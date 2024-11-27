@@ -22,6 +22,8 @@ Main (unreleased)
 
 - Add `otelcol.exporter.syslog` component to export logs in syslog format (@dehaansa)
 
+- (_Experimental_) Add a `database_observability.mysql` component to collect mysql performance data.
+
 ### Enhancements
 
 - Add second metrics sample to the support bundle to provide delta information (@dehaansa)
@@ -40,7 +42,7 @@ Main (unreleased)
 
 - Fixed an issue in the `otelcol.processor.attribute` component where the actions `delete` and `hash` could not be used with the `pattern` argument. (@wildum)
 
-- Fixed a few race conditions that could lead to a deadlock when using `import` statements, which could lead to a memory leak on `/metrics` endpoint of an Alloy instance. (@thampiotr) 
+- Fixed a few race conditions that could lead to a deadlock when using `import` statements, which could lead to a memory leak on `/metrics` endpoint of an Alloy instance. (@thampiotr)
 
 - Fix a race condition where the ui service was dependent on starting after the remotecfg service, which is not guaranteed. (@dehaansa & @erikbaranowski)
 
@@ -98,7 +100,7 @@ v1.5.0
 - Add support for relative paths to `import.file`. This new functionality allows users to use `import.file` blocks in modules
   imported via `import.git` and other `import.file`. (@wildum)
 
-- `prometheus.exporter.cloudwatch`: The `discovery` block now has a `recently_active_only` configuration attribute 
+- `prometheus.exporter.cloudwatch`: The `discovery` block now has a `recently_active_only` configuration attribute
   to return only metrics which have been active in the last 3 hours.
 
 - Add Prometheus bearer authentication to a `prometheus.write.queue` component (@freak12techno)
@@ -111,9 +113,9 @@ v1.5.0
 
 - Fixed a bug in `import.git` which caused a `"non-fast-forward update"` error message. (@ptodev)
 
-- Do not log error on clean shutdown of `loki.source.journal`. (@thampiotr) 
+- Do not log error on clean shutdown of `loki.source.journal`. (@thampiotr)
 
-- `prometheus.operator.*` components: Fixed a bug which would sometimes cause a 
+- `prometheus.operator.*` components: Fixed a bug which would sometimes cause a
   "failed to create service discovery refresh metrics" error after a config reload. (@ptodev)
 
 ### Other changes
@@ -152,7 +154,7 @@ v1.4.3
 
 - `pyroscope.scrape` no longer tries to scrape endpoints which are not active targets anymore. (@wildum @mattdurham @dehaansa @ptodev)
 
-- Fixed a bug with `loki.source.podlogs` not starting in large clusters due to short informer sync timeout. (@elburnetto-intapp) 
+- Fixed a bug with `loki.source.podlogs` not starting in large clusters due to short informer sync timeout. (@elburnetto-intapp)
 
 - `prometheus.exporter.windows`: Fixed bug with `exclude` regular expression config arguments which caused missing metrics. (@ptodev)
 
@@ -171,7 +173,7 @@ v1.4.2
   - Fix parsing of the Level configuration attribute in debug_metrics config block
   - Ensure "optional" debug_metrics config block really is optional
 
-- Fixed an issue with `loki.process` where `stage.luhn` and `stage.timestamp` would not apply 
+- Fixed an issue with `loki.process` where `stage.luhn` and `stage.timestamp` would not apply
   default configuration settings correctly (@thampiotr)
 
 - Fixed an issue with `loki.process` where configuration could be reloaded even if there
