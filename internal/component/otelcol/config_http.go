@@ -21,13 +21,9 @@ type HTTPServerArguments struct {
 
 	CORS *CORSArguments `alloy:"cors,block,optional"`
 
-	// TODO(rfratto): auth
-	//
-	// Figuring out how to do authentication isn't very straightforward here. The
-	// auth section links to an authenticator extension.
-	//
-	// We will need to generally figure out how we want to provide common
-	// authentication extensions to all of our components.
+	// Auth is a binding to an otelcol.auth.* component extension which handles
+	// authentication.
+	Auth *auth.Handler `alloy:"auth,attr,optional"`
 
 	MaxRequestBodySize    units.Base2Bytes `alloy:"max_request_body_size,attr,optional"`
 	IncludeMetadata       bool             `alloy:"include_metadata,attr,optional"`
@@ -49,6 +45,15 @@ func (args *HTTPServerArguments) Convert() *otelconfighttp.ServerConfig {
 		return nil
 	}
 
+	var auth *otelconfighttp.AuthConfig
+	if args.Auth != nil {
+		auth = &otelconfighttp.AuthConfig{
+			Authentication: otelconfigauth.Authentication{
+				AuthenticatorID: args.Auth.ID,
+			},
+		}
+	}
+
 	return &otelconfighttp.ServerConfig{
 		Endpoint:              args.Endpoint,
 		TLSSetting:            args.TLS.Convert(),
@@ -56,7 +61,17 @@ func (args *HTTPServerArguments) Convert() *otelconfighttp.ServerConfig {
 		MaxRequestBodySize:    int64(args.MaxRequestBodySize),
 		IncludeMetadata:       args.IncludeMetadata,
 		CompressionAlgorithms: copyStringSlice(args.CompressionAlgorithms),
+		Auth:                  auth,
 	}
+}
+
+// Extensions exposes extensions used by args.
+func (args *HTTPServerArguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
+	m := make(map[otelcomponent.ID]otelextension.Extension)
+	if args.Auth != nil {
+		m[args.Auth.ID] = args.Auth.Extension
+	}
+	return m
 }
 
 // CORSArguments holds shared CORS settings for components which launch HTTP

@@ -3,6 +3,7 @@ package otlp
 
 import (
 	"fmt"
+	"maps"
 	net_url "net/url"
 
 	"github.com/alecthomas/units"
@@ -89,7 +90,26 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 
 // Extensions implements receiver.Arguments.
 func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
-	return nil
+	extensionMap := make(map[otelcomponent.ID]otelextension.Extension)
+
+	// Gets the extensions for the HTTP server and GRPC server
+	if args.HTTP != nil{
+		httpExtensions :=  (*otelcol.HTTPServerArguments)(args.HTTP.HTTPServerArguments).Extensions()
+
+		// Copies the extensions from each server.
+		maps.Copy(extensionMap, httpExtensions)
+	}
+
+	if args.GRPC != nil{
+		grpcExtensions := (*otelcol.GRPCServerArguments)(args.GRPC).Extensions()
+
+		// Copies the extensions from each server.
+		maps.Copy(extensionMap, grpcExtensions)
+	}
+	
+	
+
+	return extensionMap
 }
 
 // Exporters implements receiver.Arguments.

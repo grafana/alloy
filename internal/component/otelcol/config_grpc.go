@@ -30,13 +30,9 @@ type GRPCServerArguments struct {
 
 	Keepalive *KeepaliveServerArguments `alloy:"keepalive,block,optional"`
 
-	// TODO(rfratto): auth
-	//
-	// Figuring out how to do authentication isn't very straightforward here. The
-	// auth section links to an authenticator extension.
-	//
-	// We will need to generally figure out how we want to provide common
-	// authentication extensions to all of our components.
+	// Auth is a binding to an otelcol.auth.* component extension which handles
+	// authentication.
+	Auth *auth.Handler `alloy:"auth,attr,optional"`
 
 	IncludeMetadata bool `alloy:"include_metadata,attr,optional"`
 }
@@ -45,6 +41,13 @@ type GRPCServerArguments struct {
 func (args *GRPCServerArguments) Convert() *otelconfiggrpc.ServerConfig {
 	if args == nil {
 		return nil
+	}
+
+	var auth *otelconfigauth.Authentication
+	if args.Auth != nil{
+		auth = &otelconfigauth.Authentication{
+			AuthenticatorID: args.Auth.ID,
+		}
 	}
 
 	return &otelconfiggrpc.ServerConfig{
@@ -59,11 +62,19 @@ func (args *GRPCServerArguments) Convert() *otelconfiggrpc.ServerConfig {
 		MaxConcurrentStreams: args.MaxConcurrentStreams,
 		ReadBufferSize:       int(args.ReadBufferSize),
 		WriteBufferSize:      int(args.WriteBufferSize),
-
 		Keepalive: args.Keepalive.Convert(),
-
 		IncludeMetadata: args.IncludeMetadata,
+		Auth: auth,
+	}	
+}
+
+// Extensions exposes extensions used by args.
+func (args *GRPCServerArguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
+	m := make(map[otelcomponent.ID]otelextension.Extension)
+	if args.Auth != nil {
+		m[args.Auth.ID] = args.Auth.Extension
 	}
+	return m
 }
 
 // KeepaliveServerArguments holds shared keepalive settings for components

@@ -2,6 +2,8 @@
 package basic
 
 import (
+	"fmt"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol/auth"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
@@ -52,6 +54,9 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		ClientAuth: &basicauthextension.ClientAuthSettings{
 			Username: args.Username,
 			Password: configopaque.String(args.Password),
+		},
+		Htpasswd: &basicauthextension.HtpasswdSettings{
+			Inline: fmt.Sprintf("%s:%s", args.Username, args.Password),
 		},
 	}, nil
 }
