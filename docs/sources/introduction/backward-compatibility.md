@@ -17,7 +17,7 @@ Documented functionality that's released as _Generally available_ is covered by 
 
 * **APIs**, for any network or code API released as v1.0.0 or later.
 
-* **Observability data used in official dashboards**, where the official set of dashboards are found in [the `alloy-mixin/` directory][alloy-mixin].
+* **Observability data used in official dashboards**, where the official set of dashboards are found in the [`alloy-mixin/`][alloy-mixin] directory.
 
 ## Exceptions
 
@@ -25,7 +25,7 @@ We strive to maintain backward compatibility, but there are situations that may 
 
 * **Security**: A security issue may arise that requires breaking compatibility.
 
-* **Legal requirements**: If we learn that exposed behavior violates a licensing or legal requirement, a breaking change may be required.
+* **Legal requirements**: If an exposed behavior violates a licensing or legal requirement, a breaking change may be required.
 
 * **Specification errors**: If a specification for a feature is found to be incomplete or inconsistent, fixing the specification may require a breaking change.
 
@@ -33,7 +33,7 @@ We strive to maintain backward compatibility, but there are situations that may 
 
 * **Upstream changes**: Much of the functionality of {{< param "PRODUCT_NAME" >}} is built on top of other software, such as OpenTelemetry Collector and Prometheus. If upstream software breaks compatibility, we may need to reflect this in {{< param "PRODUCT_NAME" >}}.
 
-* **Community components**: Community components are components implemented and maintained by the community. They are not covered by our backward compatibility strategy.
+* **Community components**: Community components are components implemented and maintained by the community. They aren't covered by the backward compatibility strategy.
 
 We try, whenever possible, to resolve these issues without breaking compatibility.
 

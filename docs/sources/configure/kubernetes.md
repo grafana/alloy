@@ -43,11 +43,10 @@ To modify {{< param "PRODUCT_NAME" >}}'s Helm chart configuration, perform the f
    ```
 
    Replace the following:
-   - _`<NAMESPACE>`_: The namespace you used for your {{< param "PRODUCT_NAME" >}} installation.
-   - _`<RELEASE_NAME>`_: The name you used for your {{< param "PRODUCT_NAME" >}} installation.
-   - _`<VALUES_PATH>`_: The path to your copy of `values.yaml` to use.
 
-[values.yaml]: https://raw.githubusercontent.com/grafana/alloy/main/operations/helm/charts/alloy/values.yaml
+   * _`<NAMESPACE>`_: The namespace you used for your {{< param "PRODUCT_NAME" >}} installation.
+   * _`<RELEASE_NAME>`_: The name you used for your {{< param "PRODUCT_NAME" >}} installation.
+   * _`<VALUES_PATH>`_: The path to your copy of `values.yaml` to use.
 
 ## Kustomize considerations
 
@@ -98,9 +97,9 @@ Use this method if you prefer to embed your {{< param "PRODUCT_NAME" >}} configu
 
    Replace the following:
 
-   - _`<NAMESPACE>`_: The namespace you used for your {{< param "PRODUCT_NAME" >}} installation.
-   - _`<RELEASE_NAME>`_: The name you used for your {{< param "PRODUCT_NAME" >}} installation.
-   - _`<VALUES_PATH>`_: The path to your copy of `values.yaml` to use.
+   * _`<NAMESPACE>`_: The namespace you used for your {{< param "PRODUCT_NAME" >}} installation.
+   * _`<RELEASE_NAME>`_: The name you used for your {{< param "PRODUCT_NAME" >}} installation.
+   * _`<VALUES_PATH>`_: The path to your copy of `values.yaml` to use.
 
 ### Method 2: Create a separate ConfigMap from a file
 
@@ -124,7 +123,7 @@ Use this method if you prefer to write your {{< param "PRODUCT_NAME" >}} configu
 
    Replace the following:
 
-   - _`<NAMESPACE>`_: The namespace you used for your {{< param "PRODUCT_NAME" >}} installation.
+   * _`<NAMESPACE>`_: The namespace you used for your {{< param "PRODUCT_NAME" >}} installation.
 
 1. Modify Helm Chart's configuration in your `values.yaml` to use the existing ConfigMap:
 
@@ -144,9 +143,9 @@ Use this method if you prefer to write your {{< param "PRODUCT_NAME" >}} configu
 
    Replace the following:
 
-   - _`<NAMESPACE>`_: The namespace you used for your {{< param "PRODUCT_NAME" >}} installation.
-   - _`<RELEASE_NAME>`_: The name you used for your {{< param "PRODUCT_NAME" >}} installation.
-   - _`<VALUES_PATH>`_: The path to your copy of `values.yaml` to use.
+   * _`<NAMESPACE>`_: The namespace you used for your {{< param "PRODUCT_NAME" >}} installation.
+   * _`<RELEASE_NAME>`_: The name you used for your {{< param "PRODUCT_NAME" >}} installation.
+   * _`<VALUES_PATH>`_: The path to your copy of `values.yaml` to use.
 
 [values.yaml]: https://raw.githubusercontent.com/grafana/alloy/main/operations/helm/charts/alloy/values.yaml
 [Helm chart]: https://github.com/grafana/alloy/tree/main/operations/helm/charts/alloy

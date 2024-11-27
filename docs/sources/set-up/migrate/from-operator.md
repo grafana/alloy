@@ -44,7 +44,7 @@ You can migrate from Grafana Agent Operator to {{< param "PRODUCT_NAME" >}}.
 
 1. Install the Grafana Helm repository:
 
-    ```
+    ```shell
     helm repo add grafana https://grafana.github.io/helm-charts
     helm repo update
     ```
@@ -121,7 +121,7 @@ Refer to the documentation for the relevant components for additional informatio
 - [prometheus.operator.probes][]
 - [prometheus.scrape][]
 
-## Collecting logs
+## Collect logs
 
 The current recommendation is to create an additional DaemonSet deployment of {{< param "PRODUCT_NAME" >}} to scrape logs.
 
@@ -145,7 +145,7 @@ alloy:
 
 This command installs a release named `alloy-logs` in the `monitoring` namespace:
 
-```
+```shell
 helm upgrade alloy-logs grafana/alloy -i -n monitoring -f values-logs.yaml --set-file alloy.configMap.content=config-logs.alloy
 ```
 
@@ -277,7 +277,6 @@ The [reference documentation][component documentation] should help convert those
 [clustering]: ../../../get-started/clustering/
 [deployment guide]: ../../../set-up/deploy/
 [operator guide]: https://grafana.com/docs/agent/latest/operator/deploy-agent-operator-resources/#deploy-a-metricsinstance-resource
-[Helm chart]: ../../../set-up/install/kubernetes/
 [remote.kubernetes.secret]: ../../../reference/components/remote/remote.kubernetes.secret/
 [prometheus.remote_write]: ../../../reference/components/prometheus/prometheus.remote_write/
 [prometheus.operator.podmonitors]: ../../../reference/components/prometheus/prometheus.operator.podmonitors/
