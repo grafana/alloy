@@ -13,7 +13,7 @@ weight: 600
 The [{{< param "PRODUCT_NAME" >}} Docker image][image] contains two users:
 
 * A `root` user.
-* A non-root user named `alloy` with uid `473` and gid `473`.
+* A non-root user named `alloy` with UID `473` and gid `473`.
 
 By default, the `alloy` binary runs as `root`. This is because some {{< param "PRODUCT_NAME" >}} components like [beyla.ebpf][] require root permissions.
 

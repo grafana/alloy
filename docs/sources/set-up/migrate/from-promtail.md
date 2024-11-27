@@ -25,15 +25,15 @@ This topic describes how to:
 
 ## Before you begin
 
-* You must have an existing Promtail configuration.
+* You must have a Promtail configuration.
 * You must be familiar with the concept of [Components][] in {{< param "PRODUCT_NAME" >}}.
 
 ## Convert a Promtail configuration
 
 To fully migrate from [Promtail] to {{< param "PRODUCT_NAME" >}}, you must convert your Promtail configuration into an {{< param "PRODUCT_NAME" >}} configuration.
-This conversion will enable you to take full advantage of the many additional features available in {{< param "PRODUCT_NAME" >}}.
+This conversion allows you to take full advantage of the many additional features available in {{< param "PRODUCT_NAME" >}}.
 
-> In this task, you will use the [convert][] CLI command to output an {{< param "PRODUCT_NAME" >}}
+> In this task, you use the [convert][] CLI command to output an {{< param "PRODUCT_NAME" >}}
 > configuration from a Promtail configuration.
 
 1. Open a terminal window and run the following command.
@@ -87,16 +87,16 @@ This conversion will enable you to take full advantage of the many additional fe
 
 ## Run a Promtail configuration
 
-If you’re not ready to completely switch to an {{< param "PRODUCT_NAME" >}} configuration, you can run {{< param "PRODUCT_NAME" >}} using your existing Promtail configuration.
+If you're not ready to completely switch to an {{< param "PRODUCT_NAME" >}} configuration, you can run {{< param "PRODUCT_NAME" >}} using your Promtail configuration.
 The `--config.format=promtail` flag tells {{< param "PRODUCT_NAME" >}} to convert your Promtail configuration to {{< param "PRODUCT_NAME" >}} and load it directly without saving the new configuration.
-This allows you to try {{< param "PRODUCT_NAME" >}} without modifying your existing Promtail configuration infrastructure.
+This allows you to try {{< param "PRODUCT_NAME" >}} without modifying your Promtail configuration infrastructure.
 
-> In this task, you will use the [run][] CLI command to run {{< param "PRODUCT_NAME" >}} using a Promtail configuration.
+> In this task, you use the [run][] CLI command to run {{< param "PRODUCT_NAME" >}} using a Promtail configuration.
 
 [Run][run alloy] {{< param "PRODUCT_NAME" >}} and include the command line flag `--config.format=promtail`.
 Your configuration file must be a valid Promtail configuration file rather than an {{< param "PRODUCT_NAME" >}} configuration file.
 
-### Debugging
+### Debug
 
 1. You can follow the convert CLI command [debugging][] instructions to generate a diagnostic report.
 
@@ -107,7 +107,7 @@ Your configuration file must be a valid Promtail configuration file rather than 
 
    {{< admonition type="caution" >}}
    If you bypass the errors, the behavior of the converted configuration may not match the original Promtail configuration.
-   Do not use this flag in a production environment.
+   Don't use this flag in a production environment.
    {{< /admonition >}}
 
 ## Example
@@ -143,28 +143,28 @@ The new {{< param "PRODUCT_NAME" >}} configuration file looks like this:
 
 ```alloy
 local.file_match "example" {
-	path_targets = [{
-		__address__ = "localhost",
-		__path__    = "/var/log/*.log",
-	}]
+  path_targets = [{
+    __address__ = "localhost",
+    __path__    = "/var/log/*.log",
+  }]
 }
 
 loki.source.file "example" {
-	targets    = local.file_match.example.targets
-	forward_to = [loki.write.default.receiver]
+  targets    = local.file_match.example.targets
+  forward_to = [loki.write.default.receiver]
 }
 
 loki.write "default" {
-	endpoint {
-		url = "http://localhost/loki/api/v1/push"
-	}
-	external_labels = {}
+  endpoint {
+    url = "http://localhost/loki/api/v1/push"
+  }
+  external_labels = {}
 }
 ```
 
 ## Limitations
 
-Configuration conversion is done on a best-effort basis. {{< param "PRODUCT_NAME" >}} will issue warnings or errors where the conversion can't be performed.
+Configuration conversion is done on a best-effort basis. {{< param "PRODUCT_NAME" >}} issues warnings or errors where the conversion can't be performed.
 
 After the configuration is converted, review the {{< param "PRODUCT_NAME" >}} configuration file created and verify that it's correct before starting to use it in a production environment.
 
@@ -174,11 +174,11 @@ The following list is specific to the convert command and not {{< param "PRODUCT
 * Check if you are setting any environment variables, whether [expanded in the configuration file][] itself or consumed directly by Promtail, such as `JAEGER_AGENT_HOST`.
 * In {{< param "PRODUCT_NAME" >}}, the positions file is saved at a different location.
   Refer to the [loki.source.file][] documentation for more details.
-  Check if you have any existing setup, for example, a Kubernetes Persistent Volume, that you must update to use the new positions file path.
-* Metamonitoring metrics exposed by {{< param "PRODUCT_NAME" >}} usually match Promtail metamonitoring metrics but will use a different name.
+  Check if you have any setup, for example, a Kubernetes Persistent Volume, that you must update to use the new positions path.
+* Meta-monitoring metrics exposed by {{< param "PRODUCT_NAME" >}} usually match Promtail meta-monitoring metrics but uses a different name.
   Make sure that you use the new metric names, for example, in your alerts and dashboards queries.
-* The logs produced by {{< param "PRODUCT_NAME" >}} will differ from those produced by Promtail.
-* {{< param "PRODUCT_NAME" >}} exposes the {{< param "PRODUCT_NAME" >}} [UI][], which differs from Promtail's Web UI.
+* The logs produced by {{< param "PRODUCT_NAME" >}} differ from those produced by Promtail.
+* {{< param "PRODUCT_NAME" >}} exposes the {{< param "PRODUCT_NAME" >}} [UI][], which differs from the Promtail Web UI.
 
 [Promtail]: https://www.grafana.com/docs/loki/<LOKI_VERSION>/clients/promtail/
 [debugging]: #debugging

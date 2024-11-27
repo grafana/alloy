@@ -12,7 +12,7 @@ weight: 100
 
 You can install {{< param "PRODUCT_NAME" >}} on Docker, Kubernetes, Linux, macOS, or Windows.
 
-The following architectures are supported:
+{{< param "PRODUCT_NAME" >}} supports the following architectures:
 
 - **Linux**: AMD64, ARM64
 - **Windows**: AMD64
