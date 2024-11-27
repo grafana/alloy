@@ -10,6 +10,12 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/dskit/backoff"
+	"github.com/hashicorp/go-multierror"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
+
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/internal/dag"
 	"github.com/grafana/alloy/internal/runtime/internal/worker"
@@ -18,11 +24,6 @@ import (
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/diag"
-	"github.com/grafana/dskit/backoff"
-	"github.com/hashicorp/go-multierror"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/codes"
-	"go.opentelemetry.io/otel/trace"
 )
 
 // The Loader builds and evaluates ComponentNodes from Alloy blocks.
@@ -92,10 +93,11 @@ func NewLoader(opts LoaderOptions) *Loader {
 		componentNodeManager: NewComponentNodeManager(globals, reg),
 
 		// This is a reasonable default which should work for most cases. If a component is completely stuck, we would
-		// retry and log an error every 10 seconds, at most.
+		// retry and log an error every 10 seconds, at most. We give up after some time to prevent lasting deadlocks.
 		backoffConfig: backoff.Config{
 			MinBackoff: 1 * time.Millisecond,
 			MaxBackoff: 10 * time.Second,
+			MaxRetries: 20, // Give up after 20 attempts - it could be a deadlock instead of an overload.
 		},
 
 		graph:         &dag.Graph{},
@@ -744,18 +746,30 @@ func (l *Loader) EvaluateDependants(ctx context.Context, updatedNodes []*QueuedN
 				l.concurrentEvalFn(nodeRef, dependantCtx, tracer, parentRef)
 			})
 			if err != nil {
-				level.Error(l.log).Log(
-					"msg", "failed to submit node for evaluation - Alloy is likely overloaded "+
-						"and cannot keep up with evaluating components - will retry",
+				level.Warn(l.log).Log(
+					"msg", "failed to submit node for evaluation - will retry",
 					"err", err,
 					"node_id", n.NodeID(),
 					"originator_id", parent.Node.NodeID(),
 					"retries", retryBackoff.NumRetries(),
 				)
+				// When backing off, release the mut in case the evaluation requires to interact with the loader itself.
+				l.mut.RUnlock()
 				retryBackoff.Wait()
+				l.mut.RLock()
 			} else {
 				break
 			}
+		}
+		if err != nil && !retryBackoff.Ongoing() {
+			level.Error(l.log).Log(
+				"msg", "retry attempts exhausted when submitting node for evaluation to the worker pool - "+
+					"this could be a deadlock, performance bottleneck or severe overload leading to goroutine starvation",
+				"err", err,
+				"node_id", n.NodeID(),
+				"originator_id", parent.Node.NodeID(),
+				"retries", retryBackoff.NumRetries(),
+			)
 		}
 		span.SetAttributes(attribute.Int("retries", retryBackoff.NumRetries()))
 		if err != nil {
