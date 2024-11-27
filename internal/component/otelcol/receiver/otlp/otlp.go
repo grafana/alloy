@@ -93,21 +93,19 @@ func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension 
 	extensionMap := make(map[otelcomponent.ID]otelextension.Extension)
 
 	// Gets the extensions for the HTTP server and GRPC server
-	if args.HTTP != nil{
-		httpExtensions :=  (*otelcol.HTTPServerArguments)(args.HTTP.HTTPServerArguments).Extensions()
+	if args.HTTP != nil {
+		httpExtensions := (*otelcol.HTTPServerArguments)(args.HTTP.HTTPServerArguments).Extensions()
 
-		// Copies the extensions from each server.
+		// Copies the extensions for the HTTP server into the map
 		maps.Copy(extensionMap, httpExtensions)
 	}
 
-	if args.GRPC != nil{
+	if args.GRPC != nil {
 		grpcExtensions := (*otelcol.GRPCServerArguments)(args.GRPC).Extensions()
 
-		// Copies the extensions from each server.
+		// Copies the extensions for the GRPC server into the map.
 		maps.Copy(extensionMap, grpcExtensions)
 	}
-	
-	
 
 	return extensionMap
 }

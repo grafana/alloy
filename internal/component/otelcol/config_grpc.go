@@ -44,7 +44,7 @@ func (args *GRPCServerArguments) Convert() *otelconfiggrpc.ServerConfig {
 	}
 
 	var auth *otelconfigauth.Authentication
-	if args.Auth != nil{
+	if args.Auth != nil {
 		auth = &otelconfigauth.Authentication{
 			AuthenticatorID: args.Auth.ID,
 		}
@@ -62,10 +62,10 @@ func (args *GRPCServerArguments) Convert() *otelconfiggrpc.ServerConfig {
 		MaxConcurrentStreams: args.MaxConcurrentStreams,
 		ReadBufferSize:       int(args.ReadBufferSize),
 		WriteBufferSize:      int(args.WriteBufferSize),
-		Keepalive: args.Keepalive.Convert(),
-		IncludeMetadata: args.IncludeMetadata,
-		Auth: auth,
-	}	
+		Keepalive:            args.Keepalive.Convert(),
+		IncludeMetadata:      args.IncludeMetadata,
+		Auth:                 auth,
+	}
 }
 
 // Extensions exposes extensions used by args.
