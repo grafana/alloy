@@ -109,3 +109,23 @@ prometheus.remote_write "metrics_test7_azuread_explicit" {
 		}
 	}
 }
+
+prometheus.remote_write "metrics_test8_azuread_appauth" {
+	endpoint {
+		name = "test8_azuread_appauth-1654c7"
+		url  = "http://localhost:9012/api/prom/push"
+
+		queue_config { }
+
+		metadata_config { }
+
+		azuread {
+			oauth {
+				client_id     = "00000000-0000-0000-0000-000000000000"
+				client_secret = "fake_client_secret"
+				tenant_id     = "00000000-0000-0000-0000-000000000000"
+			}
+			cloud = "AzureGovernment"
+		}
+	}
+}
