@@ -33,7 +33,7 @@ Main (unreleased)
 - Add relevant golang environment variables to the support bundle (@dehaansa)
 
 ### Bugfixes
-
+- Fixed an issue in the `pyroscope.write` component to allow slashes in application names in the same way it is done in the Pyroscope push API (@marcsanmi)
 - Fixed an issue in the `prometheus.exporter.postgres` component that would leak goroutines when the target was not reachable (@dehaansa)
 - Fixed an issue in the `otelcol.exporter.prometheus` component that would set series value incorrectly for stale metrics (@YusifAghalar)
 
