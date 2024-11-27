@@ -12,11 +12,11 @@ weight: 300
 
 {{< docs/public-preview product="Generate support bundle" >}}
 
-The `/-/support?duration=N` endpoint returns a support bundle, a zip file that contains information
+The `/-/support?duration=N` endpoint returns a support bundle, a compressed file that contains information
 about a running {{< param "PRODUCT_NAME" >}} instance, and can be used as a baseline of information when trying
-to debug an issue.
+to debug an [issue][alloy-repo].
 
-This feature is not covered by our [backward-compatibility][backward-compatibility] guarantees.
+This feature isn't covered by the [backward-compatibility][backward-compatibility] guarantees.
 
 {{< admonition type="note" >}}
 This endpoint is enabled by default, but may be disabled using the `--disable-support-bundle` runtime flag.
@@ -45,7 +45,7 @@ A support bundle contains the following data:
 * The `pprof/` directory contains Go runtime profiling data (CPU, heap, goroutine, mutex, block profiles) as exported by the pprof package.
 Refer to the [profile][profile] documentation for more details on how to use this information.
 
-[profile]: ../profile
+[profile]: ../profile/
 [components]: ../../get-started/components/
 [alloy-repo]: https://github.com/grafana/alloy/issues
 [backward-compatibility]: ../../introduction/backward-compatibility

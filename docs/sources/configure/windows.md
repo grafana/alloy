@@ -16,7 +16,7 @@ To configure {{< param "PRODUCT_NAME" >}} on Windows, perform the following step
 
 1. Restart the {{< param "PRODUCT_NAME" >}} service:
 
-   1. Open the Windows Services manager (`services.msc`):
+   1. Open the Windows Services manager:
 
       1. Right click on the Start Menu and select **Run**.
 
@@ -46,12 +46,12 @@ To change the set of command-line arguments passed to the {{< param "PRODUCT_NAM
 
 1. Double-click on the value called **Arguments***.
 
-1. In the dialog box, enter the new set of arguments to pass to the {{< param "PRODUCT_NAME" >}} binary.
+1. In the dialog box, enter the arguments to pass to the {{< param "PRODUCT_NAME" >}} binary.
    Make sure that each argument is on its own line.
 
 1. Restart the {{< param "PRODUCT_NAME" >}} service:
 
-   1. Open the Windows Services manager (`services.msc`):
+   1. Open the Windows Services manager:
 
       1. Right click on the Start Menu and select **Run**.
 

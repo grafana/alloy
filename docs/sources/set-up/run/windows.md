@@ -15,7 +15,7 @@ The service is configured to automatically run on startup.
 
 To verify that {{< param "PRODUCT_NAME" >}} is running as a Windows Service:
 
-1. Open the Windows Services manager (services.msc):
+1. Open the Windows Services manager:
 
     1. Right click on the Start Menu and select **Run**.
 
