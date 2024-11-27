@@ -287,9 +287,9 @@ func (m ManagedIdentityConfig) toPrometheusType() *azuread.ManagedIdentityConfig
 // Azure AD oauth
 type AzureOAuthConfig struct {
 	// AzureADOAuth is the OAuth configuration that is being used to authenticate.
-	ClientID     string `alloy:"client_id,attr,optional"`
-	ClientSecret string `alloy:"client_secret,attr,optional"`
-	TenantID     string `alloy:"tenant_id,attr,optional"`
+	ClientID     string `alloy:"client_id,attr"`
+	ClientSecret string `alloy:"client_secret,attr"`
+	TenantID     string `alloy:"tenant_id,attr"`
 }
 
 func (m AzureOAuthConfig) toPrometheusType() *azuread.OAuthConfig {
@@ -319,34 +319,40 @@ func (a *AzureADConfig) Validate() error {
 		return fmt.Errorf("must provide a cloud in the Azure AD config")
 	}
 
-	if a.ManagedIdentity.ClientID != "" {
-		_, err := uuid.Parse(a.ManagedIdentity.ClientID)
-		if err != nil {
-			return fmt.Errorf("the provided Azure Managed Identity client_id provided is invalid")
-		}
+	_, err := uuid.Parse(a.ManagedIdentity.ClientID)
+	if err != nil {
+		return fmt.Errorf("the provided Azure Managed Identity client_id provided is invalid")
 	}
 
-	if a.OAuth.ClientID != "" {
-		_, err := uuid.Parse(a.OAuth.ClientID)
-		if err != nil {
-			return fmt.Errorf("the provided Azure App Identity client_id provided is invalid")
-		}
-	}
+	// Validate OAuth if it is provided
+	// if a.OAuth != "" {
+	// 	if a.OAuth.TenantID == "" {
+	// 		return fmt.Errorf("OAuth TenantID must not be empty")
+	// 	}
+	// 	if a.OAuth.ClientSecret == "" {
+	// 		return fmt.Errorf("OAuth ClientSecret must not be empty")
+	// 	}
+	// }
 
-	if a.OAuth.TenantID != "" {
-		_, err := uuid.Parse(a.OAuth.TenantID)
-		if err != nil {
-			return fmt.Errorf("the provided Azure App Identity tenant_id provided is invalid")
-		}
-	}
+	// // Validate ManagedIdentity if it is provided
+	// if a.ManagedIdentity != nil {
+	// 	if a.ManagedIdentity.ClientID == "" {
+	// 		return fmt.Errorf("ManagedIdentity ClientID must not be empty")
+	// 	}
+	// }
 
-	if a.OAuth.ClientID == "" && a.ManagedIdentity.ClientID == "" {
-		return fmt.Errorf("either oauth or managed identity must be configured")
-	}
-
-	if a.OAuth.ClientID != "" && a.ManagedIdentity.ClientID != "" {
-		return fmt.Errorf("at most oauth or managed identity must be configured for azuread")
-	}
+	// // Validate OAuth if it is provided
+	// if a.OAuth != nil {
+	// 	if a.OAuth.ClientID == "" {
+	// 		return fmt.Errorf("OAuth ClientID must not be empty")
+	// 	}
+	// 	if a.OAuth.TenantID == "" {
+	// 		return fmt.Errorf("OAuth TenantID must not be empty")
+	// 	}
+	// 	if a.OAuth.ClientSecret == "" {
+	// 		return fmt.Errorf("OAuth ClientSecret must not be empty")
+	// 	}
+	// }
 
 	return nil
 }
