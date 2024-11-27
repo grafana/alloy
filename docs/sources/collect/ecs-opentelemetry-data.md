@@ -1,5 +1,7 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/collect/ecs-opentelemetry-data/
+alias:
+  - ./ecs-openteletry-data/ # /docs/alloy/latest/collect/ecs-openteletry-data/
 description: Learn how to collect Amazon ECS or AWS Fargate OpenTelemetry data and forward it to any OpenTelemetry-compatible endpoint
 menuTitle: Collect ECS or Fargate OpenTelemetry data
 title: Collect Amazon Elastic Container Service or AWS Fargate OpenTelemetry data
