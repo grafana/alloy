@@ -73,7 +73,7 @@ require (
 	github.com/grafana/regexp v0.0.0-20240518133315-a468a5bfb3bc
 	github.com/grafana/tail v0.0.0-20230510142333-77b18831edf0
 	github.com/grafana/vmware_exporter v0.0.5-beta
-	github.com/grafana/walqueue v0.0.0-20241118151117-77b057cbe5a2
+	github.com/grafana/walqueue v0.0.0-20241127145907-83ac26bedfce
 	github.com/hashicorp/consul/api v1.29.5
 	github.com/hashicorp/go-discover v0.0.0-20230724184603-e89ebd1b2f65
 	github.com/hashicorp/go-multierror v1.1.1
@@ -831,7 +831,6 @@ require (
 	github.com/ebitengine/purego v0.8.0 // indirect
 	github.com/elastic/lunes v0.1.0 // indirect
 	github.com/moby/sys/userns v0.1.0 // indirect
-	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/syslogexporter v0.112.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/kafka/topic v0.112.0 // indirect
 	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10 // indirect
 	go.opentelemetry.io/collector/connector/connectorprofiles v0.112.0 // indirect
@@ -850,7 +849,10 @@ require (
 	go.opentelemetry.io/otel/exporters/stdout/stdoutlog v0.7.0 // indirect
 )
 
-require github.com/mackerelio/go-osstat v0.2.5
+require (
+	github.com/mackerelio/go-osstat v0.2.5
+	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/syslogexporter v0.112.0
+)
 
 // NOTE: replace directives below must always be *temporary*.
 //

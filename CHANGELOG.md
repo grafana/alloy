@@ -43,6 +43,8 @@ Main (unreleased)
 
 - Fix a race condition where the ui service was dependent on starting after the remotecfg service, which is not guaranteed. (@dehaansa & @erikbaranowski)
 
+- Updated `prometheus.write.queue` to fix issue with TTL comparing different scales of time. (@mattdurham)
+
 ### Other changes
 
 - Change the stability of the `livedebugging` feature from "experimental" to "generally available". (@wildum)
