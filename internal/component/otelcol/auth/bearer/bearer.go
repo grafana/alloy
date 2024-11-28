@@ -51,12 +51,20 @@ func (args *Arguments) SetToDefault() {
 	args.DebugMetrics.SetToDefault()
 }
 
-// Convert implements auth.Arguments.
-func (args Arguments) Convert() (otelcomponent.Config, error) {
+func (args Arguments) convert() (otelcomponent.Config, error) {
 	return &bearertokenauthextension.Config{
 		Scheme:      args.Scheme,
 		BearerToken: configopaque.String(args.Token),
 	}, nil
+}
+
+// Convert implements auth.Arguments.
+func (args Arguments) ConvertClient() (otelcomponent.Config, error) {
+	return args.convert()
+}
+
+func (args Arguments) ConvertServer() (otelcomponent.Config, error) {
+	return args.convert()
 }
 
 // Extensions implements auth.Arguments.

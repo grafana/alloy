@@ -1,4 +1,4 @@
-//go:build !race
+// //go:build !race
 
 package receiver
 
@@ -78,7 +78,7 @@ func TestWithOtelcolConsumer(t *testing.T) {
 		err := otelcolExporter.Run(ctx, otlphttp.Arguments{
 			Client: otlphttp.HTTPClientArguments(otelcol.HTTPClientArguments{
 				Endpoint: finalOtelServer.URL,
-				Auth:     &otelcolAuthHeaderExport.Handler,
+				Auth:     otelcolAuthHeaderExport.Handler,
 				TLS: otelcol.TLSClientArguments{
 					Insecure:           true,
 					InsecureSkipVerify: true,

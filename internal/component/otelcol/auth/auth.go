@@ -7,6 +7,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"hash/fnv"
 	"os"
@@ -30,14 +31,31 @@ import (
 	"go.opentelemetry.io/otel/sdk/metric"
 )
 
+var (
+	ErrNotServerExtension = errors.New("component does not support server authentication")
+	ErrNotClientExtension = errors.New("component does not support client authentication")
+	ErrInvalidExtension   = errors.New("invalid extension")
+)
+
+type ExtensionType int
+
+const (
+	Server ExtensionType = iota // 0
+	Client
+)
+
 // Arguments is an extension of component.Arguments which contains necessary
 // settings for OpenTelemetry Collector authentication extensions.
 type Arguments interface {
 	component.Arguments
 
-	// Convert converts the Arguments into an OpenTelemetry Collector
-	// authentication extension configuration.
-	Convert() (otelcomponent.Config, error)
+	// ConvertClient converts the Arguments into an OpenTelemetry Collector
+	// client authentication extension configuration.
+	ConvertClient() (otelcomponent.Config, error)
+
+	// ConvetServer converts the Arguments into an OpenTelemetry Collector
+	// server authentication extension configuration
+	ConvertServer() (otelcomponent.Config, error)
 
 	// Extensions returns the set of extensions that the configured component is
 	// allowed to use.
@@ -56,11 +74,53 @@ type Arguments interface {
 type Exports struct {
 	// Handler is the managed component. Handler is updated any time the
 	// extension is updated.
-	Handler Handler `alloy:"handler,attr"`
+	Handler *Handler `alloy:"handler,attr"`
 }
 
 // Handler combines an extension with its ID.
 type Handler struct {
+	HandlerMap map[ExtensionType]*ExtensionHandler
+}
+
+func NewDefaultHandler() *Handler {
+	return &Handler{
+		HandlerMap: map[ExtensionType]*ExtensionHandler{},
+	}
+}
+
+func NewHandler(extensionMap map[ExtensionType]*ExtensionHandler) *Handler {
+	return &Handler{
+		HandlerMap: extensionMap,
+	}
+}
+
+func (h *Handler) GetExtension(et ExtensionType) (*ExtensionHandler, error) {
+	ext, ok := h.HandlerMap[et]
+	if !ok {
+		switch et {
+		case Server:
+			return nil, ErrNotServerExtension
+		case Client:
+			return nil, ErrNotClientExtension
+		default:
+			return nil, fmt.Errorf("%w: extension type provided %d", ErrInvalidExtension, et)
+		}
+
+	}
+
+	return ext, nil
+}
+
+func (h *Handler) AddExtension(et ExtensionType, eh *ExtensionHandler) error {
+	if et != Server && et != Client {
+		return fmt.Errorf("invalid extension type %d", et)
+	}
+
+	h.HandlerMap[et] = eh
+	return nil
+}
+
+type ExtensionHandler struct {
 	ID        otelcomponent.ID
 	Extension otelextension.Extension
 }
@@ -172,30 +232,68 @@ func (a *Auth) Update(args component.Arguments) error {
 		},
 	}
 
-	extensionConfig, err := rargs.Convert()
-	if err != nil {
-		return err
-	}
-
 	// Create instances of the extension from our factory.
 	var components []otelcomponent.Component
+	handlerMap := map[ExtensionType]*ExtensionHandler{}
 
-	ext, err := a.factory.CreateExtension(a.ctx, settings, extensionConfig)
+	createClientExtension := true
+	clientConfig, err := rargs.ConvertClient()
 	if err != nil {
-		return err
-	} else if ext != nil {
-		components = append(components, ext)
+		createClientExtension = false
+		if !errors.Is(err, ErrNotClientExtension) {
+			return err
+		}
+
+		// Log something here?
 	}
 
-	cTypeStr := NormalizeType(a.opts.ID)
+	var clientext otelcomponent.Component
+	if createClientExtension {
+		clientext, err = a.createExtension(clientConfig, settings)
+		if err != nil {
+			return err
+		}
+
+		cTypeStr := NormalizeType(fmt.Sprintf("%s_%s", a.opts.ID, "client"))
+		handlerMap[Client] = &ExtensionHandler{
+			ID:        otelcomponent.NewID(otelcomponent.MustNewType(cTypeStr)),
+			Extension: clientext,
+		}
+
+		components = append(components, clientext)
+	}
+
+	createServerExtension := true
+	serverConfig, err := rargs.ConvertServer()
+	if err != nil {
+		createServerExtension = false
+		if !errors.Is(err, ErrNotServerExtension) {
+			return err
+		}
+
+		// Log something here?
+	}
+
+	if createServerExtension {
+		serverext, err := a.createExtension(serverConfig, settings)
+		if err != nil {
+			return err
+		}
+
+		components = append(components, serverext)
+		cTypeStr := NormalizeType(fmt.Sprintf("%s_%s", a.opts.ID, "server"))
+		handlerMap[Server] = &ExtensionHandler{
+			ID:        otelcomponent.NewID(otelcomponent.MustNewType(cTypeStr)),
+			Extension: serverext,
+		}
+
+	}
 
 	// Inform listeners that our handler changed.
 	a.opts.OnStateChange(Exports{
-		Handler: Handler{
-			ID:        otelcomponent.NewID(otelcomponent.MustNewType(cTypeStr)),
-			Extension: ext,
-		},
-	})
+		Handler: NewHandler(handlerMap),
+	},
+	)
 
 	// Schedule the components to run once our component is running.
 	a.sched.Schedule(host, components...)
@@ -221,4 +319,16 @@ func NormalizeType(in string) string {
 	}
 
 	return res
+}
+
+func (a *Auth) createExtension(config otelcomponent.Config, settings otelextension.Settings) (otelcomponent.Component, error) {
+	ext, err := a.factory.Create(a.ctx, settings, config)
+	if err != nil {
+		return nil, err
+	}
+	if ext == nil {
+		return nil, fmt.Errorf("extension was not created")
+	}
+
+	return ext, nil
 }

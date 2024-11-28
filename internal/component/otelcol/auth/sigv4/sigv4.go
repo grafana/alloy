@@ -1,6 +1,8 @@
 package sigv4
 
 import (
+	"fmt"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol/auth"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
@@ -44,7 +46,7 @@ func (args *Arguments) SetToDefault() {
 }
 
 // Convert implements auth.Arguments.
-func (args Arguments) Convert() (otelcomponent.Config, error) {
+func (args Arguments) ConvertClient() (otelcomponent.Config, error) {
 	res := sigv4authextension.Config{
 		Region:     args.Region,
 		Service:    args.Service,
@@ -58,9 +60,13 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	return &res, nil
 }
 
+func (args Arguments) ConvertServer() (otelcomponent.Config, error) {
+	return nil, fmt.Errorf("%w sigv4authplugin does not implement server authentication", auth.ErrNotServerExtension)
+}
+
 // Validate implements syntax.Validator.
 func (args Arguments) Validate() error {
-	_, err := args.Convert()
+	_, err := args.ConvertClient()
 	return err
 }
 

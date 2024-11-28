@@ -38,15 +38,19 @@ type GRPCServerArguments struct {
 }
 
 // Convert converts args into the upstream type.
-func (args *GRPCServerArguments) Convert() *otelconfiggrpc.ServerConfig {
+func (args *GRPCServerArguments) Convert() (*otelconfiggrpc.ServerConfig, error) {
 	if args == nil {
-		return nil
+		return nil, nil
 	}
 
-	var auth *otelconfigauth.Authentication
+	var authz *otelconfigauth.Authentication
 	if args.Auth != nil {
-		auth = &otelconfigauth.Authentication{
-			AuthenticatorID: args.Auth.ID,
+		serverExtension, err := args.Auth.GetExtension(auth.Server)
+		if err != nil {
+			return nil, err
+		}
+		authz = &otelconfigauth.Authentication{
+			AuthenticatorID: serverExtension.ID,
 		}
 	}
 
@@ -64,15 +68,19 @@ func (args *GRPCServerArguments) Convert() *otelconfiggrpc.ServerConfig {
 		WriteBufferSize:      int(args.WriteBufferSize),
 		Keepalive:            args.Keepalive.Convert(),
 		IncludeMetadata:      args.IncludeMetadata,
-		Auth:                 auth,
-	}
+		Auth:                 authz,
+	}, nil
 }
 
 // Extensions exposes extensions used by args.
 func (args *GRPCServerArguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
 	m := make(map[otelcomponent.ID]otelextension.Extension)
 	if args.Auth != nil {
-		m[args.Auth.ID] = args.Auth.Extension
+		ext, err := args.Auth.GetExtension(auth.Server)
+		if err != nil {
+			return m
+		}
+		m[ext.ID] = ext.Extension
 	}
 	return m
 }
@@ -165,9 +173,9 @@ type GRPCClientArguments struct {
 }
 
 // Convert converts args into the upstream type.
-func (args *GRPCClientArguments) Convert() *otelconfiggrpc.ClientConfig {
+func (args *GRPCClientArguments) Convert() (*otelconfiggrpc.ClientConfig, error) {
 	if args == nil {
-		return nil
+		return nil, nil
 	}
 
 	opaqueHeaders := make(map[string]configopaque.String)
@@ -176,9 +184,14 @@ func (args *GRPCClientArguments) Convert() *otelconfiggrpc.ClientConfig {
 	}
 
 	// Configure the authentication if args.Auth is set.
-	var auth *otelconfigauth.Authentication
+	var authz *otelconfigauth.Authentication
 	if args.Auth != nil {
-		auth = &otelconfigauth.Authentication{AuthenticatorID: args.Auth.ID}
+		ext, err := args.Auth.GetExtension(auth.Client)
+		if err != nil {
+			return nil, err
+		}
+
+		authz = &otelconfigauth.Authentication{AuthenticatorID: ext.ID}
 	}
 
 	// Set default value for `balancer_name` to sync up with upstream's
@@ -202,15 +215,19 @@ func (args *GRPCClientArguments) Convert() *otelconfiggrpc.ClientConfig {
 		BalancerName:    balancerName,
 		Authority:       args.Authority,
 
-		Auth: auth,
-	}
+		Auth: authz,
+	}, nil
 }
 
 // Extensions exposes extensions used by args.
 func (args *GRPCClientArguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
 	m := make(map[otelcomponent.ID]otelextension.Extension)
 	if args.Auth != nil {
-		m[args.Auth.ID] = args.Auth.Extension
+		ext, err := args.Auth.GetExtension(auth.Client)
+		if err != nil {
+			return m
+		}
+		m[ext.ID] = ext.Extension
 	}
 	return m
 }

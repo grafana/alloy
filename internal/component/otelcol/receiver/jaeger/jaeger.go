@@ -65,10 +65,19 @@ func (args *Arguments) Validate() error {
 
 // Convert implements receiver.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
+	grpcProtocol, err := args.Protocols.GRPC.Convert()
+	if err != nil {
+		return nil, err
+	}
+
+	httpProtocol, err := args.Protocols.ThriftHTTP.Convert()
+	if err != nil {
+		return nil, err
+	}
 	return &jaegerreceiver.Config{
 		Protocols: jaegerreceiver.Protocols{
-			GRPC:          args.Protocols.GRPC.Convert(),
-			ThriftHTTP:    args.Protocols.ThriftHTTP.Convert(),
+			GRPC:          grpcProtocol,
+			ThriftHTTP:    httpProtocol,
 			ThriftBinary:  args.Protocols.ThriftBinary.Convert(),
 			ThriftCompact: args.Protocols.ThriftCompact.Convert(),
 		},
@@ -114,9 +123,9 @@ func (args *GRPC) SetToDefault() {
 }
 
 // Convert converts proto into the upstream type.
-func (args *GRPC) Convert() *otelconfiggrpc.ServerConfig {
+func (args *GRPC) Convert() (*otelconfiggrpc.ServerConfig, error) {
 	if args == nil {
-		return nil
+		return nil, nil
 	}
 
 	return args.GRPCServerArguments.Convert()
@@ -137,9 +146,9 @@ func (args *ThriftHTTP) SetToDefault() {
 }
 
 // Convert converts proto into the upstream type.
-func (args *ThriftHTTP) Convert() *otelconfighttp.ServerConfig {
+func (args *ThriftHTTP) Convert() (*otelconfighttp.ServerConfig, error) {
 	if args == nil {
-		return nil
+		return nil, nil
 	}
 
 	return args.HTTPServerArguments.Convert()

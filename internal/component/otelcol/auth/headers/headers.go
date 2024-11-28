@@ -1,4 +1,4 @@
-// Package headers provides an otelcol.auth.headers component.
+// // Package headers provides an otelcol.auth.headers component.
 package headers
 
 import (
@@ -48,7 +48,7 @@ func (args *Arguments) SetToDefault() {
 }
 
 // Convert implements auth.Arguments.
-func (args Arguments) Convert() (otelcomponent.Config, error) {
+func (args Arguments) ConvertClient() (otelcomponent.Config, error) {
 	var upstreamHeaders []headerssetterextension.HeaderConfig
 	for _, h := range args.Headers {
 		upstreamHeader := headerssetterextension.HeaderConfig{
@@ -70,9 +70,14 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		upstreamHeaders = append(upstreamHeaders, upstreamHeader)
 	}
 
+	// OtelExtensionConfig does not implement ServerAuth
 	return &headerssetterextension.Config{
 		HeadersConfig: upstreamHeaders,
 	}, nil
+}
+
+func (args Arguments) ConvertServer() (otelcomponent.Config, error) {
+	return nil, fmt.Errorf("%w, headers extension does not implement server authentication", auth.ErrNotServerExtension)
 }
 
 // Extensions implements auth.Arguments.

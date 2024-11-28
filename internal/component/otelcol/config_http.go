@@ -40,16 +40,21 @@ func copyStringSlice(s []string) []string {
 }
 
 // Convert converts args into the upstream type.
-func (args *HTTPServerArguments) Convert() *otelconfighttp.ServerConfig {
+func (args *HTTPServerArguments) Convert() (*otelconfighttp.ServerConfig, error) {
 	if args == nil {
-		return nil
+		return nil, nil
 	}
 
-	var auth *otelconfighttp.AuthConfig
+	var authz *otelconfighttp.AuthConfig
 	if args.Auth != nil {
-		auth = &otelconfighttp.AuthConfig{
+		ext, err := args.Auth.GetExtension(auth.Server)
+		if err != nil {
+			return nil, err
+		}
+
+		authz = &otelconfighttp.AuthConfig{
 			Authentication: otelconfigauth.Authentication{
-				AuthenticatorID: args.Auth.ID,
+				AuthenticatorID: ext.ID,
 			},
 		}
 	}
@@ -61,15 +66,19 @@ func (args *HTTPServerArguments) Convert() *otelconfighttp.ServerConfig {
 		MaxRequestBodySize:    int64(args.MaxRequestBodySize),
 		IncludeMetadata:       args.IncludeMetadata,
 		CompressionAlgorithms: copyStringSlice(args.CompressionAlgorithms),
-		Auth:                  auth,
-	}
+		Auth:                  authz,
+	}, nil
 }
 
 // Extensions exposes extensions used by args.
 func (args *HTTPServerArguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
 	m := make(map[otelcomponent.ID]otelextension.Extension)
 	if args.Auth != nil {
-		m[args.Auth.ID] = args.Auth.Extension
+		ext, err := args.Auth.GetExtension(auth.Server)
+		if err != nil {
+			return m
+		}
+		m[ext.ID] = ext.Extension
 	}
 	return m
 }
@@ -128,15 +137,19 @@ type HTTPClientArguments struct {
 }
 
 // Convert converts args into the upstream type.
-func (args *HTTPClientArguments) Convert() *otelconfighttp.ClientConfig {
+func (args *HTTPClientArguments) Convert() (*otelconfighttp.ClientConfig, error) {
 	if args == nil {
-		return nil
+		return nil, nil
 	}
 
 	// Configure the authentication if args.Auth is set.
-	var auth *otelconfigauth.Authentication
+	var authz *otelconfigauth.Authentication
 	if args.Auth != nil {
-		auth = &otelconfigauth.Authentication{AuthenticatorID: args.Auth.ID}
+		ext, err := args.Auth.GetExtension(auth.Client)
+		if err != nil {
+			return nil, err
+		}
+		authz = &otelconfigauth.Authentication{AuthenticatorID: ext.ID}
 	}
 
 	opaqueHeaders := make(map[string]configopaque.String)
@@ -165,17 +178,21 @@ func (args *HTTPClientArguments) Convert() *otelconfighttp.ClientConfig {
 		HTTP2ReadIdleTimeout: args.HTTP2ReadIdleTimeout,
 		HTTP2PingTimeout:     args.HTTP2PingTimeout,
 
-		Auth: auth,
+		Auth: authz,
 
 		Cookies: args.Cookies.Convert(),
-	}
+	}, nil
 }
 
 // Extensions exposes extensions used by args.
 func (args *HTTPClientArguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
 	m := make(map[otelcomponent.ID]otelextension.Extension)
 	if args.Auth != nil {
-		m[args.Auth.ID] = args.Auth.Extension
+		ext, err := args.Auth.GetExtension(auth.Client)
+		if err != nil {
+			return m
+		}
+		m[ext.ID] = ext.Extension
 	}
 	return m
 }

@@ -2,6 +2,7 @@ package basic_test
 
 import (
 	"context"
+	"encoding/base64"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -60,21 +61,38 @@ func Test(t *testing.T) {
 	// Get the authentication extension from our component and use it to make a
 	// request to our test server.
 	exports := ctrl.Exports().(auth.Exports)
-	require.NotNil(t, exports.Handler.Extension, "handler extension is nil")
+	require.NotNil(t, exports.Handler)
 
-	clientAuth, ok := exports.Handler.Extension.(extauth.Client)
-	require.True(t, ok, "handler does not implement configauth.ClientAuthenticator")
+	t.Run("ClientAuth", func(t *testing.T) {
+		clientExtension, err := exports.Handler.GetExtension(auth.Client)
+		require.NoError(t, err)
+		require.NotNil(t, clientExtension)
+		clientAuth, ok := clientExtension.Extension.(extauth.Client)
+		require.True(t, ok, "handler does not implement configauth.ClientAuthenticator")
 
-	rt, err := clientAuth.RoundTripper(http.DefaultTransport)
-	require.NoError(t, err)
-	cli := &http.Client{Transport: rt}
+		rt, err := clientAuth.RoundTripper(http.DefaultTransport)
+		require.NoError(t, err)
+		cli := &http.Client{Transport: rt}
 
-	// Wait until the request finishes. We don't assert anything else here; our
-	// HTTP handler won't write the response until it ensures that the basic auth
-	// was found.
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, srv.URL, nil)
-	require.NoError(t, err)
-	resp, err := cli.Do(req)
-	require.NoError(t, err, "HTTP request failed")
-	require.Equal(t, http.StatusOK, resp.StatusCode)
+		// Wait until the request finishes. We don't assert anything else here; our
+		// HTTP handler won't write the response until it ensures that the basic auth
+		// was found.
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, srv.URL, nil)
+		require.NoError(t, err)
+		resp, err := cli.Do(req)
+		require.NoError(t, err, "HTTP request failed")
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+	})
+
+	t.Run("ServerAuth", func(t *testing.T) {
+		serverExtension, err := exports.Handler.GetExtension(auth.Server)
+		require.NoError(t, err)
+		require.NotNil(t, serverExtension)
+		serverAuth, ok := serverExtension.Extension.(extauth.Server)
+		require.True(t, ok, "handler does not implement configauth.ServerAuthenticator")
+		b64EncodingAuth := base64.StdEncoding.EncodeToString([]byte("foo:bar"))
+		_, err = serverAuth.Authenticate(ctx, map[string][]string{"Authorization": {"Basic " + b64EncodingAuth}})
+		require.NoError(t, err)
+	})
+
 }

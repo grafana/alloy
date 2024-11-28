@@ -1,6 +1,7 @@
 package oauth2
 
 import (
+	"fmt"
 	"net/url"
 	"time"
 
@@ -54,7 +55,7 @@ func (args *Arguments) SetToDefault() {
 }
 
 // Convert implements auth.Arguments.
-func (args Arguments) Convert() (otelcomponent.Config, error) {
+func (args Arguments) ConvertClient() (otelcomponent.Config, error) {
 	return &oauth2clientauthextension.Config{
 		ClientID:         args.ClientID,
 		ClientIDFile:     args.ClientIDFile,
@@ -66,6 +67,10 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		TLSSetting:       *args.TLSSetting.Convert(),
 		Timeout:          args.Timeout,
 	}, nil
+}
+
+func (args Arguments) ConvertServer() (otelcomponent.Config, error) {
+	return nil, fmt.Errorf("%w oauth2 client extension does not implement server authentication", auth.ErrNotServerExtension)
 }
 
 // Extensions implements auth.Arguments.

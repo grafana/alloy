@@ -85,7 +85,11 @@ type fakeAuthArgs struct {
 
 var _ auth.Arguments = fakeAuthArgs{}
 
-func (fa fakeAuthArgs) Convert() (otelcomponent.Config, error) {
+func (fa fakeAuthArgs) ConvertClient() (otelcomponent.Config, error) {
+	return &struct{}{}, nil
+}
+
+func (fa fakeAuthArgs) ConvertServer() (otelcomponent.Config, error) {
 	return &struct{}{}, nil
 }
 

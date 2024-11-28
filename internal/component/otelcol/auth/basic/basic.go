@@ -48,13 +48,17 @@ func (args *Arguments) SetToDefault() {
 	args.DebugMetrics.SetToDefault()
 }
 
-// Convert implements auth.Arguments.
-func (args Arguments) Convert() (otelcomponent.Config, error) {
+func (args Arguments) ConvertClient() (otelcomponent.Config, error) {
 	return &basicauthextension.Config{
 		ClientAuth: &basicauthextension.ClientAuthSettings{
 			Username: args.Username,
 			Password: configopaque.String(args.Password),
 		},
+	}, nil
+}
+
+func (args Arguments) ConvertServer() (otelcomponent.Config, error) {
+	return &basicauthextension.Config{
 		Htpasswd: &basicauthextension.HtpasswdSettings{
 			Inline: fmt.Sprintf("%s:%s", args.Username, args.Password),
 		},

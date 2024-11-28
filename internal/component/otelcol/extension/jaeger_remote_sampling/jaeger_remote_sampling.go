@@ -68,11 +68,29 @@ func (args *Arguments) SetToDefault() {
 
 // Convert implements extension.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
+	httpServerConfig := (*otelcol.HTTPServerArguments)(args.HTTP)
+	httpConvertedServerConfig, err := httpServerConfig.Convert()
+	if err != nil {
+		return nil, err
+	}
+
+	grpcServerConfig := (*otelcol.GRPCServerArguments)(args.GRPC)
+	convertedGrpcServerConfig, err := grpcServerConfig.Convert()
+	if err != nil {
+		return nil, err
+	}
+
+	grpcClientConfig := (*otelcol.GRPCClientArguments)(args.Source.Remote)
+	convertedGrpcClientConfig, err := grpcClientConfig.Convert()
+	if err != nil {
+		return nil, err
+	}
+
 	return &jaegerremotesampling.Config{
-		HTTPServerConfig: (*otelcol.HTTPServerArguments)(args.HTTP).Convert(),
-		GRPCServerConfig: (*otelcol.GRPCServerArguments)(args.GRPC).Convert(),
+		HTTPServerConfig: httpConvertedServerConfig,
+		GRPCServerConfig: convertedGrpcServerConfig,
 		Source: jaegerremotesampling.Source{
-			Remote:         (*otelcol.GRPCClientArguments)(args.Source.Remote).Convert(),
+			Remote:         convertedGrpcClientConfig,
 			File:           args.Source.File,
 			ReloadInterval: args.Source.ReloadInterval,
 			Contents:       args.Source.Content,
