@@ -18,6 +18,7 @@ import (
 	"github.com/grafana/alloy/internal/component/pyroscope/write"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
 )
 
 const (
@@ -120,9 +121,14 @@ func (c *Component) Update(args component.Arguments) error {
 	if err != nil {
 		return fmt.Errorf("failed to create server: %w", err)
 	}
+
 	c.server = srv
 
 	return c.server.MountAndRun(func(router *mux.Router) {
+		router.Use(otelmux.Middleware(
+			"alloy",
+			otelmux.WithTracerProvider(c.opts.Tracer),
+		))
 		router.HandleFunc("/ingest", c.handleIngest).Methods(http.MethodPost)
 	})
 }

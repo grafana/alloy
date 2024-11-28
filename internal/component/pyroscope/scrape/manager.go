@@ -10,6 +10,7 @@ import (
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	config_util "github.com/prometheus/common/config"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
+	"go.opentelemetry.io/otel/trace"
 )
 
 var reloadInterval = 5 * time.Second
@@ -21,6 +22,7 @@ type Options struct {
 
 type Manager struct {
 	logger log.Logger
+	tracer trace.TracerProvider
 
 	options Options
 
@@ -35,13 +37,14 @@ type Manager struct {
 	triggerReload chan struct{}
 }
 
-func NewManager(o Options, appendable pyroscope.Appendable, logger log.Logger) *Manager {
+func NewManager(o Options, appendable pyroscope.Appendable, logger log.Logger, tracer trace.TracerProvider) *Manager {
 	if logger == nil {
 		logger = log.NewNopLogger()
 	}
 	return &Manager{
 		options:       o,
 		logger:        logger,
+		tracer:        tracer,
 		appendable:    appendable,
 		graceShut:     make(chan struct{}),
 		triggerReload: make(chan struct{}, 1),
@@ -97,7 +100,7 @@ func (m *Manager) reload() {
 	var wg sync.WaitGroup
 	for setName, groups := range m.targetSets {
 		if _, ok := m.targetsGroups[setName]; !ok {
-			sp, err := newScrapePool(m.options.HTTPClientOptions, m.config, m.appendable, log.With(m.logger, "scrape_pool", setName))
+			sp, err := newScrapePool(m.options.HTTPClientOptions, m.config, m.appendable, log.With(m.logger, "scrape_pool", setName), m.tracer)
 			if err != nil {
 				level.Error(m.logger).Log("msg", "error creating new scrape pool", "err", err, "scrape_pool", setName)
 				continue

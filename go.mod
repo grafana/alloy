@@ -786,7 +786,7 @@ require (
 	go.opentelemetry.io/contrib/detectors/azure/azurevm v0.0.1 // indirect
 	go.opentelemetry.io/contrib/detectors/gcp v1.28.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.56.0 // indirect
-	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.56.0 // indirect
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.56.0
 	go.opentelemetry.io/contrib/propagators/b3 v1.31.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp v0.7.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.31.0 // indirect
@@ -831,7 +831,6 @@ require (
 	github.com/ebitengine/purego v0.8.0 // indirect
 	github.com/elastic/lunes v0.1.0 // indirect
 	github.com/moby/sys/userns v0.1.0 // indirect
-	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/syslogexporter v0.112.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/kafka/topic v0.112.0 // indirect
 	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10 // indirect
 	go.opentelemetry.io/collector/connector/connectorprofiles v0.112.0 // indirect
@@ -850,7 +849,11 @@ require (
 	go.opentelemetry.io/otel/exporters/stdout/stdoutlog v0.7.0 // indirect
 )
 
-require github.com/mackerelio/go-osstat v0.2.5
+require (
+	github.com/mackerelio/go-osstat v0.2.5
+	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/syslogexporter v0.112.0
+	go.opentelemetry.io/contrib/instrumentation/net/http/httptrace/otelhttptrace v0.56.0
+)
 
 // NOTE: replace directives below must always be *temporary*.
 //
