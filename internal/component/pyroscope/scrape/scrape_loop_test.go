@@ -19,6 +19,7 @@ import (
 	"github.com/prometheus/prometheus/discovery/targetgroup"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/trace/noop"
 	"go.uber.org/atomic"
 	"go.uber.org/goleak"
 )
@@ -38,7 +39,8 @@ func TestScrapePool(t *testing.T) {
 		func(ctx context.Context, labels labels.Labels, samples []*pyroscope.RawSample) error {
 			return nil
 		}),
-		util.TestLogger(t))
+		util.TestLogger(t),
+		noop.NewTracerProvider())
 	require.NoError(t, err)
 
 	defer p.stop()
@@ -192,7 +194,7 @@ func TestScrapeLoop(t *testing.T) {
 			require.Equal(t, []byte("ok"), samples[0].RawProfile)
 			return nil
 		}),
-		200*time.Millisecond, 30*time.Second, util.TestLogger(t))
+		200*time.Millisecond, 30*time.Second, util.TestLogger(t), noop.NewTracerProvider())
 	defer loop.stop(true)
 
 	require.Equal(t, HealthUnknown, loop.Health())
@@ -218,7 +220,8 @@ func BenchmarkSync(b *testing.B) {
 		func(ctx context.Context, labels labels.Labels, samples []*pyroscope.RawSample) error {
 			return nil
 		}),
-		log.NewNopLogger())
+		log.NewNopLogger(),
+		noop.NewTracerProvider())
 	require.NoError(b, err)
 	groups1 := []*targetgroup.Group{
 		{

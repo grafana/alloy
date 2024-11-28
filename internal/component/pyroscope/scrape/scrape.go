@@ -275,7 +275,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 			config_util.WithDialContextFunc(httpData.DialFunc),
 		},
 	}
-	scraper := NewManager(scrapeHttpOptions, alloyAppendable, o.Logger)
+	scraper := NewManager(scrapeHttpOptions, alloyAppendable, o.Logger, o.Tracer)
 	c := &Component{
 		opts:          o,
 		cluster:       clusterData,

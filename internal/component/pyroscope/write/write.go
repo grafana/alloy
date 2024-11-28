@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptrace"
 	"net/url"
 	"path"
 	"strings"
@@ -16,6 +17,8 @@ import (
 	commonconfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/httptrace/otelhttptrace"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.uber.org/multierr"
 	"golang.org/x/sync/errgroup"
 
@@ -175,6 +178,10 @@ func NewFanOut(opts component.Options, config Arguments, metrics *metrics) (*fan
 		endpoint.Headers[alloyseed.LegacyHeaderName] = uid
 		endpoint.Headers[alloyseed.HeaderName] = uid
 		client, err := commonconfig.NewClientFromConfig(*endpoint.HTTPClientConfig.Convert(), endpoint.Name)
+		client.Transport = otelhttp.NewTransport(client.Transport, otelhttp.WithClientTrace(func(ctx context.Context) *httptrace.ClientTrace {
+			return otelhttptrace.NewClientTrace(ctx, otelhttptrace.WithoutSubSpans())
+		}),
+		)
 		if err != nil {
 			return nil, err
 		}

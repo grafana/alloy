@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptrace"
 	"reflect"
 	"sync"
 	"time"
@@ -17,6 +18,9 @@ import (
 	commonconfig "github.com/prometheus/common/config"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
 	"github.com/prometheus/prometheus/util/pool"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/httptrace/otelhttptrace"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/net/context/ctxhttp"
 )
 
@@ -29,6 +33,7 @@ type scrapePool struct {
 	config Arguments
 
 	logger       log.Logger
+	tracer       trace.TracerProvider
 	scrapeClient *http.Client
 	appendable   pyroscope.Appendable
 
@@ -37,15 +42,21 @@ type scrapePool struct {
 	droppedTargets []*Target
 }
 
-func newScrapePool(hco []commonconfig.HTTPClientOption, cfg Arguments, appendable pyroscope.Appendable, logger log.Logger) (*scrapePool, error) {
+func newScrapePool(hco []commonconfig.HTTPClientOption, cfg Arguments, appendable pyroscope.Appendable, logger log.Logger, tracer trace.TracerProvider) (*scrapePool, error) {
 	scrapeClient, err := commonconfig.NewClientFromConfig(*cfg.HTTPClientConfig.Convert(), cfg.JobName, hco...)
 	if err != nil {
 		return nil, err
 	}
 
+	scrapeClient.Transport = otelhttp.NewTransport(scrapeClient.Transport, otelhttp.WithClientTrace(func(ctx context.Context) *httptrace.ClientTrace {
+		return otelhttptrace.NewClientTrace(ctx, otelhttptrace.WithoutSubSpans())
+	}),
+	)
+
 	return &scrapePool{
 		config:        cfg,
 		logger:        logger,
+		tracer:        tracer,
 		scrapeClient:  scrapeClient,
 		appendable:    appendable,
 		activeTargets: map[uint64]*scrapeLoop{},
@@ -75,7 +86,7 @@ func (tg *scrapePool) sync(groups []*targetgroup.Group) {
 
 	for _, t := range actives {
 		if _, ok := tg.activeTargets[t.Hash()]; !ok {
-			loop := newScrapeLoop(t, tg.scrapeClient, tg.appendable, tg.config.ScrapeInterval, tg.config.ScrapeTimeout, tg.logger)
+			loop := newScrapeLoop(t, tg.scrapeClient, tg.appendable, tg.config.ScrapeInterval, tg.config.ScrapeTimeout, tg.logger, tg.tracer)
 			tg.activeTargets[t.Hash()] = loop
 			loop.start()
 		} else {
@@ -117,7 +128,7 @@ func (tg *scrapePool) reload(cfg Arguments) error {
 	for hash, t := range tg.activeTargets {
 		// restart the loop with the new configuration
 		t.stop(false)
-		loop := newScrapeLoop(t.Target, tg.scrapeClient, tg.appendable, tg.config.ScrapeInterval, tg.config.ScrapeTimeout, tg.logger)
+		loop := newScrapeLoop(t.Target, tg.scrapeClient, tg.appendable, tg.config.ScrapeInterval, tg.config.ScrapeTimeout, tg.logger, tg.tracer)
 		tg.activeTargets[hash] = loop
 		loop.start()
 	}
@@ -167,13 +178,14 @@ type scrapeLoop struct {
 
 	req               *http.Request
 	logger            log.Logger
+	tracer            trace.TracerProvider
 	interval, timeout time.Duration
 	graceShut         chan struct{}
 	once              sync.Once
 	wg                sync.WaitGroup
 }
 
-func newScrapeLoop(t *Target, scrapeClient *http.Client, appendable pyroscope.Appendable, interval, timeout time.Duration, logger log.Logger) *scrapeLoop {
+func newScrapeLoop(t *Target, scrapeClient *http.Client, appendable pyroscope.Appendable, interval, timeout time.Duration, logger log.Logger, tracer trace.TracerProvider) *scrapeLoop {
 	// if the URL parameter have a seconds parameter, then the collection will
 	// take at least scrape_duration - 1 second, as the HTTP request will block
 	// until the profile is collected.
@@ -184,6 +196,7 @@ func newScrapeLoop(t *Target, scrapeClient *http.Client, appendable pyroscope.Ap
 	return &scrapeLoop{
 		Target:       t,
 		logger:       logger,
+		tracer:       tracer,
 		scrapeClient: scrapeClient,
 		appender:     NewDeltaAppender(appendable.Appender(), t.allLabels),
 		interval:     interval,
@@ -228,6 +241,9 @@ func (t *scrapeLoop) scrape() {
 	)
 	defer cancel()
 
+	scrapeCtx, span := t.tracer.Tracer("").Start(scrapeCtx, "scrape")
+	defer span.End()
+
 	for _, l := range t.allLabels {
 		if l.Name == ProfileName {
 			profileType = l.Value
@@ -244,7 +260,7 @@ func (t *scrapeLoop) scrape() {
 	if len(b) > 0 {
 		t.lastScrapeSize = len(b)
 	}
-	if err := t.appender.Append(context.Background(), t.allLabels, []*pyroscope.RawSample{{RawProfile: b}}); err != nil {
+	if err := t.appender.Append(context.WithoutCancel(scrapeCtx), t.allLabels, []*pyroscope.RawSample{{RawProfile: b}}); err != nil {
 		level.Error(t.logger).Log("msg", "push failed", "labels", t.Labels().String(), "err", err)
 		t.updateTargetStatus(start, err)
 		return
