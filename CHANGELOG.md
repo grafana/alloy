@@ -10,6 +10,10 @@ internal API changes are not present.
 v1.5.1
 -----------------
 
+### Enhancements
+
+- Logs from underlying clustering library `memberlist` are now surfaced with correct level (@thampiotr)
+
 ### Bugfixes
 
 - Fixed issue with reloading configuration and prometheus metrics duplication in `prometheus.write.queue`. (@mattdurham)

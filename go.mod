@@ -57,7 +57,7 @@ require (
 	github.com/grafana/alloy/syntax v0.1.0
 	github.com/grafana/beyla v1.8.7
 	github.com/grafana/catchpoint-prometheus-exporter v0.0.0-20240606062944-e55f3668661d
-	github.com/grafana/ckit v0.0.0-20241001124237-ee134485edd3
+	github.com/grafana/ckit v0.0.0-20241128150632-1e6dfe1c6183
 	github.com/grafana/cloudflare-go v0.0.0-20230110200409-c627cf6792f2
 	github.com/grafana/dskit v0.0.0-20240104111617-ea101a3b86eb
 	github.com/grafana/go-gelf/v2 v2.0.1
@@ -94,6 +94,7 @@ require (
 	github.com/klauspost/compress v1.17.11
 	github.com/leodido/go-syslog/v4 v4.2.0
 	github.com/lib/pq v1.10.9
+	github.com/mackerelio/go-osstat v0.2.5
 	github.com/magefile/mage v1.15.0 // indirect
 	github.com/miekg/dns v1.1.61
 	github.com/mitchellh/mapstructure v1.5.1-0.20231216201459-8508981c8b6c
@@ -111,6 +112,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter v0.112.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancingexporter v0.112.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusexporter v0.112.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/syslogexporter v0.112.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/basicauthextension v0.112.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/bearertokenauthextension v0.112.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/headerssetterextension v0.112.0
@@ -177,7 +179,7 @@ require (
 	github.com/spaolacci/murmur3 v1.1.0
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/pflag v1.0.5
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.10.0
 	github.com/testcontainers/testcontainers-go v0.33.0
 	github.com/tilinna/clock v1.1.0
 	github.com/ua-parser/uap-go v0.0.0-20240611065828-3a4781585db6 // indirect
@@ -243,13 +245,13 @@ require (
 	go.uber.org/goleak v1.3.0
 	go.uber.org/multierr v1.11.0
 	go.uber.org/zap v1.27.0
-	golang.org/x/crypto v0.28.0
+	golang.org/x/crypto v0.29.0
 	golang.org/x/crypto/x509roots/fallback v0.0.0-20240208163226-62c9f1799c91
 	golang.org/x/exp v0.0.0-20240909161429-701f63a606c0
-	golang.org/x/net v0.30.0
+	golang.org/x/net v0.31.0
 	golang.org/x/oauth2 v0.23.0
-	golang.org/x/sys v0.26.0
-	golang.org/x/text v0.19.0
+	golang.org/x/sys v0.27.0
+	golang.org/x/text v0.20.0
 	golang.org/x/time v0.6.0
 	golang.org/x/tools v0.25.0
 	google.golang.org/api v0.188.0
@@ -795,8 +797,8 @@ require (
 	go4.org/netipx v0.0.0-20230125063823-8449b0a6169f // indirect
 	golang.org/x/arch v0.7.0 // indirect
 	golang.org/x/mod v0.21.0 // indirect
-	golang.org/x/sync v0.8.0
-	golang.org/x/term v0.25.0 // indirect
+	golang.org/x/sync v0.9.0
+	golang.org/x/term v0.26.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
 	gonum.org/v1/gonum v0.15.1 // indirect
@@ -841,8 +843,6 @@ require (
 	go.opentelemetry.io/collector/receiver/receiverprofiles v0.112.0 // indirect
 	go.opentelemetry.io/otel/exporters/stdout/stdoutlog v0.7.0 // indirect
 )
-
-require github.com/mackerelio/go-osstat v0.2.5
 
 // NOTE: replace directives below must always be *temporary*.
 //
