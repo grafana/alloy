@@ -34,7 +34,7 @@ To customize the {{< param "PRODUCT_NAME" >}} service on macOS, perform the foll
    brew edit alloy
    ```
 
-   This will open the {{< param "PRODUCT_NAME" >}} Homebrew Formula in an editor.
+   This opens the {{< param "PRODUCT_NAME" >}} Homebrew Formula in an editor.
 
 1. Modify the `service` section as desired to change things such as:
 
@@ -42,7 +42,7 @@ To customize the {{< param "PRODUCT_NAME" >}} service on macOS, perform the foll
    * Flags passed to the {{< param "PRODUCT_NAME" >}} binary.
    * Location of log files.
 
-   When you are done, save the file.
+1. Save the modified file.
 
 1. Reinstall the {{< param "PRODUCT_NAME" >}} Formula by running the following command in a terminal:
 
