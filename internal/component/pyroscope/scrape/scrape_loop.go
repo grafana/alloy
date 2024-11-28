@@ -48,9 +48,12 @@ func newScrapePool(hco []commonconfig.HTTPClientOption, cfg Arguments, appendabl
 		return nil, err
 	}
 
-	scrapeClient.Transport = otelhttp.NewTransport(scrapeClient.Transport, otelhttp.WithClientTrace(func(ctx context.Context) *httptrace.ClientTrace {
-		return otelhttptrace.NewClientTrace(ctx, otelhttptrace.WithoutSubSpans())
-	}),
+	scrapeClient.Transport = otelhttp.NewTransport(
+		scrapeClient.Transport,
+		otelhttp.WithTracerProvider(tracer),
+		otelhttp.WithClientTrace(func(ctx context.Context) *httptrace.ClientTrace {
+			return otelhttptrace.NewClientTrace(ctx, otelhttptrace.WithoutSubSpans())
+		}),
 	)
 
 	return &scrapePool{

@@ -178,9 +178,12 @@ func NewFanOut(opts component.Options, config Arguments, metrics *metrics) (*fan
 		endpoint.Headers[alloyseed.LegacyHeaderName] = uid
 		endpoint.Headers[alloyseed.HeaderName] = uid
 		client, err := commonconfig.NewClientFromConfig(*endpoint.HTTPClientConfig.Convert(), endpoint.Name)
-		client.Transport = otelhttp.NewTransport(client.Transport, otelhttp.WithClientTrace(func(ctx context.Context) *httptrace.ClientTrace {
-			return otelhttptrace.NewClientTrace(ctx, otelhttptrace.WithoutSubSpans())
-		}),
+		client.Transport = otelhttp.NewTransport(
+			client.Transport,
+			otelhttp.WithTracerProvider(opts.Tracer),
+			otelhttp.WithClientTrace(func(ctx context.Context) *httptrace.ClientTrace {
+				return otelhttptrace.NewClientTrace(ctx, otelhttptrace.WithoutSubSpans())
+			}),
 		)
 		if err != nil {
 			return nil, err
