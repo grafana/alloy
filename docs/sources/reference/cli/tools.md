@@ -6,7 +6,7 @@ title: The tools command
 weight: 400
 ---
 
-# The tools command
+# The `tools` command
 
 The `tools` command contains command line tooling grouped by {{< param "PRODUCT_NAME" >}} component.
 
@@ -24,10 +24,10 @@ Usage:
 alloy tools prometheus.remote_write sample-stats [<FLAG> ...] <WAL_DIRECTORY>
 ```
 
- Replace the following:
+Replace the following:
 
-   * _`<FLAG>`_: One or more flags that define the input and output of the command.
-   * _`<WAL_DIRECTORY>`_: The WAL directory.
+* _`<FLAG>`_: One or more flags that define the input and output of the command.
+* _`<WAL_DIRECTORY>`_: The WAL directory.
 
 The `sample-stats` command reads the Write-Ahead Log (WAL) specified by _`<WAL_DIRECTORY>`+ and collects information on metric samples within it.
 
@@ -37,7 +37,7 @@ For each metric discovered, `sample-stats` emits:
 * The timestamp of the newest sample received for that metric.
 * The total number of samples discovered for that metric.
 
-By default, `sample-stats` will return information for every metric in the WAL.
+By default, `sample-stats` returns information for every metric in the WAL.
 You can pass the `--selector` flag to filter the reported metrics to a smaller set.
 
 The following flag is supported:
@@ -71,9 +71,9 @@ Usage:
 alloy tools prometheus.remote_write wal-stats <WAL_DIRECTORY>
 ```
 
- Replace the following:
+Replace the following:
 
-      * _`<WAL_DIRECTORY>`_: The WAL directory.
+* _`<WAL_DIRECTORY>`_: The WAL directory.
 
 The `wal-stats` command reads the Write-Ahead Log (WAL) specified by _`<WAL_DIRECTORY>`_ and collects general information about it.
 
@@ -92,4 +92,4 @@ The following information is reported:
 Additionally, `wal-stats` reports per-target information, where a target is defined as a unique combination of the `job` and `instance` label values.
 For each target, `wal-stats` reports the number of series and the number of metric samples associated with that target.
 
-The `wal-stats` command does not support any flags.
+The `wal-stats` command doesn't support any flags.

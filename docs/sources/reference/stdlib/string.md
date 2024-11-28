@@ -53,7 +53,7 @@ Subsequent calls without an explicit index will then proceed with `n`+1, `n`+2, 
 The function produces an error if the format string requests an impossible conversion or accesses more arguments than are given.
 An error is also produced for an unsupported format verb.
 
-##### Verbs
+#### Verbs
 
 The specification may contain the following verbs.
 

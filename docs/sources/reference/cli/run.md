@@ -6,7 +6,7 @@ title: The run command
 weight: 300
 ---
 
-# The run command
+# The `run` command
 
 The `run` command runs {{< param "PRODUCT_NAME" >}} in the foreground until an interrupt is received.
 
@@ -18,18 +18,18 @@ Usage:
 alloy run [<FLAG> ...] <PATH_NAME>
 ```
 
-   Replace the following:
+Replace the following:
 
-   * _`<FLAG>`_: One or more flags that define the input and output of the command.
-   * _`<PATH_NAME>`_: Required. The {{< param "PRODUCT_NAME" >}} configuration file/directory path.
+* _`<FLAG>`_: One or more flags that define the input and output of the command.
+* _`<PATH_NAME>`_: Required. The {{< param "PRODUCT_NAME" >}} configuration file/directory path.
 
-If the _`<PATH_NAME>`_ argument is not provided, or if the configuration path can't be loaded or contains errors during the initial load, the `run` command will immediately exit and show an error message.
+If the _`<PATH_NAME>`_ argument isn't provided, or if the configuration path can't be loaded or contains errors during the initial load, the `run` command immediately exits and shows an error message.
 
-If you give the _`<PATH_NAME>`_ argument a directory path, {{< param "PRODUCT_NAME" >}} will find `*.alloy` files (ignoring nested directories) and load them as a single configuration source.
+If you give the _`<PATH_NAME>`_ argument a directory path, {{< param "PRODUCT_NAME" >}} finds `*.alloy` files (ignoring nested directories) and loads them as a single configuration source.
 However, component names must be **unique** across all {{< param "PRODUCT_NAME" >}} configuration files, and configuration blocks must not be repeated.
 
-{{< param "PRODUCT_NAME" >}} will continue to run if subsequent reloads of the configuration file fail, potentially marking components as unhealthy depending on the nature of the failure.
-When this happens, {{< param "PRODUCT_NAME" >}} will continue functioning in the last valid state.
+{{< param "PRODUCT_NAME" >}} continues to run if subsequent reloads of the configuration file fail, potentially marking components as unhealthy depending on the nature of the failure.
+When this happens, {{< param "PRODUCT_NAME" >}} continues functioning in the last valid state.
 
 `run` launches an HTTP server that exposes metrics about itself and its components.
 The HTTP server is also exposes a UI at `/` for debugging running components.
@@ -52,8 +52,8 @@ The following flags are supported:
 * `--cluster.advertise-interfaces`: List of interfaces used to infer an address to advertise. Set to `all` to use all available network interfaces on the system. (default `"eth0,en0"`).
 * `--cluster.max-join-peers`: Number of peers to join from the discovered set (default `5`).
 * `--cluster.name`: Name to prevent nodes without this identifier from joining the cluster (default `""`).
-* `--cluster.enable-tls`: Specifies whether TLS should be used for communication between peers (default `false`). 
-* `--cluster.tls-ca-path`: Path to the CA certificate file used for peer communication over TLS. 
+* `--cluster.enable-tls`: Specifies whether TLS should be used for communication between peers (default `false`).
+* `--cluster.tls-ca-path`: Path to the CA certificate file used for peer communication over TLS.
 * `--cluster.tls-cert-path`: Path to the certificate file used for peer communication over TLS.
 * `--cluster.tls-key-path`: Path to the key file used for peer communication over TLS.
 * `--cluster.tls-server-name`: Server name used for peer communication over TLS.
@@ -102,20 +102,20 @@ Refer to [Release life cycle for Grafana Labs](https://grafana.com/docs/release-
 The `--cluster.enabled` command-line argument starts {{< param "PRODUCT_NAME" >}} in [clustering][] mode.
 The rest of the `--cluster.*` command-line flags can be used to configure how nodes discover and connect to one another.
 
-Each cluster member’s name must be unique within the cluster.
-Nodes which try to join with a conflicting name are rejected and will fall back to bootstrapping a new cluster of their own.
+Each cluster member's name must be unique within the cluster.
+Nodes which try to join with a conflicting name are rejected and fall back to bootstrapping a new cluster of their own.
 
 Peers communicate over HTTP/2 on the built-in HTTP server.
 Each node must be configured to accept connections on `--server.http.listen-addr` and the address defined or inferred in `--cluster.advertise-address`.
 
 If the `--cluster.advertise-address` flag isn't explicitly set, {{< param "PRODUCT_NAME" >}} tries to infer a suitable one from `--cluster.advertise-interfaces`.
-If `--cluster.advertise-interfaces` isn't explicitly set, {{< param "PRODUCT_NAME" >}} will infer one from the `eth0` and `en0` local network interfaces.
+If `--cluster.advertise-interfaces` isn't explicitly set, {{< param "PRODUCT_NAME" >}} infers one from the `eth0` and `en0` local network interfaces.
 {{< param "PRODUCT_NAME" >}} will fail to start if it can't determine the advertised address.
 Since Windows doesn't use the interface names `eth0` or `en0`, Windows users must explicitly pass at least one valid network interface for `--cluster.advertise-interfaces` or a value for `--cluster.advertise-address`.
 
-The comma-separated list of addresses provided in `--cluster.join-addresses` can either be IP addresses or DNS names to lookup (supports SRV and A/AAAA records). 
-In both cases, the port number can be specified with a `:<port>` suffix. If ports are not provided, default of the port used for the HTTP listener is used.
-If you do not provide the port number explicitly, you must ensure that all instances use the same port for the HTTP listener.
+The comma-separated list of addresses provided in `--cluster.join-addresses` can either be IP addresses or DNS names to lookup (supports SRV and A/AAAA records).
+In both cases, the port number can be specified with a `:<port>` suffix. If ports aren't provided, default of the port used for the HTTP listener is used.
+If you don't provide the port number explicitly, you must ensure that all instances use the same port for the HTTP listener.
 
 The `--cluster.enable-tls` flag can be set to enable TLS for peer-to-peer communications.
 Additional arguments are required to configure the TLS client, including the CA certificate, the TLS certificate, the key, and the server name.
@@ -134,17 +134,17 @@ To disable this behavior, set the `--cluster.rejoin-interval` flag to `"0s"`.
 Discovering peers using the `--cluster.join-addresses` and `--cluster.discover-peers` flags only happens on startup.
 After that, cluster nodes depend on gossiping messages with each other to converge on the cluster's state.
 
-The first node that is used to bootstrap a new cluster (also known as the "seed node") can either omit the flags that specify peers to join or can try to connect to itself.
+The first node that's used to bootstrap a new cluster (also known as the "seed node") can either omit the flags that specify peers to join or can try to connect to itself.
 
-To join or rejoin a cluster, {{< param "PRODUCT_NAME" >}} will try to connect to a certain number of peers limited by the `--cluster.max-join-peers` flag.
+To join or rejoin a cluster, {{< param "PRODUCT_NAME" >}} tries to connect to a certain number of peers limited by the `--cluster.max-join-peers` flag.
 This flag can be useful for clusters of significant sizes because connecting to a high number of peers can be an expensive operation.
 To disable this behavior, set the `--cluster.max-join-peers` flag to 0.
-If the value of `--cluster.max-join-peers` is higher than the number of peers discovered, {{< param "PRODUCT_NAME" >}} will connect to all of them.
+If the value of `--cluster.max-join-peers` is higher than the number of peers discovered, {{< param "PRODUCT_NAME" >}} connects to all of them.
 
 The `--cluster.name` flag can be used to prevent clusters from accidentally merging.
-When `--cluster.name` is provided, nodes will only join peers who share the same cluster name value.
+When `--cluster.name` is provided, nodes only join peers who share the same cluster name value.
 By default, the cluster name is empty, and any node that doesn't set the flag can join.
-Attempting to join a cluster with a wrong `--cluster.name` will result in a "failed to join memberlist" error.
+Attempting to join a cluster with a wrong `--cluster.name` results in a "failed to join memberlist" error.
 
 ### Clustering states
 
@@ -152,7 +152,7 @@ Clustered {{< param "PRODUCT_NAME" >}}s are in one of three states:
 
 * **Viewer**: {{< param "PRODUCT_NAME" >}} has a read-only view of the cluster and isn't participating in workload distribution.
 * **Participant**: {{< param "PRODUCT_NAME" >}} is participating in workload distribution for components that have clustering enabled.
-* **Terminating**: {{< param "PRODUCT_NAME" >}} is shutting down and will no longer assign new work to itself.
+* **Terminating**: {{< param "PRODUCT_NAME" >}} is shutting down and no longer assigning new work to itself.
 
 Each {{< param "PRODUCT_NAME" >}} initially joins the cluster in the viewer state and then transitions to the participant state after the process startup completes.
 Each {{< param "PRODUCT_NAME" >}} then transitions to the terminating state when shutting down.
@@ -166,10 +166,8 @@ The current state of a clustered {{< param "PRODUCT_NAME" >}} is shown on the cl
 When you use the `--config.format` command-line argument with a value other than `alloy`, {{< param "PRODUCT_NAME" >}} converts the configuration file from the source format to {{< param "PRODUCT_NAME" >}} and immediately starts running with the new configuration.
 This conversion uses the converter API described in the [alloy convert][] docs.
 
-If you include the `--config.bypass-conversion-errors` command-line argument,
-{{< param "PRODUCT_NAME" >}} will ignore any errors from the converter. Use this argument
-with caution because the resulting conversion may not be equivalent to the
-original configuration.
+If you include the `--config.bypass-conversion-errors` command-line argument, {{< param "PRODUCT_NAME" >}} ignores errors from the converter.
+Use this argument with caution because the resulting conversion may not be equivalent to the original configuration.
 
 Include `--config.extra-args` to pass additional command line flags from the original format to the converter.
 Refer to [alloy convert][] for more details on how `extra-args` work.
@@ -180,6 +178,5 @@ Refer to [alloy convert][] for more details on how `extra-args` work.
 [in-memory HTTP traffic]: ../../../get-started/component_controller/#in-memory-traffic
 [data collection]: ../../../data-collection/
 [support bundle]: ../../../troubleshoot/support_bundle
-[components]: ../../get-started/components/
 [component controller]: ../../../get-started/component_controller/
 [UI]: ../../../troubleshoot/debug/#clustering-page
