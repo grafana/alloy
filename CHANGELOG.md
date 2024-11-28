@@ -46,6 +46,8 @@ Main (unreleased)
 
 - Fix a race condition where the ui service was dependent on starting after the remotecfg service, which is not guaranteed. (@dehaansa & @erikbaranowski)
 
+- `loki.source.podlogs`: Fixed a bug which prevented clustering from working and caused duplicate logs to be sent. (@ptodev)
+
 ### Other changes
 
 - Change the stability of the `livedebugging` feature from "experimental" to "generally available". (@wildum)
