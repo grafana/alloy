@@ -34,7 +34,7 @@ Main (unreleased)
 
 - Logs from underlying clustering library `memberlist` are now surfaced with correct level (@thampiotr)
 
-- Update mysqld_exporter from v0.15.0 to v0.16.0, most notable changes: (@cristiangreco)
+- Update mysqld_exporter from v0.15.0 to v0.16.0 (including 2ef168bf6), most notable changes: (@cristiangreco)
   - Support MySQL 8.4 replicas syntax
   - Fetch lock time and cpu time from performance schema
   - Fix fetching tmpTables vs tmpDiskTables from performance_schema
@@ -42,6 +42,7 @@ Main (unreleased)
   - Fixed parsing of timestamps with non-zero padded days
   - Fix auto_increment metric collection errors caused by using collation in INFORMATION_SCHEMA searches
   - Change processlist query to support ONLY_FULL_GROUP_BY sql_mode
+  - Add perf_schema quantile columns to collector
 
 ### Bugfixes
 

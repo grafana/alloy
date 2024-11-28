@@ -916,7 +916,7 @@ replace (
 	github.com/prometheus/exporter-toolkit => github.com/prometheus/exporter-toolkit v0.11.0
 
 	// TODO(marctc): remove once this PR is merged upstream: https://github.com/prometheus/mysqld_exporter/pull/774
-	github.com/prometheus/mysqld_exporter => github.com/grafana/mysqld_exporter v0.16.1-0.20241111085008-47b8ea9fab19
+	github.com/prometheus/mysqld_exporter => github.com/grafana/mysqld_exporter v0.16.1-0.20241128200101-e16f5286d5e9
 
 	// TODO(marctc, mattdurham): Replace node_export with custom fork for multi usage. https://github.com/prometheus/node_exporter/pull/2812
 	github.com/prometheus/node_exporter => github.com/grafana/node_exporter v0.18.1-grafana-r01.0.20231004161416-702318429731
