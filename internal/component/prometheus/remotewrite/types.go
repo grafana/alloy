@@ -319,40 +319,26 @@ func (a *AzureADConfig) Validate() error {
 		return fmt.Errorf("must provide a cloud in the Azure AD config")
 	}
 
-	_, err := uuid.Parse(a.ManagedIdentity.ClientID)
-	if err != nil {
-		return fmt.Errorf("the provided Azure Managed Identity client_id provided is invalid")
+	// Ensure both Managed Identity and OAuth are not provided
+	if a.ManagedIdentity != (ManagedIdentityConfig{}) && a.OAuth != (AzureOAuthConfig{}) {
+		return fmt.Errorf("at most oauth or managed identity must be configured for azuread")
+	}
+
+	// Validate Managed Identity if it is provided
+	if (a.ManagedIdentity != ManagedIdentityConfig{}) {
+		_, err := uuid.Parse(a.ManagedIdentity.ClientID)
+		if err != nil {
+			return fmt.Errorf("the provided Azure Managed Identity client_id provided is invalid")
+		}
 	}
 
 	// Validate OAuth if it is provided
-	// if a.OAuth != "" {
-	// 	if a.OAuth.TenantID == "" {
-	// 		return fmt.Errorf("OAuth TenantID must not be empty")
-	// 	}
-	// 	if a.OAuth.ClientSecret == "" {
-	// 		return fmt.Errorf("OAuth ClientSecret must not be empty")
-	// 	}
-	// }
-
-	// // Validate ManagedIdentity if it is provided
-	// if a.ManagedIdentity != nil {
-	// 	if a.ManagedIdentity.ClientID == "" {
-	// 		return fmt.Errorf("ManagedIdentity ClientID must not be empty")
-	// 	}
-	// }
-
-	// // Validate OAuth if it is provided
-	// if a.OAuth != nil {
-	// 	if a.OAuth.ClientID == "" {
-	// 		return fmt.Errorf("OAuth ClientID must not be empty")
-	// 	}
-	// 	if a.OAuth.TenantID == "" {
-	// 		return fmt.Errorf("OAuth TenantID must not be empty")
-	// 	}
-	// 	if a.OAuth.ClientSecret == "" {
-	// 		return fmt.Errorf("OAuth ClientSecret must not be empty")
-	// 	}
-	// }
+	if (a.OAuth != AzureOAuthConfig{}) {
+		_, err := uuid.Parse(a.OAuth.ClientID)
+		if err != nil {
+			return fmt.Errorf("the provided Azure Application Identity client_id provided is invalid")
+		}
+	}
 
 	return nil
 }
