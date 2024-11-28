@@ -32,6 +32,8 @@ Main (unreleased)
 
 - Add relevant golang environment variables to the support bundle (@dehaansa)
 
+- Logs from underlying clustering library `memberlist` are now surfaced with correct level (@thampiotr)
+
 ### Bugfixes
 
 - Fixed an issue in the `prometheus.exporter.postgres` component that would leak goroutines when the target was not reachable (@dehaansa)
