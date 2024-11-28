@@ -127,6 +127,15 @@ func (tg *scrapePool) reload(cfg Arguments) error {
 	if err != nil {
 		return err
 	}
+
+	scrapeClient.Transport = otelhttp.NewTransport(
+		scrapeClient.Transport,
+		otelhttp.WithTracerProvider(tg.tracer),
+		otelhttp.WithClientTrace(func(ctx context.Context) *httptrace.ClientTrace {
+			return otelhttptrace.NewClientTrace(ctx, otelhttptrace.WithoutSubSpans())
+		}),
+	)
+
 	tg.scrapeClient = scrapeClient
 	for hash, t := range tg.activeTargets {
 		// restart the loop with the new configuration
