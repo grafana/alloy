@@ -4,11 +4,11 @@ description: Shared content, oauth block
 headless: true
 ---
 
-Name        | Type     | Description                                             | Default | Required
-------------|----------|---------------------------------------------------------|---------|---------
-`client_id` | `string` | Client ID of the Microsoft authenication application used to authenticate. |         | yes
-`client_secret` | `string` | Client secret of the Microsoft authenication application used to authenticate. |         | yes
-`tenant_id` | `string` | Tenant ID of the Microsoft authenication application used to authenticate. |         | yes
+Name            | Type     | Description                                                                     | Default | Required
+----------------|----------|---------------------------------------------------------------------------------|---------|---------
+`client_id`     | `string` | Client ID of the Microsoft authentication application used to authenticate.     |         | yes
+`client_secret` | `string` | Client secret of the Microsoft authentication application used to authenticate. |         | yes
+`tenant_id`     | `string` | Tenant ID of the Microsoft authentication application used to authenticate.     |         | yes
 
 `client_id` should be a valid [UUID][] in one of the supported formats:
 * `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`
