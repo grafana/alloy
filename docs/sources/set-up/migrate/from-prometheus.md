@@ -19,8 +19,8 @@ This topic describes how to:
 
 ## Components used in this topic
 
-* [prometheus.scrape][]
-* [prometheus.remote_write][]
+* [`prometheus.scrape`][prometheus.scrape]
+* [`prometheus.remote_write`][prometheus.remote_write]
 
 ## Before you begin
 

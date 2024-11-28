@@ -19,9 +19,9 @@ This topic describes how to:
 
 ## Components used in this topic
 
-* [local.file_match][]
-* [loki.source.file][]
-* [loki.write][]
+* [`local.file_match`][local.file_match]
+* [`loki.source.file`][loki.source.file]
+* [`loki.write`][loki.write]
 
 ## Before you begin
 
@@ -30,7 +30,7 @@ This topic describes how to:
 
 ## Convert a Promtail configuration
 
-To fully migrate from [Promtail] to {{< param "PRODUCT_NAME" >}}, you must convert your Promtail configuration into an {{< param "PRODUCT_NAME" >}} configuration.
+To fully migrate from [Promtail][] to {{< param "PRODUCT_NAME" >}}, you must convert your Promtail configuration into an {{< param "PRODUCT_NAME" >}} configuration.
 This conversion allows you to take full advantage of the many additional features available in {{< param "PRODUCT_NAME" >}}.
 
 > In this task, you use the [convert][] CLI command to output an {{< param "PRODUCT_NAME" >}}
@@ -173,7 +173,7 @@ The following list is specific to the convert command and not {{< param "PRODUCT
 * Check if you are using any extra command line arguments with Promtail that aren't present in your configuration file. For example, `-max-line-size`.
 * Check if you are setting any environment variables, whether [expanded in the configuration file][] itself or consumed directly by Promtail, such as `JAEGER_AGENT_HOST`.
 * In {{< param "PRODUCT_NAME" >}}, the positions file is saved at a different location.
-  Refer to the [loki.source.file][] documentation for more details.
+  Refer to the [`loki.source.file`][loki.source.file] documentation for more details.
   Check if you have any setup, for example, a Kubernetes Persistent Volume, that you must update to use the new positions path.
 * Meta-monitoring metrics exposed by {{< param "PRODUCT_NAME" >}} usually match Promtail meta-monitoring metrics but uses a different name.
   Make sure that you use the new metric names, for example, in your alerts and dashboards queries.

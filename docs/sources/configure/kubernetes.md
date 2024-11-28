@@ -14,7 +14,7 @@ This page describes how to apply a new configuration to {{< param "PRODUCT_NAME"
 It assumes that:
 
 - You have [installed {{< param "PRODUCT_NAME" >}} on Kubernetes using the Helm chart][k8s-install].
-- You already have a new {{< param "PRODUCT_NAME" >}} configuration that you want to apply to your Helm chart installation.
+- You already have a {{< param "PRODUCT_NAME" >}} configuration that you want to apply to your Helm chart installation.
 
 Refer to [Collect and forward data][collect] for information about configuring {{< param "PRODUCT_NAME" >}} to collect and forward data.
 
@@ -25,7 +25,7 @@ Refer to [Collect and forward data][collect] for information about configuring {
 
 To modify {{< param "PRODUCT_NAME" >}}'s Helm chart configuration, perform the following steps:
 
-1. Create a local `values.yaml` file with a new Helm chart configuration.
+1. Create a local `values.yaml` file with a Helm chart configuration.
 
    1. You can use your own copy of the values file or download a copy of the
       default [values.yaml][].

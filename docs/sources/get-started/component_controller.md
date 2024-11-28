@@ -81,7 +81,7 @@ The overall health of a component is determined by combining the controller-repo
 An individual component's health is independent of the health of any other components it references.
 A component can be marked as healthy even if it references an exported field of an unhealthy component.
 
-## Handling evaluation failures
+## Handle evaluation failures
 
 When a component fails to evaluate, it's marked as unhealthy with the reason for why the evaluation failed.
 
@@ -93,7 +93,7 @@ If your `local.file` component, which watches API keys, suddenly stops working, 
 
 ## In-memory traffic
 
-Components that expose HTTP endpoints, such as [prometheus.exporter.unix][], can expose an internal address that completely bypasses the network and communicate in-memory.
+Components that expose HTTP endpoints, such as [`prometheus.exporter.unix`][prometheus.exporter.unix], can expose an internal address that completely bypasses the network and communicate in-memory.
 Components within the same process can communicate with one another without needing to be aware of any network-level protections such as authentication or mutual TLS.
 
 The internal address defaults to `alloy.internal:12345`.
@@ -102,7 +102,7 @@ If this address collides with a real target on your network, change it to someth
 Components must opt-in to using in-memory traffic.
 Refer to the individual documentation for components to learn if in-memory traffic is supported.
 
-## Updating the configuration file
+## Update the configuration file
 
 The `/-/reload` HTTP endpoint and the `SIGHUP` signal can inform the component controller to reload the configuration file.
 When this happens, the component controller synchronizes the set of running components with the ones in the configuration file,

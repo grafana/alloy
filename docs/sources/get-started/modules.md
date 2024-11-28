@@ -12,9 +12,9 @@ weight: 400
 A _Module_ is a unit of {{< param "PRODUCT_NAME" >}} configuration, which combines all the other concepts, containing a mix of configuration blocks, instantiated components, and custom component definitions.
 The module passed as an argument to [the `run` command][run] is called the _main configuration_.
 
-Modules can be [imported](#importing-modules) to enable the reuse of [custom components][] defined by that module.
+Modules can be [imported](#import-modules) to enable the reuse of [custom components][] defined by that module.
 
-## Importing modules
+## Import modules
 
 A module can be _imported_, allowing the custom components defined by that module to be used by other modules, called the _importing module_.
 Modules can be imported from multiple locations using one of the `import` configuration blocks:
@@ -35,7 +35,7 @@ For example, if a configuration contains a block called `import.file "my_module"
 If an import namespace matches the name of a built-in component namespace, such as `prometheus`, the built-in namespace is hidden from the importing module, and only components defined in the imported module may be used.
 
 {{< admonition type="warning" >}}
-If you choose a label that corresponds to an existing component for an `import` or a `declare` block, the component will be shadowed and you won't be able to use it in your configuration.
+If you choose a label that corresponds to an existing component for an `import` or a `declare` block, the component is shadowed and you won't be able to use it in your configuration.
 For example, if you use the label `import.file "mimir"`, you won't be able to use the existing components that start with `mimir` such as `mimir.rules.kubernetes` because it refers to the module imported via the `import` block.
 {{< /admonition >}}
 
@@ -106,9 +106,8 @@ loki.write "default" {
 
 ## Security
 
-Since modules can load an arbitrary configuration from a potentially remote source, it is important to carefully consider the security of your solution. 
-The best practice is to ensure that Alloy configuration cannot be changed by attackers. This includes Alloy's main configuration files as well as 
-modules fetched from remote locations such as Git repositories or HTTP servers.
+Since modules can load an arbitrary configuration from a potentially remote source, it's important to carefully consider the security of your solution.
+The best practice is to ensure that the {{< param "PRODUCT_NAME" >}} configuration can't be changed by attackers. This includes the main {{< param "PRODUCT_NAME" >}} configuration files as well as modules fetched from remote locations such as Git repositories or HTTP servers.
 
 [custom components]: ../custom_components/
 [run]: ../../reference/cli/run/

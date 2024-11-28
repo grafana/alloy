@@ -40,8 +40,8 @@ prometheus.scrape "default" {
 }
 ```
 
-A cluster state change is detected when a new node joins or an existing node leaves.
-All participating components locally recalculate target ownership and re-balance the number of targets they’re scraping without explicitly communicating ownership over the network.
+A cluster state change is detected when a node joins or a node leaves.
+All participating components locally recalculate target ownership and re-balance the number of targets they're scraping without explicitly communicating ownership over the network.
 
 Target auto-distribution allows you to dynamically scale the number of {{< param "PRODUCT_NAME" >}} deployments to distribute workload during peaks.
 It also provides resiliency because targets are automatically picked up by one of the node peers if a node leaves.
@@ -50,10 +50,10 @@ It also provides resiliency because targets are automatically picked up by one o
 
 Refer to component reference documentation to discover whether it supports clustering, such as:
 
-- [prometheus.scrape][]
-- [pyroscope.scrape][]
-- [prometheus.operator.podmonitors][]
-- [prometheus.operator.servicemonitors][]
+- [`prometheus.scrape`][prometheus.scrape]
+- [`pyroscope.scrape`][pyroscope.scrape]
+- [`prometheus.operator.podmonitors`][prometheus.operator.podmonitors]
+- [`prometheus.operator.servicemonitors`][prometheus.operator.servicemonitors]
 
 ## Cluster monitoring and troubleshooting
 

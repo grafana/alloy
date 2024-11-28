@@ -14,7 +14,7 @@ weight: 600
 
 * Linux: AMD64, ARM64
 * Windows: AMD64
-* macOS: AMD64 (Intel), ARM64 (Apple Silicon)
+* macOS: AMD64 on Intel, ARM64 on Apple Silicon
 * FreeBSD: AMD64
 
 ## Download {{% param "PRODUCT_NAME" %}}
