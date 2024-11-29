@@ -66,6 +66,8 @@ connectrpc.com/connect v1.16.2/go.mod h1:n2kgwskMHXC+lVqb18wngEpF95ldBHXjZYJussz
 dario.cat/mergo v1.0.0 h1:AGCNq9Evsj31mOgNPcLyXc+4PNABt905YmuqPYYpBWk=
 dario.cat/mergo v1.0.0/go.mod h1:uNxQE+84aUszobStD9th8a29P2fMDhsBdgRYvZOxGmk=
 dmitri.shuralyov.com/gpu/mtl v0.0.0-20190408044501-666a987793e9/go.mod h1:H6x//7gZCb22OMCxBHrMx7a5I7Hp++hsVxbQ4BYO7hU=
+filippo.io/edwards25519 v1.1.0 h1:FNf4tywRC1HmFuKW5xopWpigGjJKiJSV0Cqo0cJWDaA=
+filippo.io/edwards25519 v1.1.0/go.mod h1:BxyFTGdWcka3PhytdK4V28tE5sGfRvvvRV7EaN4VDT4=
 github.com/99designs/go-keychain v0.0.0-20191008050251-8e49817e8af4 h1:/vQbFIOMbk2FiG/kXiLl8BRyzTWDw7gX/Hz7Dd5eDMs=
 github.com/99designs/go-keychain v0.0.0-20191008050251-8e49817e8af4/go.mod h1:hN7oaIRCjzsZ2dE+yG5k+rsdt3qcwykqK6HVGcKwsw4=
 github.com/99designs/keyring v1.2.2 h1:pZd3neh/EmUzWONb35LxQfvuY7kiSXAq3HQd97+XBn0=
@@ -1000,8 +1002,8 @@ github.com/go-sourcemap/sourcemap v2.1.3+incompatible/go.mod h1:F8jJfvm2KbVjc5Nq
 github.com/go-sql-driver/mysql v0.0.0-20180618115901-749ddf1598b4/go.mod h1:zAC/RDZ24gD3HViQzih4MyKcchzm+sOG5ZlKdlhCg5w=
 github.com/go-sql-driver/mysql v1.4.0/go.mod h1:zAC/RDZ24gD3HViQzih4MyKcchzm+sOG5ZlKdlhCg5w=
 github.com/go-sql-driver/mysql v1.5.0/go.mod h1:DCzpHaOWr8IXmIStZouvnhqoel9Qv2LBy8hT2VhHyBg=
-github.com/go-sql-driver/mysql v1.7.1 h1:lUIinVbN1DY0xBg0eMOzmmtGoHwWBbvnWubQUrtU8EI=
-github.com/go-sql-driver/mysql v1.7.1/go.mod h1:OXbVy3sEdcQ2Doequ6Z5BW6fXNQTmx+9S1MCJN5yJMI=
+github.com/go-sql-driver/mysql v1.8.1 h1:LedoTUt/eveggdHS9qUFC1EFSa8bU2+1pZjSRpvNJ1Y=
+github.com/go-sql-driver/mysql v1.8.1/go.mod h1:wEBSXgmK//2ZFJyE+qWnIsVGmvmEKlqwuVSjsCm7DZg=
 github.com/go-stack/stack v1.8.0/go.mod h1:v0f6uXyyMGvRgIKkXu+yp6POWl0qKG85gN/melR3HDY=
 github.com/go-task/slim-sprig v0.0.0-20230315185526-52ccab3ef572 h1:tfuBGBXKqDEevZMzYi5KSi8KkcZtzBcTgAUUtapy0OI=
 github.com/go-task/slim-sprig/v3 v3.0.0 h1:sUs3vkvUymDpBKi3qH1YSqBQk9+9D/8M2mN1vB6EwHI=
@@ -1243,8 +1245,8 @@ github.com/grafana/loki/pkg/push v0.0.0-20240617182007-6c33561108ad h1:4XAhmVmKb
 github.com/grafana/loki/pkg/push v0.0.0-20240617182007-6c33561108ad/go.mod h1:lJEF/Wh5MYlmBem6tOYAFObkLsuikfrEf8Iy9AdMPiQ=
 github.com/grafana/loki/v3 v3.0.0-20240617182007-6c33561108ad h1:eaHz6gH7OM3LWGp1h2QZ+/wkeyjNspk3QwjD4YUWR5g=
 github.com/grafana/loki/v3 v3.0.0-20240617182007-6c33561108ad/go.mod h1:fKBY3k60xjlGcIdbOaJiy3aWopF65FpQvQWczCp2SZ0=
-github.com/grafana/mysqld_exporter v0.12.2-0.20231005125903-364b9c41e595 h1:I9sRknI5ajd8whPOX0nBDXy5B6xUfhItClMy+6R4oqE=
-github.com/grafana/mysqld_exporter v0.12.2-0.20231005125903-364b9c41e595/go.mod h1:U8ifHC5pT2WuVTO7ki4KZmWLjfEKfktQiU3bh0J8scw=
+github.com/grafana/mysqld_exporter v0.16.1-0.20241128200101-e16f5286d5e9 h1:2nQItBsfp7hy+AMq1MBFW6p9Ax08nAsdR8u21rWZItQ=
+github.com/grafana/mysqld_exporter v0.16.1-0.20241128200101-e16f5286d5e9/go.mod h1:ctzLZ0vK3ow5JZmBfbS261ufC/4vtfuwFileKJea3kg=
 github.com/grafana/node_exporter v0.18.1-grafana-r01.0.20231004161416-702318429731 h1:vyyIYY2sLpmgFIckJ1vSO/oYkvB0thDF6UiFYp5PThM=
 github.com/grafana/node_exporter v0.18.1-grafana-r01.0.20231004161416-702318429731/go.mod h1:vOZxEzxm0nZmuNqjtIfvtmvdRtJik9POmcN5mQVLf5E=
 github.com/grafana/opentelemetry-collector-contrib/receiver/prometheusreceiver v0.0.0-20240326165551-1ae1b9218b1b h1:o7tJxI3dVrIwZwNd7feiMNjYRnbMvyGCQtxJGgfORQQ=
@@ -1770,6 +1772,8 @@ github.com/mdlayher/netlink v1.7.2 h1:/UtM3ofJap7Vl4QWCPDGXY8d3GIY2UGSDbK+QWmY8/
 github.com/mdlayher/netlink v1.7.2/go.mod h1:xraEF7uJbxLhc5fpHL4cPe221LI2bdttWlU+ZGLfQSw=
 github.com/mdlayher/socket v0.4.1 h1:eM9y2/jlbs1M615oshPQOHZzj6R6wMT7bX5NPiQvn2U=
 github.com/mdlayher/socket v0.4.1/go.mod h1:cAqeGjoufqdxWkD7DkpyS+wcefOtmu5OQ8KuoJGIReA=
+github.com/mdlayher/vsock v1.2.1 h1:pC1mTJTvjo1r9n9fbm7S1j04rCgCzhCOS5DY0zqHlnQ=
+github.com/mdlayher/vsock v1.2.1/go.mod h1:NRfCibel++DgeMD8z/hP+PPTjlNJsdPOmxcnENvE+SE=
 github.com/mdlayher/wifi v0.1.0 h1:y8wYRUXwok5CtUZOXT3egghYesX0O79E3ALl+SIDm9Q=
 github.com/mdlayher/wifi v0.1.0/go.mod h1:+gBYnZAMcUKHSFzMJXwlz7tLsEHgwDJ9DJCefhJM+gI=
 github.com/metalmatze/signal v0.0.0-20210307161603-1c9aa721a97a h1:0usWxe5SGXKQovz3p+BiQ81Jy845xSMu2CWKuXsXuUM=
@@ -2232,6 +2236,8 @@ github.com/prometheus/common v0.31.1/go.mod h1:vu+V0TpY+O6vW9J44gczi3Ap/oXXR10b+
 github.com/prometheus/common v0.32.1/go.mod h1:vu+V0TpY+O6vW9J44gczi3Ap/oXXR10b+M/gUGO4Hls=
 github.com/prometheus/common v0.60.0 h1:+V9PAREWNvJMAuJ1x1BaWl9dewMW4YrHZQbx0sJNllA=
 github.com/prometheus/common v0.60.0/go.mod h1:h0LYf1R1deLSKtD4Vdg8gy4RuOvENW2J/h19V5NADQw=
+github.com/prometheus/common v0.60.1 h1:FUas6GcOw66yB/73KC+BOZoFJmbo/1pojoILArPAaSc=
+github.com/prometheus/common v0.60.1/go.mod h1:h0LYf1R1deLSKtD4Vdg8gy4RuOvENW2J/h19V5NADQw=
 github.com/prometheus/common/sigv4 v0.1.0 h1:qoVebwtwwEhS85Czm2dSROY5fTo2PAPEVdDeppTwGX4=
 github.com/prometheus/common/sigv4 v0.1.0/go.mod h1:2Jkxxk9yYvCkE5G1sQT7GuEXm57JrvHu9k5YwTjsNtI=
 github.com/prometheus/consul_exporter v0.8.0 h1:2z3drFic65WFoHaJRKkmnJRRlBLmmxVqT8L9LO2yxAo=
@@ -2240,6 +2246,8 @@ github.com/prometheus/exporter-toolkit v0.7.0/go.mod h1:ZUBIj498ePooX9t/2xtDjeQY
 github.com/prometheus/exporter-toolkit v0.7.1/go.mod h1:ZUBIj498ePooX9t/2xtDjeQYwvRpiPP2lh5u4iblj2g=
 github.com/prometheus/exporter-toolkit v0.11.0 h1:yNTsuZ0aNCNFQ3aFTD2uhPOvr4iD7fdBvKPAEGkNf+g=
 github.com/prometheus/exporter-toolkit v0.11.0/go.mod h1:BVnENhnNecpwoTLiABx7mrPB/OLRIgN74qlQbV+FK1Q=
+github.com/prometheus/exporter-toolkit v0.13.1 h1:Evsh0gWQo2bdOHlnz9+0Nm7/OFfIwhE2Ws4A2jIlR04=
+github.com/prometheus/exporter-toolkit v0.13.1/go.mod h1:ujdv2YIOxtdFxxqtloLpbqmxd5J0Le6IITUvIRSWjj0=
 github.com/prometheus/memcached_exporter v0.13.0 h1:d246RYODFCXy39XA8S2PBrqp5jLCSvl9b4KsYspDCHk=
 github.com/prometheus/memcached_exporter v0.13.0/go.mod h1:fp7Wk6v0RFijeP3Syvd1TShBSJoCG5iFfvPdi5dCMEU=
 github.com/prometheus/procfs v0.12.0 h1:jluTpSng7V9hY0O2R9DzzJHYb2xULk9VTR1V1R/k6Bo=
