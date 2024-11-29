@@ -28,12 +28,12 @@ To modify {{< param "PRODUCT_NAME" >}}'s Helm chart configuration, perform the f
 1. Create a local `values.yaml` file with a Helm chart configuration.
 
    1. You can use your own copy of the values file or download a copy of the
-      default [values.yaml][].
+      default [`values.yaml`][values.yaml].
 
    1. Make changes to your `values.yaml` to customize settings for the
       Helm chart.
 
-      Refer to the inline documentation in the default [values.yaml][] for more
+      Refer to the inline documentation in the default [`values.yaml`][values.yaml] for more
       information about each option.
 
 1. Run the following command in a terminal to upgrade your {{< param "PRODUCT_NAME" >}} installation:

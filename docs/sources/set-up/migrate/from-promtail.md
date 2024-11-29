@@ -46,7 +46,7 @@ This conversion allows you to take full advantage of the many additional feature
     * _`<INPUT_CONFIG_PATH>`_: The full path to the Promtail configuration.
     * _`<OUTPUT_CONFIG_PATH>`_: The full path to output the {{< param "PRODUCT_NAME" >}} configuration.
 
-1. [Run][run alloy] {{< param "PRODUCT_NAME" >}} using the new configuration from _`<OUTPUT_CONFIG_PATH>`_:
+1. [Run][run] {{< param "PRODUCT_NAME" >}} using the new configuration from _`<OUTPUT_CONFIG_PATH>`_:
 
 ### Debugging
 
@@ -93,7 +93,7 @@ This allows you to try {{< param "PRODUCT_NAME" >}} without modifying your Promt
 
 > In this task, you use the [run][] CLI command to run {{< param "PRODUCT_NAME" >}} using a Promtail configuration.
 
-[Run][run alloy] {{< param "PRODUCT_NAME" >}} and include the command line flag `--config.format=promtail`.
+[Run][run] {{< param "PRODUCT_NAME" >}} and include the command line flag `--config.format=promtail`.
 Your configuration file must be a valid Promtail configuration file rather than an {{< param "PRODUCT_NAME" >}} configuration file.
 
 ### Debug
@@ -189,7 +189,6 @@ The following list is specific to the convert command and not {{< param "PRODUCT
 [Components]: ../../../get-started/components/
 [convert]: ../../../reference/cli/convert/
 [run]: ../../../reference/cli/run/
-[run alloy]: ../../../set-up/run/
 [DebuggingUI]: ../../../troubleshoot/debug/
 [configuration]: ../../../get-started/configuration-syntax/
 [UI]: ../../../troubleshoot/debug/#alloy-ui

@@ -12,8 +12,6 @@ The `run` command runs {{< param "PRODUCT_NAME" >}} in the foreground until an i
 
 ## Usage
 
-Usage:
-
 ```shell
 alloy run [<FLAG> ...] <PATH_NAME>
 ```
@@ -177,6 +175,6 @@ Refer to [alloy convert][] for more details on how `extra-args` work.
 [go-discover]: https://github.com/hashicorp/go-discover
 [in-memory HTTP traffic]: ../../../get-started/component_controller/#in-memory-traffic
 [data collection]: ../../../data-collection/
-[support bundle]: ../../../troubleshoot/support_bundle
+[support bundle]: ../../../troubleshoot/support_bundle/
 [component controller]: ../../../get-started/component_controller/
 [UI]: ../../../troubleshoot/debug/#clustering-page

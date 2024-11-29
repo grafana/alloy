@@ -12,8 +12,6 @@ The `fmt` command formats a given {{< param "PRODUCT_NAME" >}} configuration fil
 
 ## Usage
 
-Usage:
-
 ```shell
 alloy fmt [<FLAG> ...] <FILE_NAME>
 ```

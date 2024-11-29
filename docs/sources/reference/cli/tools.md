@@ -18,8 +18,6 @@ Utilities in this command have no backward compatibility guarantees and may chan
 
 ### prometheus.remote_write sample-stats
 
-Usage:
-
 ```shell
 alloy tools prometheus.remote_write sample-stats [<FLAG> ...] <WAL_DIRECTORY>
 ```
@@ -46,8 +44,6 @@ The following flag is supported:
 
 ### prometheus.remote_write target-stats
 
-Usage:
-
 ```shell
 alloy tools prometheus.remote_write target-stats --job JOB --instance INSTANCE WAL_DIRECTORY
 ```
@@ -64,8 +60,6 @@ The following flags are supported:
 The `--job` and `--instance` labels are required.
 
 ### prometheus.remote_write wal-stats
-
-Usage:
 
 ```shell
 alloy tools prometheus.remote_write wal-stats <WAL_DIRECTORY>

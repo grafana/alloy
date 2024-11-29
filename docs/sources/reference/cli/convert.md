@@ -16,8 +16,6 @@ The `convert` command converts a supported configuration format to the {{< param
 
 ## Usage
 
-Usage:
-
 ```shell
 alloy convert [<FLAG> ...] <FILE_NAME>
 ```
@@ -111,7 +109,7 @@ Refer to [Migrate from Grafana Agent Static to {{< param "PRODUCT_NAME" >}}][mig
 [relabel_config]: https://prometheus.io/docs/prometheus/2.45/configuration/configuration/#relabel_config
 [metric_relabel_configs]: https://prometheus.io/docs/prometheus/2.45/configuration/configuration/#metric_relabel_configs
 [remote_write]: https://prometheus.io/docs/prometheus/2.45/configuration/configuration/#remote_write
-[Component Reference]: ../components/otelcol/
+[Component Reference]: ../../components/otelcol/
 [migrate otelcol]: ../../../set-up/migrate/from-otelcol/
 [migrate prometheus]: ../../../set-up/migrate/from-prometheus/
 [Promtail v2.8.x]: https://grafana.com/docs/loki/v2.8.x/clients/promtail/
