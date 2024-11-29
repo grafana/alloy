@@ -22,8 +22,6 @@ Main (unreleased)
 
 - Add `otelcol.exporter.syslog` component to export logs in syslog format (@dehaansa)
 
-- Add `otelcol.receiver.influxdb` to convert influx metric into OTEL. (@EHSchmitt4395)
-
 ### Enhancements
 
 - Add second metrics sample to the support bundle to provide delta information (@dehaansa)
@@ -32,9 +30,22 @@ Main (unreleased)
 
 - Add relevant golang environment variables to the support bundle (@dehaansa)
 
+- Logs from underlying clustering library `memberlist` are now surfaced with correct level (@thampiotr)
+
+- Update mysqld_exporter from v0.15.0 to v0.16.0 (including 2ef168bf6), most notable changes: (@cristiangreco)
+  - Support MySQL 8.4 replicas syntax
+  - Fetch lock time and cpu time from performance schema
+  - Fix fetching tmpTables vs tmpDiskTables from performance_schema
+  - Skip SPACE_TYPE column for MariaDB >=10.5
+  - Fixed parsing of timestamps with non-zero padded days
+  - Fix auto_increment metric collection errors caused by using collation in INFORMATION_SCHEMA searches
+  - Change processlist query to support ONLY_FULL_GROUP_BY sql_mode
+  - Add perf_schema quantile columns to collector
+
 ### Bugfixes
 
 - Fixed an issue in the `prometheus.exporter.postgres` component that would leak goroutines when the target was not reachable (@dehaansa)
+
 - Fixed an issue in the `otelcol.exporter.prometheus` component that would set series value incorrectly for stale metrics (@YusifAghalar)
 
 - Fixed issue with reloading configuration and prometheus metrics duplication in `prometheus.write.queue`. (@mattdurham)
@@ -105,6 +116,8 @@ v1.5.0
 - Support logs that have a `timestamp` field instead of a `time` field for the `loki.source.azure_event_hubs` component. (@andriikushch)
 
 - Add `proxy_url` to `otelcol.exporter.otlphttp`. (@wildum)
+
+- Allow setting `informer_sync_timeout` in prometheus.operator.* components. (@captncraig)
 
 ### Bugfixes
 

@@ -3,6 +3,7 @@ package all
 
 import (
 	_ "github.com/grafana/alloy/internal/component/beyla/ebpf"                               // Import beyla.ebpf
+	_ "github.com/grafana/alloy/internal/component/database_observability/mysql"             // Import database_observability.mysql
 	_ "github.com/grafana/alloy/internal/component/discovery/aws"                            // Import discovery.aws.ec2 and discovery.aws.lightsail
 	_ "github.com/grafana/alloy/internal/component/discovery/azure"                          // Import discovery.azure
 	_ "github.com/grafana/alloy/internal/component/discovery/consul"                         // Import discovery.consul
