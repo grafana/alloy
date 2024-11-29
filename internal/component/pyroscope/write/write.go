@@ -177,7 +177,12 @@ func NewFanOut(opts component.Options, config Arguments, metrics *metrics) (*fan
 		}
 		endpoint.Headers[alloyseed.LegacyHeaderName] = uid
 		endpoint.Headers[alloyseed.HeaderName] = uid
+
 		client, err := commonconfig.NewClientFromConfig(*endpoint.HTTPClientConfig.Convert(), endpoint.Name)
+		if err != nil {
+			return nil, err
+		}
+
 		client.Transport = otelhttp.NewTransport(
 			client.Transport,
 			otelhttp.WithTracerProvider(opts.Tracer),
@@ -185,9 +190,7 @@ func NewFanOut(opts component.Options, config Arguments, metrics *metrics) (*fan
 				return otelhttptrace.NewClientTrace(ctx, otelhttptrace.WithoutSubSpans())
 			}),
 		)
-		if err != nil {
-			return nil, err
-		}
+
 		clients = append(clients, pushv1connect.NewPusherServiceClient(client, endpoint.URL, WithUserAgent(userAgent)))
 		if httpClient == nil {
 			httpClient = client
