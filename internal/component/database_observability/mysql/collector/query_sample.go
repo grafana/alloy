@@ -111,7 +111,7 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 		var digest, sampleText, sampleSeen, sampleTimerWait string
 		err := rs.Scan(&digest, &sampleText, &sampleSeen, &sampleTimerWait)
 		if err != nil {
-			level.Error(c.logger).Log("msg", "failed to scan result set", "err", err)
+			level.Error(c.logger).Log("msg", "failed to scan result set for query samples", "err", err)
 			continue
 		}
 
