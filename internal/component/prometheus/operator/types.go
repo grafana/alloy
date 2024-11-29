@@ -32,6 +32,8 @@ type Arguments struct {
 	RelabelConfigs []*alloy_relabel.Config `alloy:"rule,block,optional"`
 
 	Scrape ScrapeOptions `alloy:"scrape,block,optional"`
+
+	InformerSyncTimeout time.Duration `alloy:"informer_sync_timeout,attr,optional"`
 }
 
 // ScrapeOptions holds values that configure scraping behavior.
@@ -54,6 +56,7 @@ var DefaultArguments = Arguments{
 	Client: kubernetes.ClientArguments{
 		HTTPClientConfig: config.DefaultHTTPClientConfig,
 	},
+	InformerSyncTimeout: time.Minute,
 }
 
 // SetToDefault implements syntax.Defaulter.

@@ -14,6 +14,8 @@ v1.5.1
 
 - Logs from underlying clustering library `memberlist` are now surfaced with correct level (@thampiotr)
 
+- Allow setting `informer_sync_timeout` in prometheus.operator.* components. (@captncraig)
+
 ### Bugfixes
 
 - Fixed issue with reloading configuration and prometheus metrics duplication in `prometheus.write.queue`. (@mattdurham)
