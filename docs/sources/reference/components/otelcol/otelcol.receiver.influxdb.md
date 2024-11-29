@@ -46,8 +46,10 @@ The following blocks are supported inside the definition of `otelcol.receiver.in
 |           | `debug_metrics`| Configures the metrics that this component generates.    | no       |
 |           | `output`       | Configures where to send received metrics.              | yes      |
 
-The `>` symbol indicates deeper levels of nesting. For example, `grpc > tls`
-refers to a `tls` block defined inside a `grpc` block.
+[tls]: #tls-block
+[cors]: #cors-block
+[debug_metrics]: #debug_metrics-block
+[output]: #output-block
 
 ### tls block
 
