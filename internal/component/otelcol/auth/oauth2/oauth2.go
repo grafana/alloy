@@ -1,7 +1,6 @@
 package oauth2
 
 import (
-	"fmt"
 	"net/url"
 	"time"
 
@@ -69,8 +68,9 @@ func (args Arguments) ConvertClient() (otelcomponent.Config, error) {
 	}, nil
 }
 
+// ConvertServer returns nil since the ouath2 client extension doesn ot support serve auth
 func (args Arguments) ConvertServer() (otelcomponent.Config, error) {
-	return nil, fmt.Errorf("%w oauth2 client extension does not implement server authentication", auth.ErrNotServerExtension)
+	return nil, nil
 }
 
 // Extensions implements auth.Arguments.

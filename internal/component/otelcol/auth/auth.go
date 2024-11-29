@@ -37,11 +37,11 @@ var (
 	ErrInvalidExtension   = errors.New("invalid extension")
 )
 
-type ExtensionType int
+type ExtensionType string
 
 const (
-	Server ExtensionType = iota // 0
-	Client
+	Server ExtensionType = "server"
+	Client ExtensionType = "client"
 )
 
 // Arguments is an extension of component.Arguments which contains necessary
@@ -79,33 +79,25 @@ type Exports struct {
 
 // Handler combines an extension with its ID.
 type Handler struct {
-	HandlerMap map[ExtensionType]*ExtensionHandler
+	componentID string
+	handlerMap  map[ExtensionType]*ExtensionHandler
 }
 
-func NewDefaultHandler() *Handler {
+func NewHandler(componentID string) *Handler {
 	return &Handler{
-		HandlerMap: map[ExtensionType]*ExtensionHandler{},
-	}
-}
-
-func NewHandler(extensionMap map[ExtensionType]*ExtensionHandler) *Handler {
-	return &Handler{
-		HandlerMap: extensionMap,
+		componentID: componentID,
+		handlerMap:  map[ExtensionType]*ExtensionHandler{},
 	}
 }
 
 func (h *Handler) GetExtension(et ExtensionType) (*ExtensionHandler, error) {
-	ext, ok := h.HandlerMap[et]
+	ext, ok := h.handlerMap[et]
 	if !ok {
-		switch et {
-		case Server:
-			return nil, ErrNotServerExtension
-		case Client:
-			return nil, ErrNotClientExtension
-		default:
-			return nil, fmt.Errorf("%w: extension type provided %d", ErrInvalidExtension, et)
-		}
+		return nil, fmt.Errorf("error initializing %s auth extension. component %s was unexpectedly nil", et, h.componentID)
+	}
 
+	if ext.Error != nil {
+		return nil, ext.Error
 	}
 
 	return ext, nil
@@ -113,16 +105,19 @@ func (h *Handler) GetExtension(et ExtensionType) (*ExtensionHandler, error) {
 
 func (h *Handler) AddExtension(et ExtensionType, eh *ExtensionHandler) error {
 	if et != Server && et != Client {
-		return fmt.Errorf("invalid extension type %d", et)
+		return fmt.Errorf("invalid extension type %s", et)
 	}
 
-	h.HandlerMap[et] = eh
+	h.handlerMap[et] = eh
 	return nil
 }
 
 type ExtensionHandler struct {
 	ID        otelcomponent.ID
 	Extension otelextension.Extension
+	// Set if the extension does not support the type of authentication
+	// requested
+	Error error
 }
 
 var _ syntax.Capsule = Handler{}
@@ -234,64 +229,40 @@ func (a *Auth) Update(args component.Arguments) error {
 
 	// Create instances of the extension from our factory.
 	var components []otelcomponent.Component
-	handlerMap := map[ExtensionType]*ExtensionHandler{}
-
-	createClientExtension := true
-	clientConfig, err := rargs.ConvertClient()
+	handler := NewHandler(a.opts.ID)
+	clientEh, err := a.setupExtension(Client, rargs, settings)
 	if err != nil {
-		createClientExtension = false
-		if !errors.Is(err, ErrNotClientExtension) {
-			return err
-		}
-
-		// Log something here?
+		return err
 	}
 
-	var clientext otelcomponent.Component
-	if createClientExtension {
-		clientext, err = a.createExtension(clientConfig, settings)
-		if err != nil {
-			return err
-		}
-
-		cTypeStr := NormalizeType(fmt.Sprintf("%s_%s", a.opts.ID, "client"))
-		handlerMap[Client] = &ExtensionHandler{
-			ID:        otelcomponent.NewID(otelcomponent.MustNewType(cTypeStr)),
-			Extension: clientext,
-		}
-
-		components = append(components, clientext)
+	// Extension could be nil if the auth plugin does not support client auth
+	if clientEh.Extension != nil {
+		components = append(components, clientEh.Extension)
 	}
 
-	createServerExtension := true
-	serverConfig, err := rargs.ConvertServer()
+	// Register extension so it can be retrieved
+	if err := handler.AddExtension(Client, clientEh); err != nil {
+		return err
+	}
+
+	serverEh, err := a.setupExtension(Server, rargs, settings)
 	if err != nil {
-		createServerExtension = false
-		if !errors.Is(err, ErrNotServerExtension) {
-			return err
-		}
-
-		// Log something here?
+		return err
 	}
 
-	if createServerExtension {
-		serverext, err := a.createExtension(serverConfig, settings)
-		if err != nil {
-			return err
-		}
+	// Extension could be nil if the auth plugin does not support server auth.
+	if serverEh.Extension != nil {
+		components = append(components, serverEh.Extension)
+	}
 
-		components = append(components, serverext)
-		cTypeStr := NormalizeType(fmt.Sprintf("%s_%s", a.opts.ID, "server"))
-		handlerMap[Server] = &ExtensionHandler{
-			ID:        otelcomponent.NewID(otelcomponent.MustNewType(cTypeStr)),
-			Extension: serverext,
-		}
-
+	// Register extension so it can be retrieved
+	if err := handler.AddExtension(Server, serverEh); err != nil {
+		return err
 	}
 
 	// Inform listeners that our handler changed.
 	a.opts.OnStateChange(Exports{
-		Handler: NewHandler(handlerMap),
+		Handler: handler,
 	},
 	)
 
@@ -319,6 +290,44 @@ func NormalizeType(in string) string {
 	}
 
 	return res
+}
+
+func (a *Auth) setupExtension(t ExtensionType, rargs Arguments, settings otelextension.Settings) (*ExtensionHandler, error) {
+	var otelConfig otelcomponent.Config
+	var err error
+	var notSupportedErr error
+	if t == Server {
+		otelConfig, err = rargs.ConvertServer()
+		notSupportedErr = ErrNotServerExtension
+	}
+	if t == Client {
+		otelConfig, err = rargs.ConvertClient()
+		notSupportedErr = ErrNotClientExtension
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	eh := &ExtensionHandler{}
+
+	// Auth plugins that don't support the client/server auth
+	// are expected to return nil, check for that error here.
+	if otelConfig == nil {
+		eh.Error = fmt.Errorf("%s %w", a.opts.ID, notSupportedErr)
+		return eh, nil
+	}
+
+	otelExtension, err := a.createExtension(otelConfig, settings)
+	if err != nil {
+		return nil, err
+	}
+
+	cTypeStr := NormalizeType(fmt.Sprintf("%s.%s", a.opts.ID, t))
+	eh.ID = otelcomponent.NewID(otelcomponent.MustNewType(cTypeStr))
+	eh.Extension = otelExtension
+
+	return eh, nil
 }
 
 func (a *Auth) createExtension(config otelcomponent.Config, settings otelextension.Settings) (otelcomponent.Component, error) {

@@ -76,8 +76,9 @@ func (args Arguments) ConvertClient() (otelcomponent.Config, error) {
 	}, nil
 }
 
+// ConvertServer returns nil since theheaders extension does not support server authenticaiton.
 func (args Arguments) ConvertServer() (otelcomponent.Config, error) {
-	return nil, fmt.Errorf("%w, headers extension does not implement server authentication", auth.ErrNotServerExtension)
+	return nil, nil
 }
 
 // Extensions implements auth.Arguments.
