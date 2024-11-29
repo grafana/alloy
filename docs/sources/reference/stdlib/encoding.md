@@ -26,6 +26,29 @@ The `encoding.from_base64` function decodes a RFC4648-compliant Base64-encoded s
 tangerine
 ```
 
+## encoding.to_base64
+
+The `encoding.to_base64` function encodes a string to RFC4648-compliant base64 string
+into the original string.
+
+### Examples
+
+```
+> encoding.to_base64("foobar123!?$*&()'-=@~")
+Zm9vYmFyMTIzIT8kKiYoKSctPUB+
+```
+
+## encoding.to_URLbase64
+
+The `encoding.to_URLbase64` function encodes a string to RFC4648-compliant url safe base64 string
+
+### Examples
+
+```
+> encoding.to_URLbase64("foobar123!?$*&()'-=@~")
+Zm9vYmFyMTIzIT8kKiYoKSctPUB-
+```
+
 ## encoding.from_json
 
 The `encoding.from_json` function decodes a string representing JSON into an {{< param "PRODUCT_NAME" >}} value.

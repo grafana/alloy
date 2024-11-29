@@ -75,9 +75,11 @@ var file = map[string]interface{}{
 }
 
 var encoding = map[string]interface{}{
-	"from_json":   jsonDecode,
-	"from_yaml":   yamlDecode,
-	"from_base64": base64Decode,
+	"from_json":    jsonDecode,
+	"from_yaml":    yamlDecode,
+	"from_base64":  base64Decode,
+	"to_base64":    base64Encode,
+	"to_URLbase64": base64URLEncode,
 }
 
 var str = map[string]interface{}{
@@ -311,6 +313,16 @@ func base64Decode(in string) (interface{}, error) {
 		return nil, err
 	}
 	return decoded, nil
+}
+
+func base64URLEncode(in string) (interface{}, error) {
+	encoded := base64.URLEncoding.EncodeToString([]byte(in))
+	return encoded, nil
+}
+
+func base64Encode(in string) (interface{}, error) {
+	encoded := base64.StdEncoding.EncodeToString([]byte(in))
+	return encoded, nil
 }
 
 func jsonPath(jsonString string, path string) (interface{}, error) {
