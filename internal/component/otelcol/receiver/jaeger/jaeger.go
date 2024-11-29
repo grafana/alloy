@@ -3,6 +3,7 @@ package jaeger
 
 import (
 	"fmt"
+	"maps"
 
 	"github.com/alecthomas/units"
 	"github.com/grafana/alloy/internal/component"
@@ -86,7 +87,24 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 
 // Extensions implements receiver.Arguments.
 func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
-	return nil
+	extensionMap := make(map[otelcomponent.ID]otelextension.Extension)
+
+	// Gets the extensions for the HTTP server and GRPC server
+	if args.Protocols.ThriftHTTP != nil {
+		httpExtensions := (*otelcol.HTTPServerArguments)(args.Protocols.ThriftHTTP.HTTPServerArguments).Extensions()
+
+		// Copies the extensions for the HTTP server into the map
+		maps.Copy(extensionMap, httpExtensions)
+	}
+
+	if args.Protocols.GRPC.GRPCServerArguments != nil {
+		grpcExtensions := (*otelcol.GRPCServerArguments)(args.Protocols.GRPC.GRPCServerArguments).Extensions()
+
+		// Copies the extensions for the GRPC server into the map.
+		maps.Copy(extensionMap, grpcExtensions)
+	}
+
+	return extensionMap
 }
 
 // Exporters implements receiver.Arguments.

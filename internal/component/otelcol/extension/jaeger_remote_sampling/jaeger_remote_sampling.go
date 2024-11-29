@@ -2,6 +2,7 @@ package jaeger_remote_sampling
 
 import (
 	"fmt"
+	"maps"
 	"time"
 
 	"github.com/grafana/alloy/internal/component"
@@ -100,7 +101,24 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 
 // Extensions implements extension.Arguments.
 func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
-	return nil
+	extensionMap := make(map[otelcomponent.ID]otelextension.Extension)
+
+	// Gets the extensions for the HTTP server and GRPC server
+	if args.HTTP != nil {
+		httpExtensions := (*otelcol.HTTPServerArguments)(args.HTTP).Extensions()
+
+		// Copies the extensions for the HTTP server into the map
+		maps.Copy(extensionMap, httpExtensions)
+	}
+
+	if args.GRPC != nil {
+		grpcExtensions := (*otelcol.GRPCServerArguments)(args.GRPC).Extensions()
+
+		// Copies the extensions for the GRPC server into the map.
+		maps.Copy(extensionMap, grpcExtensions)
+	}
+
+	return extensionMap
 }
 
 // Exporters implements extension.Arguments.

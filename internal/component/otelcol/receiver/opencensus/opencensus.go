@@ -70,7 +70,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 
 // Extensions implements receiver.Arguments.
 func (args Arguments) Extensions() map[otelcomponent.ID]extension.Extension {
-	return nil
+	return args.GRPC.Extensions()
 }
 
 // Exporters implements receiver.Arguments.
