@@ -231,7 +231,7 @@ cluster to distribute the load of log collection between all cluster nodes.
 If {{< param "PRODUCT_NAME" >}} is _not_ running in clustered mode, then the block is a no-op and
 `loki.source.podlogs` collects logs based on every PodLogs resource discovered.
 
-Clustering only looks at the following labels for determining the shard key:
+Clustering looks only at the following labels for determining the shard key:
 
 * `__pod_namespace__`
 * `__pod_name__`
