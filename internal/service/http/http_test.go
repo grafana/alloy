@@ -3,6 +3,7 @@ package http
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"testing"
 
@@ -42,6 +43,26 @@ func TestHTTP(t *testing.T) {
 		resp, err := cli.Do(req)
 		require.NoError(t, err)
 		defer resp.Body.Close()
+
+		buf, err := io.ReadAll(resp.Body)
+		require.Equal(t, "Alloy is ready.\n", string(buf))
+
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+	})
+
+	util.Eventually(t, func(t require.TestingT) {
+		cli, err := config.NewClientFromConfig(config.HTTPClientConfig{}, "test")
+		require.NoError(t, err)
+
+		req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://%s/-/healthy", env.ListenAddr()), nil)
+		require.NoError(t, err)
+
+		resp, err := cli.Do(req)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+
+		buf, err := io.ReadAll(resp.Body)
+		require.Equal(t, "Alloy is healthy.\n", string(buf))
 
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 	})
@@ -157,9 +178,53 @@ func Test_Toggle_TLS(t *testing.T) {
 	}
 }
 
+func TestUnhealthy(t *testing.T) {
+	ctx := componenttest.TestContext(t)
+
+	env, err := newTestEnvironment(t)
+	require.NoError(t, err)
+
+	env.components = []*component.Info{
+		{
+			ID: component.ID{
+				ModuleID: "",
+				LocalID:  "testCompId",
+			},
+			Label:         "testCompLabel",
+			ComponentName: "testCompName",
+			Health: component.Health{
+				Health: component.HealthTypeUnhealthy,
+			},
+		},
+	}
+	require.NoError(t, env.ApplyConfig(""))
+
+	go func() {
+		require.NoError(t, env.Run(ctx))
+	}()
+
+	util.Eventually(t, func(t require.TestingT) {
+		cli, err := config.NewClientFromConfig(config.HTTPClientConfig{}, "test")
+		require.NoError(t, err)
+
+		req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://%s/-/healthy", env.ListenAddr()), nil)
+		require.NoError(t, err)
+
+		resp, err := cli.Do(req)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+
+		buf, err := io.ReadAll(resp.Body)
+		require.Equal(t, "unhealthy components: testCompName\n", string(buf))
+
+		require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+	})
+}
+
 type testEnvironment struct {
-	svc  *Service
-	addr string
+	svc        *Service
+	addr       string
+	components []*component.Info
 }
 
 func newTestEnvironment(t *testing.T) (*testEnvironment, error) {
@@ -196,12 +261,16 @@ func (env *testEnvironment) ApplyConfig(config string) error {
 }
 
 func (env *testEnvironment) Run(ctx context.Context) error {
-	return env.svc.Run(ctx, fakeHost{})
+	return env.svc.Run(ctx, fakeHost{
+		components: env.components,
+	})
 }
 
 func (env *testEnvironment) ListenAddr() string { return env.addr }
 
-type fakeHost struct{}
+type fakeHost struct {
+	components []*component.Info
+}
 
 var _ service.Host = (fakeHost{})
 
@@ -209,7 +278,10 @@ func (fakeHost) GetComponent(id component.ID, opts component.InfoOptions) (*comp
 	return nil, fmt.Errorf("no such component %s", id)
 }
 
-func (fakeHost) ListComponents(moduleID string, opts component.InfoOptions) ([]*component.Info, error) {
+func (f fakeHost) ListComponents(moduleID string, opts component.InfoOptions) ([]*component.Info, error) {
+	if f.components != nil {
+		return f.components, nil
+	}
 	if moduleID == "" {
 		return nil, nil
 	}

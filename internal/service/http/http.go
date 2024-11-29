@@ -188,6 +188,32 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 		otelmux.WithTracerProvider(s.tracer),
 	))
 
+	// The implementation for "/-/healthy" is inspired by
+	// the "/components" web API endpoint in /internal/web/api/api.go
+	r.HandleFunc("/-/healthy", func(w http.ResponseWriter, r *http.Request) {
+		components, err := host.ListComponents("", component.InfoOptions{
+			GetHealth: true,
+		})
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		unhealthyComponents := []string{}
+		for _, c := range components {
+			if c.Health.Health == component.HealthTypeUnhealthy {
+				unhealthyComponents = append(unhealthyComponents, c.ComponentName)
+			}
+		}
+		if len(unhealthyComponents) > 0 {
+			http.Error(w, "unhealthy components: "+strings.Join(unhealthyComponents, ", "), http.StatusInternalServerError)
+			return
+		}
+
+		fmt.Fprintln(w, "Alloy is healthy.")
+		w.WriteHeader(http.StatusOK)
+	})
+
 	r.Handle(
 		"/metrics",
 		promhttp.HandlerFor(s.gatherer, promhttp.HandlerOpts{}),
