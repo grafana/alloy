@@ -50,13 +50,6 @@ func (influxdbReceiverConverter) ConvertAndAppend(
 
 	// // Create a block with the converted arguments
 	block := common.NewBlockWithOverride([]string{"otelcol", "receiver", "influxdb"}, label, args)
-
-	// block := common.NewBlockWithOverride([]string{"otelcol", "receiver", "influxdb"}, label, args)
-
-	// Debug logs (optional)
-	fmt.Printf("InfluxDB Arguments: %+v\n", args)
-	fmt.Printf("HTTPServer Endpoint: %s\n", args.HTTPServer.Endpoint)
-
 	// Append the block to the state directly
 	state.Body().AppendBlock(block)
 
@@ -75,15 +68,7 @@ func toInfluxdbReceiver(
     id componentstatus.InstanceID,
     cfg *influxdbreceiver.Config,
 ) *influxdb.Arguments {
-    // if cfg.ServerConfig.Endpoint == "" {
-    //     cfg.ServerConfig.Endpoint = "localhost:8086"
-    // }
-	fmt.Printf("cfg: %v\n", cfg)
-
     metricsConsumers := ToTokenizedConsumers(state.Next(id, pipeline.SignalMetrics))
-    if len(metricsConsumers) == 0 {
-		fmt.Printf("Warning: No metrics consumers found for %v\n", id)
-    }
 
 	args := &influxdb.Arguments{
 		HTTPServer:  *toHTTPServerArguments(&cfg.ServerConfig),
@@ -92,6 +77,5 @@ func toInfluxdbReceiver(
 			Metrics: metricsConsumers,
 		},
 	}
-	fmt.Printf("Generated Arguments: %+v\n", args)
 	return args
 }

@@ -73,10 +73,8 @@ func TestInfluxdbUnmarshal(t *testing.T) {
     }
     `
 	var args influxdb.Arguments
-	// fmt.Printf("Expected Arguments Struct: %+v\n", influxdb.Arguments{})
 	err := syntax.Unmarshal([]byte(influxdbConfig), &args)
 	require.NoError(t, err, "Unmarshaling should not produce an error")
-	// fmt.Printf("Unmarshaled Arguments: %+v\n", args)
 
 	// Set up the metrics output for testing
 	args.Output = makeMetricsOutput(metricCh)
@@ -191,7 +189,7 @@ func TestReceiverProcessesMetrics(t *testing.T) {
     config := influxdb.Arguments{
         HTTPServer: otelcol.HTTPServerArguments{
             Endpoint: addr,
-            CompressionAlgorithms: []string{""},
+            CompressionAlgorithms: []string{"gzip"},
         },
         Output: nil, // Output will not be used since we are directly testing the consumer
     }
@@ -213,7 +211,7 @@ func TestReceiverProcessesMetrics(t *testing.T) {
     t.Log("Receiver started successfully")
 
     // Simulate sending data to the receiver
-    o := influxdb2.DefaultOptions()
+    o := influxdb2.DefaultOptions().SetUseGZip(true)
     o.SetPrecision(time.Microsecond)
     client := influxdb2.NewClientWithOptions("http://"+addr, "", o)
     defer client.Close()
