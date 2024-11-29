@@ -41,10 +41,10 @@ The following blocks are supported inside the definition of `otelcol.receiver.in
 
 | Hierarchy | Block          | Description                                              | Required |
 |-----------|----------------|----------------------------------------------------------|----------|
-|           | `tls`          | Configures TLS for the HTTP server.                      | no       |
-|           | `cors`         | Configures CORS for the HTTP server.                     | no       |
-|           | `debug_metrics`| Configures the metrics that this component generates.    | no       |
-|           | `output`       | Configures where to send received metrics.              | yes      |
+| tls       | [tls][]          | Configures TLS for the HTTP server.                      | no       |
+| cors          | [cors][]         | Configures CORS for the HTTP server.                     | no       |
+| debug_metrics        | [debug_metrics][]| Configures the metrics that this component generates.    | no       |
+| output          | [output][]       | Configures where to send received metrics.              | yes      |
 
 [tls]: #tls-block
 [cors]: #cors-block
