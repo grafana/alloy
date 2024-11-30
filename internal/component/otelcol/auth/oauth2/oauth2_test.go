@@ -115,7 +115,6 @@ func Test(t *testing.T) {
 
 			ext, err := exports.Handler.GetExtension(auth.Client)
 			require.NoError(t, err)
-
 			require.NotNil(t, ext.Extension, "handler extension is nil")
 
 			clientAuth, ok := ext.Extension.(extauth.Client)
