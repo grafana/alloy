@@ -53,7 +53,7 @@ func (args *Arguments) SetToDefault() {
 	args.DebugMetrics.SetToDefault()
 }
 
-// Convert implements auth.Arguments.
+// ConvertClient implements auth.Arguments.
 func (args Arguments) ConvertClient() (otelcomponent.Config, error) {
 	return &oauth2clientauthextension.Config{
 		ClientID:         args.ClientID,
@@ -68,7 +68,7 @@ func (args Arguments) ConvertClient() (otelcomponent.Config, error) {
 	}, nil
 }
 
-// ConvertServer returns nil since the ouath2 client extension doesn ot support serve auth
+// ConvertServer returns nil since the ouath2 client extension does not support server auth.
 func (args Arguments) ConvertServer() (otelcomponent.Config, error) {
 	return nil, nil
 }
@@ -83,6 +83,7 @@ func (args Arguments) Exporters() map[pipeline.Signal]map[otelcomponent.ID]otelc
 	return nil
 }
 
+// AuthFeatures implements auth.Arguments.
 func (args Arguments) AuthFeatures() auth.AuthFeature {
 	return auth.ClientAuthSupported
 }

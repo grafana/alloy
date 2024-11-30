@@ -58,15 +58,17 @@ func (args Arguments) convert() (otelcomponent.Config, error) {
 	}, nil
 }
 
-// Convert implements auth.Arguments.
+// ConvertClient implements auth.Arguments.
 func (args Arguments) ConvertClient() (otelcomponent.Config, error) {
 	return args.convert()
 }
 
+// ConvertServer implements auth.Arguments.
 func (args Arguments) ConvertServer() (otelcomponent.Config, error) {
 	return args.convert()
 }
 
+// AuthFeatures implements auth.Arguments.
 func (args Arguments) AuthFeatures() auth.AuthFeature {
 	return auth.ClientAndServerAuthSupported
 }

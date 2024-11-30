@@ -46,6 +46,7 @@ func (args *Arguments) SetToDefault() {
 	args.DebugMetrics.SetToDefault()
 }
 
+// ConvertClient implements auth.Arguments.
 func (args Arguments) ConvertClient() (otelcomponent.Config, error) {
 	return &basicauthextension.Config{
 		ClientAuth: &basicauthextension.ClientAuthSettings{
@@ -55,6 +56,7 @@ func (args Arguments) ConvertClient() (otelcomponent.Config, error) {
 	}, nil
 }
 
+// ConvertServer implements auth.Arguments.
 func (args Arguments) ConvertServer() (otelcomponent.Config, error) {
 	return &basicauthextension.Config{
 		Htpasswd: &basicauthextension.HtpasswdSettings{
@@ -63,6 +65,7 @@ func (args Arguments) ConvertServer() (otelcomponent.Config, error) {
 	}, nil
 }
 
+// AuthFeatures implements auth.Arguments.
 func (args Arguments) AuthFeatures() auth.AuthFeature {
 	return auth.ClientAndServerAuthSupported
 }

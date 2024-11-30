@@ -1,4 +1,4 @@
-// //go:build !race
+//go:build !race
 
 package receiver
 

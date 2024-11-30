@@ -47,7 +47,7 @@ func (args *Arguments) SetToDefault() {
 	args.DebugMetrics.SetToDefault()
 }
 
-// Convert implements auth.Arguments.
+// ConvertClient implements auth.Arguments.
 func (args Arguments) ConvertClient() (otelcomponent.Config, error) {
 	var upstreamHeaders []headerssetterextension.HeaderConfig
 	for _, h := range args.Headers {
@@ -86,6 +86,7 @@ func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension 
 	return nil
 }
 
+// AuthFeatures implements auth.Arguments.
 func (args Arguments) AuthFeatures() auth.AuthFeature {
 	return auth.ClientAuthSupported
 }
