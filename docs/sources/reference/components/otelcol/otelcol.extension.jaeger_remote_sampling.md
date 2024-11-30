@@ -305,6 +305,9 @@ otelcol.extension.jaeger_remote_sampling "default" {
   http {
     auth = otelcol.auth.basic.creds.handler
   }
+  grpc {
+     auth = otelcol.auth.basic.creds.handler
+  }
 }
 
 otelcol.auth.basic "creds" {
