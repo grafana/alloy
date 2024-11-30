@@ -85,6 +85,7 @@ Name | Type | Description | Default | Required
 `read_buffer_size` | `string` | Size of the read buffer the gRPC server will use for reading from clients. | `"512KiB"` | no
 `write_buffer_size` | `string` | Size of the write buffer the gRPC server will use for writing to clients. | | no
 `include_metadata` | `boolean` | Propagate incoming connection metadata to downstream consumers. | | no
+`auth`              | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests.     |               | no
 
 ### tls block
 
@@ -145,6 +146,7 @@ Name | Type | Description | Default         | Required
 `metrics_url_path` | `string` | The URL path to receive metrics on. | `"/v1/metrics"` | no
 `logs_url_path` | `string` | The URL path to receive logs on. | `"/v1/logs"`    | no
 `compression_algorithms` | `list(string)` | A list of compression algorithms the server can accept.    | `["", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"]` | no
+`auth`              | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests.     |               | no
 
 To send telemetry signals to `otelcol.receiver.otlp` with HTTP/JSON, POST to:
 * `[endpoint][traces_url_path]` for traces.
@@ -240,6 +242,30 @@ otelcol.exporter.otlp "default" {
 ## Technical details
 
 `otelcol.receiver.otlp` supports [gzip](https://en.wikipedia.org/wiki/Gzip) for compression.
+
+## Enabling Authentication
+
+You can create a `otlp` receiver that requires authentication for requests. This is useful for limiting who can push data to the server. Note that not all OpenTelemetry Collector (otelcol) authentication plugins support receiver authentication. Please refer to the documentation for each `otelcol.auth.*` plugin to determine its compatibility.
+
+```alloy
+otelcol.receiver.otlp "default" {
+  http {
+    auth = otelcol.auth.basic.creds.handler
+  }
+  grpc {
+     auth = otelcol.auth.basic.creds.handler
+  }
+
+  output {
+   ...
+  }
+}
+
+otelcol.auth.basic "creds" {
+    username = sys.env("USERNAME")
+    password = sys.env("PASSWORD")
+}
+```
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components

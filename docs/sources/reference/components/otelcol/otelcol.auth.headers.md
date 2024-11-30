@@ -11,6 +11,8 @@ title: otelcol.auth.headers
 `otelcol.auth.headers` exposes a `handler` that can be used by other `otelcol`
 components to authenticate requests using custom headers.
 
+This extension only supports client authentication. 
+
 {{< admonition type="note" >}}
 `otelcol.auth.headers` is a wrapper over the upstream OpenTelemetry Collector `headerssetter` extension.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
