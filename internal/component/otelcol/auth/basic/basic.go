@@ -32,8 +32,6 @@ func init() {
 
 // Arguments configures the otelcol.auth.basic component.
 type Arguments struct {
-	// TODO(rfratto): should we support htpasswd?
-
 	Username string            `alloy:"username,attr"`
 	Password alloytypes.Secret `alloy:"password,attr"`
 
