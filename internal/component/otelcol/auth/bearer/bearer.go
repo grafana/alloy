@@ -67,6 +67,10 @@ func (args Arguments) ConvertServer() (otelcomponent.Config, error) {
 	return args.convert()
 }
 
+func (args Arguments) AuthFeatures() auth.AuthFeature {
+	return auth.ClientAndServerAuthSupported
+}
+
 // Extensions implements auth.Arguments.
 func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
 	return nil

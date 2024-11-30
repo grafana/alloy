@@ -45,6 +45,8 @@ func (args *HTTPServerArguments) Convert() (*otelconfighttp.ServerConfig, error)
 		return nil, nil
 	}
 
+	// If auth is set by the user retrieve the associated extension from the handler.
+	// if the extension does not support server auth an error will be returned.
 	var authz *otelconfighttp.AuthConfig
 	if args.Auth != nil {
 		ext, err := args.Auth.GetExtension(auth.Server)
@@ -75,6 +77,7 @@ func (args *HTTPServerArguments) Extensions() map[otelcomponent.ID]otelextension
 	m := make(map[otelcomponent.ID]otelextension.Extension)
 	if args.Auth != nil {
 		ext, err := args.Auth.GetExtension(auth.Server)
+		// Extension will not be registered if there was an error.
 		if err != nil {
 			return m
 		}

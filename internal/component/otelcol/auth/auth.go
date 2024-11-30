@@ -34,12 +34,16 @@ import (
 var (
 	ErrNotServerExtension = errors.New("component does not support server authentication")
 	ErrNotClientExtension = errors.New("component does not support client authentication")
-	ErrInvalidExtension   = errors.New("invalid extension")
 )
 
 type ExtensionType string
+type AuthFeature byte
 
 const (
+	ClientAuthSupported          AuthFeature = 1 << iota
+	ServerAuthSupported          AuthFeature = 1 << iota
+	ClientAndServerAuthSupported AuthFeature = ClientAuthSupported | ServerAuthSupported
+
 	Server ExtensionType = "server"
 	Client ExtensionType = "client"
 )
@@ -49,12 +53,18 @@ const (
 type Arguments interface {
 	component.Arguments
 
+	// AuthFeature returns the type of auth that a opentelemetry collector plugin supports
+	// client auth, server auth or both.
+	AuthFeatures() AuthFeature
+
 	// ConvertClient converts the Arguments into an OpenTelemetry Collector
-	// client authentication extension configuration.
+	// client authentication extension configuration. If the plugin does
+	// not support server authentication it should return nil, nil
 	ConvertClient() (otelcomponent.Config, error)
 
 	// ConvetServer converts the Arguments into an OpenTelemetry Collector
-	// server authentication extension configuration
+	// server authentication extension configuration. If the plugin does
+	// not support server authentication it should return nil, nil
 	ConvertServer() (otelcomponent.Config, error)
 
 	// Extensions returns the set of extensions that the configured component is
@@ -83,6 +93,8 @@ type Handler struct {
 	handlerMap  map[ExtensionType]*ExtensionHandler
 }
 
+// NewHandler creates a handler that can be exported
+// in a capsule for otel servers to consume.
 func NewHandler(componentID string) *Handler {
 	return &Handler{
 		componentID: componentID,
@@ -90,12 +102,20 @@ func NewHandler(componentID string) *Handler {
 	}
 }
 
+// GetExtension retrieves the extension for the requested auth type, server or client.
 func (h *Handler) GetExtension(et ExtensionType) (*ExtensionHandler, error) {
 	ext, ok := h.handlerMap[et]
+
+	// This condition shouldn't happen since both extension types are set in Update(), but
+	// this will prevent a panic if it is somehow unset.
 	if !ok {
-		return nil, fmt.Errorf("error initializing %s auth extension. component %s was unexpectedly nil", et, h.componentID)
+		return nil, fmt.Errorf("error getting %s auth extension. component %s was unexpectedly nil", et, h.componentID)
 	}
 
+	// Check to make sure the extension does not have Error set.
+	// see SetupExtension() to see how this value is set.
+	// In general the error value is set if an auth extension
+	// does not support the type of authentication that was requested.
 	if ext.Error != nil {
 		return nil, ext.Error
 	}
@@ -103,9 +123,16 @@ func (h *Handler) GetExtension(et ExtensionType) (*ExtensionHandler, error) {
 	return ext, nil
 }
 
+// AddExtension registers an extension type with the handler so it can be referenced
+// by another component.
 func (h *Handler) AddExtension(et ExtensionType, eh *ExtensionHandler) error {
+	// If an invalid extension is passed raise an error.
 	if et != Server && et != Client {
 		return fmt.Errorf("invalid extension type %s", et)
+	}
+
+	if eh == nil {
+		return fmt.Errorf("extension handler must not be null")
 	}
 
 	h.handlerMap[et] = eh
@@ -115,6 +142,7 @@ func (h *Handler) AddExtension(et ExtensionType, eh *ExtensionHandler) error {
 type ExtensionHandler struct {
 	ID        otelcomponent.ID
 	Extension otelextension.Extension
+
 	// Set if the extension does not support the type of authentication
 	// requested
 	Error error
@@ -229,29 +257,38 @@ func (a *Auth) Update(args component.Arguments) error {
 
 	// Create instances of the extension from our factory.
 	var components []otelcomponent.Component
+
+	// Make sure the component returned a valid set of auth flags.
+	authFeature := rargs.AuthFeatures()
+	if valid := ValidateAuthFeatures(authFeature); !valid {
+		return fmt.Errorf("invalid auth flag %d returned by component %s", authFeature, a.opts.ID)
+	}
+
+	// Registers the client extension for the otel collector plugin
 	handler := NewHandler(a.opts.ID)
-	clientEh, err := a.setupExtension(Client, rargs, settings)
+	clientEh, err := a.SetupExtension(Client, rargs, settings)
 	if err != nil {
 		return err
 	}
 
-	// Extension could be nil if the auth plugin does not support client auth
-	if clientEh.Extension != nil {
+	// If the extension supports client auth schedule it.
+	if HasAuthFeature(authFeature, ClientAuthSupported) {
 		components = append(components, clientEh.Extension)
 	}
 
-	// Register extension so it can be retrieved
+	// Register extension so it can be retrieved when referenced.
 	if err := handler.AddExtension(Client, clientEh); err != nil {
 		return err
 	}
 
-	serverEh, err := a.setupExtension(Server, rargs, settings)
+	// Registers server authentication plugin.
+	serverEh, err := a.SetupExtension(Server, rargs, settings)
 	if err != nil {
 		return err
 	}
 
-	// Extension could be nil if the auth plugin does not support server auth.
-	if serverEh.Extension != nil {
+	// If the extension supports server auth schedule it.
+	if HasAuthFeature(authFeature, ServerAuthSupported) {
 		components = append(components, serverEh.Extension)
 	}
 
@@ -292,37 +329,54 @@ func NormalizeType(in string) string {
 	return res
 }
 
-func (a *Auth) setupExtension(t ExtensionType, rargs Arguments, settings otelextension.Settings) (*ExtensionHandler, error) {
+// SetupExtension sets up the extension handler object with the appropriate fields to map the alloy
+// capsule to the underlying otel auth extension.
+func (a *Auth) SetupExtension(t ExtensionType, rargs Arguments, settings otelextension.Settings) (*ExtensionHandler, error) {
 	var otelConfig otelcomponent.Config
 	var err error
 	var notSupportedErr error
+	var requiredAuthFeature AuthFeature
+
+	// Retrieve the appropriate auth extension for the requested type.
 	if t == Server {
 		otelConfig, err = rargs.ConvertServer()
 		notSupportedErr = ErrNotServerExtension
+		requiredAuthFeature = ServerAuthSupported
 	}
 	if t == Client {
 		otelConfig, err = rargs.ConvertClient()
 		notSupportedErr = ErrNotClientExtension
+		requiredAuthFeature = ClientAuthSupported
 	}
 
+	// If there was an error converting the server/client args fail now.
 	if err != nil {
 		return nil, err
 	}
 
 	eh := &ExtensionHandler{}
+	extensionAuthFeatures := rargs.AuthFeatures()
 
-	// Auth plugins that don't support the client/server auth
-	// are expected to return nil, check for that error here.
-	if otelConfig == nil {
+	// Auth plugins return a feature flag indicating the types of authentication they support.
+	// If the plugin does not support the requested extension type (client or server authentication),
+	// the handler will set the error field. This results in an error being triggered if the unsupported
+	// extension is accessed via the handler. However, we do not return an error immediately because
+	// the user must explicitly request the invalid handler in their configuration for the error to occur.
+	// Refer to Handler.GetExtension() for the implementation logic.
+	if !HasAuthFeature(extensionAuthFeatures, requiredAuthFeature) {
 		eh.Error = fmt.Errorf("%s %w", a.opts.ID, notSupportedErr)
 		return eh, nil
 	}
 
+	// Create the otel extension via its factory.
 	otelExtension, err := a.createExtension(otelConfig, settings)
 	if err != nil {
 		return nil, err
 	}
 
+	// Create an extension id based off the alloy name. For example
+	// auth.basic.creds will become auth.basic.creds.server/client depending on
+	// the type.
 	cTypeStr := NormalizeType(fmt.Sprintf("%s.%s", a.opts.ID, t))
 	eh.ID = otelcomponent.NewID(otelcomponent.MustNewType(cTypeStr))
 	eh.Extension = otelExtension
@@ -330,14 +384,31 @@ func (a *Auth) setupExtension(t ExtensionType, rargs Arguments, settings otelext
 	return eh, nil
 }
 
+// createExtension uses the otelextension factory to construct the otel auth extension.
 func (a *Auth) createExtension(config otelcomponent.Config, settings otelextension.Settings) (otelcomponent.Component, error) {
 	ext, err := a.factory.Create(a.ctx, settings, config)
 	if err != nil {
 		return nil, err
 	}
+
+	// sanity check
 	if ext == nil {
 		return nil, fmt.Errorf("extension was not created")
 	}
 
 	return ext, nil
+}
+
+// ValidateAuthFeatures makes sure a valid auth feature was returned by a
+func ValidateAuthFeatures(f AuthFeature) bool {
+	validFlags := ClientAuthSupported | ServerAuthSupported | ClientAndServerAuthSupported
+
+	// bit clear any flags not set in f.
+	// if this is not zero then an invalid flag was passed.
+	return f&^validFlags == 0
+}
+
+func HasAuthFeature(flag AuthFeature, feature AuthFeature) bool {
+	// bitwise and the two features together. If not zero it has the feature
+	return flag&feature != 0
 }

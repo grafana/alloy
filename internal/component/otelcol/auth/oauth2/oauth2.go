@@ -83,6 +83,10 @@ func (args Arguments) Exporters() map[pipeline.Signal]map[otelcomponent.ID]otelc
 	return nil
 }
 
+func (args Arguments) AuthFeatures() auth.AuthFeature {
+	return auth.ClientAuthSupported
+}
+
 // DebugMetricsConfig implements auth.Arguments.
 func (args Arguments) DebugMetricsConfig() otelcolCfg.DebugMetricsArguments {
 	return args.DebugMetrics

@@ -86,6 +86,10 @@ func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension 
 	return nil
 }
 
+func (args Arguments) AuthFeatures() auth.AuthFeature {
+	return auth.ClientAuthSupported
+}
+
 // Exporters implements auth.Arguments.
 func (args Arguments) Exporters() map[pipeline.Signal]map[otelcomponent.ID]otelcomponent.Component {
 	return nil

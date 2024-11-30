@@ -93,6 +93,10 @@ func (fa fakeAuthArgs) ConvertServer() (otelcomponent.Config, error) {
 	return &struct{}{}, nil
 }
 
+func (fa fakeAuthArgs) AuthFeatures() auth.AuthFeature {
+	return auth.ClientAndServerAuthSupported
+}
+
 func (fa fakeAuthArgs) Extensions() map[otelcomponent.ID]otelextension.Extension {
 	return nil
 }
@@ -134,4 +138,51 @@ func (fe fakeAuthArgs) DebugMetricsConfig() otelcolCfg.DebugMetricsArguments {
 	var dma otelcolCfg.DebugMetricsArguments
 	dma.SetToDefault()
 	return dma
+}
+
+// TestValidateAuthFeature tests that it returns if the flag returned by an otel auth
+// extension is correctly interpreted.
+func TestValidateAuthFeature(t *testing.T) {
+	type tc struct {
+		input    auth.AuthFeature
+		expected bool
+	}
+	testcases := []tc{
+		{auth.ClientAndServerAuthSupported, true},
+		{auth.ClientAuthSupported, true},
+		{auth.ServerAuthSupported, true},
+		{5, false},
+	}
+
+	for _, tc := range testcases {
+		actual := auth.ValidateAuthFeatures(tc.input)
+		require.Equal(t, tc.expected, actual)
+	}
+}
+
+// TestHasAuthFeature tests that HasAuthFeature correctly determines
+// whether the auth extension has an authentication feature, server or client.
+func TestHasAuthFeature(t *testing.T) {
+	type input struct {
+		flag    auth.AuthFeature
+		feature auth.AuthFeature
+	}
+	type tc struct {
+		input    input
+		expected bool
+	}
+
+	testcases := []tc{
+		{input{flag: auth.ClientAuthSupported, feature: auth.ClientAuthSupported}, true},
+		{input{flag: auth.ServerAuthSupported, feature: auth.ServerAuthSupported}, true},
+		{input{flag: auth.ClientAndServerAuthSupported, feature: auth.ClientAuthSupported}, true},
+		{input{flag: auth.ClientAndServerAuthSupported, feature: auth.ServerAuthSupported}, true},
+		{input{flag: auth.ClientAuthSupported, feature: auth.ServerAuthSupported}, false},
+		{input{flag: auth.ServerAuthSupported, feature: auth.ClientAuthSupported}, false},
+	}
+
+	for _, tc := range testcases {
+		actual := auth.HasAuthFeature(tc.input.flag, tc.input.feature)
+		require.Equal(t, tc.expected, actual, "flag:", tc.input.flag, "feature:", tc.input.feature)
+	}
 }

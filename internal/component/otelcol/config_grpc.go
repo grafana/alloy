@@ -43,8 +43,10 @@ func (args *GRPCServerArguments) Convert() (*otelconfiggrpc.ServerConfig, error)
 		return nil, nil
 	}
 
+	// If auth is set add that to the config.
 	var authz *otelconfigauth.Authentication
 	if args.Auth != nil {
+		// If a auth plugin does not implement server auth, an error will be returned here.
 		serverExtension, err := args.Auth.GetExtension(auth.Server)
 		if err != nil {
 			return nil, err
@@ -183,7 +185,7 @@ func (args *GRPCClientArguments) Convert() (*otelconfiggrpc.ClientConfig, error)
 		opaqueHeaders[headerName] = configopaque.String(headerVal)
 	}
 
-	// Configure the authentication if args.Auth is set.
+	// Configure authentication if args.Auth is set.
 	var authz *otelconfigauth.Authentication
 	if args.Auth != nil {
 		ext, err := args.Auth.GetExtension(auth.Client)
