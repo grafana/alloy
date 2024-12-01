@@ -47,11 +47,12 @@ Name | Type | Description | Default | Required
 `read_buffer_size` | `string` | Size of the read buffer the gRPC server will use for reading from clients. | `"512KiB"` | no
 `write_buffer_size` | `string` | Size of the write buffer the gRPC server will use for writing to clients. | | no
 `include_metadata` | `boolean` | Propagate incoming connection metadata to downstream consumers. | | no
+`auth`              | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests.     |               | no
 
 `cors_allowed_origins` are the allowed [CORS](https://github.com/rs/cors) origins for HTTP/JSON requests.
 An empty list means that CORS is not enabled at all. A wildcard (*) can be
 used to match any origin or one or more characters of an origin.
-`auth`              | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests.     |               | no
+
 
 The "endpoint" parameter is the same for both gRPC and HTTP/JSON, as the protocol is recognized and processed accordingly.
 
