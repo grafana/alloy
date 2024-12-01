@@ -95,16 +95,23 @@ func TestServerAuth(t *testing.T) {
 	require.True(t, ok, "extension doesn't export auth exports struct")
 	require.NotNil(t, exports.Handler)
 
-	// There's a data race condition in this test that causes this test to fail.
-	// The test will pass if running without race conditions with this sleep,
-	// If race condition checks are enabled it will fail. I believe this is because
-	// the upstream starts the extension asynchronously, but the scheduler expects
-	// a component to be running once Run() returns. If you have any suggestions/ideas
-	// on how to improve this test please let me know. Otherwise I will remove this test
-	// since it will cause failures.
+	// This test fails due to a data race condition.
+	// The test passes if the -race flag is not passed to the test, simulated by a sleep.
+	// This issue arises from both the initialization of the basic_auth extension
+	// and the scheduling mechanism used in the component test controller.
+	// The problem is related to the way componenttest is structured and the interactions
+	// between the Run method and the scheduler. The WaitRunning() method returns when the
+	// channel is closed in the Run() method, but Run is actually invoked on the following line.
+	// In auth.go, the component is scheduled via the scheduler, but the extension doesn't
+	// actually start until the component is processed. As a result, ctrl.WaitRunning()
+	// returns before the auth extension is fully running.
+	// A more reliable method for confirming the extension is running would resolve this issue.
+	// Otherwise, this test might need to be removed. If anyone has any feedback or thoughts
+	// I would appreciate it.
 	time.Sleep(time.Second)
 
 	serverAuthExtension, err := exports.Handler.GetExtension(auth.Server)
+
 	require.NoError(t, err)
 	require.NotNil(t, serverAuthExtension.ID)
 	require.NotNil(t, serverAuthExtension.Extension)
