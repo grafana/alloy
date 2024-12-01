@@ -1,4 +1,4 @@
-// // Package headers provides an otelcol.auth.headers component.
+// Package headers provides an otelcol.auth.headers component.
 package headers
 
 import (
