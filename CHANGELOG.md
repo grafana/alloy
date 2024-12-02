@@ -24,6 +24,8 @@ Main (unreleased)
 
 - (_Experimental_) Add a `database_observability.mysql` component to collect mysql performance data.
 
+- Add `otelcol.receiver.influxdb` to convert influx metric into OTEL. (@EHSchmitt4395)
+
 ### Enhancements
 
 - Add second metrics sample to the support bundle to provide delta information (@dehaansa)
