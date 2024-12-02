@@ -42,8 +42,10 @@ Main (unreleased)
   - Change processlist query to support ONLY_FULL_GROUP_BY sql_mode
   - Add perf_schema quantile columns to collector
 
-### Bugfixes
+- For sharding targets during clustering, `loki.source.podlogs` now only takes into account some labels. (@ptodev)
 
+### Bugfixes
+- Fixed an issue in the `pyroscope.write` component to allow slashes in application names in the same way it is done in the Pyroscope push API (@marcsanmi)
 - Fixed an issue in the `prometheus.exporter.postgres` component that would leak goroutines when the target was not reachable (@dehaansa)
 
 - Fixed an issue in the `otelcol.exporter.prometheus` component that would set series value incorrectly for stale metrics (@YusifAghalar)
@@ -53,6 +55,8 @@ Main (unreleased)
 - Fixed an issue in the `otelcol.processor.attribute` component where the actions `delete` and `hash` could not be used with the `pattern` argument. (@wildum)
 
 - Fixed a race condition that could lead to a deadlock when using `import` statements, which could lead to a memory leak on `/metrics` endpoint of an Alloy instance. (@thampiotr)
+
+- Updated `prometheus.write.queue` to fix issue with TTL comparing different scales of time. (@mattdurham)
 
 ### Other changes
 

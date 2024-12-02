@@ -139,7 +139,7 @@ When {{< param "PRODUCT_NAME" >}} is [using clustering][], and `enabled` is set 
 
 If {{< param "PRODUCT_NAME" >}} is _not_ running in clustered mode, then the block is a no-op and `loki.source.kubernetes` collects logs from every target it receives in its arguments.
 
-Clustering only looks at the following labels for determining the shard key:
+Clustering looks only at the following labels for determining the shard key:
 
 * `__pod_namespace__`
 * `__pod_name__`
