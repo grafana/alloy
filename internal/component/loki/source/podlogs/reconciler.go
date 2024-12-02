@@ -3,6 +3,7 @@ package podlogs
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -15,6 +16,7 @@ import (
 	"github.com/grafana/alloy/internal/service/cluster"
 	"github.com/grafana/ckit/shard"
 	"github.com/prometheus/common/model"
+	prom_lbls "github.com/prometheus/prometheus/model/labels"
 	promlabels "github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/prometheus/prometheus/util/strutil"
@@ -126,6 +128,17 @@ func (r *reconciler) Reconcile(ctx context.Context, cli client.Client) error {
 	return nil
 }
 
+func filterLabels(lbls prom_lbls.Labels, keysToKeep []string) prom_lbls.Labels {
+	var res prom_lbls.Labels
+	for _, k := range lbls {
+		if slices.Contains(keysToKeep, k.Name) {
+			res = append(res, prom_lbls.Label{Name: k.Name, Value: k.Value})
+		}
+	}
+	sort.Sort(res)
+	return res
+}
+
 func distributeTargets(c cluster.Cluster, targets []*kubetail.Target) []*kubetail.Target {
 	if c == nil {
 		return targets
@@ -140,7 +153,11 @@ func distributeTargets(c cluster.Cluster, targets []*kubetail.Target) []*kubetai
 	res := make([]*kubetail.Target, 0, resCap)
 
 	for _, target := range targets {
-		peers, err := c.Lookup(shard.StringKey(target.Labels().String()), 1, shard.OpReadWrite)
+		// Only take into account the labels necessary to uniquely identify a pod/container instance.
+		// If we take into account more labels than necessary, there may be issues due to labels changing
+		// over the lifetime of the pod.
+		clusteringLabels := filterLabels(target.DiscoveryLabels(), kubetail.ClusteringLabels)
+		peers, err := c.Lookup(shard.StringKey(clusteringLabels.String()), 1, shard.OpReadWrite)
 		if err != nil {
 			// This can only fail in case we ask for more owners than the
 			// available peers. This will never happen, but in any case we fall

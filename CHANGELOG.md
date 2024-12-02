@@ -44,6 +44,8 @@ Main (unreleased)
   - Change processlist query to support ONLY_FULL_GROUP_BY sql_mode
   - Add perf_schema quantile columns to collector
 
+- For sharding targets during clustering, `loki.source.podlogs` now only takes into account some labels. (@ptodev)
+
 ### Bugfixes
 - Fixed an issue in the `pyroscope.write` component to allow slashes in application names in the same way it is done in the Pyroscope push API (@marcsanmi)
 - Fixed an issue in the `prometheus.exporter.postgres` component that would leak goroutines when the target was not reachable (@dehaansa)
