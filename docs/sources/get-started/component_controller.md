@@ -102,7 +102,7 @@ If this address collides with a real target on your network, change it to someth
 Components must opt-in to using in-memory traffic.
 Refer to the individual documentation for components to learn if in-memory traffic is supported.
 
-## Update the configuration file
+## Reload the configuration file
 
 The `/-/reload` HTTP endpoint and the `SIGHUP` signal can inform the component controller to reload the configuration file.
 When this happens, the component controller synchronizes the set of running components with the ones in the configuration file,
