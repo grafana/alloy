@@ -27,6 +27,8 @@ v1.5.1
 - `loki.source.podlogs`: Fixed a bug which prevented clustering from working and caused duplicate logs to be sent.
   The bug only happened when no `selector` or `namespace_selector` blocks were specified in the Alloy configuration. (@ptodev)
 
+- Fixed an issue in the `pyroscope.write` component to allow slashes in application names in the same way it is done in the Pyroscope push API (@marcsanmi)
+
 v1.5.0
 -----------------
 
