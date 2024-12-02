@@ -11,7 +11,7 @@ import (
 func TestAddCallback(t *testing.T) {
 	livedebugging := NewLiveDebugging()
 	callbackID := CallbackID("callback1")
-	callback := func(data string) {}
+	callback := func(data FeedData) {}
 
 	err := livedebugging.AddCallback(callbackID, "fake.liveDebugging", callback)
 	require.ErrorContains(t, err, "the live debugging service is disabled. Check the documentation to find out how to enable it")
@@ -46,8 +46,8 @@ func TestStream(t *testing.T) {
 	componentID := ComponentID("fake.liveDebugging")
 	callbackID := CallbackID("callback1")
 
-	var receivedData string
-	callback := func(data string) {
+	var receivedData FeedData
+	callback := func(data FeedData) {
 		receivedData = data
 	}
 	require.False(t, livedebugging.IsActive(componentID))
@@ -55,11 +55,11 @@ func TestStream(t *testing.T) {
 	require.True(t, livedebugging.IsActive(componentID))
 	require.Len(t, livedebugging.callbacks[componentID], 1)
 
-	livedebugging.Publish(componentID, "test data")
+	livedebugging.Publish(componentID, FeedData{Data: "test data"})
 	require.Equal(t, "test data", receivedData)
 
 	livedebugging.SetEnabled(false)
-	livedebugging.Publish(componentID, "new test data")
+	livedebugging.Publish(componentID, FeedData{Data: "new test data"})
 	require.Equal(t, "test data", receivedData) // not updated because the feature is disabled
 }
 
@@ -67,7 +67,7 @@ func TestStreamEmpty(t *testing.T) {
 	livedebugging := NewLiveDebugging()
 	setupServiceHost(livedebugging)
 	componentID := ComponentID("fake.liveDebugging")
-	require.NotPanics(t, func() { livedebugging.Publish(componentID, "test data") })
+	require.NotPanics(t, func() { livedebugging.Publish(componentID, FeedData{Data: "test data"}) })
 }
 
 func TestMultipleStreams(t *testing.T) {
@@ -77,13 +77,13 @@ func TestMultipleStreams(t *testing.T) {
 	callbackID1 := CallbackID("callback1")
 	callbackID2 := CallbackID("callback2")
 
-	var receivedData1 string
-	callback1 := func(data string) {
+	var receivedData1 FeedData
+	callback1 := func(data FeedData) {
 		receivedData1 = data
 	}
 
-	var receivedData2 string
-	callback2 := func(data string) {
+	var receivedData2 FeedData
+	callback2 := func(data FeedData) {
 		receivedData2 = data
 	}
 
@@ -91,7 +91,7 @@ func TestMultipleStreams(t *testing.T) {
 	require.NoError(t, livedebugging.AddCallback(callbackID2, componentID, callback2))
 	require.Len(t, livedebugging.callbacks[componentID], 2)
 
-	livedebugging.Publish(componentID, "test data")
+	livedebugging.Publish(componentID, FeedData{Data: "test data"})
 	require.Equal(t, "test data", receivedData1)
 	require.Equal(t, "test data", receivedData2)
 }
@@ -103,8 +103,8 @@ func TestDeleteCallback(t *testing.T) {
 	callbackID1 := CallbackID("callback1")
 	callbackID2 := CallbackID("callback2")
 
-	callback1 := func(data string) {}
-	callback2 := func(data string) {}
+	callback1 := func(data FeedData) {}
+	callback2 := func(data FeedData) {}
 
 	component, _ := livedebugging.host.GetComponent(component.ParseID("fake.liveDebugging"), component.InfoOptions{})
 

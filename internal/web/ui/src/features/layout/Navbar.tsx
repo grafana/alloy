@@ -19,6 +19,11 @@ function Navbar() {
           </NavLink>
         </li>
         <li>
+          <NavLink to="/livegraph" className="nav-link">
+            Live Graph
+          </NavLink>
+        </li>
+        <li>
           <NavLink to="/clustering" className="nav-link">
             Clustering
           </NavLink>

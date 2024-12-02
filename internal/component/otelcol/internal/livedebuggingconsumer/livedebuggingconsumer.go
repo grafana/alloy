@@ -43,7 +43,12 @@ func (c *Consumer) Capabilities() otelconsumer.Capabilities {
 func (c *Consumer) ConsumeTraces(ctx context.Context, td ptrace.Traces) error {
 	if c.debugDataPublisher.IsActive(c.componentID) {
 		data, _ := c.tracesMarshaler.MarshalTraces(td)
-		c.debugDataPublisher.Publish(c.componentID, string(data))
+		c.debugDataPublisher.Publish(c.componentID, livedebugging.FeedData{
+			ComponentID: c.componentID,
+			Type:        livedebugging.OtelTrace,
+			Count:       td.SpanCount(),
+			Data:        string(data),
+		})
 	}
 	return nil
 }
@@ -52,7 +57,12 @@ func (c *Consumer) ConsumeTraces(ctx context.Context, td ptrace.Traces) error {
 func (c *Consumer) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) error {
 	if c.debugDataPublisher.IsActive(c.componentID) {
 		data, _ := c.metricsMarshaler.MarshalMetrics(md)
-		c.debugDataPublisher.Publish(c.componentID, string(data))
+		c.debugDataPublisher.Publish(c.componentID, livedebugging.FeedData{
+			ComponentID: c.componentID,
+			Type:        livedebugging.OtelMetric,
+			Count:       md.MetricCount(),
+			Data:        string(data),
+		})
 	}
 	return nil
 }
@@ -61,7 +71,12 @@ func (c *Consumer) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) error
 func (c *Consumer) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
 	if c.debugDataPublisher.IsActive(c.componentID) {
 		data, _ := c.logsMarshaler.MarshalLogs(ld)
-		c.debugDataPublisher.Publish(c.componentID, string(data))
+		c.debugDataPublisher.Publish(c.componentID, livedebugging.FeedData{
+			ComponentID: c.componentID,
+			Type:        livedebugging.OtelLog,
+			Count:       ld.LogRecordCount(),
+			Data:        string(data),
+		})
 	}
 	return nil
 }

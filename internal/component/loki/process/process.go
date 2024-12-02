@@ -168,7 +168,12 @@ func (c *Component) handleIn(ctx context.Context, wg *sync.WaitGroup) {
 				return
 			case c.processIn <- entry.Clone():
 				if c.debugDataPublisher.IsActive(componentID) {
-					c.debugDataPublisher.Publish(componentID, fmt.Sprintf("[IN]: timestamp: %s, entry: %s, labels: %s", entry.Timestamp.Format(time.RFC3339Nano), entry.Line, entry.Labels.String()))
+					c.debugDataPublisher.Publish(componentID, livedebugging.FeedData{
+						ComponentID: componentID,
+						Type:        livedebugging.LokiLog,
+						Count:       0,
+						Data:        fmt.Sprintf("[IN]: timestamp: %s, entry: %s, labels: %s", entry.Timestamp.Format(time.RFC3339Nano), entry.Line, entry.Labels.String()),
+					})
 				}
 				// TODO(@tpaschalis) Instead of calling Clone() at the
 				// component's entrypoint here, we can try a copy-on-write
@@ -195,7 +200,12 @@ func (c *Component) handleOut(shutdownCh chan struct{}, wg *sync.WaitGroup) {
 			// The log entry is the same for every fanout,
 			// so we can publish it only once.
 			if c.debugDataPublisher.IsActive(componentID) {
-				c.debugDataPublisher.Publish(componentID, fmt.Sprintf("[OUT]: timestamp: %s, entry: %s, labels: %s", entry.Timestamp.Format(time.RFC3339Nano), entry.Line, entry.Labels.String()))
+				c.debugDataPublisher.Publish(componentID, livedebugging.FeedData{
+					ComponentID: componentID,
+					Type:        livedebugging.LokiLog,
+					Count:       1,
+					Data:        fmt.Sprintf("[OUT]: timestamp: %s, entry: %s, labels: %s", entry.Timestamp.Format(time.RFC3339Nano), entry.Line, entry.Labels.String()),
+				})
 			}
 
 			for _, f := range fanout {

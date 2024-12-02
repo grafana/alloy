@@ -50,6 +50,8 @@ func (a *AlloyAPI) RegisterRoutes(urlPrefix string, r *mux.Router) {
 
 	r.Handle(path.Join(urlPrefix, "/peers"), httputil.CompressionHandler{Handler: getClusteringPeersHandler(a.alloy)})
 	r.Handle(path.Join(urlPrefix, "/debug/{id:.+}"), liveDebugging(a.alloy, a.CallbackManager))
+
+	r.Handle(path.Join(urlPrefix, "/livegraph"), liveGraph(a.alloy, a.CallbackManager))
 }
 
 func listComponentsHandler(host service.Host) http.HandlerFunc {
@@ -165,6 +167,67 @@ func getClusteringPeersHandler(host service.Host) http.HandlerFunc {
 	}
 }
 
+func liveGraph(_ service.Host, callbackManager livedebugging.CallbackManager) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var moduleID livedebugging.ModuleID
+		if vars := mux.Vars(r); vars != nil {
+			moduleID = livedebugging.ModuleID(vars["id"])
+		}
+		dataCh := make(chan livedebugging.FeedData, 1000)
+
+		ctx := r.Context()
+		id := livedebugging.CallbackID(uuid.New().String())
+
+		err := callbackManager.AddMultiCallback(id, moduleID, func(data livedebugging.FeedData) {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				// Avoid blocking the channel when the channel is full
+				select {
+				case dataCh <- data:
+				default:
+				}
+			}
+		})
+
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		defer func() {
+			close(dataCh)
+			callbackManager.DeleteMultiCallback(id, moduleID)
+		}()
+
+		for {
+			select {
+			case data := <-dataCh:
+				data.Data = "" // Don't send the lines.
+				jsonData, err := json.Marshal(data)
+				if err != nil {
+					http.Error(w, "Failed to serialize data", http.StatusInternalServerError)
+					return
+				}
+				var builder strings.Builder
+				builder.Write(jsonData)
+				builder.WriteString("|;|")
+
+				// Write to the response
+				_, writeErr := w.Write([]byte(builder.String()))
+				if writeErr != nil {
+					return
+				}
+				// TODO: flushing at a regular interval might be better performance wise
+				w.(http.Flusher).Flush()
+			case <-ctx.Done():
+				return
+			}
+		}
+	}
+}
+
 func liveDebugging(host service.Host, callbackManager livedebugging.CallbackManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
@@ -179,7 +242,7 @@ func liveDebugging(host service.Host, callbackManager livedebugging.CallbackMana
 
 		id := livedebugging.CallbackID(uuid.New().String())
 
-		err := callbackManager.AddCallback(id, componentID, func(data string) {
+		err := callbackManager.AddCallback(id, componentID, func(data livedebugging.FeedData) {
 			select {
 			case <-ctx.Done():
 				return
@@ -189,7 +252,7 @@ func liveDebugging(host service.Host, callbackManager livedebugging.CallbackMana
 				}
 				// Avoid blocking the channel when the channel is full
 				select {
-				case dataCh <- data:
+				case dataCh <- data.Data:
 				default:
 				}
 			}

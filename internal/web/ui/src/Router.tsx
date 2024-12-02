@@ -5,6 +5,7 @@ import PageClusteringPeers from './pages/Clustering';
 import ComponentDetailPage from './pages/ComponentDetailPage';
 import Graph from './pages/Graph';
 import PageLiveDebugging from './pages/LiveDebugging';
+import PageLiveGraph from './pages/LiveGraph';
 import PageComponentList from './pages/PageComponentList';
 import PageRemoteComponentList from './pages/PageRemoteComponentList';
 import RemoteComponentDetailPage from './pages/RemoteComponentDetailPage';
@@ -28,6 +29,7 @@ const Router = ({ basePath }: Props) => {
           <Route path="/graph" element={<Graph />} />
           <Route path="/clustering" element={<PageClusteringPeers />} />
           <Route path="/debug/*" element={<PageLiveDebugging />} />
+          <Route path="/livegraph" element={<PageLiveGraph />} />
         </Routes>
       </main>
     </BrowserRouter>
