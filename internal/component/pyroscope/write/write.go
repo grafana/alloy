@@ -38,6 +38,17 @@ var (
 		return Arguments{}
 	}
 	_ component.Component = (*Component)(nil)
+
+	// List of headers to ignore when copying headers from client to server connection
+	// https://datatracker.ietf.org/doc/html/rfc9113#name-connection-specific-header-
+	ignoreProxyHeaders = map[string]bool{
+		"Connection":        true,
+		"Proxy-Connection":  true,
+		"Keep-Alive":        true,
+		"Transfer-Encoding": true,
+		"Upgrade":           true,
+		"TE":                true,
+	}
 )
 
 func init() {
@@ -395,7 +406,7 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 			for k, v := range profile.Headers {
 				// Ignore this header as it may interfere with keepalives in the connection to pyroscope
 				// which may cause huge load due to tls renegotiation
-				if k == "Connection" {
+				if _, exists := ignoreProxyHeaders[k]; exists {
 					continue
 				}
 				req.Header[k] = v
