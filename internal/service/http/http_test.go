@@ -62,7 +62,7 @@ func TestHTTP(t *testing.T) {
 		defer resp.Body.Close()
 
 		buf, err := io.ReadAll(resp.Body)
-		require.Equal(t, "Alloy is healthy.\n", string(buf))
+		require.Equal(t, "All Alloy components are healthy.\n", string(buf))
 
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 	})

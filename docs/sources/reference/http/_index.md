@@ -30,13 +30,13 @@ Otherwise, if the instance is not ready, the `/-/ready` endpoint returns `HTTP 5
 ### /-/healthy
 
 When all {{< param "PRODUCT_NAME" >}} components are working correctly, all components are considered healthy.
-If all components are healthy, the `/-/healthy` endpoint returns `HTTP 200 OK` and the message `Alloy is healthy.`.
+If all components are healthy, the `/-/healthy` endpoint returns `HTTP 200 OK` and the message `All Alloy components are healthy.`.
 Otherwise, if any of the components are not working correctly, the `/-/healthy` endpoint returns `HTTP 500 Internal Server Error` and an error message.
 You can also monitor component health through the {{< param "PRODUCT_NAME" >}} [UI](../../troubleshoot/debug#alloy-ui).
 
 ```shell
 $ curl localhost:12345/-/healthy
-Alloy is healthy.
+All Alloy components are healthy.
 ```
 
 ```shell
