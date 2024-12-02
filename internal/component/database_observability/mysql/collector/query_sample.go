@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/go-kit/log"
@@ -45,10 +46,10 @@ type QuerySample struct {
 	collectInterval time.Duration
 	entryHandler    loki.EntryHandler
 
-	logger log.Logger
-
-	ctx    context.Context
-	cancel context.CancelFunc
+	logger  log.Logger
+	running *atomic.Bool
+	ctx     context.Context
+	cancel  context.CancelFunc
 }
 
 func NewQuerySample(args QuerySampleArguments) (*QuerySample, error) {
@@ -57,23 +58,29 @@ func NewQuerySample(args QuerySampleArguments) (*QuerySample, error) {
 		collectInterval: args.CollectInterval,
 		entryHandler:    args.EntryHandler,
 		logger:          args.Logger,
+		running:         &atomic.Bool{},
 	}, nil
 }
 
 func (c *QuerySample) Start(ctx context.Context) error {
 	level.Debug(c.logger).Log("msg", "QuerySample collector started")
 
+	c.running.Store(true)
 	ctx, cancel := context.WithCancel(ctx)
 	c.ctx = ctx
 	c.cancel = cancel
 
 	go func() {
+		defer func() {
+			c.Stop()
+			c.running.Store(false)
+		}()
+
 		ticker := time.NewTicker(c.collectInterval)
 
 		for {
 			if err := c.fetchQuerySamples(c.ctx); err != nil {
 				level.Error(c.logger).Log("msg", "collector stopping due to error", "err", err)
-				c.Stop()
 				break
 			}
 
@@ -87,6 +94,10 @@ func (c *QuerySample) Start(ctx context.Context) error {
 	}()
 
 	return nil
+}
+
+func (c *QuerySample) Stopped() bool {
+	return !c.running.Load()
 }
 
 // Stop should be kept idempotent
