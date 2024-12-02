@@ -66,7 +66,12 @@ func listComponentsHandlerRemoteCfg(host service.Host) http.HandlerFunc {
 			return
 		}
 
-		listComponentsHandlerInternal(svc.Data().(remotecfg.Data).Host, w, r)
+		data := svc.Data().(remotecfg.Data)
+		if data.Host == nil {
+			http.Error(w, "remote config service startup in progress", http.StatusInternalServerError)
+			return
+		}
+		listComponentsHandlerInternal(data.Host, w, r)
 	}
 }
 
@@ -108,7 +113,13 @@ func getComponentHandlerRemoteCfg(host service.Host) http.HandlerFunc {
 			return
 		}
 
-		getComponentHandlerInternal(svc.Data().(remotecfg.Data).Host, w, r)
+		data := svc.Data().(remotecfg.Data)
+		if data.Host == nil {
+			http.Error(w, "remote config service startup in progress", http.StatusInternalServerError)
+			return
+		}
+
+		getComponentHandlerInternal(data.Host, w, r)
 	}
 }
 

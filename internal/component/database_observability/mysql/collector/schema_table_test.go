@@ -9,6 +9,7 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/go-kit/log"
 	loki_fake "github.com/grafana/alloy/internal/component/common/loki/client/fake"
+	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
@@ -76,7 +77,7 @@ func TestSchemaTable(t *testing.T) {
 
 	lokiEntries := lokiClient.Received()
 	for _, entry := range lokiEntries {
-		require.Equal(t, model.LabelSet{"job": "integrations/db-o11y"}, entry.Labels)
+		require.Equal(t, model.LabelSet{"job": database_observability.JobName}, entry.Labels)
 	}
 	require.Equal(t, `level=info msg="schema detected" op="schema_detection" schema="some_schema"`, lokiEntries[0].Line)
 	require.Equal(t, `level=info msg="table detected" op="table_detection" schema="some_schema" table="some_table"`, lokiEntries[1].Line)

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	loki_fake "github.com/grafana/alloy/internal/component/common/loki/client/fake"
+	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/prometheus/common/model"
 	"go.uber.org/goleak"
 
@@ -59,9 +60,9 @@ func TestQuerySample(t *testing.T) {
 
 	lokiEntries := lokiClient.Received()
 	for _, entry := range lokiEntries {
-		require.Equal(t, model.LabelSet{"job": "integrations/db-o11y"}, entry.Labels)
+		require.Equal(t, model.LabelSet{"job": database_observability.JobName}, entry.Labels)
 	}
-	require.Equal(t, `level=info msg="query samples fetched" op="query_sample" digest="abc123" query_sample_text="select * from some_table where id = 1" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_redacted="select * from some_table where id = :redacted1"`, lokiEntries[0].Line)
+	require.Equal(t, `level=info msg="query samples fetched" op="query_sample" digest="abc123" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="select * from some_table where id = :redacted1"`, lokiEntries[0].Line)
 	require.Equal(t, `level=info msg="table name parsed" op="query_parsed_table_name" digest="abc123" table="some_table"`, lokiEntries[1].Line)
 
 	err = mock.ExpectationsWereMet()

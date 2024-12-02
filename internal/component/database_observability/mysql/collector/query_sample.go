@@ -12,6 +12,7 @@ import (
 	"github.com/xwb1989/sqlparser"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/loki/v3/pkg/logproto"
 )
@@ -108,27 +109,28 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 		var digest, query_sample_text, query_sample_seen, query_sample_timer_wait string
 		err := rs.Scan(&digest, &query_sample_text, &query_sample_seen, &query_sample_timer_wait)
 		if err != nil {
-			level.Error(c.logger).Log("msg", "failed to scan query samples", "err", err)
+			level.Error(c.logger).Log("msg", "failed to scan query samples", "digest", digest, "err", err)
 			break
 		}
 
-		redacted, err := sqlparser.RedactSQLQuery(query_sample_text)
+		query_sample_redacted, err := sqlparser.RedactSQLQuery(query_sample_text)
 		if err != nil {
-			level.Error(c.logger).Log("msg", "failed to redact sql query", "err", err)
+			level.Error(c.logger).Log("msg", "failed to redact sql query", "digest", digest, "err", err)
+			break
 		}
 
 		c.entryHandler.Chan() <- loki.Entry{
-			Labels: model.LabelSet{"job": "integrations/db-o11y"},
+			Labels: model.LabelSet{"job": database_observability.JobName},
 			Entry: logproto.Entry{
 				Timestamp: time.Unix(0, time.Now().UnixNano()),
-				Line:      fmt.Sprintf(`level=info msg="query samples fetched" op="%s" digest="%s" query_sample_text="%s" query_sample_seen="%s" query_sample_timer_wait="%s" query_redacted="%s"`, OP_QUERY_SAMPLE, digest, query_sample_text, query_sample_seen, query_sample_timer_wait, redacted),
+				Line:      fmt.Sprintf(`level=info msg="query samples fetched" op="%s" digest="%s" query_sample_seen="%s" query_sample_timer_wait="%s" query_sample_redacted="%s"`, OP_QUERY_SAMPLE, digest, query_sample_seen, query_sample_timer_wait, query_sample_redacted),
 			},
 		}
 
-		tables := c.tablesFromQuery(query_sample_text)
+		tables := c.tablesFromQuery(digest, query_sample_text)
 		for _, table := range tables {
 			c.entryHandler.Chan() <- loki.Entry{
-				Labels: model.LabelSet{"job": "integrations/db-o11y"},
+				Labels: model.LabelSet{"job": database_observability.JobName},
 				Entry: logproto.Entry{
 					Timestamp: time.Unix(0, time.Now().UnixNano()),
 					Line:      fmt.Sprintf(`level=info msg="table name parsed" op="%s" digest="%s" table="%s"`, OP_QUERY_PARSED_TABLE_NAME, digest, table),
@@ -140,15 +142,15 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 	return nil
 }
 
-func (c QuerySample) tablesFromQuery(query string) []string {
+func (c QuerySample) tablesFromQuery(digest, query string) []string {
 	if strings.HasSuffix(query, "...") {
-		level.Info(c.logger).Log("msg", "skipping parsing truncated query")
+		level.Info(c.logger).Log("msg", "skipping parsing truncated query", "digest", digest)
 		return []string{}
 	}
 
 	stmt, err := sqlparser.Parse(query)
 	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to parse sql query", "err", err)
+		level.Error(c.logger).Log("msg", "failed to parse sql query", "digest", digest, "err", err)
 		return []string{}
 	}
 
