@@ -26,35 +26,15 @@ export const useLiveGraph = (setData: React.Dispatch<React.SetStateAction<FeedDa
         while (true) {
           const { value, done } = await reader.read();
           if (done) {
-            console.log('done');
             break;
           }
 
-          const decodedChunks = decoder.decode(value, { stream: true }).split('|;|'); //not sure if that's enough
-          decodedChunks.pop(); // pop the last value because it should be empty
+          const decodedChunks = decoder
+            .decode(value, { stream: true })
+            .split('|;|')
+            .filter((entry) => entry.length != 0);
 
-          setData((prevValue: FeedData[]) => {
-            return decodedChunks.reduce((updatedData, chunk) => {
-              const newFeed: FeedData = JSON.parse(chunk);
-
-              const existingIndex = updatedData.findIndex(
-                (obj) => obj.componentID === newFeed.componentID && obj.type === newFeed.type
-              );
-
-              if (existingIndex !== -1) {
-                // Create a new array with updated count
-                const newData = [...updatedData];
-                newData[existingIndex] = {
-                  ...newData[existingIndex],
-                  count: newData[existingIndex].count + newFeed.count,
-                };
-                return newData;
-              } else {
-                // Add new feed
-                return [...updatedData, newFeed];
-              }
-            }, prevValue);
-          });
+          setData(() => decodedChunks.map((chunk) => JSON.parse(chunk)));
         }
       } catch (error) {
         console.log(error);

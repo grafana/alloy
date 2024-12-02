@@ -21,25 +21,16 @@ const ComponentLiveGraph: React.FC<LiveGraphProps> = ({ components }) => {
   const [nodes, _, onNodesChange] = useNodesState(layoutedNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(layoutedEdges);
 
-  const dataRef = useRef(data); // Reference to the latest data
-  const updateEdges = useCallback(() => {
+  useEffect(() => {
     setEdges((prevEdges) =>
       prevEdges.map((edge) => {
-        const matchingDataIndex = dataRef.current.findIndex((item) => item.componentID === edge.source && item.count > 0);
+        const match = data.find((item) => item.componentID === edge.source && item.count > 0);
 
-        if (matchingDataIndex !== -1) {
-          const matchingData = dataRef.current[matchingDataIndex];
-
-          // Update data immutably
-          const newData = [...dataRef.current];
-          newData.splice(matchingDataIndex, 1);
-          dataRef.current = newData;
-          setData(newData);
-
+        if (match) {
           return {
             ...edge,
             style: { stroke: 'red' },
-            label: matchingData.count.toString(),
+            label: match.count.toString(),
             data: { ...edge.data },
           };
         }
@@ -53,17 +44,7 @@ const ComponentLiveGraph: React.FC<LiveGraphProps> = ({ components }) => {
         };
       })
     );
-  }, [setEdges]);
-
-  useEffect(() => {
-    dataRef.current = data; // Keep ref updated with the latest data
   }, [data]);
-
-  useEffect(() => {
-    const interval = setInterval(updateEdges, 2000); // Run update every 2 seconds
-
-    return () => clearInterval(interval); // Cleanup interval on unmount
-  }, [updateEdges]); // `updateEdges` is memoized
 
   return (
     <ReactFlow

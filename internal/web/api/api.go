@@ -11,6 +11,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -173,7 +174,9 @@ func liveGraph(_ service.Host, callbackManager livedebugging.CallbackManager) ht
 		if vars := mux.Vars(r); vars != nil {
 			moduleID = livedebugging.ModuleID(vars["id"])
 		}
+
 		dataCh := make(chan livedebugging.FeedData, 1000)
+		feedDataMap := make(map[string]*livedebugging.FeedData)
 
 		ctx := r.Context()
 		id := livedebugging.CallbackID(uuid.New().String())
@@ -183,7 +186,6 @@ func liveGraph(_ service.Host, callbackManager livedebugging.CallbackManager) ht
 			case <-ctx.Done():
 				return
 			default:
-				// Avoid blocking the channel when the channel is full
 				select {
 				case dataCh <- data:
 				default:
@@ -201,26 +203,50 @@ func liveGraph(_ service.Host, callbackManager livedebugging.CallbackManager) ht
 			callbackManager.DeleteMultiCallback(id, moduleID)
 		}()
 
+		ticker := time.NewTicker(2 * time.Second)
+		defer ticker.Stop()
+
 		for {
 			select {
 			case data := <-dataCh:
-				data.Data = "" // Don't send the lines.
-				jsonData, err := json.Marshal(data)
-				if err != nil {
-					http.Error(w, "Failed to serialize data", http.StatusInternalServerError)
-					return
+				// Aggregate incoming data
+				key := string(data.ComponentID) + "|" + string(data.Type)
+				if existing, exists := feedDataMap[key]; exists {
+					existing.Count += data.Count
+				} else {
+					// The data is ignored for the graph.
+					feedDataMap[key] = &livedebugging.FeedData{
+						ComponentID: data.ComponentID,
+						Count:       data.Count,
+						Type:        data.Type,
+					}
 				}
-				var builder strings.Builder
-				builder.Write(jsonData)
-				builder.WriteString("|;|")
 
-				// Write to the response
+			case <-ticker.C:
+				// Flush aggregated data
+				var builder strings.Builder
+				for _, data := range feedDataMap {
+					jsonData, err := json.Marshal(data)
+					if err != nil {
+						continue
+					}
+					builder.Write(jsonData)
+					builder.WriteString("|;|")
+				}
+
+				// Add an empty limiter to show the lack of data
+				if builder.Len() == 0 {
+					builder.WriteString("|;|")
+				}
+
 				_, writeErr := w.Write([]byte(builder.String()))
 				if writeErr != nil {
 					return
 				}
-				// TODO: flushing at a regular interval might be better performance wise
 				w.(http.Flusher).Flush()
+
+				feedDataMap = make(map[string]*livedebugging.FeedData)
+
 			case <-ctx.Done():
 				return
 			}
