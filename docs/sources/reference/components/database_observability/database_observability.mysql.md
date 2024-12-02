@@ -25,9 +25,10 @@ The following arguments are supported:
 
 | Name                 | Type           | Description                                                                                                         | Default | Required |
 | -------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
-| `data_source_name` | `secret`             | [Data Source Name](https://github.com/go-sql-driver/mysql#dsn-data-source-name) for the MySQL server to connect to.                   |         | yes      |
-| `forward_to`       | `list(LogsReceiver)` | Where to forward log entries after processing.     |         | yes      |
-| `collect_interval` | `duration`           | How frequently to collect query samples from database | `"10s"` | no       |
+| `data_source_name`      | `secret`             | [Data Source Name](https://github.com/go-sql-driver/mysql#dsn-data-source-name) for the MySQL server to connect to.               |         | yes |
+| `forward_to`            | `list(LogsReceiver)` | Where to forward log entries after processing.         |         | yes |
+| `collect_interval`      | `duration`           | How frequently to collect information from database | `"10s"` | no  |
+| `query_samples_enabled` | `bool`               | Whether to enable collection of query samples          | `true`  | no  |
 
 ## Blocks
 
@@ -67,7 +68,6 @@ loki.write "logs_service" {
   }
 }
 ```
-
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components

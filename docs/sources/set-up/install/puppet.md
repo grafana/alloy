@@ -15,10 +15,10 @@ You can use Puppet to install and manage {{< param "PRODUCT_NAME" >}}.
 ## Before you begin
 
 - These steps assume you already have a working [Puppet][] setup.
-- You can add the following manifest to any new or existing module.
+- You can add the following manifest to any module.
 - The manifest installs {{< param "PRODUCT_NAME" >}} from the package repositories. It targets Linux systems from the following families:
-  - Debian (including Ubuntu)
-  - RedHat Enterprise Linux (including Fedora)
+  - Debian, including Ubuntu
+  - RedHat Enterprise Linux, including Fedora
 
 ## Steps
 
@@ -37,7 +37,7 @@ To add {{< param "PRODUCT_NAME" >}} to a host:
     }
     ```
 
-1. Create a new [Puppet][] manifest with the following class to add the Grafana package repositories, install the `alloy` package, and run the service:
+1. Create a [Puppet][] manifest with the following class to add the Grafana package repositories, install the `alloy` package, and run the service:
 
     ```ruby
     class grafana_alloy::grafana_alloy () {
@@ -96,11 +96,11 @@ To add {{< param "PRODUCT_NAME" >}} to a host:
 The `alloy` package installs a default configuration file that doesn't send telemetry anywhere.
 
 The default configuration file location is `/etc/alloy/config.alloy`.
-You can replace this file with your own configuration, or create a new configuration file for the service to use.
+You can replace this file with your own configuration, or create a configuration file for the service to use.
 
 ## Next steps
 
-- [Configure {{< param "PRODUCT_NAME" >}}][Configure]
+* [Configure {{< param "PRODUCT_NAME" >}}][Configure]
 
 [Puppet]: https://www.puppet.com/
 [Configure]: ../../../configure/linux/

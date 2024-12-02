@@ -17,6 +17,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/component/database_observability/mysql/collector"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/featuregate"
@@ -46,14 +47,18 @@ var (
 	_ syntax.Validator = (*Arguments)(nil)
 )
 
+// TODO(cristian) consider using something like "enabled_collectors"
+// to allow users to enable/disable collectors.
 type Arguments struct {
-	DataSourceName  alloytypes.Secret   `alloy:"data_source_name,attr"`
-	CollectInterval time.Duration       `alloy:"collect_interval,attr,optional"`
-	ForwardTo       []loki.LogsReceiver `alloy:"forward_to,attr"`
+	DataSourceName      alloytypes.Secret   `alloy:"data_source_name,attr"`
+	CollectInterval     time.Duration       `alloy:"collect_interval,attr,optional"`
+	QuerySamplesEnabled bool                `alloy:"query_samples_enabled,attr,optional"`
+	ForwardTo           []loki.LogsReceiver `alloy:"forward_to,attr"`
 }
 
 var DefaultArguments = Arguments{
-	CollectInterval: 10 * time.Second,
+	CollectInterval:     10 * time.Second,
+	QuerySamplesEnabled: true,
 }
 
 func (a *Arguments) SetToDefault() {
@@ -155,7 +160,7 @@ func (c *Component) getBaseTarget() (discovery.Target, error) {
 		model.SchemeLabel:      "http",
 		model.MetricsPathLabel: path.Join(httpData.HTTPPathForComponent(c.opts.ID), "metrics"),
 		"instance":             c.instanceKey(),
-		"job":                  "integrations/db-o11y",
+		"job":                  database_observability.JobName,
 	}, nil
 }
 
@@ -194,21 +199,23 @@ func (c *Component) Update(args component.Arguments) error {
 
 	entryHandler := loki.NewEntryHandler(c.handler.Chan(), func() {})
 
-	qsCollector, err := collector.NewQuerySample(collector.QuerySampleArguments{
-		DB:              dbConnection,
-		CollectInterval: c.args.CollectInterval,
-		EntryHandler:    entryHandler,
-		Logger:          c.opts.Logger,
-	})
-	if err != nil {
-		level.Error(c.opts.Logger).Log("msg", "failed to create QuerySample collector", "err", err)
-		return err
+	if c.args.QuerySamplesEnabled {
+		qsCollector, err := collector.NewQuerySample(collector.QuerySampleArguments{
+			DB:              dbConnection,
+			CollectInterval: c.args.CollectInterval,
+			EntryHandler:    entryHandler,
+			Logger:          c.opts.Logger,
+		})
+		if err != nil {
+			level.Error(c.opts.Logger).Log("msg", "failed to create QuerySample collector", "err", err)
+			return err
+		}
+		if err := qsCollector.Start(context.Background()); err != nil {
+			level.Error(c.opts.Logger).Log("msg", "failed to start QuerySample collector", "err", err)
+			return err
+		}
+		c.collectors = append(c.collectors, qsCollector)
 	}
-	if err := qsCollector.Start(context.Background()); err != nil {
-		level.Error(c.opts.Logger).Log("msg", "failed to start QuerySample collector", "err", err)
-		return err
-	}
-	c.collectors = append(c.collectors, qsCollector)
 
 	stCollector, err := collector.NewSchemaTable(collector.SchemaTableArguments{
 		DB:              dbConnection,

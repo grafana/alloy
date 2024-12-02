@@ -12,6 +12,7 @@ import (
 	"github.com/prometheus/common/model"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
@@ -146,7 +147,7 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 		schemas = append(schemas, schema)
 
 		c.entryHandler.Chan() <- loki.Entry{
-			Labels: model.LabelSet{"job": "integrations/db-o11y"},
+			Labels: model.LabelSet{"job": database_observability.JobName},
 			Entry: logproto.Entry{
 				Timestamp: time.Unix(0, time.Now().UnixNano()),
 				Line:      fmt.Sprintf(`level=info msg="schema detected" op="%s" schema="%s"`, OP_SCHEMA_DETECTION, schema),
@@ -179,7 +180,7 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 			tables = append(tables, tableInfo{schema: schema, tableName: table, createTime: createTime, updateTime: updateTime})
 
 			c.entryHandler.Chan() <- loki.Entry{
-				Labels: model.LabelSet{"job": "integrations/db-o11y"},
+				Labels: model.LabelSet{"job": database_observability.JobName},
 				Entry: logproto.Entry{
 					Timestamp: time.Unix(0, time.Now().UnixNano()),
 					Line:      fmt.Sprintf(`level=info msg="table detected" op="%s" schema="%s" table="%s"`, OP_TABLE_DETECTION, schema, table),
@@ -215,7 +216,7 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 		c.cache.Add(cacheKey, table)
 
 		c.entryHandler.Chan() <- loki.Entry{
-			Labels: model.LabelSet{"job": "integrations/db-o11y"},
+			Labels: model.LabelSet{"job": database_observability.JobName},
 			Entry: logproto.Entry{
 				Timestamp: time.Unix(0, time.Now().UnixNano()),
 				Line:      fmt.Sprintf(`level=info msg="create table" op="%s" schema="%s" table="%s" create_statement="%s"`, OP_CREATE_STATEMENT, table.schema, table.tableName, createStmt),
