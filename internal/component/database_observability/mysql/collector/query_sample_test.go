@@ -236,7 +236,7 @@ func TestQuerySample(t *testing.T) {
 	}
 }
 
-func TestQuerySampleSqlDriverErrors(t *testing.T) {
+func TestQuerySampleSQLDriverErrors(t *testing.T) {
 	defer goleak.VerifyNone(t)
 
 	t.Run("QueryContext() fail", func(t *testing.T) {
