@@ -65,6 +65,8 @@ Main (unreleased)
 
 - Updated `prometheus.write.queue` to fix issue with TTL comparing different scales of time. (@mattdurham)
 
+- Fixed a crash when updating import.http config that occurred because `importsource.HTTPArguments` was passed to `component/remote/http.Update` instead of `component/remote/http.Arguments`
+
 ### Other changes
 
 - Change the stability of the `livedebugging` feature from "experimental" to "generally available". (@wildum)
