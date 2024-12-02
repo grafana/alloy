@@ -81,7 +81,7 @@ The overall health of a component is determined by combining the controller-repo
 An individual component's health is independent of the health of any other components it references.
 A component can be marked as healthy even if it references an exported field of an unhealthy component.
 
-## Handle evaluation failures
+## Evaluation failures
 
 When a component fails to evaluate, it's marked as unhealthy with the reason for why the evaluation failed.
 
