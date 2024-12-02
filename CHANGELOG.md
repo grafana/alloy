@@ -61,6 +61,8 @@ Main (unreleased)
 - `loki.source.podlogs`: Fixed a bug which prevented clustering from working and caused duplicate logs to be sent.
   The bug only happened when no `selector` or `namespace_selector` blocks were specified in the Alloy configuration. (@ptodev)
 
+- Updated `prometheus.write.queue` to fix issue with TTL comparing different scales of time. (@mattdurham)
+
 ### Other changes
 
 - Change the stability of the `livedebugging` feature from "experimental" to "generally available". (@wildum)

@@ -234,7 +234,7 @@ func handlePost(t *testing.T, _ http.ResponseWriter, r *http.Request) ([]prompb.
 }
 
 func makeSeries(index int) (int64, float64, labels.Labels) {
-	return time.Now().UTC().Unix(), float64(index), labels.FromStrings(fmt.Sprintf("name_%d", index), fmt.Sprintf("value_%d", index))
+	return time.Now().UTC().UnixMilli(), float64(index), labels.FromStrings(fmt.Sprintf("name_%d", index), fmt.Sprintf("value_%d", index))
 }
 
 func makeMetadata(index int) (metadata.Metadata, labels.Labels) {
@@ -246,13 +246,13 @@ func makeMetadata(index int) (metadata.Metadata, labels.Labels) {
 }
 
 func makeHistogram(index int) (int64, labels.Labels, *histogram.Histogram) {
-	return time.Now().UTC().Unix(), labels.FromStrings(fmt.Sprintf("name_%d", index), fmt.Sprintf("value_%d", index)), hist(index)
+	return time.Now().UTC().UnixMilli(), labels.FromStrings(fmt.Sprintf("name_%d", index), fmt.Sprintf("value_%d", index)), hist(index)
 }
 
 func makeExemplar(index int) exemplar.Exemplar {
 	return exemplar.Exemplar{
 		Labels: labels.FromStrings(fmt.Sprintf("name_%d", index), fmt.Sprintf("value_%d", index)),
-		Ts:     time.Now().Unix(),
+		Ts:     time.Now().UnixMilli(),
 		HasTs:  true,
 		Value:  float64(index),
 	}
@@ -305,7 +305,7 @@ func histSpanSame(t *testing.T, h []histogram.Span, pb []prompb.BucketSpan) {
 }
 
 func makeFloatHistogram(index int) (int64, labels.Labels, *histogram.FloatHistogram) {
-	return time.Now().UTC().Unix(), labels.FromStrings(fmt.Sprintf("name_%d", index), fmt.Sprintf("value_%d", index)), histFloat(index)
+	return time.Now().UTC().UnixMilli(), labels.FromStrings(fmt.Sprintf("name_%d", index), fmt.Sprintf("value_%d", index)), histFloat(index)
 }
 
 func histFloat(i int) *histogram.FloatHistogram {

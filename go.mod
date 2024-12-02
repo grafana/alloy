@@ -73,7 +73,7 @@ require (
 	github.com/grafana/regexp v0.0.0-20240518133315-a468a5bfb3bc
 	github.com/grafana/tail v0.0.0-20230510142333-77b18831edf0
 	github.com/grafana/vmware_exporter v0.0.5-beta
-	github.com/grafana/walqueue v0.0.0-20241118151117-77b057cbe5a2
+	github.com/grafana/walqueue v0.0.0-20241202135041-6ec70efeec94
 	github.com/hashicorp/consul/api v1.29.5
 	github.com/hashicorp/go-discover v0.0.0-20230724184603-e89ebd1b2f65
 	github.com/hashicorp/go-multierror v1.1.1
@@ -833,9 +833,7 @@ require (
 	github.com/antchfx/xpath v1.3.2 // indirect
 	github.com/ebitengine/purego v0.8.0 // indirect
 	github.com/elastic/lunes v0.1.0 // indirect
-	github.com/mdlayher/vsock v1.2.1 // indirect
 	github.com/moby/sys/userns v0.1.0 // indirect
-	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/syslogexporter v0.112.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/kafka/topic v0.112.0 // indirect
 	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10 // indirect
 	go.opentelemetry.io/collector/connector/connectorprofiles v0.112.0 // indirect
@@ -912,7 +910,7 @@ replace (
 	// grafana fork of the exporter, or completely into upstream
 	github.com/prometheus-community/postgres_exporter => github.com/grafana/postgres_exporter v0.15.1-0.20241105053755-e0a51174f168
 
-// Needed until a bunch of exporters are updated, because 0.13.0 breaks compatibility in web.ListenAndServe
+	// Needed until a bunch of exporters are updated, because 0.13.0 breaks compatibility in web.ListenAndServe
 	github.com/prometheus/exporter-toolkit => github.com/prometheus/exporter-toolkit v0.11.0
 
 	// TODO(marctc): remove once this PR is merged upstream: https://github.com/prometheus/mysqld_exporter/pull/774
