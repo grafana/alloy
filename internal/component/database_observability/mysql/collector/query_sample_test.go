@@ -239,7 +239,7 @@ func TestQuerySample(t *testing.T) {
 func TestQuerySampleSQLDriverErrors(t *testing.T) {
 	defer goleak.VerifyNone(t)
 
-	t.Run("QueryContext() fail", func(t *testing.T) {
+	t.Run("unrecoverable sql error", func(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer db.Close()
@@ -273,7 +273,7 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Run("Scan() fail", func(t *testing.T) {
+	t.Run("recoverable sql error in result set", func(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer db.Close()
