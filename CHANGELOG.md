@@ -65,8 +65,6 @@ Main (unreleased)
 - `loki.source.podlogs`: Fixed a bug which prevented clustering from working and caused duplicate logs to be sent.
   The bug only happened when no `selector` or `namespace_selector` blocks were specified in the Alloy configuration. (@ptodev)
 
-- Fixed a race condition that could lead to a deadlock when using `import` statements, which could lead to a memory leak on `/metrics` endpoint of an Alloy instance. (@thampiotr)
-
 - Updated `prometheus.write.queue` to fix issue with TTL comparing different scales of time. (@mattdurham)
 
 ### Other changes
