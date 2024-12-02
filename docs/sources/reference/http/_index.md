@@ -8,8 +8,7 @@ weight: 700
 
 # The {{% param "FULL_PRODUCT_NAME" %}} HTTP endpoints
 
-There are HTTP endpoints which are enabled by default on every instance of {{% param "FULL_PRODUCT_NAME" %}}, 
-regardless which components are configured.
+{{< param "FULL_PRODUCT_NAME" >}} has several default HTTP endpoints that are available by default regardless of which components you have configured.
 You can use these HTTP endpoints to monitor, health check, and troubleshoot {{< param "PRODUCT_NAME" >}}.
 
 The HTTP server which exposes them is configured via the [http block](../config-blocks/http)
