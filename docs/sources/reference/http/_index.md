@@ -1,7 +1,8 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/http/
 description: Learn about HTTP endpoints exposed by Grafana Alloy
-title: HTTP endpoints
+title: Grafana Alloy HTTP endpoints
+menuTitle: HTTP endpoints
 weight: 700
 ---
 
