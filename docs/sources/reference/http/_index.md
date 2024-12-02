@@ -43,6 +43,17 @@ $ curl localhost:12345/-/healthy
 unhealthy components: math.add
 ```
 
+{{< admonition type="note" >}}
+The `/-/healthy` endpoint is not suitable for a [Kubernetes liveness probe][k8s-liveness].
+
+An Alloy instance which reports as unhealthy should not necessarily be restarted.
+For example, a component may be unhealthy due to invalid configuration or due to an unavailable external resource.
+In this case, restarting {{< param "PRODUCT_NAME" >}} would not fix the problem.
+A restart may even make it worse, because it would could stop the flow of telemetry in healthy pipelines.
+
+[k8s-liveness]: https://kubernetes.io/docs/concepts/configuration/liveness-readiness-startup-probes/
+{{< /admonition >}}
+
 ### /-/reload
 
 The `/-/reload` endpoint reloads the {{< param "PRODUCT_NAME" >}} configuration file.
