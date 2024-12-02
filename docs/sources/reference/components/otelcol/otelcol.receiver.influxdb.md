@@ -31,6 +31,7 @@ otelcol.receiver.influxdb "influxdb_metrics" {
 | `endpoint`               | `string`       | `host:port` to listen for traffic on.                           | `"localhost:8086"` | no       |
 | `max_request_body_size`  | `string`       | Maximum request body size the server will allow.                | `20MiB`            | no       |
 | `include_metadata`       | `boolean`      | Propagate incoming connection metadata to downstream consumers. |                    | no       |
+`compression_algorithms` | `list(string)` | A list of compression algorithms the server can accept.      | `["", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"]` | no
 
 By default, `otelcol.receiver.influxdb` listens for HTTP connections on `localhost`.
 To expose the HTTP server to other machines on your network, configure `endpoint` with the IP address to listen on, or `0.0.0.0:8086` to listen on all network interfaces.
