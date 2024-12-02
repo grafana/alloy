@@ -46,7 +46,8 @@ unhealthy components: math.add
 
 ### /-/reload
 
-Reloads the {{% param "FULL_PRODUCT_NAME" %}} configuration file. Returns HTTP 400 and an error message if an issue with the reload was encountered.
+The `/-/reload` endpoint reloads the {{< param "PRODUCT_NAME" >}} configuration file.
+If the configuration file can't be reloaded, the `/-/reload` endpoint returns `HTTP 400 Bad Request` and an error message.
 
 ```shell
 $ curl localhost:12345/-/reload
