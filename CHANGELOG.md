@@ -16,6 +16,8 @@ v1.5.1
 
 - Allow setting `informer_sync_timeout` in prometheus.operator.* components. (@captncraig)
 
+- For sharding targets during clustering, `loki.source.podlogs` now only takes into account some labels. (@ptodev)
+
 ### Bugfixes
 
 - Fixed issue with reloading configuration and prometheus metrics duplication in `prometheus.write.queue`. (@mattdurham)
