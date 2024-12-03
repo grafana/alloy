@@ -190,6 +190,34 @@ discovery.process "all" {
   }
 }
 
+### Example discovering processes on the local host based on `cgroups` path
+
+To discover processes running under systemd services on the local host.
+
+```alloy
+discovery.process "all" {
+  refresh_interval = "60s"
+  discover_config {
+    cwd = true
+    exe = true
+    commandline = true
+    username = true
+    uid = true
+    cgroup_path = true
+    container_id = true
+  }
+}
+
+discovery.relabel "systemd_services" {
+  targets = discovery.process.all.targets
+  // Only keep the targets that correspond to systemd services
+  rule {
+    action = "keep"
+    regex = "^.*/([a-zA-Z0-9-_]+).service(?:.*$)"
+    source_labels = ["__meta_cgroup_id"]
+  }
+}
+
 ```
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

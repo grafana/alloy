@@ -30,7 +30,7 @@ var DefaultConfig = Arguments{
 		Exe:         true,
 		Commandline: true,
 		ContainerID: true,
-		CgroupPath:  true,
+		CgroupPath:  false,
 	},
 }
 
