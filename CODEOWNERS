@@ -20,5 +20,6 @@
 /docs/sources/ @clayton-cornell
 
 # Components:
-/internal/component/pyroscope/ @grafana/grafana-alloy-profiling-maintainers
-/internal/component/beyla/     @marctc
+/internal/component/pyroscope/              @grafana/grafana-alloy-profiling-maintainers
+/internal/component/beyla/                  @marctc
+/internal/component/database_observability/ @cristiangreco @matthewnolf
