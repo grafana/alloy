@@ -9,6 +9,7 @@ Name        | Type     | Description                                            
 `client_id` | `string` | Client ID of the managed identity used to authenticate. |         | yes
 
 `client_id` should be a valid [UUID][] in one of the supported formats:
+
 * `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`
 * `urn:uuid:xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`
 * Microsoft encoding: `{xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx}`

@@ -29,7 +29,7 @@ You can use the following actions:
 * `dropequal` - Drop targets for which the concatenated `source_labels` do match `target_label`.
 * `hashmod`   - Hashes the concatenated labels, calculates its modulo `modulus` and writes the result to the `target_label`.
 * `keep`      - Keeps metrics where `regex` matches the string extracted using the `source_labels` and `separator`.
-* `keepequal` - Drop targets for which the concatenated `source_labels` do not match `target_label`.
+* `keepequal` - Drop targets for which the concatenated `source_labels` don't match `target_label`.
 * `labeldrop` - Matches `regex` against all label names. Any labels that match are removed from the metric's label set.
 * `labelkeep` - Matches `regex` against all label names. Any labels that don't match are removed from the metric's label set.
 * `labelmap`  - Matches `regex` against all label names. Any labels that match are renamed according to the contents of the `replacement` field.

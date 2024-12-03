@@ -230,7 +230,7 @@ Copy and paste the following component configuration below the previous componen
   }
 ```
 
-This configuration creates a [loki.source.file][] component named `log_scrape` which does the following:
+This configuration creates a [`loki.source.file`][loki.source.file] component named `log_scrape` which does the following:
 
 * It connects to the `local_files` component as its source or target.
 * It forwards the logs it scrapes to the receiver of another component called `filter_logs`.
@@ -258,7 +258,7 @@ Copy and paste the following component configuration below the previous componen
 The `loki.process` component allows you to transform, filter, parse, and enrich log data.
 Within this component, you can define one or more processing stages to specify how you would like to process log entries before they're stored or forwarded.
 
-This configuration creates a [loki.process][] component named `filter_logs` which does the following:
+This configuration creates a [`loki.process`][loki.process] component named `filter_logs` which does the following:
 
 * It receives scraped log entries from the default `log_scrape` component.
 * It uses the `stage.drop` block to define what to drop from the scraped logs.
@@ -266,7 +266,7 @@ This configuration creates a [loki.process][] component named `filter_logs` whic
 * It uses an optional string label `drop_counter_reason` to show the reason for dropping the log entries.
 * It forwards the processed logs to the receiver of another component called `grafana_loki`.
 
-The [`loki.process` documentation][loki.process] provides more comprehensive information on processing logs.
+The [`loki.process`][loki.process] documentation provides more comprehensive information on processing logs.
 
 ### Fourth component: Write logs to Loki
 

@@ -114,19 +114,19 @@ It then scrapes metrics from the targets and forward them to your remote write e
 You may need to customize this configuration further if you use additional features in your `MetricsInstance` resources.
 Refer to the documentation for the relevant components for additional information:
 
-- [remote.kubernetes.secret][]
-- [prometheus.remote_write][]
-- [prometheus.operator.podmonitors][]
-- [prometheus.operator.servicemonitors][]
-- [prometheus.operator.probes][]
-- [prometheus.scrape][]
+- [`remote.kubernetes.secret`][remote.kubernetes.secret]
+- [`prometheus.remote_write`][prometheus.remote_write]
+- [`prometheus.operator.podmonitors`][prometheus.operator.podmonitors]
+- [`prometheus.operator.servicemonitors`][prometheus.operator.servicemonitors]
+- [`prometheus.operator.probes`][prometheus.operator.probes]
+- [`prometheus.scrape`][prometheus.scrape]
 
 ## Collect logs
 
 The current recommendation is to create an additional DaemonSet deployment of {{< param "PRODUCT_NAME" >}} to scrape logs.
 
 > {{< param "PRODUCT_NAME" >}} has components that can scrape Pod logs directly from the Kubernetes API without needing a DaemonSet deployment.
-> These are still considered experimental, but if you would like to try them, see the documentation for [loki.source.kubernetes][] and [loki.source.podlogs][].
+> These are still considered experimental, but if you would like to try them, see the documentation for [`loki.source.kubernetes`][loki.source.kubernetes] and [`loki.source.podlogs`][loki.source.podlogs].
 
 These values are close to what Grafana Agent Operator deploys for logs:
 

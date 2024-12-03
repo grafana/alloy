@@ -40,8 +40,7 @@ When provided, the `revision` attribute must be set to a valid branch, tag, or c
 
 You must set the `path` attribute to a path accessible from the repository's root.
 It can either be an {{< param "PRODUCT_NAME" >}} configuration file such as `FILE_NAME.alloy` or `DIR_NAME/FILE_NAME.alloy` or
-a directory containing {{< param "PRODUCT_NAME" >}} configuration files such as `DIR_NAME` or `.` if the {{< param "PRODUCT_NAME" >}} configuration files are stored at the root
-of the repository.
+a directory containing {{< param "PRODUCT_NAME" >}} configuration files such as `DIR_NAME` or `.` if the {{< param "PRODUCT_NAME" >}} configuration files are stored at the root of the repository.
 
 If `pull_frequency` isn't `"0s"`, the Git repository is pulled for updates at the frequency specified.
 If it's set to `"0s"`, the Git repository is pulled once on init.
