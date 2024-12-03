@@ -49,6 +49,7 @@ Main (unreleased)
 - For sharding targets during clustering, `loki.source.podlogs` now only takes into account some labels. (@ptodev)
 
 ### Bugfixes
+
 - Fixed an issue in the `pyroscope.write` component to prevent TLS connection churn to Pyroscope when the `pyroscope.receive_http` clients don't request keepalive (@madaraszg-tulip)
 
 - Fixed an issue in the `pyroscope.write` component with multiple endpoints not working correctly for forwarding profiles from `pyroscope.receive_http` (@madaraszg-tulip)
@@ -73,6 +74,8 @@ Main (unreleased)
 - Updated `prometheus.write.queue` to fix issue with TTL comparing different scales of time. (@mattdurham)
 
 - Fixed a crash when updating the configuration of `remote.http`. (@kinolaev)
+
+- Fixed an issue in the `prometheus.operator.servicemonitors`, `prometheus.operator.podmonitors` and `prometheus.operator.probes` to support capitalized actions. (@QuentinBisson)
 
 ### Other changes
 

@@ -494,6 +494,82 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 				LabelValueLengthLimit: 105,
 			},
 		},
+		{
+			name: "invalid-relabelling-action",
+			m: &promopv1.ServiceMonitor{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "operator",
+					Name:      "svcmonitor",
+				},
+			},
+			ep: promopv1.Endpoint{
+				MetricRelabelConfigs: []*promopv1.RelabelConfig{
+					{
+						SourceLabels: []promopv1.LabelName{"foo"},
+						TargetLabel:  "bar",
+						Action:       "Replace",
+					},
+				},
+			},
+			role: promk8s.RoleEndpoint,
+			expectedRelabels: util.Untab(`
+				- target_label: __meta_foo
+				  replacement: bar
+				- source_labels: [job]
+				  target_label: __tmp_prometheus_job_name
+				- source_labels: [__meta_kubernetes_endpoint_address_target_kind, __meta_kubernetes_endpoint_address_target_name]
+				  regex: Node;(.*)
+				  target_label: node
+				  replacement: ${1}
+				- source_labels: [__meta_kubernetes_endpoint_address_target_kind, __meta_kubernetes_endpoint_address_target_name]
+				  regex: Pod;(.*)
+				  target_label: pod
+				  action: replace
+				  replacement: ${1}
+				- source_labels: [__meta_kubernetes_namespace]
+				  target_label: namespace
+				- source_labels: [__meta_kubernetes_service_name]
+				  target_label: service
+				- source_labels: [__meta_kubernetes_pod_container_name]
+				  target_label: container
+				- source_labels: [__meta_kubernetes_pod_name]
+				  target_label: pod
+				- source_labels: [__meta_kubernetes_pod_phase]
+				  regex: (Failed|Succeeded)
+				  action: drop
+				- source_labels: [__meta_kubernetes_service_name]
+				  target_label: job
+				  replacement: ${1}
+			`),
+			expectedMetricRelabels: util.Untab(`
+				- action: replace
+				  source_labels: [foo]
+				  target_label: bar
+			`),
+			expected: &config.ScrapeConfig{
+				JobName:           "serviceMonitor/operator/svcmonitor/1",
+				HonorTimestamps:   true,
+				ScrapeInterval:    model.Duration(time.Minute),
+				ScrapeTimeout:     model.Duration(10 * time.Second),
+				ScrapeProtocols:   config.DefaultScrapeProtocols,
+				EnableCompression: true,
+				MetricsPath:       "/metrics",
+				Scheme:            "http",
+				HTTPClientConfig: commonConfig.HTTPClientConfig{
+					FollowRedirects: true,
+					EnableHTTP2:     true,
+				},
+				ServiceDiscoveryConfigs: discovery.Configs{
+					&promk8s.SDConfig{
+						Role: "endpoints",
+						NamespaceDiscovery: promk8s.NamespaceDiscovery{
+							IncludeOwnNamespace: false,
+							Names:               []string{"operator"},
+						},
+					},
+				},
+			},
+		},
 	}
 	for _, tc := range suite {
 		t.Run(tc.name, func(t *testing.T) {
