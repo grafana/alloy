@@ -192,7 +192,7 @@ discovery.process "all" {
 
 ### Example discovering processes on the local host based on `cgroups` path
 
-To discover processes running under systemd services on the local host.
+The following example configuration shows you how to discover processes running under systemd services on the local host.
 
 ```alloy
 discovery.process "all" {
