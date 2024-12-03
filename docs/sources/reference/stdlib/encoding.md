@@ -52,7 +52,7 @@ c3RyaW5nMTIzIT8kKiYoKSctPUB+
 
 ## encoding.to_URLbase64
 
-The `encoding.to_base64` function encodes the original string into RFC4648-compliant URL safe Base64 encoded string
+The `encoding.to_base64` function encodes the original string into RFC4648-compliant URL safe Base64 encoded string.
 
 ### Example
 
