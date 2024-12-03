@@ -299,13 +299,16 @@ func (c *Component) Run(ctx context.Context) error {
 				jobName = c.args.JobName
 			}
 
-			newTargetGroups, movedTargets := c.distributeTargets(targets, jobName, args)
+			newTargetGroups, _ := c.distributeTargets(targets, jobName, args)
 
 			// Make sure the targets that moved to another instance are NOT marked as stale. This is specific to how
 			// Prometheus handles marking series as stale: it is the client's responsibility to inject the
 			// staleness markers. In our case, for targets that moved to another instance in the cluster, we hand
 			// over this responsibility to the new owning instance. We must not inject staleness marker here.
-			c.scraper.DisableEndOfRunStalenessMarkers(jobName, movedTargets)
+
+			// TODO(thampiotr): This is broken because I broke it in the fork to save time, but we could have both
+			//                  methods working with some extra code. Will be no problem to fix.
+			// c.scraper.DisableEndOfRunStalenessMarkers(jobName, movedTargets)
 
 			select {
 			case targetSetsChan <- newTargetGroups:
