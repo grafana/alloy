@@ -5,6 +5,7 @@ import (
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
+	"go.opentelemetry.io/collector/pipeline"
 	otelreceiver "go.opentelemetry.io/collector/receiver"
 )
 
@@ -52,7 +53,7 @@ func (f *Factory) TracesReceiverStability() component.StabilityLevel {
 // CreateTracesReceiver creates a stub receiver while also sneakily keeping a reference to the provided Traces consumer.
 func (f *Factory) CreateTracesReceiver(
 	_ context.Context,
-	_ otelreceiver.CreateSettings,
+	_ otelreceiver.Settings,
 	_ component.Config,
 	c consumer.Traces,
 ) (otelreceiver.Traces, error) {
@@ -64,15 +65,15 @@ func (f *Factory) CreateTracesReceiver(
 }
 
 // CreateMetricsReceiver returns an error because metrics are not supported by push receiver.
-func (f *Factory) CreateMetricsReceiver(ctx context.Context, set otelreceiver.CreateSettings,
+func (f *Factory) CreateMetricsReceiver(ctx context.Context, set otelreceiver.Settings,
 	cfg component.Config, nextConsumer consumer.Metrics) (otelreceiver.Metrics, error) {
 
-	return nil, component.ErrDataTypeIsNotSupported
+	return nil, pipeline.ErrSignalNotSupported
 }
 
 // CreateLogsReceiver returns an error because logs are not supported by push receiver.
-func (f *Factory) CreateLogsReceiver(ctx context.Context, set otelreceiver.CreateSettings,
+func (f *Factory) CreateLogsReceiver(ctx context.Context, set otelreceiver.Settings,
 	cfg component.Config, nextConsumer consumer.Logs) (otelreceiver.Logs, error) {
 
-	return nil, component.ErrDataTypeIsNotSupported
+	return nil, pipeline.ErrSignalNotSupported
 }

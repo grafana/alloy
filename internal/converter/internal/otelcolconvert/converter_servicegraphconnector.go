@@ -9,6 +9,8 @@ import (
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraphconnector"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/component/componentstatus"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 func init() {
@@ -25,7 +27,7 @@ func (servicegraphConnectorConverter) InputComponentName() string {
 	return "otelcol.connector.servicegraph"
 }
 
-func (servicegraphConnectorConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
+func (servicegraphConnectorConverter) ConvertAndAppend(state *State, id componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -42,12 +44,12 @@ func (servicegraphConnectorConverter) ConvertAndAppend(state *State, id componen
 	return diags
 }
 
-func toServicegraphConnector(state *State, id component.InstanceID, cfg *servicegraphconnector.Config) *servicegraph.Arguments {
+func toServicegraphConnector(state *State, id componentstatus.InstanceID, cfg *servicegraphconnector.Config) *servicegraph.Arguments {
 	if cfg == nil {
 		return nil
 	}
 	var (
-		nextMetrics = state.Next(id, component.DataTypeMetrics)
+		nextMetrics = state.Next(id, pipeline.SignalMetrics)
 	)
 
 	return &servicegraph.Arguments{

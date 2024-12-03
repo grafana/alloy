@@ -105,7 +105,7 @@ In addition to the meta labels, the following labels are exposed to tell
 * `__pod_uid__`: The UID of the Pod.
 
 [LabelSelector]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#labelselector-v1-meta
-[RelabelConfig]: https://prometheus-operator.dev/docs/operator/api/#monitoring.coreos.com/v1.RelabelConfig
+[RelabelConfig]: https://prometheus-operator.dev/docs/api-reference/api/#monitoring.coreos.com/v1.RelabelConfig
 
 ## Blocks
 
@@ -231,6 +231,21 @@ cluster to distribute the load of log collection between all cluster nodes.
 If {{< param "PRODUCT_NAME" >}} is _not_ running in clustered mode, then the block is a no-op and
 `loki.source.podlogs` collects logs based on every PodLogs resource discovered.
 
+Clustering looks only at the following labels for determining the shard key:
+
+* `__pod_namespace__`
+* `__pod_name__`
+* `__pod_container_name__`
+* `__pod_uid__`
+* `__meta_kubernetes_namespace`
+* `__meta_kubernetes_pod_name`
+* `__meta_kubernetes_pod_container_name`
+* `__meta_kubernetes_pod_uid`
+* `container`
+* `pod`
+* `job`
+* `namespace`
+
 [using clustering]: ../../../../get-started/clustering/
 
 ## Exported fields
@@ -268,7 +283,7 @@ loki.source.podlogs "default" {
 
 loki.write "local" {
   endpoint {
-    url = env("LOKI_URL")
+    url = sys.env("LOKI_URL")
   }
 }
 ```

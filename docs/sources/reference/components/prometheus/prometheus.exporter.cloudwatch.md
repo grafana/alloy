@@ -92,10 +92,10 @@ To use all of the integration features, use the following AWS IAM Policy:
 
 ```alloy
 prometheus.exporter.cloudwatch "queues" {
-    sts_region = "us-east-2"
-
+    sts_region      = "us-east-2"
+    aws_sdk_version_v2 = false
     discovery {
-        type        = "sqs"
+        type        = "AWS/SQS"
         regions     = ["us-east-2"]
         search_tags = {
             "scrape" = "true",
@@ -124,6 +124,7 @@ Omitted fields take their default values.
 | Name                      | Type                | Description                                                                    | Default | Required |
 |---------------------------|---------------------|--------------------------------------------------------------------------------|---------|----------|
 | `sts_region`              | `string`            | AWS region to use when calling [STS][] for retrieving account information.     |         | yes      |
+| `aws_sdk_version_v2`      | `bool`              | Use AWS SDK version 2.                                                                                                                                                                                                                  | `false` | no       |
 | `fips_disabled`           | `bool`              | Disable use of FIPS endpoints. Set 'true' when running outside of USA regions. | `true`  | no       |
 | `debug`                   | `bool`              | Enable debug logging on CloudWatch exporter internals.                         | `false` | no       |
 | `discovery_exported_tags` | `map(list(string))` | List of tags (value) per service (key) to export in all metrics. For example, defining the `["name", "type"]` under `"AWS/EC2"` will export the name and type tags and its values as labels in all metrics. Affects all discovery jobs. | `{}` | no |
@@ -134,22 +135,27 @@ Omitted fields take their default values.
 
 You can use the following blocks in`prometheus.exporter.cloudwatch` to configure collector-specific options:
 
-| Hierarchy          | Name                   | Description                                                                                                                                                | Required |
+| Hierarchy                 | Name                   | Description                                                                                                                                                | Required |
 |--------------------|------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|
-| discovery          | [discovery][]          | Configures a discovery job. Multiple jobs can be configured.                                                                                               | no\*     |
-| discovery > role   | [role][]               | Configures the IAM roles the job should assume to scrape metrics. Defaults to the role configured in the environment {{< param "PRODUCT_NAME" >}} runs on. | no       |
-| discovery > metric | [metric][]             | Configures the list of metrics the job should scrape. Multiple metrics can be defined inside one job.                                                      | yes      |
-| static             | [static][]             | Configures a static job. Multiple jobs can be configured.                                                                                                  | no\*     |
-| static > role      | [role][]               | Configures the IAM roles the job should assume to scrape metrics. Defaults to the role configured in the environment {{< param "PRODUCT_NAME" >}} runs on. | no       |
-| static > metric    | [metric][]             | Configures the list of metrics the job should scrape. Multiple metrics can be defined inside one job.                                                      | yes      |
-| decoupled_scraping | [decoupled_scraping][] | Configures the decoupled scraping feature to retrieve metrics on a schedule and return the cached metrics.                                                 | no       |
+| discovery                 | [discovery][]          | Configures a discovery job. Multiple jobs can be configured.                                                                                               | no\*     |
+| discovery > role          | [role][]               | Configures the IAM roles the job should assume to scrape metrics. Defaults to the role configured in the environment {{< param "PRODUCT_NAME" >}} runs on. | no       |
+| discovery > metric        | [metric][]             | Configures the list of metrics the job should scrape. Multiple metrics can be defined inside one job.                                                      | yes      |
+| static                    | [static][]             | Configures a static job. Multiple jobs can be configured.                                                                                                  | no\*     |
+| static > role             | [role][]               | Configures the IAM roles the job should assume to scrape metrics. Defaults to the role configured in the environment {{< param "PRODUCT_NAME" >}} runs on. | no       |
+| static > metric           | [metric][]             | Configures the list of metrics the job should scrape. Multiple metrics can be defined inside one job.                                                      | yes      |
+| custom_namespace          | [custom_namespace][]   | Configures a custom namespace job. Multiple jobs can be configured.                                                                                               | no\*     |
+| custom_namespace > role   | [role][]               | Configures the IAM roles the job should assume to scrape metrics. Defaults to the role configured in the environment {{< param "PRODUCT_NAME" >}} runs on. | no       |
+| custom_namespace > metric | [metric][]             | Configures the list of metrics the job should scrape. Multiple metrics can be defined inside one job.                                                      | yes      |
+| decoupled_scraping        | [decoupled_scraping][] | Configures the decoupled scraping feature to retrieve metrics on a schedule and return the cached metrics.                                                 | no       |
 
 {{< admonition type="note" >}}
-The `static` and `discovery` blocks are marked as not required, but you must configure at least one static or discovery job.
+The `static`, `discovery`, and `custom_namespace` blocks are marked as not required, 
+but you must configure at least one static, discovery, or custom namespace job.
 {{< /admonition >}}
 
 [discovery]: #discovery-block
 [static]: #static-block
+[custom_namespace]: #custom_namespace-block
 [metric]: #metric-block
 [role]: #role-block
 [decoupled_scraping]: #decoupled_scraping-block
@@ -192,6 +198,7 @@ different `search_tags`.
 | `regions`                     | `list(string)` | List of AWS regions.                                                                                                                                                                                                                                       |         | yes      |
 | `type`                        | `string`       | CloudWatch service alias (`"alb"`, `"ec2"`, etc) or namespace name (`"AWS/EC2"`, `"AWS/S3"`, etc). Refer to [supported-services][] for a complete list.                                                                                                    |         | yes      |
 | `custom_tags`                 | `map(string)`  | Custom tags to be added as a list of key / value pairs. When exported to Prometheus format, the label name follows the following format: `custom_tag_{key}`.                                                                                               | `{}`    | no       |
+| `recently_active_only`        | `bool`         | Only return metrics that have been active in the last 3 hours.                                                                                                                                 | `false` | no       |
 | `search_tags`                 | `map(string)`  | List of key / value pairs to use for tag filtering (all must match). Value can be a regex.                                                                                                                                                                 | `{}`    | no       |
 | `dimension_name_requirements` | `list(string)` | List of metric dimensions to query. Before querying metric values, the total list of metrics will be filtered to only those that contain exactly this list of dimensions. An empty or undefined list results in all dimension combinations being included. | `{}`    | no       |
 | `nil_to_zero`                 | `bool`         | When `true`, `NaN` metric values are converted to 0. Individual metrics can override this value in the [metric][] block.                                                                                                                                   | `true`  | no       |
@@ -256,6 +263,46 @@ require `Resource`, `Service`, `Class`, and `Type` dimensions to be specified. T
 metrics,
 all dimensions attached to a metric when saved in CloudWatch are required.
 
+### custom_namespace block
+
+The `custom_namespace` block allows the component to scrape CloudWatch metrics from custom namespaces using only the namespace name and a list of metrics under that namespace.
+For example:
+
+```alloy
+prometheus.exporter.cloudwatch "discover_instances" {
+    sts_region = "eu-west-1"
+
+    custom_namespace "customEC2Metrics" {
+        namespace = "CustomEC2Metrics"
+        regions   = ["us-east-1"]
+
+        metric {
+            name       = "cpu_usage_idle"
+            statistics = ["Average"]
+            period     = "5m"
+        }
+
+        metric {
+            name       = "disk_free"
+            statistics = ["Average"]
+            period     = "5m"
+        }
+    }
+}
+```
+
+You can configure the `custom_namespace` block multiple times if you need to scrape metrics from different namespaces.
+
+| Name                          | Type           | Description                                                                                                                                                                                                                                                | Default | Required |
+| ----------------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
+| `regions`                     | `list(string)` | List of AWS regions.                                                                                                                                                                                                                                       |         | yes      |
+| `namespace`                   | `string`       | CloudWatch metric namespace.                                                                                                                                 |         | yes      |
+| `recently_active_only`        | `bool`         | Only return metrics that have been active in the last 3 hours.                                                                                                                                 | `false` | no       |
+| `custom_tags`                 | `map(string)`  | Custom tags to be added as a list of key / value pairs. When exported to Prometheus format, the label name follows the following format: `custom_tag_{key}`.                                                                                               | `{}`    | no       |
+| `dimension_name_requirements` | `list(string)` | List of metric dimensions to query. Before querying metric values, the total list of metrics will be filtered to only those that contain exactly this list of dimensions. An empty or undefined list results in all dimension combinations being included. | `{}`    | no       |
+| `nil_to_zero`                 | `bool`         | When `true`, `NaN` metric values are converted to 0. Individual metrics can override this value in the [metric][] block.                                                                                                                                   | `true`  | no       |
+
+
 ### metric block
 
 Represents an AWS Metrics to scrape. To see available metrics, AWS does not keep a documentation page with all available
@@ -270,6 +317,7 @@ on how to explore metrics, to easily pick the ones you need.
 | `period`      | `duration`     | Refer to the [period][] section below.                                    |                                                                                                                    | yes      |
 | `length`      | `duration`     | Refer to the [period][] section below.                                    | Calculated based on `period`. Refer to [period][] for details.                                                     | no       |
 | `nil_to_zero` | `bool`         | When `true`, `NaN` metric values are converted to 0.                      | The value of `nil_to_zero` in the parent [static][] or [discovery][] block. `true` if not set in the parent block. | no       |
+| `add_cloudwatch_timestamp` | `bool` | When `true`, use the timestamp from CloudWatch instead of the scrape time. | `false` | no
 
 [period]: #period-and-length
 
@@ -366,91 +414,103 @@ See the examples described under each [discovery][] and [static] sections.
 ## Supported services in discovery jobs
 
 The following is a list of AWS services that are supported in `cloudwatch_exporter` discovery jobs. When configuring a
-discovery job, the `type` field of each `discovery_job` must match either the desired job namespace or alias.
+discovery job, the `type` field of each `discovery_job` must match the desired job namespace.
 
-- Namespace: `CWAgent` or Alias: `cwagent`
-- Namespace: `AWS/Usage` or Alias: `usage`
-- Namespace: `AWS/CertificateManager` or Alias: `acm`
-- Namespace: `AWS/ACMPrivateCA` or Alias: `acm-pca`
-- Namespace: `AmazonMWAA` or Alias: `airflow`
-- Namespace: `AWS/MWAA` or Alias: `mwaa`
-- Namespace: `AWS/ApplicationELB` or Alias: `alb`
-- Namespace: `AWS/AppStream` or Alias: `appstream`
-- Namespace: `AWS/Backup` or Alias: `backup`
-- Namespace: `AWS/ApiGateway` or Alias: `apigateway`
-- Namespace: `AWS/AmazonMQ` or Alias: `mq`
-- Namespace: `AWS/AppSync` or Alias: `appsync`
-- Namespace: `AWS/Athena` or Alias: `athena`
-- Namespace: `AWS/AutoScaling` or Alias: `asg`
-- Namespace: `AWS/ElasticBeanstalk` or Alias: `beanstalk`
-- Namespace: `AWS/Billing` or Alias: `billing`
-- Namespace: `AWS/Cassandra` or Alias: `cassandra`
-- Namespace: `AWS/CloudFront` or Alias: `cloudfront`
-- Namespace: `AWS/Cognito` or Alias: `cognito-idp`
-- Namespace: `AWS/DMS` or Alias: `dms`
-- Namespace: `AWS/DDoSProtection` or Alias: `shield`
-- Namespace: `AWS/DocDB` or Alias: `docdb`
-- Namespace: `AWS/DX` or Alias: `dx`
-- Namespace: `AWS/DynamoDB` or Alias: `dynamodb`
-- Namespace: `AWS/EBS` or Alias: `ebs`
-- Namespace: `AWS/ElastiCache` or Alias: `ec`
-- Namespace: `AWS/MemoryDB` or Alias: `memorydb`
-- Namespace: `AWS/EC2` or Alias: `ec2`
-- Namespace: `AWS/EC2Spot` or Alias: `ec2Spot`
-- Namespace: `AWS/ECS` or Alias: `ecs-svc`
-- Namespace: `ECS/ContainerInsights` or Alias: `ecs-containerinsights`
-- Namespace: `AWS/EFS` or Alias: `efs`
-- Namespace: `AWS/ELB` or Alias: `elb`
-- Namespace: `AWS/ElasticMapReduce` or Alias: `emr`
-- Namespace: `AWS/EMRServerless` or Alias: `emr-serverless`
-- Namespace: `AWS/ES` or Alias: `es`
-- Namespace: `AWS/Firehose` or Alias: `firehose`
-- Namespace: `AWS/FSx` or Alias: `fsx`
-- Namespace: `AWS/GameLift` or Alias: `gamelift`
-- Namespace: `AWS/GlobalAccelerator` or Alias: `ga`
-- Namespace: `Glue` or Alias: `glue`
-- Namespace: `AWS/IoT` or Alias: `iot`
-- Namespace: `AWS/Kafka` or Alias: `kafka`
-- Namespace: `AWS/KafkaConnect` or Alias: `kafkaconnect`
-- Namespace: `AWS/Kinesis` or Alias: `kinesis`
-- Namespace: `AWS/KinesisAnalytics` or Alias: `kinesis-analytics`
-- Namespace: `AWS/Lambda` or Alias: `lambda`
-- Namespace: `AWS/MediaConnect` or Alias: `mediaconnect`
-- Namespace: `AWS/MediaConvert` or Alias: `mediaconvert`
-- Namespace: `AWS/MediaLive` or Alias: `medialive`
-- Namespace: `AWS/MediaTailor` or Alias: `mediatailor`
-- Namespace: `AWS/Neptune` or Alias: `neptune`
-- Namespace: `AWS/NetworkFirewall` or Alias: `nfw`
-- Namespace: `AWS/NATGateway` or Alias: `ngw`
-- Namespace: `AWS/NetworkELB` or Alias: `nlb`
-- Namespace: `AWS/PrivateLinkEndpoints` or Alias: `vpc-endpoint`
-- Namespace: `AWS/PrivateLinkServices` or Alias: `vpc-endpoint-service`
-- Namespace: `AWS/Prometheus` or Alias: `amp`
-- Namespace: `AWS/QLDB` or Alias: `qldb`
-- Namespace: `AWS/RDS` or Alias: `rds`
-- Namespace: `AWS/Redshift` or Alias: `redshift`
-- Namespace: `AWS/Route53Resolver` or Alias: `route53-resolver`
-- Namespace: `AWS/Route53` or Alias: `route53`
-- Namespace: `AWS/S3` or Alias: `s3`
-- Namespace: `AWS/SES` or Alias: `ses`
-- Namespace: `AWS/States` or Alias: `sfn`
-- Namespace: `AWS/SNS` or Alias: `sns`
-- Namespace: `AWS/SQS` or Alias: `sqs`
-- Namespace: `AWS/StorageGateway` or Alias: `storagegateway`
-- Namespace: `AWS/TransitGateway` or Alias: `tgw`
-- Namespace: `AWS/TrustedAdvisor` or Alias: `trustedadvisor`
-- Namespace: `AWS/VPN` or Alias: `vpn`
-- Namespace: `AWS/ClientVPN` or Alias: `clientvpn`
-- Namespace: `AWS/WAFV2` or Alias: `wafv2`
-- Namespace: `AWS/WorkSpaces` or Alias: `workspaces`
-- Namespace: `AWS/AOSS` or Alias: `aoss`
-- Namespace: `AWS/SageMaker` or Alias: `sagemaker`
-- Namespace: `/aws/sagemaker/Endpoints` or Alias: `sagemaker-endpoints`
-- Namespace: `/aws/sagemaker/TrainingJobs` or Alias: `sagemaker-training`
-- Namespace: `/aws/sagemaker/ProcessingJobs` or Alias: `sagemaker-processing`
-- Namespace: `/aws/sagemaker/TransformJobs` or Alias: `sagemaker-transform`
-- Namespace: `/aws/sagemaker/InferenceRecommendationsJobs` or Alias: `sagemaker-inf-rec`
-- Namespace: `AWS/Sagemaker/ModelBuildingPipeline` or Alias: `sagemaker-model-building-pipeline`
+- Namespace: `CWAgent`
+- Namespace: `AWS/Usage`
+- Namespace: `AWS/CertificateManager`
+- Namespace: `AWS/ACMPrivateCA`
+- Namespace: `AmazonMWAA`
+- Namespace: `AWS/MWAA`
+- Namespace: `AWS/ApplicationELB`
+- Namespace: `AWS/AppStream`
+- Namespace: `AWS/Backup`
+- Namespace: `AWS/ApiGateway`
+- Namespace: `AWS/AmazonMQ`
+- Namespace: `AWS/AppRunner`
+- Namespace: `AWS/AppSync`
+- Namespace: `AWS/Athena`
+- Namespace: `AWS/AutoScaling`
+- Namespace: `AWS/ElasticBeanstalk`
+- Namespace: `AWS/Billing`
+- Namespace: `AWS/Cassandra`
+- Namespace: `AWS/CloudFront`
+- Namespace: `AWS/Cognito`
+- Namespace: `AWS/DataSync`
+- Namespace: `AWS/DMS`
+- Namespace: `AWS/DDoSProtection`
+- Namespace: `AWS/DocDB`
+- Namespace: `AWS/DX`
+- Namespace: `AWS/DynamoDB`
+- Namespace: `AWS/EBS`
+- Namespace: `AWS/ElastiCache`
+- Namespace: `AWS/MemoryDB`
+- Namespace: `AWS/EC2`
+- Namespace: `AWS/EC2Spot`
+- Namespace: `AWS/EC2CapacityReservations`
+- Namespace: `AWS/ECS`
+- Namespace: `ECS/ContainerInsights`
+- Namespace: `AWS/EFS`
+- Namespace: `AWS/ELB`
+- Namespace: `AWS/ElasticMapReduce`
+- Namespace: `AWS/EMRServerless`
+- Namespace: `AWS/ES`
+- Namespace: `AWS/Firehose`
+- Namespace: `AWS/FSx`
+- Namespace: `AWS/GameLift`
+- Namespace: `AWS/GatewayELB`
+- Namespace: `AWS/GlobalAccelerator`
+- Namespace: `Glue`
+- Namespace: `AWS/IoT`
+- Namespace: `AWS/Kafka`
+- Namespace: `AWS/KafkaConnect`
+- Namespace: `AWS/Kinesis`
+- Namespace: `AWS/KinesisAnalytics`
+- Namespace: `AWS/KMS`
+- Namespace: `AWS/Lambda`
+- Namespace: `AWS/Logs`
+- Namespace: `AWS/MediaConnect`
+- Namespace: `AWS/MediaConvert`
+- Namespace: `AWS/MediaPackage`
+- Namespace: `AWS/MediaLive`
+- Namespace: `AWS/MediaTailor`
+- Namespace: `AWS/Neptune`
+- Namespace: `AWS/NetworkFirewall`
+- Namespace: `AWS/NATGateway`
+- Namespace: `AWS/NetworkELB`
+- Namespace: `AWS/PrivateLinkEndpoints`
+- Namespace: `AWS/PrivateLinkServices`
+- Namespace: `AWS/Prometheus`
+- Namespace: `AWS/QLDB`
+- Namespace: `AWS/RDS`
+- Namespace: `AWS/Redshift`
+- Namespace: `AWS/Route53Resolver`
+- Namespace: `AWS/Route53`
+- Namespace: `AWS/RUM`
+- Namespace: `AWS/S3`
+- Namespace: `AWS/SecretsManager`
+- Namespace: `AWS/SES`
+- Namespace: `AWS/States`
+- Namespace: `AWS/SNS`
+- Namespace: `AWS/SQS`
+- Namespace: `AWS/StorageGateway`
+- Namespace: `AWS/TransitGateway`
+- Namespace: `AWS/TrustedAdvisor`
+- Namespace: `AWS/VPN`
+- Namespace: `AWS/ClientVPN`
+- Namespace: `AWS/WAFV2`
+- Namespace: `AWS/WorkSpaces`
+- Namespace: `AWS/AOSS`
+- Namespace: `AWS/SageMaker`
+- Namespace: `/aws/sagemaker/Endpoints`
+- Namespace: `/aws/sagemaker/TrainingJobs`
+- Namespace: `/aws/sagemaker/ProcessingJobs`
+- Namespace: `/aws/sagemaker/TransformJobs`
+- Namespace: `/aws/sagemaker/InferenceRecommendationsJobs`
+- Namespace: `AWS/Sagemaker/ModelBuildingPipeline`
+- Namespace: `AWS/IPAM`
+- Namespace: `AWS/Bedrock`
+- Namespace: `AWS/Events`
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

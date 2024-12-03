@@ -22,7 +22,9 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/storage"
 	otelcomponent "go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/config/configtelemetry"
 	otelreceiver "go.opentelemetry.io/collector/receiver"
+	otelmetric "go.opentelemetry.io/otel/metric"
 	metricNoop "go.opentelemetry.io/otel/metric/noop"
 	traceNoop "go.opentelemetry.io/otel/trace/noop"
 )
@@ -143,16 +145,17 @@ func (c *Component) Update(newConfig component.Arguments) error {
 		return err
 	}
 
-	settings := otelreceiver.CreateSettings{
+	mp := metricNoop.NewMeterProvider()
+	settings := otelreceiver.Settings{
 		TelemetrySettings: otelcomponent.TelemetrySettings{
 			Logger: zapadapter.New(c.opts.Logger),
 
 			// TODO(tpaschalis): expose tracing and logging statistics.
 			TracerProvider: traceNoop.NewTracerProvider(),
-			MeterProvider:  metricNoop.NewMeterProvider(),
-			MetricsLevel:   metricsLevel,
-
-			ReportStatus: func(*otelcomponent.StatusEvent) {},
+			LeveledMeterProvider: func(_ configtelemetry.Level) otelmetric.MeterProvider {
+				return mp
+			},
+			MetricsLevel: metricsLevel,
 		},
 
 		BuildInfo: otelcomponent.BuildInfo{

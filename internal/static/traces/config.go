@@ -1,6 +1,8 @@
 package traces
 
 import (
+	"bytes"
+	"context"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -11,7 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mitchellh/mapstructure"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancingexporter"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusexporter"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/extension/jaegerremotesampling"
@@ -25,7 +26,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	prom_config "github.com/prometheus/common/config"
 	"go.opentelemetry.io/collector/component/componenttest"
+	"go.opentelemetry.io/collector/config/configopaque"
 	"go.opentelemetry.io/collector/confmap"
+	"go.opentelemetry.io/collector/confmap/provider/yamlprovider"
 	otelexporter "go.opentelemetry.io/collector/exporter"
 	"go.opentelemetry.io/collector/exporter/otlpexporter"
 	"go.opentelemetry.io/collector/exporter/otlphttpexporter"
@@ -48,7 +51,6 @@ import (
 	"github.com/grafana/alloy/internal/static/traces/remotewriteexporter"
 	"github.com/grafana/alloy/internal/static/traces/servicegraphprocessor"
 	"github.com/grafana/alloy/internal/static/traces/spanmetricsprocessor"
-	"github.com/grafana/alloy/internal/util"
 	_ "github.com/grafana/alloy/internal/util/otelfeaturegatefix" // Gracefully handle duplicate OTEL feature gates
 )
 
@@ -289,27 +291,6 @@ type OAuth2Config struct {
 	Scopes         []string         `yaml:"scopes,omitempty"`
 	TLS            TLSClientSetting `yaml:"tls,omitempty"`
 	Timeout        time.Duration    `yaml:"timeout,omitempty"`
-}
-
-// Agent uses standard YAML unmarshalling, while the oauth2clientauthextension relies on
-// mapstructure without providing YAML labels. `toOtelConfig` marshals `Oauth2Config` to configuration type expected by
-// the oauth2clientauthextension Extension Factory
-func (c OAuth2Config) toOtelConfig() (*oauth2clientauthextension.Config, error) {
-	var result *oauth2clientauthextension.Config
-	decoderConfig := &mapstructure.DecoderConfig{
-		MatchName:        func(s, t string) bool { return util.CamelToSnake(s) == t },
-		Result:           &result,
-		WeaklyTypedInput: true,
-		DecodeHook: mapstructure.ComposeDecodeHookFunc(
-			mapstructure.StringToSliceHookFunc(","),
-			mapstructure.StringToTimeDurationHookFunc(),
-		),
-	}
-	decoder, _ := mapstructure.NewDecoder(decoderConfig)
-	if err := decoder.Decode(c); err != nil {
-		return nil, err
-	}
-	return result, nil
 }
 
 // RemoteWriteConfig controls the configuration of an exporter
@@ -560,11 +541,7 @@ func (c *InstanceConfig) extensions() (map[string]interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		oauthConfig, err := remoteWriteConfig.Oauth2.toOtelConfig()
-		if err != nil {
-			return nil, err
-		}
-		extensions[getAuthExtensionName(exporterName)] = oauthConfig
+		extensions[getAuthExtensionName(exporterName)] = remoteWriteConfig.Oauth2
 	}
 	if c.JaegerRemoteSampling != nil {
 		if len(c.JaegerRemoteSampling) == 0 {
@@ -572,7 +549,7 @@ func (c *InstanceConfig) extensions() (map[string]interface{}, error) {
 		}
 		for i, jrsConfig := range c.JaegerRemoteSampling {
 			extName := fmt.Sprintf("jaegerremotesampling/%d", i)
-			extensions[extName] = jrsConfig
+			extensions[extName] = map[string]interface{}(jrsConfig)
 		}
 	}
 	return extensions, nil
@@ -994,26 +971,46 @@ func orderProcessors(processors []string, splitPipelines bool) [][]string {
 }
 
 func otelcolConfigFromStringMap(otelMapStructure map[string]interface{}, factories *otelcol.Factories) (*otelcol.Config, error) {
-	configMap := confmap.NewFromStringMap(otelMapStructure)
-	otelCfg, err := otelcol.Unmarshal(configMap, *factories)
+	var b bytes.Buffer
+	enc := yaml.NewEncoder(&b)
+
+	enc.SetHook(func(in interface{}) (ok bool, out interface{}, err error) {
+		switch v := in.(type) {
+		case SecretString:
+			return true, string(v), nil
+		case configopaque.String:
+			return true, string(v), nil
+		default:
+			return false, nil, nil
+		}
+	})
+
+	if err := enc.Encode(otelMapStructure); err != nil {
+		return nil, err
+	}
+	cp, err := otelcol.NewConfigProvider(otelcol.ConfigProviderSettings{
+		ResolverSettings: confmap.ResolverSettings{
+			URIs: []string{"yaml:" + string(b.Bytes())},
+			ProviderFactories: []confmap.ProviderFactory{
+				yamlprovider.NewFactory(),
+			},
+		},
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to create config provider: %w", err)
+	}
+
+	otelCfg, err := cp.Get(context.Background(), *factories)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load OTel config: %w", err)
 	}
 
-	res := otelcol.Config{
-		Receivers:  otelCfg.Receivers.Configs(),
-		Processors: otelCfg.Processors.Configs(),
-		Exporters:  otelCfg.Exporters.Configs(),
-		Connectors: otelCfg.Connectors.Configs(),
-		Extensions: otelCfg.Extensions.Configs(),
-		Service:    otelCfg.Service,
-	}
-
-	if err := res.Validate(); err != nil {
+	if err := otelCfg.Validate(); err != nil {
 		return nil, err
 	}
 
-	return &res, nil
+	return otelCfg, nil
 }
 
 // Code taken from OTel's service/configcheck.go

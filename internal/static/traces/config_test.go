@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/otelcol"
+	"go.opentelemetry.io/collector/pipeline"
 	"gopkg.in/yaml.v2"
 )
 
@@ -1159,8 +1160,6 @@ remote_write:
       scopes: ["api.metrics"]
       timeout: 2s
 `,
-			// The tls.ciphersuites would appear that it should output nothing or nil but during the conversion otelcolConfigFromStringMap the otelcol.Unmarshal converts the nil array to a blank one []. This is specifically used
-			// in confmap.go that transforms nil arrays into [] on the zeroSliceHookFunc.
 			expectedConfig: `
 receivers:
   push_receiver: {}
@@ -1174,8 +1173,6 @@ extensions:
     token_url: https://example.com/oauth2/default/v1/token
     scopes: ["api.metrics"]
     timeout: 2s
-    tls:
-      cipher_suites: []
 exporters:
   otlphttp/0:
     endpoint: example.com:12345
@@ -1244,7 +1241,6 @@ extensions:
       key_file: keyfile
       min_version: "1.3"
       reload_interval: 1h
-      cipher_suites: []
 exporters:
   otlphttp/0:
     endpoint: example.com:12345
@@ -1313,7 +1309,6 @@ extensions:
       key_pem: test_secret_key_pem_string
       max_version: "1.2"
       reload_interval: 1h
-      cipher_suites: []
 exporters:
   otlphttp/0:
     endpoint: example.com:12345
@@ -1370,16 +1365,12 @@ extensions:
    token_url: https://example.com/oauth2/default/v1/token
    scopes: ["api.metrics"]
    timeout: 2s
-   tls:
-     cipher_suites: []
  oauth2client/otlp1:
    client_id: anotherclientid
    client_secret: anotherclientsecret
    token_url: https://example.com/oauth2/default/v1/token
    scopes: ["api.metrics"]
    timeout: 2s
-   tls:
-     cipher_suites: []
 exporters:
   otlphttp/0:
     endpoint: example.com:12345
@@ -1440,7 +1431,6 @@ extensions:
     timeout: 2s
     tls:
       insecure: true
-      cipher_suites: []
 exporters:
   otlphttp/0:
     endpoint: http://example.com:12345
@@ -1544,7 +1534,7 @@ service:
 			sortService(actualConfig)
 			sortService(expectedConfig)
 
-			assert.Equal(t, *expectedConfig, *actualConfig)
+			assert.Equal(t, expectedConfig, actualConfig)
 		})
 	}
 }
@@ -1751,9 +1741,15 @@ load_balancing:
 			for componentID := range tc.expectedProcessors {
 				if len(tc.expectedProcessors[componentID]) > 0 {
 					assert.NotNil(t, tc.expectedProcessors)
-					assert.NotNil(t, actualConfig.Service.Pipelines[componentID])
+					var p pipeline.ID
+					if componentID.Name() != "" {
+						p = pipeline.MustNewIDWithName(componentID.Type().String(), componentID.Name())
+					} else {
+						p = pipeline.MustNewID(componentID.Type().String())
+					}
 
-					assert.Equal(t, tc.expectedProcessors[componentID], actualConfig.Service.Pipelines[componentID].Processors)
+					assert.NotNil(t, actualConfig.Service.Pipelines[p])
+					assert.Equal(t, tc.expectedProcessors[componentID], actualConfig.Service.Pipelines[p].Processors)
 				}
 			}
 		})
@@ -1905,7 +1901,7 @@ remote_write:
 	assert.Nil(t, err)
 	otel, err := cfg.OtelConfig()
 	assert.Nil(t, err)
-	assert.Contains(t, otel.Service.Pipelines[component.NewID(component.MustNewType("traces"))].Receivers, component.NewID(component.MustNewType(pushreceiver.TypeStr)))
+	assert.Contains(t, otel.Service.Pipelines[pipeline.NewID(pipeline.SignalTraces)].Receivers, component.NewID(component.MustNewType(pushreceiver.TypeStr)))
 }
 
 func TestUnmarshalYAMLEmptyOTLP(t *testing.T) {

@@ -1,6 +1,8 @@
 otelcol.receiver.kafka "default" {
-	brokers          = ["broker:9092"]
-	protocol_version = "2.0.0"
+	brokers            = ["broker:9092"]
+	protocol_version   = "2.0.0"
+	session_timeout    = "11s"
+	heartbeat_interval = "4s"
 
 	authentication {
 		plaintext {
@@ -31,6 +33,9 @@ otelcol.receiver.kafka "default" {
 			password     = "fakepassword"
 		}
 	}
+	min_fetch_size     = 2
+	default_fetch_size = 1048575
+	max_fetch_size     = 2000000
 
 	output {
 		metrics = [otelcol.exporter.kafka.default.input]

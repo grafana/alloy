@@ -2,27 +2,34 @@
 package http
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	_ "net/http/pprof" // Register pprof handlers
 	"os"
 	"path"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/go-kit/log"
 	"github.com/gorilla/mux"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
 	alloy_runtime "github.com/grafana/alloy/internal/runtime"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/service/remotecfg"
 	"github.com/grafana/alloy/internal/static/server"
+	"github.com/grafana/alloy/syntax/ast"
+	"github.com/grafana/alloy/syntax/printer"
 	"github.com/grafana/ckit/memconn"
 	_ "github.com/grafana/pyroscope-go/godeltaprof/http/pprof" // Register godeltaprof handler
 	"github.com/prometheus/client_golang/prometheus"
@@ -40,16 +47,18 @@ const ServiceName = "http"
 // Options are used to configure the HTTP service. Options are constant for the
 // lifetime of the HTTP service.
 type Options struct {
-	Logger   log.Logger           // Where to send logs.
+	Logger   *logging.Logger      // Where to send logs.
 	Tracer   trace.TracerProvider // Where to send traces.
 	Gatherer prometheus.Gatherer  // Where to collect metrics from.
 
 	ReadyFunc  func() bool
 	ReloadFunc func() (*alloy_runtime.Source, error)
 
-	HTTPListenAddr   string // Address to listen for HTTP traffic on.
-	MemoryListenAddr string // Address to accept in-memory traffic on.
-	EnablePProf      bool   // Whether pprof endpoints should be exposed.
+	HTTPListenAddr   string                // Address to listen for HTTP traffic on.
+	MemoryListenAddr string                // Address to accept in-memory traffic on.
+	EnablePProf      bool                  // Whether pprof endpoints should be exposed.
+	MinStability     featuregate.Stability // Minimum stability level to utilize for feature gates
+	BundleContext    SupportBundleContext  // Context for delivering a support bundle
 }
 
 // Arguments holds runtime settings for the HTTP service.
@@ -58,13 +67,22 @@ type Arguments struct {
 }
 
 type Service struct {
-	log      log.Logger
-	tracer   trace.TracerProvider
-	gatherer prometheus.Gatherer
-	opts     Options
+	// globalLogger allows us to leverage the logging struct for setting a temporary
+	// logger for support bundle usage and still leverage log.With for logging in the service
+	globalLogger *logging.Logger
+	log          log.Logger
+	tracer       trace.TracerProvider
+	gatherer     prometheus.Gatherer
+	opts         Options
 
 	winMut sync.Mutex
 	win    *server.WinCertStoreHandler
+
+	// Used to enforce single-flight requests to supportHandler
+	supportBundleMut sync.Mutex
+
+	// Track the raw config for use with the support bundle
+	sources map[string]*ast.File
 
 	// publicLis and tcpLis are used to lazily enable TLS, since TLS is
 	// optionally configurable at runtime.
@@ -95,7 +113,7 @@ func New(opts Options) *Service {
 	)
 
 	if l == nil {
-		l = log.NewNopLogger()
+		l = logging.NewNop()
 	}
 	if t == nil {
 		t = noop.NewTracerProvider()
@@ -113,10 +131,11 @@ func New(opts Options) *Service {
 	_ = publicLis.SetInner(tcpLis)
 
 	return &Service{
-		log:      l,
-		tracer:   t,
-		gatherer: r,
-		opts:     opts,
+		globalLogger: l,
+		log:          log.With(l, "service", "http"),
+		tracer:       t,
+		gatherer:     r,
+		opts:         opts,
 
 		publicLis: publicLis,
 		tcpLis:    tcpLis,
@@ -211,6 +230,9 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 		}).Methods(http.MethodGet, http.MethodPost)
 	}
 
+	// Wire in support bundle generator
+	r.HandleFunc("/-/support", s.generateSupportBundleHandler(host)).Methods("GET")
+
 	// Wire custom service handlers for services which depend on the http
 	// service.
 	//
@@ -241,6 +263,90 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 
 	<-ctx.Done()
 	return nil
+}
+
+func (s *Service) generateSupportBundleHandler(host service.Host) func(rw http.ResponseWriter, r *http.Request) {
+	return func(rw http.ResponseWriter, r *http.Request) {
+		s.supportBundleMut.Lock()
+		defer s.supportBundleMut.Unlock()
+
+		// TODO(dehaansa) remove this check once the support bundle is generally available
+		if !s.opts.MinStability.Permits(featuregate.StabilityPublicPreview) {
+			rw.WriteHeader(http.StatusForbidden)
+			_, _ = rw.Write([]byte("support bundle generation is only available in public preview. Use" +
+				" --stability.level command-line flag to enable public-preview features"))
+			return
+		}
+
+		if s.opts.BundleContext.DisableSupportBundle {
+			rw.WriteHeader(http.StatusForbidden)
+			_, _ = rw.Write([]byte("support bundle generation is disabled; it can be re-enabled by removing the --disable-support-bundle flag"))
+			return
+		}
+
+		duration := getServerWriteTimeout(r)
+		if r.URL.Query().Has("duration") {
+			d, err := strconv.Atoi(r.URL.Query().Get("duration"))
+			if err != nil {
+				http.Error(rw, fmt.Sprintf("duration value (in seconds) should be a positive integer: %s", err), http.StatusBadRequest)
+				return
+			}
+			if d < 1 {
+				http.Error(rw, "duration value (in seconds) should be larger than 1", http.StatusBadRequest)
+				return
+			}
+			if float64(d) > duration.Seconds() {
+				http.Error(rw, "duration value exceeds the server's write timeout", http.StatusBadRequest)
+				return
+			}
+			duration = time.Duration(d) * time.Second
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), duration)
+		defer cancel()
+
+		var logsBuffer bytes.Buffer
+		syncBuff := log.NewSyncWriter(&logsBuffer)
+		s.globalLogger.SetTemporaryWriter(syncBuff)
+		defer func() {
+			s.globalLogger.RemoveTemporaryWriter()
+		}()
+
+		// Get and redact the cached remote config.
+		cachedConfig, err := remoteCfgRedactedCachedConfig(host)
+		if err != nil {
+			level.Debug(s.log).Log("msg", "failed to get cached remote config", "err", err)
+		}
+
+		// Ensure the sources are written using the printer as it will handle
+		// secret redaction.
+		sources := redactedSources(s.sources)
+
+		bundle, err := ExportSupportBundle(ctx, s.opts.BundleContext.RuntimeFlags, s.opts.HTTPListenAddr, sources, cachedConfig, s.Data().(Data).DialFunc)
+		if err != nil {
+			http.Error(rw, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if err := ServeSupportBundle(rw, bundle, &logsBuffer); err != nil {
+			http.Error(rw, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+}
+
+// SetSources sets the sources on reload to be delivered
+// with the support bundle.
+func (s *Service) SetSources(sources map[string]*ast.File) {
+	s.supportBundleMut.Lock()
+	defer s.supportBundleMut.Unlock()
+	s.sources = sources
+}
+
+func getServerWriteTimeout(r *http.Request) time.Duration {
+	srv, ok := r.Context().Value(http.ServerContextKey).(*http.Server)
+	if ok && srv.WriteTimeout != 0 {
+		return srv.WriteTimeout
+	}
+	return 30 * time.Second
 }
 
 // getServiceRoutes returns a sorted list of service routes for services which
@@ -500,6 +606,45 @@ func (lis *lazyListener) Addr() net.Addr {
 	}
 
 	return lis.inner.Addr()
+}
+
+func redactedSources(sources map[string]*ast.File) map[string][]byte {
+	if sources == nil {
+		return nil
+	}
+	printedSources := make(map[string][]byte, len(sources))
+
+	for k, v := range sources {
+		b, err := printFileRedacted(v)
+		if err != nil {
+			printedSources[k] = []byte(fmt.Errorf("failed to print source: %w", err).Error())
+			continue
+		}
+		printedSources[k] = b
+	}
+	return printedSources
+}
+
+func remoteCfgRedactedCachedConfig(host service.Host) ([]byte, error) {
+	svc, ok := host.GetService(remotecfg.ServiceName)
+	if !ok {
+		return nil, fmt.Errorf("failed to get the remotecfg service")
+	}
+
+	return printFileRedacted(svc.(*remotecfg.Service).GetCachedAstFile())
+}
+
+func printFileRedacted(f *ast.File) ([]byte, error) {
+	c := printer.Config{
+		RedactSecrets: true,
+	}
+
+	var buf bytes.Buffer
+	w := io.Writer(&buf)
+	if err := c.Fprint(w, f); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
 
 func remoteCfgHostProvider(host service.Host) func() (service.Host, error) {

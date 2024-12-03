@@ -2,6 +2,7 @@ package remotecfg
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"hash/fnv"
 	"maps"
@@ -27,6 +28,7 @@ import (
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/util/jitter"
 	"github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax/ast"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	commonconfig "github.com/prometheus/common/config"
@@ -39,6 +41,8 @@ func getHash(in []byte) string {
 }
 
 const baseJitter = 100 * time.Millisecond
+
+var errNotModified = errors.New("config not modified since last fetch")
 
 // Service implements a service for remote configuration.
 // The default value of ch is nil; this means it will block forever if the
@@ -60,10 +64,19 @@ type Service struct {
 	systemAttrs       map[string]string
 	attrs             map[string]string
 	metrics           *metrics
+
+	// This is the hash received from the API. It is used to determine if
+	// the configuration has changed since the last fetch
+	remoteHash string
+
+	// This is the AST file parsed from the configuration. This is used
+	// for the support bundle
+	astFile *ast.File
 }
 
 type metrics struct {
 	lastFetchSuccess     prometheus.Gauge
+	lastFetchNotModified prometheus.Gauge
 	totalFailures        prometheus.Counter
 	configHash           *prometheus.GaugeVec
 	lastFetchSuccessTime prometheus.Gauge
@@ -82,6 +95,7 @@ const namespaceDelimiter = "."
 type Options struct {
 	Logger      log.Logger            // Where to send logs.
 	StoragePath string                // Where to cache configuration on-disk.
+	ConfigPath  string                // Where the root config file is.
 	Metrics     prometheus.Registerer // Where to send metrics to.
 }
 
@@ -176,6 +190,12 @@ func (s *Service) registerMetrics() {
 			prometheus.GaugeOpts{
 				Name: "remotecfg_last_load_successful",
 				Help: "Remote config loaded successfully",
+			},
+		),
+		lastFetchNotModified: prom.NewGauge(
+			prometheus.GaugeOpts{
+				Name: "remotecfg_last_load_not_modified",
+				Help: "Remote config not modified since last fetch",
 			},
 		),
 		totalFailures: prom.NewCounter(
@@ -316,6 +336,13 @@ func (s *Service) Update(newConfig any) error {
 	return nil
 }
 
+// GetCachedAstFile returns the AST file that was parsed from the configuration.
+func (s *Service) GetCachedAstFile() *ast.File {
+	s.mut.RLock()
+	defer s.mut.RUnlock()
+	return s.astFile
+}
+
 // fetch attempts to read configuration from the API and the local cache
 // and then parse/load their contents in order of preference.
 func (s *Service) fetch() {
@@ -345,15 +372,27 @@ func (s *Service) fetchRemote() error {
 		return nil
 	}
 
+	level.Debug(s.opts.Logger).Log("msg", "fetching remote configuration")
+
 	b, err := s.getAPIConfig()
 	s.metrics.totalAttempts.Add(1)
-	if err != nil {
+
+	if err == nil || err == errNotModified {
+		s.metrics.lastFetchSuccess.Set(1)
+		s.metrics.lastFetchSuccessTime.SetToCurrentTime()
+	} else {
 		s.metrics.totalFailures.Add(1)
 		s.metrics.lastFetchSuccess.Set(0)
 		return err
 	}
-	s.metrics.lastFetchSuccess.Set(1)
-	s.metrics.lastFetchSuccessTime.SetToCurrentTime()
+
+	if err == errNotModified {
+		level.Debug(s.opts.Logger).Log("msg", "skipping over API response since it has not been modified since last fetch")
+		s.metrics.lastFetchNotModified.Set(1)
+		return nil
+	} else {
+		s.metrics.lastFetchNotModified.Set(0)
+	}
 
 	// API return the same configuration, no need to reload.
 	newConfigHash := getHash(b)
@@ -391,6 +430,7 @@ func (s *Service) getAPIConfig() ([]byte, error) {
 	req := connect.NewRequest(&collectorv1.GetConfigRequest{
 		Id:         s.args.ID,
 		Attributes: s.attrs,
+		Hash:       s.remoteHash,
 	})
 	client := s.asClient
 	s.mut.RUnlock()
@@ -401,6 +441,14 @@ func (s *Service) getAPIConfig() ([]byte, error) {
 		return nil, err
 	}
 	s.metrics.getConfigTime.Observe(time.Since(start).Seconds())
+	if gcr.Msg.NotModified {
+		return nil, errNotModified
+	}
+	if gcr.Msg.Hash != "" {
+		s.mut.Lock()
+		s.remoteHash = gcr.Msg.Hash
+		s.mut.Unlock()
+	}
 	return []byte(gcr.Msg.GetContent()), nil
 }
 
@@ -432,11 +480,12 @@ func (s *Service) parseAndLoad(b []byte) error {
 		return nil
 	}
 
-	err := ctrl.LoadSource(b, nil)
+	file, err := ctrl.LoadSource(b, nil, s.opts.ConfigPath)
 	if err != nil {
 		return err
 	}
 
+	s.setAstFile(file)
 	s.setCfgHash(getHash(b))
 	return nil
 }
@@ -446,6 +495,12 @@ func (s *Service) getCfgHash() string {
 	defer s.mut.RUnlock()
 
 	return s.currentConfigHash
+}
+
+func (s *Service) setAstFile(f *ast.File) {
+	s.mut.Lock()
+	defer s.mut.Unlock()
+	s.astFile = f
 }
 
 func (s *Service) setCfgHash(h string) {

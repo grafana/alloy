@@ -9,10 +9,11 @@ import (
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/grafana/alloy/syntax/token/builder"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/component/componentstatus"
 )
 
-func StringifyInstanceID(id component.InstanceID) string {
-	return fmt.Sprintf("%s/%s", StringifyKind(id.Kind), id.ID)
+func StringifyInstanceID(id componentstatus.InstanceID) string {
+	return fmt.Sprintf("%s/%s", StringifyKind(id.Kind()), id.ComponentID())
 }
 
 func StringifyKind(k component.Kind) string {

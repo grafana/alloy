@@ -32,12 +32,12 @@ func (args *QueueArguments) SetToDefault() {
 }
 
 // Convert converts args into the upstream type.
-func (args *QueueArguments) Convert() *otelexporterhelper.QueueSettings {
+func (args *QueueArguments) Convert() *otelexporterhelper.QueueConfig {
 	if args == nil {
 		return nil
 	}
 
-	return &otelexporterhelper.QueueSettings{
+	return &otelexporterhelper.QueueConfig{
 		Enabled:      args.Enabled,
 		NumConsumers: args.NumConsumers,
 		QueueSize:    args.QueueSize,

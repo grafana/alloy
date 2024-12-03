@@ -19,7 +19,7 @@ To complete this tutorial:
 
 ### Recommended reading
 
-- [{{< param "PRODUCT_NAME" >}} configuration syntax][configuration syntax]
+* [{{< param "PRODUCT_NAME" >}} configuration syntax][configuration syntax]
 
 ## {{% param "PRODUCT_NAME" %}} configuration syntax basics
 
@@ -36,8 +36,8 @@ An {{< param "PRODUCT_NAME" >}} configuration file contains three elements:
 1. **Expressions**
 
    Expressions are used to compute values.
-   They can be constant values (for example, `"localhost:9090"`), or they can be more complex (for example, referencing a component's export: `prometheus.exporter.unix.targets`.
-   They can also be a mathematical expression: `(1 + 2) * 3`, or a standard library function call: `env("HOME")`). We will use more expressions as we go along the examples.
+   They can be constant values, for example `"localhost:9090"`. They can be more complex, for example, referencing a component's export: `prometheus.exporter.unix.targets`.
+   They can also be a mathematical expression: `(1 + 2) * 3`, or a standard library function call: `sys.env("HOME")`.
    If you are curious, you can find a list of available standard library functions in the [Standard library documentation][].
 
 1. **Blocks**
@@ -59,7 +59,7 @@ An {{< param "PRODUCT_NAME" >}} configuration file contains three elements:
     Try pasting this into `config.alloy` and running `<BINARY_FILE_PATH> run config.alloy` to see what happens. Replace _`<BINARY_FILE_PATH>`_ with the path to the {{< param "PRODUCT_NAME" >}} binary.
 
     Congratulations, you've just written your first {{< param "PRODUCT_NAME" >}} configuration file.
-    This configuration won't do anything, so let's add some components to it.
+    This configuration won't do anything. In the next step, you add some functionality to this configuration.
 
     {{< admonition type="note" >}}
     Comments in {{< param "PRODUCT_NAME" >}} syntax are prefixed with `//` and are single-line only. For example: `// This is a comment`.
@@ -67,13 +67,13 @@ An {{< param "PRODUCT_NAME" >}} configuration file contains three elements:
 
 ## Components
 
-Components are the building blocks of an {{< param "PRODUCT_NAME" >}} configuration. They are configured and linked to create pipelines that collect, process, and output your telemetry data. Components are configured with `Arguments` and have `Exports` that may be referenced by other components.
+Components are the building blocks of an {{< param "PRODUCT_NAME" >}} configuration. They're configured and linked to create pipelines that collect, process, and output your telemetry data. Components are configured with `Arguments` and have `Exports` that may be referenced by other components.
 
 ### Recommended reading
 
-- [Components][]
-- [Components configuration language][]
-- [Component controller][]
+* [Components][]
+* [Components configuration language][]
+* [Component controller][]
 
 ### An example pipeline
 
@@ -81,7 +81,7 @@ Look at the following simple pipeline:
 
 ```alloy
 local.file "example" {
-    filename = env("HOME") + "/file.txt"
+    filename = sys.env("HOME") + "/file.txt"
 }
 
 prometheus.remote_write "local_prom" {
@@ -104,7 +104,7 @@ Each component has a link to its documentation, which contains a description of 
 {{< /admonition >}}
 
 This pipeline has two components: `local.file` and `prometheus.remote_write`.
-The `local.file` component is configured with a single argument, `filename`, which is set by calling the [env][] standard library function to retrieve the value of the `HOME` environment variable and concatenating it with the string `"file.txt"`.
+The `local.file` component is configured with a single argument, `filename`, which is set by calling the [sys.env][] standard library function to retrieve the value of the `HOME` environment variable and concatenating it with the string `"file.txt"`.
 The `local.file` component has a single export, `content`, which contains the contents of the file.
 
 The `prometheus.remote_write` component is configured with an `endpoint` block, containing the `url` attribute and a `basic_auth` block.
@@ -121,15 +121,15 @@ The `prometheus.remote_write` component's label is set to `"local_prom"`, so the
 
 This example pipeline still doesn't do anything, so its time to add some more components to it.
 
-## Shipping your first metrics
+## Send your first metrics
 
-Now that you have a simple pipeline, you can ship your first metrics.
+Now that you have a simple pipeline, you can send your first metrics.
 
 ### Recommended reading
 
-- Optional: [prometheus.exporter.unix][]
-- Optional: [prometheus.scrape][]
-- Optional: [prometheus.remote_write][]
+* Optional: [`prometheus.exporter.unix`][prometheus.exporter.unix]
+* Optional: [`prometheus.scrape`][prometheus.scrape]
+* Optional: [`prometheus.remote_write`][prometheus.remote_write]
 
 ### Modify your pipeline and scrape the metrics
 
@@ -171,9 +171,7 @@ Navigate to [http://localhost:3000/explore][] in your browser.
 After ~15-20 seconds, you should be able to see the metrics from the `prometheus.exporter.unix` component.
 Try querying for `node_memory_Active_bytes` to see the active memory of your host.
 
-<p align="center">
-<img src="/media/docs/alloy/screenshot-memory-usage.png" alt="Screenshot of node_memory_Active_bytes query in Grafana" />
-</p>
+{{< figure src="/media/docs/alloy/screenshot-memory-usage.png" alt="Screenshot of node_memory_Active_bytes query in Grafana" >}}
 
 ## Visualize the relationship between components
 
@@ -183,9 +181,9 @@ The following diagram is an example pipeline:
 
 Your pipeline configuration defines three components:
 
-- `prometheus.scrape` - A component that scrapes metrics from components that export targets.
-- `prometheus.exporter.unix` - A component that exports metrics from the host, built around [node_exporter][].
-- `prometheus.remote_write` - A component that sends metrics to a Prometheus remote-write compatible endpoint.
+* `prometheus.scrape` - A component that scrapes metrics from components that export targets.
+* `prometheus.exporter.unix` - A component that exports metrics from the host, built around [node_exporter][].
+* `prometheus.remote_write` - A component that sends metrics to a Prometheus remote-write compatible endpoint.
 
 The `prometheus.scrape` component references the `prometheus.exporter.unix` component's targets export, which is a list of scrape targets.
 The `prometheus.scrape` component forwards the scraped metrics to the `prometheus.remote_write` component.
@@ -200,7 +198,7 @@ The following exercise guides you through modifying your pipeline to scrape metr
 
 ### Recommended Reading
 
-- Optional: [prometheus.exporter.redis][]
+* Optional: [`prometheus.exporter.redis`][prometheus.exporter.redis]
 
 Start a container running Redis and configure {{< param "PRODUCT_NAME" >}} to scrape the metrics.
 
@@ -209,16 +207,16 @@ docker container run -d --name alloy-redis -p 6379:6379 --rm redis
 ```
 
 Try modifying the pipeline to scrape metrics from the Redis exporter.
-You can refer to the [prometheus.exporter.redis][] component documentation for more information on how to configure it.
+You can refer to the [`prometheus.exporter.redis`][prometheus.exporter.redis] component documentation for more information on how to configure it.
 
 To give a visual hint, you want to create a pipeline that looks like this:
 
 {{< figure src="/media/docs/alloy/diagram-example-pipeline-exercise-alloy.png" alt="Exercise pipeline, with a scrape, unix_exporter, redis_exporter, and remote_write component" >}}
 
 {{< admonition type="tip" >}}
-Refer to the [concat][] standard library function for information about combining lists of values into a single list.
+Refer to the [`array.concat`][array.concat] standard library function for information about combining lists of values into a single list.
 
-[concat]: ../../reference/stdlib/concat/
+[array.concat]: ../../reference/stdlib/array/
 {{< /admonition >}}
 
 You can run {{< param "PRODUCT_NAME" >}} with the new configuration file with the following command:
@@ -265,8 +263,8 @@ prometheus.scrape "default" {
     // of the prometheus.exporter.redis component with the label "local_redis".
     //
     // If you have more than one set of targets that you would like to scrape, you can use
-    // the 'concat' function from the standard library to combine them.
-    targets    = concat(prometheus.exporter.redis.local_redis.targets, prometheus.exporter.unix.localhost.targets)
+    // the 'array.concat' function from the standard library to combine them.
+    targets    = array.concat(prometheus.exporter.redis.local_redis.targets, prometheus.exporter.unix.localhost.targets)
     forward_to = [prometheus.remote_write.local_prom.receiver]
 }
 
@@ -282,10 +280,10 @@ prometheus.remote_write "local_prom" {
 
 {{< /collapse >}}
 
-## Finishing up and next steps
+## Finish up and next steps
 
 You might have noticed that running {{< param "PRODUCT_NAME" >}} with the configurations created a directory called `data-alloy` in the directory you ran {{< param "PRODUCT_NAME" >}} from.
-This directory is where components can store data, such as the `prometheus.exporter.unix` component storing its WAL (Write Ahead Log).
+This directory is where components can store data, such as the `prometheus.exporter.unix` component storing its Write Ahead Log (WAL).
 If you look in the directory, do you notice anything interesting? The directory for each component is the fully qualified name.
 
 If you'd like to store the data elsewhere, you can specify a different directory by supplying the `--storage.path` flag to {{< param "PRODUCT_NAME" >}}'s run command, for example, `<BINARY_FILE_PATH> run config.alloy --storage.path /etc/alloy`. Replace _`<BINARY_FILE_PATH>`_ with the path to the {{< param "PRODUCT_NAME" >}} binary.
@@ -305,4 +303,5 @@ You also learn how to use different components to process metrics and logs.
 [Components]: ../../get-started/components/
 [Component controller]: ../../get-started/component_controller/
 [Components configuration language]: ../../get-started/configuration-syntax/components/
-[env]: ../../reference/stdlib/env/
+[sys.env]: ../../reference/stdlib/sys/
+[http://localhost:3000/explore]: http://localhost:3000/explore

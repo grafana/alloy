@@ -37,6 +37,7 @@ Name | Type | Description | Default | Required
 ---- | ---- | ----------- | ------- | --------
 `forward_to` | `list(MetricsReceiver)` | List of receivers to send scraped metrics to. | | yes
 `namespaces` | `list(string)` | List of namespaces to search for Probe resources. If not specified, all namespaces will be searched. || no
+`informer_sync_timeout` | `duration` | Timeout for initial sync of Probe resources. | `1m` | no
 
 ## Blocks
 
@@ -252,7 +253,7 @@ prometheus.operator.probes "probes" {
     forward_to = [prometheus.remote_write.staging.receiver]
     rule {
       action = "keep"
-      regex = env("HOSTNAME")
+      regex = sys.env("HOSTNAME")
       source_labels = ["__meta_kubernetes_pod_node_name"]
     }
 }

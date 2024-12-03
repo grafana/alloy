@@ -16,6 +16,7 @@ import (
 	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
 	otelextension "go.opentelemetry.io/collector/extension"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 func init() {
@@ -151,7 +152,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	result.Encoding = args.Encoding
 	result.PartitionTracesByID = args.PartitionTracesByID
 	result.PartitionMetricsByResourceAttributes = args.PartitionMetricsByResourceAttributes
-	result.TimeoutSettings = exporterhelper.TimeoutSettings{
+	result.TimeoutSettings = exporterhelper.TimeoutConfig{
 		Timeout: args.Timeout,
 	}
 	result.Metadata = args.Metadata.Convert()
@@ -168,7 +169,7 @@ func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension 
 }
 
 // Exporters implements exporter.Arguments.
-func (args Arguments) Exporters() map[otelcomponent.DataType]map[otelcomponent.ID]otelcomponent.Component {
+func (args Arguments) Exporters() map[pipeline.Signal]map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 

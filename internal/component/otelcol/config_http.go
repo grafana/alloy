@@ -34,7 +34,7 @@ type HTTPServerArguments struct {
 	CompressionAlgorithms []string         `alloy:"compression_algorithms,attr,optional"`
 }
 
-var DefaultCompressionAlgorithms = []string{"", "gzip", "zstd", "zlib", "snappy", "deflate"}
+var DefaultCompressionAlgorithms = []string{"", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"}
 
 func copyStringSlice(s []string) []string {
 	if s == nil {
@@ -87,22 +87,23 @@ func (args *CORSArguments) Convert() *otelconfighttp.CORSConfig {
 type HTTPClientArguments struct {
 	Endpoint string `alloy:"endpoint,attr"`
 
+	ProxyUrl string `alloy:"proxy_url,attr,optional"`
+
 	Compression CompressionType `alloy:"compression,attr,optional"`
 
 	TLS TLSClientArguments `alloy:"tls,block,optional"`
 
-	ReadBufferSize  units.Base2Bytes  `alloy:"read_buffer_size,attr,optional"`
-	WriteBufferSize units.Base2Bytes  `alloy:"write_buffer_size,attr,optional"`
-	Timeout         time.Duration     `alloy:"timeout,attr,optional"`
-	Headers         map[string]string `alloy:"headers,attr,optional"`
-	// CustomRoundTripper  func(next http.RoundTripper) (http.RoundTripper, error) TODO (@tpaschalis)
-	MaxIdleConns         *int           `alloy:"max_idle_conns,attr,optional"`
-	MaxIdleConnsPerHost  *int           `alloy:"max_idle_conns_per_host,attr,optional"`
-	MaxConnsPerHost      *int           `alloy:"max_conns_per_host,attr,optional"`
-	IdleConnTimeout      *time.Duration `alloy:"idle_conn_timeout,attr,optional"`
-	DisableKeepAlives    bool           `alloy:"disable_keep_alives,attr,optional"`
-	HTTP2ReadIdleTimeout time.Duration  `alloy:"http2_read_idle_timeout,attr,optional"`
-	HTTP2PingTimeout     time.Duration  `alloy:"http2_ping_timeout,attr,optional"`
+	ReadBufferSize       units.Base2Bytes  `alloy:"read_buffer_size,attr,optional"`
+	WriteBufferSize      units.Base2Bytes  `alloy:"write_buffer_size,attr,optional"`
+	Timeout              time.Duration     `alloy:"timeout,attr,optional"`
+	Headers              map[string]string `alloy:"headers,attr,optional"`
+	MaxIdleConns         *int              `alloy:"max_idle_conns,attr,optional"`
+	MaxIdleConnsPerHost  *int              `alloy:"max_idle_conns_per_host,attr,optional"`
+	MaxConnsPerHost      *int              `alloy:"max_conns_per_host,attr,optional"`
+	IdleConnTimeout      *time.Duration    `alloy:"idle_conn_timeout,attr,optional"`
+	DisableKeepAlives    bool              `alloy:"disable_keep_alives,attr,optional"`
+	HTTP2ReadIdleTimeout time.Duration     `alloy:"http2_read_idle_timeout,attr,optional"`
+	HTTP2PingTimeout     time.Duration     `alloy:"http2_ping_timeout,attr,optional"`
 
 	// Auth is a binding to an otelcol.auth.* component extension which handles
 	// authentication.
@@ -131,15 +132,16 @@ func (args *HTTPClientArguments) Convert() *otelconfighttp.ClientConfig {
 	return &otelconfighttp.ClientConfig{
 		Endpoint: args.Endpoint,
 
+		ProxyURL: args.ProxyUrl,
+
 		Compression: args.Compression.Convert(),
 
 		TLSSetting: *args.TLS.Convert(),
 
-		ReadBufferSize:  int(args.ReadBufferSize),
-		WriteBufferSize: int(args.WriteBufferSize),
-		Timeout:         args.Timeout,
-		Headers:         opaqueHeaders,
-		// CustomRoundTripper: func(http.RoundTripper) (http.RoundTripper, error) { panic("not implemented") }, TODO (@tpaschalis)
+		ReadBufferSize:       int(args.ReadBufferSize),
+		WriteBufferSize:      int(args.WriteBufferSize),
+		Timeout:              args.Timeout,
+		Headers:              opaqueHeaders,
 		MaxIdleConns:         args.MaxIdleConns,
 		MaxIdleConnsPerHost:  args.MaxIdleConnsPerHost,
 		MaxConnsPerHost:      args.MaxConnsPerHost,

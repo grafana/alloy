@@ -61,15 +61,15 @@ loki.write "local_loki" {
 
 The {{< param "PRODUCT_NAME" >}} syntax aims to reduce errors in configuration files by making configurations easier to read and write.
 The {{< param "PRODUCT_NAME" >}} syntax uses blocks, attributes, and expressions.
-The blocks can be copied and pasted from the documentation to help you get started as quickly as possible.
+You can copy and paste the blocks from the documentation to help you get started as quickly as possible.
 
-The {{< param "PRODUCT_NAME" >}} syntax is declarative, so ordering components, blocks, and attributes does not matter.
+The {{< param "PRODUCT_NAME" >}} syntax is declarative, so ordering components, blocks, and attributes doesn't matter.
 The relationship between components determines the order of operations in the pipeline.
 
 ## Blocks
 
 You use _Blocks_ to configure components and groups of attributes.
-Each block can contain any number of attributes or nested blocks. 
+Each block can contain any number of attributes or nested blocks.
 Blocks are steps in the overall pipeline expressed by the configuration.
 
 ```alloy
@@ -107,11 +107,11 @@ The {{< param "PRODUCT_NAME" >}} syntax supports complex expressions, for exampl
 * Referencing the exports of components: `local.file.password_file.content`
 * Mathematical operations: `1 + 2`, `3 * 4`, `(5 * 6) + (7 + 8)`
 * Equality checks: `local.file.file_a.content == local.file.file_b.content`
-* Calling functions from {{< param "PRODUCT_NAME" >}}'s standard library: `env("HOME")` retrieves the value of the `HOME` environment variable.
+* Calling functions from {{< param "PRODUCT_NAME" >}}'s standard library: `sys.env("HOME")` retrieves the value of the `HOME` environment variable.
 
 You can use expressions for any attribute inside a component definition.
 
-### Referencing component exports
+### Reference component exports
 
 The most common expression is to reference the exports of a component, for example, `local.file.password_file.content`.
 You form a reference to a component's exports by merging the component's name (for example, `local.file`),

@@ -12,11 +12,11 @@ If no argument is non-empty or non-zero, the last argument is returned.
 
 ## Examples
 
-```
+```alloy
 > coalesce("a", "b")
 a
 > coalesce("", "b")
 b
-> coalesce(env("DOES_NOT_EXIST"), "c")
+> coalesce(sys.env("DOES_NOT_EXIST"), "c")
 c
 ```

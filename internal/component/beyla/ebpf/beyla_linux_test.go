@@ -329,6 +329,16 @@ func TestArguments_Validate(t *testing.T) {
 			},
 			expected: errors.New("invalid prometheus.features entry: tralara"),
 		},
+		{
+			name: "network feature without network enabled",
+			args: Arguments{
+				Port: "849",
+				Metrics: Metrics{
+					Features: []string{"network"},
+				},
+			},
+			expected: errors.New("network feature can only be enabled if network is enabled"),
+		},
 	}
 
 	for _, tt := range tests {

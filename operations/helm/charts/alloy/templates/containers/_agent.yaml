@@ -16,7 +16,7 @@
     - --cluster.enabled=true
     - --cluster.join-addresses={{ include "alloy.fullname" . }}-cluster
     {{- if $values.clustering.name }}
-    - --cluster.name={{ $values.clustering.name | quote }}
+    - --cluster.name={{ $values.clustering.name }}
     {{- end}}
     {{- end}}
     {{- if $values.stabilityLevel }}
@@ -60,6 +60,10 @@
   {{- with $values.resources }}
   resources:
     {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with $values.lifecycle }}
+  lifecycle:
+  {{- toYaml . | nindent 4 }}
   {{- end }}
   {{- with $values.securityContext }}
   securityContext:

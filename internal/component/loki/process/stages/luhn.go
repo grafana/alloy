@@ -17,7 +17,7 @@ type LuhnFilterConfig struct {
 }
 
 // validateLuhnFilterConfig validates the LuhnFilterConfig.
-func validateLuhnFilterConfig(c LuhnFilterConfig) error {
+func validateLuhnFilterConfig(c *LuhnFilterConfig) error {
 	if c.Replacement == "" {
 		c.Replacement = "**REDACTED**"
 	}
@@ -32,7 +32,7 @@ func validateLuhnFilterConfig(c LuhnFilterConfig) error {
 
 // newLuhnFilterStage creates a new LuhnFilterStage.
 func newLuhnFilterStage(config LuhnFilterConfig) (Stage, error) {
-	if err := validateLuhnFilterConfig(config); err != nil {
+	if err := validateLuhnFilterConfig(&config); err != nil {
 		return nil, err
 	}
 	return toStage(&luhnFilterStage{

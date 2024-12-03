@@ -17,6 +17,7 @@ The value of an attribute may matter as well as its type.
 Refer to each component's documentation for more details on what values are acceptable.
 
 For example:
+
 * A Prometheus component may always expect an `"__address__"` label inside a list of targets.
 * A `string` argument may only accept certain values like "traceID" or "spanID".
 {{< /admonition >}}
@@ -41,6 +42,10 @@ The following components, grouped by namespace, _export_ Targets.
 
 {{< collapse title="beyla" >}}
 - [beyla.ebpf](../components/beyla/beyla.ebpf)
+{{< /collapse >}}
+
+{{< collapse title="database_observability" >}}
+- [database_observability.mysql](../components/database_observability/database_observability.mysql)
 {{< /collapse >}}
 
 {{< collapse title="discovery" >}}
@@ -113,9 +118,9 @@ The following components, grouped by namespace, _export_ Targets.
 
 <!-- END GENERATED SECTION: EXPORTERS OF Targets -->
 
-
 <!-- NOTE: this title is used as an anchor in links. Do not change. -->
 ### Targets Consumers
+
 The following components, grouped by namespace, _consume_ Targets.
 
 <!-- START GENERATED SECTION: CONSUMERS OF Targets -->
@@ -151,7 +156,6 @@ The following components, grouped by namespace, _consume_ Targets.
 
 <!-- END GENERATED SECTION: CONSUMERS OF Targets -->
 
-
 ## Prometheus `MetricsReceiver`
 
 The Prometheus metrics are sent between components using `MetricsReceiver`s.
@@ -175,6 +179,7 @@ The following components, grouped by namespace, _export_ Prometheus `MetricsRece
 {{< collapse title="prometheus" >}}
 - [prometheus.relabel](../components/prometheus/prometheus.relabel)
 - [prometheus.remote_write](../components/prometheus/prometheus.remote_write)
+- [prometheus.write.queue](../components/prometheus/prometheus.write.queue)
 {{< /collapse >}}
 
 <!-- END GENERATED SECTION: EXPORTERS OF Prometheus `MetricsReceiver` -->
@@ -218,6 +223,7 @@ The following components, grouped by namespace, _export_ Loki `LogsReceiver`.
 - [loki.echo](../components/loki/loki.echo)
 - [loki.process](../components/loki/loki.process)
 - [loki.relabel](../components/loki/loki.relabel)
+- [loki.secretfilter](../components/loki/loki.secretfilter)
 - [loki.write](../components/loki/loki.write)
 {{< /collapse >}}
 
@@ -234,6 +240,10 @@ The following components, grouped by namespace, _consume_ Loki `LogsReceiver`.
 
 <!-- START GENERATED SECTION: CONSUMERS OF Loki `LogsReceiver` -->
 
+{{< collapse title="database_observability" >}}
+- [database_observability.mysql](../components/database_observability/database_observability.mysql)
+{{< /collapse >}}
+
 {{< collapse title="faro" >}}
 - [faro.receiver](../components/faro/faro.receiver)
 {{< /collapse >}}
@@ -241,6 +251,7 @@ The following components, grouped by namespace, _consume_ Loki `LogsReceiver`.
 {{< collapse title="loki" >}}
 - [loki.process](../components/loki/loki.process)
 - [loki.relabel](../components/loki/loki.relabel)
+- [loki.secretfilter](../components/loki/loki.secretfilter)
 - [loki.source.api](../components/loki/loki.source.api)
 - [loki.source.awsfirehose](../components/loki/loki.source.awsfirehose)
 - [loki.source.azure_event_hubs](../components/loki/loki.source.azure_event_hubs)
@@ -287,19 +298,23 @@ The following components, grouped by namespace, _export_ OpenTelemetry `otelcol.
 - [otelcol.connector.spanlogs](../components/otelcol/otelcol.connector.spanlogs)
 - [otelcol.connector.spanmetrics](../components/otelcol/otelcol.connector.spanmetrics)
 - [otelcol.exporter.awss3](../components/otelcol/otelcol.exporter.awss3)
+- [otelcol.exporter.datadog](../components/otelcol/otelcol.exporter.datadog)
 - [otelcol.exporter.debug](../components/otelcol/otelcol.exporter.debug)
 - [otelcol.exporter.kafka](../components/otelcol/otelcol.exporter.kafka)
 - [otelcol.exporter.loadbalancing](../components/otelcol/otelcol.exporter.loadbalancing)
-- [otelcol.exporter.logging](../components/otelcol/otelcol.exporter.logging)
 - [otelcol.exporter.loki](../components/otelcol/otelcol.exporter.loki)
 - [otelcol.exporter.otlp](../components/otelcol/otelcol.exporter.otlp)
 - [otelcol.exporter.otlphttp](../components/otelcol/otelcol.exporter.otlphttp)
 - [otelcol.exporter.prometheus](../components/otelcol/otelcol.exporter.prometheus)
+- [otelcol.exporter.splunkhec](../components/otelcol/otelcol.exporter.splunkhec)
+- [otelcol.exporter.syslog](../components/otelcol/otelcol.exporter.syslog)
 - [otelcol.processor.attributes](../components/otelcol/otelcol.processor.attributes)
 - [otelcol.processor.batch](../components/otelcol/otelcol.processor.batch)
 - [otelcol.processor.deltatocumulative](../components/otelcol/otelcol.processor.deltatocumulative)
 - [otelcol.processor.discovery](../components/otelcol/otelcol.processor.discovery)
 - [otelcol.processor.filter](../components/otelcol/otelcol.processor.filter)
+- [otelcol.processor.groupbyattrs](../components/otelcol/otelcol.processor.groupbyattrs)
+- [otelcol.processor.interval](../components/otelcol/otelcol.processor.interval)
 - [otelcol.processor.k8sattributes](../components/otelcol/otelcol.processor.k8sattributes)
 - [otelcol.processor.memory_limiter](../components/otelcol/otelcol.processor.memory_limiter)
 - [otelcol.processor.probabilistic_sampler](../components/otelcol/otelcol.processor.probabilistic_sampler)
@@ -336,6 +351,8 @@ The following components, grouped by namespace, _consume_ OpenTelemetry `otelcol
 - [otelcol.processor.deltatocumulative](../components/otelcol/otelcol.processor.deltatocumulative)
 - [otelcol.processor.discovery](../components/otelcol/otelcol.processor.discovery)
 - [otelcol.processor.filter](../components/otelcol/otelcol.processor.filter)
+- [otelcol.processor.groupbyattrs](../components/otelcol/otelcol.processor.groupbyattrs)
+- [otelcol.processor.interval](../components/otelcol/otelcol.processor.interval)
 - [otelcol.processor.k8sattributes](../components/otelcol/otelcol.processor.k8sattributes)
 - [otelcol.processor.memory_limiter](../components/otelcol/otelcol.processor.memory_limiter)
 - [otelcol.processor.probabilistic_sampler](../components/otelcol/otelcol.processor.probabilistic_sampler)
@@ -345,12 +362,14 @@ The following components, grouped by namespace, _consume_ OpenTelemetry `otelcol
 - [otelcol.processor.transform](../components/otelcol/otelcol.processor.transform)
 - [otelcol.receiver.datadog](../components/otelcol/otelcol.receiver.datadog)
 - [otelcol.receiver.file_stats](../components/otelcol/otelcol.receiver.file_stats)
+- [otelcol.receiver.influxdb](../components/otelcol/otelcol.receiver.influxdb)
 - [otelcol.receiver.jaeger](../components/otelcol/otelcol.receiver.jaeger)
 - [otelcol.receiver.kafka](../components/otelcol/otelcol.receiver.kafka)
 - [otelcol.receiver.loki](../components/otelcol/otelcol.receiver.loki)
 - [otelcol.receiver.opencensus](../components/otelcol/otelcol.receiver.opencensus)
 - [otelcol.receiver.otlp](../components/otelcol/otelcol.receiver.otlp)
 - [otelcol.receiver.prometheus](../components/otelcol/otelcol.receiver.prometheus)
+- [otelcol.receiver.solace](../components/otelcol/otelcol.receiver.solace)
 - [otelcol.receiver.vcenter](../components/otelcol/otelcol.receiver.vcenter)
 - [otelcol.receiver.zipkin](../components/otelcol/otelcol.receiver.zipkin)
 {{< /collapse >}}
@@ -387,6 +406,7 @@ The following components, grouped by namespace, _consume_ Pyroscope `ProfilesRec
 {{< collapse title="pyroscope" >}}
 - [pyroscope.ebpf](../components/pyroscope/pyroscope.ebpf)
 - [pyroscope.java](../components/pyroscope/pyroscope.java)
+- [pyroscope.receive_http](../components/pyroscope/pyroscope.receive_http)
 - [pyroscope.scrape](../components/pyroscope/pyroscope.scrape)
 {{< /collapse >}}
 

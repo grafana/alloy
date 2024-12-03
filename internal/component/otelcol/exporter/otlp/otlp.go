@@ -13,6 +13,7 @@ import (
 	otelpexporterhelper "go.opentelemetry.io/collector/exporter/exporterhelper"
 	"go.opentelemetry.io/collector/exporter/otlpexporter"
 	otelextension "go.opentelemetry.io/collector/extension"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 func init() {
@@ -35,6 +36,9 @@ type Arguments struct {
 
 	Queue otelcol.QueueArguments `alloy:"sending_queue,block,optional"`
 	Retry otelcol.RetryArguments `alloy:"retry_on_failure,block,optional"`
+
+	// Add BatcherConfig once https://github.com/open-telemetry/opentelemetry-collector/issues/8122 is resolved
+	// BatcherConfig exporterbatcher.Config `mapstructure:"batcher"`
 
 	// DebugMetrics configures component internal metrics. Optional.
 	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
@@ -59,7 +63,7 @@ func (args *Arguments) SetToDefault() {
 // Convert implements exporter.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
 	return &otlpexporter.Config{
-		TimeoutSettings: otelpexporterhelper.TimeoutSettings{
+		TimeoutConfig: otelpexporterhelper.TimeoutConfig{
 			Timeout: args.Timeout,
 		},
 		QueueConfig:  *args.Queue.Convert(),
@@ -74,7 +78,7 @@ func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension 
 }
 
 // Exporters implements exporter.Arguments.
-func (args Arguments) Exporters() map[otelcomponent.DataType]map[otelcomponent.ID]otelcomponent.Component {
+func (args Arguments) Exporters() map[pipeline.Signal]map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 

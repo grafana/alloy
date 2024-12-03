@@ -15,6 +15,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelextension "go.opentelemetry.io/collector/extension"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 func init() {
@@ -32,13 +33,15 @@ func init() {
 
 // Arguments configures the otelcol.receiver.kafka component.
 type Arguments struct {
-	Brokers         []string `alloy:"brokers,attr"`
-	ProtocolVersion string   `alloy:"protocol_version,attr"`
-	Topic           string   `alloy:"topic,attr,optional"`
-	Encoding        string   `alloy:"encoding,attr,optional"`
-	GroupID         string   `alloy:"group_id,attr,optional"`
-	ClientID        string   `alloy:"client_id,attr,optional"`
-	InitialOffset   string   `alloy:"initial_offset,attr,optional"`
+	Brokers           []string      `alloy:"brokers,attr"`
+	ProtocolVersion   string        `alloy:"protocol_version,attr"`
+	SessionTimeout    time.Duration `alloy:"session_timeout,attr,optional"`
+	HeartbeatInterval time.Duration `alloy:"heartbeat_interval,attr,optional"`
+	Topic             string        `alloy:"topic,attr,optional"`
+	Encoding          string        `alloy:"encoding,attr,optional"`
+	GroupID           string        `alloy:"group_id,attr,optional"`
+	ClientID          string        `alloy:"client_id,attr,optional"`
+	InitialOffset     string        `alloy:"initial_offset,attr,optional"`
 
 	ResolveCanonicalBootstrapServersOnly bool `alloy:"resolve_canonical_bootstrap_servers_only,attr,optional"`
 
@@ -47,6 +50,10 @@ type Arguments struct {
 	AutoCommit       AutoCommitArguments                  `alloy:"autocommit,block,optional"`
 	MessageMarking   MessageMarkingArguments              `alloy:"message_marking,block,optional"`
 	HeaderExtraction HeaderExtraction                     `alloy:"header_extraction,block,optional"`
+
+	MinFetchSize     int32 `alloy:"min_fetch_size,attr,optional"`
+	DefaultFetchSize int32 `alloy:"default_fetch_size,attr,optional"`
+	MaxFetchSize     int32 `alloy:"max_fetch_size,attr,optional"`
 
 	// DebugMetrics configures component internal metrics. Optional.
 	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
@@ -64,11 +71,16 @@ func (args *Arguments) SetToDefault() {
 		// for compatibility, even though that means using a client and group ID of
 		// "otel-collector".
 
-		Encoding:      "otlp_proto",
-		Brokers:       []string{"localhost:9092"},
-		ClientID:      "otel-collector",
-		GroupID:       "otel-collector",
-		InitialOffset: "latest",
+		Encoding:          "otlp_proto",
+		Brokers:           []string{"localhost:9092"},
+		ClientID:          "otel-collector",
+		GroupID:           "otel-collector",
+		InitialOffset:     "latest",
+		SessionTimeout:    10 * time.Second,
+		HeartbeatInterval: 3 * time.Second,
+		MinFetchSize:      1,
+		DefaultFetchSize:  1048576,
+		MaxFetchSize:      0,
 	}
 	args.Metadata.SetToDefault()
 	args.AutoCommit.SetToDefault()
@@ -111,6 +123,8 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 
 	result.Brokers = args.Brokers
 	result.ProtocolVersion = args.ProtocolVersion
+	result.SessionTimeout = args.SessionTimeout
+	result.HeartbeatInterval = args.HeartbeatInterval
 	result.Topic = args.Topic
 	result.Encoding = args.Encoding
 	result.GroupID = args.GroupID
@@ -121,6 +135,9 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	result.AutoCommit = args.AutoCommit.Convert()
 	result.MessageMarking = args.MessageMarking.Convert()
 	result.HeaderExtraction = args.HeaderExtraction.Convert()
+	result.MinFetchSize = args.MinFetchSize
+	result.DefaultFetchSize = args.DefaultFetchSize
+	result.MaxFetchSize = args.MaxFetchSize
 
 	return &result, nil
 }
@@ -131,7 +148,7 @@ func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension 
 }
 
 // Exporters implements receiver.Arguments.
-func (args Arguments) Exporters() map[otelcomponent.DataType]map[otelcomponent.ID]otelcomponent.Component {
+func (args Arguments) Exporters() map[pipeline.Signal]map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 

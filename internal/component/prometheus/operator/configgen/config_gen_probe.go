@@ -30,7 +30,7 @@ func (cg *ConfigGenerator) GenerateProbeConfig(m *promopv1.Probe) (cfg *config.S
 		cfg.ScrapeInterval, _ = model.ParseDuration(string(m.Spec.Interval))
 	}
 	if m.Spec.ScrapeTimeout != "" {
-		cfg.ScrapeInterval, _ = model.ParseDuration(string(m.Spec.ScrapeTimeout))
+		cfg.ScrapeTimeout, _ = model.ParseDuration(string(m.Spec.ScrapeTimeout))
 	}
 	if m.Spec.ProberSpec.Scheme != "" {
 		cfg.Scheme = m.Spec.ProberSpec.Scheme

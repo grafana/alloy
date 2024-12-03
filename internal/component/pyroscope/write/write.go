@@ -3,23 +3,29 @@ package write
 import (
 	"context"
 	"errors"
+	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+	"path"
 	"strings"
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/grafana/alloy/internal/alloyseed"
-	"github.com/grafana/alloy/internal/component/pyroscope"
-	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/grafana/alloy/internal/useragent"
 	"github.com/oklog/run"
 	commonconfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"go.uber.org/multierr"
+	"golang.org/x/sync/errgroup"
 
+	"github.com/grafana/alloy/internal/alloyseed"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/config"
+	"github.com/grafana/alloy/internal/component/pyroscope"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/useragent"
 	"github.com/grafana/dskit/backoff"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
@@ -32,6 +38,17 @@ var (
 		return Arguments{}
 	}
 	_ component.Component = (*Component)(nil)
+
+	// List of headers to ignore when copying headers from client to server connection
+	// https://datatracker.ietf.org/doc/html/rfc9113#name-connection-specific-header-
+	ignoreProxyHeaders = map[string]bool{
+		"Connection":        true,
+		"Proxy-Connection":  true,
+		"Keep-Alive":        true,
+		"Transfer-Encoding": true,
+		"Upgrade":           true,
+		"TE":                true,
+	}
 )
 
 func init() {
@@ -149,17 +166,19 @@ func (c *Component) Update(newConfig component.Arguments) error {
 
 type fanOutClient struct {
 	// The list of push clients to fan out to.
-	clients []pushv1connect.PusherServiceClient
-
-	config  Arguments
-	opts    component.Options
-	metrics *metrics
+	pushClients   []pushv1connect.PusherServiceClient
+	ingestClients map[*EndpointOptions]*http.Client
+	config        Arguments
+	opts          component.Options
+	metrics       *metrics
 }
 
 // NewFanOut creates a new fan out client that will fan out to all endpoints.
 func NewFanOut(opts component.Options, config Arguments, metrics *metrics) (*fanOutClient, error) {
-	clients := make([]pushv1connect.PusherServiceClient, 0, len(config.Endpoints))
+	pushClients := make([]pushv1connect.PusherServiceClient, 0, len(config.Endpoints))
+	ingestClients := make(map[*EndpointOptions]*http.Client)
 	uid := alloyseed.Get().UID
+
 	for _, endpoint := range config.Endpoints {
 		if endpoint.Headers == nil {
 			endpoint.Headers = map[string]string{}
@@ -170,13 +189,15 @@ func NewFanOut(opts component.Options, config Arguments, metrics *metrics) (*fan
 		if err != nil {
 			return nil, err
 		}
-		clients = append(clients, pushv1connect.NewPusherServiceClient(httpClient, endpoint.URL, WithUserAgent(userAgent)))
+		pushClients = append(pushClients, pushv1connect.NewPusherServiceClient(httpClient, endpoint.URL, WithUserAgent(userAgent)))
+		ingestClients[endpoint] = httpClient
 	}
 	return &fanOutClient{
-		clients: clients,
-		config:  config,
-		opts:    opts,
-		metrics: metrics,
+		pushClients:   pushClients,
+		ingestClients: ingestClients,
+		config:        config,
+		opts:          opts,
+		metrics:       metrics,
 	}, nil
 }
 
@@ -190,7 +211,7 @@ func (f *fanOutClient) Push(ctx context.Context, req *connect.Request[pushv1.Pus
 		reqSize, profileCount = requestSize(req)
 	)
 
-	for i, client := range f.clients {
+	for i, client := range f.pushClients {
 		var (
 			client  = client
 			i       = i
@@ -271,7 +292,7 @@ func requestSize(req *connect.Request[pushv1.PushRequest]) (int64, int64) {
 	return size, profiles
 }
 
-// Append implements the pyroscope.Appendable interface.
+// Appender implements the pyroscope.Appendable interface.
 func (f *fanOutClient) Appender() pyroscope.Appender {
 	return f
 }
@@ -316,6 +337,105 @@ func (f *fanOutClient) Append(ctx context.Context, lbs labels.Labels, samples []
 		},
 	}))
 	return err
+}
+
+type PyroscopeWriteError struct {
+	StatusCode int
+}
+
+func (e *PyroscopeWriteError) Error() string {
+	return fmt.Sprintf("pyroscope write error: status %d", e.StatusCode)
+}
+
+// AppendIngest implements the pyroscope.Appender interface.
+func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.IncomingProfile) error {
+	pipeWriters := make([]io.Writer, len(f.config.Endpoints))
+	pipeReaders := make([]io.Reader, len(f.config.Endpoints))
+	for i := range f.config.Endpoints {
+		pr, pw := io.Pipe()
+		pipeReaders[i] = pr
+		pipeWriters[i] = pw
+	}
+	mw := io.MultiWriter(pipeWriters...)
+
+	g, ctx := errgroup.WithContext(ctx)
+
+	// Start copying the profile body to all pipes
+	g.Go(func() error {
+		defer func() {
+			for _, pw := range pipeWriters {
+				pw.(io.WriteCloser).Close()
+			}
+		}()
+		_, err := io.Copy(mw, profile.Body)
+		return err
+	})
+
+	// Send to each endpoint concurrently
+	for i, endpoint := range f.config.Endpoints {
+		g.Go(func() error {
+			defer pipeReaders[i].(io.ReadCloser).Close()
+
+			u, err := url.Parse(endpoint.URL)
+			if err != nil {
+				return fmt.Errorf("parse endpoint URL: %w", err)
+			}
+
+			u.Path = path.Join(u.Path, profile.URL.Path)
+
+			// Handle labels
+			query := profile.URL.Query()
+			if nameParam := query.Get("name"); nameParam != "" {
+				key, err := ParseKey(nameParam)
+				if err != nil {
+					return err
+				}
+				for k, v := range f.config.ExternalLabels {
+					key.labels[k] = v
+				}
+				query.Set("name", key.Normalized())
+			}
+			u.RawQuery = query.Encode()
+
+			req, err := http.NewRequestWithContext(ctx, "POST", u.String(), pipeReaders[i])
+			if err != nil {
+				return fmt.Errorf("create request: %w", err)
+			}
+
+			// First set profile headers as defaults
+			for k, v := range profile.Headers {
+				// Ignore this header as it may interfere with keepalives in the connection to pyroscope
+				// which may cause huge load due to tls renegotiation
+				if _, exists := ignoreProxyHeaders[k]; exists {
+					continue
+				}
+				req.Header[k] = v
+			}
+
+			// Override any profile duplicated header
+			for k, v := range endpoint.Headers {
+				req.Header.Set(k, v)
+			}
+
+			resp, err := f.ingestClients[endpoint].Do(req)
+			if err != nil {
+				return fmt.Errorf("do request: %w", err)
+			}
+			defer resp.Body.Close()
+
+			_, err = io.Copy(io.Discard, resp.Body)
+			if err != nil {
+				return fmt.Errorf("read response body: %w", err)
+			}
+
+			if resp.StatusCode != http.StatusOK {
+				return &PyroscopeWriteError{StatusCode: resp.StatusCode}
+			}
+			return nil
+		})
+	}
+
+	return g.Wait()
 }
 
 // WithUserAgent returns a `connect.ClientOption` that sets the User-Agent header on.

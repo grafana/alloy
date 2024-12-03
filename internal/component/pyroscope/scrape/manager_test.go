@@ -11,9 +11,12 @@ import (
 	"github.com/prometheus/prometheus/discovery/targetgroup"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/goleak"
 )
 
 func TestManager(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
+
 	reloadInterval = time.Millisecond
 
 	m := NewManager(Options{}, pyroscope.AppendableFunc(func(ctx context.Context, labels labels.Labels, samples []*pyroscope.RawSample) error {
@@ -61,6 +64,8 @@ func TestManager(t *testing.T) {
 	require.Eventually(t, func() bool {
 		return len(m.TargetsActive()["group2"]) == 10
 	}, time.Second, 10*time.Millisecond)
+
+	require.Equal(t, 1, len(m.targetsGroups))
 
 	for _, ts := range m.targetsGroups {
 		require.Equal(t, 1*time.Second, ts.config.ScrapeInterval)

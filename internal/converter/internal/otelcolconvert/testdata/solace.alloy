@@ -1,0 +1,31 @@
+otelcol.receiver.solace "default" {
+	broker = "localhost:5672"
+	queue  = "queue://#telemetry-profile123"
+
+	tls {
+		insecure = true
+	}
+
+	flow_control {
+		delayed_retry {
+			delay = "20ms"
+		}
+	}
+
+	auth {
+		sasl_plain {
+			username = "otel"
+			password = "otel01$"
+		}
+	}
+
+	output {
+		traces = [otelcol.exporter.otlp.default.input]
+	}
+}
+
+otelcol.exporter.otlp "default" {
+	client {
+		endpoint = "database:4317"
+	}
+}

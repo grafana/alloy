@@ -18,6 +18,7 @@ import (
 	otelexporter "go.opentelemetry.io/collector/exporter"
 	otelextension "go.opentelemetry.io/collector/extension"
 	"go.opentelemetry.io/collector/pdata/ptrace"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 func TestExporter(t *testing.T) {
@@ -56,7 +57,7 @@ func TestExporter(t *testing.T) {
 		for {
 			err = ce.Input.ConsumeTraces(ctx, testTraces)
 
-			if errors.Is(err, otelcomponent.ErrDataTypeIsNotSupported) {
+			if errors.Is(err, pipeline.ErrSignalNotSupported) {
 				// Our component may not have been fully initialized yet. Wait a little
 				// bit before trying again.
 				time.Sleep(100 * time.Millisecond)
@@ -99,7 +100,7 @@ func newTestEnvironment(t *testing.T, fe *fakeExporter) *testEnvironment {
 					require.NoError(t, err)
 					return res
 				},
-				otelexporter.WithTraces(func(ctx context.Context, ecs otelexporter.CreateSettings, e otelcomponent.Config) (otelexporter.Traces, error) {
+				otelexporter.WithTraces(func(ctx context.Context, ecs otelexporter.Settings, e otelcomponent.Config) (otelexporter.Traces, error) {
 					return fe, nil
 				}, otelcomponent.StabilityLevelUndefined),
 			)
@@ -134,7 +135,7 @@ func (fa fakeExporterArgs) Extensions() map[otelcomponent.ID]otelextension.Exten
 	return nil
 }
 
-func (fa fakeExporterArgs) Exporters() map[otelcomponent.DataType]map[otelcomponent.ID]otelcomponent.Component {
+func (fa fakeExporterArgs) Exporters() map[pipeline.Signal]map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 

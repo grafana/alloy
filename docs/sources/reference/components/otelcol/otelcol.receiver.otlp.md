@@ -144,7 +144,7 @@ Name | Type | Description | Default         | Required
 `traces_url_path` | `string` | The URL path to receive traces on. | `"/v1/traces"`  | no
 `metrics_url_path` | `string` | The URL path to receive metrics on. | `"/v1/metrics"` | no
 `logs_url_path` | `string` | The URL path to receive logs on. | `"/v1/logs"`    | no
-`compression_algorithms` | `list(string)` | A list of compression algorithms the server can accept.    | `["", "gzip", "zstd", "zlib", "snappy", "deflate"]` | no
+`compression_algorithms` | `list(string)` | A list of compression algorithms the server can accept.    | `["", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"]` | no
 
 To send telemetry signals to `otelcol.receiver.otlp` with HTTP/JSON, POST to:
 * `[endpoint][traces_url_path]` for traces.
@@ -197,8 +197,8 @@ information.
 
 ## Debug metrics
 
-* `receiver_accepted_spans_ratio_total` (counter): Number of spans successfully pushed into the pipeline.
-* `receiver_refused_spans_ratio_total` (counter): Number of spans that could not be pushed into the pipeline.
+* `otelcol_receiver_accepted_spans_total` (counter): Number of spans successfully pushed into the pipeline.
+* `otelcol_receiver_refused_spans_total` (counter): Number of spans that could not be pushed into the pipeline.
 * `rpc_server_duration_milliseconds` (histogram): Duration of RPC requests from a gRPC server.
 * `rpc_server_request_size_bytes` (histogram): Measures size of RPC request messages (uncompressed).
 * `rpc_server_requests_per_rpc` (histogram): Measures the number of messages received per RPC. Should be 1 for all non-streaming RPCs.
@@ -232,7 +232,7 @@ otelcol.processor.batch "default" {
 
 otelcol.exporter.otlp "default" {
   client {
-    endpoint = env("OTLP_ENDPOINT")
+    endpoint = sys.env("OTLP_ENDPOINT")
   }
 }
 ```

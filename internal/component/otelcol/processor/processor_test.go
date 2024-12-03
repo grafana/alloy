@@ -18,6 +18,7 @@ import (
 	otelconsumer "go.opentelemetry.io/collector/consumer"
 	otelextension "go.opentelemetry.io/collector/extension"
 	"go.opentelemetry.io/collector/pdata/ptrace"
+	"go.opentelemetry.io/collector/pipeline"
 	otelprocessor "go.opentelemetry.io/collector/processor"
 )
 
@@ -77,7 +78,7 @@ func TestProcessor(t *testing.T) {
 		for {
 			err = ce.Input.ConsumeTraces(ctx, ptrace.NewTraces())
 
-			if errors.Is(err, otelcomponent.ErrDataTypeIsNotSupported) {
+			if errors.Is(err, pipeline.ErrSignalNotSupported) {
 				// Our component may not have been fully initialized yet. Wait a little
 				// bit before trying again.
 				time.Sleep(100 * time.Millisecond)
@@ -122,7 +123,7 @@ func newTestEnvironment(
 				},
 				otelprocessor.WithTraces(func(
 					_ context.Context,
-					_ otelprocessor.CreateSettings,
+					_ otelprocessor.Settings,
 					_ otelcomponent.Config,
 					t otelconsumer.Traces,
 				) (otelprocessor.Traces, error) {
@@ -164,7 +165,7 @@ func (fa fakeProcessorArgs) Extensions() map[otelcomponent.ID]otelextension.Exte
 	return nil
 }
 
-func (fa fakeProcessorArgs) Exporters() map[otelcomponent.DataType]map[otelcomponent.ID]otelcomponent.Component {
+func (fa fakeProcessorArgs) Exporters() map[pipeline.Signal]map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 

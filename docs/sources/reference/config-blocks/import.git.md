@@ -9,6 +9,9 @@ title: import.git
 The `import.git` block imports custom components from a Git repository and exposes them to the importer.
 `import.git` blocks must be given a label that determines the namespace where custom components are exposed.
 
+The entire repository is cloned, and the module path is accessible via the `module_path` keyword.
+This enables, for example, your module to import other modules within the repository by setting relative paths in the [import.file][] blocks.
+
 ## Usage
 
 ```alloy
@@ -37,8 +40,7 @@ When provided, the `revision` attribute must be set to a valid branch, tag, or c
 
 You must set the `path` attribute to a path accessible from the repository's root.
 It can either be an {{< param "PRODUCT_NAME" >}} configuration file such as `FILE_NAME.alloy` or `DIR_NAME/FILE_NAME.alloy` or
-a directory containing {{< param "PRODUCT_NAME" >}} configuration files such as `DIR_NAME` or `.` if the {{< param "PRODUCT_NAME" >}} configuration files are stored at the root
-of the repository.
+a directory containing {{< param "PRODUCT_NAME" >}} configuration files such as `DIR_NAME` or `.` if the {{< param "PRODUCT_NAME" >}} configuration files are stored at the root of the repository.
 
 If `pull_frequency` isn't `"0s"`, the Git repository is pulled for updates at the frequency specified.
 If it's set to `"0s"`, the Git repository is pulled once on init.
@@ -101,5 +103,6 @@ math.add "default" {
 }
 ```
 
+[import.file]: ../import.file/
 [basic_auth]: #basic_auth-block
 [ssh_key]: #ssh_key-block

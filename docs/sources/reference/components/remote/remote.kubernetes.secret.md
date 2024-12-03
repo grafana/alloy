@@ -120,15 +120,15 @@ Name   | Type          | Description
 
 The `data` field contains a mapping from field names to values.
 
-If an individual key stored in `data` does not hold sensitive data, it can be converted into a string using [the `nonsensitive` function][nonsensitive]:
+If an individual key stored in `data` does not hold sensitive data, it can be converted into a string using [the `convert.nonsensitive` function][convert]:
 
 ```alloy
-nonsensitive(remote.kubernetes.secret.LABEL.data.KEY_NAME)
+convert.nonsensitive(remote.kubernetes.secret.LABEL.data.KEY_NAME)
 ```
 
-Using `nonsensitive` allows for using the exports of `remote.kubernetes.secret` for attributes in components that do not support secrets.
+Using `convert.nonsensitive` allows for using the exports of `remote.kubernetes.secret` for attributes in components that do not support secrets.
 
-[nonsensitive]: ../../../stdlib/nonsensitive/
+[convert]: ../../../stdlib/convert/
 
 ## Component health
 
@@ -161,7 +161,7 @@ prometheus.remote_write "default" {
   endpoint {
     url = remote.kubernetes.configmap.endpoint.data["url"]
     basic_auth {
-      username = nonsensitive(remote.kubernetes.configmap.endpoint.data["username"])
+      username = convert.nonsensitive(remote.kubernetes.configmap.endpoint.data["username"])
       password = remote.kubernetes.secret.credentials.data["password"]
     }
   }

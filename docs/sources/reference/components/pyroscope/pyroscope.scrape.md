@@ -499,7 +499,7 @@ discovery.http "dynamic_targets" {
 }
 
 pyroscope.scrape "local" {
-  targets = concat([
+  targets = array.concat([
     {"__address__" = "localhost:4040", "service_name"="pyroscope"},
     {"__address__" = "localhost:12345", "service_name"="alloy"},
   ], discovery.http.dynamic_targets.targets)

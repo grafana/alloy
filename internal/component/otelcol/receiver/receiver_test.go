@@ -17,6 +17,7 @@ import (
 	otelconsumer "go.opentelemetry.io/collector/consumer"
 	otelextension "go.opentelemetry.io/collector/extension"
 	"go.opentelemetry.io/collector/pdata/ptrace"
+	"go.opentelemetry.io/collector/pipeline"
 	otelreceiver "go.opentelemetry.io/collector/receiver"
 )
 
@@ -147,7 +148,7 @@ func newTestEnvironment(t *testing.T, onTracesConsumer func(t otelconsumer.Trace
 				func() otelcomponent.Config { return nil },
 				otelreceiver.WithTraces(func(
 					_ context.Context,
-					_ otelreceiver.CreateSettings,
+					_ otelreceiver.Settings,
 					_ otelcomponent.Config,
 					t otelconsumer.Traces,
 				) (otelreceiver.Traces, error) {
@@ -189,7 +190,7 @@ func (fa fakeReceiverArgs) Extensions() map[otelcomponent.ID]otelextension.Exten
 	return nil
 }
 
-func (fa fakeReceiverArgs) Exporters() map[otelcomponent.DataType]map[otelcomponent.ID]otelcomponent.Component {
+func (fa fakeReceiverArgs) Exporters() map[pipeline.Signal]map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 

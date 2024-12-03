@@ -145,11 +145,13 @@ type PrinterConfig struct {
 }
 
 // SMBConfig handles settings for the windows_exporter smb collector
+// Deprecated: This is not used by the windows_exporter
 type SMBConfig struct {
 	EnabledList string `yaml:"enabled_list,omitempty"`
 }
 
 // SMBClientConfig handles settings for the windows_exporter smb client collector
+// Deprecated: This is not used by the windows_exporter
 type SMBClientConfig struct {
 	EnabledList string `yaml:"enabled_list,omitempty"`
 }

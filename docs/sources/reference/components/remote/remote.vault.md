@@ -23,6 +23,7 @@ labels.
 remote.vault "LABEL" {
   server = "VAULT_SERVER"
   path   = "VAULT_PATH"
+  key    = "VAULT_KEY"
 
   // Alternatively, use one of the other auth.* mechanisms.
   auth.token {
@@ -40,6 +41,7 @@ Name               | Type       | Description                                   
 `server`           | `string`   | The Vault server to connect to.                            |         | yes
 `namespace`        | `string`   | The Vault namespace to connect to (Vault Enterprise only). |         | no
 `path`             | `string`   | The path to retrieve a secret from.                        |         | yes
+`key`              | `string`   | The key to retrieve a secret from.                         |         | no
 `reread_frequency` | `duration` | Rate to re-read keys.                                      | `"0s"`  | no
 
 Tokens with a lease will be automatically renewed roughly two-thirds through their lease duration.
@@ -250,12 +252,12 @@ Keys with non-string values are ignored and omitted from the `data` field.
 If an individual key stored in `data` doesn't hold sensitive data, it can be converted into a string using [the `nonsensitive` function][nonsensitive]:
 
 ```alloy
-nonsensitive(remote.vault.LABEL.data.KEY_NAME)
+convert.nonsensitive(remote.vault.LABEL.data.KEY_NAME)
 ```
 
-Using `nonsensitive` allows for using the exports of `remote.vault` for attributes in components that don't support secrets.
+Using `convert.nonsensitive` allows for using the exports of `remote.vault` for attributes in components that don't support secrets.
 
-[nonsensitive]: ../../../stdlib/nonsensitive/
+[convert.nonsensitive]: ../../../stdlib/convert/
 
 ## Component health
 
@@ -290,7 +292,8 @@ local.file "vault_token" {
 
 remote.vault "remote_write" {
   server = "https://prod-vault.corporate.internal"
-  path   = "secret/prometheus/remote_write"
+  path   = "secret"
+  key    = "prometheus/remote_write
 
   auth.token {
     token = local.file.vault_token.content

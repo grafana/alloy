@@ -2,6 +2,11 @@ receivers:
   kafka:
     brokers: ['broker:9092']
     protocol_version: 2.0.0
+    session_timeout: 11s
+    heartbeat_interval: 4s
+    min_fetch_size: 2
+    default_fetch_size: 1048575
+    max_fetch_size: 2000000
     auth:
       plain_text:
         username: fakeusername

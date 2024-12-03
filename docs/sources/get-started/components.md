@@ -48,7 +48,7 @@ log_level = "debug"
 ```
 
 You use _expressions_ to dynamically compute the value of an argument at runtime.
-You can use expressions to retrieve the value of an environment variable (`log_level = env("LOG_LEVEL")`)
+You can use expressions to retrieve the value of an environment variable (`log_level = sys.env("LOG_LEVEL")`)
 or to reference an exported field of another component (`log_level = local.file.log_level.content`).
 
 You create a dependent relationship when a component's argument references an exported field of another component.
@@ -74,7 +74,7 @@ The following configuration file represents the pipeline.
 // This component has an exported field called "content", holding the content
 // of the file.
 //
-// local.file.api_key will watch the file and update its exports any time the
+// local.file will watch the file and update its exports any time the
 // file changes.
 local.file "api_key" {
   filename  = "/var/data/secrets/api-key"

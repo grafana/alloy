@@ -4,7 +4,7 @@
 # default when running `docker buildx build` or when DOCKER_BUILDKIT=1 is set
 # in environment variables.
 
-FROM --platform=$BUILDPLATFORM grafana/alloy-build-image:v0.1.3 as build
+FROM --platform=$BUILDPLATFORM grafana/alloy-build-image:v0.1.7 as build
 ARG BUILDPLATFORM
 ARG TARGETPLATFORM
 ARG TARGETOS
@@ -30,7 +30,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     GOEXPERIMENT=${GOEXPERIMENT} \
     make alloy
 
-FROM public.ecr.aws/ubuntu/ubuntu:mantic
+FROM public.ecr.aws/ubuntu/ubuntu:noble
 
 # Username and uid for alloy user
 ARG UID=473

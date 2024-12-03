@@ -19,15 +19,15 @@ This topic describes how to:
 
 ## Components used in this topic
 
-* [prometheus.scrape][]
-* [prometheus.remote_write][]
-* [local.file_match][]
-* [loki.process][]
-* [loki.source.file][]
-* [loki.write][]
-* [otelcol.receiver.otlp][]
-* [otelcol.processor.batch][]
-* [otelcol.exporter.otlp][]
+* [`prometheus.scrape`][prometheus.scrape]
+* [`prometheus.remote_write`][prometheus.remote_write]
+* [`local.file_match`][local.file_match]
+* [`loki.process`][loki.process]
+* [`loki.source.file`][loki.source.file]
+* [`loki.write`][loki.write]
+* [`otelcol.receiver.otlp`][otelcol.receiver.otlp]
+* [`otelcol.processor.batch`][otelcol.processor.batch]
+* [`otelcol.exporter.otlp`][otelcol.exporter.otlp]
 
 ## Before you begin
 
@@ -51,6 +51,8 @@ This conversion allows you to take full advantage of the many additional feature
 
     * _`<INPUT_CONFIG_PATH>`_: The full path to the configuration file for Grafana Agent Static.
     * _`<OUTPUT_CONFIG_PATH>`_: The full path to output the {{< param "PRODUCT_NAME" >}} configuration.
+  
+1. [Stop][] Grafana Agent static.
 
 1. [Run][run alloy] {{< param "PRODUCT_NAME" >}} using the new {{< param "PRODUCT_NAME" >}} configuration from _`<OUTPUT_CONFIG_PATH>`_:
 
@@ -93,7 +95,7 @@ This conversion allows you to take full advantage of the many additional feature
 
 ## Run a Grafana Agent Static mode configuration
 
-If you’re not ready to completely switch to an {{< param "PRODUCT_NAME" >}} configuration, you can run {{< param "PRODUCT_NAME" >}} using your Grafana Agent Static configuration.
+If you're not ready to completely switch to an {{< param "PRODUCT_NAME" >}} configuration, you can run {{< param "PRODUCT_NAME" >}} using your Grafana Agent Static configuration.
 The `--config.format=static` flag tells {{< param "PRODUCT_NAME" >}} to convert your Grafana Agent Static configuration to {{< param "PRODUCT_NAME" >}} and load it directly without saving the configuration.
 This allows you to try {{< param "PRODUCT_NAME" >}} without modifying your Grafana Agent Static configuration infrastructure.
 
@@ -102,11 +104,11 @@ This allows you to try {{< param "PRODUCT_NAME" >}} without modifying your Grafa
 [Run][] {{< param "PRODUCT_NAME" >}} and include the command line flag `--config.format=static`.
 Your configuration file must be a valid Grafana Agent Static configuration file.
 
-### Debugging
+### Debug
 
 1. Follow the convert CLI command [debugging][] instructions to generate a diagnostic report.
 
-1. Refer to the {{< param "PRODUCT_NAME" >}} [debugging UI][UI] for more information about running {{< param "PRODUCT_NAME" >}}.
+1. Refer to the {{< param "PRODUCT_NAME" >}} [debugging UI][UI_debug] for more information about running {{< param "PRODUCT_NAME" >}}.
 
 1. If your Grafana Agent Static configuration can't be converted and loaded directly into {{< param "PRODUCT_NAME" >}}, diagnostic information is sent to `stderr`.
    You can use the `--config.bypass-conversion-errors` flag with `--config.format=static` to bypass any non-critical issues and start {{< param "PRODUCT_NAME" >}}.
@@ -330,9 +332,10 @@ You can convert [integrations next][] configurations by adding the `extra-args` 
 alloy convert --source-format=static --extra-args="-enable-features=integrations-next" --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
 ```
 
- Replace the following:
-   * _`<INPUT_CONFIG_PATH>`_: The full path to the configuration file for Grafana Agent Static.
-   * _`<OUTPUT_CONFIG_PATH>`_: The full path to output the {{< param "PRODUCT_NAME" >}} configuration.
+Replace the following:
+
+* _`<INPUT_CONFIG_PATH>`_: The full path to the configuration file for Grafana Agent Static.
+* _`<OUTPUT_CONFIG_PATH>`_: The full path to output the {{< param "PRODUCT_NAME" >}} configuration.
 
 ## Environment variables
 
@@ -355,7 +358,7 @@ The following list is specific to the convert command and not {{< param "PRODUCT
 * There is no gRPC server to configure for {{< param "PRODUCT_NAME" >}}. Any non-default configuration shows as unsupported during the conversion.
 * Check if you are using any extra command line arguments with Grafana Agent Static that aren't present in your configuration file. For example, `-server.http.address`.
 * Check if you are using any environment variables in your Grafana Agent Static configuration.
-  These are evaluated during conversion, and you may want to replace them with the {{< param "PRODUCT_NAME" >}} Standard library [env][] function after conversion.
+  These are evaluated during conversion, and you may want to replace them with the {{< param "PRODUCT_NAME" >}} Standard library [sys.env][] function after conversion.
 * Review additional [Prometheus Limitations][] for limitations specific to your [Metrics][] configuration.
 * Review additional [Promtail Limitations][] for limitations specific to your [Logs][] configuration.
 * The logs produced by {{< param "PRODUCT_NAME" >}} differ from those produced by Grafana Agent Static.
@@ -374,16 +377,17 @@ The following list is specific to the convert command and not {{< param "PRODUCT
 [convert]: ../../../reference/cli/convert/
 [run]: ../../../reference/cli/run/
 [run alloy]: ../../../set-up/run/
-[UI]: ../../../troubleshoot/debug/
+[UI_debug]: ../../../troubleshoot/debug/
 [configuration]: ../../../get-started/configuration-syntax/
 [Integrations next]: https://grafana.com/docs/agent/latest/static/configuration/integrations/integrations-next/
 [Agent Management]: https://grafana.com/docs/agent/latest/static/configuration/agent-management/
-[env]: ../../../reference/stdlib/env/
+[sys.env]: ../../../reference/stdlib/sys/
 [Prometheus Limitations]: ../from-prometheus/#limitations
 [Promtail Limitations]: ../from-promtail/#limitations
 [Metrics]: https://grafana.com/docs/agent/latest/static/configuration/metrics-config/
 [Logs]: https://grafana.com/docs/agent/latest/static/configuration/logs-config/
-[UI]: ../../../debug/#alloy-ui
+[UI]: ../../../troubleshoot/debug/#alloy-ui
 [otelcol.receiver.otlp]: ../../../reference/components/otelcol/otelcol.receiver.otlp/
 [otelcol.processor.batch]: ../../../reference/components/otelcol/otelcol.processor.batch/
 [otelcol.exporter.otlp]:../../../reference/components/otelcol/otelcol.exporter.otlp/
+[Stop]: https://grafana.com/docs/agent/latest/static/set-up/start-agent

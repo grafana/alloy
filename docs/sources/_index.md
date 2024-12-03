@@ -4,8 +4,10 @@ title: Grafana Alloy
 description: Grafana Alloy is a a vendor-neutral distribution of the OTel Collector
 weight: 350
 cascade:
-  ALLOY_RELEASE: v1.4.0
-  OTEL_VERSION: v0.105.0
+  ALLOY_RELEASE: v1.6.0
+  OTEL_VERSION: v0.112.0
+  PROM_WIN_EXP_VERSION: v0.27.3
+  SNMP_VERSION: v0.26.0
   FULL_PRODUCT_NAME: Grafana Alloy
   PRODUCT_NAME: Alloy
 hero:
@@ -55,7 +57,7 @@ cards:
 In addition, you can use {{< param "PRODUCT_NAME" >}} pipelines to do different tasks, such as configure alert rules in Loki and [Mimir][].
 {{< param "PRODUCT_NAME" >}} is fully compatible with the OTel Collector, Prometheus Agent, and [Promtail][].
 You can use {{< param "PRODUCT_NAME" >}} as an alternative to either of these solutions or combine it into a hybrid system of multiple collectors and agents.
-You can deploy {{< param "PRODUCT_NAME" >}} anywhere within your IT infrastructure and pair it with your Grafana LGTM stack, a telemetry backend from Grafana Cloud, or any other compatible backend from any other vendor.
+You can deploy {{< param "PRODUCT_NAME" >}} anywhere within your IT infrastructure and pair it with your Grafana stack, a telemetry backend from Grafana Cloud, or any other compatible backend from any other vendor.
 {{< param "PRODUCT_NAME" >}} is flexible, and you can easily configure it to fit your needs in on-prem, cloud-only, or a mix of both.
 
 {{< admonition type="tip" >}}

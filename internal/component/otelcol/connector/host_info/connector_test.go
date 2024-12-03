@@ -41,7 +41,7 @@ func TestNewConnector(t *testing.T) {
 				cfg.MetricsFlushInterval = *tc.metricsFlushInterval
 			}
 
-			c, err := factory.CreateTracesToMetrics(context.Background(), connectortest.NewNopCreateSettings(), cfg, consumertest.NewNop())
+			c, err := factory.CreateTracesToMetrics(context.Background(), connectortest.NewNopSettings(), cfg, consumertest.NewNop())
 			imp := c.(*connectorImp)
 
 			assert.NoError(t, err)

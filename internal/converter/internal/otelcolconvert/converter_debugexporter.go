@@ -4,10 +4,10 @@ import (
 	"fmt"
 
 	"github.com/grafana/alloy/internal/component/otelcol/exporter/debug"
-	"github.com/grafana/alloy/internal/component/otelcol/exporter/logging"
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/component/componentstatus"
 	"go.opentelemetry.io/collector/exporter/debugexporter"
 )
 
@@ -25,7 +25,7 @@ func (debugExporterConverter) InputComponentName() string {
 	return "otelcol.exporter.debug"
 }
 
-func (debugExporterConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
+func (debugExporterConverter) ConvertAndAppend(state *State, id componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -48,6 +48,6 @@ func toDebugExporter(cfg *debugexporter.Config) *debug.Arguments {
 		SamplingInitial:    cfg.SamplingInitial,
 		SamplingThereafter: cfg.SamplingThereafter,
 		UseInternalLogger:  cfg.UseInternalLogger,
-		DebugMetrics:       common.DefaultValue[logging.Arguments]().DebugMetrics,
+		DebugMetrics:       common.DefaultValue[debug.Arguments]().DebugMetrics,
 	}
 }

@@ -22,6 +22,7 @@ import (
 	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax/ast"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -48,7 +49,7 @@ func TestOnDiskCache(t *testing.T) {
 	client.registerCollectorFunc = buildRegisterCollectorFunc(&registerCalled)
 
 	// Mock client to return an unparseable response.
-	client.getConfigFunc = buildGetConfigHandler("unparseable config")
+	client.getConfigFunc = buildGetConfigHandler("unparseable config", "", false)
 
 	// Write the cache contents, and run the service.
 	err := os.WriteFile(env.svc.dataPath, []byte(cacheContents), 0644)
@@ -84,7 +85,7 @@ func TestAPIResponse(t *testing.T) {
 	// Mock client to return a valid response.
 	var registerCalled atomic.Bool
 	client.mut.Lock()
-	client.getConfigFunc = buildGetConfigHandler(cfg1)
+	client.getConfigFunc = buildGetConfigHandler(cfg1, "", false)
 	client.registerCollectorFunc = buildRegisterCollectorFunc(&registerCalled)
 	client.mut.Unlock()
 
@@ -103,7 +104,7 @@ func TestAPIResponse(t *testing.T) {
 
 	// Update the response returned by the API.
 	client.mut.Lock()
-	client.getConfigFunc = buildGetConfigHandler(cfg2)
+	client.getConfigFunc = buildGetConfigHandler(cfg2, "", false)
 	client.mut.Unlock()
 
 	// Verify that the service has loaded the updated response.
@@ -114,11 +115,61 @@ func TestAPIResponse(t *testing.T) {
 	cancel()
 }
 
-func buildGetConfigHandler(in string) func(context.Context, *connect.Request[collectorv1.GetConfigRequest]) (*connect.Response[collectorv1.GetConfigResponse], error) {
+func TestAPIResponseNotModified(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	url := "https://example.com/"
+	cfg1 := `loki.process "default" { forward_to = [] }`
+
+	// Create a new service.
+	env := newTestEnvironment(t)
+	require.NoError(t, env.ApplyConfig(fmt.Sprintf(`
+		url            = "%s"
+		poll_frequency = "10s"
+	`, url)))
+
+	client := &collectorClient{}
+	env.svc.asClient = client
+
+	// Mock client to return a valid response.
+	var registerCalled atomic.Bool
+	client.mut.Lock()
+	client.getConfigFunc = buildGetConfigHandler(cfg1, "12345", false)
+	client.registerCollectorFunc = buildRegisterCollectorFunc(&registerCalled)
+	client.mut.Unlock()
+
+	// Run the service.
+	go func() {
+		require.NoError(t, env.Run(ctx))
+	}()
+
+	require.Eventually(t, func() bool { return registerCalled.Load() }, 1*time.Second, 10*time.Millisecond)
+
+	// As the API response was successful, verify that the service has loaded
+	// the valid response.
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		assert.Equal(c, getHash([]byte(cfg1)), env.svc.getCfgHash())
+	}, time.Second, 10*time.Millisecond)
+
+	// Update the response returned by the API.
+	client.mut.Lock()
+	client.getConfigFunc = buildGetConfigHandler("", "12345", true)
+	client.mut.Unlock()
+
+	// Verify that the service has loaded the updated response.
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		assert.Equal(c, getHash([]byte(cfg1)), env.svc.getCfgHash())
+	}, 1*time.Second, 10*time.Millisecond)
+
+	cancel()
+}
+
+func buildGetConfigHandler(in string, hash string, notModified bool) func(context.Context, *connect.Request[collectorv1.GetConfigRequest]) (*connect.Response[collectorv1.GetConfigResponse], error) {
 	return func(context.Context, *connect.Request[collectorv1.GetConfigRequest]) (*connect.Response[collectorv1.GetConfigResponse], error) {
 		rsp := &connect.Response[collectorv1.GetConfigResponse]{
 			Msg: &collectorv1.GetConfigResponse{
-				Content: in,
+				Content:     in,
+				NotModified: notModified,
+				Hash:        hash,
 			},
 		}
 		return rsp, nil
@@ -240,11 +291,11 @@ type serviceController struct {
 }
 
 func (sc serviceController) Run(ctx context.Context) { sc.f.Run(ctx) }
-func (sc serviceController) LoadSource(b []byte, args map[string]any) error {
+func (sc serviceController) LoadSource(b []byte, args map[string]any, configPath string) (*ast.File, error) {
 	source, err := alloy_runtime.ParseSource("", b)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return sc.f.LoadSource(source, args)
+	return source.SourceFiles()[""], sc.f.LoadSource(source, args, configPath)
 }
 func (sc serviceController) Ready() bool { return sc.f.Ready() }

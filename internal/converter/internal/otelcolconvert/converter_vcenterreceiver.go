@@ -10,6 +10,8 @@ import (
 	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/vcenterreceiver"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/component/componentstatus"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 func init() {
@@ -22,7 +24,7 @@ func (vcenterReceiverConverter) Factory() component.Factory { return vcenterrece
 
 func (vcenterReceiverConverter) InputComponentName() string { return "" }
 
-func (vcenterReceiverConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
+func (vcenterReceiverConverter) ConvertAndAppend(state *State, id componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -39,10 +41,10 @@ func (vcenterReceiverConverter) ConvertAndAppend(state *State, id component.Inst
 	return diags
 }
 
-func toVcenterReceiver(state *State, id component.InstanceID, cfg *vcenterreceiver.Config) *vcenter.Arguments {
+func toVcenterReceiver(state *State, id componentstatus.InstanceID, cfg *vcenterreceiver.Config) *vcenter.Arguments {
 	var (
-		nextMetrics = state.Next(id, component.DataTypeMetrics)
-		nextTraces  = state.Next(id, component.DataTypeTraces)
+		nextMetrics = state.Next(id, pipeline.SignalMetrics)
+		nextTraces  = state.Next(id, pipeline.SignalTraces)
 	)
 
 	return &vcenter.Arguments{
@@ -91,6 +93,10 @@ func toVcenterMetricsConfig(cfg map[string]any) vcenter.MetricsConfig {
 		VcenterClusterMemoryLimit:          toVcenterMetricConfig(encodeMapstruct(cfg["vcenter.cluster.memory.limit"])),
 		VcenterClusterVMCount:              toVcenterMetricConfig(encodeMapstruct(cfg["vcenter.cluster.vm.count"])),
 		VcenterClusterVMTemplateCount:      toVcenterMetricConfig(encodeMapstruct(cfg["vcenter.cluster.vm_template.count"])),
+		VcenterClusterVsanCongestions:      toVcenterMetricConfig(encodeMapstruct(cfg["vcenter.cluster.vsan.congestions"])),
+		VcenterClusterVsanLatencyAvg:       toVcenterMetricConfig(encodeMapstruct(cfg["vcenter.cluster.vsan.latency.avg"])),
+		VcenterClusterVsanOperations:       toVcenterMetricConfig(encodeMapstruct(cfg["vcenter.cluster.vsan.operations"])),
+		VcenterClusterVsanThroughput:       toVcenterMetricConfig(encodeMapstruct(cfg["vcenter.cluster.vsan.throughput"])),
 		VcenterDatacenterClusterCount:      toVcenterMetricConfig(encodeMapstruct(cfg["vcenter.datacenter.cluster.count"])),
 		VcenterDatacenterCPULimit:          toVcenterMetricConfig(encodeMapstruct(cfg["vcenter.datacenter.cpu.limit"])),
 		VcenterDatacenterDatastoreCount:    toVcenterMetricConfig(encodeMapstruct(cfg["vcenter.datacenter.datastore.count"])),
@@ -114,6 +120,11 @@ func toVcenterMetricsConfig(cfg map[string]any) vcenter.MetricsConfig {
 		VcenterHostNetworkPacketDropRate:   toVcenterMetricConfig(encodeMapstruct(cfg["vcenter.host.network.packet.drop.rate"])),
 		VcenterHostNetworkThroughput:       toVcenterMetricConfig(encodeMapstruct(cfg["vcenter.host.network.throughput"])),
 		VcenterHostNetworkUsage:            toVcenterMetricConfig(encodeMapstruct(cfg["vcenter.host.network.usage"])),
+		VcenterHostVsanCacheHitRate:        toVcenterMetricConfig(encodeMapstruct(cfg["vcenter.host.vsan.cache.hit_rate"])),
+		VcenterHostVsanCongestions:         toVcenterMetricConfig(encodeMapstruct(cfg["vcenter.host.vsan.congestions"])),
+		VcenterHostVsanLatencyAvg:          toVcenterMetricConfig(encodeMapstruct(cfg["vcenter.host.vsan.latency.avg"])),
+		VcenterHostVsanOperations:          toVcenterMetricConfig(encodeMapstruct(cfg["vcenter.host.vsan.operations"])),
+		VcenterHostVsanThroughput:          toVcenterMetricConfig(encodeMapstruct(cfg["vcenter.host.vsan.throughput"])),
 		VcenterResourcePoolCPUShares:       toVcenterMetricConfig(encodeMapstruct(cfg["vcenter.resource_pool.cpu.shares"])),
 		VcenterResourcePoolCPUUsage:        toVcenterMetricConfig(encodeMapstruct(cfg["vcenter.resource_pool.cpu.usage"])),
 		VcenterResourcePoolMemoryBallooned: toVcenterMetricConfig(encodeMapstruct(cfg["vcenter.resource_pool.memory.ballooned"])),
@@ -138,6 +149,9 @@ func toVcenterMetricsConfig(cfg map[string]any) vcenter.MetricsConfig {
 		VcenterVMNetworkPacketDropRate:     toVcenterMetricConfig(encodeMapstruct(cfg["vcenter.vm.network.packet.drop.rate"])),
 		VcenterVMNetworkThroughput:         toVcenterMetricConfig(encodeMapstruct(cfg["vcenter.vm.network.throughput"])),
 		VcenterVMNetworkUsage:              toVcenterMetricConfig(encodeMapstruct(cfg["vcenter.vm.network.usage"])),
+		VcenterVMVsanLatencyAvg:            toVcenterMetricConfig(encodeMapstruct(cfg["vcenter.vm.vsan.latency.avg"])),
+		VcenterVMVsanOperations:            toVcenterMetricConfig(encodeMapstruct(cfg["vcenter.vm.vsan.operations"])),
+		VcenterVMVsanThroughput:            toVcenterMetricConfig(encodeMapstruct(cfg["vcenter.vm.vsan.throughput"])),
 	}
 }
 

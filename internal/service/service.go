@@ -12,6 +12,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/syntax/ast"
 )
 
 // Definition describes an individual service. Services have unique names
@@ -75,7 +76,7 @@ type Host interface {
 // Controller is implemented by alloy.Alloy.
 type Controller interface {
 	Run(ctx context.Context)
-	LoadSource(source []byte, args map[string]any) error
+	LoadSource(source []byte, args map[string]any, configPath string) (*ast.File, error)
 	Ready() bool
 }
 

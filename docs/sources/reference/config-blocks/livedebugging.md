@@ -5,11 +5,7 @@ menuTitle: livedebugging
 title: livedebugging block
 ---
 
-<span class="badge docs-labels__stage docs-labels__item">Experimental</span>
-
 # livedebugging block
-
-{{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `livedebugging` is an optional configuration block that enables the [live debugging feature][debug], which streams real-time data from your components directly to the {{< param "PRODUCT_NAME" >}} UI.
 

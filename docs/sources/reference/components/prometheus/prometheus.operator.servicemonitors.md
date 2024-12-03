@@ -32,10 +32,12 @@ prometheus.operator.servicemonitors "LABEL" {
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`forward_to` | `list(MetricsReceiver)` | List of receivers to send scraped metrics to. | | yes
-`namespaces` | `list(string)` | List of namespaces to search for ServiceMonitor resources. If not specified, all namespaces will be searched. || no
+Name | Type | Description                                                                                                                | Default   | Required
+---- | ---- |----------------------------------------------------------------------------------------------------------------------------|-----------| --------
+`forward_to` | `list(MetricsReceiver)` | List of receivers to send scraped metrics to.                                                                              |           | yes
+`namespaces` | `list(string)` | List of namespaces to search for ServiceMonitor resources. If not specified, all namespaces will be searched.              |           | no
+`kubernetes_role` | `string` | The Kubernetes role used for discovery. Supports `endpoints` or `endpointslice`. | `endpoints` | no
+`informer_sync_timeout` | `duration` | Timeout for initial sync of ServiceMonitor resources. | `1m` | no
 
 ## Blocks
 
@@ -252,7 +254,7 @@ prometheus.operator.servicemonitors "services" {
     forward_to = [prometheus.remote_write.staging.receiver]
     rule {
       action = "keep"
-      regex = env("HOSTNAME")
+      regex = sys.env("HOSTNAME")
       source_labels = ["__meta_kubernetes_pod_node_name"]
     }
 }

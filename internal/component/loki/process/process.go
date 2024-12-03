@@ -97,19 +97,26 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
+	handleOutShutdown := make(chan struct{})
+	wgOut := &sync.WaitGroup{}
 	defer func() {
 		c.mut.RLock()
 		if c.entryHandler != nil {
 			c.entryHandler.Stop()
+			// Stop handleOut only after the entryHandler has stopped.
+			// If handleOut stops first, entryHandler might get stuck on a channel send.
+			close(handleOutShutdown)
+			wgOut.Wait()
 		}
 		c.mut.RUnlock()
 	}()
-	wg := &sync.WaitGroup{}
-	wg.Add(2)
-	go c.handleIn(ctx, wg)
-	go c.handleOut(ctx, wg)
+	wgIn := &sync.WaitGroup{}
+	wgIn.Add(1)
+	go c.handleIn(ctx, wgIn)
+	wgOut.Add(1)
+	go c.handleOut(handleOutShutdown, wgOut)
 
-	wg.Wait()
+	wgIn.Wait()
 	return nil
 }
 
@@ -173,12 +180,12 @@ func (c *Component) handleIn(ctx context.Context, wg *sync.WaitGroup) {
 	}
 }
 
-func (c *Component) handleOut(ctx context.Context, wg *sync.WaitGroup) {
+func (c *Component) handleOut(shutdownCh chan struct{}, wg *sync.WaitGroup) {
 	defer wg.Done()
 	componentID := livedebugging.ComponentID(c.opts.ID)
 	for {
 		select {
-		case <-ctx.Done():
+		case <-shutdownCh:
 			return
 		case entry := <-c.processOut:
 			c.fanoutMut.RLock()
@@ -193,7 +200,7 @@ func (c *Component) handleOut(ctx context.Context, wg *sync.WaitGroup) {
 
 			for _, f := range fanout {
 				select {
-				case <-ctx.Done():
+				case <-shutdownCh:
 					return
 				case f.Chan() <- entry:
 				}

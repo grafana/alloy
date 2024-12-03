@@ -35,10 +35,10 @@ otelcol.processor.deltatocumulative "LABEL" {
 
 `otelcol.processor.deltatocumulative` supports the following arguments:
 
-Name          | Type       | Description                                                         | Default | Required
-------------- | ---------- | ------------------------------------------------------------------- | ------- | --------
-`max_stale`   | `duration` | How long to wait for a new sample before marking a stream as stale. | `"5m"`  | no
-`max_streams` | `number`   | Upper limit of streams to track. Set to `0` to disable.             | `0`     | no
+| Name          | Type       | Description                                                         | Default       | Required |
+| ------------- | ---------- | ------------------------------------------------------------------- | ------------- | -------- |
+| `max_stale`   | `duration` | How long to wait for a new sample before marking a stream as stale. | `"5m"`        | no       |
+| `max_streams` | `number`   | Upper limit of streams to track. Set to `0` to disable.             | `9223372036854775807` | no       |
 
 `otelcol.processor.deltatocumulative` tracks incoming metric streams.
 Sum and exponential histogram metrics with delta temporality are tracked and converted into cumulative temporality.
@@ -47,16 +47,15 @@ If a new sample hasn't been received since the duration specified by `max_stale`
 
 The `max_streams` attribute configures the upper limit of streams to track.
 If the limit of tracked streams is reached, new incoming streams are dropped.
-You can disable this behavior by setting `max_streams` to `0`.
 
 ## Blocks
 
 The following blocks are supported inside the definition of `otelcol.processor.deltatocumulative`:
 
-Hierarchy     | Block             | Description                                                                | Required
-------------- | ----------------- | -------------------------------------------------------------------------- | --------
-output        | [output][]        | Configures where to send received telemetry data.                          | yes
-debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
+| Hierarchy     | Block             | Description                                                                | Required |
+| ------------- | ----------------- | -------------------------------------------------------------------------- | -------- |
+| output        | [output][]        | Configures where to send received telemetry data.                          | yes      |
+| debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no       |
 
 [output]: #output-block
 [debug_metrics]: #debug_metrics-block
@@ -73,9 +72,9 @@ debug_metrics | [debug_metrics][] | Configures the metrics that this component g
 
 The following fields are exported and can be referenced by other components:
 
-Name    | Type               | Description
---------|--------------------|-----------------------------------------------------------------
-`input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to.
+| Name    | Type               | Description                                                      |
+| ------- | ------------------ | ---------------------------------------------------------------- |
+| `input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to. |
 
 `input` accepts `otelcol.Consumer` data for metrics.
 
@@ -89,13 +88,13 @@ Name    | Type               | Description
 
 ## Debug metrics
 
-* `processor_deltatocumulative_streams_tracked` (gauge): Number of streams currently tracked by the aggregation state.
-* `processor_deltatocumulative_streams_limit` (gauge): Upper limit of tracked streams.
-* `processor_deltatocumulative_streams_evicted` (counter): Total number of streams removed from tracking to ingest newer streams.
-* `processor_deltatocumulative_streams_max_stale` (gauge): Duration without new samples after which streams are dropped.
-* `processor_deltatocumulative_datapoints_processed` (counter): Total number of datapoints processed (successfully or unsuccessfully).
-* `processor_deltatocumulative_datapoints_dropped` (counter): Faulty datapoints that were dropped due to the reason given in the `reason` label.
-* `processor_deltatocumulative_gaps_length` (counter): Total length of all gaps in the streams, such as being due to lost in transit.
+- `otelcol_deltatocumulative_streams_tracked` (gauge): Number of streams currently tracked by the aggregation state.
+- `otelcol_deltatocumulative_streams_limit` (gauge): Upper limit of tracked streams.
+- `otelcol_deltatocumulative_streams_evicted` (counter): Total number of streams removed from tracking to ingest newer streams.
+- `otelcol_deltatocumulative_streams_max_stale_seconds` (gauge): Duration without new samples after which streams are dropped.
+- `otelcol_deltatocumulative_datapoints_processed` (counter): Total number of datapoints processed (successfully or unsuccessfully).
+- `otelcol_deltatocumulative_datapoints_dropped` (counter): Faulty datapoints that were dropped due to the reason given in the `reason` label.
+- `otelcol_deltatocumulative_gaps_length` (counter): Total length of all gaps in the streams, such as being due to lost in transit.
 
 ## Examples
 
@@ -112,7 +111,7 @@ otelcol.processor.deltatocumulative "default" {
 
 otelcol.exporter.otlp "production" {
   client {
-    endpoint = env("OTLP_SERVER_ENDPOINT")
+    endpoint = sys.env("OTLP_SERVER_ENDPOINT")
   }
 }
 ```
@@ -136,7 +135,7 @@ otelcol.exporter.prometheus "default" {
 
 prometheus.remote_write "default" {
   endpoint {
-    url = env("PROMETHEUS_SERVER_URL")
+    url = sys.env("PROMETHEUS_SERVER_URL")
   }
 }
 ```

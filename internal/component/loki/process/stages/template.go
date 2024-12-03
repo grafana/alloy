@@ -13,16 +13,16 @@ import (
 
 	"github.com/Masterminds/sprig/v3"
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/prometheus/common/model"
+
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 
 	"golang.org/x/crypto/sha3"
 )
 
 // Config Errors.
 var (
-	ErrEmptyTemplateStageConfig = errors.New("template stage config cannot be empty")
-	ErrTemplateSourceRequired   = errors.New("template source value is required")
+	ErrTemplateSourceRequired = errors.New("template source value is required")
 )
 
 var extraFunctionMap = template.FuncMap{

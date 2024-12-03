@@ -44,7 +44,7 @@ You can migrate from Grafana Agent Operator to {{< param "PRODUCT_NAME" >}}.
 
 1. Install the Grafana Helm repository:
 
-    ```
+    ```shell
     helm repo add grafana https://grafana.github.io/helm-charts
     helm repo update
     ```
@@ -80,7 +80,7 @@ prometheus.remote_write "primary" {
     endpoint {
         url = "https://<PROMETHEUS_URL>/api/v1/push"
         basic_auth {
-            username = nonsensitive(remote.kubernetes.secret.credentials.data["username"])
+            username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["username"])
             password = remote.kubernetes.secret.credentials.data["password"]
         }
     }
@@ -114,19 +114,19 @@ It then scrapes metrics from the targets and forward them to your remote write e
 You may need to customize this configuration further if you use additional features in your `MetricsInstance` resources.
 Refer to the documentation for the relevant components for additional information:
 
-- [remote.kubernetes.secret][]
-- [prometheus.remote_write][]
-- [prometheus.operator.podmonitors][]
-- [prometheus.operator.servicemonitors][]
-- [prometheus.operator.probes][]
-- [prometheus.scrape][]
+- [`remote.kubernetes.secret`][remote.kubernetes.secret]
+- [`prometheus.remote_write`][prometheus.remote_write]
+- [`prometheus.operator.podmonitors`][prometheus.operator.podmonitors]
+- [`prometheus.operator.servicemonitors`][prometheus.operator.servicemonitors]
+- [`prometheus.operator.probes`][prometheus.operator.probes]
+- [`prometheus.scrape`][prometheus.scrape]
 
-## Collecting logs
+## Collect logs
 
 The current recommendation is to create an additional DaemonSet deployment of {{< param "PRODUCT_NAME" >}} to scrape logs.
 
 > {{< param "PRODUCT_NAME" >}} has components that can scrape Pod logs directly from the Kubernetes API without needing a DaemonSet deployment.
-> These are still considered experimental, but if you would like to try them, see the documentation for [loki.source.kubernetes][] and [loki.source.podlogs][].
+> These are still considered experimental, but if you would like to try them, see the documentation for [`loki.source.kubernetes`][loki.source.kubernetes] and [`loki.source.podlogs`][loki.source.podlogs].
 
 These values are close to what Grafana Agent Operator deploys for logs:
 
@@ -145,7 +145,7 @@ alloy:
 
 This command installs a release named `alloy-logs` in the `monitoring` namespace:
 
-```
+```shell
 helm upgrade alloy-logs grafana/alloy -i -n monitoring -f values-logs.yaml --set-file alloy.configMap.content=config-logs.alloy
 ```
 
@@ -163,7 +163,7 @@ discovery.kubernetes "pods" {
   // limit to pods on this node to reduce the amount you need to filter
   selectors {
     role  = "pod"
-    field = "spec.nodeName=" + env("<HOSTNAME>")
+    field = "spec.nodeName=" + sys.env("<HOSTNAME>")
   }
 }
 
@@ -253,7 +253,7 @@ loki.write "loki" {
   endpoint {
     url = "https://<LOKI_URL>/loki/api/v1/push"
     basic_auth {
-      username = nonsensitive(remote.kubernetes.secret.credentials.data["username"])
+      username = convert.nonsensitive(remote.kubernetes.secret.credentials.data["username"])
       password = remote.kubernetes.secret.credentials.data["password"]
     }
 }
@@ -277,7 +277,6 @@ The [reference documentation][component documentation] should help convert those
 [clustering]: ../../../get-started/clustering/
 [deployment guide]: ../../../set-up/deploy/
 [operator guide]: https://grafana.com/docs/agent/latest/operator/deploy-agent-operator-resources/#deploy-a-metricsinstance-resource
-[Helm chart]: ../../../set-up/install/kubernetes/
 [remote.kubernetes.secret]: ../../../reference/components/remote/remote.kubernetes.secret/
 [prometheus.remote_write]: ../../../reference/components/prometheus/prometheus.remote_write/
 [prometheus.operator.podmonitors]: ../../../reference/components/prometheus/prometheus.operator.podmonitors/
