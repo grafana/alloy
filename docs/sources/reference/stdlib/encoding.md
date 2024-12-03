@@ -28,7 +28,7 @@ tangerine
 
 ## encoding.from_URLbase64
 
-The `encoding.from_URLbase64` function decodes a RFC4648-compliant Base64 url safe encoded string into the original string.
+The `encoding.from_URLbase64` function decodes a RFC4648-compliant Base64 URL safe encoded string into the original string.
 
 `encoding.from_URLbase64` fails if the provided string argument contains invalid Base64 data.
 
