@@ -37,9 +37,6 @@ import (
 	"github.com/grafana/alloy/internal/util"
 )
 
-// Generous timeout period for configuring all informers
-const informerSyncTimeout = 10 * time.Second
-
 type crdManagerInterface interface {
 	Run(ctx context.Context) error
 	ClusteringUpdated()
@@ -332,7 +329,7 @@ func (c *crdManager) configureInformers(ctx context.Context, informers cache.Inf
 		return fmt.Errorf("unknown kind to configure Informers: %s", c.kind)
 	}
 
-	informerCtx, cancel := context.WithTimeout(ctx, informerSyncTimeout)
+	informerCtx, cancel := context.WithTimeout(ctx, c.args.InformerSyncTimeout)
 	defer cancel()
 
 	informer, err := informers.GetInformer(informerCtx, prototype)

@@ -7,6 +7,42 @@ This document contains a historical list of changes between releases. Only
 changes that impact end-user behavior are listed; changes to documentation or
 internal API changes are not present.
 
+v1.5.1
+-----------------
+
+### Enhancements
+
+- Logs from underlying clustering library `memberlist` are now surfaced with correct level (@thampiotr)
+
+- Allow setting `informer_sync_timeout` in prometheus.operator.* components. (@captncraig)
+
+- For sharding targets during clustering, `loki.source.podlogs` now only takes into account some labels. (@ptodev)
+
+### Bugfixes
+
+- Fixed an issue in the `pyroscope.write` component to prevent TLS connection churn to Pyroscope when the `pyroscope.receive_http` clients don't request keepalive (@madaraszg-tulip)
+
+- Fixed an issue in the `pyroscope.write` component with multiple endpoints not working correctly for forwarding profiles from `pyroscope.receive_http` (@madaraszg-tulip)
+
+- Fixed issue with reloading configuration and prometheus metrics duplication in `prometheus.write.queue`. (@mattdurham)
+
+- Fixed a few race conditions that could lead to a deadlock when using `import` statements, which could lead to a memory leak on `/metrics` endpoint of an Alloy instance. (@thampiotr)
+
+- Fix a race condition where the ui service was dependent on starting after the remotecfg service, which is not guaranteed. (@dehaansa & @erikbaranowski)
+
+- Fixed an issue in the `otelcol.exporter.prometheus` component that would set series value incorrectly for stale metrics (@YusifAghalar)
+
+- `loki.source.podlogs`: Fixed a bug which prevented clustering from working and caused duplicate logs to be sent.
+  The bug only happened when no `selector` or `namespace_selector` blocks were specified in the Alloy configuration. (@ptodev)
+
+- Fixed an issue in the `pyroscope.write` component to allow slashes in application names in the same way it is done in the Pyroscope push API (@marcsanmi)
+
+- Fixed a crash when updating the configuration of `remote.http`. (@kinolaev)
+
+- Fixed an issue in the `otelcol.processor.attribute` component where the actions `delete` and `hash` could not be used with the `pattern` argument. (@wildum) 
+
+- Fixed an issue in the `prometheus.exporter.postgres` component that would leak goroutines when the target was not reachable (@dehaansa)
+
 v1.5.0
 -----------------
 
