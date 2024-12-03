@@ -31,6 +31,8 @@ v1.5.1
 
 - Fixed an issue in the `pyroscope.write` component to allow slashes in application names in the same way it is done in the Pyroscope push API (@marcsanmi)
 
+- Fixed a crash when updating the configuration of `remote.http`. (@kinolaev)
+
 v1.5.0
 -----------------
 
