@@ -34,6 +34,8 @@ export function buildGraph(components: ComponentInfo[]): [Node[], Edge[]] {
     return node;
   });
 
+  //   edges = fixDirections(edges);
+
   dagreGraph.setGraph({ rankdir: 'LR' });
 
   nodes.forEach((node) => {
@@ -64,3 +66,14 @@ export function buildGraph(components: ComponentInfo[]): [Node[], Edge[]] {
 
   return [newNodes, edges];
 }
+
+// function fixDirections(edges: Edge[]): Edge[] {
+//   return edges.map((edge) => {
+//     if (edge.source.startsWith('prometheus.')) {
+//       const tmp = edge.source;
+//       edge.source = edge.target;
+//       edge.target = tmp;
+//     }
+//     return edge;
+//   });
+// }

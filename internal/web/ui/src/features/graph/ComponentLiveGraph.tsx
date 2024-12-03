@@ -45,19 +45,25 @@ const ComponentLiveGraph: React.FC<LiveGraphProps> = ({ components }) => {
       const matchAny = edges.findIndex(
         (edge) =>
           edge.source === feed.componentID &&
-          (feed.targetComponentIDs.length === 0 || feed.targetComponentIDs.find((t) => t === edge.target))
+          (!feed.targetComponentIDs ||
+            feed.targetComponentIDs.length === 0 ||
+            feed.targetComponentIDs.find((t) => t === edge.target))
       );
       const match = edges.findIndex(
         (edge) =>
           edge.source === feed.componentID &&
           edge.data!.signal == feed.type &&
-          (feed.targetComponentIDs.length === 0 || feed.targetComponentIDs.find((t) => t === edge.target))
+          (!feed.targetComponentIDs ||
+            feed.targetComponentIDs.length === 0 ||
+            feed.targetComponentIDs.find((t) => t === edge.target))
       );
       const matchUnassigned = edges.findIndex(
         (edge) =>
           edge.source === feed.componentID &&
           edge.data!.signal == FeedDataType.UNDEFINED &&
-          (feed.targetComponentIDs.length === 0 || feed.targetComponentIDs.find((t) => t === edge.target))
+          (!feed.targetComponentIDs ||
+            feed.targetComponentIDs.length === 0 ||
+            feed.targetComponentIDs.find((t) => t === edge.target))
       );
       if (match === -1 && matchUnassigned === -1 && matchAny !== -1) {
         newEdges.push({
@@ -70,7 +76,9 @@ const ComponentLiveGraph: React.FC<LiveGraphProps> = ({ components }) => {
             edges.filter(
               (edge) =>
                 edge.source === feed.componentID &&
-                (feed.targetComponentIDs.length === 0 || feed.targetComponentIDs.find((t) => t === edge.target))
+                (!feed.targetComponentIDs ||
+                  feed.targetComponentIDs.length === 0 ||
+                  feed.targetComponentIDs.find((t) => t === edge.target))
             ).length * 40,
         });
       } else if (match === -1 && matchUnassigned !== -1) {
