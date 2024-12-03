@@ -9,8 +9,6 @@ import (
 	"sync"
 	"time"
 
-	promk8s "github.com/prometheus/prometheus/discovery/kubernetes"
-
 	"github.com/go-kit/log"
 	"github.com/grafana/ckit/shard"
 	promopv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"

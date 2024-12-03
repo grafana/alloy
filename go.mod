@@ -112,7 +112,6 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter v0.112.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancingexporter v0.112.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusexporter v0.112.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/syslogexporter v0.112.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/basicauthextension v0.112.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/bearertokenauthextension v0.112.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/headerssetterextension v0.112.0
