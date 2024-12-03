@@ -3,8 +3,10 @@ package receive
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/prometheus/scrape_task"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
@@ -29,8 +31,8 @@ type Arguments struct {
 type Component struct {
 	opts component.Options
 
-	updateMut sync.RWMutex
-	args      Arguments
+	mut  sync.RWMutex
+	args Arguments
 }
 
 func New(opts component.Options, args Arguments) (*Component, error) {
@@ -46,19 +48,50 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 
 // Run satisfies the Component interface.
 func (c *Component) Run(ctx context.Context) error {
-	// TODO(thampiotr): consume tasks from somewhere, e.g.
-	<-ctx.Done()
-	level.Info(c.opts.Logger).Log("msg", "terminating due to context done")
-	return nil
+	// TODO(thampiotr): consume tasks from somewhere, e.g. redis queue and send them to the consumer
+
+	tick := time.NewTicker(5 * time.Second)
+	defer tick.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			level.Info(c.opts.Logger).Log("msg", "terminating due to context done")
+			return nil
+		case <-tick.C:
+			level.Debug(c.opts.Logger).Log("msg", "generating fake scrape tasks and forwarding to consumers")
+
+			c.mut.RLock()
+			consumers := c.args.ForwardTo
+			c.mut.RUnlock()
+
+			// TODO(thampiotr): add metrics here
+
+			for _, consumer := range consumers {
+				consumer.Consume(fakeScrapeTasks())
+			}
+		}
+	}
+}
+
+func fakeScrapeTasks() []scrape_task.ScrapeTask {
+	return []scrape_task.ScrapeTask{
+		{
+			IssueTime: time.Now(),
+			Target:    discovery.Target{"host": "test_host_1", "cluster": "home"},
+		},
+		{
+			IssueTime: time.Now(),
+			Target:    discovery.Target{"host": "test_host_2", "cluster": "home"},
+		},
+	}
 }
 
 // Update satisfies the Component interface.
 func (c *Component) Update(args component.Arguments) error {
-	newArgs := args.(Arguments)
+	c.mut.Lock()
+	defer c.mut.Unlock()
 
-	c.updateMut.Lock()
-	defer c.updateMut.Unlock()
-
-	c.args = newArgs
+	c.args = args.(Arguments)
 	return nil
 }

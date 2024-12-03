@@ -1,0 +1,15 @@
+
+logging {
+    level = "debug"
+}
+
+prometheus.scrape_task.receive "a" {
+    forward_to = [
+        prometheus.scrape_task.scrape.a.receiver,
+    ]
+}
+
+prometheus.scrape_task.scrape "a" {
+    forward_to = []
+    pool_size = 10
+}

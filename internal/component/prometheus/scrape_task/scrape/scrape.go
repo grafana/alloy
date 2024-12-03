@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/go-kit/log"
 	promclient "github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/atomic"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/grafana/alloy/internal/component/prometheus/scrape_task/internal/promadapter"
 	"github.com/grafana/alloy/internal/component/prometheus/scrape_task/internal/promstub"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 func init() {
@@ -21,6 +23,7 @@ func init() {
 		Name:      "prometheus.scrape_task.scrape",
 		Stability: featuregate.StabilityExperimental,
 		Args:      Arguments{},
+		Exports:   Exports{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
 			return New(opts, args.(Arguments))
@@ -84,6 +87,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
 	<-ctx.Done()
+	c.pool.drainAndShutdown()
 	return nil
 }
 
@@ -92,7 +96,7 @@ func (c *Component) Update(args component.Arguments) error {
 	c.mut.Lock()
 	oldPool := c.pool
 	c.args = args.(Arguments)
-	c.pool = newPool(c.args.PoolSize)
+	c.pool = newPool(c.args.PoolSize, log.With(c.opts.Logger, "subsystem", "task_pool"))
 	c.mut.Unlock()
 
 	if oldPool != nil {
@@ -103,6 +107,8 @@ func (c *Component) Update(args component.Arguments) error {
 }
 
 func (c *Component) Consume(tasks []scrape_task.ScrapeTask) map[int]error {
+	level.Debug(c.opts.Logger).Log("msg", "consuming scrape tasks", "count", len(tasks))
+
 	// Create function to collect errors
 	resultMut := sync.Mutex{}
 	results := make(map[int]error, len(tasks))
@@ -141,6 +147,11 @@ func (c *Component) Consume(tasks []scrape_task.ScrapeTask) map[int]error {
 
 // scrapeWithTimeoutAndRetries must always complete and return an error.
 func (c *Component) scrapeWithTimeoutAndRetries(task scrape_task.ScrapeTask) error {
+	level.Debug(c.opts.Logger).Log("msg", "scraping target", "target", task.Target)
+
+	// TODO(thampiotr): better metrics, do a histogram of scraping time etc
+	c.scrapesCounter.Inc()
+
 	var err error
 
 	// Do the scrape
@@ -166,11 +177,14 @@ type pool struct {
 	isDraining atomic.Bool
 	allDone    sync.WaitGroup
 	shutdown   chan struct{}
+	logger     log.Logger
 }
 
-func newPool(size int) *pool {
+func newPool(size int, logger log.Logger) *pool {
 	p := &pool{
-		tasks: make(chan func(), size),
+		tasks:    make(chan func(), size),
+		shutdown: make(chan struct{}),
+		logger:   logger,
 	}
 	for i := 0; i < size; i++ {
 		p.allDone.Add(1)
@@ -198,7 +212,9 @@ func (p *pool) submit(fn func()) error {
 }
 
 func (p *pool) drainAndShutdown() {
+	level.Debug(p.logger).Log("msg", "draining tasks pool")
 	p.isDraining.Store(true)
 	close(p.shutdown)
 	p.allDone.Wait()
+	level.Debug(p.logger).Log("msg", "pool drained")
 }
