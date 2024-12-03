@@ -188,6 +188,10 @@ controller:
   # 'statefulset'.
   parallelRollout: true
 
+  # -- Wether to automatically mount the ServiceAccountToken.
+  # https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#opt-out-of-api-credential-automounting
+  automountServiceAccountToken: true
+
   # -- Configures Pods to use the host network. When set to true, the ports that will be used must be specified.
   hostNetwork: false
 

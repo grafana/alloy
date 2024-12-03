@@ -66,6 +66,9 @@ spec:
   topologySpreadConstraints:
     {{- toYaml . | nindent 4 }}
   {{- end }}
+  {{- if .Values.controller.automountServiceAccountToken }}
+  automountServiceAccountToken: {{ .Values.controller.automountServiceAccountToken }}
+  {{- end }}
   volumes:
     - name: config
       configMap:
