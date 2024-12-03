@@ -2,6 +2,10 @@
 canonical: https://grafana.com/docs/alloy/latest/reference/components/beyla/beyla.ebpf/
 aliases:
   - ../beyla.ebpf/ # /docs/alloy/latest/reference/components/beyla.ebpf/
+keywords:
+  - Grafana Beyla
+  - eBPF
+  - Beyla
 description: Learn about beyla.ebpf
 title: beyla.ebpf
 ---
@@ -12,9 +16,9 @@ title: beyla.ebpf
 
 {{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-The `beyla.ebpf` component is used as a wrapper for [Grafana Beyla][] which uses [eBPF][] to automatically inspect application executables and the OS networking layer, and capture trace spans related to web transactions and Rate Errors Duration (RED) metrics for Linux HTTP/S and gRPC services.
+The `beyla.ebpf` component is a wrapper for [Grafana Beyla][], which uses [eBPF][] to automatically inspect application executables and the OS networking layer and capture trace spans related to web transactions and Rate Errors Duration (RED) metrics for Linux HTTP/S and gRPC services.
 You can configure the component to collect telemetry data from a specific port or executable path, and other criteria from Kubernetes metadata.
-The component exposes metrics that can be collected by a Prometheus scrape component, and traces that can be forwarded to an OTel exporter component.
+The component exposes metrics that a Prometheus scrape component can collect and traces that can be forwarded to an OTel exporter component.
 
 {{< admonition type="note" >}}
 To run this component, {{< param "PRODUCT_NAME" >}} requires administrator privileges, or at least it must be granted the `CAP_SYS_ADMIN` and `CAP_SYS_PTRACE` capability.
@@ -52,26 +56,24 @@ If the executable matches only one of the ports in the list, it's considered to 
 
 The following blocks are supported inside the definition of `beyla.ebpf`:
 
-Hierarchy                                 | Block                     | Description                                                                                        | Required
-------------------------------------------|---------------------------|----------------------------------------------------------------------------------------------------|---------
-output                                    | [output][]                | Configures where to send received telemetry data.                                                  | yes
-attributes                                | [attributes][]            | Configures the Beyla attributes for the component.                                                 | no
-attributes > kubernetes                   | [kubernetes attributes][] | Configures decorating of the metrics and traces with Kubernetes metadata of the instrumented Pods. | no
-discovery                                 | [discovery][]             | Configures the discovery for instrumentable processes matching a given criteria.                   | no
-discovery > exclude_services              | [services][]              | Configures the services to exclude for the component.                                              | no
-discovery > exclude_services > kubernetes | [kubernetes services][]   | Configures the Kubernetes services to exclude for the component.                                   | no
-discovery > services                      | [services][]              | Configures the services to discover for the component.                                             | no
-discovery > services > kubernetes         | [kubernetes services][]   | Configures the Kubernetes services to discover for the component.                                  | no
-metrics                                   | [metrics][]               | Configures which metrics Beyla exposes.                                                            | no
-metrics > network                         | [network][]               | Configures network metrics options for Beyla.                                                      | no
-routes                                    | [routes][]                | Configures the routes to match HTTP paths into user-provided HTTP routes.                          | no
+Hierarchy                                       | Block                                            | Description                                                                                        | Required
+------------------------------------------------|--------------------------------------------------|----------------------------------------------------------------------------------------------------|---------
+output                                        | [output][output]                               | Configures where to send received telemetry data.                                                  | yes
+attributes                                    | [attributes][attributes]                       | Configures the Beyla attributes for the component.                                                 | no
+attributes<br>&nbsp;&nbsp;└──kubernetes                  | [kubernetes&nbsp;attributes][kubernetes attributes] | Configures decorating of the metrics and traces with Kubernetes metadata of the instrumented Pods. | no
+discovery                                     | [discovery][discovery]                         | Configures the discovery for instrumentable processes matching a given criteria.                   | no
+discovery<br>&nbsp;&nbsp;└──exclude_services                | [services][services]                           | Configures the services to exclude for the component.                                              | no
+discovery<br>&nbsp;&nbsp;└──exclude_services<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└──kubernetes | [kubernetes&nbsp;services][kubernetes services]     | Configures the Kubernetes services to exclude for the component.                                   | no
+discovery<br>&nbsp;&nbsp;└──services                        | [services][services]                           | Configures the services to discover for the component.                                             | no
+discovery<br>&nbsp;&nbsp;└──services<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└──kubernetes         | [kubernetes&nbsp;services][kubernetes services]     | Configures the Kubernetes services to discover for the component.                                  | no
+metrics                                       | [metrics][metrics]                             | Configures which metrics Beyla exposes.                                                            | no
+metrics<br>&nbsp;&nbsp;└──network                           | [network][network]                             | Configures network metrics options for Beyla.                                                      | no
+routes                                        | [routes][routes]                               | Configures the routes to match HTTP paths into user-provided HTTP routes.                          | no
 
 The `>` symbol indicates deeper levels of nesting.
 For example,`attributes > kubernetes` refers to a `kubernetes` block defined inside an `attributes` block.
 
-### output
-
-<span class="badge docs-labels__product-oss docs-labels__item"><b>Required</b></span>
+### output <span class="badge docs-labels__product-oss docs-labels__item"><b>Required</b></span> {#output}
 
 The `output` block configures a set of components to forward the resulting telemetry data to.
 You must specify the `output` block, but all its arguments are optional.
@@ -86,13 +88,13 @@ By default, telemetry data is dropped.
 
 Configure the `traces` argument to send traces data to other components.
 
-### attributes
+### attributes <span class="badge docs-labels__product-oss docs-labels__item"><b>Optional</b></span> {#attributes}
 
 This block allows you to configure how some attributes for metrics and traces are decorated.
 
 It contains the following blocks:
 
-#### kubernetes attributes
+#### kubernetes attributes <span class="badge docs-labels__product-oss docs-labels__item"><b>Optional</b></span> {#kubernetes-attributes}
 
 Name           | Type     | Description                                | Default | Required
 ---------------|----------|--------------------------------------------|---------|---------
@@ -101,33 +103,33 @@ Name           | Type     | Description                                | Default
 
 If `cluster_name` isn't set, Beyla tries to detect the cluster name from the Kubernetes API.
 
-If `enable` is set to `true`, Beyla decorates the metrics and traces with Kubernetes metadata. The following labels are added:
+If you set `enable` to `true`, Beyla decorates the metrics and traces with Kubernetes metadata. The following labels are added:
 
-- `k8s.namespace.name`
-- `k8s.deployment.name`
-- `k8s.statefulset.name`
-- `k8s.replicaset.name`
-- `k8s.daemonset.name`
-- `k8s.node.name`
-- `k8s.pod.name`
-- `k8s.pod.uid`
-- `k8s.pod.start_time`
+* `k8s.namespace.name`
+* `k8s.deployment.name`
+* `k8s.statefulset.name`
+* `k8s.replicaset.name`
+* `k8s.daemonset.name`
+* `k8s.node.name`
+* `k8s.pod.name`
+* `k8s.pod.uid`
+* `k8s.pod.start_time`
 
-If `enable` is set to `false`, the Kubernetes metadata decorator is disabled.
+If you set `enable` to `false`, the Kubernetes metadata decorator is disabled.
 
-If `enable` is set to `autodetect`, Beyla tries to automatically detect if it's running inside Kubernetes, and enable the metadata decoration if that's the case.
+If you set `enable` to `autodetect`, Beyla tries to automatically detect if it's running inside Kubernetes, and enable the metadata decoration if that's the case.
 
-### discovery
+### discovery <span class="badge docs-labels__product-oss docs-labels__item"><b>Optional</b></span> {#discovery}
 
 This block is used to configure the discovery for instrumentable processes matching a given criteria.
 
 It contains the following blocks:
 
-#### services
+#### services <span class="badge docs-labels__product-oss docs-labels__item"><b>Optional</b></span> {#services}
 
-In some scenarios, Beyla will instrument a wide variety of services, such as a Kubernetes DaemonSet that instruments all the services in a node.
-This block allows you to filter the services to instrument based on their metadata. If you specify other selectors in the same services entry,
-the instrumented processes need to match all the selector properties.
+In some scenarios, Beyla instruments a wide variety of services, such as a Kubernetes DaemonSet that instruments all the services in a node.
+This block allows you to filter the services to instrument based on their metadata.
+If you specify other selectors in the same services entry, the instrumented processes need to match all the selector properties.
 
 Name         | Type     | Description                                                                     | Default | Required
 -------------|----------|---------------------------------------------------------------------------------|---------|---------
@@ -144,7 +146,7 @@ It's used to populate the `service.name` OTel property or the `service_name` Pro
 `open_port` accepts a comma-separated list of ports, for example, `80,443`, and port ranges,  for example, `8000-8999`.
 If the executable matches only one of the ports in the list, it's considered to match the selection criteria.
 
-#### kubernetes services
+#### kubernetes services <span class="badge docs-labels__product-oss docs-labels__item"><b>Optional</b></span> {#kubernetes-services}
 
 This block allows you to filter the services to instrument based on their Kubernetes metadata.
 If you specify other selectors in the same services entry, the instrumented processes need to match all the selector properties.
@@ -160,7 +162,7 @@ Name               | Type           | Description                               
 `replicaset_name`  | `string`       | Regular expression of Kubernetes ReplicaSets to match.                                                      | `""`    | no
 `statefulset_name` | `string`       | Regular expression of Kubernetes StatefulSets to match.                                                     | `""`    | no
 
-### metrics
+### metrics <span class="badge docs-labels__product-oss docs-labels__item"><b>Optional</b></span> {#metrics}
 
 This block configures which metrics Beyla collects.
 
@@ -171,22 +173,22 @@ Name               | Type           | Description                               
 
 `features` is a list of features to enable for the metrics. The following features are available:
 
-- `application_process` exports metrics about the processes that run the instrumented application.
-- `application_service_graph` exports application-level service graph metrics.
-- `application_span`exports application-level metrics in traces span metrics format.
-- `application` exports application-level metrics.
-- `network` exports network-level metrics.
+* `application_process` exports metrics about the processes that run the instrumented application.
+* `application_service_graph` exports application-level service graph metrics.
+* `application_span`exports application-level metrics in traces span metrics format.
+* `application` exports application-level metrics.
+* `network` exports network-level metrics.
 
 `instrumentations` is a list of instrumentations to enable for the metrics. The following instrumentations are available:
 
-- `*` enables all `instrumentations`. If `*` is present in the list, the other values are ignored.
-- `grpc` enables the collection of gRPC application metrics.
-- `http` enables the collection of HTTP/HTTPS/HTTP2 application metrics.
-- `kafka` enables the collection of Kafka client/server message queue metrics.
-- `redis` enables the collection of Redis client/server database metrics.
-- `sql` enables the collection of SQL database client call metrics.
+* `*` enables all `instrumentations`. If `*` is present in the list, the other values are ignored.
+* `grpc` enables the collection of gRPC application metrics.
+* `http` enables the collection of HTTP/HTTPS/HTTP2 application metrics.
+* `kafka` enables the collection of Kafka client/server message queue metrics.
+* `redis` enables the collection of Redis client/server database metrics.
+* `sql` enables the collection of SQL database client call metrics.
 
-#### network
+#### network <span class="badge docs-labels__product-oss docs-labels__item"><b>Optional</b></span> {#network}
 
 This block configures network metrics options for Beyla. You must append `network` to the `features` list in the `metrics` block to enable network metrics.
 
@@ -194,7 +196,7 @@ Name              | Type           | Description                                
 ------------------|----------------|---------------------------------------------------------|---------|---------
 `enabled`         | `bool`         | Enable network metrics collection.                      | `false` | no
 
-### routes
+### routes <span class="badge docs-labels__product-oss docs-labels__item"><b>Optional</b></span> {#routes}
 
 This block is used to configure the routes to match HTTP paths into user-provided HTTP routes.
 
@@ -207,26 +209,26 @@ Name               | Type           | Description                               
 
 `ignore_mode` properties are:
 
-- `all` discards metrics and traces matching the `ignored_patterns`.
-- `traces` discards only the traces that match the `ignored_patterns`. No metric events are ignored.
-- `metrics` discards only the metrics that match the `ignored_patterns`. No trace events are ignored.
+* `all` discards metrics and traces matching the `ignored_patterns`.
+* `traces` discards only the traces that match the `ignored_patterns`. No metric events are ignored.
+* `metrics` discards only the metrics that match the `ignored_patterns`. No trace events are ignored.
 
-`patterns` and `ignored_patterns` are a list of patterns which a URL path with specific tags which allow for grouping path segments (or ignored them).
+`patterns` and `ignored_patterns` are a list of patterns with a URL path with specific tags which allow you to group path segments, or ignore them.
 The matcher tags can be in the `:name` or `{name}` format.
 
 `unmatched` properties are:
 
-- `heuristic` automatically derives the `http.route` field property from the path value based on the following rules:
+* `heuristic` automatically derives the `http.route` field property from the path value based on the following rules:
 
-  - Any path components that have numbers or characters outside of the ASCII alphabet (or `-` and _), are replaced by an asterisk `*`.
-  - Any alphabetical components that don’t look like words are replaced by an asterisk `*`.
+  * Any path components that have numbers or characters outside of the ASCII alphabet or `-` and `_`, are replaced by an asterisk `*`.
+  * Any alphabetical components that don't look like words are replaced by an asterisk `*`.
 
-- `path` copies the `http.route` field property to the path value.
+* `path` copies the `http.route` field property to the path value.
   {{< admonition type="caution" >}}
   This option could lead to a cardinality explosion on the ingester side.
   {{< /admonition >}}
-- `unset` leaves the `http.route` property as unset.
-- `wildcard` sets the `http.route` field property to a generic asterisk-based `/**` value.
+* `unset` leaves the `http.route` property as unset.
+* `wildcard` sets the `http.route` field property to a generic asterisk-based `/**` value.
 
 ## Exported fields
 
@@ -279,10 +281,10 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-- _`<OPEN_PORT>`_: The port of the running service for Beyla automatically instrumented with eBPF.
-- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
-- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+* _`<OPEN_PORT>`_: The port of the running service for Beyla automatically instrumented with eBPF.
+* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
+* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 ### Traces
 
@@ -311,8 +313,8 @@ otelcol.exporter.otlp "default" {
 
 Replace the following:
 
-- _`<OPEN_PORT>`_: The port of the running service for Beyla automatically instrumented with eBPF.
-- _`<OTLP_ENDPOINT>`_: The endpoint of the OpenTelemetry Collector to send traces to.
+* _`<OPEN_PORT>`_: The port of the running service for Beyla automatically instrumented with eBPF.
+* _`<OTLP_ENDPOINT>`_: The endpoint of the OpenTelemetry Collector to send traces to.
 
 [attributes]: #attributes
 [discovery]: #discovery
