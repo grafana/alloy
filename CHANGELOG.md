@@ -67,6 +67,8 @@ Main (unreleased)
 
 - Updated `prometheus.write.queue` to fix issue with TTL comparing different scales of time. (@mattdurham)
 
+- Fixed a crash when updating the configuration of `remote.http`. (@kinolaev)
+
 ### Other changes
 
 - Change the stability of the `livedebugging` feature from "experimental" to "generally available". (@wildum)
