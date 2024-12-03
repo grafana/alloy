@@ -19,34 +19,46 @@ The `encoding.from_base64` function decodes a RFC4648-compliant Base64-encoded s
 
 `encoding.from_base64` fails if the provided string argument contains invalid Base64 data.
 
-### Examples
+### Example
 
 ```text
 > encoding.from_base64("dGFuZ2VyaW5l")
 tangerine
 ```
 
-## encoding.to_base64
+## encoding.from_URLbase64
 
-The `encoding.to_base64` function encodes a string to RFC4648-compliant base64 string
-into the original string.
+The `encoding.from_URLbase64` function decodes a RFC4648-compliant Base64 url safe encoded string into the original string.
 
-### Examples
+`encoding.from_URLbase64` fails if the provided string argument contains invalid Base64 data.
+
+### Example
 
 ```
-> encoding.to_base64("foobar123!?$*&()'-=@~")
-Zm9vYmFyMTIzIT8kKiYoKSctPUB+
+> encoding.from_URLbase64("c3RyaW5nMTIzIT8kKiYoKSctPUB-")
+string123!?$*&()'-=@~
+```
+
+## encoding.to_base64
+
+The `encoding.to_base64` function encodes the original string into RFC4648-compliant Base64 encoded string
+
+### Example
+
+```
+> encoding.to_base64("string123!?$*&()'-=@~")
+c3RyaW5nMTIzIT8kKiYoKSctPUB+
 ```
 
 ## encoding.to_URLbase64
 
-The `encoding.to_URLbase64` function encodes a string to RFC4648-compliant url safe base64 string
+The `encoding.to_base64` function encodes the original string into RFC4648-compliant URL safe Base64 encoded string
 
-### Examples
+### Example
 
 ```
-> encoding.to_URLbase64("foobar123!?$*&()'-=@~")
-Zm9vYmFyMTIzIT8kKiYoKSctPUB-
+> encoding.to_URLbase64("string123!?$*&()'-=@~")
+c3RyaW5nMTIzIT8kKiYoKSctPUB-
 ```
 
 ## encoding.from_json

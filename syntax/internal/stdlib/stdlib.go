@@ -75,11 +75,12 @@ var file = map[string]interface{}{
 }
 
 var encoding = map[string]interface{}{
-	"from_json":    jsonDecode,
-	"from_yaml":    yamlDecode,
-	"from_base64":  base64Decode,
-	"to_base64":    base64Encode,
-	"to_URLbase64": base64URLEncode,
+	"from_json":      jsonDecode,
+	"from_yaml":      yamlDecode,
+	"from_base64":    base64Decode,
+	"from_URLbase64": base64URLDecode,
+	"to_base64":      base64Encode,
+	"to_URLbase64":   base64URLEncode,
 }
 
 var str = map[string]interface{}{
@@ -309,6 +310,14 @@ func yamlDecode(in string) (interface{}, error) {
 
 func base64Decode(in string) (interface{}, error) {
 	decoded, err := base64.StdEncoding.DecodeString(in)
+	if err != nil {
+		return nil, err
+	}
+	return decoded, nil
+}
+
+func base64URLDecode(in string) (interface{}, error) {
+	decoded, err := base64.URLEncoding.DecodeString(in)
 	if err != nil {
 		return nil, err
 	}

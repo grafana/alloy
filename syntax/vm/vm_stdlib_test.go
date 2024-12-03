@@ -39,8 +39,9 @@ func TestVM_Stdlib(t *testing.T) {
 		{"encoding.from_yaml nil field", "encoding.from_yaml(`foo: null`)", map[string]interface{}{"foo": nil}},
 		{"encoding.from_yaml nil array element", `encoding.from_yaml("[0, null]")`, []interface{}{0, nil}},
 		{"encoding.from_base64", `encoding.from_base64("Zm9vYmFyMTIzIT8kKiYoKSctPUB+")`, string(`foobar123!?$*&()'-=@~`)},
-		{"encoding.to_base64", `encoding.to_base64("foobar123!?$*&()'-=@~")`, string(`Zm9vYmFyMTIzIT8kKiYoKSctPUB+`)},
-		{"encoding.to_URLbase64", `encoding.to_URLbase64("foobar123!?$*&()'-=@~")`, string(`Zm9vYmFyMTIzIT8kKiYoKSctPUB-`)},
+		{"encoding.from_URLbase64", `encoding.from_URLbase64("c3RyaW5nMTIzIT8kKiYoKSctPUB-")`, string(`string123!?$*&()'-=@~`)},
+		{"encoding.to_base64", `encoding.to_base64("string123!?$*&()'-=@~")`, string(`c3RyaW5nMTIzIT8kKiYoKSctPUB+`)},
+		{"encoding.to_URLbase64", `encoding.to_URLbase64("string123!?$*&()'-=@~")`, string(`c3RyaW5nMTIzIT8kKiYoKSctPUB-`)},
 
 		// Map tests
 		{

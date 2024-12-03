@@ -47,6 +47,7 @@ Main (unreleased)
   - Add perf_schema quantile columns to collector
 
 - For sharding targets during clustering, `loki.source.podlogs` now only takes into account some labels. (@ptodev)
+- Add two new stdlib functions to_base64 and to_URLbase64 (@ravishankar15)
 
 ### Bugfixes
 - Fixed an issue in the `pyroscope.write` component to prevent TLS connection churn to Pyroscope when the `pyroscope.receive_http` clients don't request keepalive (@madaraszg-tulip)
