@@ -1,4 +1,3 @@
-import React from 'react';
 import { BaseEdge, type EdgeProps, EdgeText, getBezierPath, type ReactFlowState, useStore } from '@xyflow/react';
 
 export type GetSpecialPathParams = {
@@ -49,9 +48,13 @@ export default function CustomEdge({
     [path] = getBezierPath(edgePathParams);
   }
 
+  const flashyStyle = {
+    strokeWidth: 3, // Make the edge thicker
+  };
+
   return (
     <>
-      <BaseEdge path={path} style={style} />
+      <BaseEdge path={path} style={{ ...style, ...flashyStyle }} />
       <EdgeText
         x={(sourceX + targetX) / 2}
         y={(sourceY + targetY + offset) / 2}

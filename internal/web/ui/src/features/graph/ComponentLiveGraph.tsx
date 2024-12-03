@@ -16,6 +16,7 @@ import { ComponentHealthState, ComponentInfo } from '../component/types';
 
 import { buildGraph } from './buildGraph';
 import { FeedData, FeedDataType, FeedDataTypeColorMap } from './feedDataType';
+import { Legend } from './Legend';
 import MultiEdge from './MultiEdge';
 
 import '@xyflow/react/dist/style.css';
@@ -36,6 +37,7 @@ const ComponentLiveGraph: React.FC<LiveGraphProps> = ({ components }) => {
     multiedge: MultiEdge,
   };
 
+  // Ugly code to add some edges at runtime because we dont have this info from the Alloy graph
   useEffect(() => {
     const sortedFeedData = data.sort((a, b) => a.type.localeCompare(b.type));
     const newEdges: Edge[] = [];
@@ -104,7 +106,6 @@ const ComponentLiveGraph: React.FC<LiveGraphProps> = ({ components }) => {
       });
       return [...updatedEdges, ...newEdges];
     });
-    //console.log(edges);
   }, [data]);
 
   return (
@@ -117,9 +118,7 @@ const ComponentLiveGraph: React.FC<LiveGraphProps> = ({ components }) => {
       fitView
       attributionPosition="bottom-left"
       style={{ backgroundColor: '#F7F9FB' }}
-    >
-      <Background />
-    </ReactFlow>
+    ></ReactFlow>
   );
 };
 

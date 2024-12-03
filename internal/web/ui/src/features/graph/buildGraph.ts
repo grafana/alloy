@@ -16,7 +16,10 @@ export function buildGraph(components: ComponentInfo[]): [Node[], Edge[]] {
   const nodes = components.map((component) => {
     const node: Node = {
       id: component.localID,
-      data: { label: component.name.split('.').pop() + ' "' + (component.label ?? '') + '"' },
+      data: {
+        label: component.name.split('.').pop() + ' "' + (component.label ?? '') + '"',
+        fullName: component.name + ' "' + (component.label ?? '') + '"',
+      },
       position: position,
     };
     const componentEdges: Edge[] = component.referencesTo.map((edge) => ({
