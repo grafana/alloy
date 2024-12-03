@@ -22,7 +22,7 @@ Main (unreleased)
 
 - Add `otelcol.exporter.syslog` component to export logs in syslog format (@dehaansa)
 
-- (_Experimental_) Add a `database_observability.mysql` component to collect mysql performance data.
+- (_Experimental_) Add a `database_observability.mysql` component to collect mysql performance data. (@cristiangreco & @matthewnolf)
 
 - Add `otelcol.receiver.influxdb` to convert influx metric into OTEL. (@EHSchmitt4395)
 
