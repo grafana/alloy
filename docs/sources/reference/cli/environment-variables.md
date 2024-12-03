@@ -23,13 +23,13 @@ Refer to the [Go runtime][runtime] documentation for more information about Go r
 
 ## GODEBUG
 
-You can use the `GODEBUG` environment variable to control the debugging variables within the Go runtime.  The following arguments are supported.
+You can use the `GODEBUG` environment variable to control the debugging variables within the Go runtime. The following arguments are supported.
 
- Argument               | Description                                                                                          | Default 
-------------------------|------------------------------------------------------------------------------------------------------|---------
- `x509usefallbackroots` | Enforce a fallback on the X.509 trusted root certificates. Set to `1` to enable.                     | `0`     
- `netdns`               | Force a resolver. Set to `go` for a pure Go resolver. Set to `cgo` or `win32` for a native resolver. |
- `netdns`               | Show resolver debugging information. Set to `1` for basic information. Set to `2` for verbose.       |
+Argument               | Description                                                                                          | Default
+-----------------------|------------------------------------------------------------------------------------------------------|--------
+`x509usefallbackroots` | Enforce a fallback on the X.509 trusted root certificates. Set to `1` to enable.                     | `0`
+`netdns`               | Force a resolver. Set to `go` for a pure Go resolver. Set to `cgo` or `win32` for a native resolver. |
+`netdns`               | Show resolver debugging information. Set to `1` for basic information. Set to `2` for verbose.       |
 
 ## HTTP_PROXY
 
@@ -59,7 +59,7 @@ Don't treat the `GOMEMLIMIT` environment variable as a hard memory limit.
 A rough number is to set `GOMEMLIMIT` to is 90% of the maximum memory required.
 For example, if you want to keep memory usage below `10GiB`, use `GOMEMLIMIT=9GiB`.
 
-#### Automatically set GOMEMLIMIT
+### Automatically set GOMEMLIMIT
 
 The `GOMEMLIMIT` environment variable is either automatically set to 90% of an available `cgroup` value, or you can explicitly set the  `GOMEMLIMIT` environment variable before you run  {{< param "PRODUCT_NAME" >}}.
 No changes will occur if the limit cannot be determined and you did not explicitly define a  `GOMEMLIMIT` value.

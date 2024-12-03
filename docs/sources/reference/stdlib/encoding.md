@@ -15,14 +15,13 @@ The `encoding` namespace contains encoding and decoding functions.
 
 ## encoding.from_base64
 
-The `encoding.from_base64` function decodes a RFC4648-compliant Base64-encoded string 
-into the original string. 
+The `encoding.from_base64` function decodes a RFC4648-compliant Base64-encoded string into the original string.
 
-`encoding.from_base64` fails if the provided string argument contains invalid Base64 data. 
+`encoding.from_base64` fails if the provided string argument contains invalid Base64 data.
 
 ### Examples
 
-```
+```text
 > encoding.from_base64("dGFuZ2VyaW5l")
 tangerine
 ```
@@ -42,7 +41,7 @@ For example, the JSON value `{"key": "value"}` is properly represented by the st
 
 ### Examples
 
-```
+```alloy
 > encoding.from_json("15")
 15
 
@@ -63,12 +62,10 @@ null
 
 ## encoding.from_yaml
 
-The `encoding.from_yaml` function decodes a string representing YAML into an {{< param "PRODUCT_NAME" >}}
-value. `encoding.from_yaml` fails if the string argument provided cannot be parsed as
-YAML.
+The `encoding.from_yaml` function decodes a string representing YAML into an {{< param "PRODUCT_NAME" >}} value.
+`encoding.from_yaml` fails if the string argument provided can't be parsed as YAML.
 
-A common use case of `encoding.from_yaml` is to decode the output of a
-[`local.file`][] component to an {{< param "PRODUCT_NAME" >}} value.
+A common use case of `encoding.from_yaml` is to decode the output of a [`local.file`][] component to an {{< param "PRODUCT_NAME" >}} value.
 
 {{< admonition type="note" >}}
  Remember to escape double quotes when passing YAML string literals to `encoding.from_yaml`.
@@ -78,7 +75,7 @@ For example, the YAML value `key: "value"` is properly represented by the string
 
 ### Examples
 
-```
+```alloy
 > encoding.from_yaml("15")
 15
 > encoding.from_yaml("[1, 2, 3]")

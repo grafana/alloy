@@ -7,7 +7,7 @@ title: Referencing component exports
 weight: 200
 ---
 
-# Referencing component exports
+# Reference component exports
 
 Referencing exports enables {{< param "PRODUCT_NAME" >}} to configure and connect components dynamically using expressions.
 While components can work in isolation, they're more useful when one component's behavior and data flow are bound to the exports of another, building a dependency relationship between the two.
@@ -15,7 +15,7 @@ While components can work in isolation, they're more useful when one component's
 Such references can only appear as part of another component's arguments or a configuration block's fields.
 Components can't reference themselves.
 
-## Using references
+## Use references
 
 You build references by combining the component's name, label, and named export with dots.
 
@@ -45,7 +45,7 @@ In the preceding example, you wired together a very simple pipeline by writing a
 
 {{< figure src="/media/docs/alloy/diagram-referencing-exports.png" alt="Example of a pipeline" >}}
 
-After the value is resolved, it must match the [type][] of the attribute it is assigned to.
+After the value is resolved, it must match the [type][] of the attribute it's assigned to.
 While you can only configure attributes using the basic {{< param "PRODUCT_NAME" >}} types,
 the exports of components can take on special internal {{< param "PRODUCT_NAME" >}} types, such as Secrets or Capsules, which expose different functionality.
 

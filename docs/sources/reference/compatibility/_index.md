@@ -17,6 +17,7 @@ The value of an attribute may matter as well as its type.
 Refer to each component's documentation for more details on what values are acceptable.
 
 For example:
+
 * A Prometheus component may always expect an `"__address__"` label inside a list of targets.
 * A `string` argument may only accept certain values like "traceID" or "spanID".
 {{< /admonition >}}
@@ -113,9 +114,9 @@ The following components, grouped by namespace, _export_ Targets.
 
 <!-- END GENERATED SECTION: EXPORTERS OF Targets -->
 
-
 <!-- NOTE: this title is used as an anchor in links. Do not change. -->
 ### Targets Consumers
+
 The following components, grouped by namespace, _consume_ Targets.
 
 <!-- START GENERATED SECTION: CONSUMERS OF Targets -->
@@ -150,7 +151,6 @@ The following components, grouped by namespace, _consume_ Targets.
 {{< /collapse >}}
 
 <!-- END GENERATED SECTION: CONSUMERS OF Targets -->
-
 
 ## Prometheus `MetricsReceiver`
 
