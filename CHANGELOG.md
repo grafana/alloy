@@ -44,7 +44,7 @@ Main (unreleased)
   - Change processlist query to support ONLY_FULL_GROUP_BY sql_mode
   - Add perf_schema quantile columns to collector
 
-- Add two new stdlib functions to_base64 and to_URLbase64 (@ravishankar15)
+- Add three new stdlib functions to_base64, from_URLbase64 and to_URLbase64 (@ravishankar15)
 
 ### Bugfixes
 
