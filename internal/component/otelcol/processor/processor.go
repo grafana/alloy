@@ -95,7 +95,7 @@ func New(opts component.Options, f otelprocessor.Factory, args Arguments) (*Proc
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	consumer := lazyconsumer.NewPaused(ctx)
+	consumer := lazyconsumer.NewPaused(ctx, opts.ID)
 
 	// Create a lazy collector where metrics from the upstream component will be
 	// forwarded.
@@ -236,6 +236,8 @@ func (p *Processor) Update(args component.Arguments) error {
 			components = append(components, logsProcessor)
 		}
 	}
+
+	p.liveDebuggingConsumer.SetTargetComsumers(next.Metrics, next.Logs, next.Traces)
 
 	// Schedule the components to run once our component is running.
 	p.sched.Schedule(host, components...)

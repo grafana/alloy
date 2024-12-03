@@ -1,9 +1,11 @@
 import dagre from '@dagrejs/dagre';
 import { Edge, Node, Position } from '@xyflow/react';
 
-import { ComponentHealthState, ComponentInfo } from '../component/types';
+import { ComponentInfo } from '../component/types';
 
-const dagreGraph = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
+import { FeedDataType } from './feedDataType';
+
+const dagreGraph = new dagre.graphlib.Graph({ multigraph: true }).setDefaultEdgeLabel(() => ({}));
 
 const nodeWidth = 172;
 const nodeHeight = 36;
@@ -18,11 +20,12 @@ export function buildGraph(components: ComponentInfo[]): [Node[], Edge[]] {
       position: position,
     };
     const componentEdges: Edge[] = component.referencesTo.map((edge) => ({
-      id: node.id + '|' + edge,
+      id: `${node.id}|${edge}`,
       source: node.id,
       target: edge,
-      type: 'smoothstep',
+      type: 'multiedge',
       animated: true,
+      data: { signal: FeedDataType.UNDEFINED },
     }));
     edges.push(...componentEdges);
     return node;
@@ -35,7 +38,7 @@ export function buildGraph(components: ComponentInfo[]): [Node[], Edge[]] {
   });
 
   edges.forEach((edge) => {
-    dagreGraph.setEdge(edge.source, edge.target);
+    dagreGraph.setEdge(edge.source, edge.target, { label: edge.id }, edge.id);
   });
 
   dagre.layout(dagreGraph);

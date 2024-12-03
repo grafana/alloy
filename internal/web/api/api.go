@@ -203,7 +203,7 @@ func liveGraph(_ service.Host, callbackManager livedebugging.CallbackManager) ht
 			callbackManager.DeleteMultiCallback(id, moduleID)
 		}()
 
-		ticker := time.NewTicker(2 * time.Second)
+		ticker := time.NewTicker(5 * time.Second)
 		defer ticker.Stop()
 
 		for {
@@ -216,9 +216,10 @@ func liveGraph(_ service.Host, callbackManager livedebugging.CallbackManager) ht
 				} else {
 					// The data is ignored for the graph.
 					feedDataMap[key] = &livedebugging.FeedData{
-						ComponentID: data.ComponentID,
-						Count:       data.Count,
-						Type:        data.Type,
+						ComponentID:        data.ComponentID,
+						Count:              data.Count,
+						Type:               data.Type,
+						TargetComponentIDs: data.TargetComponentIDs,
 					}
 				}
 

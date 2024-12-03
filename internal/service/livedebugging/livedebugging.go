@@ -44,10 +44,11 @@ const (
 )
 
 type FeedData struct {
-	ComponentID ComponentID  `json:"componentID"`
-	Type        FeedDataType `json:"type"`
-	Count       int          `json:"count"`
-	Data        string       `json:"data"`
+	ComponentID        ComponentID  `json:"componentID"`
+	TargetComponentIDs []string     `json:"targetComponentIDs"`
+	Type               FeedDataType `json:"type"`
+	Count              int          `json:"count"`
+	Data               string       `json:"data"`
 }
 
 type liveDebugging struct {

@@ -6,6 +6,7 @@ import (
 	"context"
 
 	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/lazyconsumer"
 	"github.com/grafana/alloy/internal/service/livedebugging"
 	otelconsumer "go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/plog"
@@ -14,11 +15,14 @@ import (
 )
 
 type Consumer struct {
-	debugDataPublisher livedebugging.DebugDataPublisher
-	componentID        livedebugging.ComponentID
-	logsMarshaler      plog.Marshaler
-	metricsMarshaler   pmetric.Marshaler
-	tracesMarshaler    ptrace.Marshaler
+	debugDataPublisher       livedebugging.DebugDataPublisher
+	componentID              livedebugging.ComponentID
+	logsMarshaler            plog.Marshaler
+	metricsMarshaler         pmetric.Marshaler
+	tracesMarshaler          ptrace.Marshaler
+	targetComponentIDsMetric []string
+	targetComponentIDsLog    []string
+	targetComponentIDsTraces []string
 }
 
 var _ otelcol.Consumer = (*Consumer)(nil)
@@ -33,6 +37,22 @@ func New(debugDataPublisher livedebugging.DebugDataPublisher, componentID string
 	}
 }
 
+func (c *Consumer) SetTargetComsumers(metric, log, trace []otelcol.Consumer) {
+	c.targetComponentIDsMetric = extractIds(metric)
+	c.targetComponentIDsLog = extractIds(log)
+	c.targetComponentIDsTraces = extractIds(trace)
+}
+
+func extractIds(consumers []otelcol.Consumer) []string {
+	ids := make([]string, 0)
+	for _, cons := range consumers {
+		if lazy, ok := cons.(*lazyconsumer.Consumer); ok {
+			ids = append(ids, lazy.ComponentID())
+		}
+	}
+	return ids
+}
+
 // Capabilities implements otelcol.Consumer.
 func (c *Consumer) Capabilities() otelconsumer.Capabilities {
 	// streaming data should not modify the value
@@ -44,10 +64,11 @@ func (c *Consumer) ConsumeTraces(ctx context.Context, td ptrace.Traces) error {
 	if c.debugDataPublisher.IsActive(c.componentID) {
 		data, _ := c.tracesMarshaler.MarshalTraces(td)
 		c.debugDataPublisher.Publish(c.componentID, livedebugging.FeedData{
-			ComponentID: c.componentID,
-			Type:        livedebugging.OtelTrace,
-			Count:       td.SpanCount(),
-			Data:        string(data),
+			ComponentID:        c.componentID,
+			TargetComponentIDs: c.targetComponentIDsTraces,
+			Type:               livedebugging.OtelTrace,
+			Count:              td.SpanCount(),
+			Data:               string(data),
 		})
 	}
 	return nil
@@ -58,10 +79,11 @@ func (c *Consumer) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) error
 	if c.debugDataPublisher.IsActive(c.componentID) {
 		data, _ := c.metricsMarshaler.MarshalMetrics(md)
 		c.debugDataPublisher.Publish(c.componentID, livedebugging.FeedData{
-			ComponentID: c.componentID,
-			Type:        livedebugging.OtelMetric,
-			Count:       md.MetricCount(),
-			Data:        string(data),
+			ComponentID:        c.componentID,
+			TargetComponentIDs: c.targetComponentIDsMetric,
+			Type:               livedebugging.OtelMetric,
+			Count:              md.MetricCount(),
+			Data:               string(data),
 		})
 	}
 	return nil
@@ -72,10 +94,11 @@ func (c *Consumer) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
 	if c.debugDataPublisher.IsActive(c.componentID) {
 		data, _ := c.logsMarshaler.MarshalLogs(ld)
 		c.debugDataPublisher.Publish(c.componentID, livedebugging.FeedData{
-			ComponentID: c.componentID,
-			Type:        livedebugging.OtelLog,
-			Count:       ld.LogRecordCount(),
-			Data:        string(data),
+			ComponentID:        c.componentID,
+			TargetComponentIDs: c.targetComponentIDsLog,
+			Type:               livedebugging.OtelLog,
+			Count:              ld.LogRecordCount(),
+			Data:               string(data),
 		})
 	}
 	return nil

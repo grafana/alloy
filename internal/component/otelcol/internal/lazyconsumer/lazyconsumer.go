@@ -17,6 +17,8 @@ import (
 type Consumer struct {
 	ctx context.Context
 
+	componentID string
+
 	// pauseMut and pausedWg are used to implement Pause & Resume semantics. See Pause method for more info.
 	pauseMut sync.RWMutex
 	pausedWg *sync.WaitGroup
@@ -36,15 +38,19 @@ var (
 // New creates a new Consumer. The provided ctx is used to determine when the
 // Consumer should stop accepting data; if the ctx is closed, no further data
 // will be accepted.
-func New(ctx context.Context) *Consumer {
-	return &Consumer{ctx: ctx}
+func New(ctx context.Context, componentID string) *Consumer {
+	return &Consumer{ctx: ctx, componentID: componentID}
 }
 
 // NewPaused is like New, but returns a Consumer that is paused by calling Pause method.
-func NewPaused(ctx context.Context) *Consumer {
-	c := New(ctx)
+func NewPaused(ctx context.Context, componentID string) *Consumer {
+	c := New(ctx, componentID)
 	c.Pause()
 	return c
+}
+
+func (c *Consumer) ComponentID() string {
+	return c.componentID
 }
 
 // Capabilities implements otelconsumer.baseConsumer.
