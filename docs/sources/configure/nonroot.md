@@ -24,7 +24,7 @@ You can configure a non-root user when you deploy {{< param "PRODUCT_NAME" >}} i
 {{< admonition type="note" >}}
 Running {{< param "PRODUCT_NAME" >}} as a non-root user won't work if you are using components like [beyla.ebpf][] that require root rights.
 
-[beyla.ebpf]: ../../reference/components/beyla/beyla.ebpf
+[beyla.ebpf]: ../../reference/components/beyla/beyla.ebpf/
 {{< /admonition >}}
 
 To run {{< param "PRODUCT_NAME" >}} as a non-root user, configure a [security context][] for the {{< param "PRODUCT_NAME" >}} container. If you are using the [Grafana Helm chart][] you can add the following snippet to `values.yaml`:
@@ -45,6 +45,6 @@ Not really. The Linux kernel prevents Docker containers from accessing host reso
 However, if there was a bug in the Linux kernel that allowed Docker containers to break out of the virtual environment, it would likely be easier to exploit this bug with a root user than with a non-root user. It's worth noting that the attacker would not only need to find such a Linux kernel bug, but would also need to find a way to make {{< param "PRODUCT_NAME" >}} exploit that bug.
 
 [image]: https://hub.docker.com/r/grafana/alloy
-[beyla.ebpf]: ../../reference/components/beyla/beyla.ebpf
+[beyla.ebpf]: ../../reference/components/beyla/beyla.ebpf/
 [security context]: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
 [Grafana Helm chart]: ../../configure/kubernetes/#configure-the-helm-chart

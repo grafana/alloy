@@ -15,6 +15,7 @@ Name        | Type     | Description                                            
 `tag_name`  | `string` | The name of the resource attribute added to logs, metrics, or spans.                          | `""`    | no
 
 When you don't specify the `tag_name`, a default tag name is used with the format:
+
 * `k8s.pod.annotations.<annotation key>`
 * `k8s.pod.labels.<label key>`
 
@@ -23,7 +24,8 @@ For example, if `tag_name` isn't specified and the key is `git_sha`, the attribu
 You can set either the `key` attribute or the `key_regex` attribute, but not both.
 When `key_regex` is present, `tag_name` supports back reference to both named capturing and positioned capturing.
 
-For example, assume your pod spec contains the following labels:
+For example, assume your Pod spec contains the following labels:
+
 * `app.kubernetes.io/component: mysql`
 * `app.kubernetes.io/version: 5.7.21`
 
@@ -31,11 +33,11 @@ If you'd like to add tags for all labels with the prefix `app.kubernetes.io/` an
 
 ```alloy
 extract {
-	label {
-	    from = "pod"
-		key_regex = "kubernetes.io/(.*)"
-		tag_name  = "$1"
-	}
+  label {
+    from = "pod"
+    key_regex = "kubernetes.io/(.*)"
+    tag_name  = "$1"
+  }
 }
 ```
 

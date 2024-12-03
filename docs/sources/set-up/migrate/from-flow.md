@@ -48,11 +48,11 @@ You can enable functionality in _Experimental_ and _Public preview_ by setting t
 Before migrating, modify your Grafana Agent Flow configuration to remove or replace any unsupported components:
 
 * The "classic modules" in Grafana Agent Flow have been removed in favor of the modules introduced in v0.40:
-  * `module.file` is replaced by the [import.file] configuration block.
-  * `module.git` is replaced by the [import.git] configuration block.
-  * `module.http` is replaced by the [import.http] configuration block.
-  * `module.string` is replaced by the [import.string] configuration block.
-* `prometheus.exporter.vsphere` is replaced by the [otelcol.receiver.vcenter] component.
+  * `module.file` is replaced by the [`import.file`][import.file] configuration block.
+  * `module.git` is replaced by the [`import.git`][import.git] configuration block.
+  * `module.http` is replaced by the [`import.http`][import.http] configuration block.
+  * `module.string` is replaced by the [`import.string`][import.string] configuration block.
+* `prometheus.exporter.vsphere` is replaced by the [`otelcol.receiver.vcenter`][otelcol.receiver.vcenter] component.
 
 [import.file]: ../../../reference/config-blocks/import.file/
 [import.git]: ../../../reference/config-blocks/import.git/
@@ -101,7 +101,7 @@ Telemetry pipelines which receive data over the network (for example, pipelines 
 Migrate remaining pipelines from Grafana Agent Flow to {{% param "PRODUCT_NAME" %}}:
 
 1. Disable remaining pipelines in Grafana Agent Flow to prevent Flow and {{< param "PRODUCT_NAME" >}} from processing the same data.
-2. Configure {{< param "PRODUCT_NAME" >}} with the remaining pipelines.
+1. Configure {{< param "PRODUCT_NAME" >}} with the remaining pipelines.
 
 {{< admonition type="note" >}}
 This process results in minimal downtime as remaining pipelines are moved from Grafana Agent Flow to {{< param "PRODUCT_NAME" >}}.

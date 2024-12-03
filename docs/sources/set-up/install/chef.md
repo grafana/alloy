@@ -18,10 +18,9 @@ You can use Chef to install and manage {{< param "PRODUCT_NAME" >}}.
 - You can add the following resources to any recipe.
 - These tasks install {{< param "PRODUCT_NAME" >}} from the package repositories.
   The tasks target Linux systems from the following families:
-  - Debian (including Ubuntu)
-  - RedHat Enterprise Linux
+  - Debian, including Ubuntu
+  - RedHat Enterprise Linux, including Fedora
   - Amazon Linux
-  - Fedora
 
 ## Steps
 
