@@ -32,6 +32,7 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 		argsUpdates:   make(chan Arguments),
 		args:          args,
 	}
+
 	return c, nil
 }
 
@@ -51,6 +52,7 @@ func (c *Component) Run(ctx context.Context) error {
 		}
 		c.processes = convertProcesses(processes)
 		c.changed()
+
 		return nil
 	}
 	if err := doDiscover(); err != nil {

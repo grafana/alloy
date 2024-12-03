@@ -286,6 +286,8 @@ v1.4.0
 
 - Add the label `alloy_cluster` in the metric `alloy_config_hash` when the flag `cluster.name` is set to help differentiate between
   configs from the same alloy cluster or different alloy clusters. (@wildum)
+  
+- Add support for discovering the cgroup path(s) of a process in `process.discovery`. (@mahendrapaipuri)
 
 ### Bugfixes
 
