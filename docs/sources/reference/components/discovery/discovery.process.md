@@ -111,7 +111,7 @@ The following arguments are supported:
 | `commandline`  | `bool` | A flag to enable discovering `__meta_process_commandline` label. | true    | no       |
 | `uid`          | `bool` | A flag to enable discovering `__meta_process_uid`: label.        | true    | no       |
 | `username`     | `bool` | A flag to enable discovering `__meta_process_username`: label.   | true    | no       |
-| `cgroup_path`  | `bool` | A flag to enable discovering `__meta_cgroup_path__` label.       | true    | no       |
+| `cgroup_path`  | `bool` | A flag to enable discovering `__meta_cgroup_path__` label.       | false    | no       |
 | `container_id` | `bool` | A flag to enable discovering `__container_id__` label.           | true    | no       |
 
 ## Exported fields
