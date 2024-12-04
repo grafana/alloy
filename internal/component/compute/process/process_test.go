@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/component/prometheus"
 	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/storage"
@@ -39,23 +38,15 @@ func TestProcess(t *testing.T) {
 	defer cancel()
 	go c.Run(ctx)
 	bulk := c.Appender(ctx)
-	metrics := make([]prometheus.PromMetric, 0)
 	for i := 0; i < 1000; i++ {
-		metrics = append(metrics, prometheus.PromMetric{
-			Value:  1,
-			TS:     1,
-			Labels: labels.FromStrings("service", "cool"),
-		})
+		bulk.Append(0, labels.FromStrings("service", "cool"), time.Now().UnixMilli(), 1)
+
 	}
 	for i := 0; i < 10; i++ {
-		metrics = append(metrics, prometheus.PromMetric{
-			Value:  1,
-			TS:     1,
-			Labels: labels.FromStrings("service", "warm"),
-		})
+		bulk.Append(0, labels.FromStrings("service", "warm"), time.Now().UnixMilli(), 1)
 	}
 
-	err = bulk.Append(nil, metrics)
+	err = bulk.Commit()
 	require.NoError(t, err)
 	// There should only be 1_000 since we dont want any warm services to make it through
 	require.Eventually(t, func() bool {

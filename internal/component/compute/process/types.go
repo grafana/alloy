@@ -2,7 +2,6 @@ package process
 
 import (
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/prometheus"
 	"github.com/prometheus/prometheus/storage"
 )
 
@@ -14,6 +13,6 @@ type Arguments struct {
 }
 
 type Exports struct {
-	PrometheusReceiver prometheus.BulkAppendable `alloy:"prometheus_receiver,attr"`
-	LokiReceiver       loki.LogsReceiver         `alloy:"loki_receiver,attr"`
+	PrometheusReceiver storage.Appendable `alloy:"prometheus_receiver,attr"`
+	LokiReceiver       loki.LogsReceiver  `alloy:"loki_receiver,attr"`
 }

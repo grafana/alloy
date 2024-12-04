@@ -8,9 +8,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/prometheus"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/storage"
 )
 
@@ -70,57 +68,10 @@ func (c *Component) Update(args component.Arguments) error {
 	return nil
 }
 
-func (c *Component) Appender(ctx context.Context) prometheus.BulkAppender {
+func (c *Component) Appender(ctx context.Context) storage.Appender {
 	return &bulkAppender{
 		ctx:  ctx,
 		wasm: c.wasm,
 		next: c.args.PrometheusForwardTo,
 	}
-}
-
-type bulkAppender struct {
-	ctx  context.Context
-	wasm *WasmPlugin
-	next storage.Appender
-}
-
-func (b *bulkAppender) Append(metadata map[string]string, metrics []prometheus.PromMetric) error {
-	pt := &Passthrough{
-		// TODO reduce the number of random objects that
-		// represent the same thing.
-		Prommetrics: make([]*PrometheusMetric, len(metrics)),
-	}
-	for i, m := range metrics {
-		labels := make([]*Label, len(m.Labels))
-		for j, l := range m.Labels {
-			labels[j] = &Label{
-				Name:  l.Name,
-				Value: l.Value,
-			}
-		}
-		pt.Prommetrics[i] = &PrometheusMetric{
-			Value:       m.Value,
-			Timestampms: m.TS,
-			Labels:      labels,
-		}
-	}
-	outpt, err := b.wasm.Process(pt)
-	if err != nil {
-		return err
-	}
-	for _, m := range outpt.Prommetrics {
-		labelsBack := make(labels.Labels, len(m.Labels))
-		for i, l := range m.Labels {
-			labelsBack[i] = labels.Label{
-				Name:  l.Name,
-				Value: l.Value,
-			}
-		}
-		// We explicitly dont care about errors from append
-		_, _ = b.next.Append(0, labelsBack, m.Timestampms, m.Value)
-	}
-	// We explicitly dont care about errors from commit
-	_ = b.next.Commit()
-	return nil
-
 }
