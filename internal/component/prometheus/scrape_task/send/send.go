@@ -5,6 +5,8 @@ import (
 	"sync"
 	"time"
 
+	promclient "github.com/prometheus/client_golang/prometheus"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/prometheus/scrape_task"
 	"github.com/grafana/alloy/internal/component/prometheus/scrape_task/internal/promadapter"
@@ -36,9 +38,9 @@ type Exports struct {
 }
 
 type Component struct {
-	opts component.Options
-
-	sender promadapter.Sender
+	opts           component.Options
+	samplesCounter promclient.Counter
+	sender         promadapter.Sender
 
 	mut  sync.RWMutex
 	args Arguments
@@ -49,8 +51,17 @@ var (
 )
 
 func New(o component.Options, args Arguments) (*Component, error) {
+	samplesCounter := promclient.NewCounter(promclient.CounterOpts{
+		Name: "scrape_tasks_samples_sent_total",
+		Help: "Number of samples the prometheus.scrape_task.send has sent"})
+	err := o.Registerer.Register(samplesCounter)
+	if err != nil {
+		return nil, err
+	}
+
 	c := &Component{
-		opts: o,
+		opts:           o,
+		samplesCounter: samplesCounter,
 		// TODO(thampiotr): for now using a stub, but the idea is to use a proper implementation that can remote write
 		sender: promstub.NewSender(),
 	}
@@ -89,6 +100,7 @@ func (c *Component) Consume(metrics []promadapter.Metrics) {
 	for _, m := range metrics {
 		totalSeries += m.SeriesCount()
 	}
+	c.samplesCounter.Add(float64(totalSeries))
 	level.Debug(c.opts.Logger).Log(
 		"msg", "done sending metrics",
 		"count", len(metrics),

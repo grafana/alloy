@@ -4,6 +4,8 @@ import (
 	"context"
 	"sync"
 
+	promclient "github.com/prometheus/client_golang/prometheus"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/prometheus/scrape_task"
 	"github.com/grafana/alloy/internal/component/prometheus/scrape_task/internal/queuestub"
@@ -33,15 +35,25 @@ func (a *Arguments) SetToDefault() {
 }
 
 type Component struct {
-	opts component.Options
+	opts         component.Options
+	tasksCounter promclient.Counter
 
 	mut  sync.RWMutex
 	args Arguments
 }
 
 func New(opts component.Options, args Arguments) (*Component, error) {
+	tasksCounter := promclient.NewCounter(promclient.CounterOpts{
+		Name: "scrape_tasks_tasks_processed_total",
+		Help: "Number of tasks the prometheus.scrape_task.receiver component has processed"})
+	err := opts.Registerer.Register(tasksCounter)
+	if err != nil {
+		return nil, err
+	}
+
 	c := &Component{
-		opts: opts,
+		opts:         opts,
+		tasksCounter: tasksCounter,
 	}
 
 	if err := c.Update(args); err != nil {
@@ -69,11 +81,10 @@ func (c *Component) Run(ctx context.Context) error {
 			consumers := c.args.ForwardTo
 			c.mut.RUnlock()
 
-			// TODO(thampiotr): add metrics here
-
 			for _, consumer := range consumers {
 				consumer.Consume(tasks)
 			}
+			c.tasksCounter.Add(float64(len(tasks)))
 		}
 	}
 }
