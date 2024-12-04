@@ -66,6 +66,9 @@ export function buildGraph(components: ComponentInfo[]): [Node[], Edge[]] {
     return newNode;
   });
 
+  console.log('rebuild graph', newNodes);
+  console.log(edges);
+
   return [newNodes, edges];
 }
 

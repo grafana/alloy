@@ -2,14 +2,19 @@ import { useEffect, useState } from 'react';
 
 import { FeedData } from '../features/graph/feedDataType';
 
-export const useLiveGraph = (setData: React.Dispatch<React.SetStateAction<FeedData[]>>) => {
+export const useLiveGraph = (
+  setData: React.Dispatch<React.SetStateAction<FeedData[]>>,
+  moduleID: string,
+  resetSignal: number
+) => {
   const [error, setError] = useState('');
   useEffect(() => {
     const abortController = new AbortController();
 
     const fetchData = async () => {
       try {
-        const response = await fetch(`./api/v0/web/livegraph`, {
+        const url = moduleID === '' ? `./api/v0/web/livegraph` : `./api/v0/web/livegraph/${moduleID}`;
+        const response = await fetch(url, {
           signal: abortController.signal,
           cache: 'no-cache',
           credentials: 'same-origin',
@@ -49,7 +54,7 @@ export const useLiveGraph = (setData: React.Dispatch<React.SetStateAction<FeedDa
     return () => {
       abortController.abort();
     };
-  }, [setData]);
+  }, [setData, resetSignal]);
 
   return { error };
 };

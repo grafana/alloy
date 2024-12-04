@@ -29,7 +29,7 @@ const Router = ({ basePath }: Props) => {
           <Route path="/graph" element={<Graph />} />
           <Route path="/clustering" element={<PageClusteringPeers />} />
           <Route path="/debug/*" element={<PageLiveDebugging />} />
-          <Route path="/livegraph" element={<PageLiveGraph />} />
+          <Route path="/livegraph/*" element={<PageLiveGraph />} />
         </Routes>
       </main>
     </BrowserRouter>

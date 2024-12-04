@@ -53,6 +53,7 @@ func (a *AlloyAPI) RegisterRoutes(urlPrefix string, r *mux.Router) {
 	r.Handle(path.Join(urlPrefix, "/debug/{id:.+}"), liveDebugging(a.alloy, a.CallbackManager))
 
 	r.Handle(path.Join(urlPrefix, "/livegraph"), liveGraph(a.alloy, a.CallbackManager))
+	r.Handle(path.Join(urlPrefix, "/livegraph/{moduleID:.+}"), liveGraph(a.alloy, a.CallbackManager))
 }
 
 func listComponentsHandler(host service.Host) http.HandlerFunc {
@@ -172,7 +173,7 @@ func liveGraph(_ service.Host, callbackManager livedebugging.CallbackManager) ht
 	return func(w http.ResponseWriter, r *http.Request) {
 		var moduleID livedebugging.ModuleID
 		if vars := mux.Vars(r); vars != nil {
-			moduleID = livedebugging.ModuleID(vars["id"])
+			moduleID = livedebugging.ModuleID(vars["moduleID"])
 		}
 
 		dataCh := make(chan livedebugging.FeedData, 1000)

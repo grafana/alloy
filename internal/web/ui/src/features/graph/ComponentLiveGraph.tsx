@@ -13,6 +13,7 @@ import {
 } from '@xyflow/react';
 
 import { useLiveGraph } from '../../hooks/liveGraph';
+import { parseID } from '../../utils/id';
 import { ComponentHealthState, ComponentInfo } from '../component/types';
 
 import { buildGraph } from './buildGraph';
@@ -24,47 +25,52 @@ import '@xyflow/react/dist/style.css';
 
 type LiveGraphProps = {
   components: ComponentInfo[];
+  moduleID: string;
 };
 
-const ComponentLiveGraph: React.FC<LiveGraphProps> = ({ components }) => {
+const ComponentLiveGraph: React.FC<LiveGraphProps> = ({ components, moduleID }) => {
   const navigate = useNavigate();
   const [layoutedNodes, layoutedEdges] = useMemo(() => buildGraph(components), [components]);
   const [data, setData] = useState<FeedData[]>([]);
-  const { error } = useLiveGraph(setData);
+  const [refreshSignal, setRefreshSignal] = useState(0);
+  const { error } = useLiveGraph(setData, moduleID, refreshSignal);
 
-  const [nodes, _, onNodesChange] = useNodesState(layoutedNodes);
+  const [nodes, setNodes, onNodesChange] = useNodesState(layoutedNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(layoutedEdges);
 
   const edgeTypes = {
     multiedge: MultiEdge,
   };
 
+  useEffect(() => {
+    setNodes(layoutedNodes);
+    setEdges(layoutedEdges);
+    setRefreshSignal((prev) => prev + 1);
+  }, [layoutedNodes, layoutedEdges]);
+
   // Ugly code to add some edges at runtime because we dont have this info from the Alloy graph
   useEffect(() => {
     const sortedFeedData = data.sort((a, b) => a.type.localeCompare(b.type));
     const newEdges: Edge[] = [];
     sortedFeedData.forEach((feed) => {
-      if (!feed.targetComponentIDs || feed.targetComponentIDs.length === 0) {
-        const matches = edges.filter(
-          (edge) => edge.source === feed.componentID && edge.data!.signal == FeedDataType.UNDEFINED
-        );
+      const { localID } = parseID(feed.componentID);
+      const targetComponentIDs = feed.targetComponentIDs
+        ? feed.targetComponentIDs.map((targetID) => parseID(targetID).localID)
+        : [];
+      if (!targetComponentIDs || targetComponentIDs.length === 0) {
+        const matches = edges.filter((edge) => edge.source === localID && edge.data!.signal == FeedDataType.UNDEFINED);
         matches.forEach((edge) => {
           edge.style = { stroke: FeedDataTypeColorMap[feed.type] };
           edge.label = feed.count.toString();
           edge.data = { ...edge.data, signal: feed.type };
         });
       } else {
-        feed.targetComponentIDs.forEach((target) => {
-          if (
-            edges.find(
-              (edge) => edge.source === feed.componentID && edge.target === target && edge.data!.signal == feed.type
-            )
-          ) {
+        targetComponentIDs.forEach((target) => {
+          if (edges.find((edge) => edge.source === localID && edge.target === target && edge.data!.signal == feed.type)) {
             return; // already assigned
           }
           const matchUnassigned = edges.findIndex(
-            (edge) =>
-              edge.source === feed.componentID && edge.target === target && edge.data!.signal == FeedDataType.UNDEFINED
+            (edge) => edge.source === localID && edge.target === target && edge.data!.signal == FeedDataType.UNDEFINED
           );
           if (matchUnassigned !== -1) {
             edges[matchUnassigned] = {
@@ -75,7 +81,7 @@ const ComponentLiveGraph: React.FC<LiveGraphProps> = ({ components }) => {
             };
             return; // color an existing one
           }
-          const matchAny = edges.filter((edge) => edge.source === feed.componentID && edge.target === target);
+          const matchAny = edges.filter((edge) => edge.source === localID && edge.target === target);
           if (matchAny && matchAny.length > 0) {
             newEdges.push({
               ...matchAny[0],
@@ -85,8 +91,7 @@ const ComponentLiveGraph: React.FC<LiveGraphProps> = ({ components }) => {
               data: { ...matchAny[0].data, signal: feed.type },
               //weird hack to use the interactionWidth param here
               interactionWidth:
-                matchAny.length +
-                newEdges.filter((edge) => edge.source === feed.componentID && edge.target === target).length,
+                matchAny.length + newEdges.filter((edge) => edge.source === localID && edge.target === target).length,
             });
           }
         });
@@ -96,7 +101,7 @@ const ComponentLiveGraph: React.FC<LiveGraphProps> = ({ components }) => {
     setEdges((prevEdges) => {
       const updatedEdges = prevEdges.map((edge) => {
         const match = sortedFeedData.find(
-          (item) => item.componentID === edge.source && item.count > 0 && edge.data!.signal === item.type
+          (item) => parseID(item.componentID).localID === edge.source && item.count > 0 && edge.data!.signal === item.type
         );
 
         if (match) {
