@@ -2,6 +2,8 @@ package process
 
 import (
 	"context"
+	"github.com/grafana/alloy/internal/service/labelstore"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/exemplar"
 	"github.com/prometheus/prometheus/model/metadata"
 	"os"
@@ -25,12 +27,16 @@ func TestProcess(t *testing.T) {
 		OnStateChange: func(e component.Exports) {
 
 		},
+		GetServiceData: func(name string) (interface{}, error) {
+			return &fakestore{}, nil
+		},
+		Registerer: prometheus.NewRegistry(),
 	}, Arguments{
 		Wasm: bb,
 		Config: map[string]string{
 			"allowed_services": "cool,not_here",
 		},
-		PrometheusForwardTo: ta,
+		PrometheusForwardTo: []storage.Appendable{ta},
 	})
 	require.NoError(t, err)
 	ctx := context.Background()
@@ -57,6 +63,10 @@ func TestProcess(t *testing.T) {
 type testAppendable struct {
 	count atomic.Int32
 	ts    *testing.T
+}
+
+func (ta *testAppendable) Appender(ctx context.Context) storage.Appender {
+	return ta
 }
 
 func (ta *testAppendable) Commit() error {
@@ -94,6 +104,28 @@ func (ta *testAppendable) AppendCTZeroSample(ref storage.SeriesRef, l labels.Lab
 	panic("implement me")
 }
 
-func (ta *testAppendable) Appender(_ context.Context) storage.Appender {
-	return ta
+type fakestore struct{}
+
+func (f fakestore) GetOrAddLink(componentID string, localRefID uint64, lbls labels.Labels) uint64 {
+	return 0
+}
+
+func (f fakestore) GetOrAddGlobalRefID(l labels.Labels) uint64 {
+	return 0
+}
+
+func (f fakestore) GetGlobalRefID(componentID string, localRefID uint64) uint64 {
+	return 0
+}
+
+func (f fakestore) GetLocalRefID(componentID string, globalRefID uint64) uint64 {
+	return 0
+}
+
+func (f fakestore) TrackStaleness(ids []labelstore.StalenessTracker) {
+	return
+}
+
+func (f fakestore) CheckAndRemoveStaleMarkers() {
+	return
 }

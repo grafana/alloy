@@ -3,6 +3,7 @@ package all
 
 import (
 	_ "github.com/grafana/alloy/internal/component/beyla/ebpf"                               // Import beyla.ebpf
+	_ "github.com/grafana/alloy/internal/component/compute/process"                          // Import compute.process
 	_ "github.com/grafana/alloy/internal/component/database_observability/mysql"             // Import database_observability.mysql
 	_ "github.com/grafana/alloy/internal/component/discovery/aws"                            // Import discovery.aws.ec2 and discovery.aws.lightsail
 	_ "github.com/grafana/alloy/internal/component/discovery/azure"                          // Import discovery.azure
@@ -36,6 +37,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/discovery/uyuni"                          // Import discovery.uyuni
 	_ "github.com/grafana/alloy/internal/component/faro/receiver"                            // Import faro.receiver
 	_ "github.com/grafana/alloy/internal/component/local/file"                               // Import local.file
+	_ "github.com/grafana/alloy/internal/component/local/file_binary"                        // Import local.file_binary
 	_ "github.com/grafana/alloy/internal/component/local/file_match"                         // Import local.file_match
 	_ "github.com/grafana/alloy/internal/component/loki/echo"                                // Import loki.echo
 	_ "github.com/grafana/alloy/internal/component/loki/process"                             // Import loki.process
@@ -96,8 +98,8 @@ import (
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/tail_sampling"          // Import otelcol.processor.tail_sampling
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/transform"              // Import otelcol.processor.transform
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/datadog"                 // Import otelcol.receiver.datadog
-	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/influxdb"                // Import otelcol.receiver.influxdb
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/file_stats"              // Import otelcol.receiver.file_stats
+	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/influxdb"                // Import otelcol.receiver.influxdb
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/jaeger"                  // Import otelcol.receiver.jaeger
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/kafka"                   // Import otelcol.receiver.kafka
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/loki"                    // Import otelcol.receiver.loki

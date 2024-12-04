@@ -15,7 +15,7 @@ type bulkAppender struct {
 	ctx     context.Context
 	wasm    *WasmPlugin
 	metrics []*PrometheusMetric
-	next    storage.Appender
+	next    storage.Appendable
 }
 
 func (b *bulkAppender) Append(ref storage.SeriesRef, l labels.Labels, t int64, v float64) (storage.SeriesRef, error) {
@@ -73,6 +73,7 @@ func (b *bulkAppender) process() error {
 	if err != nil {
 		return err
 	}
+	app := b.next.Appender(b.ctx)
 	for _, m := range outpt.Prommetrics {
 		labelsBack := make(labels.Labels, len(m.Labels))
 		for i, l := range m.Labels {
@@ -82,10 +83,10 @@ func (b *bulkAppender) process() error {
 			}
 		}
 		// We explicitly dont care about errors from append
-		_, _ = b.next.Append(0, labelsBack, m.Timestampms, m.Value)
+		_, _ = app.Append(0, labelsBack, m.Timestampms, m.Value)
 	}
 	// We explicitly dont care about errors from commit
-	_ = b.next.Commit()
+	_ = app.Commit()
 	return nil
 
 }

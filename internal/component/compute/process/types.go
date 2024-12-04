@@ -6,10 +6,10 @@ import (
 )
 
 type Arguments struct {
-	Wasm                []byte              `alloy:"wasm,attr"`
-	Config              map[string]string   `alloy:"config,attr,optional"`
-	LokiForwardTo       []loki.LogsReceiver `alloy:"loki_forward_to,attr,optional"`
-	PrometheusForwardTo storage.Appender    `alloy:"prometheus_forward_to,attr,optional"`
+	Wasm                []byte               `alloy:"wasm,attr"`
+	Config              map[string]string    `alloy:"config,attr,optional"`
+	LokiForwardTo       []loki.LogsReceiver  `alloy:"loki_forward_to,attr,optional"`
+	PrometheusForwardTo []storage.Appendable `alloy:"prometheus_forward_to,attr,optional"`
 }
 
 type Exports struct {

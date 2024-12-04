@@ -2,6 +2,8 @@ package process
 
 import (
 	"context"
+	"github.com/grafana/alloy/internal/component/prometheus"
+	"github.com/grafana/alloy/internal/service/labelstore"
 	"maps"
 	"slices"
 	"sync"
@@ -31,9 +33,14 @@ type Component struct {
 	loki loki.LogsReceiver
 	args Arguments
 	opts component.Options
+	ls   labelstore.LabelStore
 }
 
 func New(opts component.Options, args Arguments) (*Component, error) {
+	data, err := opts.GetServiceData(labelstore.ServiceName)
+	if err != nil {
+		return nil, err
+	}
 	wp, err := NewPlugin(args.Wasm, args.Config, context.TODO())
 	if err != nil {
 		return nil, err
@@ -43,6 +50,7 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 		wasm: wp,
 		opts: opts,
 		args: args,
+		ls:   data.(labelstore.LabelStore),
 	}
 	c.opts.OnStateChange(Exports{
 		PrometheusReceiver: c,
@@ -72,6 +80,6 @@ func (c *Component) Appender(ctx context.Context) storage.Appender {
 	return &bulkAppender{
 		ctx:  ctx,
 		wasm: c.wasm,
-		next: c.args.PrometheusForwardTo,
+		next: prometheus.NewFanout(c.args.PrometheusForwardTo, c.opts.ID, c.opts.Registerer, c.ls),
 	}
 }
