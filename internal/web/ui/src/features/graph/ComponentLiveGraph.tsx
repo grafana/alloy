@@ -117,16 +117,22 @@ const ComponentLiveGraph: React.FC<LiveGraphProps> = ({ components }) => {
   }, [data]);
 
   return (
-    <ReactFlow
-      nodes={nodes}
-      edges={edges}
-      onNodesChange={onNodesChange}
-      onEdgesChange={onEdgesChange}
-      edgeTypes={edgeTypes}
-      fitView
-      attributionPosition="bottom-left"
-      style={{ backgroundColor: '#F7F9FB' }}
-    ></ReactFlow>
+    <>
+      {error ? (
+        <p>Error: {error}</p>
+      ) : (
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          edgeTypes={edgeTypes}
+          fitView
+          attributionPosition="bottom-left"
+          style={{ backgroundColor: '#F7F9FB' }}
+        />
+      )}
+    </>
   );
 };
 
