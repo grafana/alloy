@@ -36,8 +36,6 @@ export function buildGraph(components: ComponentInfo[]): [Node[], Edge[]] {
 
   edges = fixDirections(edges);
 
-  console.log(edges);
-
   dagreGraph.setGraph({ rankdir: 'LR' });
 
   nodes.forEach((node) => {

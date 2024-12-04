@@ -42,52 +42,51 @@ const ComponentLiveGraph: React.FC<LiveGraphProps> = ({ components }) => {
     const sortedFeedData = data.sort((a, b) => a.type.localeCompare(b.type));
     const newEdges: Edge[] = [];
     sortedFeedData.forEach((feed) => {
-      const matchAny = edges.findIndex(
-        (edge) =>
-          edge.source === feed.componentID &&
-          (!feed.targetComponentIDs ||
-            feed.targetComponentIDs.length === 0 ||
-            feed.targetComponentIDs.find((t) => t === edge.target))
-      );
-      const match = edges.findIndex(
-        (edge) =>
-          edge.source === feed.componentID &&
-          edge.data!.signal == feed.type &&
-          (!feed.targetComponentIDs ||
-            feed.targetComponentIDs.length === 0 ||
-            feed.targetComponentIDs.find((t) => t === edge.target))
-      );
-      const matchUnassigned = edges.findIndex(
-        (edge) =>
-          edge.source === feed.componentID &&
-          edge.data!.signal == FeedDataType.UNDEFINED &&
-          (!feed.targetComponentIDs ||
-            feed.targetComponentIDs.length === 0 ||
-            feed.targetComponentIDs.find((t) => t === edge.target))
-      );
-      if (match === -1 && matchUnassigned === -1 && matchAny !== -1) {
-        newEdges.push({
-          ...edges[matchAny],
-          id: edges[matchAny].id + '|' + feed.type,
-          style: { stroke: FeedDataTypeColorMap[feed.type] },
-          label: feed.count.toString(),
-          data: { ...edges[matchAny].data, signal: feed.type },
-          interactionWidth:
-            edges.filter(
-              (edge) =>
-                edge.source === feed.componentID &&
-                (!feed.targetComponentIDs ||
-                  feed.targetComponentIDs.length === 0 ||
-                  feed.targetComponentIDs.find((t) => t === edge.target))
-            ).length * 40,
+      if (!feed.targetComponentIDs || feed.targetComponentIDs.length === 0) {
+        const matches = edges.filter(
+          (edge) => edge.source === feed.componentID && edge.data!.signal == FeedDataType.UNDEFINED
+        );
+        matches.forEach((edge) => {
+          edge.style = { stroke: FeedDataTypeColorMap[feed.type] };
+          edge.label = feed.count.toString();
+          edge.data = { ...edge.data, signal: feed.type };
         });
-      } else if (match === -1 && matchUnassigned !== -1) {
-        edges[matchUnassigned] = {
-          ...edges[matchUnassigned],
-          style: { stroke: FeedDataTypeColorMap[feed.type] },
-          label: feed.count.toString(),
-          data: { ...edges[matchUnassigned].data, signal: feed.type },
-        };
+      } else {
+        feed.targetComponentIDs.forEach((target) => {
+          if (
+            edges.find(
+              (edge) => edge.source === feed.componentID && edge.target === target && edge.data!.signal == feed.type
+            )
+          ) {
+            return; // already assigned
+          }
+          const matchUnassigned = edges.findIndex(
+            (edge) =>
+              edge.source === feed.componentID && edge.target === target && edge.data!.signal == FeedDataType.UNDEFINED
+          );
+          if (matchUnassigned !== -1) {
+            edges[matchUnassigned] = {
+              ...edges[matchUnassigned],
+              style: { stroke: FeedDataTypeColorMap[feed.type] },
+              label: feed.count.toString(),
+              data: { ...edges[matchUnassigned].data, signal: feed.type },
+            };
+            return; // color an existing one
+          }
+          const matchAny = edges.filter((edge) => edge.source === feed.componentID && edge.target === target);
+          if (matchAny && matchAny.length > 0) {
+            newEdges.push({
+              ...matchAny[0],
+              id: matchAny[0].id + '|' + feed.type, // bit ugly but that guarantees that it is unique
+              style: { stroke: FeedDataTypeColorMap[feed.type] },
+              label: feed.count.toString(),
+              data: { ...matchAny[0].data, signal: feed.type },
+              interactionWidth: //weird hack to use the interactionWidth param here
+                matchAny.length +
+                newEdges.filter((edge) => edge.source === feed.componentID && edge.target === target).length,
+            });
+          }
+        });
       }
     });
 

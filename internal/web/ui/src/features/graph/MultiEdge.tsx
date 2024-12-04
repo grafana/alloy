@@ -38,7 +38,13 @@ export default function CustomEdge({
 
   let path = '';
 
-  const offset = interactionWidth ? interactionWidth : 0;
+  let offset = interactionWidth ? interactionWidth : 0;
+
+  if (offset % 2 != 0) {
+    offset *= 40;
+  } else {
+    offset *= -40;
+  }
 
   if (offset > 0) {
     // If there are multiple edges, create a unique path with the offset
