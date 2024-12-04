@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+message Passthrough {
+  repeated bytes metrics = 1;
+  repeated bytes traces = 2;
+  repeated bytes logs = 3;
+  map<string,string> config = 4;
+  repeated PrometheusMetric prommetrics = 5;
+  repeated LokiLog lokilogs = 6;
+}
+
+message LokiLog {
+  repeated Label labels = 1;
+  int64 timestamp = 3;
+  string line = 4;
+  repeated Label metadata  = 5;
+  repeated Label parsed = 6;
+
+}
+
+message PrometheusMetric {
+  repeated Label Labels = 1;
+  double value = 2;
+  int64 timestampms = 3;
+}
+
+message Label {
+  string Name = 1;
+  string Value = 2;
+}

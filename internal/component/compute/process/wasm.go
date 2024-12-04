@@ -53,6 +53,11 @@ func (wp *WasmPlugin) Process(pt *Passthrough) (*Passthrough, error) {
 	defer wp.mut.Unlock()
 
 	pt.Config = wp.config
+
+	// Ensure our pt fields are set to non nil
+	if pt.Lokilogs == nil {
+		pt.Lokilogs = make([]*LokiLog, 0)
+	}
 	bb, err := pt.MarshalVT()
 	if err != nil {
 		return nil, err

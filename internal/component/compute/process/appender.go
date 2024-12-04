@@ -12,14 +12,51 @@ import (
 )
 
 var _ storage.Appender = (*bulkAppender)(nil)
+var _ storage.Appendable = (*bulkAppendable)(nil)
 
-type bulkAppender struct {
-	ctx                        context.Context
+type bulkAppendable struct {
 	wasm                       *WasmPlugin
 	metrics                    []*PrometheusMetric
 	next                       storage.Appendable
 	timeMetric                 prom.Counter
 	prometheusRecordsProcessed prom.Counter
+	bridge                     *bridge
+}
+
+func (b *bulkAppendable) Appender(ctx context.Context) storage.Appender {
+	return &bulkAppender{
+		ctx:                        ctx,
+		wasm:                       b.wasm,
+		timeMetric:                 b.timeMetric,
+		prometheusRecordsProcessed: b.prometheusRecordsProcessed,
+		bridge:                     b.bridge,
+	}
+}
+
+func (b *bulkAppendable) send(metrics []*PrometheusMetric) {
+	app := b.next.Appender(context.TODO())
+	for _, m := range metrics {
+		labelsBack := make(labels.Labels, len(m.Labels))
+		for i, l := range m.Labels {
+			labelsBack[i] = labels.Label{
+				Name:  l.Name,
+				Value: l.Value,
+			}
+		}
+		// We explicitly dont care about errors from append
+		_, _ = app.Append(0, labelsBack, m.Timestampms, m.Value)
+	}
+	// We explicitly dont care about errors from commit
+	_ = app.Commit()
+}
+
+type bulkAppender struct {
+	ctx                        context.Context
+	wasm                       *WasmPlugin
+	metrics                    []*PrometheusMetric
+	timeMetric                 prom.Counter
+	prometheusRecordsProcessed prom.Counter
+	bridge                     *bridge
 }
 
 func (b *bulkAppender) Append(ref storage.SeriesRef, l labels.Labels, t int64, v float64) (storage.SeriesRef, error) {
@@ -81,20 +118,7 @@ func (b *bulkAppender) process() error {
 	if err != nil {
 		return err
 	}
-	app := b.next.Appender(b.ctx)
-	for _, m := range outpt.Prommetrics {
-		labelsBack := make(labels.Labels, len(m.Labels))
-		for i, l := range m.Labels {
-			labelsBack[i] = labels.Label{
-				Name:  l.Name,
-				Value: l.Value,
-			}
-		}
-		// We explicitly dont care about errors from append
-		_, _ = app.Append(0, labelsBack, m.Timestampms, m.Value)
-	}
-	// We explicitly dont care about errors from commit
-	_ = app.Commit()
+	// Passthrough may have generated other types so we need to pass it to the bridge to handle.
+	b.bridge.sendPassthrough(outpt)
 	return nil
-
 }

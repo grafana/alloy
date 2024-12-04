@@ -2,7 +2,7 @@
 // protoc-gen-go-lite version: v0.8.0
 // source: passthrough.proto
 
-package main
+package __
 
 import (
 	binary "encoding/binary"
