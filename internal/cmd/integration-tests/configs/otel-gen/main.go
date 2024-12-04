@@ -6,9 +6,13 @@ import (
 	"os"
 	"time"
 
+	"go.opentelemetry.io/contrib/bridges/otelslog"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+	"go.opentelemetry.io/otel/log/global"
+	otellog "go.opentelemetry.io/otel/sdk/log"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
@@ -40,6 +44,15 @@ func main() {
 	)
 	if err != nil {
 		log.Fatalf("failed to create metric exporter: %v", err)
+	}
+
+	// Set up OTLP log exporter
+	logExporter, err := otlploghttp.New(ctx,
+		otlploghttp.WithInsecure(),
+		otlploghttp.WithEndpoint(otlpExporterEndpoint),
+	)
+	if err != nil {
+		log.Fatalf("failed to create log exporter: %v", err)
 	}
 
 	resource, err := resource.New(ctx,
@@ -100,6 +113,18 @@ func main() {
 	exponentialHistogram, _ := meter.Int64Histogram("example_exponential_histogram")
 	exponentialFloatHistogram, _ := meter.Float64Histogram("example_exponential_float_histogram")
 
+	// Configure log provider
+	lp := otellog.NewLoggerProvider(otellog.WithProcessor(
+		otellog.NewBatchProcessor(logExporter),
+	))
+	global.SetLoggerProvider(lp)
+	defer func() {
+		if err := lp.Shutdown(ctx); err != nil {
+			log.Fatalf("failed to shut down log provider: %v", err)
+		}
+	}()
+	logger := otelslog.NewLogger("example-logger")
+
 	for {
 		ctx, span := tracer.Start(ctx, "sample-trace")
 		counter.Add(ctx, 10)
@@ -110,6 +135,8 @@ func main() {
 		floatHistogram.Record(ctx, 6.5)
 		exponentialHistogram.Record(ctx, 5)
 		exponentialFloatHistogram.Record(ctx, 1.5)
+
+		logger.Info("Something interesting happened")
 
 		time.Sleep(200 * time.Millisecond)
 		span.End()
