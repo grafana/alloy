@@ -14,11 +14,12 @@ import (
 var _ storage.Appender = (*bulkAppender)(nil)
 
 type bulkAppender struct {
-	ctx        context.Context
-	wasm       *WasmPlugin
-	metrics    []*PrometheusMetric
-	next       storage.Appendable
-	timeMetric prom.Counter
+	ctx                        context.Context
+	wasm                       *WasmPlugin
+	metrics                    []*PrometheusMetric
+	next                       storage.Appendable
+	timeMetric                 prom.Counter
+	prometheusRecordsProcessed prom.Counter
 }
 
 func (b *bulkAppender) Append(ref storage.SeriesRef, l labels.Labels, t int64, v float64) (storage.SeriesRef, error) {
@@ -72,6 +73,7 @@ func (b *bulkAppender) process() error {
 		// represent the same thing.
 		Prommetrics: b.metrics,
 	}
+	b.prometheusRecordsProcessed.Add(float64(len(b.metrics)))
 	start := time.Now()
 	outpt, err := b.wasm.Process(pt)
 	elapsed := time.Since(start)
