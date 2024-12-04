@@ -2,15 +2,16 @@ package process
 
 import (
 	"context"
-	"github.com/grafana/alloy/internal/component/prometheus"
-	"github.com/grafana/alloy/internal/service/labelstore"
 	"maps"
 	"slices"
 	"sync"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/prometheus"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/service/labelstore"
+	prom "github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/storage"
 )
 
@@ -28,12 +29,13 @@ func init() {
 }
 
 type Component struct {
-	mut  sync.RWMutex
-	wasm *WasmPlugin
-	loki loki.LogsReceiver
-	args Arguments
-	opts component.Options
-	ls   labelstore.LabelStore
+	mut        sync.RWMutex
+	wasm       *WasmPlugin
+	loki       loki.LogsReceiver
+	args       Arguments
+	opts       component.Options
+	ls         labelstore.LabelStore
+	timeMetric prom.Counter
 }
 
 func New(opts component.Options, args Arguments) (*Component, error) {
@@ -51,7 +53,13 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 		opts: opts,
 		args: args,
 		ls:   data.(labelstore.LabelStore),
+		timeMetric: prom.NewCounter(prom.CounterOpts{
+			Namespace: "alloy",
+			Subsystem: "compute",
+			Name:      "process_time_ms_total",
+		}),
 	}
+	c.opts.Registerer.Register(c.timeMetric)
 	c.opts.OnStateChange(Exports{
 		PrometheusReceiver: c,
 		LokiReceiver:       c.loki,
@@ -78,8 +86,9 @@ func (c *Component) Update(args component.Arguments) error {
 
 func (c *Component) Appender(ctx context.Context) storage.Appender {
 	return &bulkAppender{
-		ctx:  ctx,
-		wasm: c.wasm,
-		next: prometheus.NewFanout(c.args.PrometheusForwardTo, c.opts.ID, c.opts.Registerer, c.ls),
+		ctx:        ctx,
+		wasm:       c.wasm,
+		next:       prometheus.NewFanout(c.args.PrometheusForwardTo, c.opts.ID, c.opts.Registerer, c.ls),
+		timeMetric: c.timeMetric,
 	}
 }

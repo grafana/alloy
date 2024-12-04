@@ -2,20 +2,23 @@ package process
 
 import (
 	"context"
+	prom "github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/exemplar"
 	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/metadata"
 	"github.com/prometheus/prometheus/storage"
+	"time"
 )
 
 var _ storage.Appender = (*bulkAppender)(nil)
 
 type bulkAppender struct {
-	ctx     context.Context
-	wasm    *WasmPlugin
-	metrics []*PrometheusMetric
-	next    storage.Appendable
+	ctx        context.Context
+	wasm       *WasmPlugin
+	metrics    []*PrometheusMetric
+	next       storage.Appendable
+	timeMetric prom.Counter
 }
 
 func (b *bulkAppender) Append(ref storage.SeriesRef, l labels.Labels, t int64, v float64) (storage.SeriesRef, error) {
@@ -69,7 +72,10 @@ func (b *bulkAppender) process() error {
 		// represent the same thing.
 		Prommetrics: b.metrics,
 	}
+	start := time.Now()
 	outpt, err := b.wasm.Process(pt)
+	elapsed := time.Since(start)
+	b.timeMetric.Add(float64(elapsed.Milliseconds()))
 	if err != nil {
 		return err
 	}
