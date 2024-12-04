@@ -44,6 +44,8 @@ Main (unreleased)
   - Change processlist query to support ONLY_FULL_GROUP_BY sql_mode
   - Add perf_schema quantile columns to collector
 
+- Add three new stdlib functions to_base64, from_URLbase64 and to_URLbase64 (@ravishankar15)
+
 ### Bugfixes
 
 - Fixed issue with reloading configuration and prometheus metrics duplication in `prometheus.write.queue`. (@mattdurham)
