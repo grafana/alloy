@@ -13,9 +13,9 @@ type ScrapeTask struct {
 }
 
 type ScrapeTaskConsumer interface {
-	Consume(tasks []ScrapeTask) map[int]error
+	Consume(tasks []ScrapeTask)
 }
 
 type MetricsConsumer interface {
-	Consume(metrics promadapter.Metrics) error
+	Consume(metrics []promadapter.Metrics)
 }

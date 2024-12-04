@@ -2,7 +2,6 @@ package scrape
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sync"
 
@@ -106,16 +105,18 @@ func (c *Component) Update(args component.Arguments) error {
 	return nil
 }
 
-func (c *Component) Consume(tasks []scrape_task.ScrapeTask) map[int]error {
+func (c *Component) Consume(tasks []scrape_task.ScrapeTask) {
 	level.Debug(c.opts.Logger).Log("msg", "consuming scrape tasks", "count", len(tasks))
 
-	// Create function to collect errors
+	// Create function to collect results
 	resultMut := sync.Mutex{}
-	results := make(map[int]error, len(tasks))
-	reportResult := func(index int, err error) {
+	scrapeErrs := make(map[int]error)
+	metrics := make([]promadapter.Metrics, len(tasks))
+	collectResult := func(index int, m promadapter.Metrics, err error) {
 		resultMut.Lock()
 		defer resultMut.Unlock()
-		results[index] = err
+		scrapeErrs[index] = err
+		metrics[index] = m
 	}
 
 	// Grab the current pool
@@ -129,46 +130,43 @@ func (c *Component) Consume(tasks []scrape_task.ScrapeTask) map[int]error {
 		ind := i
 		allDone.Add(1)
 		err := currentPool.submit(func() {
-			err := c.scrapeWithTimeoutAndRetries(task)
-			reportResult(ind, err)
+			m, err := c.scrapeWithTimeoutAndRetries(task)
+			collectResult(ind, m, err)
 			allDone.Done()
 		})
 		// Pool may reject, in which case the task won't run.
 		if err != nil {
-			reportResult(ind, err)
+			collectResult(ind, promadapter.Metrics{} /* we got nothing to send */, err)
 			allDone.Done()
 		}
 	}
 
-	// Wait for done and return.
+	// Wait for scraping done.
 	allDone.Wait()
-	return results
+
+	// Grab the consumers list
+	c.mut.RLock()
+	consumers := c.args.ForwardTo
+	c.mut.RUnlock()
+
+	// Fan out the metrics to all consumers.
+	for _, cons := range consumers {
+		cons.Consume(metrics)
+	}
+
+	// TODO(thampiotr): surface scrape errors in the UI
 }
 
 // scrapeWithTimeoutAndRetries must always complete and return an error.
-func (c *Component) scrapeWithTimeoutAndRetries(task scrape_task.ScrapeTask) error {
+func (c *Component) scrapeWithTimeoutAndRetries(task scrape_task.ScrapeTask) (promadapter.Metrics, error) {
 	level.Debug(c.opts.Logger).Log("msg", "scraping target", "target", task.Target)
 
 	// TODO(thampiotr): better metrics, do a histogram of scraping time etc
 	c.scrapesCounter.Inc()
 
-	var err error
-
 	// Do the scrape
 	// TODO(thampiotr): need to make sure here that retries and timeouts work - don't want a task that hangs forever
-	metrics, err := c.scraper.ScrapeTarget(task.Target)
-	if err != nil {
-		return err
-	}
-
-	// Fan out the same metrics to all consumers.
-	for ind, cons := range c.args.ForwardTo {
-		consErr := cons.Consume(metrics)
-		if consErr != nil {
-			err = errors.Join(err, fmt.Errorf("consumer at index %d failed to consume metrics: %w", ind, consErr))
-		}
-	}
-	return err
+	return c.scraper.ScrapeTarget(task.Target)
 }
 
 // TODO(thampiotr): Maybe some out-of-the-box pool would work too. For now I want to have maximum customisability.
@@ -182,6 +180,7 @@ type pool struct {
 
 func newPool(size int, logger log.Logger) *pool {
 	p := &pool{
+		// TODO(thampiotr): pool queue maybe should be configurable
 		tasks:    make(chan func(), size),
 		shutdown: make(chan struct{}),
 		logger:   logger,

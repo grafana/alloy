@@ -18,6 +18,7 @@ type scraper struct {
 }
 
 func (s scraper) ScrapeTarget(target discovery.Target) (promadapter.Metrics, error) {
+	// TODO(thampiotr): generate some random number of metrics here for demo purposes
 	timestamp := time.Now().UnixMilli()
 	metrics := promadapter.Metrics{}
 	metrics.TimeSeries = []prompb.TimeSeries{{
