@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/go-kit/log"
 	promclient "github.com/prometheus/client_golang/prometheus"
@@ -33,10 +34,16 @@ func init() {
 type Arguments struct {
 	ForwardTo []scrape_task.MetricsConsumer `alloy:"forward_to,attr"`
 	// TODO(thampiotr): we can do RW shards-style auto-tuning of this pool.
-	PoolSize int `alloy:"pool_size,attr"`
+	PoolSize      int `alloy:"pool_size,attr,optional"`
+	PoolQueueSize int `alloy:"pool_queue_size,attr,optional"`
 
 	// TODO(thampiotr): Proper implementation will have all the configuration options required for scraper too.
 	// 					for now we're using stubs, so not needed.
+}
+
+func (a *Arguments) SetToDefault() {
+	a.PoolSize = 10
+	a.PoolQueueSize = 20
 }
 
 type Exports struct {
@@ -59,10 +66,10 @@ var (
 )
 
 func New(o component.Options, args Arguments) (*Component, error) {
-	counter := promclient.NewCounter(promclient.CounterOpts{
-		Name: "scrape_tasks_completed",
-		Help: "Number of scraped tasks this component has completed"})
-	err := o.Registerer.Register(counter)
+	scrapesCounter := promclient.NewCounter(promclient.CounterOpts{
+		Name: "scrape_tasks_scrapes_total",
+		Help: "Number of scrapes the prometheus.scrape_task.scrape component has completed"})
+	err := o.Registerer.Register(scrapesCounter)
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +78,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		opts: o,
 		// TODO(thampiotr): for now using a stub, but the idea is to use a proper implementation that can scrape
 		scraper:        promstub.NewScraper(),
-		scrapesCounter: counter,
+		scrapesCounter: scrapesCounter,
 	}
 
 	o.OnStateChange(Exports{Receiver: c})
@@ -95,7 +102,11 @@ func (c *Component) Update(args component.Arguments) error {
 	c.mut.Lock()
 	oldPool := c.pool
 	c.args = args.(Arguments)
-	c.pool = newPool(c.args.PoolSize, log.With(c.opts.Logger, "subsystem", "task_pool"))
+	c.pool = newPool(
+		c.args.PoolSize,
+		c.args.PoolQueueSize,
+		log.With(c.opts.Logger, "subsystem", "task_pool"),
+	)
 	c.mut.Unlock()
 
 	if oldPool != nil {
@@ -108,50 +119,38 @@ func (c *Component) Update(args component.Arguments) error {
 func (c *Component) Consume(tasks []scrape_task.ScrapeTask) {
 	level.Debug(c.opts.Logger).Log("msg", "consuming scrape tasks", "count", len(tasks))
 
-	// Create function to collect results
+	// Create function to collect errors
 	resultMut := sync.Mutex{}
 	scrapeErrs := make(map[int]error)
-	metrics := make([]promadapter.Metrics, len(tasks))
 	collectResult := func(index int, m promadapter.Metrics, err error) {
 		resultMut.Lock()
 		defer resultMut.Unlock()
 		scrapeErrs[index] = err
-		metrics[index] = m
 	}
 
-	// Grab the current pool
+	// Grab the current pool and consumers list
 	c.mut.RLock()
 	currentPool := c.pool
+	consumers := c.args.ForwardTo
 	c.mut.RUnlock()
 
 	// Submit all scrape tasks to the pool
-	allDone := sync.WaitGroup{}
 	for i, task := range tasks {
 		ind := i
-		allDone.Add(1)
 		err := currentPool.submit(func() {
 			m, err := c.scrapeWithTimeoutAndRetries(task)
+			// Fan out the metrics to all consumers.
+			for _, cons := range consumers {
+				// TODO(thampiotr): change the type here as we don't need the slice?
+				// TODO(thampiotr): this must never hang forever - needs timeout
+				cons.Consume([]promadapter.Metrics{m})
+			}
 			collectResult(ind, m, err)
-			allDone.Done()
 		})
 		// Pool may reject, in which case the task won't run.
 		if err != nil {
 			collectResult(ind, promadapter.Metrics{} /* we got nothing to send */, err)
-			allDone.Done()
 		}
-	}
-
-	// Wait for scraping done.
-	allDone.Wait()
-
-	// Grab the consumers list
-	c.mut.RLock()
-	consumers := c.args.ForwardTo
-	c.mut.RUnlock()
-
-	// Fan out the metrics to all consumers.
-	for _, cons := range consumers {
-		cons.Consume(metrics)
 	}
 
 	// TODO(thampiotr): surface scrape errors in the UI
@@ -159,14 +158,15 @@ func (c *Component) Consume(tasks []scrape_task.ScrapeTask) {
 
 // scrapeWithTimeoutAndRetries must always complete and return an error.
 func (c *Component) scrapeWithTimeoutAndRetries(task scrape_task.ScrapeTask) (promadapter.Metrics, error) {
-	level.Debug(c.opts.Logger).Log("msg", "scraping target", "target", task.Target)
-
-	// TODO(thampiotr): better metrics, do a histogram of scraping time etc
-	c.scrapesCounter.Inc()
+	start := time.Now()
 
 	// Do the scrape
 	// TODO(thampiotr): need to make sure here that retries and timeouts work - don't want a task that hangs forever
-	return c.scraper.ScrapeTarget(task.Target)
+	metrics, err := c.scraper.ScrapeTarget(task.Target)
+	level.Debug(c.opts.Logger).Log("msg", "scraped target", "target", task.Target, "duration", time.Since(start))
+	c.scrapesCounter.Inc()
+
+	return metrics, err
 }
 
 // TODO(thampiotr): Maybe some out-of-the-box pool would work too. For now I want to have maximum customisability.
@@ -178,10 +178,9 @@ type pool struct {
 	logger     log.Logger
 }
 
-func newPool(size int, logger log.Logger) *pool {
+func newPool(size int, queueSize int, logger log.Logger) *pool {
 	p := &pool{
-		// TODO(thampiotr): pool queue maybe should be configurable
-		tasks:    make(chan func(), size),
+		tasks:    make(chan func(), queueSize),
 		shutdown: make(chan struct{}),
 		logger:   logger,
 	}
@@ -191,8 +190,16 @@ func newPool(size int, logger log.Logger) *pool {
 			for {
 				select {
 				case <-p.shutdown:
-					p.allDone.Done()
-					return
+					// drain the queue first and return
+					for {
+						select {
+						case task := <-p.tasks:
+							task()
+						default:
+							p.allDone.Done()
+							return
+						}
+					}
 				case task := <-p.tasks:
 					task()
 				}

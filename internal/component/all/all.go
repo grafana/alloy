@@ -142,6 +142,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/prometheus/scrape"                        // Import prometheus.scrape
 	_ "github.com/grafana/alloy/internal/component/prometheus/scrape_task/receive"           // Import prometheus.scrape_task.receive
 	_ "github.com/grafana/alloy/internal/component/prometheus/scrape_task/scrape"            // Import prometheus.scrape_task.scrape
+	_ "github.com/grafana/alloy/internal/component/prometheus/scrape_task/send"              // Import prometheus.scrape_task.send
 	_ "github.com/grafana/alloy/internal/component/prometheus/write/queue"                   // Import prometheus.write.queue
 	_ "github.com/grafana/alloy/internal/component/pyroscope/ebpf"                           // Import pyroscope.ebpf
 	_ "github.com/grafana/alloy/internal/component/pyroscope/java"                           // Import pyroscope.java

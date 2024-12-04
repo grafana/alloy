@@ -3,11 +3,10 @@ package receive
 import (
 	"context"
 	"sync"
-	"time"
 
 	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/prometheus/scrape_task"
+	"github.com/grafana/alloy/internal/component/prometheus/scrape_task/internal/queuestub"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
@@ -26,6 +25,11 @@ func init() {
 
 type Arguments struct {
 	ForwardTo []scrape_task.ScrapeTaskConsumer `alloy:"forward_to,attr"`
+	BatchSize int                              `alloy:"batch_size,attr,optional"`
+}
+
+func (a *Arguments) SetToDefault() {
+	a.BatchSize = 100
 }
 
 type Component struct {
@@ -48,18 +52,18 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 
 // Run satisfies the Component interface.
 func (c *Component) Run(ctx context.Context) error {
-	// TODO(thampiotr): consume tasks from somewhere, e.g. redis queue and send them to the consumer
-
-	tick := time.NewTicker(5 * time.Second)
-	defer tick.Stop()
-
 	for {
 		select {
 		case <-ctx.Done():
 			level.Info(c.opts.Logger).Log("msg", "terminating due to context done")
 			return nil
-		case <-tick.C:
-			level.Debug(c.opts.Logger).Log("msg", "generating fake scrape tasks and forwarding to consumers")
+		default:
+			c.mut.RLock()
+			batchSize := c.args.BatchSize
+			c.mut.RUnlock()
+
+			tasks := queuestub.PopTasks(batchSize)
+			level.Debug(c.opts.Logger).Log("msg", "forwarding scrape tasks to consumers", "count", len(tasks))
 
 			c.mut.RLock()
 			consumers := c.args.ForwardTo
@@ -68,22 +72,9 @@ func (c *Component) Run(ctx context.Context) error {
 			// TODO(thampiotr): add metrics here
 
 			for _, consumer := range consumers {
-				consumer.Consume(fakeScrapeTasks())
+				consumer.Consume(tasks)
 			}
 		}
-	}
-}
-
-func fakeScrapeTasks() []scrape_task.ScrapeTask {
-	return []scrape_task.ScrapeTask{
-		{
-			IssueTime: time.Now(),
-			Target:    discovery.Target{"host": "test_host_1", "cluster": "home"},
-		},
-		{
-			IssueTime: time.Now(),
-			Target:    discovery.Target{"host": "test_host_2", "cluster": "home"},
-		},
 	}
 }
 

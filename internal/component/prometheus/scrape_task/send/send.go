@@ -3,6 +3,7 @@ package send
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/prometheus/scrape_task"
@@ -79,6 +80,7 @@ func (c *Component) Update(args component.Arguments) error {
 
 func (c *Component) Consume(metrics []promadapter.Metrics) {
 	// TODO(thampiotr): batch metrics differently here? Or is this responsibility of the sender? TBD
+	start := time.Now()
 	err := c.sender.Send(metrics)
 	if err != nil {
 		level.Error(c.opts.Logger).Log("msg", "sending metrics failed", "err", err)
@@ -87,5 +89,10 @@ func (c *Component) Consume(metrics []promadapter.Metrics) {
 	for _, m := range metrics {
 		totalSeries += m.SeriesCount()
 	}
-	level.Debug(c.opts.Logger).Log("msg", "done sending metrics", "count", len(metrics), "total_series", totalSeries)
+	level.Debug(c.opts.Logger).Log(
+		"msg", "done sending metrics",
+		"count", len(metrics),
+		"total_series", totalSeries,
+		"duration", time.Since(start),
+	)
 }
