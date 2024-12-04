@@ -81,7 +81,8 @@ const ComponentLiveGraph: React.FC<LiveGraphProps> = ({ components }) => {
               style: { stroke: FeedDataTypeColorMap[feed.type] },
               label: feed.count.toString(),
               data: { ...matchAny[0].data, signal: feed.type },
-              interactionWidth: //weird hack to use the interactionWidth param here
+              //weird hack to use the interactionWidth param here
+              interactionWidth:
                 matchAny.length +
                 newEdges.filter((edge) => edge.source === feed.componentID && edge.target === target).length,
             });

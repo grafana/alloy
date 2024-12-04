@@ -40,13 +40,14 @@ export default function CustomEdge({
 
   let offset = interactionWidth ? interactionWidth : 0;
 
-  if (offset % 2 != 0) {
-    offset *= 40;
-  } else {
-    offset *= -40;
+  // only handle 3 edges to the same graph node
+  if (offset === 1) {
+    offset = 40;
+  } else if (offset == 2) {
+    offset = -40;
   }
 
-  if (offset > 0) {
+  if (offset !== 0) {
     // If there are multiple edges, create a unique path with the offset
     path = getSpecialPath(edgePathParams, offset);
   } else {
