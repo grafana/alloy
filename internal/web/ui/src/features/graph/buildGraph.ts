@@ -12,7 +12,7 @@ const nodeHeight = 36;
 const position = { x: 0, y: 0 };
 
 export function buildGraph(components: ComponentInfo[]): [Node[], Edge[]] {
-  const edges: Edge[] = [];
+  let edges: Edge[] = [];
   const nodes = components.map((component) => {
     const node: Node = {
       id: component.localID,
@@ -34,7 +34,9 @@ export function buildGraph(components: ComponentInfo[]): [Node[], Edge[]] {
     return node;
   });
 
-  //   edges = fixDirections(edges);
+  edges = fixDirections(edges);
+
+  console.log(edges);
 
   dagreGraph.setGraph({ rankdir: 'LR' });
 
@@ -67,13 +69,13 @@ export function buildGraph(components: ComponentInfo[]): [Node[], Edge[]] {
   return [newNodes, edges];
 }
 
-// function fixDirections(edges: Edge[]): Edge[] {
-//   return edges.map((edge) => {
-//     if (edge.source.startsWith('prometheus.')) {
-//       const tmp = edge.source;
-//       edge.source = edge.target;
-//       edge.target = tmp;
-//     }
-//     return edge;
-//   });
-// }
+function fixDirections(edges: Edge[]): Edge[] {
+  return edges.map((edge) => {
+    if (edge.target.startsWith('discovery.')) {
+      const tmp = edge.source;
+      edge.source = edge.target;
+      edge.target = tmp;
+    }
+    return edge;
+  });
+}
