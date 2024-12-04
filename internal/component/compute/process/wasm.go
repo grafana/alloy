@@ -3,6 +3,7 @@ package process
 import (
 	"context"
 	"fmt"
+	"github.com/tetratelabs/wazero"
 	"sync"
 	"time"
 
@@ -24,8 +25,10 @@ func NewPlugin(wasm []byte, wasmConfig map[string]string, ctx context.Context) (
 		},
 	}
 
+	mv := wazero.NewModuleConfig().WithSysWalltime()
 	config := extism.PluginConfig{
-		EnableWasi: true,
+		EnableWasi:   true,
+		ModuleConfig: mv,
 	}
 	plugin, err := extism.NewPlugin(ctx, manifest, config, []extism.HostFunction{})
 	if err != nil {
