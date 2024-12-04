@@ -37,7 +37,7 @@ func New(debugDataPublisher livedebugging.DebugDataPublisher, componentID string
 	}
 }
 
-func (c *Consumer) SetTargetComsumers(metric, log, trace []otelcol.Consumer) {
+func (c *Consumer) SetTargetConsumers(metric, log, trace []otelcol.Consumer) {
 	c.targetComponentIDsMetric = extractIds(metric)
 	c.targetComponentIDsLog = extractIds(log)
 	c.targetComponentIDsTraces = extractIds(trace)

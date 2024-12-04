@@ -232,7 +232,7 @@ func (r *Receiver) Update(args component.Arguments) error {
 		}
 	}
 
-	r.liveDebuggingConsumer.SetTargetComsumers(next.Metrics, next.Logs, next.Traces)
+	r.liveDebuggingConsumer.SetTargetConsumers(next.Metrics, next.Logs, next.Traces)
 
 	// Schedule the components to run once our component is running.
 	r.sched.Schedule(host, components...)

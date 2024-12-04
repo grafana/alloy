@@ -237,7 +237,7 @@ func (p *Processor) Update(args component.Arguments) error {
 		}
 	}
 
-	p.liveDebuggingConsumer.SetTargetComsumers(next.Metrics, next.Logs, next.Traces)
+	p.liveDebuggingConsumer.SetTargetConsumers(next.Metrics, next.Logs, next.Traces)
 
 	// Schedule the components to run once our component is running.
 	p.sched.Schedule(host, components...)

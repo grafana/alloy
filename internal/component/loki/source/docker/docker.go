@@ -25,6 +25,7 @@ import (
 	dt "github.com/grafana/alloy/internal/component/loki/source/docker/internal/dockertarget"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/useragent"
 	"github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
@@ -96,6 +97,7 @@ func (a *Arguments) Validate() error {
 var (
 	_ component.Component      = (*Component)(nil)
 	_ component.DebugComponent = (*Component)(nil)
+	_ component.LiveDebugging  = (*Component)(nil)
 )
 
 // Component implements the loki.source.file component.
@@ -112,6 +114,8 @@ type Component struct {
 	rcs           []*relabel.Config
 	defaultLabels model.LabelSet
 
+	debugDataPublisher livedebugging.DebugDataPublisher
+
 	receiversMut sync.RWMutex
 	receivers    []loki.LogsReceiver
 }
@@ -120,6 +124,10 @@ type Component struct {
 func New(o component.Options, args Arguments) (*Component, error) {
 	err := os.MkdirAll(o.DataPath, 0750)
 	if err != nil && !os.IsExist(err) {
+		return nil, err
+	}
+	debugDataPublisher, err := o.GetServiceData(livedebugging.ServiceName)
+	if err != nil {
 		return nil, err
 	}
 	positionsFile, err := positions.New(o.Logger, positions.Config{
@@ -136,10 +144,11 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		opts:    o,
 		metrics: dt.NewMetrics(o.Registerer),
 
-		handler:   loki.NewLogsReceiver(),
-		manager:   newManager(o.Logger, nil),
-		receivers: args.ForwardTo,
-		posFile:   positionsFile,
+		handler:            loki.NewLogsReceiver(),
+		manager:            newManager(o.Logger, nil),
+		receivers:          args.ForwardTo,
+		posFile:            positionsFile,
+		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
 	}
 
 	// Call to Update() to start readers and set receivers once at the start.
@@ -165,6 +174,7 @@ func (c *Component) Run(ctx context.Context) error {
 		}
 	}()
 
+	componentID := livedebugging.ComponentID(c.opts.ID)
 	for {
 		select {
 		case <-ctx.Done():
@@ -173,6 +183,14 @@ func (c *Component) Run(ctx context.Context) error {
 			c.receiversMut.RLock()
 			receivers := c.receivers
 			c.receiversMut.RUnlock()
+			if c.debugDataPublisher.IsActive(componentID) {
+				c.debugDataPublisher.Publish(componentID, livedebugging.FeedData{
+					ComponentID: componentID,
+					Type:        livedebugging.LokiLog,
+					Count:       1,
+					Data:        fmt.Sprintf("entry: %s, labels: %s", entry.Line, entry.Labels.String()),
+				})
+			}
 			for _, receiver := range receivers {
 				receiver.Chan() <- entry
 			}
@@ -355,3 +373,5 @@ type targetInfo struct {
 	IsRunning  string `alloy:"is_running,attr"`
 	ReadOffset string `alloy:"read_offset,attr"`
 }
+
+func (c *Component) LiveDebugging(_ int) {}
