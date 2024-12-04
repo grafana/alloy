@@ -6,6 +6,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"math/rand"
 	"net/http"
 	"path"
@@ -176,6 +177,8 @@ func liveGraph(_ service.Host, callbackManager livedebugging.CallbackManager) ht
 			moduleID = livedebugging.ModuleID(vars["moduleID"])
 		}
 
+		window := setWindow(w, r.URL.Query().Get("window"))
+
 		dataCh := make(chan livedebugging.FeedData, 1000)
 		feedDataMap := make(map[string]*livedebugging.FeedData)
 
@@ -204,7 +207,7 @@ func liveGraph(_ service.Host, callbackManager livedebugging.CallbackManager) ht
 			callbackManager.DeleteMultiCallback(id, moduleID)
 		}()
 
-		ticker := time.NewTicker(5 * time.Second)
+		ticker := time.NewTicker(time.Duration(window) * time.Second)
 		defer ticker.Stop()
 
 		for {
@@ -250,6 +253,7 @@ func liveGraph(_ service.Host, callbackManager livedebugging.CallbackManager) ht
 				feedDataMap = make(map[string]*livedebugging.FeedData)
 
 			case <-ctx.Done():
+				fmt.Println("close connection", id)
 				return
 			}
 		}
@@ -327,4 +331,17 @@ func setSampleProb(w http.ResponseWriter, sampleProbParam string) (sampleProb fl
 		}
 	}
 	return sampleProb
+}
+
+func setWindow(w http.ResponseWriter, windowParam string) (window int64) {
+	window = 5
+	if windowParam != "" {
+		var err error
+		window, err = strconv.ParseInt(windowParam, 10, 64)
+		if err != nil || window < 1 || window > 60 {
+			http.Error(w, "Invalid window", http.StatusBadRequest)
+			return 5
+		}
+	}
+	return window
 }

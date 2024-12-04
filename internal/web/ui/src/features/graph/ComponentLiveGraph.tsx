@@ -26,15 +26,15 @@ import '@xyflow/react/dist/style.css';
 type LiveGraphProps = {
   components: ComponentInfo[];
   moduleID: string;
+  enabled: boolean;
+  window: number;
 };
 
-const ComponentLiveGraph: React.FC<LiveGraphProps> = ({ components, moduleID }) => {
+const ComponentLiveGraph: React.FC<LiveGraphProps> = ({ components, moduleID, enabled, window }) => {
   const navigate = useNavigate();
   const [layoutedNodes, layoutedEdges] = useMemo(() => buildGraph(components), [components]);
   const [data, setData] = useState<FeedData[]>([]);
-  const [refreshSignal, setRefreshSignal] = useState(0);
-  const { error } = useLiveGraph(setData, moduleID, refreshSignal);
-
+  const { error } = useLiveGraph(setData, moduleID, window, enabled, layoutedNodes);
   const [nodes, setNodes, onNodesChange] = useNodesState(layoutedNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(layoutedEdges);
 
@@ -45,7 +45,6 @@ const ComponentLiveGraph: React.FC<LiveGraphProps> = ({ components, moduleID }) 
   useEffect(() => {
     setNodes(layoutedNodes);
     setEdges(layoutedEdges);
-    setRefreshSignal((prev) => prev + 1);
   }, [layoutedNodes, layoutedEdges]);
 
   // Ugly code to add some edges at runtime because we dont have this info from the Alloy graph

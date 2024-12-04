@@ -8,6 +8,7 @@ import (
 
 	"go.opentelemetry.io/contrib/bridges/otelslog"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
@@ -127,6 +128,7 @@ func main() {
 
 	for {
 		ctx, span := tracer.Start(ctx, "sample-trace")
+		span.SetAttributes(attribute.KeyValue{attribute.Key("server.address"), attribute.StringValue("the.country.is.france")})
 		counter.Add(ctx, 10)
 		floatCounter.Add(ctx, 2.5)
 		upDownCounter.Add(ctx, -5)

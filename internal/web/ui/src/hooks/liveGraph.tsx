@@ -1,20 +1,27 @@
 import { useEffect, useState } from 'react';
+import { Node } from '@xyflow/react';
 
 import { FeedData } from '../features/graph/feedDataType';
 
 export const useLiveGraph = (
   setData: React.Dispatch<React.SetStateAction<FeedData[]>>,
   moduleID: string,
-  resetSignal: number
+  window: number,
+  enabled: boolean,
+  layoutedNodes: Node[]
 ) => {
   const [error, setError] = useState('');
   useEffect(() => {
     const abortController = new AbortController();
 
     const fetchData = async () => {
+      if (!enabled) {
+        return;
+      }
       try {
+        console.log('start fetching data data!');
         const url = moduleID === '' ? `./api/v0/web/livegraph` : `./api/v0/web/livegraph/${moduleID}`;
-        const response = await fetch(url, {
+        const response = await fetch(url + `?window=${window}`, {
           signal: abortController.signal,
           cache: 'no-cache',
           credentials: 'same-origin',
@@ -28,7 +35,7 @@ export const useLiveGraph = (
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
 
-        while (true) {
+        while (enabled) {
           const { value, done } = await reader.read();
           if (done) {
             break;
@@ -38,9 +45,9 @@ export const useLiveGraph = (
             .decode(value, { stream: true })
             .split('|;|')
             .filter((entry) => entry.length != 0);
-
           setData(() => decodedChunks.map((chunk) => JSON.parse(chunk)));
         }
+        console.log('done...');
       } catch (error) {
         console.log(error);
         if ((error as Error).name !== 'AbortError') {
@@ -54,7 +61,7 @@ export const useLiveGraph = (
     return () => {
       abortController.abort();
     };
-  }, [setData, resetSignal]);
+  }, [setData, layoutedNodes, window, enabled]);
 
   return { error };
 };
