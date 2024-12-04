@@ -5,9 +5,9 @@ import (
 	"time"
 
 	"github.com/extism/go-pdk"
+	opentelemetry_proto_common_v1 "github.com/grafana/alloy/internal/component/compute/process/examples/go/lib/otlp/common/v1"
+	opentelemetry_proto_logs_v1 "github.com/grafana/alloy/internal/component/compute/process/examples/go/lib/otlp/logs/v1"
 	"github.com/prometheus/prometheus/model/labels"
-	"go.opentelemetry.io/collector/pdata/pcommon"
-	"go.opentelemetry.io/collector/pdata/plog"
 )
 
 type config struct {
@@ -53,17 +53,29 @@ func createOTelLog(metric *PrometheusMetric) ([]byte, error) {
 	}
 	logMsg += " }"
 
-	ld := plog.NewLogs()
-	rl := ld.ResourceLogs().AppendEmpty()
-	il := rl.ScopeLogs().AppendEmpty()
-	lg := il.LogRecords().AppendEmpty()
-	lg.SetSeverityText("Info")
-	lg.SetDroppedAttributesCount(1)
-	lg.Body().SetStr(logMsg)
-	lg.SetTimestamp(pcommon.NewTimestampFromTime(time.Now()))
+	log := opentelemetry_proto_logs_v1.LogsData{
+		ResourceLogs: []*opentelemetry_proto_logs_v1.ResourceLogs{
+			{
+				ScopeLogs: []*opentelemetry_proto_logs_v1.ScopeLogs{
+					{
+						LogRecords: []*opentelemetry_proto_logs_v1.LogRecord{
+							{
+								SeverityText: "Info",
+								Body: &opentelemetry_proto_common_v1.AnyValue{
+									Value: &opentelemetry_proto_common_v1.AnyValue_BytesValue{
+										BytesValue: []byte(logMsg),
+									},
+								},
+								TimeUnixNano: uint64(time.Now().UnixNano()),
+							},
+						},
+					},
+				},
+			},
+		},
+	}
 
-	encoder := &plog.JSONMarshaler{}
-	return encoder.MarshalLogs(ld)
+	return log.MarshalVT()
 }
 
 //export process
