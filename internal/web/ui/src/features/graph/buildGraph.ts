@@ -7,7 +7,7 @@ import { FeedDataType } from './feedDataType';
 
 const dagreGraph = new dagre.graphlib.Graph({ multigraph: true }).setDefaultEdgeLabel(() => ({}));
 
-const nodeWidth = 172;
+const nodeWidth = 200;
 const nodeHeight = 36;
 const position = { x: 0, y: 0 };
 
@@ -16,9 +16,11 @@ export function buildGraph(components: ComponentInfo[]): [Node[], Edge[]] {
   const nodes = components.map((component) => {
     const node: Node = {
       id: component.localID,
+      width: nodeWidth,
       data: {
-        label: component.name.split('.').pop() + ' "' + (component.label ?? '') + '"',
-        fullName: component.name + ' "' + (component.label ?? '') + '"',
+        label: component.name + ' "' + (component.label ?? '') + '"',
+        localID: component.localID,
+        moduleID: component.moduleID,
       },
       position: position,
     };

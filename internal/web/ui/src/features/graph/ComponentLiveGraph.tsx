@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   addEdge,
   Background,
@@ -26,6 +27,7 @@ type LiveGraphProps = {
 };
 
 const ComponentLiveGraph: React.FC<LiveGraphProps> = ({ components }) => {
+  const navigate = useNavigate();
   const [layoutedNodes, layoutedEdges] = useMemo(() => buildGraph(components), [components]);
   const [data, setData] = useState<FeedData[]>([]);
   const { error } = useLiveGraph(setData);
@@ -116,6 +118,14 @@ const ComponentLiveGraph: React.FC<LiveGraphProps> = ({ components }) => {
     });
   }, [data]);
 
+  const onNodeClick = (event: any, node: Node) => {
+    if (node.data.moduleID && node.data.moduleID != '') {
+      navigate(`/component/${node.data.moduleID}/${node.data.localID}`);
+    } else {
+      navigate(`/component/${node.data.localID}`);
+    }
+  };
+
   return (
     <>
       {error ? (
@@ -127,6 +137,7 @@ const ComponentLiveGraph: React.FC<LiveGraphProps> = ({ components }) => {
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           edgeTypes={edgeTypes}
+          onNodeClick={onNodeClick}
           fitView
           attributionPosition="bottom-left"
           style={{ backgroundColor: '#F7F9FB' }}
