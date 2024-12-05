@@ -2,13 +2,14 @@ package process
 
 import (
 	"context"
+	"time"
+
 	prom "github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/exemplar"
 	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/metadata"
 	"github.com/prometheus/prometheus/storage"
-	"time"
 )
 
 var _ storage.Appender = (*bulkAppender)(nil)
@@ -113,6 +114,10 @@ func (b *bulkAppender) process() error {
 	b.prometheusRecordsProcessed.Add(float64(len(b.metrics)))
 	start := time.Now()
 	outpt, err := b.wasm.Process(pt)
+	if err != nil {
+		return err
+	}
+
 	elapsed := time.Since(start)
 	b.timeMetric.Add(float64(elapsed.Milliseconds()))
 	if err != nil {

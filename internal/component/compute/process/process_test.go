@@ -2,15 +2,17 @@ package process
 
 import (
 	"context"
-	"github.com/grafana/alloy/internal/service/labelstore"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/prometheus/model/exemplar"
-	"github.com/prometheus/prometheus/model/metadata"
 	"os"
 	"path/filepath"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/service/labelstore"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/prometheus/model/exemplar"
+	"github.com/prometheus/prometheus/model/metadata"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/prometheus/prometheus/model/histogram"
@@ -43,7 +45,8 @@ func TestProcess(t *testing.T) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	go c.Run(ctx)
-	bulk := c.Appender(ctx)
+
+	bulk := c.bridge.prom.Appender(ctx)
 	for i := 0; i < 1000; i++ {
 		bulk.Append(0, labels.FromStrings("service", "cool"), time.Now().UnixMilli(), 1)
 
@@ -58,6 +61,56 @@ func TestProcess(t *testing.T) {
 	require.Eventually(t, func() bool {
 		return ta.count.Load() == 1000
 	}, 5*time.Second, 100*time.Millisecond)
+}
+
+func TestLogMetricSample(t *testing.T) {
+	bb, err := os.ReadFile(filepath.Join(".", "examples", "go", "log_metric_sample", "main.wasm"))
+	require.NoError(t, err)
+
+	ch := loki.NewLogsReceiver()
+	c, err := New(
+		component.Options{
+			OnStateChange: func(e component.Exports) {},
+			GetServiceData: func(name string) (interface{}, error) {
+				return &fakestore{}, nil
+			},
+			Registerer: prometheus.NewRegistry(),
+		},
+		Arguments{
+			Wasm: bb,
+			Config: map[string]string{
+				// "Metrics": `"[{"a": "b"}]"`,
+				// "Metrics": `a,b`,
+				"allowed_services": "cool,not_here",
+			},
+			LokiForwardTo: []loki.LogsReceiver{ch},
+		})
+	require.NoError(t, err)
+
+	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	go c.Run(ctx)
+	bulk := c.bridge.prom.Appender(ctx)
+	for i := 0; i < 1; i++ {
+		bulk.Append(0, labels.FromStrings("service", "cool"), time.Now().UnixMilli(), 1)
+
+	}
+
+	err = bulk.Commit()
+	require.NoError(t, err)
+
+	for i := 0; i < 2; i++ {
+		select {
+		case logEntry := <-ch.Chan():
+			// require.Equal(t, expectedTs, logEntry.Timestamp)
+			logline := ""
+			require.Equal(t, logline, logEntry.Line)
+			// require.Equal(t, wantLabelSet, logEntry.Labels)
+		case <-time.After(5 * time.Second):
+			require.FailNow(t, "failed waiting for log line")
+		}
+	}
 }
 
 type testAppendable struct {

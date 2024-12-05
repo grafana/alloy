@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/extism/go-pdk"
@@ -78,18 +79,37 @@ func createOTelLog(metric *PrometheusMetric) ([]byte, error) {
 	return log.MarshalVT()
 }
 
+func createLokiLog(metric *PrometheusMetric) *LokiLog {
+	logMsg := "Prometheus metric: { "
+	for _, lbl := range metric.Labels {
+		logMsg += lbl.Name + " = " + lbl.Value + "; "
+	}
+	logMsg += " }"
+
+	return &LokiLog{
+		Timestamp: time.Now().Unix(),
+		Line:      logMsg,
+	}
+}
+
+func setError(err error) {
+	if err != nil {
+		pdk.SetError(fmt.Errorf("error in log_metric_sample: %v", err))
+	}
+}
+
 //export process
 func process() int32 {
 	in := pdk.Input()
 	pt, err := parsePassthrough(in)
 	if err != nil {
-		pdk.SetError(err)
+		setError(fmt.Errorf("failed to parse input: %v", err))
 		return 1
 	}
 	var cfg config
 	err = json.Unmarshal(pdk.Input(), &cfg)
 	if err != nil {
-		pdk.SetError(err)
+		setError(fmt.Errorf("failed to unmarshal WASM config: %v; full config: %s", err, pdk.Input()))
 		return 1
 	}
 
@@ -109,25 +129,23 @@ func process() int32 {
 		})
 	}
 
-	outPT := &Passthrough{
-		Logs: pt.Logs,
-	}
+	outPT := &Passthrough{}
 	for _, metric := range pt.Prommetrics {
 		fingerprint := internalLabelsFingerprint(metric.Labels)
 		found := metrics.find(fingerprint)
 		if found {
-			log, err := createOTelLog(metric)
+			log := createLokiLog(metric)
 			if err != nil {
-				pdk.SetError(err)
+				setError(err)
 				return 1
 			}
 
-			outPT.Logs = append(outPT.Logs, log)
+			outPT.Lokilogs = append(outPT.Lokilogs, log)
 		}
 	}
 	bb, err := outPT.MarshalVT()
 	if err != nil {
-		pdk.SetError(err)
+		setError(fmt.Errorf("failed to marshal WASM output: %v", err))
 		return 1
 	}
 	pdk.Output(bb)
