@@ -318,7 +318,7 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 
 		require.Eventually(t, func() bool {
 			return len(lokiClient.Received()) == 2
-		}, 5000*time.Second, 100*time.Millisecond)
+		}, 5*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
 		lokiClient.Stop()
