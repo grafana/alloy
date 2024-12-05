@@ -52,6 +52,12 @@ Main (unreleased)
 
 - Fixed an issue in the `prometheus.operator.servicemonitors`, `prometheus.operator.podmonitors` and `prometheus.operator.probes` to support capitalized actions. (@QuentinBisson)
 
+### Other changes
+
+- Change the stability of the `livedebugging` feature from "experimental" to "generally available". (@wildum)
+
+- Use Go 1.23.3 for builds. (@mattdurham)
+
 v1.5.1
 -----------------
 
@@ -83,10 +89,6 @@ v1.5.1
 - Fixed a crash when updating the configuration of `remote.http`. (@kinolaev)
 
 ### Other changes
-
-- Change the stability of the `livedebugging` feature from "experimental" to "generally available". (@wildum)
-
-- Use Go 1.23.3 for builds. (@mattdurham)
 
 - Fixed an issue in the `otelcol.processor.attribute` component where the actions `delete` and `hash` could not be used with the `pattern` argument. (@wildum) 
 
