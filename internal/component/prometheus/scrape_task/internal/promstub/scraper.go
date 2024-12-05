@@ -1,7 +1,6 @@
 package promstub
 
 import (
-	"math/rand"
 	"strconv"
 	"time"
 
@@ -10,6 +9,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/prometheus/scrape_task/internal/promadapter"
+	"github.com/grafana/alloy/internal/component/prometheus/scrape_task/internal/random"
 )
 
 const SeriesToGenerateLabel = "__series_to_generate"
@@ -41,10 +41,10 @@ func (s scraper) ScrapeTarget(target discovery.Target) (promadapter.Metrics, err
 		metrics.TimeSeries = append(metrics.TimeSeries, prompb.TimeSeries{
 			Labels: append(targetLabels, prompb.Label{
 				Name:  "__name__",
-				Value: randomString(12),
+				Value: random.String(12),
 			}, prompb.Label{
 				Name:  "series_label",
-				Value: randomString(12),
+				Value: random.String(12),
 			}),
 			Samples: []prompb.Sample{
 				{
@@ -53,14 +53,15 @@ func (s scraper) ScrapeTarget(target discovery.Target) (promadapter.Metrics, err
 				},
 			},
 		})
-	}
 
-	simulateLatency(
-		time.Microsecond*500, // min
-		time.Millisecond*300, // avg
-		time.Second*10,       // max
-		time.Second,          // stdev
-	)
+		// Each series adds latency, so the more series, the more latency.
+		random.SimulateLatency(
+			time.Nanosecond*10,   // min
+			time.Nanosecond*100,  // avg
+			time.Microsecond*100, // max
+			time.Nanosecond*500,  // stdev
+		)
+	}
 
 	return metrics, nil
 }
@@ -71,13 +72,4 @@ func toPBLabels(labels labels.Labels) []prompb.Label {
 		r[i] = prompb.Label{Name: l.Name, Value: l.Value}
 	}
 	return r
-}
-
-func randomString(length int) string {
-	charset := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-	result := make([]byte, length)
-	for i := range result {
-		result[i] = charset[rand.Intn(len(charset))]
-	}
-	return string(result)
 }

@@ -40,6 +40,7 @@ type Exports struct {
 type Component struct {
 	opts           component.Options
 	samplesCounter promclient.Counter
+	sendDuration   promclient.Histogram
 	sender         promadapter.Sender
 
 	mut  sync.RWMutex
@@ -59,9 +60,19 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		return nil, err
 	}
 
+	sendDuration := promclient.NewHistogram(promclient.HistogramOpts{
+		Name: "scrape_tasks_send_samples_duration_seconds",
+		Help: "The time it takes to send samples",
+	})
+	err = o.Registerer.Register(sendDuration)
+	if err != nil {
+		return nil, err
+	}
+
 	c := &Component{
 		opts:           o,
 		samplesCounter: samplesCounter,
+		sendDuration:   sendDuration,
 		// TODO(thampiotr): for now using a stub, but the idea is to use a proper implementation that can remote write
 		sender: promstub.NewSender(),
 	}
@@ -100,11 +111,12 @@ func (c *Component) Consume(metrics []promadapter.Metrics) {
 	for _, m := range metrics {
 		totalSeries += m.SeriesCount()
 	}
-	c.samplesCounter.Add(float64(totalSeries))
 	level.Debug(c.opts.Logger).Log(
 		"msg", "done sending metrics",
 		"count", len(metrics),
 		"total_series", totalSeries,
 		"duration", time.Since(start),
 	)
+	c.samplesCounter.Add(float64(totalSeries))
+	c.sendDuration.Observe(time.Since(start).Seconds())
 }

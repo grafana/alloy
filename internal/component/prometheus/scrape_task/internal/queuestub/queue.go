@@ -1,40 +1,59 @@
 package queuestub
 
 import (
-	"math/rand"
-	"strconv"
+	"fmt"
+	"sync"
 	"time"
 
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/prometheus/scrape_task"
 	"github.com/grafana/alloy/internal/component/prometheus/scrape_task/internal/promstub"
+	"github.com/grafana/alloy/internal/component/prometheus/scrape_task/internal/random"
 )
 
-func PopTasks(maxTasks int) []scrape_task.ScrapeTask {
-	return fakeScrapeTasks(maxTasks, 5000)
+// The scrape interval we simulate here - how often scrape tasks are available in the queue.
+const scrapeInterval = 3 * time.Second
+
+// We only generate tasks once and keep them cached. To simulate same targets having same numbers of series.
+var (
+	cached  []scrape_task.ScrapeTask = nil
+	mut     sync.Mutex
+	ticker  = time.NewTicker(scrapeInterval)
+	lastPop = time.Now().Add(scrapeInterval * 2)
+)
+
+func PopTasks(count int) []scrape_task.ScrapeTask {
+	<-ticker.C // this limits the rate of scrape tasks produced, simulating scrape interval
+
+	// TODO(thampiotr): Instead of this, in a real system we would monitor the queue depth. Kinda like WAL delay - a
+	//                  sign of congestion.
+	if time.Since(lastPop) > scrapeInterval*2 {
+		fmt.Println("=======> QUEUE IS NOT DRAINED FAST ENOUGH")
+	}
+	lastPop = time.Now()
+
+	return fakeScrapeTasks(count)
 }
 
-func fakeScrapeTasks(maxTasks int, maxSeriesPerTarget int) []scrape_task.ScrapeTask {
-	tasks := rand.Intn(maxTasks)
-	result := make([]scrape_task.ScrapeTask, tasks)
-	for i := 0; i < tasks; i++ {
+func fakeScrapeTasks(count int) []scrape_task.ScrapeTask {
+	mut.Lock()
+	defer mut.Unlock()
+	if cached != nil {
+		return cached
+	}
+
+	result := make([]scrape_task.ScrapeTask, count)
+	for i := 0; i < count; i++ {
+		numberOfSeries := random.NumberOfSeries(5_000, 100_000, 1_000)
 		result[i] = scrape_task.ScrapeTask{
-			IssueTime: time.Now(),
 			Target: discovery.Target{
-				"host":                         "host_" + randomString(6),
-				"team":                         "team_" + randomString(1),
-				promstub.SeriesToGenerateLabel: strconv.Itoa(rand.Intn(maxSeriesPerTarget)),
+				"host":                         "host_" + random.String(6),
+				"team":                         "team_" + random.String(1),
+				promstub.SeriesToGenerateLabel: numberOfSeries,
 			},
 		}
 	}
-	return result
-}
 
-func randomString(length int) string {
-	charset := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-	result := make([]byte, length)
-	for i := range result {
-		result[i] = charset[rand.Intn(len(charset))]
-	}
-	return string(result)
+	cached = result
+	return result
 }

@@ -2,8 +2,10 @@ package receive
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
+	"github.com/grafana/ckit/shard"
 	promclient "github.com/prometheus/client_golang/prometheus"
 
 	"github.com/grafana/alloy/internal/component"
@@ -11,6 +13,7 @@ import (
 	"github.com/grafana/alloy/internal/component/prometheus/scrape_task/internal/queuestub"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/service/cluster"
 )
 
 func init() {
@@ -26,8 +29,9 @@ func init() {
 }
 
 type Arguments struct {
-	ForwardTo []scrape_task.ScrapeTaskConsumer `alloy:"forward_to,attr"`
-	BatchSize int                              `alloy:"batch_size,attr,optional"`
+	ForwardTo                []scrape_task.ScrapeTaskConsumer `alloy:"forward_to,attr"`
+	BatchSize                int                              `alloy:"batch_size,attr,optional"`
+	SimulateStableAssignment bool                             `alloy:"simulate_stable_assignment,attr,optional"`
 }
 
 func (a *Arguments) SetToDefault() {
@@ -37,6 +41,7 @@ func (a *Arguments) SetToDefault() {
 type Component struct {
 	opts         component.Options
 	tasksCounter promclient.Counter
+	cluster      cluster.Cluster
 
 	mut  sync.RWMutex
 	args Arguments
@@ -51,9 +56,14 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 		return nil, err
 	}
 
+	clusterSvc, err := opts.GetServiceData(cluster.ServiceName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get information about cluster: %w", err)
+	}
 	c := &Component{
 		opts:         opts,
 		tasksCounter: tasksCounter,
+		cluster:      clusterSvc.(cluster.Cluster),
 	}
 
 	if err := c.Update(args); err != nil {
@@ -72,9 +82,17 @@ func (c *Component) Run(ctx context.Context) error {
 		default:
 			c.mut.RLock()
 			batchSize := c.args.BatchSize
+			stableAssignment := c.args.SimulateStableAssignment
 			c.mut.RUnlock()
 
 			tasks := queuestub.PopTasks(batchSize)
+			if stableAssignment {
+				// If we want to simulate stable assignment, we will only process tasks that belong to this instance
+				// as determined by consistent hashing - this is similar to current clustering where targets are
+				// distributed between instances.
+				tasks = c.filterTasksWeOwn(tasks)
+			}
+
 			level.Debug(c.opts.Logger).Log("msg", "forwarding scrape tasks to consumers", "count", len(tasks))
 
 			c.mut.RLock()
@@ -87,6 +105,27 @@ func (c *Component) Run(ctx context.Context) error {
 			c.tasksCounter.Add(float64(len(tasks)))
 		}
 	}
+}
+
+func (c *Component) filterTasksWeOwn(tasks []scrape_task.ScrapeTask) []scrape_task.ScrapeTask {
+	var newTasks []scrape_task.ScrapeTask
+	for _, task := range tasks {
+		// Extract host label from target
+		sl := task.Target.SpecificLabels([]string{"host"})
+		if len(sl) != 1 {
+			fmt.Println("missing host label")
+			return nil
+		}
+		host := sl[0].Value
+
+		peers, err := c.cluster.Lookup(shard.StringKey(host), 1, shard.OpReadWrite)
+		belongsToLocal := err != nil || len(peers) == 0 || peers[0].Self
+
+		if belongsToLocal {
+			newTasks = append(newTasks, task)
+		}
+	}
+	return newTasks
 }
 
 // Update satisfies the Component interface.

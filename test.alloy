@@ -8,6 +8,7 @@ prometheus.scrape_task.receive "a" {
     forward_to = [
         prometheus.scrape_task.scrape.a.receiver,
     ]
+    simulate_stable_assignment = true
 }
 
 prometheus.scrape_task.scrape "a" {

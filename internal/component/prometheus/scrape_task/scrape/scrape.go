@@ -53,8 +53,10 @@ type Exports struct {
 type Component struct {
 	opts component.Options
 
-	scraper        promadapter.Scraper
-	scrapesCounter promclient.Counter
+	scraper         promadapter.Scraper
+	scrapesCounter  promclient.Counter
+	scrapesDuration promclient.Histogram
+	seriesPerTarget promclient.Histogram
 
 	mut  sync.RWMutex
 	args Arguments
@@ -74,11 +76,32 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		return nil, err
 	}
 
+	scrapesDuration := promclient.NewHistogram(promclient.HistogramOpts{
+		Name: "scrape_tasks_scrapes_duration_seconds",
+		Help: "The time it takes to scrape",
+	})
+	err = o.Registerer.Register(scrapesDuration)
+	if err != nil {
+		return nil, err
+	}
+
+	seriesPerTarget := promclient.NewHistogram(promclient.HistogramOpts{
+		Name:    "scrape_tasks_series_per_target",
+		Help:    "Number of series per target observed",
+		Buckets: []float64{10, 30, 100, 300, 1_000, 3_000, 10_000, 30_000, 100_000, 300_000},
+	})
+	err = o.Registerer.Register(seriesPerTarget)
+	if err != nil {
+		return nil, err
+	}
+
 	c := &Component{
 		opts: o,
 		// TODO(thampiotr): for now using a stub, but the idea is to use a proper implementation that can scrape
-		scraper:        promstub.NewScraper(),
-		scrapesCounter: scrapesCounter,
+		scraper:         promstub.NewScraper(),
+		scrapesCounter:  scrapesCounter,
+		scrapesDuration: scrapesDuration,
+		seriesPerTarget: seriesPerTarget,
 	}
 
 	o.OnStateChange(Exports{Receiver: c})
@@ -165,6 +188,8 @@ func (c *Component) scrapeWithTimeoutAndRetries(task scrape_task.ScrapeTask) (pr
 	metrics, err := c.scraper.ScrapeTarget(task.Target)
 	level.Debug(c.opts.Logger).Log("msg", "scraped target", "target", task.Target, "duration", time.Since(start))
 	c.scrapesCounter.Inc()
+	c.scrapesDuration.Observe(time.Since(start).Seconds())
+	c.seriesPerTarget.Observe(float64(metrics.SeriesCount()))
 
 	return metrics, err
 }

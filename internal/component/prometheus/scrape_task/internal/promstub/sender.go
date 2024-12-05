@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/grafana/alloy/internal/component/prometheus/scrape_task/internal/promadapter"
+	"github.com/grafana/alloy/internal/component/prometheus/scrape_task/internal/random"
 )
 
 func NewSender() promadapter.Sender {
@@ -22,15 +23,15 @@ func (s *sender) Send(metrics []promadapter.Metrics) error {
 			if err != nil || len(b) == 0 {
 				return err
 			}
+			// Each series adds latency, so the more series, the more latency.
+			random.SimulateLatency(
+				time.Nanosecond*10,   // min
+				time.Nanosecond*100,  // avg
+				time.Microsecond*100, // max
+				time.Nanosecond*500,  // stdev
+			)
 		}
 	}
-
-	simulateLatency(
-		time.Microsecond*500, // min
-		time.Millisecond*300, // avg
-		time.Second*10,       // max
-		time.Second,          // stdev
-	)
 
 	// 1% failures
 	if rand.Intn(100) == 0 {
@@ -38,16 +39,4 @@ func (s *sender) Send(metrics []promadapter.Metrics) error {
 	}
 
 	return nil
-}
-
-func simulateLatency(minLatency time.Duration, avgLatency time.Duration, maxLatency time.Duration, stdDev time.Duration) {
-	thisRequestLatency := time.Duration(rand.NormFloat64()*float64(stdDev) + float64(avgLatency))
-	if thisRequestLatency < minLatency {
-		thisRequestLatency = minLatency
-	}
-	if thisRequestLatency > maxLatency {
-		thisRequestLatency = maxLatency
-	}
-
-	time.Sleep(thisRequestLatency)
 }
