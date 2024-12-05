@@ -26,7 +26,7 @@ cards:
       description: Discover more about the key features and benefits of Alloy.
     - title: Concepts
       href: ./get-started/
-      description: Learn about components, modules, clustering, and the Alloy configuration syntax.
+      description: Learn about the concepts of Grafana Alloy.
     - title: Install Alloy
       href: ./set-up/install/
       description: Learn how to install and uninstall Alloy on Docker, Kubernetes, Linux, macOS, or Windows.
