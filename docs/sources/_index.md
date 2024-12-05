@@ -56,7 +56,7 @@ cards:
 
 # Overview
 
-Collecting the relevant telemetry data, such as metrics, logs, and traces, for analysis is an indispensable part of understanding the health of your system.
+Collecting telemetry data such as metrics, logs, and traces is an indispensable part of understanding the health of your system.
 
 {{< param "PRODUCT_NAME" >}} is more than just a collector. You can use {{< param "PRODUCT_NAME" >}} to collect, process, and forward telemetry data to the observability backend of your choosing.
 
