@@ -126,10 +126,14 @@ func (c *Component) Run(ctx context.Context) error {
 			lbls := c.relabel(entry)
 
 			if c.debugDataPublisher.IsActive(componentID) {
+				count := 1
+				if len(lbls) == 0 {
+					count = 0
+				}
 				c.debugDataPublisher.Publish(componentID, livedebugging.FeedData{
 					ComponentID: componentID,
 					Type:        livedebugging.LokiLog,
-					Count:       1,
+					Count:       count,
 					Data:        fmt.Sprintf("entry: %s, labels: %s => %s", entry.Line, entry.Labels.String(), lbls.String()),
 				})
 			}

@@ -50,7 +50,12 @@ function Graph() {
   );
 
   return (
-    <Page name="LiveGraph" desc="Data passing through the components" icon={faDiagramProject} controls={controls}>
+    <Page
+      name="Live Graph"
+      desc="Visualizes data flow during the last window interval."
+      icon={faDiagramProject}
+      controls={controls}
+    >
       {components.length > 0 && (
         <ComponentLiveGraph components={components} moduleID={moduleID} enabled={enabled} window={window} />
       )}

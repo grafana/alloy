@@ -126,6 +126,17 @@ func main() {
 	}()
 	logger := otelslog.NewLogger("example-logger")
 
+	go func() {
+		ticker := time.NewTicker(5 * time.Millisecond)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			_, span := tracer.Start(ctx, "spamming_trace")
+			time.Sleep(2 * time.Millisecond)
+			span.End()
+		}
+	}()
+
 	for {
 		ctx, span := tracer.Start(ctx, "sample-trace")
 		span.SetAttributes(attribute.KeyValue{attribute.Key("server.address"), attribute.StringValue("the.country.is.france")})

@@ -42,9 +42,9 @@ export default function CustomEdge({
 
   // only handle 3 edges to the same graph node
   if (offset === 1) {
-    offset = 40;
+    offset = 100;
   } else if (offset == 2) {
-    offset = -40;
+    offset = -100;
   }
 
   if (offset !== 0) {
@@ -56,7 +56,7 @@ export default function CustomEdge({
   }
 
   const flashyStyle = {
-    strokeWidth: 3, // Make the edge thicker
+    strokeWidth: 5, // Make the edge thicker
   };
 
   return (
@@ -66,7 +66,8 @@ export default function CustomEdge({
         x={(sourceX + targetX) / 2}
         y={(sourceY + targetY + offset) / 2}
         label={label}
-        labelStyle={{ fill: 'black' }}
+        labelBgStyle={{ fill: '#F7F9FB' }}
+        labelStyle={{ fill: 'black', fontWeight: 'bold', fontSize: '0.8em' }}
       />
     </>
   );

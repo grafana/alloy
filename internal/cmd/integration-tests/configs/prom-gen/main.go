@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -21,7 +22,12 @@ type Config struct {
 }
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
-	f.StringVar(&cfg.ListenAddress, "bind", fmt.Sprintf(":%s", defaultPort), "Bind address")
+	// Check if the environment variable is set and use it as the port.
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = defaultPort
+	}
+	f.StringVar(&cfg.ListenAddress, "bind", fmt.Sprintf(":%s", port), "Bind address")
 }
 
 func main() {
@@ -56,6 +62,14 @@ func main() {
 	go handleHistogramInput(setupHistogram(labels))
 	go handleHistogramInput(setupNativeHistogram(labels))
 	go handleSummary(setupSummary(labels))
+	go func() {
+		ticker := time.NewTicker(time.Second)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			log.Printf("some random logs")
+		}
+	}()
 	stopChan := make(chan struct{})
 	<-stopChan
 }
