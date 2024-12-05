@@ -68,7 +68,7 @@ Collecting the relevant telemetry data, such as metrics, logs, and traces, for a
 * Security
 * Debugging utilities
 
-{{< param "PRODUCT_NAME" >}} is flexible, and you can easily configure it to fit your needs in on-prem, cloud-only, or a mix of both.
+{{< param "PRODUCT_NAME" >}} is flexible, and you can easily configure it to fit your needs in on-premises, cloud, or a mix of on-premises and cloud. .
 
 ## Explore
 
