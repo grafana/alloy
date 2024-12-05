@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"path"
+	"strings"
 	"sync"
 	"time"
 
@@ -183,8 +184,7 @@ func (c *Component) Update(args component.Arguments) error {
 
 	c.args = args.(Arguments)
 
-	// TODO(cristian): verify before appending parameter
-	dbConnection, err := sql.Open("mysql", string(c.args.DataSourceName)+"?parseTime=true")
+	dbConnection, err := sql.Open("mysql", formatDSN(string(c.args.DataSourceName), "parseTime=true"))
 	if err != nil {
 		return err
 	}
@@ -267,4 +267,19 @@ func (c *Component) instanceKey() string {
 	}
 
 	return fmt.Sprintf("%s(%s)/%s", m.Net, m.Addr, m.DBName)
+}
+
+// formatDSN appends the given parameters to the DSN.
+// parameters are expected to be in the form of "key=value".
+func formatDSN(dsn string, params ...string) string {
+	if len(params) == 0 {
+		return dsn
+	}
+
+	if strings.Contains(dsn, "?") {
+		dsn = dsn + "&"
+	} else {
+		dsn = dsn + "?"
+	}
+	return dsn + strings.Join(params, "&")
 }
