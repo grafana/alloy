@@ -88,8 +88,6 @@ v1.5.1
 
 - Fixed a crash when updating the configuration of `remote.http`. (@kinolaev)
 
-### Other changes
-
 - Fixed an issue in the `otelcol.processor.attribute` component where the actions `delete` and `hash` could not be used with the `pattern` argument. (@wildum) 
 
 - Fixed an issue in the `prometheus.exporter.postgres` component that would leak goroutines when the target was not reachable (@dehaansa)
