@@ -58,7 +58,7 @@ cards:
 
 Collecting telemetry data such as metrics, logs, and traces is an indispensable part of understanding the health of your system.
 
-{{< param "PRODUCT_NAME" >}} is more than just a collector. You can use {{< param "PRODUCT_NAME" >}} to collect, process, and forward telemetry data to the observability backend of your choosing.
+You can use {{< param "PRODUCT_NAME" >}} to collect, process, and forward telemetry data to the observability backend of your choosing.
 
 {{< param "PRODUCT_NAME" >}} has the following features to help you customize, scale, secure, and troubleshoot your data pipeline.
 
