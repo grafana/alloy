@@ -17,6 +17,7 @@ import (
 	"github.com/grafana/alloy/internal/component/faro/receiver/internal/payload"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/util"
 )
 
 type exporter interface {
@@ -57,7 +58,10 @@ func newMetricsExporter(reg prometheus.Registerer) *metricsExporter {
 		}),
 	}
 
-	reg.MustRegister(exp.totalLogs, exp.totalExceptions, exp.totalMeasurements, exp.totalEvents)
+	exp.totalLogs = util.MustRegisterOrGet(reg, exp.totalLogs).(prometheus.Counter)
+	exp.totalMeasurements = util.MustRegisterOrGet(reg, exp.totalMeasurements).(prometheus.Counter)
+	exp.totalExceptions = util.MustRegisterOrGet(reg, exp.totalExceptions).(prometheus.Counter)
+	exp.totalEvents = util.MustRegisterOrGet(reg, exp.totalEvents).(prometheus.Counter)
 
 	return exp
 }
