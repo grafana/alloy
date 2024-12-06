@@ -52,6 +52,8 @@ Main (unreleased)
 
 - Updated `prometheus.write.queue` to fix issue with TTL comparing different scales of time. (@mattdurham)
 
+- Fixed an issue in the `prometheus.operator.servicemonitors`, `prometheus.operator.podmonitors` and `prometheus.operator.probes` to support capitalized actions. (@QuentinBisson)
+
 ### Other changes
 
 - Change the stability of the `livedebugging` feature from "experimental" to "generally available". (@wildum)
