@@ -54,6 +54,8 @@ Main (unreleased)
 
 - Fixed an issue in the `prometheus.operator.servicemonitors`, `prometheus.operator.podmonitors` and `prometheus.operator.probes` to support capitalized actions. (@QuentinBisson)
 
+- Fixed an issue where the `otelcol.processor.interval` could not be used because the debug metrics were not set to default. (@wildum)
+
 ### Other changes
 
 - Change the stability of the `livedebugging` feature from "experimental" to "generally available". (@wildum)
