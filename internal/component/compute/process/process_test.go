@@ -65,9 +65,10 @@ func TestProcess(t *testing.T) {
 
 func TestLogMetricSample(t *testing.T) {
 	bb, err := os.ReadFile(filepath.Join(".", "examples", "go", "log_metric_sample", "main.wasm"))
+	// bb, err := os.ReadFile(filepath.Join(".", "examples", "go", "restrict", "main.wasm"))
 	require.NoError(t, err)
 
-	ch := loki.NewLogsReceiver()
+	recv := loki.NewLogsReceiver()
 	c, err := New(
 		component.Options{
 			OnStateChange: func(e component.Exports) {},
@@ -79,11 +80,9 @@ func TestLogMetricSample(t *testing.T) {
 		Arguments{
 			Wasm: bb,
 			Config: map[string]string{
-				// "Metrics": `"[{"a": "b"}]"`,
-				// "Metrics": `a,b`,
-				"allowed_services": "cool,not_here",
+				"Metrics": `{"Metrics":[{"a":"b"}, {"service": "cool"}]}`,
 			},
-			LokiForwardTo: []loki.LogsReceiver{ch},
+			LokiForwardTo: []loki.LogsReceiver{recv},
 		})
 	require.NoError(t, err)
 
@@ -92,21 +91,24 @@ func TestLogMetricSample(t *testing.T) {
 	defer cancel()
 	go c.Run(ctx)
 	bulk := c.bridge.prom.Appender(ctx)
-	for i := 0; i < 1; i++ {
+	for i := 0; i < 2; i++ {
 		bulk.Append(0, labels.FromStrings("service", "cool"), time.Now().UnixMilli(), 1)
-
 	}
 
-	err = bulk.Commit()
-	require.NoError(t, err)
+	// bulk.Commit() is called in the background
+	// because it sends the logs synchronously.
+	// If we call without a goroutine, we will block the test
+	// and will never reach the test code which receives the log line.
+	go func() {
+		err = bulk.Commit()
+		require.NoError(t, err)
+	}()
 
 	for i := 0; i < 2; i++ {
 		select {
-		case logEntry := <-ch.Chan():
-			// require.Equal(t, expectedTs, logEntry.Timestamp)
-			logline := ""
+		case logEntry := <-recv.Chan():
+			logline := "Prometheus metric: { service = cool;  }"
 			require.Equal(t, logline, logEntry.Line)
-			// require.Equal(t, wantLabelSet, logEntry.Labels)
 		case <-time.After(5 * time.Second):
 			require.FailNow(t, "failed waiting for log line")
 		}

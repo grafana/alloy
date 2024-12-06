@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/extism/go-pdk"
@@ -106,13 +107,15 @@ func process() int32 {
 		setError(fmt.Errorf("failed to parse input: %v", err))
 		return 1
 	}
+	cfgStr := pt.Config["Metrics"]
 	var cfg config
-	err = json.Unmarshal(pdk.Input(), &cfg)
+	err = json.Unmarshal([]byte(cfgStr), &cfg)
 	if err != nil {
-		setError(fmt.Errorf("failed to unmarshal WASM config: %v; full config: %s", err, pdk.Input()))
+		setError(fmt.Errorf("failed to unmarshal WASM config: %v; full config: %s", err, cfgStr))
 		return 1
 	}
 
+	pdk.Log(pdk.LogDebug, "loaded config")
 	if len(cfg.Metrics) == 0 {
 		pdk.Output(in)
 		return 0
@@ -128,22 +131,26 @@ func process() int32 {
 			fingerprint: promLbls.Hash(),
 		})
 	}
+	pdk.Log(pdk.LogDebug, "will print logs for "+strconv.Itoa(len(cfg.Metrics))+" metrics")
 
 	outPT := &Passthrough{}
+	//TODO: We shouldn't have to init the array. Make functions for appending a log.
+	if outPT.Lokilogs == nil {
+		outPT.Lokilogs = make([]*LokiLog, 0)
+	}
 	for _, metric := range pt.Prommetrics {
 		fingerprint := internalLabelsFingerprint(metric.Labels)
 		found := metrics.find(fingerprint)
 		if found {
+			pdk.Log(pdk.LogDebug, "printing logs for metric")
 			log := createLokiLog(metric)
-			if err != nil {
-				setError(err)
-				return 1
-			}
-
 			outPT.Lokilogs = append(outPT.Lokilogs, log)
+		} else {
+			pdk.Log(pdk.LogDebug, "not printing logs for metric")
 		}
 	}
 	bb, err := outPT.MarshalVT()
+	pdk.Log(pdk.LogDebug, fmt.Sprintf("sending logs: %v", outPT.Lokilogs[0].GetLine()))
 	if err != nil {
 		setError(fmt.Errorf("failed to marshal WASM output: %v", err))
 		return 1

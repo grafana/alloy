@@ -3,9 +3,10 @@ package process
 import (
 	"context"
 	"fmt"
-	"github.com/tetratelabs/wazero"
 	"sync"
 	"time"
+
+	"github.com/tetratelabs/wazero"
 
 	extism "github.com/extism/go-sdk"
 )
@@ -34,6 +35,8 @@ func NewPlugin(wasm []byte, wasmConfig map[string]string, ctx context.Context) (
 	if err != nil {
 		return nil, err
 	}
+	//TODO: Make this configurable
+	extism.SetLogLevel(extism.LogLevelDebug)
 	return &WasmPlugin{
 		plugin: plugin,
 		config: wasmConfig,
