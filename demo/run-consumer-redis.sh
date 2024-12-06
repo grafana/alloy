@@ -1,0 +1,2 @@
+echo "running $1 on port $2"
+INSTANCE=$1 MIMIR_PWD_FILE=~/workspace/go-playground/secrets/MIMIR_TOKEN alloy run --stability.level experimental consumer-redis.alloy --cluster.name redis --cluster.enabled --cluster.node-name "$1" --server.http.listen-addr "127.0.0.1:$2" --cluster.advertise-address "127.0.0.1:$2" --storage.path "./tmp/data_$1" --cluster.join-addresses "127.0.0.1:8001,127.0.0.1:8002,127.0.0.1:8003,127.0.0.1:8004"

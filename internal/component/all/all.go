@@ -140,7 +140,9 @@ import (
 	_ "github.com/grafana/alloy/internal/component/prometheus/relabel"                       // Import prometheus.relabel
 	_ "github.com/grafana/alloy/internal/component/prometheus/remotewrite"                   // Import prometheus.remote_write
 	_ "github.com/grafana/alloy/internal/component/prometheus/scrape"                        // Import prometheus.scrape
-	_ "github.com/grafana/alloy/internal/component/prometheus/scrape_task/receive"           // Import prometheus.scrape_task.receive
+	_ "github.com/grafana/alloy/internal/component/prometheus/scrape_task/produce/redis"     // Import prometheus.scrape_task.produce.redis
+	_ "github.com/grafana/alloy/internal/component/prometheus/scrape_task/receive/fake"      // Import prometheus.scrape_task.receive.fake
+	_ "github.com/grafana/alloy/internal/component/prometheus/scrape_task/receive/redis"     // Import prometheus.scrape_task.receive.redis
 	_ "github.com/grafana/alloy/internal/component/prometheus/scrape_task/scrape"            // Import prometheus.scrape_task.scrape
 	_ "github.com/grafana/alloy/internal/component/prometheus/scrape_task/send"              // Import prometheus.scrape_task.send
 	_ "github.com/grafana/alloy/internal/component/prometheus/write/queue"                   // Import prometheus.write.queue

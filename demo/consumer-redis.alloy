@@ -1,0 +1,67 @@
+
+logging {
+    // level = "debug"
+    level = "info"
+}
+
+prometheus.scrape_task.receive.redis "a" {
+    forward_to = [
+        prometheus.scrape_task.scrape.a.receiver,
+    ]
+    concurrency = 1
+    redis_address = "localhost:6379"
+}
+
+
+prometheus.scrape_task.scrape "a" {
+    forward_to = [prometheus.scrape_task.send.a.receiver]
+    pool_size = 20
+}
+
+prometheus.scrape_task.send "a" {
+
+}
+
+// Traditional pipeline to publish metrics
+
+prometheus.exporter.self "self" {}
+
+discovery.relabel "replace_instance" {
+  targets = prometheus.exporter.self.self.targets
+  rule {
+    action        = "replace"
+    source_labels = ["instance"]
+    target_label  = "instance"
+	  replacement   = env("INSTANCE")
+  }  
+  rule {
+    action        = "replace"
+    source_labels = ["job"]
+    target_label  = "job"
+	  replacement   = "integrations/alloy"
+  }  
+}
+
+prometheus.scrape "self" {
+  targets    = discovery.relabel.replace_instance.output
+  forward_to = [prometheus.remote_write.cloud.receiver]
+  scrape_interval = "15s"
+}
+
+prometheus.remote_write "cloud" {
+	endpoint {
+		url = "https://prometheus-prod-05-gb-south-0.grafana.net/api/prom/push"
+
+		basic_auth {
+			username      = "949385"
+			password_file = env("MIMIR_PWD_FILE")
+		}
+	}
+
+	external_labels = {
+		"cluster" = "my-desk",
+    "namespace" = "alloy",
+    "alloy_instance" = env("INSTANCE"),
+    "role" = "redis-consumer",
+	}
+}

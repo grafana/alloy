@@ -4,13 +4,14 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/grafana/ckit/shard"
 	promclient "github.com/prometheus/client_golang/prometheus"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/prometheus/scrape_task"
-	"github.com/grafana/alloy/internal/component/prometheus/scrape_task/internal/queuestub"
+	"github.com/grafana/alloy/internal/component/prometheus/scrape_task/internal/faketasks"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service/cluster"
@@ -18,7 +19,7 @@ import (
 
 func init() {
 	component.Register(component.Registration{
-		Name:      "prometheus.scrape_task.receive",
+		Name:      "prometheus.scrape_task.receive.fake",
 		Stability: featuregate.StabilityExperimental,
 		Args:      Arguments{},
 
@@ -29,19 +30,22 @@ func init() {
 }
 
 type Arguments struct {
-	ForwardTo                []scrape_task.ScrapeTaskConsumer `alloy:"forward_to,attr"`
-	BatchSize                int                              `alloy:"batch_size,attr,optional"`
-	SimulateStableAssignment bool                             `alloy:"simulate_stable_assignment,attr,optional"`
+	ForwardTo      []scrape_task.ScrapeTaskConsumer `alloy:"forward_to,attr"`
+	TargetsCount   int                              `alloy:"targets_count,attr,optional"`
+	ScrapeInterval time.Duration                    `alloy:"scrape_interval,attr,optional"`
 }
 
 func (a *Arguments) SetToDefault() {
-	a.BatchSize = 100
+	a.TargetsCount = 100
+	a.ScrapeInterval = time.Minute
 }
 
 type Component struct {
-	opts         component.Options
-	tasksCounter promclient.Counter
-	cluster      cluster.Cluster
+	opts             component.Options
+	tasksCounter     promclient.Counter
+	taskLag          promclient.Histogram
+	cluster          cluster.Cluster
+	fakeTaskProvider scrape_task.ScrapeTaskProvider
 
 	mut  sync.RWMutex
 	args Arguments
@@ -49,9 +53,19 @@ type Component struct {
 
 func New(opts component.Options, args Arguments) (*Component, error) {
 	tasksCounter := promclient.NewCounter(promclient.CounterOpts{
-		Name: "scrape_tasks_tasks_processed_total",
-		Help: "Number of tasks the prometheus.scrape_task.receiver component has processed"})
+		Name: "scrape_tasks_fake_tasks_processed_total",
+		Help: "Number of tasks the prometheus.scrape_task.receiver.fake component has processed"})
 	err := opts.Registerer.Register(tasksCounter)
+	if err != nil {
+		return nil, err
+	}
+
+	taskLag := promclient.NewHistogram(promclient.HistogramOpts{
+		Name:    "scrape_tasks_fake_tasks_lag_seconds",
+		Help:    "The time a task spends waiting to be picked up",
+		Buckets: []float64{0.5, 1, 5, 10, 30, 60, 90, 180, 300, 600},
+	})
+	err = opts.Registerer.Register(taskLag)
 	if err != nil {
 		return nil, err
 	}
@@ -63,6 +77,7 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 	c := &Component{
 		opts:         opts,
 		tasksCounter: tasksCounter,
+		taskLag:      taskLag,
 		cluster:      clusterSvc.(cluster.Cluster),
 	}
 
@@ -81,24 +96,17 @@ func (c *Component) Run(ctx context.Context) error {
 			return nil
 		default:
 			c.mut.RLock()
-			batchSize := c.args.BatchSize
-			stableAssignment := c.args.SimulateStableAssignment
-			c.mut.RUnlock()
-
-			tasks := queuestub.PopTasks(batchSize)
-			if stableAssignment {
-				// If we want to simulate stable assignment, we will only process tasks that belong to this instance
-				// as determined by consistent hashing - this is similar to current clustering where targets are
-				// distributed between instances.
-				tasks = c.filterTasksWeOwn(tasks)
-			}
-
-			level.Debug(c.opts.Logger).Log("msg", "forwarding scrape tasks to consumers", "count", len(tasks))
-
-			c.mut.RLock()
 			consumers := c.args.ForwardTo
+			taskProvider := c.fakeTaskProvider
 			c.mut.RUnlock()
 
+			// This will block for scrape interval until tasks are available.
+			tasks := taskProvider.Get()
+			// Like our current stable cluster sharding - pick only targets that belong to local instance.
+			tasks = c.filterTasksWeOwn(tasks)
+
+			// Fan out the tasks
+			level.Debug(c.opts.Logger).Log("msg", "forwarding scrape tasks to consumers", "count", len(tasks))
 			for _, consumer := range consumers {
 				consumer.Consume(tasks)
 			}
@@ -110,7 +118,7 @@ func (c *Component) Run(ctx context.Context) error {
 func (c *Component) filterTasksWeOwn(tasks []scrape_task.ScrapeTask) []scrape_task.ScrapeTask {
 	var newTasks []scrape_task.ScrapeTask
 	for _, task := range tasks {
-		// Extract host label from target
+		// Extract host label from target. This is a hack for demo purposes.
 		sl := task.Target.SpecificLabels([]string{"host"})
 		if len(sl) != 1 {
 			fmt.Println("missing host label")
@@ -134,5 +142,14 @@ func (c *Component) Update(args component.Arguments) error {
 	defer c.mut.Unlock()
 
 	c.args = args.(Arguments)
+
+	c.fakeTaskProvider = faketasks.NewProvider(
+		c.args.ScrapeInterval,
+		c.args.TargetsCount,
+		func(duration time.Duration) {
+			c.taskLag.Observe(duration.Seconds())
+		},
+	)
+
 	return nil
 }

@@ -1,0 +1,2 @@
+echo "running $1 on port $2"
+INSTANCE=$1 MIMIR_PWD_FILE=~/workspace/go-playground/secrets/MIMIR_TOKEN alloy run --stability.level experimental consumer-cluster.alloy --cluster.name cluster --cluster.enabled --cluster.node-name "$1" --server.http.listen-addr "127.0.0.1:$2" --cluster.advertise-address "127.0.0.1:$2" --storage.path "./tmp/data_$1" --cluster.join-addresses "127.0.0.1:8101,127.0.0.1:8102,127.0.0.1:8103,127.0.0.1:8104"

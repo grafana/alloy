@@ -17,7 +17,7 @@ func NumberOfSeries(smallAvg int, bigAvg int, stdev int) string {
 	mut.Lock()
 	defer mut.Unlock()
 	var n int
-	if r.Intn(20) == 0 { // 5% will be big
+	if r.Intn(50) == 0 { // 2% will be big
 		n = int(r.NormFloat64()*float64(stdev) + float64(bigAvg))
 	} else { // 95% will be smaller
 		n = int(r.NormFloat64()*float64(stdev) + float64(smallAvg))

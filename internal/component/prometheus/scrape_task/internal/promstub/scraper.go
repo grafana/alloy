@@ -56,8 +56,8 @@ func (s scraper) ScrapeTarget(target discovery.Target) (promadapter.Metrics, err
 
 		// Each series adds latency, so the more series, the more latency.
 		random.SimulateLatency(
-			time.Nanosecond*10,   // min
-			time.Nanosecond*100,  // avg
+			time.Nanosecond*1,    // min
+			time.Nanosecond*10,   // avg
 			time.Microsecond*100, // max
 			time.Nanosecond*500,  // stdev
 		)

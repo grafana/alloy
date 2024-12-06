@@ -4,23 +4,15 @@ logging {
     level = "info"
 }
 
-prometheus.scrape_task.receive "a" {
-    forward_to = [
-        prometheus.scrape_task.scrape.a.receiver,
-    ]
-    simulate_stable_assignment = true
+prometheus.scrape_task.produce.redis "a" {
+    redis_address = "localhost:6379"
+    // This should match the consumer-cluster.alloy
+    scrape_interval = "15s"
+    targets_count = 1000
 }
 
-prometheus.scrape_task.scrape "a" {
-    forward_to = [prometheus.scrape_task.send.a.receiver]
-    pool_size = 10
-}
 
-prometheus.scrape_task.send "a" {
-
-}
-
-// Traditional pipeline to publish metrics
+// Traditional pipeline to publish own metrics
 
 prometheus.exporter.self "self" {}
 
@@ -60,5 +52,6 @@ prometheus.remote_write "cloud" {
 		"cluster" = "my-desk",
         "namespace" = "alloy",
         "alloy_instance" = env("INSTANCE"),
+        "role" = "producer",
 	}
 }
