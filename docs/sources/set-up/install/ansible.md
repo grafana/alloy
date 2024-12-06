@@ -5,7 +5,7 @@ aliases:
 description: Learn how to install Grafana Alloy with Ansible
 menuTitle: Ansible
 title: Install Grafana Alloy with Ansible
-weight: 550
+weight: 510
 ---
 
 # Install or uninstall {{% param "FULL_PRODUCT_NAME" %}} using Ansible
