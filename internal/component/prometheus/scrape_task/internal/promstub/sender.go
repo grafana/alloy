@@ -1,8 +1,6 @@
 package promstub
 
 import (
-	"fmt"
-	"math/rand"
 	"time"
 
 	"github.com/grafana/alloy/internal/component/prometheus/scrape_task/internal/promadapter"
@@ -31,11 +29,6 @@ func (s *sender) Send(metrics []promadapter.Metrics) error {
 				time.Nanosecond*500,  // stdev
 			)
 		}
-	}
-
-	// 1% failures
-	if rand.Intn(100) == 0 {
-		return fmt.Errorf("send failed: test downstream unavailable")
 	}
 
 	return nil
