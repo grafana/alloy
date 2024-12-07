@@ -22,7 +22,7 @@ To do a standard graphical install of {{< param "PRODUCT_NAME" >}} on Windows, p
 
 1. Download the file called `alloy-installer-windows-amd64.exe.zip`.
 
-1. Unzip the downloaded file.
+1. Extract the downloaded file.
 
 1. Double-click on `alloy-installer-windows-amd64.exe` to install {{< param "PRODUCT_NAME" >}}.
 
@@ -38,7 +38,7 @@ To do a silent install of {{< param "PRODUCT_NAME" >}} on Windows, perform the f
 
 1. Download the file called `alloy-installer-windows-amd64.exe.zip`.
 
-1. Unzip the downloaded file.
+1. Extract the downloaded file.
 
 1. Run the following command in PowerShell or Command Prompt:
 
@@ -48,7 +48,7 @@ To do a silent install of {{< param "PRODUCT_NAME" >}} on Windows, perform the f
 
    Replace the following:
 
-   - _`<PATH_TO_INSTALLER>`_: The path where the unzipped installer executable is located.
+   - _`<PATH_TO_INSTALLER>`_: The path to the uncompressed installer executable.
 
 ### Silent install options
 
@@ -74,8 +74,8 @@ This includes any configuration files in the installation directory.
 
 ## Next steps
 
-- [Run {{< param "PRODUCT_NAME" >}}][Run]
-- [Configure {{< param "PRODUCT_NAME" >}}][Configure]
+* [Run {{< param "PRODUCT_NAME" >}}][Run]
+* [Configure {{< param "PRODUCT_NAME" >}}][Configure]
 
 [latest]: https://github.com/grafana/alloy/releases/latest
 [data collection]: ../../../data-collection/

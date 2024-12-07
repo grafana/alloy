@@ -43,6 +43,7 @@ The following arguments are supported:
 This example imports a module from a file and instantiates a custom component from the import that adds two numbers:
 
 main.alloy
+
 ```alloy
 import.file "math" {
   filename = "module.alloy"
@@ -55,6 +56,7 @@ math.add "default" {
 ```
 
 module.alloy
+
 ```alloy
 declare "add" {
   argument "a" {}
@@ -66,11 +68,12 @@ declare "add" {
 }
 ```
 
-### Import a module in a module imported via import.git 
+### Import a module in a module imported via import.git
 
-This example imports a module from a file inside of a module that is imported via [import.git][]:
+This example imports a module from a file inside of a module that's imported via [import.git][]:
 
 main.alloy
+
 ```alloy
 import.git "math" {
   repository = "https://github.com/wildum/module.git"
@@ -84,8 +87,8 @@ math.add "default" {
 }
 ```
 
-
 relative_math.alloy
+
 ```alloy
 import.file "lib" {
   filename = file.path_join(module_path, "lib.alloy")
@@ -107,6 +110,7 @@ declare "add" {
 ```
 
 lib.alloy
+
 ```alloy
 declare "plus" {
   argument "a" {}
@@ -118,9 +122,9 @@ declare "plus" {
 }
 ```
 
-### Import a module in a module imported via import.file 
+### Import a module in a module imported via import.file
 
-This example imports a module from a file inside of a module that is imported via another `import.file`:
+This example imports a module from a file inside of a module that's imported via another `import.file`:
 
 main.alloy
 
@@ -136,6 +140,7 @@ math.add "default" {
 ```
 
 relative_math.alloy
+
 ```alloy
 import.file "lib" {
   filename = file.path_join(module_path, "lib.alloy")
@@ -157,6 +162,7 @@ declare "add" {
 ```
 
 lib.alloy
+
 ```alloy
 declare "plus" {
   argument "a" {}
@@ -167,8 +173,6 @@ declare "plus" {
   }
 }
 ```
-
-
 
 [file.path_join]: ../../stdlib/file/
 [import.git]: ../import.git/

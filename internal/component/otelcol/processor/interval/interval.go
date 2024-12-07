@@ -67,6 +67,7 @@ var DefaultArguments = Arguments{
 // SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = DefaultArguments
+	args.DebugMetrics.SetToDefault()
 }
 
 // Validate implements syntax.Validator.

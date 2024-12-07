@@ -52,7 +52,7 @@ local.file "targets" {
 }
 ```
 
-## Referencing components
+## Reference components
 
 To wire components together, one can use the exports of one as the arguments to another by using references.
 References can only appear in components.

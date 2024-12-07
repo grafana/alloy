@@ -4,6 +4,7 @@ headless: true
 ---
 
 The supported values for `balancer_name` are listed in the gRPC documentation on [Load balancing][]:
+
 * `pick_first`: Tries to connect to the first address, uses it for all RPCs if it connects, or tries the next address if it fails (and keeps doing that until one connection is successful).
   Because of this, all the RPCs will be sent to the same backend.
 * `round_robin`: Connects to all the addresses it sees and sends an RPC to each backend one at a time in order.
