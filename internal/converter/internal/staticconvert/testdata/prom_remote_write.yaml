@@ -42,3 +42,13 @@ metrics:
             cloud: AzureGovernment
             managed_identity:
               client_id: 00000000-0000-0000-0000-000000000000
+    - name: "test8_azuread_appauth"
+      remote_write:
+        - url: http://localhost:9012/api/prom/push
+          azuread:
+            cloud: AzureGovernment
+            oauth:
+              client_id: 00000000-0000-0000-0000-000000000000
+              client_secret: fake_client_secret
+              tenant_id: 00000000-0000-0000-0000-000000000000
+          

@@ -54,7 +54,8 @@ endpoint > oauth2 | [oauth2][] | Configure OAuth2 for authenticating to the endp
 endpoint > oauth2 > tls_config | [tls_config][] | Configure TLS settings for connecting to the endpoint. | no
 endpoint > sigv4 | [sigv4][] | Configure AWS Signature Verification 4 for authenticating to the endpoint. | no
 endpoint > azuread | [azuread][] | Configure AzureAD for authenticating to the endpoint. | no
-endpoint > azuread > managed_identity | [managed_identity][] | Configure Azure user-assigned managed identity. | yes
+endpoint > azuread > managed_identity | [managed_identity][] | Configure Azure user-assigned managed identity. | no
+endpoint > azuread > oauth | [oauth][] | Configure Azure application authenication. | no
 endpoint > tls_config | [tls_config][] | Configure TLS settings for connecting to the endpoint. | no
 endpoint > queue_config | [queue_config][] | Configuration for how metrics are batched before sending. | no
 endpoint > metadata_config | [metadata_config][] | Configuration for how metric metadata is sent. | no
@@ -72,6 +73,7 @@ basic_auth` refers to a `basic_auth` block defined inside an
 [sigv4]: #sigv4-block
 [azuread]: #azuread-block
 [managed_identity]: #managed_identity-block
+[oauth]: #oauth-block
 [tls_config]: #tls_config-block
 [queue_config]: #queue_config-block
 [metadata_config]: #metadata_config-block
@@ -150,6 +152,10 @@ metrics fails.
 ### managed_identity block
 
 {{< docs/shared lookup="reference/components/managed_identity-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### oauth block
+
+{{< docs/shared lookup="reference/components/oauth-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### tls_config block
 
