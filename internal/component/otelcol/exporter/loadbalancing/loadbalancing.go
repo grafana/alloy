@@ -13,6 +13,7 @@ import (
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/exporter"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/syntax"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancingexporter"
 	otelcomponent "go.opentelemetry.io/collector/component"
@@ -34,10 +35,33 @@ func init() {
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
 			fact := loadbalancingexporter.NewFactory()
-			//TODO(ptodev): LB exporter cannot yet work with metrics due to a limitation in Alloy:
-			// https://github.com/grafana/agent/pull/5684
-			// Once the limitation is removed, we may be able to remove the need for exporter.TypeSignal altogether.
-			return exporter.New(opts, fact, args.(Arguments), exporter.TypeLogs|exporter.TypeTraces)
+
+			myArgs := args.(Arguments)
+
+			var typeSignal exporter.TypeSignal
+
+			// As per https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/exporter/loadbalancingexporter/README.md
+			// metrics is considered "development" stability level
+
+			switch myArgs.RoutingKey {
+			case "traceID":
+				typeSignal = exporter.TypeLogs | exporter.TypeTraces
+			case "service":
+				if opts.MinStability.Permits(featuregate.StabilityExperimental) {
+					typeSignal = exporter.TypeLogs | exporter.TypeTraces | exporter.TypeMetrics
+				} else {
+					level.Warn(opts.Logger).Log("msg", "disabling metrics exporter as stability level does not allow it")
+					typeSignal = exporter.TypeLogs | exporter.TypeTraces
+				}
+			case "resource", "metric", "streamID":
+				if opts.MinStability.Permits(featuregate.StabilityExperimental) {
+					typeSignal = exporter.TypeMetrics
+				} else {
+					level.Warn(opts.Logger).Log("msg", "disabling metrics exporter as stability level does not allow it")
+				}
+			}
+
+			return exporter.New(opts, fact, myArgs, typeSignal)
 		},
 	})
 }
@@ -69,13 +93,10 @@ func (args *Arguments) SetToDefault() {
 
 // Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
-	//TODO(ptodev): Add support for "resource" and "metric" routing keys later.
-	// The reason we can't add them yet is that otelcol.exporter.loadbalancing
-	// is labeled as "beta", but those routing keys are experimental.
-	// We need a way to label otelcol.exporter.loadbalancing as "public-preview"
-	// for logs and traces, but "experimental" for metrics.
+	// Allow routing keys for all signal types. Metrics exporter will be disabled
+	// if stability level is above experimental
 	switch args.RoutingKey {
-	case "service", "traceID":
+	case "service", "traceID", "resource", "metric", "streamID":
 		// The routing key is valid.
 	default:
 		return fmt.Errorf("invalid routing key %q", args.RoutingKey)
