@@ -28,6 +28,7 @@ func init() {
 type Arguments struct {
 	PathTargets []discovery.Target `alloy:"path_targets,attr"`
 	SyncPeriod  time.Duration      `alloy:"sync_period,attr,optional"`
+	IgnoreOlder time.Duration      `alloy:"ignore_older,attr,optional"`
 }
 
 var _ component.Component = (*Component)(nil)
@@ -80,8 +81,9 @@ func (c *Component) Update(args component.Arguments) error {
 	c.watches = c.watches[:0]
 	for _, v := range c.args.PathTargets {
 		c.watches = append(c.watches, watch{
-			target: v,
-			log:    c.opts.Logger,
+			target:      v,
+			log:         c.opts.Logger,
+			ignoreOlder: c.args.IgnoreOlder,
 		})
 	}
 
