@@ -63,6 +63,35 @@ func TestDirectoryFile(t *testing.T) {
 	require.True(t, contains(foundFiles, "t1.txt"))
 }
 
+func TestFileIgnoreOlder(t *testing.T) {
+	dir := path.Join(os.TempDir(), "alloy_testing", "t1")
+	err := os.MkdirAll(dir, 0755)
+	require.NoError(t, err)
+	writeFile(t, dir, "t1.txt")
+	t.Cleanup(func() {
+		os.RemoveAll(dir)
+	})
+	c := createComponent(t, dir, []string{path.Join(dir, "*.txt")}, nil)
+	ct := context.Background()
+	ct, ccl := context.WithTimeout(ct, 5*time.Second)
+	defer ccl()
+	c.args.SyncPeriod = 10 * time.Millisecond
+	c.args.IgnoreOlder = 100 * time.Millisecond
+	c.Update(c.args)
+	go c.Run(ct)
+
+	foundFiles := c.getWatchedFiles()
+	require.Len(t, foundFiles, 1)
+	require.True(t, contains(foundFiles, "t1.txt"))
+	time.Sleep(150 * time.Millisecond)
+
+	writeFile(t, dir, "t2.txt")
+	ct.Done()
+	foundFiles = c.getWatchedFiles()
+	require.Len(t, foundFiles, 1)
+	require.True(t, contains(foundFiles, "t2.txt"))
+}
+
 func TestAddingFile(t *testing.T) {
 	dir := path.Join(os.TempDir(), "alloy_testing", "t2")
 	err := os.MkdirAll(dir, 0755)
@@ -270,6 +299,7 @@ func createComponentWithLabels(t *testing.T, dir string, paths []string, exclude
 	}, Arguments{
 		PathTargets: tPaths,
 		SyncPeriod:  1 * time.Second,
+		IgnoreOlder: 1 * time.Hour,
 	})
 
 	require.NoError(t, err)
