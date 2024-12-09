@@ -1,6 +1,9 @@
 package write
 
-import "github.com/prometheus/client_golang/prometheus"
+import (
+	"github.com/grafana/alloy/internal/util"
+	"github.com/prometheus/client_golang/prometheus"
+)
 
 type metrics struct {
 	sentBytes       *prometheus.CounterVec
@@ -35,13 +38,11 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 	}
 
 	if reg != nil {
-		reg.MustRegister(
-			m.sentBytes,
-			m.droppedBytes,
-			m.sentProfiles,
-			m.droppedProfiles,
-			m.retries,
-		)
+		m.sentBytes = util.MustRegisterOrGet(reg, m.sentBytes).(*prometheus.CounterVec)
+		m.droppedBytes = util.MustRegisterOrGet(reg, m.droppedBytes).(*prometheus.CounterVec)
+		m.sentProfiles = util.MustRegisterOrGet(reg, m.sentProfiles).(*prometheus.CounterVec)
+		m.droppedProfiles = util.MustRegisterOrGet(reg, m.droppedProfiles).(*prometheus.CounterVec)
+		m.retries = util.MustRegisterOrGet(reg, m.retries).(*prometheus.CounterVec)
 	}
 
 	return m
