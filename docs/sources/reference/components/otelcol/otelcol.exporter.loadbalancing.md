@@ -72,8 +72,9 @@ for metric collection. Otherwise, metrics for the same services would be sent to
 
 The loadbalancer configures the exporter for the signal types supported by the `routing_key`.
 
-Metrics support in `otelcol.exporter.loadbalancing` is considered experimental, so an exporter
-will be configured for metrics only if Alloy is run with `--stability-level=experimental`
+> **EXPERIMENTAL**: Metrics support in `otelcol.exporter.loadbalancing` is an [experimental][] feature.
+> Experimental features are subject to frequent breaking changes, and may be removed with no equivalent replacement.
+> The `stability.level` flag must be set to `experimental` to use the feature.
 
 ## Blocks
 
