@@ -12,6 +12,8 @@ Main (unreleased)
 
 ### Features
 
+- Add `azuread.oauth` to `prometheus.remote_write` to support Azure AD authentication applicaion. (@callumau)
+
 - Add `add_cloudwatch_timestamp` to `prometheus.exporter.cloudwatch` metrics. (@captncraig)
 
 - Add support to `prometheus.operator.servicemonitors` to allow `endpointslice` role. (@yoyosir)

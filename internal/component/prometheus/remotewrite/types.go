@@ -274,15 +274,41 @@ type ManagedIdentityConfig struct {
 	ClientID string `alloy:"client_id,attr"`
 }
 
-func (m ManagedIdentityConfig) toPrometheusType() azuread.ManagedIdentityConfig {
-	return azuread.ManagedIdentityConfig{
+func (m ManagedIdentityConfig) toPrometheusType() *azuread.ManagedIdentityConfig {
+	if m.ClientID == "" {
+		return nil
+	}
+
+	return &azuread.ManagedIdentityConfig{
 		ClientID: m.ClientID,
+	}
+}
+
+// Azure AD oauth
+type AzureOAuthConfig struct {
+	// AzureADOAuth is the OAuth configuration that is being used to authenticate.
+	ClientID     string `alloy:"client_id,attr"`
+	ClientSecret string `alloy:"client_secret,attr"`
+	TenantID     string `alloy:"tenant_id,attr"`
+}
+
+func (m AzureOAuthConfig) toPrometheusType() *azuread.OAuthConfig {
+	if m.ClientID == "" && m.ClientSecret == "" && m.TenantID == "" {
+		return nil
+	}
+
+	return &azuread.OAuthConfig{
+		ClientID:     m.ClientID,
+		ClientSecret: m.ClientSecret,
+		TenantID:     m.TenantID,
 	}
 }
 
 type AzureADConfig struct {
 	// ManagedIdentity is the managed identity that is being used to authenticate.
-	ManagedIdentity ManagedIdentityConfig `alloy:"managed_identity,block"`
+	ManagedIdentity ManagedIdentityConfig `alloy:"managed_identity,block,optional"`
+	// OAuth is the OAuth configuration that is being used to authenticate.
+	OAuth AzureOAuthConfig `alloy:"oauth,block,optional"`
 
 	// Cloud is the Azure cloud in which the service is running. Example: AzurePublic/AzureGovernment/AzureChina.
 	Cloud string `alloy:"cloud,attr,optional"`
@@ -293,9 +319,25 @@ func (a *AzureADConfig) Validate() error {
 		return fmt.Errorf("must provide a cloud in the Azure AD config")
 	}
 
-	_, err := uuid.Parse(a.ManagedIdentity.ClientID)
-	if err != nil {
-		return fmt.Errorf("the provided Azure Managed Identity client_id provided is invalid")
+	// Ensure both Managed Identity and OAuth are not provided
+	if a.ManagedIdentity != (ManagedIdentityConfig{}) && a.OAuth != (AzureOAuthConfig{}) {
+		return fmt.Errorf("at most oauth or managed identity must be configured for azuread")
+	}
+
+	// Validate Managed Identity if it is provided
+	if (a.ManagedIdentity != ManagedIdentityConfig{}) {
+		_, err := uuid.Parse(a.ManagedIdentity.ClientID)
+		if err != nil {
+			return fmt.Errorf("the provided Azure Managed Identity client_id provided is invalid")
+		}
+	}
+
+	// Validate OAuth if it is provided
+	if (a.OAuth != AzureOAuthConfig{}) {
+		_, err := uuid.Parse(a.OAuth.ClientID)
+		if err != nil {
+			return fmt.Errorf("the provided Azure Application Identity client_id provided is invalid")
+		}
 	}
 
 	return nil
@@ -314,8 +356,10 @@ func (a *AzureADConfig) toPrometheusType() *azuread.AzureADConfig {
 	}
 
 	mangedIdentity := a.ManagedIdentity.toPrometheusType()
+	oauth := a.OAuth.toPrometheusType()
 	return &azuread.AzureADConfig{
-		ManagedIdentity: &mangedIdentity,
+		OAuth:           oauth,
+		ManagedIdentity: mangedIdentity,
 		Cloud:           a.Cloud,
 	}
 }
