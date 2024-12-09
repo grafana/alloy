@@ -9,6 +9,7 @@ prometheus.scrape_task.produce.redis "a" {
     // This should match the consumer-cluster.alloy
     scrape_interval = "15s"
     targets_count = 1000
+    batch_size = 3
 }
 
 

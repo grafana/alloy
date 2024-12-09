@@ -15,7 +15,7 @@ prometheus.scrape_task.receive.redis "a" {
 
 prometheus.scrape_task.scrape "a" {
     forward_to = [prometheus.scrape_task.send.a.receiver]
-    pool_size = 20
+    pool_size = 10
 }
 
 prometheus.scrape_task.send "a" {
