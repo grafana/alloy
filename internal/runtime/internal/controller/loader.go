@@ -268,6 +268,8 @@ func (l *Loader) Apply(options ApplyOptions) diag.Diagnostics {
 			Severity: diag.SeverityLevelError,
 			Message:  fmt.Sprintf("Failed to update the internal cache with the new list of components: %s", err),
 		})
+		// return it now because there is no point to process further
+		return diags
 	}
 	l.blocks = options.ComponentBlocks
 	if l.globals.OnExportsChange != nil && l.cache.ExportChangeIndex() != l.moduleExportIndex {
@@ -623,7 +625,7 @@ func (l *Loader) wireGraphEdges(g *dag.Graph) diag.Diagnostics {
 
 		// Finally, wire component references.
 		l.cache.mut.RLock()
-		refs, nodeDiags := ComponentReferences(n, g, l.log, l.cache.GetScope(), l.globals.MinStability)
+		refs, nodeDiags := ComponentReferences(n, g, l.log, l.cache.GetContext(), l.globals.MinStability)
 		l.cache.mut.RUnlock()
 		for _, ref := range refs {
 			g.AddEdge(dag.Edge{From: n, To: ref.Target})
@@ -653,7 +655,7 @@ func (l *Loader) wireCustomComponentNode(g *dag.Graph, cc *CustomComponentNode) 
 // Variables returns the Variables the Loader exposes for other components to
 // reference.
 func (l *Loader) Variables() map[string]interface{} {
-	return l.cache.GetScope().Variables
+	return l.cache.GetContext().Variables
 }
 
 // Components returns the current set of loaded components.
@@ -791,7 +793,7 @@ func (l *Loader) concurrentEvalFn(n dag.Node, spanCtx context.Context, tracer tr
 	var err error
 	switch n := n.(type) {
 	case BlockNode:
-		ectx := l.cache.GetScope()
+		ectx := l.cache.GetContext()
 
 		// RLock before evaluate to prevent Evaluating while the config is being reloaded
 		l.mut.RLock()
@@ -830,13 +832,15 @@ func (l *Loader) concurrentEvalFn(n dag.Node, spanCtx context.Context, tracer tr
 // evaluate constructs the final context for the BlockNode and
 // evaluates it. mut must be held when calling evaluate.
 func (l *Loader) evaluate(logger log.Logger, bn BlockNode) error {
-	ectx := l.cache.GetScope()
+	ectx := l.cache.GetContext()
 	err := bn.Evaluate(ectx)
 	return l.postEvaluate(logger, bn, err)
 }
 
 // postEvaluate is called after a node has been evaluated. It updates the caches and logs any errors.
 // mut must be held when calling postEvaluate.
+// TODO: Refactor this function to avoid using an error as input solely for shadowing purposes.
+// This design choice limits extensibility and makes it harder to modify or add functionality.
 func (l *Loader) postEvaluate(logger log.Logger, bn BlockNode, err error) error {
 	switch c := bn.(type) {
 	case ComponentNode:

@@ -56,7 +56,7 @@ func TestValueCache(t *testing.T) {
 
 	require.NoError(t, vc.CacheExports(ComponentID{"foo"}, fooExports{SomethingElse: true}))
 
-	res := vc.GetScope()
+	res := vc.GetContext()
 
 	var (
 		expectKeys = []string{"foo"}
@@ -149,20 +149,20 @@ func TestModuleArgumentCache(t *testing.T) {
 			vc.CacheModuleArgument("arg", tc.argValue)
 
 			// Build the scope and validate it
-			res := vc.GetScope()
+			res := vc.GetContext()
 			expected := map[string]any{"arg": map[string]any{"value": tc.argValue}}
 			require.Equal(t, expected, res.Variables["argument"])
 
 			// Sync arguments where the arg shouldn't change
 			syncArgs := map[string]any{"arg": tc.argValue}
 			vc.SyncModuleArgs(syncArgs)
-			res = vc.GetScope()
+			res = vc.GetContext()
 			require.Equal(t, expected, res.Variables["argument"])
 
 			// Sync arguments where the arg should clear out
 			syncArgs = map[string]any{}
 			vc.SyncModuleArgs(syncArgs)
-			res = vc.GetScope()
+			res = vc.GetContext()
 			require.Equal(t, map[string]any{}, res.Variables)
 		})
 	}
@@ -178,7 +178,7 @@ func TestScope(t *testing.T) {
 		},
 	)
 	require.NoError(t, vc.CacheExports(ComponentID{"foo", "bar"}, barArgs{Number: 12}))
-	res := vc.GetScope()
+	res := vc.GetContext()
 
 	expected := map[string]any{
 		"test": map[string]any{
@@ -205,7 +205,7 @@ func TestScopeSameNamespace(t *testing.T) {
 		},
 	)
 	require.NoError(t, vc.CacheExports(ComponentID{"test", "bar"}, barArgs{Number: 12}))
-	res := vc.GetScope()
+	res := vc.GetContext()
 
 	expected := map[string]any{
 		"test": map[string]any{
@@ -230,7 +230,7 @@ func TestScopeOverride(t *testing.T) {
 		},
 	)
 	require.NoError(t, vc.CacheExports(ComponentID{"test", "scope"}, barArgs{Number: 12}))
-	res := vc.GetScope()
+	res := vc.GetContext()
 
 	expected := map[string]any{
 		"test": map[string]any{
@@ -269,7 +269,7 @@ func TestScopeComplex(t *testing.T) {
 	)
 	require.NoError(t, vc.CacheExports(ComponentID{"test", "cp1", "foo"}, barArgs{Number: 12}))
 	require.NoError(t, vc.CacheExports(ComponentID{"test", "cp1", "bar", "fizz"}, barArgs{Number: 2}))
-	res := vc.GetScope()
+	res := vc.GetContext()
 
 	expected := map[string]any{
 		"test": map[string]any{
@@ -335,7 +335,7 @@ func TestSyncIds(t *testing.T) {
 			},
 		},
 	}
-	res := vc.GetScope()
+	res := vc.GetContext()
 	require.Equal(t, expected, res.Variables)
 }
 
@@ -353,4 +353,24 @@ func TestSyncIdsError(t *testing.T) {
 		vc.SyncIDs(ids),
 		"failed to sync component test.cp1.bar.fizz.foo: expected a map but found a value for \"fizz\"",
 	)
+}
+
+func TestCapsule(t *testing.T) {
+	vc := newValueCache()
+	bar := barArgs{Number: 13}
+	vc.scope = vm.NewScope(
+		map[string]any{
+			"test": map[string]any{
+				"scope": &bar,
+			},
+		},
+	)
+	res := vc.GetContext()
+
+	expected := map[string]any{
+		"test": map[string]any{
+			"scope": &bar,
+		},
+	}
+	require.Equal(t, expected, res.Variables)
 }

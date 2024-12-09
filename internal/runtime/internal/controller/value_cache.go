@@ -12,22 +12,25 @@ import (
 // This special keyword is used to expose the argument values to the custom components.
 const argumentLabel = "argument"
 
-// valueCache caches exports to expose as variables for Alloy expressions.
+// valueCache caches exports and module arguments to expose as variables for Alloy expressions.
+// It also caches module exports to expose them to the parent loader.
 // The exports are stored directly in the scope which is used to evaluate Alloy expressions.
 type valueCache struct {
 	mut                sync.RWMutex
-	componentIds       map[string]ComponentID
-	moduleExports      map[string]any // name -> value for the value of module exports
-	moduleChangedIndex int            // Everytime a change occurs this is incremented
-	scope              *vm.Scope      // scope provides additional context for the nodes in the module
+	componentIds       map[string]ComponentID // NodeID -> ComponentID
+	moduleExports      map[string]any         // Export label -> Export value
+	moduleArguments    map[string]any         // Argument label -> Map with the key "value" that points to the Argument value
+	moduleChangedIndex int                    // Everytime a change occurs this is incremented
+	scope              *vm.Scope              // scope provides additional context for the nodes in the module
 }
 
 // newValueCache creates a new ValueCache.
 func newValueCache() *valueCache {
 	return &valueCache{
-		componentIds:  make(map[string]ComponentID, 0),
-		moduleExports: make(map[string]any),
-		scope:         vm.NewScope(make(map[string]any)),
+		componentIds:    make(map[string]ComponentID, 0),
+		moduleExports:   make(map[string]any),
+		moduleArguments: make(map[string]any),
+		scope:           vm.NewScope(make(map[string]any)),
 	}
 }
 
@@ -70,10 +73,7 @@ func (vc *valueCache) CacheExports(id ComponentID, exports component.Exports) er
 func (vc *valueCache) GetModuleArgument(key string) (any, bool) {
 	vc.mut.RLock()
 	defer vc.mut.RUnlock()
-	if _, ok := vc.scope.Variables[argumentLabel]; !ok {
-		return nil, false
-	}
-	v, exist := vc.scope.Variables[argumentLabel].(map[string]any)[key]
+	v, exist := vc.moduleArguments[key]
 	return v, exist
 }
 
@@ -82,12 +82,9 @@ func (vc *valueCache) CacheModuleArgument(key string, value any) {
 	vc.mut.Lock()
 	defer vc.mut.Unlock()
 
-	if _, ok := vc.scope.Variables[argumentLabel]; !ok {
-		vc.scope.Variables[argumentLabel] = make(map[string]any)
-	}
 	keyMap := make(map[string]any)
 	keyMap["value"] = value
-	vc.scope.Variables[argumentLabel].(map[string]any)[key] = keyMap
+	vc.moduleArguments[key] = keyMap
 }
 
 // CacheModuleExportValue saves the value to the map
@@ -151,6 +148,7 @@ func (vc *valueCache) SyncIDs(ids map[string]ComponentID) error {
 
 	// Remove the component exports from the scope.
 	for _, id := range cleanupIds {
+		// Start with the index "0". It refers to the first part of the componentID and it's used for recursion.
 		err := cleanup(vc.scope.Variables, id, 0)
 		if err != nil {
 			return fmt.Errorf("failed to sync component %s: %w", id.String(), err)
@@ -196,26 +194,25 @@ func (vc *valueCache) SyncModuleArgs(args map[string]any) {
 	vc.mut.Lock()
 	defer vc.mut.Unlock()
 
-	if _, ok := vc.scope.Variables[argumentLabel]; !ok {
-		return
-	}
-
-	argsMap := vc.scope.Variables[argumentLabel].(map[string]any)
-	for arg := range argsMap {
+	for arg := range vc.moduleArguments {
 		if _, ok := args[arg]; !ok {
-			delete(argsMap, arg)
+			delete(vc.moduleArguments, arg)
 		}
-	}
-	if len(argsMap) == 0 {
-		delete(vc.scope.Variables, argumentLabel)
 	}
 }
 
-// GetScope returns the current scope.
-func (vc *valueCache) GetScope() *vm.Scope {
+// GetContext returns a scope that can be used for evaluation.
+func (vc *valueCache) GetContext() *vm.Scope {
 	vc.mut.RLock()
 	defer vc.mut.RUnlock()
-	return vm.NewScope(deepCopyMap(vc.scope.Variables))
+	vars := deepCopyMap(vc.scope.Variables)
+
+	// Add module arguments if there are any.
+	if len(vc.moduleArguments) > 0 {
+		vars[argumentLabel] = deepCopyMap(vc.moduleArguments)
+	}
+
+	return vm.NewScope(vars)
 }
 
 func deepCopyMap(original map[string]any) map[string]any {
