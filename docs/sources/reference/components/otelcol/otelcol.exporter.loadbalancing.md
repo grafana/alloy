@@ -70,7 +70,7 @@ for metric collection. Otherwise, metrics for the same services would be sent to
 - `"metric"`: metrics with the same name will be exported to the same backend.
 - `"streamID"`: metrics with the same `streamID` will be exported to the same backend.
 
-The loadbalancer will configure the exporter for the singal types supported by the `routing_key`
+The loadbalancer configures the exporter for the signal types supported by the `routing_key`.
 
 Metrics support in `otelcol.exporter.loadbalancing` is considered experimental, so an exporter
 will be configured for metrics only if Alloy is run with `--stability-level=experimental`
