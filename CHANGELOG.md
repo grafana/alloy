@@ -26,6 +26,8 @@ Main (unreleased)
 
 - Add `otelcol.receiver.influxdb` to convert influx metric into OTEL. (@EHSchmitt4395)
 
+- Add a `prometheus.mapping` component to add labels based on a source_label and a mapping table. (@vaxvms)
+
 ### Enhancements
 
 - Add second metrics sample to the support bundle to provide delta information (@dehaansa)
