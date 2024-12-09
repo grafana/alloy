@@ -67,7 +67,7 @@ This is useful when using processors like the span metrics, so all spans for eac
 for metric collection. Otherwise, metrics for the same services would be sent to different instances, making aggregations inaccurate.
 - `"traceID"`: spans/logs belonging to the same traceID will be exported to the same backend.
 - `"resource"`: metrics belonging to the same resource will be exported to the same backend.
-- `"metric"`: metrics with the same name will be exported to the same backend
+- `"metric"`: metrics with the same name will be exported to the same backend.
 - `"streamID"`: metrics with the same streamID will be exported to the same backend
 
 The loadbalancer will configure the exporter for the singal types supported by the `routing_key`
