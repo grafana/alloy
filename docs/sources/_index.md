@@ -4,7 +4,7 @@ title: Grafana Alloy
 description: Grafana Alloy is a a vendor-neutral distribution of the OTel Collector
 weight: 350
 cascade:
-  ALLOY_RELEASE: v1.4.2
+  ALLOY_RELEASE: v1.4.3
   OTEL_VERSION: v0.105.0
   PROM_WIN_EXP_VERSION: v0.27.3
   FULL_PRODUCT_NAME: Grafana Alloy
