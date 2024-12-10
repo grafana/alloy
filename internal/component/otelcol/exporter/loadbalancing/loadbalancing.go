@@ -36,32 +36,32 @@ func init() {
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
 			fact := loadbalancingexporter.NewFactory()
 
-			myArgs := args.(Arguments)
-
-			var typeSignal exporter.TypeSignal
-
 			// As per https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/exporter/loadbalancingexporter/README.md
 			// metrics is considered "development" stability level
 
-			switch myArgs.RoutingKey {
-			case "traceID":
-				typeSignal = exporter.TypeLogs | exporter.TypeTraces
-			case "service":
-				if opts.MinStability.Permits(featuregate.StabilityExperimental) {
-					typeSignal = exporter.TypeLogs | exporter.TypeTraces | exporter.TypeMetrics
-				} else {
-					level.Warn(opts.Logger).Log("msg", "disabling metrics exporter as stability level does not allow it")
+			typeSignalFunc := func(opts component.Options, args component.Arguments) exporter.TypeSignal {
+				myArgs := args.(Arguments)
+				var typeSignal exporter.TypeSignal
+				switch myArgs.RoutingKey {
+				case "traceID":
 					typeSignal = exporter.TypeLogs | exporter.TypeTraces
+				case "service":
+					if opts.MinStability.Permits(featuregate.StabilityExperimental) {
+						typeSignal = exporter.TypeLogs | exporter.TypeTraces | exporter.TypeMetrics
+					} else {
+						level.Warn(opts.Logger).Log("msg", "disabling metrics exporter as stability level does not allow it")
+						typeSignal = exporter.TypeLogs | exporter.TypeTraces
+					}
+				case "resource", "metric", "streamID":
+					if opts.MinStability.Permits(featuregate.StabilityExperimental) {
+						typeSignal = exporter.TypeMetrics
+					} else {
+						level.Warn(opts.Logger).Log("msg", "disabling metrics exporter as stability level does not allow it")
+					}
 				}
-			case "resource", "metric", "streamID":
-				if opts.MinStability.Permits(featuregate.StabilityExperimental) {
-					typeSignal = exporter.TypeMetrics
-				} else {
-					level.Warn(opts.Logger).Log("msg", "disabling metrics exporter as stability level does not allow it")
-				}
+				return typeSignal
 			}
-
-			return exporter.New(opts, fact, myArgs, typeSignal)
+			return exporter.New(opts, fact, args.(Arguments), typeSignalFunc)
 		},
 	})
 }

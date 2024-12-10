@@ -77,6 +77,14 @@ func (s TypeSignal) SupportsTraces() bool {
 	return s&TypeTraces != 0
 }
 
+type TypeSignalFunc func(component.Options, component.Arguments) TypeSignal
+
+func TypeSignalConstFunc(ts TypeSignal) TypeSignalFunc {
+	return func(component.Options, component.Arguments) TypeSignal {
+		return ts
+	}
+}
+
 // Exporter is an Alloy component shim which manages an OpenTelemetry Collector
 // exporter component.
 type Exporter struct {
@@ -92,7 +100,7 @@ type Exporter struct {
 
 	// Signals which the exporter is able to export.
 	// Can be logs, metrics, traces or any combination of them.
-	supportedSignals TypeSignal
+	supportedSignals TypeSignalFunc
 }
 
 var (
@@ -106,7 +114,7 @@ var (
 //
 // The registered component must be registered to export the
 // otelcol.ConsumerExports type, otherwise New will panic.
-func New(opts component.Options, f otelexporter.Factory, args Arguments, supportedSignals TypeSignal) (*Exporter, error) {
+func New(opts component.Options, f otelexporter.Factory, args Arguments, supportedSignals TypeSignalFunc) (*Exporter, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	consumer := lazyconsumer.NewPaused(ctx)
@@ -212,8 +220,10 @@ func (e *Exporter) Update(args component.Arguments) error {
 	// supported telemetry signals.
 	var components []otelcomponent.Component
 
+	supportedSignals := e.supportedSignals(e.opts, args)
+
 	var tracesExporter otelexporter.Traces
-	if e.supportedSignals.SupportsTraces() {
+	if supportedSignals.SupportsTraces() {
 		tracesExporter, err = e.factory.CreateTracesExporter(e.ctx, settings, exporterConfig)
 		if err != nil && !errors.Is(err, pipeline.ErrSignalNotSupported) {
 			return err
@@ -223,7 +233,7 @@ func (e *Exporter) Update(args component.Arguments) error {
 	}
 
 	var metricsExporter otelexporter.Metrics
-	if e.supportedSignals.SupportsMetrics() {
+	if supportedSignals.SupportsMetrics() {
 		metricsExporter, err = e.factory.CreateMetricsExporter(e.ctx, settings, exporterConfig)
 		if err != nil && !errors.Is(err, pipeline.ErrSignalNotSupported) {
 			return err
@@ -233,7 +243,7 @@ func (e *Exporter) Update(args component.Arguments) error {
 	}
 
 	var logsExporter otelexporter.Logs
-	if e.supportedSignals.SupportsLogs() {
+	if supportedSignals.SupportsLogs() {
 		logsExporter, err = e.factory.CreateLogsExporter(e.ctx, settings, exporterConfig)
 		if err != nil && !errors.Is(err, pipeline.ErrSignalNotSupported) {
 			return err

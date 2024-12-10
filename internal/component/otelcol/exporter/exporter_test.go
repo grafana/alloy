@@ -105,7 +105,7 @@ func newTestEnvironment(t *testing.T, fe *fakeExporter) *testEnvironment {
 				}, otelcomponent.StabilityLevelUndefined),
 			)
 
-			return exporter.New(opts, factory, args.(exporter.Arguments), exporter.TypeAll)
+			return exporter.New(opts, factory, args.(exporter.Arguments), exporter.TypeSignalConstFunc(exporter.TypeAll))
 		},
 	}
 
