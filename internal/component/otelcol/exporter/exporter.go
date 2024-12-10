@@ -100,6 +100,7 @@ type Exporter struct {
 
 	// Signals which the exporter is able to export.
 	// Can be logs, metrics, traces or any combination of them.
+	// This is a function because which signals are supported may depend on the component configuration.
 	supportedSignals TypeSignalFunc
 }
 
