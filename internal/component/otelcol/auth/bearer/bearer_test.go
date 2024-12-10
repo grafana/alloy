@@ -2,8 +2,10 @@ package bearer_test
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -19,7 +21,7 @@ import (
 
 // Test performs a basic integration test which runs the otelcol.auth.bearer
 // component and ensures that it can be used for authentication.
-func Test(t *testing.T) {
+func TestClient(t *testing.T) {
 	type TestDefinition struct {
 		testName          string
 		expectedHeaderVal string
@@ -75,29 +77,17 @@ func Test(t *testing.T) {
 		ctx, cancel := context.WithTimeout(ctx, time.Minute)
 		defer cancel()
 
-		l := util.TestLogger(t)
-
-		// Create and run our component
-		ctrl, err := componenttest.NewControllerFromID(l, "otelcol.auth.bearer")
-		require.NoError(t, err)
-
-		var args bearer.Arguments
-		require.NoError(t, syntax.Unmarshal([]byte(tt.alloyConfig), &args))
-
-		go func() {
-			err := ctrl.Run(ctx, args)
-			require.NoError(t, err)
-		}()
-
-		require.NoError(t, ctrl.WaitRunning(time.Second), "component never started")
-		require.NoError(t, ctrl.WaitExports(time.Second), "component never exported anything")
+		ctrl := newTestComponent(t, ctx, tt.alloyConfig)
 
 		// Get the authentication extension from our component and use it to make a
 		// request to our test server.
 		exports := ctrl.Exports().(auth.Exports)
-		require.NotNil(t, exports.Handler.Extension, "handler extension is nil")
+		require.NotNil(t, exports.Handler, "handler extension is nil")
 
-		clientAuth, ok := exports.Handler.Extension.(extauth.Client)
+		clientExtension, err := exports.Handler.GetExtension(auth.Client)
+		require.NoError(t, err)
+
+		clientAuth, ok := clientExtension.Extension.(extauth.Client)
 		require.True(t, ok, "handler does not implement configauth.ClientAuthenticator")
 
 		rt, err := clientAuth.RoundTripper(http.DefaultTransport)
@@ -113,4 +103,109 @@ func Test(t *testing.T) {
 		require.NoError(t, err, "HTTP request failed")
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 	}
+}
+
+func TestServer(t *testing.T) {
+	type TestDefinition struct {
+		testName    string
+		token       string
+		scheme      string
+		alloyConfig string
+	}
+	token := "123"
+	tokenCfg := fmt.Sprintf(`token = "%s"`, token)
+	tests := []TestDefinition{
+		{
+			testName: "Test1",
+			token:    token,
+			scheme:   "Bearer",
+			alloyConfig: fmt.Sprintf(`
+			%s
+			`, tokenCfg),
+		},
+		{
+			testName: "Test2",
+			token:    token,
+			scheme:   "Bearer",
+			alloyConfig: fmt.Sprintf(`
+			%s
+			scheme = "Bearer"
+			`, tokenCfg),
+		},
+		{
+			testName: "Test3",
+			token:    token,
+			scheme:   "MyScheme",
+			alloyConfig: fmt.Sprintf(`
+			%s
+			scheme = "MyScheme"
+			`, tokenCfg),
+		},
+		{
+			testName: "Test4",
+			token:    token,
+			scheme:   "",
+			alloyConfig: fmt.Sprintf(`
+			%s
+			scheme = ""
+			`, tokenCfg),
+		},
+	}
+
+	for _, td := range tests {
+		ctx := componenttest.TestContext(t)
+		ctx, cancel := context.WithTimeout(ctx, time.Minute)
+		defer cancel()
+
+		// Spin up component
+		ctrl := newTestComponent(t, ctx, td.alloyConfig)
+		exports := ctrl.Exports()
+		require.NotNil(t, exports)
+
+		authExport, ok := exports.(auth.Exports)
+		require.True(t, ok, "component doesn't export auth export struct")
+
+		// Get handler from exports
+		handler := authExport.Handler
+		require.NotNil(t, handler)
+
+		// Get the server auth extension
+		serverExtension, err := handler.GetExtension(auth.Server)
+		require.NoError(t, err)
+		require.NotNil(t, serverExtension.Extension)
+		require.NotNil(t, serverExtension.ID)
+
+		// Convert to server auth extension
+		otelServerAuthExtension, ok := serverExtension.Extension.(extauth.Server)
+		require.True(t, ok, "extension does not implement server authentication")
+
+		scheme := fmt.Sprintf("%s %s", td.scheme, td.token)
+
+		// Trim the space in case bearer token is set to an empty string
+		scheme = strings.TrimSpace(scheme)
+		_, err = otelServerAuthExtension.Authenticate(ctx, map[string][]string{"Authorization": {scheme}})
+		require.NoError(t, err, td.testName)
+	}
+}
+
+func newTestComponent(t *testing.T, ctx context.Context, alloyConfig string) *componenttest.Controller {
+	t.Helper()
+	l := util.TestLogger(t)
+
+	// Create and run our component
+	ctrl, err := componenttest.NewControllerFromID(l, "otelcol.auth.bearer")
+	require.NoError(t, err)
+
+	var args bearer.Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(alloyConfig), &args))
+
+	go func() {
+		err := ctrl.Run(ctx, args)
+		require.NoError(t, err)
+	}()
+
+	require.NoError(t, ctrl.WaitRunning(time.Second), "component never started")
+	require.NoError(t, ctrl.WaitExports(time.Second), "component never exported anything")
+
+	return ctrl
 }

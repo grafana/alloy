@@ -47,8 +47,8 @@ func (args *Arguments) SetToDefault() {
 	args.DebugMetrics.SetToDefault()
 }
 
-// Convert implements auth.Arguments.
-func (args Arguments) Convert() (otelcomponent.Config, error) {
+// ConvertClient implements auth.Arguments.
+func (args Arguments) ConvertClient() (otelcomponent.Config, error) {
 	var upstreamHeaders []headerssetterextension.HeaderConfig
 	for _, h := range args.Headers {
 		upstreamHeader := headerssetterextension.HeaderConfig{
@@ -70,14 +70,25 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		upstreamHeaders = append(upstreamHeaders, upstreamHeader)
 	}
 
+	// OtelExtensionConfig does not implement ServerAuth
 	return &headerssetterextension.Config{
 		HeadersConfig: upstreamHeaders,
 	}, nil
 }
 
+// ConvertServer returns nil since theheaders extension does not support server authenticaiton.
+func (args Arguments) ConvertServer() (otelcomponent.Config, error) {
+	return nil, nil
+}
+
 // Extensions implements auth.Arguments.
 func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
 	return nil
+}
+
+// AuthFeatures implements auth.Arguments.
+func (args Arguments) AuthFeatures() auth.AuthFeature {
+	return auth.ClientAuthSupported
 }
 
 // Exporters implements auth.Arguments.
