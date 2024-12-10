@@ -242,9 +242,11 @@ func (e *Exporter) Update(args component.Arguments) error {
 		}
 	}
 
-	// Schedule the components to run once our component is running.
-	e.sched.Schedule(host, components...)
+	// Pause the consumer, because we need to scheduler to run the new components before they receive any traffic.
+	e.consumer.Pause()
 	e.consumer.SetConsumers(tracesExporter, metricsExporter, logsExporter)
+	// Schedule the components. The scheduler will resume the consumer once the components are running.
+	e.sched.Schedule(host, components...)
 	return nil
 }
 
