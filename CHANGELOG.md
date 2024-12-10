@@ -18,7 +18,7 @@ Main (unreleased)
 
 - Add `otelcol.exporter.splunkhec` allowing to export otel data to Splunk HEC (@adlotsof)
 
-- Add `otelcol.receivser.solace` component to receive traces from a Solace broker. (@wildum)
+- Add `otelcol.receiver.solace` component to receive traces from a Solace broker. (@wildum)
 
 - Add `otelcol.exporter.syslog` component to export logs in syslog format (@dehaansa)
 
