@@ -242,7 +242,7 @@ func (e *Exporter) Update(args component.Arguments) error {
 		}
 	}
 
-	// Pause the consumer, because we need to scheduler to run the new components before they receive any traffic.
+	// Pause the consumer, because we need the scheduler to run the new components before they receive any traffic.
 	e.consumer.Pause()
 	e.consumer.SetConsumers(tracesExporter, metricsExporter, logsExporter)
 	// Schedule the components. The scheduler will resume the consumer once the components are running.

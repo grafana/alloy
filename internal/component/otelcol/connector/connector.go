@@ -214,7 +214,7 @@ func (p *Connector) Update(args component.Arguments) error {
 		return errors.New("unsupported connector type")
 	}
 
-	// Pause the consumer, because we need to scheduler to run the new components before they receive any traffic.
+	// Pause the consumer, because we need the scheduler to run the new components before they receive any traffic.
 	p.consumer.Pause()
 	p.consumer.SetConsumers(tracesConnector, metricsConnector, logsConnector)
 	// Schedule the components. The scheduler will resume the consumer once the components are running.
