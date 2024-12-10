@@ -36,8 +36,6 @@ Main (unreleased)
 
 - Add support for server authentication to otelcol components. (@aidaleuc)
 
-- Logs from underlying clustering library `memberlist` are now surfaced with correct level (@thampiotr)
-
 - Update mysqld_exporter from v0.15.0 to v0.16.0 (including 2ef168bf6), most notable changes: (@cristiangreco)
   - Support MySQL 8.4 replicas syntax
   - Fetch lock time and cpu time from performance schema
