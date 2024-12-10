@@ -18,7 +18,7 @@ Main (unreleased)
 
 - Add `otelcol.exporter.splunkhec` allowing to export otel data to Splunk HEC (@adlotsof)
 
-- Add `otelcol.receiver.solace` component to receive traces from a Solace broker. (@wildum)
+- Add `otelcol.receivser.solace` component to receive traces from a Solace broker. (@wildum)
 
 - Add `otelcol.exporter.syslog` component to export logs in syslog format (@dehaansa)
 
@@ -34,13 +34,10 @@ Main (unreleased)
 
 - Add relevant golang environment variables to the support bundle (@dehaansa)
 
-<<<<<<< HEAD
 - Add support for server authentication to otelcol components. (@aidaleuc)
 
 - Logs from underlying clustering library `memberlist` are now surfaced with correct level (@thampiotr)
 
-=======
->>>>>>> origin
 - Update mysqld_exporter from v0.15.0 to v0.16.0 (including 2ef168bf6), most notable changes: (@cristiangreco)
   - Support MySQL 8.4 replicas syntax
   - Fetch lock time and cpu time from performance schema
