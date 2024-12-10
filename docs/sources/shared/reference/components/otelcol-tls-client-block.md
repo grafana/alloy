@@ -36,6 +36,6 @@ The following pairs of arguments are mutually exclusive and can't both be set si
 * `key_pem` and `key_file`
 
 If `cipher_suites` is left blank, a safe default list is used.
-See the [Go TLS documentation][golang-tls] for a list of supported cipher suites.
+Refer to the [Go TLS documentation][golang-tls] for a list of supported cipher suites.
 
 [golang-tls]: https://go.dev/src/crypto/tls/cipher_suites.go

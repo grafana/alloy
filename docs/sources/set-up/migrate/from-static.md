@@ -19,15 +19,15 @@ This topic describes how to:
 
 ## Components used in this topic
 
-* [prometheus.scrape][]
-* [prometheus.remote_write][]
-* [local.file_match][]
-* [loki.process][]
-* [loki.source.file][]
-* [loki.write][]
-* [otelcol.receiver.otlp][]
-* [otelcol.processor.batch][]
-* [otelcol.exporter.otlp][]
+* [`prometheus.scrape`][prometheus.scrape]
+* [`prometheus.remote_write`][prometheus.remote_write]
+* [`local.file_match`][local.file_match]
+* [`loki.process`][loki.process]
+* [`loki.source.file`][loki.source.file]
+* [`loki.write`][loki.write]
+* [`otelcol.receiver.otlp`][otelcol.receiver.otlp]
+* [`otelcol.processor.batch`][otelcol.processor.batch]
+* [`otelcol.exporter.otlp`][otelcol.exporter.otlp]
 
 ## Before you begin
 

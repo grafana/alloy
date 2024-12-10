@@ -13,6 +13,7 @@ Name    | Type     | Description                                                
 `op`    | `string` | The filter operation to apply on the given key: value pair.   | `equals` | no
 
 For `op`, the following values are allowed:
+
 * `equals`: The field value must equal the provided value.
 * `not-equals`: The field value must not be equal to the provided value.
 * `exists`: The field value must exist. Only applicable to `annotation` fields.

@@ -23,7 +23,7 @@ The following operating systems and hardware architecture are supported.
 ## macOS
 
 * Minimum version: macOS 10.13 or later
-* Architectures: AMD64 (Intel), ARM64 (Apple Silicon)
+* Architectures: AMD64 on Intel, ARM64 on Apple Silicon
 
 ## FreeBSD
 

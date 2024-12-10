@@ -4,6 +4,7 @@ package configgen
 
 import (
 	"regexp"
+	"strings"
 
 	promopv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	commonConfig "github.com/prometheus/common/config"
@@ -197,6 +198,7 @@ func (r *relabeler) add(cfgs ...*relabel.Config) {
 		if cfg.Action == "" {
 			cfg.Action = relabel.DefaultRelabelConfig.Action
 		}
+		cfg.Action = relabel.Action(strings.ToLower(string(cfg.Action)))
 		if cfg.Separator == "" {
 			cfg.Separator = relabel.DefaultRelabelConfig.Separator
 		}

@@ -17,7 +17,7 @@ A custom component is composed of:
 * _Exports_: Values that a custom component exposes to its consumers.
 * _Components_: Built-in and custom components that are run as part of the custom component.
 
-## Creating custom components
+## Create custom components
 
 You can create a new custom component using [the `declare` configuration block][declare].
 The label of the block determines the name of the custom component.
@@ -33,7 +33,7 @@ To learn how to share custom components across multiple files, refer to [Modules
 
 ## Example
 
-This example creates a new custom component called `add`, which exports the sum of two arguments:
+This example creates a custom component called `add`, which exports the sum of two arguments:
 
 ```alloy
 declare "add" {
@@ -52,6 +52,7 @@ add "example" {
 
 // add.example.sum == 32
 ```
+
 [declare]: ../../reference/config-blocks/declare/
 [argument]: ../../reference/config-blocks/argument/
 [export]: ../../reference/config-blocks/export/

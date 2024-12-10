@@ -195,7 +195,7 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 		cacheKey := fmt.Sprintf("%s@%d", fullyQualifiedTable, table.updateTime.Unix())
 
 		if c.cache.Contains(cacheKey) {
-			level.Info(c.logger).Log("msg", "table definition already in cache", "schema", table.schema, "table", table.tableName)
+			level.Debug(c.logger).Log("msg", "table definition already in cache", "schema", table.schema, "table", table.tableName)
 			continue
 		}
 

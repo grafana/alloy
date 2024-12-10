@@ -19,8 +19,8 @@ This topic describes how to:
 
 ## Components used in this topic
 
-* [prometheus.scrape][]
-* [prometheus.remote_write][]
+* [`prometheus.scrape`][prometheus.scrape]
+* [`prometheus.remote_write`][prometheus.remote_write]
 
 ## Before you begin
 
@@ -96,7 +96,7 @@ This allows you to try {{< param "PRODUCT_NAME" >}} without modifying your Prome
 
 In this task, you use the [run][] CLI command to run {{< param "PRODUCT_NAME" >}} using a Prometheus configuration.
 
-[Run][run alloy] {{< param "PRODUCT_NAME" >}} and include the command line flag `--config.format=prometheus`.
+[Run][run] {{< param "PRODUCT_NAME" >}} and include the command line flag `--config.format=prometheus`.
 Your configuration file must be a valid Prometheus configuration file rather than an {{< param "PRODUCT_NAME" >}} configuration file.
 
 ### Debug
@@ -206,7 +206,6 @@ The following list is specific to the convert command and not {{< param "PRODUCT
 [Components]: ../../../get-started/components/
 [convert]: ../../../reference/cli/convert/
 [run]: ../../../reference/cli/run/
-[run alloy]: ../../../set-up/run/
 [DebuggingUI]: ../../../troubleshoot/debug/
 [configuration]: ../../../get-started/configuration-syntax/
 [UI]: ../../../troubleshoot/debug/#alloy-ui

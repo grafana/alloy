@@ -19,9 +19,9 @@ This topic describes how to:
 
 ## Components used in this topic
 
-* [otelcol.receiver.otlp][]
-* [otelcol.processor.memory_limiter][]
-* [otelcol.exporter.otlp][]
+* [`otelcol.receiver.otlp`][otelcol.receiver.otlp]
+* [`otelcol.processor.memory_limiter`][otelcol.processor.memory_limiter]
+* [`otelcol.exporter.otlp`][otelcol.exporter.otlp]
 
 ## Before you begin
 
@@ -47,7 +47,7 @@ In this task, you use the [convert][] CLI command to output a {{< param "PRODUCT
    * _`<INPUT_CONFIG_PATH>`_: The full path to the OpenTelemetry Collector configuration.
    * _`<OUTPUT_CONFIG_PATH>`_: The full path to output the {{< param "PRODUCT_NAME" >}} configuration.
 
-1. [Run][] {{< param "PRODUCT_NAME" >}} using the new {{< param "PRODUCT_NAME" >}} configuration from _`<OUTPUT_CONFIG_PATH>`_:
+1. [Run][run_cli] {{< param "PRODUCT_NAME" >}} using the new {{< param "PRODUCT_NAME" >}} configuration from _`<OUTPUT_CONFIG_PATH>`_:
 
 ### Debugging
 
@@ -98,7 +98,7 @@ This allows you to try {{< param "PRODUCT_NAME" >}} without modifying your OpenT
 
 In this task, you use the [run][run_cli] CLI command to run {{< param "PRODUCT_NAME" >}} using an OpenTelemetry Collector configuration.
 
-[Run][] {{< param "PRODUCT_NAME" >}} and include the command line flag `--config.format=otelcol`.
+[Run][run_cli] {{< param "PRODUCT_NAME" >}} and include the command line flag `--config.format=otelcol`.
 Your configuration file must be a valid OpenTelemetry Collector configuration file rather than a {{< param "PRODUCT_NAME" >}} configuration file.
 
 ### Debug
@@ -225,6 +225,5 @@ The following list is specific to the convert command and not {{< param "PRODUCT
 [Component Reference]: ../../../reference/components/
 [convert]: ../../../reference/cli/convert/
 [run_cli]: ../../../reference/cli/run/
-[Run]: ../../../get-started/run/
 [DebuggingUI]: ../../../troubleshoot/debug/
 [UI]: ../../../troubleshoot/debug/#alloy-ui
