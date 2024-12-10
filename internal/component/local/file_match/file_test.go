@@ -299,7 +299,6 @@ func createComponentWithLabels(t *testing.T, dir string, paths []string, exclude
 	}, Arguments{
 		PathTargets: tPaths,
 		SyncPeriod:  1 * time.Second,
-		IgnoreOlder: 1 * time.Hour,
 	})
 
 	require.NoError(t, err)
