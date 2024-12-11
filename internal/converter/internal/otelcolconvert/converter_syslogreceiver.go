@@ -49,12 +49,6 @@ func (syslogReceiverConverter) ConvertAndAppend(state *State, id componentstatus
 }
 
 func toOtelcolReceiversyslog(cfg *syslogreceiver.SysLogConfig) *syslog.Arguments {
-	// Protocol                     string  `mapstructure:"protocol,omitempty"`
-	// Location                     string  `mapstructure:"location,omitempty"`
-	// EnableOctetCounting          bool    `mapstructure:"enable_octet_counting,omitempty"`
-	// AllowSkipPriHeader           bool    `mapstructure:"allow_skip_pri_header,omitempty"`
-	// NonTransparentFramingTrailer *string `mapstructure:"non_transparent_framing_trailer,omitempty"`
-	// MaxOctets                    int     `mapstructure:"max_octets,omitempty"`
 	args := &syslog.Arguments{
 		Protocol:                     config.SysLogFormat(cfg.InputConfig.Protocol),
 		Location:                     cfg.InputConfig.Location,
