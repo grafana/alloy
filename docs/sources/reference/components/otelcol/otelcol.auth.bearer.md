@@ -38,7 +38,11 @@ Name     | Type     | Description                                      | Default
 `scheme` | `string` | Authentication scheme name.                      | "Bearer" | no
 
 When sending the token, the value of `scheme` is prepended to the `token` value.
-The string is then sent out as either a header (in case of HTTP) or as metadata (in case of gRPC). If we are using file for storing the token we can refer the value of `token` using `local.file`
+The string is then sent out as either a header (in case of HTTP) or as metadata (in case of gRPC).
+
+If you use a file to store the token, you can use `[local.file`][local.file] to retrieve the `token` value from the file.
+
+[local.file]: ../../local/local.file/
 
 ## Blocks
 
