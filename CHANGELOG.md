@@ -12,6 +12,8 @@ Main (unreleased)
 
 ### Features
 
+- Add support for metrics in `otelcol.exporter.loadbalancing` (@madaraszg-tulip)
+
 - Add `add_cloudwatch_timestamp` to `prometheus.exporter.cloudwatch` metrics. (@captncraig)
 
 - Add support to `prometheus.operator.servicemonitors` to allow `endpointslice` role. (@yoyosir)
