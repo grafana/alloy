@@ -12,6 +12,8 @@ Main (unreleased)
 
 ### Features
 
+- Add support for metrics in `otelcol.exporter.loadbalancing` (@madaraszg-tulip)
+
 - Add `add_cloudwatch_timestamp` to `prometheus.exporter.cloudwatch` metrics. (@captncraig)
 
 - Add support to `prometheus.operator.servicemonitors` to allow `endpointslice` role. (@yoyosir)
@@ -46,6 +48,9 @@ Main (unreleased)
 
 - Add three new stdlib functions to_base64, from_URLbase64 and to_URLbase64 (@ravishankar15)
 
+- Use a forked `github.com/goccy/go-json` module which reduces the memory consumption of an Alloy instance by 20MB.
+  If Alloy is running certain otelcol components, this reduction will not apply. (@ptodev)
+  
 - Update `prometheus.write.queue` library for performance increases in cpu. (@mattdurham)
 
 ### Bugfixes
