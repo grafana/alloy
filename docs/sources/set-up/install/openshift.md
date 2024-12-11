@@ -163,4 +163,4 @@ Refer to [Deploy {{< param "FULL_PRODUCT_NAME" >}}][deploy] for more information
 [scc]: https://docs.openshift.com/container-platform/latest/authentication/managing-security-context-constraints.html
 [Configure]: ../../../configure/linux/
 [deploy]: ../../deploy/
-[selinux]: https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/6/html/security-enhanced_linux/chap-security-enhanced_linux-selinux_contexts#chap-Security-Enhanced_Linux-SELinux_Contexts)
+[selinux]: https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/6/html/security-enhanced_linux/chap-security-enhanced_linux-selinux_contexts#chap-Security-Enhanced_Linux-SELinux_Contexts
