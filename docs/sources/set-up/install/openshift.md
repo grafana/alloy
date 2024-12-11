@@ -27,7 +27,7 @@ You must configure Role-Based Access Control (RBAC) to allow secure access to Ku
 You must configure {{< param "PRODUCT_NAME" >}} to [run as a non-root user][nonroot].
 This ensures that {{< param "PRODUCT_NAME" >}} complies with your OCP security policies.
 
-## Apply SSC
+## Apply security context constraints
 
 OCP uses Security Context Constraints (SCC) to control Pod permissions.
 Refer to [Managing security context constraints][scc] for more information about how you can define and enforce these permissions.
@@ -54,7 +54,7 @@ You can adapt the SCCs to meet your local requirements and needs.
 * `Volumes`: Specifies the persistent volumes used for storage.
   You must configure this constraint to give {{< param "PRODUCT_NAME" >}} access to the volumes it needs.
 
-The following example shows a SCC configuration that deploys {{< param "PRODUCT_NAME" >}} as a non-root user:
+The following example shows a DaemonSet configuration that deploys {{< param "PRODUCT_NAME" >}} as a non-root user:
 
 ```yaml
 apiVersion: aapps/v1
@@ -77,21 +77,43 @@ spec:
           image: grafana/alloy:latest
           ports:
           - containerPort: 12345
+          # The security context configuration
           securityContext:
             allowPrivilegeEscalation: false
             runAsUser: 473
             runAsGroup: 473
-            # fsGroup: 1000
+            fsGroup: 1000
          volumes:
          - name: log-volume
            emptyDir: {}
+```
+
+The following example shows an SSC definition that deploys {{< param "PRODUCT_NAME" >}} as a non-root user:
+
+```yaml
+kind: SecurityContextConstraints
+apiVersion: security.openshift.io/v1
+metadata:
+  name: scc-alloy
+runAsUser:
+  type: MustRunAs
+  uid: 473
+fsGroup:
+  type: MustRunAs
+  uid: 1000
+volumes: 
+- '*'
+users:
+- my-admin-user
+groups:
+- my-admin-group
 ```
 
 Refer to [Deploy {{< param "FULL_PRODUCT_NAME" >}}][deploy] for more information about deploying {{< param "PRODUCT_NAME" >}} in your environment.
 
 ## Next steps
 
-- [Configure {{< param "PRODUCT_NAME" >}}][Configure]
+* [Configure {{< param "PRODUCT_NAME" >}}][Configure]
 
 [rbac.yaml]: https://github.com/grafana/alloy/blob/main/operations/helm/charts/alloy/templates/rbac.yaml
 [rbac]: https://docs.openshift.com/container-platform/3.11/admin_guide/manage_rbac.html
