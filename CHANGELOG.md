@@ -46,6 +46,8 @@ Main (unreleased)
 
 - Add three new stdlib functions to_base64, from_URLbase64 and to_URLbase64 (@ravishankar15)
 
+- Update `prometheus.write.queue` library for performance increases in cpu. (@mattdurham)
+
 ### Bugfixes
 
 - Fixed issue with reloading configuration and prometheus metrics duplication in `prometheus.write.queue`. (@mattdurham)
