@@ -37,37 +37,13 @@ type Scheduler struct {
 	schedMut        sync.Mutex
 	schedComponents []otelcomponent.Component // Most recently created components
 	host            otelcomponent.Host
-
-	// newComponentsCh is written to when schedComponents gets updated.
-	newComponentsCh chan struct{}
-
-	// onPause is called when scheduler is making changes to running components.
-	onPause func()
-	// onResume is called when scheduler is done making changes to running components.
-	onResume func()
 }
 
 // New creates a new unstarted Scheduler. Call Run to start it, and call
 // Schedule to schedule components to run.
 func New(l log.Logger) *Scheduler {
 	return &Scheduler{
-		log:             l,
-		newComponentsCh: make(chan struct{}, 1),
-		onPause:         func() {},
-		onResume:        func() {},
-	}
-}
-
-// NewWithPauseCallbacks is like New, but allows to specify onPause and onResume callbacks. The scheduler is assumed to
-// start paused and only when its components are scheduled, it will call onResume. From then on, each update to running
-// components via Schedule method will trigger a call to onPause and then onResume. When scheduler is shutting down, it
-// will call onResume as a last step.
-func NewWithPauseCallbacks(l log.Logger, onPause func(), onResume func()) *Scheduler {
-	return &Scheduler{
-		log:             l,
-		newComponentsCh: make(chan struct{}, 1),
-		onPause:         onPause,
-		onResume:        onResume,
+		log: l,
 	}
 }
 
@@ -77,63 +53,28 @@ func NewWithPauseCallbacks(l log.Logger, onPause func(), onResume func()) *Sched
 // Schedule completely overrides the set of previously running components;
 // components which have been removed since the last call to Schedule will be
 // stopped.
-func (cs *Scheduler) Schedule(h otelcomponent.Host, cc ...otelcomponent.Component) {
+func (cs *Scheduler) Schedule(ctx context.Context, h otelcomponent.Host, cc ...otelcomponent.Component) {
 	cs.schedMut.Lock()
 	defer cs.schedMut.Unlock()
 
-	cs.schedComponents = cc
-	cs.host = h
+	// Stop the old components before running new scheduled ones.
+	cs.stopComponents(ctx, cs.schedComponents...)
 
-	select {
-	case cs.newComponentsCh <- struct{}{}:
-		// Queued new message.
-	default:
-		// A message is already queued for refreshing running components so we
-		// don't have to do anything here.
-	}
+	level.Debug(cs.log).Log("msg", "scheduling components", "count", len(cc))
+	cs.schedComponents = cs.startComponents(ctx, h, cc...)
 }
 
-// Run starts the Scheduler. Run will watch for schedule components to appear
-// and run them, terminating previously running components if they exist.
+// Run starts the Scheduler and stops the components when the context is cancelled.
 func (cs *Scheduler) Run(ctx context.Context) error {
-	firstRun := true
-	var components []otelcomponent.Component
-
 	// Make sure we terminate all of our running components on shutdown.
 	defer func() {
-		if !firstRun { // always handle the callbacks correctly
-			cs.onPause()
-		}
-		cs.stopComponents(context.Background(), components...)
-		cs.onResume()
+		cs.schedMut.Lock()
+		defer cs.schedMut.Unlock()
+		cs.stopComponents(context.Background(), cs.schedComponents...)
 	}()
 
-	// Wait for a write to cs.newComponentsCh. The initial list of components is
-	// always empty so there's nothing to do until cs.newComponentsCh is written
-	// to.
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		case <-cs.newComponentsCh:
-			if !firstRun {
-				cs.onPause() // do not pause on first run
-			} else {
-				firstRun = false
-			}
-			// Stop the old components before running new scheduled ones.
-			cs.stopComponents(ctx, components...)
-
-			cs.schedMut.Lock()
-			components = cs.schedComponents
-			host := cs.host
-			cs.schedMut.Unlock()
-
-			level.Debug(cs.log).Log("msg", "scheduling components", "count", len(components))
-			components = cs.startComponents(ctx, host, components...)
-			cs.onResume()
-		}
-	}
+	<-ctx.Done()
+	return nil
 }
 
 func (cs *Scheduler) stopComponents(ctx context.Context, cc ...otelcomponent.Component) {

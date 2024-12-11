@@ -117,7 +117,7 @@ func New(opts component.Options, f otelconnector.Factory, args Arguments) (*Conn
 		factory:  f,
 		consumer: consumer,
 
-		sched:     scheduler.NewWithPauseCallbacks(opts.Logger, consumer.Pause, consumer.Resume),
+		sched:     scheduler.New(opts.Logger),
 		collector: collector,
 	}
 	if err := p.Update(args); err != nil {
@@ -215,8 +215,10 @@ func (p *Connector) Update(args component.Arguments) error {
 	}
 
 	// Schedule the components to run once our component is running.
-	p.sched.Schedule(host, components...)
+	p.consumer.Pause()
 	p.consumer.SetConsumers(tracesConnector, metricsConnector, logsConnector)
+	p.sched.Schedule(p.ctx, host, components...)
+	p.consumer.Resume()
 	return nil
 }
 

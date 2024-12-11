@@ -162,7 +162,7 @@ func (e *Extension) Update(args component.Arguments) error {
 	}
 
 	// Schedule the components to run once our component is running.
-	e.sched.Schedule(host, components...)
+	e.sched.Schedule(e.ctx, host, components...)
 	return nil
 }
 

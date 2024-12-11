@@ -233,7 +233,7 @@ func (r *Receiver) Update(args component.Arguments) error {
 	}
 
 	// Schedule the components to run once our component is running.
-	r.sched.Schedule(host, components...)
+	r.sched.Schedule(r.ctx, host, components...)
 	return nil
 }
 
