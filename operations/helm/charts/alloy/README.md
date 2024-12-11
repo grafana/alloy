@@ -1,6 +1,6 @@
 # Grafana Alloy Helm chart
 
-![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![Version: 0.10.1](https://img.shields.io/badge/Version-0.10.1-informational?style=flat-square) ![AppVersion: v1.5.1](https://img.shields.io/badge/AppVersion-v1.5.1-informational?style=flat-square)
+![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![Version: 0.10.2](https://img.shields.io/badge/Version-0.10.2-informational?style=flat-square) ![AppVersion: v1.5.1](https://img.shields.io/badge/AppVersion-v1.5.1-informational?style=flat-square)
 
 Helm chart for deploying [Grafana Alloy][] to Kubernetes.
 
@@ -64,7 +64,7 @@ useful if just using the default DaemonSet isn't sufficient.
 | configReloader.image.registry | string | `"ghcr.io"` | Config reloader image registry (defaults to docker.io) |
 | configReloader.image.repository | string | `"jimmidyson/configmap-reload"` | Repository to get config reloader image from. |
 | configReloader.image.tag | string | `"v0.12.0"` | Tag of image to use for config reloading. |
-| configReloader.resources | object | `{"requests":{"cpu":"1m","memory":"5Mi"}}` | Resource requests and limits to apply to the config reloader container. |
+| configReloader.resources | object | `{}` | Resource requests and limits to apply to the config reloader container. |
 | configReloader.securityContext | object | `{}` | Security context to apply to the Grafana configReloader container. |
 | controller.affinity | object | `{}` | Affinity configuration for pods. |
 | controller.autoscaling.enabled | bool | `false` | Creates a HorizontalPodAutoscaler for controller type deployment. |

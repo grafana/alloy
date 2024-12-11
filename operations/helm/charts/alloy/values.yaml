@@ -111,7 +111,12 @@ alloy:
 
   # -- Resource requests and limits to apply to the Grafana Alloy container.
   resources: {}
-
+#    limits:
+#      cpu: "1"
+#      memory: "1Gi"
+#    requests:
+#      cpu: "1"
+#      memory: "1Gi"
   # -- Set lifecycle hooks for the Grafana Alloy container.
   lifecycle: {}
     # preStop:
@@ -166,10 +171,13 @@ configReloader:
   # -- Override the args passed to the container.
   customArgs: []
   # -- Resource requests and limits to apply to the config reloader container.
-  resources:
-    requests:
-      cpu: "1m"
-      memory: "5Mi"
+  resources: {}
+#    limits:
+#      cpu: "1m"
+#      memory: "5Mi"
+#    requests:
+#      cpu: "1m"
+#      memory: "5Mi"
   # -- Security context to apply to the Grafana configReloader container.
   securityContext: {}
 
