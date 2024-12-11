@@ -117,7 +117,7 @@ func New(opts component.Options, f otelprocessor.Factory, args Arguments) (*Proc
 		factory:  f,
 		consumer: consumer,
 
-		sched:     scheduler.NewWithPauseCallbacks(opts.Logger, consumer.Pause, consumer.Resume),
+		sched:     scheduler.New(opts.Logger),
 		collector: collector,
 
 		liveDebuggingConsumer: livedebuggingconsumer.New(debugDataPublisher.(livedebugging.DebugDataPublisher), opts.ID),
@@ -238,8 +238,11 @@ func (p *Processor) Update(args component.Arguments) error {
 	}
 
 	// Schedule the components to run once our component is running.
-	p.sched.Schedule(host, components...)
+	p.consumer.Pause()
 	p.consumer.SetConsumers(tracesProcessor, metricsProcessor, logsProcessor)
+	p.sched.Schedule(p.ctx, host, components...)
+	p.consumer.Resume()
+
 	return nil
 }
 
