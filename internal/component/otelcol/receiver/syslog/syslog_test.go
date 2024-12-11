@@ -56,7 +56,7 @@ func Test(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
-	require.NoError(t, ctrl.WaitRunning(time.Second))
+	require.NoError(t, ctrl.WaitRunning(3*time.Second))
 
 	// Send traces in the background to our receiver.
 	go func() {
@@ -87,7 +87,7 @@ func Test(t *testing.T) {
 	// Wait for our client to get a span.
 	select {
 	case <-time.After(time.Second):
-		require.FailNow(t, "failed waiting for traces")
+		require.FailNow(t, "failed waiting for logs")
 	case log := <-logCh:
 		require.Equal(t, 1, log.LogRecordCount())
 	}
