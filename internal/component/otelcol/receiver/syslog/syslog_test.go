@@ -118,7 +118,7 @@ func getFreeAddr(t *testing.T) string {
 	portNumber, err := freeport.GetFreePort()
 	require.NoError(t, err)
 
-	return fmt.Sprintf("localhost:%d", portNumber)
+	return fmt.Sprintf("127.0.0.1:%d", portNumber)
 }
 
 func TestUnmarshal(t *testing.T) {

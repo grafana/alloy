@@ -3,7 +3,7 @@ package syslog
 
 import (
 	"fmt"
-	net_url "net/url"
+	"net"
 
 	"github.com/alecthomas/units"
 	"github.com/grafana/alloy/internal/component"
@@ -48,7 +48,7 @@ type Arguments struct {
 	EnableOctetCounting          bool                `alloy:"enable_octet_counting,attr,optional"`
 	MaxOctets                    int                 `alloy:"max_octets,attr,optional"`
 	AllowSkipPriHeader           bool                `alloy:"allow_skip_pri_header,attr,optional"`
-	NonTransparentFramingTrailer FramingTrailer      `alloy:"non_transparent_framing_trailer,attr,optional"`
+	NonTransparentFramingTrailer *FramingTrailer     `alloy:"non_transparent_framing_trailer,attr,optional"`
 
 	ConsumerRetry otelcol.ConsumerRetryArguments `alloy:"retry_on_failure,block,optional"`
 	TCP           *TCP                           `alloy:"tcp,block,optional"`
@@ -168,10 +168,9 @@ var _ receiver.Arguments = Arguments{}
 // SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = Arguments{
-		Location:                     "UTC",
-		Protocol:                     config.SyslogFormatRFC5424,
-		Output:                       &otelcol.ConsumerArguments{},
-		NonTransparentFramingTrailer: LFTrailer,
+		Location: "UTC",
+		Protocol: config.SyslogFormatRFC5424,
+		Output:   &otelcol.ConsumerArguments{},
 	}
 	args.DebugMetrics.SetToDefault()
 	args.ConsumerRetry.SetToDefault()
@@ -179,16 +178,19 @@ func (args *Arguments) SetToDefault() {
 
 // Convert implements receiver.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
-	trailer := string(args.NonTransparentFramingTrailer)
 
 	c := stanzainputsyslog.NewConfig()
 	c.BaseConfig = stanzaparsersyslog.BaseConfig{
-		Protocol:                     string(args.Protocol),
-		Location:                     args.Location,
-		EnableOctetCounting:          args.EnableOctetCounting,
-		MaxOctets:                    args.MaxOctets,
-		AllowSkipPriHeader:           args.AllowSkipPriHeader,
-		NonTransparentFramingTrailer: &trailer,
+		Protocol:            string(args.Protocol),
+		Location:            args.Location,
+		EnableOctetCounting: args.EnableOctetCounting,
+		MaxOctets:           args.MaxOctets,
+		AllowSkipPriHeader:  args.AllowSkipPriHeader,
+	}
+
+	if args.NonTransparentFramingTrailer != nil {
+		s := string(*args.NonTransparentFramingTrailer)
+		c.BaseConfig.NonTransparentFramingTrailer = &s
 	}
 
 	if args.TCP != nil {
@@ -274,12 +276,12 @@ func (args *Arguments) Validate() error {
 	}
 
 	if args.TCP != nil {
-		if err := validateURL(args.TCP.ListenAddress, "tcp.listen_address"); err != nil {
+		if err := validateListenAddress(args.TCP.ListenAddress, "tcp.listen_address"); err != nil {
 			errs = multierror.Append(errs, err)
 		}
 
-		if args.NonTransparentFramingTrailer != LFTrailer && args.NonTransparentFramingTrailer != NULTrailer {
-			errs = multierror.Append(errs, fmt.Errorf("invalid non_transparent_framing_trailer, must be one of 'LF', 'NUL': %s", args.NonTransparentFramingTrailer))
+		if args.NonTransparentFramingTrailer != nil && *args.NonTransparentFramingTrailer != LFTrailer && *args.NonTransparentFramingTrailer != NULTrailer {
+			errs = multierror.Append(errs, fmt.Errorf("invalid non_transparent_framing_trailer, must be one of 'LF', 'NUL': %s", *args.NonTransparentFramingTrailer))
 		}
 
 		_, err := decode.LookupEncoding(args.TCP.Encoding)
@@ -293,7 +295,7 @@ func (args *Arguments) Validate() error {
 	}
 
 	if args.UDP != nil {
-		if err := validateURL(args.UDP.ListenAddress, "udp.listen_address"); err != nil {
+		if err := validateListenAddress(args.UDP.ListenAddress, "udp.listen_address"); err != nil {
 			errs = multierror.Append(errs, err)
 		}
 
@@ -306,11 +308,12 @@ func (args *Arguments) Validate() error {
 	return errs
 }
 
-func validateURL(url string, urlName string) error {
+func validateListenAddress(url string, urlName string) error {
 	if url == "" {
 		return fmt.Errorf("%s cannot be empty", urlName)
 	}
-	if _, err := net_url.Parse(url); err != nil {
+
+	if _, _, err := net.SplitHostPort(url); err != nil {
 		return fmt.Errorf("invalid %s: %w", urlName, err)
 	}
 	return nil

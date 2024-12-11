@@ -43,7 +43,7 @@ The following arguments are supported:
 | `enable_octet_counting`           | `bool`   | Whether to enable RFC6587 octet counting.                          | `false`   | no       |
 | `max_octets`                      | `int`    | The maximum octets for messages when octet counting is enabled.    | `8192`    | no       |
 | `allow_skip_pri_header`           | `bool`   | Allow parsing records without a priority header.                   | `false`   | no       |
-| `non_transparent_framing_trailer` | `string` | The framing trailer when using RFC6587 Non-Transparent-Framing.    | `false`   | no       |
+| `non_transparent_framing_trailer` | `string` | The framing trailer when using RFC6587 Non-Transparent-Framing.    | `nil`     | no       |
 
 The `protocol` argument specifies the syslog format supported by the receiver.
 `protocol` must be one of `rfc5424`, `rfc3164`
@@ -52,6 +52,8 @@ The `location` argument specifies a Time Zone identifier. The available location
 See [this wikipedia entry][tz-wiki] for a non-comprehensive list.
 
 The `non_transparent_framing_trailer` argument must be one of `LF`, `NUL`.
+
+The `non_transparent_framing_trailer` and `enable_octet_counting` arguments cannot be used with a UDP syslog server.
 
 [tz-wiki]: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
 
