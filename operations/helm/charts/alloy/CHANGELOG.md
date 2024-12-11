@@ -10,6 +10,10 @@ internal API changes are not present.
 Unreleased
 ----------
 
+### Enhancements
+
+- Update jimmidyson/configmap-reload to 0.14.0. (@petewall)
+
 0.10.1 (2024-12-03)
 ----------
 

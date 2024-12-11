@@ -27,7 +27,7 @@ func init() {
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
 			fact := syslogexporter.NewFactory()
-			return exporter.New(opts, fact, args.(Arguments), exporter.TypeLogs)
+			return exporter.New(opts, fact, args.(Arguments), exporter.TypeSignalConstFunc(exporter.TypeLogs))
 		},
 	})
 }

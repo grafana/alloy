@@ -948,3 +948,6 @@ exclude (
 )
 
 replace github.com/prometheus/procfs => github.com/prometheus/procfs v0.12.0
+
+// TODO(ptodev): Remove when this PR has been merged: https://github.com/goccy/go-json/pull/490
+replace github.com/goccy/go-json => github.com/grafana/go-json v0.0.0-20241106155216-71a03f133f5c
