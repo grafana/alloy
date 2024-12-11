@@ -48,7 +48,7 @@ Main (unreleased)
 
 - Add three new stdlib functions to_base64, from_URLbase64 and to_URLbase64 (@ravishankar15)
 
-- Reduce the memory consumption of an Alloy instance by 20MB.
+- Use a forked `github.com/goccy/go-json` module which reduces the memory consumption of an Alloy instance by 20MB.
   If Alloy is running certain otelcol components, this reduction will not apply. (@ptodev)
 
 ### Bugfixes
