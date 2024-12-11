@@ -9,12 +9,12 @@ title: otelcol.receiver.syslog
 `otelcol.receiver.syslog` accepts syslog messages over the network and forwards them as logs to other `otelcol.*` components.
 It supports syslog protocols [RFC5424][] and [RFC3164][] and can receive data over `TCP` or `UDP`.
 
-> **NOTE**: `otelcol.receiver.syslog` is a wrapper over the upstream
-> OpenTelemetry Collector `syslog` receiver. Bug reports or feature requests will
-> be redirected to the upstream repository, if necessary.
+{{< admonition type="note" >}}
+`otelcol.receiver.syslog` is a wrapper over the upstream OpenTelemetry Collector `syslog` receiver.
+Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+{{< /admonition >}}
 
-Multiple `otelcol.receiver.syslog` components can be specified by giving them
-different labels.
+You can specify multiple `otelcol.receiver.syslog` components by giving them different labels.
 
 [RFC5424]: https://www.rfc-editor.org/rfc/rfc5424
 [RFC3164]: https://www.rfc-editor.org/rfc/rfc3164
@@ -32,9 +32,6 @@ otelcol.receiver.syslog "LABEL" {
 }
 ```
 
-
-
-
 ## Arguments
 
 The following arguments are supported:
@@ -42,11 +39,11 @@ The following arguments are supported:
 | Name                              | Type     | Description                                                        | Default   | Required |
 |-----------------------------------|----------|--------------------------------------------------------------------|-----------|----------|
 | `protocol`                        | `string` | The syslog protocol that the syslog server supports.               | `rfc5424` | no       |
-| `location`                        | `string` | The geographic time zone to use when parsing an rfc3164 timestamp. | `UTC`     | no       |
-| `enable_octet_counting`           | `bool`   | Whether to enable rfc6587 octet counting.                          | `false`   | no       |
+| `location`                        | `string` | The geographic time zone to use when parsing an RFC3164 timestamp. | `UTC`     | no       |
+| `enable_octet_counting`           | `bool`   | Whether to enable RFC6587 octet counting.                          | `false`   | no       |
 | `max_octets`                      | `int`    | The maximum octets for messages when octet counting is enabled.    | `8192`    | no       |
 | `allow_skip_pri_header`           | `bool`   | Allow parsing records without a priority header.                   | `false`   | no       |
-| `non_transparent_framing_trailer` | `string` | The framing trailer when using rfc6587 Non-Transparent-Framing.    | `false`   | no       |
+| `non_transparent_framing_trailer` | `string` | The framing trailer when using RFC6587 Non-Transparent-Framing.    | `false`   | no       |
 
 The `protocol` argument specifies the syslog format supported by the receiver.
 `protocol` must be one of `rfc5424`, `rfc3164`
@@ -106,7 +103,7 @@ The following arguments are supported:
 
 The `encoding` argument specifies the encoding of the incoming syslog messages.
 `encoding` must be one of `utf-8`, `utf-16le`, `utf-16be`, `ascii`, `big5`, `nop`. 
-See the upstream receiver [documentation][encoding-documentation] for more details.
+Refer to the upstream receiver [documentation][encoding-documentation] for more details.
 
 ### multiline block
 
@@ -215,7 +212,7 @@ can be used to proxy syslog messages before sending them to another destination.
 Using the `otelcol` syslog components in this way results in the messages being forwarded as sent,
 attempting to use the `loki.source.syslog` component for a similar proxy use case requires
 careful mapping of any structured data fields through the `otelcol.processor.transform` component. A
-very simple example of that can be seen in the [`otelcol.exporter.syslog`][exporter-examples] documentation.
+very simple example of that can be found in the [`otelcol.exporter.syslog`][exporter-examples] documentation.
 
 ```alloy
 otelcol.receiver.syslog "default" {
