@@ -66,6 +66,26 @@ type FramingTrailer string
 var NULTrailer FramingTrailer = "NUL"
 var LFTrailer FramingTrailer = "LF"
 
+// MarshalText implements encoding.TextMarshaler
+func (s FramingTrailer) MarshalText() (text []byte, err error) {
+	return []byte(s), nil
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler
+func (s *FramingTrailer) UnmarshalText(text []byte) error {
+	str := string(text)
+	switch str {
+	case "NUL":
+		*s = NULTrailer
+	case "LF":
+		*s = LFTrailer
+	default:
+		return fmt.Errorf("unknown syslog format: %s", str)
+	}
+
+	return nil
+}
+
 // Values taken from tcp input Build function
 const defaultMaxLogSize = helper.ByteSize(tcp.DefaultMaxLogSize)
 const minMaxLogSize = helper.ByteSize(64 * 1024)
@@ -267,8 +287,8 @@ func (args *Arguments) Validate() error {
 			errs = multierror.Append(errs, fmt.Errorf("invalid tcp.encoding: %w", err))
 		}
 
-		if int64(args.TCP.MaxLogSize) < int64(minMaxLogSize) {
-			errs = multierror.Append(errs, fmt.Errorf("invalid value for parameter 'tcp.max_log_size', must be equal to or greater than %d bytes", minMaxLogSize))
+		if args.TCP.MaxLogSize != 0 && (int64(args.TCP.MaxLogSize) < int64(minMaxLogSize)) {
+			errs = multierror.Append(errs, fmt.Errorf("invalid value %d for parameter 'tcp.max_log_size', must be equal to or greater than %d bytes", args.TCP.MaxLogSize, minMaxLogSize))
 		}
 	}
 
