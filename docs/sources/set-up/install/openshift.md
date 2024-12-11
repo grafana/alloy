@@ -54,6 +54,8 @@ You can adapt the SCCs to meet your local requirements and needs.
 * `Volumes`: Specifies the persistent volumes used for storage.
   You must configure this constraint to give {{< param "PRODUCT_NAME" >}} access to the volumes it needs.
 
+## Example DaemonSet configuration
+
 The following example shows a DaemonSet configuration that deploys {{< param "PRODUCT_NAME" >}} as a non-root user:
 
 ```yaml
@@ -63,22 +65,22 @@ metadata:
   name: alloy-logs
   namespace: monitoring
 spec:
-  replicas: 1
   selector:
     matchLabels:
       app: alloy-logs
    template:
      metadata:
-       lables:
+       labels:
          app: alloy-logs
       spec:
         containers:
         - name: alloy-logs
-          image: grafana/alloy:latest
+          image: grafana/alloy:<ALLOY_VERSION>
           ports:
           - containerPort: 12345
           # The security context configuration
           securityContext:
+            readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false
             runAsUser: 473
             runAsGroup: 473
@@ -87,6 +89,16 @@ spec:
          - name: log-volume
            emptyDir: {}
 ```
+
+Replace the following:
+
+* _`<ALLOY_VERSION>`_: Set to the specific {{< param "PRODUCT_NAME" >}} version you are deploying. For example, `1.5.1`.
+
+{{< admonition type="note" >}}
+This example uses the simplest volume type, `emptyDir`. In this example configuration, if your node restarts, your data will be lost. Make sure you set the volume type to a persistent storage location for production environments. Refer to [Using volumes to persist container data](https://docs.openshift.com/container-platform/4.8/nodes/containers/nodes-containers-volumes.html) in the OpenShift documentation for more information.
+{{< /admonition >}}
+
+## Example SSC definition
 
 The following example shows an SSC definition that deploys {{< param "PRODUCT_NAME" >}} as a non-root user:
 
@@ -107,7 +119,36 @@ users:
 - my-admin-user
 groups:
 - my-admin-group
+seLinuxContext:
+  type: MustRunAs
+  user: <SYSTEM_USER>
+  role: <SYSTEM_ROLE>
+  type: <CONTAINER_TYPE>
+  level: <LEVEL>
 ```
+
+Replace the following:
+
+* _`<SYSTEM_USER>`_: The user for your SELinux context.
+* _`<SYSTEM_ROLE>`_: The role for your SELinux context.
+* _`<CONTAINER_TYPE>`_: The container type for your SELinux context.
+* _`<LEVEL>`_: The level  for your SELinux context.
+
+Refer to [SELinux Contexts][selinux] in the RedHat documentation for more information on the SELinux context configuration.
+
+{{< admonition type="note" >}}
+This example sets `volumes:` to `*`. In a production environment, you should set `volumes:` to only the volumes that are necessary for the deployment. For example:
+
+```yaml
+volumes:
+  - configMap
+  - downwardAPI
+  - emptyDir
+  - persistentVolumeClaim
+  - secret 
+```
+
+{{< /admonition >}}
 
 Refer to [Deploy {{< param "FULL_PRODUCT_NAME" >}}][deploy] for more information about deploying {{< param "PRODUCT_NAME" >}} in your environment.
 
@@ -122,3 +163,4 @@ Refer to [Deploy {{< param "FULL_PRODUCT_NAME" >}}][deploy] for more information
 [scc]: https://docs.openshift.com/container-platform/latest/authentication/managing-security-context-constraints.html
 [Configure]: ../../../configure/linux/
 [deploy]: ../../deploy/
+[selinux]: https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/6/html/security-enhanced_linux/chap-security-enhanced_linux-selinux_contexts#chap-Security-Enhanced_Linux-SELinux_Contexts)
