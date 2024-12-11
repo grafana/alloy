@@ -136,8 +136,8 @@ func TestUnmarshal(t *testing.T) {
 			one_log_per_packet = true
 			add_attributes = true
 			encoding = "utf-16be"
-			preserve_leading_whitespace = true
-			preserve_trailing_whitespace = true
+			preserve_leading_whitespaces = true
+			preserve_trailing_whitespaces = true
 			tls {
 				include_system_ca_certs_pool = true
 				reload_interval = "1m"
@@ -149,8 +149,8 @@ func TestUnmarshal(t *testing.T) {
 			one_log_per_packet = false
 			add_attributes = false
 			encoding = "utf-16le"
-			preserve_leading_whitespace = false
-			preserve_trailing_whitespace = false
+			preserve_leading_whitespaces = false
+			preserve_trailing_whitespaces = false
 			async {
 				readers = 2
 				processors = 4

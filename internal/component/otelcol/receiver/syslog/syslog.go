@@ -112,8 +112,8 @@ type UDP struct {
 }
 
 type TrimConfig struct {
-	PreserveLeadingWhitespace  bool `alloy:"preserve_leading_whitespace,attr,optional"`
-	PreserveTrailingWhitespace bool `alloy:"preserve_trailing_whitespace,attr,optional"`
+	PreserveLeadingWhitespace  bool `alloy:"preserve_leading_whitespaces,attr,optional"`
+	PreserveTrailingWhitespace bool `alloy:"preserve_trailing_whitespaces,attr,optional"`
 }
 
 func (c *TrimConfig) Convert() *trim.Config {
