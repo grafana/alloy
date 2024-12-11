@@ -184,6 +184,15 @@ func (r *Receiver) Update(args component.Arguments) error {
 
 	next := r.args.NextConsumers()
 
+	// // if the otel config satisfies the operator.Builder interface we need to use the Build() function
+	// // to create the receiver
+	// if builder, ok := receiverConfig.(operator.Builder); ok {
+	// 	op, err := builder.Build(settings.TelemetrySettings)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// }
+
 	// Create instances of the receiver from our factory for each of our
 	// supported telemetry signals.
 	var components []otelcomponent.Component
