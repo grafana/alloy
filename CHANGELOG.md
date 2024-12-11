@@ -28,6 +28,8 @@ Main (unreleased)
 
 - Add `otelcol.receiver.influxdb` to convert influx metric into OTEL. (@EHSchmitt4395)
 
+- Add a new `/-/healthy` endpoint which returns HTTP 500 if one or more components are unhealthy. (@ptodev)
+
 ### Enhancements
 
 - Add second metrics sample to the support bundle to provide delta information (@dehaansa)
