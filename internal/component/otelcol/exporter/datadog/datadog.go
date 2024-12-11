@@ -42,7 +42,7 @@ func init() {
 			// Since we don't have that, we disable the feature gate to allow the exporter to compute APM stats.
 			// See https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/exporter/datadogexporter for more
 			featuregate.GlobalRegistry().Set("exporter.datadogexporter.DisableAPMStats", false)
-			return exporter.New(opts, fact, args.(Arguments), exporter.TypeAll)
+			return exporter.New(opts, fact, args.(Arguments), exporter.TypeSignalConstFunc(exporter.TypeAll))
 		},
 	})
 }
