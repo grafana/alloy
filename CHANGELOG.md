@@ -52,6 +52,8 @@ Main (unreleased)
 
 - Use a forked `github.com/goccy/go-json` module which reduces the memory consumption of an Alloy instance by 20MB.
   If Alloy is running certain otelcol components, this reduction will not apply. (@ptodev)
+  
+- Update `prometheus.write.queue` library for performance increases in cpu. (@mattdurham)
 
 ### Bugfixes
 
