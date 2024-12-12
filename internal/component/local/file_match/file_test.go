@@ -76,7 +76,7 @@ func TestFileIgnoreOlder(t *testing.T) {
 	ct, ccl := context.WithTimeout(ct, 5*time.Second)
 	defer ccl()
 	c.args.SyncPeriod = 10 * time.Millisecond
-	c.args.IgnoreOlder = 100 * time.Millisecond
+	c.args.IgnoreOlderThan = 100 * time.Millisecond
 	c.Update(c.args)
 	go c.Run(ct)
 

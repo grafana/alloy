@@ -15,9 +15,9 @@ import (
 
 // watch handles a single discovery.target for file watching.
 type watch struct {
-	target      discovery.Target
-	log         log.Logger
-	ignoreOlder time.Duration
+	target          discovery.Target
+	log             log.Logger
+	ignoreOlderThan time.Duration
 }
 
 func (w *watch) getPaths() ([]discovery.Target, error) {
@@ -51,7 +51,7 @@ func (w *watch) getPaths() ([]discovery.Target, error) {
 			continue
 		}
 
-		if w.ignoreOlder != 0 && fi.ModTime().Before(time.Now().Add(-w.ignoreOlder)) {
+		if w.ignoreOlderThan != 0 && fi.ModTime().Before(time.Now().Add(-w.ignoreOlderThan)) {
 			continue
 		}
 
