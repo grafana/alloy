@@ -100,7 +100,7 @@ The following arguments are supported:
 | `one_log_per_packet`            | `bool`   | Skip log tokenization, improving performance when messages always contain one log and multiline is not used. | `false` | no       |
 | `add_attributes`                | `bool`   | Add net.* attributes to log messages according to OpenTelemetry semantic conventions.                        | `false` | no       |
 | `encoding`                      | `string` | The encoding of the syslog messages.                                                                         | `utf-8` | no       |
-| `preserve_leading_whitespaces`  | `bool`   | Preserves leading whitespace in messages when set to `true` .                                                 | `false` | no       |
+| `preserve_leading_whitespaces`  | `bool`   | Preserves leading whitespace in messages when set to `true`.                                                 | `false` | no       |
 | `preserve_trailing_whitespaces` | `bool`   | Preserves trailing whitespace in messages when set to `true`.                                                 | `false` | no       |
 
 The `encoding` argument specifies the encoding of the incoming syslog messages.
