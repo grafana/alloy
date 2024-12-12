@@ -8,14 +8,14 @@
 
 * @grafana/grafana-alloy-maintainers
 
-#`make docs` procedure and related workflows are owned by @grafana/docs-tooling.
-/.github/workflows/deploy-pr-preview.yml                       @grafana/docs-tooling
-/.github/workflows/publish-technical-documentation-next.yml    @grafana/docs-tooling
-/.github/workflows/publish-technical-documentation-release.yml @grafana/docs-tooling
-/.github/workflows/update-make-docs.yml                        @grafana/docs-tooling
-/docs/docs.mk                                                  @grafana/docs-tooling
-/docs/make-docs                                                @grafana/docs-tooling
-/docs/variables.mk                                             @grafana/docs-tooling
+#`make docs` procedure and related workflows are owned by @jdbaldry.
+/.github/workflows/deploy-pr-preview.yml                       @jdbaldry
+/.github/workflows/publish-technical-documentation-next.yml    @jdbaldry
+/.github/workflows/publish-technical-documentation-release.yml @jdbaldry
+/.github/workflows/update-make-docs.yml                        @jdbaldry
+/docs/docs.mk                                                  @jdbaldry
+/docs/make-docs                                                @jdbaldry
+/docs/variables.mk                                             @jdbaldry
 
 # Documentation:
 /docs/sources/ @clayton-cornell
