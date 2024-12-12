@@ -52,6 +52,7 @@ Main (unreleased)
 
 - Use a forked `github.com/goccy/go-json` module which reduces the memory consumption of an Alloy instance by 20MB.
   If Alloy is running certain otelcol components, this reduction will not apply. (@ptodev)
+- improve performance in regexp component: call fmt only if debug is enabled (@r0ka)
 
 ### Bugfixes
 
