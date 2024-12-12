@@ -95,7 +95,7 @@ Replace the following:
 * _`<ALLOY_VERSION>`_: Set to the specific {{< param "PRODUCT_NAME" >}} version you are deploying. For example, `1.5.1`.
 
 {{< admonition type="note" >}}
-This example uses the simplest volume type, `emptyDir`. In this example configuration, if your node restarts, your data will be lost. Make sure you set the volume type to a persistent storage location for production environments. Refer to [Using volumes to persist container data](https://docs.openshift.com/container-platform/4.8/nodes/containers/nodes-containers-volumes.html) in the OpenShift documentation for more information.
+This example uses the simplest volume type, `emptyDir`. In this example configuration, if your node restarts, your data will be lost. Make sure you set the volume type to a persistent storage location for production environments. Refer to [Using volumes to persist container data](https://docs.openshift.com/container-platform/latest/nodes/containers/nodes-containers-volumes.html) in the OpenShift documentation for more information.
 {{< /admonition >}}
 
 ## Example SSC definition
@@ -157,7 +157,7 @@ Refer to [Deploy {{< param "FULL_PRODUCT_NAME" >}}][deploy] for more information
 * [Configure {{< param "PRODUCT_NAME" >}}][Configure]
 
 [rbac.yaml]: https://github.com/grafana/alloy/blob/main/operations/helm/charts/alloy/templates/rbac.yaml
-[rbac]: https://docs.openshift.com/container-platform/3.11/admin_guide/manage_rbac.html
+[rbac]: https://docs.openshift.com/container-platform/latest/authentication/using-rbac.html
 [security]: https://grafana.com/docs/grafana-cloud/monitor-infrastructure/kubernetes-monitoring/configuration/troubleshooting/#openshift-support
 [nonroot]: ../../../configure/nonroot/
 [scc]: https://docs.openshift.com/container-platform/latest/authentication/managing-security-context-constraints.html
