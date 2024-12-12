@@ -13,7 +13,7 @@ You can deploy {{< param "PRODUCT_NAME" >}} on the Red Hat OpenShift Container P
 ## Before you begin
 
 * These steps assume you have a working OCP environment.
-* You can adapt the suggested policies and configuration to meet your specific needs and [security][] policies.
+* You can adapt the suggested policies and configuration to meet your specific needs and security policies.
 
 ## Configure RBAC
 
@@ -158,7 +158,6 @@ Refer to [Deploy {{< param "FULL_PRODUCT_NAME" >}}][deploy] for more information
 
 [rbac.yaml]: https://github.com/grafana/alloy/blob/main/operations/helm/charts/alloy/templates/rbac.yaml
 [rbac]: https://docs.openshift.com/container-platform/latest/authentication/using-rbac.html
-[security]: https://grafana.com/docs/grafana-cloud/monitor-infrastructure/kubernetes-monitoring/configuration/troubleshooting/#openshift-support
 [nonroot]: ../../../configure/nonroot/
 [scc]: https://docs.openshift.com/container-platform/latest/authentication/managing-security-context-constraints.html
 [Configure]: ../../../configure/linux/
