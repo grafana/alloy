@@ -12,6 +12,8 @@ Main (unreleased)
 
 ### Features
 
+- Add support for metrics in `otelcol.exporter.loadbalancing` (@madaraszg-tulip)
+
 - Add `add_cloudwatch_timestamp` to `prometheus.exporter.cloudwatch` metrics. (@captncraig)
 
 - Add support to `prometheus.operator.servicemonitors` to allow `endpointslice` role. (@yoyosir)
@@ -25,6 +27,8 @@ Main (unreleased)
 - (_Experimental_) Add a `database_observability.mysql` component to collect mysql performance data. (@cristiangreco & @matthewnolf)
 
 - Add `otelcol.receiver.influxdb` to convert influx metric into OTEL. (@EHSchmitt4395)
+
+- Add a new `/-/healthy` endpoint which returns HTTP 500 if one or more components are unhealthy. (@ptodev)
 
 ### Enhancements
 
@@ -47,6 +51,9 @@ Main (unreleased)
   - Add perf_schema quantile columns to collector
 
 - Add three new stdlib functions to_base64, from_URLbase64 and to_URLbase64 (@ravishankar15)
+
+- Use a forked `github.com/goccy/go-json` module which reduces the memory consumption of an Alloy instance by 20MB.
+  If Alloy is running certain otelcol components, this reduction will not apply. (@ptodev)
 
 ### Bugfixes
 
