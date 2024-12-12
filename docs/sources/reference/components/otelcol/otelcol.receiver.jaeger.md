@@ -101,6 +101,7 @@ Name                     | Type      | Description                              
 `read_buffer_size`       | `string`  | Size of the read buffer the gRPC server will use for reading from clients. | `"512KiB"`        | no
 `write_buffer_size`      | `string`  | Size of the write buffer the gRPC server will use for writing to clients.  |                   | no
 `include_metadata`       | `boolean` | Propagate incoming connection metadata to downstream consumers.            |                   | no
+`auth`              | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests.     |               | no
 
 ### tls block
 
@@ -154,6 +155,7 @@ Name                     | Type      | Description                              
 `max_request_body_size`  | `string`  | Maximum request body size the server will allow.                | `20MiB`           | no
 `include_metadata`       | `boolean` | Propagate incoming connection metadata to downstream consumers. |                   | no
 `compression_algorithms` | `list(string)` | A list of compression algorithms the server can accept.    | `["", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"]` | no
+`auth`              | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests.     |               | no
 
 ### cors block
 
@@ -261,6 +263,28 @@ otelcol.exporter.otlp "default" {
 ## Technical details
 
 `otelcol.receiver.jaeger` supports [Gzip](https://en.wikipedia.org/wiki/Gzip) for compression.
+
+## Enabling Authentication
+
+You can create a `jaeger` receiver that requires authentication for requests. This is useful for limiting who can push data to the server. Note that not all OpenTelemetry Collector (otelcol) authentication plugins support receiver authentication. Please refer to the documentation for each `otelcol.auth.*` plugin to determine its compatibility. This functionality is currently limited to the GRPC/HTTP blocks.
+
+```alloy
+otelcol.receiver.jaeger "default" {
+  protocols {
+    grpc {
+      auth = otelcol.auth.basic.creds.handler
+    }
+    thrift_http {
+      auth = otelcol.auth.basic.creds.handler
+    }
+  }
+}
+
+otelcol.auth.basic "creds" {
+    username = sys.env("USERNAME")
+    password = sys.env("PASSWORD")
+}
+```
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
