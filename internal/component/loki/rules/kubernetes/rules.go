@@ -12,6 +12,7 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 	lokiClient "github.com/grafana/alloy/internal/loki/client"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/dskit/instrument"
 	promListers "github.com/prometheus-operator/prometheus-operator/pkg/client/listers/monitoring/v1"
@@ -82,13 +83,11 @@ type metrics struct {
 }
 
 func (m *metrics) Register(r prometheus.Registerer) error {
-	r.MustRegister(
-		m.configUpdatesTotal,
-		m.eventsTotal,
-		m.eventsFailed,
-		m.eventsRetried,
-		m.lokiClientTiming,
-	)
+	m.configUpdatesTotal = util.MustRegisterOrGet(r, m.configUpdatesTotal).(prometheus.Counter)
+	m.eventsTotal = util.MustRegisterOrGet(r, m.eventsTotal).(*prometheus.CounterVec)
+	m.eventsFailed = util.MustRegisterOrGet(r, m.eventsFailed).(*prometheus.CounterVec)
+	m.eventsRetried = util.MustRegisterOrGet(r, m.eventsRetried).(*prometheus.CounterVec)
+	m.lokiClientTiming = util.MustRegisterOrGet(r, m.lokiClientTiming).(*prometheus.HistogramVec)
 	return nil
 }
 
