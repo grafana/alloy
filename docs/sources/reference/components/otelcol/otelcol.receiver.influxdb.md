@@ -32,6 +32,7 @@ otelcol.receiver.influxdb "influxdb_metrics" {
 | `max_request_body_size`  | `string`       | Maximum request body size the server will allow.                | `20MiB`                                                    | no       |
 | `include_metadata`       | `boolean`      | Propagate incoming connection metadata to downstream consumers. |                                                            | no       |
 | `compression_algorithms` | `list(string)` | A list of compression algorithms the server can accept.         | `["", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"]` | no       |
+`auth`              | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests.     |               | no
 
 By default, `otelcol.receiver.influxdb` listens for HTTP connections on `localhost`.
 To expose the HTTP server to other machines on your network, configure `endpoint` with the IP address to listen on, or `0.0.0.0:8086` to listen on all network interfaces.
@@ -147,6 +148,24 @@ prometheus.remote_write "mimir" {
       password = "xxxx=="
     }
   }
+}
+```
+
+## Enabling Authentication
+
+You can create a `influxdb` receiver that requires authentication for requests. This is useful for limiting who can push data to the server. Note that not all OpenTelemetry Collector (otelcol) authentication plugins support receiver authentication. Please refer to the documentation for each `otelcol.auth.*` plugin to determine its compatibility.
+
+```alloy
+otelcol.receiver.influxdb "influxdb_metrics" {
+  output {
+    metrics = [...]
+  }
+  auth = otelcol.auth.basic.creds.handler
+}
+
+otelcol.auth.basic "creds" {
+    username = sys.env("USERNAME")
+    password = sys.env("PASSWORD")
 }
 ```
 
