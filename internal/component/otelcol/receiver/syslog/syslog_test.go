@@ -57,6 +57,7 @@ func Test(t *testing.T) {
 	}()
 
 	require.NoError(t, ctrl.WaitRunning(3*time.Second))
+	// TODO(@dehaansa) - test if this is removeable after https://github.com/grafana/alloy/pull/2262
 	time.Sleep(1 * time.Second)
 
 	// Send traces in the background to our receiver.
