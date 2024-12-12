@@ -4,6 +4,8 @@ description: Learn about otelcol.receiver.syslog
 title: otelcol.receiver.syslog
 ---
 
+<span class="badge docs-labels__stage docs-labels__item">Public preview</span>
+
 # otelcol.receiver.syslog
 
 {{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
