@@ -50,10 +50,10 @@ The following arguments are supported:
 | `non_transparent_framing_trailer` | `string` | The framing trailer when using RFC6587 Non-Transparent-Framing.    | `nil`     | no       |
 
 The `protocol` argument specifies the syslog format supported by the receiver.
-`protocol` must be one of `rfc5424`, `rfc3164`
+`protocol` must be one of `rfc5424` or `rfc3164`
 
 The `location` argument specifies a Time Zone identifier. The available locations depend on the local IANA Time Zone database.
-See [this wikipedia entry][tz-wiki] for a non-comprehensive list.
+Refer to the [list of tz database time zones][tz-wiki] in Wikipedia for a non-comprehensive list.
 
 The `non_transparent_framing_trailer` and `enable_octet_counting` arguments specify TCP syslog behavior as defined in [RFC6587].
 These arguments are mutually exclusive.
@@ -111,7 +111,7 @@ The following arguments are supported:
 | `preserve_trailing_whitespaces` | `bool`   | Preserves trailing whitespace in messages when set to `true`.                                                 | `false` | no       |
 
 The `encoding` argument specifies the encoding of the incoming syslog messages.
-`encoding` must be one of `utf-8`, `utf-16le`, `utf-16be`, `ascii`, `big5`, `nop`. 
+`encoding` must be one of `utf-8`, `utf-16le`, `utf-16be`, `ascii`, `big5`, or `nop`. 
 Refer to the upstream receiver [documentation][encoding-documentation] for more details.
 
 ### multiline block
