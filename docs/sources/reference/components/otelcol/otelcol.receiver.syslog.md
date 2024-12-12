@@ -53,10 +53,13 @@ The `protocol` argument specifies the syslog format supported by the receiver.
 The `location` argument specifies a Time Zone identifier. The available locations depend on the local IANA Time Zone database.
 See [this wikipedia entry][tz-wiki] for a non-comprehensive list.
 
-The `non_transparent_framing_trailer` argument must be one of `LF`, `NUL`.
+The `non_transparent_framing_trailer` and `enable_octet_counting` arguments specify TCP syslog behavior as defined in [RFC6587].
+These arguments are mutually exclusive.
+They can't be used with a UDP syslog listener configured.
+If configured, the `non_transparent_framing_trailer` argument must be one of `LF`, `NUL`.
 
-The `non_transparent_framing_trailer` and `enable_octet_counting` arguments can't be used with a UDP syslog server.
 
+[RFC6587]: https://datatracker.ietf.org/doc/html/rfc6587
 [tz-wiki]: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
 
 ## Blocks
