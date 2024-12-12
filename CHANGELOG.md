@@ -619,6 +619,10 @@ v1.2.0
 
 - Added support for NS records to `discovery.dns`. (@djcode)
 
+- In `loki.rules.kubernetes`, add support for running in a cluster of Alloy instances
+  by electing a single instance as the leader for the `loki.rules.kubernetes` component
+  to avoid conflicts when making calls to the Loki API. (@toontijtgat2)
+
 - Improved clustering use cases for tracking GCP delta metrics in the `prometheus.exporter.gcp` (@kgeckhart)
 
 - Add the `targets` argument to the `prometheus.exporter.snmp` component to support passing SNMP targets at runtime. (@wildum)
