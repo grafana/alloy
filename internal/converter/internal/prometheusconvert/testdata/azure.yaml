@@ -15,6 +15,7 @@ scrape_configs:
         client_secret: "secret"
         proxy_url: "proxy"
         follow_redirects: false
+        authentication_method: "ManagedIdentity"
 
 remote_write:
   - name: "remote1"

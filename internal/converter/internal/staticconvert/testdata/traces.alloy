@@ -52,10 +52,6 @@ discovery.azure "_0_default_prometheus1" {
 		tenant_id     = "tenant1"
 		client_secret = "secret1"
 	}
-
-	managed_identity {
-		client_id = "client1"
-	}
 }
 
 discovery.lightsail "_0_default_prometheus1" {
@@ -118,8 +114,7 @@ prometheus.relabel "_0_default" {
 }
 
 otelcol.exporter.prometheus "_0_default" {
-	gc_frequency = "0s"
-	forward_to   = [prometheus.relabel._0_default.receiver]
+	forward_to = [prometheus.relabel._0_default.receiver]
 }
 
 otelcol.exporter.loadbalancing "_0_default" {
@@ -204,8 +199,7 @@ prometheus.relabel "_1_default" {
 }
 
 otelcol.exporter.prometheus "_1_default" {
-	gc_frequency = "0s"
-	forward_to   = [prometheus.relabel._1_default.receiver]
+	forward_to = [prometheus.relabel._1_default.receiver]
 }
 
 otelcol.exporter.otlp "_1_0" {

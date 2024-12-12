@@ -6,10 +6,6 @@ discovery.azure "prometheus2" {
 		tenant_id     = "tenant"
 		client_secret = "secret"
 	}
-
-	managed_identity {
-		client_id = "client"
-	}
 }
 
 discovery.relabel "prometheus1" {
