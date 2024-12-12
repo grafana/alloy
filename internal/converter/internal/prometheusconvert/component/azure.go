@@ -25,12 +25,10 @@ func toDiscoveryAzure(sdConfig *prom_azure.SDConfig) *azure.Arguments {
 		return nil
 	}
 
-	return &azure.Arguments{
+	args := &azure.Arguments{
 		Environment:     sdConfig.Environment,
 		Port:            sdConfig.Port,
 		SubscriptionID:  sdConfig.SubscriptionID,
-		OAuth:           toDiscoveryAzureOauth2(sdConfig.ClientID, sdConfig.TenantID, string(sdConfig.ClientSecret)),
-		ManagedIdentity: toManagedIdentity(sdConfig),
 		RefreshInterval: time.Duration(sdConfig.RefreshInterval),
 		ResourceGroup:   sdConfig.ResourceGroup,
 		ProxyConfig:     common.ToProxyConfig(sdConfig.HTTPClientConfig.ProxyConfig),
@@ -38,6 +36,16 @@ func toDiscoveryAzure(sdConfig *prom_azure.SDConfig) *azure.Arguments {
 		EnableHTTP2:     sdConfig.HTTPClientConfig.EnableHTTP2,
 		TLSConfig:       *common.ToTLSConfig(&sdConfig.HTTPClientConfig.TLSConfig),
 	}
+
+	// Only one auth method is allowed.
+	switch sdConfig.AuthenticationMethod {
+	case "ManagedIdentity":
+		args.ManagedIdentity = toManagedIdentity(sdConfig)
+	default:
+		args.OAuth = toDiscoveryAzureOauth2(sdConfig.ClientID, sdConfig.TenantID, string(sdConfig.ClientSecret))
+	}
+
+	return args
 }
 
 func ValidateDiscoveryAzure(sdConfig *prom_azure.SDConfig) diag.Diagnostics {

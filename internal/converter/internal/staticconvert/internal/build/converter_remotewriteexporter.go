@@ -91,13 +91,20 @@ func toremotewriteexporterConfig(cfg *remotewriteexporter.Config, forwardTo []st
 	defaultArgs := &prometheus.Arguments{}
 	defaultArgs.SetToDefault()
 
-	return &prometheus.Arguments{
+	args := &prometheus.Arguments{
 		IncludeTargetInfo:             defaultArgs.IncludeTargetInfo,
 		IncludeScopeInfo:              defaultArgs.IncludeScopeInfo,
 		IncludeScopeLabels:            defaultArgs.IncludeScopeLabels,
-		GCFrequency:                   cfg.StaleTime,
+		GCFrequency:                   defaultArgs.GCFrequency,
 		ForwardTo:                     forwardTo,
 		AddMetricSuffixes:             defaultArgs.AddMetricSuffixes,
 		ResourceToTelemetryConversion: defaultArgs.ResourceToTelemetryConversion,
 	}
+
+	// Override default only if > 0 because GCFrequency of 0 is not allowed
+	if cfg.StaleTime > 0 {
+		args.GCFrequency = cfg.StaleTime
+	}
+
+	return args
 }
