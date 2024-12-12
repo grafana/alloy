@@ -57,6 +57,7 @@ func Test(t *testing.T) {
 	}()
 
 	require.NoError(t, ctrl.WaitRunning(3*time.Second))
+	time.Sleep(1 * time.Second)
 
 	// Send traces in the background to our receiver.
 	go func() {
