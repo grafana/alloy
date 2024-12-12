@@ -3,6 +3,7 @@ package test_common
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"fmt"
 	"io/fs"
 	"os"
@@ -12,6 +13,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/featuregate"
 	alloy_runtime "github.com/grafana/alloy/internal/runtime"
@@ -20,6 +22,7 @@ import (
 	cluster_service "github.com/grafana/alloy/internal/service/cluster"
 	http_service "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/service/labelstore"
+	"github.com/grafana/alloy/internal/service/livedebugging"
 	remotecfg_service "github.com/grafana/alloy/internal/service/remotecfg"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
@@ -214,14 +217,42 @@ func attemptLoadingAlloyConfig(t *testing.T, bb []byte) {
 			clusterService,
 			labelstore.New(nil, prometheus.DefaultRegisterer),
 			remotecfgService,
+			livedebugging.New(),
 		},
 		EnableCommunityComps: true,
 	})
 	err = f.LoadSource(cfg, nil, "")
 
+	// This is a bit of an ugly workaround but the spanmetrics connector is starting a go routine in its start function.
+	// If the goroutine is not stopped, it will result in a panic. To stop it we need to run the Alloy controller to run the component and then stop it.
+	// We cannot run the Alloy controller for all tests because some components such as the statsd_exporter will panic after being stopped and some other components have wrong config.
+	runAlloyController := false
+	components, err := f.ListComponents("", component.InfoOptions{})
+	require.NoError(t, err)
+	for _, component := range components {
+		if component.ComponentName == "otelcol.connector.spanmetrics" {
+			runAlloyController = true
+			break
+		}
+	}
+
+	if runAlloyController {
+		ctx, cancel := context.WithCancel(context.Background())
+		done := make(chan struct{})
+		go func() {
+			f.Run(ctx)
+			close(done)
+		}()
+		defer func() {
+			cancel()
+			<-done
+		}()
+	}
+
 	// Many components will fail to build as e.g. the cert files are missing, so we ignore these errors.
 	// This is not ideal, but we still validate for other potential issues.
-	if err != nil && strings.Contains(err.Error(), "Failed to build component") {
+	// Tests that require the Alloy controller to run should not have build error else the components won't run.
+	if !runAlloyController && err != nil && strings.Contains(err.Error(), "Failed to build component") {
 		t.Log("ignoring error: " + err.Error())
 		return
 	}
