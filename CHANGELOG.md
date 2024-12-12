@@ -57,6 +57,8 @@ Main (unreleased)
 
 ### Bugfixes
 
+- Fixed issue with automemlimit logging bad messages and trying to access cgroup on non-linux builds (@dehaansa)
+
 - Fixed issue with reloading configuration and prometheus metrics duplication in `prometheus.write.queue`. (@mattdurham)
 
 - Updated `prometheus.write.queue` to fix issue with TTL comparing different scales of time. (@mattdurham)
