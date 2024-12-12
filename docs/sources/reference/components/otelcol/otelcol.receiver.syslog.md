@@ -53,7 +53,7 @@ See [this wikipedia entry][tz-wiki] for a non-comprehensive list.
 
 The `non_transparent_framing_trailer` argument must be one of `LF`, `NUL`.
 
-The `non_transparent_framing_trailer` and `enable_octet_counting` arguments cannot be used with a UDP syslog server.
+The `non_transparent_framing_trailer` and `enable_octet_counting` arguments can't be used with a UDP syslog server.
 
 [tz-wiki]: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
 
