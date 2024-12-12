@@ -61,6 +61,8 @@ Main (unreleased)
 
 - Fixed an issue where the `otelcol.processor.interval` could not be used because the debug metrics were not set to default. (@wildum)
 
+- Fix conversion of static config to Alloy for `discovery.azure` and `otelcol.exporter.prometheus`. (@wildum) 
+
 ### Other changes
 
 - Change the stability of the `livedebugging` feature from "experimental" to "generally available". (@wildum)
