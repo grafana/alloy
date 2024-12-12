@@ -6,6 +6,8 @@ title: otelcol.receiver.syslog
 
 # otelcol.receiver.syslog
 
+{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
 `otelcol.receiver.syslog` accepts syslog messages over the network and forwards them as logs to other `otelcol.*` components.
 It supports syslog protocols [RFC5424][] and [RFC3164][] and can receive data over `TCP` or `UDP`.
 
@@ -143,7 +145,7 @@ The following arguments are supported:
 | Name                            | Type     | Description                                                                                                  | Default | Required |
 |---------------------------------|----------|--------------------------------------------------------------------------------------------------------------|---------|----------|
 | `listen_address`                | `string` | The `<host:port>` address to listen to for syslog messages.                                                  |         | yes      |
-| `max_log_size`                  | `int`    | The maximum size of a log entry to read before failing.                                                      | `1MiB`  | no       |
+| `max_log_size`                  | `string` | The maximum size of a log entry to read before failing.                                                      | `1MiB`  | no       |
 | `one_log_per_packet`            | `bool`   | Skip log tokenization, improving performance when messages always contain one log and multiline is not used. | `false` | no       |
 | `add_attributes`                | `bool`   | Add net.* attributes to log messages according to OpenTelemetry semantic conventions.                        | `false` | no       |
 | `encoding`                      | `string` | The encoding of the syslog messages.                                                                         | `utf-8` | no       |
@@ -172,9 +174,9 @@ The following arguments are supported:
 | Name               | Type       | Description                                                                                               | Default      | Required |
 |--------------------|------------|-----------------------------------------------------------------------------------------------------------|--------------|----------|
 | `enabled`          | `bool`     | If true, the receiver will pause reading a file and attempt to resend the current batch of logs on error. | `false`      | no       |
-| `initial_interval` | `duration` | The time to wait after first failure to retry.                                                            | `1 second`   | no       |
-| `max_interval`     | `duration` | The maximum time to wait after applying backoff logic.                                                    | `30 seconds` | no       |
-| `max_elapsed_time` | `duration` | The maximum age of a message before the data is discarded.                                                | `5 minutes`  | no       |
+| `initial_interval` | `duration` | The time to wait after first failure to retry.                                                            | `1s`   | no       |
+| `max_interval`     | `duration` | The maximum time to wait after applying backoff logic.                                                    | `30s` | no       |
+| `max_elapsed_time` | `duration` | The maximum age of a message before the data is discarded.                                                | `5m`  | no       |
 
 If `max_elapsed_time` is set to `0` data will never be discarded.
 

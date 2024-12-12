@@ -87,7 +87,7 @@ func (s *FramingTrailer) UnmarshalText(text []byte) error {
 }
 
 // Values taken from tcp input Build function
-const defaultMaxLogSize = helper.ByteSize(tcp.DefaultMaxLogSize)
+const tcpDefaultMaxLogSize = helper.ByteSize(tcp.DefaultMaxLogSize)
 const minMaxLogSize = helper.ByteSize(64 * 1024)
 
 type TCP struct {
@@ -203,7 +203,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 			Encoding:        args.TCP.Encoding,
 		}
 		if c.TCP.MaxLogSize == 0 {
-			c.TCP.MaxLogSize = defaultMaxLogSize
+			c.TCP.MaxLogSize = tcpDefaultMaxLogSize
 		}
 		split := args.TCP.MultilineConfig.Convert()
 		if split != nil {
