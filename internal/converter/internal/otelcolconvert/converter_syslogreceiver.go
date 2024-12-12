@@ -50,13 +50,17 @@ func (syslogReceiverConverter) ConvertAndAppend(state *State, id componentstatus
 
 func toOtelcolReceiversyslog(cfg *syslogreceiver.SysLogConfig) *syslog.Arguments {
 	args := &syslog.Arguments{
-		Protocol:                     config.SysLogFormat(cfg.InputConfig.Protocol),
-		Location:                     cfg.InputConfig.Location,
-		EnableOctetCounting:          cfg.InputConfig.EnableOctetCounting,
-		AllowSkipPriHeader:           cfg.InputConfig.AllowSkipPriHeader,
-		NonTransparentFramingTrailer: syslog.FramingTrailer(*cfg.InputConfig.NonTransparentFramingTrailer),
-		MaxOctets:                    cfg.InputConfig.MaxOctets,
-		DebugMetrics:                 common.DefaultValue[syslog.Arguments]().DebugMetrics,
+		Protocol:            config.SysLogFormat(cfg.InputConfig.Protocol),
+		Location:            cfg.InputConfig.Location,
+		EnableOctetCounting: cfg.InputConfig.EnableOctetCounting,
+		AllowSkipPriHeader:  cfg.InputConfig.AllowSkipPriHeader,
+		MaxOctets:           cfg.InputConfig.MaxOctets,
+		DebugMetrics:        common.DefaultValue[syslog.Arguments]().DebugMetrics,
+	}
+
+	if cfg.InputConfig.NonTransparentFramingTrailer != nil {
+		trailer := syslog.FramingTrailer(*cfg.InputConfig.NonTransparentFramingTrailer)
+		args.NonTransparentFramingTrailer = &trailer
 	}
 
 	if cfg.InputConfig.TCP != nil {
