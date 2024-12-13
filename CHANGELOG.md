@@ -28,6 +28,8 @@ Main (unreleased)
 
 - Add `otelcol.receiver.influxdb` to convert influx metric into OTEL. (@EHSchmitt4395)
 
+- Add a new `/-/healthy` endpoint which returns HTTP 500 if one or more components are unhealthy. (@ptodev)
+
 ### Enhancements
 
 - Add second metrics sample to the support bundle to provide delta information (@dehaansa)
@@ -50,8 +52,12 @@ Main (unreleased)
 
 - Use a forked `github.com/goccy/go-json` module which reduces the memory consumption of an Alloy instance by 20MB.
   If Alloy is running certain otelcol components, this reduction will not apply. (@ptodev)
+  
+- Update `prometheus.write.queue` library for performance increases in cpu. (@mattdurham)
 
 ### Bugfixes
+
+- Fixed issue with automemlimit logging bad messages and trying to access cgroup on non-linux builds (@dehaansa)
 
 - Fixed issue with reloading configuration and prometheus metrics duplication in `prometheus.write.queue`. (@mattdurham)
 

@@ -4,7 +4,10 @@ package dockertarget
 // The dockertarget package is used to configure and run the targets that can
 // read logs from Docker containers and forward them to other loki components.
 
-import "github.com/prometheus/client_golang/prometheus"
+import (
+	"github.com/grafana/alloy/internal/util"
+	"github.com/prometheus/client_golang/prometheus"
+)
 
 // Metrics holds a set of Docker target metrics.
 type Metrics struct {
@@ -30,10 +33,8 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 	})
 
 	if reg != nil {
-		reg.MustRegister(
-			m.dockerEntries,
-			m.dockerErrors,
-		)
+		m.dockerEntries = util.MustRegisterOrGet(reg, m.dockerEntries).(prometheus.Counter)
+		m.dockerErrors = util.MustRegisterOrGet(reg, m.dockerErrors).(prometheus.Counter)
 	}
 
 	return &m
