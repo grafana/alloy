@@ -51,13 +51,14 @@ func (w *watch) getPaths() ([]discovery.Target, error) {
 			continue
 		}
 
+		if fi.IsDir() {
+			continue
+		}
+
 		if w.ignoreOlderThan != 0 && fi.ModTime().Before(time.Now().Add(-w.ignoreOlderThan)) {
 			continue
 		}
 
-		if fi.IsDir() {
-			continue
-		}
 		dt := discovery.Target{}
 		for dk, v := range w.target {
 			dt[dk] = v
