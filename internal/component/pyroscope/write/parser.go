@@ -192,7 +192,7 @@ func validateAppName(n string) error {
 }
 
 func isAppNameRuneAllowed(r rune) bool {
-	return r == '-' || r == '.' || isTagKeyRuneAllowed(r)
+	return r == '-' || r == '.' || r == '/' || isTagKeyRuneAllowed(r)
 }
 
 func isTagKeyReserved(k string) bool {

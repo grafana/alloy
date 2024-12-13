@@ -21,7 +21,7 @@ The language considers all direct and indirect dependencies between elements to 
 
 ## Identifiers
 
-{{< param "PRODUCT_NAME" >}} syntax considers an identifier as valid if it consists of one or more UTF-8 letters (A through Z, both upper- and lower-case), digits or underscores, but doesn't start with a digit.
+{{< param "PRODUCT_NAME" >}} syntax considers an identifier as valid if it consists of one or more UTF-8 letters (A through Z, both upper- and lower-case), digits, or underscores, but doesn't start with a digit.
 
 ## Attributes and Blocks
 
@@ -100,7 +100,6 @@ All block and attribute definitions are followed by a newline, which {{< param "
 A newline is treated as a terminator when it follows any expression, `]`, `)`, or `}`.
 {{< param "PRODUCT_NAME" >}} ignores other newlines and you can enter as many newlines as you want.
 
-[identifier]: #identifiers
 [identifier]: #identifiers
 [expression]: ../expressions/
 [type]: ../expressions/types_and_values/

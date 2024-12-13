@@ -27,7 +27,7 @@ spec:
       serviceAccountName: alloy
       containers:
         - name: alloy
-          image: docker.io/grafana/alloy:v1.5.0
+          image: docker.io/grafana/alloy:v1.5.1
           imagePullPolicy: IfNotPresent
           args:
             - run
@@ -60,7 +60,7 @@ spec:
               mountPath: /etc/geoip
               name: geoip
         - name: config-reloader
-          image: ghcr.io/jimmidyson/configmap-reload:v0.12.0
+          image: ghcr.io/jimmidyson/configmap-reload:v0.14.0
           args:
             - --volume-dir=/etc/alloy
             - --webhook-url=http://localhost:12345/-/reload

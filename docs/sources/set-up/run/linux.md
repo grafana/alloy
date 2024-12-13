@@ -20,7 +20,7 @@ To start {{< param "PRODUCT_NAME" >}}, run the following command in a terminal w
 sudo systemctl start alloy
 ```
 
-(Optional) To verify that the service is running, run the following command in a terminal window:
+Optional: To verify that the service is running, run the following command in a terminal window:
 
 ```shell
 sudo systemctl status alloy

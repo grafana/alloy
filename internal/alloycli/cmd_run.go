@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"log/slog"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -16,7 +15,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/KimMachineGun/automemlimit/memlimit"
 	"github.com/fatih/color"
 	"github.com/go-kit/log"
 	"github.com/grafana/ckit/advertise"
@@ -221,8 +219,8 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 	level.Info(l).Log("boringcrypto enabled", boringcrypto.Enabled)
 
 	// Set the memory limit, this will honor GOMEMLIMIT if set
-	// If there is a cgroup will follow that
-	memlimit.SetGoMemLimitWithOpts(memlimit.WithLogger(slog.New(l.Handler())))
+	// If there is a cgroup on linux it will use that
+	applyAutoMemLimit(l)
 
 	// Enable the profiling.
 	setMutexBlockProfiling(l)
@@ -356,6 +354,7 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 		if err != nil {
 			return nil, fmt.Errorf("reading config path %q: %w", configPath, err)
 		}
+		httpService.SetSources(alloySource.SourceFiles())
 		if err := f.LoadSource(alloySource, nil, configPath); err != nil {
 			return alloySource, fmt.Errorf("error during the initial load: %w", err)
 		}

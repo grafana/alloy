@@ -1,3 +1,5 @@
+//go:build !windows
+
 package queue
 
 import (
@@ -14,9 +16,9 @@ import (
 
 	"github.com/golang/snappy"
 	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/component/prometheus/write/queue/types"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/walqueue/types"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/exemplar"
 	"github.com/prometheus/prometheus/model/histogram"
@@ -155,6 +157,7 @@ func runTest(t *testing.T, add func(index int, appendable storage.Appender) (flo
 	require.NoError(t, err)
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
+
 	go func() {
 		runErr := c.Run(ctx)
 		require.NoError(t, runErr)
@@ -178,6 +181,7 @@ func runTest(t *testing.T, add func(index int, appendable storage.Appender) (flo
 			require.NoError(t, app.Commit())
 		}()
 	}
+
 	// This is a weird use case to handle eventually.
 	// With race turned on this can take a long time.
 	tm := time.NewTimer(20 * time.Second)
@@ -186,6 +190,7 @@ func runTest(t *testing.T, add func(index int, appendable storage.Appender) (flo
 	case <-tm.C:
 		require.Truef(t, false, "failed to collect signals in the appropriate time")
 	}
+
 	cancel()
 
 	for i := 0; i < samples.Len(); i++ {
@@ -213,7 +218,7 @@ func runTest(t *testing.T, add func(index int, appendable storage.Appender) (flo
 	}
 	require.Eventuallyf(t, func() bool {
 		return types.OutStandingTimeSeriesBinary.Load() == 0
-	}, 2*time.Second, 100*time.Millisecond, "there are %d time series not collected", types.OutStandingTimeSeriesBinary.Load())
+	}, 20*time.Second, 1*time.Second, "there are %d time series not collected", types.OutStandingTimeSeriesBinary.Load())
 }
 
 func handlePost(t *testing.T, _ http.ResponseWriter, r *http.Request) ([]prompb.TimeSeries, []prompb.MetricMetadata) {
@@ -231,7 +236,7 @@ func handlePost(t *testing.T, _ http.ResponseWriter, r *http.Request) ([]prompb.
 }
 
 func makeSeries(index int) (int64, float64, labels.Labels) {
-	return time.Now().UTC().Unix(), float64(index), labels.FromStrings(fmt.Sprintf("name_%d", index), fmt.Sprintf("value_%d", index))
+	return time.Now().UTC().UnixMilli(), float64(index), labels.FromStrings(fmt.Sprintf("name_%d", index), fmt.Sprintf("value_%d", index))
 }
 
 func makeMetadata(index int) (metadata.Metadata, labels.Labels) {
@@ -243,13 +248,13 @@ func makeMetadata(index int) (metadata.Metadata, labels.Labels) {
 }
 
 func makeHistogram(index int) (int64, labels.Labels, *histogram.Histogram) {
-	return time.Now().UTC().Unix(), labels.FromStrings(fmt.Sprintf("name_%d", index), fmt.Sprintf("value_%d", index)), hist(index)
+	return time.Now().UTC().UnixMilli(), labels.FromStrings(fmt.Sprintf("name_%d", index), fmt.Sprintf("value_%d", index)), hist(index)
 }
 
 func makeExemplar(index int) exemplar.Exemplar {
 	return exemplar.Exemplar{
 		Labels: labels.FromStrings(fmt.Sprintf("name_%d", index), fmt.Sprintf("value_%d", index)),
-		Ts:     time.Now().Unix(),
+		Ts:     time.Now().UnixMilli(),
 		HasTs:  true,
 		Value:  float64(index),
 	}
@@ -302,7 +307,7 @@ func histSpanSame(t *testing.T, h []histogram.Span, pb []prompb.BucketSpan) {
 }
 
 func makeFloatHistogram(index int) (int64, labels.Labels, *histogram.FloatHistogram) {
-	return time.Now().UTC().Unix(), labels.FromStrings(fmt.Sprintf("name_%d", index), fmt.Sprintf("value_%d", index)), histFloat(index)
+	return time.Now().UTC().UnixMilli(), labels.FromStrings(fmt.Sprintf("name_%d", index), fmt.Sprintf("value_%d", index)), histFloat(index)
 }
 
 func histFloat(i int) *histogram.FloatHistogram {

@@ -15,7 +15,7 @@ The `file.path_join` function joins any number of path elements into a single pa
 
 ### Examples
 
-```
+```alloy
 > file.path_join()
 ""
 

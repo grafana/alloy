@@ -7,15 +7,6 @@ import (
 	"errors"
 	"os"
 
-	"github.com/grafana/alloy/internal/build"
-	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/component/otelcol"
-	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
-	"github.com/grafana/alloy/internal/component/otelcol/internal/lazycollector"
-	"github.com/grafana/alloy/internal/component/otelcol/internal/lazyconsumer"
-	"github.com/grafana/alloy/internal/component/otelcol/internal/scheduler"
-	"github.com/grafana/alloy/internal/component/otelcol/internal/views"
-	"github.com/grafana/alloy/internal/util/zapadapter"
 	"github.com/prometheus/client_golang/prometheus"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/configtelemetry"
@@ -26,6 +17,16 @@ import (
 	otelmetric "go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/noop"
 	"go.opentelemetry.io/otel/sdk/metric"
+
+	"github.com/grafana/alloy/internal/build"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/otelcol"
+	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/lazycollector"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/lazyconsumer"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/scheduler"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/views"
+	"github.com/grafana/alloy/internal/util/zapadapter"
 )
 
 // Arguments is an extension of component.Arguments which contains necessary
@@ -76,6 +77,14 @@ func (s TypeSignal) SupportsTraces() bool {
 	return s&TypeTraces != 0
 }
 
+type TypeSignalFunc func(component.Options, component.Arguments) TypeSignal
+
+func TypeSignalConstFunc(ts TypeSignal) TypeSignalFunc {
+	return func(component.Options, component.Arguments) TypeSignal {
+		return ts
+	}
+}
+
 // Exporter is an Alloy component shim which manages an OpenTelemetry Collector
 // exporter component.
 type Exporter struct {
@@ -91,7 +100,8 @@ type Exporter struct {
 
 	// Signals which the exporter is able to export.
 	// Can be logs, metrics, traces or any combination of them.
-	supportedSignals TypeSignal
+	// This is a function because which signals are supported may depend on the component configuration.
+	supportedSignals TypeSignalFunc
 }
 
 var (
@@ -105,10 +115,10 @@ var (
 //
 // The registered component must be registered to export the
 // otelcol.ConsumerExports type, otherwise New will panic.
-func New(opts component.Options, f otelexporter.Factory, args Arguments, supportedSignals TypeSignal) (*Exporter, error) {
+func New(opts component.Options, f otelexporter.Factory, args Arguments, supportedSignals TypeSignalFunc) (*Exporter, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	consumer := lazyconsumer.New(ctx)
+	consumer := lazyconsumer.NewPaused(ctx)
 
 	// Create a lazy collector where metrics from the upstream component will be
 	// forwarded.
@@ -130,7 +140,7 @@ func New(opts component.Options, f otelexporter.Factory, args Arguments, support
 		factory:  f,
 		consumer: consumer,
 
-		sched:     scheduler.New(opts.Logger),
+		sched:     scheduler.NewWithPauseCallbacks(opts.Logger, consumer.Pause, consumer.Resume),
 		collector: collector,
 
 		supportedSignals: supportedSignals,
@@ -211,8 +221,10 @@ func (e *Exporter) Update(args component.Arguments) error {
 	// supported telemetry signals.
 	var components []otelcomponent.Component
 
+	supportedSignals := e.supportedSignals(e.opts, args)
+
 	var tracesExporter otelexporter.Traces
-	if e.supportedSignals.SupportsTraces() {
+	if supportedSignals.SupportsTraces() {
 		tracesExporter, err = e.factory.CreateTracesExporter(e.ctx, settings, exporterConfig)
 		if err != nil && !errors.Is(err, pipeline.ErrSignalNotSupported) {
 			return err
@@ -222,7 +234,7 @@ func (e *Exporter) Update(args component.Arguments) error {
 	}
 
 	var metricsExporter otelexporter.Metrics
-	if e.supportedSignals.SupportsMetrics() {
+	if supportedSignals.SupportsMetrics() {
 		metricsExporter, err = e.factory.CreateMetricsExporter(e.ctx, settings, exporterConfig)
 		if err != nil && !errors.Is(err, pipeline.ErrSignalNotSupported) {
 			return err
@@ -232,7 +244,7 @@ func (e *Exporter) Update(args component.Arguments) error {
 	}
 
 	var logsExporter otelexporter.Logs
-	if e.supportedSignals.SupportsLogs() {
+	if supportedSignals.SupportsLogs() {
 		logsExporter, err = e.factory.CreateLogsExporter(e.ctx, settings, exporterConfig)
 		if err != nil && !errors.Is(err, pipeline.ErrSignalNotSupported) {
 			return err

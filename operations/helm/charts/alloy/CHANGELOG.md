@@ -10,8 +10,20 @@ internal API changes are not present.
 Unreleased
 ----------
 
+### Enhancements
+
+- Update jimmidyson/configmap-reload to 0.14.0. (@petewall)
+
+0.10.1 (2024-12-03)
+----------
+
+### Enhancements
+
+- Update to Grafana Alloy v1.5.1. (@ptodev)
+
 0.10.0 (2024-11-13)
 ----------
+
 ### Enhancements
 
 - Add support for adding hostAliases to the Helm chart. (@duncan485)

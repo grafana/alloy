@@ -1,6 +1,9 @@
 package vault
 
-import "github.com/prometheus/client_golang/prometheus"
+import (
+	"github.com/grafana/alloy/internal/util"
+	"github.com/prometheus/client_golang/prometheus"
+)
 
 type metrics struct {
 	authTotal       prometheus.Counter
@@ -32,13 +35,11 @@ func newMetrics(r prometheus.Registerer) *metrics {
 	})
 
 	if r != nil {
-		r.MustRegister(
-			m.authTotal,
-			m.secretReadTotal,
+		m.authTotal = util.MustRegisterOrGet(r, m.authTotal).(prometheus.Counter)
+		m.secretReadTotal = util.MustRegisterOrGet(r, m.secretReadTotal).(prometheus.Counter)
 
-			m.authLeaseRenewalTotal,
-			m.secretLeaseRenewalTotal,
-		)
+		m.authLeaseRenewalTotal = util.MustRegisterOrGet(r, m.authLeaseRenewalTotal).(prometheus.Counter)
+		m.secretLeaseRenewalTotal = util.MustRegisterOrGet(r, m.secretLeaseRenewalTotal).(prometheus.Counter)
 	}
 	return &m
 }

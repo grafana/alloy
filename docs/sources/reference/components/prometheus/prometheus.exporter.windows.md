@@ -245,8 +245,11 @@ By default, `text_file_directory` is set to the `textfile_inputs` directory in t
 For example, if {{< param "PRODUCT_NAME" >}} is installed in `C:\Program Files\GrafanaLabs\Alloy\`,
 the default will be `C:\Program Files\GrafanaLabs\Alloy\textfile_inputs`.
 
-When `text_file_directory` is set, only files with the extension `.prom` inside the specified directory are read. Each `.prom` file found must end with an empty line feed to work properly.
+When `text_file_directory` is set, only files with the extension `.prom` inside the specified directory are read. 
 
+{{< admonition type="note" >}}
+The `.prom` files must end with an empty line feed for the component to recognize and read them.
+{{< /admonition >}}
 
 ## Exported fields
 

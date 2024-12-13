@@ -12,17 +12,100 @@ Main (unreleased)
 
 ### Features
 
+- Add support for metrics in `otelcol.exporter.loadbalancing` (@madaraszg-tulip)
+
 - Add `add_cloudwatch_timestamp` to `prometheus.exporter.cloudwatch` metrics. (@captncraig)
 
 - Add support to `prometheus.operator.servicemonitors` to allow `endpointslice` role. (@yoyosir)
 
 - Add `otelcol.exporter.splunkhec` allowing to export otel data to Splunk HEC (@adlotsof)
 
+- Add `otelcol.receiver.solace` component to receive traces from a Solace broker. (@wildum)
+
+- Add `otelcol.exporter.syslog` component to export logs in syslog format (@dehaansa)
+
+- (_Experimental_) Add a `database_observability.mysql` component to collect mysql performance data. (@cristiangreco & @matthewnolf)
+
+- Add `otelcol.receiver.influxdb` to convert influx metric into OTEL. (@EHSchmitt4395)
+
+- Add a new `/-/healthy` endpoint which returns HTTP 500 if one or more components are unhealthy. (@ptodev)
+
 ### Enhancements
+
+- Add second metrics sample to the support bundle to provide delta information (@dehaansa)
+
+- Add all raw configuration files & a copy of the latest remote config to the support bundle (@dehaansa)
+
+- Add relevant golang environment variables to the support bundle (@dehaansa)
+
+- Update mysqld_exporter from v0.15.0 to v0.16.0 (including 2ef168bf6), most notable changes: (@cristiangreco)
+  - Support MySQL 8.4 replicas syntax
+  - Fetch lock time and cpu time from performance schema
+  - Fix fetching tmpTables vs tmpDiskTables from performance_schema
+  - Skip SPACE_TYPE column for MariaDB >=10.5
+  - Fixed parsing of timestamps with non-zero padded days
+  - Fix auto_increment metric collection errors caused by using collation in INFORMATION_SCHEMA searches
+  - Change processlist query to support ONLY_FULL_GROUP_BY sql_mode
+  - Add perf_schema quantile columns to collector
+
+- Add three new stdlib functions to_base64, from_URLbase64 and to_URLbase64 (@ravishankar15)
+
+- Use a forked `github.com/goccy/go-json` module which reduces the memory consumption of an Alloy instance by 20MB.
+  If Alloy is running certain otelcol components, this reduction will not apply. (@ptodev)
+  
+- Update `prometheus.write.queue` library for performance increases in cpu. (@mattdurham)
 
 - Add an argument `retry_interval` to allow `loki.source.file` to try re-opening deleted files on Windows. (@wildum)
 
 ### Bugfixes
+
+- Fixed issue with automemlimit logging bad messages and trying to access cgroup on non-linux builds (@dehaansa)
+
+- Fixed issue with reloading configuration and prometheus metrics duplication in `prometheus.write.queue`. (@mattdurham)
+
+- Updated `prometheus.write.queue` to fix issue with TTL comparing different scales of time. (@mattdurham)
+
+- Fixed an issue in the `prometheus.operator.servicemonitors`, `prometheus.operator.podmonitors` and `prometheus.operator.probes` to support capitalized actions. (@QuentinBisson)
+
+- Fixed an issue where the `otelcol.processor.interval` could not be used because the debug metrics were not set to default. (@wildum)
+
+### Other changes
+
+- Change the stability of the `livedebugging` feature from "experimental" to "generally available". (@wildum)
+
+- Use Go 1.23.3 for builds. (@mattdurham)
+
+v1.5.1
+-----------------
+
+### Enhancements
+
+- Logs from underlying clustering library `memberlist` are now surfaced with correct level (@thampiotr)
+
+- Allow setting `informer_sync_timeout` in prometheus.operator.* components. (@captncraig)
+
+- For sharding targets during clustering, `loki.source.podlogs` now only takes into account some labels. (@ptodev)
+
+### Bugfixes
+
+- Fixed an issue in the `pyroscope.write` component to prevent TLS connection churn to Pyroscope when the `pyroscope.receive_http` clients don't request keepalive (@madaraszg-tulip)
+
+- Fixed an issue in the `pyroscope.write` component with multiple endpoints not working correctly for forwarding profiles from `pyroscope.receive_http` (@madaraszg-tulip)
+
+- Fixed a few race conditions that could lead to a deadlock when using `import` statements, which could lead to a memory leak on `/metrics` endpoint of an Alloy instance. (@thampiotr)
+
+- Fix a race condition where the ui service was dependent on starting after the remotecfg service, which is not guaranteed. (@dehaansa & @erikbaranowski)
+
+- Fixed an issue in the `otelcol.exporter.prometheus` component that would set series value incorrectly for stale metrics (@YusifAghalar)
+
+- `loki.source.podlogs`: Fixed a bug which prevented clustering from working and caused duplicate logs to be sent.
+  The bug only happened when no `selector` or `namespace_selector` blocks were specified in the Alloy configuration. (@ptodev)
+
+- Fixed an issue in the `pyroscope.write` component to allow slashes in application names in the same way it is done in the Pyroscope push API (@marcsanmi)
+
+- Fixed a crash when updating the configuration of `remote.http`. (@kinolaev)
+
+- Fixed an issue in the `otelcol.processor.attribute` component where the actions `delete` and `hash` could not be used with the `pattern` argument. (@wildum) 
 
 - Fixed an issue in the `prometheus.exporter.postgres` component that would leak goroutines when the target was not reachable (@dehaansa)
 
@@ -73,7 +156,7 @@ v1.5.0
 - Add support for relative paths to `import.file`. This new functionality allows users to use `import.file` blocks in modules
   imported via `import.git` and other `import.file`. (@wildum)
 
-- `prometheus.exporter.cloudwatch`: The `discovery` block now has a `recently_active_only` configuration attribute 
+- `prometheus.exporter.cloudwatch`: The `discovery` block now has a `recently_active_only` configuration attribute
   to return only metrics which have been active in the last 3 hours.
 
 - Add Prometheus bearer authentication to a `prometheus.write.queue` component (@freak12techno)
@@ -82,13 +165,15 @@ v1.5.0
 
 - Add `proxy_url` to `otelcol.exporter.otlphttp`. (@wildum)
 
+- Allow setting `informer_sync_timeout` in prometheus.operator.* components. (@captncraig)
+
 ### Bugfixes
 
 - Fixed a bug in `import.git` which caused a `"non-fast-forward update"` error message. (@ptodev)
 
-- Do not log error on clean shutdown of `loki.source.journal`. (@thampiotr) 
+- Do not log error on clean shutdown of `loki.source.journal`. (@thampiotr)
 
-- `prometheus.operator.*` components: Fixed a bug which would sometimes cause a 
+- `prometheus.operator.*` components: Fixed a bug which would sometimes cause a
   "failed to create service discovery refresh metrics" error after a config reload. (@ptodev)
 
 ### Other changes
@@ -127,7 +212,7 @@ v1.4.3
 
 - `pyroscope.scrape` no longer tries to scrape endpoints which are not active targets anymore. (@wildum @mattdurham @dehaansa @ptodev)
 
-- Fixed a bug with `loki.source.podlogs` not starting in large clusters due to short informer sync timeout. (@elburnetto-intapp) 
+- Fixed a bug with `loki.source.podlogs` not starting in large clusters due to short informer sync timeout. (@elburnetto-intapp)
 
 - `prometheus.exporter.windows`: Fixed bug with `exclude` regular expression config arguments which caused missing metrics. (@ptodev)
 
@@ -146,7 +231,7 @@ v1.4.2
   - Fix parsing of the Level configuration attribute in debug_metrics config block
   - Ensure "optional" debug_metrics config block really is optional
 
-- Fixed an issue with `loki.process` where `stage.luhn` and `stage.timestamp` would not apply 
+- Fixed an issue with `loki.process` where `stage.luhn` and `stage.timestamp` would not apply
   default configuration settings correctly (@thampiotr)
 
 - Fixed an issue with `loki.process` where configuration could be reloaded even if there
@@ -220,6 +305,8 @@ v1.4.0
 
 - Add the label `alloy_cluster` in the metric `alloy_config_hash` when the flag `cluster.name` is set to help differentiate between
   configs from the same alloy cluster or different alloy clusters. (@wildum)
+  
+- Add support for discovering the cgroup path(s) of a process in `process.discovery`. (@mahendrapaipuri)
 
 ### Bugfixes
 

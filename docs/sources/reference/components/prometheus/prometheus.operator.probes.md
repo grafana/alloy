@@ -37,6 +37,7 @@ Name | Type | Description | Default | Required
 ---- | ---- | ----------- | ------- | --------
 `forward_to` | `list(MetricsReceiver)` | List of receivers to send scraped metrics to. | | yes
 `namespaces` | `list(string)` | List of namespaces to search for Probe resources. If not specified, all namespaces will be searched. || no
+`informer_sync_timeout` | `duration` | Timeout for initial sync of Probe resources. | `1m` | no
 
 ## Blocks
 

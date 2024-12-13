@@ -68,7 +68,7 @@ The following table shows the supported escape sequences.
 | `\\`         | The `\` character `U+005C`                                                              |
 | `\a`         | The alert or bell character `U+0007`                                                    |
 | `\b`         | The backspace character `U+0008`                                                        |
-| `\f`         | The formfeed character `U+000C`                                                         |
+| `\f`         | The form feed character `U+000C`                                                        |
 | `\n`         | The newline character `U+000A`                                                          |
 | `\r`         | The carriage return character `U+000D`                                                  |
 | `\t`         | The horizontal tab character `U+0009`                                                   |
@@ -176,13 +176,13 @@ The null value is represented by the symbol `null`.
 
 ## Special types
 
-#### Secrets
+### Secrets
 
 A `secret` is a special type of string that's never displayed to the user.
 You can assign `string` values to an attribute expecting a `secret`, but never the inverse.
 It's impossible to convert a secret to a string or assign a secret to an attribute expecting a string.
 
-#### Capsules
+### Capsules
 
 A `capsule` is a special type that represents a category of _internal_ types used by {{< param "PRODUCT_NAME" >}}.
 Each capsule type has a unique name and is represented to the user as `capsule("<SOME_INTERNAL_NAME>")`.
