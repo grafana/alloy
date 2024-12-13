@@ -379,7 +379,7 @@ func TestDeleteRecreateFile(t *testing.T) {
 		require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
 		require.Equal(t, "writing some new text", logEntry.Line)
 		require.Equal(t, wantLabelSet, logEntry.Labels)
-	case <-time.After(5 * time.Second):
+	case <-time.After(10 * time.Second):
 		require.FailNow(t, "failed waiting for log line")
 	}
 }

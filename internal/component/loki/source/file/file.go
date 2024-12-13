@@ -143,9 +143,9 @@ func (c *Component) Run(ctx context.Context) error {
 		c.mut.RUnlock()
 	}()
 
-	// Check every 2 seconds for readers that were stopped
+	// Check every 5 seconds for readers that were stopped
 	// Should we have a parameter for this?
-	ticker := time.NewTicker(2 * time.Second)
+	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 
 	for {
@@ -159,7 +159,7 @@ func (c *Component) Run(ctx context.Context) error {
 			}
 			c.mut.RUnlock()
 		case <-ticker.C:
-			c.mut.RLock()
+			c.mut.Lock()
 			// Find readers that are stopped and re-create them if the files that they were tailing are back.
 			// This helps for log rotation on Windows because the tailer is closed as soon as the file is removed.
 			// On Unix-like systems, it won't re-create any reader because the reader will stay open till the next Update call.
@@ -179,7 +179,7 @@ func (c *Component) Run(ctx context.Context) error {
 				delete(c.readers, key)
 				c.addReader(key, reader.Path(), reader.Labels())
 			}
-			c.mut.RUnlock()
+			c.mut.Unlock()
 		}
 	}
 }
