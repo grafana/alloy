@@ -28,12 +28,13 @@ Name                | Type                | Description                         
 ---------------     | ------------------- | ------------------------------------------------------------------------------------------ |---------| --------
 `path_targets`      | `list(map(string))` | Targets to expand; looks for glob patterns on the  `__path__` and `__path_exclude__` keys. |         | yes
 `sync_period`       | `duration`          | How often to sync filesystem and targets.                                                  | `"10s"` | no
-`ignore_older_than` | `duration`          | Ignores files which are modified before this duration.                                     |         | no
+`ignore_older_than` | `duration`          | Ignores files which are modified before this duration.                                     |  `"0s"` | no
 
 `path_targets` uses [doublestar][] style paths.
 * `/tmp/**/*.log` will match all subfolders of `tmp` and include any files that end in `*.log`.
 * `/tmp/apache/*.log` will match only files in `/tmp/apache/` that end in `*.log`.
 * `/tmp/**` will match all subfolders of `tmp`, `tmp` itself, and all files.
+* When `ignore_older_than` is set to "0s" the component will not ignore any files
 
 
 ## Exported fields
