@@ -49,6 +49,7 @@ Main (unreleased)
   - Add perf_schema quantile columns to collector
 
 - Add three new stdlib functions to_base64, from_URLbase64 and to_URLbase64 (@ravishankar15)
+- Add `ignore_older_than` option for local.file_match (@ravishankar15)
 
 - Use a forked `github.com/goccy/go-json` module which reduces the memory consumption of an Alloy instance by 20MB.
   If Alloy is running certain otelcol components, this reduction will not apply. (@ptodev)
@@ -103,7 +104,7 @@ v1.5.1
 
 - Fixed a crash when updating the configuration of `remote.http`. (@kinolaev)
 
-- Fixed an issue in the `otelcol.processor.attribute` component where the actions `delete` and `hash` could not be used with the `pattern` argument. (@wildum) 
+- Fixed an issue in the `otelcol.processor.attribute` component where the actions `delete` and `hash` could not be used with the `pattern` argument. (@wildum)
 
 - Fixed an issue in the `prometheus.exporter.postgres` component that would leak goroutines when the target was not reachable (@dehaansa)
 
@@ -303,7 +304,7 @@ v1.4.0
 
 - Add the label `alloy_cluster` in the metric `alloy_config_hash` when the flag `cluster.name` is set to help differentiate between
   configs from the same alloy cluster or different alloy clusters. (@wildum)
-  
+
 - Add support for discovering the cgroup path(s) of a process in `process.discovery`. (@mahendrapaipuri)
 
 ### Bugfixes
