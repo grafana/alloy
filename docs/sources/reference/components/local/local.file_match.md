@@ -34,7 +34,7 @@ Name                | Type                | Description                         
 * `/tmp/**/*.log` will match all subfolders of `tmp` and include any files that end in `*.log`.
 * `/tmp/apache/*.log` will match only files in `/tmp/apache/` that end in `*.log`.
 * `/tmp/**` will match all subfolders of `tmp`, `tmp` itself, and all files.
-* When `ignore_older_than` is set to "0s" the component will not ignore any files
+* `local.file_match` doesn't ignore files when `ignore_older_than` is set to the default, `0s`.
 
 
 ## Exported fields
