@@ -114,7 +114,8 @@ prometheus.relabel "_0_default" {
 }
 
 otelcol.exporter.prometheus "_0_default" {
-	forward_to = [prometheus.relabel._0_default.receiver]
+	gc_frequency = "15m0s"
+	forward_to   = [prometheus.relabel._0_default.receiver]
 }
 
 otelcol.exporter.loadbalancing "_0_default" {
@@ -199,7 +200,8 @@ prometheus.relabel "_1_default" {
 }
 
 otelcol.exporter.prometheus "_1_default" {
-	forward_to = [prometheus.relabel._1_default.receiver]
+	gc_frequency = "15m0s"
+	forward_to   = [prometheus.relabel._1_default.receiver]
 }
 
 otelcol.exporter.otlp "_1_0" {

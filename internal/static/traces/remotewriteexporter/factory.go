@@ -37,7 +37,10 @@ func NewFactory() exporter.Factory {
 }
 
 func createDefaultConfig() component.Config {
-	return &Config{}
+	return &Config{
+		StaleTime:    15 * time.Minute,
+		LoopInterval: time.Second,
+	}
 }
 
 func createMetricsExporter(
