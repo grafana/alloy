@@ -18,6 +18,10 @@ Main (unreleased)
 
 - Add `otelcol.exporter.splunkhec` allowing to export otel data to Splunk HEC (@adlotsof)
 
+### Enhancements
+
+- Add an argument `retry_interval` to allow `loki.source.file` to try re-opening deleted files on Windows. (@wildum)
+
 ### Bugfixes
 
 - Fixed an issue in the `prometheus.exporter.postgres` component that would leak goroutines when the target was not reachable (@dehaansa)

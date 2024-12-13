@@ -338,7 +338,8 @@ func TestDeleteRecreateFile(t *testing.T) {
 				"__path__": f.Name(),
 				"foo":      "bar",
 			}},
-			ForwardTo: []loki.LogsReceiver{ch1},
+			ForwardTo:     []loki.LogsReceiver{ch1},
+			RetryInterval: 1 * time.Second,
 		})
 		require.NoError(t, err)
 	}()
@@ -379,7 +380,7 @@ func TestDeleteRecreateFile(t *testing.T) {
 		require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
 		require.Equal(t, "writing some new text", logEntry.Line)
 		require.Equal(t, wantLabelSet, logEntry.Labels)
-	case <-time.After(10 * time.Second):
+	case <-time.After(5 * time.Second):
 		require.FailNow(t, "failed waiting for log line")
 	}
 }

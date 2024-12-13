@@ -40,6 +40,7 @@ The component starts a new reader for each of the given `targets` and fans out l
 | `encoding`              | `string`             | The encoding to convert from when reading files.                            | `""`    | no       |
 | `tail_from_end`         | `bool`               | Whether a log file is tailed from the end if a stored position isn't found. | `false` | no       |
 | `legacy_positions_file` | `string`             | Allows conversion from legacy positions file.                               | `""`    | no       |
+| `retry_interval`        | `duration`           | Frequency to try re-opening files that were closed.                         | `"0s"`  | no       |
 
 The `encoding` argument must be a valid [IANA encoding][] name. If not set, it
 defaults to UTF-8.
@@ -47,6 +48,9 @@ defaults to UTF-8.
 You can use the `tail_from_end` argument when you want to tail a large file without reading its entire content.
 When set to true, only new logs will be read, ignoring the existing ones.
 
+`retry_interval` is deactivated by default (`"0s"`). This should be set on Windows-based systems when rotating files with the same names because the
+component will no try to re-open the files and the targets won't be updated because of the cache.
+This is not needed on Unix-like systems because the component will always try to re-open the deleted files.
 
 {{< admonition type="note" >}}
 The `legacy_positions_file` argument is used when you are transitioning from legacy. The legacy positions file is rewritten into the new format.

@@ -46,6 +46,7 @@ type Arguments struct {
 	FileWatch           FileWatch           `alloy:"file_watch,block,optional"`
 	TailFromEnd         bool                `alloy:"tail_from_end,attr,optional"`
 	LegacyPositionsFile string              `alloy:"legacy_positions_file,attr,optional"`
+	RetryInterval       time.Duration       `alloy:"retry_interval,attr,optional"`
 }
 
 type FileWatch struct {
@@ -143,10 +144,23 @@ func (c *Component) Run(ctx context.Context) error {
 		c.mut.RUnlock()
 	}()
 
-	// Check every 5 seconds for readers that were stopped
-	// Should we have a parameter for this?
-	ticker := time.NewTicker(5 * time.Second)
-	defer ticker.Stop()
+	tickerChan := make(chan struct{})
+	if c.args.RetryInterval > 0 {
+		ticker := time.NewTicker(c.args.RetryInterval)
+		defer ticker.Stop()
+
+		go func() {
+			for {
+				select {
+				case <-ticker.C:
+					tickerChan <- struct{}{}
+				case <-ctx.Done():
+					close(tickerChan)
+					return
+				}
+			}
+		}()
+	}
 
 	for {
 		select {
@@ -158,7 +172,7 @@ func (c *Component) Run(ctx context.Context) error {
 				receiver.Chan() <- entry
 			}
 			c.mut.RUnlock()
-		case <-ticker.C:
+		case <-tickerChan:
 			c.mut.Lock()
 			// Find readers that are stopped and re-create them if the files that they were tailing are back.
 			// This helps for log rotation on Windows because the tailer is closed as soon as the file is removed.
