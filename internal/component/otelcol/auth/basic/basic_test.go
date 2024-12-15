@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol/auth"
 	"github.com/grafana/alloy/internal/component/otelcol/auth/basic"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
@@ -95,20 +96,15 @@ func TestServerAuth(t *testing.T) {
 	require.True(t, ok, "extension doesn't export auth exports struct")
 	require.NotNil(t, exports.Handler)
 
-	// This test fails due to a data race condition.
-	// The test passes if the -race flag is not passed to the test, simulated by a sleep.
-	// This issue arises from both the initialization of the basic_auth extension
-	// and the scheduling mechanism used in the component test controller.
-	// The problem is related to the way componenttest is structured and the interactions
-	// between the Run method and the scheduler. The WaitRunning() method returns when the
-	// channel is closed in the Run() method, but Run is actually invoked on the following line.
-	// In auth.go, the component is scheduled via the scheduler, but the extension doesn't
-	// actually start until the component is processed. As a result, ctrl.WaitRunning()
-	// returns before the auth extension is fully running.
-	// A more reliable method for confirming the extension is running would resolve this issue.
-	// Otherwise, this test might need to be removed. If anyone has any feedback or thoughts
-	// I would appreciate it.
-	time.Sleep(time.Second)
+	startedComponent, err := ctrl.GetComponent()
+	require.NoError(t, err, "no component added in controller.")
+
+	authComponent, ok := startedComponent.(*auth.Auth)
+	require.True(t, ok, "component was not an auth component")
+
+	// auth components expose a health field. Utilize this here to wait for the component to be healthy.
+	err = waitHealthy(ctx, authComponent, time.Second)
+	require.NoError(t, err, "timed out waiting for the component to be healthy")
 
 	serverAuthExtension, err := exports.Handler.GetExtension(auth.Server)
 
@@ -142,4 +138,39 @@ func newTestComponent(t *testing.T, ctx context.Context) *componenttest.Controll
 	}()
 
 	return ctrl
+}
+
+// waitHealthy waits for the component to be healthy before continuing the test.
+// this prevents the test from executing before the underlying auth extension is running.
+func waitHealthy(ctx context.Context, basicAuthComponent *auth.Auth, timeout time.Duration) error {
+	// Channel to signal whether the component is healthy or not.
+	healthChannel := make(chan bool)
+
+	// Loop continously checking for the current health of the component.
+	go func() {
+		for {
+			healthz := basicAuthComponent.CurrentHealth().Health
+			if healthz == component.HealthTypeHealthy {
+				healthChannel <- true
+				return
+			}
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(timeout):
+				return
+			default:
+			}
+		}
+	}()
+
+	// Wait for channel to be written to or timeout to occur.
+	select {
+	case <-healthChannel:
+		return nil
+	case <-ctx.Done():
+		return fmt.Errorf("context timed out")
+	case <-time.After(timeout):
+		return fmt.Errorf("timed out waiting for the component to be healthy")
+	}
 }

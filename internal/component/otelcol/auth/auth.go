@@ -338,15 +338,17 @@ func (a *Auth) SetupExtension(t ExtensionType, rargs Arguments, settings otelext
 	var requiredAuthFeature AuthFeature
 
 	// Retrieve the appropriate auth extension for the requested type.
-	if t == Server {
+	switch t {
+	case Server:
 		otelConfig, err = rargs.ConvertServer()
 		notSupportedErr = ErrNotServerExtension
 		requiredAuthFeature = ServerAuthSupported
-	}
-	if t == Client {
+	case Client:
 		otelConfig, err = rargs.ConvertClient()
 		notSupportedErr = ErrNotClientExtension
 		requiredAuthFeature = ClientAuthSupported
+	default:
+		return nil, fmt.Errorf("unrecognized extension type %s", t)
 	}
 
 	// If there was an error converting the server/client args fail now.
@@ -375,8 +377,8 @@ func (a *Auth) SetupExtension(t ExtensionType, rargs Arguments, settings otelext
 	}
 
 	// Create an extension id based off the alloy name. For example
-	// auth.basic.creds will become auth.basic.creds.server/client depending on
-	// the type.
+	// auth.basic.creds will become auth.basic.creds.LABEL.client or auth.basic.creds.LABEL.server
+	// depending on the type.
 	cTypeStr := NormalizeType(fmt.Sprintf("%s.%s", a.opts.ID, t))
 	eh.ID = otelcomponent.NewID(otelcomponent.MustNewType(cTypeStr))
 	eh.Extension = otelExtension
