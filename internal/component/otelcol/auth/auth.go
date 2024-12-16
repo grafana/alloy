@@ -377,7 +377,7 @@ func (a *Auth) SetupExtension(t ExtensionType, rargs Arguments, settings otelext
 	}
 
 	// Create an extension id based off the alloy name. For example
-	// auth.basic.creds will become auth.basic.creds.LABEL.client or auth.basic.creds.LABEL.server
+	// auth.basic.creds.LABEL will become auth.basic.creds.LABEL.client or auth.basic.creds.LABEL.server
 	// depending on the type.
 	cTypeStr := NormalizeType(fmt.Sprintf("%s.%s", a.opts.ID, t))
 	eh.ID = otelcomponent.NewID(otelcomponent.MustNewType(cTypeStr))

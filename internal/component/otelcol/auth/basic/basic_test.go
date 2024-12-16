@@ -102,7 +102,7 @@ func TestServerAuth(t *testing.T) {
 	authComponent, ok := startedComponent.(*auth.Auth)
 	require.True(t, ok, "component was not an auth component")
 
-	// auth components expose a health field. Utilize this here to wait for the component to be healthy.
+	// auth components expose a health field. Utilize this to wait for the component to be healthy.
 	err = waitHealthy(ctx, authComponent, time.Second)
 	require.NoError(t, err, "timed out waiting for the component to be healthy")
 
