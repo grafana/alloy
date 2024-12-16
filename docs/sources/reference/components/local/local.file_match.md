@@ -24,15 +24,18 @@ local.file_match "LABEL" {
 
 The following arguments are supported:
 
-Name            | Type                | Description                                                                                | Default | Required
---------------- | ------------------- | ------------------------------------------------------------------------------------------ |---------| --------
-`path_targets`  | `list(map(string))` | Targets to expand; looks for glob patterns on the  `__path__` and `__path_exclude__` keys. |         | yes
-`sync_period`   | `duration`          | How often to sync filesystem and targets.                                                  | `"10s"` | no
+Name                | Type                | Description                                                                                | Default | Required
+---------------     | ------------------- | ------------------------------------------------------------------------------------------ |---------| --------
+`path_targets`      | `list(map(string))` | Targets to expand; looks for glob patterns on the  `__path__` and `__path_exclude__` keys. |         | yes
+`sync_period`       | `duration`          | How often to sync filesystem and targets.                                                  | `"10s"` | no
+`ignore_older_than` | `duration`          | Ignores files which are modified before this duration.                                     |  `"0s"` | no
 
 `path_targets` uses [doublestar][] style paths.
 * `/tmp/**/*.log` will match all subfolders of `tmp` and include any files that end in `*.log`.
 * `/tmp/apache/*.log` will match only files in `/tmp/apache/` that end in `*.log`.
 * `/tmp/**` will match all subfolders of `tmp`, `tmp` itself, and all files.
+
+`local.file_match` doesn't ignore files when `ignore_older_than` is set to the default, `0s`.
 
 
 ## Exported fields
