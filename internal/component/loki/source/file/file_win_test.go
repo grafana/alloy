@@ -17,7 +17,12 @@ import (
 	"go.uber.org/goleak"
 )
 
-func TestDeleteRecreateFileNoRetry(t *testing.T) {
+// This test:
+// - create a file without retry interval -> successful read
+// - delete the file, recreate it -> no read
+// - update the component with retry interval -> successful read
+// - update the component without retry interval, delete the file, recreate it -> no read
+func TestDeleteRecreateFileWindows(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
 
 	filename := "example"
@@ -55,14 +60,53 @@ func TestDeleteRecreateFileNoRetry(t *testing.T) {
 		"foo":      "bar",
 	}
 
+	checkMsg(t, ch1, "writing some text", 5*time.Second, wantLabelSet)
+
+	require.NoError(t, f.Close())
+	require.NoError(t, os.Remove(f.Name()))
+
+	// Create a file with the same name
+	f, err = os.Create(filename)
+	require.NoError(t, err)
+
+	_, err = f.Write([]byte("writing some new text\n"))
+	require.NoError(t, err)
+
 	select {
-	case logEntry := <-ch1.Chan():
-		require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
-		require.Equal(t, "writing some text", logEntry.Line)
-		require.Equal(t, wantLabelSet, logEntry.Labels)
-	case <-time.After(5 * time.Second):
-		require.FailNow(t, "failed waiting for log line")
+	case <-ch1.Chan():
+		t.Fatalf("Unexpected log entry received")
+	case <-time.After(1 * time.Second):
+		// Test passes if no log entry is received within the timeout
+		// This indicates that the log source does not retry reading the file
 	}
+
+	// Start the retry interval
+	ctrl.Update(Arguments{
+		Targets: []discovery.Target{{
+			"__path__": f.Name(),
+			"foo":      "bar",
+		}},
+		ForwardTo:     []loki.LogsReceiver{ch1},
+		RetryInterval: 200 * time.Millisecond,
+	})
+
+	require.NoError(t, f.Close())
+	require.NoError(t, os.Remove(f.Name()))
+
+	// Create a file with the same name
+	f, err = os.Create(filename)
+	require.NoError(t, err)
+
+	checkMsg(t, ch1, "writing some new text", 1*time.Second, wantLabelSet)
+
+	// Stop the retry interval
+	ctrl.Update(Arguments{
+		Targets: []discovery.Target{{
+			"__path__": f.Name(),
+			"foo":      "bar",
+		}},
+		ForwardTo: []loki.LogsReceiver{ch1},
+	})
 
 	require.NoError(t, f.Close())
 	require.NoError(t, os.Remove(f.Name()))
@@ -73,13 +117,13 @@ func TestDeleteRecreateFileNoRetry(t *testing.T) {
 	defer os.Remove(f.Name())
 	defer f.Close()
 
-	_, err = f.Write([]byte("writing some new text\n"))
+	_, err = f.Write([]byte("writing some new new text\n"))
 	require.NoError(t, err)
 
 	select {
 	case <-ch1.Chan():
 		t.Fatalf("Unexpected log entry received")
-	case <-time.After(2 * time.Second):
+	case <-time.After(1 * time.Second):
 		// Test passes if no log entry is received within the timeout
 		// This indicates that the log source does not retry reading the file
 	}

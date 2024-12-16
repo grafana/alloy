@@ -87,6 +87,11 @@ type Component struct {
 	receivers []loki.LogsReceiver
 	posFile   positions.Positions
 	readers   map[positions.Entry]reader
+
+	tickerChan            chan struct{}
+	ticker                *time.Ticker
+	restartReadersCancel  context.CancelFunc
+	restartReadersContext context.Context
 }
 
 // New creates a new loki.source.file component.
@@ -135,32 +140,15 @@ func New(o component.Options, args Arguments) (*Component, error) {
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
 		level.Info(c.opts.Logger).Log("msg", "loki.source.file component shutting down, stopping readers and positions file")
-		c.mut.RLock()
+		c.mut.Lock()
 		for _, r := range c.readers {
 			r.Stop()
 		}
 		c.posFile.Stop()
 		close(c.handler.Chan())
-		c.mut.RUnlock()
+		c.cleanupReadersRestart()
+		c.mut.Unlock()
 	}()
-
-	tickerChan := make(chan struct{})
-	if c.args.RetryInterval > 0 {
-		ticker := time.NewTicker(c.args.RetryInterval)
-		defer ticker.Stop()
-
-		go func() {
-			for {
-				select {
-				case <-ticker.C:
-					tickerChan <- struct{}{}
-				case <-ctx.Done():
-					close(tickerChan)
-					return
-				}
-			}
-		}()
-	}
 
 	for {
 		select {
@@ -172,7 +160,7 @@ func (c *Component) Run(ctx context.Context) error {
 				receiver.Chan() <- entry
 			}
 			c.mut.RUnlock()
-		case <-tickerChan:
+		case <-c.tickerChan:
 			c.mut.Lock()
 			// Find readers that are stopped and re-create them if the files that they were tailing are back.
 			// This helps for log rotation on Windows because the tailer is closed as soon as the file is removed.
@@ -226,6 +214,7 @@ func (c *Component) Update(args component.Arguments) error {
 	oldPaths := c.stopReaders()
 
 	newArgs := args.(Arguments)
+	previousRetryInterval := c.args.RetryInterval
 
 	c.mut.Lock()
 	defer c.mut.Unlock()
@@ -261,6 +250,10 @@ func (c *Component) Update(args component.Arguments) error {
 	// are no longer in the updated set of Targets.
 	for r := range missing(c.readers, oldPaths) {
 		c.posFile.Remove(r.Path, r.Labels)
+	}
+
+	if newArgs.RetryInterval != previousRetryInterval {
+		c.handleReadersRestart(newArgs.RetryInterval)
 	}
 
 	return nil
@@ -426,5 +419,37 @@ func (c *Component) reportSize(path, labels string) {
 			return
 		}
 		c.metrics.totalBytes.WithLabelValues(path).Set(float64(fi.Size()))
+	}
+}
+
+func (c *Component) handleReadersRestart(retryInterval time.Duration) {
+	c.cleanupReadersRestart()
+
+	if retryInterval > 0 {
+		c.restartReadersContext, c.restartReadersCancel = context.WithCancel(context.Background())
+		c.ticker = time.NewTicker(retryInterval)
+		c.tickerChan = make(chan struct{})
+		go func() {
+			for {
+				select {
+				case <-c.ticker.C:
+					c.tickerChan <- struct{}{}
+				case <-c.restartReadersContext.Done():
+					return
+				}
+			}
+		}()
+	}
+}
+
+func (c *Component) cleanupReadersRestart() {
+	if c.restartReadersCancel != nil {
+		c.restartReadersCancel()
+		c.restartReadersCancel = nil
+	}
+	if c.ticker != nil {
+		c.ticker.Stop()
+		close(c.tickerChan)
+		c.ticker = nil
 	}
 }

@@ -354,14 +354,29 @@ func TestDeleteRecreateFile(t *testing.T) {
 		"foo":      "bar",
 	}
 
-	select {
-	case logEntry := <-ch1.Chan():
-		require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
-		require.Equal(t, "writing some text", logEntry.Line)
-		require.Equal(t, wantLabelSet, logEntry.Labels)
-	case <-time.After(5 * time.Second):
-		require.FailNow(t, "failed waiting for log line")
-	}
+	checkMsg(t, ch1, "writing some text", 5*time.Second, wantLabelSet)
+
+	require.NoError(t, f.Close())
+	require.NoError(t, os.Remove(f.Name()))
+
+	// Create a file with the same name
+	f, err = os.Create(filename)
+	require.NoError(t, err)
+
+	_, err = f.Write([]byte("writing some new text\n"))
+	require.NoError(t, err)
+
+	checkMsg(t, ch1, "writing some new text", 5*time.Second, wantLabelSet)
+
+	// Change the retry interval to 200ms
+	ctrl.Update(Arguments{
+		Targets: []discovery.Target{{
+			"__path__": f.Name(),
+			"foo":      "bar",
+		}},
+		ForwardTo:     []loki.LogsReceiver{ch1},
+		RetryInterval: 500 * time.Millisecond,
+	})
 
 	require.NoError(t, f.Close())
 	require.NoError(t, os.Remove(f.Name()))
@@ -372,15 +387,20 @@ func TestDeleteRecreateFile(t *testing.T) {
 	defer os.Remove(f.Name())
 	defer f.Close()
 
-	_, err = f.Write([]byte("writing some new text\n"))
+	_, err = f.Write([]byte("writing some new new text\n"))
 	require.NoError(t, err)
 
+	// Timeout is set to 500ms. If the retry interval would not be updated, it would fail on Windows.
+	checkMsg(t, ch1, "writing some new new text", 800*time.Millisecond, wantLabelSet)
+}
+
+func checkMsg(t *testing.T, ch loki.LogsReceiver, msg string, timeout time.Duration, labelSet model.LabelSet) {
 	select {
-	case logEntry := <-ch1.Chan():
+	case logEntry := <-ch.Chan():
 		require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
-		require.Equal(t, "writing some new text", logEntry.Line)
-		require.Equal(t, wantLabelSet, logEntry.Labels)
-	case <-time.After(5 * time.Second):
+		require.Equal(t, msg, logEntry.Line)
+		require.Equal(t, labelSet, logEntry.Labels)
+	case <-time.After(timeout):
 		require.FailNow(t, "failed waiting for log line")
 	}
 }
