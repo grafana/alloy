@@ -1,6 +1,6 @@
 -- main.alloy --
 foreach "testForeach" {
-  collection = [1, 2, 3, 4]
+  collection = [1]
 
   template {
     // Similar to testcomponents.summation, but with a "forward_to"

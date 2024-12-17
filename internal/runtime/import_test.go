@@ -16,6 +16,9 @@ import (
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/util"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/tools/txtar"
 
@@ -93,9 +96,10 @@ func buildTestImportFile(t *testing.T, filename string) testImportFile {
 func TestForeach(t *testing.T) {
 	directory := "./testdata/foreach"
 	for _, file := range getTestFiles(directory, t) {
+		reg := prometheus.NewRegistry()
 		tc := buildTestImportFile(t, filepath.Join(directory, file.Name()))
 		t.Run(tc.description, func(t *testing.T) {
-			testConfig2(t, tc.main, tc.reloadConfig, nil)
+			testConfig2(t, reg, tc.main, tc.reloadConfig, nil)
 		})
 	}
 }
@@ -320,7 +324,7 @@ func TestImportError(t *testing.T) {
 
 func testConfig(t *testing.T, config string, reloadConfig string, update func()) {
 	defer verifyNoGoroutineLeaks(t)
-	ctrl, f := setup(t, config)
+	ctrl, f := setup(t, config, nil)
 
 	err := ctrl.LoadSource(f, nil, "")
 	require.NoError(t, err)
@@ -372,9 +376,9 @@ func testConfig(t *testing.T, config string, reloadConfig string, update func())
 }
 
 // This function is a copy of testConfig above.
-func testConfig2(t *testing.T, config string, reloadConfig string, update func()) {
+func testConfig2(t *testing.T, reg *prometheus.Registry, config string, reloadConfig string, update func()) {
 	defer verifyNoGoroutineLeaks(t)
-	ctrl, f := setup(t, config)
+	ctrl, f := setup(t, config, reg)
 
 	err := ctrl.LoadSource(f, nil, "")
 	require.NoError(t, err)
@@ -393,12 +397,15 @@ func testConfig2(t *testing.T, config string, reloadConfig string, update func()
 	}()
 
 	// Check for initial condition
-	require.Eventually(t, func() bool {
-		export := getExport[testcomponents.SummationExports_2](t, ctrl, "", "testcomponents.summation2.final")
-		// If each iteration of the for loop adds a 1,
-		// and there are 4 iterations, we expect 4 to be the end result.
-		//TODO: Make the expected "sum" value configurable?
-		return export.Sum == 4
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		expectedMetrics := `
+# HELP testcomponents_summation2 Summation of all integers received
+# TYPE testcomponents_summation2 counter
+testcomponents_summation2{component_id="testcomponents.summation2.final",component_path="/"} 1
+`
+		if err := testutil.GatherAndCompare(reg, strings.NewReader(expectedMetrics), "testcomponents_summation2"); err != nil {
+			c.Errorf("mismatch metrics: %v", err)
+		}
 	}, 3*time.Second, 10*time.Millisecond)
 
 	// if update != nil {
@@ -430,7 +437,7 @@ func testConfig2(t *testing.T, config string, reloadConfig string, update func()
 
 func testConfigError(t *testing.T, config string, expectedError string) {
 	defer verifyNoGoroutineLeaks(t)
-	ctrl, f := setup(t, config)
+	ctrl, f := setup(t, config, nil)
 	err := ctrl.LoadSource(f, nil, "")
 	require.ErrorContains(t, err, expectedError)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -447,14 +454,14 @@ func testConfigError(t *testing.T, config string, expectedError string) {
 	}()
 }
 
-func setup(t *testing.T, config string) (*alloy_runtime.Runtime, *alloy_runtime.Source) {
+func setup(t *testing.T, config string, reg prometheus.Registerer) (*alloy_runtime.Runtime, *alloy_runtime.Source) {
 	s, err := logging.New(os.Stderr, logging.DefaultOptions)
 	require.NoError(t, err)
 	ctrl := alloy_runtime.New(alloy_runtime.Options{
 		Logger:       s,
 		DataPath:     t.TempDir(),
 		MinStability: featuregate.StabilityPublicPreview,
-		Reg:          nil,
+		Reg:          reg,
 		Services:     []service.Service{},
 	})
 	f, err := alloy_runtime.ParseSource(t.Name(), []byte(config))

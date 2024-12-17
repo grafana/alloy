@@ -23,8 +23,7 @@ func init() {
 
 // Accepts a single integer input and forwards it to all the components listed in forward_to.
 type SummationConfig_Entry struct {
-	Input int `alloy:"input,attr"`
-	//TODO: What should the type be?
+	Input     int           `alloy:"input,attr"`
 	ForwardTo []IntReceiver `alloy:"forward_to,attr"`
 }
 
@@ -34,15 +33,16 @@ type SummationExports_Entry struct {
 type Summation_Entry struct {
 	opts component.Options
 	log  log.Logger
+	cfg  SummationConfig_Entry
 }
 
 // NewSummation creates a new summation component.
 func NewSummation_Entry(o component.Options, cfg SummationConfig_Entry) (*Summation_Entry, error) {
-	t := &Summation_Entry{opts: o, log: o.Logger}
-	if err := t.Update(cfg); err != nil {
-		return nil, err
-	}
-	return t, nil
+	return &Summation_Entry{
+		opts: o,
+		log:  o.Logger,
+		cfg:  cfg,
+	}, nil
 }
 
 var (
@@ -51,17 +51,16 @@ var (
 
 // Run implements Component.
 func (t *Summation_Entry) Run(ctx context.Context) error {
+	for _, r := range t.cfg.ForwardTo {
+		r.ReceiveInt(t.cfg.Input)
+	}
+
 	<-ctx.Done()
 	return nil
 }
 
 // Update implements Component.
 func (t *Summation_Entry) Update(args component.Arguments) error {
-	c := args.(SummationConfig_Entry)
-
-	for _, r := range c.ForwardTo {
-		r.ReceiveInt(c.Input)
-	}
-
+	// TODO: Implement this?
 	return nil
 }
