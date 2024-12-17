@@ -54,7 +54,7 @@ export const ComponentView: FC<ComponentViewProps> = (props) => {
     }
 
     if (!liveDebuggingEnabled) {
-      return <></>;
+      return 'Live debugging is not yet available for this component';
     }
 
     return (
