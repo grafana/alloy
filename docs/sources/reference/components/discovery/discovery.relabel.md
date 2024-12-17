@@ -78,7 +78,7 @@ In those cases, exported fields retain their last healthy values.
 
 ## Debug information
 
-`discovery.relabel` exposes some target-level debug information per target:
+`discovery.relabel` does not expose any component-specific debug information.
 
 ## Debug metrics
 
