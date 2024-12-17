@@ -162,12 +162,10 @@ func (fn *ForeachConfigNode) Run(ctx context.Context) error {
 		// TODO: log error
 	}
 
-	errChan := make(chan error, 1)
-	err = fn.run(errChan, updateTasks)
-	return err
+	return fn.run(ctx, updateTasks)
 }
 
-func (fn *ForeachConfigNode) run(errChan chan error, updateTasks func() error) error {
+func (fn *ForeachConfigNode) run(ctx context.Context, updateTasks func() error) error {
 	for {
 		select {
 		case <-fn.forEachChildrenUpdateChan:
@@ -175,8 +173,8 @@ func (fn *ForeachConfigNode) run(errChan chan error, updateTasks func() error) e
 			if err != nil {
 				// TODO: log error
 			}
-		case err := <-errChan:
-			return err
+		case <-ctx.Done():
+			return nil
 		}
 	}
 }

@@ -46,6 +46,7 @@ type Loader struct {
 	componentNodes       []ComponentNode
 	declareNodes         map[string]*DeclareNode
 	importConfigNodes    map[string]*ImportConfigNode
+	forEachNodes         map[string]*ForeachConfigNode
 	serviceNodes         []*ServiceNode
 	cache                *valueCache
 	blocks               []*ast.BlockStmt // Most recently loaded blocks, used for writing
@@ -547,6 +548,7 @@ func (l *Loader) populateConfigBlockNodes(args map[string]any, g *dag.Graph, con
 	}
 
 	l.importConfigNodes = nodeMap.importMap
+	l.forEachNodes = nodeMap.foreachMap
 
 	return diags
 }
@@ -679,6 +681,13 @@ func (l *Loader) Imports() map[string]*ImportConfigNode {
 	l.mut.RLock()
 	defer l.mut.RUnlock()
 	return l.importConfigNodes
+}
+
+// ForEachs returns the current set of for_each nodes.
+func (l *Loader) ForEachs() map[string]*ForeachConfigNode {
+	l.mut.RLock()
+	defer l.mut.RUnlock()
+	return l.forEachNodes
 }
 
 // Graph returns a copy of the DAG managed by the Loader.
