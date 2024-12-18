@@ -239,9 +239,12 @@ func (p *Processor) Update(args component.Arguments) error {
 		}
 	}
 
+	updateConsumersFunc := func() {
+		p.consumer.SetConsumers(tracesProcessor, metricsProcessor, logsProcessor)
+	}
+
 	// Schedule the components to run once our component is running.
-	p.consumer.SetConsumers(tracesProcessor, metricsProcessor, logsProcessor)
-	p.sched.Schedule(p.ctx, host, components...)
+	p.sched.Schedule(p.ctx, updateConsumersFunc, host, components...)
 
 	return nil
 }

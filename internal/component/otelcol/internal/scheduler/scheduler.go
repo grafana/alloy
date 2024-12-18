@@ -73,25 +73,43 @@ func NewWithPauseCallbacks(l log.Logger, onPause func(), onResume func()) *Sched
 // Schedule completely overrides the set of previously running components;
 // components which have been removed since the last call to Schedule will be
 // stopped.
-func (cs *Scheduler) Schedule(ctx context.Context, h otelcomponent.Host, cc ...otelcomponent.Component) {
+func (cs *Scheduler) Schedule(ctx context.Context, updateConsumers func(), h otelcomponent.Host, cc ...otelcomponent.Component) {
 	cs.schedMut.Lock()
 	defer cs.schedMut.Unlock()
 
-	cs.schedComponents = cc
-	cs.host = h
-
+	// If the scheduler isn't running yet, just update the state.
+	// That way the Run function is ready to go.
 	if !cs.running {
+		cs.schedComponents = cc
+		cs.host = h
+		updateConsumers()
 		return
 	}
 
-	cs.runScheduled(ctx)
+	cs.onPause()
+
+	// Stop the old components before running new scheduled ones.
+	cs.stopComponents(ctx, cs.schedComponents...)
+
+	updateConsumers()
+
+	level.Debug(cs.log).Log("msg", "scheduling components", "count", len(cs.schedComponents))
+	cs.schedComponents = cs.startComponents(ctx, h, cc...)
+	cs.host = h
+	//TODO: Check if there were errors? What if the trace component failed but the metrics one didn't? Should we resume all consumers?
+
+	cs.onResume()
 }
 
 // Run starts the Scheduler and stops the components when the context is cancelled.
 func (cs *Scheduler) Run(ctx context.Context) error {
 	cs.schedMut.Lock()
 	cs.running = true
-	cs.runScheduled(ctx)
+
+	cs.onPause()
+	cs.startComponents(ctx, cs.host, cs.schedComponents...)
+	cs.onResume()
+
 	cs.schedMut.Unlock()
 
 	// Make sure we terminate all of our running components on shutdown.
@@ -103,19 +121,6 @@ func (cs *Scheduler) Run(ctx context.Context) error {
 
 	<-ctx.Done()
 	return nil
-}
-
-func (cs *Scheduler) runScheduled(ctx context.Context) {
-	cs.onPause()
-
-	// Stop the old components before running new scheduled ones.
-	cs.stopComponents(ctx, cs.schedComponents...)
-
-	level.Debug(cs.log).Log("msg", "scheduling components", "count", len(cs.schedComponents))
-	cs.schedComponents = cs.startComponents(ctx, cs.host, cs.schedComponents...)
-	//TODO: Check if there were errors? What if the trace component failed but the metrics one didn't? Should we resume all consumers?
-
-	cs.onResume()
 }
 
 func (cs *Scheduler) stopComponents(ctx context.Context, cc ...otelcomponent.Component) {
