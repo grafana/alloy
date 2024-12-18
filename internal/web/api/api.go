@@ -11,6 +11,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -24,13 +25,14 @@ import (
 
 // AlloyAPI is a wrapper around the component API.
 type AlloyAPI struct {
-	alloy           service.Host
-	CallbackManager livedebugging.CallbackManager
+	alloy                         service.Host
+	CallbackManager               livedebugging.CallbackManager
+	liveDebuggingBufferStreamSize int
 }
 
 // NewAlloyAPI instantiates a new Alloy API.
-func NewAlloyAPI(alloy service.Host, CallbackManager livedebugging.CallbackManager) *AlloyAPI {
-	return &AlloyAPI{alloy: alloy, CallbackManager: CallbackManager}
+func NewAlloyAPI(alloy service.Host, CallbackManager livedebugging.CallbackManager, liveDebuggingBufferStreamSize int) *AlloyAPI {
+	return &AlloyAPI{alloy: alloy, CallbackManager: CallbackManager, liveDebuggingBufferStreamSize: liveDebuggingBufferStreamSize}
 }
 
 // RegisterRoutes registers all the API's routes.
@@ -49,7 +51,7 @@ func (a *AlloyAPI) RegisterRoutes(urlPrefix string, r *mux.Router) {
 	r.Handle(path.Join(urlPrefix, "/remotecfg/components/{id:.+}"), httputil.CompressionHandler{Handler: getComponentHandlerRemoteCfg(a.alloy)})
 
 	r.Handle(path.Join(urlPrefix, "/peers"), httputil.CompressionHandler{Handler: getClusteringPeersHandler(a.alloy)})
-	r.Handle(path.Join(urlPrefix, "/debug/{id:.+}"), liveDebugging(a.alloy, a.CallbackManager))
+	r.Handle(path.Join(urlPrefix, "/debug/{id:.+}"), liveDebugging(a.alloy, a.CallbackManager, a.liveDebuggingBufferStreamSize))
 }
 
 func listComponentsHandler(host service.Host) http.HandlerFunc {
@@ -165,14 +167,12 @@ func getClusteringPeersHandler(host service.Host) http.HandlerFunc {
 	}
 }
 
-func liveDebugging(host service.Host, callbackManager livedebugging.CallbackManager) http.HandlerFunc {
+func liveDebugging(_ service.Host, callbackManager livedebugging.CallbackManager, liveDebuggingBufferStreamSize int) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		componentID := livedebugging.ComponentID(vars["id"])
 
-		// Buffer of 1000 entries to handle load spikes and prevent this functionality from eating up too much memory.
-		// TODO: in the future we may want to make this value configurable to handle heavy load
-		dataCh := make(chan string, 1000)
+		dataCh := make(chan string, liveDebuggingBufferStreamSize)
 		ctx := r.Context()
 
 		sampleProb := setSampleProb(w, r.URL.Query().Get("sampleProb"))
@@ -200,9 +200,12 @@ func liveDebugging(host service.Host, callbackManager livedebugging.CallbackMana
 			return
 		}
 
+		flushTicker := time.NewTicker(time.Second)
+
 		defer func() {
 			close(dataCh)
 			callbackManager.DeleteCallback(id, componentID)
+			flushTicker.Stop()
 		}()
 
 		for {
@@ -216,7 +219,7 @@ func liveDebugging(host service.Host, callbackManager livedebugging.CallbackMana
 				if writeErr != nil {
 					return
 				}
-				// TODO: flushing at a regular interval might be better performance wise
+			case <-flushTicker.C:
 				w.(http.Flusher).Flush()
 			case <-ctx.Done():
 				return

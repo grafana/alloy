@@ -52,18 +52,19 @@ import (
 
 func runCommand() *cobra.Command {
 	r := &alloyRun{
-		inMemoryAddr:          "alloy.internal:12345",
-		httpListenAddr:        "127.0.0.1:12345",
-		storagePath:           "data-alloy/",
-		minStability:          featuregate.StabilityGenerallyAvailable,
-		uiPrefix:              "/",
-		disableReporting:      false,
-		enablePprof:           true,
-		configFormat:          "alloy",
-		clusterAdvInterfaces:  advertise.DefaultInterfaces,
-		clusterMaxJoinPeers:   5,
-		clusterRejoinInterval: 60 * time.Second,
-		disableSupportBundle:  false,
+		inMemoryAddr:                  "alloy.internal:12345",
+		httpListenAddr:                "127.0.0.1:12345",
+		storagePath:                   "data-alloy/",
+		minStability:                  featuregate.StabilityGenerallyAvailable,
+		uiPrefix:                      "/",
+		disableReporting:              false,
+		enablePprof:                   true,
+		configFormat:                  "alloy",
+		clusterAdvInterfaces:          advertise.DefaultInterfaces,
+		clusterMaxJoinPeers:           5,
+		clusterRejoinInterval:         60 * time.Second,
+		disableSupportBundle:          false,
+		liveDebuggingBufferStreamSize: 1000,
 	}
 
 	cmd := &cobra.Command{
@@ -113,6 +114,8 @@ depending on the nature of the reload error.
 		BoolVar(&r.enablePprof, "server.http.enable-pprof", r.enablePprof, "Enable /debug/pprof profiling endpoints.")
 	cmd.Flags().
 		BoolVar(&r.disableSupportBundle, "server.http.disable-support-bundle", r.disableSupportBundle, "Disable /-/support support bundle retrieval.")
+	cmd.Flags().
+		IntVar(&r.liveDebuggingBufferStreamSize, "server.http.live-debugging-buffer-stream-size", r.liveDebuggingBufferStreamSize, "Buffer stream size used for buffering the live debugging entries")
 
 	// Cluster flags
 	cmd.Flags().
@@ -161,32 +164,33 @@ depending on the nature of the reload error.
 }
 
 type alloyRun struct {
-	inMemoryAddr                 string
-	httpListenAddr               string
-	storagePath                  string
-	minStability                 featuregate.Stability
-	uiPrefix                     string
-	enablePprof                  bool
-	disableReporting             bool
-	clusterEnabled               bool
-	clusterNodeName              string
-	clusterAdvAddr               string
-	clusterJoinAddr              string
-	clusterDiscoverPeers         string
-	clusterAdvInterfaces         []string
-	clusterRejoinInterval        time.Duration
-	clusterMaxJoinPeers          int
-	clusterName                  string
-	clusterEnableTLS             bool
-	clusterTLSCAPath             string
-	clusterTLSCertPath           string
-	clusterTLSKeyPath            string
-	clusterTLSServerName         string
-	configFormat                 string
-	configBypassConversionErrors bool
-	configExtraArgs              string
-	enableCommunityComps         bool
-	disableSupportBundle         bool
+	inMemoryAddr                  string
+	httpListenAddr                string
+	storagePath                   string
+	minStability                  featuregate.Stability
+	uiPrefix                      string
+	enablePprof                   bool
+	disableReporting              bool
+	clusterEnabled                bool
+	clusterNodeName               string
+	clusterAdvAddr                string
+	clusterJoinAddr               string
+	clusterDiscoverPeers          string
+	clusterAdvInterfaces          []string
+	clusterRejoinInterval         time.Duration
+	clusterMaxJoinPeers           int
+	clusterName                   string
+	clusterEnableTLS              bool
+	clusterTLSCAPath              string
+	clusterTLSCertPath            string
+	clusterTLSKeyPath             string
+	clusterTLSServerName          string
+	configFormat                  string
+	configBypassConversionErrors  bool
+	configExtraArgs               string
+	enableCommunityComps          bool
+	disableSupportBundle          bool
+	liveDebuggingBufferStreamSize int
 }
 
 func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
@@ -316,8 +320,9 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 	liveDebuggingService := livedebugging.New()
 
 	uiService := uiservice.New(uiservice.Options{
-		UIPrefix:        fr.uiPrefix,
-		CallbackManager: liveDebuggingService.Data().(livedebugging.CallbackManager),
+		UIPrefix:                      fr.uiPrefix,
+		CallbackManager:               liveDebuggingService.Data().(livedebugging.CallbackManager),
+		LiveDebuggingBufferStreamSize: fr.liveDebuggingBufferStreamSize,
 	})
 
 	otelService := otel_service.New(l)

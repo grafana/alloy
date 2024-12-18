@@ -38,6 +38,7 @@ The following flags are supported:
 * `--server.http.memory-addr`: Address to listen for [in-memory HTTP traffic][] on (default `alloy.internal:12345`).
 * `--server.http.listen-addr`: Address to listen for HTTP traffic on (default `127.0.0.1:12345`).
 * `--server.http.ui-path-prefix`: Base path where the UI is exposed (default `/`).
+* `--server.http.live-debugging-buffer-stream-size`: Buffer stream size used for buffering the live debugging entries (default `1000`)
 * `--storage.path`: Base directory where components can store data (default `data-alloy/`).
 * `--disable-reporting`: Disable [data collection][] (default `false`).
 * `--disable-support-bundle`: Disable [support bundle][] endpoint (default `false`).
