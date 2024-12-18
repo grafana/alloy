@@ -131,7 +131,7 @@ func New(opts component.Options, f otelexporter.Factory, args Arguments, support
 		factory:  f,
 		consumer: consumer,
 
-		sched:     scheduler.New(opts.Logger),
+		sched:     scheduler.NewWithPauseCallbacks(opts.Logger, consumer.Pause, consumer.Resume),
 		collector: collector,
 
 		supportedSignals: supportedSignals,
@@ -242,11 +242,12 @@ func (e *Exporter) Update(args component.Arguments) error {
 		}
 	}
 
+	updateConsumersFunc := func() {
+		e.consumer.SetConsumers(tracesExporter, metricsExporter, logsExporter)
+	}
+
 	// Schedule the components to run once our component is running.
-	e.consumer.Pause()
-	e.consumer.SetConsumers(tracesExporter, metricsExporter, logsExporter)
-	e.sched.Schedule(e.ctx, host, components...)
-	e.consumer.Resume()
+	e.sched.Schedule(e.ctx, updateConsumersFunc, host, components...)
 	return nil
 }
 

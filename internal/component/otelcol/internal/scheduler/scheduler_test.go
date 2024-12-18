@@ -30,7 +30,7 @@ func TestScheduler(t *testing.T) {
 		// Schedule our component, which should notify the started trigger once it is
 		// running.
 		component, started, _ := newTriggerComponent()
-		cs.Schedule(context.Background(), h, component)
+		cs.Schedule(context.Background(), func() {}, h, component)
 		require.NoError(t, started.Wait(5*time.Second), "component did not start")
 	})
 
@@ -50,12 +50,12 @@ func TestScheduler(t *testing.T) {
 		// Schedule our component, which should notify the started and stopped
 		// trigger once it starts and stops respectively.
 		component, started, stopped := newTriggerComponent()
-		cs.Schedule(context.Background(), h, component)
+		cs.Schedule(context.Background(), func() {}, h, component)
 
 		// Wait for the component to start, and then unschedule all components, which
 		// should cause our running component to terminate.
 		require.NoError(t, started.Wait(5*time.Second), "component did not start")
-		cs.Schedule(context.Background(), h)
+		cs.Schedule(context.Background(), func() {}, h)
 		require.NoError(t, stopped.Wait(5*time.Second), "component did not shutdown")
 	})
 
@@ -78,7 +78,7 @@ func TestScheduler(t *testing.T) {
 		// Schedule our component which will notify our trigger when Shutdown gets
 		// called.
 		component, started, stopped := newTriggerComponent()
-		cs.Schedule(ctx, h, component)
+		cs.Schedule(ctx, func() {}, h, component)
 
 		// Wait for the component to start, and then stop our scheduler, which
 		// should cause our running component to terminate.

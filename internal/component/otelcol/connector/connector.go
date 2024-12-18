@@ -117,7 +117,7 @@ func New(opts component.Options, f otelconnector.Factory, args Arguments) (*Conn
 		factory:  f,
 		consumer: consumer,
 
-		sched:     scheduler.New(opts.Logger),
+		sched:     scheduler.NewWithPauseCallbacks(opts.Logger, consumer.Pause, consumer.Resume),
 		collector: collector,
 	}
 	if err := p.Update(args); err != nil {
@@ -214,11 +214,12 @@ func (p *Connector) Update(args component.Arguments) error {
 		return errors.New("unsupported connector type")
 	}
 
+	updateConsumersFunc := func() {
+		p.consumer.SetConsumers(tracesConnector, metricsConnector, logsConnector)
+	}
+
 	// Schedule the components to run once our component is running.
-	p.consumer.Pause()
-	p.consumer.SetConsumers(tracesConnector, metricsConnector, logsConnector)
-	p.sched.Schedule(p.ctx, host, components...)
-	p.consumer.Resume()
+	p.sched.Schedule(p.ctx, updateConsumersFunc, host, components...)
 	return nil
 }
 
