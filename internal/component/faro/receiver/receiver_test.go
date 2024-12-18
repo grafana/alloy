@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/phayes/freeport"
@@ -138,4 +140,53 @@ func Test(t *testing.T) {
 			require.Equal(t, tc.expect, lr.entries[0])
 		})
 	}
+}
+
+type fakeLogsReceiver struct {
+	ch chan loki.Entry
+
+	entriesMut sync.RWMutex
+	entries    []loki.Entry
+}
+
+var _ loki.LogsReceiver = (*fakeLogsReceiver)(nil)
+
+func newFakeLogsReceiver(t *testing.T) *fakeLogsReceiver {
+	ctx := componenttest.TestContext(t)
+
+	lr := &fakeLogsReceiver{
+		ch: make(chan loki.Entry, 1),
+	}
+
+	go func() {
+		defer close(lr.ch)
+
+		select {
+		case <-ctx.Done():
+			return
+		case ent := <-lr.Chan():
+			lr.entriesMut.Lock()
+			lr.entries = append(lr.entries, loki.Entry{
+				Labels: ent.Labels,
+				Entry: logproto.Entry{
+					Timestamp:          time.Time{}, // Use consistent time for testing.
+					Line:               ent.Line,
+					StructuredMetadata: ent.StructuredMetadata,
+				},
+			})
+			lr.entriesMut.Unlock()
+		}
+	}()
+
+	return lr
+}
+
+func (lr *fakeLogsReceiver) Chan() chan loki.Entry {
+	return lr.ch
+}
+
+func (lr *fakeLogsReceiver) GetEntries() []loki.Entry {
+	lr.entriesMut.RLock()
+	defer lr.entriesMut.RUnlock()
+	return lr.entries
 }
