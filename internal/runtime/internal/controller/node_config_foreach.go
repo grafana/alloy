@@ -23,7 +23,6 @@ type ForeachConfigNode struct {
 
 	mut   sync.RWMutex
 	block *ast.BlockStmt
-	eval  *vm.Evaluator
 }
 
 var _ BlockNode = (*ForeachConfigNode)(nil)
@@ -44,7 +43,6 @@ func NewForeachConfigNode(block *ast.BlockStmt, globals ComponentGlobals) *Forea
 		nodeID:                    nodeID,
 		label:                     block.Label,
 		block:                     block,
-		eval:                      vm.New(block.Body),
 		moduleController:          globals.NewModuleController(globalID),
 		forEachChildrenUpdateChan: make(chan struct{}, 1),
 		customComponents:          make(map[string]CustomComponent, 0),
@@ -57,37 +55,54 @@ func (fn *ForeachConfigNode) NodeID() string { return fn.nodeID }
 
 func (fn *ForeachConfigNode) Block() *ast.BlockStmt { return fn.block }
 
+type Arguments struct {
+	Collection []any  `alloy:"collection,attr"`
+	Var        string `alloy:"var,attr"`
+}
+
 func (fn *ForeachConfigNode) Evaluate(scope *vm.Scope) error {
 	fn.mut.Lock()
 	defer fn.mut.Unlock()
 
-	//TODO: Get the "template" block
-	//TODO: Prefix the custom components with something like "foreach.testForeach.1."
-	//TODO: find a way to evaluate the block?
-	collection, template, err := getArgs(fn.block.Body)
-	if err != nil {
-		return fmt.Errorf("parsing foreach block: %w", err)
+	var argsBody ast.Body
+	var template *ast.BlockStmt
+	for _, stmt := range fn.block.Body {
+		if blockStmt, ok := stmt.(*ast.BlockStmt); ok && blockStmt.GetBlockName() == "template" {
+			template = blockStmt
+			continue // we don't add the template to the argsBody
+		}
+		argsBody = append(argsBody, stmt)
 	}
 
-	//TODO: Take into account the actual items in the collection.
-	// The custom components should be able to use the values from the collection.
-	loopCount := len(collection)
+	if template == nil {
+		return fmt.Errorf("the block template is missing in the foreach block")
+	}
+
+	eval := vm.New(argsBody)
+
+	var args Arguments
+	if err := eval.Evaluate(scope, &args); err != nil {
+		return fmt.Errorf("decoding configuration: %w", err)
+	}
 
 	// Loop through the items to create the custom components.
 	// On re-evaluation new components are added and existing ones are updated.
-	newCustomComponentIds := make(map[string]bool, loopCount)
+	newCustomComponentIds := make(map[string]bool, len(args.Collection))
+	// find something for the ids because we cannot use numbers
 	tmp := []string{"aaa", "bbb", "ccc", "ddd"}
-	for i := 0; i < loopCount; i++ {
+	for i := 0; i < len(args.Collection); i++ {
 		customComponentID := tmp[i]
 		cc, err := fn.getOrCreateCustomComponent(customComponentID)
 		if err != nil {
 			return err
 		}
 
-		args := map[string]any{}
+		vars := deepCopyMap(scope.Variables)
+		vars[args.Var] = args.Collection[i]
+
 		// TODO: use the registry from the loader to access the modules
-		customComponentRegistry := NewCustomComponentRegistry(nil, scope)
-		if err := cc.LoadBody(template, args, customComponentRegistry); err != nil {
+		customComponentRegistry := NewCustomComponentRegistry(nil, vm.NewScope(vars))
+		if err := cc.LoadBody(template.Body, map[string]any{}, customComponentRegistry); err != nil {
 			return fmt.Errorf("updating custom component in foreach: %w", err)
 		}
 		newCustomComponentIds[customComponentID] = true
@@ -177,39 +192,6 @@ func (fn *ForeachConfigNode) run(ctx context.Context, updateTasks func() error) 
 			return nil
 		}
 	}
-}
-
-func getArgs(body ast.Body) ([]ast.Expr, ast.Body, error) {
-	var collection []ast.Expr
-	var template ast.Body
-
-	if len(body) != 2 {
-		return nil, nil, fmt.Errorf("foreach block must have two children")
-	}
-
-	for _, stmt := range body {
-		switch stmt := stmt.(type) {
-		case *ast.BlockStmt:
-			if stmt.GetBlockName() != "template" {
-				return nil, nil, fmt.Errorf("unknown block")
-			}
-			template = stmt.Body
-		case *ast.AttributeStmt:
-			if stmt.Name.Name != "collection" {
-				return nil, nil, fmt.Errorf("unknown attribute")
-			}
-			attrExpr, ok := stmt.Value.(*ast.ArrayExpr)
-			if !ok {
-				return nil, nil, fmt.Errorf("collection must be an array")
-			}
-			collection = attrExpr.Elements
-
-		default:
-			return nil, nil, fmt.Errorf("unknown argument")
-		}
-	}
-
-	return collection, template, nil
 }
 
 type forEachChildRunner struct {

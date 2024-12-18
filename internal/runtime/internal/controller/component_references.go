@@ -57,6 +57,12 @@ func ComponentReferences(cn dag.Node, g *dag.Graph, l log.Logger, scope *vm.Scop
 
 	refs := make([]Reference, 0, len(traversals))
 	for _, t := range traversals {
+
+		// TODO: fix this
+		if len(t) == 1 {
+			continue
+		}
+
 		ref, resolveDiags := resolveTraversal(t, g)
 		componentRefMatch := !resolveDiags.HasErrors()
 
