@@ -139,8 +139,6 @@ func (p *Processor) Run(ctx context.Context) error {
 // configuration for OpenTelemetry Collector processor configuration and manage
 // the underlying OpenTelemetry Collector processor.
 func (p *Processor) Update(args component.Arguments) error {
-	//TODO: Lock a mutex? There could be a race condition with multiple calls to Update
-
 	p.args = args.(Arguments)
 
 	host := scheduler.NewHost(
