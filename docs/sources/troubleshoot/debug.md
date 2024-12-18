@@ -112,6 +112,7 @@ Supported components:
 * `prometheus.relabel`
 {{< /admonition >}}
 * `discovery.relabel`
+* `prometheus.scrape`
 
 ## Debug using the UI
 
