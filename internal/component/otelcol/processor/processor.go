@@ -117,7 +117,7 @@ func New(opts component.Options, f otelprocessor.Factory, args Arguments) (*Proc
 		factory:  f,
 		consumer: consumer,
 
-		sched:     scheduler.New(opts.Logger),
+		sched:     scheduler.NewWithPauseCallbacks(opts.Logger, consumer.Pause, consumer.Resume),
 		collector: collector,
 
 		liveDebuggingConsumer: livedebuggingconsumer.New(debugDataPublisher.(livedebugging.DebugDataPublisher), opts.ID),
@@ -139,6 +139,8 @@ func (p *Processor) Run(ctx context.Context) error {
 // configuration for OpenTelemetry Collector processor configuration and manage
 // the underlying OpenTelemetry Collector processor.
 func (p *Processor) Update(args component.Arguments) error {
+	//TODO: Lock a mutex? There could be a race condition with multiple calls to Update
+
 	p.args = args.(Arguments)
 
 	host := scheduler.NewHost(
@@ -238,10 +240,8 @@ func (p *Processor) Update(args component.Arguments) error {
 	}
 
 	// Schedule the components to run once our component is running.
-	p.consumer.Pause()
 	p.consumer.SetConsumers(tracesProcessor, metricsProcessor, logsProcessor)
 	p.sched.Schedule(p.ctx, host, components...)
-	p.consumer.Resume()
 
 	return nil
 }

@@ -37,13 +37,33 @@ type Scheduler struct {
 	schedMut        sync.Mutex
 	schedComponents []otelcomponent.Component // Most recently created components
 	host            otelcomponent.Host
+	running         bool
+
+	// onPause is called when scheduler is making changes to running components.
+	onPause func()
+	// onResume is called when scheduler is done making changes to running components.
+	onResume func()
 }
 
+// TODO: Delete this function? I don't think it's used anywhere.
 // New creates a new unstarted Scheduler. Call Run to start it, and call
 // Schedule to schedule components to run.
 func New(l log.Logger) *Scheduler {
 	return &Scheduler{
-		log: l,
+		log:      l,
+		onPause:  func() {},
+		onResume: func() {},
+	}
+}
+
+// TODO: Rename to "New"?
+// TODO: Write a new comment to explain what this method does.
+func NewWithPauseCallbacks(l log.Logger, onPause func(), onResume func()) *Scheduler {
+	//TODO: Instead of assuming that the scheduler is paused, just call onPause() here.
+	return &Scheduler{
+		log:      l,
+		onPause:  onPause,
+		onResume: onResume,
 	}
 }
 
@@ -57,15 +77,23 @@ func (cs *Scheduler) Schedule(ctx context.Context, h otelcomponent.Host, cc ...o
 	cs.schedMut.Lock()
 	defer cs.schedMut.Unlock()
 
-	// Stop the old components before running new scheduled ones.
-	cs.stopComponents(ctx, cs.schedComponents...)
+	cs.schedComponents = cc
+	cs.host = h
 
-	level.Debug(cs.log).Log("msg", "scheduling components", "count", len(cc))
-	cs.schedComponents = cs.startComponents(ctx, h, cc...)
+	if !cs.running {
+		return
+	}
+
+	cs.runScheduled(ctx)
 }
 
 // Run starts the Scheduler and stops the components when the context is cancelled.
 func (cs *Scheduler) Run(ctx context.Context) error {
+	cs.schedMut.Lock()
+	cs.running = true
+	cs.runScheduled(ctx)
+	cs.schedMut.Unlock()
+
 	// Make sure we terminate all of our running components on shutdown.
 	defer func() {
 		cs.schedMut.Lock()
@@ -75,6 +103,19 @@ func (cs *Scheduler) Run(ctx context.Context) error {
 
 	<-ctx.Done()
 	return nil
+}
+
+func (cs *Scheduler) runScheduled(ctx context.Context) {
+	cs.onPause()
+
+	// Stop the old components before running new scheduled ones.
+	cs.stopComponents(ctx, cs.schedComponents...)
+
+	level.Debug(cs.log).Log("msg", "scheduling components", "count", len(cs.schedComponents))
+	cs.schedComponents = cs.startComponents(ctx, cs.host, cs.schedComponents...)
+	//TODO: Check if there were errors? What if the trace component failed but the metrics one didn't? Should we resume all consumers?
+
+	cs.onResume()
 }
 
 func (cs *Scheduler) stopComponents(ctx context.Context, cc ...otelcomponent.Component) {
