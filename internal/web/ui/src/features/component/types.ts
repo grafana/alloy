@@ -42,6 +42,11 @@ export interface ComponentInfo {
    * IDs of components which this component is referencing.
    */
   referencesTo: string[];
+
+  /**
+   * Used to indicate if live debugging is available for the component
+   */
+  liveDebuggingEnabled: boolean;
 }
 
 /**

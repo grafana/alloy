@@ -128,6 +128,10 @@ func (f *Runtime) getComponentDetail(cn controller.ComponentNode, graph *dag.Gra
 			componentInfo.DebugInfo = builtinComponent.DebugInfo()
 		}
 	}
+
+	_, liveDebuggingEnabled := componentInfo.Component.(component.LiveDebugging)
+	componentInfo.LiveDebuggingEnabled = liveDebuggingEnabled
+
 	return componentInfo
 }
 
