@@ -25,14 +25,14 @@ import (
 
 // AlloyAPI is a wrapper around the component API.
 type AlloyAPI struct {
-	alloy                         service.Host
-	CallbackManager               livedebugging.CallbackManager
-	liveDebuggingBufferStreamSize int
+	alloy               service.Host
+	CallbackManager     livedebugging.CallbackManager
+	LiveDebuggingConfig livedebugging.ConfigViewer
 }
 
 // NewAlloyAPI instantiates a new Alloy API.
-func NewAlloyAPI(alloy service.Host, CallbackManager livedebugging.CallbackManager, liveDebuggingBufferStreamSize int) *AlloyAPI {
-	return &AlloyAPI{alloy: alloy, CallbackManager: CallbackManager, liveDebuggingBufferStreamSize: liveDebuggingBufferStreamSize}
+func NewAlloyAPI(alloy service.Host, CallbackManager livedebugging.CallbackManager, LiveDebuggingConfig livedebugging.ConfigViewer) *AlloyAPI {
+	return &AlloyAPI{alloy: alloy, CallbackManager: CallbackManager, LiveDebuggingConfig: LiveDebuggingConfig}
 }
 
 // RegisterRoutes registers all the API's routes.
@@ -51,7 +51,7 @@ func (a *AlloyAPI) RegisterRoutes(urlPrefix string, r *mux.Router) {
 	r.Handle(path.Join(urlPrefix, "/remotecfg/components/{id:.+}"), httputil.CompressionHandler{Handler: getComponentHandlerRemoteCfg(a.alloy)})
 
 	r.Handle(path.Join(urlPrefix, "/peers"), httputil.CompressionHandler{Handler: getClusteringPeersHandler(a.alloy)})
-	r.Handle(path.Join(urlPrefix, "/debug/{id:.+}"), liveDebugging(a.alloy, a.CallbackManager, a.liveDebuggingBufferStreamSize))
+	r.Handle(path.Join(urlPrefix, "/debug/{id:.+}"), liveDebugging(a.alloy, a.CallbackManager, a.LiveDebuggingConfig))
 }
 
 func listComponentsHandler(host service.Host) http.HandlerFunc {
@@ -167,12 +167,12 @@ func getClusteringPeersHandler(host service.Host) http.HandlerFunc {
 	}
 }
 
-func liveDebugging(_ service.Host, callbackManager livedebugging.CallbackManager, liveDebuggingBufferStreamSize int) http.HandlerFunc {
+func liveDebugging(_ service.Host, callbackManager livedebugging.CallbackManager, LiveDebuggingConfig livedebugging.ConfigViewer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		componentID := livedebugging.ComponentID(vars["id"])
 
-		dataCh := make(chan string, liveDebuggingBufferStreamSize)
+		dataCh := make(chan string, LiveDebuggingConfig.GetBufferStreamSize())
 		ctx := r.Context()
 
 		sampleProb := setSampleProb(w, r.URL.Query().Get("sampleProb"))
