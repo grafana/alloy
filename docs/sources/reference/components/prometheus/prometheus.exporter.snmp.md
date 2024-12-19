@@ -17,33 +17,12 @@ The `prometheus.exporter.snmp` component embeds
 
 ## Usage
 
-### Recommended usage
-
 ```alloy
 prometheus.exporter.snmp "LABEL" {
   config_file = SNMP_CONFIG_FILE_PATH
   targets     = TARGET_LIST
 }
 ```
-
-### Deprecated usage
-
-```alloy
-prometheus.exporter.snmp "LABEL" {
-  config_file = SNMP_CONFIG_FILE_PATH
-
-  target "TARGET_NAME" {
-    address = TARGET_ADDRESS
-  }
-}
-```
-
-Using the `target` block is deprecated because it is less flexible than the `targets` argument:
-* The name of the `target` block cannot contain certain characters, 
-  because it has to comply with Alloy syntax restrictions for [block labels][syntax-blocks].
-* With the `targets` argument you can also pass in additional labels.
-
-[syntax-blocks]: ../../../../get-started/configuration-syntax/syntax#blocks
 
 ## Arguments
 
@@ -84,13 +63,25 @@ The following blocks are supported inside the definition of
 
 | Hierarchy  | Name           | Description                                                 | Required |
 | ---------- | -------------- | ----------------------------------------------------------- | -------- |
-| target     | [target][]     | Configures an SNMP target.                                  | no      |
+| target     | [target][]     | (Deprecated) Configures an SNMP target.                     | no       |
 | walk_param | [walk_param][] | SNMP connection profiles to override default SNMP settings. | no       |
 
 [target]: #target-block
 [walk_param]: #walk_param-block
 
 ### target block
+
+{{< admonition type="warning" >}}
+
+Using the `target` block is deprecated because it is less flexible than the `targets` argument:
+* The value of the `targets` argument could come from another component such as `local.file` or `discovery.file`.
+* The name of the `target` block cannot contain certain characters, 
+  because it has to comply with Alloy syntax restrictions for [block labels][syntax-blocks].
+* With the `targets` argument you can also pass in additional labels.
+
+[syntax-blocks]: ../../../../get-started/configuration-syntax/syntax#blocks
+
+{{< /admonition >}}
 
 The `target` block defines an individual SNMP target.
 The `target` block may be specified multiple times to define multiple targets. The label of the block is required and will be used in the target's `job` label.
@@ -104,6 +95,19 @@ The `target` block may be specified multiple times to define multiple targets. T
 | `snmp_context` | `string`      | Override the `context_name` parameter in the SNMP configuration file. | `""`    | no       |
 | `labels`       | `map(string)` | Map of labels to apply to all metrics captured from the target.       | `""`    | no       |
 
+{{< collapse title="Deprecated example using the target block" >}}
+
+```alloy
+prometheus.exporter.snmp "LABEL" {
+  config_file = SNMP_CONFIG_FILE_PATH
+
+  target "TARGET_NAME" {
+    address = TARGET_ADDRESS
+  }
+}
+```
+
+{{< /collapse >}}
 
 ### walk_param block
 
@@ -137,7 +141,7 @@ debug information.
 `prometheus.exporter.snmp` does not expose any component-specific
 debug metrics.
 
-## Examples using the targets argument (recommended)
+## Examples
 
 ### Basic usage 
 
@@ -255,10 +259,12 @@ The YAML file in this example looks like this:
     auth: public_v2
 ```
 
-## Example using the target block (deprecated)
+### Deprecated example using the target block
 
 This example uses a [`prometheus.scrape` component][scrape] to collect metrics
 from `prometheus.exporter.snmp`:
+
+{{< collapse title="Basic example" >}}
 
 ```alloy
 prometheus.exporter.snmp "example" {
@@ -295,7 +301,11 @@ prometheus.scrape "demo" {
 }
 ```
 
-This example uses an embedded configuration (with secrets):
+{{< /collapse >}}
+
+This example retrieves the SNMP YAML file as a secret, so that it is not displayed in the UI and in logs:
+
+{{< collapse title="Basic example using local.file" >}}
 
 ```alloy
 local.file "snmp_config" {
@@ -344,6 +354,8 @@ prometheus.remote_write "demo" {
     }
 }
 ```
+
+{{< /collapse >}}
 
 Replace the following:
 - _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
