@@ -23,6 +23,7 @@ logging {
 
 faro.receiver "integrations_app_agent_receiver" {
 	extra_log_labels = {}
+	log_format       = ""
 
 	server {
 		listen_address           = "localhost"
