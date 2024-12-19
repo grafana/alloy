@@ -1,0 +1,17 @@
+-- main.alloy --
+foreach "testForeach" {
+  collection = [2]
+  var = "num"
+
+  template {
+    // Similar to testcomponents.summation, but with a "forward_to"
+    testcomponents.summation1 "sum" {
+      input = num
+      forward_to = [testcomponents.summation2.final.receiver]
+    }
+  }
+}
+
+// Similar to testcomponents.summation, but with a "receiver" export
+testcomponents.summation2 "final" {
+}
