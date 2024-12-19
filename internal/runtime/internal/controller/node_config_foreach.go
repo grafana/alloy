@@ -2,6 +2,8 @@ package controller
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"hash/fnv"
 	"sync"
@@ -16,7 +18,8 @@ type ForeachConfigNode struct {
 	label            string
 	moduleController ModuleController
 
-	customComponents map[string]CustomComponent
+	customComponents          map[string]CustomComponent
+	customComponentHashCounts map[string]int
 
 	forEachChildrenUpdateChan chan struct{} // used to trigger an update of the running children
 	forEachChildrenRunning    bool
@@ -46,6 +49,7 @@ func NewForeachConfigNode(block *ast.BlockStmt, globals ComponentGlobals) *Forea
 		moduleController:          globals.NewModuleController(globalID),
 		forEachChildrenUpdateChan: make(chan struct{}, 1),
 		customComponents:          make(map[string]CustomComponent, 0),
+		customComponentHashCounts: make(map[string]int, 0),
 	}
 }
 
@@ -88,10 +92,17 @@ func (fn *ForeachConfigNode) Evaluate(scope *vm.Scope) error {
 	// Loop through the items to create the custom components.
 	// On re-evaluation new components are added and existing ones are updated.
 	newCustomComponentIds := make(map[string]bool, len(args.Collection))
-	// find something for the ids because we cannot use numbers
-	tmp := []string{"aaa", "bbb", "ccc", "ddd"}
+	fn.customComponentHashCounts = make(map[string]int)
 	for i := 0; i < len(args.Collection); i++ {
-		customComponentID := tmp[i]
+
+		// We must create an ID from the collection entries to avoid recreating all components on every updates.
+		// We track the hash counts because the collection might contain duplicates ([1, 1, 1] would result in the same ids
+		// so we handle it by adding the count at the end -> [11, 12, 13]
+		customComponentID := fmt.Sprintf("foreach_%s", hashObject(args.Collection[i]))
+		count := fn.customComponentHashCounts[customComponentID] // count = 0 if the key is not found
+		fn.customComponentHashCounts[customComponentID] = count + 1
+		customComponentID += fmt.Sprintf("_%d", count+1)
+
 		cc, err := fn.getOrCreateCustomComponent(customComponentID)
 		if err != nil {
 			return err
@@ -218,4 +229,20 @@ func (fi *forEachChild) Hash() uint64 {
 
 func (fi *forEachChild) Equals(other runner.Task) bool {
 	return fi.id == other.(*forEachChild).id
+}
+
+func computeHash(s string) string {
+	hasher := sha256.New()
+	hasher.Write([]byte(s))
+	fullHash := hasher.Sum(nil)
+	return hex.EncodeToString(fullHash[:12]) // taking only the 12 first char of the hash should be enough
+}
+
+func hashObject(obj any) string {
+	switch v := obj.(type) {
+	case int, string, float64, bool:
+		return fmt.Sprintf("%v", v)
+	default:
+		return computeHash(fmt.Sprintf("%#v", v))
+	}
 }
