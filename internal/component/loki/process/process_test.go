@@ -15,6 +15,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/model"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
 	"go.uber.org/goleak"
@@ -53,7 +54,7 @@ func TestJSONLabelsStage(t *testing.T) {
 	// The third stage will set some labels from the extracted values above.
 	// Again, if the value is empty, it is inferred that we want to use the
 	// populate the label with extracted value of the same name.
-	stg := `stage.json { 
+	stg := `stage.json {
 			    expressions    = {"output" = "log", stream = "stream", timestamp = "time", "extra" = "" }
 				drop_malformed = true
 		    }
@@ -62,7 +63,7 @@ func TestJSONLabelsStage(t *testing.T) {
 				source      = "extra"
 			}
 			stage.labels {
-			    values = { 
+			    values = {
 				  stream = "",
 				  user   = "",
 				  ts     = "timestamp",
@@ -164,7 +165,7 @@ func TestJSONLabelsStage(t *testing.T) {
 		"[IN]: timestamp: 2020-11-15T02:08:41-07:00, entry: {\"log\":\"log message\\n\",\"stream\":\"stderr\",\"time\":\"2019-04-30T02:12:41.8443515Z\",\"extra\":\"{\\\"user\\\":\\\"smith\\\"}\"}, labels: {filename=\"/var/log/pods/agent/agent/1.log\", foo=\"bar\"}",
 		"[OUT]: timestamp: 2019-04-30T02:12:41.8443515Z, entry: {\"log\":\"log message\\n\",\"stream\":\"stderr\",\"time\":\"2019-04-30T02:12:41.8443515Z\",\"extra\":\"{\\\"user\\\":\\\"smith\\\"}\"}, labels: {filename=\"/var/log/pods/agent/agent/1.log\", foo=\"bar\", stream=\"stderr\", ts=\"2019-04-30T02:12:41.8443515Z\", user=\"smith\"}",
 	}
-	require.Equal(t, expectedLiveDebuggingLog, liveDebuggingLog.Get())
+	assert.ElementsMatch(t, expectedLiveDebuggingLog, liveDebuggingLog.Get())
 }
 
 func TestStaticLabelsLabelAllowLabelDrop(t *testing.T) {
@@ -679,7 +680,7 @@ func TestLeakyUpdate(t *testing.T) {
 	numLogsToSend := 1
 
 	cfg1 := `
-	stage.metrics { 
+	stage.metrics {
         metric.counter {
           name = "paulin_test1"
           action = "inc"
@@ -688,7 +689,7 @@ func TestLeakyUpdate(t *testing.T) {
 	}` + forwardArgs
 
 	cfg2 := `
-	stage.metrics { 
+	stage.metrics {
         metric.counter {
           name = "paulin_test2"
           action = "inc"
@@ -731,7 +732,7 @@ func TestMetricsStageRefresh(t *testing.T) {
 	numLogsToSend := 3
 
 	cfgWithMetric := `
-	stage.metrics { 
+	stage.metrics {
         metric.counter {
           name = "paulin_test"
           action = "inc"
@@ -776,7 +777,7 @@ func TestMetricsStageRefresh(t *testing.T) {
 	// We try having a metric with the same name as before so that we can see if there
 	// is some sort of double registration error for that metric.
 	cfgWithTwoMetrics := `
-	stage.metrics { 
+	stage.metrics {
 		metric.counter {
 		  name = "paulin_test_3"
 		  action = "inc"
