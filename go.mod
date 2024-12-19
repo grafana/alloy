@@ -125,6 +125,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl v0.112.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest v0.112.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatautil v0.112.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza v0.112.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/loki v0.112.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/prometheus v0.112.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/processor/attributesprocessor v0.112.0
@@ -143,6 +144,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver v0.112.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/opencensusreceiver v0.112.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/solacereceiver v0.112.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/syslogreceiver v0.112.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/vcenterreceiver v0.112.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/zipkinreceiver v0.112.0
 	github.com/ory/dockertest/v3 v3.8.1
@@ -845,6 +847,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/kafka/topic v0.112.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/influxdbreceiver v0.112.0
 	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10 // indirect
+	github.com/valyala/fastjson v1.6.4 // indirect
 	go.opentelemetry.io/collector/connector/connectorprofiles v0.112.0 // indirect
 	go.opentelemetry.io/collector/consumer/consumererror v0.112.0 // indirect
 	go.opentelemetry.io/collector/consumer/consumererror/consumererrorprofiles v0.112.0 // indirect

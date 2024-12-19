@@ -12,6 +12,8 @@ Main (unreleased)
 
 ### Features
 
+- Add `otelcol.receiver.syslog` component to receive otel logs in syslog format (@dehaansa)
+
 - Add support for metrics in `otelcol.exporter.loadbalancing` (@madaraszg-tulip)
 
 - Add `add_cloudwatch_timestamp` to `prometheus.exporter.cloudwatch` metrics. (@captncraig)
