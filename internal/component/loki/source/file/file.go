@@ -46,6 +46,7 @@ type Arguments struct {
 	FileWatch           FileWatch           `alloy:"file_watch,block,optional"`
 	TailFromEnd         bool                `alloy:"tail_from_end,attr,optional"`
 	LegacyPositionsFile string              `alloy:"legacy_positions_file,attr,optional"`
+	RetryInterval       time.Duration       `alloy:"retry_interval,attr,optional"`
 }
 
 type FileWatch struct {
@@ -86,6 +87,11 @@ type Component struct {
 	receivers []loki.LogsReceiver
 	posFile   positions.Positions
 	readers   map[positions.Entry]reader
+
+	tickerChan            chan struct{}
+	ticker                *time.Ticker
+	restartReadersCancel  context.CancelFunc
+	restartReadersContext context.Context
 }
 
 // New creates a new loki.source.file component.
@@ -134,13 +140,14 @@ func New(o component.Options, args Arguments) (*Component, error) {
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
 		level.Info(c.opts.Logger).Log("msg", "loki.source.file component shutting down, stopping readers and positions file")
-		c.mut.RLock()
+		c.mut.Lock()
 		for _, r := range c.readers {
 			r.Stop()
 		}
 		c.posFile.Stop()
 		close(c.handler.Chan())
-		c.mut.RUnlock()
+		c.cleanupReadersRestart()
+		c.mut.Unlock()
 	}()
 
 	for {
@@ -153,6 +160,28 @@ func (c *Component) Run(ctx context.Context) error {
 				receiver.Chan() <- entry
 			}
 			c.mut.RUnlock()
+		case <-c.tickerChan:
+			c.mut.Lock()
+			// Find readers that are stopped and re-create them if the files that they were tailing are back.
+			// This helps for log rotation on Windows because the tailer is closed as soon as the file is removed.
+			// On Unix-like systems, it won't re-create any reader because the reader will stay open till the next Update call.
+			restartReaders := make(map[positions.Entry]reader)
+			for key, reader := range c.readers {
+				if !reader.IsRunning() {
+					_, err := os.Stat(reader.Path())
+					if err != nil {
+						continue
+					}
+					restartReaders[key] = reader
+				}
+			}
+			for key, reader := range restartReaders {
+				level.Debug(c.opts.Logger).Log("msg", "recreate reader", "path", reader.Path())
+				reader.Stop()
+				delete(c.readers, key)
+				c.addReader(key, reader.Path(), reader.Labels())
+			}
+			c.mut.Unlock()
 		}
 	}
 }
@@ -185,6 +214,7 @@ func (c *Component) Update(args component.Arguments) error {
 	oldPaths := c.stopReaders()
 
 	newArgs := args.(Arguments)
+	previousRetryInterval := c.args.RetryInterval
 
 	c.mut.Lock()
 	defer c.mut.Unlock()
@@ -200,7 +230,6 @@ func (c *Component) Update(args component.Arguments) error {
 
 	for _, target := range newArgs.Targets {
 		path := target[pathLabel]
-
 		labels := make(model.LabelSet)
 		for k, v := range target {
 			if strings.HasPrefix(k, model.ReservedLabelPrefix) {
@@ -214,19 +243,7 @@ func (c *Component) Update(args component.Arguments) error {
 		if _, exist := c.readers[readersKey]; exist {
 			continue
 		}
-
-		c.reportSize(path, labels.String())
-
-		handler := loki.AddLabelsMiddleware(labels).Wrap(loki.NewEntryHandler(c.handler.Chan(), func() {}))
-		reader, err := c.startTailing(path, labels, handler)
-		if err != nil {
-			continue
-		}
-
-		c.readers[readersKey] = readerWithHandler{
-			reader:  reader,
-			handler: handler,
-		}
+		c.addReader(readersKey, path, labels)
 	}
 
 	// Remove from the positions file any entries that had a Reader before, but
@@ -235,7 +252,26 @@ func (c *Component) Update(args component.Arguments) error {
 		c.posFile.Remove(r.Path, r.Labels)
 	}
 
+	if newArgs.RetryInterval != previousRetryInterval {
+		c.handleReadersRestart(newArgs.RetryInterval)
+	}
+
 	return nil
+}
+
+func (c *Component) addReader(key positions.Entry, path string, labels model.LabelSet) {
+	c.reportSize(path, labels.String())
+
+	handler := loki.AddLabelsMiddleware(labels).Wrap(loki.NewEntryHandler(c.handler.Chan(), func() {}))
+	reader, err := c.startTailing(path, labels, handler)
+	if err != nil {
+		return
+	}
+
+	c.readers[key] = readerWithHandler{
+		reader:  reader,
+		handler: handler,
+	}
 }
 
 // readerWithHandler combines a reader with an entry handler associated with
@@ -331,7 +367,7 @@ func (c *Component) startTailing(path string, labels model.LabelSet, handler lok
 			handler,
 			c.posFile,
 			path,
-			labels.String(),
+			labels,
 			c.args.Encoding,
 			c.args.DecompressionConfig,
 		)
@@ -352,7 +388,7 @@ func (c *Component) startTailing(path string, labels model.LabelSet, handler lok
 			handler,
 			c.posFile,
 			path,
-			labels.String(),
+			labels,
 			c.args.Encoding,
 			pollOptions,
 			c.args.TailFromEnd,
@@ -383,5 +419,37 @@ func (c *Component) reportSize(path, labels string) {
 			return
 		}
 		c.metrics.totalBytes.WithLabelValues(path).Set(float64(fi.Size()))
+	}
+}
+
+func (c *Component) handleReadersRestart(retryInterval time.Duration) {
+	c.cleanupReadersRestart()
+
+	if retryInterval > 0 {
+		c.restartReadersContext, c.restartReadersCancel = context.WithCancel(context.Background())
+		c.ticker = time.NewTicker(retryInterval)
+		c.tickerChan = make(chan struct{})
+		go func() {
+			for {
+				select {
+				case <-c.ticker.C:
+					c.tickerChan <- struct{}{}
+				case <-c.restartReadersContext.Done():
+					return
+				}
+			}
+		}()
+	}
+}
+
+func (c *Component) cleanupReadersRestart() {
+	if c.restartReadersCancel != nil {
+		c.restartReadersCancel()
+		c.restartReadersCancel = nil
+	}
+	if c.ticker != nil {
+		c.ticker.Stop()
+		close(c.tickerChan)
+		c.ticker = nil
 	}
 }

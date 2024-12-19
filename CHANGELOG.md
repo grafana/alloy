@@ -58,6 +58,8 @@ Main (unreleased)
 
 - Update `prometheus.write.queue` library for performance increases in cpu. (@mattdurham)
 
+- Add an argument `retry_interval` to allow `loki.source.file` to try re-opening deleted files on Windows. (@wildum)
+
 ### Bugfixes
 
 - Fixed issue with automemlimit logging bad messages and trying to access cgroup on non-linux builds (@dehaansa)

@@ -1,5 +1,7 @@
 package file
 
+import "github.com/prometheus/common/model"
+
 // This code is copied from loki/promtail@a8d5815510bd959a6dd8c176a5d9fd9bbfc8f8b5.
 // This code accommodates the tailer and decompressor implementations as readers.
 
@@ -8,5 +10,6 @@ type reader interface {
 	Stop()
 	IsRunning() bool
 	Path() string
+	Labels() model.LabelSet
 	MarkPositionAndSize() error
 }

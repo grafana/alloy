@@ -34,9 +34,10 @@ type tailer struct {
 	handler   loki.EntryHandler
 	positions positions.Positions
 
-	path   string
-	labels string
-	tail   *tail.Tail
+	path      string
+	labels    model.LabelSet
+	labelsStr string
+	tail      *tail.Tail
 
 	posAndSizeMtx sync.Mutex
 	stopOnce      sync.Once
@@ -50,20 +51,21 @@ type tailer struct {
 }
 
 func newTailer(metrics *metrics, logger log.Logger, handler loki.EntryHandler, positions positions.Positions, path string,
-	labels string, encoding string, pollOptions watch.PollingFileWatcherOptions, tailFromEnd bool) (*tailer, error) {
+	labels model.LabelSet, encoding string, pollOptions watch.PollingFileWatcherOptions, tailFromEnd bool) (*tailer, error) {
 	// Simple check to make sure the file we are tailing doesn't
 	// have a position already saved which is past the end of the file.
 	fi, err := os.Stat(path)
 	if err != nil {
 		return nil, err
 	}
-	pos, err := positions.Get(path, labels)
+	labelsStr := labels.String()
+	pos, err := positions.Get(path, labelsStr)
 	if err != nil {
 		return nil, err
 	}
 
 	if fi.Size() < pos {
-		positions.Remove(path, labels)
+		positions.Remove(path, labelsStr)
 	}
 
 	// If no cached position is found and the tailFromEnd option is enabled.
@@ -72,7 +74,7 @@ func newTailer(metrics *metrics, logger log.Logger, handler loki.EntryHandler, p
 		if err != nil {
 			level.Error(logger).Log("msg", "failed to get a position from the end of the file, default to start of file", err)
 		} else {
-			positions.Put(path, labels, pos)
+			positions.Put(path, labelsStr, pos)
 			level.Info(logger).Log("msg", "retrieved and stored the position of the last line")
 		}
 	}
@@ -101,6 +103,7 @@ func newTailer(metrics *metrics, logger log.Logger, handler loki.EntryHandler, p
 		positions: positions,
 		path:      path,
 		labels:    labels,
+		labelsStr: labelsStr,
 		tail:      tail,
 		running:   atomic.NewBool(false),
 		posquit:   make(chan struct{}),
@@ -295,7 +298,7 @@ func (t *tailer) MarkPositionAndSize() error {
 	// Update metrics and positions file all together to avoid race conditions when `t.tail` is stopped.
 	t.metrics.totalBytes.WithLabelValues(t.path).Set(float64(size))
 	t.metrics.readBytes.WithLabelValues(t.path).Set(float64(pos))
-	t.positions.Put(t.path, t.labels, pos)
+	t.positions.Put(t.path, t.labelsStr, pos)
 
 	return nil
 }
@@ -355,4 +358,8 @@ func (t *tailer) cleanupMetrics() {
 
 func (t *tailer) Path() string {
 	return t.path
+}
+
+func (t *tailer) Labels() model.LabelSet {
+	return t.labels
 }
