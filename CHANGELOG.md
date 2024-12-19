@@ -58,6 +58,8 @@ Main (unreleased)
 
 - Update `prometheus.write.queue` library for performance increases in cpu. (@mattdurham)
 
+- Add `tenant` label to remaining `loki_write_.+` metrics
+
 ### Bugfixes
 
 - Fixed issue with automemlimit logging bad messages and trying to access cgroup on non-linux builds (@dehaansa)
