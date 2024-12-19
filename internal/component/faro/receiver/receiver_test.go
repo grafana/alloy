@@ -135,6 +135,7 @@ func Test(t *testing.T) {
 			defer resp.Body.Close()
 
 			require.Equal(t, http.StatusAccepted, resp.StatusCode)
+			lr.wg.Wait() // Wait for the fakelogreceiver goroutine to process
 			require.Len(t, lr.GetEntries(), 1)
 
 			require.Equal(t, tc.expect, lr.entries[0])
@@ -146,6 +147,7 @@ type fakeLogsReceiver struct {
 	ch chan loki.Entry
 
 	entriesMut sync.RWMutex
+	wg         sync.WaitGroup
 	entries    []loki.Entry
 }
 
@@ -158,6 +160,7 @@ func newFakeLogsReceiver(t *testing.T) *fakeLogsReceiver {
 		ch: make(chan loki.Entry, 1),
 	}
 
+	lr.wg.Add(1)
 	go func() {
 		defer close(lr.ch)
 
@@ -175,6 +178,7 @@ func newFakeLogsReceiver(t *testing.T) *fakeLogsReceiver {
 				},
 			})
 			lr.entriesMut.Unlock()
+			lr.wg.Done()
 		}
 	}()
 
