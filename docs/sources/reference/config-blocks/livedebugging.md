@@ -30,8 +30,9 @@ livedebugging {
 
 The following arguments are supported:
 
-| Name      | Type   | Description                         | Default | Required |
-| --------- | ------ | ----------------------------------- | ------- | -------- |
-| `enabled` | `bool` | Enables the live debugging feature. | `false` | no       |
+| Name                 | Type  | Description                                                      | Default | Required |
+| -------------------- | ----- | ---------------------------------------------------------------  | ------- | -------- |
+| `enabled`            | `bool`| Enables the live debugging feature.                              | `false` | no       |
+| `buffer_stream_size` | `int` | Buffer stream size used for buffering the live debugging entries | 1000    | no       |
 
 [debug]: ../../../troubleshoot/debug/
