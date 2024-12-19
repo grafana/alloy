@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/gorilla/mux"
+	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/grafana/alloy/internal/component"
@@ -18,6 +19,7 @@ import (
 	"github.com/grafana/alloy/internal/component/pyroscope/write"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/util"
 )
 
 const (
@@ -53,16 +55,21 @@ func (a *Arguments) SetToDefault() {
 }
 
 type Component struct {
-	opts        component.Options
-	server      *fnet.TargetServer
-	appendables []pyroscope.Appendable
-	mut         sync.Mutex
+	opts               component.Options
+	server             *fnet.TargetServer
+	uncheckedCollector *util.UncheckedCollector
+	appendables        []pyroscope.Appendable
+	mut                sync.Mutex
 }
 
 func New(opts component.Options, args Arguments) (*Component, error) {
+	uncheckedCollector := util.NewUncheckedCollector(nil)
+	opts.Registerer.MustRegister(uncheckedCollector)
+
 	c := &Component{
-		opts:        opts,
-		appendables: args.ForwardTo,
+		opts:               opts,
+		uncheckedCollector: uncheckedCollector,
+		appendables:        args.ForwardTo,
 	}
 
 	if err := c.Update(args); err != nil {
@@ -116,7 +123,14 @@ func (c *Component) Update(args component.Arguments) error {
 
 	c.shutdownServer()
 
-	srv, err := fnet.NewTargetServer(c.opts.Logger, "pyroscope_receive_http", c.opts.Registerer, newArgs.Server)
+	// [server.Server] registers new metrics every time it is created. To
+	// avoid issues with re-registering metrics with the same name, we create a
+	// new registry for the server every time we create one, and pass it to an
+	// unchecked collector to bypass uniqueness checking.
+	serverRegistry := prometheus.NewRegistry()
+	c.uncheckedCollector.SetCollector(serverRegistry)
+
+	srv, err := fnet.NewTargetServer(c.opts.Logger, "pyroscope_receive_http", serverRegistry, newArgs.Server)
 	if err != nil {
 		return fmt.Errorf("failed to create server: %w", err)
 	}
