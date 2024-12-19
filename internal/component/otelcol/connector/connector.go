@@ -214,9 +214,12 @@ func (p *Connector) Update(args component.Arguments) error {
 		return errors.New("unsupported connector type")
 	}
 
+	updateConsumersFunc := func() {
+		p.consumer.SetConsumers(tracesConnector, metricsConnector, logsConnector)
+	}
+
 	// Schedule the components to run once our component is running.
-	p.sched.Schedule(host, components...)
-	p.consumer.SetConsumers(tracesConnector, metricsConnector, logsConnector)
+	p.sched.Schedule(p.ctx, updateConsumersFunc, host, components...)
 	return nil
 }
 
