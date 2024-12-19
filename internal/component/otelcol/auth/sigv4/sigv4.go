@@ -43,8 +43,8 @@ func (args *Arguments) SetToDefault() {
 	args.DebugMetrics.SetToDefault()
 }
 
-// Convert implements auth.Arguments.
-func (args Arguments) Convert() (otelcomponent.Config, error) {
+// ConvertClient implements auth.Arguments.
+func (args Arguments) ConvertClient() (otelcomponent.Config, error) {
 	res := sigv4authextension.Config{
 		Region:     args.Region,
 		Service:    args.Service,
@@ -58,15 +58,25 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	return &res, nil
 }
 
+// ConvertServer returns nil since the sigv4 extension does not support server authentication.
+func (args Arguments) ConvertServer() (otelcomponent.Config, error) {
+	return nil, nil
+}
+
 // Validate implements syntax.Validator.
 func (args Arguments) Validate() error {
-	_, err := args.Convert()
+	_, err := args.ConvertClient()
 	return err
 }
 
 // Extensions implements auth.Arguments.
 func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
 	return nil
+}
+
+// AuthFeatures implements auth.Arguments.
+func (args Arguments) AuthFeatures() auth.AuthFeature {
+	return auth.ClientAuthSupported
 }
 
 // Exporters implements auth.Arguments.
