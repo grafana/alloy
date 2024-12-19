@@ -53,7 +53,7 @@ func TestJSONLabelsStage(t *testing.T) {
 	// The third stage will set some labels from the extracted values above.
 	// Again, if the value is empty, it is inferred that we want to use the
 	// populate the label with extracted value of the same name.
-	stg := `stage.json { 
+	stg := `stage.json {
 			    expressions    = {"output" = "log", stream = "stream", timestamp = "time", "extra" = "" }
 				drop_malformed = true
 		    }
@@ -62,7 +62,7 @@ func TestJSONLabelsStage(t *testing.T) {
 				source      = "extra"
 			}
 			stage.labels {
-			    values = { 
+			    values = {
 				  stream = "",
 				  user   = "",
 				  ts     = "timestamp",
@@ -648,6 +648,7 @@ func getServiceDataWithLiveDebugging(log *testlivedebugging.Log) func(string) (i
 	}
 	ld.SetServiceHost(host)
 	ld.SetEnabled(true)
+	ld.SetBufferStreamSize(1000)
 	ld.AddCallback(
 		"callback1",
 		"",
@@ -679,7 +680,7 @@ func TestLeakyUpdate(t *testing.T) {
 	numLogsToSend := 1
 
 	cfg1 := `
-	stage.metrics { 
+	stage.metrics {
         metric.counter {
           name = "paulin_test1"
           action = "inc"
@@ -688,7 +689,7 @@ func TestLeakyUpdate(t *testing.T) {
 	}` + forwardArgs
 
 	cfg2 := `
-	stage.metrics { 
+	stage.metrics {
         metric.counter {
           name = "paulin_test2"
           action = "inc"
@@ -731,7 +732,7 @@ func TestMetricsStageRefresh(t *testing.T) {
 	numLogsToSend := 3
 
 	cfgWithMetric := `
-	stage.metrics { 
+	stage.metrics {
         metric.counter {
           name = "paulin_test"
           action = "inc"
@@ -776,7 +777,7 @@ func TestMetricsStageRefresh(t *testing.T) {
 	// We try having a metric with the same name as before so that we can see if there
 	// is some sort of double registration error for that metric.
 	cfgWithTwoMetrics := `
-	stage.metrics { 
+	stage.metrics {
 		metric.counter {
 		  name = "paulin_test_3"
 		  action = "inc"
