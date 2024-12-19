@@ -6,10 +6,6 @@ discovery.azure "metrics_agent_promobee" {
 		tenant_id     = "tenant"
 		client_secret = "secret"
 	}
-
-	managed_identity {
-		client_id = "client"
-	}
 	proxy_url = "proxy"
 }
 
@@ -20,10 +16,6 @@ discovery.azure "metrics_agent_promobee_2" {
 		client_id     = "client"
 		tenant_id     = "tenant"
 		client_secret = "secret"
-	}
-
-	managed_identity {
-		client_id = "client"
 	}
 	proxy_url = "proxy"
 }

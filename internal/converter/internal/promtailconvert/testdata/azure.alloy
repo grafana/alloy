@@ -6,10 +6,6 @@ discovery.azure "fun" {
 		tenant_id     = "tenant"
 		client_secret = "secret"
 	}
-
-	managed_identity {
-		client_id = "client"
-	}
 }
 
 local.file_match "fun" {
