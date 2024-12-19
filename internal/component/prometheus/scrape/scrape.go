@@ -28,6 +28,7 @@ import (
 	"github.com/grafana/alloy/internal/service/cluster"
 	"github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/service/labelstore"
+	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/useragent"
 	"github.com/grafana/alloy/internal/util"
 )
@@ -188,10 +189,13 @@ type Component struct {
 
 	dtMutex            sync.Mutex
 	distributedTargets *discovery.DistributedTargets
+
+	debugDataPublisher livedebugging.DebugDataPublisher
 }
 
 var (
-	_ component.Component = (*Component)(nil)
+	_ component.Component     = (*Component)(nil)
+	_ component.LiveDebugging = (*Component)(nil)
 )
 
 // New creates a new prometheus.scrape component.
@@ -244,6 +248,11 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		return nil, err
 	}
 
+	debugDataPublisher, err := o.GetServiceData(livedebugging.ServiceName)
+	if err != nil {
+		return nil, err
+	}
+
 	c := &Component{
 		opts:                o,
 		cluster:             clusterData,
@@ -253,6 +262,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		targetsGauge:        targetsGauge,
 		movedTargetsCounter: movedTargetsCounter,
 		unregisterer:        unregisterer,
+		debugDataPublisher:  debugDataPublisher.(livedebugging.DebugDataPublisher),
 	}
 
 	// Call to Update() to set the receivers and targets once at the start.
@@ -324,6 +334,7 @@ func (c *Component) distributeTargets(
 	var (
 		newDistTargets        = discovery.NewDistributedTargets(args.Clustering.Enabled, c.cluster, targets)
 		oldDistributedTargets *discovery.DistributedTargets
+		componentID           = livedebugging.ComponentID(c.opts.ID)
 	)
 
 	c.dtMutex.Lock()
@@ -340,6 +351,32 @@ func (c *Component) distributeTargets(
 	// the currently running scrape loop's targets. This is not needed for new targets, as they will be populated
 	// by the scrape loop itself during the sync.
 	promMovedTargets := c.populatePromLabels(movedTargets, jobName, args)
+
+	if c.debugDataPublisher.IsActive(componentID) {
+		var (
+			oldTargetLabels   labels.Labels
+			newTargetLabels   labels.Labels
+			movedTargetLabels labels.Labels
+		)
+		for _, t := range oldDistributedTargets.LocalTargets() {
+			oldTargetLabels = append(oldTargetLabels, t.Labels().Copy()...)
+		}
+
+		for _, t := range newLocalTargets {
+			newTargetLabels = append(newTargetLabels, t.Labels().Copy()...)
+		}
+
+		for _, t := range movedTargets {
+			movedTargetLabels = append(movedTargetLabels, t.Labels().Copy()...)
+		}
+
+		data := fmt.Sprintf("oldTargetLabels: %s => newTargetLabels: %s => movedTargetLabels: %s",
+			oldTargetLabels.String(),
+			newTargetLabels.String(),
+			movedTargetLabels.String(),
+		)
+		c.debugDataPublisher.Publish(componentID, data)
+	}
 
 	return promNewTargets, promMovedTargets
 }
@@ -386,6 +423,8 @@ func (c *Component) NotifyClusterChange() {
 	default:
 	}
 }
+
+func (c *Component) LiveDebugging(_ int) {}
 
 // Helper function to bridge the in-house configuration with the Prometheus
 // scrape_config.
