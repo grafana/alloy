@@ -85,7 +85,6 @@ func (s *server) Run(ctx context.Context) error {
 	})
 
 	mw := middleware.Instrument{
-		RouteMatcher:     r,
 		Duration:         s.metrics.requestDuration,
 		RequestBodySize:  s.metrics.rxMessageSize,
 		ResponseBodySize: s.metrics.txMessageSize,
