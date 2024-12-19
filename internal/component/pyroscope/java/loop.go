@@ -34,12 +34,17 @@ type profilingLoop struct {
 	pid        int
 	target     discovery.Target
 	cancel     context.CancelFunc
-	error      error
 	dist       *asprof.Distribution
 	jfrFile    string
 	startTime  time.Time
 	profiler   *asprof.Profiler
 	sampleRate int
+
+	error        error
+	lastError    time.Time
+	lastPush     time.Time
+	totalBytes   int64
+	totalSamples int64
 }
 
 func newProfilingLoop(pid int, target discovery.Target, logger log.Logger, profiler *asprof.Profiler, output *pyroscope.Fanout, cfg ProfilingConfig) *profilingLoop {
@@ -144,6 +149,7 @@ func (p *profilingLoop) push(jfrBytes []byte, startTime time.Time, endTime time.
 		return fmt.Errorf("failed to parse jfr: %w", err)
 	}
 	target := p.getTarget()
+	var totalSamples, totalBytes int64
 	for _, req := range profiles.Profiles {
 		metric := req.Metric
 		sz := req.Profile.SizeVT()
@@ -155,6 +161,9 @@ func (p *profilingLoop) push(jfrBytes []byte, startTime time.Time, endTime time.
 		if ls.Get(labelServiceName) == "" {
 			ls.Set(labelServiceName, inferServiceName(target))
 		}
+
+		totalBytes += int64(sz)
+		totalSamples += int64(len(req.Profile.Sample))
 
 		profile, err := req.Profile.MarshalVT()
 		if err != nil {
@@ -168,6 +177,12 @@ func (p *profilingLoop) push(jfrBytes []byte, startTime time.Time, endTime time.
 			continue
 		}
 		_ = l.Log("msg", "pushed jfr-pprof")
+
+		p.mutex.Lock()
+		p.lastPush = time.Now()
+		p.totalSamples += totalSamples
+		p.totalBytes += totalBytes
+		p.mutex.Unlock()
 	}
 	return nil
 }
@@ -255,7 +270,26 @@ func (p *profilingLoop) onError(err error) bool {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 	p.error = err
+	p.lastError = time.Now()
 	return alive
+}
+
+func (p *profilingLoop) debugInfo() *debugInfoProfiledTarget {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+	d := &debugInfoProfiledTarget{
+		TotalBytes:   p.totalBytes,
+		TotalSamples: p.totalSamples,
+		LastProfiled: p.lastPush,
+		LastError:    p.lastError,
+		PID:          p.pid,
+		Target:       p.target,
+	}
+	if p.error != nil {
+		d.ErrorMsg = p.error.Error()
+	}
+	return d
+
 }
 
 func (p *profilingLoop) interval() time.Duration {
