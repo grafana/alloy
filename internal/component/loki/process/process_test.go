@@ -648,7 +648,6 @@ func getServiceDataWithLiveDebugging(log *testlivedebugging.Log) func(string) (i
 	}
 	ld.SetServiceHost(host)
 	ld.SetEnabled(true)
-	ld.SetBufferStreamSize(1000)
 	ld.AddCallback(
 		"callback1",
 		"",

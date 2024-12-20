@@ -24,16 +24,7 @@ func New() *Service {
 }
 
 type Arguments struct {
-	Enabled          bool `alloy:"enabled,attr,optional"`
-	BufferStreamSize int  `alloy:"buffer_stream_size,attr,optional"`
-}
-
-// SetToDefault implements syntax.Defaulter.
-func (args *Arguments) SetToDefault() {
-	*args = Arguments{
-		Enabled:          false,
-		BufferStreamSize: 1000,
-	}
+	Enabled bool `alloy:"enabled,attr,optional"`
 }
 
 // Data implements service.Service.
@@ -63,6 +54,5 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 func (s *Service) Update(args any) error {
 	newArgs := args.(Arguments)
 	s.liveDebugging.SetEnabled(newArgs.Enabled)
-	s.liveDebugging.SetBufferStreamSize(newArgs.BufferStreamSize)
 	return nil
 }

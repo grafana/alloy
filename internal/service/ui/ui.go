@@ -23,9 +23,8 @@ const ServiceName = "ui"
 // Options are used to configure the UI service. Options are constant for the
 // lifetime of the UI service.
 type Options struct {
-	UIPrefix            string                        // Path prefix to host the UI at.
-	CallbackManager     livedebugging.CallbackManager // CallbackManager is used for live debugging in the UI.
-	LiveDebuggingConfig livedebugging.ConfigViewer    // ConfigViewer is used to access the configs of liveDebugging
+	UIPrefix        string                        // Path prefix to host the UI at.
+	CallbackManager livedebugging.CallbackManager // CallbackManager is used for live debugging in the UI.
 }
 
 // Service implements the UI service.
@@ -79,7 +78,7 @@ func (s *Service) Data() any {
 func (s *Service) ServiceHandler(host service.Host) (base string, handler http.Handler) {
 	r := mux.NewRouter()
 
-	fa := api.NewAlloyAPI(host, s.opts.CallbackManager, s.opts.LiveDebuggingConfig)
+	fa := api.NewAlloyAPI(host, s.opts.CallbackManager)
 	fa.RegisterRoutes(path.Join(s.opts.UIPrefix, "/api/v0/web"), r)
 	ui.RegisterRoutes(s.opts.UIPrefix, r)
 

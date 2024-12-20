@@ -316,9 +316,8 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 	liveDebuggingService := livedebugging.New()
 
 	uiService := uiservice.New(uiservice.Options{
-		UIPrefix:            fr.uiPrefix,
-		CallbackManager:     liveDebuggingService.Data().(livedebugging.CallbackManager),
-		LiveDebuggingConfig: liveDebuggingService.Data().(livedebugging.ConfigViewer),
+		UIPrefix:        fr.uiPrefix,
+		CallbackManager: liveDebuggingService.Data().(livedebugging.CallbackManager),
 	})
 
 	otelService := otel_service.New(l)

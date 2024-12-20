@@ -28,23 +28,15 @@ type DebugDataPublisher interface {
 	IsActive(componentID ComponentID) bool
 }
 
-// ConfigViewer is used by components to access the configs of the live debugging
-type ConfigViewer interface {
-	// returns the buffer stream size used by the UI service
-	GetBufferStreamSize() int
-}
-
 type liveDebugging struct {
-	loadMut          sync.RWMutex
-	callbacks        map[ComponentID]map[CallbackID]func(string)
-	host             service.Host
-	enabled          bool
-	bufferStreamSize int
+	loadMut   sync.RWMutex
+	callbacks map[ComponentID]map[CallbackID]func(string)
+	host      service.Host
+	enabled   bool
 }
 
 var _ CallbackManager = &liveDebugging{}
 var _ DebugDataPublisher = &liveDebugging{}
-var _ ConfigViewer = &liveDebugging{}
 
 // NewLiveDebugging creates a new instance of liveDebugging.
 func NewLiveDebugging() *liveDebugging {
@@ -138,16 +130,4 @@ func (s *liveDebugging) SetEnabled(enabled bool) {
 	s.loadMut.Lock()
 	defer s.loadMut.Unlock()
 	s.enabled = enabled
-}
-
-func (s *liveDebugging) SetBufferStreamSize(size int) {
-	s.loadMut.Lock()
-	defer s.loadMut.Unlock()
-	s.bufferStreamSize = size
-}
-
-func (s *liveDebugging) GetBufferStreamSize() int {
-	s.loadMut.RLock()
-	defer s.loadMut.RUnlock()
-	return s.bufferStreamSize
 }
