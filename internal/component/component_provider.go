@@ -123,9 +123,10 @@ type Info struct {
 	ComponentName string // Name of the component.
 	Health        Health // Current component health.
 
-	Arguments Arguments   // Current arguments value of the component.
-	Exports   Exports     // Current exports value of the component.
-	DebugInfo interface{} // Current debug info of the component.
+	Arguments            Arguments   // Current arguments value of the component.
+	Exports              Exports     // Current exports value of the component.
+	DebugInfo            interface{} // Current debug info of the component.
+	LiveDebuggingEnabled bool
 }
 
 // MarshalJSON returns a JSON representation of cd. The format of the
@@ -139,19 +140,20 @@ func (info *Info) MarshalJSON() ([]byte, error) {
 		}
 
 		componentDetailJSON struct {
-			Name             string               `json:"name"`
-			Type             string               `json:"type,omitempty"`
-			LocalID          string               `json:"localID"`
-			ModuleID         string               `json:"moduleID"`
-			Label            string               `json:"label,omitempty"`
-			References       []string             `json:"referencesTo"`
-			ReferencedBy     []string             `json:"referencedBy"`
-			Health           *componentHealthJSON `json:"health"`
-			Original         string               `json:"original"`
-			Arguments        json.RawMessage      `json:"arguments,omitempty"`
-			Exports          json.RawMessage      `json:"exports,omitempty"`
-			DebugInfo        json.RawMessage      `json:"debugInfo,omitempty"`
-			CreatedModuleIDs []string             `json:"createdModuleIDs,omitempty"`
+			Name                 string               `json:"name"`
+			Type                 string               `json:"type,omitempty"`
+			LocalID              string               `json:"localID"`
+			ModuleID             string               `json:"moduleID"`
+			Label                string               `json:"label,omitempty"`
+			References           []string             `json:"referencesTo"`
+			ReferencedBy         []string             `json:"referencedBy"`
+			Health               *componentHealthJSON `json:"health"`
+			Original             string               `json:"original"`
+			Arguments            json.RawMessage      `json:"arguments,omitempty"`
+			Exports              json.RawMessage      `json:"exports,omitempty"`
+			DebugInfo            json.RawMessage      `json:"debugInfo,omitempty"`
+			CreatedModuleIDs     []string             `json:"createdModuleIDs,omitempty"`
+			LiveDebuggingEnabled bool                 `json:"liveDebuggingEnabled"`
 		}
 	)
 
@@ -196,10 +198,11 @@ func (info *Info) MarshalJSON() ([]byte, error) {
 			Message:     info.Health.Message,
 			UpdatedTime: info.Health.UpdateTime,
 		},
-		Arguments:        arguments,
-		Exports:          exports,
-		DebugInfo:        debugInfo,
-		CreatedModuleIDs: info.ModuleIDs,
+		Arguments:            arguments,
+		Exports:              exports,
+		DebugInfo:            debugInfo,
+		CreatedModuleIDs:     info.ModuleIDs,
+		LiveDebuggingEnabled: info.LiveDebuggingEnabled,
 	})
 }
 

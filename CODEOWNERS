@@ -9,6 +9,7 @@
 * @grafana/grafana-alloy-maintainers
 
 #`make docs` procedure and related workflows are owned by @jdbaldry.
+/.github/workflows/deploy-pr-preview.yml                       @jdbaldry
 /.github/workflows/publish-technical-documentation-next.yml    @jdbaldry
 /.github/workflows/publish-technical-documentation-release.yml @jdbaldry
 /.github/workflows/update-make-docs.yml                        @jdbaldry

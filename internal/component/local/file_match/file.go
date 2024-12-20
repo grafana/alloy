@@ -26,8 +26,9 @@ func init() {
 // Arguments holds values which are used to configure the local.file_match
 // component.
 type Arguments struct {
-	PathTargets []discovery.Target `alloy:"path_targets,attr"`
-	SyncPeriod  time.Duration      `alloy:"sync_period,attr,optional"`
+	PathTargets     []discovery.Target `alloy:"path_targets,attr"`
+	SyncPeriod      time.Duration      `alloy:"sync_period,attr,optional"`
+	IgnoreOlderThan time.Duration      `alloy:"ignore_older_than,attr,optional"`
 }
 
 var _ component.Component = (*Component)(nil)
@@ -80,8 +81,9 @@ func (c *Component) Update(args component.Arguments) error {
 	c.watches = c.watches[:0]
 	for _, v := range c.args.PathTargets {
 		c.watches = append(c.watches, watch{
-			target: v,
-			log:    c.opts.Logger,
+			target:          v,
+			log:             c.opts.Logger,
+			ignoreOlderThan: c.args.IgnoreOlderThan,
 		})
 	}
 

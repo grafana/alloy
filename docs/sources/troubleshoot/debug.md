@@ -111,6 +111,7 @@ Supported components:
 * `otelcol.receiver.*`
 * `prometheus.relabel`
 {{< /admonition >}}
+* `discovery.relabel`
 
 ## Debug using the UI
 

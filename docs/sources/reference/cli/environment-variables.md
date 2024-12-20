@@ -20,6 +20,7 @@ The following environment variables are supported:
 * `PPROF_BLOCK_PROFILING_RATE`
 * `GOMEMLIMIT`
 * `AUTOMEMLIMIT`
+* `AUTOMEMLIMIT_EXPERIMENT`
 * `GOGC`
 * `GOMAXPROCS`
 * `GOTRACEBACK`
@@ -80,6 +81,7 @@ For example, if you want to keep memory usage below `10GiB`, use `GOMEMLIMIT=9Gi
 The `GOMEMLIMIT` environment variable is either automatically set to 90% of an available `cgroup` value using the [`automemlimit`][automemlimit] module, or you can explicitly set the `GOMEMLIMIT` environment variable before you run {{< param "PRODUCT_NAME" >}}.
 You can also change the 90% ratio by setting the `AUTOMEMLIMIT` environment variable to a float value between `0` and `1.0`.
 No changes occur if the limit can't be determined and you didn't explicitly define a  `GOMEMLIMIT` value.
+The `AUTOMEMLIMIT_EXPERIMENT` variable can be set to `system` to use the [`automemlimit`][automemlimit] module's System provider, which sets `GOMEMLIMIT` based on the same ratio applied to the total system memory. As `cgroup` is a Linux specific concept, this is the only way to use the `automemlimit` module to automatically set `GOMEMLIMIT` on non-Linux OSes.
 
 ## GOGC
 

@@ -2,12 +2,14 @@ package relabel
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/grafana/alloy/internal/component"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
 )
@@ -46,13 +48,23 @@ type Component struct {
 
 	mut sync.RWMutex
 	rcs []*relabel.Config
+
+	debugDataPublisher livedebugging.DebugDataPublisher
 }
 
 var _ component.Component = (*Component)(nil)
+var _ component.LiveDebugging = (*Component)(nil)
 
 // New creates a new discovery.relabel component.
 func New(o component.Options, args Arguments) (*Component, error) {
-	c := &Component{opts: o}
+	debugDataPublisher, err := o.GetServiceData(livedebugging.ServiceName)
+	if err != nil {
+		return nil, err
+	}
+	c := &Component{
+		opts:               o,
+		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
+	}
 
 	// Call to Update() to set the output once at the start
 	if err := c.Update(args); err != nil {
@@ -81,9 +93,13 @@ func (c *Component) Update(args component.Arguments) error {
 
 	for _, t := range newArgs.Targets {
 		lset := componentMapToPromLabels(t)
-		lset, keep := relabel.Process(lset, relabelConfigs...)
+		relabelled, keep := relabel.Process(lset, relabelConfigs...)
 		if keep {
-			targets = append(targets, promLabelsToComponent(lset))
+			targets = append(targets, promLabelsToComponent(relabelled))
+		}
+		componentID := livedebugging.ComponentID(c.opts.ID)
+		if c.debugDataPublisher.IsActive(componentID) {
+			c.debugDataPublisher.Publish(componentID, fmt.Sprintf("%s => %s", lset.String(), relabelled.String()))
 		}
 	}
 
@@ -94,6 +110,8 @@ func (c *Component) Update(args component.Arguments) error {
 
 	return nil
 }
+
+func (c *Component) LiveDebugging(_ int) {}
 
 func componentMapToPromLabels(ls discovery.Target) labels.Labels {
 	res := make([]labels.Label, 0, len(ls))
