@@ -50,6 +50,7 @@ Main (unreleased)
 
 - Live Debugging button should appear in UI only for supported components (@ravishankar15)
 - Add three new stdlib functions to_base64, from_URLbase64 and to_URLbase64 (@ravishankar15)
+- Add livedebugging support for `prometheus.remote_write` (@ravishankar15)
 - Add `ignore_older_than` option for local.file_match (@ravishankar15)
 - Add livedebugging support for `discover.relabel` (@ravishankar15)
 
