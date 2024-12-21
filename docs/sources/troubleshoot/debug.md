@@ -112,6 +112,36 @@ Supported components:
 * `prometheus.relabel`
 * `discovery.relabel`
 {{< /admonition >}}
+* `discovery.azure`
+* `discovery.consul`
+* `discovery.consulagent`
+* `discovery.digitalocean`
+* `discovery.dns`
+* `discovery.docker`
+* `discovery.dockerswarm`
+* `discovery.ec2`
+* `discovery.eureka`
+* `discovery.file`
+* `discovery.gce`
+* `discovery.hetzner`
+* `discovery.http`
+* `discovery.ionos`
+* `discovery.kubelet`
+* `discovery.kubernetes`
+* `discovery.kuma`
+* `discovery.lightsail`
+* `discovery.linode`
+* `discovery.marathon`
+* `discovery.nerve`
+* `discovery.nomad`
+* `discovery.openstack`
+* `discovery.ovhcloud`
+* `discovery.process`
+* `discovery.puppetdb`
+* `discovery.scaleway`
+* `discovery.serverset`
+* `discovery.triton`
+* `discovery.uyuni`
 
 ## Debug using the UI
 
