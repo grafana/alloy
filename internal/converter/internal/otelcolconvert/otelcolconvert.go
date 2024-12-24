@@ -12,7 +12,6 @@ import (
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componentstatus"
 	"go.opentelemetry.io/collector/confmap"
-	"go.opentelemetry.io/collector/confmap/converter/expandconverter"
 	"go.opentelemetry.io/collector/confmap/provider/yamlprovider"
 	"go.opentelemetry.io/collector/connector"
 	"go.opentelemetry.io/collector/exporter"
@@ -87,9 +86,8 @@ func Convert(in []byte, extraArgs []string) ([]byte, diag.Diagnostics) {
 func readOpentelemetryConfig(in []byte) (*otelcol.Config, error) {
 	configProvider, err := otelcol.NewConfigProvider(otelcol.ConfigProviderSettings{
 		ResolverSettings: confmap.ResolverSettings{
-			URIs:               []string{"yaml:" + string(in)},
-			ProviderFactories:  []confmap.ProviderFactory{yamlprovider.NewFactory()},
-			ConverterFactories: []confmap.ConverterFactory{expandconverter.NewFactory()},
+			URIs:              []string{"yaml:" + string(in)},
+			ProviderFactories: []confmap.ProviderFactory{yamlprovider.NewFactory()},
 		},
 	})
 	if err != nil {

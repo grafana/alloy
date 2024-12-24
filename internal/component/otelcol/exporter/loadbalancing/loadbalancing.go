@@ -72,6 +72,10 @@ type Arguments struct {
 	Resolver   ResolverSettings `alloy:"resolver,block"`
 	RoutingKey string           `alloy:"routing_key,attr,optional"`
 
+	Timeout time.Duration          `alloy:"timeout,attr,optional"`
+	Retry   otelcol.RetryArguments `alloy:"retry_on_failure,block,optional"`
+	Queue   otelcol.QueueArguments `alloy:"sending_queue,block,optional"`
+
 	// DebugMetrics configures component internal metrics. Optional.
 	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
 }
@@ -115,6 +119,11 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		Protocol:   args.Protocol.Convert(),
 		Resolver:   args.Resolver.Convert(),
 		RoutingKey: args.RoutingKey,
+		TimeoutSettings: exporterhelper.TimeoutConfig{
+			Timeout: args.Timeout,
+		},
+		BackOffConfig: *args.Retry.Convert(),
+		QueueSettings: *args.Queue.Convert(),
 	}, nil
 }
 
@@ -227,9 +236,10 @@ func (r *DNSResolver) Convert() *loadbalancingexporter.DNSResolver {
 
 // KubernetesResolver defines the configuration for the k8s resolver
 type KubernetesResolver struct {
-	Service string        `alloy:"service,attr"`
-	Ports   []int32       `alloy:"ports,attr,optional"`
-	Timeout time.Duration `alloy:"timeout,attr,optional"`
+	Service         string        `alloy:"service,attr"`
+	Ports           []int32       `alloy:"ports,attr,optional"`
+	Timeout         time.Duration `alloy:"timeout,attr,optional"`
+	ReturnHostnames bool          `alloy:"return_hostnames,attr,optional"`
 }
 
 var _ syntax.Defaulter = &KubernetesResolver{}
@@ -248,9 +258,10 @@ func (r *KubernetesResolver) Convert() *loadbalancingexporter.K8sSvcResolver {
 	}
 
 	return &loadbalancingexporter.K8sSvcResolver{
-		Service: r.Service,
-		Ports:   append([]int32{}, r.Ports...),
-		Timeout: r.Timeout,
+		Service:         r.Service,
+		Ports:           append([]int32{}, r.Ports...),
+		Timeout:         r.Timeout,
+		ReturnHostnames: r.ReturnHostnames,
 	}
 }
 

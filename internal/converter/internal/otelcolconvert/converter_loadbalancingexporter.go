@@ -63,6 +63,9 @@ func toLoadbalancingExporter(cfg *loadbalancingexporter.Config) *loadbalancing.A
 		Protocol:   toProtocol(cfg.Protocol),
 		Resolver:   toResolver(cfg.Resolver),
 		RoutingKey: routingKey,
+		Timeout:    cfg.TimeoutSettings.Timeout,
+		Queue:      toQueueArguments(cfg.QueueSettings),
+		Retry:      toRetryArguments(cfg.BackOffConfig),
 
 		DebugMetrics: common.DefaultValue[loadbalancing.Arguments]().DebugMetrics,
 	}
@@ -145,9 +148,10 @@ func toKubernetesResolver(cfg *loadbalancingexporter.K8sSvcResolver) *loadbalanc
 	}
 
 	return &loadbalancing.KubernetesResolver{
-		Service: cfg.Service,
-		Ports:   cfg.Ports,
-		Timeout: cfg.Timeout,
+		Service:         cfg.Service,
+		Ports:           cfg.Ports,
+		Timeout:         cfg.Timeout,
+		ReturnHostnames: cfg.ReturnHostnames,
 	}
 }
 
