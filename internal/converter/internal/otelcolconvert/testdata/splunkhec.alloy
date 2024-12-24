@@ -21,6 +21,7 @@ otelcol.exporter.splunkhec "default" {
 		timeout                 = "10s"
 		max_idle_conns          = 200
 		max_idle_conns_per_host = 200
+		max_conns_per_host      = 0
 		idle_conn_timeout       = "10s"
 	}
 
