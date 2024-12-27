@@ -70,6 +70,8 @@ Main (unreleased)
 
 - Fixed an issue where the `otelcol.processor.interval` could not be used because the debug metrics were not set to default. (@wildum)
 
+- Fixed an issue where `pyroscope.java` did not remove unused JFR files created by previous Alloy instances. (@swar8080)
+
 ### Other changes
 
 - Change the stability of the `livedebugging` feature from "experimental" to "generally available". (@wildum)

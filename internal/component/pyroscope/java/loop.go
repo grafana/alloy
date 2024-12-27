@@ -7,6 +7,8 @@ import (
 	_ "embed"
 	"fmt"
 	"os"
+	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -23,7 +25,12 @@ import (
 	gopsutil "github.com/shirou/gopsutil/v3/process"
 )
 
-const spyName = "alloy.java"
+const (
+	spyName       = "alloy.java"
+	processJfrDir = "/tmp"
+)
+
+var jfrFileNamePattern = regexp.MustCompile("^asprof-\\d+-\\d+\\.jfr$")
 
 type profilingLoop struct {
 	logger     log.Logger
@@ -45,6 +52,7 @@ type profilingLoop struct {
 func newProfilingLoop(pid int, target discovery.Target, logger log.Logger, profiler *asprof.Profiler, output *pyroscope.Fanout, cfg ProfilingConfig) *profilingLoop {
 	ctx, cancel := context.WithCancel(context.Background())
 	dist, err := profiler.DistributionForProcess(pid)
+	jfrFileName := fmt.Sprintf("asprof-%d-%d.jfr", os.Getpid(), pid)
 	p := &profilingLoop{
 		logger:   log.With(logger, "pid", pid),
 		output:   output,
@@ -52,7 +60,7 @@ func newProfilingLoop(pid int, target discovery.Target, logger log.Logger, profi
 		target:   target,
 		cancel:   cancel,
 		dist:     dist,
-		jfrFile:  fmt.Sprintf("/tmp/asprof-%d-%d.jfr", os.Getpid(), pid),
+		jfrFile:  filepath.Join(processJfrDir, jfrFileName),
 		cfg:      cfg,
 		profiler: profiler,
 	}
@@ -62,6 +70,16 @@ func newProfilingLoop(pid int, target discovery.Target, logger log.Logger, profi
 		p.onError(fmt.Errorf("failed to select dist for pid %d: %w", pid, err))
 		return p
 	}
+
+	p.wg.Add(1)
+	go func() {
+		defer p.wg.Done()
+		// Clean-up files that weren't removed by a previous instance of alloy
+		err := p.cleanupOldJFRFiles(jfrFileName)
+		if err != nil {
+			_ = level.Warn(p.logger).Log("msg", "failed cleaning-up java jfr files created by a previous instance of alloy", "err", err)
+		}
+	}()
 
 	p.wg.Add(1)
 	go func() {
@@ -274,4 +292,23 @@ func (p *profilingLoop) alive() bool {
 		_ = level.Error(p.logger).Log("msg", "failed to check if process is alive", "err", err)
 	}
 	return err == nil && exists
+}
+
+func (p *profilingLoop) cleanupOldJFRFiles(myFileName string) error {
+	dir := asprof.ProcessPath(processJfrDir, p.pid)
+	files, err := os.ReadDir(dir)
+	if err != nil {
+		return err
+	}
+
+	for _, file := range files {
+		if !file.IsDir() && jfrFileNamePattern.MatchString(file.Name()) && file.Name() != myFileName {
+			_ = level.Debug(p.logger).Log("msg", "deleting jfr file created by previous alloy process", "file", file.Name())
+			err := os.Remove(filepath.Join(dir, file.Name()))
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
