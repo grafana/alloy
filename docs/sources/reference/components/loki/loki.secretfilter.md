@@ -18,7 +18,7 @@ The detection is based on regular expression patterns, defined in the [Gitleaks 
 
 {{< admonition type="caution" >}}
 Personally Identifiable Information (PII) isn't currently in scope and some secrets could remain undetected.
-This component may generate false positives.
+This component may generate false positives or redact too much.
 Don't rely solely on this component to redact sensitive information.
 {{< /admonition >}}
 
@@ -48,6 +48,10 @@ Name                     | Type                 | Description                   
 
 The `gitleaks_config` argument is the path to the custom `gitleaks.toml` file.
 The Gitleaks configuration file embedded in the component is used if you don't provide the path to a custom configuration file.
+
+{{< admonition type="note" >}}
+This component does not support all the features of the Gitleaks configuration file. Currently, it only supports the regex-based rules, `secretGroup`, and allowlist regexes (`regexTarget` only supports the default value `secret`). Other features such as `keywords`, `entropy`, `paths`, and `stopwords` are not supported. The `extend` feature is also not supported, meaning that a custom configuration file must contain all the rules to use.
+{{< /admonition >}}
 
 The `types` argument is a map of secret types to look for. The values are used as prefixes for the secret types in the Gitleaks configuration. If you don't provide this argument, all types are used.
 

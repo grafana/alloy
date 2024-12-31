@@ -58,6 +58,8 @@ Main (unreleased)
 
 - Update `prometheus.write.queue` library for performance increases in cpu. (@mattdurham)
 
+- Update `loki.secretfilter` to be compatible with the new `[[rules.allowlists]]` gitleaks allowlist format (@romain-gaillard)
+
 ### Bugfixes
 
 - Fixed issue with automemlimit logging bad messages and trying to access cgroup on non-linux builds (@dehaansa)
@@ -69,6 +71,8 @@ Main (unreleased)
 - Fixed an issue in the `prometheus.operator.servicemonitors`, `prometheus.operator.podmonitors` and `prometheus.operator.probes` to support capitalized actions. (@QuentinBisson)
 
 - Fixed an issue where the `otelcol.processor.interval` could not be used because the debug metrics were not set to default. (@wildum)
+
+- Fixed an issue where `loki.secretfilter` would crash if the secret was shorter than the `partial_mask` value. (@romain-gaillard)
 
 ### Other changes
 
