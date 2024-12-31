@@ -43,6 +43,36 @@ var customGitleaksConfig = map[string]string{
 		description = "Identified a fake secret"
 		regex = '''(?i)\b(fakeSecret\d{5})(?:['|\"|\n|\r|\s|\x60|;]|$)'''
 	`,
+	"short_secret": `
+		title = "gitleaks custom config"
+
+		[[rules]]
+		id = "short-secret"
+		description = "Identified a fake short secret"
+		regex = '''(?i)\b(abc)(?:['|\"|\n|\r|\s|\x60|;]|$)'''
+	`,
+	"allow_list_old": `
+		title = "gitleaks custom config"
+
+		[[rules]]
+		id = "my-fake-secret"
+		description = "Identified a fake secret"
+		regex = '''(?i)\b(fakeSecret\d{5})(?:['|\"|\n|\r|\s|\x60|;]|$)'''
+		[rules.allowlist]
+		regexes = ["abc\\d{3}", "fakeSecret[9]{5}"]
+	`,
+	"allow_list_new": `
+		title = "gitleaks custom config"
+
+		[[rules]]
+		id = "my-fake-secret"
+		description = "Identified a fake secret"
+		regex = '''(?i)\b(fakeSecret\d{5})(?:['|\"|\n|\r|\s|\x60|;]|$)'''
+			[[rules.allowlists]]
+			regexes = ["def\\d{3}", "test\\d{5}"]
+			[[rules.allowlists]]
+			regexes = ["abc\\d{3}", "fakeSecret[9]{5}"]
+	`,
 }
 
 var defaultRedactionString = "REDACTED-SECRET"
@@ -64,6 +94,11 @@ var testConfigs = map[string]string{
 	"partial_mask": `
 		forward_to = []
 		partial_mask = 4
+	`,
+	"partial_mask_custom": `
+		forward_to = []
+		partial_mask = 4
+		gitleaks_config = "not-empty" // This will be replaced with the actual path to the temporary gitleaks config file
 	`,
 	"custom_types": `
 		forward_to = []
@@ -115,6 +150,14 @@ var fakeSecrets = map[string]fakeSecret{
 		name:  "my-fake-secret",
 		value: "fakeSec" + "ret12345",
 	},
+	"custom-fake-secret-all9": {
+		name:  "my-fake-secret",
+		value: "fakeSec" + "ret99999",
+	},
+	"short-secret": {
+		name:  "short-secret",
+		value: "abc",
+	},
 }
 
 // List of fake log entries to use for testing
@@ -155,11 +198,23 @@ var testLogs = map[string]testLog{
 		}`,
 		secrets: []fakeSecret{fakeSecrets["custom-fake-secret"]},
 	},
+	"simple_secret_custom_all9": {
+		log: `{
+			"message": "This is a simple log message with a secret value ` + fakeSecrets["custom-fake-secret-all9"].value + ` !
+		}`,
+		secrets: []fakeSecret{fakeSecrets["custom-fake-secret-all9"]},
+	},
 	"multiple_secrets": {
 		log: `{
 			"message": "This is a simple log message with a secret value ` + fakeSecrets["grafana-api-key"].value + ` and another secret value ` + fakeSecrets["gcp-api-key"].value + ` !
 		}`,
 		secrets: []fakeSecret{fakeSecrets["grafana-api-key"], fakeSecrets["gcp-api-key"]},
+	},
+	"short_secret": {
+		log: `{
+			"message": "This is a simple log message with a secret value ` + fakeSecrets["short-secret"].value + ` !
+		}`,
+		secrets: []fakeSecret{fakeSecrets["short-secret"]},
 	},
 }
 
@@ -214,6 +269,13 @@ var tt = []struct {
 		replaceSecrets(testLogs["simple_secret"].log, testLogs["simple_secret"].secrets, true, false, defaultRedactionString),
 	},
 	{
+		"partial_mask_too_short",
+		testConfigs["partial_mask_custom"],
+		customGitleaksConfig["short_secret"],
+		testLogs["short_secret"].log,
+		replaceSecrets(testLogs["short_secret"].log, testLogs["short_secret"].secrets, false, false, defaultRedactionString),
+	},
+	{
 		"gcp_secret",
 		testConfigs["default"],
 		"",
@@ -252,6 +314,27 @@ var tt = []struct {
 		"custom_gitleaks_file_simple",
 		testConfigs["custom_gitleaks_file_simple"],
 		customGitleaksConfig["simple"],
+		testLogs["simple_secret_custom"].log,
+		replaceSecrets(testLogs["simple_secret_custom"].log, testLogs["simple_secret_custom"].secrets, false, false, defaultRedactionString),
+	},
+	{
+		"custom_gitleaks_file_allow_list_old",
+		testConfigs["custom_gitleaks_file_simple"],
+		customGitleaksConfig["allow_list_old"],
+		testLogs["simple_secret_custom-all9"].log,
+		testLogs["simple_secret_custom-all9"].log, // In the allowlist
+	},
+	{
+		"custom_gitleaks_file_allow_list_new",
+		testConfigs["custom_gitleaks_file_simple"],
+		customGitleaksConfig["allow_list_new"],
+		testLogs["simple_secret_custom-all9"].log,
+		testLogs["simple_secret_custom-all9"].log, // In the allowlist
+	},
+	{
+		"custom_gitleaks_file_allow_list_new_redact",
+		testConfigs["custom_gitleaks_file_simple"],
+		customGitleaksConfig["allow_list_new"],
 		testLogs["simple_secret_custom"].log,
 		replaceSecrets(testLogs["simple_secret_custom"].log, testLogs["simple_secret_custom"].secrets, false, false, defaultRedactionString),
 	},

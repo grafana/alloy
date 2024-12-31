@@ -112,6 +112,10 @@ type GitLeaksConfig struct {
 			StopWords []string
 			Regexes   []string
 		}
+		Allowlists []struct {
+			StopWords []string
+			Regexes   []string
+		}
 	}
 }
 
@@ -194,16 +198,16 @@ func (c *Component) processEntry(entry loki.Entry) loki.Entry {
 
 			// Check if the secret is in the allowlist
 			var allowRule *AllowRule = nil
-			// First check the rule-specific allowlist
-			for _, a := range r.allowlist {
+			// First check the global allowlist
+			for _, a := range c.AllowList {
 				if a.Regex.MatchString(secret) {
 					allowRule = &a
 					break
 				}
 			}
-			// Then check the global allowlist
+			// Then check the rule-specific allowlists
 			if allowRule == nil {
-				for _, a := range c.AllowList {
+				for _, a := range r.allowlist {
 					if a.Regex.MatchString(secret) {
 						allowRule = &a
 						break
@@ -231,8 +235,16 @@ func (c *Component) redactLine(line string, secret string, ruleName string) stri
 		redactWith = strings.ReplaceAll(redactWith, "$SECRET_NAME", ruleName)
 		redactWith = strings.ReplaceAll(redactWith, "$SECRET_HASH", hashSecret(secret))
 	}
-	if c.args.PartialMask > 0 {
-		redactWith = secret[:c.args.PartialMask] + redactWith
+
+	partialMask := int(c.args.PartialMask)
+	if partialMask < 0 {
+		partialMask = 0
+	}
+	if partialMask > 0 {
+		// Don't apply partial masking if the secret is too short
+		if len(secret) > partialMask+3 {
+			redactWith = secret[:partialMask] + redactWith
+		}
 	}
 
 	line = strings.ReplaceAll(line, secret, redactWith)
@@ -306,6 +318,16 @@ func (c *Component) Update(args component.Arguments) error {
 			}
 			allowlist = append(allowlist, AllowRule{Regex: re, Source: fmt.Sprintf("rule %s", rule.ID)})
 		}
+		for _, currAllowList := range rule.Allowlists {
+			for _, r := range currAllowList.Regexes {
+				re, err := regexp.Compile(r)
+				if err != nil {
+					level.Error(c.opts.Logger).Log("msg", "error compiling allowlist regex", "error", err)
+					return err
+				}
+				allowlist = append(allowlist, AllowRule{Regex: re, Source: fmt.Sprintf("rule %s", rule.ID)})
+			}
+		}
 
 		newRule := Rule{
 			name:        rule.ID,
@@ -325,15 +347,6 @@ func (c *Component) Update(args component.Arguments) error {
 	}
 
 	// Compiling global allowlist regexes
-	// From the Gitleaks config
-	for _, r := range gitleaksCfg.AllowList.Regexes {
-		re, err := regexp.Compile(r)
-		if err != nil {
-			level.Error(c.opts.Logger).Log("msg", "error compiling allowlist regex", "error", err)
-			return err
-		}
-		c.AllowList = append(c.AllowList, AllowRule{Regex: re, Source: "gitleaks config"})
-	}
 	// From the arguments
 	for _, r := range c.args.AllowList {
 		re, err := regexp.Compile(r)
@@ -342,6 +355,15 @@ func (c *Component) Update(args component.Arguments) error {
 			return err
 		}
 		c.AllowList = append(c.AllowList, AllowRule{Regex: re, Source: "alloy config"})
+	}
+	// From the Gitleaks config
+	for _, r := range gitleaksCfg.AllowList.Regexes {
+		re, err := regexp.Compile(r)
+		if err != nil {
+			level.Error(c.opts.Logger).Log("msg", "error compiling allowlist regex", "error", err)
+			return err
+		}
+		c.AllowList = append(c.AllowList, AllowRule{Regex: re, Source: "gitleaks config"})
 	}
 
 	// Add the generic API key rule last if needed
