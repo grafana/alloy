@@ -108,10 +108,12 @@ type GitLeaksConfig struct {
 		Keywords    []string
 		SecretGroup int
 
+		// Old format, kept for compatibility
 		Allowlist struct {
 			StopWords []string
 			Regexes   []string
 		}
+		// New format
 		Allowlists []struct {
 			StopWords []string
 			Regexes   []string
