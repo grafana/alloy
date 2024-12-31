@@ -390,16 +390,17 @@ func TestPartialMasking(t *testing.T) {
 	// Start testing with common cases
 	component := &Component{}
 	component.args = Arguments{PartialMask: 4}
+
 	// Too short to be partially masked
-	redacted := component.redactLine("This is a short secret abc123 in a log line", "abc123", "test-rule")
+	redacted := component.redactLine("This is a very short secret ab in a log line", "ab", "test-rule")
+	require.Equal(t, "This is a very short secret <REDACTED-SECRET:test-rule> in a log line", redacted)
+
+	// Too short to be partially masked
+	redacted = component.redactLine("This is a short secret abc123 in a log line", "abc123", "test-rule")
 	require.Equal(t, "This is a short secret <REDACTED-SECRET:test-rule> in a log line", redacted)
 
-	// Too short to be partially masked
-	redacted = component.redactLine("This is a longer secret abcd1234 in a log line", "abcd1234", "test-rule")
-	require.Equal(t, "This is a longer secret <REDACTED-SECRET:test-rule> in a log line", redacted)
-
 	// Will be partially masked
-	redacted = component.redactLine("This is a long enough secret abcd12345 in a log line", "abcd12345", "test-rule")
+	redacted = component.redactLine("This is a long enough secret abcd1234 in a log line", "abcd1234", "test-rule")
 	require.Equal(t, "This is a long enough secret abcd<REDACTED-SECRET:test-rule> in a log line", redacted)
 
 	// Will be partially masked
@@ -407,12 +408,12 @@ func TestPartialMasking(t *testing.T) {
 	require.Equal(t, "This is the longest secret abcd<REDACTED-SECRET:test-rule> in a log line", redacted)
 
 	// Test with different secret lengths and partial masking values
-	for _, partialMasking := range []int{1, 3, 4, 5, 9} {
+	for _, partialMasking := range []int{1, 2, 3, 4, 5, 9} {
 		for secretLength := range 30 {
 			if secretLength < 2 {
 				continue
 			}
-			expected := secretLength > partialMasking*2
+			expected := secretLength >= 3 && secretLength >= partialMasking*2
 			checkPartialMasking(t, partialMasking, secretLength, expected)
 		}
 	}

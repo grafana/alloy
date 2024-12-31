@@ -78,7 +78,7 @@ A secret will not be redacted if it matches any of the regular expressions. The 
 
 The `partial_mask` argument is the number of characters to show from the beginning of the secret before the redact string is added.
 If set to `0`, the entire secret is redacted.
-Secrets shorter than `partial_mask + 3` are redacted entirely.
+If a secret is not at least 3 characters long and twice as long as the `partial_mask`, the entire secret is redacted.
 
 ## Blocks
 
