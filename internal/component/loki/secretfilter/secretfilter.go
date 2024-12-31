@@ -244,7 +244,7 @@ func (c *Component) redactLine(line string, secret string, ruleName string) stri
 	}
 	if partialMask > 0 {
 		// Don't apply partial masking if the secret is too short
-		if len(secret) > partialMask+2 {
+		if len(secret) > partialMask*2 {
 			redactWith = secret[:partialMask] + redactWith
 		}
 	}

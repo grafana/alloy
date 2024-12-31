@@ -73,6 +73,16 @@ var customGitleaksConfig = map[string]string{
 			[[rules.allowlists]]
 			regexes = ["abc\\d{3}", "fakeSecret[9]{5}"]
 	`,
+	`allow_list_global`: `
+		title = "gitleaks custom config"
+
+		[[rules]]
+		id = "my-fake-secret"
+		description = "Identified a fake secret"
+		regex = '''(?i)\b(fakeSecret\d{5})(?:['|\"|\n|\r|\s|\x60|;]|$)'''	
+		[allowlist]
+		regexes = ["abc\\d{3}", "fakeSecret[9]{5}"]
+	`,
 }
 
 var defaultRedactionString = "REDACTED-SECRET"
@@ -321,20 +331,41 @@ var tt = []struct {
 		"custom_gitleaks_file_allow_list_old",
 		testConfigs["custom_gitleaks_file_simple"],
 		customGitleaksConfig["allow_list_old"],
-		testLogs["simple_secret_custom-all9"].log,
-		testLogs["simple_secret_custom-all9"].log, // In the allowlist
+		testLogs["simple_secret_custom_all9"].log,
+		testLogs["simple_secret_custom_all9"].log, // In the allowlist
 	},
 	{
 		"custom_gitleaks_file_allow_list_new",
 		testConfigs["custom_gitleaks_file_simple"],
 		customGitleaksConfig["allow_list_new"],
-		testLogs["simple_secret_custom-all9"].log,
-		testLogs["simple_secret_custom-all9"].log, // In the allowlist
+		testLogs["simple_secret_custom_all9"].log,
+		testLogs["simple_secret_custom_all9"].log, // In the allowlist
+	},
+	{
+		"custom_gitleaks_file_allow_list_old_redact",
+		testConfigs["custom_gitleaks_file_simple"],
+		customGitleaksConfig["allow_list_old"],
+		testLogs["simple_secret_custom"].log,
+		replaceSecrets(testLogs["simple_secret_custom"].log, testLogs["simple_secret_custom"].secrets, false, false, defaultRedactionString),
 	},
 	{
 		"custom_gitleaks_file_allow_list_new_redact",
 		testConfigs["custom_gitleaks_file_simple"],
 		customGitleaksConfig["allow_list_new"],
+		testLogs["simple_secret_custom"].log,
+		replaceSecrets(testLogs["simple_secret_custom"].log, testLogs["simple_secret_custom"].secrets, false, false, defaultRedactionString),
+	},
+	{
+		"custom_gitleaks_file_allow_list_global",
+		testConfigs["custom_gitleaks_file_simple"],
+		customGitleaksConfig["allow_list_global"],
+		testLogs["simple_secret_custom_all9"].log,
+		testLogs["simple_secret_custom_all9"].log, // In the allowlist
+	},
+	{
+		"custom_gitleaks_file_allow_list_global_redact",
+		testConfigs["custom_gitleaks_file_simple"],
+		customGitleaksConfig["allow_list_global"],
 		testLogs["simple_secret_custom"].log,
 		replaceSecrets(testLogs["simple_secret_custom"].log, testLogs["simple_secret_custom"].secrets, false, false, defaultRedactionString),
 	},
@@ -355,11 +386,61 @@ func TestSecretFiltering(t *testing.T) {
 	}
 }
 
+func TestPartialMasking(t *testing.T) {
+	// Start testing with common cases
+	component := &Component{}
+	component.args = Arguments{PartialMask: 4}
+	// Too short to be partially masked
+	redacted := component.redactLine("This is a short secret abc123 in a log line", "abc123", "test-rule")
+	require.Equal(t, "This is a short secret <REDACTED-SECRET:test-rule> in a log line", redacted)
+
+	// Too short to be partially masked
+	redacted = component.redactLine("This is a longer secret abcd1234 in a log line", "abcd1234", "test-rule")
+	require.Equal(t, "This is a longer secret <REDACTED-SECRET:test-rule> in a log line", redacted)
+
+	// Will be partially masked
+	redacted = component.redactLine("This is a long enough secret abcd12345 in a log line", "abcd12345", "test-rule")
+	require.Equal(t, "This is a long enough secret abcd<REDACTED-SECRET:test-rule> in a log line", redacted)
+
+	// Will be partially masked
+	redacted = component.redactLine("This is the longest secret abcdef12345678 in a log line", "abcdef12345678", "test-rule")
+	require.Equal(t, "This is the longest secret abcd<REDACTED-SECRET:test-rule> in a log line", redacted)
+
+	// Test with different secret lengths and partial masking values
+	for _, partialMasking := range []int{1, 3, 4, 5, 9} {
+		for secretLength := range 30 {
+			if secretLength < 2 {
+				continue
+			}
+			expected := secretLength > partialMasking*2
+			checkPartialMasking(t, partialMasking, secretLength, expected)
+		}
+	}
+}
+
+func checkPartialMasking(t *testing.T, partialMasking int, secretLength int, partialRedactionExpected bool) {
+	component := &Component{}
+	component.args = Arguments{PartialMask: uint(partialMasking)}
+	secret := strings.Repeat("A", secretLength)
+	inputLog := fmt.Sprintf("This is a test with a secret %s in a log line", secret)
+	redacted := component.redactLine(inputLog, secret, "test-rule")
+
+	prefix := ""
+	if partialRedactionExpected {
+		prefix = strings.Repeat("A", partialMasking)
+	}
+	expectedLog := fmt.Sprintf("This is a test with a secret %s<REDACTED-SECRET:test-rule> in a log line", prefix)
+	require.Equal(t, expectedLog, redacted)
+}
+
 func runTest(t *testing.T, config string, gitLeaksConfigContent string, inputLog string, expectedLog string) {
 	ch1 := loki.NewLogsReceiver()
 	var args Arguments
 	require.NoError(t, syntax.Unmarshal([]byte(config), &args))
 	args.ForwardTo = []loki.LogsReceiver{ch1}
+
+	// Making sure we're not testing with an empty log line by mistake
+	require.NotEmpty(t, inputLog)
 
 	// If needed, create a temporary gitleaks config file
 	if args.GitleaksConfig != "" {
