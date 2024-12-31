@@ -98,24 +98,24 @@ type Component struct {
 type GitLeaksConfig struct {
 	AllowList struct {
 		Description string
-		Paths       []string
+		Paths       []string // Not used
 		Regexes     []string
 	}
 	Rules []struct {
 		ID          string
-		Description string
+		Description string // Not used
 		Regex       string
-		Keywords    []string
+		Keywords    []string // Not used
 		SecretGroup int
 
 		// Old format, kept for compatibility
 		Allowlist struct {
-			StopWords []string
+			StopWords []string // Not used
 			Regexes   []string
 		}
 		// New format
 		Allowlists []struct {
-			StopWords []string
+			StopWords []string // Not used
 			Regexes   []string
 		}
 	}
