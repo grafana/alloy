@@ -5,9 +5,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/featuregate"
-
-	// Registers the "k8sattr.fieldExtractConfigRegex.disallow" feature gate.
-	_ "github.com/open-telemetry/opentelemetry-collector-contrib/processor/k8sattributesprocessor"
 )
 
 func Test_FeatureGates(t *testing.T) {
