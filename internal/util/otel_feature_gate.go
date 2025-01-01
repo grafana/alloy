@@ -5,10 +5,8 @@ import (
 
 	"go.opentelemetry.io/collector/featuregate"
 
-	// Register the feature gates.
-	// The "service" package uses DisableHighCardinalityMetricsfeatureGate, so import "service".
-	// We cannot import DisableHighCardinalityMetricsfeatureGate directly because it's not exported.
-	_ "go.opentelemetry.io/collector/service"
+	// Registers the "k8sattr.fieldExtractConfigRegex.disallow" feature gate.
+	_ "github.com/open-telemetry/opentelemetry-collector-contrib/processor/k8sattributesprocessor"
 )
 
 type gateDetails struct {
