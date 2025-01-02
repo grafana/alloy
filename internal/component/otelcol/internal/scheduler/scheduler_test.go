@@ -117,7 +117,7 @@ func TestScheduler(t *testing.T) {
 
 		require.EventuallyWithT(t, func(t *assert.CollectT) {
 			assert.Equal(t, 3, toInt(pauseCalls), "pause callback should not be called on shutdown")
-			assert.Equal(t, 3, toInt(resumeCalls), "resume callback should not be called on shutdown")
+			assert.Equal(t, 4, toInt(resumeCalls), "resume callback should be called on shutdown")
 		}, 5*time.Second, 10*time.Millisecond, "pause/resume callbacks not called correctly")
 	})
 

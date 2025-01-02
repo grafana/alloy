@@ -138,6 +138,9 @@ func (cs *Scheduler) Run(ctx context.Context) error {
 		cs.schedMut.Lock()
 		defer cs.schedMut.Unlock()
 		cs.stopComponents(context.Background(), cs.schedComponents...)
+		// this Resume call should not be needed but is added for robustness to ensure that
+		// it does not ever exit in "paused" state.
+		cs.onResume()
 	}()
 
 	<-ctx.Done()
