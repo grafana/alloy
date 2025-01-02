@@ -433,11 +433,11 @@ func TestPartialMasking(t *testing.T) {
 func checkPartialMasking(t *testing.T, partialMasking int, secretLength int, expectedPrefixLength int) {
 	component := &Component{}
 	component.args = Arguments{PartialMask: uint(partialMasking)}
+
+	// Test with a simple ASCII character
 	secret := strings.Repeat("A", secretLength)
 	inputLog := fmt.Sprintf("This is a test with a secret %s in a log line", secret)
 	redacted := component.redactLine(inputLog, secret, "test-rule")
-
-	// Test with a simple ASCII character
 	prefix := strings.Repeat("A", expectedPrefixLength)
 	expectedLog := fmt.Sprintf("This is a test with a secret %s<REDACTED-SECRET:test-rule> in a log line", prefix)
 	require.Equal(t, expectedLog, redacted)
