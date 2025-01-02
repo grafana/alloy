@@ -253,9 +253,12 @@ func (e *Exporter) Update(args component.Arguments) error {
 		}
 	}
 
+	updateConsumersFunc := func() {
+		e.consumer.SetConsumers(tracesExporter, metricsExporter, logsExporter)
+	}
+
 	// Schedule the components to run once our component is running.
-	e.sched.Schedule(host, components...)
-	e.consumer.SetConsumers(tracesExporter, metricsExporter, logsExporter)
+	e.sched.Schedule(e.ctx, updateConsumersFunc, host, components...)
 	return nil
 }
 
