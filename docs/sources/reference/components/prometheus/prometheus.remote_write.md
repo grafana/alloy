@@ -427,7 +427,7 @@ To troubleshoot, take the following steps in order:
    You can use [Promtool][promtool] to inspect it and find out which metric series were sent by this {{< param "PRODUCT_NAME" >}} instance since the last WAL truncation event. 
    For example:
    ```
-   ./promtool tsdb dump --match='{__name__=\"otelcol_connector_spanmetrics_duration_seconds_bucket\", http_method=\"GET\", job=\"ExampleJobName\"' /path/to/wal/ 
+   ./promtool tsdb dump --match='{__name__="otelcol_connector_spanmetrics_duration_seconds_bucket", http_method="GET", job="ExampleJobName"}' /path/to/wal/
    ```
 
 [clustering]: ../../configure/clustering
