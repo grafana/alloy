@@ -238,15 +238,20 @@ func (c *Component) redactLine(line string, secret string, ruleName string) stri
 		redactWith = strings.ReplaceAll(redactWith, "$SECRET_HASH", hashSecret(secret))
 	}
 
+	// If partialMask is set, show the first N characters of the secret
 	partialMask := int(c.args.PartialMask)
 	if partialMask < 0 {
 		partialMask = 0
 	}
-	if partialMask > 0 {
-		// Don't apply partial masking if the secret is too short
-		if len(secret) >= 3 && len(secret) >= partialMask*2 {
-			redactWith = secret[:partialMask] + redactWith
+	runesSecret := []rune(secret)
+	// Only do it if the secret is long enough
+	if partialMask > 0 && len(runesSecret) >= 6 {
+		// Show at most half of the secret
+		if partialMask > len(runesSecret)/2 {
+			partialMask = len(runesSecret) / 2
 		}
+		prefix := string(runesSecret[:partialMask])
+		redactWith = prefix + redactWith
 	}
 
 	line = strings.ReplaceAll(line, secret, redactWith)
