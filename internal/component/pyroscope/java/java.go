@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"sort"
 	"strconv"
 	"sync"
 	"time"
@@ -98,6 +99,10 @@ func (j *javaComponent) DebugInfo() interface{} {
 	for _, proc := range j.pid2process {
 		di.ProfiledTargets = append(di.ProfiledTargets, proc.debugInfo())
 	}
+	// sort by pid
+	sort.Slice(di.ProfiledTargets, func(i, j int) bool {
+		return di.ProfiledTargets[i].PID < di.ProfiledTargets[j].PID
+	})
 	return &di
 }
 
