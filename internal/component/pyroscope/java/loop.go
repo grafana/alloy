@@ -40,11 +40,12 @@ type profilingLoop struct {
 	profiler   *asprof.Profiler
 	sampleRate int
 
-	error        error
-	lastError    time.Time
-	lastPush     time.Time
-	totalBytes   int64
-	totalSamples int64
+	error            error
+	lastError        time.Time
+	lastPush         time.Time
+	lastBytesPerType []debugInfoBytesPerType
+	totalBytes       int64
+	totalSamples     int64
 }
 
 func newProfilingLoop(pid int, target discovery.Target, logger log.Logger, profiler *asprof.Profiler, output *pyroscope.Fanout, cfg ProfilingConfig) *profilingLoop {
@@ -150,6 +151,10 @@ func (p *profilingLoop) push(jfrBytes []byte, startTime time.Time, endTime time.
 	}
 	target := p.getTarget()
 	var totalSamples, totalBytes int64
+
+	// reset the per type bytes stats
+	p.lastBytesPerType = p.lastBytesPerType[:0]
+
 	for _, req := range profiles.Profiles {
 		metric := req.Metric
 		sz := req.Profile.SizeVT()
@@ -162,6 +167,10 @@ func (p *profilingLoop) push(jfrBytes []byte, startTime time.Time, endTime time.
 			ls.Set(labelServiceName, inferServiceName(target))
 		}
 
+		p.lastBytesPerType = append(p.lastBytesPerType, debugInfoBytesPerType{
+			Type:  metric,
+			Bytes: int64(sz),
+		})
 		totalBytes += int64(sz)
 		totalSamples += int64(len(req.Profile.Sample))
 
@@ -277,6 +286,7 @@ func (p *profilingLoop) onError(err error) bool {
 func (p *profilingLoop) debugInfo() *debugInfoProfiledTarget {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
+
 	d := &debugInfoProfiledTarget{
 		TotalBytes:   p.totalBytes,
 		TotalSamples: p.totalSamples,
@@ -285,6 +295,16 @@ func (p *profilingLoop) debugInfo() *debugInfoProfiledTarget {
 		PID:          p.pid,
 		Target:       p.target,
 	}
+
+	// expose per profile type bytes
+	if len(p.lastBytesPerType) > 0 {
+		d.LastProfileBytesPerType = make(map[string]int64)
+		for _, b := range p.lastBytesPerType {
+			d.LastProfileBytesPerType[b.Type] += b.Bytes
+		}
+	}
+
+	// expose error message if given
 	if p.error != nil {
 		d.ErrorMsg = p.error.Error()
 	}

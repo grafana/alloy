@@ -58,14 +58,20 @@ type debugInfo struct {
 	ProfiledTargets []*debugInfoProfiledTarget `alloy:"profiled_targets,block"`
 }
 
+type debugInfoBytesPerType struct {
+	Type  string `alloy:"type,attr"`
+	Bytes int64  `alloy:"bytes,attr"`
+}
+
 type debugInfoProfiledTarget struct {
-	TotalBytes   int64            `alloy:"total_bytes,attr,optional"`
-	TotalSamples int64            `alloy:"total_samples,attr,optional"`
-	LastProfiled time.Time        `alloy:"last_profiled,attr,optional"`
-	LastError    time.Time        `alloy:"last_error,attr,optional"`
-	ErrorMsg     string           `alloy:"error_msg,attr,optional"`
-	PID          int              `alloy:"pid,attr"`
-	Target       discovery.Target `alloy:"target,attr"`
+	TotalBytes              int64            `alloy:"total_bytes,attr,optional"`
+	TotalSamples            int64            `alloy:"total_samples,attr,optional"`
+	LastProfiled            time.Time        `alloy:"last_profiled,attr,optional"`
+	LastError               time.Time        `alloy:"last_error,attr,optional"`
+	LastProfileBytesPerType map[string]int64 `alloy:"last_profile_bytes_per_type,attr,optional"`
+	ErrorMsg                string           `alloy:"error_msg,attr,optional"`
+	PID                     int              `alloy:"pid,attr"`
+	Target                  discovery.Target `alloy:"target,attr"`
 }
 
 var (
