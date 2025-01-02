@@ -74,6 +74,9 @@ func NewWithPauseCallbacks(l log.Logger, onPause func(), onResume func()) *Sched
 //
 // Schedule() completely overrides the set of previously running components.
 // Components which have been removed since the last call to Schedule will be stopped.
+//
+// updateConsumers is called after the components are paused and before starting the new components.
+// It is expected that this function will set the new set of consumers to the wrapping consumer that's assigned to the Alloy component.
 func (cs *Scheduler) Schedule(ctx context.Context, updateConsumers func(), h otelcomponent.Host, cc ...otelcomponent.Component) {
 	cs.schedMut.Lock()
 	defer cs.schedMut.Unlock()
@@ -109,7 +112,7 @@ func (cs *Scheduler) Schedule(ctx context.Context, updateConsumers func(), h ote
 	updateConsumers()
 
 	// 4. Start the new components
-	level.Debug(cs.log).Log("msg", "scheduling components", "count", len(cs.schedComponents))
+	level.Debug(cs.log).Log("msg", "scheduling otelcol components", "count", len(cs.schedComponents))
 	cs.schedComponents = cs.startComponents(ctx, h, cc...)
 	cs.host = h
 	//TODO: What if the trace component failed but the metrics one didn't? Should we resume all consumers?
