@@ -39,12 +39,12 @@ loki.secretfilter "<LABEL>" {
 Name                     | Type                 | Description                                     | Default                          | Required
 -------------------------|----------------------|-------------------------------------------------|----------------------------------|---------
 `forward_to`             | `list(LogsReceiver)` | List of receivers to send log entries to.       |                                  | yes
-`gitleaks_config`        | `string`             | Path to the custom `gitleaks.toml` file.        | Embedded Gitleaks file           | no
-`types`                  | `map(string)`        | Types of secret to look for.                    | All types                        | no
-`redact_with`            | `string`             | String to use to redact secrets.                | `<REDACTED-SECRET:$SECRET_NAME>` | no
-`include_generic`        | `bool`               | Include the generic API key rule.               | `false`                          | no
-`allowlist`              | `map(string)`        | List of regexes to allowlist matching secrets.  | `{}`                             | no
-`partial_mask`           | `number`             | Show the first N characters of the secret.      | `0`                              | no
+`gitleaks_config`        | `string`             | Path to the custom `gitleaks.toml` file.            | Embedded Gitleaks file           | no
+`types`                  | `map(string)`        | Types of secret to look for.                        | All types                        | no
+`redact_with`            | `string`             | String to use to redact secrets.                    | `<REDACTED-SECRET:$SECRET_NAME>` | no
+`include_generic`        | `bool`               | Include the generic API key rule.                   | `false`                          | no
+`allowlist`              | `map(string)`        | List of regexes to allowlist matching secrets.      | `{}`                             | no
+`partial_mask`           | `number`             | Show the first N characters (runes) of the secret.  | `0`                              | no
 
 The `gitleaks_config` argument is the path to the custom `gitleaks.toml` file.
 The Gitleaks configuration file embedded in the component is used if you don't provide the path to a custom configuration file.
@@ -76,9 +76,10 @@ The `include_generic` argument is a boolean that includes the generic API key ru
 The `allowlist` argument is a map of regular expressions to allow matching secrets.
 A secret will not be redacted if it matches any of the regular expressions. The allowlist in the Gitleaks configuration file is also applied.
 
-The `partial_mask` argument is the number of characters to show from the beginning of the secret before the redact string is added.
+The `partial_mask` argument is the number of characters (runes) to show from the beginning of the secret before the redact string is added.
 If set to `0`, the entire secret is redacted.
-If a secret is not at least 3 characters long and twice as long as the `partial_mask`, the entire secret is redacted.
+If a secret is not at least 6 characters (runes) long, it will be entirely redacted.
+For short secrets, at most half of the secret (runes) is shown.
 
 ## Blocks
 
