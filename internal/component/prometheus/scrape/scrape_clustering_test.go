@@ -21,6 +21,7 @@ import (
 	"github.com/grafana/alloy/internal/service/cluster"
 	"github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/service/labelstore"
+	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/internal/util/assertmetrics"
 	"github.com/grafana/alloy/internal/util/testappender"
@@ -213,6 +214,8 @@ func testOptions(t *testing.T, alloyMetricsReg *client.Registry, fakeCluster *fa
 				return fakeCluster, nil
 			case labelstore.ServiceName:
 				return labelstore.New(nil, alloyMetricsReg), nil
+			case livedebugging.ServiceName:
+				return livedebugging.NewLiveDebugging(), nil
 			default:
 				return nil, fmt.Errorf("service %q does not exist", name)
 			}
