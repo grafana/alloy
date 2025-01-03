@@ -47,10 +47,12 @@ Name | Type | Description | Default | Required
 `read_buffer_size` | `string` | Size of the read buffer the gRPC server will use for reading from clients. | `"512KiB"` | no
 `write_buffer_size` | `string` | Size of the write buffer the gRPC server will use for writing to clients. | | no
 `include_metadata` | `boolean` | Propagate incoming connection metadata to downstream consumers. | | no
+`auth`              | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests.     |               | no
 
 `cors_allowed_origins` are the allowed [CORS](https://github.com/rs/cors) origins for HTTP/JSON requests.
 An empty list means that CORS is not enabled at all. A wildcard (*) can be
 used to match any origin or one or more characters of an origin.
+
 
 The "endpoint" parameter is the same for both gRPC and HTTP/JSON, as the protocol is recognized and processed accordingly.
 
@@ -205,6 +207,26 @@ otelcol.exporter.otlp "default" {
     client {
         endpoint = sys.env("OTLP_ENDPOINT")
     }
+}
+```
+
+## Enable authentication
+
+You can create a `otelcol.receiver.opencensus` component that requires authentication for requests. This is useful for limiting who can push data to the server. 
+
+{{< admonition type="note" >}}
+Not all OpenTelemetry Collector authentication plugins support receiver authentication.
+Refer to the [documentation](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/otelcol/) for each `otelcol.auth.*` component to determine its compatibility.
+{{< /admonition >}} 
+
+```alloy
+otelcol.receiver.opencensus "default" {
+  auth = otelcol.auth.basic.creds.handler
+}
+
+otelcol.auth.basic "creds" {
+    username = sys.env("USERNAME")
+    password = sys.env("PASSWORD")
 }
 ```
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
