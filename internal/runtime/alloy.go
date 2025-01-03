@@ -265,6 +265,7 @@ func (f *Runtime) Run(ctx context.Context) {
 				components = f.loader.Components()
 				services   = f.loader.Services()
 				imports    = f.loader.Imports()
+				forEachs   = f.loader.ForEachs()
 
 				runnables = make([]controller.RunnableNode, 0, len(components)+len(services)+len(imports))
 			)
@@ -274,6 +275,10 @@ func (f *Runtime) Run(ctx context.Context) {
 
 			for _, i := range imports {
 				runnables = append(runnables, i)
+			}
+
+			for _, fe := range forEachs {
+				runnables = append(runnables, fe)
 			}
 
 			// Only the root controller should run services, since modules share the
