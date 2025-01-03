@@ -150,6 +150,7 @@ func TestConfigConversion(t *testing.T) {
 				HostMetadata: datadogOtelconfig.HostMetadataConfig{
 					Enabled:        true,
 					HostnameSource: datadogOtelconfig.HostnameSourceConfigOrSystem,
+					ReporterPeriod: 30 * time.Minute,
 				},
 			},
 		},
@@ -196,6 +197,7 @@ func TestConfigConversion(t *testing.T) {
 				HostMetadata: datadogOtelconfig.HostMetadataConfig{
 					Enabled:        true,
 					HostnameSource: datadogOtelconfig.HostnameSourceConfigOrSystem,
+					ReporterPeriod: 30 * time.Minute,
 				},
 			},
 		},
@@ -247,6 +249,7 @@ func TestConfigConversion(t *testing.T) {
 				HostMetadata: datadogOtelconfig.HostMetadataConfig{
 					Enabled:        true,
 					HostnameSource: datadogOtelconfig.HostnameSourceConfigOrSystem,
+					ReporterPeriod: 30 * time.Minute,
 				},
 			},
 		},

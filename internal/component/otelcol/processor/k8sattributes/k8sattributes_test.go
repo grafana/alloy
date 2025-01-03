@@ -2,6 +2,7 @@ package k8sattributes_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/grafana/alloy/internal/component/otelcol/processor/k8sattributes"
 	"github.com/grafana/alloy/syntax"
@@ -354,5 +355,44 @@ func Test_Exclude(t *testing.T) {
 		exclude := &otelObj.Exclude
 		require.Len(t, exclude.Pods, 1)
 		require.Equal(t, "alloy", exclude.Pods[0].Name)
+	})
+}
+
+func Test_WaitForMetadata(t *testing.T) {
+	t.Run("default", func(t *testing.T) {
+		cfg := `
+		output {
+			// no-op: will be overridden by test code.
+		}
+	`
+		var args k8sattributes.Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+
+		convertedArgs, err := args.Convert()
+		require.NoError(t, err)
+		otelObj := (convertedArgs).(*k8sattributesprocessor.Config)
+
+		require.False(t, otelObj.WaitForMetadata)
+		require.Equal(t, 10*time.Second, otelObj.WaitForMetadataTimeout)
+	})
+
+	t.Run("non_default", func(t *testing.T) {
+		cfg := `
+		wait_for_metadata = true
+		wait_for_metadata_timeout = "14s"
+
+		output {
+			// no-op: will be overridden by test code.
+		}
+	`
+		var args k8sattributes.Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+
+		convertedArgs, err := args.Convert()
+		require.NoError(t, err)
+		otelObj := (convertedArgs).(*k8sattributesprocessor.Config)
+
+		require.True(t, otelObj.WaitForMetadata)
+		require.Equal(t, 14*time.Second, otelObj.WaitForMetadataTimeout)
 	})
 }

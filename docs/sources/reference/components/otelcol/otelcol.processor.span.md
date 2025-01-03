@@ -104,10 +104,11 @@ The `to_attributes` block configures how to create attributes from a span name.
 
 The following attributes are supported:
 
-Name                | Type           | Description                                                          | Default | Required
---------------------|----------------|----------------------------------------------------------------------|---------|---------
-`rules`             | `list(string)` | A list of regex rules to extract attribute values from span name.    |         | yes
-`break_after_match` | `bool`         | Configures if processing of rules should stop after the first match. | `false` | no
+Name                 | Type           | Description                                                                     | Default | Required
+---------------------|----------------|---------------------------------------------------------------------------------|---------|---------
+`rules`              | `list(string)` | A list of regex rules to extract attribute values from span name.               |         | yes
+`break_after_match`  | `bool`         | Configures if processing of rules should stop after the first match.            | `false` | no
+`keep_original_name` | `bool`         | Configures if the original span name should be kept after processing the rules. | `false` | no
 
 Each rule in the `rules` list is a regex pattern string.
 1. The span name is checked against each regex in the list.
@@ -121,6 +122,9 @@ Each rule in the `rules` list is a regex pattern string.
 `break_after_match` specifies if processing of rules should stop after the first
 match. If it is `false`, rule processing will continue to be performed over the
 modified span name.
+
+If `keep_original_name` is `true`, the original span name will be kept.
+If it is `false`, it will be replaced with the placeholders of the captured attributes.
 
 ### status block
 
@@ -304,6 +308,26 @@ otelcol.processor.span "default" {
   name {
     to_attributes {
       rules = ["^\\/api\\/v1\\/document\\/(?P<documentId>.*)\\/update$"]
+    }
+  }
+
+  output {
+      traces = [otelcol.exporter.otlp.default.input]
+  }
+}
+```
+
+### Keep the original span name
+
+This example will add the same new `"documentId"="12345678"` attribute as the previous example.
+However, it will now result in an unchanged span name (/api/v1/document/12345678/update).
+
+```alloy
+otelcol.processor.span "keep_original_name" {
+  name {
+    to_attributes {
+      keep_original_name = true
+      rules = [`^\/api\/v1\/document\/(?P<documentId>.*)\/update$`]
     }
   }
 

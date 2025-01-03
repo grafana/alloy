@@ -2,6 +2,8 @@
 package k8sattributes
 
 import (
+	"time"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
@@ -41,6 +43,12 @@ type Arguments struct {
 	PodAssociations PodAssociationSlice `alloy:"pod_association,block,optional"`
 	Exclude         ExcludeConfig       `alloy:"exclude,block,optional"`
 
+	// Determines if the processor should wait k8s metadata to be synced when starting.
+	WaitForMetadata bool `alloy:"wait_for_metadata,attr,optional"`
+
+	// The maximum time the processor will wait for the k8s metadata to be synced.
+	WaitForMetadataTimeout time.Duration `alloy:"wait_for_metadata_timeout,attr,optional"`
+
 	// Output configures where to send processed data. Required.
 	Output *otelcol.ConsumerArguments `alloy:"output,block"`
 
@@ -58,6 +66,7 @@ func (args *Arguments) SetToDefault() {
 			{Name: "jaeger-collector"},
 		},
 	}
+	args.WaitForMetadataTimeout = 10 * time.Second
 	args.DebugMetrics.SetToDefault()
 }
 
@@ -80,6 +89,8 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	} else {
 		input["auth_type"] = args.AuthType
 	}
+
+	input["wait_for_metadata"] = args.WaitForMetadata
 
 	input["passthrough"] = args.Passthrough
 
@@ -105,6 +116,10 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Set the timeout after the decoding step.
+	// That way we don't have to convert a duration to a string.
+	result.WaitForMetadataTimeout = args.WaitForMetadataTimeout
 
 	return &result, nil
 }

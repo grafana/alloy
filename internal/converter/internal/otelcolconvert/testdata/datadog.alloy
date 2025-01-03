@@ -31,6 +31,8 @@ otelcol.exporter.datadog "default" {
 		span_name_remappings = {
 			"instrumentation:express.server" = "express",
 		}
+		compute_stats_by_span_kind = true
+		peer_tags_aggregation      = true
 	}
 
 	metrics {

@@ -21,12 +21,9 @@ import (
 	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/client_golang/prometheus"
 	otelcomponent "go.opentelemetry.io/collector/component"
-	"go.opentelemetry.io/collector/config/configtelemetry"
 	otelextension "go.opentelemetry.io/collector/extension"
 	"go.opentelemetry.io/collector/pipeline"
 	sdkprometheus "go.opentelemetry.io/otel/exporters/prometheus"
-	otelmetric "go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/metric/noop"
 	"go.opentelemetry.io/otel/sdk/metric"
 )
 
@@ -156,13 +153,7 @@ func (a *Auth) Update(args component.Arguments) error {
 
 			TracerProvider: a.opts.Tracer,
 			MeterProvider:  mp,
-			LeveledMeterProvider: func(level configtelemetry.Level) otelmetric.MeterProvider {
-				if level <= metricsLevel {
-					return mp
-				}
-				return noop.MeterProvider{}
-			},
-			MetricsLevel: metricsLevel,
+			MetricsLevel:   metricsLevel,
 		},
 
 		BuildInfo: otelcomponent.BuildInfo{
@@ -180,7 +171,7 @@ func (a *Auth) Update(args component.Arguments) error {
 	// Create instances of the extension from our factory.
 	var components []otelcomponent.Component
 
-	ext, err := a.factory.CreateExtension(a.ctx, settings, extensionConfig)
+	ext, err := a.factory.Create(a.ctx, settings, extensionConfig)
 	if err != nil {
 		return err
 	} else if ext != nil {

@@ -36,7 +36,6 @@ func NewGRPC(
 	settings configgrpc.ServerConfig,
 	strategyStore samplingstrategy.Provider,
 ) (*SamplingGRPCServer, error) {
-
 	if strategyStore == nil {
 		return nil, errMissingStrategyStore
 	}
