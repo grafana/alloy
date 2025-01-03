@@ -18,6 +18,7 @@ loki.write "logs_log_config" {
 
 faro.receiver "integrations_app_agent_receiver" {
 	extra_log_labels = {}
+	log_format       = ""
 
 	server {
 		listen_address           = "localhost"
