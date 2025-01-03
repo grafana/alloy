@@ -5,10 +5,11 @@ import (
 	"testing"
 	"time"
 
+	"go.uber.org/atomic"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	otelcomponent "go.opentelemetry.io/collector/component"
-	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/otelcol/internal/scheduler"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
@@ -32,7 +33,7 @@ func TestScheduler(t *testing.T) {
 		// Schedule our component, which should notify the started trigger once it is
 		// running.
 		component, started, _ := newTriggerComponent()
-		cs.Schedule(h, component)
+		cs.Schedule(context.Background(), func() {}, h, component)
 		require.NoError(t, started.Wait(5*time.Second), "component did not start")
 	})
 
@@ -52,12 +53,12 @@ func TestScheduler(t *testing.T) {
 		// Schedule our component, which should notify the started and stopped
 		// trigger once it starts and stops respectively.
 		component, started, stopped := newTriggerComponent()
-		cs.Schedule(h, component)
+		cs.Schedule(context.Background(), func() {}, h, component)
 
 		// Wait for the component to start, and then unschedule all components, which
 		// should cause our running component to terminate.
 		require.NoError(t, started.Wait(5*time.Second), "component did not start")
-		cs.Schedule(h)
+		cs.Schedule(context.Background(), func() {}, h)
 		require.NoError(t, stopped.Wait(5*time.Second), "component did not shutdown")
 	})
 
@@ -81,26 +82,32 @@ func TestScheduler(t *testing.T) {
 			require.NoError(t, err)
 		}()
 
+		toInt := func(a *atomic.Int32) int { return int(a.Load()) }
+
+		// The Run function starts the components. They should be paused and then resumed.
+		require.EventuallyWithT(t, func(t *assert.CollectT) {
+			assert.Equal(t, 1, toInt(pauseCalls), "pause callbacks should be called on run")
+			assert.Equal(t, 1, toInt(resumeCalls), "resume callback should be called on run")
+		}, 5*time.Second, 10*time.Millisecond, "pause/resume callbacks not called correctly")
+
 		// Schedule our component, which should notify the started and stopped
 		// trigger once it starts and stops respectively.
 		component, started, stopped := newTriggerComponent()
-		cs.Schedule(h, component)
-
-		toInt := func(a *atomic.Int32) int { return int(a.Load()) }
+		cs.Schedule(ctx, func() {}, h, component)
 
 		require.EventuallyWithT(t, func(t *assert.CollectT) {
-			assert.Equal(t, 0, toInt(pauseCalls), "pause callbacks should not be called on first run")
-			assert.Equal(t, 1, toInt(resumeCalls), "resume callback should be called on first run")
+			assert.Equal(t, 2, toInt(pauseCalls), "pause callbacks should be called on schedule")
+			assert.Equal(t, 2, toInt(resumeCalls), "resume callback should be called on schedule")
 		}, 5*time.Second, 10*time.Millisecond, "pause/resume callbacks not called correctly")
 
 		// Wait for the component to start, and then unschedule all components, which
 		// should cause our running component to terminate.
 		require.NoError(t, started.Wait(5*time.Second), "component did not start")
-		cs.Schedule(h)
+		cs.Schedule(ctx, func() {}, h)
 
 		require.EventuallyWithT(t, func(t *assert.CollectT) {
-			assert.Equal(t, 1, toInt(pauseCalls), "pause callback should be called on second run")
-			assert.Equal(t, 2, toInt(resumeCalls), "resume callback should be called on second run")
+			assert.Equal(t, 3, toInt(pauseCalls), "pause callback should be called on second schedule")
+			assert.Equal(t, 3, toInt(resumeCalls), "resume callback should be called on second schedule")
 		}, 5*time.Second, 10*time.Millisecond, "pause/resume callbacks not called correctly")
 
 		require.NoError(t, stopped.Wait(5*time.Second), "component did not shutdown")
@@ -109,8 +116,8 @@ func TestScheduler(t *testing.T) {
 		cancel()
 
 		require.EventuallyWithT(t, func(t *assert.CollectT) {
-			assert.Equal(t, 2, toInt(pauseCalls), "pause callback should be called on shutdown")
-			assert.Equal(t, 3, toInt(resumeCalls), "resume callback should be called on shutdown")
+			assert.Equal(t, 3, toInt(pauseCalls), "pause callback should not be called on shutdown")
+			assert.Equal(t, 4, toInt(resumeCalls), "resume callback should be called on shutdown")
 		}, 5*time.Second, 10*time.Millisecond, "pause/resume callbacks not called correctly")
 	})
 
@@ -133,7 +140,7 @@ func TestScheduler(t *testing.T) {
 		// Schedule our component which will notify our trigger when Shutdown gets
 		// called.
 		component, started, stopped := newTriggerComponent()
-		cs.Schedule(h, component)
+		cs.Schedule(ctx, func() {}, h, component)
 
 		// Wait for the component to start, and then stop our scheduler, which
 		// should cause our running component to terminate.

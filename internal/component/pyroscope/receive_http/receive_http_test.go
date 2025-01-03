@@ -287,3 +287,45 @@ func testOptions(t *testing.T) component.Options {
 		Registerer: prometheus.NewRegistry(),
 	}
 }
+
+// TestUpdateArgs verifies that the component can be updated with new arguments. This explictly also makes sure that the server is restarted when the server configuration changes. And there are no metric registration conflicts.
+func TestUpdateArgs(t *testing.T) {
+	ports, err := freeport.GetFreePorts(2)
+	require.NoError(t, err)
+
+	forwardTo := []pyroscope.Appendable{testAppendable(nil)}
+
+	args := Arguments{
+		Server: &fnet.ServerConfig{
+			HTTP: &fnet.HTTPConfig{
+				ListenAddress: "localhost",
+				ListenPort:    ports[0],
+			},
+		},
+		ForwardTo: forwardTo,
+	}
+
+	comp, err := New(testOptions(t), args)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+
+	go func() {
+		require.NoError(t, comp.Run(ctx))
+	}()
+
+	waitForServerReady(t, ports[0])
+
+	comp.Update(Arguments{
+		Server: &fnet.ServerConfig{
+			HTTP: &fnet.HTTPConfig{
+				ListenAddress: "localhost",
+				ListenPort:    ports[1],
+			},
+		},
+		ForwardTo: forwardTo,
+	})
+
+	waitForServerReady(t, ports[1])
+}

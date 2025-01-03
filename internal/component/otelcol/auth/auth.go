@@ -304,7 +304,7 @@ func (a *Auth) Update(args component.Arguments) error {
 	)
 
 	// Schedule the components to run once our component is running.
-	a.sched.Schedule(host, components...)
+	a.sched.Schedule(a.ctx, func() {}, host, components...)
 	return nil
 }
 
