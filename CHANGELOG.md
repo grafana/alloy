@@ -222,6 +222,8 @@ v1.6.0
 - Add livedebugging support for `discover.relabel` (@ravishankar15)
 - Performance optimization for live debugging feature (@ravishankar15)
 
+- Add livedebugging support for `prometheus.scrape` (@ravishankar15, @wildum)
+
 - Upgrade `github.com/goccy/go-json` to v0.10.4, which reduces the memory consumption of an Alloy instance by 20MB.
   If Alloy is running certain otelcol components, this reduction will not apply. (@ptodev)
 - improve performance in regexp component: call fmt only if debug is enabled (@r0ka)
