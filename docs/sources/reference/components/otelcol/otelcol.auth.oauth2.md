@@ -10,7 +10,7 @@ title: otelcol.auth.oauth2
 
 `otelcol.auth.oauth2` exposes a `handler` that can be used by other `otelcol` components to authenticate requests using OAuth 2.0.
 
-This extension only supports client authentication. 
+This `component` only supports client authentication. 
 
 The authorization tokens can be used by HTTP and gRPC based OpenTelemetry exporters.
 This component can fetch and refresh expired tokens automatically.

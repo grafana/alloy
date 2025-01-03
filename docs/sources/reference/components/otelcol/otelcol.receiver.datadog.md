@@ -136,9 +136,14 @@ otelcol.exporter.otlp "default" {
 }
 ```
 
-## Enabling Authentication
+## Enable authentication
 
-You can create a `datadog` receiver that requires authentication for requests. This is useful for limiting who can push data to the server. Note that not all OpenTelemetry Collector (otelcol) authentication plugins support receiver authentication. Please refer to the documentation for each `otelcol.auth.*` plugin to determine its compatibility.
+You can create a `otelcol.receiver.datadog` component that requires authentication for requests. This is useful for limiting who can push data to the server. 
+
+{{< admonition type="note" >}}
+Not all OpenTelemetry Collector authentication plugins support receiver authentication.
+Refer to the [documentation](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/otelcol/) for each `otelcol.auth.*` component to determine its compatibility.
+{{< /admonition >}} 
 
 ```alloy
 otelcol.receiver.datadog "default" {

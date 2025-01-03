@@ -264,9 +264,18 @@ otelcol.exporter.otlp "default" {
 
 `otelcol.receiver.jaeger` supports [Gzip](https://en.wikipedia.org/wiki/Gzip) for compression.
 
-## Enabling Authentication
+## Enable authentication
 
-You can create a `jaeger` receiver that requires authentication for requests. This is useful for limiting who can push data to the server. Note that not all OpenTelemetry Collector (otelcol) authentication plugins support receiver authentication. Please refer to the documentation for each `otelcol.auth.*` plugin to determine its compatibility. This functionality is currently limited to the GRPC/HTTP blocks.
+You can create a `otelcol.receiver.jaeger` component that requires authentication for requests. This is useful for limiting who can push data to the server.
+
+{{< admonition type="note" >}}
+This functionality is currently limited to the GRPC/HTTP blocks.
+{{< /admonition >}} 
+
+{{< admonition type="note" >}}
+Not all OpenTelemetry Collector authentication plugins support receiver authentication.
+Refer to the [documentation](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/otelcol/) for each `otelcol.auth.*` component to determine its compatibility.
+{{< /admonition >}} 
 
 ```alloy
 otelcol.receiver.jaeger "default" {
