@@ -52,6 +52,7 @@ Main (unreleased)
 - Add three new stdlib functions to_base64, from_URLbase64 and to_URLbase64 (@ravishankar15)
 - Add `ignore_older_than` option for local.file_match (@ravishankar15)
 - Add livedebugging support for `discover.relabel` (@ravishankar15)
+- Performance optimization for live debugging feature (@ravishankar15)
 
 - Upgrade `github.com/goccy/go-json` to v0.10.4, which reduces the memory consumption of an Alloy instance by 20MB.
   If Alloy is running certain otelcol components, this reduction will not apply. (@ptodev)
