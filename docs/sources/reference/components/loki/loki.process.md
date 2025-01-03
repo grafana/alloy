@@ -258,6 +258,9 @@ If set to `false`, the `_extracted` suffix will be appended to an already existi
 When `drop_invalid_labels` is set to `true`, the stage drops fields that are not valid label names.
 If set to `false`, the stage will automatically convert them into valid labels replacing invalid characters with underscores.
 
+Only lines that have the key:value format will be extracted. All non-alpha characters in the key are replaced with underscores.
+For example, `\tSecurity ID` will be available in the extracted map as `_Security_ID` to be used in later stages.
+
 #### Example combined with `stage.json`
 
 ```alloy
