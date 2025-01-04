@@ -78,7 +78,7 @@ func (m *eventLogMessageStage) processEntry(extracted map[string]interface{}, ke
 	for _, line := range lines {
 		parts := strings.SplitN(line, ":", 2)
 		if len(parts) < 2 {
-			level.Warn(m.logger).Log("msg", "invalid line parsed from message", "line", line)
+			level.Debug(m.logger).Log("msg", "invalid line parsed from message", "line", line)
 			continue
 		}
 		mkey := parts[0]
