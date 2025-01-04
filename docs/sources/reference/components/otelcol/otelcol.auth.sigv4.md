@@ -12,7 +12,7 @@ title: otelcol.auth.sigv4
 components to authenticate requests to AWS services using the AWS Signature Version 4 (SigV4) protocol.
 For more information about SigV4 see the AWS documentation about [Signing AWS API requests][].
 
-This `component` only supports client authentication. 
+This component only supports client authentication. 
 
 [Signing AWS API requests]: https://docs.aws.amazon.com/general/latest/gr/signing-aws-api-requests.html
 

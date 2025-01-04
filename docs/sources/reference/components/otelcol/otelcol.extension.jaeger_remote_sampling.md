@@ -301,10 +301,10 @@ otelcol.extension.jaeger_remote_sampling "example" {
 You can use `jaeger_remote_sampling` to authenticate requests.
 This allows you to limit access to the sampling document.
 
- {{< admonition type="note" >}}
+{{< admonition type="note" >}}
 Not all OpenTelemetry Collector authentication plugins support receiver authentication.
 Refer to the [documentation](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/otelcol/) for each `otelcol.auth.*` component to determine its compatibility.
- {{< /admonition >}}
+{{< /admonition >}}
 
 ```alloy
 otelcol.extension.jaeger_remote_sampling "default" {
