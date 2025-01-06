@@ -59,6 +59,8 @@ Main (unreleased)
 
 - Update `prometheus.write.queue` library for performance increases in cpu. (@mattdurham)
 
+- Update `async-profiler` binaries for `pyroscope.java` to 3.0-fa937db
+
 ### Bugfixes
 
 - Fixed issue with automemlimit logging bad messages and trying to access cgroup on non-linux builds (@dehaansa)
