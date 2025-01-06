@@ -29,7 +29,6 @@ type Rule struct {
 	name        string
 	regex       *regexp.Regexp
 	secretGroup int
-	description string
 	allowlist   []AllowRule
 }
 
@@ -98,25 +97,20 @@ type Component struct {
 type GitLeaksConfig struct {
 	AllowList struct {
 		Description string
-		Paths       []string // Not used
 		Regexes     []string
 	}
 	Rules []struct {
 		ID          string
-		Description string // Not used
 		Regex       string
-		Keywords    []string // Not used
 		SecretGroup int
 
 		// Old format, kept for compatibility
 		Allowlist struct {
-			StopWords []string // Not used
-			Regexes   []string
+			Regexes []string
 		}
 		// New format
 		Allowlists []struct {
-			StopWords []string // Not used
-			Regexes   []string
+			Regexes []string
 		}
 	}
 }
@@ -340,7 +334,6 @@ func (c *Component) Update(args component.Arguments) error {
 			name:        rule.ID,
 			regex:       re,
 			secretGroup: rule.SecretGroup,
-			description: rule.Description,
 			allowlist:   allowlist,
 		}
 
