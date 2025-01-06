@@ -53,7 +53,10 @@ The Gitleaks configuration file embedded in the component is used if you don't p
 This component does not support all the features of the Gitleaks configuration file. Currently, it only supports the regex-based rules, `secretGroup`, and allowlist regexes (`regexTarget` only supports the default value `secret`). Other features such as `keywords`, `entropy`, `paths`, and `stopwords` are not supported. The `extend` feature is also not supported, meaning that a custom configuration file must contain all the rules to use.
 {{< /admonition >}}
 
-The `types` argument is a map of secret types to look for. The values provided are used as prefixes to match rules IDs in the Gitleaks configuration (e.g. providing the type `grafana` will match the rules `grafana-api-key`, `grafana-cloud-api-token`, and `grafana-service-account-token`). If you don't provide this argument, all rules are used.
+The `types` argument is a map of secret types to look for.
+The values provided are used as prefixes to match rules IDs in the Gitleaks configuration.
+For example,  providing the type `grafana` will match the rules `grafana-api-key`, `grafana-cloud-api-token`, and `grafana-service-account-token`.
+If you don't provide this argument, all rules are used.
 
 {{< admonition type="note" >}}
 Configuring this argument with the secret types you want to look for is strongly recommended.
