@@ -2612,6 +2612,8 @@ github.com/open-telemetry/opentelemetry-collector-contrib/extension/oauth2client
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/oauth2clientauthextension v0.112.0/go.mod h1:F7NU4rHqbTrkfOFH6ZtbSHoD+vLNgfu0MrqDw5n1I8Y=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/sigv4authextension v0.112.0 h1:XYTTlyT5xjZKcUaQT05ffltMahw2S2wU7qIWtjLp7XE=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/sigv4authextension v0.112.0/go.mod h1:wlnJiEwFYq3920DXOgDby5w6ctv57GJUTkvH4gHoBVA=
+github.com/open-telemetry/opentelemetry-collector-contrib/extension/storage v0.112.0 h1:OtZFEz8PEAcGJFGAI3m1bu8gC3rS8IbtnB5mO8B9AAU=
+github.com/open-telemetry/opentelemetry-collector-contrib/extension/storage v0.112.0/go.mod h1:ykfaFUQlOIuWrWSwc4wtY0TDwWjjGHF/8jNm3lFH0cM=
 github.com/open-telemetry/opentelemetry-collector-contrib/internal/aws/ecsutil v0.112.0 h1:3zGjQ0pRszCibVGvjqTWDVEDT0D+d5pY8JRy8rV8X9k=
 github.com/open-telemetry/opentelemetry-collector-contrib/internal/aws/ecsutil v0.112.0/go.mod h1:0vf3+lFg/yOaXwQ17MAF2JmBkTGeq09qR+ftaJQqN08=
 github.com/open-telemetry/opentelemetry-collector-contrib/internal/common v0.112.0 h1:PVgAm7sIQUOS8TtX5ANV+hHn67vW6cW6uVy3qifccKc=
@@ -2716,6 +2718,8 @@ github.com/open-telemetry/opentelemetry-collector-contrib/receiver/opencensusrec
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/opencensusreceiver v0.112.0/go.mod h1:q2lFBHfnG+ar2DJJlIU6RviOFXDeFur9vJ083NvOMQs=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/solacereceiver v0.112.0 h1:cHk8vS/D1pjeZ0o4LJJAENP847HHWjTXFe4y1RJYlfo=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/solacereceiver v0.112.0/go.mod h1:2CK7Hh6UGLnBSGW7Y0nopvEhoo25D6t/395jFEephEs=
+github.com/open-telemetry/opentelemetry-collector-contrib/receiver/syslogreceiver v0.112.0 h1:GNWvYGjT08ByMbKuvY/uB57TQYrPJc/aF+nnpraELgU=
+github.com/open-telemetry/opentelemetry-collector-contrib/receiver/syslogreceiver v0.112.0/go.mod h1:U0XNYcs+DJTwElKNKXADGBpQLIFrrEKAI78PzqOVl/E=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/vcenterreceiver v0.112.0 h1:Vv1FDwd7pykzj8Wmuc7yj7bcN0qUv1mGBb/dcTMPfNE=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/vcenterreceiver v0.112.0/go.mod h1:lklLK8ELD2Wk5z7ywjaf6XEbbViDtf7uK8jAExjRlls=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/zipkinreceiver v0.112.0 h1:XhKHjEpQJQMaUuWVhWS1FEuaY4LJDwBgsGXE166j9SY=

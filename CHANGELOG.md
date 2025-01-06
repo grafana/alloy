@@ -12,6 +12,8 @@ Main (unreleased)
 
 ### Features
 
+- Add `otelcol.receiver.syslog` component to receive otel logs in syslog format (@dehaansa)
+
 - Add support for metrics in `otelcol.exporter.loadbalancing` (@madaraszg-tulip)
 
 - Add `add_cloudwatch_timestamp` to `prometheus.exporter.cloudwatch` metrics. (@captncraig)
@@ -52,6 +54,7 @@ Main (unreleased)
 - Add three new stdlib functions to_base64, from_URLbase64 and to_URLbase64 (@ravishankar15)
 - Add `ignore_older_than` option for local.file_match (@ravishankar15)
 - Add livedebugging support for `discover.relabel` (@ravishankar15)
+- Performance optimization for live debugging feature (@ravishankar15)
 
 - Upgrade `github.com/goccy/go-json` to v0.10.4, which reduces the memory consumption of an Alloy instance by 20MB.
   If Alloy is running certain otelcol components, this reduction will not apply. (@ptodev)
@@ -73,6 +76,9 @@ Main (unreleased)
 - Fixed an issue where the `otelcol.processor.interval` could not be used because the debug metrics were not set to default. (@wildum)
 
 - Fixed an issue where `loki.secretfilter` would crash if the secret was shorter than the `partial_mask` value. (@romain-gaillard)
+
+- Change the log level in the `eventlogmessage` stage of the `loki.process` component from `warn` to `debug`. (@wildum)
+
 
 ### Other changes
 
