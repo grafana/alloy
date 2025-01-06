@@ -59,7 +59,7 @@ Main (unreleased)
 
 - Update `prometheus.write.queue` library for performance increases in cpu. (@mattdurham)
 
-- Update `async-profiler` binaries for `pyroscope.java` to 3.0-fa937db
+- Update `async-profiler` binaries for `pyroscope.java` to 3.0-fa937db (@aleks-p)
 
 ### Bugfixes
 
