@@ -21,8 +21,8 @@ For a complete list of changes to {{< param "FULL_PRODUCT_NAME" >}}, with links 
 Alloy v1.5 upgraded to [OpenTelemetry Collector v0.104.0][otel-v0_104], which included a [fix][#33671] to the tail sampling processor:
 
 > Previously if the decision from a policy evaluation was `NotSampled` or `InvertNotSampled` 
-  it would return a `NotSampled` decision regardless, effectively downgrading the result.
-  This was breaking the documented behaviour that inverted decisions should take precedence over all others.
+> it would return a `NotSampled` decision regardless, effectively downgrading the result.
+> This was breaking the documented behaviour that inverted decisions should take precedence over all others.
 
 The "documented behavior" which the above quote is referring to is in the [processor documentation][tail-sample-docs]:
 
@@ -38,7 +38,7 @@ The "documented behavior" which the above quote is referring to is in the [proce
 However, in [OpenTelemetry Collector v0.1116.0][otel-v0_116] this fix was [reverted][#36673]:
 
 > Reverts [#33671][], allowing for composite policies to specify inverted clauses in conjunction with other policies. 
-  This is a change bringing the previous state into place, breaking users who rely on what was introduced as part of [#33671][].
+> This is a change bringing the previous state into place, breaking users who rely on what was introduced as part of [#33671][].
 
 [otel-v0_104]: https://github.com/open-telemetry/opentelemetry-collector-contrib/releases/tag/v0.104.0
 [otel-v0_116]: https://github.com/open-telemetry/opentelemetry-collector-contrib/releases/tag/v0.116.0
