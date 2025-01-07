@@ -2,6 +2,7 @@ package discovery
 
 import (
 	"context"
+	"fmt"
 	"slices"
 	"sort"
 	"strings"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/service/livedebugging"
 )
 
 // Target refers to a singular discovered endpoint found by a discovery
@@ -74,16 +76,26 @@ type Component struct {
 	latestDisc    DiscovererWithMetrics
 	newDiscoverer chan struct{}
 
-	creator Creator
+	creator            Creator
+	debugDataPublisher livedebugging.DebugDataPublisher
 }
+
+var _ component.Component = (*Component)(nil)
+var _ component.LiveDebugging = (*Component)(nil)
 
 // New creates a discovery component given arguments and a concrete Discovery implementation function.
 func New(o component.Options, args component.Arguments, creator Creator) (*Component, error) {
+	debugDataPublisher, err := o.GetServiceData(livedebugging.ServiceName)
+	if err != nil {
+		return nil, err
+	}
+
 	c := &Component{
 		opts:    o,
 		creator: creator,
 		// buffered to avoid deadlock from the first immediate update
-		newDiscoverer: make(chan struct{}, 1),
+		newDiscoverer:      make(chan struct{}, 1),
+		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
 	}
 	return c, c.Update(args)
 }
@@ -224,6 +236,10 @@ func (c *Component) runDiscovery(ctx context.Context, d DiscovererWithMetrics) {
 				allTargets = append(allTargets, labels)
 			}
 		}
+		componentID := livedebugging.ComponentID(c.opts.ID)
+		if c.debugDataPublisher.IsActive(componentID) {
+			c.debugDataPublisher.Publish(componentID, fmt.Sprintf("%s", allTargets))
+		}
 		c.opts.OnStateChange(Exports{Targets: allTargets})
 	}
 
@@ -257,3 +273,5 @@ func (c *Component) runDiscovery(ctx context.Context, d DiscovererWithMetrics) {
 		}
 	}
 }
+
+func (c *Component) LiveDebugging(_ int) {}

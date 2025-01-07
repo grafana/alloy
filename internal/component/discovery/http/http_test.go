@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -19,6 +20,7 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/syntax"
 )
 
@@ -95,6 +97,14 @@ func TestComponent(t *testing.T) {
 				cancel()
 			},
 			Registerer: prometheus.NewRegistry(),
+			GetServiceData: func(name string) (interface{}, error) {
+				switch name {
+				case livedebugging.ServiceName:
+					return livedebugging.NewLiveDebugging(), nil
+				default:
+					return nil, fmt.Errorf("service %q does not exist", name)
+				}
+			},
 		},
 		Arguments{
 			RefreshInterval:  time.Second,

@@ -2,6 +2,7 @@ package discovery
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"sync"
 	"testing"
@@ -14,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/service/livedebugging"
 )
 
 // discovererUpdateTestCase is a test case for testing discovery updates. A discovery component is created and the
@@ -128,17 +130,28 @@ func TestDiscoveryUpdates(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			var publishedExports []component.Exports
 			publishedExportsMut := sync.Mutex{}
-			comp := &Component{
-				opts: component.Options{
-					ID: "discovery.test",
-					OnStateChange: func(e component.Exports) {
-						publishedExportsMut.Lock()
-						defer publishedExportsMut.Unlock()
-						publishedExports = append(publishedExports, e)
-					},
-					Logger: log.NewLogfmtLogger(os.Stdout),
+			opts := component.Options{
+				ID: "discovery.test",
+				OnStateChange: func(e component.Exports) {
+					publishedExportsMut.Lock()
+					defer publishedExportsMut.Unlock()
+					publishedExports = append(publishedExports, e)
 				},
-				newDiscoverer: make(chan struct{}, 1),
+				Logger: log.NewLogfmtLogger(os.Stdout),
+				GetServiceData: func(name string) (interface{}, error) {
+					switch name {
+					case livedebugging.ServiceName:
+						return livedebugging.NewLiveDebugging(), nil
+					default:
+						return nil, fmt.Errorf("service %q does not exist", name)
+					}
+				},
+			}
+			debugDataPublisher, _ := opts.GetServiceData(livedebugging.ServiceName)
+			comp := &Component{
+				opts:               opts,
+				newDiscoverer:      make(chan struct{}, 1),
+				debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
 			}
 
 			discoverer := newFakeDiscoverer()
