@@ -849,9 +849,11 @@ func (l *Loader) postEvaluate(logger log.Logger, bn BlockNode, err error) error 
 		// We also want to cache it in case of an error
 		err2 := l.cache.CacheExports(c.ID(), c.Exports())
 		if err2 != nil {
-			level.Error(logger).Log("msg", "failed to cache exports after evaluation", "err", err2)
-			// Don't mask the previous evaluation error.
-			if err == nil {
+			if err != nil {
+				level.Error(logger).Log("msg", "evaluation and exports caching failed", "eval err", err, "caching err", err2)
+				return errors.Join(err, err2)
+			} else {
+				level.Error(logger).Log("msg", "failed to cache exports after evaluation", "err", err2)
 				return err2
 			}
 		}
