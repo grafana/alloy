@@ -156,7 +156,7 @@ The `annotation` block configures how to extract Kubernetes annotations.
 
 {{< docs/shared lookup="reference/components/extract-field-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-{{< admonition type="warning" >}}
+{{< admonition type="caution" >}}
 
 The `regex` argument is deprecated and may be removed in upcoming versions.
 Use the [ExtractPatterns][extract-patterns] function from `otelcol.processor.transform` instead. 
