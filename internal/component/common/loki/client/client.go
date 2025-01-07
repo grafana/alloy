@@ -60,7 +60,6 @@ type Metrics struct {
 	mutatedBytes                 *prometheus.CounterVec
 	requestDuration              *prometheus.HistogramVec
 	batchRetries                 *prometheus.CounterVec
-	countersWithHost             []*prometheus.CounterVec
 	countersWithHostTenant       []*prometheus.CounterVec
 	countersWithHostTenantReason []*prometheus.CounterVec
 }
@@ -71,11 +70,11 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 	m.encodedBytes = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "loki_write_encoded_bytes_total",
 		Help: "Number of bytes encoded and ready to send.",
-	}, []string{HostLabel})
+	}, []string{HostLabel, TenantLabel})
 	m.sentBytes = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "loki_write_sent_bytes_total",
 		Help: "Number of bytes sent.",
-	}, []string{HostLabel})
+	}, []string{HostLabel, TenantLabel})
 	m.droppedBytes = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "loki_write_dropped_bytes_total",
 		Help: "Number of bytes dropped because failed to be sent to the ingester after all retries.",
@@ -83,7 +82,7 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 	m.sentEntries = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "loki_write_sent_entries_total",
 		Help: "Number of log entries sent to the ingester.",
-	}, []string{HostLabel})
+	}, []string{HostLabel, TenantLabel})
 	m.droppedEntries = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "loki_write_dropped_entries_total",
 		Help: "Number of log entries dropped because failed to be sent to the ingester after all retries.",
@@ -99,18 +98,14 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 	m.requestDuration = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Name: "loki_write_request_duration_seconds",
 		Help: "Duration of send requests.",
-	}, []string{"status_code", HostLabel})
+	}, []string{"status_code", HostLabel, TenantLabel})
 	m.batchRetries = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "loki_write_batch_retries_total",
 		Help: "Number of times batches has had to be retried.",
 	}, []string{HostLabel, TenantLabel})
 
-	m.countersWithHost = []*prometheus.CounterVec{
-		m.encodedBytes, m.sentBytes, m.sentEntries,
-	}
-
 	m.countersWithHostTenant = []*prometheus.CounterVec{
-		m.batchRetries,
+		m.batchRetries, m.encodedBytes, m.sentBytes, m.sentEntries,
 	}
 
 	m.countersWithHostTenantReason = []*prometheus.CounterVec{
@@ -209,12 +204,6 @@ func newClient(metrics *Metrics, cfg Config, maxStreams, maxLineSize int, maxLin
 	}
 
 	c.client.Timeout = cfg.Timeout
-
-	// Initialize counters to 0 so the metrics are exported before the first
-	// occurrence of incrementing to avoid missing metrics.
-	for _, counter := range c.metrics.countersWithHost {
-		counter.WithLabelValues(c.cfg.URL.Host).Add(0)
-	}
 
 	c.wg.Add(1)
 	go c.run()
@@ -357,7 +346,7 @@ func (c *client) sendBatch(tenantID string, batch *batch) {
 		return
 	}
 	bufBytes := float64(len(buf))
-	c.metrics.encodedBytes.WithLabelValues(c.cfg.URL.Host).Add(bufBytes)
+	c.metrics.encodedBytes.WithLabelValues(c.cfg.URL.Host, tenantID).Add(bufBytes)
 
 	backoff := backoff.New(c.ctx, c.cfg.BackoffConfig)
 	var status int
@@ -366,7 +355,7 @@ func (c *client) sendBatch(tenantID string, batch *batch) {
 		// send uses `timeout` internally, so `context.Background` is good enough.
 		status, err = c.send(context.Background(), tenantID, buf)
 
-		c.metrics.requestDuration.WithLabelValues(strconv.Itoa(status), c.cfg.URL.Host).Observe(time.Since(start).Seconds())
+		c.metrics.requestDuration.WithLabelValues(strconv.Itoa(status), c.cfg.URL.Host, tenantID).Observe(time.Since(start).Seconds())
 
 		// Immediately drop rate limited batches to avoid HOL blocking for other tenants not experiencing throttling
 		if c.cfg.DropRateLimitedBatches && batchIsRateLimited(status) {
@@ -377,8 +366,8 @@ func (c *client) sendBatch(tenantID string, batch *batch) {
 		}
 
 		if err == nil {
-			c.metrics.sentBytes.WithLabelValues(c.cfg.URL.Host).Add(bufBytes)
-			c.metrics.sentEntries.WithLabelValues(c.cfg.URL.Host).Add(float64(entriesCount))
+			c.metrics.sentBytes.WithLabelValues(c.cfg.URL.Host, tenantID).Add(bufBytes)
+			c.metrics.sentEntries.WithLabelValues(c.cfg.URL.Host, tenantID).Add(float64(entriesCount))
 
 			return
 		}
