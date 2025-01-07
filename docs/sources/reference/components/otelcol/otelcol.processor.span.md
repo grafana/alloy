@@ -123,7 +123,7 @@ Each rule in the `rules` list is a regex pattern string.
 match. If it is `false`, rule processing will continue to be performed over the
 modified span name.
 
-If `keep_original_name` is `true`, the original span name will be kept.
+If `keep_original_name` is `true`, the original span name is kept.
 If it is `false`, it will be replaced with the placeholders of the captured attributes.
 
 ### status block
