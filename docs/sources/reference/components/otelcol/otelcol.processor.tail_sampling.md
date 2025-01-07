@@ -61,7 +61,7 @@ otelcol.processor.tail_sampling "LABEL" {
   By default, the size is 0 and the cache is inactive.
 
 You may want to vary the size of the `decision_cache` depending on how many "keep" vs "drop" decisions you expect from your policies. 
-For example, you may allocate a larger `non_sampled_cache_size` if you expect most traces to be dropped.
+For example, you can allocate a larger `non_sampled_cache_size` if you expect most traces to be dropped.
 Additionally, when you use `decision_cache`, configure it with a much higher value than `num_traces` so decisions for trace IDs are kept longer than the span data for the trace.
 
 ## Blocks
