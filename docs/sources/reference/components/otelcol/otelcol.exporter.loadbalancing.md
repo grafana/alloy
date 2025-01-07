@@ -78,9 +78,13 @@ It helps to re-route data into a new set of healthy backends.
 This is especially useful for highly elastic environments like Kubernetes, 
 where the list of resolved endpoints changes frequently due to deployments and scaling events. 
 
+[blocks]: #blocks
+
 > **EXPERIMENTAL**: Metrics support in `otelcol.exporter.loadbalancing` is an [experimental][] feature.
 > Experimental features are subject to frequent breaking changes, and may be removed with no equivalent replacement.
 > The `stability.level` flag must be set to `experimental` to use the feature.
+
+[experimental]: https://grafana.com/docs/release-life-cycle/
 
 ## Blocks
 
