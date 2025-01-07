@@ -67,7 +67,7 @@ If the metadata cannot be synced by the time the `metadata_sync_timeout` duratio
 `otelcol.processor.k8sattributes` will become unhealthy and fail to start.
 
 If `otelcol.processor.k8sattributes` is unhealthy, other {{< param "PRODUCT_NAME" >}} components will still be able to start.
-However, they may not be able to send telemetry to `otelcol.processor.k8sattributes`.
+However, they may be unable to send telemetry to `otelcol.processor.k8sattributes`.
 
 ## Blocks
 
