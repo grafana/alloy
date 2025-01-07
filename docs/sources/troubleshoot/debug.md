@@ -110,8 +110,8 @@ Supported components:
 * `otelcol.processor.*`
 * `otelcol.receiver.*`
 * `prometheus.relabel`
-{{< /admonition >}}
 * `discovery.*`
+{{< /admonition >}}
 
 ## Debug using the UI
 
