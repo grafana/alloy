@@ -1,8 +1,8 @@
-Foreach with only one item. The pulse will send "1" to the receiver of the summation component until it reaches 10.
+Foreach with two items. Both pulse components will send "1" till they both reach 5, adding to 10 in the summation component.
 
 -- main.alloy --
 foreach "testForeach" {
-  collection = [10]
+  collection = [5, 5]
   var = "num"
 
   template {
@@ -14,6 +14,5 @@ foreach "testForeach" {
   }
 }
 
-// Similar to testcomponents.summation, but with a "receiver" export
 testcomponents.summation_receiver "sum" {
 }

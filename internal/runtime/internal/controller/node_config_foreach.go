@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"hash/fnv"
+	"path"
 	"sync"
 
 	"github.com/grafana/alloy/internal/runner"
@@ -41,6 +42,9 @@ type ForeachArguments struct {
 func NewForeachConfigNode(block *ast.BlockStmt, globals ComponentGlobals) *ForeachConfigNode {
 	nodeID := BlockComponentID(block).String()
 	globalID := nodeID
+	if globals.ControllerID != "" {
+		globalID = path.Join(globals.ControllerID, nodeID)
+	}
 
 	return &ForeachConfigNode{
 		nodeID:                    nodeID,
