@@ -319,8 +319,8 @@ otelcol.processor.span "default" {
 
 ### Keep the original span name
 
-This example will add the same new `"documentId"="12345678"` attribute as the previous example.
-However, it will now result in an unchanged span name (/api/v1/document/12345678/update).
+This example adds the same new `"documentId"="12345678"` attribute as the previous example.
+However, the span name is unchanged (/api/v1/document/12345678/update).
 
 ```alloy
 otelcol.processor.span "keep_original_name" {
