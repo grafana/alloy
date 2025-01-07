@@ -158,7 +158,8 @@ The `annotation` block configures how to extract Kubernetes annotations.
 
 {{< admonition type="caution" >}}
 
-The `regex` argument is deprecated and may be removed in upcoming versions.
+Starting with v1.6.0, the `regex` argument is deprecated.
+It will be removed in a future release.
 Use the [ExtractPatterns][extract-patterns] function from `otelcol.processor.transform` instead. 
 
 [extract-patterns]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/{{< param "OTEL_VERSION" >}}/pkg/ottl/ottlfuncs/README.md#extractpatterns
@@ -173,7 +174,8 @@ The `label` block configures how to extract Kubernetes labels.
 
 {{< admonition type="warning" >}}
 
-The `regex` argument is deprecated and may be removed in upcoming versions.
+Starting with v1.6.0, the `regex` argument is deprecated.
+It will be removed in a future release.
 Use the [ExtractPatterns][extract-patterns] function from `otelcol.processor.transform` instead. 
 
 [extract-patterns]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/{{< param "OTEL_VERSION" >}}/pkg/ottl/ottlfuncs/README.md#extractpatterns
