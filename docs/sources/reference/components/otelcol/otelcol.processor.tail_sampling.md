@@ -56,7 +56,7 @@ otelcol.processor.tail_sampling "LABEL" {
 - `sampled_cache_size`: Configures the amount of trace IDs to be kept in an LRU cache,
   persisting the "keep" decisions for traces that may have already been released from memory. 
   By default, the size is 0 and the cache is inactive.
-- `non_sampled_cache_size`: Configures amount of trace IDs to be kept in an LRU cache,
+- `non_sampled_cache_size`: Configures number of trace IDs to be kept in an LRU cache,
   persisting the "drop" decisions for traces that may have already been released from memory.
   By default, the size is 0 and the cache is inactive.
 
