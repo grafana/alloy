@@ -58,6 +58,7 @@ Main (unreleased)
 
 - Upgrade `github.com/goccy/go-json` to v0.10.4, which reduces the memory consumption of an Alloy instance by 20MB.
   If Alloy is running certain otelcol components, this reduction will not apply. (@ptodev)
+- improve performance in regexp component: call fmt only if debug is enabled (@r0ka)
 
 - Update `prometheus.write.queue` library for performance increases in cpu. (@mattdurham)
 
