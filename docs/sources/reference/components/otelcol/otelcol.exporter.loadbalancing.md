@@ -113,8 +113,8 @@ The `>` symbol indicates deeper levels of nesting. For example, `resolver > stat
 refers to a `static` block defined inside a `resolver` block.
 
 There are two types of [queue][] and [retry][] blocks:
-* The ones under `protocol > otlp`. This is useful for temporary problems with a specific backend, like transient network issues.
-* The ones top-level ones for `otelcol.exporter.loadbalancing` itself. 
+* The queue and retry blocks under `protocol > otlp`. This is useful for temporary problems with a specific backend, like transient network issues.
+* The top-level queue and retry blocks for `otelcol.exporter.loadbalancing`. 
   Those configuration options provide capability to re-route data into a new set of healthy backends.
   This are useful for highly elastic environments like Kubernetes, 
   where the list of resolved endpoints changes frequently due to deployments and scaling events. 
