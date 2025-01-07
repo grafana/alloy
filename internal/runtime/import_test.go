@@ -16,7 +16,6 @@ import (
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/util"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/tools/txtar"
 
@@ -302,7 +301,7 @@ func TestImportError(t *testing.T) {
 
 func testConfig(t *testing.T, config string, reloadConfig string, update func()) {
 	defer verifyNoGoroutineLeaks(t)
-	ctrl, f := setup(t, config, nil)
+	ctrl, f := setup(t, config)
 
 	err := ctrl.LoadSource(f, nil, "")
 	require.NoError(t, err)
@@ -355,7 +354,7 @@ func testConfig(t *testing.T, config string, reloadConfig string, update func())
 
 func testConfigError(t *testing.T, config string, expectedError string) {
 	defer verifyNoGoroutineLeaks(t)
-	ctrl, f := setup(t, config, nil)
+	ctrl, f := setup(t, config)
 	err := ctrl.LoadSource(f, nil, "")
 	require.ErrorContains(t, err, expectedError)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -372,14 +371,14 @@ func testConfigError(t *testing.T, config string, expectedError string) {
 	}()
 }
 
-func setup(t *testing.T, config string, reg prometheus.Registerer) (*alloy_runtime.Runtime, *alloy_runtime.Source) {
+func setup(t *testing.T, config string) (*alloy_runtime.Runtime, *alloy_runtime.Source) {
 	s, err := logging.New(os.Stderr, logging.DefaultOptions)
 	require.NoError(t, err)
 	ctrl := alloy_runtime.New(alloy_runtime.Options{
 		Logger:       s,
 		DataPath:     t.TempDir(),
 		MinStability: featuregate.StabilityPublicPreview,
-		Reg:          reg,
+		Reg:          nil,
 		Services:     []service.Service{},
 	})
 	f, err := alloy_runtime.ParseSource(t.Name(), []byte(config))

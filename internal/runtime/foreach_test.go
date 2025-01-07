@@ -2,16 +2,17 @@ package runtime_test
 
 import (
 	"context"
+	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/stretchr/testify/assert"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/runtime"
+	alloy_runtime "github.com/grafana/alloy/internal/runtime"
 	"github.com/stretchr/testify/require"
-	"k8s.io/component-base/metrics/testutil"
+	"golang.org/x/tools/txtar"
 )
 
 // TODO: Test a foreach inside a foreach.
@@ -19,17 +20,58 @@ import (
 func TestForeach(t *testing.T) {
 	directory := "./testdata/foreach"
 	for _, file := range getTestFiles(directory, t) {
-		reg := prometheus.NewRegistry()
-		tc := buildTestImportFile(t, filepath.Join(directory, file.Name()))
+		tc := buildTestForEach(t, filepath.Join(directory, file.Name()))
 		t.Run(tc.description, func(t *testing.T) {
-			testConfigForEach(t, reg, tc.main, tc.reloadConfig, nil)
+			if tc.module != "" {
+				defer os.Remove("module.alloy")
+				require.NoError(t, os.WriteFile("module.alloy", []byte(tc.module), 0664))
+			}
+			if tc.update != nil {
+				testConfigForEach(t, tc.main, tc.reloadConfig, func() {
+					require.NoError(t, os.WriteFile(tc.update.name, []byte(tc.update.updateConfig), 0664))
+				})
+			} else {
+				testConfigForEach(t, tc.main, tc.reloadConfig, nil)
+			}
 		})
 	}
 }
 
-func testConfigForEach(t *testing.T, reg *prometheus.Registry, config string, reloadConfig string, update func()) {
+type testForEachFile struct {
+	description  string      // description at the top of the txtar file
+	main         string      // root config that the controller should load
+	module       string      // module imported by the root config
+	reloadConfig string      // root config that the controller should apply on reload
+	update       *updateFile // update can be used to update the content of a file at runtime
+}
+
+func buildTestForEach(t *testing.T, filename string) testForEachFile {
+	archive, err := txtar.ParseFile(filename)
+	require.NoError(t, err)
+	var tc testForEachFile
+	tc.description = string(archive.Comment)
+	for _, alloyConfig := range archive.Files {
+		switch alloyConfig.Name {
+		case mainFile:
+			tc.main = string(alloyConfig.Data)
+		case "module.alloy":
+			tc.module = string(alloyConfig.Data)
+		case "update/module.alloy":
+			require.Nil(t, tc.update)
+			tc.update = &updateFile{
+				name:         "module.alloy",
+				updateConfig: string(alloyConfig.Data),
+			}
+		case "reload_config.alloy":
+			tc.reloadConfig = string(alloyConfig.Data)
+		}
+	}
+	return tc
+}
+
+func testConfigForEach(t *testing.T, config string, reloadConfig string, update func()) {
 	defer verifyNoGoroutineLeaks(t)
-	ctrl, f := setup(t, config, reg)
+	ctrl, f := setup(t, config)
 
 	err := ctrl.LoadSource(f, nil, "")
 	require.NoError(t, err)
@@ -47,41 +89,49 @@ func testConfigForEach(t *testing.T, reg *prometheus.Registry, config string, re
 		ctrl.Run(ctx)
 	}()
 
-	// Check for initial condition
-	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		expectedMetrics := `
-# HELP testcomponents_summation2 Summation of all integers received
-# TYPE testcomponents_summation2 counter
-testcomponents_summation2{component_id="testcomponents.summation2.final",component_path="/"} 2
-`
-		if err := testutil.GatherAndCompare(reg, strings.NewReader(expectedMetrics), "testcomponents_summation2_total"); err != nil {
-			c.Errorf("mismatch metrics: %v", err)
-		}
+	require.Eventually(t, func() bool {
+		sum := getDebugInfo[int](t, ctrl, "", "testcomponents.summation_receiver.sum")
+		return sum >= 10
 	}, 3*time.Second, 10*time.Millisecond)
 
-	// if update != nil {
-	// 	update()
+	if update != nil {
+		update()
 
-	// 	// Export should be -10 after update
-	// 	require.Eventually(t, func() bool {
-	// 		export := getExport[testcomponents.SummationExports](t, ctrl, "", "testcomponents.summation.sum")
-	// 		return export.LastAdded <= -10
-	// 	}, 3*time.Second, 10*time.Millisecond)
-	// }
+		// Sum should be 30 after update
+		require.Eventually(t, func() bool {
+			sum := getDebugInfo[int](t, ctrl, "", "testcomponents.summation_receiver.sum")
+			return sum >= 30
+		}, 3*time.Second, 10*time.Millisecond)
+	}
 
-	// if reloadConfig != "" {
-	// 	f, err = alloy_runtime.ParseSource(t.Name(), []byte(reloadConfig))
-	// 	require.NoError(t, err)
-	// 	require.NotNil(t, f)
+	if reloadConfig != "" {
+		f, err = alloy_runtime.ParseSource(t.Name(), []byte(reloadConfig))
+		require.NoError(t, err)
+		require.NotNil(t, f)
 
-	// 	// Reload the controller with the new config.
-	// 	err = ctrl.LoadSource(f, nil)
-	// 	require.NoError(t, err)
+		// Reload the controller with the new config.
+		err = ctrl.LoadSource(f, nil, "")
+		require.NoError(t, err)
 
-	// 	// Export should be -10 after update
-	// 	require.Eventually(t, func() bool {
-	// 		export := getExport[testcomponents.SummationExports](t, ctrl, "", "testcomponents.summation.sum")
-	// 		return export.LastAdded <= -10
-	// 	}, 3*time.Second, 10*time.Millisecond)
-	// }
+		// Sum should be 30 after update
+		require.Eventually(t, func() bool {
+			sum := getDebugInfo[int](t, ctrl, "", "testcomponents.summation_receiver.sum")
+			return sum >= 30
+		}, 3*time.Second, 10*time.Millisecond)
+	}
+}
+
+func getDebugInfo[T any](t *testing.T, ctrl *runtime.Runtime, moduleId string, nodeId string) T {
+	t.Helper()
+	info, err := ctrl.GetComponent(component.ID{
+		ModuleID: moduleId,
+		LocalID:  nodeId,
+	}, component.InfoOptions{
+		GetHealth:    true,
+		GetArguments: true,
+		GetExports:   true,
+		GetDebugInfo: true,
+	})
+	require.NoError(t, err)
+	return info.DebugInfo.(T)
 }
