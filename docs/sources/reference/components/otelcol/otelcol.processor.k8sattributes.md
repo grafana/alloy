@@ -62,7 +62,7 @@ By default, `otelcol.processor.k8sattributes` is ready as soon as it starts, eve
 If telemetry is sent to this processor before the metadata is synced, there will be no metadata to enrich the telemetry with.
 
 To wait for the metadata to be synced before `otelcol.processor.k8sattributes` is ready, set the `wait_for_metadata` option to `true`.
-Then the processor will not be ready until the metadata is fully synced. As a result, the start-up of {{< param "PRODUCT_NAME" >}} will be blocked. 
+Then, the processor will not be ready until the metadata is fully synced. As a result, the start-up of {{< param "PRODUCT_NAME" >}} will be blocked. 
 If the metadata cannot be synced by the time the `metadata_sync_timeout` duration is reached, 
 `otelcol.processor.k8sattributes` will become unhealthy and will fail to start.
 
