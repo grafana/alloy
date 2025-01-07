@@ -50,7 +50,7 @@ The `gitleaks_config` argument is the path to the custom `gitleaks.toml` file.
 The Gitleaks configuration file embedded in the component is used if you don't provide the path to a custom configuration file.
 
 {{< admonition type="note" >}}
-This component does not support all the features of the Gitleaks configuration file. Currently, it only supports the regex-based rules, `secretGroup`, and allowlist regexes (`regexTarget` only supports the default value `secret`). Other features such as `keywords`, `entropy`, `paths`, and `stopwords` are not supported. The `extend` feature is also not supported, meaning that a custom configuration file must contain all the rules to use. Unsupported fields and values in the configuration files are ignored.
+This component doesn't support all the features of the Gitleaks configuration file. It only supports regular expression-based rules, `secretGroup`, and allowlist regular expressions. `regexTarget` only supports the default value `secret`. Other features such as `keywords`, `entropy`, `paths`, and `stopwords` are not supported. The `extend` feature is not supported. If you use a custom configuration file, you must include all the rules you want to use within the configuration file. Unsupported fields and values in the configuration file are ignored.
 {{< /admonition >}}
 
 The `types` argument is a map of secret types to look for.
