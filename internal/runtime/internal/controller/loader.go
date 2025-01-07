@@ -839,12 +839,13 @@ func (l *Loader) evaluate(logger log.Logger, bn BlockNode) error {
 
 // postEvaluate is called after a node has been evaluated. It updates the caches and logs any errors.
 // mut must be held when calling postEvaluate.
-// TODO: Refactor this function to avoid using an error as input solely for shadowing purposes.
-// This design choice limits extensibility and makes it harder to modify or add functionality.
+// The evaluation err is passed as an argument to allow shadowing it with an error that could be more relevant to the user
+// but cannot be determined before the evaluation (for example, we must evaluate the argument node to see if it's optional before
+// raising an error when a value is missing). When err is not nil, this function must return an error.
 func (l *Loader) postEvaluate(logger log.Logger, bn BlockNode, err error) error {
 	switch c := bn.(type) {
 	case ComponentNode:
-		// Always update the cache both the exports, since that it might change when a component gets re-evaluated.
+		// Always update the cached exports, since that it might change when a component gets re-evaluated.
 		// We also want to cache it in case of an error
 		err2 := l.cache.CacheExports(c.ID(), c.Exports())
 		if err2 != nil {

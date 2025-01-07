@@ -148,8 +148,7 @@ func (vc *valueCache) SyncIDs(ids map[string]ComponentID) error {
 
 	// Remove the component exports from the scope.
 	for _, id := range cleanupIds {
-		// Start with the index "0". It refers to the first part of the componentID and it's used for recursion.
-		err := cleanup(vc.scope.Variables, id, 0)
+		err := cleanup(vc.scope.Variables, id)
 		if err != nil {
 			return fmt.Errorf("failed to sync component %s: %w", id.String(), err)
 		}
@@ -159,7 +158,12 @@ func (vc *valueCache) SyncIDs(ids map[string]ComponentID) error {
 }
 
 // cleanup removes the ComponentID path from the map
-func cleanup(m map[string]any, id ComponentID, index int) error {
+func cleanup(m map[string]any, id ComponentID) error {
+	// Start with the index "0". It refers to the first part of the componentID and it's used for recursion.
+	return cleanupFromIndex(m, id, 0)
+}
+
+func cleanupFromIndex(m map[string]any, id ComponentID, index int) error {
 
 	if _, ok := m[id[index]]; !ok {
 		return nil
@@ -175,7 +179,7 @@ func cleanup(m map[string]any, id ComponentID, index int) error {
 	}
 	nextM := m[id[index]].(map[string]any)
 
-	err := cleanup(nextM, id, index+1)
+	err := cleanupFromIndex(nextM, id, index+1)
 	if err != nil {
 		return err
 	}
