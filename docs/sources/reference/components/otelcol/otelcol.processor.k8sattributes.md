@@ -58,7 +58,7 @@ data without any of the well-known IP attributes. If the Deployment {{< param "P
 {{< param "PRODUCT_NAME" >}}s deployed as DaemonSet, then some of those attributes might be missing. As a workaround,
 you can configure the DaemonSet {{< param "PRODUCT_NAME" >}}s with `passthrough` set to `true`.
 
-By default, `otelcol.processor.k8sattributes` will be ready as soon as it starts, even if no metadata has been fetched yet.
+By default, `otelcol.processor.k8sattributes` is ready as soon as it starts, even if no metadata has been fetched yet.
 If telemetry is sent to this processor before the metadata is synced, there will be no metadata to enrich the telemetry with.
 
 To wait for the metadata to be synced before `otelcol.processor.k8sattributes` is ready, set the `wait_for_metadata` option to `true`.
