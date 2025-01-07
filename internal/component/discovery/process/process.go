@@ -68,9 +68,9 @@ func (c *Component) Run(ctx context.Context) error {
 		c.processes = convertProcesses(processes)
 		c.changed()
 
-		compoenentID := livedebugging.ComponentID(c.opts.ID)
-		if c.debugDataPublisher.IsActive(compoenentID) {
-			c.debugDataPublisher.Publish(compoenentID, fmt.Sprintf("%s", c.processes))
+		componentID := livedebugging.ComponentID(c.opts.ID)
+		if c.debugDataPublisher.IsActive(componentID) {
+			c.debugDataPublisher.Publish(componentID, fmt.Sprintf("%s", c.processes))
 		}
 
 		return nil

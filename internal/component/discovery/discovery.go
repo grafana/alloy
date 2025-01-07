@@ -236,9 +236,9 @@ func (c *Component) runDiscovery(ctx context.Context, d DiscovererWithMetrics) {
 				allTargets = append(allTargets, labels)
 			}
 		}
-		componenentID := livedebugging.ComponentID(c.opts.ID)
-		if c.debugDataPublisher.IsActive(componenentID) {
-			c.debugDataPublisher.Publish(componenentID, fmt.Sprintf("%s", allTargets))
+		componentID := livedebugging.ComponentID(c.opts.ID)
+		if c.debugDataPublisher.IsActive(componentID) {
+			c.debugDataPublisher.Publish(componentID, fmt.Sprintf("%s", allTargets))
 		}
 		c.opts.OnStateChange(Exports{Targets: allTargets})
 	}
