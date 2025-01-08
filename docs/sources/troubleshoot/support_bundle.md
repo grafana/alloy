@@ -30,7 +30,7 @@ defaults to `localhost:12345`.
 The support bundle contains all information in plain text, so you can
 inspect it before sharing to verify that no sensitive information has leaked.
 
-In addition, you can inspect the [supportbundle implementation](https://github.com/grafana/alloy/tree/internal/service/http/supportbundle.go)
+In addition, you can inspect the [support bundle implementation](https://github.com/grafana/alloy/blob/main/internal/service/http/supportbundle.go)
 to verify the code used to generate these bundles.
 
 A support bundle contains the following data:
