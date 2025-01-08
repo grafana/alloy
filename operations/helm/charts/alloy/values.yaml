@@ -366,3 +366,15 @@ ingress:
   #  - secretName: chart-example-tls
   #    hosts:
   #      - chart-example.local
+
+# -- Extra k8s manifests to deploy
+extraObjects: []
+  # - apiVersion: "kubernetes-client.io/v1"
+  #   kind: ExternalSecret
+  #   metadata:
+  #     name: '{{ include "alloy.fullname" . }}'
+  #   spec:
+  #     backendType: gcpSecretsManager
+  #     data:
+  #       - key: alloy-oauth2-creds
+  #         name: client_secret

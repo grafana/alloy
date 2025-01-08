@@ -13,6 +13,7 @@ Unreleased
 ### Enhancements
 
 - Update jimmidyson/configmap-reload to 0.14.0. (@petewall)
+- Add the ability to deploy extra manifest files. (@dbluxo)
 
 0.10.1 (2024-12-03)
 ----------
