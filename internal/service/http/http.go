@@ -661,6 +661,10 @@ func remoteCfgRedactedCachedConfig(host service.Host) ([]byte, error) {
 }
 
 func printFileRedacted(f *ast.File) ([]byte, error) {
+	if f == nil {
+		return []byte{}, nil
+	}
+
 	c := printer.Config{
 		RedactSecrets: true,
 	}
