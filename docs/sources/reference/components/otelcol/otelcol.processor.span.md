@@ -61,7 +61,7 @@ refers to an `attribute` block defined inside an `include` block.
 If both an `include` block and an `exclude`block are specified, the `include` properties are checked before the `exclude` properties.
 
 [name]: #name-block
-[to-attributes]: #to-attributes-block
+[to-attributes]: #to_attributes-block
 [status]: #status-block
 [output]: #output-block
 [include]: #include-block
