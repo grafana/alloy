@@ -26,7 +26,7 @@ func TestCreateCustomComponents(t *testing.T) {
 		template {
 		}
 	}`
-	foreachConfigNode := NewForeachConfigNode(getBlockFromConfig(t, config), getComponentGlobals(t))
+	foreachConfigNode := NewForeachConfigNode(getBlockFromConfig(t, config), getComponentGlobals(t), nil)
 	require.NoError(t, foreachConfigNode.Evaluate(vm.NewScope(make(map[string]interface{}))))
 	customComponentIds := foreachConfigNode.moduleController.(*ModuleControllerMock).CustomComponents
 	require.ElementsMatch(t, customComponentIds, []string{"foreach_1_1", "foreach_2_1", "foreach_3_1"})
@@ -44,7 +44,7 @@ func TestCreateCustomComponentsDuplicatedIds(t *testing.T) {
 		template {
 		}
 	}`
-	foreachConfigNode := NewForeachConfigNode(getBlockFromConfig(t, config), getComponentGlobals(t))
+	foreachConfigNode := NewForeachConfigNode(getBlockFromConfig(t, config), getComponentGlobals(t), nil)
 	require.NoError(t, foreachConfigNode.Evaluate(vm.NewScope(make(map[string]interface{}))))
 	customComponentIds := foreachConfigNode.moduleController.(*ModuleControllerMock).CustomComponents
 	require.ElementsMatch(t, customComponentIds, []string{"foreach_1_1", "foreach_2_1", "foreach_1_2"})
@@ -62,7 +62,7 @@ func TestCreateCustomComponentsWithUpdate(t *testing.T) {
 		template {
 		}
 	}`
-	foreachConfigNode := NewForeachConfigNode(getBlockFromConfig(t, config), getComponentGlobals(t))
+	foreachConfigNode := NewForeachConfigNode(getBlockFromConfig(t, config), getComponentGlobals(t), nil)
 	require.NoError(t, foreachConfigNode.Evaluate(vm.NewScope(make(map[string]interface{}))))
 	customComponentIds := foreachConfigNode.moduleController.(*ModuleControllerMock).CustomComponents
 	require.ElementsMatch(t, customComponentIds, []string{"foreach_1_1", "foreach_2_1", "foreach_3_1"})
@@ -101,7 +101,7 @@ func TestRunCustomComponents(t *testing.T) {
 		template {
 		}
 	}`
-	foreachConfigNode := NewForeachConfigNode(getBlockFromConfig(t, config), getComponentGlobals(t))
+	foreachConfigNode := NewForeachConfigNode(getBlockFromConfig(t, config), getComponentGlobals(t), nil)
 	require.NoError(t, foreachConfigNode.Evaluate(vm.NewScope(make(map[string]interface{}))))
 	ctx, cancel := context.WithCancel(context.Background())
 	go foreachConfigNode.Run(ctx)
@@ -129,7 +129,7 @@ func TestRunCustomComponentsAfterUpdate(t *testing.T) {
 		template {
 		}
 	}`
-	foreachConfigNode := NewForeachConfigNode(getBlockFromConfig(t, config), getComponentGlobals(t))
+	foreachConfigNode := NewForeachConfigNode(getBlockFromConfig(t, config), getComponentGlobals(t), nil)
 	require.NoError(t, foreachConfigNode.Evaluate(vm.NewScope(make(map[string]interface{}))))
 	ctx, cancel := context.WithCancel(context.Background())
 	go foreachConfigNode.Run(ctx)
@@ -176,7 +176,7 @@ func TestCreateCustomComponentsCollectionObjectsWithUpdate(t *testing.T) {
 		template {
 		}
 	}`
-	foreachConfigNode := NewForeachConfigNode(getBlockFromConfig(t, config), getComponentGlobals(t))
+	foreachConfigNode := NewForeachConfigNode(getBlockFromConfig(t, config), getComponentGlobals(t), nil)
 	vars := map[string]interface{}{
 		"obj1": map[string]string{
 			"label1": "a",

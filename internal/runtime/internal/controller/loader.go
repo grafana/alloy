@@ -512,7 +512,7 @@ func (l *Loader) populateConfigBlockNodes(args map[string]any, g *dag.Graph, con
 			node = exist.(BlockNode)
 			node.UpdateBlock(block)
 		} else {
-			node, newConfigNodeDiags = NewConfigNode(block, l.globals)
+			node, newConfigNodeDiags = NewConfigNode(block, l.globals, l.componentNodeManager.customComponentReg)
 			diags = append(diags, newConfigNodeDiags...)
 			if diags.HasErrors() {
 				continue
@@ -625,6 +625,8 @@ func (l *Loader) wireGraphEdges(g *dag.Graph) diag.Diagnostics {
 			continue
 		case *CustomComponentNode:
 			l.wireCustomComponentNode(g, n)
+		case *ForeachConfigNode:
+			l.wireForEachNode(g, n)
 		}
 
 		// Finally, wire component references.
@@ -653,6 +655,14 @@ func (l *Loader) wireCustomComponentNode(g *dag.Graph, cc *CustomComponentNode) 
 			// add edges between the custom component and declare/import nodes.
 			g.AddEdge(dag.Edge{From: cc, To: ref})
 		}
+	}
+}
+
+func (l *Loader) wireForEachNode(g *dag.Graph, fn *ForeachConfigNode) {
+	refs := l.findCustomComponentReferences(fn.Block())
+	for ref := range refs {
+		// add edges between the foreach node and declare/import nodes.
+		g.AddEdge(dag.Edge{From: fn, To: ref})
 	}
 }
 
@@ -918,10 +928,10 @@ func (l *Loader) isRootController() bool {
 	return l.globals.ControllerID == ""
 }
 
-// findCustomComponentReferences returns references to import/declare nodes in a declare block.
-func (l *Loader) findCustomComponentReferences(declare *ast.BlockStmt) map[BlockNode]struct{} {
+// findCustomComponentReferences returns references to import/declare nodes in a block.
+func (l *Loader) findCustomComponentReferences(block *ast.BlockStmt) map[BlockNode]struct{} {
 	uniqueReferences := make(map[BlockNode]struct{})
-	l.collectCustomComponentReferences(declare.Body, uniqueReferences)
+	l.collectCustomComponentReferences(block.Body, uniqueReferences)
 	return uniqueReferences
 }
 
@@ -941,7 +951,7 @@ func (l *Loader) collectCustomComponentReferences(stmts ast.Body, uniqueReferenc
 		)
 
 		switch {
-		case componentName == declareType:
+		case componentName == declareType || componentName == templateType:
 			l.collectCustomComponentReferences(blockStmt.Body, uniqueReferences)
 		case foundDeclare:
 			uniqueReferences[declareNode] = struct{}{}
