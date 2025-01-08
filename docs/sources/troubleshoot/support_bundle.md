@@ -6,11 +6,7 @@ menuTitle: Generate a support bundle
 weight: 300
 ---
 
-<span class="badge docs-labels__stage docs-labels__item">Public preview</span>
-
 # Generate a support bundle
-
-{{< docs/public-preview product="Generate support bundle" >}}
 
 The `/-/support?duration=N` endpoint returns a support bundle, a compressed file that contains information
 about a running {{< param "PRODUCT_NAME" >}} instance, and can be used as a baseline of information when trying
