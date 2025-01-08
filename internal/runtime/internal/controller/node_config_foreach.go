@@ -14,10 +14,16 @@ import (
 	"github.com/grafana/alloy/syntax/vm"
 )
 
+const templateType = "template"
+
 type ForeachConfigNode struct {
 	nodeID           string
 	label            string
 	moduleController ModuleController
+
+	// customReg is the customComponentRegistry of the current loader.
+	// We pass it so that the foreach children have access to modules.
+	customReg *CustomComponentRegistry
 
 	customComponents          map[string]CustomComponent
 	customComponentHashCounts map[string]int
@@ -39,7 +45,7 @@ type ForeachArguments struct {
 	Collection []string `alloy:"collection,attr"`
 }
 
-func NewForeachConfigNode(block *ast.BlockStmt, globals ComponentGlobals) *ForeachConfigNode {
+func NewForeachConfigNode(block *ast.BlockStmt, globals ComponentGlobals, customReg *CustomComponentRegistry) *ForeachConfigNode {
 	nodeID := BlockComponentID(block).String()
 	globalID := nodeID
 	if globals.ControllerID != "" {
@@ -51,6 +57,7 @@ func NewForeachConfigNode(block *ast.BlockStmt, globals ComponentGlobals) *Forea
 		label:                     block.Label,
 		block:                     block,
 		moduleController:          globals.NewModuleController(globalID),
+		customReg:                 customReg,
 		forEachChildrenUpdateChan: make(chan struct{}, 1),
 		customComponents:          make(map[string]CustomComponent, 0),
 		customComponentHashCounts: make(map[string]int, 0),
@@ -61,7 +68,11 @@ func (fn *ForeachConfigNode) Label() string { return fn.label }
 
 func (fn *ForeachConfigNode) NodeID() string { return fn.nodeID }
 
-func (fn *ForeachConfigNode) Block() *ast.BlockStmt { return fn.block }
+func (fn *ForeachConfigNode) Block() *ast.BlockStmt {
+	fn.mut.RLock()
+	defer fn.mut.RUnlock()
+	return fn.block
+}
 
 type Arguments struct {
 	Collection []any  `alloy:"collection,attr"`
@@ -75,7 +86,7 @@ func (fn *ForeachConfigNode) Evaluate(scope *vm.Scope) error {
 	var argsBody ast.Body
 	var template *ast.BlockStmt
 	for _, stmt := range fn.block.Body {
-		if blockStmt, ok := stmt.(*ast.BlockStmt); ok && blockStmt.GetBlockName() == "template" {
+		if blockStmt, ok := stmt.(*ast.BlockStmt); ok && blockStmt.GetBlockName() == templateType {
 			template = blockStmt
 			continue // we don't add the template to the argsBody
 		}
@@ -115,8 +126,7 @@ func (fn *ForeachConfigNode) Evaluate(scope *vm.Scope) error {
 		vars := deepCopyMap(scope.Variables)
 		vars[args.Var] = args.Collection[i]
 
-		// TODO: use the registry from the loader to access the modules
-		customComponentRegistry := NewCustomComponentRegistry(nil, vm.NewScope(vars))
+		customComponentRegistry := NewCustomComponentRegistry(fn.customReg, vm.NewScope(vars))
 		if err := cc.LoadBody(template.Body, map[string]any{}, customComponentRegistry); err != nil {
 			return fmt.Errorf("updating custom component in foreach: %w", err)
 		}

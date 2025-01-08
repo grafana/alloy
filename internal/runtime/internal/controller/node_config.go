@@ -18,7 +18,7 @@ const (
 
 // NewConfigNode creates a new ConfigNode from an initial ast.BlockStmt.
 // The underlying config isn't applied until Evaluate is called.
-func NewConfigNode(block *ast.BlockStmt, globals ComponentGlobals) (BlockNode, diag.Diagnostics) {
+func NewConfigNode(block *ast.BlockStmt, globals ComponentGlobals, customReg *CustomComponentRegistry) (BlockNode, diag.Diagnostics) {
 	switch block.GetBlockName() {
 	case argumentBlockID:
 		return NewArgumentConfigNode(block, globals), nil
@@ -31,7 +31,7 @@ func NewConfigNode(block *ast.BlockStmt, globals ComponentGlobals) (BlockNode, d
 	case importsource.BlockImportFile, importsource.BlockImportString, importsource.BlockImportHTTP, importsource.BlockImportGit:
 		return NewImportConfigNode(block, globals, importsource.GetSourceType(block.GetBlockName())), nil
 	case foreachID:
-		return NewForeachConfigNode(block, globals), nil
+		return NewForeachConfigNode(block, globals, customReg), nil
 	default:
 		var diags diag.Diagnostics
 		diags.Add(diag.Diagnostic{
