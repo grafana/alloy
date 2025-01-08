@@ -35,7 +35,7 @@ The "documented behavior" which the above quote is referring to is in the [proce
 > 
 > An "inverted" decision is the one made based on the "invert_match" attribute, such as the one from the string, numeric or boolean tag policy.
     
-However, in [OpenTelemetry Collector v0.1116.0][otel-v0_116] this fix was [reverted][#36673]:
+However, in [OpenTelemetry Collector v0.116.0][otel-v0_116] this fix was [reverted][#36673]:
 
 > Reverts [#33671][], allowing for composite policies to specify inverted clauses in conjunction with other policies. 
 > This is a change bringing the previous state into place, breaking users who rely on what was introduced as part of [#33671][].
