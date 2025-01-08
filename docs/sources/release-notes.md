@@ -20,7 +20,7 @@ For a complete list of changes to {{< param "FULL_PRODUCT_NAME" >}}, with links 
 
 A bug in `loki.source.kafka` caused the component to treat all topics as regex. For example, setting the topic value to "foo" would match any topic containing the substring "foo".
 With the fix introduced in this version, topic values are now treated as exact matches by default.
-Regex matching is still supported by prefixing a topic with "^", allowing it to match multiple topics.
+Regular expression matching is still supported by prefixing a topic with "^", allowing it to match multiple topics.
 
 ## v1.5
 
