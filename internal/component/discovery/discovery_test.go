@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Masterminds/goutils"
 	"github.com/go-kit/log"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
@@ -199,6 +200,49 @@ func TestDiscoveryUpdates(t *testing.T) {
 				assert.Equal(t, tc.expectedFinalExports, publishedExports)
 			}, 3*time.Second, time.Millisecond)
 		})
+	}
+}
+
+/*
+on darwin/arm64/Apple M2:
+Benchmark_ToAlloyTargets-8   	     150	   7549967 ns/op	12768249 B/op	   40433 allocs/op
+Benchmark_ToAlloyTargets-8   	     169	   7257841 ns/op	12767441 B/op	   40430 allocs/op
+Benchmark_ToAlloyTargets-8   	     171	   7026276 ns/op	12767394 B/op	   40430 allocs/op
+Benchmark_ToAlloyTargets-8   	     170	   7060700 ns/op	12767377 B/op	   40430 allocs/op
+Benchmark_ToAlloyTargets-8   	     170	   7034392 ns/op	12767427 B/op	   40430 allocs/op
+*/
+func Benchmark_ToAlloyTargets(b *testing.B) {
+	sharedLabels := 5
+	labelsPerTarget := 5
+	labelsLength := 10
+	targetsCount := 20_000
+
+	genLabelSet := func(size int) model.LabelSet {
+		ls := model.LabelSet{}
+		for i := 0; i < size; i++ {
+			name, _ := goutils.RandomAlphaNumeric(labelsLength)
+			value, _ := goutils.RandomAlphaNumeric(labelsLength)
+			ls[model.LabelName(name)] = model.LabelValue(value)
+		}
+		return ls
+	}
+
+	var targets = []model.LabelSet{}
+	for i := 0; i < targetsCount; i++ {
+		targets = append(targets, genLabelSet(labelsPerTarget))
+	}
+
+	cache := map[string]*targetgroup.Group{}
+	cache["test"] = &targetgroup.Group{
+		Targets: targets,
+		Labels:  genLabelSet(sharedLabels),
+		Source:  "test",
+	}
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		toAlloyTargets(cache)
 	}
 }
 

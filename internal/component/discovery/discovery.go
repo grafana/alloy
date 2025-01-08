@@ -221,21 +221,7 @@ func (c *Component) runDiscovery(ctx context.Context, d DiscovererWithMetrics) {
 
 	// function to convert and send targets in format scraper expects
 	send := func() {
-		allTargets := []Target{}
-		for _, group := range cache {
-			for _, target := range group.Targets {
-				labels := map[string]string{}
-				// first add the group labels, and then the
-				// target labels, so that target labels take precedence.
-				for k, v := range group.Labels {
-					labels[string(k)] = string(v)
-				}
-				for k, v := range target {
-					labels[string(k)] = string(v)
-				}
-				allTargets = append(allTargets, labels)
-			}
-		}
+		allTargets := toAlloyTargets(cache)
 		componentID := livedebugging.ComponentID(c.opts.ID)
 		if c.debugDataPublisher.IsActive(componentID) {
 			c.debugDataPublisher.Publish(componentID, fmt.Sprintf("%s", allTargets))
@@ -272,6 +258,31 @@ func (c *Component) runDiscovery(ctx context.Context, d DiscovererWithMetrics) {
 			haveUpdates = true
 		}
 	}
+}
+
+func toAlloyTargets(cache map[string]*targetgroup.Group) []Target {
+	targetsCount := 0
+	for _, group := range cache {
+		targetsCount += len(group.Targets)
+	}
+	allTargets := make([]Target, 0, targetsCount)
+
+	for _, group := range cache {
+		for _, target := range group.Targets {
+			tLabels := make(map[string]string, len(group.Labels)+len(target))
+
+			// first add the group labels, and then the
+			// target labels, so that target labels take precedence.
+			for k, v := range group.Labels {
+				tLabels[string(k)] = string(v)
+			}
+			for k, v := range target {
+				tLabels[string(k)] = string(v)
+			}
+			allTargets = append(allTargets, tLabels)
+		}
+	}
+	return allTargets
 }
 
 func (c *Component) LiveDebugging(_ int) {}
