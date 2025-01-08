@@ -57,8 +57,9 @@ func toSpanProcessor(state *State, id componentstatus.InstanceID, cfg *spanproce
 	var toAttributes *span.ToAttributes
 	if cfg.Rename.ToAttributes != nil {
 		toAttributes = &span.ToAttributes{
-			Rules:           cfg.Rename.ToAttributes.Rules,
-			BreakAfterMatch: cfg.Rename.ToAttributes.BreakAfterMatch,
+			Rules:            cfg.Rename.ToAttributes.Rules,
+			BreakAfterMatch:  cfg.Rename.ToAttributes.BreakAfterMatch,
+			KeepOriginalName: cfg.Rename.ToAttributes.KeepOriginalName,
 		}
 	}
 

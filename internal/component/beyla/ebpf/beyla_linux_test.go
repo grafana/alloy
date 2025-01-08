@@ -168,8 +168,9 @@ func TestConvert_Attributes(t *testing.T) {
 	expectedConfig := beyla.Attributes{
 		InstanceID: beyla.DefaultConfig.Attributes.InstanceID,
 		Kubernetes: transform.KubernetesDecorator{
-			Enable:               kubeflags.EnableFlag(args.Kubernetes.Enable),
-			InformersSyncTimeout: 30 * time.Second,
+			Enable:                kubeflags.EnableFlag(args.Kubernetes.Enable),
+			InformersSyncTimeout:  30 * time.Second,
+			InformersResyncPeriod: 30 * time.Minute,
 		},
 		HostID: beyla.HostIDConfig{
 			FetchTimeout: 500 * time.Millisecond,
