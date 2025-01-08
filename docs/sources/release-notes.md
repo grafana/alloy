@@ -14,6 +14,14 @@ For a complete list of changes to {{< param "FULL_PRODUCT_NAME" >}}, with links 
 
 [Changelog]: https://github.com/grafana/alloy/blob/main/CHANGELOG.md
 
+## v1.6
+
+### Breaking change: The `topics` argument in the component `loki.source.kafka` does not use regex by default anymore
+
+A bug in `loki.source.kafka` caused the component to treat all topics as regex. For example, setting the topic value to "foo" would match any topic containing the substring "foo".
+With the fix introduced in this version, topic values are now treated as exact matches by default.
+Regex matching is still supported by prefixing a topic with "^", allowing it to match multiple topics.
+
 ## v1.5
 
 ### Breaking change: Change default value of `max_streams` in `otelcol.processor.deltatocumulative`
