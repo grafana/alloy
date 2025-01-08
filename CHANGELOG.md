@@ -81,6 +81,8 @@ Main (unreleased)
 
 - Change the log level in the `eventlogmessage` stage of the `loki.process` component from `warn` to `debug`. (@wildum)
 
+- Fix a bug in `loki.source.kafka` where the `topics` argument incorrectly used regex matching instead of exact matches. (@wildum)
+
 ### Other changes
 
 - Change the stability of the `livedebugging` feature from "experimental" to "generally available". (@wildum)
