@@ -172,7 +172,7 @@ The `label` block configures how to extract Kubernetes labels.
 
 {{< docs/shared lookup="reference/components/extract-field-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-{{< admonition type="warning" >}}
+{{< admonition type="caution" >}}
 
 Starting with v1.6.0, the `regex` argument is deprecated.
 It will be removed in a future release.
