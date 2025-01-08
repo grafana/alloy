@@ -65,6 +65,8 @@ Main (unreleased)
 
 - Update `async-profiler` binaries for `pyroscope.java` to 3.0-fa937db (@aleks-p)
 
+- Reduced memory allocation in discovery components by up to 30% (@thampiotr)
+
 ### Bugfixes
 
 - Fixed issue with automemlimit logging bad messages and trying to access cgroup on non-linux builds (@dehaansa)
