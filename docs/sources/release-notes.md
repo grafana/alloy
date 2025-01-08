@@ -18,7 +18,7 @@ For a complete list of changes to {{< param "FULL_PRODUCT_NAME" >}}, with links 
 
 ### Breaking change: The `topics` argument in the component `loki.source.kafka` does not use regex by default anymore
 
-A bug in `loki.source.kafka` caused the component to treat all topics as regular expressions. For example, setting the topic value to "foo" would match any topic containing the substring "foo".
+A bug in `loki.source.kafka` caused the component to treat all topics as regular expressions. For example, setting the topic value to "telemetry" would match any topic containing the substring "telemetry".
 With the fix introduced in this version, topic values are now treated as exact matches by default.
 Regular expression matching is still supported by prefixing a topic with "^", allowing it to match multiple topics.
 
