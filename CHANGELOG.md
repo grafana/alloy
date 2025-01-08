@@ -93,6 +93,8 @@ Main (unreleased)
 
 - Use Go 1.23.3 for builds. (@mattdurham)
 
+- Upgrade Beyla to v1.9.6. (@wildum)
+
 - Upgrade to OpenTelemetry Collector v0.116.0:
   - `otelcol.receiver.datadog`: Return a json reponse instead of "OK" when a trace is received with a newer protocol version.
     https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/35705

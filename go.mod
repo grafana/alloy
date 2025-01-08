@@ -56,7 +56,7 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/grafana/alloy-remote-config v0.0.9
 	github.com/grafana/alloy/syntax v0.1.0
-	github.com/grafana/beyla v1.8.7
+	github.com/grafana/beyla v1.9.6
 	github.com/grafana/catchpoint-prometheus-exporter v0.0.0-20240606062944-e55f3668661d
 	github.com/grafana/ckit v0.0.0-20241128150632-1e6dfe1c6183
 	github.com/grafana/cloudflare-go v0.0.0-20230110200409-c627cf6792f2
@@ -252,7 +252,7 @@ require (
 	golang.org/x/crypto v0.31.0
 	golang.org/x/crypto/x509roots/fallback v0.0.0-20240208163226-62c9f1799c91
 	golang.org/x/exp v0.0.0-20241210194714-1829a127f884
-	golang.org/x/net v0.32.0
+	golang.org/x/net v0.33.0
 	golang.org/x/oauth2 v0.24.0
 	golang.org/x/sys v0.28.0
 	golang.org/x/text v0.21.0
@@ -880,7 +880,9 @@ require (
 require (
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
 	github.com/containerd/typeurl/v2 v2.2.0 // indirect
-	github.com/containers/common v0.61.0 // indirect
+	github.com/onsi/ginkgo/v2 v2.21.0 // indirect
+	github.com/onsi/gomega v1.35.1 // indirect
+	go.etcd.io/bbolt v1.3.11 // indirect
 )
 
 // NOTE: replace directives below must always be *temporary*.
@@ -964,6 +966,3 @@ exclude (
 )
 
 replace github.com/prometheus/procfs => github.com/prometheus/procfs v0.12.0
-
-//TODO: Do not merge this. Wait for upstream to upgrade the main branch, or to release a new version.
-replace github.com/grafana/beyla => github.com/grafana/beyla v1.9.1-0.20241230130037-7083b65bf473
