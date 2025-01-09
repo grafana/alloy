@@ -32,7 +32,8 @@ type GRPCServerArguments struct {
 
 	// Auth is a binding to an otelcol.auth.* component extension which handles
 	// authentication.
-	Auth *auth.Handler `alloy:"auth,attr,optional"`
+	// alloy name is auth instead of authentication so the user interface is the same as exporter components.
+	Authentication *auth.Handler `alloy:"auth,attr,optional"`
 
 	IncludeMetadata bool `alloy:"include_metadata,attr,optional"`
 }
@@ -45,9 +46,9 @@ func (args *GRPCServerArguments) Convert() (*otelconfiggrpc.ServerConfig, error)
 
 	// If auth is set add that to the config.
 	var authentication *otelconfigauth.Authentication
-	if args.Auth != nil {
+	if args.Authentication != nil {
 		// If a auth plugin does not implement server auth, an error will be returned here.
-		serverExtension, err := args.Auth.GetExtension(auth.Server)
+		serverExtension, err := args.Authentication.GetExtension(auth.Server)
 		if err != nil {
 			return nil, err
 		}
@@ -77,8 +78,8 @@ func (args *GRPCServerArguments) Convert() (*otelconfiggrpc.ServerConfig, error)
 // Extensions exposes extensions used by args.
 func (args *GRPCServerArguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
 	m := make(map[otelcomponent.ID]otelextension.Extension)
-	if args.Auth != nil {
-		ext, err := args.Auth.GetExtension(auth.Server)
+	if args.Authentication != nil {
+		ext, err := args.Authentication.GetExtension(auth.Server)
 		if err != nil {
 			return m
 		}
@@ -171,7 +172,8 @@ type GRPCClientArguments struct {
 
 	// Auth is a binding to an otelcol.auth.* component extension which handles
 	// authentication.
-	Auth *auth.Handler `alloy:"auth,attr,optional"`
+	// alloy name is auth instead of authentication to not break user interface compatibility.
+	Authentication *auth.Handler `alloy:"auth,attr,optional"`
 }
 
 // Convert converts args into the upstream type.
@@ -187,8 +189,8 @@ func (args *GRPCClientArguments) Convert() (*otelconfiggrpc.ClientConfig, error)
 
 	// Configure authentication if args.Auth is set.
 	var authentication *otelconfigauth.Authentication
-	if args.Auth != nil {
-		ext, err := args.Auth.GetExtension(auth.Client)
+	if args.Authentication != nil {
+		ext, err := args.Authentication.GetExtension(auth.Client)
 		if err != nil {
 			return nil, err
 		}
@@ -224,8 +226,8 @@ func (args *GRPCClientArguments) Convert() (*otelconfiggrpc.ClientConfig, error)
 // Extensions exposes extensions used by args.
 func (args *GRPCClientArguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
 	m := make(map[otelcomponent.ID]otelextension.Extension)
-	if args.Auth != nil {
-		ext, err := args.Auth.GetExtension(auth.Client)
+	if args.Authentication != nil {
+		ext, err := args.Authentication.GetExtension(auth.Client)
 		if err != nil {
 			return m
 		}

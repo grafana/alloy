@@ -376,7 +376,8 @@ type GRPCClientArguments struct {
 
 	// Auth is a binding to an otelcol.auth.* component extension which handles
 	// authentication.
-	Auth *auth.Handler `alloy:"auth,attr,optional"`
+	// alloy name is auth instead of authentication to not break user interface compatibility.
+	Authentication *auth.Handler `alloy:"auth,attr,optional"`
 }
 
 var _ syntax.Defaulter = &GRPCClientArguments{}
@@ -394,8 +395,8 @@ func (args *GRPCClientArguments) Convert() (*otelconfiggrpc.ClientConfig, error)
 
 	// Configure the authentication if args.Auth is set.
 	var authentication *otelconfigauth.Authentication
-	if args.Auth != nil {
-		ext, err := args.Auth.GetExtension(auth.Client)
+	if args.Authentication != nil {
+		ext, err := args.Authentication.GetExtension(auth.Client)
 		if err != nil {
 			return nil, err
 		}
@@ -428,8 +429,8 @@ func (args *GRPCClientArguments) Convert() (*otelconfiggrpc.ClientConfig, error)
 // Extensions exposes extensions used by args.
 func (args *GRPCClientArguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
 	m := make(map[otelcomponent.ID]otelextension.Extension)
-	if args.Auth != nil {
-		ext, err := args.Auth.GetExtension(auth.Client)
+	if args.Authentication != nil {
+		ext, err := args.Authentication.GetExtension(auth.Client)
 		if err != nil {
 			return m
 		}

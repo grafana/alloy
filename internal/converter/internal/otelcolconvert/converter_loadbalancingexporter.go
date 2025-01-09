@@ -104,7 +104,7 @@ func toProtocol(cfg loadbalancingexporter.Protocol) loadbalancing.Protocol {
 				BalancerName:    balancerName,
 				Authority:       cfg.OTLP.Authority,
 
-				Auth: a,
+				Authentication: a,
 			},
 		},
 	}

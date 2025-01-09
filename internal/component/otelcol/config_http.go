@@ -23,7 +23,8 @@ type HTTPServerArguments struct {
 
 	// Auth is a binding to an otelcol.auth.* component extension which handles
 	// authentication.
-	Auth *auth.Handler `alloy:"auth,attr,optional"`
+	// alloy name is auth instead of authentication so the user interface is the same as exporter components.
+	Authentication *auth.Handler `alloy:"auth,attr,optional"`
 
 	MaxRequestBodySize    units.Base2Bytes `alloy:"max_request_body_size,attr,optional"`
 	IncludeMetadata       bool             `alloy:"include_metadata,attr,optional"`
@@ -48,8 +49,8 @@ func (args *HTTPServerArguments) Convert() (*otelconfighttp.ServerConfig, error)
 	// If auth is set by the user retrieve the associated extension from the handler.
 	// if the extension does not support server auth an error will be returned.
 	var authentication *otelconfighttp.AuthConfig
-	if args.Auth != nil {
-		ext, err := args.Auth.GetExtension(auth.Server)
+	if args.Authentication != nil {
+		ext, err := args.Authentication.GetExtension(auth.Server)
 		if err != nil {
 			return nil, err
 		}
@@ -75,8 +76,8 @@ func (args *HTTPServerArguments) Convert() (*otelconfighttp.ServerConfig, error)
 // Extensions exposes extensions used by args.
 func (args *HTTPServerArguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
 	m := make(map[otelcomponent.ID]otelextension.Extension)
-	if args.Auth != nil {
-		ext, err := args.Auth.GetExtension(auth.Server)
+	if args.Authentication != nil {
+		ext, err := args.Authentication.GetExtension(auth.Server)
 		// Extension will not be registered if there was an error.
 		if err != nil {
 			return m
@@ -134,7 +135,8 @@ type HTTPClientArguments struct {
 
 	// Auth is a binding to an otelcol.auth.* component extension which handles
 	// authentication.
-	Auth *auth.Handler `alloy:"auth,attr,optional"`
+	// alloy name is auth instead of authentication to not break user interface compatibility.
+	Authentication *auth.Handler `alloy:"auth,attr,optional"`
 
 	Cookies *Cookies `alloy:"cookies,block,optional"`
 }
@@ -147,8 +149,8 @@ func (args *HTTPClientArguments) Convert() (*otelconfighttp.ClientConfig, error)
 
 	// Configure the authentication if args.Auth is set.
 	var authentication *otelconfigauth.Authentication
-	if args.Auth != nil {
-		ext, err := args.Auth.GetExtension(auth.Client)
+	if args.Authentication != nil {
+		ext, err := args.Authentication.GetExtension(auth.Client)
 		if err != nil {
 			return nil, err
 		}
@@ -190,8 +192,8 @@ func (args *HTTPClientArguments) Convert() (*otelconfighttp.ClientConfig, error)
 // Extensions exposes extensions used by args.
 func (args *HTTPClientArguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
 	m := make(map[otelcomponent.ID]otelextension.Extension)
-	if args.Auth != nil {
-		ext, err := args.Auth.GetExtension(auth.Client)
+	if args.Authentication != nil {
+		ext, err := args.Authentication.GetExtension(auth.Client)
 		if err != nil {
 			return m
 		}
