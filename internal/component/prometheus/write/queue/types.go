@@ -2,6 +2,7 @@ package queue
 
 import (
 	"fmt"
+	common "github.com/prometheus/common/config"
 	"time"
 
 	"github.com/grafana/alloy/syntax/alloytypes"
@@ -89,6 +90,7 @@ type EndpointConfig struct {
 	// How many concurrent queues to have.
 	Parallelism    uint              `alloy:"parallelism,attr,optional"`
 	ExternalLabels map[string]string `alloy:"external_labels,attr,optional"`
+	TLSConfig      *common.TLSConfig `alloy:"tls_config,block,optional"`
 }
 
 var UserAgent = fmt.Sprintf("Alloy/%s", version.Version)
