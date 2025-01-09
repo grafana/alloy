@@ -1,4 +1,4 @@
-//go:build linux && (amd64 || arm64)
+//go:build (linux || darwin) && (amd64 || arm64)
 
 package java
 
@@ -50,7 +50,7 @@ type profilingLoop struct {
 
 func newProfilingLoop(pid int, target discovery.Target, logger log.Logger, profiler *asprof.Profiler, output *pyroscope.Fanout, cfg ProfilingConfig) *profilingLoop {
 	ctx, cancel := context.WithCancel(context.Background())
-	dist, err := profiler.DistributionForProcess(pid)
+	dist := profiler.Distribution()
 	p := &profilingLoop{
 		logger:   log.With(logger, "pid", pid),
 		output:   output,
@@ -63,11 +63,6 @@ func newProfilingLoop(pid int, target discovery.Target, logger log.Logger, profi
 		profiler: profiler,
 	}
 	_ = level.Debug(p.logger).Log("msg", "new process", "target", fmt.Sprintf("%+v", target))
-
-	if err != nil {
-		p.onError(fmt.Errorf("failed to select dist for pid %d: %w", pid, err))
-		return p
-	}
 
 	p.wg.Add(1)
 	go func() {

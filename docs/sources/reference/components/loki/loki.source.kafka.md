@@ -49,6 +49,8 @@ loki.source.kafka "LABEL" {
 
 `assignor` values can be either `"range"`, `"roundrobin"`, or `"sticky"`.
 
+If a topic starts with a '^', it is treated as a regular expression and may match multiple topics.
+
 Labels from the `labels` argument are applied to every message that the component reads.
 
 The `relabel_rules` field can make use of the `rules` export value from a
