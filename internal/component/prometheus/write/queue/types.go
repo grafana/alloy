@@ -108,6 +108,7 @@ func (cc EndpointConfig) ToNativeType() types.ConnectionConfig {
 		FlushInterval:    cc.FlushInterval,
 		ExternalLabels:   cc.ExternalLabels,
 		Connections:      cc.Parallelism,
+		UseRoundRobin:    cc.RoundRobin,
 	}
 	if cc.BasicAuth != nil {
 		tcc.BasicAuth = &types.BasicAuth{
