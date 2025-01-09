@@ -119,7 +119,7 @@ func (cc EndpointConfig) ToNativeType() types.ConnectionConfig {
 	if cc.TLSConfig != nil {
 		tcc.InsecureSkipVerify = cc.TLSConfig.InsecureSkipVerify
 		tcc.TLSCert = cc.TLSConfig.Cert
-		tcc.TLSKey = cc.TLSConfig.Cert
+		tcc.TLSKey = string(cc.TLSConfig.Key)
 		tcc.TLSCACert = cc.TLSConfig.CA
 	}
 	return tcc
