@@ -2,11 +2,11 @@ package queue
 
 import (
 	"fmt"
-	common "github.com/prometheus/common/config"
 	"time"
 
 	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/grafana/walqueue/types"
+	common "github.com/prometheus/common/config"
 	"github.com/prometheus/common/version"
 	"github.com/prometheus/prometheus/storage"
 )
