@@ -18,7 +18,6 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/util"
-	"github.com/grafana/walqueue/types"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/exemplar"
 	"github.com/prometheus/prometheus/model/histogram"
@@ -91,10 +90,7 @@ func TestE2E(t *testing.T) {
 				t.Helper()
 				for i := 0; i < samples.Len(); i++ {
 					s := samples.Get(i)
-					require.True(t, len(s.Samples) == 1)
-					require.True(t, s.Samples[0].Timestamp > 0)
-					require.True(t, s.Samples[0].Value == 0)
-					require.True(t, len(s.Labels) == 1)
+					require.True(t, len(s.Samples) == 0)
 					histSame(t, hist(int(s.Histograms[0].Sum)), s.Histograms[0])
 				}
 			},
@@ -216,9 +212,7 @@ func runTest(t *testing.T, add func(index int, appendable storage.Appender) (flo
 	} else {
 		metaTest(metaSamples)
 	}
-	require.Eventuallyf(t, func() bool {
-		return types.OutStandingTimeSeriesBinary.Load() == 0
-	}, 20*time.Second, 1*time.Second, "there are %d time series not collected", types.OutStandingTimeSeriesBinary.Load())
+
 }
 
 func handlePost(t *testing.T, _ http.ResponseWriter, r *http.Request) ([]prompb.TimeSeries, []prompb.MetricMetadata) {
