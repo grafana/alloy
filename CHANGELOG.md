@@ -10,6 +10,9 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+v1.6.0-rc.0
+-----------------
+
 ### Breaking changes
 
 - Upgrade to OpenTelemetry Collector v0.116.0:
