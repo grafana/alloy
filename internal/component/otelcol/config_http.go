@@ -47,14 +47,14 @@ func (args *HTTPServerArguments) Convert() (*otelconfighttp.ServerConfig, error)
 
 	// If auth is set by the user retrieve the associated extension from the handler.
 	// if the extension does not support server auth an error will be returned.
-	var authz *otelconfighttp.AuthConfig
+	var authentication *otelconfighttp.AuthConfig
 	if args.Auth != nil {
 		ext, err := args.Auth.GetExtension(auth.Server)
 		if err != nil {
 			return nil, err
 		}
 
-		authz = &otelconfighttp.AuthConfig{
+		authentication = &otelconfighttp.AuthConfig{
 			Authentication: otelconfigauth.Authentication{
 				AuthenticatorID: ext.ID,
 			},
@@ -68,7 +68,7 @@ func (args *HTTPServerArguments) Convert() (*otelconfighttp.ServerConfig, error)
 		MaxRequestBodySize:    int64(args.MaxRequestBodySize),
 		IncludeMetadata:       args.IncludeMetadata,
 		CompressionAlgorithms: copyStringSlice(args.CompressionAlgorithms),
-		Auth:                  authz,
+		Auth:                  authentication,
 	}, nil
 }
 
@@ -146,13 +146,13 @@ func (args *HTTPClientArguments) Convert() (*otelconfighttp.ClientConfig, error)
 	}
 
 	// Configure the authentication if args.Auth is set.
-	var authz *otelconfigauth.Authentication
+	var authentication *otelconfigauth.Authentication
 	if args.Auth != nil {
 		ext, err := args.Auth.GetExtension(auth.Client)
 		if err != nil {
 			return nil, err
 		}
-		authz = &otelconfigauth.Authentication{AuthenticatorID: ext.ID}
+		authentication = &otelconfigauth.Authentication{AuthenticatorID: ext.ID}
 	}
 
 	opaqueHeaders := make(map[string]configopaque.String)
@@ -181,7 +181,7 @@ func (args *HTTPClientArguments) Convert() (*otelconfighttp.ClientConfig, error)
 		HTTP2ReadIdleTimeout: args.HTTP2ReadIdleTimeout,
 		HTTP2PingTimeout:     args.HTTP2PingTimeout,
 
-		Auth: authz,
+		Auth: authentication,
 
 		Cookies: args.Cookies.Convert(),
 	}, nil

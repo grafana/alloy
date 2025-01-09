@@ -44,14 +44,14 @@ func (args *GRPCServerArguments) Convert() (*otelconfiggrpc.ServerConfig, error)
 	}
 
 	// If auth is set add that to the config.
-	var authz *otelconfigauth.Authentication
+	var authentication *otelconfigauth.Authentication
 	if args.Auth != nil {
 		// If a auth plugin does not implement server auth, an error will be returned here.
 		serverExtension, err := args.Auth.GetExtension(auth.Server)
 		if err != nil {
 			return nil, err
 		}
-		authz = &otelconfigauth.Authentication{
+		authentication = &otelconfigauth.Authentication{
 			AuthenticatorID: serverExtension.ID,
 		}
 	}
@@ -70,7 +70,7 @@ func (args *GRPCServerArguments) Convert() (*otelconfiggrpc.ServerConfig, error)
 		WriteBufferSize:      int(args.WriteBufferSize),
 		Keepalive:            args.Keepalive.Convert(),
 		IncludeMetadata:      args.IncludeMetadata,
-		Auth:                 authz,
+		Auth:                 authentication,
 	}, nil
 }
 
@@ -186,14 +186,14 @@ func (args *GRPCClientArguments) Convert() (*otelconfiggrpc.ClientConfig, error)
 	}
 
 	// Configure authentication if args.Auth is set.
-	var authz *otelconfigauth.Authentication
+	var authentication *otelconfigauth.Authentication
 	if args.Auth != nil {
 		ext, err := args.Auth.GetExtension(auth.Client)
 		if err != nil {
 			return nil, err
 		}
 
-		authz = &otelconfigauth.Authentication{AuthenticatorID: ext.ID}
+		authentication = &otelconfigauth.Authentication{AuthenticatorID: ext.ID}
 	}
 
 	// Set default value for `balancer_name` to sync up with upstream's
@@ -217,7 +217,7 @@ func (args *GRPCClientArguments) Convert() (*otelconfiggrpc.ClientConfig, error)
 		BalancerName:    balancerName,
 		Authority:       args.Authority,
 
-		Auth: authz,
+		Auth: authentication,
 	}, nil
 }
 

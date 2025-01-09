@@ -393,14 +393,14 @@ func (args *GRPCClientArguments) Convert() (*otelconfiggrpc.ClientConfig, error)
 	}
 
 	// Configure the authentication if args.Auth is set.
-	var authz *otelconfigauth.Authentication
+	var authentication *otelconfigauth.Authentication
 	if args.Auth != nil {
 		ext, err := args.Auth.GetExtension(auth.Client)
 		if err != nil {
 			return nil, err
 		}
 
-		authz = &otelconfigauth.Authentication{AuthenticatorID: ext.ID}
+		authentication = &otelconfigauth.Authentication{AuthenticatorID: ext.ID}
 	}
 
 	balancerName := args.BalancerName
@@ -421,7 +421,7 @@ func (args *GRPCClientArguments) Convert() (*otelconfiggrpc.ClientConfig, error)
 		BalancerName:    balancerName,
 		Authority:       args.Authority,
 
-		Auth: authz,
+		Auth: authentication,
 	}, nil
 }
 
