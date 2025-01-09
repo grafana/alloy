@@ -48,11 +48,13 @@ The following arguments are supported:
 The following blocks are supported inside the definition of
 `prometheus.write.queue`:
 
- Hierarchy             | Block           | Description                                              | Required 
------------------------|-----------------|----------------------------------------------------------|----------
- persistence           | [persistence][] | Configuration for persistence                            | no       
- endpoint              | [endpoint][]    | Location to send metrics to.                             | no       
- endpoint > basic_auth | [basic_auth][]  | Configure basic_auth for authenticating to the endpoint. | no       
+ Hierarchy             | Block            | Description                                              | Required 
+-----------------------|------------------|----------------------------------------------------------|----------
+ persistence           | [persistence][]  | Configuration for persistence                            | no       
+ endpoint              | [endpoint][]     | Location to send metrics to.                             | no       
+ endpoint > basic_auth | [basic_auth][]   | Configure basic_auth for authenticating to the endpoint. | no       
+ endpoint > tls_config | [tls_config][]   | Configure TLS settings for connecting to the endpoint.   | no
+
 
 The `>` symbol indicates deeper levels of nesting. For example, `endpoint >
 basic_auth` refers to a `basic_auth` block defined inside an
@@ -61,6 +63,8 @@ basic_auth` refers to a `basic_auth` block defined inside an
 [endpoint]: #endpoint-block
 [basic_auth]: #basic_auth-block
 [persistence]: #persistence-block
+[tls_config]: #tls_config-block
+
 
 ### persistence block
 
@@ -102,6 +106,9 @@ Name            | Type     | Description                              | Default 
 `password`      | `secret` | Basic auth password.                     |         | no
 `username`      | `string` | Basic auth username.                     |         | no
 
+### tls_config block
+
+{{< docs/shared lookup="reference/components/tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

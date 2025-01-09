@@ -120,7 +120,6 @@ func (cc EndpointConfig) ToNativeType() types.ConnectionConfig {
 		tcc.TLSCert = cc.TLSConfig.Cert
 		tcc.TLSKey = cc.TLSConfig.Cert
 		tcc.TLSCACert = cc.TLSConfig.CA
-
 	}
 	return tcc
 }
