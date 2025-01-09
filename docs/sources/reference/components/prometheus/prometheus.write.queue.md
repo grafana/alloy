@@ -98,7 +98,7 @@ The following arguments are supported:
  `flush_interval`     | `duration`    | How long to wait until sending if `batch_count` is not trigger.                             | `1s`    | no       
  `parallelism`        | `uint`        | How many parallel batches to write.                                                         | 10      | no       
  `external_labels`    | `map(string)` | Labels to add to metrics sent over the network.                                             |         | no       
- `enable_round_robin` | `bool`        | When there are multiple IPs for a given endpoint this will distribute the load more evenly. | `false` | no       
+ `enable_round_robin` | `bool`        | Use round robin load balancing when there are multiple IPs for a given endpoint. | `false` | no       
 
 
 ### basic_auth block
