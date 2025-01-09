@@ -58,11 +58,6 @@ func ComponentReferences(cn dag.Node, g *dag.Graph, l log.Logger, scope *vm.Scop
 	refs := make([]Reference, 0, len(traversals))
 	for _, t := range traversals {
 
-		// TODO: fix this
-		if len(t) == 1 {
-			continue
-		}
-
 		ref, resolveDiags := resolveTraversal(t, g)
 		componentRefMatch := !resolveDiags.HasErrors()
 
@@ -70,7 +65,16 @@ func ComponentReferences(cn dag.Node, g *dag.Graph, l log.Logger, scope *vm.Scop
 		_, scopeMatch := scope.Lookup(t[0].Name)
 
 		if !componentRefMatch && !scopeMatch {
-			diags = append(diags, resolveDiags...)
+			// TODO: this workaround ignores the traversal errors inside of the foreach block
+			// We are currently using the traversal at the root level to access the references from outside of the foreach block.
+			// This is quite handy but not perfect because:
+			// - it fails with the var
+			// - it fails at the root level to link two components that are inside of the template (because they are not evaluated at the root level)
+			// Both cases should be ignored so in theory that works well but it's not pretty + it won't show real errors.
+			// So we need to find a different approach to traverse the foreach node.
+			if _, ok := cn.(*ForeachConfigNode); !ok {
+				diags = append(diags, resolveDiags...)
+			}
 			continue
 		}
 
