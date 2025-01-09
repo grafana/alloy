@@ -8,42 +8,50 @@ import (
 	"hash/fnv"
 	"path"
 	"sync"
+	"time"
 
+	"github.com/go-kit/log"
+	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/runner"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/vm"
 )
 
 const templateType = "template"
 
+// The ForeachConfigNode will create the pipeline defined in its template block for each entry defined in its collection argument.
+// Each pipeline is managed by a custom component.
+// The custom component has access to the root scope (it can access exports and modules outside of the foreach template).
+// The collection may contain any item. Each child has one item from the collection associated to him and that can be accessed via the defined var argument.
+// Nesting foreach blocks is allowed.
 type ForeachConfigNode struct {
 	nodeID           string
 	label            string
 	moduleController ModuleController
 
+	logger log.Logger
+
 	// customReg is the customComponentRegistry of the current loader.
 	// We pass it so that the foreach children have access to modules.
 	customReg *CustomComponentRegistry
 
-	customComponents          map[string]CustomComponent
-	customComponentHashCounts map[string]int
+	customComponents          map[string]CustomComponent // track the children
+	customComponentHashCounts map[string]int             // track the hash to avoid collisions
 
 	forEachChildrenUpdateChan chan struct{} // used to trigger an update of the running children
 	forEachChildrenRunning    bool
 
 	mut   sync.RWMutex
 	block *ast.BlockStmt
+
+	healthMut  sync.RWMutex
+	evalHealth component.Health // Health of the last evaluate
+	runHealth  component.Health // Health of running the component
 }
 
 var _ BlockNode = (*ForeachConfigNode)(nil)
 var _ RunnableNode = (*ForeachConfigNode)(nil)
-
-// For now the Foreach doesn't have the ability to export arguments.
-//TODO: We could implement this in the future?
-
-type ForeachArguments struct {
-	Collection []string `alloy:"collection,attr"`
-}
 
 func NewForeachConfigNode(block *ast.BlockStmt, globals ComponentGlobals, customReg *CustomComponentRegistry) *ForeachConfigNode {
 	nodeID := BlockComponentID(block).String()
@@ -56,6 +64,7 @@ func NewForeachConfigNode(block *ast.BlockStmt, globals ComponentGlobals, custom
 		nodeID:                    nodeID,
 		label:                     block.Label,
 		block:                     block,
+		logger:                    log.With(globals.Logger, "component_path", globals.ControllerID, "component_id", nodeID),
 		moduleController:          globals.NewModuleController(globalID),
 		customReg:                 customReg,
 		forEachChildrenUpdateChan: make(chan struct{}, 1),
@@ -74,21 +83,37 @@ func (fn *ForeachConfigNode) Block() *ast.BlockStmt {
 	return fn.block
 }
 
+// Foreach doesn't have the ability to export values.
+// This is something we could implement in the future if there is a need for it.
 type Arguments struct {
 	Collection []any  `alloy:"collection,attr"`
 	Var        string `alloy:"var,attr"`
 }
 
-func (fn *ForeachConfigNode) Evaluate(scope *vm.Scope) error {
+func (fn *ForeachConfigNode) Evaluate(evalScope *vm.Scope) error {
+	err := fn.evaluate(evalScope)
+
+	switch err {
+	case nil:
+		fn.setEvalHealth(component.HealthTypeHealthy, "foreach evaluated")
+	default:
+		msg := fmt.Sprintf("foreach evaluation failed: %s", err)
+		fn.setEvalHealth(component.HealthTypeUnhealthy, msg)
+	}
+	return err
+}
+
+func (fn *ForeachConfigNode) evaluate(scope *vm.Scope) error {
 	fn.mut.Lock()
 	defer fn.mut.Unlock()
 
+	// Split the template block from the rest of the body because it should not be evaluated.
 	var argsBody ast.Body
 	var template *ast.BlockStmt
 	for _, stmt := range fn.block.Body {
 		if blockStmt, ok := stmt.(*ast.BlockStmt); ok && blockStmt.GetBlockName() == templateType {
 			template = blockStmt
-			continue // we don't add the template to the argsBody
+			continue
 		}
 		argsBody = append(argsBody, stmt)
 	}
@@ -123,6 +148,7 @@ func (fn *ForeachConfigNode) Evaluate(scope *vm.Scope) error {
 			return err
 		}
 
+		// Expose the current scope + the collection item that correspond to the child.
 		vars := deepCopyMap(scope.Variables)
 		vars[args.Var] = args.Collection[i]
 
@@ -141,7 +167,7 @@ func (fn *ForeachConfigNode) Evaluate(scope *vm.Scope) error {
 		}
 	}
 
-	// trigger to stop previous children from running and to start running the new ones.
+	// Trigger to stop previous children from running and to start running the new ones.
 	if fn.forEachChildrenRunning {
 		select {
 		case fn.forEachChildrenUpdateChan <- struct{}{}: // queued trigger
@@ -189,20 +215,30 @@ func (fn *ForeachConfigNode) Run(ctx context.Context) error {
 		var tasks []*forEachChild
 		for customComponentID, customComponent := range fn.customComponents {
 			tasks = append(tasks, &forEachChild{
-				id: customComponentID,
-				cc: customComponent,
+				id:           customComponentID,
+				cc:           customComponent,
+				logger:       log.With(fn.logger, "foreach_path", fn.nodeID, "child_id", customComponentID),
+				healthUpdate: fn.setRunHealth,
 			})
 		}
-
 		return runner.ApplyTasks(newCtx, tasks)
 	}
 
 	err := updateTasks()
 	if err != nil {
-		// TODO: log error
+		return fmt.Errorf("running foreach children failed: %w", err)
 	}
 
-	return fn.run(ctx, updateTasks)
+	err = fn.run(ctx, updateTasks)
+
+	// Note: logging of this error is handled by the scheduler.
+	if err != nil {
+		fn.setRunHealth(component.HealthTypeExited, fmt.Sprintf("foreach node shut down with error: %s", err))
+	} else {
+		fn.setRunHealth(component.HealthTypeExited, "foreach node shut down cleanly")
+	}
+
+	return err
 }
 
 func (fn *ForeachConfigNode) run(ctx context.Context, updateTasks func() error) error {
@@ -211,11 +247,49 @@ func (fn *ForeachConfigNode) run(ctx context.Context, updateTasks func() error) 
 		case <-fn.forEachChildrenUpdateChan:
 			err := updateTasks()
 			if err != nil {
-				// TODO: log error
+				level.Error(fn.logger).Log("msg", "error encountered while updating foreach children", "err", err)
+				fn.setRunHealth(component.HealthTypeUnhealthy, fmt.Sprintf("error encountered while updating foreach children: %s", err))
+				// the error is not fatal, the node can still run in unhealthy mode
+			} else {
+				fn.setRunHealth(component.HealthTypeHealthy, "foreach children updated successfully")
 			}
 		case <-ctx.Done():
 			return nil
 		}
+	}
+}
+
+// CurrentHealth returns the current health of the ForeachConfigNode.
+//
+// The health of a ForeachConfigNode is determined by combining:
+//
+//  1. Health from the call to Run().
+//  2. Health from the last call to Evaluate().
+func (fn *ForeachConfigNode) CurrentHealth() component.Health {
+	fn.healthMut.RLock()
+	defer fn.healthMut.RUnlock()
+	return component.LeastHealthy(fn.runHealth, fn.evalHealth)
+}
+
+func (fn *ForeachConfigNode) setEvalHealth(t component.HealthType, msg string) {
+	fn.healthMut.Lock()
+	defer fn.healthMut.Unlock()
+
+	fn.evalHealth = component.Health{
+		Health:     t,
+		Message:    msg,
+		UpdateTime: time.Now(),
+	}
+}
+
+func (fn *ForeachConfigNode) setRunHealth(t component.HealthType, msg string) {
+	fn.healthMut.Lock()
+	defer fn.healthMut.Unlock()
+
+	fn.runHealth = component.Health{
+		Health:     t,
+		Message:    msg,
+		UpdateTime: time.Now(),
 	}
 }
 
@@ -224,14 +298,17 @@ type forEachChildRunner struct {
 }
 
 type forEachChild struct {
-	cc CustomComponent
-	id string
+	cc           CustomComponent
+	id           string
+	logger       log.Logger
+	healthUpdate func(t component.HealthType, msg string)
 }
 
 func (fr *forEachChildRunner) Run(ctx context.Context) {
 	err := fr.child.cc.Run(ctx)
 	if err != nil {
-		// TODO: log and update health
+		level.Error(fr.child.logger).Log("msg", "foreach child stopped running", "err", err)
+		fr.child.healthUpdate(component.HealthTypeUnhealthy, fmt.Sprintf("foreach child stopped running: %s", err))
 	}
 }
 

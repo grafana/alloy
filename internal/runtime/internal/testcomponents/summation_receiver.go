@@ -9,6 +9,9 @@ import (
 	"go.uber.org/atomic"
 )
 
+// testcomponents.summation_receiver sums up the values that it receives via the exported int receiver.
+// The sum is exposed via the DebugInfo instead of the Exports to avoid triggering an update loop.
+// (the components that are using the exported receiver would be updated every time the sum would be updated)
 func init() {
 	component.Register(component.Registration{
 		Name:      "testcomponents.summation_receiver",

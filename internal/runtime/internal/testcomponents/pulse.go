@@ -12,6 +12,7 @@ import (
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
+// testcomponents.pulse sends the value 1 at the defined frequency for a number of times defined by the max argument.
 func init() {
 	component.Register(component.Registration{
 		Name:      "testcomponents.pulse",
