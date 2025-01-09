@@ -91,6 +91,7 @@ type EndpointConfig struct {
 	Parallelism    uint              `alloy:"parallelism,attr,optional"`
 	ExternalLabels map[string]string `alloy:"external_labels,attr,optional"`
 	TLSConfig      *common.TLSConfig `alloy:"tls_config,block,optional"`
+	RoundRobin     bool              `alloy:"enable_round_robin,attr,optional"`
 }
 
 var UserAgent = fmt.Sprintf("Alloy/%s", version.Version)
@@ -113,6 +114,13 @@ func (cc EndpointConfig) ToNativeType() types.ConnectionConfig {
 			Username: cc.BasicAuth.Username,
 			Password: string(cc.BasicAuth.Password),
 		}
+	}
+	if cc.TLSConfig != nil {
+		tcc.InsecureSkipVerify = cc.TLSConfig.InsecureSkipVerify
+		tcc.TLSCert = cc.TLSConfig.Cert
+		tcc.TLSKey = cc.TLSConfig.Cert
+		tcc.TLSCACert = cc.TLSConfig.CA
+
 	}
 	return tcc
 }
