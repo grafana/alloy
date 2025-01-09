@@ -15,8 +15,6 @@ import (
 	"golang.org/x/tools/txtar"
 )
 
-// TODO: Test a foreach inside a foreach.
-// TODO: Test foreach with clustering.
 func TestForeach(t *testing.T) {
 	directory := "./testdata/foreach"
 	for _, file := range getTestFiles(directory, t) {

@@ -658,10 +658,10 @@ func (l *Loader) wireCustomComponentNode(g *dag.Graph, cc *CustomComponentNode) 
 	}
 }
 
+// wireForEachNode add edges between a foreach node and declare/import nodes that are used in the foreach pipeline.
 func (l *Loader) wireForEachNode(g *dag.Graph, fn *ForeachConfigNode) {
 	refs := l.findCustomComponentReferences(fn.Block())
 	for ref := range refs {
-		// add edges between the foreach node and declare/import nodes.
 		g.AddEdge(dag.Edge{From: fn, To: ref})
 	}
 }
@@ -693,7 +693,7 @@ func (l *Loader) Imports() map[string]*ImportConfigNode {
 	return l.importConfigNodes
 }
 
-// ForEachs returns the current set of for_each nodes.
+// ForEachs returns the current set of foreach nodes.
 func (l *Loader) ForEachs() map[string]*ForeachConfigNode {
 	l.mut.RLock()
 	defer l.mut.RUnlock()

@@ -29,7 +29,6 @@ func init() {
 type CountConfig struct {
 	Frequency time.Duration `alloy:"frequency,attr"`
 	Max       int           `alloy:"max,attr"`
-	ForwardTo []IntReceiver `alloy:"forward_to,attr,optional"`
 }
 
 type CountExports struct {
@@ -64,20 +63,17 @@ func (t *Count) Run(ctx context.Context) error {
 			return nil
 		case <-time.After(t.getNextCount()):
 			t.cfgMut.Lock()
+			maxCount := t.cfg.Max
+			t.cfgMut.Unlock()
 			currentCount := t.count.Load()
-			if t.cfg.Max == 0 || currentCount < int32(t.cfg.Max) {
+			if maxCount == 0 || currentCount < int32(maxCount) {
 				if t.count.CompareAndSwap(currentCount, currentCount+1) {
-					newCount := int(currentCount + 1)
-					level.Info(t.log).Log("msg", "incremented count", "count", newCount)
-					t.opts.OnStateChange(CountExports{Count: newCount})
-					for _, r := range t.cfg.ForwardTo {
-						r.ReceiveInt(newCount)
-					}
+					level.Info(t.log).Log("msg", "incremented count", "count", currentCount+1)
+					t.opts.OnStateChange(CountExports{Count: int(currentCount + 1)})
 				} else {
 					level.Info(t.log).Log("msg", "failed to increment count", "count", currentCount)
 				}
 			}
-			t.cfgMut.Unlock()
 		}
 	}
 }

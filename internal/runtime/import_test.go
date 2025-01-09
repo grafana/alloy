@@ -120,9 +120,6 @@ func TestImportFile(t *testing.T) {
 	}
 }
 
-// TODO: Why does this test fail? It seems to be running multiple times,
-// then fails on the final retry since it's interrupted by a shutdown
-// as indicated in the "node exited without error" log message.
 func TestImportString(t *testing.T) {
 	directory := "./testdata/import_string"
 	for _, file := range getTestFiles(directory, t) {
