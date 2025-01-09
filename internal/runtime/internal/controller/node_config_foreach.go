@@ -26,8 +26,10 @@ const templateType = "template"
 // The collection may contain any item. Each child has one item from the collection associated to him and that can be accessed via the defined var argument.
 // Nesting foreach blocks is allowed.
 type ForeachConfigNode struct {
+	id               ComponentID
 	nodeID           string
 	label            string
+	componentName    string
 	moduleController ModuleController
 
 	logger log.Logger
@@ -44,14 +46,14 @@ type ForeachConfigNode struct {
 
 	mut   sync.RWMutex
 	block *ast.BlockStmt
+	args  Arguments
 
 	healthMut  sync.RWMutex
 	evalHealth component.Health // Health of the last evaluate
 	runHealth  component.Health // Health of running the component
 }
 
-var _ BlockNode = (*ForeachConfigNode)(nil)
-var _ RunnableNode = (*ForeachConfigNode)(nil)
+var _ ComponentNode = (*ForeachConfigNode)(nil)
 
 func NewForeachConfigNode(block *ast.BlockStmt, globals ComponentGlobals, customReg *CustomComponentRegistry) *ForeachConfigNode {
 	nodeID := BlockComponentID(block).String()
@@ -64,6 +66,8 @@ func NewForeachConfigNode(block *ast.BlockStmt, globals ComponentGlobals, custom
 		nodeID:                    nodeID,
 		label:                     block.Label,
 		block:                     block,
+		componentName:             block.GetBlockName(),
+		id:                        BlockComponentID(block),
 		logger:                    log.With(globals.Logger, "component_path", globals.ControllerID, "component_id", nodeID),
 		moduleController:          globals.NewModuleController(globalID),
 		customReg:                 customReg,
@@ -81,6 +85,27 @@ func (fn *ForeachConfigNode) Block() *ast.BlockStmt {
 	fn.mut.RLock()
 	defer fn.mut.RUnlock()
 	return fn.block
+}
+
+func (fn *ForeachConfigNode) Arguments() component.Arguments {
+	fn.mut.RLock()
+	defer fn.mut.RUnlock()
+	return fn.args
+}
+
+func (fn *ForeachConfigNode) ModuleIDs() []string {
+	return fn.moduleController.ModuleIDs()
+}
+
+func (fn *ForeachConfigNode) ComponentName() string {
+	return fn.componentName
+}
+
+func (fn *ForeachConfigNode) Exports() component.Exports {
+	return nil
+}
+func (fn *ForeachConfigNode) ID() ComponentID {
+	return fn.id
 }
 
 // Foreach doesn't have the ability to export values.
@@ -128,6 +153,8 @@ func (fn *ForeachConfigNode) evaluate(scope *vm.Scope) error {
 	if err := eval.Evaluate(scope, &args); err != nil {
 		return fmt.Errorf("decoding configuration: %w", err)
 	}
+
+	fn.args = args
 
 	// Loop through the items to create the custom components.
 	// On re-evaluation new components are added and existing ones are updated.
@@ -223,6 +250,8 @@ func (fn *ForeachConfigNode) Run(ctx context.Context) error {
 		}
 		return runner.ApplyTasks(newCtx, tasks)
 	}
+
+	fn.setRunHealth(component.HealthTypeHealthy, "started foreach")
 
 	err := updateTasks()
 	if err != nil {
