@@ -366,3 +366,13 @@ ingress:
   #  - secretName: chart-example-tls
   #    hosts:
   #      - chart-example.local
+
+# -- Extra k8s manifests to deploy
+extraObjects: []
+# - apiVersion: v1
+#   kind: Secret
+#   metadata:
+#     name: grafana-cloud
+#   stringData:
+#     PROMETHEUS_HOST: 'https://prometheus-us-central1.grafana.net/api/prom/push'
+#     PROMETHEUS_USERNAME: '123456'

@@ -2,6 +2,8 @@
 package basic
 
 import (
+	"fmt"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol/auth"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
@@ -30,8 +32,6 @@ func init() {
 
 // Arguments configures the otelcol.auth.basic component.
 type Arguments struct {
-	// TODO(rfratto): should we support htpasswd?
-
 	Username string            `alloy:"username,attr"`
 	Password alloytypes.Secret `alloy:"password,attr"`
 
@@ -46,14 +46,28 @@ func (args *Arguments) SetToDefault() {
 	args.DebugMetrics.SetToDefault()
 }
 
-// Convert implements auth.Arguments.
-func (args Arguments) Convert() (otelcomponent.Config, error) {
+// ConvertClient implements auth.Arguments.
+func (args Arguments) ConvertClient() (otelcomponent.Config, error) {
 	return &basicauthextension.Config{
 		ClientAuth: &basicauthextension.ClientAuthSettings{
 			Username: args.Username,
 			Password: configopaque.String(args.Password),
 		},
 	}, nil
+}
+
+// ConvertServer implements auth.Arguments.
+func (args Arguments) ConvertServer() (otelcomponent.Config, error) {
+	return &basicauthextension.Config{
+		Htpasswd: &basicauthextension.HtpasswdSettings{
+			Inline: fmt.Sprintf("%s:%s", args.Username, args.Password),
+		},
+	}, nil
+}
+
+// AuthFeatures implements auth.Arguments.
+func (args Arguments) AuthFeatures() auth.AuthFeature {
+	return auth.ClientAndServerAuthSupported
 }
 
 // Extensions implements auth.Arguments.

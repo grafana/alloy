@@ -658,7 +658,7 @@ steps:
         "repo_name": "deployment_tools",
         "update_jsonnet_attribute_configs": [
           {
-            "file_path": "ksonnet/environments/grafana-agent/waves/alloy.libsonnet",
+            "file_path": "ksonnet/lib/alloy/waves/alloy.libsonnet",
             "jsonnet_key": "dev_canary",
             "jsonnet_value_file": ".image-tag"
           }
@@ -836,6 +836,6 @@ kind: secret
 name: updater_private_key
 ---
 kind: signature
-hmac: 10e6be95fbe639c7701a96c7b0523e849b28389d09eda8b122de3c981a93c4c0
+hmac: 760087c49893d6970a81c973518d26b582c3d4673d3c28b90553361de8b6e03a
 
 ...
