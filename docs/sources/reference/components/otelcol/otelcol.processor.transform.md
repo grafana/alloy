@@ -306,10 +306,6 @@ otelcol.processor.transform "default" {
 }
 ```
 
-Each statement is enclosed in backticks instead of quotation marks.
-This constitutes a [raw string][raw-strings], and lets us avoid the need to escape
-each `"` with a `\"` inside a [normal][strings] {{< param "PRODUCT_NAME" >}} syntax string.
-
 ### Rename a resource attribute
 
 The are two ways to rename an attribute key.
@@ -356,10 +352,6 @@ otelcol.processor.transform "default" {
 }
 ```
 
-Each statement is enclosed in backticks instead of quotation marks.
-This constitutes a [raw string][raw-strings], and lets us avoid the need to escape
-each `"` with a `\"`, and each `\` with a `\\` inside a [normal][strings] {{< param "PRODUCT_NAME" >}} syntax string.
-
 ### Create an attribute from the contents of a log body
 
 This example sets the attribute `body` to the value of the log body:
@@ -382,10 +374,6 @@ otelcol.processor.transform "default" {
   }
 }
 ```
-
-Each statement is enclosed in backticks instead of quotation marks.
-This constitutes a [raw string][raw-strings], and lets us avoid the need to escape
-each `"` with a `\"` inside a [normal][strings] {{< param "PRODUCT_NAME" >}} syntax string.
 
 ### Combine two attributes
 
@@ -410,10 +398,6 @@ otelcol.processor.transform "default" {
   }
 }
 ```
-
-Each statement is enclosed in backticks instead of quotation marks.
-This constitutes a [raw string][raw-strings], and lets us avoid the need to escape
-each `"` with a `\"` inside a [normal][strings] {{< param "PRODUCT_NAME" >}} syntax string.
 
 ### Parsing JSON logs
 
@@ -462,10 +446,6 @@ otelcol.processor.transform "default" {
   }
 }
 ```
-
-Each statement is enclosed in backticks instead of quotation marks.
-This constitutes a [raw string][raw-strings], and lets us avoid the need to escape
-each `"` with a `\"`, and each `\` with a `\\` inside a [normal][strings] {{< param "PRODUCT_NAME" >}} syntax string.
 
 ### Various transformations of attributes and status codes
 
@@ -564,10 +544,6 @@ otelcol.exporter.otlp "default" {
   }
 }
 ```
-
-Each statement is enclosed in backticks instead of quotation marks.
-This constitutes a [raw string][raw-strings], and lets us avoid the need to escape
-each `"` with a `\"`, and each `\` with a `\\` inside a [normal][strings] {{< param "PRODUCT_NAME" >}} syntax string.
 
 [strings]: ../../../../get-started/configuration-syntax/expressions/types_and_values/#strings
 [raw-strings]: ../../../../get-started/configuration-syntax/expressions/types_and_values/#raw-strings

@@ -217,8 +217,6 @@ otelcol.processor.filter "default" {
 }
 ```
 
-Each `"` is [escaped][] with `\"` inside the {{< param "PRODUCT_NAME" >}} syntax string.
-
 ### Drop metrics based on either of two criteria
 
 This example drops metrics which satisfy at least one of two OTTL statements:
@@ -243,11 +241,6 @@ otelcol.processor.filter "default" {
   }
 }
 ```
-
-
-Some values in the {{< param "PRODUCT_NAME" >}} syntax string are [escaped][]:
-* `\` is escaped with `\\`
-* `"` is escaped with `\"`
 
 ### Drop non-HTTP spans and sensitive logs
 
@@ -275,13 +268,6 @@ otelcol.processor.filter "default" {
   }
 }
 ```
-
-Each `"` is [escaped][] with `\"` inside the {{< param "PRODUCT_NAME" >}} syntax string.
-
-
-Some values in the {{< param "PRODUCT_NAME" >}} syntax strings are [escaped][]:
-* `\` is escaped with `\\`
-* `"` is escaped with `\"`
 
 [escaped]: ../../../../get-started/configuration-syntax/expressions/types_and_values/#strings
 
