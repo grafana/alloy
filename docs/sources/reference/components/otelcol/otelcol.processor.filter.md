@@ -191,7 +191,7 @@ information.
 
 ### Drop spans which contain a certain span attribute
 
-This example sets the attribute `test` to `pass` if the attribute `test` does not exist.
+This example drops the signals that have the attribute `container.name` set to the value `app_container_1`.
 
 ```alloy
 otelcol.processor.filter "default" {
@@ -199,7 +199,7 @@ otelcol.processor.filter "default" {
 
   traces {
     span = [
-      "attributes[\"container.name\"] == \"app_container_1\"",
+      `attributes["container.name"] == "app_container_1"`,
     ]
   }
 
@@ -210,8 +210,6 @@ otelcol.processor.filter "default" {
   }
 }
 ```
-
-Each `"` is [escaped][] with `\"` inside the {{< param "PRODUCT_NAME" >}} syntax string.
 
 ### Drop metrics based on either of two criteria
 
@@ -225,8 +223,8 @@ otelcol.processor.filter "default" {
 
   metrics {
     metric = [
-       "name == \"my.metric\" and resource.attributes[\"my_label\"] == \"abc123\"",
-       "type == METRIC_DATA_TYPE_HISTOGRAM",
+       `name == "my.metric" and resource.attributes["my_label"] == "abc123"`,
+       `type == METRIC_DATA_TYPE_HISTOGRAM`,
     ]
   }
 
@@ -237,11 +235,6 @@ otelcol.processor.filter "default" {
   }
 }
 ```
-
-
-Some values in the {{< param "PRODUCT_NAME" >}} syntax string are [escaped][]:
-* `\` is escaped with `\\`
-* `"` is escaped with `\"`
 
 ### Drop non-HTTP spans and sensitive logs
 
@@ -251,14 +244,14 @@ otelcol.processor.filter "default" {
 
   traces {
     span = [
-      "attributes[\"http.request.method\"] == nil",
+      `attributes["http.request.method"] == nil`,
     ]
   }
 
   logs {
     log_record = [
-      "IsMatch(body, \".*password.*\")",
-      "severity_number < SEVERITY_NUMBER_WARN",
+      `IsMatch(body, ".*password.*")`,
+      `severity_number < SEVERITY_NUMBER_WARN`,
     ]
   }
 
@@ -269,13 +262,6 @@ otelcol.processor.filter "default" {
   }
 }
 ```
-
-Each `"` is [escaped][] with `\"` inside the {{< param "PRODUCT_NAME" >}} syntax string.
-
-
-Some values in the {{< param "PRODUCT_NAME" >}} syntax strings are [escaped][]:
-* `\` is escaped with `\\`
-* `"` is escaped with `\"`
 
 [escaped]: ../../../../get-started/configuration-syntax/expressions/types_and_values/#strings
 
