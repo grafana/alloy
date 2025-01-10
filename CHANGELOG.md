@@ -10,6 +10,10 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Features
+
+- Add support for TLS to `prometheus.write.queue`. (@mattdurham)
+
 v1.6.0-rc.0
 -----------------
 

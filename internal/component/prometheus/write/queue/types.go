@@ -6,6 +6,7 @@ import (
 
 	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/grafana/walqueue/types"
+	common "github.com/prometheus/common/config"
 	"github.com/prometheus/common/version"
 	"github.com/prometheus/prometheus/storage"
 )
@@ -66,6 +67,9 @@ func (r *Arguments) Validate() error {
 		if conn.FlushInterval < 1*time.Second {
 			return fmt.Errorf("flush_interval must be greater or equal to 1s, the internal timers resolution is 1s")
 		}
+		if conn.BasicAuth != nil && conn.TLSConfig != nil {
+			return fmt.Errorf("endpoint %s cannot have both BasicAuth and TLSConfig set", conn.Name)
+		}
 	}
 
 	return nil
@@ -89,6 +93,8 @@ type EndpointConfig struct {
 	// How many concurrent queues to have.
 	Parallelism    uint              `alloy:"parallelism,attr,optional"`
 	ExternalLabels map[string]string `alloy:"external_labels,attr,optional"`
+	TLSConfig      *common.TLSConfig `alloy:"tls_config,block,optional"`
+	RoundRobin     bool              `alloy:"enable_round_robin,attr,optional"`
 }
 
 var UserAgent = fmt.Sprintf("Alloy/%s", version.Version)
@@ -105,12 +111,19 @@ func (cc EndpointConfig) ToNativeType() types.ConnectionConfig {
 		FlushInterval:    cc.FlushInterval,
 		ExternalLabels:   cc.ExternalLabels,
 		Connections:      cc.Parallelism,
+		UseRoundRobin:    cc.RoundRobin,
 	}
 	if cc.BasicAuth != nil {
 		tcc.BasicAuth = &types.BasicAuth{
 			Username: cc.BasicAuth.Username,
 			Password: string(cc.BasicAuth.Password),
 		}
+	}
+	if cc.TLSConfig != nil {
+		tcc.InsecureSkipVerify = cc.TLSConfig.InsecureSkipVerify
+		tcc.TLSCert = cc.TLSConfig.Cert
+		tcc.TLSKey = string(cc.TLSConfig.Key)
+		tcc.TLSCACert = cc.TLSConfig.CA
 	}
 	return tcc
 }
