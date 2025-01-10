@@ -68,7 +68,7 @@ func (r *Arguments) Validate() error {
 			return fmt.Errorf("flush_interval must be greater or equal to 1s, the internal timers resolution is 1s")
 		}
 		if conn.BasicAuth != nil && conn.TLSConfig != nil {
-			return fmt.Errorf("on endpoint %s cannot have both BasicAuth and TLSConfig set", conn.Name)
+			return fmt.Errorf("endpoint %s cannot have both BasicAuth and TLSConfig set", conn.Name)
 		}
 	}
 
