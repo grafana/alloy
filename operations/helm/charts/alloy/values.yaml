@@ -369,12 +369,10 @@ ingress:
 
 # -- Extra k8s manifests to deploy
 extraObjects: []
-  # - apiVersion: "kubernetes-client.io/v1"
-  #   kind: ExternalSecret
-  #   metadata:
-  #     name: '{{ include "alloy.fullname" . }}'
-  #   spec:
-  #     backendType: gcpSecretsManager
-  #     data:
-  #       - key: alloy-oauth2-creds
-  #         name: client_secret
+# - apiVersion: v1
+#   kind: Secret
+#   metadata:
+#     name: grafana-cloud
+#   stringData:
+#     PROMETHEUS_HOST: 'https://prometheus-us-central1.grafana.net/api/prom/push'
+#     PROMETHEUS_USERNAME: '123456'
