@@ -65,13 +65,13 @@ func ComponentReferences(cn dag.Node, g *dag.Graph, l log.Logger, scope *vm.Scop
 		_, scopeMatch := scope.Lookup(t[0].Name)
 
 		if !componentRefMatch && !scopeMatch {
-			// TODO: this workaround ignores the traversal errors inside of the foreach block
-			// We are currently using the traversal at the root level to access the references from outside of the foreach block.
+			// The traversal for the foreach node is used at the foreach level to access the references from outside of the foreach block.
 			// This is quite handy but not perfect because:
 			// - it fails with the var
 			// - it fails at the root level to link two components that are inside of the template (because they are not evaluated at the root level)
-			// Both cases should be ignored so in theory that works well but it's not pretty + it won't show real errors.
-			// So we need to find a different approach to traverse the foreach node.
+			// Both cases should be ignored at the linking level, that's the diags are ignored here.
+			// This is not super clean, but it should not create any problem since that the errors will be caught either during evaluation or while linking components
+			// inside of the foreach.
 			if _, ok := cn.(*ForeachConfigNode); !ok {
 				diags = append(diags, resolveDiags...)
 			}
