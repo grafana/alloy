@@ -399,7 +399,7 @@ otelcol.processor.transform "default" {
     context = "resource"
     statements = [
       // The Concat function combines any number of strings, separated by a delimiter.
-      `set(attributes["test"], Concat([attributes["foo"], attributes["bar"]], " "))`,
+      `set(attributes["test"], Concat([attributes["service.name"], attributes["service.version"]], " "))`,
     ]
   }
 
