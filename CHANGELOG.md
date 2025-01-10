@@ -56,6 +56,8 @@ v1.6.0-rc.0
 
 - Add relevant golang environment variables to the support bundle (@dehaansa)
 
+- Add support for server authentication to otelcol components. (@aidaleuc)
+
 - Update mysqld_exporter from v0.15.0 to v0.16.0 (including 2ef168bf6), most notable changes: (@cristiangreco)
   - Support MySQL 8.4 replicas syntax
   - Fetch lock time and cpu time from performance schema

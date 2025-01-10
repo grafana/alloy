@@ -116,7 +116,7 @@ func toGRPCClientArguments(cfg configgrpc.ClientConfig) otelcol.GRPCClientArgume
 		BalancerName:    balancerName,
 		Authority:       cfg.Authority,
 
-		Auth: a,
+		Authentication: a,
 	}
 }
 
