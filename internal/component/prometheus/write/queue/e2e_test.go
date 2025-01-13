@@ -90,6 +90,7 @@ func TestE2E(t *testing.T) {
 				t.Helper()
 				for i := 0; i < samples.Len(); i++ {
 					s := samples.Get(i)
+					require.True(t, len(s.Samples) == 0)
 					require.True(t, len(s.Labels) == 1)
 					histSame(t, hist(int(s.Histograms[0].Sum)), s.Histograms[0])
 				}
@@ -107,6 +108,7 @@ func TestE2E(t *testing.T) {
 				t.Helper()
 				for i := 0; i < samples.Len(); i++ {
 					s := samples.Get(i)
+					require.True(t, len(s.Samples) == 0)
 					require.True(t, len(s.Labels) == 1)
 					histFloatSame(t, histFloat(int(s.Histograms[0].Sum)), s.Histograms[0])
 				}
