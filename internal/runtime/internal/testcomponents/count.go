@@ -65,6 +65,7 @@ func (t *Count) Run(ctx context.Context) error {
 			t.cfgMut.Lock()
 			maxCount := t.cfg.Max
 			t.cfgMut.Unlock()
+
 			currentCount := t.count.Load()
 			if maxCount == 0 || currentCount < int32(maxCount) {
 				if t.count.CompareAndSwap(currentCount, currentCount+1) {
