@@ -82,7 +82,7 @@
       mountPath: /var/lib/docker/containers
       readOnly: true
     {{- end }}
-    {{- range $values.mounts.extra }}
-    - {{- toYaml . | nindent 6 }}
+    {{- with $values.mounts.extra }}
+    {{- toYaml . | nindent 4 }}
     {{- end }}
 {{- end }}
