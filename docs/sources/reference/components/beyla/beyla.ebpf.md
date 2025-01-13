@@ -146,16 +146,16 @@ If the executable matches only one of the ports in the list, it is considered to
 This block allows you to filter the services to instrument based on their Kubernetes metadata. If you specify other selectors in the same services entry,
 the instrumented processes need to match all the selector properties.
 
-Name               | Type           | Description                                                                                                | Default | Required
--------------------|----------------|-------------------------------------------------------------------------------------------------------------|---------|---------
-`daemonset_name`   | `string`       | Regular expression of Kubernetes DaemonSets to match.                                                       | `""`    | no
-`deployment_name`  | `string`       | Regular expression of Kubernetes Deployments to match.                                                      | `""`    | no
-`namespace`        | `string`       | Regular expression of Kubernetes Namespaces to match.                                                       | `""`    | no
-`owner_name`       | `string`       | Regular expression of Kubernetes owners of running Pods to match.                                           | `""`    | no
-`pod_labels`       | `map(string)`  | Key-value pairs of labels with keys matching Kubernetes Pods with the provided value as regular expression. |  `{}`   | no
-`pod_name`         | `string`       | Regular expression of Kubernetes Pods to match.                                                             | `""`    | no
-`replicaset_name`  | `string`       | Regular expression of Kubernetes ReplicaSets to match.                                                      | `""`    | no
-`statefulset_name` | `string`       | Regular expression of Kubernetes StatefulSets to match.                                                     | `""`    | no
+Name               | Type          | Description                                                                                                 | Default | Required
+-------------------|---------------|-------------------------------------------------------------------------------------------------------------|---------|---------
+`daemonset_name`   | `string`      | Regular expression of Kubernetes DaemonSets to match.                                                       | `""`    | no
+`deployment_name`  | `string`      | Regular expression of Kubernetes Deployments to match.                                                      | `""`    | no
+`namespace`        | `string`      | Regular expression of Kubernetes Namespaces to match.                                                       | `""`    | no
+`owner_name`       | `string`      | Regular expression of Kubernetes owners of running Pods to match.                                           | `""`    | no
+`pod_labels`       | `map(string)` | Key-value pairs of labels with keys matching Kubernetes Pods with the provided value as regular expression. | `{}`    | no
+`pod_name`         | `string`      | Regular expression of Kubernetes Pods to match.                                                             | `""`    | no
+`replicaset_name`  | `string`      | Regular expression of Kubernetes ReplicaSets to match.                                                      | `""`    | no
+`statefulset_name` | `string`      | Regular expression of Kubernetes StatefulSets to match.                                                     | `""`    | no
 
 ### metrics
 
@@ -171,7 +171,7 @@ Name               | Type           | Description                               
 - `application` exports application-level metrics.
 - `application_process` exports metrics about the processes that run the instrumented application.
 - `application_service_graph` exports application-level service graph metrics.
-- `application_span`exports application-level metrics in traces span metrics format.
+- `application_span` exports application-level metrics in traces span metrics format.
 - `network` exports network-level metrics.
 
 `instrumentations` is a list of instrumentations to enable for the metrics. The following instrumentations are available:
@@ -320,7 +320,7 @@ Replace the following:
 [metrics]: #metrics
 [network]: #network
 [output]: #output
-[in-memory traffic]: ../../../../get-started/component_controller#in-memory-traffic
+[in-memory traffic]: ../../../../get-started/component_controller/#in-memory-traffic
 [run command]: ../../../cli/run/
 [scrape]: ../../prometheus/prometheus.scrape/
 
