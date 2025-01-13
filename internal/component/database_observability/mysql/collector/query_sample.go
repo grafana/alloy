@@ -5,12 +5,12 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
-	"sync/atomic"
 	"time"
 
 	"github.com/go-kit/log"
 	"github.com/prometheus/common/model"
 	"github.com/xwb1989/sqlparser"
+	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability"
@@ -57,9 +57,13 @@ func NewQuerySample(args QuerySampleArguments) (*QuerySample, error) {
 		dbConnection:    args.DB,
 		collectInterval: args.CollectInterval,
 		entryHandler:    args.EntryHandler,
-		logger:          args.Logger,
+		logger:          log.With(args.Logger, "collector", "QuerySample"),
 		running:         &atomic.Bool{},
 	}, nil
+}
+
+func (c *QuerySample) Name() string {
+	return "QuerySample"
 }
 
 func (c *QuerySample) Start(ctx context.Context) error {
@@ -81,6 +85,7 @@ func (c *QuerySample) Start(ctx context.Context) error {
 		for {
 			if err := c.fetchQuerySamples(c.ctx); err != nil {
 				level.Error(c.logger).Log("msg", "collector stopping due to error", "err", err)
+				c.Stop()
 				break
 			}
 
@@ -127,7 +132,7 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 		}
 
 		if strings.HasSuffix(sampleText, "...") {
-			level.Info(c.logger).Log("msg", "skipping parsing truncated query", "digest", digest)
+			level.Debug(c.logger).Log("msg", "skipping parsing truncated query", "digest", digest)
 			continue
 		}
 

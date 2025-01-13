@@ -14,6 +14,8 @@ Main (unreleased)
 
 - Add support for TLS to `prometheus.write.queue`. (@mattdurham)
 
+- (_Experimental_) Add health reporting to `database_observability.mysql` component (@cristiangreco)
+
 v1.6.0-rc.0
 -----------------
 
@@ -124,11 +126,11 @@ v1.6.0-rc.0
     https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/36071
   - `otelcol.exporter.datadog`: Stop prefixing `http_server_duration`, `http_server_request_size` and `http_server_response_size` with `otelcol`.
     https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/36265
-    These metrics can be from SDKs rather than collector. Stop prefixing them to be consistent with 
+    These metrics can be from SDKs rather than collector. Stop prefixing them to be consistent with
     https://opentelemetry.io/docs/collector/internal-telemetry/#lists-of-internal-metrics
   - `otelcol.receiver.datadog`: Add json handling for the `api/v2/series` endpoint in the datadogreceiver.
     https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/36218
-  - `otelcol.processor.span`: Add a new `keep_original_name` configuration argument 
+  - `otelcol.processor.span`: Add a new `keep_original_name` configuration argument
     to keep the original span name when extracting attributes from the span name.
     https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/36397
   - `pkg/ottl`: Respect the `depth` option when flattening slices using `flatten`.
@@ -136,14 +138,14 @@ v1.6.0-rc.0
     https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/36198
   - `otelcol.exporter.loadbalancing`: Shutdown exporters during collector shutdown. This fixes a memory leak.
     https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/36024
-  - `otelcol.processor.k8sattributes`: New `wait_for_metadata` and `wait_for_metadata_timeout` configuration arguments, 
+  - `otelcol.processor.k8sattributes`: New `wait_for_metadata` and `wait_for_metadata_timeout` configuration arguments,
     which block the processor startup until metadata is received from Kubernetes.
     https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/32556
-  - `otelcol.processor.k8sattributes`: Enable the `k8sattr.fieldExtractConfigRegex.disallow` for all Alloy instances, 
+  - `otelcol.processor.k8sattributes`: Enable the `k8sattr.fieldExtractConfigRegex.disallow` for all Alloy instances,
     to retain the behavior of `regex` argument in the `annotation` and `label` blocks.
     When the feature gate is "deprecated" in the upstream Collector, Alloy users will need to use the transform processor instead.
     https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/25128
-  - `otelcol.receiver.vcenter`: The existing code did not honor TLS settings beyond 'insecure'. 
+  - `otelcol.receiver.vcenter`: The existing code did not honor TLS settings beyond 'insecure'.
     All TLS client config should now be honored.
     https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/36482
   - `otelcol.receiver.opencensus`: Do not report error message when OpenCensus receiver is shutdown cleanly.

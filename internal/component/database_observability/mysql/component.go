@@ -15,6 +15,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/model"
+	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -79,12 +80,15 @@ type Exports struct {
 }
 
 var (
-	_ component.Component    = (*Component)(nil)
-	_ http_service.Component = (*Component)(nil)
+	_ component.Component       = (*Component)(nil)
+	_ http_service.Component    = (*Component)(nil)
+	_ component.HealthComponent = (*Component)(nil)
 )
 
 type Collector interface {
+	Name() string
 	Start(context.Context) error
+	Stopped() bool
 	Stop()
 }
 
@@ -98,6 +102,7 @@ type Component struct {
 	baseTarget   discovery.Target
 	collectors   []Collector
 	dbConnection *sql.DB
+	healthErr    *atomic.String
 }
 
 func New(opts component.Options, args Arguments) (*Component, error) {
@@ -107,6 +112,7 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 		receivers: args.ForwardTo,
 		handler:   loki.NewLogsReceiver(),
 		registry:  prometheus.NewRegistry(),
+		healthErr: atomic.NewString(""),
 	}
 
 	baseTarget, err := c.getBaseTarget()
@@ -184,6 +190,16 @@ func (c *Component) Update(args component.Arguments) error {
 
 	c.args = args.(Arguments)
 
+	if err := c.startCollectors(); err != nil {
+		c.healthErr.Store(err.Error())
+		return err
+	}
+
+	c.healthErr.Store("")
+	return nil
+}
+
+func (c *Component) startCollectors() error {
 	dbConnection, err := sql.Open("mysql", formatDSN(string(c.args.DataSourceName), "parseTime=true"))
 	if err != nil {
 		return err
@@ -252,6 +268,40 @@ func (c *Component) Update(args component.Arguments) error {
 
 func (c *Component) Handler() http.Handler {
 	return promhttp.HandlerFor(c.registry, promhttp.HandlerOpts{})
+}
+
+func (c *Component) CurrentHealth() component.Health {
+	if err := c.healthErr.Load(); err != "" {
+		return component.Health{
+			Health:     component.HealthTypeUnhealthy,
+			Message:    err,
+			UpdateTime: time.Now(),
+		}
+	}
+
+	var unhealthyCollectors []string
+
+	c.mut.RLock()
+	for _, collector := range c.collectors {
+		if collector.Stopped() {
+			unhealthyCollectors = append(unhealthyCollectors, collector.Name())
+		}
+	}
+	c.mut.RUnlock()
+
+	if len(unhealthyCollectors) > 0 {
+		return component.Health{
+			Health:     component.HealthTypeUnhealthy,
+			Message:    "One or more collectors are unhealthy: [" + strings.Join(unhealthyCollectors, ", ") + "]",
+			UpdateTime: time.Now(),
+		}
+	}
+
+	return component.Health{
+		Health:     component.HealthTypeHealthy,
+		Message:    "All collectors are healthy",
+		UpdateTime: time.Now(),
+	}
 }
 
 // instanceKey returns network(hostname:port)/dbname of the MySQL server.
