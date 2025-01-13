@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/josharian/intern"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/discovery"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
@@ -274,10 +275,10 @@ func toAlloyTargets(cache map[string]*targetgroup.Group) []Target {
 			// first add the group labels, and then the
 			// target labels, so that target labels take precedence.
 			for k, v := range group.Labels {
-				tLabels[string(k)] = string(v)
+				tLabels[intern.String(string(k))] = intern.String(string(v))
 			}
 			for k, v := range target {
-				tLabels[string(k)] = string(v)
+				tLabels[intern.String(string(k))] = intern.String(string(v))
 			}
 			allTargets = append(allTargets, tLabels)
 		}
