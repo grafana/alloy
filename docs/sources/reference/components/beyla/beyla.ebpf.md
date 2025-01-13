@@ -69,6 +69,8 @@ For example,`attributes > kubernetes` refers to a `kubernetes` block defined ins
 
 ### output
 
+<span class="badge docs-labels__stage docs-labels__item">Required</span>
+
 The `output` block configures a set of components to forward the resulting telemetry data to.
 
 The following arguments are supported:
@@ -126,18 +128,18 @@ the instrumented processes need to match all the selector properties.
 
 Name         | Type     | Description                                                                     | Default | Required
 -------------|----------|---------------------------------------------------------------------------------|---------|---------
+`exe_path`   | `string` | The path of the running service for Beyla automatically instrumented with eBPF. | `""`    | no
 `name`       | `string` | The name of the service to match.                                               | `""`    | no
 `namespace`  | `string` | The namespace of the service to match.                                          | `""`    | no
 `open_ports` | `string` | The port of the running service for Beyla automatically instrumented with eBPF. | `""`    | no
-`exe_path`   | `string` | The path of the running service for Beyla automatically instrumented with eBPF. | `""`    | no
+
+`exe_path` accepts a regular expression to be matched against the full executable command line, including the directory where the executable resides on the file system.
 
 `name` defines a name for the matching instrumented service.
 It is used to populate the `service.name` OTEL property and/or the `service_name` Prometheus property in the exported metrics/traces.
 
 `open_port` accepts a comma-separated list of ports (for example, `80,443`), and port ranges (for example, `8000-8999`).
 If the executable matches only one of the ports in the list, it is considered to match the selection criteria.
-
-`exe_path` accepts a regular expression to be matched against the full executable command line, including the directory where the executable resides on the file system.
 
 #### kubernetes services
 
@@ -146,14 +148,14 @@ the instrumented processes need to match all the selector properties.
 
 Name               | Type           | Description                                                                                                | Default | Required
 -------------------|----------------|-------------------------------------------------------------------------------------------------------------|---------|---------
-`namespace`        | `string`       | Regular expression of Kubernetes Namespaces to match.                                                       | `""`    | no
-`pod_name`         | `string`       | Regular expression of Kubernetes Pods to match.                                                             | `""`    | no
-`deployment_name`  | `string`       | Regular expression of Kubernetes Deployments to match.                                                      | `""`    | no
-`statefulset_name` | `string`       | Regular expression of Kubernetes StatefulSets to match.                                                     | `""`    | no
-`replicaset_name`  | `string`       | Regular expression of Kubernetes ReplicaSets to match.                                                      | `""`    | no
 `daemonset_name`   | `string`       | Regular expression of Kubernetes DaemonSets to match.                                                       | `""`    | no
+`deployment_name`  | `string`       | Regular expression of Kubernetes Deployments to match.                                                      | `""`    | no
+`namespace`        | `string`       | Regular expression of Kubernetes Namespaces to match.                                                       | `""`    | no
 `owner_name`       | `string`       | Regular expression of Kubernetes owners of running Pods to match.                                           | `""`    | no
 `pod_labels`       | `map(string)`  | Key-value pairs of labels with keys matching Kubernetes Pods with the provided value as regular expression. |  `{}`   | no
+`pod_name`         | `string`       | Regular expression of Kubernetes Pods to match.                                                             | `""`    | no
+`replicaset_name`  | `string`       | Regular expression of Kubernetes ReplicaSets to match.                                                      | `""`    | no
+`statefulset_name` | `string`       | Regular expression of Kubernetes StatefulSets to match.                                                     | `""`    | no
 
 ### metrics
 
@@ -195,19 +197,19 @@ This block is used to configure the routes to match HTTP paths into user-provide
 
 Name              | Type           | Description                                                                               | Default       | Required
 ------------------|----------------|-------------------------------------------------------------------------------------------|---------------|---------
-`patterns`        | `list(string)` | List of provided URL path patterns to set the `http.route` trace/metric property          | `[]`          | no
-`ignore_patterns` | `list(string)` | List of provided URL path patterns to ignore from `http.route` trace/metric property.     | `[]`          | no
 `ignore_mode`     | `string`       | The mode to use when ignoring patterns.                                                   | `""`          | no
+`ignore_patterns` | `list(string)` | List of provided URL path patterns to ignore from `http.route` trace/metric property.     | `[]`          | no
+`patterns`        | `list(string)` | List of provided URL path patterns to set the `http.route` trace/metric property          | `[]`          | no
 `unmatched`       | `string`       | Specifies what to do when a trace HTTP path does not match any of the `patterns` entries. | `"heuristic"` | no
-
-`patterns` and `ignored_patterns` are a list of patterns which a URL path with specific tags which allow for grouping path segments (or ignored them).
-The matcher tags can be in the `:name` or `{name}` format.
 
 `ignore_mode` properties are:
 
 - `all` discards metrics and traces matching the `ignored_patterns`.
 - `metrics` discards only the metrics that match the `ignored_patterns`. No trace events are ignored.
 - `traces` discards only the traces that match the `ignored_patterns`. No metric events are ignored.
+
+`patterns` and `ignore_patterns` are a list of patterns which a URL path with specific tags which allow for grouping path segments (or ignored them).
+The matcher tags can be in the `:name` or `{name}` format.
 
 `unmatched` properties are:
 
@@ -318,7 +320,7 @@ Replace the following:
 [metrics]: #metrics
 [network]: #network
 [output]: #output
-[in-memory traffic]: ../../../../get-started/component_controller#in-memory-traffic
+[in-memory traffic]: ../../../../component_controller#in-memory-traffic
 [run command]: ../../../cli/run/
 [scrape]: ../../prometheus/prometheus.scrape/
 
