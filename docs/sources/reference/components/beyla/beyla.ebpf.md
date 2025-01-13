@@ -320,7 +320,7 @@ Replace the following:
 [metrics]: #metrics
 [network]: #network
 [output]: #output
-[in-memory traffic]: ../../../component_controller#in-memory-traffic
+[in-memory traffic]: ../../../get-started/component_controller#in-memory-traffic
 [run command]: ../../../cli/run/
 [scrape]: ../../prometheus/prometheus.scrape/
 
