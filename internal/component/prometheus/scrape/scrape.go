@@ -269,16 +269,14 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	componentID := livedebugging.ComponentID(c.opts.ID)
 	interceptor := prometheus.NewInterceptor(alloyAppendable, ls,
 		prometheus.WithAppendHook(func(globalRef storage.SeriesRef, l labels.Labels, t int64, v float64, next storage.Appender) (storage.SeriesRef, error) {
-			localID := ls.GetLocalRefID(c.opts.ID, uint64(globalRef))
-			_, nextErr := next.Append(storage.SeriesRef(localID), l, t, v)
+			_, nextErr := next.Append(globalRef, l, t, v)
 			if c.debugDataPublisher.IsActive(componentID) {
 				c.debugDataPublisher.Publish(componentID, fmt.Sprintf("ts=%d, labels=%s, value=%f", t, l, v))
 			}
 			return globalRef, nextErr
 		}),
 		prometheus.WithHistogramHook(func(globalRef storage.SeriesRef, l labels.Labels, t int64, h *histogram.Histogram, fh *histogram.FloatHistogram, next storage.Appender) (storage.SeriesRef, error) {
-			localID := ls.GetLocalRefID(c.opts.ID, uint64(globalRef))
-			_, nextErr := next.AppendHistogram(storage.SeriesRef(localID), l, t, h, fh)
+			_, nextErr := next.AppendHistogram(globalRef, l, t, h, fh)
 			if c.debugDataPublisher.IsActive(componentID) {
 				var data string
 				if h != nil {
@@ -293,16 +291,14 @@ func New(o component.Options, args Arguments) (*Component, error) {
 			return globalRef, nextErr
 		}),
 		prometheus.WithMetadataHook(func(globalRef storage.SeriesRef, l labels.Labels, m metadata.Metadata, next storage.Appender) (storage.SeriesRef, error) {
-			localID := ls.GetLocalRefID(c.opts.ID, uint64(globalRef))
-			_, nextErr := next.UpdateMetadata(storage.SeriesRef(localID), l, m)
+			_, nextErr := next.UpdateMetadata(globalRef, l, m)
 			if c.debugDataPublisher.IsActive(componentID) {
 				c.debugDataPublisher.Publish(componentID, fmt.Sprintf("labels=%s, type=%s, unit=%s, help=%s", l, m.Type, m.Unit, m.Help))
 			}
 			return globalRef, nextErr
 		}),
 		prometheus.WithExemplarHook(func(globalRef storage.SeriesRef, l labels.Labels, e exemplar.Exemplar, next storage.Appender) (storage.SeriesRef, error) {
-			localID := ls.GetLocalRefID(c.opts.ID, uint64(globalRef))
-			_, nextErr := next.AppendExemplar(storage.SeriesRef(localID), l, e)
+			_, nextErr := next.AppendExemplar(globalRef, l, e)
 			if c.debugDataPublisher.IsActive(componentID) {
 				c.debugDataPublisher.Publish(componentID, fmt.Sprintf("ts=%d, labels=%s, exemplar_labels=%s, value=%f", e.Ts, l, e.Labels, e.Value))
 			}
