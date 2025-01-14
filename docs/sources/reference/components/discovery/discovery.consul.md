@@ -29,7 +29,7 @@ Name                     | Type                | Description                    
 `allow_stale`            | `bool`              | Allow stale Consul results. Reduces load on Consul. Refer to the [Consul documentation][] for more information. | `true`           | no
 `bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                                            |                  | no
 `bearer_token`           | `secret`            | Bearer token to authenticate with.                                                                              |                  | no
-`datacenter`             | `string`            | Datacenter to query. If not provided, the default is used.                                                      |                  | no
+`datacenter`             | `string`            | Data center to query. If not provided, the default is used.                                                     |                  | no
 `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                                        | `true`           | no
 `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                                    | `true`           | no
 `namespace`              | `string`            | Namespace to use. Only supported in Consul Enterprise.                                                          |                  | no
@@ -53,8 +53,8 @@ Name                     | Type                | Description                    
 
 * [`authorization` block][authorization]
 * [`basic_auth` block][basic_auth]
-* [`bearer_token_file` argument](#arguments)
-* [`bearer_token` argument](#arguments)
+* [`bearer_token_file` argument][arguments]
+* [`bearer_token` argument][arguments]
 * [`oauth2` block][oauth2]
 
 {{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
@@ -111,7 +111,7 @@ Each target includes the following labels:
 * `__meta_consul_address`: The address of the target.
 * `__meta_consul_metadata_<key>`: Each node metadata key value of the target.
 * `__meta_consul_node`: The node name defined for the target.
-* `__meta_consul_partition`: The admin partition name where the service is registered.
+* `__meta_consul_partition`: The administrator partition name where the service is registered.
 * `__meta_consul_service_address`: The service address of the target.
 * `__meta_consul_service_id`: The service ID of the target.
 * `__meta_consul_service_metadata_<key>`: Each service metadata key value of the target.
