@@ -50,9 +50,9 @@ tls_config       | [tls_config][]       | TLS configuration for requests to the 
 
 Exactly one of the `oauth` or `managed_identity` blocks must be specified.
 
-[managed_identity]: #managed_identity-block
-[oauth]: #oauth-block
-[tls_config]: #tls_config-block
+[managed_identity]: #managed_identity
+[oauth]: #oauth
+[tls_config]: #tls_config
 
 ### managed_identity
 

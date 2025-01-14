@@ -41,7 +41,7 @@ Name                     | Type                | Description                    
 
 The DigitalOcean API uses bearer tokens for authentication, see more about it in the [DigitalOcean API documentation](https://docs.digitalocean.com/reference/api/api-reference/#section/Authentication).
 
-Exactly one of the [`bearer_token`](#arguments) and [`bearer_token_file`](#arguments) arguments must be specified to authenticate against DigitalOcean.
+Exactly one of the [`bearer_token`][arguments] and [`bearer_token_file`][arguments] arguments must be specified to authenticate against DigitalOcean.
 
 [arguments]: #arguments
 

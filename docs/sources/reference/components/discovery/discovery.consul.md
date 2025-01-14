@@ -77,10 +77,10 @@ tls_config          | [tls_config][]    | Configure TLS settings for connecting 
 The `>` symbol indicates deeper levels of nesting.
 For example, `oauth2 > tls_config` refers to a `tls_config` block defined inside an `oauth2` block.
 
-[basic_auth]: #basic_auth-block
-[authorization]: #authorization-block
-[oauth2]: #oauth2-block
-[tls_config]: #tls_config-block
+[authorization]: #authorization
+[basic_auth]: #basic_auth
+[oauth2]: #oauth2
+[tls_config]: #tls_config
 
 ### authorization
 
