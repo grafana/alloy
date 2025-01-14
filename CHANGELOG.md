@@ -14,6 +14,13 @@ Main (unreleased)
 
 - Add support for TLS to `prometheus.write.queue`. (@mattdurham)
 
+### Bugfixes
+
+- Fix issue where `alloy_prometheus_relabel_metrics_processed` was not being incremented. (@mattdurham)
+
+### Enhancements
+
+- Update `prometheus.write.queue` to support v2 for cpu performance. (@mattdurham)
 - (_Experimental_) Add health reporting to `database_observability.mysql` component (@cristiangreco)
 
 v1.6.0-rc.0
