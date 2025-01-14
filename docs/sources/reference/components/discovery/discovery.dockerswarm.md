@@ -42,8 +42,8 @@ Name                     | Type                | Description                    
 
 * [`authorization` block][authorization]
 * [`basic_auth` block][basic_auth]
-* [`bearer_token_file` argument](#arguments)
-* [`bearer_token` argument](#arguments)
+* [`bearer_token_file` argument][arguments]
+* [`bearer_token` argument][arguments]
 * [`oauth2` block][oauth2]
 
 {{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
@@ -57,7 +57,7 @@ The following blocks are supported inside the definition of `discovery.dockerswa
 Hierarchy           | Block             | Description                                                                        | Required
 --------------------|-------------------|------------------------------------------------------------------------------------|---------
 authorization       | [authorization][] | Configure generic authorization to the endpoint.                                   | no
-basic_auth          | [basic_auth][]    | Configure basic_auth for authenticating to the endpoint.                           | no
+basic_auth          | [basic_auth][]    | Configure `basic_auth` for authenticating to the endpoint.                         | no
 filter              | [filter][]        | Optional filter to limit the discovery process to a subset of available resources. | no
 oauth2              | [oauth2][]        | Configure OAuth2 for authenticating to the endpoint.                               | no
 oauth2 > tls_config | [tls_config][]    | Configure TLS settings for connecting to the endpoint.                             | no
@@ -83,7 +83,7 @@ For example, `oauth2 > tls_config` refers to a `tls_config` block defined inside
 ### filter
 
 Filters can be used to limit the discovery process to a subset of available resources.
-It is possible to define multiple `filter` blocks within the `discovery.dockerswarm` block.
+It's possible to define multiple `filter` blocks within the `discovery.dockerswarm` block.
 The list of available filters depends on the `role`:
 
 * [nodes filters](https://docs.docker.com/engine/api/v1.40/#operation/NodeList)
@@ -125,21 +125,21 @@ If a service has no published ports, a target per service is created using the `
 
 Available meta labels:
 
-* `__meta_dockerswarm_network_id`: the ID of the network.
-* `__meta_dockerswarm_network_ingress`: whether the network is ingress.
-* `__meta_dockerswarm_network_internal`: whether the network is internal.
-* `__meta_dockerswarm_network_label_<labelname>`: each label of the network.
-* `__meta_dockerswarm_network_name`: the name of the network.
-* `__meta_dockerswarm_network_scope`: the scope of the network.
-* `__meta_dockerswarm_service_endpoint_port_name`: the name of the endpoint port, if available.
-* `__meta_dockerswarm_service_endpoint_port_publish_mode`: the publish mode of the endpoint port.
-* `__meta_dockerswarm_service_id`: the ID of the service.
-* `__meta_dockerswarm_service_label_<labelname>`: each label of the service.
-* `__meta_dockerswarm_service_mode`: the mode of the service.
-* `__meta_dockerswarm_service_name`: the name of the service.
-* `__meta_dockerswarm_service_task_container_hostname`: the container hostname of the target, if available.
-* `__meta_dockerswarm_service_task_container_image`: the container image of the target.
-* `__meta_dockerswarm_service_updating_status`: the status of the service, if available.
+* `__meta_dockerswarm_network_id`: The ID of the network.
+* `__meta_dockerswarm_network_ingress`: Whether the network is ingress.
+* `__meta_dockerswarm_network_internal`: Whether the network is internal.
+* `__meta_dockerswarm_network_label_<labelname>`: Each label of the network.
+* `__meta_dockerswarm_network_name`: The name of the network.
+* `__meta_dockerswarm_network_scope`: The scope of the network.
+* `__meta_dockerswarm_service_endpoint_port_name`: The name of the endpoint port, if available.
+* `__meta_dockerswarm_service_endpoint_port_publish_mode`: The publish mode of the endpoint port.
+* `__meta_dockerswarm_service_id`: The ID of the service.
+* `__meta_dockerswarm_service_label_<labelname>`: Each label of the service.
+* `__meta_dockerswarm_service_mode`: The mode of the service.
+* `__meta_dockerswarm_service_name`: The name of the service.
+* `__meta_dockerswarm_service_task_container_hostname`: The container hostname of the target, if available.
+* `__meta_dockerswarm_service_task_container_image`: The container image of the target.
+* `__meta_dockerswarm_service_updating_status`: The status of the service, if available.
 
 ### tasks
 
@@ -149,35 +149,35 @@ If a task has no published ports, a target per task is created using the `port` 
 
 Available meta labels:
 
-- `__meta_dockerswarm_container_label_<labelname>`: each label of the container.
-- `__meta_dockerswarm_task_id`: the ID of the task.
-- `__meta_dockerswarm_task_container_id`: the container ID of the task.
-- `__meta_dockerswarm_task_desired_state`: the desired state of the task.
-- `__meta_dockerswarm_task_slot`: the slot of the task.
-- `__meta_dockerswarm_task_state`: the state of the task.
-- `__meta_dockerswarm_task_port_publish_mode`: the publish mode of the task port.
-- `__meta_dockerswarm_service_id`: the ID of the service.
-- `__meta_dockerswarm_service_name`: the name of the service.
-- `__meta_dockerswarm_service_mode`: the mode of the service.
-- `__meta_dockerswarm_service_label_<labelname>`: each label of the service.
-- `__meta_dockerswarm_network_id`: the ID of the network.
-- `__meta_dockerswarm_network_name`: the name of the network.
-- `__meta_dockerswarm_network_ingress`: whether the network is ingress.
-- `__meta_dockerswarm_network_internal`: whether the network is internal.
-- `__meta_dockerswarm_network_label_<labelname>`: each label of the network.
-- `__meta_dockerswarm_network_label`: each label of the network.
-- `__meta_dockerswarm_network_scope`: the scope of the network.
-- `__meta_dockerswarm_node_id`: the ID of the node.
-- `__meta_dockerswarm_node_hostname`: the hostname of the node.
-- `__meta_dockerswarm_node_address`: the address of the node.
-- `__meta_dockerswarm_node_availability`: the availability of the node.
-- `__meta_dockerswarm_node_label_<labelname>`: each label of the node.
-- `__meta_dockerswarm_node_platform_architecture`: the architecture of the node.
-- `__meta_dockerswarm_node_platform_os`: the operating system of the node.
-- `__meta_dockerswarm_node_role`: the role of the node.
-- `__meta_dockerswarm_node_status`: the status of the node.
+* `__meta_dockerswarm_container_label_<labelname>`: Each label of the container.
+* `__meta_dockerswarm_network_id`: The ID of the network.
+* `__meta_dockerswarm_network_ingress`: Whether the network is ingress.
+* `__meta_dockerswarm_network_internal`: Whether the network is internal.
+* `__meta_dockerswarm_network_label_<labelname>`: Each label of the network.
+* `__meta_dockerswarm_network_label`: Each label of the network.
+* `__meta_dockerswarm_network_name`: The name of the network.
+* `__meta_dockerswarm_network_scope`: The scope of the network.
+* `__meta_dockerswarm_node_address`: The address of the node.
+* `__meta_dockerswarm_node_availability`: The availability of the node.
+* `__meta_dockerswarm_node_hostname`: The hostname of the node.
+* `__meta_dockerswarm_node_id`: The ID of the node.
+* `__meta_dockerswarm_node_label_<labelname>`: Each label of the node.
+* `__meta_dockerswarm_node_platform_architecture`: The architecture of the node.
+* `__meta_dockerswarm_node_platform_os`: The operating system of the node.
+* `__meta_dockerswarm_node_role`: The role of the node.
+* `__meta_dockerswarm_node_status`: The status of the node.
+* `__meta_dockerswarm_service_id`: The ID of the service.
+* `__meta_dockerswarm_service_label_<labelname>`: Each label of the service.
+* `__meta_dockerswarm_service_mode`: The mode of the service.
+* `__meta_dockerswarm_service_name`: The name of the service.
+* `__meta_dockerswarm_task_container_id`: The container ID of the task.
+* `__meta_dockerswarm_task_desired_state`: The desired state of the task.
+* `__meta_dockerswarm_task_id`: The ID of the task.
+* `__meta_dockerswarm_task_port_publish_mode`: The publish mode of the task port.
+* `__meta_dockerswarm_task_slot`: The slot of the task.
+* `__meta_dockerswarm_task_state`: The state of the task.
 
-The `__meta_dockerswarm_network_*` meta labels are not populated for ports which are published with mode=host.
+The `__meta_dockerswarm_network_*` meta labels aren't populated for ports which are published with mode=host.
 
 ### nodes
 
@@ -185,19 +185,19 @@ The `nodes` role is used to discover [Swarm nodes](https://docs.docker.com/engin
 
 Available meta labels:
 
-- `__meta_dockerswarm_node_address`: the address of the node.
-- `__meta_dockerswarm_node_availability`: the availability of the node.
-- `__meta_dockerswarm_node_engine_version`: the version of the node engine.
-- `__meta_dockerswarm_node_hostname`: the hostname of the node.
-- `__meta_dockerswarm_node_id`: the ID of the node.
-- `__meta_dockerswarm_node_label_<labelname>`: each label of the node.
-- `__meta_dockerswarm_node_manager_address`: the address of the manager component of the node.
-- `__meta_dockerswarm_node_manager_leader`: the leadership status of the manager component of the node (true or false).
-- `__meta_dockerswarm_node_manager_reachability`: the reachability of the manager component of the node.
-- `__meta_dockerswarm_node_platform_architecture`: the architecture of the node.
-- `__meta_dockerswarm_node_platform_os`: the operating system of the node.
-- `__meta_dockerswarm_node_role`: the role of the node.
-- `__meta_dockerswarm_node_status`: the status of the node.
+* `__meta_dockerswarm_node_address`: The address of the node.
+* `__meta_dockerswarm_node_availability`: The availability of the node.
+* `__meta_dockerswarm_node_engine_version`: The version of the node engine.
+* `__meta_dockerswarm_node_hostname`: The hostname of the node.
+* `__meta_dockerswarm_node_id`: The ID of the node.
+* `__meta_dockerswarm_node_label_<labelname>`: Each label of the node.
+* `__meta_dockerswarm_node_manager_address`: The address of the manager component of the node.
+* `__meta_dockerswarm_node_manager_leader`: The leadership status of the manager component of the node (true or false).
+* `__meta_dockerswarm_node_manager_reachability`: The reachability of the manager component of the node.
+* `__meta_dockerswarm_node_platform_architecture`: The architecture of the node.
+* `__meta_dockerswarm_node_platform_os`: The operating system of the node.
+* `__meta_dockerswarm_node_role`: The role of the node.
+* `__meta_dockerswarm_node_status`: The status of the node.
 
 ## Component health
 
@@ -206,11 +206,11 @@ In those cases, exported fields retain their last healthy values.
 
 ## Debug information
 
-`discovery.dockerswarm` does not expose any component-specific debug information.
+`discovery.dockerswarm` doesn't expose any component-specific debug information.
 
 ## Debug metrics
 
-`discovery.dockerswarm` does not expose any component-specific debug metrics.
+`discovery.dockerswarm` doesn't expose any component-specific debug metrics.
 
 ## Example
 
@@ -239,11 +239,11 @@ prometheus.scrape "demo" {
 
 prometheus.remote_write "demo" {
   endpoint {
-    url = PROMETHEUS_REMOTE_WRITE_URL
+    url = <PROMETHEUS_REMOTE_WRITE_URL>
 
     basic_auth {
-      username = USERNAME
-      password = PASSWORD
+      username = <USERNAME>
+      password = <PASSWORD>
     }
   }
 }
@@ -251,9 +251,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-- `PROMETHEUS_REMOTE_WRITE_URL`: The URL of the Prometheus remote_write-compatible server to send metrics to.
-- `USERNAME`: The username to use for authentication to the remote_write API.
-- `PASSWORD`: The password to use for authentication to the remote_write API.
+* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
+* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
