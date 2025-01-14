@@ -43,8 +43,8 @@ Name                     | Type                | Description                    
 
 * [`authorization` block][authorization]
 * [`basic_auth` block][basic_auth]
-* [`bearer_token_file` argument](#arguments)
-* [`bearer_token` argument](#arguments)
+* [`bearer_token_file` argument][arguments]
+* [`bearer_token` argument][arguments]
 * [`oauth2` block][oauth2]
 
 [arguments]: #arguments
@@ -67,11 +67,11 @@ tls_config          | [tls_config][]    | Configure TLS settings for connecting 
 The `>` symbol indicates deeper levels of nesting.
 For example, `oauth2 > tls_config` refers to a `tls_config` block defined inside an `oauth2` block.
 
-[filter]: #filter-block
-[basic_auth]: #basic_auth-block
-[authorization]: #authorization-block
-[oauth2]: #oauth2-block
-[tls_config]: #tls_config-block
+[filter]: #filter
+[basic_auth]: #basic_auth
+[authorization]: #authorization
+[oauth2]: #oauth2
+[tls_config]: #tls_config
 
 ### authorization
 

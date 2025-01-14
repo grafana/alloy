@@ -47,7 +47,7 @@ Hierarchy  | Block          | Description                                       
 -----------|----------------|--------------------------------------------------------|---------
 tls_config | [tls_config][] | Configure TLS settings for connecting to the endpoint. | no
 
-[tls_config]: #tls_config-block
+[tls_config]: #tls_config
 
 ### tls_config
 
