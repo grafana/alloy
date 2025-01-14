@@ -21,7 +21,7 @@ discovery.azure "<LABEL>" {
 
 ## Arguments
 
-The following arguments are supported:
+You can use the following arguments with `discovery.azure`:
 
 Name                     | Type                | Description                                                                                      | Default              | Required
 -------------------------|---------------------|--------------------------------------------------------------------------------------------------|----------------------|---------
@@ -29,7 +29,7 @@ Name                     | Type                | Description                    
 `environment`            | `string`            | Azure environment.                                                                               | `"AzurePublicCloud"` | no
 `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`               | no
 `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |                      | no
-`port`                   | `number`            | Port to be appended to the `__address__` label for each target.                                  | `80`                 | no
+`port`                   | `number`            | The port appended to the `__address__` label for each target.                                    | `80`                 | no
 `proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |                      | no
 `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false`              | no
 `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |                      | no
@@ -45,7 +45,7 @@ The following blocks are supported inside the definition of `discovery.azure`:
 Hierarchy        | Block                | Description                                      | Required
 -----------------|----------------------|--------------------------------------------------|---------
 managed_identity | [managed_identity][] | Managed Identity configuration for Azure API.    | no
-oauth            | [oauth][]            | OAuth configuration for Azure API.               | no
+oauth            | [oauth][]            | OAuth 2.0 configuration for Azure API.           | no
 tls_config       | [tls_config][]       | TLS configuration for requests to the Azure API. | no
 
 Exactly one of the `oauth` or `managed_identity` blocks must be specified.
@@ -64,13 +64,13 @@ Name        | Type     | Description                 | Default | Required
 
 ### oauth
 
-The `oauth` block configures OAuth authentication for the Azure API.
+The `oauth` block configures OAuth 2.0 authentication for the Azure API.
 
-Name            | Type     | Description          | Default | Required
-----------------|----------|----------------------|---------|---------
-`client_id`     | `string` | OAuth client ID.     |         | yes
-`client_secret` | `string` | OAuth client secret. |         | yes
-`tenant_id`     | `string` | OAuth tenant ID.     |         | yes
+Name            | Type     | Description              | Default | Required
+----------------|----------|--------------------------|---------|---------
+`client_id`     | `string` | OAuth 2.0 client ID.     |         | yes
+`client_secret` | `string` | OAuth 2.0 client secret. |         | yes
+`tenant_id`     | `string` | OAuth 2.0 tenant ID.     |         | yes
 
 ### tls_config
 
@@ -90,17 +90,18 @@ Each target includes the following labels:
 * `__meta_azure_machine_id`: The UUID of the Azure VM.
 * `__meta_azure_machine_location`: The region the VM is in.
 * `__meta_azure_machine_name`: The name of the VM.
-* `__meta_azure_machine_os_type`: The OS the VM is running (either `Linux` or `Windows`).
+* `__meta_azure_machine_os_type`: The OS the VM is running, either `Linux` or `Windows`.
 * `__meta_azure_machine_private_ip`: The private IP address of the VM.
 * `__meta_azure_machine_public_ip`: The public IP address of the VM.
 * `__meta_azure_machine_resource_group`: The name of the resource group the VM is in.
 * `__meta_azure_machine_scale_set`: The name of the scale set the VM is in.
 * `__meta_azure_machine_size`: The size of the VM.
-* `__meta_azure_machine_tag_*`: A tag on the VM. There will be one label per tag.
+* `__meta_azure_machine_tag_*`: A tag on the VM. There is one label per tag.
 * `__meta_azure_subscription_id`: The Azure subscription ID.
 * `__meta_azure_tenant_id`: The Azure tenant ID.
 
-Each discovered VM maps to a single target. The `__address__` label is set to the `private_ip:port` (`[private_ip]:port` if the private IP is an IPv6 address) of the VM.
+Each discovered VM maps to a single target.
+The `__address__` label is set to the `private_ip:port` of the VM if the private IP is an IPv4 address, or `[private_ip]:port` if the private IP of the VM is an IPv6 address.
 
 ## Component health
 
@@ -152,8 +153,8 @@ Replace the following:
 * _`<AZURE_CLIENT_SECRET>`_: Your Azure client secret.
 * _`<AZURE_TENANT_ID>`_: Your Azure tenant ID.
 * _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the remote_write API.
-* _`<PASSWORD>`_: The password to use for authentication to the remote_write API.
+* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
