@@ -10,20 +10,7 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
-### Features
-
-- Add support for TLS to `prometheus.write.queue`. (@mattdurham)
-
-### Bugfixes
-
-- Fix issue where `alloy_prometheus_relabel_metrics_processed` was not being incremented. (@mattdurham)
-
-### Enhancements
-
-- Update `prometheus.write.queue` to support v2 for cpu performance. (@mattdurham)
-- (_Experimental_) Add health reporting to `database_observability.mysql` component (@cristiangreco)
-
-v1.6.0-rc.0
+v1.6.0-rc.1
 -----------------
 
 ### Breaking changes
@@ -36,6 +23,8 @@ v1.6.0-rc.0
     [release-notes-alloy-1_6]: https://grafana.com/docs/alloy/latest/release-notes/#v16
 
 ### Features
+
+- Add support for TLS to `prometheus.write.queue`. (@mattdurham)
 
 - Add `otelcol.receiver.syslog` component to receive otel logs in syslog format (@dehaansa)
 
@@ -58,6 +47,10 @@ v1.6.0-rc.0
 - Add a new `/-/healthy` endpoint which returns HTTP 500 if one or more components are unhealthy. (@ptodev)
 
 ### Enhancements
+
+- Update `prometheus.write.queue` to support v2 for cpu performance. (@mattdurham)
+
+- (_Experimental_) Add health reporting to `database_observability.mysql` component (@cristiangreco)
 
 - Add second metrics sample to the support bundle to provide delta information (@dehaansa)
 
@@ -97,6 +90,8 @@ v1.6.0-rc.0
 - Reduced memory allocation in discovery components by up to 30% (@thampiotr)
 
 ### Bugfixes
+
+- Fix issue where `alloy_prometheus_relabel_metrics_processed` was not being incremented. (@mattdurham)
 
 - Fixed issue with automemlimit logging bad messages and trying to access cgroup on non-linux builds (@dehaansa)
 
