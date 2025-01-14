@@ -115,8 +115,12 @@ func (args *Arguments) Validate() error {
 
 // Convert implements exporter.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
+	protocol, err := args.Protocol.Convert()
+	if err != nil {
+		return nil, err
+	}
 	return &loadbalancingexporter.Config{
-		Protocol:   args.Protocol.Convert(),
+		Protocol:   *protocol,
 		Resolver:   args.Resolver.Convert(),
 		RoutingKey: args.RoutingKey,
 		TimeoutSettings: exporterhelper.TimeoutConfig{
@@ -132,10 +136,14 @@ type Protocol struct {
 	OTLP OtlpConfig `alloy:"otlp,block"`
 }
 
-func (protocol Protocol) Convert() loadbalancingexporter.Protocol {
-	return loadbalancingexporter.Protocol{
-		OTLP: protocol.OTLP.Convert(),
+func (protocol Protocol) Convert() (*loadbalancingexporter.Protocol, error) {
+	otlp, err := protocol.OTLP.Convert()
+	if err != nil {
+		return nil, err
 	}
+	return &loadbalancingexporter.Protocol{
+		OTLP: *otlp,
+	}, nil
 }
 
 // OtlpConfig defines the config for an OTLP exporter
@@ -157,15 +165,19 @@ func (oc *OtlpConfig) SetToDefault() {
 	oc.Queue.SetToDefault()
 }
 
-func (oc OtlpConfig) Convert() otlpexporter.Config {
-	return otlpexporter.Config{
+func (oc OtlpConfig) Convert() (*otlpexporter.Config, error) {
+	clientConfig, err := oc.Client.Convert()
+	if err != nil {
+		return nil, err
+	}
+	return &otlpexporter.Config{
 		TimeoutConfig: exporterhelper.TimeoutConfig{
 			Timeout: oc.Timeout,
 		},
 		QueueConfig:  *oc.Queue.Convert(),
 		RetryConfig:  *oc.Retry.Convert(),
-		ClientConfig: *oc.Client.Convert(),
-	}
+		ClientConfig: *clientConfig,
+	}, nil
 }
 
 // ResolverSettings defines the configurations for the backend resolver
@@ -364,15 +376,16 @@ type GRPCClientArguments struct {
 
 	// Auth is a binding to an otelcol.auth.* component extension which handles
 	// authentication.
-	Auth *auth.Handler `alloy:"auth,attr,optional"`
+	// alloy name is auth instead of authentication to not break user interface compatibility.
+	Authentication *auth.Handler `alloy:"auth,attr,optional"`
 }
 
 var _ syntax.Defaulter = &GRPCClientArguments{}
 
 // Convert converts args into the upstream type.
-func (args *GRPCClientArguments) Convert() *otelconfiggrpc.ClientConfig {
+func (args *GRPCClientArguments) Convert() (*otelconfiggrpc.ClientConfig, error) {
 	if args == nil {
-		return nil
+		return nil, nil
 	}
 
 	opaqueHeaders := make(map[string]configopaque.String)
@@ -381,9 +394,14 @@ func (args *GRPCClientArguments) Convert() *otelconfiggrpc.ClientConfig {
 	}
 
 	// Configure the authentication if args.Auth is set.
-	var auth *otelconfigauth.Authentication
-	if args.Auth != nil {
-		auth = &otelconfigauth.Authentication{AuthenticatorID: args.Auth.ID}
+	var authentication *otelconfigauth.Authentication
+	if args.Authentication != nil {
+		ext, err := args.Authentication.GetExtension(auth.Client)
+		if err != nil {
+			return nil, err
+		}
+
+		authentication = &otelconfigauth.Authentication{AuthenticatorID: ext.ID}
 	}
 
 	balancerName := args.BalancerName
@@ -404,15 +422,19 @@ func (args *GRPCClientArguments) Convert() *otelconfiggrpc.ClientConfig {
 		BalancerName:    balancerName,
 		Authority:       args.Authority,
 
-		Auth: auth,
-	}
+		Auth: authentication,
+	}, nil
 }
 
 // Extensions exposes extensions used by args.
 func (args *GRPCClientArguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
 	m := make(map[otelcomponent.ID]otelextension.Extension)
-	if args.Auth != nil {
-		m[args.Auth.ID] = args.Auth.Extension
+	if args.Authentication != nil {
+		ext, err := args.Authentication.GetExtension(auth.Client)
+		if err != nil {
+			return m
+		}
+		m[ext.ID] = ext.Extension
 	}
 	return m
 }

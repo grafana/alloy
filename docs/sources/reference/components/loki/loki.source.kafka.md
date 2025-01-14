@@ -147,7 +147,7 @@ loki.source.kafka "local" {
   brokers                = ["localhost:9092"]
   topics                 = ["quickstart-events"]
   labels                 = {component = "loki.source.kafka"}
-  forward_to             = [loki.relabel.kafka.receiver]
+  forward_to             = [loki.write.local.receiver]
   use_incoming_timestamp = true
   relabel_rules          = loki.relabel.kafka.rules
 }
