@@ -10,6 +10,7 @@ import (
 	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/prometheus/common/model"
+	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability"
@@ -66,10 +67,10 @@ type SchemaTable struct {
 	// TODO(cristian): allow configuring cache size (currently unlimited).
 	cache *expirable.LRU[string, tableInfo]
 
-	logger log.Logger
-
-	ctx    context.Context
-	cancel context.CancelFunc
+	logger  log.Logger
+	running *atomic.Bool
+	ctx     context.Context
+	cancel  context.CancelFunc
 }
 
 type tableInfo struct {
@@ -86,18 +87,29 @@ func NewSchemaTable(args SchemaTableArguments) (*SchemaTable, error) {
 		collectInterval: args.CollectInterval,
 		entryHandler:    args.EntryHandler,
 		cache:           expirable.NewLRU[string, tableInfo](0, nil, args.CacheTTL),
-		logger:          args.Logger,
+		logger:          log.With(args.Logger, "collector", "SchemaTable"),
+		running:         &atomic.Bool{},
 	}, nil
+}
+
+func (c *SchemaTable) Name() string {
+	return "SchemaTable"
 }
 
 func (c *SchemaTable) Start(ctx context.Context) error {
 	level.Debug(c.logger).Log("msg", "SchemaTable collector started")
 
+	c.running.Store(true)
 	ctx, cancel := context.WithCancel(ctx)
 	c.ctx = ctx
 	c.cancel = cancel
 
 	go func() {
+		defer func() {
+			c.Stop()
+			c.running.Store(false)
+		}()
+
 		ticker := time.NewTicker(c.collectInterval)
 
 		for {
@@ -117,6 +129,10 @@ func (c *SchemaTable) Start(ctx context.Context) error {
 	}()
 
 	return nil
+}
+
+func (c *SchemaTable) Stopped() bool {
+	return !c.running.Load()
 }
 
 // Stop should be kept idempotent
@@ -153,6 +169,11 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 				Line:      fmt.Sprintf(`level=info msg="schema detected" op="%s" schema="%s"`, OP_SCHEMA_DETECTION, schema),
 			},
 		}
+	}
+
+	if len(schemas) == 0 {
+		level.Info(c.logger).Log("msg", "no schema detected from information_schema.schemata")
+		return nil
 	}
 
 	tables := []tableInfo{}

@@ -48,11 +48,13 @@ The following arguments are supported:
 The following blocks are supported inside the definition of
 `prometheus.write.queue`:
 
- Hierarchy             | Block           | Description                                              | Required 
------------------------|-----------------|----------------------------------------------------------|----------
- persistence           | [persistence][] | Configuration for persistence                            | no       
- endpoint              | [endpoint][]    | Location to send metrics to.                             | no       
- endpoint > basic_auth | [basic_auth][]  | Configure basic_auth for authenticating to the endpoint. | no       
+ Hierarchy             | Block            | Description                                              | Required 
+-----------------------|------------------|----------------------------------------------------------|----------
+ persistence           | [persistence][]  | Configuration for persistence                            | no       
+ endpoint              | [endpoint][]     | Location to send metrics to.                             | no       
+ endpoint > basic_auth | [basic_auth][]   | Configure basic_auth for authenticating to the endpoint. | no       
+ endpoint > tls_config | [tls_config][]   | Configure TLS settings for connecting to the endpoint.   | no
+
 
 The `>` symbol indicates deeper levels of nesting. For example, `endpoint >
 basic_auth` refers to a `basic_auth` block defined inside an
@@ -61,6 +63,8 @@ basic_auth` refers to a `basic_auth` block defined inside an
 [endpoint]: #endpoint-block
 [basic_auth]: #basic_auth-block
 [persistence]: #persistence-block
+[tls_config]: #tls_config-block
+
 
 ### persistence block
 
@@ -83,17 +87,19 @@ The `endpoint` block describes a single location to send metrics to. Multiple
 
 The following arguments are supported:
 
- Name                 | Type          | Description                                                     | Default | Required 
-----------------------|---------------|-----------------------------------------------------------------|---------|----------
- `url`                | `string`      | Full URL to send metrics to.                                    |         | yes      
-`bearer_token`        | `secret`      | Bearer token to authenticate with.                              |         | no
- `write_timeout`      | `duration`    | Timeout for requests made to the URL.                           | `"30s"` | no       
- `retry_backoff`      | `duration`    | How long to wait between retries.                               | `1s`    | no       
- `max_retry_attempts` | `uint`        | Maximum number of retries before dropping the batch.            | `0`     | no      
- `batch_count`        | `uint`        | How many series to queue in each queue.                         | `1000`  | no       
- `flush_interval`     | `duration`    | How long to wait until sending if `batch_count` is not trigger. | `1s`    | no       
- `parallelism`        | `uint`        | How many parallel batches to write.                             | 10      | no       
- `external_labels`    | `map(string)` | Labels to add to metrics sent over the network.                 |         | no       
+ Name                 | Type          | Description                                                                                 | Default | Required 
+----------------------|---------------|---------------------------------------------------------------------------------------------|---------|----------
+ `url`                | `string`      | Full URL to send metrics to.                                                                |         | yes      
+ `bearer_token`        | `secret`      | Bearer token to authenticate with.                                                          |         | no
+ `write_timeout`      | `duration`    | Timeout for requests made to the URL.                                                       | `"30s"` | no       
+ `retry_backoff`      | `duration`    | How long to wait between retries.                                                           | `1s`    | no       
+ `max_retry_attempts` | `uint`        | Maximum number of retries before dropping the batch.                                        | `0`     | no      
+ `batch_count`        | `uint`        | How many series to queue in each queue.                                                     | `1000`  | no       
+ `flush_interval`     | `duration`    | How long to wait until sending if `batch_count` is not trigger.                             | `1s`    | no       
+ `parallelism`        | `uint`        | How many parallel batches to write.                                                         | 10      | no       
+ `external_labels`    | `map(string)` | Labels to add to metrics sent over the network.                                             |         | no       
+ `enable_round_robin` | `bool`        | Use round robin load balancing when there are multiple IPs for a given endpoint. | `false` | no       
+
 
 ### basic_auth block
 
@@ -102,6 +108,9 @@ Name            | Type     | Description                              | Default 
 `password`      | `secret` | Basic auth password.                     |         | no
 `username`      | `string` | Basic auth username.                     |         | no
 
+### tls_config block
+
+{{< docs/shared lookup="reference/components/tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

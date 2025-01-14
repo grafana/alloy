@@ -243,6 +243,8 @@ func (c *Component) relabel(val float64, lbls labels.Labels) labels.Labels {
 	c.mut.RLock()
 	defer c.mut.RUnlock()
 
+	c.metricsProcessed.Inc()
+
 	globalRef := c.ls.GetOrAddGlobalRefID(lbls)
 	var (
 		relabelled labels.Labels
