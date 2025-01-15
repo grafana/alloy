@@ -163,6 +163,7 @@ func newFakeLogsReceiver(t *testing.T) *fakeLogsReceiver {
 	lr.wg.Add(1)
 	go func() {
 		defer close(lr.ch)
+		defer lr.wg.Done()
 
 		select {
 		case <-ctx.Done():
@@ -178,7 +179,6 @@ func newFakeLogsReceiver(t *testing.T) *fakeLogsReceiver {
 				},
 			})
 			lr.entriesMut.Unlock()
-			lr.wg.Done()
 		}
 	}()
 
