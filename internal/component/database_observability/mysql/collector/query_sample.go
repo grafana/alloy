@@ -35,6 +35,7 @@ const selectQuerySamples = `
 
 type QuerySampleArguments struct {
 	DB              *sql.DB
+	InstanceKey     string
 	CollectInterval time.Duration
 	EntryHandler    loki.EntryHandler
 
@@ -43,6 +44,7 @@ type QuerySampleArguments struct {
 
 type QuerySample struct {
 	dbConnection    *sql.DB
+	instanceKey     string
 	collectInterval time.Duration
 	entryHandler    loki.EntryHandler
 
@@ -55,6 +57,7 @@ type QuerySample struct {
 func NewQuerySample(args QuerySampleArguments) (*QuerySample, error) {
 	return &QuerySample{
 		dbConnection:    args.DB,
+		instanceKey:     args.InstanceKey,
 		collectInterval: args.CollectInterval,
 		entryHandler:    args.EntryHandler,
 		logger:          log.With(args.Logger, "collector", "QuerySample"),
@@ -153,8 +156,8 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 			Entry: logproto.Entry{
 				Timestamp: time.Unix(0, time.Now().UnixNano()),
 				Line: fmt.Sprintf(
-					`level=info msg="query samples fetched" op="%s" digest="%s" query_type="%s" query_sample_seen="%s" query_sample_timer_wait="%s" query_sample_redacted="%s"`,
-					OP_QUERY_SAMPLE, digest, c.stmtType(stmt), sampleSeen, sampleTimerWait, sampleRedactedText,
+					`level=info msg="query samples fetched" op="%s" instance="%s" digest="%s" query_type="%s" query_sample_seen="%s" query_sample_timer_wait="%s" query_sample_redacted="%s"`,
+					OP_QUERY_SAMPLE, c.instanceKey, digest, c.stmtType(stmt), sampleSeen, sampleTimerWait, sampleRedactedText,
 				),
 			},
 		}
@@ -166,8 +169,8 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 				Entry: logproto.Entry{
 					Timestamp: time.Unix(0, time.Now().UnixNano()),
 					Line: fmt.Sprintf(
-						`level=info msg="table name parsed" op="%s" digest="%s" table="%s"`,
-						OP_QUERY_PARSED_TABLE_NAME, digest, table,
+						`level=info msg="table name parsed" op="%s" instance="%s" digest="%s" table="%s"`,
+						OP_QUERY_PARSED_TABLE_NAME, c.instanceKey, digest, table,
 					),
 				},
 			}
