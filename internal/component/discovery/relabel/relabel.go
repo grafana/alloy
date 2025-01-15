@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/prometheus/prometheus/model/labels"
+	"github.com/prometheus/prometheus/model/relabel"
+
 	"github.com/grafana/alloy/internal/component"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/service/livedebugging"
-	"github.com/prometheus/prometheus/model/labels"
-	"github.com/prometheus/prometheus/model/relabel"
 )
 
 func init() {
@@ -92,9 +93,11 @@ func (c *Component) Update(args component.Arguments) error {
 	c.rcs = relabelConfigs
 
 	for _, t := range newArgs.Targets {
+		// TODO(thampiotr): HOT SPOT #2
 		lset := componentMapToPromLabels(t)
 		relabelled, keep := relabel.Process(lset, relabelConfigs...)
 		if keep {
+			// TODO(thampiotr): HOT SPOT #3
 			targets = append(targets, promLabelsToComponent(relabelled))
 		}
 		componentID := livedebugging.ComponentID(c.opts.ID)

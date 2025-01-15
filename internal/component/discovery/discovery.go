@@ -262,6 +262,7 @@ func (c *Component) runDiscovery(ctx context.Context, d DiscovererWithMetrics) {
 }
 
 func toAlloyTargets(cache map[string]*targetgroup.Group) []Target {
+	// TODO(thampiotr): HOT SPOT #1
 	targetsCount := 0
 	for _, group := range cache {
 		targetsCount += len(group.Targets)
