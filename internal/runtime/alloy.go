@@ -207,17 +207,22 @@ func newController(o controllerOptions) *Runtime {
 			OnExportsChange: o.OnExportsChange,
 			Registerer:      o.Reg,
 			ControllerID:    o.ControllerID,
-			NewModuleController: func(id string) controller.ModuleController {
+			NewModuleController: func(opts controller.ModuleControllerOpts) controller.ModuleController {
+				reg := o.Reg
+				if opts.Reg != nil {
+					reg = opts.Reg
+				}
+
 				return newModuleController(&moduleControllerOptions{
 					ComponentRegistry:    o.ComponentRegistry,
 					ModuleRegistry:       o.ModuleRegistry,
 					Logger:               log,
 					Tracer:               tracer,
-					Reg:                  o.Reg,
+					Reg:                  reg,
 					DataPath:             o.DataPath,
 					MinStability:         o.MinStability,
 					EnableCommunityComps: o.EnableCommunityComps,
-					ID:                   id,
+					ID:                   opts.Id,
 					ServiceMap:           serviceMap,
 					WorkerPool:           workerPool,
 				})

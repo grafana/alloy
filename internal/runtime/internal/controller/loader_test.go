@@ -83,7 +83,7 @@ func TestLoader(t *testing.T) {
 				MinStability:      stability,
 				OnBlockNodeUpdate: func(cn controller.BlockNode) { /* no-op */ },
 				Registerer:        prometheus.NewRegistry(),
-				NewModuleController: func(id string) controller.ModuleController {
+				NewModuleController: func(opts controller.ModuleControllerOpts) controller.ModuleController {
 					return nil
 				},
 			},
@@ -382,7 +382,7 @@ func TestLoader_Services(t *testing.T) {
 				MinStability:      stability,
 				OnBlockNodeUpdate: func(cn controller.BlockNode) { /* no-op */ },
 				Registerer:        prometheus.NewRegistry(),
-				NewModuleController: func(id string) controller.ModuleController {
+				NewModuleController: func(opts controller.ModuleControllerOpts) controller.ModuleController {
 					return nil
 				},
 			},
@@ -439,7 +439,7 @@ func TestScopeWithFailingComponent(t *testing.T) {
 				MinStability:      featuregate.StabilityPublicPreview,
 				OnBlockNodeUpdate: func(cn controller.BlockNode) { /* no-op */ },
 				Registerer:        prometheus.NewRegistry(),
-				NewModuleController: func(id string) controller.ModuleController {
+				NewModuleController: func(opts controller.ModuleControllerOpts) controller.ModuleController {
 					return fakeModuleController{}
 				},
 			},

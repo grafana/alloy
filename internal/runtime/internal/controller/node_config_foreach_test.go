@@ -241,7 +241,7 @@ func getComponentGlobals(t *testing.T) ComponentGlobals {
 		MinStability:      featuregate.StabilityGenerallyAvailable,
 		OnBlockNodeUpdate: func(cn BlockNode) { /* no-op */ },
 		Registerer:        prometheus.NewRegistry(),
-		NewModuleController: func(id string) ModuleController {
+		NewModuleController: func(opts ModuleControllerOpts) ModuleController {
 			return NewModuleControllerMock()
 		},
 	}
