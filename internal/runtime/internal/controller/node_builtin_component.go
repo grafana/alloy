@@ -60,20 +60,25 @@ func (id ComponentID) Equals(other ComponentID) bool {
 // DialFunc is a function to establish a network connection.
 type DialFunc func(ctx context.Context, network, address string) (net.Conn, error)
 
+type ModuleControllerOpts struct {
+	Id  string
+	Reg prometheus.Registerer
+}
+
 // ComponentGlobals are used by BuiltinComponentNodes to build managed components. All
 // BuiltinComponentNodes should use the same ComponentGlobals.
 type ComponentGlobals struct {
-	Logger               *logging.Logger                        // Logger shared between all managed components.
-	TraceProvider        trace.TracerProvider                   // Tracer shared between all managed components.
-	DataPath             string                                 // Shared directory where component data may be stored
-	MinStability         featuregate.Stability                  // Minimum allowed stability level for features
-	OnBlockNodeUpdate    func(cn BlockNode)                     // Informs controller that we need to reevaluate
-	OnExportsChange      func(exports map[string]any)           // Invoked when the managed component updated its exports
-	Registerer           prometheus.Registerer                  // Registerer for serving Alloy and component metrics
-	ControllerID         string                                 // ID of controller.
-	NewModuleController  func(id string) ModuleController       // Func to generate a module controller.
-	GetServiceData       func(name string) (interface{}, error) // Get data for a service.
-	EnableCommunityComps bool                                   // Enables the use of community components.
+	Logger               *logging.Logger                                  // Logger shared between all managed components.
+	TraceProvider        trace.TracerProvider                             // Tracer shared between all managed components.
+	DataPath             string                                           // Shared directory where component data may be stored
+	MinStability         featuregate.Stability                            // Minimum allowed stability level for features
+	OnBlockNodeUpdate    func(cn BlockNode)                               // Informs controller that we need to reevaluate
+	OnExportsChange      func(exports map[string]any)                     // Invoked when the managed component updated its exports
+	Registerer           prometheus.Registerer                            // Registerer for serving Alloy and component metrics
+	ControllerID         string                                           // ID of controller.
+	NewModuleController  func(opts ModuleControllerOpts) ModuleController // Func to generate a module controller.
+	GetServiceData       func(name string) (interface{}, error)           // Get data for a service.
+	EnableCommunityComps bool                                             // Enables the use of community components.
 }
 
 // BuiltinComponentNode is a controller node which manages a builtin component.
@@ -146,7 +151,7 @@ func NewBuiltinComponentNode(globals ComponentGlobals, reg component.Registratio
 		componentName:     strings.Join(b.Name, "."),
 		reg:               reg,
 		exportsType:       getExportsType(reg),
-		moduleController:  globals.NewModuleController(globalID),
+		moduleController:  globals.NewModuleController(ModuleControllerOpts{Id: globalID}),
 		OnBlockNodeUpdate: globals.OnBlockNodeUpdate,
 
 		block: b,

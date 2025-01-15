@@ -10,6 +10,7 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 // testcomponents.pulse sends the value 1 at the defined frequency for a number of times defined by the max argument.
@@ -38,10 +39,22 @@ type Pulse struct {
 	cfgMut sync.Mutex
 	cfg    PulseConfig
 	count  int
+
+	pulseCount prometheus.Counter
 }
 
 func NewPulse(o component.Options, cfg PulseConfig) (*Pulse, error) {
-	t := &Pulse{opts: o, log: o.Logger}
+	t := &Pulse{
+		opts:       o,
+		log:        o.Logger,
+		pulseCount: prometheus.NewCounter(prometheus.CounterOpts{Name: "pulse_count"}),
+	}
+
+	err := o.Registerer.Register(t.pulseCount)
+	if err != nil {
+		return nil, err
+	}
+
 	if err := t.Update(cfg); err != nil {
 		return nil, err
 	}
@@ -63,6 +76,7 @@ func (p *Pulse) Run(ctx context.Context) error {
 				for _, r := range p.cfg.ForwardTo {
 					r.ReceiveInt(1)
 				}
+				p.pulseCount.Inc()
 				p.count++
 			}
 			p.cfgMut.Unlock()

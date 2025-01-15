@@ -16,6 +16,7 @@ import (
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/vm"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 const templateType = "template"
@@ -48,6 +49,9 @@ type ForeachConfigNode struct {
 	block *ast.BlockStmt
 	args  Arguments
 
+	moduleControllerFactory func(opts ModuleControllerOpts) ModuleController
+	moduleControllerOpts    ModuleControllerOpts
+
 	healthMut  sync.RWMutex
 	evalHealth component.Health // Health of the last evaluate
 	runHealth  component.Health // Health of running the component
@@ -69,7 +73,8 @@ func NewForeachConfigNode(block *ast.BlockStmt, globals ComponentGlobals, custom
 		componentName:             block.GetBlockName(),
 		id:                        BlockComponentID(block),
 		logger:                    log.With(globals.Logger, "component_path", globals.ControllerID, "component_id", nodeID),
-		moduleController:          globals.NewModuleController(globalID),
+		moduleControllerFactory:   globals.NewModuleController,
+		moduleControllerOpts:      ModuleControllerOpts{Id: globalID},
 		customReg:                 customReg,
 		forEachChildrenUpdateChan: make(chan struct{}, 1),
 		customComponents:          make(map[string]CustomComponent, 0),
@@ -94,6 +99,8 @@ func (fn *ForeachConfigNode) Arguments() component.Arguments {
 }
 
 func (fn *ForeachConfigNode) ModuleIDs() []string {
+	fn.mut.RLock()
+	defer fn.mut.RUnlock()
 	return fn.moduleController.ModuleIDs()
 }
 
@@ -113,6 +120,11 @@ func (fn *ForeachConfigNode) ID() ComponentID {
 type Arguments struct {
 	Collection []any  `alloy:"collection,attr"`
 	Var        string `alloy:"var,attr"`
+
+	// enable_metrics should be false by default.
+	// That way users are protected from an explosion of debug metrics
+	// if there are many items inside "collection".
+	EnableMetrics bool `alloy:"enable_metrics,attr,optional"`
 }
 
 func (fn *ForeachConfigNode) Evaluate(evalScope *vm.Scope) error {
@@ -155,6 +167,14 @@ func (fn *ForeachConfigNode) evaluate(scope *vm.Scope) error {
 	}
 
 	fn.args = args
+
+	// By default don't show debug metrics.
+	if args.EnableMetrics {
+		fn.moduleControllerOpts.Reg = nil
+	} else {
+		fn.moduleControllerOpts.Reg = NoopRegistry{}
+	}
+	fn.moduleController = fn.moduleControllerFactory(fn.moduleControllerOpts)
 
 	// Loop through the items to create the custom components.
 	// On re-evaluation new components are added and existing ones are updated.
@@ -204,6 +224,8 @@ func (fn *ForeachConfigNode) evaluate(scope *vm.Scope) error {
 	return nil
 }
 
+// Assumes that a lock is held,
+// so that fn.moduleController doesn't change while the function is running.
 func (fn *ForeachConfigNode) getOrCreateCustomComponent(customComponentID string) (CustomComponent, error) {
 	cc, exists := fn.customComponents[customComponentID]
 	if exists {
@@ -365,4 +387,21 @@ func hashObject(obj any) string {
 	default:
 		return computeHash(fmt.Sprintf("%#v", v))
 	}
+}
+
+type NoopRegistry struct{}
+
+var _ prometheus.Registerer = NoopRegistry{}
+
+// MustRegister implements prometheus.Registerer.
+func (n NoopRegistry) MustRegister(...prometheus.Collector) {}
+
+// Register implements prometheus.Registerer.
+func (n NoopRegistry) Register(prometheus.Collector) error {
+	return nil
+}
+
+// Unregister implements prometheus.Registerer.
+func (n NoopRegistry) Unregister(prometheus.Collector) bool {
+	return true
 }
