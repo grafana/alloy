@@ -16,6 +16,8 @@ Main (unreleased)
 
 - (_Experimental_) Log instance label key in `database_observability.mysql` (@cristiangreco)
 
+- Add json format support for log export via faro receiver (@ravishankar15)
+
 v1.6.0-rc.1
 -----------------
 
@@ -77,7 +79,6 @@ v1.6.0-rc.1
   - Add perf_schema quantile columns to collector
 
 - Live Debugging button should appear in UI only for supported components (@ravishankar15)
-- Add json format support for log export via faro receiver (@ravishankar15)
 - Add three new stdlib functions to_base64, from_URLbase64 and to_URLbase64 (@ravishankar15)
 - Add `ignore_older_than` option for local.file_match (@ravishankar15)
 - Add livedebugging support for discovery components (@ravishankar15)
