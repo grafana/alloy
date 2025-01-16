@@ -62,6 +62,8 @@ v1.6.0-rc.2
 
 - Add a new `/-/healthy` endpoint which returns HTTP 500 if one or more components are unhealthy. (@ptodev)
 
+- Add `otelcol.connector.spanlogs` allowing to export span events as logs. (@steve-hb)
+
 ### Enhancements
 
 - Update `prometheus.write.queue` to support v2 for cpu performance. (@mattdurham)

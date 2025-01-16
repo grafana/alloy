@@ -40,8 +40,10 @@ otelcol.connector.spanlogs "LABEL" {
 | `spans`              | `bool`         | Log one line per span.                        | `false` | no       |
 | `roots`              | `bool`         | Log one line for every root span of a trace.  | `false` | no       |
 | `processes`          | `bool`         | Log one line for every process.               | `false` | no       |
+| `events`             | `bool`         | Log one line for every span event.            | `false` | no       |
 | `span_attributes`    | `list(string)` | Additional span attributes to log.            | `[]`    | no       |
 | `process_attributes` | `list(string)` | Additional process attributes to log.         | `[]`    | no       |
+| `event_attributes`   | `list(string)` | Additional event attributes to log.           | `[]`    | no       |
 | `labels`             | `list(string)` | A list of keys that will be logged as labels. | `[]`    | no       |
 
 The values listed in `labels` should be the values of either span or process attributes.
