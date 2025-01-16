@@ -32,8 +32,10 @@ type Arguments struct {
 	Spans             bool           `alloy:"spans,attr,optional"`
 	Roots             bool           `alloy:"roots,attr,optional"`
 	Processes         bool           `alloy:"processes,attr,optional"`
+	Events            bool           `alloy:"events,attr,optional"`
 	SpanAttributes    []string       `alloy:"span_attributes,attr,optional"`
 	ProcessAttributes []string       `alloy:"process_attributes,attr,optional"`
+	EventAttributes   []string       `alloy:"event_attributes,attr,optional"`
 	Overrides         OverrideConfig `alloy:"overrides,block,optional"`
 	Labels            []string       `alloy:"labels,attr,optional"`
 
