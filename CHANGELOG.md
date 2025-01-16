@@ -14,6 +14,8 @@ Main (unreleased)
 
 - Improved performance by reducing allocation in Prometheus write pipelines by ~30% (@thampiotr)
 
+- (_Experimental_) Log instance label key in `database_observability.mysql` (@cristiangreco)
+
 - Add json format support for log export via faro receiver (@ravishankar15)
 
 v1.6.0-rc.1

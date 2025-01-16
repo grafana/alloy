@@ -49,6 +49,7 @@ const (
 
 type SchemaTableArguments struct {
 	DB              *sql.DB
+	InstanceKey     string
 	CollectInterval time.Duration
 	EntryHandler    loki.EntryHandler
 	CacheTTL        time.Duration
@@ -58,6 +59,7 @@ type SchemaTableArguments struct {
 
 type SchemaTable struct {
 	dbConnection    *sql.DB
+	instanceKey     string
 	collectInterval time.Duration
 	entryHandler    loki.EntryHandler
 	// Cache of table definitions. Entries are removed after a configurable TTL.
@@ -84,6 +86,7 @@ type tableInfo struct {
 func NewSchemaTable(args SchemaTableArguments) (*SchemaTable, error) {
 	return &SchemaTable{
 		dbConnection:    args.DB,
+		instanceKey:     args.InstanceKey,
 		collectInterval: args.CollectInterval,
 		entryHandler:    args.EntryHandler,
 		cache:           expirable.NewLRU[string, tableInfo](0, nil, args.CacheTTL),
@@ -166,7 +169,7 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 			Labels: model.LabelSet{"job": database_observability.JobName},
 			Entry: logproto.Entry{
 				Timestamp: time.Unix(0, time.Now().UnixNano()),
-				Line:      fmt.Sprintf(`level=info msg="schema detected" op="%s" schema="%s"`, OP_SCHEMA_DETECTION, schema),
+				Line:      fmt.Sprintf(`level=info msg="schema detected" op="%s" instance="%s" schema="%s"`, OP_SCHEMA_DETECTION, c.instanceKey, schema),
 			},
 		}
 	}
@@ -204,7 +207,7 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 				Labels: model.LabelSet{"job": database_observability.JobName},
 				Entry: logproto.Entry{
 					Timestamp: time.Unix(0, time.Now().UnixNano()),
-					Line:      fmt.Sprintf(`level=info msg="table detected" op="%s" schema="%s" table="%s"`, OP_TABLE_DETECTION, schema, table),
+					Line:      fmt.Sprintf(`level=info msg="table detected" op="%s" instance="%s" schema="%s" table="%s"`, OP_TABLE_DETECTION, c.instanceKey, schema, table),
 				},
 			}
 		}
@@ -240,7 +243,7 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 			Labels: model.LabelSet{"job": database_observability.JobName},
 			Entry: logproto.Entry{
 				Timestamp: time.Unix(0, time.Now().UnixNano()),
-				Line:      fmt.Sprintf(`level=info msg="create table" op="%s" schema="%s" table="%s" create_statement="%s"`, OP_CREATE_STATEMENT, table.schema, table.tableName, createStmt),
+				Line:      fmt.Sprintf(`level=info msg="create table" op="%s" instance="%s" schema="%s" table="%s" create_statement="%s"`, OP_CREATE_STATEMENT, c.instanceKey, table.schema, table.tableName, createStmt),
 			},
 		}
 	}

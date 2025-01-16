@@ -101,6 +101,7 @@ type Component struct {
 	registry     *prometheus.Registry
 	baseTarget   discovery.Target
 	collectors   []Collector
+	instanceKey  string
 	dbConnection *sql.DB
 	healthErr    *atomic.String
 }
@@ -114,6 +115,12 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 		registry:  prometheus.NewRegistry(),
 		healthErr: atomic.NewString(""),
 	}
+
+	instance, err := instanceKey(string(args.DataSourceName))
+	if err != nil {
+		return nil, err
+	}
+	c.instanceKey = instance
 
 	baseTarget, err := c.getBaseTarget()
 	if err != nil {
@@ -166,7 +173,7 @@ func (c *Component) getBaseTarget() (discovery.Target, error) {
 		model.AddressLabel:     httpData.MemoryListenAddr,
 		model.SchemeLabel:      "http",
 		model.MetricsPathLabel: path.Join(httpData.HTTPPathForComponent(c.opts.ID), "metrics"),
-		"instance":             c.instanceKey(),
+		"instance":             c.instanceKey,
 		"job":                  database_observability.JobName,
 	}, nil
 }
@@ -218,6 +225,7 @@ func (c *Component) startCollectors() error {
 	if c.args.QuerySamplesEnabled {
 		qsCollector, err := collector.NewQuerySample(collector.QuerySampleArguments{
 			DB:              dbConnection,
+			InstanceKey:     c.instanceKey,
 			CollectInterval: c.args.CollectInterval,
 			EntryHandler:    entryHandler,
 			Logger:          c.opts.Logger,
@@ -235,6 +243,7 @@ func (c *Component) startCollectors() error {
 
 	stCollector, err := collector.NewSchemaTable(collector.SchemaTableArguments{
 		DB:              dbConnection,
+		InstanceKey:     c.instanceKey,
 		CollectInterval: c.args.CollectInterval,
 		EntryHandler:    entryHandler,
 		Logger:          c.opts.Logger,
@@ -306,8 +315,11 @@ func (c *Component) CurrentHealth() component.Health {
 
 // instanceKey returns network(hostname:port)/dbname of the MySQL server.
 // This is the same key as used by the mysqld_exporter integration.
-func (c *Component) instanceKey() string {
-	m, _ := mysql.ParseDSN(string(c.args.DataSourceName))
+func instanceKey(dsn string) (string, error) {
+	m, err := mysql.ParseDSN(dsn)
+	if err != nil {
+		return "", err
+	}
 
 	if m.Addr == "" {
 		m.Addr = "localhost:3306"
@@ -316,7 +328,7 @@ func (c *Component) instanceKey() string {
 		m.Net = "tcp"
 	}
 
-	return fmt.Sprintf("%s(%s)/%s", m.Net, m.Addr, m.DBName)
+	return fmt.Sprintf("%s(%s)/%s", m.Net, m.Addr, m.DBName), nil
 }
 
 // formatDSN appends the given parameters to the DSN.
