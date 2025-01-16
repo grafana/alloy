@@ -28,11 +28,11 @@ Example response body:
 ]
 ```
 
-It is possible to use additional fields in the JSON to pass parameters to [prometheus.scrape][] such as the `metricsPath` and `scrape_interval`.
+It is possible to use additional fields in the JSON to pass parameters to [`prometheus.scrape`][prometheus.scrape] such as the `metricsPath` and `scrape_interval`.
 
 [prometheus.scrape]: ../../prometheus/prometheus.scrape/#technical-details
 
-As an example, the following will provide a target with a custom `metricsPath`, scrape interval, and timeout value:
+The following example provides a target with a custom `metricsPath`, scrape interval, and timeout value:
 
 ```json
 [
@@ -54,7 +54,7 @@ As an example, the following will provide a target with a custom `metricsPath`, 
 
 It's also possible to append query parameters to the metrics path with the `__param_<name>` syntax.
 
-For example, the following will call a metrics path of `/health?target_data=prometheus`:
+The following example calls the metrics path `/health?target_data=prometheus`:
 
 ```json
 [
@@ -75,15 +75,15 @@ For example, the following will call a metrics path of `/health?target_data=prom
 
 ```
 
-For more information on the potential labels you can use, see the [prometheus.scrape technical details][prometheus.scrape] section, or the [Prometheus Configuration][] documentation.
+For more information on the potential labels you can use, refer to the [`prometheus.scrape` technical details][prometheus.scrape] section, or the [Prometheus Configuration][] documentation.
 
 [Prometheus Configuration]: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config
 
 ## Usage
 
 ```alloy
-discovery.http "LABEL" {
-  url = URL
+discovery.http "<LABEL>" {
+  url = <URL>
 }
 ```
 
@@ -94,22 +94,23 @@ The following arguments are supported:
 Name                     | Type                | Description                                                                                      | Default | Required
 -------------------------|---------------------|--------------------------------------------------------------------------------------------------|---------|---------
 `url`                    | `string`            | URL to scrape.                                                                                   |         | yes
-`refresh_interval`       | `duration`          | How often to refresh targets.                                                                    | `"60s"` | no
 `bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                             |         | no
 `bearer_token`           | `secret`            | Bearer token to authenticate with.                                                               |         | no
 `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`  | no
 `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`  | no
-`proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |         | no
 `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |         | no
-`proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false` | no
 `proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |         | no
+`proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false` | no
+`proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |         | no
+`refresh_interval`       | `duration`          | How often to refresh targets.                                                                    | `"60s"` | no
 
  At most, one of the following can be provided:
- - [`bearer_token` argument](#arguments).
- - [`bearer_token_file` argument](#arguments).
- - [`basic_auth` block][basic_auth].
- - [`authorization` block][authorization].
- - [`oauth2` block][oauth2].
+
+* [`bearer_token` argument][arguments]
+* [`bearer_token_file` argument][arguments]
+* [`basic_auth` block][basic_auth]
+* [`authorization` block][authorization]
+* [`oauth2` block][oauth2]
 
 [arguments]: #arguments
 
@@ -117,13 +118,12 @@ Name                     | Type                | Description                    
 
 ## Blocks
 
-The following blocks are supported inside the definition of
-`discovery.http`:
+The following blocks are supported inside the definition of `discovery.http`:
 
 Hierarchy           | Block             | Description                                              | Required
 --------------------|-------------------|----------------------------------------------------------|---------
-basic_auth          | [basic_auth][]    | Configure basic_auth for authenticating to the endpoint. | no
 authorization       | [authorization][] | Configure generic authorization to the endpoint.         | no
+basic_auth          | [basic_auth][]    | Configure basic_auth for authenticating to the endpoint. | no
 oauth2              | [oauth2][]        | Configure OAuth2 for authenticating to the endpoint.     | no
 oauth2 > tls_config | [tls_config][]    | Configure TLS settings for connecting to the endpoint.   | no
 tls_config          | [tls_config][]    | Configure TLS settings for connecting to the endpoint.   | no
@@ -131,24 +131,24 @@ tls_config          | [tls_config][]    | Configure TLS settings for connecting 
 The `>` symbol indicates deeper levels of nesting.
 For example, `oauth2 > tls_config` refers to a `tls_config` block defined inside an `oauth2` block.
 
-[basic_auth]: #basic_auth-block
-[authorization]: #authorization-block
-[oauth2]: #oauth2-block
-[tls_config]: #tls_config-block
+[authorization]: #authorization
+[basic_auth]: #basic_auth
+[oauth2]: #oauth2
+[tls_config]: #tls_config
 
-### basic_auth block
-
-{{< docs/shared lookup="reference/components/basic-auth-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
-
-### authorization block
+### authorization
 
 {{< docs/shared lookup="reference/components/authorization-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### oauth2 block
+### basic_auth
+
+{{< docs/shared lookup="reference/components/basic-auth-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### oauth2
 
 {{< docs/shared lookup="reference/components/oauth2-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### tls_config block
+### tls_config
 
 {{< docs/shared lookup="reference/components/tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -171,7 +171,7 @@ In those cases, exported fields retain their last healthy values.
 
 ## Debug information
 
-`discovery.http` does not expose any component-specific debug information.
+`discovery.http` doesn't expose any component-specific debug information.
 
 ## Debug metrics
 
@@ -179,7 +179,7 @@ In those cases, exported fields retain their last healthy values.
 
 ## Examples
 
-This example will query a URL every 15 seconds and expose targets that it finds:
+This example queries a URL every 15 seconds and exposes the targets that it finds:
 
 ```alloy
 discovery.http "dynamic_targets" {
