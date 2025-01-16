@@ -28,8 +28,8 @@ Multiple `discovery.relabel` components can be specified by giving them differen
 ## Usage
 
 ```alloy
-discovery.relabel "LABEL" {
-  targets = TARGET_LIST
+discovery.relabel "<LABEL>" {
+  targets = <TARGET_LIST>
 
   rule {
     ...
@@ -49,16 +49,15 @@ Name      | Type                | Description        | Default | Required
 
 ## Blocks
 
-The following blocks are supported inside the definition of
-`discovery.relabel`:
+The following blocks are supported inside the definition of `discovery.relabel`:
 
 Hierarchy | Block    | Description                           | Required
 ----------|----------|---------------------------------------|---------
 rule      | [rule][] | Relabeling rules to apply to targets. | no
 
-[rule]: #rule-block
+[rule]: #rule
 
-### rule block
+### rule
 
 {{< docs/shared lookup="reference/components/rule-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -78,11 +77,11 @@ In those cases, exported fields retain their last healthy values.
 
 ## Debug information
 
-`discovery.relabel` does not expose any component-specific debug information.
+`discovery.relabel` doesn't expose any component-specific debug information.
 
 ## Debug metrics
 
-`discovery.relabel` does not expose any component-specific debug metrics.
+`discovery.relabel` doesn't expose any component-specific debug metrics.
 
 ## Example
 
