@@ -112,6 +112,19 @@ func TestQuerySample(t *testing.T) {
 			},
 		},
 		{
+			name: "with comment",
+			rows: [][]driver.Value{{
+				"abc123",
+				"select val1, /* val2,*/ val3 from some_table where id = 1",
+				"2024-01-01T00:00:00.000Z",
+				"1000",
+			}},
+			logs: []string{
+				`level=info msg="query samples fetched" op="query_sample" instance="mysql-db" digest="abc123" query_type="select" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="select val1, val3 from some_table where id = :redacted1"`,
+				`level=info msg="table name parsed" op="query_parsed_table_name" instance="mysql-db" digest="abc123" table="some_table"`,
+			},
+		},
+		{
 			name: "truncated query",
 			rows: [][]driver.Value{{
 				"xyz456",
@@ -121,6 +134,19 @@ func TestQuerySample(t *testing.T) {
 			}, {
 				"abc123",
 				"select * from some_table where id = 1",
+				"2024-01-01T00:00:00.000Z",
+				"1000",
+			}},
+			logs: []string{
+				`level=info msg="query samples fetched" op="query_sample" instance="mysql-db" digest="abc123" query_type="select" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="select * from some_table where id = :redacted1"`,
+				`level=info msg="table name parsed" op="query_parsed_table_name" instance="mysql-db" digest="abc123" table="some_table"`,
+			},
+		},
+		{
+			name: "truncated in multi-line comment",
+			rows: [][]driver.Value{{
+				"abc123",
+				"select * from some_table where id = 1 /*traceparent='00-abc...",
 				"2024-01-01T00:00:00.000Z",
 				"1000",
 			}},
