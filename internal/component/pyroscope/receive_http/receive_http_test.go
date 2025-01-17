@@ -20,6 +20,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	fnet "github.com/grafana/alloy/internal/component/common/net"
+	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/util"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
@@ -142,6 +143,27 @@ func TestForwardsProfilesIngest(t *testing.T) {
 	}
 }
 
+func generatePushPayload(numSeries, numSamplesPerSeries, sampleSize int) *connect.Request[pushv1.PushRequest] {
+	var series []*pushv1.RawProfileSeries
+	for i := 0; i < numSeries; i++ {
+		var samples []*pushv1.RawSample
+		for j := 0; j < numSamplesPerSeries; j++ {
+			samples = append(samples, &pushv1.RawSample{
+				RawProfile: bytes.Repeat([]byte{0xde, 0xad}, sampleSize/2),
+			})
+		}
+
+		series = append(series, &pushv1.RawProfileSeries{
+			Labels: []*typesv1.LabelPair{
+				{Name: "app", Value: fmt.Sprintf("app-%d", i)},
+			},
+			Samples: samples,
+		})
+	}
+
+	return connect.NewRequest(&pushv1.PushRequest{Series: series})
+}
+
 // TestForwardsProfilesPushV1 verifies the behavior of the
 // pyroscope.receive_http using the connect pushv1 API. This is predominentaly
 // used by other alloy components like pyrscope.ebpf.
@@ -226,26 +248,7 @@ func TestForwardsProfilesPushV1(t *testing.T) {
 				fmt.Sprintf("http://127.0.0.1:%d", port),
 				tc.clientOpts...)
 
-			var series []*pushv1.RawProfileSeries
-			for i := 0; i < tc.numSeries; i++ {
-				var samples []*pushv1.RawSample
-				for j := 0; j < tc.numSamplesPerSeries; j++ {
-					samples = append(samples, &pushv1.RawSample{
-						RawProfile: bytes.Repeat([]byte{0xde, 0xad}, tc.SampleSize/2),
-					})
-				}
-
-				series = append(series, &pushv1.RawProfileSeries{
-					Labels: []*typesv1.LabelPair{
-						{Name: "app", Value: fmt.Sprintf("app-%d", i)},
-					},
-					Samples: samples,
-				})
-			}
-
-			_, err := c.Push(ctx, connect.NewRequest(&pushv1.PushRequest{
-				Series: series,
-			}))
+			_, err := c.Push(ctx, generatePushPayload(tc.numSeries, tc.numSamplesPerSeries, tc.SampleSize))
 			if tc.expectedError != nil {
 				require.ErrorContains(t, err, tc.expectedError.Error())
 			} else {
@@ -412,6 +415,13 @@ type testAppender struct {
 	pushedSamples [][]*pyroscope.RawSample
 }
 
+func (a *testAppender) reset(expectedErr error) {
+	a.appendErr = expectedErr
+	a.lastProfile = nil
+	a.pushedLabels = a.pushedLabels[:0]
+	a.pushedSamples = a.pushedSamples[:0]
+}
+
 func (a *testAppender) samples() int {
 	var c = 0
 	for _, x := range a.pushedSamples {
@@ -505,4 +515,70 @@ func TestUpdateArgs(t *testing.T) {
 	})
 
 	waitForServerReady(t, ports[1])
+}
+
+// The join parameter allows to add extra labels onto the received profiles, based on IP address matching
+func TestJoin(t *testing.T) {
+	// TODO: test for ingest endpoint
+	port, err := freeport.GetFreePort()
+	require.NoError(t, err)
+
+	forwardTo := []pyroscope.Appendable{testAppendable(nil)}
+
+	args := Arguments{
+		Server: &fnet.ServerConfig{
+			HTTP: &fnet.HTTPConfig{
+				ListenAddress: "localhost",
+				ListenPort:    port,
+			},
+		},
+		ForwardTo: forwardTo,
+		Join: []discovery.Target{
+			{labelMetaKubernetesPodIP: "127.0.0.1", "pod": "my-pod-a", "namespace": "my-namespace"},
+		},
+	}
+
+	comp, err := New(testOptions(t), args)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+
+	go func() {
+		require.NoError(t, comp.Run(ctx))
+	}()
+
+	waitForServerReady(t, port)
+
+	c := pushv1connect.NewPusherServiceClient(
+		http.DefaultClient,
+		fmt.Sprintf("http://127.0.0.1:%d", port))
+
+	_, err = c.Push(ctx, generatePushPayload(1, 1, 1024))
+	require.NoError(t, err)
+
+	appendable := forwardTo[0].(*testAppender)
+	require.Equal(
+		t,
+		[]string{"{__meta_kubernetes_pod_ip=\"127.0.0.1\", app=\"app-0\", namespace=\"my-namespace\", pod=\"my-pod-a\"}"},
+		appendable.series(),
+	)
+	appendable.reset(nil)
+
+	// update join info
+	args.Join = []discovery.Target{
+		{labelMetaKubernetesPodIP: "127.0.0.1", "pod": "my-pod-b", "namespace": "my-namespace"},
+	}
+	comp.Update(args)
+
+	_, err = c.Push(ctx, generatePushPayload(1, 1, 1024))
+	require.NoError(t, err)
+
+	require.Equal(
+		t,
+		[]string{"{__meta_kubernetes_pod_ip=\"127.0.0.1\", app=\"app-0\", namespace=\"my-namespace\", pod=\"my-pod-b\"}"},
+		appendable.series(),
+	)
+	appendable.reset(nil)
+
 }

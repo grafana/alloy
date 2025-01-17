@@ -5,18 +5,23 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"net/netip"
+	"net/url"
 	"reflect"
 	"sync"
 
 	"connectrpc.com/connect"
 	"github.com/gorilla/mux"
+	"github.com/grafana/pyroscope/api/model/labelset"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/grafana/alloy/internal/component"
 	fnet "github.com/grafana/alloy/internal/component/common/net"
+	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/component/pyroscope/write"
 	"github.com/grafana/alloy/internal/featuregate"
@@ -44,7 +49,17 @@ func init() {
 }
 
 type Arguments struct {
-	Server    *fnet.ServerConfig     `alloy:",squash"`
+	// Server is the configuration for the HTTP server.
+	Server *fnet.ServerConfig `alloy:",squash"`
+
+	// Join takes a discovert.Target and will add information that can be matched with incoming profiles.
+	//
+	// The matching is taking place using
+	// __meta_docker_network_ip
+	// __meta_kubernetes_pod_ip
+	Join []discovery.Target
+
+	// ForwardTo is a list of appendables to forward the received profiles to.
 	ForwardTo []pyroscope.Appendable `alloy:"forward_to,attr"`
 }
 
@@ -64,7 +79,8 @@ type Component struct {
 	server             *fnet.TargetServer
 	uncheckedCollector *util.UncheckedCollector
 	appendables        []pyroscope.Appendable
-	mut                sync.Mutex
+	ipLookup           map[netip.Addr]discovery.Target
+	mut                sync.RWMutex
 }
 
 func New(opts component.Options, args Arguments) (*Component, error) {
@@ -99,9 +115,13 @@ func (c *Component) Run(ctx context.Context) error {
 func (c *Component) Update(args component.Arguments) error {
 	newArgs := args.(Arguments)
 
+	// build new ip lookup, before acquiring lock
+	ipLookup := buildIPLookupMap(c.opts.Logger, newArgs.Join)
+
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
+	c.ipLookup = ipLookup
 	c.appendables = newArgs.ForwardTo
 
 	// if no server config provided, we'll use defaults
@@ -171,6 +191,13 @@ func apiToAlloySamples(api []*pushv1.RawSample) []*pyroscope.RawSample {
 
 func (c *Component) Push(ctx context.Context, req *connect.Request[pushv1.PushRequest],
 ) (*connect.Response[pushv1.PushResponse], error) {
+
+	// lookup extra labels to join
+	var extraLabels discovery.Target
+	if remoteIP := c.ipFromReq(req.Peer().Addr, req.Header()); remoteIP.IsValid() {
+		extraLabels = c.getIPLookup()[remoteIP]
+	}
+
 	appendables := c.getAppendables()
 
 	// Create an errgroup with the timeout context
@@ -188,6 +215,9 @@ func (c *Component) Push(ctx context.Context, req *connect.Request[pushv1.PushRe
 			for idx := range req.Msg.Series {
 				lb.Reset(nil)
 				setLabelBuilderFromAPI(lb, req.Msg.Series[idx].Labels)
+				for k, v := range extraLabels {
+					lb.Set(k, v)
+				}
 				err := appendable.Append(ctx, lb.Labels(), apiToAlloySamples(req.Msg.Series[idx].Samples))
 				if err != nil {
 					errs = errors.Join(
@@ -208,11 +238,61 @@ func (c *Component) Push(ctx context.Context, req *connect.Request[pushv1.PushRe
 	return connect.NewResponse(&pushv1.PushResponse{}), nil
 }
 
+func (c *Component) getIPLookup() map[netip.Addr]discovery.Target {
+	c.mut.RLock()
+	defer c.mut.RUnlock()
+	ipLookup := c.ipLookup
+	return ipLookup
+}
+
 func (c *Component) getAppendables() []pyroscope.Appendable {
-	c.mut.Lock()
-	defer c.mut.Unlock()
+	c.mut.RLock()
+	defer c.mut.RUnlock()
 	appendables := c.appendables
 	return appendables
+}
+
+// TODO: This is likely to simple we should also accept headers X-Forwarded-For, if it coming from an internal IP
+func (c *Component) ipFromReq(remoteAddr string, _ http.Header) netip.Addr {
+	if remoteAddr != "" {
+		host, _, _ := net.SplitHostPort(remoteAddr)
+		addr, err := netip.ParseAddr(host)
+		if err == nil {
+			return addr
+		}
+		level.Error(c.opts.Logger).Log("msg", "Unable to parse remote IP address", "ip", host)
+	}
+
+	return netip.Addr{}
+}
+
+// Parse and rewrite labels/Series
+// TODO: Keep labels out of url until pyroscope.write
+// TODO: Investigate merging of appendables[0].Append() and AppendIngest again
+func (c *Component) rewriteIngestURL(ip netip.Addr, u url.URL) url.URL {
+	ipLookup := c.getIPLookup()
+
+	// loop up ip in ipLookup
+	extraLabels, found := ipLookup[ip]
+	if !found {
+		return u
+	}
+
+	// parse existing labels
+	ls, err := labelset.Parse(u.Query().Get("name"))
+	if err != nil {
+		level.Warn(c.opts.Logger).Log("msg", "Failed to parse labelset", "err", err)
+		return u
+	}
+
+	for k, v := range extraLabels {
+		ls.Add(k, v)
+	}
+	query := u.Query()
+	query.Set("name", ls.Normalized())
+	u.RawQuery = query.Encode()
+
+	return u
 }
 
 func (c *Component) handleIngest(w http.ResponseWriter, r *http.Request) {
@@ -242,6 +322,12 @@ func (c *Component) handleIngest(w http.ResponseWriter, r *http.Request) {
 		return err
 	})
 
+	newURL := *r.URL
+	remoteIP := c.ipFromReq(r.RemoteAddr, r.Header)
+	if remoteIP.IsValid() {
+		newURL = c.rewriteIngestURL(remoteIP, *r.URL)
+	}
+
 	// Process each appendable
 	for i, appendable := range appendables {
 		g.Go(func() error {
@@ -250,7 +336,7 @@ func (c *Component) handleIngest(w http.ResponseWriter, r *http.Request) {
 			profile := &pyroscope.IncomingProfile{
 				Body:    io.NopCloser(pipeReaders[i]),
 				Headers: r.Header.Clone(),
-				URL:     r.URL,
+				URL:     &newURL,
 			}
 
 			err := appendable.Appender().AppendIngest(ctx, profile)
