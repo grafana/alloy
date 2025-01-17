@@ -15,10 +15,10 @@ title: discovery.digitalocean
 ## Usage
 
 ```alloy
-discovery.digitalocean "LABEL" {
+discovery.digitalocean "<LABEL>" {
     // Use one of:
-    // bearer_token      = BEARER_TOKEN
-    // bearer_token_file = PATH_TO_BEARER_TOKEN_FILE
+    // bearer_token      = <BEARER_TOKEN>
+    // bearer_token_file = <PATH_TO_BEARER_TOKEN_FILE>
 }
 ```
 
