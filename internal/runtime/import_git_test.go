@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/vcs"
 	"github.com/stretchr/testify/require"
 )
@@ -55,7 +56,7 @@ testImport.add "cc" {
 	runGit(t, testRepo, "commit", "-m \"test\"")
 
 	defer verifyNoGoroutineLeaks(t)
-	ctrl, f := setup(t, main, nil)
+	ctrl, f := setup(t, main, nil, featuregate.StabilityPublicPreview)
 	err = ctrl.LoadSource(f, nil, "")
 	require.NoError(t, err)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -122,7 +123,7 @@ testImport.add "cc" {
 	runGit(t, testRepo, "commit", "-m \"test\"")
 
 	defer verifyNoGoroutineLeaks(t)
-	ctrl, f := setup(t, main, nil)
+	ctrl, f := setup(t, main, nil, featuregate.StabilityPublicPreview)
 	err = ctrl.LoadSource(f, nil, "")
 	require.NoError(t, err)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -205,7 +206,7 @@ testImport.add "cc" {
 	runGit(t, testRepo, "commit", "-m \"test2\"")
 
 	defer verifyNoGoroutineLeaks(t)
-	ctrl, f := setup(t, main, nil)
+	ctrl, f := setup(t, main, nil, featuregate.StabilityPublicPreview)
 	err = ctrl.LoadSource(f, nil, "")
 	require.NoError(t, err)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -269,7 +270,7 @@ testImport.add "cc" {
 
 	defer verifyNoGoroutineLeaks(t)
 
-	ctrl, f := setup(t, main, nil)
+	ctrl, f := setup(t, main, nil, featuregate.StabilityPublicPreview)
 	err = ctrl.LoadSource(f, nil, "")
 	require.NoError(t, err)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -354,7 +355,7 @@ testImport.add "cc" {
 	runGit(t, testRepo, "commit", "-m \"test\"")
 
 	defer verifyNoGoroutineLeaks(t)
-	ctrl, f := setup(t, main, nil)
+	ctrl, f := setup(t, main, nil, featuregate.StabilityPublicPreview)
 	err = ctrl.LoadSource(f, nil, "")
 	expectedErr := vcs.InvalidRevisionError{
 		Revision: "nonexistent",
