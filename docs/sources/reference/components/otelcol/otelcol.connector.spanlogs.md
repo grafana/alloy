@@ -46,10 +46,10 @@ otelcol.connector.spanlogs "LABEL" {
 | `event_attributes`   | `list(string)` | Additional event attributes to log.           | `[]`    | no       |
 | `labels`             | `list(string)` | A list of keys that will be logged as labels. | `[]`    | no       |
 
-The values listed in `labels` should be the values of either span or process attributes.
+The values listed in `labels` should be the values of either span, process or event attributes.
 
 {{< admonition type="warning" >}}
-Setting `spans` to `true` could lead to a high volume of logs.
+Setting either `spans` or `events` to `true` could lead to a high volume of logs.
 {{< /admonition >}}
 
 ## Blocks
@@ -122,9 +122,11 @@ otelcol.connector.spanlogs "default" {
   spans              = true
   roots              = true
   processes          = true
+  events             = true
   labels             = ["attribute1", "res_attribute1"]
   span_attributes    = ["attribute1"]
   process_attributes = ["res_attribute1"]
+  event_attributes   = ["attribute1"]
 
   output {
     logs = [otelcol.processor.attributes.default.input]
@@ -200,6 +202,21 @@ For an input trace like this...
                   "key": "account_id",
                   "value": { "intValue": "2245" }
                 }
+              ],
+              "events": [
+                {
+                  "name": "log",
+                  "attributes": [
+                    {
+                      "key": "log.severity",
+                      "value": { "stringValue": "INFO" }
+                    },
+                    {
+                      "key": "log.message",
+                      "value": { "stringValue": "TestLogMessage" }
+                    }
+                  ]
+                }
               ]
             }
           ]
@@ -269,6 +286,31 @@ For an input trace like this...
                 {
                   "key": "res_attribute1",
                   "value": { "intValue": "78" }
+                }
+              ]
+            },
+            {
+              "body": { "stringValue": "span=TestSpan dur=0ns attribute1=78 svc=TestSvcName res_attribute1=78 tid=7bba9f33312b3dbb8b2c2c62bb7abe2d log.severity=INFO log.message=TestLogMessage" },
+              "attributes": [
+                {
+                  "key": "traces",
+                  "value": { "stringValue": "event" }
+                },
+                {
+                  "key": "attribute1",
+                  "value": { "intValue": "78" }
+                },
+                {
+                  "key": "res_attribute1",
+                  "value": { "intValue": "78" }
+                },
+                {
+                  "key": "log.severity",
+                  "value": { "stringValue": "INFO" }
+                },
+                {
+                  "key": "log.message",
+                  "value": { "stringValue": "TestLogMessage" }
                 }
               ]
             }
