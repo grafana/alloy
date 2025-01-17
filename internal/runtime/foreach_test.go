@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime"
 	alloy_runtime "github.com/grafana/alloy/internal/runtime"
 	"github.com/prometheus/client_golang/prometheus"
@@ -103,7 +104,7 @@ func buildTestForEach(t *testing.T, filename string) testForEachFile {
 func testConfigForEach(t *testing.T, config string, reloadConfig string, update func(), expectedMetrics *string, expectedDurationMetrics *int) {
 	defer verifyNoGoroutineLeaks(t)
 	reg := prometheus.NewRegistry()
-	ctrl, f := setup(t, config, reg)
+	ctrl, f := setup(t, config, reg, featuregate.StabilityExperimental)
 
 	err := ctrl.LoadSource(f, nil, "")
 	require.NoError(t, err)

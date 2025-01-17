@@ -3,6 +3,7 @@ package controller
 import (
 	"fmt"
 
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/internal/importsource"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/diag"
@@ -16,9 +17,26 @@ const (
 	foreachID       = "foreach"
 )
 
+// Add config blocks that are not GA. Config blocks that are not specified here are considered GA.
+var configBlocksUnstable = map[string]featuregate.Stability{
+	foreachID: featuregate.StabilityExperimental,
+}
+
 // NewConfigNode creates a new ConfigNode from an initial ast.BlockStmt.
 // The underlying config isn't applied until Evaluate is called.
 func NewConfigNode(block *ast.BlockStmt, globals ComponentGlobals, customReg *CustomComponentRegistry) (BlockNode, diag.Diagnostics) {
+	var diags diag.Diagnostics
+
+	if err := checkFeatureStability(block.GetBlockName(), globals.MinStability); err != nil {
+		diags.Add(diag.Diagnostic{
+			Severity: diag.SeverityLevelError,
+			Message:  err.Error(),
+			StartPos: ast.StartPos(block).Position(),
+			EndPos:   ast.EndPos(block).Position(),
+		})
+		return nil, diags
+	}
+
 	switch block.GetBlockName() {
 	case argumentBlockID:
 		return NewArgumentConfigNode(block, globals), nil
@@ -33,7 +51,6 @@ func NewConfigNode(block *ast.BlockStmt, globals ComponentGlobals, customReg *Cu
 	case foreachID:
 		return NewForeachConfigNode(block, globals, customReg), nil
 	default:
-		var diags diag.Diagnostics
 		diags.Add(diag.Diagnostic{
 			Severity: diag.SeverityLevelError,
 			Message:  fmt.Sprintf("invalid config block type %s while creating new config node", block.GetBlockName()),
@@ -42,6 +59,14 @@ func NewConfigNode(block *ast.BlockStmt, globals ComponentGlobals, customReg *Cu
 		})
 		return nil, diags
 	}
+}
+
+func checkFeatureStability(blockName string, minStability featuregate.Stability) error {
+	blockStability, exist := configBlocksUnstable[blockName]
+	if exist {
+		return featuregate.CheckAllowed(blockStability, minStability, fmt.Sprintf("config block %q", blockName))
+	}
+	return nil
 }
 
 // ConfigNodeMap represents the config BlockNodes in their explicit types.
