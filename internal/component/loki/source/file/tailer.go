@@ -1,6 +1,6 @@
 package file
 
-// This code is adapted from loki/promtail@a8d5815510bd959a6dd8c176a5d9fd9bbfc8f8b5.
+// This code is adapted from loki/promtail. Last revision used to port changes to Alloy was a8d5815510bd959a6dd8c176a5d9fd9bbfc8f8b5.
 // tailer implements the reader interface by using the github.com/grafana/tail package to tail files.
 
 import (
@@ -34,19 +34,23 @@ type tailer struct {
 	receiver  loki.LogsReceiver
 	positions positions.Positions
 
-	path        string
-	labelsStr   string
-	labels      model.LabelSet
-	tail        *tail.Tail
+	path      string
+	labelsStr string
+	labels    model.LabelSet
+
 	tailFromEnd bool
 	pollOptions watch.PollingFileWatcherOptions
 
 	posAndSizeMtx sync.Mutex
 
 	running *atomic.Bool
-	posquit chan struct{} // used by the readLine method to tell the updatePosition method to stop
-	posdone chan struct{} // used by the updatePosition method to notify when it stopped
-	done    chan struct{} // used by the readLine method to notify when it stopped
+
+	mut      sync.RWMutex
+	stopping bool
+	tail     *tail.Tail
+	posquit  chan struct{} // used by the readLine method to tell the updatePosition method to stop
+	posdone  chan struct{} // used by the updatePosition method to notify when it stopped
+	done     chan struct{} // used by the readLine method to notify when it stopped
 
 	decoder *encoding.Decoder
 }
@@ -140,6 +144,16 @@ func getLastLinePosition(path string) (int64, error) {
 }
 
 func (t *tailer) Run() {
+	t.mut.Lock()
+
+	// Check if the stop function was called between two Run.
+	if t.stopping {
+		close(t.done)
+		close(t.posdone)
+		close(t.posquit)
+		return
+	}
+
 	fi, err := os.Stat(t.path)
 	if err != nil {
 		level.Error(t.logger).Log("msg", "failed to tail file", "path", t.path, "err", err)
@@ -151,6 +165,11 @@ func (t *tailer) Run() {
 		return
 	}
 
+	// NOTE: The code assumes that if a position is available and that the file is bigger than the position, then
+	// the tail should start from the position. This may not be always desired in situation where the file was rotated
+	// with a file that has the same name but different content and a bigger size that the previous one. This problem would
+	// mostly show up on Windows because on Unix systems, the readlines function is not exited on file rotation.
+	// If this ever becomes a problem, we may want to consider saving and comparing file creation timestamps.
 	if fi.Size() < pos {
 		t.positions.Remove(t.path, t.labelsStr)
 	}
@@ -190,6 +209,7 @@ func (t *tailer) Run() {
 	t.posquit = make(chan struct{})
 	t.posdone = make(chan struct{})
 	t.done = make(chan struct{})
+	t.mut.Unlock()
 
 	go t.updatePosition()
 	t.metrics.filesActive.Add(1.)
@@ -315,6 +335,12 @@ func (t *tailer) markPositionAndSize() error {
 }
 
 func (t *tailer) Stop() {
+	t.mut.RLock()
+	t.stopping = true
+	defer func() {
+		t.stopping = false
+	}()
+
 	// Save the current position before shutting down tailer
 	err := t.markPositionAndSize()
 	if err != nil {
@@ -322,7 +348,11 @@ func (t *tailer) Stop() {
 	}
 
 	// Stop the underlying tailer to prevent resource leak.
-	err = t.tail.Stop()
+	if t.tail != nil {
+		err = t.tail.Stop()
+	}
+	t.mut.RUnlock()
+
 	if err != nil {
 		if utils.IsEphemeralOrFileClosed(err) {
 			// Don't log as error if the file is already closed, or we got an ephemeral error - it's a common case

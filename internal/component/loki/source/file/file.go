@@ -215,7 +215,7 @@ func (c *Component) Update(args component.Arguments) error {
 			reader: reader,
 			path:   path,
 			labels: labels.String(),
-			// Could fastFingerPrint work?
+			// TODO: Could fastFingerPrint work?
 			readerHash: uint64(labels.Merge(model.LabelSet{filenameLabel: model.LabelValue(path)}).Fingerprint()),
 		}
 	}

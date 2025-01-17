@@ -2,6 +2,7 @@ package file
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/grafana/alloy/internal/runner"
@@ -50,7 +51,11 @@ func (r *runnerReader) Run(ctx context.Context) {
 		},
 	)
 
+	var wg sync.WaitGroup
+	wg.Add(1)
+
 	go func() {
+		defer wg.Done()
 		<-ctx.Done()
 		r.reader.Stop()
 	}()
@@ -63,4 +68,6 @@ func (r *runnerReader) Run(ctx context.Context) {
 		}
 	}
 
+	// Wait for the stop function to exit to ensure that the reader was properly stopped.
+	wg.Wait()
 }
