@@ -393,5 +393,19 @@ func getTestFiles(directory string, t *testing.T) []fs.FileInfo {
 	files, err := dir.Readdir(-1)
 	require.NoError(t, err)
 
-	return files
+	// Don't use files which start with a dot (".").
+	// This is to prevent the test suite from using files such as ".DS_Store",
+	// which Visual Studio Code may add.
+	return filterFiles(files, ".")
+}
+
+// Only take into account files which don't have a certain prefix.
+func filterFiles(files []fs.FileInfo, denylistedPrefix string) []fs.FileInfo {
+	res := make([]fs.FileInfo, 0, len(files))
+	for _, file := range files {
+		if !strings.HasPrefix(file.Name(), denylistedPrefix) {
+			res = append(res, file)
+		}
+	}
+	return res
 }
