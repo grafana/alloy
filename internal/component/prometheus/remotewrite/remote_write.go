@@ -108,7 +108,7 @@ func New(o component.Options, c Arguments) (*Component, error) {
 		storage:            storage.NewFanout(o.Logger, walStorage, remoteStore),
 		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
 	}
-	componenentID := livedebugging.ComponentID(res.opts.ID)
+	componentID := livedebugging.ComponentID(res.opts.ID)
 	res.receiver = prometheus.NewInterceptor(
 		res.storage,
 		ls,
@@ -129,8 +129,8 @@ func New(o component.Options, c Arguments) (*Component, error) {
 			if localID == 0 {
 				ls.GetOrAddLink(res.opts.ID, uint64(newRef), l)
 			}
-			if res.debugDataPublisher.IsActive(componenentID) {
-				res.debugDataPublisher.Publish(componenentID, fmt.Sprintf("ts=%d, labels=%s, value=%f", t, l, v))
+			if res.debugDataPublisher.IsActive(componentID) {
+				res.debugDataPublisher.Publish(componentID, fmt.Sprintf("ts=%d, labels=%s, value=%f", t, l, v))
 			}
 			return globalRef, nextErr
 		}),
@@ -144,7 +144,7 @@ func New(o component.Options, c Arguments) (*Component, error) {
 			if localID == 0 {
 				ls.GetOrAddLink(res.opts.ID, uint64(newRef), l)
 			}
-			if res.debugDataPublisher.IsActive(componenentID) {
+			if res.debugDataPublisher.IsActive(componentID) {
 				var data string
 				if h != nil {
 					data = fmt.Sprintf("ts=%d, labels=%s, histogram=%s", t, l, h.String())
@@ -153,7 +153,7 @@ func New(o component.Options, c Arguments) (*Component, error) {
 				} else {
 					data = fmt.Sprintf("ts=%d, labels=%s, no_value", t, l)
 				}
-				res.debugDataPublisher.Publish(componenentID, data)
+				res.debugDataPublisher.Publish(componentID, data)
 			}
 			return globalRef, nextErr
 		}),
@@ -167,8 +167,8 @@ func New(o component.Options, c Arguments) (*Component, error) {
 			if localID == 0 {
 				ls.GetOrAddLink(res.opts.ID, uint64(newRef), l)
 			}
-			if res.debugDataPublisher.IsActive(componenentID) {
-				res.debugDataPublisher.Publish(componenentID, fmt.Sprintf("labels=%s, type=%s, unit=%s, help=%s", l, m.Type, m.Unit, m.Help))
+			if res.debugDataPublisher.IsActive(componentID) {
+				res.debugDataPublisher.Publish(componentID, fmt.Sprintf("labels=%s, type=%s, unit=%s, help=%s", l, m.Type, m.Unit, m.Help))
 			}
 			return globalRef, nextErr
 		}),
@@ -182,8 +182,8 @@ func New(o component.Options, c Arguments) (*Component, error) {
 			if localID == 0 {
 				ls.GetOrAddLink(res.opts.ID, uint64(newRef), l)
 			}
-			if res.debugDataPublisher.IsActive(componenentID) {
-				res.debugDataPublisher.Publish(componenentID, fmt.Sprintf("ts=%d, labels=%s, exemplar_labels=%s, value=%f", e.Ts, l, e.Labels, e.Value))
+			if res.debugDataPublisher.IsActive(componentID) {
+				res.debugDataPublisher.Publish(componentID, fmt.Sprintf("ts=%d, labels=%s, exemplar_labels=%s, value=%f", e.Ts, l, e.Labels, e.Value))
 			}
 			return globalRef, nextErr
 		}),
