@@ -307,7 +307,7 @@ func (t *tailer) readLines(handler loki.EntryHandler) {
 }
 
 func (t *tailer) markPositionAndSize() error {
-	// Lock this update because it can be called in two different threads
+	// Lock this update because it can be called in two different goroutines
 	t.posAndSizeMtx.Lock()
 	defer t.posAndSizeMtx.Unlock()
 

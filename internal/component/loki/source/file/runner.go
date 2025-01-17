@@ -33,7 +33,7 @@ func (r *runnerTask) Equals(other runner.Task) bool {
 }
 
 // runnerReader is a wrapper around a reader (tailer or decompressor)
-// It is responsible for running the runner. If the reader stops running,
+// It is responsible for running the reader. If the reader stops running,
 // it will retry it after a few seconds. This is useful to handle log file rotation
 // when a file might be gone for a very short amount of time.
 // The runner is only stopped when the corresponding target is gone or when the component is stopped.

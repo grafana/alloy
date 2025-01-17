@@ -294,7 +294,7 @@ func (d *decompressor) readLines(handler loki.EntryHandler) {
 }
 
 func (d *decompressor) markPositionAndSize() error {
-	// Lock this update because it can be called in two different threads
+	// Lock this update because it can be called in two different goroutines
 	d.posAndSizeMtx.RLock()
 	defer d.posAndSizeMtx.RUnlock()
 
