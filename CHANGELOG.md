@@ -10,6 +10,10 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Features
+
+- Add the possibility to export span events as logs in `otelcol.connector.spanlogs`. (@steve-hb)
+
 ### Enhancements
 
 - Improved performance by reducing allocation in Prometheus write pipelines by ~30% (@thampiotr)
@@ -61,8 +65,6 @@ v1.6.0-rc.2
 - Add `otelcol.receiver.influxdb` to convert influx metric into OTEL. (@EHSchmitt4395)
 
 - Add a new `/-/healthy` endpoint which returns HTTP 500 if one or more components are unhealthy. (@ptodev)
-
-- Add `otelcol.connector.spanlogs` allowing to export span events as logs. (@steve-hb)
 
 ### Enhancements
 
