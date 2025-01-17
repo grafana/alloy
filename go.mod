@@ -62,13 +62,13 @@ require (
 	github.com/grafana/cloudflare-go v0.0.0-20230110200409-c627cf6792f2
 	github.com/grafana/dskit v0.0.0-20240104111617-ea101a3b86eb
 	github.com/grafana/go-gelf/v2 v2.0.1
-	github.com/grafana/jfr-parser/pprof v0.0.0-20240126072739-986e71dc0361
+	github.com/grafana/jfr-parser/pprof v0.0.3
 	github.com/grafana/jsonparser v0.0.0-20240209175146-098958973a2d
 	github.com/grafana/kafka_exporter v0.0.0-20240409084445-5e3488ad9f9a
 	github.com/grafana/loki/pkg/push v0.0.0-20240617182007-6c33561108ad // k206 branch
 	github.com/grafana/loki/v3 v3.0.0-20240617182007-6c33561108ad // k206 branch
 	github.com/grafana/pyroscope-go/godeltaprof v0.1.8
-	github.com/grafana/pyroscope/api v0.4.0
+	github.com/grafana/pyroscope/api v1.2.0
 	github.com/grafana/pyroscope/ebpf v0.4.8
 	github.com/grafana/regexp v0.0.0-20240518133315-a468a5bfb3bc
 	github.com/grafana/tail v0.0.0-20230510142333-77b18831edf0
@@ -544,7 +544,7 @@ require (
 	github.com/gosnmp/gosnmp v1.37.0 // indirect
 	github.com/grafana/go-offsets-tracker v0.1.7 // indirect
 	github.com/grafana/gomemcache v0.0.0-20231204155601-7de47a8c3cb0 // indirect
-	github.com/grafana/jfr-parser v0.8.0 // indirect
+	github.com/grafana/jfr-parser v0.9.2 // indirect
 	github.com/grafana/snowflake-prometheus-exporter v0.0.0-20240813124544-9995e8354548
 	github.com/grobie/gomemcache v0.0.0-20230213081705-239240bbc445 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0 // indirect
