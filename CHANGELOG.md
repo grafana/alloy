@@ -18,6 +18,8 @@ Main (unreleased)
 
 - Add json format support for log export via faro receiver (@ravishankar15)
 
+- Add livedebugging support for `prometheus.remote_write` (@ravishankar15)
+
 v1.6.0-rc.1
 -----------------
 
