@@ -13,8 +13,8 @@ title: discovery.dns
 ## Usage
 
 ```alloy
-discovery.dns "LABEL" {
-  names = [NAME_1, NAME_2, ...]
+discovery.dns "<LABEL>" {
+  names = [<NAME_1>, <NAME_2>, ...]
 }
 ```
 
