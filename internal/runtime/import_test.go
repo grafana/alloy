@@ -299,7 +299,7 @@ func TestImportError(t *testing.T) {
 
 func testConfig(t *testing.T, config string, reloadConfig string, update func()) {
 	defer verifyNoGoroutineLeaks(t)
-	ctrl, f := setup(t, config, nil)
+	ctrl, f := setup(t, config, nil, featuregate.StabilityPublicPreview)
 
 	err := ctrl.LoadSource(f, nil, "")
 	require.NoError(t, err)
@@ -352,7 +352,7 @@ func testConfig(t *testing.T, config string, reloadConfig string, update func())
 
 func testConfigError(t *testing.T, config string, expectedError string) {
 	defer verifyNoGoroutineLeaks(t)
-	ctrl, f := setup(t, config, nil)
+	ctrl, f := setup(t, config, nil, featuregate.StabilityPublicPreview)
 	err := ctrl.LoadSource(f, nil, "")
 	require.ErrorContains(t, err, expectedError)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -369,13 +369,13 @@ func testConfigError(t *testing.T, config string, expectedError string) {
 	}()
 }
 
-func setup(t *testing.T, config string, reg prometheus.Registerer) (*alloy_runtime.Runtime, *alloy_runtime.Source) {
+func setup(t *testing.T, config string, reg prometheus.Registerer, stability featuregate.Stability) (*alloy_runtime.Runtime, *alloy_runtime.Source) {
 	s, err := logging.New(os.Stderr, logging.DefaultOptions)
 	require.NoError(t, err)
 	ctrl := alloy_runtime.New(alloy_runtime.Options{
 		Logger:       s,
 		DataPath:     t.TempDir(),
-		MinStability: featuregate.StabilityPublicPreview,
+		MinStability: stability,
 		Reg:          reg,
 		Services:     []service.Service{},
 	})
