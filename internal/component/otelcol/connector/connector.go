@@ -9,13 +9,10 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	otelcomponent "go.opentelemetry.io/collector/component"
-	"go.opentelemetry.io/collector/config/configtelemetry"
 	otelconnector "go.opentelemetry.io/collector/connector"
 	otelextension "go.opentelemetry.io/collector/extension"
 	"go.opentelemetry.io/collector/pipeline"
 	sdkprometheus "go.opentelemetry.io/otel/exporters/prometheus"
-	otelmetric "go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/metric/noop"
 	"go.opentelemetry.io/otel/sdk/metric"
 
 	"github.com/grafana/alloy/internal/build"
@@ -164,13 +161,7 @@ func (p *Connector) Update(args component.Arguments) error {
 
 			TracerProvider: p.opts.Tracer,
 			MeterProvider:  mp,
-			LeveledMeterProvider: func(level configtelemetry.Level) otelmetric.MeterProvider {
-				if level <= metricsLevel {
-					return mp
-				}
-				return noop.MeterProvider{}
-			},
-			MetricsLevel: metricsLevel,
+			MetricsLevel:   metricsLevel,
 		},
 
 		BuildInfo: otelcomponent.BuildInfo{
@@ -214,9 +205,12 @@ func (p *Connector) Update(args component.Arguments) error {
 		return errors.New("unsupported connector type")
 	}
 
+	updateConsumersFunc := func() {
+		p.consumer.SetConsumers(tracesConnector, metricsConnector, logsConnector)
+	}
+
 	// Schedule the components to run once our component is running.
-	p.sched.Schedule(host, components...)
-	p.consumer.SetConsumers(tracesConnector, metricsConnector, logsConnector)
+	p.sched.Schedule(p.ctx, updateConsumersFunc, host, components...)
 	return nil
 }
 

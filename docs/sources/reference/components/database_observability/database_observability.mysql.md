@@ -13,9 +13,9 @@ title: database_observability.mysql
 ## Usage
 
 ```alloy
-database_observability.mysql "LABEL" {
-  data_source_name = DATA_SOURCE_NAME
-  forward_to       = [LOKI_RECEIVERS]
+database_observability.mysql "<LABEL>" {
+  data_source_name = <DATA_SOURCE_NAME>
+  forward_to       = [<LOKI_RECEIVERS>]
 }
 ```
 
@@ -23,16 +23,16 @@ database_observability.mysql "LABEL" {
 
 The following arguments are supported:
 
-| Name                 | Type           | Description                                                                                                         | Default | Required |
-| -------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
-| `data_source_name`      | `secret`             | [Data Source Name](https://github.com/go-sql-driver/mysql#dsn-data-source-name) for the MySQL server to connect to.               |         | yes |
-| `forward_to`            | `list(LogsReceiver)` | Where to forward log entries after processing.         |         | yes |
-| `collect_interval`      | `duration`           | How frequently to collect information from database | `"10s"` | no  |
-| `query_samples_enabled` | `bool`               | Whether to enable collection of query samples          | `true`  | no  |
+Name                    | Type                 | Description                                              | Default | Required
+------------------------|----------------------|----------------------------------------------------------|---------|---------
+`data_source_name`      | `secret`             | [Data Source Name][] for the MySQL server to connect to. |         | yes
+`forward_to`            | `list(LogsReceiver)` | Where to forward log entries after processing.           |         | yes
+`collect_interval`      | `duration`           | How frequently to collect information from database.     | `"10s"` | no
+`query_samples_enabled` | `bool`               | Whether to enable collection of query samples.           | `true`  | no
 
 ## Blocks
 
-The `database_observability.mysql` component does not support any blocks, and is configured fully through arguments.
+The `database_observability.mysql` component doesn't support any blocks, and is configured fully through arguments.
 
 ## Example
 
@@ -68,6 +68,9 @@ loki.write "logs_service" {
   }
 }
 ```
+
+[Data Source Name]: https://github.com/go-sql-driver/mysql#dsn-data-source-name
+
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components

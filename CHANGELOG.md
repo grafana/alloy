@@ -10,7 +10,35 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Enhancements
+
+- Improved performance by reducing allocation in Prometheus write pipelines by ~30% (@thampiotr)
+
+- (_Experimental_) Log instance label key in `database_observability.mysql` (@cristiangreco)
+
+- (_Experimental_) Improve parsing of truncated queries in `database_observability.mysql` (@cristiangreco)
+
+- Add json format support for log export via faro receiver (@ravishankar15)
+
+- Add livedebugging support for `prometheus.remote_write` (@ravishankar15)
+
+v1.6.0-rc.1
+-----------------
+
+### Breaking changes
+
+- Upgrade to OpenTelemetry Collector v0.116.0:
+  - `otelcol.processor.tailsampling`: Change decision precedence when using `and_sub_policy` and `invert_match`.
+    For more information, see the [release notes for Alloy 1.6][release-notes-alloy-1_6].
+
+    [#33671]: https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/33671
+    [release-notes-alloy-1_6]: https://grafana.com/docs/alloy/latest/release-notes/#v16
+
 ### Features
+
+- Add support for TLS to `prometheus.write.queue`. (@mattdurham)
+
+- Add `otelcol.receiver.syslog` component to receive otel logs in syslog format (@dehaansa)
 
 - Add support for metrics in `otelcol.exporter.loadbalancing` (@madaraszg-tulip)
 
@@ -32,11 +60,17 @@ Main (unreleased)
 
 ### Enhancements
 
+- Update `prometheus.write.queue` to support v2 for cpu performance. (@mattdurham)
+
+- (_Experimental_) Add health reporting to `database_observability.mysql` component (@cristiangreco)
+
 - Add second metrics sample to the support bundle to provide delta information (@dehaansa)
 
 - Add all raw configuration files & a copy of the latest remote config to the support bundle (@dehaansa)
 
 - Add relevant golang environment variables to the support bundle (@dehaansa)
+
+- Add support for server authentication to otelcol components. (@aidaleuc)
 
 - Update mysqld_exporter from v0.15.0 to v0.16.0 (including 2ef168bf6), most notable changes: (@cristiangreco)
   - Support MySQL 8.4 replicas syntax
@@ -51,14 +85,25 @@ Main (unreleased)
 - Live Debugging button should appear in UI only for supported components (@ravishankar15)
 - Add three new stdlib functions to_base64, from_URLbase64 and to_URLbase64 (@ravishankar15)
 - Add `ignore_older_than` option for local.file_match (@ravishankar15)
+- Add livedebugging support for discovery components (@ravishankar15)
 - Add livedebugging support for `discover.relabel` (@ravishankar15)
+- Performance optimization for live debugging feature (@ravishankar15)
 
 - Upgrade `github.com/goccy/go-json` to v0.10.4, which reduces the memory consumption of an Alloy instance by 20MB.
   If Alloy is running certain otelcol components, this reduction will not apply. (@ptodev)
+- improve performance in regexp component: call fmt only if debug is enabled (@r0ka)
 
 - Update `prometheus.write.queue` library for performance increases in cpu. (@mattdurham)
 
+- Update `loki.secretfilter` to be compatible with the new `[[rules.allowlists]]` gitleaks allowlist format (@romain-gaillard)
+
+- Update `async-profiler` binaries for `pyroscope.java` to 3.0-fa937db (@aleks-p)
+
+- Reduced memory allocation in discovery components by up to 30% (@thampiotr)
+
 ### Bugfixes
+
+- Fix issue where `alloy_prometheus_relabel_metrics_processed` was not being incremented. (@mattdurham)
 
 - Fixed issue with automemlimit logging bad messages and trying to access cgroup on non-linux builds (@dehaansa)
 
@@ -70,11 +115,71 @@ Main (unreleased)
 
 - Fixed an issue where the `otelcol.processor.interval` could not be used because the debug metrics were not set to default. (@wildum)
 
+- Fixed an issue where `loki.secretfilter` would crash if the secret was shorter than the `partial_mask` value. (@romain-gaillard)
+
+- Change the log level in the `eventlogmessage` stage of the `loki.process` component from `warn` to `debug`. (@wildum)
+
+- Fix a bug in `loki.source.kafka` where the `topics` argument incorrectly used regex matching instead of exact matches. (@wildum)
+
 ### Other changes
 
 - Change the stability of the `livedebugging` feature from "experimental" to "generally available". (@wildum)
 
 - Use Go 1.23.3 for builds. (@mattdurham)
+
+- Upgrade Beyla to v1.9.6. (@wildum)
+
+- Upgrade to OpenTelemetry Collector v0.116.0:
+  - `otelcol.receiver.datadog`: Return a json reponse instead of "OK" when a trace is received with a newer protocol version.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/35705
+  - `otelcol.receiver.datadog`: Changes response message for `/api/v1/check_run` 202 response to be JSON and on par with Datadog API spec
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/36029
+  - `otelcol.receiver.solace`: The Solace receiver may unexpectedly terminate on reporting traces when used with a memory limiter processor and under high load.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/35958
+  - `otelcol.receiver.solace`: Support converting the new `Move to Dead Message Queue` and new `Delete` spans generated by Solace Event Broker to OTLP.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/36071
+  - `otelcol.exporter.datadog`: Stop prefixing `http_server_duration`, `http_server_request_size` and `http_server_response_size` with `otelcol`.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/36265
+    These metrics can be from SDKs rather than collector. Stop prefixing them to be consistent with
+    https://opentelemetry.io/docs/collector/internal-telemetry/#lists-of-internal-metrics
+  - `otelcol.receiver.datadog`: Add json handling for the `api/v2/series` endpoint in the datadogreceiver.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/36218
+  - `otelcol.processor.span`: Add a new `keep_original_name` configuration argument
+    to keep the original span name when extracting attributes from the span name.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/36397
+  - `pkg/ottl`: Respect the `depth` option when flattening slices using `flatten`.
+    The `depth` option is also now required to be at least `1`.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/36198
+  - `otelcol.exporter.loadbalancing`: Shutdown exporters during collector shutdown. This fixes a memory leak.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/36024
+  - `otelcol.processor.k8sattributes`: New `wait_for_metadata` and `wait_for_metadata_timeout` configuration arguments,
+    which block the processor startup until metadata is received from Kubernetes.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/32556
+  - `otelcol.processor.k8sattributes`: Enable the `k8sattr.fieldExtractConfigRegex.disallow` for all Alloy instances,
+    to retain the behavior of `regex` argument in the `annotation` and `label` blocks.
+    When the feature gate is "deprecated" in the upstream Collector, Alloy users will need to use the transform processor instead.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/25128
+  - `otelcol.receiver.vcenter`: The existing code did not honor TLS settings beyond 'insecure'.
+    All TLS client config should now be honored.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/36482
+  - `otelcol.receiver.opencensus`: Do not report error message when OpenCensus receiver is shutdown cleanly.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/36622
+  - `otelcol.processor.k8sattributes`: Fixed parsing of k8s image names to support images with tags and digests.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/36145
+  - `otelcol.exporter.loadbalancing`: Adding sending_queue, retry_on_failure and timeout settings to loadbalancing exporter configuration.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/35378
+  - `otelcol.exporter.loadbalancing`: The k8sresolver was triggering exporter churn in the way the change event was handled.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/35658
+  - `otelcol.processor.k8sattributes`: Override extracted k8s attributes if original value has been empty.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/36466
+  - `otelcol.exporter.awss3`: Upgrading to adopt aws sdk v2.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/36698
+  - `pkg/ottl`: GetXML Converter now supports selecting text, CDATA, and attribute (value) content.
+  - `otelcol.exporter.loadbalancing`: Adds a an optional `return_hostnames` configuration argument to the k8s resolver.
+     https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/35411
+  - `otelcol.exporter.kafka`, `otelcol.receiver.kafka`: Add a new `AWS_MSK_IAM_OAUTHBEARER` mechanism.
+    This mechanism use the AWS MSK IAM SASL Signer for Go https://github.com/aws/aws-msk-iam-sasl-signer-go.
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/32500
 
 v1.5.1
 -----------------

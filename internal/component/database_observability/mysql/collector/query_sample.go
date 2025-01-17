@@ -5,12 +5,12 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
-	"sync/atomic"
 	"time"
 
 	"github.com/go-kit/log"
 	"github.com/prometheus/common/model"
 	"github.com/xwb1989/sqlparser"
+	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability"
@@ -35,6 +35,7 @@ const selectQuerySamples = `
 
 type QuerySampleArguments struct {
 	DB              *sql.DB
+	InstanceKey     string
 	CollectInterval time.Duration
 	EntryHandler    loki.EntryHandler
 
@@ -43,6 +44,7 @@ type QuerySampleArguments struct {
 
 type QuerySample struct {
 	dbConnection    *sql.DB
+	instanceKey     string
 	collectInterval time.Duration
 	entryHandler    loki.EntryHandler
 
@@ -55,11 +57,16 @@ type QuerySample struct {
 func NewQuerySample(args QuerySampleArguments) (*QuerySample, error) {
 	return &QuerySample{
 		dbConnection:    args.DB,
+		instanceKey:     args.InstanceKey,
 		collectInterval: args.CollectInterval,
 		entryHandler:    args.EntryHandler,
-		logger:          args.Logger,
+		logger:          log.With(args.Logger, "collector", "QuerySample"),
 		running:         &atomic.Bool{},
 	}, nil
+}
+
+func (c *QuerySample) Name() string {
+	return "QuerySample"
 }
 
 func (c *QuerySample) Start(ctx context.Context) error {
@@ -81,6 +88,7 @@ func (c *QuerySample) Start(ctx context.Context) error {
 		for {
 			if err := c.fetchQuerySamples(c.ctx); err != nil {
 				level.Error(c.logger).Log("msg", "collector stopping due to error", "err", err)
+				c.Stop()
 				break
 			}
 
@@ -127,8 +135,16 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 		}
 
 		if strings.HasSuffix(sampleText, "...") {
-			level.Info(c.logger).Log("msg", "skipping parsing truncated query", "digest", digest)
-			continue
+			// best-effort attempt to detect truncated trailing comment
+			if idx := strings.LastIndex(sampleText, "/*"); idx >= 0 {
+				trailingPart := sampleText[idx:]
+				if strings.LastIndex(trailingPart, "*/") < 0 {
+					sampleText = sampleText[:idx]
+				}
+			} else {
+				level.Debug(c.logger).Log("msg", "skipping parsing truncated query", "digest", digest)
+				continue
+			}
 		}
 
 		stmt, err := sqlparser.Parse(sampleText)
@@ -148,8 +164,8 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 			Entry: logproto.Entry{
 				Timestamp: time.Unix(0, time.Now().UnixNano()),
 				Line: fmt.Sprintf(
-					`level=info msg="query samples fetched" op="%s" digest="%s" query_type="%s" query_sample_seen="%s" query_sample_timer_wait="%s" query_sample_redacted="%s"`,
-					OP_QUERY_SAMPLE, digest, c.stmtType(stmt), sampleSeen, sampleTimerWait, sampleRedactedText,
+					`level=info msg="query samples fetched" op="%s" instance="%s" digest="%s" query_type="%s" query_sample_seen="%s" query_sample_timer_wait="%s" query_sample_redacted="%s"`,
+					OP_QUERY_SAMPLE, c.instanceKey, digest, c.stmtType(stmt), sampleSeen, sampleTimerWait, sampleRedactedText,
 				),
 			},
 		}
@@ -161,8 +177,8 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 				Entry: logproto.Entry{
 					Timestamp: time.Unix(0, time.Now().UnixNano()),
 					Line: fmt.Sprintf(
-						`level=info msg="table name parsed" op="%s" digest="%s" table="%s"`,
-						OP_QUERY_PARSED_TABLE_NAME, digest, table,
+						`level=info msg="table name parsed" op="%s" instance="%s" digest="%s" table="%s"`,
+						OP_QUERY_PARSED_TABLE_NAME, c.instanceKey, digest, table,
 					),
 				},
 			}

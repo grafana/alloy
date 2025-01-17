@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/jaegertracing/jaeger/proto-gen/api_v2"
-	"github.com/tilinna/clock"
+	"github.com/jonboulle/clockwork"
 )
 
 type serviceStrategyCache interface {
@@ -56,7 +56,6 @@ func (c *serviceStrategyTTLCache) get(
 	ctx context.Context,
 	serviceName string,
 ) (*api_v2.SamplingStrategyResponse, bool) {
-
 	c.rw.RLock()
 	defer c.rw.RUnlock()
 	found, ok := c.items[serviceName]
@@ -75,12 +74,11 @@ func (c *serviceStrategyTTLCache) put(
 	serviceName string,
 	response *api_v2.SamplingStrategyResponse,
 ) {
-
 	c.rw.Lock()
 	defer c.rw.Unlock()
 	c.items[serviceName] = serviceStrategyCacheEntry{
 		strategyResponse: response,
-		retrievedAt:      clock.Now(ctx),
+		retrievedAt:      clockwork.FromContext(ctx).Now(),
 	}
 }
 
@@ -91,11 +89,10 @@ func (c *serviceStrategyTTLCache) periodicallyClearCache(
 	ctx context.Context,
 	schedulingPeriod time.Duration,
 ) {
-
-	ticker := clock.NewTicker(ctx, schedulingPeriod)
+	ticker := clockwork.FromContext(ctx).NewTicker(schedulingPeriod)
 	for {
 		select {
-		case <-ticker.C:
+		case <-ticker.Chan():
 			c.rw.Lock()
 			newItems := make(map[string]serviceStrategyCacheEntry, initialRemoteResponseCacheSize)
 			for serviceName, item := range c.items {
@@ -118,7 +115,7 @@ func (c *serviceStrategyTTLCache) Close() error {
 }
 
 func (c *serviceStrategyTTLCache) staleItem(ctx context.Context, item serviceStrategyCacheEntry) bool {
-	return clock.Now(ctx).After(item.retrievedAt.Add(c.itemTTL))
+	return clockwork.FromContext(ctx).Now().After(item.retrievedAt.Add(c.itemTTL))
 }
 
 type noopStrategyCache struct{}

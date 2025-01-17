@@ -29,12 +29,12 @@ func TestSchemaTable(t *testing.T) {
 
 		collector, err := NewSchemaTable(SchemaTableArguments{
 			DB:              db,
+			InstanceKey:     "mysql-db",
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
 			CacheTTL:        time.Minute,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
-
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
@@ -82,9 +82,9 @@ func TestSchemaTable(t *testing.T) {
 		for _, entry := range lokiEntries {
 			require.Equal(t, model.LabelSet{"job": database_observability.JobName}, entry.Labels)
 		}
-		require.Equal(t, `level=info msg="schema detected" op="schema_detection" schema="some_schema"`, lokiEntries[0].Line)
-		require.Equal(t, `level=info msg="table detected" op="table_detection" schema="some_schema" table="some_table"`, lokiEntries[1].Line)
-		require.Equal(t, `level=info msg="create table" op="create_statement" schema="some_schema" table="some_table" create_statement="CREATE TABLE some_table (id INT)"`, lokiEntries[2].Line)
+		require.Equal(t, `level=info msg="schema detected" op="schema_detection" instance="mysql-db" schema="some_schema"`, lokiEntries[0].Line)
+		require.Equal(t, `level=info msg="table detected" op="table_detection" instance="mysql-db" schema="some_schema" table="some_table"`, lokiEntries[1].Line)
+		require.Equal(t, `level=info msg="create table" op="create_statement" instance="mysql-db" schema="some_schema" table="some_table" create_statement="CREATE TABLE some_table (id INT)"`, lokiEntries[2].Line)
 
 		err = mock.ExpectationsWereMet()
 		require.NoError(t, err)
@@ -102,6 +102,7 @@ func TestSchemaTable(t *testing.T) {
 
 		collector, err := NewSchemaTable(SchemaTableArguments{
 			DB:              db,
+			InstanceKey:     "mysql-db",
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
 			CacheTTL:        time.Minute,
@@ -159,9 +160,9 @@ func TestSchemaTable(t *testing.T) {
 		for _, entry := range lokiEntries {
 			require.Equal(t, model.LabelSet{"job": database_observability.JobName}, entry.Labels)
 		}
-		require.Equal(t, `level=info msg="schema detected" op="schema_detection" schema="some_schema"`, lokiEntries[0].Line)
-		require.Equal(t, `level=info msg="table detected" op="table_detection" schema="some_schema" table="some_table"`, lokiEntries[1].Line)
-		require.Equal(t, `level=info msg="create table" op="create_statement" schema="some_schema" table="some_table" create_statement="CREATE VIEW some_view (id INT)"`, lokiEntries[2].Line)
+		require.Equal(t, `level=info msg="schema detected" op="schema_detection" instance="mysql-db" schema="some_schema"`, lokiEntries[0].Line)
+		require.Equal(t, `level=info msg="table detected" op="table_detection" instance="mysql-db" schema="some_schema" table="some_table"`, lokiEntries[1].Line)
+		require.Equal(t, `level=info msg="create table" op="create_statement" instance="mysql-db" schema="some_schema" table="some_table" create_statement="CREATE VIEW some_view (id INT)"`, lokiEntries[2].Line)
 
 		err = mock.ExpectationsWereMet()
 		require.NoError(t, err)

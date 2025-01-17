@@ -37,9 +37,7 @@ type Scheduler struct {
 	schedMut        sync.Mutex
 	schedComponents []otelcomponent.Component // Most recently created components
 	host            otelcomponent.Host
-
-	// newComponentsCh is written to when schedComponents gets updated.
-	newComponentsCh chan struct{}
+	running         bool
 
 	// onPause is called when scheduler is making changes to running components.
 	onPause func()
@@ -51,89 +49,102 @@ type Scheduler struct {
 // Schedule to schedule components to run.
 func New(l log.Logger) *Scheduler {
 	return &Scheduler{
-		log:             l,
-		newComponentsCh: make(chan struct{}, 1),
-		onPause:         func() {},
-		onResume:        func() {},
+		log:      l,
+		onPause:  func() {},
+		onResume: func() {},
 	}
 }
 
-// NewWithPauseCallbacks is like New, but allows to specify onPause and onResume callbacks. The scheduler is assumed to
-// start paused and only when its components are scheduled, it will call onResume. From then on, each update to running
-// components via Schedule method will trigger a call to onPause and then onResume. When scheduler is shutting down, it
-// will call onResume as a last step.
+// NewWithPauseCallbacks is like New, but allows to specify onPause() and onResume() callbacks.
+// The callbacks are a useful way of pausing and resuming the ingestion of data by the components:
+// * onPause() is called before the scheduler stops the components.
+// * onResume() is called after the scheduler starts the components.
+// The callbacks are used by the Schedule() and Run() functions.
+// The scheduler is assumed to start paused; Schedule() won't call onPause() if Run() was never ran.
 func NewWithPauseCallbacks(l log.Logger, onPause func(), onResume func()) *Scheduler {
 	return &Scheduler{
-		log:             l,
-		newComponentsCh: make(chan struct{}, 1),
-		onPause:         onPause,
-		onResume:        onResume,
+		log:      l,
+		onPause:  onPause,
+		onResume: onResume,
 	}
 }
 
-// Schedule schedules a new set of OpenTelemetry Components to run. Components
-// will only be scheduled when the Scheduler is running.
+// Schedule a new set of OpenTelemetry Components to run.
+// Components will only be started when the Scheduler's Run() function has been called.
 //
-// Schedule completely overrides the set of previously running components;
-// components which have been removed since the last call to Schedule will be
-// stopped.
-func (cs *Scheduler) Schedule(h otelcomponent.Host, cc ...otelcomponent.Component) {
+// Schedule() completely overrides the set of previously running components.
+// Components which have been removed since the last call to Schedule will be stopped.
+//
+// updateConsumers is called after the components are paused and before starting the new components.
+// It is expected that this function will set the new set of consumers to the wrapping consumer that's assigned to the Alloy component.
+func (cs *Scheduler) Schedule(ctx context.Context, updateConsumers func(), h otelcomponent.Host, cc ...otelcomponent.Component) {
 	cs.schedMut.Lock()
 	defer cs.schedMut.Unlock()
 
-	cs.schedComponents = cc
-	cs.host = h
-
-	select {
-	case cs.newComponentsCh <- struct{}{}:
-		// Queued new message.
-	default:
-		// A message is already queued for refreshing running components so we
-		// don't have to do anything here.
+	// If the scheduler isn't running yet, just update the state.
+	// That way the Run function is ready to go.
+	if !cs.running {
+		cs.schedComponents = cc
+		cs.host = h
+		updateConsumers()
+		return
 	}
+
+	// The new components must be setup in this order:
+	//
+	// 1. Pause consumers
+	// 2. Stop the old components
+	// 3. Change the consumers
+	// 4. Start the new components
+	// 5. Start the consumer
+	//
+	// There could be race conditions if the order above is not followed.
+
+	// 1. Pause consumers
+	// This prevents them from accepting new data while we're shutting them down.
+	cs.onPause()
+
+	// 2. Stop the old components
+	cs.stopComponents(ctx, cs.schedComponents...)
+
+	// 3. Change the consumers
+	// This can only be done after stopping the pervious components and before starting the new ones.
+	updateConsumers()
+
+	// 4. Start the new components
+	level.Debug(cs.log).Log("msg", "scheduling otelcol components", "count", len(cs.schedComponents))
+	cs.schedComponents = cs.startComponents(ctx, h, cc...)
+	cs.host = h
+	//TODO: What if the trace component failed but the metrics one didn't? Should we resume all consumers?
+
+	// 5. Start the consumer
+	// The new components will now start accepting telemetry data.
+	cs.onResume()
 }
 
-// Run starts the Scheduler. Run will watch for schedule components to appear
-// and run them, terminating previously running components if they exist.
+// Run starts the Scheduler and stops the components when the context is cancelled.
 func (cs *Scheduler) Run(ctx context.Context) error {
-	firstRun := true
-	var components []otelcomponent.Component
+	cs.schedMut.Lock()
+	cs.running = true
+
+	cs.onPause()
+	cs.startComponents(ctx, cs.host, cs.schedComponents...)
+	cs.onResume()
+
+	cs.schedMut.Unlock()
 
 	// Make sure we terminate all of our running components on shutdown.
 	defer func() {
-		if !firstRun { // always handle the callbacks correctly
-			cs.onPause()
-		}
-		cs.stopComponents(context.Background(), components...)
+		cs.schedMut.Lock()
+		defer cs.schedMut.Unlock()
+		cs.stopComponents(context.Background(), cs.schedComponents...)
+		// this Resume call should not be needed but is added for robustness to ensure that
+		// it does not ever exit in "paused" state.
 		cs.onResume()
 	}()
 
-	// Wait for a write to cs.newComponentsCh. The initial list of components is
-	// always empty so there's nothing to do until cs.newComponentsCh is written
-	// to.
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		case <-cs.newComponentsCh:
-			if !firstRun {
-				cs.onPause() // do not pause on first run
-			} else {
-				firstRun = false
-			}
-			// Stop the old components before running new scheduled ones.
-			cs.stopComponents(ctx, components...)
-
-			cs.schedMut.Lock()
-			components = cs.schedComponents
-			host := cs.host
-			cs.schedMut.Unlock()
-
-			level.Debug(cs.log).Log("msg", "scheduling components", "count", len(components))
-			components = cs.startComponents(ctx, host, components...)
-			cs.onResume()
-		}
-	}
+	<-ctx.Done()
+	return nil
 }
 
 func (cs *Scheduler) stopComponents(ctx context.Context, cc ...otelcomponent.Component) {
