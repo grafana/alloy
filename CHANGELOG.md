@@ -10,6 +10,10 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Features
+
+- Add the possibility to export span events as logs in `otelcol.connector.spanlogs`. (@steve-hb)
+
 ### Enhancements
 
 - Improved performance by reducing allocation in Prometheus write pipelines by ~30% (@thampiotr)
