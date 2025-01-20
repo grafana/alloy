@@ -35,8 +35,8 @@ const (
 	selectTableName = `
 	SELECT
 		TABLE_NAME,
-		CREATE_TIME,
 		TABLE_TYPE,
+		CREATE_TIME,
 		ifnull(UPDATE_TIME, CREATE_TIME) AS UPDATE_TIME
 	FROM
 		information_schema.tables
