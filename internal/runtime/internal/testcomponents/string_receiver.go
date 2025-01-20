@@ -50,7 +50,7 @@ type StringReceiverComponent struct {
 	receiver StringReceiver
 }
 
-// NewStringReceiver creates a new summation component.
+// NewStringReceiver creates a new string_receiver component.
 func NewStringReceiverComp(o component.Options, cfg StringReceiverConfig) (*StringReceiverComponent, error) {
 	s := &StringReceiverComponent{opts: o, log: o.Logger}
 	s.receiver = StringReceiverImpl{
@@ -78,7 +78,7 @@ func (s *StringReceiverComponent) Run(ctx context.Context) error {
 	return nil
 }
 
-// Return the sum as debug info instead of export to avoid evaluation loop.
+// Return the receiver as debug info instead of export to avoid evaluation loop.
 func (s *StringReceiverComponent) DebugInfo() interface{} {
 	s.mut.Lock()
 	defer s.mut.Unlock()
