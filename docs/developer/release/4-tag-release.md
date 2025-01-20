@@ -2,6 +2,9 @@
 
 A tag is required to create GitHub artifacts and as a prerequisite for publishing.
 
+> **NOTE**: There's an experimental script in `scripts/release-process/tag-release.sh` that can
+> facilitate this process.
+
 ## Before you begin
 
 1. All required commits for the release should exist on the release branch. This includes functionality and documentation such as the `CHANGELOG.md`. All versions in code should have already been updated.
