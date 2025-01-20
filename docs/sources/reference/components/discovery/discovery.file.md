@@ -21,8 +21,8 @@ If you are trying to discover files on the local filesystem rather than scrape t
 ## Usage
 
 ```alloy
-discovery.file "LABEL" {
-  files = [FILE_PATH_1, FILE_PATH_2, ...]
+discovery.file "<LABEL>" {
+  files = [<FILE_PATH_1>, <FILE_PATH_2>, ...]
 }
 ```
 
@@ -35,7 +35,7 @@ Name               | Type           | Description                              |
 `files`            | `list(string)` | Files to read and discover targets from. |         | yes
 `refresh_interval` | `duration`     | How often to sync targets.               | "5m"    | no
 
-The last path segment of each element in `files` may contain a single * that matches any character sequence, e.g. `my/path/tg_*.json`.
+The last path segment of each element in `files` may contain a single `*` that matches any character sequence, for example, `my/path/tg_*.json`.
 
 ## Exported fields
 
@@ -56,15 +56,16 @@ In those cases, exported fields retain their last healthy values.
 
 ## Debug information
 
-`discovery.file` does not expose any component-specific debug information.
+`discovery.file` doesn't expose any component-specific debug information.
 
 ## Debug metrics
 
-`discovery.file` does not expose any component-specific debug metrics.
+`discovery.file` doesn't expose any component-specific debug metrics.
 
 ## Examples
 
 ### Example target files
+
 ```json
 [
   {
@@ -110,20 +111,21 @@ prometheus.scrape "default" {
 
 prometheus.remote_write "demo" {
   endpoint {
-    url = PROMETHEUS_REMOTE_WRITE_URL
+    url = <PROMETHEUS_REMOTE_WRITE_URL>
 
     basic_auth {
-      username = USERNAME
-      password = PASSWORD
+      username = <USERNAME>
+      password = <PASSWORD>
     }
   }
 }
 ```
 
 Replace the following:
-  - `PROMETHEUS_REMOTE_WRITE_URL`: The URL of the Prometheus remote_write-compatible server to send metrics to.
-  - `USERNAME`: The username to use for authentication to the remote_write API.
-  - `PASSWORD`: The password to use for authentication to the remote_write API.
+
+* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
+* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 ### File discovery with retained file path label
 
@@ -151,20 +153,21 @@ prometheus.scrape "default" {
 
 prometheus.remote_write "demo" {
   endpoint {
-    url = PROMETHEUS_REMOTE_WRITE_URL
+    url = <PROMETHEUS_REMOTE_WRITE_URL>
 
     basic_auth {
-      username = USERNAME
-      password = PASSWORD
+      username = <USERNAME>
+      password = <PASSWORD>
     }
   }
 }
 ```
 
 Replace the following:
-  - `PROMETHEUS_REMOTE_WRITE_URL`: The URL of the Prometheus remote_write-compatible server to send metrics to.
-  - `USERNAME`: The username to use for authentication to the remote_write API.
-  - `PASSWORD`: The password to use for authentication to the remote_write API.
+
+* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
+* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
