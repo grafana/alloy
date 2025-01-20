@@ -24,6 +24,10 @@ Main (unreleased)
 
 - Add livedebugging support for `prometheus.remote_write` (@ravishankar15)
 
+### Other changes
+
+- Use Go 1.23.5 for builds. (@wildum)
+
 v1.6.0-rc.1
 -----------------
 
