@@ -22,7 +22,7 @@ discovery.ec2 "<LABEL>" {
 
 ## Arguments
 
-The following arguments are supported:
+You can use the following arguments with `discovery.ec2`:
 
 Name                     | Type                | Description                                                                                                             | Default | Required
 -------------------------|---------------------|-------------------------------------------------------------------------------------------------------------------------|---------|---------
@@ -45,26 +45,29 @@ Name                     | Type                | Description                    
 
  At most, one of the following can be provided:
 
-* [`authorization` block][authorization].
-* [`basic_auth` block][basic_auth].
-* [`bearer_token_file` argument](#arguments).
-* [`bearer_token` argument](#arguments).
-* [`oauth2` block][oauth2].
+* [`authorization`][authorization] block
+* [`basic_auth`][basic_auth] block
+* [`bearer_token_file`](#arguments) argument
+* [`bearer_token`](#arguments) argument
+* [`oauth2`][oauth2] block
 
  {{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Blocks
 
-The following blocks are supported inside the definition of `discovery.ec2`:
+You can use the following blocks with `discovery.ec2`:
 
-Hierarchy           | Block             | Description                                                | Required
---------------------|-------------------|------------------------------------------------------------|---------
-authorization       | [authorization][] | Configure generic authorization to the endpoint.           | no
-basic_auth          | [basic_auth][]    | Configure `basic_auth` for authenticating to the endpoint. | no
-filter              | [filter][]        | Filters discoverable resources.                            | no
-oauth2              | [oauth2][]        | Configure OAuth2 for authenticating to the endpoint.       | no
-oauth2 > tls_config | [tls_config][]    | Configure TLS settings for connecting to the endpoint.     | no
-tls_config          | [tls_config][]    | Configure TLS settings for connecting to the endpoint.     | no
+Block                   | Description                                                | Required
+------------------------|------------------------------------------------------------|---------
+[authorization][]       | Configure generic authorization to the endpoint.           | no
+[basic_auth][]          | Configure `basic_auth` for authenticating to the endpoint. | no
+[filter][]              | Filters discoverable resources.                            | no
+[oauth2][]              | Configure OAuth 2.0 for authenticating to the endpoint.    | no
+oauth2 > [tls_config][] | Configure TLS settings for connecting to the endpoint.     | no
+[tls_config][]          | Configure TLS settings for connecting to the endpoint.     | no
+
+The > symbol indicates deeper levels of nesting.
+For example, `oauth2 > tls_config` refers to a `tls_config` block defined inside an `oauth2` block.
 
 [authorization]: #authorization
 [basic_auth]: #basic_auth
@@ -74,15 +77,19 @@ tls_config          | [tls_config][]    | Configure TLS settings for connecting 
 
 ### authorization
 
+The `authorization` block configures generic authorization to the endpoint.
+
 {{< docs/shared lookup="reference/components/authorization-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### basic_auth
+
+The `basic_auth` block configures basic authentication to the endpoint.
 
 {{< docs/shared lookup="reference/components/basic-auth-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### filter
 
-You can use filters to filter the instance list by other criteria.
+The `filter` block filters the instance list by other criteria.
 Refer to the [Amazon EC2 documentation][amazon] for more information about filters.
 
 Name     | Type           | Description                   | Default | Required
@@ -97,9 +104,13 @@ Refer to the [Filter API AWS EC2 documentation][filter api] for the list of supp
 
 ### oauth2
 
+The `oauth` block configures OAuth 2.0 authentication to the endpoint.
+
 {{< docs/shared lookup="reference/components/oauth2-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### tls_config
+
+The `tls_config` block configures TLS settings for connecting to the endpoint.
 
 {{< docs/shared lookup="reference/components/tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 

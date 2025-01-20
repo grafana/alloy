@@ -28,7 +28,7 @@ discovery.file "<LABEL>" {
 
 ## Arguments
 
-The following arguments are supported:
+You can use the following arguments with `discovery.file`:
 
 Name               | Type           | Description                              | Default | Required
 -------------------|----------------|------------------------------------------|---------|---------
@@ -36,6 +36,10 @@ Name               | Type           | Description                              |
 `refresh_interval` | `duration`     | How often to sync targets.               | "5m"    | no
 
 The last path segment of each element in `files` may contain a single `*` that matches any character sequence, for example, `my/path/tg_*.json`.
+
+## Blocks
+
+The `discovery.file` component doesn't support any blocks. You can configure this component with arguments.
 
 ## Exported fields
 
@@ -63,6 +67,8 @@ In those cases, exported fields retain their last healthy values.
 `discovery.file` doesn't expose any component-specific debug metrics.
 
 ## Examples
+
+The following examples show you how to configure the `discovery.file` component.
 
 ### Example target files
 

@@ -33,7 +33,7 @@ discovery.gce "<LABEL>" {
 
 ## Arguments
 
-The following arguments are supported:
+You can use the following arguments with `discovery.gce`:
 
 Name               | Type       | Description                                                                                                             | Default | Required
 -------------------|------------|-------------------------------------------------------------------------------------------------------------------------|---------|---------
@@ -47,6 +47,10 @@ Name               | Type       | Description                                   
 For more information on the syntax of the `filter` argument, refer to Google's `filter` documentation for [Method: instances.list][].
 
 [Method: instances.list]: https://cloud.google.com/compute/docs/reference/latest/instances/list
+
+## Blocks
+
+The `discovery.gce` component doesn't support any blocks. You can configure this component with arguments.
 
 ## Exported fields
 
