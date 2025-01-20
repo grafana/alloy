@@ -22,7 +22,7 @@ discovery.docker "<LABEL>" {
 
 ## Arguments
 
-TYou can use the following arguments with `discovery.docker`:
+You can use the following arguments with `discovery.docker`:
 
 Name                     | Type                | Description                                                                                      | Default       | Required
 -------------------------|---------------------|--------------------------------------------------------------------------------------------------|---------------|---------
@@ -87,7 +87,7 @@ The `basic_auth` block configures basic authentication to the endpoint.
 
 ### filter
 
-You can use the `filter` block to configure a filter to pass to the Docker Engine to limit the amount of containers returned.
+The `filter` block configures a filter to pass to the Docker Engine to limit the number of containers returned.
 You can specify the `filter` block multiple times to provide more than one filter.
 
 Name     | Type           | Description                   | Default | Required

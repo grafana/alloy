@@ -86,7 +86,7 @@ The `basic_auth` block configures basic authentication to the endpoint.
 
 ### filter
 
-You can use the `filter` block to limit the discovery process to a subset of available resources.
+The `filter` block limits the discovery process to a subset of available resources.
 You can define multiple `filter` blocks within the `discovery.dockerswarm` block.
 The list of available filters depends on the `role`:
 
