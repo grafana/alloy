@@ -126,7 +126,7 @@ otelcol.connector.spanlogs "default" {
   labels             = ["attribute1", "res_attribute1"]
   span_attributes    = ["attribute1"]
   process_attributes = ["res_attribute1"]
-  event_attributes   = ["attribute1"]
+  event_attributes   = ["log.severity", "log.message"]
 
   output {
     logs = [otelcol.processor.attributes.default.input]
