@@ -1,4 +1,4 @@
-FROM library/golang:1.23.3-windowsservercore-1809
+FROM library/golang:1.23.5-windowsservercore-1809
 
 SHELL ["powershell", "-command"]
 
