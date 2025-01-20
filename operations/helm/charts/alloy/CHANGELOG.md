@@ -12,6 +12,7 @@ Unreleased
 
 ### Enhancements
 
+- Allow configuration of `--cluster.max-join-peers` in the Helm chart. (@adinhodovic)
 - Update jimmidyson/configmap-reload to 0.14.0. (@petewall)
 - Add the ability to deploy extra manifest files. (@dbluxo)
 
