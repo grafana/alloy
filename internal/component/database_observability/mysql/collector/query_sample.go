@@ -143,20 +143,20 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 					sampleText = sampleText[:idx]
 				}
 			} else {
-				level.Debug(c.logger).Log("msg", "skipping parsing truncated query", "digest", digest, "schema", schemaName)
+				level.Debug(c.logger).Log("msg", "skipping parsing truncated query", "schema", schemaName, "digest", digest)
 				continue
 			}
 		}
 
 		stmt, err := sqlparser.Parse(sampleText)
 		if err != nil {
-			level.Error(c.logger).Log("msg", "failed to parse sql query", "digest", digest, "schema", schemaName, "err", err)
+			level.Error(c.logger).Log("msg", "failed to parse sql query", "schema", schemaName, "digest", digest, "err", err)
 			continue
 		}
 
 		sampleRedactedText, err := sqlparser.RedactSQLQuery(sampleText)
 		if err != nil {
-			level.Error(c.logger).Log("msg", "failed to redact sql query", "digest", digest, "schema", schemaName, "err", err)
+			level.Error(c.logger).Log("msg", "failed to redact sql query", "schema", schemaName, "digest", digest, "err", err)
 			continue
 		}
 
