@@ -18,6 +18,8 @@ Main (unreleased)
 
 - (_Experimental_) Improve parsing of truncated queries in `database_observability.mysql` (@cristiangreco)
 
+- (_Experimental_) Fix handling of view table types when detecting schema in `database_observability.mysql` (@matthewnolf)
+
 - Add json format support for log export via faro receiver (@ravishankar15)
 
 - Add livedebugging support for `prometheus.remote_write` (@ravishankar15)
