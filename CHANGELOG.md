@@ -26,11 +26,7 @@ Main (unreleased)
 
 - Add livedebugging support for `prometheus.remote_write` (@ravishankar15)
 
-### Other changes
-
-- Use Go 1.23.5 for builds. (@wildum)
-
-v1.6.0-rc.1
+v1.6.0-rc.2
 -----------------
 
 ### Breaking changes
@@ -188,6 +184,8 @@ v1.6.0-rc.1
   - `otelcol.exporter.kafka`, `otelcol.receiver.kafka`: Add a new `AWS_MSK_IAM_OAUTHBEARER` mechanism.
     This mechanism use the AWS MSK IAM SASL Signer for Go https://github.com/aws/aws-msk-iam-sasl-signer-go.
     https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/32500
+
+  - Use Go 1.23.5 for builds. (@wildum)
 
 v1.5.1
 -----------------
