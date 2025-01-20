@@ -126,7 +126,13 @@ func (j *javaComponent) updateTargets(args Arguments) {
 
 	active := make(map[int]struct{})
 	for _, target := range args.Targets {
-		pid, err := strconv.Atoi(target[labelProcessID])
+		pid64, err := strconv.ParseInt(target[labelProcessID], 10, 32)
+		if err != nil {
+			_ = level.Error(j.opts.Logger).Log("msg", "could not convert process ID to a 32 bit integer", "pid", target[labelProcessID], "err", err)
+			continue
+		}
+		pid := int(pid64)
+
 		_ = level.Debug(j.opts.Logger).Log("msg", "active target",
 			"target", fmt.Sprintf("%+v", target),
 			"pid", pid)
