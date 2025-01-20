@@ -42,11 +42,11 @@ Name                     | Type                | Description                    
 
 You can use the following blocks with `discovery.azure`:
 
-Block                                | Description                                      | Required
--------------------------------------|--------------------------------------------------|---------
-[managed_identity][managed_identity] | Managed Identity configuration for Azure API.    | no
-[oauth][oauth]                       | OAuth 2.0 configuration for Azure API.           | no
-[tls_config][tls_config]             | TLS configuration for requests to the Azure API. | no
+Block                | Description                                      | Required
+---------------------|--------------------------------------------------|---------
+[managed_identity][] | Managed Identity configuration for Azure API.    | no
+[oauth][]            | OAuth 2.0 configuration for Azure API.           | no
+[tls_config][]       | TLS configuration for requests to the Azure API. | no
 
 You must specify exactly one of the `oauth` or `managed_identity` blocks.
 
