@@ -46,6 +46,7 @@ type Loader struct {
 	componentNodes       []ComponentNode
 	declareNodes         map[string]*DeclareNode
 	importConfigNodes    map[string]*ImportConfigNode
+	forEachNodes         map[string]*ForeachConfigNode
 	serviceNodes         []*ServiceNode
 	cache                *valueCache
 	blocks               []*ast.BlockStmt // Most recently loaded blocks, used for writing
@@ -511,7 +512,7 @@ func (l *Loader) populateConfigBlockNodes(args map[string]any, g *dag.Graph, con
 			node = exist.(BlockNode)
 			node.UpdateBlock(block)
 		} else {
-			node, newConfigNodeDiags = NewConfigNode(block, l.globals)
+			node, newConfigNodeDiags = NewConfigNode(block, l.globals, l.componentNodeManager.customComponentReg)
 			diags = append(diags, newConfigNodeDiags...)
 			if diags.HasErrors() {
 				continue
@@ -547,6 +548,7 @@ func (l *Loader) populateConfigBlockNodes(args map[string]any, g *dag.Graph, con
 	}
 
 	l.importConfigNodes = nodeMap.importMap
+	l.forEachNodes = nodeMap.foreachMap
 
 	return diags
 }
@@ -623,6 +625,8 @@ func (l *Loader) wireGraphEdges(g *dag.Graph) diag.Diagnostics {
 			continue
 		case *CustomComponentNode:
 			l.wireCustomComponentNode(g, n)
+		case *ForeachConfigNode:
+			l.wireForEachNode(g, n)
 		}
 
 		// Finally, wire component references.
@@ -654,6 +658,14 @@ func (l *Loader) wireCustomComponentNode(g *dag.Graph, cc *CustomComponentNode) 
 	}
 }
 
+// wireForEachNode add edges between a foreach node and declare/import nodes that are used in the foreach pipeline.
+func (l *Loader) wireForEachNode(g *dag.Graph, fn *ForeachConfigNode) {
+	refs := l.findCustomComponentReferences(fn.Block())
+	for ref := range refs {
+		g.AddEdge(dag.Edge{From: fn, To: ref})
+	}
+}
+
 // Variables returns the Variables the Loader exposes for other components to
 // reference.
 func (l *Loader) Variables() map[string]interface{} {
@@ -679,6 +691,13 @@ func (l *Loader) Imports() map[string]*ImportConfigNode {
 	l.mut.RLock()
 	defer l.mut.RUnlock()
 	return l.importConfigNodes
+}
+
+// ForEachs returns the current set of foreach nodes.
+func (l *Loader) ForEachs() map[string]*ForeachConfigNode {
+	l.mut.RLock()
+	defer l.mut.RUnlock()
+	return l.forEachNodes
 }
 
 // Graph returns a copy of the DAG managed by the Loader.
@@ -909,10 +928,10 @@ func (l *Loader) isRootController() bool {
 	return l.globals.ControllerID == ""
 }
 
-// findCustomComponentReferences returns references to import/declare nodes in a declare block.
-func (l *Loader) findCustomComponentReferences(declare *ast.BlockStmt) map[BlockNode]struct{} {
+// findCustomComponentReferences returns references to import/declare nodes in a block.
+func (l *Loader) findCustomComponentReferences(block *ast.BlockStmt) map[BlockNode]struct{} {
 	uniqueReferences := make(map[BlockNode]struct{})
-	l.collectCustomComponentReferences(declare.Body, uniqueReferences)
+	l.collectCustomComponentReferences(block.Body, uniqueReferences)
 	return uniqueReferences
 }
 
@@ -932,7 +951,7 @@ func (l *Loader) collectCustomComponentReferences(stmts ast.Body, uniqueReferenc
 		)
 
 		switch {
-		case componentName == declareType:
+		case componentName == declareType || componentName == templateType:
 			l.collectCustomComponentReferences(blockStmt.Body, uniqueReferences)
 		case foundDeclare:
 			uniqueReferences[declareNode] = struct{}{}

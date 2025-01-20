@@ -13,7 +13,7 @@ func TestGlobalID(t *testing.T) {
 		DataPath:     "/data/",
 		MinStability: featuregate.StabilityPublicPreview,
 		ControllerID: "module.file",
-		NewModuleController: func(id string) ModuleController {
+		NewModuleController: func(opts ModuleControllerOpts) ModuleController {
 			return nil
 		},
 	}, &BuiltinComponentNode{
@@ -28,7 +28,7 @@ func TestLocalID(t *testing.T) {
 		DataPath:     "/data/",
 		MinStability: featuregate.StabilityPublicPreview,
 		ControllerID: "",
-		NewModuleController: func(id string) ModuleController {
+		NewModuleController: func(opts ModuleControllerOpts) ModuleController {
 			return nil
 		},
 	}, &BuiltinComponentNode{
