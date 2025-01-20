@@ -36,6 +36,7 @@ const (
 	SELECT
 		TABLE_NAME,
 		CREATE_TIME,
+		TABLE_TYPE,
 		ifnull(UPDATE_TIME, CREATE_TIME) AS UPDATE_TIME
 	FROM
 		information_schema.tables
@@ -78,6 +79,7 @@ type SchemaTable struct {
 type tableInfo struct {
 	schema     string
 	tableName  string
+	tableType  string
 	createTime time.Time
 	updateTime time.Time
 	createStmt string
@@ -195,19 +197,25 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 				break
 			}
 
-			var table string
+			var tableName, tableType string
 			var createTime, updateTime time.Time
-			if err := rs.Scan(&table, &createTime, &updateTime); err != nil {
+			if err := rs.Scan(&tableName, &tableType, &createTime, &updateTime); err != nil {
 				level.Error(c.logger).Log("msg", "failed to scan tables", "err", err)
 				break
 			}
-			tables = append(tables, tableInfo{schema: schema, tableName: table, createTime: createTime, updateTime: updateTime})
+			tables = append(tables, tableInfo{
+				schema:     schema,
+				tableName:  tableName,
+				tableType:  tableType,
+				createTime: createTime,
+				updateTime: updateTime,
+			})
 
 			c.entryHandler.Chan() <- loki.Entry{
 				Labels: model.LabelSet{"job": database_observability.JobName},
 				Entry: logproto.Entry{
 					Timestamp: time.Unix(0, time.Now().UnixNano()),
-					Line:      fmt.Sprintf(`level=info msg="table detected" op="%s" instance="%s" schema="%s" table="%s"`, OP_TABLE_DETECTION, c.instanceKey, schema, table),
+					Line:      fmt.Sprintf(`level=info msg="table detected" op="%s" instance="%s" schema="%s" table="%s"`, OP_TABLE_DETECTION, c.instanceKey, schema, tableName),
 				},
 			}
 		}
@@ -225,15 +233,24 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 
 		row := c.dbConnection.QueryRowContext(ctx, showCreateTable+" "+fullyQualifiedTable)
 		if row.Err() != nil {
-			level.Error(c.logger).Log("msg", "failed to show create table", "err", row.Err())
+			level.Error(c.logger).Log("msg", "failed to show create table", "table", table.tableName, "err", row.Err())
 			break
 		}
 
 		var tableName string
 		var createStmt string
-		if err = row.Scan(&tableName, &createStmt); err != nil {
-			level.Error(c.logger).Log("msg", "failed to scan create table", "err", err)
-			break
+		var characterSetClient string
+		var collationConnection string
+		if table.tableType == "BASE TABLE" {
+			if err = row.Scan(&tableName, &createStmt); err != nil {
+				level.Error(c.logger).Log("msg", "failed to scan create table", "table", table.tableName, "err", err)
+				break
+			}
+		} else if table.tableType == "VIEW" {
+			if err = row.Scan(&tableName, &createStmt, &characterSetClient, &collationConnection); err != nil {
+				level.Error(c.logger).Log("msg", "failed to scan create view", "table", table.tableName, "err", err)
+				break
+			}
 		}
 
 		table.createStmt = createStmt
