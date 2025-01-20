@@ -109,6 +109,7 @@ Supported components:
 * `loki.secretfilter`
 * `otelcol.processor.*`
 * `otelcol.receiver.*`
+* `prometheus.remote_write`
 * `prometheus.relabel`
 * `discovery.*`
 {{< /admonition >}}
