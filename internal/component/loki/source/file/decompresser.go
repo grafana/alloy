@@ -161,6 +161,7 @@ func (d *decompressor) Run() {
 	if d.stopping {
 		close(d.done)
 		close(d.posdone)
+		d.mut.Unlock()
 		return
 	}
 

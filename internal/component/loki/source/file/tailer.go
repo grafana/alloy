@@ -151,6 +151,7 @@ func (t *tailer) Run() {
 		close(t.done)
 		close(t.posdone)
 		close(t.posquit)
+		t.mut.Unlock()
 		return
 	}
 
