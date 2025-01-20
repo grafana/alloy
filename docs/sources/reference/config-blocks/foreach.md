@@ -9,7 +9,7 @@ title: foreach
 
 # foreach
 
-{{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="stability/experimental_feature.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 The `foreach` block runs a separate pipeline for each item inside a list.
 
