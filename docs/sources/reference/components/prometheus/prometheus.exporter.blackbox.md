@@ -259,6 +259,37 @@ Replace the following:
 [disc]: ../discovery.file/
 [relabel]: ../discovery.relabel/
 
+### Set instance label to target url
+
+Some dashboards may expect the `instance` label on the Blackbox metrics to contain the value of the target url. Here's how to achieve that with Prometheus relabeling:
+
+```alloy
+prometheus.exporter.blackbox "example" {
+  config = "{ modules: { http_2xx: { prober: http, timeout: 5s } } }"
+
+  target {
+    name    = "example"
+    address = "example.com"
+    module = "http_2xx"
+  }
+}
+
+discovery.relabel "example" {
+  targets = prometheus.exporter.blackbox.example.targets
+
+  rule {
+    source_labels = ["__param_target"]
+    target_label = "instance"
+  }
+}
+
+prometheus.scrape "example" {
+  targets = discovery.relabel.example.output
+  forward_to = [prometheus.remote_write.metrics_service.receiver]
+}
+
+```
+
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components
