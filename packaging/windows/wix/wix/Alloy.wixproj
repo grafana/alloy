@@ -1,0 +1,48 @@
+﻿<Project Sdk="WixToolset.Sdk/5.0.0">
+  <PropertyGroup>
+    <!-- If MSIProductVersion not passed in, try to get it from TFBuild Environments (XAML Builds)-->
+    <MSIProductVersion Condition=" '$(MSIProductVersion)' == '' ">$([System.Text.RegularExpressions.Regex]::Match($(TF_BUILD_BUILDNUMBER), "\d+.\d+.\d+.\d+"))</MSIProductVersion>
+    <!-- If MSIProductVersion still not known, try to get it from TFBuild Environments (V.Next Builds)-->
+    <MSIProductVersion Condition=" '$(MSIProductVersion)' == '' ">$([System.Text.RegularExpressions.Regex]::Match($(BUILD_BUILDNUMBER), "\d+.\d+.\d+.\d+"))</MSIProductVersion>
+    <!-- If MSIProductVersion still not known, default to lowerbound 0.0.1 for developer builds.-->
+    <MSIProductVersion Condition=" '$(MSIProductVersion)' == '' ">0.0.1</MSIProductVersion>
+    <!-- The following allows one cert to be referenced from the certificate store for self-signing in localbuilds and another cert to be passed in during official builds. -->
+    <AppxCertificateThumbprint Condition=" '$(AppxCertificateThumbprint)' == '' ">
+    </AppxCertificateThumbprint>
+    <AppxTimestampUrl Condition=" '$(AppxTimestampUrl)' == '' ">
+    </AppxTimestampUrl>
+    <MsixCertificateThumbprint Condition=" '$(MsixCertificateThumbprint)' == '' ">
+    </MsixCertificateThumbprint>
+    <MsixTimestampUrl Condition=" '$(MsixTimestampUrl)' == '' ">
+    </MsixTimestampUrl>
+    <OutputName>alloy-installer-windows-$(Platform)</OutputName>
+    <OutputType>Package</OutputType>
+    <OutputPath>..\..\..\..\dist</OutputPath>
+    <DefineConstants>MSIProductVersion=$(MSIProductVersion)</DefineConstants>
+    <Platforms>x86;x64;ARM64</Platforms>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Platform)' == 'x86' ">
+    <SuppressIces>ICE64</SuppressIces>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Platform)' == 'x64' ">
+    <SuppressIces>ICE64</SuppressIces>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+    <DefineConstants>Debug;MSIProductVersion=$(MSIProductVersion)</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <Content Include="Resources\config.alloy" />
+    <Content Include="Resources\grafana_dialog_background.bmp" />
+    <Content Include="Resources\grafana_top_banner_white.bmp" />
+    <Content Include="Resources\Icon.ico" />
+    <Content Include="Resources\LICENSE.rtf" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\config.alloy" />
+    <None Include="Resources\LICENSE.md" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="WixToolset.UI.wixext" Version="5.0.0" />
+    <PackageReference Include="WixToolset.Util.wixext" Version="5.0.0" />
+  </ItemGroup>
+</Project>
