@@ -16,9 +16,9 @@ The `foreach` block runs a separate pipeline for each item inside a list.
 ## Usage
 
 ```alloy
-foreach "LABEL" {
+foreach "<LABEL>" {
   collection = [...]
-  var        = "VAR_NAME"
+  var        = "<VAR_NAME>"
   template {
     ...
   }
@@ -33,13 +33,12 @@ Name             | Type        | Description                                    
 -----------------|-------------|-----------------------------------------------------------------------|---------|---------
 `collection`     | `list(any)` | A list of items to loop over.                                         |         | yes
 `var`            | `string`    | Name of the variable referring to the current item in the collection. |         | yes
-`enable_metrics` | `bool`      | Whether to expose debug metrics in Alloy's `/metrics` endpoint.       | `false` | no
+`enable_metrics` | `bool`      | Whether to expose debug metrics in the {{< param "PRODUCT_NAME" >}} `/metrics` endpoint.       | `false` | no
 
 `collection` could contain any [type][types] such as a bool, a string, a list, or a map.
 
 {{< admonition type="warning" >}}
-
-Setting `enable_metrics` to `true` when `collection` has lots of elements may cause a large number of metrics to appear on Alloy's `/metric` endpoint.
+Setting `enable_metrics` to `true` when `collection` has lots of elements may cause a large number of metrics to appear on the {{< param "PRODUCT_NAME" >}} `/metric` endpoint.
 {{< /admonition >}}
 
 [types]: ../../../get-started/configuration-syntax/expressions/types_and_values
@@ -54,10 +53,10 @@ template  | [template][] | A component pipeline to run. | yes
 
 [template]: #template-block
 
-### template block
+### template
 
-The `template` block contains the definition of Alloy components which will be ran for every item in the collection.
-The contents of the block look like a normal Alloy config file, except that you can use the keyword defined in `var` to refer to the current item in the collection.
+The `template` block contains the definition of {{< param "PRODUCT_NAME" >}} components which will be ran for every item in the collection.
+The contents of the block look like a normal {{< param "PRODUCT_NAME" >}} configuration file, except that you can use the keyword defined in `var` to refer to the current item in the collection.
 
 ## Examples
 
@@ -70,60 +69,60 @@ On the other hand, `discovery.*` components such as `discovery.kubernetes` outpu
 {{< collapse title="Example targets output by discovery.kubernetes" >}}
 ```json
 [
-	{
-	__address__                                          = "10.42.0.16:5432",
-	__meta_kubernetes_namespace                          = "ns1",
-	__meta_kubernetes_pod_container_id                   = "containerd://96b77d035d0bbe27bb173d8fc0c56d21965892a50e4e6eab9f6cffdb90b275fb",
-	__meta_kubernetes_pod_container_image                = "postgres:bullseye",
-	__meta_kubernetes_pod_container_init                 = "false",
-	__meta_kubernetes_pod_container_name                 = "pgcont",
-	__meta_kubernetes_pod_container_port_name            = "pg-db",
-	__meta_kubernetes_pod_container_port_number          = "5432",
-	__meta_kubernetes_pod_container_port_protocol        = "TCP",
-	__meta_kubernetes_pod_controller_kind                = "ReplicaSet",
-	__meta_kubernetes_pod_controller_name                = "postgres-db-cd54547b9",
-	__meta_kubernetes_pod_host_ip                        = "172.25.0.2",
-	__meta_kubernetes_pod_ip                             = "10.42.0.16",
-	__meta_kubernetes_pod_label_name                     = "postgres-db",
-	__meta_kubernetes_pod_label_pod_template_hash        = "cd54547b9",
-	__meta_kubernetes_pod_labelpresent_name              = "true",
-	__meta_kubernetes_pod_labelpresent_pod_template_hash = "true",
-	__meta_kubernetes_pod_name                           = "postgres-db-cd54547b9-4zpds",
-	__meta_kubernetes_pod_node_name                      = "k3d-asserts-test-server-0",
-	__meta_kubernetes_pod_phase                          = "Running",
-	__meta_kubernetes_pod_ready                          = "true",
-	__meta_kubernetes_pod_uid                            = "7cdcacdc-4a2d-460a-b1fb-6340700c4cac",
-	},
-	{
-	__address__                                          = "10.42.0.20:6379",
-	__meta_kubernetes_namespace                          = "ns1",
-	__meta_kubernetes_pod_container_id                   = "containerd://68f2f0eacd880eb4a141d833aafc1f297f7d9bdf00f4c787f9fcc964a039d278",
-	__meta_kubernetes_pod_container_image                = "redis:latest",
-	__meta_kubernetes_pod_container_init                 = "false",
-	__meta_kubernetes_pod_container_name                 = "redis-cont",
-	__meta_kubernetes_pod_container_port_name            = "redis-db",
-	__meta_kubernetes_pod_container_port_number          = "6379",
-	__meta_kubernetes_pod_container_port_protocol        = "TCP",
-	__meta_kubernetes_pod_controller_kind                = "ReplicaSet",
-	__meta_kubernetes_pod_controller_name                = "redis-db-778b66cb7d",
-	__meta_kubernetes_pod_host_ip                        = "172.25.0.2",
-	__meta_kubernetes_pod_ip                             = "10.42.0.20",
-	__meta_kubernetes_pod_label_name                     = "redis-db",
-	__meta_kubernetes_pod_label_pod_template_hash        = "778b66cb7d",
-	__meta_kubernetes_pod_labelpresent_name              = "true",
-	__meta_kubernetes_pod_labelpresent_pod_template_hash = "true",
-	__meta_kubernetes_pod_name                           = "redis-db-778b66cb7d-wxmf6",
-	__meta_kubernetes_pod_node_name                      = "k3d-asserts-test-server-0",
-	__meta_kubernetes_pod_phase                          = "Running",
-	__meta_kubernetes_pod_ready                          = "true",
-	__meta_kubernetes_pod_uid                            = "ae74e400-8eda-4b02-b4c8-669473fb001b",
-	}
+    {
+    __address__                                          = "10.42.0.16:5432",
+    __meta_kubernetes_namespace                          = "ns1",
+    __meta_kubernetes_pod_container_id                   = "containerd://96b77d035d0bbe27bb173d8fc0c56d21965892a50e4e6eab9f6cffdb90b275fb",
+    __meta_kubernetes_pod_container_image                = "postgres:bullseye",
+    __meta_kubernetes_pod_container_init                 = "false",
+    __meta_kubernetes_pod_container_name                 = "pgcont",
+    __meta_kubernetes_pod_container_port_name            = "pg-db",
+    __meta_kubernetes_pod_container_port_number          = "5432",
+    __meta_kubernetes_pod_container_port_protocol        = "TCP",
+    __meta_kubernetes_pod_controller_kind                = "ReplicaSet",
+    __meta_kubernetes_pod_controller_name                = "postgres-db-cd54547b9",
+    __meta_kubernetes_pod_host_ip                        = "172.25.0.2",
+    __meta_kubernetes_pod_ip                             = "10.42.0.16",
+    __meta_kubernetes_pod_label_name                     = "postgres-db",
+    __meta_kubernetes_pod_label_pod_template_hash        = "cd54547b9",
+    __meta_kubernetes_pod_labelpresent_name              = "true",
+    __meta_kubernetes_pod_labelpresent_pod_template_hash = "true",
+    __meta_kubernetes_pod_name                           = "postgres-db-cd54547b9-4zpds",
+    __meta_kubernetes_pod_node_name                      = "k3d-asserts-test-server-0",
+    __meta_kubernetes_pod_phase                          = "Running",
+    __meta_kubernetes_pod_ready                          = "true",
+    __meta_kubernetes_pod_uid                            = "7cdcacdc-4a2d-460a-b1fb-6340700c4cac",
+    },
+    {
+    __address__                                          = "10.42.0.20:6379",
+    __meta_kubernetes_namespace                          = "ns1",
+    __meta_kubernetes_pod_container_id                   = "containerd://68f2f0eacd880eb4a141d833aafc1f297f7d9bdf00f4c787f9fcc964a039d278",
+    __meta_kubernetes_pod_container_image                = "redis:latest",
+    __meta_kubernetes_pod_container_init                 = "false",
+    __meta_kubernetes_pod_container_name                 = "redis-cont",
+    __meta_kubernetes_pod_container_port_name            = "redis-db",
+    __meta_kubernetes_pod_container_port_number          = "6379",
+    __meta_kubernetes_pod_container_port_protocol        = "TCP",
+    __meta_kubernetes_pod_controller_kind                = "ReplicaSet",
+    __meta_kubernetes_pod_controller_name                = "redis-db-778b66cb7d",
+    __meta_kubernetes_pod_host_ip                        = "172.25.0.2",
+    __meta_kubernetes_pod_ip                             = "10.42.0.20",
+    __meta_kubernetes_pod_label_name                     = "redis-db",
+    __meta_kubernetes_pod_label_pod_template_hash        = "778b66cb7d",
+    __meta_kubernetes_pod_labelpresent_name              = "true",
+    __meta_kubernetes_pod_labelpresent_pod_template_hash = "true",
+    __meta_kubernetes_pod_name                           = "redis-db-778b66cb7d-wxmf6",
+    __meta_kubernetes_pod_node_name                      = "k3d-asserts-test-server-0",
+    __meta_kubernetes_pod_phase                          = "Running",
+    __meta_kubernetes_pod_ready                          = "true",
+    __meta_kubernetes_pod_uid                            = "ae74e400-8eda-4b02-b4c8-669473fb001b",
+    }
 ]
 ```
 {{< /collapse >}}
 
 You can use a `foreach` to loop over each target and start a separate component pipeline for it.
-The example below shows how a `prometheus.exporter.redis` instance is started for each Redis instance discoverd by `discovery.kubernetes`.
+The following example configuration shows how a `prometheus.exporter.redis` instance is started for each Redis instance discoverd by `discovery.kubernetes`.
 Additional Kubernetes labels from `discovery.kubernetes` are also added to the metrics created by `prometheus.exporter.redis`.
 
 ```alloy
@@ -182,9 +181,14 @@ prometheus.remote_write "mimir" {
         url = "https://prometheus-xxx.grafana.net/api/prom/push"
 
         basic_auth {
-            username = sys.env("PROMETHEUS_USERNAME")
-            password = sys.env("GRAFANA_CLOUD_API_KEY")
+            username = sys.env("<PROMETHEUS_USERNAME>")
+            password = sys.env("<GRAFANA_CLOUD_API_KEY>")
         }
     }
 }
 ```
+
+Replace the following:
+
+* _`<PROMETHEUS_USERNAME>`_: Your Prometheus username.
+* _`<GRAFANA_CLOUD_API_KEY>`_: Your Grafana Cloud API key.
