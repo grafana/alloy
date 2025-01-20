@@ -40,15 +40,15 @@ Name                     | Type                | Description                    
 
 ## Blocks
 
-The following blocks are supported inside the definition of `discovery.azure`:
+You can use the following blocks with `discovery.azure`:
 
-Hierarchy        | Block                | Description                                      | Required
------------------|----------------------|--------------------------------------------------|---------
-managed_identity | [managed_identity][] | Managed Identity configuration for Azure API.    | no
-oauth            | [oauth][]            | OAuth 2.0 configuration for Azure API.           | no
-tls_config       | [tls_config][]       | TLS configuration for requests to the Azure API. | no
+Block                                | Description                                      | Required
+-------------------------------------|--------------------------------------------------|---------
+[managed_identity][managed_identity] | Managed Identity configuration for Azure API.    | no
+[oauth][oauth]                       | OAuth 2.0 configuration for Azure API.           | no
+[tls_config][tls_config]             | TLS configuration for requests to the Azure API. | no
 
-Exactly one of the `oauth` or `managed_identity` blocks must be specified.
+You must specify exactly one of the `oauth` or `managed_identity` blocks.
 
 [managed_identity]: #managed_identity
 [oauth]: #oauth
@@ -73,6 +73,8 @@ Name            | Type     | Description              | Default | Required
 `tenant_id`     | `string` | OAuth 2.0 tenant ID.     |         | yes
 
 ### tls_config
+
+The `tls_config` block configures TLS settings for requests to the Azure API.
 
 {{< docs/shared lookup="reference/components/tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 

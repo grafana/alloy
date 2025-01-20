@@ -24,7 +24,7 @@ discovery.consulagent "<LABEL>" {
 
 ## Arguments
 
-The following arguments are supported:
+You can use the following arguments with `discovery.consulagent`:
 
 Name               | Type           | Description                                                                                                                            | Default          | Required
 -------------------|----------------|----------------------------------------------------------------------------------------------------------------------------------------|------------------|---------
@@ -41,15 +41,17 @@ Name               | Type           | Description                               
 
 ## Blocks
 
-The following blocks are supported inside the definition of `discovery.consulagent`:
+You can use the following blocks with `discovery.consulagent`:
 
-Hierarchy  | Block          | Description                                            | Required
------------|----------------|--------------------------------------------------------|---------
-tls_config | [tls_config][] | Configure TLS settings for connecting to the endpoint. | no
+Block          | Description                                            | Required
+---------------|--------------------------------------------------------|---------
+[tls_config][] | Configure TLS settings for connecting to the endpoint. | no
 
 [tls_config]: #tls_config
 
 ### tls_config
+
+The `tls_config` block configures TLS settings for connecting to the endpoint.
 
 {{< docs/shared lookup="reference/components/tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 

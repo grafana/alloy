@@ -20,7 +20,7 @@ discovery.dns "<LABEL>" {
 
 ## Arguments
 
-The following arguments are supported:
+You can use the following arguments with `discovery.dns`:
 
 Name               | Type           | Description                                                          | Default | Required
 -------------------|----------------|----------------------------------------------------------------------|---------|---------
@@ -28,6 +28,10 @@ Name               | Type           | Description                               
 `port`             | `number`       | Port to use for collecting metrics. Not used for SRV records.        | `0`     | no
 `refresh_interval` | `duration`     | How often to query DNS for updates.                                  | `"30s"` | no
 `type`             | `string`       | Type of DNS record to query. Must be one of SRV, A, AAAA, MX, or NS. | `"SRV"` | no
+
+## Blocks
+
+The `discovery.dns` component doesn't support any blocks. You can configure this component with arguments.
 
 ## Exported fields
 

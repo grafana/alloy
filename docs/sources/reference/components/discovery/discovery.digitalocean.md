@@ -24,7 +24,7 @@ discovery.digitalocean "<LABEL>" {
 
 ## Arguments
 
-The following arguments are supported:
+You can use the following arguments with `discovery.digitalocean`:
 
 Name                     | Type                | Description                                                                                      | Default | Required
 -------------------------|---------------------|--------------------------------------------------------------------------------------------------|---------|---------
@@ -49,7 +49,7 @@ Exactly one of the [`bearer_token`][arguments] and [`bearer_token_file`][argumen
 
 ## Blocks
 
-The `discovery.digitalocean` component doesn't support any blocks, and is configured fully through arguments.
+The `discovery.digitalocean` component doesn't support any blocks. You can configure this component with arguments.
 
 ## Exported fields
 
