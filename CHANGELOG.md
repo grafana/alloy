@@ -7,7 +7,7 @@ This document contains a historical list of changes between releases. Only
 changes that impact end-user behavior are listed; changes to documentation or
 internal API changes are not present.
 
-v1.6.0-rc.2
+v1.6.0-rc.3
 -----------------
 
 ### Breaking changes
@@ -44,6 +44,8 @@ v1.6.0-rc.2
 - Add a new `/-/healthy` endpoint which returns HTTP 500 if one or more components are unhealthy. (@ptodev)
 
 ### Enhancements
+
+- Improved performance by reducing allocation in Prometheus write pipelines by ~30% (@thampiotr)
 
 - Update `prometheus.write.queue` to support v2 for cpu performance. (@mattdurham)
 
