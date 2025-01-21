@@ -49,13 +49,15 @@ var (
 	_ syntax.Validator = (*Arguments)(nil)
 )
 
-// TODO(cristian) consider using something like "enabled_collectors"
-// to allow users to enable/disable collectors.
 type Arguments struct {
 	DataSourceName      alloytypes.Secret   `alloy:"data_source_name,attr"`
 	CollectInterval     time.Duration       `alloy:"collect_interval,attr,optional"`
 	QuerySamplesEnabled bool                `alloy:"query_samples_enabled,attr,optional"`
 	ForwardTo           []loki.LogsReceiver `alloy:"forward_to,attr"`
+	// Collectors to mark as enabled in addition to the default.
+    EnableCollectors []string `alloy:"enable_collectors,attr,optional"`
+    // Collectors to explicitly mark as disabled.
+    DisableCollectors []string `alloy:"disable_collectors,attr,optional"`
 }
 
 var DefaultArguments = Arguments{
