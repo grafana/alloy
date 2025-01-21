@@ -24,7 +24,7 @@ discovery.triton "<LABEL>" {
 
 ## Arguments
 
-The following arguments are supported:
+You can use the following arguments with `discovery.triton`:
 
 Name               | Type           | Description                                         | Default       | Required
 -------------------|----------------|-----------------------------------------------------|---------------|---------
@@ -47,15 +47,17 @@ If omitted, all containers owned by the requesting account are scraped.
 
 ## Blocks
 
-The following blocks are supported inside the definition of `discovery.triton`:
+You can use the following blocks with `discovery.triton`:
 
-Hierarchy  | Block          | Description                                       | Required
------------|----------------|---------------------------------------------------|---------
-tls_config | [tls_config][] | TLS configuration for requests to the Triton API. | no
+Block          | Description                                       | Required
+---------------|---------------------------------------------------|---------
+[tls_config][] | TLS configuration for requests to the Triton API. | no
 
 [tls_config]: #tls_config
 
 ### tls_config
+
+The `tls_config` block configures TLS settings for requests to the Triton API.
 
 {{< docs/shared lookup="reference/components/tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 

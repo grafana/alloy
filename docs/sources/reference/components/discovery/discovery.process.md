@@ -24,7 +24,7 @@ discovery.process "<LABEL>" {
 
 ## Arguments
 
-The following arguments are supported:
+You can use the following arguments with `discovery.process`:
 
 Name               | Type                | Description                                                                              | Default | Required
 -------------------|---------------------|------------------------------------------------------------------------------------------|---------|---------
@@ -33,7 +33,7 @@ Name               | Type                | Description                          
 
 ### Targets joining
 
-If `join` is specified, `discovery.process` joins the discovered processes based on the `__container_id__` label.
+If you specify `join`, `discovery.process` joins the discovered processes based on the `__container_id__` label.
 
 For example, if `join` is specified as follows:
 
@@ -89,11 +89,11 @@ The resulting targets are:
 
 ## Blocks
 
-The following blocks are supported inside the definition of `discovery.process`:
+You can use the following blocks with `discovery.process`:
 
-Hierarchy       | Block               | Description                                    | Required
-----------------|---------------------|------------------------------------------------|---------
-discover_config | [discover_config][] | Configures which process metadata to discover. | no
+Block               | Description                                    | Required
+--------------------|------------------------------------------------|---------
+[discover_config][] | Configures which process metadata to discover. | no
 
 [discover_config]: #discover_config
 
@@ -105,13 +105,13 @@ The following arguments are supported:
 
 Name           | Type   | Description                                                      | Default | Required
 ---------------|--------|------------------------------------------------------------------|---------|---------
-`exe`          | `bool` | A flag to enable discovering `__meta_process_exe` label.         | true    | no
-`cwd`          | `bool` | A flag to enable discovering `__meta_process_cwd` label.         | true    | no
-`commandline`  | `bool` | A flag to enable discovering `__meta_process_commandline` label. | true    | no
-`uid`          | `bool` | A flag to enable discovering `__meta_process_uid`: label.        | true    | no
-`username`     | `bool` | A flag to enable discovering `__meta_process_username`: label.   | true    | no
-`cgroup_path`  | `bool` | A flag to enable discovering `__meta_cgroup_path__` label.       | false   | no
-`container_id` | `bool` | A flag to enable discovering `__container_id__` label.           | true    | no
+`exe`          | `bool` | A flag to enable discovering `__meta_process_exe` label.         | `true`  | no
+`cwd`          | `bool` | A flag to enable discovering `__meta_process_cwd` label.         | `true`  | no
+`commandline`  | `bool` | A flag to enable discovering `__meta_process_commandline` label. | `true`  | no
+`uid`          | `bool` | A flag to enable discovering `__meta_process_uid`: label.        | `true`  | no
+`username`     | `bool` | A flag to enable discovering `__meta_process_username`: label.   | `true`  | no
+`cgroup_path`  | `bool` | A flag to enable discovering `__meta_cgroup_path__` label.       | `false` | no
+`container_id` | `bool` | A flag to enable discovering `__container_id__` label.           | `true`  | no
 
 ## Exported fields
 
@@ -123,7 +123,7 @@ Name      | Type                | Description
 
 Each target includes the following labels:
 
-* `__container_id__`: The container ID. Taken from `/proc/<pid>/cgroup`. If the process is not running in a container, this label is not set.
+* `__container_id__`: The container ID. Taken from `/proc/<pid>/cgroup`. If the process isn't running in a container, this label isn't set.
 * `__meta_cgroup_path`: The cgroup path under which the process is running. In the case of cgroups v1, this label includes all the controllers paths delimited by `|`.
 * `__meta_process_commandline`: The process command line. Taken from `/proc/<pid>/cmdline`.
 * `__meta_process_cwd`: The process current working directory. Taken from `/proc/<pid>/cwd`.

@@ -59,6 +59,8 @@ rule      | [rule][] | Relabeling rules to apply to targets. | no
 
 ### rule
 
+The `rule` block configures the relabeling rules to apply to targets.
+
 {{< docs/shared lookup="reference/components/rule-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields

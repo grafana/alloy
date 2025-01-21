@@ -29,13 +29,17 @@ The Thrift format isn't supported.
 
 ## Arguments
 
-The following arguments are supported:
+You can use the following arguments with `discovery.serverset`:
 
 Name      | Type           | Description                                      | Default | Required
 ----------|----------------|--------------------------------------------------|---------|---------
 `paths`   | `list(string)` | The Zookeeper paths to discover Serversets from. |         | yes
 `servers` | `list(string)` | The Zookeeper servers to connect to.             |         | yes
 `timeout` | `duration`     | The Zookeeper session timeout                    | `10s`   | no
+
+## Blocks
+
+The `discovery.serverset` component doesn't support any blocks. You can configure this component with arguments.
 
 ## Exported fields
 

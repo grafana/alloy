@@ -16,8 +16,8 @@ title: discovery.openstack
 
 ```alloy
 discovery.openstack "<LABEL>" {
-  role   = "hypervisor"
-  region = "us-east-1"
+  role   = "<OPENSTACK_ROLE>"
+  region = "<OPENSTACK_REGION>"
 }
 ```
 
@@ -63,11 +63,11 @@ Some providers allow you to specify a `project_name` instead of the `project_id`
 
 ## Blocks
 
-The following blocks are supported inside the definition of `discovery.openstack`:
+You can use the following blocks with `discovery.openstack`:
 
-Hierarchy  | Block          | Description                                          | Required
------------|----------------|------------------------------------------------------|---------
-tls_config | [tls_config][] | TLS configuration for requests to the OpenStack API. | no
+Block          | Description                                          | Required
+---------------|------------------------------------------------------|---------
+[tls_config][] | TLS configuration for requests to the OpenStack API. | no
 
 [tls_config]: #tls_config
 
@@ -83,7 +83,7 @@ Name      | Type                | Description
 ----------|---------------------|------------------------------------------------------
 `targets` | `list(map(string))` | The set of targets discovered from the OpenStack API.
 
-### `hypervisor`
+### hypervisor
 
 The `hypervisor` role discovers one target per Nova hypervisor node.
 The target address defaults to the `host_ip` attribute of the hypervisor.
@@ -95,7 +95,7 @@ The target address defaults to the `host_ip` attribute of the hypervisor.
 * `__meta_openstack_hypervisor_status`: The hypervisor node's status.
 * `__meta_openstack_hypervisor_type`: The hypervisor node's type.
 
-### `instance`
+### instance
 
 The `instance` role discovers one target per network interface of Nova instance.
 The target address defaults to the private IP address of the network interface.

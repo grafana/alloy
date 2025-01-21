@@ -24,7 +24,7 @@ discovery.uyuni "<LABEL>" {
 
 ## Arguments
 
-The following arguments are supported:
+You can use the following arguments with `discovery.uyuni`:
 
 Name                     | Type                | Description                                                                                      | Default                 | Required
 -------------------------|---------------------|--------------------------------------------------------------------------------------------------|-------------------------|---------
@@ -45,15 +45,17 @@ Name                     | Type                | Description                    
 
 ## Blocks
 
-The following blocks are supported inside the definition of `discovery.uyuni`:
+You can use the following blocks with `discovery.uyuni`:
 
-Hierarchy  | Block          | Description                                      | Required
------------|----------------|--------------------------------------------------|---------
-tls_config | [tls_config][] | TLS configuration for requests to the Uyuni API. | no
+Block          | Description                                      | Required
+---------------|--------------------------------------------------|---------
+[tls_config][] | TLS configuration for requests to the Uyuni API. | no
 
 [tls_config]: #tls_config
 
 ### tls_config
+
+The `tls_config` block configures TLS settings for requests to the Uyuni API.
 
 {{< docs/shared lookup="reference/components/tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 

@@ -26,7 +26,7 @@ discovery.scaleway "<LABEL>" {
 
 ## Arguments
 
-The following arguments are supported:
+You can use the following arguments with `discovery.scaleway`:
 
 Name                     | Type                | Description                                                                                      | Default                      | Required
 -------------------------|---------------------|--------------------------------------------------------------------------------------------------|------------------------------|------------
@@ -61,18 +61,17 @@ The `name_filter` and `tags_filter` arguments can be used to filter the set of d
 
 ## Blocks
 
-The following blocks are supported inside the definition of `discovery.scaleway`:
+You can use the following blocks with `discovery.scaleway`:
 
-Hierarchy  | Block          | Description                                            | Required
------------|----------------|--------------------------------------------------------|---------
-tls_config | [tls_config][] | Configure TLS settings for connecting to the endpoint. | no
-
-The `>` symbol indicates deeper levels of nesting.
-For example, `oauth2 > tls_config` refers to a `tls_config` block defined inside an `oauth2` block.
+ Block          | Description                                            | Required
+----------------|--------------------------------------------------------|---------
+ [tls_config][] | Configure TLS settings for connecting to the endpoint. | no
 
 [tls_config]: #tls_config
 
 ### tls_config
+
+The `tls_config` block configures TLS settings for connecting to the endpoint.
 
 {{< docs/shared lookup="reference/components/tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
