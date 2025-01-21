@@ -6,7 +6,6 @@ import (
 
 	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/grafana/walqueue/types"
-	common "github.com/prometheus/common/config"
 	"github.com/prometheus/common/version"
 	"github.com/prometheus/prometheus/storage"
 )
@@ -67,9 +66,6 @@ func (r *Arguments) Validate() error {
 		if conn.FlushInterval < 1*time.Second {
 			return fmt.Errorf("flush_interval must be greater or equal to 1s, the internal timers resolution is 1s")
 		}
-		if conn.BasicAuth != nil && conn.TLSConfig != nil {
-			return fmt.Errorf("endpoint %s cannot have both BasicAuth and TLSConfig set", conn.Name)
-		}
 	}
 
 	return nil
@@ -93,8 +89,15 @@ type EndpointConfig struct {
 	// How many concurrent queues to have.
 	Parallelism    uint              `alloy:"parallelism,attr,optional"`
 	ExternalLabels map[string]string `alloy:"external_labels,attr,optional"`
-	TLSConfig      *common.TLSConfig `alloy:"tls_config,block,optional"`
+	TLSConfig      *TLSConfig        `alloy:"tls_config,block,optional"`
 	RoundRobin     bool              `alloy:"enable_round_robin,attr,optional"`
+}
+
+type TLSConfig struct {
+	CA                 string            `alloy:"ca_pem,attr,optional"`
+	Cert               string            `alloy:"cert_pem,attr,optional"`
+	Key                alloytypes.Secret `alloy:"key_pem,attr,optional"`
+	InsecureSkipVerify bool              `alloy:"insecure_skip_verify,attr,optional"`
 }
 
 var UserAgent = fmt.Sprintf("Alloy/%s", version.Version)
