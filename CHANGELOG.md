@@ -16,8 +16,6 @@ Main (unreleased)
 
 ### Enhancements
 
-- Improved performance by reducing allocation in Prometheus write pipelines by ~30% (@thampiotr)
-
 - (_Experimental_) Log instance label key in `database_observability.mysql` (@cristiangreco)
 
 - (_Experimental_) Improve parsing of truncated queries in `database_observability.mysql` (@cristiangreco)
@@ -30,7 +28,7 @@ Main (unreleased)
 
 - Add livedebugging support for `prometheus.remote_write` (@ravishankar15)
 
-v1.6.0-rc.2
+v1.6.0-rc.3
 -----------------
 
 ### Breaking changes
@@ -67,6 +65,8 @@ v1.6.0-rc.2
 - Add a new `/-/healthy` endpoint which returns HTTP 500 if one or more components are unhealthy. (@ptodev)
 
 ### Enhancements
+
+- Improved performance by reducing allocation in Prometheus write pipelines by ~30% (@thampiotr)
 
 - Update `prometheus.write.queue` to support v2 for cpu performance. (@mattdurham)
 
