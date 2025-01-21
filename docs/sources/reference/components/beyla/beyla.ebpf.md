@@ -3,10 +3,11 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/beyla/beyl
 aliases:
   - ../beyla.ebpf/ # /docs/alloy/latest/reference/components/beyla.ebpf/
 description: Learn about beyla.ebpf
+labels:
+  stages:
+    - public-preview
 title: beyla.ebpf
 ---
-
-<span class="badge docs-labels__stage docs-labels__item">Public preview</span>
 
 # beyla.ebpf
 
