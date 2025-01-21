@@ -50,19 +50,15 @@ var (
 )
 
 type Arguments struct {
-	DataSourceName      alloytypes.Secret   `alloy:"data_source_name,attr"`
-	CollectInterval     time.Duration       `alloy:"collect_interval,attr,optional"`
-	QuerySamplesEnabled bool                `alloy:"query_samples_enabled,attr,optional"`
-	ForwardTo           []loki.LogsReceiver `alloy:"forward_to,attr"`
-	// Collectors to mark as enabled in addition to the default.
-    EnableCollectors []string `alloy:"enable_collectors,attr,optional"`
-    // Collectors to explicitly mark as disabled.
-    DisableCollectors []string `alloy:"disable_collectors,attr,optional"`
+	DataSourceName    alloytypes.Secret   `alloy:"data_source_name,attr"`
+	CollectInterval   time.Duration       `alloy:"collect_interval,attr,optional"`
+	ForwardTo         []loki.LogsReceiver `alloy:"forward_to,attr"`
+	EnableCollectors  []string            `alloy:"enable_collectors,attr,optional"`
+	DisableCollectors []string            `alloy:"disable_collectors,attr,optional"`
 }
 
 var DefaultArguments = Arguments{
-	CollectInterval:     10 * time.Second,
-	QuerySamplesEnabled: true,
+	CollectInterval: 10 * time.Second,
 }
 
 func (a *Arguments) SetToDefault() {
@@ -224,24 +220,22 @@ func (c *Component) startCollectors() error {
 
 	entryHandler := loki.NewEntryHandler(c.handler.Chan(), func() {})
 
-	if c.args.QuerySamplesEnabled {
-		qsCollector, err := collector.NewQuerySample(collector.QuerySampleArguments{
-			DB:              dbConnection,
-			InstanceKey:     c.instanceKey,
-			CollectInterval: c.args.CollectInterval,
-			EntryHandler:    entryHandler,
-			Logger:          c.opts.Logger,
-		})
-		if err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to create QuerySample collector", "err", err)
-			return err
-		}
-		if err := qsCollector.Start(context.Background()); err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to start QuerySample collector", "err", err)
-			return err
-		}
-		c.collectors = append(c.collectors, qsCollector)
+	qsCollector, err := collector.NewQuerySample(collector.QuerySampleArguments{
+		DB:              dbConnection,
+		InstanceKey:     c.instanceKey,
+		CollectInterval: c.args.CollectInterval,
+		EntryHandler:    entryHandler,
+		Logger:          c.opts.Logger,
+	})
+	if err != nil {
+		level.Error(c.opts.Logger).Log("msg", "failed to create QuerySample collector", "err", err)
+		return err
 	}
+	if err := qsCollector.Start(context.Background()); err != nil {
+		level.Error(c.opts.Logger).Log("msg", "failed to start QuerySample collector", "err", err)
+		return err
+	}
+	c.collectors = append(c.collectors, qsCollector)
 
 	stCollector, err := collector.NewSchemaTable(collector.SchemaTableArguments{
 		DB:              dbConnection,
