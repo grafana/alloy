@@ -2,9 +2,9 @@
 canonical: https://grafana.com/docs/alloy/latest/reference/components/database_observability.mysql/
 description: Learn about database_observability.mysql
 title: database_observability.mysql
+labels:
+  stage: experimental
 ---
-
-<span class="badge docs-labels__stage docs-labels__item">Experimental</span>
 
 # database_observability.mysql
 
@@ -21,7 +21,7 @@ database_observability.mysql "<LABEL>" {
 
 ## Arguments
 
-The following arguments are supported:
+You can use the following arguments with `database_observability.mysql`:
 
 Name                    | Type                 | Description                                              | Default | Required
 ------------------------|----------------------|----------------------------------------------------------|---------|---------
@@ -32,7 +32,7 @@ Name                    | Type                 | Description                    
 
 ## Blocks
 
-The `database_observability.mysql` component doesn't support any blocks, and is configured fully through arguments.
+The `database_observability.mysql` component doesn't support any blocks. You can configure this component with arguments.
 
 ## Example
 
@@ -50,24 +50,32 @@ prometheus.scrape "orders_db" {
 
 prometheus.remote_write "metrics_service" {
   endpoint {
-    url = sys.env("GCLOUD_HOSTED_METRICS_URL")
+    url = sys.env("<GCLOUD_HOSTED_METRICS_URL>")
     basic_auth {
-      username = sys.env("GCLOUD_HOSTED_METRICS_ID")
-      password = sys.env("GCLOUD_RW_API_KEY")
+      username = sys.env("<GCLOUD_HOSTED_METRICS_ID>")
+      password = sys.env("<GCLOUD_RW_API_KEY>")
     }
   }
 }
 
 loki.write "logs_service" {
   endpoint {
-    url = sys.env("GCLOUD_HOSTED_LOGS_URL")
+    url = sys.env("<GCLOUD_HOSTED_LOGS_URL>")
     basic_auth {
-      username = sys.env("GCLOUD_HOSTED_LOGS_ID")
-      password = sys.env("GCLOUD_RW_API_KEY")
+      username = sys.env("<GCLOUD_HOSTED_LOGS_ID>")
+      password = sys.env("<GCLOUD_RW_API_KEY>")
     }
   }
 }
 ```
+
+Replace the following:
+
+* _`<GCLOUD_HOSTED_METRICS_URL>`_: The URL for your Google Cloud hosted metrics.
+* _`<GCLOUD_HOSTED_METRICS_ID>`_: The user ID for your Google Cloud hosted metrics.
+* _`<GCLOUD_RW_API_KEY>`_: Your Google Cloud API key.
+* _`<GCLOUD_HOSTED_LOGS_URL>`_: The URL for your Google Cloud hosted logs.
+* _`<GCLOUD_HOSTED_LOGS_ID>`_: The user ID for your Google Cloud hosted logs.
 
 [Data Source Name]: https://github.com/go-sql-driver/mysql#dsn-data-source-name
 
