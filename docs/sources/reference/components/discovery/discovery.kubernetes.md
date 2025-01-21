@@ -9,7 +9,7 @@ title: discovery.kubernetes
 # discovery.kubernetes
 
 `discovery.kubernetes` allows you to find scrape targets from Kubernetes resources.
-It watches cluster state, and ensures targets are continually synced with what is currently running in your cluster.
+It watches cluster state, and ensures targets are continually synced with what's currently running in your cluster.
 
 If you supply no connection information, this component defaults to an in-cluster configuration.
 A kubeconfig file or manual connection settings can be used to override the defaults.
@@ -24,7 +24,7 @@ discovery.kubernetes "<LABEL>" {
 
 ## Arguments
 
-The following arguments are supported:
+You can use the following arguments with `discovery.kubernetes`:
 
 Name                     | Type                | Description                                                                                      | Default | Required
 -------------------------|---------------------|--------------------------------------------------------------------------------------------------|---------|---------
@@ -42,17 +42,18 @@ Name                     | Type                | Description                    
 
  At most, one of the following can be provided:
 
-* [`authorization` block][authorization].
-* [`basic_auth` block][basic_auth].
-* [`bearer_token_file` argument][arguments]
-* [`bearer_token` argument][arguments]
-* [`oauth2` block][oauth2]
+* [`authorization`][authorization] block
+* [`basic_auth`][basic_auth] block
+* [`bearer_token_file`][arguments] argument
+* [`bearer_token`][arguments] argument
+* [`oauth2`][oauth2] block
 
  [arguments]: #arguments
 
 {{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-The `role` argument is required to specify what type of targets to discover. `role` must be one of `node`, `pod`, `service`, `endpoints`, `endpointslice`, or `ingress`.
+The `role` argument is required to specify what type of targets to discover.
+`role` must be one of `node`, `pod`, `service`, `endpoints`, `endpointslice`, or `ingress`.
 
 ### node role
 
@@ -82,7 +83,7 @@ The following labels are included for discovered services:
 * `__meta_kubernetes_namespace`: The namespace of the service object.
 * `__meta_kubernetes_service_annotation_<annotationname>`: Each annotation from the service object.
 * `__meta_kubernetes_service_annotationpresent_<annotationname>`: `true` for each annotation of the service object.
-* `__meta_kubernetes_service_cluster_ip`: The cluster IP address of the service. This does not apply to services of type `ExternalName`.
+* `__meta_kubernetes_service_cluster_ip`: The cluster IP address of the service. This doesn't apply to services of type `ExternalName`.
 * `__meta_kubernetes_service_external_name`: The DNS name of the service. This only applies to services of type `ExternalName`.
 * `__meta_kubernetes_service_label_<labelname>`: Each label from the service object.
 * `__meta_kubernetes_service_labelpresent_<labelname>`: `true` for each label of the service object.
@@ -153,9 +154,9 @@ The following labels are included for discovered endpoints:
 
 ### endpointslice role
 
-The endpointslice role discovers targets from existing Kubernetes endpoint slices.
+The `endpointslice` role discovers targets from existing Kubernetes endpoint slices.
 For each endpoint address referenced in the `EndpointSlice` object, one target is discovered.
-If the endpoint is backed by a Pod, all container ports of a Pod are discovered as targets even if they are not bound to an endpoint port.
+If the endpoint is backed by a Pod, all container ports of a Pod are discovered as targets even if they're not bound to an endpoint port.
 
 The following labels are included for discovered endpoint slices:
 
@@ -197,19 +198,18 @@ The following labels are included for discovered ingress objects:
 
 ## Blocks
 
-The following blocks are supported inside the definition of
-`discovery.kubernetes`:
+You can use the following blocks with `discovery.kubernetes`:
 
-Hierarchy           | Block               | Description                                                | Required
---------------------|---------------------|------------------------------------------------------------|---------
-attach_metadata     | [attach_metadata][] | Optional metadata to attach to discovered targets.         | no
-authorization       | [authorization][]   | Configure generic authorization to the endpoint.           | no
-basic_auth          | [basic_auth][]      | Configure `basic_auth` for authenticating to the endpoint. | no
-namespaces          | [namespaces][]      | Information about which Kubernetes namespaces to search.   | no
-oauth2              | [oauth2][]          | Configure OAuth2 for authenticating to the endpoint.       | no
-oauth2 > tls_config | [tls_config][]      | Configure TLS settings for connecting to the endpoint.     | no
-selectors           | [selectors][]       | Selectors to filter discovered Kubernetes resources.       | no
-tls_config          | [tls_config][]      | Configure TLS settings for connecting to the endpoint.     | no
+Block                   | Description                                                | Required
+------------------------|------------------------------------------------------------|---------
+[attach_metadata][]     | Optional metadata to attach to discovered targets.         | no
+[authorization][]       | Configure generic authorization to the endpoint.           | no
+[basic_auth][]          | Configure `basic_auth` for authenticating to the endpoint. | no
+[namespaces][]          | Information about which Kubernetes namespaces to search.   | no
+[oauth2][]              | Configure OAuth 2.0 for authenticating to the endpoint.    | no
+oauth2 > [tls_config][] | Configure TLS settings for connecting to the endpoint.     | no
+[selectors][]           | Selectors to filter discovered Kubernetes resources.       | no
+[tls_config][]          | Configure TLS settings for connecting to the endpoint.     | no
 
 The `>` symbol indicates deeper levels of nesting.
 For example, `oauth2 > tls_config` refers to a `tls_config` block defined inside an `oauth2` block.
@@ -224,8 +224,8 @@ For example, `oauth2 > tls_config` refers to a `tls_config` block defined inside
 
 ### attach_metadata
 
-The `attach_metadata` block allows to attach node metadata to discovered targets.
-Valid for roles: pod, endpoints, endpointslice.
+The `attach_metadata` block allows you to attach node metadata to discovered targets.
+This block is valid for the `pod`, `endpoints`, and `endpointslice` roles.
 
 Name   | Type   | Description           | Default | Required
 -------|--------|-----------------------|---------|---------
@@ -233,16 +233,20 @@ Name   | Type   | Description           | Default | Required
 
 ### authorization
 
+The `authorization` block configures generic authorization to the endpoint.
+
 {{< docs/shared lookup="reference/components/authorization-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### basic_auth
+
+The `basic_auth` block configures basic authentication to the endpoint.
 
 {{< docs/shared lookup="reference/components/basic-auth-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### namespaces
 
 The `namespaces` block limits the namespaces to discover resources in.
-If omitted, all namespaces are searched.
+If you omit this block, all namespaces are searched.
 
 Name            | Type           | Description                                                       | Default | Required
 ----------------|----------------|-------------------------------------------------------------------|---------|---------
@@ -250,6 +254,8 @@ Name            | Type           | Description                                  
 `own_namespace` | `bool`         | Include the namespace {{< param "PRODUCT_NAME" >}} is running in. |         | no
 
 ### oauth2
+
+The `oauth` block configures OAuth 2.0 authentication to the endpoint.
 
 {{< docs/shared lookup="reference/components/oauth2-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -282,6 +288,8 @@ Smaller clusters are recommended to avoid selectors in favor of filtering with [
 [Labels and selectors]: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
 
 ### tls_config
+
+The `tls_config` block configures TLS settings for connecting to the endpoint.
 
 {{< docs/shared lookup="reference/components/tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 

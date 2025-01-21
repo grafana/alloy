@@ -23,7 +23,7 @@ discovery.nerve "<LABEL>" {
 
 ## Arguments
 
-The following arguments are supported:
+You can use the following arguments with `discovery.nerve`:
 
 Name      | Type           | Description                       | Default | Required
 ----------|----------------|-----------------------------------|---------|---------
@@ -35,7 +35,7 @@ Each element in the `path` list can either point to a single service, or to the 
 
 ## Blocks
 
-The `discovery.nerve` component doesn't support any blocks, and is configured fully through arguments.
+The `discovery.nerve` component doesn't support any blocks. You can configure this component with arguments.
 
 ## Exported fields
 
