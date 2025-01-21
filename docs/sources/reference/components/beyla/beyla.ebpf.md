@@ -4,8 +4,7 @@ aliases:
   - ../beyla.ebpf/ # /docs/alloy/latest/reference/components/beyla.ebpf/
 description: Learn about beyla.ebpf
 labels:
-  stages:
-    - public-preview
+  stage: public-preview
 title: beyla.ebpf
 ---
 
@@ -13,9 +12,9 @@ title: beyla.ebpf
 
 {{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-The `beyla.ebpf` component is used as a wrapper for [Grafana Beyla][] which uses [eBPF][] to automatically inspect application executables and the OS networking layer, and capture trace spans related to web transactions and Rate Errors Duration (RED) metrics for Linux HTTP/S and gRPC services.
+The `beyla.ebpf` component is a wrapper for [Grafana Beyla][] which uses [eBPF][] to automatically inspect application executables and the OS networking layer, and capture trace spans related to web transactions and Rate Errors Duration (RED) metrics for Linux HTTP/S and gRPC services.
 You can configure the component to collect telemetry data from a specific port or executable path, and other criteria from Kubernetes metadata.
-The component exposes metrics that can be collected by a Prometheus scrape component, and traces that can be forwarded to an OTEL exporter component.
+The component exposes metrics that can be collected by a Prometheus scrape component, and traces that can be forwarded to an OTel exporter component.
 
 {{< admonition type="note" >}}
 To run this component, {{< param "PRODUCT_NAME" >}} requires administrative (`sudo`) privileges, or at least it needs to be granted the `CAP_SYS_ADMIN` and `CAP_SYS_PTRACE` capability.
@@ -32,7 +31,7 @@ beyla.ebpf "<LABEL>" {
 
 ## Arguments
 
-`beyla.ebpf` supports the following arguments:
+You can use the following arguments with `beyla.ebpf`:
 
 Name              | Type     | Description                                                                         | Default | Required
 ------------------|----------|-------------------------------------------------------------------------------------|---------|---------
@@ -45,25 +44,25 @@ Name              | Type     | Description                                      
 `executable_name` accepts a regular expression to be matched against the full executable command line, including the directory where the executable resides on the file system.
 
 `open_port` accepts a comma-separated list of ports (for example, `80,443`), and port ranges (for example, `8000-8999`).
-If the executable matches only one of the ports in the list, it is considered to match the selection criteria.
+If the executable matches only one of the ports in the list, it's considered to match the selection criteria.
 
 ## Blocks
 
 The following blocks are supported inside the definition of `beyla.ebpf`:
 
-Hierarchy                                 | Block                     | Description                                                                                        | Required
-------------------------------------------|---------------------------|----------------------------------------------------------------------------------------------------|---------
-output                                    | [output][]                | Configures where to send received telemetry data.                                                  | yes
-attributes                                | [attributes][]            | Configures the Beyla attributes for the component.                                                 | no
-attributes > kubernetes                   | [kubernetes attributes][] | Configures decorating of the metrics and traces with Kubernetes metadata of the instrumented Pods. | no
-discovery                                 | [discovery][]             | Configures the discovery for instrumentable processes matching a given criteria.                   | no
-discovery > exclude_services              | [services][]              | Configures the services to exclude for the component.                                              | no
-discovery > exclude_services > kubernetes | [kubernetes services][]   | Configures the Kubernetes services to exclude for the component.                                   | no
-discovery > services                      | [services][]              | Configures the services to discover for the component.                                             | no
-discovery > services > kubernetes         | [kubernetes services][]   | Configures the Kubernetes services to discover for the component.                                  | no
-metrics                                   | [metrics][]               | Configures which metrics Beyla exposes.                                                            | no
-metrics > network                         | [network][]               | Configures network metrics options for Beyla.                                                      | no
-routes                                    | [routes][]                | Configures the routes to match HTTP paths into user-provided HTTP routes.                          | no
+Block                                                            | Description                                                                                        | Required
+-----------------------------------------------------------------|----------------------------------------------------------------------------------------------------|---------
+[output][]                                                       | Configures where to send received telemetry data.                                                  | yes
+[attributes][]                                                   | Configures the Beyla attributes for the component.                                                 | no
+attributes > [kubernetes][kubernetes attributes]                 | Configures decorating of the metrics and traces with Kubernetes metadata of the instrumented Pods. | no
+[discovery][]                                                    | Configures the discovery for instrumentable processes matching a given criteria.                   | no
+discovery > [exclude services][services]                         | Configures the services to exclude for the component.                                              | no
+discovery > exclude_services > [kubernetes][kubernetes services] | Configures the Kubernetes services to exclude for the component.                                   | no
+discovery > [services][]                                         | Configures the services to discover for the component.                                             | no
+discovery > services > [kubernetes][kubernetes services]         | Configures the Kubernetes services to discover for the component.                                  | no
+[metrics][]                                                      | Configures which metrics Beyla exposes.                                                            | no
+metrics > [network][]                                            | Configures network metrics options for Beyla.                                                      | no
+[routes][]                                                       | Configures the routes to match HTTP paths into user-provided HTTP routes.                          | no
 
 The `>` symbol indicates deeper levels of nesting.
 For example,`attributes > kubernetes` refers to a `kubernetes` block defined inside an `attributes` block.
@@ -123,7 +122,7 @@ It contains the following blocks:
 
 #### services
 
-In some scenarios, Beyla will instrument a wide variety of services, such as a Kubernetes DaemonSet that instruments all the services in a node.
+In some scenarios, Beyla instruments a wide variety of services, such as a Kubernetes DaemonSet that instruments all the services in a node.
 This block allows you to filter the services to instrument based on their metadata. If you specify other selectors in the same services entry,
 the instrumented processes need to match all the selector properties.
 
@@ -240,11 +239,11 @@ The exported targets use the configured [in-memory traffic][] address specified 
 
 ## Debug information
 
-`beyla.ebpf` does not expose any component-specific debug information.
+`beyla.ebpf` doesn't expose any component-specific debug information.
 
 ## Examples
 
-The following examples show you how to collect metricss and traces from `beyla.ebpf`.
+The following examples show you how to collect metrics and traces from `beyla.ebpf`.
 
 ### Metrics
 
