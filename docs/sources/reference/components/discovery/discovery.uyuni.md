@@ -76,7 +76,7 @@ Each target includes the following labels:
 * `__meta_uyuni_minion_hostname`: The hostname of the Uyuni Minion.
 * `__meta_uyuni_primary_fqdn`: The FQDN of the Uyuni primary.
 * `__meta_uyuni_proxy_module`: The name of the Uyuni module.
-* `__meta_uyuni_scheme`: `https` If TLS is enabled on the endpoint, `http` otherwise.
+* `__meta_uyuni_scheme`: `https` if TLS is enabled on the endpoint, `http` otherwise.
 * `__meta_uyuni_system_id`: The system ID of the Uyuni Minion.
 
 These labels are largely derived from a [listEndpoints][] API call to the Uyuni Server.
