@@ -110,7 +110,12 @@ Name            | Type     | Description                              | Default 
 
 ### tls_config block
 
-{{< docs/shared lookup="reference/components/tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+Name                   | Type     | Description                                              | Default | Required
+-----------------------|----------|----------------------------------------------------------|---------|---------
+`ca_pem`               | `string` | CA PEM-encoded text to validate the server with.         |         | no
+`cert_pem`             | `string` | Certificate PEM-encoded text for client authentication.  |         | no
+`insecure_skip_verify` | `bool`   | Disables validation of the server certificate.           |         | no
+`key_pem`              | `secret` | Key PEM-encoded text for client authentication.          |         | no
 
 ## Exported fields
 
