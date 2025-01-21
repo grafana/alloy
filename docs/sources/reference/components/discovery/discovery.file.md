@@ -8,14 +8,6 @@ title: discovery.file
 
 # discovery.file
 
-{{< admonition type="note" >}}
-In {{< param "PRODUCT_NAME" >}} `v0.35.0`, the `discovery.file` component was renamed to [local.file_match][], and `discovery.file` was repurposed to discover scrape targets from one or more files.
-
-If you are trying to discover files on the local filesystem rather than scrape targets within a set of files, you should use [local.file_match][] instead.
-
-[local.file_match]: ../../local/local.file_match/
-{{< /admonition >}}
-
 `discovery.file` discovers targets from a set of files, similar to the [Prometheus file_sd_config](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#file_sd_config).
 
 ## Usage
