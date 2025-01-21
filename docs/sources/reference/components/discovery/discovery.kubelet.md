@@ -26,7 +26,7 @@ discovery.kubelet "LABEL" {
 
 ## Arguments
 
-The following arguments are supported:
+You can use the following arguments with `discovery.kubelet`:
 
 Name                     | Type                | Description                                                                                      | Default                   | Required
 -------------------------|---------------------|--------------------------------------------------------------------------------------------------|---------------------------|---------
@@ -50,11 +50,12 @@ You can have additional paths in the `url`.
 For example, if `url` is `https://kubernetes.default.svc.cluster.local:443/api/v1/nodes/cluster-node-1/proxy`, then `discovery.kubelet` sends a request on `https://kubernetes.default.svc.cluster.local:443/api/v1/nodes/cluster-node-1/proxy/pods`
 
  At most, one of the following can be provided:
- - [`bearer_token` argument](#arguments).
- - [`bearer_token_file` argument](#arguments).
- - [`basic_auth` block][basic_auth].
- - [`authorization` block][authorization].
- - [`oauth2` block][oauth2].
+
+* [`authorization`][authorization] block
+* [`basic_auth`][basic_auth] block
+* [`bearer_token_file`][arguments] argument
+* [`bearer_token`][arguments] argument
+* [`oauth2`][oauth2] block
 
  [arguments]: #arguments
 
@@ -62,8 +63,7 @@ For example, if `url` is `https://kubernetes.default.svc.cluster.local:443/api/v
 
 ## Blocks
 
-The following blocks are supported inside the definition of
-`discovery.kubelet`:
+You can use the following blocks with `discovery.kubelet`:
 
 Block                   | Description                                                | Required
 ------------------------|------------------------------------------------------------|---------
