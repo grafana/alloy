@@ -242,7 +242,7 @@ func (d *decompressor) readLines(handler loki.EntryHandler) {
 	maxLoglineSize := 2000000 // 2 MB
 	scanner := bufio.NewScanner(r)
 	scanner.Buffer(buffer, maxLoglineSize)
-	for line := 1; ; line++ {
+	for line := int64(1); ; line++ {
 		if !scanner.Scan() {
 			break
 		}
@@ -256,7 +256,7 @@ func (d *decompressor) readLines(handler loki.EntryHandler) {
 		}
 
 		d.posAndSizeMtx.RLock()
-		if line <= int(d.position) {
+		if line <= d.position {
 			// skip already seen lines.
 			d.posAndSizeMtx.RUnlock()
 			continue

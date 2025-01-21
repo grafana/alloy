@@ -10,6 +10,10 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Features
+
+- Add the possibility to export span events as logs in `otelcol.connector.spanlogs`. (@steve-hb)
+
 ### Enhancements
 
 - Improved performance by reducing allocation in Prometheus write pipelines by ~30% (@thampiotr)
@@ -17,6 +21,10 @@ Main (unreleased)
 - (_Experimental_) Log instance label key in `database_observability.mysql` (@cristiangreco)
 
 - (_Experimental_) Improve parsing of truncated queries in `database_observability.mysql` (@cristiangreco)
+
+- (_Experimental_) Capture schema name for query samples in `database_observability.mysql` (@cristiangreco)
+
+- (_Experimental_) Fix handling of view table types when detecting schema in `database_observability.mysql` (@matthewnolf)
 
 - Add json format support for log export via faro receiver (@ravishankar15)
 
@@ -26,8 +34,7 @@ Main (unreleased)
 
 - Add livedebugging support for `prometheus.remote_write` (@ravishankar15)
 
-
-v1.6.0-rc.1
+v1.6.0-rc.2
 -----------------
 
 ### Breaking changes
@@ -185,6 +192,8 @@ v1.6.0-rc.1
   - `otelcol.exporter.kafka`, `otelcol.receiver.kafka`: Add a new `AWS_MSK_IAM_OAUTHBEARER` mechanism.
     This mechanism use the AWS MSK IAM SASL Signer for Go https://github.com/aws/aws-msk-iam-sasl-signer-go.
     https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/32500
+
+  - Use Go 1.23.5 for builds. (@wildum)
 
 v1.5.1
 -----------------
