@@ -8,7 +8,7 @@ title: discovery.scaleway
 
 # discovery.scaleway
 
-`discovery.scaleway` discovers targets from [Scaleway instances][instance] and [bare metal services][baremetal].
+`discovery.scaleway` discovers targets from [Scaleway instances][instance] and [bare metal services][bare metal].
 
 [instance]: https://www.scaleway.com/en/virtual-instances/
 [bare metal]: https://www.scaleway.com/en/bare-metal-servers/

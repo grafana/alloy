@@ -41,7 +41,7 @@ discovery.relabel "<LABEL>" {
 
 ## Arguments
 
-The following arguments are supported:
+You can use the following arguments with `discovery.relabel`:
 
 Name      | Type                | Description        | Default | Required
 ----------|---------------------|--------------------|---------|---------
@@ -49,7 +49,7 @@ Name      | Type                | Description        | Default | Required
 
 ## Blocks
 
-The following blocks are supported inside the definition of `discovery.relabel`:
+You can use the following blocks with `discovery.relabel`:
 
 Hierarchy | Block    | Description                           | Required
 ----------|----------|---------------------------------------|---------

@@ -37,13 +37,13 @@ Name               | Type           | Description                               
 `role`             | `string`       | The type of targets to discover.                    | `"container"` | no
 `version`          | `int`          | The Triton discovery API version.                   | `1`           | no
 
+`groups` is only supported when `role` is set to `"container"`.
+If you omit `groups`, all containers owned by the requesting account are scraped.
+
 `role` can be set to:
 
 * `"container"` to discover virtual machines (SmartOS zones, lx/KVM/bhyve branded zones) running on Triton.
 * `"cn"` to discover compute nodes (servers/global zones) making up the Triton infrastructure.
-
-`groups` is only supported when `role` is set to `"container"`.
-If omitted, all containers owned by the requesting account are scraped.
 
 ## Blocks
 
