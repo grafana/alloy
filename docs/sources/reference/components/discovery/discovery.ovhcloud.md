@@ -32,7 +32,7 @@ discovery.ovhcloud "<LABEL>" {
 
 ## Arguments
 
-The following arguments are supported:
+You can use the following arguments with `discovery.ovhcloud`:
 
 Name                 | Type       | Description                                     | Default  | Required
 ---------------------|------------|-------------------------------------------------|----------|---------
@@ -48,6 +48,10 @@ Name                 | Type       | Description                                 
 `endpoint` must be one of the [supported API endpoints][supported-apis].
 
 [supported-apis]: https://github.com/ovh/go-ovh#supported-apis
+
+## Blocks
+
+The `discovery.ovhcloud` component doesn't support any blocks. You can configure this component with arguments.
 
 ## Exported fields
 

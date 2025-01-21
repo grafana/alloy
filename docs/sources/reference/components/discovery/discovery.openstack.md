@@ -23,7 +23,7 @@ discovery.openstack "<LABEL>" {
 
 ## Arguments
 
-The following arguments are supported:
+You can use the following arguments with `discovery.openstack`:
 
 Name                            | Type       | Description                                                                                           | Default  | Required
 --------------------------------|------------|-------------------------------------------------------------------------------------------------------|----------|---------
