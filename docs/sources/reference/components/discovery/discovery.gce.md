@@ -8,7 +8,7 @@ title: discovery.gce
 
 # discovery.gce
 
-`discovery.gce` allows retrieving scrape targets from [Google Compute Engine][] (GCE) instances.
+`discovery.gce` allows you to retrieve scrape targets from [Google Compute Engine][] (GCE) instances.
 The private IP address is used by default, but may be changed to the public IP address with relabeling.
 
 Credentials are discovered by the Google Cloud SDK default client by looking in the following places, preferring the first location found:
