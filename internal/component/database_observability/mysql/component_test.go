@@ -57,16 +57,16 @@ func Test_Fluffles(t *testing.T) {
 		opts:     component.Options{Logger: &noopLogger{}},
 		registry: prometheus.NewRegistry(),
 	}
-	//require.NoError(t, c.startCollectors())
 
-	//c := &Component{
-	//	args:     Arguments{CollectInterval: time.Second},
-	//	opts:     component.Options{Logger: &noopLogger{}},
-	//	registry: prometheus.NewRegistry(),
-	//}
+	//c, err := New(component.Options{Logger: &noopLogger{}, GetServiceData: func(name string) (interface{}, error) {
+	//	return nil, nil
+	//}}, args)
+	//require.NoError(t, err)
+
 	err = theRealStartCollectors(q, c, nil)
 	require.NoError(t, err)
 
 	require.NotNil(t, c.args.EnableCollectors)
 	require.Equal(t, []string{"collector1"}, c.args.EnableCollectors)
+	require.Equal(t, []Collector{}, c.collectors)
 }
