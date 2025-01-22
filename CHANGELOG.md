@@ -24,6 +24,8 @@ Main (unreleased)
 
 - (_Experimental_) Fix handling of view table types when detecting schema in `database_observability.mysql` (@matthewnolf)
 
+- (_Experimental_) fix error handling during result set iteration in `database_observability.mysql` (@cristiangreco)
+
 - Add json format support for log export via faro receiver (@ravishankar15)
 
 - Add livedebugging support for `prometheus.remote_write` (@ravishankar15)
