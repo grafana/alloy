@@ -172,7 +172,7 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 	}
 
 	if err := rs.Err(); err != nil {
-		level.Error(c.logger).Log("msg", "error during iteration over schemas result set", "err", err)
+		level.Error(c.logger).Log("msg", "error during iterating over schemas result set", "err", err)
 		return err
 	}
 
