@@ -67,7 +67,7 @@ local linux_containers_dev_jobs = std.map(function(container) (
 local windows_containers_dev_jobs = std.map(function(container) (
   pipelines.windows('Publish Windows %s container' % container.devel) {
     trigger: {
-      ref: ['refs/heads/main'],
+      ref: ['refs/heads/build-windows-image'],
     },
     steps: [{
       name: 'Build containers',

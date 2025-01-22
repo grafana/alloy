@@ -501,7 +501,7 @@ steps:
     path: //./pipe/docker_engine/
 trigger:
   ref:
-  - refs/heads/main
+  - refs/heads/build-windows-image
 type: docker
 volumes:
 - host:
@@ -836,6 +836,6 @@ kind: secret
 name: updater_private_key
 ---
 kind: signature
-hmac: 5c0ba3650cd2bbdccc1b19b96b07ac8f76d78b4dcd461dddc140857a86db1900
+hmac: 3f8ac240dd7f557d9c53d5c599b0fb7a5cb7d559a6fdd345481196b8446bcecc
 
 ...
