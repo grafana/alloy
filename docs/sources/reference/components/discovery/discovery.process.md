@@ -3,6 +3,8 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/
 aliases:
   - ../discovery.process/ # /docs/alloy/latest/reference/components/discovery.process/
 description: Learn about discovery.process
+labels:
+  stage: general-availability
 title: discovery.process
 ---
 

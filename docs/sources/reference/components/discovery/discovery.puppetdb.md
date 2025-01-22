@@ -3,6 +3,8 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/
 aliases:
   - ../discovery.puppetdb/ # /docs/alloy/latest/reference/components/discovery.puppetdb/
 description: Learn about discovery.puppetdb
+labels:
+  stage: general-availability
 title: discovery.puppetdb
 ---
 
@@ -20,7 +22,7 @@ The queries for this component are expected to be valid [PQL (Puppet Query Langu
 
 ```alloy
 discovery.puppetdb "<LABEL>" {
-  url = <PUPPET_SERVER>
+  url = "<PUPPET_SERVER>"
 }
 ```
 
@@ -152,11 +154,11 @@ prometheus.scrape "demo" {
 
 prometheus.remote_write "demo" {
     endpoint {
-        url = <PROMETHEUS_REMOTE_WRITE_URL>
+        url = "<PROMETHEUS_REMOTE_WRITE_URL>"
 
         basic_auth {
-            username = <USERNAME>
-            password = <PASSWORD>
+            username = "<USERNAME>"
+            password = "<PASSWORD>"
         }
     }
 }

@@ -3,6 +3,8 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/
 aliases:
   - ../discovery.serverset/ # /docs/alloy/latest/reference/components/discovery.serverset/
 description: Learn about discovery.serverset
+labels:
+  stage: general-availability
 title: discovery.serverset
 ---
 
@@ -19,8 +21,8 @@ Serversets are commonly used by [Finagle][] and [Aurora][].
 
 ```alloy
 discovery.serverset "<LABEL>" {
-    servers = <SERVERS_LIST>
-    paths   = <ZOOKEEPER_PATHS_LIST>
+    servers = "<SERVERS_LIST>"
+    paths   = "<ZOOKEEPER_PATHS_LIST>"
 }
 ```
 

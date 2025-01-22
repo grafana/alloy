@@ -3,6 +3,8 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/
 aliases:
   - ../discovery.triton/ # /docs/alloy/latest/reference/components/discovery.triton/
 description: Learn about discovery.triton
+labels:
+  stage: general-availability
 title: discovery.triton
 ---
 
@@ -16,9 +18,9 @@ title: discovery.triton
 
 ```alloy
 discovery.triton "<LABEL>" {
-    account    = <ACCOUNT>
-    dns_suffix = <DNS_SUFFIX>
-    endpoint   = <ENDPOINT>
+    account    = "<ACCOUNT>"
+    dns_suffix = "<DNS_SUFFIX>"
+    endpoint   = "<ENDPOINT>"
 }
 ```
 
@@ -100,9 +102,9 @@ In those cases, exported fields retain their last healthy values.
 
 ```alloy
 discovery.triton "example" {
-    account    = <TRITON_ACCOUNT>
-    dns_suffix = <TRITON_DNS_SUFFIX>
-    endpoint   = <TRITON_ENDPOINT>
+    account    = "<TRITON_ACCOUNT>"
+    dns_suffix = "<TRITON_DNS_SUFFIX>"
+    endpoint   = "<TRITON_ENDPOINT>"
 }
 
 prometheus.scrape "demo" {
@@ -112,11 +114,11 @@ prometheus.scrape "demo" {
 
 prometheus.remote_write "demo" {
     endpoint {
-        url = <PROMETHEUS_REMOTE_WRITE_URL>
+        url = "<PROMETHEUS_REMOTE_WRITE_URL>"
 
         basic_auth {
-            username = <USERNAME>
-            password = <PASSWORD>
+            username = "<USERNAME>"
+            password = "<PASSWORD>"
         }
     }
 }

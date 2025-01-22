@@ -3,6 +3,8 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/
 aliases:
   - ../discovery.openstack/ # /docs/alloy/latest/reference/components/discovery.openstack/
 description: Learn about discovery.openstack
+labels:
+  stage: general-availability
 title: discovery.openstack
 ---
 
@@ -129,8 +131,8 @@ In those cases, exported fields retain their last healthy values.
 
 ```alloy
 discovery.openstack "example" {
-  role   = <OPENSTACK_ROLE>
-  region = <OPENSTACK_REGION>
+  role   = "<OPENSTACK_ROLE>"
+  region = "<OPENSTACK_REGION>"
 }
 
 prometheus.scrape "demo" {
@@ -140,11 +142,11 @@ prometheus.scrape "demo" {
 
 prometheus.remote_write "demo" {
   endpoint {
-    url = <PROMETHEUS_REMOTE_WRITE_URL>
+    url = "<PROMETHEUS_REMOTE_WRITE_URL>"
 
     basic_auth {
-      username = <USERNAME>
-      password = <PASSWORD>
+      username = "<USERNAME>"
+      password = "<PASSWORD>"
     }
   }
 }

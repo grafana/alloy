@@ -3,6 +3,8 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/
 aliases:
   - ../discovery.uyuni/ # /docs/alloy/latest/reference/components/discovery.uyuni/
 description: Learn about discovery.uyuni
+labels:
+  stage: general-availability
 title: discovery.uyuni
 ---
 
@@ -16,9 +18,9 @@ title: discovery.uyuni
 
 ```alloy
 discovery.uyuni "<LABEL>" {
-    server   = <SERVER>
-    username = <USERNAME>
-    password = <PASSWORD>
+    server   = "<SERVER>"
+    username = "<USERNAME>"
+    password = "<PASSWORD>"
 }
 ```
 
@@ -101,8 +103,8 @@ In those cases, exported fields retain their last healthy values.
 ```alloy
 discovery.uyuni "example" {
   server    = "https://127.0.0.1/rpc/api"
-  username  = <UYUNI_USERNAME>
-  password  = <UYUNI_PASSWORD>
+  username  = "<UYUNI_USERNAME>"
+  password  = "<UYUNI_PASSWORD>"
 }
 
 prometheus.scrape "demo" {
@@ -112,11 +114,11 @@ prometheus.scrape "demo" {
 
 prometheus.remote_write "demo" {
   endpoint {
-    url = <PROMETHEUS_REMOTE_WRITE_URL>
+    url = "<PROMETHEUS_REMOTE_WRITE_URL>"
 
     basic_auth {
-      username = <USERNAME>
-      password = <PASSWORD>
+      username = "<USERNAME>"
+      password = "<PASSWORD>"
     }
   }
 }

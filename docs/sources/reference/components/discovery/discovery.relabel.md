@@ -3,6 +3,8 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/
 aliases:
   - ../discovery.relabel/ # /docs/alloy/latest/reference/components/discovery.relabel/
 description: Learn about discovery.relabel
+labels:
+  stage: general-availability
 title: discovery.relabel
 ---
 
@@ -29,7 +31,7 @@ Multiple `discovery.relabel` components can be specified by giving them differen
 
 ```alloy
 discovery.relabel "<LABEL>" {
-  targets = <TARGET_LIST>
+  targets = "<TARGET_LIST>"
 
   rule {
     ...

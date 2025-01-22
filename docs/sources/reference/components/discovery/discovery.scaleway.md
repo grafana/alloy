@@ -3,6 +3,8 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/
 aliases:
   - ../discovery.scaleway/ # /docs/alloy/latest/reference/components/discovery.scaleway/
 description: Learn about discovery.scaleway
+labels:
+  stage: general-availability
 title: discovery.scaleway
 ---
 
@@ -152,11 +154,11 @@ prometheus.scrape "demo" {
 
 prometheus.remote_write "demo" {
     endpoint {
-        url = <PROMETHEUS_REMOTE_WRITE_URL>
+        url = "<PROMETHEUS_REMOTE_WRITE_URL>"
 
         basic_auth {
-            username = <USERNAME>
-            password = <PASSWORD>
+            username = "<USERNAME>"
+            password = "<PASSWORD>"
         }
     }
 }

@@ -3,6 +3,8 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/
 aliases:
   - ../discovery.ovhcloud/ # /docs/alloy/latest/reference/components/discovery.ovhcloud/
 description: Learn about discovery.ovhcloud
+labels:
+  stage: general-availability
 title: discovery.ovhcloud
 ---
 
@@ -23,10 +25,10 @@ For OVHcloud's [public cloud][] instances you can use `discovery.openstack`.
 
 ```alloy
 discovery.ovhcloud "<LABEL>" {
-    application_key    = <APPLICATION_KEY>
-    application_secret = <APPLICATION_SECRET>
-    consumer_key       = <CONSUMER_KEY>
-    service            = <SERVICE>
+    application_key    = "<APPLICATION_KEY>"
+    application_secret = "<APPLICATION_SECRET>"
+    consumer_key       = "<CONSUMER_KEY>"
+    service            = "<SERVICE>"
 }
 ```
 
@@ -117,10 +119,10 @@ In those cases, exported fields retain their last healthy values.
 
 ```alloy
 discovery.ovhcloud "example" {
-    application_key    = <APPLICATION_KEY>
-    application_secret = <APPLICATION_SECRET>
-    consumer_key       = <CONSUMER_KEY>
-    service            = <SERVICE>
+    application_key    = "<APPLICATION_KEY>"
+    application_secret = "<APPLICATION_SECRET>"
+    consumer_key       = "<CONSUMER_KEY>"
+    service            = "<SERVICE>"
 }
 
 prometheus.scrape "demo" {
@@ -130,10 +132,10 @@ prometheus.scrape "demo" {
 
 prometheus.remote_write "demo" {
     endpoint {
-        url = <PROMETHEUS_REMOTE_WRITE_URL>
+        url = "<PROMETHEUS_REMOTE_WRITE_URL>"
         basic_auth {
-            username = <USERNAME>
-            password = <PASSWORD>
+            username = "<USERNAME>"
+            password = "<PASSWORD>"
         }
     }
 }
