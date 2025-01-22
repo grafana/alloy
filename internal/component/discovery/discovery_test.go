@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/runtime/equality"
 	"github.com/grafana/alloy/internal/service/livedebugging"
 )
 
@@ -40,21 +41,21 @@ var updateTestCases = []discovererUpdateTestCase{
 			{Source: "test", Labels: model.LabelSet{"test_key": "value"}, Targets: []model.LabelSet{{"foo": "bar"}}},
 		},
 		expectedInitialExports: []component.Exports{
-			Exports{Targets: []Target{{"foo": "bar", "test_key": "value"}}}, // Initial export
+			Exports{Targets: []Target{NewTargetFromMap(map[string]string{"foo": "bar", "test_key": "value"})}}, // Initial export
 		},
 		updatedTargets: []*targetgroup.Group{
 			{Source: "test", Labels: model.LabelSet{"test_key_2": "value"}, Targets: []model.LabelSet{{"baz": "bux"}}},
 		},
 		expectedUpdatedExports: []component.Exports{
-			Exports{Targets: []Target{{"foo": "bar", "test_key": "value"}}},   // Initial export
-			Exports{Targets: []Target{{"foo": "bar", "test_key": "value"}}},   // Initial re-published on shutdown
-			Exports{Targets: []Target{{"test_key_2": "value", "baz": "bux"}}}, // Updated export
+			Exports{Targets: []Target{NewTargetFromMap(map[string]string{"foo": "bar", "test_key": "value"})}},   // Initial export
+			Exports{Targets: []Target{NewTargetFromMap(map[string]string{"foo": "bar", "test_key": "value"})}},   // Initial re-published on shutdown
+			Exports{Targets: []Target{NewTargetFromMap(map[string]string{"test_key_2": "value", "baz": "bux"})}}, // Updated export
 		},
 		expectedFinalExports: []component.Exports{
-			Exports{Targets: []Target{{"foo": "bar", "test_key": "value"}}},   // Initial export
-			Exports{Targets: []Target{{"foo": "bar", "test_key": "value"}}},   // Initial re-published on shutdown
-			Exports{Targets: []Target{{"test_key_2": "value", "baz": "bux"}}}, // Updated export
-			Exports{Targets: []Target{{"test_key_2": "value", "baz": "bux"}}}, // Updated re-published on shutdown
+			Exports{Targets: []Target{NewTargetFromMap(map[string]string{"foo": "bar", "test_key": "value"})}},   // Initial export
+			Exports{Targets: []Target{NewTargetFromMap(map[string]string{"foo": "bar", "test_key": "value"})}},   // Initial re-published on shutdown
+			Exports{Targets: []Target{NewTargetFromMap(map[string]string{"test_key_2": "value", "baz": "bux"})}}, // Updated export
+			Exports{Targets: []Target{NewTargetFromMap(map[string]string{"test_key_2": "value", "baz": "bux"})}}, // Updated re-published on shutdown
 		},
 	},
 	{
@@ -86,15 +87,15 @@ var updateTestCases = []discovererUpdateTestCase{
 			{Source: "test", Labels: model.LabelSet{"test_key_2": "value"}, Targets: []model.LabelSet{{"baz": "bux"}}},
 		},
 		expectedUpdatedExports: []component.Exports{
-			Exports{Targets: []Target{}},                                      // Initial publish
-			Exports{Targets: []Target{}},                                      // Initial re-published on shutdown
-			Exports{Targets: []Target{{"test_key_2": "value", "baz": "bux"}}}, // Updated export.
+			Exports{Targets: []Target{}}, // Initial publish
+			Exports{Targets: []Target{}}, // Initial re-published on shutdown
+			Exports{Targets: []Target{NewTargetFromMap(map[string]string{"test_key_2": "value", "baz": "bux"})}}, // Updated export.
 		},
 		expectedFinalExports: []component.Exports{
-			Exports{Targets: []Target{}},                                      // Initial publish
-			Exports{Targets: []Target{}},                                      // Initial re-published on shutdown
-			Exports{Targets: []Target{{"test_key_2": "value", "baz": "bux"}}}, // Updated export.
-			Exports{Targets: []Target{{"test_key_2": "value", "baz": "bux"}}}, // Updated export re-published on shutdown.
+			Exports{Targets: []Target{}}, // Initial publish
+			Exports{Targets: []Target{}}, // Initial re-published on shutdown
+			Exports{Targets: []Target{NewTargetFromMap(map[string]string{"test_key_2": "value", "baz": "bux"})}}, // Updated export.
+			Exports{Targets: []Target{NewTargetFromMap(map[string]string{"test_key_2": "value", "baz": "bux"})}}, // Updated export re-published on shutdown.
 		},
 	},
 	{
@@ -103,19 +104,19 @@ var updateTestCases = []discovererUpdateTestCase{
 			{Source: "test", Labels: model.LabelSet{"test_key": "value"}, Targets: []model.LabelSet{{"foo": "bar"}}},
 		},
 		expectedInitialExports: []component.Exports{
-			Exports{Targets: []Target{{"foo": "bar", "test_key": "value"}}}, // Initial export
+			Exports{Targets: []Target{NewTargetFromMap(map[string]string{"foo": "bar", "test_key": "value"})}}, // Initial export
 		},
 		updatedTargets: nil,
 		expectedUpdatedExports: []component.Exports{
-			Exports{Targets: []Target{{"foo": "bar", "test_key": "value"}}}, // Initial export
-			Exports{Targets: []Target{{"foo": "bar", "test_key": "value"}}}, // Initial re-published on shutdown
-			Exports{Targets: []Target{}},                                    // Updated export should publish empty!
+			Exports{Targets: []Target{NewTargetFromMap(map[string]string{"foo": "bar", "test_key": "value"})}}, // Initial export
+			Exports{Targets: []Target{NewTargetFromMap(map[string]string{"foo": "bar", "test_key": "value"})}}, // Initial re-published on shutdown
+			Exports{Targets: []Target{}}, // Updated export should publish empty!
 		},
 		expectedFinalExports: []component.Exports{
-			Exports{Targets: []Target{{"foo": "bar", "test_key": "value"}}}, // Initial export
-			Exports{Targets: []Target{{"foo": "bar", "test_key": "value"}}}, // Initial re-published on shutdown
-			Exports{Targets: []Target{}},                                    // Updated export should publish empty!
-			Exports{Targets: []Target{}},                                    // Updated re-published on shutdown
+			Exports{Targets: []Target{NewTargetFromMap(map[string]string{"foo": "bar", "test_key": "value"})}}, // Initial export
+			Exports{Targets: []Target{NewTargetFromMap(map[string]string{"foo": "bar", "test_key": "value"})}}, // Initial re-published on shutdown
+			Exports{Targets: []Target{}}, // Updated export should publish empty!
+			Exports{Targets: []Target{}}, // Updated re-published on shutdown
 		},
 	},
 }
@@ -175,7 +176,7 @@ func TestDiscoveryUpdates(t *testing.T) {
 			require.EventuallyWithT(t, func(t *assert.CollectT) {
 				publishedExportsMut.Lock()
 				defer publishedExportsMut.Unlock()
-				assert.Equal(t, tc.expectedInitialExports, publishedExports)
+				assertExportsEqual(t, tc.expectedInitialExports, publishedExports)
 			}, 3*time.Second, time.Millisecond)
 
 			discoverer = newFakeDiscoverer()
@@ -188,7 +189,7 @@ func TestDiscoveryUpdates(t *testing.T) {
 			require.EventuallyWithT(t, func(t *assert.CollectT) {
 				publishedExportsMut.Lock()
 				defer publishedExportsMut.Unlock()
-				assert.Equal(t, tc.expectedUpdatedExports, publishedExports)
+				assertExportsEqual(t, tc.expectedUpdatedExports, publishedExports)
 			}, 3*time.Second, time.Millisecond)
 
 			ctxCancel()
@@ -197,9 +198,21 @@ func TestDiscoveryUpdates(t *testing.T) {
 			require.EventuallyWithT(t, func(t *assert.CollectT) {
 				publishedExportsMut.Lock()
 				defer publishedExportsMut.Unlock()
-				assert.Equal(t, tc.expectedFinalExports, publishedExports)
+				assertExportsEqual(t, tc.expectedFinalExports, publishedExports)
 			}, 3*time.Second, time.Millisecond)
 		})
+	}
+}
+
+func assertExportsEqual(t *assert.CollectT, expected []component.Exports, actual []component.Exports) {
+	if actual == nil {
+		assert.NotNil(t, actual)
+		return
+	}
+	equal := equality.DeepEqual(expected, actual)
+	assert.True(t, equal, "expected and actual exports are different")
+	if !equal { // also do assert.Equal to get a nice diff view if there is an issue.
+		assert.Equal(t, expected, actual)
 	}
 }
 

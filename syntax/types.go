@@ -95,3 +95,9 @@ type ConvertibleIntoCapsule interface {
 	// available. Other errors are treated as an Alloy decoding error.
 	ConvertInto(dst interface{}) error
 }
+
+// Value represents an Alloy value. See the value.Value for more details.
+type Value = value.Value
+
+// ValueFromString creates a new Value from a given string.
+var ValueFromString = value.String

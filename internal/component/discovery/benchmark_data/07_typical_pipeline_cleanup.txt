@@ -1,0 +1,12 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/grafana/alloy/internal/component/discovery
+cpu: Apple M2
+Benchmark_Targets_TypicalPipeline-8   	      38	  31321855 ns/op	10927509 B/op	   80538 allocs/op
+Benchmark_Targets_TypicalPipeline-8   	      37	  30664661 ns/op	10927795 B/op	   80543 allocs/op
+Benchmark_Targets_TypicalPipeline-8   	      40	  29373879 ns/op	10927857 B/op	   80542 allocs/op
+Benchmark_Targets_TypicalPipeline-8   	      38	  29473440 ns/op	10840650 B/op	   80538 allocs/op
+Benchmark_Targets_TypicalPipeline-8   	      39	  29437880 ns/op	10840480 B/op	   80537 allocs/op
+Benchmark_Targets_TypicalPipeline-8   	      39	  29056206 ns/op	10927634 B/op	   80541 allocs/op
+PASS
+ok  	github.com/grafana/alloy/internal/component/discovery	8.487s

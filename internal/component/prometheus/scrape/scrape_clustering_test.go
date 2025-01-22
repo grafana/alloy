@@ -38,7 +38,7 @@ var (
 
 	// There is a race condition in prometheus where calls to NewManager can race over a package-global variable when
 	// calling targetMetadataCache.registerManager(m). This is a workaround to prevent this for now.
-	//TODO(thampiotr): Open an issue in prometheus to fix this?
+	// TODO(thampiotr): Open an issue in prometheus to fix this?
 	promManagerMutex sync.Mutex
 )
 
@@ -260,7 +260,7 @@ func setUpClusterLookup(fakeCluster *fakeCluster, assignment map[peer.Peer][]int
 	fakeCluster.lookupMap = make(map[shard.Key][]peer.Peer)
 	for owningPeer, ownedTargets := range assignment {
 		for _, id := range ownedTargets {
-			fakeCluster.lookupMap[shard.Key(targets[id].Target().NonMetaLabels().Hash())] = []peer.Peer{owningPeer}
+			fakeCluster.lookupMap[shard.Key(targets[id].Target().NonMetaLabelsHash())] = []peer.Peer{owningPeer}
 		}
 	}
 }
