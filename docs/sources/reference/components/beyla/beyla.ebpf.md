@@ -195,7 +195,7 @@ Name      | Type   | Description                        | Default | Required
 
 ### routes
 
-The `route` block configures the routes to match HTTP paths into user-provided HTTP routes.
+The `routes` block configures the routes to match HTTP paths into user-provided HTTP routes.
 
 Name              | Type           | Description                                                                              | Default       | Required
 ------------------|----------------|------------------------------------------------------------------------------------------|---------------|---------
