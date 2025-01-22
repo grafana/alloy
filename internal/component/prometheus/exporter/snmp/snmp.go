@@ -6,6 +6,9 @@ import (
 	"slices"
 	"time"
 
+	snmp_config "github.com/prometheus/snmp_exporter/config"
+	"gopkg.in/yaml.v2"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter"
@@ -13,8 +16,6 @@ import (
 	"github.com/grafana/alloy/internal/static/integrations"
 	"github.com/grafana/alloy/internal/static/integrations/snmp_exporter"
 	"github.com/grafana/alloy/syntax/alloytypes"
-	snmp_config "github.com/prometheus/snmp_exporter/config"
-	"gopkg.in/yaml.v2"
 )
 
 func init() {
@@ -35,6 +36,7 @@ func createExporter(opts component.Options, args component.Arguments, defaultIns
 
 // buildSNMPTargets creates the exporter's discovery targets based on the defined SNMP targets.
 func buildSNMPTargets(baseTarget discovery.Target, args component.Arguments) []discovery.Target {
+	// TODO: This implementation of targets manipulation may not be optimal. If it's a hot spot, we should optimise it.
 	var targets []discovery.Target
 
 	snmpTargets := args.(Arguments).Targets
@@ -44,14 +46,15 @@ func buildSNMPTargets(baseTarget discovery.Target, args component.Arguments) []d
 	}
 
 	for _, tgt := range snmpTargets {
-		target := make(discovery.Target)
+		target := make(map[string]string, len(tgt.Labels)+baseTarget.Len())
 		// Set extra labels first, meaning that any other labels will override
 		for k, v := range tgt.Labels {
 			target[k] = v
 		}
-		for k, v := range baseTarget {
-			target[k] = v
-		}
+		baseTarget.ForEachLabel(func(key string, value string) bool {
+			target[key] = value
+			return true
+		})
 
 		target["job"] = target["job"] + "/" + tgt.Name
 		target["__param_target"] = tgt.Target
@@ -69,7 +72,7 @@ func buildSNMPTargets(baseTarget discovery.Target, args component.Arguments) []d
 			target["__param_auth"] = tgt.Auth
 		}
 
-		targets = append(targets, target)
+		targets = append(targets, discovery.NewTargetFromMap(target))
 	}
 
 	return targets

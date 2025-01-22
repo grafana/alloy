@@ -482,7 +482,7 @@ func (c *Component) DebugInfo() interface{} {
 func (c *Component) componentTargetsToPromTargetGroups(jobName string, tgs []discovery.Target) map[string][]*targetgroup.Group {
 	promGroup := &targetgroup.Group{Source: jobName}
 	for _, tg := range tgs {
-		promGroup.Targets = append(promGroup.Targets, convertLabelSet(tg))
+		promGroup.Targets = append(promGroup.Targets, tg.LabelSet())
 	}
 
 	return map[string][]*targetgroup.Group{jobName: {promGroup}}
@@ -501,12 +501,4 @@ func (c *Component) populatePromLabels(targets []discovery.Target, jobName strin
 		level.Warn(c.opts.Logger).Log("msg", "error while populating labels of targets using prom config", "err", err)
 	}
 	return promTargets
-}
-
-func convertLabelSet(tg discovery.Target) model.LabelSet {
-	lset := make(model.LabelSet, len(tg))
-	for k, v := range tg {
-		lset[model.LabelName(k)] = model.LabelValue(v)
-	}
-	return lset
 }

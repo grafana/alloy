@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 	"time"
+
+	"github.com/grafana/tail/watch"
+	"github.com/prometheus/common/model"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -15,8 +17,6 @@ import (
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/grafana/tail/watch"
-	"github.com/prometheus/common/model"
 )
 
 func init() {
@@ -199,15 +199,9 @@ func (c *Component) Update(args component.Arguments) error {
 	}
 
 	for _, target := range newArgs.Targets {
-		path := target[pathLabel]
+		path, _ := target.Get(pathLabel)
 
-		labels := make(model.LabelSet)
-		for k, v := range target {
-			if strings.HasPrefix(k, model.ReservedLabelPrefix) {
-				continue
-			}
-			labels[model.LabelName(k)] = model.LabelValue(v)
-		}
+		labels := target.NonReservedLabelSet()
 
 		// Deduplicate targets which have the same public label set.
 		readersKey := positions.Entry{Path: path, Labels: labels.String()}

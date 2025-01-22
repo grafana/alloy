@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/prometheus/prometheus/model/relabel"
+
 	"github.com/grafana/alloy/internal/component"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/service/livedebugging"
-	"github.com/prometheus/prometheus/model/labels"
-	"github.com/prometheus/prometheus/model/relabel"
 )
 
 func init() {
@@ -92,10 +92,10 @@ func (c *Component) Update(args component.Arguments) error {
 	c.rcs = relabelConfigs
 
 	for _, t := range newArgs.Targets {
-		lset := componentMapToPromLabels(t)
+		lset := t.Labels()
 		relabelled, keep := relabel.Process(lset, relabelConfigs...)
 		if keep {
-			targets = append(targets, promLabelsToComponent(relabelled))
+			targets = append(targets, discovery.NewTargetFromModelLabels(relabelled))
 		}
 		componentID := livedebugging.ComponentID(c.opts.ID)
 		if c.debugDataPublisher.IsActive(componentID) {
@@ -112,21 +112,3 @@ func (c *Component) Update(args component.Arguments) error {
 }
 
 func (c *Component) LiveDebugging(_ int) {}
-
-func componentMapToPromLabels(ls discovery.Target) labels.Labels {
-	res := make([]labels.Label, 0, len(ls))
-	for k, v := range ls {
-		res = append(res, labels.Label{Name: k, Value: v})
-	}
-
-	return res
-}
-
-func promLabelsToComponent(ls labels.Labels) discovery.Target {
-	res := make(map[string]string, len(ls))
-	for _, l := range ls {
-		res[l.Name] = l.Value
-	}
-
-	return res
-}

@@ -221,6 +221,10 @@ func (v Value) Text() string {
 	}
 }
 
+func (v Value) IsString() bool {
+	return v.Type() == TypeString
+}
+
 // Len returns the length of v. Panics if v is not an array or object.
 func (v Value) Len() int {
 	switch v.ty {

@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	"github.com/IBM/sarama"
+	"github.com/prometheus/common/config"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter"
@@ -11,7 +13,6 @@ import (
 	"github.com/grafana/alloy/internal/static/integrations"
 	"github.com/grafana/alloy/internal/static/integrations/kafka_exporter"
 	"github.com/grafana/alloy/syntax/alloytypes"
-	"github.com/prometheus/common/config"
 )
 
 var DefaultArguments = Arguments{
@@ -94,9 +95,9 @@ func customizeTarget(baseTarget discovery.Target, args component.Arguments) []di
 	a := args.(Arguments)
 	target := baseTarget
 	if len(a.KafkaURIs) > 1 {
-		target["instance"] = a.Instance
+		target.Set("instance", a.Instance)
 	} else {
-		target["instance"] = a.KafkaURIs[0]
+		target.Set("instance", a.KafkaURIs[0])
 	}
 	return []discovery.Target{target}
 }
