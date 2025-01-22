@@ -18,7 +18,7 @@ This service discovery uses the public IPv4 address by default, but that can be 
 
 ```alloy
 discovery.hetzner "<LABEL>" {
-  role = <HETZNER_ROLE>
+  role = "<HETZNER_ROLE>"
 }
 ```
 
@@ -160,7 +160,7 @@ This example discovers targets from Hetzner:
 
 ```alloy
 discovery.hetzner "example" {
-  role = <HETZNER_ROLE>
+  role = "<HETZNER_ROLE>"
 }
 
 prometheus.scrape "demo" {
@@ -170,11 +170,11 @@ prometheus.scrape "demo" {
 
 prometheus.remote_write "demo" {
   endpoint {
-    url = <PROMETHEUS_REMOTE_WRITE_URL>
+    url = "<PROMETHEUS_REMOTE_WRITE_URL>"
 
     basic_auth {
-      username = <USERNAME>
-      password = <PASSWORD>
+      username = "<USERNAME>"
+      password = "<PASSWORD>"
     }
   }
 }

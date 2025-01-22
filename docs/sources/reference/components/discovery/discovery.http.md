@@ -19,9 +19,9 @@ Example response body:
 ```json
 [
   {
-    "targets": [ "<host>", ... ],
+    "targets": [ "<HOST>", ... ],
     "labels": {
-      "<labelname>": "<labelvalue>", ...
+      "<labelname>": "<LABELVALUE>", ...
     }
   },
   ...
@@ -83,7 +83,7 @@ For more information on the potential labels you can use, refer to the [`prometh
 
 ```alloy
 discovery.http "<LABEL>" {
-  url = <URL>
+  url = "<URL>"
 }
 ```
 

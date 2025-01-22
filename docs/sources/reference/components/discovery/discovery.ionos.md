@@ -16,7 +16,7 @@ title: discovery.ionos
 
 ```alloy
 discovery.ionos "<LABEL>" {
-    datacenter_id = <DATACENTER_ID>
+    datacenter_id = "<DATACENTER_ID>"
 }
 ```
 
@@ -110,10 +110,10 @@ Each target includes the following labels:
 * `__meta_ionos_server_boot_volume_id`: The ID of the boot volume.
 * `__meta_ionos_server_cpu_family`: The CPU family of the server to.
 * `__meta_ionos_server_id`: The ID of the server.
-* `__meta_ionos_server_ip`: A comma separated list of all IPs assigned to the server.
+* `__meta_ionos_server_ip`: A comma separated list of all IP addresses assigned to the server.
 * `__meta_ionos_server_lifecycle`: The lifecycle state of the server resource.
 * `__meta_ionos_server_name`: The name of the server.
-* `__meta_ionos_server_nic_ip_<nic_name>`: A comma separated list of IPs, grouped by the name of each NIC attached to the server.
+* `__meta_ionos_server_nic_ip_<nic_name>`: A comma separated list of IP addresses, grouped by the name of each NIC attached to the server.
 * `__meta_ionos_server_servers_id`: The ID of the servers the server belongs to.
 * `__meta_ionos_server_state`: The execution state of the server.
 * `__meta_ionos_server_type`: The type of the server.
@@ -145,11 +145,11 @@ prometheus.scrape "demo" {
 
 prometheus.remote_write "demo" {
   endpoint {
-    url = <PROMETHEUS_REMOTE_WRITE_URL>
+    url = "<PROMETHEUS_REMOTE_WRITE_URL>"
 
     basic_auth {
-      username = <USERNAME>
-      password = <PASSWORD>
+      username = "<USERNAME>"
+      password = "<PASSWORD>"
     }
   }
 }
