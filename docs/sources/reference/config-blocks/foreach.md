@@ -35,7 +35,7 @@ Name             | Type        | Description                                    
 `var`            | `string`    | Name of the variable referring to the current item in the collection. |         | yes
 `enable_metrics` | `bool`      | Whether to expose debug metrics in the {{< param "PRODUCT_NAME" >}} `/metrics` endpoint.       | `false` | no
 
-`collection` could contain any [type][types] such as a bool, a string, a list, or a map.
+The items in the `collection` list can be of any type [type][types], such as a bool, a string, a list, or a map.
 
 {{< admonition type="warning" >}}
 Setting `enable_metrics` to `true` when `collection` has lots of elements may cause a large number of metrics to appear on the {{< param "PRODUCT_NAME" >}} `/metric` endpoint.
@@ -56,11 +56,15 @@ template  | [template][] | A component pipeline to run. | yes
 ### template
 
 The `template` block contains the definition of {{< param "PRODUCT_NAME" >}} components which will be ran for every item in the collection.
-The contents of the block look like a normal {{< param "PRODUCT_NAME" >}} configuration file, except that you can use the keyword defined in `var` to refer to the current item in the collection.
+The contents of the block look like a normal {{< param "PRODUCT_NAME" >}} configuration file,
+except that you can use the keyword defined in `var` to refer to the current item in the collection.
 
-## Examples
+Components inside the `template` block can use exports of components defined outside of the `foreach` block.
+However, components outside of the `foreach` cannot use exports from components defined inside the `template` block of a `foreach`.
 
-### Run Prometheus exporters dynamically on service discovery targets
+## Example
+
+The following example shows you how to run Run Prometheus exporters dynamically on service discovery targets.
 
 `prometheus.exporter.*` components often require the address of one particular instance being monitored.
 For example, `prometheus.exporter.redis` has a `redis_addr` attribute for the Redis instance under observation.
