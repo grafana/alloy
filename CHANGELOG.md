@@ -38,6 +38,8 @@ Main (unreleased)
   - Added table columns parsing (@cristiagreco)
   - Add enable/disable collector configurability to `database_observability.mysql`. This removes the `query_samples_enabled` argument, now configurable via enable/disable collector. (@fridgepoet)
 
+- Improved memory and CPU performance of Prometheus pipelines by changing the underlying implementation of targets (@thampiotr)  
+
 ### Bugfixes
 
 - Fix log rotation for Windows in `loki.source.file` by refactoring the component to use the runner pkg. This should also reduce CPU consumption when tailing a lot of files in a dynamic environment. (@wildum)

@@ -11,16 +11,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/discovery"
-	"github.com/grafana/alloy/internal/runtime/componenttest"
-	"github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
 	"golang.org/x/text/encoding/unicode"
+
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/runtime/componenttest"
+	"github.com/grafana/alloy/internal/util"
 )
 
 func Test(t *testing.T) {
@@ -41,10 +42,10 @@ func Test(t *testing.T) {
 
 	go func() {
 		err := ctrl.Run(ctx, Arguments{
-			Targets: []discovery.Target{{
+			Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{
 				"__path__": f.Name(),
 				"foo":      "bar",
-			}},
+			})},
 			ForwardTo: []loki.LogsReceiver{ch1, ch2},
 		})
 		require.NoError(t, err)
@@ -91,10 +92,10 @@ func TestFileWatch(t *testing.T) {
 	ch1 := loki.NewLogsReceiver()
 
 	args := Arguments{
-		Targets: []discovery.Target{{
+		Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{
 			"__path__": f.Name(),
 			"foo":      "bar",
-		}},
+		})},
 		ForwardTo: []loki.LogsReceiver{ch1},
 		FileWatch: FileWatch{
 			MinPollFrequency: time.Millisecond * 500,
@@ -150,10 +151,10 @@ func TestUpdate_NoLeak(t *testing.T) {
 	require.NoError(t, err)
 
 	args := Arguments{
-		Targets: []discovery.Target{{
+		Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{
 			"__path__": f.Name(),
 			"foo":      "bar",
-		}},
+		})},
 		ForwardTo: []loki.LogsReceiver{},
 	}
 
@@ -195,8 +196,8 @@ func TestTwoTargets(t *testing.T) {
 	ch1 := loki.NewLogsReceiver()
 	args := Arguments{}
 	args.Targets = []discovery.Target{
-		{"__path__": f.Name(), "foo": "bar"},
-		{"__path__": f2.Name(), "foo": "bar2"},
+		discovery.NewTargetFromMap(map[string]string{"__path__": f.Name(), "foo": "bar"}),
+		discovery.NewTargetFromMap(map[string]string{"__path__": f2.Name(), "foo": "bar2"}),
 	}
 	args.ForwardTo = []loki.LogsReceiver{ch1}
 
@@ -265,7 +266,7 @@ func TestEncoding(t *testing.T) {
 
 	ch1 := loki.NewLogsReceiver()
 	args := Arguments{}
-	args.Targets = []discovery.Target{{"__path__": f.Name(), "lbl1": "val1"}}
+	args.Targets = []discovery.Target{discovery.NewTargetFromMap(map[string]string{"__path__": f.Name(), "lbl1": "val1"})}
 	args.Encoding = "UTF-16BE"
 	args.ForwardTo = []loki.LogsReceiver{ch1}
 
@@ -334,10 +335,10 @@ func TestDeleteRecreateFile(t *testing.T) {
 
 	go func() {
 		err := ctrl.Run(ctx, Arguments{
-			Targets: []discovery.Target{{
+			Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{
 				"__path__": f.Name(),
 				"foo":      "bar",
-			}},
+			})},
 			ForwardTo: []loki.LogsReceiver{ch1},
 		})
 		require.NoError(t, err)

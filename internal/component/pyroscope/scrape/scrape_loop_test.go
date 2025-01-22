@@ -11,9 +11,6 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/component/discovery"
-	"github.com/grafana/alloy/internal/component/pyroscope"
-	"github.com/grafana/alloy/internal/util"
 	config_util "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
@@ -21,6 +18,10 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
 	"go.uber.org/goleak"
+
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/component/pyroscope"
+	"github.com/grafana/alloy/internal/util"
 )
 
 func TestScrapePool(t *testing.T) {
@@ -28,7 +29,7 @@ func TestScrapePool(t *testing.T) {
 
 	args := NewDefaultArguments()
 	args.Targets = []discovery.Target{
-		{"instance": "foo"},
+		discovery.NewTargetFromMap(map[string]string{"instance": "foo"}),
 	}
 	args.ProfilingConfig.Block.Enabled = false
 	args.ProfilingConfig.Goroutine.Enabled = false
