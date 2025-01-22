@@ -11,9 +11,10 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/grafana/alloy/internal/component/discovery"
 	gopsutil "github.com/shirou/gopsutil/v3/process"
 	"golang.org/x/sys/unix"
+
+	"github.com/grafana/alloy/internal/component/discovery"
 )
 
 const (
@@ -52,7 +53,7 @@ func convertProcesses(ps []process) []discovery.Target {
 }
 
 func convertProcess(p process) discovery.Target {
-	t := make(discovery.Target, 8)
+	t := make(map[string]string, 8)
 	t[labelProcessID] = p.pid
 	if p.exe != "" {
 		t[labelProcessExe] = p.exe
@@ -75,7 +76,7 @@ func convertProcess(p process) discovery.Target {
 	if p.cgroupPath != "" {
 		t[labelProcessCgroupPath] = p.cgroupPath
 	}
-	return t
+	return discovery.NewTargetFromMap(t)
 }
 
 func discover(l log.Logger, cfg *DiscoverConfig) ([]process, error) {

@@ -22,6 +22,12 @@ func NewEmptyTarget() Target {
 	return Target{}
 }
 
+func NewEmptyTargetWithSize(allocSize int) Target {
+	return Target{
+		labels: make(commonlabels.LabelSet, allocSize),
+	}
+}
+
 func NewTargetFromLabelSet(targetLabels commonlabels.LabelSet) Target {
 	return Target{
 		labels: targetLabels,
