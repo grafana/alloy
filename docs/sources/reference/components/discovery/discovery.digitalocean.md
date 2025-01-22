@@ -17,8 +17,8 @@ title: discovery.digitalocean
 ```alloy
 discovery.digitalocean "<LABEL>" {
     // Use one of:
-    // bearer_token      = <BEARER_TOKEN>
-    // bearer_token_file = <PATH_TO_BEARER_TOKEN_FILE>
+    // bearer_token      = "<BEARER_TOKEN>"
+    // bearer_token_file = "<PATH_TO_BEARER_TOKEN_FILE>"
 }
 ```
 
@@ -108,11 +108,11 @@ prometheus.scrape "demo" {
 
 prometheus.remote_write "demo" {
   endpoint {
-    url = <PROMETHEUS_REMOTE_WRITE_URL>
+    url = "<PROMETHEUS_REMOTE_WRITE_URL>"
 
     basic_auth {
-      username = <USERNAME>
-      password = <PASSWORD>
+      username = "<USERNAME>"
+      password = "<PASSWORD>"
     }
   }
 }

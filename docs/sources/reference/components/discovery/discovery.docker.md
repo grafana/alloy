@@ -16,7 +16,7 @@ title: discovery.docker
 
 ```alloy
 discovery.docker "<LABEL>" {
-  host = <DOCKER_ENGINE_HOST>
+  host = "<DOCKER_ENGINE_HOST>"
 }
 ```
 
@@ -169,11 +169,11 @@ prometheus.scrape "demo" {
 
 prometheus.remote_write "demo" {
   endpoint {
-    url = <PROMETHEUS_REMOTE_WRITE_URL>
+    url = "<PROMETHEUS_REMOTE_WRITE_URL>"
 
     basic_auth {
-      username = <USERNAME>
-      password = <PASSWORD>
+      username = "<USERNAME>"
+      password = "<PASSWORD>"
     }
   }
 }
@@ -205,11 +205,11 @@ prometheus.scrape "demo" {
 
 prometheus.remote_write "demo" {
   endpoint {
-    url = <PROMETHEUS_REMOTE_WRITE_URL>
+    url = "<PROMETHEUS_REMOTE_WRITE_URL>"
 
     basic_auth {
-      username = <USERNAME>
-      password = <PASSWORD>
+      username = "<USERNAME>"
+      password = "<PASSWORD>"
     }
   }
 }

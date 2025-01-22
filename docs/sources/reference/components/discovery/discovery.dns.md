@@ -14,7 +14,7 @@ title: discovery.dns
 
 ```alloy
 discovery.dns "<LABEL>" {
-  names = [<NAME_1>, <NAME_2>, ...]
+  names = ["<NAME_1>", "<NAME_2>", ...]
 }
 ```
 
@@ -80,11 +80,11 @@ prometheus.scrape "demo" {
 
 prometheus.remote_write "demo" {
   endpoint {
-    url = <PROMETHEUS_REMOTE_WRITE_URL>
+    url = "<PROMETHEUS_REMOTE_WRITE_URL>"
 
     basic_auth {
-      username = <USERNAME>
-      password = <PASSWORD>
+      username = "<USERNAME>"
+      password = "<PASSWORD>"
     }
   }
 }

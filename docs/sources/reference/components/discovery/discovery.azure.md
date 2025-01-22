@@ -123,11 +123,11 @@ In those cases, exported fields retain their last healthy values.
 ```alloy
 discovery.azure "example" {
   port = 80
-  subscription_id = <AZURE_SUBSCRIPTION_ID>
+  subscription_id = "<AZURE_SUBSCRIPTION_ID>"
   oauth {
-      client_id = <AZURE_CLIENT_ID>
-      client_secret = <AZURE_CLIENT_SECRET>
-      tenant_id = <AZURE_TENANT_ID>
+      client_id = "<AZURE_CLIENT_ID>"
+      client_secret = "<AZURE_CLIENT_SECRET>"
+      tenant_id = "<AZURE_TENANT_ID>"
   }
 }
 
@@ -138,11 +138,11 @@ prometheus.scrape "demo" {
 
 prometheus.remote_write "demo" {
   endpoint {
-    url = <PROMETHEUS_REMOTE_WRITE_URL>
+    url = "<PROMETHEUS_REMOTE_WRITE_URL>"
 
     basic_auth {
-      username = <USERNAME>
-      password = <PASSWORD>
+      username = "<USERNAME>"
+      password = "<PASSWORD>"
     }
   }
 }

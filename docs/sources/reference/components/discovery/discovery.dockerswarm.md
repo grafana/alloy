@@ -247,11 +247,11 @@ prometheus.scrape "demo" {
 
 prometheus.remote_write "demo" {
   endpoint {
-    url = <PROMETHEUS_REMOTE_WRITE_URL>
+    url = "<PROMETHEUS_REMOTE_WRITE_URL>"
 
     basic_auth {
-      username = <USERNAME>
-      password = <PASSWORD>
+      username = "<USERNAME>"
+      password = "<PASSWORD>"
     }
   }
 }
