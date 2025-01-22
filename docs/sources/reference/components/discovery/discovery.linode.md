@@ -3,6 +3,8 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/
 aliases:
   - ../discovery.linode/ # /docs/alloy/latest/reference/components/discovery.linode/
 description: Learn about discovery.linode
+labels:
+  stage: general-availability
 title: discovery.linode
 ---
 
@@ -17,12 +19,12 @@ This service discovery uses the public IPv4 address by default, but that can be 
 
 ```alloy
 discovery.linode "<LABEL>" {
-    bearer_token = <LINODE_API_TOKEN>
+    bearer_token = "<LINODE_API_TOKEN>"
 }
 ```
 
 {{< admonition type="note" >}}
-The Linode APIv4 Token must be created with the scopes: `linodes:read_only`, `ips:read_only`, and `events:read_only`.
+T=You must create the Linode APIv4 Token with the scopes: `linodes:read_only`, `ips:read_only`, and `events:read_only`.
 {{< /admonition >}}
 
 ## Arguments

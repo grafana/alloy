@@ -3,6 +3,8 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/
 aliases:
   - ../discovery.kuma/ # /docs/alloy/latest/reference/components/discovery.kuma/
 description: Learn about discovery.kuma
+labels:
+  stage: general-availability
 title: discovery.kuma
 ---
 
@@ -16,7 +18,7 @@ title: discovery.kuma
 
 ```alloy
 discovery.kuma "LABEL" {
-    server = SERVER
+    server = "SERVER"
 }
 ```
 
@@ -134,10 +136,10 @@ prometheus.scrape "demo" {
 }
 prometheus.remote_write "demo" {
     endpoint {
-        url = <PROMETHEUS_REMOTE_WRITE_URL>
+        url = "<PROMETHEUS_REMOTE_WRITE_URL>"
         basic_auth {
-            username = <USERNAME>
-            password = <PASSWORD>
+            username = "<USERNAME>"
+            password = "<PASSWORD>"
         }
     }
 }

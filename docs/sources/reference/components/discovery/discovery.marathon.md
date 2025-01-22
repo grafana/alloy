@@ -3,6 +3,8 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/
 aliases:
   - ../discovery.marathon/ # /docs/alloy/latest/reference/components/discovery.marathon/
 description: Learn about discovery.marathon
+labels:
+  stage: general-availability
 title: discovery.marathon
 ---
 
@@ -14,7 +16,7 @@ title: discovery.marathon
 
 ```alloy
 discovery.marathon "<LABEL>" {
-  servers = [<MARATHON_SERVER1>, <MARATHON_SERVER2>...]
+  servers = ["<MARATHON_SERVER1>", "<MARATHON_SERVER2>"...]
 }
 ```
 
@@ -142,11 +144,11 @@ prometheus.scrape "demo" {
 
 prometheus.remote_write "demo" {
   endpoint {
-    url = <PROMETHEUS_REMOTE_WRITE_URL>
+    url = "<PROMETHEUS_REMOTE_WRITE_URL>"
 
     basic_auth {
-      username = <USERNAME>
-      password = <PASSWORD>
+      username = "<USERNAME>"
+      password = "<PASSWORD>"
     }
   }
 }
