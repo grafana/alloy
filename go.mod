@@ -56,7 +56,7 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/grafana/alloy-remote-config v0.0.9
 	github.com/grafana/alloy/syntax v0.1.0
-	github.com/grafana/beyla v0.0.0-20250108110233-3f1b9b55c6dc // custom beyla 1.9.6 branch without breaking replace directives
+	github.com/grafana/beyla v1.9.1-0.20250122195759-1117708def46 // custom beyla 1.10 branch without git lfs
 	github.com/grafana/catchpoint-prometheus-exporter v0.0.0-20240606062944-e55f3668661d
 	github.com/grafana/ckit v0.0.0-20241128150632-1e6dfe1c6183
 	github.com/grafana/cloudflare-go v0.0.0-20230110200409-c627cf6792f2
@@ -577,7 +577,7 @@ require (
 	github.com/hodgesds/perf-utils v0.7.0 // indirect
 	github.com/huandu/xstrings v1.3.3 // indirect
 	github.com/iancoleman/strcase v0.3.0 // indirect
-	github.com/ianlancetaylor/demangle v0.0.0-20240312041847-bd984b5ce465 // indirect
+	github.com/ianlancetaylor/demangle v0.0.0-20240912202439-0a2b6291aafd // indirect
 	github.com/illumos/go-kstat v0.0.0-20210513183136-173c9b0a9973 // indirect
 	github.com/imdario/mergo v0.3.16 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
@@ -880,6 +880,7 @@ require (
 require (
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
 	github.com/containerd/typeurl/v2 v2.2.0 // indirect
+	github.com/containers/common v0.61.0 // indirect
 	github.com/deneonet/benc v1.1.2 // indirect
 	github.com/onsi/ginkgo/v2 v2.21.0 // indirect
 	github.com/onsi/gomega v1.35.1 // indirect
