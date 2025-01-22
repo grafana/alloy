@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/go-sql-driver/mysql"
+	"github.com/golang-sql/sqlexp"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/model"
@@ -50,11 +51,11 @@ var (
 )
 
 type Arguments struct {
-	DataSourceName    alloytypes.Secret   `alloy:"data_source_name,attr"`
-	CollectInterval   time.Duration       `alloy:"collect_interval,attr,optional"`
-	ForwardTo         []loki.LogsReceiver `alloy:"forward_to,attr"`
-	EnableCollectors  []string            `alloy:"enable_collectors,attr,optional"`
-	DisableCollectors []string            `alloy:"disable_collectors,attr,optional"`
+	DataSourceName   alloytypes.Secret   `alloy:"data_source_name,attr"`
+	CollectInterval  time.Duration       `alloy:"collect_interval,attr,optional"`
+	ForwardTo        []loki.LogsReceiver `alloy:"forward_to,attr"`
+	EnableCollectors []string            `alloy:"enable_collectors,attr,optional"`
+	//DisableCollectors []string            `alloy:"disable_collectors,attr,optional"`
 }
 
 var DefaultArguments = Arguments{
@@ -220,6 +221,14 @@ func (c *Component) startCollectors() error {
 
 	entryHandler := loki.NewEntryHandler(c.handler.Chan(), func() {})
 
+	if err := theRealStartCollectors(dbConnection, c, entryHandler); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func theRealStartCollectors(dbConnection sqlexp.Querier, c *Component, entryHandler loki.EntryHandler) error {
 	qsCollector, err := collector.NewQuerySample(collector.QuerySampleArguments{
 		DB:              dbConnection,
 		InstanceKey:     c.instanceKey,

@@ -2,11 +2,11 @@ package collector
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/golang-sql/sqlexp"
 	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/prometheus/common/model"
@@ -49,7 +49,7 @@ const (
 )
 
 type SchemaTableArguments struct {
-	DB              *sql.DB
+	DB              sqlexp.Querier
 	InstanceKey     string
 	CollectInterval time.Duration
 	EntryHandler    loki.EntryHandler
@@ -59,7 +59,7 @@ type SchemaTableArguments struct {
 }
 
 type SchemaTable struct {
-	dbConnection    *sql.DB
+	dbConnection    sqlexp.Querier
 	instanceKey     string
 	collectInterval time.Duration
 	entryHandler    loki.EntryHandler

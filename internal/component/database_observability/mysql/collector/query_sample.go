@@ -2,20 +2,21 @@ package collector
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/golang-sql/sqlexp"
 	"github.com/prometheus/common/model"
 	"github.com/xwb1989/sqlparser"
 	"go.uber.org/atomic"
 
+	"github.com/grafana/loki/v3/pkg/logproto"
+
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/grafana/loki/v3/pkg/logproto"
 )
 
 const (
@@ -35,7 +36,7 @@ const selectQuerySamples = `
 	AND last_seen > DATE_SUB(NOW(), INTERVAL 1 DAY)`
 
 type QuerySampleArguments struct {
-	DB              *sql.DB
+	DB              sqlexp.Querier
 	InstanceKey     string
 	CollectInterval time.Duration
 	EntryHandler    loki.EntryHandler
@@ -44,7 +45,7 @@ type QuerySampleArguments struct {
 }
 
 type QuerySample struct {
-	dbConnection    *sql.DB
+	dbConnection    sqlexp.Querier
 	instanceKey     string
 	collectInterval time.Duration
 	entryHandler    loki.EntryHandler
