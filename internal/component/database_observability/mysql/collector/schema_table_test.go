@@ -257,11 +257,17 @@ func TestSchemaTable(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
-			return collector.Stopped()
+			return len(lokiClient.Received()) == 1
 		}, 5*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
 		lokiClient.Stop()
+
+		lokiEntries := lokiClient.Received()
+		for _, entry := range lokiEntries {
+			require.Equal(t, model.LabelSet{"job": database_observability.JobName}, entry.Labels)
+		}
+		require.Equal(t, `level=info msg="schema detected" op="schema_detection" instance="mysql-db" schema="some_schema"`, lokiEntries[0].Line)
 
 		err = mock.ExpectationsWereMet()
 		require.NoError(t, err)
