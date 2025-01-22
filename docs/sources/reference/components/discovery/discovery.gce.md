@@ -3,6 +3,8 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/
 aliases:
   - ../discovery.gce/ # /docs/alloy/latest/reference/components/discovery.gce/
 description: Learn about discovery.gce
+labels:
+  stage: general-availability
 title: discovery.gce
 ---
 

@@ -3,6 +3,8 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/
 aliases:
   - ../discovery.http/ # /docs/alloy/latest/reference/components/discovery.http/
 description: Learn about discovery.http
+labels:
+  stage: general-availability
 title: discovery.http
 ---
 

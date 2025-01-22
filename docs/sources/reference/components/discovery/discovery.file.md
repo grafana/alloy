@@ -3,6 +3,8 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/
 aliases:
   - ../discovery.file/ # /docs/alloy/latest/reference/components/discovery.file/
 description: Learn about discovery.file
+labels:
+  stage: general-availability
 title: discovery.file
 ---
 

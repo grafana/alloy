@@ -3,6 +3,8 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/
 aliases:
   - ../discovery.ionos/ # /docs/alloy/latest/reference/components/discovery.ionos/
 description: Learn about discovery.ionos
+labels:
+  stage: general-availability
 title: discovery.ionos
 ---
 

@@ -3,6 +3,8 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/
 aliases:
   - ../discovery.eureka/ # /docs/alloy/latest/reference/components/discovery.eureka/
 description: Learn about discovery.eureka
+labels:
+  stage: general-availability
 title: discovery.eureka
 ---
 

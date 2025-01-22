@@ -3,6 +3,8 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/
 aliases:
   - ../discovery.ec2/ # /docs/alloy/latest/reference/components/discovery.ec2/
 description: Learn about discovery.ec2
+labels:
+  stage: general-availability
 title: discovery.ec2
 ---
 

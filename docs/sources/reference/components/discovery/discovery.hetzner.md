@@ -3,6 +3,8 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/
 aliases:
   - ../discovery.hetzner/ # /docs/alloy/latest/reference/components/discovery.hetzner/
 description: Learn about discovery.hetzner
+labels:
+  stage: general-availability
 title: discovery.hetzner
 ---
 
