@@ -30,7 +30,7 @@ Main (unreleased)
 
 - Add livedebugging support for `prometheus.remote_write` (@ravishankar15)
 
-v1.6.0-rc.3
+v1.6.0
 -----------------
 
 ### Breaking changes
