@@ -49,18 +49,16 @@ var (
 	_ syntax.Validator = (*Arguments)(nil)
 )
 
-// TODO(cristian) consider using something like "enabled_collectors"
-// to allow users to enable/disable collectors.
 type Arguments struct {
-	DataSourceName      alloytypes.Secret   `alloy:"data_source_name,attr"`
-	CollectInterval     time.Duration       `alloy:"collect_interval,attr,optional"`
-	QuerySamplesEnabled bool                `alloy:"query_samples_enabled,attr,optional"`
-	ForwardTo           []loki.LogsReceiver `alloy:"forward_to,attr"`
+	DataSourceName    alloytypes.Secret   `alloy:"data_source_name,attr"`
+	CollectInterval   time.Duration       `alloy:"collect_interval,attr,optional"`
+	ForwardTo         []loki.LogsReceiver `alloy:"forward_to,attr"`
+	EnableCollectors  []string            `yaml:"enable_collectors,omitempty"`
+	DisableCollectors []string            `yaml:"disable_collectors,omitempty"`
 }
 
 var DefaultArguments = Arguments{
-	CollectInterval:     10 * time.Second,
-	QuerySamplesEnabled: true,
+	CollectInterval: 10 * time.Second,
 }
 
 func (a *Arguments) SetToDefault() {
@@ -206,6 +204,34 @@ func (c *Component) Update(args component.Arguments) error {
 	return nil
 }
 
+func getCollectors(a Arguments) map[Collector]bool {
+	collectors := map[Collector]bool{
+		&collector.QuerySample{}: true,
+		//&collector.ConnectionInfo{}: true,
+		//&collector.SchemaTable{}:    true,
+	}
+
+	// Explicitly disable/enable specific collectors.
+	for _, disabled := range a.DisableCollectors {
+		for c := range collectors {
+			if c.Name() == disabled {
+				collectors[c] = false
+				break
+			}
+		}
+	}
+	for _, enabled := range a.EnableCollectors {
+		for c := range collectors {
+			if c.Name() == enabled {
+				collectors[c] = true
+				break
+			}
+		}
+	}
+
+	return collectors
+}
+
 func (c *Component) startCollectors() error {
 	dbConnection, err := sql.Open("mysql", formatDSN(string(c.args.DataSourceName), "parseTime=true"))
 	if err != nil {
@@ -222,7 +248,9 @@ func (c *Component) startCollectors() error {
 
 	entryHandler := loki.NewEntryHandler(c.handler.Chan(), func() {})
 
-	if c.args.QuerySamplesEnabled {
+	collectors := getCollectors(c.args)
+
+	if _, ok := collectors[&collector.QuerySample{}]; ok {
 		qsCollector, err := collector.NewQuerySample(collector.QuerySampleArguments{
 			DB:              dbConnection,
 			InstanceKey:     c.instanceKey,
