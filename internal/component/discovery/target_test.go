@@ -42,11 +42,16 @@ func TestDecodeMap(t *testing.T) {
 	get, ok := actual.Get("foo")
 	require.True(t, ok)
 	require.Equal(t, "bar", get)
-	
+
 	actual.Delete("foo")
 	get, ok = actual.Get("foo")
 	require.False(t, ok)
 	require.Equal(t, "", get)
+
+	// Some loggers print targets out, check it's all good. But without caring about order.
+	str := fmt.Sprintf("%s", actual)
+	valid := str == `{a="5", b="10"}` || str == `{b="10", a="5"}`
+	require.True(t, valid)
 }
 
 func TestConvertFromNative(t *testing.T) {
