@@ -58,8 +58,8 @@ func TestDecodeMap(t *testing.T) {
 	valid := str == `{a="5", b="10"}` || str == `{b="10", a="5"}`
 	require.True(t, valid)
 
-	// Test setting on empty target (verifies the nil check)
-	Target{}.Set("foo", "bar")
+	// Test setting on empty target (verifies the nil check exists, and it won't panic)
+	(&Target{}).Set("foo", "bar")
 }
 
 func TestConvertFromNative(t *testing.T) {
