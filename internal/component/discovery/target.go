@@ -53,12 +53,6 @@ func NewTargetFromModelLabels(labels modellabels.Labels) Target {
 	}
 }
 
-func NewTargetFromOwnAndSharedLabelSets(targetLabels commonlabels.LabelSet, sharedLabels commonlabels.LabelSet) Target {
-	return Target{
-		labels: targetLabels.Merge(sharedLabels),
-	}
-}
-
 func NewTargetFromMap(m map[string]string) Target {
 	l := make(commonlabels.LabelSet, len(m))
 	for k, v := range m {
@@ -69,19 +63,10 @@ func NewTargetFromMap(m map[string]string) Target {
 	}
 }
 
-// TODO(thampiotr): unused?
-func NewTargetsFromMaps(maps []map[string]string) []Target {
-	targets := make([]Target, len(maps))
-	for i, m := range maps {
-		targets[i] = NewTargetFromMap(m)
-	}
-	return targets
-}
-
 // AlloyCapsule marks FastTarget as a capsule so Alloy syntax can marshal to or from it.
 func (t Target) AlloyCapsule() {}
 
-// ConvertInto is called by Alloy syntax to try convert Target to another type.
+// ConvertInto is called by Alloy syntax to try converting Target to another type.
 func (t Target) ConvertInto(dst interface{}) error {
 	switch dst := dst.(type) {
 	case *map[string]syntax.Value:
@@ -91,12 +76,11 @@ func (t Target) ConvertInto(dst interface{}) error {
 		}
 		*dst = result
 		return nil
-		// TODO(thampiotr): Do we need to support other conversions?
 	}
 	return fmt.Errorf("target::ConvertInto: conversion to '%T' is not supported", dst)
 }
 
-// ConvertFrom is called by Alloy syntax to try convert from another type to Target.
+// ConvertFrom is called by Alloy syntax to try converting from another type to Target.
 func (t *Target) ConvertFrom(src interface{}) error {
 	switch src := src.(type) {
 	case map[string]syntax.Value:
@@ -109,7 +93,6 @@ func (t *Target) ConvertFrom(src interface{}) error {
 		}
 		t.labels = labelSet
 		return nil
-		// TODO(thampiotr): Do we need to support other conversions?
 	}
 
 	return fmt.Errorf("target: conversion from '%T' is not supported", src)
@@ -211,12 +194,10 @@ func (t Target) Len() int {
 }
 
 func (t Target) Delete(key string) {
-	// TODO(thampiotr): do we even need this method?
 	delete(t.labels, commonlabels.LabelName(key))
 }
 
 func (t Target) Clone() Target {
-	// TODO(thampiotr): Do we even need this method? Is this the best way to do it?
 	return Target{
 		labels: t.labels.Clone(),
 	}
