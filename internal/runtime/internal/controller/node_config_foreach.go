@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"hash/fnv"
 	"path"
+	"strings"
 	"sync"
 	"time"
 
@@ -381,9 +382,14 @@ func computeHash(s string) string {
 }
 
 func hashObject(obj any) string {
+	//TODO: Test what happens if there is a "true" string and a true bool in the collection.
 	switch v := obj.(type) {
-	case int, string, float64, bool:
+	case int, string, bool:
 		return fmt.Sprintf("%v", v)
+	case float64:
+		// Dots are not valid characters in Alloy syntax identifiers.
+		// For example, "foreach_3.14_1" should become "foreach_3_14_1".
+		return strings.Replace(fmt.Sprintf("%f", v), ".", "_", -1)
 	default:
 		return computeHash(fmt.Sprintf("%#v", v))
 	}

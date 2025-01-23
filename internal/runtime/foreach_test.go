@@ -24,7 +24,7 @@ func TestForeach(t *testing.T) {
 	directory := "./testdata/foreach"
 	for _, file := range getTestFiles(directory, t) {
 		tc := buildTestForEach(t, filepath.Join(directory, file.Name()))
-		t.Run(tc.description, func(t *testing.T) {
+		t.Run(file.Name(), func(t *testing.T) {
 			if tc.module != "" {
 				defer os.Remove("module.alloy")
 				require.NoError(t, os.WriteFile("module.alloy", []byte(tc.module), 0664))
@@ -68,6 +68,7 @@ type testForEachFile struct {
 	update                  *updateFile // update can be used to update the content of a file at runtime
 	expectedMetrics         *string     // expected prometheus metrics
 	expectedDurationMetrics *int        // expected prometheus duration metrics - check those separately as they vary with each test run
+	expectedDebugInfo       *string     // expected debug info after running the config
 }
 
 func buildTestForEach(t *testing.T, filename string) testForEachFile {
@@ -96,6 +97,9 @@ func buildTestForEach(t *testing.T, filename string) testForEachFile {
 			expectedDurationMetrics, err := strconv.Atoi(strings.TrimSpace(string((alloyConfig.Data))))
 			require.NoError(t, err)
 			tc.expectedDurationMetrics = &expectedDurationMetrics
+		case "expected_debug_info.txt":
+			expectedDebugInfo := string(alloyConfig.Data)
+			tc.expectedDebugInfo = &expectedDebugInfo
 		}
 	}
 	return tc
