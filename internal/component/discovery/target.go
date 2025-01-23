@@ -186,6 +186,9 @@ func (t Target) Get(key string) (string, bool) {
 }
 
 func (t Target) Set(key, value string) {
+	if t.labels == nil {
+		t.labels = make(commonlabels.LabelSet, 1)
+	}
 	t.labels[commonlabels.LabelName(key)] = commonlabels.LabelValue(value)
 }
 
