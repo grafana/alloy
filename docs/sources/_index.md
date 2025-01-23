@@ -1,7 +1,7 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/
 title: Grafana Alloy
-description: Grafana Alloy is a a vendor-neutral distribution of the OTel Collector
+description: Grafana Alloy is a vendor-neutral distribution of the OTel Collector
 weight: 350
 cascade:
   ALLOY_RELEASE: v1.7.0
