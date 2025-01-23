@@ -12,10 +12,10 @@ import (
 )
 
 type Target struct {
-	// labels is of a Prometheus-native models.LabelSet type, because most of the time targets are used with
+	// labelSet is of a Prometheus-native models.LabelSet type, because most of the time targets are used with
 	// Prometheus codebase (even for logs, we have loki.relabel) and this representation helps reduce
 	// unnecessary conversions and allocations. We can add another internal representations in the future if needed.
-	labels commonlabels.LabelSet
+	labelSet commonlabels.LabelSet
 }
 
 var (
@@ -25,23 +25,36 @@ var (
 )
 
 func NewEmptyTarget() Target {
-	return Target{}
+	return NewTargetFromLabelSet(nil)
 }
 
 // NewEmptyTargetWithSize creates an empty target, but allocates the allocSize of space for labels. These can be set
 // using Set method.
 func NewEmptyTargetWithSize(allocSize int) Target {
-	return Target{
-		labels: make(commonlabels.LabelSet, allocSize),
-	}
+	return NewTargetFromLabelSet(make(commonlabels.LabelSet, allocSize))
 }
 
 func NewTargetFromLabelSet(targetLabels commonlabels.LabelSet) Target {
 	return Target{
-		labels: targetLabels,
+		labelSet: targetLabels,
 	}
 }
 
+// TODO(thampiotr): 37% allocs
+// TODO(thampiotr): discovery.*
+func NewTargetFromSpecificAndBaseLabelSet(specific, base commonlabels.LabelSet) Target {
+	merged := make(commonlabels.LabelSet, len(specific)+len(base))
+	for k, v := range base {
+		merged[k] = v
+	}
+	for k, v := range specific {
+		merged[k] = v
+	}
+	return NewTargetFromLabelSet(merged)
+}
+
+// TODO(thampiotr): 23% allocs
+// TODO(thampiotr): discovery.relabel
 func NewTargetFromModelLabels(labels modellabels.Labels) Target {
 	// TODO(thampiotr): save labels as cached value?
 	l := make(commonlabels.LabelSet, len(labels))
@@ -49,7 +62,7 @@ func NewTargetFromModelLabels(labels modellabels.Labels) Target {
 		l[commonlabels.LabelName(v.Name)] = commonlabels.LabelValue(v.Value)
 	}
 	return Target{
-		labels: l,
+		labelSet: l,
 	}
 }
 
@@ -58,8 +71,118 @@ func NewTargetFromMap(m map[string]string) Target {
 	for k, v := range m {
 		l[commonlabels.LabelName(k)] = commonlabels.LabelValue(v)
 	}
+	return NewTargetFromLabelSet(l)
+}
+
+// TODO(thampiotr): 12% allocs
+// TODO(thampiotr): discovery.relabel
+func (t Target) Labels() modellabels.Labels {
+	// TODO(thampiotr): We can cache this!
+	return t.LabelsWithPredicate(nil)
+}
+
+// TODO(thampiotr): 11% allocs
+// TODO(thampiotr): prometheus.scrape / distributed_targets
+func (t Target) NonMetaLabels() modellabels.Labels {
+	return t.LabelsWithPredicate(func(key string) bool {
+		return !strings.HasPrefix(key, commonlabels.MetaLabelPrefix)
+	})
+}
+
+// TODO(thampiotr): loki.source.kubernetes / distributed_targets
+func (t Target) SpecificLabels(lbls []string) modellabels.Labels {
+	// TODO(thampiotr): We can cache this!
+	return t.LabelsWithPredicate(func(key string) bool {
+		return slices.Contains(lbls, key)
+	})
+}
+
+func (t Target) NonReservedLabelSet() commonlabels.LabelSet {
+	// This may not be the most optimal way, but this method is NOT a known hot spot at the time of this comment.
+	result := make(commonlabels.LabelSet, t.Len())
+	t.ForEachLabel(func(key string, value string) bool {
+		if !strings.HasPrefix(key, commonlabels.ReservedLabelPrefix) {
+			result[commonlabels.LabelName(key)] = commonlabels.LabelValue(value)
+		}
+		return true
+	})
+	return result
+}
+
+func (t Target) LabelsWithPredicate(pred func(key string) bool) modellabels.Labels {
+	// This method allocates less than Builder or ScratchBuilder, as proven by benchmarks.
+	lb := make([]modellabels.Label, 0, t.Len())
+	t.ForEachLabel(func(key string, value string) bool {
+		if pred == nil || pred(key) {
+			lb = append(lb, modellabels.Label{
+				Name:  key,
+				Value: value,
+			})
+		}
+		return true
+	})
+	slices.SortFunc(lb, func(a, b modellabels.Label) int { return strings.Compare(a.Name, b.Name) })
+	return lb
+}
+
+// ForEachLabel runs f over each key value pair in the Target. f must not modify Target while iterating. If f returns
+// false, the iteration is interrupted. If f returns true, the iteration continues until the last element. ForEachLabel
+// returns true if all the labels were iterated over or false if any call to f has interrupted the iteration.
+func (t Target) ForEachLabel(f func(key string, value string) bool) bool {
+	for k, v := range t.labelSet {
+		if !f(string(k), string(v)) {
+			// f has returned false, interrupt the iteration and return false.
+			return false
+		}
+	}
+	// We finished the iteration, return true.
+	return true
+}
+
+// AsMap returns target's labels as a map of strings.
+// Deprecated: this should not be used on any hot path as it leads to more allocation.
+func (t Target) AsMap() map[string]string {
+	ret := make(map[string]string, t.Len())
+	t.ForEachLabel(func(key string, value string) bool {
+		ret[key] = value
+		return true
+	})
+	return ret
+}
+
+func (t Target) Get(key string) (string, bool) {
+	value, ok := t.labelSet[commonlabels.LabelName(key)]
+	return string(value), ok
+}
+
+func (t *Target) Set(key, value string) {
+	if t.labelSet == nil {
+		t.labelSet = make(commonlabels.LabelSet, 1)
+	}
+	t.labelSet[commonlabels.LabelName(key)] = commonlabels.LabelValue(value)
+}
+
+func (t Target) Delete(key string) {
+	delete(t.labelSet, commonlabels.LabelName(key))
+}
+
+func (t Target) LabelSet() commonlabels.LabelSet {
+	return t.labelSet
+}
+
+func (t Target) Len() int {
+	return len(t.labelSet)
+}
+
+// Equals should be called to compare two Target objects.
+// TODO(thampiotr): make sure this is called when Alloy is deciding whether to propagate updates
+func (t Target) Equals(other Target) bool {
+	return t.labelSet.Equal(other.labelSet)
+}
+
+func (t Target) Clone() Target {
 	return Target{
-		labels: l,
+		labelSet: t.labelSet.Clone(),
 	}
 }
 
@@ -70,10 +193,11 @@ func (t Target) AlloyCapsule() {}
 func (t Target) ConvertInto(dst interface{}) error {
 	switch dst := dst.(type) {
 	case *map[string]syntax.Value:
-		result := make(map[string]syntax.Value, len(t.labels))
-		for k, v := range t.labels {
-			result[string(k)] = syntax.ValueFromString(string(v))
-		}
+		result := make(map[string]syntax.Value, t.Len())
+		t.ForEachLabel(func(key string, value string) bool {
+			result[key] = syntax.ValueFromString(value)
+			return true
+		})
 		*dst = result
 		return nil
 	}
@@ -91,121 +215,12 @@ func (t *Target) ConvertFrom(src interface{}) error {
 			}
 			labelSet[commonlabels.LabelName(k)] = commonlabels.LabelValue(v.Text())
 		}
-		t.labels = labelSet
+		*t = NewTargetFromLabelSet(labelSet)
 		return nil
 	}
-
 	return fmt.Errorf("target: conversion from '%T' is not supported", src)
 }
 
-// Equals should be called to compare two Target objects.
-// TODO(thampiotr): make sure this is called when Alloy is deciding whether to propagate updates
-func (t Target) Equals(other Target) bool {
-	return t.labels.Equal(other.labels)
-}
-
-func (t Target) LabelSet() commonlabels.LabelSet {
-	return t.labels
-}
-
-func (t Target) Labels() modellabels.Labels {
-	// TODO(thampiotr): consider using base? cached one? or scratch builder?
-	lb := modellabels.NewBuilder(nil)
-	for k, v := range t.labels {
-		lb.Set(string(k), string(v))
-	}
-	// TODO(thampiotr): verify this will be sorted!
-	// TODO(thampiotr): We can cache this!
-	return lb.Labels()
-}
-
-func (t Target) NonMetaLabels() modellabels.Labels {
-	// TODO(thampiotr): consider using base? cached one? or scratch builder?
-	lb := modellabels.NewBuilder(nil)
-	for k, v := range t.labels {
-		if !strings.HasPrefix(string(k), commonlabels.MetaLabelPrefix) {
-			lb.Set(string(k), string(v))
-		}
-	}
-	// TODO(thampiotr): verify this will be sorted!
-	// TODO(thampiotr): We can cache this!
-	return lb.Labels()
-}
-
-func (t Target) NonReservedLabelSet() commonlabels.LabelSet {
-	// TODO(thampiotr): is there a more optimal way?
-	result := make(commonlabels.LabelSet, len(t.labels))
-	for k, v := range t.labels {
-		if !strings.HasPrefix(string(k), commonlabels.ReservedLabelPrefix) {
-			result[k] = v
-		}
-	}
-	return result
-}
-
-func (t Target) SpecificLabels(lbls []string) modellabels.Labels {
-	// TODO(thampiotr): consider using base? cached one? or scratch builder?
-	lb := modellabels.NewBuilder(nil)
-	for k, v := range t.labels {
-		if slices.Contains(lbls, string(k)) {
-			lb.Set(string(k), string(v))
-		}
-	}
-	// TODO(thampiotr): verify this will be sorted!
-	// TODO(thampiotr): We can cache this!
-	return lb.Labels()
-}
-
-// ForEachLabel runs f over each key value pair in the Target. f must not modify Target while iterating. If f returns
-// false, the iteration is interrupted. If f returns true, the iteration continues until the last element. ForEachLabel
-// returns true if all the labels were iterated over or false if any call to f has interrupted the iteration.
-func (t Target) ForEachLabel(f func(key string, value string) bool) bool {
-	for k, v := range t.labels {
-		if !f(string(k), string(v)) {
-			// f has returned false, interrupt the iteration and return false.
-			return false
-		}
-	}
-	// We finished the iteration, return true.
-	return true
-}
-
-// AsMap returns target's labels as a map of strings.
-// Deprecated: this should not be used on any hot path as it leads to more allocation.
-func (t Target) AsMap() map[string]string {
-	ret := make(map[string]string, len(t.labels))
-	for k, v := range t.labels {
-		ret[string(k)] = string(v)
-	}
-	return ret
-}
-
-func (t Target) Get(key string) (string, bool) {
-	value, ok := t.labels[commonlabels.LabelName(key)]
-	return string(value), ok
-}
-
-func (t *Target) Set(key, value string) {
-	if t.labels == nil {
-		t.labels = make(commonlabels.LabelSet, 1)
-	}
-	t.labels[commonlabels.LabelName(key)] = commonlabels.LabelValue(value)
-}
-
-func (t Target) Len() int {
-	return len(t.labels)
-}
-
-func (t Target) Delete(key string) {
-	delete(t.labels, commonlabels.LabelName(key))
-}
-
-func (t Target) Clone() Target {
-	return Target{
-		labels: t.labels.Clone(),
-	}
-}
-
 func (t Target) String() string {
-	return fmt.Sprintf("%s", t.labels)
+	return fmt.Sprintf("%s", t.labelSet)
 }

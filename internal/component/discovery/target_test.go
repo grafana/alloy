@@ -2,7 +2,6 @@ package discovery
 
 import (
 	"fmt"
-	"math/rand"
 	"reflect"
 	"slices"
 	"testing"
@@ -131,38 +130,54 @@ func Benchmark_Targets_TypicalPipeline(b *testing.B) {
 	}
 
 	cluster := &randomCluster{
-		peers: peers,
+		peers:        peers,
+		peersByIndex: make(map[int][]peer.Peer, len(peers)),
 	}
 
 	b.ResetTimer()
 
-	var prev *DistributedTargets
+	var prevDistTargets *DistributedTargets
 	for i := 0; i < b.N; i++ {
 		// Creating the targets in discovery
 		targets := toAlloyTargets(cache)
+
 		// Relabel of targets in discovery.relabel
-		for _, target := range targets {
-			l := target.Labels()
-			_ = NewTargetFromModelLabels(l)
+		for i := range targets {
+			l := targets[i].Labels()
+			targets[i] = NewTargetFromModelLabels(l)
 		}
-		// Distributed targets for clustering
+
+		// discovery.scrape: distributing targets for clustering
 		dt := NewDistributedTargets(true, cluster, targets)
 		_ = dt.LocalTargets()
-		_ = dt.MovedToRemoteInstance(prev)
+		_ = dt.MovedToRemoteInstance(prevDistTargets)
 		// Sending LabelSet to Prometheus library for scraping
 		for _, target := range targets {
 			_ = target.LabelSet()
 		}
-		prev = dt
+
+		// Remote write happens on a sample level and largely outside Alloy's codebase, so skipping here.
+
+		prevDistTargets = dt
 	}
 }
 
 type randomCluster struct {
 	peers []peer.Peer
+	// stores results in a map to reduce the allocation noise in the benchmark
+	peersByIndex map[int][]peer.Peer
 }
 
 func (f *randomCluster) Lookup(key shard.Key, _ int, _ shard.Op) ([]peer.Peer, error) {
-	return []peer.Peer{f.peers[rand.Int()%len(f.peers)]}, nil
+	ind := int(key)
+	if ind < 0 {
+		ind = -ind
+	}
+	peerIndex := ind % len(f.peers)
+	if _, ok := f.peersByIndex[peerIndex]; !ok {
+		f.peersByIndex[peerIndex] = []peer.Peer{f.peers[peerIndex]}
+	}
+	return f.peersByIndex[peerIndex], nil
 }
 
 func (f *randomCluster) Peers() []peer.Peer {
