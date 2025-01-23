@@ -6,11 +6,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/grafana/alloy/syntax/parser"
 	"github.com/grafana/alloy/syntax/printer"
 	"github.com/grafana/alloy/syntax/token"
 	"github.com/grafana/alloy/syntax/token/builder"
-	"github.com/stretchr/testify/require"
 )
 
 func TestBuilder_File(t *testing.T) {
@@ -69,6 +70,7 @@ func TestBuilder_GoEncode(t *testing.T) {
 		"Hello!",
 	})
 
+	// TODO(thampiotr): add support for custom marshalling when encoding here!
 	expect := format(t, `
 		// Hello, world!
 		null_value = null

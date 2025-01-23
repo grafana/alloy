@@ -18,10 +18,16 @@ type Target struct {
 	labels commonlabels.LabelSet
 }
 
+var (
+	_ syntax.Capsule = Target{}
+)
+
 func NewEmptyTarget() Target {
 	return Target{}
 }
 
+// NewEmptyTargetWithSize creates an empty target, but allocates the allocSize of space for labels. These can be set
+// using Set method.
 func NewEmptyTargetWithSize(allocSize int) Target {
 	return Target{
 		labels: make(commonlabels.LabelSet, allocSize),
@@ -71,14 +77,14 @@ func NewTargetsFromMaps(maps []map[string]string) []Target {
 }
 
 // AlloyCapsule marks FastTarget as a capsule so Alloy syntax can marshal to or from it.
-func (p Target) AlloyCapsule() {}
+func (t Target) AlloyCapsule() {}
 
-// ConvertInto is called by Alloy syntax to try convert FastTarget to another type.
-func (p Target) ConvertInto(dst interface{}) error {
+// ConvertInto is called by Alloy syntax to try convert Target to another type.
+func (t Target) ConvertInto(dst interface{}) error {
 	switch dst := dst.(type) {
 	case *map[string]syntax.Value:
-		result := make(map[string]syntax.Value, len(p.labels))
-		for k, v := range p.labels {
+		result := make(map[string]syntax.Value, len(t.labels))
+		for k, v := range t.labels {
 			result[string(k)] = syntax.ValueFromString(string(v))
 		}
 		*dst = result
@@ -88,39 +94,39 @@ func (p Target) ConvertInto(dst interface{}) error {
 	return fmt.Errorf("MapCapsule: conversion to '%T' is not supported", dst)
 }
 
-// ConvertFrom is called by Alloy syntax to try convert from another type to FastTarget.
-func (p *Target) ConvertFrom(src interface{}) error {
+// ConvertFrom is called by Alloy syntax to try convert from another type to Target.
+func (t *Target) ConvertFrom(src interface{}) error {
 	switch src := src.(type) {
 	case map[string]syntax.Value:
 		labelSet := make(commonlabels.LabelSet, len(src))
 		for k, v := range src {
 			if !v.IsString() {
-				return fmt.Errorf("Target::ConvertFrom: cannot convert non-string values to labels")
+				return fmt.Errorf("target::ConvertFrom: cannot convert non-string values to labels")
 			}
 			labelSet[commonlabels.LabelName(k)] = commonlabels.LabelValue(v.Text())
 		}
-		p.labels = labelSet
+		t.labels = labelSet
 		return nil
 		// TODO(thampiotr): Do we need to support other conversions?
 	}
 
-	return fmt.Errorf("FastTarget: conversion from '%T' is not supported", src)
+	return fmt.Errorf("target: conversion from '%T' is not supported", src)
 }
 
-// Equals should be called to compare two FastTarget objects.
+// Equals should be called to compare two Target objects.
 // TODO(thampiotr): make sure this is called when Alloy is deciding whether to propagate updates
-func (p Target) Equals(other Target) bool {
-	return p.labels.Equal(other.labels)
+func (t Target) Equals(other Target) bool {
+	return t.labels.Equal(other.labels)
 }
 
-func (p Target) LabelSet() commonlabels.LabelSet {
-	return p.labels
+func (t Target) LabelSet() commonlabels.LabelSet {
+	return t.labels
 }
 
-func (p Target) Labels() modellabels.Labels {
+func (t Target) Labels() modellabels.Labels {
 	// TODO(thampiotr): consider using base? cached one? or scratch builder?
 	lb := modellabels.NewBuilder(nil)
-	for k, v := range p.labels {
+	for k, v := range t.labels {
 		lb.Set(string(k), string(v))
 	}
 	// TODO(thampiotr): verify this will be sorted!
@@ -128,10 +134,10 @@ func (p Target) Labels() modellabels.Labels {
 	return lb.Labels()
 }
 
-func (p Target) NonMetaLabels() modellabels.Labels {
+func (t Target) NonMetaLabels() modellabels.Labels {
 	// TODO(thampiotr): consider using base? cached one? or scratch builder?
 	lb := modellabels.NewBuilder(nil)
-	for k, v := range p.labels {
+	for k, v := range t.labels {
 		if !strings.HasPrefix(string(k), commonlabels.MetaLabelPrefix) {
 			lb.Set(string(k), string(v))
 		}
@@ -141,10 +147,10 @@ func (p Target) NonMetaLabels() modellabels.Labels {
 	return lb.Labels()
 }
 
-func (p Target) NonReservedLabelSet() commonlabels.LabelSet {
+func (t Target) NonReservedLabelSet() commonlabels.LabelSet {
 	// TODO(thampiotr): is there a more optimal way?
-	result := make(commonlabels.LabelSet, len(p.labels))
-	for k, v := range p.labels {
+	result := make(commonlabels.LabelSet, len(t.labels))
+	for k, v := range t.labels {
 		if !strings.HasPrefix(string(k), commonlabels.ReservedLabelPrefix) {
 			result[k] = v
 		}
@@ -152,10 +158,10 @@ func (p Target) NonReservedLabelSet() commonlabels.LabelSet {
 	return result
 }
 
-func (p Target) SpecificLabels(lbls []string) modellabels.Labels {
+func (t Target) SpecificLabels(lbls []string) modellabels.Labels {
 	// TODO(thampiotr): consider using base? cached one? or scratch builder?
 	lb := modellabels.NewBuilder(nil)
-	for k, v := range p.labels {
+	for k, v := range t.labels {
 		if slices.Contains(lbls, string(k)) {
 			lb.Set(string(k), string(v))
 		}
@@ -168,8 +174,8 @@ func (p Target) SpecificLabels(lbls []string) modellabels.Labels {
 // ForEachLabel runs f over each key value pair in the Target. f must not modify Target while iterating. If f returns
 // false, the iteration is interrupted. If f returns true, the iteration continues until the last element. ForEachLabel
 // returns true if all the labels were iterated over or false if any call to f has interrupted the iteration.
-func (p Target) ForEachLabel(f func(key string, value string) bool) bool {
-	for k, v := range p.labels {
+func (t Target) ForEachLabel(f func(key string, value string) bool) bool {
+	for k, v := range t.labels {
 		if !f(string(k), string(v)) {
 			// f has returned false, interrupt the iteration and return false.
 			return false
@@ -181,39 +187,39 @@ func (p Target) ForEachLabel(f func(key string, value string) bool) bool {
 
 // AsMap returns target's labels as a map of strings.
 // Deprecated: this should not be used on any hot path as it leads to more allocation.
-func (p Target) AsMap() map[string]string {
-	ret := make(map[string]string, len(p.labels))
-	for k, v := range p.labels {
+func (t Target) AsMap() map[string]string {
+	ret := make(map[string]string, len(t.labels))
+	for k, v := range t.labels {
 		ret[string(k)] = string(v)
 	}
 	return ret
 }
 
-func (p Target) Get(key string) (string, bool) {
-	value, ok := p.labels[commonlabels.LabelName(key)]
+func (t Target) Get(key string) (string, bool) {
+	value, ok := t.labels[commonlabels.LabelName(key)]
 	return string(value), ok
 }
 
-func (p Target) Set(key, value string) {
-	p.labels[commonlabels.LabelName(key)] = commonlabels.LabelValue(value)
+func (t Target) Set(key, value string) {
+	t.labels[commonlabels.LabelName(key)] = commonlabels.LabelValue(value)
 }
 
-func (p Target) Len() int {
-	return len(p.labels)
+func (t Target) Len() int {
+	return len(t.labels)
 }
 
-func (p Target) Delete(key string) {
+func (t Target) Delete(key string) {
 	// TODO(thampiotr): do we even need this method?
-	delete(p.labels, commonlabels.LabelName(key))
+	delete(t.labels, commonlabels.LabelName(key))
 }
 
-func (p Target) Clone() Target {
+func (t Target) Clone() Target {
 	// TODO(thampiotr): Do we even need this method? Is this the best way to do it?
 	return Target{
-		labels: p.labels.Clone(),
+		labels: t.labels.Clone(),
 	}
 }
 
-func (p Target) String() string {
-	return fmt.Sprintf("%s", p.labels)
+func (t Target) String() string {
+	return fmt.Sprintf("%s", t.labels)
 }
