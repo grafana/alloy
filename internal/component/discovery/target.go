@@ -19,7 +19,9 @@ type Target struct {
 }
 
 var (
-	_ syntax.Capsule = Target{}
+	_ syntax.Capsule                = Target{}
+	_ syntax.ConvertibleIntoCapsule = Target{}
+	_ syntax.ConvertibleFromCapsule = &Target{}
 )
 
 func NewEmptyTarget() Target {
@@ -91,7 +93,7 @@ func (t Target) ConvertInto(dst interface{}) error {
 		return nil
 		// TODO(thampiotr): Do we need to support other conversions?
 	}
-	return fmt.Errorf("MapCapsule: conversion to '%T' is not supported", dst)
+	return fmt.Errorf("target::ConvertInto: conversion to '%T' is not supported", dst)
 }
 
 // ConvertFrom is called by Alloy syntax to try convert from another type to Target.
