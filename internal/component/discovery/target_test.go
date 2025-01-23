@@ -1,0 +1,185 @@
+package discovery
+
+import (
+	"fmt"
+	"reflect"
+	"slices"
+	"testing"
+
+	"github.com/Masterminds/goutils"
+	"github.com/grafana/ckit/peer"
+	"github.com/grafana/ckit/shard"
+	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/discovery/targetgroup"
+	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/syntax/parser"
+	"github.com/grafana/alloy/syntax/vm"
+)
+
+func TestDecodeMap(t *testing.T) {
+	scope := vm.NewScope(map[string]interface{}{
+		"foobar": 42,
+	})
+
+	input := `{ a = "5", b = "10" }`
+	expected := NewTargetFromMap(map[string]string{"a": "5", "b": "10"})
+
+	expr, err := parser.ParseExpression(input)
+	require.NoError(t, err)
+
+	eval := vm.New(expr)
+	actual := Target{}
+	require.NoError(t, eval.Evaluate(scope, &actual))
+	require.Equal(t, expected, actual)
+
+	// Test can use it like a map
+	var seen []string
+	actual.ForEachLabel(func(k string, v string) bool {
+		seen = append(seen, fmt.Sprintf("%s=%s", k, v))
+		return true
+	})
+	slices.Sort(seen)
+	require.Equal(t, []string{"a=5", "b=10"}, seen)
+
+	actual.Set("foo", "bar")
+	get, ok := actual.Get("foo")
+	require.True(t, ok)
+	require.Equal(t, "bar", get)
+
+	actual.Delete("foo")
+	get, ok = actual.Get("foo")
+	require.False(t, ok)
+	require.Equal(t, "", get)
+
+	// Some loggers print targets out, check it's all good. But without caring about order.
+	str := fmt.Sprintf("%s", actual)
+	valid := str == `{a="5", b="10"}` || str == `{b="10", a="5"}`
+	require.True(t, valid)
+
+	// Test setting on empty target (verifies the nil check exists, and it won't panic)
+	(&Target{}).Set("foo", "bar")
+}
+
+func TestConvertFromNative(t *testing.T) {
+	var nativeTargets = []model.LabelSet{
+		{model.LabelName("hip"): model.LabelValue("hop")},
+		{model.LabelName("nae"): model.LabelValue("nae")},
+	}
+
+	nativeGroup := &targetgroup.Group{
+		Targets: nativeTargets,
+		Labels: model.LabelSet{
+			model.LabelName("boom"): model.LabelValue("bap"),
+		},
+		Source: "test",
+	}
+
+	expected := []Target{
+		NewTargetFromMap(map[string]string{"hip": "hop", "boom": "bap"}),
+		NewTargetFromMap(map[string]string{"nae": "nae", "boom": "bap"}),
+	}
+
+	require.Equal(t, expected, toAlloyTargets(map[string]*targetgroup.Group{"test": nativeGroup}))
+}
+
+func TestEquals(t *testing.T) {
+	t1 := NewTargetFromMap(map[string]string{"hip": "hop", "boom": "bap"})
+	// TODO(thampiotr): if we start caching this as a field, the equality may break.
+	require.Equal(t, 2, t1.Labels().Len())
+	t2 := NewTargetFromMap(map[string]string{"hip": "hop"})
+	t2.Set("boom", "bap")
+	// This is the way exports are compared in BuiltinComponentNode.setExports, and it's important for performance that
+	// Targets equality is working correctly.
+	require.True(t, reflect.DeepEqual(t1, t2))
+}
+
+func Benchmark_Targets_TypicalPipeline(b *testing.B) {
+	sharedLabels := 5
+	labelsPerTarget := 5
+	labelsLength := 10
+	targetsCount := 20_000
+	numPeers := 10
+
+	genLabelSet := func(size int) model.LabelSet {
+		ls := model.LabelSet{}
+		for i := 0; i < size; i++ {
+			name, _ := goutils.RandomAlphaNumeric(labelsLength)
+			value, _ := goutils.RandomAlphaNumeric(labelsLength)
+			ls[model.LabelName(name)] = model.LabelValue(value)
+		}
+		return ls
+	}
+
+	var labelSets []model.LabelSet
+	for i := 0; i < targetsCount; i++ {
+		labelSets = append(labelSets, genLabelSet(labelsPerTarget))
+	}
+
+	cache := map[string]*targetgroup.Group{}
+	cache["test"] = &targetgroup.Group{
+		Targets: labelSets,
+		Labels:  genLabelSet(sharedLabels),
+		Source:  "test",
+	}
+
+	peers := make([]peer.Peer, 0, numPeers)
+	for i := 0; i < numPeers; i++ {
+		peerName := fmt.Sprintf("peer_%d", i)
+		peers = append(peers, peer.Peer{Name: peerName, Addr: peerName, Self: i == 0, State: peer.StateParticipant})
+	}
+
+	cluster := &randomCluster{
+		peers:        peers,
+		peersByIndex: make(map[int][]peer.Peer, len(peers)),
+	}
+
+	b.ResetTimer()
+
+	var prevDistTargets *DistributedTargets
+	for i := 0; i < b.N; i++ {
+		// Creating the targets in discovery
+		targets := toAlloyTargets(cache)
+
+		// Relabel of targets in discovery.relabel
+		for i := range targets {
+			l := targets[i].Labels()
+			targets[i] = NewTargetFromModelLabels(l)
+		}
+
+		// discovery.scrape: distributing targets for clustering
+		dt := NewDistributedTargets(true, cluster, targets)
+		_ = dt.LocalTargets()
+		_ = dt.MovedToRemoteInstance(prevDistTargets)
+		// Sending LabelSet to Prometheus library for scraping
+		for _, target := range targets {
+			_ = target.LabelSet()
+		}
+
+		// Remote write happens on a sample level and largely outside Alloy's codebase, so skipping here.
+
+		prevDistTargets = dt
+	}
+}
+
+type randomCluster struct {
+	peers []peer.Peer
+	// stores results in a map to reduce the allocation noise in the benchmark
+	peersByIndex map[int][]peer.Peer
+}
+
+func (f *randomCluster) Lookup(key shard.Key, _ int, _ shard.Op) ([]peer.Peer, error) {
+	ind := int(key)
+	if ind < 0 {
+		ind = -ind
+	}
+	peerIndex := ind % len(f.peers)
+	if _, ok := f.peersByIndex[peerIndex]; !ok {
+		f.peersByIndex[peerIndex] = []peer.Peer{f.peers[peerIndex]}
+	}
+	return f.peersByIndex[peerIndex], nil
+}
+
+func (f *randomCluster) Peers() []peer.Peer {
+	return f.peers
+}

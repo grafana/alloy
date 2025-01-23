@@ -59,11 +59,8 @@ func (w *watch) getPaths() ([]discovery.Target, error) {
 			continue
 		}
 
-		dt := discovery.Target{}
-		for dk, v := range w.target {
-			dt[dk] = v
-		}
-		dt["__path__"] = abs
+		dt := w.target.Clone()
+		dt.Set("__path__", abs)
 		allMatchingPaths = append(allMatchingPaths, dt)
 	}
 
@@ -71,9 +68,11 @@ func (w *watch) getPaths() ([]discovery.Target, error) {
 }
 
 func (w *watch) getPath() string {
-	return w.target["__path__"]
+	path, _ := w.target.Get("__path__")
+	return path
 }
 
 func (w *watch) getExcludePath() string {
-	return w.target["__path_exclude__"]
+	excludePath, _ := w.target.Get("__path_exclude__")
+	return excludePath
 }

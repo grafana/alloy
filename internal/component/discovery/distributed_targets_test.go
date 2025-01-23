@@ -285,11 +285,11 @@ func BenchmarkDistributedTargets(b *testing.B) {
 }
 
 func mkTarget(kv ...string) Target {
-	target := make(Target)
+	target := make(map[string]string)
 	for i := 0; i < len(kv); i += 2 {
 		target[kv[i]] = kv[i+1]
 	}
-	return target
+	return NewTargetFromMap(target)
 }
 
 func testDistTargets(lookupMap map[shard.Key][]peer.Peer) *DistributedTargets {

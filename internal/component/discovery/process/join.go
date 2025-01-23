@@ -27,13 +27,15 @@ func join(processes, containers []discovery.Target) []discovery.Target {
 			res = append(res, p)
 			continue
 		}
-		mergedTarget := make(discovery.Target, len(p)+len(container))
-		for k, v := range p {
-			mergedTarget[k] = v
-		}
-		for k, v := range container {
-			mergedTarget[k] = v
-		}
+		mergedTarget := discovery.NewEmptyTargetWithSize(p.Len() + container.Len())
+		p.ForEachLabel(func(key string, value string) bool {
+			mergedTarget.Set(key, value)
+			return true
+		})
+		container.ForEachLabel(func(key string, value string) bool {
+			mergedTarget.Set(key, value)
+			return true
+		})
 		res = append(res, mergedTarget)
 	}
 	for _, target := range cid2container {

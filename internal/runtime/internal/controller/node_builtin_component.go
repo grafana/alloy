@@ -371,6 +371,7 @@ func (cn *BuiltinComponentNode) setExports(e component.Exports) {
 	var changed bool
 
 	cn.exportsMut.Lock()
+	// TODO(thampiotr): If we export a capsule and don't want to trigger updates, we would want to have a customisable way of comparing them to each other here.
 	if !reflect.DeepEqual(cn.exports, e) {
 		changed = true
 		cn.exports = e

@@ -4,6 +4,7 @@
 package file_match
 
 import (
+	"context"
 	"os"
 	"path"
 	"strings"
@@ -12,12 +13,11 @@ import (
 
 	"github.com/grafana/alloy/internal/component/discovery"
 
-	"context"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/util"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/stretchr/testify/require"
 )
 
 func TestFile(t *testing.T) {
@@ -254,7 +254,7 @@ func TestMultiLabels(t *testing.T) {
 		"foo":   "bar",
 		"fruit": "apple",
 	})
-	c.args.PathTargets[0]["newlabel"] = "test"
+	c.args.PathTargets[0].Set("newlabel", "test")
 	ct := context.Background()
 	ct, ccl := context.WithTimeout(ct, 40*time.Second)
 	defer ccl()
@@ -278,12 +278,12 @@ func createComponent(t *testing.T, dir string, paths []string, excluded []string
 func createComponentWithLabels(t *testing.T, dir string, paths []string, excluded []string, labels map[string]string) *Component {
 	tPaths := make([]discovery.Target, 0)
 	for i, p := range paths {
-		tar := discovery.Target{"__path__": p}
+		tar := discovery.NewTargetFromMap(map[string]string{"__path__": p})
 		for k, v := range labels {
-			tar[k] = v
+			tar.Set(k, v)
 		}
 		if i < len(excluded) {
-			tar["__path_exclude__"] = excluded[i]
+			tar.Set("__path_exclude__", excluded[i])
 		}
 		tPaths = append(tPaths, tar)
 	}
@@ -308,7 +308,7 @@ func createComponentWithLabels(t *testing.T, dir string, paths []string, exclude
 
 func contains(sources []discovery.Target, match string) bool {
 	for _, s := range sources {
-		p := s["__path__"]
+		p, _ := s.Get("__path__")
 		if strings.Contains(p, match) {
 			return true
 		}
