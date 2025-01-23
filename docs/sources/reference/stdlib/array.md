@@ -35,9 +35,7 @@ Elements within the list can be any type.
 
 ## array.combine_maps
 
-> **EXPERIMENTAL**: This is an [experimental][] feature.
-> Experimental features are subject to frequent breaking changes, and may be removed with no equivalent replacement.
-> The `stability.level` flag must be set to `experimental` to use the feature.
+{{< docs/shared lookup="stability/experimental_feature.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 The `array.combine_maps` function allows you to join two arrays of maps if certain keys have matching values in both maps. It's particularly useful when combining labels of targets coming from different `prometheus.discovery.*` or `prometheus.exporter.*` components.
 It takes three arguments:
