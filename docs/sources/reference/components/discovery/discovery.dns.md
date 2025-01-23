@@ -3,6 +3,8 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/
 aliases:
   - ../discovery.dns/ # /docs/alloy/latest/reference/components/discovery.dns/
 description: Learn about discovery.dns
+labels:
+  stage: general-availability
 title: discovery.dns
 ---
 
