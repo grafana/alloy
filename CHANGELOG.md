@@ -7,7 +7,7 @@ This document contains a historical list of changes between releases. Only
 changes that impact end-user behavior are listed; changes to documentation or
 internal API changes are not present.
 
-v1.6.1-rc.0
+v1.6.1
 -----------------
 
 - Resolve issue with Beyla starting. (@rafaelroquetto)
