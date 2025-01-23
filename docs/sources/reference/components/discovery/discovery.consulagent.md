@@ -3,6 +3,8 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/
 aliases:
   - ../discovery.consulagent/ # /docs/alloy/latest/reference/components/discovery.consulagent/
 description: Learn about discovery.consulagent
+labels:
+  stage: general-availability
 title: discovery.consulagent
 ---
 
