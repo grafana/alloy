@@ -3,6 +3,8 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/
 aliases:
   - ../discovery.docker/ # /docs/alloy/latest/reference/components/discovery.docker/
 description: Learn about discovery.docker
+labels:
+  stage: general-availability
 title: discovery.docker
 ---
 
