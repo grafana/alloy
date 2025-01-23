@@ -3,6 +3,8 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/
 aliases:
   - ../discovery.dockerswarm/ # /docs/alloy/latest/reference/components/discovery.dockerswarm/
 description: Learn about discovery.dockerswarm
+labels:
+  stage: general-availability
 title: discovery.dockerswarm
 ---
 
