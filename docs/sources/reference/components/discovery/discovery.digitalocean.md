@@ -3,6 +3,8 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/
 aliases:
   - ../discovery.digitalocean/ # /docs/alloy/latest/reference/components/discovery.digitalocean/
 description: Learn about discovery.digitalocean
+labels:
+  stage: general-availability
 title: discovery.digitalocean
 ---
 

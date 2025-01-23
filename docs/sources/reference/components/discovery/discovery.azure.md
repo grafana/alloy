@@ -3,6 +3,8 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/
 aliases:
   - ../discovery.azure/ # /docs/alloy/latest/reference/components/discovery.azure/
 description: Learn about discovery.azure
+labels:
+  stage: general-availability
 title: discovery.azure
 ---
 
