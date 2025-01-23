@@ -221,6 +221,7 @@ func TestDecompressor(t *testing.T) {
 		labels,
 		"",
 		DecompressionConfig{Format: "gz"},
+		func() bool { return true },
 	)
 	go decompressor.Run()
 
@@ -248,6 +249,60 @@ func TestDecompressor(t *testing.T) {
 	}
 
 	decompressor.Stop()
+
+	positionsFile.Stop()
+}
+
+func TestDecompressorPositionFileEntryDeleted(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
+	l := util.TestLogger(t)
+	ch1 := loki.NewLogsReceiver()
+	tempDir := t.TempDir()
+	positionsFile, err := positions.New(l, positions.Config{
+		SyncPeriod:        50 * time.Millisecond,
+		PositionsFile:     filepath.Join(tempDir, "positions.yaml"),
+		IgnoreInvalidYaml: false,
+		ReadOnly:          false,
+	})
+	require.NoError(t, err)
+	filename := "testdata/onelinelog.tar.gz"
+	labels := model.LabelSet{
+		"filename": model.LabelValue(filename),
+		"foo":      "bar",
+	}
+	decompressor, err := newDecompressor(
+		newMetrics(nil),
+		l,
+		ch1,
+		positionsFile,
+		filename,
+		labels,
+		"",
+		DecompressionConfig{Format: "gz"},
+		func() bool { return false },
+	)
+	go decompressor.Run()
+
+	select {
+	case logEntry := <-ch1.Chan():
+		require.Contains(t, logEntry.Line, "onelinelog.log")
+	case <-time.After(1 * time.Second):
+		require.FailNow(t, "failed waiting for log line")
+	}
+
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		pos, err := positionsFile.Get(filename, labels.String())
+		assert.NoError(c, err)
+		assert.Equal(c, int64(1), pos)
+	}, time.Second, 50*time.Millisecond)
+
+	decompressor.Stop()
+
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		pos, err := positionsFile.Get(filename, labels.String())
+		assert.NoError(c, err)
+		assert.Equal(c, int64(0), pos)
+	}, time.Second, 50*time.Millisecond)
 
 	positionsFile.Stop()
 }

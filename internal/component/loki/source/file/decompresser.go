@@ -60,6 +60,8 @@ type decompressor struct {
 	size     int64
 	cfg      DecompressionConfig
 
+	componentStopping func() bool
+
 	mut      sync.RWMutex
 	stopping bool
 	posquit  chan struct{} // used by the readLine method to tell the updatePosition method to stop
@@ -76,6 +78,7 @@ func newDecompressor(
 	labels model.LabelSet,
 	encodingFormat string,
 	cfg DecompressionConfig,
+	componentStopping func() bool,
 ) (*decompressor, error) {
 
 	labelsStr := labels.String()
@@ -98,20 +101,21 @@ func newDecompressor(
 	}
 
 	decompressor := &decompressor{
-		metrics:   metrics,
-		logger:    logger,
-		receiver:  receiver,
-		positions: positions,
-		path:      path,
-		labels:    labels,
-		labelsStr: labelsStr,
-		running:   atomic.NewBool(false),
-		posquit:   make(chan struct{}),
-		posdone:   make(chan struct{}),
-		done:      make(chan struct{}),
-		position:  pos,
-		decoder:   decoder,
-		cfg:       cfg,
+		metrics:           metrics,
+		logger:            logger,
+		receiver:          receiver,
+		positions:         positions,
+		path:              path,
+		labels:            labels,
+		labelsStr:         labelsStr,
+		running:           atomic.NewBool(false),
+		posquit:           make(chan struct{}),
+		posdone:           make(chan struct{}),
+		done:              make(chan struct{}),
+		position:          pos,
+		decoder:           decoder,
+		cfg:               cfg,
+		componentStopping: componentStopping,
 	}
 
 	return decompressor, nil
@@ -322,9 +326,15 @@ func (d *decompressor) Stop() {
 	<-d.done
 	level.Info(d.logger).Log("msg", "stopped decompressor", "path", d.path)
 
-	// Save the current position before shutting down reader
-	if err := d.markPositionAndSize(); err != nil {
-		level.Error(d.logger).Log("msg", "error marking file position when stopping decompressor", "path", d.path, "error", err)
+	// If the component is not stopping, then it means that the target for this component is gone and that
+	// we should clear the entry from the positions file.
+	if !d.componentStopping() {
+		d.positions.Remove(d.path, d.labelsStr)
+	} else {
+		// Save the current position before shutting down reader
+		if err := d.markPositionAndSize(); err != nil {
+			level.Error(d.logger).Log("msg", "error marking file position when stopping decompressor", "path", d.path, "error", err)
+		}
 	}
 }
 

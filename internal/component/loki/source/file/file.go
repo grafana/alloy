@@ -18,6 +18,7 @@ import (
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/tail/watch"
 	"github.com/prometheus/common/model"
+	"go.uber.org/atomic"
 )
 
 func init() {
@@ -88,6 +89,8 @@ type Component struct {
 	posFile   positions.Positions
 	tasks     map[positions.Entry]runnerTask
 
+	stopping atomic.Bool
+
 	updateReaders chan struct{}
 }
 
@@ -141,6 +144,7 @@ func (c *Component) Run(ctx context.Context) error {
 	defer func() {
 		level.Info(c.opts.Logger).Log("msg", "loki.source.file component shutting down, stopping readers and positions file")
 		c.mut.RLock()
+		c.stopping.Store(true)
 		runner.Stop()
 		c.posFile.Stop()
 		close(c.handler.Chan())
@@ -296,6 +300,7 @@ func (c *Component) createReader(path string, labels model.LabelSet) (reader, er
 			labels,
 			c.args.Encoding,
 			c.args.DecompressionConfig,
+			c.IsStopping,
 		)
 		if err != nil {
 			level.Error(c.opts.Logger).Log("msg", "failed to create decompressor", "error", err, "filename", path)
@@ -317,6 +322,7 @@ func (c *Component) createReader(path string, labels model.LabelSet) (reader, er
 			c.args.Encoding,
 			pollOptions,
 			c.args.TailFromEnd,
+			c.IsStopping,
 		)
 		if err != nil {
 			level.Error(c.opts.Logger).Log("msg", "failed to create tailer", "error", err, "filename", path)
@@ -326,6 +332,10 @@ func (c *Component) createReader(path string, labels model.LabelSet) (reader, er
 	}
 
 	return reader, nil
+}
+
+func (c *Component) IsStopping() bool {
+	return c.stopping.Load()
 }
 
 func (c *Component) reportSize(path string) {
