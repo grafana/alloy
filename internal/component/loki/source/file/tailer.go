@@ -45,6 +45,8 @@ type tailer struct {
 
 	running *atomic.Bool
 
+	componentStopping func() bool
+
 	mut      sync.RWMutex
 	stopping bool
 	tail     *tail.Tail
@@ -56,22 +58,23 @@ type tailer struct {
 }
 
 func newTailer(metrics *metrics, logger log.Logger, receiver loki.LogsReceiver, positions positions.Positions, path string,
-	labels model.LabelSet, encoding string, pollOptions watch.PollingFileWatcherOptions, tailFromEnd bool) (*tailer, error) {
+	labels model.LabelSet, encoding string, pollOptions watch.PollingFileWatcherOptions, tailFromEnd bool, componentStopping func() bool) (*tailer, error) {
 
 	tailer := &tailer{
-		metrics:     metrics,
-		logger:      log.With(logger, "component", "tailer"),
-		receiver:    receiver,
-		positions:   positions,
-		path:        path,
-		labels:      labels,
-		labelsStr:   labels.String(),
-		running:     atomic.NewBool(false),
-		tailFromEnd: tailFromEnd,
-		pollOptions: pollOptions,
-		posquit:     make(chan struct{}),
-		posdone:     make(chan struct{}),
-		done:        make(chan struct{}),
+		metrics:           metrics,
+		logger:            log.With(logger, "component", "tailer"),
+		receiver:          receiver,
+		positions:         positions,
+		path:              path,
+		labels:            labels,
+		labelsStr:         labels.String(),
+		running:           atomic.NewBool(false),
+		tailFromEnd:       tailFromEnd,
+		pollOptions:       pollOptions,
+		posquit:           make(chan struct{}),
+		posdone:           make(chan struct{}),
+		done:              make(chan struct{}),
+		componentStopping: componentStopping,
 	}
 
 	if encoding != "" {
@@ -369,6 +372,12 @@ func (t *tailer) Stop() {
 	// Wait for the position marker thread to exit
 	<-t.posdone
 	level.Info(t.logger).Log("msg", "stopped tailing file", "path", t.path)
+
+	// If the component is not stopping, then it means that the target for this component is gone and that
+	// we should clear the entry from the positions file.
+	if !t.componentStopping() {
+		t.positions.Remove(t.path, t.labelsStr)
+	}
 }
 
 func (t *tailer) IsRunning() bool {
