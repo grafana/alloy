@@ -64,7 +64,7 @@ However, components outside of the `foreach` cannot use exports from components 
 
 ## Example
 
-The following example shows you how to run Run Prometheus exporters dynamically on service discovery targets.
+The following example shows you how to run Prometheus exporters dynamically on service discovery targets.
 
 `prometheus.exporter.*` components often require the address of one particular instance being monitored.
 For example, `prometheus.exporter.redis` has a `redis_addr` attribute for the Redis instance under observation.
