@@ -22,5 +22,5 @@
 
 # Components:
 /internal/component/pyroscope/              @grafana/grafana-alloy-profiling-maintainers
-/internal/component/beyla/                  @marctc
+/internal/component/beyla/                  @grafana/beyla
 /internal/component/database_observability/ @cristiangreco @matthewnolf
