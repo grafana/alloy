@@ -16,8 +16,6 @@ Main (unreleased)
 
 ### Enhancements
 
-- Improved performance by reducing allocation in Prometheus write pipelines by ~30% (@thampiotr)
-
 - (_Experimental_) Log instance label key in `database_observability.mysql` (@cristiangreco)
 
 - (_Experimental_) Improve parsing of truncated queries in `database_observability.mysql` (@cristiangreco)
@@ -25,6 +23,8 @@ Main (unreleased)
 - (_Experimental_) Capture schema name for query samples in `database_observability.mysql` (@cristiangreco)
 
 - (_Experimental_) Fix handling of view table types when detecting schema in `database_observability.mysql` (@matthewnolf)
+
+- (_Experimental_) fix error handling during result set iteration in `database_observability.mysql` (@cristiangreco)
 
 - Add json format support for log export via faro receiver (@ravishankar15)
 
@@ -34,7 +34,7 @@ Main (unreleased)
 
 - Add livedebugging support for `prometheus.remote_write` (@ravishankar15)
 
-v1.6.0-rc.2
+v1.6.0
 -----------------
 
 ### Breaking changes
@@ -71,6 +71,8 @@ v1.6.0-rc.2
 - Add a new `/-/healthy` endpoint which returns HTTP 500 if one or more components are unhealthy. (@ptodev)
 
 ### Enhancements
+
+- Improved performance by reducing allocation in Prometheus write pipelines by ~30% (@thampiotr)
 
 - Update `prometheus.write.queue` to support v2 for cpu performance. (@mattdurham)
 

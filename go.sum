@@ -1277,6 +1277,8 @@ github.com/containerd/typeurl v1.0.2 h1:Chlt8zIieDbzQFzXzAeBEF92KhExuE4p9p92/QmY
 github.com/containerd/typeurl v1.0.2/go.mod h1:9trJWW2sRlGub4wZJRTW83VtbOLS6hwcDZXTn6oPz9s=
 github.com/containerd/typeurl/v2 v2.2.0 h1:6NBDbQzr7I5LHgp34xAXYF5DOTQDn05X58lsPEmzLso=
 github.com/containerd/typeurl/v2 v2.2.0/go.mod h1:8XOOxnyatxSWuG8OfsZXVnAF4iZfedjS/8UHSPJnX4g=
+github.com/containers/common v0.61.0 h1:j/84PTqZIKKYy42OEJsZmjZ4g4Kq2ERuC3tqp2yWdh4=
+github.com/containers/common v0.61.0/go.mod h1:NGRISq2vTFPSbhNqj6MLwyes4tWSlCnqbJg7R77B8xc=
 github.com/coredns/coredns v1.1.2/go.mod h1:zASH/MVDgR6XZTbxvOnsZfffS+31vg6Ackf/wo1+AM0=
 github.com/coreos/bbolt v1.3.2/go.mod h1:iRUV2dpdMOn7Bo10OQBFzIJO9kkE559Wcmn+qkEiiKk=
 github.com/coreos/bbolt v1.3.3/go.mod h1:iRUV2dpdMOn7Bo10OQBFzIJO9kkE559Wcmn+qkEiiKk=
@@ -1857,6 +1859,10 @@ github.com/grafana/alloy-remote-config v0.0.9 h1:gy34SxZ8Iq/HrDTIFZi80+8BlT+FnJh
 github.com/grafana/alloy-remote-config v0.0.9/go.mod h1:kHE1usYo2WAVCikQkIXuoG1Clz8BSdiz3kF+DZSCQ4k=
 github.com/grafana/beyla v0.0.0-20250108110233-3f1b9b55c6dc h1:oY8yQB8IG0dBo1UrLlLC2CspxbiVtSWWExMxXOnfWgk=
 github.com/grafana/beyla v0.0.0-20250108110233-3f1b9b55c6dc/go.mod h1:hpk185gTeIQXjxV/so9vAxhZtSEgm8ODanWXZNVnH2M=
+github.com/grafana/beyla v1.9.1-0.20250122195759-1117708def46 h1:/aw+Ze9lUluE1hNZ0fAtwhmf2CKP0VbsLFumpN8xztY=
+github.com/grafana/beyla v1.9.1-0.20250122195759-1117708def46/go.mod h1:CRWu15fkScScSYBlYUtdJu2Ak8ojGvnuwHToGGkaOXY=
+github.com/grafana/beyla v1.10.0-alloy h1:kGyZtBSS/Br2qdhbvzu8sVYZHuE9a3OzWpbp6gN55EY=
+github.com/grafana/beyla v1.10.0-alloy/go.mod h1:CRWu15fkScScSYBlYUtdJu2Ak8ojGvnuwHToGGkaOXY=
 github.com/grafana/cadvisor v0.0.0-20240729082359-1f04a91701e2 h1:ju6EcY2aEobeBg185ETtFCKj5WzaQ48qfkbsSRRQrF4=
 github.com/grafana/cadvisor v0.0.0-20240729082359-1f04a91701e2/go.mod h1:8sLW/G7rcFe1CKMaA4pYT4mX3P1xQVGqM6luzEzx/2g=
 github.com/grafana/catchpoint-prometheus-exporter v0.0.0-20240606062944-e55f3668661d h1:6sNPBwOokfCxAyateu7iLdtyWDUzaLLShPs7F4eTLfw=
@@ -2120,6 +2126,8 @@ github.com/ianlancetaylor/demangle v0.0.0-20200824232613-28f6c0f3b639/go.mod h1:
 github.com/ianlancetaylor/demangle v0.0.0-20210905161508-09a460cdf81d/go.mod h1:aYm2/VgdVmcIU8iMfdMvDMsRAQjcfZSKFby6HOFvi/w=
 github.com/ianlancetaylor/demangle v0.0.0-20240312041847-bd984b5ce465 h1:KwWnWVWCNtNq/ewIX7HIKnELmEx2nDP42yskD/pi7QE=
 github.com/ianlancetaylor/demangle v0.0.0-20240312041847-bd984b5ce465/go.mod h1:gx7rwoVhcfuVKG5uya9Hs3Sxj7EIvldVofAWIUtGouw=
+github.com/ianlancetaylor/demangle v0.0.0-20240912202439-0a2b6291aafd h1:EVX1s+XNss9jkRW9K6XGJn2jL2lB1h5H804oKPsxOec=
+github.com/ianlancetaylor/demangle v0.0.0-20240912202439-0a2b6291aafd/go.mod h1:gx7rwoVhcfuVKG5uya9Hs3Sxj7EIvldVofAWIUtGouw=
 github.com/illumos/go-kstat v0.0.0-20210513183136-173c9b0a9973 h1:hk4LPqXIY/c9XzRbe7dA6qQxaT6Axcbny0L/G5a4owQ=
 github.com/illumos/go-kstat v0.0.0-20210513183136-173c9b0a9973/go.mod h1:PoK3ejP3LJkGTzKqRlpvCIFas3ncU02v8zzWDW+g0FY=
 github.com/imdario/mergo v0.3.5/go.mod h1:2EnlNZ0deacrJVfApfmtdGgDfMuh/nq6Ok1EcJh5FfA=

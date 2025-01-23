@@ -155,11 +155,6 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 
 	var schemas []string
 	for rs.Next() {
-		if err := rs.Err(); err != nil {
-			level.Error(c.logger).Log("msg", "failed to iterate rs", "err", err)
-			break
-		}
-
 		var schema string
 		if err := rs.Scan(&schema); err != nil {
 			level.Error(c.logger).Log("msg", "failed to scan schemata", "err", err)
@@ -174,6 +169,11 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 				Line:      fmt.Sprintf(`level=info msg="schema detected" op="%s" instance="%s" schema="%s"`, OP_SCHEMA_DETECTION, c.instanceKey, schema),
 			},
 		}
+	}
+
+	if err := rs.Err(); err != nil {
+		level.Error(c.logger).Log("msg", "error during iterating over schemas result set", "err", err)
+		return err
 	}
 
 	if len(schemas) == 0 {
@@ -192,11 +192,6 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 		defer rs.Close()
 
 		for rs.Next() {
-			if err := rs.Err(); err != nil {
-				level.Error(c.logger).Log("msg", "failed to iterate rs", "err", err)
-				break
-			}
-
 			var tableName, tableType string
 			var createTime, updateTime time.Time
 			if err := rs.Scan(&tableName, &tableType, &createTime, &updateTime); err != nil {
@@ -218,6 +213,11 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 					Line:      fmt.Sprintf(`level=info msg="table detected" op="%s" instance="%s" schema="%s" table="%s"`, OP_TABLE_DETECTION, c.instanceKey, schema, tableName),
 				},
 			}
+		}
+
+		if err := rs.Err(); err != nil {
+			level.Error(c.logger).Log("msg", "error during iterating over tables result set", "err", err)
+			return err
 		}
 	}
 

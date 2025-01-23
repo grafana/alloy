@@ -123,11 +123,6 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 	defer rs.Close()
 
 	for rs.Next() {
-		if err := rs.Err(); err != nil {
-			level.Error(c.logger).Log("msg", "failed to iterate rs", "err", err)
-			break
-		}
-
 		var digest, schemaName, sampleText, sampleSeen, sampleTimerWait string
 		err := rs.Scan(&digest, &schemaName, &sampleText, &sampleSeen, &sampleTimerWait)
 		if err != nil {
@@ -184,6 +179,11 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 				},
 			}
 		}
+	}
+
+	if err := rs.Err(); err != nil {
+		level.Error(c.logger).Log("msg", "error during iterating over samples result set", "err", err)
+		return err
 	}
 
 	return nil
