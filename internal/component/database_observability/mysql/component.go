@@ -204,9 +204,9 @@ func (c *Component) Update(args component.Arguments) error {
 	return nil
 }
 
-func getCollectors(a Arguments) map[Collector]bool {
-	collectors := map[Collector]bool{
-		&collector.QuerySample{}: true,
+func getCollectors(a Arguments) map[string]bool {
+	collectors := map[string]bool{
+		"QuerySample": true,
 		//&collector.ConnectionInfo{}: true,
 		//&collector.SchemaTable{}:    true,
 	}
@@ -214,7 +214,7 @@ func getCollectors(a Arguments) map[Collector]bool {
 	// Explicitly disable/enable specific collectors.
 	for _, disabled := range a.DisableCollectors {
 		for c := range collectors {
-			if c.Name() == disabled {
+			if c == disabled {
 				collectors[c] = false
 				break
 			}
@@ -222,7 +222,7 @@ func getCollectors(a Arguments) map[Collector]bool {
 	}
 	for _, enabled := range a.EnableCollectors {
 		for c := range collectors {
-			if c.Name() == enabled {
+			if c == enabled {
 				collectors[c] = true
 				break
 			}
@@ -250,7 +250,7 @@ func (c *Component) startCollectors() error {
 
 	collectors := getCollectors(c.args)
 
-	if _, ok := collectors[&collector.QuerySample{}]; ok {
+	if _, ok := collectors["QuerySample"]; ok {
 		qsCollector, err := collector.NewQuerySample(collector.QuerySampleArguments{
 			DB:              dbConnection,
 			InstanceKey:     c.instanceKey,
@@ -289,6 +289,7 @@ func (c *Component) startCollectors() error {
 	ciCollector, err := collector.NewConnectionInfo(collector.ConnectionInfoArguments{
 		DSN:      string(c.args.DataSourceName),
 		Registry: c.registry,
+		Logger:   c.opts.Logger,
 	})
 	if err != nil {
 		level.Error(c.opts.Logger).Log("msg", "failed to create ConnectionInfo collector", "err", err)
