@@ -3,6 +3,7 @@ package discovery
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"os"
 	"sync"
 	"testing"
@@ -10,8 +11,11 @@ import (
 
 	"github.com/Masterminds/goutils"
 	"github.com/go-kit/log"
+	"github.com/grafana/ckit/peer"
+	"github.com/grafana/ckit/shard"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
+	"github.com/prometheus/prometheus/model/labels"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -246,6 +250,100 @@ func Benchmark_ToAlloyTargets(b *testing.B) {
 	}
 }
 
+func Benchmark_Targets_TypicalPipeline(b *testing.B) {
+	sharedLabels := 5
+	labelsPerTarget := 5
+	labelsLength := 10
+	targetsCount := 20_000
+	numPeers := 10
+
+	genLabelSet := func(size int) model.LabelSet {
+		ls := model.LabelSet{}
+		for i := 0; i < size; i++ {
+			name, _ := goutils.RandomAlphaNumeric(labelsLength)
+			value, _ := goutils.RandomAlphaNumeric(labelsLength)
+			ls[model.LabelName(name)] = model.LabelValue(value)
+		}
+		return ls
+	}
+
+	var labelSets []model.LabelSet
+	for i := 0; i < targetsCount; i++ {
+		labelSets = append(labelSets, genLabelSet(labelsPerTarget))
+	}
+
+	cache := map[string]*targetgroup.Group{}
+	cache["test"] = &targetgroup.Group{
+		Targets: labelSets,
+		Labels:  genLabelSet(sharedLabels),
+		Source:  "test",
+	}
+
+	peers := make([]peer.Peer, 0, numPeers)
+	for i := 0; i < numPeers; i++ {
+		peerName := fmt.Sprintf("peer_%d", i)
+		peers = append(peers, peer.Peer{Name: peerName, Addr: peerName, Self: i == 0, State: peer.StateParticipant})
+	}
+
+	cluster := &randomCluster{
+		peers: peers,
+	}
+
+	b.ResetTimer()
+
+	// The current method of converting Target -> prom Labels used by prometheus.relabel
+	componentMapToPromLabels := func(ls Target) labels.Labels {
+		res := make([]labels.Label, 0, len(ls))
+		for k, v := range ls {
+			res = append(res, labels.Label{Name: k, Value: v})
+		}
+
+		return res
+	}
+
+	// The current method of converting prom Labels -> Target used by prometheus.relabel
+	promLabelsToComponent := func(ls labels.Labels) Target {
+		res := make(map[string]string, len(ls))
+		for _, l := range ls {
+			res[l.Name] = l.Value
+		}
+
+		return res
+	}
+
+	// The current method of converting Target -> LabelSet used by prometheus.scrape
+	convertLabelSet := func(tg Target) model.LabelSet {
+		lset := make(model.LabelSet, len(tg))
+		for k, v := range tg {
+			lset[model.LabelName(k)] = model.LabelValue(v)
+		}
+		return lset
+	}
+
+	var prev *DistributedTargets
+	for i := 0; i < b.N; i++ {
+		// Creating the targets in discovery
+		targets := toAlloyTargets(cache)
+
+		// Relabel of targets in discovery.relabel
+		for _, target := range targets {
+			l := componentMapToPromLabels(target)
+			_ = promLabelsToComponent(l)
+		}
+
+		// Distributed targets for clustering
+		dt := NewDistributedTargets(true, cluster, targets)
+		_ = dt.LocalTargets()
+		_ = dt.MovedToRemoteInstance(prev)
+
+		// Sending LabelSet to Prometheus library for scraping
+		for _, target := range targets {
+			_ = convertLabelSet(target)
+		}
+		prev = dt
+	}
+}
+
 func updateDiscoverer(comp *Component, discoverer *fakeDiscoverer) {
 	comp.discMut.Lock()
 	defer comp.discMut.Unlock()
@@ -282,3 +380,15 @@ func (f *fakeDiscoverer) Run(ctx context.Context, publishChan chan<- []*targetgr
 func (f *fakeDiscoverer) Register() error { return nil }
 
 func (f *fakeDiscoverer) Unregister() {}
+
+type randomCluster struct {
+	peers []peer.Peer
+}
+
+func (f *randomCluster) Lookup(key shard.Key, _ int, _ shard.Op) ([]peer.Peer, error) {
+	return []peer.Peer{f.peers[rand.Int()%len(f.peers)]}, nil
+}
+
+func (f *randomCluster) Peers() []peer.Peer {
+	return f.peers
+}
