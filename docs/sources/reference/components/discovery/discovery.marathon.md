@@ -3,6 +3,8 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/
 aliases:
   - ../discovery.marathon/ # /docs/alloy/latest/reference/components/discovery.marathon/
 description: Learn about discovery.marathon
+labels:
+  stage: general-availability
 title: discovery.marathon
 ---
 
@@ -13,38 +15,39 @@ title: discovery.marathon
 ## Usage
 
 ```alloy
-discovery.marathon "LABEL" {
-  servers = [MARATHON_SERVER1, MARATHON_SERVER2...]
+discovery.marathon "<LABEL>" {
+  servers = ["<MARATHON_SERVER1>", "<MARATHON_SERVER2>"...]
 }
 ```
 
 ## Arguments
 
-The following arguments are supported:
+You can use the following arguments with `discovery.marathon`:
 
 Name                     | Type                | Description                                                                                      | Default | Required
 -------------------------|---------------------|--------------------------------------------------------------------------------------------------|---------|---------
 `servers`                | `list(string)`      | List of Marathon servers.                                                                        |         | yes
-`refresh_interval`       | `duration`          | Interval at which to refresh the list of targets.                                                | `"30s"` | no
-`auth_token`             | `secret`            | Auth token to authenticate with.                                                                 |         | no
 `auth_token_file`        | `string`            | File containing an auth token to authenticate with.                                              |         | no
+`auth_token`             | `secret`            | Auth token to authenticate with.                                                                 |         | no
 `bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                             |         | no
 `bearer_token`           | `secret`            | Bearer token to authenticate with.                                                               |         | no
 `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`  | no
 `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`  | no
-`proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |         | no
 `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |         | no
-`proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false` | no
 `proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |         | no
+`proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false` | no
+`proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |         | no
+`refresh_interval`       | `duration`          | Interval at which to refresh the list of targets.                                                | `"30s"` | no
 
  At most, one of the following can be provided:
-- [`auth_token` argument](#arguments).
-- [`auth_token_file` argument](#arguments).
-- [`bearer_token_file` argument](#arguments).
-- [`bearer_token` argument](#arguments).
-- [`basic_auth` block][basic_auth].
-- [`authorization` block][authorization].
-- [`oauth2` block][oauth2].
+
+* [`auth_token_file`][arguments] argument
+* [`auth_token`][arguments] argument
+* [`authorization`][authorization] block
+* [`basic_auth`][basic_auth] block
+* [`bearer_token_file`][arguments] argument
+* [`bearer_token`][arguments] argument
+* [`oauth2`][oauth2] block
 
 [arguments]: #arguments
 
@@ -52,38 +55,45 @@ Name                     | Type                | Description                    
 
 ## Blocks
 
-The following blocks are supported inside the definition of
-`discovery.marathon`:
+You can use the following blocks with `discovery.marathon`:
 
-| Hierarchy           | Block             | Description                                              | Required |
-| ------------------- | ----------------- | -------------------------------------------------------- | -------- |
-| basic_auth          | [basic_auth][]    | Configure basic_auth for authenticating to the endpoint. | no       |
-| authorization       | [authorization][] | Configure generic authorization to the endpoint.         | no       |
-| oauth2              | [oauth2][]        | Configure OAuth2 for authenticating to the endpoint.     | no       |
-| oauth2 > tls_config | [tls_config][]    | Configure TLS settings for connecting to the endpoint.   | no       |
-| tls_config          | [tls_config][]    | Configure TLS settings for connecting to the endpoint.   | no       |
+Block                   | Description                                                | Required
+------------------------|------------------------------------------------------------|---------
+[authorization][]       | Configure generic authorization to the endpoint.           | no
+[basic_auth][]          | Configure `basic_auth` for authenticating to the endpoint. | no
+[oauth2][]              | Configure OAuth 2.0 for authenticating to the endpoint.    | no
+oauth2 > [tls_config][] | Configure TLS settings for connecting to the endpoint.     | no
+[tls_config][]          | Configure TLS settings for connecting to the endpoint.     | no
 
 The `>` symbol indicates deeper levels of nesting.
 For example, `oauth2 > tls_config` refers to a `tls_config` block defined inside an `oauth2` block.
 
-[basic_auth]: #basic_auth-block
-[authorization]: #authorization-block
-[oauth2]: #oauth2-block
-[tls_config]: #tls_config-block
+[authorization]: #authorization
+[basic_auth]: #basic_auth
+[oauth2]: #oauth2
+[tls_config]: #tls_config
 
-### basic_auth block
+### authorization
 
-{{< docs/shared lookup="reference/components/basic-auth-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
-
-### authorization block
+The `authorization` block configures generic authorization to the endpoint.
 
 {{< docs/shared lookup="reference/components/authorization-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### oauth2 block
+### basic_auth
+
+The `basic_auth` block configures basic authentication to the endpoint.
+
+{{< docs/shared lookup="reference/components/basic-auth-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### oauth2
+
+The `oauth` block configures OAuth 2.0 authentication to the endpoint.
 
 {{< docs/shared lookup="reference/components/oauth2-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### tls_config block
+### tls_config
+
+The `tls_config` block configures TLS settings for connecting to the endpoint.
 
 {{< docs/shared lookup="reference/components/tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -91,19 +101,19 @@ For example, `oauth2 > tls_config` refers to a `tls_config` block defined inside
 
 The following fields are exported and can be referenced by other components:
 
-| Name      | Type                | Description                                              |
-| --------- | ------------------- | -------------------------------------------------------- |
-| `targets` | `list(map(string))` | The set of targets discovered from the Marathon servers. |
+Name      | Type                | Description
+----------|---------------------|---------------------------------------------------------
+`targets` | `list(map(string))` | The set of targets discovered from the Marathon servers.
 
 Each target includes the following labels:
 
-- `__meta_marathon_app`: the name of the app (with slashes replaced by dashes).
-- `__meta_marathon_image`: the name of the Docker image used (if available).
-- `__meta_marathon_task`: the ID of the Mesos task.
-- `__meta_marathon_app_label_<labelname>`: any Marathon labels attached to the app.
-- `__meta_marathon_port_definition_label_<labelname>`: the port definition labels.
-- `__meta_marathon_port_mapping_label_<labelname>`: the port mapping labels.
-- `__meta_marathon_port_index`: the port index number (e.g. 1 for PORT1).
+* `__meta_marathon_app_label_<labelname>`: Any Marathon labels attached to the app.
+* `__meta_marathon_app`: The name of the app, with slashes replaced by dashes.
+* `__meta_marathon_image`: The name of the Docker image used, if available.
+* `__meta_marathon_port_definition_label_<labelname>`: The port definition labels.
+* `__meta_marathon_port_index`: The port index number, for example 1 for PORT1.
+* `__meta_marathon_port_mapping_label_<labelname>`: The port mapping labels.
+* `__meta_marathon_task`: The ID of the Mesos task.
 
 ## Component health
 
@@ -112,11 +122,11 @@ In those cases, exported fields retain their last healthy values.
 
 ## Debug information
 
-`discovery.marathon` does not expose any component-specific debug information.
+`discovery.marathon` doesn't expose any component-specific debug information.
 
 ## Debug metrics
 
-`discovery.marathon` does not expose any component-specific debug metrics.
+`discovery.marathon` doesn't expose any component-specific debug metrics.
 
 ## Example
 
@@ -134,11 +144,11 @@ prometheus.scrape "demo" {
 
 prometheus.remote_write "demo" {
   endpoint {
-    url = PROMETHEUS_REMOTE_WRITE_URL
+    url = "<PROMETHEUS_REMOTE_WRITE_URL>"
 
     basic_auth {
-      username = USERNAME
-      password = PASSWORD
+      username = "<USERNAME>"
+      password = "<PASSWORD>"
     }
   }
 }
@@ -146,9 +156,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-- `PROMETHEUS_REMOTE_WRITE_URL`: The URL of the Prometheus remote_write-compatible server to send metrics to.
-- `USERNAME`: The username to use for authentication to the remote_write API.
-- `PASSWORD`: The password to use for authentication to the remote_write API.
+* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
+* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
