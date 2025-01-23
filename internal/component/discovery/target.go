@@ -185,7 +185,7 @@ func (t Target) Get(key string) (string, bool) {
 	return string(value), ok
 }
 
-func (t Target) Set(key, value string) {
+func (t *Target) Set(key, value string) {
 	if t.labels == nil {
 		t.labels = make(commonlabels.LabelSet, 1)
 	}
