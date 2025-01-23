@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/josharian/intern"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/discovery"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
@@ -261,6 +262,7 @@ func (c *Component) runDiscovery(ctx context.Context, d DiscovererWithMetrics) {
 }
 
 func toAlloyTargets(cache map[string]*targetgroup.Group) []Target {
+	// TODO(thampiotr): HOT SPOT #1
 	targetsCount := 0
 	for _, group := range cache {
 		targetsCount += len(group.Targets)
@@ -274,10 +276,10 @@ func toAlloyTargets(cache map[string]*targetgroup.Group) []Target {
 			// first add the group labels, and then the
 			// target labels, so that target labels take precedence.
 			for k, v := range group.Labels {
-				tLabels[string(k)] = string(v)
+				tLabels[intern.String(string(k))] = intern.String(string(v))
 			}
 			for k, v := range target {
-				tLabels[string(k)] = string(v)
+				tLabels[intern.String(string(k))] = intern.String(string(v))
 			}
 			allTargets = append(allTargets, tLabels)
 		}
