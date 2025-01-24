@@ -43,11 +43,11 @@ prometheus.remote_write "snmp_metrics" {
     }
     queue_config {
         max_samples_per_send = 100
-    }    
+    }
   }
   external_labels = {
     test_name = "snmp_metrics",
-  }  
+  }
 }
 
 prometheus.exporter.snmp "snmp_metrics2" {
@@ -92,11 +92,11 @@ prometheus.remote_write "snmp_metrics2" {
     }
     queue_config {
         max_samples_per_send = 100
-    }    
+    }
   }
   external_labels = {
     test_name = "snmp_metrics2",
-  }  
+  }
 }
 
 prometheus.exporter.snmp "snmp_metrics3" {
@@ -152,10 +152,10 @@ prometheus.remote_write "snmp_metrics3" {
     }
     queue_config {
         max_samples_per_send = 100
-    }    
+    }
   }
   external_labels = {
     test_name = "snmp_metrics3",
-  }  
+  }
 }
 
