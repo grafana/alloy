@@ -7,7 +7,7 @@ on:
   pull_request:
 jobs:
   test_linux:
-    name: Test
+    name: Test (Full)
     runs-on: ubuntu-latest
     container:
       image: grafana/alloy-build-image:v0.1.8
@@ -25,5 +25,6 @@ jobs:
       uses: actions/setup-go@v5
       with:
         go-version-file: go.mod
+        # TODO: Enable caching later.
         cache: false
     - run: K8S_USE_DOCKER_NETWORK=1 make test

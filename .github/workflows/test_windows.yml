@@ -1,4 +1,4 @@
-name: Test
+name: Test (Windows)
 on:
   # TODO: Run the Windows tests for each PR? 
   # For now we don't do it just because it takes time.
@@ -11,7 +11,7 @@ on:
   pull_request:
 jobs:
   test_windows:
-    name: Test Windows
+    name: Test (Windows)
     runs-on: windows-latest
     steps:
     - name: Checkout code
