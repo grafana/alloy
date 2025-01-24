@@ -56,8 +56,8 @@ Block                                                                  | Descrip
 [`attributes`][attributes]                                             | Configures the Beyla attributes for the component.                                                 | no
 `attributes` > [`kubernetes`][kubernetes attributes]                   | Configures decorating of the metrics and traces with Kubernetes metadata of the instrumented Pods. | no
 [`discovery`][discovery]                                               | Configures the discovery for instrumentable processes matching a given criteria.                   | no
-`discovery` > [`exclude services`][services]                           | Configures the services to exclude for the component.                                              | no
-`discovery` > `exclude services` > [`kubernetes`][kubernetes services] | Configures the Kubernetes services to exclude for the component.                                   | no
+`discovery` > [`exclude_services`][services]                           | Configures the services to exclude for the component.                                              | no
+`discovery` > `exclude_services` > [`kubernetes`][kubernetes services] | Configures the Kubernetes services to exclude for the component.                                   | no
 `discovery` > [`services`][services]                                   | Configures the services to discover for the component.                                             | no
 `discovery` > `services` > [`kubernetes`][kubernetes services]         | Configures the Kubernetes services to discover for the component.                                  | no
 [`metrics`][metrics]                                                   | Configures which metrics Beyla exposes.                                                            | no
