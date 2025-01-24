@@ -72,7 +72,7 @@ This behavior is consistent with the Gitleaks redaction feature but may not be w
 Currently, the secret types known to have this behavior are: `aws-access-token`.
 {{< /admonition >}}
 
-The `redact_with` argument is a string that can use variables such as `$SECRET_NAME` (replaced with the matching secret type) and `$SECRET_HASH`(replaced with the sha1 hash of the secret).
+The `redact_with` argument is a string that can use variables such as `$SECRET_NAME` (replaced with the matching secret type) and `$SECRET_HASH`(replaced with the first half of the SHA256 hash).
 
 The `include_generic` argument is a boolean that includes the generic API key rule in the Gitleaks configuration file if set to `true`. It's disabled by default because it can generate false positives.
 
@@ -107,7 +107,7 @@ The following fields are exported and can be referenced by other components:
 ## Example
 
 This example shows how to use `loki.secretfilter` to redact secrets from log entries before forwarding them to a Loki receiver.
-It uses a custom redaction string that will include the secret type and its hash.
+It uses a custom redaction string that will include the secret type and the first half of its SHA256 hash.
 
 ```alloy
 local.file_match "local_logs" {

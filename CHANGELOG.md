@@ -30,6 +30,10 @@ Main (unreleased)
 
 - Add livedebugging support for `prometheus.remote_write` (@ravishankar15)
 
+### Other changes
+
+- Change the way the secret is hashed in `loki.secretfilter`. (@romain-gaillard)
+
 v1.6.1
 -----------------
 
