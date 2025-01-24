@@ -2,7 +2,7 @@ package secretfilter
 
 import (
 	"context"
-	"crypto/sha1"
+	"crypto/sha256"
 	"embed"
 	"fmt"
 	"regexp"
@@ -254,9 +254,14 @@ func (c *Component) redactLine(line string, secret string, ruleName string) stri
 }
 
 func hashSecret(secret string) string {
-	hasher := sha1.New()
+	hasher := sha256.New()
 	hasher.Write([]byte(secret))
-	return fmt.Sprintf("%x", hasher.Sum(nil))
+	hashBytes := hasher.Sum(nil)
+
+	// Only use the first half of the hash
+	firstHalf := hashBytes[:len(hashBytes)/2]
+
+	return fmt.Sprintf("%x", firstHalf)
 }
 
 // Update implements component.Component.
