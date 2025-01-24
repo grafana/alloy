@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/snmp_exporter/collector"
@@ -126,7 +127,7 @@ func Handler(w http.ResponseWriter, r *http.Request, logger log.Logger, snmpCfg 
 
 	start := time.Now()
 	registry := prometheus.NewRegistry()
-	c := collector.New(r.Context(), target, authName, snmpContext, auth, nmodules, slog.New(slog.Default().Handler()), NewSNMPMetrics(registry), concurrency, false)
+	c := collector.New(r.Context(), target, authName, snmpContext, auth, nmodules, slog.New(logging.NewSlogGoKitHandler(logger)), NewSNMPMetrics(registry), concurrency, false)
 	registry.MustRegister(c)
 	// Delegate http serving to Prometheus client library, which will call collector.Collect.
 	h := promhttp.HandlerFor(registry, promhttp.HandlerOpts{})
