@@ -45,6 +45,7 @@ Omitted fields take their default values.
 | ------------- | -------------------- | ------------------------------------------------ | ------- | -------- |
 | `config_file` | `string`             | SNMP configuration file defining custom modules. |         | no       |
 | `config`      | `string` or `secret` | SNMP configuration as inline string.             |         | no       |
+| `concurrency` | `int`                | SNMP exporter concurrency.                       |   `1`   | no       |
 | `targets`     | `list(map(string))`  | SNMP targets.                                    |         | no       |
 
 The `config_file` argument points to a YAML file defining which snmp_exporter modules to use.
@@ -61,7 +62,7 @@ The `targets` argument is an alternative to the [target][] block. This is useful
 The following labels can be set to a target:
 * `name`: The name of the target (required).
 * `address` or `__address__`: The address of SNMP device (required).
-* `module`: The SNMP module to use for polling.
+* `module`: SNMP modules to use for polling, separated by comma.
 * `auth`: The SNMP authentication profile to use.
 * `walk_params`: The config to use for this target.
 
@@ -88,7 +89,7 @@ The `target` block may be specified multiple times to define multiple targets. T
 | Name           | Type          | Description                                                           | Default | Required |
 |----------------|---------------|-----------------------------------------------------------------------| ------- | -------- |
 | `address`      | `string`      | The address of SNMP device.                                           |         | yes      |
-| `module`       | `string`      | SNMP module to use for polling.                                       | `""`    | no       |
+| `module`       | `string`      | SNMP modules to use for polling, separated by comma.                  | `""`    | no       |
 | `auth`         | `string`      | SNMP authentication profile to use.                                   | `""`    | no       |
 | `walk_params`  | `string`      | Config to use for this target.                                        | `""`    | no       |
 | `snmp_context` | `string`      | Override the `context_name` parameter in the SNMP configuration file. | `""`    | no       |
@@ -138,7 +139,7 @@ prometheus.exporter.snmp "example" {
 
     target "network_switch_1" {
         address     = "192.168.1.2"
-        module      = "if_mib"
+        module      = "system,if_mib"
         walk_params = "public"
         labels = {
             "env" = "dev",
@@ -147,7 +148,7 @@ prometheus.exporter.snmp "example" {
 
     target "network_router_2" {
         address     = "192.168.1.3"
-        module      = "mikrotik"
+        module      = "system,if_mib,mikrotik"
         walk_params = "private"
     }
 
@@ -180,13 +181,13 @@ prometheus.exporter.snmp "example" {
 
     target "network_switch_1" {
         address     = "192.168.1.2"
-        module      = "if_mib"
+        module      = "system,if_mib"
         walk_params = "public"
     }
 
     target "network_router_2" {
         address     = "192.168.1.3"
-        module      = "mikrotik"
+        module      = "system,if_mib,mikrotik"
         walk_params = "private"
     }
 
@@ -232,14 +233,14 @@ prometheus.exporter.snmp "example" {
         {
             "name"        = "network_switch_1",
             "address"     = "192.168.1.2",
-            "module"      = "if_mib",
+            "module"      = "system,if_mib",
             "walk_params" = "public",
             "env"         = "dev",
         },
         {
             "name"        = "network_router_2",
             "address"     = "192.168.1.3",
-            "module"      = "mikrotik",
+            "module"      = "system,if_mib,mikrotik",
             "walk_params" = "private",
         },
     ]

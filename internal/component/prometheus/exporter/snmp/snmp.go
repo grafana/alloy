@@ -129,12 +129,24 @@ func (w WalkParams) Convert() map[string]snmp_config.WalkParams {
 	return walkParams
 }
 
+// DefaultArguments holds non-zero default options for Arguments when it is
+// unmarshaled from Alloy.
+var DefaultArguments = Arguments{
+	SnmpConcurrency: 1,
+}
+
+// SetToDefault implements syntax.Defaulter.
+func (a *Arguments) SetToDefault() {
+	*a = DefaultArguments
+}
+
 type Arguments struct {
-	ConfigFile   string                    `alloy:"config_file,attr,optional"`
-	Config       alloytypes.OptionalSecret `alloy:"config,attr,optional"`
-	Targets      TargetBlock               `alloy:"target,block,optional"`
-	WalkParams   WalkParams                `alloy:"walk_param,block,optional"`
-	ConfigStruct snmp_config.Config
+	ConfigFile      string                    `alloy:"config_file,attr,optional"`
+	SnmpConcurrency int                       `alloy:"concurrency,attr,optional"`
+	Config          alloytypes.OptionalSecret `alloy:"config,attr,optional"`
+	Targets         TargetBlock               `alloy:"target,block,optional"`
+	WalkParams      WalkParams                `alloy:"walk_param,block,optional"`
+	ConfigStruct    snmp_config.Config
 
 	// New way of passing targets. This allows the component to receive targets from other components.
 	TargetsList TargetsList `alloy:"targets,attr,optional"`
@@ -233,10 +245,11 @@ func (a *Arguments) Convert() *snmp_exporter.Config {
 		targets = a.TargetsList.Convert()
 	}
 	return &snmp_exporter.Config{
-		SnmpConfigFile: a.ConfigFile,
-		SnmpTargets:    targets,
-		WalkParams:     a.WalkParams.Convert(),
-		SnmpConfig:     a.ConfigStruct,
+		SnmpConfigFile:  a.ConfigFile,
+		SnmpConcurrency: a.SnmpConcurrency,
+		SnmpTargets:     targets,
+		WalkParams:      a.WalkParams.Convert(),
+		SnmpConfig:      a.ConfigStruct,
 	}
 }
 

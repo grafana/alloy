@@ -17,7 +17,7 @@ func TestLoadSNMPConfig(t *testing.T) {
 		{
 			name:               "passing a config file",
 			cfg:                Config{SnmpConfigFile: "common/snmp.yml", SnmpTargets: []SNMPTarget{{Name: "test", Target: "localhost"}}},
-			expectedNumModules: 22,
+			expectedNumModules: 39,
 		},
 		{
 			name: "passing a snmp config",
@@ -30,7 +30,7 @@ func TestLoadSNMPConfig(t *testing.T) {
 		{
 			name:               "using embedded config",
 			cfg:                Config{SnmpTargets: []SNMPTarget{{Name: "test", Target: "localhost"}}},
-			expectedNumModules: 22,
+			expectedNumModules: 39,
 		},
 	}
 	for _, tt := range tests {
