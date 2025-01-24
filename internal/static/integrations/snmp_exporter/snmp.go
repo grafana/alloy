@@ -110,11 +110,13 @@ func Handler(w http.ResponseWriter, r *http.Request, logger log.Logger, snmpCfg 
 				http.Error(w, fmt.Sprintf("Unknown walk_params '%s'", walkParams), http.StatusBadRequest)
 				return
 			}
-			logger = log.With(logger, "module", moduleParam, "target", target, "walk_params", walkParams)
-		} else {
-			logger = log.With(logger, "module", moduleParam, "target", target)
 		}
 		nmodules = append(nmodules, collector.NewNamedModule(moduleName, module))
+	}
+	if walkParams != "" {
+		logger = log.With(logger, "module", moduleParam, "target", target, "walk_params", walkParams)
+	} else {
+		logger = log.With(logger, "module", moduleParam, "target", target)
 	}
 
 	auth, ok := (*snmpCfg).Auths[authName]
