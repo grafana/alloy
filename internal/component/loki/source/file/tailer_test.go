@@ -169,6 +169,7 @@ func TestTailer(t *testing.T) {
 	}, time.Second, 50*time.Millisecond)
 
 	positionsFile.Stop()
+	require.NoError(t, logFile.Close())
 }
 
 func TestTailerPositionFileEntryDeleted(t *testing.T) {
@@ -230,4 +231,5 @@ func TestTailerPositionFileEntryDeleted(t *testing.T) {
 	}, time.Second, 50*time.Millisecond)
 
 	positionsFile.Stop()
+	require.NoError(t, logFile.Close())
 }
