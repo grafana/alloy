@@ -2,9 +2,9 @@ name: Test logging in to DockerHub
 on:
   pull_request:
 
-permissions:
-  contents: read
-  id-token: write
+# permissions:
+#   contents: read
+#   id-token: write
 
 jobs:
   test_linux:
