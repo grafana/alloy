@@ -6,9 +6,12 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/go-kit/log"
 	"github.com/go-sql-driver/mysql"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/atomic"
+
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 var rdsRegex = regexp.MustCompile(`(?P<identifier>[^\.]+)\.([^\.]+)\.(?P<region>[^\.]+)\.rds\.amazonaws\.com`)
@@ -16,6 +19,7 @@ var rdsRegex = regexp.MustCompile(`(?P<identifier>[^\.]+)\.([^\.]+)\.(?P<region>
 type ConnectionInfoArguments struct {
 	DSN      string
 	Registry *prometheus.Registry
+	Logger   log.Logger
 }
 
 type ConnectionInfo struct {
@@ -24,6 +28,7 @@ type ConnectionInfo struct {
 	InfoMetric *prometheus.GaugeVec
 
 	running *atomic.Bool
+	logger  log.Logger
 }
 
 func NewConnectionInfo(args ConnectionInfoArguments) (*ConnectionInfo, error) {
@@ -39,6 +44,7 @@ func NewConnectionInfo(args ConnectionInfoArguments) (*ConnectionInfo, error) {
 		Registry:   args.Registry,
 		InfoMetric: infoMetric,
 		running:    &atomic.Bool{},
+		logger:     log.With(args.Logger, "collector", "ConnectionInfo"),
 	}, nil
 }
 
@@ -51,6 +57,8 @@ func (c *ConnectionInfo) Start(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+
+	level.Debug(c.logger).Log("msg", "ConnectionInfo collector started")
 
 	c.running.Store(true)
 
