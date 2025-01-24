@@ -711,6 +711,7 @@ prometheus.scrape "integrations_blackbox" {
 }
 
 prometheus.exporter.snmp "integrations_snmp" {
+	concurrency = 1
 	targets = [{
 		address      = "192.168.1.2",
 		auth         = "public",
@@ -721,7 +722,7 @@ prometheus.exporter.snmp "integrations_snmp" {
 	}, {
 		address      = "192.168.1.3",
 		auth         = "private",
-		module       = "mikrotik",
+		module       = "system,mikrotik",
 		name         = "network_router_2",
 		snmp_context = "dummyContext",
 		walk_params  = "private",
