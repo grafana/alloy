@@ -49,18 +49,16 @@ var (
 	_ syntax.Validator = (*Arguments)(nil)
 )
 
-// TODO(cristian) consider using something like "enabled_collectors"
-// to allow users to enable/disable collectors.
 type Arguments struct {
-	DataSourceName      alloytypes.Secret   `alloy:"data_source_name,attr"`
-	CollectInterval     time.Duration       `alloy:"collect_interval,attr,optional"`
-	QuerySamplesEnabled bool                `alloy:"query_samples_enabled,attr,optional"`
-	ForwardTo           []loki.LogsReceiver `alloy:"forward_to,attr"`
+	DataSourceName   alloytypes.Secret   `alloy:"data_source_name,attr"`
+	CollectInterval  time.Duration       `alloy:"collect_interval,attr,optional"`
+	ForwardTo        []loki.LogsReceiver `alloy:"forward_to,attr"`
+	EnableCollectors []string            `alloy:"enable_collectors,attr,optional"`
+	//DisableCollectors []string            `alloy:"disable_collectors,attr,optional"`
 }
 
 var DefaultArguments = Arguments{
-	CollectInterval:     10 * time.Second,
-	QuerySamplesEnabled: true,
+	CollectInterval: 10 * time.Second,
 }
 
 func (a *Arguments) SetToDefault() {
@@ -206,6 +204,33 @@ func (c *Component) Update(args component.Arguments) error {
 	return nil
 }
 
+func getCollectors(a Arguments) map[string]bool {
+	collectors := map[string]bool{
+		"QuerySample": false,
+		"SchemaTable": false,
+	}
+
+	// Explicitly disable/enable specific collectors.
+	//for _, disabled := range a.DisableCollectors {
+	//	for c := range collectors {
+	//		if c == disabled {
+	//			collectors[c] = false
+	//			break
+	//		}
+	//	}
+	//}
+	for _, enabled := range a.EnableCollectors {
+		for c := range collectors {
+			if c == enabled {
+				collectors[c] = true
+				break
+			}
+		}
+	}
+
+	return collectors
+}
+
 func (c *Component) startCollectors() error {
 	dbConnection, err := sql.Open("mysql", formatDSN(string(c.args.DataSourceName), "parseTime=true"))
 	if err != nil {
@@ -222,7 +247,9 @@ func (c *Component) startCollectors() error {
 
 	entryHandler := loki.NewEntryHandler(c.handler.Chan(), func() {})
 
-	if c.args.QuerySamplesEnabled {
+	collectors := getCollectors(c.args)
+
+	if _, ok := collectors["QuerySample"]; ok {
 		qsCollector, err := collector.NewQuerySample(collector.QuerySampleArguments{
 			DB:              dbConnection,
 			InstanceKey:     c.instanceKey,
@@ -241,22 +268,24 @@ func (c *Component) startCollectors() error {
 		c.collectors = append(c.collectors, qsCollector)
 	}
 
-	stCollector, err := collector.NewSchemaTable(collector.SchemaTableArguments{
-		DB:              dbConnection,
-		InstanceKey:     c.instanceKey,
-		CollectInterval: c.args.CollectInterval,
-		EntryHandler:    entryHandler,
-		Logger:          c.opts.Logger,
-	})
-	if err != nil {
-		level.Error(c.opts.Logger).Log("msg", "failed to create SchemaTable collector", "err", err)
-		return err
+	if _, ok := collectors["SchemaTable"]; ok {
+		stCollector, err := collector.NewSchemaTable(collector.SchemaTableArguments{
+			DB:              dbConnection,
+			InstanceKey:     c.instanceKey,
+			CollectInterval: c.args.CollectInterval,
+			EntryHandler:    entryHandler,
+			Logger:          c.opts.Logger,
+		})
+		if err != nil {
+			level.Error(c.opts.Logger).Log("msg", "failed to create SchemaTable collector", "err", err)
+			return err
+		}
+		if err := stCollector.Start(context.Background()); err != nil {
+			level.Error(c.opts.Logger).Log("msg", "failed to start SchemaTable collector", "err", err)
+			return err
+		}
+		c.collectors = append(c.collectors, stCollector)
 	}
-	if err := stCollector.Start(context.Background()); err != nil {
-		level.Error(c.opts.Logger).Log("msg", "failed to start SchemaTable collector", "err", err)
-		return err
-	}
-	c.collectors = append(c.collectors, stCollector)
 
 	ciCollector, err := collector.NewConnectionInfo(collector.ConnectionInfoArguments{
 		DSN:      string(c.args.DataSourceName),
