@@ -8,7 +8,7 @@ labels:
 title: discovery.digitalocean
 ---
 
-# discovery.digitalocean
+# `discovery.digitalocean`
 
 `discovery.digitalocean` discovers [DigitalOcean][] Droplets and exposes them as targets.
 

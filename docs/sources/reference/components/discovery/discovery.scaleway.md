@@ -8,7 +8,7 @@ labels:
 title: discovery.scaleway
 ---
 
-# discovery.scaleway
+# `discovery.scaleway`
 
 `discovery.scaleway` discovers targets from [Scaleway instances][instance] and [bare metal services][bare metal].
 
@@ -65,13 +65,13 @@ The `name_filter` and `tags_filter` arguments can be used to filter the set of d
 
 You can use the following blocks with `discovery.scaleway`:
 
- Block          | Description                                            | Required
-----------------|--------------------------------------------------------|---------
- [tls_config][] | Configure TLS settings for connecting to the endpoint. | no
+Block                      | Description                                            | Required
+---------------------------|--------------------------------------------------------|---------
+[`tls_config`][tls_config] | Configure TLS settings for connecting to the endpoint. | no
 
 [tls_config]: #tls_config
 
-### tls_config
+### `tls_config`
 
 The `tls_config` block configures TLS settings for connecting to the endpoint.
 

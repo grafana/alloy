@@ -8,7 +8,7 @@ labels:
 title: discovery.puppetdb
 ---
 
-# discovery.puppetdb
+# `discovery.puppetdb`
 
 `discovery.puppetdb` allows you to retrieve scrape targets from [PuppetDB](https://www.puppet.com/docs/puppetdb/7/overview.html) resources.
 
@@ -62,13 +62,13 @@ Name                     | Type                | Description                    
 
 You can use the following blocks with `discovery.puppetdb`:
 
-Block                   | Description                                                | Required
-------------------------|------------------------------------------------------------|---------
-[authorization][]       | Configure generic authorization to the endpoint.           | no
-[basic_auth][]          | Configure `basic_auth` for authenticating to the endpoint. | no
-[oauth2][]              | Configure OAuth 2.0 for authenticating to the endpoint.    | no
-oauth2 > [tls_config][] | Configure TLS settings for connecting to the endpoint.     | no
-[tls_config][]          | Configure TLS settings for connecting to the endpoint.     | no
+Block                                 | Description                                                | Required
+--------------------------------------|------------------------------------------------------------|---------
+[`authorization`][authorization]      | Configure generic authorization to the endpoint.           | no
+[`basic_auth`][basic_auth]            | Configure `basic_auth` for authenticating to the endpoint. | no
+[`oauth2`][oauth2]                    | Configure OAuth 2.0 for authenticating to the endpoint.    | no
+`oauth2` > [`tls_config`][tls_config] | Configure TLS settings for connecting to the endpoint.     | no
+[`tls_config`][tls_config]            | Configure TLS settings for connecting to the endpoint.     | no
 
 The `>` symbol indicates deeper levels of nesting.
 For example, `oauth2 > tls_config` refers to a `tls_config` block defined inside an `oauth2` block.
@@ -78,25 +78,25 @@ For example, `oauth2 > tls_config` refers to a `tls_config` block defined inside
 [oauth2]: #oauth2
 [tls_config]: #tls_config
 
-### authorization
+### `authorization`
 
 The `authorization` block configures generic authorization to the endpoint.
 
 {{< docs/shared lookup="reference/components/authorization-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### basic_auth
+### `basic_auth`
 
 The `basic_auth` block configures basic authentication to the endpoint.
 
 {{< docs/shared lookup="reference/components/basic-auth-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### oauth2
+### `oauth2`
 
 The `oauth` block configures OAuth 2.0 authentication to the endpoint.
 
 {{< docs/shared lookup="reference/components/oauth2-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### tls_config
+### `tls_config`
 
 The `tls_config` block configures TLS settings for connecting to the endpoint.
 

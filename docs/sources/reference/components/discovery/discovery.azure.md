@@ -8,7 +8,7 @@ labels:
 title: discovery.azure
 ---
 
-# discovery.azure
+# `discovery.azure`
 
 `discovery.azure` discovers [Azure][] Virtual Machines and exposes them as targets.
 
@@ -44,11 +44,11 @@ Name                     | Type                | Description                    
 
 You can use the following blocks with `discovery.azure`:
 
-Block                | Description                                      | Required
----------------------|--------------------------------------------------|---------
-[managed_identity][] | Managed Identity configuration for Azure API.    | no
-[oauth][]            | OAuth 2.0 configuration for Azure API.           | no
-[tls_config][]       | TLS configuration for requests to the Azure API. | no
+Block                                  | Description                                      | Required
+---------------------------------------|--------------------------------------------------|---------
+[`managed_identity`][managed_identity] | Managed Identity configuration for Azure API.    | no
+[`oauth`][oauth]                       | OAuth 2.0 configuration for Azure API.           | no
+[`tls_config`][tls_config]             | TLS configuration for requests to the Azure API. | no
 
 You must specify exactly one of the `oauth` or `managed_identity` blocks.
 
@@ -56,7 +56,7 @@ You must specify exactly one of the `oauth` or `managed_identity` blocks.
 [oauth]: #oauth
 [tls_config]: #tls_config
 
-### managed_identity
+### `managed_identity`
 
 The `managed_identity` block configures Managed Identity authentication for the Azure API.
 
@@ -64,7 +64,7 @@ Name        | Type     | Description                 | Default | Required
 ------------|----------|-----------------------------|---------|---------
 `client_id` | `string` | Managed Identity client ID. |         | yes
 
-### oauth
+### `oauth`
 
 The `oauth` block configures OAuth 2.0 authentication for the Azure API.
 
@@ -74,7 +74,7 @@ Name            | Type     | Description              | Default | Required
 `client_secret` | `string` | OAuth 2.0 client secret. |         | yes
 `tenant_id`     | `string` | OAuth 2.0 tenant ID.     |         | yes
 
-### tls_config
+### `tls_config`
 
 The `tls_config` block configures TLS settings for requests to the Azure API.
 

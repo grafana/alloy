@@ -8,7 +8,7 @@ labels:
 title: discovery.gce
 ---
 
-# discovery.gce
+# `discovery.gce`
 
 `discovery.gce` allows you to retrieve scrape targets from [Google Compute Engine][] (GCE) instances.
 The private IP address is used by default, but may be changed to the public IP address with relabeling.
