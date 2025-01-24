@@ -3,7 +3,10 @@ package snmp_exporter
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
+
+	"log/slog"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -51,13 +54,13 @@ func Handler(w http.ResponseWriter, r *http.Request, logger log.Logger, snmpCfg 
 		target = targetName
 	}
 
-	moduleName := query.Get("module")
+	moduleParam := query.Get("module")
 	if len(query["module"]) > 1 {
 		http.Error(w, "'module' parameter must only be specified once", http.StatusBadRequest)
 		return
 	}
-	if moduleName == "" {
-		moduleName = "if_mib"
+	if moduleParam == "" {
+		moduleParam = "if_mib"
 	}
 
 	authName := query.Get("auth")
@@ -75,10 +78,42 @@ func Handler(w http.ResponseWriter, r *http.Request, logger log.Logger, snmpCfg 
 		return
 	}
 
-	module, ok := (*snmpCfg).Modules[moduleName]
-	if !ok {
-		http.Error(w, fmt.Sprintf("Unknown module '%s'", moduleName), http.StatusBadRequest)
+	walkParams := query.Get("walk_params")
+	if len(query["walk_params"]) > 1 {
+		http.Error(w, "'walk_params' parameter must only be specified once", http.StatusBadRequest)
 		return
+	}
+
+	var nmodules []*collector.NamedModule
+	for _, moduleName := range strings.Split(moduleParam, ",") {
+		module, ok := (*snmpCfg).Modules[moduleName]
+		if !ok {
+			http.Error(w, fmt.Sprintf("Unknown module '%s'", moduleName), http.StatusBadRequest)
+			return
+		}
+
+		// override module connection details with custom walk params if provided
+		if walkParams != "" {
+			zeroRetries := 0
+			if wp, ok := wParams[walkParams]; ok {
+				if wp.MaxRepetitions != 0 {
+					module.WalkParams.MaxRepetitions = wp.MaxRepetitions
+				}
+				if wp.Retries != nil && wp.Retries != &zeroRetries {
+					module.WalkParams.Retries = wp.Retries
+				}
+				if wp.Timeout != 0 {
+					module.WalkParams.Timeout = wp.Timeout
+				}
+			} else {
+				http.Error(w, fmt.Sprintf("Unknown walk_params '%s'", walkParams), http.StatusBadRequest)
+				return
+			}
+			logger = log.With(logger, "module", moduleName, "target", target, "walk_params", walkParams)
+		} else {
+			logger = log.With(logger, "module", moduleName, "target", target)
+		}
+		nmodules = append(nmodules, collector.NewNamedModule(moduleName, module))
 	}
 
 	auth, ok := (*snmpCfg).Auths[authName]
@@ -87,39 +122,11 @@ func Handler(w http.ResponseWriter, r *http.Request, logger log.Logger, snmpCfg 
 		return
 	}
 
-	// override module connection details with custom walk params if provided
-	walkParams := query.Get("walk_params")
-	if len(query["walk_params"]) > 1 {
-		http.Error(w, "'walk_params' parameter must only be specified once", http.StatusBadRequest)
-		return
-	}
-	if walkParams != "" {
-		zeroRetries := 0
-		if wp, ok := wParams[walkParams]; ok {
-			if wp.MaxRepetitions != 0 {
-				module.WalkParams.MaxRepetitions = wp.MaxRepetitions
-			}
-			if wp.Retries != nil && wp.Retries != &zeroRetries {
-				module.WalkParams.Retries = wp.Retries
-			}
-			if wp.Timeout != 0 {
-				module.WalkParams.Timeout = wp.Timeout
-			}
-		} else {
-			http.Error(w, fmt.Sprintf("Unknown walk_params '%s'", walkParams), http.StatusBadRequest)
-			return
-		}
-		logger = log.With(logger, "module", moduleName, "target", target, "walk_params", walkParams)
-	} else {
-		logger = log.With(logger, "module", moduleName, "target", target)
-	}
-	var nmodules []*collector.NamedModule
-	nmodules = append(nmodules, collector.NewNamedModule(moduleName, module))
 	level.Debug(logger).Log("msg", "Starting scrape")
 
 	start := time.Now()
 	registry := prometheus.NewRegistry()
-	c := collector.New(r.Context(), target, authName, snmpContext, auth, nmodules, logger, NewSNMPMetrics(registry), concurrency, false)
+	c := collector.New(r.Context(), target, authName, snmpContext, auth, nmodules, slog.New(slog.Default().Handler()), NewSNMPMetrics(registry), concurrency, false)
 	registry.MustRegister(c)
 	// Delegate http serving to Prometheus client library, which will call collector.Collect.
 	h := promhttp.HandlerFor(registry, promhttp.HandlerOpts{})

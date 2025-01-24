@@ -30,6 +30,8 @@ Main (unreleased)
 
 - Add livedebugging support for `prometheus.remote_write` (@ravishankar15)
 
+- Bump snmp_exporter to 0.27.0. Add support for multi-module handling by comma separation for `prometheus.exporter.snmp`. (@v-zhuravlev)
+
 v1.6.1
 -----------------
 
