@@ -92,6 +92,7 @@ func TestUnmarshalAlloyTargets(t *testing.T) {
 	var args Arguments
 	err := syntax.Unmarshal([]byte(alloyCfg), &args)
 	require.NoError(t, err)
+	require.Equal(t, 1, args.SnmpConcurrency)
 	require.Equal(t, "modules.yml", args.ConfigFile)
 	require.Equal(t, 2, len(args.TargetsList))
 
