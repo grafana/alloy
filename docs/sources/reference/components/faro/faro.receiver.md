@@ -3,6 +3,8 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/faro/faro.
 aliases:
   - ../faro.receiver/ # /docs/alloy/latest/reference/components/faro.receiver/
 description: Learn about the faro.receiver
+labels:
+  stage: general-availability
 title: faro.receiver
 ---
 
