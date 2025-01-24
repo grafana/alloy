@@ -61,7 +61,7 @@ The `targets` argument is an alternative to the [target][] block. This is useful
 The following labels can be set to a target:
 * `name`: The name of the target (required).
 * `address` or `__address__`: The address of SNMP device (required).
-* `module`: The SNMP module to use for polling.
+* `module`: SNMP modules to use for polling, separated by comma.
 * `auth`: The SNMP authentication profile to use.
 * `walk_params`: The config to use for this target.
 
