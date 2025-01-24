@@ -19,10 +19,6 @@ import (
 
 const (
 	namespace = "snmp"
-	// This is the default value for snmp.module-concurrency in snmp_exporter.
-	// For now we set to 1.
-	// More info: https://github.com/prometheus/snmp_exporter#multi-module-handling
-	concurrency = 1
 )
 
 type snmpHandler struct {
@@ -32,7 +28,7 @@ type snmpHandler struct {
 }
 
 func Handler(w http.ResponseWriter, r *http.Request, logger log.Logger, snmpCfg *snmp_config.Config,
-	targets []SNMPTarget, wParams map[string]snmp_config.WalkParams) {
+	targets []SNMPTarget, wParams map[string]snmp_config.WalkParams, concurrency int) {
 
 	query := r.URL.Query()
 
@@ -139,5 +135,5 @@ func Handler(w http.ResponseWriter, r *http.Request, logger log.Logger, snmpCfg 
 }
 
 func (sh snmpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	Handler(w, r, sh.log, sh.snmpCfg, sh.cfg.SnmpTargets, sh.cfg.WalkParams)
+	Handler(w, r, sh.log, sh.snmpCfg, sh.cfg.SnmpTargets, sh.cfg.WalkParams, sh.cfg.SnmpConcurrency)
 }

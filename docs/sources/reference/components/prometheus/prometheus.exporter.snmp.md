@@ -45,6 +45,7 @@ Omitted fields take their default values.
 | ------------- | -------------------- | ------------------------------------------------ | ------- | -------- |
 | `config_file` | `string`             | SNMP configuration file defining custom modules. |         | no       |
 | `config`      | `string` or `secret` | SNMP configuration as inline string.             |         | no       |
+| `concurrency` | `int`                | SNMP exporter concurrency.                       |   `1`   | no       |
 | `targets`     | `list(map(string))`  | SNMP targets.                                    |         | no       |
 
 The `config_file` argument points to a YAML file defining which snmp_exporter modules to use.
