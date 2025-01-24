@@ -1,11 +1,15 @@
 name: Test logging in to DockerHub
 on:
   pull_request:
+
+permissions:
+  contents: read
+  id-token: write
+
 jobs:
   test_linux:
     name: Test login
     runs-on: ubuntu-latest
     steps:
-    - name: "Login to DockerHub (from vault)"
-      uses: "grafana/shared-workflows/actions/dockerhub-login@7d18a46aafb8b875ed76a0bc98852d74b91e7f91"  # dockerhub-login-v1.0.0
-      
+    - name: Login to DockerHub (from vault)
+      uses: grafana/shared-workflows/actions/dockerhub-login@dockerhub-login-v1.0.0
