@@ -222,6 +222,7 @@ volumes:
     path: //./pipe/docker_engine/
   name: docker
 ---
+# TODO: Remove this pipeline later
 kind: pipeline
 name: Build alloy (Linux amd64)
 platform:
@@ -239,6 +240,7 @@ trigger:
   - pull_request
 type: docker
 ---
+# TODO: Remove this pipeline later
 kind: pipeline
 name: Build alloy (Linux arm64)
 platform:
@@ -256,6 +258,7 @@ trigger:
   - pull_request
 type: docker
 ---
+# TODO: Remove this pipeline later
 kind: pipeline
 name: Build alloy (Linux ppc64le)
 platform:
@@ -273,6 +276,7 @@ trigger:
   - pull_request
 type: docker
 ---
+# TODO: Remove this pipeline later
 kind: pipeline
 name: Build alloy (Linux s390x)
 platform:
@@ -290,6 +294,7 @@ trigger:
   - pull_request
 type: docker
 ---
+# TODO: Remove this pipeline later
 kind: pipeline
 name: Build alloy (macOS Intel)
 platform:
@@ -306,6 +311,7 @@ trigger:
   - pull_request
 type: docker
 ---
+# TODO: Remove this pipeline later
 kind: pipeline
 name: Build alloy (macOS Apple Silicon)
 platform:
@@ -322,6 +328,7 @@ trigger:
   - pull_request
 type: docker
 ---
+# TODO: Remove this pipeline later
 kind: pipeline
 name: Build alloy (Windows amd64)
 platform:
@@ -338,6 +345,7 @@ trigger:
   - pull_request
 type: docker
 ---
+# TODO: Remove this pipeline later
 kind: pipeline
 name: Build alloy (FreeBSD amd64)
 platform:
@@ -354,6 +362,7 @@ trigger:
   - pull_request
 type: docker
 ---
+# TODO: Remove this pipeline later
 kind: pipeline
 name: Build alloy (Linux amd64 boringcrypto)
 platform:
@@ -371,6 +380,7 @@ trigger:
   - pull_request
 type: docker
 ---
+# TODO: Remove this pipeline later
 kind: pipeline
 name: Build alloy (Linux arm64 boringcrypto)
 platform:
