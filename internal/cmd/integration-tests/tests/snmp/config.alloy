@@ -69,17 +69,6 @@ modules:
         oid: 1.3.6.1.2.1.1.1.0
         type: DisplayString
         help: "A textual description of the entity."
-  hrDevice:
-    walk:
-    - 1.3.6.1.2.1.25.3
-    metrics:
-    - name: hrDeviceIndex
-      oid: 1.3.6.1.2.1.25.3.2.1.1
-      type: gauge
-      help: A unique value for each device contained by the host - 1.3.6.1.2.1.25.3.2.1.1
-      indexes:
-      - labelname: hrDeviceIndex
-        type: gauge
 `
   target "t1" {
       address     = "localhost:161"
@@ -129,6 +118,17 @@ modules:
         oid: 1.3.6.1.2.1.1.1.0
         type: DisplayString
         help: "A textual description of the entity."
+  hrDevice:
+    walk:
+    - 1.3.6.1.2.1.25.3
+    metrics:
+    - name: hrDeviceIndex
+      oid: 1.3.6.1.2.1.25.3.2.1.1
+      type: gauge
+      help: A unique value for each device contained by the host - 1.3.6.1.2.1.25.3.2.1.1
+      indexes:
+      - labelname: hrDeviceIndex
+        type: gauge
 `
   target "t1" {
       address     = "localhost:161"
