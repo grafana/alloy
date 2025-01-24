@@ -28,6 +28,10 @@ Main (unreleased)
 
 - Add json format support for log export via faro receiver (@ravishankar15)
 
+### Bugfixes
+
+- Fix log rotation for Windows in `loki.source.file` by refactoring the component to use the runner pkg. This should also reduce CPU consumption when tailing a lot of files in a dynamic environment. (@wildum)
+
 - Add livedebugging support for `prometheus.remote_write` (@ravishankar15)
 
 v1.6.1
