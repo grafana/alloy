@@ -19,7 +19,7 @@ import (
 const (
 	namespace = "snmp"
 	// This is the default value for snmp.module-concurrency in snmp_exporter.
-	// For now we set to 1 as we don't support multi-module handling.
+	// For now we set to 1.
 	// More info: https://github.com/prometheus/snmp_exporter#multi-module-handling
 	concurrency = 1
 )
@@ -109,9 +109,9 @@ func Handler(w http.ResponseWriter, r *http.Request, logger log.Logger, snmpCfg 
 				http.Error(w, fmt.Sprintf("Unknown walk_params '%s'", walkParams), http.StatusBadRequest)
 				return
 			}
-			logger = log.With(logger, "module", moduleName, "target", target, "walk_params", walkParams)
+			logger = log.With(logger, "module", moduleParam, "target", target, "walk_params", walkParams)
 		} else {
-			logger = log.With(logger, "module", moduleName, "target", target)
+			logger = log.With(logger, "module", moduleParam, "target", target)
 		}
 		nmodules = append(nmodules, collector.NewNamedModule(moduleName, module))
 	}
