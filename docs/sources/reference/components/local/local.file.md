@@ -6,20 +6,20 @@ description: Learn about local.file
 title: local.file
 ---
 
-# local.file
+# `local.file`
 
 `local.file` exposes the contents of a file on disk to other components.
 The file will be watched for changes so that its latest content is always exposed.
 
-The most common use of `local.file` is to load secrets (e.g., API keys) from files.
+The most common use of `local.file` is to load secrets (for example, API keys) from files.
 
 Multiple `local.file` components can be specified by giving them different labels.
 
 ## Usage
 
 ```alloy
-local.file "LABEL" {
-  filename = FILE_NAME
+local.file "<LABEL>" {
+  filename = "<FILE_NAME>"
 }
 ```
 
@@ -27,12 +27,12 @@ local.file "LABEL" {
 
 The following arguments are supported:
 
-Name             | Type       | Description                                        | Default      | Required
------------------|------------|----------------------------------------------------|--------------|---------
-`filename`       | `string`   | Path of the file on disk to watch                  |              | yes
-`detector`       | `string`   | Which file change detector to use (fsnotify, poll) | `"fsnotify"` | no
-`poll_frequency` | `duration` | How often to poll for file changes                 | `"1m"`       | no
-`is_secret`      | `bool`     | Marks the file as containing a [secret][]          | `false`      | no
+Name             | Type       | Description                                         | Default      | Required
+-----------------|------------|-----------------------------------------------------|--------------|---------
+`filename`       | `string`   | Path of the file on disk to watch.                  |              | yes
+`detector`       | `string`   | Which file change detector to use (fsnotify, poll). | `"fsnotify"` | no
+`is_secret`      | `bool`     | Marks the file as containing a [secret][].          | `false`      | no
+`poll_frequency` | `duration` | How often to poll for file changes.                 | `"1m"`       | no
 
 [secret]: ../../../../get-started/configuration-syntax/expressions/types_and_values/#secrets
 
@@ -43,16 +43,16 @@ Name             | Type       | Description                                     
 The following fields are exported and can be referenced by other components:
 
 Name      | Type                 | Description
-----------|----------------------|---------------------------------------------------
-`content` | `string` or `secret` | The contents of the file from the most recent read
+----------|----------------------|----------------------------------------------------
+`content` | `string` or `secret` | The contents of the file from the most recent read.
 
-The `content` field will have the `secret` type only if the `is_secret` argument was true. 
+The `content` field has the `secret` type only if the `is_secret` argument is true.
 
 You can use `local.file.LABEL.content` to access the contents of the file.
 
 ## Component health
 
-`local.file` will be reported as healthy whenever if the watched file was read successfully.
+`local.file` is reported as healthy whenever if the watched file was read successfully.
 
 Failing to read the file whenever an update is detected (or after the poll period elapses) will cause the component to be reported as unhealthy.
 When unhealthy, exported fields will be kept at the last healthy value.
@@ -60,7 +60,7 @@ The read error will be exposed as a log message and in the debug information for
 
 ## Debug information
 
-`local.file` does not expose any component-specific debug information.
+`local.file` doesn't expose any component-specific debug information.
 
 ## Debug metrics
 
