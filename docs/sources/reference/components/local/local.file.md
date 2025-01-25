@@ -38,6 +38,10 @@ Name             | Type       | Description                                     
 
 {{< docs/shared lookup="reference/components/local-file-arguments-text.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
+## Blocks
+
+The `local.file` component doesn't support any blocks. You can configure this component with arguments.
+
 ## Exported fields
 
 The following fields are exported and can be referenced by other components:
