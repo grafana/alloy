@@ -6,11 +6,7 @@ menuTitle: Generate a support bundle
 weight: 300
 ---
 
-<span class="badge docs-labels__stage docs-labels__item">Public preview</span>
-
 # Generate a support bundle
-
-{{< docs/public-preview product="Generate support bundle" >}}
 
 The `/-/support?duration=N` endpoint returns a support bundle, a compressed file that contains information
 about a running {{< param "PRODUCT_NAME" >}} instance, and can be used as a baseline of information when trying
@@ -30,7 +26,7 @@ defaults to `localhost:12345`.
 The support bundle contains all information in plain text, so you can
 inspect it before sharing to verify that no sensitive information has leaked.
 
-In addition, you can inspect the [supportbundle implementation](https://github.com/grafana/alloy/tree/internal/service/http/supportbundle.go)
+In addition, you can inspect the [support bundle implementation](https://github.com/grafana/alloy/blob/main/internal/service/http/supportbundle.go)
 to verify the code used to generate these bundles.
 
 A support bundle contains the following data:

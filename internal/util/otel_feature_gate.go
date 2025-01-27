@@ -5,14 +5,25 @@ import (
 
 	"go.opentelemetry.io/collector/featuregate"
 
-	// Register the feature gates.
-	// The "service" package uses DisableHighCardinalityMetricsfeatureGate, so import "service".
-	// We cannot import DisableHighCardinalityMetricsfeatureGate directly because it's not exported.
-	_ "go.opentelemetry.io/collector/service"
+	// Registers the "k8sattr.fieldExtractConfigRegex.disallow" feature gate.
+	_ "github.com/open-telemetry/opentelemetry-collector-contrib/processor/k8sattributesprocessor"
 )
 
+type gateDetails struct {
+	name    string
+	enabled bool
+}
+
 var (
-	otelFeatureGates = []string{}
+	otelFeatureGates = []gateDetails{
+		{
+			// We're setting this feature gate since we don't yet know whether the
+			// feature it deprecates will be removed.
+			//TODO: Remove this once the feature gate in the Collector is "deprecated".
+			name:    "k8sattr.fieldExtractConfigRegex.disallow",
+			enabled: false,
+		},
+	}
 )
 
 // Enables a set of feature gates which should always be enabled in Alloy.
@@ -21,11 +32,11 @@ func SetupOtelFeatureGates() error {
 }
 
 // Enables a set of feature gates in Otel's Global Feature Gate Registry.
-func EnableOtelFeatureGates(fgNames ...string) error {
+func EnableOtelFeatureGates(fgts ...gateDetails) error {
 	fgReg := featuregate.GlobalRegistry()
 
-	for _, fg := range fgNames {
-		err := fgReg.Set(fg, true)
+	for _, fg := range fgts {
+		err := fgReg.Set(fg.name, fg.enabled)
 		if err != nil {
 			return fmt.Errorf("error setting Otel feature gate: %w", err)
 		}

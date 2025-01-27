@@ -370,6 +370,7 @@ The following components, grouped by namespace, _consume_ OpenTelemetry `otelcol
 - [otelcol.receiver.otlp](../components/otelcol/otelcol.receiver.otlp)
 - [otelcol.receiver.prometheus](../components/otelcol/otelcol.receiver.prometheus)
 - [otelcol.receiver.solace](../components/otelcol/otelcol.receiver.solace)
+- [otelcol.receiver.syslog](../components/otelcol/otelcol.receiver.syslog)
 - [otelcol.receiver.vcenter](../components/otelcol/otelcol.receiver.vcenter)
 - [otelcol.receiver.zipkin](../components/otelcol/otelcol.receiver.zipkin)
 {{< /collapse >}}

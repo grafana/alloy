@@ -23,7 +23,7 @@ jobs:
           path: source
 
       - name: Install chart-testing
-        uses: helm/chart-testing-action@v2.6.1
+        uses: helm/chart-testing-action@v2.7.0
 
       - name: List changed charts
         id: list-changed

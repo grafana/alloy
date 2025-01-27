@@ -2,6 +2,7 @@ package relabel
 
 import (
 	"fmt"
+	dto "github.com/prometheus/client_model/go"
 	"math"
 	"strconv"
 	"testing"
@@ -109,6 +110,17 @@ func TestLRUNaN(t *testing.T) {
 	require.True(t, relabeller.cache.Len() == 1)
 	relabeller.relabel(math.Float64frombits(value.StaleNaN), lbls)
 	require.True(t, relabeller.cache.Len() == 0)
+}
+
+func TestMetrics(t *testing.T) {
+	relabeller := generateRelabel(t)
+	lbls := labels.FromStrings("__address__", "localhost")
+
+	relabeller.relabel(0, lbls)
+	m := &dto.Metric{}
+	err := relabeller.metricsProcessed.Write(m)
+	require.NoError(t, err)
+	require.True(t, *(m.Counter.Value) == 1)
 }
 
 func BenchmarkCache(b *testing.B) {

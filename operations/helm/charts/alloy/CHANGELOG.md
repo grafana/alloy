@@ -7,12 +7,13 @@ This document contains a historical list of changes between releases. Only
 changes that impact end-user behavior are listed; changes to documentation or
 internal API changes are not present.
 
-Unreleased
+0.11.0 (2025-01-23)
 ----------
 
 ### Enhancements
 
 - Update jimmidyson/configmap-reload to 0.14.0. (@petewall)
+- Add the ability to deploy extra manifest files. (@dbluxo)
 
 0.10.1 (2024-12-03)
 ----------

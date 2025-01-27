@@ -3,6 +3,8 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/
 aliases:
   - ../discovery.kubelet/ # /docs/alloy/latest/reference/components/discovery.kubelet/
 description: Learn about discovery.kubelet
+labels:
+  stage: general-availability
 title: discovery.kubelet
 ---
 
@@ -26,7 +28,7 @@ discovery.kubelet "LABEL" {
 
 ## Arguments
 
-The following arguments are supported:
+You can use the following arguments with `discovery.kubelet`:
 
 Name                     | Type                | Description                                                                                      | Default                   | Required
 -------------------------|---------------------|--------------------------------------------------------------------------------------------------|---------------------------|---------
@@ -50,11 +52,12 @@ You can have additional paths in the `url`.
 For example, if `url` is `https://kubernetes.default.svc.cluster.local:443/api/v1/nodes/cluster-node-1/proxy`, then `discovery.kubelet` sends a request on `https://kubernetes.default.svc.cluster.local:443/api/v1/nodes/cluster-node-1/proxy/pods`
 
  At most, one of the following can be provided:
- - [`bearer_token` argument](#arguments).
- - [`bearer_token_file` argument](#arguments).
- - [`basic_auth` block][basic_auth].
- - [`authorization` block][authorization].
- - [`oauth2` block][oauth2].
+
+* [`authorization`][authorization] block
+* [`basic_auth`][basic_auth] block
+* [`bearer_token_file`][arguments] argument
+* [`bearer_token`][arguments] argument
+* [`oauth2`][oauth2] block
 
  [arguments]: #arguments
 
@@ -62,16 +65,15 @@ For example, if `url` is `https://kubernetes.default.svc.cluster.local:443/api/v
 
 ## Blocks
 
-The following blocks are supported inside the definition of
-`discovery.kubelet`:
+You can use the following blocks with `discovery.kubelet`:
 
-Hierarchy           | Block             | Description                                              | Required
---------------------|-------------------|----------------------------------------------------------|---------
-basic_auth          | [basic_auth][]    | Configure basic_auth for authenticating to the endpoint. | no
-authorization       | [authorization][] | Configure generic authorization to the endpoint.         | no
-oauth2              | [oauth2][]        | Configure OAuth2 for authenticating to the endpoint.     | no
-oauth2 > tls_config | [tls_config][]    | Configure TLS settings for connecting to the endpoint.   | no
-tls_config          | [tls_config][]    | Configure TLS settings for connecting to the endpoint.   | no
+Block                   | Description                                                | Required
+------------------------|------------------------------------------------------------|---------
+[authorization][]       | Configure generic authorization to the endpoint.           | no
+[basic_auth][]          | Configure `basic_auth` for authenticating to the endpoint. | no
+[oauth2][]              | Configure OAuth 2.0 for authenticating to the endpoint.    | no
+oauth2 > [tls_config][] | Configure TLS settings for connecting to the endpoint.     | no
+[tls_config][]          | Configure TLS settings for connecting to the endpoint.     | no
 
 The `>` symbol indicates deeper levels of nesting.
 For example, `oauth2 > tls_config` refers to a `tls_config` block defined inside an `oauth2` block.
@@ -81,7 +83,15 @@ For example, `oauth2 > tls_config` refers to a `tls_config` block defined inside
 [oauth2]: #oauth2-block
 [tls_config]: #tls_config-block
 
-### basic_auth block
+### authorization
+
+The `authorization` block configures generic authorization to the endpoint.
+
+{{< docs/shared lookup="reference/components/authorization-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### basic_auth
+
+The `basic_auth` block configures basic authentication to the endpoint.
 
 {{< docs/shared lookup="reference/components/basic-auth-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -91,9 +101,13 @@ For example, `oauth2 > tls_config` refers to a `tls_config` block defined inside
 
 ### oauth2 block
 
+The `oauth` block configures OAuth 2.0 authentication to the endpoint.
+
 {{< docs/shared lookup="reference/components/oauth2-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### tls_config block
+
+The `tls_config` block configures TLS settings for connecting to the endpoint.
 
 {{< docs/shared lookup="reference/components/tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -165,19 +179,21 @@ prometheus.scrape "demo" {
 
 prometheus.remote_write "demo" {
   endpoint {
-    url = PROMETHEUS_REMOTE_WRITE_URL
+    url = "PROMETHEUS_REMOTE_WRITE_URL"
 
     basic_auth {
-      username = USERNAME
-      password = PASSWORD
+      username = "USERNAME"
+      password = "PASSWORD"
     }
   }
 }
 ```
+
 Replace the following:
-  - `PROMETHEUS_REMOTE_WRITE_URL`: The URL of the Prometheus remote_write-compatible server to send metrics to.
-  - `USERNAME`: The username to use for authentication to the remote_write API.
-  - `PASSWORD`: The password to use for authentication to the remote_write API.
+
+* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
+* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 ### Limit searched namespaces
 
@@ -196,19 +212,21 @@ prometheus.scrape "demo" {
 
 prometheus.remote_write "demo" {
   endpoint {
-    url = PROMETHEUS_REMOTE_WRITE_URL
+    url = "PROMETHEUS_REMOTE_WRITE_URL"
 
     basic_auth {
-      username = USERNAME
-      password = PASSWORD
+      username = "USERNAME"
+      password = "PASSWORD"
     }
   }
 }
 ```
+
 Replace the following:
-  - `PROMETHEUS_REMOTE_WRITE_URL`: The URL of the Prometheus remote_write-compatible server to send metrics to.
-  - `USERNAME`: The username to use for authentication to the remote_write API.
-  - `PASSWORD`: The password to use for authentication to the remote_write API.
+
+* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
+* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

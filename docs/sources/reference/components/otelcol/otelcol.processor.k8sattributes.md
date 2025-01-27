@@ -34,10 +34,12 @@ otelcol.processor.k8sattributes "LABEL" {
 
 The following arguments are supported:
 
-Name          | Type     | Description                                                               | Default          | Required
---------------|----------|---------------------------------------------------------------------------|------------------|---------
-`auth_type`   | `string` | Authentication method when connecting to the Kubernetes API.              | `serviceAccount` | no
-`passthrough` | `bool`   | Passthrough signals as-is, only adding a `k8s.pod.ip` resource attribute. | `false`          | no
+Name                        | Type       | Description                                                                    | Default          | Required
+----------------------------|------------|--------------------------------------------------------------------------------|------------------|---------
+`auth_type`                 | `string`   | Authentication method when connecting to the Kubernetes API.                   | `serviceAccount` | no
+`passthrough`               | `bool`     | Passthrough signals as-is, only adding a `k8s.pod.ip` resource attribute.      | `false`          | no
+`wait_for_metadata`         | `bool`     | Whether to wait for Kubernetes metadata to arrive before processing telemetry. | `false`          | no
+`wait_for_metadata_timeout` | `duration` | How long to wait for Kubernetes metadata to arrive.                            | `"10s"`          | no
 
 The supported values for `auth_type` are:
 * `none`: No authentication is required.
@@ -55,6 +57,17 @@ A {{< param "PRODUCT_NAME" >}} running as a Deployment cannot detect the IP addr
 data without any of the well-known IP attributes. If the Deployment {{< param "PRODUCT_NAME" >}} receives telemetry from
 {{< param "PRODUCT_NAME" >}}s deployed as DaemonSet, then some of those attributes might be missing. As a workaround,
 you can configure the DaemonSet {{< param "PRODUCT_NAME" >}}s with `passthrough` set to `true`.
+
+By default, `otelcol.processor.k8sattributes` is ready as soon as it starts, even if no metadata has been fetched yet.
+If telemetry is sent to this processor before the metadata is synced, there will be no metadata to enrich the telemetry with.
+
+To wait for the metadata to be synced before `otelcol.processor.k8sattributes` is ready, set the `wait_for_metadata` option to `true`.
+Then, the processor will not be ready until the metadata is fully synced. As a result, the start-up of {{< param "PRODUCT_NAME" >}} will be blocked. 
+If the metadata cannot be synced by the time the `metadata_sync_timeout` duration is reached, 
+`otelcol.processor.k8sattributes` will become unhealthy and fail to start.
+
+If `otelcol.processor.k8sattributes` is unhealthy, other {{< param "PRODUCT_NAME" >}} components will still be able to start.
+However, they may be unable to send telemetry to `otelcol.processor.k8sattributes`.
 
 ## Blocks
 
@@ -143,11 +156,31 @@ The `annotation` block configures how to extract Kubernetes annotations.
 
 {{< docs/shared lookup="reference/components/extract-field-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
+{{< admonition type="caution" >}}
+
+Starting with v1.6.0, the `regex` argument is deprecated.
+It will be removed in a future release.
+Use the [ExtractPatterns][extract-patterns] function from `otelcol.processor.transform` instead. 
+
+[extract-patterns]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/{{< param "OTEL_VERSION" >}}/pkg/ottl/ottlfuncs/README.md#extractpatterns
+
+{{< /admonition >}}
+
 ### label block {#extract-label-block}
 
 The `label` block configures how to extract Kubernetes labels.
 
 {{< docs/shared lookup="reference/components/extract-field-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+{{< admonition type="caution" >}}
+
+Starting with v1.6.0, the `regex` argument is deprecated.
+It will be removed in a future release.
+Use the [ExtractPatterns][extract-patterns] function from `otelcol.processor.transform` instead. 
+
+[extract-patterns]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/{{< param "OTEL_VERSION" >}}/pkg/ottl/ottlfuncs/README.md#extractpatterns
+
+{{< /admonition >}}
 
 ### filter block
 

@@ -79,6 +79,7 @@ Name                     | Type           | Description                         
 `max_request_body_size`  | `string`       | Maximum request body size the server will allow.                | `20MiB`          | no
 `include_metadata`       | `boolean`      | Propagate incoming connection metadata to downstream consumers. |                  | no
 `compression_algorithms` | `list(string)` | A list of compression algorithms the server can accept.         | `["", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"]` | no
+`auth`              | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests.     |               | no
 
 ### tls block
 
@@ -125,6 +126,7 @@ Name                     | Type      | Description                              
 `read_buffer_size`       | `string`  | Size of the read buffer the gRPC server will use for reading from clients. | `"512KiB"`        | no
 `write_buffer_size`      | `string`  | Size of the write buffer the gRPC server will use for writing to clients.  |                   | no
 `include_metadata`       | `boolean` | Propagate incoming connection metadata to downstream consumers.            |                   | no
+`auth`              | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests.     |               | no
 
 ### keepalive block
 
@@ -291,5 +293,31 @@ otelcol.extension.jaeger_remote_sampling "example" {
   source {
     content = local.file.sampling.content
   }
+}
+```
+
+## Enable authentication
+
+You can use `jaeger_remote_sampling` to authenticate requests.
+This allows you to limit access to the sampling document.
+
+{{< admonition type="note" >}}
+Not all OpenTelemetry Collector authentication plugins support receiver authentication.
+Refer to the [documentation](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/otelcol/) for each `otelcol.auth.*` component to determine its compatibility.
+{{< /admonition >}}
+
+```alloy
+otelcol.extension.jaeger_remote_sampling "default" {
+  http {
+    auth = otelcol.auth.basic.creds.handler
+  }
+  grpc {
+     auth = otelcol.auth.basic.creds.handler
+  }
+}
+
+otelcol.auth.basic "creds" {
+    username = sys.env("USERNAME")
+    password = sys.env("PASSWORD")
 }
 ```

@@ -3,6 +3,8 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/
 aliases:
   - ../discovery.relabel/ # /docs/alloy/latest/reference/components/discovery.relabel/
 description: Learn about discovery.relabel
+labels:
+  stage: general-availability
 title: discovery.relabel
 ---
 
@@ -28,8 +30,8 @@ Multiple `discovery.relabel` components can be specified by giving them differen
 ## Usage
 
 ```alloy
-discovery.relabel "LABEL" {
-  targets = TARGET_LIST
+discovery.relabel "<LABEL>" {
+  targets = "<TARGET_LIST>"
 
   rule {
     ...
@@ -41,7 +43,7 @@ discovery.relabel "LABEL" {
 
 ## Arguments
 
-The following arguments are supported:
+You can use the following arguments with `discovery.relabel`:
 
 Name      | Type                | Description        | Default | Required
 ----------|---------------------|--------------------|---------|---------
@@ -49,16 +51,17 @@ Name      | Type                | Description        | Default | Required
 
 ## Blocks
 
-The following blocks are supported inside the definition of
-`discovery.relabel`:
+You can use the following blocks with `discovery.relabel`:
 
 Hierarchy | Block    | Description                           | Required
 ----------|----------|---------------------------------------|---------
 rule      | [rule][] | Relabeling rules to apply to targets. | no
 
-[rule]: #rule-block
+[rule]: #rule
 
-### rule block
+### rule
+
+The `rule` block configures the relabeling rules to apply to targets.
 
 {{< docs/shared lookup="reference/components/rule-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -78,11 +81,11 @@ In those cases, exported fields retain their last healthy values.
 
 ## Debug information
 
-`discovery.relabel` does not expose any component-specific debug information.
+`discovery.relabel` doesn't expose any component-specific debug information.
 
 ## Debug metrics
 
-`discovery.relabel` does not expose any component-specific debug metrics.
+`discovery.relabel` doesn't expose any component-specific debug metrics.
 
 ## Example
 

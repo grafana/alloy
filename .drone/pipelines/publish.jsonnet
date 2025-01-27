@@ -208,7 +208,7 @@ linux_containers_jobs + windows_containers_jobs + [
               "repo_name": "deployment_tools",
               "update_jsonnet_attribute_configs": [
                 {
-                  "file_path": "ksonnet/environments/grafana-agent/waves/alloy.libsonnet",
+                  "file_path": "ksonnet/lib/alloy/waves/alloy.libsonnet",
                   "jsonnet_key": "dev_canary",
                   "jsonnet_value_file": ".image-tag"
                 }

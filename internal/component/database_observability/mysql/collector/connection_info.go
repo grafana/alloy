@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/prometheus/client_golang/prometheus"
+	"go.uber.org/atomic"
 )
 
 var rdsRegex = regexp.MustCompile(`(?P<identifier>[^\.]+)\.([^\.]+)\.(?P<region>[^\.]+)\.rds\.amazonaws\.com`)
@@ -21,6 +22,8 @@ type ConnectionInfo struct {
 	DSN        string
 	Registry   *prometheus.Registry
 	InfoMetric *prometheus.GaugeVec
+
+	running *atomic.Bool
 }
 
 func NewConnectionInfo(args ConnectionInfoArguments) (*ConnectionInfo, error) {
@@ -35,7 +38,12 @@ func NewConnectionInfo(args ConnectionInfoArguments) (*ConnectionInfo, error) {
 		DSN:        args.DSN,
 		Registry:   args.Registry,
 		InfoMetric: infoMetric,
+		running:    &atomic.Bool{},
 	}, nil
+}
+
+func (c *ConnectionInfo) Name() string {
+	return "ConnectionInfo"
 }
 
 func (c *ConnectionInfo) Start(ctx context.Context) error {
@@ -43,6 +51,8 @@ func (c *ConnectionInfo) Start(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+
+	c.running.Store(true)
 
 	var (
 		providerName         = "unknown"
@@ -66,6 +76,11 @@ func (c *ConnectionInfo) Start(ctx context.Context) error {
 	return nil
 }
 
+func (c *ConnectionInfo) Stopped() bool {
+	return !c.running.Load()
+}
+
 func (c *ConnectionInfo) Stop() {
 	c.Registry.Unregister(c.InfoMetric)
+	c.running.Store(false)
 }

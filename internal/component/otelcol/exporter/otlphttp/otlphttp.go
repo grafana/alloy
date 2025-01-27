@@ -71,8 +71,13 @@ func (args *Arguments) SetToDefault() {
 
 // Convert implements exporter.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
+	httpClientArgs := *(*otelcol.HTTPClientArguments)(&args.Client)
+	convertedClientArgs, err := httpClientArgs.Convert()
+	if err != nil {
+		return nil, err
+	}
 	return &otlphttpexporter.Config{
-		ClientConfig:    *(*otelcol.HTTPClientArguments)(&args.Client).Convert(),
+		ClientConfig:    *convertedClientArgs,
 		QueueConfig:     *args.Queue.Convert(),
 		RetryConfig:     *args.Retry.Convert(),
 		TracesEndpoint:  args.TracesEndpoint,

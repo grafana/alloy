@@ -296,14 +296,6 @@ func (s *Service) generateSupportBundleHandler(host service.Host) func(rw http.R
 		s.supportBundleMut.Lock()
 		defer s.supportBundleMut.Unlock()
 
-		// TODO(dehaansa) remove this check once the support bundle is generally available
-		if !s.opts.MinStability.Permits(featuregate.StabilityPublicPreview) {
-			rw.WriteHeader(http.StatusForbidden)
-			_, _ = rw.Write([]byte("support bundle generation is only available in public preview. Use" +
-				" --stability.level command-line flag to enable public-preview features"))
-			return
-		}
-
 		if s.opts.BundleContext.DisableSupportBundle {
 			rw.WriteHeader(http.StatusForbidden)
 			_, _ = rw.Write([]byte("support bundle generation is disabled; it can be re-enabled by removing the --disable-support-bundle flag"))
@@ -661,6 +653,10 @@ func remoteCfgRedactedCachedConfig(host service.Host) ([]byte, error) {
 }
 
 func printFileRedacted(f *ast.File) ([]byte, error) {
+	if f == nil {
+		return []byte{}, nil
+	}
+
 	c := printer.Config{
 		RedactSecrets: true,
 	}

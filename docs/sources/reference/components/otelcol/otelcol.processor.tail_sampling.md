@@ -44,7 +44,7 @@ otelcol.processor.tail_sampling "LABEL" {
 | `decision_wait`               | `duration` | Wait time since the first span of a trace before making a sampling decision. | `"30s"` | no       |
 | `num_traces`                  | `int`      | Number of traces kept in memory.                                             | `50000` | no       |
 | `expected_new_traces_per_sec` | `int`      | Expected number of new traces (helps in allocating data structures).         | `0`     | no       |
-| `decision_cache`              | `object`   | Configures the number of trace IDs to be kept in an LRU cache.               | `{}`    | no       |
+| `decision_cache`              | `object`   | Configures caches for sampling decisions.                                    | `{}`    | no       |
 
 `decision_wait` determines the number of batches to maintain on a channel. Its value must convert to a number of seconds greater than zero.
 
@@ -52,7 +52,17 @@ otelcol.processor.tail_sampling "LABEL" {
 
 `expected_new_traces_per_sec` determines the initial slice sizing of the current batch. A larger number will use more memory but be more efficient when adding traces to the batch.
 
-`decision_cache` requires a key `sampled_cache_size` with a value that indicates the number of trace IDs to keep in the cache. When `sampled_cache_size` is set to `0`, the cache is inactive. When you use `decision_cache`, make sure you set `sampled_cache_size` to a value much higher than `num_traces` so that decisions for trace IDs are kept longer than the span data for the trace.
+`decision_cache` can contain two keys:
+- `sampled_cache_size`: Configures the number of trace IDs to be kept in an LRU cache,
+  persisting the "keep" decisions for traces that may have already been released from memory. 
+  By default, the size is 0 and the cache is inactive.
+- `non_sampled_cache_size`: Configures number of trace IDs to be kept in an LRU cache,
+  persisting the "drop" decisions for traces that may have already been released from memory.
+  By default, the size is 0 and the cache is inactive.
+
+You may want to vary the size of the `decision_cache` depending on how many "keep" vs "drop" decisions you expect from your policies. 
+For example, you can allocate a larger `non_sampled_cache_size` if you expect most traces to be dropped.
+Additionally, when you use `decision_cache`, configure it with a much higher value than `num_traces` so decisions for trace IDs are kept longer than the span data for the trace.
 
 ## Blocks
 
@@ -351,7 +361,8 @@ tracing {
 
 otelcol.processor.tail_sampling "default" {
   decision_cache = {
-    sampled_cache_size = 100000,
+    sampled_cache_size     = 100000,
+    non_sampled_cache_size = 100000,
     }
   decision_wait               = "10s"
   num_traces                  = 100
