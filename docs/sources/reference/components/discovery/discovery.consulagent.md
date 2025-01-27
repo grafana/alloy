@@ -8,7 +8,7 @@ labels:
 title: discovery.consulagent
 ---
 
-# discovery.consulagent
+# `discovery.consulagent`
 
 `discovery.consulagent` allows you to retrieve scrape targets from [Consul's Agent API][].
 Only the services registered with the local agent running on the same host are watched.
@@ -45,13 +45,13 @@ Name               | Type           | Description                               
 
 You can use the following blocks with `discovery.consulagent`:
 
-Block          | Description                                            | Required
----------------|--------------------------------------------------------|---------
-[tls_config][] | Configure TLS settings for connecting to the endpoint. | no
+Block                      | Description                                            | Required
+---------------------------|--------------------------------------------------------|---------
+[`tls_config`][tls_config] | Configure TLS settings for connecting to the endpoint. | no
 
 [tls_config]: #tls_config
 
-### tls_config
+### `tls_config`
 
 The `tls_config` block configures TLS settings for connecting to the endpoint.
 
