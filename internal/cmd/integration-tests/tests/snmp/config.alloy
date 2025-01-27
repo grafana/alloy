@@ -130,6 +130,7 @@ modules:
       - labelname: hrDeviceIndex
         type: gauge
 `
+  concurrency = 2
   target "t1" {
       address     = "localhost:161"
       module      = "default,hrDevice"
