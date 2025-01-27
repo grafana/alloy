@@ -288,6 +288,41 @@ controller:
   # -- Additional containers to run alongside the Alloy container and initContainers.
   extraContainers: []
 
+networkPolicy:
+  enabled: true
+  flavor: kubernetes
+
+  ingress:
+    # Allow ingress from all pods in the cluster
+    - from:
+      - podSelector: {}
+    # Allow ingress from the internet (Faro)
+    - from:
+      - ipBlock:
+          cidr: 0.0.0.0/0
+  egress:
+    # Allow egress to the kube-apiserver (default port)
+    # Not all cloud providers use the same labels on kube-apiserver pod
+    - to:
+      - ports:
+        - protocol: TCP
+          port: 6443
+    # Allow egress to all pods in the cluster
+    - to:
+      - podSelector: {}
+    # Allow egress to the internet
+    - to:
+      - ipBlock:
+          cidr: 0.0.0.0/0
+          except:
+            - 10.0.0.0/8
+            - 172.16.0.0/12
+            - 192.168.0.0/16
+      - ipBlock:
+          cidr: ::/0 
+          except:
+            - fc00::/7
+
 service:
   # -- Creates a Service for the controller's pods.
   enabled: true
