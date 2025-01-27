@@ -26,6 +26,7 @@ const (
 const selectQuerySamples = `
 	SELECT
 		digest,
+		schema_name,
 		query_sample_text,
 		query_sample_seen,
 		query_sample_timer_wait
@@ -122,13 +123,8 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 	defer rs.Close()
 
 	for rs.Next() {
-		if err := rs.Err(); err != nil {
-			level.Error(c.logger).Log("msg", "failed to iterate rs", "err", err)
-			break
-		}
-
-		var digest, sampleText, sampleSeen, sampleTimerWait string
-		err := rs.Scan(&digest, &sampleText, &sampleSeen, &sampleTimerWait)
+		var digest, schemaName, sampleText, sampleSeen, sampleTimerWait string
+		err := rs.Scan(&digest, &schemaName, &sampleText, &sampleSeen, &sampleTimerWait)
 		if err != nil {
 			level.Error(c.logger).Log("msg", "failed to scan result set for query samples", "err", err)
 			continue
@@ -142,20 +138,20 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 					sampleText = sampleText[:idx]
 				}
 			} else {
-				level.Debug(c.logger).Log("msg", "skipping parsing truncated query", "digest", digest)
+				level.Debug(c.logger).Log("msg", "skipping parsing truncated query", "schema", schemaName, "digest", digest)
 				continue
 			}
 		}
 
 		stmt, err := sqlparser.Parse(sampleText)
 		if err != nil {
-			level.Error(c.logger).Log("msg", "failed to parse sql query", "digest", digest, "err", err)
+			level.Error(c.logger).Log("msg", "failed to parse sql query", "schema", schemaName, "digest", digest, "err", err)
 			continue
 		}
 
 		sampleRedactedText, err := sqlparser.RedactSQLQuery(sampleText)
 		if err != nil {
-			level.Error(c.logger).Log("msg", "failed to redact sql query", "digest", digest, "err", err)
+			level.Error(c.logger).Log("msg", "failed to redact sql query", "schema", schemaName, "digest", digest, "err", err)
 			continue
 		}
 
@@ -164,8 +160,8 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 			Entry: logproto.Entry{
 				Timestamp: time.Unix(0, time.Now().UnixNano()),
 				Line: fmt.Sprintf(
-					`level=info msg="query samples fetched" op="%s" instance="%s" digest="%s" query_type="%s" query_sample_seen="%s" query_sample_timer_wait="%s" query_sample_redacted="%s"`,
-					OP_QUERY_SAMPLE, c.instanceKey, digest, c.stmtType(stmt), sampleSeen, sampleTimerWait, sampleRedactedText,
+					`level=info msg="query samples fetched" op="%s" instance="%s" schema="%s" digest="%s" query_type="%s" query_sample_seen="%s" query_sample_timer_wait="%s" query_sample_redacted="%s"`,
+					OP_QUERY_SAMPLE, c.instanceKey, schemaName, digest, c.stmtType(stmt), sampleSeen, sampleTimerWait, sampleRedactedText,
 				),
 			},
 		}
@@ -177,12 +173,17 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 				Entry: logproto.Entry{
 					Timestamp: time.Unix(0, time.Now().UnixNano()),
 					Line: fmt.Sprintf(
-						`level=info msg="table name parsed" op="%s" instance="%s" digest="%s" table="%s"`,
-						OP_QUERY_PARSED_TABLE_NAME, c.instanceKey, digest, table,
+						`level=info msg="table name parsed" op="%s" instance="%s" schema="%s" digest="%s" table="%s"`,
+						OP_QUERY_PARSED_TABLE_NAME, c.instanceKey, schemaName, digest, table,
 					),
 				},
 			}
 		}
+	}
+
+	if err := rs.Err(); err != nil {
+		level.Error(c.logger).Log("msg", "error during iterating over samples result set", "err", err)
+		return err
 	}
 
 	return nil

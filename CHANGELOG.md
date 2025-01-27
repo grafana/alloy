@@ -16,17 +16,32 @@ Main (unreleased)
 
 ### Enhancements
 
-- Improved performance by reducing allocation in Prometheus write pipelines by ~30% (@thampiotr)
+- Add the possibility to export span events as logs in `otelcol.connector.spanlogs`. (@steve-hb)
 
 - (_Experimental_) Log instance label key in `database_observability.mysql` (@cristiangreco)
 
 - (_Experimental_) Improve parsing of truncated queries in `database_observability.mysql` (@cristiangreco)
 
+- (_Experimental_) Capture schema name for query samples in `database_observability.mysql` (@cristiangreco)
+
+- (_Experimental_) Fix handling of view table types when detecting schema in `database_observability.mysql` (@matthewnolf)
+
+- (_Experimental_) fix error handling during result set iteration in `database_observability.mysql` (@cristiangreco)
+
 - Add json format support for log export via faro receiver (@ravishankar15)
 
 - Add livedebugging support for `prometheus.remote_write` (@ravishankar15)
 
-v1.6.0-rc.1
+- Bump snmp_exporter and embedded modules to 0.27.0. Add support for multi-module handling by comma separation and expose argument to increase SNMP polling concurrency for `prometheus.exporter.snmp`. (@v-zhuravlev)
+
+v1.6.1
+-----------------
+
+## Bugs
+
+- Resolve issue with Beyla starting. (@rafaelroquetto)
+
+v1.6.0
 -----------------
 
 ### Breaking changes
@@ -63,6 +78,8 @@ v1.6.0-rc.1
 - Add a new `/-/healthy` endpoint which returns HTTP 500 if one or more components are unhealthy. (@ptodev)
 
 ### Enhancements
+
+- Improved performance by reducing allocation in Prometheus write pipelines by ~30% (@thampiotr)
 
 - Update `prometheus.write.queue` to support v2 for cpu performance. (@mattdurham)
 
@@ -184,6 +201,8 @@ v1.6.0-rc.1
   - `otelcol.exporter.kafka`, `otelcol.receiver.kafka`: Add a new `AWS_MSK_IAM_OAUTHBEARER` mechanism.
     This mechanism use the AWS MSK IAM SASL Signer for Go https://github.com/aws/aws-msk-iam-sasl-signer-go.
     https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/32500
+
+  - Use Go 1.23.5 for builds. (@wildum)
 
 v1.5.1
 -----------------
