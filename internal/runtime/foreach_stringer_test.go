@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -30,7 +31,7 @@ func TestForeachStringer(t *testing.T) {
 func testConfigForEachStringer(t *testing.T, config string, expectedDebugInfo string) {
 	defer verifyNoGoroutineLeaks(t)
 	reg := prometheus.NewRegistry()
-	ctrl, f := setup(t, config, reg)
+	ctrl, f := setup(t, config, reg, featuregate.StabilityExperimental)
 
 	err := ctrl.LoadSource(f, nil, "")
 	require.NoError(t, err)

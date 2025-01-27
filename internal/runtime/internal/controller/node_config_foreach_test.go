@@ -188,12 +188,12 @@ func TestCreateCustomComponentsCollectionObjectsWithUpdate(t *testing.T) {
 	}
 	require.NoError(t, foreachConfigNode.Evaluate(vm.NewScope(vars)))
 	customComponentIds := foreachConfigNode.moduleController.(*ModuleControllerMock).CustomComponents
-	require.ElementsMatch(t, customComponentIds, []string{"foreach_be19d02a2ccb2cbc2c47e90d_1", "foreach_b335d50e2e8490eb8bf5f51b_1"})
+	require.ElementsMatch(t, customComponentIds, []string{"foreach_be19d02a2ccb2cbc2c47e90dcad8446a50459577449624176398d1f2aa6cd23a_1", "foreach_b335d50e2e8490eb8bf5f51b3ca8b1599d811514ca40d28ada5214294d49752d_1"})
 	keys := make([]string, 0, len(foreachConfigNode.customComponents))
 	for key := range foreachConfigNode.customComponents {
 		keys = append(keys, key)
 	}
-	require.ElementsMatch(t, keys, []string{"foreach_be19d02a2ccb2cbc2c47e90d_1", "foreach_b335d50e2e8490eb8bf5f51b_1"})
+	require.ElementsMatch(t, keys, []string{"foreach_be19d02a2ccb2cbc2c47e90dcad8446a50459577449624176398d1f2aa6cd23a_1", "foreach_b335d50e2e8490eb8bf5f51b3ca8b1599d811514ca40d28ada5214294d49752d_1"})
 
 	newConfig := `foreach "default" {
 		collection = [obj1, obj3]
@@ -216,14 +216,14 @@ func TestCreateCustomComponentsCollectionObjectsWithUpdate(t *testing.T) {
 	customComponentIds = foreachConfigNode.moduleController.(*ModuleControllerMock).CustomComponents
 
 	// Create only the custom component for the obj3 because the one for obj1 was already created
-	require.ElementsMatch(t, customComponentIds, []string{"foreach_1464766cf9c8fd1095d0f7a2_1"})
+	require.ElementsMatch(t, customComponentIds, []string{"foreach_1464766cf9c8fd1095d0f7a22abe0632b6a6d44c3eeae65766086350eef3ac33_1"})
 
-	// "foreachb335d50e2e8490eb8bf5f51b1" was removed, "foreach1464766cf9c8fd1095d0f7a21" was added
+	// "foreach_b335d50e2e8490eb8bf5f51b3ca8b1599d811514ca40d28ada5214294d49752d_1" was removed, "foreach_1464766cf9c8fd1095d0f7a22abe0632b6a6d44c3eeae65766086350eef3ac33_1" was added
 	keys = make([]string, 0, len(foreachConfigNode.customComponents))
 	for key := range foreachConfigNode.customComponents {
 		keys = append(keys, key)
 	}
-	require.ElementsMatch(t, keys, []string{"foreach_be19d02a2ccb2cbc2c47e90d_1", "foreach_1464766cf9c8fd1095d0f7a2_1"})
+	require.ElementsMatch(t, keys, []string{"foreach_be19d02a2ccb2cbc2c47e90dcad8446a50459577449624176398d1f2aa6cd23a_1", "foreach_1464766cf9c8fd1095d0f7a22abe0632b6a6d44c3eeae65766086350eef3ac33_1"})
 }
 
 func getBlockFromConfig(t *testing.T, config string) *ast.BlockStmt {

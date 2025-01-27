@@ -377,8 +377,7 @@ func (fi *forEachChild) Equals(other runner.Task) bool {
 func computeHash(s string) string {
 	hasher := sha256.New()
 	hasher.Write([]byte(s))
-	fullHash := hasher.Sum(nil)
-	return hex.EncodeToString(fullHash[:12]) // taking only the 12 first char of the hash should be enough
+	return hex.EncodeToString(hasher.Sum(nil))
 }
 
 func hashObject(obj any) string {
