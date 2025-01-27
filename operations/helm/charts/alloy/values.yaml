@@ -44,6 +44,9 @@ alloy:
     # -- Name for the Alloy cluster. Used for differentiating between clusters.
     name: ""
 
+    # -- The number of peers to join in the cluster. If set to 0, Alloy will join all peers. Defaults to 5.
+    maxJoinPeers: null
+
     # -- Name for the port used for clustering, useful if running inside an Istio Mesh
     portName: http
 
