@@ -14,6 +14,8 @@ Main (unreleased)
 
 - Add the possibility to export span events as logs in `otelcol.connector.spanlogs`. (@steve-hb)
 
+- (_Experimental_) A new `foreach` block which starts an Alloy pipeline for each item inside a list. (@wildum, @thampiotr, @ptodev)
+
 ### Enhancements
 
 - (_Experimental_) Log instance label key in `database_observability.mysql` (@cristiangreco)
