@@ -711,7 +711,6 @@ prometheus.scrape "integrations_blackbox" {
 }
 
 prometheus.exporter.snmp "integrations_snmp" {
-
 	targets = [{
 		address      = "192.168.1.2",
 		auth         = "public",
