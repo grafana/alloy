@@ -7,6 +7,13 @@ This document contains a historical list of changes between releases. Only
 changes that impact end-user behavior are listed; changes to documentation or
 internal API changes are not present.
 
+0.11.1 (2025-01-27)
+------------------
+
+### Enhancements
+
+- Add NetworkPolicy support to the Helm chart. (@TheRealNoob)
+
 0.11.0 (2025-01-23)
 ----------
 
