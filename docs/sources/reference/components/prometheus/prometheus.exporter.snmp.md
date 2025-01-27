@@ -20,18 +20,6 @@ The `prometheus.exporter.snmp` component embeds
 ```alloy
 prometheus.exporter.snmp "LABEL" {
   config_file = SNMP_CONFIG_FILE_PATH
-
-  target "TARGET_NAME" {
-    address = TARGET_ADDRESS
-  }
-}
-```
-
-or
-
-```alloy
-prometheus.exporter.snmp "LABEL" {
-  config_file = SNMP_CONFIG_FILE_PATH
   targets     = TARGET_LIST
 }
 ```
@@ -50,7 +38,8 @@ Omitted fields take their default values.
 The `config_file` argument points to a YAML file defining which snmp_exporter modules to use.
 Refer to [snmp_exporter](https://github.com/prometheus/snmp_exporter/tree/{{< param "SNMP_VERSION" >}}?tab=readme-ov-file#configuration) for details on how to generate a configuration file.
 
-The `config` argument must be a YAML document as string defining which SNMP modules and auths to use.
+The `config` argument is an alternative to the `config_file` argument. 
+It must be a YAML document as string defining which SNMP modules and auths to use.
 `config` is typically loaded by using the exports of another component. For example,
 
 - `local.file.LABEL.content`
@@ -74,13 +63,25 @@ The following blocks are supported inside the definition of
 
 | Hierarchy  | Name           | Description                                                 | Required |
 | ---------- | -------------- | ----------------------------------------------------------- | -------- |
-| target     | [target][]     | Configures an SNMP target.                                  | no      |
+| target     | [target][]     | (Deprecated) Configures an SNMP target.                     | no       |
 | walk_param | [walk_param][] | SNMP connection profiles to override default SNMP settings. | no       |
 
 [target]: #target-block
 [walk_param]: #walk_param-block
 
 ### target block
+
+{{< admonition type="warning" >}}
+
+Using the `target` block is deprecated because it is less flexible than the `targets` argument:
+* The value of the `targets` argument could come from another component such as `local.file` or `discovery.file`.
+* The name of the `target` block cannot contain certain characters, 
+  because it has to comply with Alloy syntax restrictions for [block labels][syntax-blocks].
+* With the `targets` argument you can also pass in additional labels.
+
+[syntax-blocks]: ../../../../get-started/configuration-syntax/syntax#blocks
+
+{{< /admonition >}}
 
 The `target` block defines an individual SNMP target.
 The `target` block may be specified multiple times to define multiple targets. The label of the block is required and will be used in the target's `job` label.
@@ -94,6 +95,19 @@ The `target` block may be specified multiple times to define multiple targets. T
 | `snmp_context` | `string`      | Override the `context_name` parameter in the SNMP configuration file. | `""`    | no       |
 | `labels`       | `map(string)` | Map of labels to apply to all metrics captured from the target.       | `""`    | no       |
 
+{{< collapse title="Deprecated example using the target block" >}}
+
+```alloy
+prometheus.exporter.snmp "LABEL" {
+  config_file = SNMP_CONFIG_FILE_PATH
+
+  target "TARGET_NAME" {
+    address = TARGET_ADDRESS
+  }
+}
+```
+
+{{< /collapse >}}
 
 ### walk_param block
 
@@ -127,10 +141,130 @@ debug information.
 `prometheus.exporter.snmp` does not expose any component-specific
 debug metrics.
 
-## Example
+## Examples
+
+### Basic usage 
+
+```alloy
+prometheus.exporter.snmp "example" {
+    config_file = "snmp_modules.yml"
+
+    targets = [
+        {
+            "name"        = "network_switch_1",
+            "address"     = "192.168.1.2",
+            "module"      = "if_mib",
+            "walk_params" = "public",
+            "env"         = "dev",
+        },
+        {
+            "name"        = "network_router_2",
+            "address"     = "192.168.1.3",
+            "module"      = "mikrotik",
+            "walk_params" = "private",
+        },
+    ]
+
+    walk_param "private" {
+        retries = "2"
+    }
+
+    walk_param "public" {
+        retries = "2"
+    }
+}
+
+// Configure a prometheus.scrape component to collect SNMP metrics.
+prometheus.scrape "demo" {
+    targets    = prometheus.exporter.snmp.example.targets
+    forward_to = [ /* ... */ ]
+}
+```
+
+### Targets coming from local.file
+
+This example uses the [`local.file` component][file] to read targets from a YAML file and send them to the `prometheus.exporter.snmp` component:
+
+```alloy
+local.file "targets" {
+  filename = "targets.yml"
+}
+
+prometheus.exporter.snmp "example" {
+    config_file = "snmp_modules.yml"
+
+    targets = encoding.from_yaml(local.file.targets.content)
+
+    walk_param "private" {
+        retries = "2"
+    }
+
+    walk_param "public" {
+        retries = "2"
+    }
+}
+
+// Configure a prometheus.scrape component to collect SNMP metrics.
+prometheus.scrape "demo" {
+    targets    = prometheus.exporter.snmp.example.targets
+    forward_to = [ /* ... */ ]
+}
+```
+
+The YAML file in this example looks like this:
+```yaml
+- name: t1
+  address: localhost:161
+  module: default
+  auth: public_v2
+- name: t2
+  address: localhost:161
+  module: default
+  auth: public_v2
+```
+
+### Targets coming from discovery.file
+
+This example uses the [`discovery.file` component][disc] to send targets to the `prometheus.exporter.snmp` component:
+```alloy
+discovery.file "example" {
+  files = ["targets.yml"]
+}
+
+prometheus.exporter.snmp "example" {
+  config_file = "snmp_modules.yml"
+  targets = discovery.file.example.targets
+}
+
+// Configure a prometheus.scrape component to collect SNMP metrics.
+prometheus.scrape "demo" {
+    targets    = prometheus.exporter.snmp.example.targets
+    forward_to = [ /* ... */ ]
+}
+```
+
+The YAML file in this example looks like this:
+```yaml
+- targets:
+  - localhost:161
+  labels:
+    name: t1
+    module: default
+    auth: public_v2
+- targets:
+  - localhost:161
+  labels:
+    name: t2
+    module: default
+    auth: public_v2
+```
+
+### Deprecated example using the target block
 
 This example uses a [`prometheus.scrape` component][scrape] to collect metrics
 from `prometheus.exporter.snmp`:
+
+{{< collapse title="Basic example" >}}
 
 ```alloy
 prometheus.exporter.snmp "example" {
@@ -167,7 +301,11 @@ prometheus.scrape "demo" {
 }
 ```
 
-This example uses an embedded configuration (with secrets):
+{{< /collapse >}}
+
+This example retrieves the SNMP YAML file as a secret, so that it is not displayed in the UI and in logs:
+
+{{< collapse title="Basic example using local.file" >}}
 
 ```alloy
 local.file "snmp_config" {
@@ -217,122 +355,13 @@ prometheus.remote_write "demo" {
 }
 ```
 
+{{< /collapse >}}
+
 Replace the following:
 - _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
 - _`<USERNAME>`_: The username to use for authentication to the remote_write API.
 - _`<PASSWORD>`_: The password to use for authentication to the remote_write API.
 
-This example uses the alternative way to pass targets:
-
-```alloy
-prometheus.exporter.snmp "example" {
-    config_file = "snmp_modules.yml"
-
-    targets = [
-        {
-            "name"        = "network_switch_1",
-            "address"     = "192.168.1.2",
-            "module"      = "if_mib",
-            "walk_params" = "public",
-            "env"         = "dev",
-        },
-        {
-            "name"        = "network_router_2",
-            "address"     = "192.168.1.3",
-            "module"      = "mikrotik",
-            "walk_params" = "private",
-        },
-    ]
-
-    walk_param "private" {
-        retries = "2"
-    }
-
-    walk_param "public" {
-        retries = "2"
-    }
-}
-
-// Configure a prometheus.scrape component to collect SNMP metrics.
-prometheus.scrape "demo" {
-    targets    = prometheus.exporter.snmp.example.targets
-    forward_to = [ /* ... */ ]
-}
-```
-
-This example uses the [`local.file` component][file] to read targets from a YAML file and send them to the `prometheus.exporter.snmp` component:
-
-```alloy
-local.file "targets" {
-  filename = "targets.yml"
-}
-
-prometheus.exporter.snmp "example" {
-    config_file = "snmp_modules.yml"
-
-    targets = encoding.from_yaml(local.file.targets.content)
-
-    walk_param "private" {
-        retries = "2"
-    }
-
-    walk_param "public" {
-        retries = "2"
-    }
-}
-
-// Configure a prometheus.scrape component to collect SNMP metrics.
-prometheus.scrape "demo" {
-    targets    = prometheus.exporter.snmp.example.targets
-    forward_to = [ /* ... */ ]
-}
-```
-
-The YAML file in this example looks like this:
-```yaml
-- name: t1
-  address: localhost:161
-  module: default
-  auth: public_v2
-- name: t2
-  address: localhost:161
-  module: default
-  auth: public_v2
-```
-
-This example uses the [`discovery.file` component][disc] to send targets to the `prometheus.exporter.snmp` component:
-```alloy
-discovery.file "example" {
-  files = ["targets.yml"]
-}
-
-prometheus.exporter.snmp "example" {
-  config_file = "snmp_modules.yml"
-  targets = discovery.file.example.targets
-}
-
-// Configure a prometheus.scrape component to collect SNMP metrics.
-prometheus.scrape "demo" {
-    targets    = prometheus.exporter.snmp.example.targets
-    forward_to = [ /* ... */ ]
-}
-```
-
-The YAML file in this example looks like this:
-```yaml
-- targets:
-  - localhost:161
-  labels:
-    name: t1
-    module: default
-    auth: public_v2
-- targets:
-  - localhost:161
-  labels:
-    name: t2
-    module: default
-    auth: public_v2
-```
 
 [scrape]: ../prometheus.scrape/
 [file]: ../../local/local.file/
