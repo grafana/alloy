@@ -1,3 +1,6 @@
+---
+# TODO: Remove this pipeline
+# when its GitHub Actions equivalent is more battle-tested.
 kind: pipeline
 name: Lint
 platform:
@@ -14,6 +17,8 @@ trigger:
   - pull_request
 type: docker
 ---
+# TODO: Remove this pipeline
+# when its GitHub Actions equivalent is more battle-tested.
 kind: pipeline
 name: Test
 platform:
@@ -51,6 +56,8 @@ volumes:
     path: /var/run/docker.sock
   name: docker
 ---
+# TODO: Remove this pipeline 
+# when its GitHub Actions equivalent is more battle-tested.
 kind: pipeline
 name: Test (Windows)
 platform:
