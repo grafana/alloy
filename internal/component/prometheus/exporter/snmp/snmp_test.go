@@ -16,6 +16,7 @@ import (
 func TestUnmarshalAlloy(t *testing.T) {
 	alloyCfg := `
 		config_file = "modules.yml"
+		concurrency = 2
 		target "network_switch_1" {
 			address = "192.168.1.2"
 			module = "if_mib"
@@ -25,7 +26,7 @@ func TestUnmarshalAlloy(t *testing.T) {
 		}
 		target "network_router_2" {
 			address = "192.168.1.3"
-			module = "mikrotik"
+			module = "system,mikrotik"
 			walk_params = "private"
 		}
 		walk_param "private" {
@@ -38,6 +39,7 @@ func TestUnmarshalAlloy(t *testing.T) {
 	var args Arguments
 	err := syntax.Unmarshal([]byte(alloyCfg), &args)
 	require.NoError(t, err)
+	require.Equal(t, 2, args.SnmpConcurrency)
 	require.Equal(t, "modules.yml", args.ConfigFile)
 	require.Equal(t, 2, len(args.Targets))
 
@@ -50,7 +52,7 @@ func TestUnmarshalAlloy(t *testing.T) {
 
 	require.Contains(t, "network_router_2", args.Targets[1].Name)
 	require.Contains(t, "192.168.1.3", args.Targets[1].Target)
-	require.Contains(t, "mikrotik", args.Targets[1].Module)
+	require.Contains(t, "system,mikrotik", args.Targets[1].Module)
 	require.Contains(t, "private", args.Targets[1].WalkParams)
 	require.Empty(t, args.Targets[1].Auth)
 
@@ -90,6 +92,7 @@ func TestUnmarshalAlloyTargets(t *testing.T) {
 	var args Arguments
 	err := syntax.Unmarshal([]byte(alloyCfg), &args)
 	require.NoError(t, err)
+	require.Equal(t, 1, args.SnmpConcurrency)
 	require.Equal(t, "modules.yml", args.ConfigFile)
 	require.Equal(t, 2, len(args.TargetsList))
 

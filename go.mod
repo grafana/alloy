@@ -170,7 +170,7 @@ require (
 	github.com/prometheus/node_exporter v1.6.0
 	github.com/prometheus/procfs v0.15.1
 	github.com/prometheus/prometheus v0.55.1 // a.k.a. v2.51.2
-	github.com/prometheus/snmp_exporter v0.26.0 // if you update the snmp_exporter version, make sure to update the SNMP_VERSION in _index
+	github.com/prometheus/snmp_exporter v0.27.0 // if you update the snmp_exporter version, make sure to update the SNMP_VERSION in _index
 	github.com/prometheus/statsd_exporter v0.22.8
 	github.com/richardartoul/molecule v1.0.1-0.20221107223329-32cfee06a052
 	github.com/rogpeppe/go-internal v1.13.1
@@ -541,7 +541,7 @@ require (
 	github.com/googleapis/gax-go/v2 v2.12.5 // indirect
 	github.com/gophercloud/gophercloud v1.13.0 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
-	github.com/gosnmp/gosnmp v1.37.0 // indirect
+	github.com/gosnmp/gosnmp v1.38.0 // indirect
 	github.com/grafana/go-offsets-tracker v0.1.7 // indirect
 	github.com/grafana/gomemcache v0.0.0-20231204155601-7de47a8c3cb0 // indirect
 	github.com/grafana/jfr-parser v0.9.2 // indirect
@@ -709,7 +709,7 @@ require (
 	github.com/prometheus-community/go-runit v0.1.0 // indirect
 	github.com/prometheus-community/prom-label-proxy v0.6.0 // indirect
 	github.com/prometheus/alertmanager v0.27.0 // indirect
-	github.com/prometheus/exporter-toolkit v0.13.1 // indirect
+	github.com/prometheus/exporter-toolkit v0.13.2 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 // indirect
 	github.com/relvacode/iso8601 v1.6.0 // indirect
 	github.com/remeh/sizedwaitgroup v1.0.0 // indirect
@@ -882,6 +882,7 @@ require (
 	github.com/containerd/typeurl/v2 v2.2.0 // indirect
 	github.com/containers/common v0.61.0 // indirect
 	github.com/deneonet/benc v1.1.2 // indirect
+	github.com/itchyny/timefmt-go v0.1.6 // indirect
 	github.com/onsi/ginkgo/v2 v2.21.0 // indirect
 	github.com/onsi/gomega v1.35.1 // indirect
 	go.etcd.io/bbolt v1.3.11 // indirect
