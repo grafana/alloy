@@ -289,7 +289,7 @@ controller:
   extraContainers: []
 
 networkPolicy:
-  enabled: true
+  enabled: false
   flavor: kubernetes
 
   ingress:
