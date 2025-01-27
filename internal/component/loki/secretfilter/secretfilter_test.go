@@ -430,6 +430,31 @@ func TestPartialMasking(t *testing.T) {
 	}
 }
 
+func TestHash(t *testing.T) {
+	// Hash random strings
+	for range 15 {
+		secret := generateRandomString(rand.Intn(50))
+		hashed := hashSecret(secret)
+		require.NotEmpty(t, hashed)
+		require.NotEqual(t, secret, hashed)
+	}
+	// Check against some known values
+	require.Equal(t, "6ca13d52ca70c883e0f0bb101e425a89", hashSecret("abc123"))
+	require.Equal(t, "c7be1ed902fb8dd4d48997c6452f5d7e", hashSecret("This is a test"))
+	require.Equal(t, "54cca69c28704ad067bcf29253f1a4b3", hashSecret("Longer string with more characters"))
+
+}
+
+func generateRandomString(length int) string {
+	// Random string to be used as a secret
+	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	b := make([]byte, length)
+	for i := range b {
+		b[i] = charset[rand.Intn(len(charset))]
+	}
+	return string(b)
+}
+
 func checkPartialMasking(t *testing.T, partialMasking int, secretLength int, expectedPrefixLength int) {
 	component := &Component{}
 	component.args = Arguments{PartialMask: uint(partialMasking)}
