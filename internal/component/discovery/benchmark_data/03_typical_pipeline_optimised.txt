@@ -2,11 +2,11 @@ goos: darwin
 goarch: arm64
 pkg: github.com/grafana/alloy/internal/component/discovery
 cpu: Apple M2
-Benchmark_Targets_TypicalPipeline-8   	      36	  31346274 ns/op	39374500 B/op	  121373 allocs/op
-Benchmark_Targets_TypicalPipeline-8   	      36	  31289104 ns/op	39373371 B/op	  121363 allocs/op
-Benchmark_Targets_TypicalPipeline-8   	      32	  31354146 ns/op	39375356 B/op	  121370 allocs/op
-Benchmark_Targets_TypicalPipeline-8   	      36	  31117051 ns/op	39374880 B/op	  121372 allocs/op
-Benchmark_Targets_TypicalPipeline-8   	      36	  31220479 ns/op	39376100 B/op	  121377 allocs/op
-Benchmark_Targets_TypicalPipeline-8   	      36	  31204558 ns/op	39331845 B/op	  121371 allocs/op
+Benchmark_Targets_TypicalPipeline-8   	      37	  30833760 ns/op	39329354 B/op	  121357 allocs/op
+Benchmark_Targets_TypicalPipeline-8   	      36	  30976884 ns/op	39332137 B/op	  121369 allocs/op
+Benchmark_Targets_TypicalPipeline-8   	      36	  30991049 ns/op	39330710 B/op	  121365 allocs/op
+Benchmark_Targets_TypicalPipeline-8   	      36	  31083038 ns/op	39374131 B/op	  121370 allocs/op
+Benchmark_Targets_TypicalPipeline-8   	      36	  31207431 ns/op	39335620 B/op	  121384 allocs/op
+Benchmark_Targets_TypicalPipeline-8   	      36	  31276877 ns/op	39332212 B/op	  121370 allocs/op
 PASS
-ok  	github.com/grafana/alloy/internal/component/discovery	13.348s
+ok  	github.com/grafana/alloy/internal/component/discovery	13.233s
