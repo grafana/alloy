@@ -151,6 +151,7 @@ func TestConvert_Routes(t *testing.T) {
 		Patterns:       args.Patterns,
 		IgnorePatterns: args.IgnorePatterns,
 		IgnoredEvents:  transform.IgnoreMode(args.IgnoredEvents),
+		WildcardChar:   "*",
 	}
 
 	config := args.Convert()
@@ -168,8 +169,10 @@ func TestConvert_Attributes(t *testing.T) {
 	expectedConfig := beyla.Attributes{
 		InstanceID: beyla.DefaultConfig.Attributes.InstanceID,
 		Kubernetes: transform.KubernetesDecorator{
-			Enable:               kubeflags.EnableFlag(args.Kubernetes.Enable),
-			InformersSyncTimeout: 30 * time.Second,
+			Enable:                kubeflags.EnableFlag(args.Kubernetes.Enable),
+			InformersSyncTimeout:  30 * time.Second,
+			InformersResyncPeriod: 30 * time.Minute,
+			MetadataSources:       beyla.DefaultConfig.Attributes.Kubernetes.MetadataSources,
 		},
 		HostID: beyla.HostIDConfig{
 			FetchTimeout: 500 * time.Millisecond,

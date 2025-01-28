@@ -89,6 +89,15 @@ type EndpointConfig struct {
 	// How many concurrent queues to have.
 	Parallelism    uint              `alloy:"parallelism,attr,optional"`
 	ExternalLabels map[string]string `alloy:"external_labels,attr,optional"`
+	TLSConfig      *TLSConfig        `alloy:"tls_config,block,optional"`
+	RoundRobin     bool              `alloy:"enable_round_robin,attr,optional"`
+}
+
+type TLSConfig struct {
+	CA                 string            `alloy:"ca_pem,attr,optional"`
+	Cert               string            `alloy:"cert_pem,attr,optional"`
+	Key                alloytypes.Secret `alloy:"key_pem,attr,optional"`
+	InsecureSkipVerify bool              `alloy:"insecure_skip_verify,attr,optional"`
 }
 
 var UserAgent = fmt.Sprintf("Alloy/%s", version.Version)
@@ -105,12 +114,19 @@ func (cc EndpointConfig) ToNativeType() types.ConnectionConfig {
 		FlushInterval:    cc.FlushInterval,
 		ExternalLabels:   cc.ExternalLabels,
 		Connections:      cc.Parallelism,
+		UseRoundRobin:    cc.RoundRobin,
 	}
 	if cc.BasicAuth != nil {
 		tcc.BasicAuth = &types.BasicAuth{
 			Username: cc.BasicAuth.Username,
 			Password: string(cc.BasicAuth.Password),
 		}
+	}
+	if cc.TLSConfig != nil {
+		tcc.InsecureSkipVerify = cc.TLSConfig.InsecureSkipVerify
+		tcc.TLSCert = cc.TLSConfig.Cert
+		tcc.TLSKey = string(cc.TLSConfig.Key)
+		tcc.TLSCACert = cc.TLSConfig.CA
 	}
 	return tcc
 }

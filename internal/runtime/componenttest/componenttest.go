@@ -191,3 +191,13 @@ func (c *Controller) Update(args component.Arguments) error {
 	}
 	return c.inner.Update(args)
 }
+
+// GetComponent retrieves the component under test. It should only be called
+// after Run()
+func (c *Controller) GetComponent() (component.Component, error) {
+	if c.inner == nil {
+		return nil, fmt.Errorf("component was nil. Did you call Run()? %w", component.ErrComponentNotFound)
+	}
+
+	return c.inner, nil
+}

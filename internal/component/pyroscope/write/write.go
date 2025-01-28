@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/grafana/pyroscope/api/model/labelset"
 	"github.com/oklog/run"
 	commonconfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
@@ -189,7 +190,10 @@ func NewFanOut(opts component.Options, config Arguments, metrics *metrics) (*fan
 		if err != nil {
 			return nil, err
 		}
-		pushClients = append(pushClients, pushv1connect.NewPusherServiceClient(httpClient, endpoint.URL, WithUserAgent(userAgent)))
+		pushClients = append(
+			pushClients,
+			pushv1connect.NewPusherServiceClient(httpClient, endpoint.URL, WithUserAgent(userAgent)),
+		)
 		ingestClients[endpoint] = httpClient
 	}
 	return &fanOutClient{
@@ -202,7 +206,10 @@ func NewFanOut(opts component.Options, config Arguments, metrics *metrics) (*fan
 }
 
 // Push implements the PusherServiceClient interface.
-func (f *fanOutClient) Push(ctx context.Context, req *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
+func (f *fanOutClient) Push(
+	ctx context.Context,
+	req *connect.Request[pushv1.PushRequest],
+) (*connect.Response[pushv1.PushResponse], error) {
 	// Don't flow the context down to the `run.Group`.
 	// We want to fan out to all even in case of failures to one.
 	var (
@@ -240,7 +247,8 @@ func (f *fanOutClient) Push(ctx context.Context, req *connect.Request[pushv1.Pus
 					f.metrics.sentProfiles.WithLabelValues(f.config.Endpoints[i].URL).Add(float64(profileCount))
 					break
 				}
-				level.Warn(f.opts.Logger).Log("msg", "failed to push to endpoint", "endpoint", f.config.Endpoints[i].URL, "err", err)
+				level.Warn(f.opts.Logger).
+					Log("msg", "failed to push to endpoint", "endpoint", f.config.Endpoints[i].URL, "err", err)
 				if !shouldRetry(err) {
 					break
 				}
@@ -253,7 +261,8 @@ func (f *fanOutClient) Push(ctx context.Context, req *connect.Request[pushv1.Pus
 			if err != nil {
 				f.metrics.droppedBytes.WithLabelValues(f.config.Endpoints[i].URL).Add(float64(reqSize))
 				f.metrics.droppedProfiles.WithLabelValues(f.config.Endpoints[i].URL).Add(float64(profileCount))
-				level.Warn(f.opts.Logger).Log("msg", "final error sending to profiles to endpoint", "endpoint", f.config.Endpoints[i].URL, "err", err)
+				level.Warn(f.opts.Logger).
+					Log("msg", "final error sending to profiles to endpoint", "endpoint", f.config.Endpoints[i].URL, "err", err)
 				errs = multierr.Append(errs, err)
 			}
 			return err
@@ -386,14 +395,14 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 			// Handle labels
 			query := profile.URL.Query()
 			if nameParam := query.Get("name"); nameParam != "" {
-				key, err := ParseKey(nameParam)
+				ls, err := labelset.Parse(nameParam)
 				if err != nil {
 					return err
 				}
 				for k, v := range f.config.ExternalLabels {
-					key.labels[k] = v
+					ls.Add(k, v)
 				}
-				query.Set("name", key.Normalized())
+				query.Set("name", ls.Normalized())
 			}
 			u.RawQuery = query.Encode()
 

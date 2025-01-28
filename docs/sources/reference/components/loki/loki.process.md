@@ -258,6 +258,10 @@ If set to `false`, the `_extracted` suffix will be appended to an already existi
 When `drop_invalid_labels` is set to `true`, the stage drops fields that are not valid label names.
 If set to `false`, the stage will automatically convert them into valid labels replacing invalid characters with underscores.
 
+The `eventlogmessage` stage only extracts lines with the key:value format.
+All non-alpha characters in the key are replaced with underscores.
+For example, `\tSecurity ID` is extracted as `_Security_ID`.
+
 #### Example combined with `stage.json`
 
 ```alloy

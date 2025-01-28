@@ -30,6 +30,14 @@ The following arguments are supported:
 Name               | Type          | Description                                  | Default | Required
 -------------------|---------------|----------------------------------------------|---------|---------
 `extra_log_labels` | `map(string)` | Extra labels to attach to emitted log lines. | `{}`    | no
+`log_format`       | `string`      | Export format for the logs.                  | `logfmt`| no
+
+### Log format
+
+The following strings are recognized as valid log line formats:
+
+* `"logfmt"`: Export logs as [logfmt](https://brandur.org/logfmt) lines.
+* `"json"`: Export logs as JSON objects.
 
 ## Blocks
 
