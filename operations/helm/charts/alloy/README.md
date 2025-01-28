@@ -87,6 +87,7 @@ useful if just using the default DaemonSet isn't sufficient.
 | controller.initContainers | list | `[]` |  |
 | controller.nodeSelector | object | `{}` | nodeSelector to apply to Grafana Alloy pods. |
 | controller.parallelRollout | bool | `true` | Whether to deploy pods in parallel. Only used when controller.type is 'statefulset'. |
+| controller.minReadySeconds | int | `10` | How many additional seconds to wait before considering a pod ready. |
 | controller.podAnnotations | object | `{}` | Extra pod annotations to add. |
 | controller.podDisruptionBudget | object | `{"enabled":false,"maxUnavailable":null,"minAvailable":null}` | PodDisruptionBudget configuration. |
 | controller.podDisruptionBudget.enabled | bool | `false` | Whether to create a PodDisruptionBudget for the controller. |
