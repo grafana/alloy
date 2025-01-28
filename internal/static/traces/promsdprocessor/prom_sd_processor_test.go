@@ -91,7 +91,7 @@ func TestSyncGroups(t *testing.T) {
 				},
 			},
 			expected: map[string]discovery.Target{
-				"127.0.0.1": {},
+				"127.0.0.1": discovery.NewEmptyTarget(),
 			},
 		},
 	}
