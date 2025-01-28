@@ -213,7 +213,7 @@ integrations:
         snmp_context: dummyContext
       - name: network_router_2
         address: 192.168.1.3
-        module: mikrotik
+        module: system,mikrotik
         walk_params: private
         auth: private
         snmp_context: dummyContext
