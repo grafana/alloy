@@ -29,7 +29,11 @@ import (
 	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
-const name = "database_observability.mysql"
+const (
+	name        = "database_observability.mysql"
+	querySample = "QuerySample"
+	schemaTable = "SchemaTable"
+)
 
 func init() {
 	component.Register(component.Registration{
@@ -50,11 +54,11 @@ var (
 )
 
 type Arguments struct {
-	DataSourceName   alloytypes.Secret   `alloy:"data_source_name,attr"`
-	CollectInterval  time.Duration       `alloy:"collect_interval,attr,optional"`
-	ForwardTo        []loki.LogsReceiver `alloy:"forward_to,attr"`
-	EnableCollectors []string            `alloy:"enable_collectors,attr,optional"`
-	//DisableCollectors []string            `alloy:"disable_collectors,attr,optional"`
+	DataSourceName    alloytypes.Secret   `alloy:"data_source_name,attr"`
+	CollectInterval   time.Duration       `alloy:"collect_interval,attr,optional"`
+	ForwardTo         []loki.LogsReceiver `alloy:"forward_to,attr"`
+	EnableCollectors  []string            `alloy:"enable_collectors,attr,optional"`
+	DisableCollectors []string            `alloy:"disable_collectors,attr,optional"`
 }
 
 var DefaultArguments = Arguments{
@@ -204,21 +208,21 @@ func (c *Component) Update(args component.Arguments) error {
 	return nil
 }
 
-func getCollectors(a Arguments) map[string]bool {
+func enableOrDisableCollectors(a Arguments) map[string]bool {
 	collectors := map[string]bool{
-		"QuerySample": false,
-		"SchemaTable": false,
+		querySample: true,
+		schemaTable: true,
 	}
 
 	// Explicitly disable/enable specific collectors.
-	//for _, disabled := range a.DisableCollectors {
-	//	for c := range collectors {
-	//		if c == disabled {
-	//			collectors[c] = false
-	//			break
-	//		}
-	//	}
-	//}
+	for _, disabled := range a.DisableCollectors {
+		for c := range collectors {
+			if c == disabled {
+				collectors[c] = false
+				break
+			}
+		}
+	}
 	for _, enabled := range a.EnableCollectors {
 		for c := range collectors {
 			if c == enabled {
@@ -247,9 +251,9 @@ func (c *Component) startCollectors() error {
 
 	entryHandler := loki.NewEntryHandler(c.handler.Chan(), func() {})
 
-	collectors := getCollectors(c.args)
+	collectors := enableOrDisableCollectors(c.args)
 
-	if _, ok := collectors["QuerySample"]; ok {
+	if _, ok := collectors[querySample]; ok {
 		qsCollector, err := collector.NewQuerySample(collector.QuerySampleArguments{
 			DB:              dbConnection,
 			InstanceKey:     c.instanceKey,
@@ -268,7 +272,7 @@ func (c *Component) startCollectors() error {
 		c.collectors = append(c.collectors, qsCollector)
 	}
 
-	if _, ok := collectors["SchemaTable"]; ok {
+	if _, ok := collectors[schemaTable]; ok {
 		stCollector, err := collector.NewSchemaTable(collector.SchemaTableArguments{
 			DB:              dbConnection,
 			InstanceKey:     c.instanceKey,
@@ -287,6 +291,7 @@ func (c *Component) startCollectors() error {
 		c.collectors = append(c.collectors, stCollector)
 	}
 
+	// Connection Info collector is always enabled
 	ciCollector, err := collector.NewConnectionInfo(collector.ConnectionInfoArguments{
 		DSN:      string(c.args.DataSourceName),
 		Registry: c.registry,
