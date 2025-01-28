@@ -31,5 +31,21 @@ All newly reported data is documented in the CHANGELOG.
 
 You can use the `--disable-reporting` [command line flag][] to disable the reporting and opt-out of the data collection.
 
+## Opt-out of data collection with ansible
+
+Example:
+```
+- name: Install Alloy
+  hosts: all
+  become: true
+  tasks:
+    - name: Install Alloy
+      ansible.builtin.include_role:
+        name: grafana.grafana.alloy
+      vars:
+        alloy_env_file_vars:
+          CUSTOM_ARGS: "--disable-reporting"
+```
+
 [components]: ../get-started/components/
 [command line flag]: ../reference/cli/run/
