@@ -32,6 +32,8 @@ Main (unreleased)
 
 - Bump snmp_exporter and embedded modules to 0.27.0. Add support for multi-module handling by comma separation and expose argument to increase SNMP polling concurrency for `prometheus.exporter.snmp`. (@v-zhuravlev)
 
+- (_Experimental_) Add enable/disable collector configurability to `database_observability.mysql` (@fridgepoet)
+
 v1.6.1
 -----------------
 
