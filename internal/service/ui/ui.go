@@ -8,6 +8,7 @@ import (
 	"path"
 
 	"github.com/gorilla/mux"
+
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/service"
 	http_service "github.com/grafana/alloy/internal/service/http"

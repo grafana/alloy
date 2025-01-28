@@ -10,13 +10,14 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/prometheus/common/model"
 	"go.opentelemetry.io/collector/client"
 	otelconsumer "go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	semconv "go.opentelemetry.io/collector/semconv/v1.5.0"
+
+	"github.com/grafana/alloy/internal/component/discovery"
 )
 
 const (
@@ -27,7 +28,7 @@ const (
 	// OperationTypeUpsert does both of above
 	OperationTypeUpsert = "upsert"
 
-	//TODO: It'd be cleaner to get these from the otel semver package?
+	// TODO: It'd be cleaner to get these from the otel semver package?
 	//      Not all are in semver though. E.g. "k8s.pod.ip" is internal inside the k8sattributesprocessor.
 	PodAssociationIPLabel       = "ip"
 	PodAssociationOTelIPLabel   = "net.host.ip"
@@ -230,7 +231,7 @@ func (c *Consumer) getConnectionIP(ctx context.Context) string {
 }
 
 func GetHostFromLabels(labels discovery.Target) (string, error) {
-	address, ok := labels[model.AddressLabel]
+	address, ok := labels.Get(model.AddressLabel)
 	if !ok {
 		return "", fmt.Errorf("unable to find address in labels %q", labels.Labels())
 	}
@@ -247,12 +248,6 @@ func GetHostFromLabels(labels discovery.Target) (string, error) {
 	return host, nil
 }
 
-func NewTargetsWithNonInternalLabels(labels discovery.Target) discovery.Target {
-	res := make(discovery.Target)
-	for k, v := range labels {
-		if !strings.HasPrefix(k, "__") {
-			res[k] = v
-		}
-	}
-	return res
+func NewTargetsWithNonInternalLabels(target discovery.Target) discovery.Target {
+	return discovery.NewTargetFromLabelSet(target.NonReservedLabelSet())
 }

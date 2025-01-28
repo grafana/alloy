@@ -375,20 +375,11 @@ func (c *Component) NotifyClusterChange() {
 }
 
 func (c *Component) componentTargetsToProm(jobName string, tgs []discovery.Target) map[string][]*targetgroup.Group {
-	promGroup := &targetgroup.Group{Source: jobName}
+	promGroup := &targetgroup.Group{Source: jobName, Targets: make([]model.LabelSet, 0, len(tgs))}
 	for _, tg := range tgs {
-		promGroup.Targets = append(promGroup.Targets, convertLabelSet(tg))
+		promGroup.Targets = append(promGroup.Targets, tg.LabelSet())
 	}
-
 	return map[string][]*targetgroup.Group{jobName: {promGroup}}
-}
-
-func convertLabelSet(tg discovery.Target) model.LabelSet {
-	lset := make(model.LabelSet, len(tg))
-	for k, v := range tg {
-		lset[model.LabelName(k)] = model.LabelValue(v)
-	}
-	return lset
 }
 
 // DebugInfo implements component.DebugComponent.
