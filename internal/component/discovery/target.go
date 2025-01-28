@@ -16,6 +16,8 @@ type Target struct {
 	// Prometheus codebase (even for logs, we have loki.relabel) and this representation helps reduce
 	// unnecessary conversions and allocations. We can add another internal representations in the future if needed.
 	labelSet commonlabels.LabelSet
+	// NOTE: it is essential that equality between targets continues to work as it is used by Alloy runtime to
+	// decide whether updates need to be propagated throughout the pipeline. See tests.
 }
 
 var (
@@ -40,7 +42,7 @@ func NewTargetFromLabelSet(targetLabels commonlabels.LabelSet) Target {
 	}
 }
 
-// TODO(thampiotr): 37% allocs
+// TODO(thampiotr): 27% allocs
 // TODO(thampiotr): discovery.*
 func NewTargetFromSpecificAndBaseLabelSet(specific, base commonlabels.LabelSet) Target {
 	merged := make(commonlabels.LabelSet, len(specific)+len(base))
@@ -53,7 +55,7 @@ func NewTargetFromSpecificAndBaseLabelSet(specific, base commonlabels.LabelSet) 
 	return NewTargetFromLabelSet(merged)
 }
 
-// TODO(thampiotr): 23% allocs
+// TODO(thampiotr): 27% allocs
 // TODO(thampiotr): discovery.relabel
 func NewTargetFromModelLabels(labels modellabels.Labels) Target {
 	// TODO(thampiotr): save labels as cached value?
@@ -74,14 +76,14 @@ func NewTargetFromMap(m map[string]string) Target {
 	return NewTargetFromLabelSet(l)
 }
 
-// TODO(thampiotr): 12% allocs
+// TODO(thampiotr): 13% allocs
 // TODO(thampiotr): discovery.relabel
 func (t Target) Labels() modellabels.Labels {
 	// TODO(thampiotr): We can cache this!
 	return t.LabelsWithPredicate(nil)
 }
 
-// TODO(thampiotr): 11% allocs
+// TODO(thampiotr): 13% allocs
 // TODO(thampiotr): prometheus.scrape / distributed_targets
 func (t Target) NonMetaLabels() modellabels.Labels {
 	return t.LabelsWithPredicate(func(key string) bool {
@@ -172,12 +174,6 @@ func (t Target) LabelSet() commonlabels.LabelSet {
 
 func (t Target) Len() int {
 	return len(t.labelSet)
-}
-
-// Equals should be called to compare two Target objects.
-// TODO(thampiotr): make sure this is called when Alloy is deciding whether to propagate updates
-func (t Target) Equals(other Target) bool {
-	return t.labelSet.Equal(other.labelSet)
 }
 
 func (t Target) Clone() Target {

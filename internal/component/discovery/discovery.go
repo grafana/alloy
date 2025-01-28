@@ -228,7 +228,6 @@ func toAlloyTargets(cache map[string]*targetgroup.Group) []Target {
 
 	for _, group := range cache {
 		for _, target := range group.Targets {
-			// TODO(thampiotr): Merge 20% allocs
 			allTargets = append(allTargets, NewTargetFromSpecificAndBaseLabelSet(target, group.Labels))
 		}
 	}

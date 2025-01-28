@@ -33,7 +33,7 @@ func TestDecodeMap(t *testing.T) {
 	require.NoError(t, eval.Evaluate(scope, &actual))
 	require.Equal(t, expected, actual)
 
-	// Test can use it like a map
+	// Test can iterate over it
 	var seen []string
 	actual.ForEachLabel(func(k string, v string) bool {
 		seen = append(seen, fmt.Sprintf("%s=%s", k, v))
@@ -84,8 +84,8 @@ func TestConvertFromNative(t *testing.T) {
 }
 
 func TestEquals(t *testing.T) {
+	// NOTE: if we start caching anything as a field, the equality may break. We should test it.
 	t1 := NewTargetFromMap(map[string]string{"hip": "hop", "boom": "bap"})
-	// TODO(thampiotr): if we start caching this as a field, the equality may break.
 	require.Equal(t, 2, t1.Labels().Len())
 	t2 := NewTargetFromMap(map[string]string{"hip": "hop"})
 	t2.Set("boom", "bap")
