@@ -3,11 +3,9 @@ package collector
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/require"
@@ -46,7 +44,6 @@ func TestConnectionInfo(t *testing.T) {
 		collector, err := NewConnectionInfo(ConnectionInfoArguments{
 			DSN:      tc.dsn,
 			Registry: reg,
-			Logger:   log.NewLogfmtLogger(os.Stderr),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
