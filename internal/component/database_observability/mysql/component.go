@@ -215,7 +215,6 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 		schemaTable: true,
 	}
 
-	// Explicitly disable/enable specific collectors.
 	for _, disabled := range a.DisableCollectors {
 		for c := range collectors {
 			if c == disabled {
