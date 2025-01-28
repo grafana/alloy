@@ -261,7 +261,8 @@ Replace the following:
 
 ### Set instance label to target url
 
-Some dashboards may expect the `instance` label on the Blackbox metrics to contain the value of the target url. Here's how to achieve that with Prometheus relabeling:
+Some dashboards may expect the `instance` label on the Blackbox metrics to contain the value of the target URL.
+The following example demonstrates how to achieve that with Prometheus relabeling:
 
 ```alloy
 prometheus.exporter.blackbox "example" {
