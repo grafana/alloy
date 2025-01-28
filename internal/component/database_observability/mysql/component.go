@@ -209,6 +209,7 @@ func (c *Component) Update(args component.Arguments) error {
 }
 
 func enableOrDisableCollectors(a Arguments) map[string]bool {
+	// configurable collectors and their default enabled/disabled value
 	collectors := map[string]bool{
 		querySample: true,
 		schemaTable: true,
