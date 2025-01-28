@@ -25,7 +25,7 @@ var (
 )
 
 func NewEmptyTarget() Target {
-	return NewTargetFromLabelSet(nil)
+	return NewTargetFromLabelSet(make(commonlabels.LabelSet))
 }
 
 // NewEmptyTargetWithSize creates an empty target, but allocates the allocSize of space for labels. These can be set
