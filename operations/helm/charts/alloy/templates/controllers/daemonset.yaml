@@ -11,7 +11,7 @@ metadata:
   {{- end }}
 spec:
   {{- if ge (int .Capabilities.KubeVersion.Minor) 22 }}
-  minReadySeconds: 10
+  minReadySeconds: {{ .Values.controller.minReadySeconds }}
   {{- end }}
   selector:
     matchLabels:
