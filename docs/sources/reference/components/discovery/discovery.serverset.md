@@ -8,7 +8,7 @@ labels:
 title: discovery.serverset
 ---
 
-# discovery.serverset
+# `discovery.serverset`
 
 `discovery.serverset` discovers [Serversets][] stored in Zookeeper and exposes them as targets.
 Serversets are commonly used by [Finagle][] and [Aurora][].

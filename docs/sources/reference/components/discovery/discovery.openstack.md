@@ -8,7 +8,7 @@ labels:
 title: discovery.openstack
 ---
 
-# discovery.openstack
+# `discovery.openstack`
 
 `discovery.openstack` discovers [OpenStack][] Nova instances and exposes them as targets.
 
@@ -27,25 +27,25 @@ discovery.openstack "<LABEL>" {
 
 You can use the following arguments with `discovery.openstack`:
 
-Name                            | Type       | Description                                                                                           | Default  | Required
---------------------------------|------------|-------------------------------------------------------------------------------------------------------|----------|---------
-`region`                        | `string`   | OpenStack region.                                                                                     |          | yes
-`role`                          | `string`   | Role of the discovered targets.                                                                       |          | yes
-`all_tenants`                   | `bool`     | Whether the service discovery should list all instances for all projects.                             | `false`  | no
-`application_credential_id`     | `string`   | OpenStack application credential ID for the Identity V2 and V3 APIs.                                  |          | no
-`application_credential_name`   | `string`   | OpenStack application credential name for the Identity V2 and V3 APIs.                                |          | no
-`application_credential_secret` | `secret`   | OpenStack application credential secret for the Identity V2 and V3 APIs.                              |          | no
-`availability`                  | `string`   | The availability of the endpoint to connect to.                                                       | `public` | no
-`domain_id`                     | `string`   | OpenStack domain ID for the Identity V2 and V3 APIs.                                                  |          | no
-`domain_name`                   | `string`   | OpenStack domain name for the Identity V2 and V3 APIs.                                                |          | no
-`identity_endpoint`             | `string`   | Specifies the HTTP endpoint that is required to work with the Identity API of the appropriate version |          | no
-`password`                      | `secret`   | Password for the Identity V2 and V3 APIs.                                                             |          | no
-`port`                          | `int`      | The port to scrape metrics from.                                                                      | `80`     | no
-`project_id`                    | `string`   | OpenStack project ID for the Identity V2 and V3 APIs.                                                 |          | no
-`project_name`                  | `string`   | OpenStack project name for the Identity V2 and V3 APIs.                                               |          | no
-`refresh_interval`              | `duration` | Refresh interval to re-read the instance list.                                                        | `60s`    | no
-`userid`                        | `string`   | OpenStack user ID for the Identity V2 and V3 APIs.                                                    |          | no
-`username`                      | `string`   | OpenStack username for the Identity V2 and V3 APIs.                                                   |          | no
+Name                            | Type       | Description                                                                                          | Default  | Required
+--------------------------------|------------|------------------------------------------------------------------------------------------------------|----------|---------
+`region`                        | `string`   | OpenStack region.                                                                                    |          | yes
+`role`                          | `string`   | Role of the discovered targets.                                                                      |          | yes
+`all_tenants`                   | `bool`     | Whether the service discovery should list all instances for all projects.                            | `false`  | no
+`application_credential_id`     | `string`   | OpenStack application credential ID for the Identity V2 and V3 APIs.                                 |          | no
+`application_credential_name`   | `string`   | OpenStack application credential name for the Identity V2 and V3 APIs.                               |          | no
+`application_credential_secret` | `secret`   | OpenStack application credential secret for the Identity V2 and V3 APIs.                             |          | no
+`availability`                  | `string`   | The availability of the endpoint to connect to.                                                      | `public` | no
+`domain_id`                     | `string`   | OpenStack domain ID for the Identity V2 and V3 APIs.                                                 |          | no
+`domain_name`                   | `string`   | OpenStack domain name for the Identity V2 and V3 APIs.                                               |          | no
+`identity_endpoint`             | `string`   | Specifies the HTTP endpoint that's required to work with the Identity API of the appropriate version |          | no
+`password`                      | `secret`   | Password for the Identity V2 and V3 APIs.                                                            |          | no
+`port`                          | `int`      | The port to scrape metrics from.                                                                     | `80`     | no
+`project_id`                    | `string`   | OpenStack project ID for the Identity V2 and V3 APIs.                                                |          | no
+`project_name`                  | `string`   | OpenStack project name for the Identity V2 and V3 APIs.                                              |          | no
+`refresh_interval`              | `duration` | Refresh interval to re-read the instance list.                                                       | `60s`    | no
+`userid`                        | `string`   | OpenStack user ID for the Identity V2 and V3 APIs.                                                   |          | no
+`username`                      | `string`   | OpenStack username for the Identity V2 and V3 APIs.                                                  |          | no
 
 `role` must be one of `hypervisor` or `instance`.
 
@@ -67,13 +67,13 @@ Some providers allow you to specify a `project_name` instead of the `project_id`
 
 You can use the following blocks with `discovery.openstack`:
 
-Block          | Description                                          | Required
----------------|------------------------------------------------------|---------
-[tls_config][] | TLS configuration for requests to the OpenStack API. | no
+Block                      | Description                                          | Required
+---------------------------|------------------------------------------------------|---------
+[`tls_config`][tls_config] | TLS configuration for requests to the OpenStack API. | no
 
 [tls_config]: #tls_config
 
-### tls_config
+### `tls_config`
 
 {{< docs/shared lookup="reference/components/tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -85,7 +85,7 @@ Name      | Type                | Description
 ----------|---------------------|------------------------------------------------------
 `targets` | `list(map(string))` | The set of targets discovered from the OpenStack API.
 
-### hypervisor
+### `hypervisor` role
 
 The `hypervisor` role discovers one target per Nova hypervisor node.
 The target address defaults to the `host_ip` attribute of the hypervisor.
@@ -97,7 +97,7 @@ The target address defaults to the `host_ip` attribute of the hypervisor.
 * `__meta_openstack_hypervisor_status`: The hypervisor node's status.
 * `__meta_openstack_hypervisor_type`: The hypervisor node's type.
 
-### instance
+### `instance` role
 
 The `instance` role discovers one target per network interface of Nova instance.
 The target address defaults to the private IP address of the network interface.

@@ -8,7 +8,7 @@ labels:
 title: discovery.triton
 ---
 
-# discovery.triton
+# `discovery.triton`
 
 `discovery.triton` discovers [Triton][] Container Monitors and exposes them as targets.
 
@@ -51,13 +51,13 @@ If you omit `groups`, all containers owned by the requesting account are scraped
 
 You can use the following blocks with `discovery.triton`:
 
-Block          | Description                                       | Required
----------------|---------------------------------------------------|---------
-[tls_config][] | TLS configuration for requests to the Triton API. | no
+Block                      | Description                                       | Required
+---------------------------|---------------------------------------------------|---------
+[`tls_config`][tls_config] | TLS configuration for requests to the Triton API. | no
 
 [tls_config]: #tls_config
 
-### tls_config
+### `tls_config`
 
 The `tls_config` block configures TLS settings for requests to the Triton API.
 
