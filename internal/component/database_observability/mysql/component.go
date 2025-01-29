@@ -253,7 +253,7 @@ func (c *Component) startCollectors() error {
 
 	collectors := enableOrDisableCollectors(c.args)
 
-	if _, ok := collectors[querySample]; ok {
+	if collectors[querySample] {
 		qsCollector, err := collector.NewQuerySample(collector.QuerySampleArguments{
 			DB:              dbConnection,
 			InstanceKey:     c.instanceKey,
@@ -272,7 +272,7 @@ func (c *Component) startCollectors() error {
 		c.collectors = append(c.collectors, qsCollector)
 	}
 
-	if _, ok := collectors[schemaTable]; ok {
+	if collectors[schemaTable] {
 		stCollector, err := collector.NewSchemaTable(collector.SchemaTableArguments{
 			DB:              dbConnection,
 			InstanceKey:     c.instanceKey,
