@@ -8,7 +8,7 @@ labels:
 title: discovery.process
 ---
 
-# discovery.process
+# `discovery.process`
 
 `discovery.process` discovers processes running on the local Linux OS.
 
@@ -93,13 +93,13 @@ The resulting targets are:
 
 You can use the following blocks with `discovery.process`:
 
-Block               | Description                                    | Required
---------------------|------------------------------------------------|---------
-[discover_config][] | Configures which process metadata to discover. | no
+Block                                | Description                                    | Required
+-------------------------------------|------------------------------------------------|---------
+[`discover_config`][discover_config] | Configures which process metadata to discover. | no
 
 [discover_config]: #discover_config
 
-### discover_config
+### `discover_config`
 
 The `discover_config` block describes which process metadata to discover.
 
