@@ -8,7 +8,7 @@ labels:
 title: beyla.ebpf
 ---
 
-# beyla.ebpf
+# `beyla.ebpf`
 
 {{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -50,24 +50,24 @@ If the executable matches only one of the ports in the list, it's considered to 
 
 You can use the following blocks with `beyla.ebpf`:
 
-Block                                                            | Description                                                                                        | Required
------------------------------------------------------------------|----------------------------------------------------------------------------------------------------|---------
-[output][]                                                       | Configures where to send received telemetry data.                                                  | yes
-[attributes][]                                                   | Configures the Beyla attributes for the component.                                                 | no
-attributes > [kubernetes][kubernetes attributes]                 | Configures decorating of the metrics and traces with Kubernetes metadata of the instrumented Pods. | no
-[discovery][]                                                    | Configures the discovery for instrumentable processes matching a given criteria.                   | no
-discovery > [exclude services][services]                         | Configures the services to exclude for the component.                                              | no
-discovery > exclude_services > [kubernetes][kubernetes services] | Configures the Kubernetes services to exclude for the component.                                   | no
-discovery > [services][]                                         | Configures the services to discover for the component.                                             | no
-discovery > services > [kubernetes][kubernetes services]         | Configures the Kubernetes services to discover for the component.                                  | no
-[metrics][]                                                      | Configures which metrics Beyla exposes.                                                            | no
-metrics > [network][]                                            | Configures network metrics options for Beyla.                                                      | no
-[routes][]                                                       | Configures the routes to match HTTP paths into user-provided HTTP routes.                          | no
+Block                                                                  | Description                                                                                        | Required
+-----------------------------------------------------------------------|----------------------------------------------------------------------------------------------------|---------
+[`output`][output]                                                     | Configures where to send received telemetry data.                                                  | yes
+[`attributes`][attributes]                                             | Configures the Beyla attributes for the component.                                                 | no
+`attributes` > [`kubernetes`][kubernetes attributes]                   | Configures decorating of the metrics and traces with Kubernetes metadata of the instrumented Pods. | no
+[`discovery`][discovery]                                               | Configures the discovery for instrumentable processes matching a given criteria.                   | no
+`discovery` > [`exclude_services`][services]                           | Configures the services to exclude for the component.                                              | no
+`discovery` > `exclude_services` > [`kubernetes`][kubernetes services] | Configures the Kubernetes services to exclude for the component.                                   | no
+`discovery` > [`services`][services]                                   | Configures the services to discover for the component.                                             | no
+`discovery` > `services` > [`kubernetes`][kubernetes services]         | Configures the Kubernetes services to discover for the component.                                  | no
+[`metrics`][metrics]                                                   | Configures which metrics Beyla exposes.                                                            | no
+`metrics` > [`network`][network]                                       | Configures network metrics options for Beyla.                                                      | no
+[`routes`][routes]                                                     | Configures the routes to match HTTP paths into user-provided HTTP routes.                          | no
 
 The `>` symbol indicates deeper levels of nesting.
 For example,`attributes > kubernetes` refers to a `kubernetes` block defined inside an `attributes` block.
 
-### output
+### `output`
 
 <span class="badge docs-labels__stage docs-labels__item">Required</span>
 
@@ -83,13 +83,13 @@ You must specify the `output` block, but all its arguments are optional.
 By default, telemetry data is dropped.
 Configure the `traces` argument to send traces data to other components.
 
-### attributes
+### `attributes`
 
 The `attributes` block configures how some attributes for metrics and traces are decorated.
 
 It contains the following block:
 
-#### kubernetes attributes
+#### `kubernetes` attributes
 
 This `kubernetes` block configures the decorating of the metrics and traces with Kubernetes metadata from the instrumented Pods.
 
@@ -116,13 +116,13 @@ If `enable` is set to `false`, the Kubernetes metadata decorator is disabled.
 
 If `enable` is set to `autodetect`, Beyla tries to detect if it's running inside Kubernetes, and enables the metadata decoration if that's the case.
 
-### discovery
+### `discovery`
 
 The `discovery` block configures the discovery for instrumentable processes matching a given criteria.
 
 It contains the following blocks:
 
-#### services
+#### `services`
 
 In some scenarios, Beyla instruments a wide variety of services, such as a Kubernetes DaemonSet that instruments all the services in a node.
 The `services` block allows you to filter the services to instrument based on their metadata. If you specify other selectors in the same services entry,
@@ -143,7 +143,7 @@ It's used to populate the `service.name` OTel property or the `service_name` Pro
 `open_port` accepts a comma-separated list of ports (for example, `80,443`), and port ranges (for example, `8000-8999`).
 If the executable matches only one of the ports in the list, it's considered to match the selection criteria.
 
-#### kubernetes services
+#### `kubernetes` services
 
 This `kubernetes` block filters the services to instrument based on their Kubernetes metadata. If you specify other selectors in the same services entry,
 the instrumented processes need to match all the selector properties.
@@ -159,7 +159,7 @@ Name               | Type          | Description                                
 `replicaset_name`  | `string`      | Regular expression of Kubernetes ReplicaSets to match.                                                      | `""`    | no
 `statefulset_name` | `string`      | Regular expression of Kubernetes StatefulSets to match.                                                     | `""`    | no
 
-### metrics
+### `metrics`
 
 The `metrics` block configures which metrics Beyla collects.
 
@@ -185,7 +185,7 @@ Name               | Type           | Description                               
 * `redis` enables the collection of Redis client/server database metrics.
 * `sql` enables the collection of SQL database client call metrics.
 
-#### network
+#### `network`
 
 The `network` block configures network metrics options for Beyla. You must append `network` to the `features` list in the `metrics` block to enable network metrics.
 
@@ -193,7 +193,7 @@ Name      | Type   | Description                        | Default | Required
 ----------|--------|------------------------------------|---------|---------
 `enabled` | `bool` | Enable network metrics collection. | `false` | no
 
-### routes
+### `routes`
 
 The `routes` block configures the routes to match HTTP paths into user-provided HTTP routes.
 
