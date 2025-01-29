@@ -13,6 +13,7 @@ Main (unreleased)
 ### Features
 
 - Add the possibility to export span events as logs in `otelcol.connector.spanlogs`. (@steve-hb)
+- Add binary version to constants exposed in configuration file syntatx. (@adlots)
 
 ### Enhancements
 
