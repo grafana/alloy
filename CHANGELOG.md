@@ -24,7 +24,11 @@ Main (unreleased)
 
 - (_Experimental_) Fix handling of view table types when detecting schema in `database_observability.mysql` (@matthewnolf)
 
-- (_Experimental_) fix error handling during result set iteration in `database_observability.mysql` (@cristiangreco)
+- (_Experimental_) Fix error handling during result set iteration in `database_observability.mysql` (@cristiangreco)
+
+- (_Experimental_) Better support for table name parsing in `database_observability.mysql` (@cristiangreco)
+
+- (_Experimental_) Better error handling for `database_observability.mysql` (@cristiangreco)
 
 - Add json format support for log export via faro receiver (@ravishankar15)
 
