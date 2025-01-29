@@ -327,6 +327,23 @@ func TestQuerySample(t *testing.T) {
 				`level=info msg="table name parsed" op="query_parsed_table_name" instance="mysql-db" schema="some_schema" digest="abc123" table="employees_eu"`,
 			},
 		},
+		{
+			name: "insert with subquery and join",
+			rows: [][]driver.Value{{
+				"abc123",
+				"some_schema",
+				"INSERT INTO some_table SELECT * FROM departments dep JOIN (SELECT id, name FROM employees_us UNION SELECT id, name FROM employees_eu) employees ON dep.id = employees.id",
+				"2024-01-01T00:00:00.000Z",
+				"1000",
+			}},
+			logs: []string{
+				`level=info msg="query samples fetched" op="query_sample" instance="mysql-db" schema="some_schema" digest="abc123" query_type="insert" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="insert into some_table select * from departments as dep join (select id, name from employees_us union select id, name from employees_eu) as employees on dep.id = employees.id"`,
+				`level=info msg="table name parsed" op="query_parsed_table_name" instance="mysql-db" schema="some_schema" digest="abc123" table="some_table"`,
+				`level=info msg="table name parsed" op="query_parsed_table_name" instance="mysql-db" schema="some_schema" digest="abc123" table="departments"`,
+				`level=info msg="table name parsed" op="query_parsed_table_name" instance="mysql-db" schema="some_schema" digest="abc123" table="employees_us"`,
+				`level=info msg="table name parsed" op="query_parsed_table_name" instance="mysql-db" schema="some_schema" digest="abc123" table="employees_eu"`,
+			},
+		},
 	}
 
 	for _, tc := range testcases {
