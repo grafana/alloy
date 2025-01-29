@@ -3,6 +3,7 @@ package mysql
 import (
 	"testing"
 
+	"github.com/grafana/alloy/internal/component/database_observability/mysql/collector"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -23,8 +24,8 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		actualCollectors := enableOrDisableCollectors(args)
 
 		assert.Equal(t, map[string]bool{
-			querySample: true,
-			schemaTable: true,
+			collector.QuerySampleName: true,
+			collector.SchemaTableName: true,
 		}, actualCollectors)
 	})
 
@@ -42,8 +43,8 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		actualCollectors := enableOrDisableCollectors(args)
 
 		assert.Equal(t, map[string]bool{
-			querySample: true,
-			schemaTable: true,
+			collector.QuerySampleName: true,
+			collector.SchemaTableName: true,
 		}, actualCollectors)
 	})
 
@@ -61,8 +62,8 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		actualCollectors := enableOrDisableCollectors(args)
 
 		assert.Equal(t, map[string]bool{
-			querySample: false,
-			schemaTable: false,
+			collector.QuerySampleName: false,
+			collector.SchemaTableName: false,
 		}, actualCollectors)
 	})
 
@@ -81,8 +82,8 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		actualCollectors := enableOrDisableCollectors(args)
 
 		assert.Equal(t, map[string]bool{
-			querySample: true,
-			schemaTable: true,
+			collector.QuerySampleName: true,
+			collector.SchemaTableName: true,
 		}, actualCollectors)
 	})
 
@@ -101,8 +102,29 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		actualCollectors := enableOrDisableCollectors(args)
 
 		assert.Equal(t, map[string]bool{
-			querySample: true,
-			schemaTable: false,
+			collector.QuerySampleName: true,
+			collector.SchemaTableName: false,
 		}, actualCollectors)
 	})
+
+	t.Run("unknown collectors are ignored", func(t *testing.T) {
+		var exampleDBO11yAlloyConfig = `
+		data_source_name = ""
+		forward_to = []
+		enable_collectors = ["some_string"]
+		disable_collectors = ["another_string"]
+	`
+
+		var args Arguments
+		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
+		require.NoError(t, err)
+
+		actualCollectors := enableOrDisableCollectors(args)
+
+		assert.Equal(t, map[string]bool{
+			collector.QuerySampleName: true,
+			collector.SchemaTableName: true,
+		}, actualCollectors)
+	})
+
 }

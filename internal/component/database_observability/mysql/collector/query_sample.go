@@ -21,6 +21,7 @@ import (
 const (
 	OP_QUERY_SAMPLE            = "query_sample"
 	OP_QUERY_PARSED_TABLE_NAME = "query_parsed_table_name"
+	QuerySampleName            = "query_sample"
 )
 
 const selectQuerySamples = `
@@ -67,7 +68,7 @@ func NewQuerySample(args QuerySampleArguments) (*QuerySample, error) {
 }
 
 func (c *QuerySample) Name() string {
-	return "QuerySample"
+	return QuerySampleName
 }
 
 func (c *QuerySample) Start(ctx context.Context) error {

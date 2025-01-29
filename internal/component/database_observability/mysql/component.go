@@ -30,9 +30,7 @@ import (
 )
 
 const (
-	name        = "database_observability.mysql"
-	querySample = "query_sample"
-	schemaTable = "schema_table"
+	name = "database_observability.mysql"
 )
 
 func init() {
@@ -211,24 +209,18 @@ func (c *Component) Update(args component.Arguments) error {
 func enableOrDisableCollectors(a Arguments) map[string]bool {
 	// configurable collectors and their default enabled/disabled value
 	collectors := map[string]bool{
-		querySample: true,
-		schemaTable: true,
+		collector.QuerySampleName: true,
+		collector.SchemaTableName: true,
 	}
 
 	for _, disabled := range a.DisableCollectors {
-		for c := range collectors {
-			if c == disabled {
-				collectors[c] = false
-				break
-			}
+		if _, ok := collectors[disabled]; ok {
+			collectors[disabled] = false
 		}
 	}
 	for _, enabled := range a.EnableCollectors {
-		for c := range collectors {
-			if c == enabled {
-				collectors[c] = true
-				break
-			}
+		if _, ok := collectors[enabled]; ok {
+			collectors[enabled] = true
 		}
 	}
 
@@ -253,7 +245,7 @@ func (c *Component) startCollectors() error {
 
 	collectors := enableOrDisableCollectors(c.args)
 
-	if collectors[querySample] {
+	if collectors[collector.QuerySampleName] {
 		qsCollector, err := collector.NewQuerySample(collector.QuerySampleArguments{
 			DB:              dbConnection,
 			InstanceKey:     c.instanceKey,
@@ -272,7 +264,7 @@ func (c *Component) startCollectors() error {
 		c.collectors = append(c.collectors, qsCollector)
 	}
 
-	if collectors[schemaTable] {
+	if collectors[collector.QuerySampleName] {
 		stCollector, err := collector.NewSchemaTable(collector.SchemaTableArguments{
 			DB:              dbConnection,
 			InstanceKey:     c.instanceKey,
