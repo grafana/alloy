@@ -8,7 +8,7 @@ labels:
 title: discovery.relabel
 ---
 
-# discovery.relabel
+# `discovery.relabel`
 
 In {{< param "PRODUCT_NAME" >}}, targets are defined as sets of key-value pairs called _labels_.
 
@@ -53,13 +53,13 @@ Name      | Type                | Description        | Default | Required
 
 You can use the following blocks with `discovery.relabel`:
 
-Hierarchy | Block    | Description                           | Required
-----------|----------|---------------------------------------|---------
-rule      | [rule][] | Relabeling rules to apply to targets. | no
+Block          | Description                           | Required
+---------------|---------------------------------------|---------
+[`rule`][rule] | Relabeling rules to apply to targets. | no
 
 [rule]: #rule
 
-### rule
+### `rule`
 
 The `rule` block configures the relabeling rules to apply to targets.
 

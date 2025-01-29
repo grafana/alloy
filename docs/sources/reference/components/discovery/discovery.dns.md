@@ -8,7 +8,7 @@ labels:
 title: discovery.dns
 ---
 
-# discovery.dns
+# `discovery.dns`
 
 `discovery.dns` discovers scrape targets from DNS records.
 
