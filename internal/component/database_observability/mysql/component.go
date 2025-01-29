@@ -41,7 +41,20 @@ func init() {
 		Exports:   Exports{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
-			return New(opts, args.(Arguments))
+			anotherArgs := args.(Arguments)
+			dbConnection, err := sql.Open("mysql", formatDSN(string(anotherArgs.DataSourceName), "parseTime=true"))
+			if err != nil {
+				return nil, err
+			}
+
+			if dbConnection == nil {
+				return nil, errors.New("nil DB connection")
+			}
+			if err = dbConnection.Ping(); err != nil {
+				return nil, err
+			}
+
+			return New(opts, args.(Arguments), dbConnection)
 		},
 	})
 }
@@ -106,7 +119,7 @@ type Component struct {
 	healthErr    *atomic.String
 }
 
-func New(opts component.Options, args Arguments) (*Component, error) {
+func New(opts component.Options, args Arguments, db *sql.DB) (*Component, error) {
 	c := &Component{
 		opts:      opts,
 		args:      args,
@@ -127,6 +140,8 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 		return nil, err
 	}
 	c.baseTarget = baseTarget
+
+	c.dbConnection = db
 
 	if err := c.Update(args); err != nil {
 		return nil, err
@@ -195,8 +210,6 @@ func (c *Component) Update(args component.Arguments) error {
 		c.dbConnection.Close()
 	}
 
-	c.args = args.(Arguments)
-
 	if err := c.startCollectors(); err != nil {
 		c.healthErr.Store(err.Error())
 		return err
@@ -228,26 +241,13 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 }
 
 func (c *Component) startCollectors() error {
-	dbConnection, err := sql.Open("mysql", formatDSN(string(c.args.DataSourceName), "parseTime=true"))
-	if err != nil {
-		return err
-	}
-
-	if dbConnection == nil {
-		return errors.New("nil DB connection")
-	}
-	if err = dbConnection.Ping(); err != nil {
-		return err
-	}
-	c.dbConnection = dbConnection
-
 	entryHandler := loki.NewEntryHandler(c.handler.Chan(), func() {})
 
 	collectors := enableOrDisableCollectors(c.args)
 
 	if collectors[collector.QuerySampleName] {
 		qsCollector, err := collector.NewQuerySample(collector.QuerySampleArguments{
-			DB:              dbConnection,
+			DB:              c.dbConnection,
 			InstanceKey:     c.instanceKey,
 			CollectInterval: c.args.CollectInterval,
 			EntryHandler:    entryHandler,
@@ -266,7 +266,7 @@ func (c *Component) startCollectors() error {
 
 	if collectors[collector.QuerySampleName] {
 		stCollector, err := collector.NewSchemaTable(collector.SchemaTableArguments{
-			DB:              dbConnection,
+			DB:              c.dbConnection,
 			InstanceKey:     c.instanceKey,
 			CollectInterval: c.args.CollectInterval,
 			EntryHandler:    entryHandler,
