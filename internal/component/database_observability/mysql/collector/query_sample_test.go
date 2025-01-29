@@ -348,6 +348,8 @@ func TestQuerySample(t *testing.T) {
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 			require.NoError(t, err)
 			defer db.Close()
@@ -357,7 +359,7 @@ func TestQuerySample(t *testing.T) {
 			collector, err := NewQuerySample(QuerySampleArguments{
 				DB:              db,
 				InstanceKey:     "mysql-db",
-				CollectInterval: time.Minute,
+				CollectInterval: time.Second,
 				EntryHandler:    lokiClient,
 				Logger:          log.NewLogfmtLogger(os.Stderr),
 			})
@@ -387,14 +389,18 @@ func TestQuerySample(t *testing.T) {
 			collector.Stop()
 			lokiClient.Stop()
 
+			require.Eventually(t, func() bool {
+				return collector.Stopped()
+			}, 5*time.Second, 100*time.Millisecond)
+
+			err = mock.ExpectationsWereMet()
+			require.NoError(t, err)
+
 			lokiEntries := lokiClient.Received()
 			for i, entry := range lokiEntries {
 				require.Equal(t, model.LabelSet{"job": database_observability.JobName}, entry.Labels)
 				require.Equal(t, tc.logs[i], entry.Line)
 			}
-
-			err = mock.ExpectationsWereMet()
-			require.NoError(t, err)
 		})
 	}
 }
@@ -402,41 +408,9 @@ func TestQuerySample(t *testing.T) {
 func TestQuerySampleSQLDriverErrors(t *testing.T) {
 	defer goleak.VerifyNone(t)
 
-	t.Run("unrecoverable sql error", func(t *testing.T) {
-		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
-		require.NoError(t, err)
-		defer db.Close()
-
-		lokiClient := loki_fake.NewClient(func() {})
-
-		collector, err := NewQuerySample(QuerySampleArguments{
-			DB:              db,
-			CollectInterval: time.Minute,
-			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
-		})
-		require.NoError(t, err)
-		require.NotNil(t, collector)
-
-		mock.ExpectQuery(selectQuerySamples).WithoutArgs().WillReturnError(driver.ErrBadConn)
-
-		err = collector.Start(context.Background())
-		require.NoError(t, err)
-
-		require.Eventually(t, func() bool {
-			return collector.Stopped()
-		}, 5*time.Second, 100*time.Millisecond)
-
-		collector.Stop()
-		lokiClient.Stop()
-
-		require.Equal(t, 0, len(lokiClient.Received()))
-
-		err = mock.ExpectationsWereMet()
-		require.NoError(t, err)
-	})
-
 	t.Run("recoverable sql error in result set", func(t *testing.T) {
+		t.Parallel()
+
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer db.Close()
@@ -446,14 +420,13 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 		collector, err := NewQuerySample(QuerySampleArguments{
 			DB:              db,
 			InstanceKey:     "mysql-db",
-			CollectInterval: time.Millisecond,
+			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		// Expect to loop twice, first time to fail, second time to succeed
 		mock.ExpectQuery(selectQuerySamples).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
@@ -489,6 +462,13 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 		collector.Stop()
 		lokiClient.Stop()
 
+		require.Eventually(t, func() bool {
+			return collector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
+
+		err = mock.ExpectationsWereMet()
+		require.NoError(t, err)
+
 		lokiEntries := lokiClient.Received()
 		for _, entry := range lokiEntries {
 			require.Equal(t, model.LabelSet{"job": database_observability.JobName}, entry.Labels)
@@ -496,12 +476,11 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 
 		require.Equal(t, `level=info msg="query samples fetched" op="query_sample" instance="mysql-db" schema="some_schema" digest="abc123" query_type="select" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="select * from some_table where id = :redacted1"`, lokiEntries[0].Line)
 		require.Equal(t, `level=info msg="table name parsed" op="query_parsed_table_name" instance="mysql-db" schema="some_schema" digest="abc123" table="some_table"`, lokiEntries[1].Line)
-
-		err = mock.ExpectationsWereMet()
-		require.NoError(t, err)
 	})
 
 	t.Run("result set iteration error", func(t *testing.T) {
+		t.Parallel()
+
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer db.Close()
@@ -522,28 +501,106 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"digest",
+					"schema_name",
 					"query_sample_text",
 					"query_sample_seen",
 					"query_sample_timer_wait",
 				}).AddRow(
 					"abc123",
-					"SELECT 1",
-					"2024-01-01",
+					"some_schema",
+					"select * from some_table where id = 1",
+					"2024-01-01T00:00:00.000Z",
 					"1000",
-				).RowError(0, fmt.Errorf("rs error")),
+				).RowError(1, fmt.Errorf("rs error")), // error on second row
 			)
 
 		err = collector.Start(context.Background())
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
-			return collector.Stopped()
+			return len(lokiClient.Received()) == 2
 		}, 5*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
 		lokiClient.Stop()
 
+		require.Eventually(t, func() bool {
+			return collector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
+
 		err = mock.ExpectationsWereMet()
 		require.NoError(t, err)
+
+		lokiEntries := lokiClient.Received()
+		for _, entry := range lokiEntries {
+			require.Equal(t, model.LabelSet{"job": database_observability.JobName}, entry.Labels)
+		}
+
+		require.Equal(t, `level=info msg="query samples fetched" op="query_sample" instance="mysql-db" schema="some_schema" digest="abc123" query_type="select" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="select * from some_table where id = :redacted1"`, lokiEntries[0].Line)
+		require.Equal(t, `level=info msg="table name parsed" op="query_parsed_table_name" instance="mysql-db" schema="some_schema" digest="abc123" table="some_table"`, lokiEntries[1].Line)
+	})
+
+	t.Run("connection error recovery", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		lokiClient := loki_fake.NewClient(func() {})
+
+		collector, err := NewQuerySample(QuerySampleArguments{
+			DB:              db,
+			InstanceKey:     "mysql-db",
+			CollectInterval: time.Second,
+			EntryHandler:    lokiClient,
+			Logger:          log.NewLogfmtLogger(os.Stderr),
+		})
+		require.NoError(t, err)
+		require.NotNil(t, collector)
+
+		mock.ExpectQuery(selectQuerySamples).WithoutArgs().WillReturnError(fmt.Errorf("connection error"))
+
+		mock.ExpectQuery(selectQuerySamples).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"digest",
+					"schema_name",
+					"query_sample_text",
+					"query_sample_seen",
+					"query_sample_timer_wait",
+				}).AddRow(
+					"abc123",
+					"some_schema",
+					"select * from some_table where id = 1",
+					"2024-01-01T00:00:00.000Z",
+					"1000",
+				),
+			)
+
+		err = collector.Start(context.Background())
+		require.NoError(t, err)
+
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 2
+		}, 5*time.Second, 100*time.Millisecond)
+
+		collector.Stop()
+		lokiClient.Stop()
+
+		require.Eventually(t, func() bool {
+			return collector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
+
+		err = mock.ExpectationsWereMet()
+		require.NoError(t, err)
+
+		lokiEntries := lokiClient.Received()
+		for _, entry := range lokiEntries {
+			require.Equal(t, model.LabelSet{"job": database_observability.JobName}, entry.Labels)
+		}
+
+		require.Equal(t, `level=info msg="query samples fetched" op="query_sample" instance="mysql-db" schema="some_schema" digest="abc123" query_type="select" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="select * from some_table where id = :redacted1"`, lokiEntries[0].Line)
+		require.Equal(t, `level=info msg="table name parsed" op="query_parsed_table_name" instance="mysql-db" schema="some_schema" digest="abc123" table="some_table"`, lokiEntries[1].Line)
 	})
 }
