@@ -166,7 +166,7 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 			},
 		}
 
-		tables := c.tablesFromQuery(stmt)
+		tables := c.tablesFromQuery(digest, stmt)
 		for _, table := range tables {
 			c.entryHandler.Chan() <- loki.Entry{
 				Labels: model.LabelSet{"job": database_observability.JobName},
@@ -199,29 +199,49 @@ func (c QuerySample) stmtType(stmt sqlparser.Statement) string {
 		return "update"
 	case *sqlparser.Delete:
 		return "delete"
+	case *sqlparser.Union:
+		return "select" // label union as a select
 	default:
 		return ""
 	}
 }
 
-func (c QuerySample) tablesFromQuery(stmt sqlparser.Statement) []string {
+func (c QuerySample) tablesFromQuery(digest string, stmt sqlparser.Statement) []string {
 	var parsedTables []string
 
 	switch stmt := stmt.(type) {
 	case *sqlparser.Select:
-		parsedTables = c.parseTableExprs(stmt.From)
+		parsedTables = c.parseTableExprs(digest, stmt.From)
+	case *sqlparser.Update:
+		parsedTables = c.parseTableExprs(digest, stmt.TableExprs)
+	case *sqlparser.Delete:
+		parsedTables = c.parseTableExprs(digest, stmt.TableExprs)
 	case *sqlparser.Insert:
 		parsedTables = []string{c.parseTableName(stmt.Table)}
-	case *sqlparser.Update:
-		parsedTables = c.parseTableExprs(stmt.TableExprs)
-	case *sqlparser.Delete:
-		parsedTables = c.parseTableExprs(stmt.TableExprs)
+		switch insRowsStmt := stmt.Rows.(type) {
+		case *sqlparser.Select:
+			parsedTables = append(parsedTables, c.tablesFromQuery(digest, insRowsStmt)...)
+		case *sqlparser.Union:
+			for _, side := range []sqlparser.SelectStatement{insRowsStmt.Left, insRowsStmt.Right} {
+				parsedTables = append(parsedTables, c.tablesFromQuery(digest, side)...)
+			}
+		case *sqlparser.ParenSelect:
+			parsedTables = append(parsedTables, c.tablesFromQuery(digest, insRowsStmt.Select)...)
+		default:
+			level.Error(c.logger).Log("msg", "unknown insert type", "digest", digest)
+		}
+	case *sqlparser.Union:
+		for _, side := range []sqlparser.SelectStatement{stmt.Left, stmt.Right} {
+			parsedTables = append(parsedTables, c.tablesFromQuery(digest, side)...)
+		}
+	default:
+		level.Error(c.logger).Log("msg", "unknown statement type", "digest", digest)
 	}
 
 	return parsedTables
 }
 
-func (c QuerySample) parseTableExprs(tables sqlparser.TableExprs) []string {
+func (c QuerySample) parseTableExprs(digest string, tables sqlparser.TableExprs) []string {
 	parsedTables := []string{}
 	for i := 0; i < len(tables); i++ {
 		t := tables[i]
@@ -231,16 +251,28 @@ func (c QuerySample) parseTableExprs(tables sqlparser.TableExprs) []string {
 			case sqlparser.TableName:
 				parsedTables = append(parsedTables, c.parseTableName(expr))
 			case *sqlparser.Subquery:
-				subquery := expr.Select.(*sqlparser.Select)
-				parsedTables = append(parsedTables, c.parseTableExprs(subquery.From)...)
+				switch subqueryExpr := expr.Select.(type) {
+				case *sqlparser.Select:
+					parsedTables = append(parsedTables, c.parseTableExprs(digest, subqueryExpr.From)...)
+				case *sqlparser.Union:
+					for _, side := range []sqlparser.SelectStatement{subqueryExpr.Left, subqueryExpr.Right} {
+						parsedTables = append(parsedTables, c.tablesFromQuery(digest, side)...)
+					}
+				case *sqlparser.ParenSelect:
+					parsedTables = append(parsedTables, c.tablesFromQuery(digest, subqueryExpr.Select)...)
+				default:
+					level.Error(c.logger).Log("msg", "unknown subquery type", "digest", digest)
+				}
 			default:
-				level.Error(c.logger).Log("msg", "unknown nested table expression", "table", tableExpr)
+				level.Error(c.logger).Log("msg", "unknown nested table expression", "digest", digest, "table", tableExpr)
 			}
 		case *sqlparser.JoinTableExpr:
 			// continue parsing both sides of join
 			tables = append(tables, tableExpr.LeftExpr, tableExpr.RightExpr)
+		case *sqlparser.ParenTableExpr:
+			tables = append(tables, tableExpr.Exprs...)
 		default:
-			level.Error(c.logger).Log("msg", "unknown table type", "table", t)
+			level.Error(c.logger).Log("msg", "unknown table type", "digest", digest, "table", t)
 		}
 	}
 	return parsedTables
