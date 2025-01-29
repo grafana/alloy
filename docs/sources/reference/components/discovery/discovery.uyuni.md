@@ -8,7 +8,7 @@ labels:
 title: discovery.uyuni
 ---
 
-# discovery.uyuni
+# `discovery.uyuni`
 
 `discovery.uyuni` discovers [Uyuni][] Monitoring Endpoints and exposes them as targets.
 
@@ -49,13 +49,13 @@ Name                     | Type                | Description                    
 
 You can use the following blocks with `discovery.uyuni`:
 
-Block          | Description                                      | Required
----------------|--------------------------------------------------|---------
-[tls_config][] | TLS configuration for requests to the Uyuni API. | no
+Block                      | Description                                      | Required
+---------------------------|--------------------------------------------------|---------
+[`tls_config`][tls_config] | TLS configuration for requests to the Uyuni API. | no
 
 [tls_config]: #tls_config
 
-### tls_config
+### `tls_config`
 
 The `tls_config` block configures TLS settings for requests to the Uyuni API.
 
