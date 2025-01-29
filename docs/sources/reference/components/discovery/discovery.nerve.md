@@ -8,7 +8,7 @@ labels:
 title: discovery.nerve
 ---
 
-# discovery.nerve
+# `discovery.nerve`
 
 `discovery.nerve` discovers [airbnb/nerve][] targets stored in Zookeeper.
 
