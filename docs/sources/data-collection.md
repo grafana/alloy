@@ -31,7 +31,7 @@ All newly reported data is documented in the CHANGELOG.
 
 You can use the `--disable-reporting` [command line flag][] to disable the reporting and opt-out of the data collection.
 
-## Opt-out of data collection with ansible
+## Opt-out of data collection with Ansible
 
 Example:
 ```
