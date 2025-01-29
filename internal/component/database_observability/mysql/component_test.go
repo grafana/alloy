@@ -32,7 +32,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		var exampleDBO11yAlloyConfig = `
 		data_source_name = ""
 		forward_to = []
-		enable_collectors = ["QuerySample", "SchemaTable"]
+		enable_collectors = ["query_sample", "schema_table"]
 	`
 
 		var args Arguments
@@ -51,7 +51,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		var exampleDBO11yAlloyConfig = `
 		data_source_name = ""
 		forward_to = []
-		disable_collectors = ["QuerySample", "SchemaTable"]
+		disable_collectors = ["query_sample", "schema_table"]
 	`
 
 		var args Arguments
@@ -70,8 +70,8 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		var exampleDBO11yAlloyConfig = `
 		data_source_name = ""
 		forward_to = []
-		disable_collectors = ["QuerySample", "SchemaTable"]
-		enable_collectors = ["QuerySample", "SchemaTable"]
+		disable_collectors = ["query_sample", "schema_table"]
+		enable_collectors = ["query_sample", "schema_table"]
 	`
 
 		var args Arguments
@@ -90,8 +90,8 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		var exampleDBO11yAlloyConfig = `
 		data_source_name = ""
 		forward_to = []
-		disable_collectors = ["SchemaTable"]
-		enable_collectors = ["QuerySample"]
+		disable_collectors = ["schema_table"]
+		enable_collectors = ["query_sample"]
 	`
 
 		var args Arguments

@@ -31,8 +31,8 @@ import (
 
 const (
 	name        = "database_observability.mysql"
-	querySample = "QuerySample"
-	schemaTable = "SchemaTable"
+	querySample = "query_sample"
+	schemaTable = "schema_table"
 )
 
 func init() {
