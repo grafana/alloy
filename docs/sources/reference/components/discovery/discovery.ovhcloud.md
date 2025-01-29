@@ -8,13 +8,13 @@ labels:
 title: discovery.ovhcloud
 ---
 
-# discovery.ovhcloud
+# `discovery.ovhcloud`
 
-`discovery.ovhcloud` discovers scrape targets from OVHcloud's [dedicated servers][] and [VPS][] using their [API][].
+`discovery.ovhcloud` discovers scrape targets from the OVHcloud [dedicated servers][] and [VPS][] using their [API][].
 {{< param "PRODUCT_NAME" >}} periodically checks the REST endpoint and create a target for every discovered server.
 The public IPv4 address is used by default. If there's no IPv4 address, the IPv6 address is used.
 This may be changed via relabeling with `discovery.relabel`.
-For OVHcloud's [public cloud][] instances you can use `discovery.openstack`.
+For the OVHcloud [public cloud][] instances you can use `discovery.openstack`.
 
 [API]: https://api.ovh.com/
 [public cloud]: https://www.ovhcloud.com/en/public-cloud/
@@ -74,7 +74,7 @@ Multiple meta labels are available on `targets` and can be used by the `discover
 * `__meta_ovhcloud_vps_ipv4`: The IPv4 of the server.
 * `__meta_ovhcloud_vps_ipv6`: The IPv6 of the server.
 * `__meta_ovhcloud_vps_keymap`: The KVM keyboard layout of the server.
-* `__meta_ovhcloud_vps_maximum_additional_ip`: The maximum additional IPs of the server.
+* `__meta_ovhcloud_vps_maximum_additional_ip`: The maximum additional IP addresses of the server.
 * `__meta_ovhcloud_vps_memory_limit`: The memory limit of the server.
 * `__meta_ovhcloud_vps_memory`: The memory of the server.
 * `__meta_ovhcloud_vps_monitoring_ip_blocks`: The monitoring IP blocks of the server.

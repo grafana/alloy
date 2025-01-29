@@ -8,7 +8,7 @@ labels:
 title: discovery.file
 ---
 
-# discovery.file
+# `discovery.file`
 
 `discovery.file` discovers targets from a set of files, similar to the [Prometheus file_sd_config](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#file_sd_config).
 
