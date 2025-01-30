@@ -6,8 +6,6 @@ labels:
   stage: experimental
 ---
 
-<span class="badge docs-labels__stage docs-labels__item">Experimental</span>
-
 # loki.secretfilter
 
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
