@@ -20,7 +20,7 @@ func init() {
 		constants["hostname"] = hostname
 	}
 	if build.Version != "v0.0.0"{
-	constants["version"] = build.Version
+		constants["version"] = build.Version
    	}
 
 }
