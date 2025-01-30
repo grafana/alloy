@@ -38,6 +38,7 @@ type StageConfig struct {
 	ReplaceConfig         *ReplaceConfig         `alloy:"replace,block,optional"`
 	StaticLabelsConfig    *StaticLabelsConfig    `alloy:"static_labels,block,optional"`
 	StructuredMetadata    *LabelsConfig          `alloy:"structured_metadata,block,optional"`
+	StructuredMetadataRegex *StructuredMetadataRegexConfig `alloy:"structured_metadata_regex,block,optional"`
 	SamplingConfig        *SamplingConfig        `alloy:"sampling,block,optional"`
 	TemplateConfig        *TemplateConfig        `alloy:"template,block,optional"`
 	TenantConfig          *TenantConfig          `alloy:"tenant,block,optional"`
