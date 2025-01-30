@@ -1,6 +1,7 @@
 package receive_http
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -239,47 +240,33 @@ func (c *Component) handleIngest(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Create a pipe for each appendable
-	pipeWriters := make([]io.Writer, len(appendables))
-	pipeReaders := make([]io.Reader, len(appendables))
-	for i := range appendables {
-		pr, pw := io.Pipe()
-		pipeReaders[i] = pr
-		pipeWriters[i] = pw
+	// Read the entire body into memory
+	// This matches how Append() handles profile data (as RawProfile),
+	// but means the entire profile will be held in memory
+	var buf bytes.Buffer
+	if _, err := io.Copy(&buf, r.Body); err != nil {
+		level.Error(c.opts.Logger).Log("msg", "Failed to read request body", "err", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
-	mw := io.MultiWriter(pipeWriters...)
 
-	// Create an errgroup with the timeout context
 	g, ctx := errgroup.WithContext(r.Context())
 
-	// Start copying the request body to all pipes
-	g.Go(func() error {
-		defer func() {
-			for _, pw := range pipeWriters {
-				pw.(io.WriteCloser).Close()
-			}
-		}()
-		_, err := io.Copy(mw, r.Body)
-		return err
-	})
-
-	// Process each appendable
+	// Process each appendable with a new reader from the buffer
 	for i, appendable := range appendables {
 		g.Go(func() error {
-			defer pipeReaders[i].(io.ReadCloser).Close()
-
 			profile := &pyroscope.IncomingProfile{
-				Body:    io.NopCloser(pipeReaders[i]),
+				Body:    io.NopCloser(bytes.NewReader(buf.Bytes())),
 				Headers: r.Header.Clone(),
 				URL:     r.URL,
 				Labels:  lbls,
 			}
 
-			err := appendable.Appender().AppendIngest(ctx, profile)
-			if err != nil {
+			if err := appendable.Appender().AppendIngest(ctx, profile); err != nil {
 				level.Error(c.opts.Logger).Log("msg", "Failed to append profile", "appendable", i, "err", err)
 				return err
 			}
+
 			level.Debug(c.opts.Logger).Log("msg", "Profile appended successfully", "appendable", i)
 			return nil
 		})
