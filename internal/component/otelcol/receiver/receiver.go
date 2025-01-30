@@ -20,13 +20,10 @@ import (
 	"github.com/grafana/alloy/internal/util/zapadapter"
 	"github.com/prometheus/client_golang/prometheus"
 	otelcomponent "go.opentelemetry.io/collector/component"
-	"go.opentelemetry.io/collector/config/configtelemetry"
 	"go.opentelemetry.io/collector/extension"
 	"go.opentelemetry.io/collector/pipeline"
 	otelreceiver "go.opentelemetry.io/collector/receiver"
 	sdkprometheus "go.opentelemetry.io/otel/exporters/prometheus"
-	otelmetric "go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/metric/noop"
 	"go.opentelemetry.io/otel/sdk/metric"
 )
 
@@ -161,13 +158,7 @@ func (r *Receiver) Update(args component.Arguments) error {
 
 			TracerProvider: r.opts.Tracer,
 			MeterProvider:  mp,
-			LeveledMeterProvider: func(level configtelemetry.Level) otelmetric.MeterProvider {
-				if level <= metricsLevel {
-					return mp
-				}
-				return noop.MeterProvider{}
-			},
-			MetricsLevel: metricsLevel,
+			MetricsLevel:   metricsLevel,
 		},
 
 		BuildInfo: otelcomponent.BuildInfo{
@@ -233,7 +224,7 @@ func (r *Receiver) Update(args component.Arguments) error {
 	}
 
 	// Schedule the components to run once our component is running.
-	r.sched.Schedule(host, components...)
+	r.sched.Schedule(r.ctx, func() {}, host, components...)
 	return nil
 }
 

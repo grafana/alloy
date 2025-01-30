@@ -19,10 +19,11 @@ import (
 
 // DefaultConfig holds the default settings for the snmp_exporter integration.
 var DefaultConfig = Config{
-	WalkParams:     make(map[string]snmp_config.WalkParams),
-	SnmpConfigFile: "",
-	SnmpTargets:    make([]SNMPTarget, 0),
-	SnmpConfig:     snmp_config.Config{},
+	WalkParams:      make(map[string]snmp_config.WalkParams),
+	SnmpConfigFile:  "",
+	SnmpConcurrency: 1,
+	SnmpTargets:     make([]SNMPTarget, 0),
+	SnmpConfig:      snmp_config.Config{},
 }
 
 // SNMPTarget defines a target device to be used by the integration.
@@ -38,10 +39,11 @@ type SNMPTarget struct {
 
 // Config configures the SNMP integration.
 type Config struct {
-	WalkParams     map[string]snmp_config.WalkParams `yaml:"walk_params,omitempty"`
-	SnmpConfigFile string                            `yaml:"config_file,omitempty"`
-	SnmpTargets    []SNMPTarget                      `yaml:"snmp_targets"`
-	SnmpConfig     snmp_config.Config                `yaml:"snmp_config,omitempty"`
+	WalkParams      map[string]snmp_config.WalkParams `yaml:"walk_params,omitempty"`
+	SnmpConfigFile  string                            `yaml:"config_file,omitempty"`
+	SnmpConcurrency int                               `yaml:"concurrency,omitempty"`
+	SnmpTargets     []SNMPTarget                      `yaml:"snmp_targets"`
+	SnmpConfig      snmp_config.Config                `yaml:"snmp_config,omitempty"`
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler for Config.

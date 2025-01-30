@@ -86,12 +86,33 @@ func Test_ComponentIO(t *testing.T) {
 					{
 						"key": "account_id",
 						"value": { "intValue": "2245" }
+					}],
+					"events": [{
+						"name": "log",
+						"attributes": [{
+							"key": "log.severity",
+							"value": { "stringValue": "INFO" }
+						},
+						{
+							"key": "log.message",
+							"value": { "stringValue": "TestLogMessage" }
+						}]
+					},
+					{
+						"name": "test_event",
+						"attributes": [{
+							"key": "cause",
+							"value": { "stringValue": "call" }
+						},
+						{
+							"key": "ignore",
+							"value": { "stringValue": "ignore" }
+						}]
 					}]
 				}]
 			}]
 		}]
 	}`
-
 	defaultOverrides := spanlogs.OverrideConfig{
 		LogsTag:     "traces",
 		ServiceKey:  "svc",
@@ -689,6 +710,79 @@ func Test_ComponentIO(t *testing.T) {
 							{
 								"key": "attribute1",
 								"value": { "intValue": "22222" }
+							}]
+						}]
+					}]
+				}]
+			}`,
+		},
+		{
+			testName: "Events",
+			cfg: `
+			events = true
+			span_attributes = ["attribute1", "redact_trace", "account_id"]
+			event_attributes = ["log.severity", "log.message"]
+			labels = ["attribute1", "redact_trace", "account_id", "log.severity", "log.message"]
+
+			output {
+				// no-op: will be overridden by test code.
+			}`,
+			expectedUnmarshaledCfg: spanlogs.Arguments{
+				Events:          true,
+				EventAttributes: []string{"log.severity", "log.message"},
+				SpanAttributes:  []string{"attribute1", "redact_trace", "account_id"},
+				Overrides:       defaultOverrides,
+				Labels:          []string{"attribute1", "redact_trace", "account_id", "log.severity", "log.message"},
+				Output:          &otelcol.ConsumerArguments{},
+			},
+			inputTraceJson: defaultInputTrace,
+			expectedOutputLogJson: `{
+				"resourceLogs": [{
+					"scopeLogs": [{
+						"log_records": [{
+							"body": { "stringValue": "span=TestSpan dur=0ns attribute1=78 redact_trace=true account_id=2245 svc=TestSvcName tid=7bba9f33312b3dbb8b2c2c62bb7abe2d log.severity=INFO log.message=TestLogMessage" },
+							"attributes": [{
+								"key": "traces",
+								"value": { "stringValue": "event" }
+							},
+							{
+								"key": "attribute1",
+								"value": { "intValue": "78" }
+							},
+							{
+								"key": "redact_trace", 
+								"value": { "boolValue": true }
+							},
+							{
+								"key": "account_id",
+								"value": { "intValue": "2245" }
+							},
+							{
+								"key": "log.severity",
+								"value": { "stringValue": "INFO" }
+							},
+							{
+								"key": "log.message",
+								"value": { "stringValue": "TestLogMessage" }
+							}]
+						},
+						{
+							"body": { "stringValue": "span=TestSpan dur=0ns attribute1=78 redact_trace=true account_id=2245 svc=TestSvcName tid=7bba9f33312b3dbb8b2c2c62bb7abe2d" },
+							"attributes": [{
+								"key": "traces",
+								"value": { "stringValue": "event" }
+							},
+							{
+								"key": "attribute1",
+								"value": { "intValue": "78" }
+							},
+							{
+								"key": "redact_trace", 
+								"value": { "boolValue": true }
+							},
+							{
+								"key": "account_id",
+								"value": { "intValue": "2245" }
 							}]
 						}]
 					}]

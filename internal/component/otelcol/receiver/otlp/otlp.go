@@ -3,6 +3,7 @@ package otlp
 
 import (
 	"fmt"
+	"maps"
 	net_url "net/url"
 
 	"github.com/alecthomas/units"
@@ -56,17 +57,22 @@ type HTTPConfigArguments struct {
 }
 
 // Convert converts args into the upstream type.
-func (args *HTTPConfigArguments) Convert() *otlpreceiver.HTTPConfig {
+func (args *HTTPConfigArguments) Convert() (*otlpreceiver.HTTPConfig, error) {
 	if args == nil {
-		return nil
+		return nil, nil
+	}
+
+	httpServerArgs, err := args.HTTPServerArguments.Convert()
+	if err != nil {
+		return nil, err
 	}
 
 	return &otlpreceiver.HTTPConfig{
-		ServerConfig:   args.HTTPServerArguments.Convert(),
+		ServerConfig:   httpServerArgs,
 		TracesURLPath:  args.TracesURLPath,
 		MetricsURLPath: args.MetricsURLPath,
 		LogsURLPath:    args.LogsURLPath,
-	}
+	}, nil
 }
 
 var _ receiver.Arguments = Arguments{}
@@ -79,17 +85,45 @@ func (args *Arguments) SetToDefault() {
 
 // Convert implements receiver.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
+	grpcProtocol := (*otelcol.GRPCServerArguments)(args.GRPC)
+	grpcProtocolArgs, err := grpcProtocol.Convert()
+	if err != nil {
+		return nil, err
+	}
+
+	httpProtocolArgs, err := args.HTTP.Convert()
+	if err != nil {
+		return nil, err
+	}
+
 	return &otlpreceiver.Config{
 		Protocols: otlpreceiver.Protocols{
-			GRPC: (*otelcol.GRPCServerArguments)(args.GRPC).Convert(),
-			HTTP: args.HTTP.Convert(),
+			GRPC: grpcProtocolArgs,
+			HTTP: httpProtocolArgs,
 		},
 	}, nil
 }
 
 // Extensions implements receiver.Arguments.
 func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
-	return nil
+	extensionMap := make(map[otelcomponent.ID]otelextension.Extension)
+
+	// Gets the extensions for the HTTP server and GRPC server
+	if args.HTTP != nil {
+		httpExtensions := (*otelcol.HTTPServerArguments)(args.HTTP.HTTPServerArguments).Extensions()
+
+		// Copies the extensions for the HTTP server into the map
+		maps.Copy(extensionMap, httpExtensions)
+	}
+
+	if args.GRPC != nil {
+		grpcExtensions := (*otelcol.GRPCServerArguments)(args.GRPC).Extensions()
+
+		// Copies the extensions for the GRPC server into the map.
+		maps.Copy(extensionMap, grpcExtensions)
+	}
+
+	return extensionMap
 }
 
 // Exporters implements receiver.Arguments.
