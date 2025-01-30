@@ -9,8 +9,10 @@ import (
 	"reflect"
 	"sync"
 
+	"connectrpc.com/connect"
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/prometheus/model/labels"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/grafana/alloy/internal/component"
@@ -20,6 +22,9 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/util"
+	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
+	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 )
 
 const (
@@ -137,14 +142,81 @@ func (c *Component) Update(args component.Arguments) error {
 	c.server = srv
 
 	return c.server.MountAndRun(func(router *mux.Router) {
+		// this mounts the og pyroscope ingest API, mostly used by SDKs
 		router.HandleFunc("/ingest", c.handleIngest).Methods(http.MethodPost)
+
+		// mount connect go pushv1
+		pathPush, handlePush := pushv1connect.NewPusherServiceHandler(c)
+		router.PathPrefix(pathPush).Handler(handlePush).Methods(http.MethodPost)
 	})
 }
 
-func (c *Component) handleIngest(w http.ResponseWriter, r *http.Request) {
+func setLabelBuilderFromAPI(lb *labels.Builder, api []*typesv1.LabelPair) {
+	for i := range api {
+		lb.Set(api[i].Name, api[i].Value)
+	}
+}
+
+func apiToAlloySamples(api []*pushv1.RawSample) []*pyroscope.RawSample {
+	var (
+		alloy = make([]*pyroscope.RawSample, len(api))
+	)
+	for i := range alloy {
+		alloy[i] = &pyroscope.RawSample{
+			RawProfile: api[i].RawProfile,
+		}
+	}
+	return alloy
+}
+
+func (c *Component) Push(ctx context.Context, req *connect.Request[pushv1.PushRequest],
+) (*connect.Response[pushv1.PushResponse], error) {
+	appendables := c.getAppendables()
+
+	// Create an errgroup with the timeout context
+	g, ctx := errgroup.WithContext(ctx)
+
+	// Start copying the request body to all pipes
+	for i := range appendables {
+		appendable := appendables[i].Appender()
+		g.Go(func() error {
+			var (
+				errs error
+				lb   = labels.NewBuilder(nil)
+			)
+
+			for idx := range req.Msg.Series {
+				lb.Reset(nil)
+				setLabelBuilderFromAPI(lb, req.Msg.Series[idx].Labels)
+				err := appendable.Append(ctx, lb.Labels(), apiToAlloySamples(req.Msg.Series[idx].Samples))
+				if err != nil {
+					errs = errors.Join(
+						errs,
+						fmt.Errorf("unable to append series %s to appendable %d: %w", lb.Labels().String(), i, err),
+					)
+				}
+			}
+			return errs
+		})
+	}
+	if err := g.Wait(); err != nil {
+		level.Error(c.opts.Logger).Log("msg", "Failed to forward profiles requests", "err", err)
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	level.Debug(c.opts.Logger).Log("msg", "Profiles successfully forwarded")
+	return connect.NewResponse(&pushv1.PushResponse{}), nil
+}
+
+func (c *Component) getAppendables() []pyroscope.Appendable {
 	c.mut.Lock()
+	defer c.mut.Unlock()
 	appendables := c.appendables
-	c.mut.Unlock()
+	return appendables
+}
+
+func (c *Component) handleIngest(w http.ResponseWriter, r *http.Request) {
+	appendables := c.getAppendables()
 
 	// Create a pipe for each appendable
 	pipeWriters := make([]io.Writer, len(appendables))

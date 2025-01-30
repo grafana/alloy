@@ -6,7 +6,7 @@ labels:
   stage: experimental
 ---
 
-# database_observability.mysql
+# `database_observability.mysql`
 
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
