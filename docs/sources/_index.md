@@ -55,28 +55,18 @@ cards:
 
 {{< figure src="/media/docs/alloy/flow-diagram-small-alloy.png" alt="Alloy flow diagram" >}}
 
-### Simple Telemetry collection with One Solution
+**Simple telemetry collection with one solution.** Choosing the right tools to collect, process, and export telemetry data can be a confusing and costly experience.
+The broad range of telemetry you need to process and the collectors you choose can vary widely depending on your observability goals.
+In addition, you face the challenge of addressing the constantly evolving needs of your observability strategy.
+For example, you may initially only need application observability, but you then discover that you must add infrastructure observability.
+Many organizations manage and configure multiple collectors to address these challenges, introducing more complexity and potential errors in their obervability strategy.
 
-Choosing the right tools to collect, process, and export telemetry data can be a confusing and costly experience. The broad range of telemetry you need to process and the collectors you choose can vary widely depending on your observability goals. In addition, you face the challenge of addressing the constantly evolving needs of your observability strategy. For example, you may initially only need application observability, but you then discover that you must add infrastructure observability. Many organizations manage and configure multiple collectors to address these challenges, introducing more complexity and error-prone areas to their strategy.
+**All signals, whether application, infrastructure, or both.** {{< param "FULL_PRODUCT_NAME" >}} has native pipelines for leading telemetry signals, such as Prometheus and OpenTelemetry, and databases such as Loki and Pyroscope.
+This permits logs, metrics, traces, and even mature support for profiling.
 
-## All telemetry signals, whether application, infrastructure, or both
-
-{{< param "FULL_PRODUCT_NAME" >}} has native pipelines for leading telemetry signals, such as Prometheus and OpenTelemetry, and databases such as Loki and Pyroscope. This permits logs, metrics, traces, and even mature support for profiling.
-
-### Enterprise strength observability
-
-{{< param "FULL_PRODUCT_NAME" >}} improves reliability and provides advanced features for Enterprise needs, such as clusters of fleets and balancing workloads.
-
-You can easily manage a large number of {{< param "FULL_PRODUCT_NAME" >}} instances using the Grafana Cloud [Fleet Management](https://grafana.com/docs/grafana-cloud/send-data/fleet-management/) service free of charge and ensure scalability with ease. 
+**Enterprise strength observability.** {{< param "FULL_PRODUCT_NAME" >}} improves reliability and provides advanced features for Enterprise needs, such as clusters of fleets and balancing workloads.
+Grafana [Fleet Management](https://grafana.com/docs/grafana-cloud/send-data/fleet-management/) helps you manage multiple {{< param "FULL_PRODUCT_NAME" >}} deployments at scale.
 
 ## Explore
 
 {{< card-grid key="cards" type="simple" >}}
-
-[OTel]: https://opentelemetry.io/ecosystem/distributions/
-[Prometheus]: https://prometheus.io/
-[Pyroscope]: https://grafana.com/docs/pyroscope/
-[Loki]: https://grafana.com/docs/loki/
-[Mimir]: https://grafana.com/docs/mimir/
-[Promtail]: https://grafana.com/docs/loki/latest/send-data/promtail/
-[Introduction]: ./introduction/
