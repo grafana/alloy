@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/loki/v3/clients/pkg/logentry/logql"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
@@ -60,7 +61,7 @@ func validateMatcherConfig(cfg *MatchConfig) (logql.Expr, error) {
 }
 
 // newMatcherStage creates a new matcherStage from config
-func newMatcherStage(logger log.Logger, jobName *string, config MatchConfig, registerer prometheus.Registerer) (Stage, error) {
+func newMatcherStage(logger log.Logger, jobName *string, config MatchConfig, registerer prometheus.Registerer, minStability featuregate.Stability) (Stage, error) {
 	selector, err := validateMatcherConfig(&config)
 	if err != nil {
 		return nil, err
@@ -75,7 +76,7 @@ func newMatcherStage(logger log.Logger, jobName *string, config MatchConfig, reg
 	var pl *Pipeline
 	if config.Action == MatchActionKeep {
 		var err error
-		pl, err = NewPipeline(logger, config.Stages, nPtr, registerer)
+		pl, err = NewPipeline(logger, config.Stages, nPtr, registerer, minStability)
 		if err != nil {
 			return nil, fmt.Errorf("%v: %w", err, fmt.Errorf("match stage failed to create pipeline from config: %v", config))
 		}

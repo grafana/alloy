@@ -141,7 +141,7 @@ func (c *Component) Update(args component.Arguments) error {
 			c.entryHandler.Stop()
 		}
 
-		pipeline, err := stages.NewPipeline(c.opts.Logger, newArgs.Stages, &c.opts.ID, c.opts.Registerer)
+		pipeline, err := stages.NewPipeline(c.opts.Logger, newArgs.Stages, &c.opts.ID, c.opts.Registerer, c.opts.MinStability)
 		if err != nil {
 			return err
 		}

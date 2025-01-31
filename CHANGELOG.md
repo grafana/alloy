@@ -12,9 +12,11 @@ Main (unreleased)
 
 ### Features
 
-- Add the possibility to export span events as logs in `otelcol.connector.spanlogs`. (@steve-hb)
+- (_Experimental_) Add a `stage.windowsevent` block in the `loki.process` component. This aims to replace the existing `stage.eventlogmessage`. (@wildum)
 
 ### Enhancements
+
+- Add the possibility to export span events as logs in `otelcol.connector.spanlogs`. (@steve-hb)
 
 - (_Experimental_) Log instance label key in `database_observability.mysql` (@cristiangreco)
 
