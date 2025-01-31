@@ -20,7 +20,7 @@ This component may generate false positives or redact too much.
 Don't rely solely on this component to redact sensitive information.
 {{< /admonition >}}
 
-{{< admonition type="caution" >}}
+{{< admonition type="note" >}}
 This component operates on log lines and doesn't scan labels or other metadata.
 {{< /admonition >}}
 
