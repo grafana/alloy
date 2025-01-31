@@ -239,6 +239,17 @@ func TestNonAlphaNumericString(t *testing.T) {
 	require.ElementsMatch(t, customComponentIds, []string{"foreach_123__st_4__1"})
 }
 
+func TestCollectionNonArrayValue(t *testing.T) {
+	config := `foreach "default" {
+		collection = "aaa"
+		var = "num"
+		template {
+		}
+	}`
+	foreachConfigNode := NewForeachConfigNode(getBlockFromConfig(t, config), getComponentGlobals(t), nil)
+	require.ErrorContains(t, foreachConfigNode.Evaluate(vm.NewScope(make(map[string]interface{}))), `"aaa" should be array, got string`)
+}
+
 func getBlockFromConfig(t *testing.T, config string) *ast.BlockStmt {
 	file, err := parser.ParseFile("", []byte(config))
 	require.NoError(t, err)
