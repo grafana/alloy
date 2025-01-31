@@ -226,6 +226,19 @@ func TestCreateCustomComponentsCollectionObjectsWithUpdate(t *testing.T) {
 	require.ElementsMatch(t, keys, []string{"foreach_be19d02a2ccb2cbc2c47e90dcad8446a50459577449624176398d1f2aa6cd23a_1", "foreach_1464766cf9c8fd1095d0f7a22abe0632b6a6d44c3eeae65766086350eef3ac33_1"})
 }
 
+func TestNonAlphaNumericString(t *testing.T) {
+	config := `foreach "default" {
+		collection = ["123./st%4$"]
+		var = "num"
+		template {
+		}
+	}`
+	foreachConfigNode := NewForeachConfigNode(getBlockFromConfig(t, config), getComponentGlobals(t), nil)
+	require.NoError(t, foreachConfigNode.Evaluate(vm.NewScope(make(map[string]interface{}))))
+	customComponentIds := foreachConfigNode.moduleController.(*ModuleControllerMock).CustomComponents
+	require.ElementsMatch(t, customComponentIds, []string{"foreach_123__st_4__1"})
+}
+
 func getBlockFromConfig(t *testing.T, config string) *ast.BlockStmt {
 	file, err := parser.ParseFile("", []byte(config))
 	require.NoError(t, err)

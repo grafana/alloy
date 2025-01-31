@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component"
@@ -383,7 +384,9 @@ func computeHash(s string) string {
 func hashObject(obj any) string {
 	//TODO: Test what happens if there is a "true" string and a true bool in the collection.
 	switch v := obj.(type) {
-	case int, string, bool:
+	case string:
+		return replaceNonAlphaNumeric(v)
+	case int, bool:
 		return fmt.Sprintf("%v", v)
 	case float64:
 		// Dots are not valid characters in Alloy syntax identifiers.
@@ -392,6 +395,18 @@ func hashObject(obj any) string {
 	default:
 		return computeHash(fmt.Sprintf("%#v", v))
 	}
+}
+
+func replaceNonAlphaNumeric(s string) string {
+	var builder strings.Builder
+	for _, r := range s {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+			builder.WriteRune(r)
+		} else {
+			builder.WriteRune('_')
+		}
+	}
+	return builder.String()
 }
 
 type NoopRegistry struct{}
