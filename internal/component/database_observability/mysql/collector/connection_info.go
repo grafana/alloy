@@ -11,6 +11,8 @@ import (
 	"go.uber.org/atomic"
 )
 
+const ConnectionInfoName = "connection_info"
+
 var rdsRegex = regexp.MustCompile(`(?P<identifier>[^\.]+)\.([^\.]+)\.(?P<region>[^\.]+)\.rds\.amazonaws\.com`)
 
 type ConnectionInfoArguments struct {
@@ -43,7 +45,7 @@ func NewConnectionInfo(args ConnectionInfoArguments) (*ConnectionInfo, error) {
 }
 
 func (c *ConnectionInfo) Name() string {
-	return "ConnectionInfo"
+	return ConnectionInfoName
 }
 
 func (c *ConnectionInfo) Start(ctx context.Context) error {

@@ -21,6 +21,7 @@ const (
 	OP_SCHEMA_DETECTION = "schema_detection"
 	OP_TABLE_DETECTION  = "table_detection"
 	OP_CREATE_STATEMENT = "create_statement"
+	SchemaTableName     = "schema_table"
 )
 
 const (
@@ -98,7 +99,7 @@ func NewSchemaTable(args SchemaTableArguments) (*SchemaTable, error) {
 }
 
 func (c *SchemaTable) Name() string {
-	return "SchemaTable"
+	return SchemaTableName
 }
 
 func (c *SchemaTable) Start(ctx context.Context) error {
