@@ -69,6 +69,7 @@ type testForEachFile struct {
 	expectedMetrics         *string     // expected prometheus metrics
 	expectedDurationMetrics *int        // expected prometheus duration metrics - check those separately as they vary with each test run
 	expectedDebugInfo       *string     // expected debug info after running the config
+	expectedDebugInfo2      *string     // 2nd optional expected debug info after running the config
 }
 
 func buildTestForEach(t *testing.T, filename string) testForEachFile {
@@ -100,6 +101,9 @@ func buildTestForEach(t *testing.T, filename string) testForEachFile {
 		case "expected_debug_info.txt":
 			expectedDebugInfo := string(alloyConfig.Data)
 			tc.expectedDebugInfo = &expectedDebugInfo
+		case "expected_debug_info2.txt":
+			expectedDebugInfo2 := string(alloyConfig.Data)
+			tc.expectedDebugInfo2 = &expectedDebugInfo2
 		}
 	}
 	return tc

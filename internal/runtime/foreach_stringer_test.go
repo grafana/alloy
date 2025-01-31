@@ -23,12 +23,12 @@ func TestForeachStringer(t *testing.T) {
 				defer os.Remove("module.alloy")
 				require.NoError(t, os.WriteFile("module.alloy", []byte(tc.module), 0664))
 			}
-			testConfigForEachStringer(t, tc.main, *tc.expectedDebugInfo)
+			testConfigForEachStringer(t, tc.main, tc.expectedDebugInfo, tc.expectedDebugInfo2)
 		})
 	}
 }
 
-func testConfigForEachStringer(t *testing.T, config string, expectedDebugInfo string) {
+func testConfigForEachStringer(t *testing.T, config string, expectedDebugInfo *string, expectedDebugInfo2 *string) {
 	defer verifyNoGoroutineLeaks(t)
 	reg := prometheus.NewRegistry()
 	ctrl, f := setup(t, config, reg, featuregate.StabilityExperimental)
@@ -49,8 +49,17 @@ func testConfigForEachStringer(t *testing.T, config string, expectedDebugInfo st
 		ctrl.Run(ctx)
 	}()
 
-	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		debugInfo := getDebugInfo[string](t, ctrl, "", "testcomponents.string_receiver.log")
-		require.Equal(t, expectedDebugInfo, debugInfo)
-	}, 3*time.Second, 10*time.Millisecond)
+	if expectedDebugInfo != nil {
+		require.EventuallyWithT(t, func(c *assert.CollectT) {
+			debugInfo := getDebugInfo[string](t, ctrl, "", "testcomponents.string_receiver.log")
+			require.Equal(t, *expectedDebugInfo, debugInfo)
+		}, 3*time.Second, 10*time.Millisecond)
+	}
+
+	if expectedDebugInfo2 != nil {
+		require.EventuallyWithT(t, func(c *assert.CollectT) {
+			debugInfo := getDebugInfo[string](t, ctrl, "", "testcomponents.string_receiver.log2")
+			require.Equal(t, *expectedDebugInfo2, debugInfo)
+		}, 3*time.Second, 10*time.Millisecond)
+	}
 }
