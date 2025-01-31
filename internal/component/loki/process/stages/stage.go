@@ -40,6 +40,7 @@ const (
 	StageTypeSampling           = "sampling"
 	StageTypeStaticLabels       = "static_labels"
 	StageTypeStructuredMetadata = "structured_metadata"
+	StageTypeStructuredMetadataRegex = "structured_metadata_regex"
 	StageTypeTemplate           = "template"
 	StageTypeTenant             = "tenant"
 	StageTypeTimestamp          = "timestamp"
@@ -155,6 +156,11 @@ func New(logger log.Logger, jobName *string, cfg StageConfig, registerer prometh
 		}
 	case cfg.StructuredMetadata != nil:
 		s, err = newStructuredMetadataStage(logger, *cfg.StructuredMetadata)
+		if err != nil {
+			return nil, err
+		}
+	case cfg.StructuredMetadataRegex != nil:
+		s, err = newStructuredMetadataRegexStage(logger, *cfg.StructuredMetadataRegex)
 		if err != nil {
 			return nil, err
 		}
