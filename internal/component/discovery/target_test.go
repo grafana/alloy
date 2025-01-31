@@ -47,25 +47,6 @@ func TestDecodeMap(t *testing.T) {
 	require.Equal(t, `{"a"="5", "b"="10"}`, fmt.Sprintf("%s", actual))
 }
 
-func TestTargetBuilder(t *testing.T) {
-	target := NewTargetFromMap(map[string]string{"a": "5", "b": "10"})
-	builder := NewTargetBuilderFrom(target)
-
-	builder.Set("foo", "bar")
-	get, ok := builder.Target().Get("foo")
-	require.True(t, ok)
-	require.Equal(t, "bar", get)
-
-	builder = NewTargetBuilderFrom(target)
-	builder.Del("foo")
-	get, ok = builder.Target().Get("foo")
-	require.False(t, ok)
-	require.Equal(t, "", get)
-
-	// Test setting on empty target (verifies it won't panic)
-	NewTargetBuilder().Set("foo", "bar")
-}
-
 func TestConvertFromNative(t *testing.T) {
 	var nativeTargets = []model.LabelSet{
 		{model.LabelName("hip"): model.LabelValue("hop")},

@@ -23,22 +23,6 @@ type targetBuilder struct {
 	toDel map[string]struct{}
 }
 
-func (t targetBuilder) SetKV(kv ...string) TargetBuilder {
-	for i := 0; i < len(kv); i += 2 {
-		t.Set(kv[i], kv[i+1])
-	}
-	return t
-}
-
-func (t targetBuilder) MergeWith(target Target) TargetBuilder {
-	// Not on a hot path, so doesn't really need to be optimised.
-	target.ForEachLabel(func(key string, value string) bool {
-		t.Set(key, value)
-		return true
-	})
-	return t
-}
-
 // NewTargetBuilder creates an empty labels builder.
 func NewTargetBuilder() TargetBuilder {
 	return targetBuilder{
@@ -84,29 +68,59 @@ func (t targetBuilder) Range(f func(label string, value string)) {
 	}
 	for k, v := range t.own {
 		if _, deleted := t.toDel[string(k)]; deleted {
-			continue
+			continue // skip if it's deleted
+		}
+		if _, added := t.toAdd[string(k)]; added {
+			continue // skip if it was in toAdd
 		}
 		f(string(k), string(v))
 	}
 	for k, v := range t.group {
 		if _, deleted := t.toDel[string(k)]; deleted {
-			continue
+			continue // skip if it's deleted
+		}
+		if _, added := t.toAdd[string(k)]; added {
+			continue // skip if it was in toAdd
 		}
 		if _, inOwn := t.own[k]; inOwn {
-			continue
+			continue // skip if it was in own
 		}
 		f(string(k), string(v))
 	}
 }
 
 func (t targetBuilder) Set(label string, val string) {
+	if val == "" { // Setting to empty is treated as deleting.
+		t.Del(label)
+		return
+	}
 	t.toAdd[label] = val
 }
 
 func (t targetBuilder) Del(labels ...string) {
 	for _, label := range labels {
 		t.toDel[label] = struct{}{}
+		// If we were adding one, need to clean it up too.
+		if _, ok := t.toAdd[label]; ok {
+			delete(t.toAdd, label)
+		}
 	}
+}
+
+func (t targetBuilder) SetKV(kv ...string) TargetBuilder {
+	for i := 0; i < len(kv); i += 2 {
+		t.Set(kv[i], kv[i+1])
+	}
+	return t
+}
+
+func (t targetBuilder) MergeWith(target Target) TargetBuilder {
+	// Not on a hot path, so doesn't really need to be optimised.
+	target.ForEachLabel(func(key string, value string) bool {
+		t.Set(key, value)
+		return true
+	})
+	return t
 }
 
 func (t targetBuilder) Target() Target {
