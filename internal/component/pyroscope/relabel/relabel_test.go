@@ -7,12 +7,10 @@ import (
 	"strings"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/grafana/alloy/internal/component"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/pyroscope"
-	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/pyroscope/api/model/labelset"
 	"github.com/grafana/regexp"
@@ -156,30 +154,20 @@ func TestRelabeling(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			app := NewTestAppender()
 
-			tc, err := componenttest.NewControllerFromID(util.TestLogger(t), "pyroscope.relabel")
+			c, err := New(component.Options{
+				Logger:        util.TestLogger(t),
+				Registerer:    prometheus.NewRegistry(),
+				OnStateChange: func(e component.Exports) {},
+			}, Arguments{
+				ForwardTo:      []pyroscope.Appendable{app},
+				RelabelConfigs: tt.rules,
+				MaxCacheSize:   10,
+			})
 			require.NoError(t, err)
-
-			go func() {
-				err = tc.Run(componenttest.TestContext(t), Arguments{
-					ForwardTo:      []pyroscope.Appendable{app},
-					RelabelConfigs: tt.rules,
-					MaxCacheSize:   10,
-				})
-				require.NoError(t, err)
-			}()
-
-			// Wait for the component to be ready
-			require.NoError(t, tc.WaitExports(time.Second))
-			time.Sleep(100 * time.Millisecond) // Give a little extra time for initialization
 
 			profile := &pyroscope.IncomingProfile{
 				Labels: tt.inputLabels,
 			}
-
-			// Get the actual component
-			comp, err := tc.GetComponent()
-			require.NoError(t, err)
-			c := comp.(*Component)
 
 			err = c.AppendIngest(context.Background(), profile)
 

@@ -96,6 +96,7 @@ pyroscope.relabel "process" {
 ```
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
+
 ## Compatible components
 
 `pyroscope.relabel` can accept arguments from the following components:
