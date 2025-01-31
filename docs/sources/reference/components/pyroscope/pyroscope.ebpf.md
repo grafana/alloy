@@ -12,21 +12,17 @@ title: pyroscope.ebpf
 The collected performance profiles are forwarded to the list of receivers passed in `forward_to`.
 
 {{< admonition type="note" >}}
-To use the  `pyroscope.ebpf` component you must run {{< param "PRODUCT_NAME" >}} as root and inside the host PID
-namespace.
+To use the  `pyroscope.ebpf` component you must run {{< param "PRODUCT_NAME" >}} as root and inside the host PID namespace.
 {{< /admonition >}}
 
-You can specify multiple `pyroscope.ebpf` components by giving them different labels, however it's not recommended as it
-can lead to additional memory and CPU usage.
+You can specify multiple `pyroscope.ebpf` components by giving them different labels, however it's not recommended as it can lead to additional memory and CPU usage.
 
 ## Supported languages
 
-This eBPF profiler only collects CPU profiles. Generally, natively compiled languages like C/C++, Go, and Rust are
-supported. Refer to [Troubleshooting unknown symbols][troubleshooting] for additional requirements.
+This eBPF profiler only collects CPU profiles. Generally, natively compiled languages like C/C++, Go, and Rust are supported. Refer to [Troubleshooting unknown symbols][troubleshooting] for additional requirements.
 
 Python is the only supported high-level language, as long as `python_enabled=true`.
-Other high-level languages like Java, Ruby, PHP, and JavaScript require additional work to show stack traces of methods
-in these languages correctly.
+Other high-level languages like Java, Ruby, PHP, and JavaScript require additional work to show stack traces of methods in these languages correctly.
 Currently, the CPU usage for these languages is reported as belonging to the runtime's methods.
 
 ## Usage
@@ -45,6 +41,7 @@ The component configures and starts a new eBPF profiling job to collect performa
 You can use the following arguments to configure a `pyroscope.ebpf`.
 Only the `forward_to` and `targets` fields are required.
 Omitted fields take their default values.
+
 
 | Name                      | Type                     | Description                                                                                                                      | Default | Required |
 |---------------------------|--------------------------|----------------------------------------------------------------------------------------------------------------------------------|---------|----------|
@@ -94,29 +91,25 @@ You can use the `sample_rate` argument to define the number of stack traces coll
 The following labels are automatically injected into the collected profiles if you haven't defined them.
 These labels can help you pin down a profiling target.
 
- Label              | Description                                                                                                                      
---------------------|----------------------------------------------------------------------------------------------------------------------------------
- `service_name`     | Pyroscope service name. It's automatically selected from discovery meta labels if possible. Otherwise defaults to `unspecified`. 
- `__name__`         | pyroscope metric name. Defaults to `process_cpu`.                                                                                
- `__container_id__` | The container ID derived from target.                                                                                            
+Label              | Description
+-------------------|---------------------------------------------------------------------------------------------------------------------------------
+`service_name`     | Pyroscope service name. It's automatically selected from discovery meta labels if possible. Otherwise defaults to `unspecified`.
+`__name__`         | pyroscope metric name. Defaults to `process_cpu`.
+`__container_id__` | The container ID derived from target.
 
 ### Targets
 
-One of the following special labels _must_ be included in each target of `targets` and the label must correspond to the
-container or process that is profiled:
+One of the following special labels _must_ be included in each target of `targets` and the label must correspond to the container or process that is profiled:
 
 * `__container_id__`: The container ID.
 * `__meta_docker_container_id`: The ID of the Docker container.
 * `__meta_kubernetes_pod_container_id`: The ID of the Kubernetes pod container.
 * `__process_pid__` : The process ID.
 
-Each process is then associated with a specified target from the targets list, determined by a container ID or process
-PID.
+Each process is then associated with a specified target from the targets list, determined by a container ID or process PID.
 
-If a process's container ID matches a target's container ID label, the stack traces are aggregated per target based on
-the container ID.
-If a process's PID matches a target's process PID label, the stack traces are aggregated per target based on the process
-PID.
+If a process's container ID matches a target's container ID label, the stack traces are aggregated per target based on the container ID.
+If a process's PID matches a target's process PID label, the stack traces are aggregated per target based on the process PID.
 Otherwise the process isn't profiled.
 
 ### Service name
@@ -139,8 +132,7 @@ Symbols are extracted from various sources, including:
 - The `.gopclntab` section in Go language ELF files.
 
 The search for debug files follows [gdb algorithm][].
-For example, if the profiler wants to find the debug file for `/lib/x86_64-linux-gnu/libc.so.6` with a `.gnu_debuglink`
-set to `libc.so.6.debug` and a build ID `0123456789abcdef`.
+For example, if the profiler wants to find the debug file for `/lib/x86_64-linux-gnu/libc.so.6` with a `.gnu_debuglink` set to `libc.so.6.debug` and a build ID `0123456789abcdef`.
 The following paths are examined:
 
 - `/usr/lib/debug/.build-id/01/0123456789abcdef.debug`
@@ -150,8 +142,7 @@ The following paths are examined:
 
 ### Dealing with unknown symbols
 
-Unknown symbols in the profiles you’ve collected indicate that the profiler couldn't access an ELF file associated with
-a given address in the trace.
+Unknown symbols in the profiles you’ve collected indicate that the profiler couldn't access an ELF file associated with a given address in the trace.
 
 This can occur for several reasons:
 
@@ -161,8 +152,7 @@ This can occur for several reasons:
 
 ### Addressing unresolved symbols
 
-If you only see module names (e.g., `/lib/x86_64-linux-gnu/libc.so.6`) without corresponding function names, this
-indicates that the symbols couldn't be mapped to their respective function names.
+If you only see module names (e.g., `/lib/x86_64-linux-gnu/libc.so.6`) without corresponding function names, this indicates that the symbols couldn't be mapped to their respective function names.
 
 This can occur for several reasons:
 
@@ -187,21 +177,18 @@ apt install libc6-dbg
 
 ### Understanding flat stack traces
 
-If your profiles show many shallow stack traces, typically 1-2 frames deep, your binary might have been compiled without
-frame pointers.
+If your profiles show many shallow stack traces, typically 1-2 frames deep, your binary might have been compiled without frame pointers.
 
 To compile your code with frame pointers, include the `-fno-omit-frame-pointer` flag in your compiler options.
+
 
 ## Example
 
 ### Kubernetes discovery
 
-In the following example, performance profiles are collected from pods on the same node, discovered using
-`discovery.kubernetes`.
-Pod selection relies on the `HOSTNAME` environment variable, which is a pod name if {{< param "PRODUCT_NAME" >}} is used
-as an {{< param "PRODUCT_NAME" >}} Helm chart.
-The `service_name` label is set to `{__meta_kubernetes_namespace}/{__meta_kubernetes_pod_container_name}` from
-Kubernetes meta labels.
+In the following example, performance profiles are collected from pods on the same node, discovered using `discovery.kubernetes`.
+Pod selection relies on the `HOSTNAME` environment variable, which is a pod name if {{< param "PRODUCT_NAME" >}} is used as an {{< param "PRODUCT_NAME" >}} Helm chart.
+The `service_name` label is set to `{__meta_kubernetes_namespace}/{__meta_kubernetes_pod_container_name}` from Kubernetes meta labels.
 
 ```alloy
 discovery.kubernetes "all_pods" {
@@ -266,8 +253,7 @@ pyroscope.write "endpoint" {
 
 ### Docker discovery
 
-The following example collects performance profiles from containers discovered by `discovery.docker` and ignores all
-other profiles collected from outside any docker container.
+The following example collects performance profiles from containers discovered by `discovery.docker` and ignores all other profiles collected from outside any docker container.
 The `service_name` label is set to the `__meta_docker_container_name` label.
 
 ```alloy
@@ -297,7 +283,6 @@ pyroscope.ebpf "default" {
 ```
 
 [troubleshooting]: #troubleshooting-unknown-symbols
-
 [gdb algorithm]: https://sourceware.org/gdb/onlinedocs/gdb/Separate-Debug-Files.html
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
@@ -309,9 +294,9 @@ pyroscope.ebpf "default" {
 - Components that export [Targets](../../../compatibility/#targets-exporters)
 - Components that export [Pyroscope `ProfilesReceiver`](../../../compatibility/#pyroscope-profilesreceiver-exporters)
 
+
 {{< admonition type="note" >}}
-Connecting some components may not be sensible or components may require further configuration to make the connection
-work correctly.
+Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.
 Refer to the linked documentation for more details.
 {{< /admonition >}}
 
