@@ -602,6 +602,48 @@ func runBenchmarks(b *testing.B, config string, percentageSecrets int, secretNam
 	}
 }
 
+var sampleFuzzLogLines = []string{
+	`key=value1,value2 log=fmt test=1 secret=password`,
+	`{"key":["value1","value2"],"log":"fmt","test":1,"secret":"password"}`,
+	`1970-01-01 00:00:00 pattern value1,value2 1 secret`,
+}
+
+func FuzzProcessEntryDefault(f *testing.F) {
+	f.Fuzz(setupFuzz(f, "default"))
+}
+
+func FuzzProcessEntryRedactHash(f *testing.F) {
+	f.Fuzz(setupFuzz(f, "custom_redact_string_with_hash"))
+}
+
+func FuzzProcessEntryPartialMask(f *testing.F) {
+	f.Fuzz(setupFuzz(f, "partial_mask"))
+}
+
+func setupFuzz(f *testing.F, config string) func(t *testing.T, log string) {
+	for _, line := range sampleFuzzLogLines {
+		f.Add(line)
+	}
+	ch1 := loki.NewLogsReceiver()
+	var args Arguments
+	require.NoError(f, syntax.Unmarshal([]byte(testConfigs[config]), &args))
+	args.ForwardTo = []loki.LogsReceiver{ch1}
+
+	opts := component.Options{
+		Logger:         util.TestLogger(f),
+		OnStateChange:  func(e component.Exports) {},
+		GetServiceData: getServiceData,
+	}
+
+	// Create component
+	c, err := New(opts, args)
+	require.NoError(f, err)
+	return func(t *testing.T, log string) {
+		entry := loki.Entry{Labels: model.LabelSet{}, Entry: logproto.Entry{Timestamp: time.Now(), Line: log}}
+		c.processEntry(entry)
+	}
+}
+
 func getServiceData(name string) (interface{}, error) {
 	switch name {
 	case livedebugging.ServiceName:
