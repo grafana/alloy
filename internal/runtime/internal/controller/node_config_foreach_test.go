@@ -239,6 +239,41 @@ func TestNonAlphaNumericString(t *testing.T) {
 	require.ElementsMatch(t, customComponentIds, []string{"foreach_123__st_4__1"})
 }
 
+func TestNonAlphaNumericString2(t *testing.T) {
+	// All non-alphanumeric characters are replaced with "_".
+	// This test uses two different strings that will be normalized to the same string.
+	// Both "123./s4" and "123/.s4" will become "123__s4".
+	// We expect this to be ok - the controller will name one of them "123__s4_1", and the other "123__s4_2"
+	config := `foreach "default" {
+		collection = ["123./s4", "123/.s4"]
+		var = "num"
+		template {
+		}
+	}`
+	foreachConfigNode := NewForeachConfigNode(getBlockFromConfig(t, config), getComponentGlobals(t), nil)
+	require.NoError(t, foreachConfigNode.Evaluate(vm.NewScope(make(map[string]interface{}))))
+	customComponentIds := foreachConfigNode.moduleController.(*ModuleControllerMock).CustomComponents
+	require.ElementsMatch(t, customComponentIds, []string{"foreach_123__s4_1", "foreach_123__s4_2"})
+}
+
+func TestNonAlphaNumericString3(t *testing.T) {
+	// The "123./s4" non-alphanumeric string should normally be converted into "foreach_123__s4_1".
+	// However, there is already a "foreach_123__s4_1".
+	// We expect the controller to avoid such name collisions.
+	config := `foreach "default" {
+		collection = ["123./s4", "123__s4_1"]
+		var = "num"
+		template {
+		}
+	}`
+	foreachConfigNode := NewForeachConfigNode(getBlockFromConfig(t, config), getComponentGlobals(t), nil)
+	require.NoError(t, foreachConfigNode.Evaluate(vm.NewScope(make(map[string]interface{}))))
+	customComponentIds := foreachConfigNode.moduleController.(*ModuleControllerMock).CustomComponents
+	//TODO: It's not very clear which item became "foreach_123__s4_1_1".
+	// To avoid confusion, maybe we should log a mapping?
+	require.ElementsMatch(t, customComponentIds, []string{"foreach_123__s4_1", "foreach_123__s4_1_1"})
+}
+
 func TestCollectionNonArrayValue(t *testing.T) {
 	config := `foreach "default" {
 		collection = "aaa"
