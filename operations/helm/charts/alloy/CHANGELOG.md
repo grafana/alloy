@@ -78,6 +78,7 @@ internal API changes are not present.
 
 ### Enhancements
 
+- Add Vertical Pod Autoscaler support (@QuentinBisson)
 - Add the ability to set --cluster.name in the Helm chart with alloy.clustering.name. (@petewall)
 - Add the ability to set appProtocol in extraPorts to help OpenShift users to expose gRPC. (@clementduveau)
 
