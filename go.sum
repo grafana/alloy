@@ -2704,6 +2704,8 @@ github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/zipkin 
 github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/zipkin v0.116.0/go.mod h1:9TzKV3YvfXnz9PUoKluRG3iQkOVQMNZcUJy+CUnthkY=
 github.com/open-telemetry/opentelemetry-collector-contrib/processor/attributesprocessor v0.116.0 h1:3qdGwEhZmRyepVnOwPTe4fk6WDKxUCivr6RHleX7hy4=
 github.com/open-telemetry/opentelemetry-collector-contrib/processor/attributesprocessor v0.116.0/go.mod h1:FAuz4SFxKZwNgptL1BVarh6SEO4gQ1I7SclJScBBho4=
+github.com/open-telemetry/opentelemetry-collector-contrib/processor/cumulativetodeltaprocessor v0.116.0 h1:+daFa0jsEaIgyEfGQfn/osSfKYaErOypxHNeytYYF08=
+github.com/open-telemetry/opentelemetry-collector-contrib/processor/cumulativetodeltaprocessor v0.116.0/go.mod h1:+nGFbElge3UAkSHzrPalOUYmGKcQGgKU8e6NZbRy1x8=
 github.com/open-telemetry/opentelemetry-collector-contrib/processor/deltatocumulativeprocessor v0.116.0 h1:ZBmLuipJv7BT9fho/2yAFsS8AtMsCOCe4ON8oqkX3n8=
 github.com/open-telemetry/opentelemetry-collector-contrib/processor/deltatocumulativeprocessor v0.116.0/go.mod h1:f0GdYWGxUunyRZ088gHnoX78pc/gZc3dQlRtidiGXzg=
 github.com/open-telemetry/opentelemetry-collector-contrib/processor/filterprocessor v0.116.0 h1:XHe77t+TheItR0xPgtmk3+ijTdXlkupCNXidzUEyjbc=
