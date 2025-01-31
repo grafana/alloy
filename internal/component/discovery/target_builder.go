@@ -154,8 +154,6 @@ func (t targetBuilder) Target() Target {
 	)
 
 	if modifyOwn {
-		// TODO(thampiotr): further benchmarking is needed here, but if this is causing a lot of allocation, we could
-		// 					try implementing Target with toAdd and toDel overlays instead.
 		newOwn = make(commonlabels.LabelSet, len(t.own)+len(t.toAdd))
 		for k, v := range t.own {
 			if _, ok := t.toDel[string(k)]; ok {

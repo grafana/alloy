@@ -29,32 +29,6 @@ var (
 	_ equality.CustomEquality       = Target{}
 )
 
-func ComponentTargetsToPromTargetGroups(jobName string, tgs []Target) map[string][]*targetgroup.Group {
-	targetsWithCommonGroupLabels := map[uint64][]Target{}
-	for _, t := range tgs {
-		fp := t.groupLabelsHash() // TODO(thampiotr): could use a cache if it's on exactly the same slice
-		targetsWithCommonGroupLabels[fp] = append(targetsWithCommonGroupLabels[fp], t)
-	}
-
-	allGroups := make([]*targetgroup.Group, 0, len(targetsWithCommonGroupLabels))
-
-	groupIndex := 0
-	for _, targetsInGroup := range targetsWithCommonGroupLabels {
-		sharedLabels := targetsInGroup[0].group // all have the same group labels.
-		individualLabels := make([]commonlabels.LabelSet, len(targetsInGroup))
-		for i, target := range targetsInGroup {
-			individualLabels[i] = target.own
-		}
-		promGroup := &targetgroup.Group{
-			Source:  fmt.Sprintf("%s_part_%d", jobName, groupIndex),
-			Labels:  sharedLabels,
-			Targets: individualLabels,
-		}
-		allGroups = append(allGroups, promGroup)
-	}
-	return map[string][]*targetgroup.Group{jobName: allGroups}
-}
-
 var EmptyTarget = Target{
 	group: commonlabels.LabelSet{},
 	own:   commonlabels.LabelSet{},
@@ -302,7 +276,7 @@ func (t Target) hashLabelsInOrder(order []string) uint64 {
 	b := make([]byte, 0, 1024)
 	mustGet := func(label string) string {
 		val, ok := t.Get(label)
-		if !ok {
+		if !ok { // should never happen as Target is immutable
 			panic("label concurrently modified - this is a bug - please report an issue")
 		}
 		return val
@@ -329,4 +303,31 @@ func (t Target) hashLabelsInOrder(order []string) uint64 {
 		b = append(b, seps[0])
 	}
 	return xxhash.Sum64(b)
+}
+
+func ComponentTargetsToPromTargetGroups(jobName string, tgs []Target) map[string][]*targetgroup.Group {
+	targetsWithCommonGroupLabels := map[uint64][]Target{}
+	for _, t := range tgs {
+		fp := t.groupLabelsHash() // TODO(thampiotr): could use a cache if it's on exactly the same slice
+		targetsWithCommonGroupLabels[fp] = append(targetsWithCommonGroupLabels[fp], t)
+	}
+
+	allGroups := make([]*targetgroup.Group, 0, len(targetsWithCommonGroupLabels))
+
+	groupIndex := 0
+	for _, targetsInGroup := range targetsWithCommonGroupLabels {
+		sharedLabels := targetsInGroup[0].group // all have the same group labels.
+		individualLabels := make([]commonlabels.LabelSet, len(targetsInGroup))
+		for i, target := range targetsInGroup {
+			individualLabels[i] = target.own
+		}
+		promGroup := &targetgroup.Group{
+			Source:  fmt.Sprintf("%s_part_%d", jobName, groupIndex),
+			Labels:  sharedLabels,
+			Targets: individualLabels,
+		}
+		allGroups = append(allGroups, promGroup)
+		groupIndex++
+	}
+	return map[string][]*targetgroup.Group{jobName: allGroups}
 }

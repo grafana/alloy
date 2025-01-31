@@ -2,8 +2,8 @@ package discovery
 
 import (
 	"fmt"
-	"reflect"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/Masterminds/goutils"
@@ -11,6 +11,7 @@ import (
 	"github.com/grafana/ckit/shard"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/runtime/equality"
@@ -69,33 +70,47 @@ func TestConvertFromNative(t *testing.T) {
 	require.True(t, equality.DeepEqual(expected, toAlloyTargets(map[string]*targetgroup.Group{"test": nativeGroup})))
 }
 
-func TestEquals_Basic(t *testing.T) {
-	// NOTE: if we start caching anything as a field, the equality may break. We should test it.
-	t1 := NewTargetFromMap(map[string]string{"hip": "hop", "boom": "bap"})
-	require.Equal(t, 2, t1.Len())
-	tb := NewTargetBuilderFrom(t1)
-	tb.Set("boom", "bap")
-	t2 := tb.Target()
-	// This is a way commonly used in tests.
-	require.Equal(t, t1, t2)
-	// This is the way exports are compared in BuiltinComponentNode.setExports, and it's important for performance that
-	// Targets equality is working correctly.
-	require.True(t, reflect.DeepEqual(t1, t2))
-}
-
-// TODO(thampiotr): will need a lot more tests like this and with a builder
 func TestEquals_Custom(t *testing.T) {
-	t1 := NewTargetFromSpecificAndBaseLabelSet(
+	eq1 := NewTargetFromSpecificAndBaseLabelSet(
 		model.LabelSet{"foo": "bar"},
 		model.LabelSet{"hip": "hop"},
 	)
-	t2 := NewTargetFromSpecificAndBaseLabelSet(
+	eq2 := NewTargetFromSpecificAndBaseLabelSet(
 		nil,
 		model.LabelSet{"hip": "hop", "foo": "bar"},
 	)
-	require.NotEqual(t, t1, t2)
-	require.True(t, t1.Equals(&t2))
-	require.True(t, t1.EqualsTarget(&t2))
+	eq3 := NewTargetFromSpecificAndBaseLabelSet(
+		model.LabelSet{"hip": "hop", "foo": "bar"},
+		nil,
+	)
+	ne1 := NewTargetFromSpecificAndBaseLabelSet(
+		model.LabelSet{"foo": "bar"},
+		nil,
+	)
+	ne2 := NewTargetFromSpecificAndBaseLabelSet(
+		nil,
+		model.LabelSet{"foo": "bar"},
+	)
+
+	equalTargets := []Target{eq1, eq2, eq3}
+	for _, t1 := range equalTargets {
+		for _, t2 := range equalTargets {
+			require.True(t, t1.Equals(&t2))
+			require.True(t, t1.EqualsTarget(&t2))
+			require.True(t, t2.Equals(&t1))
+			require.True(t, t2.EqualsTarget(&t1))
+		}
+	}
+
+	notEqualTargets := []Target{ne1, ne2}
+	for _, t1 := range notEqualTargets {
+		for _, t2 := range equalTargets {
+			require.False(t, t1.Equals(&t2))
+			require.False(t, t1.EqualsTarget(&t2))
+			require.False(t, t2.Equals(&t1))
+			require.False(t, t2.EqualsTarget(&t1))
+		}
+	}
 }
 
 func Benchmark_Targets_TypicalPipeline(b *testing.B) {
@@ -185,4 +200,98 @@ func (f *randomCluster) Lookup(key shard.Key, _ int, _ shard.Op) ([]peer.Peer, e
 
 func (f *randomCluster) Peers() []peer.Peer {
 	return f.peers
+}
+
+func TestComponentTargetsToPromTargetGroups(t *testing.T) {
+	type testTarget struct {
+		own   map[string]string
+		group map[string]string
+	}
+	type args struct {
+		jobName string
+		tgs     []testTarget
+	}
+	tests := []struct {
+		name     string
+		args     args
+		expected map[string][]*targetgroup.Group
+	}{
+		{
+			name:     "empty targets",
+			args:     args{jobName: "job"},
+			expected: map[string][]*targetgroup.Group{"job": {}},
+		},
+		{
+			name: "targets all in same group",
+			args: args{
+				jobName: "job",
+				tgs: []testTarget{
+					{group: map[string]string{"hip": "hop"}, own: map[string]string{"boom": "bap"}},
+					{group: map[string]string{"hip": "hop"}, own: map[string]string{"tiki": "ta"}},
+				},
+			},
+			expected: map[string][]*targetgroup.Group{"job": {
+				{
+					Source: "job_part_0",
+					Labels: mapToLabelSet(map[string]string{"hip": "hop"}),
+					Targets: []model.LabelSet{
+						mapToLabelSet(map[string]string{"boom": "bap"}),
+						mapToLabelSet(map[string]string{"tiki": "ta"}),
+					},
+				},
+			}},
+		},
+		{
+			name: "two groups",
+			args: args{
+				jobName: "job",
+				tgs: []testTarget{
+					{group: map[string]string{"hip": "hop"}, own: map[string]string{"boom": "bap"}},
+					{group: map[string]string{"kung": "foo"}, own: map[string]string{"tiki": "ta"}},
+					{group: map[string]string{"hip": "hop"}, own: map[string]string{"hoo": "rey"}},
+					{group: map[string]string{"kung": "foo"}, own: map[string]string{"bibim": "bap"}},
+				},
+			},
+			expected: map[string][]*targetgroup.Group{"job": {
+				{
+					Source: "job_part_0",
+					Labels: mapToLabelSet(map[string]string{"hip": "hop"}),
+					Targets: []model.LabelSet{
+						mapToLabelSet(map[string]string{"boom": "bap"}),
+						mapToLabelSet(map[string]string{"hoo": "rey"}),
+					},
+				},
+				{
+					Source: "job_part_1",
+					Labels: mapToLabelSet(map[string]string{"kung": "foo"}),
+					Targets: []model.LabelSet{
+						mapToLabelSet(map[string]string{"tiki": "ta"}),
+						mapToLabelSet(map[string]string{"bibim": "bap"}),
+					},
+				},
+			}},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			targets := make([]Target, 0, len(tt.args.tgs))
+			for _, tg := range tt.args.tgs {
+				targets = append(targets, NewTargetFromSpecificAndBaseLabelSet(mapToLabelSet(tg.own), mapToLabelSet(tg.group)))
+			}
+			actual := ComponentTargetsToPromTargetGroups(tt.args.jobName, targets)
+			assert.Contains(t, actual, tt.args.jobName)
+			slices.SortFunc(actual[tt.args.jobName], func(a *targetgroup.Group, b *targetgroup.Group) int {
+				return strings.Compare(a.Source, b.Source)
+			})
+			assert.Equal(t, tt.expected, actual, "ComponentTargetsToPromTargetGroups(%v, %v)", tt.args.jobName, tt.args.tgs)
+		})
+	}
+}
+
+func mapToLabelSet(m map[string]string) model.LabelSet {
+	r := make(model.LabelSet, len(m))
+	for k, v := range m {
+		r[model.LabelName(k)] = model.LabelValue(v)
+	}
+	return r
 }
