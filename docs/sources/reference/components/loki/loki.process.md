@@ -1700,7 +1700,7 @@ Then the extracted `ip` value is given as source to geoip stage. The geoip stage
 
 ### stage.windowsevent block
 
-The `windowsevent` stage extracts data from the message string that appears in the Windows Event Log.
+The `windowsevent` stage extracts data from the message string in the Windows Event Log.
 
 The following arguments are supported:
 
