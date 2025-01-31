@@ -1722,7 +1722,7 @@ The first section of the input is treated as a whole block and stored in the ext
 
 Sections following the Description are expected to contain key-value pairs in the format key:value.
 
-If the first line of a section has no value (e.g., "Subject:"), the key will act as a prefix for subsequent keys in the same section.
+If the first line of a section has no value, for example "Subject:", the key will act as a prefix for subsequent keys in the same section.
 
 If a line within a section does not include the `:` symbol, it is considered part of the previous entry's value. The line is appended to the previous value, separated by a comma.
 
