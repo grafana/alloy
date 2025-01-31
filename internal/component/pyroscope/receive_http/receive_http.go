@@ -256,7 +256,7 @@ func (c *Component) handleIngest(w http.ResponseWriter, r *http.Request) {
 	for i, appendable := range appendables {
 		g.Go(func() error {
 			profile := &pyroscope.IncomingProfile{
-				Body:    io.NopCloser(bytes.NewReader(buf.Bytes())),
+				RawBody: buf.Bytes(),
 				Headers: r.Header.Clone(),
 				URL:     r.URL,
 				Labels:  lbls,

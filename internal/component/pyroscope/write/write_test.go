@@ -1,7 +1,6 @@
 package write
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"io"
@@ -344,7 +343,7 @@ func Test_Write_AppendIngest(t *testing.T) {
 	require.NotNil(t, export.Receiver, "Receiver is nil")
 
 	incomingProfile := &pyroscope.IncomingProfile{
-		Body: io.NopCloser(bytes.NewReader(testData)),
+		RawBody: testData,
 		Headers: http.Header{
 			"X-Test-Header":    []string{"profile-value"},                    // This should be overridden by endpoint
 			"X-Profile-Header": []string{"profile-value1", "profile-value2"}, // This should be preserved

@@ -359,15 +359,6 @@ func (e *PyroscopeWriteError) Error() string {
 
 // AppendIngest implements the pyroscope.Appender interface.
 func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.IncomingProfile) error {
-	// Read the entire body into memory
-	// This matches how Append() handles profile data (as RawProfile),
-	// but means the entire profile will be held in memory
-	var buf bytes.Buffer
-	if _, err := io.Copy(&buf, profile.Body); err != nil {
-		return fmt.Errorf("reading profile body: %w", err)
-	}
-	bodyBytes := buf.Bytes()
-
 	g, ctx := errgroup.WithContext(ctx)
 
 	// Send to each endpoint concurrently
@@ -397,7 +388,7 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 			}
 			u.RawQuery = query.Encode()
 
-			req, err := http.NewRequestWithContext(ctx, "POST", u.String(), bytes.NewReader(bodyBytes))
+			req, err := http.NewRequestWithContext(ctx, "POST", u.String(), bytes.NewReader(profile.RawBody))
 			if err != nil {
 				return fmt.Errorf("create request: %w", err)
 			}
