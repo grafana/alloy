@@ -99,11 +99,11 @@ func (dt *DistributedTargets) MovedToRemoteInstance(prev *DistributedTargets) []
 }
 
 func keyFor(tgt Target) shard.Key {
-	return shard.Key(tgt.NonMetaLabels().Hash())
+	return shard.Key(tgt.NonMetaLabelsHash())
 }
 
 func keyForLabels(tgt Target, lbls []string) shard.Key {
-	return shard.Key(tgt.SpecificLabels(lbls).Hash())
+	return shard.Key(tgt.SpecificLabelsHash(lbls))
 }
 
 type disabledCluster struct{}
