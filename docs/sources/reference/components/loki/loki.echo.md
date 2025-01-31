@@ -6,21 +6,25 @@ description: Learn about loki.echo
 title: loki.echo
 ---
 
-# loki.echo
+# `loki.echo`
 
 `loki.echo` receives log entries from other `loki` components and prints them to the process' standard output (stdout).
 
-Multiple `loki.echo` components can be specified by giving them different labels.
+You can specify multiple `loki.echo` components by giving them different labels.
 
 ## Usage
 
 ```alloy
-loki.echo "LABEL" {}
+loki.echo "<LABEL>" {}
 ```
 
 ## Arguments
 
-`loki.echo` accepts no arguments.
+The `loki.echo` component doesn't support any arguments.
+
+## Blocks
+
+The `loki.echo` component doesn't support any blocks.
 
 ## Exported fields
 
@@ -36,7 +40,7 @@ Name       | Type           | Description
 
 ## Debug information
 
-`loki.echo` does not expose any component-specific debug information.
+`loki.echo` doesn't expose any component-specific debug information.
 
 ## Example
 
