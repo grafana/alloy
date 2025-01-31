@@ -1711,7 +1711,7 @@ The following arguments are supported:
 | `drop_invalid_labels` | `bool`   | Whether to drop fields that are not valid label names. | `false`   | no       |
 
 When `overwrite_existing` is set to `true`, the stage overwrites existing extracted data fields with the same name.
-If set to `false`, the `_extracted` suffix will be appended to an already existing field name.
+If set to `false`, the `_extracted` suffix is appended to an existing field name.
 
 When `drop_invalid_labels` is set to `true`, the stage drops fields that aren't valid label names.
 If set to `false`, the stage will automatically convert them into valid labels, replacing invalid characters with underscores.
