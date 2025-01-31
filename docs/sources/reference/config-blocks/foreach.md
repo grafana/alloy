@@ -126,7 +126,7 @@ On the other hand, `discovery.*` components such as `discovery.kubernetes` outpu
 {{< /collapse >}}
 
 You can use a `foreach` to loop over each target and start a separate component pipeline for it.
-The following example configuration shows how a `prometheus.exporter.redis` instance is started for each Redis instance discoverd by `discovery.kubernetes`.
+The following example configuration shows how a `prometheus.exporter.redis` instance is started for each Redis instance discovered by `discovery.kubernetes`.
 Additional Kubernetes labels from `discovery.kubernetes` are also added to the metrics created by `prometheus.exporter.redis`.
 
 ```alloy
