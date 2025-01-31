@@ -114,7 +114,7 @@ func NewCustomComponentNode(globals ComponentGlobals, b *ast.BlockStmt, getConfi
 		componentName:       componentName,
 		importNamespace:     importNamespace,
 		customComponentName: customComponentName,
-		moduleController:    globals.NewModuleController(globalID),
+		moduleController:    globals.NewModuleController(ModuleControllerOpts{Id: globalID}),
 		OnBlockNodeUpdate:   globals.OnBlockNodeUpdate,
 		logger:              log.With(globals.Logger, "component_path", parent, "component_id", node),
 		getConfig:           getConfig,
