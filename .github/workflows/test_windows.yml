@@ -1,0 +1,26 @@
+name: Test (Windows)
+on:
+  # TODO: Run the Windows tests for each PR? 
+  # For now we don't do it just because it takes time.
+  push:
+    # TODO: Also run the tests when a Windows-specific features is changed.
+    # For example, the Windows Exporter for Prometheus and Event Log tailers.
+    branches:
+      - main
+jobs:
+  test_windows:
+    name: Test (Windows)
+    runs-on: windows-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Set up Go 1.23
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: go.mod
+        # TODO: Enable caching later.
+        # We'll need to make sure the same cache is reused by the workflow to build Windows binaries.
+        cache: false
+    - name: Test
+      run: '& "C:/Program Files/git/bin/bash.exe" -c ''go test -tags="nodocker,nonetwork"
+        ./...'''
