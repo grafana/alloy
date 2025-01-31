@@ -30,7 +30,6 @@ trigger:
   - pull_request
 type: docker
 ---
-# TODO: Remove this pipeline once its GitHub actions equivalent is battle tested.
 kind: pipeline
 name: Test (Full)
 platform:
