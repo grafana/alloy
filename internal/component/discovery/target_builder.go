@@ -15,7 +15,6 @@ type TargetBuilder interface {
 	MergeWith(Target) TargetBuilder
 }
 
-// TODO(thampiotr): maybe all targets can have toDel map ready?
 type targetBuilder struct {
 	group commonlabels.LabelSet
 	own   commonlabels.LabelSet
@@ -110,7 +109,6 @@ func (t targetBuilder) Del(labels ...string) {
 	}
 }
 
-// TODO(thampiotr): this can be more optimal still...
 func (t targetBuilder) Target() Target {
 	if len(t.toAdd) == 0 && len(t.toDel) == 0 {
 		return NewTargetFromSpecificAndBaseLabelSet(t.own, t.group)

@@ -7,7 +7,8 @@ import (
 var customEqualityType = reflect.TypeOf((*CustomEquality)(nil)).Elem()
 
 // CustomEquality allows to define custom Equals implementation. This can be used, for example, with exported types,
-// so that the Runtime can short-circuit propagating updates when it is not necessary.
+// so that the Runtime can short-circuit propagating updates when it is not necessary. If a struct is passed to
+// DeepEqual, the `other` supplied to Equals will be a pointer. See tests for reference.
 type CustomEquality interface {
 	Equals(other any) bool
 }
@@ -15,7 +16,9 @@ type CustomEquality interface {
 // DeepEqual is a wrapper around reflect.DeepEqual, which first checks if arguments implement CustomEquality. If they
 // do, their Equals method is used for comparison instead of reflect.DeepEqual.
 // For simplicity, DeepEqual requires x and y to be of the same type before calling CustomEquality.Equals.
-// TODO(thampiotr): this will need a lot of tests!!!
+// NOTE: structs, slices, maps and arrays that contain a mix of values implementing CustomEquality and not implementing it
+// are not supported. Unexported fields are not supported either. In those cases, implement CustomEquality on higher
+// level of your object hierarchy.
 func DeepEqual(x, y any) bool {
 	if x == nil || y == nil {
 		return x == y
@@ -52,13 +55,11 @@ func deepCustomEqual(v1, v2 reflect.Value) result {
 		return couldNotCompare
 	}
 
-	if v1.Type().Implements(customEqualityType) {
-		return successfulCompare(v1.Interface().(CustomEquality).Equals(v2.Interface()))
-	}
-
-	// Somewhat redundant, but just in case:
-	if v2.Type().Implements(customEqualityType) {
-		return successfulCompare(v2.Interface().(CustomEquality).Equals(v1.Interface()))
+	pointerOrStruct := v1.Type().Kind() == reflect.Ptr || v1.Type().Kind() == reflect.Struct
+	if pointerOrStruct && v1.CanInterface() && v1.Type().Implements(customEqualityType) {
+		if v2Ptr := getAddr(v2); v2Ptr.CanInterface() {
+			return successfulCompare(v1.Interface().(CustomEquality).Equals(v2Ptr.Interface()))
+		}
 	}
 
 	switch v1.Kind() {
@@ -120,4 +121,19 @@ func deepCustomEqual(v1, v2 reflect.Value) result {
 	default:
 		return couldNotCompare
 	}
+}
+
+// getAddr grabs an address (if needed) to v. This function must be called with either a pointer or struct value.
+func getAddr(v reflect.Value) reflect.Value {
+	if v.Type().Kind() == reflect.Ptr { // already pointer
+		return v
+	}
+	// otherwise it's a struct
+	if v.CanAddr() {
+		return v.Addr()
+	}
+	// if not addressable, we'll need to make a copy
+	newVal := reflect.New(v.Type()).Elem()
+	newVal.Set(v)
+	return newVal.Addr()
 }
