@@ -25,7 +25,7 @@ local.file "<LABEL>" {
 
 ## Arguments
 
-The following arguments are supported:
+You can use the following arguments with `local.file`:
 
 Name             | Type       | Description                                         | Default      | Required
 -----------------|------------|-----------------------------------------------------|--------------|---------
