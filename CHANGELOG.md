@@ -16,6 +16,8 @@ Main (unreleased)
 
 ### Enhancements
 
+- Add `go_table_fallback` arg to `pyroscope.ebpf` (@korniltsev)
+
 - (_Experimental_) Log instance label key in `database_observability.mysql` (@cristiangreco)
 
 - (_Experimental_) Improve parsing of truncated queries in `database_observability.mysql` (@cristiangreco)
