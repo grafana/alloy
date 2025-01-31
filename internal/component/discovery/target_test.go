@@ -113,8 +113,8 @@ func TestEquals_Custom(t *testing.T) {
 		model.LabelSet{"hip": "hop", "foo": "bar"},
 	)
 	require.NotEqual(t, t1, t2)
-	require.True(t, t1.EqualsTarget(t2))
-	require.True(t, t1.Equals(t2))
+	require.True(t, t1.Equals(&t2))
+	require.True(t, t1.EqualsTarget(&t2))
 }
 
 func Benchmark_Targets_TypicalPipeline(b *testing.B) {

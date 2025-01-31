@@ -238,14 +238,15 @@ func (t Target) String() string {
 	return fmt.Sprintf("{%s}", strings.Join(s, ", "))
 }
 
+// Equals implements equality.CustomEquality. Works only with pointers.
 func (t Target) Equals(other any) bool {
-	if ot, ok := other.(Target); ok {
+	if ot, ok := other.(*Target); ok {
 		return t.EqualsTarget(ot)
 	}
 	return false
 }
 
-func (t Target) EqualsTarget(other Target) bool {
+func (t Target) EqualsTarget(other *Target) bool {
 	if t.Len() != other.Len() {
 		return false
 	}
