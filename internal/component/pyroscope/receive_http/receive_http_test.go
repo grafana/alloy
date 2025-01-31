@@ -6,7 +6,6 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"testing"
@@ -350,9 +349,7 @@ func verifyForwardedProfiles(
 
 		if testApp.lastProfile != nil {
 			// Verify profile body
-			body, err := io.ReadAll(testApp.lastProfile.Body)
-			require.NoError(t, err, "Failed to read profile body for appendable %d", i)
-			require.Equal(t, expectedProfile, body, "Profile mismatch for appendable %d", i)
+			require.Equal(t, expectedProfile, testApp.lastProfile.RawBody, "Profile mismatch for appendable %d", i)
 
 			// Verify headers
 			for key, value := range expectedHeaders {
@@ -486,22 +483,13 @@ func (a *testAppender) Append(_ context.Context, lbls labels.Labels, samples []*
 }
 
 func (a *testAppender) AppendIngest(_ context.Context, profile *pyroscope.IncomingProfile) error {
-	var buf bytes.Buffer
-	tee := io.TeeReader(profile.Body, &buf)
-
 	newProfile := &pyroscope.IncomingProfile{
-		Body:    io.NopCloser(&buf),
+		RawBody: profile.RawBody,
 		Headers: profile.Headers,
 		URL:     profile.URL,
 		Labels:  profile.Labels,
 	}
 	a.lastProfile = newProfile
-
-	_, err := io.Copy(io.Discard, tee)
-	if err != nil {
-		return err
-	}
-
 	return a.appendErr
 }
 
