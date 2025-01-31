@@ -153,12 +153,6 @@ func (c *Component) Update(args component.Arguments) error {
 	return nil
 }
 
-type ProfileDroppedError struct{}
-
-func (e *ProfileDroppedError) Error() string {
-	return "profile dropped by relabel rules"
-}
-
 func (c *Component) Append(ctx context.Context, lbls labels.Labels, samples []*pyroscope.RawSample) error {
 	if c.exited.Load() {
 		return fmt.Errorf("%s has exited", c.opts.ID)
@@ -172,7 +166,8 @@ func (c *Component) Append(ctx context.Context, lbls labels.Labels, samples []*p
 		return err
 	}
 	if !keep {
-		return &ProfileDroppedError{}
+		level.Debug(c.opts.Logger).Log("msg", "profile dropped by relabel rules", "labels", lbls.String())
+		return nil
 	}
 
 	return c.fanout.Appender().Append(ctx, newLabels, samples)
@@ -186,24 +181,21 @@ func (c *Component) AppendIngest(ctx context.Context, profile *pyroscope.Incomin
 	c.mut.RLock()
 	defer c.mut.RUnlock()
 
-	lbls, err := extractLabelsFromIncomingProfile(profile)
-	if err != nil {
-		return err
-	}
-	if lbls.IsEmpty() {
+	if profile.Labels.IsEmpty() {
 		return c.fanout.Appender().AppendIngest(ctx, profile)
 	}
 
-	newLabels, keep, err := c.relabel(lbls)
+	newLabels, keep, err := c.relabel(profile.Labels)
 	if err != nil {
 		return fmt.Errorf("processing labels: %w", err)
 	}
 	if !keep {
 		c.metrics.profilesDropped.Inc()
-		return &ProfileDroppedError{}
+		level.Debug(c.opts.Logger).Log("msg", "profile dropped by relabel rules")
+		return nil
 	}
 
-	updateProfileLabels(profile, newLabels)
+	profile.Labels = newLabels
 	return c.fanout.Appender().AppendIngest(ctx, profile)
 }
 
@@ -228,11 +220,15 @@ func (c *Component) relabel(lbls labels.Labels) (labels.Labels, bool, error) {
 	}
 
 	// Apply relabeling
-	newLabels, keep := relabel.Process(lbls, c.rcs...)
+	// builder := labels.NewBuilder(lbls)
+	builder := labels.NewBuilder(lbls)
+	keep := relabel.ProcessBuilder(builder, c.rcs...)
 	if !keep {
 		c.metrics.profilesDropped.Inc()
 		return labels.Labels{}, false, nil
 	}
+
+	newLabels := builder.Labels()
 
 	// Cache result
 	c.addToCache(hash, labelSet, newLabels)

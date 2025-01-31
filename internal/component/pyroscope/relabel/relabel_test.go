@@ -4,12 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/url"
 	"strings"
-	"time"
-
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/grafana/alloy/internal/component"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
@@ -22,6 +20,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
+	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/stretchr/testify/require"
 )
 
@@ -29,8 +28,8 @@ func TestRelabeling(t *testing.T) {
 	tests := []struct {
 		name        string
 		rules       []*alloy_relabel.Config
-		inputName   string
-		wantName    string
+		inputLabels labels.Labels
+		wantLabels  labels.Labels
 		wantDropped bool
 	}{
 		{
@@ -44,8 +43,8 @@ func TestRelabeling(t *testing.T) {
 					Replacement:  "$1",
 				},
 			},
-			inputName:   "app.cpu{}",
-			wantName:    "app.cpu{}",
+			inputLabels: labels.EmptyLabels(),
+			wantLabels:  labels.EmptyLabels(),
 			wantDropped: false,
 		},
 		{
@@ -63,8 +62,8 @@ func TestRelabeling(t *testing.T) {
 					Regex:  alloy_relabel.Regexp{Regexp: regexp.MustCompile("foo")},
 				},
 			},
-			inputName:   "app.cpu{foo=hello}",
-			wantName:    "app.cpu{bar=hello}",
+			inputLabels: labels.FromStrings("foo", "hello"),
+			wantLabels:  labels.FromStrings("bar", "hello"),
 			wantDropped: false,
 		},
 		{
@@ -74,7 +73,8 @@ func TestRelabeling(t *testing.T) {
 				Action:       "drop",
 				Regex:        alloy_relabel.Regexp{Regexp: regexp.MustCompile("dev")},
 			}},
-			inputName:   "app.cpu{env=dev,region=us-1}",
+			inputLabels: labels.FromStrings("env", "dev", "region", "us-1"),
+			wantLabels:  labels.EmptyLabels(),
 			wantDropped: true,
 		},
 		{
@@ -84,8 +84,8 @@ func TestRelabeling(t *testing.T) {
 				Action:       "keep",
 				Regex:        alloy_relabel.Regexp{Regexp: regexp.MustCompile("prod")},
 			}},
-			inputName:   "app.cpu{env=prod,region=us-1}",
-			wantName:    "app.cpu{env=prod,region=us-1}",
+			inputLabels: labels.FromStrings("env", "prod", "region", "us-1"),
+			wantLabels:  labels.FromStrings("env", "prod", "region", "us-1"),
 			wantDropped: false,
 		},
 		{
@@ -95,31 +95,20 @@ func TestRelabeling(t *testing.T) {
 				Action:       "keep",
 				Regex:        alloy_relabel.Regexp{Regexp: regexp.MustCompile("prod")},
 			}},
-			inputName:   "app.cpu{env=dev,region=us-1}",
+			inputLabels: labels.FromStrings("env", "dev", "region", "us-1"),
+			wantLabels:  labels.EmptyLabels(),
 			wantDropped: true,
 		},
 		{
-			name: "drop __name__ label should affect profile name",
-			rules: []*alloy_relabel.Config{
-				{
-					Action: "labeldrop",
-					Regex:  alloy_relabel.Regexp{Regexp: regexp.MustCompile("__name__")},
-				},
-			},
-			inputName:   "app.cpu{env=prod}",
-			wantName:    "{env=prod}",
-			wantDropped: false,
-		},
-		{
-			name: "drop all labels preserves profile name",
+			name: "drop all labels not dropping profile",
 			rules: []*alloy_relabel.Config{
 				{
 					Action: "labeldrop",
 					Regex:  alloy_relabel.Regexp{Regexp: regexp.MustCompile("env|region")},
 				},
 			},
-			inputName:   "app.cpu{env=prod,region=us-1}",
-			wantName:    "app.cpu{}",
+			inputLabels: labels.FromStrings("env", "prod", "region", "us-1"),
+			wantLabels:  labels.EmptyLabels(),
 			wantDropped: false,
 		},
 		{
@@ -131,21 +120,9 @@ func TestRelabeling(t *testing.T) {
 					Regex:        alloy_relabel.Regexp{Regexp: regexp.MustCompile("dev")},
 				},
 			},
-			inputName:   "app.cpu",
-			wantName:    "app.cpu{}",
+			inputLabels: labels.EmptyLabels(),
+			wantLabels:  labels.EmptyLabels(),
 			wantDropped: false,
-		},
-		{
-			name: "drop profile with no name",
-			rules: []*alloy_relabel.Config{
-				{
-					Action: "labeldrop",
-					Regex:  alloy_relabel.Regexp{Regexp: regexp.MustCompile(".*")},
-				},
-			},
-			inputName:   "{env=prod,region=us-1}",
-			wantName:    "",
-			wantDropped: true,
 		},
 		{
 			name: "multiple rules",
@@ -169,8 +146,8 @@ func TestRelabeling(t *testing.T) {
 					Replacement:  "zone-$1",
 				},
 			},
-			inputName:   "app.cpu{env=prod,region=us-1}",
-			wantName:    "app.cpu{environment=prod,region=us-1,zone=zone-1}",
+			inputLabels: labels.FromStrings("env", "prod", "region", "us-1"),
+			wantLabels:  labels.FromStrings("environment", "prod", "region", "us-1", "zone", "zone-1"),
 			wantDropped: false,
 		},
 	}
@@ -196,7 +173,7 @@ func TestRelabeling(t *testing.T) {
 			time.Sleep(100 * time.Millisecond) // Give a little extra time for initialization
 
 			profile := &pyroscope.IncomingProfile{
-				URL: mustParseURL("http://localhost/ingest?name=" + tt.inputName),
+				Labels: tt.inputLabels,
 			}
 
 			// Get the actual component
@@ -209,21 +186,18 @@ func TestRelabeling(t *testing.T) {
 			profiles := app.Profiles()
 
 			if tt.wantDropped {
-				require.Error(t, err)
 				if errors.Is(err, labelset.ErrServiceNameIsRequired) {
 					require.Empty(t, profiles, "profile should have been dropped")
 					return
 				}
-				var dropErr *ProfileDroppedError
-				require.ErrorAs(t, err, &dropErr)
-				require.Equal(t, dropErr.Error(), err.Error())
+				require.NoError(t, err)
 				require.Empty(t, profiles, "profile should have been dropped")
 				return
 			}
 
-			require.NoError(t, err)
-			require.Len(t, profiles, 1)
-			require.Equal(t, tt.wantName, profiles[0].URL.Query().Get("name"))
+			// Compare labels instead of URL
+			gotProfile := app.Profiles()[0]
+			require.Equal(t, tt.wantLabels, gotProfile.Labels)
 		})
 	}
 }
@@ -258,7 +232,7 @@ func TestCache(t *testing.T) {
 	// Add initial entries and verify cache state
 	for _, ls := range lsets {
 		err = c.AppendIngest(context.Background(), &pyroscope.IncomingProfile{
-			URL: mustParseURL(fmt.Sprintf("http://localhost/ingest?name=app.cpu{%s}", formatLabelsForURL(ls))),
+			Labels: ls,
 		})
 		require.NoError(t, err)
 	}
@@ -266,7 +240,7 @@ func TestCache(t *testing.T) {
 
 	// Test cache hit
 	err = c.AppendIngest(context.Background(), &pyroscope.IncomingProfile{
-		URL: mustParseURL(fmt.Sprintf("http://localhost/ingest?name=app.cpu{%s}", formatLabelsForURL(lsets[0]))),
+		Labels: lsets[0],
 	})
 	require.NoError(t, err)
 	require.Equal(t, 3, c.cache.Len(), "cache length should not change after cache hit")
@@ -287,7 +261,6 @@ func TestCache(t *testing.T) {
 	// Add colliding profiles
 	for _, ls := range []model.LabelSet{ls1, ls2} {
 		// Convert directly to labels.Labels as the component expects
-		// lbls := labels.FromStrings("A", string(ls["A"]))
 		lbls := labels.FromStrings("A", string(ls["A"]), "__name__", string(ls["__name__"]))
 
 		// Log intermediate fingerprint
@@ -298,7 +271,7 @@ func TestCache(t *testing.T) {
 		t.Logf("Intermediate fingerprint: %v", tmpLabelSet.Fingerprint())
 
 		err = c.AppendIngest(context.Background(), &pyroscope.IncomingProfile{
-			URL: mustParseURL(fmt.Sprintf("http://localhost/ingest?name=app.cpu{%s}", formatLabelsForURL(lbls))),
+			Labels: lbls,
 		})
 		require.NoError(t, err)
 	}
@@ -354,18 +327,40 @@ func (t *TestAppender) Profiles() []*pyroscope.IncomingProfile {
 	return t.profiles
 }
 
-func mustParseURL(s string) *url.URL {
-	u, err := url.Parse(s)
-	if err != nil {
-		panic(err)
-	}
-	return u
-}
-
 func formatLabelsForURL(lbls labels.Labels) string {
 	var pairs []string
 	lbls.Range(func(l labels.Label) {
 		pairs = append(pairs, fmt.Sprintf("%s=%s", l.Name, l.Value))
 	})
 	return strings.Join(pairs, ",")
+}
+
+func BenchmarkRelabelProcess(b *testing.B) {
+	lbls := labels.FromStrings(
+		"__name__", "test_metric",
+		"env", "prod",
+		"service", "api",
+		"region", "us-east",
+	)
+
+	cfg := &relabel.Config{
+		SourceLabels: []model.LabelName{"env"},
+		TargetLabel:  "environment",
+		Action:       "replace",
+		Regex:        relabel.MustNewRegexp("(.+)"),
+		Replacement:  "$1",
+	}
+
+	b.Run("Process", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			relabel.Process(lbls, cfg)
+		}
+	})
+
+	b.Run("ProcessBuilder", func(b *testing.B) {
+		builder := labels.NewBuilder(lbls)
+		for i := 0; i < b.N; i++ {
+			relabel.ProcessBuilder(builder, cfg)
+		}
+	})
 }

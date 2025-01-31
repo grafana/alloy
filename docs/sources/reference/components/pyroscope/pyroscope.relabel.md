@@ -43,13 +43,13 @@ The following blocks are supported inside the definition of `pyroscope.relabel`:
 
 Hierarchy | Name     | Description                                        | Required
 ----------|----------|----------------------------------------------------|---------
-rule      | [rule][] | Relabeling rules to apply to received log entries. | no
+rule      | [rule][] | Relabeling rules to apply to received profile entries. | no
 
 [rule]: #rule-block
 
 ### rule block
 
-{{< docs/shared lookup="reference/components/rule-block-logs.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/rule-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 
