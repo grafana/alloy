@@ -1716,7 +1716,7 @@ If set to `false`, the `_extracted` suffix will be appended to an already existi
 When `drop_invalid_labels` is set to `true`, the stage drops fields that aren't valid label names.
 If set to `false`, the stage will automatically convert them into valid labels, replacing invalid characters with underscores.
 
-The `windowsevent` stage expects the message to structured in sections that are split by empty lines.
+The `windowsevent` stage expects the message to be structured in sections that are split by empty lines.
 
 The first section of the input is treated as a whole block and stored in the extracted map with the key `Description`.
 
