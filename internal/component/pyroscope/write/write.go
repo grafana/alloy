@@ -394,11 +394,14 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 
 			// Handle labels
 			query := profile.URL.Query()
-			if nameParam := query.Get("name"); nameParam != "" {
-				ls, err := labelset.Parse(nameParam)
-				if err != nil {
-					return err
-				}
+			if !profile.Labels.IsEmpty() {
+				ls := labelset.New(make(map[string]string))
+
+				profile.Labels.Range(func(l labels.Label) {
+					ls.Add(l.Name, l.Value)
+				})
+
+				// Add external labels (which will override any existing ones)
 				for k, v := range f.config.ExternalLabels {
 					ls.Add(k, v)
 				}

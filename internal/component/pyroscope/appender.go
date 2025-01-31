@@ -37,6 +37,7 @@ type IncomingProfile struct {
 	Body    io.ReadCloser
 	Headers http.Header
 	URL     *url.URL
+	Labels  labels.Labels
 }
 
 var _ Appendable = (*Fanout)(nil)

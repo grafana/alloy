@@ -14,6 +14,8 @@ Main (unreleased)
 
 - Add the possibility to export span events as logs in `otelcol.connector.spanlogs`. (@steve-hb)
 
+- Add `pyroscope.relabel` component to modify or filter profiles using Prometheus relabeling rules. (@marcsanmi)
+
 ### Enhancements
 
 - (_Experimental_) Log instance label key in `database_observability.mysql` (@cristiangreco)

@@ -25,6 +25,7 @@ import (
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/api/model/labelset"
 )
 
 const (
@@ -218,6 +219,26 @@ func (c *Component) getAppendables() []pyroscope.Appendable {
 func (c *Component) handleIngest(w http.ResponseWriter, r *http.Request) {
 	appendables := c.getAppendables()
 
+	// Parse labels early
+	var lbls labels.Labels
+	if nameParam := r.URL.Query().Get("name"); nameParam != "" {
+		ls, err := labelset.Parse(nameParam)
+		if err != nil {
+			level.Warn(c.opts.Logger).Log(
+				"msg", "Failed to parse labels from name parameter",
+				"name", nameParam,
+				"err", err,
+			)
+			// Continue with empty labels instead of returning an error
+		} else {
+			var labelPairs []labels.Label
+			for k, v := range ls.Labels() {
+				labelPairs = append(labelPairs, labels.Label{Name: k, Value: v})
+			}
+			lbls = labels.New(labelPairs...)
+		}
+	}
+
 	// Create a pipe for each appendable
 	pipeWriters := make([]io.Writer, len(appendables))
 	pipeReaders := make([]io.Reader, len(appendables))
@@ -251,6 +272,7 @@ func (c *Component) handleIngest(w http.ResponseWriter, r *http.Request) {
 				Body:    io.NopCloser(pipeReaders[i]),
 				Headers: r.Header.Clone(),
 				URL:     r.URL,
+				Labels:  lbls,
 			}
 
 			err := appendable.Appender().AppendIngest(ctx, profile)
