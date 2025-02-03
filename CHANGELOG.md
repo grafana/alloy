@@ -294,6 +294,8 @@ v1.7.0
   previous "legacy" scheme. An experimental flag `--feature.prometheus.metric-validation-scheme` can be used to switch
   it to `utf-8` to experiment with UTF-8 support. (@thampiotr)
 
+- Fix `otelcol.exporter.prometheus` that dropped valid exemplars. (@github-vincent-miszczak)
+
 ### Other changes
 
 - Upgrading to Prometheus v2.54.1. (@ptodev)
