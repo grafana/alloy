@@ -38,6 +38,10 @@ Main (unreleased)
 
 - Add support for pushv1.PusherService Connect API in `pyroscope.receive_http`. (@simonswine)
 
+### Bugfixes
+
+- Fix `otelcol.exporter.prometheus` that dropped valid exemplars.
+
 v1.6.1
 -----------------
 
