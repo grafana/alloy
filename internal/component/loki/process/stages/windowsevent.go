@@ -125,6 +125,8 @@ func (w *WindowsEventStage) processEntry(extracted map[string]interface{}, key s
 				//  Virtual Account:No
 				// To avoid collisions with other sections, we use the section title as prefix
 				if j == 1 {
+					// The prefix is not sanitized here because the sanitization process should be
+					// applied on the full key only. Else it can add an unnecessary "_extracted" suffix to the prefix.
 					keyPrefix = ek
 				}
 				continue
