@@ -30,7 +30,7 @@ jobs:
       run: echo "image_tag=${FULL_TAG##*/}" >> $GITHUB_OUTPUT
 
     - name: Login to DockerHub (from vault)
-      uses: grafana/shared-workflows/actions/dockerhub-login@dockerhub-login-v1.0.0
+      uses: grafana/shared-workflows/actions/dockerhub-login@dockerhub-login-v1.0.1
 
     - run: |
        docker run --rm --privileged multiarch/qemu-user-static --reset -p yes     
@@ -58,7 +58,7 @@ jobs:
       run: echo "image_tag=${FULL_TAG##*/}-boringcrypto" >> $GITHUB_OUTPUT
 
     - name: Login to DockerHub (from vault)
-      uses: grafana/shared-workflows/actions/dockerhub-login@dockerhub-login-v1.0.0
+      uses: grafana/shared-workflows/actions/dockerhub-login@dockerhub-login-v1.0.1
 
     - run: |
        docker run --rm --privileged multiarch/qemu-user-static --reset -p yes     
