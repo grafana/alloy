@@ -123,7 +123,7 @@ func New(o component.Options, c Arguments) (*Component, error) {
 	// Export the consumer.
 	// This will remain the same throughout the component's lifetime,
 	// so we do this during component construction.
-	export := lazyconsumer.New(context.Background())
+	export := lazyconsumer.New(context.Background(), o.ID)
 	export.SetConsumers(res.consumer, nil, nil)
 	o.OnStateChange(otelcol.ConsumerExports{Input: export})
 

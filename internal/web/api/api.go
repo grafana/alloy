@@ -51,6 +51,9 @@ func (a *AlloyAPI) RegisterRoutes(urlPrefix string, r *mux.Router) {
 
 	r.Handle(path.Join(urlPrefix, "/peers"), httputil.CompressionHandler{Handler: getClusteringPeersHandler(a.alloy)})
 	r.Handle(path.Join(urlPrefix, "/debug/{id:.+}"), liveDebugging(a.alloy, a.CallbackManager))
+
+	r.Handle(path.Join(urlPrefix, "/graph"), graph(a.alloy, a.CallbackManager))
+	r.Handle(path.Join(urlPrefix, "/graph/{moduleID:.+}"), graph(a.alloy, a.CallbackManager))
 }
 
 func listComponentsHandler(host service.Host) http.HandlerFunc {
@@ -166,6 +169,100 @@ func getClusteringPeersHandler(host service.Host) http.HandlerFunc {
 	}
 }
 
+type feedKey struct {
+	ComponentID livedebugging.ComponentID
+	Type        livedebugging.FeedType
+}
+
+func graph(_ service.Host, callbackManager livedebugging.CallbackManager) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var moduleID livedebugging.ModuleID
+		if vars := mux.Vars(r); vars != nil {
+			moduleID = livedebugging.ModuleID(vars["moduleID"])
+		}
+
+		window := setWindow(w, r.URL.Query().Get("window"))
+
+		dataCh := make(chan *livedebugging.Feed, 1000)
+		feedDataMap := make(map[feedKey]feed)
+
+		ctx := r.Context()
+		id := livedebugging.CallbackID(uuid.New().String())
+
+		err := callbackManager.AddCallbackMulti(id, moduleID, func(data *livedebugging.Feed) {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				select {
+				case dataCh <- data:
+				default:
+				}
+			}
+		})
+
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		defer func() {
+			close(dataCh)
+			callbackManager.DeleteCallbackMulti(id, moduleID)
+		}()
+
+		ticker := time.NewTicker(time.Duration(window) * time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case data := <-dataCh:
+				// Aggregate incoming data
+				key := feedKey{ComponentID: data.ComponentID, Type: data.Type}
+				if existing, exists := feedDataMap[key]; exists {
+					existing.Count += data.Count
+				} else {
+					// The data is ignored for the graph.
+					feedDataMap[key] = feed{
+						ComponentID:        string(data.ComponentID),
+						Count:              data.Count,
+						Type:               string(data.Type),
+						TargetComponentIDs: data.TargetComponentIDs,
+					}
+				}
+
+			case <-ticker.C:
+				// Flush aggregated data
+				var builder strings.Builder
+				for _, data := range feedDataMap {
+					jsonData, err := json.Marshal(data)
+					if err != nil {
+						continue
+					}
+					builder.Write(jsonData)
+					builder.WriteString("|;|")
+				}
+
+				// Add an empty limiter to show the lack of data
+				if builder.Len() == 0 {
+					builder.WriteString("|;|")
+				}
+
+				_, writeErr := w.Write([]byte(builder.String()))
+				if writeErr != nil {
+					return
+				}
+				w.(http.Flusher).Flush()
+
+				feedDataMap = make(map[feedKey]feed)
+
+			case <-ctx.Done():
+				return
+			}
+		}
+	}
+}
+
 func liveDebugging(_ service.Host, callbackManager livedebugging.CallbackManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
@@ -178,7 +275,7 @@ func liveDebugging(_ service.Host, callbackManager livedebugging.CallbackManager
 
 		id := livedebugging.CallbackID(uuid.New().String())
 
-		err := callbackManager.AddCallback(id, componentID, func(data string) {
+		err := callbackManager.AddCallback(id, componentID, func(data *livedebugging.Feed) {
 			select {
 			case <-ctx.Done():
 				return
@@ -188,7 +285,7 @@ func liveDebugging(_ service.Host, callbackManager livedebugging.CallbackManager
 				}
 				// Avoid blocking the channel when the channel is full
 				select {
-				case dataCh <- data:
+				case dataCh <- data.DataFunc():
 				default:
 				}
 			}
@@ -238,4 +335,17 @@ func setSampleProb(w http.ResponseWriter, sampleProbParam string) (sampleProb fl
 		}
 	}
 	return sampleProb
+}
+
+func setWindow(w http.ResponseWriter, windowParam string) (window int64) {
+	window = 5
+	if windowParam != "" {
+		var err error
+		window, err = strconv.ParseInt(windowParam, 10, 64)
+		if err != nil || window < 1 || window > 60 {
+			http.Error(w, "Invalid window", http.StatusBadRequest)
+			return 5
+		}
+	}
+	return window
 }

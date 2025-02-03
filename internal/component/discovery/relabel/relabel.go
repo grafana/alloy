@@ -99,7 +99,12 @@ func (c *Component) Update(args component.Arguments) error {
 		}
 		componentID := livedebugging.ComponentID(c.opts.ID)
 		if c.debugDataPublisher.IsActive(componentID) {
-			c.debugDataPublisher.Publish(componentID, fmt.Sprintf("%s => %s", lset.String(), relabelled.String()))
+			c.debugDataPublisher.Publish(componentID, livedebugging.NewFeed(
+				componentID,
+				livedebugging.Target,
+				1,
+				func() string { return fmt.Sprintf("%s => %s", lset.String(), relabelled.String()) },
+			))
 		}
 	}
 

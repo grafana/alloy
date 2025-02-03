@@ -153,7 +153,14 @@ func (c *Component) Run(ctx context.Context) error {
 			// Start processing the log entry to redact secrets
 			newEntry := c.processEntry(entry)
 			if c.debugDataPublisher.IsActive(componentID) {
-				c.debugDataPublisher.Publish(componentID, fmt.Sprintf("%s => %s", entry.Line, newEntry.Line))
+				c.debugDataPublisher.Publish(componentID, livedebugging.NewFeed(
+					componentID,
+					livedebugging.LokiLog,
+					1,
+					func() string {
+						return fmt.Sprintf("%s => %s", entry.Line, newEntry.Line)
+					},
+				))
 			}
 
 			for _, f := range c.fanout {

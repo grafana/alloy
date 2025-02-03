@@ -277,7 +277,18 @@ func (c *Component) relabel(val float64, lbls labels.Labels) labels.Labels {
 
 	componentID := livedebugging.ComponentID(c.opts.ID)
 	if c.debugDataPublisher.IsActive(componentID) {
-		c.debugDataPublisher.Publish(componentID, fmt.Sprintf("%s => %s", lbls.String(), relabelled.String()))
+		count := uint64(1)
+		if relabelled.Len() == 0 {
+			count = 0 // if no labels are left, the count is not incremented because the metric will be filtered out
+		}
+		c.debugDataPublisher.Publish(componentID, livedebugging.NewFeed(
+			componentID,
+			livedebugging.PrometheusMetric,
+			count,
+			func() string {
+				return fmt.Sprintf("%s => %s", lbls.String(), relabelled.String())
+			},
+		))
 	}
 
 	return relabelled

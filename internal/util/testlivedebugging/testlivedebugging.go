@@ -27,6 +27,28 @@ func (h *FakeServiceHost) GetComponent(id component.ID, opts component.InfoOptio
 	return nil, component.ErrComponentNotFound
 }
 
+func (h *FakeServiceHost) ListComponents(moduleID string, opts component.InfoOptions) ([]*component.Info, error) {
+	if moduleID != "" {
+		for key, _ := range h.ComponentsInfo {
+			if key.ModuleID == moduleID {
+				return h.getComponentsInModule(moduleID), nil
+			}
+		}
+		return nil, component.ErrModuleNotFound
+	}
+	return h.getComponentsInModule(""), nil
+}
+
+func (h *FakeServiceHost) getComponentsInModule(module string) []*component.Info {
+	detail := make([]*component.Info, 0, len(h.ComponentsInfo))
+	for key, cp := range h.ComponentsInfo {
+		if key.ModuleID == module {
+			detail = append(detail, &component.Info{ID: key, ComponentName: cp.ComponentName, Component: cp.Component})
+		}
+	}
+	return detail
+}
+
 type FakeComponentLiveDebugging struct {
 	ConsumersCount int
 }

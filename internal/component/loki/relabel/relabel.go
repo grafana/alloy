@@ -126,7 +126,18 @@ func (c *Component) Run(ctx context.Context) error {
 			lbls := c.relabel(entry)
 
 			if c.debugDataPublisher.IsActive(componentID) {
-				c.debugDataPublisher.Publish(componentID, fmt.Sprintf("entry: %s, labels: %s => %s", entry.Line, entry.Labels.String(), lbls.String()))
+				count := uint64(1)
+				if len(lbls) == 0 {
+					count = 0 // if no labels are left, the count is not incremented because the log will be filtered out
+				}
+				c.debugDataPublisher.Publish(componentID, livedebugging.NewFeed(
+					componentID,
+					livedebugging.LokiLog,
+					count,
+					func() string {
+						return fmt.Sprintf("entry: %s, labels: %s => %s", entry.Line, entry.Labels.String(), lbls.String())
+					},
+				))
 			}
 
 			if len(lbls) == 0 {

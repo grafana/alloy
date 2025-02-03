@@ -16,7 +16,7 @@ import (
 )
 
 func Test_PauseAndResume(t *testing.T) {
-	c := New(componenttest.TestContext(t))
+	c := New(componenttest.TestContext(t), "")
 	require.False(t, c.IsPaused())
 	c.Pause()
 	require.True(t, c.IsPaused())
@@ -25,14 +25,14 @@ func Test_PauseAndResume(t *testing.T) {
 }
 
 func Test_NewPaused(t *testing.T) {
-	c := NewPaused(componenttest.TestContext(t))
+	c := NewPaused(componenttest.TestContext(t), "")
 	require.True(t, c.IsPaused())
 	c.Resume()
 	require.False(t, c.IsPaused())
 }
 
 func Test_PauseResume_MultipleCalls(t *testing.T) {
-	c := New(componenttest.TestContext(t))
+	c := New(componenttest.TestContext(t), "")
 	require.False(t, c.IsPaused())
 	c.Pause()
 	c.Pause()
@@ -46,7 +46,7 @@ func Test_PauseResume_MultipleCalls(t *testing.T) {
 
 func Test_ConsumeWaitsForResume(t *testing.T) {
 	goleak.VerifyNone(t, goleak.IgnoreCurrent())
-	c := NewPaused(componenttest.TestContext(t))
+	c := NewPaused(componenttest.TestContext(t), "")
 	require.True(t, c.IsPaused())
 
 	method := map[string]func(){
@@ -109,7 +109,7 @@ func Test_PauseResume_Multithreaded(t *testing.T) {
 	routines := 5
 	allDone := sync.WaitGroup{}
 
-	c := NewPaused(componenttest.TestContext(t))
+	c := NewPaused(componenttest.TestContext(t), "")
 	require.True(t, c.IsPaused())
 
 	// Run goroutines that constantly try to call Consume* methods
