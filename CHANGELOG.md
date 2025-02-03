@@ -34,6 +34,8 @@ Main (unreleased)
 
 - Add livedebugging support for `prometheus.remote_write` (@ravishankar15)
 
+- Add livedebugging support for `otelcol.connector.*` components (@wildum)
+
 - Bump snmp_exporter and embedded modules to 0.27.0. Add support for multi-module handling by comma separation and expose argument to increase SNMP polling concurrency for `prometheus.exporter.snmp`. (@v-zhuravlev)
 
 - Add support for pushv1.PusherService Connect API in `pyroscope.receive_http`. (@simonswine)
