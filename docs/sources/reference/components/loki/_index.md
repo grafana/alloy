@@ -5,7 +5,7 @@ title: loki
 weight: 100
 ---
 
-# loki
+# `loki`
 
 This section contains reference documentation for the `loki` components.
 
