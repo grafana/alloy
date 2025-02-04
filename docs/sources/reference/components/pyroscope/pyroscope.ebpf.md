@@ -56,7 +56,7 @@ Omitted fields take their default values.
 | `collect_user_profile`    | `bool`                   | A flag to enable/disable collection of userspace profiles                                                                        | true    | no       |
 | `collect_kernel_profile`  | `bool`                   | A flag to enable/disable collection of kernelspace profiles                                                                      | true    | no       |
 | `go_table_fallback`       | `bool`                   | A flag to enable symbol lookup in `.sym` / `.dynsym` sections when `.gopclntab` lookup failed. May be useful for `cgo` binaries. | false   | no       |
-| `demangle`                | `string`                 | C++ demangle mode. Available options are: `none`, `simplified`, `templates`, `full`                                              | `none`  | no       |
+| `demangle`                | `string`                 | C++ demangle mode. Available options are: `none`, `simplified`, `templates`, or `full`                                           | `none`  | no       |
 | `python_enabled`          | `bool`                   | A flag to enable/disable python profiling                                                                                        | true    | no       |
 | `symbols_map_size`        | `int`                    | The size of eBPF symbols map                                                                                                     | 16384   | no       |
 | `pid_map_size`            | `int`                    | The size of eBPF PID map                                                                                                         | 2048    | no       |
