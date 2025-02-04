@@ -311,12 +311,12 @@ func (d *decompressor) markPositionAndSize() error {
 }
 
 func (d *decompressor) Stop() {
-	d.mut.RLock()
+	d.mut.Lock()
 	d.stopping = true
 	defer func() {
 		d.stopping = false
 	}()
-	d.mut.RUnlock()
+	d.mut.Unlock()
 
 	// Shut down the position marker thread
 	close(d.posquit)

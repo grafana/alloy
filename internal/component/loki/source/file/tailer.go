@@ -339,7 +339,7 @@ func (t *tailer) markPositionAndSize() error {
 }
 
 func (t *tailer) Stop() {
-	t.mut.RLock()
+	t.mut.Lock()
 	t.stopping = true
 	defer func() {
 		t.stopping = false
@@ -355,7 +355,7 @@ func (t *tailer) Stop() {
 	if t.tail != nil {
 		err = t.tail.Stop()
 	}
-	t.mut.RUnlock()
+	t.mut.Unlock()
 
 	if err != nil {
 		if utils.IsEphemeralOrFileClosed(err) {
