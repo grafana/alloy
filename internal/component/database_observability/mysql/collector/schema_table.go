@@ -3,13 +3,17 @@ package collector
 import (
 	"context"
 	"database/sql"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/go-kit/log"
 	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/prometheus/common/model"
+	"github.com/xwb1989/sqlparser"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -83,6 +87,17 @@ type tableInfo struct {
 	createTime time.Time
 	updateTime time.Time
 	createStmt string
+}
+
+type tableSpec struct {
+	Columns []columnSpec `json:"columns"`
+}
+type columnSpec struct {
+	Name          string `json:"name"`
+	Type          string `json:"type"`
+	NotNull       bool   `json:"not_null,omitempty"`
+	AutoIncrement bool   `json:"auto_increment,omitempty"`
+	DefaultValue  string `json:"default_value,omitempty"`
 }
 
 func NewSchemaTable(args SchemaTableArguments) (*SchemaTable, error) {
@@ -219,6 +234,11 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 		}
 	}
 
+	if len(tables) == 0 {
+		level.Info(c.logger).Log("msg", "no tables detected from information_schema.tables")
+		return nil
+	}
+
 	// TODO(cristian): consider moving this into the loop above
 	for _, table := range tables {
 		fullyQualifiedTable := fmt.Sprintf("%s.%s", table.schema, table.tableName)
@@ -231,7 +251,7 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 
 		row := c.dbConnection.QueryRowContext(ctx, showCreateTable+" "+fullyQualifiedTable)
 		if row.Err() != nil {
-			level.Error(c.logger).Log("msg", "failed to show create table", "table", table.tableName, "err", row.Err())
+			level.Error(c.logger).Log("msg", "failed to show create table", "schema", table.schema, "table", table.tableName, "err", row.Err())
 			break
 		}
 
@@ -241,12 +261,12 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 		var collationConnection string
 		if table.tableType == "BASE TABLE" {
 			if err = row.Scan(&tableName, &createStmt); err != nil {
-				level.Error(c.logger).Log("msg", "failed to scan create table", "table", table.tableName, "err", err)
+				level.Error(c.logger).Log("msg", "failed to scan create table", "schema", table.schema, "table", table.tableName, "err", err)
 				break
 			}
 		} else if table.tableType == "VIEW" {
 			if err = row.Scan(&tableName, &createStmt, &characterSetClient, &collationConnection); err != nil {
-				level.Error(c.logger).Log("msg", "failed to scan create view", "table", table.tableName, "err", err)
+				level.Error(c.logger).Log("msg", "failed to scan create view", "schema", table.schema, "table", table.tableName, "err", err)
 				break
 			}
 		}
@@ -254,14 +274,112 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 		table.createStmt = createStmt
 		c.cache.Add(cacheKey, table)
 
+		spec, err := c.parseTableSpec(table.schema, table.tableName, createStmt)
+		if err != nil {
+			break
+		}
+		jsonSpec, err := json.Marshal(spec)
+		if err != nil {
+			level.Error(c.logger).Log("msg", "failed to marshal table spec", "schema", table.schema, "table", table.tableName, "err", err)
+			break
+		}
+
 		c.entryHandler.Chan() <- loki.Entry{
 			Labels: model.LabelSet{"job": database_observability.JobName},
 			Entry: logproto.Entry{
 				Timestamp: time.Unix(0, time.Now().UnixNano()),
-				Line:      fmt.Sprintf(`level=info msg="create table" op="%s" instance="%s" schema="%s" table="%s" create_statement="%s"`, OP_CREATE_STATEMENT, c.instanceKey, table.schema, table.tableName, createStmt),
+				Line: fmt.Sprintf(
+					`level=info msg="create table" op="%s" instance="%s" schema="%s" table="%s" create_statement="%s" table_spec="%s"`,
+					OP_CREATE_STATEMENT, c.instanceKey, table.schema, table.tableName, base64.StdEncoding.EncodeToString([]byte(createStmt)), base64.StdEncoding.EncodeToString(jsonSpec),
+				),
 			},
 		}
 	}
 
 	return nil
+}
+
+func (c *SchemaTable) parseTableSpec(schemaName string, tableName string, createStmt string) (*tableSpec, error) {
+	// TODO(cristian): find a better way to parse the create statement.
+	// For now, remove CONSTRAINT clauses as they are not supported by xwb1989/sqlparser.
+	lines := strings.Split(createStmt, "\n")
+	filteredLines := make([]string, 0, len(lines))
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(strings.ToUpper(trimmed), "CONSTRAINT") {
+			level.Info(c.logger).Log("msg", "skipping parsing of unsupported DDL feature", "schema", schemaName, "table", tableName, "line", line)
+			continue
+		}
+		filteredLines = append(filteredLines, line)
+	}
+	if len(lines) != len(filteredLines) && len(filteredLines) > 1 {
+		// Remove trailing comma from the last line
+		createStmt = strings.Join(filteredLines, "\n")
+		if c := strings.LastIndex(createStmt, ","); c > 0 {
+			createStmt = createStmt[:c] + createStmt[c+1:]
+		}
+	}
+
+	stmt, err := sqlparser.Parse(createStmt)
+	if err != nil {
+		level.Error(c.logger).Log("msg", "failed to parse create table sql query", "schema", schemaName, "table", tableName, "err", err)
+		return nil, err
+	}
+
+	ddl, ok := stmt.(*sqlparser.DDL)
+	if !ok {
+		level.Error(c.logger).Log("msg", "failed to parse create table sql query as DDL", "schema", schemaName, "table", tableName, "err", err)
+		return nil, err
+	}
+
+	tblSpec := &tableSpec{Columns: []columnSpec{}}
+
+	if ddl.TableSpec != nil {
+		for _, col := range ddl.TableSpec.Columns {
+			colSpec := columnSpec{
+				Name: col.Name.String(),
+				Type: col.Type.Type,
+			}
+
+			typeLen := ""
+			if col.Type.Length != nil {
+				typeLen = string(col.Type.Length.Val)
+			}
+
+			enumVals := ""
+			if col.Type.Type == "enum" && len(col.Type.EnumValues) > 0 {
+				enumVals = strings.Join(col.Type.EnumValues, ",")
+			}
+			if typeLen != "" {
+				colSpec.Type += "(" + typeLen + ")"
+			} else if enumVals != "" {
+				colSpec.Type += "(" + enumVals + ")"
+			}
+
+			if col.Type.NotNull {
+				colSpec.NotNull = true
+			}
+
+			if col.Type.Autoincrement {
+				colSpec.AutoIncrement = true
+			}
+
+			defaultVal := ""
+			if col.Type.Default != nil {
+				switch col.Type.Default.Type {
+				case sqlparser.StrVal, sqlparser.IntVal, sqlparser.FloatVal, sqlparser.BitVal, sqlparser.ValArg:
+					defaultVal = string(col.Type.Default.Val)
+				default:
+					level.Info(c.logger).Log("msg", "unsupported default value type", "schema", schemaName, "table", tableName, "column", col.Name.String(), "type", col.Type.Default.Type)
+				}
+			}
+			if defaultVal != "" {
+				colSpec.DefaultValue = defaultVal
+			}
+
+			tblSpec.Columns = append(tblSpec.Columns, colSpec)
+		}
+	}
+
+	return tblSpec, nil
 }

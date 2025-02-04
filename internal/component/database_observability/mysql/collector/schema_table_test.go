@@ -2,6 +2,7 @@ package collector
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"os"
 	"testing"
@@ -99,7 +100,7 @@ func TestSchemaTable(t *testing.T) {
 		}
 		require.Equal(t, `level=info msg="schema detected" op="schema_detection" instance="mysql-db" schema="some_schema"`, lokiEntries[0].Line)
 		require.Equal(t, `level=info msg="table detected" op="table_detection" instance="mysql-db" schema="some_schema" table="some_table"`, lokiEntries[1].Line)
-		require.Equal(t, `level=info msg="create table" op="create_statement" instance="mysql-db" schema="some_schema" table="some_table" create_statement="CREATE TABLE some_table (id INT)"`, lokiEntries[2].Line)
+		require.Equal(t, fmt.Sprintf(`level=info msg="create table" op="create_statement" instance="mysql-db" schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, base64.StdEncoding.EncodeToString([]byte("CREATE TABLE some_table (id INT)")), base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"int"}]}`))), lokiEntries[2].Line)
 	})
 	t.Run("detect view schema", func(t *testing.T) {
 		t.Parallel()
@@ -184,7 +185,7 @@ func TestSchemaTable(t *testing.T) {
 		}
 		require.Equal(t, `level=info msg="schema detected" op="schema_detection" instance="mysql-db" schema="some_schema"`, lokiEntries[0].Line)
 		require.Equal(t, `level=info msg="table detected" op="table_detection" instance="mysql-db" schema="some_schema" table="some_table"`, lokiEntries[1].Line)
-		require.Equal(t, `level=info msg="create table" op="create_statement" instance="mysql-db" schema="some_schema" table="some_table" create_statement="CREATE VIEW some_view (id INT)"`, lokiEntries[2].Line)
+		require.Equal(t, fmt.Sprintf(`level=info msg="create table" op="create_statement" instance="mysql-db" schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, base64.StdEncoding.EncodeToString([]byte("CREATE VIEW some_view (id INT)")), base64.StdEncoding.EncodeToString([]byte(`{"columns":[]}`))), lokiEntries[2].Line)
 	})
 	t.Run("schemas result set iteration error", func(t *testing.T) {
 		t.Parallel()
@@ -373,6 +374,6 @@ func TestSchemaTable(t *testing.T) {
 		}
 		require.Equal(t, `level=info msg="schema detected" op="schema_detection" instance="mysql-db" schema="some_schema"`, lokiEntries[0].Line)
 		require.Equal(t, `level=info msg="table detected" op="table_detection" instance="mysql-db" schema="some_schema" table="some_table"`, lokiEntries[1].Line)
-		require.Equal(t, `level=info msg="create table" op="create_statement" instance="mysql-db" schema="some_schema" table="some_table" create_statement="CREATE TABLE some_table (id INT)"`, lokiEntries[2].Line)
+		require.Equal(t, fmt.Sprintf(`level=info msg="create table" op="create_statement" instance="mysql-db" schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, base64.StdEncoding.EncodeToString([]byte("CREATE TABLE some_table (id INT)")), base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"int"}]}`))), lokiEntries[2].Line)
 	})
 }

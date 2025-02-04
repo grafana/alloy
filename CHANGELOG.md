@@ -22,23 +22,18 @@ Main (unreleased)
 
 - Add the possibility to export span events as logs in `otelcol.connector.spanlogs`. (@steve-hb)
 
-- (_Experimental_) Log instance label key in `database_observability.mysql` (@cristiangreco)
-
-- (_Experimental_) Improve parsing of truncated queries in `database_observability.mysql` (@cristiangreco)
-
-- (_Experimental_) Capture schema name for query samples in `database_observability.mysql` (@cristiangreco)
-
-- (_Experimental_) Fix handling of view table types when detecting schema in `database_observability.mysql` (@matthewnolf)
-
-- (_Experimental_) Fix error handling during result set iteration in `database_observability.mysql` (@cristiangreco)
-
-- (_Experimental_) Better support for table name parsing in `database_observability.mysql` (@cristiangreco)
-
-- (_Experimental_) Better error handling for `database_observability.mysql` (@cristiangreco)
-
-- (_Experimental_) Add namespace to `connection_info` metric in `database_observability.mysql` (@cristiangreco)
-
 - Add json format support for log export via faro receiver (@ravishankar15)
+
+- (_Experimental_) Various changes to the experimental component `database_observability.mysql`:
+  - Always log `instance` label key (@cristiangreco)
+  - Improve parsing of truncated queries (@cristiangreco)
+  - Capture schema name for query samples (@cristiangreco)
+  - Fix handling of view table types when detecting schema (@matthewnolf)
+  - Fix error handling during result set iteration (@cristiangreco)
+  - Better support for table name parsing (@cristiangreco)
+  - Better error handling for components (@cristiangreco)
+  - Add namespace to `connection_info` metric in `database_observability.mysql` (@cristiangreco)
+  - Added table columns parsing (@cristiagreco)
 
 ### Bugfixes
 
