@@ -33,10 +33,10 @@ You can use the following arguments with `database_observability.mysql`:
 
 The following collectors are enabled by default:
 
-Name           | Description                                           | Enabled by default
----------------|-------------------------------------------------------|-------------------
-`query_sample` | Collect query samples.                                | yes
-`schema_table` | Collect schemas and tables from `information_schema`. | yes
+ Name           | Description                                           
+----------------|-------------------------------------------------------
+ `query_sample` | Collect query samples.                                
+ `schema_table` | Collect schemas and tables from `information_schema`. 
 
 ## Blocks
 
