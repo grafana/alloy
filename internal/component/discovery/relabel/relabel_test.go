@@ -1,6 +1,7 @@
 package relabel_test
 
 import (
+	"strconv"
 	"testing"
 	"time"
 
@@ -122,4 +123,55 @@ rule {
 	require.Equal(t, gotUpdated[0].Action, alloy_relabel.Drop)
 	require.Equal(t, gotUpdated[0].SourceLabels, gotOriginal[0].SourceLabels)
 	require.Equal(t, gotUpdated[0].Regex, gotOriginal[0].Regex)
+}
+
+func buildTargets(n int) []discovery.Target {
+	envs := []string{"dev", "staging", "prod"}
+	t := make([]discovery.Target, n)
+	for idx := range t {
+		t[idx] = make(map[string]string)
+		t[idx]["__address__"] = "localhost"
+		t[idx]["instance"] = "instance" + strconv.Itoa(idx)
+		t[idx]["env"] = envs[idx%3]
+	}
+	return t
+}
+
+func BenchmarkRelabel(b *testing.B) {
+	var args relabel.Arguments
+	alloyRules := `
+targets = []
+
+rule {
+	action        = "drop"
+	source_labels = ["env"]
+	regex         = "staging"
+}
+rule {
+	action        = "drop"
+	source_labels = ["instance"]
+	regex         = "instance[048]+"
+}
+rule {
+	source_labels = ["__address__", "instance"]
+	separator     = "/"
+	target_label  = "destination"
+	action        = "replace"
+}
+`
+	require.NoError(b, syntax.Unmarshal([]byte(alloyRules), &args))
+
+	tc, err := componenttest.NewControllerFromID(nil, "discovery.relabel")
+	require.NoError(b, err)
+	go func() {
+		err = tc.Run(componenttest.TestContext(b), args)
+		require.NoError(b, err)
+	}()
+	args.Targets = buildTargets(10_000)
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		tc.Update(args)
+	}
 }

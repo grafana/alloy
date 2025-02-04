@@ -91,15 +91,22 @@ func (c *Component) Update(args component.Arguments) error {
 	relabelConfigs := alloy_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelConfigs)
 	c.rcs = relabelConfigs
 
+	lbls := make(labels.Labels, 0, 32)
+	lblBuilder := labels.NewBuilder(lbls)
+
 	for _, t := range newArgs.Targets {
-		lset := componentMapToPromLabels(t)
-		relabelled, keep := relabel.Process(lset, relabelConfigs...)
+		// set existing label in the builder
+		lbls = discoveryTargetToLabels(t, lbls)
+		lblBuilder.Reset(lbls)
+
+		keep := relabel.ProcessBuilder(lblBuilder, relabelConfigs...)
 		if keep {
-			targets = append(targets, promLabelsToComponent(relabelled))
+			targets = append(targets, builderToDiscoveryTarget(lblBuilder, len(t)))
 		}
 		componentID := livedebugging.ComponentID(c.opts.ID)
 		if c.debugDataPublisher.IsActive(componentID) {
-			c.debugDataPublisher.Publish(componentID, fmt.Sprintf("%s => %s", lset.String(), relabelled.String()))
+			lblAfter := lblBuilder.Labels().String()
+			c.debugDataPublisher.Publish(componentID, fmt.Sprintf("%s => %s", lbls.String(), lblAfter))
 		}
 	}
 
@@ -113,20 +120,22 @@ func (c *Component) Update(args component.Arguments) error {
 
 func (c *Component) LiveDebugging(_ int) {}
 
-func componentMapToPromLabels(ls discovery.Target) labels.Labels {
-	res := make([]labels.Label, 0, len(ls))
-	for k, v := range ls {
-		res = append(res, labels.Label{Name: k, Value: v})
+func discoveryTargetToLabels(t discovery.Target, lbls labels.Labels) labels.Labels {
+	if cap(lbls) < len(t) {
+		lbls = make([]labels.Label, 0, len(t))
+	} else {
+		lbls = lbls[:len(t)]
 	}
-
-	return res
+	for k, v := range t {
+		lbls = append(lbls, labels.Label{Name: k, Value: v})
+	}
+	return lbls
 }
 
-func promLabelsToComponent(ls labels.Labels) discovery.Target {
-	res := make(map[string]string, len(ls))
-	for _, l := range ls {
+func builderToDiscoveryTarget(b *labels.Builder, size int) discovery.Target {
+	res := make(map[string]string, size)
+	b.Range(func(l labels.Label) {
 		res[l.Name] = l.Value
-	}
-
+	})
 	return res
 }

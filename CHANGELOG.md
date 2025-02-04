@@ -32,6 +32,9 @@ Main (unreleased)
 
 - Add json format support for log export via faro receiver (@ravishankar15)
 
+- Improve preformance of discovery.relabel by using label builder (@simonswine)
+
+
 ### Bugfixes
 
 - Fix log rotation for Windows in `loki.source.file` by refactoring the component to use the runner pkg. This should also reduce CPU consumption when tailing a lot of files in a dynamic environment. (@wildum)
