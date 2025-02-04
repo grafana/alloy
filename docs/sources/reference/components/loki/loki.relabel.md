@@ -22,7 +22,7 @@ If you're looking for a way to process the log entry contents, use [the `loki.pr
 
 [loki.process]: ../loki.process/
 
-Youc an specify multiple `loki.relabel` components by giving them different labels.
+You can specify multiple `loki.relabel` components by giving them different labels.
 
 ## Usage
 
