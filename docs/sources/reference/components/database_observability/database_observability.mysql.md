@@ -23,13 +23,13 @@ database_observability.mysql "<LABEL>" {
 
 You can use the following arguments with `database_observability.mysql`:
 
- Name                 | Type                 | Description                                                   | Default | Required 
-----------------------|----------------------|---------------------------------------------------------------|---------|----------
- `data_source_name`   | `secret`             | [Data Source Name][] for the MySQL server to connect to.      |         | yes      
- `forward_to`         | `list(LogsReceiver)` | Where to forward log entries after processing.                |         | yes      
- `collect_interval`   | `duration`           | How frequently to collect information from database.          | `"1m"`  | no       
- `disable_collectors` | `list(string)`       | A list of [collectors][] to disable from the default set.     |         | no       
-  `enable_collectors`  | `list(string)`       | A list of [collectors][] to enable on top of the default set. |         | no       
+ Name                 | Type                 | Description                                               | Default | Required 
+----------------------|----------------------|-----------------------------------------------------------|---------|----------
+ `data_source_name`   | `secret`             | [Data Source Name][] for the MySQL server to connect to.  |         | yes      
+ `forward_to`         | `list(LogsReceiver)` | Where to forward log entries after processing.            |         | yes      
+ `collect_interval`   | `duration`           | How frequently to collect information from database.      | `"1m"`  | no       
+ `disable_collectors` | `list(string)`       | A list of collectors to disable from the default set.     |         | no       
+ `enable_collectors`  | `list(string)`       | A list of collectors to enable on top of the default set. |         | no       
 
 The following collectors are enabled by default:
 
