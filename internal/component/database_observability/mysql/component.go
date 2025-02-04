@@ -58,7 +58,7 @@ type Arguments struct {
 }
 
 var DefaultArguments = Arguments{
-	CollectInterval: 10 * time.Second,
+	CollectInterval: 1 * time.Minute,
 }
 
 func (a *Arguments) SetToDefault() {
