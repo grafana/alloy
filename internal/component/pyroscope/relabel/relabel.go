@@ -26,7 +26,7 @@ import (
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/pyroscope/api/model/labelset"
 
-	lru "github.com/hashicorp/golang-lru"
+	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
@@ -77,7 +77,7 @@ type Component struct {
 	mut          sync.RWMutex
 	rcs          []*relabel.Config
 	fanout       *pyroscope.Fanout
-	cache        *lru.Cache
+	cache        *lru.Cache[model.Fingerprint, []cacheItem]
 	maxCacheSize int
 	exited       atomic.Bool
 }
@@ -88,7 +88,7 @@ var (
 
 // New creates a new pyroscope.relabel component.
 func New(o component.Options, args Arguments) (*Component, error) {
-	cache, err := lru.New(args.MaxCacheSize)
+	cache, err := lru.New[model.Fingerprint, []cacheItem](args.MaxCacheSize)
 	if err != nil {
 		return nil, err
 	}
@@ -181,7 +181,10 @@ func (c *Component) AppendIngest(ctx context.Context, profile *pyroscope.Incomin
 	c.mut.RLock()
 	defer c.mut.RUnlock()
 
+	c.metrics.profilesProcessed.Inc()
+
 	if profile.Labels.IsEmpty() {
+		c.metrics.profilesOutgoing.Inc()
 		return c.fanout.Appender().AppendIngest(ctx, profile)
 	}
 
@@ -196,6 +199,7 @@ func (c *Component) AppendIngest(ctx context.Context, profile *pyroscope.Incomin
 	}
 
 	profile.Labels = newLabels
+	c.metrics.profilesOutgoing.Inc()
 	return c.fanout.Appender().AppendIngest(ctx, profile)
 }
 
@@ -220,12 +224,12 @@ func (c *Component) relabel(lbls labels.Labels) (labels.Labels, bool, error) {
 	}
 
 	// Apply relabeling
-	// builder := labels.NewBuilder(lbls)
 	builder := labels.NewBuilder(lbls)
 	keep := relabel.ProcessBuilder(builder, c.rcs...)
 	if !keep {
 		c.metrics.profilesDropped.Inc()
-		return labels.Labels{}, false, nil
+		c.addToCache(hash, labelSet, labels.EmptyLabels())
+		return labels.EmptyLabels(), false, nil
 	}
 
 	newLabels := builder.Labels()
@@ -238,7 +242,7 @@ func (c *Component) relabel(lbls labels.Labels) (labels.Labels, bool, error) {
 
 func (c *Component) getCacheEntry(hash model.Fingerprint, labelSet model.LabelSet) (labels.Labels, bool, bool) {
 	if val, ok := c.cache.Get(hash); ok {
-		for _, item := range val.([]cacheItem) {
+		for _, item := range val {
 			if labelSet.Equal(item.original) {
 				c.metrics.cacheHits.Inc()
 				if len(item.relabeled) == 0 {
@@ -256,13 +260,14 @@ func (c *Component) getCacheEntry(hash model.Fingerprint, labelSet model.LabelSe
 func (c *Component) addToCache(hash model.Fingerprint, original model.LabelSet, relabeled labels.Labels) {
 	var cacheValue []cacheItem
 	if val, exists := c.cache.Get(hash); exists {
-		cacheValue = val.([]cacheItem)
+		cacheValue = val
 	}
 	cacheValue = append(cacheValue, cacheItem{
 		original:  original,
 		relabeled: toModelLabelSet(relabeled),
 	})
 	c.cache.Add(hash, cacheValue)
+	c.metrics.cacheSize.Set(float64(c.cache.Len()))
 }
 
 // extractLabelsFromIncomingProfile converts profile labels to Prometheus labels

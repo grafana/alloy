@@ -79,18 +79,22 @@ Name | Type | Description
 pyroscope.relabel "process" {
     forward_to = [pyroscope.write.backend.receiver]
 
-    # Rules are applied in order
+    // This creates a consistent hash value (0 or 1) for each unique combination of labels
+    // Using multiple source labels provides better sampling distribution across your profiles
     rule {
         source_labels = ["env"]
-        target_label = "environment"
-        action = "replace"
-        regex = "(.)"
-        replacement = "$1"
+        target_label = "__tmp_hash"
+        action = "hashmod"
+        modulus = 2
     }
 
+    // This effectively samples ~50% of profile series
+    // The same combination of source label values will always hash to the same number,
+    // ensuring consistent sampling
     rule {
-        action = "labeldrop"
-        regex = "env"
+        source_labels = ["__tmp_hash"]
+        action       = "drop"
+        regex        = "^1$"
     }
 }
 ```

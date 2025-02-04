@@ -3,8 +3,6 @@ package relabel
 import (
 	"context"
 	"errors"
-	"fmt"
-	"strings"
 	"sync"
 	"testing"
 
@@ -16,9 +14,7 @@ import (
 	"github.com/grafana/regexp"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
-	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/stretchr/testify/require"
 )
 
@@ -123,6 +119,26 @@ func TestRelabeling(t *testing.T) {
 			wantDropped: false,
 		},
 		{
+			name: "hashmod sampling with profile that should pass",
+			rules: []*alloy_relabel.Config{
+				{
+					SourceLabels: []string{"env"},
+					Action:       "hashmod",
+					Modulus:      2,
+					TargetLabel:  "__tmp_hash",
+				},
+				{
+					SourceLabels: []string{"__tmp_hash"},
+					Action:       "drop",
+					Regex:        alloy_relabel.Regexp{Regexp: regexp.MustCompile("^1$")},
+				},
+			},
+			// Use a value we know will hash to 1
+			inputLabels: labels.FromStrings("env", "prod", "region", "us-1"),
+			wantLabels:  labels.EmptyLabels(),
+			wantDropped: true,
+		},
+		{
 			name: "multiple rules",
 			rules: []*alloy_relabel.Config{
 				{
@@ -183,7 +199,6 @@ func TestRelabeling(t *testing.T) {
 				return
 			}
 
-			// Compare labels instead of URL
 			gotProfile := app.Profiles()[0]
 			require.Equal(t, tt.wantLabels, gotProfile.Labels)
 		})
@@ -192,9 +207,8 @@ func TestRelabeling(t *testing.T) {
 
 func TestCache(t *testing.T) {
 	app := NewTestAppender()
-
 	c, err := New(component.Options{
-		Logger:        util.TestAlloyLogger(t),
+		Logger:        util.TestLogger(t),
 		Registerer:    prometheus.NewRegistry(),
 		OnStateChange: func(e component.Exports) {},
 	}, Arguments{
@@ -210,74 +224,87 @@ func TestCache(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	// Initial profiles
-	lsets := []labels.Labels{
-		labels.FromStrings("env", "prod"),
-		labels.FromStrings("env", "dev"),
-		labels.FromStrings("env", "test"),
-	}
-
-	// Add initial entries and verify cache state
-	for _, ls := range lsets {
-		err = c.AppendIngest(context.Background(), &pyroscope.IncomingProfile{
-			Labels: ls,
-		})
-		require.NoError(t, err)
-	}
-	require.Equal(t, 3, c.cache.Len(), "cache should have 3 entries after initial profiles")
+	// Test basic cache functionality
+	labels := labels.FromStrings("env", "prod")
+	err = c.AppendIngest(context.Background(), &pyroscope.IncomingProfile{Labels: labels})
+	require.NoError(t, err)
+	require.Equal(t, 1, c.cache.Len(), "cache should have 1 entry")
 
 	// Test cache hit
-	err = c.AppendIngest(context.Background(), &pyroscope.IncomingProfile{
-		Labels: lsets[0],
+	err = c.AppendIngest(context.Background(), &pyroscope.IncomingProfile{Labels: labels})
+	require.NoError(t, err)
+	require.Equal(t, 1, c.cache.Len(), "cache length should not change after hit")
+}
+
+func TestCacheCollisions(t *testing.T) {
+	app := NewTestAppender()
+	c, err := New(component.Options{
+		Logger:        util.TestLogger(t),
+		Registerer:    prometheus.NewRegistry(),
+		OnStateChange: func(e component.Exports) {},
+	}, Arguments{
+		ForwardTo:      []pyroscope.Appendable{app},
+		RelabelConfigs: []*alloy_relabel.Config{},
+		MaxCacheSize:   4,
 	})
 	require.NoError(t, err)
-	require.Equal(t, 3, c.cache.Len(), "cache length should not change after cache hit")
 
-	// Test colliding entries
-	ls1 := model.LabelSet{
-		"A":        "K6sjsNNczPl",
-		"__name__": "app.cpu",
-	}
-	ls2 := model.LabelSet{
-		"A":        "cswpLMIZpwt",
-		"__name__": "app.cpu",
-	}
-	hash := ls1.Fingerprint()
-	t.Logf("Original fingerprint from ls1: %v", hash)
-	require.Equal(t, ls1.Fingerprint(), ls2.Fingerprint(), "expected labelset fingerprints to collide")
+	// These LabelSets are known to collide
+	ls1 := labels.FromStrings("A", "K6sjsNNczPl", "__name__", "app.cpu")
+	ls2 := labels.FromStrings("A", "cswpLMIZpwt", "__name__", "app.cpu")
 
-	// Add colliding profiles
-	for _, ls := range []model.LabelSet{ls1, ls2} {
-		// Convert directly to labels.Labels as the component expects
-		lbls := labels.FromStrings("A", string(ls["A"]), "__name__", string(ls["__name__"]))
+	// Verify collision
+	require.Equal(t, toModelLabelSet(ls1).Fingerprint(), toModelLabelSet(ls2).Fingerprint(),
+		"expected labelset fingerprints to collide")
 
-		// Log intermediate fingerprint
-		tmpLabelSet := make(model.LabelSet, lbls.Len())
-		lbls.Range(func(l labels.Label) {
-			tmpLabelSet[model.LabelName(l.Name)] = model.LabelValue(l.Value)
-		})
-		t.Logf("Intermediate fingerprint: %v", tmpLabelSet.Fingerprint())
+	// Add both colliding profiles
+	err = c.AppendIngest(context.Background(), &pyroscope.IncomingProfile{Labels: ls1})
+	require.NoError(t, err)
+	err = c.AppendIngest(context.Background(), &pyroscope.IncomingProfile{Labels: ls2})
+	require.NoError(t, err)
 
-		err = c.AppendIngest(context.Background(), &pyroscope.IncomingProfile{
-			Labels: lbls,
-		})
-		require.NoError(t, err)
-	}
-
-	t.Logf("Final fingerprint for cache lookup: %v", hash)
-
-	t.Logf("Cache length after adding colliding profiles: %d", c.cache.Len())
-	t.Logf("Attempting to get cache key with fingerprint: %v", hash)
-	for _, k := range c.cache.Keys() {
-		t.Logf("Available cache key: %v", k)
-	}
-
-	// Verify cache state after collisions
-	require.Equal(t, 4, c.cache.Len(), "cache should have 4 entries")
+	// Verify both are stored under same hash
+	hash := toModelLabelSet(ls1).Fingerprint()
 	val, ok := c.cache.Get(hash)
 	require.True(t, ok, "colliding entry should be in cache")
-	items := val.([]cacheItem)
-	require.Len(t, items, 2, "should have both colliding items under same key")
+	require.Len(t, val, 2, "should have both colliding items under same key")
+
+	// Verify items are stored correctly
+	require.Equal(t, toModelLabelSet(ls1), val[0].original, "first item should match ls1")
+	require.Equal(t, toModelLabelSet(ls2), val[1].original, "second item should match ls2")
+}
+
+func TestCacheLRU(t *testing.T) {
+	app := NewTestAppender()
+	c, err := New(component.Options{
+		Logger:        util.TestLogger(t),
+		Registerer:    prometheus.NewRegistry(),
+		OnStateChange: func(e component.Exports) {},
+	}, Arguments{
+		ForwardTo:      []pyroscope.Appendable{app},
+		RelabelConfigs: []*alloy_relabel.Config{},
+		MaxCacheSize:   2,
+	})
+	require.NoError(t, err)
+
+	// Add profiles up to cache size
+	labels1 := labels.FromStrings("env", "prod")
+	labels2 := labels.FromStrings("env", "dev")
+	labels3 := labels.FromStrings("env", "stage")
+
+	err = c.AppendIngest(context.Background(), &pyroscope.IncomingProfile{Labels: labels1})
+	require.NoError(t, err)
+	err = c.AppendIngest(context.Background(), &pyroscope.IncomingProfile{Labels: labels2})
+	require.NoError(t, err)
+
+	// Add one more to trigger eviction
+	err = c.AppendIngest(context.Background(), &pyroscope.IncomingProfile{Labels: labels3})
+	require.NoError(t, err)
+
+	// Verify size and that oldest entry was evicted
+	require.Equal(t, 2, c.cache.Len())
+	_, ok := c.cache.Get(toModelLabelSet(labels1).Fingerprint())
+	require.False(t, ok, "oldest entry should have been evicted")
 }
 
 type TestAppender struct {
@@ -313,42 +340,4 @@ func (t *TestAppender) Profiles() []*pyroscope.IncomingProfile {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	return t.profiles
-}
-
-func formatLabelsForURL(lbls labels.Labels) string {
-	var pairs []string
-	lbls.Range(func(l labels.Label) {
-		pairs = append(pairs, fmt.Sprintf("%s=%s", l.Name, l.Value))
-	})
-	return strings.Join(pairs, ",")
-}
-
-func BenchmarkRelabelProcess(b *testing.B) {
-	lbls := labels.FromStrings(
-		"__name__", "test_metric",
-		"env", "prod",
-		"service", "api",
-		"region", "us-east",
-	)
-
-	cfg := &relabel.Config{
-		SourceLabels: []model.LabelName{"env"},
-		TargetLabel:  "environment",
-		Action:       "replace",
-		Regex:        relabel.MustNewRegexp("(.+)"),
-		Replacement:  "$1",
-	}
-
-	b.Run("Process", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			relabel.Process(lbls, cfg)
-		}
-	})
-
-	b.Run("ProcessBuilder", func(b *testing.B) {
-		builder := labels.NewBuilder(lbls)
-		for i := 0; i < b.N; i++ {
-			relabel.ProcessBuilder(builder, cfg)
-		}
-	})
 }
