@@ -31,6 +31,7 @@ type Arguments struct {
 	DirectConnect          bool              `alloy:"direct_connect,attr,optional"`
 	DiscoveringMode        bool              `alloy:"discovering_mode,attr,optional"`
 	TLSBasicAuthConfigPath string            `alloy:"tls_basic_auth_config_path,attr,optional"`
+	CompatibleMode         bool              `alloy:"compatible_mode,attr,optional"`
 }
 
 func (a *Arguments) Convert() *mongodb_exporter.Config {
@@ -39,5 +40,6 @@ func (a *Arguments) Convert() *mongodb_exporter.Config {
 		DirectConnect:          a.DirectConnect,
 		DiscoveringMode:        a.DiscoveringMode,
 		TLSBasicAuthConfigPath: a.TLSBasicAuthConfigPath,
+		CompatibleMode:         a.CompatibleMode,
 	}
 }
