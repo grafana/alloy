@@ -14,6 +14,7 @@ integrations:
   mongodb_exporter:
     enabled: true
     mongodb_uri: secret_password_in_uri
+    compatible_mode: true
 `
 	config.CheckSecret(t, stringCfg, "secret_password_in_uri")
 }
