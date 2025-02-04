@@ -3,6 +3,8 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/loki/loki.
 aliases:
   - ../loki.relabel/ # /docs/alloy/latest/reference/components/loki.relabel/
 description: Learn about loki.relabel
+labels:
+  stage: general-availability
 title: loki.relabel
 ---
 
@@ -40,18 +42,18 @@ loki.relabel "<LABEL>" {
 
 You can use the following arguments with `loki.relabel`:
 
-Name             | Type             | Description                                                    | Default | Required
------------------|------------------|----------------------------------------------------------------|---------|---------
-`forward_to`     | `list(receiver)` | Where to forward log entries after relabeling.                 |         | yes
-`max_cache_size` | `int`            | The maximum number of elements to hold in the relabeling cache | 10,000  | no
+| Name             | Type             | Description                                                    | Default | Required |
+|------------------|------------------|----------------------------------------------------------------|---------|----------|
+| `forward_to`     | `list(receiver)` | Where to forward log entries after relabeling.                 |         | yes      |
+| `max_cache_size` | `int`            | The maximum number of elements to hold in the relabeling cache | 10,000  | no       |
 
 ## Blocks
 
 You can use the following blocks with `loki.relabel`:
 
-Name           | Description                                        | Required
----------------|----------------------------------------------------|---------
-[`rule`][rule] | Relabeling rules to apply to received log entries. | no
+| Name           | Description                                        | Required |
+|----------------|----------------------------------------------------|----------|
+| [`rule`][rule] | Relabeling rules to apply to received log entries. | no       |
 
 [rule]: #rule
 
@@ -63,10 +65,10 @@ Name           | Description                                        | Required
 
 The following fields are exported and can be referenced by other components:
 
-Name       | Type           | Description
------------|----------------|-------------------------------------------------------------
-`receiver` | `receiver`     | The input receiver where log lines are sent to be relabeled.
-`rules`    | `RelabelRules` | The currently configured relabeling rules.
+| Name       | Type           | Description                                                  |
+|------------|----------------|--------------------------------------------------------------|
+| `receiver` | `receiver`     | The input receiver where log lines are sent to be relabeled. |
+| `rules`    | `RelabelRules` | The currently configured relabeling rules.                   |
 
 ## Component health
 

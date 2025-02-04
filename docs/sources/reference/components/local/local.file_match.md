@@ -3,6 +3,8 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/local/loca
 aliases:
   - ../local.file_match/ # /docs/alloy/latest/reference/components/local.file_match/
 description: Learn about local.file_match
+labels:
+  stage: general-availability
 title: local.file_match
 ---
 

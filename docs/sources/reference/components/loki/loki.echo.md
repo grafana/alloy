@@ -3,12 +3,14 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/loki/loki.
 aliases:
   - ../loki.echo/ # /docs/alloy/latest/reference/components/loki.echo/
 description: Learn about loki.echo
+labels:
+  stage: general-availability
 title: loki.echo
 ---
 
 # `loki.echo`
 
-`loki.echo` receives log entries from other `loki` components and prints them to the process' standard output (stdout).
+`loki.echo` receives log entries from other `loki` components and prints them to the process' standard output, `stdout`.
 
 You can specify multiple `loki.echo` components by giving them different labels.
 
@@ -30,9 +32,9 @@ The `loki.echo` component doesn't support any blocks.
 
 The following fields are exported and can be referenced by other components:
 
-Name       | Type           | Description
------------|----------------|--------------------------------------------------------------
-`receiver` | `LogsReceiver` | A value that other components can use to send log entries to.
+| Name       | Type           | Description                                                   |
+|------------|----------------|---------------------------------------------------------------|
+| `receiver` | `LogsReceiver` | A value that other components can use to send log entries to. |
 
 ## Component health
 

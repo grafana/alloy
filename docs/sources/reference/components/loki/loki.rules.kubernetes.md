@@ -2,6 +2,9 @@
 canonical: https://grafana.com/docs/alloy/latest/reference/components/loki/loki.rules.kubernetes/
 aliases:
   - ../loki.rules.kubernetes/ # /docs/alloy/latest/reference/components/loki.rules.kubernetes/
+description: Learn about loki.rules.kubernetes
+labels:
+  stage: general-availability
 title: loki.rules.kubernetes
 ---
 
@@ -37,18 +40,18 @@ loki.rules.kubernetes "<LABEL>" {
 
 You can use the following arguments with `loki.rules.kubernetes`:
 
-Name                    | Type       | Description                                                                     | Default | Required
-------------------------|------------|---------------------------------------------------------------------------------|---------|---------
-`address`               | `string`   | URL of the Loki ruler.                                                          |         | yes
-`bearer_token_file`     | `string`   | File containing a bearer token to authenticate with.                            |         | no
-`bearer_token`          | `secret`   | Bearer token to authenticate with.                                              |         | no
-`enable_http2`          | `bool`     | Whether HTTP2 is supported for requests.                                        | `true`  | no
-`follow_redirects`      | `bool`     | Whether redirects returned by the server should be followed.                    | `true`  | no
-`loki_namespace_prefix` | `string`   | Prefix used to differentiate multiple {{< param "PRODUCT_NAME" >}} deployments. | "alloy" | no
-`proxy_url`             | `string`   | HTTP proxy to proxy requests through.                                           |         | no
-`sync_interval`         | `duration` | Amount of time between reconciliations with Loki.                               | "30s"   | no
-`tenant_id`             | `string`   | Loki tenant ID.                                                                 |         | no
-`use_legacy_routes`     | `bool`     | Whether to use deprecated ruler API endpoints.                                  | false   | no
+| Name                    | Type       | Description                                                                     | Default | Required |
+|-------------------------|------------|---------------------------------------------------------------------------------|---------|----------|
+| `address`               | `string`   | URL of the Loki ruler.                                                          |         | yes      |
+| `bearer_token_file`     | `string`   | File containing a bearer token to authenticate with.                            |         | no       |
+| `bearer_token`          | `secret`   | Bearer token to authenticate with.                                              |         | no       |
+| `enable_http2`          | `bool`     | Whether HTTP2 is supported for requests.                                        | `true`  | no       |
+| `follow_redirects`      | `bool`     | Whether redirects returned by the server should be followed.                    | `true`  | no       |
+| `loki_namespace_prefix` | `string`   | Prefix used to differentiate multiple {{< param "PRODUCT_NAME" >}} deployments. | "alloy" | no       |
+| `proxy_url`             | `string`   | HTTP proxy to proxy requests through.                                           |         | no       |
+| `sync_interval`         | `duration` | Amount of time between reconciliations with Loki.                               | "30s"   | no       |
+| `tenant_id`             | `string`   | Loki tenant ID.                                                                 |         | no       |
+| `use_legacy_routes`     | `bool`     | Whether to use deprecated ruler API endpoints.                                  | false   | no       |
 
  At most, one of the following can be provided:
 
@@ -73,52 +76,57 @@ You should set the prefix to a unique value for each deployment.
 
 You can use the following blocks with `loki.rules.kubernetes`:
 
-Hierarchy                                  | Block                                          | Description                                              | Required
--------------------------------------------|------------------------------------------------|----------------------------------------------------------|---------
-rule_namespace_selector                    | [label_selector][]                             | Label selector for `Namespace` resources.                | no
-rule_namespace_selector > match_expression | rule_namespace_selector > [match_expression][] | Label match expression for `Namespace` resources.        | no
-rule_selector                              | [label_selector][]                             | Label selector for `PrometheusRule` resources.           | no
-rule_selector > match_expression           | rule_selector > [match_expression][]           | Label match expression for `PrometheusRule` resources.   | no
- [basic_auth][basic_auth]                                 | Configure `basic_auth` for authenticating to the endpoint. | no
- [authorization][authorization]                              | Configure generic authorization to the endpoint.         | no
- [`oauth2`][oauth2]                                     | Configure OAuth 2.0 for authenticating to the endpoint.     | no
- `oauth2` > [`tls_config`][tls_config]                        | Configure TLS settings for connecting to the endpoint.   | no
- [`tls_config`][tls_config]                                 | Configure TLS settings for connecting to the endpoint.   | no
+| Block                                                     | Description                                                          | Required |
+|-----------------------------------------------------------|----------------------------------------------------------------------|----------|
+| [`authorization`][authorization]                          | Configure generic authorization to the endpoint.                     | no       |
+| [`basic_auth`][basic_auth]                                | Configure `basic_auth` for authenticating to the endpoint.           | no       |
+| [`label_selector`][label_selector]                        | Label selector for `Namespace` or `PrometheusRule` resources.        | no       |
+| `label_selector` > [`match_expression`][match_expression] | Label match expression for `Namespace` or`PrometheusRule` resources. | no       |
+| [`oauth2`][oauth2]                                        | Configure OAuth 2.0 for authenticating to the endpoint.              | no       |
+| `oauth2` > [`tls_config`][tls_config]                     | Configure TLS settings for connecting to the endpoint.               | no       |
+| [`tls_config`][tls_config]                                | Configure TLS settings for connecting to the endpoint.               | no       |
 
-The `>` symbol indicates deeper levels of nesting. For example,
-`oauth2 > tls_config` refers to a `tls_config` block defined inside
-an `oauth2` block.
+The `>` symbol indicates deeper levels of nesting.
+For example, `oauth2 > tls_config` refers to a `tls_config` block defined inside an `oauth2` block.
 
-[basic_auth]: #basic_auth-block
-[authorization]: #authorization-block
-[oauth2]: #oauth2-block
-[tls_config]: #tls_config-block
-[label_selector]: #label_selector-block
-[match_expression]: #match_expression-block
+[authorization]: #authorization
+[basic_auth]: #basic_auth
+[label_selector]: #label_selector
+[match_expression]: #match_expression
+[oauth2]: #oauth2
+[tls_config]: #tls_config
 
-### label_selector block
+### `authorization`
+
+{{< docs/shared lookup="reference/components/authorization-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `basic_auth`
+
+{{< docs/shared lookup="reference/components/basic-auth-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `label_selector`
 
 The `label_selector` block describes a Kubernetes label selector for rule or namespace discovery.
 
 The following arguments are supported:
 
-Name           | Type          | Description                                       | Default | Required
----------------|---------------|---------------------------------------------------|---------|---------
-`match_labels` | `map(string)` | Label keys and values used to discover resources. | `{}`    | yes
+| Name           | Type          | Description                                       | Default | Required |
+|----------------|---------------|---------------------------------------------------|---------|----------|
+| `match_labels` | `map(string)` | Label keys and values used to discover resources. | `{}`    | yes      |
 
-When the `match_labels` argument is empty, all resources will be matched.
+When the `match_labels` argument is empty, all resources are matched.
 
-### match_expression block
+### `match_expression`
 
 The `match_expression` block describes a Kubernetes label match expression for rule or namespace discovery.
 
 The following arguments are supported:
 
-Name       | Type           | Description                        | Default | Required
------------|----------------|------------------------------------|---------|---------
-`key`      | `string`       | The label name to match against.   |         | yes
-`operator` | `string`       | The operator to use when matching. |         | yes
-`values`   | `list(string)` | The values used when matching.     |         | no
+| Name       | Type           | Description                        | Default | Required |
+|------------|----------------|------------------------------------|---------|----------|
+| `key`      | `string`       | The label name to match against.   |         | yes      |
+| `operator` | `string`       | The operator to use when matching. |         | yes      |
+| `values`   | `list(string)` | The values used when matching.     |         | no       |
 
 The `operator` argument should be one of the following strings:
 
@@ -126,19 +134,11 @@ The `operator` argument should be one of the following strings:
 * `"notin"`
 * `"exists"`
 
-### basic_auth block
-
-{{< docs/shared lookup="reference/components/basic-auth-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
-
-### authorization block
-
-{{< docs/shared lookup="reference/components/authorization-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
-
-### oauth2 block
+### `oauth2`
 
 {{< docs/shared lookup="reference/components/oauth2-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### tls_config block
+### `tls_config`
 
 {{< docs/shared lookup="reference/components/tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -170,19 +170,18 @@ Only resources managed by the component are exposed - regardless of how many act
 
 ## Debug metrics
 
-Metric Name                                  | Type        | Description
----------------------------------------------|-------------|-------------------------------------------------------------------------
-`loki_rules_config_updates_total`            | `counter`   | Number of times the configuration has been updated.
-`loki_rules_events_total`                    | `counter`   | Number of events processed, partitioned by event type.
-`loki_rules_events_failed_total`             | `counter`   | Number of events that failed to be processed, partitioned by event type.
-`loki_rules_events_retried_total`            | `counter`   | Number of events that were retried, partitioned by event type.
-`loki_rules_client_request_duration_seconds` | `histogram` | Duration of requests to the Loki API.
+| Metric Name                                  | Type        | Description                                                              |
+|----------------------------------------------|-------------|--------------------------------------------------------------------------|
+| `loki_rules_config_updates_total`            | `counter`   | Number of times the configuration has been updated.                      |
+| `loki_rules_events_total`                    | `counter`   | Number of events processed, partitioned by event type.                   |
+| `loki_rules_events_failed_total`             | `counter`   | Number of events that failed to be processed, partitioned by event type. |
+| `loki_rules_events_retried_total`            | `counter`   | Number of events that were retried, partitioned by event type.           |
+| `loki_rules_client_request_duration_seconds` | `histogram` | Duration of requests to the Loki API.                                    |
 
 ## Example
 
-This example creates a `loki.rules.kubernetes` component that loads discovered
-rules to a local Loki instance under the `team-a` tenant. Only namespaces and
-rules with the `alloy` label set to `yes` are included.
+This example creates a `loki.rules.kubernetes` component that loads discovered rules to a local Loki instance under the `team-a` tenant.
+Only namespaces and rules with the `alloy` label set to `yes` are included.
 
 ```alloy
 loki.rules.kubernetes "local" {
@@ -203,20 +202,26 @@ loki.rules.kubernetes "local" {
 }
 ```
 
-This example creates a `loki.rules.kubernetes` component that loads discovered
-rules to Grafana Cloud.
+This example creates a `loki.rules.kubernetes` component that loads discovered rules to Grafana Cloud.
 
 ```alloy
 loki.rules.kubernetes "default" {
-    address = "GRAFANA_CLOUD_URL"
+    address = "<GRAFANA_CLOUD_URL>"
     basic_auth {
-        username = "GRAFANA_CLOUD_USER"
-        password = "GRAFANA_CLOUD_API_KEY"
+        username = "<GRAFANA_CLOUD_USER>"
+        password = "<GRAFANA_CLOUD_API_KEY>"
         // Alternatively, load the password from a file:
-        // password_file = "GRAFANA_CLOUD_API_KEY_PATH"
+        // password_file = "<GRAFANA_CLOUD_API_KEY_PATH>"
     }
 }
 ```
+
+Replace the following:
+
+* _`<GRAFANA_CLOUD_URL>`_: The Grafana Cloud URL.
+* _`<GRAFANA_CLOUD_USER>`_: Your Grafana Cloud user name.
+* _`<GRAFANA_CLOUD_API_KEY>`_: Your Grafana Cloud API key.
+* _`<GRAFANA_CLOUD_API_KEY_PATH>`_: The path to the Grafana Cloud API key.
 
 The following example is an RBAC configuration for Kubernetes. It authorizes {{< param "PRODUCT_NAME" >}} to query the Kubernetes REST API:
 

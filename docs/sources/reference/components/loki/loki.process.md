@@ -3,6 +3,8 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/loki/loki.
 aliases:
   - ../loki.process/ # /docs/alloy/latest/reference/components/loki.process/
 description: Learn about loki.process
+labels:
+  stage: general-availability
 title: loki.process
 ---
 

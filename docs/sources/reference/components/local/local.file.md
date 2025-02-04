@@ -3,6 +3,8 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/local/loca
 aliases:
   - ../local.file/ # /docs/alloy/latest/reference/components/local.file/
 description: Learn about local.file
+labels:
+  stage: general-availability
 title: local.file
 ---
 
