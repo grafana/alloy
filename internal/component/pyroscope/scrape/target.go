@@ -19,6 +19,7 @@ import (
 	"hash/fnv"
 	"net"
 	"net/url"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -120,10 +121,11 @@ func urlFromTarget(lbls labels.Labels, params url.Values) string {
 		}
 	}
 
+	path := filepath.Join(lbls.Get(ProfilePathPrefix), lbls.Get(ProfilePath))
 	return (&url.URL{
 		Scheme:   lbls.Get(model.SchemeLabel),
 		Host:     lbls.Get(model.AddressLabel),
-		Path:     lbls.Get(ProfilePath),
+		Path:     path,
 		RawQuery: newParams.Encode(),
 	}).String()
 }
@@ -259,6 +261,7 @@ func (ts Targets) Swap(i, j int)      { ts[i], ts[j] = ts[j], ts[i] }
 
 const (
 	ProfilePath         = "__profile_path__"
+	ProfilePathPrefix   = "__profile_path_prefix__"
 	ProfileName         = "__name__"
 	serviceNameLabel    = "service_name"
 	serviceNameK8SLabel = "__meta_kubernetes_pod_annotation_pyroscope_io_service_name"
@@ -395,7 +398,7 @@ func targetsFromGroup(group *targetgroup.Group, cfg Arguments, targetTypes map[s
 				return nil, nil, fmt.Errorf("instance %d in group %s: %s", i, group, err)
 			}
 			// This is a dropped target, according to the current return behaviour of populateLabels
-			if lbls == nil && origLabels != nil {
+			if lbls == nil && origLabels != nil { //todo remove this branch and relabeling
 				// ensure we get the full url path for dropped targets
 				params := cfg.Params
 				if params == nil {
@@ -404,6 +407,9 @@ func targetsFromGroup(group *targetgroup.Group, cfg Arguments, targetTypes map[s
 				lbls = append(lbls, labels.Label{Name: model.AddressLabel, Value: lset.Get(model.AddressLabel)})
 				lbls = append(lbls, labels.Label{Name: model.SchemeLabel, Value: cfg.Scheme})
 				lbls = append(lbls, labels.Label{Name: ProfilePath, Value: lset.Get(ProfilePath)})
+				//ilbls = append(lbls, labels.Label{Name: ProfilePathPrefix, Value: profilePathPrefix})f profilePathPrefix := lset.Get(ProfilePathPrefix); profilePathPrefix != "" {
+				//	lbls = append(lbls, labels.Label{Name: ProfilePathPrefix, Value: profilePathPrefix})
+				//}
 				// Encode scrape query parameters as labels.
 				for k, v := range cfg.Params {
 					if len(v) > 0 {
