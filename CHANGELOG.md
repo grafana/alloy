@@ -32,7 +32,7 @@ Main (unreleased)
   - Fix error handling during result set iteration (@cristiangreco)
   - Better support for table name parsing (@cristiangreco)
   - Better error handling for components (@cristiangreco)
-  - Add namespace to `connection_info` metric in `database_observability.mysql` (@cristiangreco)
+  - Add namespace to `connection_info` metric (@cristiangreco)
   - Added table columns parsing (@cristiagreco)
 
 ### Bugfixes

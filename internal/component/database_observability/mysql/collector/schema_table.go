@@ -13,7 +13,6 @@ import (
 	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/prometheus/common/model"
-	"github.com/xwb1989/sqlparser"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -50,6 +49,20 @@ const (
 	// Note that the fully qualified table name is appendend to the query,
 	// for some reason it doesn't work with placeholders.
 	showCreateTable = `SHOW CREATE TABLE`
+
+	selectColumnNames = `
+	SELECT
+		COLUMN_NAME,
+		COLUMN_DEFAULT,
+		IS_NULLABLE,
+		COLUMN_TYPE,
+		COLUMN_KEY,
+		EXTRA
+	FROM
+		information_schema.columns
+	WHERE
+		TABLE_SCHEMA = ? AND TABLE_NAME = ?
+	ORDER BY ORDINAL_POSITION ASC`
 )
 
 type SchemaTableArguments struct {
@@ -97,6 +110,7 @@ type columnSpec struct {
 	Type          string `json:"type"`
 	NotNull       bool   `json:"not_null,omitempty"`
 	AutoIncrement bool   `json:"auto_increment,omitempty"`
+	PrimaryKey    bool   `json:"primary_key,omitempty"`
 	DefaultValue  string `json:"default_value,omitempty"`
 }
 
@@ -241,17 +255,19 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 
 	// TODO(cristian): consider moving this into the loop above
 	for _, table := range tables {
+		logKVs := []any{"schema", table.schema, "table", table.tableName}
+
 		fullyQualifiedTable := fmt.Sprintf("%s.%s", table.schema, table.tableName)
 		cacheKey := fmt.Sprintf("%s@%d", fullyQualifiedTable, table.updateTime.Unix())
 
 		if c.cache.Contains(cacheKey) {
-			level.Debug(c.logger).Log("msg", "table definition already in cache", "schema", table.schema, "table", table.tableName)
+			level.Debug(c.logger).Log("msg", "table definition already in cache", logKVs)
 			continue
 		}
 
 		row := c.dbConnection.QueryRowContext(ctx, showCreateTable+" "+fullyQualifiedTable)
 		if row.Err() != nil {
-			level.Error(c.logger).Log("msg", "failed to show create table", "schema", table.schema, "table", table.tableName, "err", row.Err())
+			level.Error(c.logger).Log("msg", "failed to show create table", append(logKVs, "err", row.Err()))
 			break
 		}
 
@@ -261,12 +277,12 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 		var collationConnection string
 		if table.tableType == "BASE TABLE" {
 			if err = row.Scan(&tableName, &createStmt); err != nil {
-				level.Error(c.logger).Log("msg", "failed to scan create table", "schema", table.schema, "table", table.tableName, "err", err)
+				level.Error(c.logger).Log("msg", "failed to scan create table", append(logKVs, "err", err))
 				break
 			}
 		} else if table.tableType == "VIEW" {
 			if err = row.Scan(&tableName, &createStmt, &characterSetClient, &collationConnection); err != nil {
-				level.Error(c.logger).Log("msg", "failed to scan create view", "schema", table.schema, "table", table.tableName, "err", err)
+				level.Error(c.logger).Log("msg", "failed to scan create view", append(logKVs, "err", err))
 				break
 			}
 		}
@@ -274,13 +290,14 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 		table.createStmt = createStmt
 		c.cache.Add(cacheKey, table)
 
-		spec, err := c.parseTableSpec(table.schema, table.tableName, createStmt)
+		spec, err := c.analyzeTableSpec(ctx, table.schema, table.tableName)
 		if err != nil {
+			level.Error(c.logger).Log("msg", "failed to analyze table spec", append(logKVs, "err", err))
 			break
 		}
 		jsonSpec, err := json.Marshal(spec)
 		if err != nil {
-			level.Error(c.logger).Log("msg", "failed to marshal table spec", "schema", table.schema, "table", table.tableName, "err", err)
+			level.Error(c.logger).Log("msg", "failed to marshal table spec", append(logKVs, "err", err))
 			break
 		}
 
@@ -299,86 +316,63 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 	return nil
 }
 
-func (c *SchemaTable) parseTableSpec(schemaName string, tableName string, createStmt string) (*tableSpec, error) {
-	// TODO(cristian): find a better way to parse the create statement.
-	// For now, remove CONSTRAINT clauses as they are not supported by xwb1989/sqlparser.
-	lines := strings.Split(createStmt, "\n")
-	filteredLines := make([]string, 0, len(lines))
-	for _, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if strings.HasPrefix(strings.ToUpper(trimmed), "CONSTRAINT") {
-			level.Info(c.logger).Log("msg", "skipping parsing of unsupported DDL feature", "schema", schemaName, "table", tableName, "line", line)
-			continue
-		}
-		filteredLines = append(filteredLines, line)
-	}
-	if len(lines) != len(filteredLines) && len(filteredLines) > 1 {
-		// Remove trailing comma from the last line
-		createStmt = strings.Join(filteredLines, "\n")
-		if c := strings.LastIndex(createStmt, ","); c > 0 {
-			createStmt = createStmt[:c] + createStmt[c+1:]
-		}
-	}
-
-	stmt, err := sqlparser.Parse(createStmt)
+func (c *SchemaTable) analyzeTableSpec(ctx context.Context, schemaName string, tableName string) (*tableSpec, error) {
+	rs, err := c.dbConnection.QueryContext(ctx, selectColumnNames, schemaName, tableName)
 	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to parse create table sql query", "schema", schemaName, "table", tableName, "err", err)
+		level.Error(c.logger).Log("msg", "failed to query table columns", "schema", schemaName, "table", tableName, "err", err)
 		return nil, err
 	}
-
-	ddl, ok := stmt.(*sqlparser.DDL)
-	if !ok {
-		level.Error(c.logger).Log("msg", "failed to parse create table sql query as DDL", "schema", schemaName, "table", tableName, "err", err)
-		return nil, err
-	}
+	defer rs.Close()
 
 	tblSpec := &tableSpec{Columns: []columnSpec{}}
 
-	if ddl.TableSpec != nil {
-		for _, col := range ddl.TableSpec.Columns {
-			colSpec := columnSpec{
-				Name: col.Name.String(),
-				Type: col.Type.Type,
-			}
-
-			typeLen := ""
-			if col.Type.Length != nil {
-				typeLen = string(col.Type.Length.Val)
-			}
-
-			enumVals := ""
-			if col.Type.Type == "enum" && len(col.Type.EnumValues) > 0 {
-				enumVals = strings.Join(col.Type.EnumValues, ",")
-			}
-			if typeLen != "" {
-				colSpec.Type += "(" + typeLen + ")"
-			} else if enumVals != "" {
-				colSpec.Type += "(" + enumVals + ")"
-			}
-
-			if col.Type.NotNull {
-				colSpec.NotNull = true
-			}
-
-			if col.Type.Autoincrement {
-				colSpec.AutoIncrement = true
-			}
-
-			defaultVal := ""
-			if col.Type.Default != nil {
-				switch col.Type.Default.Type {
-				case sqlparser.StrVal, sqlparser.IntVal, sqlparser.FloatVal, sqlparser.BitVal, sqlparser.ValArg:
-					defaultVal = string(col.Type.Default.Val)
-				default:
-					level.Info(c.logger).Log("msg", "unsupported default value type", "schema", schemaName, "table", tableName, "column", col.Name.String(), "type", col.Type.Default.Type)
-				}
-			}
-			if defaultVal != "" {
-				colSpec.DefaultValue = defaultVal
-			}
-
-			tblSpec.Columns = append(tblSpec.Columns, colSpec)
+	for rs.Next() {
+		var columnName, isNullable, columnType, columnKey, extra string
+		var columnDefault sql.NullString
+		if err := rs.Scan(&columnName, &columnDefault, &isNullable, &columnType, &columnKey, &extra); err != nil {
+			level.Error(c.logger).Log("msg", "failed to scan table columns", "schema", schemaName, "table", tableName, "err", err)
+			return nil, err
 		}
+
+		extra = strings.ToUpper(extra)
+
+		notNull := false
+		if isNullable == "NO" {
+			notNull = true
+		}
+
+		autoIncrement := false
+		if strings.Contains(extra, "AUTO_INCREMENT") {
+			autoIncrement = true
+		}
+
+		primaryKey := false
+		if columnKey == "PRI" {
+			primaryKey = true
+		}
+
+		defaultValue := ""
+		if columnDefault.Valid {
+			defaultValue = columnDefault.String
+			if strings.Contains(extra, "ON UPDATE CURRENT_TIMESTAMP") {
+				defaultValue += " ON UPDATE CURRENT_TIMESTAMP"
+			}
+		}
+
+		colSpec := columnSpec{
+			Name:          columnName,
+			Type:          columnType,
+			NotNull:       notNull,
+			AutoIncrement: autoIncrement,
+			PrimaryKey:    primaryKey,
+			DefaultValue:  defaultValue,
+		}
+		tblSpec.Columns = append(tblSpec.Columns, colSpec)
+	}
+
+	if err := rs.Err(); err != nil {
+		level.Error(c.logger).Log("msg", "error during iterating over table columns result set", "schema", schemaName, "table", tableName, "err", err)
+		return nil, err
 	}
 
 	return tblSpec, nil
