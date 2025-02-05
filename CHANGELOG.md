@@ -16,6 +16,8 @@ Main (unreleased)
 
 ### Enhancements
 
+- Add `go_table_fallback` arg to `pyroscope.ebpf` (@korniltsev)
+
 - Add the possibility to export span events as logs in `otelcol.connector.spanlogs`. (@steve-hb)
 
 - (_Experimental_) Log instance label key in `database_observability.mysql` (@cristiangreco)
