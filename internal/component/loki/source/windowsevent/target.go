@@ -126,7 +126,11 @@ func (t *Target) loop() {
 				t.handler.Chan() <- entry
 			}
 			if len(handles) != 0 {
-				t.bm.update(handles[len(handles)-1])
+				err = t.bm.update(handles[len(handles)-1])
+				if err != nil {
+					t.err = err
+					level.Error(util_log.Logger).Log("msg", "error updating in-memory bookmark", "err", err)
+				}
 			}
 			win_eventlog.Close(handles)
 		}
