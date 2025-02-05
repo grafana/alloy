@@ -56,7 +56,7 @@ If you use the short form, you must define `eventlog_name`.
 
 ## Blocks
 
-The `loki.source.windowsevent` component doesn't support any blocks.
+The `loki.source.windowsevent` component doesn't support any blocks. You can configure this component with arguments.
 
 ## Component health
 

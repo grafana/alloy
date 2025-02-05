@@ -41,7 +41,7 @@ You can use the following arguments with `loki.source.docker`:
 
 ## Blocks
 
-The following blocks are supported inside the definition of `loki.source.docker`:
+You can use the following blocks with `loki.source.docker`:
 
 | Block                                            | Description                                                | Required |
 | ------------------------------------------------ | ---------------------------------------------------------- | -------- |

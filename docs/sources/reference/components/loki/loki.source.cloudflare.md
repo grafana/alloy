@@ -211,7 +211,7 @@ A sample log looks like this:
 
 ## Blocks
 
-The `loki.source.cloudflare` component doesn't support any blocks.
+The `loki.source.cloudflare` component doesn't support any blocks. You can configure this component with arguments.
 
 ## Exported fields
 

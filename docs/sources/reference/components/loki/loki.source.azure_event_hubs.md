@@ -76,7 +76,7 @@ The following internal labels prefixed with `__` are available but are discarded
 
 ## Blocks
 
-You can use the following blocks with `loki.source.azure_event_hubs`:
+You can use the following block with `loki.source.azure_event_hubs`:
 
 | Name                               | Description                                        | Required |
 | ---------------------------------- | -------------------------------------------------- | -------- |

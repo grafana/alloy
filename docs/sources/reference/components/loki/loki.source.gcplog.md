@@ -40,8 +40,7 @@ loki.source.gcplog "<LABEL>" {
 
 ## Blocks
 
-The following blocks are supported inside the definition of
-`loki.source.gcplog`:
+You can use the following blocks with `loki.source.gcplog`:
 
 | Name                    | Description                                                                   | Required |
 | ----------------------- | ----------------------------------------------------------------------------- | -------- |

@@ -68,7 +68,7 @@ The final internal label name would be `__journal__systemd_unit`, with _two_ und
 
 ## Blocks
 
-The `loki.source.journal` component doesn't support any blocks.
+The `loki.source.journal` component doesn't support any blocks. You can configure this component with arguments.
 
 ## Component health
 

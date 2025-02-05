@@ -53,6 +53,10 @@ To keep these labels, relabel them using a [`loki.relabel`][loki.relabel] compon
 
 [loki.relabel]: ../loki.relabel/
 
+## Blocks
+
+The `loki.source.gelf` component doesn't support any blocks. You can configure this component with arguments.
+
 ## Component health
 
 `loki.source.gelf` is only reported as unhealthy if given an invalid configuration.
