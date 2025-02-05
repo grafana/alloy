@@ -536,6 +536,53 @@ func TestProfileURL(t *testing.T) {
 				"https://127.0.0.1:4100/mimir-prometheus/foo239",
 			},
 		},
+		{
+			name: "path prefix argument",
+			args: func() Arguments {
+				args := NewDefaultArguments()
+				args.ProfilingConfig = ProfilingConfig{
+					ProcessCPU: ProfilingTarget{
+						Enabled: true,
+						Path:    "/debug/pprof/profile",
+						Delta:   true,
+					},
+					PathPrefix: "/foo",
+				}
+
+				return args
+			},
+			targets:      []model.LabelSet{{model.AddressLabel: "localhost:9090"}},
+			expectedUrls: []string{"http://localhost:9090/foo/debug/pprof/profile?seconds=14"},
+		},
+		{
+			name: "path prefix argument overridden by target label",
+			args: func() Arguments {
+				args := NewDefaultArguments()
+				args.ProfilingConfig = ProfilingConfig{
+					ProcessCPU: ProfilingTarget{
+						Enabled: true,
+						Path:    "/debug/pprof/profile",
+						Delta:   true,
+					},
+					PathPrefix: "/foo",
+				}
+
+				return args
+			},
+			targets: []model.LabelSet{
+				{
+					model.AddressLabel: "localhost:9090",
+				},
+				{
+					model.AddressLabel: "localhost:4242",
+					ProfilePathPrefix:  "/bar",
+				},
+			},
+			expectedUrls: []string{
+				"http://localhost:4242/bar/debug/pprof/profile?seconds=14",
+				"http://localhost:9090/foo/debug/pprof/profile?seconds=14",
+			},
+		},
 	}
 	for _, td := range testdata {
 		t.Run(td.name, func(t *testing.T) {
@@ -549,5 +596,111 @@ func TestProfileURL(t *testing.T) {
 		})
 
 	}
+}
 
+func TestLabelsByProfiles(t *testing.T) {
+	testdata := []struct {
+		name     string
+		target   labels.Labels
+		cfg      *ProfilingConfig
+		expected []labels.Labels
+	}{
+		{
+			name: "single target",
+			target: labels.FromMap(map[string]string{
+				model.AddressLabel: "localhost:9090",
+			}),
+			cfg: &ProfilingConfig{
+				ProcessCPU: ProfilingTarget{
+					Enabled: true,
+					Path:    "/debug/pprof/profile",
+					Delta:   true,
+				},
+			},
+			expected: []labels.Labels{
+				labels.FromMap(map[string]string{
+					ProfilePath:        "/debug/pprof/profile",
+					ProfileName:        "process_cpu",
+					model.AddressLabel: "localhost:9090",
+				}),
+			},
+		},
+		{
+			name: "path prefix from args",
+			target: labels.FromMap(map[string]string{
+				model.AddressLabel: "localhost:9090",
+			}),
+			cfg: &ProfilingConfig{
+				ProcessCPU: ProfilingTarget{
+					Enabled: true,
+					Path:    "/debug/pprof/profile",
+					Delta:   true,
+				},
+				PathPrefix: "/foo",
+			},
+			expected: []labels.Labels{
+				labels.FromMap(map[string]string{
+					ProfilePath:        "/debug/pprof/profile",
+					ProfileName:        "process_cpu",
+					model.AddressLabel: "localhost:9090",
+					ProfilePathPrefix:  "/foo",
+				}),
+			},
+		},
+		{
+			name: "path prefix from label",
+			target: labels.FromMap(map[string]string{
+				model.AddressLabel: "localhost:9090",
+				ProfilePathPrefix:  "/bar",
+			}),
+			cfg: &ProfilingConfig{
+				ProcessCPU: ProfilingTarget{
+					Enabled: true,
+					Path:    "/debug/pprof/profile",
+					Delta:   true,
+				},
+				PathPrefix: "/foo",
+			},
+			expected: []labels.Labels{
+				labels.FromMap(map[string]string{
+					ProfilePath:        "/debug/pprof/profile",
+					ProfileName:        "process_cpu",
+					model.AddressLabel: "localhost:9090",
+					ProfilePathPrefix:  "/bar",
+				}),
+			},
+		},
+		{
+			name: "no duplicates",
+			target: labels.Labels{
+				{model.AddressLabel, "localhost:9090"},
+				{ProfilePath, "/debug/pprof/custom_profile"},
+				{ProfileName, "custom_process_cpu"},
+				{ProfilePathPrefix, "/prefix"},
+			},
+			cfg: &ProfilingConfig{
+				ProcessCPU: ProfilingTarget{
+					Enabled: true,
+					Path:    "/debug/pprof/profile",
+					Delta:   true,
+				},
+				PathPrefix: "/foo",
+			},
+			expected: []labels.Labels{
+				{
+					{model.AddressLabel, "localhost:9090"},
+					{ProfileName, "custom_process_cpu"},
+					{ProfilePath, "/debug/pprof/custom_profile"},
+					{ProfilePathPrefix, "/prefix"},
+				},
+			},
+		},
+	}
+	for _, td := range testdata {
+		t.Run(td.name, func(t *testing.T) {
+
+			actual := LabelsByProfiles(labels.New(td.target...), td.cfg)
+			assert.Equal(t, td.expected, actual)
+		})
+	}
 }

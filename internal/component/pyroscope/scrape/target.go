@@ -223,12 +223,15 @@ func (t *Target) Health() TargetHealth {
 // LabelsByProfiles returns the labels for a given ProfilingConfig.
 func LabelsByProfiles(lset labels.Labels, c *ProfilingConfig) []labels.Labels {
 	res := []labels.Labels{}
+
 	add := func(profileType string, cfgs ...ProfilingTarget) {
 		for _, p := range cfgs {
 			if p.Enabled {
-				l := lset.Copy()
-				l = append(l, labels.Label{Name: ProfilePath, Value: p.Path}, labels.Label{Name: ProfileName, Value: profileType})
-				res = append(res, l)
+				lb := labels.NewBuilder(lset)
+				setIfNotPresentAndNotEmpty(lb, ProfilePath, p.Path)
+				setIfNotPresentAndNotEmpty(lb, ProfileName, profileType)
+				setIfNotPresentAndNotEmpty(lb, ProfilePathPrefix, c.PathPrefix)
+				res = append(res, lb.Labels())
 			}
 		}
 	}
@@ -449,4 +452,14 @@ func inferServiceName(lset labels.Labels) string {
 		return swarmService
 	}
 	return "unspecified"
+}
+
+func setIfNotPresentAndNotEmpty(b *labels.Builder, k, v string) {
+	if b.Get(k) != "" {
+		return
+	}
+	if v == "" {
+		return
+	}
+	b.Set(k, v)
 }
