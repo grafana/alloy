@@ -1,6 +1,7 @@
 package scrape
 
 import (
+	"github.com/stretchr/testify/assert"
 	"net/url"
 	"sort"
 	"testing"
@@ -285,6 +286,8 @@ func Test_NewTarget_godeltaprof(t *testing.T) {
 	require.Equal(t, withGodeltaprof.publicLabels, withoutGodeltaprof.publicLabels)
 	assert.Equal(t, pprofMemory, withGodeltaprof.allLabels.Get(model.MetricNameLabel))
 	assert.Equal(t, pprofMemory, withoutGodeltaprof.allLabels.Get(model.MetricNameLabel))
+	assert.Equal(t, "/debug/pprof/heap", withoutGodeltaprof.allLabels.Get(ProfilePath))
+	assert.Equal(t, "/debug/pprof/delta_heap", withGodeltaprof.allLabels.Get(ProfilePath))
 }
 
 func Test_targetsFromGroup_withSpecifiedDeltaProfilingDuration(t *testing.T) {
