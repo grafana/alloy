@@ -86,6 +86,8 @@ You can use the following block with `loki.source.azure_event_hubs`:
 
 ### `authentication`
 
+<span class="badge docs-labels__stage docs-labels__item">Required</span>
+
 The `authentication` block defines the authentication method when communicating with Azure Event Hub.
 
 | Name                | Type           | Description                                                               | Default | Required |
