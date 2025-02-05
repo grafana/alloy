@@ -1,6 +1,7 @@
 package receive_http
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -9,8 +10,10 @@ import (
 	"reflect"
 	"sync"
 
+	"connectrpc.com/connect"
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/prometheus/model/labels"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/grafana/alloy/internal/component"
@@ -20,6 +23,10 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/util"
+	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
+	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/api/model/labelset"
 )
 
 const (
@@ -137,55 +144,129 @@ func (c *Component) Update(args component.Arguments) error {
 	c.server = srv
 
 	return c.server.MountAndRun(func(router *mux.Router) {
+		// this mounts the og pyroscope ingest API, mostly used by SDKs
 		router.HandleFunc("/ingest", c.handleIngest).Methods(http.MethodPost)
+
+		// mount connect go pushv1
+		pathPush, handlePush := pushv1connect.NewPusherServiceHandler(c)
+		router.PathPrefix(pathPush).Handler(handlePush).Methods(http.MethodPost)
 	})
 }
 
-func (c *Component) handleIngest(w http.ResponseWriter, r *http.Request) {
-	c.mut.Lock()
-	appendables := c.appendables
-	c.mut.Unlock()
-
-	// Create a pipe for each appendable
-	pipeWriters := make([]io.Writer, len(appendables))
-	pipeReaders := make([]io.Reader, len(appendables))
-	for i := range appendables {
-		pr, pw := io.Pipe()
-		pipeReaders[i] = pr
-		pipeWriters[i] = pw
+func setLabelBuilderFromAPI(lb *labels.Builder, api []*typesv1.LabelPair) {
+	for i := range api {
+		lb.Set(api[i].Name, api[i].Value)
 	}
-	mw := io.MultiWriter(pipeWriters...)
+}
+
+func apiToAlloySamples(api []*pushv1.RawSample) []*pyroscope.RawSample {
+	var (
+		alloy = make([]*pyroscope.RawSample, len(api))
+	)
+	for i := range alloy {
+		alloy[i] = &pyroscope.RawSample{
+			RawProfile: api[i].RawProfile,
+		}
+	}
+	return alloy
+}
+
+func (c *Component) Push(ctx context.Context, req *connect.Request[pushv1.PushRequest],
+) (*connect.Response[pushv1.PushResponse], error) {
+	appendables := c.getAppendables()
 
 	// Create an errgroup with the timeout context
-	g, ctx := errgroup.WithContext(r.Context())
+	g, ctx := errgroup.WithContext(ctx)
 
 	// Start copying the request body to all pipes
-	g.Go(func() error {
-		defer func() {
-			for _, pw := range pipeWriters {
-				pw.(io.WriteCloser).Close()
-			}
-		}()
-		_, err := io.Copy(mw, r.Body)
-		return err
-	})
+	for i := range appendables {
+		appendable := appendables[i].Appender()
+		g.Go(func() error {
+			var (
+				errs error
+				lb   = labels.NewBuilder(nil)
+			)
 
-	// Process each appendable
+			for idx := range req.Msg.Series {
+				lb.Reset(nil)
+				setLabelBuilderFromAPI(lb, req.Msg.Series[idx].Labels)
+				err := appendable.Append(ctx, lb.Labels(), apiToAlloySamples(req.Msg.Series[idx].Samples))
+				if err != nil {
+					errs = errors.Join(
+						errs,
+						fmt.Errorf("unable to append series %s to appendable %d: %w", lb.Labels().String(), i, err),
+					)
+				}
+			}
+			return errs
+		})
+	}
+	if err := g.Wait(); err != nil {
+		level.Error(c.opts.Logger).Log("msg", "Failed to forward profiles requests", "err", err)
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	level.Debug(c.opts.Logger).Log("msg", "Profiles successfully forwarded")
+	return connect.NewResponse(&pushv1.PushResponse{}), nil
+}
+
+func (c *Component) getAppendables() []pyroscope.Appendable {
+	c.mut.Lock()
+	defer c.mut.Unlock()
+	appendables := c.appendables
+	return appendables
+}
+
+func (c *Component) handleIngest(w http.ResponseWriter, r *http.Request) {
+	appendables := c.getAppendables()
+
+	// Parse labels early
+	var lbls labels.Labels
+	if nameParam := r.URL.Query().Get("name"); nameParam != "" {
+		ls, err := labelset.Parse(nameParam)
+		if err != nil {
+			level.Warn(c.opts.Logger).Log(
+				"msg", "Failed to parse labels from name parameter",
+				"name", nameParam,
+				"err", err,
+			)
+			// Continue with empty labels instead of returning an error
+		} else {
+			var labelPairs []labels.Label
+			for k, v := range ls.Labels() {
+				labelPairs = append(labelPairs, labels.Label{Name: k, Value: v})
+			}
+			lbls = labels.New(labelPairs...)
+		}
+	}
+
+	// Read the entire body into memory
+	// This matches how Append() handles profile data (as RawProfile),
+	// but means the entire profile will be held in memory
+	var buf bytes.Buffer
+	if _, err := io.Copy(&buf, r.Body); err != nil {
+		level.Error(c.opts.Logger).Log("msg", "Failed to read request body", "err", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	g, ctx := errgroup.WithContext(r.Context())
+
+	// Process each appendable with a new reader from the buffer
 	for i, appendable := range appendables {
 		g.Go(func() error {
-			defer pipeReaders[i].(io.ReadCloser).Close()
-
 			profile := &pyroscope.IncomingProfile{
-				Body:    io.NopCloser(pipeReaders[i]),
+				RawBody: buf.Bytes(),
 				Headers: r.Header.Clone(),
 				URL:     r.URL,
+				Labels:  lbls,
 			}
 
-			err := appendable.Appender().AppendIngest(ctx, profile)
-			if err != nil {
+			if err := appendable.Appender().AppendIngest(ctx, profile); err != nil {
 				level.Error(c.opts.Logger).Log("msg", "Failed to append profile", "appendable", i, "err", err)
 				return err
 			}
+
 			level.Debug(c.opts.Logger).Log("msg", "Profile appended successfully", "appendable", i)
 			return nil
 		})

@@ -6,7 +6,7 @@ labels:
   stage: experimental
 ---
 
-# database_observability.mysql
+# `database_observability.mysql`
 
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -27,7 +27,7 @@ Name                    | Type                 | Description                    
 ------------------------|----------------------|----------------------------------------------------------|---------|---------
 `data_source_name`      | `secret`             | [Data Source Name][] for the MySQL server to connect to. |         | yes
 `forward_to`            | `list(LogsReceiver)` | Where to forward log entries after processing.           |         | yes
-`collect_interval`      | `duration`           | How frequently to collect information from database.     | `"10s"` | no
+`collect_interval`      | `duration`           | How frequently to collect information from database.     | `"1m"`  | no
 `query_samples_enabled` | `bool`               | Whether to enable collection of query samples.           | `true`  | no
 
 ## Blocks

@@ -203,6 +203,7 @@ func TestQuerySample(t *testing.T) {
 			}},
 			logs: []string{
 				`level=info msg="query samples fetched" op="query_sample" instance="mysql-db" schema="some_schema" digest="abc123" query_type="" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="alter table some_table"`,
+				`level=info msg="table name parsed" op="query_parsed_table_name" instance="mysql-db" schema="some_schema" digest="abc123" table="some_table"`,
 			},
 		},
 		{
@@ -247,10 +248,149 @@ func TestQuerySample(t *testing.T) {
 				`level=info msg="table name parsed" op="query_parsed_table_name" instance="mysql-db" schema="other_schema" digest="abc123" table="some_table"`,
 			},
 		},
+		{
+			name: "union query",
+			rows: [][]driver.Value{{
+				"abc123",
+				"some_schema",
+				"SELECT id, name FROM employees_ny UNION SELECT id, name FROM employees_ca UNION SELECT id, name FROM employees_tx",
+				"2024-01-01T00:00:00.000Z",
+				"1000",
+			}},
+			logs: []string{
+				`level=info msg="query samples fetched" op="query_sample" instance="mysql-db" schema="some_schema" digest="abc123" query_type="select" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="select id, name from employees_ny union select id, name from employees_ca union select id, name from employees_tx"`,
+				`level=info msg="table name parsed" op="query_parsed_table_name" instance="mysql-db" schema="some_schema" digest="abc123" table="employees_ny"`,
+				`level=info msg="table name parsed" op="query_parsed_table_name" instance="mysql-db" schema="some_schema" digest="abc123" table="employees_ca"`,
+				`level=info msg="table name parsed" op="query_parsed_table_name" instance="mysql-db" schema="some_schema" digest="abc123" table="employees_tx"`,
+			},
+		},
+		{
+			name: "from subquery with union",
+			rows: [][]driver.Value{{
+				"abc123",
+				"some_schema",
+				"SELECT COUNT(DISTINCT t.role_id) AS roles, COUNT(DISTINCT r.id) AS fixed_roles FROM (SELECT role_id FROM user_role UNION ALL SELECT role_id FROM team_role) AS t LEFT JOIN (SELECT id FROM role WHERE name LIKE 'prefix%') AS r ON t.role_id = r.id",
+				"2024-01-01T00:00:00.000Z",
+				"1000",
+			}},
+			logs: []string{
+				`level=info msg="query samples fetched" op="query_sample" instance="mysql-db" schema="some_schema" digest="abc123" query_type="select" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="select COUNT(distinct t.role_id) as roles, COUNT(distinct r.id) as fixed_roles from (select role_id from user_role union all select role_id from team_role) as t left join (select id from role where name like :redacted1) as r on t.role_id = r.id"`,
+				`level=info msg="table name parsed" op="query_parsed_table_name" instance="mysql-db" schema="some_schema" digest="abc123" table="user_role"`,
+				`level=info msg="table name parsed" op="query_parsed_table_name" instance="mysql-db" schema="some_schema" digest="abc123" table="team_role"`,
+				`level=info msg="table name parsed" op="query_parsed_table_name" instance="mysql-db" schema="some_schema" digest="abc123" table="role"`,
+			},
+		},
+		{
+			name: "subquery and union",
+			rows: [][]driver.Value{{
+				"abc123",
+				"some_schema",
+				"SELECT * FROM (SELECT id, name FROM employees_us_east UNION SELECT id, name FROM employees_us_west) as employees_us UNION SELECT id, name FROM employees_emea",
+				"2024-01-01T00:00:00.000Z",
+				"1000",
+			}},
+			logs: []string{
+				`level=info msg="query samples fetched" op="query_sample" instance="mysql-db" schema="some_schema" digest="abc123" query_type="select" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="select * from (select id, name from employees_us_east union select id, name from employees_us_west) as employees_us union select id, name from employees_emea"`,
+				`level=info msg="table name parsed" op="query_parsed_table_name" instance="mysql-db" schema="some_schema" digest="abc123" table="employees_us_east"`,
+				`level=info msg="table name parsed" op="query_parsed_table_name" instance="mysql-db" schema="some_schema" digest="abc123" table="employees_us_west"`,
+				`level=info msg="table name parsed" op="query_parsed_table_name" instance="mysql-db" schema="some_schema" digest="abc123" table="employees_emea"`,
+			},
+		},
+		{
+			name: "insert with subquery and union",
+			rows: [][]driver.Value{{
+				"abc123",
+				"some_schema",
+				"INSERT INTO customers (id, name) SELECT id, name FROM customers_us UNION SELECT id, name FROM customers_eu",
+				"2024-01-01T00:00:00.000Z",
+				"1000",
+			}},
+			logs: []string{
+				`level=info msg="query samples fetched" op="query_sample" instance="mysql-db" schema="some_schema" digest="abc123" query_type="insert" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="insert into customers(id, name) select id, name from customers_us union select id, name from customers_eu"`,
+				`level=info msg="table name parsed" op="query_parsed_table_name" instance="mysql-db" schema="some_schema" digest="abc123" table="customers"`,
+				`level=info msg="table name parsed" op="query_parsed_table_name" instance="mysql-db" schema="some_schema" digest="abc123" table="customers_us"`,
+				`level=info msg="table name parsed" op="query_parsed_table_name" instance="mysql-db" schema="some_schema" digest="abc123" table="customers_eu"`,
+			},
+		},
+		{
+			name: "join with subquery and union",
+			rows: [][]driver.Value{{
+				"abc123",
+				"some_schema",
+				"SELECT * FROM departments dep JOIN (SELECT id, name FROM employees_us UNION SELECT id, name FROM employees_eu) employees ON dep.id = employees.id",
+				"2024-01-01T00:00:00.000Z",
+				"1000",
+			}},
+			logs: []string{
+				`level=info msg="query samples fetched" op="query_sample" instance="mysql-db" schema="some_schema" digest="abc123" query_type="select" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="select * from departments as dep join (select id, name from employees_us union select id, name from employees_eu) as employees on dep.id = employees.id"`,
+				`level=info msg="table name parsed" op="query_parsed_table_name" instance="mysql-db" schema="some_schema" digest="abc123" table="departments"`,
+				`level=info msg="table name parsed" op="query_parsed_table_name" instance="mysql-db" schema="some_schema" digest="abc123" table="employees_us"`,
+				`level=info msg="table name parsed" op="query_parsed_table_name" instance="mysql-db" schema="some_schema" digest="abc123" table="employees_eu"`,
+			},
+		},
+		{
+			name: "insert with subquery and join",
+			rows: [][]driver.Value{{
+				"abc123",
+				"some_schema",
+				"INSERT INTO some_table SELECT * FROM departments dep JOIN (SELECT id, name FROM employees_us UNION SELECT id, name FROM employees_eu) employees ON dep.id = employees.id",
+				"2024-01-01T00:00:00.000Z",
+				"1000",
+			}},
+			logs: []string{
+				`level=info msg="query samples fetched" op="query_sample" instance="mysql-db" schema="some_schema" digest="abc123" query_type="insert" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="insert into some_table select * from departments as dep join (select id, name from employees_us union select id, name from employees_eu) as employees on dep.id = employees.id"`,
+				`level=info msg="table name parsed" op="query_parsed_table_name" instance="mysql-db" schema="some_schema" digest="abc123" table="some_table"`,
+				`level=info msg="table name parsed" op="query_parsed_table_name" instance="mysql-db" schema="some_schema" digest="abc123" table="departments"`,
+				`level=info msg="table name parsed" op="query_parsed_table_name" instance="mysql-db" schema="some_schema" digest="abc123" table="employees_us"`,
+				`level=info msg="table name parsed" op="query_parsed_table_name" instance="mysql-db" schema="some_schema" digest="abc123" table="employees_eu"`,
+			},
+		},
+		{
+			name: "show create table (table name is not parsed)",
+			rows: [][]driver.Value{{
+				"abc123",
+				"some_schema",
+				"SHOW CREATE TABLE some_table",
+				"2024-01-01T00:00:00.000Z",
+				"1000",
+			}},
+			logs: []string{
+				`level=info msg="query samples fetched" op="query_sample" instance="mysql-db" schema="some_schema" digest="abc123" query_type="" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="show create table"`,
+			},
+		},
+		{
+			name: "show variables",
+			rows: [][]driver.Value{{
+				"abc123",
+				"some_schema",
+				"SHOW VARIABLES LIKE 'version'",
+				"2024-01-01T00:00:00.000Z",
+				"1000",
+			}},
+			logs: []string{
+				`level=info msg="query samples fetched" op="query_sample" instance="mysql-db" schema="some_schema" digest="abc123" query_type="" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="show variables"`,
+			},
+		},
+		{
+			name: "drop table",
+			rows: [][]driver.Value{{
+				"abc123",
+				"some_schema",
+				"DROP TABLE IF EXISTS some_table",
+				"2024-01-01T00:00:00.000Z",
+				"1000",
+			}},
+			logs: []string{
+				`level=info msg="query samples fetched" op="query_sample" instance="mysql-db" schema="some_schema" digest="abc123" query_type="" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="drop table if exists some_table"`,
+				`level=info msg="table name parsed" op="query_parsed_table_name" instance="mysql-db" schema="some_schema" digest="abc123" table="some_table"`,
+			},
+		},
 	}
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 			require.NoError(t, err)
 			defer db.Close()
@@ -260,7 +400,7 @@ func TestQuerySample(t *testing.T) {
 			collector, err := NewQuerySample(QuerySampleArguments{
 				DB:              db,
 				InstanceKey:     "mysql-db",
-				CollectInterval: time.Minute,
+				CollectInterval: time.Second,
 				EntryHandler:    lokiClient,
 				Logger:          log.NewLogfmtLogger(os.Stderr),
 			})
@@ -290,14 +430,19 @@ func TestQuerySample(t *testing.T) {
 			collector.Stop()
 			lokiClient.Stop()
 
+			require.Eventually(t, func() bool {
+				return collector.Stopped()
+			}, 5*time.Second, 100*time.Millisecond)
+
+			err = mock.ExpectationsWereMet()
+			require.NoError(t, err)
+
 			lokiEntries := lokiClient.Received()
+			require.Equal(t, len(tc.logs), len(lokiEntries))
 			for i, entry := range lokiEntries {
 				require.Equal(t, model.LabelSet{"job": database_observability.JobName}, entry.Labels)
 				require.Equal(t, tc.logs[i], entry.Line)
 			}
-
-			err = mock.ExpectationsWereMet()
-			require.NoError(t, err)
 		})
 	}
 }
@@ -305,41 +450,9 @@ func TestQuerySample(t *testing.T) {
 func TestQuerySampleSQLDriverErrors(t *testing.T) {
 	defer goleak.VerifyNone(t)
 
-	t.Run("unrecoverable sql error", func(t *testing.T) {
-		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
-		require.NoError(t, err)
-		defer db.Close()
-
-		lokiClient := loki_fake.NewClient(func() {})
-
-		collector, err := NewQuerySample(QuerySampleArguments{
-			DB:              db,
-			CollectInterval: time.Minute,
-			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
-		})
-		require.NoError(t, err)
-		require.NotNil(t, collector)
-
-		mock.ExpectQuery(selectQuerySamples).WithoutArgs().WillReturnError(driver.ErrBadConn)
-
-		err = collector.Start(context.Background())
-		require.NoError(t, err)
-
-		require.Eventually(t, func() bool {
-			return collector.Stopped()
-		}, 5*time.Second, 100*time.Millisecond)
-
-		collector.Stop()
-		lokiClient.Stop()
-
-		require.Equal(t, 0, len(lokiClient.Received()))
-
-		err = mock.ExpectationsWereMet()
-		require.NoError(t, err)
-	})
-
 	t.Run("recoverable sql error in result set", func(t *testing.T) {
+		t.Parallel()
+
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer db.Close()
@@ -349,14 +462,13 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 		collector, err := NewQuerySample(QuerySampleArguments{
 			DB:              db,
 			InstanceKey:     "mysql-db",
-			CollectInterval: time.Millisecond,
+			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		// Expect to loop twice, first time to fail, second time to succeed
 		mock.ExpectQuery(selectQuerySamples).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
@@ -392,6 +504,13 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 		collector.Stop()
 		lokiClient.Stop()
 
+		require.Eventually(t, func() bool {
+			return collector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
+
+		err = mock.ExpectationsWereMet()
+		require.NoError(t, err)
+
 		lokiEntries := lokiClient.Received()
 		for _, entry := range lokiEntries {
 			require.Equal(t, model.LabelSet{"job": database_observability.JobName}, entry.Labels)
@@ -399,12 +518,11 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 
 		require.Equal(t, `level=info msg="query samples fetched" op="query_sample" instance="mysql-db" schema="some_schema" digest="abc123" query_type="select" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="select * from some_table where id = :redacted1"`, lokiEntries[0].Line)
 		require.Equal(t, `level=info msg="table name parsed" op="query_parsed_table_name" instance="mysql-db" schema="some_schema" digest="abc123" table="some_table"`, lokiEntries[1].Line)
-
-		err = mock.ExpectationsWereMet()
-		require.NoError(t, err)
 	})
 
 	t.Run("result set iteration error", func(t *testing.T) {
+		t.Parallel()
+
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer db.Close()
@@ -425,28 +543,106 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"digest",
+					"schema_name",
 					"query_sample_text",
 					"query_sample_seen",
 					"query_sample_timer_wait",
 				}).AddRow(
 					"abc123",
-					"SELECT 1",
-					"2024-01-01",
+					"some_schema",
+					"select * from some_table where id = 1",
+					"2024-01-01T00:00:00.000Z",
 					"1000",
-				).RowError(0, fmt.Errorf("rs error")),
+				).RowError(1, fmt.Errorf("rs error")), // error on second row
 			)
 
 		err = collector.Start(context.Background())
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
-			return collector.Stopped()
+			return len(lokiClient.Received()) == 2
 		}, 5*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
 		lokiClient.Stop()
 
+		require.Eventually(t, func() bool {
+			return collector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
+
 		err = mock.ExpectationsWereMet()
 		require.NoError(t, err)
+
+		lokiEntries := lokiClient.Received()
+		for _, entry := range lokiEntries {
+			require.Equal(t, model.LabelSet{"job": database_observability.JobName}, entry.Labels)
+		}
+
+		require.Equal(t, `level=info msg="query samples fetched" op="query_sample" instance="mysql-db" schema="some_schema" digest="abc123" query_type="select" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="select * from some_table where id = :redacted1"`, lokiEntries[0].Line)
+		require.Equal(t, `level=info msg="table name parsed" op="query_parsed_table_name" instance="mysql-db" schema="some_schema" digest="abc123" table="some_table"`, lokiEntries[1].Line)
+	})
+
+	t.Run("connection error recovery", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		lokiClient := loki_fake.NewClient(func() {})
+
+		collector, err := NewQuerySample(QuerySampleArguments{
+			DB:              db,
+			InstanceKey:     "mysql-db",
+			CollectInterval: time.Second,
+			EntryHandler:    lokiClient,
+			Logger:          log.NewLogfmtLogger(os.Stderr),
+		})
+		require.NoError(t, err)
+		require.NotNil(t, collector)
+
+		mock.ExpectQuery(selectQuerySamples).WithoutArgs().WillReturnError(fmt.Errorf("connection error"))
+
+		mock.ExpectQuery(selectQuerySamples).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"digest",
+					"schema_name",
+					"query_sample_text",
+					"query_sample_seen",
+					"query_sample_timer_wait",
+				}).AddRow(
+					"abc123",
+					"some_schema",
+					"select * from some_table where id = 1",
+					"2024-01-01T00:00:00.000Z",
+					"1000",
+				),
+			)
+
+		err = collector.Start(context.Background())
+		require.NoError(t, err)
+
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 2
+		}, 5*time.Second, 100*time.Millisecond)
+
+		collector.Stop()
+		lokiClient.Stop()
+
+		require.Eventually(t, func() bool {
+			return collector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
+
+		err = mock.ExpectationsWereMet()
+		require.NoError(t, err)
+
+		lokiEntries := lokiClient.Received()
+		for _, entry := range lokiEntries {
+			require.Equal(t, model.LabelSet{"job": database_observability.JobName}, entry.Labels)
+		}
+
+		require.Equal(t, `level=info msg="query samples fetched" op="query_sample" instance="mysql-db" schema="some_schema" digest="abc123" query_type="select" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="select * from some_table where id = :redacted1"`, lokiEntries[0].Line)
+		require.Equal(t, `level=info msg="table name parsed" op="query_parsed_table_name" instance="mysql-db" schema="some_schema" digest="abc123" table="some_table"`, lokiEntries[1].Line)
 	})
 }
