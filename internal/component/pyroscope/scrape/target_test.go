@@ -11,7 +11,6 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
 	"github.com/prometheus/prometheus/model/labels"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -597,7 +596,7 @@ func TestProfileURL(t *testing.T) {
 			}
 			slices.Sort(td.expectedUrls)
 			slices.Sort(actualURLs)
-			assert.Equal(t, td.expectedUrls, actualURLs)
+			require.Equal(t, td.expectedUrls, actualURLs)
 		})
 
 	}
@@ -703,9 +702,8 @@ func TestLabelsByProfiles(t *testing.T) {
 	}
 	for _, td := range testdata {
 		t.Run(td.name, func(t *testing.T) {
-
 			actual := LabelsByProfiles(labels.New(td.target...), td.cfg)
-			assert.Equal(t, td.expected, actual)
+			require.Equal(t, td.expected, actual)
 		})
 	}
 }
