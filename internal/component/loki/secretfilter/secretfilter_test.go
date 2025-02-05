@@ -646,6 +646,45 @@ func FuzzProcessEntry(f *testing.F) {
 	})
 }
 
+func FuzzConfig(f *testing.F) {
+	for _, testConf := range testConfigs {
+		f.Add(testConf)
+	}
+	opts := component.Options{
+		Logger:         util.TestLogger(f),
+		OnStateChange:  func(e component.Exports) {},
+		GetServiceData: getServiceData,
+	}
+	ch1 := loki.NewLogsReceiver()
+
+	f.Fuzz(func(t *testing.T, config string) {
+		var args Arguments
+		err := syntax.Unmarshal([]byte(config), &args)
+		if err != nil {
+			// ignore parsing errors, as we aren't fuzz testing the Alloy config parser
+			return
+		}
+		if args.GitleaksConfig != "" {
+			return // Skip the configs that use a custom gitleaks config file
+		}
+
+		args.ForwardTo = []loki.LogsReceiver{ch1}
+		c, err := New(opts, args)
+		if err != nil {
+			// ignore regex parsing errors
+			if strings.HasPrefix(err.Error(), "error parsing regexp") {
+				return
+			}
+			t.Errorf("%v", err)
+		}
+
+		for _, log := range sampleFuzzLogLines {
+			entry := loki.Entry{Labels: model.LabelSet{}, Entry: logproto.Entry{Timestamp: time.Now(), Line: log}}
+			c.processEntry(entry)
+		}
+	})
+}
+
 func getServiceData(name string) (interface{}, error) {
 	switch name {
 	case livedebugging.ServiceName:
