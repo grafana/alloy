@@ -283,6 +283,8 @@ func Test_NewTarget_godeltaprof(t *testing.T) {
 
 	require.NotEqual(t, withGodeltaprof.allLabels, withoutGodeltaprof.allLabels)
 	require.Equal(t, withGodeltaprof.publicLabels, withoutGodeltaprof.publicLabels)
+	assert.Equal(t, pprofMemory, withGodeltaprof.allLabels.Get(model.MetricNameLabel))
+	assert.Equal(t, pprofMemory, withoutGodeltaprof.allLabels.Get(model.MetricNameLabel))
 }
 
 func Test_targetsFromGroup_withSpecifiedDeltaProfilingDuration(t *testing.T) {
