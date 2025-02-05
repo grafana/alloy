@@ -289,6 +289,10 @@ func (c *Component) Update(args component.Arguments) error {
 
 	// Compile regexes
 	for _, rule := range gitleaksCfg.Rules {
+		// If the rule regex is empty, skip this rule
+		if rule.Regex == "" {
+			continue
+		}
 		// If specific secret types are provided, only include rules that match the types
 		if len(c.args.Types) > 0 {
 			var found bool
@@ -307,6 +311,10 @@ func (c *Component) Update(args component.Arguments) error {
 		if err != nil {
 			level.Error(c.opts.Logger).Log("msg", "error compiling regex", "error", err)
 			return err
+		}
+		// If the rule regex matches the empty string, skip this rule
+		if re.Match([]byte("")) {
+			continue
 		}
 
 		// Compile rule-specific allowlist regexes
