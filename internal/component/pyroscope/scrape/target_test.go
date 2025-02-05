@@ -1,7 +1,6 @@
 package scrape
 
 import (
-	"github.com/stretchr/testify/assert"
 	"net/url"
 	"slices"
 	"sort"
@@ -11,6 +10,7 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
 	"github.com/prometheus/prometheus/model/labels"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
