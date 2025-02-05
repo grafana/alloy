@@ -34,6 +34,7 @@ Name                     | Type                | Description                    
 `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`        | no
 `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`        | no
 `host_networking_host`   | `string`            | Host to use if the container is in host networking mode.                                         | `"localhost"` | no
+`match_first_network`    | `bool`              | Match the first network if the container has multiple networks defined, thus avoiding collecting duplicate targets. | `true`        | no
 `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |               | no
 `port`                   | `number`            | Port to use for collecting metrics when containers don't have any port mappings.                 | `80`          | no
 `proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |               | no

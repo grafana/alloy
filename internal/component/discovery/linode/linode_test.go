@@ -33,6 +33,7 @@ func TestConvert(t *testing.T) {
 		Port:            8080,
 		RefreshInterval: 15 * time.Second,
 		TagSeparator:    ";",
+		Region:          "us-west",
 		HTTPClientConfig: config.HTTPClientConfig{
 			BearerToken: "FOO",
 			BasicAuth: &config.BasicAuth{
@@ -45,6 +46,7 @@ func TestConvert(t *testing.T) {
 	promArgs := alloyArgs.Convert().(*prom_discovery.SDConfig)
 	require.Equal(t, 8080, promArgs.Port)
 	require.Equal(t, model.Duration(15*time.Second), promArgs.RefreshInterval)
+	require.Equal(t, "us-west", promArgs.Region)
 	require.Equal(t, ";", promArgs.TagSeparator)
 	require.Equal(t, promconfig.Secret("FOO"), promArgs.HTTPClientConfig.BearerToken)
 	require.Equal(t, "test", promArgs.HTTPClientConfig.BasicAuth.Username)

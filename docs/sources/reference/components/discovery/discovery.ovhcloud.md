@@ -95,6 +95,7 @@ Multiple meta labels are available on `targets` and can be used by the `discover
 * `__meta_ovhcloud_dedicated_server_ipv6`: The IPv6 of the server.
 * `__meta_ovhcloud_dedicated_server_link_speed`: The link speed of the server.
 * `__meta_ovhcloud_dedicated_server_name`: The name of the server.
+* `__meta_ovhcloud_dedicated_server_no_intervention`: Whether datacenter intervention is disabled for the server.
 * `__meta_ovhcloud_dedicated_server_os`: The operating system of the server.
 * `__meta_ovhcloud_dedicated_server_rack`: The rack of the server.
 * `__meta_ovhcloud_dedicated_server_reverse`: The reverse DNS name of the server.
