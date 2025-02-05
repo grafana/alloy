@@ -648,7 +648,9 @@ func FuzzProcessEntry(f *testing.F) {
 
 func FuzzConfig(f *testing.F) {
 	for _, testConf := range testConfigs {
-		f.Add(testConf)
+		for _, testLog := range testLogs {
+			f.Add(testConf, testLog.log)
+		}
 	}
 	opts := component.Options{
 		Logger:         util.TestLogger(f),
@@ -657,7 +659,7 @@ func FuzzConfig(f *testing.F) {
 	}
 	ch1 := loki.NewLogsReceiver()
 
-	f.Fuzz(func(t *testing.T, config string) {
+	f.Fuzz(func(t *testing.T, config string, log string) {
 		var args Arguments
 		err := syntax.Unmarshal([]byte(config), &args)
 		if err != nil {
@@ -675,13 +677,55 @@ func FuzzConfig(f *testing.F) {
 			if strings.HasPrefix(err.Error(), "error parsing regexp") {
 				return
 			}
-			t.Errorf("%v", err)
+			t.Errorf("error configuring component: %v", err)
 		}
 
-		for _, log := range sampleFuzzLogLines {
-			entry := loki.Entry{Labels: model.LabelSet{}, Entry: logproto.Entry{Timestamp: time.Now(), Line: log}}
-			c.processEntry(entry)
+		entry := loki.Entry{Labels: model.LabelSet{}, Entry: logproto.Entry{Timestamp: time.Now(), Line: log}}
+		c.processEntry(entry)
+	})
+}
+
+func FuzzGitleaksConfig(f *testing.F) {
+	for _, testConf := range testConfigs {
+		for _, testGitleaksConf := range customGitleaksConfig {
+			for _, testLog := range testLogs {
+				f.Add(testConf, testGitleaksConf, testLog.log)
+			}
 		}
+	}
+	opts := component.Options{
+		Logger:         util.TestLogger(f),
+		OnStateChange:  func(e component.Exports) {},
+		GetServiceData: getServiceData,
+	}
+	ch1 := loki.NewLogsReceiver()
+
+	f.Fuzz(func(t *testing.T, config string, gitleaksConfig string, log string) {
+		var args Arguments
+		err := syntax.Unmarshal([]byte(config), &args)
+		if err != nil {
+			// ignore parsing errors, as we aren't fuzz testing the Alloy config parser
+			return
+		}
+		args.GitleaksConfig = createTempGitleaksConfig(t, gitleaksConfig)
+		defer deleteTempGitLeaksConfig(t, args.GitleaksConfig)
+
+		args.ForwardTo = []loki.LogsReceiver{ch1}
+		c, err := New(opts, args)
+		if err != nil {
+			// ignore regex parsing errors - out of scope
+			if strings.HasPrefix(err.Error(), "error parsing regexp") {
+				return
+			}
+			// ignore toml parsing errors - out of scope
+			if strings.HasPrefix(err.Error(), "toml:") {
+				return
+			}
+			t.Errorf("error configuring component: %v", err)
+		}
+
+		entry := loki.Entry{Labels: model.LabelSet{}, Entry: logproto.Entry{Timestamp: time.Now(), Line: log}}
+		c.processEntry(entry)
 	})
 }
 
