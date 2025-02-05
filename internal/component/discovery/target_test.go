@@ -608,11 +608,16 @@ func TestHashLargeLabelSets(t *testing.T) {
 
 	target := NewTargetFromSpecificAndBaseLabelSet(genLabelSet(ownLabels), genLabelSet(sharedLabels))
 	expectedNonMetaLabelsHash := 0x374005f6a622f4d8
+	expectedAllLabelsHash := 0x174c789bf3b783a7
 
 	require.Equal(t, uint64(expectedNonMetaLabelsHash), target.NonMetaLabelsHash())
 	require.Equal(t, uint64(expectedNonMetaLabelsHash), target.HashLabelsWithPredicate(func(key string) bool {
 		return !strings.HasPrefix(key, "__meta_")
 	}))
+	require.Equal(t, uint64(expectedAllLabelsHash), target.HashLabelsWithPredicate(func(key string) bool {
+		return true
+	}))
+	require.Equal(t, uint64(expectedAllLabelsHash), target.PromLabels().Hash()) // check it matches Prometheus algo
 
 	var allNonMetaLabels []string
 	target.ForEachLabel(func(k string, v string) bool {

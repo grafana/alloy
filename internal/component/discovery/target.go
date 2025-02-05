@@ -79,9 +79,9 @@ func NewTargetFromMap(m map[string]string) Target {
 	return NewTargetFromLabelSet(l)
 }
 
-// Labels converts this target into prometheus/prometheus/model/labels.Labels. It is not efficient and should be
+// PromLabels converts this target into prometheus/prometheus/model/labels.Labels. It is not efficient and should be
 // avoided on a hot path.
-func (t Target) Labels() modellabels.Labels {
+func (t Target) PromLabels() modellabels.Labels {
 	// This method allocates less than Builder or ScratchBuilder, as proven by benchmarks.
 	lb := make([]modellabels.Label, 0, t.Len())
 	t.ForEachLabel(func(key string, value string) bool {

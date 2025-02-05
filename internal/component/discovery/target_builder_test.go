@@ -272,6 +272,10 @@ func TestTargetBuilder(t *testing.T) {
 				if !equal { // if not equal, run this to get a nice diff view
 					assert.Equal(t, expected, actual)
 				}
+
+				assert.Equal(t, actual.PromLabels().Hash(), actual.HashLabelsWithPredicate(func(key string) bool {
+					return true
+				}), "prometheus and alloy target hash codes should match")
 			}
 
 			t.Run("prometheus compliant", func(t *testing.T) {
