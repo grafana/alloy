@@ -36,6 +36,8 @@ Main (unreleased)
 
 - (_Experimental_) Better error handling for `database_observability.mysql` (@cristiangreco)
 
+- (_Experimental_) Add namespace to `connection_info` metric in `database_observability.mysql` (@cristiangreco)
+
 - Add json format support for log export via faro receiver (@ravishankar15)
 
 ### Bugfixes
