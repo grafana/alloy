@@ -608,40 +608,42 @@ var sampleFuzzLogLines = []string{
 	`1970-01-01 00:00:00 pattern value1,value2 1 secret`,
 }
 
-func FuzzProcessEntryDefault(f *testing.F) {
-	f.Fuzz(setupFuzz(f, "default"))
-}
-
-func FuzzProcessEntryRedactHash(f *testing.F) {
-	f.Fuzz(setupFuzz(f, "custom_redact_string_with_hash"))
-}
-
-func FuzzProcessEntryPartialMask(f *testing.F) {
-	f.Fuzz(setupFuzz(f, "partial_mask"))
-}
-
-func setupFuzz(f *testing.F, config string) func(t *testing.T, log string) {
+func FuzzProcessEntry(f *testing.F) {
 	for _, line := range sampleFuzzLogLines {
 		f.Add(line)
 	}
-	ch1 := loki.NewLogsReceiver()
-	var args Arguments
-	require.NoError(f, syntax.Unmarshal([]byte(testConfigs[config]), &args))
-	args.ForwardTo = []loki.LogsReceiver{ch1}
+	for _, testLog := range testLogs {
+		f.Add(testLog.log)
+	}
 
+	comps := make([]*Component, 0, len(testConfigs))
 	opts := component.Options{
 		Logger:         util.TestLogger(f),
 		OnStateChange:  func(e component.Exports) {},
 		GetServiceData: getServiceData,
 	}
+	ch1 := loki.NewLogsReceiver()
 
-	// Create component
-	c, err := New(opts, args)
-	require.NoError(f, err)
-	return func(t *testing.T, log string) {
-		entry := loki.Entry{Labels: model.LabelSet{}, Entry: logproto.Entry{Timestamp: time.Now(), Line: log}}
-		c.processEntry(entry)
+	// Create components
+	for _, config := range testConfigs {
+		var args Arguments
+		require.NoError(f, syntax.Unmarshal([]byte(config), &args))
+		if args.GitleaksConfig != "" {
+			continue // Skip the configs using a custom gitleaks config file
+		}
+
+		args.ForwardTo = []loki.LogsReceiver{ch1}
+		c, err := New(opts, args)
+		require.NoError(f, err)
+		comps = append(comps, c)
 	}
+
+	f.Fuzz(func(t *testing.T, log string) {
+		for _, c := range comps {
+			entry := loki.Entry{Labels: model.LabelSet{}, Entry: logproto.Entry{Timestamp: time.Now(), Line: log}}
+			c.processEntry(entry)
+		}
+	})
 }
 
 func getServiceData(name string) (interface{}, error) {
