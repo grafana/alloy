@@ -12,9 +12,15 @@ Main (unreleased)
 
 ### Features
 
-- Add the possibility to export span events as logs in `otelcol.connector.spanlogs`. (@steve-hb)
+- (_Experimental_) Add a `stage.windowsevent` block in the `loki.process` component. This aims to replace the existing `stage.eventlogmessage`. (@wildum)
+
+- Add `pyroscope.relabel` component to modify or filter profiles using Prometheus relabeling rules. (@marcsanmi)
 
 ### Enhancements
+
+- Add `go_table_fallback` arg to `pyroscope.ebpf` (@korniltsev)
+
+- Add the possibility to export span events as logs in `otelcol.connector.spanlogs`. (@steve-hb)
 
 - (_Experimental_) Log instance label key in `database_observability.mysql` (@cristiangreco)
 
@@ -32,6 +38,10 @@ Main (unreleased)
 
 - Add json format support for log export via faro receiver (@ravishankar15)
 
+### Bugfixes
+
+- Fix log rotation for Windows in `loki.source.file` by refactoring the component to use the runner pkg. This should also reduce CPU consumption when tailing a lot of files in a dynamic environment. (@wildum)
+
 - Add livedebugging support for `prometheus.remote_write` (@ravishankar15)
 
 - Bump snmp_exporter and embedded modules to 0.27.0. Add support for multi-module handling by comma separation and expose argument to increase SNMP polling concurrency for `prometheus.exporter.snmp`. (@v-zhuravlev)
@@ -39,6 +49,9 @@ Main (unreleased)
 - Add support for pushv1.PusherService Connect API in `pyroscope.receive_http`. (@simonswine)
 
 - Add support for path prefixes in `pyroscope.scrape` to allow scraping targets behind a proxy or with custom URL paths. (@korniltsev)
+
+- Fixes godeltaprof hiding (renaming `godeltaprof_*` profile names to regular ones). (@korniltsev)
+
 
 v1.6.1
 -----------------

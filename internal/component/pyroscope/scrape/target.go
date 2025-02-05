@@ -64,23 +64,21 @@ type Target struct {
 // NewTarget creates a reasonably configured target for querying.
 func NewTarget(lbls, discoveredLabels labels.Labels, params url.Values) *Target {
 	publicLabels := make(labels.Labels, 0, len(lbls))
-	for _, l := range lbls {
+	for i, l := range lbls {
 		if strings.HasPrefix(l.Name, model.ReservedLabelPrefix) {
+			// the fact that godeltaprof was used scraping should not be user visible
+			if l.Name == model.MetricNameLabel {
+				switch l.Value {
+				case pprofGoDeltaProfMemory:
+					lbls[i].Value = pprofMemory
+				case pprofGoDeltaProfBlock:
+					lbls[i].Value = pprofBlock
+				case pprofGoDeltaProfMutex:
+					lbls[i].Value = pprofMutex
+				}
+			}
 			continue
 		}
-
-		// the fact that godeltaprof was used scraping should not be user visible
-		if l.Name == pprofGoDeltaProfMemory {
-			switch l.Value {
-			case pprofGoDeltaProfMemory:
-				l.Value = pprofMemory
-			case pprofGoDeltaProfBlock:
-				l.Value = pprofBlock
-			case pprofGoDeltaProfMutex:
-				l.Value = pprofMutex
-			}
-		}
-
 		publicLabels = append(publicLabels, l)
 	}
 	url := urlFromTarget(lbls, params)
