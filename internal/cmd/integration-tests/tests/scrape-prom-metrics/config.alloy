@@ -4,7 +4,7 @@ prometheus.scrape "scrape_prom_metrics" {
   ]
   forward_to = [prometheus.remote_write.scrape_prom_metrics.receiver, otelcol.receiver.prometheus.scrape_prom_metrics_to_otlp.receiver]
   scrape_classic_histograms = true
-  enable_protobuf_negotiation = true
+  scrape_protocols = ["PrometheusProto", "OpenMetricsText1.0.0", "OpenMetricsText0.0.1", "PrometheusText0.0.4"]
   scrape_interval = "1s"
   scrape_timeout = "500ms"
 }

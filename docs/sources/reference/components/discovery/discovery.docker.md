@@ -26,20 +26,21 @@ discovery.docker "<LABEL>" {
 
 You can use the following arguments with `discovery.docker`:
 
-| Name                     | Type                | Description                                                                                      | Default       | Required |
-| ------------------------ | ------------------- | ------------------------------------------------------------------------------------------------ | ------------- | -------- |
-| `host`                   | `string`            | Address of the Docker Daemon to connect to.                                                      |               | yes      |
-| `bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                             |               | no       |
-| `bearer_token`           | `secret`            | Bearer token to authenticate with.                                                               |               | no       |
-| `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`        | no       |
-| `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`        | no       |
-| `host_networking_host`   | `string`            | Host to use if the container is in host networking mode.                                         | `"localhost"` | no       |
-| `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |               | no       |
-| `port`                   | `number`            | Port to use for collecting metrics when containers don't have any port mappings.                 | `80`          | no       |
-| `proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |               | no       |
-| `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false`       | no       |
-| `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |               | no       |
-| `refresh_interval`       | `duration`          | Frequency to refresh list of containers.                                                         | `"1m"`        | no       |
+| Name                     | Type                | Description                                                                                                         | Default       | Required |
+| ------------------------ | ------------------- | ------------------------------------------------------------------------------------------------------------------- | ------------- | -------- |
+| `host`                   | `string`            | Address of the Docker Daemon to connect to.                                                                         |               | yes      |
+| `bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                                                |               | no       |
+| `bearer_token`           | `secret`            | Bearer token to authenticate with.                                                                                  |               | no       |
+| `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                                            | `true`        | no       |
+| `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                                        | `true`        | no       |
+| `host_networking_host`   | `string`            | Host to use if the container is in host networking mode.                                                            | `"localhost"` | no       |
+| `match_first_network`    | `bool`              | Match the first network if the container has multiple networks defined, thus avoiding collecting duplicate targets. | `true`        | no       |
+| `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying.                    |               | no       |
+| `port`                   | `number`            | Port to use for collecting metrics when containers don't have any port mappings.                                    | `80`          | no       |
+| `proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                                       |               | no       |
+| `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                                               | `false`       | no       |
+| `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                                                |               | no       |
+| `refresh_interval`       | `duration`          | Frequency to refresh list of containers.                                                                            | `"1m"`        | no       |
 
  At most, one of the following can be provided:
 
