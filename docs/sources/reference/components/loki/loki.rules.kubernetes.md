@@ -76,22 +76,24 @@ You should set the prefix to a unique value for each deployment.
 
 You can use the following blocks with `loki.rules.kubernetes`:
 
-| Block                                                     | Description                                                          | Required |
-|-----------------------------------------------------------|----------------------------------------------------------------------|----------|
-| [`authorization`][authorization]                          | Configure generic authorization to the endpoint.                     | no       |
-| [`basic_auth`][basic_auth]                                | Configure `basic_auth` for authenticating to the endpoint.           | no       |
-| [`label_selector`][label_selector]                        | Label selector for `Namespace` or `PrometheusRule` resources.        | no       |
-| `label_selector` > [`match_expression`][match_expression] | Label match expression for `Namespace` or`PrometheusRule` resources. | no       |
-| [`oauth2`][oauth2]                                        | Configure OAuth 2.0 for authenticating to the endpoint.              | no       |
-| `oauth2` > [`tls_config`][tls_config]                     | Configure TLS settings for connecting to the endpoint.               | no       |
-| [`tls_config`][tls_config]                                | Configure TLS settings for connecting to the endpoint.               | no       |
+| Block                                                              | Description                                                | Required |
+|--------------------------------------------------------------------|------------------------------------------------------------|----------|
+| [`authorization`][authorization]                                   | Configure generic authorization to the endpoint.           | no       |
+| [`basic_auth`][basic_auth]                                         | Configure `basic_auth` for authenticating to the endpoint. | no       |
+| [`rule_namespace_selector`][label_selector]                        | Label selector for `Namespace` resources.                  | no       |
+| `rule_namespace_selector` > [`match_expression`][match_expression] | Label match expression for `Namespace` resources.          | no       |
+| [`rule_selector`][label_selector]                                  | Label selector for `PrometheusRule` resources.             | no       |
+| `rule_selector` > [`match_expression`][match_expression]           | Label match expression for `PrometheusRule` resources.     | no       |
+| [`oauth2`][oauth2]                                                 | Configure OAuth 2.0 for authenticating to the endpoint.    | no       |
+| `oauth2` > [`tls_config`][tls_config]                              | Configure TLS settings for connecting to the endpoint.     | no       |
+| [`tls_config`][tls_config]                                         | Configure TLS settings for connecting to the endpoint.     | no       |
 
 The `>` symbol indicates deeper levels of nesting.
 For example, `oauth2 > tls_config` refers to a `tls_config` block defined inside an `oauth2` block.
 
 [authorization]: #authorization
 [basic_auth]: #basic_auth
-[label_selector]: #label_selector
+[label_selector]: #rule_selector-and-rule_namespace_selector
 [match_expression]: #match_expression
 [oauth2]: #oauth2
 [tls_config]: #tls_config
@@ -104,9 +106,9 @@ For example, `oauth2 > tls_config` refers to a `tls_config` block defined inside
 
 {{< docs/shared lookup="reference/components/basic-auth-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### `label_selector`
+### `rule_selector` and `rule_namespace_selector`
 
-The `label_selector` block describes a Kubernetes label selector for rule or namespace discovery.
+The `rule_selector` and `rule_namespace_selector` blocks describe a Kubernetes label selector for rule or namespace discovery.
 
 The following arguments are supported:
 
