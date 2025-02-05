@@ -1,0 +1,4 @@
+go test fuzz v1
+string("forward_to=[]")
+string("[[rules]]\nd=\"\"\ne=\"\"\nregex='''()'''\n[[rules.allowlista]]\ns=[\"\\\\\",\"\\\\\"]\n[[rules.allowlists]]\nregexes=[\"\\\\{\",\"]\"\"")
+string("{\n\t\t\t\"message\": \"This is a simple log message with a secret value eyJrIjoiAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA and another secret value AIzaAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA !\n\t\t}")
