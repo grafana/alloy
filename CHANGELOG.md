@@ -16,8 +16,6 @@ Main (unreleased)
 
 - Add `pyroscope.relabel` component to modify or filter profiles using Prometheus relabeling rules. (@marcsanmi)
 
-- Add `pyroscope.relabel` component to modify or filter profiles using Prometheus relabeling rules. (@marcsanmi)
-
 ### Enhancements
 
 - Add `go_table_fallback` arg to `pyroscope.ebpf` (@korniltsev)
