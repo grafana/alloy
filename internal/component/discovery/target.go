@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"sync"
 
 	"github.com/cespare/xxhash/v2"
 	commonlabels "github.com/prometheus/common/model"
@@ -257,7 +258,8 @@ func (t Target) SpecificLabelsHash(labelNames []string) uint64 {
 
 func (t Target) HashLabelsWithPredicate(pred func(key string) bool) uint64 {
 	// For hash to be deterministic, we need labels order to be deterministic too. Figure this out first.
-	labelsInOrder := make([]string, 0, t.Len()) // TODO(thampiotr): this can go to object pool?
+	labelsInOrder := stringSlicesPool.Get().([]string)
+	defer stringSlicesPool.Put(labelsInOrder[:])
 	t.ForEachLabel(func(key string, value string) bool {
 		if pred(key) {
 			labelsInOrder = append(labelsInOrder, key)
@@ -270,7 +272,9 @@ func (t Target) HashLabelsWithPredicate(pred func(key string) bool) uint64 {
 
 func (t Target) groupLabelsHash() uint64 {
 	// For hash to be deterministic, we need labels order to be deterministic too. Figure this out first.
-	labelsInOrder := make([]string, 0, len(t.group)) // TODO(thampiotr): this can go to object pool?
+	labelsInOrder := stringSlicesPool.Get().([]string)
+	defer stringSlicesPool.Put(labelsInOrder[:])
+
 	for name := range t.group {
 		labelsInOrder = append(labelsInOrder, string(name))
 	}
@@ -313,32 +317,54 @@ func (t Target) hashLabelsInOrder(order []string) uint64 {
 	return xxhash.Sum64(b)
 }
 
+var (
+	// used in tests to simulate hash conflicts
+	labelSetEqualsFn = func(l1, l2 commonlabels.LabelSet) bool { return &l1 == &l2 || l1.Equal(l2) }
+	stringSlicesPool = sync.Pool{New: func() interface{} { return make([]string, 0, 20) }}
+)
+
 func ComponentTargetsToPromTargetGroups(jobName string, tgs []Target) map[string][]*targetgroup.Group {
-	targetsWithCommonGroupLabels := map[uint64][]Target{}
-	for _, t := range tgs {
-		fp := t.groupLabelsHash() // TODO(thampiotr): could use a cache if it's on exactly the same slice?
-		targetsWithCommonGroupLabels[fp] = append(targetsWithCommonGroupLabels[fp], t)
+	targetIndWithCommonGroupLabels := map[uint64][]int{} // target group hash --> index of target in tgs array
+	for ind, t := range tgs {
+		fp := t.groupLabelsHash()
+		targetIndWithCommonGroupLabels[fp] = append(targetIndWithCommonGroupLabels[fp], ind)
 	}
 
 	// Sort by hash to get deterministic order
-	sortedKeys := maps.Keys(targetsWithCommonGroupLabels)
+	sortedKeys := maps.Keys(targetIndWithCommonGroupLabels)
 	slices.Sort(sortedKeys)
 
-	allGroups := make([]*targetgroup.Group, 0, len(targetsWithCommonGroupLabels))
-
+	allGroups := make([]*targetgroup.Group, 0, len(targetIndWithCommonGroupLabels))
+	var hashConflicts []commonlabels.LabelSet
 	for _, hash := range sortedKeys {
-		targetsInGroup := targetsWithCommonGroupLabels[hash]
-		sharedLabels := targetsInGroup[0].group // all have the same group labels.
-		individualLabels := make([]commonlabels.LabelSet, len(targetsInGroup))
-		for i, target := range targetsInGroup {
-			individualLabels[i] = target.own
+		targetIndices := targetIndWithCommonGroupLabels[hash]
+		sharedLabels := tgs[targetIndices[0]].group // all should have the same group labels, so grab first one
+		individualLabels := make([]commonlabels.LabelSet, 0, len(targetIndices))
+		for _, ind := range targetIndices {
+			target := tgs[ind]
+			// detect hash conflicts - we'll append them separately
+			if !labelSetEqualsFn(sharedLabels, target.group) {
+				hashConflicts = append(hashConflicts, target.LabelSet())
+				continue
+			}
+			individualLabels = append(individualLabels, target.own)
 		}
-		promGroup := &targetgroup.Group{
-			Source:  fmt.Sprintf("%s_part_%v", jobName, hash),
-			Labels:  sharedLabels,
-			Targets: individualLabels,
+
+		if len(individualLabels) != 0 {
+			allGroups = append(allGroups, &targetgroup.Group{
+				Source:  fmt.Sprintf("%s_part_%v", jobName, hash),
+				Labels:  sharedLabels,
+				Targets: individualLabels,
+			})
 		}
-		allGroups = append(allGroups, promGroup)
 	}
+
+	if len(hashConflicts) > 0 { // these are consolidated already, no common group labels here.
+		allGroups = append(allGroups, &targetgroup.Group{
+			Source:  fmt.Sprintf("%s_rest", jobName),
+			Targets: hashConflicts,
+		})
+	}
+
 	return map[string][]*targetgroup.Group{jobName: allGroups}
 }

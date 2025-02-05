@@ -335,10 +335,10 @@ func TestDeleteRecreateFile(t *testing.T) {
 
 	go func() {
 		err := ctrl.Run(ctx, Arguments{
-			Targets: []discovery.Target{{
+			Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{
 				"__path__": f.Name(),
 				"foo":      "bar",
-			}},
+			})},
 			ForwardTo: []loki.LogsReceiver{ch1},
 		})
 		require.NoError(t, err)

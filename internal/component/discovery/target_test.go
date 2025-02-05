@@ -635,9 +635,10 @@ func TestComponentTargetsToPromTargetGroups(t *testing.T) {
 		tgs     []testTarget
 	}
 	tests := []struct {
-		name     string
-		args     args
-		expected map[string][]*targetgroup.Group
+		name                string
+		args                args
+		mockLabelSetEqualFn func(l1, l2 model.LabelSet) bool
+		expected            map[string][]*targetgroup.Group
 	}{
 		{
 			name:     "empty targets",
@@ -694,16 +695,59 @@ func TestComponentTargetsToPromTargetGroups(t *testing.T) {
 				},
 			}},
 		},
+		{
+			name: "two groups with hash conflict",
+			mockLabelSetEqualFn: func(l1, l2 model.LabelSet) bool {
+				if _, ok := l1[model.LabelName("hip")]; ok {
+					return false
+				}
+				return l1.Equal(l2)
+			},
+			args: args{
+				jobName: "job",
+				tgs: []testTarget{
+					{group: map[string]string{"hip": "hop"}, own: map[string]string{"boom": "bap"}},
+					{group: map[string]string{"kung": "foo"}, own: map[string]string{"tiki": "ta"}},
+					{group: map[string]string{"hip": "hop"}, own: map[string]string{"hoo": "rey"}},
+					{group: map[string]string{"kung": "foo"}, own: map[string]string{"bibim": "bap"}},
+				},
+			},
+			expected: map[string][]*targetgroup.Group{"job": {
+				{
+					Source: "job_part_13313558424202542889",
+					Labels: mapToLabelSet(map[string]string{"kung": "foo"}),
+					Targets: []model.LabelSet{
+						mapToLabelSet(map[string]string{"tiki": "ta"}),
+						mapToLabelSet(map[string]string{"bibim": "bap"}),
+					},
+				},
+				{
+					Source: "job_rest",
+					Targets: []model.LabelSet{
+						mapToLabelSet(map[string]string{"boom": "bap", "hip": "hop"}),
+						mapToLabelSet(map[string]string{"hoo": "rey", "hip": "hop"}),
+					},
+				},
+			}},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			if tt.mockLabelSetEqualFn != nil {
+				prev := labelSetEqualsFn
+				labelSetEqualsFn = tt.mockLabelSetEqualFn
+				defer func() {
+					labelSetEqualsFn = prev
+				}()
+			}
+
 			targets := make([]Target, 0, len(tt.args.tgs))
 			for _, tg := range tt.args.tgs {
 				targets = append(targets, NewTargetFromSpecificAndBaseLabelSet(mapToLabelSet(tg.own), mapToLabelSet(tg.group)))
 			}
 			actual := ComponentTargetsToPromTargetGroups(tt.args.jobName, targets)
 			assert.Contains(t, actual, tt.args.jobName)
-			assert.Equal(t, tt.expected, actual, "ComponentTargetsToPromTargetGroups(%v, %v)", tt.args.jobName, tt.args.tgs)
+			assert.Equal(t, tt.expected, actual, "actual:\n%+v\nexpected:\n%+v\n", actual, tt.expected)
 		})
 	}
 }

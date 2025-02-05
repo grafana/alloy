@@ -6,8 +6,6 @@ import (
 	"github.com/grafana/alloy/internal/component/common/relabel"
 )
 
-const initialLabelsBuilderCapacity = 5
-
 type TargetBuilder interface {
 	relabel.LabelBuilder
 	Target() Target
@@ -38,9 +36,8 @@ func NewTargetBuilderFrom(t Target) TargetBuilder {
 }
 
 func NewTargetBuilderFromLabelSets(group, own commonlabels.LabelSet) TargetBuilder {
-	// TODO(thampiotr): we could postulate that builder is throw-away after .Target() and use object pool for these.
-	toAdd := make(map[string]string, initialLabelsBuilderCapacity)
-	toDel := make(map[string]struct{}, initialLabelsBuilderCapacity)
+	toAdd := make(map[string]string)
+	toDel := make(map[string]struct{})
 
 	// if we are given labels that are set to empty value, it should be treated as deleting them
 	for name, value := range group {
