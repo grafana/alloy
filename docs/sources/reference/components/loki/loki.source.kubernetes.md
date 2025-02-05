@@ -76,7 +76,7 @@ You can use the following blocks with `loki.source.kubernetes`:
 | [`clustering`][clustering]                       | Configure the component for when {{< param "PRODUCT_NAME" >}} is running in clustered mode. | no       |
 
 The `>` symbol indicates deeper levels of nesting.
-For example, `client > basic_auth` refers to a `basic_auth` block defined inside a `client` block.
+For example, `client` > `basic_auth` refers to a `basic_auth` block defined inside a `client` block.
 
 [client]: #client
 [authorization]: #authorization

@@ -53,7 +53,7 @@ You can use the following blocks with `loki.source.syslog`:
 | `listener` > [`tls_config`][tls_config] | Configures TLS settings for connecting to the endpoint for TCP connections. | no       |
 
 The `>` symbol indicates deeper levels of nesting.
-For example, `config` > `tls_config` refers to a `tls_config` block defined inside a `config` block.
+For example, `listener` > `tls_config` refers to a `tls_config` block defined inside a `listener` block.
 
 [listener]: #listener
 [tls_config]: #tls_config
