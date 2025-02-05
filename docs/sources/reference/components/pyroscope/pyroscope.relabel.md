@@ -6,6 +6,8 @@ description: Learn about pyroscope.relabel
 title: pyroscope.relabel
 ---
 
+<span class="badge docs-labels__stage docs-labels__item">Public preview</span>
+
 # `pyroscope.relabel`
 
 The `pyroscope.relabel` component rewrites the label set of each profile passed to its receiver by applying one or more relabeling rules and forwards the results to the list of receivers.
@@ -18,7 +20,7 @@ The most common use of `pyroscope.relabel` is to filter profiles or standardize 
 ## Usage
 
 ```alloy
-pyroscope.relabel "process" {
+pyroscope.relabel "LABEL" {
     forward_to = <RECEIVER_LIST>
 
     rule {
@@ -77,8 +79,17 @@ The following fields are exported and can be referenced by other components:
 ## Example
 
 ```alloy
-pyroscope.relabel "process" {
-    forward_to = [pyroscope.write.backend.receiver]
+pyroscope.receive_http "default" {
+    forward_to = [pyroscope.relabel.filter_profiles.receiver]
+
+    http {
+        listen_address = "0.0.0.0"
+        listen_port = 9999
+    }
+}
+
+pyroscope.relabel "filter_profiles" {
+    forward_to = [pyroscope.write.staging.receiver]
 
     // This creates a consistent hash value (0 or 1) for each unique combination of labels
     // Using multiple source labels provides better sampling distribution across your profiles
@@ -97,6 +108,12 @@ pyroscope.relabel "process" {
         action       = "drop"
         regex        = "^1$"
     }
+}
+
+pyroscope.write "staging" {
+  endpoint {
+    url = "http://pyroscope-staging:4040"
+  }
 }
 ```
 
