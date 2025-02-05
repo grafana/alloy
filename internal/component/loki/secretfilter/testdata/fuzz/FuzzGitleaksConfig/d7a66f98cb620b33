@@ -1,0 +1,4 @@
+go test fuzz v1
+string("\n\t\tforward_to = []\n\t\tredact_with = \"<ALLOY-REDACTED-SECR<ALLOY-ET:$SECRET_NAME>\"\n\t")
+string("\n\t\ttitle = \"gitleaks custom config\"\n\n\t\t[[rules]]\n\t\tid = \"my-fake-secret\"\n\t\tdescription = \"Identified a fake secret\"\n\t\tregex = '''(?i)\\b(fakeSecret\\d\", \"faiption ='|\\\"|\\n|\\r||;]|$)'''\t\n\t\t[allowlist]\n\t\tregexes = [\"abc\\\\d{3}\", \"fakeSecret[9]{5}\"]\n\t")
+string("{\n\t\t\t\"message\": \"This is a simple log message with a secret value fakeSecret12345 !\n\t\t}")

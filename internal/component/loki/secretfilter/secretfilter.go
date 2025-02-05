@@ -192,6 +192,12 @@ func (c *Component) processEntry(entry loki.Entry) loki.Entry {
 				secret = occ[1]
 			}
 
+			// If secret is empty string, ignore
+			if secret == "" {
+				level.Debug(c.opts.Logger).Log("msg", "empty secret found", "rule", r.name)
+				continue
+			}
+
 			// Check if the secret is in the allowlist
 			var allowRule *AllowRule = nil
 			// First check the global allowlist
