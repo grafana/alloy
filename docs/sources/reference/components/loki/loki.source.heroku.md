@@ -14,7 +14,7 @@ title: loki.source.heroku
 
 The component starts a new Heroku listener for the given `listener` block and fans out incoming entries to the list of receivers in `forward_to`.
 
-Before using `loki.source.heroku`, Heroku should be configured with the URL where {{< param "PRODUCT_NAME" >}} will be listening.
+Before using `loki.source.heroku`, Heroku should be configured with the URL where {{< param "PRODUCT_NAME" >}} is listening.
 Follow the steps in [Heroku HTTPS Drain docs](https://devcenter.heroku.com/articles/log-drains#https-drains) for using the Heroku CLI with a command like the following:
 
 ```shell
@@ -40,7 +40,7 @@ loki.source.heroku "<LABEL>" {
 You can use the following arguments with `loki.source.heroku`:
 
 | Name                        | Type                 | Description                                                                        | Default | Required |
-|-----------------------------|----------------------|------------------------------------------------------------------------------------|---------|----------|
+| --------------------------- | -------------------- | ---------------------------------------------------------------------------------- | ------- | -------- |
 | `forward_to`                | `list(LogsReceiver)` | List of receivers to send log entries to.                                          |         | yes      |
 | `graceful_shutdown_timeout` | `duration`           | Timeout for servers graceful shutdown. If configured, should be greater than zero. | "30s"   | no       |
 | `labels`                    | `map(string)`        | The labels to associate with each received Heroku record.                          | `{}`    | no       |
@@ -54,7 +54,7 @@ The `relabel_rules` field can make use of the `rules` export value from a `loki.
 You can use the following blocks with `loki.source.heroku`:
 
 | Name           | Description                                        | Required |
-|----------------|----------------------------------------------------|----------|
+| -------------- | -------------------------------------------------- | -------- |
 | [`grpc`][grpc] | Configures the gRPC server that receives requests. | no       |
 | [`http`][http] | Configures the HTTP server that receives requests. | no       |
 

@@ -39,7 +39,7 @@ loki.secretfilter "<LABEL>" {
 `loki.secretfilter` supports the following arguments:
 
 | Name              | Type                 | Description                                                | Default                          | Required |
-|-------------------|----------------------|------------------------------------------------------------|----------------------------------|----------|
+| ----------------- | -------------------- | ---------------------------------------------------------- | -------------------------------- | -------- |
 | `forward_to`      | `list(LogsReceiver)` | List of receivers to send log entries to.                  |                                  | yes      |
 | `allowlist`       | `map(string)`        | List of regular expressions to allowlist matching secrets. | `{}`                             | no       |
 | `gitleaks_config` | `string`             | Path to the custom `gitleaks.toml` file.                   | Embedded Gitleaks file           | no       |
@@ -89,7 +89,7 @@ For short secrets, at most half of the secret is shown.
 
 ## Blocks
 
-The `loki.secretfilter` component doesn’t support any blocks. You can configure this component with arguments.
+The `loki.secretfilter` component doesn't support any blocks. You can configure this component with arguments.
 
 ## Exported fields
 

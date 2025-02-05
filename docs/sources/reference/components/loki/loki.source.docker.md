@@ -31,7 +31,7 @@ The component starts a new reader for each of the given `targets` and fans out l
 You can use the following arguments with `loki.source.docker`:
 
 | Name               | Type                 | Description                                                                    | Default | Required |
-|--------------------|----------------------|--------------------------------------------------------------------------------|---------|----------|
+| ------------------ | -------------------- | ------------------------------------------------------------------------------ | ------- | -------- |
 | `forward_to`       | `list(LogsReceiver)` | List of receivers to send log entries to.                                      |         | yes      |
 | `host`             | `string`             | Address of the Docker daemon.                                                  |         | yes      |
 | `labels`           | `map(string)`        | The default set of labels to apply on entries.                                 | `"{}"`  | yes      |
@@ -44,7 +44,7 @@ You can use the following arguments with `loki.source.docker`:
 The following blocks are supported inside the definition of `loki.source.docker`:
 
 | Block                                            | Description                                                | Required |
-|--------------------------------------------------|------------------------------------------------------------|----------|
+| ------------------------------------------------ | ---------------------------------------------------------- | -------- |
 | [`client`][client]                               | HTTP client settings when connecting to the endpoint.      | no       |
 | `client` > [`authorization`][authorization]      | Configure generic authorization to the endpoint.           | no       |
 | `client` > [`basic_auth`][basic_auth]            | Configure `basic_auth` for authenticating to the endpoint. | no       |
@@ -119,8 +119,7 @@ The `tls_config` block configures TLS settings for connecting to HTTPS Docker da
 The component uses its data path, a directory named after the domain's fully qualified name, to store its _positions file_.
 The positions file is used to store read offsets, so that if a component or {{< param "PRODUCT_NAME" >}} restarts, `loki.source.docker` can pick up tailing from the same spot.
 
-If the target's argument contains multiple entries with the same container ID (for example as a result of `discovery.docker` picking up multiple exposed ports or networks), `loki.source.docker` will deduplicate them, and only keep
-the first of each container ID instances, based on the `__meta_docker_container_id` label.
+If the target's argument contains multiple entries with the same container ID, for example, as a result of `discovery.docker` picking up multiple exposed ports or networks, `loki.source.docker` deduplicates them, and only keeps the first of each container ID instances, based on the `__meta_docker_container_id` label.
 As such, the Docker daemon is queried for each container ID only once, and only one target is available in the component's debug info.
 
 ## Example

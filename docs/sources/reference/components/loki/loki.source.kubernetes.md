@@ -45,16 +45,16 @@ The component starts a new reader for each of the given `targets` and fans out l
 You can use the following arguments with `loki.source.kubernetes`:
 
 | Name         | Type                 | Description                               | Default | Required |
-|--------------|----------------------|-------------------------------------------|---------|----------|
+| ------------ | -------------------- | ----------------------------------------- | ------- | -------- |
 | `forward_to` | `list(LogsReceiver)` | List of receivers to send log entries to. |         | yes      |
 | `targets`    | `list(map(string))`  | List of files to read from.               |         | yes      |
 
 Each target in `targets` must have the following labels:
 
-* `__meta_kubernetes_namespace` or `__pod_namespace__` to specify the namespace of the pod to tail.
-* `__meta_kubernetes_pod_container_name` or `__pod_container_name__` to specify the container within the pod to tail.
-* `__meta_kubernetes_pod_name` or `__pod_name__` to specify the name of the pod to tail.
-* `__meta_kubernetes_pod_uid` or `__pod_uid__` to specify the UID of the pod to tail.
+* `__meta_kubernetes_namespace` or `__pod_namespace__` to specify the namespace of the Pod to tail.
+* `__meta_kubernetes_pod_container_name` or `__pod_container_name__` to specify the container within the Pod to tail.
+* `__meta_kubernetes_pod_name` or `__pod_name__` to specify the name of the Pod to tail.
+* `__meta_kubernetes_pod_uid` or `__pod_uid__` to specify the UID of the Pod to tail.
 
 By default, all of these labels are present when the output `discovery.kubernetes` is used.
 
@@ -66,7 +66,7 @@ Log tailers reconnect with exponential backoff to Kubernetes if the log stream r
 You can use the following blocks with `loki.source.kubernetes`:
 
 | Block                                            | Description                                                                                 | Required |
-|--------------------------------------------------|---------------------------------------------------------------------------------------------|----------|
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------- | -------- |
 | [`client`][client]                               | Configures Kubernetes client used to tail logs.                                             | no       |
 | `client` > [`authorization`][authorization]      | Configure generic authorization to the endpoint.                                            | no       |
 | `client` > [`basic_auth`][basic_auth]            | Configure `basic_auth` for authenticating to the endpoint.                                  | no       |
@@ -88,12 +88,12 @@ For example, `client > basic_auth` refers to a `basic_auth` block defined inside
 ### `client`
 
 The `client` block configures the Kubernetes client used to tail logs from containers.
-If the `client` block isn't provided, the default in-cluster configuration with the service account of the running {{< param "PRODUCT_NAME" >}} pod is used.
+If the `client` block isn't provided, the default in-cluster configuration with the service account of the running {{< param "PRODUCT_NAME" >}} Pod is used.
 
 The following arguments are supported:
 
 | Name                     | Type                | Description                                                                                      | Default | Required |
-|--------------------------|---------------------|--------------------------------------------------------------------------------------------------|---------|----------|
+| ------------------------ | ------------------- | ------------------------------------------------------------------------------------------------ | ------- | -------- |
 | `api_server`             | `string`            | URL of the Kubernetes API server.                                                                |         | no       |
 | `bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                             |         | no       |
 | `bearer_token`           | `secret`            | Bearer token to authenticate with.                                                               |         | no       |
@@ -134,7 +134,7 @@ The following arguments are supported:
 ### `clustering`
 
 | Name      | Type   | Description                                         | Default | Required |
-|-----------|--------|-----------------------------------------------------|---------|----------|
+| --------- | ------ | --------------------------------------------------- | ------- | -------- |
 | `enabled` | `bool` | Distribute log collection with other cluster nodes. |         | yes      |
 
 When {{< param "PRODUCT_NAME" >}} is [using clustering][], and `enabled` is set to true, then this `loki.source.kubernetes` component instance opts-in to participating in the cluster to distribute the load of log collection between all cluster nodes.
@@ -181,7 +181,7 @@ Clustering looks only at the following labels for determining the shard key:
 
 ## Example
 
-This example collects logs from all Kubernetes Pods and forwards them to a `loki.write` component so they are written to Loki.
+This example collects logs from all Kubernetes Pods and forwards them to a `loki.write` component so they're written to Loki.
 
 ```alloy
 discovery.kubernetes "pods" {

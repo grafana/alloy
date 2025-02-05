@@ -11,11 +11,11 @@ title: local.file
 # `local.file`
 
 `local.file` exposes the contents of a file on disk to other components.
-The file will be watched for changes so that its latest content is always exposed.
+The file is watched for changes so that its latest content is always exposed.
 
 The most common use of `local.file` is to load secrets (for example, API keys) from files.
 
-Multiple `local.file` components can be specified by giving them different labels.
+You can specify multiple `local.file` components by giving them different labels.
 
 ## Usage
 

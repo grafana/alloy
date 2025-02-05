@@ -10,11 +10,11 @@ title: loki.relabel
 
 # `loki.relabel`
 
-The `loki.relabel` component rewrites the label set of each log entry passed to its receiver by applying one or more relabeling `rule`s and forwards the results to the list of receivers in the component's arguments.
+The `loki.relabel` component rewrites the label set of each log entry passed to its receiver by applying one or more relabeling rules and forwards the results to the list of receivers in the component's arguments.
 
 If no labels remain after the relabeling rules are applied, then the log entries are dropped.
 
-The most common use of `loki.relabel` is to filter log entries or standardize the label set that is passed to one or more downstream receivers.
+The most common use of `loki.relabel` is to filter log entries or standardize the label set that's passed to one or more downstream receivers.
 The `rule` blocks are applied to the label set of each log entry in order of their appearance in the configuration file.
 The configured rules can be retrieved by calling the function in the `rules` export field.
 
@@ -49,7 +49,7 @@ You can use the following arguments with `loki.relabel`:
 
 ## Blocks
 
-You can use the following blocks with `loki.relabel`:
+You can use the following block with `loki.relabel`:
 
 | Name           | Description                                        | Required |
 |----------------|----------------------------------------------------|----------|

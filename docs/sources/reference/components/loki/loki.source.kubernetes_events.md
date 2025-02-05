@@ -29,7 +29,7 @@ The component starts a new reader for each of the given `targets` and fans out l
 You can use the following arguments with `loki.source.kubernetes_events`:
 
 | Name         | Type                 | Description                                      | Default                           | Required |
-|--------------|----------------------|--------------------------------------------------|-----------------------------------|----------|
+| ------------ | -------------------- | ------------------------------------------------ | --------------------------------- | -------- |
 | `forward_to` | `list(LogsReceiver)` | List of receivers to send log entries to.        |                                   | yes      |
 | `job_name`   | `string`             | Value to use for `job` label for generated logs. | `"loki.source.kubernetes_events"` | no       |
 | `log_format` | `string`             | Format of the log.                               | `"logfmt"`                        | no       |
@@ -65,7 +65,7 @@ For compatibility with the `eventhandler` integration from static mode, `job_nam
 You can use the following blocks with `loki.source.kubernetes_events`:
 
 | Block                                            | Description                                                | Required |
-|--------------------------------------------------|------------------------------------------------------------|----------|
+| ------------------------------------------------ | ---------------------------------------------------------- | -------- |
 | [`client`][client]                               | Configures Kubernetes client used to tail logs.            | no       |
 | `client` > [`authorization`][authorization]      | Configure generic authorization to the endpoint.           | no       |
 | `client` > [`basic_auth`][basic_auth]            | Configure `basic_auth` for authenticating to the endpoint. | no       |
@@ -85,12 +85,12 @@ For example, `client` > `basic_auth` refers to a `basic_auth` block defined insi
 ### `client`
 
 The `client` block configures the Kubernetes client used to tail logs from containers.
-If the `client` block isn't provided, the default in-cluster configuration with the service account of the running {{< param "PRODUCT_NAME" >}} pod is used.
+If the `client` block isn't provided, the default in-cluster configuration with the service account of the running {{< param "PRODUCT_NAME" >}} Pod is used.
 
 The following arguments are supported:
 
 | Name                     | Type                | Description                                                                                      | Default | Required |
-|--------------------------|---------------------|--------------------------------------------------------------------------------------------------|---------|----------|
+| ------------------------ | ------------------- | ------------------------------------------------------------------------------------------------ | ------- | -------- |
 | `api_server`             | `string`            | URL of the Kubernetes API server.                                                                |         | no       |
 | `bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                             |         | no       |
 | `bearer_token`           | `secret`            | Bearer token to authenticate with.                                                               |         | no       |
@@ -155,7 +155,7 @@ The data path is inside the directory configured by the `--storage.path` [comman
 
 ## Example
 
-This example collects watches events in the `kube-system` namespace and forwards them to a `loki.write` component so they are written to Loki.
+This example collects watches events in the `kube-system` namespace and forwards them to a `loki.write` component so they're written to Loki.
 
 ```alloy
 loki.source.kubernetes_events "example" {

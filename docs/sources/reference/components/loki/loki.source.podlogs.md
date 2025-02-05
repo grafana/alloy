@@ -38,7 +38,7 @@ The component starts a new reader for each of the given `targets` and fans out l
 `loki.source.podlogs` supports the following arguments:
 
 | Name         | Type                 | Description                               | Default | Required |
-|--------------|----------------------|-------------------------------------------|---------|----------|
+| ------------ | -------------------- | ----------------------------------------- | ------- | -------- |
 | `forward_to` | `list(LogsReceiver)` | List of receivers to send log entries to. |         | yes      |
 
 `loki.source.podlogs` searches for `PodLogs` resources on Kubernetes.
@@ -53,7 +53,7 @@ The `PodLogs` resource describes a set of Pods to collect logs from.
 {{< /admonition >}}
 
 | Field        | Type            | Description                                   |
-|--------------|-----------------|-----------------------------------------------|
+| ------------ | --------------- | --------------------------------------------- |
 | `apiVersion` | string          | `monitoring.grafana.com/v1alpha2`             |
 | `kind`       | string          | `PodLogs`                                     |
 | `metadata`   | [ObjectMeta][]  | Metadata for the PodLogs.                     |
@@ -67,7 +67,7 @@ The `PodLogs` resource describes a set of Pods to collect logs from.
 `PodLogsSpec` describes a set of Pods to collect logs from.
 
 | Field               | Type              | Description                                                  |
-|---------------------|-------------------|--------------------------------------------------------------|
+| ------------------- | ----------------- | ------------------------------------------------------------ |
 | `selector`          | [LabelSelector][] | Label selector of Pods to collect logs from.                 |
 | `namespaceSelector` | [LabelSelector][] | Label selector of Namespaces that Pods can be discovered in. |
 | `relabelings`       | [RelabelConfig][] | Relabel rules to apply to discovered Pods.                   |
@@ -86,12 +86,12 @@ The following meta labels are available for relabeling:
 * `__meta_kubernetes_pod_container_name`: Name of the container.
 * `__meta_kubernetes_pod_controller_kind`: Object kind of the Pod's controller.
 * `__meta_kubernetes_pod_controller_name`: Name of the Pod's controller.
-* `__meta_kubernetes_pod_host_ip`: The current host IP of the pod object.
-* `__meta_kubernetes_pod_ip`: The pod IP of the Pod.
+* `__meta_kubernetes_pod_host_ip`: The current host IP of the Pod object.
+* `__meta_kubernetes_pod_ip`: The Pod IP of the Pod.
 * `__meta_kubernetes_pod_label_<labelname>`: Each label from the Pod.
 * `__meta_kubernetes_pod_labelpresent_<labelname>`: `true` for each label from the Pod.
 * `__meta_kubernetes_pod_name`: The name of the Pod.
-* `__meta_kubernetes_pod_node_name`: The name of the node the pod is scheduled onto.
+* `__meta_kubernetes_pod_node_name`: The name of the node the Pod is scheduled onto.
 * `__meta_kubernetes_pod_phase`: Set to `Pending`, `Running`, `Succeeded`, `Failed` or `Unknown` in the lifecycle.
 * `__meta_kubernetes_pod_ready`: Set to `true` or `false` for the Pod's ready state.
 * `__meta_kubernetes_pod_uid`: The UID of the Pod.
@@ -111,7 +111,7 @@ In addition to the meta labels, the following labels are exposed to tell `loki.s
 You can use the following blocks with `loki.source.podlogs`:
 
 | Block                                                         | Description                                                                                 | Required |
-|---------------------------------------------------------------|---------------------------------------------------------------------------------------------|----------|
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | -------- |
 | [`client`][client]                                            | Configures Kubernetes client used to tail logs.                                             | no       |
 | `client` > [`authorization`][authorization]                   | Configure generic authorization to the endpoint.                                            | no       |
 | `client` > [`basic_auth`][basic_auth]                         | Configure `basic_auth` for authenticating to the endpoint.                                  | no       |
@@ -133,13 +133,13 @@ For example, `client > basic_auth` refers to a `basic_auth` block defined inside
 [clustering]: #clustering
 [match_expression]: #match_expression
 [oauth2]: #oauth2
-[selector]: #selector
+[selector]: #selector-and-namespace_selector
 [tls_config]: #tls_config
 
 ### `client`
 
 The `client` block configures the Kubernetes client used to tail logs from containers.
-If the `client` block isn't provided, the default in-cluster configuration with the service account of the running {{< param "PRODUCT_NAME" >}} pod is used.
+If the `client` block isn't provided, the default in-cluster configuration with the service account of the running {{< param "PRODUCT_NAME" >}} Pod is used.
 
 The following arguments are supported:
 
@@ -230,9 +230,9 @@ Both `selector` and `namespace_selector` can make use of multiple
 
 {{< docs/shared lookup="reference/components/oauth2-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### `selector`
+### `selector` and `namespace_selector`
 
-The `selector` block describes a Kubernetes label selector for `PodLogs` or Namespace discovery.
+The `selector` and `namespce_selector` blocks describe a Kubernetes label selector for `PodLogs` or Namespace discovery.
 
 The following arguments are supported:
 
@@ -240,7 +240,7 @@ The following arguments are supported:
 |----------------|---------------|---------------------------------------------------|---------|----------|
 | `match_labels` | `map(string)` | Label keys and values used to discover resources. | `{}`    | no       |
 
-When the `match_labels` argument is empty, all resources will be matched.
+When the `match_labels` argument is empty, all resources are matched.
 
 ### `tls_config`
 
@@ -269,8 +269,7 @@ When the `match_labels` argument is empty, all resources will be matched.
 
 ## Example
 
-This example discovers all `PodLogs` resources and forwards collected logs to a
-`loki.write` component so they are written to Loki.
+This example discovers all `PodLogs` resources and forwards collected logs to a `loki.write` component so they're written to Loki.
 
 ```alloy
 loki.source.podlogs "default" {

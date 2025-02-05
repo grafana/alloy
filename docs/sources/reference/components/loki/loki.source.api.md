@@ -49,7 +49,7 @@ The component starts an HTTP server on the configured port and address with the 
 You can use the following arguments with `loki.source.api`:
 
 | Name                     | Type                 | Description                                                | Default | Required |
-|--------------------------|----------------------|------------------------------------------------------------|---------|----------|
+| ------------------------ | -------------------- | ---------------------------------------------------------- | ------- | -------- |
 | `forward_to`             | `list(LogsReceiver)` | List of receivers to send log entries to.                  |         | yes      |
 | `labels`                 | `map(string)`        | The labels to associate with each received logs record.    | `{}`    | no       |
 | `relabel_rules`          | `RelabelRules`       | Relabeling rules to apply on log entries.                  | `{}`    | no       |
@@ -64,7 +64,7 @@ The `relabel_rules` field can make use of the `rules` export value from a [`loki
 You can use the following blocks with `loki.source.api`:
 
 | Name           | Description                                        | Required |
-|----------------|----------------------------------------------------|----------|
+| -------------- | -------------------------------------------------- | -------- |
 | [`http`][http] | Configures the HTTP server that receives requests. | no       |
 
 [http]: #http

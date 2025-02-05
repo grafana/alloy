@@ -33,7 +33,7 @@ loki.source.cloudflare "<LABEL>" {
 You can use the following arguments with `loki.source.cloudflare`:
 
 | Name                | Type                 | Description                                                                   | Default     | Required |
-|---------------------|----------------------|-------------------------------------------------------------------------------|-------------|----------|
+| ------------------- | -------------------- | ----------------------------------------------------------------------------- | ----------- | -------- |
 | `api_token`         | `string`             | The API token to authenticate with.                                           |             | yes      |
 | `forward_to`        | `list(LogsReceiver)` | List of receivers to send log entries to.                                     |             | yes      |
 | `zone_id`           | `string`             | The Cloudflare zone ID to use.                                                |             | yes      |
@@ -208,6 +208,10 @@ A sample log looks like this:
     "ZoneID": 1234
 }
 ```
+
+## Blocks
+
+The `loki.source.cloudflare` component doesn't support any blocks.
 
 ## Exported fields
 

@@ -33,10 +33,10 @@ loki.source.file "<LABEL>" {
 
 The component starts a new reader for each of the given `targets` and fans out log entries to the list of receivers passed in `forward_to`.
 
-Youc an use the following arguments with `loki.source.file`:
+You can use the following arguments with `loki.source.file`:
 
 | Name                    | Type                 | Description                                                                 | Default | Required |
-|-------------------------|----------------------|-----------------------------------------------------------------------------|---------|----------|
+| ----------------------- | -------------------- | --------------------------------------------------------------------------- | ------- | -------- |
 | `forward_to`            | `list(LogsReceiver)` | List of receivers to send log entries to.                                   |         | yes      |
 | `targets`               | `list(map(string))`  | List of files to read from.                                                 |         | yes      |
 | `encoding`              | `string`             | The encoding to convert from when reading files.                            | `""`    | no       |
@@ -47,8 +47,7 @@ The `encoding` argument must be a valid [IANA encoding][] name.
 If not set, it defaults to UTF-8.
 
 You can use the `tail_from_end` argument when you want to tail a large file without reading its entire content.
-When set to true, only new logs will be read, ignoring the existing ones.
-
+When set to true, only new logs are read, ignoring the existing ones.
 
 {{< admonition type="note" >}}
 The `legacy_positions_file` argument is used when you are transitioning from legacy. The legacy positions file is rewritten into the new format.
@@ -60,10 +59,10 @@ The legacy positions file didn't have a concept of labels in the positions file,
 
 ## Blocks
 
-You can use the following blocks wuth `loki.source.file`:
+You can use the following blocks with `loki.source.file`:
 
 | Name                             | Description                                                       | Required |
-|----------------------------------|-------------------------------------------------------------------|----------|
+| -------------------------------- | ----------------------------------------------------------------- | -------- |
 | [`decompression`][decompression] | Configure reading logs from compressed files.                     | no       |
 | [`file_watch`][file_watch]       | Configure how often files should be polled from disk for changes. | no       |
 
@@ -76,7 +75,7 @@ The `decompression` block contains configuration for reading logs from compresse
 The following arguments are supported:
 
 | Name            | Type       | Description                                                     | Default | Required |
-|-----------------|------------|-----------------------------------------------------------------|---------|----------|
+| --------------- | ---------- | --------------------------------------------------------------- | ------- | -------- |
 | `enabled`       | `bool`     | Whether decompression is enabled.                               |         | yes      |
 | `format`        | `string`   | Compression format.                                             |         | yes      |
 | `initial_delay` | `duration` | Time to wait before starting to read from new compressed files. | 0       | no       |

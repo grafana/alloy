@@ -66,6 +66,10 @@ The final internal label name would be `__journal__systemd_unit`, with _two_ und
 
 [loki.relabel]: ../loki.relabel/
 
+## Blocks
+
+The `loki.source.journal` component doesn't support any blocks.
+
 ## Component health
 
 `loki.source.journal` is only reported as unhealthy if given an invalid configuration.

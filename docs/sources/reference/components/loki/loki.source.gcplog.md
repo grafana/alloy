@@ -34,7 +34,7 @@ loki.source.gcplog "<LABEL>" {
 `loki.source.gcplog` supports the following arguments:
 
 | Name            | Type                 | Description                               | Default | Required |
-|-----------------|----------------------|-------------------------------------------|---------|----------|
+| --------------- | -------------------- | ----------------------------------------- | ------- | -------- |
 | `forward_to`    | `list(LogsReceiver)` | List of receivers to send log entries to. |         | yes      |
 | `relabel_rules` | `RelabelRules`       | Relabeling rules to apply on log entries. | "{}"    | no       |
 
@@ -44,7 +44,7 @@ The following blocks are supported inside the definition of
 `loki.source.gcplog`:
 
 | Name                    | Description                                                                   | Required |
-|-------------------------|-------------------------------------------------------------------------------|----------|
+| ----------------------- | ----------------------------------------------------------------------------- | -------- |
 | [`pull`][pull]          | Configures a target to pull logs from a GCP Pub/Sub subscription.             | no       |
 | [`push`][push]          | Configures a server to receive logs as GCP Pub/Sub push requests.             | no       |
 | `push` > [`grpc`][grpc] | Configures the gRPC server that receives requests when using the `push` mode. | no       |
@@ -67,7 +67,7 @@ The following arguments can be used to configure the `pull` block.
 Any omitted fields take their default values.
 
 | Name                     | Type          | Description                                                               | Default | Required |
-|--------------------------|---------------|---------------------------------------------------------------------------|---------|----------|
+| ------------------------ | ------------- | ------------------------------------------------------------------------- | ------- | -------- |
 | `project_id`             | `string`      | The GCP project id the subscription belongs to.                           |         | yes      |
 | `subscription`           | `string`      | The subscription to pull logs from.                                       |         | yes      |
 | `labels`                 | `map(string)` | Additional labels to associate with incoming logs.                        | `"{}"`  | no       |
@@ -87,7 +87,7 @@ The following arguments can be used to configure the `push` block.
 Any omitted fields take their default values.
 
 | Name                        | Type          | Description                                                                                                                                                | Default | Required |
-|-----------------------------|---------------|------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|----------|
+| --------------------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
 | `graceful_shutdown_timeout` | `duration`    | Timeout for servers graceful shutdown. If configured, should be greater than zero.                                                                         | "30s"   | no       |
 | `labels`                    | `map(string)` | Additional labels to associate with incoming entries.                                                                                                      | `"{}"`  | no       |
 | `push_timeout`              | `duration`    | Sets a maximum processing time for each incoming GCP log entry.                                                                                            | `"0s"`  | no       |

@@ -28,17 +28,17 @@ loki.write "<LABEL>" {
 
 You can use the following arguments with `loki.write`:
 
-| Name              | Type          | Description                                  | Default      | Required |
-|-------------------|---------------|----------------------------------------------|--------------|----------|
-| `external_labels` | `map(string)` | Labels to add to logs sent over the network. |              | no       |
-| `max_streams`     | `int`         | Maximum number of active streams.            | 0 (no limit) | no       |
+| Name              | Type          | Description                                  | Default        | Required |
+| ----------------- | ------------- | -------------------------------------------- | -------------- | -------- |
+| `external_labels` | `map(string)` | Labels to add to logs sent over the network. |                | no       |
+| `max_streams`     | `int`         | Maximum number of active streams.            | `0` (no limit) | no       |
 
 ## Blocks
 
 You can use the following blocks with `loki.write`:
 
 | Block                                              | Description                                                | Required |
-|----------------------------------------------------|------------------------------------------------------------|----------|
+| -------------------------------------------------- | ---------------------------------------------------------- | -------- |
 | [`endpoint`][endpoint]                             | Location to send logs to.                                  | no       |
 | `endpoint` > [`authorization`][authorization]      | Configure generic authorization to the endpoint.           | no       |
 | `endpoint` > [`basic_auth`][basic_auth]            | Configure `basic_auth` for authenticating to the endpoint. | no       |
@@ -67,7 +67,7 @@ You can use multiple `endpoint` blocks to send logs to multiple locations.
 The following arguments are supported:
 
 | Name                     | Type                | Description                                                                                      | Default   | Required |
-|--------------------------|---------------------|--------------------------------------------------------------------------------------------------|-----------|----------|
+| ------------------------ | ------------------- | ------------------------------------------------------------------------------------------------ | --------- | -------- |
 | `url`                    | `string`            | Full URL to send logs to.                                                                        |           | yes      |
 | `batch_size`             | `string`            | Maximum batch size of logs to accumulate before sending.                                         | `"1MiB"`  | no       |
 | `batch_wait`             | `duration`          | Maximum amount of time to wait before sending a batch.                                           | `"1s"`    | no       |
@@ -108,7 +108,7 @@ Endpoints can be named for easier identification in debug metrics by using the `
 
 The `retry_on_http_429` argument specifies whether `HTTP 429` status code responses should be treated as recoverable errors.
 Other `HTTP 4xx` status code responses are never considered recoverable errors.
-When `retry_on_http_429` is enabled, the retry mechanism is governed by the backoff configuration specified through `min_backoff_period`, `max_backoff_period ` and `max_backoff_retries` attributes.
+When `retry_on_http_429` is enabled, the retry mechanism is governed by the backoff configuration specified through `min_backoff_period`, `max_backoff_period` and `max_backoff_retries` attributes.
 
 ### `authorization`
 
@@ -131,14 +131,14 @@ When `retry_on_http_429` is enabled, the retry mechanism is governed by the back
 [experimental]: https://grafana.com/docs/release-life-cycle/
 
 The optional `queue_config` block configures, when WAL is enabled, how the underlying client queues batches of logs sent to Loki.
-Refer to [Write-Ahead block](#wal-block-experimental) for more information.
+Refer to [Write-Ahead block](#wal) for more information.
 
 The following arguments are supported:
 
-| Name            | Type       | Description                                                                                                                                                                     | Default | Required |
-|-----------------|------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|----------|
-| `capacity`      | `string`   | Controls the size of the underlying send queue buffer. This setting should be considered a worst-case scenario of memory consumption, in which all enqueued batches are full.   | `10MiB` | no       |
-| `drain_timeout` | `duration` | Configures the maximum time the client can take to drain the send queue upon shutdown. During that time, it will enqueue pending batches and drain the send queue sending each. | `"1m"`  | no       |
+| Name            | Type       | Description                                                                                                                                                                   | Default | Required |
+| --------------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
+| `capacity`      | `string`   | Controls the size of the underlying send queue buffer. This setting should be considered a worst-case scenario of memory consumption, in which all enqueued batches are full. | `10MiB` | no       |
+| `drain_timeout` | `duration` | Configures the maximum time the client can take to drain the send queue upon shutdown. During that time, it enqueues pending batches and drains the send queue sending each.  | `"1m"`  | no       |
 
 ### `tls_config`
 
@@ -164,7 +164,7 @@ Refer to the [`run` documentation][run] for more information about how to change
 The following arguments are supported:
 
 | Name                 | Type       | Description                                                                                                        | Default   | Required |
-|----------------------|------------|--------------------------------------------------------------------------------------------------------------------|-----------|----------|
+| -------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------ | --------- | -------- |
 | `drain_timeout`      | `duration` | Maximum time the WAL drain procedure can take, before being forcefully stopped.                                    | `"30s"`   | no       |
 | `enabled`            | `bool`     | Whether to enable the WAL.                                                                                         | false     | no       |
 | `max_read_frequency` | `duration` | Maximum backoff time in the backup read mechanism.                                                                 | `"1s"`    | no       |
@@ -178,7 +178,7 @@ The following arguments are supported:
 The following fields are exported and can be referenced by other components:
 
 | Name       | Type           | Description                                                   |
-|------------|----------------|---------------------------------------------------------------|
+| ---------- | -------------- | ------------------------------------------------------------- |
 | `receiver` | `LogsReceiver` | A value that other components can use to send log entries to. |
 
 ## Component health

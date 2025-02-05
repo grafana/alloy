@@ -30,7 +30,7 @@ The component starts a reader and fans out log entries to the list of receivers 
 You can use the following arguments with `loki.source.windowsevent`:
 
 | Name                     | Type                 | Description                                                 | Default                    | Required  |
-|--------------------------|----------------------|-------------------------------------------------------------|----------------------------|-----------|
+| ------------------------ | -------------------- | ----------------------------------------------------------- | -------------------------- | --------- |
 | `forward_to`             | `list(LogsReceiver)` | List of receivers to send log entries to.                   |                            | yes       |
 | `eventlog_name`          | `string`             | Event log to read from.                                     |                            | See below |
 | `xpath_query`            | `string`             | Event log to read from.                                     | `"*"`                      | See below |
@@ -53,6 +53,10 @@ If you use the short form, you must define `eventlog_name`.
 {{< admonition type="note" >}}
 `legacy_bookmark_path` converts the legacy Grafana Agent Static bookmark to a {{< param "PRODUCT_NAME" >}} bookmark, if `bookmark_path` doesn't exist.
 {{< /admonition >}}
+
+## Blocks
+
+The `loki.source.windowsevent` component doesn't support any blocks.
 
 ## Component health
 

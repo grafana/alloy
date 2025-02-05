@@ -35,7 +35,7 @@ loki.process "<LABEL>" {
 
 You can use the following arguments with `loki.process`:
 
-|     Name     |         Type         |                  Description                   | Default | Required |
+| Name         | Type                 | Description                                    | Default | Required |
 | ------------ | -------------------- | ---------------------------------------------- | ------- | -------- |
 | `forward_to` | `list(LogsReceiver)` | Where to forward log entries after processing. |         | yes      |
 
@@ -43,7 +43,7 @@ You can use the following arguments with `loki.process`:
 
 You can use the following blocks with `loki.process`:
 
-|                          Block                           |                          Description                           | Required |
+| Block                                                    | Description                                                    | Required |
 | -------------------------------------------------------- | -------------------------------------------------------------- | -------- |
 | [`stage.cri`][stage.cri]                                 | Configures a pre-defined CRI-format pipeline.                  | no       |
 | [`stage.decolorize`][stage.decolorize]                   | Strips ANSI color codes from log lines.                        | no       |
@@ -107,7 +107,7 @@ The `stage.cri` inner block enables a predefined pipeline which reads log lines 
 
 The following arguments are supported:
 
-|               Name               |   Type   |                             Description                              | Default | Required |
+| Name                             | Type     | Description                                                          | Default | Required |
 | -------------------------------- | -------- | -------------------------------------------------------------------- | ------- | -------- |
 | `max_partial_line_size_truncate` | `bool`   | Truncate partial lines that are longer than `max_partial_line_size`. | `false` | no       |
 | `max_partial_line_size`          | `number` | Maximum number of characters which a partial line can have.          | `0`     | no       |
@@ -146,7 +146,8 @@ The `stage.decolorize` block doesn't support any arguments or inner blocks, so i
 stage.decolorize {}
 ```
 
-`stage.decolorize` turns each line having a color code into a non-colored one, for example:
+`stage.decolorize` turns each line having a color code into a non-colored one.
+For example:
 
 ```text
 [2022-11-04 22:17:57.811] \033[0;32http\033[0m: GET /_health (0 ms) 204
@@ -192,7 +193,7 @@ To drop entries with an OR clause, specify multiple `drop` blocks in sequence.
 
 The following arguments are supported:
 
-|         Name          |    Type    |                                                      Description                                                       |    Default     | Required |
+| Name                  | Type       | Description                                                                                                            | Default        | Required |
 | --------------------- | ---------- | ---------------------------------------------------------------------------------------------------------------------- | -------------- | -------- |
 | `drop_counter_reason` | `string`   | A custom reason to report for dropped lines.                                                                           | `"drop_stage"` | no       |
 | `expression`          | `string`   | A valid RE2 regular expression.                                                                                        | `""`           | no       |
@@ -246,13 +247,13 @@ stage.drop {
 
 ### `stage.eventlogmessage`
 
-Deprecated in favor of the [stage.windowsevent block][stage.windowsevent].
+Deprecated in favor of the [`stage.windowsevent`][stage.windowsevent] block.
 
 The `eventlogmessage` stage extracts data from the Message string that appears in the Windows Event Log.
 
 The following arguments are supported:
 
-|         Name          |   Type   |                      Description                      |  Default  | Required |
+| Name                  | Type     | Description                                           | Default   | Required |
 | --------------------- | -------- | ----------------------------------------------------- | --------- | -------- |
 | `drop_invalid_labels` | `bool`   | Whether to drop fields that aren't valid label names. | `false`   | no       |
 | `overwrite_existing`  | `bool`   | Whether to overwrite existing extracted data fields.  | `false`   | no       |
@@ -307,7 +308,7 @@ The `stage.geoip` inner block configures a processing stage that reads an IP add
 
 The following arguments are supported:
 
-|       Name       |     Type      |                             Description                             | Default | Required |
+| Name             | Type          | Description                                                         | Default | Required |
 | ---------------- | ------------- | ------------------------------------------------------------------- | ------- | -------- |
 | `db`             | `string`      | Path to the Maxmind DB file.                                        |         | yes      |
 | `source`         | `string`      | IP from extracted data to parse.                                    |         | yes      |
@@ -349,7 +350,8 @@ loki.process "example" {
 ```
 
 The `json` stage extracts the IP address from the `client_ip` key in the log line.
-Then the extracted `ip` value is given as source to `geoip` stage. The `geoip` stage performs a lookup on the IP and populates the following fields in the shared map which are added as labels using the `labels` stage.
+Then the extracted `ip` value is given as source to `geoip` stage.
+The `geoip` stage performs a lookup on the IP and populates the following fields in the shared map which are added as labels using the `labels` stage.
 
 The extracted data from the IP used in this example:
 
@@ -428,7 +430,8 @@ loki.process "example" {
 ```
 
 The `json` stage extracts the IP address from the `client_ip` key in the log line.
-Then the extracted `ip` value is given as source to `geoip` stage. The `geoip` stage performs a lookup on the IP and populates the following fields in the shared map which are added as labels using the `labels` stage.
+Then the extracted `ip` value is given as source to `geoip` stage.
+The `geoip` stage performs a lookup on the IP and populates the following fields in the shared map which are added as labels using the `labels` stage.
 
 The extracted data from the IP used in this example:
 
@@ -481,7 +484,7 @@ The `stage.json` inner block configures a JSON processing stage that parses inco
 
 The following arguments are supported:
 
-|       Name       |     Type      |                      Description                      | Default | Required |
+| Name             | Type          | Description                                           | Default | Required |
 | ---------------- | ------------- | ----------------------------------------------------- | ------- | -------- |
 | `expressions`    | `map(string)` | Key-value pairs of JMESPath expressions.              |         | yes      |
 | `drop_malformed` | `bool`        | Drop lines whose input can't be parsed as valid JSON. | `false` | no       |
@@ -541,7 +544,7 @@ The `stage.label_drop` inner block configures a processing stage that drops labe
 
 The following arguments are supported:
 
-|   Name   |      Type      |                 Description                 | Default | Required |
+| Name     | Type           | Description                                 | Default | Required |
 | -------- | -------------- | ------------------------------------------- | ------- | -------- |
 | `values` | `list(string)` | Configures a `label_drop` processing stage. | `{}`    | no       |
 
@@ -557,7 +560,7 @@ The `stage.label_keep` inner block configures a processing stage that filters th
 
 The following arguments are supported:
 
-|   Name   |      Type      |                 Description                 | Default | Required |
+| Name     | Type           | Description                                 | Default | Required |
 | -------- | -------------- | ------------------------------------------- | ------- | -------- |
 | `values` | `list(string)` | Configures a `label_keep` processing stage. | `{}`    | no       |
 
@@ -573,7 +576,7 @@ The `stage.labels` inner block configures a labels processing stage that can rea
 
 The following arguments are supported:
 
-|   Name   |     Type      |               Description               | Default | Required |
+| Name     | Type          | Description                             | Default | Required |
 | -------- | ------------- | --------------------------------------- | ------- | -------- |
 | `values` | `map(string)` | Configures a `labels` processing stage. | `{}`    | no       |
 
@@ -595,7 +598,7 @@ The `stage.limit` inner block configures a rate-limiting stage that throttles lo
 
 The following arguments are supported:
 
-|         Name          |   Type   |                                   Description                                    | Default | Required |
+| Name                  | Type     | Description                                                                      | Default | Required |
 | --------------------- | -------- | -------------------------------------------------------------------------------- | ------- | -------- |
 | `burst`               | `number` | The maximum number of burst lines that the stage forwards.                       |         | yes      |
 | `rate`                | `number` | The maximum rate of lines per second that the stage forwards.                    |         | yes      |
@@ -638,7 +641,7 @@ The `stage.logfmt` inner block configures a processing stage that reads incoming
 
 The following arguments are supported:
 
-|   Name    |     Type      |                  Description                   | Default | Required |
+| Name      | Type          | Description                                    | Default | Required |
 | --------- | ------------- | ---------------------------------------------- | ------- | -------- |
 | `mapping` | `map(string)` | Key-value pairs of `logmft` fields to extract. |         | yes      |
 | `source`  | `string`      | Source of the data to parse as `logfmt`.       | `""`    | no       |
@@ -682,7 +685,7 @@ Many Payment Card Industry environments require these numbers to be redacted.
 
 The following arguments are supported:
 
-|     Name      |   Type   |                  Description                   |     Default      | Required |
+| Name          | Type     | Description                                    | Default          | Required |
 | ------------- | -------- | ---------------------------------------------- | ---------------- | -------- |
 | `min_length`  | `int`    | Minimum length of digits to consider           | `13`             | no       |
 | `replacement` | `string` | String to substitute the matched patterns with | `"**REDACTED**"` | no       |
@@ -713,7 +716,7 @@ The `stage.match` inner block configures a filtering stage that can conditionall
 
 The following arguments are supported:
 
-|         Name          |   Type   |                                              Description                                              |     Default     | Required |
+| Name                  | Type     | Description                                                                                           | Default         | Required |
 | --------------------- | -------- | ----------------------------------------------------------------------------------------------------- | --------------- | -------- |
 | `selector`            | `string` | The LogQL stream selector and line filter expressions to use.                                         |                 | yes      |
 | `action`              | `string` | The action to take when the selector matches the log line. Supported values are `"keep"` and `"drop"` | `"keep"`        | no       |
@@ -793,7 +796,7 @@ The `stage.metrics` block doesn't support any arguments and is only configured v
 
 The following blocks are supported inside the definition of `stage.metrics`:
 
-|                 Block                  |          Description          | Required |
+| Block                                  | Description                   | Required |
 | -------------------------------------- | ----------------------------- | -------- |
 | [`metric.counter`][metric.counter]     | Defines a `counter` metric.   | no       |
 | [`metric.gauge`][metric.gauge]         | Defines a `gauge` metric.     | no       |
@@ -813,7 +816,7 @@ Defines a metric whose value only goes up.
 
 The following arguments are supported:
 
-|        Name         |    Type    |                                                Description                                                |         Default          | Required |
+| Name                | Type       | Description                                                                                               | Default                  | Required |
 | ------------------- | ---------- | --------------------------------------------------------------------------------------------------------- | ------------------------ | -------- |
 | `action`            | `string`   | The action to take. Valid actions are `inc` and `add`.                                                    |                          | yes      |
 | `name`              | `string`   | The metric name.                                                                                          |                          | yes      |
@@ -837,7 +840,7 @@ Defines a gauge metric whose value can go up or down.
 
 The following arguments are supported:
 
-|        Name         |    Type    |                                     Description                                     |         Default          | Required |
+| Name                | Type       | Description                                                                         | Default                  | Required |
 | ------------------- | ---------- | ----------------------------------------------------------------------------------- | ------------------------ | -------- |
 | `action`            | `string`   | The action to take. Valid actions are  `inc`, `dec`, `set`, `add`, or `sub`.        |                          | yes      |
 | `name`              | `string`   | The metric name.                                                                    |                          | yes      |
@@ -857,9 +860,9 @@ Defines a histogram metric whose values are recorded in predefined buckets.
 
 The following arguments are supported:
 
-|        Name         |     Type      |                                     Description                                     |         Default          | Required |
+| Name                | Type          | Description                                                                         | Default                  | Required |
 | ------------------- | ------------- | ----------------------------------------------------------------------------------- | ------------------------ | -------- |
-| `buckets`           | `list(float)` | Prefined buckets                                                                    |                          | yes      |
+| `buckets`           | `list(float)` | Predefined buckets                                                                    |                          | yes      |
 | `name`              | `string`      | The metric name.                                                                    |                          | yes      |
 | `description`       | `string`      | The metric's description and help text.                                             | `""`                     | no       |
 | `max_idle_duration` | `duration`    | Maximum amount of time to wait until the metric is marked as 'stale' and removed.   | `"5m"`                   | no       |
@@ -878,13 +881,13 @@ The `max_idle_duration` must be greater or equal to `"1s"`, and it defaults to `
 The metric values extracted from the log data are internally converted to floats.
 The supported values are the following:
 
-* integer
-* floating point number
-* string - Two types of string format are supported:
+* Integer
+* Floating point number
+* String - Two types of string format are supported:
   * Strings that represent floating point numbers, for example, "0.804" is converted to 0.804.
   * Duration format strings. Valid time units are `"ns"`, `"us"`, `"ms"`, `"s"`, `"m"`, `"h"`.
     A value in this format is converted to a floating point number of seconds, for example, `"0.5ms"` is converted to `0.0005`.
-* boolean:
+* Boolean:
   * `true` is converted to `1`.
   * `false` is converted to `0`.
 
@@ -983,7 +986,7 @@ The `stage.multiline` inner block merges multiple lines into a single block befo
 
 The following arguments are supported:
 
-|      Name       |    Type    |                    Description                     | Default | Required |
+| Name            | Type       | Description                                        | Default | Required |
 | --------------- | ---------- | -------------------------------------------------- | ------- | -------- |
 | `firstline`     | `string`   | Name from extracted data to use for the log entry. |         | yes      |
 | `max_lines`     | `number`   | The maximum number of lines a block can have.      | `128`   | no       |
@@ -1035,7 +1038,7 @@ The `stage.output` inner block configures a processing stage that reads from the
 
 The following arguments are supported:
 
-|   Name   |   Type   |                    Description                     | Default | Required |
+| Name     | Type     | Description                                        | Default | Required |
 | -------- | -------- | -------------------------------------------------- | ------- | -------- |
 | `source` | `string` | Name from extracted data to use for the log entry. |         | yes      |
 
@@ -1072,7 +1075,7 @@ The `stage.pack` inner block configures a transforming stage that replaces the l
 
 The following arguments are supported:
 
-|        Name        |      Type      |                                   Description                                   | Default | Required |
+| Name               | Type           | Description                                                                     | Default | Required |
 | ------------------ | -------------- | ------------------------------------------------------------------------------- | ------- | -------- |
 | `labels`           | `list(string)` | The values from the extracted data and labels to pack with the log entry.       |         | yes      |
 | `ingest_timestamp` | `bool`         | Whether to replace the log entry timestamp with the time the `pack` stage runs. | `true`  | no       |
@@ -1120,7 +1123,7 @@ The `stage.regex` inner block configures a processing stage that parses log line
 
 The following arguments are supported:
 
-|     Name     |   Type   |                            Description                             | Default | Required |
+| Name         | Type     | Description                                                        | Default | Required |
 | ------------ | -------- | ------------------------------------------------------------------ | ------- | -------- |
 | `expression` | `string` | A valid RE2 regular expression. Each capture group must be named.  |         | yes      |
 | `source`     | `string` | Name from extracted data to parse. If empty, uses the log message. | `""`    | no       |
@@ -1184,7 +1187,7 @@ Named capture groups in the regular expression also support adding data into the
 
 The following arguments are supported:
 
-|     Name     |   Type   |                           Description                           | Default | Required |
+| Name         | Type     | Description                                                     | Default | Required |
 | ------------ | -------- | --------------------------------------------------------------- | ------- | -------- |
 | `expression` | `string` | A RE2 regular expression containing capture groups.             |         | yes      |
 | `replace`    | `string` | Value replaced by the capture group.                            |         | no       |
@@ -1258,7 +1261,7 @@ The `replace` field can use a set of templating functions, by utilizing Go's [te
 
 [text/template]: https://pkg.go.dev/text/template
 
-The following exampel shows how this works with named capture groups with a sample log line and stage.
+The following example shows how this works with named capture groups with a sample log line and stage.
 
 ```alloy
 11.11.11.11 - alloy [01/Jan/2023:00:00:01 +0200]
@@ -1297,15 +1300,15 @@ ToLower, ToUpper, Replace, Trim, TrimLeftTrimRight, TrimPrefix, TrimSuffix, Trim
 ### `stage.sampling`
 
 The `sampling` stage is used to sample the logs.
-Configuring the value `rate = 0.1` means that 10% of the logs will continue to be processed.
-The remaining 90% of the logs will be dropped.
+Configuring the value `rate = 0.1` means that 10% of the logs continue to be processed.
+The remaining 90% of the logs are dropped.
 
 The following arguments are supported:
 
-|         Name          |   Type   |                                            Description                                             |    Default     | Required |
-| --------------------- | -------- | -------------------------------------------------------------------------------------------------- | -------------- | -------- |
-| `rate`                | `float`  | The sampling rate in a range of `[0, 1]`                                                           |                | yes      |
-| `drop_counter_reason` | `string` | The label to add to `loki_process_dropped_lines_total` metric when logs are dropped by this stage. | sampling_stage | no       |
+| Name                  | Type     | Description                                                                                        | Default          | Required |
+| --------------------- | -------- | -------------------------------------------------------------------------------------------------- | ---------------- | -------- |
+| `rate`                | `float`  | The sampling rate in a range of `[0, 1]`                                                           |                  | yes      |
+| `drop_counter_reason` | `string` | The label to add to `loki_process_dropped_lines_total` metric when logs are dropped by this stage. | `sampling_stage` | no       |
 
 For example, the configuration below will sample 25% of the logs and drop the remaining 75%.
 When logs are dropped, the `loki_process_dropped_lines_total` metric is incremented with an additional `reason=logs_sampling` label.
@@ -1323,10 +1326,9 @@ The `stage.static_labels` inner block configures a static_labels processing stag
 
 The following arguments are supported:
 
-|   Name   |     Type      |                  Description                   | Default | Required |
+| Name     | Type          | Description                                    | Default | Required |
 | -------- | ------------- | ---------------------------------------------- | ------- | -------- |
 | `values` | `map(string)` | Configures a `static_labels` processing stage. | `{}`    | no       |
-
 
 ```alloy
 stage.static_labels {
@@ -1343,7 +1345,7 @@ The `stage.structured_metadata` inner block configures a stage that can read dat
 
 The following arguments are supported:
 
-|   Name   |     Type      |                                 Description                                 | Default | Required |
+| Name     | Type          | Description                                                                 | Default | Required |
 | -------- | ------------- | --------------------------------------------------------------------------- | ------- | -------- |
 | `values` | `map(string)` | Specifies the list of labels to add from extracted values map to log entry. | `{}`    | no       |
 
@@ -1371,7 +1373,7 @@ The template stage can also create new keys in the extracted map.
 
 The following arguments are supported:
 
-|    Name    |   Type   |                                     Description                                      | Default | Required |
+| Name       | Type     | Description                                                                          | Default | Required |
 | ---------- | -------- | ------------------------------------------------------------------------------------ | ------- | -------- |
 | `source`   | `string` | Name from extracted data to parse. If the key doesn't exist, a new entry is created. |         | yes      |
 | `template` | `string` | Go template string to use.                                                           |         | yes      |
@@ -1542,7 +1544,7 @@ The `stage.tenant` inner block sets the tenant ID for the log entry by obtaining
 
 The following arguments are supported:
 
-|   Name   |   Type   |                      Description                       | Default | Required |
+| Name     | Type     | Description                                            | Default | Required |
 | -------- | -------- | ------------------------------------------------------ | ------- | -------- |
 | `label`  | `string` | The label to set as tenant ID.                         | `""`    | no       |
 | `source` | `string` | The name from the extracted value to use as tenant ID. | `""`    | no       |
@@ -1587,7 +1589,7 @@ When no timestamp stage is set, the log entry timestamp defaults to the time whe
 
 The following arguments are supported:
 
-|        Name         |      Type      |                         Description                         |  Default  | Required |
+| Name                | Type           | Description                                                 | Default   | Required |
 | ------------------- | -------------- | ----------------------------------------------------------- | --------- | -------- |
 | `format`            | `string`       | Determines how to parse the source string.                  |           | yes      |
 | `source`            | `string`       | Name from extracted values map to use for the timestamp.    |           | yes      |
@@ -1637,7 +1639,7 @@ If the custom format has no year component, the stage uses the current year, acc
 
 The following table shows the supported reference values to use when defining a custom format.
 
-| Timestamp Component |                                                       Format value                                                       |
+| Timestamp Component | Format value                                                                                                             |
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | Year                | 06, 2006                                                                                                                 |
 | Month               | 1, 01, Jan, January                                                                                                      |
@@ -1690,7 +1692,7 @@ stage.timestamp {
 
 The following fields are exported and can be referenced by other components:
 
-|    Name    |      Type      |                          Description                          |
+| Name       | Type           | Description                                                   |
 | ---------- | -------------- | ------------------------------------------------------------- |
 | `receiver` | `LogsReceiver` | A value that other components can use to send log entries to. |
 

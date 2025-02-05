@@ -35,7 +35,7 @@ loki.source.syslog "<LABEL>" {
 You can use the following arguments with `loki.source.syslog`:
 
 | Name            | Type                 | Description                               | Default | Required |
-|-----------------|----------------------|-------------------------------------------|---------|----------|
+| --------------- | -------------------- | ----------------------------------------- | ------- | -------- |
 | `forward_to`    | `list(LogsReceiver)` | List of receivers to send log entries to. |         | yes      |
 | `relabel_rules` | `RelabelRules`       | Relabeling rules to apply on log entries. | "{}"    | no       |
 
@@ -48,12 +48,12 @@ The `relabel_rules` field can make use of the `rules` export value from a [loki.
 You can use the following blocks with `loki.source.syslog`:
 
 | Name                                    | Description                                                                 | Required |
-|-----------------------------------------|-----------------------------------------------------------------------------|----------|
+| --------------------------------------- | --------------------------------------------------------------------------- | -------- |
 | [`listener`][listener]                  | Configures a listener for IETF Syslog (RFC5424) messages.                   | no       |
 | `listener` > [`tls_config`][tls_config] | Configures TLS settings for connecting to the endpoint for TCP connections. | no       |
 
 The `>` symbol indicates deeper levels of nesting.
-For example, `config > tls_config` refers to a `tls_config` block defined inside a `config` block.
+For example, `config` > `tls_config` refers to a `tls_config` block defined inside a `config` block.
 
 [listener]: #listener
 [tls_config]: #tls_config
@@ -66,7 +66,7 @@ The following arguments can be used to configure a `listener`.
 Only the `address` field is required and any omitted fields take their default values.
 
 | Name                     | Type          | Description                                                                   | Default   | Required |
-|--------------------------|---------------|-------------------------------------------------------------------------------|-----------|----------|
+| ------------------------ | ------------- | ----------------------------------------------------------------------------- | --------- | -------- |
 | `address`                | `string`      | The `<host:port>` address to listen to for syslog messages.                   |           | yes      |
 | `idle_timeout`           | `duration`    | The idle timeout for TCP connections.                                         | `"120s"`  | no       |
 | `label_structured_data`  | `bool`        | Whether to translate syslog structured data to Loki labels.                   | `false`   | no       |
@@ -103,7 +103,7 @@ configuration.
 
 `loki.source.syslog` exposes some debug information per syslog listener:
 
-* Whether the listener is currently running.
+* Whether the listener is running.
 * The listen address.
 * The labels that the listener applies to incoming log entries.
 

@@ -51,7 +51,7 @@ If a topic starts with a '^', it's treated as a regular expression and may match
 
 Labels from the `labels` argument are applied to every message that the component reads.
 
-The `relabel_rules` field can make use of the `rules` export value from a [loki.relabel][] component to apply one or more relabeling rules to log entries before they're forwarded to the list of receivers in `forward_to`.
+The `relabel_rules` field can make use of the `rules` export value from a [`loki.relabel`][loki.relabel] component to apply one or more relabeling rules to log entries before they're forwarded to the list of receivers in `forward_to`.
 
 In addition to custom labels, the following internal labels prefixed with `__` are available:
 
@@ -63,16 +63,16 @@ In addition to custom labels, the following internal labels prefixed with `__` a
 - `__meta_kafka_topic`
 
 All labels starting with `__` are removed prior to forwarding log entries.
-To keep these labels, relabel them using a [loki.relabel][] component and pass its `rules` export to the `relabel_rules` argument.
+To keep these labels, relabel them using a [`loki.relabel`][loki.relabel] component and pass its `rules` export to the `relabel_rules` argument.
 
 [loki.relabel]: ../loki.relabel/
 
 ## Blocks
 
-You can use the following blocks awith `loki.source.kafka`:
+You can use the following blocks with `loki.source.kafka`:
 
 | Name                                                              | Description                                               | Required |
-|-------------------------------------------------------------------|-----------------------------------------------------------|----------|
+| ----------------------------------------------------------------- | --------------------------------------------------------- | -------- |
 | [`authentication`][authentication]                                | Optional authentication configuration with Kafka brokers. | no       |
 | `authentication` >  [`sasl_config`][sasl_config]                  | Optional authentication configuration with Kafka brokers. | no       |
 | `authentication` > `sasl_config` > [`oauth_config`][oauth_config] | Optional authentication configuration with Kafka brokers. | no       |
@@ -89,7 +89,7 @@ You can use the following blocks awith `loki.source.kafka`:
 The `authentication` block defines the authentication method when communicating with the Kafka event brokers.
 
 | Name   | Type     | Description             | Default  | Required |
-|--------|----------|-------------------------|----------|----------|
+| ------ | -------- | ----------------------- | -------- | -------- |
 | `type` | `string` | Type of authentication. | `"none"` | no       |
 
 `type` supports the values `"none"`, `"ssl"`, and `"sasl"`. If `"ssl"` is used,
@@ -100,7 +100,7 @@ you must set the `tls_config` block. If `"sasl"` is used, you must set the `sasl
 The `sasl_config` block defines the listen address and port where the listener expects Kafka messages to be sent to.
 
 | Name        | Type     | Description                                                                   | Default    | Required |
-|-------------|----------|-------------------------------------------------------------------------------|------------|----------|
+| ----------- | -------- | ----------------------------------------------------------------------------- | ---------- | -------- |
 | `mechanism` | `string` | Specifies the SASL mechanism the client uses to authenticate with the broker. | `"PLAIN""` | no       |
 | `password`  | `secret` | The password to use for SASL authentication.                                  | `""`       | no       |
 | `use_tls`   | `bool`   | If true, SASL authentication is executed over TLS.                            | `false`    | no       |
@@ -110,10 +110,10 @@ The `sasl_config` block defines the listen address and port where the listener e
 
 The `oauth_config` is required when the SASL mechanism is set to `OAUTHBEARER`.
 
-| Name             | Type           | Description                                                            | Default | Required |
-|------------------|----------------|------------------------------------------------------------------------|---------|----------|
-| `scopes`         | `list(string)` | The scopes to set in the access token                                  | `[]`    | yes      |
-| `token_provider` | `string`       | The OAuth provider to be used. The only supported provider is `azure`. | `""`    | yes      |
+| Name             | Type           | Description                                                                | Default | Required |
+| ---------------- | -------------- | -------------------------------------------------------------------------- | ------- | -------- |
+| `scopes`         | `list(string)` | The scopes to set in the access token                                      | `[]`    | yes      |
+| `token_provider` | `string`       | The OAuth 2.0 provider to be used. The only supported provider is `azure`. | `""`    | yes      |
 
 ### `tls_config`
 

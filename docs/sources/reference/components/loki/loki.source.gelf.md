@@ -29,7 +29,7 @@ The component starts a new UDP listener and fans out log entries to the list of 
 You can use the following arguments with `loki.source.gelf`:
 
 | Name                     | Type           | Description                                                                | Default         | Required |
-|--------------------------|----------------|----------------------------------------------------------------------------|-----------------|----------|
+| ------------------------ | -------------- | -------------------------------------------------------------------------- | --------------- | -------- |
 | `listen_address`         | `string`       | UDP address and port to listen for Graylog messages.                       | `0.0.0.0:12201` | no       |
 | `relabel_rules`          | `RelabelRules` | Relabeling rules to apply on log entries.                                  | "{}"            | no       |
 | `use_incoming_timestamp` | `bool`         | When false, assigns the current timestamp to the log when it was processed | `false`         | no       |
