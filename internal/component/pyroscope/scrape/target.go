@@ -398,9 +398,6 @@ func targetsFromGroup(group *targetgroup.Group, cfg Arguments, targetTypes map[s
 				lbls = append(lbls, labels.Label{Name: model.AddressLabel, Value: lset.Get(model.AddressLabel)})
 				lbls = append(lbls, labels.Label{Name: model.SchemeLabel, Value: cfg.Scheme})
 				lbls = append(lbls, labels.Label{Name: ProfilePath, Value: lset.Get(ProfilePath)})
-				//ilbls = append(lbls, labels.Label{Name: ProfilePathPrefix, Value: profilePathPrefix})f profilePathPrefix := lset.Get(ProfilePathPrefix); profilePathPrefix != "" {
-				//	lbls = append(lbls, labels.Label{Name: ProfilePathPrefix, Value: profilePathPrefix})
-				//}
 				// Encode scrape query parameters as labels.
 				for k, v := range cfg.Params {
 					if len(v) > 0 {
