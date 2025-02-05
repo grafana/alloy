@@ -3,6 +3,7 @@ package scrape
 import (
 	"github.com/stretchr/testify/assert"
 	"net/url"
+	"slices"
 	"sort"
 	"testing"
 	"time"
@@ -350,4 +351,359 @@ func Test_targetsFromGroup_withSpecifiedDeltaProfilingDuration(t *testing.T) {
 	sort.Sort(Targets(expected))
 	require.Equal(t, expected, active)
 	require.Empty(t, dropped)
+}
+
+func TestProfileURL(t *testing.T) {
+	targets := func(t *testing.T, args Arguments, ls []model.LabelSet) []*Target {
+
+		active, dropped, err := targetsFromGroup(&targetgroup.Group{
+			Targets: ls,
+		}, args, args.ProfilingConfig.AllTargets())
+		require.NoError(t, err)
+		require.Len(t, dropped, 0)
+		require.NotEmpty(t, active)
+		return active
+	}
+	testdata := []struct {
+		name         string
+		args         func() Arguments
+		targets      []model.LabelSet
+		expectedUrls []string
+	}{
+		{
+			name: "single cpu only target",
+			args: func() Arguments {
+				args := NewDefaultArguments()
+				args.ProfilingConfig = ProfilingConfig{
+					ProcessCPU: ProfilingTarget{
+						Enabled: true,
+						Path:    "/debug/pprof/profile",
+						Delta:   true,
+					},
+				}
+				return args
+			},
+			targets:      []model.LabelSet{{model.AddressLabel: "localhost:9090"}},
+			expectedUrls: []string{"http://localhost:9090/debug/pprof/profile?seconds=14"},
+		},
+		{
+			name:    "default profiling config targets from single target",
+			args:    NewDefaultArguments,
+			targets: []model.LabelSet{{model.AddressLabel: "localhost:9090"}},
+			expectedUrls: []string{
+				"http://localhost:9090/debug/pprof/allocs",
+				"http://localhost:9090/debug/pprof/block",
+				"http://localhost:9090/debug/pprof/goroutine",
+				"http://localhost:9090/debug/pprof/mutex",
+				"http://localhost:9090/debug/pprof/profile?seconds=14",
+			},
+		},
+		{
+			name: "default config, https scheme label",
+			args: NewDefaultArguments,
+			targets: []model.LabelSet{{
+				model.AddressLabel: "localhost:9090",
+				model.SchemeLabel:  "https",
+			}},
+			expectedUrls: []string{
+				"https://localhost:9090/debug/pprof/allocs",
+				"https://localhost:9090/debug/pprof/block",
+				"https://localhost:9090/debug/pprof/goroutine",
+				"https://localhost:9090/debug/pprof/mutex",
+				"https://localhost:9090/debug/pprof/profile?seconds=14",
+			},
+		},
+		{
+			name: "default config, https scheme label, no port",
+			args: NewDefaultArguments,
+			targets: []model.LabelSet{{
+				model.AddressLabel: "localhost",
+				model.SchemeLabel:  "https",
+			}},
+			expectedUrls: []string{
+				"https://localhost:443/debug/pprof/allocs",
+				"https://localhost:443/debug/pprof/block",
+				"https://localhost:443/debug/pprof/goroutine",
+				"https://localhost:443/debug/pprof/mutex",
+				"https://localhost:443/debug/pprof/profile?seconds=14",
+			},
+		},
+		{
+			name: "default config, http scheme label, no port",
+			args: NewDefaultArguments,
+			targets: []model.LabelSet{{
+				model.AddressLabel: "localhost",
+				model.SchemeLabel:  "http",
+			}},
+			expectedUrls: []string{
+				"http://localhost:80/debug/pprof/allocs",
+				"http://localhost:80/debug/pprof/block",
+				"http://localhost:80/debug/pprof/goroutine",
+				"http://localhost:80/debug/pprof/mutex",
+				"http://localhost:80/debug/pprof/profile?seconds=14",
+			},
+		},
+		{
+			name: "default config, no port",
+			args: NewDefaultArguments,
+			targets: []model.LabelSet{{
+				model.AddressLabel: "localhost",
+			}},
+			expectedUrls: []string{
+				"http://localhost:80/debug/pprof/allocs",
+				"http://localhost:80/debug/pprof/block",
+				"http://localhost:80/debug/pprof/goroutine",
+				"http://localhost:80/debug/pprof/mutex",
+				"http://localhost:80/debug/pprof/profile?seconds=14",
+			},
+		},
+		{
+			name: "config with https scheme, no port",
+			args: func() Arguments {
+				args := NewDefaultArguments()
+				args.Scheme = "https"
+				return args
+			},
+			targets: []model.LabelSet{{
+				model.AddressLabel: "localhost",
+			}},
+			expectedUrls: []string{
+				"https://localhost:443/debug/pprof/allocs",
+				"https://localhost:443/debug/pprof/block",
+				"https://localhost:443/debug/pprof/goroutine",
+				"https://localhost:443/debug/pprof/mutex",
+				"https://localhost:443/debug/pprof/profile?seconds=14",
+			},
+		},
+		{
+			name: "all enabled",
+			args: func() Arguments {
+				args := NewDefaultArguments()
+				args.ProfilingConfig.GoDeltaProfBlock.Enabled = true
+				args.ProfilingConfig.GoDeltaProfMutex.Enabled = true
+				args.ProfilingConfig.GoDeltaProfMemory.Enabled = true
+				args.ProfilingConfig.FGProf.Enabled = true
+				args.ProfilingConfig.Custom = []CustomProfilingTarget{{
+					Enabled: true,
+					Path:    "/foo239",
+					Name:    "custom",
+				}}
+				args.Scheme = "https"
+				return args
+			},
+			targets: []model.LabelSet{{
+				model.AddressLabel: "127.0.0.1:4100",
+			}},
+			expectedUrls: []string{
+				"https://127.0.0.1:4100/debug/fgprof?seconds=14",
+				"https://127.0.0.1:4100/debug/pprof/allocs",
+				"https://127.0.0.1:4100/debug/pprof/block",
+				"https://127.0.0.1:4100/debug/pprof/delta_block",
+				"https://127.0.0.1:4100/debug/pprof/delta_heap",
+				"https://127.0.0.1:4100/debug/pprof/delta_mutex",
+				"https://127.0.0.1:4100/debug/pprof/goroutine",
+				"https://127.0.0.1:4100/debug/pprof/mutex",
+				"https://127.0.0.1:4100/debug/pprof/profile?seconds=14",
+				"https://127.0.0.1:4100/foo239",
+			},
+		},
+		{
+			name: "all enabled with prefix",
+			args: func() Arguments {
+				args := NewDefaultArguments()
+				args.ProfilingConfig.GoDeltaProfBlock.Enabled = true
+				args.ProfilingConfig.GoDeltaProfMutex.Enabled = true
+				args.ProfilingConfig.GoDeltaProfMemory.Enabled = true
+				args.ProfilingConfig.FGProf.Enabled = true
+				args.ProfilingConfig.Custom = []CustomProfilingTarget{{
+					Enabled: true,
+					Path:    "/foo239",
+					Name:    "custom",
+				}}
+				args.Scheme = "https"
+				return args
+			},
+			targets: []model.LabelSet{{
+				model.AddressLabel: "127.0.0.1:4100",
+				ProfilePathPrefix:  "/mimir-prometheus",
+			}},
+			expectedUrls: []string{
+				"https://127.0.0.1:4100/mimir-prometheus/debug/fgprof?seconds=14",
+				"https://127.0.0.1:4100/mimir-prometheus/debug/pprof/allocs",
+				"https://127.0.0.1:4100/mimir-prometheus/debug/pprof/block",
+				"https://127.0.0.1:4100/mimir-prometheus/debug/pprof/delta_block",
+				"https://127.0.0.1:4100/mimir-prometheus/debug/pprof/delta_heap",
+				"https://127.0.0.1:4100/mimir-prometheus/debug/pprof/delta_mutex",
+				"https://127.0.0.1:4100/mimir-prometheus/debug/pprof/goroutine",
+				"https://127.0.0.1:4100/mimir-prometheus/debug/pprof/mutex",
+				"https://127.0.0.1:4100/mimir-prometheus/debug/pprof/profile?seconds=14",
+				"https://127.0.0.1:4100/mimir-prometheus/foo239",
+			},
+		},
+		{
+			name: "path prefix argument",
+			args: func() Arguments {
+				args := NewDefaultArguments()
+				args.ProfilingConfig = ProfilingConfig{
+					ProcessCPU: ProfilingTarget{
+						Enabled: true,
+						Path:    "/debug/pprof/profile",
+						Delta:   true,
+					},
+					PathPrefix: "/foo",
+				}
+
+				return args
+			},
+			targets:      []model.LabelSet{{model.AddressLabel: "localhost:9090"}},
+			expectedUrls: []string{"http://localhost:9090/foo/debug/pprof/profile?seconds=14"},
+		},
+		{
+			name: "path prefix argument overridden by target label",
+			args: func() Arguments {
+				args := NewDefaultArguments()
+				args.ProfilingConfig = ProfilingConfig{
+					ProcessCPU: ProfilingTarget{
+						Enabled: true,
+						Path:    "/debug/pprof/profile",
+						Delta:   true,
+					},
+					PathPrefix: "/foo",
+				}
+
+				return args
+			},
+			targets: []model.LabelSet{
+				{
+					model.AddressLabel: "localhost:9090",
+				},
+				{
+					model.AddressLabel: "localhost:4242",
+					ProfilePathPrefix:  "/bar",
+				},
+			},
+			expectedUrls: []string{
+				"http://localhost:4242/bar/debug/pprof/profile?seconds=14",
+				"http://localhost:9090/foo/debug/pprof/profile?seconds=14",
+			},
+		},
+	}
+	for _, td := range testdata {
+		t.Run(td.name, func(t *testing.T) {
+			var actualURLs []string
+			for _, tt := range targets(t, td.args(), td.targets) {
+				actualURLs = append(actualURLs, tt.URL())
+			}
+			slices.Sort(td.expectedUrls)
+			slices.Sort(actualURLs)
+			require.Equal(t, td.expectedUrls, actualURLs)
+		})
+
+	}
+}
+
+func TestLabelsByProfiles(t *testing.T) {
+	testdata := []struct {
+		name     string
+		target   labels.Labels
+		cfg      *ProfilingConfig
+		expected []labels.Labels
+	}{
+		{
+			name: "single target",
+			target: labels.FromMap(map[string]string{
+				model.AddressLabel: "localhost:9090",
+			}),
+			cfg: &ProfilingConfig{
+				ProcessCPU: ProfilingTarget{
+					Enabled: true,
+					Path:    "/debug/pprof/profile",
+					Delta:   true,
+				},
+			},
+			expected: []labels.Labels{
+				labels.FromMap(map[string]string{
+					ProfilePath:        "/debug/pprof/profile",
+					ProfileName:        "process_cpu",
+					model.AddressLabel: "localhost:9090",
+				}),
+			},
+		},
+		{
+			name: "path prefix from args",
+			target: labels.FromMap(map[string]string{
+				model.AddressLabel: "localhost:9090",
+			}),
+			cfg: &ProfilingConfig{
+				ProcessCPU: ProfilingTarget{
+					Enabled: true,
+					Path:    "/debug/pprof/profile",
+					Delta:   true,
+				},
+				PathPrefix: "/foo",
+			},
+			expected: []labels.Labels{
+				labels.FromMap(map[string]string{
+					ProfilePath:        "/debug/pprof/profile",
+					ProfileName:        "process_cpu",
+					model.AddressLabel: "localhost:9090",
+					ProfilePathPrefix:  "/foo",
+				}),
+			},
+		},
+		{
+			name: "path prefix from label",
+			target: labels.FromMap(map[string]string{
+				model.AddressLabel: "localhost:9090",
+				ProfilePathPrefix:  "/bar",
+			}),
+			cfg: &ProfilingConfig{
+				ProcessCPU: ProfilingTarget{
+					Enabled: true,
+					Path:    "/debug/pprof/profile",
+					Delta:   true,
+				},
+				PathPrefix: "/foo",
+			},
+			expected: []labels.Labels{
+				labels.FromMap(map[string]string{
+					ProfilePath:        "/debug/pprof/profile",
+					ProfileName:        "process_cpu",
+					model.AddressLabel: "localhost:9090",
+					ProfilePathPrefix:  "/bar",
+				}),
+			},
+		},
+		{
+			name: "no duplicates",
+			target: labels.Labels{
+				{model.AddressLabel, "localhost:9090"},
+				{ProfilePath, "/debug/pprof/custom_profile"},
+				{ProfileName, "custom_process_cpu"},
+				{ProfilePathPrefix, "/prefix"},
+			},
+			cfg: &ProfilingConfig{
+				ProcessCPU: ProfilingTarget{
+					Enabled: true,
+					Path:    "/debug/pprof/profile",
+					Delta:   true,
+				},
+				PathPrefix: "/foo",
+			},
+			expected: []labels.Labels{
+				{
+					{model.AddressLabel, "localhost:9090"},
+					{ProfileName, "custom_process_cpu"},
+					{ProfilePath, "/debug/pprof/custom_profile"},
+					{ProfilePathPrefix, "/prefix"},
+				},
+			},
+		},
+	}
+	for _, td := range testdata {
+		t.Run(td.name, func(t *testing.T) {
+			actual := LabelsByProfiles(labels.New(td.target...), td.cfg)
+			require.Equal(t, td.expected, actual)
+		})
+	}
 }
