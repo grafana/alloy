@@ -35,15 +35,15 @@ The component starts a new journal reader and fans out log entries to the list o
 
 You can use the following arguments with `loki.source.journal`:
 
-| Name             | Type                 | Description                                                                                            | Default | Required |
-|------------------|----------------------|--------------------------------------------------------------------------------------------------------|---------|----------|
-| `forward_to`     | `list(LogsReceiver)` | List of receivers to send log entries to.                                                              |         | yes      |
-| `format_as_json` | `bool`               | Whether to forward the original journal entry as JSON.                                                 | `false` | no       |
-| `labels`         | `map(string)`        | The labels to apply to every log coming out of the journal.                                            | `{}`    | no       |
-| `matches`        | `string`             | Journal matches to filter. The `+` character is not supported, only logical AND matches will be added. | `""`    | no       |
-| `max_age`        | `duration`           | The oldest relative time from process start that will be read.                                         | `"7h"`  | no       |
-| `path`           | `string`             | Path to a directory to read entries from.                                                              | `""`    | no       |
-| `relabel_rules`  | `RelabelRules`       | Relabeling rules to apply on log entries.                                                              | `{}`    | no       |
+| Name             | Type                 | Description                                                                                       | Default | Required |
+| ---------------- | -------------------- | ------------------------------------------------------------------------------------------------- | ------- | -------- |
+| `forward_to`     | `list(LogsReceiver)` | List of receivers to send log entries to.                                                         |         | yes      |
+| `format_as_json` | `bool`               | Whether to forward the original journal entry as JSON.                                            | `false` | no       |
+| `labels`         | `map(string)`        | The labels to apply to every log coming out of the journal.                                       | `{}`    | no       |
+| `matches`        | `string`             | Journal matches to filter. The `+` character isn't supported, only logical AND matches are added. | `""`    | no       |
+| `max_age`        | `duration`           | The oldest relative time from process start that will be read.                                    | `"7h"`  | no       |
+| `path`           | `string`             | Path to a directory to read entries from.                                                         | `""`    | no       |
+| `relabel_rules`  | `RelabelRules`       | Relabeling rules to apply on log entries.                                                         | `{}`    | no       |
 
 {{< admonition type="note" >}}
 A `job` label is added with the full name of the component `loki.source.journal.LABEL`.
@@ -52,11 +52,11 @@ A `job` label is added with the full name of the component `loki.source.journal.
 When the `format_as_json` argument is true, log messages are passed through as JSON with all of the original fields from the journal entry.
 Otherwise, the log message is taken from the content of the `MESSAGE` field from the journal entry.
 
-When the `path` argument is empty, `/var/log/journal` and `/run/log/journal` will be used for discovering journal entries.
+When the `path` argument is empty, `/var/log/journal` and `/run/log/journal` are used for discovering journal entries.
 
-The `relabel_rules` argument can make use of the `rules` export value from a [loki.relabel][] component to apply one or more relabeling rules to log entries before they're forwarded to the list of receivers in `forward_to`.
+The `relabel_rules` argument can make use of the `rules` export value from a [`loki.relabel`][loki.relabel] component to apply one or more relabeling rules to log entries before they're forwarded to the list of receivers in `forward_to`.
 
-All messages read from the journal include internal labels following the pattern of `__journal_FIELDNAME` and will be dropped before sending to the list of receivers specified in `forward_to`.
+All messages read from the journal include internal labels following the pattern of `__journal_FIELDNAME` and are dropped before sending to the list of receivers specified in `forward_to`.
 To keep these labels, use the `relabel_rules` argument and relabel them to not be prefixed with `__`.
 
 {{< admonition type="note" >}}

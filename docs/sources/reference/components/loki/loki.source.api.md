@@ -61,7 +61,7 @@ The `relabel_rules` field can make use of the `rules` export value from a [`loki
 
 ## Blocks
 
-You can use the following blocks with `loki.source.api`:
+You can use the following block with `loki.source.api`:
 
 | Name           | Description                                        | Required |
 | -------------- | -------------------------------------------------- | -------- |

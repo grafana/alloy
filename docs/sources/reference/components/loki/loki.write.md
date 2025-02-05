@@ -163,13 +163,13 @@ Refer to the [`run` documentation][run] for more information about how to change
 
 The following arguments are supported:
 
-| Name                 | Type       | Description                                                                                                        | Default   | Required |
-| -------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------ | --------- | -------- |
-| `drain_timeout`      | `duration` | Maximum time the WAL drain procedure can take, before being forcefully stopped.                                    | `"30s"`   | no       |
-| `enabled`            | `bool`     | Whether to enable the WAL.                                                                                         | false     | no       |
-| `max_read_frequency` | `duration` | Maximum backoff time in the backup read mechanism.                                                                 | `"1s"`    | no       |
-| `max_segment_age`    | `duration` | Maximum time a WAL segment should be allowed to live. Segments older than this setting will be eventually deleted. | `"1h"`    | no       |
-| `min_read_frequency` | `duration` | Minimum backoff time in the backup read mechanism.                                                                 | `"250ms"` | no       |
+| Name                 | Type       | Description                                                                                                    | Default   | Required |
+| -------------------- | ---------- | -------------------------------------------------------------------------------------------------------------- | --------- | -------- |
+| `drain_timeout`      | `duration` | Maximum time the WAL drain procedure can take, before being forcefully stopped.                                | `"30s"`   | no       |
+| `enabled`            | `bool`     | Whether to enable the WAL.                                                                                     | false     | no       |
+| `max_read_frequency` | `duration` | Maximum backoff time in the backup read mechanism.                                                             | `"1s"`    | no       |
+| `max_segment_age`    | `duration` | Maximum time a WAL segment should be allowed to live. Segments older than this setting are eventually deleted. | `"1h"`    | no       |
+| `min_read_frequency` | `duration` | Minimum backoff time in the backup read mechanism.                                                             | `"250ms"` | no       |
 
 [run]: ../../../cli/run/
 
@@ -236,7 +236,7 @@ loki.write "default" {
 
 `loki.write` uses [snappy](https://en.wikipedia.org/wiki/Snappy_(compression)) for compression.
 
-Any labels that start with `__` will be removed before sending to the endpoint.
+Any labels that start with `__` are removed before sending to the endpoint.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

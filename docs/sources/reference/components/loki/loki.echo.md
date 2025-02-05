@@ -33,7 +33,7 @@ The `loki.echo` component doesn't support any blocks.
 The following fields are exported and can be referenced by other components:
 
 | Name       | Type           | Description                                                   |
-|------------|----------------|---------------------------------------------------------------|
+| ---------- | -------------- | ------------------------------------------------------------- |
 | `receiver` | `LogsReceiver` | A value that other components can use to send log entries to. |
 
 ## Component health

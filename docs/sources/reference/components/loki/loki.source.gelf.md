@@ -39,7 +39,7 @@ GELF logs can be sent uncompressed or compressed with GZIP or ZLIB.
 A `job` label is added with the full name of the component `loki.source.gelf.LABEL`.
 {{< /admonition >}}
 
-The `relabel_rules` argument can make use of the `rules` export from a [loki.relabel][] component to apply one or more relabling rules to log entries before they're forward to the list of receivers specified in `forward_to`.
+The `relabel_rules` argument can make use of the `rules` export from a [`loki.relabel`][loki.relabel] component to apply one or more relabling rules to log entries before they're forward to the list of receivers specified in `forward_to`.
 
 Incoming messages have the following internal labels available:
 
@@ -49,7 +49,7 @@ Incoming messages have the following internal labels available:
 * `__gelf_message_level`: The GELF level as a string.
 
 All labels starting with `__` are removed prior to forwarding log entries.
-To keep these labels, relabel them using a [loki.relabel][] component and pass its `rules` export to the `relabel_rules` argument.
+To keep these labels, relabel them using a [`loki.relabel`][loki.relabel] component and pass its `rules` export to the `relabel_rules` argument.
 
 [loki.relabel]: ../loki.relabel/
 

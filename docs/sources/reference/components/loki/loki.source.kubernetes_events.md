@@ -38,7 +38,7 @@ You can use the following arguments with `loki.source.kubernetes_events`:
 By default, `loki.source.kubernetes_events` watches for events in all namespaces.
 A list of explicit namespaces to watch can be provided in the `namespaces` argument.
 
-By default, the generated log lines will be in the `logfmt` format.
+By default, the generated log lines are in the `logfmt` format.
 Use the `log_format` argument to change it to `json`.
 These formats are also names of LogQL parsers, which can be used for processing the logs.
 

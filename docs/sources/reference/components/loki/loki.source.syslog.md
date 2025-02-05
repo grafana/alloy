@@ -39,7 +39,7 @@ You can use the following arguments with `loki.source.syslog`:
 | `forward_to`    | `list(LogsReceiver)` | List of receivers to send log entries to. |         | yes      |
 | `relabel_rules` | `RelabelRules`       | Relabeling rules to apply on log entries. | "{}"    | no       |
 
-The `relabel_rules` field can make use of the `rules` export value from a [loki.relabel][] component to apply one or more relabeling rules to log entries before they're forwarded to the list of receivers in `forward_to`.
+The `relabel_rules` field can make use of the `rules` export value from a [`loki.relabel`][loki.relabel] component to apply one or more relabeling rules to log entries before they're forwarded to the list of receivers in `forward_to`.
 
 [loki.relabel]: ../loki.relabel/
 
@@ -115,7 +115,7 @@ configuration.
 
 ## Example
 
-This example listens for Syslog messages in valid RFC5424 format over TCP and UDP in the specified ports and forwards them to a `loki.write` component.
+This example listens for syslog messages in valid RFC5424 format over TCP and UDP in the specified ports and forwards them to a `loki.write` component.
 
 ```alloy
 loki.source.syslog "local" {

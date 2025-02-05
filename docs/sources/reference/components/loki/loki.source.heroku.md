@@ -73,16 +73,16 @@ You can use the following blocks with `loki.source.heroku`:
 
 The `labels` map is applied to every message that the component reads.
 
-The following internal labels all prefixed with `__` are available but will be discarded if not relabeled:
+The following internal labels all prefixed with `__` are available but are discarded if not relabeled:
 
 * `__heroku_drain_app`
 * `__heroku_drain_host`
 * `__heroku_drain_log_id`
 * `__heroku_drain_proc`
 
-All URL query parameters will be translated to `__heroku_drain_param_<name>`
+All URL query parameters are translated to `__heroku_drain_param_<name>`
 
-If the `X-Scope-OrgID` header is set it will be translated to `__tenant_id__`
+If the `X-Scope-OrgID` header is set it's translated to `__tenant_id__`
 
 ## Exported fields
 

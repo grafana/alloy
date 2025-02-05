@@ -15,7 +15,7 @@ title: loki.rules.kubernetes
 * You can specify multiple `loki.rules.kubernetes` components by giving them different labels.
 * [Kubernetes label selectors][] can be used to limit the `Namespace` and `PrometheusRule` resources considered during reconciliation.
 * Compatible with the Ruler APIs of Grafana Loki, Grafana Cloud, and Grafana Enterprise Metrics.
-* Compatible with the `PrometheusRule` CRD from the [prometheus-operator][].
+* Compatible with the `PrometheusRule` CRD from the [`prometheus-operator`][prometheus-operator].
 * This component accesses the Kubernetes REST API from [within a Pod][].
 
 {{< admonition type="note" >}}
@@ -41,7 +41,7 @@ loki.rules.kubernetes "<LABEL>" {
 You can use the following arguments with `loki.rules.kubernetes`:
 
 | Name                    | Type       | Description                                                                     | Default | Required |
-|-------------------------|------------|---------------------------------------------------------------------------------|---------|----------|
+| ----------------------- | ---------- | ------------------------------------------------------------------------------- | ------- | -------- |
 | `address`               | `string`   | URL of the Loki ruler.                                                          |         | yes      |
 | `bearer_token_file`     | `string`   | File containing a bearer token to authenticate with.                            |         | no       |
 | `bearer_token`          | `secret`   | Bearer token to authenticate with.                                              |         | no       |
@@ -58,7 +58,7 @@ You can use the following arguments with `loki.rules.kubernetes`:
 * [`authorization`][authorization] block
 * [`basic_auth`][basic_auth] block
 * [`bearer_token_file`][arguments] argument
-* [`bearer_token` ][arguments] argument
+* [`bearer_token`][arguments] argument
 * [`oauth2`][oauth2] block
 
  [arguments]: #arguments
@@ -77,7 +77,7 @@ You should set the prefix to a unique value for each deployment.
 You can use the following blocks with `loki.rules.kubernetes`:
 
 | Block                                                              | Description                                                | Required |
-|--------------------------------------------------------------------|------------------------------------------------------------|----------|
+| ------------------------------------------------------------------ | ---------------------------------------------------------- | -------- |
 | [`authorization`][authorization]                                   | Configure generic authorization to the endpoint.           | no       |
 | [`basic_auth`][basic_auth]                                         | Configure `basic_auth` for authenticating to the endpoint. | no       |
 | [`rule_namespace_selector`][label_selector]                        | Label selector for `Namespace` resources.                  | no       |
@@ -113,7 +113,7 @@ The `rule_selector` and `rule_namespace_selector` blocks describe a Kubernetes l
 The following arguments are supported:
 
 | Name           | Type          | Description                                       | Default | Required |
-|----------------|---------------|---------------------------------------------------|---------|----------|
+| -------------- | ------------- | ------------------------------------------------- | ------- | -------- |
 | `match_labels` | `map(string)` | Label keys and values used to discover resources. | `{}`    | yes      |
 
 When the `match_labels` argument is empty, all resources are matched.
@@ -125,7 +125,7 @@ The `match_expression` block describes a Kubernetes label match expression for r
 The following arguments are supported:
 
 | Name       | Type           | Description                        | Default | Required |
-|------------|----------------|------------------------------------|---------|----------|
+| ---------- | -------------- | ---------------------------------- | ------- | -------- |
 | `key`      | `string`       | The label name to match against.   |         | yes      |
 | `operator` | `string`       | The operator to use when matching. |         | yes      |
 | `values`   | `list(string)` | The values used when matching.     |         | no       |
@@ -173,7 +173,7 @@ Only resources managed by the component are exposed - regardless of how many act
 ## Debug metrics
 
 | Metric Name                                  | Type        | Description                                                              |
-|----------------------------------------------|-------------|--------------------------------------------------------------------------|
+| -------------------------------------------- | ----------- | ------------------------------------------------------------------------ |
 | `loki_rules_config_updates_total`            | `counter`   | Number of times the configuration has been updated.                      |
 | `loki_rules_events_total`                    | `counter`   | Number of events processed, partitioned by event type.                   |
 | `loki_rules_events_failed_total`             | `counter`   | Number of events that failed to be processed, partitioned by event type. |

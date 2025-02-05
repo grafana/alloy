@@ -33,7 +33,7 @@ loki.process "<LABEL>" {
 
 ## Arguments
 
-You can use the following arguments with `loki.process`:
+You can use the following argument with `loki.process`:
 
 | Name         | Type                 | Description                                    | Default | Required |
 | ------------ | -------------------- | ---------------------------------------------- | ------- | -------- |
