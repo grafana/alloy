@@ -176,15 +176,6 @@ func (t *Target) DiscoveredLabels() labels.Labels {
 	return lset
 }
 
-// Clone returns a clone of the target.
-func (t *Target) Clone() *Target {
-	return NewTarget(
-		t.Labels(),
-		t.DiscoveredLabels(),
-		t.Params(),
-	)
-}
-
 // SetDiscoveredLabels sets new DiscoveredLabels.
 func (t *Target) SetDiscoveredLabels(l labels.Labels) {
 	t.mtx.Lock()
