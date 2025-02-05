@@ -232,6 +232,14 @@ func (c QuerySample) tablesFromQuery(digest string, stmt sqlparser.Statement) []
 		for _, side := range []sqlparser.SelectStatement{stmt.Left, stmt.Right} {
 			parsedTables = append(parsedTables, c.tablesFromQuery(digest, side)...)
 		}
+	case *sqlparser.Show:
+		if stmt.HasOnTable() {
+			parsedTables = append(parsedTables, c.parseTableName(stmt.OnTable))
+		}
+	case *sqlparser.DDL:
+		parsedTables = append(parsedTables, c.parseTableName(stmt.Table))
+	case *sqlparser.Begin, *sqlparser.Commit, *sqlparser.Rollback, *sqlparser.Set, *sqlparser.DBDDL:
+		// ignore
 	default:
 		level.Error(c.logger).Log("msg", "unknown statement type", "digest", digest)
 	}
