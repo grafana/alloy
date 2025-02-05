@@ -48,7 +48,7 @@ You can use the following blocks with `loki.write`:
 | `endpoint` > [`tls_config`][tls_config]            | Configure TLS settings for connecting to the endpoint.     | no       |
 | [`wal`][wal]                                       | Write-ahead log configuration.                             | no       |
 
-The `>` symbol indicates deeper levels of nesting.
+The > symbol indicates deeper levels of nesting.
 For example, `endpoint` > `basic_auth` refers to a `basic_auth` block defined inside an `endpoint` block.
 
 [authorization]: #authorization

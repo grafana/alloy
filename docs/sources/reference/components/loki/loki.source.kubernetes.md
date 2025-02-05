@@ -75,7 +75,7 @@ You can use the following blocks with `loki.source.kubernetes`:
 | `client` > [`tls_config`][tls_config]            | Configure TLS settings for connecting to the endpoint.                                      | no       |
 | [`clustering`][clustering]                       | Configure the component for when {{< param "PRODUCT_NAME" >}} is running in clustered mode. | no       |
 
-The `>` symbol indicates deeper levels of nesting.
+The > symbol indicates deeper levels of nesting.
 For example, `client` > `basic_auth` refers to a `basic_auth` block defined inside a `client` block.
 
 [client]: #client

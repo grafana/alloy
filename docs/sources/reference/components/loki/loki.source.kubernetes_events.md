@@ -73,7 +73,7 @@ You can use the following blocks with `loki.source.kubernetes_events`:
 | `client` > `oauth2` > [`tls_config`][tls_config] | Configure TLS settings for connecting to the endpoint.     | no       |
 | `client` > [`tls_config`][]                      | Configure TLS settings for connecting to the endpoint.     | no       |
 
-The `>` symbol indicates deeper levels of nesting.
+The > symbol indicates deeper levels of nesting.
 For example, `client` > `basic_auth` refers to a `basic_auth` block defined inside a `client` block.
 
 [authorization]: #authorization

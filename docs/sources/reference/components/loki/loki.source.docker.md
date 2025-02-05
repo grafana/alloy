@@ -52,7 +52,7 @@ You can use the following blocks with `loki.source.docker`:
 | `client` > `oauth2` > [`tls_config`][tls_config] | Configure TLS settings for connecting to the endpoint.     | no       |
 | `client` > [`tls_config`][tls_config]            | Configure TLS settings for connecting to the endpoint.     | no       |
 
-The `>` symbol indicates deeper levels of nesting.
+The > symbol indicates deeper levels of nesting.
 For example, `client` > `basic_auth` refers to an `basic_auth` block defined inside a `client` block.
 
 These blocks are only applicable when connecting to a Docker daemon over HTTP or HTTPS and has no effect when connecting via a `unix:///` socket

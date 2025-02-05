@@ -52,7 +52,7 @@ You can use the following blocks with `loki.source.syslog`:
 | [`listener`][listener]                  | Configures a listener for IETF Syslog (RFC5424) messages.                   | no       |
 | `listener` > [`tls_config`][tls_config] | Configures TLS settings for connecting to the endpoint for TCP connections. | no       |
 
-The `>` symbol indicates deeper levels of nesting.
+The > symbol indicates deeper levels of nesting.
 For example, `listener` > `tls_config` refers to a `tls_config` block defined inside a `listener` block.
 
 [listener]: #listener

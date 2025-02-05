@@ -49,7 +49,7 @@ You can use the following blocks with `loki.source.gcplog`:
 | `push` > [`grpc`][grpc] | Configures the gRPC server that receives requests when using the `push` mode. | no       |
 | `push` > [`http`][http] | Configures the HTTP server that receives requests when using the `push` mode. | no       |
 
-The `>` symbol indicates deeper levels of nesting.
+The > symbol indicates deeper levels of nesting.
 For example, `push` > `grpc` refers to a `grpc` block defined inside a `push` block.
 
 The `pull` and `push` inner blocks are mutually exclusive.
