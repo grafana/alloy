@@ -36,7 +36,7 @@ Omitted fields take their default values.
 | `direct_connect`             | `boolean` | Whether or not a direct connect should be made. Direct connections are not valid if multiple hosts are specified or an SRV URI is used. | false   | no       |
 | `discovering_mode`           | `boolean` | Wheter or not to enable autodiscover collections.                                                                                       | false   | no       |
 | `tls_basic_auth_config_path` | `string`  | Path to the file having Prometheus TLS config for basic auth. Only enable if you want to use TLS based authentication.                  |         | no       |
-| `compatible_mode` | `boolean`  | Wheter or not to enable Compatible mode to get old mongodb_exporter metric names.        |         | no       |
+| `compatible_mode` | `boolean`  | Whether or not to enable compatible mode to get old `mongodb_exporter` metric names.        |         | no       |
 
 MongoDB node connection URI must be in the [`Standard Connection String Format`](https://docs.mongodb.com/manual/reference/connection-string/#std-label-connections-standard-connection-string-format)
 
