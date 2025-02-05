@@ -83,7 +83,7 @@ The `basic_auth` block configures basic authentication for HTTP(S) Docker daemon
 
 ### `oauth2`
 
-The `oauth2` block configures OAuth2 authorization to use for the Docker daemon.
+The `oauth2` block configures OAuth 2.0 authorization to use for the Docker daemon.
 
 {{< docs/shared lookup="reference/components/oauth2-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
