@@ -54,6 +54,7 @@ Main (unreleased)
 
 - Fixes godeltaprof hiding (renaming `godeltaprof_*` profile names to regular ones). (@korniltsev)
 
+- Change profile handling in `pyroscope.receive_http` and `pyroscope.write` components to use in-memory processing instead of pipes. (@marcsanmi)
 
 v1.6.1
 -----------------
