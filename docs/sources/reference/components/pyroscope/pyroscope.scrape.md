@@ -95,8 +95,13 @@ For example, the `job_name` of `pyroscope.scrape "local" { ... }` will be `"pyro
 
 The list of `targets` can be provided [statically][example_static_targets], [dynamically][example_dynamic_targets], or a [combination of both][example_static_and_dynamic_targets].
 
-The special `__address__` label _must always_ be present and corresponds to the
-`<host>:<port>` that is used for the scrape request.
+The following special labels can change the behavior of `pyroscope.scrape`:
+
+* `__address__` is the special label that _must always_ be present and corresponds to the `<host>:<port>` that is used for the scrape request.
+* `__profile_path__` is the special label that holds the path to the profile endpoint on the target (e.g. "/debug/pprof/allocs").
+* `__profile_path_prefix__` is the special label that holds an optional prefix to prepend to the profile path (e.g. "/mimir-prometheus").
+* `__name__` is the special label that indicates the profile type being collected.
+* `service_name` is a required label that identifies the service being profiled.
 
 Labels starting with a double underscore (`__`) are treated as _internal_, and are removed prior to scraping.
 

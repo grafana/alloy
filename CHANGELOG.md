@@ -38,6 +38,8 @@ Main (unreleased)
 
 - Add support for pushv1.PusherService Connect API in `pyroscope.receive_http`. (@simonswine)
 
+- Add support for path prefixes in `pyroscope.scrape` to allow scraping targets behind a proxy or with custom URL paths. (@korniltsev)
+
 v1.6.1
 -----------------
 
