@@ -10,9 +10,6 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
-
 	jsoniter "github.com/json-iterator/go"
 	"golang.org/x/sys/windows"
 
@@ -64,7 +61,7 @@ type Correlation struct {
 }
 
 // formatLine format a Loki log line from a windows event.
-func formatLine(cfg *scrapeconfig.WindowsEventsTargetConfig, event win_eventlog.Event, l log.Logger) (string, error) {
+func formatLine(cfg *scrapeconfig.WindowsEventsTargetConfig, event win_eventlog.Event) (string, error) {
 	structuredEvent := Event{
 		Source:        event.Source.Name,
 		Channel:       event.Channel,
@@ -117,13 +114,8 @@ func formatLine(cfg *scrapeconfig.WindowsEventsTargetConfig, event win_eventlog.
 			ProcessID: event.Execution.ProcessID,
 			ThreadID:  event.Execution.ThreadID,
 		}
-		_, _, processName, err := win_eventlog.GetFromSnapProcess(event.Execution.ProcessID)
-		newProcessName, err := GetProcessName(event.Execution.ProcessID)
 
-		if processName != newProcessName {
-			level.Error(l).Log("msg", "process names are different", "legacy", processName, "new", newProcessName)
-		}
-
+		processName, err := GetProcessName(event.Execution.ProcessID)
 		if err == nil {
 			structuredEvent.Execution.ProcessName = processName
 		}
@@ -132,12 +124,12 @@ func formatLine(cfg *scrapeconfig.WindowsEventsTargetConfig, event win_eventlog.
 }
 
 func GetProcessName(pid uint32) (string, error) {
-	// PID 4 is always System
+	// PID 4 is always "System"
 	if pid == 4 {
 		return "System", nil
 	}
 
-	// PID 0 is always Idle Process
+	// PID 0 is always "Idle Process"
 	if pid == 0 {
 		return "Idle Process", nil
 	}
