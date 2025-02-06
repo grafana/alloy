@@ -20,6 +20,8 @@ Main (unreleased)
 
 - Add `go_table_fallback` arg to `pyroscope.ebpf` (@korniltsev)
 
+- Memory optimizations in `pyroscope.scrape` (@korniltsev)
+
 - Add the possibility to export span events as logs in `otelcol.connector.spanlogs`. (@steve-hb)
 
 - Add json format support for log export via faro receiver (@ravishankar15)
