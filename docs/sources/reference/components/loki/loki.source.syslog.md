@@ -17,8 +17,6 @@ The component starts a new syslog listener for each of the given `config`
 blocks and fans out incoming entries to the list of receivers in `forward_to`.
 
 Multiple `loki.source.syslog` components can be specified by giving them different labels.
-[RFC5424]: https://www.rfc-editor.org/rfc/rfc5424
-[RFC3164]: https://www.rfc-editor.org/rfc/rfc3164
 
 ## Usage
 
