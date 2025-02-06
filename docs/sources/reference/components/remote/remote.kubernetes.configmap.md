@@ -3,34 +3,36 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/remote/rem
 aliases:
   - ../remote.kubernetes.configmap/ # /docs/alloy/latest/reference/components/remote.kubernetes.configmap/
 description: Learn about remote.kubernetes.configmap
+labels:
+  stage: general-availability
 title: remote.kubernetes.configmap
 ---
 
-# remote.kubernetes.configmap
+# `remote.kubernetes.configmap`
 
 `remote.kubernetes.configmap` reads a ConfigMap from the Kubernetes API server and exposes its data for other components to consume.
 
-This can be useful anytime {{< param "PRODUCT_NAME" >}} needs data from a ConfigMap that is not directly mounted to the {{< param "PRODUCT_NAME" >}} pod.
+This can be useful anytime {{< param "PRODUCT_NAME" >}} needs data from a ConfigMap that is not directly mounted to the {{< param "PRODUCT_NAME" >}} Pod.
 
 ## Usage
 
 ```alloy
-remote.kubernetes.configmap "LABEL" {
-  namespace = "NAMESPACE_OF_CONFIGMAP"
-  name = "NAME_OF_CONFIGMAP"
+remote.kubernetes.configmap "<LABEL>" {
+  namespace = "<NAMESPACE_OF_CONFIGMAP>"
+  name = "<NAME_OF_CONFIGMAP>"
 }
 ```
 
 ## Arguments
 
-The following arguments are supported:
+You can use the following arguments with `remote.kubernetes.configmap`:
 
-Name             | Type       | Description                                            | Default | Required
------------------|------------|--------------------------------------------------------|---------|---------
-`namespace`      | `string`   | Kubernetes namespace containing the desired ConfigMap. |         | yes
-`name`           | `string`   | Name of the Kubernetes ConfigMap                       |         | yes
-`poll_frequency` | `duration` | Frequency to poll the Kubernetes API.                  | `"1m"`  | no
-`poll_timeout`   | `duration` | Timeout when polling the Kubernetes API.               | `"15s"` | no
+| Name             | Type       | Description                                            | Default | Required |
+| ---------------- | ---------- | ------------------------------------------------------ | ------- | -------- |
+| `name`           | `string`   | Name of the Kubernetes ConfigMap                       |         | yes      |
+| `namespace`      | `string`   | Kubernetes namespace containing the desired ConfigMap. |         | yes      |
+| `poll_frequency` | `duration` | Frequency to poll the Kubernetes API.                  | `"1m"`  | no       |
+| `poll_timeout`   | `duration` | Timeout when polling the Kubernetes API.               | `"15s"` | no       |
 
 When this component performs a poll operation, it requests the ConfigMap data from the Kubernetes API.
 A poll is triggered by the following:
@@ -44,27 +46,27 @@ After a successful poll, all data is exported with the same field names as the s
 
 ## Blocks
 
-The following blocks are supported inside the definition of `remote.kubernetes.configmap`:
+You can use the following blocks with `remote.kubernetes.configmap`:
 
-Hierarchy                    | Block             | Description                                                  | Required
------------------------------|-------------------|--------------------------------------------------------------|---------
-client                       | [client][]        | Configures Kubernetes client used to find Probes.            | no
-client > basic_auth          | [basic_auth][]    | Configure basic authentication to the Kubernetes API.        | no
-client > authorization       | [authorization][] | Configure generic authorization to the Kubernetes API.       | no
-client > oauth2              | [oauth2][]        | Configure OAuth2 for authenticating to the Kubernetes API.   | no
-client > oauth2 > tls_config | [tls_config][]    | Configure TLS settings for connecting to the Kubernetes API. | no
-client > tls_config          | [tls_config][]    | Configure TLS settings for connecting to the Kubernetes API. | no
+| Block                                            | Description                                                   | Required |
+| ------------------------------------------------ | ------------------------------------------------------------- | -------- |
+| [`client`][client]                               | Configures Kubernetes client used to find Probes.             | no       |
+| `client` > [`authorization`][authorization]      | Configure generic authorization to the Kubernetes API.        | no       |
+| `client` > [`basic_auth`][basic_auth]            | Configure basic authentication to the Kubernetes API.         | no       |
+| `client` > [`oauth2`][oauth2]                    | Configure OAuth 2.0 for authenticating to the Kubernetes API. | no       |
+| `client` > `oauth2` > [`tls_config`][tls_config] | Configure TLS settings for connecting to the Kubernetes API.  | no       |
+| `client` > [`tls_config`][tls_config]            | Configure TLS settings for connecting to the Kubernetes API.  | no       |
 
-The `>` symbol indicates deeper levels of nesting.
-For example, `client > basic_auth` refers to a `basic_auth` block defined inside a `client` block.
+The > symbol indicates deeper levels of nesting.
+For example, `client` > `basic_auth` refers to a `basic_auth` block defined inside a `client` block.
 
-[client]: #client-block
-[basic_auth]: #basic_auth-block
-[authorization]: #authorization-block
-[oauth2]: #oauth2-block
-[tls_config]: #tls_config-block
+[client]: #client
+[authorization]: #authorization
+[basic_auth]: #basic_auth
+[oauth2]: #oauth2
+[tls_config]: #tls_config
 
-### client block
+### `client`
 
 The `client` block configures the Kubernetes client used to discover Probes.
 If the `client` block isn't provided, the default in-cluster configuration with the service account of the running {{< param "PRODUCT_NAME" >}} pod is used.

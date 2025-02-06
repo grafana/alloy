@@ -3,6 +3,8 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/remote/rem
 aliases:
   - ../remote.s3/ # /docs/alloy/latest/reference/components/remote.s3/
 description: Learn about remote.s3
+labels:
+  stage: general-availability
 title: remote.s3
 ---
 

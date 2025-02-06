@@ -3,6 +3,8 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/remote/rem
 aliases:
   - ../remote.kubernetes.secret/ # /docs/alloy/latest/reference/components/remote.kubernetes.secret/
 description: Learn about remote.kubernetes.secret
+labels:
+  stage: general-availability
 title: remote.kubernetes.secret
 ---
 

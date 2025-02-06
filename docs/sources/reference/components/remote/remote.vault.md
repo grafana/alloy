@@ -3,6 +3,8 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/remote/rem
 aliases:
   - ../remote.vault/ # /docs/alloy/latest/reference/components/remote.vault/
 description: Learn about remote.vault
+labels:
+  stage: general-availability
 title: remote.vault
 ---
 
