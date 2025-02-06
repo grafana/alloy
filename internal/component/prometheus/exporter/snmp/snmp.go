@@ -132,7 +132,8 @@ func (w WalkParams) Convert() map[string]snmp_config.WalkParams {
 // DefaultArguments holds non-zero default options for Arguments when it is
 // unmarshaled from Alloy.
 var DefaultArguments = Arguments{
-	SnmpConcurrency: 1,
+	SnmpConcurrency:    1,
+	ConfigMergeStategy: "replace",
 }
 
 // SetToDefault implements syntax.Defaulter.
@@ -141,12 +142,13 @@ func (a *Arguments) SetToDefault() {
 }
 
 type Arguments struct {
-	ConfigFile      string                    `alloy:"config_file,attr,optional"`
-	SnmpConcurrency int                       `alloy:"concurrency,attr,optional"`
-	Config          alloytypes.OptionalSecret `alloy:"config,attr,optional"`
-	Targets         TargetBlock               `alloy:"target,block,optional"`
-	WalkParams      WalkParams                `alloy:"walk_param,block,optional"`
-	ConfigStruct    snmp_config.Config
+	ConfigFile         string                    `alloy:"config_file,attr,optional"`
+	SnmpConcurrency    int                       `alloy:"concurrency,attr,optional"`
+	Config             alloytypes.OptionalSecret `alloy:"config,attr,optional"`
+	ConfigMergeStategy string                    `alloy:"config_merge_strategy,attr,optional"`
+	Targets            TargetBlock               `alloy:"target,block,optional"`
+	WalkParams         WalkParams                `alloy:"walk_param,block,optional"`
+	ConfigStruct       snmp_config.Config
 
 	// New way of passing targets. This allows the component to receive targets from other components.
 	TargetsList TargetsList `alloy:"targets,attr,optional"`
@@ -218,6 +220,10 @@ func (a *Arguments) UnmarshalAlloy(f func(interface{}) error) error {
 		return errors.New("config and config_file are mutually exclusive")
 	}
 
+	if a.ConfigMergeStategy != "replace" && a.ConfigMergeStategy != "merge" {
+		return errors.New("config_merge_strategy must be `replace` or `merge`")
+	}
+
 	if len(a.Targets) != 0 && len(a.TargetsList) != 0 {
 		return fmt.Errorf("the block `target` and the attribute `targets` are mutually exclusive")
 	}
@@ -248,11 +254,12 @@ func (a *Arguments) Convert() *snmp_exporter.Config {
 		targets = a.TargetsList.Convert()
 	}
 	return &snmp_exporter.Config{
-		SnmpConfigFile:  a.ConfigFile,
-		SnmpConcurrency: a.SnmpConcurrency,
-		SnmpTargets:     targets,
-		WalkParams:      a.WalkParams.Convert(),
-		SnmpConfig:      a.ConfigStruct,
+		SnmpConfigFile:          a.ConfigFile,
+		SnmpConfigMergeStrategy: a.ConfigMergeStategy,
+		SnmpConcurrency:         a.SnmpConcurrency,
+		SnmpTargets:             targets,
+		WalkParams:              a.WalkParams.Convert(),
+		SnmpConfig:              a.ConfigStruct,
 	}
 }
 
