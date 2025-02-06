@@ -77,7 +77,9 @@ func TestAlloyConfig(t *testing.T) {
 				url = "http://0.0.0.0:11111/api/v1/write"
 			}
 			`,
-			expectedCfg: expectedCfg(nil),
+			expectedCfg: expectedCfg(func(c *config.Config) {
+				c.RemoteWriteConfigs[0].ProtobufMessage = config.RemoteWriteProtoMsgV1
+			}),
 		},
 		{
 			testName: "RelabelConfig",
@@ -116,6 +118,7 @@ func TestAlloyConfig(t *testing.T) {
 				c.RemoteWriteConfigs[0].WriteRelabelConfigs = []*relabel.Config{
 					relabelCfg,
 				}
+				c.RemoteWriteConfigs[0].ProtobufMessage = config.RemoteWriteProtoMsgV1
 			}),
 		},
 		{
@@ -126,7 +129,7 @@ func TestAlloyConfig(t *testing.T) {
 
 				azuread {
 					managed_identity {
-						client_id = "00000000-0000-0000-0000-000000000000"
+						client_id = "f47ac10b-58cc-0372-8567-0e02b2c3d479"
 					}
 				}
 			}`,
@@ -134,9 +137,10 @@ func TestAlloyConfig(t *testing.T) {
 				c.RemoteWriteConfigs[0].AzureADConfig = &azuread.AzureADConfig{
 					Cloud: "AzurePublic",
 					ManagedIdentity: &azuread.ManagedIdentityConfig{
-						ClientID: "00000000-0000-0000-0000-000000000000",
+						ClientID: "f47ac10b-58cc-0372-8567-0e02b2c3d479",
 					},
 				}
+				c.RemoteWriteConfigs[0].ProtobufMessage = config.RemoteWriteProtoMsgV1
 			}),
 		},
 		{
@@ -148,7 +152,7 @@ func TestAlloyConfig(t *testing.T) {
 				azuread {
 					cloud = "AzureChina"
 					managed_identity {
-						client_id = "00000000-0000-0000-0000-000000000000"
+						client_id = "f47ac10b-58cc-0372-8567-0e02b2c3d479"
 					}
 				}
 			}`,
@@ -156,9 +160,10 @@ func TestAlloyConfig(t *testing.T) {
 				c.RemoteWriteConfigs[0].AzureADConfig = &azuread.AzureADConfig{
 					Cloud: "AzureChina",
 					ManagedIdentity: &azuread.ManagedIdentityConfig{
-						ClientID: "00000000-0000-0000-0000-000000000000",
+						ClientID: "f47ac10b-58cc-0372-8567-0e02b2c3d479",
 					},
 				}
+				c.RemoteWriteConfigs[0].ProtobufMessage = config.RemoteWriteProtoMsgV1
 			}),
 		},
 		{
@@ -171,6 +176,7 @@ func TestAlloyConfig(t *testing.T) {
 			}`,
 			expectedCfg: expectedCfg(func(c *config.Config) {
 				c.RemoteWriteConfigs[0].SigV4Config = &sigv4.SigV4Config{}
+				c.RemoteWriteConfigs[0].ProtobufMessage = config.RemoteWriteProtoMsgV1
 			}),
 		},
 		{
@@ -195,6 +201,7 @@ func TestAlloyConfig(t *testing.T) {
 					Profile:   "example_profile",
 					RoleARN:   "example_role_arn",
 				}
+				c.RemoteWriteConfigs[0].ProtobufMessage = config.RemoteWriteProtoMsgV1
 			}),
 		},
 		{
@@ -235,7 +242,7 @@ func TestAlloyConfig(t *testing.T) {
 					}
 				}
 			}`,
-			errorMsg: "the provided Azure Managed Identity client_id provided is invalid",
+			errorMsg: "the provided Azure Managed Identity client_id is invalid",
 		},
 		{
 			// Make sure the squashed HTTPClientConfig Validate function is being utilized correctly

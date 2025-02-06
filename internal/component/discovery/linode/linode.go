@@ -31,6 +31,7 @@ type Arguments struct {
 	RefreshInterval  time.Duration           `alloy:"refresh_interval,attr,optional"`
 	Port             int                     `alloy:"port,attr,optional"`
 	TagSeparator     string                  `alloy:"tag_separator,attr,optional"`
+	Region           string                  `alloy:"region,attr,optional"`
 	HTTPClientConfig config.HTTPClientConfig `alloy:",squash"`
 }
 
@@ -39,6 +40,7 @@ var DefaultArguments = Arguments{
 	TagSeparator:    ",",
 	Port:            80,
 	RefreshInterval: 60 * time.Second,
+	Region:          "",
 
 	HTTPClientConfig: config.DefaultHTTPClientConfig,
 }
@@ -61,6 +63,7 @@ func (args Arguments) Convert() discovery.DiscovererConfig {
 		RefreshInterval:  model.Duration(args.RefreshInterval),
 		Port:             args.Port,
 		TagSeparator:     args.TagSeparator,
+		Region:           args.Region,
 		HTTPClientConfig: *(args.HTTPClientConfig.Convert()),
 	}
 }
