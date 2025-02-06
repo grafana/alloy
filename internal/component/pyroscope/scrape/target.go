@@ -28,7 +28,6 @@ import (
 	"github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
 	"github.com/prometheus/prometheus/model/labels"
-	"github.com/prometheus/prometheus/model/relabel"
 )
 
 // TargetHealth describes the health state of a target.
@@ -259,8 +258,7 @@ const (
 // populateLabels builds a label set from the given label set and scrape configuration.
 // It returns a label set before relabeling was applied as the second return value.
 // Returns the original discovered label set found before relabelling was applied if the target is dropped during relabeling.
-func populateLabels(lset labels.Labels, cfg Arguments) (res, orig labels.Labels, err error) {
-	// Copy labels into the labelset for the target if they are not set already.
+func populateLabels(lset labels.Labels, cfg Arguments) (res labels.Labels, err error) {
 	scrapeLabels := []labels.Label{
 		{Name: model.JobLabel, Value: cfg.JobName},
 		{Name: model.SchemeLabel, Value: cfg.Scheme},
@@ -268,9 +266,7 @@ func populateLabels(lset labels.Labels, cfg Arguments) (res, orig labels.Labels,
 	lb := labels.NewBuilder(lset)
 
 	for _, l := range scrapeLabels {
-		if lv := lset.Get(l.Name); lv == "" {
-			lb.Set(l.Name, l.Value)
-		}
+		setIfNotPresentAndNotEmpty(lb, l.Name, l.Value)
 	}
 	// Encode scrape query parameters as labels.
 	for k, v := range cfg.Params {
@@ -279,17 +275,10 @@ func populateLabels(lset labels.Labels, cfg Arguments) (res, orig labels.Labels,
 		}
 	}
 
-	preRelabelLabels := lb.Labels()
-	// todo(ctovena): add relabeling after pprof discovery.
-	// lset = relabel.Process(preRelabelLabels, cfg.RelabelConfigs...)
-	lset, keep := relabel.Process(preRelabelLabels)
+	lset = lb.Labels() // todo do not create labels in the middle, just use builder and create final labels just once
 
-	// Check if the target was dropped.
-	if !keep {
-		return nil, preRelabelLabels, nil
-	}
 	if v := lset.Get(model.AddressLabel); v == "" {
-		return nil, nil, errors.New("no address")
+		return nil, errors.New("no address")
 	}
 
 	lb = labels.NewBuilder(lset)
@@ -316,13 +305,13 @@ func populateLabels(lset labels.Labels, cfg Arguments) (res, orig labels.Labels,
 		case "https":
 			addr = addr + ":443"
 		default:
-			return nil, nil, fmt.Errorf("invalid scheme: %q", cfg.Scheme)
+			return nil, fmt.Errorf("invalid scheme: %q", cfg.Scheme)
 		}
 		lb.Set(model.AddressLabel, addr)
 	}
 
 	if err := config.CheckTargetAddress(model.LabelValue(addr)); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	// Meta labels are deleted after relabelling. Other internal labels propagate to
@@ -346,11 +335,11 @@ func populateLabels(lset labels.Labels, cfg Arguments) (res, orig labels.Labels,
 	for _, l := range res {
 		// Check label values are valid, drop the target if not.
 		if !model.LabelValue(l.Value).IsValid() {
-			return nil, nil, fmt.Errorf("invalid label value for %q: %q", l.Name, l.Value)
+			return nil, fmt.Errorf("invalid label value for %q: %q", l.Name, l.Value)
 		}
 	}
 
-	return res, lset, nil
+	return res, nil
 }
 
 // targetsFromGroup builds targets based on the given TargetGroup, config and target types map.
@@ -381,7 +370,8 @@ func targetsFromGroup(group *targetgroup.Group, cfg Arguments, targetTypes map[s
 					profType = label.Value
 				}
 			}
-			lbls, origLabels, err := populateLabels(lset, cfg)
+			origLabels := lset
+			lbls, err := populateLabels(lset, cfg)
 			if err != nil {
 				return nil, fmt.Errorf("instance %d in group %s: %s", i, group, err)
 			}

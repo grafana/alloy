@@ -67,22 +67,22 @@ func TestScrapePool(t *testing.T) {
 			expected: []*Target{
 				NewTarget(
 					labels.FromStrings("instance", "localhost:8080", "foo", "bar", model.AddressLabel, "localhost:8080", model.MetricNameLabel, pprofMutex, model.SchemeLabel, "http", ProfilePath, "/debug/pprof/mutex", serviceNameLabel, "k"),
-					labels.FromStrings("foo", "bar", model.AddressLabel, "localhost:8080", model.MetricNameLabel, pprofMutex, model.SchemeLabel, "http", ProfilePath, "/debug/pprof/mutex", serviceNameK8SLabel, "k"),
+					labels.FromStrings("foo", "bar", model.AddressLabel, "localhost:8080", model.MetricNameLabel, pprofMutex, ProfilePath, "/debug/pprof/mutex", serviceNameK8SLabel, "k"),
 					url.Values{},
 				),
 				NewTarget(
 					labels.FromStrings("instance", "localhost:8080", "foo", "bar", model.AddressLabel, "localhost:8080", model.MetricNameLabel, pprofProcessCPU, model.SchemeLabel, "http", ProfilePath, "/debug/pprof/profile", serviceNameLabel, "k"),
-					labels.FromStrings("foo", "bar", model.AddressLabel, "localhost:8080", model.MetricNameLabel, pprofProcessCPU, model.SchemeLabel, "http", ProfilePath, "/debug/pprof/profile", serviceNameK8SLabel, "k"),
+					labels.FromStrings("foo", "bar", model.AddressLabel, "localhost:8080", model.MetricNameLabel, pprofProcessCPU, ProfilePath, "/debug/pprof/profile", serviceNameK8SLabel, "k"),
 					url.Values{"seconds": []string{"14"}},
 				),
 				NewTarget(
 					labels.FromStrings("instance", "localhost:9090", "foo", "bar", model.AddressLabel, "localhost:9090", model.MetricNameLabel, pprofMutex, model.SchemeLabel, "http", ProfilePath, "/debug/pprof/mutex", serviceNameLabel, "s"),
-					labels.FromStrings("foo", "bar", model.AddressLabel, "localhost:9090", model.MetricNameLabel, pprofMutex, model.SchemeLabel, "http", ProfilePath, "/debug/pprof/mutex", serviceNameLabel, "s"),
+					labels.FromStrings("foo", "bar", model.AddressLabel, "localhost:9090", model.MetricNameLabel, pprofMutex, ProfilePath, "/debug/pprof/mutex", serviceNameLabel, "s"),
 					url.Values{},
 				),
 				NewTarget(
 					labels.FromStrings("instance", "localhost:9090", "foo", "bar", model.AddressLabel, "localhost:9090", model.MetricNameLabel, pprofProcessCPU, model.SchemeLabel, "http", ProfilePath, "/debug/pprof/profile", serviceNameLabel, "s"),
-					labels.FromStrings("foo", "bar", model.AddressLabel, "localhost:9090", model.MetricNameLabel, pprofProcessCPU, model.SchemeLabel, "http", ProfilePath, "/debug/pprof/profile", serviceNameLabel, "s"),
+					labels.FromStrings("foo", "bar", model.AddressLabel, "localhost:9090", model.MetricNameLabel, pprofProcessCPU, ProfilePath, "/debug/pprof/profile", serviceNameLabel, "s"),
 					url.Values{"seconds": []string{"14"}},
 				),
 			},
@@ -99,12 +99,12 @@ func TestScrapePool(t *testing.T) {
 			expected: []*Target{
 				NewTarget(
 					labels.FromStrings("instance", "localhost:9090", model.AddressLabel, "localhost:9090", model.MetricNameLabel, pprofMutex, model.SchemeLabel, "http", ProfilePath, "/debug/pprof/mutex", serviceNameLabel, "s"),
-					labels.FromStrings(model.AddressLabel, "localhost:9090", model.MetricNameLabel, pprofMutex, model.SchemeLabel, "http", ProfilePath, "/debug/pprof/mutex", serviceNameLabel, "s"),
+					labels.FromStrings(model.AddressLabel, "localhost:9090", model.MetricNameLabel, pprofMutex, ProfilePath, "/debug/pprof/mutex", serviceNameLabel, "s"),
 					url.Values{},
 				),
 				NewTarget(
 					labels.FromStrings("instance", "localhost:9090", model.AddressLabel, "localhost:9090", model.MetricNameLabel, pprofProcessCPU, model.SchemeLabel, "http", ProfilePath, "/debug/pprof/profile", serviceNameLabel, "s"),
-					labels.FromStrings(model.AddressLabel, "localhost:9090", model.MetricNameLabel, pprofProcessCPU, model.SchemeLabel, "http", ProfilePath, "/debug/pprof/profile", serviceNameLabel, "s"),
+					labels.FromStrings(model.AddressLabel, "localhost:9090", model.MetricNameLabel, pprofProcessCPU, ProfilePath, "/debug/pprof/profile", serviceNameLabel, "s"),
 					url.Values{"seconds": []string{"14"}},
 				),
 			},
@@ -121,12 +121,12 @@ func TestScrapePool(t *testing.T) {
 			expected: []*Target{
 				NewTarget(
 					labels.FromStrings("instance", "localhost:9090", model.AddressLabel, "localhost:9090", model.MetricNameLabel, pprofMutex, model.SchemeLabel, "http", ProfilePath, "/debug/pprof/mutex", serviceNameLabel, "s"),
-					labels.FromStrings("__type__", "foo", model.AddressLabel, "localhost:9090", model.MetricNameLabel, pprofMutex, model.SchemeLabel, "http", ProfilePath, "/debug/pprof/mutex", serviceNameLabel, "s"),
+					labels.FromStrings("__type__", "foo", model.AddressLabel, "localhost:9090", model.MetricNameLabel, pprofMutex, ProfilePath, "/debug/pprof/mutex", serviceNameLabel, "s"),
 					url.Values{},
 				),
 				NewTarget(
 					labels.FromStrings("instance", "localhost:9090", model.AddressLabel, "localhost:9090", model.MetricNameLabel, pprofProcessCPU, model.SchemeLabel, "http", ProfilePath, "/debug/pprof/profile", serviceNameLabel, "s"),
-					labels.FromStrings("__type__", "foo", model.AddressLabel, "localhost:9090", model.MetricNameLabel, pprofProcessCPU, model.SchemeLabel, "http", ProfilePath, "/debug/pprof/profile", serviceNameLabel, "s"),
+					labels.FromStrings("__type__", "foo", model.AddressLabel, "localhost:9090", model.MetricNameLabel, pprofProcessCPU, ProfilePath, "/debug/pprof/profile", serviceNameLabel, "s"),
 					url.Values{"seconds": []string{"14"}},
 				),
 			},
