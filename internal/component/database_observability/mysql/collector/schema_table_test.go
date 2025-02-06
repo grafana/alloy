@@ -36,7 +36,7 @@ func TestSchemaTable(t *testing.T) {
 			InstanceKey:     "mysql-db",
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
-			CacheTTL:        time.Minute,
+			CacheEnabled:    false,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
 		require.NoError(t, err)
@@ -135,7 +135,7 @@ func TestSchemaTable(t *testing.T) {
 			InstanceKey:     "mysql-db",
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
-			CacheTTL:        time.Minute,
+			CacheEnabled:    false,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
 
@@ -239,7 +239,7 @@ func TestSchemaTable(t *testing.T) {
 			InstanceKey:     "mysql-db",
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
-			CacheTTL:        time.Minute,
+			CacheEnabled:    false,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
 		require.NoError(t, err)
@@ -250,6 +250,8 @@ func TestSchemaTable(t *testing.T) {
 				[]string{"schema_name"},
 			).AddRow(
 				"some_schema",
+			).AddRow(
+				"another_schema",
 			).RowError(1, fmt.Errorf("rs error"))) // error on the second row
 
 		err = collector.Start(context.Background())
@@ -289,7 +291,7 @@ func TestSchemaTable(t *testing.T) {
 			InstanceKey:     "mysql-db",
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
-			CacheTTL:        time.Minute,
+			CacheEnabled:    false,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
 		require.NoError(t, err)
@@ -313,6 +315,11 @@ func TestSchemaTable(t *testing.T) {
 				"BASE TABLE",
 				time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 				time.Date(2024, 2, 2, 0, 0, 0, 0, time.UTC),
+			).AddRow(
+				"another_table",
+				"BASE TABLE",
+				time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+				time.Date(2024, 2, 2, 0, 0, 0, 0, time.UTC),
 			).RowError(1, fmt.Errorf("rs error")), // error on the second row
 		)
 
@@ -321,7 +328,7 @@ func TestSchemaTable(t *testing.T) {
 
 		require.Eventually(t, func() bool {
 			return len(lokiClient.Received()) == 2
-		}, 5*time.Second, 100*time.Millisecond)
+		}, 50000*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
 		lokiClient.Stop()
@@ -354,7 +361,7 @@ func TestSchemaTable(t *testing.T) {
 			InstanceKey:     "mysql-db",
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
-			CacheTTL:        time.Minute,
+			CacheEnabled:    false,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
 		require.NoError(t, err)

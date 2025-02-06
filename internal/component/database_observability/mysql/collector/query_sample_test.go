@@ -553,6 +553,12 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 					"select * from some_table where id = 1",
 					"2024-01-01T00:00:00.000Z",
 					"1000",
+				).AddRow(
+					"def456",
+					"another_schema",
+					"select * from another_table where id = 2",
+					"2024-01-01T00:00:00.000Z",
+					"1000",
 				).RowError(1, fmt.Errorf("rs error")), // error on second row
 			)
 
