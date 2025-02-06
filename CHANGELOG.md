@@ -35,6 +35,8 @@ Main (unreleased)
   - Add namespace to `connection_info` metric (@cristiangreco)
   - Added table columns parsing (@cristiagreco)
 
+- Add `config_merge_strategy` in `prometheus.exporter.snmp` to optionally merge custom snmp config with embedded config instead of replacing. Useful for providing SNMP auths. (@v-zhuravlev)
+
 ### Bugfixes
 
 - Fix log rotation for Windows in `loki.source.file` by refactoring the component to use the runner pkg. This should also reduce CPU consumption when tailing a lot of files in a dynamic environment. (@wildum)
