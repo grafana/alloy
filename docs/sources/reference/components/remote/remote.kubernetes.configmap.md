@@ -69,56 +69,56 @@ For example, `client` > `basic_auth` refers to a `basic_auth` block defined insi
 ### `client`
 
 The `client` block configures the Kubernetes client used to discover Probes.
-If the `client` block isn't provided, the default in-cluster configuration with the service account of the running {{< param "PRODUCT_NAME" >}} pod is used.
+If the `client` block isn't provided, the default in-cluster configuration with the service account of the running {{< param "PRODUCT_NAME" >}} Pod is used.
 
 The following arguments are supported:
 
-Name                     | Type                | Description                                                   | Default | Required
--------------------------|---------------------|---------------------------------------------------------------|---------|---------
-`api_server`             | `string`            | URL of the Kubernetes API server.                             |         | no
-`kubeconfig_file`        | `string`            | Path of the `kubeconfig` file to use for connecting to Kubernetes. |    | no
-`bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.          |         | no
-`bearer_token`           | `secret`            | Bearer token to authenticate with.                            |         | no
-`enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                      | `true`  | no
-`follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.  | `true`  | no
-`proxy_url`              | `string`            | HTTP proxy to send requests through.                          |         | no
-`no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. | | no
-`proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.         | `false` | no
-`proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests. |         | no
+| Name                     | Type                | Description                                                                                      | Default | Required |
+| ------------------------ | ------------------- | ------------------------------------------------------------------------------------------------ | ------- | -------- |
+| `api_server`             | `string`            | URL of the Kubernetes API server.                                                                |         | no       |
+| `bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                             |         | no       |
+| `bearer_token`           | `secret`            | Bearer token to authenticate with.                                                               |         | no       |
+| `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`  | no       |
+| `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`  | no       |
+| `kubeconfig_file`        | `string`            | Path of the `kubeconfig` file to use for connecting to Kubernetes.                               |         | no       |
+| `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |         | no       |
+| `proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |         | no       |
+| `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false` | no       |
+| `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |         | no       |
 
  At most, one of the following can be provided:
- - [`bearer_token` argument][client].
- - [`bearer_token_file` argument][client].
- - [`basic_auth` block][basic_auth].
- - [`authorization` block][authorization].
- - [`oauth2` block][oauth2].
+
+* [`authorization`][authorization] block
+* [`basic_auth`][basic_auth] block
+* [`bearer_token_file`][client] argument
+* [`bearer_token`][client] argument
+* [`oauth2`][oauth2] block
 
 {{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### basic_auth block
-
-{{< docs/shared lookup="reference/components/basic-auth-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
-
-### authorization block
+### `authorization`
 
 {{< docs/shared lookup="reference/components/authorization-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### oauth2 block
+### `basic_auth`
+
+{{< docs/shared lookup="reference/components/basic-auth-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `oauth2`
 
 {{< docs/shared lookup="reference/components/oauth2-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### tls_config block
+### `tls_config`
 
 {{< docs/shared lookup="reference/components/tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
-
 
 ## Exported fields
 
 The following fields are exported and can be referenced by other components:
 
-Name   | Type          | Description
--------|---------------|--------------------------------------------------
-`data` | `map(string)` | Data from the ConfigMap obtained from Kubernetes.
+| Name   | Type          | Description                                       |
+| ------ | ------------- | ------------------------------------------------- |
+| `data` | `map(string)` | Data from the ConfigMap obtained from Kubernetes. |
 
 The `data` field contains a mapping from field names to values.
 
@@ -128,11 +128,11 @@ Instances of `remote.kubernetes.configmap` report as healthy if the most recent 
 
 ## Debug information
 
-`remote.kubernetes.configmap` does not expose any component-specific debug information.
+`remote.kubernetes.configmap` doesn't expose any component-specific debug information.
 
 ## Debug metrics
 
-`remote.kubernetes.configmap` does not expose any component-specific debug metrics.
+`remote.kubernetes.configmap` doesn't expose any component-specific debug metrics.
 
 ## Example
 
