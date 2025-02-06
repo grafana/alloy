@@ -78,7 +78,7 @@ Name                     | Type          | Description                          
 -------------------------|---------------|-------------------------------------------------------------------------------|-----------|---------
 `address`                | `string`      | The `<host:port>` address to listen to for syslog messages.                   |           | yes
 `protocol`               | `string`      | The protocol to listen to for syslog messages. Must be either `tcp` or `udp`. | `tcp`     | no
-`idle_timeout`           | `duration`    | The idle timeout for tcp connections.                                         | `"120s"`  | no
+`idle_timeout`           | `duration`    | The idle timeout for TCP connections.                                         | `"120s"`  | no
 `label_structured_data`  | `bool`        | Whether to translate syslog structured data to loki labels.                   | `false`   | no
 `labels`                 | `map(string)` | The labels to associate with each received syslog record.                     | `{}`      | no
 `use_incoming_timestamp` | `bool`        | Whether to set the timestamp to the incoming syslog record timestamp.         | `false`   | no
