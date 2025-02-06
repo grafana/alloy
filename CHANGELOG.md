@@ -55,6 +55,8 @@ Main (unreleased)
 
 - Change profile handling in `pyroscope.receive_http` and `pyroscope.write` components to use in-memory processing instead of pipes. (@marcsanmi)
 
+- (_Experimental_) Fixed several out-of-memory bugs in `loki.secretfilter`. (@kelnage)
+
 
 v1.6.1
 -----------------
