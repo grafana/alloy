@@ -34,6 +34,7 @@ Main (unreleased)
   - Better error handling for components (@cristiangreco)
   - Add namespace to `connection_info` metric (@cristiangreco)
   - Added table columns parsing (@cristiagreco)
+  - Add enable/disable collector configurability to `database_observability.mysql`. This removes the `query_samples_enabled` argument, now configurable via enable/disable collector. (@fridgepoet)
 
 ### Bugfixes
 
@@ -48,13 +49,6 @@ Main (unreleased)
 - Reduce CPU usage of `loki.source.windowsevent` by up to 60% by updating the bookmark file every 10 seconds instead of after every event. (@wildum)
 
 - Add support for pushv1.PusherService Connect API in `pyroscope.receive_http`. (@simonswine)
-
-- Add support for path prefixes in `pyroscope.scrape` to allow scraping targets behind a proxy or with custom URL paths. (@korniltsev)
-
-- Fixes godeltaprof hiding (renaming `godeltaprof_*` profile names to regular ones). (@korniltsev)
-
-- Change profile handling in `pyroscope.receive_http` and `pyroscope.write` components to use in-memory processing instead of pipes. (@marcsanmi)
-
 
 v1.6.1
 -----------------
