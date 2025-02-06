@@ -273,17 +273,17 @@ func (c *Component) Update(args component.Arguments) error {
 func (c *Component) baseTarget() (discovery.Target, error) {
 	data, err := c.opts.GetServiceData(http_service.ServiceName)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get HTTP information: %w", err)
+		return discovery.EmptyTarget, fmt.Errorf("failed to get HTTP information: %w", err)
 	}
 	httpData := data.(http_service.Data)
 
-	return discovery.Target{
+	return discovery.NewTargetFromMap(map[string]string{
 		model.AddressLabel:     httpData.MemoryListenAddr,
 		model.SchemeLabel:      "http",
 		model.MetricsPathLabel: path.Join(httpData.HTTPPathForComponent(c.opts.ID), "metrics"),
 		"instance":             defaultInstance(),
 		"job":                  "beyla",
-	}, nil
+	}), nil
 }
 
 func (c *Component) reportUnhealthy(err error) {

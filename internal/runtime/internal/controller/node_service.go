@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/runtime/equality"
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/vm"
@@ -104,7 +105,7 @@ func (sn *ServiceNode) Evaluate(scope *vm.Scope) error {
 	// since services expect a non-pointer.
 	argsCopyValue := reflect.ValueOf(argsPointer).Elem().Interface()
 
-	if reflect.DeepEqual(sn.args, argsCopyValue) {
+	if equality.DeepEqual(sn.args, argsCopyValue) {
 		// Ignore arguments which haven't changed. This reduces the cost of calling
 		// evaluate for services where evaluation is expensive (e.g., if
 		// re-evaluating requires re-starting some internal logic).

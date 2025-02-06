@@ -7,14 +7,15 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/go-kit/log"
+
 	"github.com/grafana/alloy/internal/component"
 	filedetector "github.com/grafana/alloy/internal/filedetector"
+	"github.com/grafana/alloy/internal/runtime/equality"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax/vm"
@@ -84,7 +85,7 @@ func (im *ImportFile) Evaluate(scope *vm.Scope) error {
 		return fmt.Errorf("decoding configuration: %w", err)
 	}
 
-	if reflect.DeepEqual(im.args, arguments) {
+	if equality.DeepEqual(im.args, arguments) {
 		return nil
 	}
 	im.args = arguments

@@ -332,7 +332,7 @@ func (c *Component) distributeTargets(
 
 	newLocalTargets := newDistTargets.LocalTargets()
 	c.targetsGauge.Set(float64(len(newLocalTargets)))
-	promNewTargets := c.componentTargetsToPromTargetGroups(jobName, newLocalTargets)
+	promNewTargets := discovery.ComponentTargetsToPromTargetGroups(jobName, newLocalTargets)
 
 	movedTargets := newDistTargets.MovedToRemoteInstance(oldDistributedTargets)
 	c.movedTargetsCounter.Add(float64(len(movedTargets)))
@@ -479,34 +479,27 @@ func (c *Component) DebugInfo() interface{} {
 	}
 }
 
-func (c *Component) componentTargetsToPromTargetGroups(jobName string, tgs []discovery.Target) map[string][]*targetgroup.Group {
-	promGroup := &targetgroup.Group{Source: jobName}
-	for _, tg := range tgs {
-		promGroup.Targets = append(promGroup.Targets, convertLabelSet(tg))
-	}
-
-	return map[string][]*targetgroup.Group{jobName: {promGroup}}
-}
-
 func (c *Component) populatePromLabels(targets []discovery.Target, jobName string, args Arguments) []*scrape.Target {
+	// We need to call scrape.TargetsFromGroup to reuse the rather complex logic of populating labels on targets.
+	allTargets := make([]*scrape.Target, 0, len(targets))
 	lb := labels.NewBuilder(labels.EmptyLabels())
-	promTargets, errs := scrape.TargetsFromGroup(
-		c.componentTargetsToPromTargetGroups(jobName, targets)[jobName][0],
-		getPromScrapeConfigs(c.opts.ID, args),
-		false,                                /* noDefaultScrapePort - always false in this component */
-		make([]*scrape.Target, len(targets)), /* targets slice to reuse */
-		lb,
-	)
-	for _, err := range errs {
-		level.Warn(c.opts.Logger).Log("msg", "error while populating labels of targets using prom config", "err", err)
+	groups := discovery.ComponentTargetsToPromTargetGroups(jobName, targets)
+	for _, tgs := range groups {
+		for _, tg := range tgs {
+			promTargets, errs := scrape.TargetsFromGroup(
+				tg,
+				getPromScrapeConfigs(jobName, args),
+				false,                                /* noDefaultScrapePort - always false in this component */
+				make([]*scrape.Target, len(targets)), /* targets slice to reuse */
+				lb,
+			)
+			lb.Reset(labels.EmptyLabels())
+			for _, err := range errs {
+				level.Warn(c.opts.Logger).Log("msg", "error while populating labels of targets using prom config", "err", err)
+			}
+			allTargets = append(allTargets, promTargets...)
+		}
 	}
-	return promTargets
-}
 
-func convertLabelSet(tg discovery.Target) model.LabelSet {
-	lset := make(model.LabelSet, len(tg))
-	for k, v := range tg {
-		lset[model.LabelName(k)] = model.LabelValue(v)
-	}
-	return lset
+	return allTargets
 }

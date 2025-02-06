@@ -8,7 +8,6 @@ import (
 	"time"
 
 	config_util "github.com/prometheus/common/config"
-	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
 
 	"github.com/grafana/alloy/internal/component/pyroscope"
@@ -322,7 +321,7 @@ func (c *Component) Run(ctx context.Context) error {
 			// NOTE(@tpaschalis) First approach, manually building the
 			// 'clustered' targets implementation every time.
 			ct := discovery.NewDistributedTargets(clusteringEnabled, c.cluster, tgs)
-			promTargets := c.componentTargetsToProm(jobName, ct.LocalTargets())
+			promTargets := discovery.ComponentTargetsToPromTargetGroups(jobName, ct.LocalTargets())
 
 			select {
 			case targetSetsChan <- promTargets:
@@ -372,23 +371,6 @@ func (c *Component) NotifyClusterChange() {
 	case c.reloadTargets <- struct{}{}:
 	default:
 	}
-}
-
-func (c *Component) componentTargetsToProm(jobName string, tgs []discovery.Target) map[string][]*targetgroup.Group {
-	promGroup := &targetgroup.Group{Source: jobName}
-	for _, tg := range tgs {
-		promGroup.Targets = append(promGroup.Targets, convertLabelSet(tg))
-	}
-
-	return map[string][]*targetgroup.Group{jobName: {promGroup}}
-}
-
-func convertLabelSet(tg discovery.Target) model.LabelSet {
-	lset := make(model.LabelSet, len(tg))
-	for k, v := range tg {
-		lset[model.LabelName(k)] = model.LabelValue(v)
-	}
-	return lset
 }
 
 // DebugInfo implements component.DebugComponent.
