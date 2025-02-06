@@ -109,9 +109,9 @@ The following blocks are supported inside the definition of
 | `extra_query_matchers` > [`matcher`][matcher]                      | A label matcher to add to query.                           | no       |
 | [`oauth2`][oauth2]                                                 | Configure OAuth 2.0 for authenticating to the endpoint.    | no       |
 | `oauth2` > [`tls_config`][tls_config]                              | Configure TLS settings for connecting to the endpoint.     | no       |
-| [`rule_namespace_selector`][label_selector][]                      | Label selector for `Namespace` resources.                  | no       |
+| [`rule_namespace_selector`][label_selector]                        | Label selector for `Namespace` resources.                  | no       |
 | `rule_namespace_selector` > [`match_expression`][match_expression] | Label match expression for `Namespace` resources.          | no       |
-| [`rule_selector`][label_selector][]                                | Label selector for `PrometheusRule` resources.             | no       |
+| [`rule_selector`][label_selector]                                  | Label selector for `PrometheusRule` resources.             | no       |
 | `rule_selector` > [`match_expression`][match_expression]           | Label match expression for `PrometheusRule` resources.     | no       |
 | [`tls_config`][tls_config]                                         | Configure TLS settings for connecting to the endpoint.     | no       |
 
