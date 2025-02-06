@@ -6,7 +6,6 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"testing"
@@ -25,6 +24,7 @@ import (
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/api/model/labelset"
 )
 
 // TestForwardsProfilesIngest verifies the behavior of the
@@ -44,13 +44,14 @@ func TestForwardsProfilesIngest(t *testing.T) {
 		appendableErrors []error
 		expectedStatus   int
 		expectedForwards int
+		expectedLabels   map[string]string
 	}{
 		{
 			name:             "Small profile",
 			profileSize:      1024, // 1KB
 			method:           "POST",
 			path:             "/ingest",
-			queryParams:      "name=test_app_1&from=1234567890&until=1234567900",
+			queryParams:      "name=test_app&from=1234567890&until=1234567900",
 			headers:          map[string]string{"Content-Type": "application/octet-stream"},
 			appendableErrors: []error{nil, nil},
 			expectedStatus:   http.StatusOK,
@@ -61,7 +62,7 @@ func TestForwardsProfilesIngest(t *testing.T) {
 			profileSize:      1024 * 1024, // 1MB
 			method:           "POST",
 			path:             "/ingest",
-			queryParams:      "name=test_app_2&from=1234567891&until=1234567901&custom=param1",
+			queryParams:      "name=test_app&from=1234567891&until=1234567901&custom=param1",
 			headers:          map[string]string{"X-Scope-OrgID": "1234"},
 			appendableErrors: []error{nil},
 			expectedStatus:   http.StatusOK,
@@ -72,7 +73,7 @@ func TestForwardsProfilesIngest(t *testing.T) {
 			profileSize:      1024,
 			method:           "GET",
 			path:             "/ingest",
-			queryParams:      "name=test_app_3&from=1234567892&until=1234567902",
+			queryParams:      "name=test_app&from=1234567892&until=1234567902",
 			headers:          map[string]string{},
 			appendableErrors: []error{nil, nil},
 			expectedStatus:   http.StatusMethodNotAllowed,
@@ -94,7 +95,7 @@ func TestForwardsProfilesIngest(t *testing.T) {
 			profileSize:      1024,
 			method:           "POST",
 			path:             "/invalid",
-			queryParams:      "name=test_app_4&from=1234567893&until=1234567903",
+			queryParams:      "name=test_app&from=1234567893&until=1234567903",
 			headers:          map[string]string{"Content-Type": "application/octet-stream"},
 			appendableErrors: []error{nil, nil},
 			expectedStatus:   http.StatusNotFound,
@@ -105,7 +106,7 @@ func TestForwardsProfilesIngest(t *testing.T) {
 			profileSize:      2048,
 			method:           "POST",
 			path:             "/ingest",
-			queryParams:      "name=test_app_5&from=1234567894&until=1234567904&scenario=all_fail",
+			queryParams:      "name=test_app&from=1234567894&until=1234567904&scenario=all_fail",
 			headers:          map[string]string{"Content-Type": "application/octet-stream", "X-Test": "fail-all"},
 			appendableErrors: []error{fmt.Errorf("error1"), fmt.Errorf("error2")},
 			expectedStatus:   http.StatusInternalServerError,
@@ -116,11 +117,41 @@ func TestForwardsProfilesIngest(t *testing.T) {
 			profileSize:      4096,
 			method:           "POST",
 			path:             "/ingest",
-			queryParams:      "name=test_app_6&from=1234567895&until=1234567905&scenario=partial_failure",
+			queryParams:      "name=test_app&from=1234567895&until=1234567905&scenario=partial_failure",
 			headers:          map[string]string{"X-Custom-ID": "test-6"},
 			appendableErrors: []error{fmt.Errorf("error"), nil},
 			expectedStatus:   http.StatusInternalServerError,
 			expectedForwards: 2,
+		},
+		{
+			name:             "Valid labels are parsed and forwarded",
+			profileSize:      1024,
+			method:           "POST",
+			path:             "/ingest",
+			queryParams:      "name=test.app{env=prod,region=us-east}",
+			headers:          map[string]string{"Content-Type": "application/octet-stream"},
+			appendableErrors: []error{nil, nil},
+			expectedStatus:   http.StatusOK,
+			expectedForwards: 2,
+			expectedLabels: map[string]string{
+				"__name__": "test.app",
+				"env":      "prod",
+				"region":   "us-east",
+			},
+		},
+		{
+			name:             "Invalid labels still forward profile",
+			profileSize:      1024,
+			method:           "POST",
+			path:             "/ingest",
+			queryParams:      "name=test.app{invalid-label-syntax}",
+			headers:          map[string]string{"Content-Type": "application/octet-stream"},
+			appendableErrors: []error{nil, nil},
+			expectedStatus:   http.StatusOK,
+			expectedForwards: 2,
+			expectedLabels: map[string]string{
+				"__name__": "test.app", // Only __name__ is preserved
+			},
 		},
 	}
 
@@ -136,7 +167,7 @@ func TestForwardsProfilesIngest(t *testing.T) {
 			require.Equal(t, tt.expectedForwards, forwardedCount, "Unexpected number of forwards")
 
 			if tt.expectedForwards > 0 {
-				verifyForwardedProfiles(t, appendables, testProfile, tt.headers, tt.queryParams)
+				verifyForwardedProfiles(t, appendables, testProfile, tt.headers, tt.queryParams, tt.expectedLabels)
 			}
 		})
 	}
@@ -296,16 +327,29 @@ func verifyForwardedProfiles(
 	expectedProfile []byte,
 	expectedHeaders map[string]string,
 	expectedQueryParams string,
+	expectedLabels map[string]string,
 ) {
 	for i, app := range appendables {
 		testApp, ok := app.(*testAppender)
 		require.True(t, ok, "Appendable is not a testAppender")
 
+		// Verify labels if name parameter exists and is valid
+		if nameParam := testApp.lastProfile.URL.Query().Get("name"); nameParam != "" {
+			ls, err := labelset.Parse(nameParam)
+			if err == nil {
+				require.Equal(t, ls.Labels(), testApp.lastProfile.Labels.Map(),
+					"Labels mismatch for appendable %d", i)
+			}
+		}
+
+		if expectedLabels != nil {
+			require.Equal(t, expectedLabels, testApp.lastProfile.Labels.Map(),
+				"Labels mismatch for appendable %d", i)
+		}
+
 		if testApp.lastProfile != nil {
 			// Verify profile body
-			body, err := io.ReadAll(testApp.lastProfile.Body)
-			require.NoError(t, err, "Failed to read profile body for appendable %d", i)
-			require.Equal(t, expectedProfile, body, "Profile mismatch for appendable %d", i)
+			require.Equal(t, expectedProfile, testApp.lastProfile.RawBody, "Profile mismatch for appendable %d", i)
 
 			// Verify headers
 			for key, value := range expectedHeaders {
@@ -439,21 +483,13 @@ func (a *testAppender) Append(_ context.Context, lbls labels.Labels, samples []*
 }
 
 func (a *testAppender) AppendIngest(_ context.Context, profile *pyroscope.IncomingProfile) error {
-	var buf bytes.Buffer
-	tee := io.TeeReader(profile.Body, &buf)
-
 	newProfile := &pyroscope.IncomingProfile{
-		Body:    io.NopCloser(&buf),
+		RawBody: profile.RawBody,
 		Headers: profile.Headers,
 		URL:     profile.URL,
+		Labels:  profile.Labels,
 	}
 	a.lastProfile = newProfile
-
-	_, err := io.Copy(io.Discard, tee)
-	if err != nil {
-		return err
-	}
-
 	return a.appendErr
 }
 

@@ -22,7 +22,9 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/internal/fanoutconsumer"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/lazycollector"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/lazyconsumer"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/livedebuggingconsumer"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/scheduler"
+	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/util/zapadapter"
 )
 
@@ -76,11 +78,17 @@ type Connector struct {
 
 	sched     *scheduler.Scheduler
 	collector *lazycollector.Collector
+
+	liveDebuggingConsumer *livedebuggingconsumer.Consumer
+	debugDataPublisher    livedebugging.DebugDataPublisher
+
+	args Arguments
 }
 
 var (
 	_ component.Component       = (*Connector)(nil)
 	_ component.HealthComponent = (*Connector)(nil)
+	_ component.LiveDebugging   = (*Connector)(nil)
 )
 
 // New creates a new Alloy component which encapsulates an OpenTelemetry
@@ -90,6 +98,11 @@ var (
 // The registered component must be registered to export the
 // otelcol.ConsumerExports type, otherwise New will panic.
 func New(opts component.Options, f otelconnector.Factory, args Arguments) (*Connector, error) {
+	debugDataPublisher, err := opts.GetServiceData(livedebugging.ServiceName)
+	if err != nil {
+		return nil, err
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 
 	consumer := lazyconsumer.NewPaused(ctx)
@@ -114,8 +127,10 @@ func New(opts component.Options, f otelconnector.Factory, args Arguments) (*Conn
 		factory:  f,
 		consumer: consumer,
 
-		sched:     scheduler.NewWithPauseCallbacks(opts.Logger, consumer.Pause, consumer.Resume),
-		collector: collector,
+		liveDebuggingConsumer: livedebuggingconsumer.New(debugDataPublisher.(livedebugging.DebugDataPublisher), opts.ID),
+		debugDataPublisher:    debugDataPublisher.(livedebugging.DebugDataPublisher),
+		sched:                 scheduler.NewWithPauseCallbacks(opts.Logger, consumer.Pause, consumer.Resume),
+		collector:             collector,
 	}
 	if err := p.Update(args); err != nil {
 		return nil, err
@@ -133,12 +148,12 @@ func (p *Connector) Run(ctx context.Context) error {
 // configuration for OpenTelemetry Collector connector configuration and manage
 // the underlying OpenTelemetry Collector connector.
 func (p *Connector) Update(args component.Arguments) error {
-	pargs := args.(Arguments)
+	p.args = args.(Arguments)
 
 	host := scheduler.NewHost(
 		p.opts.Logger,
-		scheduler.WithHostExtensions(pargs.Extensions()),
-		scheduler.WithHostExporters(pargs.Exporters()),
+		scheduler.WithHostExtensions(p.args.Extensions()),
+		scheduler.WithHostExporters(p.args.Exporters()),
 	)
 
 	reg := prometheus.NewRegistry()
@@ -149,7 +164,7 @@ func (p *Connector) Update(args component.Arguments) error {
 		return err
 	}
 
-	metricsLevel, err := pargs.DebugMetricsConfig().Level.Convert()
+	metricsLevel, err := p.args.DebugMetricsConfig().Level.Convert()
 	if err != nil {
 		return err
 	}
@@ -171,12 +186,14 @@ func (p *Connector) Update(args component.Arguments) error {
 		},
 	}
 
-	connectorConfig, err := pargs.Convert()
+	connectorConfig, err := p.args.Convert()
 	if err != nil {
 		return err
 	}
 
-	next := pargs.NextConsumers()
+	next := p.args.NextConsumers()
+
+	liveDebuggingActive := p.debugDataPublisher.IsActive(livedebugging.ComponentID(p.opts.ID))
 
 	// Create instances of the connector from our factory for each of our
 	// supported telemetry signals.
@@ -186,14 +203,18 @@ func (p *Connector) Update(args component.Arguments) error {
 	var metricsConnector otelconnector.Metrics
 	var logsConnector otelconnector.Logs
 
-	switch pargs.ConnectorType() {
+	switch p.args.ConnectorType() {
 	case ConnectorTracesToMetrics:
 		if len(next.Traces) > 0 || len(next.Logs) > 0 {
 			return errors.New("this connector can only output metrics")
 		}
 
 		if len(next.Metrics) > 0 {
-			nextMetrics := fanoutconsumer.Metrics(next.Metrics)
+			metrics := next.Metrics
+			if liveDebuggingActive {
+				metrics = append(metrics, p.liveDebuggingConsumer)
+			}
+			nextMetrics := fanoutconsumer.Metrics(metrics)
 			tracesConnector, err = p.factory.CreateTracesToMetrics(p.ctx, settings, connectorConfig, nextMetrics)
 			if err != nil && !errors.Is(err, pipeline.ErrSignalNotSupported) {
 				return err
@@ -217,4 +238,8 @@ func (p *Connector) Update(args component.Arguments) error {
 // CurrentHealth implements component.HealthComponent.
 func (p *Connector) CurrentHealth() component.Health {
 	return p.sched.CurrentHealth()
+}
+
+func (p *Connector) LiveDebugging(_ int) {
+	p.Update(p.args)
 }

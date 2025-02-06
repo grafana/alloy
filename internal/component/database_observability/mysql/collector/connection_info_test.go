@@ -16,9 +16,9 @@ func TestConnectionInfo(t *testing.T) {
 	defer goleak.VerifyNone(t)
 
 	const baseExpectedMetrics = `
-	# HELP connection_info Information about the connection
-	# TYPE connection_info gauge
-	connection_info{db_instance_identifier="%s",provider_name="%s",region="%s"} 1
+	# HELP database_observability_connection_info Information about the connection
+	# TYPE database_observability_connection_info gauge
+	database_observability_connection_info{db_instance_identifier="%s",provider_name="%s",region="%s"} 1
 `
 
 	testCases := []struct {
