@@ -63,10 +63,10 @@ func (tg *scrapePool) sync(groups []*targetgroup.Group) {
 			level.Error(tg.logger).Log("msg", "creating targets failed", "err", err)
 			continue
 		}
-		for _, t := range targets {
-			if t.publicLabelsCount > 0 {
-				actives = append(actives, t)
-			}
+		if actives == nil {
+			actives = targets
+		} else { // in practice we only have one group
+			actives = append(actives, targets...)
 		}
 	}
 

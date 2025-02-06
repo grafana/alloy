@@ -45,8 +45,7 @@ const (
 // Target refers to a singular HTTP or HTTPS endpoint.
 type Target struct {
 	// All labels of this target - public and private
-	allLabels         labels.Labels
-	publicLabelsCount int
+	allLabels labels.Labels
 	// Additional URL parameters that are part of the target URL.
 	params url.Values
 	hash   uint64
@@ -89,12 +88,11 @@ func NewTarget(lbls labels.Labels, params url.Values) *Target {
 	_, _ = h.Write([]byte(url))
 
 	return &Target{
-		allLabels:         lbls,
-		url:               url,
-		hash:              h.Sum64(),
-		publicLabelsCount: len(publicLabels),
-		params:            params,
-		health:            HealthUnknown,
+		allLabels: lbls,
+		url:       url,
+		hash:      h.Sum64(),
+		params:    params,
+		health:    HealthUnknown,
 	}
 }
 
