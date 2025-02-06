@@ -35,7 +35,7 @@ func TestLoadSNMPConfig(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cfg, err := LoadSNMPConfig(tt.cfg.SnmpConfigFile, &tt.cfg.SnmpConfig)
+			cfg, err := LoadSNMPConfig(tt.cfg.SnmpConfigFile, &tt.cfg.SnmpConfig, tt.cfg.SnmpConfigMergeStrategy)
 			require.NoError(t, err)
 
 			require.Equal(t, tt.expectedNumModules, len(cfg.Modules))

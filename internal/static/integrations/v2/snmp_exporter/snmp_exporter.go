@@ -44,7 +44,8 @@ func (c *Config) Identifier(globals integrations_v2.Globals) (string, error) {
 
 // NewIntegration creates a new SNMP integration.
 func (c *Config) NewIntegration(log log.Logger, globals integrations_v2.Globals) (integrations_v2.Integration, error) {
-	snmpCfg, err := snmp_exporter.LoadSNMPConfig(c.SnmpConfigFile, &c.SnmpConfig)
+	// 'replace'' corresponds to classic snmp integration behavior
+	snmpCfg, err := snmp_exporter.LoadSNMPConfig(c.SnmpConfigFile, &c.SnmpConfig, "replace")
 	if err != nil {
 		return nil, err
 	}
