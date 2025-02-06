@@ -19,6 +19,7 @@ import (
 	"hash/fnv"
 	"net"
 	"net/url"
+	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
@@ -118,8 +119,9 @@ func urlFromTarget(lbls labels.Labels, params url.Values) string {
 	return (&url.URL{
 		Scheme:   lbls.Get(model.SchemeLabel),
 		Host:     lbls.Get(model.AddressLabel),
+		Path:     filepath.Join(lbls.Get(ProfilePathPrefix), lbls.Get(ProfilePath)), // faster than URL.JoinPath
 		RawQuery: newParams.Encode(),
-	}).JoinPath(lbls.Get(ProfilePathPrefix), lbls.Get(ProfilePath)).String()
+	}).String()
 }
 
 func (t *Target) String() string {
