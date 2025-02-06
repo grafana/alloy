@@ -20,6 +20,10 @@ This component may generate false positives or redact too much.
 Don't rely solely on this component to redact sensitive information.
 {{< /admonition >}}
 
+{{< admonition type="note" >}}
+This component operates on log lines and doesn't scan labels or other metadata.
+{{< /admonition >}}
+
 [gitleaks]: https://github.com/gitleaks/gitleaks/blob/master/config/gitleaks.toml
 
 ## Usage
@@ -104,7 +108,7 @@ The following fields are exported and can be referenced by other components:
 
 ## Example
 
-This example shows how to use `loki.secretfilter` to redact secrets from log entries before forwarding them to a Loki receiver.
+This example shows how to use `loki.secretfilter` to redact secrets from log lines before forwarding them to a Loki receiver.
 It uses a custom redaction string that will include the secret type and its hash.
 
 ```alloy

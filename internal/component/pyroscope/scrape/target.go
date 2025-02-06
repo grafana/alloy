@@ -64,23 +64,21 @@ type Target struct {
 // NewTarget creates a reasonably configured target for querying.
 func NewTarget(lbls, discoveredLabels labels.Labels, params url.Values) *Target {
 	publicLabels := make(labels.Labels, 0, len(lbls))
-	for _, l := range lbls {
+	for i, l := range lbls {
 		if strings.HasPrefix(l.Name, model.ReservedLabelPrefix) {
+			// the fact that godeltaprof was used scraping should not be user visible
+			if l.Name == model.MetricNameLabel {
+				switch l.Value {
+				case pprofGoDeltaProfMemory:
+					lbls[i].Value = pprofMemory
+				case pprofGoDeltaProfBlock:
+					lbls[i].Value = pprofBlock
+				case pprofGoDeltaProfMutex:
+					lbls[i].Value = pprofMutex
+				}
+			}
 			continue
 		}
-
-		// the fact that godeltaprof was used scraping should not be user visible
-		if l.Name == pprofGoDeltaProfMemory {
-			switch l.Value {
-			case pprofGoDeltaProfMemory:
-				l.Value = pprofMemory
-			case pprofGoDeltaProfBlock:
-				l.Value = pprofBlock
-			case pprofGoDeltaProfMutex:
-				l.Value = pprofMutex
-			}
-		}
-
 		publicLabels = append(publicLabels, l)
 	}
 	url := urlFromTarget(lbls, params)
@@ -123,9 +121,8 @@ func urlFromTarget(lbls labels.Labels, params url.Values) string {
 	return (&url.URL{
 		Scheme:   lbls.Get(model.SchemeLabel),
 		Host:     lbls.Get(model.AddressLabel),
-		Path:     lbls.Get(ProfilePath),
 		RawQuery: newParams.Encode(),
-	}).String()
+	}).JoinPath(lbls.Get(ProfilePathPrefix), lbls.Get(ProfilePath)).String()
 }
 
 func (t *Target) String() string {
@@ -177,15 +174,6 @@ func (t *Target) DiscoveredLabels() labels.Labels {
 	return lset
 }
 
-// Clone returns a clone of the target.
-func (t *Target) Clone() *Target {
-	return NewTarget(
-		t.Labels(),
-		t.DiscoveredLabels(),
-		t.Params(),
-	)
-}
-
 // SetDiscoveredLabels sets new DiscoveredLabels.
 func (t *Target) SetDiscoveredLabels(l labels.Labels) {
 	t.mtx.Lock()
@@ -233,12 +221,15 @@ func (t *Target) Health() TargetHealth {
 // LabelsByProfiles returns the labels for a given ProfilingConfig.
 func LabelsByProfiles(lset labels.Labels, c *ProfilingConfig) []labels.Labels {
 	res := []labels.Labels{}
+
 	add := func(profileType string, cfgs ...ProfilingTarget) {
 		for _, p := range cfgs {
 			if p.Enabled {
-				l := lset.Copy()
-				l = append(l, labels.Label{Name: ProfilePath, Value: p.Path}, labels.Label{Name: ProfileName, Value: profileType})
-				res = append(res, l)
+				lb := labels.NewBuilder(lset)
+				setIfNotPresentAndNotEmpty(lb, ProfilePath, p.Path)
+				setIfNotPresentAndNotEmpty(lb, ProfileName, profileType)
+				setIfNotPresentAndNotEmpty(lb, ProfilePathPrefix, c.PathPrefix)
+				res = append(res, lb.Labels())
 			}
 		}
 	}
@@ -259,6 +250,7 @@ func (ts Targets) Swap(i, j int)      { ts[i], ts[j] = ts[j], ts[i] }
 
 const (
 	ProfilePath         = "__profile_path__"
+	ProfilePathPrefix   = "__profile_path_prefix__"
 	ProfileName         = "__name__"
 	serviceNameLabel    = "service_name"
 	serviceNameK8SLabel = "__meta_kubernetes_pod_annotation_pyroscope_io_service_name"
@@ -395,7 +387,7 @@ func targetsFromGroup(group *targetgroup.Group, cfg Arguments, targetTypes map[s
 				return nil, nil, fmt.Errorf("instance %d in group %s: %s", i, group, err)
 			}
 			// This is a dropped target, according to the current return behaviour of populateLabels
-			if lbls == nil && origLabels != nil {
+			if lbls == nil && origLabels != nil { //todo remove this branch and relabeling
 				// ensure we get the full url path for dropped targets
 				params := cfg.Params
 				if params == nil {
@@ -455,4 +447,14 @@ func inferServiceName(lset labels.Labels) string {
 		return swarmService
 	}
 	return "unspecified"
+}
+
+func setIfNotPresentAndNotEmpty(b *labels.Builder, k, v string) {
+	if b.Get(k) != "" {
+		return
+	}
+	if v == "" {
+		return
+	}
+	b.Set(k, v)
 }

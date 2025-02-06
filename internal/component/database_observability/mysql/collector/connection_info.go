@@ -28,8 +28,9 @@ type ConnectionInfo struct {
 
 func NewConnectionInfo(args ConnectionInfoArguments) (*ConnectionInfo, error) {
 	infoMetric := prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "connection_info",
-		Help: "Information about the connection",
+		Namespace: "database_observability",
+		Name:      "connection_info",
+		Help:      "Information about the connection",
 	}, []string{"provider_name", "region", "db_instance_identifier"})
 
 	args.Registry.MustRegister(infoMetric)

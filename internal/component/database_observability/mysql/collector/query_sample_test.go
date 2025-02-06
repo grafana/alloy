@@ -203,6 +203,7 @@ func TestQuerySample(t *testing.T) {
 			}},
 			logs: []string{
 				`level=info msg="query samples fetched" op="query_sample" instance="mysql-db" schema="some_schema" digest="abc123" query_type="" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="alter table some_table"`,
+				`level=info msg="table name parsed" op="query_parsed_table_name" instance="mysql-db" schema="some_schema" digest="abc123" table="some_table"`,
 			},
 		},
 		{
@@ -344,6 +345,46 @@ func TestQuerySample(t *testing.T) {
 				`level=info msg="table name parsed" op="query_parsed_table_name" instance="mysql-db" schema="some_schema" digest="abc123" table="employees_eu"`,
 			},
 		},
+		{
+			name: "show create table (table name is not parsed)",
+			rows: [][]driver.Value{{
+				"abc123",
+				"some_schema",
+				"SHOW CREATE TABLE some_table",
+				"2024-01-01T00:00:00.000Z",
+				"1000",
+			}},
+			logs: []string{
+				`level=info msg="query samples fetched" op="query_sample" instance="mysql-db" schema="some_schema" digest="abc123" query_type="" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="show create table"`,
+			},
+		},
+		{
+			name: "show variables",
+			rows: [][]driver.Value{{
+				"abc123",
+				"some_schema",
+				"SHOW VARIABLES LIKE 'version'",
+				"2024-01-01T00:00:00.000Z",
+				"1000",
+			}},
+			logs: []string{
+				`level=info msg="query samples fetched" op="query_sample" instance="mysql-db" schema="some_schema" digest="abc123" query_type="" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="show variables"`,
+			},
+		},
+		{
+			name: "drop table",
+			rows: [][]driver.Value{{
+				"abc123",
+				"some_schema",
+				"DROP TABLE IF EXISTS some_table",
+				"2024-01-01T00:00:00.000Z",
+				"1000",
+			}},
+			logs: []string{
+				`level=info msg="query samples fetched" op="query_sample" instance="mysql-db" schema="some_schema" digest="abc123" query_type="" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="drop table if exists some_table"`,
+				`level=info msg="table name parsed" op="query_parsed_table_name" instance="mysql-db" schema="some_schema" digest="abc123" table="some_table"`,
+			},
+		},
 	}
 
 	for _, tc := range testcases {
@@ -397,6 +438,7 @@ func TestQuerySample(t *testing.T) {
 			require.NoError(t, err)
 
 			lokiEntries := lokiClient.Received()
+			require.Equal(t, len(tc.logs), len(lokiEntries))
 			for i, entry := range lokiEntries {
 				require.Equal(t, model.LabelSet{"job": database_observability.JobName}, entry.Labels)
 				require.Equal(t, tc.logs[i], entry.Line)
