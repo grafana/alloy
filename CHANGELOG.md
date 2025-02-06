@@ -37,6 +37,7 @@ Main (unreleased)
   - Add namespace to `connection_info` metric (@cristiangreco)
   - Added table columns parsing (@cristiagreco)
   - Add enable/disable collector configurability to `database_observability.mysql`. This removes the `query_samples_enabled` argument, now configurable via enable/disable collector. (@fridgepoet)
+  - Refactor cache config in schema_table collector (@cristiangreco)
 
 ### Bugfixes
 
