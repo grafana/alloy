@@ -1,0 +1,18 @@
+Foreach with two items. Both pulse components will send "1" till they both reach 5, adding to 10 in the summation component.
+
+-- main.alloy --
+foreach "testForeach" {
+  collection = [5, 5]
+  var = "num"
+
+  template {
+    testcomponents.pulse "pt" {
+      max = num
+      frequency = "10ms"
+      forward_to = [testcomponents.summation_receiver.sum.receiver]
+    }
+  }
+}
+
+testcomponents.summation_receiver "sum" {
+}
