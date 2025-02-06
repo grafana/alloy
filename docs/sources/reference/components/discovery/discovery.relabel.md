@@ -43,19 +43,19 @@ discovery.relabel "<LABEL>" {
 
 ## Arguments
 
-You can use the following arguments with `discovery.relabel`:
+You can use the following argument with `discovery.relabel`:
 
-Name      | Type                | Description        | Default | Required
-----------|---------------------|--------------------|---------|---------
-`targets` | `list(map(string))` | Targets to relabel |         | yes
+| Name      | Type                | Description        | Default | Required |
+| --------- | ------------------- | ------------------ | ------- | -------- |
+| `targets` | `list(map(string))` | Targets to relabel |         | yes      |
 
 ## Blocks
 
-You can use the following blocks with `discovery.relabel`:
+You can use the following block with `discovery.relabel`:
 
-Block          | Description                           | Required
----------------|---------------------------------------|---------
-[`rule`][rule] | Relabeling rules to apply to targets. | no
+| Block          | Description                           | Required |
+| -------------- | ------------------------------------- | -------- |
+| [`rule`][rule] | Relabeling rules to apply to targets. | no       |
 
 [rule]: #rule
 
@@ -69,10 +69,10 @@ The `rule` block configures the relabeling rules to apply to targets.
 
 The following fields are exported and can be referenced by other components:
 
-Name     | Type                | Description
----------|---------------------|----------------------------------------------
-`output` | `list(map(string))` | The set of targets after applying relabeling.
-`rules`  | `RelabelRules`      | The currently configured relabeling rules.
+| Name     | Type                | Description                                   |
+| -------- | ------------------- | --------------------------------------------- |
+| `output` | `list(map(string))` | The set of targets after applying relabeling. |
+| `rules`  | `RelabelRules`      | The currently configured relabeling rules.    |
 
 ## Component health
 
