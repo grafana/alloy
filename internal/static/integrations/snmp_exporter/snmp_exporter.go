@@ -143,6 +143,8 @@ func LoadSNMPConfig(snmpConfigFile string, customSnmpCfg *snmp_config.Config, st
 		}
 
 		return finalCfg, nil
+	} else {
+		return nil, fmt.Errorf("unsupported snmp config merge strategy is used: '%s'", strategy)
 	}
 	return customSnmpCfg, nil
 }
