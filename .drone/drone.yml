@@ -530,7 +530,7 @@ depends_on:
 - Publish Linux alloy-devel container
 - Publish Linux alloy-devel-boringcrypto container
 image_pull_secrets:
-- dockerconfigjson
+- dockerconfigjson_gar
 kind: pipeline
 name: Deploy to deployment_tools
 platform:
@@ -543,7 +543,7 @@ steps:
   - echo "grafana/alloy-dev:$(bash ./tools/image-tag-docker)" > .image-tag
   image: alpine
   name: Create .image-tag
-- image: us.gcr.io/kubernetes-dev/drone/plugins/updater
+- image: us-docker.pkg.dev/grafanalabs-global/docker-deployment-tools-prod/updater
   name: Update deployment_tools
   settings:
     config_json: |
@@ -684,6 +684,12 @@ get:
   path: secret/data/common/gcr
 kind: secret
 name: dockerconfigjson
+---
+get:
+  name: .dockerconfigjson
+  path: secret/data/common/gar
+kind: secret
+name: dockerconfigjson_gar
 ---
 get:
   name: .dockerconfigjson
