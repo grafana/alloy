@@ -74,7 +74,7 @@ At most, one of the following can be provided:
 * [`oauth2`][oauth2] block
 
  [arguments]: #arguments
- [gem-path-prefix]: https://grafana.com/docs/mimir/<MIMIR_VERSION>/references/http-api/
+ [gem-path-prefix]: https://grafana.com/docs/mimir/latest/references/http-api/
 
 {{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
