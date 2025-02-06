@@ -22,8 +22,6 @@ Main (unreleased)
 
 - Add the possibility to export span events as logs in `otelcol.connector.spanlogs`. (@steve-hb)
 
-- (_Experimental_) Fixed several out-of-memory bugs in `loki.secretfilter` (@kelnage)
-
 - Add json format support for log export via faro receiver (@ravishankar15)
 
 - (_Experimental_) Various changes to the experimental component `database_observability.mysql`:
@@ -56,6 +54,8 @@ Main (unreleased)
 - Fixes godeltaprof hiding (renaming `godeltaprof_*` profile names to regular ones). (@korniltsev)
 
 - Change profile handling in `pyroscope.receive_http` and `pyroscope.write` components to use in-memory processing instead of pipes. (@marcsanmi)
+
+- (_Experimental_) Fixed several out-of-memory bugs in `loki.secretfilter`. (@kelnage)
 
 
 v1.6.1
