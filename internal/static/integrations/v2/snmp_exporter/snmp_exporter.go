@@ -11,19 +11,21 @@ import (
 
 // DefaultConfig holds the default settings for the snmp_exporter integration.
 var DefaultConfig = Config{
-	WalkParams:      make(map[string]snmp_config.WalkParams),
-	SnmpConfigFile:  "",
-	SnmpConcurrency: 1,
+	WalkParams:              make(map[string]snmp_config.WalkParams),
+	SnmpConfigFile:          "",
+	SnmpConfigMergeStrategy: "replace",
+	SnmpConcurrency:         1,
 }
 
 // Config configures the SNMP integration.
 type Config struct {
-	WalkParams      map[string]snmp_config.WalkParams `yaml:"walk_params,omitempty"`
-	SnmpConfigFile  string                            `yaml:"config_file,omitempty"`
-	SnmpConcurrency int                               `yaml:"concurrency,omitempty"`
-	SnmpTargets     []snmp_exporter.SNMPTarget        `yaml:"snmp_targets"`
-	SnmpConfig      snmp_config.Config                `yaml:"snmp_config,omitempty"`
-	Common          common.MetricsConfig              `yaml:",inline"`
+	WalkParams              map[string]snmp_config.WalkParams `yaml:"walk_params,omitempty"`
+	SnmpConfigFile          string                            `yaml:"config_file,omitempty"`
+	SnmpConfigMergeStrategy string                            `yaml:"config_merge_strategy,omitempty"`
+	SnmpConcurrency         int                               `yaml:"concurrency,omitempty"`
+	SnmpTargets             []snmp_exporter.SNMPTarget        `yaml:"snmp_targets"`
+	SnmpConfig              snmp_config.Config                `yaml:"snmp_config,omitempty"`
+	Common                  common.MetricsConfig              `yaml:",inline"`
 
 	globals integrations_v2.Globals
 }
@@ -45,7 +47,7 @@ func (c *Config) Identifier(globals integrations_v2.Globals) (string, error) {
 // NewIntegration creates a new SNMP integration.
 func (c *Config) NewIntegration(log log.Logger, globals integrations_v2.Globals) (integrations_v2.Integration, error) {
 	// 'replace'' corresponds to classic snmp integration behavior
-	snmpCfg, err := snmp_exporter.LoadSNMPConfig(c.SnmpConfigFile, &c.SnmpConfig, "replace")
+	snmpCfg, err := snmp_exporter.LoadSNMPConfig(c.SnmpConfigFile, &c.SnmpConfig, c.SnmpConfigMergeStrategy)
 	if err != nil {
 		return nil, err
 	}
