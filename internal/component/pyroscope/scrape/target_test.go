@@ -707,3 +707,25 @@ func TestLabelsByProfiles(t *testing.T) {
 		})
 	}
 }
+
+func BenchmarkPopulateLabels(b *testing.B) {
+	args := NewDefaultArguments()
+	tg := &targetgroup.Group{
+		Targets: []model.LabelSet{
+			{model.AddressLabel: "localhost:9090"},
+			{model.AddressLabel: "localhost:9091", serviceNameLabel: "svc"},
+			{model.AddressLabel: "localhost:9092", serviceNameK8SLabel: "k8s-svc"},
+			{model.AddressLabel: "localhost:9093", "__meta_kubernetes_namespace": "ns", "__meta_kubernetes_pod_container_name": "container"},
+			{model.AddressLabel: "localhost:9094", "__meta_docker_container_name": "docker-container"},
+		},
+		Labels: model.LabelSet{
+			"foo": "bar",
+		},
+	}
+	for i := 0; i < b.N; i++ {
+		active, err := targetsFromGroup(tg, args, args.ProfilingConfig.AllTargets())
+		if err != nil || len(active) == 0 {
+			b.Fail()
+		}
+	}
+}
