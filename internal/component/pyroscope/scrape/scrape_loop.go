@@ -76,7 +76,7 @@ func (tg *scrapePool) sync(groups []*targetgroup.Group) {
 			tg.activeTargets[t.Hash()] = loop
 			loop.start()
 		} else {
-			tg.activeTargets[t.Hash()].SetDiscoveredLabels(t.DiscoveredLabels())
+			// todo (korniltsev): here used to be "discovered labels update" but it should have been "all labels update". fix this
 		}
 	}
 

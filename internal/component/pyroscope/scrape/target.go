@@ -46,8 +46,6 @@ type Target struct {
 	allLabels labels.Labels
 	// Only public labels that are added to this target and its metrics.
 	publicLabels labels.Labels
-	// Labels before any processing.
-	discoveredLabels labels.Labels
 	// Additional URL parameters that are part of the target URL.
 	params url.Values
 	hash   uint64
@@ -87,13 +85,12 @@ func NewTarget(lbls, discoveredLabels labels.Labels, params url.Values) *Target 
 	_, _ = h.Write([]byte(url))
 
 	return &Target{
-		allLabels:        lbls,
-		url:              url,
-		hash:             h.Sum64(),
-		publicLabels:     publicLabels,
-		discoveredLabels: discoveredLabels,
-		params:           params,
-		health:           HealthUnknown,
+		allLabels:    lbls,
+		url:          url,
+		hash:         h.Sum64(),
+		publicLabels: publicLabels,
+		params:       params,
+		health:       HealthUnknown,
 	}
 }
 
@@ -162,22 +159,6 @@ func (t *Target) Params() url.Values {
 // Labels returns the set of all public labels of the target. Callers must not modify the returned labels.
 func (t *Target) Labels() labels.Labels {
 	return t.publicLabels
-}
-
-// DiscoveredLabels returns a copy of the target's labels before any processing.
-func (t *Target) DiscoveredLabels() labels.Labels {
-	t.mtx.RLock()
-	defer t.mtx.RUnlock()
-	lset := make(labels.Labels, len(t.discoveredLabels))
-	copy(lset, t.discoveredLabels)
-	return lset
-}
-
-// SetDiscoveredLabels sets new DiscoveredLabels.
-func (t *Target) SetDiscoveredLabels(l labels.Labels) {
-	t.mtx.Lock()
-	defer t.mtx.Unlock()
-	t.discoveredLabels = l
 }
 
 // URL returns the target's URL as string.
@@ -275,7 +256,7 @@ func populateLabels(lset labels.Labels, cfg Arguments) (res labels.Labels, err e
 		}
 	}
 
-	lset = lb.Labels() // todo do not create labels in the middle, just use builder and create final labels just once
+	lset = lb.Labels() // todo (korniltsev) do not create labels in the middle, just use builder and create final labels just once
 
 	if v := lset.Get(model.AddressLabel); v == "" {
 		return nil, errors.New("no address")
