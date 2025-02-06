@@ -238,7 +238,7 @@ func convertSessionOptions(args Arguments, ms *metrics) ebpfspy.SessionOptions {
 		PythonEnabled: args.PythonEnabled,
 		Metrics:       ms.ebpfMetrics,
 		SymbolOptions: symtab.SymbolOptions{
-			GoTableFallback: false,
+			GoTableFallback: args.GoTableFallback,
 			DemangleOptions: demangle2.ConvertDemangleOptions(args.Demangle),
 		},
 		CacheOptions: symtab.CacheOptions{
