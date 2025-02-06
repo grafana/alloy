@@ -36,6 +36,9 @@ Main (unreleased)
   - Added table columns parsing (@cristiagreco)
   - Add enable/disable collector configurability to `database_observability.mysql`. This removes the `query_samples_enabled` argument, now configurable via enable/disable collector. (@fridgepoet)
 
+- Reduce CPU usage of `loki.source.windowsevent` by up to 85% by updating the bookmark file every 10 seconds instead of after every event and by 
+  optimizing the retrieval of the process name. (@wildum)
+
 ### Bugfixes
 
 - Fix log rotation for Windows in `loki.source.file` by refactoring the component to use the runner pkg. This should also reduce CPU consumption when tailing a lot of files in a dynamic environment. (@wildum)
@@ -45,8 +48,6 @@ Main (unreleased)
 - Add livedebugging support for `otelcol.connector.*` components (@wildum)
 
 - Bump snmp_exporter and embedded modules to 0.27.0. Add support for multi-module handling by comma separation and expose argument to increase SNMP polling concurrency for `prometheus.exporter.snmp`. (@v-zhuravlev)
-
-- Reduce CPU usage of `loki.source.windowsevent` by up to 60% by updating the bookmark file every 10 seconds instead of after every event. (@wildum)
 
 - Add support for pushv1.PusherService Connect API in `pyroscope.receive_http`. (@simonswine)
 

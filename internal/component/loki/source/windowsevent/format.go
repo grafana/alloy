@@ -7,9 +7,11 @@ package windowsevent
 
 import (
 	"fmt"
+	"path/filepath"
 	"syscall"
 
 	jsoniter "github.com/json-iterator/go"
+	"golang.org/x/sys/windows"
 
 	"github.com/grafana/loki/v3/clients/pkg/promtail/scrapeconfig"
 	"github.com/grafana/loki/v3/clients/pkg/promtail/targets/windows/win_eventlog"
@@ -112,10 +114,37 @@ func formatLine(cfg *scrapeconfig.WindowsEventsTargetConfig, event win_eventlog.
 			ProcessID: event.Execution.ProcessID,
 			ThreadID:  event.Execution.ThreadID,
 		}
-		_, _, processName, err := win_eventlog.GetFromSnapProcess(event.Execution.ProcessID)
+
+		processName, err := GetProcessName(event.Execution.ProcessID)
 		if err == nil {
 			structuredEvent.Execution.ProcessName = processName
 		}
 	}
 	return jsoniter.MarshalToString(structuredEvent)
+}
+
+func GetProcessName(pid uint32) (string, error) {
+	// PID 4 is always "System"
+	if pid == 4 {
+		return "System", nil
+	}
+
+	// PID 0 is always "Idle Process"
+	if pid == 0 {
+		return "Idle Process", nil
+	}
+
+	handle, err := windows.OpenProcess(windows.PROCESS_QUERY_LIMITED_INFORMATION, false, pid)
+	if err != nil {
+		return "", fmt.Errorf("failed to open process %d: %w", pid, err)
+	}
+	defer windows.CloseHandle(handle)
+
+	var buf [windows.MAX_PATH]uint16
+	size := uint32(len(buf))
+	err = windows.QueryFullProcessImageName(handle, 0, &buf[0], &size)
+	if err != nil {
+		return "", fmt.Errorf("failed to get process name for %d: %w", pid, err)
+	}
+	return filepath.Base(windows.UTF16ToString(buf[:size])), nil
 }
