@@ -75,8 +75,6 @@ func (tg *scrapePool) sync(groups []*targetgroup.Group) {
 			loop := newScrapeLoop(t, tg.scrapeClient, tg.appendable, tg.config.ScrapeInterval, tg.config.ScrapeTimeout, tg.logger)
 			tg.activeTargets[t.Hash()] = loop
 			loop.start()
-		} else {
-			// todo (korniltsev): here used to be "discovered labels update" but it should have been "all labels update". fix this
 		}
 	}
 
