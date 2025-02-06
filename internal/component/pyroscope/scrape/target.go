@@ -61,7 +61,9 @@ type Target struct {
 
 // NewTarget creates a reasonably configured target for querying.
 func NewTarget(lbls labels.Labels, params url.Values) *Target {
-	publicLabels := make(labels.Labels, 0, len(lbls))
+	var publicLabels labels.Labels
+	// lbls are sorted. Private labels goes before public labels.
+	// find pivot to calculate publicLabels as subslice, with no allocations
 	for i, l := range lbls {
 		if strings.HasPrefix(l.Name, model.ReservedLabelPrefix) {
 			// the fact that godeltaprof was used scraping should not be user visible
@@ -77,7 +79,8 @@ func NewTarget(lbls labels.Labels, params url.Values) *Target {
 			}
 			continue
 		}
-		publicLabels = append(publicLabels, l)
+		publicLabels = lbls[i:]
+		break
 	}
 	url := urlFromTarget(lbls, params)
 
