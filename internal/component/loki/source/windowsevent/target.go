@@ -208,7 +208,7 @@ func (t *Target) renderEntries(events []win_eventlog.Event) []api.Entry {
 			entry.Labels[model.LabelName(lbl.Name)] = model.LabelValue(lbl.Value)
 		}
 
-		line, err := formatLine(t.cfg, event)
+		line, err := formatLine(t.cfg, event, t.logger)
 		if err != nil {
 			level.Warn(t.logger).Log("msg", "error formatting event", "err", err)
 			continue

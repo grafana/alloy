@@ -7,9 +7,14 @@ package windowsevent
 
 import (
 	"fmt"
+	"path/filepath"
 	"syscall"
 
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
+
 	jsoniter "github.com/json-iterator/go"
+	"golang.org/x/sys/windows"
 
 	"github.com/grafana/loki/v3/clients/pkg/promtail/scrapeconfig"
 	"github.com/grafana/loki/v3/clients/pkg/promtail/targets/windows/win_eventlog"
@@ -59,7 +64,7 @@ type Correlation struct {
 }
 
 // formatLine format a Loki log line from a windows event.
-func formatLine(cfg *scrapeconfig.WindowsEventsTargetConfig, event win_eventlog.Event) (string, error) {
+func formatLine(cfg *scrapeconfig.WindowsEventsTargetConfig, event win_eventlog.Event, l log.Logger) (string, error) {
 	structuredEvent := Event{
 		Source:        event.Source.Name,
 		Channel:       event.Channel,
@@ -113,9 +118,41 @@ func formatLine(cfg *scrapeconfig.WindowsEventsTargetConfig, event win_eventlog.
 			ThreadID:  event.Execution.ThreadID,
 		}
 		_, _, processName, err := win_eventlog.GetFromSnapProcess(event.Execution.ProcessID)
+		newProcessName, err := GetProcessName(event.Execution.ProcessID)
+
+		if processName != newProcessName {
+			level.Error(l).Log("msg", "process names are different", "legacy", processName, "new", newProcessName)
+		}
+
 		if err == nil {
 			structuredEvent.Execution.ProcessName = processName
 		}
 	}
 	return jsoniter.MarshalToString(structuredEvent)
+}
+
+func GetProcessName(pid uint32) (string, error) {
+	// PID 4 is always System
+	if pid == 4 {
+		return "System", nil
+	}
+
+	// PID 0 is always Idle Process
+	if pid == 0 {
+		return "Idle Process", nil
+	}
+
+	handle, err := windows.OpenProcess(windows.PROCESS_QUERY_LIMITED_INFORMATION, false, pid)
+	if err != nil {
+		return "", fmt.Errorf("failed to open process %d: %w", pid, err)
+	}
+	defer windows.CloseHandle(handle)
+
+	var buf [windows.MAX_PATH]uint16
+	size := uint32(len(buf))
+	err = windows.QueryFullProcessImageName(handle, 0, &buf[0], &size)
+	if err != nil {
+		return "", fmt.Errorf("failed to get process name for %d: %w", pid, err)
+	}
+	return filepath.Base(windows.UTF16ToString(buf[:size])), nil
 }
