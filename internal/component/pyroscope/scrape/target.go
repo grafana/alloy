@@ -59,7 +59,7 @@ type Target struct {
 }
 
 // NewTarget creates a reasonably configured target for querying.
-func NewTarget(lbls, discoveredLabels labels.Labels, params url.Values) *Target {
+func NewTarget(lbls labels.Labels, params url.Values) *Target {
 	publicLabels := make(labels.Labels, 0, len(lbls))
 	for i, l := range lbls {
 		if strings.HasPrefix(l.Name, model.ReservedLabelPrefix) {
@@ -369,7 +369,7 @@ func targetsFromGroup(group *targetgroup.Group, cfg Arguments, targetTypes map[s
 					}
 					params.Add("seconds", strconv.Itoa(int(seconds)))
 				}
-				targets = append(targets, NewTarget(lbls, origLabels, params))
+				targets = append(targets, NewTarget(lbls, params))
 			}
 		}
 	}
