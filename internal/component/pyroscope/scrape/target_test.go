@@ -559,7 +559,11 @@ func TestLabelsByProfiles(t *testing.T) {
 	}
 	for _, td := range testdata {
 		t.Run(td.name, func(t *testing.T) {
-			actual := LabelsByProfiles(labels.New(td.target...), td.cfg)
+			actualBuilders := labelsByProfiles(labels.New(td.target...), td.cfg)
+			actual := make([]labels.Labels, len(actualBuilders))
+			for i, b := range actualBuilders {
+				actual[i] = b.Labels()
+			}
 			require.Equal(t, td.expected, actual)
 		})
 	}

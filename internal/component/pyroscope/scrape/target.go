@@ -19,6 +19,7 @@ import (
 	"hash/fnv"
 	"net"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -198,18 +199,18 @@ func (t *Target) Health() TargetHealth {
 	return t.health
 }
 
-// LabelsByProfiles returns the labels for a given ProfilingConfig.
-func LabelsByProfiles(lset labels.Labels, c *ProfilingConfig) []labels.Labels {
-	res := []labels.Labels{}
+// labelsByProfiles returns builders for each profiling type enabled in config
+func labelsByProfiles(base labels.Labels, c *ProfilingConfig) []*labels.Builder {
+	var res []*labels.Builder
 
 	add := func(profileType string, cfgs ...ProfilingTarget) {
 		for _, p := range cfgs {
 			if p.Enabled {
-				lb := labels.NewBuilder(lset)
+				lb := labels.NewBuilder(base)
 				setIfNotPresentAndNotEmpty(lb, ProfilePath, p.Path)
 				setIfNotPresentAndNotEmpty(lb, ProfileName, profileType)
 				setIfNotPresentAndNotEmpty(lb, ProfilePathPrefix, c.PathPrefix)
-				res = append(res, lb.Labels())
+				res = append(res, lb)
 			}
 		}
 	}
@@ -237,14 +238,11 @@ const (
 )
 
 // populateLabels builds a label set from the given label set and scrape configuration.
-// It returns a label set before relabeling was applied as the second return value.
-// Returns the original discovered label set found before relabelling was applied if the target is dropped during relabeling.
-func populateLabels(lset labels.Labels, cfg Arguments) (res labels.Labels, err error) {
+func populateLabels(lb *labels.Builder, base labels.Labels, cfg Arguments) (res labels.Labels, err error) {
 	scrapeLabels := []labels.Label{
 		{Name: model.JobLabel, Value: cfg.JobName},
 		{Name: model.SchemeLabel, Value: cfg.Scheme},
 	}
-	lb := labels.NewBuilder(lset)
 
 	for _, l := range scrapeLabels {
 		setIfNotPresentAndNotEmpty(lb, l.Name, l.Value)
@@ -255,14 +253,10 @@ func populateLabels(lset labels.Labels, cfg Arguments) (res labels.Labels, err e
 			lb.Set(model.ParamLabelPrefix+k, v[0])
 		}
 	}
-
-	lset = lb.Labels() // todo (korniltsev) do not create labels in the middle, just use builder and create final labels just once
-
-	if v := lset.Get(model.AddressLabel); v == "" {
+	addr := lb.Get(model.AddressLabel)
+	if addr == "" {
 		return nil, errors.New("no address")
 	}
-
-	lb = labels.NewBuilder(lset)
 
 	// addPort checks whether we should add a default port to the address.
 	// If the address is not valid, we don't append a port either.
@@ -276,11 +270,11 @@ func populateLabels(lset labels.Labels, cfg Arguments) (res labels.Labels, err e
 		_, _, err := net.SplitHostPort(s + ":1234")
 		return err == nil
 	}
-	addr := lset.Get(model.AddressLabel)
+
 	// If it's an address with no trailing port, infer it based on the used scheme.
 	if addPort(addr) {
 		// Addresses reaching this point are already wrapped in [] if necessary.
-		switch lset.Get(model.SchemeLabel) {
+		switch lb.Get(model.SchemeLabel) {
 		case "http", "":
 			addr = addr + ":80"
 		case "https":
@@ -297,19 +291,19 @@ func populateLabels(lset labels.Labels, cfg Arguments) (res labels.Labels, err e
 
 	// Meta labels are deleted after relabelling. Other internal labels propagate to
 	// the target which decides whether they will be part of their label set.
-	for _, l := range lset {
+	for _, l := range base {
 		if strings.HasPrefix(l.Name, model.MetaLabelPrefix) {
 			lb.Del(l.Name)
 		}
 	}
 
 	// Default the instance label to the target address.
-	if v := lset.Get(model.InstanceLabel); v == "" {
+	if v := lb.Get(model.InstanceLabel); v == "" {
 		lb.Set(model.InstanceLabel, addr)
 	}
 
-	if serviceName := lset.Get(serviceNameLabel); serviceName == "" {
-		lb.Set(serviceNameLabel, inferServiceName(lset))
+	if serviceName := lb.Get(serviceNameLabel); serviceName == "" {
+		lb.Set(serviceNameLabel, inferServiceName(base))
 	}
 
 	res = lb.Labels()
@@ -330,7 +324,8 @@ func targetsFromGroup(group *targetgroup.Group, cfg Arguments, targetTypes map[s
 	)
 
 	for i, tlset := range group.Targets {
-		lbls := make([]labels.Label, 0, len(tlset)+len(group.Labels))
+
+		lbls := make(labels.Labels, 0, len(tlset)+len(group.Labels))
 
 		for ln, lv := range tlset {
 			lbls = append(lbls, labels.Label{Name: string(ln), Value: string(lv)})
@@ -340,23 +335,17 @@ func targetsFromGroup(group *targetgroup.Group, cfg Arguments, targetTypes map[s
 				lbls = append(lbls, labels.Label{Name: string(ln), Value: string(lv)})
 			}
 		}
+		slices.SortFunc(lbls, func(a, b labels.Label) int { return strings.Compare(a.Name, b.Name) })
 
-		lset := labels.New(lbls...)
-		lsets := LabelsByProfiles(lset, &cfg.ProfilingConfig)
+		lsets := labelsByProfiles(lbls, &cfg.ProfilingConfig)
 
 		for _, lset := range lsets {
-			var profType string
-			for _, label := range lset {
-				if label.Name == ProfileName {
-					profType = label.Value
-				}
-			}
-			origLabels := lset
-			lbls, err := populateLabels(lset, cfg)
+			lbls, err := populateLabels(lset, lbls, cfg)
 			if err != nil {
 				return nil, fmt.Errorf("instance %d in group %s: %s", i, group, err)
 			}
-			if lbls != nil || origLabels != nil {
+			if lbls != nil {
+				profType := lbls.Get(ProfileName)
 				params := cfg.Params
 				if params == nil {
 					params = url.Values{}
