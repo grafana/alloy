@@ -32,6 +32,14 @@ func TestLoadSNMPConfig(t *testing.T) {
 			cfg:                Config{SnmpTargets: []SNMPTarget{{Name: "test", Target: "localhost"}}},
 			expectedNumModules: 39,
 		},
+		{
+			name: "merging embedded config and provided",
+			cfg: Config{
+				SnmpConfig:              snmp_config.Config{Modules: map[string]*snmp_config.Module{"if_mib_custom": {Walk: []string{"1.3.6.1.2.1.2"}}}},
+				SnmpConfigMergeStrategy: "merge",
+				SnmpTargets:             []SNMPTarget{{Name: "test", Target: "localhost"}}},
+			expectedNumModules: 40,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
