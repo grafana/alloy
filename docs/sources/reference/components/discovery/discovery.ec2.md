@@ -66,7 +66,7 @@ Block                                 | Description                             
 [`filter`][filter]                    | Filters discoverable resources.                            | no
 [`oauth2`][oauth2]                    | Configure OAuth 2.0 for authenticating to the endpoint.    | no
 `oauth2` > [`tls_config`][tls_config] | Configure TLS settings for connecting to the endpoint.     | no
-[``tls_config][tls_config]            | Configure TLS settings for connecting to the endpoint.     | no
+[`tls_config`][tls_config]            | Configure TLS settings for connecting to the endpoint.     | no
 
 The > symbol indicates deeper levels of nesting.
 For example, `oauth2 > tls_config` refers to a `tls_config` block defined inside an `oauth2` block.
