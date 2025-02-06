@@ -64,7 +64,7 @@ func (tg *scrapePool) sync(groups []*targetgroup.Group) {
 			continue
 		}
 		for _, t := range targets {
-			if t.Labels().Len() > 0 {
+			if t.publicLabelsCount > 0 {
 				actives = append(actives, t)
 			}
 		}
@@ -222,7 +222,7 @@ func (t *scrapeLoop) scrape() {
 		}
 	}
 	if err := t.fetchProfile(scrapeCtx, profileType, buf); err != nil {
-		level.Error(t.logger).Log("msg", "fetch profile failed", "target", t.Labels().String(), "err", err)
+		level.Error(t.logger).Log("msg", "fetch profile failed", "target", t, "err", err)
 		t.updateTargetStatus(start, err)
 		return
 	}
@@ -232,7 +232,7 @@ func (t *scrapeLoop) scrape() {
 		t.lastScrapeSize = len(b)
 	}
 	if err := t.appender.Append(context.Background(), t.allLabels, []*pyroscope.RawSample{{RawProfile: b}}); err != nil {
-		level.Error(t.logger).Log("msg", "push failed", "labels", t.Labels().String(), "err", err)
+		level.Error(t.logger).Log("msg", "push failed", "target", t, "err", err)
 		t.updateTargetStatus(start, err)
 		return
 	}
@@ -264,7 +264,7 @@ func (t *scrapeLoop) fetchProfile(ctx context.Context, profileType string, buf i
 		t.req = req
 	}
 
-	level.Debug(t.logger).Log("msg", "scraping profile", "labels", t.Labels().String(), "url", t.req.URL.String())
+	level.Debug(t.logger).Log("msg", "scraping profile", "target", t, "url", t.req.URL.String())
 	resp, err := ctxhttp.Do(ctx, t.scrapeClient, t.req)
 	if err != nil {
 		return err
