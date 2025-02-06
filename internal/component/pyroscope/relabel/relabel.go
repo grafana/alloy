@@ -161,15 +161,24 @@ func (c *Component) Append(ctx context.Context, lbls labels.Labels, samples []*p
 	c.mut.RLock()
 	defer c.mut.RUnlock()
 
+	c.metrics.profilesProcessed.Inc()
+
+	if lbls.IsEmpty() {
+		c.metrics.profilesOutgoing.Inc()
+		return c.fanout.Appender().Append(ctx, lbls, samples)
+	}
+
 	newLabels, keep, err := c.relabel(lbls)
 	if err != nil {
 		return err
 	}
 	if !keep {
+		c.metrics.profilesDropped.Inc()
 		level.Debug(c.opts.Logger).Log("msg", "profile dropped by relabel rules", "labels", lbls.String())
 		return nil
 	}
 
+	c.metrics.profilesOutgoing.Inc()
 	return c.fanout.Appender().Append(ctx, newLabels, samples)
 }
 
@@ -227,7 +236,6 @@ func (c *Component) relabel(lbls labels.Labels) (labels.Labels, bool, error) {
 	builder := labels.NewBuilder(lbls)
 	keep := relabel.ProcessBuilder(builder, c.rcs...)
 	if !keep {
-		c.metrics.profilesDropped.Inc()
 		c.addToCache(hash, labelSet, labels.EmptyLabels())
 		return labels.EmptyLabels(), false, nil
 	}
@@ -246,7 +254,6 @@ func (c *Component) getCacheEntry(hash model.Fingerprint, labelSet model.LabelSe
 			if labelSet.Equal(item.original) {
 				c.metrics.cacheHits.Inc()
 				if len(item.relabeled) == 0 {
-					c.metrics.profilesDropped.Inc()
 					return labels.Labels{}, false, true
 				}
 				return toLabelsLabels(item.relabeled), true, true
