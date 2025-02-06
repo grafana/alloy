@@ -354,10 +354,9 @@ func populateLabels(lset labels.Labels, cfg Arguments) (res, orig labels.Labels,
 }
 
 // targetsFromGroup builds targets based on the given TargetGroup, config and target types map.
-func targetsFromGroup(group *targetgroup.Group, cfg Arguments, targetTypes map[string]ProfilingTarget) ([]*Target, []*Target, error) {
+func targetsFromGroup(group *targetgroup.Group, cfg Arguments, targetTypes map[string]ProfilingTarget) ([]*Target, error) {
 	var (
-		targets        = make([]*Target, 0, len(group.Targets))
-		droppedTargets = make([]*Target, 0, len(group.Targets))
+		targets = make([]*Target, 0, len(group.Targets))
 	)
 
 	for i, tlset := range group.Targets {
@@ -384,26 +383,7 @@ func targetsFromGroup(group *targetgroup.Group, cfg Arguments, targetTypes map[s
 			}
 			lbls, origLabels, err := populateLabels(lset, cfg)
 			if err != nil {
-				return nil, nil, fmt.Errorf("instance %d in group %s: %s", i, group, err)
-			}
-			// This is a dropped target, according to the current return behaviour of populateLabels
-			if lbls == nil && origLabels != nil { //todo remove this branch and relabeling
-				// ensure we get the full url path for dropped targets
-				params := cfg.Params
-				if params == nil {
-					params = url.Values{}
-				}
-				lbls = append(lbls, labels.Label{Name: model.AddressLabel, Value: lset.Get(model.AddressLabel)})
-				lbls = append(lbls, labels.Label{Name: model.SchemeLabel, Value: cfg.Scheme})
-				lbls = append(lbls, labels.Label{Name: ProfilePath, Value: lset.Get(ProfilePath)})
-				// Encode scrape query parameters as labels.
-				for k, v := range cfg.Params {
-					if len(v) > 0 {
-						lbls = append(lbls, labels.Label{Name: model.ParamLabelPrefix + k, Value: v[0]})
-					}
-				}
-				droppedTargets = append(droppedTargets, NewTarget(lbls, origLabels, params))
-				continue
+				return nil, fmt.Errorf("instance %d in group %s: %s", i, group, err)
 			}
 			if lbls != nil || origLabels != nil {
 				params := cfg.Params
@@ -423,7 +403,7 @@ func targetsFromGroup(group *targetgroup.Group, cfg Arguments, targetTypes map[s
 		}
 	}
 
-	return targets, droppedTargets, nil
+	return targets, nil
 }
 
 func inferServiceName(lset labels.Labels) string {

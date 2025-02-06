@@ -139,7 +139,6 @@ func TestScrapePool(t *testing.T) {
 			sort.Sort(Targets(actual))
 			sort.Sort(Targets(tt.expected))
 			require.Equal(t, tt.expected, actual)
-			require.Empty(t, p.DroppedTargets())
 		})
 	}
 

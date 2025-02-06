@@ -32,9 +32,8 @@ type scrapePool struct {
 	scrapeClient *http.Client
 	appendable   pyroscope.Appendable
 
-	mtx            sync.RWMutex
-	activeTargets  map[uint64]*scrapeLoop
-	droppedTargets []*Target
+	mtx           sync.RWMutex
+	activeTargets map[uint64]*scrapeLoop
 }
 
 func newScrapePool(hco []commonconfig.HTTPClientOption, cfg Arguments, appendable pyroscope.Appendable, logger log.Logger) (*scrapePool, error) {
@@ -58,9 +57,8 @@ func (tg *scrapePool) sync(groups []*targetgroup.Group) {
 	allTargets := tg.config.ProfilingConfig.AllTargets()
 	level.Info(tg.logger).Log("msg", "syncing target groups", "job", tg.config.JobName)
 	var actives []*Target
-	tg.droppedTargets = tg.droppedTargets[:0]
 	for _, group := range groups {
-		targets, dropped, err := targetsFromGroup(group, tg.config, allTargets)
+		targets, err := targetsFromGroup(group, tg.config, allTargets)
 		if err != nil {
 			level.Error(tg.logger).Log("msg", "creating targets failed", "err", err)
 			continue
@@ -70,7 +68,6 @@ func (tg *scrapePool) sync(groups []*targetgroup.Group) {
 				actives = append(actives, t)
 			}
 		}
-		tg.droppedTargets = append(tg.droppedTargets, dropped...)
 	}
 
 	for _, t := range actives {
@@ -146,14 +143,6 @@ func (tg *scrapePool) ActiveTargets() []*Target {
 	for _, target := range tg.activeTargets {
 		result = append(result, target.Target)
 	}
-	return result
-}
-
-func (tg *scrapePool) DroppedTargets() []*Target {
-	tg.mtx.RLock()
-	defer tg.mtx.RUnlock()
-	result := make([]*Target, 0, len(tg.droppedTargets))
-	result = append(result, tg.droppedTargets...)
 	return result
 }
 

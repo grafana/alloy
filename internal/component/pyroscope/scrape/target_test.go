@@ -20,7 +20,7 @@ func Test_targetsFromGroup(t *testing.T) {
 	args.ProfilingConfig.Goroutine.Enabled = false
 	args.ProfilingConfig.Mutex.Enabled = false
 
-	active, dropped, err := targetsFromGroup(&targetgroup.Group{
+	active, err := targetsFromGroup(&targetgroup.Group{
 		Targets: []model.LabelSet{
 			{model.AddressLabel: "localhost:9090"},
 			{model.AddressLabel: "localhost:9091", serviceNameLabel: "svc"},
@@ -237,7 +237,6 @@ func Test_targetsFromGroup(t *testing.T) {
 	sort.Sort(Targets(active))
 	sort.Sort(Targets(expected))
 	require.Equal(t, expected, active)
-	require.Empty(t, dropped)
 }
 
 // Test that the godeltaprof is not surfaced publicly
@@ -298,7 +297,7 @@ func Test_targetsFromGroup_withSpecifiedDeltaProfilingDuration(t *testing.T) {
 	args.ProfilingConfig.Mutex.Enabled = false
 	args.DeltaProfilingDuration = 20 * time.Second
 
-	active, dropped, err := targetsFromGroup(&targetgroup.Group{
+	active, err := targetsFromGroup(&targetgroup.Group{
 		Targets: []model.LabelSet{
 			{model.AddressLabel: "localhost:9090"},
 		},
@@ -350,17 +349,15 @@ func Test_targetsFromGroup_withSpecifiedDeltaProfilingDuration(t *testing.T) {
 	sort.Sort(Targets(active))
 	sort.Sort(Targets(expected))
 	require.Equal(t, expected, active)
-	require.Empty(t, dropped)
 }
 
 func TestProfileURL(t *testing.T) {
 	targets := func(t *testing.T, args Arguments, ls []model.LabelSet) []*Target {
 
-		active, dropped, err := targetsFromGroup(&targetgroup.Group{
+		active, err := targetsFromGroup(&targetgroup.Group{
 			Targets: ls,
 		}, args, args.ProfilingConfig.AllTargets())
 		require.NoError(t, err)
-		require.Len(t, dropped, 0)
 		require.NotEmpty(t, active)
 		return active
 	}
