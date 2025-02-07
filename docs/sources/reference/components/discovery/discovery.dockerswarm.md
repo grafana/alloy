@@ -25,20 +25,20 @@ discovery.dockerswarm "<LABEL>" {
 
 You can use the following arguments with `discovery.dockerswarm`:
 
-Name                     | Type                | Description                                                                                                                   | Default | Required
--------------------------|---------------------|-------------------------------------------------------------------------------------------------------------------------------|---------|---------
-`host`                   | `string`            | Address of the Docker daemon.                                                                                                 |         | yes
-`role`                   | `string`            | Role of the targets to retrieve. Must be `services`, `tasks`, or `nodes`.                                                     |         | yes
-`bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                                                          |         | no
-`bearer_token`           | `secret`            | Bearer token to authenticate with.                                                                                            |         | no
-`enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                                                      | `true`  | no
-`follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                                                  | `true`  | no
-`no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying.                              |         | no
-`port`                   | `number`            | The port to scrape metrics from, when `role` is nodes, and for discovered tasks and services that don't have published ports. | `80`    | no
-`proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                                                 |         | no
-`proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                                                         | `false` | no
-`proxy_url`              | `string`            | HTTP proxy to send requests through.                                                                                          |         | no
-`refresh_interval`       | `duration`          | Interval at which to refresh the list of targets.                                                                             | `"60s"` | no
+| Name                     | Type                | Description                                                                                                                   | Default | Required |
+| ------------------------ | ------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
+| `host`                   | `string`            | Address of the Docker daemon.                                                                                                 |         | yes      |
+| `role`                   | `string`            | Role of the targets to retrieve. Must be `services`, `tasks`, or `nodes`.                                                     |         | yes      |
+| `bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                                                          |         | no       |
+| `bearer_token`           | `secret`            | Bearer token to authenticate with.                                                                                            |         | no       |
+| `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                                                      | `true`  | no       |
+| `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                                                  | `true`  | no       |
+| `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying.                              |         | no       |
+| `port`                   | `number`            | The port to scrape metrics from, when `role` is nodes, and for discovered tasks and services that don't have published ports. | `80`    | no       |
+| `proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                                                 |         | no       |
+| `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                                                         | `false` | no       |
+| `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                                                          |         | no       |
+| `refresh_interval`       | `duration`          | Interval at which to refresh the list of targets.                                                                             | `"60s"` | no       |
 
  At most, one of the following can be provided:
 
@@ -56,14 +56,14 @@ Name                     | Type                | Description                    
 
 You can use the following blocks with `discovery.dockerswarm`:
 
-Block                                 | Description                                                                        | Required
---------------------------------------|------------------------------------------------------------------------------------|---------
-[`authorization`][authorization]      | Configure generic authorization to the endpoint.                                   | no
-[`basic_auth`][basic_auth]            | Configure `basic_auth` for authenticating to the endpoint.                         | no
-[`filter`][filter]                    | Optional filter to limit the discovery process to a subset of available resources. | no
-[`oauth2`][oauth2]                    | Configure OAuth2 for authenticating to the endpoint.                               | no
-`oauth2` > [`tls_config`][tls_config] | Configure TLS settings for connecting to the endpoint.                             | no
-[`tls_config`][tls_config]            | Configure TLS settings for connecting to the endpoint.                             | no
+| Block                                 | Description                                                                        | Required |
+| ------------------------------------- | ---------------------------------------------------------------------------------- | -------- |
+| [`authorization`][authorization]      | Configure generic authorization to the endpoint.                                   | no       |
+| [`basic_auth`][basic_auth]            | Configure `basic_auth` for authenticating to the endpoint.                         | no       |
+| [`filter`][filter]                    | Optional filter to limit the discovery process to a subset of available resources. | no       |
+| [`oauth2`][oauth2]                    | Configure OAuth2 for authenticating to the endpoint.                               | no       |
+| `oauth2` > [`tls_config`][tls_config] | Configure TLS settings for connecting to the endpoint.                             | no       |
+| [`tls_config`][tls_config]            | Configure TLS settings for connecting to the endpoint.                             | no       |
 
 The `>` symbol indicates deeper levels of nesting.
 For example, `oauth2 > tls_config` refers to a `tls_config` block defined inside an `oauth2` block.
@@ -98,10 +98,10 @@ The list of available filters depends on the `role`:
 
 You can use the following arguments to configure a filter.
 
-Name     | Type           | Description                                | Default | Required
----------|----------------|--------------------------------------------|---------|---------
-`name`   | `string`       | Name of the filter.                        |         | yes
-`values` | `list(string)` | List of values associated with the filter. |         | yes
+| Name     | Type           | Description                                | Default | Required |
+| -------- | -------------- | ------------------------------------------ | ------- | -------- |
+| `name`   | `string`       | Name of the filter.                        |         | yes      |
+| `values` | `list(string)` | List of values associated with the filter. |         | yes      |
 
 ### `oauth2`
 
@@ -119,15 +119,15 @@ The `tls_config` block configures TLS settings for connecting to the endpoint.
 
 The following fields are exported and can be referenced by other components:
 
-Name      | Type                | Description
-----------|---------------------|------------------------------------------
-`targets` | `list(map(string))` | The set of targets discovered from Swarm.
+| Name      | Type                | Description                               |
+| --------- | ------------------- | ----------------------------------------- |
+| `targets` | `list(map(string))` | The set of targets discovered from Swarm. |
 
 ## Roles
 
 The `role` attribute decides the role of the targets to retrieve.
 
-### services
+### `services`
 
 The `services` role discovers all [Swarm services](https://docs.docker.com/engine/swarm/key-concepts/#services-and-tasks) and exposes their ports as targets.
 For each published port of a service, a single target is generated.
@@ -151,7 +151,7 @@ Available meta labels:
 * `__meta_dockerswarm_service_task_container_image`: The container image of the target.
 * `__meta_dockerswarm_service_updating_status`: The status of the service, if available.
 
-### tasks
+### `tasks`
 
 The `tasks` role discovers all [Swarm tasks](https://docs.docker.com/engine/swarm/key-concepts/#services-and-tasks) and exposes their ports as targets.
 For each published port of a task, a single target is generated.
@@ -189,7 +189,7 @@ Available meta labels:
 
 The `__meta_dockerswarm_network_*` meta labels aren't populated for ports which are published with mode=host.
 
-### nodes
+### `nodes`
 
 The `nodes` role is used to discover [Swarm nodes](https://docs.docker.com/engine/swarm/key-concepts/#nodes).
 
