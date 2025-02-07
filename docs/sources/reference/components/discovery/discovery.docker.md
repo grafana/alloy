@@ -26,20 +26,20 @@ discovery.docker "<LABEL>" {
 
 You can use the following arguments with `discovery.docker`:
 
-Name                     | Type                | Description                                                                                      | Default       | Required
--------------------------|---------------------|--------------------------------------------------------------------------------------------------|---------------|---------
-`host`                   | `string`            | Address of the Docker Daemon to connect to.                                                      |               | yes
-`bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                             |               | no
-`bearer_token`           | `secret`            | Bearer token to authenticate with.                                                               |               | no
-`enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`        | no
-`follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`        | no
-`host_networking_host`   | `string`            | Host to use if the container is in host networking mode.                                         | `"localhost"` | no
-`no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |               | no
-`port`                   | `number`            | Port to use for collecting metrics when containers don't have any port mappings.                 | `80`          | no
-`proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |               | no
-`proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false`       | no
-`proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |               | no
-`refresh_interval`       | `duration`          | Frequency to refresh list of containers.                                                         | `"1m"`        | no
+| Name                     | Type                | Description                                                                                      | Default       | Required |
+| ------------------------ | ------------------- | ------------------------------------------------------------------------------------------------ | ------------- | -------- |
+| `host`                   | `string`            | Address of the Docker Daemon to connect to.                                                      |               | yes      |
+| `bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                             |               | no       |
+| `bearer_token`           | `secret`            | Bearer token to authenticate with.                                                               |               | no       |
+| `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`        | no       |
+| `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`        | no       |
+| `host_networking_host`   | `string`            | Host to use if the container is in host networking mode.                                         | `"localhost"` | no       |
+| `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |               | no       |
+| `port`                   | `number`            | Port to use for collecting metrics when containers don't have any port mappings.                 | `80`          | no       |
+| `proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |               | no       |
+| `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false`       | no       |
+| `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |               | no       |
+| `refresh_interval`       | `duration`          | Frequency to refresh list of containers.                                                         | `"1m"`        | no       |
 
  At most, one of the following can be provided:
 
@@ -57,17 +57,17 @@ Name                     | Type                | Description                    
 
 You can use the following blocks with `discovery.docker`:
 
-Block                                 | Description                                                | Required
---------------------------------------|------------------------------------------------------------|---------
-[`authorization`][authorization]      | Configure generic authorization to the endpoint.           | no
-[`basic_auth`][basic_auth]            | Configure `basic_auth` for authenticating to the endpoint. | no
-[`filter`][filter]                    | Filters discoverable resources.                            | no
-[`oauth2`][oauth2]                    | Configure OAuth 2.0 for authenticating to the endpoint.    | no
-`oauth2` > [`tls_config`][tls_config] | Configure TLS settings for connecting to the endpoint.     | no
-[`tls_config`][tls_config]            | Configure TLS settings for connecting to the endpoint.     | no
+| Block                                 | Description                                                | Required |
+| ------------------------------------- | ---------------------------------------------------------- | -------- |
+| [`authorization`][authorization]      | Configure generic authorization to the endpoint.           | no       |
+| [`basic_auth`][basic_auth]            | Configure `basic_auth` for authenticating to the endpoint. | no       |
+| [`filter`][filter]                    | Filters discoverable resources.                            | no       |
+| [`oauth2`][oauth2]                    | Configure OAuth 2.0 for authenticating to the endpoint.    | no       |
+| `oauth2` > [`tls_config`][tls_config] | Configure TLS settings for connecting to the endpoint.     | no       |
+| [`tls_config`][tls_config]            | Configure TLS settings for connecting to the endpoint.     | no       |
 
-The `>` symbol indicates deeper levels of nesting.
-For example, `oauth2 > tls_config` refers to a `tls_config` block defined inside an `oauth2` block.
+The > symbol indicates deeper levels of nesting.
+For example, `oauth2` > `tls_config` refers to a `tls_config` block defined inside an `oauth2` block.
 
 [filter]: #filter
 [basic_auth]: #basic_auth
@@ -92,10 +92,10 @@ The `basic_auth` block configures basic authentication to the endpoint.
 The `filter` block configures a filter to pass to the Docker Engine to limit the number of containers returned.
 You can specify the `filter` block multiple times to provide more than one filter.
 
-Name     | Type           | Description                   | Default | Required
----------|----------------|-------------------------------|---------|---------
-`name`   | `string`       | Filter name to use.           |         | yes
-`values` | `list(string)` | Values to pass to the filter. |         | yes
+| Name     | Type           | Description                   | Default | Required |
+| -------- | -------------- | ----------------------------- | ------- | -------- |
+| `name`   | `string`       | Filter name to use.           |         | yes      |
+| `values` | `list(string)` | Values to pass to the filter. |         | yes      |
 
 Refer to [List containers][List containers] from the Docker Engine API documentation for the list of supported filters and their meaning.
 
@@ -117,9 +117,9 @@ The `tls_config` block configures TLS settings for connecting to the endpoint.
 
 The following fields are exported and can be referenced by other components:
 
-Name      | Type                | Description
-----------|---------------------|---------------------------------------------------
-`targets` | `list(map(string))` | The set of targets discovered from the docker API.
+| Name      | Type                | Description                                        |
+| --------- | ------------------- | -------------------------------------------------- |
+| `targets` | `list(map(string))` | The set of targets discovered from the docker API. |
 
 Each target includes the following labels:
 
