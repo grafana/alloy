@@ -406,7 +406,7 @@ func (c *Component) DebugInfo() interface{} {
 					JobName:            job,
 					URL:                st.URL(),
 					Health:             string(st.Health()),
-					Labels:             st.discoveredLabels.Map(),
+					Labels:             st.allLabels.Map(),
 					LastError:          lastError,
 					LastScrape:         st.LastScrape(),
 					LastScrapeDuration: st.LastScrapeDuration(),
