@@ -45,7 +45,7 @@ Omitted fields take their default values.
 | -----------------------| -------------------- | -------------------------------------------------------------------------------------------| -------  | -------- |
 | `config_file`          | `string`             | SNMP configuration file defining custom modules.                                           |          | no       |
 | `config`               | `string` or `secret` | SNMP configuration as inline string.                                                       |          | no       |
-| `config_merge_strategy`| `string`             | A strategy defining how `config` or `config_file` contents merge with embedded snmp config. Can be `replace` or `merge`.|`replace `| no       |
+| `config_merge_strategy`| `string`             | A strategy defining how `config` or `config_file` contents merge with the embedded SNMP config. Can be `replace` or `merge`.|`replace`| no       |
 | `concurrency`          | `int`                | SNMP exporter concurrency.                                                                 |   `1`    | no       |
 | `targets`              | `list(map(string))`  | SNMP targets.                                                                              |          | no       |
 
