@@ -20,7 +20,7 @@ func Test_targetsFromGroup(t *testing.T) {
 	args.ProfilingConfig.Goroutine.Enabled = false
 	args.ProfilingConfig.Mutex.Enabled = false
 
-	active, err := targetsFromGroup(&targetgroup.Group{
+	active, err := targetsFromGroup(targetgroup.Group{
 		Targets: []model.LabelSet{
 			{model.AddressLabel: "localhost:9090"},
 			{model.AddressLabel: "localhost:9091", serviceNameLabel: "svc"},
@@ -174,7 +174,7 @@ func Test_targetsFromGroup_withSpecifiedDeltaProfilingDuration(t *testing.T) {
 	args.ProfilingConfig.Mutex.Enabled = false
 	args.DeltaProfilingDuration = 20 * time.Second
 
-	active, err := targetsFromGroup(&targetgroup.Group{
+	active, err := targetsFromGroup(targetgroup.Group{
 		Targets: []model.LabelSet{
 			{model.AddressLabel: "localhost:9090"},
 		},
@@ -213,7 +213,7 @@ func Test_targetsFromGroup_withSpecifiedDeltaProfilingDuration(t *testing.T) {
 func TestProfileURL(t *testing.T) {
 	targets := func(t *testing.T, args Arguments, ls []model.LabelSet) []*Target {
 
-		active, err := targetsFromGroup(&targetgroup.Group{
+		active, err := targetsFromGroup(targetgroup.Group{
 			Targets: ls,
 		}, args, args.ProfilingConfig.AllTargets())
 		require.NoError(t, err)
@@ -570,7 +570,7 @@ func TestLabelsByProfiles(t *testing.T) {
 
 func BenchmarkPopulateLabels(b *testing.B) {
 	args := NewDefaultArguments()
-	tg := &targetgroup.Group{
+	tg := targetgroup.Group{
 		Targets: []model.LabelSet{
 			{model.AddressLabel: "localhost:9090"},
 			{model.AddressLabel: "localhost:9091", serviceNameLabel: "svc"},

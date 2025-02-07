@@ -45,24 +45,22 @@ func TestScrapePool(t *testing.T) {
 
 	for _, tt := range []struct {
 		name     string
-		groups   []*targetgroup.Group
+		group    targetgroup.Group
 		expected []*Target
 	}{
 		{
 			name:     "no targets",
-			groups:   []*targetgroup.Group{},
+			group:    targetgroup.Group{},
 			expected: []*Target{},
 		},
 		{
 			name: "targets",
-			groups: []*targetgroup.Group{
-				{
-					Targets: []model.LabelSet{
-						{model.AddressLabel: "localhost:9090", serviceNameLabel: "s"},
-						{model.AddressLabel: "localhost:8080", serviceNameK8SLabel: "k"},
-					},
-					Labels: model.LabelSet{"foo": "bar"},
+			group: targetgroup.Group{
+				Targets: []model.LabelSet{
+					{model.AddressLabel: "localhost:9090", serviceNameLabel: "s"},
+					{model.AddressLabel: "localhost:8080", serviceNameK8SLabel: "k"},
 				},
+				Labels: model.LabelSet{"foo": "bar"},
 			},
 			expected: []*Target{
 				NewTarget(labels.FromStrings("instance", "localhost:8080", "foo", "bar", model.AddressLabel, "localhost:8080", model.MetricNameLabel, pprofMutex, model.SchemeLabel, "http", ProfilePath, "/debug/pprof/mutex", serviceNameLabel, "k"), url.Values{}),
@@ -73,11 +71,9 @@ func TestScrapePool(t *testing.T) {
 		},
 		{
 			name: "Remove targets",
-			groups: []*targetgroup.Group{
-				{
-					Targets: []model.LabelSet{
-						{model.AddressLabel: "localhost:9090", serviceNameLabel: "s"},
-					},
+			group: targetgroup.Group{
+				Targets: []model.LabelSet{
+					{model.AddressLabel: "localhost:9090", serviceNameLabel: "s"},
 				},
 			},
 			expected: []*Target{
@@ -87,11 +83,9 @@ func TestScrapePool(t *testing.T) {
 		},
 		{
 			name: "Sync targets",
-			groups: []*targetgroup.Group{
-				{
-					Targets: []model.LabelSet{
-						{model.AddressLabel: "localhost:9090", "__type__": "foo", serviceNameLabel: "s"},
-					},
+			group: targetgroup.Group{
+				Targets: []model.LabelSet{
+					{model.AddressLabel: "localhost:9090", "__type__": "foo", serviceNameLabel: "s"},
 				},
 			},
 			expected: []*Target{
@@ -102,7 +96,7 @@ func TestScrapePool(t *testing.T) {
 	} {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			p.sync(tt.groups)
+			p.sync(tt.group)
 			actual := p.ActiveTargets()
 			sort.Sort(Targets(actual))
 			sort.Sort(Targets(tt.expected))
@@ -186,28 +180,24 @@ func BenchmarkSync(b *testing.B) {
 		}),
 		log.NewNopLogger())
 	require.NoError(b, err)
-	groups1 := []*targetgroup.Group{
-		{
-			Targets: []model.LabelSet{
-				{model.AddressLabel: "localhost:9090", serviceNameLabel: "s"},
-				{model.AddressLabel: "localhost:9091", serviceNameLabel: "s"},
-				{model.AddressLabel: "localhost:9092", serviceNameLabel: "s"},
-			},
-			Labels: model.LabelSet{"foo": "bar"},
+	group1 := targetgroup.Group{
+		Targets: []model.LabelSet{
+			{model.AddressLabel: "localhost:9090", serviceNameLabel: "s"},
+			{model.AddressLabel: "localhost:9091", serviceNameLabel: "s"},
+			{model.AddressLabel: "localhost:9092", serviceNameLabel: "s"},
 		},
+		Labels: model.LabelSet{"foo": "bar"},
 	}
-	groups2 := []*targetgroup.Group{
-		{
-			Targets: []model.LabelSet{
-				{model.AddressLabel: "localhost:9090", serviceNameLabel: "s"},
-				{model.AddressLabel: "localhost:9091", serviceNameLabel: "s"},
-				{model.AddressLabel: "localhost:9092", serviceNameLabel: "s"},
-				{model.AddressLabel: "localhost:9093", serviceNameLabel: "s"},
-				{model.AddressLabel: "localhost:9094", serviceNameLabel: "s"},
-				{model.AddressLabel: "localhost:9095", serviceNameLabel: "s"},
-			},
-			Labels: model.LabelSet{"foo": "bar"},
+	group2 := targetgroup.Group{
+		Targets: []model.LabelSet{
+			{model.AddressLabel: "localhost:9090", serviceNameLabel: "s"},
+			{model.AddressLabel: "localhost:9091", serviceNameLabel: "s"},
+			{model.AddressLabel: "localhost:9092", serviceNameLabel: "s"},
+			{model.AddressLabel: "localhost:9093", serviceNameLabel: "s"},
+			{model.AddressLabel: "localhost:9094", serviceNameLabel: "s"},
+			{model.AddressLabel: "localhost:9095", serviceNameLabel: "s"},
 		},
+		Labels: model.LabelSet{"foo": "bar"},
 	}
 
 	defer p.stop()
@@ -216,8 +206,8 @@ func BenchmarkSync(b *testing.B) {
 	b.ResetTimer()
 
 	for n := 0; n < b.N; n++ {
-		p.sync(groups1)
-		p.sync(groups2)
-		p.sync([]*targetgroup.Group{})
+		p.sync(group1)
+		p.sync(group2)
+		p.sync(targetgroup.Group{})
 	}
 }

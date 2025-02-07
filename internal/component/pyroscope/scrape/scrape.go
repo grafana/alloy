@@ -271,11 +271,15 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 	alloyAppendable := pyroscope.NewFanout(args.ForwardTo, o.ID, o.Registerer)
 	scrapeHttpOptions := Options{
+		ID: o.ID,
 		HTTPClientOptions: []config_util.HTTPClientOption{
 			config_util.WithDialContextFunc(httpData.DialFunc),
 		},
 	}
-	scraper := NewManager(scrapeHttpOptions, alloyAppendable, o.Logger)
+	scraper, err := NewManager(scrapeHttpOptions, alloyAppendable, o.Logger)
+	if err != nil {
+		return nil, err
+	}
 	c := &Component{
 		opts:          o,
 		cluster:       clusterData,
@@ -296,7 +300,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 func (c *Component) Run(ctx context.Context) error {
 	defer c.scraper.Stop()
 
-	targetSetsChan := make(chan map[string][]*targetgroup.Group)
+	targetSetsChan := make(chan targetgroup.Group)
 
 	go func() {
 		c.scraper.Run(targetSetsChan)
@@ -374,13 +378,12 @@ func (c *Component) NotifyClusterChange() {
 	}
 }
 
-func (c *Component) componentTargetsToProm(jobName string, tgs []discovery.Target) map[string][]*targetgroup.Group {
-	promGroup := &targetgroup.Group{Source: jobName}
+func (c *Component) componentTargetsToProm(jobName string, tgs []discovery.Target) targetgroup.Group {
+	promGroup := targetgroup.Group{Source: jobName}
 	for _, tg := range tgs {
 		promGroup.Targets = append(promGroup.Targets, convertLabelSet(tg))
 	}
-
-	return map[string][]*targetgroup.Group{jobName: {promGroup}}
+	return promGroup
 }
 
 func convertLabelSet(tg discovery.Target) model.LabelSet {
@@ -395,23 +398,21 @@ func convertLabelSet(tg discovery.Target) model.LabelSet {
 func (c *Component) DebugInfo() interface{} {
 	var res []scrape.TargetStatus
 
-	for job, stt := range c.scraper.TargetsActive() {
-		for _, st := range stt {
-			var lastError string
-			if st.LastError() != nil {
-				lastError = st.LastError().Error()
-			}
-			if st != nil {
-				res = append(res, scrape.TargetStatus{
-					JobName:            job,
-					URL:                st.URL(),
-					Health:             string(st.Health()),
-					Labels:             st.allLabels.Map(),
-					LastError:          lastError,
-					LastScrape:         st.LastScrape(),
-					LastScrapeDuration: st.LastScrapeDuration(),
-				})
-			}
+	for _, st := range c.scraper.TargetsActive() {
+		var lastError string
+		if st.LastError() != nil {
+			lastError = st.LastError().Error()
+		}
+		if st != nil {
+			res = append(res, scrape.TargetStatus{
+				JobName:            c.opts.ID,
+				URL:                st.URL(),
+				Health:             string(st.Health()),
+				Labels:             st.allLabels.Map(),
+				LastError:          lastError,
+				LastScrape:         st.LastScrape(),
+				LastScrapeDuration: st.LastScrapeDuration(),
+			})
 		}
 	}
 

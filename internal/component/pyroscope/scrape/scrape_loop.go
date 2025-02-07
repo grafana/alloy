@@ -51,23 +51,14 @@ func newScrapePool(hco []commonconfig.HTTPClientOption, cfg Arguments, appendabl
 	}, nil
 }
 
-func (tg *scrapePool) sync(groups []*targetgroup.Group) {
+func (tg *scrapePool) sync(group targetgroup.Group) {
 	tg.mtx.Lock()
 	defer tg.mtx.Unlock()
 	allTargets := tg.config.ProfilingConfig.AllTargets()
 	level.Info(tg.logger).Log("msg", "syncing target groups", "job", tg.config.JobName)
-	var actives []*Target
-	for _, group := range groups {
-		targets, err := targetsFromGroup(group, tg.config, allTargets)
-		if err != nil {
-			level.Error(tg.logger).Log("msg", "creating targets failed", "err", err)
-			continue
-		}
-		if actives == nil {
-			actives = targets
-		} else { // in practice we only have one group
-			actives = append(actives, targets...)
-		}
+	actives, err := targetsFromGroup(group, tg.config, allTargets)
+	if err != nil {
+		level.Error(tg.logger).Log("msg", "creating targets failed", "err", err)
 	}
 
 	for _, t := range actives {

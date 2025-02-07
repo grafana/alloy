@@ -17,6 +17,7 @@ var reloadInterval = 5 * time.Second
 type Options struct {
 	// Optional HTTP client options to use when scraping.
 	HTTPClientOptions []config_util.HTTPClientOption
+	ID                string
 }
 
 type Manager struct {
@@ -27,32 +28,36 @@ type Manager struct {
 	graceShut  chan struct{}
 	appendable pyroscope.Appendable
 
-	mtxScrape     sync.Mutex // Guards the fields below.
-	config        Arguments
-	targetsGroups map[string]*scrapePool
-	targetSets    map[string][]*targetgroup.Group
+	mtxScrape sync.Mutex // Guards the fields below.
+	config    Arguments
+	sp        *scrapePool
+	targets   targetgroup.Group
 
 	triggerReload chan struct{}
 }
 
-func NewManager(o Options, appendable pyroscope.Appendable, logger log.Logger) *Manager {
+func NewManager(o Options, appendable pyroscope.Appendable, logger log.Logger) (*Manager, error) {
 	if logger == nil {
 		logger = log.NewNopLogger()
 	}
-	return &Manager{
+	m := &Manager{
 		options:       o,
 		logger:        logger,
 		appendable:    appendable,
 		graceShut:     make(chan struct{}),
 		triggerReload: make(chan struct{}, 1),
-		targetsGroups: make(map[string]*scrapePool),
-		targetSets:    make(map[string][]*targetgroup.Group),
 	}
+	sp, err := newScrapePool(m.options.HTTPClientOptions, m.config, m.appendable, log.With(m.logger, "scrape_pool", o.ID))
+	if err != nil {
+		return nil, err
+	}
+	m.sp = sp
+	return m, nil
 }
 
 // Run receives and saves target set updates and triggers the scraping loops reloading.
 // Reloading happens in the background so that it doesn't block receiving targets updates.
-func (m *Manager) Run(tsets <-chan map[string][]*targetgroup.Group) {
+func (m *Manager) Run(tsets <-chan targetgroup.Group) {
 	go m.reloader()
 	for {
 		select {
@@ -94,33 +99,7 @@ func (m *Manager) reload() {
 	m.mtxScrape.Lock()
 	defer m.mtxScrape.Unlock()
 
-	var wg sync.WaitGroup
-	for setName, groups := range m.targetSets {
-		if _, ok := m.targetsGroups[setName]; !ok {
-			sp, err := newScrapePool(m.options.HTTPClientOptions, m.config, m.appendable, log.With(m.logger, "scrape_pool", setName))
-			if err != nil {
-				level.Error(m.logger).Log("msg", "error creating new scrape pool", "err", err, "scrape_pool", setName)
-				continue
-			}
-			m.targetsGroups[setName] = sp
-		}
-
-		wg.Add(1)
-		// Run the sync in parallel as these take a while and at high load can't catch up.
-		go func(sp *scrapePool, groups []*targetgroup.Group) {
-			sp.sync(groups)
-			wg.Done()
-		}(m.targetsGroups[setName], groups)
-	}
-
-	for tgName, sp := range m.targetsGroups {
-		if _, ok := m.targetSets[tgName]; !ok {
-			sp.stop()
-			delete(m.targetsGroups, tgName)
-		}
-	}
-
-	wg.Wait()
+	m.sp.sync(m.targets)
 }
 
 // ApplyConfig resets the manager's target providers and job configurations as defined by the new cfg.
@@ -131,12 +110,10 @@ func (m *Manager) ApplyConfig(cfg Arguments) error {
 	var failed bool
 	m.config = cfg
 
-	for name, sp := range m.targetsGroups {
-		err := sp.reload(cfg)
-		if err != nil {
-			level.Error(m.logger).Log("msg", "error reloading scrape pool", "err", err, "scrape_pool", name)
-			failed = true
-		}
+	err := m.sp.reload(cfg)
+	if err != nil {
+		level.Error(m.sp.logger).Log("msg", "error reloading scrape pool", "err", err)
+		failed = true
 	}
 
 	if failed {
@@ -145,62 +122,25 @@ func (m *Manager) ApplyConfig(cfg Arguments) error {
 	return nil
 }
 
-func (m *Manager) updateTsets(tsets map[string][]*targetgroup.Group) {
+func (m *Manager) updateTsets(tsets targetgroup.Group) {
 	m.mtxScrape.Lock()
-	m.targetSets = tsets
+	m.targets = tsets
 	m.mtxScrape.Unlock()
 }
 
-// TargetsAll returns active and dropped targets grouped by job_name.
-func (m *Manager) TargetsAll() map[string][]*Target {
-	m.mtxScrape.Lock()
-	defer m.mtxScrape.Unlock()
-
-	targets := make(map[string][]*Target, len(m.targetsGroups))
-	for tset, sp := range m.targetsGroups {
-		targets[tset] = sp.ActiveTargets()
-	}
-	return targets
-}
-
 // TargetsActive returns the active targets currently being scraped.
-func (m *Manager) TargetsActive() map[string][]*Target {
+func (m *Manager) TargetsActive() []*Target {
 	m.mtxScrape.Lock()
 	defer m.mtxScrape.Unlock()
 
-	var (
-		wg  sync.WaitGroup
-		mtx sync.Mutex
-	)
-
-	targets := make(map[string][]*Target, len(m.targetsGroups))
-	wg.Add(len(m.targetsGroups))
-	for tset, sp := range m.targetsGroups {
-		// Running in parallel limits the blocking time of scrapePool to scrape
-		// interval when there's an update from SD.
-		go func(tset string, sp *scrapePool) {
-			mtx.Lock()
-			targets[tset] = sp.ActiveTargets()
-			mtx.Unlock()
-			wg.Done()
-		}(tset, sp)
-	}
-	wg.Wait()
-	return targets
+	return m.sp.ActiveTargets()
 }
 
 func (m *Manager) Stop() {
 	m.mtxScrape.Lock()
 	defer m.mtxScrape.Unlock()
 
-	wg := sync.WaitGroup{}
-	for _, sp := range m.targetsGroups {
-		wg.Add(1)
-		go func(sp *scrapePool) {
-			defer wg.Done()
-			sp.stop()
-		}(sp)
-	}
-	wg.Wait()
+	m.sp.stop()
+
 	close(m.graceShut)
 }

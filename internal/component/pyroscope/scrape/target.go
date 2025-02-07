@@ -315,7 +315,7 @@ func populateLabels(lb *labels.Builder, base labels.Labels, cfg Arguments) (res 
 }
 
 // targetsFromGroup builds targets based on the given TargetGroup, config and target types map.
-func targetsFromGroup(group *targetgroup.Group, cfg Arguments, targetTypes map[string]ProfilingTarget) ([]*Target, error) {
+func targetsFromGroup(group targetgroup.Group, cfg Arguments, targetTypes map[string]ProfilingTarget) ([]*Target, error) {
 	var (
 		targets = make([]*Target, 0, len(group.Targets))
 	)
