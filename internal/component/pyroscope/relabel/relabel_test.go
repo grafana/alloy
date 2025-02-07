@@ -3,6 +3,7 @@ package relabel
 import (
 	"context"
 	"errors"
+	"strings"
 	"sync"
 	"testing"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/grafana/regexp"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/stretchr/testify/require"
 )
@@ -305,6 +307,139 @@ func TestCacheLRU(t *testing.T) {
 	require.Equal(t, 2, c.cache.Len())
 	_, ok := c.cache.Get(toModelLabelSet(labels1).Fingerprint())
 	require.False(t, ok, "oldest entry should have been evicted")
+}
+
+func TestCachePurge(t *testing.T) {
+	app := NewTestAppender()
+	c, err := New(component.Options{
+		Logger:        util.TestLogger(t),
+		Registerer:    prometheus.NewRegistry(),
+		OnStateChange: func(e component.Exports) {},
+	}, Arguments{
+		ForwardTo: []pyroscope.Appendable{app},
+		RelabelConfigs: []*alloy_relabel.Config{{
+			SourceLabels: []string{"env"},
+			Action:       "replace",
+			TargetLabel:  "environment",
+			Regex:        alloy_relabel.Regexp{Regexp: regexp.MustCompile("(.+)")},
+			Replacement:  "staging",
+		}},
+		MaxCacheSize: 4,
+	})
+	require.NoError(t, err)
+
+	// Add some entries to cache
+	labels1 := labels.FromStrings("env", "prod")
+	labels2 := labels.FromStrings("env", "dev")
+	err = c.AppendIngest(context.Background(), &pyroscope.IncomingProfile{Labels: labels1})
+	require.NoError(t, err)
+	err = c.AppendIngest(context.Background(), &pyroscope.IncomingProfile{Labels: labels2})
+	require.NoError(t, err)
+	require.Equal(t, 2, c.cache.Len(), "cache should have 2 entries")
+
+	// Update with different relabel rules to trigger purge
+	err = c.Update(Arguments{
+		ForwardTo: []pyroscope.Appendable{app},
+		RelabelConfigs: []*alloy_relabel.Config{{
+			SourceLabels: []string{"region"}, // Different source label
+			Action:       "replace",
+			TargetLabel:  "zone",
+			Replacement:  "us-east",
+		}},
+		MaxCacheSize: 4,
+	})
+	require.NoError(t, err)
+
+	// Verify cache was purged
+	require.Equal(t, 0, c.cache.Len(), "cache should be empty after purge")
+}
+
+func TestMetricsWithRelabeling(t *testing.T) {
+	reg := prometheus.NewRegistry()
+	app := NewTestAppender()
+
+	// Create component with relabel rules that will trigger different metrics
+	c, err := New(component.Options{
+		Logger:        util.TestLogger(t),
+		Registerer:    reg,
+		OnStateChange: func(e component.Exports) {},
+	}, Arguments{
+		ForwardTo: []pyroscope.Appendable{app},
+		RelabelConfigs: []*alloy_relabel.Config{{
+			SourceLabels: []string{"env"},
+			Action:       "drop",
+			Regex:        alloy_relabel.Regexp{Regexp: regexp.MustCompile("dev")},
+		}},
+		MaxCacheSize: 10,
+	})
+	require.NoError(t, err)
+
+	// Test empty labels (bypass relabeling)
+	err = c.Append(context.Background(), labels.EmptyLabels(), []*pyroscope.RawSample{})
+	require.NoError(t, err)
+
+	// Test profile that should be processed but not dropped
+	prodLabels := labels.FromStrings("env", "prod")
+	err = c.Append(context.Background(), prodLabels, []*pyroscope.RawSample{})
+	require.NoError(t, err)
+
+	// Test profile that should be dropped
+	devLabels := labels.FromStrings("env", "dev")
+	err = c.Append(context.Background(), devLabels, []*pyroscope.RawSample{})
+	require.NoError(t, err)
+
+	// Send same profile again to test cache hit
+	err = c.AppendIngest(context.Background(), &pyroscope.IncomingProfile{Labels: prodLabels})
+	require.NoError(t, err)
+
+	// Send new profile to test cache miss
+	stageLabels := labels.FromStrings("env", "stage")
+	err = c.AppendIngest(context.Background(), &pyroscope.IncomingProfile{Labels: stageLabels})
+	require.NoError(t, err)
+
+	// Verify all metrics
+	expected := `
+        # HELP pyroscope_relabel_profiles_processed Total number of profiles processed
+        # TYPE pyroscope_relabel_profiles_processed counter
+        pyroscope_relabel_profiles_processed 5
+    `
+	require.NoError(t, testutil.CollectAndCompare(c.metrics.profilesProcessed, strings.NewReader(expected)))
+
+	expected = `
+        # HELP pyroscope_relabel_profiles_written Total number of profiles forwarded
+        # TYPE pyroscope_relabel_profiles_written counter
+        pyroscope_relabel_profiles_written 4
+    `
+	require.NoError(t, testutil.CollectAndCompare(c.metrics.profilesOutgoing, strings.NewReader(expected)))
+
+	expected = `
+        # HELP pyroscope_relabel_profiles_dropped Total number of profiles dropped by relabeling rules
+        # TYPE pyroscope_relabel_profiles_dropped counter
+        pyroscope_relabel_profiles_dropped 1
+    `
+	require.NoError(t, testutil.CollectAndCompare(c.metrics.profilesDropped, strings.NewReader(expected)))
+
+	expected = `
+        # HELP pyroscope_relabel_cache_hits Total number of cache hits
+        # TYPE pyroscope_relabel_cache_hits counter
+        pyroscope_relabel_cache_hits 1
+    `
+	require.NoError(t, testutil.CollectAndCompare(c.metrics.cacheHits, strings.NewReader(expected)))
+
+	expected = `
+        # HELP pyroscope_relabel_cache_misses Total number of cache misses
+        # TYPE pyroscope_relabel_cache_misses counter
+        pyroscope_relabel_cache_misses 3
+    `
+	require.NoError(t, testutil.CollectAndCompare(c.metrics.cacheMisses, strings.NewReader(expected)))
+
+	expected = `
+        # HELP pyroscope_relabel_cache_size Total size of relabel cache
+        # TYPE pyroscope_relabel_cache_size gauge
+        pyroscope_relabel_cache_size 3
+	`
+
+	require.NoError(t, testutil.CollectAndCompare(c.metrics.cacheSize, strings.NewReader(expected)))
 }
 
 type TestAppender struct {
