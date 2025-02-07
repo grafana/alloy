@@ -40,10 +40,7 @@ pyroscope.ebpf "<LABEL>" {
 
 The component configures and starts a new eBPF profiling job to collect performance profiles from the current host.
 
-You can use the following arguments with `pyroscope.ebpf`.
-
-Only the `forward_to` and `targets` fields are required.
-Omitted fields take their default values.
+You can use the following arguments with `pyroscope.ebpf`:
 
 | Name                      | Type                     | Description                                                                                                                      | Default | Required |
 | ------------------------- | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
@@ -62,6 +59,9 @@ Omitted fields take their default values.
 | `same_file_cache_size`    | `int`                    | The size of the elf file -> symbols table LRU cache                                                                              | 8       | no       |
 | `sample_rate`             | `int`                    | How many times per second to collect profile samples                                                                             | 97      | no       |
 | `symbols_map_size`        | `int`                    | The size of eBPF symbols map                                                                                                     | 16384   | no       |
+
+Only the `forward_to` and `targets` fields are required.
+Omitted fields take their default values.
 
 ## Blocks
 
