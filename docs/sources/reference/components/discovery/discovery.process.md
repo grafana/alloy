@@ -125,7 +125,6 @@ The following fields are exported and can be referenced by other components:
 Each target includes the following labels:
 
 * `__container_id__`: The container ID. Taken from `/proc/<pid>/cgroup`. If the process isn't running in a container, this label isn't set.
-* `__meta_cgroup_path`: The cgroup path under which the process is running. In the case of cgroups v1, this label includes all the controllers paths delimited by `|`.
 * `__meta_process_commandline`: The process command line. Taken from `/proc/<pid>/cmdline`.
 * `__meta_process_cwd`: The process current working directory. Taken from `/proc/<pid>/cwd`.
 * `__meta_process_exe`: The process executable path. Taken from `/proc/<pid>/exe`.
