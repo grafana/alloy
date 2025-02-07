@@ -19,23 +19,29 @@ func TestLoadSNMPConfig(t *testing.T) {
 		expectedNumAuths   int
 	}{
 		{
-			name:               "passing a config file",
-			cfg:                Config{SnmpConfigFile: "common/snmp.yml", SnmpTargets: []SNMPTarget{{Name: "test", Target: "localhost"}}},
+			name: "passing a config file",
+			cfg: Config{
+				SnmpConfigFile:          "common/snmp.yml",
+				SnmpConfigMergeStrategy: "replace",
+				SnmpTargets:             []SNMPTarget{{Name: "test", Target: "localhost"}}},
 			expectedNumModules: embeddedModulesCount,
 			expectedNumAuths:   embeddedAuthCount,
 		},
 		{
 			name: "passing a snmp config",
 			cfg: Config{
-				SnmpConfig:  snmp_config.Config{Modules: map[string]*snmp_config.Module{"if_mib": {Walk: []string{"1.3.6.1.2.1.2"}}}},
-				SnmpTargets: []SNMPTarget{{Name: "test", Target: "localhost"}},
+				SnmpConfig:              snmp_config.Config{Modules: map[string]*snmp_config.Module{"if_mib": {Walk: []string{"1.3.6.1.2.1.2"}}}},
+				SnmpConfigMergeStrategy: "replace",
+				SnmpTargets:             []SNMPTarget{{Name: "test", Target: "localhost"}},
 			},
 			expectedNumModules: 1,
 			expectedNumAuths:   0,
 		},
 		{
-			name:               "using embedded config",
-			cfg:                Config{SnmpTargets: []SNMPTarget{{Name: "test", Target: "localhost"}}},
+			name: "using embedded config",
+			cfg: Config{
+				SnmpConfigMergeStrategy: "replace",
+				SnmpTargets:             []SNMPTarget{{Name: "test", Target: "localhost"}}},
 			expectedNumModules: embeddedModulesCount,
 			expectedNumAuths:   embeddedAuthCount,
 		},
