@@ -38,6 +38,7 @@ Main (unreleased)
   - Added table columns parsing (@cristiagreco)
   - Add enable/disable collector configurability to `database_observability.mysql`. This removes the `query_samples_enabled` argument, now configurable via enable/disable collector. (@fridgepoet)
   - Refactor cache config in schema_table collector (@cristiangreco)
+  - Use labels for some indexed logs elements (@cristiangreco)
 
 ### Bugfixes
 

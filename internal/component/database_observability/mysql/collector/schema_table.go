@@ -200,10 +200,14 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 		schemas = append(schemas, schema)
 
 		c.entryHandler.Chan() <- loki.Entry{
-			Labels: model.LabelSet{"job": database_observability.JobName},
+			Labels: model.LabelSet{
+				"job":      database_observability.JobName,
+				"op":       OP_SCHEMA_DETECTION,
+				"instance": model.LabelValue(c.instanceKey),
+			},
 			Entry: logproto.Entry{
 				Timestamp: time.Unix(0, time.Now().UnixNano()),
-				Line:      fmt.Sprintf(`level=info msg="schema detected" op="%s" instance="%s" schema="%s"`, OP_SCHEMA_DETECTION, c.instanceKey, schema),
+				Line:      fmt.Sprintf(`level=info msg="schema detected" schema="%s"`, schema),
 			},
 		}
 	}
@@ -246,10 +250,14 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 			})
 
 			c.entryHandler.Chan() <- loki.Entry{
-				Labels: model.LabelSet{"job": database_observability.JobName},
+				Labels: model.LabelSet{
+					"job":      database_observability.JobName,
+					"op":       OP_TABLE_DETECTION,
+					"instance": model.LabelValue(c.instanceKey),
+				},
 				Entry: logproto.Entry{
 					Timestamp: time.Unix(0, time.Now().UnixNano()),
-					Line:      fmt.Sprintf(`level=info msg="table detected" op="%s" instance="%s" schema="%s" table="%s"`, OP_TABLE_DETECTION, c.instanceKey, schema, tableName),
+					Line:      fmt.Sprintf(`level=info msg="table detected" schema="%s" table="%s"`, schema, tableName),
 				},
 			}
 		}
@@ -290,12 +298,16 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 		}
 
 		c.entryHandler.Chan() <- loki.Entry{
-			Labels: model.LabelSet{"job": database_observability.JobName},
+			Labels: model.LabelSet{
+				"job":      database_observability.JobName,
+				"op":       OP_CREATE_STATEMENT,
+				"instance": model.LabelValue(c.instanceKey),
+			},
 			Entry: logproto.Entry{
 				Timestamp: time.Unix(0, time.Now().UnixNano()),
 				Line: fmt.Sprintf(
-					`level=info msg="create table" op="%s" instance="%s" schema="%s" table="%s" create_statement="%s" table_spec="%s"`,
-					OP_CREATE_STATEMENT, c.instanceKey, table.schema, table.tableName, base64.StdEncoding.EncodeToString([]byte(table.createStmt)), base64.StdEncoding.EncodeToString([]byte(table.tableSpec)),
+					`level=info msg="create table" schema="%s" table="%s" create_statement="%s" table_spec="%s"`,
+					table.schema, table.tableName, base64.StdEncoding.EncodeToString([]byte(table.createStmt)), base64.StdEncoding.EncodeToString([]byte(table.tableSpec)),
 				),
 			},
 		}
