@@ -807,10 +807,10 @@ func (l *Loader) concurrentEvalFn(n dag.Node, spanCtx context.Context, tracer tr
 	var err error
 	switch n := n.(type) {
 	case BlockNode:
-		ectx := l.cache.GetContext()
 
 		// RLock before evaluate to prevent Evaluating while the config is being reloaded
 		l.mut.RLock()
+		ectx := l.cache.GetContext()
 		evalErr := n.Evaluate(ectx)
 
 		err = l.postEvaluate(l.log, n, evalErr)
