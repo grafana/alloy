@@ -235,6 +235,8 @@ v1.5.1
 
 - For sharding targets during clustering, `loki.source.podlogs` now only takes into account some labels. (@ptodev)
 
+- Improve instrumentation of `pyroscope.relabel` component. (@marcsanmi)
+
 ### Bugfixes
 
 - Fixed an issue in the `pyroscope.write` component to prevent TLS connection churn to Pyroscope when the `pyroscope.receive_http` clients don't request keepalive (@madaraszg-tulip)
