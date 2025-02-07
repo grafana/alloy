@@ -5,7 +5,7 @@ on:
     inputs:
       directory:
         description: "Directory to search for Go fuzz tests in."
-        default: '.'
+        default: "."
         required: false
         type: string
       fuzz-time:
@@ -33,15 +33,20 @@ jobs:
           RESULTS=()
 
           for FILE in $TEST_FILES; do
-            FUZZ_FUNC=$(grep -E 'func Fuzz\w*' $FILE | sed 's/func //' | sed 's/(.*$//')
-            if [ -z "$FUZZ_FUNC" ]; then
+            FUZZ_FUNCS=$(grep -E 'func Fuzz\w*' $FILE | sed 's/func //' | sed 's/(.*$//')
+            if [ -z "$FUZZ_FUNCS" ]; then
               continue
             fi
 
             PACKAGE_PATH=$(dirname ${FILE#${{ inputs.directory }}/})
-            RESULTS+=("{\"package\":\"$PACKAGE_PATH\",\"function\":\"$FUZZ_FUNC\"}")
+            for FUZZ_FUNC in $FUZZ_FUNCS; do
+              if [ -z "$FUZZ_FUNC" ]; then
+                continue
+              fi
 
-            echo "Found $FUZZ_FUNC in $PACKAGE_PATH"
+              RESULTS+=("{\"package\":\"$PACKAGE_PATH\",\"function\":\"$FUZZ_FUNC\"}")
+              echo "Found $FUZZ_FUNC in $PACKAGE_PATH"
+            done
           done
 
           NUM_RESULTS=${#RESULTS[@]}
@@ -74,8 +79,7 @@ jobs:
           cache: false
 
       - name: Find cache location
-        run:
-          echo "FUZZ_CACHE=$(go env GOCACHE)/fuzz" >> $GITHUB_ENV
+        run: echo "FUZZ_CACHE=$(go env GOCACHE)/fuzz" >> $GITHUB_ENV
 
       - name: Restore fuzz cache
         uses: actions/cache@v4
