@@ -215,6 +215,8 @@ func TestSchemaTable(t *testing.T) {
 		err = mock.ExpectationsWereMet()
 		require.NoError(t, err)
 
+		require.Equal(t, 1, collector.cache.Len())
+
 		lokiEntries := lokiClient.Received()
 		for _, entry := range lokiEntries {
 			require.Equal(t, model.LabelSet{"job": database_observability.JobName}, entry.Labels)
@@ -338,6 +340,8 @@ func TestSchemaTable(t *testing.T) {
 		require.Eventually(t, func() bool {
 			return collector.Stopped()
 		}, 5*time.Second, 100*time.Millisecond)
+
+		require.Equal(t, 1, collector.cache.Len())
 
 		err = mock.ExpectationsWereMet()
 		require.NoError(t, err)
