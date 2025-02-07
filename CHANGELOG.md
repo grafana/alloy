@@ -38,7 +38,7 @@ Main (unreleased)
   - Added table columns parsing (@cristiagreco)
   - Add enable/disable collector configurability to `database_observability.mysql`. This removes the `query_samples_enabled` argument, now configurable via enable/disable collector. (@fridgepoet)
 
-- Improve preformance of discovery.relabel by using label builder (@simonswine)
+- Improve performance of discovery.relabel by using label builder (@simonswine)
 
 ### Bugfixes
 
