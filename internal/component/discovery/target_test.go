@@ -757,6 +757,17 @@ func TestComponentTargetsToPromTargetGroups(t *testing.T) {
 	}
 }
 
+/*
+	Recent run:
+
+goos: darwin goarch: arm64 cpu: Apple M2
+Benchmark_Targets_TypicalPipeline-8   	      36	  32868159 ns/op	 6022494 B/op	  100544 allocs/op
+Benchmark_Targets_TypicalPipeline-8   	      34	  34562724 ns/op	 6109322 B/op	  100543 allocs/op
+Benchmark_Targets_TypicalPipeline-8   	      34	  35662420 ns/op	 6022429 B/op	  100545 allocs/op
+Benchmark_Targets_TypicalPipeline-8   	      36	  33446308 ns/op	 6021909 B/op	  100541 allocs/op
+Benchmark_Targets_TypicalPipeline-8   	      34	  33537419 ns/op	 6022333 B/op	  100543 allocs/op
+Benchmark_Targets_TypicalPipeline-8   	      34	  33687083 ns/op	 6109172 B/op	  100543 allocs/op
+*/
 func Benchmark_Targets_TypicalPipeline(b *testing.B) {
 	sharedLabels := 5
 	labelsPerTarget := 5
