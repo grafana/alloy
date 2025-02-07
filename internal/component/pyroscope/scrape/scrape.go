@@ -104,7 +104,7 @@ type ProfilingConfig struct {
 	GoDeltaProfBlock  ProfilingTarget         `alloy:"profile.godeltaprof_block,block,optional"`
 	Custom            []CustomProfilingTarget `alloy:"profile.custom,block,optional"`
 
-	PprofPrefix string `alloy:"path_prefix,attr,optional"`
+	PathPrefix string `alloy:"path_prefix,attr,optional"`
 }
 
 // AllTargets returns the set of all standard and custom profiling targets,
@@ -406,7 +406,7 @@ func (c *Component) DebugInfo() interface{} {
 					JobName:            job,
 					URL:                st.URL(),
 					Health:             string(st.Health()),
-					Labels:             st.discoveredLabels.Map(),
+					Labels:             st.allLabels.Map(),
 					LastError:          lastError,
 					LastScrape:         st.LastScrape(),
 					LastScrapeDuration: st.LastScrapeDuration(),

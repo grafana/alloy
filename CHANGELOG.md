@@ -12,28 +12,33 @@ Main (unreleased)
 
 ### Features
 
-- Add the possibility to export span events as logs in `otelcol.connector.spanlogs`. (@steve-hb)
+- (_Experimental_) Add a `stage.windowsevent` block in the `loki.process` component. This aims to replace the existing `stage.eventlogmessage`. (@wildum)
+
+- Add `pyroscope.relabel` component to modify or filter profiles using Prometheus relabeling rules. (@marcsanmi)
 
 ### Enhancements
 
-- (_Experimental_) Log instance label key in `database_observability.mysql` (@cristiangreco)
+- Add `go_table_fallback` arg to `pyroscope.ebpf` (@korniltsev)
 
-- (_Experimental_) Improve parsing of truncated queries in `database_observability.mysql` (@cristiangreco)
+- Memory optimizations in `pyroscope.scrape` (@korniltsev)
 
-- (_Experimental_) Capture schema name for query samples in `database_observability.mysql` (@cristiangreco)
-
-- (_Experimental_) Fix handling of view table types when detecting schema in `database_observability.mysql` (@matthewnolf)
-
-- (_Experimental_) Fix error handling during result set iteration in `database_observability.mysql` (@cristiangreco)
-
-- (_Experimental_) Better support for table name parsing in `database_observability.mysql` (@cristiangreco)
-
-- (_Experimental_) Better error handling for `database_observability.mysql` (@cristiangreco)
+- Add the possibility to export span events as logs in `otelcol.connector.spanlogs`. (@steve-hb)
 
 - Add json format support for log export via faro receiver (@ravishankar15)
 
-- Improve preformance of discovery.relabel by using label builder (@simonswine)
+- (_Experimental_) Various changes to the experimental component `database_observability.mysql`:
+  - Always log `instance` label key (@cristiangreco)
+  - Improve parsing of truncated queries (@cristiangreco)
+  - Capture schema name for query samples (@cristiangreco)
+  - Fix handling of view table types when detecting schema (@matthewnolf)
+  - Fix error handling during result set iteration (@cristiangreco)
+  - Better support for table name parsing (@cristiangreco)
+  - Better error handling for components (@cristiangreco)
+  - Add namespace to `connection_info` metric (@cristiangreco)
+  - Added table columns parsing (@cristiagreco)
+  - Add enable/disable collector configurability to `database_observability.mysql`. This removes the `query_samples_enabled` argument, now configurable via enable/disable collector. (@fridgepoet)
 
+- Improve preformance of discovery.relabel by using label builder (@simonswine)
 
 ### Bugfixes
 
@@ -41,9 +46,15 @@ Main (unreleased)
 
 - Add livedebugging support for `prometheus.remote_write` (@ravishankar15)
 
+- Add livedebugging support for `otelcol.connector.*` components (@wildum)
+
 - Bump snmp_exporter and embedded modules to 0.27.0. Add support for multi-module handling by comma separation and expose argument to increase SNMP polling concurrency for `prometheus.exporter.snmp`. (@v-zhuravlev)
 
+- Reduce CPU usage of `loki.source.windowsevent` by up to 60% by updating the bookmark file every 10 seconds instead of after every event. (@wildum)
+
 - Add support for pushv1.PusherService Connect API in `pyroscope.receive_http`. (@simonswine)
+
+- Fixed an issue where `loki.process` would sometimes output live debugging entries out-of-order (@thampiotr)
 
 v1.6.1
 -----------------
