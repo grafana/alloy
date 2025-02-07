@@ -24,6 +24,7 @@ const (
 	OP_SCHEMA_DETECTION = "schema_detection"
 	OP_TABLE_DETECTION  = "table_detection"
 	OP_CREATE_STATEMENT = "create_statement"
+	SchemaTableName     = "schema_table"
 )
 
 const (
@@ -70,7 +71,10 @@ type SchemaTableArguments struct {
 	InstanceKey     string
 	CollectInterval time.Duration
 	EntryHandler    loki.EntryHandler
-	CacheTTL        time.Duration
+
+	CacheEnabled bool
+	CacheSize    int
+	CacheTTL     time.Duration
 
 	Logger log.Logger
 }
@@ -80,12 +84,12 @@ type SchemaTable struct {
 	instanceKey     string
 	collectInterval time.Duration
 	entryHandler    loki.EntryHandler
+
 	// Cache of table definitions. Entries are removed after a configurable TTL.
 	// Key is a string of the form "schema.table@timestamp", where timestamp is
 	// the last update time of the table (this allows capturing schema changes
 	// at each scan, regardless of caching).
-	// TODO(cristian): allow configuring cache size (currently unlimited).
-	cache *expirable.LRU[string, tableInfo]
+	cache *expirable.LRU[string, *tableInfo]
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -100,6 +104,7 @@ type tableInfo struct {
 	createTime time.Time
 	updateTime time.Time
 	createStmt string
+	tableSpec  string
 }
 
 type tableSpec struct {
@@ -115,19 +120,24 @@ type columnSpec struct {
 }
 
 func NewSchemaTable(args SchemaTableArguments) (*SchemaTable, error) {
-	return &SchemaTable{
+	c := &SchemaTable{
 		dbConnection:    args.DB,
 		instanceKey:     args.InstanceKey,
 		collectInterval: args.CollectInterval,
 		entryHandler:    args.EntryHandler,
-		cache:           expirable.NewLRU[string, tableInfo](0, nil, args.CacheTTL),
 		logger:          log.With(args.Logger, "collector", "SchemaTable"),
 		running:         &atomic.Bool{},
-	}, nil
+	}
+
+	if args.CacheEnabled {
+		c.cache = expirable.NewLRU[string, *tableInfo](args.CacheSize, nil, args.CacheTTL)
+	}
+
+	return c, nil
 }
 
 func (c *SchemaTable) Name() string {
-	return "SchemaTable"
+	return SchemaTableName
 }
 
 func (c *SchemaTable) Start(ctx context.Context) error {
@@ -208,7 +218,7 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 		return nil
 	}
 
-	tables := []tableInfo{}
+	tables := []*tableInfo{}
 
 	for _, schema := range schemas {
 		rs, err := c.dbConnection.QueryContext(ctx, selectTableName, schema)
@@ -225,12 +235,14 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 				level.Error(c.logger).Log("msg", "failed to scan tables", "err", err)
 				break
 			}
-			tables = append(tables, tableInfo{
+			tables = append(tables, &tableInfo{
 				schema:     schema,
 				tableName:  tableName,
 				tableType:  tableType,
 				createTime: createTime,
 				updateTime: updateTime,
+				createStmt: "",
+				tableSpec:  "",
 			})
 
 			c.entryHandler.Chan() <- loki.Entry{
@@ -255,50 +267,26 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 
 	// TODO(cristian): consider moving this into the loop above
 	for _, table := range tables {
-		logKVs := []any{"schema", table.schema, "table", table.tableName}
-
 		fullyQualifiedTable := fmt.Sprintf("%s.%s", table.schema, table.tableName)
 		cacheKey := fmt.Sprintf("%s@%d", fullyQualifiedTable, table.updateTime.Unix())
 
-		if c.cache.Contains(cacheKey) {
-			level.Debug(c.logger).Log("msg", "table definition already in cache", logKVs)
-			continue
-		}
-
-		row := c.dbConnection.QueryRowContext(ctx, showCreateTable+" "+fullyQualifiedTable)
-		if row.Err() != nil {
-			level.Error(c.logger).Log("msg", "failed to show create table", append(logKVs, "err", row.Err()))
-			break
-		}
-
-		var tableName string
-		var createStmt string
-		var characterSetClient string
-		var collationConnection string
-		if table.tableType == "BASE TABLE" {
-			if err = row.Scan(&tableName, &createStmt); err != nil {
-				level.Error(c.logger).Log("msg", "failed to scan create table", append(logKVs, "err", err))
-				break
-			}
-		} else if table.tableType == "VIEW" {
-			if err = row.Scan(&tableName, &createStmt, &characterSetClient, &collationConnection); err != nil {
-				level.Error(c.logger).Log("msg", "failed to scan create view", append(logKVs, "err", err))
-				break
+		cacheHit := false
+		if c.cache != nil {
+			if cached, ok := c.cache.Get(cacheKey); ok {
+				table = cached
+				cacheHit = true
 			}
 		}
 
-		table.createStmt = createStmt
-		c.cache.Add(cacheKey, table)
-
-		spec, err := c.analyzeTableSpec(ctx, table.schema, table.tableName)
-		if err != nil {
-			level.Error(c.logger).Log("msg", "failed to analyze table spec", append(logKVs, "err", err))
-			break
-		}
-		jsonSpec, err := json.Marshal(spec)
-		if err != nil {
-			level.Error(c.logger).Log("msg", "failed to marshal table spec", append(logKVs, "err", err))
-			break
+		if !cacheHit {
+			table, err = c.fetchTableDefinitions(ctx, fullyQualifiedTable, table)
+			if err != nil {
+				level.Error(c.logger).Log("msg", "failed to get table definitions", "schema", table.schema, "table", table.tableName, "err", err)
+				continue
+			}
+			if c.cache != nil {
+				c.cache.Add(cacheKey, table)
+			}
 		}
 
 		c.entryHandler.Chan() <- loki.Entry{
@@ -307,7 +295,7 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 				Timestamp: time.Unix(0, time.Now().UnixNano()),
 				Line: fmt.Sprintf(
 					`level=info msg="create table" op="%s" instance="%s" schema="%s" table="%s" create_statement="%s" table_spec="%s"`,
-					OP_CREATE_STATEMENT, c.instanceKey, table.schema, table.tableName, base64.StdEncoding.EncodeToString([]byte(createStmt)), base64.StdEncoding.EncodeToString(jsonSpec),
+					OP_CREATE_STATEMENT, c.instanceKey, table.schema, table.tableName, base64.StdEncoding.EncodeToString([]byte(table.createStmt)), base64.StdEncoding.EncodeToString([]byte(table.tableSpec)),
 				),
 			},
 		}
@@ -316,7 +304,45 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 	return nil
 }
 
-func (c *SchemaTable) analyzeTableSpec(ctx context.Context, schemaName string, tableName string) (*tableSpec, error) {
+func (c *SchemaTable) fetchTableDefinitions(ctx context.Context, fullyQualifiedTable string, table *tableInfo) (*tableInfo, error) {
+	logKVs := []any{"schema", table.schema, "table", table.tableName}
+
+	row := c.dbConnection.QueryRowContext(ctx, showCreateTable+" "+fullyQualifiedTable)
+	if row.Err() != nil {
+		level.Error(c.logger).Log("msg", "failed to show create table", append(logKVs, "err", row.Err()))
+		return nil, row.Err()
+	}
+
+	var tableName, createStmt, characterSetClient, collationConnection string
+	if table.tableType == "BASE TABLE" {
+		if err := row.Scan(&tableName, &createStmt); err != nil {
+			level.Error(c.logger).Log("msg", "failed to scan create table", append(logKVs, "err", err))
+			return nil, err
+		}
+	} else if table.tableType == "VIEW" {
+		if err := row.Scan(&tableName, &createStmt, &characterSetClient, &collationConnection); err != nil {
+			level.Error(c.logger).Log("msg", "failed to scan create view", append(logKVs, "err", err))
+			return nil, err
+		}
+	}
+	table.createStmt = createStmt
+
+	spec, err := c.fetchColumnsDefinitions(ctx, table.schema, table.tableName)
+	if err != nil {
+		level.Error(c.logger).Log("msg", "failed to analyze table spec", append(logKVs, "err", err))
+		return nil, err
+	}
+	jsonSpec, err := json.Marshal(spec)
+	if err != nil {
+		level.Error(c.logger).Log("msg", "failed to marshal table spec", append(logKVs, "err", err))
+		return nil, err
+	}
+	table.tableSpec = string(jsonSpec)
+
+	return table, nil
+}
+
+func (c *SchemaTable) fetchColumnsDefinitions(ctx context.Context, schemaName string, tableName string) (*tableSpec, error) {
 	rs, err := c.dbConnection.QueryContext(ctx, selectColumnNames, schemaName, tableName)
 	if err != nil {
 		level.Error(c.logger).Log("msg", "failed to query table columns", "schema", schemaName, "table", tableName, "err", err)

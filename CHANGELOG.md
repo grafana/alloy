@@ -20,6 +20,8 @@ Main (unreleased)
 
 - Add `go_table_fallback` arg to `pyroscope.ebpf` (@korniltsev)
 
+- Memory optimizations in `pyroscope.scrape` (@korniltsev)
+
 - Add the possibility to export span events as logs in `otelcol.connector.spanlogs`. (@steve-hb)
 
 - Add json format support for log export via faro receiver (@ravishankar15)
@@ -34,6 +36,8 @@ Main (unreleased)
   - Better error handling for components (@cristiangreco)
   - Add namespace to `connection_info` metric (@cristiangreco)
   - Added table columns parsing (@cristiagreco)
+  - Add enable/disable collector configurability to `database_observability.mysql`. This removes the `query_samples_enabled` argument, now configurable via enable/disable collector. (@fridgepoet)
+  - Refactor cache config in schema_table collector (@cristiangreco)
 
 ### Bugfixes
 
@@ -49,12 +53,7 @@ Main (unreleased)
 
 - Add support for pushv1.PusherService Connect API in `pyroscope.receive_http`. (@simonswine)
 
-- Add support for path prefixes in `pyroscope.scrape` to allow scraping targets behind a proxy or with custom URL paths. (@korniltsev)
-
-- Fixes godeltaprof hiding (renaming `godeltaprof_*` profile names to regular ones). (@korniltsev)
-
-- Change profile handling in `pyroscope.receive_http` and `pyroscope.write` components to use in-memory processing instead of pipes. (@marcsanmi)
-
+- Fixed an issue where `loki.process` would sometimes output live debugging entries out-of-order (@thampiotr)
 
 v1.6.1
 -----------------
@@ -236,6 +235,8 @@ v1.5.1
 - Allow setting `informer_sync_timeout` in prometheus.operator.* components. (@captncraig)
 
 - For sharding targets during clustering, `loki.source.podlogs` now only takes into account some labels. (@ptodev)
+
+- Improve instrumentation of `pyroscope.relabel` component. (@marcsanmi)
 
 ### Bugfixes
 
