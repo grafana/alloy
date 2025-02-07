@@ -52,6 +52,8 @@ Main (unreleased)
 
 - Add support for pushv1.PusherService Connect API in `pyroscope.receive_http`. (@simonswine)
 
+- Fixed an issue where `loki.process` would sometimes output live debugging entries out-of-order (@thampiotr)
+
 v1.6.1
 -----------------
 
