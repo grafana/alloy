@@ -91,7 +91,7 @@ func TestLoadSNMPConfig(t *testing.T) {
 			expectedNumAuths:   0,
 		},
 		{
-			name: "replacing embedded config with custom (add module)",
+			name: "replacing embedded config with custom (add auth)",
 			cfg: Config{
 				SnmpConfig:              snmp_config.Config{Auths: map[string]*snmp_config.Auth{"public_v2": {Community: "private", Version: 2}}},
 				SnmpConfigMergeStrategy: "replace",
