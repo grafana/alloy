@@ -106,33 +106,29 @@ func New(log log.Logger, c *Config) (integrations.Integration, error) {
 // load the embedded configuration.
 func LoadSNMPConfig(snmpConfigFile string, customSnmpCfg *snmp_config.Config, strategy string) (*snmp_config.Config, error) {
 	var err error
+	if snmpConfigFile != "" {
+		customSnmpCfg, err = snmp_config.LoadFile([]string{snmpConfigFile}, false)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load snmp config from file %v: %w", snmpConfigFile, err)
+		}
+	}
+	switch strategy {
 
-	if strategy == "replace" {
-		if snmpConfigFile != "" {
-			customSnmpCfg, err = snmp_config.LoadFile([]string{snmpConfigFile}, false)
+	case "replace":
+
+		if len(customSnmpCfg.Modules) == 0 && len(customSnmpCfg.Auths) == 0 { // If the user didn't specify a config, load the embedded config.
+			customSnmpCfg, err = snmp_common.LoadEmbeddedConfig()
 			if err != nil {
-				return nil, fmt.Errorf("failed to load snmp config from file %v: %w", snmpConfigFile, err)
-			}
-		} else {
-			if len(customSnmpCfg.Modules) == 0 && len(customSnmpCfg.Auths) == 0 { // If the user didn't specify a config, load the embedded config.
-				customSnmpCfg, err = snmp_common.LoadEmbeddedConfig()
-				if err != nil {
-					return nil, fmt.Errorf("failed to load embedded snmp config: %w", err)
-				}
+				return nil, fmt.Errorf("failed to load embedded snmp config: %w", err)
 			}
 		}
-	} else if strategy == "merge" {
+		return customSnmpCfg, nil
+
+	case "merge":
 		var finalCfg *snmp_config.Config
 		finalCfg, err = snmp_common.LoadEmbeddedConfig()
 		if err != nil {
 			return nil, fmt.Errorf("failed to load embedded snmp config: %w", err)
-		}
-
-		if snmpConfigFile != "" {
-			customSnmpCfg, err = snmp_config.LoadFile([]string{snmpConfigFile}, false)
-			if err != nil {
-				return nil, fmt.Errorf("failed to load snmp config from file %v: %w", snmpConfigFile, err)
-			}
 		}
 
 		if len(customSnmpCfg.Auths) > 0 {
@@ -141,12 +137,12 @@ func LoadSNMPConfig(snmpConfigFile string, customSnmpCfg *snmp_config.Config, st
 		if len(customSnmpCfg.Modules) > 0 {
 			maps.Copy(finalCfg.Modules, customSnmpCfg.Modules)
 		}
-
 		return finalCfg, nil
-	} else {
+
+	default:
 		return nil, fmt.Errorf("unsupported snmp config merge strategy is used: '%s'", strategy)
 	}
-	return customSnmpCfg, nil
+
 }
 
 func NewSNMPMetrics(reg prometheus.Registerer) collector.Metrics {
