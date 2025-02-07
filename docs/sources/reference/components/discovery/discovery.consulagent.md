@@ -28,26 +28,26 @@ discovery.consulagent "<LABEL>" {
 
 You can use the following arguments with `discovery.consulagent`:
 
-Name               | Type           | Description                                                                                                                            | Default          | Required
--------------------|----------------|----------------------------------------------------------------------------------------------------------------------------------------|------------------|---------
-`datacenter`       | `string`       | Data center in which the Consul Agent is configured to run. If not provided, the data center is retrieved from the local Consul Agent. |                  | no
-`password`         | `secret`       | The password to use.                                                                                                                   |                  | no
-`refresh_interval` | `duration`     | Frequency to refresh list of containers.                                                                                               | `"30s"`          | no
-`scheme`           | `string`       | The scheme to use when talking to the Consul Agent.                                                                                    | `http`           | no
-`server`           | `string`       | Host and port of the Consul Agent API.                                                                                                 | `localhost:8500` | no
-`services`         | `list(string)` | A list of services for which targets are retrieved. If omitted, all services are scraped.                                              |                  | no
-`tag_separator`    | `string`       | The string by which Consul tags are joined into the tag label.                                                                         | `,`              | no
-`tags`             | `list(string)` | An optional list of tags used to filter nodes for a given service. Services must contain all tags in the list.                         |                  | no
-`token`            | `secret`       | Secret token used to access the Consul Agent API.                                                                                      |                  | no
-`username`         | `string`       | The username to use.                                                                                                                   |                  | no
+| Name               | Type           | Description                                                                                                                            | Default          | Required |
+| ------------------ | -------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ---------------- | -------- |
+| `datacenter`       | `string`       | Data center in which the Consul Agent is configured to run. If not provided, the data center is retrieved from the local Consul Agent. |                  | no       |
+| `password`         | `secret`       | The password to use.                                                                                                                   |                  | no       |
+| `refresh_interval` | `duration`     | Frequency to refresh list of containers.                                                                                               | `"30s"`          | no       |
+| `scheme`           | `string`       | The scheme to use when talking to the Consul Agent.                                                                                    | `http`           | no       |
+| `server`           | `string`       | Host and port of the Consul Agent API.                                                                                                 | `localhost:8500` | no       |
+| `services`         | `list(string)` | A list of services for which targets are retrieved. If omitted, all services are scraped.                                              |                  | no       |
+| `tag_separator`    | `string`       | The string by which Consul tags are joined into the tag label.                                                                         | `,`              | no       |
+| `tags`             | `list(string)` | An optional list of tags used to filter nodes for a given service. Services must contain all tags in the list.                         |                  | no       |
+| `token`            | `secret`       | Secret token used to access the Consul Agent API.                                                                                      |                  | no       |
+| `username`         | `string`       | The username to use.                                                                                                                   |                  | no       |
 
 ## Blocks
 
-You can use the following blocks with `discovery.consulagent`:
+You can use the following block with `discovery.consulagent`:
 
-Block                      | Description                                            | Required
----------------------------|--------------------------------------------------------|---------
-[`tls_config`][tls_config] | Configure TLS settings for connecting to the endpoint. | no
+| Block                      | Description                                            | Required |
+| -------------------------- | ------------------------------------------------------ | -------- |
+| [`tls_config`][tls_config] | Configure TLS settings for connecting to the endpoint. | no       |
 
 [tls_config]: #tls_config
 
@@ -61,9 +61,9 @@ The `tls_config` block configures TLS settings for connecting to the endpoint.
 
 The following fields are exported and can be referenced by other components:
 
-Name      | Type                | Description
-----------|---------------------|---------------------------------------------------------
-`targets` | `list(map(string))` | The set of targets discovered from the Consul Agent API.
+| Name      | Type                | Description                                              |
+| --------- | ------------------- | -------------------------------------------------------- |
+| `targets` | `list(map(string))` | The set of targets discovered from the Consul Agent API. |
 
 Each target includes the following labels:
 
