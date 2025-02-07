@@ -82,7 +82,7 @@ func TestLoadSNMPConfig(t *testing.T) {
 			expectedNumAuths:   embeddedAuthCount,
 		},
 		{
-			name: "replacing embedded config with custom (add auth)",
+			name: "replacing embedded config with custom (add module)",
 			cfg: Config{
 				SnmpConfig:              snmp_config.Config{Modules: map[string]*snmp_config.Module{"if_mib": {Walk: []string{"1.3.6.1.2.1.2"}}}},
 				SnmpConfigMergeStrategy: "replace",
