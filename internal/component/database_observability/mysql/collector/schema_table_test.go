@@ -330,14 +330,14 @@ func TestSchemaTable(t *testing.T) {
 
 		require.Eventually(t, func() bool {
 			return len(lokiClient.Received()) == 6
-		}, 50000*time.Second, 100*time.Millisecond)
+		}, 5*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
 		lokiClient.Stop()
 
 		require.Eventually(t, func() bool {
 			return collector.Stopped()
-		}, 50000*time.Second, 100*time.Millisecond)
+		}, 5*time.Second, 100*time.Millisecond)
 
 		err = mock.ExpectationsWereMet()
 		require.NoError(t, err)
@@ -560,7 +560,7 @@ func TestSchemaTable(t *testing.T) {
 
 		require.Eventually(t, func() bool {
 			return len(lokiClient.Received()) == 2
-		}, 50000*time.Second, 100*time.Millisecond)
+		}, 5*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
 		lokiClient.Stop()
