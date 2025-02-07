@@ -3,7 +3,6 @@
 package ebpf
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -14,12 +13,14 @@ import (
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
-	ebpfspy "github.com/grafana/pyroscope/ebpf"
-	demangle2 "github.com/grafana/pyroscope/ebpf/cpp/demangle"
-	"github.com/grafana/pyroscope/ebpf/pprof"
 	"github.com/grafana/pyroscope/ebpf/sd"
-	"github.com/grafana/pyroscope/ebpf/symtab"
 	"github.com/oklog/run"
+
+	"go.opentelemetry.io/ebpf-profiler/pyroscope/internalshim/controller"
+	"go.opentelemetry.io/ebpf-profiler/pyroscope/internalshim/helpers"
+	"go.opentelemetry.io/ebpf-profiler/reporter"
+	"go.opentelemetry.io/ebpf-profiler/times"
+	"go.opentelemetry.io/ebpf-profiler/vc"
 )
 
 func init() {
@@ -42,48 +43,40 @@ func New(opts component.Options, args Arguments) (component.Component, error) {
 	}
 	ms := newMetrics(opts.Registerer)
 
-	session, err := ebpfspy.NewSession(
-		opts.Logger,
-		targetFinder,
-		convertSessionOptions(args, ms),
-	)
+	appendable := pyroscope.NewFanout(args.ForwardTo, opts.ID, opts.Registerer)
+
+	cfg, err := createConfigFromArguments(args)
 	if err != nil {
-		return nil, fmt.Errorf("ebpf session create: %w", err)
+		return nil, err
 	}
 
-	alloyAppendable := pyroscope.NewFanout(args.ForwardTo, opts.ID, opts.Registerer)
-
+	cfg.Reporter, err = createOTLPReporter(cfg)
+	if err != nil {
+		return nil, err
+	}
 	res := &Component{
+		cfg:          cfg,
 		options:      opts,
 		metrics:      ms,
-		appendable:   alloyAppendable,
+		appendable:   appendable,
 		args:         args,
 		targetFinder: targetFinder,
-		session:      session,
 		argsUpdate:   make(chan Arguments),
 	}
 	res.metrics.targetsActive.Set(float64(len(res.targetFinder.DebugInfo())))
 	return res, nil
 }
 
-var DefaultArguments = NewDefaultArguments()
-
 // NewDefaultArguments create the default settings for a scrape job.
 func NewDefaultArguments() Arguments {
 	return Arguments{
 		CollectInterval:      15 * time.Second,
-		SampleRate:           97,
-		PidCacheSize:         32,
+		SampleRate:           19,
 		ContainerIDCacheSize: 1024,
-		BuildIDCacheSize:     64,
-		SameFileCacheSize:    8,
-		CacheRounds:          3,
 		CollectUserProfile:   true,
 		CollectKernelProfile: true,
 		Demangle:             "none",
 		PythonEnabled:        true,
-		SymbolsMapSize:       2048,
-		PIDMapSize:           16384,
 	}
 }
 
@@ -98,19 +91,28 @@ type Component struct {
 	argsUpdate   chan Arguments
 	appendable   *pyroscope.Fanout
 	targetFinder sd.TargetFinder
-	session      ebpfspy.Session
 
 	debugInfo     DebugInfo
 	debugInfoLock sync.Mutex
 	metrics       *metrics
+	cfg           *controller.Config
 }
 
 func (c *Component) Run(ctx context.Context) error {
-	err := c.session.Start()
+	c.options.Logger.Log(fmt.Sprintf("Starting OTEL profiling agent %s (revision %s, build timestamp %s)",
+		vc.Version(), vc.Revision(), vc.BuildTimestamp())) //todo extract this info from mod if possible?
+	ctlr := controller.New(c.cfg)
+	err := ctlr.Start(ctx)
 	if err != nil {
-		return fmt.Errorf("ebpf profiling session start: %w", err)
+		return fmt.Errorf("Failed to start agent controller: %v", err)
 	}
-	defer c.session.Stop()
+	defer ctlr.Shutdown()
+
+	//err := c.session.Start()
+	//if err != nil {
+	//	return fmt.Errorf("ebpf profiling session start: %w", err)
+	//}
+	//defer c.session.Stop()
 
 	var g run.Group
 	g.Add(func() error {
@@ -123,12 +125,12 @@ func (c *Component) Run(ctx context.Context) error {
 				return nil
 			case newArgs := <-c.argsUpdate:
 				c.args = newArgs
-				c.session.UpdateTargets(targetsOptionFromArgs(c.args))
+				//c.session.UpdateTargets(targetsOptionFromArgs(c.args))
 				c.metrics.targetsActive.Set(float64(len(c.targetFinder.DebugInfo())))
-				err := c.session.Update(convertSessionOptions(c.args, c.metrics))
-				if err != nil {
-					return nil
-				}
+				//err := c.session.Update(createConfigFromArguments(c.args, c.metrics))
+				//if err != nil {
+				//	return nil
+				//}
 				c.appendable.UpdateChildren(newArgs.ForwardTo)
 				if c.args.CollectInterval != collectInterval {
 					t.Reset(c.args.CollectInterval)
@@ -164,48 +166,47 @@ func (c *Component) DebugInfo() interface{} {
 func (c *Component) collectProfiles() error {
 	c.metrics.profilingSessionsTotal.Inc()
 	level.Debug(c.options.Logger).Log("msg", "ebpf  collectProfiles")
-	args := c.args
-	builders := pprof.NewProfileBuilders(pprof.BuildersOptions{
-		SampleRate:    int64(args.SampleRate),
-		PerPIDProfile: true,
-	})
-	err := pprof.Collect(builders, c.session)
-
-	if err != nil {
-		return fmt.Errorf("ebpf session collectProfiles %w", err)
-	}
-	level.Debug(c.options.Logger).Log("msg", "ebpf collectProfiles done", "profiles", len(builders.Builders))
-	bytesSent := 0
-	for _, builder := range builders.Builders {
-		serviceName := builder.Labels.Get("service_name")
-		c.metrics.pprofsTotal.WithLabelValues(serviceName).Inc()
-		c.metrics.pprofSamplesTotal.WithLabelValues(serviceName).Add(float64(len(builder.Profile.Sample)))
-
-		buf := bytes.NewBuffer(nil)
-		_, err := builder.Write(buf)
-		if err != nil {
-			return fmt.Errorf("ebpf profile encode %w", err)
-		}
-		rawProfile := buf.Bytes()
-
-		appender := c.appendable.Appender()
-		bytesSent += len(rawProfile)
-		c.metrics.pprofBytesTotal.WithLabelValues(serviceName).Add(float64(len(rawProfile)))
-
-		samples := []*pyroscope.RawSample{{RawProfile: rawProfile}}
-		err = appender.Append(context.Background(), builder.Labels, samples)
-		if err != nil {
-			level.Error(c.options.Logger).Log("msg", "ebpf pprof write", "err", err)
-			continue
-		}
-	}
-	level.Debug(c.options.Logger).Log("msg", "ebpf append done", "bytes_sent", bytesSent)
+	//args := c.args
+	//builders := pprof.NewProfileBuilders(pprof.BuildersOptions{
+	//	SampleRate:    int64(args.SampleRate),
+	//	PerPIDProfile: true,
+	//})
+	//err := pprof.Collect(builders, c.session)
+	//
+	//if err != nil {
+	//	return fmt.Errorf("ebpf session collectProfiles %w", err)
+	//}
+	//level.Debug(c.options.Logger).Log("msg", "ebpf collectProfiles done", "profiles", len(builders.Builders))
+	//bytesSent := 0
+	//for _, builder := range builders.Builders {
+	//	serviceName := builder.Labels.Get("service_name")
+	//	c.metrics.pprofsTotal.WithLabelValues(serviceName).Inc()
+	//	c.metrics.pprofSamplesTotal.WithLabelValues(serviceName).Add(float64(len(builder.Profile.Sample)))
+	//
+	//	buf := bytes.NewBuffer(nil)
+	//	_, err := builder.Write(buf)
+	//	if err != nil {
+	//		return fmt.Errorf("ebpf profile encode %w", err)
+	//	}
+	//	rawProfile := buf.Bytes()
+	//
+	//	appender := c.appendable.Appender()
+	//	bytesSent += len(rawProfile)
+	//	c.metrics.pprofBytesTotal.WithLabelValues(serviceName).Add(float64(len(rawProfile)))
+	//
+	//	samples := []*pyroscope.RawSample{{RawProfile: rawProfile}}
+	//	err = appender.Append(context.Background(), builder.Labels, samples)
+	//	if err != nil {
+	//		level.Error(c.options.Logger).Log("msg", "ebpf pprof write", "err", err)
+	//		continue
+	//	}
+	//}
+	//level.Debug(c.options.Logger).Log("msg", "ebpf append done", "bytes_sent", bytesSent)
 	return nil
 }
 
 type DebugInfo struct {
 	Targets interface{} `alloy:"targets,attr,optional"`
-	Session interface{} `alloy:"session,attr,optional"`
 }
 
 func (c *Component) updateDebugInfo() {
@@ -214,7 +215,6 @@ func (c *Component) updateDebugInfo() {
 
 	c.debugInfo = DebugInfo{
 		Targets: c.targetFinder.DebugInfo(),
-		Session: c.session.DebugInfo(),
 	}
 }
 
@@ -230,34 +230,76 @@ func targetsOptionFromArgs(args Arguments) sd.TargetsOptions {
 	}
 }
 
-func convertSessionOptions(args Arguments, ms *metrics) ebpfspy.SessionOptions {
-	return ebpfspy.SessionOptions{
-		CollectUser:   args.CollectUserProfile,
-		CollectKernel: args.CollectKernelProfile,
-		SampleRate:    args.SampleRate,
-		PythonEnabled: args.PythonEnabled,
-		Metrics:       ms.ebpfMetrics,
-		SymbolOptions: symtab.SymbolOptions{
-			GoTableFallback: args.GoTableFallback,
-			DemangleOptions: demangle2.ConvertDemangleOptions(args.Demangle),
-		},
-		CacheOptions: symtab.CacheOptions{
-			PidCacheOptions: symtab.GCacheOptions{
-				Size:       args.PidCacheSize,
-				KeepRounds: args.CacheRounds,
-			},
-			BuildIDCacheOptions: symtab.GCacheOptions{
-				Size:       args.BuildIDCacheSize,
-				KeepRounds: args.CacheRounds,
-			},
-			SameFileCacheOptions: symtab.GCacheOptions{
-				Size:       args.SameFileCacheSize,
-				KeepRounds: args.CacheRounds,
-			},
-		},
-		BPFMapsOptions: ebpfspy.BPFMapsOptions{
-			SymbolsMapSize: uint32(args.SymbolsMapSize),
-			PIDMapSize:     uint32(args.PIDMapSize),
-		},
+func createConfigFromArguments(args Arguments) (*controller.Config, error) {
+	cfgProtoType, err := controller.ParseArgs()
+	if err != nil {
+		return nil, err
 	}
+
+	if err = cfgProtoType.Validate(); err != nil {
+		return nil, err
+	}
+
+	// hostname and sourceIP will be populated from the root namespace.
+	hostname, sourceIP, err := helpers.GetHostnameAndSourceIP(cfgProtoType.CollAgentAddr)
+	if err != nil {
+		return nil, err
+	}
+	cfgProtoType.HostName, cfgProtoType.IPAddress = hostname, sourceIP
+
+	cfg := new(controller.Config)
+	*cfg = *cfgProtoType
+	cfg.ReporterInterval = args.CollectInterval
+	cfg.SamplesPerSecond = args.SampleRate
+	cfg.Tracers = "perl,php,hotspot,ruby,v8,dotnet"
+	if args.PythonEnabled { // todo create flags for other interpreters
+		cfg.Tracers += ",python"
+	}
+	return cfg, nil
+
+}
+
+func createOTLPReporter(cfg *controller.Config) (*reporter.OTLPReporter, error) {
+	intervals := times.New(cfg.MonitorInterval,
+		cfg.ReporterInterval, cfg.ProbabilisticInterval)
+
+	kernelVersion, err := helpers.GetKernelVersion()
+	if err != nil {
+		return nil, err
+	}
+	if cfg.CollAgentAddr == "" {
+		return nil, fmt.Errorf("missing otlp collector address")
+	}
+
+	// hostname and sourceIP will be populated from the root namespace.
+	hostname, sourceIP, err := helpers.GetHostnameAndSourceIP(cfg.CollAgentAddr)
+	if err != nil {
+		return nil, err
+	}
+	cfg.HostName, cfg.IPAddress = hostname, sourceIP
+
+	return reporter.NewOTLP(&reporter.Config{
+		CollAgentAddr:            cfg.CollAgentAddr,
+		DisableTLS:               cfg.DisableTLS,
+		MaxRPCMsgSize:            32 << 20, // 32 MiB
+		MaxGRPCRetries:           5,
+		GRPCOperationTimeout:     intervals.GRPCOperationTimeout(),
+		GRPCStartupBackoffTime:   intervals.GRPCStartupBackoffTime(),
+		GRPCConnectionTimeout:    intervals.GRPCConnectionTimeout(),
+		ReportInterval:           intervals.ReportInterval(),
+		ExecutablesCacheElements: 16384,
+		// Next step: Calculate FramesCacheElements from numCores and samplingRate.
+		FramesCacheElements: 65536,
+		CGroupCacheElements: 1024,
+		SamplesPerSecond:    cfg.SamplesPerSecond,
+		KernelVersion:       kernelVersion,
+		HostName:            hostname,
+		IPAddress:           sourceIP,
+
+		PyroscopeUsername:              cfg.PyroscopeUsername,
+		PyroscopePasswordFile:          cfg.PyroscopePasswordFile,
+		PyroscopeSymbCachePath:         cfg.PyroscopeSymbCachePath,
+		PyroscopeSymbCacheSizeBytes:    cfg.PyroscopeSymbCacheSizeBytes,
+		PyroscopeSymbolizeNativeFrames: cfg.PyroscopeSymbolizeNativeFrames,
+	})
 }

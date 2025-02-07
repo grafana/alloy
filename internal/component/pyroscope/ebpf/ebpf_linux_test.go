@@ -232,11 +232,6 @@ collect_kernel_profile = false`,
 				x.ForwardTo = []pyroscope.Appendable{}
 				x.CollectInterval = time.Second * 3
 				x.SampleRate = 239
-				x.PidCacheSize = 1000
-				x.BuildIDCacheSize = 2000
-				x.SameFileCacheSize = 3000
-				x.ContainerIDCacheSize = 4000
-				x.CacheRounds = 4
 				x.CollectUserProfile = true
 				x.CollectKernelProfile = false
 				return x
