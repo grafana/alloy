@@ -59,7 +59,7 @@ The `config` argument must be a YAML document as string defining which SNMP modu
 - `remote.http.LABEL.content`
 - `remote.s3.LABEL.content`
 
-Set `config_merge_strategy` to `merge` in order to add additional configuration to embedded SNMP config. For example if you need to add few custom `auth` settings without regenerating whole config.
+Set `config_merge_strategy` to `merge` in order to add additional configuration to the embedded SNMP config. For example, if you need to add a few custom `auth` settings without regenerating the whole config.
 
 The `targets` argument is an alternative to the [target][] block. This is useful when SNMP targets are supplied by another component.
 The following labels can be set to a target:
