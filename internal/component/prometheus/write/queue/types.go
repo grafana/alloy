@@ -113,7 +113,7 @@ type EndpointConfig struct {
 	// How long to wait before sending regardless of batch count.
 	FlushInterval time.Duration `alloy:"flush_interval,attr,optional"`
 	// How many concurrent queues to have.
-	Parallelism    ParralelismConfig `alloy:"parallelism,attr,block"`
+	Parallelism    ParralelismConfig `alloy:"parallelism,block,optional"`
 	ExternalLabels map[string]string `alloy:"external_labels,attr,optional"`
 	TLSConfig      *TLSConfig        `alloy:"tls_config,block,optional"`
 	RoundRobin     bool              `alloy:"enable_round_robin,attr,optional"`
