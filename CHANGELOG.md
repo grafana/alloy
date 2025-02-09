@@ -10,6 +10,10 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Breaking changes
+
+- (_Experimental_) Changed `parallelism` from attribute to block to allow dynamic scaling of `prometheus.write.queue`. (@mattdurham)
+
 ### Features
 
 - Add `add_cloudwatch_timestamp` to `prometheus.exporter.cloudwatch` metrics. (@captncraig)

@@ -53,6 +53,7 @@ The following blocks are supported inside the definition of
  persistence           | [persistence][] | Configuration for persistence                            | no       
  endpoint              | [endpoint][]    | Location to send metrics to.                             | no       
  endpoint > basic_auth | [basic_auth][]  | Configure basic_auth for authenticating to the endpoint. | no       
+endpoint > parralelism | [parralelism][]  | Configure parralelism for the endpoint. | no
 
 The `>` symbol indicates deeper levels of nesting. For example, `endpoint >
 basic_auth` refers to a `basic_auth` block defined inside an
@@ -61,6 +62,7 @@ basic_auth` refers to a `basic_auth` block defined inside an
 [endpoint]: #endpoint-block
 [basic_auth]: #basic_auth-block
 [persistence]: #persistence-block
+[parralelism]: #parralelism
 
 ### persistence block
 
@@ -86,13 +88,12 @@ The following arguments are supported:
  Name                 | Type          | Description                                                     | Default | Required 
 ----------------------|---------------|-----------------------------------------------------------------|---------|----------
  `url`                | `string`      | Full URL to send metrics to.                                    |         | yes      
-`bearer_token`        | `secret`      | Bearer token to authenticate with.                              |         | no
+ `bearer_token`        | `secret`      | Bearer token to authenticate with.                              |         | no
  `write_timeout`      | `duration`    | Timeout for requests made to the URL.                           | `"30s"` | no       
  `retry_backoff`      | `duration`    | How long to wait between retries.                               | `1s`    | no       
  `max_retry_attempts` | `uint`        | Maximum number of retries before dropping the batch.            | `0`     | no      
  `batch_count`        | `uint`        | How many series to queue in each queue.                         | `1000`  | no       
  `flush_interval`     | `duration`    | How long to wait until sending if `batch_count` is not trigger. | `1s`    | no       
- `parallelism`        | `uint`        | How many parallel batches to write.                             | 10      | no       
  `external_labels`    | `map(string)` | Labels to add to metrics sent over the network.                 |         | no       
 
 ### basic_auth block
@@ -101,6 +102,30 @@ Name            | Type     | Description                              | Default 
 ----------------|----------|------------------------------------------|---------|---------
 `password`      | `secret` | Basic auth password.                     |         | no
 `username`      | `string` | Basic auth username.                     |         | no
+
+### parralelism block
+
+Name            | Type       | Description                                                                                                                        | Default | Required
+----------------|------------|------------------------------------------------------------------------------------------------------------------------------------|---------|---------
+`drift_scale_up_seconds`      | `int`      | The maximum amount of time between the timestamps of incoming signals and outgoing signals before increasing desired connections.  | `60`    | no
+`drift_scale_down_seconds`    | `int`      | The minimum amount of time between the timestamps of incoming signals and outgoing signals before descreasing desired connections. | `30`    | no
+`max_connections`    | `uint`     | The maximum number of desired connections.                                                                                         | `50`    | no
+`min_connections`    | `uint`     | The minimum number of desired connections.                                                                                         | `2`     | no
+`network_flush_interval`    | `duration` | The length of time that network successes and failures are kept for determining desired connections.                               | `1m`    | no
+`desired_connections_lookback`    | `duration` | The length of time that previous desired connections are kept for determining desired connections.                                 | `5m`    | no
+`desired_check_interval`    | `duration` | The length of time that between checking for desired connections.                                                                  | `5s`    | no
+`allowed_network_error_percent`    | `float`    | The allowed error rate before scaling down.                                                                                        | `0.50`   | no
+
+Parralelism determines when to scale up or down the number of desired connections. This is accomplished by a variety of inputs.
+By determining the drift between the incoming and outgoing timestamps that will determine whether to increase or decrease the
+desired connections. This is represented by `drift_scale_up_seconds` and `drift_scale_down_seconds`, if the drift is between these
+two values then the value will stay the same. Network success and failures are recorded and kept in memory, this helps determine
+the nature of the drift. For instance if the drift is increasing but the network failures are increasing we should not increase
+desired connections since that would only increase load on the endpoint. The last major part is to prevent flapping of desired connections.
+This is accomplished with the `desired_check_interval`, each time a desired connection is calculated it is added to a list, before actually changing the
+desired connection the system will choose the highest value in the lookback. Example; for the past 5 minutes desired connections have been: [2,1,1] the check runs
+and determines that the desired connections are 1, but will not change the value since the value 2 is still in the lookback. On the next check we have [1,1,1], 
+now it will change to 1. In general the system is fast to increase and slow to decrease. 
 
 
 ## Exported fields
