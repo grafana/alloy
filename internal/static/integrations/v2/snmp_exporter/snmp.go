@@ -126,6 +126,6 @@ func (sh *snmpHandler) RunIntegration(ctx context.Context) error {
 
 func (sh *snmpHandler) createHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		snmp_exporter.Handler(w, r, sh.log, sh.snmpCfg, sh.cfg.SnmpTargets, sh.cfg.WalkParams)
+		snmp_exporter.Handler(w, r, sh.log, sh.snmpCfg, sh.cfg.SnmpTargets, sh.cfg.WalkParams, sh.cfg.SnmpConcurrency)
 	}
 }

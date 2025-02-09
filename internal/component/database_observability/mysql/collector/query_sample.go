@@ -5,12 +5,12 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
-	"sync/atomic"
 	"time"
 
 	"github.com/go-kit/log"
 	"github.com/prometheus/common/model"
 	"github.com/xwb1989/sqlparser"
+	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability"
@@ -21,11 +21,13 @@ import (
 const (
 	OP_QUERY_SAMPLE            = "query_sample"
 	OP_QUERY_PARSED_TABLE_NAME = "query_parsed_table_name"
+	QuerySampleName            = "query_sample"
 )
 
 const selectQuerySamples = `
 	SELECT
 		digest,
+		schema_name,
 		query_sample_text,
 		query_sample_seen,
 		query_sample_timer_wait
@@ -35,6 +37,7 @@ const selectQuerySamples = `
 
 type QuerySampleArguments struct {
 	DB              *sql.DB
+	InstanceKey     string
 	CollectInterval time.Duration
 	EntryHandler    loki.EntryHandler
 
@@ -43,6 +46,7 @@ type QuerySampleArguments struct {
 
 type QuerySample struct {
 	dbConnection    *sql.DB
+	instanceKey     string
 	collectInterval time.Duration
 	entryHandler    loki.EntryHandler
 
@@ -55,11 +59,16 @@ type QuerySample struct {
 func NewQuerySample(args QuerySampleArguments) (*QuerySample, error) {
 	return &QuerySample{
 		dbConnection:    args.DB,
+		instanceKey:     args.InstanceKey,
 		collectInterval: args.CollectInterval,
 		entryHandler:    args.EntryHandler,
-		logger:          args.Logger,
+		logger:          log.With(args.Logger, "collector", "QuerySample"),
 		running:         &atomic.Bool{},
 	}, nil
+}
+
+func (c *QuerySample) Name() string {
+	return QuerySampleName
 }
 
 func (c *QuerySample) Start(ctx context.Context) error {
@@ -80,8 +89,7 @@ func (c *QuerySample) Start(ctx context.Context) error {
 
 		for {
 			if err := c.fetchQuerySamples(c.ctx); err != nil {
-				level.Error(c.logger).Log("msg", "collector stopping due to error", "err", err)
-				break
+				level.Error(c.logger).Log("msg", "collector error", "err", err)
 			}
 
 			select {
@@ -114,32 +122,35 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 	defer rs.Close()
 
 	for rs.Next() {
-		if err := rs.Err(); err != nil {
-			level.Error(c.logger).Log("msg", "failed to iterate rs", "err", err)
-			break
-		}
-
-		var digest, sampleText, sampleSeen, sampleTimerWait string
-		err := rs.Scan(&digest, &sampleText, &sampleSeen, &sampleTimerWait)
+		var digest, schemaName, sampleText, sampleSeen, sampleTimerWait string
+		err := rs.Scan(&digest, &schemaName, &sampleText, &sampleSeen, &sampleTimerWait)
 		if err != nil {
 			level.Error(c.logger).Log("msg", "failed to scan result set for query samples", "err", err)
 			continue
 		}
 
 		if strings.HasSuffix(sampleText, "...") {
-			level.Info(c.logger).Log("msg", "skipping parsing truncated query", "digest", digest)
-			continue
+			// best-effort attempt to detect truncated trailing comment
+			if idx := strings.LastIndex(sampleText, "/*"); idx >= 0 {
+				trailingPart := sampleText[idx:]
+				if strings.LastIndex(trailingPart, "*/") < 0 {
+					sampleText = sampleText[:idx]
+				}
+			} else {
+				level.Debug(c.logger).Log("msg", "skipping parsing truncated query", "schema", schemaName, "digest", digest)
+				continue
+			}
 		}
 
 		stmt, err := sqlparser.Parse(sampleText)
 		if err != nil {
-			level.Error(c.logger).Log("msg", "failed to parse sql query", "digest", digest, "err", err)
+			level.Error(c.logger).Log("msg", "failed to parse sql query", "schema", schemaName, "digest", digest, "err", err)
 			continue
 		}
 
 		sampleRedactedText, err := sqlparser.RedactSQLQuery(sampleText)
 		if err != nil {
-			level.Error(c.logger).Log("msg", "failed to redact sql query", "digest", digest, "err", err)
+			level.Error(c.logger).Log("msg", "failed to redact sql query", "schema", schemaName, "digest", digest, "err", err)
 			continue
 		}
 
@@ -148,25 +159,30 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 			Entry: logproto.Entry{
 				Timestamp: time.Unix(0, time.Now().UnixNano()),
 				Line: fmt.Sprintf(
-					`level=info msg="query samples fetched" op="%s" digest="%s" query_type="%s" query_sample_seen="%s" query_sample_timer_wait="%s" query_sample_redacted="%s"`,
-					OP_QUERY_SAMPLE, digest, c.stmtType(stmt), sampleSeen, sampleTimerWait, sampleRedactedText,
+					`level=info msg="query samples fetched" op="%s" instance="%s" schema="%s" digest="%s" query_type="%s" query_sample_seen="%s" query_sample_timer_wait="%s" query_sample_redacted="%s"`,
+					OP_QUERY_SAMPLE, c.instanceKey, schemaName, digest, c.stmtType(stmt), sampleSeen, sampleTimerWait, sampleRedactedText,
 				),
 			},
 		}
 
-		tables := c.tablesFromQuery(stmt)
+		tables := c.tablesFromQuery(digest, stmt)
 		for _, table := range tables {
 			c.entryHandler.Chan() <- loki.Entry{
 				Labels: model.LabelSet{"job": database_observability.JobName},
 				Entry: logproto.Entry{
 					Timestamp: time.Unix(0, time.Now().UnixNano()),
 					Line: fmt.Sprintf(
-						`level=info msg="table name parsed" op="%s" digest="%s" table="%s"`,
-						OP_QUERY_PARSED_TABLE_NAME, digest, table,
+						`level=info msg="table name parsed" op="%s" instance="%s" schema="%s" digest="%s" table="%s"`,
+						OP_QUERY_PARSED_TABLE_NAME, c.instanceKey, schemaName, digest, table,
 					),
 				},
 			}
 		}
+	}
+
+	if err := rs.Err(); err != nil {
+		level.Error(c.logger).Log("msg", "error during iterating over samples result set", "err", err)
+		return err
 	}
 
 	return nil
@@ -182,29 +198,57 @@ func (c QuerySample) stmtType(stmt sqlparser.Statement) string {
 		return "update"
 	case *sqlparser.Delete:
 		return "delete"
+	case *sqlparser.Union:
+		return "select" // label union as a select
 	default:
 		return ""
 	}
 }
 
-func (c QuerySample) tablesFromQuery(stmt sqlparser.Statement) []string {
+func (c QuerySample) tablesFromQuery(digest string, stmt sqlparser.Statement) []string {
 	var parsedTables []string
 
 	switch stmt := stmt.(type) {
 	case *sqlparser.Select:
-		parsedTables = c.parseTableExprs(stmt.From)
+		parsedTables = c.parseTableExprs(digest, stmt.From)
+	case *sqlparser.Update:
+		parsedTables = c.parseTableExprs(digest, stmt.TableExprs)
+	case *sqlparser.Delete:
+		parsedTables = c.parseTableExprs(digest, stmt.TableExprs)
 	case *sqlparser.Insert:
 		parsedTables = []string{c.parseTableName(stmt.Table)}
-	case *sqlparser.Update:
-		parsedTables = c.parseTableExprs(stmt.TableExprs)
-	case *sqlparser.Delete:
-		parsedTables = c.parseTableExprs(stmt.TableExprs)
+		switch insRowsStmt := stmt.Rows.(type) {
+		case *sqlparser.Select:
+			parsedTables = append(parsedTables, c.tablesFromQuery(digest, insRowsStmt)...)
+		case *sqlparser.Union:
+			for _, side := range []sqlparser.SelectStatement{insRowsStmt.Left, insRowsStmt.Right} {
+				parsedTables = append(parsedTables, c.tablesFromQuery(digest, side)...)
+			}
+		case *sqlparser.ParenSelect:
+			parsedTables = append(parsedTables, c.tablesFromQuery(digest, insRowsStmt.Select)...)
+		default:
+			level.Error(c.logger).Log("msg", "unknown insert type", "digest", digest)
+		}
+	case *sqlparser.Union:
+		for _, side := range []sqlparser.SelectStatement{stmt.Left, stmt.Right} {
+			parsedTables = append(parsedTables, c.tablesFromQuery(digest, side)...)
+		}
+	case *sqlparser.Show:
+		if stmt.HasOnTable() {
+			parsedTables = append(parsedTables, c.parseTableName(stmt.OnTable))
+		}
+	case *sqlparser.DDL:
+		parsedTables = append(parsedTables, c.parseTableName(stmt.Table))
+	case *sqlparser.Begin, *sqlparser.Commit, *sqlparser.Rollback, *sqlparser.Set, *sqlparser.DBDDL:
+		// ignore
+	default:
+		level.Error(c.logger).Log("msg", "unknown statement type", "digest", digest)
 	}
 
 	return parsedTables
 }
 
-func (c QuerySample) parseTableExprs(tables sqlparser.TableExprs) []string {
+func (c QuerySample) parseTableExprs(digest string, tables sqlparser.TableExprs) []string {
 	parsedTables := []string{}
 	for i := 0; i < len(tables); i++ {
 		t := tables[i]
@@ -214,16 +258,28 @@ func (c QuerySample) parseTableExprs(tables sqlparser.TableExprs) []string {
 			case sqlparser.TableName:
 				parsedTables = append(parsedTables, c.parseTableName(expr))
 			case *sqlparser.Subquery:
-				subquery := expr.Select.(*sqlparser.Select)
-				parsedTables = append(parsedTables, c.parseTableExprs(subquery.From)...)
+				switch subqueryExpr := expr.Select.(type) {
+				case *sqlparser.Select:
+					parsedTables = append(parsedTables, c.parseTableExprs(digest, subqueryExpr.From)...)
+				case *sqlparser.Union:
+					for _, side := range []sqlparser.SelectStatement{subqueryExpr.Left, subqueryExpr.Right} {
+						parsedTables = append(parsedTables, c.tablesFromQuery(digest, side)...)
+					}
+				case *sqlparser.ParenSelect:
+					parsedTables = append(parsedTables, c.tablesFromQuery(digest, subqueryExpr.Select)...)
+				default:
+					level.Error(c.logger).Log("msg", "unknown subquery type", "digest", digest)
+				}
 			default:
-				level.Error(c.logger).Log("msg", "unknown nested table expression", "table", tableExpr)
+				level.Error(c.logger).Log("msg", "unknown nested table expression", "digest", digest, "table", tableExpr)
 			}
 		case *sqlparser.JoinTableExpr:
 			// continue parsing both sides of join
 			tables = append(tables, tableExpr.LeftExpr, tableExpr.RightExpr)
+		case *sqlparser.ParenTableExpr:
+			tables = append(tables, tableExpr.Exprs...)
 		default:
-			level.Error(c.logger).Log("msg", "unknown table type", "table", t)
+			level.Error(c.logger).Log("msg", "unknown table type", "digest", digest, "table", t)
 		}
 	}
 	return parsedTables

@@ -6,7 +6,7 @@ description: Learn about local.file_match
 title: local.file_match
 ---
 
-# local.file_match
+# `local.file_match`
 
 `local.file_match` discovers files on the local filesystem using glob patterns and the [doublestar][] library.
 
@@ -22,18 +22,25 @@ local.file_match "LABEL" {
 
 ## Arguments
 
-The following arguments are supported:
+You can use the following arguments with `local.file_match`:
 
-Name            | Type                | Description                                                                                | Default | Required
---------------- | ------------------- | ------------------------------------------------------------------------------------------ |---------| --------
-`path_targets`  | `list(map(string))` | Targets to expand; looks for glob patterns on the  `__path__` and `__path_exclude__` keys. |         | yes
-`sync_period`   | `duration`          | How often to sync filesystem and targets.                                                  | `"10s"` | no
+Name                | Type                | Description                                                                                | Default | Required
+---------------     | ------------------- | ------------------------------------------------------------------------------------------ |---------| --------
+`path_targets`      | `list(map(string))` | Targets to expand; looks for glob patterns on the  `__path__` and `__path_exclude__` keys. |         | yes
+`ignore_older_than` | `duration`          | Ignores files which are modified before this duration.                                     |  `"0s"` | no
+`sync_period`       | `duration`          | How often to sync filesystem and targets.                                                  | `"10s"` | no
 
 `path_targets` uses [doublestar][] style paths.
-* `/tmp/**/*.log` will match all subfolders of `tmp` and include any files that end in `*.log`.
-* `/tmp/apache/*.log` will match only files in `/tmp/apache/` that end in `*.log`.
-* `/tmp/**` will match all subfolders of `tmp`, `tmp` itself, and all files.
 
+* `/tmp/**/*.log` matches all subdirectories of `tmp` and include any files that end in `*.log`.
+* `/tmp/apache/*.log` matches only files in `/tmp/apache/` that end in `*.log`.
+* `/tmp/**` matches all subdirectories of `tmp`, `tmp` itself, and all files.
+
+`local.file_match` doesn't ignore files when `ignore_older_than` is set to the default, `0s`.
+
+## Blocks
+
+The `local.file_match` component doesn't support any blocks. You can configure this component with arguments.
 
 ## Exported fields
 
@@ -43,7 +50,7 @@ Name      | Type                | Description
 ----------|---------------------|---------------------------------------------------
 `targets` | `list(map(string))` | The set of targets discovered from the filesystem.
 
-Each target includes the following labels:
+Each target includes the following label:
 
 * `__path__`: Absolute path to the file.
 
@@ -54,13 +61,15 @@ In those cases, exported fields retain their last healthy values.
 
 ## Debug information
 
-`local.file_match` does not expose any component-specific debug information.
+`local.file_match` doesn't expose any component-specific debug information.
 
 ## Debug metrics
 
-`local.file_match` does not expose any component-specific debug metrics.
+`local.file_match` doesn't expose any component-specific debug metrics.
 
 ## Examples
+
+The following examples show you how to use `local.file_match` to find and send log files to Loki
 
 ### Send `/tmp/logs/*.log` files to Loki
 
@@ -79,22 +88,24 @@ loki.source.file "files" {
 
 loki.write "endpoint" {
   endpoint {
-      url = LOKI_URL
+      url = <LOKI_URL>
       basic_auth {
-          username = USERNAME
-          password = PASSWORD
+          username = <USERNAME>
+          password = <PASSWORD>
       }
   }
 }
 ```
+
 Replace the following:
-  - `LOKI_URL`: The URL of the Loki server to send logs to.
-  - `USERNAME`: The username to use for authentication to the Loki API.
-  - `PASSWORD`: The password to use for authentication to the Loki API.
 
-### Send Kubernetes pod logs to Loki
+* _`<LOKI_URL>`_: The URL of the Loki server to send logs to.
+* _`<USERNAME>`_: The username to use for authentication to the Loki API.
+* _`<PASSWORD>`_: The password to use for authentication to the Loki API.
 
-This example finds all the logs on pods and monitors them.
+### Send Kubernetes Pod logs to Loki
+
+This example finds all the logs on Pods and monitors them.
 
 ```alloy
 discovery.kubernetes "k8s" {
@@ -129,18 +140,20 @@ loki.source.file "pods" {
 
 loki.write "endpoint" {
   endpoint {
-      url = LOKI_URL
+      url = <LOKI_URL>
       basic_auth {
-          username = USERNAME
-          password = PASSWORD
+          username = <USERNAME>
+          password = <PASSWORD>
       }
   }
 }
 ```
+
 Replace the following:
-  - `LOKI_URL`: The URL of the Loki server to send logs to.
-  - `USERNAME`: The username to use for authentication to the Loki API.
-  - `PASSWORD`: The password to use for authentication to the Loki API.
+
+* _`<LOKI_URL>`_: The URL of the Loki server to send logs to.
+* _`<USERNAME>`_: The username to use for authentication to the Loki API.
+* _`<PASSWORD>`_: The password to use for authentication to the Loki API.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

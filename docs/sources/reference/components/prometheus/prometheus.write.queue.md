@@ -48,12 +48,13 @@ The following arguments are supported:
 The following blocks are supported inside the definition of
 `prometheus.write.queue`:
 
- Hierarchy             | Block           | Description                                              | Required 
------------------------|-----------------|----------------------------------------------------------|----------
- persistence           | [persistence][] | Configuration for persistence                            | no       
- endpoint              | [endpoint][]    | Location to send metrics to.                             | no       
- endpoint > basic_auth | [basic_auth][]  | Configure basic_auth for authenticating to the endpoint. | no       
-endpoint > parralelism | [parralelism][]  | Configure parralelism for the endpoint. | no
+ Hierarchy             | Block           | Description                                               | Required 
+-----------------------|-----------------|-----------------------------------------------------------|----------
+ persistence           | [persistence][] | Configuration for persistence                             | no       
+ endpoint              | [endpoint][]    | Location to send metrics to.                              | no       
+ endpoint > basic_auth | [basic_auth][]  | Configure basic_auth for authenticating to the endpoint.  | no       
+ endpoint > tls_config | [tls_config][]  | Configure TLS settings for connecting to the endpoint.    | no
+ endpoint > parallelism | [parallelism][] | Configure parralelism for the endpoint.                   | no
 
 The `>` symbol indicates deeper levels of nesting. For example, `endpoint >
 basic_auth` refers to a `basic_auth` block defined inside an
@@ -62,7 +63,8 @@ basic_auth` refers to a `basic_auth` block defined inside an
 [endpoint]: #endpoint-block
 [basic_auth]: #basic_auth-block
 [persistence]: #persistence-block
-[parralelism]: #parralelism
+[tls_config]: #tls_config-block
+[parallelism]: #parralelism
 
 ### persistence block
 
@@ -85,16 +87,18 @@ The `endpoint` block describes a single location to send metrics to. Multiple
 
 The following arguments are supported:
 
- Name                 | Type          | Description                                                     | Default | Required 
-----------------------|---------------|-----------------------------------------------------------------|---------|----------
- `url`                | `string`      | Full URL to send metrics to.                                    |         | yes      
- `bearer_token`        | `secret`      | Bearer token to authenticate with.                              |         | no
- `write_timeout`      | `duration`    | Timeout for requests made to the URL.                           | `"30s"` | no       
- `retry_backoff`      | `duration`    | How long to wait between retries.                               | `1s`    | no       
- `max_retry_attempts` | `uint`        | Maximum number of retries before dropping the batch.            | `0`     | no      
- `batch_count`        | `uint`        | How many series to queue in each queue.                         | `1000`  | no       
- `flush_interval`     | `duration`    | How long to wait until sending if `batch_count` is not trigger. | `1s`    | no       
- `external_labels`    | `map(string)` | Labels to add to metrics sent over the network.                 |         | no       
+ Name                 | Type          | Description                                                                                 | Default | Required 
+----------------------|---------------|---------------------------------------------------------------------------------------------|---------|----------
+ `url`                | `string`      | Full URL to send metrics to.                                                                |         | yes      
+ `bearer_token`        | `secret`      | Bearer token to authenticate with.                                                          |         | no
+ `write_timeout`      | `duration`    | Timeout for requests made to the URL.                                                       | `"30s"` | no       
+ `retry_backoff`      | `duration`    | How long to wait between retries.                                                           | `1s`    | no       
+ `max_retry_attempts` | `uint`        | Maximum number of retries before dropping the batch.                                        | `0`     | no      
+ `batch_count`        | `uint`        | How many series to queue in each queue.                                                     | `1000`  | no       
+ `flush_interval`     | `duration`    | How long to wait until sending if `batch_count` is not trigger.                             | `1s`    | no       
+ `external_labels`    | `map(string)` | Labels to add to metrics sent over the network.                                             |         | no       
+ `enable_round_robin` | `bool`        | Use round robin load balancing when there are multiple IPs for a given endpoint. | `false` | no       
+
 
 ### basic_auth block
 
@@ -103,7 +107,17 @@ Name            | Type     | Description                              | Default 
 `password`      | `secret` | Basic auth password.                     |         | no
 `username`      | `string` | Basic auth username.                     |         | no
 
-### parralelism block
+### tls_config block
+
+Name                   | Type     | Description                                              | Default | Required
+-----------------------|----------|----------------------------------------------------------|---------|---------
+`ca_pem`               | `string` | CA PEM-encoded text to validate the server with.         |         | no
+`cert_pem`             | `string` | Certificate PEM-encoded text for client authentication.  |         | no
+`insecure_skip_verify` | `bool`   | Disables validation of the server certificate.           |         | no
+`key_pem`              | `secret` | Key PEM-encoded text for client authentication.          |         | no
+
+
+### parallelism block
 
 Name            | Type       | Description                                                                                                                        | Default | Required
 ----------------|------------|------------------------------------------------------------------------------------------------------------------------------------|---------|---------
@@ -124,9 +138,8 @@ the nature of the drift. For instance if the drift is increasing but the network
 desired connections since that would only increase load on the endpoint. The last major part is to prevent flapping of desired connections.
 This is accomplished with the `desired_check_interval`, each time a desired connection is calculated it is added to a list, before actually changing the
 desired connection the system will choose the highest value in the lookback. Example; for the past 5 minutes desired connections have been: [2,1,1] the check runs
-and determines that the desired connections are 1, but will not change the value since the value 2 is still in the lookback. On the next check we have [1,1,1], 
-now it will change to 1. In general the system is fast to increase and slow to decrease. 
-
+and determines that the desired connections are 1, but will not change the value since the value 2 is still in the lookback. On the next check we have [1,1,1],
+now it will change to 1. In general the system is fast to increase and slow to decrease.
 
 ## Exported fields
 

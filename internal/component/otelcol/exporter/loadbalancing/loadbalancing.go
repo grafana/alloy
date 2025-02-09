@@ -13,6 +13,7 @@ import (
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/exporter"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/syntax"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancingexporter"
 	otelcomponent "go.opentelemetry.io/collector/component"
@@ -34,10 +35,33 @@ func init() {
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
 			fact := loadbalancingexporter.NewFactory()
-			//TODO(ptodev): LB exporter cannot yet work with metrics due to a limitation in Alloy:
-			// https://github.com/grafana/agent/pull/5684
-			// Once the limitation is removed, we may be able to remove the need for exporter.TypeSignal altogether.
-			return exporter.New(opts, fact, args.(Arguments), exporter.TypeLogs|exporter.TypeTraces)
+
+			// As per https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/exporter/loadbalancingexporter/README.md
+			// metrics is considered "development" stability level
+
+			typeSignalFunc := func(opts component.Options, args component.Arguments) exporter.TypeSignal {
+				myArgs := args.(Arguments)
+				var typeSignal exporter.TypeSignal
+				switch myArgs.RoutingKey {
+				case "traceID":
+					typeSignal = exporter.TypeLogs | exporter.TypeTraces
+				case "service":
+					if opts.MinStability.Permits(featuregate.StabilityExperimental) {
+						typeSignal = exporter.TypeLogs | exporter.TypeTraces | exporter.TypeMetrics
+					} else {
+						level.Warn(opts.Logger).Log("msg", "disabling metrics exporter as stability level does not allow it")
+						typeSignal = exporter.TypeLogs | exporter.TypeTraces
+					}
+				case "resource", "metric", "streamID":
+					if opts.MinStability.Permits(featuregate.StabilityExperimental) {
+						typeSignal = exporter.TypeMetrics
+					} else {
+						level.Warn(opts.Logger).Log("msg", "disabling metrics exporter as stability level does not allow it")
+					}
+				}
+				return typeSignal
+			}
+			return exporter.New(opts, fact, args.(Arguments), typeSignalFunc)
 		},
 	})
 }
@@ -47,6 +71,10 @@ type Arguments struct {
 	Protocol   Protocol         `alloy:"protocol,block"`
 	Resolver   ResolverSettings `alloy:"resolver,block"`
 	RoutingKey string           `alloy:"routing_key,attr,optional"`
+
+	Timeout time.Duration          `alloy:"timeout,attr,optional"`
+	Retry   otelcol.RetryArguments `alloy:"retry_on_failure,block,optional"`
+	Queue   otelcol.QueueArguments `alloy:"sending_queue,block,optional"`
 
 	// DebugMetrics configures component internal metrics. Optional.
 	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
@@ -69,13 +97,10 @@ func (args *Arguments) SetToDefault() {
 
 // Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
-	//TODO(ptodev): Add support for "resource" and "metric" routing keys later.
-	// The reason we can't add them yet is that otelcol.exporter.loadbalancing
-	// is labeled as "beta", but those routing keys are experimental.
-	// We need a way to label otelcol.exporter.loadbalancing as "public-preview"
-	// for logs and traces, but "experimental" for metrics.
+	// Allow routing keys for all signal types. Metrics exporter will be disabled
+	// if stability level is above experimental
 	switch args.RoutingKey {
-	case "service", "traceID":
+	case "service", "traceID", "resource", "metric", "streamID":
 		// The routing key is valid.
 	default:
 		return fmt.Errorf("invalid routing key %q", args.RoutingKey)
@@ -90,10 +115,19 @@ func (args *Arguments) Validate() error {
 
 // Convert implements exporter.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
+	protocol, err := args.Protocol.Convert()
+	if err != nil {
+		return nil, err
+	}
 	return &loadbalancingexporter.Config{
-		Protocol:   args.Protocol.Convert(),
+		Protocol:   *protocol,
 		Resolver:   args.Resolver.Convert(),
 		RoutingKey: args.RoutingKey,
+		TimeoutSettings: exporterhelper.TimeoutConfig{
+			Timeout: args.Timeout,
+		},
+		BackOffConfig: *args.Retry.Convert(),
+		QueueSettings: *args.Queue.Convert(),
 	}, nil
 }
 
@@ -102,10 +136,14 @@ type Protocol struct {
 	OTLP OtlpConfig `alloy:"otlp,block"`
 }
 
-func (protocol Protocol) Convert() loadbalancingexporter.Protocol {
-	return loadbalancingexporter.Protocol{
-		OTLP: protocol.OTLP.Convert(),
+func (protocol Protocol) Convert() (*loadbalancingexporter.Protocol, error) {
+	otlp, err := protocol.OTLP.Convert()
+	if err != nil {
+		return nil, err
 	}
+	return &loadbalancingexporter.Protocol{
+		OTLP: *otlp,
+	}, nil
 }
 
 // OtlpConfig defines the config for an OTLP exporter
@@ -127,15 +165,19 @@ func (oc *OtlpConfig) SetToDefault() {
 	oc.Queue.SetToDefault()
 }
 
-func (oc OtlpConfig) Convert() otlpexporter.Config {
-	return otlpexporter.Config{
+func (oc OtlpConfig) Convert() (*otlpexporter.Config, error) {
+	clientConfig, err := oc.Client.Convert()
+	if err != nil {
+		return nil, err
+	}
+	return &otlpexporter.Config{
 		TimeoutConfig: exporterhelper.TimeoutConfig{
 			Timeout: oc.Timeout,
 		},
 		QueueConfig:  *oc.Queue.Convert(),
 		RetryConfig:  *oc.Retry.Convert(),
-		ClientConfig: *oc.Client.Convert(),
-	}
+		ClientConfig: *clientConfig,
+	}, nil
 }
 
 // ResolverSettings defines the configurations for the backend resolver
@@ -206,9 +248,10 @@ func (r *DNSResolver) Convert() *loadbalancingexporter.DNSResolver {
 
 // KubernetesResolver defines the configuration for the k8s resolver
 type KubernetesResolver struct {
-	Service string        `alloy:"service,attr"`
-	Ports   []int32       `alloy:"ports,attr,optional"`
-	Timeout time.Duration `alloy:"timeout,attr,optional"`
+	Service         string        `alloy:"service,attr"`
+	Ports           []int32       `alloy:"ports,attr,optional"`
+	Timeout         time.Duration `alloy:"timeout,attr,optional"`
+	ReturnHostnames bool          `alloy:"return_hostnames,attr,optional"`
 }
 
 var _ syntax.Defaulter = &KubernetesResolver{}
@@ -227,9 +270,10 @@ func (r *KubernetesResolver) Convert() *loadbalancingexporter.K8sSvcResolver {
 	}
 
 	return &loadbalancingexporter.K8sSvcResolver{
-		Service: r.Service,
-		Ports:   append([]int32{}, r.Ports...),
-		Timeout: r.Timeout,
+		Service:         r.Service,
+		Ports:           append([]int32{}, r.Ports...),
+		Timeout:         r.Timeout,
+		ReturnHostnames: r.ReturnHostnames,
 	}
 }
 
@@ -332,15 +376,16 @@ type GRPCClientArguments struct {
 
 	// Auth is a binding to an otelcol.auth.* component extension which handles
 	// authentication.
-	Auth *auth.Handler `alloy:"auth,attr,optional"`
+	// alloy name is auth instead of authentication to not break user interface compatibility.
+	Authentication *auth.Handler `alloy:"auth,attr,optional"`
 }
 
 var _ syntax.Defaulter = &GRPCClientArguments{}
 
 // Convert converts args into the upstream type.
-func (args *GRPCClientArguments) Convert() *otelconfiggrpc.ClientConfig {
+func (args *GRPCClientArguments) Convert() (*otelconfiggrpc.ClientConfig, error) {
 	if args == nil {
-		return nil
+		return nil, nil
 	}
 
 	opaqueHeaders := make(map[string]configopaque.String)
@@ -349,9 +394,14 @@ func (args *GRPCClientArguments) Convert() *otelconfiggrpc.ClientConfig {
 	}
 
 	// Configure the authentication if args.Auth is set.
-	var auth *otelconfigauth.Authentication
-	if args.Auth != nil {
-		auth = &otelconfigauth.Authentication{AuthenticatorID: args.Auth.ID}
+	var authentication *otelconfigauth.Authentication
+	if args.Authentication != nil {
+		ext, err := args.Authentication.GetExtension(auth.Client)
+		if err != nil {
+			return nil, err
+		}
+
+		authentication = &otelconfigauth.Authentication{AuthenticatorID: ext.ID}
 	}
 
 	balancerName := args.BalancerName
@@ -372,15 +422,19 @@ func (args *GRPCClientArguments) Convert() *otelconfiggrpc.ClientConfig {
 		BalancerName:    balancerName,
 		Authority:       args.Authority,
 
-		Auth: auth,
-	}
+		Auth: authentication,
+	}, nil
 }
 
 // Extensions exposes extensions used by args.
 func (args *GRPCClientArguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
 	m := make(map[otelcomponent.ID]otelextension.Extension)
-	if args.Auth != nil {
-		m[args.Auth.ID] = args.Auth.Extension
+	if args.Authentication != nil {
+		ext, err := args.Authentication.GetExtension(auth.Client)
+		if err != nil {
+			return m
+		}
+		m[ext.ID] = ext.Extension
 	}
 	return m
 }

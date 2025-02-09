@@ -19,11 +19,46 @@ The `encoding.from_base64` function decodes a RFC4648-compliant Base64-encoded s
 
 `encoding.from_base64` fails if the provided string argument contains invalid Base64 data.
 
-### Examples
+### Example
 
 ```text
 > encoding.from_base64("dGFuZ2VyaW5l")
 tangerine
+```
+
+## encoding.from_URLbase64
+
+The `encoding.from_URLbase64` function decodes a RFC4648-compliant Base64 URL safe encoded string into the original string.
+
+`encoding.from_URLbase64` fails if the provided string argument contains invalid Base64 data.
+
+### Example
+
+```
+> encoding.from_URLbase64("c3RyaW5nMTIzIT8kKiYoKSctPUB-")
+string123!?$*&()'-=@~
+```
+
+## encoding.to_base64
+
+The `encoding.to_base64` function encodes the original string into RFC4648-compliant Base64 encoded string.
+
+### Example
+
+```
+> encoding.to_base64("string123!?$*&()'-=@~")
+c3RyaW5nMTIzIT8kKiYoKSctPUB+
+```
+
+## encoding.to_URLbase64
+
+The `encoding.to_base64` function encodes the original string into RFC4648-compliant URL safe Base64 encoded string.
+
+### Example
+
+```
+> encoding.to_URLbase64("string123!?$*&()'-=@~")
+c3RyaW5nMTIzIT8kKiYoKSctPUB-
 ```
 
 ## encoding.from_json

@@ -1,107 +1,5 @@
 ---
 kind: pipeline
-name: Create Linux build image
-platform:
-  arch: amd64
-  os: linux
-steps:
-- commands:
-  - export IMAGE_TAG=${DRONE_TAG##build-image/}
-  - docker login -u $DOCKER_LOGIN -p $DOCKER_PASSWORD
-  - docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
-  - docker buildx create --name multiarch --driver docker-container --use
-  - docker buildx build --build-arg="GO_RUNTIME=golang:1.23.3-bullseye" --push --platform
-    linux/amd64,linux/arm64 -t grafana/alloy-build-image:$IMAGE_TAG ./tools/build-image
-  environment:
-    DOCKER_LOGIN:
-      from_secret: docker_login
-    DOCKER_PASSWORD:
-      from_secret: docker_password
-  image: docker
-  name: Build
-  volumes:
-  - name: docker
-    path: /var/run/docker.sock
-trigger:
-  event:
-  - tag
-  ref:
-  - refs/tags/build-image/v*
-type: docker
-volumes:
-- host:
-    path: /var/run/docker.sock
-  name: docker
----
-kind: pipeline
-name: Create Linux build image for boringcrypto
-platform:
-  arch: amd64
-  os: linux
-steps:
-- commands:
-  - export IMAGE_TAG=${DRONE_TAG##build-image/}-boringcrypto
-  - docker login -u $DOCKER_LOGIN -p $DOCKER_PASSWORD
-  - docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
-  - docker buildx create --name multiarch --driver docker-container --use
-  - docker buildx build --build-arg="GO_RUNTIME=mcr.microsoft.com/oss/go/microsoft/golang:1.23.3-bullseye"
-    --push --platform linux/amd64,linux/arm64 -t grafana/alloy-build-image:$IMAGE_TAG
-    ./tools/build-image
-  environment:
-    DOCKER_LOGIN:
-      from_secret: docker_login
-    DOCKER_PASSWORD:
-      from_secret: docker_password
-  image: docker
-  name: Build
-  volumes:
-  - name: docker
-    path: /var/run/docker.sock
-trigger:
-  event:
-  - tag
-  ref:
-  - refs/tags/build-image/v*
-type: docker
-volumes:
-- host:
-    path: /var/run/docker.sock
-  name: docker
----
-kind: pipeline
-name: Create Windows build image
-platform:
-  arch: amd64
-  os: windows
-  version: "1809"
-steps:
-- commands:
-  - $IMAGE_TAG="${DRONE_TAG##build-image/}-windows"
-  - docker login -u $Env:DOCKER_LOGIN -p $Env:DOCKER_PASSWORD
-  - docker build -t grafana/alloy-build-image:$IMAGE_TAG ./tools/build-image/windows
-  - docker push grafana/alloy-build-image:$IMAGE_TAG
-  environment:
-    DOCKER_LOGIN:
-      from_secret: docker_login
-    DOCKER_PASSWORD:
-      from_secret: docker_password
-  image: docker:windowsservercore-1809
-  name: Build
-  volumes:
-  - name: docker
-    path: //./pipe/docker_engine/
-trigger:
-  event:
-  - tag
-  ref:
-  - refs/tags/build-image/v*
-type: docker
-volumes:
-- host:
-    path: //./pipe/docker_engine/
-  name: docker
----
-kind: pipeline
 name: Lint
 platform:
   arch: amd64
@@ -110,7 +8,7 @@ steps:
 - commands:
   - apt-get update -y && apt-get install -y libsystemd-dev
   - make lint
-  image: grafana/alloy-build-image:v0.1.7
+  image: grafana/alloy-build-image:v0.1.8
   name: Lint
 trigger:
   event:
@@ -125,7 +23,7 @@ platform:
 steps:
 - commands:
   - make GO_TAGS="nodocker" test
-  image: grafana/alloy-build-image:v0.1.7
+  image: grafana/alloy-build-image:v0.1.8
   name: Run Go tests
 trigger:
   event:
@@ -140,7 +38,7 @@ platform:
 steps:
 - commands:
   - K8S_USE_DOCKER_NETWORK=1 make test
-  image: grafana/alloy-build-image:v0.1.7
+  image: grafana/alloy-build-image:v0.1.8
   name: Run Go tests
   volumes:
   - name: docker
@@ -164,7 +62,7 @@ steps:
 - commands:
   - '& "C:/Program Files/git/bin/bash.exe" -c ''go test -tags="nodocker,nonetwork"
     ./...'''
-  image: grafana/alloy-build-image:v0.1.7-windows
+  image: grafana/alloy-build-image:v0.1.8-windows
   name: Run Go tests
 trigger:
   ref:
@@ -179,7 +77,7 @@ platform:
 steps:
 - commands:
   - make alloy-image
-  image: grafana/alloy-build-image:v0.1.7
+  image: grafana/alloy-build-image:v0.1.8
   name: Build container
   volumes:
   - name: docker
@@ -205,7 +103,7 @@ platform:
 steps:
 - commands:
   - '& "C:/Program Files/git/bin/bash.exe" -c "make alloy-image-windows"'
-  image: grafana/alloy-build-image:v0.1.7-windows
+  image: grafana/alloy-build-image:v0.1.8-windows
   name: Build container
   volumes:
   - name: docker
@@ -232,7 +130,7 @@ steps:
   - make generate-ui
   - GO_TAGS="builtinassets promtail_journal_enabled" GOOS=linux GOARCH=amd64 GOARM=
     make alloy
-  image: grafana/alloy-build-image:v0.1.7
+  image: grafana/alloy-build-image:v0.1.8
   name: Build
 trigger:
   event:
@@ -249,7 +147,7 @@ steps:
   - make generate-ui
   - GO_TAGS="builtinassets promtail_journal_enabled" GOOS=linux GOARCH=arm64 GOARM=
     make alloy
-  image: grafana/alloy-build-image:v0.1.7
+  image: grafana/alloy-build-image:v0.1.8
   name: Build
 trigger:
   event:
@@ -266,7 +164,7 @@ steps:
   - make generate-ui
   - GO_TAGS="builtinassets promtail_journal_enabled" GOOS=linux GOARCH=ppc64le GOARM=
     make alloy
-  image: grafana/alloy-build-image:v0.1.7
+  image: grafana/alloy-build-image:v0.1.8
   name: Build
 trigger:
   event:
@@ -283,7 +181,7 @@ steps:
   - make generate-ui
   - GO_TAGS="builtinassets promtail_journal_enabled" GOOS=linux GOARCH=s390x GOARM=
     make alloy
-  image: grafana/alloy-build-image:v0.1.7
+  image: grafana/alloy-build-image:v0.1.8
   name: Build
 trigger:
   event:
@@ -299,7 +197,7 @@ steps:
 - commands:
   - make generate-ui
   - GO_TAGS="builtinassets" GOOS=darwin GOARCH=amd64 GOARM= make alloy
-  image: grafana/alloy-build-image:v0.1.7
+  image: grafana/alloy-build-image:v0.1.8
   name: Build
 trigger:
   event:
@@ -315,7 +213,7 @@ steps:
 - commands:
   - make generate-ui
   - GO_TAGS="builtinassets" GOOS=darwin GOARCH=arm64 GOARM= make alloy
-  image: grafana/alloy-build-image:v0.1.7
+  image: grafana/alloy-build-image:v0.1.8
   name: Build
 trigger:
   event:
@@ -331,7 +229,7 @@ steps:
 - commands:
   - make generate-ui
   - GO_TAGS="builtinassets" GOOS=windows GOARCH=amd64 GOARM= make alloy
-  image: grafana/alloy-build-image:v0.1.7
+  image: grafana/alloy-build-image:v0.1.8
   name: Build
 trigger:
   event:
@@ -347,7 +245,7 @@ steps:
 - commands:
   - make generate-ui
   - GO_TAGS="builtinassets" GOOS=freebsd GOARCH=amd64 GOARM= make alloy
-  image: grafana/alloy-build-image:v0.1.7
+  image: grafana/alloy-build-image:v0.1.8
   name: Build
 trigger:
   event:
@@ -364,7 +262,7 @@ steps:
   - make generate-ui
   - GO_TAGS="builtinassets promtail_journal_enabled" GOOS=linux GOARCH=amd64 GOARM=
     GOEXPERIMENT=boringcrypto make alloy
-  image: grafana/alloy-build-image:v0.1.7-boringcrypto
+  image: grafana/alloy-build-image:v0.1.8-boringcrypto
   name: Build
 trigger:
   event:
@@ -381,7 +279,7 @@ steps:
   - make generate-ui
   - GO_TAGS="builtinassets promtail_journal_enabled" GOOS=linux GOARCH=arm64 GOARM=
     GOEXPERIMENT=boringcrypto make alloy
-  image: grafana/alloy-build-image:v0.1.7-boringcrypto
+  image: grafana/alloy-build-image:v0.1.8-boringcrypto
   name: Build
 trigger:
   event:
@@ -397,7 +295,7 @@ steps:
 - commands:
   - docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
   failure: ignore
-  image: grafana/alloy-build-image:v0.1.7
+  image: grafana/alloy-build-image:v0.1.8
   name: Configure QEMU
   volumes:
   - name: docker
@@ -417,7 +315,7 @@ steps:
       from_secret: docker_password
     GCR_CREDS:
       from_secret: gcr_admin
-  image: grafana/alloy-build-image:v0.1.7
+  image: grafana/alloy-build-image:v0.1.8
   name: Publish container
   volumes:
   - name: docker
@@ -440,7 +338,7 @@ steps:
 - commands:
   - docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
   failure: ignore
-  image: grafana/alloy-build-image:v0.1.7
+  image: grafana/alloy-build-image:v0.1.8
   name: Configure QEMU
   volumes:
   - name: docker
@@ -460,7 +358,7 @@ steps:
       from_secret: docker_password
     GCR_CREDS:
       from_secret: gcr_admin
-  image: grafana/alloy-build-image:v0.1.7
+  image: grafana/alloy-build-image:v0.1.8
   name: Publish container
   volumes:
   - name: docker
@@ -494,7 +392,7 @@ steps:
       from_secret: docker_password
     GCR_CREDS:
       from_secret: gcr_admin
-  image: grafana/alloy-build-image:v0.1.7-windows
+  image: grafana/alloy-build-image:v0.1.8-windows
   name: Build containers
   volumes:
   - name: docker
@@ -517,7 +415,7 @@ steps:
 - commands:
   - docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
   failure: ignore
-  image: grafana/alloy-build-image:v0.1.7
+  image: grafana/alloy-build-image:v0.1.8
   name: Configure QEMU
   volumes:
   - name: docker
@@ -537,7 +435,7 @@ steps:
       from_secret: docker_password
     GCR_CREDS:
       from_secret: gcr_admin
-  image: grafana/alloy-build-image:v0.1.7
+  image: grafana/alloy-build-image:v0.1.8
   name: Publish container
   volumes:
   - name: docker
@@ -560,7 +458,7 @@ steps:
 - commands:
   - docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
   failure: ignore
-  image: grafana/alloy-build-image:v0.1.7
+  image: grafana/alloy-build-image:v0.1.8
   name: Configure QEMU
   volumes:
   - name: docker
@@ -580,7 +478,7 @@ steps:
       from_secret: docker_password
     GCR_CREDS:
       from_secret: gcr_admin
-  image: grafana/alloy-build-image:v0.1.7
+  image: grafana/alloy-build-image:v0.1.8
   name: Publish container
   volumes:
   - name: docker
@@ -614,7 +512,7 @@ steps:
       from_secret: docker_password
     GCR_CREDS:
       from_secret: gcr_admin
-  image: grafana/alloy-build-image:v0.1.7-windows
+  image: grafana/alloy-build-image:v0.1.8-windows
   name: Build containers
   volumes:
   - name: docker
@@ -632,7 +530,7 @@ depends_on:
 - Publish Linux alloy-devel container
 - Publish Linux alloy-devel-boringcrypto container
 image_pull_secrets:
-- dockerconfigjson
+- dockerconfigjson_gar
 kind: pipeline
 name: Deploy to deployment_tools
 platform:
@@ -645,7 +543,7 @@ steps:
   - echo "grafana/alloy-dev:$(bash ./tools/image-tag-docker)" > .image-tag
   image: alpine
   name: Create .image-tag
-- image: us.gcr.io/kubernetes-dev/drone/plugins/updater
+- image: us-docker.pkg.dev/grafanalabs-global/docker-deployment-tools-prod/updater
   name: Update deployment_tools
   settings:
     config_json: |
@@ -658,7 +556,7 @@ steps:
         "repo_name": "deployment_tools",
         "update_jsonnet_attribute_configs": [
           {
-            "file_path": "ksonnet/environments/grafana-agent/waves/alloy.libsonnet",
+            "file_path": "ksonnet/lib/alloy/waves/alloy.libsonnet",
             "jsonnet_key": "dev_canary",
             "jsonnet_value_file": ".image-tag"
           }
@@ -715,7 +613,7 @@ steps:
       from_secret: gpg_private_key
     GPG_PUBLIC_KEY:
       from_secret: gpg_public_key
-  image: grafana/alloy-build-image:v0.1.7
+  image: grafana/alloy-build-image:v0.1.8
   name: Publish release
   volumes:
   - name: docker
@@ -738,7 +636,7 @@ steps:
 - commands:
   - DOCKER_OPTS="" make dist/alloy-linux-amd64
   - DOCKER_OPTS="" make test-packages
-  image: grafana/alloy-build-image:v0.1.7
+  image: grafana/alloy-build-image:v0.1.8
   name: Test Linux system packages
   volumes:
   - name: docker
@@ -789,6 +687,12 @@ name: dockerconfigjson
 ---
 get:
   name: .dockerconfigjson
+  path: secret/data/common/gar
+kind: secret
+name: dockerconfigjson_gar
+---
+get:
+  name: .dockerconfigjson
   path: infra/data/ci/gcr-admin
 kind: secret
 name: gcr_admin
@@ -836,6 +740,6 @@ kind: secret
 name: updater_private_key
 ---
 kind: signature
-hmac: 10e6be95fbe639c7701a96c7b0523e849b28389d09eda8b122de3c981a93c4c0
+hmac: 7ba78cacbcf46b94023a48ec09a159962a34effaefe8da55fa21089cf56c0ecc
 
 ...

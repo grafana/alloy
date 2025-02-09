@@ -26,7 +26,7 @@ func init() {
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
 			fact := otlphttpexporter.NewFactory()
-			return exporter.New(opts, fact, args.(Arguments), exporter.TypeAll)
+			return exporter.New(opts, fact, args.(Arguments), exporter.TypeSignalConstFunc(exporter.TypeAll))
 		},
 	})
 }
@@ -71,8 +71,13 @@ func (args *Arguments) SetToDefault() {
 
 // Convert implements exporter.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
+	httpClientArgs := *(*otelcol.HTTPClientArguments)(&args.Client)
+	convertedClientArgs, err := httpClientArgs.Convert()
+	if err != nil {
+		return nil, err
+	}
 	return &otlphttpexporter.Config{
-		ClientConfig:    *(*otelcol.HTTPClientArguments)(&args.Client).Convert(),
+		ClientConfig:    *convertedClientArgs,
 		QueueConfig:     *args.Queue.Convert(),
 		RetryConfig:     *args.Retry.Convert(),
 		TracesEndpoint:  args.TracesEndpoint,

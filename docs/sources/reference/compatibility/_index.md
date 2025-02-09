@@ -370,6 +370,7 @@ The following components, grouped by namespace, _consume_ OpenTelemetry `otelcol
 - [otelcol.receiver.otlp](../components/otelcol/otelcol.receiver.otlp)
 - [otelcol.receiver.prometheus](../components/otelcol/otelcol.receiver.prometheus)
 - [otelcol.receiver.solace](../components/otelcol/otelcol.receiver.solace)
+- [otelcol.receiver.syslog](../components/otelcol/otelcol.receiver.syslog)
 - [otelcol.receiver.vcenter](../components/otelcol/otelcol.receiver.vcenter)
 - [otelcol.receiver.zipkin](../components/otelcol/otelcol.receiver.zipkin)
 {{< /collapse >}}
@@ -391,6 +392,7 @@ The following components, grouped by namespace, _export_ Pyroscope `ProfilesRece
 <!-- START GENERATED SECTION: EXPORTERS OF Pyroscope `ProfilesReceiver` -->
 
 {{< collapse title="pyroscope" >}}
+- [pyroscope.relabel](../components/pyroscope/pyroscope.relabel)
 - [pyroscope.write](../components/pyroscope/pyroscope.write)
 {{< /collapse >}}
 
@@ -407,6 +409,7 @@ The following components, grouped by namespace, _consume_ Pyroscope `ProfilesRec
 - [pyroscope.ebpf](../components/pyroscope/pyroscope.ebpf)
 - [pyroscope.java](../components/pyroscope/pyroscope.java)
 - [pyroscope.receive_http](../components/pyroscope/pyroscope.receive_http)
+- [pyroscope.relabel](../components/pyroscope/pyroscope.relabel)
 - [pyroscope.scrape](../components/pyroscope/pyroscope.scrape)
 {{< /collapse >}}
 

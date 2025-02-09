@@ -194,13 +194,13 @@ If the string doesn't start with the prefix, the string is returned unchanged.
 "hello"
 ```
 
-## strings.trim_space
+## string.trim_space
 
-`strings.trim_space` removes any whitespace characters from the start and end of a string.
+`string.trim_space` removes any whitespace characters from the start and end of a string.
 
 ### Examples
 
 ```alloy
-> strings.trim_space("  hello\n\n")
+> string.trim_space("  hello\n\n")
 "hello"
 ```

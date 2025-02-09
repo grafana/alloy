@@ -9,6 +9,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/gorilla/mux"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/dskit/instrument"
 	"github.com/grafana/dskit/middleware"
 	"github.com/prometheus/client_golang/prometheus"
@@ -46,7 +47,11 @@ func newServerMetrics(reg prometheus.Registerer) *serverMetrics {
 			Help: "Current number of inflight requests.",
 		}, []string{"method", "route"}),
 	}
-	reg.MustRegister(m.requestDuration, m.rxMessageSize, m.txMessageSize, m.inflightRequests)
+
+	m.requestDuration = util.MustRegisterOrGet(reg, m.requestDuration).(*prometheus.HistogramVec)
+	m.rxMessageSize = util.MustRegisterOrGet(reg, m.rxMessageSize).(*prometheus.HistogramVec)
+	m.txMessageSize = util.MustRegisterOrGet(reg, m.txMessageSize).(*prometheus.HistogramVec)
+	m.inflightRequests = util.MustRegisterOrGet(reg, m.inflightRequests).(*prometheus.GaugeVec)
 
 	return m
 }

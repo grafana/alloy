@@ -1,6 +1,7 @@
 package write
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/grafana/pyroscope/api/model/labelset"
 	"github.com/oklog/run"
 	commonconfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
@@ -189,7 +191,10 @@ func NewFanOut(opts component.Options, config Arguments, metrics *metrics) (*fan
 		if err != nil {
 			return nil, err
 		}
-		pushClients = append(pushClients, pushv1connect.NewPusherServiceClient(httpClient, endpoint.URL, WithUserAgent(userAgent)))
+		pushClients = append(
+			pushClients,
+			pushv1connect.NewPusherServiceClient(httpClient, endpoint.URL, WithUserAgent(userAgent)),
+		)
 		ingestClients[endpoint] = httpClient
 	}
 	return &fanOutClient{
@@ -202,7 +207,10 @@ func NewFanOut(opts component.Options, config Arguments, metrics *metrics) (*fan
 }
 
 // Push implements the PusherServiceClient interface.
-func (f *fanOutClient) Push(ctx context.Context, req *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
+func (f *fanOutClient) Push(
+	ctx context.Context,
+	req *connect.Request[pushv1.PushRequest],
+) (*connect.Response[pushv1.PushResponse], error) {
 	// Don't flow the context down to the `run.Group`.
 	// We want to fan out to all even in case of failures to one.
 	var (
@@ -240,7 +248,8 @@ func (f *fanOutClient) Push(ctx context.Context, req *connect.Request[pushv1.Pus
 					f.metrics.sentProfiles.WithLabelValues(f.config.Endpoints[i].URL).Add(float64(profileCount))
 					break
 				}
-				level.Warn(f.opts.Logger).Log("msg", "failed to push to endpoint", "endpoint", f.config.Endpoints[i].URL, "err", err)
+				level.Warn(f.opts.Logger).
+					Log("msg", "failed to push to endpoint", "endpoint", f.config.Endpoints[i].URL, "err", err)
 				if !shouldRetry(err) {
 					break
 				}
@@ -253,7 +262,8 @@ func (f *fanOutClient) Push(ctx context.Context, req *connect.Request[pushv1.Pus
 			if err != nil {
 				f.metrics.droppedBytes.WithLabelValues(f.config.Endpoints[i].URL).Add(float64(reqSize))
 				f.metrics.droppedProfiles.WithLabelValues(f.config.Endpoints[i].URL).Add(float64(profileCount))
-				level.Warn(f.opts.Logger).Log("msg", "final error sending to profiles to endpoint", "endpoint", f.config.Endpoints[i].URL, "err", err)
+				level.Warn(f.opts.Logger).
+					Log("msg", "final error sending to profiles to endpoint", "endpoint", f.config.Endpoints[i].URL, "err", err)
 				errs = multierr.Append(errs, err)
 			}
 			return err
@@ -349,33 +359,11 @@ func (e *PyroscopeWriteError) Error() string {
 
 // AppendIngest implements the pyroscope.Appender interface.
 func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.IncomingProfile) error {
-	pipeWriters := make([]io.Writer, len(f.config.Endpoints))
-	pipeReaders := make([]io.Reader, len(f.config.Endpoints))
-	for i := range f.config.Endpoints {
-		pr, pw := io.Pipe()
-		pipeReaders[i] = pr
-		pipeWriters[i] = pw
-	}
-	mw := io.MultiWriter(pipeWriters...)
-
 	g, ctx := errgroup.WithContext(ctx)
 
-	// Start copying the profile body to all pipes
-	g.Go(func() error {
-		defer func() {
-			for _, pw := range pipeWriters {
-				pw.(io.WriteCloser).Close()
-			}
-		}()
-		_, err := io.Copy(mw, profile.Body)
-		return err
-	})
-
 	// Send to each endpoint concurrently
-	for i, endpoint := range f.config.Endpoints {
+	for _, endpoint := range f.config.Endpoints {
 		g.Go(func() error {
-			defer pipeReaders[i].(io.ReadCloser).Close()
-
 			u, err := url.Parse(endpoint.URL)
 			if err != nil {
 				return fmt.Errorf("parse endpoint URL: %w", err)
@@ -385,19 +373,22 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 
 			// Handle labels
 			query := profile.URL.Query()
-			if nameParam := query.Get("name"); nameParam != "" {
-				key, err := ParseKey(nameParam)
-				if err != nil {
-					return err
-				}
+			if !profile.Labels.IsEmpty() {
+				ls := labelset.New(make(map[string]string))
+
+				profile.Labels.Range(func(l labels.Label) {
+					ls.Add(l.Name, l.Value)
+				})
+
+				// Add external labels (which will override any existing ones)
 				for k, v := range f.config.ExternalLabels {
-					key.labels[k] = v
+					ls.Add(k, v)
 				}
-				query.Set("name", key.Normalized())
+				query.Set("name", ls.Normalized())
 			}
 			u.RawQuery = query.Encode()
 
-			req, err := http.NewRequestWithContext(ctx, "POST", u.String(), pipeReaders[i])
+			req, err := http.NewRequestWithContext(ctx, "POST", u.String(), bytes.NewReader(profile.RawBody))
 			if err != nil {
 				return fmt.Errorf("create request: %w", err)
 			}

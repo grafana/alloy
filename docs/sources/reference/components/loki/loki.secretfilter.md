@@ -6,8 +6,6 @@ labels:
   stage: experimental
 ---
 
-<span class="badge docs-labels__stage docs-labels__item">Experimental</span>
-
 # loki.secretfilter
 
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
@@ -18,8 +16,12 @@ The detection is based on regular expression patterns, defined in the [Gitleaks 
 
 {{< admonition type="caution" >}}
 Personally Identifiable Information (PII) isn't currently in scope and some secrets could remain undetected.
-This component may generate false positives.
+This component may generate false positives or redact too much.
 Don't rely solely on this component to redact sensitive information.
+{{< /admonition >}}
+
+{{< admonition type="note" >}}
+This component operates on log lines and doesn't scan labels or other metadata.
 {{< /admonition >}}
 
 [gitleaks]: https://github.com/gitleaks/gitleaks/blob/master/config/gitleaks.toml
@@ -49,7 +51,14 @@ Name                     | Type                 | Description                   
 The `gitleaks_config` argument is the path to the custom `gitleaks.toml` file.
 The Gitleaks configuration file embedded in the component is used if you don't provide the path to a custom configuration file.
 
-The `types` argument is a map of secret types to look for. The values are used as prefixes for the secret types in the Gitleaks configuration. If you don't provide this argument, all types are used.
+{{< admonition type="note" >}}
+This component doesn't support all the features of the Gitleaks configuration file. It only supports regular expression-based rules, `secretGroup`, and allowlist regular expressions. `regexTarget` only supports the default value `secret`. Other features such as `keywords`, `entropy`, `paths`, and `stopwords` are not supported. The `extend` feature is not supported. If you use a custom configuration file, you must include all the rules you want to use within the configuration file. Unsupported fields and values in the configuration file are ignored.
+{{< /admonition >}}
+
+The `types` argument is a map of secret types to look for.
+The values provided are used as prefixes to match rules IDs in the Gitleaks configuration.
+For example,  providing the type `grafana` will match the rules `grafana-api-key`, `grafana-cloud-api-token`, and `grafana-service-account-token`.
+If you don't provide this argument, all rules are used.
 
 {{< admonition type="note" >}}
 Configuring this argument with the secret types you want to look for is strongly recommended.
@@ -74,6 +83,8 @@ A secret will not be redacted if it matches any of the regular expressions. The 
 
 The `partial_mask` argument is the number of characters to show from the beginning of the secret before the redact string is added.
 If set to `0`, the entire secret is redacted.
+If a secret is not at least 6 characters long, it will be entirely redacted.
+For short secrets, at most half of the secret is shown.
 
 ## Blocks
 
@@ -97,7 +108,7 @@ The following fields are exported and can be referenced by other components:
 
 ## Example
 
-This example shows how to use `loki.secretfilter` to redact secrets from log entries before forwarding them to a Loki receiver.
+This example shows how to use `loki.secretfilter` to redact secrets from log lines before forwarding them to a Loki receiver.
 It uses a custom redaction string that will include the secret type and its hash.
 
 ```alloy

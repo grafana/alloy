@@ -27,7 +27,7 @@ spec:
       serviceAccountName: alloy
       containers:
         - name: alloy
-          image: quay.io/grafana/alloy:v1.5.0
+          image: quay.io/grafana/alloy:v1.6.1
           imagePullPolicy: IfNotPresent
           args:
             - run
@@ -57,7 +57,7 @@ spec:
             - name: config
               mountPath: /etc/alloy
         - name: config-reloader
-          image: quay.io/jimmidyson/configmap-reload:v0.12.0
+          image: quay.io/jimmidyson/configmap-reload:v0.14.0
           args:
             - --volume-dir=/etc/alloy
             - --webhook-url=http://localhost:12345/-/reload

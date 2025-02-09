@@ -106,6 +106,8 @@ func (args *DatadogHostMetadataArguments) Convert() *datadogOtelconfig.HostMetad
 		Enabled:        args.Enabled,
 		HostnameSource: datadogOtelconfig.HostnameSource(args.HostnameSource),
 		Tags:           args.Tags,
+		//TODO: Make ReporterPeriod configurable.
+		ReporterPeriod: 30 * time.Minute,
 	}
 }
 

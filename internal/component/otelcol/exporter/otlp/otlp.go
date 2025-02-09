@@ -25,7 +25,7 @@ func init() {
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
 			fact := otlpexporter.NewFactory()
-			return exporter.New(opts, fact, args.(Arguments), exporter.TypeAll)
+			return exporter.New(opts, fact, args.(Arguments), exporter.TypeSignalConstFunc(exporter.TypeAll))
 		},
 	})
 }
@@ -62,13 +62,18 @@ func (args *Arguments) SetToDefault() {
 
 // Convert implements exporter.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
+	clientArgs := *(*otelcol.GRPCClientArguments)(&args.Client)
+	convertedClientArgs, err := clientArgs.Convert()
+	if err != nil {
+		return nil, err
+	}
 	return &otlpexporter.Config{
 		TimeoutConfig: otelpexporterhelper.TimeoutConfig{
 			Timeout: args.Timeout,
 		},
 		QueueConfig:  *args.Queue.Convert(),
 		RetryConfig:  *args.Retry.Convert(),
-		ClientConfig: *(*otelcol.GRPCClientArguments)(&args.Client).Convert(),
+		ClientConfig: *convertedClientArgs,
 	}, nil
 }
 

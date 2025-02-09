@@ -183,7 +183,7 @@ linux_containers_jobs + windows_containers_jobs + [
     trigger: {
       ref: ['refs/heads/main'],
     },
-    image_pull_secrets: ['dockerconfigjson'],
+    image_pull_secrets: ['dockerconfigjson_gar'],
     steps: [
       {
         name: 'Create .image-tag',
@@ -196,7 +196,7 @@ linux_containers_jobs + windows_containers_jobs + [
       },
       {
         name: 'Update deployment_tools',
-        image: 'us.gcr.io/kubernetes-dev/drone/plugins/updater',
+        image: 'us-docker.pkg.dev/grafanalabs-global/docker-deployment-tools-prod/updater',
         settings: {
           config_json: |||
             {
@@ -208,7 +208,7 @@ linux_containers_jobs + windows_containers_jobs + [
               "repo_name": "deployment_tools",
               "update_jsonnet_attribute_configs": [
                 {
-                  "file_path": "ksonnet/environments/grafana-agent/waves/alloy.libsonnet",
+                  "file_path": "ksonnet/lib/alloy/waves/alloy.libsonnet",
                   "jsonnet_key": "dev_canary",
                   "jsonnet_value_file": ".image-tag"
                 }

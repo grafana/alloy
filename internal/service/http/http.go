@@ -188,6 +188,32 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 		otelmux.WithTracerProvider(s.tracer),
 	))
 
+	// The implementation for "/-/healthy" is inspired by
+	// the "/components" web API endpoint in /internal/web/api/api.go
+	r.HandleFunc("/-/healthy", func(w http.ResponseWriter, r *http.Request) {
+		components, err := host.ListComponents("", component.InfoOptions{
+			GetHealth: true,
+		})
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		unhealthyComponents := []string{}
+		for _, c := range components {
+			if c.Health.Health == component.HealthTypeUnhealthy {
+				unhealthyComponents = append(unhealthyComponents, c.ComponentName)
+			}
+		}
+		if len(unhealthyComponents) > 0 {
+			http.Error(w, "unhealthy components: "+strings.Join(unhealthyComponents, ", "), http.StatusInternalServerError)
+			return
+		}
+
+		fmt.Fprintln(w, "All Alloy components are healthy.")
+		w.WriteHeader(http.StatusOK)
+	})
+
 	r.Handle(
 		"/metrics",
 		promhttp.HandlerFor(s.gatherer, promhttp.HandlerOpts{}),
@@ -269,14 +295,6 @@ func (s *Service) generateSupportBundleHandler(host service.Host) func(rw http.R
 	return func(rw http.ResponseWriter, r *http.Request) {
 		s.supportBundleMut.Lock()
 		defer s.supportBundleMut.Unlock()
-
-		// TODO(dehaansa) remove this check once the support bundle is generally available
-		if !s.opts.MinStability.Permits(featuregate.StabilityPublicPreview) {
-			rw.WriteHeader(http.StatusForbidden)
-			_, _ = rw.Write([]byte("support bundle generation is only available in public preview. Use" +
-				" --stability.level command-line flag to enable public-preview features"))
-			return
-		}
 
 		if s.opts.BundleContext.DisableSupportBundle {
 			rw.WriteHeader(http.StatusForbidden)
@@ -635,6 +653,10 @@ func remoteCfgRedactedCachedConfig(host service.Host) ([]byte, error) {
 }
 
 func printFileRedacted(f *ast.File) ([]byte, error) {
+	if f == nil {
+		return []byte{}, nil
+	}
+
 	c := printer.Config{
 		RedactSecrets: true,
 	}

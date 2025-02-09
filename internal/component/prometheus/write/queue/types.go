@@ -115,6 +115,15 @@ type EndpointConfig struct {
 	// How many concurrent queues to have.
 	Parallelism    ParralelismConfig `alloy:"parallelism,attr,block"`
 	ExternalLabels map[string]string `alloy:"external_labels,attr,optional"`
+	TLSConfig      *TLSConfig        `alloy:"tls_config,block,optional"`
+	RoundRobin     bool              `alloy:"enable_round_robin,attr,optional"`
+}
+
+type TLSConfig struct {
+	CA                 string            `alloy:"ca_pem,attr,optional"`
+	Cert               string            `alloy:"cert_pem,attr,optional"`
+	Key                alloytypes.Secret `alloy:"key_pem,attr,optional"`
+	InsecureSkipVerify bool              `alloy:"insecure_skip_verify,attr,optional"`
 }
 
 type ParralelismConfig struct {
@@ -156,6 +165,7 @@ func (cc EndpointConfig) ToNativeType() types.ConnectionConfig {
 		BatchCount:       cc.BatchCount,
 		FlushInterval:    cc.FlushInterval,
 		ExternalLabels:   cc.ExternalLabels,
+		UseRoundRobin:    cc.RoundRobin,
 		Parralelism: types.ParralelismConfig{
 			AllowedDriftSeconds:          cc.Parallelism.DriftScaleUpSeconds,
 			MinimumScaleDownDriftSeconds: cc.Parallelism.DriftScaleDownSeconds,
@@ -172,6 +182,12 @@ func (cc EndpointConfig) ToNativeType() types.ConnectionConfig {
 			Username: cc.BasicAuth.Username,
 			Password: string(cc.BasicAuth.Password),
 		}
+	}
+	if cc.TLSConfig != nil {
+		tcc.InsecureSkipVerify = cc.TLSConfig.InsecureSkipVerify
+		tcc.TLSCert = cc.TLSConfig.Cert
+		tcc.TLSKey = string(cc.TLSConfig.Key)
+		tcc.TLSCACert = cc.TLSConfig.CA
 	}
 	return tcc
 }
