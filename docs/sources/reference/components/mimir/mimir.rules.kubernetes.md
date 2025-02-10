@@ -99,8 +99,7 @@ This is useful if you configure Mimir to use a different [prefix][gem-path-prefi
 
 ## Blocks
 
-The following blocks are supported inside the definition of
-`mimir.rules.kubernetes`:
+You can use the following blocks with `mimir.rules.kubernetes`:
 
 | Block                                                              | Description                                                | Required |
 | ------------------------------------------------------------------ | ---------------------------------------------------------- | -------- |
