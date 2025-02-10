@@ -123,6 +123,9 @@ func formatLine(cfg *scrapeconfig.WindowsEventsTargetConfig, event win_eventlog.
 	return jsoniter.MarshalToString(structuredEvent)
 }
 
+// This function was tested via manual testing on Windows machines at scale and by changing the
+// size of the buffer to ensure that the dynamic resizing works as expected.
+// TODO: would be better to have a unit test for this (not easy to setup)
 func GetProcessName(pid uint32) (string, error) {
 	// PID 4 is always "System"
 	if pid == 4 {
