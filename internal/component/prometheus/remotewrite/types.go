@@ -243,7 +243,7 @@ func convertConfigs(cfg Arguments) (*config.Config, error) {
 			SendExemplars:        rw.SendExemplars,
 			SendNativeHistograms: rw.SendNativeHistograms,
 
-			//TODO: Make this configurable?
+			//TODO: Make this configurable when we upgrade to Prometheus v3?
 			ProtobufMessage: config.RemoteWriteProtoMsgV1,
 
 			WriteRelabelConfigs: alloy_relabel.ComponentToPromRelabelConfigs(rw.WriteRelabelConfigs),
