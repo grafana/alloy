@@ -190,7 +190,9 @@ func (c *Component) Push(ctx context.Context, req *connect.Request[pushv1.PushRe
 			for idx := range req.Msg.Series {
 				lb.Reset(nil)
 				setLabelBuilderFromAPI(lb, req.Msg.Series[idx].Labels)
-				err := appendable.Append(ctx, lb.Labels(), apiToAlloySamples(req.Msg.Series[idx].Samples))
+				// Ensure service_name label is set
+				lbls := ensureServiceName(lb.Labels())
+				err := appendable.Append(ctx, lbls, apiToAlloySamples(req.Msg.Series[idx].Samples))
 				if err != nil {
 					errs = errors.Join(
 						errs,
@@ -239,6 +241,9 @@ func (c *Component) handleIngest(w http.ResponseWriter, r *http.Request) {
 			lbls = labels.New(labelPairs...)
 		}
 	}
+
+	// Ensure service_name label is set
+	lbls = ensureServiceName(lbls)
 
 	// Read the entire body into memory
 	// This matches how Append() handles profile data (as RawProfile),
@@ -291,4 +296,30 @@ func (c *Component) shutdownServer() {
 		c.server.StopAndShutdown()
 		c.server = nil
 	}
+}
+
+const (
+	labelServiceName = "service_name"
+	labelAppName     = "app_name"
+)
+
+func ensureServiceName(lbls labels.Labels) labels.Labels {
+	// If service_name is already present, add app_name if not exists
+	if lbls.Has(labelServiceName) {
+		if appName := lbls.Get("__name__"); appName != "" && !lbls.Has(labelAppName) {
+			builder := labels.NewBuilder(lbls)
+			builder.Set(labelAppName, appName)
+			return builder.Labels()
+		}
+		return lbls
+	}
+
+	// If no service_name, use __name__ value for service_name
+	if appName := lbls.Get("__name__"); appName != "" {
+		builder := labels.NewBuilder(lbls)
+		builder.Set(labelServiceName, appName)
+		return builder.Labels()
+	}
+
+	return lbls
 }
