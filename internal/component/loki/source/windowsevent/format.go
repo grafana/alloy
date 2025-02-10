@@ -140,11 +140,22 @@ func GetProcessName(pid uint32) (string, error) {
 	}
 	defer windows.CloseHandle(handle)
 
-	var buf [windows.MAX_PATH]uint16
-	size := uint32(len(buf))
-	err = windows.QueryFullProcessImageName(handle, 0, &buf[0], &size)
-	if err != nil {
+	// Support Windows long paths by dynamically resizing the buffer.
+	size := uint32(512)
+	maxSize := uint32(64 * 1024)
+	for {
+		buf := make([]uint16, size)
+		err = windows.QueryFullProcessImageName(handle, 0, &buf[0], &size)
+		if err == nil {
+			return filepath.Base(windows.UTF16ToString(buf[:size])), nil
+		}
+		if err == windows.ERROR_INSUFFICIENT_BUFFER {
+			if size >= maxSize {
+				return "", fmt.Errorf("failed to get process name for %d: buffer size exceeded maximum limit", pid)
+			}
+			size *= 2
+			continue
+		}
 		return "", fmt.Errorf("failed to get process name for %d: %w", pid, err)
 	}
-	return filepath.Base(windows.UTF16ToString(buf[:size])), nil
 }
