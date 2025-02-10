@@ -1,12 +1,12 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/pyroscope/pyroscope.receive_http/
 description: Learn about pyroscope.receive_http
+labels:
+  stage: public-preview
 title: pyroscope.receive_http
 ---
 
-<span class="badge docs-labels__stage docs-labels__item">Public preview</span>
-
-# pyroscope.receive_http
+# `pyroscope.receive_http`
 
 {{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -18,62 +18,66 @@ This allows `pyroscope.receive_http` to act as a proxy for Pyroscope profiles, e
 ## Usage
 
 ```alloy
-pyroscope.receive_http "LABEL" {
+pyroscope.receive_http "<LABEL>" {
   http {
-    listen_address = "LISTEN_ADDRESS"
-    listen_port = PORT
+    listen_address = "<LISTEN_ADDRESS>"
+    listen_port = "<PORT>"
   }
-  forward_to = RECEIVER_LIST
+  forward_to = <RECEIVER_LIST>
 }
 ```
 
-The component will start an HTTP server supporting the following endpoint.
+The component starts an HTTP server supporting the following endpoint.
 
-* `POST /ingest` - send profiles to the component, which will be forwarded to the receivers as configured in the `forward_to argument`. The request format must match the format of the Pyroscope ingest API.
+* `POST /ingest` - send profiles to the component, which will be forwarded to the receivers as configured in the `forward_to argument`.
+   The request format must match the format of the Pyroscope ingest API.
 
 ## Arguments
 
-The following arguments are supported:
+You can use the following arguments with `pyroscope.receive_http`:
 
-Name              | Type          | Description                                     | Default | Required
-------------------|---------------|-------------------------------------------------|---------|---------
-`forward_to` | `list(ProfilesReceiver)` | List of receivers to send profiles to. |         | yes
+| Name         | Type                     | Description                            | Default | Required |
+| ------------ | ------------------------ | -------------------------------------- | ------- | -------- |
+| `forward_to` | `list(ProfilesReceiver)` | List of receivers to send profiles to. |         | yes      |
 
 ## Blocks
 
-The following blocks are supported inside the definition of `pyroscope.receive_http`:
+You can use the following blocks `pyroscope.receive_http`:
 
-Hierarchy | Name | Description                                        | Required
-----------|------|----------------------------------------------------|---------
-`http`    | `http` | Configures the HTTP server that receives requests. | no
+| Name           | Description                                        | Required |
+| -------------- | -------------------------------------------------- | -------- |
+| [`http`][http] | Configures the HTTP server that receives requests. | no       |
 
-### http
+[http]: #http
+
+### `http`
 
 The `http` block configures the HTTP server.
 
 You can use the following arguments to configure the `http` block. Any omitted fields take their default values.
 
-Name                   | Type       | Description                                                                                                      | Default  | Required
------------------------|------------|------------------------------------------------------------------------------------------------------------------|----------|---------
-`conn_limit`           | `int`      | Maximum number of simultaneous HTTP connections. Defaults to 100.                                           | `0`      | no
-`listen_address`       | `string`   | Network address on which the server listens for new connections. Defaults to accepting all incoming connections. | `""`     | no
-`listen_port`          | `int`      | Port number on which the server listens for new connections.                                                     | `8080`   | no
-`server_idle_timeout`  | `duration` | Idle timeout for the HTTP server.                                                                                    | `"120s"` | no
-`server_read_timeout`  | `duration` | Read timeout for the HTTP server.                                                                                    | `"30s"`  | no
-`server_write_timeout` | `duration` | Write timeout for the HTTP server.                                                                                   | `"30s"`  | no
+| Name                   | Type       | Description                                                                                                      | Default  | Required |
+| ---------------------- | ---------- | ---------------------------------------------------------------------------------------------------------------- | -------- | -------- |
+| `conn_limit`           | `int`      | Maximum number of simultaneous HTTP connections. Defaults to 100.                                                | `0`      | no       |
+| `listen_address`       | `string`   | Network address on which the server listens for new connections. Defaults to accepting all incoming connections. | `""`     | no       |
+| `listen_port`          | `int`      | Port number on which the server listens for new connections.                                                     | `8080`   | no       |
+| `server_idle_timeout`  | `duration` | Idle timeout for the HTTP server.                                                                                | `"120s"` | no       |
+| `server_read_timeout`  | `duration` | Read timeout for the HTTP server.                                                                                | `"30s"`  | no       |
+| `server_write_timeout` | `duration` | Write timeout for the HTTP server.                                                                               | `"30s"`  | no       |
 
 ## Exported fields
 
-`pyroscope.receive_http` does not export any fields.
+`pyroscope.receive_http` doesn't export any fields.
 
 ## Component health
 
-`pyroscope.receive_http` is reported as unhealthy if it is given an invalid configuration.
+`pyroscope.receive_http` is reported as unhealthy if it's given an invalid configuration.
 
 ## Example
 
 This example creates a `pyroscope.receive_http` component, which starts an HTTP server listening on `0.0.0.0` and port `9999`.
 The server receives profiles and forwards them to multiple `pyroscope.write` components, which write these profiles to different HTTP endpoints.
+
 ```alloy
 // Receives profiles over HTTP
 pyroscope.receive_http "default" {
@@ -101,10 +105,11 @@ pyroscope.write "production" {
 
 {{< admonition type="note" >}}
 This example demonstrates forwarding to multiple `pyroscope.write` components.
-This configuration will duplicate the received profiles and send a copy to each configured `pyroscope.write` component.
+This configuration duplicates the received profiles and send a copy to each configured `pyroscope.write` component.
 {{< /admonition >}}
 
-You can also create multiple `pyroscope.receive_http` components with different configurations to listen on different addresses or ports as needed. This flexibility allows you to design a setup that best fits your infrastructure and profile routing requirements.
+You can also create multiple `pyroscope.receive_http` components with different configurations to listen on different addresses or ports as needed.
+This flexibility allows you to design a setup that best fits your infrastructure and profile routing requirements.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
