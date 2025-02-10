@@ -172,9 +172,11 @@ func (fn *ForeachConfigNode) evaluate(scope *vm.Scope) error {
 
 	// By default don't show debug metrics.
 	if args.EnableMetrics {
-		fn.moduleControllerOpts.Reg = nil
+		// If metrics should be enabled, just use the regular registry.
+		// There's no need to pass a special registry specific for this module controller.
+		fn.moduleControllerOpts.RegOverride = nil
 	} else {
-		fn.moduleControllerOpts.Reg = NoopRegistry{}
+		fn.moduleControllerOpts.RegOverride = NoopRegistry{}
 	}
 	fn.moduleController = fn.moduleControllerFactory(fn.moduleControllerOpts)
 

@@ -208,9 +208,11 @@ func newController(o controllerOptions) *Runtime {
 			Registerer:      o.Reg,
 			ControllerID:    o.ControllerID,
 			NewModuleController: func(opts controller.ModuleControllerOpts) controller.ModuleController {
+				// The module controller registry should take precedence.,
+				// because it is tailored to this module.
 				reg := o.Reg
-				if opts.Reg != nil {
-					reg = opts.Reg
+				if opts.RegOverride != nil {
+					reg = opts.RegOverride
 				}
 
 				return newModuleController(&moduleControllerOptions{

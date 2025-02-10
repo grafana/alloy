@@ -61,8 +61,12 @@ func (id ComponentID) Equals(other ComponentID) bool {
 type DialFunc func(ctx context.Context, network, address string) (net.Conn, error)
 
 type ModuleControllerOpts struct {
-	Id  string
-	Reg prometheus.Registerer
+	Id string
+
+	// When RegOverride is nil, the registry used in the module will the usual one.
+	// When RegOverride is not nil, the registry used in the module will be RegOverride.
+	// This can be used to disable metrics for modules by giving them a no-op registry.
+	RegOverride prometheus.Registerer
 }
 
 // ComponentGlobals are used by BuiltinComponentNodes to build managed components. All
