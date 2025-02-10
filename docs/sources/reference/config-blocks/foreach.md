@@ -1,11 +1,12 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/stdlib/foreach/
 description: Learn about foreach
+labels:
+  stage: experimental
 menuTitle: foreach
 title: foreach
 ---
 
-<span class="badge docs-labels__stage docs-labels__item">Experimental</span>
 
 # foreach
 
@@ -27,13 +28,13 @@ foreach "<LABEL>" {
 
 ## Arguments
 
-The following arguments are supported:
+You can use the following arguments with `foreach`:
 
-Name             | Type        | Description                                                           | Default | Required
------------------|-------------|-----------------------------------------------------------------------|---------|---------
-`collection`     | `list(any)` | A list of items to loop over.                                         |         | yes
-`var`            | `string`    | Name of the variable referring to the current item in the collection. |         | yes
-`enable_metrics` | `bool`      | Whether to expose debug metrics in the {{< param "PRODUCT_NAME" >}} `/metrics` endpoint.       | `false` | no
+Name             | Type        | Description                                                                              | Default | Required
+-----------------|-------------|------------------------------------------------------------------------------------------|---------|---------
+`collection`     | `list(any)` | A list of items to loop over.                                                            |         | yes
+`var`            | `string`    | Name of the variable referring to the current item in the collection.                    |         | yes
+`enable_metrics` | `bool`      | Whether to expose debug metrics in the {{< param "PRODUCT_NAME" >}} `/metrics` endpoint. | `false` | no
 
 The items in the `collection` list can be of any type [type][types], such as a bool, a string, a list, or a map.
 
