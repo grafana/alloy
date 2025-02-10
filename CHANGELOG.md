@@ -57,6 +57,8 @@ Main (unreleased)
 
 - Fixed an issue where `loki.process` would sometimes output live debugging entries out-of-order (@thampiotr)
 
+- (_Experimental_) Fixed several out-of-memory bugs in `loki.secretfilter`. (@kelnage)
+
 v1.6.1
 -----------------
 
