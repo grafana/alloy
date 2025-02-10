@@ -73,7 +73,7 @@ require (
 	github.com/grafana/regexp v0.0.0-20240518133315-a468a5bfb3bc
 	github.com/grafana/tail v0.0.0-20230510142333-77b18831edf0
 	github.com/grafana/vmware_exporter v0.0.5-beta
-	github.com/grafana/walqueue v0.0.0-20250207154308-e874c2251fc7
+	github.com/grafana/walqueue v0.0.0-20250210172748-0dc5bd134b25
 	github.com/hashicorp/consul/api v1.30.0
 	github.com/hashicorp/go-discover v0.0.0-20230724184603-e89ebd1b2f65
 	github.com/hashicorp/go-multierror v1.1.1
