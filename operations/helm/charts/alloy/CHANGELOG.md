@@ -7,6 +7,13 @@ This document contains a historical list of changes between releases. Only
 changes that impact end-user behavior are listed; changes to documentation or
 internal API changes are not present.
 
+Unreleased
+----------
+
+### Enhancements
+
+- Add the ability to set additional service labels. (@devsunb)
+
 0.11.0 (2025-01-23)
 ----------
 

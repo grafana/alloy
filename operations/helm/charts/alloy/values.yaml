@@ -299,6 +299,7 @@ service:
   clusterIP: ''
   # -- Value for internal traffic policy. 'Cluster' or 'Local'
   internalTrafficPolicy: Cluster
+  labels: {}
   annotations: {}
     # cloud.google.com/load-balancer-type: Internal
 
