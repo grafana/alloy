@@ -45,15 +45,15 @@ Setting `enable_metrics` to `true` when `collection` has lots of elements may ca
 
 ## Blocks
 
-The following blocks are supported inside the definition of `foreach`:
+You can use the following blocks with `foreach`:
 
-Hierarchy | Block        | Description                  | Required
-----------|--------------|------------------------------|---------
-template  | [template][] | A component pipeline to run. | yes
+Block        | Description                  | Required
+--------------|------------------------------|---------
+[template][] | A component pipeline to run. | yes
 
-[template]: #template-block
+[template]: #template
 
-### template
+### `template`
 
 The `template` block contains the definition of {{< param "PRODUCT_NAME" >}} components which will be ran for every item in the collection.
 The contents of the block look like a normal {{< param "PRODUCT_NAME" >}} configuration file,
@@ -70,7 +70,7 @@ The following example shows you how to run Prometheus exporters dynamically on s
 For example, `prometheus.exporter.redis` has a `redis_addr` attribute for the Redis instance under observation.
 On the other hand, `discovery.*` components such as `discovery.kubernetes` output a list of targets such as this:
 
-{{< collapse title="Example targets output by discovery.kubernetes" >}}
+{{< collapse title="Example targets output by `discovery.kubernetes`" >}}
 ```json
 [
     {
@@ -196,3 +196,4 @@ Replace the following:
 
 * _`<PROMETHEUS_USERNAME>`_: Your Prometheus username.
 * _`<GRAFANA_CLOUD_API_KEY>`_: Your Grafana Cloud API key.
+
