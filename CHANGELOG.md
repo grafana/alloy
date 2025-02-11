@@ -12,7 +12,7 @@ Main (unreleased)
 
 ### Breaking changes
 
-- (_Experimental_) Changed `parallelism` from attribute to block to allow dynamic scaling of `prometheus.write.queue`. (@mattdurham)
+- (_Experimental_) In `prometheus.write.queue` changed `parallelism` from attribute to a block to allow for dynamic scaling. (@mattdurham)
 
 ### Features
 
