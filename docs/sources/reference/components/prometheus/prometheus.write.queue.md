@@ -130,14 +130,18 @@ Name                   | Type     | Description                                 
 | `desired_check_interval`        | `duration` | The length of time between checking for desired connections.                                                                       | `5s`    | no       |
 | `allowed_network_error_percent` | `float`    | The allowed error rate before scaling down. For example `0.50` allows 50% error rate.                                              | `0.50`  | no       |
 
-Parallelism determines when to scale up or down the number of desired connections. This is accomplished by a variety of inputs.
+Parallelism determines when to scale up or down the number of desired connections. This is accomplished by a variety of inputs: 
+
 By determining the drift between the incoming and outgoing timestamps that will determine whether to increase or decrease the
 desired connections. This is represented by `drift_scale_up_seconds` and `drift_scale_down_seconds`, if the drift is between these
-two values then the value will stay the same. Network success and failures are recorded and kept in memory, this helps determine
+two values then the value will stay the same. 
+
+Network success and failures are recorded and kept in memory, this helps determine
 the nature of the drift. For instance if the drift is increasing but the network failures are increasing we should not increase
-desired connections since that would only increase load on the endpoint. The last major part is to prevent flapping of desired connections.
-This is accomplished with the `desired_check_interval`, each time a desired connection is calculated it is added to a list, before actually changing the
-desired connection the system will choose the highest value in the lookback. Example; for the past 5 minutes desired connections have been: [2,1,1] the check runs
+desired connections since that would only increase load on the endpoint. 
+
+Flapping prevention accomplished with `desired_check_interval`, each time a desired connection is calculated it is added to a list, before actually changing the
+desired connection the system will choose the highest value in the lookback buffer. Example; for the past 5 minutes desired connections have been: [2,1,1] the check runs
 and determines that the desired connections are 1, but will not change the value since the value 2 is still in the lookback. On the next check we have [1,1,1],
 now it will change to 1. In general the system is fast to increase and slow to decrease.
 
