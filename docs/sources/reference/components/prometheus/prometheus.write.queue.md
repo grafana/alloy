@@ -122,7 +122,7 @@ Name                   | Type     | Description                                 
 | Name                            | Type       | Description                                                                                                                        | Default | Required |
 |---------------------------------|------------|------------------------------------------------------------------------------------------------------------------------------------|---------|----------|
 | `drift_scale_up`                | `duration` | The maximum amount of time between the timestamps of incoming signals and outgoing signals before increasing desired connections.  | `60`    | no       |
-| `drift_scale_down`              | `duration` | The minimum amount of time between the timestamps of incoming signals and outgoing signals before descreasing desired connections. | `30`    | no       |
+| `drift_scale_down`              | `duration` | The minimum amount of time between the timestamps of incoming signals and outgoing signals before decreasing desired connections. | `30`    | no       |
 | `max_connections`               | `uint`     | The maximum number of desired connections.                                                                                         | `50`    | no       |
 | `min_connections`               | `uint`     | The minimum number of desired connections.                                                                                         | `2`     | no       |
 | `network_flush_interval`        | `duration` | The length of time that network successes and failures are kept for determining desired connections.                               | `1m`    | no       |
