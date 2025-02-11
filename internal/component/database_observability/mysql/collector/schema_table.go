@@ -317,23 +317,21 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 }
 
 func (c *SchemaTable) fetchTableDefinitions(ctx context.Context, fullyQualifiedTable string, table *tableInfo) (*tableInfo, error) {
-	logKVs := []any{"schema", table.schema, "table", table.tableName}
-
 	row := c.dbConnection.QueryRowContext(ctx, showCreateTable+" "+fullyQualifiedTable)
-	if row.Err() != nil {
-		level.Error(c.logger).Log("msg", "failed to show create table", append(logKVs, "err", row.Err()))
+	if err := row.Err(); err != nil {
+		level.Error(c.logger).Log("msg", "failed to show create table", "schema", table.schema, "table", table.tableName, "err", err)
 		return nil, row.Err()
 	}
 
 	var tableName, createStmt, characterSetClient, collationConnection string
 	if table.tableType == "BASE TABLE" {
 		if err := row.Scan(&tableName, &createStmt); err != nil {
-			level.Error(c.logger).Log("msg", "failed to scan create table", append(logKVs, "err", err))
+			level.Error(c.logger).Log("msg", "failed to scan create table", "schema", table.schema, "table", table.tableName, "err", err)
 			return nil, err
 		}
 	} else if table.tableType == "VIEW" {
 		if err := row.Scan(&tableName, &createStmt, &characterSetClient, &collationConnection); err != nil {
-			level.Error(c.logger).Log("msg", "failed to scan create view", append(logKVs, "err", err))
+			level.Error(c.logger).Log("msg", "failed to scan create view", "schema", table.schema, "table", table.tableName, "err", err)
 			return nil, err
 		}
 	}
@@ -341,12 +339,12 @@ func (c *SchemaTable) fetchTableDefinitions(ctx context.Context, fullyQualifiedT
 
 	spec, err := c.fetchColumnsDefinitions(ctx, table.schema, table.tableName)
 	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to analyze table spec", append(logKVs, "err", err))
+		level.Error(c.logger).Log("msg", "failed to analyze table spec", "schema", table.schema, "table", table.tableName, "err", err)
 		return nil, err
 	}
 	jsonSpec, err := json.Marshal(spec)
 	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to marshal table spec", append(logKVs, "err", err))
+		level.Error(c.logger).Log("msg", "failed to marshal table spec", "schema", table.schema, "table", table.tableName, "err", err)
 		return nil, err
 	}
 	table.tableSpec = string(jsonSpec)
