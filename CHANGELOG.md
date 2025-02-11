@@ -57,6 +57,20 @@ Main (unreleased)
 
 - Fixed an issue where `loki.process` would sometimes output live debugging entries out-of-order (@thampiotr)
 
+### Other changes
+
+- Upgrading to Prometheus v2.54.1. (@ptodev)
+  - `discovery.docker` has a new `match_first_network` attribute for matching the first network 
+    if the container has multiple networks defined, thus avoiding collecting duplicate targets.
+  - `discovery.ec2`, `discovery.kubernetes`, `discovery.openstack`, and `discovery.ovhcloud`
+    add extra `__meta_` labels.
+  - `prometheus.remote_write` supports Azure OAuth and Azure SDK authentication.
+  - `discovery.linode` has a new `region` attribute, as well as extra `__meta_` labels.
+  - A new `scrape_native_histograms` argument for `prometheus.scrape`.
+    This is enabled by default and can be used to explicitly disable native histogram support.
+    In previous versions of Alloy, native histogram support has also been enabled by default 
+    as long as `scrape_protocols` starts with `PrometheusProto`.
+
 v1.6.1
 -----------------
 

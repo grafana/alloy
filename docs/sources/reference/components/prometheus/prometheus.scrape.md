@@ -51,6 +51,7 @@ The following arguments are supported:
 | `track_timestamps_staleness`  | `bool`                  | Indicator whether to track the staleness of the scraped timestamps.                                    | `false`                                                                   | no       |
 | `params`                      | `map(list(string))`     | A set of query parameters with which the target is scraped.                                            |                                                                           | no       |
 | `scrape_classic_histograms`   | `bool`                  | Whether to scrape a classic histogram that is also exposed as a native histogram.                      | `false`                                                                   | no       |
+| `scrape_native_histograms`    | `bool`                  | Whether to scrape native histograms.                      | `true`                                                                   | no       |
 | `scrape_interval`             | `duration`              | How frequently to scrape the targets of this scrape configuration.                                     | `"60s"`                                                                   | no       |
 | `scrape_timeout`              | `duration`              | The timeout for scraping targets of this configuration.                                                | `"10s"`                                                                   | no       |
 | `scrape_protocols`            | `list(string)`          | The protocols to negotiate during a scrape, in order of preference. See below for available values.    | `["OpenMetricsText1.0.0", "OpenMetricsText0.0.1", "PrometheusText0.0.4"]` | no       |
@@ -88,6 +89,10 @@ a scrape. The following values are supported:
 
 If you were using the now deprecated `enable_protobuf_negotiation` argument, switch 
 to using `scrape_protocols = ["PrometheusProto", "OpenMetricsText1.0.0", "OpenMetricsText0.0.1", "PrometheusText0.0.4"]` instead.
+
+For now, native histograms are only available through the Prometheus Protobuf exposition format.
+To scrape native histograms, `scrape_native_histograms` must be set to `true` and 
+the first item in `scrape_protocols` must be `PrometheusProto`.
 
 {{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -269,6 +274,7 @@ negotiate, for example:
 ```alloy
 prometheus.scrape "prometheus" {
   ...
+  scrape_native_histograms = true
   scrape_protocols = ["PrometheusProto", "OpenMetricsText1.0.0", "OpenMetricsText0.0.1", "PrometheusText0.0.4"]
 }
 ```

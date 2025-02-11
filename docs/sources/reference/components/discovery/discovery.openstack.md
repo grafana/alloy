@@ -103,7 +103,7 @@ The `instance` role discovers one target per network interface of Nova instance.
 The target address defaults to the private IP address of the network interface.
 
 * `__meta_openstack_address_pool`: The pool of the private IP.
-* `__meta_openstack_instance_flavor`: The flavor of the OpenStack instance.
+* `__meta_openstack_instance_flavor`: The flavor of the OpenStack instance, or the flavor ID if the flavor name isn't available.
 * `__meta_openstack_instance_id`: The OpenStack instance ID.
 * `__meta_openstack_instance_image`: The ID of the image the OpenStack instance is using.
 * `__meta_openstack_instance_name`: The OpenStack instance name.
@@ -111,7 +111,7 @@ The target address defaults to the private IP address of the network interface.
 * `__meta_openstack_private_ip`: The private IP of the OpenStack instance.
 * `__meta_openstack_project_id`: The project (tenant) owning this instance.
 * `__meta_openstack_public_ip`: The public IP of the OpenStack instance.
-* `__meta_openstack_tag_<tagkey>`: Each tag value of the instance.
+* `__meta_openstack_tag_<key>`: Each metadata item of the instance, with any unsupported characters converted to an underscore.
 * `__meta_openstack_user_id`: The user account owning the tenant.
 
 ## Component health
