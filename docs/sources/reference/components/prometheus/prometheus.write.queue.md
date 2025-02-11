@@ -54,7 +54,7 @@ The following blocks are supported inside the definition of
  endpoint              | [endpoint][]    | Location to send metrics to.                              | no       
  endpoint > basic_auth | [basic_auth][]  | Configure basic_auth for authenticating to the endpoint.  | no       
  endpoint > tls_config | [tls_config][]  | Configure TLS settings for connecting to the endpoint.    | no
- endpoint > parallelism | [parallelism][] | Configure parralelism for the endpoint.                   | no
+ endpoint > parallelism | [parallelism][] | Configure parallelism for the endpoint.                   | no
 
 The `>` symbol indicates deeper levels of nesting. For example, `endpoint >
 basic_auth` refers to a `basic_auth` block defined inside an
