@@ -36,14 +36,14 @@ discovery.ovhcloud "<LABEL>" {
 
 You can use the following arguments with `discovery.ovhcloud`:
 
-Name                 | Type       | Description                                     | Default  | Required
----------------------|------------|-------------------------------------------------|----------|---------
-`application_key`    | `string`   | [API][] application key.                        |          | yes
-`application_secret` | `secret`   | [API][] application secret.                     |          | yes
-`consumer_key`       | `secret`   | [API][] consumer key.                           |          | yes
-`service`            | `string`   | Service of the targets to retrieve.             |          | yes
-`endpoint`           | `string`   | [API][] endpoint.                               | "ovh-eu" | no
-`refresh_interval`   | `duration` | Refresh interval to re-read the resources list. | "60s"    | no
+| Name                 | Type       | Description                                     | Default  | Required |
+| -------------------- | ---------- | ----------------------------------------------- | -------- | -------- |
+| `application_key`    | `string`   | [API][] application key.                        |          | yes      |
+| `application_secret` | `secret`   | [API][] application secret.                     |          | yes      |
+| `consumer_key`       | `secret`   | [API][] consumer key.                           |          | yes      |
+| `service`            | `string`   | Service of the targets to retrieve.             |          | yes      |
+| `endpoint`           | `string`   | [API][] endpoint.                               | "ovh-eu" | no       |
+| `refresh_interval`   | `duration` | Refresh interval to re-read the resources list. | "60s"    | no       |
 
 `service` must be either `vps` or `dedicated_server`.
 
@@ -59,9 +59,9 @@ The `discovery.ovhcloud` component doesn't support any blocks. You can configure
 
 The following fields are exported and can be referenced by other components:
 
-Name      | Type                | Description
-----------|---------------------|-----------------------------------------------------
-`targets` | `list(map(string))` | The set of targets discovered from the OVHcloud API.
+| Name      | Type                | Description                                          |
+| --------- | ------------------- | ---------------------------------------------------- |
+| `targets` | `list(map(string))` | The set of targets discovered from the OVHcloud API. |
 
 Multiple meta labels are available on `targets` and can be used by the `discovery.relabel` component.
 
@@ -90,7 +90,7 @@ Multiple meta labels are available on `targets` and can be used by the `discover
 [Dedicated servers][] meta labels:
 
 * `__meta_ovhcloud_dedicated_server_commercial_range`: The commercial range of the server.
-* `__meta_ovhcloud_dedicated_server_datacenter`: The datacenter of the server.
+* `__meta_ovhcloud_dedicated_server_datacenter`: The data center of the server.
 * `__meta_ovhcloud_dedicated_server_ipv4`: The IPv4 of the server.
 * `__meta_ovhcloud_dedicated_server_ipv6`: The IPv6 of the server.
 * `__meta_ovhcloud_dedicated_server_link_speed`: The link speed of the server.
