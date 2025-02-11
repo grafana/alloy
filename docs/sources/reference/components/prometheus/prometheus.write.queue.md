@@ -64,7 +64,7 @@ basic_auth` refers to a `basic_auth` block defined inside an
 [basic_auth]: #basic_auth-block
 [persistence]: #persistence-block
 [tls_config]: #tls_config-block
-[parallelism]: #parralelism
+[parallelism]: #parallelism
 
 ### persistence block
 
