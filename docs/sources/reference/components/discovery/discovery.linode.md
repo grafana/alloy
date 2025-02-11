@@ -43,6 +43,7 @@ You can use the following arguments with `discovery.linode`:
 | `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false` | no       |
 | `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |         | no       |
 | `refresh_interval`       | `duration`          | The time to wait between polling update requests.                                                | `"60s"` | no       |
+| `region`                 | `string`            | A region to filter on.                                                                           | `""`    | no       |
 | `tag_separator`          | `string`            | The string by which Linode Instance tags are joined into the tag label.                          | `,`     | no       |
 
  At most, one of the following can be provided:
@@ -114,13 +115,17 @@ The following meta labels are available on targets and can be used by the discov
 * `__meta_linode_backups`: The backup service status of the Linode instance.
 * `__meta_linode_extra_ips`: A list of all extra IPv4 addresses assigned to the Linode instance joined by the tag separator.
 * `__meta_linode_group`: The display group a Linode instance is a member of.
+* `__meta_linode_gpus`: The number of GPUs of the Linode instance.
 * `__meta_linode_hypervisor`: The virtualization software powering the Linode instance.
 * `__meta_linode_image`: The slug of the Linode instance's image.
 * `__meta_linode_instance_id`: The ID of the Linode instance.
 * `__meta_linode_instance_label`: The label of the Linode instance.
 * `__meta_linode_private_ipv4`: The private IPv4 of the Linode instance.
+* `__meta_linode_private_ipv4_rdns`: The reverse DNS for the first private IPv4 of the Linode instance.
 * `__meta_linode_public_ipv4`: The public IPv4 of the Linode instance.
+* `__meta_linode_public_ipv4_rdns`: The reverse DNS for the first public IPv4 of the Linode instance.
 * `__meta_linode_public_ipv6`: The public IPv6 of the Linode instance.
+* `__meta_linode_public_ipv6_rdns`: The reverse DNS for the first public IPv6 of the Linode instance.
 * `__meta_linode_region`: The region of the Linode instance.
 * `__meta_linode_specs_disk_bytes`: The amount of storage space the Linode instance has access to.
 * `__meta_linode_specs_memory_bytes`: The amount of RAM the Linode instance has access to.
@@ -129,6 +134,7 @@ The following meta labels are available on targets and can be used by the discov
 * `__meta_linode_status`: The status of the Linode instance.
 * `__meta_linode_tags`: A list of tags of the Linode instance joined by the tag separator.
 * `__meta_linode_type`: The type of the Linode instance.
+* `__meta_linode_ipv6_ranges`: A list of IPv6 ranges with mask assigned to the Linode instance joined by the tag separator.
 
 ## Component health
 
