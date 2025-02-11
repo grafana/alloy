@@ -51,14 +51,14 @@ func defaultEndpointConfig() EndpointConfig {
 		BatchCount:       1_000,
 		FlushInterval:    1 * time.Second,
 		Parallelism: ParallelismConfig{
-			DriftScaleUp:               60 * time.Second,
-			DriftScaleDown:             30 * time.Second,
-			MaxConnections:             50,
-			MinConnections:             2,
-			NetworkFlushInterval:       1 * time.Minute,
-			DesiredConnectionsLookback: 5 * time.Minute,
-			DesiredCheckInterval:       5 * time.Second,
-			AllowedNetworkErrorPercent: 0.50,
+			DriftScaleUp:                60 * time.Second,
+			DriftScaleDown:              30 * time.Second,
+			MaxConnections:              50,
+			MinConnections:              2,
+			NetworkFlushInterval:        1 * time.Minute,
+			DesiredConnectionsLookback:  5 * time.Minute,
+			DesiredCheckInterval:        5 * time.Second,
+			AllowedNetworkErrorFraction: 0.50,
 		},
 	}
 }
@@ -89,7 +89,7 @@ func (r *Arguments) Validate() error {
 		if conn.Parallelism.DesiredCheckInterval < 1*time.Second {
 			return fmt.Errorf("desired_check_interval must be greater than or equal to 1 second")
 		}
-		if conn.Parallelism.AllowedNetworkErrorPercent < 0 || conn.Parallelism.AllowedNetworkErrorPercent > 1 {
+		if conn.Parallelism.AllowedNetworkErrorFraction < 0 || conn.Parallelism.AllowedNetworkErrorFraction > 1 {
 			return fmt.Errorf("allowed_network_error_percent must be between 0.00 and 1.00")
 		}
 	}
@@ -127,14 +127,14 @@ type TLSConfig struct {
 }
 
 type ParallelismConfig struct {
-	DriftScaleUp               time.Duration `alloy:"drift_scale_up,attr,optional"`
-	DriftScaleDown             time.Duration `alloy:"drift_scale_down,attr,optional"`
-	MaxConnections             uint          `alloy:"max_connections,attr,optional"`
-	MinConnections             uint          `alloy:"min_connections,attr,optional"`
-	NetworkFlushInterval       time.Duration `alloy:"network_flush_interval,attr,optional"`
-	DesiredConnectionsLookback time.Duration `alloy:"desired_connections_lookback,attr,optional"`
-	DesiredCheckInterval       time.Duration `alloy:"desired_check_interval,attr,optional"`
-	AllowedNetworkErrorPercent float64       `alloy:"allowed_network_error_percent,attr,optional"`
+	DriftScaleUp                time.Duration `alloy:"drift_scale_up,attr,optional"`
+	DriftScaleDown              time.Duration `alloy:"drift_scale_down,attr,optional"`
+	MaxConnections              uint          `alloy:"max_connections,attr,optional"`
+	MinConnections              uint          `alloy:"min_connections,attr,optional"`
+	NetworkFlushInterval        time.Duration `alloy:"network_flush_interval,attr,optional"`
+	DesiredConnectionsLookback  time.Duration `alloy:"desired_connections_lookback,attr,optional"`
+	DesiredCheckInterval        time.Duration `alloy:"desired_check_interval,attr,optional"`
+	AllowedNetworkErrorFraction float64       `alloy:"allowed_network_error_fraction,attr,optional"`
 }
 
 var UserAgent = fmt.Sprintf("Alloy/%s", version.Version)
@@ -159,7 +159,7 @@ func (cc EndpointConfig) ToNativeType() types.ConnectionConfig {
 			ResetInterval:               cc.Parallelism.NetworkFlushInterval,
 			Lookback:                    cc.Parallelism.DesiredConnectionsLookback,
 			CheckInterval:               cc.Parallelism.DesiredCheckInterval,
-			AllowedNetworkErrorFraction: cc.Parallelism.AllowedNetworkErrorPercent,
+			AllowedNetworkErrorFraction: cc.Parallelism.AllowedNetworkErrorFraction,
 		},
 	}
 	if cc.BasicAuth != nil {

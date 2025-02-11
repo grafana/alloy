@@ -68,7 +68,7 @@ func TestParralelismConfig_Validate(t *testing.T) {
 		{
 			name: "invalid network error percentage low",
 			config: func(cfg ParallelismConfig) ParallelismConfig {
-				cfg.AllowedNetworkErrorPercent = -0.01
+				cfg.AllowedNetworkErrorFraction = -0.01
 				return cfg
 			},
 			expectedErrMsg: "allowed_network_error_percent must be between 0.00 and 1.00",
@@ -76,7 +76,7 @@ func TestParralelismConfig_Validate(t *testing.T) {
 		{
 			name: "invalid network error percentage high",
 			config: func(cfg ParallelismConfig) ParallelismConfig {
-				cfg.AllowedNetworkErrorPercent = 1.01
+				cfg.AllowedNetworkErrorFraction = 1.01
 				return cfg
 			},
 			expectedErrMsg: "allowed_network_error_percent must be between 0.00 and 1.00",
