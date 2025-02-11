@@ -127,7 +127,7 @@ Name            | Type       | Description                                      
 `min_connections`    | `uint`     | The minimum number of desired connections.                                                                                         | `2`     | no
 `network_flush_interval`    | `duration` | The length of time that network successes and failures are kept for determining desired connections.                               | `1m`    | no
 `desired_connections_lookback`    | `duration` | The length of time that previous desired connections are kept for determining desired connections.                                 | `5m`    | no
-`desired_check_interval`    | `duration` | The length of time that between checking for desired connections.                                                                  | `5s`    | no
+`desired_check_interval`    | `duration` | The length of time between checking for desired connections.                                                                  | `5s`    | no
 `allowed_network_error_percent`    | `float`    | The allowed error rate before scaling down.                                                                                        | `0.50`   | no
 
 Parralelism determines when to scale up or down the number of desired connections. This is accomplished by a variety of inputs.
