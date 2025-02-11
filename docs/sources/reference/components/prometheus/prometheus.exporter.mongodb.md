@@ -70,7 +70,7 @@ from `prometheus.exporter.mongodb`:
 ```alloy
 prometheus.exporter.mongodb "example" {
   mongodb_uri = "mongodb://127.0.0.1:27017"
-  compatible_mode	= true
+  compatible_mode = true
 }
 
 // Configure a prometheus.scrape component to collect MongoDB metrics.
