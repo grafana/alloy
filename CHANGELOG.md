@@ -12,6 +12,8 @@ Main (unreleased)
 
 ### Features
 
+- Add `otelcol.receiver.tcplog` compoent to receive otel logs over a TCP connectio (@nosammai)
+
 - (_Experimental_) Add a `stage.windowsevent` block in the `loki.process` component. This aims to replace the existing `stage.eventlogmessage`. (@wildum)
 
 - Add `pyroscope.relabel` component to modify or filter profiles using Prometheus relabeling rules. (@marcsanmi)
