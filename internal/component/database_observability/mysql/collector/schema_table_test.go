@@ -58,11 +58,15 @@ func TestSchemaTable(t *testing.T) {
 					"table_type",
 					"create_time",
 					"update_time",
+					"table_rows",
+					"auto_increment",
 				}).AddRow(
 					"some_table",
 					"BASE TABLE",
 					time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 					time.Date(2024, 2, 2, 0, 0, 0, 0, time.UTC),
+					0,
+					1,
 				),
 			)
 
@@ -117,7 +121,7 @@ func TestSchemaTable(t *testing.T) {
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_SCHEMA_DETECTION, "instance": "mysql-db"}, lokiEntries[0].Labels)
 		require.Equal(t, `level=info msg="schema detected" schema="some_schema"`, lokiEntries[0].Line)
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_TABLE_DETECTION, "instance": "mysql-db"}, lokiEntries[1].Labels)
-		require.Equal(t, `level=info msg="table detected" schema="some_schema" table="some_table"`, lokiEntries[1].Line)
+		require.Equal(t, `level=info msg="table detected" schema="some_schema" table="some_table" rows_count="0" auto_increment="1"`, lokiEntries[1].Line)
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_CREATE_STATEMENT, "instance": "mysql-db"}, lokiEntries[2].Labels)
 		require.Equal(t, fmt.Sprintf(`level=info msg="create table" schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, base64.StdEncoding.EncodeToString([]byte("CREATE TABLE some_table (id INT)")), base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"int","not_null":true,"auto_increment":true,"primary_key":true,"default_value":"null"}]}`))), lokiEntries[2].Line)
 	})
@@ -160,11 +164,15 @@ func TestSchemaTable(t *testing.T) {
 					"table_type",
 					"create_time",
 					"update_time",
+					"table_rows",
+					"auto_increment",
 				}).AddRow(
 					"some_table",
 					"BASE TABLE",
 					time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 					time.Date(2024, 2, 2, 0, 0, 0, 0, time.UTC),
+					0,
+					1,
 				),
 			)
 
@@ -221,7 +229,7 @@ func TestSchemaTable(t *testing.T) {
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_SCHEMA_DETECTION, "instance": "mysql-db"}, lokiEntries[0].Labels)
 		require.Equal(t, `level=info msg="schema detected" schema="some_schema"`, lokiEntries[0].Line)
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_TABLE_DETECTION, "instance": "mysql-db"}, lokiEntries[1].Labels)
-		require.Equal(t, `level=info msg="table detected" schema="some_schema" table="some_table"`, lokiEntries[1].Line)
+		require.Equal(t, `level=info msg="table detected" schema="some_schema" table="some_table" rows_count="0" auto_increment="1"`, lokiEntries[1].Line)
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_CREATE_STATEMENT, "instance": "mysql-db"}, lokiEntries[2].Labels)
 		require.Equal(t, fmt.Sprintf(`level=info msg="create table" schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, base64.StdEncoding.EncodeToString([]byte("CREATE TABLE some_table (id INT)")), base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"int","not_null":true,"auto_increment":true,"primary_key":true,"default_value":"null"}]}`))), lokiEntries[2].Line)
 	})
@@ -263,11 +271,15 @@ func TestSchemaTable(t *testing.T) {
 					"table_type",
 					"create_time",
 					"update_time",
+					"table_rows",
+					"auto_increment",
 				}).AddRow(
 					"some_table",
 					"BASE TABLE",
 					time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 					time.Date(2024, 2, 2, 0, 0, 0, 0, time.UTC),
+					0,
+					1,
 				),
 			)
 
@@ -319,11 +331,15 @@ func TestSchemaTable(t *testing.T) {
 					"table_type",
 					"create_time",
 					"update_time",
+					"table_rows",
+					"auto_increment",
 				}).AddRow(
 					"some_table",
 					"BASE TABLE",
 					time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 					time.Date(2024, 2, 2, 0, 0, 0, 0, time.UTC),
+					0,
+					1,
 				),
 			)
 
@@ -350,13 +366,13 @@ func TestSchemaTable(t *testing.T) {
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_SCHEMA_DETECTION, "instance": "mysql-db"}, lokiEntries[0].Labels)
 		require.Equal(t, `level=info msg="schema detected" schema="some_schema"`, lokiEntries[0].Line)
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_TABLE_DETECTION, "instance": "mysql-db"}, lokiEntries[1].Labels)
-		require.Equal(t, `level=info msg="table detected" schema="some_schema" table="some_table"`, lokiEntries[1].Line)
+		require.Equal(t, `level=info msg="table detected" schema="some_schema" table="some_table" rows_count="0" auto_increment="1"`, lokiEntries[1].Line)
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_CREATE_STATEMENT, "instance": "mysql-db"}, lokiEntries[2].Labels)
 		require.Equal(t, fmt.Sprintf(`level=info msg="create table" schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, base64.StdEncoding.EncodeToString([]byte("CREATE TABLE some_table (id INT)")), base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"int","not_null":true,"auto_increment":true,"primary_key":true,"default_value":"null"}]}`))), lokiEntries[2].Line)
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_SCHEMA_DETECTION, "instance": "mysql-db"}, lokiEntries[3].Labels)
 		require.Equal(t, `level=info msg="schema detected" schema="some_schema"`, lokiEntries[3].Line)
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_TABLE_DETECTION, "instance": "mysql-db"}, lokiEntries[4].Labels)
-		require.Equal(t, `level=info msg="table detected" schema="some_schema" table="some_table"`, lokiEntries[4].Line)
+		require.Equal(t, `level=info msg="table detected" schema="some_schema" table="some_table" rows_count="0" auto_increment="1"`, lokiEntries[4].Line)
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_CREATE_STATEMENT, "instance": "mysql-db"}, lokiEntries[5].Labels)
 		require.Equal(t, fmt.Sprintf(`level=info msg="create table" schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, base64.StdEncoding.EncodeToString([]byte("CREATE TABLE some_table (id INT)")), base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"int","not_null":true,"auto_increment":true,"primary_key":true,"default_value":"null"}]}`))), lokiEntries[5].Line)
 	})
@@ -397,11 +413,15 @@ func TestSchemaTable(t *testing.T) {
 					"table_type",
 					"create_time",
 					"update_time",
+					"table_rows",
+					"auto_increment",
 				}).AddRow(
 					"some_table",
 					"VIEW",
 					time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 					time.Date(2024, 2, 2, 0, 0, 0, 0, time.UTC),
+					0,
+					1,
 				),
 			)
 
@@ -460,7 +480,7 @@ func TestSchemaTable(t *testing.T) {
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_SCHEMA_DETECTION, "instance": "mysql-db"}, lokiEntries[0].Labels)
 		require.Equal(t, `level=info msg="schema detected" schema="some_schema"`, lokiEntries[0].Line)
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_TABLE_DETECTION, "instance": "mysql-db"}, lokiEntries[1].Labels)
-		require.Equal(t, `level=info msg="table detected" schema="some_schema" table="some_table"`, lokiEntries[1].Line)
+		require.Equal(t, `level=info msg="table detected" schema="some_schema" table="some_table" rows_count="0" auto_increment="1"`, lokiEntries[1].Line)
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_CREATE_STATEMENT, "instance": "mysql-db"}, lokiEntries[2].Labels)
 		require.Equal(t, fmt.Sprintf(`level=info msg="create table" schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, base64.StdEncoding.EncodeToString([]byte("CREATE VIEW some_view (id INT)")), base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"int","not_null":true,"auto_increment":true,"primary_key":true,"default_value":"null"}]}`))), lokiEntries[2].Line)
 	})
@@ -547,16 +567,22 @@ func TestSchemaTable(t *testing.T) {
 				"table_type",
 				"create_time",
 				"update_time",
+				"table_rows",
+				"auto_increment",
 			}).AddRow(
 				"some_table",
 				"BASE TABLE",
 				time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 				time.Date(2024, 2, 2, 0, 0, 0, 0, time.UTC),
+				0,
+				1,
 			).AddRow(
 				"another_table",
 				"BASE TABLE",
 				time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 				time.Date(2024, 2, 2, 0, 0, 0, 0, time.UTC),
+				1,
+				2,
 			).RowError(1, fmt.Errorf("rs error")), // error on the second row
 		)
 
@@ -581,7 +607,7 @@ func TestSchemaTable(t *testing.T) {
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_SCHEMA_DETECTION, "instance": "mysql-db"}, lokiEntries[0].Labels)
 		require.Equal(t, `level=info msg="schema detected" schema="some_schema"`, lokiEntries[0].Line)
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_TABLE_DETECTION, "instance": "mysql-db"}, lokiEntries[1].Labels)
-		require.Equal(t, `level=info msg="table detected" schema="some_schema" table="some_table"`, lokiEntries[1].Line)
+		require.Equal(t, `level=info msg="table detected" schema="some_schema" table="some_table" rows_count="0" auto_increment="1"`, lokiEntries[1].Line)
 	})
 	t.Run("connection error recovery", func(t *testing.T) {
 		t.Parallel()
@@ -618,11 +644,15 @@ func TestSchemaTable(t *testing.T) {
 				"table_type",
 				"create_time",
 				"update_time",
+				"table_rows",
+				"auto_increment",
 			}).AddRow(
 				"some_table",
 				"BASE TABLE",
 				time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 				time.Date(2024, 2, 2, 0, 0, 0, 0, time.UTC),
+				0,
+				1,
 			),
 		)
 		mock.ExpectQuery("SHOW CREATE TABLE some_schema.some_table").WithoutArgs().WillReturnRows(
@@ -672,7 +702,7 @@ func TestSchemaTable(t *testing.T) {
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_SCHEMA_DETECTION, "instance": "mysql-db"}, lokiEntries[0].Labels)
 		require.Equal(t, `level=info msg="schema detected" schema="some_schema"`, lokiEntries[0].Line)
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_TABLE_DETECTION, "instance": "mysql-db"}, lokiEntries[1].Labels)
-		require.Equal(t, `level=info msg="table detected" schema="some_schema" table="some_table"`, lokiEntries[1].Line)
+		require.Equal(t, `level=info msg="table detected" schema="some_schema" table="some_table" rows_count="0" auto_increment="1"`, lokiEntries[1].Line)
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_CREATE_STATEMENT, "instance": "mysql-db"}, lokiEntries[2].Labels)
 		require.Equal(t, fmt.Sprintf(`level=info msg="create table" schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, base64.StdEncoding.EncodeToString([]byte("CREATE TABLE some_table (id INT)")), base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"int","not_null":true,"auto_increment":true,"primary_key":true,"default_value":"null"}]}`))), lokiEntries[2].Line)
 	})

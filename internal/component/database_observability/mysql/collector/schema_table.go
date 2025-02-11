@@ -30,18 +30,20 @@ const (
 const (
 	selectSchemaName = `
 	SELECT
-		SCHEMA_NAME
+		schema_name
 	FROM
 		information_schema.schemata
 	WHERE
-		SCHEMA_NAME NOT IN ('mysql', 'information_schema', 'performance_schema', 'sys')`
+		schema_name NOT IN ('mysql', 'information_schema', 'performance_schema', 'sys')`
 
 	selectTableName = `
 	SELECT
-		TABLE_NAME,
-		TABLE_TYPE,
-		CREATE_TIME,
-		ifnull(UPDATE_TIME, CREATE_TIME) AS UPDATE_TIME
+		table_name,
+		table_type,
+		create_time,
+		ifnull(update_time, create_time) as update_time,
+		table_rows,
+		auto_increment
 	FROM
 		information_schema.tables
 	WHERE
@@ -98,13 +100,15 @@ type SchemaTable struct {
 }
 
 type tableInfo struct {
-	schema     string
-	tableName  string
-	tableType  string
-	createTime time.Time
-	updateTime time.Time
-	createStmt string
-	tableSpec  string
+	schema        string
+	tableName     string
+	tableType     string
+	createTime    time.Time
+	updateTime    time.Time
+	tableRows     int64
+	autoIncrement int64
+	b64CreateStmt string
+	b64TableSpec  string
 }
 
 type tableSpec struct {
@@ -235,19 +239,29 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 		for rs.Next() {
 			var tableName, tableType string
 			var createTime, updateTime time.Time
-			if err := rs.Scan(&tableName, &tableType, &createTime, &updateTime); err != nil {
+			var tableRows, autoIncrement sql.NullInt64
+			if err := rs.Scan(&tableName, &tableType, &createTime, &updateTime, &tableRows, &autoIncrement); err != nil {
 				level.Error(c.logger).Log("msg", "failed to scan tables", "err", err)
 				break
 			}
-			tables = append(tables, &tableInfo{
-				schema:     schema,
-				tableName:  tableName,
-				tableType:  tableType,
-				createTime: createTime,
-				updateTime: updateTime,
-				createStmt: "",
-				tableSpec:  "",
-			})
+			table := &tableInfo{
+				schema:        schema,
+				tableName:     tableName,
+				tableType:     tableType,
+				createTime:    createTime,
+				updateTime:    updateTime,
+				tableRows:     0,
+				autoIncrement: 0,
+				b64CreateStmt: "",
+				b64TableSpec:  "",
+			}
+			if tableRows.Valid {
+				table.tableRows = tableRows.Int64
+			}
+			if autoIncrement.Valid {
+				table.autoIncrement = autoIncrement.Int64
+			}
+			tables = append(tables, table)
 
 			c.entryHandler.Chan() <- loki.Entry{
 				Labels: model.LabelSet{
@@ -257,7 +271,10 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 				},
 				Entry: logproto.Entry{
 					Timestamp: time.Unix(0, time.Now().UnixNano()),
-					Line:      fmt.Sprintf(`level=info msg="table detected" schema="%s" table="%s"`, schema, tableName),
+					Line: fmt.Sprintf(
+						`level=info msg="table detected" schema="%s" table="%s" rows_count="%d" auto_increment="%d"`,
+						schema, tableName, table.tableRows, table.autoIncrement,
+					),
 				},
 			}
 		}
@@ -307,7 +324,7 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 				Timestamp: time.Unix(0, time.Now().UnixNano()),
 				Line: fmt.Sprintf(
 					`level=info msg="create table" schema="%s" table="%s" create_statement="%s" table_spec="%s"`,
-					table.schema, table.tableName, base64.StdEncoding.EncodeToString([]byte(table.createStmt)), base64.StdEncoding.EncodeToString([]byte(table.tableSpec)),
+					table.schema, table.tableName, table.b64CreateStmt, table.b64TableSpec,
 				),
 			},
 		}
@@ -326,18 +343,22 @@ func (c *SchemaTable) fetchTableDefinitions(ctx context.Context, fullyQualifiedT
 	}
 
 	var tableName, createStmt, characterSetClient, collationConnection string
-	if table.tableType == "BASE TABLE" {
+	switch table.tableType {
+	case "BASE TABLE":
 		if err := row.Scan(&tableName, &createStmt); err != nil {
 			level.Error(c.logger).Log("msg", "failed to scan create table", append(logKVs, "err", err))
 			return nil, err
 		}
-	} else if table.tableType == "VIEW" {
+	case "VIEW":
 		if err := row.Scan(&tableName, &createStmt, &characterSetClient, &collationConnection); err != nil {
 			level.Error(c.logger).Log("msg", "failed to scan create view", append(logKVs, "err", err))
 			return nil, err
 		}
+	default:
+		level.Error(c.logger).Log("msg", "unknown table type", append(logKVs, "table_type", table.tableType))
+		return nil, fmt.Errorf("unknown table type: %s", table.tableType)
 	}
-	table.createStmt = createStmt
+	table.b64CreateStmt = base64.StdEncoding.EncodeToString([]byte(createStmt))
 
 	spec, err := c.fetchColumnsDefinitions(ctx, table.schema, table.tableName)
 	if err != nil {
@@ -349,7 +370,7 @@ func (c *SchemaTable) fetchTableDefinitions(ctx context.Context, fullyQualifiedT
 		level.Error(c.logger).Log("msg", "failed to marshal table spec", append(logKVs, "err", err))
 		return nil, err
 	}
-	table.tableSpec = string(jsonSpec)
+	table.b64TableSpec = base64.StdEncoding.EncodeToString(jsonSpec)
 
 	return table, nil
 }
