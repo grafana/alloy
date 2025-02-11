@@ -27,32 +27,30 @@ func TestParsingTLSConfig(t *testing.T) {
 	require.NoError(t, err)
 }
 
-
-
 func TestParralelismConfig_Validate(t *testing.T) {
 	testCases := []struct {
 		name           string
-		config         func(cfg ParralelismConfig) ParralelismConfig
+		config         func(cfg ParallelismConfig) ParallelismConfig
 		expectedErrMsg string
 	}{
 		{
 			name: "default config is valid",
-			config: func(cfg ParralelismConfig) ParralelismConfig {
+			config: func(cfg ParallelismConfig) ParallelismConfig {
 				return cfg
 			},
 		},
 		{
 			name: "positive drift scale up seconds is invalid",
-			config: func(cfg ParralelismConfig) ParralelismConfig {
-				cfg.DriftScaleUpSeconds = 10
-				cfg.DriftScaleDownSeconds = 10
+			config: func(cfg ParallelismConfig) ParallelismConfig {
+				cfg.DriftScaleUp = 10 * time.Second
+				cfg.DriftScaleDown = 10 * time.Second
 				return cfg
 			},
 			expectedErrMsg: "drift_scale_up_seconds less than or equal drift_scale_down_seconds",
 		},
 		{
 			name: "max less than min",
-			config: func(cfg ParralelismConfig) ParralelismConfig {
+			config: func(cfg ParallelismConfig) ParallelismConfig {
 				cfg.MaxConnections = 1
 				cfg.MinConnections = 2
 				return cfg
@@ -61,7 +59,7 @@ func TestParralelismConfig_Validate(t *testing.T) {
 		},
 		{
 			name: "to low desired check",
-			config: func(cfg ParralelismConfig) ParralelismConfig {
+			config: func(cfg ParallelismConfig) ParallelismConfig {
 				cfg.DesiredCheckInterval = (1 * time.Second) - (50 * time.Millisecond)
 				return cfg
 			},
@@ -69,7 +67,7 @@ func TestParralelismConfig_Validate(t *testing.T) {
 		},
 		{
 			name: "invalid network error percentage low",
-			config: func(cfg ParralelismConfig) ParralelismConfig {
+			config: func(cfg ParallelismConfig) ParallelismConfig {
 				cfg.AllowedNetworkErrorPercent = -0.01
 				return cfg
 			},
@@ -77,7 +75,7 @@ func TestParralelismConfig_Validate(t *testing.T) {
 		},
 		{
 			name: "invalid network error percentage high",
-			config: func(cfg ParralelismConfig) ParralelismConfig {
+			config: func(cfg ParallelismConfig) ParallelismConfig {
 				cfg.AllowedNetworkErrorPercent = 1.01
 				return cfg
 			},
@@ -103,4 +101,3 @@ func TestParralelismConfig_Validate(t *testing.T) {
 		})
 	}
 }
-
