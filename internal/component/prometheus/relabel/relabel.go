@@ -281,7 +281,7 @@ func (c *Component) relabel(val float64, lbls labels.Labels) labels.Labels {
 		if relabelled.Len() == 0 {
 			count = 0 // if no labels are left, the count is not incremented because the metric will be filtered out
 		}
-		c.debugDataPublisher.Publish(componentID, livedebugging.NewFeed(
+		c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
 			componentID,
 			livedebugging.PrometheusMetric,
 			count,

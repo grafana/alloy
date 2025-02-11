@@ -70,7 +70,7 @@ func (c *Component) Run(ctx context.Context) error {
 
 		componentID := livedebugging.ComponentID(c.opts.ID)
 		if c.debugDataPublisher.IsActive(componentID) {
-			c.debugDataPublisher.Publish(componentID, livedebugging.NewFeed(
+			c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
 				componentID,
 				livedebugging.Target,
 				uint64(len(c.processes)),

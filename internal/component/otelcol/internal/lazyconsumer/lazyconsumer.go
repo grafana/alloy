@@ -50,6 +50,7 @@ func NewPaused(ctx context.Context, componentID string) *Consumer {
 }
 
 // ComponentID returns the componentID associated with the consumer.
+// TODO: find a way to decouple the lazyconsumer from the component for better abstraction.
 func (c *Consumer) ComponentID() string {
 	return c.componentID
 }

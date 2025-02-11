@@ -129,16 +129,14 @@ func New(o component.Options, c Arguments) (*Component, error) {
 			if localID == 0 {
 				ls.GetOrAddLink(res.opts.ID, uint64(newRef), l)
 			}
-			if res.debugDataPublisher.IsActive(componentID) {
-				res.debugDataPublisher.Publish(componentID, livedebugging.NewFeed(
-					componentID,
-					livedebugging.PrometheusMetric,
-					1,
-					func() string {
-						return fmt.Sprintf("ts=%d, labels=%s, value=%f", t, l, v)
-					},
-				))
-			}
+			res.debugDataPublisher.PublishIfActive(livedebugging.NewData(
+				componentID,
+				livedebugging.PrometheusMetric,
+				1,
+				func() string {
+					return fmt.Sprintf("ts=%d, labels=%s, value=%f", t, l, v)
+				},
+			))
 			return globalRef, nextErr
 		}),
 		prometheus.WithHistogramHook(func(globalRef storage.SeriesRef, l labels.Labels, t int64, h *histogram.Histogram, fh *histogram.FloatHistogram, next storage.Appender) (storage.SeriesRef, error) {
@@ -151,24 +149,22 @@ func New(o component.Options, c Arguments) (*Component, error) {
 			if localID == 0 {
 				ls.GetOrAddLink(res.opts.ID, uint64(newRef), l)
 			}
-			if res.debugDataPublisher.IsActive(componentID) {
-				res.debugDataPublisher.Publish(componentID, livedebugging.NewFeed(
-					componentID,
-					livedebugging.PrometheusMetric,
-					1,
-					func() string {
-						var data string
-						if h != nil {
-							data = fmt.Sprintf("ts=%d, labels=%s, histogram=%s", t, l, h.String())
-						} else if fh != nil {
-							data = fmt.Sprintf("ts=%d, labels=%s, float_histogram=%s", t, l, fh.String())
-						} else {
-							data = fmt.Sprintf("ts=%d, labels=%s, no_value", t, l)
-						}
-						return data
-					},
-				))
-			}
+			res.debugDataPublisher.PublishIfActive(livedebugging.NewData(
+				componentID,
+				livedebugging.PrometheusMetric,
+				1,
+				func() string {
+					var data string
+					if h != nil {
+						data = fmt.Sprintf("ts=%d, labels=%s, histogram=%s", t, l, h.String())
+					} else if fh != nil {
+						data = fmt.Sprintf("ts=%d, labels=%s, float_histogram=%s", t, l, fh.String())
+					} else {
+						data = fmt.Sprintf("ts=%d, labels=%s, no_value", t, l)
+					}
+					return data
+				},
+			))
 			return globalRef, nextErr
 		}),
 		prometheus.WithMetadataHook(func(globalRef storage.SeriesRef, l labels.Labels, m metadata.Metadata, next storage.Appender) (storage.SeriesRef, error) {
@@ -181,16 +177,14 @@ func New(o component.Options, c Arguments) (*Component, error) {
 			if localID == 0 {
 				ls.GetOrAddLink(res.opts.ID, uint64(newRef), l)
 			}
-			if res.debugDataPublisher.IsActive(componentID) {
-				res.debugDataPublisher.Publish(componentID, livedebugging.NewFeed(
-					componentID,
-					livedebugging.PrometheusMetric,
-					1,
-					func() string {
-						return fmt.Sprintf("labels=%s, type=%s, unit=%s, help=%s", l, m.Type, m.Unit, m.Help)
-					},
-				))
-			}
+			res.debugDataPublisher.PublishIfActive(livedebugging.NewData(
+				componentID,
+				livedebugging.PrometheusMetric,
+				1,
+				func() string {
+					return fmt.Sprintf("labels=%s, type=%s, unit=%s, help=%s", l, m.Type, m.Unit, m.Help)
+				},
+			))
 			return globalRef, nextErr
 		}),
 		prometheus.WithExemplarHook(func(globalRef storage.SeriesRef, l labels.Labels, e exemplar.Exemplar, next storage.Appender) (storage.SeriesRef, error) {
@@ -203,16 +197,14 @@ func New(o component.Options, c Arguments) (*Component, error) {
 			if localID == 0 {
 				ls.GetOrAddLink(res.opts.ID, uint64(newRef), l)
 			}
-			if res.debugDataPublisher.IsActive(componentID) {
-				res.debugDataPublisher.Publish(componentID, livedebugging.NewFeed(
-					componentID,
-					livedebugging.PrometheusMetric,
-					1,
-					func() string {
-						return fmt.Sprintf("ts=%d, labels=%s, exemplar_labels=%s, value=%f", e.Ts, l, e.Labels, e.Value)
-					},
-				))
-			}
+			res.debugDataPublisher.PublishIfActive(livedebugging.NewData(
+				componentID,
+				livedebugging.PrometheusMetric,
+				1,
+				func() string {
+					return fmt.Sprintf("ts=%d, labels=%s, exemplar_labels=%s, value=%f", e.Ts, l, e.Labels, e.Value)
+				},
+			))
 			return globalRef, nextErr
 		}),
 	)

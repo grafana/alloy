@@ -226,6 +226,8 @@ func (p *Connector) Update(args component.Arguments) error {
 		return errors.New("unsupported connector type")
 	}
 
+	p.liveDebuggingConsumer.SetTargetConsumers(next.Metrics, next.Logs, next.Traces)
+
 	updateConsumersFunc := func() {
 		p.consumer.SetConsumers(tracesConnector, metricsConnector, logsConnector)
 	}

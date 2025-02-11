@@ -11,7 +11,7 @@ import (
 func TestAddCallback(t *testing.T) {
 	livedebugging := NewLiveDebugging()
 	callbackID := CallbackID("callback1")
-	callback := func(data *Feed) {}
+	callback := func(data *Data) {}
 
 	err := livedebugging.AddCallback(callbackID, "fake.liveDebugging", callback)
 	require.ErrorContains(t, err, "the live debugging service is disabled. Check the documentation to find out how to enable it")
@@ -46,22 +46,23 @@ func TestStream(t *testing.T) {
 	componentID := ComponentID("fake.liveDebugging")
 	callbackID := CallbackID("callback1")
 
-	var receivedData *Feed
-	callback := func(data *Feed) {
+	var receivedData *Data
+	callback := func(data *Data) {
 		receivedData = data
 	}
 	require.False(t, livedebugging.IsActive(componentID))
-	livedebugging.AddCallback(callbackID, componentID, callback)
-	require.True(t, livedebugging.IsActive(componentID))
-	require.Len(t, livedebugging.callbacks[componentID], 1)
+	livedebugging.PublishIfActive(NewData(componentID, PrometheusMetric, 3, func() string { return "test data" }, WithTargetComponentIDs([]string{"component1"})))
+	require.Nil(t, receivedData) // nil because there are no active callbacks for it
 
-	livedebugging.Publish(componentID, NewFeed(componentID, PrometheusMetric, 3, func() string { return "test data" }, WithTargetComponentIDs([]string{"component1"})))
+	livedebugging.AddCallback(callbackID, componentID, callback)
+
+	livedebugging.PublishIfActive(NewData(componentID, PrometheusMetric, 3, func() string { return "test data" }, WithTargetComponentIDs([]string{"component1"})))
 	require.Equal(t, componentID, receivedData.ComponentID)
 	require.Equal(t, []string{"component1"}, receivedData.TargetComponentIDs)
 	require.Equal(t, uint64(3), receivedData.Count)
 	require.Equal(t, "test data", receivedData.DataFunc())
 	livedebugging.SetEnabled(false)
-	livedebugging.Publish(componentID, NewFeed(componentID, PrometheusMetric, 3, func() string { return "new test data" }, WithTargetComponentIDs([]string{"component1"})))
+	livedebugging.PublishIfActive(NewData(componentID, PrometheusMetric, 3, func() string { return "new test data" }, WithTargetComponentIDs([]string{"component1"})))
 	require.Equal(t, "test data", receivedData.DataFunc()) // not updated because the feature is disabled
 }
 
@@ -70,7 +71,7 @@ func TestStreamEmpty(t *testing.T) {
 	setupServiceHost(livedebugging)
 	componentID := ComponentID("fake.liveDebugging")
 	require.NotPanics(t, func() {
-		livedebugging.Publish(componentID, NewFeed(componentID, PrometheusMetric, 3, func() string { return "test data" }, WithTargetComponentIDs([]string{"component1"})))
+		livedebugging.PublishIfActive(NewData(componentID, PrometheusMetric, 3, func() string { return "test data" }, WithTargetComponentIDs([]string{"component1"})))
 	})
 }
 
@@ -81,13 +82,13 @@ func TestMultipleStreams(t *testing.T) {
 	callbackID1 := CallbackID("callback1")
 	callbackID2 := CallbackID("callback2")
 
-	var receivedData1 *Feed
-	callback1 := func(data *Feed) {
+	var receivedData1 *Data
+	callback1 := func(data *Data) {
 		receivedData1 = data
 	}
 
-	var receivedData2 *Feed
-	callback2 := func(data *Feed) {
+	var receivedData2 *Data
+	callback2 := func(data *Data) {
 		receivedData2 = data
 	}
 
@@ -95,7 +96,7 @@ func TestMultipleStreams(t *testing.T) {
 	require.NoError(t, livedebugging.AddCallback(callbackID2, componentID, callback2))
 	require.Len(t, livedebugging.callbacks[componentID], 2)
 
-	livedebugging.Publish(componentID, NewFeed(componentID, PrometheusMetric, 3, func() string { return "test data" }))
+	livedebugging.PublishIfActive(NewData(componentID, PrometheusMetric, 3, func() string { return "test data" }))
 	require.Equal(t, "test data", receivedData1.DataFunc())
 	require.Equal(t, "test data", receivedData2.DataFunc())
 }
@@ -107,8 +108,8 @@ func TestDeleteCallback(t *testing.T) {
 	callbackID1 := CallbackID("callback1")
 	callbackID2 := CallbackID("callback2")
 
-	callback1 := func(data *Feed) {}
-	callback2 := func(data *Feed) {}
+	callback1 := func(data *Data) {}
+	callback2 := func(data *Data) {}
 
 	component, _ := livedebugging.host.GetComponent(component.ParseID("fake.liveDebugging"), component.InfoOptions{})
 
@@ -129,8 +130,6 @@ func TestDeleteCallback(t *testing.T) {
 	livedebugging.DeleteCallback(callbackID2, componentID)
 	require.Empty(t, livedebugging.callbacks[componentID])
 	require.Equal(t, 0, component.Component.(*testlivedebugging.FakeComponentLiveDebugging).ConsumersCount)
-
-	require.False(t, livedebugging.IsActive(ComponentID("fake.liveDebugging")))
 }
 
 func setupServiceHost(liveDebugging *liveDebugging) {
@@ -149,7 +148,7 @@ func setupServiceHost(liveDebugging *liveDebugging) {
 func TestAddCallbackMulti(t *testing.T) {
 	livedebugging := NewLiveDebugging()
 	callbackID := CallbackID("callback1")
-	callback := func(data *Feed) {}
+	callback := func(data *Data) {}
 
 	err := livedebugging.AddCallbackMulti(callbackID, "", callback)
 	require.ErrorContains(t, err, "the live debugging service is disabled. Check the documentation to find out how to enable it")
@@ -179,8 +178,8 @@ func TestDeleteCallbackMulti(t *testing.T) {
 	callbackID1 := CallbackID("callback1")
 	callbackID2 := CallbackID("callback2")
 
-	callback1 := func(data *Feed) {}
-	callback2 := func(data *Feed) {}
+	callback1 := func(data *Data) {}
+	callback2 := func(data *Data) {}
 
 	component, _ := livedebugging.host.GetComponent(component.ParseID("fake.liveDebugging"), component.InfoOptions{})
 
@@ -201,8 +200,6 @@ func TestDeleteCallbackMulti(t *testing.T) {
 	livedebugging.DeleteCallbackMulti(callbackID2, "")
 	require.Empty(t, livedebugging.callbacks[componentID])
 	require.Equal(t, 0, component.Component.(*testlivedebugging.FakeComponentLiveDebugging).ConsumersCount)
-
-	require.False(t, livedebugging.IsActive(ComponentID("fake.liveDebugging")))
 }
 
 func TestMultiCallbacksMultipleStreams(t *testing.T) {
@@ -212,13 +209,13 @@ func TestMultiCallbacksMultipleStreams(t *testing.T) {
 	callbackID1 := CallbackID("callback1")
 	callbackID2 := CallbackID("callback2")
 
-	var receivedData1 *Feed
-	callback1 := func(data *Feed) {
+	var receivedData1 *Data
+	callback1 := func(data *Data) {
 		receivedData1 = data
 	}
 
-	var receivedData2 *Feed
-	callback2 := func(data *Feed) {
+	var receivedData2 *Data
+	callback2 := func(data *Data) {
 		receivedData2 = data
 	}
 
@@ -226,7 +223,7 @@ func TestMultiCallbacksMultipleStreams(t *testing.T) {
 	require.NoError(t, livedebugging.AddCallbackMulti(callbackID2, "", callback2))
 	require.Len(t, livedebugging.callbacks[componentID], 2)
 
-	livedebugging.Publish(componentID, NewFeed(componentID, PrometheusMetric, 3, func() string { return "test data" }))
+	livedebugging.PublishIfActive(NewData(componentID, PrometheusMetric, 3, func() string { return "test data" }))
 	require.Equal(t, "test data", receivedData1.DataFunc())
 	require.Equal(t, "test data", receivedData2.DataFunc())
 }

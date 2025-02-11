@@ -98,14 +98,12 @@ func (c *Component) Update(args component.Arguments) error {
 			targets = append(targets, promLabelsToComponent(relabelled))
 		}
 		componentID := livedebugging.ComponentID(c.opts.ID)
-		if c.debugDataPublisher.IsActive(componentID) {
-			c.debugDataPublisher.Publish(componentID, livedebugging.NewFeed(
-				componentID,
-				livedebugging.Target,
-				1,
-				func() string { return fmt.Sprintf("%s => %s", lset.String(), relabelled.String()) },
-			))
-		}
+		c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
+			componentID,
+			livedebugging.Target,
+			1,
+			func() string { return fmt.Sprintf("%s => %s", lset.String(), relabelled.String()) },
+		))
 	}
 
 	c.opts.OnStateChange(Exports{

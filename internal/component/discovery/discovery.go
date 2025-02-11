@@ -223,14 +223,12 @@ func (c *Component) runDiscovery(ctx context.Context, d DiscovererWithMetrics) {
 	send := func() {
 		allTargets := toAlloyTargets(cache)
 		componentID := livedebugging.ComponentID(c.opts.ID)
-		if c.debugDataPublisher.IsActive(componentID) {
-			c.debugDataPublisher.Publish(componentID, livedebugging.NewFeed(
-				componentID,
-				livedebugging.Target,
-				uint64(len(allTargets)),
-				func() string { return fmt.Sprintf("%s", allTargets) },
-			))
-		}
+		c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
+			componentID,
+			livedebugging.Target,
+			uint64(len(allTargets)),
+			func() string { return fmt.Sprintf("%s", allTargets) },
+		))
 		c.opts.OnStateChange(Exports{Targets: allTargets})
 	}
 

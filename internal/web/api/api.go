@@ -169,9 +169,9 @@ func getClusteringPeersHandler(host service.Host) http.HandlerFunc {
 	}
 }
 
-type feedKey struct {
+type dataKey struct {
 	ComponentID livedebugging.ComponentID
-	Type        livedebugging.FeedType
+	Type        livedebugging.DataType
 }
 
 func graph(_ service.Host, callbackManager livedebugging.CallbackManager) http.HandlerFunc {
@@ -183,13 +183,13 @@ func graph(_ service.Host, callbackManager livedebugging.CallbackManager) http.H
 
 		window := setWindow(w, r.URL.Query().Get("window"))
 
-		dataCh := make(chan *livedebugging.Feed, 1000)
-		feedDataMap := make(map[feedKey]feed)
+		dataCh := make(chan *livedebugging.Data, 1000)
+		dataMap := make(map[dataKey]liveDebuggingData)
 
 		ctx := r.Context()
 		id := livedebugging.CallbackID(uuid.New().String())
 
-		err := callbackManager.AddCallbackMulti(id, moduleID, func(data *livedebugging.Feed) {
+		err := callbackManager.AddCallbackMulti(id, moduleID, func(data *livedebugging.Data) {
 			select {
 			case <-ctx.Done():
 				return
@@ -218,12 +218,12 @@ func graph(_ service.Host, callbackManager livedebugging.CallbackManager) http.H
 			select {
 			case data := <-dataCh:
 				// Aggregate incoming data
-				key := feedKey{ComponentID: data.ComponentID, Type: data.Type}
-				if existing, exists := feedDataMap[key]; exists {
+				key := dataKey{ComponentID: data.ComponentID, Type: data.Type}
+				if existing, exists := dataMap[key]; exists {
 					existing.Count += data.Count
 				} else {
 					// The data is ignored for the graph.
-					feedDataMap[key] = feed{
+					dataMap[key] = liveDebuggingData{
 						ComponentID:        string(data.ComponentID),
 						Count:              data.Count,
 						Type:               string(data.Type),
@@ -234,7 +234,7 @@ func graph(_ service.Host, callbackManager livedebugging.CallbackManager) http.H
 			case <-ticker.C:
 				// Flush aggregated data
 				var builder strings.Builder
-				for _, data := range feedDataMap {
+				for _, data := range dataMap {
 					jsonData, err := json.Marshal(data)
 					if err != nil {
 						continue
@@ -254,7 +254,7 @@ func graph(_ service.Host, callbackManager livedebugging.CallbackManager) http.H
 				}
 				w.(http.Flusher).Flush()
 
-				feedDataMap = make(map[feedKey]feed)
+				dataMap = make(map[dataKey]liveDebuggingData)
 
 			case <-ctx.Done():
 				return
@@ -275,7 +275,7 @@ func liveDebugging(_ service.Host, callbackManager livedebugging.CallbackManager
 
 		id := livedebugging.CallbackID(uuid.New().String())
 
-		err := callbackManager.AddCallback(id, componentID, func(data *livedebugging.Feed) {
+		err := callbackManager.AddCallback(id, componentID, func(data *livedebugging.Data) {
 			select {
 			case <-ctx.Done():
 				return

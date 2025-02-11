@@ -228,6 +228,8 @@ func (p *Processor) Update(args component.Arguments) error {
 		}
 	}
 
+	p.liveDebuggingConsumer.SetTargetConsumers(next.Metrics, next.Logs, next.Traces)
+
 	updateConsumersFunc := func() {
 		p.consumer.SetConsumers(tracesProcessor, metricsProcessor, logsProcessor)
 	}
