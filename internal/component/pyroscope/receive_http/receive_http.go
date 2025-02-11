@@ -298,28 +298,16 @@ func (c *Component) shutdownServer() {
 	}
 }
 
-const (
-	labelServiceName = "service_name"
-	labelAppName     = "app_name"
-)
-
+// rename __name__ to service_name
 func ensureServiceName(lbls labels.Labels) labels.Labels {
-	// If service_name is already present, add app_name if not exists
-	if lbls.Has(labelServiceName) {
-		if appName := lbls.Get("__name__"); appName != "" && !lbls.Has(labelAppName) {
-			builder := labels.NewBuilder(lbls)
-			builder.Set(labelAppName, appName)
-			return builder.Labels()
-		}
-		return lbls
+	builder := labels.NewBuilder(lbls)
+	originalName := lbls.Get(pyroscope.LabelName)
+
+	if !lbls.Has(pyroscope.LabelServiceName) {
+		builder.Set(pyroscope.LabelServiceName, originalName)
+	} else {
+		builder.Set("app_name", originalName)
 	}
 
-	// If no service_name, use __name__ value for service_name
-	if appName := lbls.Get("__name__"); appName != "" {
-		builder := labels.NewBuilder(lbls)
-		builder.Set(labelServiceName, appName)
-		return builder.Labels()
-	}
-
-	return lbls
+	return builder.Labels()
 }
