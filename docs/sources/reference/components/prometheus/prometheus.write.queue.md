@@ -141,11 +141,11 @@ For example, if the drift is increasing and the network failures are increasing,
 
 The `desired_check_interval` prevents connection flapping.
 Each time a desired connection is calculated, the connection is added to a list.
-Before changing the desired connection, the system will choose the highest value in the lookback buffer.
+Before changing the desired connection, `prometheus.write.queue` will choose the highest value in the lookback buffer.
 For example, for the past 5 minutes, desired connections have been: [2,1,1].
 The check determines that the desired connections are 1, and the number of desired connections will not change because the value `2` is still in the lookback buffer.
 On the next check, the desired connections are [1,1,1].
-Now, it will change to 1. In general, the system is fast to increase and slow to decrease.
+Since the `2` value has expired the desired connections will change to 1. In general, the system is fast to increase and slow to decrease.
 
 ## Exported fields
 
