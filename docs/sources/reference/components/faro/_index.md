@@ -5,7 +5,7 @@ title: faro
 weight: 100
 ---
 
-# faro
+# `faro`
 
 This section contains reference documentation for the `faro` components.
 
