@@ -3,6 +3,8 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/local/loca
 aliases:
   - ../local.file_match/ # /docs/alloy/latest/reference/components/local.file_match/
 description: Learn about local.file_match
+labels:
+  stage: general-availability
 title: local.file_match
 ---
 
@@ -24,10 +26,10 @@ local.file_match "LABEL" {
 
 You can use the following arguments with `local.file_match`:
 
-Name            | Type                | Description                                                                                | Default | Required
---------------- | ------------------- | ------------------------------------------------------------------------------------------ |---------| --------
-`path_targets`  | `list(map(string))` | Targets to expand; looks for glob patterns on the  `__path__` and `__path_exclude__` keys. |         | yes
-`sync_period`   | `duration`          | How often to sync filesystem and targets.                                                  | `"10s"` | no
+| Name           | Type                | Description                                                                                | Default | Required |
+| -------------- | ------------------- | ------------------------------------------------------------------------------------------ | ------- | -------- |
+| `path_targets` | `list(map(string))` | Targets to expand; looks for glob patterns on the  `__path__` and `__path_exclude__` keys. |         | yes      |
+| `sync_period`  | `duration`          | How often to sync filesystem and targets.                                                  | `"10s"` | no       |
 
 `path_targets` uses [doublestar][] style paths.
 
@@ -43,9 +45,9 @@ The `local.file_match` component doesn't support any blocks. You can configure t
 
 The following fields are exported and can be referenced by other components:
 
-Name      | Type                | Description
-----------|---------------------|---------------------------------------------------
-`targets` | `list(map(string))` | The set of targets discovered from the filesystem.
+| Name      | Type                | Description                                        |
+|-----------|---------------------|----------------------------------------------------|
+| `targets` | `list(map(string))` | The set of targets discovered from the filesystem. |
 
 Each target includes the following label:
 
