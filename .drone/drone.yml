@@ -391,34 +391,6 @@ volumes:
     path: /var/run/docker.sock
   name: docker
 ---
-kind: pipeline
-name: Test Linux system packages
-platform:
-  arch: amd64
-  os: linux
-steps:
-- commands:
-  - DOCKER_OPTS="" make dist/alloy-linux-amd64
-  - DOCKER_OPTS="" make test-packages
-  image: grafana/alloy-build-image:v0.1.8
-  name: Test Linux system packages
-  volumes:
-  - name: docker
-    path: /var/run/docker.sock
-trigger:
-  paths:
-  - packaging/**
-  - internal/tools/packaging_test/**
-  - Makefile
-  - tools/make/*.mk
-  ref:
-  - refs/heads/main
-type: docker
-volumes:
-- host:
-    path: /var/run/docker.sock
-  name: docker
----
 get:
   name: app-id
   path: infra/data/ci/agent/githubapp
@@ -504,6 +476,6 @@ kind: secret
 name: updater_private_key
 ---
 kind: signature
-hmac: 5d317332b9c3f6e11b63eff2405c45f7e1c67efe0f31f9577f479707e1a35af5
+hmac: 2f4aa94bee9f21df7493482977c746381fba40de71589f506563a60955c59873
 
 ...
