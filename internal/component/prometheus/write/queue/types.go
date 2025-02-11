@@ -50,9 +50,9 @@ func defaultEndpointConfig() EndpointConfig {
 		MaxRetryAttempts: 0,
 		BatchCount:       1_000,
 		FlushInterval:    1 * time.Second,
-		Parallelism: ParralelismConfig{
-			DriftScaleUpSeconds:        60,
-			DriftScaleDownSeconds:      30,
+		Parallelism: ParallelismConfig{
+			DriftScaleUp:               60 * time.Second,
+			DriftScaleDown:             30 * time.Second,
 			MaxConnections:             50,
 			MinConnections:             2,
 			NetworkFlushInterval:       1 * time.Minute,
@@ -81,7 +81,7 @@ func (r *Arguments) Validate() error {
 		if conn.Parallelism.MinConnections == 0 {
 			return fmt.Errorf("min_connections must be greater than 0")
 		}
-		if conn.Parallelism.DriftScaleUpSeconds <= conn.Parallelism.DriftScaleDownSeconds {
+		if conn.Parallelism.DriftScaleUp <= conn.Parallelism.DriftScaleDown {
 			return fmt.Errorf("drift_scale_up_seconds less than or equal drift_scale_down_seconds")
 		}
 		// Any lower than 1 second and you spend a fair amount of time churning on the draining and
@@ -113,7 +113,7 @@ type EndpointConfig struct {
 	// How long to wait before sending regardless of batch count.
 	FlushInterval time.Duration `alloy:"flush_interval,attr,optional"`
 	// How many concurrent queues to have.
-	Parallelism    ParralelismConfig `alloy:"parallelism,block,optional"`
+	Parallelism    ParallelismConfig `alloy:"parallelism,block,optional"`
 	ExternalLabels map[string]string `alloy:"external_labels,attr,optional"`
 	TLSConfig      *TLSConfig        `alloy:"tls_config,block,optional"`
 	RoundRobin     bool              `alloy:"enable_round_robin,attr,optional"`
@@ -126,30 +126,15 @@ type TLSConfig struct {
 	InsecureSkipVerify bool              `alloy:"insecure_skip_verify,attr,optional"`
 }
 
-type ParralelismConfig struct {
-	// DriftScaleUpSeconds is the maximum amount of seconds that is allowed for the Newest Timestamp Serializer - Newest Timestamp Sent via Network before the connections scales up.
-	// Using non unix timestamp numbers. If Newest TS In Serializer sees 100s and Newest TS Out Network sees 20s then we have a drift of 80s. If AllowDriftSeconds is 60s that would
-	// trigger a scaling up event.
-	DriftScaleUpSeconds int64 `alloy:"drift_scale_up_seconds,attr,optional"`
-	// DriftScaleDownSeconds is the amount if we go below that we can scale down. Using the above if In is 100s and Out is 70s and DriftScaleDownSeconds is 30 then we wont scale
-	// down even though we are below the 60s. This is to keep the number of connections from flapping. In practice we should consider 30s DriftScaleDownSeconds and 60s DriftScaleUpSeconds to be a sweet spot
-	// for general usage.
-	DriftScaleDownSeconds int64 `alloy:"drift_scale_down_seconds,attr,optional"`
-	// MaxConnections is the maximum number of concurrent connections to use.
-	MaxConnections uint `alloy:"max_connections,attr,optional"`
-	// MinConnections is the minimum number of concurrent connections to use.
-	MinConnections uint `alloy:"min_connections,attr,optional"`
-	// NetworkFlushInterval is how long to keep network successes and errors in memory for calculations.
-	NetworkFlushInterval time.Duration `alloy:"network_flush_interval,attr,optional"`
-	// DesiredConnectionsLookback is how far to lookback for previous desired values. This is to prevent flapping.
-	// In a situation where in the past 5 minutes you have desired [1,2,1,1] and desired is 1 it will
-	// choose 2 since that was the greatest. This determines how fast you can scale down.
+type ParallelismConfig struct {
+	DriftScaleUp               time.Duration `alloy:"drift_scale_up,attr,optional"`
+	DriftScaleDown             time.Duration `alloy:"drift_scale_down,attr,optional"`
+	MaxConnections             uint          `alloy:"max_connections,attr,optional"`
+	MinConnections             uint          `alloy:"min_connections,attr,optional"`
+	NetworkFlushInterval       time.Duration `alloy:"network_flush_interval,attr,optional"`
 	DesiredConnectionsLookback time.Duration `alloy:"desired_connections_lookback,attr,optional"`
-	// DesiredCheckInterval is how long to check for desired values.
-	DesiredCheckInterval time.Duration `alloy:"desired_check_interval,attr,optional"`
-	// AllowedNetworkErrorPercent is the percentage of failed network requests that are allowable. This will
-	// trigger a decrease in connections if exceeded.
-	AllowedNetworkErrorPercent float64 `alloy:"allowed_network_error_percent,attr,optional"`
+	DesiredCheckInterval       time.Duration `alloy:"desired_check_interval,attr,optional"`
+	AllowedNetworkErrorPercent float64       `alloy:"allowed_network_error_percent,attr,optional"`
 }
 
 var UserAgent = fmt.Sprintf("Alloy/%s", version.Version)
@@ -166,15 +151,15 @@ func (cc EndpointConfig) ToNativeType() types.ConnectionConfig {
 		FlushInterval:    cc.FlushInterval,
 		ExternalLabels:   cc.ExternalLabels,
 		UseRoundRobin:    cc.RoundRobin,
-		Parralelism: types.ParralelismConfig{
-			AllowedDriftSeconds:          cc.Parallelism.DriftScaleUpSeconds,
-			MinimumScaleDownDriftSeconds: cc.Parallelism.DriftScaleDownSeconds,
-			MaxConnections:               cc.Parallelism.MaxConnections,
-			MinConnections:               cc.Parallelism.MinConnections,
-			ResetInterval:                cc.Parallelism.NetworkFlushInterval,
-			Lookback:                     cc.Parallelism.DesiredConnectionsLookback,
-			CheckInterval:                cc.Parallelism.DesiredCheckInterval,
-			AllowedNetworkErrorPercent:   cc.Parallelism.AllowedNetworkErrorPercent,
+		Parallelism: types.ParallelismConfig{
+			AllowedDrift:                cc.Parallelism.DriftScaleUp,
+			MinimumScaleDownDrift:       cc.Parallelism.DriftScaleDown,
+			MaxConnections:              cc.Parallelism.MaxConnections,
+			MinConnections:              cc.Parallelism.MinConnections,
+			ResetInterval:               cc.Parallelism.NetworkFlushInterval,
+			Lookback:                    cc.Parallelism.DesiredConnectionsLookback,
+			CheckInterval:               cc.Parallelism.DesiredCheckInterval,
+			AllowedNetworkErrorFraction: cc.Parallelism.AllowedNetworkErrorPercent,
 		},
 	}
 	if cc.BasicAuth != nil {

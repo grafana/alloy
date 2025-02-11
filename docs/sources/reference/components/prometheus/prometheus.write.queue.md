@@ -119,18 +119,18 @@ Name                   | Type     | Description                                 
 
 ### parallelism block
 
-Name            | Type       | Description                                                                                                                        | Default | Required
-----------------|------------|------------------------------------------------------------------------------------------------------------------------------------|---------|---------
-`drift_scale_up_seconds`      | `int`      | The maximum amount of time between the timestamps of incoming signals and outgoing signals before increasing desired connections.  | `60`    | no
-`drift_scale_down_seconds`    | `int`      | The minimum amount of time between the timestamps of incoming signals and outgoing signals before descreasing desired connections. | `30`    | no
-`max_connections`    | `uint`     | The maximum number of desired connections.                                                                                         | `50`    | no
-`min_connections`    | `uint`     | The minimum number of desired connections.                                                                                         | `2`     | no
-`network_flush_interval`    | `duration` | The length of time that network successes and failures are kept for determining desired connections.                               | `1m`    | no
-`desired_connections_lookback`    | `duration` | The length of time that previous desired connections are kept for determining desired connections.                                 | `5m`    | no
-`desired_check_interval`    | `duration` | The length of time between checking for desired connections.                                                                  | `5s`    | no
-`allowed_network_error_percent`    | `float`    | The allowed error rate before scaling down.                                                                                        | `0.50`   | no
+| Name                            | Type       | Description                                                                                                                        | Default | Required |
+|---------------------------------|------------|------------------------------------------------------------------------------------------------------------------------------------|---------|----------|
+| `drift_scale_up`                | `duration` | The maximum amount of time between the timestamps of incoming signals and outgoing signals before increasing desired connections.  | `60`    | no       |
+| `drift_scale_down`              | `duration` | The minimum amount of time between the timestamps of incoming signals and outgoing signals before descreasing desired connections. | `30`    | no       |
+| `max_connections`               | `uint`     | The maximum number of desired connections.                                                                                         | `50`    | no       |
+| `min_connections`               | `uint`     | The minimum number of desired connections.                                                                                         | `2`     | no       |
+| `network_flush_interval`        | `duration` | The length of time that network successes and failures are kept for determining desired connections.                               | `1m`    | no       |
+| `desired_connections_lookback`  | `duration` | The length of time that previous desired connections are kept for determining desired connections.                                 | `5m`    | no       |
+| `desired_check_interval`        | `duration` | The length of time between checking for desired connections.                                                                       | `5s`    | no       |
+| `allowed_network_error_percent` | `float`    | The allowed error rate before scaling down. For example `0.50` allows 50% error rate.                                              | `0.50`  | no       |
 
-Parralelism determines when to scale up or down the number of desired connections. This is accomplished by a variety of inputs.
+Parallelism determines when to scale up or down the number of desired connections. This is accomplished by a variety of inputs.
 By determining the drift between the incoming and outgoing timestamps that will determine whether to increase or decrease the
 desired connections. This is represented by `drift_scale_up_seconds` and `drift_scale_down_seconds`, if the drift is between these
 two values then the value will stay the same. Network success and failures are recorded and kept in memory, this helps determine
