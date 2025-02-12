@@ -114,6 +114,9 @@ func (s *liveDebugging) DeleteCallbackMulti(callbackID CallbackID, moduleID Modu
 	for _, cp := range components {
 		delete(s.callbacks[ComponentID(cp.ID.String())], callbackID)
 	}
+	// The s.callbacks[componentID] is not deleted. This is a very small memory leak which could only become significant if a user
+	// has a lot of components and reload the config with always different component labels while having the graph open.
+	// If this ever become a realistic scenario we should cleanup the map here.
 }
 
 func (s *liveDebugging) addCallback(callbackID CallbackID, componentID ComponentID, callback func(*Data)) error {
