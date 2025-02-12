@@ -16,7 +16,9 @@ import (
 func TestUnmarshalAlloy(t *testing.T) {
 	alloyCfg := `
 		config_file = "modules.yml"
+		config_merge_strategy = "replace"
 		concurrency = 2
+
 		target "network_switch_1" {
 			address = "192.168.1.2"
 			module = "if_mib"
@@ -40,6 +42,7 @@ func TestUnmarshalAlloy(t *testing.T) {
 	err := syntax.Unmarshal([]byte(alloyCfg), &args)
 	require.NoError(t, err)
 	require.Equal(t, 2, args.SnmpConcurrency)
+	require.Equal(t, "replace", args.ConfigMergeStrategy)
 	require.Equal(t, "modules.yml", args.ConfigFile)
 	require.Equal(t, 2, len(args.Targets))
 
