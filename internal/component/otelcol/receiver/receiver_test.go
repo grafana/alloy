@@ -127,6 +127,31 @@ func TestReceiverUpdate(t *testing.T) {
 	require.ErrorContains(t, waitConsumerTrigger.Wait(time.Second), "context deadline exceeded")
 }
 
+// This test will trigger a race error if the update function is not properly protected with a mutex
+// because the live debugging service can call the update function concurrently.
+func TestReceiverUpdateLiveDebugging(t *testing.T) {
+	te := newTestEnvironment(t, func(t otelconsumer.Traces) {})
+	te.Start(fakeReceiverArgs{
+		Output: &otelcol.ConsumerArguments{},
+	})
+
+	require.NoError(t, te.Controller.WaitRunning(50*time.Millisecond))
+
+	go func() {
+		for i := 0; i < 100; i++ {
+			te.Controller.Update(fakeReceiverArgs{
+				Output: &otelcol.ConsumerArguments{},
+			})
+		}
+	}()
+
+	for i := 0; i < 100; i++ {
+		cp, err := te.Controller.GetComponent()
+		require.NoError(t, err)
+		cp.(*receiver.Receiver).LiveDebugging(1)
+	}
+}
+
 type testEnvironment struct {
 	t *testing.T
 

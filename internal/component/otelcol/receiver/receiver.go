@@ -69,6 +69,8 @@ type Receiver struct {
 
 	args Arguments
 
+	// The mutex is needed because the live debugging service can trigger an update
+	// concurrently to add/remove the live debugging consumer.
 	updateMut sync.Mutex
 }
 
@@ -128,8 +130,14 @@ func (r *Receiver) Run(ctx context.Context) error {
 // the underlying OpenTelemetry Collector receiver.
 func (r *Receiver) Update(args component.Arguments) error {
 	r.updateMut.Lock()
-	defer r.updateMut.Unlock()
 	r.args = args.(Arguments)
+	r.updateMut.Unlock()
+	return r.update()
+}
+
+func (r *Receiver) update() error {
+	r.updateMut.Lock()
+	defer r.updateMut.Unlock()
 
 	host := scheduler.NewHost(
 		r.opts.Logger,
@@ -241,5 +249,5 @@ func (r *Receiver) CurrentHealth() component.Health {
 }
 
 func (p *Receiver) LiveDebugging(_ int) {
-	p.Update(p.args)
+	p.update()
 }
