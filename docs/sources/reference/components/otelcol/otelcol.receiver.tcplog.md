@@ -4,11 +4,11 @@ description: Learn about otelcol.receiver.tcplog
 title: otelcol.receiver.tcplog
 ---
 
-<span class="badge docs-labels__stage docs-labels__item">Public preview</span>
+<span class="badge docs-labels__stage docs-labels__item">Experimental</span>
 
 # otelcol.receiver.tcplog
 
-{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `otelcol.receiver.tcplog` accepts log messages over a TCP connection and forwards them as logs to other `otelcol.*` components.
 
@@ -24,7 +24,6 @@ You can specify multiple `otelcol.receiver.tcplog` components by giving them dif
 ```alloy
 otelcol.receiver.tcplog "LABEL" {
   listen_address = "IP_ADDRESS:PORT"
-  tls { ... }
 
   output {
     logs    = [...]
@@ -39,17 +38,17 @@ The following arguments are supported:
 | Name                            | Type     | Description                                                                                                  | Default | Required |
 |---------------------------------|----------|--------------------------------------------------------------------------------------------------------------|---------|----------|
 | `listen_address`                | `string` | The `<host:port>` address to listen to for logs messages.                                                    |         | yes      |
-| `max_log_size`                  | `string` | The maximum size of a log entry to read before failing.                                                      | `1MiB`  | no       |
+| `max_log_size`                  | `string` | The maximum size of a log entry to read before failing.                                                      | `"1MiB"` | no       |
 | `one_log_per_packet`            | `bool`   | Skip log tokenization, improving performance when messages always contain one log and multiline is not used. | `false` | no       |
-| `add_attributes`                | `bool`   | Add net.* attributes to log messages according to OpenTelemetry semantic conventions.                        | `false` | no       |
-| `encoding`                      | `string` | The encoding of the log messages.                                                                            | `utf-8` | no       |
+| `add_attributes`                | `bool`   | Add `net.*` attributes to log messages according to [OpenTelemetry semantic conventions][net-semconv].                        | `false` | no       |
+| `encoding`                      | `string` | The encoding of the log messages.                                                                            | `"utf-8"` | no       |
 
 
 The `encoding` argument specifies the encoding of the incoming log messages.
 `encoding` must be one of `utf-8`, `utf-16le`, `utf-16be`, `ascii`, `big5`, `nop`. 
 See the upstream receiver [documentation][encoding-documentation] for more details.
 
-The `max_log_size` argument has a minimum value of `64KiB`
+The `max_log_size` argument has a minimum value of `64KiB`.
 
 ## Blocks
 
@@ -116,7 +115,7 @@ If `max_elapsed_time` is set to `0` data will never be discarded.
 
 ### output block
 
-{{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/output-block-logs.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 
@@ -138,21 +137,16 @@ information.
 
 ## Example
 
-This example proxies log messages from the `otelcol.receiver.tcplog` receiver to the 
-`otelcol.exporter.loki` component, and then sends them to be logged by a `loki.echo` component.
+This example receives log messages from TCP and logs them.
 ```alloy
 otelcol.receiver.tcplog "default" {
     listen_address = "localhost:1515"
     output {
-        logs = [otelcol.exporter.loki.default.input]
+        logs = [otelcol.exporter.debug.default.input]
     }
 }
 
-otelcol.exporter.loki "default" {
-  forward_to = [loki.echo.default.receiver]
-}
-
-loki.echo "default" {}
+otelcol.exporter.debug "default" {}
 ```
 
 [exporter-examples]: ../otelcol.exporter.tcplog/#use-the-otelcolprocessortransform-component-to-format-logs-from-lokisourcetcplog
