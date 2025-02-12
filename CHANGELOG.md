@@ -22,7 +22,7 @@ Main (unreleased)
 
 ### Features
 
-- Add `otelcol.receiver.tcplog` compoent to receive otel logs over a TCP connectio (@nosammai)
+- Add a `otelcol.receiver.tcplog` component to receive OpenTelemetry logs over a TCP connection. (@nosammai)
 
 - (_Public preview_) Add `otelcol.receiver.filelog` component to read otel log entries from files (@dehaansa)
   
