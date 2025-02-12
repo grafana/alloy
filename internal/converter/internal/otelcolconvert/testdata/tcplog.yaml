@@ -1,0 +1,29 @@
+receivers:
+  tcplog:
+    listen_address: "localhost:1514"
+    max_log_size: "2MiB"
+    one_log_per_packet: true
+    add_attributes: true
+    encoding: "utf-16be"
+    tls:
+      include_system_ca_certs_pool: true
+      reload_interval: "1m"
+    multiline:
+      line_end_pattern: "logend"
+      omit_pattern: true
+    retry_on_failure:
+      enabled: true
+      initial_interval: "10s"
+      max_interval: "1m"
+      max_elapsed_time: "10m"
+
+exporters:
+  otlp:
+    endpoint: database:4317
+
+service:
+  pipelines:
+    logs:
+      receivers: [tcplog]
+      processors: []
+      exporters: [otlp]

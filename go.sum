@@ -2750,6 +2750,8 @@ github.com/open-telemetry/opentelemetry-collector-contrib/receiver/solacereceive
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/solacereceiver v0.116.0/go.mod h1:3xeX6PJrUj1pf300sbT14MOnvuUaIpC/8ToDgvTvx70=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/syslogreceiver v0.116.0 h1:jsVEKZnKygcgtamDRcwmDWmk+PgGK+qXDeB3iDTrmJE=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/syslogreceiver v0.116.0/go.mod h1:AAved1ryEezpmrDSmvLdmRibXmiCfICfmQzTZ55w2hw=
+github.com/open-telemetry/opentelemetry-collector-contrib/receiver/tcplogreceiver v0.116.0 h1:5BVhBF703X7+QbaRGgwLVUBZU62tZKZcKhxsz5uIjCs=
+github.com/open-telemetry/opentelemetry-collector-contrib/receiver/tcplogreceiver v0.116.0/go.mod h1:LmXQb4AnoHwgwsrxzO/ehASXXGZly/rCpJs4SsrCLQc=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/vcenterreceiver v0.116.0 h1:3r2W4whIJW2FC+DJtx4Ta852KitR3Fgid3kE+2c2huY=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/vcenterreceiver v0.116.0/go.mod h1:pAVeznA/ZQeF+E6uMBPRwXHVgQbznj9yITH6DW9RxTY=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/zipkinreceiver v0.116.0 h1:M9nXu5HHi1Prf2h3o2W+nI2RXvXuVF0qh+hNP8p7pAI=
