@@ -33,7 +33,6 @@ type DebugDataPublisher interface {
 	// IsActive returns true when at least one consumer is listening for debugging data for the given componentID.
 	IsActive(componentID ComponentID) bool
 }
-
 type liveDebugging struct {
 	loadMut   sync.RWMutex
 	callbacks map[ComponentID]map[CallbackID]func(*Data)
@@ -76,6 +75,48 @@ func (s *liveDebugging) IsActive(componentID ComponentID) bool {
 }
 
 func (s *liveDebugging) AddCallback(callbackID CallbackID, componentID ComponentID, callback func(*Data)) error {
+	// Split in two functions because this one needs write lock while notifyComponent needs read lock only.
+	// Using write lock on notifyComponent is not possible because the notified component might call IsActive or
+	// PublishIfActive which would create a deadlock.
+	err := s.addCallback(callbackID, componentID, callback)
+	if err != nil {
+		return err
+	}
+	s.notifyComponent(componentID)
+	return nil
+}
+
+func (s *liveDebugging) AddCallbackMulti(callbackID CallbackID, moduleID ModuleID, callback func(*Data)) error {
+	// Split in two functions because this one needs write lock while notifyComponents needs read lock only.
+	// Using write lock on notifyComponents is not possible because notified components might call IsActive or
+	// PublishIfActive which would create a deadlock.
+	err := s.addCallbackMulti(callbackID, moduleID, callback)
+	if err != nil {
+		return err
+	}
+	s.notifyComponents(moduleID)
+	return nil
+}
+
+func (s *liveDebugging) DeleteCallback(callbackID CallbackID, componentID ComponentID) {
+	defer s.notifyComponent(componentID)
+	s.loadMut.Lock()
+	defer s.loadMut.Unlock()
+	delete(s.callbacks[componentID], callbackID)
+}
+
+func (s *liveDebugging) DeleteCallbackMulti(callbackID CallbackID, moduleID ModuleID) {
+	defer s.notifyComponents(moduleID)
+	s.loadMut.Lock()
+	defer s.loadMut.Unlock()
+	// ignore errors on delete
+	components, _ := s.host.ListComponents(string(moduleID), component.InfoOptions{})
+	for _, cp := range components {
+		delete(s.callbacks[ComponentID(cp.ID.String())], callbackID)
+	}
+}
+
+func (s *liveDebugging) addCallback(callbackID CallbackID, componentID ComponentID, callback func(*Data)) error {
 	s.loadMut.Lock()
 	defer s.loadMut.Unlock()
 
@@ -101,11 +142,10 @@ func (s *liveDebugging) AddCallback(callbackID CallbackID, componentID Component
 	}
 
 	s.callbacks[componentID][callbackID] = callback
-	s.notifyComponent(componentID)
 	return nil
 }
 
-func (s *liveDebugging) AddCallbackMulti(callbackID CallbackID, moduleID ModuleID, callback func(*Data)) error {
+func (s *liveDebugging) addCallbackMulti(callbackID CallbackID, moduleID ModuleID, callback func(*Data)) error {
 	s.loadMut.Lock()
 	defer s.loadMut.Unlock()
 
@@ -132,44 +172,27 @@ func (s *liveDebugging) AddCallbackMulti(callbackID CallbackID, moduleID ModuleI
 		}
 		s.callbacks[ComponentID(cp.ID.String())][callbackID] = callback
 	}
-
-	s.notifyComponents(moduleID)
 	return nil
 }
 
-func (s *liveDebugging) DeleteCallback(callbackID CallbackID, componentID ComponentID) {
-	s.loadMut.Lock()
-	defer s.loadMut.Unlock()
-	delete(s.callbacks[componentID], callbackID)
-	s.notifyComponent(componentID)
-}
-
-func (s *liveDebugging) DeleteCallbackMulti(callbackID CallbackID, moduleID ModuleID) {
-	s.loadMut.Lock()
-	defer s.loadMut.Unlock()
-	// ignore errors on delete
-	components, _ := s.host.ListComponents(string(moduleID), component.InfoOptions{})
-	for _, cp := range components {
-		delete(s.callbacks[ComponentID(cp.ID.String())], callbackID)
-	}
-
-	s.notifyComponents(moduleID)
-}
-
-// expect mut to be locked
 func (s *liveDebugging) notifyComponent(componentID ComponentID) {
+	s.loadMut.RLock()
+	defer s.loadMut.RUnlock()
+
 	info, err := s.host.GetComponent(component.ParseID(string(componentID)), component.InfoOptions{})
 	if err != nil {
 		return
 	}
 	if component, ok := info.Component.(component.LiveDebugging); ok {
 		// notify the component of the change
-		go component.LiveDebugging(len(s.callbacks[componentID]))
+		component.LiveDebugging(len(s.callbacks[componentID]))
 	}
 }
 
-// expect mut to be locked
 func (s *liveDebugging) notifyComponents(moduleID ModuleID) {
+	s.loadMut.RLock()
+	defer s.loadMut.RUnlock()
+
 	components, err := s.host.ListComponents(string(moduleID), component.InfoOptions{})
 	if err != nil {
 		return
@@ -177,7 +200,7 @@ func (s *liveDebugging) notifyComponents(moduleID ModuleID) {
 	for _, cp := range components {
 		if c, ok := cp.Component.(component.LiveDebugging); ok {
 			// notify the component of the change
-			go c.LiveDebugging(len(s.callbacks[ComponentID(cp.ID.String())]))
+			c.LiveDebugging(len(s.callbacks[ComponentID(cp.ID.String())]))
 		}
 	}
 }
