@@ -145,8 +145,8 @@ func (args Arguments) DebugMetricsConfig() otelcolCfg.DebugMetricsArguments {
 }
 
 type MatchArgs struct {
-	Metrics   []string `alloy:"metrics,attr"`
-	MatchType string   `alloy:"match_type,attr"`
+	Metrics   []string `alloy:"metrics,attr,optional"`
+	MatchType string   `alloy:"match_type,attr,optional"`
 }
 
 func (matchArgs MatchArgs) Convert() (*cumulativetodeltaprocessor.MatchMetrics, error) {
