@@ -5,19 +5,21 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"reflect"
 	"sync"
 	"time"
 
-	"github.com/grafana/alloy/internal/service/labelstore"
-	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/atomic"
 
+	"github.com/grafana/alloy/internal/runtime/equality"
+	"github.com/grafana/alloy/internal/service/labelstore"
+	"github.com/grafana/alloy/internal/service/livedebugging"
+
 	"github.com/go-kit/log"
+	"go.opentelemetry.io/otel/trace/noop"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/runtime/logging"
-	"go.opentelemetry.io/otel/trace/noop"
 )
 
 // A Controller is a testing controller which controls a single component.
@@ -66,7 +68,7 @@ func NewControllerFromReg(l log.Logger, reg component.Registration) *Controller 
 
 func (c *Controller) onStateChange(e component.Exports) {
 	c.exportsMut.Lock()
-	changed := !reflect.DeepEqual(c.exports, e)
+	changed := !equality.DeepEqual(c.exports, e)
 	c.exports = e
 	c.exportsMut.Unlock()
 

@@ -10,8 +10,6 @@ import (
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/service/livedebugging"
-	"github.com/prometheus/prometheus/model/labels"
-	"github.com/prometheus/prometheus/model/relabel"
 )
 
 func init() {
@@ -47,7 +45,6 @@ type Component struct {
 	opts component.Options
 
 	mut sync.RWMutex
-	rcs []*relabel.Config
 
 	debugDataPublisher livedebugging.DebugDataPublisher
 }
@@ -82,24 +79,23 @@ func (c *Component) Run(ctx context.Context) error {
 
 // Update implements component.Component.
 func (c *Component) Update(args component.Arguments) error {
-	c.mut.Lock()
-	defer c.mut.Unlock()
-
 	newArgs := args.(Arguments)
 
 	targets := make([]discovery.Target, 0, len(newArgs.Targets))
-	relabelConfigs := alloy_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelConfigs)
-	c.rcs = relabelConfigs
 
 	for _, t := range newArgs.Targets {
-		lset := componentMapToPromLabels(t)
-		relabelled, keep := relabel.Process(lset, relabelConfigs...)
+		var (
+			relabelled discovery.Target
+			builder    = discovery.NewTargetBuilderFrom(t)
+			keep       = alloy_relabel.ProcessBuilder(builder, newArgs.RelabelConfigs...)
+		)
 		if keep {
-			targets = append(targets, promLabelsToComponent(relabelled))
+			relabelled = builder.Target()
+			targets = append(targets, relabelled)
 		}
 		componentID := livedebugging.ComponentID(c.opts.ID)
 		if c.debugDataPublisher.IsActive(componentID) {
-			c.debugDataPublisher.Publish(componentID, fmt.Sprintf("%s => %s", lset.String(), relabelled.String()))
+			c.debugDataPublisher.Publish(componentID, fmt.Sprintf("%s => %s", t, relabelled))
 		}
 	}
 
@@ -112,21 +108,3 @@ func (c *Component) Update(args component.Arguments) error {
 }
 
 func (c *Component) LiveDebugging(_ int) {}
-
-func componentMapToPromLabels(ls discovery.Target) labels.Labels {
-	res := make([]labels.Label, 0, len(ls))
-	for k, v := range ls {
-		res = append(res, labels.Label{Name: k, Value: v})
-	}
-
-	return res
-}
-
-func promLabelsToComponent(ls labels.Labels) discovery.Target {
-	res := make(map[string]string, len(ls))
-	for _, l := range ls {
-		res[l.Name] = l.Value
-	}
-
-	return res
-}

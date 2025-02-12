@@ -163,17 +163,17 @@ func (c *Component) Run(ctx context.Context) error {
 func (c *Component) getBaseTarget() (discovery.Target, error) {
 	data, err := c.opts.GetServiceData(http_service.ServiceName)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get HTTP information: %w", err)
+		return discovery.EmptyTarget, fmt.Errorf("failed to get HTTP information: %w", err)
 	}
 	httpData := data.(http_service.Data)
 
-	return discovery.Target{
+	return discovery.NewTargetFromMap(map[string]string{
 		model.AddressLabel:     httpData.MemoryListenAddr,
 		model.SchemeLabel:      "http",
 		model.MetricsPathLabel: path.Join(httpData.HTTPPathForComponent(c.opts.ID), "metrics"),
 		"instance":             c.instanceKey,
 		"job":                  database_observability.JobName,
-	}, nil
+	}), nil
 }
 
 func (c *Component) Update(args component.Arguments) error {

@@ -126,9 +126,14 @@ func (j *javaComponent) updateTargets(args Arguments) {
 
 	active := make(map[int]struct{})
 	for _, target := range args.Targets {
-		pid64, err := strconv.ParseInt(target[labelProcessID], 10, 32)
+		pidStr, ok := target.Get(labelProcessID)
+		if !ok {
+			_ = level.Error(j.opts.Logger).Log("msg", "could not find PID label", "pid", pidStr)
+			continue
+		}
+		pid64, err := strconv.ParseInt(pidStr, 10, 32)
 		if err != nil {
-			_ = level.Error(j.opts.Logger).Log("msg", "could not convert process ID to a 32 bit integer", "pid", target[labelProcessID], "err", err)
+			_ = level.Error(j.opts.Logger).Log("msg", "could not convert process ID to a 32 bit integer", "pid", pidStr, "err", err)
 			continue
 		}
 		pid := int(pid64)
