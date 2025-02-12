@@ -320,7 +320,7 @@ func (c *SchemaTable) fetchTableDefinitions(ctx context.Context, fullyQualifiedT
 	row := c.dbConnection.QueryRowContext(ctx, showCreateTable+" "+fullyQualifiedTable)
 	if err := row.Err(); err != nil {
 		level.Error(c.logger).Log("msg", "failed to show create table", "schema", table.schema, "table", table.tableName, "err", err)
-		return nil, row.Err()
+		return table, err
 	}
 
 	var tableName, createStmt, characterSetClient, collationConnection string
@@ -328,15 +328,15 @@ func (c *SchemaTable) fetchTableDefinitions(ctx context.Context, fullyQualifiedT
 	case "BASE TABLE":
 		if err := row.Scan(&tableName, &createStmt); err != nil {
 			level.Error(c.logger).Log("msg", "failed to scan create table", "schema", table.schema, "table", table.tableName, "err", err)
-			return nil, err
+			return table, err
 		}
 	case "VIEW":
 		if err := row.Scan(&tableName, &createStmt, &characterSetClient, &collationConnection); err != nil {
 			level.Error(c.logger).Log("msg", "failed to scan create view", "schema", table.schema, "table", table.tableName, "err", err)
-			return nil, err
+			return table, err
 		}
 	default:
-		level.Error(c.logger).Log("msg", "unknown table type", append(logKVs, "table_type", table.tableType))
+		level.Error(c.logger).Log("msg", "unknown table type", "schema", table.schema, "table", table.tableName, "table_type", table.tableType)
 		return nil, fmt.Errorf("unknown table type: %s", table.tableType)
 	}
 	table.b64CreateStmt = base64.StdEncoding.EncodeToString([]byte(createStmt))
@@ -344,12 +344,12 @@ func (c *SchemaTable) fetchTableDefinitions(ctx context.Context, fullyQualifiedT
 	spec, err := c.fetchColumnsDefinitions(ctx, table.schema, table.tableName)
 	if err != nil {
 		level.Error(c.logger).Log("msg", "failed to analyze table spec", "schema", table.schema, "table", table.tableName, "err", err)
-		return nil, err
+		return table, err
 	}
 	jsonSpec, err := json.Marshal(spec)
 	if err != nil {
 		level.Error(c.logger).Log("msg", "failed to marshal table spec", "schema", table.schema, "table", table.tableName, "err", err)
-		return nil, err
+		return table, err
 	}
 	table.b64TableSpec = base64.StdEncoding.EncodeToString(jsonSpec)
 
