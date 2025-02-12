@@ -14,7 +14,6 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/decode"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator/helper"
-	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator/input/tcp"
 	stanzainputtcp "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator/input/tcp"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/split"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/tcplogreceiver"
@@ -38,7 +37,7 @@ func init() {
 }
 
 // Values taken from tcp input Build function
-const tcpDefaultMaxLogSize = helper.ByteSize(tcp.DefaultMaxLogSize)
+const tcpDefaultMaxLogSize = 1024 * 1024
 const minMaxLogSize = helper.ByteSize(64 * 1024)
 
 // Arguments configures the otelcol.receiver.tcplog component.
@@ -83,7 +82,8 @@ var _ receiver.Arguments = Arguments{}
 // SetToDefault implements syntax.Defaulter, providing default values.
 func (args *Arguments) SetToDefault() {
 	*args = Arguments{
-		Output: &otelcol.ConsumerArguments{},
+		MaxLogSize: tcpDefaultMaxLogSize,
+		Output:     &otelcol.ConsumerArguments{},
 	}
 	args.DebugMetrics.SetToDefault()
 	args.ConsumerRetry.SetToDefault()
@@ -100,9 +100,6 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		AddAttributes:   args.AddAttributes,
 		OneLogPerPacket: args.OneLogPerPacket,
 		Encoding:        args.Encoding,
-	}
-	if c.MaxLogSize == 0 {
-		c.MaxLogSize = tcpDefaultMaxLogSize
 	}
 	split := args.MultilineConfig.Convert()
 	if split != nil {
@@ -151,7 +148,7 @@ func (args *Arguments) Validate() error {
 		errs = multierror.Append(errs, fmt.Errorf("invalid encoding: %w", err))
 	}
 
-	if args.MaxLogSize != 0 && (int64(args.MaxLogSize) < int64(minMaxLogSize)) {
+	if int64(args.MaxLogSize) < int64(minMaxLogSize) {
 		errs = multierror.Append(errs, fmt.Errorf("invalid value %d for parameter 'max_log_size', must be equal to or greater than %d bytes", args.MaxLogSize, minMaxLogSize))
 	}
 
