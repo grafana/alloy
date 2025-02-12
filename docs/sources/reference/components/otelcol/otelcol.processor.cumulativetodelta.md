@@ -3,12 +3,13 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/ot
 aliases:
   - ../otelcol.processor.cumulativetodelta/ # /docs/alloy/latest/reference/otelcol.processor.cumulativetodelta/
 description: Learn about otelcol.processor.cumulativetodelta
+labels:
+  stage: experimental
 title: otelcol.processor.cumulativetodelta
 ---
 
-<span class="badge docs-labels__stage docs-labels__item">Experimental</span>
 
-# otelcol.processor.cumulativetodelta
+# `otelcol.processor.cumulativetodelta`
 
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -24,7 +25,7 @@ You can specify multiple `otelcol.processor.cumulativetodelta` components by giv
 ## Usage
 
 ```alloy
-otelcol.processor.cumulativetodelta "LABEL" {
+otelcol.processor.cumulativetodelta "<LABEL>" {
   output {
     metrics = [...]
   }
@@ -33,73 +34,80 @@ otelcol.processor.cumulativetodelta "LABEL" {
 
 ## Arguments
 
-`otelcol.processor.cumulativetodelta` supports the following arguments:
+You can use the following arguments with `otelcol.processor.cumulativetodelta`:
 
 | Name            | Type       | Description                                                            | Default  | Required |
 | --------------- | ---------- | ---------------------------------------------------------------------- | -------- | -------- |
+| `initial_value` | `string`   | Handling of the first observed point for a given metric identity.      | `"auto"` | no       |
 | `max_staleness` | `duration` | The total time a state entry will live past the time it was last seen. | `"0"`    | no       |
-| `initial_value` | `string`   | Handling of the first observed point for a given metric identity       | `"auto"` | no       |
 
 `otelcol.processor.cumulativetodelta` tracks incoming metric streams.
 Sum and exponential histogram metrics with delta temporality are tracked and converted into cumulative temporality.
 
-If a new sample hasn't been received since the duration specified by `max_staleness`, tracked streams are considered stale and dropped. When set to `"0"`, the state is retained indefinitely.
+If a new sample hasn't been received since the duration specified by `max_staleness`, tracked streams are considered stale and dropped.
+When set to `"0"`, the state is retained indefinitely.
 
-The `initial_value` sets the handling of the first observed point for a given metric identity. When the collector (re)starts, there's no record of how much of a given cumulative counter has already been converted to delta values.
+The `initial_value` sets the handling of the first observed point for a given metric identity.
+When the collector (re)starts, there's no record of how much of a given cumulative counter has already been converted to delta values.
 
-- `"auto"` (default): Send if and only if the startime is set AND the starttime happens after the component started AND the starttime is different from the timestamp. Suitable for gateway deployments, this heuristic is like drop, but keeps values for newly started counters (which could not have had previous observed values).
-- `"keep"`: Send the observed value as the delta value. Suitable for when the incoming metrics have not been observed before, e.g. running the collector as a sidecar, the collector lifecycle is tied to the metric source.
-- `"drop"`: Keep the observed value but don't send. Suitable for gateway deployments, guarantees that all delta counts it produces haven't been observed before, but loses the values between thir first 2 observations.
+* `"auto"` (default): Send the observed value if the start time is set AND the start time happens after the component started AND the start time is different from the timestamp.
+  This is suitable for gateway deployments. This heuristic is like `drop`, but it keeps values for newly started counters which could not have had previous observed values.
+* `"keep"`: Send the observed value as the delta value. This is suitable for when the incoming metrics haven't been observed before. For example, when you are running the collector as a sidecar, the collector lifecycle is tied to the metric source.
+* `"drop"`: Keep the observed value but don't send it. This is suitable for gateway deployments. It guarantees that all delta counts it produces haven't been observed before, but drops the values between the first two observations.
 
 ## Blocks
 
-The following blocks are supported inside the definition of `otelcol.processor.cumulativetodelta`:
+You can use the following blocks with `otelcol.processor.cumulativetodelta`:
 
-| Hierarchy     | Block             | Description                                                                | Required |
-| ------------- | ----------------- | -------------------------------------------------------------------------- | -------- |
-| output        | [output][]        | Configures where to send received telemetry data.                          | yes      |
-| include       | [include][]       | Configures which metrics to convert to delta.                              | no       |
-| exclude       | [exclude][]       | Configures which metrics to not convert to delta.                          | no       |
-| debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no       |
+| Block                            | Description                                                                | Required |
+| -------------------------------- | -------------------------------------------------------------------------- | -------- |
+| [`output`][output]               | Configures where to send received telemetry data.                          | yes      |
+| [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |
+| [`exclude`][exclude]             | Configures which metrics to not convert to delta.                          | no       |
+| [`include`][include]             | Configures which metrics to convert to delta.                              | no       |
 
-If metric matches both `include` and `exclude`, exclude takes preference. If neither `include` nor `exclude` are supplied, no filtering is applied.
+If metric matches both `include` and `exclude`, exclude takes preference.
+If neither `include` nor `exclude` are supplied, no filtering is applied.
 
-[include]: #include-block
-[exclude]: #exclude-block
-[output]: #output-block
-[debug_metrics]: #debug_metrics-block
+[include]: #include 
+[exclude]: #exclude
+[output]: #output
+[debug_metrics]: #debug_metrics
 
-### include block
+### `output`
+
+<span class="badge docs-labels__stage docs-labels__item">Required</span>
+
+{{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `include`
 
 The `include` block configures which metrics to convert to delta.
 
 The following attributes are supported:
 
-| Name       | Type           | Description                             | Default | Required |
-| ---------- | -------------- | --------------------------------------- | ------- | -------- |
-| metrics    | `list(string)` | Names or patterns to convert to delta   |         | no       |
-| match_type | `string`       | Match type to use, `strict` or `regexp` |         | no       |
+| Name         | Type           | Description                             | Default | Required |
+| ------------ | -------------- | --------------------------------------- | ------- | -------- |
+| `metrics`    | `list(string)` | Names or patterns to convert to delta   |         | no       |
+| `match_type` | `string`       | Match type to use, `strict` or `regexp` |         | no       |
 
-If one of `metrics` or `match_type` is supplied, the other must be supplied too
+If one of `metrics` or `match_type` is supplied, the other must be supplied too.
 
-### exclude block
+### `exclude`
 
-The `exclude` block configures which metrics not to convert to delta. `exclude` takes precedence to `include`
+The `exclude` block configures which metrics not to convert to delta.
+`exclude` takes precedence over `include`
 
 The following attributes are supported:
 
-| Name       | Type           | Description                             | Default | Required |
-| ---------- | -------------- | --------------------------------------- | ------- | -------- |
-| metrics    | `list(string)` | Names or patterns to convert to delta   |         | no       |
-| match_type | `string`       | Match type to use, `strict` or `regexp` |         | no       |
+| Name         | Type           | Description                             | Default | Required |
+| ------------ | -------------- | --------------------------------------- | ------- | -------- |
+| `metrics`    | `list(string)` | Names or patterns to convert to delta   |         | no       |
+| `match_type` | `string`       | Match type to use, `strict` or `regexp` |         | no       |
 
-If one of `metrics` or `match_type` is supplied, the other must be supplied too
+If one of `metrics` or `match_type` is supplied, the other must be supplied too.
 
-### output block
-
-{{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
-
-### debug_metrics block
+### `debug_metrics`
 
 {{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -119,13 +127,12 @@ The following fields are exported and can be referenced by other components:
 
 ## Debug information
 
-`otelcol.processor.cumulativetodelta` does not expose any component-specific debug information.
+`otelcol.processor.cumulativetodelta` doesn't expose any component-specific debug information.
 
-## Examples
+## Example
 
-### Basic usage
 
-This example converts cumulative temporality metrics to delta before sending it to [otelcol.exporter.otlp][] for further processing:
+This example converts cumulative temporality metrics to delta before sending it to [`otelcol.exporter.otlp`]otelcol.exporter.otlp[] for further processing.
 
 ```alloy
 otelcol.processor.cumulativetodelta "default" {
