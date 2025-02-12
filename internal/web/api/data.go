@@ -10,6 +10,8 @@ type liveDebuggingData struct {
 	TargetComponentIDs []string `json:"targetComponentIDs"`
 	// Type specifies the category of data represented by the count (otel_metric, loki_log, target...).
 	Type string `json:"type"`
+	// Rate represents the number of events of the given Type sent per second by the component.
+	Rate float64 `json:"rate"`
 	// Count is the number of spans, metrics, logs that the data represent.
-	Count uint64 `json:"count"`
+	Count uint64 `json:"-"`
 }

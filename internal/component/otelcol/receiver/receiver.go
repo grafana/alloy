@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"sync"
 
 	"github.com/grafana/alloy/internal/build"
 	"github.com/grafana/alloy/internal/component"
@@ -67,6 +68,8 @@ type Receiver struct {
 	debugDataPublisher    livedebugging.DebugDataPublisher
 
 	args Arguments
+
+	updateMut sync.Mutex
 }
 
 var (
@@ -124,6 +127,8 @@ func (r *Receiver) Run(ctx context.Context) error {
 // configuration for OpenTelemetry Collector receiver configuration and manage
 // the underlying OpenTelemetry Collector receiver.
 func (r *Receiver) Update(args component.Arguments) error {
+	r.updateMut.Lock()
+	defer r.updateMut.Unlock()
 	r.args = args.(Arguments)
 
 	host := scheduler.NewHost(

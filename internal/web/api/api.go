@@ -13,9 +13,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-kit/log"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/service/cluster"
 	"github.com/grafana/alloy/internal/service/livedebugging"
@@ -27,11 +29,12 @@ import (
 type AlloyAPI struct {
 	alloy           service.Host
 	CallbackManager livedebugging.CallbackManager
+	logger          log.Logger
 }
 
 // NewAlloyAPI instantiates a new Alloy API.
-func NewAlloyAPI(alloy service.Host, CallbackManager livedebugging.CallbackManager) *AlloyAPI {
-	return &AlloyAPI{alloy: alloy, CallbackManager: CallbackManager}
+func NewAlloyAPI(alloy service.Host, CallbackManager livedebugging.CallbackManager, l log.Logger) *AlloyAPI {
+	return &AlloyAPI{alloy: alloy, CallbackManager: CallbackManager, logger: l}
 }
 
 // RegisterRoutes registers all the API's routes.
@@ -50,10 +53,10 @@ func (a *AlloyAPI) RegisterRoutes(urlPrefix string, r *mux.Router) {
 	r.Handle(path.Join(urlPrefix, "/remotecfg/components/{id:.+}"), httputil.CompressionHandler{Handler: getComponentHandlerRemoteCfg(a.alloy)})
 
 	r.Handle(path.Join(urlPrefix, "/peers"), httputil.CompressionHandler{Handler: getClusteringPeersHandler(a.alloy)})
-	r.Handle(path.Join(urlPrefix, "/debug/{id:.+}"), liveDebugging(a.alloy, a.CallbackManager))
+	r.Handle(path.Join(urlPrefix, "/debug/{id:.+}"), liveDebugging(a.alloy, a.CallbackManager, a.logger))
 
-	r.Handle(path.Join(urlPrefix, "/graph"), graph(a.alloy, a.CallbackManager))
-	r.Handle(path.Join(urlPrefix, "/graph/{moduleID:.+}"), graph(a.alloy, a.CallbackManager))
+	r.Handle(path.Join(urlPrefix, "/graph"), graph(a.alloy, a.CallbackManager, a.logger))
+	r.Handle(path.Join(urlPrefix, "/graph/{moduleID:.+}"), graph(a.alloy, a.CallbackManager, a.logger))
 }
 
 func listComponentsHandler(host service.Host) http.HandlerFunc {
@@ -174,7 +177,7 @@ type dataKey struct {
 	Type        livedebugging.DataType
 }
 
-func graph(_ service.Host, callbackManager livedebugging.CallbackManager) http.HandlerFunc {
+func graph(_ service.Host, callbackManager livedebugging.CallbackManager, logger log.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var moduleID livedebugging.ModuleID
 		if vars := mux.Vars(r); vars != nil {
@@ -189,6 +192,7 @@ func graph(_ service.Host, callbackManager livedebugging.CallbackManager) http.H
 		ctx := r.Context()
 		id := livedebugging.CallbackID(uuid.New().String())
 
+		droppedData := false
 		err := callbackManager.AddCallbackMulti(id, moduleID, func(data *livedebugging.Data) {
 			select {
 			case <-ctx.Done():
@@ -197,6 +201,10 @@ func graph(_ service.Host, callbackManager livedebugging.CallbackManager) http.H
 				select {
 				case dataCh <- data:
 				default:
+					if !droppedData {
+						level.Warn(logger).Log("msg", "data throughput is very high, not all debugging data can be sent to the graph")
+						droppedData = true
+					}
 				}
 			}
 		})
@@ -235,6 +243,7 @@ func graph(_ service.Host, callbackManager livedebugging.CallbackManager) http.H
 				// Flush aggregated data
 				var builder strings.Builder
 				for _, data := range dataMap {
+					data.Rate = float64(data.Count) / float64(window)
 					jsonData, err := json.Marshal(data)
 					if err != nil {
 						continue
@@ -254,7 +263,9 @@ func graph(_ service.Host, callbackManager livedebugging.CallbackManager) http.H
 				}
 				w.(http.Flusher).Flush()
 
-				dataMap = make(map[dataKey]liveDebuggingData)
+				for k := range dataMap {
+					delete(dataMap, k)
+				}
 
 			case <-ctx.Done():
 				return
@@ -263,7 +274,7 @@ func graph(_ service.Host, callbackManager livedebugging.CallbackManager) http.H
 	}
 }
 
-func liveDebugging(_ service.Host, callbackManager livedebugging.CallbackManager) http.HandlerFunc {
+func liveDebugging(_ service.Host, callbackManager livedebugging.CallbackManager, logger log.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		componentID := livedebugging.ComponentID(vars["id"])
@@ -275,6 +286,7 @@ func liveDebugging(_ service.Host, callbackManager livedebugging.CallbackManager
 
 		id := livedebugging.CallbackID(uuid.New().String())
 
+		droppedData := false
 		err := callbackManager.AddCallback(id, componentID, func(data *livedebugging.Data) {
 			select {
 			case <-ctx.Done():
@@ -287,6 +299,10 @@ func liveDebugging(_ service.Host, callbackManager livedebugging.CallbackManager
 				select {
 				case dataCh <- data.DataFunc():
 				default:
+					if !droppedData {
+						level.Warn(logger).Log("msg", "data throughput is very high, not all debugging data can be sent the live debugging stream")
+						droppedData = true
+					}
 				}
 			}
 		})
@@ -337,6 +353,7 @@ func setSampleProb(w http.ResponseWriter, sampleProbParam string) (sampleProb fl
 	return sampleProb
 }
 
+// window is expected to be in seconds, between 1 and 60.
 func setWindow(w http.ResponseWriter, windowParam string) (window int64) {
 	window = 5
 	if windowParam != "" {

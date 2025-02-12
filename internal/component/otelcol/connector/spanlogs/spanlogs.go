@@ -4,6 +4,7 @@ package spanlogs
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
@@ -85,6 +86,8 @@ type Component struct {
 	debugDataPublisher    livedebugging.DebugDataPublisher
 
 	args Arguments
+
+	updateMut sync.Mutex
 }
 
 var (
@@ -140,6 +143,8 @@ func (c *Component) Run(ctx context.Context) error {
 
 // Update implements Component.
 func (c *Component) Update(newConfig component.Arguments) error {
+	c.updateMut.Lock()
+	defer c.updateMut.Unlock()
 	c.args = newConfig.(Arguments)
 
 	fanoutConsumer := c.args.Output.Logs

@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"sync"
 
 	"github.com/prometheus/client_golang/prometheus"
 	otelcomponent "go.opentelemetry.io/collector/component"
@@ -83,6 +84,8 @@ type Connector struct {
 	debugDataPublisher    livedebugging.DebugDataPublisher
 
 	args Arguments
+
+	updateMut sync.Mutex
 }
 
 var (
@@ -148,6 +151,8 @@ func (p *Connector) Run(ctx context.Context) error {
 // configuration for OpenTelemetry Collector connector configuration and manage
 // the underlying OpenTelemetry Collector connector.
 func (p *Connector) Update(args component.Arguments) error {
+	p.updateMut.Lock()
+	defer p.updateMut.Unlock()
 	p.args = args.(Arguments)
 
 	host := scheduler.NewHost(

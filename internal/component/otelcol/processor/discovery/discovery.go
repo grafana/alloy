@@ -4,6 +4,7 @@ package discovery
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component"
@@ -85,6 +86,8 @@ type Component struct {
 
 	opts component.Options
 	args Arguments
+
+	updateMut sync.Mutex
 }
 
 var (
@@ -154,6 +157,8 @@ func (c *Component) Run(ctx context.Context) error {
 
 // Update implements Component.
 func (c *Component) Update(newConfig component.Arguments) error {
+	c.updateMut.Lock()
+	defer c.updateMut.Unlock()
 	c.args = newConfig.(Arguments)
 
 	hostLabels := make(map[string]discovery.Target)
