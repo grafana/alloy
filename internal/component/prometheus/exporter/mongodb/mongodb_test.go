@@ -14,6 +14,7 @@ func TestAlloyUnmarshal(t *testing.T) {
 	direct_connect = true
 	discovering_mode = true
 	tls_basic_auth_config_path = "/etc/path-to-file"
+	compatible_mode = true
 	`
 
 	var args Arguments
@@ -25,6 +26,7 @@ func TestAlloyUnmarshal(t *testing.T) {
 		DirectConnect:          true,
 		DiscoveringMode:        true,
 		TLSBasicAuthConfigPath: "/etc/path-to-file",
+		CompatibleMode:         true,
 	}
 
 	require.Equal(t, expected, args)
@@ -36,6 +38,7 @@ func TestConvert(t *testing.T) {
 	direct_connect = true
 	discovering_mode = true
 	tls_basic_auth_config_path = "/etc/path-to-file"
+	compatible_mode = true
 	`
 	var args Arguments
 	err := syntax.Unmarshal([]byte(alloyConfig), &args)
@@ -48,6 +51,7 @@ func TestConvert(t *testing.T) {
 		DirectConnect:          true,
 		DiscoveringMode:        true,
 		TLSBasicAuthConfigPath: "/etc/path-to-file",
+		CompatibleMode:         true,
 	}
 	require.Equal(t, expected, *res)
 }
