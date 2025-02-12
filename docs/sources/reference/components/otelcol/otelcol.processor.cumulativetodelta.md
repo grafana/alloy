@@ -4,7 +4,7 @@ aliases:
   - ../otelcol.processor.cumulativetodelta/ # /docs/alloy/latest/reference/otelcol.processor.cumulativetodelta/
 description: Learn about otelcol.processor.cumulativetodelta
 labels:
-  stage: experimental
+  stage: public-preview
 title: otelcol.processor.cumulativetodelta
 ---
 
