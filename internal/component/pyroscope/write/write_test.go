@@ -363,3 +363,65 @@ func Test_Write_AppendIngest(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, serverCount, appendCount.Load())
 }
+
+func TestAppendIngestLabelTransformation(t *testing.T) {
+	var (
+		export      Exports
+		appendCount = atomic.NewInt32(0)
+	)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		appendCount.Inc()
+
+		// Parse labels from query
+		ls, err := labelset.Parse(r.URL.Query().Get("name"))
+		require.NoError(t, err)
+		labels := ls.Labels()
+
+		// Verify __name__ matches service_name after transformation
+		require.Equal(t, "my-service-grafana", labels["__name__"])
+		require.Equal(t, "my-service-grafana", labels["service_name"])
+
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	// Create component with a relabel rule that modifies service_name
+	argument := DefaultArguments()
+	argument.Endpoints = []*EndpointOptions{{
+		URL:           server.URL,
+		RemoteTimeout: GetDefaultEndpointOptions().RemoteTimeout,
+	}}
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	c, err := New(component.Options{
+		ID:         "test-write",
+		Logger:     util.TestAlloyLogger(t),
+		Registerer: prometheus.NewRegistry(),
+		OnStateChange: func(e component.Exports) {
+			defer wg.Done()
+			export = e.(Exports)
+		},
+	}, argument)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go c.Run(ctx)
+	wg.Wait()
+	require.NotNil(t, export.Receiver)
+
+	// Send profile
+	incomingProfile := &pyroscope.IncomingProfile{
+		Labels: labels.FromMap(map[string]string{
+			"__name__":     "original-name",
+			"service_name": "my-service-grafana",
+		}),
+		URL: &url.URL{Path: "/ingest"},
+	}
+
+	err = export.Receiver.Appender().AppendIngest(context.Background(), incomingProfile)
+	require.NoError(t, err)
+	require.Equal(t, int32(1), appendCount.Load())
+}
