@@ -59,16 +59,16 @@ You can use the following blocks with `prometheus.operator.scrapeconfigs`:
 The > symbol indicates deeper levels of nesting.
 For example, `client` > `basic_auth` refers to a `basic_auth` block defined inside a `client` block.
 
-[client]: #client-block
-[basic_auth]: #basic_auth-block
-[authorization]: #authorization-block
-[oauth2]: #oauth2-block
-[tls_config]: #tls_config-block
-[selector]: #selector-block
-[match_expression]: #match_expression-block
-[rule]: #rule-block
-[scrape]: #scrape-block
-[clustering]: #clustering-block
+[client]: #client
+[authorization]: #authorization
+[basic_auth]: #basic_auth
+[oauth2]: #oauth2
+[clustering]: #clustering
+[selector]: #selector
+[match_expression]: #match_expression
+[rule]: #rule
+[scrape]: #scrape
+[tls_config]: #tls_config
 
 ### client block
 
