@@ -336,7 +336,7 @@ func (c *SchemaTable) fetchTableDefinitions(ctx context.Context, fullyQualifiedT
 			return table, err
 		}
 	default:
-		level.Error(c.logger).Log("msg", "unknown table type", append(logKVs, "table_type", table.tableType))
+		level.Error(c.logger).Log("msg", "unknown table type", "schema", table.schema, "table", table.tableName, "table_type", table.tableType)
 		return nil, fmt.Errorf("unknown table type: %s", table.tableType)
 	}
 	table.b64CreateStmt = base64.StdEncoding.EncodeToString([]byte(createStmt))
