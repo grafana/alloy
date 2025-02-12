@@ -100,13 +100,13 @@ The following arguments are supported:
 
 {{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### basic_auth block
-
-{{< docs/shared lookup="reference/components/basic-auth-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
-
-### authorization block
+### `authorization`
 
 {{< docs/shared lookup="reference/components/authorization-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `basic_auth`
+
+{{< docs/shared lookup="reference/components/basic-auth-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### oauth2 block
 
