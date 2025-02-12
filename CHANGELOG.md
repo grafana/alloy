@@ -16,6 +16,8 @@ Main (unreleased)
 
 - Add `pyroscope.relabel` component to modify or filter profiles using Prometheus relabeling rules. (@marcsanmi)
 
+- (_Experimental_) A new `foreach` block which starts an Alloy pipeline for each item inside a list. (@wildum, @thampiotr, @ptodev)
+
 ### Enhancements
 
 - Add `go_table_fallback` arg to `pyroscope.ebpf` (@korniltsev)
