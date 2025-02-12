@@ -11,7 +11,7 @@ title: otelcol.processor.cumulativetodelta
 
 # `otelcol.processor.cumulativetodelta`
 
-{{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `otelcol.processor.cumulativetodelta` accepts metrics from other `otelcol` components and converts metrics with the cumulative temporality to delta.
 
