@@ -377,6 +377,7 @@ func (fi *forEachChild) Equals(other runner.Task) bool {
 	return fi.id == other.(*forEachChild).id
 }
 
+// This function uses a 256 bits hash to minimize the risk of collisions between foreach children.
 func computeHash(s string) string {
 	hasher := sha256.New()
 	hasher.Write([]byte(s))
