@@ -8,6 +8,11 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+    - name: Set ownership
+      # https://github.com/actions/runner/issues/2033#issuecomment-1204205989
+      run: |
+          # this is to fix GIT not liking owner of the checkout dir
+          chown -R $(id -u):$(id -g) $PWD
     - name: Set up Go 1.23
       uses: actions/setup-go@v5
       with:
@@ -23,6 +28,11 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+    - name: Set ownership
+      # https://github.com/actions/runner/issues/2033#issuecomment-1204205989
+      run: |
+          # this is to fix GIT not liking owner of the checkout dir
+          chown -R $(id -u):$(id -g) $PWD
     - name: Set up Go 1.23
       uses: actions/setup-go@v5
       with:
