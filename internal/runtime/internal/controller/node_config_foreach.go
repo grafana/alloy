@@ -378,6 +378,7 @@ func (fi *forEachChild) Equals(other runner.Task) bool {
 }
 
 // This function uses a 256 bits hash to minimize the risk of collisions between foreach children.
+// If this is ever a performance bottleneck, it should still be totally safe to switch the 64bits hash.
 func computeHash(s string) string {
 	hasher := sha256.New()
 	hasher.Write([]byte(s))
