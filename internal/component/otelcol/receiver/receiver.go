@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"sync"
 
 	"github.com/grafana/alloy/internal/build"
 	"github.com/grafana/alloy/internal/component"
@@ -67,6 +68,10 @@ type Receiver struct {
 	debugDataPublisher    livedebugging.DebugDataPublisher
 
 	args Arguments
+
+	// The mutex is needed because the live debugging service can trigger an update
+	// concurrently to add/remove the live debugging consumer.
+	updateMut sync.Mutex
 }
 
 var (
@@ -124,7 +129,15 @@ func (r *Receiver) Run(ctx context.Context) error {
 // configuration for OpenTelemetry Collector receiver configuration and manage
 // the underlying OpenTelemetry Collector receiver.
 func (r *Receiver) Update(args component.Arguments) error {
+	r.updateMut.Lock()
 	r.args = args.(Arguments)
+	r.updateMut.Unlock()
+	return r.update()
+}
+
+func (r *Receiver) update() error {
+	r.updateMut.Lock()
+	defer r.updateMut.Unlock()
 
 	host := scheduler.NewHost(
 		r.opts.Logger,
@@ -223,6 +236,8 @@ func (r *Receiver) Update(args component.Arguments) error {
 		}
 	}
 
+	r.liveDebuggingConsumer.SetTargetConsumers(next.Metrics, next.Logs, next.Traces)
+
 	// Schedule the components to run once our component is running.
 	r.sched.Schedule(r.ctx, func() {}, host, components...)
 	return nil
@@ -234,5 +249,5 @@ func (r *Receiver) CurrentHealth() component.Health {
 }
 
 func (p *Receiver) LiveDebugging(_ int) {
-	p.Update(p.args)
+	p.update()
 }

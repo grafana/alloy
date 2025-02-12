@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"sync"
 
 	"github.com/prometheus/client_golang/prometheus"
 	otelcomponent "go.opentelemetry.io/collector/component"
@@ -69,6 +70,8 @@ type Processor struct {
 	debugDataPublisher    livedebugging.DebugDataPublisher
 
 	args Arguments
+
+	updateMut sync.Mutex
 }
 
 var (
@@ -92,7 +95,7 @@ func New(opts component.Options, f otelprocessor.Factory, args Arguments) (*Proc
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	consumer := lazyconsumer.NewPaused(ctx)
+	consumer := lazyconsumer.NewPaused(ctx, opts.ID)
 
 	// Create a lazy collector where metrics from the upstream component will be
 	// forwarded.
@@ -136,6 +139,8 @@ func (p *Processor) Run(ctx context.Context) error {
 // configuration for OpenTelemetry Collector processor configuration and manage
 // the underlying OpenTelemetry Collector processor.
 func (p *Processor) Update(args component.Arguments) error {
+	p.updateMut.Lock()
+	defer p.updateMut.Unlock()
 	p.args = args.(Arguments)
 
 	host := scheduler.NewHost(
@@ -227,6 +232,8 @@ func (p *Processor) Update(args component.Arguments) error {
 			components = append(components, logsProcessor)
 		}
 	}
+
+	p.liveDebuggingConsumer.SetTargetConsumers(next.Metrics, next.Logs, next.Traces)
 
 	updateConsumersFunc := func() {
 		p.consumer.SetConsumers(tracesProcessor, metricsProcessor, logsProcessor)

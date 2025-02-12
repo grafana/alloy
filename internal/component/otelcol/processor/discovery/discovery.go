@@ -4,6 +4,7 @@ package discovery
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component"
@@ -85,6 +86,8 @@ type Component struct {
 
 	opts component.Options
 	args Arguments
+
+	updateMut sync.Mutex
 }
 
 var (
@@ -137,7 +140,7 @@ func New(o component.Options, c Arguments) (*Component, error) {
 	// Export the consumer.
 	// This will remain the same throughout the component's lifetime,
 	// so we do this during component construction.
-	export := lazyconsumer.New(context.Background())
+	export := lazyconsumer.New(context.Background(), o.ID)
 	export.SetConsumers(res.consumer, nil, nil)
 	o.OnStateChange(otelcol.ConsumerExports{Input: export})
 
@@ -154,6 +157,8 @@ func (c *Component) Run(ctx context.Context) error {
 
 // Update implements Component.
 func (c *Component) Update(newConfig component.Arguments) error {
+	c.updateMut.Lock()
+	defer c.updateMut.Unlock()
 	c.args = newConfig.(Arguments)
 
 	hostLabels := make(map[string]discovery.Target)

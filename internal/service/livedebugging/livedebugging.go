@@ -9,28 +9,33 @@ import (
 )
 
 type ComponentID string
+type ModuleID string
 type CallbackID string
 
 // CallbackManager is used to manage live debugging callbacks.
 type CallbackManager interface {
 	// AddCallback sets a callback for a given componentID.
 	// The callback is used to send debugging data to live debugging consumers.
-	AddCallback(callbackID CallbackID, componentID ComponentID, callback func(string)) error
+	AddCallback(callbackID CallbackID, componentID ComponentID, callback func(*Data)) error
 	// DeleteCallback deletes a callback for a given componentID.
 	DeleteCallback(callbackID CallbackID, componentID ComponentID)
+	// AddCallbackMulti sets a callback to all components.
+	// The callbacks are used to send debugging data to live debugging consumers.
+	AddCallbackMulti(callbackID CallbackID, moduleID ModuleID, callback func(*Data)) error
+	// DeleteCallbackMulti deletes callbacks for all components.
+	DeleteCallbackMulti(callbackID CallbackID, moduleID ModuleID)
 }
 
 // DebugDataPublisher is used by components to push information to live debugging consumers.
 type DebugDataPublisher interface {
-	// Publish sends debugging data for a given componentID.
-	Publish(componentID ComponentID, data string)
+	// Publish sends debugging data for a given componentID if a least one consumer is listening for debugging data for the given componentID.
+	PublishIfActive(data *Data)
 	// IsActive returns true when at least one consumer is listening for debugging data for the given componentID.
 	IsActive(componentID ComponentID) bool
 }
-
 type liveDebugging struct {
 	loadMut   sync.RWMutex
-	callbacks map[ComponentID]map[CallbackID]func(string)
+	callbacks map[ComponentID]map[CallbackID]func(*Data)
 	host      service.Host
 	enabled   bool
 }
@@ -41,17 +46,24 @@ var _ DebugDataPublisher = &liveDebugging{}
 // NewLiveDebugging creates a new instance of liveDebugging.
 func NewLiveDebugging() *liveDebugging {
 	return &liveDebugging{
-		callbacks: make(map[ComponentID]map[CallbackID]func(string)),
+		callbacks: make(map[ComponentID]map[CallbackID]func(*Data)),
 	}
 }
 
-func (s *liveDebugging) Publish(componentID ComponentID, data string) {
+func (s *liveDebugging) PublishIfActive(data *Data) {
 	s.loadMut.RLock()
 	defer s.loadMut.RUnlock()
-	if s.enabled {
-		for _, callback := range s.callbacks[componentID] {
-			callback(data)
-		}
+
+	if !s.enabled {
+		return
+	}
+
+	if callbacks, exist := s.callbacks[data.ComponentID]; !exist || len(callbacks) == 0 {
+		return
+	}
+
+	for _, callback := range s.callbacks[data.ComponentID] {
+		callback(data)
 	}
 }
 
@@ -62,12 +74,27 @@ func (s *liveDebugging) IsActive(componentID ComponentID) bool {
 	return exist && len(callbacks) > 0
 }
 
-func (s *liveDebugging) AddCallback(callbackID CallbackID, componentID ComponentID, callback func(string)) error {
+func (s *liveDebugging) AddCallback(callbackID CallbackID, componentID ComponentID, callback func(*Data)) error {
+	// Split in two functions because this one needs write lock while notifyComponent needs read lock only.
+	// Using write lock on notifyComponent is not possible because the notified component might call IsActive or
+	// PublishIfActive which would create a deadlock.
 	err := s.addCallback(callbackID, componentID, callback)
 	if err != nil {
 		return err
 	}
 	s.notifyComponent(componentID)
+	return nil
+}
+
+func (s *liveDebugging) AddCallbackMulti(callbackID CallbackID, moduleID ModuleID, callback func(*Data)) error {
+	// Split in two functions because this one needs write lock while notifyComponents needs read lock only.
+	// Using write lock on notifyComponents is not possible because notified components might call IsActive or
+	// PublishIfActive which would create a deadlock.
+	err := s.addCallbackMulti(callbackID, moduleID, callback)
+	if err != nil {
+		return err
+	}
+	s.notifyComponents(moduleID)
 	return nil
 }
 
@@ -78,7 +105,21 @@ func (s *liveDebugging) DeleteCallback(callbackID CallbackID, componentID Compon
 	delete(s.callbacks[componentID], callbackID)
 }
 
-func (s *liveDebugging) addCallback(callbackID CallbackID, componentID ComponentID, callback func(string)) error {
+func (s *liveDebugging) DeleteCallbackMulti(callbackID CallbackID, moduleID ModuleID) {
+	defer s.notifyComponents(moduleID)
+	s.loadMut.Lock()
+	defer s.loadMut.Unlock()
+	// ignore errors on delete
+	components, _ := s.host.ListComponents(string(moduleID), component.InfoOptions{})
+	for _, cp := range components {
+		delete(s.callbacks[ComponentID(cp.ID.String())], callbackID)
+	}
+	// The s.callbacks[componentID] is not deleted. This is a very small memory leak which could only become significant if a user
+	// has a lot of components and reload the config with always different component labels while having the graph open.
+	// If this ever become a realistic scenario we should cleanup the map here.
+}
+
+func (s *liveDebugging) addCallback(callbackID CallbackID, componentID ComponentID, callback func(*Data)) error {
 	s.loadMut.Lock()
 	defer s.loadMut.Unlock()
 
@@ -100,9 +141,40 @@ func (s *liveDebugging) addCallback(callbackID CallbackID, componentID Component
 	}
 
 	if _, ok := s.callbacks[componentID]; !ok {
-		s.callbacks[componentID] = make(map[CallbackID]func(string))
+		s.callbacks[componentID] = make(map[CallbackID]func(*Data))
 	}
+
 	s.callbacks[componentID][callbackID] = callback
+	return nil
+}
+
+func (s *liveDebugging) addCallbackMulti(callbackID CallbackID, moduleID ModuleID, callback func(*Data)) error {
+	s.loadMut.Lock()
+	defer s.loadMut.Unlock()
+
+	if !s.enabled {
+		return fmt.Errorf("the live debugging service is disabled. Check the documentation to find out how to enable it")
+	}
+
+	if s.host == nil {
+		return fmt.Errorf("the live debugging service is not ready yet")
+	}
+
+	components, err := s.host.ListComponents(string(moduleID), component.InfoOptions{GetHealth: true})
+	if err != nil {
+		return err
+	}
+
+	for _, cp := range components {
+		if _, ok := cp.Component.(component.LiveDebugging); !ok {
+			continue // Ignore components that don't support live debugging
+		}
+
+		if _, ok := s.callbacks[ComponentID(cp.ID.String())]; !ok {
+			s.callbacks[ComponentID(cp.ID.String())] = make(map[CallbackID]func(*Data))
+		}
+		s.callbacks[ComponentID(cp.ID.String())][callbackID] = callback
+	}
 	return nil
 }
 
@@ -117,6 +189,22 @@ func (s *liveDebugging) notifyComponent(componentID ComponentID) {
 	if component, ok := info.Component.(component.LiveDebugging); ok {
 		// notify the component of the change
 		component.LiveDebugging(len(s.callbacks[componentID]))
+	}
+}
+
+func (s *liveDebugging) notifyComponents(moduleID ModuleID) {
+	s.loadMut.RLock()
+	defer s.loadMut.RUnlock()
+
+	components, err := s.host.ListComponents(string(moduleID), component.InfoOptions{})
+	if err != nil {
+		return
+	}
+	for _, cp := range components {
+		if c, ok := cp.Component.(component.LiveDebugging); ok {
+			// notify the component of the change
+			c.LiveDebugging(len(s.callbacks[ComponentID(cp.ID.String())]))
+		}
 	}
 }
 

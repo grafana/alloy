@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"sync"
 
 	"github.com/prometheus/client_golang/prometheus"
 	otelcomponent "go.opentelemetry.io/collector/component"
@@ -83,6 +84,8 @@ type Connector struct {
 	debugDataPublisher    livedebugging.DebugDataPublisher
 
 	args Arguments
+
+	updateMut sync.Mutex
 }
 
 var (
@@ -105,7 +108,7 @@ func New(opts component.Options, f otelconnector.Factory, args Arguments) (*Conn
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	consumer := lazyconsumer.NewPaused(ctx)
+	consumer := lazyconsumer.NewPaused(ctx, opts.ID)
 
 	// Create a lazy collector where metrics from the upstream component will be
 	// forwarded.
@@ -148,6 +151,8 @@ func (p *Connector) Run(ctx context.Context) error {
 // configuration for OpenTelemetry Collector connector configuration and manage
 // the underlying OpenTelemetry Collector connector.
 func (p *Connector) Update(args component.Arguments) error {
+	p.updateMut.Lock()
+	defer p.updateMut.Unlock()
 	p.args = args.(Arguments)
 
 	host := scheduler.NewHost(
@@ -225,6 +230,8 @@ func (p *Connector) Update(args component.Arguments) error {
 	default:
 		return errors.New("unsupported connector type")
 	}
+
+	p.liveDebuggingConsumer.SetTargetConsumers(next.Metrics, next.Logs, next.Traces)
 
 	updateConsumersFunc := func() {
 		p.consumer.SetConsumers(tracesConnector, metricsConnector, logsConnector)
