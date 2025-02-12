@@ -216,7 +216,7 @@ prometheus.operator.scrapeconfigs "scrapeconfigs" {
 }
 ```
 
-This example will limit discovered scrapeconfigs to ones with the label `team=ops` in a specific namespace: `my-app`.
+This example limits the discovered `scrapeconfigs` to ones with the label `team=ops` in a specific namespace: `my-app`.
 
 ```alloy
 prometheus.operator.scrapeconfigs "scrapeconfigs" {
