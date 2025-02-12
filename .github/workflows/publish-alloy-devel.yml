@@ -87,12 +87,13 @@ jobs:
           chown -R $(id -u):$(id -g) $PWD
 
     - name: Log in to Google Artifact Registry
-      uses: grafana/shared-workflows/actions/login-to-gar@main
+      uses: grafana/shared-workflows/actions/login-to-gar@login-to-gar-v0.1.1
+      id: login-to-gar
       with:
         registry: "us-docker.pkg.dev"
         environment: "prod"
 
-    - name: Update to latest image
+    - name: Create .image-tag
       run: |
         echo "$(bash ./tools/image-tag-docker)" > .tag-only
         echo "grafana/alloy-dev:$(bash ./tools/image-tag-docker)" > .image-tag
