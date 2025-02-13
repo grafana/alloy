@@ -10,11 +10,15 @@ services:
     ports:
       - "3000:3000"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/healthz"]
+      test: [ "CMD", "curl", "-f", "http://localhost:3000/healthz" ]
       interval: 1s
       start_interval: 0s
       timeout: 10s
       retries: 5
+    env_file:
+      # Use this optional env file to add any secrets required by data sources you can add to config/grafana/datasources
+      - path: ~/.grafana_dev_datasources
+        required: false
 
   install-dashboard-dependencies:
     build: images/jb
