@@ -2,10 +2,10 @@ otelcol.receiver.filelog "default" {
 	include            = ["/var/log/*.log"]
 	exclude            = ["/var/log/excluded.log"]
 	exclude_older_than = "24h0m0s"
-	ordering_criteria  {
-		regex   = "^(?P<timestamp>\\d{8})_(?P<severity>\\d+)_"
-		top_n   = 12
-		group_by = "severity"
+
+	ordering_criteria {
+		regex = "^(?P<timestamp>\\d{8})_(?P<severity>\\d+)_"
+		top_n = 12
 
 		sort_by {
 			sort_type = "timestamp"
@@ -14,10 +14,13 @@ otelcol.receiver.filelog "default" {
 			layout    = "%Y%m%d"
 			location  = "UTC"
 		}
+
 		sort_by {
-			sort_type = "severity"
-			regex_key = "numeric"
+			sort_type = "numeric"
+			regex_key = "severity"
+			ascending = true
 		}
+		group_by = "severity"
 	}
 	poll_interval              = "10s"
 	max_concurrent_files       = 10
@@ -32,26 +35,22 @@ otelcol.receiver.filelog "default" {
 	compression                = "gzip"
 	acquire_fs_lock            = true
 
-	header {
-		pattern = "^HEADER .*$"
-		metadata_operators = []
-	}
-
 	multiline {
 		line_start_pattern = "\\d{4}-\\d{2}-\\d{2}"
 		omit_pattern       = true
 	}
 	preserve_leading_whitespaces  = true
 	preserve_trailing_whitespaces = true
-	include_file_name             = true
+
+	header {
+		pattern            = "^HEADER .*$"
+		metadata_operators = []
+	}
 	include_file_path             = true
 	include_file_name_resolved    = true
 	include_file_path_resolved    = true
 	include_file_owner_name       = true
 	include_file_owner_group_name = true
-	attributes                    = {}
-	resource                      = {}
-	operators                     = []
 }
 
 otelcol.exporter.otlp "default" {
