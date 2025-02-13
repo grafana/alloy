@@ -87,7 +87,7 @@ jobs:
           chown -R $(id -u):$(id -g) $PWD
 
     - name: Log in to Google Artifact Registry
-      uses: grafana/shared-workflows/actions/login-to-gar@login-to-gar-v0.1.1
+      uses: grafana/shared-workflows/actions/login-to-gar@login-to-gar-v0.2.0
       id: login-to-gar
       with:
         registry: "us-docker.pkg.dev"
