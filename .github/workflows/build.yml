@@ -14,30 +14,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test_ver:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Update to latest image
-        run: |
-          IMG_TAG_INT=$(echo "grafana/alloy-dev:$(bash ./tools/image-tag-docker)")
-          echo "IMG_TAG=$IMG_TAG_INT" >> $GITHUB_ENV
-      - name: create file image tag
-        run: |
-          cat << EOF > config.json
-          {
-          "update_jsonnet_attribute_configs": [
-            {
-              "file_path": "ksonnet/lib/alloy/waves/alloy.libsonnet",
-              "jsonnet_key": "dev_canary",
-              "jsonnet_value": "$IMG_TAG"
-            }
-            ]
-          }
-          EOF
-      - name: print image file
-        run: |
-          cat config.json
-
 
   setup-environment:
     runs-on: ubuntu-latest
@@ -49,13 +25,17 @@ jobs:
         with:
           go-version-file: go.mod
           cache: false
+      - id: go-cache-paths
+        run: |
+          echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
+          echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
       - name: Cache Go
         id: go-cache
         uses: actions/cache@v4.2.0
         with:
           path: |
-            ~/go/bin
-            ~/go/pkg/mod
+            ${{ steps.go-cache-paths.outputs.go-mod }}
+            ${{ steps.go-cache-paths.outputs.go-build }}
           key: go-cache-${{ hashFiles('**/go.sum') }}
           enableCrossOsArchive: true
       - name: Download dependencies
@@ -74,13 +54,17 @@ jobs:
       with:
         go-version-file: go.mod
         cache: false
+    - id: go-cache-paths
+      run: |
+        echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
+        echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
     - name: Cache Go
       id: go-cache
       uses: actions/cache@v4.2.0
       with:
         path: |
-          ~/go/bin
-          ~/go/pkg/mod
+          ${{ steps.go-cache-paths.outputs.go-mod }}
+          ${{ steps.go-cache-paths.outputs.go-build }}
         key: go-cache-${{ hashFiles('**/go.sum') }}
         enableCrossOsArchive: true
     - run: sudo apt-get update -y && sudo apt-get install -y libsystemd-dev
@@ -98,13 +82,17 @@ jobs:
       with:
         go-version-file: go.mod
         cache: false
+    - id: go-cache-paths
+      run: |
+        echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
+        echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
     - name: Cache Go
       id: go-cache
       uses: actions/cache@v4.2.0
       with:
         path: |
-          ~/go/bin
-          ~/go/pkg/mod
+          ${{ steps.go-cache-paths.outputs.go-mod }}
+          ${{ steps.go-cache-paths.outputs.go-build }}
         key: go-cache-${{ hashFiles('**/go.sum') }}
         enableCrossOsArchive: true
     - run: make GO_TAGS="nodocker" test
@@ -123,13 +111,17 @@ jobs:
       with:
         go-version: "1.23"
         cache: false
+    - id: go-cache-paths
+      run: |
+        echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
+        echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
     - name: Cache Go
       id: go-cache
       uses: actions/cache@v4.2.0
       with:
         path: |
-          ~/go/bin
-          ~/go/pkg/mod
+          ${{ steps.go-cache-paths.outputs.go-mod }}
+          ${{ steps.go-cache-paths.outputs.go-build }}
         key: go-cache-${{ hashFiles('**/go.sum') }}
         enableCrossOsArchive: true
     - name: Test
@@ -162,13 +154,17 @@ jobs:
       with:
         go-version-file: go.mod
         cache: false
+    - id: go-cache-paths
+      run: |
+        echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
+        echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
     - name: Cache Go
       id: go-cache
       uses: actions/cache@v4.2.0
       with:
         path: |
-          ~/go/bin
-          ~/go/pkg/mod
+          ${{ steps.go-cache-paths.outputs.go-mod }}
+          ${{ steps.go-cache-paths.outputs.go-build }}
         key: go-cache-${{ hashFiles('**/go.sum') }}
         enableCrossOsArchive: true
     - run: make generate-ui
@@ -201,13 +197,17 @@ jobs:
       with:
         go-version-file: go.mod
         cache: false
+    - id: go-cache-paths
+      run: |
+        echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
+        echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
     - name: Cache Go
       id: go-cache
       uses: actions/cache@v4.2.0
       with:
         path: |
-          ~/go/bin
-          ~/go/pkg/mod
+          ${{ steps.go-cache-paths.outputs.go-mod }}
+          ${{ steps.go-cache-paths.outputs.go-build }}
         key: go-cache-${{ hashFiles('**/go.sum') }}
         enableCrossOsArchive: true
     - run: make generate-ui
@@ -225,13 +225,17 @@ jobs:
       with:
         go-version-file: go.mod
         cache: false
+    - id: go-cache-paths
+      run: |
+        echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
+        echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
     - name: Cache Go
       id: go-cache
       uses: actions/cache@v4.2.0
       with:
         path: |
-          ~/go/bin
-          ~/go/pkg/mod
+          ${{ steps.go-cache-paths.outputs.go-mod }}
+          ${{ steps.go-cache-paths.outputs.go-build }}
         key: go-cache-${{ hashFiles('**/go.sum') }}
         enableCrossOsArchive: true
     - run: make generate-ui
@@ -249,13 +253,17 @@ jobs:
       with:
         go-version-file: go.mod
         cache: false
+    - id: go-cache-paths
+      run: |
+        echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
+        echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
     - name: Cache Go
       id: go-cache
       uses: actions/cache@v4.2.0
       with:
         path: |
-          ~/go/bin
-          ~/go/pkg/mod
+          ${{ steps.go-cache-paths.outputs.go-mod }}
+          ${{ steps.go-cache-paths.outputs.go-build }}
         key: go-cache-${{ hashFiles('**/go.sum') }}
         enableCrossOsArchive: true
     - run: make generate-ui
@@ -273,6 +281,10 @@ jobs:
       with:
         go-version-file: go.mod
         cache: false
+    - id: go-cache-paths
+      run: |
+        echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
+        echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
     - name: Cache Go
       # Windows won't restore the Linux cache because 
       # Linux uses different line breaks and the hashes don't match.
@@ -281,8 +293,8 @@ jobs:
       uses: actions/cache@v4.2.0
       with:
         path: |
-          ~/go/bin
-          ~/go/pkg/mod
+          ${{ steps.go-cache-paths.outputs.go-mod }}
+          ${{ steps.go-cache-paths.outputs.go-build }}
         key: go-cache-${{ hashFiles('**/go.sum') }}
         enableCrossOsArchive: true
     - run: make generate-ui
@@ -314,13 +326,17 @@ jobs:
       with:
         go-version-file: go.mod
         cache: false
+    - id: go-cache-paths
+      run: |
+        echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
+        echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
     - name: Cache Go
       id: go-cache
       uses: actions/cache@v4.2.0
       with:
         path: |
-          ~/go/bin
-          ~/go/pkg/mod
+          ${{ steps.go-cache-paths.outputs.go-mod }}
+          ${{ steps.go-cache-paths.outputs.go-build }}
         key: go-cache-${{ hashFiles('**/go.sum') }}
         enableCrossOsArchive: true
     - run: make generate-ui
