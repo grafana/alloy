@@ -126,7 +126,7 @@ func TestController_LoadSource_WithModulePathWithoutFileExtension_Evaluation(t *
 	require.Equal(t, filepath.Join("tmp_modulePath_test", "test"), out.(testcomponents.PassthroughExports).Output)
 }
 
-// This test reload the config a few times and checks that Alloy does not log errors.
+// This test reloads the config a few times and checks that Alloy does not log errors.
 // The ticker has a very small frequency to put pressure on the concurrent evaluations happening
 // in the runtime while the loader is concurrently reloading the config.
 func TestController_ReloadLoaderNoErrorLog(t *testing.T) {
