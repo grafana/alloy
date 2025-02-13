@@ -48,7 +48,7 @@ const (
 		TABLE_SCHEMA = ?`
 
 	// Note that the fully qualified table name is appendend to the query,
-	// for some reason it doesn't work with placeholders.
+	// we can't use placeholders with this statement.
 	showCreateTable = `SHOW CREATE TABLE`
 
 	selectColumnNames = `
@@ -275,7 +275,7 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 
 	// TODO(cristian): consider moving this into the loop above
 	for _, table := range tables {
-		fullyQualifiedTable := fmt.Sprintf("%s.%s", table.schema, table.tableName)
+		fullyQualifiedTable := fmt.Sprintf("`%s`.`%s`", table.schema, table.tableName)
 		cacheKey := fmt.Sprintf("%s@%d", fullyQualifiedTable, table.updateTime.Unix())
 
 		cacheHit := false
