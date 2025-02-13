@@ -36,8 +36,9 @@ jobs:
           path: |
             ${{ steps.go-cache-paths.outputs.go-mod }}
             ${{ steps.go-cache-paths.outputs.go-build }}
-          key: go-cache-${{ hashFiles('**/go.sum') }}
-          enableCrossOsArchive: true
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
       - name: Download dependencies
         if: steps.go-cache.outputs.cache-hit != 'true'
         run: go mod download
@@ -65,8 +66,9 @@ jobs:
         path: |
           ${{ steps.go-cache-paths.outputs.go-mod }}
           ${{ steps.go-cache-paths.outputs.go-build }}
-        key: go-cache-${{ hashFiles('**/go.sum') }}
-        enableCrossOsArchive: true
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+         ${{ runner.os }}-go-
     - run: sudo apt-get update -y && sudo apt-get install -y libsystemd-dev
     - run: make lint
 
@@ -93,8 +95,9 @@ jobs:
         path: |
           ${{ steps.go-cache-paths.outputs.go-mod }}
           ${{ steps.go-cache-paths.outputs.go-build }}
-        key: go-cache-${{ hashFiles('**/go.sum') }}
-        enableCrossOsArchive: true
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
     - run: make GO_TAGS="nodocker" test
 
   test:
@@ -122,8 +125,9 @@ jobs:
         path: |
           ${{ steps.go-cache-paths.outputs.go-mod }}
           ${{ steps.go-cache-paths.outputs.go-build }}
-        key: go-cache-${{ hashFiles('**/go.sum') }}
-        enableCrossOsArchive: true
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
     - name: Test
       run: CGO_LDFLAGS="-ld_classic $CGO_LDFLAGS" make GO_TAGS="nodocker" test
 
@@ -165,8 +169,9 @@ jobs:
         path: |
           ${{ steps.go-cache-paths.outputs.go-mod }}
           ${{ steps.go-cache-paths.outputs.go-build }}
-        key: go-cache-${{ hashFiles('**/go.sum') }}
-        enableCrossOsArchive: true
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
     - run: make generate-ui
     - run: GO_TAGS="builtinassets promtail_journal_enabled" GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} GOARM= make alloy
 
@@ -208,8 +213,9 @@ jobs:
         path: |
           ${{ steps.go-cache-paths.outputs.go-mod }}
           ${{ steps.go-cache-paths.outputs.go-build }}
-        key: go-cache-${{ hashFiles('**/go.sum') }}
-        enableCrossOsArchive: true
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
     - run: make generate-ui
     - run: GO_TAGS="builtinassets promtail_journal_enabled" GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} GOARM= GOEXPERIMENT=boringcrypto make alloy
 
@@ -236,8 +242,9 @@ jobs:
         path: |
           ${{ steps.go-cache-paths.outputs.go-mod }}
           ${{ steps.go-cache-paths.outputs.go-build }}
-        key: go-cache-${{ hashFiles('**/go.sum') }}
-        enableCrossOsArchive: true
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
     - run: make generate-ui
     - run: GO_TAGS="builtinassets" GOOS=darwin GOARCH=amd64 GOARM= make alloy
 
@@ -264,8 +271,9 @@ jobs:
         path: |
           ${{ steps.go-cache-paths.outputs.go-mod }}
           ${{ steps.go-cache-paths.outputs.go-build }}
-        key: go-cache-${{ hashFiles('**/go.sum') }}
-        enableCrossOsArchive: true
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
     - run: make generate-ui
     - run: GO_TAGS="builtinassets" GOOS=darwin GOARCH=arm64 GOARM= make alloy
 
@@ -281,10 +289,11 @@ jobs:
       with:
         go-version-file: go.mod
         cache: false
-    - id: go-cache-paths
-      run: |
-        echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
-        echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
+    # TODO: Find a way to get the cached locations from Go.
+    # - id: go-cache-paths
+    #   run: |
+    #     echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
+    #     echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
     - name: Cache Go
       # Windows won't restore the Linux cache because 
       # Linux uses different line breaks and the hashes don't match.
@@ -293,10 +302,11 @@ jobs:
       uses: actions/cache@v4.2.0
       with:
         path: |
-          ${{ steps.go-cache-paths.outputs.go-mod }}
-          ${{ steps.go-cache-paths.outputs.go-build }}
-        key: go-cache-${{ hashFiles('**/go.sum') }}
-        enableCrossOsArchive: true
+          ~\AppData\Local\go-build
+          ~\go\pkg\mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
     - run: make generate-ui
     - run: echo "GO_TAGS=builtinassets" | Out-File -FilePath $env:GITHUB_ENV -Append
     - run: echo "GOOS=windows" | Out-File -FilePath $env:GITHUB_ENV -Append
@@ -337,7 +347,8 @@ jobs:
         path: |
           ${{ steps.go-cache-paths.outputs.go-mod }}
           ${{ steps.go-cache-paths.outputs.go-build }}
-        key: go-cache-${{ hashFiles('**/go.sum') }}
-        enableCrossOsArchive: true
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
     - run: make generate-ui
     - run: GO_TAGS="builtinassets" GOOS=freebsd GOARCH=amd64 GOARM= make alloy
