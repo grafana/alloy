@@ -9,7 +9,6 @@ import (
 type TargetBuilder interface {
 	relabel.LabelBuilder
 	Target() Target
-	SetKV(kv ...string) TargetBuilder
 	MergeWith(Target) TargetBuilder
 }
 
@@ -120,13 +119,6 @@ func (t targetBuilder) Del(labels ...string) {
 			delete(t.toAdd, label)
 		}
 	}
-}
-
-func (t targetBuilder) SetKV(kv ...string) TargetBuilder {
-	for i := 0; i < len(kv); i += 2 {
-		t.Set(kv[i], kv[i+1])
-	}
-	return t
 }
 
 func (t targetBuilder) MergeWith(target Target) TargetBuilder {

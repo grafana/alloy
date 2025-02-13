@@ -24,6 +24,9 @@ type Target struct {
 
 var (
 	seps = []byte{'\xff'}
+	// used in tests to simulate hash conflicts
+	labelSetEqualsFn = func(l1, l2 commonlabels.LabelSet) bool { return &l1 == &l2 || l1.Equal(l2) }
+	stringSlicesPool = sync.Pool{New: func() interface{} { return make([]string, 0, 20) }}
 
 	_ syntax.Capsule                = Target{}
 	_ syntax.ConvertibleIntoCapsule = Target{}
@@ -287,10 +290,9 @@ func (t Target) hashLabelsInOrder(order []string) uint64 {
 	// Use xxhash.Sum64(b) for fast path as it's faster.
 	b := make([]byte, 0, 1024)
 	mustGet := func(label string) string {
-		val, ok := t.Get(label)
-		if !ok { // should never happen as Target is immutable
-			panic("label concurrently modified - this is a bug - please report an issue")
-		}
+		val, _ := t.Get(label)
+		// if val is not found it would mean there is a bug and Target is no longer immutable. But we can still provide
+		// a consistent hashing behaviour by returning empty string we got from Get.
 		return val
 	}
 
@@ -317,12 +319,6 @@ func (t Target) hashLabelsInOrder(order []string) uint64 {
 	return xxhash.Sum64(b)
 }
 
-var (
-	// used in tests to simulate hash conflicts
-	labelSetEqualsFn = func(l1, l2 commonlabels.LabelSet) bool { return &l1 == &l2 || l1.Equal(l2) }
-	stringSlicesPool = sync.Pool{New: func() interface{} { return make([]string, 0, 20) }}
-)
-
 func ComponentTargetsToPromTargetGroups(jobName string, tgs []Target) map[string][]*targetgroup.Group {
 	targetIndWithCommonGroupLabels := map[uint64][]int{} // target group hash --> index of target in tgs array
 	for ind, t := range tgs {
@@ -337,12 +333,14 @@ func ComponentTargetsToPromTargetGroups(jobName string, tgs []Target) map[string
 	allGroups := make([]*targetgroup.Group, 0, len(targetIndWithCommonGroupLabels))
 	var hashConflicts []commonlabels.LabelSet
 	for _, hash := range sortedKeys {
+		// targetIndices = indices of all the targets that have the same group labels hash
 		targetIndices := targetIndWithCommonGroupLabels[hash]
-		sharedLabels := tgs[targetIndices[0]].group // all should have the same group labels, so grab first one
+		// since we grouped them by their group labels hash, their group labels should all be the same (except for hash collision handled below)
+		sharedLabels := tgs[targetIndices[0]].group
 		individualLabels := make([]commonlabels.LabelSet, 0, len(targetIndices))
 		for _, ind := range targetIndices {
 			target := tgs[ind]
-			// detect hash conflicts - we'll append them separately
+			// detect hash collisions - we'll append them separately - it's still correct, just may be less efficient
 			if !labelSetEqualsFn(sharedLabels, target.group) {
 				hashConflicts = append(hashConflicts, target.LabelSet())
 				continue

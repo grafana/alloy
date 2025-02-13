@@ -482,7 +482,6 @@ func (c *Component) DebugInfo() interface{} {
 func (c *Component) populatePromLabels(targets []discovery.Target, jobName string, args Arguments) []*scrape.Target {
 	// We need to call scrape.TargetsFromGroup to reuse the rather complex logic of populating labels on targets.
 	allTargets := make([]*scrape.Target, 0, len(targets))
-	lb := labels.NewBuilder(labels.EmptyLabels())
 	groups := discovery.ComponentTargetsToPromTargetGroups(jobName, targets)
 	for _, tgs := range groups {
 		for _, tg := range tgs {
@@ -491,9 +490,8 @@ func (c *Component) populatePromLabels(targets []discovery.Target, jobName strin
 				getPromScrapeConfigs(jobName, args),
 				false,                                /* noDefaultScrapePort - always false in this component */
 				make([]*scrape.Target, len(targets)), /* targets slice to reuse */
-				lb,
+				labels.NewBuilder(labels.EmptyLabels()),
 			)
-			lb.Reset(labels.EmptyLabels())
 			for _, err := range errs {
 				level.Warn(c.opts.Logger).Log("msg", "error while populating labels of targets using prom config", "err", err)
 			}

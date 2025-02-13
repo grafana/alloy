@@ -210,8 +210,8 @@ func (rc *Config) Validate() error {
 	return nil
 }
 
-// ProcessBuilder is like Process, but the caller passes a labels.Builder
-// containing the initial set of labels, which is mutated by the rules.
+// ProcessBuilder should be called with lb LabelBuilder containing the initial set of labels,
+// which are then modified following the configured rules using builder's methods such as Set and Del.
 func ProcessBuilder(lb LabelBuilder, cfgs ...*Config) (keep bool) {
 	for _, cfg := range cfgs {
 		keep = doRelabel(cfg, lb)

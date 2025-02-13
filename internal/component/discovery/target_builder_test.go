@@ -83,12 +83,6 @@ func TestTargetBuilder(t *testing.T) {
 			expected: map[string]string{"hip": "hop", "boom": "bap", "tiki": "tiki"},
 		},
 		{
-			name:     "set kv",
-			init:     map[string]string{"hip": "hop", "boom": "bap", "tiki": "ta"},
-			op:       func(tb TargetBuilder) { tb.SetKV("ka", "boom", "tiki", "tiki", "kung", "fu") },
-			expected: map[string]string{"hip": "hop", "boom": "bap", "tiki": "tiki", "ka": "boom", "kung": "fu"},
-		},
-		{
 			name: "merge with target",
 			init: map[string]string{"hip": "hop", "boom": "bap", "tiki": "ta"},
 			op: func(tb TargetBuilder) {
