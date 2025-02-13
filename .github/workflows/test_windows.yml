@@ -7,8 +7,6 @@ on:
     # For example, the Windows Exporter for Prometheus and Event Log tailers.
     branches:
       - main
-  pull_request:
-
 jobs:
   test_windows:
     name: Test (Windows)
