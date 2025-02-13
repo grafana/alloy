@@ -93,10 +93,10 @@ jobs:
         registry: "us-docker.pkg.dev"
         environment: "prod"
 
-    - name: Create .image-tag
+    - name: Create an IMG_TAG env var
       run: |
-        echo "$(bash ./tools/image-tag-docker)" > .tag-only
-        echo "grafana/alloy-dev:$(bash ./tools/image-tag-docker)" > .image-tag
+        IMG_TAG_INT=$(echo "grafana/alloy-dev:$(bash ./tools/image-tag-docker)")
+        echo "IMG_TAG=$IMG_TAG_INT" >> $GITHUB_ENV
 
     - name: Update to latest image
       env:
@@ -116,7 +116,7 @@ jobs:
             {
               "file_path": "ksonnet/lib/alloy/waves/alloy.libsonnet",
               "jsonnet_key": "dev_canary",
-              "jsonnet_value_file": ".image-tag"
+              "jsonnet_value": "$IMG_TAG"
             }
           ]
         }
