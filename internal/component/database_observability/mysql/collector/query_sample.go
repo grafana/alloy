@@ -62,7 +62,7 @@ func NewQuerySample(args QuerySampleArguments) (*QuerySample, error) {
 		instanceKey:     args.InstanceKey,
 		collectInterval: args.CollectInterval,
 		entryHandler:    args.EntryHandler,
-		logger:          log.With(args.Logger, "collector", "QuerySample"),
+		logger:          log.With(args.Logger, "collector", QuerySampleName),
 		running:         &atomic.Bool{},
 	}, nil
 }
@@ -72,7 +72,7 @@ func (c *QuerySample) Name() string {
 }
 
 func (c *QuerySample) Start(ctx context.Context) error {
-	level.Debug(c.logger).Log("msg", "QuerySample collector started")
+	level.Debug(c.logger).Log("msg", QuerySampleName+" collector started")
 
 	c.running.Store(true)
 	ctx, cancel := context.WithCancel(ctx)

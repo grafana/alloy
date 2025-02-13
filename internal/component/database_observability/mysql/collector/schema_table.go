@@ -64,6 +64,20 @@ const (
 	WHERE
 		TABLE_SCHEMA = ? AND TABLE_NAME = ?
 	ORDER BY ORDINAL_POSITION ASC`
+
+	selectIndexNames = `
+		SELECT
+			index_name,
+			seq_in_index,
+			column_name,
+			nullable,
+			non_unique,
+			index_type
+		FROM
+			information_schema.statistics
+		WHERE
+			table_schema = ? and table_name = ?
+		ORDER BY table_name, index_name, seq_in_index`
 )
 
 type SchemaTableArguments struct {
@@ -109,6 +123,7 @@ type tableInfo struct {
 
 type tableSpec struct {
 	Columns []columnSpec `json:"columns"`
+	Indexes []indexSpec  `json:"indexes,omitempty"`
 }
 type columnSpec struct {
 	Name          string `json:"name"`
@@ -119,13 +134,21 @@ type columnSpec struct {
 	DefaultValue  string `json:"default_value,omitempty"`
 }
 
+type indexSpec struct {
+	Name     string   `json:"name"`
+	Type     string   `json:"type"`
+	Columns  []string `json:"columns"`
+	Unique   bool     `json:"unique"`
+	Nullable bool     `json:"nullable"`
+}
+
 func NewSchemaTable(args SchemaTableArguments) (*SchemaTable, error) {
 	c := &SchemaTable{
 		dbConnection:    args.DB,
 		instanceKey:     args.InstanceKey,
 		collectInterval: args.CollectInterval,
 		entryHandler:    args.EntryHandler,
-		logger:          log.With(args.Logger, "collector", "SchemaTable"),
+		logger:          log.With(args.Logger, "collector", SchemaTableName),
 		running:         &atomic.Bool{},
 	}
 
@@ -141,7 +164,7 @@ func (c *SchemaTable) Name() string {
 }
 
 func (c *SchemaTable) Start(ctx context.Context) error {
-	level.Debug(c.logger).Log("msg", "SchemaTable collector started")
+	level.Debug(c.logger).Log("msg", SchemaTableName+" collector started")
 
 	c.running.Store(true)
 	ctx, cancel := context.WithCancel(ctx)
@@ -412,6 +435,44 @@ func (c *SchemaTable) fetchColumnsDefinitions(ctx context.Context, schemaName st
 
 	if err := rs.Err(); err != nil {
 		level.Error(c.logger).Log("msg", "error during iterating over table columns result set", "schema", schemaName, "table", tableName, "err", err)
+		return nil, err
+	}
+
+	rs, err = c.dbConnection.QueryContext(ctx, selectIndexNames, schemaName, tableName)
+	if err != nil {
+		level.Error(c.logger).Log("msg", "failed to query table indexes", "schema", schemaName, "table", tableName, "err", err)
+		return nil, err
+	}
+	defer rs.Close()
+
+	for rs.Next() {
+		var indexName, columnName, indexType string
+		var seqInIndex, nonUnique int
+		var nullable sql.NullString
+		if err := rs.Scan(&indexName, &seqInIndex, &columnName, &nullable, &nonUnique, &indexType); err != nil {
+			level.Error(c.logger).Log("msg", "failed to scan table indexes", "schema", schemaName, "table", tableName, "err", err)
+			return nil, err
+		}
+
+		if len(tblSpec.Indexes) > 0 && tblSpec.Indexes[len(tblSpec.Indexes)-1].Name == indexName {
+			lastIndex := &tblSpec.Indexes[len(tblSpec.Indexes)-1]
+			if len(lastIndex.Columns) != seqInIndex-1 {
+				panic(seqInIndex)
+			}
+			lastIndex.Columns = append(lastIndex.Columns, columnName)
+		} else {
+			tblSpec.Indexes = append(tblSpec.Indexes, indexSpec{
+				Name:     indexName,
+				Type:     indexType,
+				Columns:  []string{columnName},
+				Unique:   nonUnique == 0,
+				Nullable: nullable.Valid && nullable.String == "YES",
+			})
+		}
+	}
+
+	if err := rs.Err(); err != nil {
+		level.Error(c.logger).Log("msg", "error during iterating over table indexes result set", "schema", schemaName, "table", tableName, "err", err)
 		return nil, err
 	}
 
