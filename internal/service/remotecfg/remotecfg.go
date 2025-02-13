@@ -250,7 +250,7 @@ func (s *Service) Definition() service.Definition {
 		Name:       ServiceName,
 		ConfigType: Arguments{},
 		DependsOn:  nil, // remotecfg has no dependencies.
-		Stability:  featuregate.StabilityPublicPreview,
+		Stability:  featuregate.StabilityGenerallyAvailable,
 	}
 }
 

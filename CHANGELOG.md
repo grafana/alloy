@@ -82,6 +82,8 @@ Main (unreleased)
     In previous versions of Alloy, native histogram support has also been enabled by default
     as long as `scrape_protocols` starts with `PrometheusProto`.
 
+  - Change the stability of the `remotecfg` feature from "public preview" to "generally available". (@erikbaranowski)
+
 v1.6.1
 -----------------
 
