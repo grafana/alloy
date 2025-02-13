@@ -207,7 +207,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	cfg.InputConfig.Criteria.Include = args.MatchCriteria.Include
 	cfg.InputConfig.Criteria.Exclude = args.MatchCriteria.Exclude
 	cfg.InputConfig.Criteria.ExcludeOlderThan = args.MatchCriteria.ExcludeOlderThan
-	if args.MatchCriteria.OrderingCriteria == nil {
+	if args.MatchCriteria.OrderingCriteria != nil {
 		cfg.InputConfig.Criteria.OrderingCriteria.Regex = args.MatchCriteria.OrderingCriteria.Regex
 		cfg.InputConfig.Criteria.OrderingCriteria.TopN = args.MatchCriteria.OrderingCriteria.TopN
 		cfg.InputConfig.Criteria.OrderingCriteria.GroupBy = args.MatchCriteria.OrderingCriteria.GroupBy
