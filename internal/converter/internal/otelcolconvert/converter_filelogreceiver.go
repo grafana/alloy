@@ -119,7 +119,7 @@ func toOtelcolMatchCriteria(cfg matcher.Criteria) *filelog.MatchCriteria {
 		Include:          cfg.Include,
 		Exclude:          cfg.Exclude,
 		ExcludeOlderThan: cfg.ExcludeOlderThan,
-		OrderingCriteria: *toOtelcolOrderingCriteria(cfg.OrderingCriteria),
+		OrderingCriteria: toOtelcolOrderingCriteria(cfg.OrderingCriteria),
 	}
 }
 
