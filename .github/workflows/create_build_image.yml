@@ -12,7 +12,7 @@ jobs:
   linux_build_image:
     name: Create a Linux build image
     runs-on:
-      labels: github-hosted-ubuntu-x64-small
+      labels: github-hosted-ubuntu-x64-large
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -40,7 +40,7 @@ jobs:
   linux_build_image_boringcrypto:
     name: Create a Linux build image for boringcrypto
     runs-on:
-      labels: github-hosted-ubuntu-x64-small
+      labels: github-hosted-ubuntu-x64-large
     steps:
     - name: Checkout code
       uses: actions/checkout@v4

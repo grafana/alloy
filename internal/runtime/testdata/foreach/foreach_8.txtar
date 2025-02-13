@@ -1,0 +1,23 @@
+Foreach with two components linked together.
+
+-- main.alloy --
+foreach "testForeach" {
+  collection = [10]
+  var = "num"
+
+  template {
+    testcomponents.passthrough "pt" {
+      input = num
+      lag = "1ms"
+    }
+    testcomponents.pulse "p" {
+      max = testcomponents.passthrough.pt.output
+      frequency = "10ms"
+      forward_to = [testcomponents.summation_receiver.sum.receiver]
+    }
+  }
+}
+
+// Similar to testcomponents.summation, but with a "receiver" export
+testcomponents.summation_receiver "sum" {
+}

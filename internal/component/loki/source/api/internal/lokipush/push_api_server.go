@@ -162,7 +162,7 @@ func (s *PushAPIServer) handleLoki(w http.ResponseWriter, r *http.Request) {
 		tenantID,
 		r,
 		nil, // tenants retention
-		nil, // limits
+		push.EmptyLimits{},
 		push.ParseLokiRequest,
 		nil, // usage tracker
 	)

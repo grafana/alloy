@@ -98,13 +98,13 @@ type SchemaTable struct {
 }
 
 type tableInfo struct {
-	schema     string
-	tableName  string
-	tableType  string
-	createTime time.Time
-	updateTime time.Time
-	createStmt string
-	tableSpec  string
+	schema        string
+	tableName     string
+	tableType     string
+	createTime    time.Time
+	updateTime    time.Time
+	b64CreateStmt string
+	b64TableSpec  string
 }
 
 type tableSpec struct {
@@ -200,10 +200,14 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 		schemas = append(schemas, schema)
 
 		c.entryHandler.Chan() <- loki.Entry{
-			Labels: model.LabelSet{"job": database_observability.JobName},
+			Labels: model.LabelSet{
+				"job":      database_observability.JobName,
+				"op":       OP_SCHEMA_DETECTION,
+				"instance": model.LabelValue(c.instanceKey),
+			},
 			Entry: logproto.Entry{
 				Timestamp: time.Unix(0, time.Now().UnixNano()),
-				Line:      fmt.Sprintf(`level=info msg="schema detected" op="%s" instance="%s" schema="%s"`, OP_SCHEMA_DETECTION, c.instanceKey, schema),
+				Line:      fmt.Sprintf(`level=info msg="schema detected" schema="%s"`, schema),
 			},
 		}
 	}
@@ -236,20 +240,24 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 				break
 			}
 			tables = append(tables, &tableInfo{
-				schema:     schema,
-				tableName:  tableName,
-				tableType:  tableType,
-				createTime: createTime,
-				updateTime: updateTime,
-				createStmt: "",
-				tableSpec:  "",
+				schema:        schema,
+				tableName:     tableName,
+				tableType:     tableType,
+				createTime:    createTime,
+				updateTime:    updateTime,
+				b64CreateStmt: "",
+				b64TableSpec:  "",
 			})
 
 			c.entryHandler.Chan() <- loki.Entry{
-				Labels: model.LabelSet{"job": database_observability.JobName},
+				Labels: model.LabelSet{
+					"job":      database_observability.JobName,
+					"op":       OP_TABLE_DETECTION,
+					"instance": model.LabelValue(c.instanceKey),
+				},
 				Entry: logproto.Entry{
 					Timestamp: time.Unix(0, time.Now().UnixNano()),
-					Line:      fmt.Sprintf(`level=info msg="table detected" op="%s" instance="%s" schema="%s" table="%s"`, OP_TABLE_DETECTION, c.instanceKey, schema, tableName),
+					Line:      fmt.Sprintf(`level=info msg="table detected" schema="%s" table="%s"`, schema, tableName),
 				},
 			}
 		}
@@ -290,12 +298,16 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 		}
 
 		c.entryHandler.Chan() <- loki.Entry{
-			Labels: model.LabelSet{"job": database_observability.JobName},
+			Labels: model.LabelSet{
+				"job":      database_observability.JobName,
+				"op":       OP_CREATE_STATEMENT,
+				"instance": model.LabelValue(c.instanceKey),
+			},
 			Entry: logproto.Entry{
 				Timestamp: time.Unix(0, time.Now().UnixNano()),
 				Line: fmt.Sprintf(
-					`level=info msg="create table" op="%s" instance="%s" schema="%s" table="%s" create_statement="%s" table_spec="%s"`,
-					OP_CREATE_STATEMENT, c.instanceKey, table.schema, table.tableName, base64.StdEncoding.EncodeToString([]byte(table.createStmt)), base64.StdEncoding.EncodeToString([]byte(table.tableSpec)),
+					`level=info msg="create table" schema="%s" table="%s" create_statement="%s" table_spec="%s"`,
+					table.schema, table.tableName, table.b64CreateStmt, table.b64TableSpec,
 				),
 			},
 		}
@@ -305,39 +317,41 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 }
 
 func (c *SchemaTable) fetchTableDefinitions(ctx context.Context, fullyQualifiedTable string, table *tableInfo) (*tableInfo, error) {
-	logKVs := []any{"schema", table.schema, "table", table.tableName}
-
 	row := c.dbConnection.QueryRowContext(ctx, showCreateTable+" "+fullyQualifiedTable)
-	if row.Err() != nil {
-		level.Error(c.logger).Log("msg", "failed to show create table", append(logKVs, "err", row.Err()))
-		return nil, row.Err()
+	if err := row.Err(); err != nil {
+		level.Error(c.logger).Log("msg", "failed to show create table", "schema", table.schema, "table", table.tableName, "err", err)
+		return table, err
 	}
 
 	var tableName, createStmt, characterSetClient, collationConnection string
-	if table.tableType == "BASE TABLE" {
+	switch table.tableType {
+	case "BASE TABLE":
 		if err := row.Scan(&tableName, &createStmt); err != nil {
-			level.Error(c.logger).Log("msg", "failed to scan create table", append(logKVs, "err", err))
-			return nil, err
+			level.Error(c.logger).Log("msg", "failed to scan create table", "schema", table.schema, "table", table.tableName, "err", err)
+			return table, err
 		}
-	} else if table.tableType == "VIEW" {
+	case "VIEW":
 		if err := row.Scan(&tableName, &createStmt, &characterSetClient, &collationConnection); err != nil {
-			level.Error(c.logger).Log("msg", "failed to scan create view", append(logKVs, "err", err))
-			return nil, err
+			level.Error(c.logger).Log("msg", "failed to scan create view", "schema", table.schema, "table", table.tableName, "err", err)
+			return table, err
 		}
+	default:
+		level.Error(c.logger).Log("msg", "unknown table type", "schema", table.schema, "table", table.tableName, "table_type", table.tableType)
+		return nil, fmt.Errorf("unknown table type: %s", table.tableType)
 	}
-	table.createStmt = createStmt
+	table.b64CreateStmt = base64.StdEncoding.EncodeToString([]byte(createStmt))
 
 	spec, err := c.fetchColumnsDefinitions(ctx, table.schema, table.tableName)
 	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to analyze table spec", append(logKVs, "err", err))
-		return nil, err
+		level.Error(c.logger).Log("msg", "failed to analyze table spec", "schema", table.schema, "table", table.tableName, "err", err)
+		return table, err
 	}
 	jsonSpec, err := json.Marshal(spec)
 	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to marshal table spec", append(logKVs, "err", err))
-		return nil, err
+		level.Error(c.logger).Log("msg", "failed to marshal table spec", "schema", table.schema, "table", table.tableName, "err", err)
+		return table, err
 	}
-	table.tableSpec = string(jsonSpec)
+	table.b64TableSpec = base64.StdEncoding.EncodeToString(jsonSpec)
 
 	return table, nil
 }
