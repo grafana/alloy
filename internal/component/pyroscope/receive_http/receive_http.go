@@ -190,7 +190,9 @@ func (c *Component) Push(ctx context.Context, req *connect.Request[pushv1.PushRe
 			for idx := range req.Msg.Series {
 				lb.Reset(nil)
 				setLabelBuilderFromAPI(lb, req.Msg.Series[idx].Labels)
-				err := appendable.Append(ctx, lb.Labels(), apiToAlloySamples(req.Msg.Series[idx].Samples))
+				// Ensure service_name label is set
+				lbls := ensureServiceName(lb.Labels())
+				err := appendable.Append(ctx, lbls, apiToAlloySamples(req.Msg.Series[idx].Samples))
 				if err != nil {
 					errs = errors.Join(
 						errs,
@@ -239,6 +241,9 @@ func (c *Component) handleIngest(w http.ResponseWriter, r *http.Request) {
 			lbls = labels.New(labelPairs...)
 		}
 	}
+
+	// Ensure service_name label is set
+	lbls = ensureServiceName(lbls)
 
 	// Read the entire body into memory
 	// This matches how Append() handles profile data (as RawProfile),
@@ -291,4 +296,18 @@ func (c *Component) shutdownServer() {
 		c.server.StopAndShutdown()
 		c.server = nil
 	}
+}
+
+// rename __name__ to service_name
+func ensureServiceName(lbls labels.Labels) labels.Labels {
+	builder := labels.NewBuilder(lbls)
+	originalName := lbls.Get(pyroscope.LabelName)
+
+	if !lbls.Has(pyroscope.LabelServiceName) {
+		builder.Set(pyroscope.LabelServiceName, originalName)
+	} else {
+		builder.Set("app_name", originalName)
+	}
+
+	return builder.Labels()
 }

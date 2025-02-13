@@ -13,7 +13,9 @@ import (
 )
 
 const (
-	LabelNameDelta = "__delta__"
+	LabelNameDelta   = "__delta__"
+	LabelName        = "__name__"
+	LabelServiceName = "service_name"
 )
 
 var NoopAppendable = AppendableFunc(func(_ context.Context, _ labels.Labels, _ []*RawSample) error { return nil })
