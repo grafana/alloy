@@ -10,6 +10,10 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Breaking changes
+
+- (_Experimental_) In `prometheus.write.queue` changed `parallelism` from attribute to a block to allow for dynamic scaling. (@mattdurham)
+
 ### Features
 
 - (_Experimental_) Add a `stage.windowsevent` block in the `loki.process` component. This aims to replace the existing `stage.eventlogmessage`. (@wildum)
@@ -48,6 +52,8 @@ Main (unreleased)
 
 - Ensure consistent service_name label handling in `pyroscope.receive_http` to match Pyroscope's behavior. (@marcsanmi)
 
+- Improved memory and CPU performance of Prometheus pipelines by changing the underlying implementation of targets (@thampiotr)  
+
 ### Bugfixes
 
 - Fix log rotation for Windows in `loki.source.file` by refactoring the component to use the runner pkg. This should also reduce CPU consumption when tailing a lot of files in a dynamic environment. (@wildum)
@@ -75,6 +81,8 @@ Main (unreleased)
     This is enabled by default and can be used to explicitly disable native histogram support.
     In previous versions of Alloy, native histogram support has also been enabled by default
     as long as `scrape_protocols` starts with `PrometheusProto`.
+
+  - Change the stability of the `remotecfg` feature from "public preview" to "generally available". (@erikbaranowski)
 
 v1.6.1
 -----------------

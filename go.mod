@@ -54,7 +54,7 @@ require (
 	github.com/google/renameio/v2 v2.0.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
-	github.com/grafana/alloy-remote-config v0.0.9
+	github.com/grafana/alloy-remote-config v0.0.10
 	github.com/grafana/alloy/syntax v0.1.0
 	github.com/grafana/beyla v1.10.0-alloy // custom beyla 1.10 branch without git lfs
 	github.com/grafana/catchpoint-prometheus-exporter v0.0.0-20240606062944-e55f3668661d
@@ -73,7 +73,7 @@ require (
 	github.com/grafana/regexp v0.0.0-20240518133315-a468a5bfb3bc
 	github.com/grafana/tail v0.0.0-20230510142333-77b18831edf0
 	github.com/grafana/vmware_exporter v0.0.5-beta
-	github.com/grafana/walqueue v0.0.0-20250113171943-e5fe545d1408
+	github.com/grafana/walqueue v0.0.0-20250211154548-6435b3242458
 	github.com/hashicorp/consul/api v1.31.0
 	github.com/hashicorp/go-discover v0.0.0-20230724184603-e89ebd1b2f65
 	github.com/hashicorp/go-multierror v1.1.1
@@ -869,6 +869,7 @@ require (
 
 require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza v0.119.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filelogreceiver v0.119.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/syslogreceiver v0.119.0
 	go.opentelemetry.io/collector/scraper/scraperhelper v0.119.0
 )
@@ -888,6 +889,7 @@ require (
 	github.com/minio/minio-go v6.0.14+incompatible // indirect
 	github.com/mongodb/mongo-tools v0.0.0-20240723193119-837c2bc263f4 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/core/xidutils v0.119.0 // indirect
+	github.com/panjf2000/ants/v2 v2.11.0 // indirect
 	github.com/percona/percona-backup-mongodb v1.8.1-0.20241022111827-8d3ad8a6eb7a // indirect
 	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
 	github.com/pires/go-proxyproto v0.7.0 // indirect
@@ -895,6 +897,7 @@ require (
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/collector/extension/xextension v0.119.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc v0.10.0 // indirect
+	golang.design/x/chann v0.1.2 // indirect
 )
 
 // NOTE: replace directives below must always be *temporary*.

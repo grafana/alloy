@@ -18,6 +18,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/equality"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/tracing"
 	"github.com/grafana/alloy/syntax/ast"
@@ -291,7 +292,7 @@ func (cn *BuiltinComponentNode) evaluate(scope *vm.Scope) error {
 		return nil
 	}
 
-	if reflect.DeepEqual(cn.args, argsCopyValue) {
+	if equality.DeepEqual(cn.args, argsCopyValue) {
 		// Ignore components which haven't changed. This reduces the cost of
 		// calling evaluate for components where evaluation is expensive (e.g., if
 		// re-evaluating requires re-starting some internal logic).
@@ -380,7 +381,7 @@ func (cn *BuiltinComponentNode) setExports(e component.Exports) {
 	var changed bool
 
 	cn.exportsMut.Lock()
-	if !reflect.DeepEqual(cn.exports, e) {
+	if !equality.DeepEqual(cn.exports, e) {
 		changed = true
 		cn.exports = e
 	}

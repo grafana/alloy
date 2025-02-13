@@ -12,6 +12,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/stretchr/testify/require"
+
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/featuregate"
 	alloy_runtime "github.com/grafana/alloy/internal/runtime"
@@ -20,9 +23,8 @@ import (
 	cluster_service "github.com/grafana/alloy/internal/service/cluster"
 	http_service "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/service/labelstore"
+	"github.com/grafana/alloy/internal/service/livedebugging"
 	remotecfg_service "github.com/grafana/alloy/internal/service/remotecfg"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -214,6 +216,7 @@ func attemptLoadingAlloyConfig(t *testing.T, bb []byte) {
 			clusterService,
 			labelstore.New(nil, prometheus.DefaultRegisterer),
 			remotecfgService,
+			livedebugging.New(),
 		},
 		EnableCommunityComps: true,
 	})
