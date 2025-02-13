@@ -29,20 +29,21 @@ Main (unreleased)
 - Add json format support for log export via faro receiver (@ravishankar15)
 
 - (_Experimental_) Various changes to the experimental component `database_observability.mysql`:
-  - Always log `instance` label key (@cristiangreco)
-  - Improve parsing of truncated queries (@cristiangreco)
-  - Capture schema name for query samples (@cristiangreco)
-  - Fix handling of view table types when detecting schema (@matthewnolf)
-  - Fix error handling during result set iteration (@cristiangreco)
-  - Better support for table name parsing (@cristiangreco)
-  - Better error handling for components (@cristiangreco)
-  - Add namespace to `connection_info` metric (@cristiangreco)
-  - Added table columns parsing (@cristiagreco)
-  - Add enable/disable collector configurability to `database_observability.mysql`. This removes the `query_samples_enabled` argument, now configurable via enable/disable collector. (@fridgepoet)
-  - Refactor cache config in schema_table collector (@cristiangreco)
-  - Use labels for some indexed logs elements (@cristiangreco)
+  - `connection_info`: add namespace to the metric (@cristiangreco)
+  - `query_sample`: better support for table name parsing (@cristiangreco)
+  - `query_sample`: capture schema name for query samples (@cristiangreco)
+  - `query_sample`: fix error handling during result set iteration (@cristiangreco)
+  - `query_sample`: improve parsing of truncated queries (@cristiangreco)
+  - `schema_table`: add table columns parsing (@cristiagreco)
+  - `schema_table`: correctly quote schema and table name in SHOW CREATE (@cristiangreco)
+  - `schema_table`: fix handling of view table types when detecting schema (@matthewnolf)
+  - `schema_table`: refactor cache config in schema_table collector (@cristiangreco)
+  - Component: add enable/disable collector configurability to `database_observability.mysql`. This removes the `query_samples_enabled` argument, now configurable via enable/disable collector. (@fridgepoet)
+  - Component: always log `instance` label key (@cristiangreco)
+  - Component: better error handling for collectors (@cristiangreco)
+  - Component: use labels for some indexed logs elements (@cristiangreco)
 
-- Reduce CPU usage of `loki.source.windowsevent` by up to 85% by updating the bookmark file every 10 seconds instead of after every event and by 
+- Reduce CPU usage of `loki.source.windowsevent` by up to 85% by updating the bookmark file every 10 seconds instead of after every event and by
   optimizing the retrieval of the process name. (@wildum)
 
 - Ensure consistent service_name label handling in `pyroscope.receive_http` to match Pyroscope's behavior. (@marcsanmi)
@@ -64,7 +65,7 @@ Main (unreleased)
 ### Other changes
 
 - Upgrading to Prometheus v2.54.1. (@ptodev)
-  - `discovery.docker` has a new `match_first_network` attribute for matching the first network 
+  - `discovery.docker` has a new `match_first_network` attribute for matching the first network
     if the container has multiple networks defined, thus avoiding collecting duplicate targets.
   - `discovery.ec2`, `discovery.kubernetes`, `discovery.openstack`, and `discovery.ovhcloud`
     add extra `__meta_` labels.
@@ -72,7 +73,7 @@ Main (unreleased)
   - `discovery.linode` has a new `region` attribute, as well as extra `__meta_` labels.
   - A new `scrape_native_histograms` argument for `prometheus.scrape`.
     This is enabled by default and can be used to explicitly disable native histogram support.
-    In previous versions of Alloy, native histogram support has also been enabled by default 
+    In previous versions of Alloy, native histogram support has also been enabled by default
     as long as `scrape_protocols` starts with `PrometheusProto`.
 
 v1.6.1
