@@ -1,4 +1,4 @@
-// NOTE: this is adapted from Prometheus codebase to work correctly with Alloy types.
+// NOTE: this file is copied from Prometheus codebase and adapted to work correctly with Alloy types.
 
 // Copyright 2015 The Prometheus Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
