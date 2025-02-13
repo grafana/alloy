@@ -9,7 +9,6 @@ import (
 	otelconfigauth "go.opentelemetry.io/collector/config/configauth"
 	otelconfighttp "go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/config/configopaque"
-	otelextension "go.opentelemetry.io/collector/extension"
 )
 
 // HTTPServerArguments holds shared settings for components which launch HTTP
@@ -74,8 +73,8 @@ func (args *HTTPServerArguments) Convert() (*otelconfighttp.ServerConfig, error)
 }
 
 // Extensions exposes extensions used by args.
-func (args *HTTPServerArguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
-	m := make(map[otelcomponent.ID]otelextension.Extension)
+func (args *HTTPServerArguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
+	m := make(map[otelcomponent.ID]otelcomponent.Component)
 	if args.Authentication != nil {
 		ext, err := args.Authentication.GetExtension(auth.Server)
 		// Extension will not be registered if there was an error.
@@ -190,8 +189,8 @@ func (args *HTTPClientArguments) Convert() (*otelconfighttp.ClientConfig, error)
 }
 
 // Extensions exposes extensions used by args.
-func (args *HTTPClientArguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
-	m := make(map[otelcomponent.ID]otelextension.Extension)
+func (args *HTTPClientArguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
+	m := make(map[otelcomponent.ID]otelcomponent.Component)
 	if args.Authentication != nil {
 		ext, err := args.Authentication.GetExtension(auth.Client)
 		if err != nil {

@@ -1907,8 +1907,8 @@ github.com/grafana/node_exporter v0.18.1-grafana-r01.0.20250213175948-c55b81403e
 github.com/grafana/node_exporter v0.18.1-grafana-r01.0.20250213175948-c55b81403e32/go.mod h1:Wu92jivUIONVOlPx1HP9K9KV+PhuwOmQDHZwpD0gKro=
 github.com/grafana/opentelemetry-collector/featuregate v0.0.0-20240325174506-2fd1623b2ca0 h1:i/Ne0XwoRokYj52ZcSmnvuyID3h/uA91n0Ycg/grHU8=
 github.com/grafana/opentelemetry-collector/featuregate v0.0.0-20240325174506-2fd1623b2ca0/go.mod h1:mm8+xyQfgDmqhyegZRNIQmoKsNnDTwWKFLsdMoXAb7A=
-github.com/grafana/postgres_exporter v0.15.1-0.20250213162516-1038b8e7fa42 h1:VK5j6xt9J3+ypRuKqsTKlQ2ZRBojsLpjlo8PVtPbIsU=
-github.com/grafana/postgres_exporter v0.15.1-0.20250213162516-1038b8e7fa42/go.mod h1:ws2UAbpWWvs87mYgclemWvosRQjIp6fuOxDjLzfo7L0=
+github.com/grafana/postgres_exporter v0.15.1-0.20250213194513-66241578063a h1:LvpKzONVqOs8YeC/tgcrBtn7af+w784JvuMVwyy4kB4=
+github.com/grafana/postgres_exporter v0.15.1-0.20250213194513-66241578063a/go.mod h1:ws2UAbpWWvs87mYgclemWvosRQjIp6fuOxDjLzfo7L0=
 github.com/grafana/prometheus v1.8.2-0.20240827140850-d665aef8a4ac h1:+zEyixkKR6tYHQc2fTx4Nkj0Fhe9E+WzSwokEgmbrp0=
 github.com/grafana/prometheus v1.8.2-0.20240827140850-d665aef8a4ac/go.mod h1:xlLByHhk2g3ycakQGrMaU8K7OySZx98BzeCR99991NY=
 github.com/grafana/pyroscope-go/godeltaprof v0.1.8 h1:iwOtYXeeVSAeYefJNaxDytgjKtUuKQbJqgAIjlnicKg=

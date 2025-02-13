@@ -113,7 +113,7 @@ func (fa *fakeAuthArgs) AuthFeatures() auth.AuthFeature {
 	return result.Get(0).(auth.AuthFeature)
 }
 
-func (fa *fakeAuthArgs) Extensions() map[otelcomponent.ID]otelextension.Extension {
+func (fa *fakeAuthArgs) Extensions() map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 

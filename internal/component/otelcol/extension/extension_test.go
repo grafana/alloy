@@ -88,7 +88,7 @@ func (fa fakeExtensionArgs) Convert() (otelcomponent.Config, error) {
 	return &struct{}{}, nil
 }
 
-func (fa fakeExtensionArgs) Extensions() map[otelcomponent.ID]otelextension.Extension {
+func (fa fakeExtensionArgs) Extensions() map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 

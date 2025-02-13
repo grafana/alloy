@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -22,6 +23,7 @@ import (
 	"google.golang.org/api/option"
 	"gopkg.in/yaml.v2"
 
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/static/integrations"
 	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
@@ -85,12 +87,14 @@ func (c *Config) NewIntegration(l log.Logger) (integrations.Integration, error) 
 		return nil, err
 	}
 
+	logger := slog.New(logging.NewSlogGoKitHandler(l))
+
 	var gcpCollectors []prometheus.Collector
 	var counterStores []*SelfPruningDeltaStore[collectors.ConstMetric]
 	var histogramStores []*SelfPruningDeltaStore[collectors.HistogramMetric]
 	for _, projectID := range c.ProjectIDs {
-		counterStore := NewSelfPruningDeltaStore[collectors.ConstMetric](l, delta.NewInMemoryCounterStore(l, 30*time.Minute))
-		histogramStore := NewSelfPruningDeltaStore[collectors.HistogramMetric](l, delta.NewInMemoryHistogramStore(l, 30*time.Minute))
+		counterStore := NewSelfPruningDeltaStore[collectors.ConstMetric](l, delta.NewInMemoryCounterStore(logger, 30*time.Minute))
+		histogramStore := NewSelfPruningDeltaStore[collectors.HistogramMetric](l, delta.NewInMemoryHistogramStore(logger, 30*time.Minute))
 		monitoringCollector, err := collectors.NewMonitoringCollector(
 			projectID,
 			svc,
@@ -110,7 +114,7 @@ func (c *Config) NewIntegration(l log.Logger) (integrations.Integration, error) 
 				// for more info
 				AggregateDeltas: true,
 			},
-			l,
+			logger,
 			counterStore,
 			histogramStore,
 		)
