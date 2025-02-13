@@ -3,9 +3,9 @@ package importsource
 import (
 	"context"
 	"fmt"
-	"reflect"
 
 	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/runtime/equality"
 	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/grafana/alloy/syntax/vm"
 )
@@ -37,7 +37,7 @@ func (im *ImportString) Evaluate(scope *vm.Scope) error {
 		return fmt.Errorf("decoding configuration: %w", err)
 	}
 
-	if reflect.DeepEqual(im.arguments, arguments) {
+	if equality.DeepEqual(im.arguments, arguments) {
 		return nil
 	}
 	im.arguments = arguments
