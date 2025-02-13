@@ -62,7 +62,6 @@ Main (unreleased)
 
 - Fixed an issue where `loki.process` would sometimes output live debugging entries out-of-order (@thampiotr)
 
-
 ### Other changes
 
 - Upgrading to Prometheus v2.54.1. (@ptodev)
