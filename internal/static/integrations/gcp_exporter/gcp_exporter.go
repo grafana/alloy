@@ -222,11 +222,11 @@ func createMonitoringService(ctx context.Context, httpTimeout time.Duration) (*m
 func parseMetricExtraFilters(filters []string) []collectors.MetricFilter {
 	var extraFilters []collectors.MetricFilter
 	for _, ef := range filters {
-		efPrefix, efModifier := utils.GetExtraFilterModifiers(ef, ":")
+		efPrefix, efModifier := utils.SplitExtraFilter(ef, ":")
 		if efPrefix != "" {
 			extraFilter := collectors.MetricFilter{
-				Prefix:   efPrefix,
-				Modifier: efModifier,
+				TargetedMetricPrefix: efPrefix,
+				FilterQuery:          efModifier,
 			}
 			extraFilters = append(extraFilters, extraFilter)
 		}

@@ -886,6 +886,7 @@ require (
 	github.com/itchyny/timefmt-go v0.1.6 // indirect
 	github.com/jessevdk/go-flags v1.5.0 // indirect
 	github.com/klauspost/pgzip v1.2.6 // indirect
+	github.com/mdlayher/vsock v1.2.1 // indirect
 	github.com/minio/minio-go v6.0.14+incompatible // indirect
 	github.com/mongodb/mongo-tools v0.0.0-20240723193119-837c2bc263f4 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/core/xidutils v0.119.0 // indirect
@@ -961,7 +962,7 @@ replace (
 	github.com/prometheus-community/postgres_exporter => github.com/grafana/postgres_exporter v0.15.1-0.20250213194513-66241578063a
 
 	// Needed until a bunch of exporters are updated, because 0.13.0 breaks compatibility in web.ListenAndServe
-	github.com/prometheus/exporter-toolkit => github.com/prometheus/exporter-toolkit v0.11.0
+	//github.com/prometheus/exporter-toolkit => github.com/prometheus/exporter-toolkit v0.11.0
 
 	// TODO(marctc): remove once this PR is merged upstream: https://github.com/prometheus/mysqld_exporter/pull/774
 	github.com/prometheus/mysqld_exporter => github.com/grafana/mysqld_exporter v0.16.1-0.20241128200101-e16f5286d5e9
