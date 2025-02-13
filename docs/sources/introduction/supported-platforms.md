@@ -14,7 +14,7 @@ The following operating systems and hardware architecture are supported.
 
 * Minimum version: kernel 4.x or later
 * Architectures: AMD64, ARM64
-* Within the Linux distribution lifecycle
+* Within the supported Linux distribution lifecycle
 
 ## Windows
 
@@ -28,5 +28,5 @@ The following operating systems and hardware architecture are supported.
 
 ## FreeBSD
 
-* Minimum version: FreeBSD 10 or later
+* Within the supported FreeBSD lifecycle
 * Architectures: AMD64
