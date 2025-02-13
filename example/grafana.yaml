@@ -1,6 +1,6 @@
 services:
   grafana:
-    image: grafana/grafana:10.1.9
+    image: grafana/grafana:11.5.1
     restart: on-failure
     command:
       - --config=/etc/grafana-config/grafana.ini
@@ -53,6 +53,6 @@ services:
     volumes:
       - ../operations/alloy-mixin:/etc/alloy-mixin
     working_dir: /etc/alloy-mixin
-    command: grr watch dashboards/ grizzly/dashboards.jsonnet
+    command: grr watch . ./grizzly.jsonnet
 
 

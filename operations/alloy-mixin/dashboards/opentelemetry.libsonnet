@@ -44,10 +44,9 @@ local stackedPanelMixin = {
         panel.withQueries([
           panel.newQuery(
             expr= |||
-              rate(otelcol_receiver_accepted_spans_total{%(instanceSelector)s}[$__rate_interval])
+              sum by(instance) (rate(otelcol_receiver_accepted_spans_total{%(instanceSelector)s}[$__rate_interval]))
             ||| % $._config,
-            //TODO: How will the dashboard look if there is more than one receiver component? The legend is not unique enough?
-            legendFormat='{{ pod }} / {{ transport }}',
+            legendFormat='{{ instance }}',
           ),
         ])
       ),
@@ -62,9 +61,9 @@ local stackedPanelMixin = {
         panel.withQueries([
           panel.newQuery(
             expr= |||
-              rate(otelcol_receiver_refused_spans_total{%(instanceSelector)s}[$__rate_interval])
+              sum by(instance) (rate(otelcol_receiver_refused_spans_total{%(instanceSelector)s}[$__rate_interval]))
             ||| % $._config,
-            legendFormat='{{ pod }} / {{ transport }}',
+            legendFormat='{{ instance }}',
           ),
         ])
       ),
@@ -119,9 +118,9 @@ local stackedPanelMixin = {
         panel.withQueries([
           panel.newQuery(
             expr= |||
-              otelcol_processor_batch_metadata_cardinality{%(instanceSelector)s}
+              sum by(instance) (otelcol_processor_batch_metadata_cardinality{%(instanceSelector)s})
             ||| % $._config,
-            legendFormat='{{ pod }}',
+            legendFormat='{{ instance }}',
           ),
         ])
       ),
@@ -134,9 +133,9 @@ local stackedPanelMixin = {
         panel.withQueries([
           panel.newQuery(
             expr= |||
-              rate(otelcol_processor_batch_timeout_trigger_send_total{%(instanceSelector)s}[$__rate_interval])
+              sum by(instance) (rate(otelcol_processor_batch_timeout_trigger_send_total{%(instanceSelector)s}[$__rate_interval]))
             ||| % $._config,
-            legendFormat='{{ pod }}',
+            legendFormat='{{ instance }}',
           ),
         ])
       ),
@@ -156,9 +155,9 @@ local stackedPanelMixin = {
         panel.withQueries([
           panel.newQuery(
             expr= ||| 
-              rate(otelcol_exporter_sent_spans_total{%(instanceSelector)s}[$__rate_interval])
+              sum by(instance) (rate(otelcol_exporter_sent_spans_total{%(instanceSelector)s}[$__rate_interval]))
             ||| % $._config,
-            legendFormat='{{ pod }}',
+            legendFormat='{{ instance }}',
           ),
         ])
       ),
@@ -172,9 +171,9 @@ local stackedPanelMixin = {
         panel.withQueries([
           panel.newQuery(
             expr= |||
-              rate(otelcol_exporter_send_failed_spans_total{%(instanceSelector)s}[$__rate_interval])
+              sum by(instance) (rate(otelcol_exporter_send_failed_spans_total{%(instanceSelector)s}[$__rate_interval]))
             ||| % $._config,
-            legendFormat='{{ pod }}',
+            legendFormat='{{ instance }}',
           ),
         ])
       ),
