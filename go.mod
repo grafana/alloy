@@ -874,6 +874,7 @@ require (
 
 require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza v0.116.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filelogreceiver v0.116.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/syslogreceiver v0.116.0
 )
 
@@ -883,9 +884,6 @@ require (
 	github.com/containers/common v0.61.0 // indirect
 	github.com/deneonet/benc v1.1.2 // indirect
 	github.com/itchyny/timefmt-go v0.1.6 // indirect
-	github.com/onsi/ginkgo/v2 v2.21.0 // indirect
-	github.com/onsi/gomega v1.35.1 // indirect
-	go.etcd.io/bbolt v1.3.11 // indirect
 )
 
 // NOTE: replace directives below must always be *temporary*.

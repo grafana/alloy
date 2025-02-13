@@ -23,6 +23,16 @@ var (
 			name:    "k8sattr.fieldExtractConfigRegex.disallow",
 			enabled: false,
 		},
+		{
+			// This feature gate allows users of the otel filelogreceiver to use the `delete_after_read` setting.
+			name:    "filelog.allowFileDeletion",
+			enabled: true,
+		},
+		{
+			// This feature gate allows users of the otel filelogreceiver to use the `header` setting.
+			name:    "filelog.allowHeaderMetadataParsing",
+			enabled: true,
+		},
 	}
 )
 
