@@ -52,14 +52,14 @@ func testConfigForEachStringer(t *testing.T, config string, expectedDebugInfo *s
 	if expectedDebugInfo != nil {
 		require.EventuallyWithT(t, func(c *assert.CollectT) {
 			debugInfo := getDebugInfo[string](t, ctrl, "", "testcomponents.string_receiver.log")
-			require.Equal(t, *expectedDebugInfo, debugInfo)
+			assert.Equal(c, *expectedDebugInfo, debugInfo)
 		}, 3*time.Second, 10*time.Millisecond)
 	}
 
 	if expectedDebugInfo2 != nil {
 		require.EventuallyWithT(t, func(c *assert.CollectT) {
 			debugInfo := getDebugInfo[string](t, ctrl, "", "testcomponents.string_receiver.log2")
-			require.Equal(t, *expectedDebugInfo2, debugInfo)
+			assert.Equal(c, *expectedDebugInfo2, debugInfo)
 		}, 3*time.Second, 10*time.Millisecond)
 	}
 }
