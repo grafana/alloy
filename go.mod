@@ -879,6 +879,7 @@ require (
 )
 
 require (
+	github.com/chimehq/binarycursor v0.0.0-20230825172046-f9a5c882a482 // indirect
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
 	github.com/containerd/typeurl/v2 v2.2.0 // indirect
 	github.com/containers/common v0.61.0 // indirect

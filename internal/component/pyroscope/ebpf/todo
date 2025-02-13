@@ -1,18 +1,13 @@
-otel: pass sd to reporter, create pyrosd only in otel binary, not in alloy, create flags to enable/disable pyrosd
-
-
-move pyroplug out of reporter internal, use Config.SampleAttr/...
-
-otel: merge changes from laptop and main PC, reorganize commits, to split changes, pyrosd, symbolizer, shim
-
-
-
 
 ===================
 create pprof reporter, take from parca if available, use pprofBuilders otherwise
 
 alloy: create a hidden flag to enable otlp reporter, allow forward_to be optional, but require if pprof is selected
 
-alloy: add flag to disable native frames symbolization
+otel: configure fscache (gsym/table)
 
 otel: profiling only subset of processes
+
+
+organize alloy CGO build
+

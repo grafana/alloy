@@ -5,6 +5,7 @@ package ebpf
 import (
 	"context"
 	"fmt"
+	"go.opentelemetry.io/ebpf-profiler/pyroscope/reporter"
 	"os"
 	"sync"
 	"time"
@@ -13,13 +14,13 @@ import (
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/grafana/pyroscope/ebpf/sd"
+
 	"github.com/oklog/run"
 
 	"go.opentelemetry.io/ebpf-profiler/pyroscope/internalshim/controller"
 	"go.opentelemetry.io/ebpf-profiler/pyroscope/internalshim/helpers"
-	"go.opentelemetry.io/ebpf-profiler/reporter"
-	"go.opentelemetry.io/ebpf-profiler/times"
+	"go.opentelemetry.io/ebpf-profiler/pyroscope/sd"
+	"go.opentelemetry.io/ebpf-profiler/pyroscope/symb/cache"
 	"go.opentelemetry.io/ebpf-profiler/vc"
 )
 
@@ -37,7 +38,7 @@ func init() {
 }
 
 func New(opts component.Options, args Arguments) (component.Component, error) {
-	targetFinder, err := sd.NewTargetFinder(os.DirFS("/"), opts.Logger, targetsOptionFromArgs(args))
+	targetFinder, err := sd.NewTargetFinder(os.DirFS("/"), opts.Logger, targetsOptionFromArguments(args))
 	if err != nil {
 		return nil, fmt.Errorf("ebpf target finder create: %w", err)
 	}
@@ -50,7 +51,13 @@ func New(opts component.Options, args Arguments) (component.Component, error) {
 		return nil, err
 	}
 
-	cfg.Reporter, err = createOTLPReporter(cfg)
+	nfs, err := cache.NewFSCache(cfg.PyroscopeSymbCacheSizeBytes, cfg.PyroscopeSymbCachePath, cfg.PyroscopeSymbolizeNativeFrames)
+	if err != nil {
+		return nil, err
+	}
+	cfg.NativeFrameSymbolizer = nfs
+
+	cfg.Reporter, err = reporter.New(opts.Logger, cfg, targetFinder, nfs, &pprofConsumer{fanout: appendable})
 	if err != nil {
 		return nil, err
 	}
@@ -104,45 +111,21 @@ func (c *Component) Run(ctx context.Context) error {
 	ctlr := controller.New(c.cfg)
 	err := ctlr.Start(ctx)
 	if err != nil {
-		return fmt.Errorf("Failed to start agent controller: %v", err)
+		return fmt.Errorf("failed to start agent controller: %v", err)
 	}
 	defer ctlr.Shutdown()
 
-	//err := c.session.Start()
-	//if err != nil {
-	//	return fmt.Errorf("ebpf profiling session start: %w", err)
-	//}
-	//defer c.session.Stop()
-
 	var g run.Group
 	g.Add(func() error {
-		collectInterval := c.args.CollectInterval
-		t := time.NewTicker(collectInterval)
-		defer t.Stop()
 		for {
 			select {
 			case <-ctx.Done():
 				return nil
 			case newArgs := <-c.argsUpdate:
 				c.args = newArgs
-				//c.session.UpdateTargets(targetsOptionFromArgs(c.args))
+				c.targetFinder.Update(targetsOptionFromArguments(c.args))
 				c.metrics.targetsActive.Set(float64(len(c.targetFinder.DebugInfo())))
-				//err := c.session.Update(createConfigFromArguments(c.args, c.metrics))
-				//if err != nil {
-				//	return nil
-				//}
 				c.appendable.UpdateChildren(newArgs.ForwardTo)
-				if c.args.CollectInterval != collectInterval {
-					t.Reset(c.args.CollectInterval)
-					collectInterval = c.args.CollectInterval
-				}
-			case <-t.C:
-				err := c.collectProfiles()
-				if err != nil {
-					c.metrics.profilingSessionsFailingTotal.Inc()
-					return err
-				}
-				c.updateDebugInfo()
 			}
 		}
 	}, func(error) {
@@ -163,48 +146,6 @@ func (c *Component) DebugInfo() interface{} {
 	return c.debugInfo
 }
 
-func (c *Component) collectProfiles() error {
-	c.metrics.profilingSessionsTotal.Inc()
-	level.Debug(c.options.Logger).Log("msg", "ebpf  collectProfiles")
-	//args := c.args
-	//builders := pprof.NewProfileBuilders(pprof.BuildersOptions{
-	//	SampleRate:    int64(args.SampleRate),
-	//	PerPIDProfile: true,
-	//})
-	//err := pprof.Collect(builders, c.session)
-	//
-	//if err != nil {
-	//	return fmt.Errorf("ebpf session collectProfiles %w", err)
-	//}
-	//level.Debug(c.options.Logger).Log("msg", "ebpf collectProfiles done", "profiles", len(builders.Builders))
-	//bytesSent := 0
-	//for _, builder := range builders.Builders {
-	//	serviceName := builder.Labels.Get("service_name")
-	//	c.metrics.pprofsTotal.WithLabelValues(serviceName).Inc()
-	//	c.metrics.pprofSamplesTotal.WithLabelValues(serviceName).Add(float64(len(builder.Profile.Sample)))
-	//
-	//	buf := bytes.NewBuffer(nil)
-	//	_, err := builder.Write(buf)
-	//	if err != nil {
-	//		return fmt.Errorf("ebpf profile encode %w", err)
-	//	}
-	//	rawProfile := buf.Bytes()
-	//
-	//	appender := c.appendable.Appender()
-	//	bytesSent += len(rawProfile)
-	//	c.metrics.pprofBytesTotal.WithLabelValues(serviceName).Add(float64(len(rawProfile)))
-	//
-	//	samples := []*pyroscope.RawSample{{RawProfile: rawProfile}}
-	//	err = appender.Append(context.Background(), builder.Labels, samples)
-	//	if err != nil {
-	//		level.Error(c.options.Logger).Log("msg", "ebpf pprof write", "err", err)
-	//		continue
-	//	}
-	//}
-	//level.Debug(c.options.Logger).Log("msg", "ebpf append done", "bytes_sent", bytesSent)
-	return nil
-}
-
 type DebugInfo struct {
 	Targets interface{} `alloy:"targets,attr,optional"`
 }
@@ -218,7 +159,7 @@ func (c *Component) updateDebugInfo() {
 	}
 }
 
-func targetsOptionFromArgs(args Arguments) sd.TargetsOptions {
+func targetsOptionFromArguments(args Arguments) sd.TargetsOptions {
 	targets := make([]sd.DiscoveryTarget, 0, len(args.Targets))
 	for _, t := range args.Targets {
 		targets = append(targets, sd.DiscoveryTarget(t))
@@ -259,47 +200,17 @@ func createConfigFromArguments(args Arguments) (*controller.Config, error) {
 
 }
 
-func createOTLPReporter(cfg *controller.Config) (*reporter.OTLPReporter, error) {
-	intervals := times.New(cfg.MonitorInterval,
-		cfg.ReporterInterval, cfg.ProbabilisticInterval)
+type pprofConsumer struct {
+	fanout *pyroscope.Fanout
+}
 
-	kernelVersion, err := helpers.GetKernelVersion()
-	if err != nil {
-		return nil, err
+func (p2 *pprofConsumer) Next(p []reporter.PPROF) {
+	for _, pprof := range p {
+		appender := p2.fanout.Appender()
+		_, ls := pprof.Target.Labels()
+		err := appender.Append(context.Background(), ls, []*pyroscope.RawSample{{RawProfile: pprof.Raw}})
+		if err != nil {
+			level.Error(nil).Log("msg", "pprof write", "err", err)
+		}
 	}
-	if cfg.CollAgentAddr == "" {
-		return nil, fmt.Errorf("missing otlp collector address")
-	}
-
-	// hostname and sourceIP will be populated from the root namespace.
-	hostname, sourceIP, err := helpers.GetHostnameAndSourceIP(cfg.CollAgentAddr)
-	if err != nil {
-		return nil, err
-	}
-	cfg.HostName, cfg.IPAddress = hostname, sourceIP
-
-	return reporter.NewOTLP(&reporter.Config{
-		CollAgentAddr:            cfg.CollAgentAddr,
-		DisableTLS:               cfg.DisableTLS,
-		MaxRPCMsgSize:            32 << 20, // 32 MiB
-		MaxGRPCRetries:           5,
-		GRPCOperationTimeout:     intervals.GRPCOperationTimeout(),
-		GRPCStartupBackoffTime:   intervals.GRPCStartupBackoffTime(),
-		GRPCConnectionTimeout:    intervals.GRPCConnectionTimeout(),
-		ReportInterval:           intervals.ReportInterval(),
-		ExecutablesCacheElements: 16384,
-		// Next step: Calculate FramesCacheElements from numCores and samplingRate.
-		FramesCacheElements: 65536,
-		CGroupCacheElements: 1024,
-		SamplesPerSecond:    cfg.SamplesPerSecond,
-		KernelVersion:       kernelVersion,
-		HostName:            hostname,
-		IPAddress:           sourceIP,
-
-		PyroscopeUsername:              cfg.PyroscopeUsername,
-		PyroscopePasswordFile:          cfg.PyroscopePasswordFile,
-		PyroscopeSymbCachePath:         cfg.PyroscopeSymbCachePath,
-		PyroscopeSymbCacheSizeBytes:    cfg.PyroscopeSymbCacheSizeBytes,
-		PyroscopeSymbolizeNativeFrames: cfg.PyroscopeSymbolizeNativeFrames,
-	})
 }

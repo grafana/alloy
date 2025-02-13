@@ -1214,6 +1214,8 @@ github.com/channelmeter/iso8601duration v0.0.0-20150204201828-8da3af7a2a61/go.mo
 github.com/checkpoint-restore/go-criu/v5 v5.0.0/go.mod h1:cfwC0EG7HMUenopBsUf9d89JlCLQIfgVcNsNN0t6T2M=
 github.com/checkpoint-restore/go-criu/v6 v6.3.0 h1:mIdrSO2cPNWQY1truPg6uHLXyKHk3Z5Odx4wjKOASzA=
 github.com/checkpoint-restore/go-criu/v6 v6.3.0/go.mod h1:rrRTN/uSwY2X+BPRl/gkulo9gsKOSAeVp9/K2tv7xZI=
+github.com/chimehq/binarycursor v0.0.0-20230825172046-f9a5c882a482 h1:79d6c4LLQhQHvJDY2PXORbKCbl2EmKnXwFIro4M2YSU=
+github.com/chimehq/binarycursor v0.0.0-20230825172046-f9a5c882a482/go.mod h1:STVzLFRRn2bz791yF6FvcvvQHLSUmYp4hM0T2I+uub0=
 github.com/chzyer/logex v1.1.10/go.mod h1:+Ywpsq7O8HXn0nuIou7OrIPyXbp3wmkHB+jjWRnGsAI=
 github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e/go.mod h1:nSuG5e5PlCu98SY8svDHJxuZscDgtXS6KTTbou5AhLI=
 github.com/chzyer/test v0.0.0-20180213035817-a1ea475d72b1/go.mod h1:Q3SI9o4m/ZMnBNeIyt5eFwwo7qiLfzFZmjNmxjkiQlU=
