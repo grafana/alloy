@@ -16,6 +16,9 @@ Main (unreleased)
 
 ### Features
 
+- (_Public preview_) Add a `otelcol.processor.cumulativetodelta` component to convert metrics from
+  cumulative temporality to delta. (@madaraszg-tulip)
+
 - (_Experimental_) Add a `stage.windowsevent` block in the `loki.process` component. This aims to replace the existing `stage.eventlogmessage`. (@wildum)
 
 - Add `pyroscope.relabel` component to modify or filter profiles using Prometheus relabeling rules. (@marcsanmi)
