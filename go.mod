@@ -955,6 +955,9 @@ replace (
 	// TODO(dehaansa): DO NOT MERGE, remove after https://github.com/grafana/catchpoint-prometheus-exporter/pull/6 is merged
 	github.com/grafana/catchpoint-prometheus-exporter => github.com/dehaansa/catchpoint-prometheus-exporter v0.0.0-20250213170154-939c6db7967a
 
+	// TODO(dehaansa): DO NOT MERGE until this PR is merged upstream: https://github.com/grafana/vmware_exporter/pull/43
+	github.com/grafana/vmware_exporter => github.com/dehaansa/vmware_exporter v0.0.0-20250214145456-1d18c8569d6c
+
 	// TODO(dehaansa): integrate the changes from the exporter-package-v0.15.0 branch into at least the
 	// grafana fork of the exporter, or completely into upstream
 	// TODO(dehaansa): DO NOT MERGE without redirecting back to branch after
