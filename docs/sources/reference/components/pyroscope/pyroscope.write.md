@@ -10,7 +10,9 @@ title: pyroscope.write
 
 # `pyroscope.write`
 
-`pyroscope.write` receives performance profiles from other components and forwards them to a series of user-supplied endpoints using [Pyroscope' Push API](/oss/pyroscope/).
+`pyroscope.write` receives performance profiles from other components and forwards them to a series of user-supplied endpoints using [Pyroscope' Push API](/oss/pyroscope/). When forwarding profiles, most labels starting with double underscore (`__`) are dropped before sending the data, with the following exceptions:
+- `__name__` - preserved as it identifies the profile type
+- `__delta__` - preserved as it's required for delta profiles
 
 You can specify multiple `pyroscope.write` components by giving them different labels.
 

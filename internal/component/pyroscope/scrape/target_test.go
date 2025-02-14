@@ -1,12 +1,13 @@
 package scrape
 
 import (
-	"github.com/stretchr/testify/assert"
 	"net/url"
 	"slices"
 	"sort"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
@@ -82,6 +83,7 @@ func Test_targetsFromGroup(t *testing.T) {
 			model.SchemeLabel:     "http",
 			"foo":                 "bar",
 			"instance":            "localhost:9092",
+			serviceNameK8SLabel:   "k8s-svc",
 		}), url.Values{}),
 		NewTarget(labels.FromMap(map[string]string{
 			model.AddressLabel:    "localhost:9092",
@@ -91,46 +93,53 @@ func Test_targetsFromGroup(t *testing.T) {
 			model.SchemeLabel:     "http",
 			"foo":                 "bar",
 			"instance":            "localhost:9092",
+			serviceNameK8SLabel:   "k8s-svc",
 		}), url.Values{"seconds": []string{"14"}}),
 
 		// unspecified, infer from k8s
 		NewTarget(labels.FromMap(map[string]string{
-			model.AddressLabel:    "localhost:9093",
-			serviceNameLabel:      "ns/container",
-			model.MetricNameLabel: pprofMemory,
-			ProfilePath:           "/debug/pprof/allocs",
-			model.SchemeLabel:     "http",
-			"foo":                 "bar",
-			"instance":            "localhost:9093",
+			model.AddressLabel:                     "localhost:9093",
+			serviceNameLabel:                       "ns/container",
+			model.MetricNameLabel:                  pprofMemory,
+			ProfilePath:                            "/debug/pprof/allocs",
+			model.SchemeLabel:                      "http",
+			"foo":                                  "bar",
+			"instance":                             "localhost:9093",
+			"__meta_kubernetes_namespace":          "ns",
+			"__meta_kubernetes_pod_container_name": "container",
 		}), url.Values{}),
 		NewTarget(labels.FromMap(map[string]string{
-			model.AddressLabel:    "localhost:9093",
-			serviceNameLabel:      "ns/container",
-			model.MetricNameLabel: pprofProcessCPU,
-			ProfilePath:           "/debug/pprof/profile",
-			model.SchemeLabel:     "http",
-			"foo":                 "bar",
-			"instance":            "localhost:9093",
+			model.AddressLabel:                     "localhost:9093",
+			serviceNameLabel:                       "ns/container",
+			model.MetricNameLabel:                  pprofProcessCPU,
+			ProfilePath:                            "/debug/pprof/profile",
+			model.SchemeLabel:                      "http",
+			"foo":                                  "bar",
+			"instance":                             "localhost:9093",
+			"__meta_kubernetes_namespace":          "ns",
+			"__meta_kubernetes_pod_container_name": "container",
 		}), url.Values{"seconds": []string{"14"}}),
 
 		// unspecified, infer from docker
 		NewTarget(labels.FromMap(map[string]string{
-			model.AddressLabel:    "localhost:9094",
-			serviceNameLabel:      "docker-container",
-			model.MetricNameLabel: pprofMemory,
-			ProfilePath:           "/debug/pprof/allocs",
-			model.SchemeLabel:     "http",
-			"foo":                 "bar",
-			"instance":            "localhost:9094",
+			model.AddressLabel:             "localhost:9094",
+			serviceNameLabel:               "docker-container",
+			model.MetricNameLabel:          pprofMemory,
+			ProfilePath:                    "/debug/pprof/allocs",
+			model.SchemeLabel:              "http",
+			"foo":                          "bar",
+			"instance":                     "localhost:9094",
+			"__meta_docker_container_name": "docker-container",
 		}), url.Values{}),
 		NewTarget(labels.FromMap(map[string]string{
-			model.AddressLabel:    "localhost:9094",
-			serviceNameLabel:      "docker-container",
-			model.MetricNameLabel: pprofProcessCPU,
-			ProfilePath:           "/debug/pprof/profile",
-			model.SchemeLabel:     "http",
-			"foo":                 "bar",
-			"instance":            "localhost:9094",
+			model.AddressLabel:             "localhost:9094",
+			serviceNameLabel:               "docker-container",
+			model.MetricNameLabel:          pprofProcessCPU,
+			ProfilePath:                    "/debug/pprof/profile",
+			model.SchemeLabel:              "http",
+			"foo":                          "bar",
+			"instance":                     "localhost:9094",
+			"__meta_docker_container_name": "docker-container",
 		}), url.Values{"seconds": []string{"14"}}),
 	}
 	require.NoError(t, err)
