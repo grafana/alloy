@@ -26,6 +26,7 @@ type Config struct {
 	DirectConnect          bool               `yaml:"direct_connect,omitempty"`
 	DiscoveringMode        bool               `yaml:"discovering_mode,omitempty"`
 	TLSBasicAuthConfigPath string             `yaml:"tls_basic_auth_config_path,omitempty"`
+	CompatibleMode         bool               `yaml:"compatible_mode,omitempty"`
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler for Config
@@ -73,16 +74,11 @@ func New(logger log.Logger, c *Config) (integrations.Integration, error) {
 		URI:                    string(c.URI),
 		Logger:                 logrusLogger,
 		DisableDefaultRegistry: true,
-
-		// NOTE(rfratto): CompatibleMode configures the exporter to use old metric
-		// names from mongodb_exporter <v0.20.0. Many existing dashboards rely on
-		// the old names, so we hard-code it to true now. We may wish to make this
-		// configurable in the future.
-		CompatibleMode:  true,
-		CollectAll:      true,
-		DirectConnect:   c.DirectConnect,
-		DiscoveringMode: c.DiscoveringMode,
-		TLSConfigPath:   c.TLSBasicAuthConfigPath,
+		CompatibleMode:         c.CompatibleMode,
+		CollectAll:             true,
+		DirectConnect:          c.DirectConnect,
+		DiscoveringMode:        c.DiscoveringMode,
+		TLSConfigPath:          c.TLSBasicAuthConfigPath,
 	})
 
 	return integrations.NewHandlerIntegration(c.Name(), exp.Handler()), nil
