@@ -87,15 +87,16 @@ jobs:
           chown -R $(id -u):$(id -g) $PWD
 
     - name: Log in to Google Artifact Registry
-      uses: grafana/shared-workflows/actions/login-to-gar@main
+      uses: grafana/shared-workflows/actions/login-to-gar@login-to-gar-v0.2.0
+      id: login-to-gar
       with:
         registry: "us-docker.pkg.dev"
         environment: "prod"
 
-    - name: Update to latest image
+    - name: Create an IMG_TAG env var
       run: |
-        echo "$(bash ./tools/image-tag-docker)" > .tag-only
-        echo "grafana/alloy-dev:$(bash ./tools/image-tag-docker)" > .image-tag
+        IMG_TAG_INT=$(echo "grafana/alloy-dev:$(bash ./tools/image-tag-docker)")
+        echo "IMG_TAG=$IMG_TAG_INT" >> $GITHUB_ENV
 
     - name: Update to latest image
       env:
@@ -115,7 +116,7 @@ jobs:
             {
               "file_path": "ksonnet/lib/alloy/waves/alloy.libsonnet",
               "jsonnet_key": "dev_canary",
-              "jsonnet_value_file": ".image-tag"
+              "jsonnet_value": "$IMG_TAG"
             }
           ]
         }
