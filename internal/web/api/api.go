@@ -184,7 +184,7 @@ func graph(_ service.Host, callbackManager livedebugging.CallbackManager, logger
 			moduleID = livedebugging.ModuleID(vars["moduleID"])
 		}
 
-		window := setWindow(w, r.URL.Query().Get("window"))
+		window := setWindow(w, r.URL.Query().Get("window")) // in seconds
 
 		dataCh := make(chan *livedebugging.Data, 1000)
 		dataMap := make(map[dataKey]liveDebuggingData)
