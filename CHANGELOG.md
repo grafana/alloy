@@ -16,6 +16,8 @@ Main (unreleased)
 
 ### Features
 
+- Add a `otelcol.receiver.tcplog` component to receive OpenTelemetry logs over a TCP connection. (@nosammai)
+
 - (_Public preview_) Add a `otelcol.processor.cumulativetodelta` component to convert metrics from
   cumulative temporality to delta. (@madaraszg-tulip)
 
