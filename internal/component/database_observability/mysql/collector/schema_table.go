@@ -64,6 +64,34 @@ const (
 	WHERE
 		TABLE_SCHEMA = ? AND TABLE_NAME = ?
 	ORDER BY ORDINAL_POSITION ASC`
+
+	selectIndexNames = `
+		SELECT
+			index_name,
+			seq_in_index,
+			column_name,
+			nullable,
+			non_unique,
+			index_type
+		FROM
+			information_schema.statistics
+		WHERE
+			table_schema = ? and table_name = ?
+		ORDER BY table_name, index_name, seq_in_index`
+
+	selectForeignKeys = `
+		SELECT
+			constraint_name,
+			column_name,
+			referenced_table_name,
+			referenced_column_name
+		FROM
+			information_schema.key_column_usage
+		WHERE
+			constraint_name <> 'PRIMARY'
+			AND referenced_table_schema is not null
+			AND table_schema = ? and table_name = ?
+		ORDER BY table_name, constraint_name, ordinal_position`
 )
 
 type SchemaTableArguments struct {
@@ -108,7 +136,9 @@ type tableInfo struct {
 }
 
 type tableSpec struct {
-	Columns []columnSpec `json:"columns"`
+	Columns     []columnSpec `json:"columns"`
+	Indexes     []indexSpec  `json:"indexes,omitempty"`
+	ForeignKeys []foreignKey `json:"foreign_keys,omitempty"`
 }
 type columnSpec struct {
 	Name          string `json:"name"`
@@ -119,13 +149,28 @@ type columnSpec struct {
 	DefaultValue  string `json:"default_value,omitempty"`
 }
 
+type indexSpec struct {
+	Name     string   `json:"name"`
+	Type     string   `json:"type"`
+	Columns  []string `json:"columns"`
+	Unique   bool     `json:"unique"`
+	Nullable bool     `json:"nullable"`
+}
+
+type foreignKey struct {
+	Name                 string `json:"name"`
+	ColumnName           string `json:"column_name"`
+	ReferencedTableName  string `json:"referenced_table_name"`
+	ReferencedColumnName string `json:"referenced_column_name"`
+}
+
 func NewSchemaTable(args SchemaTableArguments) (*SchemaTable, error) {
 	c := &SchemaTable{
 		dbConnection:    args.DB,
 		instanceKey:     args.InstanceKey,
 		collectInterval: args.CollectInterval,
 		entryHandler:    args.EntryHandler,
-		logger:          log.With(args.Logger, "collector", "SchemaTable"),
+		logger:          log.With(args.Logger, "collector", SchemaTableName),
 		running:         &atomic.Bool{},
 	}
 
@@ -141,7 +186,7 @@ func (c *SchemaTable) Name() string {
 }
 
 func (c *SchemaTable) Start(ctx context.Context) error {
-	level.Debug(c.logger).Log("msg", "SchemaTable collector started")
+	level.Debug(c.logger).Log("msg", SchemaTableName+" collector started")
 
 	c.running.Store(true)
 	ctx, cancel := context.WithCancel(ctx)
@@ -412,6 +457,71 @@ func (c *SchemaTable) fetchColumnsDefinitions(ctx context.Context, schemaName st
 
 	if err := rs.Err(); err != nil {
 		level.Error(c.logger).Log("msg", "error during iterating over table columns result set", "schema", schemaName, "table", tableName, "err", err)
+		return nil, err
+	}
+
+	rs, err = c.dbConnection.QueryContext(ctx, selectIndexNames, schemaName, tableName)
+	if err != nil {
+		level.Error(c.logger).Log("msg", "failed to query table indexes", "schema", schemaName, "table", tableName, "err", err)
+		return nil, err
+	}
+	defer rs.Close()
+
+	for rs.Next() {
+		var indexName, columnName, indexType string
+		var seqInIndex, nonUnique int
+		var nullable sql.NullString
+		if err := rs.Scan(&indexName, &seqInIndex, &columnName, &nullable, &nonUnique, &indexType); err != nil {
+			level.Error(c.logger).Log("msg", "failed to scan table indexes", "schema", schemaName, "table", tableName, "err", err)
+			return nil, err
+		}
+
+		if len(tblSpec.Indexes) > 0 && tblSpec.Indexes[len(tblSpec.Indexes)-1].Name == indexName {
+			lastIndex := &tblSpec.Indexes[len(tblSpec.Indexes)-1]
+			if len(lastIndex.Columns) != seqInIndex-1 {
+				panic(seqInIndex)
+			}
+			lastIndex.Columns = append(lastIndex.Columns, columnName)
+		} else {
+			tblSpec.Indexes = append(tblSpec.Indexes, indexSpec{
+				Name:     indexName,
+				Type:     indexType,
+				Columns:  []string{columnName},
+				Unique:   nonUnique == 0,
+				Nullable: nullable.Valid && nullable.String == "YES",
+			})
+		}
+	}
+
+	if err := rs.Err(); err != nil {
+		level.Error(c.logger).Log("msg", "error during iterating over table indexes result set", "schema", schemaName, "table", tableName, "err", err)
+		return nil, err
+	}
+
+	rs, err = c.dbConnection.QueryContext(ctx, selectForeignKeys, schemaName, tableName)
+	if err != nil {
+		level.Error(c.logger).Log("msg", "failed to query table foreign keys", "schema", schemaName, "table", tableName, "err", err)
+		return nil, err
+	}
+	defer rs.Close()
+
+	for rs.Next() {
+		var constraintName, columnName, referencedTableName, referencedColumnName string
+		if err := rs.Scan(&constraintName, &columnName, &referencedTableName, &referencedColumnName); err != nil {
+			level.Error(c.logger).Log("msg", "failed to scan foreign keys", "schema", schemaName, "table", tableName, "err", err)
+			return nil, err
+		}
+
+		tblSpec.ForeignKeys = append(tblSpec.ForeignKeys, foreignKey{
+			Name:                 constraintName,
+			ColumnName:           columnName,
+			ReferencedTableName:  referencedTableName,
+			ReferencedColumnName: referencedColumnName,
+		})
+	}
+
+	if err := rs.Err(); err != nil {
+		level.Error(c.logger).Log("msg", "error during iterating over foreign keys result set", "schema", schemaName, "table", tableName, "err", err)
 		return nil, err
 	}
 

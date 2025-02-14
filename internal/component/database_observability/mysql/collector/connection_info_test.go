@@ -18,7 +18,7 @@ func TestConnectionInfo(t *testing.T) {
 	const baseExpectedMetrics = `
 	# HELP database_observability_connection_info Information about the connection
 	# TYPE database_observability_connection_info gauge
-	database_observability_connection_info{db_instance_identifier="%s",provider_name="%s",region="%s"} 1
+	database_observability_connection_info{db_instance_identifier="%s",provider_name="%s",provider_region="%s"} 1
 `
 
 	testCases := []struct {
@@ -28,12 +28,12 @@ func TestConnectionInfo(t *testing.T) {
 	}{
 		{
 			name:            "generic dsn",
-			dsn:             "user:pass@tcp(localhost:3306)/db",
+			dsn:             "user:pass@tcp(localhost:3306)/dbname",
 			expectedMetrics: fmt.Sprintf(baseExpectedMetrics, "unknown", "unknown", "unknown"),
 		},
 		{
 			name:            "AWS/RDS dsn",
-			dsn:             "user:pass@tcp(products-db.abc123xyz.us-east-1.rds.amazonaws.com:3306)/db",
+			dsn:             "user:pass@tcp(products-db.abc123xyz.us-east-1.rds.amazonaws.com:3306)/dbname",
 			expectedMetrics: fmt.Sprintf(baseExpectedMetrics, "products-db", "aws", "us-east-1"),
 		},
 	}
