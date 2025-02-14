@@ -125,7 +125,7 @@ func NewSchemaTable(args SchemaTableArguments) (*SchemaTable, error) {
 		instanceKey:     args.InstanceKey,
 		collectInterval: args.CollectInterval,
 		entryHandler:    args.EntryHandler,
-		logger:          log.With(args.Logger, "collector", "SchemaTable"),
+		logger:          log.With(args.Logger, "collector", SchemaTableName),
 		running:         &atomic.Bool{},
 	}
 
@@ -141,7 +141,7 @@ func (c *SchemaTable) Name() string {
 }
 
 func (c *SchemaTable) Start(ctx context.Context) error {
-	level.Debug(c.logger).Log("msg", "SchemaTable collector started")
+	level.Debug(c.logger).Log("msg", SchemaTableName+" collector started")
 
 	c.running.Store(true)
 	ctx, cancel := context.WithCancel(ctx)
