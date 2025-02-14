@@ -288,4 +288,4 @@ func toAlloyTargets(cache map[string]*targetgroup.Group) []Target {
 	return allTargets
 }
 
-func (c *Component) LiveDebugging(_ int) {}
+func (c *Component) LiveDebugging() {}

@@ -255,4 +255,4 @@ func (c *Component) process(e loki.Entry) model.LabelSet {
 	return relabeled
 }
 
-func (c *Component) LiveDebugging(_ int) {}
+func (c *Component) LiveDebugging() {}

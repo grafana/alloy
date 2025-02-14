@@ -6,6 +6,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/grafana/alloy/internal/component/otelcol"
 	otelconsumer "go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/plog"
 	"go.opentelemetry.io/collector/pdata/pmetric"
@@ -30,9 +31,10 @@ type Consumer struct {
 }
 
 var (
-	_ otelconsumer.Traces  = (*Consumer)(nil)
-	_ otelconsumer.Metrics = (*Consumer)(nil)
-	_ otelconsumer.Logs    = (*Consumer)(nil)
+	_ otelconsumer.Traces             = (*Consumer)(nil)
+	_ otelconsumer.Metrics            = (*Consumer)(nil)
+	_ otelconsumer.Logs               = (*Consumer)(nil)
+	_ otelcol.ConsumerWithComponentID = (*Consumer)(nil)
 )
 
 // New creates a new Consumer. The provided ctx is used to determine when the

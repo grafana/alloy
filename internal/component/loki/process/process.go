@@ -231,4 +231,4 @@ func stagesChanged(prev, next []stages.StageConfig) bool {
 	return false
 }
 
-func (c *Component) LiveDebugging(_ int) {}
+func (c *Component) LiveDebugging() {}

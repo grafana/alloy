@@ -49,13 +49,9 @@ func (h *FakeServiceHost) getComponentsInModule(module string) []*component.Info
 	return detail
 }
 
-type FakeComponentLiveDebugging struct {
-	ConsumersCount int
-}
+type FakeComponentLiveDebugging struct{}
 
-func (f *FakeComponentLiveDebugging) LiveDebugging(consumers int) {
-	f.ConsumersCount = consumers
-}
+func (f *FakeComponentLiveDebugging) LiveDebugging() {}
 
 func (f *FakeComponentLiveDebugging) Run(ctx context.Context) error {
 	<-ctx.Done()

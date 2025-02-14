@@ -28,9 +28,6 @@ func TestAddCallback(t *testing.T) {
 
 	require.NoError(t, livedebugging.AddCallback(callbackID, "fake.liveDebugging", callback))
 
-	component, _ := livedebugging.host.GetComponent(component.ParseID("fake.liveDebugging"), component.InfoOptions{})
-	require.Equal(t, 1, component.Component.(*testlivedebugging.FakeComponentLiveDebugging).ConsumersCount)
-
 	err = livedebugging.AddCallback(callbackID, "fake.noLiveDebugging", callback)
 	require.ErrorContains(t, err, "the component \"fake.noLiveDebugging\" does not support live debugging")
 
@@ -50,7 +47,6 @@ func TestStream(t *testing.T) {
 	callback := func(data *Data) {
 		receivedData = data
 	}
-	require.False(t, livedebugging.IsActive(componentID))
 	livedebugging.PublishIfActive(NewData(componentID, PrometheusMetric, 3, func() string { return "test data" }, WithTargetComponentIDs([]string{"component1"})))
 	require.Nil(t, receivedData) // nil because there are no active callbacks for it
 
@@ -111,13 +107,8 @@ func TestDeleteCallback(t *testing.T) {
 	callback1 := func(data *Data) {}
 	callback2 := func(data *Data) {}
 
-	component, _ := livedebugging.host.GetComponent(component.ParseID("fake.liveDebugging"), component.InfoOptions{})
-
 	require.NoError(t, livedebugging.AddCallback(callbackID1, componentID, callback1))
-	require.Equal(t, 1, component.Component.(*testlivedebugging.FakeComponentLiveDebugging).ConsumersCount)
 	require.NoError(t, livedebugging.AddCallback(callbackID2, componentID, callback2))
-	require.Equal(t, 2, component.Component.(*testlivedebugging.FakeComponentLiveDebugging).ConsumersCount)
-	require.Len(t, livedebugging.callbacks[componentID], 2)
 
 	// Deleting callbacks that don't exist should not panic
 	require.NotPanics(t, func() { livedebugging.DeleteCallback(callbackID1, "fakeComponentID") })
@@ -125,11 +116,9 @@ func TestDeleteCallback(t *testing.T) {
 
 	livedebugging.DeleteCallback(callbackID1, componentID)
 	require.Len(t, livedebugging.callbacks[componentID], 1)
-	require.Equal(t, 1, component.Component.(*testlivedebugging.FakeComponentLiveDebugging).ConsumersCount)
 
 	livedebugging.DeleteCallback(callbackID2, componentID)
 	require.Empty(t, livedebugging.callbacks[componentID])
-	require.Equal(t, 0, component.Component.(*testlivedebugging.FakeComponentLiveDebugging).ConsumersCount)
 }
 
 func setupServiceHost(liveDebugging *liveDebugging) {
@@ -165,9 +154,6 @@ func TestAddCallbackMulti(t *testing.T) {
 
 	require.NoError(t, livedebugging.AddCallbackMulti(callbackID, "", callback))
 
-	component, _ := livedebugging.host.GetComponent(component.ParseID("fake.liveDebugging"), component.InfoOptions{})
-	require.Equal(t, 1, component.Component.(*testlivedebugging.FakeComponentLiveDebugging).ConsumersCount)
-
 	require.NoError(t, livedebugging.AddCallbackMulti(callbackID, "declared.cmp", callback))
 }
 
@@ -181,12 +167,8 @@ func TestDeleteCallbackMulti(t *testing.T) {
 	callback1 := func(data *Data) {}
 	callback2 := func(data *Data) {}
 
-	component, _ := livedebugging.host.GetComponent(component.ParseID("fake.liveDebugging"), component.InfoOptions{})
-
 	require.NoError(t, livedebugging.AddCallbackMulti(callbackID1, "", callback1))
-	require.Equal(t, 1, component.Component.(*testlivedebugging.FakeComponentLiveDebugging).ConsumersCount)
 	require.NoError(t, livedebugging.AddCallbackMulti(callbackID2, "", callback2))
-	require.Equal(t, 2, component.Component.(*testlivedebugging.FakeComponentLiveDebugging).ConsumersCount)
 	require.Len(t, livedebugging.callbacks[componentID], 2)
 
 	// Deleting callbacks that don't exist should not panic
@@ -195,11 +177,9 @@ func TestDeleteCallbackMulti(t *testing.T) {
 
 	livedebugging.DeleteCallbackMulti(callbackID1, "")
 	require.Len(t, livedebugging.callbacks[componentID], 1)
-	require.Equal(t, 1, component.Component.(*testlivedebugging.FakeComponentLiveDebugging).ConsumersCount)
 
 	livedebugging.DeleteCallbackMulti(callbackID2, "")
 	require.Empty(t, livedebugging.callbacks[componentID])
-	require.Equal(t, 0, component.Component.(*testlivedebugging.FakeComponentLiveDebugging).ConsumersCount)
 }
 
 func TestMultiCallbacksMultipleStreams(t *testing.T) {

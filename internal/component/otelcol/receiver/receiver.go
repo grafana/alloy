@@ -6,15 +6,15 @@ import (
 	"context"
 	"errors"
 	"os"
-	"sync"
 
 	"github.com/grafana/alloy/internal/build"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/fanoutconsumer"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/interceptorconsumer"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/lazycollector"
-	"github.com/grafana/alloy/internal/component/otelcol/internal/livedebuggingconsumer"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/livedebuggingpublisher"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/scheduler"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/views"
 	"github.com/grafana/alloy/internal/service/livedebugging"
@@ -22,6 +22,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/extension"
+	"go.opentelemetry.io/collector/pdata/plog"
+	"go.opentelemetry.io/collector/pdata/pmetric"
+	"go.opentelemetry.io/collector/pdata/ptrace"
 	"go.opentelemetry.io/collector/pipeline"
 	otelreceiver "go.opentelemetry.io/collector/receiver"
 	sdkprometheus "go.opentelemetry.io/otel/exporters/prometheus"
@@ -64,14 +67,9 @@ type Receiver struct {
 	sched     *scheduler.Scheduler
 	collector *lazycollector.Collector
 
-	liveDebuggingConsumer *livedebuggingconsumer.Consumer
-	debugDataPublisher    livedebugging.DebugDataPublisher
+	debugDataPublisher livedebugging.DebugDataPublisher
 
 	args Arguments
-
-	// The mutex is needed because the live debugging service can trigger an update
-	// concurrently to add/remove the live debugging consumer.
-	updateMut sync.Mutex
 }
 
 var (
@@ -110,8 +108,7 @@ func New(opts component.Options, f otelreceiver.Factory, args Arguments) (*Recei
 		sched:     scheduler.New(opts.Logger),
 		collector: collector,
 
-		liveDebuggingConsumer: livedebuggingconsumer.New(debugDataPublisher.(livedebugging.DebugDataPublisher), opts.ID),
-		debugDataPublisher:    debugDataPublisher.(livedebugging.DebugDataPublisher),
+		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
 	}
 	if err := r.Update(args); err != nil {
 		return nil, err
@@ -129,16 +126,7 @@ func (r *Receiver) Run(ctx context.Context) error {
 // configuration for OpenTelemetry Collector receiver configuration and manage
 // the underlying OpenTelemetry Collector receiver.
 func (r *Receiver) Update(args component.Arguments) error {
-	r.updateMut.Lock()
 	r.args = args.(Arguments)
-	r.updateMut.Unlock()
-	return r.update()
-}
-
-func (r *Receiver) update() error {
-	r.updateMut.Lock()
-	defer r.updateMut.Unlock()
-
 	host := scheduler.NewHost(
 		r.opts.Logger,
 		scheduler.WithHostExtensions(r.args.Extensions()),
@@ -192,15 +180,15 @@ func (r *Receiver) update() error {
 	// supported telemetry signals.
 	var components []otelcomponent.Component
 
-	liveDebuggingActive := r.debugDataPublisher.IsActive(livedebugging.ComponentID(r.opts.ID))
-
 	if len(next.Traces) > 0 {
-		traces := next.Traces
-		if liveDebuggingActive {
-			traces = append(traces, r.liveDebuggingConsumer)
-		}
-		nextTraces := fanoutconsumer.Traces(traces)
-		tracesReceiver, err := r.factory.CreateTraces(r.ctx, settings, receiverConfig, nextTraces)
+		fanout := fanoutconsumer.Traces(next.Traces)
+		tracesInterceptor := interceptorconsumer.Traces(fanout, false,
+			func(ctx context.Context, td ptrace.Traces) error {
+				livedebuggingpublisher.PublishTracesIfActive(r.debugDataPublisher, r.opts.ID, td, next.Traces)
+				return fanout.ConsumeTraces(ctx, td)
+			},
+		)
+		tracesReceiver, err := r.factory.CreateTraces(r.ctx, settings, receiverConfig, tracesInterceptor)
 		if err != nil && !errors.Is(err, pipeline.ErrSignalNotSupported) {
 			return err
 		} else if tracesReceiver != nil {
@@ -209,12 +197,14 @@ func (r *Receiver) update() error {
 	}
 
 	if len(next.Metrics) > 0 {
-		metrics := next.Metrics
-		if liveDebuggingActive {
-			metrics = append(metrics, r.liveDebuggingConsumer)
-		}
-		nextMetrics := fanoutconsumer.Metrics(metrics)
-		metricsReceiver, err := r.factory.CreateMetrics(r.ctx, settings, receiverConfig, nextMetrics)
+		fanout := fanoutconsumer.Metrics(next.Metrics)
+		metricsInterceptor := interceptorconsumer.Metrics(fanout, false,
+			func(ctx context.Context, md pmetric.Metrics) error {
+				livedebuggingpublisher.PublishMetricsIfActive(r.debugDataPublisher, r.opts.ID, md, next.Metrics)
+				return fanout.ConsumeMetrics(ctx, md)
+			},
+		)
+		metricsReceiver, err := r.factory.CreateMetrics(r.ctx, settings, receiverConfig, metricsInterceptor)
 		if err != nil && !errors.Is(err, pipeline.ErrSignalNotSupported) {
 			return err
 		} else if metricsReceiver != nil {
@@ -223,20 +213,20 @@ func (r *Receiver) update() error {
 	}
 
 	if len(next.Logs) > 0 {
-		logs := next.Logs
-		if liveDebuggingActive {
-			logs = append(logs, r.liveDebuggingConsumer)
-		}
-		nextLogs := fanoutconsumer.Logs(logs)
-		logsReceiver, err := r.factory.CreateLogs(r.ctx, settings, receiverConfig, nextLogs)
+		fanout := fanoutconsumer.Logs(next.Logs)
+		logsInterceptor := interceptorconsumer.Logs(fanout, false,
+			func(ctx context.Context, ld plog.Logs) error {
+				livedebuggingpublisher.PublishLogsIfActive(r.debugDataPublisher, r.opts.ID, ld, next.Logs)
+				return fanout.ConsumeLogs(ctx, ld)
+			},
+		)
+		logsReceiver, err := r.factory.CreateLogs(r.ctx, settings, receiverConfig, logsInterceptor)
 		if err != nil && !errors.Is(err, pipeline.ErrSignalNotSupported) {
 			return err
 		} else if logsReceiver != nil {
 			components = append(components, logsReceiver)
 		}
 	}
-
-	r.liveDebuggingConsumer.SetTargetConsumers(next.Metrics, next.Logs, next.Traces)
 
 	// Schedule the components to run once our component is running.
 	r.sched.Schedule(r.ctx, func() {}, host, components...)
@@ -248,6 +238,4 @@ func (r *Receiver) CurrentHealth() component.Health {
 	return r.sched.CurrentHealth()
 }
 
-func (p *Receiver) LiveDebugging(_ int) {
-	p.update()
-}
+func (p *Receiver) LiveDebugging() {}

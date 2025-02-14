@@ -382,4 +382,4 @@ func (c *Component) Update(args component.Arguments) error {
 	return nil
 }
 
-func (c *Component) LiveDebugging(_ int) {}
+func (c *Component) LiveDebugging() {}

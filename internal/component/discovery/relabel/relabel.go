@@ -114,7 +114,7 @@ func (c *Component) Update(args component.Arguments) error {
 	return nil
 }
 
-func (c *Component) LiveDebugging(_ int) {}
+func (c *Component) LiveDebugging() {}
 
 func componentMapToPromLabels(ls discovery.Target) labels.Labels {
 	res := make([]labels.Label, 0, len(ls))
