@@ -78,6 +78,20 @@ const (
 		WHERE
 			table_schema = ? and table_name = ?
 		ORDER BY table_name, index_name, seq_in_index`
+
+	selectForeignKeys = `
+		SELECT
+			constraint_name,
+			column_name,
+			referenced_table_name,
+			referenced_column_name
+		FROM
+			information_schema.key_column_usage
+		WHERE
+			constraint_name <> 'PRIMARY'
+			AND referenced_table_schema is not null
+			AND table_schema = ? and table_name = ?
+		ORDER BY table_name, constraint_name, ordinal_position`
 )
 
 type SchemaTableArguments struct {
@@ -122,8 +136,9 @@ type tableInfo struct {
 }
 
 type tableSpec struct {
-	Columns []columnSpec `json:"columns"`
-	Indexes []indexSpec  `json:"indexes,omitempty"`
+	Columns     []columnSpec `json:"columns"`
+	Indexes     []indexSpec  `json:"indexes,omitempty"`
+	ForeignKeys []foreignKey `json:"foreign_keys,omitempty"`
 }
 type columnSpec struct {
 	Name          string `json:"name"`
@@ -140,6 +155,13 @@ type indexSpec struct {
 	Columns  []string `json:"columns"`
 	Unique   bool     `json:"unique"`
 	Nullable bool     `json:"nullable"`
+}
+
+type foreignKey struct {
+	Name                 string `json:"name"`
+	ColumnName           string `json:"column_name"`
+	ReferencedTableName  string `json:"referenced_table_name"`
+	ReferencedColumnName string `json:"referenced_column_name"`
 }
 
 func NewSchemaTable(args SchemaTableArguments) (*SchemaTable, error) {
@@ -473,6 +495,33 @@ func (c *SchemaTable) fetchColumnsDefinitions(ctx context.Context, schemaName st
 
 	if err := rs.Err(); err != nil {
 		level.Error(c.logger).Log("msg", "error during iterating over table indexes result set", "schema", schemaName, "table", tableName, "err", err)
+		return nil, err
+	}
+
+	rs, err = c.dbConnection.QueryContext(ctx, selectForeignKeys, schemaName, tableName)
+	if err != nil {
+		level.Error(c.logger).Log("msg", "failed to query table foreign keys", "schema", schemaName, "table", tableName, "err", err)
+		return nil, err
+	}
+	defer rs.Close()
+
+	for rs.Next() {
+		var constraintName, columnName, referencedTableName, referencedColumnName string
+		if err := rs.Scan(&constraintName, &columnName, &referencedTableName, &referencedColumnName); err != nil {
+			level.Error(c.logger).Log("msg", "failed to scan foreign keys", "schema", schemaName, "table", tableName, "err", err)
+			return nil, err
+		}
+
+		tblSpec.ForeignKeys = append(tblSpec.ForeignKeys, foreignKey{
+			Name:                 constraintName,
+			ColumnName:           columnName,
+			ReferencedTableName:  referencedTableName,
+			ReferencedColumnName: referencedColumnName,
+		})
+	}
+
+	if err := rs.Err(); err != nil {
+		level.Error(c.logger).Log("msg", "error during iterating over foreign keys result set", "schema", schemaName, "table", tableName, "err", err)
 		return nil, err
 	}
 
