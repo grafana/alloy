@@ -163,9 +163,14 @@ func (c *Component) handleIn(ctx context.Context, wg *sync.WaitGroup) {
 			return
 		case entry := <-c.receiver.Chan():
 			c.mut.RLock()
-			if c.debugDataPublisher.IsActive(componentID) {
-				c.debugDataPublisher.Publish(componentID, fmt.Sprintf("[IN]: timestamp: %s, entry: %s, labels: %s", entry.Timestamp.Format(time.RFC3339Nano), entry.Line, entry.Labels.String()))
-			}
+			c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
+				componentID,
+				livedebugging.LokiLog,
+				0, // does not count because we count only the data that exists
+				func() string {
+					return fmt.Sprintf("[IN]: timestamp: %s, entry: %s, labels: %s", entry.Timestamp.Format(time.RFC3339Nano), entry.Line, entry.Labels.String())
+				},
+			))
 			select {
 			case <-ctx.Done():
 				return
@@ -194,9 +199,14 @@ func (c *Component) handleOut(shutdownCh chan struct{}, wg *sync.WaitGroup) {
 
 			// The log entry is the same for every fanout,
 			// so we can publish it only once.
-			if c.debugDataPublisher.IsActive(componentID) {
-				c.debugDataPublisher.Publish(componentID, fmt.Sprintf("[OUT]: timestamp: %s, entry: %s, labels: %s", entry.Timestamp.Format(time.RFC3339Nano), entry.Line, entry.Labels.String()))
-			}
+			c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
+				componentID,
+				livedebugging.LokiLog,
+				1,
+				func() string {
+					return fmt.Sprintf("[OUT]: timestamp: %s, entry: %s, labels: %s", entry.Timestamp.Format(time.RFC3339Nano), entry.Line, entry.Labels.String())
+				},
+			))
 
 			for _, f := range fanout {
 				select {
@@ -221,4 +231,4 @@ func stagesChanged(prev, next []stages.StageConfig) bool {
 	return false
 }
 
-func (c *Component) LiveDebugging(_ int) {}
+func (c *Component) LiveDebugging() {}

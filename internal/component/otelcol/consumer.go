@@ -12,6 +12,11 @@ type Consumer interface {
 	otelconsumer.Logs
 }
 
+type ConsumerWithComponentID interface {
+	Consumer
+	ComponentID() string
+}
+
 // ConsumerArguments is a common Arguments type for Alloy components which can
 // send data to otelcol consumers.
 //
