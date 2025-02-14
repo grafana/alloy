@@ -23,6 +23,9 @@ local stackedPanelMixin = {
       includeInstance=true,
       setenceCaseLabels=$._config.useSetenceCaseTemplateLabels),
 
+  local panelPosition(row, col) = panel.withPosition({x: col*8, y: row*10, w: 8, h: 10}),
+  local rowPosition(row) = panel.withPosition({h: 1, w: 24, x: 0, y: row*10}),
+
   [filename]:
     dashboard.new(name='Alloy / OpenTelemetry', tag=$._config.dashboardTag) +
     dashboard.withDashboardsLink(tag=$._config.dashboardTag) +
@@ -32,7 +35,7 @@ local stackedPanelMixin = {
       // "Receivers for traces" row
       (
         panel.new('Receivers for traces [otelcol.receiver]', 'row') +
-        panel.withPosition({ h: 1, w: 24, x: 0, y: 0 })
+        rowPosition(0)
       ),
       (
         panel.new(title='Accepted spans', type='timeseries') +
@@ -40,14 +43,12 @@ local stackedPanelMixin = {
           Number of spans successfully pushed into the pipeline.
         |||) +
         stackedPanelMixin +
-        panel.withPosition({ x: 0, y: 0, w: 8, h: 10 }) +
+        panelPosition(row=0, col=0) +
         panel.withQueries([
           panel.newQuery(
             expr= |||
-              rate(otelcol_receiver_accepted_spans_total{%(instanceSelector)s}[$__rate_interval])
+              sum by(instance) (rate(otelcol_receiver_accepted_spans_total{%(instanceSelector)s}[$__rate_interval]))
             ||| % $._config,
-            //TODO: How will the dashboard look if there is more than one receiver component? The legend is not unique enough?
-            legendFormat='{{ pod }} / {{ transport }}',
           ),
         ])
       ),
@@ -58,13 +59,12 @@ local stackedPanelMixin = {
           Number of spans that could not be pushed into the pipeline.
         |||) +
         stackedPanelMixin +
-        panel.withPosition({ x: 8, y: 0, w: 8, h: 10 }) +
+        panelPosition(row=0, col=1) +
         panel.withQueries([
           panel.newQuery(
             expr= |||
-              rate(otelcol_receiver_refused_spans_total{%(instanceSelector)s}[$__rate_interval])
+              sum by(instance) (rate(otelcol_receiver_refused_spans_total{%(instanceSelector)s}[$__rate_interval]))
             ||| % $._config,
-            legendFormat='{{ pod }} / {{ transport }}',
           ),
         ])
       ),
@@ -73,7 +73,7 @@ local stackedPanelMixin = {
         panel.withDescription(|||
           The duration of inbound RPCs.
         |||) +
-        panel.withPosition({ x: 16, y: 0, w: 8, h: 10 }) +
+        panelPosition(row=0, col=2) +
         panel.withQueries([
           panel.newQuery(
             expr= |||
@@ -88,7 +88,7 @@ local stackedPanelMixin = {
       // "Batching" row
       (
         panel.new('Batching of logs, metrics, and traces [otelcol.processor.batch]', 'row') +
-        panel.withPosition({ h: 1, w: 24, x: 0, y: 10 })
+        rowPosition(1)
       ),
       (
         panel.newHeatmap('Number of units in the batch', 'short') +
@@ -96,7 +96,7 @@ local stackedPanelMixin = {
         panel.withDescription(|||
           Number of spans, metric datapoints, or log lines in a batch
         |||) +
-        panel.withPosition({ x: 0, y: 10, w: 8, h: 10 }) +
+        panelPosition(row=1, col=0) +
         panel.withQueries([
           panel.newQuery(
             expr= |||
@@ -115,13 +115,12 @@ local stackedPanelMixin = {
         panel.withDescription(|||
           Number of distinct metadata value combinations being processed
         |||) +
-        panel.withPosition({ x: 8, y: 10, w: 8, h: 10 }) +
+        panelPosition(row=1, col=1) +
         panel.withQueries([
           panel.newQuery(
             expr= |||
-              otelcol_processor_batch_metadata_cardinality{%(instanceSelector)s}
+              sum by(instance) (otelcol_processor_batch_metadata_cardinality{%(instanceSelector)s})
             ||| % $._config,
-            legendFormat='{{ pod }}',
           ),
         ])
       ),
@@ -130,13 +129,12 @@ local stackedPanelMixin = {
         panel.withDescription(|||
           Number of times the batch was sent due to a timeout trigger
         |||) +
-        panel.withPosition({ x: 16, y: 10, w: 8, h: 10 }) +
+        panelPosition(row=1, col=2) +
         panel.withQueries([
           panel.newQuery(
             expr= |||
-              rate(otelcol_processor_batch_timeout_trigger_send_total{%(instanceSelector)s}[$__rate_interval])
+              sum by(instance) (rate(otelcol_processor_batch_timeout_trigger_send_total{%(instanceSelector)s}[$__rate_interval]))
             ||| % $._config,
-            legendFormat='{{ pod }}',
           ),
         ])
       ),
@@ -144,7 +142,7 @@ local stackedPanelMixin = {
       // "Exporters for traces" row
       (
         panel.new('Exporters for traces [otelcol.exporter]', 'row') +
-        panel.withPosition({ h: 1, w: 24, x: 0, y: 20 })
+        rowPosition(2)
       ),
       (
         panel.new(title='Exported sent spans', type='timeseries') +
@@ -152,13 +150,12 @@ local stackedPanelMixin = {
           Number of spans successfully sent to destination.
         |||) +
         stackedPanelMixin +
-        panel.withPosition({ x: 0, y: 20, w: 8, h: 10 }) +
+        panelPosition(row=2, col=0) +
         panel.withQueries([
           panel.newQuery(
             expr= ||| 
-              rate(otelcol_exporter_sent_spans_total{%(instanceSelector)s}[$__rate_interval])
+              sum by(instance) (rate(otelcol_exporter_sent_spans_total{%(instanceSelector)s}[$__rate_interval]))
             ||| % $._config,
-            legendFormat='{{ pod }}',
           ),
         ])
       ),
@@ -168,16 +165,14 @@ local stackedPanelMixin = {
           Number of spans in failed attempts to send to destination.
         |||) +
         stackedPanelMixin +
-        panel.withPosition({ x: 8, y: 20, w: 8, h: 10 }) +
+        panelPosition(row=2, col=1) +
         panel.withQueries([
           panel.newQuery(
             expr= |||
-              rate(otelcol_exporter_send_failed_spans_total{%(instanceSelector)s}[$__rate_interval])
+              sum by(instance) (rate(otelcol_exporter_send_failed_spans_total{%(instanceSelector)s}[$__rate_interval]))
             ||| % $._config,
-            legendFormat='{{ pod }}',
           ),
         ])
       ),
-
     ]),
 }
