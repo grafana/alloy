@@ -85,7 +85,7 @@ func (args *Arguments) Validate() error {
 	}
 
 	if (len(args.Include.MatchType) > 0 && args.Include.MatchType != "strict" && args.Include.MatchType != "regexp") ||
-		(len(args.Include.MatchType) > 0 && args.Include.MatchType != "strict" && args.Include.MatchType != "regexp") {
+		(len(args.Exclude.MatchType) > 0 && args.Exclude.MatchType != "strict" && args.Exclude.MatchType != "regexp") {
 
 		return fmt.Errorf("match_type must be one of %q and %q", "strict", "regexp")
 	}
