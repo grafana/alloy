@@ -1,0 +1,4 @@
+# Test correct rendering of the service labels
+service:
+  labels:
+    testLabelKey: testLabelValue
