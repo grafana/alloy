@@ -57,6 +57,8 @@ Main (unreleased)
 
 - Improved memory and CPU performance of Prometheus pipelines by changing the underlying implementation of targets (@thampiotr)  
 
+- Add `config_merge_strategy` in `prometheus.exporter.snmp` to optionally merge custom snmp config with embedded config instead of replacing. Useful for providing SNMP auths. (@v-zhuravlev)
+
 ### Bugfixes
 
 - Fix log rotation for Windows in `loki.source.file` by refactoring the component to use the runner pkg. This should also reduce CPU consumption when tailing a lot of files in a dynamic environment. (@wildum)
