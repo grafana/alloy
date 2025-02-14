@@ -16,6 +16,7 @@ import (
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/util"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/tools/txtar"
 
@@ -298,7 +299,7 @@ func TestImportError(t *testing.T) {
 
 func testConfig(t *testing.T, config string, reloadConfig string, update func()) {
 	defer verifyNoGoroutineLeaks(t)
-	ctrl, f := setup(t, config)
+	ctrl, f := setup(t, config, nil, featuregate.StabilityPublicPreview)
 
 	err := ctrl.LoadSource(f, nil, "")
 	require.NoError(t, err)
@@ -351,7 +352,7 @@ func testConfig(t *testing.T, config string, reloadConfig string, update func())
 
 func testConfigError(t *testing.T, config string, expectedError string) {
 	defer verifyNoGoroutineLeaks(t)
-	ctrl, f := setup(t, config)
+	ctrl, f := setup(t, config, nil, featuregate.StabilityPublicPreview)
 	err := ctrl.LoadSource(f, nil, "")
 	require.ErrorContains(t, err, expectedError)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -368,14 +369,14 @@ func testConfigError(t *testing.T, config string, expectedError string) {
 	}()
 }
 
-func setup(t *testing.T, config string) (*alloy_runtime.Runtime, *alloy_runtime.Source) {
+func setup(t *testing.T, config string, reg prometheus.Registerer, stability featuregate.Stability) (*alloy_runtime.Runtime, *alloy_runtime.Source) {
 	s, err := logging.New(os.Stderr, logging.DefaultOptions)
 	require.NoError(t, err)
 	ctrl := alloy_runtime.New(alloy_runtime.Options{
 		Logger:       s,
 		DataPath:     t.TempDir(),
-		MinStability: featuregate.StabilityPublicPreview,
-		Reg:          nil,
+		MinStability: stability,
+		Reg:          reg,
 		Services:     []service.Service{},
 	})
 	f, err := alloy_runtime.ParseSource(t.Name(), []byte(config))
@@ -392,5 +393,19 @@ func getTestFiles(directory string, t *testing.T) []fs.FileInfo {
 	files, err := dir.Readdir(-1)
 	require.NoError(t, err)
 
-	return files
+	// Don't use files which start with a dot (".").
+	// This is to prevent the test suite from using files such as ".DS_Store",
+	// which Visual Studio Code may add.
+	return filterFiles(files, ".")
+}
+
+// Only take into account files which don't have a certain prefix.
+func filterFiles(files []fs.FileInfo, denylistedPrefix string) []fs.FileInfo {
+	res := make([]fs.FileInfo, 0, len(files))
+	for _, file := range files {
+		if !strings.HasPrefix(file.Name(), denylistedPrefix) {
+			res = append(res, file)
+		}
+	}
+	return res
 }

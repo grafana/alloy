@@ -226,6 +226,8 @@ func (c QuerySample) tablesFromQuery(digest string, stmt sqlparser.Statement) []
 	case *sqlparser.Insert:
 		parsedTables = []string{c.parseTableName(stmt.Table)}
 		switch insRowsStmt := stmt.Rows.(type) {
+		case sqlparser.Values:
+			// ignore raw values
 		case *sqlparser.Select:
 			parsedTables = append(parsedTables, c.tablesFromQuery(digest, insRowsStmt)...)
 		case *sqlparser.Union:

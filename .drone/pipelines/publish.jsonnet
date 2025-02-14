@@ -14,56 +14,6 @@ local windows_containers = [
   { devel: 'alloy-devel', release: 'alloy' },
 ];
 
-local linux_containers_dev_jobs = std.map(function(container) (
-  pipelines.linux('Publish Linux %s container' % container.devel) {
-    trigger: {
-      ref: ['refs/heads/main'],
-    },
-    steps: [{
-      // We only need to run this once per machine, so it's OK if it fails. It
-      // is also likely to fail when run in parallel on the same machine.
-      name: 'Configure QEMU',
-      image: build_image.linux,
-      failure: 'ignore',
-      volumes: [{
-        name: 'docker',
-        path: '/var/run/docker.sock',
-      }],
-      commands: [
-        'docker run --rm --privileged multiarch/qemu-user-static --reset -p yes',
-      ],
-    }, {
-      name: 'Publish container',
-      image: build_image.linux,
-      volumes: [{
-        name: 'docker',
-        path: '/var/run/docker.sock',
-      }],
-      environment: {
-        DOCKER_LOGIN: secrets.docker_login.fromSecret,
-        DOCKER_PASSWORD: secrets.docker_password.fromSecret,
-        GCR_CREDS: secrets.gcr_admin.fromSecret,
-      },
-      commands: [
-        'mkdir -p $HOME/.docker',
-        'printenv GCR_CREDS > $HOME/.docker/config.json',
-        'docker login -u $DOCKER_LOGIN -p $DOCKER_PASSWORD',
-
-        // Create a buildx worker for our cross platform builds.
-        'docker buildx create --name multiarch-alloy-%s-${DRONE_COMMIT_SHA} --driver docker-container --use' % container.devel,
-
-        './tools/ci/docker-containers %s' % container.devel,
-
-        'docker buildx rm multiarch-alloy-%s-${DRONE_COMMIT_SHA}' % container.devel,
-      ],
-    }],
-    volumes: [{
-      name: 'docker',
-      host: { path: '/var/run/docker.sock' },
-    }],
-  }
-), linux_containers);
-
 local windows_containers_dev_jobs = std.map(function(container) (
   pipelines.windows('Publish Windows %s container' % container.devel) {
     trigger: {
@@ -177,52 +127,8 @@ local windows_containers_jobs = std.map(function(container) (
   }
 ), windows_containers);
 
-linux_containers_dev_jobs + windows_containers_dev_jobs +
+windows_containers_dev_jobs +
 linux_containers_jobs + windows_containers_jobs + [
-  pipelines.linux('Deploy to deployment_tools') {
-    trigger: {
-      ref: ['refs/heads/main'],
-    },
-    image_pull_secrets: ['dockerconfigjson_gar'],
-    steps: [
-      {
-        name: 'Create .image-tag',
-        image: 'alpine',
-        commands: [
-          'apk add --no-cache bash git',
-          'echo "$(bash ./tools/image-tag-docker)" > .tag-only',
-          'echo "grafana/alloy-dev:$(bash ./tools/image-tag-docker)" > .image-tag',
-        ],
-      },
-      {
-        name: 'Update deployment_tools',
-        image: 'us-docker.pkg.dev/grafanalabs-global/docker-deployment-tools-prod/updater',
-        settings: {
-          config_json: |||
-            {
-              "git_committer_name": "updater-for-ci[bot]",
-              "git_author_name": "updater-for-ci[bot]",
-              "git_committer_email": "119986603+updater-for-ci[bot]@users.noreply.github.com",
-              "git_author_email": "119986603+updater-for-ci[bot]@users.noreply.github.com",
-              "destination_branch": "master",
-              "repo_name": "deployment_tools",
-              "update_jsonnet_attribute_configs": [
-                {
-                  "file_path": "ksonnet/lib/alloy/waves/alloy.libsonnet",
-                  "jsonnet_key": "dev_canary",
-                  "jsonnet_value_file": ".image-tag"
-                }
-              ]
-            }
-          |||,
-          github_app_id: secrets.updater_app_id.fromSecret,
-          github_app_installation_id: secrets.updater_app_installation_id.fromSecret,
-          github_app_private_key: secrets.updater_private_key.fromSecret,
-        },
-      },
-    ],
-    depends_on: job_names(linux_containers_dev_jobs),
-  },
 
   pipelines.linux('Publish release') {
     trigger: {

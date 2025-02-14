@@ -250,7 +250,7 @@ func (s *Service) Definition() service.Definition {
 		Name:       ServiceName,
 		ConfigType: Arguments{},
 		DependsOn:  nil, // remotecfg has no dependencies.
-		Stability:  featuregate.StabilityPublicPreview,
+		Stability:  featuregate.StabilityGenerallyAvailable,
 	}
 }
 
@@ -316,6 +316,7 @@ func (s *Service) Update(newConfig any) error {
 		s.asClient = collectorv1connect.NewCollectorServiceClient(
 			httpClient,
 			newArgs.URL,
+			connect.WithHTTPGet(),
 		)
 	}
 	// Combine the new attributes on top of the system attributes
@@ -354,9 +355,9 @@ func (s *Service) fetch() {
 
 func (s *Service) registerCollector() error {
 	req := connect.NewRequest(&collectorv1.RegisterCollectorRequest{
-		Id:         s.args.ID,
-		Attributes: s.attrs,
-		Name:       s.args.Name,
+		Id:              s.args.ID,
+		LocalAttributes: s.attrs,
+		Name:            s.args.Name,
 	})
 	client := s.asClient
 
@@ -428,9 +429,9 @@ func (s *Service) fetchLocal() {
 func (s *Service) getAPIConfig() ([]byte, error) {
 	s.mut.RLock()
 	req := connect.NewRequest(&collectorv1.GetConfigRequest{
-		Id:         s.args.ID,
-		Attributes: s.attrs,
-		Hash:       s.remoteHash,
+		Id:              s.args.ID,
+		LocalAttributes: s.attrs,
+		Hash:            s.remoteHash,
 	})
 	client := s.asClient
 	s.mut.RUnlock()

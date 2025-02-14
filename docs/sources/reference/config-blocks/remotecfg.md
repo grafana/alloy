@@ -2,14 +2,12 @@
 canonical: https://grafana.com/docs/alloy/latest/reference/config-blocks/remotecfg/
 description: Learn about the remotecfg configuration block
 menuTitle: remotecfg
+labels:
+  stage: general-availability
 title: remotecfg block
 ---
 
-<span class="badge docs-labels__stage docs-labels__item">Public preview</span>
-
 # remotecfg block
-
-{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `remotecfg` is an optional configuration block that enables {{< param "PRODUCT_NAME" >}} to fetch and load the configuration from a remote endpoint.
 `remotecfg` is specified without a label and can only be provided once per configuration file.

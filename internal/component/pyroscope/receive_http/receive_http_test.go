@@ -56,6 +56,10 @@ func TestForwardsProfilesIngest(t *testing.T) {
 			appendableErrors: []error{nil, nil},
 			expectedStatus:   http.StatusOK,
 			expectedForwards: 2,
+			expectedLabels: map[string]string{
+				"__name__":     "test_app",
+				"service_name": "test_app",
+			},
 		},
 		{
 			name:             "Large profile with custom headers",
@@ -67,6 +71,10 @@ func TestForwardsProfilesIngest(t *testing.T) {
 			appendableErrors: []error{nil},
 			expectedStatus:   http.StatusOK,
 			expectedForwards: 1,
+			expectedLabels: map[string]string{
+				"__name__":     "test_app",
+				"service_name": "test_app",
+			},
 		},
 		{
 			name:             "Invalid method",
@@ -111,6 +119,10 @@ func TestForwardsProfilesIngest(t *testing.T) {
 			appendableErrors: []error{fmt.Errorf("error1"), fmt.Errorf("error2")},
 			expectedStatus:   http.StatusInternalServerError,
 			expectedForwards: 2,
+			expectedLabels: map[string]string{
+				"__name__":     "test_app",
+				"service_name": "test_app",
+			},
 		},
 		{
 			name:             "One appendable fails, one succeeds",
@@ -122,6 +134,10 @@ func TestForwardsProfilesIngest(t *testing.T) {
 			appendableErrors: []error{fmt.Errorf("error"), nil},
 			expectedStatus:   http.StatusInternalServerError,
 			expectedForwards: 2,
+			expectedLabels: map[string]string{
+				"__name__":     "test_app",
+				"service_name": "test_app",
+			},
 		},
 		{
 			name:             "Valid labels are parsed and forwarded",
@@ -134,9 +150,10 @@ func TestForwardsProfilesIngest(t *testing.T) {
 			expectedStatus:   http.StatusOK,
 			expectedForwards: 2,
 			expectedLabels: map[string]string{
-				"__name__": "test.app",
-				"env":      "prod",
-				"region":   "us-east",
+				"__name__":     "test.app",
+				"service_name": "test.app",
+				"env":          "prod",
+				"region":       "us-east",
 			},
 		},
 		{
@@ -150,7 +167,24 @@ func TestForwardsProfilesIngest(t *testing.T) {
 			expectedStatus:   http.StatusOK,
 			expectedForwards: 2,
 			expectedLabels: map[string]string{
-				"__name__": "test.app", // Only __name__ is preserved
+				"__name__":     "test.app",
+				"service_name": "test.app",
+			},
+		},
+		{
+			name:             "existing service_name sets app_name from __name__",
+			profileSize:      1024,
+			method:           "POST",
+			path:             "/ingest",
+			queryParams:      "name=test.app{service_name=my-service}",
+			headers:          map[string]string{"Content-Type": "application/octet-stream"},
+			appendableErrors: []error{nil},
+			expectedStatus:   http.StatusOK,
+			expectedForwards: 1,
+			expectedLabels: map[string]string{
+				"__name__":     "test.app",
+				"service_name": "my-service",
+				"app_name":     "test.app",
 			},
 		},
 	}
@@ -333,12 +367,14 @@ func verifyForwardedProfiles(
 		testApp, ok := app.(*testAppender)
 		require.True(t, ok, "Appendable is not a testAppender")
 
-		// Verify labels if name parameter exists and is valid
-		if nameParam := testApp.lastProfile.URL.Query().Get("name"); nameParam != "" {
-			ls, err := labelset.Parse(nameParam)
-			if err == nil {
-				require.Equal(t, ls.Labels(), testApp.lastProfile.Labels.Map(),
-					"Labels mismatch for appendable %d", i)
+		// Skip name parameter label check if we're testing service_name behavior
+		if expectedLabels == nil || expectedLabels["service_name"] == "" {
+			if nameParam := testApp.lastProfile.URL.Query().Get("name"); nameParam != "" {
+				ls, err := labelset.Parse(nameParam)
+				if err == nil {
+					require.Equal(t, ls.Labels(), testApp.lastProfile.Labels.Map(),
+						"Labels mismatch for appendable %d", i)
+				}
 			}
 		}
 

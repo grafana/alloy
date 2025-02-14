@@ -66,7 +66,7 @@ func TestSchemaTable(t *testing.T) {
 				),
 			)
 
-		mock.ExpectQuery("SHOW CREATE TABLE some_schema.some_table").WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery("SHOW CREATE TABLE `some_schema`.`some_table`").WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"table_name",
@@ -168,7 +168,7 @@ func TestSchemaTable(t *testing.T) {
 				),
 			)
 
-		mock.ExpectQuery("SHOW CREATE TABLE some_schema.some_table").WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery("SHOW CREATE TABLE `some_schema`.`some_table`").WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"table_name",
@@ -271,7 +271,7 @@ func TestSchemaTable(t *testing.T) {
 				),
 			)
 
-		mock.ExpectQuery("SHOW CREATE TABLE some_schema.some_table").WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery("SHOW CREATE TABLE `some_schema`.`some_table`").WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"table_name",
@@ -405,7 +405,7 @@ func TestSchemaTable(t *testing.T) {
 				),
 			)
 
-		mock.ExpectQuery("SHOW CREATE TABLE some_schema.some_table").WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery("SHOW CREATE TABLE `some_schema`.`some_table`").WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"table_name",
@@ -625,7 +625,7 @@ func TestSchemaTable(t *testing.T) {
 				time.Date(2024, 2, 2, 0, 0, 0, 0, time.UTC),
 			),
 		)
-		mock.ExpectQuery("SHOW CREATE TABLE some_schema.some_table").WithoutArgs().WillReturnRows(
+		mock.ExpectQuery("SHOW CREATE TABLE `some_schema`.`some_table`").WithoutArgs().WillReturnRows(
 			sqlmock.NewRows([]string{
 				"table_name",
 				"create_statement",

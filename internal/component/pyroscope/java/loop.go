@@ -13,14 +13,15 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/component/discovery"
-	"github.com/grafana/alloy/internal/component/pyroscope"
-	"github.com/grafana/alloy/internal/component/pyroscope/java/asprof"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	jfrpprof "github.com/grafana/jfr-parser/pprof"
 	jfrpprofPyroscope "github.com/grafana/jfr-parser/pprof/pyroscope"
 	"github.com/prometheus/prometheus/model/labels"
 	gopsutil "github.com/shirou/gopsutil/v3/process"
+
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/component/pyroscope"
+	"github.com/grafana/alloy/internal/component/pyroscope/java/asprof"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 const spyName = "alloy.java"
@@ -155,7 +156,7 @@ func (p *profilingLoop) push(jfrBytes []byte, startTime time.Time, endTime time.
 		sz := req.Profile.SizeVT()
 		l := log.With(p.logger, "metric", metric, "sz", sz)
 		ls := labels.NewBuilder(nil)
-		for _, l := range jfrpprofPyroscope.Labels(target, profiles.JFREvent, req.Metric, "", spyName) {
+		for _, l := range jfrpprofPyroscope.Labels(target.AsMap(), profiles.JFREvent, req.Metric, "", spyName) {
 			ls.Set(l.Name, l.Value)
 		}
 		if ls.Get(labelServiceName) == "" {

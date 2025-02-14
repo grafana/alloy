@@ -48,13 +48,13 @@ The following arguments are supported:
 The following blocks are supported inside the definition of
 `prometheus.write.queue`:
 
- Hierarchy             | Block            | Description                                              | Required 
------------------------|------------------|----------------------------------------------------------|----------
- persistence           | [persistence][]  | Configuration for persistence                            | no       
- endpoint              | [endpoint][]     | Location to send metrics to.                             | no       
- endpoint > basic_auth | [basic_auth][]   | Configure basic_auth for authenticating to the endpoint. | no       
- endpoint > tls_config | [tls_config][]   | Configure TLS settings for connecting to the endpoint.   | no
-
+ Hierarchy             | Block           | Description                                               | Required 
+-----------------------|-----------------|-----------------------------------------------------------|----------
+ persistence           | [persistence][] | Configuration for persistence                             | no       
+ endpoint              | [endpoint][]    | Location to send metrics to.                              | no       
+ endpoint > basic_auth | [basic_auth][]  | Configure basic_auth for authenticating to the endpoint.  | no       
+ endpoint > tls_config | [tls_config][]  | Configure TLS settings for connecting to the endpoint.    | no
+ endpoint > parallelism | [parallelism][] | Configure parallelism for the endpoint.                   | no
 
 The `>` symbol indicates deeper levels of nesting. For example, `endpoint >
 basic_auth` refers to a `basic_auth` block defined inside an
@@ -64,7 +64,7 @@ basic_auth` refers to a `basic_auth` block defined inside an
 [basic_auth]: #basic_auth-block
 [persistence]: #persistence-block
 [tls_config]: #tls_config-block
-
+[parallelism]: #parallelism
 
 ### persistence block
 
@@ -96,7 +96,6 @@ The following arguments are supported:
  `max_retry_attempts` | `uint`        | Maximum number of retries before dropping the batch.                                        | `0`     | no      
  `batch_count`        | `uint`        | How many series to queue in each queue.                                                     | `1000`  | no       
  `flush_interval`     | `duration`    | How long to wait until sending if `batch_count` is not trigger.                             | `1s`    | no       
- `parallelism`        | `uint`        | How many parallel batches to write.                                                         | 10      | no       
  `external_labels`    | `map(string)` | Labels to add to metrics sent over the network.                                             |         | no       
  `enable_round_robin` | `bool`        | Use round robin load balancing when there are multiple IPs for a given endpoint. | `false` | no       
 
@@ -116,6 +115,38 @@ Name                   | Type     | Description                                 
 `cert_pem`             | `string` | Certificate PEM-encoded text for client authentication.  |         | no
 `insecure_skip_verify` | `bool`   | Disables validation of the server certificate.           |         | no
 `key_pem`              | `secret` | Key PEM-encoded text for client authentication.          |         | no
+
+
+### parallelism block
+
+| Name                             | Type       | Description                                                                                                                        | Default | Required |
+|----------------------------------|------------|------------------------------------------------------------------------------------------------------------------------------------|---------|----------|
+| `drift_scale_up`                 | `duration` | The maximum amount of time between the timestamps of incoming signals and outgoing signals before increasing desired connections.  | `60`    | no       |
+| `drift_scale_down`               | `duration` | The minimum amount of time between the timestamps of incoming signals and outgoing signals before descreasing desired connections. | `30`    | no       |
+| `max_connections`                | `uint`     | The maximum number of desired connections.                                                                                         | `50`    | no       |
+| `min_connections`                | `uint`     | The minimum number of desired connections.                                                                                         | `2`     | no       |
+| `network_flush_interval`         | `duration` | The length of time that network successes and failures are kept for determining desired connections.                               | `1m`    | no       |
+| `desired_connections_lookback`   | `duration` | The length of time that previous desired connections are kept for determining desired connections.                                 | `5m`    | no       |
+| `desired_check_interval`         | `duration` | The length of time between checking for desired connections.                                                                       | `5s`    | no       |
+| `allowed_network_error_fraction` | `float`    | The allowed error rate before scaling down. For example `0.50` allows 50% error rate.                                              | `0.50`  | no       |
+
+Parallelism determines when to scale up or down the number of desired connections.
+
+The drift between the incoming and outgoing timestamps determines whether to increase or decrease the desired connections.
+The value stays the same if the drift is between `drift_scale_up_seconds` and `drift_scale_down_seconds`. 
+
+Network successes and failures are recorded and kept in memory.
+This data helps determine the nature of the drift.
+For example, if the drift is increasing and the network failures are increasing, the desired connections should not increase because that would increase the load on the endpoint.
+
+The `desired_check_interval` prevents connection flapping.
+Each time a desired connection is calculated, the connection is added to a lookback buffer.
+Before increasing or decreasing the desired connections, `prometheus.write.queue` chooses the highest value in the lookback buffer.
+For example, for the past 5 minutes, the desired connections have been: [2,1,1].
+The check determines that the desired connections are 1, and the number of desired connections will not change because the value `2` is still in the lookback buffer.
+On the next check, the desired connections are [1,1,1].
+Since the `2` value has expired, the desired connections will change to 1.
+In general, the system is fast to increase and slow to decrease the desired connections.
 
 ## Exported fields
 

@@ -22,7 +22,7 @@ func NewDiscoveryExports(expr string) discovery.Exports {
 // as a component export string rather than the standard [discovery.Target]
 // AlloyTokenize.
 func NewDiscoveryTargets(expr string) []discovery.Target {
-	return []discovery.Target{map[string]string{"__expr__": expr}}
+	return []discovery.Target{discovery.NewTargetFromMap(map[string]string{"__expr__": expr})}
 }
 
 // ConvertTargets implements [builder.Tokenizer]. This allows us to set
@@ -52,9 +52,9 @@ func (f ConvertTargets) AlloyTokenize() []builder.Token {
 		toks = append(toks, builder.Token{Tok: token.LITERAL, Lit: "\n"})
 	}
 
-	for ix, targetMap := range f.Targets {
+	for ix, target := range f.Targets {
 		keyValMap := map[string]string{}
-		for key, val := range targetMap {
+		target.ForEachLabel(func(key string, val string) bool {
 			// __expr__ is a special key used by the converter code to specify
 			// we should tokenize the value instead of tokenizing the map normally.
 			// An alternative strategy would have been to add a new property for
@@ -68,7 +68,8 @@ func (f ConvertTargets) AlloyTokenize() []builder.Token {
 			} else {
 				keyValMap[key] = val
 			}
-		}
+			return true
+		})
 
 		if len(keyValMap) > 0 {
 			expr.SetValue([]map[string]string{keyValMap})

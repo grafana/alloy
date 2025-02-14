@@ -287,92 +287,6 @@ trigger:
 type: docker
 ---
 kind: pipeline
-name: Publish Linux alloy-devel container
-platform:
-  arch: amd64
-  os: linux
-steps:
-- commands:
-  - docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
-  failure: ignore
-  image: grafana/alloy-build-image:v0.1.8
-  name: Configure QEMU
-  volumes:
-  - name: docker
-    path: /var/run/docker.sock
-- commands:
-  - mkdir -p $HOME/.docker
-  - printenv GCR_CREDS > $HOME/.docker/config.json
-  - docker login -u $DOCKER_LOGIN -p $DOCKER_PASSWORD
-  - docker buildx create --name multiarch-alloy-alloy-devel-${DRONE_COMMIT_SHA} --driver
-    docker-container --use
-  - ./tools/ci/docker-containers alloy-devel
-  - docker buildx rm multiarch-alloy-alloy-devel-${DRONE_COMMIT_SHA}
-  environment:
-    DOCKER_LOGIN:
-      from_secret: docker_login
-    DOCKER_PASSWORD:
-      from_secret: docker_password
-    GCR_CREDS:
-      from_secret: gcr_admin
-  image: grafana/alloy-build-image:v0.1.8
-  name: Publish container
-  volumes:
-  - name: docker
-    path: /var/run/docker.sock
-trigger:
-  ref:
-  - refs/heads/main
-type: docker
-volumes:
-- host:
-    path: /var/run/docker.sock
-  name: docker
----
-kind: pipeline
-name: Publish Linux alloy-devel-boringcrypto container
-platform:
-  arch: amd64
-  os: linux
-steps:
-- commands:
-  - docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
-  failure: ignore
-  image: grafana/alloy-build-image:v0.1.8
-  name: Configure QEMU
-  volumes:
-  - name: docker
-    path: /var/run/docker.sock
-- commands:
-  - mkdir -p $HOME/.docker
-  - printenv GCR_CREDS > $HOME/.docker/config.json
-  - docker login -u $DOCKER_LOGIN -p $DOCKER_PASSWORD
-  - docker buildx create --name multiarch-alloy-alloy-devel-boringcrypto-${DRONE_COMMIT_SHA}
-    --driver docker-container --use
-  - ./tools/ci/docker-containers alloy-devel-boringcrypto
-  - docker buildx rm multiarch-alloy-alloy-devel-boringcrypto-${DRONE_COMMIT_SHA}
-  environment:
-    DOCKER_LOGIN:
-      from_secret: docker_login
-    DOCKER_PASSWORD:
-      from_secret: docker_password
-    GCR_CREDS:
-      from_secret: gcr_admin
-  image: grafana/alloy-build-image:v0.1.8
-  name: Publish container
-  volumes:
-  - name: docker
-    path: /var/run/docker.sock
-trigger:
-  ref:
-  - refs/heads/main
-type: docker
-volumes:
-- host:
-    path: /var/run/docker.sock
-  name: docker
----
-kind: pipeline
 name: Publish Windows alloy-devel container
 platform:
   arch: amd64
@@ -527,53 +441,6 @@ volumes:
   name: docker
 ---
 depends_on:
-- Publish Linux alloy-devel container
-- Publish Linux alloy-devel-boringcrypto container
-image_pull_secrets:
-- dockerconfigjson_gar
-kind: pipeline
-name: Deploy to deployment_tools
-platform:
-  arch: amd64
-  os: linux
-steps:
-- commands:
-  - apk add --no-cache bash git
-  - echo "$(bash ./tools/image-tag-docker)" > .tag-only
-  - echo "grafana/alloy-dev:$(bash ./tools/image-tag-docker)" > .image-tag
-  image: alpine
-  name: Create .image-tag
-- image: us-docker.pkg.dev/grafanalabs-global/docker-deployment-tools-prod/updater
-  name: Update deployment_tools
-  settings:
-    config_json: |
-      {
-        "git_committer_name": "updater-for-ci[bot]",
-        "git_author_name": "updater-for-ci[bot]",
-        "git_committer_email": "119986603+updater-for-ci[bot]@users.noreply.github.com",
-        "git_author_email": "119986603+updater-for-ci[bot]@users.noreply.github.com",
-        "destination_branch": "master",
-        "repo_name": "deployment_tools",
-        "update_jsonnet_attribute_configs": [
-          {
-            "file_path": "ksonnet/lib/alloy/waves/alloy.libsonnet",
-            "jsonnet_key": "dev_canary",
-            "jsonnet_value_file": ".image-tag"
-          }
-        ]
-      }
-    github_app_id:
-      from_secret: updater_app_id
-    github_app_installation_id:
-      from_secret: updater_app_installation_id
-    github_app_private_key:
-      from_secret: updater_private_key
-trigger:
-  ref:
-  - refs/heads/main
-type: docker
----
-depends_on:
 - Publish Linux alloy container
 - Publish Linux alloy-boringcrypto container
 - Publish Windows alloy container
@@ -621,34 +488,6 @@ steps:
 trigger:
   ref:
   - refs/tags/v*
-type: docker
-volumes:
-- host:
-    path: /var/run/docker.sock
-  name: docker
----
-kind: pipeline
-name: Test Linux system packages
-platform:
-  arch: amd64
-  os: linux
-steps:
-- commands:
-  - DOCKER_OPTS="" make dist/alloy-linux-amd64
-  - DOCKER_OPTS="" make test-packages
-  image: grafana/alloy-build-image:v0.1.8
-  name: Test Linux system packages
-  volumes:
-  - name: docker
-    path: /var/run/docker.sock
-trigger:
-  paths:
-  - packaging/**
-  - internal/tools/packaging_test/**
-  - Makefile
-  - tools/make/*.mk
-  ref:
-  - refs/heads/main
 type: docker
 volumes:
 - host:
@@ -740,6 +579,6 @@ kind: secret
 name: updater_private_key
 ---
 kind: signature
-hmac: 7ba78cacbcf46b94023a48ec09a159962a34effaefe8da55fa21089cf56c0ecc
+hmac: 26b5613cbd5e5cd42656c10c372d44dc93af565ec2ae212d3b27c2fe366c6aeb
 
 ...
