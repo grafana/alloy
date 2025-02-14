@@ -71,6 +71,8 @@ Main (unreleased)
 
 - Fixed an issue where `loki.process` would sometimes output live debugging entries out-of-order (@thampiotr)
 
+- Fixed a bug where components could be evaluated concurrently without the full context during a config reload (@wildum)
+
 ### Other changes
 
 - Upgrading to Prometheus v2.54.1. (@ptodev)
