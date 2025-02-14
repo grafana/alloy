@@ -8,7 +8,6 @@ labels:
 title: otelcol.processor.cumulativetodelta
 ---
 
-
 # `otelcol.processor.cumulativetodelta`
 
 {{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
@@ -132,7 +131,7 @@ The following fields are exported and can be referenced by other components:
 ## Example
 
 
-This example converts cumulative temporality metrics to delta before sending it to [`otelcol.exporter.otlp`]otelcol.exporter.otlp[] for further processing.
+This example converts cumulative temporality metrics to delta before sending it to [`otelcol.exporter.otlp`][otelcol.exporter.otlp] for further processing.
 
 ```alloy
 otelcol.processor.cumulativetodelta "default" {
