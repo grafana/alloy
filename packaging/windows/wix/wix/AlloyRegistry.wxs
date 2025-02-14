@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+	<?define ComponentRules="OneToOne"?>
+	<?define FileSourceDir="..\..\..\..\dist"?>
+	<Fragment>
+		<ComponentGroup Id="AlloyRegistry">
+			<Component Directory="INSTALLLOCATION">
+				<RegistryKey Root="HKLM" Key="Software\GrafanaLabs\Alloy">
+					<RegistryValue Type="string" Value="[INSTALLLOCATION]alloy.exe"/>
+					<RegistryValue Type="multiString" Name="Arguments" Value="run[~][INSTALLLOCATION]config.alloy[~]--storage.path=C:\ProgramData\GrafanaLabs\Alloy\data"/>
+					<RegistryValue Type="multiString" Name="Environment" Value=""/>
+				</RegistryKey>
+			</Component>
+		</ComponentGroup>
+	</Fragment>
+</Wix>
