@@ -244,10 +244,11 @@ func (args Arguments) NextConsumers() *otelcol.ConsumerArguments {
 // Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	var errs error
-	// Convert will validate operator(s)
-	_, err := args.Convert()
-	if err != nil {
-		errs = multierror.Append(errs, err)
+	for _, op := range args.Operators {
+		_, err := op.Convert()
+		if err != nil {
+			errs = multierror.Append(errs, fmt.Errorf("failed to parse 'operator': %w", err))
+		}
 	}
 
 	if args.MaxConcurrentFiles < 1 {
@@ -262,9 +263,9 @@ func (args *Arguments) Validate() error {
 		errs = multierror.Append(errs, errors.New("'delete_after_read' cannot be used with 'start_at = end'"))
 	}
 
-	_, err = decode.LookupEncoding(args.Encoding)
+	_, err := decode.LookupEncoding(args.Encoding)
 	if err != nil {
-		errs = multierror.Append(errs, fmt.Errorf("invalid encoding: %w", err))
+		errs = multierror.Append(errs, fmt.Errorf("invalid 'encoding': %w", err))
 	}
 
 	if args.MatchCriteria.OrderingCriteria != nil {
@@ -274,13 +275,13 @@ func (args *Arguments) Validate() error {
 
 		for _, s := range args.MatchCriteria.OrderingCriteria.SortBy {
 			if !slices.Contains([]string{"timestamp", "numeric", "lexicographic", "mtime"}, s.SortType) {
-				errs = multierror.Append(errs, fmt.Errorf("invalid sort type: %s", s.SortType))
+				errs = multierror.Append(errs, fmt.Errorf("invalid 'sort_type': %s", s.SortType))
 			}
 		}
 	}
 
 	if args.Compression != "" && args.Compression != "gzip" {
-		errs = multierror.Append(errs, fmt.Errorf("invalid compression type: %s", args.Compression))
+		errs = multierror.Append(errs, fmt.Errorf("invalid 'compression' type: %s", args.Compression))
 	}
 
 	if args.PollInterval < 0 {
@@ -299,9 +300,26 @@ func (args *Arguments) Validate() error {
 		errs = multierror.Append(errs, errors.New("'force_flush_period' must not be negative"))
 	}
 
+	if args.MatchCriteria.ExcludeOlderThan < 0 {
+		errs = multierror.Append(errs, errors.New("'exclude_older_than' must not be negative"))
+	}
+
 	if args.MultilineConfig != nil {
 		if err := args.MultilineConfig.Validate(); err != nil {
-			errs = multierror.Append(errs, fmt.Errorf("invalid multiline: %w", err))
+			errs = multierror.Append(errs, fmt.Errorf("invalid 'multiline': %w", err))
+		}
+	}
+
+	if args.Header != nil {
+		if len(args.Header.MetadataOperators) == 0 {
+			errs = multierror.Append(errs, errors.New("'header' requires at least one 'metadata_operator'"))
+		} else {
+			for _, op := range args.Header.MetadataOperators {
+				_, err := op.Convert()
+				if err != nil {
+					errs = multierror.Append(errs, fmt.Errorf("failed to parse 'metadata_operator': %w", err))
+				}
+			}
 		}
 	}
 

@@ -1,3 +1,5 @@
+// Stanza is the name of the logs agent that was donated to the OpenTelemetry project.
+// Stanza receivers are logs receivers built of stanza operators.
 package otelcol
 
 import (

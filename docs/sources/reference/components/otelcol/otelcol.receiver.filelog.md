@@ -38,7 +38,7 @@ The following arguments are supported:
 |---------------------------------|---------------------|--------------------------------------------------------------------------------------------|-------------|----------|
 | `include`                       | `list(string)`      | A list of glob patterns to include files.                                                  | `[]`        | yes      |
 | `exclude`                       | `list(string)`      | A list of glob patterns to exclude files that would be included by the `include` patterns. | `[]`        | no       |
-| `poll_interval`                 | `time.Duration`     | The interval at which the file is polled for new entries.                                  | `1s`        | no       |
+| `poll_interval`                 | `time.Duration`     | The interval at which the file is polled for new entries.                                  | `200ms`     | no       |
 | `max_concurrent_files`          | `int`               | The maximum number of files to read concurrently.                                          | `10`        | no       |
 | `max_batches`                   | `int`               | The maximum number of batches to process concurrently.                                     | `10`        | no       |
 | `start_at`                      | `string`            | The position to start reading the file from.                                               | `beginning` | no       |
@@ -104,7 +104,7 @@ The following blocks are supported inside the definition of
 | retry_on_failure            | [retry_on_failure][]  | Configures the retry behavior when the receiver encounters an error downstream in the pipeline. | no       |
 | debug_metrics               | [debug_metrics][]     | Configures the metrics that this component generates to monitor its state.                      | no       |
 | ordering_criteria           | [ordering_criteria][] | Configures the order in which log files are processed.                                          | no       |
-| ordering_criteria > sort_by | [sort_by][]           | Configures the fields to sort by within the ordering critera.                                   | no       |
+| ordering_criteria > sort_by | [sort_by][]           | Configures the fields to sort by within the ordering critera.                                   | yes      |
 
 The `>` symbol indicates deeper levels of nesting. For example, `ordering_criteria > sort_by`
 refers to a `sort_by` block defined inside a `ordering_criteria` block.

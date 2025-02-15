@@ -54,7 +54,7 @@ func Test(t *testing.T) {
 
 	require.NoError(t, ctrl.WaitRunning(3*time.Second))
 
-	// TODO(@dehaansa) - test if this is removeable after https://github.com/grafana/alloy/pull/2262
+	// TODO(@dehaansa) - discover a better way to wait for otelcol component readiness
 	time.Sleep(1 * time.Second)
 
 	// Add a log message to the file
@@ -127,7 +127,10 @@ func TestUnmarshal(t *testing.T) {
 
 	header {
 		pattern = "^HEADER .*$"
-		metadata_operators = []
+		metadata_operators = [{
+			type = "regex_parser",
+			regex = "^HEADER env='(?P<env>[^ ]+)'",
+		}]
 	}
 
 	multiline {
@@ -159,4 +162,67 @@ func TestUnmarshal(t *testing.T) {
 	var args filelog.Arguments
 	err := syntax.Unmarshal([]byte(alloyCfg), &args)
 	require.NoError(t, err)
+
+	err = args.Validate()
+	require.NoError(t, err)
+}
+
+func TestValidate(t *testing.T) {
+	alloyCfg := `
+	include            = ["/var/log/*.log"]
+	exclude_older_than = "-5m"
+	ordering_criteria  {
+		regex   = "^(?P<timestamp>\\d{8})_(?P<severity>\\d+)_"
+		top_n   = -3
+		group_by = "severity"
+
+		sort_by  {
+			sort_type = "std_dev"
+			regex_key = "severity"
+			ascending = true
+		}
+	}
+	poll_interval              = "-10s"
+	max_concurrent_files       = 0
+	max_batches                = -3
+	start_at                   = "middle"
+	fingerprint_size           = "-4KiB"
+	max_log_size               = "-3MiB"
+	encoding                   = "webdings"
+	force_flush_period         = "-5s"
+	compression                = "tar"
+
+	header {
+		pattern = "^HEADER .*$"
+		metadata_operators = []
+	}
+	
+	operators 					  = [{
+      type = "regex_parser",
+      regex = "^(?P<timestamp>[^ ]+)",
+      timestamp = {
+        parse_from = "timestamp",
+        layout = "%Y-%m-%dT%H:%M:%S.%fZ",
+        location = "UTC",
+      },
+    }]
+
+	output {}
+	`
+	var args filelog.Arguments
+	err := syntax.Unmarshal([]byte(alloyCfg), &args)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "error decoding 'parse_from': unrecognized prefix")
+	require.Contains(t, err.Error(), "'max_concurrent_files' must be positive")
+	require.Contains(t, err.Error(), "'max_batches' must not be negative")
+	require.Contains(t, err.Error(), "invalid 'encoding': unsupported encoding 'webdings'")
+	require.Contains(t, err.Error(), "'top_n' must not be negative")
+	require.Contains(t, err.Error(), "invalid 'sort_type': std_dev")
+	require.Contains(t, err.Error(), "invalid 'compression' type: tar")
+	require.Contains(t, err.Error(), "'poll_interval' must not be negative")
+	require.Contains(t, err.Error(), "'fingerprint_size' must not be negative")
+	require.Contains(t, err.Error(), "'max_log_size' must not be negative")
+	require.Contains(t, err.Error(), "'force_flush_period' must not be negative")
+	require.Contains(t, err.Error(), "'header' requires at least one 'metadata_operator'")
+	require.Contains(t, err.Error(), "'exclude_older_than' must not be negative")
 }

@@ -38,16 +38,16 @@ func (filelogReceiverConverter) ConvertAndAppend(state *State, id componentstatu
 	// TODO(@dehaansa) - find a way to convert the operators
 	if len(cfg.(*filelogreceiver.FileLogConfig).Operators) > 0 {
 		diags.Add(
-			diag.SeverityLevelInfo,
-			fmt.Sprintf("Operators cannot currently be translated for %s", StringifyInstanceID(id)),
+			diag.SeverityLevelWarn,
+			fmt.Sprintf("operators cannot currently be translated for %s", StringifyInstanceID(id)),
 		)
 	}
 
 	// TODO(@dehaansa) - find a way to convert the metadata operators
 	if cfg.(*filelogreceiver.FileLogConfig).InputConfig.Header != nil {
 		diags.Add(
-			diag.SeverityLevelInfo,
-			fmt.Sprintf("Header cannot currently be translated for %s", StringifyInstanceID(id)),
+			diag.SeverityLevelWarn,
+			fmt.Sprintf("header metadata_operators cannot currently be translated for %s", StringifyInstanceID(id)),
 		)
 	}
 
