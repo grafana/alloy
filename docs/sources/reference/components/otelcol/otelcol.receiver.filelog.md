@@ -1,12 +1,12 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.receiver.filelog/
 description: Learn about otelcol.receiver.filelog
+labels:
+  stage: public-preview
 title: otelcol.receiver.filelog
 ---
 
-<span class="badge docs-labels__stage docs-labels__item">Public preview</span>
-
-# otelcol.receiver.filelog
+# `otelcol.receiver.filelog`
 
 {{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -22,7 +22,7 @@ You can specify multiple `otelcol.receiver.filelog` components by giving them di
 ## Usage
 
 ```alloy
-otelcol.receiver.filelog "LABEL" {
+otelcol.receiver.filelog "<LABEL>" {
   include = []
   output {
     logs    = [...]
@@ -32,7 +32,7 @@ otelcol.receiver.filelog "LABEL" {
 
 ## Arguments
 
-The following arguments are supported:
+You can use the following arguments with `otelcol.receiver.filelog`:
 
 | Name                            | Type                | Description                                                                                | Default     | Required |
 |---------------------------------|---------------------|--------------------------------------------------------------------------------------------|-------------|----------|
@@ -90,7 +90,6 @@ otelcol.receiver.filelog "default" {
 
 [operators]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/{{< param "OTEL_VERSION" >}}/pkg/stanza/docs/operators/README.md#what-operators-are-available
 
-
 ## Blocks
 
 The following blocks are supported inside the definition of
@@ -106,42 +105,37 @@ The following blocks are supported inside the definition of
 | ordering_criteria           | [ordering_criteria][] | Configures the order in which log files are processed.                                          | no       |
 | ordering_criteria > sort_by | [sort_by][]           | Configures the fields to sort by within the ordering critera.                                   | yes      |
 
-The `>` symbol indicates deeper levels of nesting. For example, `ordering_criteria > sort_by`
-refers to a `sort_by` block defined inside a `ordering_criteria` block.
+The > symbol indicates deeper levels of nesting.
+For example, `ordering_criteria` > `sort_by` refers to a `sort_by` block defined inside a `ordering_criteria` block.
 
-[multiline]: #multiline-block
-[header]: #header-block
-[retry_on_failure]: #retry-on-failure-block
-[debug_metrics]: #debug_metrics-block
-[output]: #output-block
-[ordering_criteria]: #ordering-criteria-block
-[sort_by]: #sort-by-block
+[output]: #output
+[debug_metrics]: #debug_metrics
+[header]: #header
+[multiline]: #multiline
+[ordering_criteria]: #ordering-criteria
+[sort_by]: #sort-by
+[retry_on_failure]: #retry-on-failure
 
-### multiline block
+### `output`
 
-The `multiline` block configures logic for splitting incoming log entries.
-The following arguments are supported:
+<span class="badge docs-labels__stage docs-labels__item">Required</span>
 
-| Name                 | Type     | Description                                                     | Default | Required |
-|----------------------|----------|-----------------------------------------------------------------|---------|----------|
-| `line_start_pattern` | `string` | A regular expression that matches the beginning of a log entry. |         | no       |
-| `line_end_pattern`   | `string` | A regular expression that matches the end of a log entry.       |         | no       |
-| `omit_pattern`       | `bool`   | Omit the start/end pattern from the split log entries.          | `false` | no       |
+{{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-A `multiline` block must contain either `line_start_pattern` or `line_end_pattern`.
+### `debug_metrics`
 
-If a `multiline` block is not set, log entries will not be split.
+{{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### header block
+### `header`
 
 The `header` block configures logic for parsing a log header line into additional attributes added to each log entry.
 It may only be used when `start_at` is set to `beginning`.
 The following arguments are supported:
 
 | Name                 | Type                | Description                                                 | Default | Required |
-|----------------------|---------------------|-------------------------------------------------------------|---------|----------|
-| `pattern`            | `string`            | A regular expression that matches the the header line.      |         | yes      |
+| -------------------- | ------------------- | ----------------------------------------------------------- | ------- | -------- |
 | `metadata_operators` | `lists(map(string)` | A list of operators used to parse metadata from the header. |         | yes      |
+| `pattern`            | `string`            | A regular expression that matches the header line.          |         | yes      |
 
 If a `header` block is not set, no log lines will be treated as header metadata.
 
@@ -149,11 +143,11 @@ The `metadata_operators` list is a list of stanza [operators][] that parses meta
 Any attributes created from the embedded operators pipeline will be applied to all log entries in the file.
 
 For example, you might use a `regex_parser` to process a header line that has been identified by the `pattern` expression.
-Below is an example ficticious header line, and then the `header` block that would parse an `environment` attribute from it.
-```
+The following example shows a fictitious header line, and then the `header` block that would parse an `environment` attribute from it.
+
+```text
 HEADER_IDENTIFIER env="production"
 ...
-
 ```
 
 ```alloy
@@ -169,35 +163,49 @@ otelcol.receiver.filelog "default" {
       ]
     }
 }
-
 ```
 
-### ordering criteria block
+### `multiline`
+
+The `multiline` block configures logic for splitting incoming log entries.
+The following arguments are supported:
+
+| Name                 | Type     | Description                                                     | Default | Required |
+| -------------------- | -------- | --------------------------------------------------------------- | ------- | -------- |
+| `line_end_pattern`   | `string` | A regular expression that matches the end of a log entry.       |         | no       |
+| `line_start_pattern` | `string` | A regular expression that matches the beginning of a log entry. |         | no       |
+| `omit_pattern`       | `bool`   | Omit the start/end pattern from the split log entries.          | `false` | no       |
+
+A `multiline` block must contain either `line_start_pattern` or `line_end_pattern`.
+
+If a `multiline` block isn't set, log entries will not be split.
+
+### `ordering_criteria`
 
 The `ordering_criteria` block configures the order in which log files discovered will be processed.
 The following arguments are supported:
 
-| Name               | Type       | Description                                                                                               | Default      | Required |
-|--------------------|------------|-----------------------------------------------------------------------------------------------------------|--------------|----------|
-| `regex`            | `string`   | A regular expression to capture elements of log files to use in ordering calculations.                    | `""`         | no       |
-| `top_n`            | `int`      | The number of top log files to track when using file ordering.                                            | `1`          | no       |
-| `group_by`         | `string`   | A named capture group from the `regex` attribute used for grouping pre-sort.                              | `""`         | no       |
+| Name       | Type     | Description                                                                            | Default | Required |
+| ---------- | -------- | -------------------------------------------------------------------------------------- | ------- | -------- |
+| `group_by` | `string` | A named capture group from the `regex` attribute used for grouping pre-sort.           | `""`    | no       |
+| `regex`    | `string` | A regular expression to capture elements of log files to use in ordering calculations. | `""`    | no       |
+| `top_n`    | `int`    | The number of top log files to track when using file ordering.                         | `1`     | no       |
 
-### sort by block
+### `sort_by`
 
 The `sort_by` repeatable block configures the way the fields parsed in the `ordering_criteria` block will be applied to sort the discovered log files.
 The following arguments are supported:
 
 | Name        | Type     | Description                                                                  | Default | Required |
-|-------------|----------|------------------------------------------------------------------------------|---------|----------|
+| ----------- | -------- | ---------------------------------------------------------------------------- | ------- | -------- |
 | `sort_type` | `string` | The type of sorting to apply.                                                |         | yes      |
-| `regex_key` | `string` | The named capture group from the `regex` attribute to use for sorting.       | `""`    | no       |
 | `ascending` | `bool`   | Whether to sort in ascending order.                                          | `true`  | no       |
 | `layout`    | `string` | The layout of the timestamp to be parsed from a named `regex` capture group. | `""`    | no       |
 | `location`  | `string` | The location of the timestamp.                                               | `UTC`   | no       |
+| `regex_key` | `string` | The named capture group from the `regex` attribute to use for sorting.       | `""`    | no       |
 
 `sort_type` must be one of `numeric`, `lexicographic`, `timestamp`, or `mtime`.
-When using `numeric`, `lexicographic`, or `timestamp` `sort_type`, a named capture group defined in the `ordering_criteria`'s `regex` attribute must be provided in `regex_key`.
+When using `numeric`, `lexicographic`, or `timestamp` `sort_type`, a named capture group defined in the `regex` attribute in `ordering_criteria` must be provided in `regex_key`.
 When using `mtime` `sort_type`, the file's modified time will be used to sort.
 
 The `location` and `layout` arguments are only applicable when `sort_type` is `timestamp`.
@@ -205,48 +213,39 @@ The `location` and `layout` arguments are only applicable when `sort_type` is `t
 The `location` argument specifies a Time Zone identifier. The available locations depend on the local IANA Time Zone database.
 Refer to the [list of tz database time zones][tz-wiki] in Wikipedia for a non-comprehensive list.
 
-### retry on failure block
+[tz-wiki]: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
+
+### `retry_on_failure`
 
 The `retry_on_failure` block configures the retry behavior when the receiver encounters an error downstream in the pipeline.
 A backoff algorithm is used to delay the retry upon subsequent failures.
 The following arguments are supported:
 
-| Name               | Type       | Description                                                                                               | Default | Required |
-|--------------------|------------|-----------------------------------------------------------------------------------------------------------|---------|----------|
-| `enabled`          | `bool`     | If true, the receiver will pause reading a file and attempt to resend the current batch of logs on error. | `false` | no       |
-| `initial_interval` | `duration` | The time to wait after first failure to retry.                                                            | `1s`    | no       |
-| `max_interval`     | `duration` | The maximum time to wait after applying backoff logic.                                                    | `30s`   | no       |
-| `max_elapsed_time` | `duration` | The maximum age of a message before the data is discarded.                                                | `5m`    | no       |
+| Name               | Type       | Description                                                                                                               | Default | Required |
+| ------------------ | ---------- | ------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
+| `enabled`          | `bool`     | If set to `true` and an error occurs, the receiver will pause reading the log files and resend the current batch of logs. | `false` | no       |
+| `initial_interval` | `duration` | The time to wait after first failure to retry.                                                                            | `1s`    | no       |
+| `max_elapsed_time` | `duration` | The maximum age of a message before the data is discarded.                                                                | `5m`    | no       |
+| `max_interval`     | `duration` | The maximum time to wait after applying backoff logic.                                                                    | `30s`   | no       |
 
-If `max_elapsed_time` is set to `0` data will never be discarded.
-
-
-### debug_metrics block
-
-{{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
-
-### output block
-
-{{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+If `max_elapsed_time` is set to `0` data is never discarded.
 
 ## Exported fields
 
-`otelcol.receiver.filelog` does not export any fields.
+`otelcol.receiver.filelog` doesn't export any fields.
 
 ## Component health
 
-`otelcol.receiver.filelog` is only reported as unhealthy if given an invalid
-configuration.
+`otelcol.receiver.filelog` is only reported as unhealthy if given an invalid configuration.
 
 ## Debug metrics
 
-`otelcol.receiver.filelog` does not expose any component-specific debug metrics.
+`otelcol.receiver.filelog` doesn't expose any component-specific debug metrics.
 
 ## Example
 
-This example reads log entries using the `otelcol.receiver.filelog` receiver and
-they are logged by a `otelcol.exporter.debug` component. It expects the logs to start with an
-ISO8601 compatible timestamp and parses it from the log using the `regex_parser` operator.
+This example reads log entries using the `otelcol.receiver.filelog` receiver and they are logged by a `otelcol.exporter.debug` component.
+It expects the logs to start with an ISO8601 compatible timestamp and parses it from the log using the `regex_parser` operator.
 
 ```alloy
 otelcol.receiver.filelog "default" {
