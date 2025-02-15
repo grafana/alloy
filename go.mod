@@ -128,6 +128,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/loki v0.119.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/prometheus v0.119.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/processor/attributesprocessor v0.119.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/processor/cumulativetodeltaprocessor v0.116.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/processor/deltatocumulativeprocessor v0.119.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/processor/filterprocessor v0.119.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/processor/groupbyattrsprocessor v0.119.0
@@ -144,7 +145,6 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/opencensusreceiver v0.119.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/solacereceiver v0.119.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/vcenterreceiver v0.119.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/zipkinreceiver v0.119.0
 	github.com/ory/dockertest/v3 v3.8.1
 	github.com/oschwald/geoip2-golang v1.11.0
 	github.com/oschwald/maxminddb-golang v1.13.0
@@ -871,6 +871,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza v0.119.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filelogreceiver v0.119.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/syslogreceiver v0.119.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/zipkinreceiver v0.116.0
 	go.opentelemetry.io/collector/scraper/scraperhelper v0.119.0
 )
 
