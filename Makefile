@@ -85,7 +85,9 @@ ALLOY_BINARY         ?= build/alloy
 SERVICE_BINARY       ?= build/alloy-service
 ALLOYLINT_BINARY     ?= build/alloylint
 GOOS                 ?= $(shell go env GOOS)
+GOHOSTOS             ?= $(shell go env GOHOSTOS)
 GOARCH               ?= $(shell go env GOARCH)
+GOHOSTARCH           ?= $(shell go env GOHOSTARCH)
 GOARM                ?= $(shell go env GOARM)
 CGO_ENABLED          ?= 1
 RELEASE_BUILD        ?= 0
@@ -95,7 +97,7 @@ GOEXPERIMENT         ?= $(shell go env GOEXPERIMENT)
 # container. USE_CONTAINER must _not_ be included to avoid infinite recursion.
 PROPAGATE_VARS := \
     ALLOY_IMAGE ALLOY_IMAGE_WINDOWS \
-    BUILD_IMAGE GOOS GOARCH GOARM CGO_ENABLED RELEASE_BUILD \
+    BUILD_IMAGE GOOS GOHOSTOS GOARCH GOHOSTARCH GOARM CGO_ENABLED RELEASE_BUILD \
     ALLOY_BINARY \
     VERSION GO_TAGS GOEXPERIMENT
 
@@ -115,9 +117,10 @@ GO_LDFLAGS   := -X $(VPREFIX).Branch=$(GIT_BRANCH)                        \
                 -X $(VPREFIX).BuildUser=$(shell whoami)@$(shell hostname) \
                 -X $(VPREFIX).BuildDate=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 
+GO_BUILTIN_TAGS  := beyla_bpf $(GO_TAGS)
 DEFAULT_FLAGS    := $(GO_FLAGS)
-DEBUG_GO_FLAGS   := -ldflags "$(GO_LDFLAGS)" -tags "$(GO_TAGS)"
-RELEASE_GO_FLAGS := -ldflags "-s -w $(GO_LDFLAGS)" -tags "$(GO_TAGS)"
+DEBUG_GO_FLAGS   := -ldflags "$(GO_LDFLAGS)" -tags "$(GO_BUILTIN_TAGS)"
+RELEASE_GO_FLAGS := -ldflags "-s -w $(GO_LDFLAGS)" -tags "$(GO_BUILTIN_TAGS)"
 
 ifeq ($(RELEASE_BUILD),1)
 GO_FLAGS := $(DEFAULT_FLAGS) $(RELEASE_GO_FLAGS)
@@ -144,7 +147,7 @@ run-alloylint: alloylint
 # We have to run test twice: once for all packages with -race and then once
 # more without -race for packages that have known race detection issues. The
 # final command runs tests for all other submodules.
-test:
+test: generate-beyla
 	$(GO_ENV) go test $(GO_FLAGS) -race $(shell go list ./... | grep -v /integration-tests/)
 	$(GO_ENV) go test $(GO_FLAGS) ./internal/static/integrations/node_exporter ./internal/static/logs ./internal/component/otelcol/processor/tail_sampling ./internal/component/loki/source/file ./internal/component/loki/source/docker
 	$(GO_ENV) find . -name go.mod -not -path "./go.mod" -execdir go test -race ./... \;
@@ -168,7 +171,7 @@ integration-test:
 .PHONY: binaries alloy
 binaries: alloy
 
-alloy:
+alloy: generate-beyla
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
@@ -183,7 +186,7 @@ else
 	$(GO_ENV) go build $(GO_FLAGS) -o $(SERVICE_BINARY) ./internal/cmd/alloy-service
 endif
 
-alloylint:
+alloylint: generate-beyla
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
@@ -290,6 +293,13 @@ drone: generate-drone
 	drone lint .drone/drone.yml --trusted
 	drone --server https://drone.grafana.net sign --save grafana/alloy .drone/drone.yml
 
+# Required by vendored Beyla to build eBPF artifacts prior to building the
+# Alloy binary
+.PHONY: generate-beyla
+generate-beyla:
+	@go mod vendor
+	@GOOS=$(GOHOSTOS) GOARCH=$(GOHOSTARCH) go generate vendor/github.com/grafana/beyla/v2/bpf/build_ebpf.go > /dev/null
+
 .PHONY: clean
 clean: clean-dist clean-build-container-cache
 	rm -rf ./build/*
@@ -302,7 +312,9 @@ info:
 	@printf "BUILD_IMAGE         = $(BUILD_IMAGE)\n"
 	@printf "ALLOY_BINARY        = $(ALLOY_BINARY)\n"
 	@printf "GOOS                = $(GOOS)\n"
+	@printf "GOHOSTOS            = $(GOHOSTOS)\n"
 	@printf "GOARCH              = $(GOARCH)\n"
+	@printf "GOHOSTARCH          = $(GOHOSTARCH)\n"
 	@printf "GOARM               = $(GOARM)\n"
 	@printf "CGO_ENABLED         = $(CGO_ENABLED)\n"
 	@printf "RELEASE_BUILD       = $(RELEASE_BUILD)\n"
