@@ -826,10 +826,10 @@ func (l *Loader) concurrentEvalFn(n dag.Node, spanCtx context.Context, tracer tr
 	var err error
 	switch n := n.(type) {
 	case BlockNode:
-		ectx := l.cache.GetContext()
 
 		// RLock before evaluate to prevent Evaluating while the config is being reloaded
 		l.mut.RLock()
+		ectx := l.cache.GetContext()
 		evalErr := n.Evaluate(ectx)
 
 		err = l.postEvaluate(l.log, n, evalErr)
@@ -842,12 +842,12 @@ func (l *Loader) concurrentEvalFn(n dag.Node, spanCtx context.Context, tracer tr
 			// Upgrade to write lock to update the module exports.
 			l.mut.RUnlock()
 			l.mut.Lock()
-			defer l.mut.Unlock()
 			// Check if the update still needed after obtaining the write lock and perform it.
 			if l.cache.ExportChangeIndex() != l.moduleExportIndex {
 				l.globals.OnExportsChange(l.cache.CreateModuleExports())
 				l.moduleExportIndex = l.cache.ExportChangeIndex()
 			}
+			l.mut.Unlock()
 		} else {
 			// No need to upgrade to write lock, just release the read lock.
 			l.mut.RUnlock()

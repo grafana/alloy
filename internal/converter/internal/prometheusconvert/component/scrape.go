@@ -90,7 +90,7 @@ func getScrapeTargets(staticConfig prom_discovery.StaticConfig) []discovery.Targ
 				targetMap[string(labelName)] = string(labelValue)
 				newMap := map[string]string{}
 				maps.Copy(newMap, targetMap)
-				targets = append(targets, newMap)
+				targets = append(targets, discovery.NewTargetFromMap(newMap))
 			}
 		}
 	}

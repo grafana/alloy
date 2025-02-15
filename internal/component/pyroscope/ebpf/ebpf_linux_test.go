@@ -198,10 +198,10 @@ forward_to = []
 			expected: func() Arguments {
 				x := NewDefaultArguments()
 				x.Targets = []discovery.Target{
-					map[string]string{
+					discovery.NewTargetFromMap(map[string]string{
 						"container_id": "cid",
 						"service_name": "foo",
-					},
+					}),
 				}
 				x.ForwardTo = []pyroscope.Appendable{}
 				return x
@@ -224,10 +224,10 @@ collect_kernel_profile = false`,
 			expected: func() Arguments {
 				x := NewDefaultArguments()
 				x.Targets = []discovery.Target{
-					map[string]string{
+					discovery.NewTargetFromMap(map[string]string{
 						"container_id": "cid",
 						"service_name": "foo",
-					},
+					}),
 				}
 				x.ForwardTo = []pyroscope.Appendable{}
 				x.CollectInterval = time.Second * 3
