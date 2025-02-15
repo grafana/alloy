@@ -1,11 +1,14 @@
 package runtime
 
 import (
+	"bytes"
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
+	"github.com/go-kit/log"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
 
@@ -121,6 +124,60 @@ func TestController_LoadSource_WithModulePathWithoutFileExtension_Evaluation(t *
 	in, out := getFields(t, ctrl.loader.Graph(), "testcomponents.passthrough.static")
 	require.Equal(t, filepath.Join("tmp_modulePath_test", "test"), in.(testcomponents.PassthroughConfig).Input)
 	require.Equal(t, filepath.Join("tmp_modulePath_test", "test"), out.(testcomponents.PassthroughExports).Output)
+}
+
+// This test reloads the config a few times and checks that Alloy does not log errors.
+// The ticker has a very small frequency to put pressure on the concurrent evaluations happening
+// in the runtime while the loader is concurrently reloading the config.
+func TestController_ReloadLoaderNoErrorLog(t *testing.T) {
+	defer verifyNoGoroutineLeaks(t)
+	ctrl := New(testOptions(t))
+
+	var testFileFastTick = `
+	testcomponents.tick "ticker" {
+		frequency = "10ns"
+	}
+
+	testcomponents.passthrough "static" {
+		input = "hello, world!"
+	}
+
+	testcomponents.passthrough "ticker" {
+		input = testcomponents.tick.ticker.tick_time
+	}
+
+	testcomponents.passthrough "forwarded" {
+		input = testcomponents.passthrough.ticker.output
+	}
+`
+	var logsBuffer bytes.Buffer
+	syncBuff := log.NewSyncWriter(&logsBuffer)
+	ctrl.log.SetTemporaryWriter(syncBuff)
+
+	f, err := ParseSource(t.Name(), []byte(testFileFastTick))
+	require.NoError(t, err)
+	require.NotNil(t, f)
+
+	err = ctrl.LoadSource(f, nil, "")
+	require.NoError(t, err)
+	require.Len(t, ctrl.loader.Components(), 4)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() {
+		ctrl.Run(ctx)
+		close(done)
+	}()
+
+	for i := 0; i < 5; i++ {
+		err = ctrl.LoadSource(f, nil, "")
+		require.NoError(t, err)
+	}
+
+	cancel()
+	<-done
+
+	require.False(t, strings.Contains(logsBuffer.String(), "level=error"))
 }
 
 func getFields(t *testing.T, g *dag.Graph, nodeID string) (component.Arguments, component.Exports) {
