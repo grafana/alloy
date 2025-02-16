@@ -23,7 +23,7 @@ You can specify multiple `otelcol.receiver.filelog` components by giving them di
 
 ```alloy
 otelcol.receiver.filelog "<LABEL>" {
-  include = []
+  include = [...]
   output {
     logs    = [...]
   }
@@ -36,7 +36,7 @@ You can use the following arguments with `otelcol.receiver.filelog`:
 
 | Name                            | Type                | Description                                                                                | Default     | Required |
 |---------------------------------|---------------------|--------------------------------------------------------------------------------------------|-------------|----------|
-| `include`                       | `list(string)`      | A list of glob patterns to include files.                                                  | `[]`        | yes      |
+| `include`                       | `list(string)`      | A list of glob patterns to include files.                                                  |             | yes      |
 | `exclude`                       | `list(string)`      | A list of glob patterns to exclude files that would be included by the `include` patterns. | `[]`        | no       |
 | `poll_interval`                 | `time.Duration`     | The interval at which the file is polled for new entries.                                  | `200ms`     | no       |
 | `max_concurrent_files`          | `int`               | The maximum number of files to read concurrently.                                          | `10`        | no       |
@@ -47,8 +47,8 @@ You can use the following arguments with `otelcol.receiver.filelog`:
 | `encoding`                      | `string`            | The encoding of the log file.                                                              | `utf-8`     | no       |
 | `force_flush_period`            | `time.Duration`     | The period after which logs are flushed even if the buffer is not full.                    | `500ms`     | no       |
 | `delete_after_read`             | `bool`              | Whether to delete the file after reading.                                                  | `false`     | no       |
-| `compression`                   | `string`            | The compression type used for the log file.                                                | `none`      | no       |
-| `acquire_fs_lock`               | `bool`              | Whether to acquire a file system lock while reading the file.                              | `false`     | no       |
+| `compression`                   | `string`            | The compression type used for the log file.                                                | ``          | no       |
+| `acquire_fs_lock`               | `bool`              | Whether to acquire a file system lock while reading the file (Unix only).                  | `false`     | no       |
 | `attributes`                    | `map(string)`       | A map of attributes to add to each log entry.                                              | `{}`        | no       |
 | `resource`                      | `map(string)`       | A map of resource attributes to associate with each log entry.                             | `{}`        | no       |
 | `exclude_older_than`            | `time.Duration`     | Exclude files with a modification time older than the specified duration.                  | `0s`        | no       |
@@ -67,6 +67,8 @@ You can use the following arguments with `otelcol.receiver.filelog`:
 Refer to the upstream receiver [documentation][encoding-documentation] for more details.
 
 `start_at` must be one of `beginning` or `end`. The `header` block may only be used if `start_at` is `beginning`.
+
+`compression` must be either `` or `gzip`.
 
 [encoding-documentation]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/{{< param "OTEL_VERSION" >}}/receiver/filelogreceiver/README.md#supported-encodings
 
@@ -172,8 +174,8 @@ The following arguments are supported:
 
 | Name                 | Type     | Description                                                     | Default | Required |
 | -------------------- | -------- | --------------------------------------------------------------- | ------- | -------- |
-| `line_end_pattern`   | `string` | A regular expression that matches the end of a log entry.       |         | no       |
-| `line_start_pattern` | `string` | A regular expression that matches the beginning of a log entry. |         | no       |
+| `line_end_pattern`   | `string` | A regular expression that matches the end of a log entry.       |         | yes*     |
+| `line_start_pattern` | `string` | A regular expression that matches the beginning of a log entry. |         | yes*     |
 | `omit_pattern`       | `bool`   | Omit the start/end pattern from the split log entries.          | `false` | no       |
 
 A `multiline` block must contain either `line_start_pattern` or `line_end_pattern`.
