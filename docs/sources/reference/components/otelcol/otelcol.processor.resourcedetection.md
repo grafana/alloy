@@ -134,9 +134,16 @@ The `ec2` block reads resource information from the [EC2 instance metadata API][
 
 The `ec2` block supports the following attributes:
 
-Attribute   | Type           | Description                                                                 | Default     | Required
------------ |----------------| --------------------------------------------------------------------------- |-------------| --------
-`tags`      | `list(string)` | A list of regular expressions to match against tag keys of an EC2 instance. | `[]`        | no
+| Attribute                  | Type           | Description                                                                 | Default | Required |
+|----------------------------|----------------|-----------------------------------------------------------------------------|---------|----------|
+| `tags`                     | `list(string)` | A list of regular expressions to match against tag keys of an EC2 instance. | `[]`    | no       |
+| `max_attempts`             | `int`          | The maximum number of attempts to retrieve metadata.                        | `3`     | no       |
+| `max_backoff`              | `duration`     | The maximum backoff time between retries.                                   | `"20s"` | no       |
+<!-- The below commented behavior is allegedly implemented in https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/37453 but it does not appear 
+that the code actually will cause the collector to fail to start, waiting for a response from the author >
+<!-- | `fail_on_missing_metadata` | `bool`         | Whether to fail if metadata is missing.                                     | `false` | no       |
+
+By default the ec2 detector will log errors if the metadata endpoint is unavailable, but if `fail_on_missing_metadata` is `true` it will propagate that error instead which will cause {{< param "PRODUCT_NAME" >}} to fail to start. -->
 
 If you are using a proxy server on your EC2 instance, it's important that you exempt requests for instance metadata as described in the [AWS cli user guide][].
 Failing to do so can result in proxied or missing instance data.
