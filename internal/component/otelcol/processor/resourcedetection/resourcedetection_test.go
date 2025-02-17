@@ -135,6 +135,9 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 						"host.name":               map[string]interface{}{"enabled": true},
 						"host.type":               map[string]interface{}{"enabled": true},
 					},
+					"max_attempts":             3,
+					"max_backoff":              20 * time.Second,
+					"fail_on_missing_metadata": false,
 				},
 				"ecs":              ecs.DefaultArguments.Convert(),
 				"eks":              eks.DefaultArguments.Convert(),
@@ -177,6 +180,9 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 						"host.name":               map[string]interface{}{"enabled": true},
 						"host.type":               map[string]interface{}{"enabled": true},
 					},
+					"max_attempts":             3,
+					"max_backoff":              20 * time.Second,
+					"fail_on_missing_metadata": false,
 				},
 				"ecs":              ecs.DefaultArguments.Convert(),
 				"eks":              eks.DefaultArguments.Convert(),
@@ -210,6 +216,9 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					host.name  { enabled = false }
 					host.type  { enabled = false }
 				}
+				max_attempts = 5
+				max_backoff = "10s"
+				fail_on_missing_metadata = true
 			}
 			output {}
 			`,
@@ -230,6 +239,9 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 						"host.name":               map[string]interface{}{"enabled": false},
 						"host.type":               map[string]interface{}{"enabled": false},
 					},
+					"max_attempts":             5,
+					"max_backoff":              10 * time.Second,
+					"fail_on_missing_metadata": true,
 				},
 				"ecs":              ecs.DefaultArguments.Convert(),
 				"eks":              eks.DefaultArguments.Convert(),

@@ -46,8 +46,11 @@ func (args *Config) SetToDefault() {
 
 func (args Config) Convert() map[string]interface{} {
 	return map[string]interface{}{
-		"tags":                append([]string{}, args.Tags...),
-		"resource_attributes": args.ResourceAttributes.Convert(),
+		"tags":                     append([]string{}, args.Tags...),
+		"resource_attributes":      args.ResourceAttributes.Convert(),
+		"max_attempts":             args.MaxAttempts,
+		"max_backoff":              args.MaxBackoff,
+		"fail_on_missing_metadata": args.FailOnMissingMetadata,
 	}
 }
 
