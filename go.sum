@@ -2089,6 +2089,8 @@ github.com/open-telemetry/opentelemetry-collector-contrib/processor/attributespr
 github.com/open-telemetry/opentelemetry-collector-contrib/processor/attributesprocessor v0.119.0/go.mod h1:e5Sb/dOSruRTyykbNZppUXEXeYh3cI+7ks7M3HaaL8M=
 github.com/open-telemetry/opentelemetry-collector-contrib/processor/cumulativetodeltaprocessor v0.116.0 h1:+daFa0jsEaIgyEfGQfn/osSfKYaErOypxHNeytYYF08=
 github.com/open-telemetry/opentelemetry-collector-contrib/processor/cumulativetodeltaprocessor v0.116.0/go.mod h1:+nGFbElge3UAkSHzrPalOUYmGKcQGgKU8e6NZbRy1x8=
+github.com/open-telemetry/opentelemetry-collector-contrib/processor/cumulativetodeltaprocessor v0.119.0 h1:Uiw68g/rrLaSy4HiD8o2grBiBUgmkzT+W6QBCeScAXQ=
+github.com/open-telemetry/opentelemetry-collector-contrib/processor/cumulativetodeltaprocessor v0.119.0/go.mod h1:Z4+DZ0MHkE6kRMehh7L/f5KzrL12+yTBVpsPikEjAWI=
 github.com/open-telemetry/opentelemetry-collector-contrib/processor/deltatocumulativeprocessor v0.119.0 h1:vHB/9/MtALSwEoTLNsZwVvHylVcDU2esDUMduVM/iz8=
 github.com/open-telemetry/opentelemetry-collector-contrib/processor/deltatocumulativeprocessor v0.119.0/go.mod h1:zDA2b1nkH1XlDoCEidxT/KBY4PGtwlcEXlOLj30THjk=
 github.com/open-telemetry/opentelemetry-collector-contrib/processor/filterprocessor v0.119.0 h1:uNGKTj6/vy06LuLsjfEQDy7vH7BwmN9TnPOu6xmRuKM=

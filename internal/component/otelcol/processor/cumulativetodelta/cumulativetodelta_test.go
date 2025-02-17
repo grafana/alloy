@@ -71,10 +71,12 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				include {
 					metrics = ["metric1", "metric2"]
 					match_type = "strict"
+					metric_types = ["histogram"]
 				}
 				exclude {
 					metrics = [".*metric.*"]
 					match_type = "regexp"
+					metric_types = ["sum"]
 				}
 				output {}
 			`,
@@ -82,12 +84,14 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"max_staleness": 86400000000000,
 				"initial_value": 2,
 				"include": map[string]interface{}{
-					"metrics":    []string{"metric1", "metric2"},
-					"match_type": "strict",
+					"metrics":      []string{"metric1", "metric2"},
+					"match_type":   "strict",
+					"metric_types": []string{"histogram"},
 				},
 				"exclude": map[string]interface{}{
-					"metrics":    []string{".*metric.*"},
-					"match_type": "regexp",
+					"metrics":      []string{".*metric.*"},
+					"match_type":   "regexp",
+					"metric_types": []string{"sum"},
 				},
 			},
 		},
@@ -188,6 +192,30 @@ func TestArguments_Validate(t *testing.T) {
 				output {}
 			`,
 			expectedError: `match_type must be one of "strict" and "regexp"`,
+		},
+		{
+			testName: "Incorrect Include Metric Types",
+			cfg: `
+				include {
+					metrics = ["metric"]
+					match_type = "regexp"
+					metric_types = ["invalid"]
+				}
+				output {}
+			`,
+			expectedError: `metric_types must be one of "sum" and "histogram"`,
+		},
+		{
+			testName: "Incorrect Exclude Metric Types",
+			cfg: `
+				exclude {
+					metrics = ["metric"]
+					match_type = "regexp"
+					metric_types = ["invalid"]
+				}
+				output {}
+			`,
+			expectedError: `metric_types must be one of "sum" and "histogram"`,
 		},
 	}
 	for _, tc := range tests {
