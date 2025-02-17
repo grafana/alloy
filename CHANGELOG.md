@@ -14,6 +14,9 @@ Main (unreleased)
 
 - (_Experimental_) In `prometheus.write.queue` changed `parallelism` from attribute to a block to allow for dynamic scaling. (@mattdurham)
 
+- Remove `tls_basic_auth_config_path` attribute from `prometheus.exporter.mongodb` configuration as it does not configure TLS client
+  behavior as previously documented.
+
 ### Features
 
 - (_Public preview_) Add a `otelcol.processor.cumulativetodelta` component to convert metrics from
@@ -26,6 +29,15 @@ Main (unreleased)
 - (_Experimental_) A new `foreach` block which starts an Alloy pipeline for each item inside a list. (@wildum, @thampiotr, @ptodev)
 
 ### Enhancements
+
+- Upgrade to OpenTelemetry Collector v0.119.0 (@dehaansa):
+  - `otelcol.processor.resourcedetection`: additional configuration for the `ec2` detector to configure retry behavior 
+  - `otelcol.processor.resourcedetection`: additional configuration for the `ec2` detector to configure failure behavior
+  - `otelcol.processor.resourcedetection`: additional configuration for the `gcp` detector to collect Managed Instance Group attributes
+  - `otelcol.processor.resourcedetection`: additional configuration for the `eks` detector to collect cloud account attributes
+  - `otelcol.processor.resourcedetection`: add `kubeadm` detector to collect local cluster attributes
+  - `otelcol.processor.cumulativetodelta`: add `metric_types` filtering options
+  - `otelcol.exporter.awss3`: support configuring sending_queue behavior 
 
 - Add `go_table_fallback` arg to `pyroscope.ebpf` (@korniltsev)
 
