@@ -698,6 +698,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					cloud.provider { enabled = true }
 					cloud.region { enabled = false }
 					faas.id { enabled = false }
+					gcp.gce.instance.group_manager.zone { enabled = false }
 				}
 			}
 			output {}
@@ -745,6 +746,15 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 							"enabled": false,
 						},
 						"gcp.gce.instance.name": map[string]interface{}{
+							"enabled": false,
+						},
+						"gcp.gce.instance.group_manager.name": map[string]interface{}{
+							"enabled": true,
+						},
+						"gcp.gce.instance.group_manager.region": map[string]interface{}{
+							"enabled": true,
+						},
+						"gcp.gce.instance.group_manager.zone": map[string]interface{}{
 							"enabled": false,
 						},
 						"host.id": map[string]interface{}{
