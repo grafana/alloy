@@ -29,8 +29,7 @@ func init() {
 
 // Arguments configures the otelcol.exporter.awss3 component.
 type Arguments struct {
-	Encoding              string `alloy:"encoding,attr,optional"`
-	EncodingFileExtension string `alloy:"encoding_file_ext,attr,optional"`
+	Queue otelcol.QueueArguments `alloy:"sending_queue,block,optional"`
 
 	S3Uploader    S3Uploader    `alloy:"s3_uploader,block"`
 	MarshalerName MarshalerType `alloy:"marshaler,block,optional"`
@@ -45,6 +44,7 @@ func (args *Arguments) SetToDefault() {
 	args.MarshalerName.SetToDefault()
 	args.S3Uploader.SetToDefault()
 	args.DebugMetrics.SetToDefault()
+	args.Queue.SetToDefault()
 }
 
 func (args Arguments) Convert() (otelcomponent.Config, error) {
@@ -52,6 +52,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 
 	result.S3Uploader = args.S3Uploader.Convert()
 	result.MarshalerName = args.MarshalerName.Convert()
+	result.QueueSettings = *args.Queue.Convert()
 
 	return &result, nil
 }
