@@ -413,6 +413,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			detectors = ["eks"]
 			eks {
 				resource_attributes {
+					cloud.account.id { enabled = true }
 					cloud.platform { enabled = true }
 					cloud.provider { enabled = false }
 				}
@@ -426,6 +427,9 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"eks": map[string]interface{}{
 					"tags": []string{},
 					"resource_attributes": map[string]interface{}{
+						"cloud.account.id": map[string]interface{}{
+							"enabled": true,
+						},
 						"cloud.platform": map[string]interface{}{
 							"enabled": true,
 						},
