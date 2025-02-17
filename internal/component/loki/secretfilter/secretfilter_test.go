@@ -647,10 +647,9 @@ func FuzzProcessEntry(f *testing.F) {
 }
 
 func FuzzConfig(f *testing.F) {
-	for _, testConf := range testConfigs {
-		for _, testLog := range testLogs {
-			f.Add(testConf, testLog.log)
-		}
+	for _, testLog := range testLogs {
+		f.Add("", false, uint(0), "", "", testLog.log)                               // zero values
+		f.Add("REDACTED", true, uint(4), "aws,gcp", "abc.*&.*foobar.*", testLog.log) // sane values
 	}
 	opts := component.Options{
 		Logger:         util.TestLogger(f),
@@ -659,18 +658,16 @@ func FuzzConfig(f *testing.F) {
 	}
 	ch1 := loki.NewLogsReceiver()
 
-	f.Fuzz(func(t *testing.T, config string, log string) {
-		var args Arguments
-		err := syntax.Unmarshal([]byte(config), &args)
-		if err != nil {
-			// ignore parsing errors, as we aren't fuzz testing the Alloy config parser
-			return
+	f.Fuzz(func(t *testing.T, redact string, generic bool, partial uint, types string, allow string, log string) {
+		args := Arguments{
+			ForwardTo:      []loki.LogsReceiver{ch1}, // not fuzzed
+			Types:          strings.Split(types, ","),
+			RedactWith:     redact,
+			IncludeGeneric: generic,
+			AllowList:      strings.Split(allow, "&"), // a character that has no special meaning in go regexp and doesn't appear in the gitleaks regexes
+			PartialMask:    partial,
+			GitleaksConfig: "", // not fuzzed in this test
 		}
-		if args.GitleaksConfig != "" {
-			return // Skip the configs that use a custom gitleaks config file
-		}
-
-		args.ForwardTo = []loki.LogsReceiver{ch1}
 		c, err := New(opts, args)
 		if err != nil {
 			// ignore regex parsing errors
