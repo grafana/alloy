@@ -54,7 +54,7 @@ func newTestEnvironment(t *testing.T, onCreated func()) *testEnvironment {
 					_ context.Context,
 					_ otelextension.Settings,
 					_ otelcomponent.Config,
-				) (otelcomponent.Component, error) {
+				) (otelextension.Extension, error) {
 
 					onCreated()
 					return nil, nil
