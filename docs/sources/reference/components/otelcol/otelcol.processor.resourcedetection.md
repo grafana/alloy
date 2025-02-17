@@ -59,6 +59,7 @@ Name        | Type           | Description                                      
 * `system`
 * `openshift`
 * `kubernetes_node`
+* `kubeadm`
 
 `env` is the only detector that is not configured through a block.
 The `env` detector reads resource information from the `OTEL_RESOURCE_ATTRIBUTES` environment variable.
@@ -100,6 +101,7 @@ heroku            | [heroku][]            |                                     
 system            | [system][]            |                                                   | no
 openshift         | [openshift][]         |                                                   | no
 kubernetes_node   | [kubernetes_node][]   |                                                   | no
+kubeadm           | [kubeadm][]           |                                                   | no
 debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
 
 [output]: #output
@@ -118,6 +120,7 @@ debug_metrics | [debug_metrics][] | Configures the metrics that this component g
 [system]: #system
 [openshift]: #openshift
 [kubernetes_node]: #kubernetes_node
+[kubadm]: #kubeadm
 [res-attr-cfg]: #resource-attribute-config
 
 ### output
@@ -762,6 +765,64 @@ Block                          | Description                                    
 ------------------------------ | ------------------------------------------------------------------------------------------ | --------
 [k8s.node.name][res-attr-cfg]  | Toggles the `k8s.node.name` resource attribute. <br> Sets `enabled` to `true` by default.  | no
 [k8s.node.uid][res-attr-cfg]   | Toggles the `k8s.node.uid` resource attribute. <br> Sets `enabled` to `true` by default.   | no
+
+### kubeadm
+
+The `kubeadm` block queries the Kubernetes API server to retrieve kubeadm resource attributes.
+
+The `kubeadm` block supports the following attributes:
+
+Attribute           | Type     | Description                                                               | Default           | Required
+------------------- |--------- | ------------------------------------------------------------------------- |------------------ | --------
+`auth_type`         | `string` | Configures how to authenticate to the K8s API server.                     | `"none"`          | no
+`context`           | `string` | Override the current context when `auth_type` is set to `"kubeConfig"`.   | `""`              | no
+
+The following permissions are required:
+
+```yaml
+kind: Role
+metadata:
+  name: otel-collector
+  namespace: kube-system
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    resourceNames: ["kubeadm-config"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: otel-collector-rolebinding
+  namespace: kube-system
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: default
+roleRef:
+  kind: Role
+  name: otel-collector
+  apiGroup: rbac.authorization.k8s.io
+```
+
+`auth_type` can be set to one of the following:
+* `none`: no authentication.
+* `serviceAccount`: use the standard service account token provided to the {{< param "PRODUCT_NAME" >}} pod.
+* `kubeConfig`: use credentials from `~/.kube/config`.
+
+The `kubeadm` block supports the following blocks:
+
+Block                                                        | Description                                  | Required
+-------------------------------------------------------------|----------------------------------------------|---------
+[resource_attributes](#kubeadm--resource_attributes) | Configures which resource attributes to add. | no
+
+#### kubeadm > resource_attributes
+
+The `resource_attributes` block supports the following blocks:
+
+Block                             | Description                                                                                | Required
+--------------------------------- | ------------------------------------------------------------------------------------------ | --------
+[k8s.cluster.name][res-attr-cfg]  | Toggles the `k8s.cluster.name` resource attribute. <br> Sets `enabled` to `true` by default.  | no
 
 ## Common configuration
 

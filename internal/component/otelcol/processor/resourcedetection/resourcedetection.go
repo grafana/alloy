@@ -20,6 +20,7 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/gcp"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/heroku"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/k8snode"
+	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/kubeadm"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/openshift"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/system"
 	"github.com/grafana/alloy/internal/featuregate"
@@ -118,6 +119,9 @@ type DetectorConfig struct {
 
 	// KubernetesNode contains user-specified configurations for the K8SNode detector
 	KubernetesNodeConfig k8snode.Config `alloy:"kubernetes_node,block,optional"`
+
+	// KubeADMConfig contains user-specified configurations for the KubeADM detector
+	KubeADMConfig kubeadm.Config `alloy:"kubeadm,block,optional"`
 }
 
 func (dc *DetectorConfig) SetToDefault() {
@@ -135,6 +139,7 @@ func (dc *DetectorConfig) SetToDefault() {
 		HerokuConfig:           heroku.DefaultArguments,
 		OpenShiftConfig:        openshift.DefaultArguments,
 		KubernetesNodeConfig:   k8snode.DefaultArguments,
+		KubeADMConfig:          kubeadm.DefaultArguments,
 	}
 	dc.SystemConfig.SetToDefault()
 }
@@ -178,7 +183,8 @@ func (args *Arguments) Validate() error {
 			heroku.Name,
 			system.Name,
 			openshift.Name,
-			k8snode.Name:
+			k8snode.Name,
+			kubeadm.Name:
 		// Valid option - nothing to do
 		default:
 			return fmt.Errorf("invalid detector: %s", detector)
@@ -227,6 +233,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	input["system"] = args.DetectorConfig.SystemConfig.Convert()
 	input["openshift"] = args.DetectorConfig.OpenShiftConfig.Convert()
 	input["k8snode"] = args.DetectorConfig.KubernetesNodeConfig.Convert()
+	input["kubeadm"] = args.DetectorConfig.KubeADMConfig.Convert()
 
 	var result resourcedetectionprocessor.Config
 	err := mapstructure.Decode(input, &result)
