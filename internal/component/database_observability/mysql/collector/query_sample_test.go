@@ -120,49 +120,6 @@ func TestQuerySample(t *testing.T) {
 			},
 		},
 		{
-			name: "subquery",
-			rows: [][]driver.Value{{
-				"abc123",
-				"some_schema",
-				`select ifnull(schema_name, 'none') as schema_name, digest, count_star from
-				(select * from performance_schema.events_statements_summary_by_digest where schema_name not in ('mysql', 'performance_schema', 'information_schema')
-				and last_seen > date_sub(now(), interval 86400 second) order by last_seen desc)q
-				group by q.schema_name, q.digest, q.count_star limit 100`,
-				"2024-01-01T00:00:00.000Z",
-				"1000",
-			}},
-			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
-			},
-			logsLines: []string{
-				`level=info msg="query samples fetched" schema="some_schema" digest="abc123" query_type="select" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" ` +
-					`query_sample_redacted="select ifnull(schema_name, :redacted1) as schema_name, digest, count_star from (select * from ` +
-					`performance_schema.events_statements_summary_by_digest where schema_name not in ::redacted2 ` +
-					`and last_seen > date_sub(now(), interval :redacted3 second) order by last_seen desc) as q ` +
-					`group by q.schema_name, q.digest, q.count_star limit :redacted4"`,
-				`level=info msg="table name parsed" schema="some_schema" digest="abc123" table="performance_schema.events_statements_summary_by_digest"`,
-			},
-		},
-		{
-			name: "with comment",
-			rows: [][]driver.Value{{
-				"abc123",
-				"some_schema",
-				"select val1, /* val2,*/ val3 from some_table where id = 1",
-				"2024-01-01T00:00:00.000Z",
-				"1000",
-			}},
-			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
-			},
-			logsLines: []string{
-				`level=info msg="query samples fetched" schema="some_schema" digest="abc123" query_type="select" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="select val1, val3 from some_table where id = :redacted1"`,
-				`level=info msg="table name parsed" schema="some_schema" digest="abc123" table="some_table"`,
-			},
-		},
-		{
 			name: "truncated query",
 			rows: [][]driver.Value{{
 				"xyz456",
@@ -221,40 +178,6 @@ func TestQuerySample(t *testing.T) {
 			},
 		},
 		{
-			name: "commit",
-			rows: [][]driver.Value{{
-				"abc123",
-				"some_schema",
-				"COMMIT",
-				"2024-01-01T00:00:00.000Z",
-				"1000",
-			}},
-			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
-			},
-			logsLines: []string{
-				`level=info msg="query samples fetched" schema="some_schema" digest="abc123" query_type="" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="commit"`,
-			},
-		},
-		{
-			name: "alter table",
-			rows: [][]driver.Value{{
-				"abc123",
-				"some_schema",
-				"alter table some_table modify enumerable enum('val1', 'val2') not null",
-				"2024-01-01T00:00:00.000Z",
-				"1000",
-			}},
-			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
-			},
-			logsLines: []string{
-				`level=info msg="query samples fetched" schema="some_schema" digest="abc123" query_type="" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="alter table some_table"`,
-				`level=info msg="table name parsed" schema="some_schema" digest="abc123" table="some_table"`,
-			},
-		},
-		{
 			name: "sql parse error",
 			rows: [][]driver.Value{{
 				"xyz456",
@@ -307,50 +230,6 @@ func TestQuerySample(t *testing.T) {
 			},
 		},
 		{
-			name: "union query",
-			rows: [][]driver.Value{{
-				"abc123",
-				"some_schema",
-				"SELECT id, name FROM employees_ny UNION SELECT id, name FROM employees_ca UNION SELECT id, name FROM employees_tx",
-				"2024-01-01T00:00:00.000Z",
-				"1000",
-			}},
-			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
-			},
-			logsLines: []string{
-				`level=info msg="query samples fetched" schema="some_schema" digest="abc123" query_type="select" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="select id, name from employees_ny union select id, name from employees_ca union select id, name from employees_tx"`,
-				`level=info msg="table name parsed" schema="some_schema" digest="abc123" table="employees_ny"`,
-				`level=info msg="table name parsed" schema="some_schema" digest="abc123" table="employees_ca"`,
-				`level=info msg="table name parsed" schema="some_schema" digest="abc123" table="employees_tx"`,
-			},
-		},
-		{
-			name: "from subquery with union",
-			rows: [][]driver.Value{{
-				"abc123",
-				"some_schema",
-				"SELECT COUNT(DISTINCT t.role_id) AS roles, COUNT(DISTINCT r.id) AS fixed_roles FROM (SELECT role_id FROM user_role UNION ALL SELECT role_id FROM team_role) AS t LEFT JOIN (SELECT id FROM role WHERE name LIKE 'prefix%') AS r ON t.role_id = r.id",
-				"2024-01-01T00:00:00.000Z",
-				"1000",
-			}},
-			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
-			},
-			logsLines: []string{
-				`level=info msg="query samples fetched" schema="some_schema" digest="abc123" query_type="select" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="select COUNT(distinct t.role_id) as roles, COUNT(distinct r.id) as fixed_roles from (select role_id from user_role union all select role_id from team_role) as t left join (select id from role where name like :redacted1) as r on t.role_id = r.id"`,
-				`level=info msg="table name parsed" schema="some_schema" digest="abc123" table="user_role"`,
-				`level=info msg="table name parsed" schema="some_schema" digest="abc123" table="team_role"`,
-				`level=info msg="table name parsed" schema="some_schema" digest="abc123" table="role"`,
-			},
-		},
-		{
 			name: "subquery and union",
 			rows: [][]driver.Value{{
 				"abc123",
@@ -370,74 +249,6 @@ func TestQuerySample(t *testing.T) {
 				`level=info msg="table name parsed" schema="some_schema" digest="abc123" table="employees_us_east"`,
 				`level=info msg="table name parsed" schema="some_schema" digest="abc123" table="employees_us_west"`,
 				`level=info msg="table name parsed" schema="some_schema" digest="abc123" table="employees_emea"`,
-			},
-		},
-		{
-			name: "insert with subquery and union",
-			rows: [][]driver.Value{{
-				"abc123",
-				"some_schema",
-				"INSERT INTO customers (id, name) SELECT id, name FROM customers_us UNION SELECT id, name FROM customers_eu",
-				"2024-01-01T00:00:00.000Z",
-				"1000",
-			}},
-			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
-			},
-			logsLines: []string{
-				`level=info msg="query samples fetched" schema="some_schema" digest="abc123" query_type="insert" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="insert into customers(id, name) select id, name from customers_us union select id, name from customers_eu"`,
-				`level=info msg="table name parsed" schema="some_schema" digest="abc123" table="customers"`,
-				`level=info msg="table name parsed" schema="some_schema" digest="abc123" table="customers_us"`,
-				`level=info msg="table name parsed" schema="some_schema" digest="abc123" table="customers_eu"`,
-			},
-		},
-		{
-			name: "join with subquery and union",
-			rows: [][]driver.Value{{
-				"abc123",
-				"some_schema",
-				"SELECT * FROM departments dep JOIN (SELECT id, name FROM employees_us UNION SELECT id, name FROM employees_eu) employees ON dep.id = employees.id",
-				"2024-01-01T00:00:00.000Z",
-				"1000",
-			}},
-			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
-			},
-			logsLines: []string{
-				`level=info msg="query samples fetched" schema="some_schema" digest="abc123" query_type="select" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="select * from departments as dep join (select id, name from employees_us union select id, name from employees_eu) as employees on dep.id = employees.id"`,
-				`level=info msg="table name parsed" schema="some_schema" digest="abc123" table="departments"`,
-				`level=info msg="table name parsed" schema="some_schema" digest="abc123" table="employees_us"`,
-				`level=info msg="table name parsed" schema="some_schema" digest="abc123" table="employees_eu"`,
-			},
-		},
-		{
-			name: "insert with subquery and join",
-			rows: [][]driver.Value{{
-				"abc123",
-				"some_schema",
-				"INSERT INTO some_table SELECT * FROM departments dep JOIN (SELECT id, name FROM employees_us UNION SELECT id, name FROM employees_eu) employees ON dep.id = employees.id",
-				"2024-01-01T00:00:00.000Z",
-				"1000",
-			}},
-			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
-			},
-			logsLines: []string{
-				`level=info msg="query samples fetched" schema="some_schema" digest="abc123" query_type="insert" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="insert into some_table select * from departments as dep join (select id, name from employees_us union select id, name from employees_eu) as employees on dep.id = employees.id"`,
-				`level=info msg="table name parsed" schema="some_schema" digest="abc123" table="some_table"`,
-				`level=info msg="table name parsed" schema="some_schema" digest="abc123" table="departments"`,
-				`level=info msg="table name parsed" schema="some_schema" digest="abc123" table="employees_us"`,
-				`level=info msg="table name parsed" schema="some_schema" digest="abc123" table="employees_eu"`,
 			},
 		},
 		{
@@ -470,24 +281,6 @@ func TestQuerySample(t *testing.T) {
 			},
 			logsLines: []string{
 				`level=info msg="query samples fetched" schema="some_schema" digest="abc123" query_type="" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="show variables"`,
-			},
-		},
-		{
-			name: "drop table",
-			rows: [][]driver.Value{{
-				"abc123",
-				"some_schema",
-				"DROP TABLE IF EXISTS some_table",
-				"2024-01-01T00:00:00.000Z",
-				"1000",
-			}},
-			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
-			},
-			logsLines: []string{
-				`level=info msg="query samples fetched" schema="some_schema" digest="abc123" query_type="" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="drop table if exists some_table"`,
-				`level=info msg="table name parsed" schema="some_schema" digest="abc123" table="some_table"`,
 			},
 		},
 	}
