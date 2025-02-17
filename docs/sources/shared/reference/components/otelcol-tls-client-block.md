@@ -22,7 +22,7 @@ Name                           | Type           | Description                   
 `cipher_suites`                | `list(string)` | A list of TLS cipher suites that the TLS transport can use.                                  | `[]`        | no
 `reload_interval`              | `duration`     | The duration after which the certificate is reloaded.                                        | `"0s"`      | no
 `server_name`                  | `string`       | Verifies the hostname of server certificates when set.                                       |             | no
-`curve_preferences`            | `list(string)` | Configures the preferred curve types for ECDHE handshake.                                    | `[]`        | no
+`curve_preferences`            | `list(string)` | Set of elliptic curves to use in a handshake.                                                | `[]`        | no
 
 If the server doesn't support TLS, you must set the `insecure` argument to `true`.
 
@@ -39,7 +39,9 @@ The following pairs of arguments are mutually exclusive and can't both be set si
 If `cipher_suites` is left blank, a safe default list is used.
 Refer to the [Go TLS documentation][golang-tls] for a list of supported cipher suites.
 
-`curve_preferences` accepted values are `X25519`, `P521`, `P256`, and `P384`. Refer to the [Go TLS documentation][golang-curve] for more details.
+The `curve_preferences` argument determines the set of elliptic curves to prefer during a handshake in preference order.
+If not provided, a default list is used.
+The set of elliptic curves available are `X25519`, `P521`, `P256`, and `P384`.
 
 [golang-tls]: https://go.dev/src/crypto/tls/cipher_suites.go
 [golang-curve]: https://go.dev/src/crypto/tls/common.go#L138
