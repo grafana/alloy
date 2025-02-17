@@ -20,6 +20,7 @@ Name                           | Type           | Description                   
 `cipher_suites`                | `list(string)` | A list of TLS cipher suites that the TLS transport can use.                                  | `[]`        | no
 `reload_interval`              | `duration`     | The duration after which the certificate is reloaded.                                        | `"0s"`      | no
 `client_ca_file`               | `string`       | Path to the TLS cert to use by the server to verify a client certificate.                    |             | no
+`curve_preferences`            | `list(string)` | Configures the preferred curve types for ECDHE handshake.                                    | `[]`        | no
 
 If `reload_interval` is set to `"0s"`, the certificate never reloaded.
 
@@ -35,5 +36,8 @@ Refer to the [Go Cipher Suites documentation][golang-cipher-suites] for a list o
 `client_ca_file` sets the `ClientCA` and `ClientAuth` to `RequireAndVerifyClientCert` in the `TLSConfig`. 
 Refer to the [Go TLS documentation][golang-tls] for more information.
 
+`curve_preferences` accepted values are `X25519`, `P521`, `P256`, and `P384`. Refer to the [Go TLS documentation][golang-curve] for more details.
+
 [golang-tls]: https://godoc.org/crypto/tls#Config
 [golang-cipher-suites]: https://go.dev/src/crypto/tls/cipher_suites.go
+[golang-curve]: https://go.dev/src/crypto/tls/common.go#L138
