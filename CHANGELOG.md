@@ -38,7 +38,9 @@ Main (unreleased)
   - `otelcol.processor.resourcedetection`: add `kubeadm` detector to collect local cluster attributes
   - `otelcol.processor.cumulativetodelta`: add `metric_types` filtering options
   - `otelcol.exporter.awss3`: support configuring sending_queue behavior 
+  - `otelcol.exporter.otlphttp`: support configuring `compression_params`, which currently only includes `level`
   - `configtls`: opentelemetry components with tls config now support specifying TLS curve preferences
+  - `sending_queue`: opentelemetry exporters with a `sending_queue` can now configure the queue to be `blocking`
 
 - Add `go_table_fallback` arg to `pyroscope.ebpf` (@korniltsev)
 

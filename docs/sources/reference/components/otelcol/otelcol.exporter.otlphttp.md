@@ -45,14 +45,15 @@ If set, these arguments override the `client.endpoint` field for the correspondi
 
 The following blocks are supported inside the definition of `otelcol.exporter.otlphttp`:
 
-Hierarchy        | Block                | Description                                                                | Required
------------------|----------------------|----------------------------------------------------------------------------|---------
-client           | [client][]           | Configures the HTTP server to send telemetry data to.                      | yes
-client > tls     | [tls][]              | Configures TLS for the HTTP client.                                        | no
-client > cookies | [cookies][]          | Store cookies from server responses and reuse them in subsequent requests. | no
-sending_queue    | [sending_queue][]    | Configures batching of data before sending.                                | no
-retry_on_failure | [retry_on_failure][] | Configures retry mechanism for failed requests.                            | no
-debug_metrics    | [debug_metrics][]    | Configures the metrics that this component generates to monitor its state. | no
+| Hierarchy                   | Block                  | Description                                                                | Required |
+|-----------------------------|------------------------|----------------------------------------------------------------------------|----------|
+| client                      | [client][]             | Configures the HTTP server to send telemetry data to.                      | yes      |
+| client > tls                | [tls][]                | Configures TLS for the HTTP client.                                        | no       |
+| client > cookies            | [cookies][]            | Store cookies from server responses and reuse them in subsequent requests. | no       |
+| client > compression_params | [compression_params][] | Configure advanced compression options                                     | no       |
+| sending_queue               | [sending_queue][]      | Configures batching of data before sending.                                | no       |
+| retry_on_failure            | [retry_on_failure][]   | Configures retry mechanism for failed requests.                            | no       |
+| debug_metrics               | [debug_metrics][]      | Configures the metrics that this component generates to monitor its state. | no       |
 
 The `>` symbol indicates deeper levels of nesting.
 For example, `client > tls` refers to a `tls` block defined inside a `client` block.
@@ -60,6 +61,7 @@ For example, `client > tls` refers to a `tls` block defined inside a `client` bl
 [client]: #client-block
 [tls]: #tls-block
 [cookies]: #cookies-block
+[compression_params]: #compression_params-block
 [sending_queue]: #sending_queue-block
 [retry_on_failure]: #retry_on_failure-block
 [debug_metrics]: #debug_metrics-block
@@ -112,6 +114,20 @@ The following arguments are supported:
 Name      | Type   | Description                               | Default    | Required
 ----------|--------|-------------------------------------------|------------|---------
 `enabled` | `bool` | The target URL to send telemetry data to. | `false`    | no
+
+### compression_params block
+
+The `compression_params` block allows for configuration of advanced compression options.
+
+The following arguments are supported:
+
+Name      | Type   | Description                               | Default    | Required
+----------|--------|-------------------------------------------|------------|---------
+`level`   | `int`  | Configure compression level.              |            | yes
+
+For valid combinations of `client.compression` and `client.compression_params.level`, see the [upstream documentation][confighttp].
+
+[confighttp]: https://github.com/open-telemetry/opentelemetry-collector/blob/<OTEL_VERSION>/config/confighttp/README.md
 
 ### tls block
 
