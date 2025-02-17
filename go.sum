@@ -1277,10 +1277,10 @@ github.com/grafana/jsonparser v0.0.0-20240425183733-ea80629e1a32 h1:NznuPwItog+r
 github.com/grafana/jsonparser v0.0.0-20240425183733-ea80629e1a32/go.mod h1:796sq+UcONnSlzA3RtlBZ+b/hrerkZXiEmO8oMjyRwY=
 github.com/grafana/kafka_exporter v0.0.0-20240409084445-5e3488ad9f9a h1:jqM4NNdx8LSquKo8bPx+XWn91S2b+sgNvEcFfSJQtHY=
 github.com/grafana/kafka_exporter v0.0.0-20240409084445-5e3488ad9f9a/go.mod h1:ZXGGyeTUMenf/H1CDBK9lv3azjswfa0nVzLoQAYmnDc=
-github.com/grafana/loki/pkg/push v0.0.0-20250214215857-fd349e14d2e3 h1:mhM6E1kEJngU/X+5gHr0PbVuW3FQw7HZ10GIlLqTyw8=
-github.com/grafana/loki/pkg/push v0.0.0-20250214215857-fd349e14d2e3/go.mod h1:lJEF/Wh5MYlmBem6tOYAFObkLsuikfrEf8Iy9AdMPiQ=
-github.com/grafana/loki/v3 v3.0.0-20250214215857-fd349e14d2e3 h1:WCGLgecwkjl5WfVZ+qg2hgfsNbIgYnCkcffmDyO2YaU=
-github.com/grafana/loki/v3 v3.0.0-20250214215857-fd349e14d2e3/go.mod h1:DqFXiZyJE9AEimFlbVY9XHrV2ahCXKupIY2qP4Ku3EM=
+github.com/grafana/loki/pkg/push v0.0.0-20250217060541-c70d59072494 h1:VPSuMYlVCLPMDwZ1vQXf2OrwMkFbP+KfJjoLFWxCSpI=
+github.com/grafana/loki/pkg/push v0.0.0-20250217060541-c70d59072494/go.mod h1:lJEF/Wh5MYlmBem6tOYAFObkLsuikfrEf8Iy9AdMPiQ=
+github.com/grafana/loki/v3 v3.0.0-20250217060541-c70d59072494 h1:wIXM7zC58ZLC8rGHM/zHGKzeJ67tEP+UyOKWfFooSqw=
+github.com/grafana/loki/v3 v3.0.0-20250217060541-c70d59072494/go.mod h1:DqFXiZyJE9AEimFlbVY9XHrV2ahCXKupIY2qP4Ku3EM=
 github.com/grafana/mysqld_exporter v0.16.1-0.20241128200101-e16f5286d5e9 h1:2nQItBsfp7hy+AMq1MBFW6p9Ax08nAsdR8u21rWZItQ=
 github.com/grafana/mysqld_exporter v0.16.1-0.20241128200101-e16f5286d5e9/go.mod h1:ctzLZ0vK3ow5JZmBfbS261ufC/4vtfuwFileKJea3kg=
 github.com/grafana/node_exporter v0.18.1-grafana-r01.0.20250213175948-c55b81403e32 h1:aBZB4GdbhhVwY3V4kGRRkanHMot3o0Ro5pS4e8eq9aw=
