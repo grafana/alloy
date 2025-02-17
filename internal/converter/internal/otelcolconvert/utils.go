@@ -29,7 +29,7 @@ func StringifyKind(k component.Kind) string {
 	case component.KindConnector:
 		return "connector"
 	default:
-		return fmt.Sprintf("Kind(%d)", k)
+		return fmt.Sprintf("Kind(%s)", k.String())
 	}
 }
 
