@@ -19,6 +19,8 @@ Main (unreleased)
 
 ### Features
 
+- (_Public preview_) Add `otelcol.receiver.filelog` component to read otel log entries from files (@dehaansa)
+  
 - (_Public preview_) Add a `otelcol.processor.cumulativetodelta` component to convert metrics from
   cumulative temporality to delta. (@madaraszg-tulip)
 

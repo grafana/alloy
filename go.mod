@@ -147,6 +147,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/processor/tailsamplingprocessor v0.119.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor v0.119.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/datadogreceiver v0.119.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filelogreceiver v0.119.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filestatsreceiver v0.119.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/influxdbreceiver v0.119.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/jaegerreceiver v0.119.0
