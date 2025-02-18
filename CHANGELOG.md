@@ -34,7 +34,6 @@ Main (unreleased)
 
 - Upgrade to OpenTelemetry Collector v0.119.0 (@dehaansa):
   - `otelcol.processor.resourcedetection`: additional configuration for the `ec2` detector to configure retry behavior 
-  - `otelcol.processor.resourcedetection`: additional configuration for the `ec2` detector to configure failure behavior
   - `otelcol.processor.resourcedetection`: additional configuration for the `gcp` detector to collect Managed Instance Group attributes
   - `otelcol.processor.resourcedetection`: additional configuration for the `eks` detector to collect cloud account attributes
   - `otelcol.processor.resourcedetection`: add `kubeadm` detector to collect local cluster attributes
