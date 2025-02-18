@@ -148,6 +148,7 @@ otelcol.exporter.debug "default" {}
 
 [exporter-examples]: ../otelcol.exporter.tcplog/#use-the-otelcolprocessortransform-component-to-format-logs-from-lokisourcetcplog
 [encoding-documentation]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/receiver/tcplogreceiver/README.md#supported-encodings
+[net-semconv]: https://github.com/open-telemetry/semantic-conventions/blob/main/docs/attributes-registry/network.md#network-attributes
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
