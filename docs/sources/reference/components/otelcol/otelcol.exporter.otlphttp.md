@@ -50,7 +50,7 @@ The following blocks are supported inside the definition of `otelcol.exporter.ot
 | client                      | [client][]             | Configures the HTTP server to send telemetry data to.                      | yes      |
 | client > tls                | [tls][]                | Configures TLS for the HTTP client.                                        | no       |
 | client > cookies            | [cookies][]            | Store cookies from server responses and reuse them in subsequent requests. | no       |
-| client > compression_params | [compression_params][] | Configure advanced compression options                                     | no       |
+| client > compression_params | [compression_params][] | Configure advanced compression options.                                    | no       |
 | sending_queue               | [sending_queue][]      | Configures batching of data before sending.                                | no       |
 | retry_on_failure            | [retry_on_failure][]   | Configures retry mechanism for failed requests.                            | no       |
 | debug_metrics               | [debug_metrics][]      | Configures the metrics that this component generates to monitor its state. | no       |
@@ -125,7 +125,7 @@ Name      | Type   | Description                               | Default    | Re
 ----------|--------|-------------------------------------------|------------|---------
 `level`   | `int`  | Configure compression level.              |            | yes
 
-For valid combinations of `client.compression` and `client.compression_params.level`, see the [upstream documentation][confighttp].
+For valid combinations of `client.compression` and `client.compression_params.level`, refer to the [upstream documentation][confighttp].
 
 [confighttp]: https://github.com/open-telemetry/opentelemetry-collector/blob/<OTEL_VERSION>/config/confighttp/README.md
 

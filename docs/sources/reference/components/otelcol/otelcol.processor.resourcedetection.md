@@ -772,10 +772,10 @@ The `kubeadm` block queries the Kubernetes API server to retrieve kubeadm resour
 
 The `kubeadm` block supports the following attributes:
 
-Attribute           | Type     | Description                                                               | Default           | Required
-------------------- |--------- | ------------------------------------------------------------------------- |------------------ | --------
-`auth_type`         | `string` | Configures how to authenticate to the K8s API server.                     | `"none"`          | no
-`context`           | `string` | Override the current context when `auth_type` is set to `"kubeConfig"`.   | `""`              | no
+| Attribute   | Type     | Description                                                             | Default  | Required |
+| ----------- | -------- | ----------------------------------------------------------------------- | -------- | -------- |
+| `auth_type` | `string` | Configures how to authenticate to the Kubernetes API server.            | `"none"` | no       |
+| `context`   | `string` | Override the current context when `auth_type` is set to `"kubeConfig"`. | `""`     | no       |
 
 The following permissions are required:
 
@@ -805,24 +805,25 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
 ```
 
-`auth_type` can be set to one of the following:
+You can set `auth_type` to one of the following:
+
 * `none`: no authentication.
 * `serviceAccount`: use the standard service account token provided to the {{< param "PRODUCT_NAME" >}} pod.
 * `kubeConfig`: use credentials from `~/.kube/config`.
 
 The `kubeadm` block supports the following blocks:
 
-Block                                                        | Description                                  | Required
--------------------------------------------------------------|----------------------------------------------|---------
-[resource_attributes](#kubeadm--resource_attributes) | Configures which resource attributes to add. | no
+| Block                                                | Description                                  | Required |
+| ---------------------------------------------------- | -------------------------------------------- | -------- |
+| [resource_attributes](#kubeadm--resource_attributes) | Configures which resource attributes to add. | no       |
 
 #### kubeadm > resource_attributes
 
 The `resource_attributes` block supports the following blocks:
 
-Block                             | Description                                                                                | Required
---------------------------------- | ------------------------------------------------------------------------------------------ | --------
-[k8s.cluster.name][res-attr-cfg]  | Toggles the `k8s.cluster.name` resource attribute. <br> Sets `enabled` to `true` by default.  | no
+| Block                            | Description                                                                             | Required |
+| -------------------------------- | --------------------------------------------------------------------------------------- | -------- |
+| [k8s.cluster.name][res-attr-cfg] | Toggles the `k8s.cluster.name` resource attribute. Sets `enabled` to `true` by default. | no       |
 
 ## Common configuration
 
