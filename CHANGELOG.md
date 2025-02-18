@@ -79,6 +79,8 @@ Main (unreleased)
 
 - Add `config_merge_strategy` in `prometheus.exporter.snmp` to optionally merge custom snmp config with embedded config instead of replacing. Useful for providing SNMP auths. (@v-zhuravlev)
 
+- Upgrade `beyla.ebpf` to v2.0.4. The full list of changes can be found in the [Beyla release notes](https://github.com/grafana/beyla/releases/tag/v2.0.0). (@marctc)
+
 ### Bugfixes
 
 - Fix log rotation for Windows in `loki.source.file` by refactoring the component to use the runner pkg. This should also reduce CPU consumption when tailing a lot of files in a dynamic environment. (@wildum)
