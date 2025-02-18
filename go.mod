@@ -75,7 +75,7 @@ require (
 	github.com/grafana/regexp v0.0.0-20240518133315-a468a5bfb3bc
 	github.com/grafana/snowflake-prometheus-exporter v0.0.0-20240813124544-9995e8354548
 	github.com/grafana/tail v0.0.0-20230510142333-77b18831edf0
-	github.com/grafana/vmware_exporter v0.0.5-beta
+	github.com/grafana/vmware_exporter v0.0.5-beta.0.20250218170317-73398ba08329
 	github.com/grafana/walqueue v0.0.0-20250211154548-6435b3242458
 	github.com/hashicorp/consul/api v1.31.0
 	github.com/hashicorp/go-discover v0.0.0-20230724184603-e89ebd1b2f65
@@ -943,9 +943,6 @@ replace (
 	// and allow non-singleton components.
 	// https://github.com/grafana/cadvisor/tree/grafana-v0.47-noglobals
 	github.com/google/cadvisor => github.com/grafana/cadvisor v0.0.0-20240729082359-1f04a91701e2
-
-	// TODO(dehaansa): DO NOT MERGE until this PR is merged upstream: https://github.com/grafana/vmware_exporter/pull/43
-	github.com/grafana/vmware_exporter => github.com/dehaansa/vmware_exporter v0.0.0-20250214145456-1d18c8569d6c
 
 	// TODO(dehaansa): integrate the changes from the exporter-package-v0.15.0 branch into at least the
 	// grafana fork of the exporter, or completely into upstream
