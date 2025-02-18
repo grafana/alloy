@@ -962,7 +962,7 @@ replace (
 	// TODO(marctc, mattdurham): Replace node_export with custom fork for multi usage. https://github.com/prometheus/node_exporter/pull/2812
 	// this commit is on the refactor_collectors branch in the grafana fork.
 	// TODO(dehaansa): DO NOT MERGE without redirecting back to branch
-	github.com/prometheus/node_exporter => github.com/grafana/node_exporter v0.18.1-grafana-r01.0.20250218105449-1ef992543f3f
+	github.com/prometheus/node_exporter => github.com/grafana/node_exporter v0.18.1-grafana-r01.0.20250218165712-95ff04d719d7
 )
 
 replace github.com/github/smimesign => github.com/grafana/smimesign v0.2.1-0.20220408144937-2a5adf3481d3
