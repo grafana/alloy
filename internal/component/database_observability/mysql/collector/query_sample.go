@@ -62,7 +62,7 @@ func NewQuerySample(args QuerySampleArguments) (*QuerySample, error) {
 		instanceKey:     args.InstanceKey,
 		collectInterval: args.CollectInterval,
 		entryHandler:    args.EntryHandler,
-		logger:          log.With(args.Logger, "collector", "QuerySample"),
+		logger:          log.With(args.Logger, "collector", QuerySampleName),
 		running:         &atomic.Bool{},
 	}, nil
 }
@@ -72,7 +72,7 @@ func (c *QuerySample) Name() string {
 }
 
 func (c *QuerySample) Start(ctx context.Context) error {
-	level.Debug(c.logger).Log("msg", "QuerySample collector started")
+	level.Debug(c.logger).Log("msg", QuerySampleName+" collector started")
 
 	c.running.Store(true)
 	ctx, cancel := context.WithCancel(ctx)
@@ -155,12 +155,16 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 		}
 
 		c.entryHandler.Chan() <- loki.Entry{
-			Labels: model.LabelSet{"job": database_observability.JobName},
+			Labels: model.LabelSet{
+				"job":      database_observability.JobName,
+				"op":       OP_QUERY_SAMPLE,
+				"instance": model.LabelValue(c.instanceKey),
+			},
 			Entry: logproto.Entry{
 				Timestamp: time.Unix(0, time.Now().UnixNano()),
 				Line: fmt.Sprintf(
-					`level=info msg="query samples fetched" op="%s" instance="%s" schema="%s" digest="%s" query_type="%s" query_sample_seen="%s" query_sample_timer_wait="%s" query_sample_redacted="%s"`,
-					OP_QUERY_SAMPLE, c.instanceKey, schemaName, digest, c.stmtType(stmt), sampleSeen, sampleTimerWait, sampleRedactedText,
+					`level=info msg="query samples fetched" schema="%s" digest="%s" query_type="%s" query_sample_seen="%s" query_sample_timer_wait="%s" query_sample_redacted="%s"`,
+					schemaName, digest, c.stmtType(stmt), sampleSeen, sampleTimerWait, sampleRedactedText,
 				),
 			},
 		}
@@ -168,12 +172,16 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 		tables := c.tablesFromQuery(digest, stmt)
 		for _, table := range tables {
 			c.entryHandler.Chan() <- loki.Entry{
-				Labels: model.LabelSet{"job": database_observability.JobName},
+				Labels: model.LabelSet{
+					"job":      database_observability.JobName,
+					"op":       OP_QUERY_PARSED_TABLE_NAME,
+					"instance": model.LabelValue(c.instanceKey),
+				},
 				Entry: logproto.Entry{
 					Timestamp: time.Unix(0, time.Now().UnixNano()),
 					Line: fmt.Sprintf(
-						`level=info msg="table name parsed" op="%s" instance="%s" schema="%s" digest="%s" table="%s"`,
-						OP_QUERY_PARSED_TABLE_NAME, c.instanceKey, schemaName, digest, table,
+						`level=info msg="table name parsed" schema="%s" digest="%s" table="%s"`,
+						schemaName, digest, table,
 					),
 				},
 			}
@@ -218,6 +226,8 @@ func (c QuerySample) tablesFromQuery(digest string, stmt sqlparser.Statement) []
 	case *sqlparser.Insert:
 		parsedTables = []string{c.parseTableName(stmt.Table)}
 		switch insRowsStmt := stmt.Rows.(type) {
+		case sqlparser.Values:
+			// ignore raw values
 		case *sqlparser.Select:
 			parsedTables = append(parsedTables, c.tablesFromQuery(digest, insRowsStmt)...)
 		case *sqlparser.Union:

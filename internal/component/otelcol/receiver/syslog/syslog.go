@@ -20,8 +20,6 @@ import (
 	stanzainputtcp "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator/input/tcp"
 	stanzainputudp "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator/input/udp"
 	stanzaparsersyslog "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator/parser/syslog"
-	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/split"
-	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/trim"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/syslogreceiver"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelextension "go.opentelemetry.io/collector/extension"
@@ -97,52 +95,18 @@ type TCP struct {
 	AddAttributes   bool                        `alloy:"add_attributes,attr,optional"`
 	OneLogPerPacket bool                        `alloy:"one_log_per_packet,attr,optional"`
 	Encoding        string                      `alloy:"encoding,attr,optional"`
-	MultilineConfig *MultilineConfig            `alloy:"multiline,block,optional"`
-	TrimConfig      *TrimConfig                 `alloy:",squash"`
+	MultilineConfig *otelcol.MultilineConfig    `alloy:"multiline,block,optional"`
+	TrimConfig      *otelcol.TrimConfig         `alloy:",squash"`
 }
 
 type UDP struct {
-	ListenAddress   string           `alloy:"listen_address,attr,optional"`
-	OneLogPerPacket bool             `alloy:"one_log_per_packet,attr,optional"`
-	AddAttributes   bool             `alloy:"add_attributes,attr,optional"`
-	Encoding        string           `alloy:"encoding,attr,optional"`
-	MultilineConfig *MultilineConfig `alloy:"multiline,block,optional"`
-	TrimConfig      *TrimConfig      `alloy:",squash"`
-	Async           *AsyncConfig     `alloy:"async,block,optional"`
-}
-
-type TrimConfig struct {
-	PreserveLeadingWhitespace  bool `alloy:"preserve_leading_whitespaces,attr,optional"`
-	PreserveTrailingWhitespace bool `alloy:"preserve_trailing_whitespaces,attr,optional"`
-}
-
-func (c *TrimConfig) Convert() *trim.Config {
-	if c == nil {
-		return nil
-	}
-
-	return &trim.Config{
-		PreserveLeading:  c.PreserveLeadingWhitespace,
-		PreserveTrailing: c.PreserveTrailingWhitespace,
-	}
-}
-
-type MultilineConfig struct {
-	LineStartPattern string `alloy:"line_start_pattern,attr,optional"`
-	LineEndPattern   string `alloy:"line_end_pattern,attr,optional"`
-	OmitPattern      bool   `alloy:"omit_pattern,attr,optional"`
-}
-
-func (c *MultilineConfig) Convert() *split.Config {
-	if c == nil {
-		return nil
-	}
-
-	return &split.Config{
-		LineStartPattern: c.LineStartPattern,
-		LineEndPattern:   c.LineEndPattern,
-		OmitPattern:      c.OmitPattern,
-	}
+	ListenAddress   string                   `alloy:"listen_address,attr,optional"`
+	OneLogPerPacket bool                     `alloy:"one_log_per_packet,attr,optional"`
+	AddAttributes   bool                     `alloy:"add_attributes,attr,optional"`
+	Encoding        string                   `alloy:"encoding,attr,optional"`
+	MultilineConfig *otelcol.MultilineConfig `alloy:"multiline,block,optional"`
+	TrimConfig      *otelcol.TrimConfig      `alloy:",squash"`
+	Async           *AsyncConfig             `alloy:"async,block,optional"`
 }
 
 type AsyncConfig struct {

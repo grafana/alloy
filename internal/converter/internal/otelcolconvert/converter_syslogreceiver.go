@@ -71,8 +71,8 @@ func toOtelcolReceiversyslog(cfg *syslogreceiver.SysLogConfig) *syslog.Arguments
 			AddAttributes:   cfg.InputConfig.TCP.AddAttributes,
 			OneLogPerPacket: cfg.InputConfig.TCP.OneLogPerPacket,
 			Encoding:        cfg.InputConfig.TCP.Encoding,
-			MultilineConfig: toSyslogMultilineConfig(cfg.InputConfig.TCP.SplitConfig),
-			TrimConfig:      toSyslogTrimConfig(cfg.InputConfig.TCP.TrimConfig),
+			MultilineConfig: toOtelcolMultilineConfig(cfg.InputConfig.TCP.SplitConfig),
+			TrimConfig:      toOtelcolTrimConfig(cfg.InputConfig.TCP.TrimConfig),
 		}
 	}
 
@@ -82,8 +82,8 @@ func toOtelcolReceiversyslog(cfg *syslogreceiver.SysLogConfig) *syslog.Arguments
 			OneLogPerPacket: cfg.InputConfig.UDP.OneLogPerPacket,
 			AddAttributes:   cfg.InputConfig.UDP.AddAttributes,
 			Encoding:        cfg.InputConfig.UDP.Encoding,
-			MultilineConfig: toSyslogMultilineConfig(cfg.InputConfig.UDP.SplitConfig),
-			TrimConfig:      toSyslogTrimConfig(cfg.InputConfig.UDP.TrimConfig),
+			MultilineConfig: toOtelcolMultilineConfig(cfg.InputConfig.UDP.SplitConfig),
+			TrimConfig:      toOtelcolTrimConfig(cfg.InputConfig.UDP.TrimConfig),
 			Async:           toSyslogAsyncConfig(cfg.InputConfig.UDP.AsyncConfig),
 		}
 	}
@@ -100,16 +100,16 @@ func toOtelcolReceiversyslog(cfg *syslogreceiver.SysLogConfig) *syslog.Arguments
 
 }
 
-func toSyslogMultilineConfig(cfg split.Config) *syslog.MultilineConfig {
-	return &syslog.MultilineConfig{
+func toOtelcolMultilineConfig(cfg split.Config) *otelcol.MultilineConfig {
+	return &otelcol.MultilineConfig{
 		LineStartPattern: cfg.LineStartPattern,
 		LineEndPattern:   cfg.LineEndPattern,
 		OmitPattern:      cfg.OmitPattern,
 	}
 }
 
-func toSyslogTrimConfig(cfg trim.Config) *syslog.TrimConfig {
-	return &syslog.TrimConfig{
+func toOtelcolTrimConfig(cfg trim.Config) *otelcol.TrimConfig {
+	return &otelcol.TrimConfig{
 		PreserveLeadingWhitespace:  cfg.PreserveLeading,
 		PreserveTrailingWhitespace: cfg.PreserveTrailing,
 	}

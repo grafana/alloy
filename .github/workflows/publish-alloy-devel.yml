@@ -1,0 +1,137 @@
+name: Publish alloy-devel container
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish_linux_container:
+    name: Publish Linux alloy-devel container
+    container: grafana/alloy-build-image:v0.1.8
+    runs-on:
+      labels: github-hosted-ubuntu-x64-large
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set ownership
+      # https://github.com/actions/runner/issues/2033#issuecomment-1204205989
+      run: |
+          # this is to fix GIT not liking owner of the checkout dir
+          chown -R $(id -u):$(id -g) $PWD
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: go.mod
+        cache: false
+
+    - name: Login to DockerHub (from vault)
+      uses: grafana/shared-workflows/actions/dockerhub-login@dockerhub-login-v1.0.1
+
+    - run: |
+       docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+       docker buildx create --name multiarch-alloy-alloy-devel-${GITHUB_SHA} --driver docker-container --use
+       ./tools/ci/docker-containers alloy-devel
+       docker buildx rm multiarch-alloy-alloy-devel-${GITHUB_SHA}
+
+  publish_linux_boringcrypto_container:
+    name: Publish Linux alloy-devel-boringcrypto container
+    container: grafana/alloy-build-image:v0.1.8
+    runs-on:
+      labels: github-hosted-ubuntu-x64-large
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set ownership
+      # https://github.com/actions/runner/issues/2033#issuecomment-1204205989
+      run: |
+          # this is to fix GIT not liking owner of the checkout dir
+          chown -R $(id -u):$(id -g) $PWD
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: go.mod
+        cache: false
+
+    - name: Login to DockerHub (from vault)
+      uses: grafana/shared-workflows/actions/dockerhub-login@dockerhub-login-v1.0.1
+
+    - run: |
+       docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+       docker buildx create --name multiarch-alloy-alloy-devel-boringcrypto-${GITHUB_SHA} --driver docker-container --use
+       ./tools/ci/docker-containers alloy-devel-boringcrypto
+       docker buildx rm multiarch-alloy-alloy-devel-boringcrypto-${GITHUB_SHA}
+
+  update_deployment_tools:
+    name: Update deployment_tools
+    runs-on: ubuntu-latest
+    needs:
+    - publish_linux_container
+    - publish_linux_boringcrypto_container
+    steps:
+
+    - name: Log in to Google Artifact Registry
+      # This step needs to run before "Checkout code".
+      # That's because the login to GAR generates a new file.
+      # We don't want this file to end up in the repo directory.
+      # Then "tools/image-tag" would get confused because "git status" no longer reports a clean repo.
+      # TODO: Ask the platform team to rework the login to GAR to not generate such files?
+      uses: grafana/shared-workflows/actions/login-to-gar@main
+      with:
+        registry: "us-docker.pkg.dev"
+        environment: "prod"
+
+    - name: Get Vault secrets
+      uses: grafana/shared-workflows/actions/get-vault-secrets@main
+      with:
+        common_secrets: |
+          GITHUB_APP_ID=updater-app:app-id
+          GITHUB_APP_INSTALLATION_ID=updater-app:app-installation-id
+          GITHUB_APP_PRIVATE_KEY=updater-app:private-key
+
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Get the image tag
+      run: |
+        echo "$(bash ./tools/image-tag-docker)" > .tag-only
+        echo "grafana/alloy-dev:$(bash ./tools/image-tag-docker)" > .image-tag
+
+    - name: Update to latest image
+      run: |
+        set -e -o pipefail
+
+        echo "The image tag is: $(cat .image-tag)"
+
+        cat << EOF > config.json
+        {
+          "git_committer_name": "updater-for-ci[bot]",
+          "git_author_name": "updater-for-ci[bot]",
+          "git_committer_email": "119986603+updater-for-ci[bot]@users.noreply.github.com",
+          "git_author_email": "119986603+updater-for-ci[bot]@users.noreply.github.com",
+          "destination_branch": "master",
+          "repo_name": "deployment_tools",
+          "update_jsonnet_attribute_configs": [
+            {
+              "file_path": "ksonnet/lib/alloy/waves/alloy.libsonnet",
+              "jsonnet_key": "dev_canary",
+              "jsonnet_value_file": ".image-tag"
+            }
+          ]
+        }
+        EOF
+
+        docker run --rm \
+          -e GITHUB_APP_ID \
+          -e GITHUB_APP_INSTALLATION_ID \
+          -e GITHUB_APP_PRIVATE_KEY \
+          -e CONFIG_JSON="$(cat config.json)" \
+          -v ./.image-tag:/app/.image-tag \
+          us-docker.pkg.dev/grafanalabs-global/docker-deployment-tools-prod/updater |& tee updater-output.log

@@ -1,0 +1,32 @@
+Module used inside of a foreach.
+
+-- main.alloy --
+import.file "testImport" {
+  filename = "module.alloy"
+}
+
+foreach "testForeach" {
+  collection = [5, 5]
+  var = "num"
+
+  template {
+    testImport.a "cc" {
+      max = num
+      receiver = testcomponents.summation_receiver.sum.receiver
+    }
+  }
+}
+
+testcomponents.summation_receiver "sum" {
+}
+
+-- module.alloy --
+declare "a" {
+  argument "max" {}
+  argument "receiver" {}
+  testcomponents.pulse "pt" {
+    max = argument.max.value
+    frequency = "10ms"
+    forward_to = [argument.receiver.value]
+  }
+}

@@ -45,14 +45,15 @@ func buildBlackboxTargets(baseTarget discovery.Target, args component.Arguments)
 	}
 
 	for _, tgt := range blackboxTargets {
-		target := make(discovery.Target)
+		target := make(map[string]string, len(tgt.Labels)+baseTarget.Len())
 		// Set extra labels first, meaning that any other labels will override
 		for k, v := range tgt.Labels {
 			target[k] = v
 		}
-		for k, v := range baseTarget {
-			target[k] = v
-		}
+		baseTarget.ForEachLabel(func(key string, value string) bool {
+			target[key] = value
+			return true
+		})
 
 		target["job"] = target["job"] + "/" + tgt.Name
 		target["__param_target"] = tgt.Target
@@ -60,7 +61,7 @@ func buildBlackboxTargets(baseTarget discovery.Target, args component.Arguments)
 			target["__param_module"] = tgt.Module
 		}
 
-		targets = append(targets, target)
+		targets = append(targets, discovery.NewTargetFromMap(target))
 	}
 
 	return targets

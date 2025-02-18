@@ -1,0 +1,30 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+      http:
+
+processors:
+  cumulativetodelta:
+    max_staleness: 24h
+    initial_value: drop
+    include:
+      metrics:
+        - metric1
+        - metric2
+      match_type: strict
+    exclude:
+      metrics:
+        - ".*metric.*"
+      match_type: regexp
+
+exporters:
+  otlp:
+    endpoint: database:4317
+
+service:
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: [cumulativetodelta]
+      exporters: [otlp]
