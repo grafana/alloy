@@ -874,6 +874,7 @@ require (
 
 require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza v0.116.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filelogreceiver v0.116.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/syslogreceiver v0.116.0
 )
 
