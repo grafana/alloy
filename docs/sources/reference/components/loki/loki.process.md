@@ -1688,6 +1688,88 @@ stage.timestamp {
 }
 ```
 
+### stage.windowsevent block
+
+The `windowsevent` stage extracts data from the message string in the Windows Event Log.
+
+The following arguments are supported:
+
+| Name                  | Type     | Description                                            | Default   | Required |
+|-----------------------|----------|--------------------------------------------------------|-----------|----------|
+| `source`              | `string` | Name of the field in the extracted data to parse.      | `message` | no       |
+| `overwrite_existing`  | `bool`   | Whether to overwrite existing extracted data fields.   | `false`   | no       |
+| `drop_invalid_labels` | `bool`   | Whether to drop fields that are not valid label names. | `false`   | no       |
+
+When `overwrite_existing` is set to `true`, the stage overwrites existing extracted data fields with the same name.
+If set to `false`, the `_extracted` suffix is appended to an existing field name.
+
+When `drop_invalid_labels` is set to `true`, the stage drops fields that aren't valid label names.
+If set to `false`, the stage will automatically convert them into valid labels, replacing invalid characters with underscores.
+
+The `windowsevent` stage expects the message to be structured in sections that are split by empty lines.
+
+The first section of the input is treated as a whole block and stored in the extracted map with the key `Description`.
+
+Sections following the Description are expected to contain key-value pairs in the format key:value.
+
+If the first line of a section has no value, for example "Subject:", the key will act as a prefix for subsequent keys in the same section.
+
+If a line within a section does not include the `:` symbol, it is considered part of the previous entry's value. The line is appended to the previous value, separated by a comma.
+
+Lines in a section without a preceding valid entry (key-value pair) are ignored and discarded.
+
+#### Example with `loki.source.windowsevent`
+
+```alloy
+loki.source.windowsevent "security"  {
+    eventlog_name = "Security"
+    forward_to = [loki.process.default.receiver]
+}
+loki.process "default" {
+  forward_to = [loki.write.default.receiver]
+  stage.json {
+      expressions = {
+          message = "",
+          Overwritten = "",
+      }
+  }
+  stage.windowsevent {
+      source = "message"
+      overwrite_existing = true
+  }
+  stage.labels {
+    values = {
+      Description = "",
+      Subject_SecurityID  = "",        
+      ReadOP = "Subject_ReadOperation",
+    }
+  }
+}
+```
+
+The `loki.source.windowsevent` component forwards Windows security events to the `loki.process` component.
+
+Given the following event:
+```
+{"event_id": 1, "Overwritten": "old", "message": ""Special privileges assigned to new logon.\r\n\r\nSubject:\r\n\tSecurity ID:\t\tS-1-1-1\r\n\tAccount Name:\t\tSYSTEM\r\n\tAccount Domain:\t\tNT AUTHORITY\r\n\tLogon ID:\t\t0xAAA\r\n\r\nPrivileges:\t\tSeAssignPrimaryTokenPrivilege\r\n\t\t\tSeTcbPrivilege\r\n\t\t\tSeSecurityPrivilege\r\n\t\t\tSeTakeOwnershipPrivilege\r\n\t\t\tSeLoadDriverPrivilege\r\n\t\t\tSeBackupPrivilege\r\n\t\t\tSeRestorePrivilege\r\n\t\t\tSeDebugPrivilege\r\n\t\t\tSeAuditPrivilege\r\n\t\t\tSeSystemEnvironmentPrivilege\r\n\t\t\tSeImpersonatePrivilege\r\n\t\t\tSeDelegateSessionUserImpersonatePrivilege""}
+```
+
+The `json` stage would create the following key-value pairs in the set of extracted data:
+
+- `message`: `"Special privileges assigned to new logon.\r\n\r\nSubject:\r\n\tSecurity ID:\t\tS-1-1-1\r\n\tAccount Name:\t\tSYSTEM\r\n\tAccount Domain:\t\tNT AUTHORITY\r\n\tLogon ID:\t\t0xAAA\r\n\r\nPrivileges:\t\tSeAssignPrimaryTokenPrivilege\r\n\t\t\tSeTcbPrivilege\r\n\t\t\tSeSecurityPrivilege"`
+- `Overwritten`: `old`
+
+The `windowsevent` stage will parse the value of `message` from the extracted data and append/overwrite the following key-value pairs to the set of extracted data:
+
+- `Description`:           "Special privileges assigned to new logon.",
+- `Subject_SecurityID`:    "S-1-1-1",
+- `Subject_AccountName`:   "SYSTEM",
+- `Subject_AccountDomain`: "NT AUTHORITY",
+- `Subject_LogonID`:       "0xAAA",
+- `Privileges`:            "SeAssignPrimaryTokenPrivilege,SeTcbPrivilege,SeSecurityPrivilege",
+
+Finally the `labels` stage will use the extracted values `Description`, `Subject_SecurityID` and `Subject_ReadOperation` to add them as labels of the log entry before forwarding it to a `loki.write` component.
+
 ## Exported fields
 
 The following fields are exported and can be referenced by other components:
