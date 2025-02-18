@@ -88,6 +88,14 @@ jobs:
         registry: "us-docker.pkg.dev"
         environment: "prod"
 
+    - name: Get Vault secrets
+      uses: grafana/shared-workflows/actions/get-vault-secrets@main
+      with:
+        common_secrets: |
+          GITHUB_APP_ID=updater-app:app-id
+          GITHUB_APP_INSTALLATION_ID=updater-app:app-installation-id
+          GITHUB_APP_PRIVATE_KEY=updater-app:private-key
+
     - name: Checkout code
       uses: actions/checkout@v4
 
@@ -97,8 +105,6 @@ jobs:
         echo "grafana/alloy-dev:$(bash ./tools/image-tag-docker)" > .image-tag
 
     - name: Update to latest image
-      env:
-        GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
       run: |
         set -e -o pipefail
 
@@ -123,7 +129,9 @@ jobs:
         EOF
 
         docker run --rm \
-          -e GITHUB_TOKEN="$GITHUB_TOKEN" \
+          -e GITHUB_APP_ID \
+          -e GITHUB_APP_INSTALLATION_ID \
+          -e GITHUB_APP_PRIVATE_KEY \
           -e CONFIG_JSON="$(cat config.json)" \
           -v ./.image-tag:/app/.image-tag \
           us-docker.pkg.dev/grafanalabs-global/docker-deployment-tools-prod/updater |& tee updater-output.log
