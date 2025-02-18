@@ -22,7 +22,6 @@ import (
 	stanzainputfilelog "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator/input/file"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filelogreceiver"
 	otelcomponent "go.opentelemetry.io/collector/component"
-	otelextension "go.opentelemetry.io/collector/extension"
 	"go.opentelemetry.io/collector/pipeline"
 )
 
@@ -227,7 +226,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 }
 
 // Extensions implements receiver.Arguments.
-func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
+func (args Arguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 
