@@ -946,9 +946,7 @@ replace (
 
 	// TODO(dehaansa): integrate the changes from the exporter-package-v0.15.0 branch into at least the
 	// grafana fork of the exporter, or completely into upstream
-	// TODO(dehaansa): DO NOT MERGE without redirecting back to branch after
-	// https://github.com/grafana/postgres_exporter/pull/25 is merged
-	github.com/prometheus-community/postgres_exporter => github.com/grafana/postgres_exporter v0.15.1-0.20250213194513-66241578063a
+	github.com/prometheus-community/postgres_exporter => github.com/grafana/postgres_exporter v0.15.1-0.20250218135316-21788f008d39
 
 	// Needed until a bunch of exporters are updated, because 0.13.0 breaks compatibility in web.ListenAndServe
 	//github.com/prometheus/exporter-toolkit => github.com/prometheus/exporter-toolkit v0.11.0
