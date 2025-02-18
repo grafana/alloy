@@ -67,8 +67,8 @@ require (
 	github.com/grafana/jfr-parser/pprof v0.0.3
 	github.com/grafana/jsonparser v0.0.0-20240425183733-ea80629e1a32
 	github.com/grafana/kafka_exporter v0.0.0-20240409084445-5e3488ad9f9a
-	github.com/grafana/loki/pkg/push v0.0.0-20250217060541-c70d59072494 // k217-without-promlog branch
-	github.com/grafana/loki/v3 v3.0.0-20250217060541-c70d59072494 // k217-without-promlog branch
+	github.com/grafana/loki/pkg/push v0.0.0-20250218135905-f078e0e3f9b6 // k217-alloy-v1.7-fork branch
+	github.com/grafana/loki/v3 v3.0.0-20250218135905-f078e0e3f9b6 // k217-alloy-v1.7-fork branch
 	github.com/grafana/pyroscope-go/godeltaprof v0.1.8
 	github.com/grafana/pyroscope/api v1.2.0
 	github.com/grafana/pyroscope/ebpf v0.4.8
