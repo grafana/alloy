@@ -17,6 +17,9 @@ Main (unreleased)
 - Remove `tls_basic_auth_config_path` attribute from `prometheus.exporter.mongodb` configuration as it does not configure TLS client
   behavior as previously documented.
 
+- Remove `encoding` and `encoding_file_ext` from `otelcol.exporter.awss3` component as it was not wired in to the otel component and 
+  Alloy does not currently integrate the upstream encoding extensions that this would utilize.
+
 ### Features
 
 - (_Public preview_) Add `otelcol.receiver.filelog` component to read otel log entries from files (@dehaansa)
