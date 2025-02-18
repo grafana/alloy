@@ -59,7 +59,7 @@ require (
 	github.com/grafana/alloy-remote-config v0.0.10
 	github.com/grafana/alloy/syntax v0.1.0
 	github.com/grafana/beyla v1.10.0-alloy // custom beyla 1.10 branch without git lfs
-	github.com/grafana/catchpoint-prometheus-exporter v0.0.0-20240606062944-e55f3668661d
+	github.com/grafana/catchpoint-prometheus-exporter v0.0.0-20250218151502-6e97feaee761
 	github.com/grafana/ckit v0.0.0-20241128150632-1e6dfe1c6183
 	github.com/grafana/cloudflare-go v0.0.0-20230110200409-c627cf6792f2
 	github.com/grafana/dskit v0.0.0-20250131191929-eab36484cec2
@@ -943,9 +943,6 @@ replace (
 	// and allow non-singleton components.
 	// https://github.com/grafana/cadvisor/tree/grafana-v0.47-noglobals
 	github.com/google/cadvisor => github.com/grafana/cadvisor v0.0.0-20240729082359-1f04a91701e2
-
-	// TODO(dehaansa): DO NOT MERGE, remove after https://github.com/grafana/catchpoint-prometheus-exporter/pull/6 is merged
-	github.com/grafana/catchpoint-prometheus-exporter => github.com/dehaansa/catchpoint-prometheus-exporter v0.0.0-20250213170154-939c6db7967a
 
 	// TODO(dehaansa): DO NOT MERGE until this PR is merged upstream: https://github.com/grafana/vmware_exporter/pull/43
 	github.com/grafana/vmware_exporter => github.com/dehaansa/vmware_exporter v0.0.0-20250214145456-1d18c8569d6c

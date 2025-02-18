@@ -756,8 +756,6 @@ github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSs
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1VwoXQT9A3Wy9MM3WgvqSxFWenqJduM=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/dehaansa/catchpoint-prometheus-exporter v0.0.0-20250213170154-939c6db7967a h1:DbgjU/LV5dvRA4ag3cfauNqVtAQZiOJ3iwaYFdjddrs=
-github.com/dehaansa/catchpoint-prometheus-exporter v0.0.0-20250213170154-939c6db7967a/go.mod h1:S/M+H/0B7LSWtXbvzEOwqCl96xP6c1NOInW21+bzol0=
 github.com/dehaansa/vmware_exporter v0.0.0-20250214145456-1d18c8569d6c h1:YVV8FiiICFm8vK0K9T4SXxaSlZkU1/1q0lwygyJAebM=
 github.com/dehaansa/vmware_exporter v0.0.0-20250214145456-1d18c8569d6c/go.mod h1:G75j3d68ARMMzjEIYo8nsbMYtJOSGrvYlPOl0i/UjO4=
 github.com/deneonet/benc v1.1.2 h1:JNJSnA53zVLjt4Bz1HwxG4tQg475LP+kd8rgUuV4tc4=
@@ -1256,6 +1254,8 @@ github.com/grafana/beyla v1.10.0-alloy h1:kGyZtBSS/Br2qdhbvzu8sVYZHuE9a3OzWpbp6g
 github.com/grafana/beyla v1.10.0-alloy/go.mod h1:CRWu15fkScScSYBlYUtdJu2Ak8ojGvnuwHToGGkaOXY=
 github.com/grafana/cadvisor v0.0.0-20240729082359-1f04a91701e2 h1:ju6EcY2aEobeBg185ETtFCKj5WzaQ48qfkbsSRRQrF4=
 github.com/grafana/cadvisor v0.0.0-20240729082359-1f04a91701e2/go.mod h1:8sLW/G7rcFe1CKMaA4pYT4mX3P1xQVGqM6luzEzx/2g=
+github.com/grafana/catchpoint-prometheus-exporter v0.0.0-20250218151502-6e97feaee761 h1:dPJOIEwtQ8uR3Qa79pb/lsSFJQ6j4P9vpCUQ4fKimG4=
+github.com/grafana/catchpoint-prometheus-exporter v0.0.0-20250218151502-6e97feaee761/go.mod h1:S/M+H/0B7LSWtXbvzEOwqCl96xP6c1NOInW21+bzol0=
 github.com/grafana/ckit v0.0.0-20241128150632-1e6dfe1c6183 h1:9ubc4+JkJ6lChOOxXsFalg0LMAqUX6eXZqu80luIvlA=
 github.com/grafana/ckit v0.0.0-20241128150632-1e6dfe1c6183/go.mod h1:+Ddq4Cmuz2NnrPzhlZyEdxcDzsPhT6CW270t1aiCj5k=
 github.com/grafana/cloudflare-go v0.0.0-20230110200409-c627cf6792f2 h1:qhugDMdQ4Vp68H0tp/0iN17DM2ehRo1rLEdOFe/gB8I=
