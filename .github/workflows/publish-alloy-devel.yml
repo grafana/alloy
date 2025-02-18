@@ -15,6 +15,13 @@ jobs:
     runs-on:
       labels: github-hosted-ubuntu-x64-large
     steps:
+      # This step needs to run before "Checkout code".
+      # That's because it generates a new file.
+      # We don't want this file to end up in the repo directory.
+      # Then "tools/image-tag" would get confused because "git status" no longer reports a clean repo.
+    - name: Login to DockerHub (from vault)
+      uses: grafana/shared-workflows/actions/dockerhub-login@dockerhub-login-v1.0.1
+
     - name: Checkout code
       uses: actions/checkout@v4
 
@@ -29,9 +36,6 @@ jobs:
       with:
         go-version-file: go.mod
         cache: false
-
-    - name: Login to DockerHub (from vault)
-      uses: grafana/shared-workflows/actions/dockerhub-login@dockerhub-login-v1.0.1
 
     - run: |
        docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
@@ -45,6 +49,13 @@ jobs:
     runs-on:
       labels: github-hosted-ubuntu-x64-large
     steps:
+    # This step needs to run before "Checkout code".
+    # That's because it generates a new file.
+    # We don't want this file to end up in the repo directory.
+    # Then "tools/image-tag" would get confused because "git status" no longer reports a clean repo.
+    - name: Login to DockerHub (from vault)
+      uses: grafana/shared-workflows/actions/dockerhub-login@dockerhub-login-v1.0.1
+
     - name: Checkout code
       uses: actions/checkout@v4
 
@@ -59,9 +70,6 @@ jobs:
       with:
         go-version-file: go.mod
         cache: false
-
-    - name: Login to DockerHub (from vault)
-      uses: grafana/shared-workflows/actions/dockerhub-login@dockerhub-login-v1.0.1
 
     - run: |
        docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
