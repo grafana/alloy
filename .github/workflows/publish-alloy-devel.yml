@@ -3,7 +3,7 @@ on:
   push:
     branches:
       - main
-    
+
 permissions:
   contents: read
   id-token: write
@@ -34,7 +34,7 @@ jobs:
       uses: grafana/shared-workflows/actions/dockerhub-login@dockerhub-login-v1.0.1
 
     - run: |
-       docker run --rm --privileged multiarch/qemu-user-static --reset -p yes     
+       docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
        docker buildx create --name multiarch-alloy-alloy-devel-${GITHUB_SHA} --driver docker-container --use
        ./tools/ci/docker-containers alloy-devel
        docker buildx rm multiarch-alloy-alloy-devel-${GITHUB_SHA}
@@ -64,7 +64,7 @@ jobs:
       uses: grafana/shared-workflows/actions/dockerhub-login@dockerhub-login-v1.0.1
 
     - run: |
-       docker run --rm --privileged multiarch/qemu-user-static --reset -p yes     
+       docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
        docker buildx create --name multiarch-alloy-alloy-devel-boringcrypto-${GITHUB_SHA} --driver docker-container --use
        ./tools/ci/docker-containers alloy-devel-boringcrypto
        docker buildx rm multiarch-alloy-alloy-devel-boringcrypto-${GITHUB_SHA}
@@ -88,6 +88,14 @@ jobs:
         registry: "us-docker.pkg.dev"
         environment: "prod"
 
+    - name: Get Vault secrets
+      uses: grafana/shared-workflows/actions/get-vault-secrets@main
+      with:
+        common_secrets: |
+          GITHUB_APP_ID=updater-app:app-id
+          GITHUB_APP_INSTALLATION_ID=updater-app:app-installation-id
+          GITHUB_APP_PRIVATE_KEY=updater-app:private-key
+
     - name: Checkout code
       uses: actions/checkout@v4
 
@@ -97,8 +105,6 @@ jobs:
         echo "grafana/alloy-dev:$(bash ./tools/image-tag-docker)" > .image-tag
 
     - name: Update to latest image
-      env:
-        GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
       run: |
         set -e -o pipefail
 
@@ -123,5 +129,9 @@ jobs:
         EOF
 
         docker run --rm \
-          -e GITHUB_TOKEN="$GITHUB_TOKEN" \
-          -e CONFIG_JSON="$(cat config.json)" us-docker.pkg.dev/grafanalabs-global/docker-deployment-tools-prod/updater |& tee updater-output.log
+          -e GITHUB_APP_ID \
+          -e GITHUB_APP_INSTALLATION_ID \
+          -e GITHUB_APP_PRIVATE_KEY \
+          -e CONFIG_JSON="$(cat config.json)" \
+          -v ./.image-tag:/app/.image-tag \
+          us-docker.pkg.dev/grafanalabs-global/docker-deployment-tools-prod/updater |& tee updater-output.log
