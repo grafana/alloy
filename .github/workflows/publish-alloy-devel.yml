@@ -3,7 +3,7 @@ on:
   push:
     branches:
       - main
-    
+
 permissions:
   contents: read
   id-token: write
@@ -34,7 +34,7 @@ jobs:
       uses: grafana/shared-workflows/actions/dockerhub-login@dockerhub-login-v1.0.1
 
     - run: |
-       docker run --rm --privileged multiarch/qemu-user-static --reset -p yes     
+       docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
        docker buildx create --name multiarch-alloy-alloy-devel-${GITHUB_SHA} --driver docker-container --use
        ./tools/ci/docker-containers alloy-devel
        docker buildx rm multiarch-alloy-alloy-devel-${GITHUB_SHA}
@@ -64,7 +64,7 @@ jobs:
       uses: grafana/shared-workflows/actions/dockerhub-login@dockerhub-login-v1.0.1
 
     - run: |
-       docker run --rm --privileged multiarch/qemu-user-static --reset -p yes     
+       docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
        docker buildx create --name multiarch-alloy-alloy-devel-boringcrypto-${GITHUB_SHA} --driver docker-container --use
        ./tools/ci/docker-containers alloy-devel-boringcrypto
        docker buildx rm multiarch-alloy-alloy-devel-boringcrypto-${GITHUB_SHA}
@@ -124,4 +124,6 @@ jobs:
 
         docker run --rm \
           -e GITHUB_TOKEN="$GITHUB_TOKEN" \
-          -e CONFIG_JSON="$(cat config.json)" us-docker.pkg.dev/grafanalabs-global/docker-deployment-tools-prod/updater |& tee updater-output.log
+          -e CONFIG_JSON="$(cat config.json)" \
+          -v ./.image-tag:/app/.image-tag \
+          us-docker.pkg.dev/grafanalabs-global/docker-deployment-tools-prod/updater |& tee updater-output.log
