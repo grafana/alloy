@@ -1770,7 +1770,7 @@ The `windowsevent` stage parses the value of `message` from the extracted data a
 * `Subject_LogonID`:       "0xAAA",
 * `Privileges`:            "SeAssignPrimaryTokenPrivilege,SeTcbPrivilege,SeSecurityPrivilege",
 
-Finally the `labels` stage will use the extracted values `Description`, `Subject_SecurityID` and `Subject_ReadOperation` to add them as labels of the log entry before forwarding it to a `loki.write` component.
+Finally the `labels` stage uses the extracted values `Description`, `Subject_SecurityID` and `Subject_ReadOperation` to add them as labels of the log entry before forwarding it to a `loki.write` component.
 
 ## Exported fields
 
