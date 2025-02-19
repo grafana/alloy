@@ -476,26 +476,26 @@ The `resource_attributes` block supports the following blocks:
 
 | Block                                                 | Description                                                                                                       | Required |
 |-------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------|----------|
-| [cloud.account.id][res-attr-cfg]                      | Toggles the `cloud.account.id` resource attribute. <br> Sets `enabled` to `true` by default.                      | no       |
-| [cloud.availability_zone][res-attr-cfg]               | Toggles the `cloud.availability_zone` resource attribute. <br> Sets `enabled` to `true` by default.               | no       |
-| [cloud.platform][res-attr-cfg]                        | Toggles the `cloud.platform` resource attribute. <br> Sets `enabled` to `true` by default.                        | no       |
-| [cloud.provider][res-attr-cfg]                        | Toggles the `cloud.provider` resource attribute. <br> Sets `enabled` to `true` by default.                        | no       |
-| [cloud.region][res-attr-cfg]                          | Toggles the `cloud.region` resource attribute. <br> Sets `enabled` to `true` by default.                          | no       |
+| [cloud.account.id][res-attr-cfg]                      | Toggles the `cloud.account.id` resource attribute. Sets `enabled` to `true` by default.                      | no       |
+| [cloud.availability_zone][res-attr-cfg]               | Toggles the `cloud.availability_zone` resource attribute. Sets `enabled` to `true` by default.               | no       |
+| [cloud.platform][res-attr-cfg]                        | Toggles the `cloud.platform` resource attribute. Sets `enabled` to `true` by default.                        | no       |
+| [cloud.provider][res-attr-cfg]                        | Toggles the `cloud.provider` resource attribute. Sets `enabled` to `true` by default.                        | no       |
+| [cloud.region][res-attr-cfg]                          | Toggles the `cloud.region` resource attribute. Sets `enabled` to `true` by default.                          | no       |
 | [faas.id][res-attr-cfg]                               | Toggles the `faas.id` resource attribute. <br> Sets `enabled` to `true` by default.                               | no       |
-| [faas.instance][res-attr-cfg]                         | Toggles the `faas.instance` resource attribute. <br> Sets `enabled` to `true` by default.                         | no       |
-| [faas.name][res-attr-cfg]                             | Toggles the `faas.name` resource attribute. <br> Sets `enabled` to `true` by default.                             | no       |
-| [faas.version][res-attr-cfg]                          | Toggles the `faas.version` resource attribute. <br> Sets `enabled` to `true` by default.                          | no       |
-| [gcp.cloud_run.job.execution][res-attr-cfg]           | Toggles the `gcp.cloud_run.job.execution` resource attribute. <br> Sets `enabled` to `true` by default.           | no       |
-| [gcp.cloud_run.job.task_index][res-attr-cfg]          | Toggles the `gcp.cloud_run.job.task_index` resource attribute. <br> Sets `enabled` to `true` by default.          | no       |
-| [gcp.gce.instance.hostname][res-attr-cfg]             | Toggles the `gcp.gce.instance.hostname` resource attribute. <br> Sets `enabled` to `false` by default.            | no       |
-| [gcp.gce.instance.name][res-attr-cfg]                 | Toggles the `gcp.gce.instance.name` resource attribute. <br> Sets `enabled` to `false` by default.                | no       |
-| [gcp.gce.instance.group_manager.name][res-attr-cfg]   | Toggles the `gcp.gce.instance.group_manager.name` resource attribute. <br> Sets `enabled` to `true` by default.   | no       |
-| [gcp.gce.instance.group_manager.region][res-attr-cfg] | Toggles the `gcp.gce.instance.group_manager.region` resource attribute. <br> Sets `enabled` to `true` by default. | no       |
-| [gcp.gce.instance.group_manager.zone][res-attr-cfg]   | Toggles the `gcp.gce.instance.group_manager.zone` resource attribute. <br> Sets `enabled` to `true` by default.   | no       |
-| [host.id][res-attr-cfg]                               | Toggles the `host.id` resource attribute. <br> Sets `enabled` to `true` by default.                               | no       |
-| [host.name][res-attr-cfg]                             | Toggles the `host.name` resource attribute. <br> Sets `enabled` to `true` by default.                             | no       |
-| [host.type][res-attr-cfg]                             | Toggles the `host.type` resource attribute. <br> Sets `enabled` to `true` by default.                             | no       |
-| [k8s.cluster.name][res-attr-cfg]                      | Toggles the `k8s.cluster.name` resource attribute. <br> Sets `enabled` to `true` by default.                      | no       |
+| [faas.instance][res-attr-cfg]                         | Toggles the `faas.instance` resource attribute. Sets `enabled` to `true` by default.                         | no       |
+| [faas.name][res-attr-cfg]                             | Toggles the `faas.name` resource attribute. Sets `enabled` to `true` by default.                             | no       |
+| [faas.version][res-attr-cfg]                          | Toggles the `faas.version` resource attribute. Sets `enabled` to `true` by default.                          | no       |
+| [gcp.cloud_run.job.execution][res-attr-cfg]           | Toggles the `gcp.cloud_run.job.execution` resource attribute. Sets `enabled` to `true` by default.           | no       |
+| [gcp.cloud_run.job.task_index][res-attr-cfg]          | Toggles the `gcp.cloud_run.job.task_index` resource attribute. Sets `enabled` to `true` by default.          | no       |
+| [gcp.gce.instance.hostname][res-attr-cfg]             | Toggles the `gcp.gce.instance.hostname` resource attribute. Sets `enabled` to `false` by default.            | no       |
+| [gcp.gce.instance.name][res-attr-cfg]                 | Toggles the `gcp.gce.instance.name` resource attribute. Sets `enabled` to `false` by default.                | no       |
+| [gcp.gce.instance.group_manager.name][res-attr-cfg]   | Toggles the `gcp.gce.instance.group_manager.name` resource attribute. Sets `enabled` to `true` by default.   | no       |
+| [gcp.gce.instance.group_manager.region][res-attr-cfg] | Toggles the `gcp.gce.instance.group_manager.region` resource attribute. Sets `enabled` to `true` by default. | no       |
+| [gcp.gce.instance.group_manager.zone][res-attr-cfg]   | Toggles the `gcp.gce.instance.group_manager.zone` resource attribute. Sets `enabled` to `true` by default.   | no       |
+| [host.id][res-attr-cfg]                               | Toggles the `host.id` resource attribute. Sets `enabled` to `true` by default.                               | no       |
+| [host.name][res-attr-cfg]                             | Toggles the `host.name` resource attribute. Sets `enabled` to `true` by default.                             | no       |
+| [host.type][res-attr-cfg]                             | Toggles the `host.type` resource attribute. Sets `enabled` to `true` by default.                             | no       |
+| [k8s.cluster.name][res-attr-cfg]                      | Toggles the `k8s.cluster.name` resource attribute. Sets `enabled` to `true` by default.                      | no       |
 
 #### Google Compute Engine (GCE) metadata
 
