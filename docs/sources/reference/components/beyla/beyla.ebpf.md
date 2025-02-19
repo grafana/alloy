@@ -159,7 +159,12 @@ select "sql_client_duration" {
 
 ### `discovery`
 
-The `discovery` block configures the discovery for instrumentable processes matching a given criteria.
+The `discovery` block configures the discovery for processes to instrument matching given criteria.
+
+| Name                                  | Type           | Description                                                     | Default | Required |
+| ------------------------------------- | -------------- | --------------------------------------------------------------- | ------- | -------- |
+| `skip_go_specific_tracers`            | `bool`         | Skip Go-specific tracers during discovery.                      | `false` | no       |
+| `exclude_otel_instrumented_services`  | `bool`         | Exclude services that are already instrumented with OpenTelemetry.| `true`  | no       |
 
 It contains the following blocks:
 
@@ -169,15 +174,12 @@ In some scenarios, Beyla instruments a wide variety of services, such as a Kuber
 The `services` block allows you to filter the services to instrument based on their metadata. If you specify other selectors in the same services entry,
 the instrumented processes need to match all the selector properties.
 
-| Name                                  | Type    | Description                                                     | Default | Required |
-| ------------------------------------- | ------- | --------------------------------------------------------------- | ------- | -------- |
-| `exe_path`                           | `string` | The path of the running service for Beyla automatically instrumented with eBPF. | `""`    | no       |
-| `name`                               | `string` | The name of the service to match.                               | `""`    | no       |
-| `namespace`                          | `string` | The namespace of the service to match.                          | `""`    | no       |
-| `open_ports`                         | `string` | The port of the running service for Beyla automatically instrumented with eBPF. | `""`    | no       |
-| `skip_go_specific_tracers`            | `bool`  | Skip Go-specific tracers during discovery.                      | `false` | no       |
-| `exclude_otel_instrumented_services`  | `bool`  | Exclude services that are already instrumented with OpenTelemetry.| `true`  | no       |
-| `default_exclude_services`            | `list(string)` | List of services to exclude by default.                 | `["(?:^\|\/)(beyla$\|alloy$\|otelcol[^\/]*$)"]`    | no       |
+| Name         | Type     | Description                                                                              | Default | Required |
+| ------------ | -------- | ---------------------------------------------------------------------------------------- | ------- | -------- |
+| `name`       | `string` | The name of the service to match.                                                        | `""`    | no       |
+| `namespace`  | `string` | The namespace of the service to match.                                                   | `""`    | no       |
+| `open_ports` | `string` | The port of the running service for Beyla automatically instrumented with eBPF.          | `""`    | no       |
+| `exe_path`   | `string` | The path of the running service for Beyla automatically instrumented with eBPF.          | `""`    | no       |
 
 `exe_path` accepts a regular expression to be matched against the full executable command line, including the directory where the executable resides on the file system.
 
@@ -187,7 +189,10 @@ It's used to populate the `service.name` OTel property or the `service_name` Pro
 `open_port` accepts a comma-separated list of ports (for example, `80,443`), and port ranges (for example, `8000-8999`).
 If the executable matches only one of the ports in the list, it's considered to match the selection criteria.
 
-`default_exclude_services` disables instrumentation of Grafana Alloy. Set to empty to allow Alloy to instrument itself as well as these other components.
+#### `default_exclude_services`
+
+The `default_exclude_services` is special services block that disables instrumentation of Grafana Alloy. The default value for `exe_path` is `"(?:^|\/)(beyla$|alloy$|otelcol[^\/]*$)"`. 
+Set to empty to allow Alloy to instrument itself as well as these other components.
 
 #### `kubernetes` services
 
@@ -406,74 +411,4 @@ Replace the following:
 * _`<OPEN_PORT>`_: The port of the running service for Beyla automatically instrumented with eBPF.
 * _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
 * _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
-
-### Traces
-
-This example gets traces from `beyla.ebpf` and forwards them to `otlp`:
-
-```alloy
-beyla.ebpf "default" {
-    open_port = <OPEN_PORT>
-    output {
-        traces = [otelcol.processor.batch.default.input]
-    }
-}
-
-otelcol.processor.batch "default" {
-    output {
-        traces  = [otelcol.exporter.otlp.default.input]
-    }
-}
-
-otelcol.exporter.otlp "default" {
-    client {
-        endpoint = sys.env("<OTLP_ENDPOINT>")
-    }
-}
-```
-
-Replace the following:
-
-* _`<OPEN_PORT>`_: The port of the running service for Beyla automatically instrumented with eBPF.
-* _`<OTLP_ENDPOINT>`_: The endpoint of the OpenTelemetry Collector to send traces to.
-
-[Grafana Beyla]: https://github.com/grafana/beyla
-[eBPF]: https://ebpf.io/
-[routes]: #routes
-[attributes]: #attributes
-[kubernetes attributes]: #kubernetes-attributes
-[kubernetes services]: #kubernetes-services
-[discovery]: #discovery
-[services]: #services
-[metrics]: #metrics
-[network]: #network
-[output]: #output
-[ebpf]: #ebpf
-[filters]: #filters
-[application filters]: #application
-[network filters]: #network
-[instance_id]: #instance_id
-[in-memory traffic]: ../../../../get-started/component_controller/#in-memory-traffic
-[run command]: ../../../cli/run/
-[scrape]: ../../prometheus/prometheus.scrape/
-[select]: #select
-
-<!-- START GENERATED COMPATIBLE COMPONENTS -->
-
-## Compatible components
-
-`beyla.ebpf` can accept arguments from the following components:
-
-- Components that export [OpenTelemetry `otelcol.Consumer`](../../../compatibility/#opentelemetry-otelcolconsumer-exporters)
-
-`beyla.ebpf` has exports that can be consumed by the following components:
-
-- Components that consume [Targets](../../../compatibility/#targets-consumers)
-
-{{< admonition type="note" >}}
-Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.
-Refer to the linked documentation for more details.
-{{< /admonition >}}
-
-<!-- END GENERATED COMPATIBLE COMPONENTS -->
+* _`<PASSWORD>`_: The password to use for authentication to the `
