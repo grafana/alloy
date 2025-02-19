@@ -10,7 +10,7 @@ title: prometheus.exporter.blackbox
 
 # `prometheus.exporter.blackbox`
 
-The `prometheus.exporter.blackbox` component embeds [`blackbox_exporter`](https://github.com/prometheus/blackbox_exporter).
+The `prometheus.exporter.blackbox` component embeds the [`blackbox_exporter`](https://github.com/prometheus/blackbox_exporter).
 The `blackbox_exporter` lets you collect blackbox metrics (probes) and expose them as Prometheus metrics.
 
 ## Usage
@@ -67,7 +67,7 @@ Refer to [`blackbox_exporter`](https://github.com/prometheus/blackbox_exporter/b
 
 ## Blocks
 
-You can use the following blocks with `prometheus.exporter.blackbox`:
+You can use the following block with `prometheus.exporter.blackbox`:
 
 | Name               | Description                   | Required |
 | ------------------ | ----------------------------- | -------- |

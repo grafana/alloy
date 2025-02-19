@@ -3,6 +3,8 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus
 aliases:
   - ../prometheus.exporter.cadvisor/ # /docs/alloy/latest/reference/components/prometheus.exporter.cadvisor/
 description: Learn about the prometheus.exporter.cadvisor
+labels:
+  stage: general-availability
 title: prometheus.exporter.cadvisor
 ---
 
@@ -44,22 +46,57 @@ You can use the following arguments with `prometheus.exporter.cadvisor`:
 
 For `allowlisted_container_labels` to take effect, `store_container_labels` must be set to `false`.
 
-`env_metadata_allowlist` is only supported for containerd and Docker runtimes.
+`env_metadata_allowlist` is only supported for containerd and Docker run times.
 
-If `perf_events_config` is not set, measurement of perf events is disabled.
+If `perf_events_config` is not set, measurement of `perf` events is disabled.
 
 A `resctrl_interval` of `0` disables updating mon groups.
 
 The values for `enabled_metrics` and `disabled_metrics` don't correspond to Prometheus metrics, but to kinds of metrics that should or shouldn't be exposed.
-The full list of values that can be used is:
+The values that you can use are:
 
-```
-"cpu", "sched", "percpu", "memory", "memory_numa", "cpuLoad", "diskIO", "disk",
-"network", "tcp", "advtcp", "udp", "app", "process", "hugetlb", "perf_event",
-"referenced_memory", "cpu_topology", "resctrl", "cpuset", "oom_event"
-```
+{{< column-list >}}
 
-By default the following metric kinds are disabled: `"memory_numa", "tcp", "udp", "advtcp", "process", "hugetlb", "referenced_memory", "cpu_topology", "resctrl", "cpuset"`
+* `"advtcp"`
+* `"app"`
+* `"cpu_topology"`
+* `"cpu"`
+* `"cpuLoad"`
+* `"cpuset"`
+* `"disk"`
+* `"diskIO"`
+* `"hugetlb"`
+* `"memory_numa"`
+* `"memory"`
+* `"network"`
+* `"oom_event"`
+* `"percpu"`
+* `"perf_event"`
+* `"process"`
+* `"referenced_memory"`
+* `"resctrl"`
+* `"sched"`
+* `"tcp"`
+* `"udp"`
+
+{{< /column-list >}}
+
+By default the following metric kinds are disabled:
+
+{{< column-list >}}
+
+* `"advtcp"`
+* `"cpu_topology"`
+* `"cpuset"`
+* `"hugetlb"`
+* `"memory_numa"`
+* `"process"`
+* `"referenced_memory"`
+* `"resctrl"`
+* `"tcp"`
+* `"udp"`
+
+{{< /column-list >}}
 
 ## Blocks
 
