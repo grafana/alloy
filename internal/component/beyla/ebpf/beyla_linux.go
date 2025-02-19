@@ -456,7 +456,7 @@ func (a *Arguments) Convert() (*beyla.Config, error) {
 		lvl.Set(slog.LevelDebug)
 		cfg.ExternalLogger(slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
 			Level: &lvl,
-		})).Handler(), false)
+		})).Handler(), a.Debug)
 	}
 	return &cfg, nil
 }
