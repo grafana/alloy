@@ -1763,12 +1763,12 @@ The `json` stage would create the following key-value pairs in the set of extrac
 
 The `windowsevent` stage parses the value of `message` from the extracted data and appends or overwrites the following key-value pairs to the set of extracted data:
 
-- `Description`:           "Special privileges assigned to new logon.",
-- `Subject_SecurityID`:    "S-1-1-1",
-- `Subject_AccountName`:   "SYSTEM",
-- `Subject_AccountDomain`: "NT AUTHORITY",
-- `Subject_LogonID`:       "0xAAA",
-- `Privileges`:            "SeAssignPrimaryTokenPrivilege,SeTcbPrivilege,SeSecurityPrivilege",
+* `Description`:           "Special privileges assigned to new logon.",
+* `Subject_SecurityID`:    "S-1-1-1",
+* `Subject_AccountName`:   "SYSTEM",
+* `Subject_AccountDomain`: "NT AUTHORITY",
+* `Subject_LogonID`:       "0xAAA",
+* `Privileges`:            "SeAssignPrimaryTokenPrivilege,SeTcbPrivilege,SeSecurityPrivilege",
 
 Finally the `labels` stage will use the extracted values `Description`, `Subject_SecurityID` and `Subject_ReadOperation` to add them as labels of the log entry before forwarding it to a `loki.write` component.
 
