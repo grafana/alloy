@@ -52,6 +52,10 @@ type SyslogTargetConfig struct {
 	MaxMessageLength int `yaml:"max_message_length"`
 
 	TLSConfig promconfig.TLSConfig `yaml:"tls_config,omitempty"`
+
+	// When parsing an RFC3164 message, should the year be defaulted to the current year?
+	// When false, the year will default to 0.
+	RFC3164DefaultToCurrentYear bool `yaml:"rfc3164_default_to_current_year"`
 }
 
 func (config SyslogTargetConfig) IsRFC3164Message() bool {
