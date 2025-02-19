@@ -1694,11 +1694,11 @@ The `windowsevent` stage extracts data from the message string in the Windows Ev
 
 The following arguments are supported:
 
-| Name                  | Type     | Description                                            | Default   | Required |
-|-----------------------|----------|--------------------------------------------------------|-----------|----------|
-| `source`              | `string` | Name of the field in the extracted data to parse.      | `message` | no       |
-| `overwrite_existing`  | `bool`   | Whether to overwrite existing extracted data fields.   | `false`   | no       |
-| `drop_invalid_labels` | `bool`   | Whether to drop fields that are not valid label names. | `false`   | no       |
+| Name                  | Type     | Description                                           | Default   | Required |
+| --------------------- | -------- | ----------------------------------------------------- | --------- | -------- |
+| `source`              | `string` | Name of the field in the extracted data to parse.     | `message` | no       |
+| `drop_invalid_labels` | `bool`   | Whether to drop fields that aren't valid label names. | `false`   | no       |
+| `overwrite_existing`  | `bool`   | Whether to overwrite existing extracted data fields.  | `false`   | no       |
 
 When `overwrite_existing` is set to `true`, the stage overwrites existing extracted data fields with the same name.
 If set to `false`, the `_extracted` suffix is appended to an existing field name.
