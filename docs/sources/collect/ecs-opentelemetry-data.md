@@ -20,10 +20,10 @@ There are three different ways you can use {{< param "PRODUCT_NAME" >}} to colle
 
 ## Before you begin
 
-* Ensure that you have basic familiarity with instrumenting applications with OpenTelemetry.
-* Have an available Amazon ECS or AWS Fargate deployment.
-* Identify where {{< param "PRODUCT_NAME" >}} writes received telemetry data.
-* Be familiar with the concept of [Components][] in {{< param "PRODUCT_NAME" >}}.
+- Ensure that you have basic familiarity with instrumenting applications with OpenTelemetry.
+- Have an available Amazon ECS or AWS Fargate deployment.
+- Identify where {{< param "PRODUCT_NAME" >}} writes received telemetry data.
+- Be familiar with the concept of [Components][] in {{< param "PRODUCT_NAME" >}}.
 
 ## Use a custom OpenTelemetry configuration file from the SSM Parameter store
 
@@ -39,8 +39,8 @@ In ECS, you can set the values of environment variables from AWS Systems Manager
 
    1. Open the AWS Systems Manager console.
    1. Select Elastic Container Service.
-   1. In the navigation pane, choose *Task definition*.
-   1. Choose *Create new revision*.
+   1. In the navigation pane, choose _Task definition_.
+   1. Choose _Create new revision_.
 
 1. Add an environment variable.
 
@@ -53,15 +53,15 @@ In ECS, you can set the values of environment variables from AWS Systems Manager
 ### Create the SSM parameter
 
 1. Open the AWS Systems Manager console.
-1. In the navigation pane, choose *Parameter Store*.
-1. Choose *Create parameter*.
+1. In the navigation pane, choose _Parameter Store_.
+1. Choose _Create parameter_.
 1. Create a parameter with the following values:
 
-   * Name: `otel-collector-config`
-   * Tier: `Standard`
-   * Type: `String`
-   * Data type: `Text`
-   * Value: Copy and paste your custom OpenTelemetry configuration file or [{{< param "PRODUCT_NAME" >}} configuration file][configure].
+   - Name: `otel-collector-config`
+   - Tier: `Standard`
+   - Type: `String`
+   - Data type: `Text`
+   - Value: Copy and paste your custom OpenTelemetry configuration file or [{{< param "PRODUCT_NAME" >}} configuration file][configure].
 
 ### Run your task
 
@@ -75,13 +75,13 @@ To create an ECS Task Definition for AWS Fargate with an ADOT collector, complet
 
 1. Download the [ECS Fargate task definition template][template] from GitHub.
 1. Edit the task definition template and add the following parameters.
-   * `{{region}}`: The region to send the data to.
-   * `{{ecsTaskRoleArn}}`: The AWSOTTaskRole ARN.
-   * `{{ecsExecutionRoleArn}}`: The AWSOTTaskExcutionRole ARN.
-   * `command` - Assign a value to the command variable to select the path to the configuration file.
+   - `{{region}}`: The region to send the data to.
+   - `{{ecsTaskRoleArn}}`: The AWSOTTaskRole ARN.
+   - `{{ecsExecutionRoleArn}}`: The AWSOTTaskExcutionRole ARN.
+   - `command` - Assign a value to the command variable to select the path to the configuration file.
      The AWS Collector comes with two configurations. Select one of them based on your environment:
-     * Use `--config=/etc/ecs/ecs-default-config.yaml` to consume StatsD metrics, OTLP metrics and traces, and AWS X-Ray SDK traces.
-     * Use `--config=/etc/ecs/container-insights/otel-task-metrics-config.yaml` to use StatsD, OTLP, AWS X-Ray, and Container Resource utilization metrics.
+     - Use `--config=/etc/ecs/ecs-default-config.yaml` to consume StatsD metrics, OTLP metrics and traces, and AWS X-Ray SDK traces.
+     - Use `--config=/etc/ecs/container-insights/otel-task-metrics-config.yaml` to use StatsD, OTLP, AWS X-Ray, and Container Resource utilization metrics.
 1. Follow the ECS Fargate setup instructions to [create a task definition][task] using the template.
 
 ## Run {{% param "PRODUCT_NAME" %}} directly in your instance, or as a Kubernetes sidecar

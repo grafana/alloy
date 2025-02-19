@@ -20,8 +20,8 @@ By default, [AWS environment variables](https://docs.aws.amazon.com/cli/latest/u
 The `key` and `secret` arguments inside `client` blocks can be used to provide custom authentication.
 
 {{< admonition type="note" >}}
-Other S3-compatible systems can be read  with `remote.s3` but may require specific authentication environment variables.
-There is no  guarantee that `remote.s3` will work with non-AWS S3 systems.
+Other S3-compatible systems can be read with `remote.s3` but may require specific authentication environment variables.
+There is no guarantee that `remote.s3` will work with non-AWS S3 systems.
 {{< /admonition >}}
 
 ## Usage
@@ -51,9 +51,9 @@ This doesn't support reading of directories.
 
 ## Blocks
 
- | Name               | Description                                       | Required |
- | ------------------ | ------------------------------------------------- | -------- |
- | [`client`][client] | Additional options for configuring the S3 client. | no       |
+| Name               | Description                                       | Required |
+| ------------------ | ------------------------------------------------- | -------- |
+| [`client`][client] | Additional options for configuring the S3 client. | no       |
 
 [client]: #client
 

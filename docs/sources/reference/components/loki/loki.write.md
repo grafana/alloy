@@ -88,13 +88,13 @@ The following arguments are supported:
 | `retry_on_http_429`      | `bool`              | Retry when an HTTP 429 status code is received.                                                  | `true`    | no       |
 | `tenant_id`              | `string`            | The tenant ID used by default to push logs.                                                      |           | no       |
 
- At most, one of the following can be provided:
+At most, one of the following can be provided:
 
-* [`authorization`][authorization] block
-* [`basic_auth`][basic_auth] block
-* [`bearer_token_file`][endpoint] argument
-* [`bearer_token`][endpoint] argument
-* [`oauth2`][oauth2] block
+- [`authorization`][authorization] block
+- [`basic_auth`][basic_auth] block
+- [`bearer_token_file`][endpoint] argument
+- [`bearer_token`][endpoint] argument
+- [`oauth2`][oauth2] block
 
 {{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -155,8 +155,8 @@ To enable the WAL, you must include the `wal` block in your configuration.
 When the WAL is enabled, the log entries sent to the `loki.write` component are first written to a WAL under the `dir` directory and then read into the remote-write client.
 This process provides durability guarantees when an entry reaches this component. The client knows when to read from the WAL using the following two mechanisms:
 
-* The WAL-writer side of the `loki.write` component notifies the reader side that new data is available.
-* The WAL-reader side periodically checks if there is new data, increasing the wait time exponentially between `min_read_frequency` and `max_read_frequency`.
+- The WAL-writer side of the `loki.write` component notifies the reader side that new data is available.
+- The WAL-reader side periodically checks if there is new data, increasing the wait time exponentially between `min_read_frequency` and `max_read_frequency`.
 
 The WAL is located inside a component-specific directory relative to the storage path {{< param "PRODUCT_NAME" >}} is configured to use.
 Refer to the [`run` documentation][run] for more information about how to change the storage path.
@@ -191,14 +191,14 @@ The following fields are exported and can be referenced by other components:
 
 ## Debug metrics
 
-* `loki_write_batch_retries_total` (counter): Number of times batches have had to be retried.
-* `loki_write_dropped_bytes_total` (counter): Number of bytes dropped because failed to be sent to the ingester after all retries.
-* `loki_write_dropped_entries_total` (counter): Number of log entries dropped because they failed to be sent to the ingester after all retries.
-* `loki_write_encoded_bytes_total` (counter): Number of bytes encoded and ready to send.
-* `loki_write_request_duration_seconds` (histogram): Duration of sent requests.
-* `loki_write_sent_bytes_total` (counter): Number of bytes sent.
-* `loki_write_sent_entries_total` (counter): Number of log entries sent to the ingester.
-* `loki_write_stream_lag_seconds` (gauge): Difference between current time and last batch timestamp for successful sends.
+- `loki_write_batch_retries_total` (counter): Number of times batches have had to be retried.
+- `loki_write_dropped_bytes_total` (counter): Number of bytes dropped because failed to be sent to the ingester after all retries.
+- `loki_write_dropped_entries_total` (counter): Number of log entries dropped because they failed to be sent to the ingester after all retries.
+- `loki_write_encoded_bytes_total` (counter): Number of bytes encoded and ready to send.
+- `loki_write_request_duration_seconds` (histogram): Duration of sent requests.
+- `loki_write_sent_bytes_total` (counter): Number of bytes sent.
+- `loki_write_sent_entries_total` (counter): Number of log entries sent to the ingester.
+- `loki_write_stream_lag_seconds` (gauge): Difference between current time and last batch timestamp for successful sends.
 
 ## Examples
 
@@ -234,7 +234,7 @@ loki.write "default" {
 
 ## Technical details
 
-`loki.write` uses [snappy](https://en.wikipedia.org/wiki/Snappy_(compression)) for compression.
+`loki.write` uses [snappy](<https://en.wikipedia.org/wiki/Snappy_(compression)>) for compression.
 
 Any labels that start with `__` are removed before sending to the endpoint.
 

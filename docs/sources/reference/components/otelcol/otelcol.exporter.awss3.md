@@ -35,30 +35,30 @@ otelcol.exporter.awss3 "<LABEL>" {
 
 Replace the following:
 
-* _`<LABEL>`_: The label for the `otelcol.exporter.awss3` component.
-* _`<REGION>`_: The AWS region.
-* _`<BUCKET_NAME>`_: The S3 bucket.
-* _`<PREFIX>`_: The prefix for the S3 key.
+- _`<LABEL>`_: The label for the `otelcol.exporter.awss3` component.
+- _`<REGION>`_: The AWS region.
+- _`<BUCKET_NAME>`_: The S3 bucket.
+- _`<PREFIX>`_: The prefix for the S3 key.
 
 ## Arguments
 
 `otelcol.exporter.awss3` supports the following arguments:
 
-Name       | Type       | Description                                      | Default | Required
------------|------------|--------------------------------------------------|---------|---------
-`encoding` | `string`   | Encoding extension to use to marshal data. Overrides the `marshaler` configuration option if set. | `""`  | no
-`encoding_file_ext` | `string` | File format extension suffix when using the `encoding` configuration option. It can be left empty if a suffix shouldn't be appended. | `""` | no
+| Name                | Type     | Description                                                                                                                          | Default | Required |
+| ------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------ | ------- | -------- |
+| `encoding`          | `string` | Encoding extension to use to marshal data. Overrides the `marshaler` configuration option if set.                                    | `""`    | no       |
+| `encoding_file_ext` | `string` | File format extension suffix when using the `encoding` configuration option. It can be left empty if a suffix shouldn't be appended. | `""`    | no       |
 
 ## Blocks
 
 The following blocks are supported inside the definition of
 `otelcol.exporter.awss3`:
 
-Hierarchy              | Block                | Description                                                                          | Required
------------------------|----------------------|--------------------------------------------------------------------------------------|---------
-s3_uploader            | [s3_uploader][]      | Configures the AWS S3 bucket details to send telemetry data to.                      | yes
-marshaler              | [marshaler][]        | Marshaler used to produce output data.                                               | no
-debug_metrics          | [debug_metrics][]    | Configures the metrics that this component generates to monitor its state.           | no
+| Hierarchy     | Block             | Description                                                                | Required |
+| ------------- | ----------------- | -------------------------------------------------------------------------- | -------- |
+| s3_uploader   | [s3_uploader][]   | Configures the AWS S3 bucket details to send telemetry data to.            | yes      |
+| marshaler     | [marshaler][]     | Marshaler used to produce output data.                                     | no       |
+| debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no       |
 
 [s3_uploader]: #s3_uploader-block
 [marshaler]: #marshaler-block
@@ -70,18 +70,18 @@ The `s3_uploader` block configures the AWS S3 bucket details used by the compone
 
 The following arguments are supported:
 
-Name                  | Type                       | Description                                                                      | Default      | Required
-----------------------|----------------------------|----------------------------------------------------------------------------------|--------------|---------
-`region`              | `string`                   | The AWS region.                                                                      | `"us-east-1"`| no
-`s3_bucket`           | `string`                   | The S3 bucket.                                                                        |              | yes
-`s3_prefix`           | `string`                   | Prefix for the S3 key (root directory inside the bucket).                            |              | yes
-`s3_partition`        | `string`                   | Time granularity of S3 key: hour or minute.                                       | `"minute"`   | no
-`role_arn`            | `string`                   | The Role ARN to be assumed.                                                       |              | no
-`file_prefix`         | `string`                   | The file prefix defined by the user.                                                      |              | no
-`endpoint`            | `string`                   | Overrides the endpoint used by the exporter instead of constructing it from `region` and `s3_bucket`. |      | no
-`s3_force_path_style` | `boolean`                  |  Set this to `true` to force the request to use [path-style requests](https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html#path-style-access) | `false`             | no
-`disable_ssl`         | `boolean`                  |  Set this to `true` to disable SSL when sending requests.           |              | `false`
-`compression`         | `string`                   | How should the file be compressed? `none`, `gzip`                                                    | `none`      | no
+| Name                  | Type      | Description                                                                                                                                                       | Default       | Required |
+| --------------------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- | -------- |
+| `region`              | `string`  | The AWS region.                                                                                                                                                   | `"us-east-1"` | no       |
+| `s3_bucket`           | `string`  | The S3 bucket.                                                                                                                                                    |               | yes      |
+| `s3_prefix`           | `string`  | Prefix for the S3 key (root directory inside the bucket).                                                                                                         |               | yes      |
+| `s3_partition`        | `string`  | Time granularity of S3 key: hour or minute.                                                                                                                       | `"minute"`    | no       |
+| `role_arn`            | `string`  | The Role ARN to be assumed.                                                                                                                                       |               | no       |
+| `file_prefix`         | `string`  | The file prefix defined by the user.                                                                                                                              |               | no       |
+| `endpoint`            | `string`  | Overrides the endpoint used by the exporter instead of constructing it from `region` and `s3_bucket`.                                                             |               | no       |
+| `s3_force_path_style` | `boolean` | Set this to `true` to force the request to use [path-style requests](https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html#path-style-access) | `false`       | no       |
+| `disable_ssl`         | `boolean` | Set this to `true` to disable SSL when sending requests.                                                                                                          |               | `false`  |
+| `compression`         | `string`  | How should the file be compressed? `none`, `gzip`                                                                                                                 | `none`        | no       |
 
 [path-style requests]: https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html#path-style-access
 
@@ -98,9 +98,9 @@ Marshaler determines the format of data sent to AWS S3. Currently, the following
 
 The following arguments are supported:
 
-Name                    | Type       | Description                                                                                | Default | Required
-------------------------|------------|--------------------------------------------------------------------------------------------|---------|---------
-`type`                  | `string`   | Marshaler used to produce output data.                                                      | `"otlp_json"`   | no
+| Name   | Type     | Description                            | Default       | Required |
+| ------ | -------- | -------------------------------------- | ------------- | -------- |
+| `type` | `string` | Marshaler used to produce output data. | `"otlp_json"` | no       |
 
 ### debug_metrics block
 
@@ -123,9 +123,9 @@ Refer to the Open Telemetry [encoding extensions][encoding] documentation for mo
 
 The following fields are exported and can be referenced by other components:
 
-Name    | Type               | Description
---------|--------------------|-----------------------------------------------------------------
-`input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to.
+| Name    | Type               | Description                                                      |
+| ------- | ------------------ | ---------------------------------------------------------------- |
+| `input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to. |
 
 `input` accepts `otelcol.Consumer` data for any telemetry signal (metrics,
 logs, or traces).
@@ -142,15 +142,15 @@ information.
 
 ## Debug metrics
 
-* `otelcol_exporter_sent_spans_total` (counter): Number of spans successfully sent to destination.
-* `otelcol_exporter_send_failed_spans_total` (counter): Number of spans in failed attempts to send to destination.
-* `otelcol_exporter_queue_capacity` (gauge): Fixed capacity of the retry queue (in batches).
-* `otelcol_exporter_queue_size` (gauge): Current size of the retry queue (in batches).
-* `rpc_client_duration_milliseconds` (histogram): Measures the duration of inbound RPC.
-* `rpc_client_request_size_bytes` (histogram): Measures size of RPC request messages (uncompressed).
-* `rpc_client_requests_per_rpc` (histogram): Measures the number of messages received per RPC. Should be 1 for all non-streaming RPCs.
-* `rpc_client_response_size_bytes` (histogram): Measures size of RPC response messages (uncompressed).
-* `rpc_client_responses_per_rpc` (histogram): Measures the number of messages received per RPC. Should be 1 for all non-streaming RPCs.
+- `otelcol_exporter_sent_spans_total` (counter): Number of spans successfully sent to destination.
+- `otelcol_exporter_send_failed_spans_total` (counter): Number of spans in failed attempts to send to destination.
+- `otelcol_exporter_queue_capacity` (gauge): Fixed capacity of the retry queue (in batches).
+- `otelcol_exporter_queue_size` (gauge): Current size of the retry queue (in batches).
+- `rpc_client_duration_milliseconds` (histogram): Measures the duration of inbound RPC.
+- `rpc_client_request_size_bytes` (histogram): Measures size of RPC request messages (uncompressed).
+- `rpc_client_requests_per_rpc` (histogram): Measures the number of messages received per RPC. Should be 1 for all non-streaming RPCs.
+- `rpc_client_response_size_bytes` (histogram): Measures size of RPC response messages (uncompressed).
+- `rpc_client_responses_per_rpc` (histogram): Measures the number of messages received per RPC. Should be 1 for all non-streaming RPCs.
 
 ## Example
 

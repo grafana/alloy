@@ -12,8 +12,8 @@ You can deploy {{< param "PRODUCT_NAME" >}} on the Red Hat OpenShift Container P
 
 ## Before you begin
 
-* These steps assume you have a working OCP environment.
-* You can adapt the suggested policies and configuration to meet your specific needs and security policies.
+- These steps assume you have a working OCP environment.
+- You can adapt the suggested policies and configuration to meet your specific needs and security policies.
 
 ## Configure RBAC
 
@@ -44,14 +44,14 @@ Not all of these SCCs are required for each use case.
 You can adapt the SCCs to meet your local requirements and needs.
 {{< /admonition >}}
 
-* `RunAsUser`: Specifies the user ID under which {{< param "PRODUCT_NAME" >}} runs.
+- `RunAsUser`: Specifies the user ID under which {{< param "PRODUCT_NAME" >}} runs.
   You must configure this constraint to allow a non-root user ID.
-* `SELinuxContext`: Configures the SELinux context for containers.
+- `SELinuxContext`: Configures the SELinux context for containers.
   If you run {{< param "PRODUCT_NAME" >}} as root, you must configure this constraint to make sure that SELinux policies don't block {{< param "PRODUCT_NAME" >}}.
   This SCC is generally not required to deploy {{< param "PRODUCT_NAME" >}} as a non-root user.
-* `FSGroup`: Specifies the fsGroup IDs for file system access.
+- `FSGroup`: Specifies the fsGroup IDs for file system access.
   You must configure this constraint to give {{< param "PRODUCT_NAME" >}} group access to the files it needs.
-* `Volumes`: Specifies the persistent volumes used for storage.
+- `Volumes`: Specifies the persistent volumes used for storage.
   You must configure this constraint to give {{< param "PRODUCT_NAME" >}} access to the volumes it needs.
 
 ## Example DaemonSet configuration
@@ -92,7 +92,7 @@ spec:
 
 Replace the following:
 
-* _`<ALLOY_VERSION>`_: Set to the specific {{< param "PRODUCT_NAME" >}} version you are deploying. For example, `1.5.1`.
+- _`<ALLOY_VERSION>`_: Set to the specific {{< param "PRODUCT_NAME" >}} version you are deploying. For example, `1.5.1`.
 
 {{< admonition type="note" >}}
 This example uses the simplest volume type, `emptyDir`. In this example configuration, if your node restarts, your data will be lost. Make sure you set the volume type to a persistent storage location for production environments. Refer to [Using volumes to persist container data](https://docs.openshift.com/container-platform/latest/nodes/containers/nodes-containers-volumes.html) in the OpenShift documentation for more information.
@@ -113,7 +113,7 @@ runAsUser:
 fsGroup:
   type: MustRunAs
   uid: 1000
-volumes: 
+volumes:
 - '*'
 users:
 - my-admin-user
@@ -129,10 +129,10 @@ seLinuxContext:
 
 Replace the following:
 
-* _`<SYSTEM_USER>`_: The user for your SELinux context.
-* _`<SYSTEM_ROLE>`_: The role for your SELinux context.
-* _`<CONTAINER_TYPE>`_: The container type for your SELinux context.
-* _`<LEVEL>`_: The level  for your SELinux context.
+- _`<SYSTEM_USER>`_: The user for your SELinux context.
+- _`<SYSTEM_ROLE>`_: The role for your SELinux context.
+- _`<CONTAINER_TYPE>`_: The container type for your SELinux context.
+- _`<LEVEL>`_: The level for your SELinux context.
 
 Refer to [SELinux Contexts][selinux] in the RedHat documentation for more information on the SELinux context configuration.
 
@@ -145,7 +145,7 @@ volumes:
   - downwardAPI
   - emptyDir
   - persistentVolumeClaim
-  - secret 
+  - secret
 ```
 
 {{< /admonition >}}
@@ -154,7 +154,7 @@ Refer to [Deploy {{< param "FULL_PRODUCT_NAME" >}}][deploy] for more information
 
 ## Next steps
 
-* [Configure {{< param "PRODUCT_NAME" >}}][Configure]
+- [Configure {{< param "PRODUCT_NAME" >}}][Configure]
 
 [rbac.yaml]: https://github.com/grafana/alloy/blob/main/operations/helm/charts/alloy/templates/rbac.yaml
 [rbac]: https://docs.openshift.com/container-platform/latest/authentication/using-rbac.html

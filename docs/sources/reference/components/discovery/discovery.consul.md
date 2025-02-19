@@ -51,13 +51,13 @@ You can use the following arguments with `discovery.consul`:
 | `token`                  | `secret`            | Secret token used to access the Consul API.                                                                     |                  | no       |
 | `username`               | `string`            | The username to use. Deprecated in favor of the `basic_auth` configuration.                                     |                  | no       |
 
- At most, one of the following can be provided:
+At most, one of the following can be provided:
 
-* [`authorization`][authorization] block
-* [`basic_auth`][basic_auth] block
-* [`bearer_token_file`][arguments] argument
-* [`bearer_token`][arguments] argument
-* [`oauth2`][oauth2] block
+- [`authorization`][authorization] block
+- [`basic_auth`][basic_auth] block
+- [`bearer_token_file`][arguments] argument
+- [`bearer_token`][arguments] argument
+- [`oauth2`][oauth2] block
 
 {{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -118,17 +118,17 @@ The following fields are exported and can be referenced by other components:
 
 Each target includes the following labels:
 
-* `__meta_consul_address`: The address of the target.
-* `__meta_consul_metadata_<key>`: Each node metadata key value of the target.
-* `__meta_consul_node`: The node name defined for the target.
-* `__meta_consul_partition`: The administrator partition name where the service is registered.
-* `__meta_consul_service_address`: The service address of the target.
-* `__meta_consul_service_id`: The service ID of the target.
-* `__meta_consul_service_metadata_<key>`: Each service metadata key value of the target.
-* `__meta_consul_service_port`: The service port of the target.
-* `__meta_consul_service`: The name of the service the target belongs to.
-* `__meta_consul_tagged_address_<key>`: Each node tagged address key value of the target.
-* `__meta_consul_tags`: The list of tags of the target joined by the tag separator.
+- `__meta_consul_address`: The address of the target.
+- `__meta_consul_metadata_<key>`: Each node metadata key value of the target.
+- `__meta_consul_node`: The node name defined for the target.
+- `__meta_consul_partition`: The administrator partition name where the service is registered.
+- `__meta_consul_service_address`: The service address of the target.
+- `__meta_consul_service_id`: The service ID of the target.
+- `__meta_consul_service_metadata_<key>`: Each service metadata key value of the target.
+- `__meta_consul_service_port`: The service port of the target.
+- `__meta_consul_service`: The name of the service the target belongs to.
+- `__meta_consul_tagged_address_<key>`: Each node tagged address key value of the target.
+- `__meta_consul_tags`: The list of tags of the target joined by the tag separator.
 
 ## Component health
 
@@ -175,9 +175,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

@@ -13,7 +13,7 @@ title: pyroscope.java
 `pyroscope.java` continuously profiles Java processes running on the local Linux OS using [async-profiler](https://github.com/async-profiler/async-profiler).
 
 {{< admonition type="note" >}}
-To use the  `pyroscope.java` component you must run {{< param "PRODUCT_NAME" >}} as root and inside host PID namespace.
+To use the `pyroscope.java` component you must run {{< param "PRODUCT_NAME" >}} as root and inside host PID namespace.
 {{< /admonition >}}
 
 ## Usage
@@ -125,7 +125,7 @@ The following arguments are supported:
 
 | Name          | Type       | Description                                                                                                     | Default    | Required |
 | ------------- | ---------- | --------------------------------------------------------------------------------------------------------------- | ---------- | -------- |
-| `alloc`       | `string`   | Allocation profiling sampling configuration  It's passed as an `--alloc` argument to async-profiler.            | `"512k"`   | no       |
+| `alloc`       | `string`   | Allocation profiling sampling configuration It's passed as an `--alloc` argument to async-profiler.             | `"512k"`   | no       |
 | `cpu`         | `bool`     | A flag to enable CPU profiling, using `itimer` async-profiler event by default.                                 | `true`     | no       |
 | `event`       | `string`   | Sets the CPU profiling event. Can be one of `itimer`, `cpu` or `wall`.                                          | `"itimer"` | no       |
 | `interval`    | `duration` | How frequently to collect profiles from the targets.                                                            | `"60s"`    | no       |
@@ -139,10 +139,10 @@ Refer to [profiler-options](https://github.com/async-profiler/async-profiler?tab
 
 The `event` argument sets the CPU profiling event:
 
-* `itimer` - Default. Uses the [`setitimer(ITIMER_PROF)`](http://man7.org/linux/man-pages/man2/setitimer.2.html) syscall, which generates a signal every time a process consumes CPU.
-* `cpu` - Uses PMU-case sampling (like Intel PEBS or AMD IBS), can be more accurate than `itimer`, but it's not available on every platform.
-* `wall` - This samples all threads equally every given period of time regardless of thread status: Running, Sleeping, or Blocked.
-   For example, this can be helpful when profiling application start-up time or IO-intensive processes.
+- `itimer` - Default. Uses the [`setitimer(ITIMER_PROF)`](http://man7.org/linux/man-pages/man2/setitimer.2.html) syscall, which generates a signal every time a process consumes CPU.
+- `cpu` - Uses PMU-case sampling (like Intel PEBS or AMD IBS), can be more accurate than `itimer`, but it's not available on every platform.
+- `wall` - This samples all threads equally every given period of time regardless of thread status: Running, Sleeping, or Blocked.
+  For example, this can be helpful when profiling application start-up time or IO-intensive processes.
 
 #### `per_thread`
 
@@ -220,7 +220,6 @@ pyroscope.java "java" {
 
 - Components that export [Targets](../../../compatibility/#targets-exporters)
 - Components that export [Pyroscope `ProfilesReceiver`](../../../compatibility/#pyroscope-profilesreceiver-exporters)
-
 
 {{< admonition type="note" >}}
 Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.

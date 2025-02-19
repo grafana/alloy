@@ -32,13 +32,13 @@ otelcol.receiver.zipkin "LABEL" {
 
 `otelcol.receiver.zipkin` supports the following arguments:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`parse_string_tags` | `bool` | Parse string tags and binary annotations into non-string types. | `false` | no
-`endpoint` | `string` | `host:port` to listen for traffic on. | `"0.0.0.0:9411"` | no
-`max_request_body_size` | `string`   | Maximum request body size the server will allow.                   | `20MiB`          | no
-`include_metadata` | `boolean` | Propagate incoming connection metadata to downstream consumers. | | no
-`compression_algorithms` | `list(string)` | A list of compression algorithms the server can accept.    | `["", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"]` | no
+| Name                     | Type           | Description                                                     | Default                                                    | Required |
+| ------------------------ | -------------- | --------------------------------------------------------------- | ---------------------------------------------------------- | -------- |
+| `parse_string_tags`      | `bool`         | Parse string tags and binary annotations into non-string types. | `false`                                                    | no       |
+| `endpoint`               | `string`       | `host:port` to listen for traffic on.                           | `"0.0.0.0:9411"`                                           | no       |
+| `max_request_body_size`  | `string`       | Maximum request body size the server will allow.                | `20MiB`                                                    | no       |
+| `include_metadata`       | `boolean`      | Propagate incoming connection metadata to downstream consumers. |                                                            | no       |
+| `compression_algorithms` | `list(string)` | A list of compression algorithms the server can accept.         | `["", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"]` | no       |
 
 If `parse_string_tags` is `true`, string tags and binary annotations are
 converted to `int`, `bool`, and `float` if possible. String tags and binary
@@ -49,12 +49,12 @@ annotations that cannot be converted remain unchanged.
 The following blocks are supported inside the definition of
 `otelcol.receiver.zipkin`:
 
-Hierarchy | Block | Description | Required
---------- | ----- | ----------- | --------
-tls | [tls][] | Configures TLS for the HTTP server. | no
-cors | [cors][] | Configures CORS for the HTTP server. | no
-debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
-output | [output][] | Configures where to send received traces. | yes
+| Hierarchy     | Block             | Description                                                                | Required |
+| ------------- | ----------------- | -------------------------------------------------------------------------- | -------- |
+| tls           | [tls][]           | Configures TLS for the HTTP server.                                        | no       |
+| cors          | [cors][]          | Configures CORS for the HTTP server.                                       | no       |
+| debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no       |
+| output        | [output][]        | Configures where to send received traces.                                  | yes      |
 
 The `>` symbol indicates deeper levels of nesting. For example, `grpc > tls`
 refers to a `tls` block defined inside a `grpc` block.
@@ -77,19 +77,19 @@ The `cors` block configures CORS settings for an HTTP server.
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`allowed_origins` | `list(string)` | Allowed values for the `Origin` header. | | no
-`allowed_headers` | `list(string)` | Accepted headers from CORS requests. | `["X-Requested-With"]` | no
-`max_age` | `number` | Configures the `Access-Control-Max-Age` response header. | | no
+| Name              | Type           | Description                                              | Default                | Required |
+| ----------------- | -------------- | -------------------------------------------------------- | ---------------------- | -------- |
+| `allowed_origins` | `list(string)` | Allowed values for the `Origin` header.                  |                        | no       |
+| `allowed_headers` | `list(string)` | Accepted headers from CORS requests.                     | `["X-Requested-With"]` | no       |
+| `max_age`         | `number`       | Configures the `Access-Control-Max-Age` response header. |                        | no       |
 
 The `allowed_headers` argument specifies which headers are acceptable from a
 CORS request. The following headers are always implicitly allowed:
 
-* `Accept`
-* `Accept-Language`
-* `Content-Type`
-* `Content-Language`
+- `Accept`
+- `Accept-Language`
+- `Content-Type`
+- `Content-Language`
 
 If `allowed_headers` includes `"*"`, all headers are permitted.
 
@@ -141,6 +141,7 @@ otelcol.exporter.otlp "default" {
   }
 }
 ```
+
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components
@@ -148,7 +149,6 @@ otelcol.exporter.otlp "default" {
 `otelcol.receiver.zipkin` can accept arguments from the following components:
 
 - Components that export [OpenTelemetry `otelcol.Consumer`](../../../compatibility/#opentelemetry-otelcolconsumer-exporters)
-
 
 {{< admonition type="note" >}}
 Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.

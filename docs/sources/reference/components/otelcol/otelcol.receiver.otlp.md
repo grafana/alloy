@@ -43,18 +43,18 @@ through inner blocks.
 The following blocks are supported inside the definition of
 `otelcol.receiver.otlp`:
 
-Hierarchy | Block | Description | Required
---------- | ----- | ----------- | --------
-grpc | [grpc][] | Configures the gRPC server to receive telemetry data. | no
-grpc > tls | [tls][] | Configures TLS for the gRPC server. | no
-grpc > keepalive | [keepalive][] | Configures keepalive settings for the configured server. | no
-grpc > keepalive > server_parameters | [server_parameters][] | Server parameters used to configure keepalive settings. | no
-grpc > keepalive > enforcement_policy | [enforcement_policy][] | Enforcement policy for keepalive settings. | no
-http | [http][] | Configures the HTTP server to receive telemetry data. | no
-http > tls | [tls][] | Configures TLS for the HTTP server. | no
-http > cors | [cors][] | Configures CORS for the HTTP server. | no
-debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
-output | [output][] | Configures where to send received telemetry data. | yes
+| Hierarchy                             | Block                  | Description                                                                | Required |
+| ------------------------------------- | ---------------------- | -------------------------------------------------------------------------- | -------- |
+| grpc                                  | [grpc][]               | Configures the gRPC server to receive telemetry data.                      | no       |
+| grpc > tls                            | [tls][]                | Configures TLS for the gRPC server.                                        | no       |
+| grpc > keepalive                      | [keepalive][]          | Configures keepalive settings for the configured server.                   | no       |
+| grpc > keepalive > server_parameters  | [server_parameters][]  | Server parameters used to configure keepalive settings.                    | no       |
+| grpc > keepalive > enforcement_policy | [enforcement_policy][] | Enforcement policy for keepalive settings.                                 | no       |
+| http                                  | [http][]               | Configures the HTTP server to receive telemetry data.                      | no       |
+| http > tls                            | [tls][]                | Configures TLS for the HTTP server.                                        | no       |
+| http > cors                           | [cors][]               | Configures CORS for the HTTP server.                                       | no       |
+| debug_metrics                         | [debug_metrics][]      | Configures the metrics that this component generates to monitor its state. | no       |
+| output                                | [output][]             | Configures where to send received telemetry data.                          | yes      |
 
 The `>` symbol indicates deeper levels of nesting. For example, `grpc > tls`
 refers to a `tls` block defined inside a `grpc` block.
@@ -76,15 +76,15 @@ The `grpc` block configures the gRPC server used by the component. If the
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`endpoint` | `string` | `host:port` to listen for traffic on. | `"0.0.0.0:4317"` | no
-`transport` | `string` | Transport to use for the gRPC server. | `"tcp"` | no
-`max_recv_msg_size` | `string` | Maximum size of messages the server will accept. | `"4MiB`" | no
-`max_concurrent_streams` | `number` | Limit the number of concurrent streaming RPC calls. | | no
-`read_buffer_size` | `string` | Size of the read buffer the gRPC server will use for reading from clients. | `"512KiB"` | no
-`write_buffer_size` | `string` | Size of the write buffer the gRPC server will use for writing to clients. | | no
-`include_metadata` | `boolean` | Propagate incoming connection metadata to downstream consumers. | | no
+| Name                     | Type      | Description                                                                | Default          | Required |
+| ------------------------ | --------- | -------------------------------------------------------------------------- | ---------------- | -------- |
+| `endpoint`               | `string`  | `host:port` to listen for traffic on.                                      | `"0.0.0.0:4317"` | no       |
+| `transport`              | `string`  | Transport to use for the gRPC server.                                      | `"tcp"`          | no       |
+| `max_recv_msg_size`      | `string`  | Maximum size of messages the server will accept.                           | `"4MiB`"         | no       |
+| `max_concurrent_streams` | `number`  | Limit the number of concurrent streaming RPC calls.                        |                  | no       |
+| `read_buffer_size`       | `string`  | Size of the read buffer the gRPC server will use for reading from clients. | `"512KiB"`       | no       |
+| `write_buffer_size`      | `string`  | Size of the write buffer the gRPC server will use for writing to clients.  |                  | no       |
+| `include_metadata`       | `boolean` | Propagate incoming connection metadata to downstream consumers.            |                  | no       |
 
 ### tls block
 
@@ -108,13 +108,13 @@ servers.
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`max_connection_idle` | `duration` | Maximum age for idle connections. | `"infinity"` | no
-`max_connection_age` | `duration` | Maximum age for non-idle connections. | `"infinity"` | no
-`max_connection_age_grace` | `duration` | Time to wait before forcibly closing connections. | `"infinity"` | no
-`time` | `duration` | How often to ping inactive clients to check for liveness. | `"2h"` | no
-`timeout` | `duration` | Time to wait before closing inactive clients that do not respond to liveness checks. | `"20s"` | no
+| Name                       | Type       | Description                                                                          | Default      | Required |
+| -------------------------- | ---------- | ------------------------------------------------------------------------------------ | ------------ | -------- |
+| `max_connection_idle`      | `duration` | Maximum age for idle connections.                                                    | `"infinity"` | no       |
+| `max_connection_age`       | `duration` | Maximum age for non-idle connections.                                                | `"infinity"` | no       |
+| `max_connection_age_grace` | `duration` | Time to wait before forcibly closing connections.                                    | `"infinity"` | no       |
+| `time`                     | `duration` | How often to ping inactive clients to check for liveness.                            | `"2h"`       | no       |
+| `timeout`                  | `duration` | Time to wait before closing inactive clients that do not respond to liveness checks. | `"20s"`      | no       |
 
 ### enforcement_policy block
 
@@ -124,10 +124,10 @@ configured policy.
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`min_time` | `duration` | Minimum time clients should wait before sending a keepalive ping. | `"5m"` | no
-`permit_without_stream` | `boolean` | Allow clients to send keepalive pings when there are no active streams. | `false` | no
+| Name                    | Type       | Description                                                             | Default | Required |
+| ----------------------- | ---------- | ----------------------------------------------------------------------- | ------- | -------- |
+| `min_time`              | `duration` | Minimum time clients should wait before sending a keepalive ping.       | `"5m"`  | no       |
+| `permit_without_stream` | `boolean`  | Allow clients to send keepalive pings when there are no active streams. | `false` | no       |
 
 ### http block
 
@@ -136,20 +136,21 @@ The `http` block configures the HTTP server used by the component. If the
 
 The following arguments are supported:
 
-Name | Type | Description | Default         | Required
----- | ---- | ----------- |-----------------| --------
-`endpoint` | `string` | `host:port` to listen for traffic on. | `"0.0.0.0:4318"` | no
-`max_request_body_size` | `string`   | Maximum request body size the server will allow.                   | `20MiB`          | no
-`include_metadata` | `boolean` | Propagate incoming connection metadata to downstream consumers. |                 | no
-`traces_url_path` | `string` | The URL path to receive traces on. | `"/v1/traces"`  | no
-`metrics_url_path` | `string` | The URL path to receive metrics on. | `"/v1/metrics"` | no
-`logs_url_path` | `string` | The URL path to receive logs on. | `"/v1/logs"`    | no
-`compression_algorithms` | `list(string)` | A list of compression algorithms the server can accept.    | `["", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"]` | no
+| Name                     | Type           | Description                                                     | Default                                                    | Required |
+| ------------------------ | -------------- | --------------------------------------------------------------- | ---------------------------------------------------------- | -------- |
+| `endpoint`               | `string`       | `host:port` to listen for traffic on.                           | `"0.0.0.0:4318"`                                           | no       |
+| `max_request_body_size`  | `string`       | Maximum request body size the server will allow.                | `20MiB`                                                    | no       |
+| `include_metadata`       | `boolean`      | Propagate incoming connection metadata to downstream consumers. |                                                            | no       |
+| `traces_url_path`        | `string`       | The URL path to receive traces on.                              | `"/v1/traces"`                                             | no       |
+| `metrics_url_path`       | `string`       | The URL path to receive metrics on.                             | `"/v1/metrics"`                                            | no       |
+| `logs_url_path`          | `string`       | The URL path to receive logs on.                                | `"/v1/logs"`                                               | no       |
+| `compression_algorithms` | `list(string)` | A list of compression algorithms the server can accept.         | `["", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"]` | no       |
 
 To send telemetry signals to `otelcol.receiver.otlp` with HTTP/JSON, POST to:
-* `[endpoint][traces_url_path]` for traces.
-* `[endpoint][metrics_url_path]` for metrics.
-* `[endpoint][logs_url_path]` for logs.
+
+- `[endpoint][traces_url_path]` for traces.
+- `[endpoint][metrics_url_path]` for metrics.
+- `[endpoint][logs_url_path]` for logs.
 
 ### cors block
 
@@ -157,19 +158,19 @@ The `cors` block configures CORS settings for an HTTP server.
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`allowed_origins` | `list(string)` | Allowed values for the `Origin` header. | | no
-`allowed_headers` | `list(string)` | Accepted headers from CORS requests. | `["X-Requested-With"]` | no
-`max_age` | `number` | Configures the `Access-Control-Max-Age` response header. | | no
+| Name              | Type           | Description                                              | Default                | Required |
+| ----------------- | -------------- | -------------------------------------------------------- | ---------------------- | -------- |
+| `allowed_origins` | `list(string)` | Allowed values for the `Origin` header.                  |                        | no       |
+| `allowed_headers` | `list(string)` | Accepted headers from CORS requests.                     | `["X-Requested-With"]` | no       |
+| `max_age`         | `number`       | Configures the `Access-Control-Max-Age` response header. |                        | no       |
 
 The `allowed_headers` argument specifies which headers are acceptable from a
 CORS request. The following headers are always implicitly allowed:
 
-* `Accept`
-* `Accept-Language`
-* `Content-Type`
-* `Content-Language`
+- `Accept`
+- `Accept-Language`
+- `Content-Type`
+- `Content-Language`
 
 If `allowed_headers` includes `"*"`, all headers are permitted.
 
@@ -197,13 +198,13 @@ information.
 
 ## Debug metrics
 
-* `otelcol_receiver_accepted_spans_total` (counter): Number of spans successfully pushed into the pipeline.
-* `otelcol_receiver_refused_spans_total` (counter): Number of spans that could not be pushed into the pipeline.
-* `rpc_server_duration_milliseconds` (histogram): Duration of RPC requests from a gRPC server.
-* `rpc_server_request_size_bytes` (histogram): Measures size of RPC request messages (uncompressed).
-* `rpc_server_requests_per_rpc` (histogram): Measures the number of messages received per RPC. Should be 1 for all non-streaming RPCs.
-* `rpc_server_response_size_bytes` (histogram): Measures size of RPC response messages (uncompressed).
-* `rpc_server_responses_per_rpc` (histogram): Measures the number of messages received per RPC. Should be 1 for all non-streaming RPCs.
+- `otelcol_receiver_accepted_spans_total` (counter): Number of spans successfully pushed into the pipeline.
+- `otelcol_receiver_refused_spans_total` (counter): Number of spans that could not be pushed into the pipeline.
+- `rpc_server_duration_milliseconds` (histogram): Duration of RPC requests from a gRPC server.
+- `rpc_server_request_size_bytes` (histogram): Measures size of RPC request messages (uncompressed).
+- `rpc_server_requests_per_rpc` (histogram): Measures the number of messages received per RPC. Should be 1 for all non-streaming RPCs.
+- `rpc_server_response_size_bytes` (histogram): Measures size of RPC response messages (uncompressed).
+- `rpc_server_responses_per_rpc` (histogram): Measures the number of messages received per RPC. Should be 1 for all non-streaming RPCs.
 
 ## Example
 
@@ -240,6 +241,7 @@ otelcol.exporter.otlp "default" {
 ## Technical details
 
 `otelcol.receiver.otlp` supports [gzip](https://en.wikipedia.org/wiki/Gzip) for compression.
+
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components
@@ -247,7 +249,6 @@ otelcol.exporter.otlp "default" {
 `otelcol.receiver.otlp` can accept arguments from the following components:
 
 - Components that export [OpenTelemetry `otelcol.Consumer`](../../../compatibility/#opentelemetry-otelcolconsumer-exporters)
-
 
 {{< admonition type="note" >}}
 Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.

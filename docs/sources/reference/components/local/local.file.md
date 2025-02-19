@@ -30,7 +30,7 @@ local.file "<LABEL>" {
 You can use the following arguments with `local.file`:
 
 | Name             | Type       | Description                                              | Default      | Required |
-|------------------|------------|----------------------------------------------------------|--------------|----------|
+| ---------------- | ---------- | -------------------------------------------------------- | ------------ | -------- |
 | `filename`       | `string`   | Path of the file on disk to watch.                       |              | yes      |
 | `detector`       | `string`   | Which file change detector to use, `fsnotify` or `poll`. | `"fsnotify"` | no       |
 | `is_secret`      | `bool`     | Marks the file as containing a [secret][].               | `false`      | no       |
@@ -49,7 +49,7 @@ The `local.file` component doesn't support any blocks. You can configure this co
 The following fields are exported and can be referenced by other components:
 
 | Name      | Type                 | Description                                         |
-|-----------|----------------------|-----------------------------------------------------|
+| --------- | -------------------- | --------------------------------------------------- |
 | `content` | `string` or `secret` | The contents of the file from the most recent read. |
 
 The `content` field has the `secret` type only if the `is_secret` argument is true.
@@ -70,7 +70,7 @@ The read error is exposed as a log message and in the debug information for the 
 
 ## Debug metrics
 
-* `local_file_timestamp_last_accessed_unix_seconds` (gauge): The timestamp, in Unix seconds, that the file was last successfully accessed.
+- `local_file_timestamp_last_accessed_unix_seconds` (gauge): The timestamp, in Unix seconds, that the file was last successfully accessed.
 
 ## Example
 

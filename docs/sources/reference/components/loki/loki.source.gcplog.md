@@ -122,22 +122,22 @@ The `labels` map is applied to every entry that passes through the component.
 
 `loki.source.gcplog` exposes some debug information per gcplog listener:
 
-* The configured strategy.
-* Their label set.
-* When using a `push` strategy, the listen address.
+- The configured strategy.
+- Their label set.
+- When using a `push` strategy, the listen address.
 
 ## Debug metrics
 
 When using the `pull` strategy, the component exposes the following debug metrics:
 
-* `loki_source_gcplog_pull_entries_total` (counter): Number of entries received by the gcplog target.
-* `loki_source_gcplog_pull_last_success_scrape` (gauge): Timestamp of target's last successful poll.
-* `loki_source_gcplog_pull_parsing_errors_total` (counter): Total number of parsing errors while receiving gcplog messages.
+- `loki_source_gcplog_pull_entries_total` (counter): Number of entries received by the gcplog target.
+- `loki_source_gcplog_pull_last_success_scrape` (gauge): Timestamp of target's last successful poll.
+- `loki_source_gcplog_pull_parsing_errors_total` (counter): Total number of parsing errors while receiving gcplog messages.
 
 When using the `push` strategy, the component exposes the following debug metrics:
 
-* `loki_source_gcplog_push_entries_total` (counter): Number of entries received by the gcplog target.
-* `loki_source_gcplog_push_entries_total` (counter): Number of parsing errors while receiving gcplog messages.
+- `loki_source_gcplog_push_entries_total` (counter): Number of entries received by the gcplog target.
+- `loki_source_gcplog_push_entries_total` (counter): Number of parsing errors while receiving gcplog messages.
 
 ## Example
 
@@ -184,7 +184,6 @@ loki.write "local" {
 `loki.source.gcplog` can accept arguments from the following components:
 
 - Components that export [Loki `LogsReceiver`](../../../compatibility/#loki-logsreceiver-exporters)
-
 
 {{< admonition type="note" >}}
 Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.

@@ -63,19 +63,19 @@ The following fields are exported and can be referenced by other components:
 
 Each target includes the following labels:
 
-* `__meta_digitalocean_droplet_id`: ID of the Droplet.
-* `__meta_digitalocean_droplet_name`: Name of the Droplet.
-* `__meta_digitalocean_features`: Optional properties configured for the Droplet, such as IPV6 networking, private networking, or backups.
-* `__meta_digitalocean_image_name`: Name of the image used to create the Droplet.
-* `__meta_digitalocean_image`: The image slug (unique text identifier of the image) used to create the Droplet.
-* `__meta_digitalocean_private_ipv4`: The private IPv4 address of the Droplet.
-* `__meta_digitalocean_public_ipv4`: The public IPv4 address of the Droplet.
-* `__meta_digitalocean_public_ipv6`: The public IPv6 address of the Droplet.
-* `__meta_digitalocean_region`: The region the Droplet is running in.
-* `__meta_digitalocean_size`: The size of the Droplet.
-* `__meta_digitalocean_status`: The current status of the Droplet.
-* `__meta_digitalocean_tags`: The tags assigned to the Droplet.
-* `__meta_digitalocean_vpc`: The ID of the VPC where the Droplet is located.
+- `__meta_digitalocean_droplet_id`: ID of the Droplet.
+- `__meta_digitalocean_droplet_name`: Name of the Droplet.
+- `__meta_digitalocean_features`: Optional properties configured for the Droplet, such as IPV6 networking, private networking, or backups.
+- `__meta_digitalocean_image_name`: Name of the image used to create the Droplet.
+- `__meta_digitalocean_image`: The image slug (unique text identifier of the image) used to create the Droplet.
+- `__meta_digitalocean_private_ipv4`: The private IPv4 address of the Droplet.
+- `__meta_digitalocean_public_ipv4`: The public IPv4 address of the Droplet.
+- `__meta_digitalocean_public_ipv6`: The public IPv6 address of the Droplet.
+- `__meta_digitalocean_region`: The region the Droplet is running in.
+- `__meta_digitalocean_size`: The size of the Droplet.
+- `__meta_digitalocean_status`: The current status of the Droplet.
+- `__meta_digitalocean_tags`: The tags assigned to the Droplet.
+- `__meta_digitalocean_vpc`: The ID of the VPC where the Droplet is located.
 
 Each discovered Droplet maps to one target.
 
@@ -122,9 +122,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

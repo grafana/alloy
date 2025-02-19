@@ -59,6 +59,7 @@ This feature is in [Public preview][] and is not covered by {{< param "FULL_PROD
 
 [Public preview]: https://grafana.com/docs/release-life-cycle/
 [backward compatibility]: ../introduction/backward-compatibility/
+
 {{< /admonition >}}
 
 The `remotecfg` block has an updated argument name from `metadata` to `attributes`.
@@ -72,6 +73,7 @@ This feature is in [Public preview][] and is not covered by {{< param "FULL_PROD
 
 [Public preview]: https://grafana.com/docs/release-life-cycle/
 [backward compatibility]: ../introduction/backward-compatibility/
+
 {{< /admonition >}}
 
 The `remotecfg` block has been updated to use [alloy-remote-config](https://github.com/grafana/alloy-remote-config)

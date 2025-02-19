@@ -29,6 +29,7 @@ If you are running a custom installation of {{< param "PRODUCT_NAME" >}}, refer 
 
 [install]: ../../set-up/install/
 [alloy run]: ../../reference/cli/run/
+
 {{< /admonition >}}
 
 ### Home page
@@ -54,10 +55,10 @@ Clicking a component in the graph navigates to the [Component detail page](#comp
 
 The component detail page shows the following information for each component:
 
-* The health of the component with a message explaining the health.
-* The current evaluated arguments for the component.
-* The current exports for the component.
-* The current debug info for the component if the component has debug info.
+- The health of the component with a message explaining the health.
+- The current evaluated arguments for the component.
+- The current exports for the component.
+- The current debug info for the component if the component has debug info.
 
 From there you can also go to the component documentation or to its corresponding [Live Debugging page](#live-debugging-page).
 
@@ -65,6 +66,7 @@ From there you can also go to the component documentation or to its correspondin
 Values marked as a [secret][] are obfuscated and display as the text `(secret)`.
 
 [secret]: ../../get-started/configuration-syntax/expressions/types_and_values/#secrets
+
 {{< /admonition >}}
 
 ### Clustering page
@@ -73,10 +75,10 @@ Values marked as a [secret][] are obfuscated and display as the text `(secret)`.
 
 The clustering page shows the following information for each cluster node:
 
-* The node's name.
-* The node's advertised address.
-* The node's current state (Viewer/Participant/Terminating).
-* The local node that serves the UI.
+- The node's name.
+- The node's advertised address.
+- The node's current state (Viewer/Participant/Terminating).
+- The local node that serves the UI.
 
 ### Live Debugging page
 
@@ -88,14 +90,15 @@ Live debugging provides a real-time stream of debugging data from a component. Y
 Live debugging is disabled by default to avoid accidentally displaying sensitive telemetry data. To enable live debugging, configure the [livedebugging block][livedebugging].
 
 [livedebugging]: ../../reference/config-blocks/livedebugging/
+
 {{< /admonition >}}
 
 Live debugging allows you to do the following:
 
-* Pause and clear the data stream.
-* Sample data and disable auto-scrolling to handle heavy loads.
-* Search through the data using keywords.
-* Copy the entire data stream to the clipboard.
+- Pause and clear the data stream.
+- Sample data and disable auto-scrolling to handle heavy loads.
+- Search through the data using keywords.
+- Copy the entire data stream to the clipboard.
 
 The format and content of the debugging data vary depending on the component type.
 
@@ -104,21 +107,21 @@ Live debugging isn't yet available in all components.
 
 Supported components:
 
-* `loki.process`
-* `loki.relabel`
-* `loki.secretfilter`
-* `otelcol.processor.*`
-* `otelcol.receiver.*`
-* `prometheus.relabel`
-{{< /admonition >}}
+- `loki.process`
+- `loki.relabel`
+- `loki.secretfilter`
+- `otelcol.processor.*`
+- `otelcol.receiver.*`
+- `prometheus.relabel`
+  {{< /admonition >}}
 
 ## Debug using the UI
 
 To debug using the UI:
 
-* Ensure that no component is reported as unhealthy.
-* Ensure that the arguments and exports for misbehaving components appear correct.
-* Ensure that the live debugging data meets your expectations.
+- Ensure that no component is reported as unhealthy.
+- Ensure that the arguments and exports for misbehaving components appear correct.
+- Ensure that the live debugging data meets your expectations.
 
 ## Examine logs
 
@@ -134,18 +137,18 @@ Refer to the [`logging` block][logging] page to see how to find logs for your sy
 
 To debug issues when using [clustering][], check for the following symptoms.
 
-* **Cluster not converging**: The cluster peers aren't converging on the same view of their peers' status.
+- **Cluster not converging**: The cluster peers aren't converging on the same view of their peers' status.
   This is most likely due to network connectivity issues between the cluster nodes.
   Use the {{< param "PRODUCT_NAME" >}} UI of each running peer to understand which nodes aren't picked up correctly.
-* **Cluster split brain**: The cluster peers aren't aware of one another, thinking they're the only node present.
+- **Cluster split brain**: The cluster peers aren't aware of one another, thinking they're the only node present.
   Again, check for network connectivity issues.
   Check that the addresses or DNS names given to the node to join are correctly formatted and reachable.
-* **Configuration drift**: Clustering assumes that all nodes are running with the same configuration file at roughly the same time.
+- **Configuration drift**: Clustering assumes that all nodes are running with the same configuration file at roughly the same time.
   Check the logs for issues with the reloaded configuration file as well as the graph page to verify changes have been applied.
-* **Node name conflicts**: Clustering assumes all nodes have unique names.
+- **Node name conflicts**: Clustering assumes all nodes have unique names.
   Nodes with conflicting names are rejected and won't join the cluster.
   Look at the clustering UI page for the list of current peers with their names, and check the logs for any reported name conflict events.
-* **Node stuck in terminating state**: The node attempted to gracefully shut down and set its state to Terminating, but it hasn't completely gone away.
+- **Node stuck in terminating state**: The node attempted to gracefully shut down and set its state to Terminating, but it hasn't completely gone away.
   Check the clustering page to view the state of the peers and verify that the terminating {{< param "PRODUCT_NAME" >}} has been shut down.
 
 {{< admonition type="note" >}}

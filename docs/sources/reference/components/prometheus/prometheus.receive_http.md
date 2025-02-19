@@ -35,17 +35,17 @@ The component will start an HTTP server supporting the following endpoint:
 
 `prometheus.receive_http` supports the following arguments:
 
-Name         | Type             | Description                           | Default | Required
--------------|------------------|---------------------------------------|---------|---------
-`forward_to` | `list(MetricsReceiver)` | List of receivers to send metrics to. |         | yes
+| Name         | Type                    | Description                           | Default | Required |
+| ------------ | ----------------------- | ------------------------------------- | ------- | -------- |
+| `forward_to` | `list(MetricsReceiver)` | List of receivers to send metrics to. |         | yes      |
 
 ## Blocks
 
 The following blocks are supported inside the definition of `prometheus.receive_http`:
 
-Hierarchy | Name     | Description                                        | Required
-----------|----------|----------------------------------------------------|---------
-`http`    | [http][] | Configures the HTTP server that receives requests. | no
+| Hierarchy | Name     | Description                                        | Required |
+| --------- | -------- | -------------------------------------------------- | -------- |
+| `http`    | [http][] | Configures the HTTP server that receives requests. | no       |
 
 [http]: #http
 
@@ -65,12 +65,12 @@ Hierarchy | Name     | Description                                        | Requ
 
 The following are some of the metrics that are exposed when this component is used. Note that the metrics include labels such as `status_code` where relevant, which can be used to measure request success rates.
 
-* `prometheus_receive_http_request_duration_seconds` (histogram): Time (in seconds) spent serving HTTP requests.
-* `prometheus_receive_http_request_message_bytes` (histogram): Size (in bytes) of messages received in the request.
-* `prometheus_receive_http_response_message_bytes` (histogram): Size (in bytes) of messages sent in response.
-* `prometheus_receive_http_tcp_connections` (gauge): Current number of accepted TCP connections.
-* `prometheus_fanout_latency` (histogram): Write latency for sending metrics to other components.
-* `prometheus_forwarded_samples_total` (counter): Total number of samples sent to downstream components.
+- `prometheus_receive_http_request_duration_seconds` (histogram): Time (in seconds) spent serving HTTP requests.
+- `prometheus_receive_http_request_message_bytes` (histogram): Size (in bytes) of messages received in the request.
+- `prometheus_receive_http_response_message_bytes` (histogram): Size (in bytes) of messages sent in response.
+- `prometheus_receive_http_tcp_connections` (gauge): Current number of accepted TCP connections.
+- `prometheus_fanout_latency` (histogram): Write latency for sending metrics to other components.
+- `prometheus_forwarded_samples_total` (counter): Total number of samples sent to downstream components.
 
 ## Example
 
@@ -125,7 +125,8 @@ prometheus.remote_write "local" {
 
 ## Technical details
 
-`prometheus.receive_http` uses [snappy](https://en.wikipedia.org/wiki/Snappy_(compression)) for compression.
+`prometheus.receive_http` uses [snappy](<https://en.wikipedia.org/wiki/Snappy_(compression)>) for compression.
+
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components
@@ -133,7 +134,6 @@ prometheus.remote_write "local" {
 `prometheus.receive_http` can accept arguments from the following components:
 
 - Components that export [Prometheus `MetricsReceiver`](../../../compatibility/#prometheus-metricsreceiver-exporters)
-
 
 {{< admonition type="note" >}}
 Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.

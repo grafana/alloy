@@ -30,29 +30,29 @@ discovery.puppetdb "<LABEL>" {
 
 You can use the following arguments with `discovery.puppetdb`:
 
-| Name                     | Type                | Description                                                                                      | Default | Required |
-| ------------------------ | ------------------- | ------------------------------------------------------------------------------------------------ | ------- | -------- |
-| `query`                  | `string`            | Puppet Query Language (PQL) query. Only resources are supported.                                 |         | yes      |
-| `url`                    | `string`            | The URL of the PuppetDB root query endpoint.                                                     |         | yes      |
-| `bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                             |         | no       |
-| `bearer_token`           | `secret`            | Bearer token to authenticate with.                                                               |         | no       |
-| `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`  | no       |
-| `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`  | no       |
-| `include_parameters`     | `bool`              | Whether to include the parameters as meta labels. Due to the differences between parameter types and Prometheus labels, some parameters might not be rendered. The format of the parameters might also change in future releases. Make sure that you don't have secrets exposed as parameters if you enable this. | `false` | no |
-| `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |         | no       |
-| `port`                   | `int`               | The port to scrape metrics from.                                                                 | `80`    | no       |
-| `proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |         | no       |
-| `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false` | no       |
-| `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |         | no       |
-| `refresh_interval`       | `duration`          | Frequency to refresh targets.                                                                    | `"30s"` | no       |
+| Name                     | Type                | Description                                                                                                                                                                                                                                                                                                       | Default | Required |
+| ------------------------ | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
+| `query`                  | `string`            | Puppet Query Language (PQL) query. Only resources are supported.                                                                                                                                                                                                                                                  |         | yes      |
+| `url`                    | `string`            | The URL of the PuppetDB root query endpoint.                                                                                                                                                                                                                                                                      |         | yes      |
+| `bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                                                                                                                                                                                                                                              |         | no       |
+| `bearer_token`           | `secret`            | Bearer token to authenticate with.                                                                                                                                                                                                                                                                                |         | no       |
+| `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                                                                                                                                                                                                                                          | `true`  | no       |
+| `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                                                                                                                                                                                                                                      | `true`  | no       |
+| `include_parameters`     | `bool`              | Whether to include the parameters as meta labels. Due to the differences between parameter types and Prometheus labels, some parameters might not be rendered. The format of the parameters might also change in future releases. Make sure that you don't have secrets exposed as parameters if you enable this. | `false` | no       |
+| `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying.                                                                                                                                                                                                                  |         | no       |
+| `port`                   | `int`               | The port to scrape metrics from.                                                                                                                                                                                                                                                                                  | `80`    | no       |
+| `proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                                                                                                                                                                                                                                     |         | no       |
+| `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                                                                                                                                                                                                                                             | `false` | no       |
+| `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                                                                                                                                                                                                                                              |         | no       |
+| `refresh_interval`       | `duration`          | Frequency to refresh targets.                                                                                                                                                                                                                                                                                     | `"30s"` | no       |
 
- At most, one of the following can be provided:
+At most, one of the following can be provided:
 
-* [`authorization`][authorization] block
-* [`basic_auth`][basic_auth] block
-* [`bearer_token_file`][arguments] argument
-* [`bearer_token`][arguments] argument
-* [`oauth2`][oauth2] block
+- [`authorization`][authorization] block
+- [`basic_auth`][basic_auth] block
+- [`bearer_token_file`][arguments] argument
+- [`bearer_token`][arguments] argument
+- [`oauth2`][oauth2] block
 
 [arguments]: #arguments
 
@@ -112,16 +112,16 @@ The following fields are exported and can be referenced by other components:
 
 Each target includes the following labels:
 
-* `__meta_puppetdb_certname`: The name of the node associated with the resource.
-* `__meta_puppetdb_environment`: The environment of the node associated with the resource.
-* `__meta_puppetdb_exported`: Whether the resource is exported, either `true` or `false`.
-* `__meta_puppetdb_file`: The manifest file in which the resource was declared.
-* `__meta_puppetdb_parameter_<parametername>`: The parameters of the resource.
-* `__meta_puppetdb_query`: The Puppet Query Language (PQL) query.
-* `__meta_puppetdb_resource`: A SHA-1 hash of the resource's type, title, and parameters, for identification.
-* `__meta_puppetdb_tags`: A comma separated list of resource tags.
-* `__meta_puppetdb_title`: The resource title.
-* `__meta_puppetdb_type`: The resource type.
+- `__meta_puppetdb_certname`: The name of the node associated with the resource.
+- `__meta_puppetdb_environment`: The environment of the node associated with the resource.
+- `__meta_puppetdb_exported`: Whether the resource is exported, either `true` or `false`.
+- `__meta_puppetdb_file`: The manifest file in which the resource was declared.
+- `__meta_puppetdb_parameter_<parametername>`: The parameters of the resource.
+- `__meta_puppetdb_query`: The Puppet Query Language (PQL) query.
+- `__meta_puppetdb_resource`: A SHA-1 hash of the resource's type, title, and parameters, for identification.
+- `__meta_puppetdb_tags`: A comma separated list of resource tags.
+- `__meta_puppetdb_title`: The resource title.
+- `__meta_puppetdb_type`: The resource type.
 
 ## Component health
 
@@ -166,9 +166,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

@@ -22,7 +22,7 @@ prometheus.exporter.blackbox "LABEL" {
 }
 ```
 
-or 
+or
 
 ```alloy
 prometheus.exporter.blackbox "LABEL" {
@@ -37,8 +37,8 @@ Omitted fields take their default values.
 
 | Name                   | Type                 | Description                                                      | Default  | Required |
 | ---------------------- | -------------------- | ---------------------------------------------------------------- | -------- | -------- |
-| `config_file`          | `string`             | `blackbox_exporter` configuration file path.                       |          | no       |
-| `config`               | `string` or `secret` | `blackbox_exporter` configuration as inline string.                |          | no       |
+| `config_file`          | `string`             | `blackbox_exporter` configuration file path.                     |          | no       |
+| `config`               | `string` or `secret` | `blackbox_exporter` configuration as inline string.              |          | no       |
 | `probe_timeout_offset` | `duration`           | Offset in seconds to subtract from timeout when probing targets. | `"0.5s"` | no       |
 | `targets`              | `list(map(string))`  | Blackbox targets.                                                |          | no       |
 
@@ -55,9 +55,10 @@ You can't use both the `targets` argument and the [target][] block in the same c
 The `targets` argument must be used when blackbox targets cannot be passed as a target block because another component supplies them.
 
 You can set the following labels to a target:
-* `name`: The name of the target to probe (required).
-* `address`: The address of the target to probe (required).
-* `module`: The blackbox module to use to probe.
+
+- `name`: The name of the target to probe (required).
+- `address`: The address of the target to probe (required).
+- `module`: The blackbox module to use to probe.
 
 The component passes any additional labels to the exported target.
 
@@ -112,7 +113,7 @@ debug metrics.
 
 ### Collect metrics using a blackbox exporter configuration file
 
-This example uses a [`prometheus.scrape` component][scrape] to collect metrics from `prometheus.exporter.blackbox`. 
+This example uses a [`prometheus.scrape` component][scrape] to collect metrics from `prometheus.exporter.blackbox`.
 It adds an extra label, `env="dev"`, to the metrics emitted by the `grafana` target. The `example` target doesn't have any added labels.
 
 The `config_file` argument is used to define which `blackbox_exporter` modules to use. You can use the [blackbox example config file](https://github.com/prometheus/blackbox_exporter/blob/master/example.yml).
@@ -235,15 +236,16 @@ prometheus.remote_write "example" {
 ```
 
 The YAML file in this example looks like this:
+
 ```yaml
 - targets:
-  - localhost:9009
+    - localhost:9009
   labels:
     name: t1
     module: http_2xx
     other_label: example
 - targets:
-  - localhost:9009
+    - localhost:9009
   labels:
     name: t2
     module: http_2xx
