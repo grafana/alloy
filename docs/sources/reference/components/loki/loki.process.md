@@ -71,6 +71,7 @@ You can use the following blocks with `loki.process`:
 | [`stage.template`][stage.template]                       | Configures a `template` processing stage.                      | no       |
 | [`stage.tenant`][stage.tenant]                           | Configures a `tenant` processing stage.                        | no       |
 | [`stage.timestamp`][stage.timestamp]                     | Configures a `timestamp` processing stage.                     | no       |
+| [`stage.windowsevent`][stage.windowsevent]               | Configures a `windowsevent` processing stage.                  | no       |
 
 You can provide any number of these stage blocks nested inside `loki.process`. These blocks run in order of appearance in the configuration file.
 
@@ -100,6 +101,7 @@ You can provide any number of these stage blocks nested inside `loki.process`. T
 [stage.template]: #stagetemplate
 [stage.tenant]: #stagetenant
 [stage.timestamp]: #stagetimestamp
+[stage.windowsevent]: #stagewindowsevent
 
 ### `stage.cri`
 
