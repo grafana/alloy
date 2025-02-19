@@ -12,16 +12,17 @@ title: mimir.rules.kubernetes
 
 `mimir.rules.kubernetes` discovers `PrometheusRule` Kubernetes resources and loads them into a Mimir instance.
 
-* You can specify multiple `mimir.rules.kubernetes` components by giving them different labels.
-* [Kubernetes label selectors][] can be used to limit the `Namespace` and `PrometheusRule` resources considered during reconciliation.
-* Compatible with the Ruler APIs of Grafana Mimir, Grafana Cloud, and Grafana Enterprise Metrics.
-* Compatible with the `PrometheusRule` CRD from the [`prometheus-operator`][prometheus-operator].
-* This component accesses the Kubernetes REST API from [within a Pod][].
+- You can specify multiple `mimir.rules.kubernetes` components by giving them different labels.
+- [Kubernetes label selectors][] can be used to limit the `Namespace` and `PrometheusRule` resources considered during reconciliation.
+- Compatible with the Ruler APIs of Grafana Mimir, Grafana Cloud, and Grafana Enterprise Metrics.
+- Compatible with the `PrometheusRule` CRD from the [`prometheus-operator`][prometheus-operator].
+- This component accesses the Kubernetes REST API from [within a Pod][].
 
 {{< admonition type="note" >}}
 This component requires [Role-based access control (RBAC)][] to be set up in Kubernetes in order for {{< param "PRODUCT_NAME" >}} to access it via the Kubernetes REST API.
 
 [Role-based access control (RBAC)]: https://kubernetes.io/docs/reference/access-authn-authz/rbac/
+
 {{< /admonition >}}
 
 {{< admonition type="note" >}}
@@ -29,6 +30,7 @@ This component requires [Role-based access control (RBAC)][] to be set up in Kub
 When you use this component as part of a cluster of {{< param "PRODUCT_NAME" >}} instances, only a single instance from the cluster updates rules using the Mimir API.
 
 [clustered mode]: ../../../../get-started/clustering/
+
 {{< /admonition >}}
 
 [Kubernetes label selectors]: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors
@@ -67,14 +69,14 @@ You can use the following arguments with `mimir.rules.kubernetes`:
 
 At most, one of the following can be provided:
 
-* [`authorization`][authorization] block
-* [`basic_auth`][basic_auth] block
-* [`bearer_token_file`][arguments]argument
-* [`bearer_token`][arguments] argument
-* [`oauth2`][oauth2] block
+- [`authorization`][authorization] block
+- [`basic_auth`][basic_auth] block
+- [`bearer_token_file`][arguments]argument
+- [`bearer_token`][arguments] argument
+- [`oauth2`][oauth2] block
 
- [arguments]: #arguments
- [gem-path-prefix]: https://grafana.com/docs/mimir/latest/references/http-api/
+[arguments]: #arguments
+[gem-path-prefix]: https://grafana.com/docs/mimir/latest/references/http-api/
 
 {{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -180,10 +182,10 @@ The following arguments are supported:
 
 The `operator` argument should be one of the following strings:
 
-* `"In"`
-* `"NotIn"`
-* `"Exists"`
-* `"DoesNotExist"`
+- `"In"`
+- `"NotIn"`
+- `"Exists"`
+- `"DoesNotExist"`
 
 The `values` argument must not be provided when `operator` is set to `"Exists"` or `"DoesNotExist"`.
 
@@ -209,15 +211,15 @@ The `values` argument must not be provided when `operator` is set to `"Exists"` 
 
 The following are exposed per discovered `PrometheusRule` resource:
 
-* The Kubernetes namespace.
-* The resource name.
-* The resource UID.
-* The number of rule groups.
+- The Kubernetes namespace.
+- The resource name.
+- The resource UID.
+- The number of rule groups.
 
 The following are exposed per discovered Mimir rule namespace resource:
 
-* The namespace name.
-* The number of rule groups.
+- The namespace name.
+- The number of rule groups.
 
 Only resources managed by the component are exposed, regardless of how many actually exist.
 
@@ -303,21 +305,21 @@ kind: ClusterRole
 metadata:
   name: alloy
 rules:
-- apiGroups: [""]
-  resources: ["namespaces"]
-  verbs: ["get", "list", "watch"]
-- apiGroups: ["monitoring.coreos.com"]
-  resources: ["prometheusrules"]
-  verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["monitoring.coreos.com"]
+    resources: ["prometheusrules"]
+    verbs: ["get", "list", "watch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: alloy
 subjects:
-- kind: ServiceAccount
-  name: alloy
-  namespace: default
+  - kind: ServiceAccount
+    name: alloy
+    namespace: default
 roleRef:
   kind: ClusterRole
   name: alloy

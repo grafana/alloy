@@ -35,21 +35,21 @@ otelcol.extension.jaeger_remote_sampling "LABEL" {
 The following blocks are supported inside the definition of
 `otelcol.extension.jaeger_remote_sampling`:
 
-Hierarchy                             | Block                  | Description                                                                      | Required
---------------------------------------|------------------------|----------------------------------------------------------------------------------|---------
-http                                  | [http][]               | Configures the http server to serve Jaeger remote sampling.                      | no
-http > tls                            | [tls][]                | Configures TLS for the HTTP server.                                              | no
-http > cors                           | [cors][]               | Configures CORS for the HTTP server.                                             | no
-grpc                                  | [grpc][]               | Configures the grpc server to serve Jaeger remote sampling.                      | no
-grpc > tls                            | [tls][]                | Configures TLS for the gRPC server.                                              | no
-grpc > keepalive                      | [keepalive][]          | Configures keepalive settings for the configured server.                         | no
-grpc > keepalive > server_parameters  | [server_parameters][]  | Server parameters used to configure keepalive settings.                          | no
-grpc > keepalive > enforcement_policy | [enforcement_policy][] | Enforcement policy for keepalive settings.                                       | no
-source                                | [source][]             | Configures the Jaeger remote sampling document.                                  | yes
-source > remote                       | [remote][]             | Configures the gRPC client used to retrieve the Jaeger remote sampling document. | no
-source > remote > tls                 | [tls_client][]                | Configures TLS for the gRPC client.                                              | no
-source > remote > keepalive           | [keepalive][]          | Configures keepalive settings for the gRPC client.                               | no
-debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
+| Hierarchy                             | Block                  | Description                                                                      | Required |
+| ------------------------------------- | ---------------------- | -------------------------------------------------------------------------------- | -------- |
+| http                                  | [http][]               | Configures the http server to serve Jaeger remote sampling.                      | no       |
+| http > tls                            | [tls][]                | Configures TLS for the HTTP server.                                              | no       |
+| http > cors                           | [cors][]               | Configures CORS for the HTTP server.                                             | no       |
+| grpc                                  | [grpc][]               | Configures the grpc server to serve Jaeger remote sampling.                      | no       |
+| grpc > tls                            | [tls][]                | Configures TLS for the gRPC server.                                              | no       |
+| grpc > keepalive                      | [keepalive][]          | Configures keepalive settings for the configured server.                         | no       |
+| grpc > keepalive > server_parameters  | [server_parameters][]  | Server parameters used to configure keepalive settings.                          | no       |
+| grpc > keepalive > enforcement_policy | [enforcement_policy][] | Enforcement policy for keepalive settings.                                       | no       |
+| source                                | [source][]             | Configures the Jaeger remote sampling document.                                  | yes      |
+| source > remote                       | [remote][]             | Configures the gRPC client used to retrieve the Jaeger remote sampling document. | no       |
+| source > remote > tls                 | [tls_client][]         | Configures TLS for the gRPC client.                                              | no       |
+| source > remote > keepalive           | [keepalive][]          | Configures keepalive settings for the gRPC client.                               | no       |
+| debug_metrics                         | [debug_metrics][]      | Configures the metrics that this component generates to monitor its state.       | no       |
 
 The `>` symbol indicates deeper levels of nesting. For example, `grpc > tls`
 refers to a `tls` block defined inside a `grpc` block.
@@ -73,13 +73,13 @@ The `http` block configures an HTTP server which serves the Jaeger remote sampli
 
 The following arguments are supported:
 
-Name                     | Type           | Description                                                     | Default          | Required
--------------------------|----------------|-----------------------------------------------------------------|------------------|---------
-`endpoint`               | `string`       | `host:port` to listen for traffic on.                           | `"0.0.0.0:5778"` | no
-`max_request_body_size`  | `string`       | Maximum request body size the server will allow.                | `20MiB`          | no
-`include_metadata`       | `boolean`      | Propagate incoming connection metadata to downstream consumers. |                  | no
-`compression_algorithms` | `list(string)` | A list of compression algorithms the server can accept.         | `["", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"]` | no
-`auth`              | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests.     |               | no
+| Name                     | Type                       | Description                                                                  | Default                                                    | Required |
+| ------------------------ | -------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------- | -------- |
+| `endpoint`               | `string`                   | `host:port` to listen for traffic on.                                        | `"0.0.0.0:5778"`                                           | no       |
+| `max_request_body_size`  | `string`                   | Maximum request body size the server will allow.                             | `20MiB`                                                    | no       |
+| `include_metadata`       | `boolean`                  | Propagate incoming connection metadata to downstream consumers.              |                                                            | no       |
+| `compression_algorithms` | `list(string)`             | A list of compression algorithms the server can accept.                      | `["", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"]` | no       |
+| `auth`                   | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests. |                                                            | no       |
 
 ### tls block
 
@@ -94,39 +94,39 @@ The `cors` block configures CORS settings for an HTTP server.
 
 The following arguments are supported:
 
-Name              | Type           | Description                                              | Default                | Required
-------------------|----------------|----------------------------------------------------------|------------------------|---------
-`allowed_origins` | `list(string)` | Allowed values for the `Origin` header.                  |                        | no
-`allowed_headers` | `list(string)` | Accepted headers from CORS requests.                     | `["X-Requested-With"]` | no
-`max_age`         | `number`       | Configures the `Access-Control-Max-Age` response header. |                        | no
+| Name              | Type           | Description                                              | Default                | Required |
+| ----------------- | -------------- | -------------------------------------------------------- | ---------------------- | -------- |
+| `allowed_origins` | `list(string)` | Allowed values for the `Origin` header.                  |                        | no       |
+| `allowed_headers` | `list(string)` | Accepted headers from CORS requests.                     | `["X-Requested-With"]` | no       |
+| `max_age`         | `number`       | Configures the `Access-Control-Max-Age` response header. |                        | no       |
 
 The `allowed_headers` specifies which headers are acceptable from a CORS
 request. The following headers are always implicitly allowed:
 
-* `Accept`
-* `Accept-Language`
-* `Content-Type`
-* `Content-Language`
+- `Accept`
+- `Accept-Language`
+- `Content-Type`
+- `Content-Language`
 
 If `allowed_headers` includes `"*"`, all headers will be permitted.
 
 ### grpc block
 
 The `grpc` block configures a gRPC server which serves the Jaeger remote
- sampling document.
+sampling document.
 
 The following arguments are supported:
 
-Name                     | Type      | Description                                                                | Default           | Required
--------------------------|-----------|----------------------------------------------------------------------------|-------------------|---------
-`endpoint`               | `string`  | `host:port` to listen for traffic on.                                      | `"0.0.0.0:14250"` | no
-`transport`              | `string`  | Transport to use for the gRPC server.                                      | `"tcp"`           | no
-`max_recv_msg_size`      | `string`  | Maximum size of messages the server will accept.                           | `"4MiB"`          | no
-`max_concurrent_streams` | `number`  | Limit the number of concurrent streaming RPC calls.                        |                   | no
-`read_buffer_size`       | `string`  | Size of the read buffer the gRPC server will use for reading from clients. | `"512KiB"`        | no
-`write_buffer_size`      | `string`  | Size of the write buffer the gRPC server will use for writing to clients.  |                   | no
-`include_metadata`       | `boolean` | Propagate incoming connection metadata to downstream consumers.            |                   | no
-`auth`              | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests.     |               | no
+| Name                     | Type                       | Description                                                                  | Default           | Required |
+| ------------------------ | -------------------------- | ---------------------------------------------------------------------------- | ----------------- | -------- |
+| `endpoint`               | `string`                   | `host:port` to listen for traffic on.                                        | `"0.0.0.0:14250"` | no       |
+| `transport`              | `string`                   | Transport to use for the gRPC server.                                        | `"tcp"`           | no       |
+| `max_recv_msg_size`      | `string`                   | Maximum size of messages the server will accept.                             | `"4MiB"`          | no       |
+| `max_concurrent_streams` | `number`                   | Limit the number of concurrent streaming RPC calls.                          |                   | no       |
+| `read_buffer_size`       | `string`                   | Size of the read buffer the gRPC server will use for reading from clients.   | `"512KiB"`        | no       |
+| `write_buffer_size`      | `string`                   | Size of the write buffer the gRPC server will use for writing to clients.    |                   | no       |
+| `include_metadata`       | `boolean`                  | Propagate incoming connection metadata to downstream consumers.              |                   | no       |
+| `auth`                   | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests. |                   | no       |
 
 ### keepalive block
 
@@ -143,13 +143,13 @@ servers.
 
 The following arguments are supported:
 
-Name                       | Type       | Description                                                                          | Default      | Required
----------------------------|------------|--------------------------------------------------------------------------------------|--------------|---------
-`max_connection_idle`      | `duration` | Maximum age for idle connections.                                                    | `"infinity"` | no
-`max_connection_age`       | `duration` | Maximum age for non-idle connections.                                                | `"infinity"` | no
-`max_connection_age_grace` | `duration` | Time to wait before forcibly closing connections.                                    | `"infinity"` | no
-`time`                     | `duration` | How often to ping inactive clients to check for liveness.                            | `"2h"`       | no
-`timeout`                  | `duration` | Time to wait before closing inactive clients that do not respond to liveness checks. | `"20s"`      | no
+| Name                       | Type       | Description                                                                          | Default      | Required |
+| -------------------------- | ---------- | ------------------------------------------------------------------------------------ | ------------ | -------- |
+| `max_connection_idle`      | `duration` | Maximum age for idle connections.                                                    | `"infinity"` | no       |
+| `max_connection_age`       | `duration` | Maximum age for non-idle connections.                                                | `"infinity"` | no       |
+| `max_connection_age_grace` | `duration` | Time to wait before forcibly closing connections.                                    | `"infinity"` | no       |
+| `time`                     | `duration` | How often to ping inactive clients to check for liveness.                            | `"2h"`       | no       |
+| `timeout`                  | `duration` | Time to wait before closing inactive clients that do not respond to liveness checks. | `"20s"`      | no       |
 
 ### enforcement_policy block
 
@@ -159,10 +159,10 @@ configured policy.
 
 The following arguments are supported:
 
-Name                    | Type       | Description                                                             | Default | Required
-------------------------|------------|-------------------------------------------------------------------------|---------|---------
-`min_time`              | `duration` | Minimum time clients should wait before sending a keepalive ping.       | `"5m"`  | no
-`permit_without_stream` | `boolean`  | Allow clients to send keepalive pings when there are no active streams. | `false` | no
+| Name                    | Type       | Description                                                             | Default | Required |
+| ----------------------- | ---------- | ----------------------------------------------------------------------- | ------- | -------- |
+| `min_time`              | `duration` | Minimum time clients should wait before sending a keepalive ping.       | `"5m"`  | no       |
+| `permit_without_stream` | `boolean`  | Allow clients to send keepalive pings when there are no active streams. | `false` | no       |
 
 ### source block
 
@@ -171,11 +171,11 @@ that is served by the servers specified in the `grpc` and `http` blocks.
 
 The following arguments are supported:
 
-Name              | Type       | Description                                                                     | Default | Required
-------------------|------------|---------------------------------------------------------------------------------|---------|---------
-`file`            | `string`   | A local file containing a Jaeger remote sampling document.                      | `""`    | no
-`reload_interval` | `duration` | The interval at which to reload the specified file. Leave at 0 to never reload. | `0`     | no
-`content`         | `string`   | A string containing the Jaeger remote sampling contents directly.               | `""`    | no
+| Name              | Type       | Description                                                                     | Default | Required |
+| ----------------- | ---------- | ------------------------------------------------------------------------------- | ------- | -------- |
+| `file`            | `string`   | A local file containing a Jaeger remote sampling document.                      | `""`    | no       |
+| `reload_interval` | `duration` | The interval at which to reload the specified file. Leave at 0 to never reload. | `0`     | no       |
+| `content`         | `string`   | A string containing the Jaeger remote sampling contents directly.               | `""`    | no       |
 
 Exactly one of the `file` argument, `content` argument or `remote` block must be specified.
 
@@ -185,16 +185,16 @@ The `remote` block configures the gRPC client used by the component.
 
 The following arguments are supported:
 
-Name                | Type                       | Description                                                                      | Default       | Required
---------------------|----------------------------|----------------------------------------------------------------------------------|---------------|---------
-`endpoint`          | `string`                   | `host:port` to send telemetry data to.                                           |               | yes
-`compression`       | `string`                   | Compression mechanism to use for requests.                                       | `"gzip"`      | no
-`read_buffer_size`  | `string`                   | Size of the read buffer the gRPC client to use for reading server responses.     |               | no
-`write_buffer_size` | `string`                   | Size of the write buffer the gRPC client to use for writing requests.            | `"512KiB"`    | no
-`wait_for_ready`    | `boolean`                  | Waits for gRPC connection to be in the `READY` state before sending data.        | `false`       | no
-`headers`           | `map(string)`              | Additional headers to send with the request.                                     | `{}`          | no
-`authority`         | `string`                   | Overrides the default `:authority` header in gRPC requests from the gRPC client. |               | no
-`auth`              | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests.     |               | no
+| Name                | Type                       | Description                                                                      | Default    | Required |
+| ------------------- | -------------------------- | -------------------------------------------------------------------------------- | ---------- | -------- |
+| `endpoint`          | `string`                   | `host:port` to send telemetry data to.                                           |            | yes      |
+| `compression`       | `string`                   | Compression mechanism to use for requests.                                       | `"gzip"`   | no       |
+| `read_buffer_size`  | `string`                   | Size of the read buffer the gRPC client to use for reading server responses.     |            | no       |
+| `write_buffer_size` | `string`                   | Size of the write buffer the gRPC client to use for writing requests.            | `"512KiB"` | no       |
+| `wait_for_ready`    | `boolean`                  | Waits for gRPC connection to be in the `READY` state before sending data.        | `false`    | no       |
+| `headers`           | `map(string)`              | Additional headers to send with the request.                                     | `{}`       | no       |
+| `authority`         | `string`                   | Overrides the default `:authority` header in gRPC requests from the gRPC client. |            | no       |
+| `auth`              | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests.     |            | no       |
 
 {{< docs/shared lookup="reference/components/otelcol-compression-field.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -204,8 +204,8 @@ Name                | Type                       | Description                  
 
 An HTTP proxy can be configured through the following environment variables:
 
-* `HTTPS_PROXY`
-* `NO_PROXY`
+- `HTTPS_PROXY`
+- `NO_PROXY`
 
 The `HTTPS_PROXY` environment variable specifies a URL to use for proxying
 requests. Connections to the proxy are established via [the `HTTP CONNECT`
@@ -238,11 +238,11 @@ connections.
 
 The following arguments are supported:
 
-Name                    | Type       | Description                                                                                | Default | Required
-------------------------|------------|--------------------------------------------------------------------------------------------|---------|---------
-`ping_wait`             | `duration` | How often to ping the server after no activity.                                            |         | no
-`ping_response_timeout` | `duration` | Time to wait before closing inactive connections if the server does not respond to a ping. |         | no
-`ping_without_stream`   | `boolean`  | Send pings even if there is no active stream request.                                      |         | no
+| Name                    | Type       | Description                                                                                | Default | Required |
+| ----------------------- | ---------- | ------------------------------------------------------------------------------------------ | ------- | -------- |
+| `ping_wait`             | `duration` | How often to ping the server after no activity.                                            |         | no       |
+| `ping_response_timeout` | `duration` | Time to wait before closing inactive connections if the server does not respond to a ping. |         | no       |
+| `ping_without_stream`   | `boolean`  | Send pings even if there is no active stream request.                                      |         | no       |
 
 ### debug_metrics block
 
@@ -277,7 +277,6 @@ otelcol.extension.jaeger_remote_sampling "example" {
 ```
 
 ### Serving from another component
-
 
 This example uses the output of a component to determine what sampling
 rules to serve:

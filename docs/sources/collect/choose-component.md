@@ -6,7 +6,7 @@ menuTitle: Choose a component
 weight: 100
 ---
 
-# Choose a  {{< param "FULL_PRODUCT_NAME" >}} component
+# Choose a {{< param "FULL_PRODUCT_NAME" >}} component
 
 [Components][components] are the building blocks of {{< param "FULL_PRODUCT_NAME" >}}, and there is a [large number of them][components-ref].
 The components you select and configure depend on the telemetry signals you want to collect.
@@ -24,7 +24,7 @@ For example, you can get metrics for a Linux host using `prometheus.exporter.uni
 You can also scrape any Prometheus endpoint using `prometheus.scrape`.
 Use `discovery.*` components to find targets for `prometheus.scrape`.
 
-[Grafana Infrastructure Observability]:https://grafana.com/docs/grafana-cloud/monitor-infrastructure/
+[Grafana Infrastructure Observability]: https://grafana.com/docs/grafana-cloud/monitor-infrastructure/
 
 ## Metrics for applications
 
@@ -36,7 +36,7 @@ For example, use `otelcol.receiver.otlp` to collect metrics from OpenTelemetry-i
 If your application is already instrumented with Prometheus metrics, there is no need to use `otelcol.*` components.
 Use `prometheus.*` components for the entire pipeline and send the metrics using `prometheus.remote_write`.
 
-[Grafana Application Observability]:https://grafana.com/docs/grafana-cloud/monitor-applications/application-observability/introduction/
+[Grafana Application Observability]: https://grafana.com/docs/grafana-cloud/monitor-applications/application-observability/introduction/
 
 ## Logs from infrastructure
 
@@ -58,7 +58,7 @@ All application telemetry must follow the [OpenTelemetry semantic conventions][O
 
 For example, if your application runs on Kubernetes, every trace, log, and metric can have a `k8s.namespace.name` resource attribute.
 
-[OTel-semantics]:https://opentelemetry.io/docs/concepts/semantic-conventions/
+[OTel-semantics]: https://opentelemetry.io/docs/concepts/semantic-conventions/
 
 ## Traces
 

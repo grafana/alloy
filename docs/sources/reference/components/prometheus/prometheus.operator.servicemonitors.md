@@ -32,30 +32,30 @@ prometheus.operator.servicemonitors "LABEL" {
 
 The following arguments are supported:
 
-Name | Type | Description                                                                                                                | Default   | Required
----- | ---- |----------------------------------------------------------------------------------------------------------------------------|-----------| --------
-`forward_to` | `list(MetricsReceiver)` | List of receivers to send scraped metrics to.                                                                              |           | yes
-`namespaces` | `list(string)` | List of namespaces to search for ServiceMonitor resources. If not specified, all namespaces will be searched.              |           | no
-`kubernetes_role` | `string` | The Kubernetes role used for discovery. Supports `endpoints` or `endpointslice`. | `endpoints` | no
-`informer_sync_timeout` | `duration` | Timeout for initial sync of ServiceMonitor resources. | `1m` | no
+| Name                    | Type                    | Description                                                                                                   | Default     | Required |
+| ----------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------- | ----------- | -------- |
+| `forward_to`            | `list(MetricsReceiver)` | List of receivers to send scraped metrics to.                                                                 |             | yes      |
+| `namespaces`            | `list(string)`          | List of namespaces to search for ServiceMonitor resources. If not specified, all namespaces will be searched. |             | no       |
+| `kubernetes_role`       | `string`                | The Kubernetes role used for discovery. Supports `endpoints` or `endpointslice`.                              | `endpoints` | no       |
+| `informer_sync_timeout` | `duration`              | Timeout for initial sync of ServiceMonitor resources.                                                         | `1m`        | no       |
 
 ## Blocks
 
 The following blocks are supported inside the definition of `prometheus.operator.servicemonitors`:
 
-Hierarchy | Block | Description | Required
---------- | ----- | ----------- | --------
-client | [client][] | Configures Kubernetes client used to find ServiceMonitors. | no
-client > basic_auth | [basic_auth][] | Configure basic authentication to the Kubernetes API. | no
-client > authorization | [authorization][] | Configure generic authorization to the Kubernetes API. | no
-client > oauth2 | [oauth2][] | Configure OAuth2 for authenticating to the Kubernetes API. | no
-client > oauth2 > tls_config | [tls_config][] | Configure TLS settings for connecting to the Kubernetes API. | no
-client > tls_config | [tls_config][] | Configure TLS settings for connecting to the Kubernetes API. | no
-rule | [rule][] | Relabeling rules to apply to discovered targets. | no
-scrape | [scrape][] | Default scrape configuration to apply to discovered targets. | no
-selector | [selector][] | Label selector for which ServiceMonitors to discover. | no
-selector > match_expression | [match_expression][] | Label selector expression for which ServiceMonitors to discover. | no
-clustering | [clustering][] | Configure the component for when {{< param "PRODUCT_NAME" >}} is running in clustered mode. | no
+| Hierarchy                    | Block                | Description                                                                                 | Required |
+| ---------------------------- | -------------------- | ------------------------------------------------------------------------------------------- | -------- |
+| client                       | [client][]           | Configures Kubernetes client used to find ServiceMonitors.                                  | no       |
+| client > basic_auth          | [basic_auth][]       | Configure basic authentication to the Kubernetes API.                                       | no       |
+| client > authorization       | [authorization][]    | Configure generic authorization to the Kubernetes API.                                      | no       |
+| client > oauth2              | [oauth2][]           | Configure OAuth2 for authenticating to the Kubernetes API.                                  | no       |
+| client > oauth2 > tls_config | [tls_config][]       | Configure TLS settings for connecting to the Kubernetes API.                                | no       |
+| client > tls_config          | [tls_config][]       | Configure TLS settings for connecting to the Kubernetes API.                                | no       |
+| rule                         | [rule][]             | Relabeling rules to apply to discovered targets.                                            | no       |
+| scrape                       | [scrape][]           | Default scrape configuration to apply to discovered targets.                                | no       |
+| selector                     | [selector][]         | Label selector for which ServiceMonitors to discover.                                       | no       |
+| selector > match_expression  | [match_expression][] | Label selector expression for which ServiceMonitors to discover.                            | no       |
+| clustering                   | [clustering][]       | Configure the component for when {{< param "PRODUCT_NAME" >}} is running in clustered mode. | no       |
 
 The `>` symbol indicates deeper levels of nesting. For example, `client >
 basic_auth` refers to a `basic_auth` block defined
@@ -79,25 +79,26 @@ If the `client` block isn't provided, the default in-cluster configuration with 
 
 The following arguments are supported:
 
-Name                     | Type                | Description                                                   | Default | Required
--------------------------|---------------------|---------------------------------------------------------------|---------|---------
-`api_server`             | `string`            | URL of the Kubernetes API server.                             |         | no
-`kubeconfig_file`        | `string`            | Path of the `kubeconfig` file to use for connecting to Kubernetes. |    | no
-`bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.          |         | no
-`bearer_token`           | `secret`            | Bearer token to authenticate with.                            |         | no
-`enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                      | `true`  | no
-`follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.  | `true`  | no
-`proxy_url`              | `string`            | HTTP proxy to send requests through.                          |         | no
-`no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. | | no
-`proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.         | `false` | no
-`proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests. |         | no
+| Name                     | Type                | Description                                                                                      | Default | Required |
+| ------------------------ | ------------------- | ------------------------------------------------------------------------------------------------ | ------- | -------- |
+| `api_server`             | `string`            | URL of the Kubernetes API server.                                                                |         | no       |
+| `kubeconfig_file`        | `string`            | Path of the `kubeconfig` file to use for connecting to Kubernetes.                               |         | no       |
+| `bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                             |         | no       |
+| `bearer_token`           | `secret`            | Bearer token to authenticate with.                                                               |         | no       |
+| `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`  | no       |
+| `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`  | no       |
+| `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |         | no       |
+| `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |         | no       |
+| `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false` | no       |
+| `proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |         | no       |
 
- At most, one of the following can be provided:
- - [`bearer_token` argument][client].
- - [`bearer_token_file` argument][client].
- - [`basic_auth` block][basic_auth].
- - [`authorization` block][authorization].
- - [`oauth2` block][oauth2].
+At most, one of the following can be provided:
+
+- [`bearer_token` argument][client].
+- [`bearer_token_file` argument][client].
+- [`basic_auth` block][basic_auth].
+- [`authorization` block][authorization].
+- [`oauth2` block][oauth2].
 
 {{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -131,9 +132,9 @@ The `selector` block describes a Kubernetes label selector for ServiceMonitors.
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`match_labels` | `map(string)` | Label keys and values used to discover resources. | `{}` | no
+| Name           | Type          | Description                                       | Default | Required |
+| -------------- | ------------- | ------------------------------------------------- | ------- | -------- |
+| `match_labels` | `map(string)` | Label keys and values used to discover resources. | `{}`    | no       |
 
 When the `match_labels` argument is empty, all ServiceMonitor resources will be matched.
 
@@ -144,26 +145,26 @@ ServiceMonitors discovery.
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`key` | `string` | The label name to match against. | | yes
-`operator` | `string` | The operator to use when matching. | | yes
-`values`| `list(string)` | The values used when matching. | | no
+| Name       | Type           | Description                        | Default | Required |
+| ---------- | -------------- | ---------------------------------- | ------- | -------- |
+| `key`      | `string`       | The label name to match against.   |         | yes      |
+| `operator` | `string`       | The operator to use when matching. |         | yes      |
+| `values`   | `list(string)` | The values used when matching.     |         | no       |
 
 The `operator` argument must be one of the following strings:
 
-* `"In"`
-* `"NotIn"`
-* `"Exists"`
-* `"DoesNotExist"`
+- `"In"`
+- `"NotIn"`
+- `"Exists"`
+- `"DoesNotExist"`
 
 If there are multiple `match_expressions` blocks inside of a `selector` block, they are combined together with AND clauses.
 
 ### clustering block
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`enabled` | `bool` | Enables sharing targets with other cluster nodes. | `false` | yes
+| Name      | Type   | Description                                       | Default | Required |
+| --------- | ------ | ------------------------------------------------- | ------- | -------- |
+| `enabled` | `bool` | Enables sharing targets with other cluster nodes. | `false` | yes      |
 
 When {{< param "PRODUCT_NAME" >}} is using [using clustering][], and `enabled` is set to true,
 then this component instance opts-in to participating in
@@ -259,6 +260,7 @@ prometheus.operator.servicemonitors "services" {
     }
 }
 ```
+
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components
@@ -266,7 +268,6 @@ prometheus.operator.servicemonitors "services" {
 `prometheus.operator.servicemonitors` can accept arguments from the following components:
 
 - Components that export [Prometheus `MetricsReceiver`](../../../compatibility/#prometheus-metricsreceiver-exporters)
-
 
 {{< admonition type="note" >}}
 Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.

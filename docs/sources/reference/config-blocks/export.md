@@ -24,9 +24,9 @@ export "ARGUMENT_NAME" {
 
 The following arguments are supported:
 
-Name    | Type  | Description      | Default | Required
---------|-------|------------------|---------|---------
-`value` | `any` | Value to export. |         | yes
+| Name    | Type  | Description      | Default | Required |
+| ------- | ----- | ---------------- | ------- | -------- |
+| `value` | `any` | Value to export. |         | yes      |
 
 The `value` argument determines what the value of the export is.
 To expose an exported field of another component, set `value` to an expression that references that exported value.

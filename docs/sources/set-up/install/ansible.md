@@ -23,32 +23,33 @@ To add {{% param "PRODUCT_NAME" %}} to a host:
 
 1. Create a file named `alloy.yml` and add the following:
 
-    ```yaml
-    - name: Install Alloy
-      hosts: all
-      become: true
+   ```yaml
+   - name: Install Alloy
+     hosts: all
+     become: true
 
-      tasks:
-        - name: Install Alloy
-          ansible.builtin.include_role:
-            name: grafana.grafana.alloy
-          vars:
-            alloy_config: |
-              prometheus.scrape "default" {
-                targets = [{"__address__" = "localhost:12345"}]
-                forward_to = [prometheus.remote_write.prom.receiver]
-              }
-              prometheus.remote_write "prom" {
-                endpoint {
-                    url = "<YOUR_PROMETHEUS_PUSH_ENDPOINT>"
-                }
-              }
-    ```
+     tasks:
+       - name: Install Alloy
+         ansible.builtin.include_role:
+           name: grafana.grafana.alloy
+         vars:
+           alloy_config: |
+             prometheus.scrape "default" {
+               targets = [{"__address__" = "localhost:12345"}]
+               forward_to = [prometheus.remote_write.prom.receiver]
+             }
+             prometheus.remote_write "prom" {
+               endpoint {
+                   url = "<YOUR_PROMETHEUS_PUSH_ENDPOINT>"
+               }
+             }
+   ```
 
-    This snippet has a sample configuration to collect and send {{% param "PRODUCT_NAME" %}} metrics to Prometheus
+   This snippet has a sample configuration to collect and send {{% param "PRODUCT_NAME" %}} metrics to Prometheus
 
-    Replace the following:
-    - _`<YOUR_PROMETHEUS_PUSH_ENDPOINT>`_:  The Remote write endpoint of your Prometheus Instance.
+   Replace the following:
+
+   - _`<YOUR_PROMETHEUS_PUSH_ENDPOINT>`_: The Remote write endpoint of your Prometheus Instance.
 
 1. Run the Ansible playbook. Open a terminal window and run the following command from the Ansible playbook directory.
 

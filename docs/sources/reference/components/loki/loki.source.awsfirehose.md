@@ -16,18 +16,18 @@ The HTTP API exposed is compatible
 with the [Data Firehose HTTP Delivery API](https://docs.aws.amazon.com/firehose/latest/dev/httpdeliveryrequestresponse.html).
 Since the API model that Data Firehose uses to deliver data over HTTP is generic enough, the same component can be used to receive data from multiple origins:
 
-* [Amazon CloudWatch logs](https://docs.aws.amazon.com/firehose/latest/dev/writing-with-cloudwatch-logs.html)
-* [Amazon CloudWatch events](https://docs.aws.amazon.com/firehose/latest/dev/writing-with-cloudwatch-events.html)
-* Custom data through [DirectPUT requests](https://docs.aws.amazon.com/firehose/latest/dev/writing-with-sdk.html)
+- [Amazon CloudWatch logs](https://docs.aws.amazon.com/firehose/latest/dev/writing-with-cloudwatch-logs.html)
+- [Amazon CloudWatch events](https://docs.aws.amazon.com/firehose/latest/dev/writing-with-cloudwatch-events.html)
+- Custom data through [DirectPUT requests](https://docs.aws.amazon.com/firehose/latest/dev/writing-with-sdk.html)
 
 The component uses a heuristic to try to decode as much information as possible from each log record, and it falls back to writing the raw records to Loki.
 The decoding process goes as follows:
 
-* Data Firehose sends batched requests
-* Each record is treated individually
-* For each `record` received in each request:
-  * If the `record` comes from a [CloudWatch logs subscription filter](https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/SubscriptionFilters.html#DestinationKinesisExample), it's decoded and each logging event is written to Loki
-  * All other records are written raw to Loki
+- Data Firehose sends batched requests
+- Each record is treated individually
+- For each `record` received in each request:
+  - If the `record` comes from a [CloudWatch logs subscription filter](https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/SubscriptionFilters.html#DestinationKinesisExample), it's decoded and each logging event is written to Loki
+  - All other records are written raw to Loki
 
 The component exposes some internal labels, available for relabeling.
 The following tables describes internal labels available in records coming from any source.
@@ -63,7 +63,7 @@ loki.source.awsfirehose "<LABEL>" {
 
 The component starts an HTTP server on the configured port and address with the following endpoints:
 
-* `/awsfirehose/api/v1/push` - accepting `POST` requests compatible with [Data Firehose HTTP Specifications](https://docs.aws.amazon.com/firehose/latest/dev/httpdeliveryrequestresponse.html).
+- `/awsfirehose/api/v1/push` - accepting `POST` requests compatible with [Data Firehose HTTP Specifications](https://docs.aws.amazon.com/firehose/latest/dev/httpdeliveryrequestresponse.html).
 
 You can use the [X-Amz-Firehose-Common-Attributes](https://docs.aws.amazon.com/firehose/latest/dev/httpdeliveryrequestresponse.html) header to set extra static labels.
 You can configure the header in the **Parameters** section of the Data Firehose delivery stream configuration.
@@ -102,7 +102,7 @@ The `relabel_rules` field can make use of the `rules` export value from a [`loki
 You can use the following blocks with `loki.source.awsfirehose`:
 
 | Name           | Description                                        | Required |
-|----------------|----------------------------------------------------|----------|
+| -------------- | -------------------------------------------------- | -------- |
 | [`grpc`][grpc] | Configures the gRPC server that receives requests. | no       |
 | [`http`][http] | Configures the HTTP server that receives requests. | no       |
 
@@ -130,14 +130,14 @@ You can use the following blocks with `loki.source.awsfirehose`:
 The following are some of the metrics that are exposed when this component is used.
 
 {{< admonition type="note" >}}
-The metrics include labels  such as `status_code` where relevant, which you can use to measure request success rates.
+The metrics include labels such as `status_code` where relevant, which you can use to measure request success rates.
 {{< /admonition >}}
 
-* `loki_source_awsfirehose_batch_size` (histogram): Size (in units) of the number of records received per request.
-* `loki_source_awsfirehose_invalid_static_labels_errors` (counter): Count number of errors while processing Data Firehose static labels.
-* `loki_source_awsfirehose_record_errors` (counter): Count of errors while decoding an individual record.
-* `loki_source_awsfirehose_records_received` (counter): Count of records received.
-* `loki_source_awsfirehose_request_errors` (counter): Count of errors while receiving a request.
+- `loki_source_awsfirehose_batch_size` (histogram): Size (in units) of the number of records received per request.
+- `loki_source_awsfirehose_invalid_static_labels_errors` (counter): Count number of errors while processing Data Firehose static labels.
+- `loki_source_awsfirehose_record_errors` (counter): Count of errors while decoding an individual record.
+- `loki_source_awsfirehose_records_received` (counter): Count of records received.
+- `loki_source_awsfirehose_request_errors` (counter): Count of errors while receiving a request.
 
 ## Example
 
@@ -169,8 +169,8 @@ loki.source.awsfirehose "loki_fh_receiver" {
 
 Replace the following:
 
-* _`<USERNAME>`_: Your username.
-* _`<PASSWORD_FILE>`_: Your password file.
+- _`<USERNAME>`_: Your username.
+- _`<PASSWORD_FILE>`_: Your password file.
 
 As another example, if you are receiving records that originated from a CloudWatch logs subscription, you can enrich each received entry by relabeling internal labels.
 The following configuration builds upon the one above but keeps the origin log stream and group as `log_stream` and `log_group`, respectively.
@@ -214,8 +214,8 @@ loki.relabel "logging_origin" {
 
 Replace the following:
 
-* _`<USERNAME>`_: Your username.
-* _`<PASSWORD_FILE>`_: Your password file.
+- _`<USERNAME>`_: Your username.
+- _`<PASSWORD_FILE>`_: Your password file.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
@@ -224,7 +224,6 @@ Replace the following:
 `loki.source.awsfirehose` can accept arguments from the following components:
 
 - Components that export [Loki `LogsReceiver`](../../../compatibility/#loki-logsreceiver-exporters)
-
 
 {{< admonition type="note" >}}
 Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.

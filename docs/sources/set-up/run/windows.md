@@ -17,9 +17,9 @@ To verify that {{< param "PRODUCT_NAME" >}} is running as a Windows Service:
 
 1. Open the Windows Services manager:
 
-    1. Right click on the Start Menu and select **Run**.
+   1. Right click on the Start Menu and select **Run**.
 
-    1. Type: `services.msc` and click **OK**.
+   1. Type: `services.msc` and click **OK**.
 
 1. Scroll down to find the **{{< param "PRODUCT_NAME" >}}** service and verify that the **Status** is **Running**.
 
@@ -31,9 +31,9 @@ To view the logs, perform the following steps:
 
 1. Open the Event Viewer:
 
-    1. Right click on the Start Menu and select **Run**.
+   1. Right click on the Start Menu and select **Run**.
 
-    1. Type `eventvwr` and click **OK**.
+   1. Type `eventvwr` and click **OK**.
 
 1. In the Event Viewer, click on **Windows Logs > Application**.
 

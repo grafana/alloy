@@ -13,7 +13,7 @@ title: otelcol.exporter.splunkhec
 `otelcol.exporter.splunkhec` accepts metrics and traces telemetry data from other `otelcol` components and sends it to Splunk HEC.
 
 {{< admonition type="note" >}}
-`otelcol.exporter.splunkhec` is a wrapper over the upstream OpenTelemetry Collector `splunkhec` exporter from the `otelcol-contrib`  distribution.
+`otelcol.exporter.splunkhec` is a wrapper over the upstream OpenTelemetry Collector `splunkhec` exporter from the `otelcol-contrib` distribution.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
 {{< /admonition >}}
 
@@ -41,18 +41,17 @@ fully through child blocks.
 
 The following blocks are supported inside the definition of `otelcol.exporter.splunkhec`:
 
-Hierarchy                  | Block                         | Description                                                                | Required
----------------------------|-------------------------------|----------------------------------------------------------------------------|---------
-splunk                     | [splunk][]                    | Configures the Splunk HEC exporter.                                        | yes
-splunk->otel_to_hec_fields | [otel_to_hec_fields][]        | Configures mapping of Open Telemetry to HEC Fields.                        | no
-splunk->telemetry          | [telemetry][]                 | Configures the exporters telemetry.                                         | no
-splunk->heartbeat          | [heartbeat][]                 | Configures the exporters heartbeat settings.                                | no
-splunk->batcher            | [batcher][]                   | Configures batching requests based on a timeout and a minimum number of items. | no
-client                     | [client][]                    | Configures the HTTP client used to send data to Splunk HEC.                | yes
-retry_on_failure          | [retry_on_failure][] | Configures retry mechanism for failed requests.                                      | no
-queue                     | [queue][]            | Configures batching of data before sending.                                          | no
-debug_metrics             | [debug_metrics][]              | Configures the metrics that this component generates to monitor its state. | no
-
+| Hierarchy                  | Block                  | Description                                                                    | Required |
+| -------------------------- | ---------------------- | ------------------------------------------------------------------------------ | -------- |
+| splunk                     | [splunk][]             | Configures the Splunk HEC exporter.                                            | yes      |
+| splunk->otel_to_hec_fields | [otel_to_hec_fields][] | Configures mapping of Open Telemetry to HEC Fields.                            | no       |
+| splunk->telemetry          | [telemetry][]          | Configures the exporters telemetry.                                            | no       |
+| splunk->heartbeat          | [heartbeat][]          | Configures the exporters heartbeat settings.                                   | no       |
+| splunk->batcher            | [batcher][]            | Configures batching requests based on a timeout and a minimum number of items. | no       |
+| client                     | [client][]             | Configures the HTTP client used to send data to Splunk HEC.                    | yes      |
+| retry_on_failure           | [retry_on_failure][]   | Configures retry mechanism for failed requests.                                | no       |
+| queue                      | [queue][]              | Configures batching of data before sending.                                    | no       |
+| debug_metrics              | [debug_metrics][]      | Configures the metrics that this component generates to monitor its state.     | no       |
 
 [splunk]: #splunk-block
 [otel_to_hec_fields]: #otel_to_hec_fields-block
@@ -70,58 +69,55 @@ The `splunk` block configures Splunk HEC specific settings.
 
 The following arguments are supported:
 
-Name                       | Type     | Description                                                     | Default                       | Required
----------------------------|----------|-----------------------------------------------------------------|-------------------------------|---------
-`token`                      | `secret` | Splunk HEC Token.                                              |                               | yes
-`log_data_enabled`           | `bool`   | Enable sending logs from the exporter. One of `log_data_enabled` or `profiling_data_enabled` must be `true`.                         | `true`                        | no
-`profiling_data_enabled`     | `bool`   | Enable sending profiling data from the exporter. One of `log_data_enabled` or `profiling_data_enabled` must be `true`.             | `true`                        | no
-`source`                     | `string` | [Splunk source](https://docs.splunk.com/Splexicon:Source).      | `""`                          | no
-`source_type`                | `string` | [Splunk source sype](https://docs.splunk.com/Splexicon:Sourcetype). | `""`                          | no
-`index`                      | `string` | Splunk index name.                                               | `""`                          | no
-`disable_compression`        | `bool`   | Disable GZip compression.                                        | `false`                       | no
-`max_content_length_logs`    | `uint`   | Maximum log payload size in bytes. Must be less than 838860800 (~800MB).                               | `2097152`                     | no
-`max_content_length_metrics` | `uint`   | Maximum metric payload size in bytes. Must be less than 838860800 (~800MB).                           | `2097152`                     | no
-`max_content_length_traces`  | `uint`   | Maximum trace payload size in bytes. Must be less than 838860800 (~800MB).                           | `2097152`                     | no
-`max_event_size`             | `uint`   | Maximum event payload size in bytes. Must be less than 838860800 (~800MB).                            | `5242880`                     | no
-`splunk_app_name`            | `string` | Used to track telemetry for Splunk Apps by name.                | `Alloy`                       | no
-`splunk_app_version`         | `string` | Used to track telemetry by App version.                          | `""`                          | no
-`health_path`                | `string` | Path for the health API.                                         | `/services/collector/health'` | no
-`health_check_enabled`       | `bool`   | Used to verify Splunk HEC health on exporter startup.     | `true`                        | no
-`export_raw`                 | `bool`   | Send only the logs body when targeting HEC raw endpoint.         | `false`                       | no
-`use_multi_metrics_format`    | `bool`   | Use multi-metrics format to save space during ingestion.        | `false`                       | no
-
+| Name                         | Type     | Description                                                                                                            | Default                       | Required |
+| ---------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------- | ----------------------------- | -------- |
+| `token`                      | `secret` | Splunk HEC Token.                                                                                                      |                               | yes      |
+| `log_data_enabled`           | `bool`   | Enable sending logs from the exporter. One of `log_data_enabled` or `profiling_data_enabled` must be `true`.           | `true`                        | no       |
+| `profiling_data_enabled`     | `bool`   | Enable sending profiling data from the exporter. One of `log_data_enabled` or `profiling_data_enabled` must be `true`. | `true`                        | no       |
+| `source`                     | `string` | [Splunk source](https://docs.splunk.com/Splexicon:Source).                                                             | `""`                          | no       |
+| `source_type`                | `string` | [Splunk source sype](https://docs.splunk.com/Splexicon:Sourcetype).                                                    | `""`                          | no       |
+| `index`                      | `string` | Splunk index name.                                                                                                     | `""`                          | no       |
+| `disable_compression`        | `bool`   | Disable GZip compression.                                                                                              | `false`                       | no       |
+| `max_content_length_logs`    | `uint`   | Maximum log payload size in bytes. Must be less than 838860800 (~800MB).                                               | `2097152`                     | no       |
+| `max_content_length_metrics` | `uint`   | Maximum metric payload size in bytes. Must be less than 838860800 (~800MB).                                            | `2097152`                     | no       |
+| `max_content_length_traces`  | `uint`   | Maximum trace payload size in bytes. Must be less than 838860800 (~800MB).                                             | `2097152`                     | no       |
+| `max_event_size`             | `uint`   | Maximum event payload size in bytes. Must be less than 838860800 (~800MB).                                             | `5242880`                     | no       |
+| `splunk_app_name`            | `string` | Used to track telemetry for Splunk Apps by name.                                                                       | `Alloy`                       | no       |
+| `splunk_app_version`         | `string` | Used to track telemetry by App version.                                                                                | `""`                          | no       |
+| `health_path`                | `string` | Path for the health API.                                                                                               | `/services/collector/health'` | no       |
+| `health_check_enabled`       | `bool`   | Used to verify Splunk HEC health on exporter startup.                                                                  | `true`                        | no       |
+| `export_raw`                 | `bool`   | Send only the logs body when targeting HEC raw endpoint.                                                               | `false`                       | no       |
+| `use_multi_metrics_format`   | `bool`   | Use multi-metrics format to save space during ingestion.                                                               | `false`                       | no       |
 
 #### otel_to_hec_fields block
 
-Name                       | Type     | Description                                                     | Default                       | Required
----------------------------|----------|-----------------------------------------------------------------|-------------------------------|---------
-`severity_text`            | `string` | Maps severity text field to a specific HEC field.                |   `""`                        | no
-`severity_number`          | `string` | Maps severity number field to a specific HEC field.              |   `""`                        | no
+| Name              | Type     | Description                                         | Default | Required |
+| ----------------- | -------- | --------------------------------------------------- | ------- | -------- |
+| `severity_text`   | `string` | Maps severity text field to a specific HEC field.   | `""`    | no       |
+| `severity_number` | `string` | Maps severity number field to a specific HEC field. | `""`    | no       |
 
+#### heartbeat block
 
-#### heartbeat block    
-
-Name                       | Type     | Description                                                     | Default                       | Required
----------------------------|----------|-----------------------------------------------------------------|-------------------------------|---------
-`interval`                 | `time.Duration`    | Time interval for the heartbeat interval, in seconds.            |   `0s`                         | no
-`startup`                  | `bool`   | Send heartbeat events on exporter startup.                       |   `false`                        | no
-
+| Name       | Type            | Description                                           | Default | Required |
+| ---------- | --------------- | ----------------------------------------------------- | ------- | -------- |
+| `interval` | `time.Duration` | Time interval for the heartbeat interval, in seconds. | `0s`    | no       |
+| `startup`  | `bool`          | Send heartbeat events on exporter startup.            | `false` | no       |
 
 #### telemetry block
 
-Name                       | Type                  | Description                                                     | Default                       | Required
----------------------------|-----------------------|-----------------------------------------------------------------|-------------------------------|---------
-`enabled`                  | `bool`                | Enable telemetry inside the exporter.                            |   `false`                     | no
-`override_metrics_names`   | `map(string)`   | Override metrics for internal metrics in the exporter.           |                | no
+| Name                     | Type          | Description                                            | Default | Required |
+| ------------------------ | ------------- | ------------------------------------------------------ | ------- | -------- |
+| `enabled`                | `bool`        | Enable telemetry inside the exporter.                  | `false` | no       |
+| `override_metrics_names` | `map(string)` | Override metrics for internal metrics in the exporter. |         | no       |
 
 #### batcher block
 
-Name                       | Type                  | Description                                                     | Default                       | Required
----------------------------|-----------------------|-----------------------------------------------------------------|-------------------------------|---------
-`enabled`                  | `bool`                | Whether to not enqueue batches before sending to the consumerSender.                            |   `false`                     | no
-`flush_timeout`             | `time.Duration`       | The time after which a batch will be sent regardless of its size.    | `200ms`  | no
-`min_size_items`   | `uint`   |  The number of items at which the batch is sent regardless of the timeout.          |  `8192`              | no
-`max_size_items`   | `uint`   | Maximum number of batch items, if the batch exceeds this value, it will be broken up into smaller batches. Must be greater than or equal to min_size_items. Setting this value to zero disables the maximum size limit.          |  `0`           |  no
+| Name             | Type            | Description                                                                                                                                                                                                             | Default | Required |
+| ---------------- | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
+| `enabled`        | `bool`          | Whether to not enqueue batches before sending to the consumerSender.                                                                                                                                                    | `false` | no       |
+| `flush_timeout`  | `time.Duration` | The time after which a batch will be sent regardless of its size.                                                                                                                                                       | `200ms` | no       |
+| `min_size_items` | `uint`          | The number of items at which the batch is sent regardless of the timeout.                                                                                                                                               | `8192`  | no       |
+| `max_size_items` | `uint`          | Maximum number of batch items, if the batch exceeds this value, it will be broken up into smaller batches. Must be greater than or equal to min_size_items. Setting this value to zero disables the maximum size limit. | `0`     | no       |
 
 ### client block
 
@@ -129,18 +125,18 @@ The `client` block configures the HTTP client used by the component.
 
 The following arguments are supported:
 
-Name                      | Type       | Description                                                                 | Default | Required
---------------------------|------------|-----------------------------------------------------------------------------|---------|---------
-`endpoint`                | `string`   | The Splunk HEC endpoint to use.                                             |         | yes
-`read_buffer_size`        | `int`      | Size of the read buffer the HTTP client uses for reading server responses.  |   `0`      | no
-`write_buffer_size`       | `int`      | Size of the write buffer the HTTP client uses for writing requests.         |   `0`     | no
-`timeout`                 | `duration` | Time to wait before marking a request as failed.                            | `"15s"` | no
-`max_idle_conns`          | `int`      | Limits the number of idle HTTP connections the client can keep open.        |   `100`      | no
-`max_idle_conns_per_host` | `int`      | Limits the number of idle HTTP connections the host can keep open.          |   `2`      | no
-`max_conns_per_host`      | `int`      | Limits the total (dialing,active, and idle) number of connections per host. Zero means no limit |    `0`     | no
-`idle_conn_timeout`       | `duration` | Time to wait before an idle connection closes itself.                       | `"45s"` | no
-`disable_keep_alives`     | `bool`     | Disable HTTP keep-alive.                                                    |   `false`      | no
-`insecure_skip_verify`    | `bool`     | Ignores insecure server TLS certificates.                                   | `false` | no
+| Name                      | Type       | Description                                                                                     | Default | Required |
+| ------------------------- | ---------- | ----------------------------------------------------------------------------------------------- | ------- | -------- |
+| `endpoint`                | `string`   | The Splunk HEC endpoint to use.                                                                 |         | yes      |
+| `read_buffer_size`        | `int`      | Size of the read buffer the HTTP client uses for reading server responses.                      | `0`     | no       |
+| `write_buffer_size`       | `int`      | Size of the write buffer the HTTP client uses for writing requests.                             | `0`     | no       |
+| `timeout`                 | `duration` | Time to wait before marking a request as failed.                                                | `"15s"` | no       |
+| `max_idle_conns`          | `int`      | Limits the number of idle HTTP connections the client can keep open.                            | `100`   | no       |
+| `max_idle_conns_per_host` | `int`      | Limits the number of idle HTTP connections the host can keep open.                              | `2`     | no       |
+| `max_conns_per_host`      | `int`      | Limits the total (dialing,active, and idle) number of connections per host. Zero means no limit | `0`     | no       |
+| `idle_conn_timeout`       | `duration` | Time to wait before an idle connection closes itself.                                           | `"45s"` | no       |
+| `disable_keep_alives`     | `bool`     | Disable HTTP keep-alive.                                                                        | `false` | no       |
+| `insecure_skip_verify`    | `bool`     | Ignores insecure server TLS certificates.                                                       | `false` | no       |
 
 ### retry_on_failure block
 
@@ -152,7 +148,7 @@ The `retry_on_failure` block configures how failed requests to splunkhec are ret
 
 The `queue` block configures an in-memory buffer of batches before data is sent to the HTTP server.
 
-{{< docs/shared lookup="reference/components/otelcol-queue-block.md" source="alloy" version="<ALLOY_VERSION>" >}} 
+{{< docs/shared lookup="reference/components/otelcol-queue-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### debug_metrics block
 
@@ -162,9 +158,9 @@ The `queue` block configures an in-memory buffer of batches before data is sent 
 
 The following fields are exported and can be referenced by other components:
 
-Name    | Type               | Description
---------|--------------------|-----------------------------------------------------------------
-`input` | `otelcol.Consumer` | A value other components can use to send telemetry data to.
+| Name    | Type               | Description                                                 |
+| ------- | ------------------ | ----------------------------------------------------------- |
+| `input` | `otelcol.Consumer` | A value other components can use to send telemetry data to. |
 
 `input` accepts `otelcol.Consumer` data for any telemetry signal (metrics, logs, or traces).
 
@@ -178,7 +174,7 @@ Name    | Type               | Description
 
 ## Example
 
-### Open Telemetry Receiver 
+### Open Telemetry Receiver
 
 This example forwards metrics, logs and traces send to the `otelcol.receiver.otlp.default` receiver to the Splunk HEC exporter.
 
@@ -242,6 +238,7 @@ z
 ```
 
 ### Forward Prometheus Metrics
+
 This example forwards Prometheus metrics from {{< param "PRODUCT_NAME" >}} through a receiver for conversion to Open Telemetry format before finally sending them to splunkhec.
 
 ```alloy

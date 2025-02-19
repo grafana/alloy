@@ -44,8 +44,8 @@ If you omit `groups`, all containers owned by the requesting account are scraped
 
 `role` can be set to:
 
-* `"container"` to discover virtual machines (SmartOS zones, lx/KVM/bhyve branded zones) running on Triton.
-* `"cn"` to discover compute nodes (servers/global zones) making up the Triton infrastructure.
+- `"container"` to discover virtual machines (SmartOS zones, lx/KVM/bhyve branded zones) running on Triton.
+- `"cn"` to discover compute nodes (servers/global zones) making up the Triton infrastructure.
 
 ## Blocks
 
@@ -73,17 +73,17 @@ The following fields are exported and can be referenced by other components:
 
 When `role` is set to `"container"`, each target includes the following labels:
 
-* `__meta_triton_groups`: The list of groups belonging to the target joined by a comma separator.
-* `__meta_triton_machine_alias`: The alias of the target container.
-* `__meta_triton_machine_brand`: The brand of the target container.
-* `__meta_triton_machine_id`: The UUID of the target container.
-* `__meta_triton_machine_image`: The target container's image type.
-* `__meta_triton_server_id`: The server UUID the target container is running on.
+- `__meta_triton_groups`: The list of groups belonging to the target joined by a comma separator.
+- `__meta_triton_machine_alias`: The alias of the target container.
+- `__meta_triton_machine_brand`: The brand of the target container.
+- `__meta_triton_machine_id`: The UUID of the target container.
+- `__meta_triton_machine_image`: The target container's image type.
+- `__meta_triton_server_id`: The server UUID the target container is running on.
 
 When `role` is set to `"cn"` each target includes the following labels:
 
-* `__meta_triton_machine_alias`: The hostname of the target. Requires triton-cmon 1.7.0 or newer.
-* `__meta_triton_machine_id`: The UUID of the target.
+- `__meta_triton_machine_alias`: The hostname of the target. Requires triton-cmon 1.7.0 or newer.
+- `__meta_triton_machine_id`: The UUID of the target.
 
 ## Component health
 
@@ -126,12 +126,12 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-* _`<TRITON_ACCOUNT>`_: Your Triton account.
-* _`<TRITON_DNS_SUFFIX>`_: Your Triton DNS suffix.
-* _`<TRITON_ENDPOINT>`_: Your Triton endpoint.
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+- _`<TRITON_ACCOUNT>`_: Your Triton account.
+- _`<TRITON_DNS_SUFFIX>`_: Your Triton DNS suffix.
+- _`<TRITON_ENDPOINT>`_: Your Triton endpoint.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

@@ -21,7 +21,7 @@ To verify the default prefix for Homebrew on your computer, open a terminal wind
 
 ## Before you begin
 
-* Install [Homebrew][] on your computer.
+- Install [Homebrew][] on your computer.
 
 ## Install
 
@@ -65,8 +65,8 @@ brew uninstall grafana/grafana/alloy
 
 ## Next steps
 
-* [Run {{< param "PRODUCT_NAME" >}}][Run]
-* [Configure {{< param "PRODUCT_NAME" >}}][Configure]
+- [Run {{< param "PRODUCT_NAME" >}}][Run]
+- [Configure {{< param "PRODUCT_NAME" >}}][Configure]
 
 [Homebrew]: https://brew.sh
 [Run]: ../../run/macos/

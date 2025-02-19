@@ -49,10 +49,10 @@ The following fields are exported and can be referenced by other components:
 
 The following meta labels are available on targets and can be used by the discovery.relabel component
 
-* `__meta_nerve_endpoint_host`: The host of the endpoint.
-* `__meta_nerve_endpoint_name`: The name of the endpoint.
-* `__meta_nerve_endpoint_port`: The port of the endpoint.
-* `__meta_nerve_path`: The full path to the endpoint node in Zookeeper.
+- `__meta_nerve_endpoint_host`: The host of the endpoint.
+- `__meta_nerve_endpoint_name`: The name of the endpoint.
+- `__meta_nerve_endpoint_port`: The port of the endpoint.
+- `__meta_nerve_path`: The full path to the endpoint node in Zookeeper.
 
 ## Component health
 
@@ -92,9 +92,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

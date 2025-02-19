@@ -24,8 +24,8 @@ To change the configuration file used by the service, perform the following step
 
 1. Edit the environment file for the service:
 
-   * Debian or Ubuntu: edit `/etc/default/alloy`
-   * RHEL/Fedora or SUSE/openSUSE: edit `/etc/sysconfig/alloy`
+   - Debian or Ubuntu: edit `/etc/default/alloy`
+   - RHEL/Fedora or SUSE/openSUSE: edit `/etc/sysconfig/alloy`
 
 1. Change the contents of the `CONFIG_FILE` environment variable to point at the new configuration file.
 
@@ -39,14 +39,14 @@ To change the configuration file used by the service, perform the following step
 
 By default, the {{< param "PRODUCT_NAME" >}} service launches with the [run][] command, passing the following flags:
 
-* `--storage.path=/var/lib/alloy`
+- `--storage.path=/var/lib/alloy`
 
 To pass additional command-line flags to the {{< param "PRODUCT_NAME" >}} binary, perform the following steps:
 
 1. Edit the environment file for the service:
 
-   * Debian-based systems: edit `/etc/default/alloy`
-   * RedHat or SUSE-based systems: edit `/etc/sysconfig/alloy`
+   - Debian-based systems: edit `/etc/default/alloy`
+   - RedHat or SUSE-based systems: edit `/etc/sysconfig/alloy`
 
 1. Change the contents of the `CUSTOM_ARGS` environment variable to specify
    command-line flags to pass.
@@ -77,10 +77,10 @@ To expose the UI to other machines, complete the following steps:
 
    Replace the following:
 
-   * _`<LISTEN_ADDR>`_: An IP address which other machines on the network have access to.
+   - _`<LISTEN_ADDR>`_: An IP address which other machines on the network have access to.
      For example, the IP address of the machine {{< param "PRODUCT_NAME" >}} is running on.
 
      To listen on all interfaces, replace _`<LISTEN_ADDR>`_ with `0.0.0.0`.
 
-[run]:../../reference/cli/run/
+[run]: ../../reference/cli/run/
 [UI]: ../../troubleshoot/debug/#alloy-ui
