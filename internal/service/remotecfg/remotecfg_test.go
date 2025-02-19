@@ -100,7 +100,7 @@ func TestGoodBadGood(t *testing.T) {
 	// As the API response was successful, verify that the service has loaded
 	// the valid response.
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		assert.Equal(c, getHash([]byte(cfgGood)), env.svc.getCfgHash())
+		assert.Equal(c, getHash([]byte(cfgGood)), env.svc.getLastLoadedCfgHash())
 	}, time.Second, 10*time.Millisecond)
 
 	// Update the response returned by the API to an invalid configuration.
@@ -118,7 +118,7 @@ func TestGoodBadGood(t *testing.T) {
 	}, 1*time.Second, 10*time.Millisecond)
 
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		assert.Equal(c, getHash([]byte(cfgBad)), env.svc.getCfgHash())
+		assert.Equal(c, getHash([]byte(cfgBad)), env.svc.getLastLoadedCfgHash())
 	}, 1*time.Second, 10*time.Millisecond)
 
 	// Update the response returned by the API to the previous "good"
@@ -129,7 +129,7 @@ func TestGoodBadGood(t *testing.T) {
 
 	// Verify that the service has updated the hash.
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		assert.Equal(c, getHash([]byte(cfgGood)), env.svc.getCfgHash())
+		assert.Equal(c, getHash([]byte(cfgGood)), env.svc.getLastLoadedCfgHash())
 	}, 1*time.Second, 10*time.Millisecond)
 
 	cancel()
@@ -168,7 +168,7 @@ func TestAPIResponse(t *testing.T) {
 	// As the API response was successful, verify that the service has loaded
 	// the valid response.
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		assert.Equal(c, getHash([]byte(cfg1)), env.svc.getCfgHash())
+		assert.Equal(c, getHash([]byte(cfg1)), env.svc.getLastLoadedCfgHash())
 	}, time.Second, 10*time.Millisecond)
 
 	// Update the response returned by the API.
@@ -178,7 +178,7 @@ func TestAPIResponse(t *testing.T) {
 
 	// Verify that the service has loaded the updated response.
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		assert.Equal(c, getHash([]byte(cfg2)), env.svc.getCfgHash())
+		assert.Equal(c, getHash([]byte(cfg2)), env.svc.getLastLoadedCfgHash())
 	}, 1*time.Second, 10*time.Millisecond)
 
 	cancel()
@@ -216,7 +216,7 @@ func TestAPIResponseNotModified(t *testing.T) {
 	// As the API response was successful, verify that the service has loaded
 	// the valid response.
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		assert.Equal(c, getHash([]byte(cfg1)), env.svc.getCfgHash())
+		assert.Equal(c, getHash([]byte(cfg1)), env.svc.getLastLoadedCfgHash())
 	}, time.Second, 10*time.Millisecond)
 
 	// Update the response returned by the API.
@@ -226,7 +226,7 @@ func TestAPIResponseNotModified(t *testing.T) {
 
 	// Verify that the service has loaded the updated response.
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		assert.Equal(c, getHash([]byte(cfg1)), env.svc.getCfgHash())
+		assert.Equal(c, getHash([]byte(cfg1)), env.svc.getLastLoadedCfgHash())
 	}, 1*time.Second, 10*time.Millisecond)
 
 	cancel()

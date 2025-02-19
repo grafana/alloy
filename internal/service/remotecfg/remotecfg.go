@@ -296,7 +296,7 @@ func (s *Service) Update(newConfig any) error {
 		s.args.HTTPClientConfig = config.CloneDefaultHTTPClientConfig()
 		s.mut.Unlock()
 
-		s.setCfgHash("")
+		s.setLastLoadedCfgHash("")
 		return nil
 	}
 
@@ -397,7 +397,7 @@ func (s *Service) fetchRemote() error {
 
 	// API returned the same configuration as the last one we loaded, no need to reload.
 	newConfigHash := getHash(b)
-	if s.getCfgHash() == newConfigHash {
+	if s.getLastLoadedCfgHash() == newConfigHash {
 		level.Debug(s.opts.Logger).Log("msg", "skipping over API response since it matched the last loaded one")
 		return nil
 	}
@@ -479,7 +479,7 @@ func (s *Service) parseAndLoad(b []byte) error {
 	if len(b) == 0 {
 		return nil
 	}
-	s.setCfgHash(getHash(b))
+	s.setLastLoadedCfgHash(getHash(b))
 	file, err := ctrl.LoadSource(b, nil, s.opts.ConfigPath)
 	if err != nil {
 		return err
@@ -489,7 +489,7 @@ func (s *Service) parseAndLoad(b []byte) error {
 	return nil
 }
 
-func (s *Service) getCfgHash() string {
+func (s *Service) getLastLoadedCfgHash() string {
 	s.mut.RLock()
 	defer s.mut.RUnlock()
 
@@ -502,7 +502,7 @@ func (s *Service) setAstFile(f *ast.File) {
 	s.astFile = f
 }
 
-func (s *Service) setCfgHash(h string) {
+func (s *Service) setLastLoadedCfgHash(h string) {
 	s.mut.Lock()
 	defer s.mut.Unlock()
 	if s.metrics != nil {
