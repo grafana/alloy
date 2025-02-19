@@ -15,14 +15,14 @@ Statistics help Grafana better understand how {{< param "PRODUCT_NAME" >}} is us
 
 The usage information includes the following details:
 
-* A randomly generated, anonymous, unique ID (UUID).
-* Timestamp of when the UID was first generated.
-* Timestamp of when the report was created (by default, every four hours).
-* The version of {{< param "PRODUCT_NAME" >}}.
-* The operating system {{< param "PRODUCT_NAME" >}} is running on.
-* The system architecture {{< param "PRODUCT_NAME" >}} is running on.
-* A list of enabled [components][]
-* The method used to deploy {{< param "PRODUCT_NAME" >}}, for example Docker, Helm, or a Linux package.
+- A randomly generated, anonymous, unique ID (UUID).
+- Timestamp of when the UID was first generated.
+- Timestamp of when the report was created (by default, every four hours).
+- The version of {{< param "PRODUCT_NAME" >}}.
+- The operating system {{< param "PRODUCT_NAME" >}} is running on.
+- The system architecture {{< param "PRODUCT_NAME" >}} is running on.
+- A list of enabled [components][]
+- The method used to deploy {{< param "PRODUCT_NAME" >}}, for example Docker, Helm, or a Linux package.
 
 This list may change over time.
 All newly reported data is documented in the CHANGELOG.
@@ -34,6 +34,7 @@ You can use the `--disable-reporting` [command line flag][] to disable the repor
 ### Opt-out of data collection with Ansible
 
 Example:
+
 ```
 - name: Install Alloy
   hosts: all

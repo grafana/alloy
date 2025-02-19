@@ -11,33 +11,33 @@ weight: 100
 
 The {{< param "PRODUCT_NAME" >}} syntax uses the following types for its values:
 
-* `number`: Any numeric value, like `3` or `3.14`.
-* `string`: A sequence of Unicode characters representing text, like `"Hello, world!"`.
-* `bool`: A boolean value, either `true` or `false`.
-* `array`: A sequence of values, like `[1, 2, 3]`. Elements within the list are indexed by whole numbers, starting with zero.
-* `object`: A group of values identified by named labels, like `{ name = "John" }`.
-* `function`: A value representing a routine that runs with arguments to compute another value, like `sys.env("HOME")`.
+- `number`: Any numeric value, like `3` or `3.14`.
+- `string`: A sequence of Unicode characters representing text, like `"Hello, world!"`.
+- `bool`: A boolean value, either `true` or `false`.
+- `array`: A sequence of values, like `[1, 2, 3]`. Elements within the list are indexed by whole numbers, starting with zero.
+- `object`: A group of values identified by named labels, like `{ name = "John" }`.
+- `function`: A value representing a routine that runs with arguments to compute another value, like `sys.env("HOME")`.
   Functions take zero or more arguments as input and always return a single value as output.
-* `null`: A type that has no value.
+- `null`: A type that has no value.
 
 ## Naming convention
 
 In addition to the preceding types, the [component reference][] documentation uses the following conventions for referring to types:
 
-* `any`: A value of any type.
-* `map(T)`: an `object` with the value type `T`.
+- `any`: A value of any type.
+- `map(T)`: an `object` with the value type `T`.
   For example, `map(string)` is an object where all the values are strings.
   The key type of an object is always a string or an identifier converted into a string.
-* `list(T)`: an `array` with the value type`T`.
+- `list(T)`: an `array` with the value type`T`.
   For example, `list(string)` is an array where all the values are strings.
-* `duration`: a `string` denoting a duration of time, such as `"100ms"`, `"1h30m"`, `"10s"`.
+- `duration`: a `string` denoting a duration of time, such as `"100ms"`, `"1h30m"`, `"10s"`.
   Valid units are:
 
-  * `h` for hours.
-  * `m` for minutes.
-  * `s` for seconds.
-  * `ms` for milliseconds.
-  * `ns` for nanoseconds.
+  - `h` for hours.
+  - `m` for minutes.
+  - `s` for seconds.
+  - `ms` for milliseconds.
+  - `ns` for nanoseconds.
 
   You can combine values of descending units to add their values together. For example, `"1h30m"` is the same as `"90m"`.
 
@@ -64,7 +64,7 @@ A `\` in a string starts an escape sequence to represent a special character.
 The following table shows the supported escape sequences.
 
 | Sequence     | Replacement                                                                             |
-|--------------|-----------------------------------------------------------------------------------------|
+| ------------ | --------------------------------------------------------------------------------------- |
 | `\\`         | The `\` character `U+005C`                                                              |
 | `\a`         | The alert or bell character `U+0007`                                                    |
 | `\b`         | The backspace character `U+0008`                                                        |
@@ -82,7 +82,7 @@ The following table shows the supported escape sequences.
 
 ## Raw strings
 
-Raw strings are represented by sequences of Unicode characters surrounded by backticks ``` `` ```.
+Raw strings are represented by sequences of Unicode characters surrounded by backticks ` `` `.
 Raw strings don't support any escape sequences.
 
 ```alloy
@@ -159,11 +159,12 @@ If the key isn't a valid identifier, you must wrap it in double quotes like a st
 {{< admonition type="note" >}}
 Don't confuse objects with blocks.
 
-* An _object_ is a value assigned to an [Attribute][]. You **must** use commas between key-value pairs on separate lines.
-* A [Block][] is a named structural element composed of multiple attributes. You **must not** use commas between attributes.
+- An _object_ is a value assigned to an [Attribute][]. You **must** use commas between key-value pairs on separate lines.
+- A [Block][] is a named structural element composed of multiple attributes. You **must not** use commas between attributes.
 
 [Attribute]: ../../syntax/#attributes
 [Block]: ../../syntax/#blocks
+
 {{< /admonition >}}
 
 ## Functions

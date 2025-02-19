@@ -13,7 +13,7 @@ You can use these HTTP endpoints to monitor, health check, and troubleshoot {{< 
 
 The HTTP server which exposes them is configured via the [http block](../config-blocks/http)
 and the `--server.` [command line arguments](../cli/run).
-For example, if you set the `--server.http.listen-addr` command line argument to `127.0.0.1:12345`, 
+For example, if you set the `--server.http.listen-addr` command line argument to `127.0.0.1:12345`,
 you can query the `127.0.0.1:12345/metrics` endpoint to see the internal metrics of {{< param "PRODUCT_NAME" >}}.
 
 ### /metrics
@@ -52,6 +52,7 @@ In this case, restarting {{< param "PRODUCT_NAME" >}} would not fix the problem.
 A restart may make it worse, because it would could stop the flow of telemetry in healthy pipelines.
 
 [k8s-liveness]: https://kubernetes.io/docs/concepts/configuration/liveness-readiness-startup-probes/
+
 {{< /admonition >}}
 
 ### /-/reload

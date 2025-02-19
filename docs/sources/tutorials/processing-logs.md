@@ -15,7 +15,7 @@ It covers using `loki.source.api` to receive logs over HTTP, processing and filt
 
 To complete this tutorial:
 
-* You must complete the [Logs and relabeling basics][logs] tutorial.
+- You must complete the [Logs and relabeling basics][logs] tutorial.
 
 ## Receive logs over HTTP and Process
 
@@ -24,7 +24,7 @@ It can be useful for receiving logs from other {{< param "PRODUCT_NAME" >}}s or 
 
 ### Recommended reading
 
-* Optional: [`loki.source.api`][loki.source.api]
+- Optional: [`loki.source.api`][loki.source.api]
 
 ### Set up the `loki.source.api` component
 
@@ -54,9 +54,9 @@ You are configuring the `loki.source.api` component to listen on `127.0.0.1:9999
 
 ### Recommended reading
 
-* [`loki.process#stage.drop`][loki.process#stage.drop]
-* [`loki.process#stage.json`][loki.process#stage.json]
-* [`loki.process#stage.labels`][loki.process#stage.labels]
+- [`loki.process#stage.drop`][loki.process#stage.drop]
+- [`loki.process#stage.json`][loki.process#stage.json]
+- [`loki.process#stage.labels`][loki.process#stage.labels]
 
 ### Configure the `loki.process` and `loki.write` components
 
@@ -153,12 +153,12 @@ Here is the example log line:
 
 ```json
 {
-    "log": {
-        "is_secret": "true",
-        "level": "info",
-        "message": "This is a secret message!",
-    },
-    "timestamp": "2023-11-16T06:01:50Z",
+  "log": {
+    "is_secret": "true",
+    "level": "info",
+    "message": "This is a secret message!"
+  },
+  "timestamp": "2023-11-16T06:01:50Z"
 }
 ```
 
@@ -200,12 +200,12 @@ Extracted map _after_ performing this stage:
 
 ```json
 {
-    "log": {
-        "is_secret": "true",
-        "level": "info",
-        "message": "This is a secret message!",
-    },
-    "ts": "2023-11-16T06:01:50Z",
+  "log": {
+    "is_secret": "true",
+    "level": "info",
+    "message": "This is a secret message!"
+  },
+  "ts": "2023-11-16T06:01:50Z"
 }
 ```
 
@@ -264,12 +264,12 @@ Extracted map _before_ performing this stage:
 
 ```json
 {
-    "log": {
-        "is_secret": "true",
-        "level": "info",
-        "message": "This is a secret message!",
-    },
-    "ts": "2023-11-16T06:01:50Z",
+  "log": {
+    "is_secret": "true",
+    "level": "info",
+    "message": "This is a secret message!"
+  },
+  "ts": "2023-11-16T06:01:50Z"
 }
 ```
 
@@ -277,15 +277,15 @@ Extracted map _after_ performing this stage:
 
 ```json
 {
-    "log": {
-        "is_secret": "true",
-        "level": "info",
-        "message": "This is a secret message!",
-    },
-    "ts": "2023-11-16T06:01:50Z",
+  "log": {
     "is_secret": "true",
     "level": "info",
-    "log_line": "This is a secret message!",
+    "message": "This is a secret message!"
+  },
+  "ts": "2023-11-16T06:01:50Z",
+  "is_secret": "true",
+  "level": "info",
+  "log_line": "This is a secret message!"
 }
 ```
 
@@ -343,7 +343,7 @@ Modify `config.alloy` with the configuration from the previous example and start
 
 Replace the following:
 
-* _`<BINARY_FILE_PATH>`_: The path to the {{< param "PRODUCT_NAME" >}} binary.
+- _`<BINARY_FILE_PATH>`_: The path to the {{< param "PRODUCT_NAME" >}} binary.
 
 Try executing the following which inserts the current timestamp:
 

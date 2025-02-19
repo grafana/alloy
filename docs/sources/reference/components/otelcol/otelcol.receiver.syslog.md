@@ -41,7 +41,7 @@ otelcol.receiver.syslog "LABEL" {
 The following arguments are supported:
 
 | Name                              | Type     | Description                                                        | Default   | Required |
-|-----------------------------------|----------|--------------------------------------------------------------------|-----------|----------|
+| --------------------------------- | -------- | ------------------------------------------------------------------ | --------- | -------- |
 | `protocol`                        | `string` | The syslog protocol that the syslog server supports.               | `rfc5424` | no       |
 | `location`                        | `string` | The geographic time zone to use when parsing an RFC3164 timestamp. | `UTC`     | no       |
 | `enable_octet_counting`           | `bool`   | Whether to enable RFC6587 octet counting.                          | `false`   | no       |
@@ -60,7 +60,6 @@ These arguments are mutually exclusive.
 They can't be used with a UDP syslog listener configured.
 If configured, the `non_transparent_framing_trailer` argument must be one of `LF`, `NUL`.
 
-
 [RFC6587]: https://datatracker.ietf.org/doc/html/rfc6587
 [tz-wiki]: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
 
@@ -69,13 +68,12 @@ If configured, the `non_transparent_framing_trailer` argument must be one of `LF
 The following blocks are supported inside the definition of
 `otelcol.receiver.syslog`:
 
-
 | Hierarchy        | Block                | Description                                                                                     | Required |
-|------------------|----------------------|-------------------------------------------------------------------------------------------------|----------|
-| udp              | [udp][]              | Configures a UDP syslog server to receive syslog messages.                                      | no*       |
+| ---------------- | -------------------- | ----------------------------------------------------------------------------------------------- | -------- |
+| udp              | [udp][]              | Configures a UDP syslog server to receive syslog messages.                                      | no\*     |
 | udp > multiline  | [multiline][]        | Configures rules for multiline parsing of incoming messages.                                    | no       |
 | udp > async      | [async][]            | Configures rules for asynchronous parsing of incoming messages.                                 | no       |
-| tcp              | [tcp][]              | Configures a TCP syslog server to receive syslog messages.                                      | no*       |
+| tcp              | [tcp][]              | Configures a TCP syslog server to receive syslog messages.                                      | no\*     |
 | tcp > multiline  | [multiline][]        | Configures rules for multiline parsing of incoming messages                                     | no       |
 | tcp > tls        | [tls][]              | Configures TLS for the TCP syslog server.                                                       | no       |
 | retry_on_failure | [retry_on_failure][] | Configures the retry behavior when the receiver encounters an error downstream in the pipeline. | no       |
@@ -102,16 +100,16 @@ The `udp` block configures a UDP syslog server.
 The following arguments are supported:
 
 | Name                            | Type     | Description                                                                                                  | Default | Required |
-|---------------------------------|----------|--------------------------------------------------------------------------------------------------------------|---------|----------|
+| ------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------ | ------- | -------- |
 | `listen_address`                | `string` | The `<host:port>` address to listen to for syslog messages.                                                  |         | yes      |
 | `one_log_per_packet`            | `bool`   | Skip log tokenization, improving performance when messages always contain one log and multiline is not used. | `false` | no       |
-| `add_attributes`                | `bool`   | Add net.* attributes to log messages according to OpenTelemetry semantic conventions.                        | `false` | no       |
+| `add_attributes`                | `bool`   | Add net.\* attributes to log messages according to OpenTelemetry semantic conventions.                       | `false` | no       |
 | `encoding`                      | `string` | The encoding of the syslog messages.                                                                         | `utf-8` | no       |
 | `preserve_leading_whitespaces`  | `bool`   | Preserves leading whitespace in messages when set to `true`.                                                 | `false` | no       |
-| `preserve_trailing_whitespaces` | `bool`   | Preserves trailing whitespace in messages when set to `true`.                                                 | `false` | no       |
+| `preserve_trailing_whitespaces` | `bool`   | Preserves trailing whitespace in messages when set to `true`.                                                | `false` | no       |
 
 The `encoding` argument specifies the encoding of the incoming syslog messages.
-`encoding` must be one of `utf-8`, `utf-16le`, `utf-16be`, `ascii`, `big5`, or `nop`. 
+`encoding` must be one of `utf-8`, `utf-16le`, `utf-16be`, `ascii`, `big5`, or `nop`.
 Refer to the upstream receiver [documentation][encoding-documentation] for more details.
 
 ### multiline block
@@ -120,7 +118,7 @@ The `multiline` block configures logic for splitting incoming log entries.
 The following arguments are supported:
 
 | Name                 | Type     | Description                                                     | Default | Required |
-|----------------------|----------|-----------------------------------------------------------------|---------|----------|
+| -------------------- | -------- | --------------------------------------------------------------- | ------- | -------- |
 | `line_start_pattern` | `string` | A regular expression that matches the beginning of a log entry. |         | no       |
 | `line_end_pattern`   | `string` | A regular expression that matches the end of a log entry.       |         | no       |
 | `omit_pattern`       | `bool`   | Omit the start/end pattern from the split log entries.          | `false` | no       |
@@ -135,7 +133,7 @@ The `async` block configures concurrent asynchronous readers for a UDP syslog se
 The following arguments are supported:
 
 | Name               | Type  | Description                                                                      | Default | Required |
-|--------------------|-------|----------------------------------------------------------------------------------|---------|----------|
+| ------------------ | ----- | -------------------------------------------------------------------------------- | ------- | -------- |
 | `readers`          | `int` | The number of goroutines to concurrently read from the UDP syslog server.        | `1`     | no       |
 | `processors`       | `int` | The number of goroutines to concurrently process logs before sending downstream. | `1`     | no       |
 | `max_queue_length` | `int` | The maximum number of messages to wait for an available processor.               | `100`   | no       |
@@ -148,17 +146,17 @@ The `tcp` block configures a TCP syslog server.
 The following arguments are supported:
 
 | Name                            | Type     | Description                                                                                                  | Default | Required |
-|---------------------------------|----------|--------------------------------------------------------------------------------------------------------------|---------|----------|
+| ------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------ | ------- | -------- |
 | `listen_address`                | `string` | The `<host:port>` address to listen to for syslog messages.                                                  |         | yes      |
 | `max_log_size`                  | `string` | The maximum size of a log entry to read before failing.                                                      | `1MiB`  | no       |
 | `one_log_per_packet`            | `bool`   | Skip log tokenization, improving performance when messages always contain one log and multiline is not used. | `false` | no       |
-| `add_attributes`                | `bool`   | Add net.* attributes to log messages according to OpenTelemetry semantic conventions.                        | `false` | no       |
+| `add_attributes`                | `bool`   | Add net.\* attributes to log messages according to OpenTelemetry semantic conventions.                       | `false` | no       |
 | `encoding`                      | `string` | The encoding of the syslog messages.                                                                         | `utf-8` | no       |
-| `preserve_leading_whitespaces`  | `bool`   | Preserves leading whitespace in messages when set to `true`.                                                  | `false` | no       |
-| `preserve_trailing_whitespaces` | `bool`   | Preserves trailing whitespace in messages when set to `true`.                                                 | `false` | no       |
+| `preserve_leading_whitespaces`  | `bool`   | Preserves leading whitespace in messages when set to `true`.                                                 | `false` | no       |
+| `preserve_trailing_whitespaces` | `bool`   | Preserves trailing whitespace in messages when set to `true`.                                                | `false` | no       |
 
 The `encoding` argument specifies the encoding of the incoming syslog messages.
-`encoding` must be one of `utf-8`, `utf-16le`, `utf-16be`, `ascii`, `big5`, `nop`. 
+`encoding` must be one of `utf-8`, `utf-16le`, `utf-16be`, `ascii`, `big5`, `nop`.
 See the upstream receiver [documentation][encoding-documentation] for more details.
 
 The `max_log_size` argument has a minimum value of `64KiB`
@@ -176,12 +174,12 @@ The `retry_on_failure` block configures the retry behavior when the receiver enc
 A backoff algorithm is used to delay the retry upon subsequent failures.
 The following arguments are supported:
 
-| Name               | Type       | Description                                                                                               | Default      | Required |
-|--------------------|------------|-----------------------------------------------------------------------------------------------------------|--------------|----------|
-| `enabled`          | `bool`     | If true, the receiver will pause reading a file and attempt to resend the current batch of logs on error. | `false`      | no       |
-| `initial_interval` | `duration` | The time to wait after first failure to retry.                                                            | `1s`   | no       |
-| `max_interval`     | `duration` | The maximum time to wait after applying backoff logic.                                                    | `30s` | no       |
-| `max_elapsed_time` | `duration` | The maximum age of a message before the data is discarded.                                                | `5m`  | no       |
+| Name               | Type       | Description                                                                                               | Default | Required |
+| ------------------ | ---------- | --------------------------------------------------------------------------------------------------------- | ------- | -------- |
+| `enabled`          | `bool`     | If true, the receiver will pause reading a file and attempt to resend the current batch of logs on error. | `false` | no       |
+| `initial_interval` | `duration` | The time to wait after first failure to retry.                                                            | `1s`    | no       |
+| `max_interval`     | `duration` | The maximum time to wait after applying backoff logic.                                                    | `30s`   | no       |
+| `max_elapsed_time` | `duration` | The maximum age of a message before the data is discarded.                                                | `5m`    | no       |
 
 If `max_elapsed_time` is set to `0` data will never be discarded.
 
@@ -213,7 +211,7 @@ information.
 
 ## Example
 
-This example proxies syslog messages from the `otelcol.receiver.syslog` receiver to the 
+This example proxies syslog messages from the `otelcol.receiver.syslog` receiver to the
 `otelcol.exporter.syslog` component, and then sends them on to a `loki.source.syslog` component
 before being logged by a `loki.echo` component. This shows how the `otelcol` syslog components
 can be used to proxy syslog messages before sending them to another destination.
@@ -261,6 +259,7 @@ loki.echo "default" {}
 
 [exporter-examples]: ../otelcol.exporter.syslog/#use-the-otelcolprocessortransform-component-to-format-logs-from-lokisourcesyslog
 [encoding-documentation]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/receiver/syslogreceiver/README.md#supported-encodings
+
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components
@@ -268,7 +267,6 @@ loki.echo "default" {}
 `otelcol.receiver.syslog` can accept arguments from the following components:
 
 - Components that export [OpenTelemetry `otelcol.Consumer`](../../../compatibility/#opentelemetry-otelcolconsumer-exporters)
-
 
 {{< admonition type="note" >}}
 Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.

@@ -13,9 +13,9 @@ _Custom components_ are a way to create new components from a pipeline of built-
 
 A custom component is composed of:
 
-* _Arguments_: Settings that configure the custom component.
-* _Exports_: Values that a custom component exposes to its consumers.
-* _Components_: Built-in and custom components that are run as part of the custom component.
+- _Arguments_: Settings that configure the custom component.
+- _Exports_: Values that a custom component exposes to its consumers.
+- _Components_: Built-in and custom components that are run as part of the custom component.
 
 ## Create custom components
 
@@ -24,9 +24,9 @@ The label of the block determines the name of the custom component.
 
 The following custom configuration blocks can be used inside a `declare` block:
 
-* [argument][]: Create a new named argument, whose current value can be referenced using the expression `argument.NAME.value`.
+- [argument][]: Create a new named argument, whose current value can be referenced using the expression `argument.NAME.value`.
   Argument values are determined by the user of a custom component.
-* [export][]: Expose a new named value to custom component users.
+- [export][]: Expose a new named value to custom component users.
 
 Custom components are useful for reusing a common pipeline multiple times.
 To learn how to share custom components across multiple files, refer to [Modules][].

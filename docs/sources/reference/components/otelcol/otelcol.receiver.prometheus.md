@@ -37,9 +37,9 @@ through inner blocks.
 The following blocks are supported inside the definition of
 `otelcol.receiver.prometheus`:
 
-Hierarchy | Block | Description | Required
---------- | ----- | ----------- | --------
-output | [output][] | Configures where to send received telemetry data. | yes
+| Hierarchy | Block      | Description                                       | Required |
+| --------- | ---------- | ------------------------------------------------- | -------- |
+| output    | [output][] | Configures where to send received telemetry data. | yes      |
 
 [output]: #output-block
 
@@ -51,9 +51,9 @@ output | [output][] | Configures where to send received telemetry data. | yes
 
 The following fields are exported and can be referenced by other components:
 
-Name | Type | Description
----- | ---- | -----------
-`receiver` | `MetricsReceiver` | A value that other components can use to send Prometheus metrics to.
+| Name       | Type              | Description                                                          |
+| ---------- | ----------------- | -------------------------------------------------------------------- |
+| `receiver` | `MetricsReceiver` | A value that other components can use to send Prometheus metrics to. |
 
 ## Component health
 
@@ -94,6 +94,7 @@ otelcol.exporter.otlp "default" {
   }
 }
 ```
+
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components

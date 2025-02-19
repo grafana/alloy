@@ -25,7 +25,7 @@ prometheus.exporter.postgres "LABEL" {
 The following arguments are supported:
 
 | Name                         | Type           | Description                                                                   | Default | Required |
-|------------------------------|----------------|-------------------------------------------------------------------------------|---------|----------|
+| ---------------------------- | -------------- | ----------------------------------------------------------------------------- | ------- | -------- |
 | `data_source_names`          | `list(secret)` | Specifies the PostgreSQL servers to connect to.                               |         | yes      |
 | `disable_settings_metrics`   | `bool`         | Disables collection of metrics from `pg_settings`.                            | `false` | no       |
 | `disable_default_metrics`    | `bool`         | When `true`, only exposes metrics supplied from `custom_queries_config_path`. | `false` | no       |
@@ -48,36 +48,36 @@ If `disable_default_metrics` is set to `true`, only the metrics defined in the `
 A subset of metrics collectors can be controlled by setting the `enabled_collectors` argument.
 The following collectors are available for selection:
 
-* `database`
-* `database_wraparound`
-* `locks`
-* `long_running_transactions`
-* `postmaster`
-* `process_idle`
-* `replication`
-* `replication_slot`
-* `stat_activity_autovacuum`
-* `stat_bgwriter`
-* `stat_database`
-* `stat_statements`
-* `stat_user_tables`
-* `stat_wal_receiver`
-* `statio_user_indexes`
-* `statio_user_tables`
-* `wal`
-* `xlog_location`
+- `database`
+- `database_wraparound`
+- `locks`
+- `long_running_transactions`
+- `postmaster`
+- `process_idle`
+- `replication`
+- `replication_slot`
+- `stat_activity_autovacuum`
+- `stat_bgwriter`
+- `stat_database`
+- `stat_statements`
+- `stat_user_tables`
+- `stat_wal_receiver`
+- `statio_user_indexes`
+- `statio_user_tables`
+- `wal`
+- `xlog_location`
 
 By default, the following collectors are enabled:
 
-* `database`
-* `locks`
-* `replication`
-* `replication_slot`
-* `stat_bgwriter`
-* `stat_database`
-* `stat_user_tables`
-* `statio_user_tables`
-* `wal`
+- `database`
+- `locks`
+- `replication`
+- `replication_slot`
+- `stat_bgwriter`
+- `stat_database`
+- `stat_user_tables`
+- `statio_user_tables`
+- `wal`
 
 {{< admonition type="note" >}}
 Due to a limitation of the upstream exporter, when multiple `data_source_names` are used, the collectors that are controlled via the `enabled_collectors` argument will only be applied to the first data source in the list.
@@ -100,7 +100,7 @@ The `autodiscovery` block configures discovery of databases, outside of any spec
 The following arguments are supported:
 
 | Name                 | Type           | Description                                                                    | Default | Required |
-|----------------------|----------------|--------------------------------------------------------------------------------|---------|----------|
+| -------------------- | -------------- | ------------------------------------------------------------------------------ | ------- | -------- |
 | `enabled`            | `bool`         | Whether to automatically discover other databases.                             | `false` | no       |
 | `database_allowlist` | `list(string)` | List of databases to filter for, meaning only these databases will be scraped. |         | no       |
 | `database_denylist`  | `list(string)` | List of databases to filter out, meaning all other databases will be scraped.  |         | no       |

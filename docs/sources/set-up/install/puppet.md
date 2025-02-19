@@ -26,70 +26,70 @@ To add {{< param "PRODUCT_NAME" >}} to a host:
 
 1. Make sure that the following module dependencies are declared and installed:
 
-    ```json
-    {
-    "name": "puppetlabs/apt",
-    "version_requirement": ">= 4.1.0 <= 7.0.0"
-    },
-    {
-    "name": "puppetlabs/yumrepo_core",
-    "version_requirement": "<= 2.0.0"
-    }
-    ```
+   ```json
+   {
+   "name": "puppetlabs/apt",
+   "version_requirement": ">= 4.1.0 <= 7.0.0"
+   },
+   {
+   "name": "puppetlabs/yumrepo_core",
+   "version_requirement": "<= 2.0.0"
+   }
+   ```
 
 1. Create a [Puppet][] manifest with the following class to add the Grafana package repositories, install the `alloy` package, and run the service:
 
-    ```ruby
-    class grafana_alloy::grafana_alloy () {
-      case $::os['family'] {
-        'debian': {
-          apt::source { 'grafana':
-            location => 'https://apt.grafana.com/',
-            release  => '',
-            repos    => 'stable main',
-            key      => {
-              id     => 'B53AE77BADB630A683046005963FA27710458545',
-              source => 'https://apt.grafana.com/gpg.key',
-            },
-          } -> package { 'alloy':
-            require => Exec['apt_update'],
-          } -> service { 'alloy':
-            ensure    => running,
-            name      => 'alloy',
-            enable    => true,
-            subscribe => Package['alloy'],
-          }
-        }
-        'redhat': {
-          yumrepo { 'grafana':
-            ensure   => 'present',
-            name     => 'grafana',
-            descr    => 'grafana',
-            baseurl  => 'https://packages.grafana.com/oss/rpm',
-            gpgkey   => 'https://packages.grafana.com/gpg.key',
-            enabled  => '1',
-            gpgcheck => '1',
-            target   => '/etc/yum.repo.d/grafana.repo',
-          } -> package { 'alloy':
-          } -> service { 'alloy':
-            ensure    => running,
-            name      => 'alloy',
-            enable    => true,
-            subscribe => Package['alloy'],
-          }
-        }
-        default: {
-          fail("Unsupported OS family: (${$::os['family']})")
-        }
-      }
-    }
-    ```
+   ```ruby
+   class grafana_alloy::grafana_alloy () {
+     case $::os['family'] {
+       'debian': {
+         apt::source { 'grafana':
+           location => 'https://apt.grafana.com/',
+           release  => '',
+           repos    => 'stable main',
+           key      => {
+             id     => 'B53AE77BADB630A683046005963FA27710458545',
+             source => 'https://apt.grafana.com/gpg.key',
+           },
+         } -> package { 'alloy':
+           require => Exec['apt_update'],
+         } -> service { 'alloy':
+           ensure    => running,
+           name      => 'alloy',
+           enable    => true,
+           subscribe => Package['alloy'],
+         }
+       }
+       'redhat': {
+         yumrepo { 'grafana':
+           ensure   => 'present',
+           name     => 'grafana',
+           descr    => 'grafana',
+           baseurl  => 'https://packages.grafana.com/oss/rpm',
+           gpgkey   => 'https://packages.grafana.com/gpg.key',
+           enabled  => '1',
+           gpgcheck => '1',
+           target   => '/etc/yum.repo.d/grafana.repo',
+         } -> package { 'alloy':
+         } -> service { 'alloy':
+           ensure    => running,
+           name      => 'alloy',
+           enable    => true,
+           subscribe => Package['alloy'],
+         }
+       }
+       default: {
+         fail("Unsupported OS family: (${$::os['family']})")
+       }
+     }
+   }
+   ```
 
 1. To use this class in a module, add the following line to the module's `init.pp` file:
 
-    ```ruby
-    include grafana_alloy::grafana_alloy
-    ```
+   ```ruby
+   include grafana_alloy::grafana_alloy
+   ```
 
 ## Configuration
 
@@ -100,7 +100,7 @@ You can replace this file with your own configuration, or create a configuration
 
 ## Next steps
 
-* [Configure {{< param "PRODUCT_NAME" >}}][Configure]
+- [Configure {{< param "PRODUCT_NAME" >}}][Configure]
 
 [Puppet]: https://www.puppet.com/
 [Configure]: ../../../configure/linux/

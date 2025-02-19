@@ -34,7 +34,7 @@ loki.source.kafka "<LABEL>" {
 `loki.source.kafka` supports the following arguments:
 
 | Name                     | Type                 | Description                                              | Default               | Required |
-|--------------------------|----------------------|----------------------------------------------------------|-----------------------|----------|
+| ------------------------ | -------------------- | -------------------------------------------------------- | --------------------- | -------- |
 | `brokers`                | `list(string)`       | The list of brokers to connect to Kafka.                 |                       | yes      |
 | `forward_to`             | `list(LogsReceiver)` | List of receivers to send log entries to.                |                       | yes      |
 | `topics`                 | `list(string)`       | The list of Kafka topics to consume.                     |                       | yes      |
@@ -74,10 +74,10 @@ You can use the following blocks with `loki.source.kafka`:
 | Name                                                              | Description                                               | Required |
 | ----------------------------------------------------------------- | --------------------------------------------------------- | -------- |
 | [`authentication`][authentication]                                | Optional authentication configuration with Kafka brokers. | no       |
-| `authentication` >  [`sasl_config`][sasl_config]                  | Optional authentication configuration with Kafka brokers. | no       |
+| `authentication` > [`sasl_config`][sasl_config]                   | Optional authentication configuration with Kafka brokers. | no       |
 | `authentication` > `sasl_config` > [`oauth_config`][oauth_config] | Optional authentication configuration with Kafka brokers. | no       |
 | `authentication` > `sasl_config` > [`tls_config`][tls_config]     | Optional authentication configuration with Kafka brokers. | no       |
-| `authentication` >  [`tls_config`][tls_config]                    | Optional authentication configuration with Kafka brokers. | no       |
+| `authentication` > [`tls_config`][tls_config]                     | Optional authentication configuration with Kafka brokers. | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `authentication` > `sasl_config` refers to a `sasl_config` block defined inside a `authentication` block.
@@ -171,7 +171,6 @@ loki.write "local" {
 `loki.source.kafka` can accept arguments from the following components:
 
 - Components that export [Loki `LogsReceiver`](../../../compatibility/#loki-logsreceiver-exporters)
-
 
 {{< admonition type="note" >}}
 Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.
