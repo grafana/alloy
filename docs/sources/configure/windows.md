@@ -30,9 +30,9 @@ To configure {{< param "PRODUCT_NAME" >}} on Windows, perform the following step
 
 By default, the {{< param "PRODUCT_NAME" >}} service will launch and pass the following arguments to the {{< param "PRODUCT_NAME" >}} binary:
 
-* `run`
-* `%PROGRAMFILES%\GrafanaLabs\Alloy\config.alloy`
-* `--storage.path=%PROGRAMDATA%\GrafanaLabs\Alloy\data`
+- `run`
+- `%PROGRAMFILES%\GrafanaLabs\Alloy\config.alloy`
+- `--storage.path=%PROGRAMDATA%\GrafanaLabs\Alloy\data`
 
 To change the set of command-line arguments passed to the {{< param "PRODUCT_NAME" >}} binary, perform the following steps:
 
@@ -44,7 +44,7 @@ To change the set of command-line arguments passed to the {{< param "PRODUCT_NAM
 
 1. Navigate to the key at the path `HKEY_LOCAL_MACHINE\SOFTWARE\GrafanaLabs\Alloy`.
 
-1. Double-click on the value called **Arguments***.
+1. Double-click on the value called **Arguments\***.
 
 1. In the dialog box, enter the arguments to pass to the {{< param "PRODUCT_NAME" >}} binary.
    Make sure that each argument is on its own line.
@@ -75,7 +75,7 @@ To change the environment variables used by {{< param "PRODUCT_NAME" >}}, perfor
 
 1. Navigate to the key at the path `HKEY_LOCAL_MACHINE\SOFTWARE\GrafanaLabs\Alloy`.
 
-1. Double-click on the multi-string value called **Environment***.
+1. Double-click on the multi-string value called **Environment\***.
 
 1. In the dialog box, enter the environment variable values to pass to the {{< param "PRODUCT_NAME" >}} binary.
    Make sure that each variable is on its own line.
@@ -110,7 +110,7 @@ To expose the UI to other machines, complete the following steps:
 
    Replace the following:
 
-   * _`<LISTEN_ADDR>`_: An IP address which other machines on the network have access to.
+   - _`<LISTEN_ADDR>`_: An IP address which other machines on the network have access to.
      For example, the IP address of the machine {{< param "PRODUCT_NAME" >}} is running on.
 
      To listen on all interfaces, replace _`<LISTEN_ADDR>`_ with `0.0.0.0`.

@@ -35,9 +35,9 @@ otelcol.processor.deltatocumulative "LABEL" {
 
 `otelcol.processor.deltatocumulative` supports the following arguments:
 
-| Name          | Type       | Description                                                         | Default       | Required |
-| ------------- | ---------- | ------------------------------------------------------------------- | ------------- | -------- |
-| `max_stale`   | `duration` | How long to wait for a new sample before marking a stream as stale. | `"5m"`        | no       |
+| Name          | Type       | Description                                                         | Default               | Required |
+| ------------- | ---------- | ------------------------------------------------------------------- | --------------------- | -------- |
+| `max_stale`   | `duration` | How long to wait for a new sample before marking a stream as stale. | `"5m"`                | no       |
 | `max_streams` | `number`   | Upper limit of streams to track. Set to `0` to disable.             | `9223372036854775807` | no       |
 
 `otelcol.processor.deltatocumulative` tracks incoming metric streams.

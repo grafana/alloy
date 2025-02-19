@@ -103,7 +103,7 @@ The `encoding.from_yaml` function decodes a string representing YAML into an {{<
 A common use case of `encoding.from_yaml` is to decode the output of a [`local.file`][] component to an {{< param "PRODUCT_NAME" >}} value.
 
 {{< admonition type="note" >}}
- Remember to escape double quotes when passing YAML string literals to `encoding.from_yaml`.
+Remember to escape double quotes when passing YAML string literals to `encoding.from_yaml`.
 
 For example, the YAML value `key: "value"` is properly represented by the string `"key: \"value\""`.
 {{< /admonition >}}

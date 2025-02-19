@@ -12,21 +12,21 @@ The following operating systems and hardware architecture are supported.
 
 ## Linux
 
-* Minimum version: kernel 4.x or later
-* Architectures: AMD64, ARM64
-* Within the Linux distribution lifecycle
+- Minimum version: kernel 4.x or later
+- Architectures: AMD64, ARM64
+- Within the Linux distribution lifecycle
 
 ## Windows
 
-* Minimum version: Windows Server 2016 or later, or Windows 10 or later.
-* Architectures: AMD64
+- Minimum version: Windows Server 2016 or later, or Windows 10 or later.
+- Architectures: AMD64
 
 ## macOS
 
-* Minimum version: macOS 10.13 or later
-* Architectures: AMD64 on Intel, ARM64 on Apple Silicon
+- Minimum version: macOS 10.13 or later
+- Architectures: AMD64 on Intel, ARM64 on Apple Silicon
 
 ## FreeBSD
 
-* Within the FreeBSD lifecycle
-* Architectures: AMD64
+- Within the FreeBSD lifecycle
+- Architectures: AMD64

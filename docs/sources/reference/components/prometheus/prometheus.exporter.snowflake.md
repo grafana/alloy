@@ -67,7 +67,7 @@ Users with an encrypted private key will also need to provide a `private_key_pas
 | `private_key_password`   | `secret` | The password for the user's RSA private key (required for encrypted RSA key-pair authentication). |                  | no       |
 | `role`                   | `string` | The role to use when querying metrics.                                                            | `"ACCOUNTADMIN"` | no       |
 | `warehouse`              | `string` | The warehouse to use when querying metrics.                                                       |                  | yes      |
-| `exclude_deleted_tables` |  `bool`  | Whether to exclude deleted tables when querying table storage metrics.                            | `false`          | no       |
+| `exclude_deleted_tables` | `bool`   | Whether to exclude deleted tables when querying table storage metrics.                            | `false`          | no       |
 
 ## Blocks
 

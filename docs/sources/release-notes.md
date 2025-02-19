@@ -22,28 +22,28 @@ A bug in `loki.source.kafka` caused the component to treat all topics as regular
 With the fix introduced in this version, topic values are now treated as exact matches by default.
 Regular expression matching is still supported by prefixing a topic with "^", allowing it to match multiple topics.
 
-### Breaking change: Change decision precedence in `otelcol.processor.tail_sampling` when using `and_sub_policy` and `invert_match` 
+### Breaking change: Change decision precedence in `otelcol.processor.tail_sampling` when using `and_sub_policy` and `invert_match`
 
 Alloy v1.5 upgraded to [OpenTelemetry Collector v0.104.0][otel-v0_104], which included a [fix][#33671] to the tail sampling processor:
 
-> Previously if the decision from a policy evaluation was `NotSampled` or `InvertNotSampled` 
+> Previously if the decision from a policy evaluation was `NotSampled` or `InvertNotSampled`
 > it would return a `NotSampled` decision regardless, effectively downgrading the result.
 > This was breaking the documented behaviour that inverted decisions should take precedence over all others.
 
 The "documented behavior" which the above quote is referring to is in the [processor documentation][tail-sample-docs]:
 
 > Each policy will result in a decision, and the processor will evaluate them to make a final decision:
-> 
-> * When there's an "inverted not sample" decision, the trace is not sampled;
-> * When there's a "sample" decision, the trace is sampled;
-> * When there's a "inverted sample" decision and no "not sample" decisions, the trace is sampled;
-> * In all other cases, the trace is NOT sampled
-> 
+>
+> - When there's an "inverted not sample" decision, the trace is not sampled;
+> - When there's a "sample" decision, the trace is sampled;
+> - When there's a "inverted sample" decision and no "not sample" decisions, the trace is sampled;
+> - In all other cases, the trace is NOT sampled
+>
 > An "inverted" decision is the one made based on the "invert_match" attribute, such as the one from the string, numeric or boolean tag policy.
-    
+
 However, in [OpenTelemetry Collector v0.116.0][otel-v0_116] this fix was [reverted][#36673]:
 
-> Reverts [#33671][], allowing for composite policies to specify inverted clauses in conjunction with other policies. 
+> Reverts [#33671][], allowing for composite policies to specify inverted clauses in conjunction with other policies.
 > This is a change bringing the previous state into place, breaking users who rely on what was introduced as part of [#33671][].
 
 [otel-v0_104]: https://github.com/open-telemetry/opentelemetry-collector-contrib/releases/tag/v0.104.0
@@ -98,6 +98,7 @@ This feature is in [Public preview][] and is not covered by {{< param "FULL_PROD
 
 [Public preview]: https://grafana.com/docs/release-life-cycle/
 [backward compatibility]: ../introduction/backward-compatibility/
+
 {{< /admonition >}}
 
 The `remotecfg` block has an updated argument name from `metadata` to `attributes`.
@@ -111,6 +112,7 @@ This feature is in [Public preview][] and is not covered by {{< param "FULL_PROD
 
 [Public preview]: https://grafana.com/docs/release-life-cycle/
 [backward compatibility]: ../introduction/backward-compatibility/
+
 {{< /admonition >}}
 
 The `remotecfg` block has been updated to use [alloy-remote-config](https://github.com/grafana/alloy-remote-config)

@@ -12,13 +12,13 @@ weight: 100
 
 {{< param "PRODUCT_NAME" >}} is available as a Docker container image on the following platforms:
 
-* [Linux containers][] for AMD64 and ARM64.
-* [Windows containers][] for AMD64.
+- [Linux containers][] for AMD64 and ARM64.
+- [Windows containers][] for AMD64.
 
 ## Before you begin
 
-* Install [Docker][] on your computer.
-* Create and save an {{< param "PRODUCT_NAME" >}} configuration file on your computer, for example:
+- Install [Docker][] on your computer.
+- Create and save an {{< param "PRODUCT_NAME" >}} configuration file on your computer, for example:
 
   ```alloy
   logging {
@@ -42,7 +42,7 @@ docker run \
 
 Replace the following:
 
-* _`<CONFIG_FILE_PATH>`_: The path of the configuration file on your host system.
+- _`<CONFIG_FILE_PATH>`_: The path of the configuration file on your host system.
 
 You can modify the last line to change the arguments passed to the {{< param "PRODUCT_NAME" >}} binary.
 Refer to the documentation for [run][] for more information about the options available to the `run` command.
@@ -52,6 +52,7 @@ Make sure you pass `--server.http.listen-addr=0.0.0.0:12345` as an argument as s
 If you don't pass this argument, the [debugging UI][UI] won't be available outside of the Docker container.
 
 [UI]: ../../../troubleshoot/debug/#alloy-ui
+
 {{< /admonition >}}
 
 ### BoringCrypto images
@@ -62,8 +63,8 @@ BoringCrypto support is in _Public preview_ and is only available on AMD64 and A
 
 BoringCrypto images are published with every release starting with version 1.1:
 
-* The current BoringCrypto image is published as `grafana/alloy:boringcrypto`.
-* A specific version of the BoringCrypto image is published as
+- The current BoringCrypto image is published as `grafana/alloy:boringcrypto`.
+- A specific version of the BoringCrypto image is published as
   `grafana/alloy:<VERSION>-boringcrypto`, such as
   `grafana/alloy:v1.1.0-boringcrypto`.
 
@@ -82,7 +83,7 @@ docker run \
 
 Replace the following:
 
-* _`<CONFIG_FILE_PATH>`_: The path of the configuration file on your host system.
+- _`<CONFIG_FILE_PATH>`_: The path of the configuration file on your host system.
 
 You can modify the last line to change the arguments passed to the {{< param "PRODUCT_NAME" >}} binary.
 Refer to the documentation for [run][] for more information about the options available to the `run` command.
@@ -92,6 +93,7 @@ Make sure you pass `--server.http.listen-addr=0.0.0.0:12345` as an argument as s
 If you don't pass this argument, the [debugging UI][debug] won't be available outside of the Docker container.
 
 [debug]: ../../../troubleshoot/debug/#alloy-ui
+
 {{< /admonition >}}
 
 ## Verify

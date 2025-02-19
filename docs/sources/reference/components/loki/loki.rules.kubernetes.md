@@ -12,16 +12,17 @@ title: loki.rules.kubernetes
 
 `loki.rules.kubernetes` discovers `PrometheusRule` Kubernetes resources and loads them into a Loki instance.
 
-* You can specify multiple `loki.rules.kubernetes` components by giving them different labels.
-* [Kubernetes label selectors][] can be used to limit the `Namespace` and `PrometheusRule` resources considered during reconciliation.
-* Compatible with the Ruler APIs of Grafana Loki, Grafana Cloud, and Grafana Enterprise Metrics.
-* Compatible with the `PrometheusRule` CRD from the [`prometheus-operator`][prometheus-operator].
-* This component accesses the Kubernetes REST API from [within a Pod][].
+- You can specify multiple `loki.rules.kubernetes` components by giving them different labels.
+- [Kubernetes label selectors][] can be used to limit the `Namespace` and `PrometheusRule` resources considered during reconciliation.
+- Compatible with the Ruler APIs of Grafana Loki, Grafana Cloud, and Grafana Enterprise Metrics.
+- Compatible with the `PrometheusRule` CRD from the [`prometheus-operator`][prometheus-operator].
+- This component accesses the Kubernetes REST API from [within a Pod][].
 
 {{< admonition type="note" >}}
 This component requires [Role-based access control (RBAC)][] to be set up in Kubernetes for {{< param "PRODUCT_NAME" >}} to access it via the Kubernetes REST API.
 
 [Role-based access control (RBAC)]: https://kubernetes.io/docs/reference/access-authn-authz/rbac/
+
 {{< /admonition >}}
 
 [Kubernetes label selectors]: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors
@@ -53,15 +54,15 @@ You can use the following arguments with `loki.rules.kubernetes`:
 | `tenant_id`             | `string`   | Loki tenant ID.                                                                 |         | no       |
 | `use_legacy_routes`     | `bool`     | Whether to use deprecated ruler API endpoints.                                  | false   | no       |
 
- At most, one of the following can be provided:
+At most, one of the following can be provided:
 
-* [`authorization`][authorization] block
-* [`basic_auth`][basic_auth] block
-* [`bearer_token_file`][arguments] argument
-* [`bearer_token`][arguments] argument
-* [`oauth2`][oauth2] block
+- [`authorization`][authorization] block
+- [`basic_auth`][basic_auth] block
+- [`bearer_token_file`][arguments] argument
+- [`bearer_token`][arguments] argument
+- [`oauth2`][oauth2] block
 
- [arguments]: #arguments
+[arguments]: #arguments
 
 If no `tenant_id` is provided, the component assumes that the Loki instance at `address` is running in single-tenant mode and no `X-Scope-OrgID` header is sent.
 
@@ -132,9 +133,9 @@ The following arguments are supported:
 
 The `operator` argument should be one of the following strings:
 
-* `"in"`
-* `"notin"`
-* `"exists"`
+- `"in"`
+- `"notin"`
+- `"exists"`
 
 ### `oauth2`
 
@@ -158,15 +159,15 @@ The `operator` argument should be one of the following strings:
 
 The following are exposed per discovered `PrometheusRule` resource:
 
-* The Kubernetes namespace.
-* The resource name.
-* The resource UID.
-* The number of rule groups.
+- The Kubernetes namespace.
+- The resource name.
+- The resource UID.
+- The number of rule groups.
 
 The following are exposed per discovered Loki rule namespace resource:
 
-* The namespace name.
-* The number of rule groups.
+- The namespace name.
+- The number of rule groups.
 
 Only resources managed by the component are exposed - regardless of how many actually exist.
 
@@ -220,10 +221,10 @@ loki.rules.kubernetes "default" {
 
 Replace the following:
 
-* _`<GRAFANA_CLOUD_URL>`_: The Grafana Cloud URL.
-* _`<GRAFANA_CLOUD_USER>`_: Your Grafana Cloud user name.
-* _`<GRAFANA_CLOUD_API_KEY>`_: Your Grafana Cloud API key.
-* _`<GRAFANA_CLOUD_API_KEY_PATH>`_: The path to the Grafana Cloud API key.
+- _`<GRAFANA_CLOUD_URL>`_: The Grafana Cloud URL.
+- _`<GRAFANA_CLOUD_USER>`_: Your Grafana Cloud user name.
+- _`<GRAFANA_CLOUD_API_KEY>`_: Your Grafana Cloud API key.
+- _`<GRAFANA_CLOUD_API_KEY_PATH>`_: The path to the Grafana Cloud API key.
 
 The following example is an RBAC configuration for Kubernetes. It authorizes {{< param "PRODUCT_NAME" >}} to query the Kubernetes REST API:
 
@@ -239,21 +240,21 @@ kind: ClusterRole
 metadata:
   name: alloy
 rules:
-- apiGroups: [""]
-  resources: ["namespaces"]
-  verbs: ["get", "list", "watch"]
-- apiGroups: ["monitoring.coreos.com"]
-  resources: ["prometheusrules"]
-  verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["monitoring.coreos.com"]
+    resources: ["prometheusrules"]
+    verbs: ["get", "list", "watch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: alloy
 subjects:
-- kind: ServiceAccount
-  name: alloy
-  namespace: default
+  - kind: ServiceAccount
+    name: alloy
+    namespace: default
 roleRef:
   kind: ClusterRole
   name: alloy

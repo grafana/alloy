@@ -1,5 +1,4 @@
 ---
-
 canonical: https://grafana.com/docs/alloy/latest/reference/components/loki/loki.source.azure_event_hubs/
 aliases:
   - ../loki.source.azure_event_hubs/ # /docs/alloy/latest/reference/components/loki.source.azure_event_hubs/
@@ -141,7 +140,6 @@ loki.write "example" {
 `loki.source.azure_event_hubs` can accept arguments from the following components:
 
 - Components that export [Loki `LogsReceiver`](../../../compatibility/#loki-logsreceiver-exporters)
-
 
 {{< admonition type="note" >}}
 Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.

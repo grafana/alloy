@@ -267,20 +267,20 @@ Using `convert.nonsensitive` allows for using the exports of `remote.vault` for 
 
 `remote.vault` exposes debug information for the authentication token and secret around:
 
-* The latest request ID used for retrieving or renewing the token.
-* The most recent time when the token was retrieved or renewed.
-* The expiration time for the token (if applicable).
-* Whether the token is renewable.
-* Warnings from Vault from when the token was retrieved.
+- The latest request ID used for retrieving or renewing the token.
+- The most recent time when the token was retrieved or renewed.
+- The expiration time for the token (if applicable).
+- Whether the token is renewable.
+- Warnings from Vault from when the token was retrieved.
 
 ## Debug metrics
 
 `remote.vault` exposes the following metrics:
 
-* `remote_vault_auth_total` (counter): Total number of times the component authenticated to Vault.
-* `remote_vault_secret_reads_total` (counter): Total number of times the secret was read from Vault.
-* `remote_vault_auth_lease_renewal_total` (counter): Total number of times the component renewed its authentication token lease.
-* `remote_vault_secret_lease_renewal_total` (counter): Total number of times the component renewed its secret token lease.
+- `remote_vault_auth_total` (counter): Total number of times the component authenticated to Vault.
+- `remote_vault_secret_reads_total` (counter): Total number of times the secret was read from Vault.
+- `remote_vault_auth_lease_renewal_total` (counter): Total number of times the component renewed its authentication token lease.
+- `remote_vault_secret_lease_renewal_total` (counter): Total number of times the component renewed its secret token lease.
 
 ## Example
 
