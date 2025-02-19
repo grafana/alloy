@@ -12,7 +12,7 @@ title: otelcol.exporter.debug
 You can control the verbosity of the logs.
 
 {{< admonition type="note" >}}
-`otelcol.exporter.debug` is a wrapper over the upstream OpenTelemetry Collector `debug` exporter. 
+`otelcol.exporter.debug` is a wrapper over the upstream OpenTelemetry Collector `debug` exporter.
 If necessary, bug reports or feature requests are redirected to the upstream repository.
 {{< /admonition >}}
 
@@ -28,24 +28,27 @@ otelcol.exporter.debug "LABEL" { }
 
 `otelcol.exporter.debug` supports the following arguments:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`verbosity`           | `string` | Verbosity of the generated logs. | `"basic"` | no
-`sampling_initial`    | `int`    | Number of messages initially logged each second. | `2` | no
-`sampling_thereafter` | `int`    | Sampling rate after the initial messages are logged. | `1` | no
-`use_internal_logger` | `bool`   | Whether to use the internal logger or print directly to `stdout`. | `true` | no
+| Name                  | Type     | Description                                                       | Default   | Required |
+| --------------------- | -------- | ----------------------------------------------------------------- | --------- | -------- |
+| `verbosity`           | `string` | Verbosity of the generated logs.                                  | `"basic"` | no       |
+| `sampling_initial`    | `int`    | Number of messages initially logged each second.                  | `2`       | no       |
+| `sampling_thereafter` | `int`    | Sampling rate after the initial messages are logged.              | `1`       | no       |
+| `use_internal_logger` | `bool`   | Whether to use the internal logger or print directly to `stdout`. | `true`    | no       |
 
 The `verbosity` argument must be one of:
-* `"basic"`: A single-line summary of received data is logged to stderr, with a total count of telemetry records for every batch of received logs, metrics, or traces.
-* `"normal"`: Produces the same output as `"basic"` verbosity.
-* `"detailed"`: All details of every telemetry record are logged to stderr, typically writing multiple lines for every telemetry record.
+
+- `"basic"`: A single-line summary of received data is logged to stderr, with a total count of telemetry records for every batch of received logs, metrics, or traces.
+- `"normal"`: Produces the same output as `"basic"` verbosity.
+- `"detailed"`: All details of every telemetry record are logged to stderr, typically writing multiple lines for every telemetry record.
 
 The following example shows `"basic"` and `"normal"` output:
+
 ```
 ts=2024-06-13T11:24:13.782957Z level=info msg=TracesExporter component_path=/ component_id=otelcol.exporter.debug.default "resource spans": 1, spans: 2
 ```
 
 The following example shows `"detailed"` output:
+
 ```
 ts=2024-06-13T11:24:13.782957Z level=info msg=TracesExporter component_path=/ component_id=otelcol.exporter.debug.default "resource spans"=1 spans=2
 ts=2024-06-13T11:24:13.783101Z level=info msg="ResourceSpans #0
@@ -97,9 +100,9 @@ Multiline logs may also be harder to parse.
 The following blocks are supported inside the definition of
 `otelcol.exporter.debug`:
 
-Hierarchy     | Block             | Description                                                                | Required
---------------|-------------------|----------------------------------------------------------------------------|---------
-debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
+| Hierarchy     | Block             | Description                                                                | Required |
+| ------------- | ----------------- | -------------------------------------------------------------------------- | -------- |
+| debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no       |
 
 The `>` symbol indicates deeper levels of nesting. For example, `client > tls`
 refers to a `tls` block defined inside a `client` block.
@@ -114,9 +117,9 @@ refers to a `tls` block defined inside a `client` block.
 
 The following fields are exported and can be referenced by other components:
 
-Name | Type | Description
----- | ---- | -----------
-`input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to.
+| Name    | Type               | Description                                                      |
+| ------- | ------------------ | ---------------------------------------------------------------- |
+| `input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to. |
 
 `input` accepts `otelcol.Consumer` data for any telemetry signal (metrics,
 logs, or traces).
@@ -149,6 +152,7 @@ otelcol.receiver.otlp "default" {
 
 otelcol.exporter.debug "default" {}
 ```
+
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components

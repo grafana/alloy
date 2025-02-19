@@ -42,9 +42,9 @@ You can use the following arguments with `remote.http`:
 When `remote.http` performs a poll operation, an HTTP `GET` request is made against the URL specified by the `url` argument.
 A poll is triggered by the following:
 
-* When the component first loads.
-* Every time the component's arguments get re-evaluated.
-* At the frequency specified by the `poll_frequency` argument.
+- When the component first loads.
+- Every time the component's arguments get re-evaluated.
+- At the frequency specified by the `poll_frequency` argument.
 
 The poll is successful if the URL returns a `200 OK` response code.
 All other response codes are treated as errors and mark the component as unhealthy.

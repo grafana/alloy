@@ -71,15 +71,15 @@ The following fields are exported and can be referenced by other components:
 
 Each target includes the following labels:
 
-* `__meta_uyuni_endpoint_name`: The name of the endpoint.
-* `__meta_uyuni_exporter`: The name of the exporter.
-* `__meta_uyuni_groups`: The groups the Uyuni Minion belongs to.
-* `__meta_uyuni_metrics_path`: The path to the metrics endpoint.
-* `__meta_uyuni_minion_hostname`: The hostname of the Uyuni Minion.
-* `__meta_uyuni_primary_fqdn`: The FQDN of the Uyuni primary.
-* `__meta_uyuni_proxy_module`: The name of the Uyuni module.
-* `__meta_uyuni_scheme`: `https` if TLS is enabled on the endpoint, `http` otherwise.
-* `__meta_uyuni_system_id`: The system ID of the Uyuni Minion.
+- `__meta_uyuni_endpoint_name`: The name of the endpoint.
+- `__meta_uyuni_exporter`: The name of the exporter.
+- `__meta_uyuni_groups`: The groups the Uyuni Minion belongs to.
+- `__meta_uyuni_metrics_path`: The path to the metrics endpoint.
+- `__meta_uyuni_minion_hostname`: The hostname of the Uyuni Minion.
+- `__meta_uyuni_primary_fqdn`: The FQDN of the Uyuni primary.
+- `__meta_uyuni_proxy_module`: The name of the Uyuni module.
+- `__meta_uyuni_scheme`: `https` if TLS is enabled on the endpoint, `http` otherwise.
+- `__meta_uyuni_system_id`: The system ID of the Uyuni Minion.
 
 These labels are largely derived from a [listEndpoints][] API call to the Uyuni Server.
 
@@ -126,11 +126,11 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-* _`<UYUNI_USERNAME>`_: The username to use for authentication to the Uyuni server.
-* _`<UYUNI_PASSWORD>`_: The password to use for authentication to the Uyuni server.
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+- _`<UYUNI_USERNAME>`_: The username to use for authentication to the Uyuni server.
+- _`<UYUNI_PASSWORD>`_: The password to use for authentication to the Uyuni server.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

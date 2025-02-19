@@ -45,7 +45,7 @@ The following fields are exported and can be referenced by other components:
 
 Each target includes the following labels:
 
-* `__meta_filepath`: The absolute path to the file the target was discovered from.
+- `__meta_filepath`: The absolute path to the file the target was discovered from.
 
 ## Component health
 
@@ -69,13 +69,13 @@ The following examples show you how to configure the `discovery.file` component.
 ```json
 [
   {
-    "targets": [ "127.0.0.1:9091", "127.0.0.1:9092" ],
+    "targets": ["127.0.0.1:9091", "127.0.0.1:9092"],
     "labels": {
       "environment": "dev"
     }
   },
   {
-    "targets": [ "127.0.0.1:9093" ],
+    "targets": ["127.0.0.1:9093"],
     "labels": {
       "environment": "prod"
     }
@@ -85,12 +85,12 @@ The following examples show you how to configure the `discovery.file` component.
 
 ```yaml
 - targets:
-  - 127.0.0.1:9999
-  - 127.0.0.1:10101
+    - 127.0.0.1:9999
+    - 127.0.0.1:10101
   labels:
     job: worker
 - targets:
-  - 127.0.0.1:9090
+    - 127.0.0.1:9090
   labels:
     job: prometheus
 ```
@@ -123,9 +123,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 ### File discovery with retained file path label
 
@@ -165,9 +165,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

@@ -42,15 +42,15 @@ You can use the following arguments with `discovery.kubernetes`:
 | `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false` | no       |
 | `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |         | no       |
 
- At most, one of the following can be provided:
+At most, one of the following can be provided:
 
-* [`authorization`][authorization] block
-* [`basic_auth`][basic_auth] block
-* [`bearer_token_file`][arguments] argument
-* [`bearer_token`][arguments] argument
-* [`oauth2`][oauth2] block
+- [`authorization`][authorization] block
+- [`basic_auth`][basic_auth] block
+- [`bearer_token_file`][arguments] argument
+- [`bearer_token`][arguments] argument
+- [`oauth2`][oauth2] block
 
- [arguments]: #arguments
+[arguments]: #arguments
 
 {{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -64,13 +64,13 @@ The target address defaults to the first address of the Kubernetes node object i
 
 The following labels are included for discovered nodes:
 
-* `__meta_kubernetes_node_address_<address_type>`: The first address for each node address type, if it exists.
-* `__meta_kubernetes_node_annotation_<annotationname>`: Each annotation from the node object.
-* `__meta_kubernetes_node_annotationpresent_<annotationname>`: Set to `true` for each annotation from the node object.
-* `__meta_kubernetes_node_label_<labelname>`: Each label from the node object.
-* `__meta_kubernetes_node_labelpresent_<labelname>`: Set to `true` for each label from the node object.
-* `__meta_kubernetes_node_name`: The name of the node object.
-* `__meta_kubernetes_node_provider_id`: The cloud provider's name for the node object.
+- `__meta_kubernetes_node_address_<address_type>`: The first address for each node address type, if it exists.
+- `__meta_kubernetes_node_annotation_<annotationname>`: Each annotation from the node object.
+- `__meta_kubernetes_node_annotationpresent_<annotationname>`: Set to `true` for each annotation from the node object.
+- `__meta_kubernetes_node_label_<labelname>`: Each label from the node object.
+- `__meta_kubernetes_node_labelpresent_<labelname>`: Set to `true` for each label from the node object.
+- `__meta_kubernetes_node_name`: The name of the node object.
+- `__meta_kubernetes_node_provider_id`: The cloud provider's name for the node object.
 
 In addition, the `instance` label for the node is set to the node name as retrieved from the API server.
 
@@ -82,18 +82,18 @@ The address is set to the Kubernetes DNS name of the service and respective serv
 
 The following labels are included for discovered services:
 
-* `__meta_kubernetes_namespace`: The namespace of the service object.
-* `__meta_kubernetes_service_annotation_<annotationname>`: Each annotation from the service object.
-* `__meta_kubernetes_service_annotationpresent_<annotationname>`: `true` for each annotation of the service object.
-* `__meta_kubernetes_service_cluster_ip`: The cluster IP address of the service. This doesn't apply to services of type `ExternalName`.
-* `__meta_kubernetes_service_external_name`: The DNS name of the service. This only applies to services of type `ExternalName`.
-* `__meta_kubernetes_service_label_<labelname>`: Each label from the service object.
-* `__meta_kubernetes_service_labelpresent_<labelname>`: `true` for each label of the service object.
-* `__meta_kubernetes_service_name`: The name of the service object.
-* `__meta_kubernetes_service_port_name`: Name of the service port for the target.
-* `__meta_kubernetes_service_port_number`: Number of the service port for the target.
-* `__meta_kubernetes_service_port_protocol`: Protocol of the service port for the target.
-* `__meta_kubernetes_service_type`: The type of the service.
+- `__meta_kubernetes_namespace`: The namespace of the service object.
+- `__meta_kubernetes_service_annotation_<annotationname>`: Each annotation from the service object.
+- `__meta_kubernetes_service_annotationpresent_<annotationname>`: `true` for each annotation of the service object.
+- `__meta_kubernetes_service_cluster_ip`: The cluster IP address of the service. This doesn't apply to services of type `ExternalName`.
+- `__meta_kubernetes_service_external_name`: The DNS name of the service. This only applies to services of type `ExternalName`.
+- `__meta_kubernetes_service_label_<labelname>`: Each label from the service object.
+- `__meta_kubernetes_service_labelpresent_<labelname>`: `true` for each label of the service object.
+- `__meta_kubernetes_service_name`: The name of the service object.
+- `__meta_kubernetes_service_port_name`: Name of the service port for the target.
+- `__meta_kubernetes_service_port_number`: Number of the service port for the target.
+- `__meta_kubernetes_service_port_protocol`: Protocol of the service port for the target.
+- `__meta_kubernetes_service_type`: The type of the service.
 
 ### `pod` role
 
@@ -107,27 +107,27 @@ These targets must have a port manually injected using a [`discovery.relabel` co
 
 The following labels are included for discovered Pods:
 
-* `__meta_kubernetes_namespace`: The namespace of the Pod object.
-* `__meta_kubernetes_pod_annotation_<annotationname>`: Each annotation from the Pod object.
-* `__meta_kubernetes_pod_annotationpresent_<annotationname>`: `true` for each annotation from the Pod object.
-* `__meta_kubernetes_pod_container_id`: ID of the container the target address points to. The ID is in the form `<type>://<container_id>`.
-* `__meta_kubernetes_pod_container_image`: The image the container is using.
-* `__meta_kubernetes_pod_container_init`: `true` if the container is an `InitContainer`.
-* `__meta_kubernetes_pod_container_name`: Name of the container the target address points to.
-* `__meta_kubernetes_pod_container_port_name`: Name of the container port.
-* `__meta_kubernetes_pod_container_port_number`: Number of the container port.
-* `__meta_kubernetes_pod_container_port_protocol`: Protocol of the container port.
-* `__meta_kubernetes_pod_controller_kind`: Object kind of the Pod controller.
-* `__meta_kubernetes_pod_controller_name`: Name of the Pod controller.
-* `__meta_kubernetes_pod_host_ip`: The current host IP of the Pod object.
-* `__meta_kubernetes_pod_ip`: The Pod IP of the Pod object.
-* `__meta_kubernetes_pod_label_<labelname>`: Each label from the Pod object.
-* `__meta_kubernetes_pod_labelpresent_<labelname>`: `true` for each label from the Pod object.
-* `__meta_kubernetes_pod_name`: The name of the Pod object.
-* `__meta_kubernetes_pod_node_name`: The name of the node the Pod is scheduled onto.
-* `__meta_kubernetes_pod_phase`: Set to `Pending`, `Running`, `Succeeded`, `Failed` or `Unknown` in the lifecycle.
-* `__meta_kubernetes_pod_ready`: Set to `true` or `false` for the Pod's ready state.
-* `__meta_kubernetes_pod_uid`: The UID of the Pod object.
+- `__meta_kubernetes_namespace`: The namespace of the Pod object.
+- `__meta_kubernetes_pod_annotation_<annotationname>`: Each annotation from the Pod object.
+- `__meta_kubernetes_pod_annotationpresent_<annotationname>`: `true` for each annotation from the Pod object.
+- `__meta_kubernetes_pod_container_id`: ID of the container the target address points to. The ID is in the form `<type>://<container_id>`.
+- `__meta_kubernetes_pod_container_image`: The image the container is using.
+- `__meta_kubernetes_pod_container_init`: `true` if the container is an `InitContainer`.
+- `__meta_kubernetes_pod_container_name`: Name of the container the target address points to.
+- `__meta_kubernetes_pod_container_port_name`: Name of the container port.
+- `__meta_kubernetes_pod_container_port_number`: Number of the container port.
+- `__meta_kubernetes_pod_container_port_protocol`: Protocol of the container port.
+- `__meta_kubernetes_pod_controller_kind`: Object kind of the Pod controller.
+- `__meta_kubernetes_pod_controller_name`: Name of the Pod controller.
+- `__meta_kubernetes_pod_host_ip`: The current host IP of the Pod object.
+- `__meta_kubernetes_pod_ip`: The Pod IP of the Pod object.
+- `__meta_kubernetes_pod_label_<labelname>`: Each label from the Pod object.
+- `__meta_kubernetes_pod_labelpresent_<labelname>`: `true` for each label from the Pod object.
+- `__meta_kubernetes_pod_name`: The name of the Pod object.
+- `__meta_kubernetes_pod_node_name`: The name of the node the Pod is scheduled onto.
+- `__meta_kubernetes_pod_phase`: Set to `Pending`, `Running`, `Succeeded`, `Failed` or `Unknown` in the lifecycle.
+- `__meta_kubernetes_pod_ready`: Set to `true` or `false` for the Pod's ready state.
+- `__meta_kubernetes_pod_uid`: The UID of the Pod object.
 
 ### `endpoints` role
 
@@ -137,22 +137,23 @@ If the endpoint is backed by a Pod, all container ports of a Pod are discovered 
 
 The following labels are included for discovered endpoints:
 
-* `__meta_kubernetes_endpoints_label_<labelname>`: Each label from the endpoints object.
-* `__meta_kubernetes_endpoints_labelpresent_<labelname>`: `true` for each label from the endpoints object.
-* `__meta_kubernetes_endpoints_name:` The names of the endpoints object.
-* `__meta_kubernetes_namespace:` The namespace of the endpoints object.
+- `__meta_kubernetes_endpoints_label_<labelname>`: Each label from the endpoints object.
+- `__meta_kubernetes_endpoints_labelpresent_<labelname>`: `true` for each label from the endpoints object.
+- `__meta_kubernetes_endpoints_name:` The names of the endpoints object.
+- `__meta_kubernetes_namespace:` The namespace of the endpoints object.
 
-* The following labels are attached for all targets discovered directly from the endpoints list:
-  * `__meta_kubernetes_endpoint_address_target_kind`: Kind of the endpoint address target.
-  * `__meta_kubernetes_endpoint_address_target_name`: Name of the endpoint address target.
-  * `__meta_kubernetes_endpoint_hostname`: Hostname of the endpoint.
-  * `__meta_kubernetes_endpoint_node_name`: Name of the node hosting the endpoint.
-  * `__meta_kubernetes_endpoint_port_name`: Name of the endpoint port.
-  * `__meta_kubernetes_endpoint_port_protocol`: Protocol of the endpoint port.
-  * `__meta_kubernetes_endpoint_ready`: Set to `true` or `false` for the endpoint's ready state.
+- The following labels are attached for all targets discovered directly from the endpoints list:
 
-* If the endpoints belong to a service, all labels of the `service` role discovery are attached.
-* For all targets backed by a Pod, all labels of the `pod` role discovery are attached.
+  - `__meta_kubernetes_endpoint_address_target_kind`: Kind of the endpoint address target.
+  - `__meta_kubernetes_endpoint_address_target_name`: Name of the endpoint address target.
+  - `__meta_kubernetes_endpoint_hostname`: Hostname of the endpoint.
+  - `__meta_kubernetes_endpoint_node_name`: Name of the node hosting the endpoint.
+  - `__meta_kubernetes_endpoint_port_name`: Name of the endpoint port.
+  - `__meta_kubernetes_endpoint_port_protocol`: Protocol of the endpoint port.
+  - `__meta_kubernetes_endpoint_ready`: Set to `true` or `false` for the endpoint's ready state.
+
+- If the endpoints belong to a service, all labels of the `service` role discovery are attached.
+- For all targets backed by a Pod, all labels of the `pod` role discovery are attached.
 
 ### `endpointslice` role
 
@@ -162,23 +163,23 @@ If the endpoint is backed by a Pod, all container ports of a Pod are discovered 
 
 The following labels are included for discovered endpoint slices:
 
-* `__meta_kubernetes_endpointslice_name`: The name of endpoint slice object.
-* `__meta_kubernetes_namespace`: The namespace of the endpoints object.
+- `__meta_kubernetes_endpointslice_name`: The name of endpoint slice object.
+- `__meta_kubernetes_namespace`: The namespace of the endpoints object.
 
-* The following labels are attached for all targets discovered directly from the endpoint slice list:
+- The following labels are attached for all targets discovered directly from the endpoint slice list:
 
-  * `__meta_kubernetes_endpointslice_address_target_kind`: Kind of the referenced object.
-  * `__meta_kubernetes_endpointslice_address_target_name`: Name of referenced object.
-  * `__meta_kubernetes_endpointslice_address_type`: The IP protocol family of the address of the target.
-  * `__meta_kubernetes_endpointslice_endpoint_conditions_ready`: Set to `true` or `false` for the referenced endpoint's ready state.
-  * `__meta_kubernetes_endpointslice_endpoint_topology_kubernetes_io_hostname`: Name of the node hosting the referenced endpoint.
-  * `__meta_kubernetes_endpointslice_endpoint_topology_present_kubernetes_io_hostname`: `true` if the referenced object has a `kubernetes.io/hostname` annotation.
-  * `__meta_kubernetes_endpointslice_port_name`: Named port of the referenced endpoint.
-  * `__meta_kubernetes_endpointslice_port_protocol`: Protocol of the referenced endpoint.
-  * `__meta_kubernetes_endpointslice_port`: Port of the referenced endpoint.
+  - `__meta_kubernetes_endpointslice_address_target_kind`: Kind of the referenced object.
+  - `__meta_kubernetes_endpointslice_address_target_name`: Name of referenced object.
+  - `__meta_kubernetes_endpointslice_address_type`: The IP protocol family of the address of the target.
+  - `__meta_kubernetes_endpointslice_endpoint_conditions_ready`: Set to `true` or `false` for the referenced endpoint's ready state.
+  - `__meta_kubernetes_endpointslice_endpoint_topology_kubernetes_io_hostname`: Name of the node hosting the referenced endpoint.
+  - `__meta_kubernetes_endpointslice_endpoint_topology_present_kubernetes_io_hostname`: `true` if the referenced object has a `kubernetes.io/hostname` annotation.
+  - `__meta_kubernetes_endpointslice_port_name`: Named port of the referenced endpoint.
+  - `__meta_kubernetes_endpointslice_port_protocol`: Protocol of the referenced endpoint.
+  - `__meta_kubernetes_endpointslice_port`: Port of the referenced endpoint.
 
-* If the endpoints belong to a service, all labels of the `service` role discovery are attached.
-* For all targets backed by a Pod, all labels of the `pod` role discovery are attached.
+- If the endpoints belong to a service, all labels of the `service` role discovery are attached.
+- For all targets backed by a Pod, all labels of the `pod` role discovery are attached.
 
 ### `ingress` role
 
@@ -188,15 +189,15 @@ The address is set to the host specified in the Kubernetes `Ingress`'s `spec` bl
 
 The following labels are included for discovered ingress objects:
 
-* `__meta_kubernetes_ingress_annotation_<annotationname>`: Each annotation from the ingress object.
-* `__meta_kubernetes_ingress_annotationpresent_<annotationname>`: `true` for each annotation from the ingress object.
-* `__meta_kubernetes_ingress_class_name`: Class name from ingress spec, if present.
-* `__meta_kubernetes_ingress_label_<labelname>`: Each label from the ingress object.
-* `__meta_kubernetes_ingress_labelpresent_<labelname>`: `true` for each label from the ingress object.
-* `__meta_kubernetes_ingress_name`: The name of the ingress object.
-* `__meta_kubernetes_ingress_path`: Path from ingress spec. Defaults to /.
-* `__meta_kubernetes_ingress_scheme`: Protocol scheme of ingress, `https` if TLS config is set. Defaults to `http`.
-* `__meta_kubernetes_namespace`: The namespace of the ingress object.
+- `__meta_kubernetes_ingress_annotation_<annotationname>`: Each annotation from the ingress object.
+- `__meta_kubernetes_ingress_annotationpresent_<annotationname>`: `true` for each annotation from the ingress object.
+- `__meta_kubernetes_ingress_class_name`: Class name from ingress spec, if present.
+- `__meta_kubernetes_ingress_label_<labelname>`: Each label from the ingress object.
+- `__meta_kubernetes_ingress_labelpresent_<labelname>`: `true` for each label from the ingress object.
+- `__meta_kubernetes_ingress_name`: The name of the ingress object.
+- `__meta_kubernetes_ingress_path`: Path from ingress spec. Defaults to /.
+- `__meta_kubernetes_ingress_scheme`: Protocol scheme of ingress, `https` if TLS config is set. Defaults to `http`.
+- `__meta_kubernetes_namespace`: The namespace of the ingress object.
 
 ## Blocks
 
@@ -344,9 +345,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 ### Kubeconfig authentication
 
@@ -377,9 +378,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 ### Limit searched namespaces and filter by labels value
 
@@ -418,9 +419,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 ### Limit to only Pods on the same node
 
@@ -460,9 +461,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

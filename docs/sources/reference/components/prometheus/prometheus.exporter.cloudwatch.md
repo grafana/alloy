@@ -121,13 +121,13 @@ prometheus.exporter.cloudwatch "queues" {
 You can use the following arguments to configure the exporter's behavior.
 Omitted fields take their default values.
 
-| Name                      | Type                | Description                                                                    | Default | Required |
-|---------------------------|---------------------|--------------------------------------------------------------------------------|---------|----------|
-| `sts_region`              | `string`            | AWS region to use when calling [STS][] for retrieving account information.     |         | yes      |
+| Name                      | Type                | Description                                                                                                                                                                                                                             | Default | Required |
+| ------------------------- | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
+| `sts_region`              | `string`            | AWS region to use when calling [STS][] for retrieving account information.                                                                                                                                                              |         | yes      |
 | `aws_sdk_version_v2`      | `bool`              | Use AWS SDK version 2.                                                                                                                                                                                                                  | `false` | no       |
-| `fips_disabled`           | `bool`              | Disable use of FIPS endpoints. Set 'true' when running outside of USA regions. | `true`  | no       |
-| `debug`                   | `bool`              | Enable debug logging on CloudWatch exporter internals.                         | `false` | no       |
-| `discovery_exported_tags` | `map(list(string))` | List of tags (value) per service (key) to export in all metrics. For example, defining the `["name", "type"]` under `"AWS/EC2"` will export the name and type tags and its values as labels in all metrics. Affects all discovery jobs. | `{}` | no |
+| `fips_disabled`           | `bool`              | Disable use of FIPS endpoints. Set 'true' when running outside of USA regions.                                                                                                                                                          | `true`  | no       |
+| `debug`                   | `bool`              | Enable debug logging on CloudWatch exporter internals.                                                                                                                                                                                  | `false` | no       |
+| `discovery_exported_tags` | `map(list(string))` | List of tags (value) per service (key) to export in all metrics. For example, defining the `["name", "type"]` under `"AWS/EC2"` will export the name and type tags and its values as labels in all metrics. Affects all discovery jobs. | `{}`    | no       |
 
 [STS]: https://docs.aws.amazon.com/STS/latest/APIReference/welcome.html
 
@@ -136,20 +136,20 @@ Omitted fields take their default values.
 You can use the following blocks in`prometheus.exporter.cloudwatch` to configure collector-specific options:
 
 | Hierarchy                 | Name                   | Description                                                                                                                                                | Required |
-|--------------------|------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|
+| ------------------------- | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
 | discovery                 | [discovery][]          | Configures a discovery job. Multiple jobs can be configured.                                                                                               | no\*     |
 | discovery > role          | [role][]               | Configures the IAM roles the job should assume to scrape metrics. Defaults to the role configured in the environment {{< param "PRODUCT_NAME" >}} runs on. | no       |
 | discovery > metric        | [metric][]             | Configures the list of metrics the job should scrape. Multiple metrics can be defined inside one job.                                                      | yes      |
 | static                    | [static][]             | Configures a static job. Multiple jobs can be configured.                                                                                                  | no\*     |
 | static > role             | [role][]               | Configures the IAM roles the job should assume to scrape metrics. Defaults to the role configured in the environment {{< param "PRODUCT_NAME" >}} runs on. | no       |
 | static > metric           | [metric][]             | Configures the list of metrics the job should scrape. Multiple metrics can be defined inside one job.                                                      | yes      |
-| custom_namespace          | [custom_namespace][]   | Configures a custom namespace job. Multiple jobs can be configured.                                                                                               | no\*     |
+| custom_namespace          | [custom_namespace][]   | Configures a custom namespace job. Multiple jobs can be configured.                                                                                        | no\*     |
 | custom_namespace > role   | [role][]               | Configures the IAM roles the job should assume to scrape metrics. Defaults to the role configured in the environment {{< param "PRODUCT_NAME" >}} runs on. | no       |
 | custom_namespace > metric | [metric][]             | Configures the list of metrics the job should scrape. Multiple metrics can be defined inside one job.                                                      | yes      |
 | decoupled_scraping        | [decoupled_scraping][] | Configures the decoupled scraping feature to retrieve metrics on a schedule and return the cached metrics.                                                 | no       |
 
 {{< admonition type="note" >}}
-The `static`, `discovery`, and `custom_namespace` blocks are marked as not required, 
+The `static`, `discovery`, and `custom_namespace` blocks are marked as not required,
 but you must configure at least one static, discovery, or custom namespace job.
 {{< /admonition >}}
 
@@ -198,7 +198,7 @@ different `search_tags`.
 | `regions`                     | `list(string)` | List of AWS regions.                                                                                                                                                                                                                                       |         | yes      |
 | `type`                        | `string`       | CloudWatch service alias (`"alb"`, `"ec2"`, etc) or namespace name (`"AWS/EC2"`, `"AWS/S3"`, etc). Refer to [supported-services][] for a complete list.                                                                                                    |         | yes      |
 | `custom_tags`                 | `map(string)`  | Custom tags to be added as a list of key / value pairs. When exported to Prometheus format, the label name follows the following format: `custom_tag_{key}`.                                                                                               | `{}`    | no       |
-| `recently_active_only`        | `bool`         | Only return metrics that have been active in the last 3 hours.                                                                                                                                 | `false` | no       |
+| `recently_active_only`        | `bool`         | Only return metrics that have been active in the last 3 hours.                                                                                                                                                                                             | `false` | no       |
 | `search_tags`                 | `map(string)`  | List of key / value pairs to use for tag filtering (all must match). Value can be a regex.                                                                                                                                                                 | `{}`    | no       |
 | `dimension_name_requirements` | `list(string)` | List of metric dimensions to query. Before querying metric values, the total list of metrics will be filtered to only those that contain exactly this list of dimensions. An empty or undefined list results in all dimension combinations being included. | `{}`    | no       |
 | `nil_to_zero`                 | `bool`         | When `true`, `NaN` metric values are converted to 0. Individual metrics can override this value in the [metric][] block.                                                                                                                                   | `true`  | no       |
@@ -296,12 +296,11 @@ You can configure the `custom_namespace` block multiple times if you need to scr
 | Name                          | Type           | Description                                                                                                                                                                                                                                                | Default | Required |
 | ----------------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
 | `regions`                     | `list(string)` | List of AWS regions.                                                                                                                                                                                                                                       |         | yes      |
-| `namespace`                   | `string`       | CloudWatch metric namespace.                                                                                                                                 |         | yes      |
-| `recently_active_only`        | `bool`         | Only return metrics that have been active in the last 3 hours.                                                                                                                                 | `false` | no       |
+| `namespace`                   | `string`       | CloudWatch metric namespace.                                                                                                                                                                                                                               |         | yes      |
+| `recently_active_only`        | `bool`         | Only return metrics that have been active in the last 3 hours.                                                                                                                                                                                             | `false` | no       |
 | `custom_tags`                 | `map(string)`  | Custom tags to be added as a list of key / value pairs. When exported to Prometheus format, the label name follows the following format: `custom_tag_{key}`.                                                                                               | `{}`    | no       |
 | `dimension_name_requirements` | `list(string)` | List of metric dimensions to query. Before querying metric values, the total list of metrics will be filtered to only those that contain exactly this list of dimensions. An empty or undefined list results in all dimension combinations being included. | `{}`    | no       |
 | `nil_to_zero`                 | `bool`         | When `true`, `NaN` metric values are converted to 0. Individual metrics can override this value in the [metric][] block.                                                                                                                                   | `true`  | no       |
-
 
 ### metric block
 
@@ -362,9 +361,9 @@ permission to assume the target role.
 Refer to [Granting a user permissions to switch roles](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_permissions-to-switch.html)
 in the AWS IAM documentation for more information about how to configure this.
 
-| Name          | Type     | Description                                                             | Default | Required |
-| ------------- | -------- | ----------------------------------------------------------------------- | ------- | -------- |
-| `role_arn`    | `string` | AWS IAM Role ARN the exporter should assume to perform AWS API calls.   |         | yes      |
+| Name          | Type     | Description                                                                                                    | Default | Required |
+| ------------- | -------- | -------------------------------------------------------------------------------------------------------------- | ------- | -------- |
+| `role_arn`    | `string` | AWS IAM Role ARN the exporter should assume to perform AWS API calls.                                          |         | yes      |
 | `external_id` | `string` | External ID used when calling STS AssumeRole API. Refer to the [IAM User Guide][details] for more information. | `""`    | no       |
 
 [details]: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_create_for-user_externalid.html

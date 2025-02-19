@@ -7,7 +7,7 @@ The `aws_msk` block configures extra parameters for SASL authentication when usi
 
 The following arguments are supported:
 
-Name          | Type     | Description                                   | Default | Required
---------------|----------|-----------------------------------------------|---------|---------
-`region`      | `string` | AWS region the MSK cluster is based in.       |         | yes
-`broker_addr` | `string` | MSK address to connect to for authentication. |         | yes
+| Name          | Type     | Description                                   | Default | Required |
+| ------------- | -------- | --------------------------------------------- | ------- | -------- |
+| `region`      | `string` | AWS region the MSK cluster is based in.       |         | yes      |
+| `broker_addr` | `string` | MSK address to connect to for authentication. |         | yes      |

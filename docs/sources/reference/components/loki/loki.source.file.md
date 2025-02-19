@@ -85,9 +85,9 @@ To avoid it, pick an `initial_delay` that's long enough to avoid it.
 
 Currently supported compression formats are:
 
-* `gz` - for Gzip
-* `z` - for zlib
-* `bz2` - for bzip2
+- `gz` - for Gzip
+- `z` - for zlib
+- `bz2` - for bzip2
 
 The component can only support one compression format at a time.
 To handle multiple formats, you must create multiple components.
@@ -118,17 +118,17 @@ If file changes are detected, the poll frequency is reset to `min_poll_frequency
 
 `loki.source.file` exposes some target-level debug information per reader:
 
-* The tailed path.
-* Whether the reader is running.
-* The last recorded read offset in the positions file.
+- The tailed path.
+- Whether the reader is running.
+- The last recorded read offset in the positions file.
 
 ## Debug metrics
 
-* `loki_source_file_encoding_failures_total` (counter): Number of encoding failures.
-* `loki_source_file_file_bytes_total` (gauge): Number of bytes total.
-* `loki_source_file_files_active_total` (gauge): Number of active files.
-* `loki_source_file_read_bytes_total` (gauge): Number of bytes read.
-* `loki_source_file_read_lines_total` (counter): Number of lines read.
+- `loki_source_file_encoding_failures_total` (counter): Number of encoding failures.
+- `loki_source_file_file_bytes_total` (gauge): Number of bytes total.
+- `loki_source_file_files_active_total` (gauge): Number of active files.
+- `loki_source_file_read_bytes_total` (gauge): Number of bytes read.
+- `loki_source_file_read_lines_total` (counter): Number of lines read.
 
 ## Component behavior
 
@@ -243,7 +243,6 @@ loki.write "local" {
 
 - Components that export [Targets](../../../compatibility/#targets-exporters)
 - Components that export [Loki `LogsReceiver`](../../../compatibility/#loki-logsreceiver-exporters)
-
 
 {{< admonition type="note" >}}
 Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.

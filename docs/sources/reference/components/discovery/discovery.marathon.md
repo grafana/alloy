@@ -39,15 +39,15 @@ You can use the following arguments with `discovery.marathon`:
 | `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |         | no       |
 | `refresh_interval`       | `duration`          | Interval at which to refresh the list of targets.                                                | `"30s"` | no       |
 
- At most, one of the following can be provided:
+At most, one of the following can be provided:
 
-* [`auth_token_file`][arguments] argument
-* [`auth_token`][arguments] argument
-* [`authorization`][authorization] block
-* [`basic_auth`][basic_auth] block
-* [`bearer_token_file`][arguments] argument
-* [`bearer_token`][arguments] argument
-* [`oauth2`][oauth2] block
+- [`auth_token_file`][arguments] argument
+- [`auth_token`][arguments] argument
+- [`authorization`][authorization] block
+- [`basic_auth`][basic_auth] block
+- [`bearer_token_file`][arguments] argument
+- [`bearer_token`][arguments] argument
+- [`oauth2`][oauth2] block
 
 [arguments]: #arguments
 
@@ -107,13 +107,13 @@ The following fields are exported and can be referenced by other components:
 
 Each target includes the following labels:
 
-* `__meta_marathon_app_label_<labelname>`: Any Marathon labels attached to the app.
-* `__meta_marathon_app`: The name of the app, with slashes replaced by dashes.
-* `__meta_marathon_image`: The name of the Docker image used, if available.
-* `__meta_marathon_port_definition_label_<labelname>`: The port definition labels.
-* `__meta_marathon_port_index`: The port index number, for example 1 for PORT1.
-* `__meta_marathon_port_mapping_label_<labelname>`: The port mapping labels.
-* `__meta_marathon_task`: The ID of the Apache Mesos task.
+- `__meta_marathon_app_label_<labelname>`: Any Marathon labels attached to the app.
+- `__meta_marathon_app`: The name of the app, with slashes replaced by dashes.
+- `__meta_marathon_image`: The name of the Docker image used, if available.
+- `__meta_marathon_port_definition_label_<labelname>`: The port definition labels.
+- `__meta_marathon_port_index`: The port index number, for example 1 for PORT1.
+- `__meta_marathon_port_mapping_label_<labelname>`: The port mapping labels.
+- `__meta_marathon_task`: The ID of the Apache Mesos task.
 
 ## Component health
 
@@ -156,9 +156,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

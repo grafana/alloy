@@ -1,5 +1,4 @@
 ---
-
 canonical: https://grafana.com/docs/alloy/latest/reference/components/loki/loki.source.cloudflare/
 aliases:
   - ../loki.source.cloudflare/ # /docs/alloy/latest/reference/components/loki.source.cloudflare/
@@ -46,84 +45,86 @@ You can use the following arguments with `loki.source.cloudflare`:
 By default `loki.source.cloudflare` fetches logs with the `default` set of fields.
 The following list shows the different sets of `fields_type` available for selection, and the fields they include:
 
-* `default` includes:
-{{< column-list >}}
-  * `"ClientIP"`
-  * `"ClientRequestHost"`
-  * `"ClientRequestMethod"`
-  * `"ClientRequestURI"`
-  * `"EdgeEndTimestamp"`
-  * `"EdgeResponseBytes"`
-  * `"EdgeRequestHost"`
-  * `"EdgeResponseStatus"`
-  * `"EdgeStartTimestamp"`
-  * `"RayID"`
-{{< /column-list >}}
+- `default` includes:
+  {{< column-list >}}
+
+  - `"ClientIP"`
+  - `"ClientRequestHost"`
+  - `"ClientRequestMethod"`
+  - `"ClientRequestURI"`
+  - `"EdgeEndTimestamp"`
+  - `"EdgeResponseBytes"`
+  - `"EdgeRequestHost"`
+  - `"EdgeResponseStatus"`
+  - `"EdgeStartTimestamp"`
+  - `"RayID"`
+    {{< /column-list >}}
 
   plus any extra fields provided via `additional_fields` argument.
-* `minimal` includes all `default` fields and adds:
-{{< column-list >}}
-  * `"ZoneID"`
-  * `"ClientSSLProtocol"`
-  * `"ClientRequestProtocol"`
-  * `"ClientRequestPath"`
-  * `"ClientRequestUserAgent"`
-  * `"ClientRequestReferer"`
-  * `"EdgeColoCode"`
-  * `"ClientCountry"`
-  * `"CacheCacheStatus"`
-  * `"CacheResponseStatus"`
-  * `"EdgeResponseContentType"`
-{{< /column-list >}}
-   plus any extra fields provided via `additional_fields` argument.
-* `extended` includes all `minimal` fields and adds:
-{{< column-list >}}
-  * `"ClientSSLCipher"`
-  * `"ClientASN"`
-  * `"ClientIPClass"`
-  * `"CacheResponseBytes"`
-  * `"EdgePathingOp"`
-  * `"EdgePathingSrc"`
-  * `"EdgePathingStatus"`
-  * `"ParentRayID"`
-  * `"WorkerCPUTime"`
-  * `"WorkerStatus"`
-  * `"WorkerSubrequest"`
-  * `"WorkerSubrequestCount"`
-  * `"OriginIP"`
-  * `"OriginResponseStatus"`
-  * `"OriginSSLProtocol"`
-  * `"OriginResponseHTTPExpires"`
-  * `"OriginResponseHTTPLastModified"`
- {{< /column-list >}}
-  plus any extra fields provided via `additional_fields` argument.
-* `all` includes all `extended` fields and adds:
-{{< column-list >}}
-  * `"BotScore"`
-  * `"BotScoreSrc"`
-  * `"BotTags"`
-  * `"ClientRequestBytes"`
-  * `"ClientSrcPort"`
-  * `"ClientXRequestedWith"`
-  * `"CacheTieredFill"`
-  * `"EdgeResponseCompressionRatio"`
-  * `"EdgeServerIP"`
-  * `"FirewallMatchesSources"`
-  * `"FirewallMatchesActions"`
-  * `"FirewallMatchesRuleIDs"`
-  * `"OriginResponseBytes"`
-  * `"OriginResponseTime"`
-  * `"ClientDeviceType"`
-  * `"WAFFlags"`
-  * `"WAFMatchedVar"`
-  * `"EdgeColoID"`
-  * `"RequestHeaders"`
-  * `"ResponseHeaders"`
-  * `"ClientRequestSource"`
-{{< /column-list >}}
-  plus any extra fields provided via `additional_fields` argument.
-  This is still relevant in this case if new fields are made available via Cloudflare API but aren't yet included in `all`.
-* `custom` includes only the fields defined in `additional_fields`.
+
+- `minimal` includes all `default` fields and adds:
+  {{< column-list >}}
+  - `"ZoneID"`
+  - `"ClientSSLProtocol"`
+  - `"ClientRequestProtocol"`
+  - `"ClientRequestPath"`
+  - `"ClientRequestUserAgent"`
+  - `"ClientRequestReferer"`
+  - `"EdgeColoCode"`
+  - `"ClientCountry"`
+  - `"CacheCacheStatus"`
+  - `"CacheResponseStatus"`
+  - `"EdgeResponseContentType"`
+    {{< /column-list >}}
+    plus any extra fields provided via `additional_fields` argument.
+- `extended` includes all `minimal` fields and adds:
+  {{< column-list >}}
+  - `"ClientSSLCipher"`
+  - `"ClientASN"`
+  - `"ClientIPClass"`
+  - `"CacheResponseBytes"`
+  - `"EdgePathingOp"`
+  - `"EdgePathingSrc"`
+  - `"EdgePathingStatus"`
+  - `"ParentRayID"`
+  - `"WorkerCPUTime"`
+  - `"WorkerStatus"`
+  - `"WorkerSubrequest"`
+  - `"WorkerSubrequestCount"`
+  - `"OriginIP"`
+  - `"OriginResponseStatus"`
+  - `"OriginSSLProtocol"`
+  - `"OriginResponseHTTPExpires"`
+  - `"OriginResponseHTTPLastModified"`
+    {{< /column-list >}}
+    plus any extra fields provided via `additional_fields` argument.
+- `all` includes all `extended` fields and adds:
+  {{< column-list >}}
+  - `"BotScore"`
+  - `"BotScoreSrc"`
+  - `"BotTags"`
+  - `"ClientRequestBytes"`
+  - `"ClientSrcPort"`
+  - `"ClientXRequestedWith"`
+  - `"CacheTieredFill"`
+  - `"EdgeResponseCompressionRatio"`
+  - `"EdgeServerIP"`
+  - `"FirewallMatchesSources"`
+  - `"FirewallMatchesActions"`
+  - `"FirewallMatchesRuleIDs"`
+  - `"OriginResponseBytes"`
+  - `"OriginResponseTime"`
+  - `"ClientDeviceType"`
+  - `"WAFFlags"`
+  - `"WAFMatchedVar"`
+  - `"EdgeColoID"`
+  - `"RequestHeaders"`
+  - `"ResponseHeaders"`
+  - `"ClientRequestSource"`
+    {{< /column-list >}}
+    plus any extra fields provided via `additional_fields` argument.
+    This is still relevant in this case if new fields are made available via Cloudflare API but aren't yet included in `all`.
+- `custom` includes only the fields defined in `additional_fields`.
 
 The component saves the last successfully fetched timestamp in its positions file.
 If a position is found in the file for a given zone ID, the component restarts pulling logs from that timestamp.
@@ -225,17 +226,17 @@ The `loki.source.cloudflare` component doesn't support any blocks. You can confi
 
 `loki.source.cloudflare` exposes the following debug information:
 
-* Whether the target is ready and reading logs from the API.
-* The Cloudflare zone ID.
-* The last error reported, if any.
-* The stored positions file entry, as the combination of `zone_id`, labels and last fetched timestamp.
-* The last timestamp fetched.
-* The set of fields being fetched.
+- Whether the target is ready and reading logs from the API.
+- The Cloudflare zone ID.
+- The last error reported, if any.
+- The stored positions file entry, as the combination of `zone_id`, labels and last fetched timestamp.
+- The last timestamp fetched.
+- The set of fields being fetched.
 
 ## Debug metrics
 
-* `loki_source_cloudflare_target_entries_total` (counter): Total number of successful entries sent via the cloudflare target.
-* `loki_source_cloudflare_target_last_requested_end_timestamp` (gauge): The last cloudflare request end timestamp fetched, for calculating how far behind the target is.
+- `loki_source_cloudflare_target_entries_total` (counter): Total number of successful entries sent via the cloudflare target.
+- `loki_source_cloudflare_target_last_requested_end_timestamp` (gauge): The last cloudflare request end timestamp fetched, for calculating how far behind the target is.
 
 ## Example
 
@@ -263,7 +264,6 @@ loki.write "local" {
 `loki.source.cloudflare` can accept arguments from the following components:
 
 - Components that export [Loki `LogsReceiver`](../../../compatibility/#loki-logsreceiver-exporters)
-
 
 {{< admonition type="note" >}}
 Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.

@@ -127,8 +127,8 @@ loki.write "local_loki" {
 
 Replace the following:
 
-* _`<PATH_TARGETS>`_: The paths to the log files to monitor.
-* _`<LOKI_ENDPOINT>`_: The URL of the Loki instance to send logs to.
+- _`<PATH_TARGETS>`_: The paths to the log files to monitor.
+- _`<LOKI_ENDPOINT>`_: The URL of the Loki instance to send logs to.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

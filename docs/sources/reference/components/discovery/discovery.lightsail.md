@@ -44,13 +44,13 @@ You can use the following arguments with `discovery.lightsail`:
 
 At most, one of the following can be provided:
 
-* [`authorization`][authorization] block
-* [`basic_auth`][basic_auth] block
-* [`bearer_token_file`][arguments] argument
-* [`bearer_token][arguments] argument
-* [`oauth2`][oauth2] block
+- [`authorization`][authorization] block
+- [`basic_auth`][basic_auth] block
+- [`bearer_token_file`][arguments] argument
+- [`bearer_token][arguments] argument
+- [`oauth2`][oauth2] block
 
- [arguments]: #arguments
+[arguments]: #arguments
 
 {{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -108,17 +108,17 @@ The following fields are exported and can be referenced by other components:
 
 Each target includes the following labels:
 
-* `__meta_lightsail_availability_zone`: The availability zone in which the instance is running.
-* `__meta_lightsail_blueprint_id`: The Lightsail blueprint ID.
-* `__meta_lightsail_bundle_id`: The Lightsail bundle ID.
-* `__meta_lightsail_instance_name`: The name of the Lightsail instance.
-* `__meta_lightsail_instance_state`: The state of the Lightsail instance.
-* `__meta_lightsail_instance_support_code`: The support code of the Lightsail instance.
-* `__meta_lightsail_ipv6_addresses`: Comma-separated list of IPv6 addresses assigned to the instance's network interfaces, if present.
-* `__meta_lightsail_private_ip`: The private IP address of the instance.
-* `__meta_lightsail_public_ip`: The public IP address of the instance, if available.
-* `__meta_lightsail_region`: The region of the instance.
-* `__meta_lightsail_tag_<tagkey>`: Each tag value of the instance.
+- `__meta_lightsail_availability_zone`: The availability zone in which the instance is running.
+- `__meta_lightsail_blueprint_id`: The Lightsail blueprint ID.
+- `__meta_lightsail_bundle_id`: The Lightsail bundle ID.
+- `__meta_lightsail_instance_name`: The name of the Lightsail instance.
+- `__meta_lightsail_instance_state`: The state of the Lightsail instance.
+- `__meta_lightsail_instance_support_code`: The support code of the Lightsail instance.
+- `__meta_lightsail_ipv6_addresses`: Comma-separated list of IPv6 addresses assigned to the instance's network interfaces, if present.
+- `__meta_lightsail_private_ip`: The private IP address of the instance.
+- `__meta_lightsail_public_ip`: The public IP address of the instance, if available.
+- `__meta_lightsail_region`: The region of the instance.
+- `__meta_lightsail_tag_<tagkey>`: Each tag value of the instance.
 
 ## Component health
 
@@ -159,9 +159,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
