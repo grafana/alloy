@@ -13,10 +13,10 @@ The _component controller_ is the core part of {{< param "PRODUCT_NAME" >}} whic
 
 The component controller is responsible for:
 
-* Reading and validating the configuration file.
-* Managing the lifecycle of defined components.
-* Evaluating the arguments used to configure components.
-* Reporting the health of defined components.
+- Reading and validating the configuration file.
+- Managing the lifecycle of defined components.
+- Evaluating the arguments used to configure components.
+- Reporting the health of defined components.
 
 ## Component graph
 

@@ -20,26 +20,26 @@ import.http "LABEL" {
 
 The following arguments are supported:
 
-Name             | Type          | Description                             | Default | Required
------------------|---------------|-----------------------------------------|---------|---------
-`url`            | `string`      | URL to poll.                            |         | yes
-`method`         | `string`      | Define the HTTP method for the request. | `"GET"` | no
-`headers`        | `map(string)` | Custom headers for the request.         | `{}`    | no
-`poll_frequency` | `duration`    | Frequency to poll the URL.              | `"1m"`  | no
-`poll_timeout`   | `duration`    | Timeout when polling the URL.           | `"10s"` | no
+| Name             | Type          | Description                             | Default | Required |
+| ---------------- | ------------- | --------------------------------------- | ------- | -------- |
+| `url`            | `string`      | URL to poll.                            |         | yes      |
+| `method`         | `string`      | Define the HTTP method for the request. | `"GET"` | no       |
+| `headers`        | `map(string)` | Custom headers for the request.         | `{}`    | no       |
+| `poll_frequency` | `duration`    | Frequency to poll the URL.              | `"1m"`  | no       |
+| `poll_timeout`   | `duration`    | Timeout when polling the URL.           | `"10s"` | no       |
 
 ## Blocks
 
 The following blocks are supported inside the definition of `import.http`:
 
-Hierarchy                    | Block             | Description                                              | Required
------------------------------|-------------------|----------------------------------------------------------|---------
-client                       | [client][]        | HTTP client settings when connecting to the endpoint.    | no
-client > basic_auth          | [basic_auth][]    | Configure basic_auth for authenticating to the endpoint. | no
-client > authorization       | [authorization][] | Configure generic authorization to the endpoint.         | no
-client > oauth2              | [oauth2][]        | Configure OAuth2 for authenticating to the endpoint.     | no
-client > oauth2 > tls_config | [tls_config][]    | Configure TLS settings for connecting to the endpoint.   | no
-client > tls_config          | [tls_config][]    | Configure TLS settings for connecting to the endpoint.   | no
+| Hierarchy                    | Block             | Description                                              | Required |
+| ---------------------------- | ----------------- | -------------------------------------------------------- | -------- |
+| client                       | [client][]        | HTTP client settings when connecting to the endpoint.    | no       |
+| client > basic_auth          | [basic_auth][]    | Configure basic_auth for authenticating to the endpoint. | no       |
+| client > authorization       | [authorization][] | Configure generic authorization to the endpoint.         | no       |
+| client > oauth2              | [oauth2][]        | Configure OAuth2 for authenticating to the endpoint.     | no       |
+| client > oauth2 > tls_config | [tls_config][]    | Configure TLS settings for connecting to the endpoint.   | no       |
+| client > tls_config          | [tls_config][]    | Configure TLS settings for connecting to the endpoint.   | no       |
 
 The `>` symbol indicates deeper levels of nesting.
 For example, `client > basic_auth` refers to an `basic_auth` block defined inside a `client` block.

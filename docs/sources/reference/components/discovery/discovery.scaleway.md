@@ -53,8 +53,8 @@ You can use the following arguments with `discovery.scaleway`:
 The `role` argument determines what type of Scaleway machines to discover.
 It must be set to one of the following:
 
-* `"baremetal"`: Discover [bare metal][] Scaleway machines.
-* `"instance"`: Discover virtual Scaleway [instances][instance].
+- `"baremetal"`: Discover [bare metal][] Scaleway machines.
+- `"instance"`: Discover virtual Scaleway [instances][instance].
 
 The `name_filter` and `tags_filter` arguments can be used to filter the set of discovered servers.
 `name_filter` returns machines matching a specific name, while `tags_filter` returns machines who contain _all_ the tags listed in the `tags_filter` argument.
@@ -87,42 +87,42 @@ The following fields are exported and can be referenced by other components:
 
 When `role` is `baremetal`, discovered targets include the following labels:
 
-* `__meta_scaleway_baremetal_id`: The ID of the server.
-* `__meta_scaleway_baremetal_name`: The name of the server.
-* `__meta_scaleway_baremetal_os_name`: The operating system name of the server.
-* `__meta_scaleway_baremetal_os_version`: The operating system version of the server.
-* `__meta_scaleway_baremetal_project_id`: The project ID the server belongs to.
-* `__meta_scaleway_baremetal_public_ipv4`: The public IPv4 address of the server.
-* `__meta_scaleway_baremetal_public_ipv6`: The public IPv6 address of the server.
-* `__meta_scaleway_baremetal_status`: The current status of the server.
-* `__meta_scaleway_baremetal_tags`: The list of tags associated with the server concatenated with a `,`.
-* `__meta_scaleway_baremetal_type`: The commercial type of the server.
-* `__meta_scaleway_baremetal_zone`: The availability zone of the server.
+- `__meta_scaleway_baremetal_id`: The ID of the server.
+- `__meta_scaleway_baremetal_name`: The name of the server.
+- `__meta_scaleway_baremetal_os_name`: The operating system name of the server.
+- `__meta_scaleway_baremetal_os_version`: The operating system version of the server.
+- `__meta_scaleway_baremetal_project_id`: The project ID the server belongs to.
+- `__meta_scaleway_baremetal_public_ipv4`: The public IPv4 address of the server.
+- `__meta_scaleway_baremetal_public_ipv6`: The public IPv6 address of the server.
+- `__meta_scaleway_baremetal_status`: The current status of the server.
+- `__meta_scaleway_baremetal_tags`: The list of tags associated with the server concatenated with a `,`.
+- `__meta_scaleway_baremetal_type`: The commercial type of the server.
+- `__meta_scaleway_baremetal_zone`: The availability zone of the server.
 
 When `role` is `instance`, discovered targets include the following labels:
 
-* `__meta_scaleway_instance_boot_type`: The boot type of the server.
-* `__meta_scaleway_instance_hostname`: The hostname of the server.
-* `__meta_scaleway_instance_id`: The ID of the server.
-* `__meta_scaleway_instance_image_arch`: The architecture of the image the server is running.
-* `__meta_scaleway_instance_image_id`: The ID of the image the server is running.
-* `__meta_scaleway_instance_image_name`: The name of the image the server is running.
-* `__meta_scaleway_instance_location_cluster_id`: The ID of the cluster for the server's location.
-* `__meta_scaleway_instance_location_hypervisor_id`: The hypervisor ID for the server's location.
-* `__meta_scaleway_instance_location_node_id`: The node ID for the server's location.
-* `__meta_scaleway_instance_name`: The name of the server.
-* `__meta_scaleway_instance_organization_id`: The organization ID that the server belongs to.
-* `__meta_scaleway_instance_private_ipv4`: The private IPv4 address of the server.
-* `__meta_scaleway_instance_project_id`: The project ID the server belongs to.
-* `__meta_scaleway_instance_public_ipv4`: The public IPv4 address of the server.
-* `__meta_scaleway_instance_public_ipv6`: The public IPv6 address of the server.
-* `__meta_scaleway_instance_region`: The region of the server.
-* `__meta_scaleway_instance_security_group_id`: The ID of the security group the server is assigned to.
-* `__meta_scaleway_instance_security_group_name`: The name of the security group the server is assigned to.
-* `__meta_scaleway_instance_status`: The current status of the server.
-* `__meta_scaleway_instance_tags`: The list of tags associated with the server concatenated with a `,`.
-* `__meta_scaleway_instance_type`: The commercial type of the server.
-* `__meta_scaleway_instance_zone`: The availability zone of the server.
+- `__meta_scaleway_instance_boot_type`: The boot type of the server.
+- `__meta_scaleway_instance_hostname`: The hostname of the server.
+- `__meta_scaleway_instance_id`: The ID of the server.
+- `__meta_scaleway_instance_image_arch`: The architecture of the image the server is running.
+- `__meta_scaleway_instance_image_id`: The ID of the image the server is running.
+- `__meta_scaleway_instance_image_name`: The name of the image the server is running.
+- `__meta_scaleway_instance_location_cluster_id`: The ID of the cluster for the server's location.
+- `__meta_scaleway_instance_location_hypervisor_id`: The hypervisor ID for the server's location.
+- `__meta_scaleway_instance_location_node_id`: The node ID for the server's location.
+- `__meta_scaleway_instance_name`: The name of the server.
+- `__meta_scaleway_instance_organization_id`: The organization ID that the server belongs to.
+- `__meta_scaleway_instance_private_ipv4`: The private IPv4 address of the server.
+- `__meta_scaleway_instance_project_id`: The project ID the server belongs to.
+- `__meta_scaleway_instance_public_ipv4`: The public IPv4 address of the server.
+- `__meta_scaleway_instance_public_ipv6`: The public IPv6 address of the server.
+- `__meta_scaleway_instance_region`: The region of the server.
+- `__meta_scaleway_instance_security_group_id`: The ID of the security group the server is assigned to.
+- `__meta_scaleway_instance_security_group_name`: The name of the security group the server is assigned to.
+- `__meta_scaleway_instance_status`: The current status of the server.
+- `__meta_scaleway_instance_tags`: The list of tags associated with the server concatenated with a `,`.
+- `__meta_scaleway_instance_type`: The commercial type of the server.
+- `__meta_scaleway_instance_zone`: The availability zone of the server.
 
 ## Component health
 
@@ -166,13 +166,13 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-* _`<SCALEWAY_PROJECT_ID>`_: The project ID of your Scaleway machines.
-* _`<SCALEWAY_PROJECT_ROLE>`_: Set to `baremetal` to discover [bare metal][] machines or `instance` to discover [virtual instances][instance].
-* _`<SCALEWAY_ACCESS_KEY>`_: Your Scaleway API access key.
-* _`<SCALEWAY_SECRET_KEY>`_: Your Scaleway API secret key.
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+- _`<SCALEWAY_PROJECT_ID>`_: The project ID of your Scaleway machines.
+- _`<SCALEWAY_PROJECT_ROLE>`_: Set to `baremetal` to discover [bare metal][] machines or `instance` to discover [virtual instances][instance].
+- _`<SCALEWAY_ACCESS_KEY>`_: Your Scaleway API access key.
+- _`<SCALEWAY_SECRET_KEY>`_: Your Scaleway API secret key.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

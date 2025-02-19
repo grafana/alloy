@@ -36,30 +36,30 @@ prometheus.remote_write "LABEL" {
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`external_labels` | `map(string)` | Labels to add to metrics sent over the network. | | no
+| Name              | Type          | Description                                     | Default | Required |
+| ----------------- | ------------- | ----------------------------------------------- | ------- | -------- |
+| `external_labels` | `map(string)` | Labels to add to metrics sent over the network. |         | no       |
 
 ## Blocks
 
 The following blocks are supported inside the definition of
 `prometheus.remote_write`:
 
-Hierarchy | Block | Description | Required
---------- | ----- | ----------- | --------
-endpoint | [endpoint][] | Location to send metrics to. | no
-endpoint > basic_auth | [basic_auth][] | Configure basic_auth for authenticating to the endpoint. | no
-endpoint > authorization | [authorization][] | Configure generic authorization to the endpoint. | no
-endpoint > oauth2 | [oauth2][] | Configure OAuth2 for authenticating to the endpoint. | no
-endpoint > oauth2 > tls_config | [tls_config][] | Configure TLS settings for connecting to the endpoint. | no
-endpoint > sigv4 | [sigv4][] | Configure AWS Signature Verification 4 for authenticating to the endpoint. | no
-endpoint > azuread | [azuread][] | Configure AzureAD for authenticating to the endpoint. | no
-endpoint > azuread > managed_identity | [managed_identity][] | Configure Azure user-assigned managed identity. | yes
-endpoint > tls_config | [tls_config][] | Configure TLS settings for connecting to the endpoint. | no
-endpoint > queue_config | [queue_config][] | Configuration for how metrics are batched before sending. | no
-endpoint > metadata_config | [metadata_config][] | Configuration for how metric metadata is sent. | no
-endpoint > write_relabel_config | [write_relabel_config][] | Configuration for write_relabel_config. | no
-wal | [wal][] | Configuration for the component's WAL. | no
+| Hierarchy                             | Block                    | Description                                                                | Required |
+| ------------------------------------- | ------------------------ | -------------------------------------------------------------------------- | -------- |
+| endpoint                              | [endpoint][]             | Location to send metrics to.                                               | no       |
+| endpoint > basic_auth                 | [basic_auth][]           | Configure basic_auth for authenticating to the endpoint.                   | no       |
+| endpoint > authorization              | [authorization][]        | Configure generic authorization to the endpoint.                           | no       |
+| endpoint > oauth2                     | [oauth2][]               | Configure OAuth2 for authenticating to the endpoint.                       | no       |
+| endpoint > oauth2 > tls_config        | [tls_config][]           | Configure TLS settings for connecting to the endpoint.                     | no       |
+| endpoint > sigv4                      | [sigv4][]                | Configure AWS Signature Verification 4 for authenticating to the endpoint. | no       |
+| endpoint > azuread                    | [azuread][]              | Configure AzureAD for authenticating to the endpoint.                      | no       |
+| endpoint > azuread > managed_identity | [managed_identity][]     | Configure Azure user-assigned managed identity.                            | yes      |
+| endpoint > tls_config                 | [tls_config][]           | Configure TLS settings for connecting to the endpoint.                     | no       |
+| endpoint > queue_config               | [queue_config][]         | Configuration for how metrics are batched before sending.                  | no       |
+| endpoint > metadata_config            | [metadata_config][]      | Configuration for how metric metadata is sent.                             | no       |
+| endpoint > write_relabel_config       | [write_relabel_config][] | Configuration for write_relabel_config.                                    | no       |
+| wal                                   | [wal][]                  | Configuration for the component's WAL.                                     | no       |
 
 The `>` symbol indicates deeper levels of nesting. For example, `endpoint >
 basic_auth` refers to a `basic_auth` block defined inside an
@@ -85,31 +85,32 @@ The `endpoint` block describes a single location to send metrics to. Multiple
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`url` | `string` | Full URL to send metrics to. | | yes
-`name` | `string` | Optional name to identify the endpoint in metrics. | | no
-`remote_timeout` | `duration` | Timeout for requests made to the URL. | `"30s"` | no
-`headers` | `map(string)` | Extra headers to deliver with the request. | | no
-`send_exemplars` | `bool` | Whether exemplars should be sent. | `true` | no
-`send_native_histograms` | `bool` | Whether native histograms should be sent. | `false` | no
-`bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.          |         | no
-`bearer_token`           | `secret`            | Bearer token to authenticate with.                            |         | no
-`enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                      | `true`  | no
-`follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.  | `true`  | no
-`proxy_url`              | `string`            | HTTP proxy to send requests through.                          |         | no
-`no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. | | no
-`proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.         | `false` | no
-`proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests. |         | no
+| Name                     | Type                | Description                                                                                      | Default | Required |
+| ------------------------ | ------------------- | ------------------------------------------------------------------------------------------------ | ------- | -------- |
+| `url`                    | `string`            | Full URL to send metrics to.                                                                     |         | yes      |
+| `name`                   | `string`            | Optional name to identify the endpoint in metrics.                                               |         | no       |
+| `remote_timeout`         | `duration`          | Timeout for requests made to the URL.                                                            | `"30s"` | no       |
+| `headers`                | `map(string)`       | Extra headers to deliver with the request.                                                       |         | no       |
+| `send_exemplars`         | `bool`              | Whether exemplars should be sent.                                                                | `true`  | no       |
+| `send_native_histograms` | `bool`              | Whether native histograms should be sent.                                                        | `false` | no       |
+| `bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                             |         | no       |
+| `bearer_token`           | `secret`            | Bearer token to authenticate with.                                                               |         | no       |
+| `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`  | no       |
+| `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`  | no       |
+| `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |         | no       |
+| `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |         | no       |
+| `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false` | no       |
+| `proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |         | no       |
 
- At most, one of the following can be provided:
- - [`bearer_token` argument](#endpoint-block).
- - [`bearer_token_file` argument](#endpoint-block).
- - [`basic_auth` block][basic_auth].
- - [`authorization` block][authorization].
- - [`oauth2` block][oauth2].
- - [`sigv4` block][sigv4].
- - [`azuread` block][azuread].
+At most, one of the following can be provided:
+
+- [`bearer_token` argument](#endpoint-block).
+- [`bearer_token_file` argument](#endpoint-block).
+- [`basic_auth` block][basic_auth].
+- [`authorization` block][authorization].
+- [`oauth2` block][oauth2].
+- [`sigv4` block][sigv4].
+- [`azuread` block][azuread].
 
 When multiple `endpoint` blocks are provided, metrics are concurrently sent to all
 configured locations. Each endpoint has a _queue_ which is used to read metrics
@@ -157,23 +158,23 @@ metrics fails.
 
 ### queue_config block
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`capacity` | `number` | Number of samples to buffer per shard. | `10000` | no
-`min_shards` | `number` | Minimum amount of concurrent shards sending samples to the endpoint. | `1` | no
-`max_shards` | `number` | Maximum number of concurrent shards sending samples to the endpoint. | `50` | no
-`max_samples_per_send` | `number` | Maximum number of samples per send. | `2000` | no
-`batch_send_deadline` | `duration` | Maximum time samples will wait in the buffer before sending. | `"5s"` | no
-`min_backoff` | `duration` | Initial retry delay. The backoff time gets doubled for each retry. | `"30ms"` | no
-`max_backoff` | `duration` | Maximum retry delay. | `"5s"` | no
-`retry_on_http_429` | `bool` | Retry when an HTTP 429 status code is received. | `true` | no
-`sample_age_limit` | `duration` | Maximum age of samples to send. | `"0s"` | no
+| Name                   | Type       | Description                                                          | Default  | Required |
+| ---------------------- | ---------- | -------------------------------------------------------------------- | -------- | -------- |
+| `capacity`             | `number`   | Number of samples to buffer per shard.                               | `10000`  | no       |
+| `min_shards`           | `number`   | Minimum amount of concurrent shards sending samples to the endpoint. | `1`      | no       |
+| `max_shards`           | `number`   | Maximum number of concurrent shards sending samples to the endpoint. | `50`     | no       |
+| `max_samples_per_send` | `number`   | Maximum number of samples per send.                                  | `2000`   | no       |
+| `batch_send_deadline`  | `duration` | Maximum time samples will wait in the buffer before sending.         | `"5s"`   | no       |
+| `min_backoff`          | `duration` | Initial retry delay. The backoff time gets doubled for each retry.   | `"30ms"` | no       |
+| `max_backoff`          | `duration` | Maximum retry delay.                                                 | `"5s"`   | no       |
+| `retry_on_http_429`    | `bool`     | Retry when an HTTP 429 status code is received.                      | `true`   | no       |
+| `sample_age_limit`     | `duration` | Maximum age of samples to send.                                      | `"0s"`   | no       |
 
 Each queue then manages a number of concurrent _shards_ which is responsible
 for sending a fraction of data to their respective endpoints. The number of
 shards is automatically raised if samples are not being sent to the endpoint
 quickly enough. The range of permitted shards can be configured with the
-`min_shards` and `max_shards` arguments. Refer to  [Tuning `max_shards`](#tuning-max_shards)
+`min_shards` and `max_shards` arguments. Refer to [Tuning `max_shards`](#tuning-max_shards)
 for more information about how to configure `max_shards`.
 
 Each shard has a buffer of samples it will keep in memory, controlled with the
@@ -201,11 +202,11 @@ The default value is `0s`, which means that all samples are sent (feature is dis
 
 ### metadata_config block
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`send` | `bool` | Controls whether metric metadata is sent to the endpoint. | `true` | no
-`send_interval` | `duration` | How frequently metric metadata is sent to the endpoint. | `"1m"` | no
-`max_samples_per_send` | `number` | Maximum number of metadata samples to send to the endpoint at once. | `2000` | no
+| Name                   | Type       | Description                                                         | Default | Required |
+| ---------------------- | ---------- | ------------------------------------------------------------------- | ------- | -------- |
+| `send`                 | `bool`     | Controls whether metric metadata is sent to the endpoint.           | `true`  | no       |
+| `send_interval`        | `duration` | How frequently metric metadata is sent to the endpoint.             | `"1m"`  | no       |
+| `max_samples_per_send` | `number`   | Maximum number of metadata samples to send to the endpoint at once. | `2000`  | no       |
 
 ### write_relabel_config block
 
@@ -216,16 +217,16 @@ Name | Type | Description | Default | Required
 The `wal` block customizes the Write-Ahead Log (WAL) used to temporarily store
 metrics before they are sent to the configured set of endpoints.
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`truncate_frequency` | `duration` | How frequently to clean up the WAL. | `"2h"` | no
-`min_keepalive_time` | `duration` | Minimum time to keep data in the WAL before it can be removed. | `"5m"` | no
-`max_keepalive_time` | `duration` | Maximum time to keep data in the WAL before removing it. | `"8h"` | no
+| Name                 | Type       | Description                                                    | Default | Required |
+| -------------------- | ---------- | -------------------------------------------------------------- | ------- | -------- |
+| `truncate_frequency` | `duration` | How frequently to clean up the WAL.                            | `"2h"`  | no       |
+| `min_keepalive_time` | `duration` | Minimum time to keep data in the WAL before it can be removed. | `"5m"`  | no       |
+| `max_keepalive_time` | `duration` | Maximum time to keep data in the WAL before removing it.       | `"8h"`  | no       |
 
 The WAL serves two primary purposes:
 
-* Buffer unsent metrics in case of intermittent network issues.
-* Populate in-memory cache after a process restart.
+- Buffer unsent metrics in case of intermittent network issues.
+- Populate in-memory cache after a process restart.
 
 The WAL is located inside a component-specific directory relative to the
 storage path {{< param "PRODUCT_NAME" >}} is configured to use. See the
@@ -246,9 +247,9 @@ of data in the WAL; samples aren't removed until they are at least as old as
 
 The following fields are exported and can be referenced by other components:
 
-Name | Type | Description
----- | ---- | -----------
-`receiver` | `MetricsReceiver` | A value which other components can use to send metrics to.
+| Name       | Type              | Description                                                |
+| ---------- | ----------------- | ---------------------------------------------------------- |
+| `receiver` | `MetricsReceiver` | A value which other components can use to send metrics to. |
 
 ## Component health
 
@@ -263,77 +264,77 @@ information.
 
 ## Debug metrics
 
-* `prometheus_remote_write_wal_storage_active_series` (gauge): Current number of active series
+- `prometheus_remote_write_wal_storage_active_series` (gauge): Current number of active series
   being tracked by the WAL.
-* `prometheus_remote_write_wal_storage_deleted_series` (gauge): Current number of series marked
+- `prometheus_remote_write_wal_storage_deleted_series` (gauge): Current number of series marked
   for deletion from memory.
-* `prometheus_remote_write_wal_out_of_order_samples_total` (counter): Total number of out of
+- `prometheus_remote_write_wal_out_of_order_samples_total` (counter): Total number of out of
   order samples ingestion failed attempts.
-* `prometheus_remote_write_wal_storage_created_series_total` (counter): Total number of created
+- `prometheus_remote_write_wal_storage_created_series_total` (counter): Total number of created
   series appended to the WAL.
-* `prometheus_remote_write_wal_storage_removed_series_total` (counter): Total number of series
+- `prometheus_remote_write_wal_storage_removed_series_total` (counter): Total number of series
   removed from the WAL.
-* `prometheus_remote_write_wal_samples_appended_total` (counter): Total number of samples
+- `prometheus_remote_write_wal_samples_appended_total` (counter): Total number of samples
   appended to the WAL.
-* `prometheus_remote_write_wal_exemplars_appended_total` (counter): Total number of exemplars
+- `prometheus_remote_write_wal_exemplars_appended_total` (counter): Total number of exemplars
   appended to the WAL.
-* `prometheus_remote_storage_samples_total` (counter): Total number of samples
+- `prometheus_remote_storage_samples_total` (counter): Total number of samples
   sent to remote storage.
-* `prometheus_remote_storage_exemplars_total` (counter): Total number of
+- `prometheus_remote_storage_exemplars_total` (counter): Total number of
   exemplars sent to remote storage.
-* `prometheus_remote_storage_metadata_total` (counter): Total number of
+- `prometheus_remote_storage_metadata_total` (counter): Total number of
   metadata entries sent to remote storage.
-* `prometheus_remote_storage_samples_failed_total` (counter): Total number of
+- `prometheus_remote_storage_samples_failed_total` (counter): Total number of
   samples that failed to send to remote storage due to non-recoverable errors.
-* `prometheus_remote_storage_exemplars_failed_total` (counter): Total number of
+- `prometheus_remote_storage_exemplars_failed_total` (counter): Total number of
   exemplars that failed to send to remote storage due to non-recoverable errors.
-* `prometheus_remote_storage_metadata_failed_total` (counter): Total number of
+- `prometheus_remote_storage_metadata_failed_total` (counter): Total number of
   metadata entries that failed to send to remote storage due to
   non-recoverable errors.
-* `prometheus_remote_storage_samples_retries_total` (counter): Total number of
+- `prometheus_remote_storage_samples_retries_total` (counter): Total number of
   samples that failed to send to remote storage but were retried due to
   recoverable errors.
-* `prometheus_remote_storage_exemplars_retried_total` (counter): Total number of
+- `prometheus_remote_storage_exemplars_retried_total` (counter): Total number of
   exemplars that failed to send to remote storage but were retried due to
   recoverable errors.
-* `prometheus_remote_storage_metadata_retried_total` (counter): Total number of
+- `prometheus_remote_storage_metadata_retried_total` (counter): Total number of
   metadata entries that failed to send to remote storage but were retried due
   to recoverable errors.
-* `prometheus_remote_storage_samples_dropped_total` (counter): Total number of
+- `prometheus_remote_storage_samples_dropped_total` (counter): Total number of
   samples which were dropped after being read from the WAL before being sent to
   remote_write because of an unknown reference ID.
-* `prometheus_remote_storage_exemplars_dropped_total` (counter): Total number
+- `prometheus_remote_storage_exemplars_dropped_total` (counter): Total number
   of exemplars which were dropped after being read from the WAL before being
   sent to remote_write because of an unknown reference ID.
-* `prometheus_remote_storage_enqueue_retries_total` (counter): Total number of
+- `prometheus_remote_storage_enqueue_retries_total` (counter): Total number of
   times enqueue has failed because a shard's queue was full.
-* `prometheus_remote_storage_sent_batch_duration_seconds` (histogram): Duration
+- `prometheus_remote_storage_sent_batch_duration_seconds` (histogram): Duration
   of send calls to remote storage.
-* `prometheus_remote_storage_queue_highest_sent_timestamp_seconds` (gauge):
+- `prometheus_remote_storage_queue_highest_sent_timestamp_seconds` (gauge):
   Unix timestamp of the latest WAL sample successfully sent by a queue.
-* `prometheus_remote_storage_samples_pending` (gauge): The number of samples
+- `prometheus_remote_storage_samples_pending` (gauge): The number of samples
   pending in shards to be sent to remote storage.
-* `prometheus_remote_storage_exemplars_pending` (gauge): The number of
+- `prometheus_remote_storage_exemplars_pending` (gauge): The number of
   exemplars pending in shards to be sent to remote storage.
-* `prometheus_remote_storage_shard_capacity` (gauge): The capacity of shards
+- `prometheus_remote_storage_shard_capacity` (gauge): The capacity of shards
   within a given queue.
-* `prometheus_remote_storage_shards` (gauge): The number of shards used for
+- `prometheus_remote_storage_shards` (gauge): The number of shards used for
   concurrent delivery of metrics to an endpoint.
-* `prometheus_remote_storage_shards_min` (gauge): The minimum number of shards
+- `prometheus_remote_storage_shards_min` (gauge): The minimum number of shards
   a queue is allowed to run.
-* `prometheus_remote_storage_shards_max` (gauge): The maximum number of a
+- `prometheus_remote_storage_shards_max` (gauge): The maximum number of a
   shards a queue is allowed to run.
-* `prometheus_remote_storage_shards_desired` (gauge): The number of shards a
+- `prometheus_remote_storage_shards_desired` (gauge): The number of shards a
   queue wants to run to be able to keep up with the amount of incoming metrics.
-* `prometheus_remote_storage_bytes_total` (counter): Total number of bytes of
+- `prometheus_remote_storage_bytes_total` (counter): Total number of bytes of
   data sent by queues after compression.
-* `prometheus_remote_storage_metadata_bytes_total` (counter): Total number of
+- `prometheus_remote_storage_metadata_bytes_total` (counter): Total number of
   bytes of metadata sent by queues after compression.
-* `prometheus_remote_storage_max_samples_per_send` (gauge): The maximum number
+- `prometheus_remote_storage_max_samples_per_send` (gauge): The maximum number
   of samples each shard is allowed to send in a single request.
-* `prometheus_remote_storage_samples_in_total` (counter): Samples read into
+- `prometheus_remote_storage_samples_in_total` (counter): Samples read into
   remote storage.
-* `prometheus_remote_storage_exemplars_in_total` (counter): Exemplars read into
+- `prometheus_remote_storage_exemplars_in_total` (counter): Exemplars read into
   remote storage.
 
 ## Examples
@@ -367,7 +368,6 @@ prometheus.scrape "demo" {
   forward_to = [prometheus.remote_write.staging.receiver]
 }
 ```
-
 
 ### Send metrics to a Mimir instance with a tenant specified
 
@@ -414,6 +414,7 @@ If your database is Mimir, the exact name of the [Mimir error][mimir-ooo-err] is
 
 The most common cause for this error is that there is more than one {{< param "PRODUCT_NAME" >}} instance scraping the same target.
 To troubleshoot, take the following steps in order:
+
 1. If you use clustering, check if the number of {{< param "PRODUCT_NAME" >}} instances changed at the time the error was logged.
    This is the only situation in which it is normal to experience an out of order error.
    The error would only happen for a short period, until the cluster stabilizes and all {{< param "PRODUCT_NAME" >}} instances have a new list of targets.
@@ -424,7 +425,7 @@ To troubleshoot, take the following steps in order:
 1. Inspect the configuration to see if there could be multiple {{< param "PRODUCT_NAME" >}} instances which scrape the same target.
 1. Inspect the WAL to see which {{< param "PRODUCT_NAME" >}} instance sent those metric samples.
    The WAL is located in a directory set by the [run command][run-cmd] `--storage.path` argument.
-   You can use [Promtool][promtool] to inspect it and find out which metric series were sent by this {{< param "PRODUCT_NAME" >}} instance since the last WAL truncation event. 
+   You can use [Promtool][promtool] to inspect it and find out which metric series were sent by this {{< param "PRODUCT_NAME" >}} instance since the last WAL truncation event.
    For example:
    ```
    ./promtool tsdb dump --match='{__name__="otelcol_connector_spanmetrics_duration_seconds_bucket", http_method="GET", job="ExampleJobName"}' /path/to/wal/
@@ -482,6 +483,7 @@ samples that can be kept in the WAL. Samples older than
 `max_keepalive_time` are forcibly removed.
 
 ### Extended `remote_write` outages
+
 When the remote write endpoint is unreachable over a period of time, the most
 recent successfully sent timestamp is not updated. The
 `min_keepalive_time` and `max_keepalive_time` arguments control the age range
@@ -491,6 +493,7 @@ If the remote write outage is longer than the `max_keepalive_time` parameter,
 then the WAL is truncated, and the oldest data is lost.
 
 ### Intermittent `remote_write` outages
+
 If the remote write endpoint is intermittently reachable, the most recent
 successfully sent timestamp is updated whenever the connection is successful.
 A successful connection updates the series' comparison with
@@ -499,6 +502,7 @@ interval which checkpoints two thirds of the segments (rounded down to the
 nearest integer) written since the previous truncation.
 
 ### Falling behind
+
 If the queue shards cannot flush data quickly enough to keep
 up-to-date with the most recent data buffered in the WAL, we say that the
 component is 'falling behind'.
@@ -532,10 +536,10 @@ increasing the value of `max_shards`.
 
 {{< param "PRODUCT_NAME" >}} exposes a few metrics that you can use to monitor the remote write shards:
 
-* `prometheus_remote_storage_shards` (gauge): The number of shards used for concurrent delivery of metrics to an endpoint.
-* `prometheus_remote_storage_shards_min` (gauge): The minimum number of shards a queue is allowed to run.
-* `prometheus_remote_storage_shards_max` (gauge): The maximum number of shards a queue is allowed to run.
-* `prometheus_remote_storage_shards_desired` (gauge): The number of shards a queue wants to run to keep up with the number of incoming metrics.
+- `prometheus_remote_storage_shards` (gauge): The number of shards used for concurrent delivery of metrics to an endpoint.
+- `prometheus_remote_storage_shards_min` (gauge): The minimum number of shards a queue is allowed to run.
+- `prometheus_remote_storage_shards_max` (gauge): The maximum number of shards a queue is allowed to run.
+- `prometheus_remote_storage_shards_desired` (gauge): The number of shards a queue wants to run to keep up with the number of incoming metrics.
 
 If you're already running {{< param "PRODUCT_NAME" >}}, a rule of thumb is to set `max_shards` to
 4x shard utilization. Using the metrics explained above, you can run the following PromQL instant query

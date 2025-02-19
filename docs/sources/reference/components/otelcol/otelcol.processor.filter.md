@@ -14,22 +14,25 @@ If any of the OTTL statements evaluates to true, the telemetry data is dropped.
 
 OTTL statements consist of [OTTL Converter functions][], which act on paths.
 A path is a reference to a telemetry data such as:
-* Resource attributes.
-* Instrumentation scope name.
-* Span attributes.
+
+- Resource attributes.
+- Instrumentation scope name.
+- Span attributes.
 
 In addition to the [standard OTTL Converter functions][OTTL Converter functions], the following metrics-only functions are used exclusively by the processor:
-* [HasAttrKeyOnDataPoint][]
-* [HasAttrOnDataPoint][]
+
+- [HasAttrKeyOnDataPoint][]
+- [HasAttrOnDataPoint][]
 
 [OTTL][] statements used in `otelcol.processor.filter` mostly contain constructs such as:
-* [Booleans][OTTL booleans]:
-  * `not true`
-  * `not IsMatch(name, "http_.*")`
-* [Math expressions][OTTL math expressions]:
-  * `1 + 1`
-  * `end_time_unix_nano - start_time_unix_nano`
-  * `sum([1, 2, 3, 4]) + (10 / 1) - 1`
+
+- [Booleans][OTTL booleans]:
+  - `not true`
+  - `not IsMatch(name, "http_.*")`
+- [Math expressions][OTTL math expressions]:
+  - `1 + 1`
+  - `end_time_unix_nano - start_time_unix_nano`
+  - `sum([1, 2, 3, 4]) + (10 / 1) - 1`
 
 {{< admonition type="note" >}}
 Raw {{< param "PRODUCT_NAME" >}} syntax strings can be used to write OTTL statements.
@@ -53,6 +56,7 @@ Exercise caution when using `otelcol.processor.filter`:
   if the log references the dropped span.
 
 [Orphaned Telemetry]: https://github.com/open-telemetry/opentelemetry-collector/blob/v0.85.0/docs/standard-warnings.md#orphaned-telemetry
+
 {{< /admonition >}}
 
 ## Usage
@@ -71,27 +75,28 @@ otelcol.processor.filter "LABEL" {
 
 `otelcol.processor.filter` supports the following arguments:
 
-Name         | Type     | Description                                                        | Default       | Required
------------- | -------- | ------------------------------------------------------------------ | ------------- | --------
-`error_mode` | `string` | How to react to errors if they occur while processing a statement. | `"propagate"` | no
+| Name         | Type     | Description                                                        | Default       | Required |
+| ------------ | -------- | ------------------------------------------------------------------ | ------------- | -------- |
+| `error_mode` | `string` | How to react to errors if they occur while processing a statement. | `"propagate"` | no       |
 
 The supported values for `error_mode` are:
-* `ignore`: Ignore errors returned by conditions, log them, and continue on to the next condition. This is the recommended mode.
-* `silent`: Ignore errors returned by conditions, do not log them, and continue on to the next condition.
-* `propagate`: Return the error up the pipeline. This will result in the payload being dropped from {{< param "PRODUCT_NAME" >}}.
+
+- `ignore`: Ignore errors returned by conditions, log them, and continue on to the next condition. This is the recommended mode.
+- `silent`: Ignore errors returned by conditions, do not log them, and continue on to the next condition.
+- `propagate`: Return the error up the pipeline. This will result in the payload being dropped from {{< param "PRODUCT_NAME" >}}.
 
 ## Blocks
 
 The following blocks are supported inside the definition of
 `otelcol.processor.filter`:
 
-Hierarchy | Block       | Description                                       | Required
---------- | ----------- | ------------------------------------------------- | --------
-traces    | [traces][]  | Statements which filter traces.                   | no
-metrics   | [metrics][] | Statements which filter metrics.                  | no
-logs      | [logs][]    | Statements which filter logs.                     | no
-output    | [output][]  | Configures where to send received telemetry data. | yes
-debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
+| Hierarchy     | Block             | Description                                                                | Required |
+| ------------- | ----------------- | -------------------------------------------------------------------------- | -------- |
+| traces        | [traces][]        | Statements which filter traces.                                            | no       |
+| metrics       | [metrics][]       | Statements which filter metrics.                                           | no       |
+| logs          | [logs][]          | Statements which filter logs.                                              | no       |
+| output        | [output][]        | Configures where to send received telemetry data.                          | yes      |
+| debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no       |
 
 [traces]: #traces-block
 [metrics]: #metrics-block
@@ -99,22 +104,23 @@ debug_metrics | [debug_metrics][] | Configures the metrics that this component g
 [output]: #output-block
 [debug_metrics]: #debug_metrics-block
 
-
 ### traces block
 
 The `traces` block specifies statements that filter trace telemetry signals.
 Only one `traces` block can be specified.
 
-Name        | Type           | Description                                         | Default | Required
------------ | -------------- | --------------------------------------------------- | ------- | --------
-`span`      | `list(string)` | List of OTTL statements filtering OTLP spans.       |         | no
-`spanevent` | `list(string)` | List of OTTL statements filtering OTLP span events. |         | no
+| Name        | Type           | Description                                         | Default | Required |
+| ----------- | -------------- | --------------------------------------------------- | ------- | -------- |
+| `span`      | `list(string)` | List of OTTL statements filtering OTLP spans.       |         | no       |
+| `spanevent` | `list(string)` | List of OTTL statements filtering OTLP span events. |         | no       |
 
 The syntax of OTTL statements depends on the OTTL context. See the OpenTelemetry documentation for more information:
-* [OTTL span context][]
-* [OTTL spanevent context][]
+
+- [OTTL span context][]
+- [OTTL spanevent context][]
 
 Statements are checked in order from "high level" to "low level" telemetry, in this order:
+
 1. `span`
 2. `spanevent`
 
@@ -128,16 +134,18 @@ If all span events for a span are dropped, the span will be left intact.
 The `metrics` block specifies statements that filter metric telemetry signals.
 Only one `metrics` blocks can be specified.
 
-Name        | Type           | Description                                               | Default | Required
------------ | -------------- | --------------------------------------------------------- | ------- | --------
-`metric`    | `list(string)` | List of OTTL statements filtering OTLP metric.            |         | no
-`datapoint` | `list(string)` | List of OTTL statements filtering OTLP metric datapoints. |         | no
+| Name        | Type           | Description                                               | Default | Required |
+| ----------- | -------------- | --------------------------------------------------------- | ------- | -------- |
+| `metric`    | `list(string)` | List of OTTL statements filtering OTLP metric.            |         | no       |
+| `datapoint` | `list(string)` | List of OTTL statements filtering OTLP metric datapoints. |         | no       |
 
 The syntax of OTTL statements depends on the OTTL context. See the OpenTelemetry documentation for more information:
-* [OTTL metric context][]
-* [OTTL datapoint context][]
+
+- [OTTL metric context][]
+- [OTTL datapoint context][]
 
 Statements are checked in order from "high level" to "low level" telemetry, in this order:
+
 1. `metric`
 2. `datapoint`
 
@@ -151,12 +159,13 @@ If all datapoints for a metric are dropped, the metric will also be dropped.
 The `logs` block specifies statements that filter log telemetry signals.
 Only `logs` blocks can be specified.
 
-Name            | Type           | Description                                    | Default | Required
---------------- | -------------- | ---------------------------------------------- | ------- | --------
-`log_record`    | `list(string)` | List of OTTL statements filtering OTLP metric. |         | no
+| Name         | Type           | Description                                    | Default | Required |
+| ------------ | -------------- | ---------------------------------------------- | ------- | -------- |
+| `log_record` | `list(string)` | List of OTTL statements filtering OTLP metric. |         | no       |
 
 The syntax of OTTL statements depends on the OTTL context. See the OpenTelemetry documentation for more information:
-* [OTTL log context][]
+
+- [OTTL log context][]
 
 Only one of the statements inside the list of statements has to be satisfied.
 
@@ -172,9 +181,9 @@ Only one of the statements inside the list of statements has to be satisfied.
 
 The following fields are exported and can be referenced by other components:
 
-Name    | Type               | Description
---------|--------------------|-----------------------------------------------------------------
-`input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to.
+| Name    | Type               | Description                                                      |
+| ------- | ------------------ | ---------------------------------------------------------------- |
+| `input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to. |
 
 `input` accepts `otelcol.Consumer` data for any telemetry signal (metrics,
 logs, or traces).
@@ -220,8 +229,9 @@ otelcol.processor.filter "default" {
 ### Drop metrics based on either of two criteria
 
 This example drops metrics which satisfy at least one of two OTTL statements:
-* The metric name is `my.metric` and there is a `my_label` resource attribute with a value of `abc123 `.
-* The metric is a histogram.
+
+- The metric name is `my.metric` and there is a `my_label` resource attribute with a value of `abc123 `.
+- The metric is a histogram.
 
 ```alloy
 otelcol.processor.filter "default" {
@@ -270,8 +280,6 @@ otelcol.processor.filter "default" {
 ```
 
 [escaped]: ../../../../get-started/configuration-syntax/expressions/types_and_values/#strings
-
-
 [OTTL]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/<OTEL_VERSION>/pkg/ottl/README.md
 [OTTL span context]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/<OTEL_VERSION>/pkg/ottl/contexts/ottlspan/README.md
 [OTTL spanevent context]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/<OTEL_VERSION>/pkg/ottl/contexts/ottlspanevent/README.md
@@ -283,6 +291,7 @@ otelcol.processor.filter "default" {
 [HasAttrOnDataPoint]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/<OTEL_VERSION>/processor/filterprocessor/README.md#hasattrondatapoint
 [OTTL booleans]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/<OTEL_VERSION>/pkg/ottl#booleans
 [OTTL math expressions]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/<OTEL_VERSION>/pkg/ottl#math-expressions
+
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components

@@ -34,10 +34,10 @@ otelcol.connector.host_info "LABEL" {
 The following blocks are supported inside the definition of
 `otelcol.connector.host_info`:
 
-| Hierarchy | Block      | Description                                       | Required |
-| --------- | ---------- | ------------------------------------------------- | -------- |
-| output    | [output][] | Configures where to send received telemetry data. | yes      |
-debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
+| Hierarchy     | Block             | Description                                                                | Required |
+| ------------- | ----------------- | -------------------------------------------------------------------------- | -------- |
+| output        | [output][]        | Configures where to send received telemetry data.                          | yes      |
+| debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no       |
 
 [output]: #output-block
 [debug_metrics]: #debug_metrics-block

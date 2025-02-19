@@ -23,11 +23,11 @@ All components are identified by their name, describing what the component is re
 
 Most user interactions with components center around two basic concepts, _arguments_ and _exports_.
 
-* _Arguments_ are settings that modify the behavior of a component.
+- _Arguments_ are settings that modify the behavior of a component.
   They can be any number of attributes or nested unlabeled blocks, some required and some optional.
   Any optional arguments that aren't set take on their default values.
 
-* _Exports_ are zero or more output values that other components can refer to and can be of any {{< param "PRODUCT_NAME" >}} type.
+- _Exports_ are zero or more output values that other components can refer to and can be of any {{< param "PRODUCT_NAME" >}} type.
 
 The following block defines a `local.file` component labeled "targets".
 The `local.file.targets` component exposes the file `content` as a string in its exports.

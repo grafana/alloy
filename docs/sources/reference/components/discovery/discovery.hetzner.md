@@ -44,13 +44,13 @@ You can use the following arguments with `discovery.hetzner`:
 
 `role` must be one of `robot` or `hcloud`.
 
- At most, one of the following can be provided:
+At most, one of the following can be provided:
 
-* [`authorization`][authorization] block
-* [`basic_auth`][basic_auth] block
-* [`bearer_token_file`][arguments] argument
-* [`bearer_token`][arguments] argument
-* [`oauth2`][oauth2] block
+- [`authorization`][authorization] block
+- [`basic_auth`][basic_auth] block
+- [`bearer_token_file`][arguments] argument
+- [`bearer_token`][arguments] argument
+- [`oauth2`][oauth2] block
 
 [arguments]: #arguments
 
@@ -110,38 +110,38 @@ The following fields are exported and can be referenced by other components:
 
 Each target includes the following labels:
 
-* `__meta_hetzner_datacenter`: The data center of the server
-* `__meta_hetzner_public_ipv4`: The public IPv4 address of the server.
-* `__meta_hetzner_public_ipv6_network`: The public IPv6 network (/64) of the server.
-* `__meta_hetzner_server_id`: The ID of the server.
-* `__meta_hetzner_server_name`: The name of the server.
-* `__meta_hetzner_server_status`: The status of the server.
+- `__meta_hetzner_datacenter`: The data center of the server
+- `__meta_hetzner_public_ipv4`: The public IPv4 address of the server.
+- `__meta_hetzner_public_ipv6_network`: The public IPv6 network (/64) of the server.
+- `__meta_hetzner_server_id`: The ID of the server.
+- `__meta_hetzner_server_name`: The name of the server.
+- `__meta_hetzner_server_status`: The status of the server.
 
 ### `hcloud`
 
 The labels below are only available for targets with `role` set to `hcloud`:
 
-* `__meta_hetzner_hcloud_cpu_cores`: The CPU cores count of the server.
-* `__meta_hetzner_hcloud_cpu_type`: The CPU type of the server (shared or dedicated).
-* `__meta_hetzner_hcloud_datacenter_location_network_zone`: The network zone of the server.
-* `__meta_hetzner_hcloud_datacenter_location`: The location of the server.
-* `__meta_hetzner_hcloud_disk_size_gb`: The disk size of the server (in GB).
-* `__meta_hetzner_hcloud_image_description`: The description of the server image.
-* `__meta_hetzner_hcloud_image_name`: The image name of the server.
-* `__meta_hetzner_hcloud_image_os_flavor`: The OS flavor of the server image.
-* `__meta_hetzner_hcloud_image_os_version`: The OS version of the server image.
-* `__meta_hetzner_hcloud_label_<labelname>`: Each label of the server.
-* `__meta_hetzner_hcloud_labelpresent_<labelname>`: `true` for each label of the server.
-* `__meta_hetzner_hcloud_memory_size_gb`: The amount of memory of the server (in GB).
-* `__meta_hetzner_hcloud_private_ipv4_<networkname>`: The private IPv4 address of the server within a given network.
-* `__meta_hetzner_hcloud_server_type`: The type of the server.
+- `__meta_hetzner_hcloud_cpu_cores`: The CPU cores count of the server.
+- `__meta_hetzner_hcloud_cpu_type`: The CPU type of the server (shared or dedicated).
+- `__meta_hetzner_hcloud_datacenter_location_network_zone`: The network zone of the server.
+- `__meta_hetzner_hcloud_datacenter_location`: The location of the server.
+- `__meta_hetzner_hcloud_disk_size_gb`: The disk size of the server (in GB).
+- `__meta_hetzner_hcloud_image_description`: The description of the server image.
+- `__meta_hetzner_hcloud_image_name`: The image name of the server.
+- `__meta_hetzner_hcloud_image_os_flavor`: The OS flavor of the server image.
+- `__meta_hetzner_hcloud_image_os_version`: The OS version of the server image.
+- `__meta_hetzner_hcloud_label_<labelname>`: Each label of the server.
+- `__meta_hetzner_hcloud_labelpresent_<labelname>`: `true` for each label of the server.
+- `__meta_hetzner_hcloud_memory_size_gb`: The amount of memory of the server (in GB).
+- `__meta_hetzner_hcloud_private_ipv4_<networkname>`: The private IPv4 address of the server within a given network.
+- `__meta_hetzner_hcloud_server_type`: The type of the server.
 
 ### `robot`
 
 The labels below are only available for targets with `role` set to `robot`:
 
-* `__meta_hetzner_robot_cancelled`: The server cancellation status.
-* `__meta_hetzner_robot_product`: The product of the server.
+- `__meta_hetzner_robot_cancelled`: The server cancellation status.
+- `__meta_hetzner_robot_product`: The product of the server.
 
 ## Component health
 
@@ -184,10 +184,10 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-* _`<HETZNER_ROLE>`_: The role of the entities that should be discovered.
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+- _`<HETZNER_ROLE>`_: The role of the entities that should be discovered.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

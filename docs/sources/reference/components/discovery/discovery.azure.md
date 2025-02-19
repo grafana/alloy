@@ -90,19 +90,19 @@ The following fields are exported and can be referenced by other components:
 
 Each target includes the following labels:
 
-* `__meta_azure_machine_computer_name`: The host OS name of the VM.
-* `__meta_azure_machine_id`: The UUID of the Azure VM.
-* `__meta_azure_machine_location`: The region the VM is in.
-* `__meta_azure_machine_name`: The name of the VM.
-* `__meta_azure_machine_os_type`: The OS the VM is running, either `Linux` or `Windows`.
-* `__meta_azure_machine_private_ip`: The private IP address of the VM.
-* `__meta_azure_machine_public_ip`: The public IP address of the VM.
-* `__meta_azure_machine_resource_group`: The name of the resource group the VM is in.
-* `__meta_azure_machine_scale_set`: The name of the scale set the VM is in.
-* `__meta_azure_machine_size`: The size of the VM.
-* `__meta_azure_machine_tag_*`: A tag on the VM. There is one label per tag.
-* `__meta_azure_subscription_id`: The Azure subscription ID.
-* `__meta_azure_tenant_id`: The Azure tenant ID.
+- `__meta_azure_machine_computer_name`: The host OS name of the VM.
+- `__meta_azure_machine_id`: The UUID of the Azure VM.
+- `__meta_azure_machine_location`: The region the VM is in.
+- `__meta_azure_machine_name`: The name of the VM.
+- `__meta_azure_machine_os_type`: The OS the VM is running, either `Linux` or `Windows`.
+- `__meta_azure_machine_private_ip`: The private IP address of the VM.
+- `__meta_azure_machine_public_ip`: The public IP address of the VM.
+- `__meta_azure_machine_resource_group`: The name of the resource group the VM is in.
+- `__meta_azure_machine_scale_set`: The name of the scale set the VM is in.
+- `__meta_azure_machine_size`: The size of the VM.
+- `__meta_azure_machine_tag_*`: A tag on the VM. There is one label per tag.
+- `__meta_azure_subscription_id`: The Azure subscription ID.
+- `__meta_azure_tenant_id`: The Azure tenant ID.
 
 Each discovered VM maps to a single target.
 The `__address__` label is set to the `private_ip:port` of the VM if the private IP is an IPv4 address, or `[private_ip]:port` if the private IP of the VM is an IPv6 address.
@@ -152,13 +152,13 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-* _`<AZURE_SUBSCRIPTION_ID>`_: Your Azure subscription ID.
-* _`<AZURE_CLIENT_ID>`_: Your Azure client ID.
-* _`<AZURE_CLIENT_SECRET>`_: Your Azure client secret.
-* _`<AZURE_TENANT_ID>`_: Your Azure tenant ID.
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+- _`<AZURE_SUBSCRIPTION_ID>`_: Your Azure subscription ID.
+- _`<AZURE_CLIENT_ID>`_: Your Azure client ID.
+- _`<AZURE_CLIENT_SECRET>`_: Your Azure client secret.
+- _`<AZURE_TENANT_ID>`_: Your Azure tenant ID.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

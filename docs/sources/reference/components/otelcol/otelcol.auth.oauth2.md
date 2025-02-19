@@ -14,7 +14,6 @@ The authorization tokens can be used by HTTP and gRPC based OpenTelemetry export
 This component can fetch and refresh expired tokens automatically.
 Refer to the [OAuth 2.0 Authorization Framework](https://datatracker.ietf.org/doc/html/rfc6749#section-4.4) for more information about the Auth 2.0 Client Credentials flow.
 
-
 {{< admonition type="note" >}}
 `otelcol.auth.oauth2` is a wrapper over the upstream OpenTelemetry Collector `oauth2client` extension.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
@@ -34,16 +33,16 @@ otelcol.auth.oauth2 "LABEL" {
 
 ## Arguments
 
-Name                 | Type                | Description                                                                        | Default | Required
--------------------- | ------------------- | ---------------------------------------------------------------------------------- | ------- | --------
-`client_id`          | `string`            | The client identifier issued to the client.                                        |         | no
-`client_id_file`     | `string`            | The file path to retrieve the client identifier issued to the client.              |         | no
-`client_secret`      | `secret`            | The secret string associated with the client identifier.                           |         | no
-`client_secret_file` | `secret`            | The file path to retrieve the secret string associated with the client identifier. |         | no
-`token_url`          | `string`            | The server endpoint URL from which to get tokens.                                  |         | yes
-`endpoint_params`    | `map(list(string))` | Additional parameters that are sent to the token endpoint.                         | `{}`    | no
-`scopes`             | `list(string)`      | Requested permissions associated for the client.                                   | `[]`    | no
-`timeout`            | `duration`          | The timeout on the client connecting to `token_url`.                               | `"0s"`  | no
+| Name                 | Type                | Description                                                                        | Default | Required |
+| -------------------- | ------------------- | ---------------------------------------------------------------------------------- | ------- | -------- |
+| `client_id`          | `string`            | The client identifier issued to the client.                                        |         | no       |
+| `client_id_file`     | `string`            | The file path to retrieve the client identifier issued to the client.              |         | no       |
+| `client_secret`      | `secret`            | The secret string associated with the client identifier.                           |         | no       |
+| `client_secret_file` | `secret`            | The file path to retrieve the secret string associated with the client identifier. |         | no       |
+| `token_url`          | `string`            | The server endpoint URL from which to get tokens.                                  |         | yes      |
+| `endpoint_params`    | `map(list(string))` | Additional parameters that are sent to the token endpoint.                         | `{}`    | no       |
+| `scopes`             | `list(string)`      | Requested permissions associated for the client.                                   | `[]`    | no       |
+| `timeout`            | `duration`          | The timeout on the client connecting to `token_url`.                               | `"0s"`  | no       |
 
 The `timeout` argument is used both for requesting initial tokens and for refreshing tokens. `"0s"` implies no timeout.
 
@@ -57,10 +56,10 @@ If both are set, `client_secret_file` also takes precedence.
 
 The following blocks are supported inside the definition of `otelcol.auth.oauth2`:
 
-Hierarchy | Block   | Description                        | Required
-----------|---------|------------------------------------|---------
-tls       | [tls][] | TLS settings for the token client. | no
-debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
+| Hierarchy     | Block             | Description                                                                | Required |
+| ------------- | ----------------- | -------------------------------------------------------------------------- | -------- |
+| tls           | [tls][]           | TLS settings for the token client.                                         | no       |
+| debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no       |
 
 [tls]: #tls-block
 [debug_metrics]: #debug_metrics-block
@@ -79,9 +78,9 @@ The `tls` block configures TLS settings used for connecting to the token client.
 
 The following fields are exported and can be referenced by other components:
 
-Name      | Type                       | Description
-----------|----------------------------|----------------------------------------------------------------
-`handler` | `capsule(otelcol.Handler)` | A value that other components can use to authenticate requests.
+| Name      | Type                       | Description                                                     |
+| --------- | -------------------------- | --------------------------------------------------------------- |
+| `handler` | `capsule(otelcol.Handler)` | A value that other components can use to authenticate requests. |
 
 ## Component health
 
@@ -111,6 +110,7 @@ otelcol.auth.oauth2 "creds" {
 ```
 
 Here is another example with some optional attributes specified:
+
 ```alloy
 otelcol.exporter.otlp "example" {
   client {

@@ -14,8 +14,8 @@ Each component handles a single task, such as retrieving secrets or collecting P
 
 Components are composed of the following:
 
-* **Arguments:** Settings that configure a component.
-* **Exports:** Named values that a component exposes to other components.
+- **Arguments:** Settings that configure a component.
+- **Exports:** Named values that a component exposes to other components.
 
 Each component has a name that describes what that component is responsible for.
 For example, the `local.file` component is responsible for retrieving the contents of files on disk.

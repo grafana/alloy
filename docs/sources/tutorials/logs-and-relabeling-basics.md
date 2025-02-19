@@ -14,7 +14,7 @@ This tutorial covers some basic metric relabeling, and shows you how to send log
 
 To complete this tutorial:
 
-* You must complete the [First components and the standard library][first] tutorial.
+- You must complete the [First components and the standard library][first] tutorial.
 
 ## Relabel metrics
 
@@ -22,7 +22,7 @@ Now that you have built a basic pipeline and scraped some metrics, you can use t
 
 ### Recommended reading
 
-* Optional: [`prometheus.relabel`][prometheus.relabel]
+- Optional: [`prometheus.relabel`][prometheus.relabel]
 
 ### Add a `prometheus.relabel` component to your pipeline
 
@@ -87,6 +87,7 @@ These labels are considered internal and are dropped before relabeling rules fro
 If you would like to keep or act on these kinds of labels, use a [`discovery.relabel`][discovery.relabel] component.
 
 [discovery.relabel]: ../../reference/components/discovery/discovery.relabel/
+
 {{< /admonition >}}
 
 ## Send logs to Loki
@@ -95,9 +96,9 @@ Now that you've created components and chained them together, you can collect so
 
 ### Recommended reading
 
-* Optional: [`local.file_match`][local.file_match]
-* Optional: [`loki.source.file`][loki.source.file]
-* Optional: [`loki.write`][loki.write]
+- Optional: [`local.file_match`][local.file_match]
+- Optional: [`loki.source.file`][loki.source.file]
+- Optional: [`loki.write`][loki.write]
 
 ### Find and collect the logs
 
@@ -154,8 +155,8 @@ The following exercise guides you through adding a label to the logs, and filter
 
 ### Recommended reading
 
-* [`loki.relabel`][loki.relabel]
-* [`loki.process`][loki.process]
+- [`loki.relabel`][loki.relabel]
+- [`loki.process`][loki.process]
 
 ### Add a Label to Logs
 
@@ -186,6 +187,7 @@ You can use the [`loki.relabel`][loki.relabel] component to relabel and add labe
 
 [loki.relabel]: ../../reference/components/loki/loki.relabel/
 [prometheus.relabel]: ../../reference/components/prometheus/prometheus.relabel/
+
 {{< /admonition >}}
 
 Run {{< param "PRODUCT_NAME" >}} and execute the following:

@@ -10,13 +10,13 @@ title: otelcol.processor.probabilistic_sampler
 
 `otelcol.processor.probabilistic_sampler` accepts logs and traces data from other otelcol components and applies probabilistic sampling based on configuration options.
 
-<!-- 
+<!--
 The next few paragraphs were copied from the OTel docs:
 https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/processor/probabilisticsamplerprocessor/README.md
 -->
 
 The probabilistic sampler processor supports several modes of sampling for spans and log records.  
-Sampling is performed on a per-request basis, considering individual items statelessly. 
+Sampling is performed on a per-request basis, considering individual items statelessly.
 For whole trace sampling, see `otelcol.processor.tail_sampling`.
 
 For trace spans, this sampler supports probabilistic sampling based on a configured sampling percentage applied to the TraceID.
@@ -48,16 +48,16 @@ otelcol.processor.probabilistic_sampler "LABEL" {
 
 `otelcol.processor.probabilistic_sampler` supports the following arguments:
 
-Name                  | Type      | Description                                                                                                          | Default          | Required
-----------------------|-----------|----------------------------------------------------------------------------------------------------------------------|------------------|---------
-`mode`                | `string`  | Sampling mode.                                                                                                       | `"proportional"` | no
-`hash_seed`           | `uint32`  | An integer used to compute the hash algorithm.                                                                       | `0`              | no
-`sampling_percentage` | `float32` | Percentage of traces or logs sampled.                                                                                | `0`              | no
-`sampling_precision`  | `int`     | The number of hexadecimal digits used to encode the sampling threshold.                                              | `4`              | no
-`fail_closed`         | `bool`    | Whether to reject items with sampling-related errors.                                                                | `true`           | no
-`attribute_source`    | `string`  | Defines where to look for the attribute in `from_attribute`.                                                         | `"traceID"`      | no
-`from_attribute`      | `string`  | The name of a log record attribute used for sampling purposes.                                                       | `""`             | no
-`sampling_priority`   | `string`  | The name of a log record attribute used to set a different sampling priority from the `sampling_percentage` setting. | `""`             | no
+| Name                  | Type      | Description                                                                                                          | Default          | Required |
+| --------------------- | --------- | -------------------------------------------------------------------------------------------------------------------- | ---------------- | -------- |
+| `mode`                | `string`  | Sampling mode.                                                                                                       | `"proportional"` | no       |
+| `hash_seed`           | `uint32`  | An integer used to compute the hash algorithm.                                                                       | `0`              | no       |
+| `sampling_percentage` | `float32` | Percentage of traces or logs sampled.                                                                                | `0`              | no       |
+| `sampling_precision`  | `int`     | The number of hexadecimal digits used to encode the sampling threshold.                                              | `4`              | no       |
+| `fail_closed`         | `bool`    | Whether to reject items with sampling-related errors.                                                                | `true`           | no       |
+| `attribute_source`    | `string`  | Defines where to look for the attribute in `from_attribute`.                                                         | `"traceID"`      | no       |
+| `from_attribute`      | `string`  | The name of a log record attribute used for sampling purposes.                                                       | `""`             | no       |
+| `sampling_priority`   | `string`  | The name of a log record attribute used to set a different sampling priority from the `sampling_percentage` setting. | `""`             | no       |
 
 You can set `mode` to `"proportional"`, `"equalizing"`, or `"hash_seed"`.
 The default is `"proportional"` unless either `hash_seed` is configured or `attribute_source` is set to `record`.
@@ -79,6 +79,7 @@ It is also possible to leverage a different `hash_seed` at different collector t
 `sampling_priority` (logs only) determines the name of a log record attribute used to set a different sampling priority from the `sampling_percentage` setting. 0 means to never sample the log record, and greater than or equal to 100 means to always sample the log record.
 
 The `probabilistic_sampler` supports two types of sampling for traces:
+
 1. `sampling.priority` [semantic convention](https://github.com/opentracing/specification/blob/master/semantic_conventions.md#span-tags-table) as defined by OpenTracing.
 2. Trace ID hashing.
 
@@ -94,9 +95,9 @@ The `probabilistic_sampler` supports sampling logs according to their trace ID, 
 The following blocks are supported inside the definition of
 `otelcol.processor.probabilistic_sampler`:
 
-Hierarchy | Block      | Description                          | Required
-----------|------------|--------------------------------------|---------
-debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
+| Hierarchy     | Block             | Description                                                                | Required |
+| ------------- | ----------------- | -------------------------------------------------------------------------- | -------- |
+| debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no       |
 
 [debug_metrics]: #debug_metrics-block
 
@@ -108,13 +109,14 @@ debug_metrics | [debug_metrics][] | Configures the metrics that this component g
 
 The following fields are exported and can be referenced by other components:
 
-Name    | Type               | Description
---------|--------------------|-----------------------------------------------------------------
-`input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to.
+| Name    | Type               | Description                                                      |
+| ------- | ------------------ | ---------------------------------------------------------------- |
+| `input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to. |
 
 `input` accepts `otelcol.Consumer` OTLP-formatted data for any telemetry signal of these types:
-* logs
-* traces
+
+- logs
+- traces
 
 ## Component health
 
@@ -179,6 +181,7 @@ otelcol.processor.probabilistic_sampler "default" {
   }
 }
 ```
+
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components
