@@ -461,6 +461,7 @@ func (c *SchemaTable) fetchColumnsDefinitions(ctx context.Context, schemaName st
 			return nil, err
 		}
 
+		// Append column to the last index if it's the same as the previous one (i.e. multi-column index)
 		if nIndexes := len(tblSpec.Indexes); nIndexes > 0 && tblSpec.Indexes[nIndexes-1].Name == indexName {
 			lastIndex := &tblSpec.Indexes[nIndexes-1]
 			if len(lastIndex.Columns) != seqInIndex-1 {
