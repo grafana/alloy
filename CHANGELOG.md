@@ -29,6 +29,8 @@ Main (unreleased)
 
 ### Enhancements
 
+- Add `rfc3164_default_to_current_year` argument to `loki.source.syslog` (@dehaansa)
+
 - Add `go_table_fallback` arg to `pyroscope.ebpf` (@korniltsev)
 
 - Memory optimizations in `pyroscope.scrape` (@korniltsev)
