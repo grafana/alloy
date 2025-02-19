@@ -1,6 +1,7 @@
 package receive_http
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -25,6 +26,7 @@ import (
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/api/model/labelset"
 )
 
 const (
@@ -188,7 +190,9 @@ func (c *Component) Push(ctx context.Context, req *connect.Request[pushv1.PushRe
 			for idx := range req.Msg.Series {
 				lb.Reset(nil)
 				setLabelBuilderFromAPI(lb, req.Msg.Series[idx].Labels)
-				err := appendable.Append(ctx, lb.Labels(), apiToAlloySamples(req.Msg.Series[idx].Samples))
+				// Ensure service_name label is set
+				lbls := ensureServiceName(lb.Labels())
+				err := appendable.Append(ctx, lbls, apiToAlloySamples(req.Msg.Series[idx].Samples))
 				if err != nil {
 					errs = errors.Join(
 						errs,
@@ -218,46 +222,56 @@ func (c *Component) getAppendables() []pyroscope.Appendable {
 func (c *Component) handleIngest(w http.ResponseWriter, r *http.Request) {
 	appendables := c.getAppendables()
 
-	// Create a pipe for each appendable
-	pipeWriters := make([]io.Writer, len(appendables))
-	pipeReaders := make([]io.Reader, len(appendables))
-	for i := range appendables {
-		pr, pw := io.Pipe()
-		pipeReaders[i] = pr
-		pipeWriters[i] = pw
+	// Parse labels early
+	var lbls labels.Labels
+	if nameParam := r.URL.Query().Get("name"); nameParam != "" {
+		ls, err := labelset.Parse(nameParam)
+		if err != nil {
+			level.Warn(c.opts.Logger).Log(
+				"msg", "Failed to parse labels from name parameter",
+				"name", nameParam,
+				"err", err,
+			)
+			// Continue with empty labels instead of returning an error
+		} else {
+			var labelPairs []labels.Label
+			for k, v := range ls.Labels() {
+				labelPairs = append(labelPairs, labels.Label{Name: k, Value: v})
+			}
+			lbls = labels.New(labelPairs...)
+		}
 	}
-	mw := io.MultiWriter(pipeWriters...)
 
-	// Create an errgroup with the timeout context
+	// Ensure service_name label is set
+	lbls = ensureServiceName(lbls)
+
+	// Read the entire body into memory
+	// This matches how Append() handles profile data (as RawProfile),
+	// but means the entire profile will be held in memory
+	var buf bytes.Buffer
+	if _, err := io.Copy(&buf, r.Body); err != nil {
+		level.Error(c.opts.Logger).Log("msg", "Failed to read request body", "err", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
 	g, ctx := errgroup.WithContext(r.Context())
 
-	// Start copying the request body to all pipes
-	g.Go(func() error {
-		defer func() {
-			for _, pw := range pipeWriters {
-				pw.(io.WriteCloser).Close()
-			}
-		}()
-		_, err := io.Copy(mw, r.Body)
-		return err
-	})
-
-	// Process each appendable
+	// Process each appendable with a new reader from the buffer
 	for i, appendable := range appendables {
 		g.Go(func() error {
-			defer pipeReaders[i].(io.ReadCloser).Close()
-
 			profile := &pyroscope.IncomingProfile{
-				Body:    io.NopCloser(pipeReaders[i]),
+				RawBody: buf.Bytes(),
 				Headers: r.Header.Clone(),
 				URL:     r.URL,
+				Labels:  lbls,
 			}
 
-			err := appendable.Appender().AppendIngest(ctx, profile)
-			if err != nil {
+			if err := appendable.Appender().AppendIngest(ctx, profile); err != nil {
 				level.Error(c.opts.Logger).Log("msg", "Failed to append profile", "appendable", i, "err", err)
 				return err
 			}
+
 			level.Debug(c.opts.Logger).Log("msg", "Profile appended successfully", "appendable", i)
 			return nil
 		})
@@ -282,4 +296,18 @@ func (c *Component) shutdownServer() {
 		c.server.StopAndShutdown()
 		c.server = nil
 	}
+}
+
+// rename __name__ to service_name
+func ensureServiceName(lbls labels.Labels) labels.Labels {
+	builder := labels.NewBuilder(lbls)
+	originalName := lbls.Get(pyroscope.LabelName)
+
+	if !lbls.Has(pyroscope.LabelServiceName) {
+		builder.Set(pyroscope.LabelServiceName, originalName)
+	} else {
+		builder.Set("app_name", originalName)
+	}
+
+	return builder.Labels()
 }

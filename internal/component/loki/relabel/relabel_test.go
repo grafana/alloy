@@ -346,7 +346,7 @@ rule {
 
 	go func() {
 		err := ctrl.Run(context.Background(), lsf.Arguments{
-			Targets: []discovery.Target{{"__path__": f.Name(), "somelbl": "somevalue"}},
+			Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{"__path__": f.Name(), "somelbl": "somevalue"})},
 			ForwardTo: []loki.LogsReceiver{
 				tc1.Exports().(Exports).Receiver,
 				tc2.Exports().(Exports).Receiver,

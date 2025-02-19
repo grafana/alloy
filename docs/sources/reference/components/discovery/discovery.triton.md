@@ -28,16 +28,16 @@ discovery.triton "<LABEL>" {
 
 You can use the following arguments with `discovery.triton`:
 
-Name               | Type           | Description                                         | Default       | Required
--------------------|----------------|-----------------------------------------------------|---------------|---------
-`account`          | `string`       | The account to use for discovering new targets.     |               | yes
-`dns_suffix`       | `string`       | The DNS suffix that is applied to the target.       |               | yes
-`endpoint`         | `string`       | The Triton discovery endpoint.                      |               | yes
-`groups`           | `list(string)` | A list of groups to retrieve targets from.          |               | no
-`port`             | `int`          | The port to use for discovery and metrics scraping. | `9163`        | no
-`refresh_interval` | `duration`     | The refresh interval for the list of targets.       | `60s`         | no
-`role`             | `string`       | The type of targets to discover.                    | `"container"` | no
-`version`          | `int`          | The Triton discovery API version.                   | `1`           | no
+| Name               | Type           | Description                                         | Default       | Required |
+| ------------------ | -------------- | --------------------------------------------------- | ------------- | -------- |
+| `account`          | `string`       | The account to use for discovering new targets.     |               | yes      |
+| `dns_suffix`       | `string`       | The DNS suffix that's applied to the target.        |               | yes      |
+| `endpoint`         | `string`       | The Triton discovery endpoint.                      |               | yes      |
+| `groups`           | `list(string)` | A list of groups to retrieve targets from.          |               | no       |
+| `port`             | `int`          | The port to use for discovery and metrics scraping. | `9163`        | no       |
+| `refresh_interval` | `duration`     | The refresh interval for the list of targets.       | `60s`         | no       |
+| `role`             | `string`       | The type of targets to discover.                    | `"container"` | no       |
+| `version`          | `int`          | The Triton discovery API version.                   | `1`           | no       |
 
 `groups` is only supported when `role` is set to `"container"`.
 If you omit `groups`, all containers owned by the requesting account are scraped.
@@ -49,11 +49,11 @@ If you omit `groups`, all containers owned by the requesting account are scraped
 
 ## Blocks
 
-You can use the following blocks with `discovery.triton`:
+You can use the following block with `discovery.triton`:
 
-Block                      | Description                                       | Required
----------------------------|---------------------------------------------------|---------
-[`tls_config`][tls_config] | TLS configuration for requests to the Triton API. | no
+| Block                      | Description                                       | Required |
+| -------------------------- | ------------------------------------------------- | -------- |
+| [`tls_config`][tls_config] | TLS configuration for requests to the Triton API. | no       |
 
 [tls_config]: #tls_config
 
@@ -67,9 +67,9 @@ The `tls_config` block configures TLS settings for requests to the Triton API.
 
 The following fields are exported and can be referenced by other components:
 
-Name      | Type                | Description
-----------|---------------------|---------------------------------------------------
-`targets` | `list(map(string))` | The set of targets discovered from the Triton API.
+| Name      | Type                | Description                                        |
+| --------- | ------------------- | -------------------------------------------------- |
+| `targets` | `list(map(string))` | The set of targets discovered from the Triton API. |
 
 When `role` is set to `"container"`, each target includes the following labels:
 

@@ -16,6 +16,10 @@ import (
 
 	"github.com/docker/docker/client"
 	"github.com/go-kit/log"
+	"github.com/prometheus/common/config"
+	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/model/relabel"
+
 	"github.com/grafana/alloy/internal/component"
 	types "github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -26,9 +30,6 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/useragent"
-	"github.com/prometheus/common/config"
-	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/model/relabel"
 )
 
 func init() {
@@ -227,11 +228,8 @@ func (c *Component) Update(args component.Arguments) error {
 
 	promTargets := make([]promTarget, len(newArgs.Targets))
 	for i, target := range newArgs.Targets {
-		var labels = make(model.LabelSet)
-		for k, v := range target {
-			labels[model.LabelName(k)] = model.LabelValue(v)
-		}
-		promTargets[i] = promTarget{labels: labels, fingerPrint: labels.Fingerprint()}
+		labelsCopy := target.LabelSet()
+		promTargets[i] = promTarget{labels: labelsCopy, fingerPrint: labelsCopy.Fingerprint()}
 	}
 
 	// Sorting the targets before filtering ensures consistent filtering of targets

@@ -5,13 +5,14 @@ import (
 	"context"
 	"errors"
 	"path/filepath"
-	"reflect"
 	"sync"
 	"time"
 
 	"github.com/go-kit/log"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/equality"
 	"github.com/grafana/alloy/internal/runtime/internal/testcomponents/module"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/vcs"
@@ -199,7 +200,7 @@ func (c *Component) Update(args component.Arguments) (err error) {
 
 	// Create or update the repo field.
 	// Failure to update repository makes the module loader temporarily use cached contents on disk
-	if c.repo == nil || !reflect.DeepEqual(repoOpts, c.repoOpts) {
+	if c.repo == nil || !equality.DeepEqual(repoOpts, c.repoOpts) {
 		r, err := vcs.NewGitRepo(context.Background(), repoPath, repoOpts)
 		if err != nil {
 			if errors.As(err, &vcs.UpdateFailedError{}) {

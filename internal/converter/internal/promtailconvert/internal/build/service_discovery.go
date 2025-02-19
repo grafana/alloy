@@ -26,7 +26,7 @@ func (s *ScrapeConfigBuilder) AppendSDs() {
 
 	targetLiterals := make([]discovery.Target, 0)
 	for _, target := range targets {
-		if expr, ok := target["__expr__"]; ok {
+		if expr, ok := target.Get("__expr__"); ok {
 			// use the expression if __expr__ is set
 			s.allTargetsExps = append(s.allTargetsExps, expr)
 		} else {

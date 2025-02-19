@@ -1,0 +1,47 @@
+Foreach in a module which will be updated to reach a sum of 30.
+
+-- main.alloy --
+import.file "testImport" {
+  filename = "module.alloy"
+}
+
+testImport.a "cc" {
+  receiver = testcomponents.summation_receiver.sum.receiver
+}
+
+testcomponents.summation_receiver "sum" {
+}
+
+-- module.alloy --
+declare "a" {
+  argument "receiver" {}
+  foreach "testForeach" {
+    collection = [5, 5]
+    var = "num"
+
+    template {
+      testcomponents.pulse "pt" {
+        max = num
+        frequency = "10ms"
+        forward_to = [argument.receiver.value]
+      }
+    }
+  }
+}
+
+-- update/module.alloy --
+declare "a" {
+  argument "receiver" {}
+  foreach "testForeach" {
+    collection = [6, 8, 6]
+    var = "num"
+
+    template {
+      testcomponents.pulse "pt" {
+        max = num
+        frequency = "10ms"
+        forward_to = [argument.receiver.value]
+      }
+    }
+  }
+}

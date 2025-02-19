@@ -28,19 +28,19 @@ discovery.hetzner "<LABEL>" {
 
 You can use the following arguments with `discovery.hetzner`:
 
-Name                     | Type                | Description                                                                                      | Default | Required
--------------------------|---------------------|--------------------------------------------------------------------------------------------------|---------|---------
-`role`                   | `string`            | Hetzner role of entities that should be discovered.                                              |         | yes
-`bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                             |         | no
-`bearer_token`           | `secret`            | Bearer token to authenticate with.                                                               |         | no
-`enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`  | no
-`follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`  | no
-`no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |         | no
-`port`                   | `int`               | The port to scrape metrics from.                                                                 | `80`    | no
-`proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |         | no
-`proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false` | no
-`proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |         | no
-`refresh_interval`       | `duration`          | The time after which the servers are refreshed.                                                  | `"60s"` | no
+| Name                     | Type                | Description                                                                                      | Default | Required |
+| ------------------------ | ------------------- | ------------------------------------------------------------------------------------------------ | ------- | -------- |
+| `role`                   | `string`            | Hetzner role of entities that should be discovered.                                              |         | yes      |
+| `bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                             |         | no       |
+| `bearer_token`           | `secret`            | Bearer token to authenticate with.                                                               |         | no       |
+| `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`  | no       |
+| `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`  | no       |
+| `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |         | no       |
+| `port`                   | `int`               | The port to scrape metrics from.                                                                 | `80`    | no       |
+| `proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |         | no       |
+| `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false` | no       |
+| `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |         | no       |
+| `refresh_interval`       | `duration`          | The time after which the servers are refreshed.                                                  | `"60s"` | no       |
 
 `role` must be one of `robot` or `hcloud`.
 
@@ -60,16 +60,16 @@ Name                     | Type                | Description                    
 
 You can use the following blocks with `discovery.hetzner`:
 
-Block                                 | Description                                                | Required
---------------------------------------|------------------------------------------------------------|---------
-[`authorization`][authorization]      | Configure generic authorization to the endpoint.           | no
-[`basic_auth`][basic_auth]            | Configure `basic_auth` for authenticating to the endpoint. | no
-[`oauth2`][oauth2]                    | Configure OAuth 2.0 for authenticating to the endpoint.    | no
-`oauth2` > [`tls_config`][tls_config] | Configure TLS settings for connecting to the endpoint.     | no
-[`tls_config`][tls_config]            | Configure TLS settings for connecting to the endpoint.     | no
+| Block                                 | Description                                                | Required |
+| ------------------------------------- | ---------------------------------------------------------- | -------- |
+| [`authorization`][authorization]      | Configure generic authorization to the endpoint.           | no       |
+| [`basic_auth`][basic_auth]            | Configure `basic_auth` for authenticating to the endpoint. | no       |
+| [`oauth2`][oauth2]                    | Configure OAuth 2.0 for authenticating to the endpoint.    | no       |
+| `oauth2` > [`tls_config`][tls_config] | Configure TLS settings for connecting to the endpoint.     | no       |
+| [`tls_config`][tls_config]            | Configure TLS settings for connecting to the endpoint.     | no       |
 
-The `>` symbol indicates deeper levels of nesting.
-For example, `oauth2 > tls_config` refers to a `tls_config` block defined inside an `oauth2` block.
+The > symbol indicates deeper levels of nesting.
+For example, `oauth2` > `tls_config` refers to a `tls_config` block defined inside an `oauth2` block.
 
 [authorization]: #authorization
 [basic_auth]: #basic_auth
@@ -104,9 +104,9 @@ The `tls_config` block configures TLS settings for connecting to the endpoint.
 
 The following fields are exported and can be referenced by other components:
 
-Name      | Type                | Description
-----------|---------------------|------------------------------------------------------------
-`targets` | `list(map(string))` | The set of targets discovered from the Hetzner catalog API.
+| Name      | Type                | Description                                                 |
+| --------- | ------------------- | ----------------------------------------------------------- |
+| `targets` | `list(map(string))` | The set of targets discovered from the Hetzner catalog API. |
 
 Each target includes the following labels:
 
@@ -117,7 +117,7 @@ Each target includes the following labels:
 * `__meta_hetzner_server_name`: The name of the server.
 * `__meta_hetzner_server_status`: The status of the server.
 
-### hcloud
+### `hcloud`
 
 The labels below are only available for targets with `role` set to `hcloud`:
 
@@ -136,7 +136,7 @@ The labels below are only available for targets with `role` set to `hcloud`:
 * `__meta_hetzner_hcloud_private_ipv4_<networkname>`: The private IPv4 address of the server within a given network.
 * `__meta_hetzner_hcloud_server_type`: The type of the server.
 
-### robot
+### `robot`
 
 The labels below are only available for targets with `role` set to `robot`:
 

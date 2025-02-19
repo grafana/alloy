@@ -7,9 +7,11 @@ package windowsevent
 
 import (
 	"fmt"
+	"path/filepath"
 	"syscall"
 
 	jsoniter "github.com/json-iterator/go"
+	"golang.org/x/sys/windows"
 
 	"github.com/grafana/loki/v3/clients/pkg/promtail/scrapeconfig"
 	"github.com/grafana/loki/v3/clients/pkg/promtail/targets/windows/win_eventlog"
@@ -112,10 +114,51 @@ func formatLine(cfg *scrapeconfig.WindowsEventsTargetConfig, event win_eventlog.
 			ProcessID: event.Execution.ProcessID,
 			ThreadID:  event.Execution.ThreadID,
 		}
-		_, _, processName, err := win_eventlog.GetFromSnapProcess(event.Execution.ProcessID)
+
+		processName, err := GetProcessName(event.Execution.ProcessID)
 		if err == nil {
 			structuredEvent.Execution.ProcessName = processName
 		}
 	}
 	return jsoniter.MarshalToString(structuredEvent)
+}
+
+// This function was tested via manual testing on Windows machines at scale and by changing the
+// size of the buffer to ensure that the dynamic resizing works as expected.
+// TODO: would be better to have a unit test for this (not easy to setup)
+func GetProcessName(pid uint32) (string, error) {
+	// PID 4 is always "System"
+	if pid == 4 {
+		return "System", nil
+	}
+
+	// PID 0 is always "Idle Process"
+	if pid == 0 {
+		return "Idle Process", nil
+	}
+
+	handle, err := windows.OpenProcess(windows.PROCESS_QUERY_LIMITED_INFORMATION, false, pid)
+	if err != nil {
+		return "", fmt.Errorf("failed to open process %d: %w", pid, err)
+	}
+	defer windows.CloseHandle(handle)
+
+	// Support Windows long paths by dynamically resizing the buffer.
+	size := uint32(512)
+	maxSize := uint32(64 * 1024)
+	for {
+		buf := make([]uint16, size)
+		err = windows.QueryFullProcessImageName(handle, 0, &buf[0], &size)
+		if err == nil {
+			return filepath.Base(windows.UTF16ToString(buf[:size])), nil
+		}
+		if err == windows.ERROR_INSUFFICIENT_BUFFER {
+			if size >= maxSize {
+				return "", fmt.Errorf("failed to get process name for %d: buffer size exceeded maximum limit", pid)
+			}
+			size *= 2
+			continue
+		}
+		return "", fmt.Errorf("failed to get process name for %d: %w", pid, err)
+	}
 }

@@ -28,19 +28,19 @@ discovery.kubernetes "<LABEL>" {
 
 You can use the following arguments with `discovery.kubernetes`:
 
-Name                     | Type                | Description                                                                                      | Default | Required
--------------------------|---------------------|--------------------------------------------------------------------------------------------------|---------|---------
-`role`                   | `string`            | Type of Kubernetes resource to query.                                                            |         | yes
-`api_server`             | `string`            | URL of Kubernetes API server.                                                                    |         | no
-`bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                             |         | no
-`bearer_token`           | `secret`            | Bearer token to authenticate with.                                                               |         | no
-`enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`  | no
-`follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`  | no
-`kubeconfig_file`        | `string`            | Path of kubeconfig file to use for connecting to Kubernetes.                                     |         | no
-`no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |         | no
-`proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |         | no
-`proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false` | no
-`proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |         | no
+| Name                     | Type                | Description                                                                                      | Default | Required |
+| ------------------------ | ------------------- | ------------------------------------------------------------------------------------------------ | ------- | -------- |
+| `role`                   | `string`            | Type of Kubernetes resource to query.                                                            |         | yes      |
+| `api_server`             | `string`            | URL of Kubernetes API server.                                                                    |         | no       |
+| `bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                             |         | no       |
+| `bearer_token`           | `secret`            | Bearer token to authenticate with.                                                               |         | no       |
+| `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`  | no       |
+| `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`  | no       |
+| `kubeconfig_file`        | `string`            | Path of kubeconfig file to use for connecting to Kubernetes.                                     |         | no       |
+| `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |         | no       |
+| `proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |         | no       |
+| `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false` | no       |
+| `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |         | no       |
 
  At most, one of the following can be provided:
 
@@ -97,7 +97,7 @@ The following labels are included for discovered services:
 
 ### `pod` role
 
-The `pod` role discovers all pods and exposes their containers as targets.
+The `pod` role discovers all Pods and exposes their containers as targets.
 For each declared port of a container, a single target is generated.
 
 If a container has no specified ports, a port-free target per container is created.
@@ -173,6 +173,9 @@ The following labels are included for discovered endpoint slices:
   * `__meta_kubernetes_endpointslice_endpoint_conditions_ready`: Set to `true` or `false` for the referenced endpoint's ready state.
   * `__meta_kubernetes_endpointslice_endpoint_topology_kubernetes_io_hostname`: Name of the node hosting the referenced endpoint.
   * `__meta_kubernetes_endpointslice_endpoint_topology_present_kubernetes_io_hostname`: `true` if the referenced object has a `kubernetes.io/hostname` annotation.
+  * `__meta_kubernetes_endpointslice_endpoint_hostname`: Hostname of the referenced endpoint.
+  * `__meta_kubernetes_endpointslice_endpoint_node_name`: Name of the Node hosting the referenced endpoint.
+  * `__meta_kubernetes_endpointslice_endpoint_zone`: Zone the referenced endpoint exists in (only available when using the `discovery.k8s.io/v1` API group).
   * `__meta_kubernetes_endpointslice_port_name`: Named port of the referenced endpoint.
   * `__meta_kubernetes_endpointslice_port_protocol`: Protocol of the referenced endpoint.
   * `__meta_kubernetes_endpointslice_port`: Port of the referenced endpoint.
@@ -202,19 +205,19 @@ The following labels are included for discovered ingress objects:
 
 You can use the following blocks with `discovery.kubernetes`:
 
-Block                                 | Description                                                | Required
---------------------------------------|------------------------------------------------------------|---------
-[`attach_metadata`][attach_metadata]  | Optional metadata to attach to discovered targets.         | no
-[`authorization`][authorization]      | Configure generic authorization to the endpoint.           | no
-[`basic_auth`][basic_auth]            | Configure `basic_auth` for authenticating to the endpoint. | no
-[`namespaces`][namespaces]            | Information about which Kubernetes namespaces to search.   | no
-[`oauth2`][oauth2]                    | Configure OAuth 2.0 for authenticating to the endpoint.    | no
-`oauth2` > [`tls_config`][tls_config] | Configure TLS settings for connecting to the endpoint.     | no
-[`selectors`][selectors]              | Selectors to filter discovered Kubernetes resources.       | no
-[`tls_config`][selectors]             | Configure TLS settings for connecting to the endpoint.     | no
+| Block                                 | Description                                                | Required |
+| ------------------------------------- | ---------------------------------------------------------- | -------- |
+| [`attach_metadata`][attach_metadata]  | Optional metadata to attach to discovered targets.         | no       |
+| [`authorization`][authorization]      | Configure generic authorization to the endpoint.           | no       |
+| [`basic_auth`][basic_auth]            | Configure `basic_auth` for authenticating to the endpoint. | no       |
+| [`namespaces`][namespaces]            | Information about which Kubernetes namespaces to search.   | no       |
+| [`oauth2`][oauth2]                    | Configure OAuth 2.0 for authenticating to the endpoint.    | no       |
+| `oauth2` > [`tls_config`][tls_config] | Configure TLS settings for connecting to the endpoint.     | no       |
+| [`selectors`][selectors]              | Selectors to filter discovered Kubernetes resources.       | no       |
+| [`tls_config`][selectors]             | Configure TLS settings for connecting to the endpoint.     | no       |
 
-The `>` symbol indicates deeper levels of nesting.
-For example, `oauth2 > tls_config` refers to a `tls_config` block defined inside an `oauth2` block.
+The > symbol indicates deeper levels of nesting.
+For example, `oauth2` > `tls_config` refers to a `tls_config` block defined inside an `oauth2` block.
 
 [attach_metadata]: #attach_metadata
 [authorization]: #authorization
@@ -229,9 +232,9 @@ For example, `oauth2 > tls_config` refers to a `tls_config` block defined inside
 The `attach_metadata` block allows you to attach node metadata to discovered targets.
 This block is valid for the `pod`, `endpoints`, and `endpointslice` roles.
 
-Name   | Type   | Description           | Default | Required
--------|--------|-----------------------|---------|---------
-`node` | `bool` | Attach node metadata. |         | no
+| Name   | Type   | Description           | Default | Required |
+| ------ | ------ | --------------------- | ------- | -------- |
+| `node` | `bool` | Attach node metadata. |         | no       |
 
 ### `authorization`
 
@@ -250,10 +253,10 @@ The `basic_auth` block configures basic authentication to the endpoint.
 The `namespaces` block limits the namespaces to discover resources in.
 If you omit this block, all namespaces are searched.
 
-Name            | Type           | Description                                                       | Default | Required
-----------------|----------------|-------------------------------------------------------------------|---------|---------
-`names`         | `list(string)` | List of namespaces to search.                                     |         | no
-`own_namespace` | `bool`         | Include the namespace {{< param "PRODUCT_NAME" >}} is running in. |         | no
+| Name            | Type           | Description                                                       | Default | Required |
+| --------------- | -------------- | ----------------------------------------------------------------- | ------- | -------- |
+| `names`         | `list(string)` | List of namespaces to search.                                     |         | no       |
+| `own_namespace` | `bool`         | Include the namespace {{< param "PRODUCT_NAME" >}} is running in. |         | no       |
 
 ### `oauth2`
 
@@ -265,11 +268,11 @@ The `oauth` block configures OAuth 2.0 authentication to the endpoint.
 
 The `selectors` block contains optional label and field selectors to limit the discovery process to a subset of resources.
 
-Name    | Type     | Description            | Default | Required
---------|----------|------------------------|---------|---------
-`role`  | `string` | Role of the selector.  |         | yes
-`field` | `string` | Field selector string. |         | no
-`label` | `string` | Label selector string. |         | no
+| Name    | Type     | Description            | Default | Required |
+| ------- | -------- | ---------------------- | ------- | -------- |
+| `role`  | `string` | Role of the selector.  |         | yes      |
+| `field` | `string` | Field selector string. |         | no       |
+| `label` | `string` | Label selector string. |         | no       |
 
 See Kubernetes' documentation for [Field selectors][] and [Labels and selectors][] to learn more about the possible filters that can be used.
 
@@ -281,9 +284,7 @@ Other roles only support selectors matching the role itself. For example, node r
 Using multiple `discovery.kubernetes` components with different selectors may result in a bigger load against the Kubernetes API.
 
 Selectors are recommended for retrieving a small set of resources in a very large cluster.
-Smaller clusters are recommended to avoid selectors in favor of filtering with [a `discovery.relabel` component][discovery.relabel] instead.
-
-[discovery.relabel]: ../discovery.relabel/
+Smaller clusters are recommended to avoid selectors in favor of filtering with [a `discovery.relabel` component](../discovery.relabel/) instead.
 {{< /admonition >}}
 
 [Field selectors]: https://kubernetes.io/docs/concepts/overview/working-with-objects/field-selectors/
@@ -299,9 +300,9 @@ The `tls_config` block configures TLS settings for connecting to the endpoint.
 
 The following fields are exported and can be referenced by other components:
 
-Name      | Type                | Description
-----------|---------------------|-------------------------------------------------------
-`targets` | `list(map(string))` | The set of targets discovered from the Kubernetes API.
+| Name      | Type                | Description                                            |
+| --------- | ------------------- | ------------------------------------------------------ |
+| `targets` | `list(map(string))` | The set of targets discovered from the Kubernetes API. |
 
 ## Component health
 
@@ -320,7 +321,7 @@ In those cases, exported fields retain their last healthy values.
 
 ### In-cluster discovery
 
-This example uses in-cluster authentication to discover all pods:
+This example uses in-cluster authentication to discover all Pods:
 
 ```alloy
 discovery.kubernetes "k8s_pods" {
@@ -385,7 +386,7 @@ Replace the following:
 
 ### Limit searched namespaces and filter by labels value
 
-This example limits the searched namespaces and only selects pods with a specific label value attached to them:
+This example limits the searched namespaces and only selects Pods with a specific label value attached to them:
 
 ```alloy
 discovery.kubernetes "k8s_pods" {
@@ -424,9 +425,9 @@ Replace the following:
 * _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
 * _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
-### Limit to only pods on the same node
+### Limit to only Pods on the same node
 
-This example limits the search to pods on the same node as this {{< param "PRODUCT_NAME" >}}.
+This example limits the search to Pods on the same node as this {{< param "PRODUCT_NAME" >}}.
 This configuration could be useful if you are running {{< param "PRODUCT_NAME" >}} as a DaemonSet.
 
 {{< admonition type="note" >}}
