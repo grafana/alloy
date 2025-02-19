@@ -39,13 +39,13 @@ You can use the following arguments with `discovery.eureka`:
 | `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |         | no       |
 | `refresh_interval`       | `duration`          | Interval at which to refresh the list of targets.                                                | `30s`   | no       |
 
- At most, one of the following can be provided:
+At most, one of the following can be provided:
 
-* [`authorization`][authorization] block
-* [`basic_auth`][basic_auth] block
-* [`bearer_token_file`][arguments] argument
-* [`bearer_token`][arguments] argument
-* [`oauth2`][oauth2] block
+- [`authorization`][authorization] block
+- [`basic_auth`][basic_auth] block
+- [`bearer_token_file`][arguments] argument
+- [`bearer_token`][arguments] argument
+- [`oauth2`][oauth2] block
 
 [arguments]: #arguments
 
@@ -105,24 +105,24 @@ The following fields are exported and can be referenced by other components:
 
 Each target includes the following labels:
 
-* `__meta_eureka_app_instance_country_id`
-* `__meta_eureka_app_instance_datacenterinfo_metadata_`
-* `__meta_eureka_app_instance_datacenterinfo_name`
-* `__meta_eureka_app_instance_healthcheck_url`
-* `__meta_eureka_app_instance_homepage_url`
-* `__meta_eureka_app_instance_hostname`
-* `__meta_eureka_app_instance_id`
-* `__meta_eureka_app_instance_ip_addr`
-* `__meta_eureka_app_instance_metadata_`
-* `__meta_eureka_app_instance_port_enabled`
-* `__meta_eureka_app_instance_port`
-* `__meta_eureka_app_instance_secure_port_enabled`
-* `__meta_eureka_app_instance_secure_port`
-* `__meta_eureka_app_instance_secure_vip_address`
-* `__meta_eureka_app_instance_status`
-* `__meta_eureka_app_instance_statuspage_url`
-* `__meta_eureka_app_instance_vip_address`
-* `__meta_eureka_app_name`
+- `__meta_eureka_app_instance_country_id`
+- `__meta_eureka_app_instance_datacenterinfo_metadata_`
+- `__meta_eureka_app_instance_datacenterinfo_name`
+- `__meta_eureka_app_instance_healthcheck_url`
+- `__meta_eureka_app_instance_homepage_url`
+- `__meta_eureka_app_instance_hostname`
+- `__meta_eureka_app_instance_id`
+- `__meta_eureka_app_instance_ip_addr`
+- `__meta_eureka_app_instance_metadata_`
+- `__meta_eureka_app_instance_port_enabled`
+- `__meta_eureka_app_instance_port`
+- `__meta_eureka_app_instance_secure_port_enabled`
+- `__meta_eureka_app_instance_secure_port`
+- `__meta_eureka_app_instance_secure_vip_address`
+- `__meta_eureka_app_instance_status`
+- `__meta_eureka_app_instance_statuspage_url`
+- `__meta_eureka_app_instance_vip_address`
+- `__meta_eureka_app_name`
 
 ## Component health
 
@@ -163,9 +163,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

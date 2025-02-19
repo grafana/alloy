@@ -6,7 +6,7 @@ menuTitle: Choose a component
 weight: 100
 ---
 
-# Choose a  {{< param "FULL_PRODUCT_NAME" >}} component
+# Choose a {{< param "FULL_PRODUCT_NAME" >}} component
 
 [Components][components] are the building blocks of {{< param "FULL_PRODUCT_NAME" >}}, and there is a [large number of them][components-ref].
 The components you select and configure depend on the telemetry signals you want to collect.
@@ -19,13 +19,13 @@ The components you select and configure depend on the telemetry signals you want
 Use `prometheus.*` components to collect infrastructure metrics.
 This will give you the best experience with [Grafana Infrastructure Observability][].
 
-For example, you can get metrics for a Linux host using `prometheus.exporter.unix`, 
-and metrics for a MongoDB instance using `prometheus.exporter.mongodb`. 
+For example, you can get metrics for a Linux host using `prometheus.exporter.unix`,
+and metrics for a MongoDB instance using `prometheus.exporter.mongodb`.
 
 You can also scrape any Prometheus endpoint using `prometheus.scrape`.
 Use `discovery.*` components to find targets for `prometheus.scrape`.
 
-[Grafana Infrastructure Observability]:https://grafana.com/docs/grafana-cloud/monitor-infrastructure/
+[Grafana Infrastructure Observability]: https://grafana.com/docs/grafana-cloud/monitor-infrastructure/
 
 ## Metrics for applications
 
@@ -37,7 +37,7 @@ For example, use `otelcol.receiver.otlp` to collect metrics from OpenTelemetry-i
 If your application is already instrumented with Prometheus metrics, there is no need to use `otelcol.*` components.
 Use `prometheus.*` components for the entire pipeline and send the metrics using `prometheus.remote_write`.
 
-[Grafana Application Observability]:https://grafana.com/docs/grafana-cloud/monitor-applications/application-observability/introduction/
+[Grafana Application Observability]: https://grafana.com/docs/grafana-cloud/monitor-applications/application-observability/introduction/
 
 ## Logs from infrastructure
 
@@ -53,13 +53,13 @@ which wouldn't correspond to the `namespace` label that is common in the Prometh
 ## Logs from applications
 
 Use `otelcol.receiver.*` components to collect application logs.
-This will gather the application logs in an OpenTelemetry-native way, making it easier to 
+This will gather the application logs in an OpenTelemetry-native way, making it easier to
 correlate the logs with OpenTelemetry metrics and traces coming from the application.
 All application telemetry must follow the [OpenTelemetry semantic conventions][OTel-semantics], simplifying this correlation.
 
 For example, if your application runs on Kubernetes, every trace, log, and metric can have a `k8s.namespace.name` resource attribute.
 
-[OTel-semantics]:https://opentelemetry.io/docs/concepts/semantic-conventions/
+[OTel-semantics]: https://opentelemetry.io/docs/concepts/semantic-conventions/
 
 ## Traces
 

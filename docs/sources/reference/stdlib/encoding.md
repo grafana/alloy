@@ -15,10 +15,10 @@ The `encoding` namespace contains encoding and decoding functions.
 
 ## encoding.from_base64
 
-The `encoding.from_base64` function decodes a RFC4648-compliant Base64-encoded string 
-into the original string. 
+The `encoding.from_base64` function decodes a RFC4648-compliant Base64-encoded string
+into the original string.
 
-`encoding.from_base64` fails if the provided string argument contains invalid Base64 data. 
+`encoding.from_base64` fails if the provided string argument contains invalid Base64 data.
 
 ### Examples
 
@@ -71,7 +71,7 @@ A common use case of `encoding.from_yaml` is to decode the output of a
 [`local.file`][] component to an {{< param "PRODUCT_NAME" >}} value.
 
 {{< admonition type="note" >}}
- Remember to escape double quotes when passing YAML string literals to `encoding.from_yaml`.
+Remember to escape double quotes when passing YAML string literals to `encoding.from_yaml`.
 
 For example, the YAML value `key: "value"` is properly represented by the string `"key: \"value\""`.
 {{< /admonition >}}

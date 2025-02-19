@@ -37,9 +37,9 @@ You can use the following arguments with `remote.kubernetes.secret`:
 When this component performs a poll operation, it requests the Secret data from the Kubernetes API.
 A poll is triggered by the following:
 
-* When the component first loads.
-* Every time the component's arguments get re-evaluated.
-* At the frequency specified by the `poll_frequency` argument.
+- When the component first loads.
+- Every time the component's arguments get re-evaluated.
+- At the frequency specified by the `poll_frequency` argument.
 
 Any error while polling will mark the component as unhealthy.
 After a successful poll, all data is exported with the same field names as the source Secret.
@@ -86,13 +86,13 @@ The following arguments are supported:
 | `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false` | no       |
 | `proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |         | no       |
 
- At most, one of the following can be provided:
+At most, one of the following can be provided:
 
-* [`authorization`][authorization] block
-* [`basic_auth`][basic_auth] block
-* [`bearer_token_file`][client] argument
-* [`bearer_token`][client] argument
-* [`oauth2`][oauth2] block
+- [`authorization`][authorization] block
+- [`basic_auth`][basic_auth] block
+- [`bearer_token_file`][client] argument
+- [`bearer_token`][client] argument
+- [`oauth2`][oauth2] block
 
 {{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
 

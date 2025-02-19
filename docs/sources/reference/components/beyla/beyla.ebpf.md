@@ -102,15 +102,15 @@ If `cluster_name` isn't set, Beyla tries to detect the cluster name from the Kub
 
 If `enable` is set to `true`, Beyla decorates the metrics and traces with Kubernetes metadata. The following labels are added:
 
-* `k8s.namespace.name`
-* `k8s.deployment.name`
-* `k8s.statefulset.name`
-* `k8s.replicaset.name`
-* `k8s.daemonset.name`
-* `k8s.node.name`
-* `k8s.pod.name`
-* `k8s.pod.uid`
-* `k8s.pod.start_time`
+- `k8s.namespace.name`
+- `k8s.deployment.name`
+- `k8s.statefulset.name`
+- `k8s.replicaset.name`
+- `k8s.daemonset.name`
+- `k8s.node.name`
+- `k8s.pod.name`
+- `k8s.pod.uid`
+- `k8s.pod.start_time`
 
 If `enable` is set to `false`, the Kubernetes metadata decorator is disabled.
 
@@ -170,20 +170,20 @@ The `metrics` block configures which metrics Beyla collects.
 
 `features` is a list of features to enable for the metrics. The following features are available:
 
-* `application` exports application-level metrics.
-* `application_process` exports metrics about the processes that run the instrumented application.
-* `application_service_graph` exports application-level service graph metrics.
-* `application_span` exports application-level metrics in traces span metrics format.
-* `network` exports network-level metrics.
+- `application` exports application-level metrics.
+- `application_process` exports metrics about the processes that run the instrumented application.
+- `application_service_graph` exports application-level service graph metrics.
+- `application_span` exports application-level metrics in traces span metrics format.
+- `network` exports network-level metrics.
 
 `instrumentations` is a list of instrumentations to enable for the metrics. The following instrumentations are available:
 
-* `*` enables all `instrumentations`. If `*` is present in the list, the other values are ignored.
-* `grpc` enables the collection of gRPC application metrics.
-* `http` enables the collection of HTTP/HTTPS/HTTP2 application metrics.
-* `kafka` enables the collection of Kafka client/server message queue metrics.
-* `redis` enables the collection of Redis client/server database metrics.
-* `sql` enables the collection of SQL database client call metrics.
+- `*` enables all `instrumentations`. If `*` is present in the list, the other values are ignored.
+- `grpc` enables the collection of gRPC application metrics.
+- `http` enables the collection of HTTP/HTTPS/HTTP2 application metrics.
+- `kafka` enables the collection of Kafka client/server message queue metrics.
+- `redis` enables the collection of Redis client/server database metrics.
+- `sql` enables the collection of SQL database client call metrics.
 
 #### `network`
 
@@ -206,24 +206,24 @@ The `routes` block configures the routes to match HTTP paths into user-provided 
 
 `ignore_mode` properties are:
 
-* `all` discards metrics and traces matching the `ignored_patterns`.
-* `metrics` discards only the metrics that match the `ignored_patterns`. No trace events are ignored.
-* `traces` discards only the traces that match the `ignored_patterns`. No metric events are ignored.
+- `all` discards metrics and traces matching the `ignored_patterns`.
+- `metrics` discards only the metrics that match the `ignored_patterns`. No trace events are ignored.
+- `traces` discards only the traces that match the `ignored_patterns`. No metric events are ignored.
 
 `patterns` and `ignore_patterns` are a list of patterns which a URL path with specific tags which allow for grouping path segments (or ignored them).
 The matcher tags can be in the `:name` or `{name}` format.
 
 `unmatched` properties are:
 
-* `heuristic` automatically derives the `http.route` field property from the path value based on the following rules:
-  * Any path components that have numbers or characters outside of the ASCII alphabet (or `-` and _), are replaced by an asterisk `*`.
-  * Any alphabetical components that don't look like words are replaced by an asterisk `*`.
-* `path` copies the `http.route` field property to the path value.
+- `heuristic` automatically derives the `http.route` field property from the path value based on the following rules:
+  - Any path components that have numbers or characters outside of the ASCII alphabet (or `-` and \_), are replaced by an asterisk `*`.
+  - Any alphabetical components that don't look like words are replaced by an asterisk `*`.
+- `path` copies the `http.route` field property to the path value.
   {{< admonition type="caution" >}}
   This property could lead to a cardinality explosion on the ingester side.
   {{< /admonition >}}
-* `unset` leaves the `http.route` property as unset.
-* `wildcard` sets the `http.route` field property to a generic asterisk-based `/**` value.
+- `unset` leaves the `http.route` property as unset.
+- `wildcard` sets the `http.route` field property to a generic asterisk-based `/**` value.
 
 ## Exported fields
 
@@ -278,10 +278,10 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-* _`<OPEN_PORT>`_: The port of the running service for Beyla automatically instrumented with eBPF.
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+- _`<OPEN_PORT>`_: The port of the running service for Beyla automatically instrumented with eBPF.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 ### Traces
 
@@ -310,8 +310,8 @@ otelcol.exporter.otlp "default" {
 
 Replace the following:
 
-* _`<OPEN_PORT>`_: The port of the running service for Beyla automatically instrumented with eBPF.
-* _`<OTLP_ENDPOINT>`_: The endpoint of the OpenTelemetry Collector to send traces to.
+- _`<OPEN_PORT>`_: The port of the running service for Beyla automatically instrumented with eBPF.
+- _`<OTLP_ENDPOINT>`_: The endpoint of the OpenTelemetry Collector to send traces to.
 
 [Grafana Beyla]: https://github.com/grafana/beyla
 [eBPF]: https://ebpf.io/

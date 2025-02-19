@@ -14,19 +14,19 @@ The built-in {{< param "PRODUCT_NAME" >}} convert command can migrate your [Prom
 
 This topic describes how to:
 
-* Convert a Prometheus configuration to an {{< param "PRODUCT_NAME" >}} configuration.
-* Run a Prometheus configuration natively using {{< param "PRODUCT_NAME" >}}.
+- Convert a Prometheus configuration to an {{< param "PRODUCT_NAME" >}} configuration.
+- Run a Prometheus configuration natively using {{< param "PRODUCT_NAME" >}}.
 
 ## Components used in this topic
 
-* [prometheus.scrape][]
-* [prometheus.remote_write][]
+- [prometheus.scrape][]
+- [prometheus.remote_write][]
 
 ## Before you begin
 
-* You must have an existing Prometheus configuration.
-* You must have a set of Prometheus applications ready to push telemetry data to {{< param "PRODUCT_NAME" >}}.
-* You must be familiar with the concept of [Components][] in {{< param "PRODUCT_NAME" >}}.
+- You must have an existing Prometheus configuration.
+- You must have a set of Prometheus applications ready to push telemetry data to {{< param "PRODUCT_NAME" >}}.
+- You must be familiar with the concept of [Components][] in {{< param "PRODUCT_NAME" >}}.
 
 ## Convert a Prometheus configuration
 
@@ -80,14 +80,14 @@ This conversion will enable you to take full advantage of the many additional fe
    - _`<OUTPUT_CONFIG_PATH>`_: The full path to output the {{< param "PRODUCT_NAME" >}} configuration.
    - _`<OUTPUT_REPORT_PATH>`_: The output path for the report.
 
-    Using the [example][] Prometheus configuration below, the diagnostic report provides the following information:
+   Using the [example][] Prometheus configuration below, the diagnostic report provides the following information:
 
-    ```plaintext
-    (Info) Converted scrape_configs job_name "prometheus" into...
-      A prometheus.scrape.prometheus component
-    (Info) Converted 1 remote_write[s] "grafana-cloud" into...
-      A prometheus.remote_write.default component
-    ```
+   ```plaintext
+   (Info) Converted scrape_configs job_name "prometheus" into...
+     A prometheus.scrape.prometheus component
+   (Info) Converted 1 remote_write[s] "grafana-cloud" into...
+     A prometheus.remote_write.default component
+   ```
 
 ## Run a Prometheus configuration
 
@@ -123,7 +123,7 @@ The following Prometheus configuration file provides the input for the conversio
 
 ```yaml
 global:
-  scrape_timeout:    45s
+  scrape_timeout: 45s
 
 scrape_configs:
   - job_name: "prometheus"
@@ -192,13 +192,13 @@ After the configuration is converted, review the {{< param "PRODUCT_NAME" >}} co
 
 The following list is specific to the convert command and not {{< param "PRODUCT_NAME" >}}:
 
-* The following configurations aren't available for conversion to {{< param "PRODUCT_NAME" >}}: `rule_files`, `alerting`, `remote_read`, `storage`, and `tracing`.
+- The following configurations aren't available for conversion to {{< param "PRODUCT_NAME" >}}: `rule_files`, `alerting`, `remote_read`, `storage`, and `tracing`.
   Any additional unsupported features are returned as errors during conversion.
-* Check if you are using any extra command line arguments with Prometheus that aren't present in your configuration file. For example, `--web.listen-address`.
-* Metamonitoring metrics exposed by {{< param "PRODUCT_NAME" >}} usually match Prometheus metamonitoring metrics but will use a different name.
+- Check if you are using any extra command line arguments with Prometheus that aren't present in your configuration file. For example, `--web.listen-address`.
+- Metamonitoring metrics exposed by {{< param "PRODUCT_NAME" >}} usually match Prometheus metamonitoring metrics but will use a different name.
   Make sure that you use the new metric names, for example, in your alerts and dashboards queries.
-* The logs produced by {{< param "PRODUCT_NAME" >}} differ from those produced by Prometheus.
-* {{< param "PRODUCT_NAME" >}} exposes the {{< param "PRODUCT_NAME" >}} [UI][].
+- The logs produced by {{< param "PRODUCT_NAME" >}} differ from those produced by Prometheus.
+- {{< param "PRODUCT_NAME" >}} exposes the {{< param "PRODUCT_NAME" >}} [UI][].
 
 [Prometheus]: https://prometheus.io/docs/prometheus/latest/configuration/configuration/
 [debugging]: #debugging

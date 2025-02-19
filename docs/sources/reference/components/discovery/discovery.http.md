@@ -38,20 +38,17 @@ The following example provides a target with a custom `metricsPath`, scrape inte
 
 ```json
 [
-   {
-      "labels" : {
-         "__metrics_path__" : "/api/prometheus",
-         "__scheme__" : "https",
-         "__scrape_interval__" : "60s",
-         "__scrape_timeout__" : "10s",
-         "service" : "custom-api-service"
-      },
-      "targets" : [
-         "custom-api:443"
-      ]
-   },
+  {
+    "labels": {
+      "__metrics_path__": "/api/prometheus",
+      "__scheme__": "https",
+      "__scrape_interval__": "60s",
+      "__scrape_timeout__": "10s",
+      "service": "custom-api-service"
+    },
+    "targets": ["custom-api:443"]
+  }
 ]
-
 ```
 
 It's also possible to append query parameters to the metrics path with the `__param_<name>` syntax.
@@ -60,21 +57,18 @@ The following example calls the metrics path `/health?target_data=prometheus`:
 
 ```json
 [
-   {
-      "labels" : {
-         "__metrics_path__" : "/health",
-         "__scheme__" : "https",
-         "__scrape_interval__" : "60s",
-         "__scrape_timeout__" : "10s",
-         "__param_target_data": "prometheus",
-         "service" : "custom-api-service"
-      },
-      "targets" : [
-         "custom-api:443"
-      ]
-   },
+  {
+    "labels": {
+      "__metrics_path__": "/health",
+      "__scheme__": "https",
+      "__scrape_interval__": "60s",
+      "__scrape_timeout__": "10s",
+      "__param_target_data": "prometheus",
+      "service": "custom-api-service"
+    },
+    "targets": ["custom-api:443"]
+  }
 ]
-
 ```
 
 For more information on the potential labels you can use, refer to the [`prometheus.scrape` technical details][prometheus.scrape] section, or the [Prometheus Configuration][] documentation.
@@ -106,13 +100,13 @@ You can use the following arguments with `discovery.http`:
 | `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |         | no       |
 | `refresh_interval`       | `duration`          | How often to refresh targets.                                                                    | `"60s"` | no       |
 
- At most, one of the following can be provided:
+At most, one of the following can be provided:
 
-* [`authorization`][authorization] block
-* [`basic_auth`][basic_auth] block
-* [`bearer_token_file`][arguments] argument
-* [`bearer_token`][arguments] argument
-* [`oauth2`][oauth2] block
+- [`authorization`][authorization] block
+- [`basic_auth`][basic_auth] block
+- [`bearer_token_file`][arguments] argument
+- [`bearer_token`][arguments] argument
+- [`oauth2`][oauth2] block
 
 [arguments]: #arguments
 
@@ -172,7 +166,7 @@ The following fields are exported and can be referenced by other components:
 
 Each target includes the following labels:
 
-* `__meta_url`: URL the target was obtained from.
+- `__meta_url`: URL the target was obtained from.
 
 ## Component health
 
@@ -185,7 +179,7 @@ In those cases, exported fields retain their last healthy values.
 
 ## Debug metrics
 
-* `prometheus_sd_http_failures_total` (counter): Total number of refresh failures.
+- `prometheus_sd_http_failures_total` (counter): Total number of refresh failures.
 
 ## Examples
 

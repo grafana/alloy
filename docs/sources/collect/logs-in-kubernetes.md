@@ -4,7 +4,7 @@ aliases:
   - ../tasks/collect-logs-in-kubernetes/ # /docs/alloy/latest/tasks/collect-logs-in-kubernetes/
 description: Learn how to collect logs on Kubernetes and forward them to Loki
 menuTitle: Collect Kubernetes logs
-title:  Collect Kubernetes logs and forward them to Loki
+title: Collect Kubernetes logs and forward them to Loki
 weight: 250
 ---
 
@@ -14,26 +14,26 @@ You can configure {{< param "PRODUCT_NAME" >}} to collect logs and forward them 
 
 This topic describes how to:
 
-* Configure logs delivery.
-* Collect logs from Kubernetes Pods.
+- Configure logs delivery.
+- Collect logs from Kubernetes Pods.
 
 ## Components used in this topic
 
-* [discovery.kubernetes][]
-* [discovery.relabel][]
-* [local.file_match][]
-* [loki.source.file][]
-* [loki.source.kubernetes][]
-* [loki.source.kubernetes_events][]
-* [loki.process][]
-* [loki.write][]
+- [discovery.kubernetes][]
+- [discovery.relabel][]
+- [local.file_match][]
+- [loki.source.file][]
+- [loki.source.kubernetes][]
+- [loki.source.kubernetes_events][]
+- [loki.process][]
+- [loki.write][]
 
 ## Before you begin
 
-* Ensure that you are familiar with logs labelling when working with Loki.
-* Identify where you will write collected logs.
+- Ensure that you are familiar with logs labelling when working with Loki.
+- Identify where you will write collected logs.
   You can write logs to Loki endpoints such as Grafana Loki, Grafana Cloud, or Grafana Enterprise Logs.
-* Be familiar with the concept of [Components][] in {{< param "PRODUCT_NAME" >}}.
+- Be familiar with the concept of [Components][] in {{< param "PRODUCT_NAME" >}}.
 
 ## Configure logs delivery
 
@@ -74,9 +74,9 @@ To configure a `loki.write` component for logs delivery, complete the following 
    - _`<USERNAME>`_: The basic authentication username.
    - _`<PASSWORD>`_: The basic authentication password or API key.
 
-  1. If you have more than one endpoint to write logs to, repeat the `endpoint` block for additional endpoints.
+1. If you have more than one endpoint to write logs to, repeat the `endpoint` block for additional endpoints.
 
-The following simple example demonstrates configuring `loki.write` with multiple endpoints, mixed usage of basic authentication, 
+The following simple example demonstrates configuring `loki.write` with multiple endpoints, mixed usage of basic authentication,
 and a `loki.source.file` component that collects logs from the filesystem on Alloy's own container.
 
 ```alloy
@@ -110,8 +110,8 @@ loki.source.file "example" {
 
 Replace the following:
 
-   - _`<USERNAME>`_: The remote write username.
-   - _`<PASSWORD>`_: The remote write password.
+- _`<USERNAME>`_: The remote write username.
+- _`<PASSWORD>`_: The remote write password.
 
 For more information on configuring logs delivery, refer to [loki.write][].
 
@@ -128,6 +128,7 @@ Thanks to the component architecture, you can follow one or all of the next sect
 ### System logs
 
 To get the system logs, you should use the following components:
+
 1. [local.file_match][]: Discovers files on the local filesystem.
 1. [loki.source.file][]: Reads log entries from files.
 1. [loki.write][]: Send logs to the Loki endpoint. You should have configured it in the [Configure logs delivery](#configure-logs-delivery) section.

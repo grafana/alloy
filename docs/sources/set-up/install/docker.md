@@ -12,13 +12,13 @@ weight: 100
 
 {{< param "PRODUCT_NAME" >}} is available as a Docker container image on the following platforms:
 
-* [Linux containers][] for AMD64 and ARM64.
-* [Windows containers][] for AMD64.
+- [Linux containers][] for AMD64 and ARM64.
+- [Windows containers][] for AMD64.
 
 ## Before you begin
 
-* Install [Docker][] on your computer.
-* Create and save an {{< param "PRODUCT_NAME" >}} configuration file on your computer, for example:
+- Install [Docker][] on your computer.
+- Create and save an {{< param "PRODUCT_NAME" >}} configuration file on your computer, for example:
 
   ```alloy
   logging {
@@ -52,6 +52,7 @@ Make sure you pass `--server.http.listen-addr=0.0.0.0:12345` as an argument as s
 If you don't pass this argument, the [debugging UI][UI] won't be available outside of the Docker container.
 
 [UI]: ../../../troubleshoot/debug/#alloy-ui
+
 {{< /admonition >}}
 
 ### BoringCrypto images
@@ -63,8 +64,8 @@ BoringCrypto support is in _Public preview_ and is only available on AMD64 and A
 BoringCrypto images are published with every release starting with version
 1.1:
 
-* The latest BoringCrypto image is published as `grafana/alloy:boringcrypto`.
-* A specific version of the BoringCrypto image is published as
+- The latest BoringCrypto image is published as `grafana/alloy:boringcrypto`.
+- A specific version of the BoringCrypto image is published as
   `grafana/alloy:<VERSION>-boringcrypto`, such as
   `grafana/alloy:v1.1.0-boringcrypto`.
 
@@ -93,6 +94,7 @@ Make sure you pass `--server.http.listen-addr=0.0.0.0:12345` as an argument as s
 If you don't pass this argument, the [debugging UI][UI] won't be available outside of the Docker container.
 
 [UI]: ../../../troubleshoot/debug/#alloy-ui
+
 {{< /admonition >}}
 
 ## Verify

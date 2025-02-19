@@ -21,7 +21,7 @@ To verify the default prefix for Homebrew on your computer, open a terminal wind
 
 ## Before you begin
 
-* Install [Homebrew][] on your computer.
+- Install [Homebrew][] on your computer.
 
 ## Install
 

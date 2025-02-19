@@ -35,7 +35,7 @@ Different types of HTTP requests will retrieve different profiles.
 
 ### Memory consumption
 
-Goroutine leaks often cause memory leaks. 
+Goroutine leaks often cause memory leaks.
 This is why obtaining a goroutine profile is usually necessary when investigating memory issues.
 For example:
 
@@ -94,7 +94,7 @@ Refer to [Estimate resource usage][res-usage] for more information about the exp
 
 ## {{% param "PRODUCT_NAME" %}} consumes an abnormally large amount of resources
 
-If {{< param "PRODUCT_NAME" >}} consumes an abnormally large amount of resources, you can open an issue in the [Alloy repository][alloy-repo]. 
+If {{< param "PRODUCT_NAME" >}} consumes an abnormally large amount of resources, you can open an issue in the [Alloy repository][alloy-repo].
 Attach your pprof files and your {{< param "PRODUCT_NAME" >}} configuration file.
 Make sure you redact any secrets in the attachments.
 

@@ -67,18 +67,18 @@ The following fields are exported and can be referenced by other components:
 
 Each target includes the following labels:
 
-* `__meta_consulagent_address`: The address of the target.
-* `__meta_consulagent_dc`: The data center name for the target.
-* `__meta_consulagent_health`: The health status of the service.
-* `__meta_consulagent_metadata_<key>`: Each node metadata key value of the target.
-* `__meta_consulagent_node`: The node name defined for the target.
-* `__meta_consulagent_service_address`: The service address of the target.
-* `__meta_consulagent_service_id`: The service ID of the target.
-* `__meta_consulagent_service_metadata_<key>`: Each service metadata key value of the target.
-* `__meta_consulagent_service_port`: The service port of the target.
-* `__meta_consulagent_service`: The name of the service the target belongs to.
-* `__meta_consulagent_tagged_address_<key>`: Each node tagged address key value of the target.
-* `__meta_consulagent_tags`: The list of tags of the target joined by the tag separator.
+- `__meta_consulagent_address`: The address of the target.
+- `__meta_consulagent_dc`: The data center name for the target.
+- `__meta_consulagent_health`: The health status of the service.
+- `__meta_consulagent_metadata_<key>`: Each node metadata key value of the target.
+- `__meta_consulagent_node`: The node name defined for the target.
+- `__meta_consulagent_service_address`: The service address of the target.
+- `__meta_consulagent_service_id`: The service ID of the target.
+- `__meta_consulagent_service_metadata_<key>`: Each service metadata key value of the target.
+- `__meta_consulagent_service_port`: The service port of the target.
+- `__meta_consulagent_service`: The name of the service the target belongs to.
+- `__meta_consulagent_tagged_address_<key>`: Each node tagged address key value of the target.
+- `__meta_consulagent_tags`: The list of tags of the target joined by the tag separator.
 
 ## Component health
 
@@ -91,12 +91,13 @@ In those cases, exported fields retain their last healthy values.
 
 ## Debug metrics
 
-* `discovery_consulagent_rpc_duration_seconds` (SummaryVec): The duration of a Consul Agent RPC call in seconds.
-* `discovery_consulagent_rpc_failures_total` (Counter): The number of Consul Agent RPC call failures.
+- `discovery_consulagent_rpc_duration_seconds` (SummaryVec): The duration of a Consul Agent RPC call in seconds.
+- `discovery_consulagent_rpc_failures_total` (Counter): The number of Consul Agent RPC call failures.
 
 ## Example
 
 <!-- TODO: Include a logging example -->
+
 This example discovers targets from a Consul Agent for the specified list of services:
 
 ```alloy
@@ -127,9 +128,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

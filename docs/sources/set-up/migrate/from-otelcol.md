@@ -14,20 +14,20 @@ The built-in {{< param "FULL_PRODUCT_NAME" >}} convert command can migrate your 
 
 This topic describes how to:
 
-* Convert an OpenTelemetry Collector configuration to a {{< param "PRODUCT_NAME" >}} configuration.
-* Run an OpenTelemetry Collector configuration natively using {{< param "PRODUCT_NAME" >}}.
+- Convert an OpenTelemetry Collector configuration to a {{< param "PRODUCT_NAME" >}} configuration.
+- Run an OpenTelemetry Collector configuration natively using {{< param "PRODUCT_NAME" >}}.
 
 ## Components used in this topic
 
-* [otelcol.receiver.otlp][]
-* [otelcol.processor.memory_limiter][]
-* [otelcol.exporter.otlp][]
+- [otelcol.receiver.otlp][]
+- [otelcol.processor.memory_limiter][]
+- [otelcol.exporter.otlp][]
 
 ## Before you begin
 
-* You must have an existing OpenTelemetry Collector configuration.
-* You must have a set of OpenTelemetry Collector applications ready to push telemetry data to {{< param "PRODUCT_NAME" >}}.
-* You must be familiar with the concept of [Components][] in {{< param "PRODUCT_NAME" >}}.
+- You must have an existing OpenTelemetry Collector configuration.
+- You must have a set of OpenTelemetry Collector applications ready to push telemetry data to {{< param "PRODUCT_NAME" >}}.
+- You must be familiar with the concept of [Components][] in {{< param "PRODUCT_NAME" >}}.
 
 ## Convert an OpenTelemetry Collector configuration
 
@@ -55,10 +55,10 @@ This conversion will enable you to take full advantage of the many additional fe
 1. If the `convert` command can't convert an OpenTelemetry Collector configuration, diagnostic information is sent to `stderr`.\
    You can bypass any non-critical issues and output the {{< param "PRODUCT_NAME" >}} configuration using a best-effort conversion by including the `--bypass-errors` flag.
 
-    {{< admonition type="caution" >}}
-    If you bypass the errors, the behavior of the converted configuration may not match the original OpenTelemetry Collector configuration.
-    Make sure you fully test the converted configuration before using it in a production environment.
-    {{< /admonition >}}
+   {{< admonition type="caution" >}}
+   If you bypass the errors, the behavior of the converted configuration may not match the original OpenTelemetry Collector configuration.
+   Make sure you fully test the converted configuration before using it in a production environment.
+   {{< /admonition >}}
 
    ```
    alloy convert --source-format=otelcol --bypass-errors --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
@@ -74,21 +74,22 @@ This conversion will enable you to take full advantage of the many additional fe
    ```
    alloy convert --source-format=otelcol --report=<OUTPUT_REPORT_PATH> --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>
    ```
+
    Replace the following:
 
    - _`<INPUT_CONFIG_PATH>`_: The full path to the OpenTelemetry Collector configuration.
    - _`<OUTPUT_CONFIG_PATH>`_: The full path to output the {{< param "PRODUCT_NAME" >}} configuration.
    - _`<OUTPUT_REPORT_PATH>`_: The output path for the report.
 
-    Using the [example][] OpenTelemetry Collector configuration below, the diagnostic report provides the following information:
+   Using the [example][] OpenTelemetry Collector configuration below, the diagnostic report provides the following information:
 
-    ```plaintext
-    (Info) Converted receiver/otlp into otelcol.receiver.otlp.default
-    (Info) Converted processor/memory_limiter into otelcol.processor.memory_limiter.default
-    (Info) Converted exporter/otlp into otelcol.exporter.otlp.default
+   ```plaintext
+   (Info) Converted receiver/otlp into otelcol.receiver.otlp.default
+   (Info) Converted processor/memory_limiter into otelcol.processor.memory_limiter.default
+   (Info) Converted exporter/otlp into otelcol.exporter.otlp.default
 
-    A configuration file was generated successfully.
-    ```
+   A configuration file was generated successfully.
+   ```
 
 ## Run an OpenTelemetry Collector configuration
 
@@ -137,7 +138,6 @@ processors:
   memory_limiter:
     limit_percentage: 90
     check_interval: 1s
-
 
 service:
   pipelines:
@@ -207,14 +207,14 @@ After the configuration is converted, review the {{< param "PRODUCT_NAME" >}} co
 
 The following list is specific to the convert command and not {{< param "PRODUCT_NAME" >}}:
 
-* Components are supported which directly embed upstream OpenTelemetry Collector features. You can get a general idea of which exist in
+- Components are supported which directly embed upstream OpenTelemetry Collector features. You can get a general idea of which exist in
   {{< param "PRODUCT_NAME" >}} for conversion by reviewing the `otelcol.*` components in the [Component Reference][].
   Any additional unsupported features are returned as errors during conversion.
-* Check if you are using any extra command line arguments with OpenTelemetry Collector that aren't present in your configuration file.
-* Metamonitoring metrics exposed by {{< param "PRODUCT_NAME" >}} usually match OpenTelemetry Collector metamonitoring metrics but will use a different name.
+- Check if you are using any extra command line arguments with OpenTelemetry Collector that aren't present in your configuration file.
+- Metamonitoring metrics exposed by {{< param "PRODUCT_NAME" >}} usually match OpenTelemetry Collector metamonitoring metrics but will use a different name.
   Make sure that you use the new metric names, for example, in your alerts and dashboards queries.
-* The logs produced by {{< param "PRODUCT_NAME" >}} differ from those produced by OpenTelemetry Collector.
-* {{< param "FULL_PRODUCT_NAME" >}} exposes the {{< param "PRODUCT_NAME" >}} [UI][].
+- The logs produced by {{< param "PRODUCT_NAME" >}} differ from those produced by OpenTelemetry Collector.
+- {{< param "FULL_PRODUCT_NAME" >}} exposes the {{< param "PRODUCT_NAME" >}} [UI][].
 
 [OpenTelemetry Collector]: https://opentelemetry.io/docs/collector/configuration/
 [debugging]: #debugging

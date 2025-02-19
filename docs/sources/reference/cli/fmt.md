@@ -18,10 +18,10 @@ Usage:
 alloy fmt [<FLAG> ...] <FILE_NAME>
 ```
 
-   Replace the following:
+Replace the following:
 
-   * _`<FLAG>`_: One or more flags that define the input and output of the command.
-   * _`<FILE_NAME>`_: The {{< param "PRODUCT_NAME" >}} configuration file.
+- _`<FLAG>`_: One or more flags that define the input and output of the command.
+- _`<FILE_NAME>`_: The {{< param "PRODUCT_NAME" >}} configuration file.
 
 If the _`<FILE_NAME>`_ argument isn't provided or if the _`<FILE_NAME>`_ argument is equal to `-`, `fmt` formats the contents of standard input.
 Otherwise, `fmt` reads and formats the file from disk specified by the argument.
@@ -37,5 +37,5 @@ The command fails if the file being formatted has syntactically incorrect {{< pa
 
 The following flags are supported:
 
-* `--write`, `-w`: Write the formatted file back to disk when not reading from standard input.
-* `--test`, `-t`: Only test the input and return a non-zero exit code if changes would have been made.
+- `--write`, `-w`: Write the formatted file back to disk when not reading from standard input.
+- `--test`, `-t`: Only test the input and return a non-zero exit code if changes would have been made.

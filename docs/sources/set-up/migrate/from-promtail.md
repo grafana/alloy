@@ -14,19 +14,19 @@ The built-in {{< param "PRODUCT_NAME" >}} convert command can migrate your [Prom
 
 This topic describes how to:
 
-* Convert a Promtail configuration to an {{< param "PRODUCT_NAME" >}} configuration.
-* Run a Promtail configuration natively using {{< param "PRODUCT_NAME" >}}.
+- Convert a Promtail configuration to an {{< param "PRODUCT_NAME" >}} configuration.
+- Run a Promtail configuration natively using {{< param "PRODUCT_NAME" >}}.
 
 ## Components used in this topic
 
-* [local.file_match][]
-* [loki.source.file][]
-* [loki.write][]
+- [local.file_match][]
+- [loki.source.file][]
+- [loki.write][]
 
 ## Before you begin
 
-* You must have an existing Promtail configuration.
-* You must be familiar with the concept of [Components][] in {{< param "PRODUCT_NAME" >}}.
+- You must have an existing Promtail configuration.
+- You must be familiar with the concept of [Components][] in {{< param "PRODUCT_NAME" >}}.
 
 ## Convert a Promtail configuration
 
@@ -43,8 +43,9 @@ This conversion will enable you to take full advantage of the many additional fe
    ```
 
    Replace the following:
-    * _`<INPUT_CONFIG_PATH>`_: The full path to the Promtail configuration.
-    * _`<OUTPUT_CONFIG_PATH>`_: The full path to output the {{< param "PRODUCT_NAME" >}} configuration.
+
+   - _`<INPUT_CONFIG_PATH>`_: The full path to the Promtail configuration.
+   - _`<OUTPUT_CONFIG_PATH>`_: The full path to output the {{< param "PRODUCT_NAME" >}} configuration.
 
 1. [Run][run alloy] {{< param "PRODUCT_NAME" >}} using the new configuration from _`<OUTPUT_CONFIG_PATH>`_:
 
@@ -63,8 +64,9 @@ This conversion will enable you to take full advantage of the many additional fe
    ```
 
    Replace the following:
-   * _`<INPUT_CONFIG_PATH>`_: The full path to the Promtail configuration.
-   * _`<OUTPUT_CONFIG_PATH>`_: The full path to output the {{< param "PRODUCT_NAME" >}} configuration.
+
+   - _`<INPUT_CONFIG_PATH>`_: The full path to the Promtail configuration.
+   - _`<OUTPUT_CONFIG_PATH>`_: The full path to output the {{< param "PRODUCT_NAME" >}} configuration.
 
 1. You can also output a diagnostic report by including the `--report` flag.
 
@@ -74,16 +76,16 @@ This conversion will enable you to take full advantage of the many additional fe
 
    Replace the following:
 
-   * _`<INPUT_CONFIG_PATH>`_: The full path to the Promtail configuration.
-   * _`<OUTPUT_CONFIG_PATH>`_: The full path to output the {{< param "PRODUCT_NAME" >}} configuration.
-   * _`<OUTPUT_REPORT_PATH>`_: The output path for the report.
+   - _`<INPUT_CONFIG_PATH>`_: The full path to the Promtail configuration.
+   - _`<OUTPUT_CONFIG_PATH>`_: The full path to output the {{< param "PRODUCT_NAME" >}} configuration.
+   - _`<OUTPUT_REPORT_PATH>`_: The output path for the report.
 
    If you use the [example](#example) Promtail configuration below, the diagnostic report provides the following information:
 
-    ```plaintext
-    (Warning) If you have a tracing set up for Promtail, it cannot be migrated to {{< param "PRODUCT_NAME" >}} automatically. Refer to the documentation on how to configure tracing in {{< param "PRODUCT_NAME" >}}.
-    (Warning) The metrics from {{< param "PRODUCT_NAME" >}} are different from the metrics emitted by Promtail. If you rely on Promtail's metrics, you must change your configuration, for example, your alerts and dashboards.
-    ```
+   ```plaintext
+   (Warning) If you have a tracing set up for Promtail, it cannot be migrated to {{< param "PRODUCT_NAME" >}} automatically. Refer to the documentation on how to configure tracing in {{< param "PRODUCT_NAME" >}}.
+   (Warning) The metrics from {{< param "PRODUCT_NAME" >}} are different from the metrics emitted by Promtail. If you rely on Promtail's metrics, you must change your configuration, for example, your alerts and dashboards.
+   ```
 
 ## Run a Promtail configuration
 
@@ -100,7 +102,7 @@ Your configuration file must be a valid Promtail configuration file rather than 
 
 1. You can follow the convert CLI command [debugging][] instructions to generate a diagnostic report.
 
-1. Refer to the {{< param "PRODUCT_NAME" >}}  [Debugging][DebuggingUI] for more information about running {{< param "PRODUCT_NAME" >}}.
+1. Refer to the {{< param "PRODUCT_NAME" >}} [Debugging][DebuggingUI] for more information about running {{< param "PRODUCT_NAME" >}}.
 
 1. If your Promtail configuration can't be converted and loaded directly into {{< param "PRODUCT_NAME" >}}, diagnostic information is sent to `stderr`.
    You can bypass any non-critical issues and start {{< param "PRODUCT_NAME" >}} by including the `--config.bypass-conversion-errors` flag in addition to `--config.format=promtail`.
@@ -136,8 +138,8 @@ alloy convert --source-format=promtail --output=<OUTPUT_CONFIG_PATH> <INPUT_CONF
 
 Replace the following:
 
-* _`<INPUT_CONFIG_PATH>`_: The full path to the Promtail configuration.
-* _`<OUTPUT_CONFIG_PATH>`_: The full path to output the {{< param "PRODUCT_NAME" >}} configuration.
+- _`<INPUT_CONFIG_PATH>`_: The full path to the Promtail configuration.
+- _`<OUTPUT_CONFIG_PATH>`_: The full path to output the {{< param "PRODUCT_NAME" >}} configuration.
 
 The new {{< param "PRODUCT_NAME" >}} configuration file looks like this:
 
@@ -170,15 +172,15 @@ After the configuration is converted, review the {{< param "PRODUCT_NAME" >}} co
 
 The following list is specific to the convert command and not {{< param "PRODUCT_NAME" >}}:
 
-* Check if you are using any extra command line arguments with Promtail that aren't present in your configuration file. For example, `-max-line-size`.
-* Check if you are setting any environment variables, whether [expanded in the configuration file][] itself or consumed directly by Promtail, such as `JAEGER_AGENT_HOST`.
-* In {{< param "PRODUCT_NAME" >}}, the positions file is saved at a different location.
+- Check if you are using any extra command line arguments with Promtail that aren't present in your configuration file. For example, `-max-line-size`.
+- Check if you are setting any environment variables, whether [expanded in the configuration file][] itself or consumed directly by Promtail, such as `JAEGER_AGENT_HOST`.
+- In {{< param "PRODUCT_NAME" >}}, the positions file is saved at a different location.
   Refer to the [loki.source.file][] documentation for more details.
   Check if you have any existing setup, for example, a Kubernetes Persistent Volume, that you must update to use the new positions file path.
-* Metamonitoring metrics exposed by {{< param "PRODUCT_NAME" >}} usually match Promtail metamonitoring metrics but will use a different name.
+- Metamonitoring metrics exposed by {{< param "PRODUCT_NAME" >}} usually match Promtail metamonitoring metrics but will use a different name.
   Make sure that you use the new metric names, for example, in your alerts and dashboards queries.
-* The logs produced by {{< param "PRODUCT_NAME" >}} will differ from those produced by Promtail.
-* {{< param "PRODUCT_NAME" >}} exposes the {{< param "PRODUCT_NAME" >}} [UI][], which differs from Promtail's Web UI.
+- The logs produced by {{< param "PRODUCT_NAME" >}} will differ from those produced by Promtail.
+- {{< param "PRODUCT_NAME" >}} exposes the {{< param "PRODUCT_NAME" >}} [UI][], which differs from Promtail's Web UI.
 
 [Promtail]: https://www.grafana.com/docs/loki/<LOKI_VERSION>/clients/promtail/
 [debugging]: #debugging

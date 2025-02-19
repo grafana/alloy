@@ -15,7 +15,7 @@ It introduces a basic pipeline that collects metrics from the host and sends the
 
 To complete this tutorial:
 
-* You must set up a [local Grafana instance][previous tutorial].
+- You must set up a [local Grafana instance][previous tutorial].
 
 ### Recommended reading
 
@@ -29,9 +29,9 @@ An {{< param "PRODUCT_NAME" >}} configuration file contains three elements:
 
    `key = value` pairs used to configure individual settings.
 
-    ```alloy
-    url = "http://localhost:9090"
-    ```
+   ```alloy
+   url = "http://localhost:9090"
+   ```
 
 1. **Expressions**
 
@@ -45,25 +45,25 @@ An {{< param "PRODUCT_NAME" >}} configuration file contains three elements:
    Blocks are used to configure components with groups of attributes or nested blocks.
    The following example block can be used to configure the logging output of {{< param "PRODUCT_NAME" >}}:
 
-    ```alloy
-    logging {
-        level  = "debug"
-        format = "json"
-    }
-    ```
+   ```alloy
+   logging {
+       level  = "debug"
+       format = "json"
+   }
+   ```
 
-    {{< admonition type="note" >}}
-    The default log level is `info` and the default log format is `logfmt`.
-    {{< /admonition >}}
+   {{< admonition type="note" >}}
+   The default log level is `info` and the default log format is `logfmt`.
+   {{< /admonition >}}
 
-    Try pasting this into `config.alloy` and running `<BINARY_FILE_PATH> run config.alloy` to see what happens. Replace _`<BINARY_FILE_PATH>`_ with the path to the {{< param "PRODUCT_NAME" >}} binary.
+   Try pasting this into `config.alloy` and running `<BINARY_FILE_PATH> run config.alloy` to see what happens. Replace _`<BINARY_FILE_PATH>`_ with the path to the {{< param "PRODUCT_NAME" >}} binary.
 
-    Congratulations, you've just written your first {{< param "PRODUCT_NAME" >}} configuration file.
-    This configuration won't do anything, so let's add some components to it.
+   Congratulations, you've just written your first {{< param "PRODUCT_NAME" >}} configuration file.
+   This configuration won't do anything, so let's add some components to it.
 
-    {{< admonition type="note" >}}
-    Comments in {{< param "PRODUCT_NAME" >}} syntax are prefixed with `//` and are single-line only. For example: `// This is a comment`.
-    {{< /admonition >}}
+   {{< admonition type="note" >}}
+   Comments in {{< param "PRODUCT_NAME" >}} syntax are prefixed with `//` and are single-line only. For example: `// This is a comment`.
+   {{< /admonition >}}
 
 ## Components
 
@@ -101,6 +101,7 @@ A list of all available components can be found in the [Component reference][].
 Each component has a link to its documentation, which contains a description of what the component does, its arguments, its exports, and examples.
 
 [Component reference]: ../../reference/components/
+
 {{< /admonition >}}
 
 This pipeline has two components: `local.file` and `prometheus.remote_write`.
@@ -165,7 +166,7 @@ Run {{< param "PRODUCT_NAME" >}} with the following command:
 
 Replace the following:
 
-* _`<BINARY_FILE_PATH>`_: The path to the {{< param "PRODUCT_NAME" >}} binary.
+- _`<BINARY_FILE_PATH>`_: The path to the {{< param "PRODUCT_NAME" >}} binary.
 
 Navigate to [http://localhost:3000/explore][] in your browser.
 After ~15-20 seconds, you should be able to see the metrics from the `prometheus.exporter.unix` component.
@@ -219,6 +220,7 @@ To give a visual hint, you want to create a pipeline that looks like this:
 Refer to the [array.concat][] standard library function for information about combining lists of values into a single list.
 
 [array.concat]: ../../reference/stdlib/array/
+
 {{< /admonition >}}
 
 You can run {{< param "PRODUCT_NAME" >}} with the new configuration file with the following command:
@@ -229,7 +231,7 @@ You can run {{< param "PRODUCT_NAME" >}} with the new configuration file with th
 
 Replace the following:
 
-* _`<BINARY_FILE_PATH>`_: The path to the {{< param "PRODUCT_NAME" >}} binary.
+- _`<BINARY_FILE_PATH>`_: The path to the {{< param "PRODUCT_NAME" >}} binary.
 
 Navigate to [http://localhost:3000/explore][] in your browser.
 After the first scrape, you should be able to query for `redis` metrics as well as `node` metrics.

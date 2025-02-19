@@ -14,7 +14,7 @@ This tutorial covers some basic metric relabeling, and shows you how to send log
 
 To complete this tutorial:
 
-* You must complete the [First components and the standard library][first] tutorial.
+- You must complete the [First components and the standard library][first] tutorial.
 
 ## Relabel metrics
 
@@ -87,6 +87,7 @@ These labels are considered internal and are dropped before relabeling rules fro
 If you would like to keep or act on these kinds of labels, use a [discovery.relabel][] component.
 
 [discovery.relabel]: ../../reference/components/discovery/discovery.relabel/
+
 {{< /admonition >}}
 
 ## Send logs to Loki
@@ -186,6 +187,7 @@ You can use the [loki.relabel][] component to relabel and add labels, just like 
 
 [loki.relabel]: ../../reference/components/loki/loki.relabel
 [prometheus.relabel]: ../../reference/components/prometheus/prometheus.relabel
+
 {{< /admonition >}}
 
 Run {{< param "PRODUCT_NAME" >}} and execute the following:

@@ -20,42 +20,42 @@ You can migrate from Grafana Agent Operator to {{< param "PRODUCT_NAME" >}}.
 1. Create a `values.yaml` file, which contains options for deploying {{< param "PRODUCT_NAME" >}}.
    You can start with the [default values][] and customize as you see fit, or start with this snippet, which should be a good starting point for what Grafana Agent Operator does.
 
-    ```yaml
-    alloy:
-      configMap:
-        create: true
-      clustering:
-        enabled: true
-    controller:
-      type: 'statefulset'
-      replicas: 2
-    crds:
-      create: false
-    ```
+   ```yaml
+   alloy:
+     configMap:
+       create: true
+     clustering:
+       enabled: true
+   controller:
+     type: "statefulset"
+     replicas: 2
+   crds:
+     create: false
+   ```
 
-    This configuration deploys {{< param "PRODUCT_NAME" >}} as a `StatefulSet` using the built-in [clustering][] functionality to allow distributing scrapes across all {{< param "PRODUCT_NAME" >}} pods.
+   This configuration deploys {{< param "PRODUCT_NAME" >}} as a `StatefulSet` using the built-in [clustering][] functionality to allow distributing scrapes across all {{< param "PRODUCT_NAME" >}} pods.
 
-    This is one of many deployment possible modes. For example, you may want to use a `DaemonSet` to collect host-level logs or metrics.
-    See the {{< param "PRODUCT_NAME" >}} [deployment guide][] for more details about different topologies.
+   This is one of many deployment possible modes. For example, you may want to use a `DaemonSet` to collect host-level logs or metrics.
+   See the {{< param "PRODUCT_NAME" >}} [deployment guide][] for more details about different topologies.
 
 1. Create an {{< param "PRODUCT_NAME" >}} configuration file, `config.alloy`.
 
-    In the next step, you add to this configuration as you convert `MetricsInstances`. You can add any additional configuration to this file as you need.
+   In the next step, you add to this configuration as you convert `MetricsInstances`. You can add any additional configuration to this file as you need.
 
 1. Install the Grafana Helm repository:
 
-    ```
-    helm repo add grafana https://grafana.github.io/helm-charts
-    helm repo update
-    ```
+   ```
+   helm repo add grafana https://grafana.github.io/helm-charts
+   helm repo update
+   ```
 
 1. Create a Helm release. You can name the release anything you like. The following command installs a release called `alloy-metrics` in the `monitoring` namespace.
 
-    ```shell
-    helm upgrade alloy-metrics grafana/alloy -i -n monitoring -f values.yaml --set-file alloy.configMap.content=config.alloy
-    ```
+   ```shell
+   helm upgrade alloy-metrics grafana/alloy -i -n monitoring -f values.yaml --set-file alloy.configMap.content=config.alloy
+   ```
 
-    This command uses the `--set-file` flag to pass the configuration file as a Helm value so that you can continue to edit it as a regular {{< param "PRODUCT_NAME" >}} configuration file.
+   This command uses the `--set-file` flag to pass the configuration file as a Helm value so that you can continue to edit it as a regular {{< param "PRODUCT_NAME" >}} configuration file.
 
 ## Convert `MetricsInstance` to {{% param "PRODUCT_NAME" %}} components
 
@@ -137,7 +137,7 @@ alloy:
   clustering:
     enabled: false
   controller:
-    type: 'daemonset'
+    type: "daemonset"
   mounts:
     # -- Mount /var/log from the host into the container for log collection.
     varlog: true
@@ -273,6 +273,7 @@ However, all Grafana Agent Static mode integrations have an equivalent component
 The [reference documentation][component documentation] should help convert those integrations to their {{< param "PRODUCT_NAME" >}} equivalent.
 
 <!-- ToDo: Validate path -->
+
 [default values]: https://github.com/grafana/alloy/blob/main/operations/helm/charts/alloy/values.yaml
 [clustering]: ../../../get-started/clustering/
 [deployment guide]: ../../../set-up/deploy/

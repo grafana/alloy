@@ -28,6 +28,7 @@ To install {{< param "PRODUCT_NAME" >}} on Linux, run the following commands in 
 1. Import the GPG key and add the Grafana package repository.
 
    {{< code >}}
+
    ```debian-ubuntu
    sudo mkdir -p /etc/apt/keyrings/
    wget -q -O - https://apt.grafana.com/gpg.key | gpg --dearmor | sudo tee /etc/apt/keyrings/grafana.gpg > /dev/null
@@ -45,11 +46,13 @@ To install {{< param "PRODUCT_NAME" >}} on Linux, run the following commands in 
    sudo rpm --import gpg.key
    sudo zypper addrepo https://rpm.grafana.com grafana
    ```
+
    {{< /code >}}
 
 1. Update the repositories.
 
    {{< code >}}
+
    ```debian-ubuntu
    sudo apt-get update
    ```
@@ -61,11 +64,13 @@ To install {{< param "PRODUCT_NAME" >}} on Linux, run the following commands in 
    ```suse-opensuse
    sudo zypper update
    ```
+
    {{< /code >}}
 
 1. Install {{< param "PRODUCT_NAME" >}}.
 
    {{< code >}}
+
    ```debian-ubuntu
    sudo apt-get install alloy
    ```
@@ -77,6 +82,7 @@ To install {{< param "PRODUCT_NAME" >}} on Linux, run the following commands in 
    ```suse-opensuse
    sudo zypper install alloy
    ```
+
    {{< /code >}}
 
 ## Uninstall
@@ -92,6 +98,7 @@ To uninstall {{< param "PRODUCT_NAME" >}} on Linux, run the following commands i
 1. Uninstall {{< param "PRODUCT_NAME" >}}.
 
    {{< code >}}
+
    ```debian-ubuntu
    sudo apt-get remove alloy
    ```
@@ -103,11 +110,13 @@ To uninstall {{< param "PRODUCT_NAME" >}} on Linux, run the following commands i
    ```suse-opensuse
    sudo zypper remove alloy
    ```
+
    {{< /code >}}
 
 1. Optional: Remove the Grafana repository.
 
    {{< code >}}
+
    ```debian-ubuntu
    sudo rm -i /etc/apt/sources.list.d/grafana.list
    ```
@@ -119,6 +128,7 @@ To uninstall {{< param "PRODUCT_NAME" >}} on Linux, run the following commands i
    ```suse-opensuse
    sudo zypper removerepo grafana
    ```
+
    {{< /code >}}
 
 ## Next steps

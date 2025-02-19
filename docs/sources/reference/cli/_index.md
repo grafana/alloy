@@ -14,12 +14,12 @@ The most common subcommand is [`run`][run] which accepts a configuration file an
 
 Available commands:
 
-* [`convert`][convert]: Convert an {{< param "PRODUCT_NAME" >}} configuration file.
-* [`fmt`][fmt]: Format an {{< param "PRODUCT_NAME" >}} configuration file.
-* [`run`][run]: Start {{< param "PRODUCT_NAME" >}}, given a configuration file.
-* [`tools`][tools]: Read the WAL and provide statistical information.
-* `completion`: Generate shell completion for the `alloy` CLI.
-* `help`: Print help for supported commands.
+- [`convert`][convert]: Convert an {{< param "PRODUCT_NAME" >}} configuration file.
+- [`fmt`][fmt]: Format an {{< param "PRODUCT_NAME" >}} configuration file.
+- [`run`][run]: Start {{< param "PRODUCT_NAME" >}}, given a configuration file.
+- [`tools`][tools]: Read the WAL and provide statistical information.
+- `completion`: Generate shell completion for the `alloy` CLI.
+- `help`: Print help for supported commands.
 
 [run]: ./run/
 [fmt]: ./fmt/

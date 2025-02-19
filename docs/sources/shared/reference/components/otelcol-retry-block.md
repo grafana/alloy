@@ -6,14 +6,14 @@ headless: true
 
 The following arguments are supported:
 
-Name                   | Type       | Description                                            | Default | Required
------------------------|------------|--------------------------------------------------------|---------|---------
-`enabled`              | `boolean`  | Enables retrying failed requests.                      | `true`  | no
-`initial_interval`     | `duration` | Initial time to wait before retrying a failed request. | `"5s"`  | no
-`max_elapsed_time`     | `duration` | Maximum time to wait before discarding a failed batch. | `"5m"`  | no
-`max_interval`         | `duration` | Maximum time to wait between retries.                  | `"30s"` | no
-`multiplier`           | `number`   | Factor to grow wait time before retrying.              | `1.5`   | no
-`randomization_factor` | `number`   | Factor to randomize wait time before retrying.         | `0.5`   | no
+| Name                   | Type       | Description                                            | Default | Required |
+| ---------------------- | ---------- | ------------------------------------------------------ | ------- | -------- |
+| `enabled`              | `boolean`  | Enables retrying failed requests.                      | `true`  | no       |
+| `initial_interval`     | `duration` | Initial time to wait before retrying a failed request. | `"5s"`  | no       |
+| `max_elapsed_time`     | `duration` | Maximum time to wait before discarding a failed batch. | `"5m"`  | no       |
+| `max_interval`         | `duration` | Maximum time to wait between retries.                  | `"30s"` | no       |
+| `multiplier`           | `number`   | Factor to grow wait time before retrying.              | `1.5`   | no       |
+| `randomization_factor` | `number`   | Factor to randomize wait time before retrying.         | `0.5`   | no       |
 
 When `enabled` is `true`, failed batches are retried after a given interval.
 The `initial_interval` argument specifies how long to wait before the first retry attempt.

@@ -14,9 +14,9 @@ weight: 200
 
 ## Before you begin
 
-* Install [Helm][] on your computer.
-* Configure a Kubernetes cluster that you can use for {{< param "PRODUCT_NAME" >}}.
-* Configure your local Kubernetes context to point at the cluster.
+- Install [Helm][] on your computer.
+- Configure a Kubernetes cluster that you can use for {{< param "PRODUCT_NAME" >}}.
+- Configure your local Kubernetes context to point at the cluster.
 
 ## Deploy
 
