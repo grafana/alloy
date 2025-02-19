@@ -18,9 +18,9 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	scrapeconfig "github.com/grafana/alloy/internal/component/loki/source/syslog/config"
+	"github.com/grafana/alloy/internal/component/loki/source/syslog/internal/syslogtarget/syslogparser"
 	"github.com/grafana/dskit/backoff"
-	"github.com/grafana/loki/v3/clients/pkg/promtail/scrapeconfig"
-	"github.com/grafana/loki/v3/clients/pkg/promtail/targets/syslog/syslogparser"
 	"github.com/leodido/go-syslog/v4"
 	"github.com/mwitkow/go-conntrack"
 	"github.com/prometheus/common/config"
