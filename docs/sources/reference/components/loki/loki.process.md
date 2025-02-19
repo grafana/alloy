@@ -1714,7 +1714,8 @@ Sections following the Description are expected to contain key-value pairs in th
 
 If the first line of a section has no value, for example "Subject:", the key acts as a prefix for subsequent keys in the same section.
 
-If a line within a section does not include the `:` symbol, it is considered part of the previous entry's value. The line is appended to the previous value, separated by a comma.
+If a line within a section doesn't include the `:` symbol, it's considered part of the previous entry's value.
+The line is appended to the previous value, separated by a comma.
 
 Lines in a section without a preceding valid entry (key-value pair) are ignored and discarded.
 
