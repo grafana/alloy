@@ -420,7 +420,7 @@ func (c *SchemaTable) fetchColumnsDefinitions(ctx context.Context, schemaName st
 			return nil, err
 		}
 
-		extra = strings.ToUpper(extra)
+		extra = strings.ToUpper(extra) // "extra" might contain a variety of textual information
 		defaultValue := ""
 		if columnDefault.Valid {
 			defaultValue = columnDefault.String
@@ -432,9 +432,9 @@ func (c *SchemaTable) fetchColumnsDefinitions(ctx context.Context, schemaName st
 		colSpec := columnSpec{
 			Name:          columnName,
 			Type:          columnType,
-			NotNull:       isNullable == "NO",
+			NotNull:       isNullable == "NO", // "YES" if NULL values can be stored in the column, "NO" if not.
 			AutoIncrement: strings.Contains(extra, "AUTO_INCREMENT"),
-			PrimaryKey:    columnKey == "PRI",
+			PrimaryKey:    columnKey == "PRI", // "column_key" is "PRI" if this column a (or part of) PRIMARY KEY
 			DefaultValue:  defaultValue,
 		}
 		tblSpec.Columns = append(tblSpec.Columns, colSpec)
@@ -474,8 +474,8 @@ func (c *SchemaTable) fetchColumnsDefinitions(ctx context.Context, schemaName st
 				Name:     indexName,
 				Type:     indexType,
 				Columns:  []string{columnName},
-				Unique:   nonUnique == 0,
-				Nullable: nullable.Valid && nullable.String == "YES",
+				Unique:   nonUnique == 0,                             // 0 if the index cannot contain duplicates, 1 if it can
+				Nullable: nullable.Valid && nullable.String == "YES", // "YES" if the column may contain NULL values
 			})
 		}
 	}
