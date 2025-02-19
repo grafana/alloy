@@ -303,6 +303,7 @@ func (s *Service) Update(newConfig any) error {
 	s.mut.Lock()
 	hash, err := newArgs.Hash()
 	if err != nil {
+		s.mut.Unlock()
 		return err
 	}
 	s.dataPath = filepath.Join(s.opts.StoragePath, ServiceName, hash)
@@ -311,6 +312,7 @@ func (s *Service) Update(newConfig any) error {
 	if !reflect.DeepEqual(s.args.HTTPClientConfig, newArgs.HTTPClientConfig) {
 		httpClient, err := commonconfig.NewClientFromConfig(*newArgs.HTTPClientConfig.Convert(), "remoteconfig")
 		if err != nil {
+			s.mut.Unlock()
 			return err
 		}
 		s.asClient = collectorv1connect.NewCollectorServiceClient(
