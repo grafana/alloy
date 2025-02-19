@@ -1704,7 +1704,7 @@ When `overwrite_existing` is set to `true`, the stage overwrites existing extrac
 If set to `false`, the `_extracted` suffix is appended to an existing field name.
 
 When `drop_invalid_labels` is set to `true`, the stage drops fields that aren't valid label names.
-If set to `false`, the stage will automatically convert them into valid labels, replacing invalid characters with underscores.
+If set to `false`, the stage automatically converts them into valid labels, replacing invalid characters with underscores.
 
 The `windowsevent` stage expects the message to be structured in sections that are split by empty lines.
 
