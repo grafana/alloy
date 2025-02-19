@@ -281,9 +281,7 @@ func (args EBPF) Convert() beylaCfg.EBPFTracer {
 	if args.HTTPRequestTimeout != 0 {
 		ebpf.HTTPRequestTimeout = args.HTTPRequestTimeout
 	}
-	if args.ContextPropagationEnabled {
-		ebpf.ContextPropagationEnabled = args.ContextPropagationEnabled
-	}
+	ebpf.ContextPropagationEnabled = args.ContextPropagationEnabled
 	ebpf.WakeupLen = args.WakeupLen
 	ebpf.TrackRequestHeaders = args.TrackRequestHeaders
 	ebpf.HighRequestVolume = args.HighRequestVolume
@@ -448,9 +446,7 @@ func (a *Arguments) Convert() (*beyla.Config, error) {
 	}
 	cfg.Prometheus = a.Metrics.Convert()
 	cfg.NetworkFlows = a.Metrics.Network.Convert()
-	if a.EnforceSysCaps {
-		cfg.EnforceSysCaps = true
-	}
+	cfg.EnforceSysCaps = a.EnforceSysCaps
 	cfg.EBPF = a.EBPF.Convert()
 	cfg.Filters = a.Filters.Convert()
 
