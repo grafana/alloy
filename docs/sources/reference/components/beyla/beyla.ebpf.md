@@ -411,4 +411,66 @@ Replace the following:
 * _`<OPEN_PORT>`_: The port of the running service for Beyla automatically instrumented with eBPF.
 * _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
 * _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `
+* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+
+### Traces
+
+This example gets traces from `beyla.ebpf` and forwards them to `otlp`:
+
+```alloy
+beyla.ebpf "default" {
+    open_port = <OPEN_PORT>
+    output {
+        traces = [otelcol.processor.batch.default.input]
+    }
+}
+otelcol.processor.batch "default" {
+    output {
+        traces  = [otelcol.exporter.otlp.default.input]
+    }
+}
+otelcol.exporter.otlp "default" {
+    client {
+        endpoint = sys.env("<OTLP_ENDPOINT>")
+    }
+}
+```
+
+Replace the following:
+
+* _`<OPEN_PORT>`_: The port of the running service for Beyla automatically instrumented with eBPF.
+* _`<OTLP_ENDPOINT>`_: The endpoint of the OpenTelemetry Collector to send traces to.
+
+[Grafana Beyla]: https://github.com/grafana/beyla
+[eBPF]: https://ebpf.io/
+[routes]: #routes
+[attributes]: #attributes
+[kubernetes attributes]: #kubernetes-attributes
+[kubernetes services]: #kubernetes-services
+[discovery]: #discovery
+[services]: #services
+[metrics]: #metrics
+[network]: #network
+[output]: #output
+[in-memory traffic]: ../../../../get-started/component_controller/#in-memory-traffic
+[run command]: ../../../cli/run/
+[scrape]: ../../prometheus/prometheus.scrape/
+
+<!-- START GENERATED COMPATIBLE COMPONENTS -->
+
+## Compatible components
+
+`beyla.ebpf` can accept arguments from the following components:
+
+- Components that export [OpenTelemetry `otelcol.Consumer`](../../../compatibility/#opentelemetry-otelcolconsumer-exporters)
+
+`beyla.ebpf` has exports that can be consumed by the following components:
+
+- Components that consume [Targets](../../../compatibility/#targets-consumers)
+
+{{< admonition type="note" >}}
+Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.
+Refer to the linked documentation for more details.
+{{< /admonition >}}
+
+<!-- END GENERATED COMPATIBLE COMPONENTS -->
