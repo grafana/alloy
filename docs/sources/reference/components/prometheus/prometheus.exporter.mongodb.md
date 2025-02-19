@@ -30,16 +30,13 @@ prometheus.exporter.mongodb "LABEL" {
 You can use the following arguments to configure the exporter's behavior.
 Omitted fields take their default values.
 
-| Name                         | Type      | Description                                                                                                                             | Default | Required |
-| ---------------------------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
-| `mongodb_uri`                | `string`  | MongoDB node connection URI.                                                                                                            |         | yes      |
-| `direct_connect`             | `boolean` | Whether or not a direct connect should be made. Direct connections are not valid if multiple hosts are specified or an SRV URI is used. | false   | no       |
-| `discovering_mode`           | `boolean` | Wheter or not to enable autodiscover collections.                                                                                       | false   | no       |
-| `tls_basic_auth_config_path` | `string`  | Path to the file having Prometheus TLS config for basic auth. Only enable if you want to use TLS based authentication.                  |         | no       |
+| Name               | Type      | Description                                                                                                                             | Default | Required |
+| ------------------ | --------- | --------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
+| `mongodb_uri`      | `string`  | MongoDB node connection URI.                                                                                                            |         | yes      |
+| `direct_connect`   | `boolean` | Whether or not a direct connect should be made. Direct connections are not valid if multiple hosts are specified or an SRV URI is used. | false   | no       |
+| `discovering_mode` | `boolean` | Wheter or not to enable autodiscover collections.                                                                                       | false   | no       |
 
 MongoDB node connection URI must be in the [`Standard Connection String Format`](https://docs.mongodb.com/manual/reference/connection-string/#std-label-connections-standard-connection-string-format)
-
-For `tls_basic_auth_config_path`, check [`tls_config`](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#tls_config) for reference on the file format to be used.
 
 ## Exported fields
 

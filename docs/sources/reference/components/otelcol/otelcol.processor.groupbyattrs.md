@@ -36,21 +36,21 @@ otelcol.processor.groupbyattrs "LABEL" {
 
 The following arguments are supported:
 
-| Name            | Type              | Description                                                                             | Default | Required |
-|-----------------|-------------------|-----------------------------------------------------------------------------------------|---------|----------|
-| `keys`          | `list(string)`    | Keys that will be used to group the spans, log records, or metric data points together. | `[]`    | no       |
+| Name   | Type           | Description                                                                             | Default | Required |
+| ------ | -------------- | --------------------------------------------------------------------------------------- | ------- | -------- |
+| `keys` | `list(string)` | Keys that will be used to group the spans, log records, or metric data points together. | `[]`    | no       |
 
-`keys` is a string array that is used for grouping the data. 
+`keys` is a string array that is used for grouping the data.
 If it is empty, the processor performs compaction and reassociates all spans with matching Resource and InstrumentationLibrary.
 
 ## Blocks
 
 The following blocks are supported inside the definition of `otelcol.processor.groupbyattrs`:
 
-Hierarchy | Block       | Description                                       | Required
---------- | ----------- | ------------------------------------------------- | --------
-output    | [output][]  | Configures where to send received telemetry data. | yes
-debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
+| Hierarchy     | Block             | Description                                                                | Required |
+| ------------- | ----------------- | -------------------------------------------------------------------------- | -------- |
+| output        | [output][]        | Configures where to send received telemetry data.                          | yes      |
+| debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no       |
 
 [output]: #output-block
 [debug_metrics]: #debug_metrics-block
@@ -68,7 +68,7 @@ debug_metrics | [debug_metrics][] | Configures the metrics that this component g
 The following fields are exported and can be referenced by other components:
 
 | Name    | Type               | Description                                                   |
-|---------|--------------------|---------------------------------------------------------------|
+| ------- | ------------------ | ------------------------------------------------------------- |
 | `input` | `otelcol.Consumer` | Accepts `otelcol.Consumer` data for metrics, logs, or traces. |
 
 `input` accepts `otelcol.Consumer` data for any telemetry signal (metrics,
@@ -164,7 +164,7 @@ This output demonstrates how `otelcol.processor.groupbyattrs` works in various s
 ### Compaction
 
 Sometimes telemetry data can become fragmented due to multiple duplicated ResourceSpans/ResourceLogs/ResourceMetrics objects.
-This leads to additional memory consumption, increased processing costs, inefficient serialization and increase of the export requests. 
+This leads to additional memory consumption, increased processing costs, inefficient serialization and increase of the export requests.
 In such situations, `otelcol.processor.groupbyattrs` can be used to compact the data with matching Resource and InstrumentationLibrary properties.
 
 For example, consider this input data:
@@ -177,24 +177,25 @@ Resource {host.name="localhost"}
   InstrumentationLibrary {name="OtherLibrary"}
   Spans
     Span {span_id=2, ...}
-    
+
 Resource {host.name="localhost"}
   InstrumentationLibrary {name="MyLibrary"}
   Spans
     Span {span_id=3, ...}
-    
+
 Resource {host.name="localhost"}
   InstrumentationLibrary {name="MyLibrary"}
   Spans
     Span {span_id=4, ...}
-    
+
 Resource {host.name="otherhost"}
   InstrumentationLibrary {name="MyLibrary"}
   Spans
     Span {span_id=5, ...}
 ```
 
-You can use `otelcol.processor.groupbyattrs` with its default configuration to compact the data: 
+You can use `otelcol.processor.groupbyattrs` with its default configuration to compact the data:
+
 ```alloy
 otelcol.processor.groupbyattrs "default" {
   output {
@@ -221,7 +222,9 @@ Resource {host.name="otherhost"}
   Spans
     Span {span_id=5, ...}
 ```
+
 [otelcol.processor.batch]: ../otelcol.processor.batch/
+
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components

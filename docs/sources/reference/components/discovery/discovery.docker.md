@@ -42,13 +42,13 @@ You can use the following arguments with `discovery.docker`:
 | `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                                                |               | no       |
 | `refresh_interval`       | `duration`          | Frequency to refresh list of containers.                                                                            | `"1m"`        | no       |
 
- At most, one of the following can be provided:
+At most, one of the following can be provided:
 
-* [`authorization`][authorization] block
-* [`basic_auth`][basic_auth] block
-* [`bearer_token_file`][arguments] argument
-* [`bearer_token`][arguments] argument
-* [`oauth2`][oauth2] block
+- [`authorization`][authorization] block
+- [`basic_auth`][basic_auth] block
+- [`bearer_token_file`][arguments] argument
+- [`bearer_token`][arguments] argument
+- [`oauth2`][oauth2] block
 
 [arguments]: #arguments
 
@@ -124,20 +124,20 @@ The following fields are exported and can be referenced by other components:
 
 Each target includes the following labels:
 
-* `__meta_docker_container_id`: ID of the container.
-* `__meta_docker_container_label_<labelname>`: Each label from the container.
-* `__meta_docker_container_name`: Name of the container.
-* `__meta_docker_container_network_mode`: Network mode of the container.
-* `__meta_docker_network_id`: ID of the Docker network the container is in.
-* `__meta_docker_network_ingress`: Set to `true` if the Docker network is an ingress network.
-* `__meta_docker_network_internal`: Set to `true` if the Docker network is an internal network.
-* `__meta_docker_network_ip`: The IP of the container in the network.
-* `__meta_docker_network_label_<labelname>`: Each label from the network the container is in.
-* `__meta_docker_network_name`: Name of the Docker network the container is in.
-* `__meta_docker_network_scope`: The scope of the network the container is in.
-* `__meta_docker_port_private`: The private port on the container.
-* `__meta_docker_port_public_ip`: The public IP of the container, if a port mapping exists.
-* `__meta_docker_port_public`: The publicly exposed port from the container, if a port mapping exists.
+- `__meta_docker_container_id`: ID of the container.
+- `__meta_docker_container_label_<labelname>`: Each label from the container.
+- `__meta_docker_container_name`: Name of the container.
+- `__meta_docker_container_network_mode`: Network mode of the container.
+- `__meta_docker_network_id`: ID of the Docker network the container is in.
+- `__meta_docker_network_ingress`: Set to `true` if the Docker network is an ingress network.
+- `__meta_docker_network_internal`: Set to `true` if the Docker network is an internal network.
+- `__meta_docker_network_ip`: The IP of the container in the network.
+- `__meta_docker_network_label_<labelname>`: Each label from the network the container is in.
+- `__meta_docker_network_name`: Name of the Docker network the container is in.
+- `__meta_docker_network_scope`: The scope of the network the container is in.
+- `__meta_docker_port_private`: The private port on the container.
+- `__meta_docker_port_public_ip`: The public IP of the container, if a port mapping exists.
+- `__meta_docker_port_public`: The publicly exposed port from the container, if a port mapping exists.
 
 Each discovered container maps to one target per unique combination of networks and port mappings used by the container.
 
@@ -184,9 +184,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 ### Windows hosts
 
@@ -220,9 +220,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

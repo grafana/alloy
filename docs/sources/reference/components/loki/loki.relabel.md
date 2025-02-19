@@ -81,11 +81,11 @@ In those cases, exported fields are kept at their last healthy values.
 
 ## Debug metrics
 
-* `loki_relabel_entries_processed` (counter): Total number of log entries processed.
-* `loki_relabel_entries_written` (counter): Total number of log entries forwarded.
-* `loki_relabel_cache_misses` (counter): Total number of cache misses.
-* `loki_relabel_cache_hits` (counter): Total number of cache hits.
-* `loki_relabel_cache_size` (gauge): Total size of relabel cache.
+- `loki_relabel_entries_processed` (counter): Total number of log entries processed.
+- `loki_relabel_entries_written` (counter): Total number of log entries forwarded.
+- `loki_relabel_cache_misses` (counter): Total number of cache misses.
+- `loki_relabel_cache_hits` (counter): Total number of cache hits.
+- `loki_relabel_cache_size` (gauge): Total size of relabel cache.
 
 ## Example
 

@@ -14,7 +14,7 @@ title: pyroscope.ebpf
 The collected performance profiles are forwarded to the list of receivers passed in `forward_to`.
 
 {{< admonition type="note" >}}
-To use the  `pyroscope.ebpf` component you must run {{< param "PRODUCT_NAME" >}} as root and inside the host PID namespace.
+To use the `pyroscope.ebpf` component you must run {{< param "PRODUCT_NAME" >}} as root and inside the host PID namespace.
 {{< /admonition >}}
 
 You can specify multiple `pyroscope.ebpf` components by giving them different labels, however it's not recommended as it can lead to additional memory and CPU usage.
@@ -77,17 +77,17 @@ The `pyroscope.ebpf` component doesn't support any blocks. You can configure thi
 
 ## Debug information
 
-* `elf_cache` per build id and per same file symbol tables and their sizes in symbols count.
-* `pid_cache` per process elf symbol tables and their sizes in symbols count.
-* `targets` currently tracked active targets.
+- `elf_cache` per build id and per same file symbol tables and their sizes in symbols count.
+- `pid_cache` per process elf symbol tables and their sizes in symbols count.
+- `targets` currently tracked active targets.
 
 ## Debug metrics
 
-* `pyroscope_ebpf_active_targets` (gauge): Number of active targets the component tracks.
-* `pyroscope_ebpf_pprofs_total` (counter): Number of pprof profiles collected by the eBPF component.
-* `pyroscope_ebpf_profiling_sessions_failing_total` (counter): Number of profiling sessions failed.
-* `pyroscope_ebpf_profiling_sessions_total` (counter): Number of profiling sessions completed.
-* `pyroscope_fanout_latency` (histogram): Write latency for sending to direct and indirect components.
+- `pyroscope_ebpf_active_targets` (gauge): Number of active targets the component tracks.
+- `pyroscope_ebpf_pprofs_total` (counter): Number of pprof profiles collected by the eBPF component.
+- `pyroscope_ebpf_profiling_sessions_failing_total` (counter): Number of profiling sessions failed.
+- `pyroscope_ebpf_profiling_sessions_total` (counter): Number of profiling sessions completed.
+- `pyroscope_fanout_latency` (histogram): Write latency for sending to direct and indirect components.
 
 ## Profile collecting behavior
 
@@ -107,10 +107,10 @@ These labels can help you pin down a profiling target.
 
 One of the following special labels _must_ be included in each target of `targets` and the label must correspond to the container or process that is profiled:
 
-* `__container_id__`: The container ID.
-* `__meta_docker_container_id`: The ID of the Docker container.
-* `__meta_kubernetes_pod_container_id`: The ID of the Kubernetes Pod container.
-* `__process_pid__` : The process ID.
+- `__container_id__`: The container ID.
+- `__meta_docker_container_id`: The ID of the Docker container.
+- `__meta_kubernetes_pod_container_id`: The ID of the Kubernetes Pod container.
+- `__process_pid__` : The process ID.
 
 Each process is then associated with a specified target from the targets list, determined by a container ID or process PID.
 
@@ -123,9 +123,9 @@ Otherwise the process isn't profiled.
 The special label `service_name` is required and must always be present.
 If it's not specified, it's attempted to be inferred from multiple sources:
 
-* `__meta_docker_container_name`
-* `__meta_kubernetes_namespace` and `__meta_kubernetes_pod_container_name`
-* `__meta_kubernetes_pod_annotation_pyroscope_io_service_name` which is a `pyroscope.io/service_name` Pod annotation.
+- `__meta_docker_container_name`
+- `__meta_kubernetes_namespace` and `__meta_kubernetes_pod_container_name`
+- `__meta_kubernetes_pod_annotation_pyroscope_io_service_name` which is a `pyroscope.io/service_name` Pod annotation.
 
 If `service_name` isn't specified and couldn't be inferred, it's set to `unspecified`.
 
@@ -133,18 +133,18 @@ If `service_name` isn't specified and couldn't be inferred, it's set to `unspeci
 
 Symbols are extracted from various sources, including:
 
-* The `.gopclntab` section in Go language ELF files.
-* The `.symtab` and `.dynsym` sections in the debug ELF file.
-* The `.symtab` and `.dynsym` sections in the ELF file.
+- The `.gopclntab` section in Go language ELF files.
+- The `.symtab` and `.dynsym` sections in the debug ELF file.
+- The `.symtab` and `.dynsym` sections in the ELF file.
 
 The search for debug files follows [gdb algorithm][].
 For example, if the profiler wants to find the debug file for `/lib/x86_64-linux-gnu/libc.so.6` with a `.gnu_debuglink` set to `libc.so.6.debug` and a build ID `0123456789abcdef`.
 The following paths are examined:
 
-* `/usr/lib/debug/.build-id/01/0123456789abcdef.debug`
-* `/lib/x86_64-linux-gnu/libc.so.6.debug`
-* `/lib/x86_64-linux-gnu/.debug/libc.so.6.debug`
-* `/usr/lib/debug/lib/x86_64-linux-gnu/libc.so.6.debug`
+- `/usr/lib/debug/.build-id/01/0123456789abcdef.debug`
+- `/lib/x86_64-linux-gnu/libc.so.6.debug`
+- `/lib/x86_64-linux-gnu/.debug/libc.so.6.debug`
+- `/usr/lib/debug/lib/x86_64-linux-gnu/libc.so.6.debug`
 
 ### Deal with unknown symbols
 
@@ -152,9 +152,9 @@ Unknown symbols in the profiles you've collected indicate that the profiler coul
 
 This can occur for several reasons:
 
-* The process has terminated, making the ELF file inaccessible.
-* The ELF file is either corrupted or not recognized as an ELF file.
-* There is no corresponding ELF file entry in `/proc/pid/maps` for the address in the stack trace.
+- The process has terminated, making the ELF file inaccessible.
+- The ELF file is either corrupted or not recognized as an ELF file.
+- There is no corresponding ELF file entry in `/proc/pid/maps` for the address in the stack trace.
 
 ### Address unresolved symbols
 
@@ -162,8 +162,8 @@ If you only see module names without corresponding function names, for example, 
 
 This can occur for several reasons:
 
-* The binary has been stripped, leaving no .symtab, .dynsym, or .gopclntab sections in the ELF file.
-* The debug file is missing or couldn't be located.
+- The binary has been stripped, leaving no .symtab, .dynsym, or .gopclntab sections in the ELF file.
+- The debug file is missing or couldn't be located.
 
 To fix this for your binaries, ensure that they're either not stripped or that you have separate debug files available.
 You can achieve this by running:
@@ -298,7 +298,6 @@ pyroscope.ebpf "default" {
 
 - Components that export [Targets](../../../compatibility/#targets-exporters)
 - Components that export [Pyroscope `ProfilesReceiver`](../../../compatibility/#pyroscope-profilesreceiver-exporters)
-
 
 {{< admonition type="note" >}}
 Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.

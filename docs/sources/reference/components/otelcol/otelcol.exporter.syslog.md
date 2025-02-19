@@ -8,7 +8,7 @@ title: otelcol.exporter.syslog
 
 {{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-`otelcol.exporter.syslog` accepts logs from other `otelcol` components and writes them over the network using the syslog protocol. 
+`otelcol.exporter.syslog` accepts logs from other `otelcol` components and writes them over the network using the syslog protocol.
 It supports syslog protocols [RFC5424][] and [RFC3164][] and can send data over `TCP` or `UDP`.
 
 {{< admonition type="note" >}}
@@ -36,16 +36,16 @@ If an attribute is missing, the default value is used. The log's timestamp field
 RFC3164 only supports a subset of the attributes supported by RFC5424, and the default values are not the same between
 the two protocols. Refer to the [OpenTelemetry documentation][upstream_readme] for the exporter for more details.
 
-| Attribute name    | Type   | RFC5424 Default value  | RFC3164 supported | RFC3164 Default value
-| ----------------- | ------ | ---------------------- |------------------ | ----------------------
-| `appname`         | string | `-`                    | yes               | empty string
-| `hostname`        | string | `-`                    | yes               | `-`
-| `message`         | string | empty string           | yes               | empty string
-| `msg_id`          | string | `-`                    | no                | 
-| `priority`        | int    | `165`                  | yes               | `165` 
-| `proc_id`         | string | `-`                    | no                | 
-| `structured_data` | map    | `-`                    | no                | 
-| `version`         | int    | `1`                    | no                | 
+| Attribute name    | Type   | RFC5424 Default value | RFC3164 supported | RFC3164 Default value |
+| ----------------- | ------ | --------------------- | ----------------- | --------------------- |
+| `appname`         | string | `-`                   | yes               | empty string          |
+| `hostname`        | string | `-`                   | yes               | `-`                   |
+| `message`         | string | empty string          | yes               | empty string          |
+| `msg_id`          | string | `-`                   | no                |
+| `priority`        | int    | `165`                 | yes               | `165`                 |
+| `proc_id`         | string | `-`                   | no                |
+| `structured_data` | map    | `-`                   | no                |
+| `version`         | int    | `1`                   | no                |
 
 [upstream_readme]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/<OTEL_VERSION>/exporter/syslogexporter
 
@@ -53,16 +53,16 @@ the two protocols. Refer to the [OpenTelemetry documentation][upstream_readme] f
 
 `otelcol.exporter.syslog` supports the following arguments:
 
-| Name                   | Type      | Description                                                               | Default                           | Required |
-|------------------------|-----------|---------------------------------------------------------------------------|-----------------------------------|----------|
-| `endpoint`             | `string`  | The endpoint to send syslog formatted logs to.                            |                                   | yes      |
-| `network`              | `string`  | The type of network connection to use to send logs.                       | tcp                               | no       |
-| `port`                 | `int`     | The port where the syslog server accepts connections.                     | 514                               | no       |
-| `protocol`             | `string`  | The syslog protocol that the syslog server supports.                      | rfc5424                           | no       |
-| `enable_octet_counting`| `bool`    | Whether to enable rfc6587 octet counting.                                 | false                             | no       |
-| `timeout`              | `duration`| Time to wait before marking a request as failed.                          | 5s                                | no       |
+| Name                    | Type       | Description                                           | Default | Required |
+| ----------------------- | ---------- | ----------------------------------------------------- | ------- | -------- |
+| `endpoint`              | `string`   | The endpoint to send syslog formatted logs to.        |         | yes      |
+| `network`               | `string`   | The type of network connection to use to send logs.   | tcp     | no       |
+| `port`                  | `int`      | The port where the syslog server accepts connections. | 514     | no       |
+| `protocol`              | `string`   | The syslog protocol that the syslog server supports.  | rfc5424 | no       |
+| `enable_octet_counting` | `bool`     | Whether to enable rfc6587 octet counting.             | false   | no       |
+| `timeout`               | `duration` | Time to wait before marking a request as failed.      | 5s      | no       |
 
-The `network` argument specifies if the syslog endpoint is using the TCP or UDP protocol. 
+The `network` argument specifies if the syslog endpoint is using the TCP or UDP protocol.
 `network` must be one of `tcp`, `udp`
 
 The `protocol` argument specifies the syslog format supported by the endpoint.
@@ -73,7 +73,7 @@ The `protocol` argument specifies the syslog format supported by the endpoint.
 The following blocks are supported inside the definition of `otelcol.exporter.syslog`:
 
 | Hierarchy        | Block                | Description                                                                | Required |
-|------------------|----------------------|----------------------------------------------------------------------------|----------|
+| ---------------- | -------------------- | -------------------------------------------------------------------------- | -------- |
 | tls              | [tls][]              | Configures TLS for a TCP connection.                                       | no       |
 | sending_queue    | [sending_queue][]    | Configures batching of data before sending.                                | no       |
 | retry_on_failure | [retry_on_failure][] | Configures retry mechanism for failed requests.                            | no       |
@@ -110,9 +110,9 @@ The `retry_on_failure` block configures how failed requests to the syslog server
 
 The following fields are exported and can be referenced by other components:
 
-| Name   | Type               | Description
-|--------|--------------------|-----------------------------------------------------------------
-|`input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to.
+| Name    | Type               | Description                                                      |
+| ------- | ------------------ | ---------------------------------------------------------------- |
+| `input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to. |
 
 `input` accepts `otelcol.Consumer` data for logs. Other telemetry signals are ignored.
 
@@ -140,12 +140,12 @@ otelcol.exporter.syslog "default" {
 }
 ```
 
-###  Use the `otelcol.processor.transform` component to format logs from `loki.source.syslog`
+### Use the `otelcol.processor.transform` component to format logs from `loki.source.syslog`
 
-This example shows one of the methods for annotating your loki messages into the format expected 
-by the exporter using a `otelcol.receiver.loki` component in addition to the `otelcol.processor.transform` 
-component. This example assumes that the log messages being parsed have come from a `loki.source.syslog` 
-component. This is just an example of some of the techniques that can be applied, and not a fully functioning 
+This example shows one of the methods for annotating your loki messages into the format expected
+by the exporter using a `otelcol.receiver.loki` component in addition to the `otelcol.processor.transform`
+component. This example assumes that the log messages being parsed have come from a `loki.source.syslog`
+component. This is just an example of some of the techniques that can be applied, and not a fully functioning
 example for a specific incoming log.
 
 ```alloy
@@ -183,10 +183,10 @@ otelcol.processor.transform "syslog" {
 
 ### Use the `otelcol.processor.transform` component to format OpenTelemetry logs
 
-This example shows one of the methods for annotating your messages in the OpenTelemetry log format into the format expected 
-by the exporter using an `otelcol.processor.transform` component. This example assumes that the log messages being 
-parsed have come from another OpenTelemetry receiver in JSON format (or have been transformed to OpenTelemetry logs using 
-an `otelcol.receiver.loki` component). This is just an example of some of the techniques that can be applied, and not a 
+This example shows one of the methods for annotating your messages in the OpenTelemetry log format into the format expected
+by the exporter using an `otelcol.processor.transform` component. This example assumes that the log messages being
+parsed have come from another OpenTelemetry receiver in JSON format (or have been transformed to OpenTelemetry logs using
+an `otelcol.receiver.loki` component). This is just an example of some of the techniques that can be applied, and not a
 fully functioning example for a specific incoming log format.
 
 ```alloy

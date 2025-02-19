@@ -105,14 +105,14 @@ The `tls_config` block configures TLS settings for connecting to HTTPS Docker da
 
 `loki.source.docker` exposes some debug information per target:
 
-* Whether the target is ready to tail entries.
-* The labels associated with the target.
-* The most recent time a log line was read.
+- Whether the target is ready to tail entries.
+- The labels associated with the target.
+- The most recent time a log line was read.
 
 ## Debug metrics
 
-* `loki_source_docker_target_entries_total` (gauge): Total number of successful entries sent to the Docker target.
-* `loki_source_docker_target_parsing_errors_total` (gauge): Total number of parsing errors while receiving Docker messages.
+- `loki_source_docker_target_entries_total` (gauge): Total number of successful entries sent to the Docker target.
+- `loki_source_docker_target_parsing_errors_total` (gauge): Total number of parsing errors while receiving Docker messages.
 
 ## Component behavior
 
@@ -153,7 +153,6 @@ loki.write "local" {
 
 - Components that export [Targets](../../../compatibility/#targets-exporters)
 - Components that export [Loki `LogsReceiver`](../../../compatibility/#loki-logsreceiver-exporters)
-
 
 {{< admonition type="note" >}}
 Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.

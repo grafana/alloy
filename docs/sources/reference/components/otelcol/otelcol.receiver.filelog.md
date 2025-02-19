@@ -35,7 +35,7 @@ otelcol.receiver.filelog "<LABEL>" {
 You can use the following arguments with `otelcol.receiver.filelog`:
 
 | Name                            | Type                | Description                                                                                | Default     | Required |
-|---------------------------------|---------------------|--------------------------------------------------------------------------------------------|-------------|----------|
+| ------------------------------- | ------------------- | ------------------------------------------------------------------------------------------ | ----------- | -------- |
 | `include`                       | `list(string)`      | A list of glob patterns to include files.                                                  |             | yes      |
 | `exclude`                       | `list(string)`      | A list of glob patterns to exclude files that would be included by the `include` patterns. | `[]`        | no       |
 | `poll_interval`                 | `time.Duration`     | The interval at which the file is polled for new entries.                                  | `200ms`     | no       |
@@ -68,7 +68,7 @@ Refer to the upstream receiver [documentation][encoding-documentation] for more 
 
 `start_at` must be one of `beginning` or `end`. The `header` block may only be used if `start_at` is `beginning`.
 
-`compression` must be either `` or `gzip`.
+`compression` must be either ``or`gzip`.
 
 [encoding-documentation]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/{{< param "OTEL_VERSION" >}}/receiver/filelogreceiver/README.md#supported-encodings
 
@@ -98,7 +98,7 @@ The following blocks are supported inside the definition of
 `otelcol.receiver.filelog`:
 
 | Hierarchy                   | Block                 | Description                                                                                     | Required |
-|-----------------------------|-----------------------|-------------------------------------------------------------------------------------------------|----------|
+| --------------------------- | --------------------- | ----------------------------------------------------------------------------------------------- | -------- |
 | output                      | [output][]            | Configures where to send received telemetry data.                                               | yes      |
 | multiline                   | [multiline][]         | Configures rules for multiline parsing of log messages                                          | no       |
 | header                      | [header][]            | Configures rules for parsing a log header line                                                  | no       |
@@ -174,8 +174,8 @@ The following arguments are supported:
 
 | Name                 | Type     | Description                                                     | Default | Required |
 | -------------------- | -------- | --------------------------------------------------------------- | ------- | -------- |
-| `line_end_pattern`   | `string` | A regular expression that matches the end of a log entry.       |         | yes*     |
-| `line_start_pattern` | `string` | A regular expression that matches the beginning of a log entry. |         | yes*     |
+| `line_end_pattern`   | `string` | A regular expression that matches the end of a log entry.       |         | yes\*    |
+| `line_start_pattern` | `string` | A regular expression that matches the beginning of a log entry. |         | yes\*    |
 | `omit_pattern`       | `bool`   | Omit the start/end pattern from the split log entries.          | `false` | no       |
 
 A `multiline` block must contain either `line_start_pattern` or `line_end_pattern`.
@@ -276,7 +276,6 @@ otelcol.exporter.debug "default" {}
 `otelcol.receiver.filelog` can accept arguments from the following components:
 
 - Components that export [OpenTelemetry `otelcol.Consumer`](../../../compatibility/#opentelemetry-otelcolconsumer-exporters)
-
 
 {{< admonition type="note" >}}
 Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.

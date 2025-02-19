@@ -23,27 +23,27 @@ logging {
 
 The following arguments are supported:
 
-Name       | Type                 | Description                                | Default    | Required
------------|----------------------|--------------------------------------------|------------|---------
-`level`    | `string`             | Level at which log lines should be written | `"info"`   | no
-`format`   | `string`             | Format to use for writing log lines        | `"logfmt"` | no
-`write_to` | `list(LogsReceiver)` | List of receivers to send log entries to   |            | no
+| Name       | Type                 | Description                                | Default    | Required |
+| ---------- | -------------------- | ------------------------------------------ | ---------- | -------- |
+| `level`    | `string`             | Level at which log lines should be written | `"info"`   | no       |
+| `format`   | `string`             | Format to use for writing log lines        | `"logfmt"` | no       |
+| `write_to` | `list(LogsReceiver)` | List of receivers to send log entries to   |            | no       |
 
 ### Log level
 
 The following strings are recognized as valid log levels:
 
-* `"error"`: Only write logs at the _error_ level.
-* `"warn"`: Only write logs at the _warn_ level or above.
-* `"info"`: Only write logs at _info_ level or above.
-* `"debug"`: Write all logs, including _debug_ level logs.
+- `"error"`: Only write logs at the _error_ level.
+- `"warn"`: Only write logs at the _warn_ level or above.
+- `"info"`: Only write logs at _info_ level or above.
+- `"debug"`: Write all logs, including _debug_ level logs.
 
 ### Log format
 
 The following strings are recognized as valid log line formats:
 
-* `"logfmt"`: Write logs as [logfmt][] lines.
-* `"json"`: Write logs as JSON objects.
+- `"logfmt"`: Write logs as [logfmt][] lines.
+- `"json"`: Write logs as JSON objects.
 
 ### Log receivers
 

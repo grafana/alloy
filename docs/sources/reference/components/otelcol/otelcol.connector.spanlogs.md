@@ -17,6 +17,7 @@ This allows you to automatically build a mechanism for trace discovery.
 It is based on the `automatic_logging` component in the [traces][] subsystem of Grafana Agent Static.
 
 [traces]: https://grafana.com/docs/agent/latest/static/configuration/traces-config
+
 {{< /admonition >}}
 
 You can specify multiple `otelcol.connector.spanlogs` components by giving them different labels.
@@ -290,7 +291,9 @@ For an input trace like this...
               ]
             },
             {
-              "body": { "stringValue": "span=TestSpan dur=0ns attribute1=78 svc=TestSvcName res_attribute1=78 tid=7bba9f33312b3dbb8b2c2c62bb7abe2d log.severity=INFO log.message=TestLogMessage" },
+              "body": {
+                "stringValue": "span=TestSpan dur=0ns attribute1=78 svc=TestSvcName res_attribute1=78 tid=7bba9f33312b3dbb8b2c2c62bb7abe2d log.severity=INFO log.message=TestLogMessage"
+              },
               "attributes": [
                 {
                   "key": "traces",
@@ -321,6 +324,7 @@ For an input trace like this...
   ]
 }
 ```
+
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components

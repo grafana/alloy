@@ -38,20 +38,20 @@ You can use the following arguments with `faro.receiver`:
 
 The following strings are valid log line formats:
 
-* `"json"`: Export logs as JSON objects.
-* `"logfmt"`: Export logs as [`logfmt`](https://brandur.org/logfmt) lines.
+- `"json"`: Export logs as JSON objects.
+- `"logfmt"`: Export logs as [`logfmt`](https://brandur.org/logfmt) lines.
 
 ## Blocks
 
 You can use the following blocks with `faro.receiver`:
 
-| Block                                        | Description                                          | Required |
-| -------------------------------------------- | ---------------------------------------------------- | -------- |
-| [`output`][output]                           | Configures where to send collected telemetry data.   | yes      |
-| [`server`][server]                           | Configures the HTTP server.                          | no       |
-| `server` >  [`rate_limiting`][rate_limiting] | Configures rate limiting for the HTTP server.        | no       |
-| [`sourcemaps`][sourcemaps]                   | Configures sourcemap retrieval.                      | no       |
-| `sourcemaps` >  [`location`][location]       | Configures on-disk location for sourcemap retrieval. | no       |
+| Block                                       | Description                                          | Required |
+| ------------------------------------------- | ---------------------------------------------------- | -------- |
+| [`output`][output]                          | Configures where to send collected telemetry data.   | yes      |
+| [`server`][server]                          | Configures the HTTP server.                          | no       |
+| `server` > [`rate_limiting`][rate_limiting] | Configures rate limiting for the HTTP server.        | no       |
+| [`sourcemaps`][sourcemaps]                  | Configures sourcemap retrieval.                      | no       |
+| `sourcemaps` > [`location`][location]       | Configures on-disk location for sourcemap retrieval. | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `sourcemaps` > `location` refers to a `location` block defined inside an `sourcemaps` block.
@@ -186,18 +186,18 @@ The template value is replaced with the release value provided by the [Faro Web 
 
 `faro.receiver` exposes the following metrics for monitoring the component:
 
-* `faro_receiver_logs_total` (counter): Total number of ingested logs.
-* `faro_receiver_measurements_total` (counter): Total number of ingested measurements.
-* `faro_receiver_exceptions_total` (counter): Total number of ingested exceptions.
-* `faro_receiver_events_total` (counter): Total number of ingested events.
-* `faro_receiver_exporter_errors_total` (counter): Total number of errors produced by an internal exporter.
-* `faro_receiver_request_duration_seconds` (histogram): Time (in seconds) spent serving HTTP requests.
-* `faro_receiver_request_message_bytes` (histogram): Size (in bytes) of HTTP requests received from clients.
-* `faro_receiver_response_message_bytes` (histogram): Size (in bytes) of HTTP responses sent to clients.
-* `faro_receiver_inflight_requests` (gauge): Current number of inflight requests.
-* `faro_receiver_sourcemap_cache_size` (counter): Number of items in sourcemap cache per origin.
-* `faro_receiver_sourcemap_downloads_total` (counter): Total number of sourcemap downloads performed per origin and status.
-* `faro_receiver_sourcemap_file_reads_total` (counter): Total number of sourcemap retrievals using the filesystem per origin and status.
+- `faro_receiver_logs_total` (counter): Total number of ingested logs.
+- `faro_receiver_measurements_total` (counter): Total number of ingested measurements.
+- `faro_receiver_exceptions_total` (counter): Total number of ingested exceptions.
+- `faro_receiver_events_total` (counter): Total number of ingested events.
+- `faro_receiver_exporter_errors_total` (counter): Total number of errors produced by an internal exporter.
+- `faro_receiver_request_duration_seconds` (histogram): Time (in seconds) spent serving HTTP requests.
+- `faro_receiver_request_message_bytes` (histogram): Size (in bytes) of HTTP requests received from clients.
+- `faro_receiver_response_message_bytes` (histogram): Size (in bytes) of HTTP responses sent to clients.
+- `faro_receiver_inflight_requests` (gauge): Current number of inflight requests.
+- `faro_receiver_sourcemap_cache_size` (counter): Number of items in sourcemap cache per origin.
+- `faro_receiver_sourcemap_downloads_total` (counter): Total number of sourcemap downloads performed per origin and status.
+- `faro_receiver_sourcemap_file_reads_total` (counter): Total number of sourcemap retrievals using the filesystem per origin and status.
 
 ## Example
 
@@ -235,13 +235,13 @@ otelcol.exporter.otlp "traces" {
 
 Replace the following:
 
-* _`<NETWORK_ADDRESS>`_: The IP address of the network interface to listen to traffic on.
+- _`<NETWORK_ADDRESS>`_: The IP address of the network interface to listen to traffic on.
   This IP address must be reachable by browsers using the web application to instrument.
-* _`<PATH_TO_SOURCEMAPS>`_: The path on disk where sourcemaps are located.
-* _`<WEB_APP_PREFIX>`_: Prefix of the web application being instrumented.
-* `LOKI_ADDRESS`: Address of the Loki server to send logs to.
+- _`<PATH_TO_SOURCEMAPS>`_: The path on disk where sourcemaps are located.
+- _`<WEB_APP_PREFIX>`_: Prefix of the web application being instrumented.
+- `LOKI_ADDRESS`: Address of the Loki server to send logs to.
   Refer to [`loki.write`][loki.write] if you want to use authentication to send logs to the Loki server.
-* _`<OTLP_ADDRESS>`_: The address of the OTLP-compatible server to send traces to.
+- _`<OTLP_ADDRESS>`_: The address of the OTLP-compatible server to send traces to.
   Refer to[`otelcol.exporter.otlp`][otelcol.exporter.otlp] if you want to use authentication to send logs to the Loki server.
 
 [loki.write]: ../../loki/loki.write/
@@ -255,7 +255,6 @@ Replace the following:
 
 - Components that export [Loki `LogsReceiver`](../../../compatibility/#loki-logsreceiver-exporters)
 - Components that export [OpenTelemetry `otelcol.Consumer`](../../../compatibility/#opentelemetry-otelcolconsumer-exporters)
-
 
 {{< admonition type="note" >}}
 Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.

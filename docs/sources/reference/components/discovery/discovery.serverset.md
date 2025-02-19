@@ -53,13 +53,13 @@ The following fields are exported and can be referenced by other components:
 
 The following metadata labels are available on targets during relabeling:
 
-* `__meta_serverset_endpoint_host_<endpoint>`: The host of the given endpoint.
-* `__meta_serverset_endpoint_host`: The host of the default endpoint.
-* `__meta_serverset_endpoint_port_<endpoint>`: The port of the given endpoint.
-* `__meta_serverset_endpoint_port`: The port of the default endpoint.
-* `__meta_serverset_path`: The full path to the serverset member node in Zookeeper.
-* `__meta_serverset_shard`: The shard number of the member.
-* `__meta_serverset_status`: The status of the member.
+- `__meta_serverset_endpoint_host_<endpoint>`: The host of the given endpoint.
+- `__meta_serverset_endpoint_host`: The host of the default endpoint.
+- `__meta_serverset_endpoint_port_<endpoint>`: The port of the given endpoint.
+- `__meta_serverset_endpoint_port`: The port of the default endpoint.
+- `__meta_serverset_path`: The full path to the serverset member node in Zookeeper.
+- `__meta_serverset_shard`: The shard number of the member.
+- `__meta_serverset_status`: The status of the member.
 
 ## Component health
 

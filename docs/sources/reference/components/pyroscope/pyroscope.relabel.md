@@ -14,7 +14,7 @@ title: pyroscope.relabel
 
 The `pyroscope.relabel` component rewrites the label set of each profile passed to its receiver by applying one or more relabeling rules and forwards the results to the list of receivers.
 
-If no rules are defined or applicable to some profiles, then those profiles are forwarded as-is to each receiver passed in the component's arguments. 
+If no rules are defined or applicable to some profiles, then those profiles are forwarded as-is to each receiver passed in the component's arguments.
 The profile is dropped if no labels remain after the relabeling rules are applied.
 
 The most common use of `pyroscope.relabel` is to filter profiles or standardize the label set that is passed to one or more downstream receivers.
@@ -47,7 +47,7 @@ You can use the following arguments with `pyroscope.relabel`:
 
 You can use the following block with `pyroscope.relabel`:
 
-|      Name      |                      Description                       | Required |
+| Name           | Description                                            | Required |
 | -------------- | ------------------------------------------------------ | -------- |
 | [`rule`][rule] | Relabeling rules to apply to received profile entries. | no       |
 
@@ -72,12 +72,12 @@ The following fields are exported and can be referenced by other components:
 
 ## Debug metrics
 
-* `pyroscope_relabel_cache_hits` (counter): Total number of cache hits.
-* `pyroscope_relabel_cache_misses` (counter): Total number of cache misses.
-* `pyroscope_relabel_cache_size` (gauge): Total size of relabel cache.
-* `pyroscope_relabel_profiles_dropped` (counter): Total number of profiles dropped by relabeling rules.
-* `pyroscope_relabel_profiles_processed` (counter): Total number of profiles processed.
-* `pyroscope_relabel_profiles_written` (counter): Total number of profiles forwarded.
+- `pyroscope_relabel_cache_hits` (counter): Total number of cache hits.
+- `pyroscope_relabel_cache_misses` (counter): Total number of cache misses.
+- `pyroscope_relabel_cache_size` (gauge): Total size of relabel cache.
+- `pyroscope_relabel_profiles_dropped` (counter): Total number of profiles dropped by relabeling rules.
+- `pyroscope_relabel_profiles_processed` (counter): Total number of profiles processed.
+- `pyroscope_relabel_profiles_written` (counter): Total number of profiles forwarded.
 
 ## Example
 

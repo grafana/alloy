@@ -4,8 +4,8 @@ description: Shared content, oauth block
 headless: true
 ---
 
-Name            | Type     | Description                                                                                     | Default | Required
-----------------|----------|-------------------------------------------------------------------------------------------------|---------|---------
-`client_id`     | `string` | The client ID of the Azure Active Directory application that is being used to authenticate.     |         | yes
-`client_secret` | `secret` | The client secret of the Azure Active Directory application that is being used to authenticate. |         | yes
-`tenant_id`     | `string` | The tenant ID of the Azure Active Directory application that is being used to authenticate.     |         | yes
+| Name            | Type     | Description                                                                                     | Default | Required |
+| --------------- | -------- | ----------------------------------------------------------------------------------------------- | ------- | -------- |
+| `client_id`     | `string` | The client ID of the Azure Active Directory application that is being used to authenticate.     |         | yes      |
+| `client_secret` | `secret` | The client secret of the Azure Active Directory application that is being used to authenticate. |         | yes      |
+| `tenant_id`     | `string` | The tenant ID of the Azure Active Directory application that is being used to authenticate.     |         | yes      |

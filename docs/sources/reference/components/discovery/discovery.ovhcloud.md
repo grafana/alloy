@@ -67,41 +67,41 @@ Multiple meta labels are available on `targets` and can be used by the `discover
 
 [VPS][] meta labels:
 
-* `__meta_ovhcloud_vps_cluster`: The cluster of the server.
-* `__meta_ovhcloud_vps_datacenter`: The data center of the server.
-* `__meta_ovhcloud_vps_disk`: The disk of the server.
-* `__meta_ovhcloud_vps_display_name`: The display name of the server.
-* `__meta_ovhcloud_vps_ipv4`: The IPv4 of the server.
-* `__meta_ovhcloud_vps_ipv6`: The IPv6 of the server.
-* `__meta_ovhcloud_vps_keymap`: The KVM keyboard layout of the server.
-* `__meta_ovhcloud_vps_maximum_additional_ip`: The maximum additional IP addresses of the server.
-* `__meta_ovhcloud_vps_memory_limit`: The memory limit of the server.
-* `__meta_ovhcloud_vps_memory`: The memory of the server.
-* `__meta_ovhcloud_vps_monitoring_ip_blocks`: The monitoring IP blocks of the server.
-* `__meta_ovhcloud_vps_name`: The name of the server.
-* `__meta_ovhcloud_vps_netboot_mode`: The netboot mode of the server.
-* `__meta_ovhcloud_vps_offer_type`: The offer type of the server.
-* `__meta_ovhcloud_vps_offer`: The offer of the server.
-* `__meta_ovhcloud_vps_state`: The state of the server.
-* `__meta_ovhcloud_vps_vcore`: The number of virtual cores of the server.
-* `__meta_ovhcloud_vps_version`: The version of the server.
-* `__meta_ovhcloud_vps_zone`: The zone of the server.
+- `__meta_ovhcloud_vps_cluster`: The cluster of the server.
+- `__meta_ovhcloud_vps_datacenter`: The data center of the server.
+- `__meta_ovhcloud_vps_disk`: The disk of the server.
+- `__meta_ovhcloud_vps_display_name`: The display name of the server.
+- `__meta_ovhcloud_vps_ipv4`: The IPv4 of the server.
+- `__meta_ovhcloud_vps_ipv6`: The IPv6 of the server.
+- `__meta_ovhcloud_vps_keymap`: The KVM keyboard layout of the server.
+- `__meta_ovhcloud_vps_maximum_additional_ip`: The maximum additional IP addresses of the server.
+- `__meta_ovhcloud_vps_memory_limit`: The memory limit of the server.
+- `__meta_ovhcloud_vps_memory`: The memory of the server.
+- `__meta_ovhcloud_vps_monitoring_ip_blocks`: The monitoring IP blocks of the server.
+- `__meta_ovhcloud_vps_name`: The name of the server.
+- `__meta_ovhcloud_vps_netboot_mode`: The netboot mode of the server.
+- `__meta_ovhcloud_vps_offer_type`: The offer type of the server.
+- `__meta_ovhcloud_vps_offer`: The offer of the server.
+- `__meta_ovhcloud_vps_state`: The state of the server.
+- `__meta_ovhcloud_vps_vcore`: The number of virtual cores of the server.
+- `__meta_ovhcloud_vps_version`: The version of the server.
+- `__meta_ovhcloud_vps_zone`: The zone of the server.
 
 [Dedicated servers][] meta labels:
 
-* `__meta_ovhcloud_dedicated_server_commercial_range`: The commercial range of the server.
-* `__meta_ovhcloud_dedicated_server_datacenter`: The data center of the server.
-* `__meta_ovhcloud_dedicated_server_ipv4`: The IPv4 of the server.
-* `__meta_ovhcloud_dedicated_server_ipv6`: The IPv6 of the server.
-* `__meta_ovhcloud_dedicated_server_link_speed`: The link speed of the server.
-* `__meta_ovhcloud_dedicated_server_name`: The name of the server.
-* `__meta_ovhcloud_dedicated_server_no_intervention`: Whether datacenter intervention is disabled for the server.
-* `__meta_ovhcloud_dedicated_server_os`: The operating system of the server.
-* `__meta_ovhcloud_dedicated_server_rack`: The rack of the server.
-* `__meta_ovhcloud_dedicated_server_reverse`: The reverse DNS name of the server.
-* `__meta_ovhcloud_dedicated_server_server_id`: The ID of the server.
-* `__meta_ovhcloud_dedicated_server_state`: The state of the server.
-* `__meta_ovhcloud_dedicated_server_support_level`: The support level of the server.
+- `__meta_ovhcloud_dedicated_server_commercial_range`: The commercial range of the server.
+- `__meta_ovhcloud_dedicated_server_datacenter`: The data center of the server.
+- `__meta_ovhcloud_dedicated_server_ipv4`: The IPv4 of the server.
+- `__meta_ovhcloud_dedicated_server_ipv6`: The IPv6 of the server.
+- `__meta_ovhcloud_dedicated_server_link_speed`: The link speed of the server.
+- `__meta_ovhcloud_dedicated_server_name`: The name of the server.
+- `__meta_ovhcloud_dedicated_server_no_intervention`: Whether datacenter intervention is disabled for the server.
+- `__meta_ovhcloud_dedicated_server_os`: The operating system of the server.
+- `__meta_ovhcloud_dedicated_server_rack`: The rack of the server.
+- `__meta_ovhcloud_dedicated_server_reverse`: The reverse DNS name of the server.
+- `__meta_ovhcloud_dedicated_server_server_id`: The ID of the server.
+- `__meta_ovhcloud_dedicated_server_state`: The state of the server.
+- `__meta_ovhcloud_dedicated_server_support_level`: The support level of the server.
 
 ## Component health
 
@@ -144,13 +144,13 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-* _`<APPLICATION_KEY>`_: The OVHcloud [API][] application key.
-* _`<APPLICATION_SECRET>`_: The OVHcloud [API][] application secret.
-* _`<CONSUMER_KEY>`_: The OVHcloud [API][] consumer key.
-* _`<SERVICE>`_: The OVHcloud service of the targets to retrieve.
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+- _`<APPLICATION_KEY>`_: The OVHcloud [API][] application key.
+- _`<APPLICATION_SECRET>`_: The OVHcloud [API][] application secret.
+- _`<CONSUMER_KEY>`_: The OVHcloud [API][] consumer key.
+- _`<SERVICE>`_: The OVHcloud service of the targets to retrieve.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

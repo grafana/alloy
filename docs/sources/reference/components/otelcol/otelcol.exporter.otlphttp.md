@@ -31,12 +31,12 @@ otelcol.exporter.otlphttp "LABEL" {
 
 `otelcol.exporter.otlphttp` supports the following arguments:
 
-Name               | Type     | Description                                                               | Default                           | Required
--------------------|----------|---------------------------------------------------------------------------|-----------------------------------|---------
-`metrics_endpoint` | `string` | The endpoint to send metrics to.                                          | `client.endpoint + "/v1/metrics"` | no
-`logs_endpoint`    | `string` | The endpoint to send logs to.                                             | `client.endpoint + "/v1/logs"`    | no
-`traces_endpoint`  | `string` | The endpoint to send traces to.                                           | `client.endpoint + "/v1/traces"`  | no
-`encoding`         | `string` | The encoding to use for messages. Should be either `"proto"` or `"json"`. | `"proto"`                         | no
+| Name               | Type     | Description                                                               | Default                           | Required |
+| ------------------ | -------- | ------------------------------------------------------------------------- | --------------------------------- | -------- |
+| `metrics_endpoint` | `string` | The endpoint to send metrics to.                                          | `client.endpoint + "/v1/metrics"` | no       |
+| `logs_endpoint`    | `string` | The endpoint to send logs to.                                             | `client.endpoint + "/v1/logs"`    | no       |
+| `traces_endpoint`  | `string` | The endpoint to send traces to.                                           | `client.endpoint + "/v1/traces"`  | no       |
+| `encoding`         | `string` | The encoding to use for messages. Should be either `"proto"` or `"json"`. | `"proto"`                         | no       |
 
 The default value depends on the `endpoint` field set in the required `client` block.
 If set, these arguments override the `client.endpoint` field for the corresponding signal.
@@ -45,14 +45,15 @@ If set, these arguments override the `client.endpoint` field for the correspondi
 
 The following blocks are supported inside the definition of `otelcol.exporter.otlphttp`:
 
-Hierarchy        | Block                | Description                                                                | Required
------------------|----------------------|----------------------------------------------------------------------------|---------
-client           | [client][]           | Configures the HTTP server to send telemetry data to.                      | yes
-client > tls     | [tls][]              | Configures TLS for the HTTP client.                                        | no
-client > cookies | [cookies][]          | Store cookies from server responses and reuse them in subsequent requests. | no
-sending_queue    | [sending_queue][]    | Configures batching of data before sending.                                | no
-retry_on_failure | [retry_on_failure][] | Configures retry mechanism for failed requests.                            | no
-debug_metrics    | [debug_metrics][]    | Configures the metrics that this component generates to monitor its state. | no
+| Hierarchy                   | Block                  | Description                                                                | Required |
+| --------------------------- | ---------------------- | -------------------------------------------------------------------------- | -------- |
+| client                      | [client][]             | Configures the HTTP server to send telemetry data to.                      | yes      |
+| client > tls                | [tls][]                | Configures TLS for the HTTP client.                                        | no       |
+| client > cookies            | [cookies][]            | Store cookies from server responses and reuse them in subsequent requests. | no       |
+| client > compression_params | [compression_params][] | Configure advanced compression options.                                    | no       |
+| sending_queue               | [sending_queue][]      | Configures batching of data before sending.                                | no       |
+| retry_on_failure            | [retry_on_failure][]   | Configures retry mechanism for failed requests.                            | no       |
+| debug_metrics               | [debug_metrics][]      | Configures the metrics that this component generates to monitor its state. | no       |
 
 The `>` symbol indicates deeper levels of nesting.
 For example, `client > tls` refers to a `tls` block defined inside a `client` block.
@@ -60,6 +61,7 @@ For example, `client > tls` refers to a `tls` block defined inside a `client` bl
 [client]: #client-block
 [tls]: #tls-block
 [cookies]: #cookies-block
+[compression_params]: #compression_params-block
 [sending_queue]: #sending_queue-block
 [retry_on_failure]: #retry_on_failure-block
 [debug_metrics]: #debug_metrics-block
@@ -70,27 +72,28 @@ The `client` block configures the HTTP client used by the component.
 
 The following arguments are supported:
 
-Name                      | Type                       | Description                                                                                                        | Default    | Required
---------------------------|----------------------------|--------------------------------------------------------------------------------------------------------------------|------------|---------
-`endpoint`                | `string`                   | The target URL to send telemetry data to.                                                                          |            | yes
-`proxy_url`               | `string`                   | HTTP proxy to send requests through.                                                                               |            |
-`read_buffer_size`        | `string`                   | Size of the read buffer the HTTP client uses for reading server responses.                                         | `0`        | no
-`write_buffer_size`       | `string`                   | Size of the write buffer the HTTP client uses for writing requests.                                                | `"512KiB"` | no
-`timeout`                 | `duration`                 | Time to wait before marking a request as failed.                                                                   | `"30s"`    | no
-`headers`                 | `map(string)`              | Additional headers to send with the request.                                                                       | `{}`       | no
-`compression`             | `string`                   | Compression mechanism to use for requests.                                                                         | `"gzip"`   | no
-`max_idle_conns`          | `int`                      | Limits the number of idle HTTP connections the client can keep open.                                               | `100`      | no
-`max_idle_conns_per_host` | `int`                      | Limits the number of idle HTTP connections the host can keep open.                                                 | `0`        | no
-`max_conns_per_host`      | `int`                      | Limits the total (dialing,active, and idle) number of connections per host.                                        | `0`        | no
-`idle_conn_timeout`       | `duration`                 | Time to wait before an idle connection closes itself.                                                              | `"90s"`    | no
-`disable_keep_alives`     | `bool`                     | Disable HTTP keep-alive.                                                                                           | `false`    | no
-`http2_read_idle_timeout` | `duration`                 | Timeout after which a health check using ping frame will be carried out if no frame is received on the connection. | `0s`       | no
-`http2_ping_timeout`      | `duration`                 | Timeout after which the connection will be closed if a response to Ping isn't received.                            | `15s`      | no
-`auth`                    | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests.                                       |            | no
+| Name                      | Type                       | Description                                                                                                        | Default    | Required |
+| ------------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------ | ---------- | -------- |
+| `endpoint`                | `string`                   | The target URL to send telemetry data to.                                                                          |            | yes      |
+| `proxy_url`               | `string`                   | HTTP proxy to send requests through.                                                                               |            |
+| `read_buffer_size`        | `string`                   | Size of the read buffer the HTTP client uses for reading server responses.                                         | `0`        | no       |
+| `write_buffer_size`       | `string`                   | Size of the write buffer the HTTP client uses for writing requests.                                                | `"512KiB"` | no       |
+| `timeout`                 | `duration`                 | Time to wait before marking a request as failed.                                                                   | `"30s"`    | no       |
+| `headers`                 | `map(string)`              | Additional headers to send with the request.                                                                       | `{}`       | no       |
+| `compression`             | `string`                   | Compression mechanism to use for requests.                                                                         | `"gzip"`   | no       |
+| `max_idle_conns`          | `int`                      | Limits the number of idle HTTP connections the client can keep open.                                               | `100`      | no       |
+| `max_idle_conns_per_host` | `int`                      | Limits the number of idle HTTP connections the host can keep open.                                                 | `0`        | no       |
+| `max_conns_per_host`      | `int`                      | Limits the total (dialing,active, and idle) number of connections per host.                                        | `0`        | no       |
+| `idle_conn_timeout`       | `duration`                 | Time to wait before an idle connection closes itself.                                                              | `"90s"`    | no       |
+| `disable_keep_alives`     | `bool`                     | Disable HTTP keep-alive.                                                                                           | `false`    | no       |
+| `http2_read_idle_timeout` | `duration`                 | Timeout after which a health check using ping frame will be carried out if no frame is received on the connection. | `0s`       | no       |
+| `http2_ping_timeout`      | `duration`                 | Timeout after which the connection will be closed if a response to Ping isn't received.                            | `15s`      | no       |
+| `auth`                    | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests.                                       |            | no       |
 
 When setting `headers`, note that:
-  - Certain headers such as `Content-Length` and `Connection` are automatically written when needed and values in `headers` may be ignored.
-  - The `Host` header is automatically derived from the `endpoint` value. However, this automatic assignment can be overridden by explicitly setting a `Host` header in `headers`.
+
+- Certain headers such as `Content-Length` and `Connection` are automatically written when needed and values in `headers` may be ignored.
+- The `Host` header is automatically derived from the `endpoint` value. However, this automatic assignment can be overridden by explicitly setting a `Host` header in `headers`.
 
 Setting `disable_keep_alives` to `true` will result in significant overhead establishing a new HTTP or HTTPS connection for every request.
 Before enabling this option, consider whether changes to idle connection settings can achieve your goal.
@@ -109,9 +112,23 @@ This could be useful in situations such as load balancers relying on cookies for
 
 The following arguments are supported:
 
-Name      | Type   | Description                               | Default    | Required
-----------|--------|-------------------------------------------|------------|---------
-`enabled` | `bool` | The target URL to send telemetry data to. | `false`    | no
+| Name      | Type   | Description                               | Default | Required |
+| --------- | ------ | ----------------------------------------- | ------- | -------- |
+| `enabled` | `bool` | The target URL to send telemetry data to. | `false` | no       |
+
+### compression_params block
+
+The `compression_params` block allows for configuration of advanced compression options.
+
+The following arguments are supported:
+
+| Name    | Type  | Description                  | Default | Required |
+| ------- | ----- | ---------------------------- | ------- | -------- |
+| `level` | `int` | Configure compression level. |         | yes      |
+
+For valid combinations of `client.compression` and `client.compression_params.level`, refer to the [upstream documentation][confighttp].
+
+[confighttp]: https://github.com/open-telemetry/opentelemetry-collector/blob/<OTEL_VERSION>/config/confighttp/README.md
 
 ### tls block
 
@@ -139,9 +156,9 @@ The `retry_on_failure` block configures how failed requests to the HTTP server a
 
 The following fields are exported and can be referenced by other components:
 
-Name    | Type               | Description
---------|--------------------|-----------------------------------------------------------------
-`input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to.
+| Name    | Type               | Description                                                      |
+| ------- | ------------------ | ---------------------------------------------------------------- |
+| `input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to. |
 
 `input` accepts `otelcol.Consumer` data for any telemetry signal (metrics, logs, or traces).
 
@@ -168,6 +185,7 @@ otelcol.exporter.otlphttp "tempo" {
     }
 }
 ```
+
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components

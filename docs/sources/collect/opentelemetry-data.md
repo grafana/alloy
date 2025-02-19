@@ -14,24 +14,24 @@ You can configure {{< param "PRODUCT_NAME" >}} to collect [OpenTelemetry][]-comp
 
 This topic describes how to:
 
-* Configure OpenTelemetry data delivery.
-* Configure batching.
-* Receive OpenTelemetry data over OTLP.
+- Configure OpenTelemetry data delivery.
+- Configure batching.
+- Receive OpenTelemetry data over OTLP.
 
 ## Components used in this topic
 
-* [`otelcol.auth.basic`][otelcol.auth.basic]
-* [`otelcol.exporter.otlp`][otelcol.exporter.otlp]
-* [`otelcol.exporter.otlphttp`][otelcol.exporter.otlphttp]
-* [`otelcol.processor.batch`][otelcol.processor.batch]
-* [`otelcol.receiver.otlp`][otelcol.receiver.otlp]
+- [`otelcol.auth.basic`][otelcol.auth.basic]
+- [`otelcol.exporter.otlp`][otelcol.exporter.otlp]
+- [`otelcol.exporter.otlphttp`][otelcol.exporter.otlphttp]
+- [`otelcol.processor.batch`][otelcol.processor.batch]
+- [`otelcol.receiver.otlp`][otelcol.receiver.otlp]
 
 ## Before you begin
 
-* Ensure that you have basic familiarity with instrumenting applications with OpenTelemetry.
-* Have a set of OpenTelemetry applications ready to push telemetry data to {{< param "PRODUCT_NAME" >}}.
-* Identify where {{< param "PRODUCT_NAME" >}} writes received telemetry data.
-* Be familiar with the concept of [Components][] in {{< param "PRODUCT_NAME" >}}.
+- Ensure that you have basic familiarity with instrumenting applications with OpenTelemetry.
+- Have a set of OpenTelemetry applications ready to push telemetry data to {{< param "PRODUCT_NAME" >}}.
+- Identify where {{< param "PRODUCT_NAME" >}} writes received telemetry data.
+- Be familiar with the concept of [Components][] in {{< param "PRODUCT_NAME" >}}.
 
 ## Configure an OpenTelemetry Protocol exporter
 
@@ -45,6 +45,7 @@ After an exporter component is defined, you can use other {{< param "PRODUCT_NAM
 Refer to the list of available [Components][] for the full list of `otelcol.exporter` components that you can use to export OpenTelemetry data.
 
 [Components]: ../../get-started/components/
+
 {{< /admonition >}}
 
 To configure an `otelcol.exporter.otlp` component for exporting OpenTelemetry data using OTLP, complete the following steps:
@@ -61,38 +62,38 @@ To configure an `otelcol.exporter.otlp` component for exporting OpenTelemetry da
 
    Replace the following:
 
-   * _`<EXPORTER_LABEL>`_: The label for the component, such as `default`.
+   - _`<EXPORTER_LABEL>`_: The label for the component, such as `default`.
      The label you use must be unique across all `otelcol.exporter.otlp` components in the same configuration file.
-   * _`<HOST>`_: The hostname or IP address of the server to send OTLP requests to.
-   * _`<PORT>`_: The port of the server to send OTLP requests to.
+   - _`<HOST>`_: The hostname or IP address of the server to send OTLP requests to.
+   - _`<PORT>`_: The port of the server to send OTLP requests to.
 
 1. If your server requires basic authentication, complete the following:
 
-    1. Add the following `otelcol.auth.basic` component to your configuration file:
+   1. Add the following `otelcol.auth.basic` component to your configuration file:
 
-       ```alloy
-       otelcol.auth.basic "<BASIC_AUTH_LABEL>" {
-         username = "<USERNAME>"
-         password = "<PASSWORD>"
-       }
-       ```
+      ```alloy
+      otelcol.auth.basic "<BASIC_AUTH_LABEL>" {
+        username = "<USERNAME>"
+        password = "<PASSWORD>"
+      }
+      ```
 
-       Replace the following:
+      Replace the following:
 
-       * _`<BASIC_AUTH_LABEL>`_: The label for the component, such as `default`.
-         The label you use must be unique across all `otelcol.auth.basic` components in the same configuration file.
-       * _`<USERNAME>`_: The basic authentication username.
-       * _`<PASSWORD>`_: The basic authentication password or API key.
+      - _`<BASIC_AUTH_LABEL>`_: The label for the component, such as `default`.
+        The label you use must be unique across all `otelcol.auth.basic` components in the same configuration file.
+      - _`<USERNAME>`_: The basic authentication username.
+      - _`<PASSWORD>`_: The basic authentication password or API key.
 
-    1. Add the following line inside of the `client` block of your `otelcol.exporter.otlp` component:
+   1. Add the following line inside of the `client` block of your `otelcol.exporter.otlp` component:
 
-       ```alloy
-       auth = otelcol.auth.basic.<BASIC_AUTH_LABEL>.handler
-       ```
+      ```alloy
+      auth = otelcol.auth.basic.<BASIC_AUTH_LABEL>.handler
+      ```
 
-       Replace the following:
+      Replace the following:
 
-       * _`<BASIC_AUTH_LABEL>`_: The label for the `otelcol.auth.basic` component.
+      - _`<BASIC_AUTH_LABEL>`_: The label for the `otelcol.auth.basic` component.
 
 1. If you have more than one server to export metrics to, create an `otelcol.exporter.otlp` component for each additional server.
 
@@ -101,6 +102,7 @@ To configure an `otelcol.exporter.otlp` component for exporting OpenTelemetry da
 To send to a server using HTTP/1.1, follow the preceding steps, but use the [`otelcol.exporter.otlphttp`][otelcol.exporter.otlphttp] component instead.
 
 [otelcol.exporter.otlphttp]: ../../reference/components/otelcol/otelcol.exporter.otlphttp/
+
 {{< /admonition >}}
 
 The following example demonstrates configuring `otelcol.exporter.otlp` with authentication and a component that forwards data to it:
@@ -153,6 +155,7 @@ Refer to the list of available [Components][] for the full list of `otelcol.proc
 You can chain processors by having one processor send data to another processor.
 
 [Components]: ../../get-started/components/
+
 {{< /admonition >}}
 
 To configure an `otelcol.processor.batch` component, complete the following steps:
@@ -173,9 +176,9 @@ To configure an `otelcol.processor.batch` component, complete the following step
 
    Replace the following:
 
-   * _`<PROCESSOR_LABEL>`_: The label for the component, such as `default`.
+   - _`<PROCESSOR_LABEL>`_: The label for the component, such as `default`.
      The label you use must be unique across all `otelcol.processor.batch` components in the same configuration file.
-   * _`<EXPORTER_LABEL>`_: The label for your `otelcol.exporter.otlp` component.
+   - _`<EXPORTER_LABEL>`_: The label for your `otelcol.exporter.otlp` component.
 
    1. To disable one of the telemetry types, set the relevant type in the `output` block to the empty list, such as `metrics = []`.
 
@@ -244,9 +247,9 @@ To configure an `otelcol.receiver.otlp` component for receiving OTLP data, compl
 
    Replace the following:
 
-   * _`<LABEL>`_: The label for the component, such as `default`.
+   - _`<LABEL>`_: The label for the component, such as `default`.
      The label you use must be unique across all `otelcol.receiver.otlp` components in the same configuration file.
-   * _`<COMPONENT_INPUT_LIST>`_: A comma-delimited list of component inputs to forward received data to.
+   - _`<COMPONENT_INPUT_LIST>`_: A comma-delimited list of component inputs to forward received data to.
      For example, to send data to a batch processor component, use `otelcol.processor.batch.PROCESSOR_LABEL.input`.
      To send data directly to an exporter component, use `otelcol.exporter.otlp.EXPORTER_LABEL.input`.
 
@@ -260,7 +263,7 @@ To configure an `otelcol.receiver.otlp` component for receiving OTLP data, compl
 
       Replace the following:
 
-      * _`<HOST>`_: A host to listen to traffic on. Use a narrowly scoped listen address whenever possible.
+      - _`<HOST>`_: A host to listen to traffic on. Use a narrowly scoped listen address whenever possible.
         To listen on all network interfaces, replace _`<HOST>`_ with `0.0.0.0`.
 
    1. To allow applications to send OTLP data over HTTP/1.1 on port `4318`, add the following to your `otelcol.receiver.otlp` component.
@@ -273,7 +276,7 @@ To configure an `otelcol.receiver.otlp` component for receiving OTLP data, compl
 
       Replace the following:
 
-      * _`<HOST>`_: The host to listen to traffic on. Use a narrowly scoped listen address whenever possible.
+      - _`<HOST>`_: The host to listen to traffic on. Use a narrowly scoped listen address whenever possible.
         To listen on all network interfaces, replace _`<HOST>`_ with `0.0.0.0`.
 
    1. To disable one of the telemetry types, set the relevant type in the `output` block to the empty list, such as `metrics = []`.

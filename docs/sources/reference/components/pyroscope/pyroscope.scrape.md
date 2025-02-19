@@ -25,9 +25,9 @@ The `pyroscope.scrape` component regards a scrape as successful if it responded 
 
 If a scrape request fails, the [debug UI][] for `pyroscope.scrape` will show:
 
-* Detailed information about the failure.
-* The time of the last successful scrape.
-* The labels last used for scraping.
+- Detailed information about the failure.
+- The time of the last successful scrape.
+- The labels last used for scraping.
 
 The scraped performance profiles can be forwarded to components such as `pyroscope.write` via the `forward_to` argument.
 
@@ -70,13 +70,13 @@ You can use the following arguments with `pyroscope.scrape`:
 | `proxy_from_environment`   | `bool`                   | Use the proxy URL indicated by environment variables.                                            | `false`        | no       |
 | `proxy_connect_header`     | `map(list(secret))`      | Specifies headers to send to proxies during CONNECT requests.                                    |                | no       |
 
- At most, one of the following can be provided:
+At most, one of the following can be provided:
 
-* [`authorization`][authorization] block
-* [`basic_auth`][basic_auth] block
-* [`bearer_token_file`][arguments] argument
-* [`bearer_token`][arguments] argument
-* [`oauth2`][oauth2] block
+- [`authorization`][authorization] block
+- [`basic_auth`][basic_auth] block
+- [`bearer_token_file`][arguments] argument
+- [`bearer_token`][arguments] argument
+- [`oauth2`][oauth2] block
 
 Any omitted arguments take on their default values.
 If conflicting arguments are being passed, for example, configuring both `bearer_token` and `bearer_token_file`, then `pyroscope.scrape` will fail to start and will report an error.
@@ -97,11 +97,11 @@ The list of `targets` can be provided [statically][example_static_targets], [dyn
 
 The following special labels can change the behavior of `pyroscope.scrape`:
 
-* `__address__` is the special label that _must always_ be present and corresponds to the `<host>:<port>` that is used for the scrape request.
-* `__name__` is the special label that indicates the profile type being collected.
-* `__profile_path__` is the special label that holds the path to the profile endpoint on the target (e.g. "/debug/pprof/allocs").
-* `__profile_path_prefix__` is the special label that holds an optional prefix to prepend to the profile path (e.g. "/mimir-prometheus").
-* `service_name` is a required label that identifies the service being profiled.
+- `__address__` is the special label that _must always_ be present and corresponds to the `<host>:<port>` that is used for the scrape request.
+- `__name__` is the special label that indicates the profile type being collected.
+- `__profile_path__` is the special label that holds the path to the profile endpoint on the target (e.g. "/debug/pprof/allocs").
+- `__profile_path_prefix__` is the special label that holds an optional prefix to prepend to the profile path (e.g. "/mimir-prometheus").
+- `service_name` is a required label that identifies the service being profiled.
 
 Labels starting with a double underscore (`__`) are treated as _internal_, and are removed prior to scraping.
 
@@ -131,27 +131,27 @@ This parameter is important for controlling the trade-off between resource usage
 
 If `scrape_interval` is short:
 
-* Advantages:
-  * Fewer profiles may be lost if the application being scraped crashes.
-* Disadvantages:
-  * Greater consumption of CPU, memory, and network resources during scrapes and remote writes.
-  * The backend database (Pyroscope) consumes more storage space.
+- Advantages:
+  - Fewer profiles may be lost if the application being scraped crashes.
+- Disadvantages:
+  - Greater consumption of CPU, memory, and network resources during scrapes and remote writes.
+  - The backend database (Pyroscope) consumes more storage space.
 
 If `scrape_interval` is long:
 
-* Advantages:
-  * Lower resource consumption.
-* Disadvantages:
-  * More profiles may be lost if the application being scraped crashes.
-  * If the [delta argument][] is set to `true`, the batch size of each remote write to Pyroscope may be bigger.
+- Advantages:
+  - Lower resource consumption.
+- Disadvantages:
+  - More profiles may be lost if the application being scraped crashes.
+  - If the [delta argument][] is set to `true`, the batch size of each remote write to Pyroscope may be bigger.
     The Pyroscope database may need to be tuned with higher limits.
-  * If the [delta argument][] is set to `true`, there is a larger risk of reaching the HTTP server timeouts of the application being scraped.
+  - If the [delta argument][] is set to `true`, there is a larger risk of reaching the HTTP server timeouts of the application being scraped.
 
 For example, consider this situation:
 
-* `pyroscope.scrape` is configured with a `scrape_interval` of `"60s"`.
-* The application being scraped is running an HTTP server with a timeout of 30 seconds.
-* Any scrape HTTP requests where the [delta argument][] is set to `true` will fail, because they will attempt to run for 59 seconds.
+- `pyroscope.scrape` is configured with a `scrape_interval` of `"60s"`.
+- The application being scraped is running an HTTP server with a timeout of 30 seconds.
+- Any scrape HTTP requests where the [delta argument][] is set to `true` will fail, because they will attempt to run for 59 seconds.
 
 ## Blocks
 
@@ -200,10 +200,8 @@ For example, if `profile.mutex` isn't specified in the configuration, the defaul
 [profile.process_cpu]: #profileprocess_cpu
 [profiling_config]: #profiling_config
 [tls_config]: #tls_config
-
 [fgprof]: https://github.com/felixge/fgprof
 [godeltaprof]: https://github.com/grafana/pyroscope-go/tree/main/godeltaprof
-
 [delta argument]: #delta-argument
 
 ### `authorization`
@@ -401,9 +399,9 @@ When the `delta` argument is `false`, the [pprof][] HTTP query will be instantan
 
 When the `delta` argument is `true`:
 
-* The [pprof][] HTTP query runs for a certain amount of time.
-* A `seconds` parameter is automatically added to the HTTP request.
-* The default value for the `seconds` query parameter is `scrape_interval - 1`.
+- The [pprof][] HTTP query runs for a certain amount of time.
+- A `seconds` parameter is automatically added to the HTTP request.
+- The default value for the `seconds` query parameter is `scrape_interval - 1`.
   If you set `delta_profiling_duration`, then `seconds` is assigned the same value as `delta_profiling_duration`.
   However, the `delta_profiling_duration` can't be larger than `scrape_interval`.
   For example, if you set `scrape_interval` to `"15s"`, then `seconds` defaults to `14s`
@@ -424,7 +422,7 @@ When the `delta` argument is `true`:
 
 ## Debug metrics
 
-* `pyroscope_fanout_latency` (histogram): Write latency for sending to direct and indirect components.
+- `pyroscope_fanout_latency` (histogram): Write latency for sending to direct and indirect components.
 
 ## Examples
 
@@ -470,8 +468,8 @@ http://localhost:12345/debug/pprof/profile?seconds=14
 
 `seconds=14` is added to the `/debug/pprof/profile` endpoint, because:
 
-* The `delta` argument of the `profile.process_cpu` block is `true` by default.
-* `scrape_interval` is `"15s"` by default.
+- The `delta` argument of the `profile.process_cpu` block is `true` by default.
+- `scrape_interval` is `"15s"` by default.
 
 The `/debug/fgprof` endpoint won't be scraped, because the `enabled` argument of the `profile.fgprof` block is `false` by default.
 
@@ -572,7 +570,6 @@ http://localhost:12345/debug/pprof/mutex
 
 - Components that export [Targets](../../../compatibility/#targets-exporters)
 - Components that export [Pyroscope `ProfilesReceiver`](../../../compatibility/#pyroscope-profilesreceiver-exporters)
-
 
 {{< admonition type="note" >}}
 Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.

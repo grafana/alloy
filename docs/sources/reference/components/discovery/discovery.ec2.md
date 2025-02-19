@@ -45,15 +45,15 @@ You can use the following arguments with `discovery.ec2`:
 | `role_arn`               | `string`            | AWS Role Amazon Resource Name (ARN), an alternative to using AWS API keys.                                              |         | no       |
 | `secret_key`             | `string`            | The AWS API key secret. If blank, the environment variable `AWS_SECRET_ACCESS_KEY` is used.                             |         | no       |
 
- At most, one of the following can be provided:
+At most, one of the following can be provided:
 
-* [`authorization`][authorization] block
-* [`basic_auth`][basic_auth] block
-* [`bearer_token_file`](#arguments) argument
-* [`bearer_token`](#arguments) argument
-* [`oauth2`][oauth2] block
+- [`authorization`][authorization] block
+- [`basic_auth`][basic_auth] block
+- [`bearer_token_file`](#arguments) argument
+- [`bearer_token`](#arguments) argument
+- [`oauth2`][oauth2] block
 
- {{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Blocks
 
@@ -126,27 +126,27 @@ The following fields are exported and can be referenced by other components:
 
 Each target includes the following labels:
 
-* `__meta_ec2_ami`: The EC2 Amazon Machine Image.
-* `__meta_ec2_architecture`: The architecture of the instance.
-* `__meta_ec2_availability_zone_id`: The availability zone ID in which the instance is running. Requires `ec2:DescribeAvailabilityZones`.
-* `__meta_ec2_availability_zone`: The availability zone in which the instance is running.
-* `__meta_ec2_instance_id`: The EC2 instance ID.
-* `__meta_ec2_instance_lifecycle`: The lifecycle of the EC2 instance, set only for 'spot' or 'scheduled' instances, absent otherwise.
-* `__meta_ec2_instance_state`: The state of the EC2 instance.
-* `__meta_ec2_instance_type`: The type of the EC2 instance.
-* `__meta_ec2_ipv6_addresses`: Comma-separated list of IPv6 addresses assigned to the instance's network interfaces, if present.
-* `__meta_ec2_owner_id`: The ID of the AWS account that owns the EC2 instance.
-* `__meta_ec2_platform`: The Operating System platform, set to 'windows' on Windows servers, absent otherwise.
-* `__meta_ec2_primary_ipv6_addresses`: Comma separated list of the Primary IPv6 addresses of the instance, if present. The list is ordered based on the position of each corresponding network interface in the attachment order.
-* `__meta_ec2_primary_subnet_id`: The subnet ID of the primary network interface, if available.
-* `__meta_ec2_private_dns_name`: The private DNS name of the instance, if available.
-* `__meta_ec2_private_ip`: The private IP address of the instance, if present.
-* `__meta_ec2_public_dns_name`: The public DNS name of the instance, if available.
-* `__meta_ec2_public_ip`: The public IP address of the instance, if available.
-* `__meta_ec2_region`: The region of the instance.
-* `__meta_ec2_subnet_id`: Comma-separated list of subnets IDs in which the instance is running, if available.
-* `__meta_ec2_tag_<tagkey>`: Each tag value of the instance.
-* `__meta_ec2_vpc_id`: The ID of the VPC in which the instance is running, if available.
+- `__meta_ec2_ami`: The EC2 Amazon Machine Image.
+- `__meta_ec2_architecture`: The architecture of the instance.
+- `__meta_ec2_availability_zone_id`: The availability zone ID in which the instance is running. Requires `ec2:DescribeAvailabilityZones`.
+- `__meta_ec2_availability_zone`: The availability zone in which the instance is running.
+- `__meta_ec2_instance_id`: The EC2 instance ID.
+- `__meta_ec2_instance_lifecycle`: The lifecycle of the EC2 instance, set only for 'spot' or 'scheduled' instances, absent otherwise.
+- `__meta_ec2_instance_state`: The state of the EC2 instance.
+- `__meta_ec2_instance_type`: The type of the EC2 instance.
+- `__meta_ec2_ipv6_addresses`: Comma-separated list of IPv6 addresses assigned to the instance's network interfaces, if present.
+- `__meta_ec2_owner_id`: The ID of the AWS account that owns the EC2 instance.
+- `__meta_ec2_platform`: The Operating System platform, set to 'windows' on Windows servers, absent otherwise.
+- `__meta_ec2_primary_ipv6_addresses`: Comma separated list of the Primary IPv6 addresses of the instance, if present. The list is ordered based on the position of each corresponding network interface in the attachment order.
+- `__meta_ec2_primary_subnet_id`: The subnet ID of the primary network interface, if available.
+- `__meta_ec2_private_dns_name`: The private DNS name of the instance, if available.
+- `__meta_ec2_private_ip`: The private IP address of the instance, if present.
+- `__meta_ec2_public_dns_name`: The public DNS name of the instance, if available.
+- `__meta_ec2_public_ip`: The public IP address of the instance, if available.
+- `__meta_ec2_region`: The region of the instance.
+- `__meta_ec2_subnet_id`: Comma-separated list of subnets IDs in which the instance is running, if available.
+- `__meta_ec2_tag_<tagkey>`: Each tag value of the instance.
+- `__meta_ec2_vpc_id`: The ID of the VPC in which the instance is running, if available.
 
 ## Component health
 
@@ -187,9 +187,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

@@ -43,10 +43,10 @@ The `relabel_rules` argument can make use of the `rules` export from a [`loki.re
 
 Incoming messages have the following internal labels available:
 
-* `__gelf_message_facility`: The GELF facility.
-* `__gelf_message_host`: The GELF level message version sent by the client.
-* `__gelf_message_host`: The host sending the GELF message.
-* `__gelf_message_level`: The GELF level as a string.
+- `__gelf_message_facility`: The GELF facility.
+- `__gelf_message_host`: The GELF level message version sent by the client.
+- `__gelf_message_host`: The host sending the GELF message.
+- `__gelf_message_level`: The GELF level as a string.
 
 All labels starting with `__` are removed prior to forwarding log entries.
 To keep these labels, relabel them using a [`loki.relabel`][loki.relabel] component and pass its `rules` export to the `relabel_rules` argument.
@@ -63,8 +63,8 @@ The `loki.source.gelf` component doesn't support any blocks. You can configure t
 
 ## Debug Metrics
 
-* `gelf_target_entries_total` (counter): Total number of successful entries sent to the GELF target.
-* `gelf_target_parsing_errors_total` (counter): Total number of parsing errors while receiving GELF messages.
+- `gelf_target_entries_total` (counter): Total number of successful entries sent to the GELF target.
+- `gelf_target_parsing_errors_total` (counter): Total number of parsing errors while receiving GELF messages.
 
 ## Example
 
@@ -95,7 +95,6 @@ loki.write "endpoint" {
 `loki.source.gelf` can accept arguments from the following components:
 
 - Components that export [Loki `LogsReceiver`](../../../compatibility/#loki-logsreceiver-exporters)
-
 
 {{< admonition type="note" >}}
 Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.

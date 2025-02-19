@@ -53,14 +53,15 @@ otelcol.processor.tail_sampling "LABEL" {
 `expected_new_traces_per_sec` determines the initial slice sizing of the current batch. A larger number will use more memory but be more efficient when adding traces to the batch.
 
 `decision_cache` can contain two keys:
+
 - `sampled_cache_size`: Configures the number of trace IDs to be kept in an LRU cache,
-  persisting the "keep" decisions for traces that may have already been released from memory. 
+  persisting the "keep" decisions for traces that may have already been released from memory.
   By default, the size is 0 and the cache is inactive.
 - `non_sampled_cache_size`: Configures number of trace IDs to be kept in an LRU cache,
   persisting the "drop" decisions for traces that may have already been released from memory.
   By default, the size is 0 and the cache is inactive.
 
-You may want to vary the size of the `decision_cache` depending on how many "keep" vs "drop" decisions you expect from your policies. 
+You may want to vary the size of the `decision_cache` depending on how many "keep" vs "drop" decisions you expect from your policies.
 For example, you can allocate a larger `non_sampled_cache_size` if you expect most traces to be dropped.
 Additionally, when you use `decision_cache`, configure it with a much higher value than `num_traces` so decisions for trace IDs are kept longer than the span data for the trace.
 

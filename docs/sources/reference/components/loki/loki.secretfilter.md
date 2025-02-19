@@ -62,7 +62,7 @@ Unsupported fields and values in the configuration file are ignored.
 
 The `types` argument is a map of secret types to look for.
 The values provided are used as prefixes to match rules IDs in the Gitleaks configuration.
-For example,  providing the type `grafana` matches the rules `grafana-api-key`, `grafana-cloud-api-token`, and `grafana-service-account-token`.
+For example, providing the type `grafana` matches the rules `grafana-api-key`, `grafana-cloud-api-token`, and `grafana-service-account-token`.
 If you don't provide this argument, all rules are used.
 
 {{< admonition type="note" >}}
@@ -141,8 +141,8 @@ loki.write "local_loki" {
 
 Replace the following:
 
-* _`<PATH_TARGETS>`_: The paths to the log files to monitor.
-* _`<LOKI_ENDPOINT>`_: The URL of the Loki instance to send logs to.
+- _`<PATH_TARGETS>`_: The paths to the log files to monitor.
+- _`<LOKI_ENDPOINT>`_: The URL of the Loki instance to send logs to.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

@@ -23,20 +23,20 @@ database_observability.mysql "<LABEL>" {
 
 You can use the following arguments with `database_observability.mysql`:
 
- Name                 | Type                 | Description                                               | Default | Required 
-----------------------|----------------------|-----------------------------------------------------------|---------|----------
- `data_source_name`   | `secret`             | [Data Source Name][] for the MySQL server to connect to.  |         | yes      
- `forward_to`         | `list(LogsReceiver)` | Where to forward log entries after processing.            |         | yes      
- `collect_interval`   | `duration`           | How frequently to collect information from database.      | `"1m"`  | no       
- `disable_collectors` | `list(string)`       | A list of collectors to disable from the default set.     |         | no       
- `enable_collectors`  | `list(string)`       | A list of collectors to enable on top of the default set. |         | no       
+| Name                 | Type                 | Description                                               | Default | Required |
+| -------------------- | -------------------- | --------------------------------------------------------- | ------- | -------- |
+| `data_source_name`   | `secret`             | [Data Source Name][] for the MySQL server to connect to.  |         | yes      |
+| `forward_to`         | `list(LogsReceiver)` | Where to forward log entries after processing.            |         | yes      |
+| `collect_interval`   | `duration`           | How frequently to collect information from database.      | `"1m"`  | no       |
+| `disable_collectors` | `list(string)`       | A list of collectors to disable from the default set.     |         | no       |
+| `enable_collectors`  | `list(string)`       | A list of collectors to enable on top of the default set. |         | no       |
 
 The following collectors are enabled by default:
 
- Name           | Description                                           
-----------------|-------------------------------------------------------
- `query_sample` | Collect query samples.                                
- `schema_table` | Collect schemas and tables from `information_schema`. 
+| Name           | Description                                           |
+| -------------- | ----------------------------------------------------- |
+| `query_sample` | Collect query samples.                                |
+| `schema_table` | Collect schemas and tables from `information_schema`. |
 
 ## Blocks
 
@@ -79,11 +79,11 @@ loki.write "logs_service" {
 
 Replace the following:
 
-* _`<GCLOUD_HOSTED_METRICS_URL>`_: The URL for your Google Cloud hosted metrics.
-* _`<GCLOUD_HOSTED_METRICS_ID>`_: The user ID for your Google Cloud hosted metrics.
-* _`<GCLOUD_RW_API_KEY>`_: Your Google Cloud API key.
-* _`<GCLOUD_HOSTED_LOGS_URL>`_: The URL for your Google Cloud hosted logs.
-* _`<GCLOUD_HOSTED_LOGS_ID>`_: The user ID for your Google Cloud hosted logs.
+- _`<GCLOUD_HOSTED_METRICS_URL>`_: The URL for your Google Cloud hosted metrics.
+- _`<GCLOUD_HOSTED_METRICS_ID>`_: The user ID for your Google Cloud hosted metrics.
+- _`<GCLOUD_RW_API_KEY>`_: Your Google Cloud API key.
+- _`<GCLOUD_HOSTED_LOGS_URL>`_: The URL for your Google Cloud hosted logs.
+- _`<GCLOUD_HOSTED_LOGS_ID>`_: The user ID for your Google Cloud hosted logs.
 
 [Data Source Name]: https://github.com/go-sql-driver/mysql#dsn-data-source-name
 

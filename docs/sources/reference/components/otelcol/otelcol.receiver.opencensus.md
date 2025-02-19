@@ -36,23 +36,21 @@ otelcol.receiver.opencensus "LABEL" {
 
 `otelcol.receiver.opencensus` supports the following arguments:
 
-
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`cors_allowed_origins` | `list(string)` | A list of allowed Cross-Origin Resource Sharing (CORS) origins. |  | no
-`endpoint` | `string` | `host:port` to listen for traffic on. | `"0.0.0.0:55678"` | no
-`transport` | `string` | Transport to use for the gRPC server. | `"tcp"` | no
-`max_recv_msg_size` | `string` | Maximum size of messages the server will accept. | `"4MiB`" | no
-`max_concurrent_streams` | `number` | Limit the number of concurrent streaming RPC calls. | | no
-`read_buffer_size` | `string` | Size of the read buffer the gRPC server will use for reading from clients. | `"512KiB"` | no
-`write_buffer_size` | `string` | Size of the write buffer the gRPC server will use for writing to clients. | | no
-`include_metadata` | `boolean` | Propagate incoming connection metadata to downstream consumers. | | no
-`auth`              | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests.     |               | no
+| Name                     | Type                       | Description                                                                  | Default           | Required |
+| ------------------------ | -------------------------- | ---------------------------------------------------------------------------- | ----------------- | -------- |
+| `cors_allowed_origins`   | `list(string)`             | A list of allowed Cross-Origin Resource Sharing (CORS) origins.              |                   | no       |
+| `endpoint`               | `string`                   | `host:port` to listen for traffic on.                                        | `"0.0.0.0:55678"` | no       |
+| `transport`              | `string`                   | Transport to use for the gRPC server.                                        | `"tcp"`           | no       |
+| `max_recv_msg_size`      | `string`                   | Maximum size of messages the server will accept.                             | `"4MiB`"          | no       |
+| `max_concurrent_streams` | `number`                   | Limit the number of concurrent streaming RPC calls.                          |                   | no       |
+| `read_buffer_size`       | `string`                   | Size of the read buffer the gRPC server will use for reading from clients.   | `"512KiB"`        | no       |
+| `write_buffer_size`      | `string`                   | Size of the write buffer the gRPC server will use for writing to clients.    |                   | no       |
+| `include_metadata`       | `boolean`                  | Propagate incoming connection metadata to downstream consumers.              |                   | no       |
+| `auth`                   | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests. |                   | no       |
 
 `cors_allowed_origins` are the allowed [CORS](https://github.com/rs/cors) origins for HTTP/JSON requests.
-An empty list means that CORS is not enabled at all. A wildcard (*) can be
+An empty list means that CORS is not enabled at all. A wildcard (\*) can be
 used to match any origin or one or more characters of an origin.
-
 
 The "endpoint" parameter is the same for both gRPC and HTTP/JSON, as the protocol is recognized and processed accordingly.
 
@@ -66,14 +64,14 @@ in the string, such as "512KiB" or "1024KB".
 The following blocks are supported inside the definition of
 `otelcol.receiver.opencensus`:
 
-Hierarchy | Block | Description | Required
---------- | ----- | ----------- | --------
-tls | [tls][] | Configures TLS for the gRPC server. | no
-keepalive | [keepalive][] | Configures keepalive settings for the configured server. | no
-keepalive > server_parameters | [server_parameters][] | Server parameters used to configure keepalive settings. | no
-keepalive > enforcement_policy | [enforcement_policy][] | Enforcement policy for keepalive settings. | no
-debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
-output | [output][] | Configures where to send received telemetry data. | yes
+| Hierarchy                      | Block                  | Description                                                                | Required |
+| ------------------------------ | ---------------------- | -------------------------------------------------------------------------- | -------- |
+| tls                            | [tls][]                | Configures TLS for the gRPC server.                                        | no       |
+| keepalive                      | [keepalive][]          | Configures keepalive settings for the configured server.                   | no       |
+| keepalive > server_parameters  | [server_parameters][]  | Server parameters used to configure keepalive settings.                    | no       |
+| keepalive > enforcement_policy | [enforcement_policy][] | Enforcement policy for keepalive settings.                                 | no       |
+| debug_metrics                  | [debug_metrics][]      | Configures the metrics that this component generates to monitor its state. | no       |
+| output                         | [output][]             | Configures where to send received telemetry data.                          | yes      |
 
 The `>` symbol indicates deeper levels of nesting. For example, `grpc > tls`
 refers to a `tls` block defined inside a `grpc` block.
@@ -107,13 +105,13 @@ servers.
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`max_connection_idle` | `duration` | Maximum age for idle connections. | `"infinity"` | no
-`max_connection_age` | `duration` | Maximum age for non-idle connections. | `"infinity"` | no
-`max_connection_age_grace` | `duration` | Time to wait before forcibly closing connections. | `"infinity"` | no
-`time` | `duration` | How often to ping inactive clients to check for liveness. | `"2h"` | no
-`timeout` | `duration` | Time to wait before closing inactive clients that do not respond to liveness checks. | `"20s"` | no
+| Name                       | Type       | Description                                                                          | Default      | Required |
+| -------------------------- | ---------- | ------------------------------------------------------------------------------------ | ------------ | -------- |
+| `max_connection_idle`      | `duration` | Maximum age for idle connections.                                                    | `"infinity"` | no       |
+| `max_connection_age`       | `duration` | Maximum age for non-idle connections.                                                | `"infinity"` | no       |
+| `max_connection_age_grace` | `duration` | Time to wait before forcibly closing connections.                                    | `"infinity"` | no       |
+| `time`                     | `duration` | How often to ping inactive clients to check for liveness.                            | `"2h"`       | no       |
+| `timeout`                  | `duration` | Time to wait before closing inactive clients that do not respond to liveness checks. | `"20s"`      | no       |
 
 ### enforcement_policy block
 
@@ -123,10 +121,10 @@ configured policy.
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`min_time` | `duration` | Minimum time clients should wait before sending a keepalive ping. | `"5m"` | no
-`permit_without_stream` | `boolean` | Allow clients to send keepalive pings when there are no active streams. | `false` | no
+| Name                    | Type       | Description                                                             | Default | Required |
+| ----------------------- | ---------- | ----------------------------------------------------------------------- | ------- | -------- |
+| `min_time`              | `duration` | Minimum time clients should wait before sending a keepalive ping.       | `"5m"`  | no       |
+| `permit_without_stream` | `boolean`  | Allow clients to send keepalive pings when there are no active streams. | `false` | no       |
 
 ### debug_metrics block
 
@@ -212,12 +210,12 @@ otelcol.exporter.otlp "default" {
 
 ## Enable authentication
 
-You can create a `otelcol.receiver.opencensus` component that requires authentication for requests. This is useful for limiting who can push data to the server. 
+You can create a `otelcol.receiver.opencensus` component that requires authentication for requests. This is useful for limiting who can push data to the server.
 
 {{< admonition type="note" >}}
 Not all OpenTelemetry Collector authentication plugins support receiver authentication.
 Refer to the [documentation](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/otelcol/) for each `otelcol.auth.*` component to determine its compatibility.
-{{< /admonition >}} 
+{{< /admonition >}}
 
 ```alloy
 otelcol.receiver.opencensus "default" {
@@ -229,6 +227,7 @@ otelcol.auth.basic "creds" {
     password = sys.env("PASSWORD")
 }
 ```
+
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components
@@ -236,7 +235,6 @@ otelcol.auth.basic "creds" {
 `otelcol.receiver.opencensus` can accept arguments from the following components:
 
 - Components that export [OpenTelemetry `otelcol.Consumer`](../../../compatibility/#opentelemetry-otelcolconsumer-exporters)
-
 
 {{< admonition type="note" >}}
 Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.

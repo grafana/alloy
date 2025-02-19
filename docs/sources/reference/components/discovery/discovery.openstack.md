@@ -90,29 +90,29 @@ The following fields are exported and can be referenced by other components:
 The `hypervisor` role discovers one target per Nova hypervisor node.
 The target address defaults to the `host_ip` attribute of the hypervisor.
 
-* `__meta_openstack_hypervisor_host_ip`: The hypervisor node's IP address.
-* `__meta_openstack_hypervisor_hostname`: The hypervisor node's name.
-* `__meta_openstack_hypervisor_id`: The hypervisor node's ID.
-* `__meta_openstack_hypervisor_state`: The hypervisor node's state.
-* `__meta_openstack_hypervisor_status`: The hypervisor node's status.
-* `__meta_openstack_hypervisor_type`: The hypervisor node's type.
+- `__meta_openstack_hypervisor_host_ip`: The hypervisor node's IP address.
+- `__meta_openstack_hypervisor_hostname`: The hypervisor node's name.
+- `__meta_openstack_hypervisor_id`: The hypervisor node's ID.
+- `__meta_openstack_hypervisor_state`: The hypervisor node's state.
+- `__meta_openstack_hypervisor_status`: The hypervisor node's status.
+- `__meta_openstack_hypervisor_type`: The hypervisor node's type.
 
 ### `instance` role
 
 The `instance` role discovers one target per network interface of Nova instance.
 The target address defaults to the private IP address of the network interface.
 
-* `__meta_openstack_address_pool`: The pool of the private IP.
-* `__meta_openstack_instance_flavor`: The flavor of the OpenStack instance, or the flavor ID if the flavor name isn't available.
-* `__meta_openstack_instance_id`: The OpenStack instance ID.
-* `__meta_openstack_instance_image`: The ID of the image the OpenStack instance is using.
-* `__meta_openstack_instance_name`: The OpenStack instance name.
-* `__meta_openstack_instance_status`: The status of the OpenStack instance.
-* `__meta_openstack_private_ip`: The private IP of the OpenStack instance.
-* `__meta_openstack_project_id`: The project (tenant) owning this instance.
-* `__meta_openstack_public_ip`: The public IP of the OpenStack instance.
-* `__meta_openstack_tag_<key>`: Each metadata item of the instance, with any unsupported characters converted to an underscore.
-* `__meta_openstack_user_id`: The user account owning the tenant.
+- `__meta_openstack_address_pool`: The pool of the private IP.
+- `__meta_openstack_instance_flavor`: The flavor of the OpenStack instance, or the flavor ID if the flavor name isn't available.
+- `__meta_openstack_instance_id`: The OpenStack instance ID.
+- `__meta_openstack_instance_image`: The ID of the image the OpenStack instance is using.
+- `__meta_openstack_instance_name`: The OpenStack instance name.
+- `__meta_openstack_instance_status`: The status of the OpenStack instance.
+- `__meta_openstack_private_ip`: The private IP of the OpenStack instance.
+- `__meta_openstack_project_id`: The project (tenant) owning this instance.
+- `__meta_openstack_public_ip`: The public IP of the OpenStack instance.
+- `__meta_openstack_tag_<key>`: Each metadata item of the instance, with any unsupported characters converted to an underscore.
+- `__meta_openstack_user_id`: The user account owning the tenant.
 
 ## Component health
 
@@ -154,11 +154,11 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-* _`<OPENSTACK_ROLE>`_: Your OpenStack role.
-* _`<OPENSTACK_REGION>`_: Your OpenStack region.
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+- _`<OPENSTACK_ROLE>`_: Your OpenStack role.
+- _`<OPENSTACK_REGION>`_: Your OpenStack region.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

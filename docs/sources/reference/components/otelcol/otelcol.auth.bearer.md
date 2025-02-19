@@ -32,10 +32,10 @@ otelcol.auth.bearer "LABEL" {
 
 `otelcol.auth.bearer` supports the following arguments:
 
-Name     | Type     | Description                                      | Default  | Required
----------|----------|--------------------------------------------------|----------|---------
-`token`  | `secret` | Bearer token to use for authenticating requests. |          | yes
-`scheme` | `string` | Authentication scheme name.                      | "Bearer" | no
+| Name     | Type     | Description                                      | Default  | Required |
+| -------- | -------- | ------------------------------------------------ | -------- | -------- |
+| `token`  | `secret` | Bearer token to use for authenticating requests. |          | yes      |
+| `scheme` | `string` | Authentication scheme name.                      | "Bearer" | no       |
 
 When sending the token, the value of `scheme` is prepended to the `token` value.
 The string is then sent out as either a header (in case of HTTP) or as metadata (in case of gRPC).
@@ -49,9 +49,9 @@ If you use a file to store the token, you can use `[local.file`][local.file] to 
 The following blocks are supported inside the definition of
 `otelcol.auth.bearer`:
 
-Hierarchy | Block      | Description                          | Required
-----------|------------|--------------------------------------|---------
-debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
+| Hierarchy     | Block             | Description                                                                | Required |
+| ------------- | ----------------- | -------------------------------------------------------------------------- | -------- |
+| debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no       |
 
 [debug_metrics]: #debug_metrics-block
 
@@ -63,9 +63,9 @@ debug_metrics | [debug_metrics][] | Configures the metrics that this component g
 
 The following fields are exported and can be referenced by other components:
 
-Name      | Type                       | Description
-----------|----------------------------|----------------------------------------------------------------
-`handler` | `capsule(otelcol.Handler)` | A value that other components can use to authenticate requests.
+| Name      | Type                       | Description                                                     |
+| --------- | -------------------------- | --------------------------------------------------------------- |
+| `handler` | `capsule(otelcol.Handler)` | A value that other components can use to authenticate requests. |
 
 ## Component health
 

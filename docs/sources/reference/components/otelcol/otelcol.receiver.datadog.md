@@ -31,14 +31,14 @@ otelcol.receiver.datadog "LABEL" {
 
 `otelcol.receiver.datadog` supports the following arguments:
 
-Name                     | Type       | Description                                                      | Default            | Required
-------------------------  | ---------- | --------------------------------------------------------------- | ------------------ | --------
-`endpoint`               | `string`   | `host:port` to listen for traffic on.                            | `"localhost:8126"` | no
-`max_request_body_size`  | `string`   | Maximum request body size the server will allow.                 | `20MiB`            | no
-`include_metadata`       | `boolean`  | Propagate incoming connection metadata to downstream consumers.  | `false`            | no
-`read_timeout`           | `duration` | Read timeout for requests of the HTTP server.                    | `"60s"`            | no
-`compression_algorithms` | `list(string)` | A list of compression algorithms the server can accept.      | `["", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"]` | no
-`auth`              | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests.     |               | no
+| Name                     | Type                       | Description                                                                  | Default                                                    | Required |
+| ------------------------ | -------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------- | -------- |
+| `endpoint`               | `string`                   | `host:port` to listen for traffic on.                                        | `"localhost:8126"`                                         | no       |
+| `max_request_body_size`  | `string`                   | Maximum request body size the server will allow.                             | `20MiB`                                                    | no       |
+| `include_metadata`       | `boolean`                  | Propagate incoming connection metadata to downstream consumers.              | `false`                                                    | no       |
+| `read_timeout`           | `duration`                 | Read timeout for requests of the HTTP server.                                | `"60s"`                                                    | no       |
+| `compression_algorithms` | `list(string)`             | A list of compression algorithms the server can accept.                      | `["", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"]` | no       |
+| `auth`                   | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests. |                                                            | no       |
 
 By default, `otelcol.receiver.datadog` listens for HTTP connections on `localhost`.
 To expose the HTTP server to other machines on your network, configure `endpoint` with the IP address to listen on, or `0.0.0.0:8126` to listen on all network interfaces.
@@ -48,12 +48,12 @@ To expose the HTTP server to other machines on your network, configure `endpoint
 The following blocks are supported inside the definition of
 `otelcol.receiver.datadog`:
 
-Hierarchy     | Block             | Description                                                                | Required
-------------- | ----------------- | -------------------------------------------------------------------------- | --------
-tls           | [tls][]           | Configures TLS for the HTTP server.                                        | no
-cors          | [cors][]          | Configures CORS for the HTTP server.                                       | no
-debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
-output        | [output][]        | Configures where to send received traces.                                  | yes
+| Hierarchy     | Block             | Description                                                                | Required |
+| ------------- | ----------------- | -------------------------------------------------------------------------- | -------- |
+| tls           | [tls][]           | Configures TLS for the HTTP server.                                        | no       |
+| cors          | [cors][]          | Configures CORS for the HTTP server.                                       | no       |
+| debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no       |
+| output        | [output][]        | Configures where to send received traces.                                  | yes      |
 
 [tls]: #tls-block
 [cors]: #cors-block
@@ -72,19 +72,19 @@ The `cors` block configures CORS settings for an HTTP server.
 
 The following arguments are supported:
 
-Name              | Type           | Description                                              | Default                | Required
------------------ | -------------- | -------------------------------------------------------- | ---------------------- | --------
-`allowed_origins` | `list(string)` | Allowed values for the `Origin` header.                  | `[]`                   | no
-`allowed_headers` | `list(string)` | Accepted headers from CORS requests.                     | `["X-Requested-With"]` | no
-`max_age`         | `number`       | Configures the `Access-Control-Max-Age` response header. | `0`                    | no
+| Name              | Type           | Description                                              | Default                | Required |
+| ----------------- | -------------- | -------------------------------------------------------- | ---------------------- | -------- |
+| `allowed_origins` | `list(string)` | Allowed values for the `Origin` header.                  | `[]`                   | no       |
+| `allowed_headers` | `list(string)` | Accepted headers from CORS requests.                     | `["X-Requested-With"]` | no       |
+| `max_age`         | `number`       | Configures the `Access-Control-Max-Age` response header. | `0`                    | no       |
 
 The `allowed_headers` argument specifies which headers are acceptable from a
 CORS request. The following headers are always implicitly allowed:
 
-* `Accept`
-* `Accept-Language`
-* `Content-Type`
-* `Content-Language`
+- `Accept`
+- `Accept-Language`
+- `Content-Type`
+- `Content-Language`
 
 If `allowed_headers` includes `"*"`, all headers are permitted.
 
@@ -138,12 +138,12 @@ otelcol.exporter.otlp "default" {
 
 ## Enable authentication
 
-You can create a `otelcol.receiver.datadog` component that requires authentication for requests. This is useful for limiting who can push data to the server. 
+You can create a `otelcol.receiver.datadog` component that requires authentication for requests. This is useful for limiting who can push data to the server.
 
 {{< admonition type="note" >}}
 Not all OpenTelemetry Collector authentication plugins support receiver authentication.
 Refer to the [documentation](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/otelcol/) for each `otelcol.auth.*` component to determine its compatibility.
-{{< /admonition >}} 
+{{< /admonition >}}
 
 ```alloy
 otelcol.receiver.datadog "default" {
@@ -159,6 +159,7 @@ otelcol.auth.basic "creds" {
     password = sys.env("PASSWORD")
 }
 ```
+
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components
@@ -166,7 +167,6 @@ otelcol.auth.basic "creds" {
 `otelcol.receiver.datadog` can accept arguments from the following components:
 
 - Components that export [OpenTelemetry `otelcol.Consumer`](../../../compatibility/#opentelemetry-otelcolconsumer-exporters)
-
 
 {{< admonition type="note" >}}
 Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.

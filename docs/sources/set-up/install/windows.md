@@ -52,17 +52,17 @@ To do a silent install of {{< param "PRODUCT_NAME" >}} on Windows, perform the f
 
 ### Silent install options
 
-* `/CONFIG=<path>` Path to the configuration file. Default: `$INSTDIR\config.alloy`
-* `/DISABLEREPORTING=<yes|no>` Disable [data collection][]. Default: `no`
-* `/DISABLEPROFILING=<yes|no>` Disable profiling endpoint. Default: `no`
-* `/ENVIRONMENT="KEY=VALUE\0KEY2=VALUE2"` Define environment variables for Windows Service. Default: ``
+- `/CONFIG=<path>` Path to the configuration file. Default: `$INSTDIR\config.alloy`
+- `/DISABLEREPORTING=<yes|no>` Disable [data collection][]. Default: `no`
+- `/DISABLEPROFILING=<yes|no>` Disable profiling endpoint. Default: `no`
+- `/ENVIRONMENT="KEY=VALUE\0KEY2=VALUE2"` Define environment variables for Windows Service. Default: ``
 
 ## Service Configuration
 
 {{< param "PRODUCT_NAME" >}} uses the Windows Registry `HKLM\Software\GrafanaLabs\Alloy` for service configuration.
 
-* `Arguments` (Type `REG_MULTI_SZ`) Each value represents a binary argument for alloy binary.
-* `Environment` (Type `REG_MULTI_SZ`) Each value represents a environment value `KEY=VALUE` for alloy binary.
+- `Arguments` (Type `REG_MULTI_SZ`) Each value represents a binary argument for alloy binary.
+- `Environment` (Type `REG_MULTI_SZ`) Each value represents a environment value `KEY=VALUE` for alloy binary.
 
 ## Uninstall
 
@@ -74,8 +74,8 @@ This includes any configuration files in the installation directory.
 
 ## Next steps
 
-* [Run {{< param "PRODUCT_NAME" >}}][Run]
-* [Configure {{< param "PRODUCT_NAME" >}}][Configure]
+- [Run {{< param "PRODUCT_NAME" >}}][Run]
+- [Configure {{< param "PRODUCT_NAME" >}}][Configure]
 
 [latest]: https://github.com/grafana/alloy/releases/latest
 [data collection]: ../../../data-collection/

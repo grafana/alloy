@@ -41,13 +41,13 @@ prometheus.exporter.snmp "LABEL" {
 The following arguments can be used to configure the exporter's behavior.
 Omitted fields take their default values.
 
-| Name                   | Type                 | Description                                                                                | Default  | Required |
-| -----------------------| -------------------- | -------------------------------------------------------------------------------------------| -------  | -------- |
-| `config_file`          | `string`             | SNMP configuration file defining custom modules.                                           |          | no       |
-| `config`               | `string` or `secret` | SNMP configuration as inline string.                                                       |          | no       |
-| `config_merge_strategy`| `string`             | A strategy defining how `config` or `config_file` contents merge with the embedded SNMP config. Can be `replace` or `merge`.|`replace`| no       |
-| `concurrency`          | `int`                | SNMP exporter concurrency.                                                                 |   `1`    | no       |
-| `targets`              | `list(map(string))`  | SNMP targets.                                                                              |          | no       |
+| Name                    | Type                 | Description                                                                                                                  | Default   | Required |
+| ----------------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------- | --------- | -------- |
+| `config_file`           | `string`             | SNMP configuration file defining custom modules.                                                                             |           | no       |
+| `config`                | `string` or `secret` | SNMP configuration as inline string.                                                                                         |           | no       |
+| `config_merge_strategy` | `string`             | A strategy defining how `config` or `config_file` contents merge with the embedded SNMP config. Can be `replace` or `merge`. | `replace` | no       |
+| `concurrency`           | `int`                | SNMP exporter concurrency.                                                                                                   | `1`       | no       |
+| `targets`               | `list(map(string))`  | SNMP targets.                                                                                                                |           | no       |
 
 The `config_file` argument points to a YAML file defining which snmp_exporter modules to use.
 Refer to [snmp_exporter](https://github.com/prometheus/snmp_exporter/tree/{{< param "SNMP_VERSION" >}}?tab=readme-ov-file#configuration) for details on how to generate a configuration file.
@@ -64,11 +64,12 @@ For example, if you need to add a few custom `auth` settings without regeneratin
 
 The `targets` argument is an alternative to the [target][] block. This is useful when SNMP targets are supplied by another component.
 The following labels can be set to a target:
-* `name`: The name of the target (required).
-* `address` or `__address__`: The address of SNMP device (required).
-* `module`: SNMP modules to use for polling, separated by comma.
-* `auth`: The SNMP authentication profile to use.
-* `walk_params`: The config to use for this target.
+
+- `name`: The name of the target (required).
+- `address` or `__address__`: The address of SNMP device (required).
+- `module`: SNMP modules to use for polling, separated by comma.
+- `auth`: The SNMP authentication profile to use.
+- `walk_params`: The config to use for this target.
 
 Any other labels defined are added to the scraped metrics.
 
@@ -79,7 +80,7 @@ The following blocks are supported inside the definition of
 
 | Hierarchy  | Name           | Description                                                 | Required |
 | ---------- | -------------- | ----------------------------------------------------------- | -------- |
-| target     | [target][]     | Configures an SNMP target.                                  | no      |
+| target     | [target][]     | Configures an SNMP target.                                  | no       |
 | walk_param | [walk_param][] | SNMP connection profiles to override default SNMP settings. | no       |
 
 [target]: #target-block
@@ -91,14 +92,13 @@ The `target` block defines an individual SNMP target.
 The `target` block may be specified multiple times to define multiple targets. The label of the block is required and will be used in the target's `job` label.
 
 | Name           | Type          | Description                                                           | Default | Required |
-|----------------|---------------|-----------------------------------------------------------------------| ------- | -------- |
+| -------------- | ------------- | --------------------------------------------------------------------- | ------- | -------- |
 | `address`      | `string`      | The address of SNMP device.                                           |         | yes      |
 | `module`       | `string`      | SNMP modules to use for polling, separated by comma.                  | `""`    | no       |
 | `auth`         | `string`      | SNMP authentication profile to use.                                   | `""`    | no       |
 | `walk_params`  | `string`      | Config to use for this target.                                        | `""`    | no       |
 | `snmp_context` | `string`      | Override the `context_name` parameter in the SNMP configuration file. | `""`    | no       |
 | `labels`       | `map(string)` | Map of labels to apply to all metrics captured from the target.       | `""`    | no       |
-
 
 ### walk_param block
 
@@ -223,6 +223,7 @@ prometheus.remote_write "demo" {
 ```
 
 Replace the following:
+
 - _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
 - _`<USERNAME>`_: The username to use for authentication to the remote_write API.
 - _`<PASSWORD>`_: The password to use for authentication to the remote_write API.
@@ -294,6 +295,7 @@ prometheus.scrape "demo" {
 ```
 
 The YAML file in this example looks like this:
+
 ```yaml
 - name: t1
   address: localhost:161
@@ -306,6 +308,7 @@ The YAML file in this example looks like this:
 ```
 
 This example uses the [`discovery.file` component][disc] to send targets to the `prometheus.exporter.snmp` component:
+
 ```alloy
 discovery.file "example" {
   files = ["targets.yml"]
@@ -324,15 +327,16 @@ prometheus.scrape "demo" {
 ```
 
 The YAML file in this example looks like this:
+
 ```yaml
 - targets:
-  - localhost:161
+    - localhost:161
   labels:
     name: t1
     module: default
     auth: public_v2
 - targets:
-  - localhost:161
+    - localhost:161
   labels:
     name: t2
     module: default
