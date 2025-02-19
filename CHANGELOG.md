@@ -77,6 +77,8 @@ Main (unreleased)
 
 - Fixed a bug where components could be evaluated concurrently without the full context during a config reload (@wildum)
 
+- Fixed locks that wouldn't be released in the remotecfg service if some errors occurred during the configuration reload (@spartan0x117)
+
 ### Other changes
 
 - Upgrading to Prometheus v2.54.1. (@ptodev)
