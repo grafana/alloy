@@ -78,30 +78,30 @@ If `namespaceSelector` is left as the default value, all Namespaces are used for
 The `relabelings` field can be used to modify labels from discovered Pods.
 The following meta labels are available for relabeling:
 
-* `__meta_kubernetes_namespace`: The namespace of the Pod.
-* `__meta_kubernetes_pod_annotation_<annotationname>`: Each annotation from the Pod.
-* `__meta_kubernetes_pod_annotationpresent_<annotationname>`: `true` for each annotation from the Pod.
-* `__meta_kubernetes_pod_container_image`: The image the container is using.
-* `__meta_kubernetes_pod_container_init`: `true` if the container is an `InitContainer`.
-* `__meta_kubernetes_pod_container_name`: Name of the container.
-* `__meta_kubernetes_pod_controller_kind`: Object kind of the Pod's controller.
-* `__meta_kubernetes_pod_controller_name`: Name of the Pod's controller.
-* `__meta_kubernetes_pod_host_ip`: The current host IP of the Pod object.
-* `__meta_kubernetes_pod_ip`: The Pod IP of the Pod.
-* `__meta_kubernetes_pod_label_<labelname>`: Each label from the Pod.
-* `__meta_kubernetes_pod_labelpresent_<labelname>`: `true` for each label from the Pod.
-* `__meta_kubernetes_pod_name`: The name of the Pod.
-* `__meta_kubernetes_pod_node_name`: The name of the node the Pod is scheduled onto.
-* `__meta_kubernetes_pod_phase`: Set to `Pending`, `Running`, `Succeeded`, `Failed` or `Unknown` in the lifecycle.
-* `__meta_kubernetes_pod_ready`: Set to `true` or `false` for the Pod's ready state.
-* `__meta_kubernetes_pod_uid`: The UID of the Pod.
+- `__meta_kubernetes_namespace`: The namespace of the Pod.
+- `__meta_kubernetes_pod_annotation_<annotationname>`: Each annotation from the Pod.
+- `__meta_kubernetes_pod_annotationpresent_<annotationname>`: `true` for each annotation from the Pod.
+- `__meta_kubernetes_pod_container_image`: The image the container is using.
+- `__meta_kubernetes_pod_container_init`: `true` if the container is an `InitContainer`.
+- `__meta_kubernetes_pod_container_name`: Name of the container.
+- `__meta_kubernetes_pod_controller_kind`: Object kind of the Pod's controller.
+- `__meta_kubernetes_pod_controller_name`: Name of the Pod's controller.
+- `__meta_kubernetes_pod_host_ip`: The current host IP of the Pod object.
+- `__meta_kubernetes_pod_ip`: The Pod IP of the Pod.
+- `__meta_kubernetes_pod_label_<labelname>`: Each label from the Pod.
+- `__meta_kubernetes_pod_labelpresent_<labelname>`: `true` for each label from the Pod.
+- `__meta_kubernetes_pod_name`: The name of the Pod.
+- `__meta_kubernetes_pod_node_name`: The name of the node the Pod is scheduled onto.
+- `__meta_kubernetes_pod_phase`: Set to `Pending`, `Running`, `Succeeded`, `Failed` or `Unknown` in the lifecycle.
+- `__meta_kubernetes_pod_ready`: Set to `true` or `false` for the Pod's ready state.
+- `__meta_kubernetes_pod_uid`: The UID of the Pod.
 
 In addition to the meta labels, the following labels are exposed to tell `loki.source.podlogs` which container to tail:
 
-* `__pod_container_name__`: The container name within the Pod.
-* `__pod_name__`: The name of the Pod.
-* `__pod_namespace__`: The namespace of the Pod.
-* `__pod_uid__`: The UID of the Pod.
+- `__pod_container_name__`: The container name within the Pod.
+- `__pod_name__`: The name of the Pod.
+- `__pod_namespace__`: The namespace of the Pod.
+- `__pod_uid__`: The UID of the Pod.
 
 [LabelSelector]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#labelselector-v1-meta
 [RelabelConfig]: https://prometheus-operator.dev/docs/api-reference/api/#monitoring.coreos.com/v1.RelabelConfig
@@ -144,7 +144,7 @@ If the `client` block isn't provided, the default in-cluster configuration with 
 The following arguments are supported:
 
 | Name                     | Type                | Description                                                                                      | Default | Required |
-|--------------------------|---------------------|--------------------------------------------------------------------------------------------------|---------|----------|
+| ------------------------ | ------------------- | ------------------------------------------------------------------------------------------------ | ------- | -------- |
 | `api_server`             | `string`            | URL of the Kubernetes API server.                                                                |         | no       |
 | `bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                             |         | no       |
 | `bearer_token`           | `secret`            | Bearer token to authenticate with.                                                               |         | no       |
@@ -158,11 +158,11 @@ The following arguments are supported:
 
 At most, one of the following can be provided:
 
-* [`authorization`][authorization] block
-* [`basic_auth`][basic_auth]block
-* [`bearer_token_file`][client] argument
-* [`bearer_token`][client] argument
-* [`oauth2`][oauth2] block
+- [`authorization`][authorization] block
+- [`basic_auth`][basic_auth]block
+- [`bearer_token_file`][client] argument
+- [`bearer_token`][client] argument
+- [`oauth2`][oauth2] block
 
 {{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -177,7 +177,7 @@ At most, one of the following can be provided:
 ### `clustering`
 
 | Name      | Type   | Description                                         | Default | Required |
-|-----------|--------|-----------------------------------------------------|---------|----------|
+| --------- | ------ | --------------------------------------------------- | ------- | -------- |
 | `enabled` | `bool` | Distribute log collection with other cluster nodes. |         | yes      |
 
 When {{< param "PRODUCT_NAME" >}} is [using clustering][], and `enabled` is set to true, then this
@@ -196,17 +196,17 @@ The `match_expression` block describes a Kubernetes label match expression for `
 The following arguments are supported:
 
 | Name       | Type           | Description                        | Default | Required |
-|------------|----------------|------------------------------------|---------|----------|
+| ---------- | -------------- | ---------------------------------- | ------- | -------- |
 | `key`      | `string`       | The label name to match against.   |         | yes      |
 | `operator` | `string`       | The operator to use when matching. |         | yes      |
 | `values`   | `list(string)` | The values used when matching.     |         | no       |
 
 The `operator` argument must be one of the following strings:
 
-* `"In"`
-* `"NotIn"`
-* `"Exists"`
-* `"DoesNotExist"`
+- `"In"`
+- `"NotIn"`
+- `"Exists"`
+- `"DoesNotExist"`
 
 Both `selector` and `namespace_selector` can make use of multiple
 `match_expression` inner blocks which are treated as AND clauses.
@@ -222,7 +222,7 @@ The `selector` and `namespce_selector` blocks describe a Kubernetes label select
 The following arguments are supported:
 
 | Name           | Type          | Description                                       | Default | Required |
-|----------------|---------------|---------------------------------------------------|---------|----------|
+| -------------- | ------------- | ------------------------------------------------- | ------- | -------- |
 | `match_labels` | `map(string)` | Label keys and values used to discover resources. | `{}`    | no       |
 
 When the `match_labels` argument is empty, all resources are matched.
@@ -243,10 +243,10 @@ When the `match_labels` argument is empty, all resources are matched.
 
 `loki.source.podlogs` exposes some target-level debug information per target:
 
-* The labels associated with the target.
-* The full set of labels which were found during service discovery.
-* The most recent time a log line was read and forwarded to the next components in the pipeline.
-* The most recent error from tailing, if any.
+- The labels associated with the target.
+- The full set of labels which were found during service discovery.
+- The most recent time a log line was read and forwarded to the next components in the pipeline.
+- The most recent error from tailing, if any.
 
 ## Debug metrics
 
@@ -275,7 +275,6 @@ loki.write "local" {
 `loki.source.podlogs` can accept arguments from the following components:
 
 - Components that export [Loki `LogsReceiver`](../../../compatibility/#loki-logsreceiver-exporters)
-
 
 {{< admonition type="note" >}}
 Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.

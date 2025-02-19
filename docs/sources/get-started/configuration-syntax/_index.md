@@ -69,7 +69,7 @@ The relationship between components determines the order of operations in the pi
 ## Blocks
 
 You use _Blocks_ to configure components and groups of attributes.
-Each block can contain any number of attributes or nested blocks. 
+Each block can contain any number of attributes or nested blocks.
 Blocks are steps in the overall pipeline expressed by the configuration.
 
 ```alloy
@@ -82,9 +82,9 @@ prometheus.remote_write "default" {
 
 The preceding example has two blocks:
 
-* `prometheus.remote_write "default"`: A labeled block which instantiates a `prometheus.remote_write` component.
+- `prometheus.remote_write "default"`: A labeled block which instantiates a `prometheus.remote_write` component.
   The label is the string `"default"`.
-* `endpoint`: An unlabeled block inside the component that configures an endpoint to send metrics to.
+- `endpoint`: An unlabeled block inside the component that configures an endpoint to send metrics to.
   This block sets the `url` attribute to specify the endpoint.
 
 ## Attributes
@@ -104,10 +104,10 @@ You use expressions to compute the value of an attribute.
 The simplest expressions are constant values like `"debug"`, `32`, or `[1, 2, 3, 4]`.
 The {{< param "PRODUCT_NAME" >}} syntax supports complex expressions, for example:
 
-* Referencing the exports of components: `local.file.password_file.content`
-* Mathematical operations: `1 + 2`, `3 * 4`, `(5 * 6) + (7 + 8)`
-* Equality checks: `local.file.file_a.content == local.file.file_b.content`
-* Calling functions from {{< param "PRODUCT_NAME" >}}'s standard library: `sys.env("HOME")` retrieves the value of the `HOME` environment variable.
+- Referencing the exports of components: `local.file.password_file.content`
+- Mathematical operations: `1 + 2`, `3 * 4`, `(5 * 6) + (7 + 8)`
+- Equality checks: `local.file.file_a.content == local.file.file_b.content`
+- Calling functions from {{< param "PRODUCT_NAME" >}}'s standard library: `sys.env("HOME")` retrieves the value of the `HOME` environment variable.
 
 You can use expressions for any attribute inside a component definition.
 
@@ -121,25 +121,25 @@ label (for example, `password_file`), and export name (for example, `content`), 
 
 {{< param "PRODUCT_NAME" >}} is:
 
-* _Fast_: The configuration language is fast, so the component controller can quickly evaluate changes.
-* _Simple_: The configuration language is easy to read and write to minimize the learning curve.
-* _Easy to debug_: The configuration language gives detailed information when there's a mistake in the configuration file.
+- _Fast_: The configuration language is fast, so the component controller can quickly evaluate changes.
+- _Simple_: The configuration language is easy to read and write to minimize the learning curve.
+- _Easy to debug_: The configuration language gives detailed information when there's a mistake in the configuration file.
 
 The {{< param "PRODUCT_NAME" >}} configuration syntax is a distinct language with custom syntax and features, such as first-class functions.
 
-* Blocks are a group of related settings and usually represent creating a component.
+- Blocks are a group of related settings and usually represent creating a component.
   Blocks have a name that consists of zero or more identifiers separated by `.`, an optional user label, and a body containing attributes and nested blocks.
-* Attributes appear within blocks and assign a value to a name.
-* Expressions represent a value, either literally or by referencing and combining other values.
+- Attributes appear within blocks and assign a value to a name.
+- Expressions represent a value, either literally or by referencing and combining other values.
   You use expressions to compute a value for an attribute.
 
 ## Tooling
 
 You can use one or all of the following tools to help you write {{< param "PRODUCT_NAME" >}} configuration files.
 
-* Editor support for:
-  * [VSCode](https://github.com/grafana/vscode-alloy)
-  * [Vim/Neovim](https://github.com/grafana/vim-alloy)
-* Code formatting using the [`alloy fmt` command][fmt]
+- Editor support for:
+  - [VSCode](https://github.com/grafana/vscode-alloy)
+  - [Vim/Neovim](https://github.com/grafana/vim-alloy)
+- Code formatting using the [`alloy fmt` command][fmt]
 
 [fmt]: ../../reference/cli/fmt/

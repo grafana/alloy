@@ -18,10 +18,10 @@ This component collects logs from Kubernetes Pods. You can't use this component 
 
 This component has the following benefits over `loki.source.file`:
 
-* It works without a privileged container.
-* It works without a root user.
-* It works without needing access to the filesystem of the Kubernetes node.
-* It doesn't require a DaemonSet to collect logs, so one {{< param "PRODUCT_NAME" >}} could collect logs for the whole cluster.
+- It works without a privileged container.
+- It works without a root user.
+- It works without needing access to the filesystem of the Kubernetes node.
+- It doesn't require a DaemonSet to collect logs, so one {{< param "PRODUCT_NAME" >}} could collect logs for the whole cluster.
 
 {{< admonition type="note" >}}
 Because `loki.source.kubernetes` uses the Kubernetes API to tail logs, it uses more network traffic and CPU consumption of Kubelets than `loki.source.file`.
@@ -51,10 +51,10 @@ You can use the following arguments with `loki.source.kubernetes`:
 
 Each target in `targets` must have the following labels:
 
-* `__meta_kubernetes_namespace` or `__pod_namespace__` to specify the namespace of the Pod to tail.
-* `__meta_kubernetes_pod_container_name` or `__pod_container_name__` to specify the container within the Pod to tail.
-* `__meta_kubernetes_pod_name` or `__pod_name__` to specify the name of the Pod to tail.
-* `__meta_kubernetes_pod_uid` or `__pod_uid__` to specify the UID of the Pod to tail.
+- `__meta_kubernetes_namespace` or `__pod_namespace__` to specify the namespace of the Pod to tail.
+- `__meta_kubernetes_pod_container_name` or `__pod_container_name__` to specify the container within the Pod to tail.
+- `__meta_kubernetes_pod_name` or `__pod_name__` to specify the name of the Pod to tail.
+- `__meta_kubernetes_pod_uid` or `__pod_uid__` to specify the UID of the Pod to tail.
 
 By default, all of these labels are present when the output `discovery.kubernetes` is used.
 
@@ -105,13 +105,13 @@ The following arguments are supported:
 | `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false` | no       |
 | `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |         | no       |
 
- At most, one of the following can be provided:
+At most, one of the following can be provided:
 
-* [`authorization`][authorization] block
-* [`basic_auth`][basic_auth] block
-* [`bearer_token_file`][client] argument
-* [`bearer_token`][client] argument
-* [`oauth2`][oauth2] block
+- [`authorization`][authorization] block
+- [`basic_auth`][basic_auth] block
+- [`bearer_token_file`][client] argument
+- [`bearer_token`][client] argument
+- [`oauth2`][oauth2] block
 
 {{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -143,18 +143,18 @@ If {{< param "PRODUCT_NAME" >}} is _not_ running in clustered mode, then the blo
 
 Clustering only looks at the following labels for determining the shard key:
 
-* `__meta_kubernetes_namespace`
-* `__meta_kubernetes_pod_container_name`
-* `__meta_kubernetes_pod_name`
-* `__meta_kubernetes_pod_uid`
-* `__pod_container_name__`
-* `__pod_name__`
-* `__pod_namespace__`
-* `__pod_uid__`
-* `container`
-* `job`
-* `namespace`
-* `pod`
+- `__meta_kubernetes_namespace`
+- `__meta_kubernetes_pod_container_name`
+- `__meta_kubernetes_pod_name`
+- `__meta_kubernetes_pod_uid`
+- `__pod_container_name__`
+- `__pod_name__`
+- `__pod_namespace__`
+- `__pod_uid__`
+- `container`
+- `job`
+- `namespace`
+- `pod`
 
 [using clustering]: ../../../../get-started/clustering/
 
@@ -170,10 +170,10 @@ Clustering only looks at the following labels for determining the shard key:
 
 `loki.source.kubernetes` exposes some target-level debug information per target:
 
-* The labels associated with the target.
-* The full set of labels which were found during service discovery.
-* The most recent time a log line was read and forwarded to the next components in the pipeline.
-* The most recent error from tailing, if any.
+- The labels associated with the target.
+- The full set of labels which were found during service discovery.
+- The most recent time a log line was read and forwarded to the next components in the pipeline.
+- The most recent error from tailing, if any.
 
 ## Debug metrics
 
@@ -208,7 +208,6 @@ loki.write "local" {
 
 - Components that export [Targets](../../../compatibility/#targets-exporters)
 - Components that export [Loki `LogsReceiver`](../../../compatibility/#loki-logsreceiver-exporters)
-
 
 {{< admonition type="note" >}}
 Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.

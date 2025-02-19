@@ -20,6 +20,7 @@ The live debugging feature uses the {{< param "PRODUCT_NAME" >}} UI to provide d
 To ensure that your data remains secure while live debugging is enabled, configure TLS in the [http block][].
 
 [http block]: ../http/
+
 {{< /admonition >}}
 
 ## Example

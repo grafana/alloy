@@ -8,11 +8,11 @@ Kafka broker.
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`include_all_topics` | `bool` | When true, maintains metadata for all topics. | `true` | no
+| Name                 | Type   | Description                                   | Default | Required |
+| -------------------- | ------ | --------------------------------------------- | ------- | -------- |
+| `include_all_topics` | `bool` | When true, maintains metadata for all topics. | `true`  | no       |
 
-If the `include_all_topics` argument is `true`, 
+If the `include_all_topics` argument is `true`,
 a full set of metadata for all topics is maintained rather than the minimal set
 that has been necessary so far. Including the full set of metadata is more
 convenient for users but can consume a substantial amount of memory if you have

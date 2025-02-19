@@ -64,19 +64,19 @@ The following fields are exported and can be referenced by other components:
 
 Each target includes the following labels:
 
-* `__meta_gce_instance_id`: The numeric ID of the instance.
-* `__meta_gce_instance_name`: The name of the instance.
-* `__meta_gce_interface_ipv4_NAME`: The IPv4 address of each named interface.
-* `__meta_gce_label_LABEL_NAME`: Each GCE label of the instance.
-* `__meta_gce_machine_type`: The full or partial URL of the machine type of the instance.
-* `__meta_gce_metadata_NAME`: Each metadata item of the instance.
-* `__meta_gce_network`: The network URL of the instance.
-* `__meta_gce_private_ip`: The private IP address of the instance.
-* `__meta_gce_project`: The GCP project in which the instance is running.
-* `__meta_gce_public_ip`: The public IP address of the instance, if present.
-* `__meta_gce_subnetwork`: The subnetwork URL of the instance.
-* `__meta_gce_tags`: A comma separated list of instance tags.
-* `__meta_gce_zone`: The GCE zone URL in which the instance is running.
+- `__meta_gce_instance_id`: The numeric ID of the instance.
+- `__meta_gce_instance_name`: The name of the instance.
+- `__meta_gce_interface_ipv4_NAME`: The IPv4 address of each named interface.
+- `__meta_gce_label_LABEL_NAME`: Each GCE label of the instance.
+- `__meta_gce_machine_type`: The full or partial URL of the machine type of the instance.
+- `__meta_gce_metadata_NAME`: Each metadata item of the instance.
+- `__meta_gce_network`: The network URL of the instance.
+- `__meta_gce_private_ip`: The private IP address of the instance.
+- `__meta_gce_project`: The GCP project in which the instance is running.
+- `__meta_gce_public_ip`: The public IP address of the instance, if present.
+- `__meta_gce_subnetwork`: The subnetwork URL of the instance.
+- `__meta_gce_tags`: A comma separated list of instance tags.
+- `__meta_gce_zone`: The GCE zone URL in which the instance is running.
 
 ## Component health
 
@@ -118,9 +118,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

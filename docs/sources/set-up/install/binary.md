@@ -12,10 +12,10 @@ weight: 600
 
 {{< param "PRODUCT_NAME" >}} is distributed as a standalone binary for the following operating systems and architectures:
 
-* Linux: AMD64, ARM64
-* Windows: AMD64
-* macOS: AMD64 (Intel), ARM64 (Apple Silicon)
-* FreeBSD: AMD64
+- Linux: AMD64, ARM64
+- Windows: AMD64
+- macOS: AMD64 (Intel), ARM64 (Apple Silicon)
+- FreeBSD: AMD64
 
 ## Download {{% param "PRODUCT_NAME" %}}
 
@@ -36,6 +36,7 @@ To download {{< param "PRODUCT_NAME" >}} as a standalone binary, perform the fol
    ```
 
    Replace the following:
+
    - _`<BINARY_PATH>`_: The path to the extracted binary.
 
 ### BoringCrypto binaries

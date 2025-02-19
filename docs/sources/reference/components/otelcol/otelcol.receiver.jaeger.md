@@ -45,21 +45,21 @@ otelcol.receiver.jaeger "LABEL" {
 The following blocks are supported inside the definition of
 `otelcol.receiver.jaeger`:
 
-Hierarchy                                         | Block                  | Description                                                                | Required
---------------------------------------------------|------------------------|----------------------------------------------------------------------------|---------
-protocols                                         | [protocols][]          | Configures the protocols the component can accept traffic over.            | yes
-protocols > grpc                                  | [grpc][]               | Configures a Jaeger gRPC server to receive traces.                         | no
-protocols > grpc > tls                            | [tls][]                | Configures TLS for the gRPC server.                                        | no
-protocols > grpc > keepalive                      | [keepalive][]          | Configures keepalive settings for the configured server.                   | no
-protocols > grpc > keepalive > server_parameters  | [server_parameters][]  | Server parameters used to configure keepalive settings.                    | no
-protocols > grpc > keepalive > enforcement_policy | [enforcement_policy][] | Enforcement policy for keepalive settings.                                 | no
-protocols > thrift_http                           | [thrift_http][]        | Configures a Thrift HTTP server to receive traces.                         | no
-protocols > thrift_http > tls                     | [tls][]                | Configures TLS for the Thrift HTTP server.                                 | no
-protocols > thrift_http > cors                    | [cors][]               | Configures CORS for the Thrift HTTP server.                                | no
-protocols > thrift_binary                         | [thrift_binary][]      | Configures a Thrift binary UDP server to receive traces.                   | no
-protocols > thrift_compact                        | [thrift_compact][]     | Configures a Thrift compact UDP server to receive traces.                  | no
-debug_metrics                                     | [debug_metrics][]      | Configures the metrics that this component generates to monitor its state. | no
-output                                            | [output][]             | Configures where to send received telemetry data.                          | yes
+| Hierarchy                                         | Block                  | Description                                                                | Required |
+| ------------------------------------------------- | ---------------------- | -------------------------------------------------------------------------- | -------- |
+| protocols                                         | [protocols][]          | Configures the protocols the component can accept traffic over.            | yes      |
+| protocols > grpc                                  | [grpc][]               | Configures a Jaeger gRPC server to receive traces.                         | no       |
+| protocols > grpc > tls                            | [tls][]                | Configures TLS for the gRPC server.                                        | no       |
+| protocols > grpc > keepalive                      | [keepalive][]          | Configures keepalive settings for the configured server.                   | no       |
+| protocols > grpc > keepalive > server_parameters  | [server_parameters][]  | Server parameters used to configure keepalive settings.                    | no       |
+| protocols > grpc > keepalive > enforcement_policy | [enforcement_policy][] | Enforcement policy for keepalive settings.                                 | no       |
+| protocols > thrift_http                           | [thrift_http][]        | Configures a Thrift HTTP server to receive traces.                         | no       |
+| protocols > thrift_http > tls                     | [tls][]                | Configures TLS for the Thrift HTTP server.                                 | no       |
+| protocols > thrift_http > cors                    | [cors][]               | Configures CORS for the Thrift HTTP server.                                | no       |
+| protocols > thrift_binary                         | [thrift_binary][]      | Configures a Thrift binary UDP server to receive traces.                   | no       |
+| protocols > thrift_compact                        | [thrift_compact][]     | Configures a Thrift compact UDP server to receive traces.                  | no       |
+| debug_metrics                                     | [debug_metrics][]      | Configures the metrics that this component generates to monitor its state. | no       |
+| output                                            | [output][]             | Configures where to send received telemetry data.                          | yes      |
 
 The `>` symbol indicates deeper levels of nesting.
 For example, `protocols > grpc` refers to a `grpc` block defined inside a `protocols` block.
@@ -92,15 +92,15 @@ If the `grpc` block isn't provided, a gRPC server isn't started.
 
 The following arguments are supported:
 
-Name                     | Type      | Description                                                                | Default           | Required
--------------------------|-----------|----------------------------------------------------------------------------|-------------------|---------
-`endpoint`               | `string`  | `host:port` to listen for traffic on.                                      | `"0.0.0.0:14250"` | no
-`transport`              | `string`  | Transport to use for the gRPC server.                                      | `"tcp"`           | no
-`max_recv_msg_size`      | `string`  | Maximum size of messages the server will accept.                           | `"4MiB`"          | no
-`max_concurrent_streams` | `number`  | Limit the number of concurrent streaming RPC calls.                        |                   | no
-`read_buffer_size`       | `string`  | Size of the read buffer the gRPC server will use for reading from clients. | `"512KiB"`        | no
-`write_buffer_size`      | `string`  | Size of the write buffer the gRPC server will use for writing to clients.  |                   | no
-`include_metadata`       | `boolean` | Propagate incoming connection metadata to downstream consumers.            |                   | no
+| Name                     | Type      | Description                                                                | Default           | Required |
+| ------------------------ | --------- | -------------------------------------------------------------------------- | ----------------- | -------- |
+| `endpoint`               | `string`  | `host:port` to listen for traffic on.                                      | `"0.0.0.0:14250"` | no       |
+| `transport`              | `string`  | Transport to use for the gRPC server.                                      | `"tcp"`           | no       |
+| `max_recv_msg_size`      | `string`  | Maximum size of messages the server will accept.                           | `"4MiB`"          | no       |
+| `max_concurrent_streams` | `number`  | Limit the number of concurrent streaming RPC calls.                        |                   | no       |
+| `read_buffer_size`       | `string`  | Size of the read buffer the gRPC server will use for reading from clients. | `"512KiB"`        | no       |
+| `write_buffer_size`      | `string`  | Size of the write buffer the gRPC server will use for writing to clients.  |                   | no       |
+| `include_metadata`       | `boolean` | Propagate incoming connection metadata to downstream consumers.            |                   | no       |
 
 ### tls block
 
@@ -121,13 +121,13 @@ The `server_parameters` block controls keepalive and maximum age settings for gR
 
 The following arguments are supported:
 
-Name                       | Type       | Description                                                                         | Default      | Required
----------------------------|------------|-------------------------------------------------------------------------------------|--------------|---------
-`max_connection_idle`      | `duration` | Maximum age for idle connections.                                                   | `"infinity"` | no
-`max_connection_age`       | `duration` | Maximum age for non-idle connections.                                               | `"infinity"` | no
-`max_connection_age_grace` | `duration` | Time to wait before forcibly closing connections.                                   | `"infinity"` | no
-`time`                     | `duration` | How often to ping inactive clients to check for liveness.                           | `"2h"`       | no
-`timeout`                  | `duration` | Time to wait before closing inactive clients that don't respond to liveness checks. | `"20s"`      | no
+| Name                       | Type       | Description                                                                         | Default      | Required |
+| -------------------------- | ---------- | ----------------------------------------------------------------------------------- | ------------ | -------- |
+| `max_connection_idle`      | `duration` | Maximum age for idle connections.                                                   | `"infinity"` | no       |
+| `max_connection_age`       | `duration` | Maximum age for non-idle connections.                                               | `"infinity"` | no       |
+| `max_connection_age_grace` | `duration` | Time to wait before forcibly closing connections.                                   | `"infinity"` | no       |
+| `time`                     | `duration` | How often to ping inactive clients to check for liveness.                           | `"2h"`       | no       |
+| `timeout`                  | `duration` | Time to wait before closing inactive clients that don't respond to liveness checks. | `"20s"`      | no       |
 
 ### enforcement_policy block
 
@@ -136,10 +136,10 @@ The server closes connections from clients that violate the configured policy.
 
 The following arguments are supported:
 
-Name                    | Type       | Description                                                             | Default | Required
-------------------------|------------|-------------------------------------------------------------------------|---------|---------
-`min_time`              | `duration` | Minimum time clients should wait before sending a keepalive ping.       | `"5m"`  | no
-`permit_without_stream` | `boolean`  | Allow clients to send keepalive pings when there are no active streams. | `false` | no
+| Name                    | Type       | Description                                                             | Default | Required |
+| ----------------------- | ---------- | ----------------------------------------------------------------------- | ------- | -------- |
+| `min_time`              | `duration` | Minimum time clients should wait before sending a keepalive ping.       | `"5m"`  | no       |
+| `permit_without_stream` | `boolean`  | Allow clients to send keepalive pings when there are no active streams. | `false` | no       |
 
 ### thrift_http block
 
@@ -148,12 +148,12 @@ If the `thrift_http` block isn't specified, an HTTP server isn't started.
 
 The following arguments are supported:
 
-Name                     | Type      | Description                                                     | Default           | Required
--------------------------|-----------|-----------------------------------------------------------------|-------------------|---------
-`endpoint`               | `string`  | `host:port` to listen for traffic on.                           | `"0.0.0.0:14268"` | no
-`max_request_body_size`  | `string`  | Maximum request body size the server will allow.                | `20MiB`           | no
-`include_metadata`       | `boolean` | Propagate incoming connection metadata to downstream consumers. |                   | no
-`compression_algorithms` | `list(string)` | A list of compression algorithms the server can accept.    | `["", "gzip", "zstd", "zlib", "snappy", "deflate"]` | no
+| Name                     | Type           | Description                                                     | Default                                             | Required |
+| ------------------------ | -------------- | --------------------------------------------------------------- | --------------------------------------------------- | -------- |
+| `endpoint`               | `string`       | `host:port` to listen for traffic on.                           | `"0.0.0.0:14268"`                                   | no       |
+| `max_request_body_size`  | `string`       | Maximum request body size the server will allow.                | `20MiB`                                             | no       |
+| `include_metadata`       | `boolean`      | Propagate incoming connection metadata to downstream consumers. |                                                     | no       |
+| `compression_algorithms` | `list(string)` | A list of compression algorithms the server can accept.         | `["", "gzip", "zstd", "zlib", "snappy", "deflate"]` | no       |
 
 ### cors block
 
@@ -161,19 +161,19 @@ The `cors` block configures CORS settings for an HTTP server.
 
 The following arguments are supported:
 
-Name              | Type           | Description                                              | Default                | Required
-------------------|----------------|----------------------------------------------------------|------------------------|---------
-`allowed_origins` | `list(string)` | Allowed values for the `Origin` header.                  |                        | no
-`allowed_headers` | `list(string)` | Accepted headers from CORS requests.                     | `["X-Requested-With"]` | no
-`max_age`         | `number`       | Configures the `Access-Control-Max-Age` response header. |                        | no
+| Name              | Type           | Description                                              | Default                | Required |
+| ----------------- | -------------- | -------------------------------------------------------- | ---------------------- | -------- |
+| `allowed_origins` | `list(string)` | Allowed values for the `Origin` header.                  |                        | no       |
+| `allowed_headers` | `list(string)` | Accepted headers from CORS requests.                     | `["X-Requested-With"]` | no       |
+| `max_age`         | `number`       | Configures the `Access-Control-Max-Age` response header. |                        | no       |
 
 The `allowed_headers` specifies which headers are acceptable from a CORS request.
 The following headers are always implicitly allowed:
 
-* `Accept`
-* `Accept-Language`
-* `Content-Type`
-* `Content-Language`
+- `Accept`
+- `Accept-Language`
+- `Content-Type`
+- `Content-Language`
 
 If `allowed_headers` includes `"*"`, all headers are permitted.
 
@@ -184,13 +184,13 @@ If the `thrift_binary` block isn't provided, a UDP server isn't started.
 
 The following arguments are supported:
 
-Name                 | Type     | Description                                                    | Default          | Required
----------------------|----------|----------------------------------------------------------------|------------------|---------
-`endpoint`           | `string` | `host:port` to listen for traffic on.                          | `"0.0.0.0:6832"` | no
-`queue_size`         | `number` | Maximum number of UDP messages that can be queued at once.     | `1000`           | no
-`max_packet_size`    | `string` | Maximum UDP message size.                                      | `"65KiB"`        | no
-`workers`            | `number` | Number of workers to concurrently read from the message queue. | `10`             | no
-`socket_buffer_size` | `string` | Buffer to allocate for the UDP socket.                         |                  | no
+| Name                 | Type     | Description                                                    | Default          | Required |
+| -------------------- | -------- | -------------------------------------------------------------- | ---------------- | -------- |
+| `endpoint`           | `string` | `host:port` to listen for traffic on.                          | `"0.0.0.0:6832"` | no       |
+| `queue_size`         | `number` | Maximum number of UDP messages that can be queued at once.     | `1000`           | no       |
+| `max_packet_size`    | `string` | Maximum UDP message size.                                      | `"65KiB"`        | no       |
+| `workers`            | `number` | Number of workers to concurrently read from the message queue. | `10`             | no       |
+| `socket_buffer_size` | `string` | Buffer to allocate for the UDP socket.                         |                  | no       |
 
 ### thrift_compact block
 
@@ -199,13 +199,13 @@ If the `thrift_compact` block isn't provided, a UDP server isn't started.
 
 The following arguments are supported:
 
-Name                 | Type     | Description                                                    | Default          | Required
----------------------|----------|----------------------------------------------------------------|------------------|---------
-`endpoint`           | `string` | `host:port` to listen for traffic on.                          | `"0.0.0.0:6831"` | no
-`queue_size`         | `number` | Maximum number of UDP messages that can be queued at once.     | `1000`           | no
-`max_packet_size`    | `string` | Maximum UDP message size.                                      | `"65KiB"`        | no
-`workers`            | `number` | Number of workers to concurrently read from the message queue. | `10`             | no
-`socket_buffer_size` | `string` | Buffer to allocate for the UDP socket.                         |                  | no
+| Name                 | Type     | Description                                                    | Default          | Required |
+| -------------------- | -------- | -------------------------------------------------------------- | ---------------- | -------- |
+| `endpoint`           | `string` | `host:port` to listen for traffic on.                          | `"0.0.0.0:6831"` | no       |
+| `queue_size`         | `number` | Maximum number of UDP messages that can be queued at once.     | `1000`           | no       |
+| `max_packet_size`    | `string` | Maximum UDP message size.                                      | `"65KiB"`        | no       |
+| `workers`            | `number` | Number of workers to concurrently read from the message queue. | `10`             | no       |
+| `socket_buffer_size` | `string` | Buffer to allocate for the UDP socket.                         |                  | no       |
 
 ### debug_metrics block
 
@@ -269,7 +269,6 @@ otelcol.exporter.otlp "default" {
 `otelcol.receiver.jaeger` can accept arguments from the following components:
 
 - Components that export [OpenTelemetry `otelcol.Consumer`](../../../compatibility/#opentelemetry-otelcolconsumer-exporters)
-
 
 {{< admonition type="note" >}}
 Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.

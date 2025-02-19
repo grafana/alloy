@@ -58,7 +58,7 @@ An error is also produced for an unsupported format verb.
 The specification may contain the following verbs.
 
 | Verb | Result                                                                                    |
-|------|-------------------------------------------------------------------------------------------|
+| ---- | ----------------------------------------------------------------------------------------- |
 | `%%` | Literal percent sign, consuming no value.                                                 |
 | `%t` | Convert to boolean and produce `true` or `false`.                                         |
 | `%b` | Convert to integer number and produce binary representation.                              |
@@ -183,6 +183,7 @@ If the string doesn't start with the prefix, the string is returned unchanged.
 > string.trim_prefix("helloworld", "hello")
 "world"
 ```
+
 ## string.trim_suffix
 
 `string.trim_suffix` removes the suffix from the end of a string.

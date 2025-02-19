@@ -17,9 +17,9 @@ You can specify multiple `loki.source.journal` components by giving them differe
 {{< admonition type="note" >}}
 Make sure that the `grafana-alloy` user is a member of the following groups:
 
-* `adm`
-* `systemd-journal`
-{{< /admonition >}}
+- `adm`
+- `systemd-journal`
+  {{< /admonition >}}
 
 ## Usage
 
@@ -76,8 +76,8 @@ The `loki.source.journal` component doesn't support any blocks. You can configur
 
 ## Debug Metrics
 
-* `loki_source_journal_target_parsing_errors_total` (counter): Total number of parsing errors while reading journal messages.
-* `loki_source_journal_target_lines_total` (counter): Total number of successful journal lines read.
+- `loki_source_journal_target_parsing_errors_total` (counter): Total number of parsing errors while reading journal messages.
+- `loki_source_journal_target_lines_total` (counter): Total number of successful journal lines read.
 
 ## Example
 
@@ -111,7 +111,6 @@ loki.write "endpoint" {
 `loki.source.journal` can accept arguments from the following components:
 
 - Components that export [Loki `LogsReceiver`](../../../compatibility/#loki-logsreceiver-exporters)
-
 
 {{< admonition type="note" >}}
 Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.

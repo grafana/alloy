@@ -21,8 +21,8 @@ discovery.kubelet "LABEL" {
 
 ## Requirements
 
-* The Kubelet must be reachable from the `alloy` Pod network.
-* Follow the [Kubelet authorization][] documentation to configure authentication to the Kubelet API.
+- The Kubelet must be reachable from the `alloy` Pod network.
+- Follow the [Kubelet authorization][] documentation to configure authentication to the Kubelet API.
 
 [Kubelet authorization]: https://kubernetes.io/docs/reference/access-authn-authz/kubelet-authn-authz/#kubelet-authorization
 
@@ -51,15 +51,15 @@ If omitted, all namespaces are searched.
 You can have additional paths in the `url`.
 For example, if `url` is `https://kubernetes.default.svc.cluster.local:443/api/v1/nodes/cluster-node-1/proxy`, then `discovery.kubelet` sends a request on `https://kubernetes.default.svc.cluster.local:443/api/v1/nodes/cluster-node-1/proxy/pods`
 
- At most, one of the following can be provided:
+At most, one of the following can be provided:
 
-* [`authorization`][authorization] block
-* [`basic_auth`][basic_auth] block
-* [`bearer_token_file`][arguments] argument
-* [`bearer_token`][arguments] argument
-* [`oauth2`][oauth2] block
+- [`authorization`][authorization] block
+- [`basic_auth`][basic_auth] block
+- [`bearer_token_file`][arguments] argument
+- [`bearer_token`][arguments] argument
+- [`oauth2`][oauth2] block
 
- [arguments]: #arguments
+[arguments]: #arguments
 
 {{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -117,28 +117,28 @@ The following fields are exported and can be referenced by other components:
 
 Each target includes the following labels:
 
-* `__address__`: The target address to scrape derived from the Pod IP and container port.
-* `__meta_kubernetes_namespace`: The namespace of the Pod object.
-* `__meta_kubernetes_pod_name`: The name of the Pod object.
-* `__meta_kubernetes_pod_ip`: The Pod IP of the Pod object.
-* `__meta_kubernetes_pod_label_<labelname>`: Each label from the Pod object.
-* `__meta_kubernetes_pod_labelpresent_<labelname>`: `true` for each label from the Pod object.
-* `__meta_kubernetes_pod_annotation_<annotationname>`: Each annotation from the Pod object.
-* `__meta_kubernetes_pod_annotationpresent_<annotationname>`: `true` for each annotation from the Pod object.
-* `__meta_kubernetes_pod_container_init`: `true` if the container is an `InitContainer`.
-* `__meta_kubernetes_pod_container_name`: Name of the container the target address points to.
-* `__meta_kubernetes_pod_container_id`: ID of the container the target address points to. The ID is in the form `<type>://<container_id>`.
-* `__meta_kubernetes_pod_container_image`: The image the container is using.
-* `__meta_kubernetes_pod_container_port_name`: Name of the container port.
-* `__meta_kubernetes_pod_container_port_number`: Number of the container port.
-* `__meta_kubernetes_pod_container_port_protocol`: Protocol of the container port.
-* `__meta_kubernetes_pod_ready`: Set to `true` or `false` for the Pod's ready state.
-* `__meta_kubernetes_pod_phase`: Set to `Pending`, `Running`, `Succeeded`, `Failed` or `Unknown` in the lifecycle.
-* `__meta_kubernetes_pod_node_name`: The name of the node the Pod is scheduled onto.
-* `__meta_kubernetes_pod_host_ip`: The current host IP of the Pod object.
-* `__meta_kubernetes_pod_uid`: The UID of the Pod object.
-* `__meta_kubernetes_pod_controller_kind`: Object kind of the Pod controller.
-* `__meta_kubernetes_pod_controller_name`: Name of the Pod controller.
+- `__address__`: The target address to scrape derived from the Pod IP and container port.
+- `__meta_kubernetes_namespace`: The namespace of the Pod object.
+- `__meta_kubernetes_pod_name`: The name of the Pod object.
+- `__meta_kubernetes_pod_ip`: The Pod IP of the Pod object.
+- `__meta_kubernetes_pod_label_<labelname>`: Each label from the Pod object.
+- `__meta_kubernetes_pod_labelpresent_<labelname>`: `true` for each label from the Pod object.
+- `__meta_kubernetes_pod_annotation_<annotationname>`: Each annotation from the Pod object.
+- `__meta_kubernetes_pod_annotationpresent_<annotationname>`: `true` for each annotation from the Pod object.
+- `__meta_kubernetes_pod_container_init`: `true` if the container is an `InitContainer`.
+- `__meta_kubernetes_pod_container_name`: Name of the container the target address points to.
+- `__meta_kubernetes_pod_container_id`: ID of the container the target address points to. The ID is in the form `<type>://<container_id>`.
+- `__meta_kubernetes_pod_container_image`: The image the container is using.
+- `__meta_kubernetes_pod_container_port_name`: Name of the container port.
+- `__meta_kubernetes_pod_container_port_number`: Number of the container port.
+- `__meta_kubernetes_pod_container_port_protocol`: Protocol of the container port.
+- `__meta_kubernetes_pod_ready`: Set to `true` or `false` for the Pod's ready state.
+- `__meta_kubernetes_pod_phase`: Set to `Pending`, `Running`, `Succeeded`, `Failed` or `Unknown` in the lifecycle.
+- `__meta_kubernetes_pod_node_name`: The name of the node the Pod is scheduled onto.
+- `__meta_kubernetes_pod_host_ip`: The current host IP of the Pod object.
+- `__meta_kubernetes_pod_uid`: The UID of the Pod object.
+- `__meta_kubernetes_pod_controller_kind`: Object kind of the Pod controller.
+- `__meta_kubernetes_pod_controller_name`: Name of the Pod controller.
 
 {{< admonition type="note" >}}
 The Kubelet API used by this component is an internal API and therefore the data in the response returned from the API can't be guaranteed between different versions of the Kubelet.
@@ -187,9 +187,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 ### Limit searched namespaces
 
@@ -220,9 +220,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

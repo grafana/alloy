@@ -10,19 +10,19 @@ title: otelcol.processor.interval
 
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-`otelcol.processor.interval`  aggregates metrics and periodically forwards the latest values to the next component in the pipeline.
+`otelcol.processor.interval` aggregates metrics and periodically forwards the latest values to the next component in the pipeline.
 The processor supports aggregating the following metric types:
 
-* Monotonically increasing, cumulative sums
-* Monotonically increasing, cumulative histograms
-* Monotonically increasing, cumulative exponential histograms
+- Monotonically increasing, cumulative sums
+- Monotonically increasing, cumulative histograms
+- Monotonically increasing, cumulative exponential histograms
 
-The following metric types will *not* be aggregated and will instead be passed, unchanged, to the next component in the pipeline:
+The following metric types will _not_ be aggregated and will instead be passed, unchanged, to the next component in the pipeline:
 
-* All delta metrics
-* Non-monotonically increasing sums
-* Gauges
-* Summaries
+- All delta metrics
+- Non-monotonically increasing sums
+- Gauges
+- Summaries
 
 {{< admonition type="warning" >}}
 After exporting, any internal state is cleared. If no new metrics come in, the next interval will export nothing.
@@ -47,18 +47,18 @@ otelcol.processor.interval "LABEL" {
 
 `otelcol.processor.interval` supports the following arguments:
 
-Name          | Type       | Description                                                         | Default | Required
-------------- | ---------- | ------------------------------------------------------------------- | ------- | --------
-`interval`    | `duration` | The interval in the processor should export the aggregated metrics. | `"60s"` | no
+| Name       | Type       | Description                                                         | Default | Required |
+| ---------- | ---------- | ------------------------------------------------------------------- | ------- | -------- |
+| `interval` | `duration` | The interval in the processor should export the aggregated metrics. | `"60s"` | no       |
 
 ## Blocks
 
 The following blocks are supported inside the definition of `otelcol.processor.interval`:
 
-Hierarchy     | Block             | Description                                                                | Required
-------------- | ----------------- | -------------------------------------------------------------------------- | --------
-output        | [output][]        | Configures where to send received telemetry data.                          | yes
-debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
+| Hierarchy     | Block             | Description                                                                | Required |
+| ------------- | ----------------- | -------------------------------------------------------------------------- | -------- |
+| output        | [output][]        | Configures where to send received telemetry data.                          | yes      |
+| debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no       |
 
 [output]: #output-block
 [debug_metrics]: #debug_metrics-block
@@ -75,9 +75,9 @@ debug_metrics | [debug_metrics][] | Configures the metrics that this component g
 
 The following fields are exported and can be referenced by other components:
 
-Name    | Type               | Description
---------|--------------------|-----------------------------------------------------------------
-`input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to.
+| Name    | Type               | Description                                                      |
+| ------- | ------------------ | ---------------------------------------------------------------- |
+| `input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to. |
 
 `input` accepts `otelcol.Consumer` data for metrics.
 
@@ -137,7 +137,6 @@ The processor immediately passes the following metric to the next processor in t
 | Timestamp | Metric Name  | Aggregation Temporarility | Attributes        | Value |
 | --------- | ------------ | ------------------------- | ----------------- | ----: |
 | 4         | other_metric | Delta                     | fruitType: orange |  77.4 |
-
 
 At the next `interval` (15s by default), the processor passed the following metrics to the next processor in the chain.
 

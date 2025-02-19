@@ -14,28 +14,28 @@ You can configure {{< param "PRODUCT_NAME" >}} to collect [OpenTelemetry][]-comp
 
 This topic describes how to:
 
-* Configure {{< param "PRODUCT_NAME" >}} to send your data to Loki.
-* Configure {{< param "PRODUCT_NAME" >}} to send your data to Tempo.
-* Configure {{< param "PRODUCT_NAME" >}} to send your data to Mimir or Prometheus Remote Write.
+- Configure {{< param "PRODUCT_NAME" >}} to send your data to Loki.
+- Configure {{< param "PRODUCT_NAME" >}} to send your data to Tempo.
+- Configure {{< param "PRODUCT_NAME" >}} to send your data to Mimir or Prometheus Remote Write.
 
 ## Components used in this topic
 
-* [loki.write][]
-* [otelcol.auth.basic][]
-* [otelcol.exporter.loki][]
-* [otelcol.exporter.otlp][]
-* [otelcol.exporter.prometheus][]
-* [otelcol.processor.batch][]
-* [otelcol.receiver.otlp][]
-* [prometheus.remote_write][]
+- [loki.write][]
+- [otelcol.auth.basic][]
+- [otelcol.exporter.loki][]
+- [otelcol.exporter.otlp][]
+- [otelcol.exporter.prometheus][]
+- [otelcol.processor.batch][]
+- [otelcol.receiver.otlp][]
+- [prometheus.remote_write][]
 
 ## Before you begin
 
-* Ensure that you have basic familiarity with instrumenting applications with OpenTelemetry.
-* Have a set of OpenTelemetry applications ready to push telemetry data to {{< param "PRODUCT_NAME" >}}.
-* Identify where {{< param "PRODUCT_NAME" >}} will write received telemetry data.
-* Be familiar with the concept of [Components][] in {{< param "PRODUCT_NAME" >}}.
-* Complete the [Collect open telemetry data][] task.
+- Ensure that you have basic familiarity with instrumenting applications with OpenTelemetry.
+- Have a set of OpenTelemetry applications ready to push telemetry data to {{< param "PRODUCT_NAME" >}}.
+- Identify where {{< param "PRODUCT_NAME" >}} will write received telemetry data.
+- Be familiar with the concept of [Components][] in {{< param "PRODUCT_NAME" >}}.
+- Complete the [Collect open telemetry data][] task.
   You will pick up from where that guide ended.
 
 ## The pipeline
@@ -104,9 +104,9 @@ otelcol.exporter.otlphttp "default" {
 
 Replace the following:
 
-* _`<ACCOUNT ID>`_: Your Grafana Cloud account ID.
-* _`<API TOKEN>`_: Your Grafana Cloud API token.
-* _`<OTLP_ENDPOINT>`_: Your OTLP endpoint.
+- _`<ACCOUNT ID>`_: Your Grafana Cloud account ID.
+- _`<API TOKEN>`_: Your Grafana Cloud API token.
+- _`<OTLP_ENDPOINT>`_: Your OTLP endpoint.
 
 This configuration will use the credentials stored in `otelcol.auth.basic "default"` to authenticate against the Grafana Cloud OTLP endpoints, and you should start to see your data arrive!
 
@@ -119,6 +119,7 @@ Metrics: OTel → batch processor → Mimir or Prometheus remote write
 Logs: OTel → batch processor → Loki exporter
 Traces: OTel → batch processor → OTel exporter
 ```
+
 ### Grafana Loki
 
 [Grafana Loki][] is a horizontally scalable, highly available, multi-tenant log aggregation system inspired by Prometheus.

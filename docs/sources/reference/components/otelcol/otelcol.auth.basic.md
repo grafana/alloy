@@ -33,19 +33,19 @@ otelcol.auth.basic "LABEL" {
 
 `otelcol.auth.basic` supports the following arguments:
 
-Name       | Type     | Description                                        | Default | Required
------------|----------|----------------------------------------------------|---------|---------
-`username` | `string` | Username to use for basic authentication requests. |         | yes
-`password` | `secret` | Password to use for basic authentication requests. |         | yes
+| Name       | Type     | Description                                        | Default | Required |
+| ---------- | -------- | -------------------------------------------------- | ------- | -------- |
+| `username` | `string` | Username to use for basic authentication requests. |         | yes      |
+| `password` | `secret` | Password to use for basic authentication requests. |         | yes      |
 
 ## Blocks
 
 The following blocks are supported inside the definition of
 `otelcol.auth.basic`:
 
-Hierarchy | Block      | Description                          | Required
-----------|------------|--------------------------------------|---------
-debug_metrics  | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
+| Hierarchy     | Block             | Description                                                                | Required |
+| ------------- | ----------------- | -------------------------------------------------------------------------- | -------- |
+| debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no       |
 
 [debug_metrics]: #debug_metrics-block
 
@@ -57,9 +57,9 @@ debug_metrics  | [debug_metrics][] | Configures the metrics that this component 
 
 The following fields are exported and can be referenced by other components:
 
-Name      | Type                       | Description
-----------|----------------------------|----------------------------------------------------------------
-`handler` | `capsule(otelcol.Handler)` | A value that other components can use to authenticate requests.
+| Name      | Type                       | Description                                                     |
+| --------- | -------------------------- | --------------------------------------------------------------- |
+| `handler` | `capsule(otelcol.Handler)` | A value that other components can use to authenticate requests. |
 
 ## Component health
 

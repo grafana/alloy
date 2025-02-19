@@ -29,6 +29,7 @@ If you are running a custom installation of {{< param "PRODUCT_NAME" >}}, refer 
 
 [install]: ../../set-up/install/
 [alloy run]: ../../reference/cli/run/
+
 {{< /admonition >}}
 
 ### Home page
@@ -54,18 +55,18 @@ Clicking a component in the graph navigates to the [Component detail page](#comp
 
 The component detail page shows the following information for each component:
 
-* The health of the component with a message explaining the health.
-* The current evaluated arguments for the component.
-* The current exports for the component.
-* The current debug info for the component (if the component has debug info).
+- The health of the component with a message explaining the health.
+- The current evaluated arguments for the component.
+- The current exports for the component.
+- The current debug info for the component (if the component has debug info).
 
 From there you can also go to the component documentation or to its corresponding [Live Debugging page](#live-debugging-page).
-
 
 {{< admonition type="note" >}}
 Values marked as a [secret][] are obfuscated and display as the text `(secret)`.
 
 [secret]: ../../get-started/configuration-syntax/expressions/types_and_values/#secrets
+
 {{< /admonition >}}
 
 ### Clustering page
@@ -74,10 +75,10 @@ Values marked as a [secret][] are obfuscated and display as the text `(secret)`.
 
 The clustering page shows the following information for each cluster node:
 
-* The node's name.
-* The node's advertised address.
-* The node's current state (Viewer/Participant/Terminating).
-* The local node that serves the UI.
+- The node's name.
+- The node's advertised address.
+- The node's current state (Viewer/Participant/Terminating).
+- The local node that serves the UI.
 
 ### Live Debugging page
 
@@ -89,14 +90,15 @@ Live debugging provides a real-time stream of debugging data from a component. Y
 Live debugging is disabled by default to avoid accidentally displaying sensitive telemetry data. To enable live debugging, configure the [livedebugging block][livedebugging].
 
 [livedebugging]: ../../reference/config-blocks/livedebugging/
+
 {{< /admonition >}}
 
 Live debugging allows you to do the following:
 
-* Pause and clear the data stream.
-* Sample data and disable auto-scrolling to handle heavy loads.
-* Search through the data using keywords.
-* Copy the entire data stream to the clipboard.
+- Pause and clear the data stream.
+- Sample data and disable auto-scrolling to handle heavy loads.
+- Search through the data using keywords.
+- Copy the entire data stream to the clipboard.
 
 The format and content of the debugging data vary depending on the component type.
 
@@ -104,21 +106,21 @@ The format and content of the debugging data vary depending on the component typ
 Live debugging is not yet available in all components.
 
 Supported components:
-* `loki.process`
-* `loki.relabel`
-* `otelcol.processor.*`
-* `otelcol.receiver.*`
-* `prometheus.relabel`
-{{< /admonition >}}
 
+- `loki.process`
+- `loki.relabel`
+- `otelcol.processor.*`
+- `otelcol.receiver.*`
+- `prometheus.relabel`
+  {{< /admonition >}}
 
 ## Debugging using the UI
 
 To debug using the UI:
 
-* Ensure that no component is reported as unhealthy.
-* Ensure that the arguments and exports for misbehaving components appear correct.
-* Ensure that the live debugging data meets your expectations.
+- Ensure that no component is reported as unhealthy.
+- Ensure that the arguments and exports for misbehaving components appear correct.
+- Ensure that the live debugging data meets your expectations.
 
 ## Examining logs
 

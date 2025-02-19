@@ -50,7 +50,7 @@ Omitted fields take their default values.
 | `client_cert`          | `string`   | Path to PEM file that contains the corresponding cert for the private key to connect to Elasticsearch. |                           | no       |
 | `ssl_skip_verify`      | `bool`     | Skip SSL verification when connecting to Elasticsearch.                                                |                           | no       |
 | `aliases`              | `bool`     | Include informational aliases metrics.                                                                 |                           | no       |
-| `data_stream`         | `bool`     | Export stats for Data Streams.                                                                         |                           | no       |
+| `data_stream`          | `bool`     | Export stats for Data Streams.                                                                         |                           | no       |
 | `slm`                  | `bool`     | Export stats for SLM (Snapshot Lifecycle Management).                                                  |                           | no       |
 
 ## Blocks
@@ -58,9 +58,9 @@ Omitted fields take their default values.
 The following blocks are supported inside the definition of
 `prometheus.exporter.elasticsearch`:
 
-| Hierarchy           | Block             | Description                                              | Required |
-| ------------------- | ----------------- | -------------------------------------------------------- | -------- |
-| basic_auth          | [basic_auth][]    | Configure basic_auth for authenticating to the endpoint. | no       |
+| Hierarchy  | Block          | Description                                              | Required |
+| ---------- | -------------- | -------------------------------------------------------- | -------- |
+| basic_auth | [basic_auth][] | Configure basic_auth for authenticating to the endpoint. | no       |
 
 [basic_auth]: #basic_auth-block
 

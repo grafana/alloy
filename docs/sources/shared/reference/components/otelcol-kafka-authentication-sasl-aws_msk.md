@@ -8,7 +8,7 @@ using the `AWS_MSK_IAM` mechanism.
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`region` | `string` | AWS region the MSK cluster is based in. | | yes
-`broker_addr` | `string` | MSK address to connect to for authentication. | | yes
+| Name          | Type     | Description                                   | Default | Required |
+| ------------- | -------- | --------------------------------------------- | ------- | -------- |
+| `region`      | `string` | AWS region the MSK cluster is based in.       |         | yes      |
+| `broker_addr` | `string` | MSK address to connect to for authentication. |         | yes      |

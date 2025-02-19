@@ -40,13 +40,13 @@ You can use the following arguments with `discovery.nomad`:
 | `server`                 | `string`            | Address of nomad server.                                                                         | `http://localhost:4646` | no       |
 | `tag_separator`          | `string`            | Separator to join nomad tags into Prometheus labels.                                             | `,`                     | no       |
 
- At most, one of the following can be provided:
+At most, one of the following can be provided:
 
-* [`authorization`][authorization] block
-* [`basic_auth`][basic_auth] block
-* [`bearer_token_file`][arguments] argument
-* [`bearer_token`][arguments] argument
-* [`oauth2`][oauth2] block
+- [`authorization`][authorization] block
+- [`basic_auth`][basic_auth] block
+- [`bearer_token_file`][arguments] argument
+- [`bearer_token`][arguments] argument
+- [`oauth2`][oauth2] block
 
 [arguments]: #arguments
 
@@ -106,15 +106,15 @@ The following fields are exported and can be referenced by other components:
 
 Each target includes the following labels:
 
-* `__meta_nomad_address`: The service address of the target.
-* `__meta_nomad_dc`: The data center name for the target.
-* `__meta_nomad_namespace`: The namespace of the target.
-* `__meta_nomad_node_id`: The node name defined for the target.
-* `__meta_nomad_service_address`: The service address of the target.
-* `__meta_nomad_service_id`: The service ID of the target.
-* `__meta_nomad_service_port`: The service port of the target.
-* `__meta_nomad_service`: The name of the service the target belongs to.
-* `__meta_nomad_tags`: The list of tags of the target joined by the tag separator.
+- `__meta_nomad_address`: The service address of the target.
+- `__meta_nomad_dc`: The data center name for the target.
+- `__meta_nomad_namespace`: The namespace of the target.
+- `__meta_nomad_node_id`: The node name defined for the target.
+- `__meta_nomad_service_address`: The service address of the target.
+- `__meta_nomad_service_id`: The service ID of the target.
+- `__meta_nomad_service_port`: The service port of the target.
+- `__meta_nomad_service`: The name of the service the target belongs to.
+- `__meta_nomad_tags`: The list of tags of the target joined by the tag separator.
 
 ## Component health
 
@@ -156,9 +156,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

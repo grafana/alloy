@@ -8,7 +8,7 @@ fails.
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`max_retries` | `number` | How many times to reattempt retrieving metadata. | `3` | no
-`backoff` | `duration` | Time to wait between retries. | `"250ms"` | no
+| Name          | Type       | Description                                      | Default   | Required |
+| ------------- | ---------- | ------------------------------------------------ | --------- | -------- |
+| `max_retries` | `number`   | How many times to reattempt retrieving metadata. | `3`       | no       |
+| `backoff`     | `duration` | Time to wait between retries.                    | `"250ms"` | no       |

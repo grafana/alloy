@@ -27,11 +27,11 @@ For clarity, "argument" in this section refers to arguments which can be given t
 
 The following arguments are supported:
 
-Name       | Type     | Description                          | Default | Required
------------|----------|--------------------------------------|---------|---------
-`comment`  | `string` | Description for the argument.        | `false` | no
-`default`  | `any`    | Default value for the argument.      | `null`  | no
-`optional` | `bool`   | Whether the argument may be omitted. | `false` | no
+| Name       | Type     | Description                          | Default | Required |
+| ---------- | -------- | ------------------------------------ | ------- | -------- |
+| `comment`  | `string` | Description for the argument.        | `false` | no       |
+| `default`  | `any`    | Default value for the argument.      | `null`  | no       |
+| `optional` | `bool`   | Whether the argument may be omitted. | `false` | no       |
 
 By default, all module arguments are required.
 The `optional` argument can be used to mark the module argument as optional.
@@ -41,9 +41,9 @@ When `optional` is `true`, the initial value for the module argument is specifie
 
 The following fields are exported and can be referenced by other components:
 
-Name    | Type  | Description
---------|-------|-----------------------------------
-`value` | `any` | The current value of the argument.
+| Name    | Type  | Description                        |
+| ------- | ----- | ---------------------------------- |
+| `value` | `any` | The current value of the argument. |
 
 If you use a custom component, you are responsible for determining the values for arguments.
 Other expressions within a custom component may use `argument.ARGUMENT_NAME.value` to retrieve the value you provide.

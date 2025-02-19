@@ -124,13 +124,13 @@ The following fields are exported and can be referenced by other components:
 
 Each target includes the following labels:
 
-* `__container_id__`: The container ID. Taken from `/proc/<pid>/cgroup`. If the process isn't running in a container, this label isn't set.
-* `__meta_process_commandline`: The process command line. Taken from `/proc/<pid>/cmdline`.
-* `__meta_process_cwd`: The process current working directory. Taken from `/proc/<pid>/cwd`.
-* `__meta_process_exe`: The process executable path. Taken from `/proc/<pid>/exe`.
-* `__meta_process_uid`: The process UID. Taken from `/proc/<pid>/status`.
-* `__meta_process_username`: The process username. Taken from `__meta_process_uid` and `os/user/LookupID`.
-* `__process_pid__`: The process PID.
+- `__container_id__`: The container ID. Taken from `/proc/<pid>/cgroup`. If the process isn't running in a container, this label isn't set.
+- `__meta_process_commandline`: The process command line. Taken from `/proc/<pid>/cmdline`.
+- `__meta_process_cwd`: The process current working directory. Taken from `/proc/<pid>/cwd`.
+- `__meta_process_exe`: The process executable path. Taken from `/proc/<pid>/exe`.
+- `__meta_process_uid`: The process UID. Taken from `/proc/<pid>/status`.
+- `__meta_process_username`: The process username. Taken from `__meta_process_uid` and `os/user/LookupID`.
+- `__process_pid__`: The process PID.
 
 ## Component health
 
@@ -209,3 +209,4 @@ Refer to the linked documentation for more details.
 {{< /admonition >}}
 
 <!-- END GENERATED COMPATIBLE COMPONENTS -->
+```
