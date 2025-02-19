@@ -625,9 +625,8 @@ func TestRelabelValidate(t *testing.T) {
 			config: Config{
 				Action:      Lowercase,
 				Replacement: DefaultRelabelConfig.Replacement,
-				TargetLabel: "${3}",
+				TargetLabel: "${3}", // With UTF-8 naming, this is now a legal relabel rule.
 			},
-			expected: `"${3}" is invalid 'target_label'`,
 		},
 		{
 			config: Config{
