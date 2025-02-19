@@ -1761,7 +1761,7 @@ The `json` stage would create the following key-value pairs in the set of extrac
 - `message`: `"Special privileges assigned to new logon.\r\n\r\nSubject:\r\n\tSecurity ID:\t\tS-1-1-1\r\n\tAccount Name:\t\tSYSTEM\r\n\tAccount Domain:\t\tNT AUTHORITY\r\n\tLogon ID:\t\t0xAAA\r\n\r\nPrivileges:\t\tSeAssignPrimaryTokenPrivilege\r\n\t\t\tSeTcbPrivilege\r\n\t\t\tSeSecurityPrivilege"`
 - `Overwritten`: `old`
 
-The `windowsevent` stage will parse the value of `message` from the extracted data and append/overwrite the following key-value pairs to the set of extracted data:
+The `windowsevent` stage parses the value of `message` from the extracted data and appends or overwrites the following key-value pairs to the set of extracted data:
 
 - `Description`:           "Special privileges assigned to new logon.",
 - `Subject_SecurityID`:    "S-1-1-1",
