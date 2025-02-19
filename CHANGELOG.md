@@ -43,6 +43,7 @@ Main (unreleased)
   - `query_sample`: capture schema name for query samples (@cristiangreco)
   - `query_sample`: fix error handling during result set iteration (@cristiangreco)
   - `query_sample`: improve parsing of truncated queries (@cristiangreco)
+  - `query_sample`: split out sql parsing logic to a separate file (@cristiangreco)
   - `schema_table`: add table columns parsing (@cristiagreco)
   - `schema_table`: correctly quote schema and table name in SHOW CREATE (@cristiangreco)
   - `schema_table`: fix handling of view table types when detecting schema (@matthewnolf)
@@ -57,7 +58,7 @@ Main (unreleased)
 
 - Ensure consistent service_name label handling in `pyroscope.receive_http` to match Pyroscope's behavior. (@marcsanmi)
 
-- Improved memory and CPU performance of Prometheus pipelines by changing the underlying implementation of targets (@thampiotr)  
+- Improved memory and CPU performance of Prometheus pipelines by changing the underlying implementation of targets (@thampiotr)
 
 - Add `config_merge_strategy` in `prometheus.exporter.snmp` to optionally merge custom snmp config with embedded config instead of replacing. Useful for providing SNMP auths. (@v-zhuravlev)
 
