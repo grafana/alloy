@@ -1688,7 +1688,7 @@ stage.timestamp {
 }
 ```
 
-### stage.windowsevent block
+### `stage.windowsevent`
 
 The `windowsevent` stage extracts data from the message string in the Windows Event Log.
 
