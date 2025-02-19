@@ -94,7 +94,7 @@ require (
 	github.com/jonboulle/clockwork v0.4.0
 	github.com/json-iterator/go v1.1.12
 	github.com/klauspost/compress v1.17.11
-	github.com/leodido/go-syslog/v4 v4.2.0
+	github.com/leodido/go-syslog/v4 v4.2.1-0.20250210154722-e1d78c258095 // temporarily on develop branch
 	github.com/lib/pq v1.10.9
 	github.com/mackerelio/go-osstat v0.2.5
 	github.com/magefile/mage v1.15.0 // indirect
