@@ -940,6 +940,7 @@ require (
 )
 
 require (
+	github.com/grafana/beyla/v2 v2.0.4-alloy.1
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza v0.116.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/syslogreceiver v0.116.0
 )
@@ -949,7 +950,6 @@ require (
 	github.com/containerd/typeurl/v2 v2.2.0 // indirect
 	github.com/containers/common v0.61.0 // indirect
 	github.com/deneonet/benc v1.1.2 // indirect
-	github.com/grafana/beyla/v2 v2.0.4-alloy.0 // indirect
 	github.com/itchyny/timefmt-go v0.1.6 // indirect
 	github.com/panjf2000/ants/v2 v2.11.0 // indirect
 	github.com/pires/go-proxyproto v0.7.0 // indirect
