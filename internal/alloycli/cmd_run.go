@@ -222,7 +222,7 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 		return fmt.Errorf("building tracer: %w", err)
 	}
 
-	if err := fr.configurePrometheusMetricNameValidationScheme(); err != nil {
+	if err := fr.configurePrometheusMetricNameValidationScheme(l); err != nil {
 		return err
 	}
 
@@ -450,7 +450,7 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 	}
 }
 
-func (fr *alloyRun) configurePrometheusMetricNameValidationScheme() error {
+func (fr *alloyRun) configurePrometheusMetricNameValidationScheme(l log.Logger) error {
 	switch fr.prometheusMetricNameValidationScheme {
 	case prometheusLegacyMetricValidationScheme:
 		model.NameValidationScheme = model.LegacyValidation
@@ -462,7 +462,10 @@ func (fr *alloyRun) configurePrometheusMetricNameValidationScheme() error {
 		); err != nil {
 			return err
 		}
+		level.Warn(l).Log("msg", "Using experimental UTF-8 Prometheus metric name validation scheme")
 		model.NameValidationScheme = model.UTF8Validation
+	default:
+		return fmt.Errorf("invalid prometheus metric name validation scheme: %q", fr.prometheusMetricNameValidationScheme)
 	}
 	return nil
 }
