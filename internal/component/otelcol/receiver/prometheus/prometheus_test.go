@@ -97,6 +97,16 @@ func Test(t *testing.T) {
 	case m := <-metricCh:
 		require.Equal(t, 1, m.MetricCount())
 		require.Equal(t, "testMetric", m.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().At(0).Name())
+
+		actFooAttr, ok := m.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().At(0).Gauge().DataPoints().At(0).Attributes().Get("foo")
+		require.True(t, ok)
+		require.Equal(t, "bar", actFooAttr.AsString())
+
+		// this should be true
+		actJobAttr, ok := m.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().At(0).Gauge().DataPoints().At(0).Attributes().Get(model.JobLabel)
+		require.True(t, ok)
+		require.Equal(t, "testJob", actJobAttr.AsString())
+
 		require.Equal(t, "go.opentelemetry.io.contrib.instrumentation.net.http.otelhttp", m.ResourceMetrics().At(0).ScopeMetrics().At(0).Scope().Name())
 		require.Equal(t, "v0.24.0", m.ResourceMetrics().At(0).ScopeMetrics().At(0).Scope().Version())
 		require.Equal(t, "Gauge", m.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().At(0).Type().String())
