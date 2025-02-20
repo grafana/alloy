@@ -7,6 +7,15 @@ This document contains a historical list of changes between releases. Only
 changes that impact end-user behavior are listed; changes to documentation or
 internal API changes are not present.
 
+v1.7.0-rc.2
+-----------------
+
+### Bugfixes
+
+- Fix an issue where Prometheus metric name validation scheme was set by default to UTF-8. It is now set back to the
+  previous "legacy" scheme. An experimental flag `--feature.prometheus.metric-validation-scheme` can be used to switch 
+  it to `utf-8` to experiment with UTF-8 support.
+
 v1.7.0-rc.1
 -----------------
 
