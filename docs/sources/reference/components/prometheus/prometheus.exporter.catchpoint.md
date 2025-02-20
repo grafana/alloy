@@ -12,7 +12,7 @@ title: prometheus.exporter.catchpoint
 
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-The `prometheus.exporter.catchpoint` component uses the [catchpoint_exporter](https://github.com/grafana/catchpoint-prometheus-exporter) for collecting statistics from a Catchpoint account.
+The `prometheus.exporter.catchpoint` component uses the [`catchpoint_exporter`](https://github.com/grafana/catchpoint-prometheus-exporter) for collecting statistics from a Catchpoint account.
 
 ## Usage
 

@@ -35,7 +35,7 @@ Omitted fields take their default values.
 
 The [`sql_exporter` examples](https://github.com/burningalchemist/sql_exporter/blob/master/examples/azure-sql-mi/sql_exporter.yml#L21) show the format of the `connection_string` argument:
 
-```conn
+```text
 sqlserver://USERNAME_HERE:PASSWORD_HERE@SQLMI_HERE_ENDPOINT.database.windows.net:1433?encrypt=true&hostNameInCertificate=%2A.SQL_MI_DOMAIN_HERE.database.windows.net&trustservercertificate=true
 ```
 
@@ -55,7 +55,7 @@ By default, the _`<USERNAME>`_ and _`<PASSWORD>`_ used within the `connection_st
 
 If {{< param "PRODUCT_NAME" >}} is running in the same Windows domain as the SQL Server, then you can use the parameter `authenticator=winsspi` within the `connection_string` to authenticate without any additional credentials.
 
-```conn
+```text
 sqlserver://@<HOST>:<PORT>?authenticator=winsspi
 ```
 
@@ -63,7 +63,7 @@ If you want to use Windows credentials to authenticate, instead of SQL Server cr
 The _`<USERNAME>`_ and _`<PASSWORD>`_ then corresponds to a Windows username and password.
 The Windows domain may need to be prefixed to the username with a trailing `\`.
 
-```conn
+```text
 sqlserver://<DOMAIN\USERNAME>:<PASSWORD>@<HOST>:<PORT>?authenticator=ntlm
 ```
 

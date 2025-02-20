@@ -56,9 +56,9 @@ You can use the following arguments with `prometheus.exporter.elasticsearch`:
 
 You can use the following block with `prometheus.exporter.elasticsearch`:
 
-| Block          | Description                                                | Required |
-| -------------- | ---------------------------------------------------------- | -------- |
-| [basic_auth][] | Configure `basic_auth` for authenticating to the endpoint. | no       |
+| Block                      | Description                                                | Required |
+| -------------------------- | ---------------------------------------------------------- | -------- |
+| [`basic_auth`][basic_auth] | Configure `basic_auth` for authenticating to the endpoint. | no       |
 
 [basic_auth]: #basic_auth
 

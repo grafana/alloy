@@ -116,12 +116,12 @@ You can use the following blocks with `prometheus.scrape`:
 | ------------------------------------- | ------------------------------------------------------------------------------------------- | -------- |
 | [`authorization`][authorization]      | Configure generic authorization to targets.                                                 | no       |
 | [`basic_auth`][basic_auth]            | Configure `basic_auth` for authenticating to targets.                                       | no       |
-| [`clustering`]clustering[]            | Configure the component for when {{< param "PRODUCT_NAME" >}} is running in clustered mode. | no       |
+| [`clustering`][clustering]            | Configure the component for when {{< param "PRODUCT_NAME" >}} is running in clustered mode. | no       |
 | [`oauth2`][oauth2]                    | Configure OAuth 2.0 for authenticating to targets.                                          | no       |
 | `oauth2` > [`tls_config`][tls_config] | Configure TLS settings for connecting to targets via OAuth 2.0                              | no       |
 | [`tls_config`][tls_config]            | Configure TLS settings for connecting to targets.                                           | no       |
 
-The `>` symbol indicates deeper levels of nesting.
+The > symbol indicates deeper levels of nesting.
 For example, `oauth2` > `tls_config` refers to a `tls_config` block defined inside an `oauth2` block.
 
 [authorization]: #authorization
@@ -138,7 +138,7 @@ For example, `oauth2` > `tls_config` refers to a `tls_config` block defined insi
 
 {{< docs/shared lookup="reference/components/basic-auth-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### clustering block
+### `clustering`
 
 | Name      | Type   | Description                                       | Default | Required |
 | --------- | ------ | ------------------------------------------------- | ------- | -------- |
@@ -150,7 +150,7 @@ Clustering assumes that all cluster nodes are running with the same configuratio
 upstream components in their `targets` argument.
 
 All `prometheus.scrape` components instances opting in to clustering use target labels and a consistent hashing algorithm to determine ownership for each of the targets between the cluster peers.
-Then, each peer only scrapes the subset of targets that it is responsible for, so that the scrape load is distributed.
+Then, each peer only scrapes the subset of targets that it's responsible for, so that the scrape load is distributed.
 When a node joins or leaves the cluster, every peer recalculates ownership and continues scraping with the new target set.
 This performs better than hashmod sharding where _all_ nodes have to be re-distributed, as only 1/N of the targets ownership is transferred, but is eventually consistent (rather than fully consistent like hashmod sharding is).
 
@@ -190,7 +190,7 @@ The `prometheus.scrape` component borrows the scraping behavior of Prometheus.
 Prometheus, and by extent this component, uses a pull model for scraping metrics from a given set of _targets_.
 Each scrape target is defined as a set of key-value pairs called _labels_.
 The set of targets can either be _static_, or dynamically provided periodically by a service discovery component such as `discovery.kubernetes`.
-The special label `__address__` _must always_ be present and corresponds to the `<host>:<port>` that is used for the scrape request.
+The special label `__address__` _must always_ be present and corresponds to the `<host>:<port>` that's used for the scrape request.
 
 By default, the scrape job tries to scrape all available targets' `/metrics` endpoints using HTTP, with a scrape interval of 1 minute and scrape timeout of 10 seconds.
 The metrics path, protocol scheme, scrape interval and timeout, query parameters, as well as any other settings can be configured using the component's arguments.
@@ -217,14 +217,14 @@ Similarly, these metrics that record the behavior of the scrape targets are also
 
 | Metric Name                             | Description                                                                                                                                                                                  |
 | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `up`                                    | 1 if the instance is healthy and reachable, or 0 if the scrape failed.                                                                                                                       |
+| `scrape_body_size_bytes`                | The uncompressed size of the most recent scrape response, if successful. Scrapes failing because the `body_size_limit` is exceeded report -1, other scrape failures report 0.                |
 | `scrape_duration_seconds`               | Duration of the scrape in seconds.                                                                                                                                                           |
-| `scrape_samples_scraped`                | The number of samples the target exposed.                                                                                                                                                    |
+| `scrape_sample_limit`                   | The configured sample limit for a target. Useful for measuring how close a target was to reaching the sample limit using `scrape_samples_post_metric_relabeling / (scrape_sample_limit > 0)` |
 | `scrape_samples_post_metric_relabeling` | The number of samples remaining after metric relabeling was applied.                                                                                                                         |
+| `scrape_samples_scraped`                | The number of samples the target exposed.                                                                                                                                                    |
 | `scrape_series_added`                   | The approximate number of new series in this scrape.                                                                                                                                         |
 | `scrape_timeout_seconds`                | The configured scrape timeout for a target. Useful for measuring how close a target was to timing out using `scrape_duration_seconds / scrape_timeout_seconds`                               |
-| `scrape_sample_limit`                   | The configured sample limit for a target. Useful for measuring how close a target was to reaching the sample limit using `scrape_samples_post_metric_relabeling / (scrape_sample_limit > 0)` |
-| `scrape_body_size_bytes`                | The uncompressed size of the most recent scrape response, if successful. Scrapes failing because the `body_size_limit` is exceeded report -1, other scrape failures report 0.                |
+| `up`                                    | 1 if the instance is healthy and reachable, or 0 if the scrape failed.                                                                                                                       |
 
 The `up` metric is particularly useful for monitoring and alerting on the health of a scrape job.
 It's set to `0` in case anything goes wrong with the scrape target, either because it's not reachable, because the connection times out while scraping, or because the samples from the target couldn't be processed.

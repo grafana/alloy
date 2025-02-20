@@ -62,6 +62,10 @@ Omitted fields take their default values.
 | `groups_filter_regex`         | `string`        | Regex filter for consumer groups to be monitored.                                                                                                                                      | `.*`    | no       |
 | `groups_exclude_regex`        | `string`        | Regex that determines which consumer groups to exclude.                                                                                                                                | `^$`    | no       |
 
+## Blocks
+
+The `prometheus.exporter.kafka` component doesn't support any blocks. You can configure this component with arguments.
+
 ## Exported fields
 
 {{< docs/shared lookup="reference/components/exporter-component-exports.md" source="alloy" version="<ALLOY_VERSION>" >}}

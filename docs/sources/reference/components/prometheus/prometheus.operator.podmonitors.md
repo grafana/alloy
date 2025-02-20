@@ -52,14 +52,14 @@ You can use the following blocks with `prometheus.operator.podmonitors`:
 | `client` > [`basic_auth`][basic_auth]               | Configure basic authentication to the Kubernetes API.                                       | no       |
 | `client` > [`oauth2`][oauth2]                       | Configure OAuth 2.0 for authenticating to the Kubernetes API.                               | no       |
 | `client` > `oauth2` > [`tls_config`][tls_config]    | Configure TLS settings for connecting to the Kubernetes API.                                | no       |
-| `client` > [`tls_config`][]                         | Configure TLS settings for connecting to the Kubernetes API.                                | no       |
-| [`clustering`][]                                    | Configure the component for when {{< param "PRODUCT_NAME" >}} is running in clustered mode. | no       |
+| `client` > [`tls_config`][tls_config]               | Configure TLS settings for connecting to the Kubernetes API.                                | no       |
+| [`clustering`][clustering]                          | Configure the component for when {{< param "PRODUCT_NAME" >}} is running in clustered mode. | no       |
 | [`rule`][rule]                                      | Relabeling rules to apply to discovered targets.                                            | no       |
 | [`scrape`][scrape]                                  | Default scrape configuration to apply to discovered targets.                                | no       |
 | [`selector`][selector]                              | Label selector for which PodMonitors to discover.                                           | no       |
 | `selector` > [`match_expression`][match_expression] | Label selector expression for which PodMonitors to discover.                                | no       |
 
-The `>` symbol indicates deeper levels of nesting.
+The > symbol indicates deeper levels of nesting.
 For example, `client` > `basic_auth` refers to a `basic_auth` block defined inside a `client` block.
 
 [client]: #client

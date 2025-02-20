@@ -62,7 +62,7 @@ You can use the following blocks with `prometheus.exporter.unix`:
 | [`hwmon`][hwmon]             | Configures the `hwmon` collector.       | no       |
 | [`ipvs`][ipvs]               | Configures the `ipvs` collector.        | no       |
 | [`ntp`][ntp]                 | Configures the `ntp` collector.         | no       |
-| [`netclass`][netclass]       | Configures the ne`tclass collector.     | no       |
+| [`netclass`][netclass]       | Configures the `netclass` collector.    | no       |
 | [`netdev`][netdev]           | Configures the `netdev` collector.      | no       |
 | [`netstat`][netstat]         | Configures the `netstat` collector.     | no       |
 | [`perf`][perf]               | Configures the `perf` collector.        | no       |
@@ -227,14 +227,14 @@ The default values vary by the operating system {{< param "PRODUCT_NAME" >}} run
 
 | Name                         | Type           | Description                                                 | Default | Required |
 | ---------------------------- | -------------- | ----------------------------------------------------------- | ------- | -------- |
-| `cpus`                       | `string`       | List of CPUs from which `perf` metrics should be collected. |         | no       |
-| `tracepoint`                 | `list(string)` | Array of `perf` tracepoints that should be collected.       |         | no       |
-| `disable_hardware_profilers` | `boolean`      | Disable `perf` hardware profilers.                          | `false` | no       |
-| `hardware_profilers`         | `list(string)` | `Perf` hardware profilers that should be collected.         |         | no       |
-| `disable_software_profilers` | `boolean`      | Disable `perf` software profilers.                          | `false` | no       |
-| `software_profilers`         | `list(string)` | `Perf` software profilers that should be collected.         |         | no       |
-| `disable_cache_profilers`    | `boolean`      | Disable `perf` cache profilers.                             | `false` | no       |
 | `cache_profilers`            | `list(string)` | `Perf` cache profilers that should be collected.            |         | no       |
+| `cpus`                       | `string`       | List of CPUs from which `perf` metrics should be collected. |         | no       |
+| `disable_cache_profilers`    | `boolean`      | Disable `perf` cache profilers.                             | `false` | no       |
+| `disable_hardware_profilers` | `boolean`      | Disable `perf` hardware profilers.                          | `false` | no       |
+| `disable_software_profilers` | `boolean`      | Disable `perf` software profilers.                          | `false` | no       |
+| `hardware_profilers`         | `list(string)` | `Perf` hardware profilers that should be collected.         |         | no       |
+| `software_profilers`         | `list(string)` | `Perf` software profilers that should be collected.         |         | no       |
+| `tracepoint`                 | `list(string)` | Array of `perf` tracepoints that should be collected.       |         | no       |
 
 ### `powersupply`
 

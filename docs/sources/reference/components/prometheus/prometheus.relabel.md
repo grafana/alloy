@@ -22,7 +22,7 @@ The `prometheus.relabel` component rewrites the label set of each metric passed 
 If no rules are defined or applicable to some metrics, then those metrics are forwarded as-is to each receiver passed in the component's arguments.
 If no labels remain after the relabeling rules are applied, then the metric is dropped.
 
-The most common use of `prometheus.relabel` is to filter Prometheus metrics or standardize the label set that is passed to one or more downstream receivers.
+The most common use of `prometheus.relabel` is to filter Prometheus metrics or standardize the label set that's passed to one or more downstream receivers.
 The `rule` blocks are applied to the label set of each metric in order of their appearance in the configuration file.
 The configured rules can be retrieved by calling the function in the `rules` export field.
 

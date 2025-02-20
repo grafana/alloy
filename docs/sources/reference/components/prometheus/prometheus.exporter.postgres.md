@@ -50,6 +50,8 @@ If `disable_default_metrics` is set to `true`, only the metrics defined in the `
 A subset of metrics collectors can be controlled by setting the `enabled_collectors` argument.
 The following collectors are available for selection:
 
+{{< column-list >}}
+
 * `database`
 * `database_wraparound`
 * `locks`
@@ -69,7 +71,11 @@ The following collectors are available for selection:
 * `wal`
 * `xlog_location`
 
+{{< /column-list >}}
+
 By default, the following collectors are enabled:
+
+{{< column-list >}}
 
 * `database`
 * `locks`
@@ -81,8 +87,10 @@ By default, the following collectors are enabled:
 * `statio_user_tables`
 * `wal`
 
+{{< /column-list >}}
+
 {{< admonition type="note" >}}
-Due to a limitation of the upstream exporter, when multiple `data_source_names` are used, the collectors that are controlled via the `enabled_collectors` argument will only be applied to the first data source in the list.
+Due to a limitation of the upstream exporter, when multiple `data_source_names` are used, the collectors that are controlled via the `enabled_collectors` argument is only applied to the first data source in the list.
 {{< /admonition >}}
 
 ## Blocks

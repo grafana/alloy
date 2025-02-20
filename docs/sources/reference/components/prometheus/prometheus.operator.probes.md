@@ -59,7 +59,7 @@ You can use the following blocks with `prometheus.operator.probes`:
 | [`selector`][selector]                              | Label selector for which Probes to discover.                                                | no       |
 | `selector` > [`match_expression`][match_expression] | Label selector expression for which Probes to discover.                                     | no       |
 
-The `>` symbol indicates deeper levels of nesting.
+The > symbol indicates deeper levels of nesting.
 For example, `client` > `basic_auth` refers to a `basic_auth` block defined inside a `client` block.
 
 [client]: #client
@@ -177,7 +177,7 @@ The `operator` argument must be one of the following strings:
 * `"Exists"`
 * `"DoesNotExist"`
 
-If there are multiple `match_expressions` blocks inside of a `selector` block, they are combined together with AND clauses.
+If there are multiple `match_expressions` blocks inside of a `selector` block, they're combined together with AND clauses.
 
 ## Exported fields
 
@@ -200,7 +200,7 @@ It also exposes some debug information for each Probe it has discovered, includi
 
 ## Example
 
-The follwoing example discovers all Probes in your cluster, and forwards collected metrics to a `prometheus.remote_write` component.
+The following example discovers all Probes in your cluster, and forwards collected metrics to a `prometheus.remote_write` component.
 
 ```alloy
 prometheus.remote_write "staging" {

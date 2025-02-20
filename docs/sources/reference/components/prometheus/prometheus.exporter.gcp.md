@@ -89,6 +89,10 @@ Consider using `ingest_delay` if you would like this to be done programmatically
 For `ingest_delay`, you can find the values for this in documented metrics as `After sampling, data is not visible for up to Y seconds.`
 Since the GCP ingestion delay is an "at worst", this is off by default to ensure data is gathered as soon as it's available.
 
+## Blocks
+
+The `prometheus.exporter.gcp` component doesn't support any blocks. You can configure this component with arguments.
+
 ## Exported fields
 
 {{< docs/shared lookup="reference/components/exporter-component-exports.md" source="alloy" version="<ALLOY_VERSION>" >}}

@@ -61,7 +61,7 @@ You can use the following blocks with `prometheus.remote_write`:
 | `endpoint` > [`write_relabel_config`][write_relabel_config]     | Configuration for `write_relabel_config`.                                  | no       |
 | [`wal`][wal]                                                    | Configuration for the component's WAL.                                     | no       |
 
-The `>` symbol indicates deeper levels of nesting.
+The > symbol indicates deeper levels of nesting.
 For example, `endpoint` > `basic_auth` refers to a `basic_auth` block defined inside an `endpoint` block.
 
 [endpoint]: #endpoint
@@ -159,9 +159,9 @@ If the endpoint doesn't support receiving native histogram samples, pushing metr
 
 | Name                   | Type       | Description                                                         | Default | Required |
 | ---------------------- | ---------- | ------------------------------------------------------------------- | ------- | -------- |
-| `send`                 | `bool`     | Controls whether metric metadata is sent to the endpoint.           | `true`  | no       |
-| `send_interval`        | `duration` | How frequently metric metadata is sent to the endpoint.             | `"1m"`  | no       |
 | `max_samples_per_send` | `number`   | Maximum number of metadata samples to send to the endpoint at once. | `2000`  | no       |
+| `send_interval`        | `duration` | How frequently metric metadata is sent to the endpoint.             | `"1m"`  | no       |
+| `send`                 | `bool`     | Controls whether metric metadata is sent to the endpoint.           | `true`  | no       |
 
 ### `oauth2`
 
@@ -175,20 +175,20 @@ If the endpoint doesn't support receiving native histogram samples, pushing metr
 
 | Name                   | Type       | Description                                                          | Default  | Required |
 | ---------------------- | ---------- | -------------------------------------------------------------------- | -------- | -------- |
-| `capacity`             | `number`   | Number of samples to buffer per shard.                               | `10000`  | no       |
-| `min_shards`           | `number`   | Minimum amount of concurrent shards sending samples to the endpoint. | `1`      | no       |
-| `max_shards`           | `number`   | Maximum number of concurrent shards sending samples to the endpoint. | `50`     | no       |
-| `max_samples_per_send` | `number`   | Maximum number of samples per send.                                  | `2000`   | no       |
 | `batch_send_deadline`  | `duration` | Maximum time samples wait in the buffer before sending.              | `"5s"`   | no       |
-| `min_backoff`          | `duration` | Initial retry delay. The backoff time gets doubled for each retry.   | `"30ms"` | no       |
+| `capacity`             | `number`   | Number of samples to buffer per shard.                               | `10000`  | no       |
 | `max_backoff`          | `duration` | Maximum retry delay.                                                 | `"5s"`   | no       |
+| `max_samples_per_send` | `number`   | Maximum number of samples per send.                                  | `2000`   | no       |
+| `max_shards`           | `number`   | Maximum number of concurrent shards sending samples to the endpoint. | `50`     | no       |
+| `min_backoff`          | `duration` | Initial retry delay. The backoff time gets doubled for each retry.   | `"30ms"` | no       |
+| `min_shards`           | `number`   | Minimum amount of concurrent shards sending samples to the endpoint. | `1`      | no       |
 | `retry_on_http_429`    | `bool`     | Retry when an HTTP 429 status code is received.                      | `true`   | no       |
 | `sample_age_limit`     | `duration` | Maximum age of samples to send.                                      | `"0s"`   | no       |
 
 Each queue then manages a number of concurrent _shards_ which is responsible for sending a fraction of data to their respective endpoints.
 The number of shards is automatically raised if samples aren't being sent to the endpoint quickly enough.
 The range of permitted shards can be configured with the `min_shards` and `max_shards` arguments.
-Refer to [Tuning `max_shards`](#tuning-max_shards) for more information about how to configure `max_shards`.
+Refer to [Tune `max_shards`](#tune-max_shards) for more information about how to configure `max_shards`.
 
 Each shard has a buffer of samples it keeps in memory, controlled with the `capacity` argument.
 New metrics aren't read from the WAL unless there is at least one shard that's not at maximum capacity.
@@ -441,7 +441,7 @@ A successful connection updates the series' comparison with `min_keepalive_time`
 
 ### Falling behind
 
-If the queue shards can't flush data quickly enough to keep up-to-date with the most recent data buffered in the WAL, we say that the component is 'falling behind'.
+If the queue shards can't flush data quickly enough to keep up-to-date with the most recent data buffered in the WAL, the component is "falling behind".
 It's not unusual for the component to temporarily fall behind 2 or 3 scrape intervals.
 If the component falls behind more than one third of the data written since the last truncate interval, it's possible for the truncate loop to checkpoint data before being pushed to the `remote_write` endpoint.
 

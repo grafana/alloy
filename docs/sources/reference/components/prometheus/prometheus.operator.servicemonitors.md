@@ -38,9 +38,9 @@ You can use the following arguments with `prometheus.operator.servicemonitors`:
 | Name                    | Type                    | Description                                                                                               | Default     | Required |
 | ----------------------- | ----------------------- | --------------------------------------------------------------------------------------------------------- | ----------- | -------- |
 | `forward_to`            | `list(MetricsReceiver)` | List of receivers to send scraped metrics to.                                                             |             | yes      |
-| `namespaces`            | `list(string)`          | List of namespaces to search for ServiceMonitor resources. If not specified, all namespaces are searched. |             | no       |
-| `kubernetes_role`       | `string`                | The Kubernetes role used for discovery. Supports `endpoints` or `endpointslice`.                          | `endpoints` | no       |
 | `informer_sync_timeout` | `duration`              | Timeout for initial sync of ServiceMonitor resources.                                                     | `1m`        | no       |
+| `kubernetes_role`       | `string`                | The Kubernetes role used for discovery. Supports `endpoints` or `endpointslice`.                          | `endpoints` | no       |
+| `namespaces`            | `list(string)`          | List of namespaces to search for ServiceMonitor resources. If not specified, all namespaces are searched. |             | no       |
 
 ## Blocks
 
@@ -60,7 +60,7 @@ You can use the following blocks with `prometheus.operator.servicemonitors`:
 | [`selector`][selector]                              | Label selector for which ServiceMonitors to discover.                                       | no       |
 | `selector` > [`match_expression`][match_expression] | Label selector expression for which ServiceMonitors to discover.                            | no       |
 
-The `>` symbol indicates deeper levels of nesting.
+The > symbol indicates deeper levels of nesting.
 For example, `client` > `basic_auth` refers to a `basic_auth` block defined inside a `client` block.
 
 [client]: #client
@@ -84,15 +84,15 @@ The following arguments are supported:
 | Name                     | Type                | Description                                                                                      | Default | Required |
 | ------------------------ | ------------------- | ------------------------------------------------------------------------------------------------ | ------- | -------- |
 | `api_server`             | `string`            | URL of the Kubernetes API server.                                                                |         | no       |
-| `kubeconfig_file`        | `string`            | Path of the `kubeconfig` file to use for connecting to Kubernetes.                               |         | no       |
 | `bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                             |         | no       |
 | `bearer_token`           | `secret`            | Bearer token to authenticate with.                                                               |         | no       |
 | `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`  | no       |
 | `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`  | no       |
-| `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |         | no       |
+| `kubeconfig_file`        | `string`            | Path of the `kubeconfig` file to use for connecting to Kubernetes.                               |         | no       |
 | `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |         | no       |
-| `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false` | no       |
 | `proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |         | no       |
+| `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false` | no       |
+| `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |         | no       |
 
  At most, one of the following can be provided:
 

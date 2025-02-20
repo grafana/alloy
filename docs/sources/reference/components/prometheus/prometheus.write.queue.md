@@ -51,7 +51,7 @@ You can use the following blocks with `prometheus.write.queue`:
 | `endpoint` > [`parallelism`][parallelism] | Configure parallelism for the endpoint.                    | no       |
 | [`persistence`][persistence]              | Configuration for persistence                              | no       |
 
-The `>` symbol indicates deeper levels of nesting.
+The > symbol indicates deeper levels of nesting.
 For example, `endpoint` > `basic_auth` refers to a `basic_auth` block defined inside an `endpoint` block.
 
 [endpoint]: #endpoint
@@ -98,16 +98,16 @@ The following arguments are supported:
 
 ### `parallelism`
 
-| Name                             | Type       | Description                                                                                                                        | Default | Required |
-|----------------------------------|------------|------------------------------------------------------------------------------------------------------------------------------------|---------|----------|
-| `allowed_network_error_fraction` | `float`    | The allowed error rate before scaling down. For example `0.50` allows 50% error rate.                                              | `0.50`  | no       |
-| `desired_check_interval`         | `duration` | The length of time between checking for desired connections.                                                                       | `5s`    | no       |
-| `desired_connections_lookback`   | `duration` | The length of time that previous desired connections are kept for determining desired connections.                                 | `5m`    | no       |
-| `drift_scale_down`               | `duration` | The minimum amount of time between the timestamps of incoming signals and outgoing signals before descreasing desired connections. | `30`    | no       |
-| `drift_scale_up`                 | `duration` | The maximum amount of time between the timestamps of incoming signals and outgoing signals before increasing desired connections.  | `60`    | no       |
-| `max_connections`                | `uint`     | The maximum number of desired connections.                                                                                         | `50`    | no       |
-| `min_connections`                | `uint`     | The minimum number of desired connections.                                                                                         | `2`     | no       |
-| `network_flush_interval`         | `duration` | The length of time that network successes and failures are kept for determining desired connections.                               | `1m`    | no       |
+| Name                             | Type       | Description                                                                                                                       | Default | Required |
+| -------------------------------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
+| `allowed_network_error_fraction` | `float`    | The allowed error rate before scaling down. For example `0.50` allows 50% error rate.                                             | `0.50`  | no       |
+| `desired_check_interval`         | `duration` | The length of time between checking for desired connections.                                                                      | `5s`    | no       |
+| `desired_connections_lookback`   | `duration` | The length of time that previous desired connections are kept for determining desired connections.                                | `5m`    | no       |
+| `drift_scale_down`               | `duration` | The minimum amount of time between the timestamps of incoming signals and outgoing signals before decreasing desired connections. | `30`    | no       |
+| `drift_scale_up`                 | `duration` | The maximum amount of time between the timestamps of incoming signals and outgoing signals before increasing desired connections. | `60`    | no       |
+| `max_connections`                | `uint`     | The maximum number of desired connections.                                                                                        | `50`    | no       |
+| `min_connections`                | `uint`     | The minimum number of desired connections.                                                                                        | `2`     | no       |
+| `network_flush_interval`         | `duration` | The length of time that network successes and failures are kept for determining desired connections.                              | `1m`    | no       |
 
 Parallelism determines when to scale up or down the number of desired connections.
 
@@ -136,8 +136,8 @@ The following arguments are supported:
 
 | Name                   | Type       | Description                                                                 | Default | Required |
 | ---------------------- | ---------- | --------------------------------------------------------------------------- | ------- | -------- |
-| `max_signals_to_batch` | `uint`     | The maximum number of signals before they're batched to disk.               | `10000` | no       |
 | `batch_interval`       | `duration` | How often to batch signals to disk if `max_signals_to_batch` isn't reached. | `5s`    | no       |
+| `max_signals_to_batch` | `uint`     | The maximum number of signals before they're batched to disk.               | `10000` | no       |
 
 ## Exported fields
 

@@ -143,6 +143,9 @@ You can use the following blocks with `prometheus.exporter.cloudwatch`:
 | `custom_namespace` > [`metric`][metric]    | Configures the list of metrics the job should scrape. You can define multiple metrics inside one job.                                                      | yes      |
 | [`decoupled_scraping`][decoupled_scraping] | Configures the decoupled scraping feature to retrieve metrics on a schedule and return the cached metrics.                                                 | no       |
 
+The > symbol indicates deeper levels of nesting.
+For example, `discovery` > `role` refers to a `role` block defined inside a `discovery` block.
+
 {{< admonition type="note" >}}
 The `static`, `discovery`, and `custom_namespace` blocks are marked as not required, but you must configure at least one `static`, `discovery`, or `custom_namespace` job.
 {{< /admonition >}}

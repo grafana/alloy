@@ -71,16 +71,16 @@ You can use the following block with `prometheus.receive_http`:
 The following are some of the metrics that are exposed when this component is used.
 The metrics include labels such as `status_code` where relevant, which can be used to measure request success rates.
 
+* `prometheus_fanout_latency` (histogram): Write latency for sending metrics to other components.
+* `prometheus_forwarded_samples_total` (counter): Total number of samples sent to downstream components.
 * `prometheus_receive_http_request_duration_seconds` (histogram): Time (in seconds) spent serving HTTP requests.
 * `prometheus_receive_http_request_message_bytes` (histogram): Size (in bytes) of messages received in the request.
 * `prometheus_receive_http_response_message_bytes` (histogram): Size (in bytes) of messages sent in response.
 * `prometheus_receive_http_tcp_connections` (gauge): Current number of accepted TCP connections.
-* `prometheus_fanout_latency` (histogram): Write latency for sending metrics to other components.
-* `prometheus_forwarded_samples_total` (counter): Total number of samples sent to downstream components.
 
 ## Example
 
-### Receiving metrics over HTTP
+### Receive metrics over HTTP
 
 The following example creates a `prometheus.receive_http` component which starts an HTTP server listening on `0.0.0.0` and port `9999`.
 The server receives metrics and forwards them to a `prometheus.remote_write` component which writes these metrics to the specified HTTP endpoint.
@@ -108,7 +108,7 @@ prometheus.remote_write "local" {
 }
 ```
 
-### Proxying metrics
+### Proxy metrics
 
 To send metrics to the `prometheus.receive_http` component defined in the previous example, another {{< param "PRODUCT_NAME" >}} can run with the following configuration:
 

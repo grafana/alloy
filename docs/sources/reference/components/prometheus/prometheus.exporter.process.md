@@ -21,12 +21,12 @@ prometheus.exporter.process "<LABEL>" {
 
 ## Arguments
 
-You cna use the following arguments with `prometheus.exporter.process`:
+You can use the following arguments with `prometheus.exporter.process`:
 
 | Name                | Type     | Description                                       | Default | Required |
 | ------------------- | -------- | ------------------------------------------------- | ------- | -------- |
 | `gather_smaps`      | `bool`   | Gather metrics from the smaps file for a process. | `true`  | no       |
-| `procfs_path`       | `string` | procfs mount point.                               | `/proc` | no       |
+| `procfs_path`       | `string` | The procfs mount point.                           | `/proc` | no       |
 | `recheck_on_scrape` | `bool`   | Recheck process names on each scrape.             | `true`  | no       |
 | `track_children`    | `bool`   | Whether to track a process' children.             | `true`  | no       |
 | `track_threads`     | `bool`   | Report metrics for a process' individual threads. | `true`  | no       |
@@ -58,7 +58,7 @@ The `name` argument can use the following template variables. By default it uses
 * `{{.ExeBase}}`: Basename of the executable from argv[0].
 * `{{.ExeFull}}`: Fully qualified path of the executable.
 * `{{.Username}}`: Username of the effective user.
-* `{{.Matches}}`: Map containing all regex capture groups resulting from matching a process with the cmdline rule group.
+* `{{.Matches}}`: Map containing all regular explression capture groups resulting from matching a process with the cmdline rule group.
 * `{{.PID}}`: PID of the process. Note that the PID is copied from the first executable found.
 * `{{.StartTime}}`: The start time of the process. This is useful when combined with PID as PIDS get reused over time.
 * `{{.Cgroups}}`: The cgroups, if supported, of the process (`/proc/self/cgroup`). This is particularly useful for identifying to which container a process belongs.
@@ -71,10 +71,10 @@ The value that's used for matching `comm` list elements is derived from reading 
 
 For values in `exe`, if there are no slashes, only the basename of `argv[0]` needs to match.
 Otherwise, the name must be an exact match.
-For example, `"postgres"` may match any postgres binary, but `/usr/local/bin/postgres` only matches a postgres process with that exact path.
+For example, `"postgres"` may match any PostgreSQL binary, but `/usr/local/bin/postgres` only matches a PostgreSQL process with that exact path.
 If any of the strings match, the process is tracked.
 
-Each regular expression in `cmdline` must match the corresponding argv for the process to be tracked.
+Each regular expression in `cmdline` must match the corresponding `argv` for the process to be tracked.
 The first element that is matched is `argv[1]`.
 Regular expression captures are added to the `.Matches` map for use in the name.
 

@@ -10,7 +10,7 @@ title: prometheus.exporter.windows
 
 # `prometheus.exporter.windows`
 
-The `prometheus.exporter.windows` component embeds the [`windows_exporter`][] which exposes a wide variety of hardware and OS metrics for Windows-based systems.
+The `prometheus.exporter.windows` component embeds the [`windows_exporter`][windows_exporter] which exposes a wide variety of hardware and OS metrics for Windows-based systems.
 
 The `windows_exporter` itself comprises various _collectors_, which you can enable and disable as needed.
 For more information on collectors, refer to the [`collectors-list`](#collectors-list) section.
@@ -79,7 +79,7 @@ You can use the following blocks with `prometheus.exporter.windows`:
 [smb_client]: #smb_client
 [smb]: #smb
 [smtp]: #smtp
-[text_file]: #textfile
+[text_file]: #text_file
 
 ### `dfsr`
 
@@ -162,10 +162,10 @@ User-supplied `exclude` and `include` strings are [wrapped][wrap-regex] in a reg
 
 ### `process`
 
-Name      | Type     | Description                                 | Default   | Required
-----------|----------|---------------------------------------------|-----------|---------
-`exclude` | `string` | Regular expression of processes to exclude. | `"^$"`    | no
-`include` | `string` | Regular expression of processes to include. | `"^.+$"`  | no
+| Name      | Type     | Description                                 | Default  | Required |
+| --------- | -------- | ------------------------------------------- | -------- | -------- |
+| `exclude` | `string` | Regular expression of processes to exclude. | `"^$"`   | no       |
+| `include` | `string` | Regular expression of processes to include. | `"^.+$"` | no       |
 
 Processes must match the regular expression specified by `include` and must _not_ match the regular expression specified by `exclude` to be included.
 
@@ -191,7 +191,7 @@ User-supplied `exclude` and `include` strings are [wrapped][wrap-regex] in a reg
 | `where_clause`        | `string` | WQL 'where' clause to use in WMI metrics query.       | `""`      | no       |
 
 The `where_clause` argument can be used to limit the response to the services you specify, reducing the size of the response.
-If `use_api` is enabled, 'where_clause' won't be effective.
+If `use_api` is enabled, `where_clause` won't be effective.
 
 The v2 collector can query service states much more efficiently, but can't provide general service information.
 
@@ -215,7 +215,7 @@ For example, `enabled_list` may be set to `["ServerShares"]`.
 
 The collectors specified by `enabled_list` can include the following:
 
-- `ClientShares`
+* `ClientShares`
 
 For example, `enabled_list` may be set to `"ClientShares"`.
 
@@ -234,7 +234,7 @@ User-supplied `exclude` and `include` strings are [wrapped][wrap-regex] in a reg
 
 | Name                  | Type     | Description                                        | Default       | Required |
 | --------------------- | -------- | -------------------------------------------------- | ------------- | -------- |
-| `text_file_directory` | `string` | The directory containing the files to be ingested. | __see_below__ | no       |
+| `text_file_directory` | `string` | The directory containing the files to be ingested. | __see below__ | no       |
 
 The default value for `text_file_directory` is relative to the location of the {{< param "PRODUCT_NAME" >}} executable.
 By default, `text_file_directory` is set to the `textfile_inputs` directory in the installation directory of {{< param "PRODUCT_NAME" >}}.
@@ -270,7 +270,7 @@ debug metrics.
 ## Wrap regular expression strings
 
 Some collector blocks such as [`scheduled_task`][scheduled_task] accept a regular expression as a string argument.
-`prometheus.exporter.windows` will prefix some regular expression string arguments with `^(?:` and suffixes them with `)$`.
+`prometheus.exporter.windows` prefixes some regular expression string arguments with `^(?:` and suffixes them with `)$`.
 For example, if a user sets an `exclude` argument to `".*"`, Alloy sets it to `"^(?:.*)$"`.
 
 To find out if a particular regular expression argument will be wrapped, refer to the collector block documentation.
@@ -314,7 +314,7 @@ Users can choose to enable a subset of collectors to limit the amount of metrics
 | [`mscluster_resource`][mscluster_resource]                           | MSCluster Resource metrics                                           |                    |
 | [`mscluster_resourcegroup`][mscluster_resourcegroup]                 | MSCluster ResourceGroup metrics                                      |                    |
 | [`msmq`][msmq]                                                       | MSMQ queues                                                          |                    |
-| [`mssql`][mssql]                                                     | [SQL Server Performance Objects][] metrics                           |                    |
+| [`mssql`][mssql]                                                     | [SQL Server Performance Objects][sql_server] metrics                 |                    |
 | [`netframework_clrexceptions`][netframework_clrexceptions]           | .NET Framework CLR Exceptions                                        |                    |
 | [`netframework_clrinterop`][netframework_clrinterop]                 | .NET Framework Interop Metrics                                       |                    |
 | [`netframework_clrjit`][netframework_clrjit]                         | .NET Framework JIT metrics                                           |                    |
@@ -336,13 +336,13 @@ Users can choose to enable a subset of collectors to limit the amount of metrics
 | [`smtp`][smtp]                                                       | IIS SMTP Server                                                      |                    |
 | [`system`][system]                                                   | System calls                                                         | Yes                |
 | [`tcp`][tcp]                                                         | TCP connections                                                      |                    |
-| [`teradici_pcoip`][teradici_pcoip]                                   | [Teradici PCoIP][] session metrics                                   |                    |
+| [`teradici_pcoip`][teradici_pcoip]                                   | [Teradici PCoIP][Teradici PCoIP] session metrics                     |                    |
 | [`time`][time]                                                       | Windows Time Service                                                 |                    |
 | [`thermalzone`][thermalzone]                                         | Thermal information                                                  |                    |
 | [`terminal_services`][terminal_services]                             | Terminal services (RDS)                                              |                    |
 | [`textfile`][textfile]                                               | Read Prometheus metrics from a text file                             |                    |
 | [`vmware_blast`][vmware_blast]                                       | VMware Blast session metrics                                         |                    |
-| [`vmware`][vmware]                                                   | Performance counters installed by the VMWare Guest agent             |                    |
+| [`vmware`][vmware]                                                   | Performance counters installed by the VMware Guest agent             |                    |
 
 [ad]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.ad.md
 [adcs]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.adcs.md
@@ -397,7 +397,7 @@ Users can choose to enable a subset of collectors to limit the amount of metrics
 [textfile]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.textfile.md
 [vmware_blast]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.vmware_blast.md
 [vmware]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.vmware.md
-[SQL Server Performance Objects]: https://docs.microsoft.com/en-us/sql/relational-databases/performance-monitor/use-sql-server-objects#SQLServerPOs
+[sql_server]: https://docs.microsoft.com/en-us/sql/relational-databases/performance-monitor/use-sql-server-objects#SQLServerPOs
 [Teradici PCoIP]: https://www.teradici.com/web-help/pcoip_wmi_specs/
 
 Refer to the linked documentation on each collector for more information on reported metrics, configuration settings and usage examples.
