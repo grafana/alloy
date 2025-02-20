@@ -107,11 +107,21 @@ func New(o component.Options, c Arguments) (*Component, error) {
 		return nil, err
 	}
 
+	nextTraces := c.Output.Traces
+	fanout := fanoutconsumer.Traces(nextTraces)
+	tracesInterceptor := interceptconsumer.Traces(fanout,
+		func(ctx context.Context, td ptrace.Traces) error {
+			livedebuggingpublisher.PublishTracesIfActive(debugDataPublisher.(livedebugging.DebugDataPublisher), o.ID, td, nextTraces)
+			return fanout.ConsumeTraces(ctx, td)
+		},
+	)
+
 	consumerOpts := promsdconsumer.Options{
 		// Don't bother setting up labels - this will be done by the Update() function.
 		HostLabels:      map[string]discovery.Target{},
 		OperationType:   c.OperationType,
 		PodAssociations: c.PodAssociations,
+		NextConsumer:    tracesInterceptor,
 	}
 	consumer, err := promsdconsumer.NewConsumer(consumerOpts, o.Logger)
 	if err != nil {

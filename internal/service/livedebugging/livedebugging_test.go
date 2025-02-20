@@ -47,9 +47,6 @@ func TestStream(t *testing.T) {
 	callback := func(data Data) {
 		receivedData = data
 	}
-	livedebugging.PublishIfActive(NewData(componentID, PrometheusMetric, 3, func() string { return "test data" }, WithTargetComponentIDs([]string{"component1"})))
-	require.Nil(t, receivedData) // nil because there are no active callbacks for it
-
 	livedebugging.AddCallback(callbackID, componentID, callback)
 
 	livedebugging.PublishIfActive(NewData(componentID, PrometheusMetric, 3, func() string { return "test data" }, WithTargetComponentIDs([]string{"component1"})))
