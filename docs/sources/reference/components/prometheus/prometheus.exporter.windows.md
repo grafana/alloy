@@ -323,7 +323,7 @@ Users can choose to enable a subset of collectors to limit the amount of metrics
 | [`netframework_clrmemory`][netframework_clrmemory]                   | .NET Framework Memory metrics                                        |                    |
 | [`netframework_clrremoting`][netframework_clrremoting]               | .NET Framework Remoting metrics                                      |                    |
 | [`netframework_clrsecurity`][netframework_clrsecurity]               | .NET Framework Security Check metrics                                |                    |
-| [`net`]net[]                                                         | Network interface I/O                                                | Yes                |
+| [`net`][net]                                                         | Network interface I/O                                                | Yes                |
 | [`os`][os]                                                           | OS metrics (memory, processes, users)                                | Yes                |
 | [`physical_disk`][physical_disk]                                     | Physical disks                                                       | Yes                |
 | [`printer`][printer]                                                 | Printer metrics                                                      |                    |

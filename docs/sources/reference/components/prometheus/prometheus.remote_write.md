@@ -57,7 +57,7 @@ You can use the following blocks with `prometheus.remote_write`:
 | `endpoint` > `oauth2` > [`tls_config`][tls_config]              | Configure TLS settings for connecting to the endpoint.                     | no       |
 | `endpoint` > [`queue_config`][queue_config]                     | Configuration for how metrics are batched before sending.                  | no       |
 | `endpoint` > [`sigv4`][sigv4]                                   | Configure AWS Signature Verification 4 for authenticating to the endpoint. | no       |
-| `endpoint` > [`tls_config`]tls_config[]                         | Configure TLS settings for connecting to the endpoint.                     | no       |
+| `endpoint` > [`tls_config`][tls_config]                         | Configure TLS settings for connecting to the endpoint.                     | no       |
 | `endpoint` > [`write_relabel_config`][write_relabel_config]     | Configuration for `write_relabel_config`.                                  | no       |
 | [`wal`][wal]                                                    | Configuration for the component's WAL.                                     | no       |
 
@@ -149,7 +149,7 @@ If the endpoint doesn't support receiving native histogram samples, pushing metr
 
 <span class="badge docs-labels__stage docs-labels__item">Required</span>
 
-{{< docs/shared lookup="reference/components/azure-sdk-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/azuread-sdk.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `basic_auth`
 
@@ -389,9 +389,9 @@ To troubleshoot, take the following steps in order:
    ./promtool tsdb dump --match='{__name__="otelcol_connector_spanmetrics_duration_seconds_bucket", http_method="GET", job="ExampleJobName"}' /path/to/wal/
    ```
 
-[clustering]: ../../configure/clustering
+[clustering]: ../../../configure/clustering
 [mimir-ooo-err]: https://grafana.com/docs/mimir/latest/manage/mimir-runbooks/#err-mimir-sample-out-of-order
-[run-cmd]: ../../cli/run
+[run-cmd]: ../../cli/run/
 [promtool]: https://prometheus.io/docs/prometheus/latest/command-line/promtool/#promtool-tsdb
 
 ## Technical details
