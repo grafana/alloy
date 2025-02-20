@@ -186,11 +186,11 @@ If the endpoint doesn't support receiving native histogram samples, pushing metr
 | `sample_age_limit`     | `duration` | Maximum age of samples to send.                                      | `"0s"`   | no       |
 
 Each queue then manages a number of concurrent _shards_ which is responsible for sending a fraction of data to their respective endpoints.
-The number of shards is automatically raised if samples are not being sent to the endpoint quickly enough.
+The number of shards is automatically raised if samples aren't being sent to the endpoint quickly enough.
 The range of permitted shards can be configured with the `min_shards` and `max_shards` arguments.
 Refer to [Tuning `max_shards`](#tuning-max_shards) for more information about how to configure `max_shards`.
 
-Each shard has a buffer of samples it will keep in memory, controlled with the `capacity` argument.
+Each shard has a buffer of samples it keeps in memory, controlled with the `capacity` argument.
 New metrics aren't read from the WAL unless there is at least one shard that's not at maximum capacity.
 
 The buffer of a shard is flushed and sent to the endpoint either after the shard reaches the number of samples specified by `max_samples_per_send` or the duration specified by `batch_send_deadline` has elapsed since the last flush
@@ -218,7 +218,7 @@ The default value is `0s`, which means that all samples are sent (feature is dis
 
 ### `wal`
 
-The `wal` block customizes the Write-Ahead Log (WAL) used to temporarily store metrics before they are sent to the configured set of endpoints.
+The `wal` block customizes the Write-Ahead Log (WAL) used to temporarily store metrics before they're sent to the configured set of endpoints.
 
 | Name                 | Type       | Description                                                    | Default | Required |
 | -------------------- | ---------- | -------------------------------------------------------------- | ------- | -------- |
@@ -239,7 +239,7 @@ Every time the `truncate_frequency` period elapses, the lower two-thirds of data
 
 When a WAL clean-up starts, the lowest successfully sent timestamp is used to determine how much data is safe to remove from the WAL.
 The `min_keepalive_time` and `max_keepalive_time` control the permitted age range of data in the WAL.
-Samples aren't removed until they are at least as old as `min_keepalive_time`, and samples are forcibly removed if they are older than `max_keepalive_time`.
+Samples aren't removed until they're at least as old as `min_keepalive_time`, and samples are forcibly removed if they're older than `max_keepalive_time`.
 
 ## Exported fields
 
@@ -372,17 +372,17 @@ If your database is Mimir, the exact name of the [Mimir error][mimir-ooo-err] is
 The most common cause for this error is that there is more than one {{< param "PRODUCT_NAME" >}} instance scraping the same target.
 To troubleshoot, take the following steps in order:
 
-1. If you use clustering, check if the number of {{< param "PRODUCT_NAME" >}} instances changed at the time the error was logged.
-   This is the only situation in which it is normal to experience an out of order error.
+1. If you use [clustering][], check if the number of {{< param "PRODUCT_NAME" >}} instances changed at the time the error was logged.
+   This is the only situation in which it's normal to experience an out of order error.
    The error would only happen for a short period, until the cluster stabilizes and all {{< param "PRODUCT_NAME" >}} instances have a new list of targets.
    Since the time duration for the cluster to stabilize is expected to be much shorter than the scrape interval, this isn't a real problem.
-   If the out of order error you see is not related to scaling of clustered collectors, it must be investigated.
-1. Check if there are active {{< param "PRODUCT_NAME" >}} instances which should not be running.
+   If the out of order error you see isn't related to scaling of clustered collectors, it must be investigated.
+1. Check if there are active {{< param "PRODUCT_NAME" >}} instances which shouldn't be running.
    There may be an older {{< param "PRODUCT_NAME" >}} instance that wasn't shut down before a new one was started.
 1. Inspect the configuration to see if there could be multiple {{< param "PRODUCT_NAME" >}} instances which scrape the same target.
 1. Inspect the WAL to see which {{< param "PRODUCT_NAME" >}} instance sent those metric samples.
    The WAL is located in a directory set by the [run command][run-cmd] `--storage.path` argument.
-   You can use [Promtool][promtool] to inspect it and find out which metric series were sent by this {{< param "PRODUCT_NAME" >}} instance since the last WAL truncation event. 
+   You can use [Promtool][promtool] to inspect it and find out which metric series were sent by this {{< param "PRODUCT_NAME" >}} instance since the last WAL truncation event.
    For example:
 
    ```text
@@ -398,109 +398,80 @@ To troubleshoot, take the following steps in order:
 
 `prometheus.remote_write` uses [snappy][] for compression.
 
-Any labels that start with `__` will be removed before sending to the endpoint.
+Any labels that start with `__` are removed before sending to the endpoint.
 
 ### Data retention
 
-The `prometheus.remote_write` component uses a Write Ahead Log (WAL) to prevent
-data loss during network outages. The component buffers the received metrics in
-a WAL for each configured endpoint. The queue shards can use the WAL after the
-network outage is resolved and flush the buffered metrics to the endpoints.
+The `prometheus.remote_write` component uses a Write Ahead Log (WAL) to prevent data loss during network outages.
+The component buffers the received metrics in a WAL for each configured endpoint.
+The queue shards can use the WAL after the network outage is resolved and flush the buffered metrics to the endpoints.
 
-The WAL records metrics in 128 MB files called segments. To avoid having a WAL
-that grows on-disk indefinitely, the component _truncates_ its segments on a
-set interval.
+The WAL records metrics in 128 MB files called segments.
+To avoid having a WAL that grows on-disk indefinitely, the component _truncates_ its segments on a set interval.
 
-On each truncation, the WAL deletes references to series that are no longer
-present and also _checkpoints_ roughly the oldest two thirds of the segments
-(rounded down to the nearest integer) written to it since the last truncation
-period. A checkpoint means that the WAL only keeps track of the unique
-identifier for each existing metrics series, and can no longer use the samples
-for remote writing. If that data has not yet been pushed to the remote
-endpoint, it is lost.
+On each truncation, the WAL deletes references to series that are no longer present and also _checkpoints_ roughly the oldest two thirds of the segments (rounded down to the nearest integer) written to it since the last truncation period.
+A checkpoint means that the WAL only keeps track of the unique identifier for each existing metrics series, and can no longer use the samples for remote writing.
+If that data hasn't yet been pushed to the remote endpoint, it's lost.
 
-This behavior dictates the data retention for the `prometheus.remote_write`
-component. It also means that it's impossible to directly correlate data
-retention directly to the data age itself, as the truncation logic works on
-_segments_, not the samples themselves. This makes data retention less
-predictable when the component receives a non-consistent rate of data.
+This behavior dictates the data retention for the `prometheus.remote_write` component.
+It also means that it's impossible to directly correlate data retention directly to the data age itself, as the truncation logic works on _segments_, not the samples themselves.
+This makes data retention less predictable when the component receives a non-consistent rate of data.
 
-The [WAL block][] contains some configurable parameters that can be used to control the tradeoff
-between memory usage, disk usage, and data retention.
+The [WAL block][] contains some configurable parameters that can be used to control the tradeoff between memory usage, disk usage, and data retention.
 
-The `truncate_frequency` or `wal_truncate_frequency` parameter configures the
-interval at which truncations happen. A lower value leads to reduced memory
-usage, but also provides less resiliency to long outages.
+The `truncate_frequency` or `wal_truncate_frequency` parameter configures the interval at which truncations happen. A lower value leads to reduced memory usage, but also provides less resiliency to long outages.
 
-When a WAL clean-up starts, the most recently successfully sent timestamp is
-used to determine how much data is safe to remove from the WAL.
-The `min_keepalive_time` or `min_wal_time` controls the minimum age of samples
-considered for removal. No samples more recent than `min_keepalive_time` are
-removed. The `max_keepalive_time` or `max_wal_time` controls the maximum age of
-samples that can be kept in the WAL. Samples older than
-`max_keepalive_time` are forcibly removed.
+When a WAL clean-up starts, the most recently successfully sent timestamp is used to determine how much data is safe to remove from the WAL.
+The `min_keepalive_time` or `min_wal_time` controls the minimum age of samples considered for removal.
+No samples more recent than `min_keepalive_time` are removed.
+The `max_keepalive_time` or `max_wal_time` controls the maximum age of samples that can be kept in the WAL.
+Samples older than `max_keepalive_time` are forcibly removed.
 
 ### Extended `remote_write` outages
-When the remote write endpoint is unreachable over a period of time, the most
-recent successfully sent timestamp is not updated. The
-`min_keepalive_time` and `max_keepalive_time` arguments control the age range
-of data kept in the WAL.
 
-If the remote write outage is longer than the `max_keepalive_time` parameter,
-then the WAL is truncated, and the oldest data is lost.
+When the remote write endpoint is unreachable over a period of time, the most recent successfully sent timestamp isn't updated.
+The `min_keepalive_time` and `max_keepalive_time` arguments control the age range of data kept in the WAL.
+
+If the remote write outage is longer than the `max_keepalive_time` parameter, then the WAL is truncated, and the oldest data is lost.
 
 ### Intermittent `remote_write` outages
-If the remote write endpoint is intermittently reachable, the most recent
-successfully sent timestamp is updated whenever the connection is successful.
-A successful connection updates the series' comparison with
-`min_keepalive_time` and triggers a truncation on the next `truncate_frequency`
-interval which checkpoints two thirds of the segments (rounded down to the
-nearest integer) written since the previous truncation.
+
+If the remote write endpoint is intermittently reachable, the most recent successfully sent timestamp is updated whenever the connection is successful.
+A successful connection updates the series' comparison with `min_keepalive_time` and triggers a truncation on the next `truncate_frequency` interval which checkpoints two thirds of the segments (rounded down to the nearest integer) written since the previous truncation.
 
 ### Falling behind
-If the queue shards cannot flush data quickly enough to keep
-up-to-date with the most recent data buffered in the WAL, we say that the
-component is 'falling behind'.
+
+If the queue shards can't flush data quickly enough to keep up-to-date with the most recent data buffered in the WAL, we say that the component is 'falling behind'.
 It's not unusual for the component to temporarily fall behind 2 or 3 scrape intervals.
-If the component falls behind more than one third of the data written since the
-last truncate interval, it is possible for the truncate loop to checkpoint data
-before being pushed to the `remote_write` endpoint.
+If the component falls behind more than one third of the data written since the last truncate interval, it's possible for the truncate loop to checkpoint data before being pushed to the `remote_write` endpoint.
 
-### Tuning `max_shards`
+### Tune `max_shards`
 
-The [`queue_config`](#queue_config-block) block allows you to configure `max_shards`. The `max_shards` is the maximum
-number of concurrent shards sending samples to the Prometheus-compatible remote write endpoint.
+The [`queue_config`](#queue_config) block allows you to configure `max_shards`.
+The `max_shards` is the maximum number of concurrent shards sending samples to the Prometheus-compatible remote write endpoint.
 For each shard, a single remote write request can send up to `max_samples_per_send` samples.
 
-{{< param "PRODUCT_NAME" >}} will try not to use too many shards, but if the queue falls behind, the remote write
-component will increase the number of shards up to `max_shards` to increase throughput. A high number of shards may
-potentially overwhelm the remote endpoint or increase {{< param "PRODUCT_NAME" >}} memory utilization. For this reason,
-it's important to tune `max_shards` to a reasonable value that is good enough to keep up with the backlog of data
-to send to the remote endpoint without overwhelming it.
+{{< param "PRODUCT_NAME" >}} tries not to use too many shards, but if the queue falls behind, the remote write component increases the number of shards up to `max_shards` to increase throughput.
+A high number of shards may potentially overwhelm the remote endpoint or increase {{< param "PRODUCT_NAME" >}} memory utilization.
+For this reason, it's important to tune `max_shards` to a reasonable value that's good enough to keep up with the backlog of data to send to the remote endpoint without overwhelming it.
 
-The maximum throughput that {{< param "PRODUCT_NAME" >}} can achieve when remote writing is equal to
-`max_shards * max_samples_per_send * <1 / average write request latency>`. For example, running {{< param "PRODUCT_NAME" >}} with the
-default configuration of 50 `max_shards` and 2000 `max_samples_per_send`, and assuming the
-average latency of a remote write request is 500ms, the maximum throughput achievable is
-about `50 * 2000 * (1s / 500ms) = 200K samples / s`.
+The maximum throughput that {{< param "PRODUCT_NAME" >}} can achieve when remote writing is equal to `max_shards * max_samples_per_send * <1 / average write request latency>`.
+For example, running {{< param "PRODUCT_NAME" >}} with the default configuration of 50 `max_shards` and 2000 `max_samples_per_send`, and assuming the average latency of a remote write request is 500ms, the maximum throughput achievable is about `50 * 2000 * (1s / 500ms) = 200K samples / s`.
 
-The default `max_shards` configuration is good for most use cases, especially if each {{< param "PRODUCT_NAME" >}}
-instance scrapes up to 1 million active series. However, if you run {{< param "PRODUCT_NAME" >}}
-at a large scale and each instance scrapes more than 1 million series, we recommend
-increasing the value of `max_shards`.
+The default `max_shards` configuration is good for most use cases, especially if each {{< param "PRODUCT_NAME" >}} instance scrapes up to 1 million active series.
+However, if you run {{< param "PRODUCT_NAME" >}} at a large scale and each instance scrapes more than 1 million series, we recommend increasing the value of `max_shards`.
 
 {{< param "PRODUCT_NAME" >}} exposes a few metrics that you can use to monitor the remote write shards:
 
-* `prometheus_remote_storage_shards` (gauge): The number of shards used for concurrent delivery of metrics to an endpoint.
-* `prometheus_remote_storage_shards_min` (gauge): The minimum number of shards a queue is allowed to run.
-* `prometheus_remote_storage_shards_max` (gauge): The maximum number of shards a queue is allowed to run.
 * `prometheus_remote_storage_shards_desired` (gauge): The number of shards a queue wants to run to keep up with the number of incoming metrics.
+* `prometheus_remote_storage_shards_max` (gauge): The maximum number of shards a queue is allowed to run.
+* `prometheus_remote_storage_shards_min` (gauge): The minimum number of shards a queue is allowed to run.
+* `prometheus_remote_storage_shards` (gauge): The number of shards used for concurrent delivery of metrics to an endpoint.
 
-If you're already running {{< param "PRODUCT_NAME" >}}, a rule of thumb is to set `max_shards` to
-4x shard utilization. Using the metrics explained above, you can run the following PromQL instant query
-to compute the suggested `max_shards` value for each remote write endpoint `url`:
+If you're already running {{< param "PRODUCT_NAME" >}}, a rule of thumb is to set `max_shards` to 4x shard utilization.
+Using the metrics explained above, you can run the following PromQL instant query to compute the suggested `max_shards` value for each remote write endpoint `url`:
 
-```
+```text
 clamp_min(
     (
         # Calculate the 90th percentile desired shards over the last seven-day period.
@@ -516,20 +487,15 @@ clamp_min(
 )
 ```
 
-If you aren't running {{< param "PRODUCT_NAME" >}} yet, we recommend running it with the default `max_shards`
-and then using the PromQL instant query mentioned above to compute the recommended `max_shards`.
+If you aren't running {{< param "PRODUCT_NAME" >}} yet, we recommend running it with the default `max_shards` and then using the PromQL instant query mentioned above to compute the recommended `max_shards`.
 
 ### WAL corruption
 
-WAL corruption can occur when {{< param "PRODUCT_NAME" >}} unexpectedly stops
-while the latest WAL segments are still being written to disk. For example, the
-host computer has a general disk failure and crashes before you can stop
-{{< param "PRODUCT_NAME" >}} and other running services. When you restart
-{{< param "PRODUCT_NAME" >}}, it verifies the WAL, removing any corrupt
-segments it finds. Sometimes, this repair is unsuccessful, and you must
-manually delete the corrupted WAL to continue. If the WAL becomes corrupted,
-{{< param "PRODUCT_NAME" >}} writes error messages such as
-`err="failed to find segment for index"` to the log file.
+WAL corruption can occur when {{< param "PRODUCT_NAME" >}} unexpectedly stops while the latest WAL segments are still being written to disk.
+For example, the host computer has a general disk failure and crashes before you can stop {{< param "PRODUCT_NAME" >}} and other running services.
+When you restart {{< param "PRODUCT_NAME" >}}, it verifies the WAL, removing any corrupt segments it finds.
+Sometimes, this repair is unsuccessful, and you must manually delete the corrupted WAL to continue.
+If the WAL becomes corrupted, {{< param "PRODUCT_NAME" >}} writes error messages such as `err="failed to find segment for index"` to the log file.
 
 {{< admonition type="note" >}}
 Deleting a WAL segment or a WAL file permanently deletes the stored WAL data.
@@ -540,9 +506,8 @@ To delete the corrupted WAL:
 1. [Stop][] {{< param "PRODUCT_NAME" >}}.
 1. Find and delete the contents of the `wal` directory.
 
-   By default the `wal` directory is a subdirectory
-   of the `data-alloy` directory located in the {{< param "PRODUCT_NAME" >}} working directory. The WAL data directory
-   may be different than the default depending on the path specified by the [command line flag][run] `--storage-path`.
+   By default the `wal` directory is a subdirectory of the `data-alloy` directory located in the {{< param "PRODUCT_NAME" >}} working directory.
+   The WAL data directory may be different than the default depending on the path specified by the [command line flag][run] `--storage-path`.
 
    {{< admonition type="note" >}}
    There is one `wal` directory per `prometheus.remote_write` component.
@@ -566,6 +531,6 @@ Refer to the linked documentation for more details.
 <!-- END GENERATED COMPATIBLE COMPONENTS -->
 
 [snappy]: https://en.wikipedia.org/wiki/Snappy_(compression)
-[WAL block]: #wal-block
+[WAL block]: #wal
 [Stop]: ../../../../set-up/run/
 [run]: ../../../cli/run/
