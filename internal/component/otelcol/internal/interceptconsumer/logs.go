@@ -1,4 +1,4 @@
-package interceptorconsumer
+package interceptconsumer
 
 import (
 	"context"
@@ -12,13 +12,22 @@ type LogsInterceptorFunc func(context.Context, plog.Logs) error
 type LogsInterceptor struct {
 	onConsumeLogs LogsInterceptorFunc
 	nextLogs      otelconsumer.Logs
-	mutatesData   bool // must be set to true if the provided opts modifies the data
+	mutatesData   bool
 }
 
-func Logs(nextLogs otelconsumer.Logs, mutatesData bool, f LogsInterceptorFunc) otelconsumer.Logs {
+// Use LogsMutating if the interceptor func is modifying the data
+func Logs(nextLogs otelconsumer.Logs, f LogsInterceptorFunc) otelconsumer.Logs {
 	return &LogsInterceptor{
 		nextLogs:      nextLogs,
-		mutatesData:   mutatesData,
+		mutatesData:   false,
+		onConsumeLogs: f,
+	}
+}
+
+func LogsMutating(nextLogs otelconsumer.Logs, f LogsInterceptorFunc) otelconsumer.Logs {
+	return &LogsInterceptor{
+		nextLogs:      nextLogs,
+		mutatesData:   true,
 		onConsumeLogs: f,
 	}
 }

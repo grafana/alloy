@@ -9,16 +9,6 @@ import (
 	"go.opentelemetry.io/collector/pdata/ptrace"
 )
 
-func extractIds(consumers []otelcol.Consumer) []string {
-	ids := make([]string, 0, len(consumers))
-	for _, cons := range consumers {
-		if consWithID, ok := cons.(otelcol.ConsumerWithComponentID); ok {
-			ids = append(ids, consWithID.ComponentID())
-		}
-	}
-	return ids
-}
-
 func PublishLogsIfActive(debugDataPublisher livedebugging.DebugDataPublisher, componentID string, ld plog.Logs, nextLogs []otelcol.Consumer) {
 	debugDataPublisher.PublishIfActive(livedebugging.NewData(
 		livedebugging.ComponentID(componentID),
@@ -65,4 +55,14 @@ func PublishMetricsIfActive(debugDataPublisher livedebugging.DebugDataPublisher,
 		},
 		livedebugging.WithTargetComponentIDs(extractIds(nextMetrics)),
 	))
+}
+
+func extractIds(consumers []otelcol.Consumer) []string {
+	ids := make([]string, 0, len(consumers))
+	for _, cons := range consumers {
+		if consWithID, ok := cons.(otelcol.ComponentMetadata); ok {
+			ids = append(ids, consWithID.ComponentID())
+		}
+	}
+	return ids
 }

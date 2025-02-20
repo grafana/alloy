@@ -24,7 +24,7 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/fanoutconsumer"
-	"github.com/grafana/alloy/internal/component/otelcol/internal/interceptorconsumer"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/interceptconsumer"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/lazycollector"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/lazyconsumer"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/livedebuggingpublisher"
@@ -195,7 +195,7 @@ func (p *Processor) Update(args component.Arguments) error {
 	var tracesProcessor otelprocessor.Traces
 	if len(next.Traces) > 0 {
 		fanout := fanoutconsumer.Traces(next.Traces)
-		tracesInterceptor := interceptorconsumer.Traces(fanout, false,
+		tracesInterceptor := interceptconsumer.Traces(fanout,
 			func(ctx context.Context, td ptrace.Traces) error {
 				livedebuggingpublisher.PublishTracesIfActive(p.debugDataPublisher, p.opts.ID, td, next.Traces)
 				return fanout.ConsumeTraces(ctx, td)
@@ -212,7 +212,7 @@ func (p *Processor) Update(args component.Arguments) error {
 	var metricsProcessor otelprocessor.Metrics
 	if len(next.Metrics) > 0 {
 		fanout := fanoutconsumer.Metrics(next.Metrics)
-		metricsInterceptor := interceptorconsumer.Metrics(fanout, false,
+		metricsInterceptor := interceptconsumer.Metrics(fanout,
 			func(ctx context.Context, md pmetric.Metrics) error {
 				livedebuggingpublisher.PublishMetricsIfActive(p.debugDataPublisher, p.opts.ID, md, next.Metrics)
 				return fanout.ConsumeMetrics(ctx, md)
@@ -229,7 +229,7 @@ func (p *Processor) Update(args component.Arguments) error {
 	var logsProcessor otelprocessor.Logs
 	if len(next.Logs) > 0 {
 		fanout := fanoutconsumer.Logs(next.Logs)
-		logsInterceptor := interceptorconsumer.Logs(fanout, false,
+		logsInterceptor := interceptconsumer.Logs(fanout,
 			func(ctx context.Context, ld plog.Logs) error {
 				livedebuggingpublisher.PublishLogsIfActive(p.debugDataPublisher, p.opts.ID, ld, next.Logs)
 				return fanout.ConsumeLogs(ctx, ld)

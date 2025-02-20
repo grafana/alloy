@@ -11,11 +11,12 @@ const (
 	OtelTrace        DataType = "otel_trace"
 )
 
-type DataOption func(*Data)
+type DataOption func(Data) Data
 
 func WithTargetComponentIDs(ids []string) DataOption {
-	return func(f *Data) {
-		f.TargetComponentIDs = ids
+	return func(d Data) Data {
+		d.TargetComponentIDs = ids
+		return d
 	}
 }
 
@@ -34,8 +35,8 @@ type Data struct {
 	DataFunc func() string
 }
 
-func NewData(componentID ComponentID, dataType DataType, count uint64, dataFunc func() string, opts ...DataOption) *Data {
-	data := &Data{
+func NewData(componentID ComponentID, dataType DataType, count uint64, dataFunc func() string, opts ...DataOption) Data {
+	data := Data{
 		ComponentID: componentID,
 		Type:        dataType,
 		Count:       count,
@@ -43,7 +44,7 @@ func NewData(componentID ComponentID, dataType DataType, count uint64, dataFunc 
 	}
 
 	for _, opt := range opts {
-		opt(data)
+		data = opt(data)
 	}
 
 	return data

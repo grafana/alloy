@@ -16,12 +16,12 @@ type CallbackID string
 type CallbackManager interface {
 	// AddCallback sets a callback for a given componentID.
 	// The callback is used to send debugging data to live debugging consumers.
-	AddCallback(callbackID CallbackID, componentID ComponentID, callback func(*Data)) error
+	AddCallback(callbackID CallbackID, componentID ComponentID, callback func(Data)) error
 	// DeleteCallback deletes a callback for a given componentID.
 	DeleteCallback(callbackID CallbackID, componentID ComponentID)
 	// AddCallbackMulti sets a callback to all components.
 	// The callbacks are used to send debugging data to live debugging consumers.
-	AddCallbackMulti(callbackID CallbackID, moduleID ModuleID, callback func(*Data)) error
+	AddCallbackMulti(callbackID CallbackID, moduleID ModuleID, callback func(Data)) error
 	// DeleteCallbackMulti deletes callbacks for all components.
 	DeleteCallbackMulti(callbackID CallbackID, moduleID ModuleID)
 }
@@ -29,11 +29,11 @@ type CallbackManager interface {
 // DebugDataPublisher is used by components to push information to live debugging consumers.
 type DebugDataPublisher interface {
 	// Publish sends debugging data for a given componentID if a least one consumer is listening for debugging data for the given componentID.
-	PublishIfActive(data *Data)
+	PublishIfActive(data Data)
 }
 type liveDebugging struct {
 	loadMut   sync.RWMutex
-	callbacks map[ComponentID]map[CallbackID]func(*Data)
+	callbacks map[ComponentID]map[CallbackID]func(Data)
 	host      service.Host
 	enabled   bool
 }
@@ -44,11 +44,11 @@ var _ DebugDataPublisher = &liveDebugging{}
 // NewLiveDebugging creates a new instance of liveDebugging.
 func NewLiveDebugging() *liveDebugging {
 	return &liveDebugging{
-		callbacks: make(map[ComponentID]map[CallbackID]func(*Data)),
+		callbacks: make(map[ComponentID]map[CallbackID]func(Data)),
 	}
 }
 
-func (s *liveDebugging) PublishIfActive(data *Data) {
+func (s *liveDebugging) PublishIfActive(data Data) {
 	s.loadMut.RLock()
 	defer s.loadMut.RUnlock()
 
@@ -65,7 +65,7 @@ func (s *liveDebugging) PublishIfActive(data *Data) {
 	}
 }
 
-func (s *liveDebugging) AddCallback(callbackID CallbackID, componentID ComponentID, callback func(*Data)) error {
+func (s *liveDebugging) AddCallback(callbackID CallbackID, componentID ComponentID, callback func(Data)) error {
 	s.loadMut.Lock()
 	defer s.loadMut.Unlock()
 
@@ -87,14 +87,14 @@ func (s *liveDebugging) AddCallback(callbackID CallbackID, componentID Component
 	}
 
 	if _, ok := s.callbacks[componentID]; !ok {
-		s.callbacks[componentID] = make(map[CallbackID]func(*Data))
+		s.callbacks[componentID] = make(map[CallbackID]func(Data))
 	}
 
 	s.callbacks[componentID][callbackID] = callback
 	return nil
 }
 
-func (s *liveDebugging) AddCallbackMulti(callbackID CallbackID, moduleID ModuleID, callback func(*Data)) error {
+func (s *liveDebugging) AddCallbackMulti(callbackID CallbackID, moduleID ModuleID, callback func(Data)) error {
 	s.loadMut.Lock()
 	defer s.loadMut.Unlock()
 
@@ -117,7 +117,7 @@ func (s *liveDebugging) AddCallbackMulti(callbackID CallbackID, moduleID ModuleI
 		}
 
 		if _, ok := s.callbacks[ComponentID(cp.ID.String())]; !ok {
-			s.callbacks[ComponentID(cp.ID.String())] = make(map[CallbackID]func(*Data))
+			s.callbacks[ComponentID(cp.ID.String())] = make(map[CallbackID]func(Data))
 		}
 		s.callbacks[ComponentID(cp.ID.String())][callbackID] = callback
 	}

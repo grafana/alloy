@@ -12,7 +12,7 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/fanoutconsumer"
-	"github.com/grafana/alloy/internal/component/otelcol/internal/interceptorconsumer"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/interceptconsumer"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/livedebuggingpublisher"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
@@ -121,7 +121,7 @@ func (c *Component) Update(newConfig component.Arguments) error {
 	c.args = newConfig.(Arguments)
 	nextLogs := c.args.Output.Logs
 	fanout := fanoutconsumer.Logs(nextLogs)
-	logsInterceptor := interceptorconsumer.Logs(fanout, false,
+	logsInterceptor := interceptconsumer.Logs(fanout,
 		func(ctx context.Context, ld plog.Logs) error {
 			livedebuggingpublisher.PublishLogsIfActive(c.debugDataPublisher, c.opts.ID, ld, nextLogs)
 			return fanout.ConsumeLogs(ctx, ld)

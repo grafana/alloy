@@ -22,7 +22,7 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/fanoutconsumer"
-	"github.com/grafana/alloy/internal/component/otelcol/internal/interceptorconsumer"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/interceptconsumer"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/lazycollector"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/lazyconsumer"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/livedebuggingpublisher"
@@ -212,7 +212,7 @@ func (p *Connector) Update(args component.Arguments) error {
 
 		if len(next.Metrics) > 0 {
 			fanout := fanoutconsumer.Metrics(next.Metrics)
-			metricsInterceptor := interceptorconsumer.Metrics(fanout, false,
+			metricsInterceptor := interceptconsumer.Metrics(fanout,
 				func(ctx context.Context, md pmetric.Metrics) error {
 					livedebuggingpublisher.PublishMetricsIfActive(p.debugDataPublisher, p.opts.ID, md, next.Metrics)
 					return fanout.ConsumeMetrics(ctx, md)

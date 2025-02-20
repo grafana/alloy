@@ -11,7 +11,7 @@ import (
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/fanoutconsumer"
-	"github.com/grafana/alloy/internal/component/otelcol/internal/interceptorconsumer"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/interceptconsumer"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/lazyconsumer"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/livedebuggingpublisher"
 	"github.com/grafana/alloy/internal/featuregate"
@@ -166,7 +166,7 @@ func (c *Component) Update(newConfig component.Arguments) error {
 	}
 	nextTraces := c.args.Output.Traces
 	fanout := fanoutconsumer.Traces(nextTraces)
-	tracesInterceptor := interceptorconsumer.Traces(fanout, false,
+	tracesInterceptor := interceptconsumer.Traces(fanout,
 		func(ctx context.Context, td ptrace.Traces) error {
 			livedebuggingpublisher.PublishTracesIfActive(c.debugDataPublisher.(livedebugging.DebugDataPublisher), c.opts.ID, td, nextTraces)
 			return fanout.ConsumeTraces(ctx, td)

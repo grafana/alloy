@@ -14,7 +14,7 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/fanoutconsumer"
-	"github.com/grafana/alloy/internal/component/otelcol/internal/interceptorconsumer"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/interceptconsumer"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/livedebuggingpublisher"
 	"github.com/grafana/alloy/internal/component/otelcol/receiver/prometheus/internal"
 	"github.com/grafana/alloy/internal/featuregate"
@@ -162,7 +162,7 @@ func (c *Component) Update(newConfig component.Arguments) error {
 	}
 	nextMetrics := cfg.Output.Metrics
 	fanout := fanoutconsumer.Metrics(nextMetrics)
-	metricsInterceptor := interceptorconsumer.Metrics(fanout, false,
+	metricsInterceptor := interceptconsumer.Metrics(fanout,
 		func(ctx context.Context, md pmetric.Metrics) error {
 			livedebuggingpublisher.PublishMetricsIfActive(c.debugDataPublisher, c.opts.ID, md, nextMetrics)
 			return fanout.ConsumeMetrics(ctx, md)

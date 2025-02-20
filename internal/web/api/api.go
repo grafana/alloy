@@ -184,16 +184,16 @@ func graph(_ service.Host, callbackManager livedebugging.CallbackManager, logger
 			moduleID = livedebugging.ModuleID(vars["moduleID"])
 		}
 
-		window := setWindow(w, r.URL.Query().Get("window")) // in seconds
+		windowSeconds := setWindow(w, r.URL.Query().Get("window"))
 
-		dataCh := make(chan *livedebugging.Data, 1000)
+		dataCh := make(chan livedebugging.Data, 1000)
 		dataMap := make(map[dataKey]liveDebuggingData)
 
 		ctx := r.Context()
 		id := livedebugging.CallbackID(uuid.New().String())
 
 		droppedData := false
-		err := callbackManager.AddCallbackMulti(id, moduleID, func(data *livedebugging.Data) {
+		err := callbackManager.AddCallbackMulti(id, moduleID, func(data livedebugging.Data) {
 			select {
 			case <-ctx.Done():
 				return
@@ -219,7 +219,7 @@ func graph(_ service.Host, callbackManager livedebugging.CallbackManager, logger
 			callbackManager.DeleteCallbackMulti(id, moduleID)
 		}()
 
-		ticker := time.NewTicker(time.Duration(window) * time.Second)
+		ticker := time.NewTicker(time.Duration(windowSeconds))
 		defer ticker.Stop()
 
 		for {
@@ -243,7 +243,7 @@ func graph(_ service.Host, callbackManager livedebugging.CallbackManager, logger
 				// Flush aggregated data
 				var builder strings.Builder
 				for _, data := range dataMap {
-					data.Rate = float64(data.Count) / float64(window)
+					data.Rate = float64(data.Count) / windowSeconds.Seconds()
 					jsonData, err := json.Marshal(data)
 					if err != nil {
 						continue
@@ -287,7 +287,7 @@ func liveDebugging(_ service.Host, callbackManager livedebugging.CallbackManager
 		id := livedebugging.CallbackID(uuid.New().String())
 
 		droppedData := false
-		err := callbackManager.AddCallback(id, componentID, func(data *livedebugging.Data) {
+		err := callbackManager.AddCallback(id, componentID, func(data livedebugging.Data) {
 			select {
 			case <-ctx.Done():
 				return
@@ -354,15 +354,18 @@ func setSampleProb(w http.ResponseWriter, sampleProbParam string) (sampleProb fl
 }
 
 // window is expected to be in seconds, between 1 and 60.
-func setWindow(w http.ResponseWriter, windowParam string) (window int64) {
-	window = 5
-	if windowParam != "" {
-		var err error
-		window, err = strconv.ParseInt(windowParam, 10, 64)
-		if err != nil || window < 1 || window > 60 {
-			http.Error(w, "Invalid window", http.StatusBadRequest)
-			return 5
-		}
+func setWindow(w http.ResponseWriter, windowParam string) time.Duration {
+	const defaultWindow = 5 * time.Second
+
+	if windowParam == "" {
+		return defaultWindow
 	}
-	return window
+
+	window, err := strconv.Atoi(windowParam)
+	if err != nil || window < 1 || window > 60 {
+		http.Error(w, "Invalid window: must be an integer between 1 and 60", http.StatusBadRequest)
+		return defaultWindow
+	}
+
+	return time.Duration(window) * time.Second
 }

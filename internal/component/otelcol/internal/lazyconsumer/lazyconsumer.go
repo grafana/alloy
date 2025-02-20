@@ -31,10 +31,10 @@ type Consumer struct {
 }
 
 var (
-	_ otelconsumer.Traces             = (*Consumer)(nil)
-	_ otelconsumer.Metrics            = (*Consumer)(nil)
-	_ otelconsumer.Logs               = (*Consumer)(nil)
-	_ otelcol.ConsumerWithComponentID = (*Consumer)(nil)
+	_ otelconsumer.Traces       = (*Consumer)(nil)
+	_ otelconsumer.Metrics      = (*Consumer)(nil)
+	_ otelconsumer.Logs         = (*Consumer)(nil)
+	_ otelcol.ComponentMetadata = (*Consumer)(nil)
 )
 
 // New creates a new Consumer. The provided ctx is used to determine when the

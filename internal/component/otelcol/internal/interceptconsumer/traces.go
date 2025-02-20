@@ -1,4 +1,4 @@
-package interceptorconsumer
+package interceptconsumer
 
 import (
 	"context"
@@ -12,13 +12,22 @@ type TracesInterceptorFunc func(context.Context, ptrace.Traces) error
 type TracesInterceptor struct {
 	onConsumeTraces TracesInterceptorFunc
 	nextTraces      otelconsumer.Traces
-	mutatesData     bool // must be set to true if the provided opts modifies the data
+	mutatesData     bool
 }
 
-func Traces(nextTraces otelconsumer.Traces, mutatesData bool, f TracesInterceptorFunc) otelconsumer.Traces {
+// Use LogsMutating if the interceptor func is modifying the data
+func Traces(nextTraces otelconsumer.Traces, f TracesInterceptorFunc) otelconsumer.Traces {
 	return &TracesInterceptor{
 		nextTraces:      nextTraces,
-		mutatesData:     mutatesData,
+		mutatesData:     false,
+		onConsumeTraces: f,
+	}
+}
+
+func TracesMutating(nextTraces otelconsumer.Traces, f TracesInterceptorFunc) otelconsumer.Traces {
+	return &TracesInterceptor{
+		nextTraces:      nextTraces,
+		mutatesData:     true,
 		onConsumeTraces: f,
 	}
 }

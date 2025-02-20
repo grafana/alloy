@@ -1,4 +1,4 @@
-package interceptorconsumer
+package interceptconsumer
 
 import (
 	"context"
@@ -12,13 +12,22 @@ type MetricsInterceptorFunc func(context.Context, pmetric.Metrics) error
 type MetricsInterceptor struct {
 	onConsumeMetrics MetricsInterceptorFunc
 	nextMetrics      otelconsumer.Metrics
-	mutatesData      bool // must be set to true if the provided opts modifies the data
+	mutatesData      bool
 }
 
-func Metrics(nextMetrics otelconsumer.Metrics, mutatesData bool, f MetricsInterceptorFunc) otelconsumer.Metrics {
+// Use LogsMutating if the interceptor func is modifying the data
+func Metrics(nextMetrics otelconsumer.Metrics, f MetricsInterceptorFunc) otelconsumer.Metrics {
 	return &MetricsInterceptor{
 		nextMetrics:      nextMetrics,
-		mutatesData:      mutatesData,
+		mutatesData:      false,
+		onConsumeMetrics: f,
+	}
+}
+
+func MetricsMutating(nextMetrics otelconsumer.Metrics, f MetricsInterceptorFunc) otelconsumer.Metrics {
+	return &MetricsInterceptor{
+		nextMetrics:      nextMetrics,
+		mutatesData:      true,
 		onConsumeMetrics: f,
 	}
 }

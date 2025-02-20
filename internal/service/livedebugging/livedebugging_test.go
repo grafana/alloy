@@ -11,7 +11,7 @@ import (
 func TestAddCallback(t *testing.T) {
 	livedebugging := NewLiveDebugging()
 	callbackID := CallbackID("callback1")
-	callback := func(data *Data) {}
+	callback := func(data Data) {}
 
 	err := livedebugging.AddCallback(callbackID, "fake.liveDebugging", callback)
 	require.ErrorContains(t, err, "the live debugging service is disabled. Check the documentation to find out how to enable it")
@@ -43,8 +43,8 @@ func TestStream(t *testing.T) {
 	componentID := ComponentID("fake.liveDebugging")
 	callbackID := CallbackID("callback1")
 
-	var receivedData *Data
-	callback := func(data *Data) {
+	var receivedData Data
+	callback := func(data Data) {
 		receivedData = data
 	}
 	livedebugging.PublishIfActive(NewData(componentID, PrometheusMetric, 3, func() string { return "test data" }, WithTargetComponentIDs([]string{"component1"})))
@@ -78,13 +78,13 @@ func TestMultipleStreams(t *testing.T) {
 	callbackID1 := CallbackID("callback1")
 	callbackID2 := CallbackID("callback2")
 
-	var receivedData1 *Data
-	callback1 := func(data *Data) {
+	var receivedData1 Data
+	callback1 := func(data Data) {
 		receivedData1 = data
 	}
 
-	var receivedData2 *Data
-	callback2 := func(data *Data) {
+	var receivedData2 Data
+	callback2 := func(data Data) {
 		receivedData2 = data
 	}
 
@@ -104,8 +104,8 @@ func TestDeleteCallback(t *testing.T) {
 	callbackID1 := CallbackID("callback1")
 	callbackID2 := CallbackID("callback2")
 
-	callback1 := func(data *Data) {}
-	callback2 := func(data *Data) {}
+	callback1 := func(data Data) {}
+	callback2 := func(data Data) {}
 
 	require.NoError(t, livedebugging.AddCallback(callbackID1, componentID, callback1))
 	require.NoError(t, livedebugging.AddCallback(callbackID2, componentID, callback2))
@@ -137,7 +137,7 @@ func setupServiceHost(liveDebugging *liveDebugging) {
 func TestAddCallbackMulti(t *testing.T) {
 	livedebugging := NewLiveDebugging()
 	callbackID := CallbackID("callback1")
-	callback := func(data *Data) {}
+	callback := func(data Data) {}
 
 	err := livedebugging.AddCallbackMulti(callbackID, "", callback)
 	require.ErrorContains(t, err, "the live debugging service is disabled. Check the documentation to find out how to enable it")
@@ -164,8 +164,8 @@ func TestDeleteCallbackMulti(t *testing.T) {
 	callbackID1 := CallbackID("callback1")
 	callbackID2 := CallbackID("callback2")
 
-	callback1 := func(data *Data) {}
-	callback2 := func(data *Data) {}
+	callback1 := func(data Data) {}
+	callback2 := func(data Data) {}
 
 	require.NoError(t, livedebugging.AddCallbackMulti(callbackID1, "", callback1))
 	require.NoError(t, livedebugging.AddCallbackMulti(callbackID2, "", callback2))
@@ -189,13 +189,13 @@ func TestMultiCallbacksMultipleStreams(t *testing.T) {
 	callbackID1 := CallbackID("callback1")
 	callbackID2 := CallbackID("callback2")
 
-	var receivedData1 *Data
-	callback1 := func(data *Data) {
+	var receivedData1 Data
+	callback1 := func(data Data) {
 		receivedData1 = data
 	}
 
-	var receivedData2 *Data
-	callback2 := func(data *Data) {
+	var receivedData2 Data
+	callback2 := func(data Data) {
 		receivedData2 = data
 	}
 

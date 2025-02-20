@@ -12,8 +12,8 @@ type Consumer interface {
 	otelconsumer.Logs
 }
 
-type ConsumerWithComponentID interface {
-	Consumer
+// ComponentMetadata can be implemented by, for example, consumers exported by components, to provide the ID of the component which is exporting given consumer. This is used for Live Graph / Live Debugging features.
+type ComponentMetadata interface {
 	ComponentID() string
 }
 
