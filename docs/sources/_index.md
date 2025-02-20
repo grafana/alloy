@@ -21,6 +21,9 @@ hero:
 cards:
   title_class: pt-0 lh-1
   items:
+    - title: Introduction to Alloy
+      href: ./introduction/
+      description: Learn about what Alloy can do for you.
     - title: Install Alloy
       href: ./set-up/install/
       description: Learn how to install and uninstall Alloy on Docker, Kubernetes, Linux, macOS, or Windows.
@@ -36,9 +39,6 @@ cards:
     - title: Collect OpenTelemetry data
       href: ./collect/opentelemetry-data/
       description: You can configure Alloy to collect OpenTelemetry-compatible data and forward it to any OpenTelemetry-compatible endpoint. Learn how to configure OpenTelemetry data delivery, configure batching, and receive OpenTelemetry data over OTLP.
-    - title: Collect and forward Prometheus metrics
-      href: ./collect/prometheus-metrics/
-      description: You can configure Alloy to collect Prometheus metrics and forward them to any Prometheus-compatible database. Learn how to configure metrics delivery and collect metrics from Kubernetes Pods.
     - title: Concepts
       href: ./get-started/
       description: Learn about components, modules, clustering, and the Alloy configuration syntax.
@@ -55,16 +55,22 @@ cards:
 
 {{< figure src="/media/docs/alloy/flow-diagram-small-alloy.png" alt="Alloy flow diagram" >}}
 
-**Simple telemetry collection with one solution.** Choosing the right tools to collect, process, and export telemetry data can be a confusing and costly experience.
+*Collect all your telemetry with one product.** 
+
+Choosing the right tools to collect, process, and export telemetry data can be a confusing and costly experience.
 The broad range of telemetry you need to process and the collectors you choose can vary widely depending on your observability goals.
 In addition, you face the challenge of addressing the constantly evolving needs of your observability strategy.
 For example, you may initially only need application observability, but you then discover that you must add infrastructure observability.
 Many organizations manage and configure multiple collectors to address these challenges, introducing more complexity and potential errors in their obervability strategy.
 
-**All signals, whether application, infrastructure, or both.** {{< param "FULL_PRODUCT_NAME" >}} has native pipelines for leading telemetry signals, such as Prometheus and OpenTelemetry, and databases such as Loki and Pyroscope.
+**All signals, whether application, infrastructure, or both.**
+
+{{< param "FULL_PRODUCT_NAME" >}} has native pipelines for leading telemetry signals, such as Prometheus and OpenTelemetry, and databases such as Loki and Pyroscope.
 This permits logs, metrics, traces, and even mature support for profiling.
 
-**Enterprise strength observability.** {{< param "FULL_PRODUCT_NAME" >}} improves reliability and provides advanced features for Enterprise needs, such as clusters of fleets and balancing workloads.
+**Enterprise strength observability.**
+
+{{< param "FULL_PRODUCT_NAME" >}} improves reliability and provides advanced features for Enterprise needs, such as clusters of fleets and balancing workloads.
 Grafana [Fleet Management](https://grafana.com/docs/grafana-cloud/send-data/fleet-management/) helps you manage multiple {{< param "FULL_PRODUCT_NAME" >}} deployments at scale.
 
 ## Explore
