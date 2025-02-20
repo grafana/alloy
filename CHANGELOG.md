@@ -10,6 +10,9 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+v1.7.0-rc.2
+-----------------
+
 ### Bugfixes
 
 - Fix an issue where Prometheus metric name validation scheme was set by default to UTF-8. It is now set back to the
