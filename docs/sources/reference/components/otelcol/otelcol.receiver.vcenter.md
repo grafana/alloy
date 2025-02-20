@@ -98,7 +98,7 @@ isn't provided, TLS won't be used for connections to the server.
 Name | Type | Description | Default | Required
 ---- | ---- | ----------- | ------- | --------
 `vcenter.cluster.cpu.effective` | [metric][] | Enables the `vcenter.cluster.cpu.effective` metric. | `true` | no
-`vcenter.cluster.cpu.usage` | [metric][] | Enables the `vcenter.cluster.cpu.usage` metric. | `true` | no
+`vcenter.cluster.cpu.limit` | [metric][] | Enables the `vcenter.cluster.cpu.limit` metric. | `true` | no
 `vcenter.cluster.host.count` | [metric][] | Enables the `vcenter.cluster.host.count` metric. | `true` | no
 `vcenter.cluster.memory.effective` | [metric][] | Enables the `vcenter.cluster.memory.effective` metric. | `true` | no
 `vcenter.cluster.memory.limit` | [metric][] | Enables the `vcenter.cluster.memory.limit` metric. | `true` | no
