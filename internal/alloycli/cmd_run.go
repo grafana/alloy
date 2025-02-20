@@ -20,6 +20,7 @@ import (
 	"github.com/grafana/ckit/advertise"
 	"github.com/grafana/ckit/peer"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/common/model"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"go.opentelemetry.io/otel"
@@ -50,6 +51,11 @@ import (
 	_ "github.com/grafana/alloy/internal/component/all"
 )
 
+var (
+	prometheusLegacyMetricValidationScheme = "legacy"
+	prometheusUTF8MetricValidationScheme   = "utf-8"
+)
+
 func runCommand() *cobra.Command {
 	r := &alloyRun{
 		inMemoryAddr:          "alloy.internal:12345",
@@ -64,6 +70,9 @@ func runCommand() *cobra.Command {
 		clusterMaxJoinPeers:   5,
 		clusterRejoinInterval: 60 * time.Second,
 		disableSupportBundle:  false,
+		// For backwards compatibility - use the LegacyValidation of Prometheus metrics name. This is a global variable
+		// setting that has changed upstream. See https://github.com/prometheus/common/pull/724.
+		prometheusMetricNameValidationScheme: prometheusLegacyMetricValidationScheme,
 	}
 
 	cmd := &cobra.Command{
@@ -155,38 +164,40 @@ depending on the nature of the reload error.
 	cmd.Flags().StringVar(&r.storagePath, "storage.path", r.storagePath, "Base directory where components can store data")
 	cmd.Flags().Var(&r.minStability, "stability.level", fmt.Sprintf("Minimum stability level of features to enable. Supported values: %s", strings.Join(featuregate.AllowedValues(), ", ")))
 	cmd.Flags().BoolVar(&r.enableCommunityComps, "feature.community-components.enabled", r.enableCommunityComps, "Enable community components.")
+	cmd.Flags().StringVar(&r.prometheusMetricNameValidationScheme, "feature.prometheus.metric-validation-scheme", prometheusLegacyMetricValidationScheme, fmt.Sprintf("Prometheus metric validation scheme to use. Supported values: %q, %q. NOTE: this is an experimental flag and may be removed in future releases.", prometheusLegacyMetricValidationScheme, prometheusUTF8MetricValidationScheme))
 
 	addDeprecatedFlags(cmd)
 	return cmd
 }
 
 type alloyRun struct {
-	inMemoryAddr                 string
-	httpListenAddr               string
-	storagePath                  string
-	minStability                 featuregate.Stability
-	uiPrefix                     string
-	enablePprof                  bool
-	disableReporting             bool
-	clusterEnabled               bool
-	clusterNodeName              string
-	clusterAdvAddr               string
-	clusterJoinAddr              string
-	clusterDiscoverPeers         string
-	clusterAdvInterfaces         []string
-	clusterRejoinInterval        time.Duration
-	clusterMaxJoinPeers          int
-	clusterName                  string
-	clusterEnableTLS             bool
-	clusterTLSCAPath             string
-	clusterTLSCertPath           string
-	clusterTLSKeyPath            string
-	clusterTLSServerName         string
-	configFormat                 string
-	configBypassConversionErrors bool
-	configExtraArgs              string
-	enableCommunityComps         bool
-	disableSupportBundle         bool
+	inMemoryAddr                         string
+	httpListenAddr                       string
+	storagePath                          string
+	minStability                         featuregate.Stability
+	uiPrefix                             string
+	enablePprof                          bool
+	disableReporting                     bool
+	clusterEnabled                       bool
+	clusterNodeName                      string
+	clusterAdvAddr                       string
+	clusterJoinAddr                      string
+	clusterDiscoverPeers                 string
+	clusterAdvInterfaces                 []string
+	clusterRejoinInterval                time.Duration
+	clusterMaxJoinPeers                  int
+	clusterName                          string
+	clusterEnableTLS                     bool
+	clusterTLSCAPath                     string
+	clusterTLSCertPath                   string
+	clusterTLSKeyPath                    string
+	clusterTLSServerName                 string
+	configFormat                         string
+	configBypassConversionErrors         bool
+	configExtraArgs                      string
+	enableCommunityComps                 bool
+	disableSupportBundle                 bool
+	prometheusMetricNameValidationScheme string
 }
 
 func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
@@ -209,6 +220,10 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 	t, err := tracing.New(tracing.DefaultOptions)
 	if err != nil {
 		return fmt.Errorf("building tracer: %w", err)
+	}
+
+	if err := fr.configurePrometheusMetricNameValidationScheme(); err != nil {
+		return err
 	}
 
 	// Set the global tracer provider to catch global traces, but ideally things
@@ -433,6 +448,23 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 			}
 		}
 	}
+}
+
+func (fr *alloyRun) configurePrometheusMetricNameValidationScheme() error {
+	switch fr.prometheusMetricNameValidationScheme {
+	case prometheusLegacyMetricValidationScheme:
+		model.NameValidationScheme = model.LegacyValidation
+	case prometheusUTF8MetricValidationScheme:
+		if err := featuregate.CheckAllowed(
+			featuregate.StabilityExperimental,
+			fr.minStability,
+			"Prometheus utf-8 metric name validation scheme",
+		); err != nil {
+			return err
+		}
+		model.NameValidationScheme = model.UTF8Validation
+	}
+	return nil
 }
 
 // getEnabledComponentsFunc returns a function that gets the current enabled components
