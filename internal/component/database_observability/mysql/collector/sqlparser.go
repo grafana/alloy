@@ -51,7 +51,7 @@ func ExtractTableNames(logger log.Logger, digest string, stmt sqlparser.Statemen
 				case *sqlparser.Subquery:
 					parsedTables = append(parsedTables, ExtractTableNames(logger, digest, exp.Select)...)
 				default:
-					level.Error(logger).Log("msg", "unknown aliased select type", "digest", digest)
+					// ignore anything else
 				}
 			}
 		}
