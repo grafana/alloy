@@ -10,6 +10,10 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Other changes
+
+- Use Go 1.24.0 for builds. (@dehaansa)
+
 v1.7.0-rc.2
 -----------------
 

@@ -8,7 +8,7 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-    - name: Set up Go 1.23
+    - name: Set up Go 1.24
       uses: actions/setup-go@v5
       with:
         go-version-file: go.mod
@@ -22,7 +22,7 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-    - name: Set up Go 1.23
+    - name: Set up Go 1.24
       uses: actions/setup-go@v5
       with:
         go-version-file: go.mod
