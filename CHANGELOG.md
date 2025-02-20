@@ -10,6 +10,10 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+
+v1.7.0-rc.0
+-----------------
+
 ### Breaking changes
 
 - (_Experimental_) In `prometheus.write.queue` changed `parallelism` from attribute to a block to allow for dynamic scaling. (@mattdurham)
