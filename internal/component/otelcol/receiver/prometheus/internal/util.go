@@ -41,7 +41,7 @@ var (
 
 	notUsefulLabelsHistogram = sortString([]string{model.MetricNameLabel, model.InstanceLabel, model.SchemeLabel, model.MetricsPathLabel, model.JobLabel, model.BucketLabel})
 	notUsefulLabelsSummary   = sortString([]string{model.MetricNameLabel, model.InstanceLabel, model.SchemeLabel, model.MetricsPathLabel, model.JobLabel, model.QuantileLabel})
-	notUsefulLabelsOther     = sortString([]string{model.MetricNameLabel, model.InstanceLabel, model.SchemeLabel, model.MetricsPathLabel, model.JobLabel})
+	notUsefulLabelsOther     = sortString([]string{model.MetricNameLabel, model.InstanceLabel, model.SchemeLabel, model.MetricsPathLabel})
 )
 
 func sortString(strs []string) []string {
