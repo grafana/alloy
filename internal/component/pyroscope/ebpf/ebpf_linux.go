@@ -5,22 +5,25 @@ package ebpf
 import (
 	"context"
 	"fmt"
-	"go.opentelemetry.io/ebpf-profiler/pyroscope/reporter"
-	"os"
 	"sync"
 	"time"
 
+	"github.com/elastic/go-freelru"
+	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"go.opentelemetry.io/ebpf-profiler/libpf"
+	"go.opentelemetry.io/ebpf-profiler/pyroscope/dynamicprofiling"
+	"go.opentelemetry.io/ebpf-profiler/pyroscope/reporter"
+	"go.opentelemetry.io/ebpf-profiler/pyroscope/symb/irsymcache"
 
 	"github.com/oklog/run"
 
 	"go.opentelemetry.io/ebpf-profiler/pyroscope/internalshim/controller"
 	"go.opentelemetry.io/ebpf-profiler/pyroscope/internalshim/helpers"
 	"go.opentelemetry.io/ebpf-profiler/pyroscope/sd"
-	"go.opentelemetry.io/ebpf-profiler/pyroscope/symb/cache"
 	"go.opentelemetry.io/ebpf-profiler/vc"
 )
 
@@ -38,7 +41,10 @@ func init() {
 }
 
 func New(opts component.Options, args Arguments) (component.Component, error) {
-	targetFinder, err := sd.NewTargetFinder(os.DirFS("/"), opts.Logger, targetsOptionFromArguments(args))
+	cgroups, err := freelru.NewSynced[libpf.PID, string](args.ContainerIDCacheSize,
+		func(pid libpf.PID) uint32 { return uint32(pid) })
+
+	discovery, err := sd.NewTargetFinder(opts.Logger, cgroups, targetsOptionFromArguments(args))
 	if err != nil {
 		return nil, fmt.Errorf("ebpf target finder create: %w", err)
 	}
@@ -51,13 +57,23 @@ func New(opts component.Options, args Arguments) (component.Component, error) {
 		return nil, err
 	}
 
-	nfs, err := cache.NewFSCache(cfg.PyroscopeSymbCacheSizeBytes, cfg.PyroscopeSymbCachePath, cfg.PyroscopeSymbolizeNativeFrames)
+	tf := irsymcache.NewTableFactory(cfg.PyroscopeSymbolizerTableGSYM)
+	nfs, err := irsymcache.NewFSCache(opts.Logger, tf, irsymcache.Options{
+		Enabled: cfg.PyroscopeSymbolizeNativeFrames,
+		Size:    cfg.PyroscopeSymbCacheSizeBytes,
+		Path:    cfg.PyroscopeSymbCachePath,
+	})
 	if err != nil {
 		return nil, err
 	}
 	cfg.NativeFrameSymbolizer = nfs
+	if cfg.PyroscopeDynamicProfilingPolicy {
+		cfg.Policy = &dynamicprofiling.ServiceDiscoveryTargetsOnlyPolicy{Discovery: discovery}
+	} else {
+		cfg.Policy = dynamicprofiling.AlwaysOnPolicy{}
+	}
 
-	cfg.Reporter, err = reporter.New(opts.Logger, cfg, targetFinder, nfs, &pprofConsumer{fanout: appendable})
+	cfg.Reporter, err = reporter.New(opts.Logger, cgroups, cfg, discovery, nfs, &pprofConsumer{fanout: appendable, logger: opts.Logger})
 	if err != nil {
 		return nil, err
 	}
@@ -67,10 +83,9 @@ func New(opts component.Options, args Arguments) (component.Component, error) {
 		metrics:      ms,
 		appendable:   appendable,
 		args:         args,
-		targetFinder: targetFinder,
+		targetFinder: discovery,
 		argsUpdate:   make(chan Arguments),
 	}
-	res.metrics.targetsActive.Set(float64(len(res.targetFinder.DebugInfo())))
 	return res, nil
 }
 
@@ -124,7 +139,6 @@ func (c *Component) Run(ctx context.Context) error {
 			case newArgs := <-c.argsUpdate:
 				c.args = newArgs
 				c.targetFinder.Update(targetsOptionFromArguments(c.args))
-				c.metrics.targetsActive.Set(float64(len(c.targetFinder.DebugInfo())))
 				c.appendable.UpdateChildren(newArgs.ForwardTo)
 			}
 		}
@@ -147,16 +161,13 @@ func (c *Component) DebugInfo() interface{} {
 }
 
 type DebugInfo struct {
-	Targets interface{} `alloy:"targets,attr,optional"`
 }
 
 func (c *Component) updateDebugInfo() {
 	c.debugInfoLock.Lock()
 	defer c.debugInfoLock.Unlock()
 
-	c.debugInfo = DebugInfo{
-		Targets: c.targetFinder.DebugInfo(),
-	}
+	c.debugInfo = DebugInfo{}
 }
 
 func targetsOptionFromArguments(args Arguments) sd.TargetsOptions {
@@ -165,9 +176,8 @@ func targetsOptionFromArguments(args Arguments) sd.TargetsOptions {
 		targets = append(targets, sd.DiscoveryTarget(t))
 	}
 	return sd.TargetsOptions{
-		Targets:            targets,
-		TargetsOnly:        true,
-		ContainerCacheSize: args.ContainerIDCacheSize,
+		Targets:     targets,
+		TargetsOnly: true,
 	}
 }
 
@@ -202,15 +212,15 @@ func createConfigFromArguments(args Arguments) (*controller.Config, error) {
 
 type pprofConsumer struct {
 	fanout *pyroscope.Fanout
+	logger log.Logger
 }
 
 func (p2 *pprofConsumer) Next(p []reporter.PPROF) {
 	for _, pprof := range p {
 		appender := p2.fanout.Appender()
-		_, ls := pprof.Target.Labels()
-		err := appender.Append(context.Background(), ls, []*pyroscope.RawSample{{RawProfile: pprof.Raw}})
+		err := appender.Append(context.Background(), pprof.Labels, []*pyroscope.RawSample{{RawProfile: pprof.Raw}})
 		if err != nil {
-			level.Error(nil).Log("msg", "pprof write", "err", err)
+			level.Error(p2.logger).Log("msg", "pprof write", "err", err)
 		}
 	}
 }

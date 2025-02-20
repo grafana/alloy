@@ -1,13 +1,23 @@
 
 ===================
-create pprof reporter, take from parca if available, use pprofBuilders otherwise
 
-alloy: create a hidden flag to enable otlp reporter, allow forward_to be optional, but require if pprof is selected
-
-otel: configure fscache (gsym/table)
-
-otel: profiling only subset of processes
-
+fix lint
+fix tests
+add integration test with symbolizer
+otel: nfs unit test
 
 organize alloy CGO build
 
+Create PRs for review
+
+=============== LATER =============
+
+irsymtab cache shutdown
+test tracer shutdown / restart manually
+
+=============== LATER =============
+
+
+table
+    Add extra check for tree-table layout
+    separate addr table and fields table

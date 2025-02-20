@@ -17,7 +17,7 @@ type Arguments struct {
 	PythonEnabled        bool                   `alloy:"python_enabled,attr,optional"`
 	PIDMapSize           int                    `alloy:"pid_map_size,attr,optional"`
 	Demangle             string                 `alloy:"demangle,attr,optional"`
-	ContainerIDCacheSize int                    `alloy:"container_id_cache_size,attr,optional"`
+	ContainerIDCacheSize uint32                 `alloy:"container_id_cache_size,attr,optional"`
 	DeprecatedArguments  DeprecatedArguments    `alloy:",squash"`
 }
 
