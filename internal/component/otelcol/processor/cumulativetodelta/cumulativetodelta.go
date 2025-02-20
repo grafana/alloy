@@ -4,6 +4,7 @@ package cumulativetodelta
 
 import (
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/grafana/alloy/internal/component"
@@ -14,7 +15,6 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/cumulativetodeltaprocessor"
 	otelcomponent "go.opentelemetry.io/collector/component"
-	otelextension "go.opentelemetry.io/collector/extension"
 	"go.opentelemetry.io/collector/pipeline"
 )
 
@@ -90,6 +90,18 @@ func (args *Arguments) Validate() error {
 		return fmt.Errorf("match_type must be one of %q and %q", "strict", "regexp")
 	}
 
+	for _, metricType := range args.Include.MetricTypes {
+		if !slices.Contains([]string{"sum", "histogram"}, metricType) {
+			return fmt.Errorf("metric_types must be one of %q and %q", "sum", "histogram")
+		}
+	}
+
+	for _, metricType := range args.Exclude.MetricTypes {
+		if !slices.Contains([]string{"sum", "histogram"}, metricType) {
+			return fmt.Errorf("metric_types must be one of %q and %q", "sum", "histogram")
+		}
+	}
+
 	return nil
 }
 
@@ -125,7 +137,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 }
 
 // Extensions implements processor.Arguments.
-func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
+func (args Arguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 
@@ -145,21 +157,27 @@ func (args Arguments) DebugMetricsConfig() otelcolCfg.DebugMetricsArguments {
 }
 
 type MatchArgs struct {
-	Metrics   []string `alloy:"metrics,attr,optional"`
-	MatchType string   `alloy:"match_type,attr,optional"`
+	Metrics     []string `alloy:"metrics,attr,optional"`
+	MatchType   string   `alloy:"match_type,attr,optional"`
+	MetricTypes []string `alloy:"metric_types,attr,optional"`
 }
 
 func (matchArgs MatchArgs) Convert() (*cumulativetodeltaprocessor.MatchMetrics, error) {
 	var result cumulativetodeltaprocessor.MatchMetrics
 
-	matchMetrics, err := ConvertMatchMetrics(matchArgs.Metrics, matchArgs.MatchType)
+	var raw = make(map[string]interface{})
 
-	if err != nil {
-		return nil, err
+	if len(matchArgs.Metrics) > 0 {
+		raw["metrics"] = matchArgs.Metrics
+	}
+	if matchArgs.MatchType != "" {
+		raw["match_type"] = matchArgs.MatchType
+	}
+	if len(matchArgs.MetricTypes) > 0 {
+		raw["metric_types"] = matchArgs.MetricTypes
 	}
 
-	err = mapstructure.Decode(matchMetrics, &result)
-	if err != nil {
+	if err := mapstructure.Decode(raw, &result); err != nil {
 		return nil, err
 	}
 
@@ -191,16 +209,4 @@ func ConvertInitialValue(initialValue string) (map[string]interface{}, error) {
 			"unknown initial_value %q, allowed values are %q, %q, and %q",
 			initialValue, InitialValueAuto, InitialValueKeep, InitialValueDrop)
 	}
-}
-
-func ConvertMatchMetrics(metrics []string, matchType string) (map[string]interface{}, error) {
-	var result = make(map[string]interface{})
-
-	if len(metrics) > 0 {
-		result["metrics"] = metrics
-	}
-	if matchType != "" {
-		result["match_type"] = matchType
-	}
-	return result, nil
 }

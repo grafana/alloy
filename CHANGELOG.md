@@ -10,11 +10,31 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+v1.7.0-rc.2
+-----------------
+
+### Bugfixes
+
+- Fix an issue where Prometheus metric name validation scheme was set by default to UTF-8. It is now set back to the
+  previous "legacy" scheme. An experimental flag `--feature.prometheus.metric-validation-scheme` can be used to switch 
+  it to `utf-8` to experiment with UTF-8 support.
+
+v1.7.0-rc.1
+-----------------
+
 ### Breaking changes
 
 - (_Experimental_) In `prometheus.write.queue` changed `parallelism` from attribute to a block to allow for dynamic scaling. (@mattdurham)
 
+- Remove `tls_basic_auth_config_path` attribute from `prometheus.exporter.mongodb` configuration as it does not configure TLS client
+  behavior as previously documented.
+
+- Remove `encoding` and `encoding_file_ext` from `otelcol.exporter.awss3` component as it was not wired in to the otel component and 
+  Alloy does not currently integrate the upstream encoding extensions that this would utilize.
+
 ### Features
+
+- Add a `otelcol.receiver.tcplog` component to receive OpenTelemetry logs over a TCP connection. (@nosammai)
 
 - (_Public preview_) Add `otelcol.receiver.filelog` component to read otel log entries from files (@dehaansa)
   
@@ -29,9 +49,22 @@ Main (unreleased)
 
 ### Enhancements
 
+- Upgrade to OpenTelemetry Collector v0.119.0 (@dehaansa):
+  - `otelcol.processor.resourcedetection`: additional configuration for the `ec2` detector to configure retry behavior 
+  - `otelcol.processor.resourcedetection`: additional configuration for the `gcp` detector to collect Managed Instance Group attributes
+  - `otelcol.processor.resourcedetection`: additional configuration for the `eks` detector to collect cloud account attributes
+  - `otelcol.processor.resourcedetection`: add `kubeadm` detector to collect local cluster attributes
+  - `otelcol.processor.cumulativetodelta`: add `metric_types` filtering options
+  - `otelcol.exporter.awss3`: support configuring sending_queue behavior 
+  - `otelcol.exporter.otlphttp`: support configuring `compression_params`, which currently only includes `level`
+  - `configtls`: opentelemetry components with tls config now support specifying TLS curve preferences
+  - `sending_queue`: opentelemetry exporters with a `sending_queue` can now configure the queue to be `blocking`
+
 - Add `go_table_fallback` arg to `pyroscope.ebpf` (@korniltsev)
 
 - Memory optimizations in `pyroscope.scrape` (@korniltsev)
+
+- Do not drop `__meta` labels in `pyroscope.scrape`. (@korniltsev)
 
 - Add the possibility to export span events as logs in `otelcol.connector.spanlogs`. (@steve-hb)
 
@@ -43,6 +76,7 @@ Main (unreleased)
   - `query_sample`: capture schema name for query samples (@cristiangreco)
   - `query_sample`: fix error handling during result set iteration (@cristiangreco)
   - `query_sample`: improve parsing of truncated queries (@cristiangreco)
+  - `query_sample`: split out sql parsing logic to a separate file (@cristiangreco)
   - `schema_table`: add table columns parsing (@cristiagreco)
   - `schema_table`: correctly quote schema and table name in SHOW CREATE (@cristiangreco)
   - `schema_table`: fix handling of view table types when detecting schema (@matthewnolf)
@@ -57,9 +91,11 @@ Main (unreleased)
 
 - Ensure consistent service_name label handling in `pyroscope.receive_http` to match Pyroscope's behavior. (@marcsanmi)
 
-- Improved memory and CPU performance of Prometheus pipelines by changing the underlying implementation of targets (@thampiotr)  
+- Improved memory and CPU performance of Prometheus pipelines by changing the underlying implementation of targets (@thampiotr)
 
 - Add `config_merge_strategy` in `prometheus.exporter.snmp` to optionally merge custom snmp config with embedded config instead of replacing. Useful for providing SNMP auths. (@v-zhuravlev)
+
+- Upgrade `beyla.ebpf` to v2.0.4. The full list of changes can be found in the [Beyla release notes](https://github.com/grafana/beyla/releases/tag/v2.0.0). (@marctc)
 
 ### Bugfixes
 
@@ -76,6 +112,8 @@ Main (unreleased)
 - Fixed an issue where `loki.process` would sometimes output live debugging entries out-of-order (@thampiotr)
 
 - Fixed a bug where components could be evaluated concurrently without the full context during a config reload (@wildum)
+
+- Fixed locks that wouldn't be released in the remotecfg service if some errors occurred during the configuration reload (@spartan0x117)
 
 ### Other changes
 
