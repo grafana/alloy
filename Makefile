@@ -280,8 +280,11 @@ drone: generate-drone
 # Alloy binary
 .PHONY: generate-beyla
 generate-beyla:
-	@go mod vendor
-	@GOOS=$(GOHOSTOS) GOARCH=$(GOHOSTARCH) go generate vendor/github.com/grafana/beyla/v2/bpf/build_ebpf.go > /dev/null
+	echo current dir is
+	pwd
+	ls -ld `pwd`
+	go mod vendor
+	GOOS=$(GOHOSTOS) GOARCH=$(GOHOSTARCH) go generate vendor/github.com/grafana/beyla/v2/bpf/build_ebpf.go
 
 .PHONY: clean
 clean: clean-dist clean-build-container-cache
