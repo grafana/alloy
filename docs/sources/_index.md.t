@@ -63,10 +63,12 @@ For example, you may initially only need application observability, but you then
 Many organizations manage and configure multiple collectors to address these challenges, introducing more complexity and potential errors in their obervability strategy.
 
 All signals, whether application, infrastructure, or both.
+
 : {{< param "FULL_PRODUCT_NAME" >}} has native pipelines for leading telemetry signals, such as Prometheus and OpenTelemetry, and databases such as Loki and Pyroscope.
 This permits logs, metrics, traces, and even mature support for profiling.
 
 Enterprise strength observability.
+
 : {{< param "FULL_PRODUCT_NAME" >}} improves reliability and provides advanced features for Enterprise needs, such as clusters of fleets and balancing workloads.
 Grafana [Fleet Management](https://grafana.com/docs/grafana-cloud/send-data/fleet-management/) helps you manage multiple {{< param "FULL_PRODUCT_NAME" >}} deployments at scale.
 
