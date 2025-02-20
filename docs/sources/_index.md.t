@@ -38,7 +38,7 @@ cards:
       description: Learn how to migrate to Alloy from Grafana Agent Operator, Prometheus, Promtail, Grafana Agent Static, or Grafana Agent Flow.
     - title: Collect OpenTelemetry data
       href: ./collect/opentelemetry-data/
-      description: You can configure Alloy to collect OpenTelemetry-compatible data and forward it to any OpenTelemetry-compatible endpoint. Learn how to configure OpenTelemetry data delivery, configure batching, and receive OpenTelemetry data over OTLP.
+      description: Learn how to configure OpenTelemetry data delivery, configure batching, and receive OpenTelemetry data over OTLP.
     - title: Concepts
       href: ./get-started/
       description: Learn about components, modules, clustering, and the Alloy configuration syntax.
