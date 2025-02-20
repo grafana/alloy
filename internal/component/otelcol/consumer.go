@@ -12,6 +12,11 @@ type Consumer interface {
 	otelconsumer.Logs
 }
 
+// ComponentMetadata can be implemented by, for example, consumers exported by components, to provide the ID of the component which is exporting given consumer. This is used for Live Graph / Live Debugging features.
+type ComponentMetadata interface {
+	ComponentID() string
+}
+
 // ConsumerArguments is a common Arguments type for Alloy components which can
 // send data to otelcol consumers.
 //
