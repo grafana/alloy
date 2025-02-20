@@ -55,7 +55,7 @@ cards:
 
 {{< figure src="/media/docs/alloy/flow-diagram-small-alloy.png" alt="Alloy flow diagram" >}}
 
-*Collect all your telemetry with one product.** 
+**Collect all your telemetry with one product.** 
 
 Choosing the right tools to collect, process, and export telemetry data can be a confusing and costly experience.
 The broad range of telemetry you need to process and the collectors you choose can vary widely depending on your observability goals.
