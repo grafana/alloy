@@ -3,10 +3,12 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus
 aliases:
   - ../prometheus.exporter.self/ # /docs/alloy/latest/reference/components/prometheus.exporter.self/
 description: Learn about prometheus.exporter.self
+labels:
+  stage: general-availability
 title: prometheus.exporter.self
 ---
 
-# prometheus.exporter.self
+# `prometheus.exporter.self`
 
 The `prometheus.exporter.self` component collects and exposes metrics about {{< param "PRODUCT_NAME" >}} itself.
 
@@ -19,7 +21,11 @@ prometheus.exporter.self "alloy" {
 
 ## Arguments
 
-`prometheus.exporter.self` accepts no arguments.
+The `prometheus.exporter.self` doesn't support any arguments.
+
+## Blocks
+
+The `prometheus.exporter.self` component doesn't support any blocks.
 
 ## Exported fields
 
@@ -27,23 +33,19 @@ prometheus.exporter.self "alloy" {
 
 ## Component health
 
-`prometheus.exporter.self` is only reported as unhealthy if given
-an invalid configuration.
+`prometheus.exporter.self` is only reported as unhealthy if given an invalid configuration.
 
 ## Debug information
 
-`prometheus.exporter.self` doesn't expose any component-specific
-debug information.
+`prometheus.exporter.self` doesn't expose any component-specific debug information.
 
 ## Debug metrics
 
-`prometheus.exporter.self` doesn't expose any component-specific
-debug metrics.
+`prometheus.exporter.self` doesn't expose any component-specific debug metrics.
 
 ## Example
 
-This example uses a [`prometheus.scrape` component][scrape] to collect metrics
-from `prometheus.exporter.self`:
+The following example uses a [`prometheus.scrape` component][scrape] to collect metrics from `prometheus.exporter.self`:
 
 ```alloy
 prometheus.exporter.self "example" {}
@@ -56,19 +58,21 @@ prometheus.scrape "demo" {
 
 prometheus.remote_write "demo" {
   endpoint {
-    url = PROMETHEUS_REMOTE_WRITE_URL
+    url = "<PROMETHEUS_REMOTE_WRITE_URL>"
 
     basic_auth {
-      username = USERNAME
-      password = PASSWORD
+      username = "<USERNAME>"
+      password = "<PASSWORD>"
     }
   }
 }
 ```
+
 Replace the following:
-  - `PROMETHEUS_REMOTE_WRITE_URL`: The URL of the Prometheus remote_write-compatible server to send metrics to.
-  - `USERNAME`: The username to use for authentication to the remote_write API.
-  - `PASSWORD`: The password to use for authentication to the remote_write API.
+
+* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
+* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 [scrape]: ../prometheus.scrape/
 
