@@ -10,6 +10,9 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+v1.7.0-rc.3
+-----------------
+
 ### Bugfixes
 
 - Fixed a bug where `loki.source.awsfirehose` and `loki.source.gcplog` could
