@@ -35,7 +35,7 @@ You can use the following arguments with `prometheus.exporter.mssql`:
 The [`sql_exporter` examples](https://github.com/burningalchemist/sql_exporter/blob/master/examples/azure-sql-mi/sql_exporter.yml#L21) show the format of the `connection_string` argument:
 
 ```text
-sqlserver://USERNAME_HERE:PASSWORD_HERE@SQLMI_HERE_ENDPOINT.database.windows.net:1433?encrypt=true&hostNameInCertificate=%2A.SQL_MI_DOMAIN_HERE.database.windows.net&trustservercertificate=true
+sqlserver://<USERNAME>:<PASSWORD>@<SQLMI_ENDPOINT>.database.windows.net:1433?encrypt=true&hostNameInCertificate=%2A.<SQL_MI_DOMAIN>.database.windows.net&trustservercertificate=true
 ```
 
 If specified, the `query_config` argument must be a YAML document as string defining which MSSQL queries map to custom Prometheus metrics.
@@ -63,7 +63,7 @@ The _`<USERNAME>`_ and _`<PASSWORD>`_ then corresponds to a Windows username and
 The Windows domain may need to be prefixed to the username with a trailing `\`.
 
 ```text
-sqlserver://<DOMAIN\USERNAME>:<PASSWORD>@<HOST>:<PORT>?authenticator=ntlm
+sqlserver://<DOMAIN>\<USERNAME>:<PASSWORD>@<HOST>:<PORT>?authenticator=ntlm
 ```
 
 ## Blocks

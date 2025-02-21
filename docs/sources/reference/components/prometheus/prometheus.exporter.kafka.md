@@ -22,8 +22,7 @@ prometheus.exporter.kafka "<LABEL>" {
 
 ## Arguments
 
-You can use the following arguments to configure the exporter's behavior.
-Omitted fields take their default values.
+You can use the following arguments with `prometheus.exporter.kafka`:
 
 | Name                          | Type            | Description                                                                                                                                                                            | Default | Required |
 | ----------------------------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
