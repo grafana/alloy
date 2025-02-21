@@ -299,7 +299,9 @@ You can configure the `custom_namespace` block multiple times to scrape metrics 
 
 <span class="badge docs-labels__stage docs-labels__item">Required</span>
 
-Represents an AWS Metrics to scrape.
+Represents an AWS Metric to scrape.
+
+The `metric` block may be specified multiple times to define multiple target metrics.
 Refer to the [View available metrics](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/viewing_metrics_with_cloudwatch.html) topic in the Amazon CloudWatch documentation for detailed metrics information.
 
 | Name                       | Type           | Description                                                                | Default                                                                                                            | Required |
