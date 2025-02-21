@@ -14,6 +14,12 @@ Main (unreleased)
 
 - Have `loki.echo` log the `entry_timestamp` and `structured_metadata` for any loki entries received (@dehaansa)
 
+- Update mysqld_exporter to v0.17.1, most notable changes: (@cristiangreco)
+  - Add perf_schema quantile columns to collector
+  - Fix database quoting problem in collector 'info_schema.tables'
+  - Use SUM_LOCK_TIME and SUM_CPU_TIME with mysql >= 8.0.28
+  - Fix query on perf_schema.events_statements_summary_by_digest
+
 v1.7.0
 -----------------
 
