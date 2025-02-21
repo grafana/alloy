@@ -15,7 +15,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/prometheus/common/model"
 
-	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/service/logging/level"
 
 	"golang.org/x/crypto/sha3"
 )

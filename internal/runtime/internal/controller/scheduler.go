@@ -7,7 +7,7 @@ import (
 
 	"github.com/go-kit/log"
 
-	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/service/logging/level"
 )
 
 // RunnableNode is any BlockNode which can also be run.

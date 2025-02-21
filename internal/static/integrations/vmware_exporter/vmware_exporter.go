@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/runtime/logging"
+	"github.com/grafana/alloy/internal/service/logging"
 	"github.com/grafana/alloy/internal/static/integrations"
 	"github.com/grafana/vmware_exporter/vsphere"
 	config_util "github.com/prometheus/common/config"

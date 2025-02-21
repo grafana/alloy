@@ -15,7 +15,7 @@ import (
 	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/loki/v3/clients/pkg/promtail/targets/target"
 
-	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/service/logging/level"
 )
 
 var defaultBackOff = backoff.Config{

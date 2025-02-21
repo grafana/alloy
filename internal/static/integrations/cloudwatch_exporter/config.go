@@ -4,8 +4,9 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"time"
+
+	"github.com/grafana/alloy/internal/service/logging/level"
 
 	"github.com/go-kit/log"
 	yaceConf "github.com/nerdswords/yet-another-cloudwatch-exporter/pkg/config"

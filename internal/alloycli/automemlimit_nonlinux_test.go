@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/KimMachineGun/automemlimit/memlimit"
-	"github.com/grafana/alloy/internal/runtime/logging"
+	"github.com/grafana/alloy/internal/service/logging"
 	"github.com/stretchr/testify/require"
 )
 
