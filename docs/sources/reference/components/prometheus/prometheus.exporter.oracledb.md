@@ -16,8 +16,8 @@ The `prometheus.exporter.oracledb` component embeds
 ## Usage
 
 ```alloy
-prometheus.exporter.oracledb "LABEL" {
-    connection_string = CONNECTION_STRING
+prometheus.exporter.oracledb "<LABEL>" {
+    connection_string = "<CONNECTION_STRING>"
 }
 ```
 

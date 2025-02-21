@@ -42,8 +42,8 @@ Since the exporter gathers all of its data from [GCP monitoring APIs](https://cl
 ```alloy
 prometheus.exporter.gcp "pubsub" {
         project_ids = [
-                "foo",
-                "bar",
+                "<PROJECT_ID_1>",
+                "<PROJECT_ID_2>",
         ]
 
         metrics_prefixes = [

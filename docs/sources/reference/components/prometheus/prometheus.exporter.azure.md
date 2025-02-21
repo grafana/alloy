@@ -45,8 +45,8 @@ The account used by {{< param "PRODUCT_NAME" >}} needs:
 ```alloy
 prometheus.exporter.azure "<LABEL>" {
         subscriptions = [
-                SUB_ID_1,
-                SUB_ID_2,
+                <SUB_ID_1>,
+                <SUB_ID_2>,
                 ...
         ]
 

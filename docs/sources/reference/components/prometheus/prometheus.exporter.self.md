@@ -15,7 +15,7 @@ The `prometheus.exporter.self` component collects and exposes metrics about {{< 
 ## Usage
 
 ```alloy
-prometheus.exporter.self "alloy" {
+prometheus.exporter.self "<LABEL>" {
 }
 ```
 

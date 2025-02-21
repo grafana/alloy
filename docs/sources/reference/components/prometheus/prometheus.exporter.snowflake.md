@@ -20,10 +20,10 @@ You can use the `prometheus.exporter.snowflake` component with password or RSA a
 
 ```alloy
 prometheus.exporter.snowflake "LABEL" {
-    account_name = <SNOWFLAKE_ACCOUNT_NAME>
-    username =     <USERNAME>
-    password =     <PASSWORD>
-    warehouse =    <VIRTUAL_WAREHOUSE>
+    account_name = "<SNOWFLAKE_ACCOUNT_NAME>"
+    username =     "<USERNAME>"
+    password =     "<PASSWORD>"
+    warehouse =    "<VIRTUAL_WAREHOUSE>"
 }
 ```
 
@@ -31,11 +31,11 @@ prometheus.exporter.snowflake "LABEL" {
 
 ```alloy
 prometheus.exporter.snowflake "LABEL" {
-    account_name =         <SNOWFLAKE_ACCOUNT_NAME>
-    username =             <USERNAME>
-    private_key_path =     <RSA_PRIVATE_KEY_PATH>
-    private_key_password = <RSA_PRIVATE_KEY_PASSWORD>
-    warehouse =            <VIRTUAL_WAREHOUSE>
+    account_name =         "<SNOWFLAKE_ACCOUNT_NAME>"
+    username =             "<USERNAME>"
+    private_key_path =     "<RSA_PRIVATE_KEY_PATH>"
+    private_key_password = "<RSA_PRIVATE_KEY_PASSWORD>"
+    warehouse =            "<VIRTUAL_WAREHOUSE>"
 }
 ```
 

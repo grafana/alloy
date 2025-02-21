@@ -18,7 +18,7 @@ You can specify multiple `prometheus.exporter.postgres` components by giving the
 
 ```alloy
 prometheus.exporter.postgres "<LABEL>" {
-    data_source_names = <DATA_SOURCE_NAMES_LIST>
+    data_source_names = "<DATA_SOURCE_NAMES_LIST>"
 }
 ```
 

@@ -18,7 +18,7 @@ The `prometheus.exporter.catchpoint` component uses the [`catchpoint_exporter`](
 
 ```alloy
 prometheus.exporter.catchpoint "<LABEL>" {
-    port              = PORT
+    port              = "<PORT>"
     verbose_logging   = <VERBOSE_LOGGING>
     webhook_path      = "<WEBHOOK_PATH>"
 }
