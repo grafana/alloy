@@ -14,6 +14,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/goleak"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -57,6 +58,8 @@ func (r *receiver) run(ctx context.Context) {
 }
 
 func TestComponentFromNestedController(t *testing.T) {
+	goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
+
 	opts := component.Options{
 		ID:            "foo/loki.source.awsfirehose.default",
 		Logger:        util.TestAlloyLogger(t),
