@@ -155,7 +155,7 @@ func (c *Component) Update(args component.Arguments) error {
 		c.rbs = newRelabels
 	}
 
-	jobName := strings.Replace(c.opts.ID, ".", "_", -1)
+	jobName := strings.Replace(strings.Replace(c.opts.ID, ".", "_", -1), "/", "_", -1)
 
 	registry := prometheus.NewRegistry()
 	c.serverMetrics.SetCollector(registry)

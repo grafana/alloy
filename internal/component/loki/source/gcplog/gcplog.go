@@ -132,7 +132,7 @@ func (c *Component) Update(args component.Arguments) error {
 		}
 	}
 	entryHandler := loki.NewEntryHandler(c.handler.Chan(), func() {})
-	jobName := strings.Replace(c.opts.ID, ".", "_", -1)
+	jobName := strings.Replace(strings.Replace(c.opts.ID, ".", "_", -1), "/", "_", -1)
 
 	if newArgs.PullTarget != nil {
 		// TODO(@tpaschalis) Are there any options from "google.golang.org/api/option"
