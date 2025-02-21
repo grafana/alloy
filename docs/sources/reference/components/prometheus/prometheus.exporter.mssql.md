@@ -23,7 +23,6 @@ prometheus.exporter.mssql "<LABEL>" {
 ## Arguments
 
 You can use the following arguments with `prometheus.exporter.mssql`:
-Omitted fields take their default values.
 
 | Name                   | Type       | Description                                                         | Default | Required |
 | ---------------------- | ---------- | ------------------------------------------------------------------- | ------- | -------- |

@@ -10,7 +10,7 @@ title: prometheus.exporter.cadvisor
 
 # `prometheus.exporter.cadvisor`
 
-The `prometheus.exporter.cadvisor` component exposes container metrics using [cAdvisor](https://github.com/google/cadvisor).
+The `prometheus.exporter.cadvisor` component collects container metrics using [cAdvisor](https://github.com/google/cadvisor).
 
 ## Usage
 
@@ -46,7 +46,7 @@ You can use the following arguments with `prometheus.exporter.cadvisor`:
 
 For `allowlisted_container_labels` to take effect, `store_container_labels` must be set to `false`.
 
-`env_metadata_allowlist` is only supported for containerd and Docker run times.
+`env_metadata_allowlist` is only supported for containerd and Docker runtimes.
 
 If `perf_events_config` is not set, measurement of `perf` events is disabled.
 

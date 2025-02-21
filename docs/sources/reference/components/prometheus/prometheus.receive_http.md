@@ -82,7 +82,7 @@ The metrics include labels such as `status_code` where relevant, which can be us
 
 ### Receive metrics over HTTP
 
-The following example creates a `prometheus.receive_http` component which starts an HTTP server listening on `0.0.0.0` and port `9999`.
+The following example creates a `prometheus.receive_http` component which starts an HTTP server listening on port `9999` on all network interfaces.
 The server receives metrics and forwards them to a `prometheus.remote_write` component which writes these metrics to the specified HTTP endpoint.
 
 ```alloy

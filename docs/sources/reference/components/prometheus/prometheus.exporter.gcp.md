@@ -20,7 +20,7 @@ The following example shows a load balancing metric:
 
 {{< figure src="/media/docs/alloy/gcp-exporter-config-metric-example.png" alt="Example GCP exporter configuration metric" >}}
 
-Th metric has the following attributes:
+The metric has the following attributes:
 
 * `monitored_resource` = `https_lb_rule`
 * `metric_type_prefix` = `loadbalancing.googleapis.com/`

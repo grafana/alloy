@@ -10,7 +10,7 @@ title: prometheus.exporter.consul
 
 # `prometheus.exporter.consul`
 
-The `prometheus.exporter.consul` component embeds the [`consul_exporter`](https://github.com/prometheus/consul_exporter) for collecting metrics from a Consul install.
+The `prometheus.exporter.consul` component embeds the [`consul_exporter`](https://github.com/prometheus/consul_exporter) for collecting metrics from a Consul installation.
 
 ## Usage
 
