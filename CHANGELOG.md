@@ -14,6 +14,14 @@ Main (unreleased)
 
 - Use Go 1.24.0 for builds. (@dehaansa)
 
+v1.7.0-rc.3
+-----------------
+
+### Bugfixes
+
+- Fixed a bug where `loki.source.awsfirehose` and `loki.source.gcplog` could
+  not be used from within a module. (@tpaschalis)
+
 v1.7.0-rc.2
 -----------------
 
