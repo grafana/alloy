@@ -235,7 +235,7 @@ The WAL is located inside a component-specific directory relative to the storage
 Refer to the [`run` documentation][run] for information about how to change the storage path.
 
 The `truncate_frequency` argument configures how often to clean up the WAL.
-Every time the `truncate_frequency` period elapses, the lower two-thirds of data is removed from the WAL and is no available for sending.
+Every time the `truncate_frequency` period elapses, the lower two-thirds of data is removed from the WAL and is no longer available for sending.
 
 When a WAL clean-up starts, the lowest successfully sent timestamp is used to determine how much data is safe to remove from the WAL.
 The `min_keepalive_time` and `max_keepalive_time` control the permitted age range of data in the WAL.
