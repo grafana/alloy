@@ -602,6 +602,130 @@ func runBenchmarks(b *testing.B, config string, percentageSecrets int, secretNam
 	}
 }
 
+var sampleFuzzLogLines = []string{
+	`key=value1,value2 log=fmt test=1 secret=password`,
+	`{"key":["value1","value2"],"log":"fmt","test":1,"secret":"password"}`,
+	`1970-01-01 00:00:00 pattern value1,value2 1 secret`,
+}
+
+func FuzzProcessEntry(f *testing.F) {
+	for _, line := range sampleFuzzLogLines {
+		f.Add(line)
+	}
+	for _, testLog := range testLogs {
+		f.Add(testLog.log)
+	}
+
+	comps := make([]*Component, 0, len(testConfigs))
+	opts := component.Options{
+		Logger:         util.TestLogger(f),
+		OnStateChange:  func(e component.Exports) {},
+		GetServiceData: getServiceData,
+	}
+	ch1 := loki.NewLogsReceiver()
+
+	// Create components
+	for _, config := range testConfigs {
+		var args Arguments
+		require.NoError(f, syntax.Unmarshal([]byte(config), &args))
+		if args.GitleaksConfig != "" {
+			continue // Skip the configs using a custom gitleaks config file
+		}
+
+		args.ForwardTo = []loki.LogsReceiver{ch1}
+		c, err := New(opts, args)
+		require.NoError(f, err)
+		comps = append(comps, c)
+	}
+
+	f.Fuzz(func(t *testing.T, log string) {
+		for _, c := range comps {
+			entry := loki.Entry{Labels: model.LabelSet{}, Entry: logproto.Entry{Timestamp: time.Now(), Line: log}}
+			c.processEntry(entry)
+		}
+	})
+}
+
+func FuzzConfig(f *testing.F) {
+	for _, testLog := range testLogs {
+		f.Add("", false, uint(0), "", "", testLog.log)                               // zero values
+		f.Add("REDACTED", true, uint(4), "aws,gcp", "abc.*&.*foobar.*", testLog.log) // sane values
+	}
+	opts := component.Options{
+		Logger:         util.TestLogger(f),
+		OnStateChange:  func(e component.Exports) {},
+		GetServiceData: getServiceData,
+	}
+	ch1 := loki.NewLogsReceiver()
+
+	f.Fuzz(func(t *testing.T, redact string, generic bool, partial uint, types string, allow string, log string) {
+		args := Arguments{
+			ForwardTo:      []loki.LogsReceiver{ch1}, // not fuzzed
+			Types:          strings.Split(types, ","),
+			RedactWith:     redact,
+			IncludeGeneric: generic,
+			AllowList:      strings.Split(allow, "&"), // a character that has no special meaning in go regexp and doesn't appear in the gitleaks regexes
+			PartialMask:    partial,
+			GitleaksConfig: "", // not fuzzed in this test
+		}
+		c, err := New(opts, args)
+		if err != nil {
+			// ignore regex parsing errors
+			if strings.HasPrefix(err.Error(), "error parsing regexp") {
+				return
+			}
+			t.Errorf("error configuring component: %v", err)
+		}
+
+		entry := loki.Entry{Labels: model.LabelSet{}, Entry: logproto.Entry{Timestamp: time.Now(), Line: log}}
+		c.processEntry(entry)
+	})
+}
+
+func FuzzGitleaksConfig(f *testing.F) {
+	for _, testConf := range testConfigs {
+		for _, testGitleaksConf := range customGitleaksConfig {
+			for _, testLog := range testLogs {
+				f.Add(testConf, testGitleaksConf, testLog.log)
+			}
+		}
+	}
+	opts := component.Options{
+		Logger:         util.TestLogger(f),
+		OnStateChange:  func(e component.Exports) {},
+		GetServiceData: getServiceData,
+	}
+	ch1 := loki.NewLogsReceiver()
+
+	f.Fuzz(func(t *testing.T, config string, gitleaksConfig string, log string) {
+		var args Arguments
+		err := syntax.Unmarshal([]byte(config), &args)
+		if err != nil {
+			// ignore parsing errors, as we aren't fuzz testing the Alloy config parser
+			return
+		}
+		args.GitleaksConfig = createTempGitleaksConfig(t, gitleaksConfig)
+		defer deleteTempGitLeaksConfig(t, args.GitleaksConfig)
+
+		args.ForwardTo = []loki.LogsReceiver{ch1}
+		c, err := New(opts, args)
+		if err != nil {
+			// ignore regex parsing errors - out of scope
+			if strings.HasPrefix(err.Error(), "error parsing regexp") {
+				return
+			}
+			// ignore toml parsing errors - out of scope
+			if strings.HasPrefix(err.Error(), "toml:") {
+				return
+			}
+			t.Errorf("error configuring component: %v", err)
+		}
+
+		entry := loki.Entry{Labels: model.LabelSet{}, Entry: logproto.Entry{Timestamp: time.Now(), Line: log}}
+		c.processEntry(entry)
+	})
+}
+
 func getServiceData(name string) (interface{}, error) {
 	switch name {
 	case livedebugging.ServiceName:
