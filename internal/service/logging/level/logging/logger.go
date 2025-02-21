@@ -48,9 +48,6 @@ func New(w io.Writer, o Options) (*Logger, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err = l.Update(o); err != nil {
-		return nil, err
-	}
 
 	return l, nil
 }
@@ -93,49 +90,6 @@ func NewDeferred(w io.Writer) (*Logger, error) {
 // Handler returns a [slog.Handler]. The returned Handler remains valid if l is
 // updated.
 func (l *Logger) Handler() slog.Handler { return l.deferredSlog }
-
-// Update re-configures the options used for the logger.
-func (l *Logger) Update(o Options) error {
-	l.bufferMut.Lock()
-	defer l.bufferMut.Unlock()
-
-	switch o.Format {
-	case FormatLogfmt, FormatJSON:
-		l.hasLogFormat = true
-	default:
-		return fmt.Errorf("unrecognized log format %q", o.Format)
-	}
-
-	l.level.Set(slogLevel(o.Level).Level())
-	l.format.Set(o.Format)
-
-	l.writer.SetInnerWriter(l.inner)
-	if len(o.WriteTo) > 0 {
-		l.writer.SetLokiWriter(&lokiWriter{o.WriteTo})
-	}
-
-	// Build all our deferred handlers
-	if l.deferredSlog != nil {
-		l.deferredSlog.buildHandlers(nil)
-	}
-	// Print out the buffered logs since we determined the log format already
-	for _, bufferedLogChunk := range l.buffer {
-		if len(bufferedLogChunk.kvps) > 0 {
-			// the buffered logs are currently only sent to the standard output
-			// because the components with the receivers are not running yet
-			slogadapter.GoKit(l.handler).Log(bufferedLogChunk.kvps...)
-		} else {
-			// We now can check to see if if our buffered log is at the right level.
-			if bufferedLogChunk.handler.Enabled(context.Background(), bufferedLogChunk.record.Level) {
-				// These will always be valid due to the build handlers call above.
-				bufferedLogChunk.handler.Handle(context.Background(), bufferedLogChunk.record)
-			}
-		}
-	}
-	l.buffer = nil
-
-	return nil
-}
 
 func (l *Logger) SetTemporaryWriter(w io.Writer) {
 	l.writer.SetTemporaryWriter(w)

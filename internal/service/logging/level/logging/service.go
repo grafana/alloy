@@ -4,7 +4,7 @@ package logging
 import (
 	"context"
 	"fmt"
-	"os"
+	"io"
 	"sync"
 
 	"github.com/grafana/alloy/internal/featuregate"
@@ -24,9 +24,9 @@ type Service struct {
 
 var _ service.Service = (*Service)(nil)
 
-func NewService() (*Service, error) {
+func NewService(w io.Writer) (*Service, error) {
 	// Buffer logs until log format has been determined
-	l, err := NewDeferred(os.Stderr)
+	l, err := NewDeferred(w)
 	if err != nil {
 		return nil, fmt.Errorf("building logger: %w", err)
 	}

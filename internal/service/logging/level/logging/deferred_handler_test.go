@@ -15,13 +15,15 @@ import (
 
 func TestDefferredSlogTester(t *testing.T) {
 	buf := &bytes.Buffer{}
+	var s *Service
 	var l *Logger
+
 	results := func(t *testing.T) map[string]any {
 		// Nothing has been written to the byte stream, it only exists in the internal logger buffer
-		// We need to call l.Update to flush it to the byte stream.
+		// We need to call s.Update to flush it to the byte stream.
 		// This does something a bit ugly where it DEPENDS on the var in slogtest.Run, if the behavior of slogtest.Run
 		// changes this may break the tests.
-		updateErr := l.Update(Options{
+		updateErr := s.Update(Options{
 			Level:   "debug",
 			Format:  "json",
 			WriteTo: nil,
@@ -49,21 +51,23 @@ func TestDefferredSlogTester(t *testing.T) {
 	// Also ignore anything that modifies the log line, which are two tests.
 	slogtest.Run(t, func(t *testing.T) slog.Handler {
 		var err error
-		l, err = NewDeferred(buf)
+		s, err = NewService(buf)
 		require.NoError(t, err)
+		l = s.Data().(*Logger)
 		return l.Handler()
 	}, results)
 }
 
 func TestDeferredHandlerWritingToBothLoggers(t *testing.T) {
 	bb := &bytes.Buffer{}
-	l, err := NewDeferred(bb)
-	slogger := slog.New(l.deferredSlog)
+	s, err := NewService(bb)
 	require.NoError(t, err)
+	l := s.Data().(*Logger)
+	slogger := slog.New(l.deferredSlog)
 	l.Log("msg", "this should happen before")
 	slogger.Log(context.Background(), slog.LevelInfo, "this should happen after)")
 
-	err = l.Update(Options{
+	err = s.Update(Options{
 		Level:   "info",
 		Format:  "json",
 		WriteTo: nil,
@@ -77,9 +81,9 @@ func TestDeferredHandlerWritingToBothLoggers(t *testing.T) {
 func TestSlogHandle(t *testing.T) {
 	bb := &bytes.Buffer{}
 	bbSl := &bytes.Buffer{}
-	sl, alloy, l := newLoggers(t, bb, bbSl)
+	sl, alloy, s := newLoggers(t, bb, bbSl)
 	logInfo(sl, alloy, "test")
-	err := l.Update(Options{
+	err := s.Update(Options{
 		Level:   "debug",
 		Format:  "json",
 		WriteTo: nil,
@@ -91,9 +95,9 @@ func TestSlogHandle(t *testing.T) {
 func TestSlogHandleWithDifferingLevelDeny(t *testing.T) {
 	bb := &bytes.Buffer{}
 	bbSl := &bytes.Buffer{}
-	sl, alloy, l := newLoggers(t, bb, bbSl)
+	sl, alloy, s := newLoggers(t, bb, bbSl)
 	logInfo(sl, alloy, "test")
-	err := l.Update(Options{
+	err := s.Update(Options{
 		Level:   "warn",
 		Format:  "json",
 		WriteTo: nil,
@@ -105,9 +109,9 @@ func TestSlogHandleWithDifferingLevelDeny(t *testing.T) {
 func TestSlogHandleWithDifferingLevelAllow(t *testing.T) {
 	bb := &bytes.Buffer{}
 	bbSl := &bytes.Buffer{}
-	sl, alloy, l := newLoggers(t, bb, bbSl)
+	sl, alloy, s := newLoggers(t, bb, bbSl)
 	logError(sl, alloy, "test")
-	err := l.Update(Options{
+	err := s.Update(Options{
 		Level:   "warn",
 		Format:  "json",
 		WriteTo: nil,
@@ -118,10 +122,11 @@ func TestSlogHandleWithDifferingLevelAllow(t *testing.T) {
 
 func TestNormalWithDifferingLevelDeny(t *testing.T) {
 	bb := &bytes.Buffer{}
-	l, err := newDeferredTest(bb)
+	s, err := newDeferredTest(bb)
 	require.NoError(t, err)
+	l := s.Data().(*Logger)
 	level.Debug(l).Log("msg", "this should not log")
-	err = l.Update(Options{
+	err = s.Update(Options{
 		Level:   "error",
 		Format:  "json",
 		WriteTo: nil,
@@ -132,10 +137,11 @@ func TestNormalWithDifferingLevelDeny(t *testing.T) {
 
 func TestNormalWithDifferingLevelAllow(t *testing.T) {
 	bb := &bytes.Buffer{}
-	l, err := newDeferredTest(bb)
+	s, err := newDeferredTest(bb)
 	require.NoError(t, err)
+	l := s.Data().(*Logger)
 	level.Error(l).Log("msg", "this should not log")
-	err = l.Update(Options{
+	err = s.Update(Options{
 		Level:   "error",
 		Format:  "json",
 		WriteTo: nil,
@@ -225,10 +231,10 @@ func TestDeferredHandler(t *testing.T) {
 	}
 }
 
-func newLoggers(t *testing.T, bb, bbSl *bytes.Buffer) (*slog.Logger, *slog.Logger, *Logger) {
-	l, err := newDeferredTest(bb)
+func newLoggers(t *testing.T, bb, bbSl *bytes.Buffer) (*slog.Logger, *slog.Logger, *Service) {
+	s, err := newDeferredTest(bb)
 	require.NoError(t, err)
-
+	l := s.Data().(*Logger)
 	jsonH := slog.NewJSONHandler(bbSl, &slog.HandlerOptions{
 		AddSource:   true,
 		Level:       nil,
@@ -236,7 +242,7 @@ func newLoggers(t *testing.T, bb, bbSl *bytes.Buffer) (*slog.Logger, *slog.Logge
 	})
 	sl := slog.New(jsonH)
 	alloy := slog.New(l.deferredSlog)
-	return sl, alloy, l
+	return sl, alloy, s
 }
 
 func withAttrs(sl *slog.Logger, alloyL *slog.Logger, attrs ...string) (*slog.Logger, *slog.Logger) {
