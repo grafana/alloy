@@ -56,6 +56,43 @@ func (r *receiver) run(ctx context.Context) {
 	}
 }
 
+func TestComponentFromNestedController(t *testing.T) {
+	opts := component.Options{
+		ID:            "foo/loki.source.awsfirehose.default",
+		Logger:        util.TestAlloyLogger(t),
+		Registerer:    prometheus.NewRegistry(),
+		OnStateChange: func(e component.Exports) {},
+	}
+	ch1, ch2 := loki.NewLogsReceiver(), loki.NewLogsReceiver()
+	r1, r2 := newReceiver(ch1.Chan()), newReceiver(ch2.Chan())
+
+	// call cancelReceivers to terminate them
+	receiverContext, cancelReceivers := context.WithCancel(context.Background())
+	go r1.run(receiverContext)
+	go r2.run(receiverContext)
+
+	args := Arguments{}
+
+	port, err := freeport.GetFreePort()
+	require.NoError(t, err)
+	args.Server = &fnet.ServerConfig{
+		HTTP: &fnet.HTTPConfig{
+			ListenAddress: "localhost",
+			ListenPort:    port,
+		},
+		// assign random grpc port
+		GRPC: &fnet.GRPCConfig{ListenPort: 0},
+	}
+	args.ForwardTo = []loki.LogsReceiver{ch1, ch2}
+
+	// Create and run the component.
+	c, err := New(opts, args)
+	require.NoError(t, err)
+	require.NotNil(t, c)
+
+	cancelReceivers()
+}
+
 func TestComponent(t *testing.T) {
 	opts := component.Options{
 		ID:            "loki.source.awsfirehose",
