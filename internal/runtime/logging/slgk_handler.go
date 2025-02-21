@@ -16,7 +16,7 @@ var _ slog.Handler = (*SlogGoKitHandler)(nil)
 type SlogGoKitHandler struct {
 	logger       log.Logger
 	group        string
-	preformatted []any
+	preformatted []slog.Attr
 }
 
 func NewSlogGoKitHandler(logger log.Logger) *SlogGoKitHandler {
@@ -44,8 +44,16 @@ func (h SlogGoKitHandler) Handle(ctx context.Context, record slog.Record) error 
 	}
 
 	pairs := make([]any, 0, 2*record.NumAttrs())
-	pairs = append(pairs, "msg", record.Message)
-	pairs = append(pairs, h.preformatted...)
+	if !record.Time.IsZero() {
+		pairs = append(pairs, slog.TimeKey, record.Time)
+	}
+	pairs = append(pairs, slog.MessageKey, record.Message)
+	pairs = append(pairs, slog.LevelKey, record.Level)
+
+	for _, attr := range h.preformatted {
+		// group has already been added to the key
+		pairs = appendPair(pairs, "", attr)
+	}
 
 	record.Attrs(func(attr slog.Attr) bool {
 		pairs = appendPair(pairs, h.group, attr)
@@ -56,9 +64,12 @@ func (h SlogGoKitHandler) Handle(ctx context.Context, record slog.Record) error 
 }
 
 func (h SlogGoKitHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
-	pairs := make([]any, 0, 2*len(attrs))
+	pairs := make([]slog.Attr, 0, len(attrs)+len(h.preformatted))
 	for _, attr := range attrs {
-		pairs = appendPair(pairs, h.group, attr)
+		if h.group != "" {
+			attr.Key = h.group + "." + attr.Key
+		}
+		pairs = append(pairs, attr)
 	}
 
 	if h.preformatted != nil {
@@ -96,9 +107,16 @@ func appendPair(pairs []any, groupPrefix string, attr slog.Attr) []any {
 
 	switch attr.Value.Kind() {
 	case slog.KindGroup:
-		if attr.Key != "" {
-			groupPrefix = groupPrefix + "." + attr.Key
+		if len(attr.Value.Group()) == 0 {
+			return pairs
 		}
+
+		if groupPrefix != "" && attr.Key != "" {
+			groupPrefix = groupPrefix + "." + attr.Key
+		} else if groupPrefix == "" && attr.Key != "" {
+			groupPrefix = attr.Key
+		}
+
 		for _, at := range attr.Value.Group() {
 			pairs = appendPair(pairs, groupPrefix, at)
 		}
@@ -108,7 +126,7 @@ func appendPair(pairs []any, groupPrefix string, attr slog.Attr) []any {
 			key = groupPrefix + "." + key
 		}
 
-		pairs = append(pairs, key, attr.Value)
+		pairs = append(pairs, key, attr.Value.Resolve())
 	}
 
 	return pairs
