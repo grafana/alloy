@@ -7,6 +7,15 @@ This document contains a historical list of changes between releases. Only
 changes that impact end-user behavior are listed; changes to documentation or
 internal API changes are not present.
 
+v1.7.0-rc.3
+-----------------
+
+### Bugfixes
+
+- Fixed a bug where `loki.source.awsfirehose` and `loki.source.gcplog` could
+  not be used from within a module. (@tpaschalis)
+
+
 v1.7.0-rc.2
 -----------------
 
