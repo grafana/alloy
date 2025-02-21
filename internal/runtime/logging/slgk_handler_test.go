@@ -95,15 +95,13 @@ func TestUpdateLevel(t *testing.T) {
 	gkLogger := log.With(baseLogger, "test", "test")
 	gkLogger.Log("msg", "hello")
 	require.Contains(t, buffer.String(), "ts=")
-	noTimestamp := strings.Join(strings.Split(buffer.String(), " ")[1:], " ")
-	require.Equal(t, "level=info msg=hello test=test\n", noTimestamp)
+	require.Equal(t, "level=info msg=hello test=test\n", removeTimestamp(buffer.String()))
 
 	sLogger := slog.New(logging.NewSlogGoKitHandler(gkLogger))
 	buffer.Reset()
 	sLogger.Info("hello")
 	require.Contains(t, buffer.String(), "ts=")
-	noTimestamp = strings.Join(strings.Split(buffer.String(), " ")[1:], " ")
-	require.Equal(t, "level=info msg=hello test=test\n", noTimestamp)
+	require.Equal(t, "level=info msg=hello test=test\n", removeTimestamp(buffer.String()))
 
 	buffer.Reset()
 	sLogger.Debug("hello")
@@ -115,12 +113,26 @@ func TestUpdateLevel(t *testing.T) {
 	buffer.Reset()
 	sLogger.Info("hello")
 	require.Contains(t, buffer.String(), "ts=")
-	noTimestamp = strings.Join(strings.Split(buffer.String(), " ")[1:], " ")
-	require.Equal(t, "level=info msg=hello test=test\n", noTimestamp)
+	require.Equal(t, "level=info msg=hello test=test\n", removeTimestamp(buffer.String()))
 
 	buffer.Reset()
 	sLogger.Debug("hello")
 	require.Contains(t, buffer.String(), "ts=")
-	noTimestamp = strings.Join(strings.Split(buffer.String(), " ")[1:], " ")
-	require.Equal(t, "level=debug msg=hello test=test\n", noTimestamp)
+	require.Equal(t, "level=debug msg=hello test=test\n", removeTimestamp(buffer.String()))
+}
+
+func removeTimestamp(s string) string {
+	parts := strings.Split(s, " ")
+	newParts := make([]string, 0, len(parts)-1)
+	for _, p := range parts {
+		if strings.Contains(p, "ts=") {
+			continue
+		}
+		newParts = append(newParts, p)
+	}
+	rejoined := strings.Join(newParts, " ")
+	if !strings.HasSuffix(rejoined, "\n") {
+		rejoined += "\n"
+	}
+	return rejoined
 }
