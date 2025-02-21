@@ -3,13 +3,14 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/ot
 aliases:
   - ../otelcol.auth.bearer/ # /docs/alloy/latest/reference/components/otelcol.auth.bearer/
 description: Learn about otelcol.auth.bearer
+labels:
+  stage: general-availability
 title: otelcol.auth.bearer
 ---
 
-# otelcol.auth.bearer
+# `otelcol.auth.bearer`
 
-`otelcol.auth.bearer` exposes a `handler` that can be used by other `otelcol`
-components to authenticate requests using bearer token authentication.
+`otelcol.auth.bearer` exposes a `handler` that can be used by other `otelcol` components to authenticate requests using bearer token authentication.
 
 This component supports both server and client authentication.
 
@@ -18,44 +19,43 @@ This component supports both server and client authentication.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
 {{< /admonition >}}
 
-Multiple `otelcol.auth.bearer` components can be specified by giving them different labels.
+You can specify multiple `otelcol.auth.bearer` components by giving them different labels.
 
 ## Usage
 
 ```alloy
-otelcol.auth.bearer "LABEL" {
-  token = "TOKEN"
+otelcol.auth.bearer "<LABEL>" {
+  token = "<TOKEN>"
 }
 ```
 
 ## Arguments
 
-`otelcol.auth.bearer` supports the following arguments:
+You can use the following arguments with `otelcol.auth.bearer`:
 
-Name     | Type     | Description                                      | Default  | Required
----------|----------|--------------------------------------------------|----------|---------
-`token`  | `secret` | Bearer token to use for authenticating requests. |          | yes
-`scheme` | `string` | Authentication scheme name.                      | "Bearer" | no
+| Name     | Type     | Description                                      | Default  | Required |
+| -------- | -------- | ------------------------------------------------ | -------- | -------- |
+| `token`  | `secret` | Bearer token to use for authenticating requests. |          | yes      |
+| `scheme` | `string` | Authentication scheme name.                      | "Bearer" | no       |
 
 When sending the token, the value of `scheme` is prepended to the `token` value.
-The string is then sent out as either a header (in case of HTTP) or as metadata (in case of gRPC).
+The string is then sent out as either a header (for HTTP) or as metadata (for gRPC).
 
-If you use a file to store the token, you can use `[local.file`][local.file] to retrieve the `token` value from the file.
+If you use a file to store the token, you can use [`local.file`][local.file] to retrieve the `token` value from the file.
 
 [local.file]: ../../local/local.file/
 
 ## Blocks
 
-The following blocks are supported inside the definition of
-`otelcol.auth.bearer`:
+You can use the following block with `otelcol.auth.bearer`:
 
-Hierarchy | Block      | Description                          | Required
-----------|------------|--------------------------------------|---------
-debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
+| Block                            | Description                                                                | Required |
+| -------------------------------- | -------------------------------------------------------------------------- | -------- |
+| [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |
 
-[debug_metrics]: #debug_metrics-block
+[debug_metrics]: #debug_metrics
 
-### debug_metrics block
+### `debug_metrics`
 
 {{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -63,26 +63,25 @@ debug_metrics | [debug_metrics][] | Configures the metrics that this component g
 
 The following fields are exported and can be referenced by other components:
 
-Name      | Type                       | Description
-----------|----------------------------|----------------------------------------------------------------
-`handler` | `capsule(otelcol.Handler)` | A value that other components can use to authenticate requests.
+| Name      | Type                       | Description                                                     |
+| --------- | -------------------------- | --------------------------------------------------------------- |
+| `handler` | `capsule(otelcol.Handler)` | A value that other components can use to authenticate requests. |
 
 ## Component health
 
-`otelcol.auth.bearer` is only reported as unhealthy if given an invalid
-configuration.
+`otelcol.auth.bearer` is only reported as unhealthy if given an invalid configuration.
 
 ## Debug information
 
-`otelcol.auth.bearer` does not expose any component-specific debug information.
+`otelcol.auth.bearer` doesn't expose any component-specific debug information.
 
 ## Examples
 
 ### Default scheme via gRPC transport
 
-The example below configures [otelcol.exporter.otlp][] to use a bearer token authentication.
+The following example configures [otelcol.exporter.otlp][] to use a bearer token authentication.
 
-If we assume that the value of the `API_KEY` environment variable is `SECRET_API_KEY`, then the `Authorization` RPC metadata is set to `Bearer SECRET_API_KEY`.
+If you assume that the value of the `API_KEY` environment variable is `SECRET_API_KEY`, then the `Authorization` RPC metadata is set to `Bearer SECRET_API_KEY`.
 
 ```alloy
 otelcol.exporter.otlp "example" {
@@ -93,7 +92,7 @@ otelcol.exporter.otlp "example" {
 }
 
 otelcol.auth.bearer "creds" {
-  token = sys.env("API_KEY")
+  token = sys.env("<API_KEY>")
 }
 ```
 
@@ -101,8 +100,7 @@ otelcol.auth.bearer "creds" {
 
 The example below configures [otelcol.exporter.otlphttp][] to use a bearer token authentication.
 
-If we assume that the value of the `API_KEY` environment variable is `SECRET_API_KEY`, then
-the `Authorization` HTTP header is set to `MyScheme SECRET_API_KEY`.
+If you assume that the value of the `API_KEY` environment variable is `SECRET_API_KEY`, then the `Authorization` HTTP header is set to `MyScheme SECRET_API_KEY`.
 
 ```alloy
 otelcol.exporter.otlphttp "example" {
@@ -113,7 +111,7 @@ otelcol.exporter.otlphttp "example" {
 }
 
 otelcol.auth.bearer "creds" {
-  token = sys.env("API_KEY")
+  token = sys.env("<API_KEY>")
   scheme = "MyScheme"
 }
 ```

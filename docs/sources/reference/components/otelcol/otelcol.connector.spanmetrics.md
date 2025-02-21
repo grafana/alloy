@@ -3,38 +3,37 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/ot
 aliases:
   - ../otelcol.connector.spanmetrics/ # /docs/alloy/latest/reference/components/otelcol.connector.spanmetrics/
 description: Learn about otelcol.connector.spanmetrics
+labels:
+  stage: general-availability
 title: otelcol.connector.spanmetrics
 ---
 
-# otelcol.connector.spanmetrics
+# `otelcol.connector.spanmetrics`
 
-`otelcol.connector.spanmetrics` accepts span data from other `otelcol` components and
-aggregates Request, Error and Duration (R.E.D) OpenTelemetry metrics from the spans:
+`otelcol.connector.spanmetrics` accepts span data from other `otelcol` components and aggregates Request, Error and Duration (RED) OpenTelemetry metrics from the spans:
 
-- **Request** counts are computed as the number of spans seen per unique set of dimensions,
-  including Errors. Multiple metrics can be aggregated if, for instance, a user wishes to
-  view call counts just on `service.name` and `span.name`.
+* **Request** counts are computed as the number of spans seen per unique set of dimensions, including Errors. Multiple metrics can be aggregated if, for example, you want to view call counts just on `service.name` and `span.name`.
 
   Requests are tracked using a `calls` metric with a `status.code` datapoint attribute set to `Ok`:
 
-  ```
+  ```text
   calls { service.name="shipping", span.name="get_shipping/{shippingId}", span.kind="SERVER", status.code="Ok" }
   ```
 
-- **Error** counts are computed from the number of spans with an `Error` status code.
+* **Error** counts are computed from the number of spans with an `Error` status code.
 
   Errors are tracked using a `calls` metric with a `status.code` datapoint attribute set to `Error`:
 
-  ```
+  ```text
   calls { service.name="shipping", span.name="get_shipping/{shippingId}, span.kind="SERVER", status.code="Error" }
   ```
 
-- **Duration** is computed from the difference between the span start and end times and inserted
+* **Duration** is computed from the difference between the span start and end times and inserted
   into the relevant duration histogram time bucket for each unique set dimensions.
 
   Span durations are tracked using a `duration` histogram metric:
 
-  ```
+  ```text
   duration { service.name="shipping", span.name="get_shipping/{shippingId}", span.kind="SERVER", status.code="Ok" }
   ```
 
@@ -43,13 +42,12 @@ aggregates Request, Error and Duration (R.E.D) OpenTelemetry metrics from the sp
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
 {{< /admonition >}}
 
-Multiple `otelcol.connector.spanmetrics` components can be specified by giving them
-different labels.
+You can specify multiple `otelcol.connector.spanmetrics` components by giving them different labels.
 
 ## Usage
 
 ```alloy
-otelcol.connector.spanmetrics "LABEL" {
+otelcol.connector.spanmetrics "<LABEL>" {
   histogram {
     ...
   }
@@ -62,16 +60,16 @@ otelcol.connector.spanmetrics "LABEL" {
 
 ## Arguments
 
-`otelcol.connector.spanmetrics` supports the following arguments:
+You can use the following arguments with `otelcol.connector.spanmetrics`:
 
 | Name                              | Type           | Description                                                                            | Default                 | Required |
 | --------------------------------- | -------------- | -------------------------------------------------------------------------------------- | ----------------------- | -------- |
 | `aggregation_temporality`         | `string`       | Configures whether to reset the metrics after flushing.                                | `"CUMULATIVE"`          | no       |
 | `dimensions_cache_size`           | `number`       | How many dimensions to cache.                                                          | `1000`                  | no       |
 | `exclude_dimensions`              | `list(string)` | List of dimensions to be excluded from the default set of dimensions.                  | `[]`                    | no       |
-| `metrics_flush_interval`          | `duration`     | How often to flush generated metrics.                                                  | `"60s"`                 | no       |
-| `metrics_expiration`              | `duration`     | Time period after which metrics are considered stale and are removed from the cache.   | `"0s"`                  | no       |
 | `metric_timestamp_cache_size`     | `number`       | Controls the size of a cache used to keep track of the last time a metric was flushed. | `1000`                  | no       |
+| `metrics_expiration`              | `duration`     | Time period after which metrics are considered stale and are removed from the cache.   | `"0s"`                  | no       |
+| `metrics_flush_interval`          | `duration`     | How often to flush generated metrics.                                                  | `"60s"`                 | no       |
 | `namespace`                       | `string`       | Metric namespace.                                                                      | `"traces.span.metrics"` | no       |
 | `resource_metrics_cache_size`     | `number`       | The size of the cache holding metrics for a service.                                   | `1000`                  | no       |
 | `resource_metrics_key_attributes` | `list(string)` | Limits the resource attributes used to create the metrics.                             | `[]`                    | no       |
@@ -80,46 +78,45 @@ Adjusting `dimensions_cache_size` can improve the {{< param "PRODUCT_NAME" >}} p
 
 The supported values for `aggregation_temporality` are:
 
-- `"CUMULATIVE"`: The metrics will **not** be reset after they are flushed.
-- `"DELTA"`: The metrics will be reset after they are flushed.
+* `"CUMULATIVE"`: The metrics will **not** be reset after they are flushed.
+* `"DELTA"`: The metrics will be reset after they are flushed.
 
-If `namespace` is set, the generated metric name will be added a `namespace.` prefix.
+If `namespace` is set, the generated metric name is added a `namespace.` prefix.
 
-Setting `metrics_expiration` to `"0s"` means that the metrics will never expire.
+Setting `metrics_expiration` to `"0s"` means that the metrics never expire.
 
 `resource_metrics_cache_size` is mostly relevant for cumulative temporality. It helps avoid issues with increasing memory and with incorrect metric timestamp resets.
 
 `metric_timestamp_cache_size` is only relevant for delta temporality span metrics.
 It controls the size of a cache used to keep track of the last time a metric was flushed.
-When a metric is evicted from the cache, its next data point will indicate a "reset" in the series.
+When a metric is evicted from the cache, its next data point indicates a "reset" in the series.
 Downstream components converting from delta to cumulative may handle these resets by setting cumulative counters back to 0.
 
-`resource_metrics_key_attributes` can be used to avoid situations where resource attributes may change across service restarts,
-causing metric counters to break (and duplicate). A resource does not need to have all of the attributes.
+`resource_metrics_key_attributes` can be used to avoid situations where resource attributes may change across service restarts, causing metric counters to break (and duplicate).
+A resource doesn't need to have all of the attributes.
 The list must include enough attributes to properly identify unique resources or risk aggregating data from more than one service and span.
 For example, `["service.name", "telemetry.sdk.language", "telemetry.sdk.name"]`.
 
 ## Blocks
 
-The following blocks are supported inside the definition of
-`otelcol.connector.spanmetrics`:
+You can use the following blocks with `otelcol.connector.spanmetrics`:
 
-| Hierarchy               | Block             | Description                                                                                                                                               | Required |
-| ----------------------- | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
-| dimension               | [dimension][]     | Dimensions to be added in addition to the default ones.                                                                                                   | no       |
-| events                  | [events][]        | Configures the events metric.                                                                                                                             | no       |
-| events > dimension      | [dimension][]     | Span event attributes to add as dimensions to the events metric, _on top of_ the default ones and the ones configured in the top-level `dimension` block. | no       |
-| exemplars               | [exemplars][]     | Configures how to attach exemplars to histograms.                                                                                                         | no       |
-| histogram               | [histogram][]     | Configures the histogram derived from spans durations.                                                                                                    | yes      |
-| histogram > explicit    | [explicit][]      | Configuration for a histogram with explicit buckets.                                                                                                      | no       |
-| histogram > exponential | [exponential][]   | Configuration for a histogram with exponential buckets.                                                                                                   | no       |
-| output                  | [output][]        | Configures where to send telemetry data.                                                                                                                  | yes      |
-| debug_metrics           | [debug_metrics][] | Configures the metrics that this component generates to monitor its state.                                                                                | no       |
+| Block                                | Description                                                                                                                                               | Required |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| [`histogram`][histogram]             | Configures the histogram derived from spans durations.                                                                                                    | yes      |
+| [`output`][output]                   | Configures where to send telemetry data.                                                                                                                  | yes      |
+| [`debug_metrics`][debug_metrics]     | Configures the metrics that this component generates to monitor its state.                                                                                | no       |
+| [`dimension`][dimension]             | Dimensions to be added in addition to the default ones.                                                                                                   | no       |
+| [events][events]                     | Configures the events metric.                                                                                                                             | no       |
+| `events` > [`dimension`][dimension]  | Span event attributes to add as dimensions to the events metric, _on top of_ the default ones and the ones configured in the top-level `dimension` block. | no       |
+| [`exemplars`][exemplars]             | Configures how to attach exemplars to histograms.                                                                                                         | no       |
+| `histogram` > [`explicit`][explicit] | Configuration for a histogram with explicit buckets.                                                                                                      | no       |
+| `histogram` > [`exponential`][]      | Configuration for a histogram with exponential buckets.                                                                                                   | no       |
 
-It is necessary to specify either a "[exponential][]" or an "[explicit][]" block:
+You must specify either a "[exponential][]" or an "[explicit][]" block:
 
-- Specifying both an "[exponential][]" and an "[explicit][]" block is not allowed.
-- Specifying neither an "[exponential][]" nor an "[explicit][]" block is not allowed.
+* Specifying both an "[exponential][]" and an "[explicit][]" block isn't allowed.
+* Specifying neither an "[exponential][]" nor an "[explicit][]" block isn't allowed.
 
 [dimension]: #dimension-block
 [histogram]: #histogram-block
