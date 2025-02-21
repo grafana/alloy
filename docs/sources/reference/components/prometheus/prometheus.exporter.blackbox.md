@@ -77,16 +77,16 @@ You can use the following block with `prometheus.exporter.blackbox`:
 
 ### `target`
 
-The `target` block defines an individual blackbox target.
-The `target` block may be specified multiple times to define multiple targets.
-The `name` attribute is required and is used in the target's `job` label.
-
 | Name      | Type          | Description                         | Default | Required |
 | --------- | ------------- | ----------------------------------- | ------- | -------- |
 | `address` | `string`      | The address of the target to probe. |         | yes      |
 | `name`    | `string`      | The name of the target to probe.    |         | yes      |
 | `labels`  | `map(string)` | Labels to add to the target.        |         | no       |
 | `module`  | `string`      | Blackbox module to use to probe.    | `""`    | no       |
+
+The `target` block defines an individual blackbox target.
+The `target` block may be specified multiple times to define multiple targets.
+The `name` attribute is required and is used in the target's `job` label.
 
 Labels specified in the `labels` argument won't override labels set by `blackbox_exporter`.
 
