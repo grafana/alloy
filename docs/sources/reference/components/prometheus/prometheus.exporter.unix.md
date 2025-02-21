@@ -31,7 +31,7 @@ You can use the following arguments with `prometheus.exporter.unix`:
 | Name                       | Type           | Description                                                                 | Default          | Required |
 | -------------------------- | -------------- | --------------------------------------------------------------------------- | ---------------- | -------- |
 | `disable_collectors`       | `list(string)` | Collectors to mark as disabled.                                             |                  | no       |
-| `enable_collectors`        | `list(string)` | Collectors to mark as enabled.                                              |                  | no       |
+| `enable_collectors`        | `list(string)` | Collectors to enable.                                              |  `[]`            | no       |
 | `include_exporter_metrics` | `boolean`      | Whether metrics about the exporter itself should be reported.               | false            | no       |
 | `procfs_path`              | `string`       | The procfs mount point.                                                     | `/proc`          | no       |
 | `rootfs_path`              | `string`       | Specify a prefix for accessing the host filesystem.                         | `/`              | no       |
