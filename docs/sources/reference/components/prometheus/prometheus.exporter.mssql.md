@@ -42,9 +42,9 @@ If specified, the `query_config` argument must be a YAML document as string defi
 `query_config` is typically loaded by using the exports of another component.
 For example,
 
-* `local.file.LABEL.content`
-* `remote.http.LABEL.content`
-* `remote.s3.LABEL.content`
+* `local.file.<LABEL>.content`
+* `remote.http.<LABEL>.content`
+* `remote.s3.<LABEL>.content`
 
 Refer to [`sql_exporter`](https://github.com/burningalchemist/sql_exporter#collectors) for details on how to create a configuration.
 
