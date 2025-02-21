@@ -283,7 +283,7 @@ However, `^(?:e.*)$` would only match "email".
 
 ## Collectors list
 
-The following table lists the available collectors that `windows_exporter` brings bundled in.
+The following table lists the available collectors in `windows_exporter`.
 Some collectors only work on specific operating systems, enabling a collector that's not supported by the host OS where {{< param "PRODUCT_NAME" >}} is running is a no-op.
 
 Users can choose to enable a subset of collectors to limit the amount of metrics exposed by the `prometheus.exporter.windows` component, or disable collectors that are expensive to run.
