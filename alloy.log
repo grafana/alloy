@@ -1,0 +1,34 @@
+ts=2025-02-19T15:18:11.192925Z level=info "boringcrypto enabled"=false
+ts=2025-02-19T15:18:11.19251Z level=error source=github.com/KimMachineGun/automemlimit@v0.6.0/memlimit/memlimit.go:117 msg="failed to set GOMEMLIMIT" package=github.com/KimMachineGun/automemlimit/memlimit error="failed to set GOMEMLIMIT: cgroups is not supported on this system"
+ts=2025-02-19T15:18:11.192983Z level=info msg="no peer discovery configured: both join and discover peers are empty" service=cluster
+ts=2025-02-19T15:18:11.192988Z level=info msg="running usage stats reporter"
+ts=2025-02-19T15:18:11.192991Z level=info msg="starting complete graph evaluation" controller_path=/ controller_id="" trace_id=61312fe6ca21f2b801aee08f7deecd2b
+ts=2025-02-19T15:18:11.192999Z level=info msg="finished node evaluation" controller_path=/ controller_id="" trace_id=61312fe6ca21f2b801aee08f7deecd2b node_id=logging duration=76µs
+ts=2025-02-19T15:18:11.364256Z level=info msg="finished node evaluation" controller_path=/ controller_id="" trace_id=61312fe6ca21f2b801aee08f7deecd2b node_id=remotecfg duration=171.289291ms
+ts=2025-02-19T15:18:11.364339Z level=info msg="applying non-TLS config to HTTP server" service=http
+ts=2025-02-19T15:18:11.364365Z level=info msg="finished node evaluation" controller_path=/ controller_id="" trace_id=61312fe6ca21f2b801aee08f7deecd2b node_id=http duration=36.25µs
+ts=2025-02-19T15:18:11.364391Z level=info msg="finished node evaluation" controller_path=/ controller_id="" trace_id=61312fe6ca21f2b801aee08f7deecd2b node_id=cluster duration=1.084µs
+ts=2025-02-19T15:18:11.364421Z level=info msg="finished node evaluation" controller_path=/ controller_id="" trace_id=61312fe6ca21f2b801aee08f7deecd2b node_id=labelstore duration=10.208µs
+ts=2025-02-19T15:18:11.364451Z level=info msg="finished node evaluation" controller_path=/ controller_id="" trace_id=61312fe6ca21f2b801aee08f7deecd2b node_id=tracing duration=7.125µs
+ts=2025-02-19T15:18:11.364469Z level=info msg="finished node evaluation" controller_path=/ controller_id="" trace_id=61312fe6ca21f2b801aee08f7deecd2b node_id=otel duration=792ns
+ts=2025-02-19T15:18:11.364502Z level=info msg="finished node evaluation" controller_path=/ controller_id="" trace_id=61312fe6ca21f2b801aee08f7deecd2b node_id=livedebugging duration=14.292µs
+ts=2025-02-19T15:18:11.364529Z level=info msg="finished node evaluation" controller_path=/ controller_id="" trace_id=61312fe6ca21f2b801aee08f7deecd2b node_id=ui duration=1.084µs
+ts=2025-02-19T15:18:11.364545Z level=info msg="finished complete graph evaluation" controller_path=/ controller_id="" trace_id=61312fe6ca21f2b801aee08f7deecd2b duration=171.718167ms
+ts=2025-02-19T15:18:11.364588Z level=info msg="scheduling loaded components and services"
+ts=2025-02-19T15:18:11.364734Z level=info msg="starting cluster node" service=cluster peers_count=0 peers="" advertise_addr=127.0.0.1:12345
+ts=2025-02-19T15:18:11.364828Z level=info msg="peers changed" service=cluster peers_count=1 peers=Paschaliss-MacBook-Pro.local
+ts=2025-02-19T15:18:11.365374Z level=info msg="now listening for http traffic" service=http addr=127.0.0.1:12345
+ts=2025-02-19T15:18:11.475567Z level=error msg="failed to fetch remote config" service=remotecfg err="invalid_argument: id is empty"
+ts=2025-02-19T15:18:11.47573Z level=error msg="failed to read from cache" service=remotecfg err="open data-alloy/remotecfg/0732abda: no such file or directory"
+ts=2025-02-19T15:18:12.366763Z level=info msg="peers changed" service=cluster peers_count=1 peers=Paschaliss-MacBook-Pro.local
+interrupt received
+ts=2025-02-19T15:18:17.775995Z level=error msg="failed to start reporter" err="context canceled"
+ts=2025-02-19T15:18:17.77609Z level=info msg="node exited without error" node=labelstore
+ts=2025-02-19T15:18:17.776116Z level=info msg="node exited without error" node=otel
+ts=2025-02-19T15:18:17.7763Z level=info msg="http server closed" service=http addr=127.0.0.1:12345 err="http: Server closed"
+ts=2025-02-19T15:18:17.776363Z level=info msg="node exited without error" node=livedebugging
+ts=2025-02-19T15:18:17.776373Z level=info msg="node exited without error" node=remotecfg
+ts=2025-02-19T15:18:17.776385Z level=info msg="http server closed" service=http addr=memory err="http: Server closed"
+ts=2025-02-19T15:18:17.776404Z level=info msg="node exited without error" node=ui
+ts=2025-02-19T15:18:17.776409Z level=info msg="node exited without error" node=http
+ts=2025-02-19T15:18:17.776462Z level=info msg="node exited without error" node=cluster

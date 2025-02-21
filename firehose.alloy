@@ -1,0 +1,15 @@
+declare "foo" {
+	loki.source.awsfirehose "loki_fh_receiver" {
+	    http {
+		    listen_address = "0.0.0.0"
+		    listen_port    = 9999
+	    }
+	    forward_to = [
+		    loki.echo.default.receiver,
+	    ]
+	}
+
+	loki.echo "default" { }
+}
+
+foo "default" {}
