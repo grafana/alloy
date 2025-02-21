@@ -87,3 +87,7 @@ func (c *ConnectionInfo) Stop() {
 	c.Registry.Unregister(c.InfoMetric)
 	c.running.Store(false)
 }
+
+func (c *ConnectionInfo) DebugInfo() interface{} {
+	return map[string]string{}
+}

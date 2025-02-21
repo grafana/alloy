@@ -417,3 +417,10 @@ func (c *SchemaTable) fetchColumnsDefinitions(ctx context.Context, schemaName st
 
 	return tblSpec, nil
 }
+
+func (c *SchemaTable) DebugInfo() interface{} {
+	m := map[string]interface{}{
+		"cache_size": c.cache.Len(),
+	}
+	return m
+}
