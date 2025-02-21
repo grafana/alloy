@@ -8,7 +8,7 @@ jobs:
     name: Test (Full)
     runs-on: ubuntu-latest
     container:
-      image: grafana/alloy-build-image:v0.1.8
+      image: grafana/alloy-build-image:v0.1.12
       volumes:
         - /var/run/docker.sock
     steps:
