@@ -173,6 +173,9 @@ else
 	$(GO_ENV) go build $(GO_FLAGS) -o $(ALLOY_BINARY) .
 endif
 
+alloy-for-image:
+	$(GO_ENV) go build $(GO_FLAGS) -o $(ALLOY_BINARY) .
+
 # alloy-service is not included in binaries since it's Windows-only.
 alloy-service:
 ifeq ($(USE_CONTAINER),1)
@@ -201,8 +204,8 @@ endif
 .PHONY: images alloy-image
 images: alloy-image
 
-alloy-image:
-	DOCKER_BUILDKIT=1 docker build $(DOCKER_FLAGS) -t $(ALLOY_IMAGE) -f Dockerfile .
+alloy-image: generate-beyla
+	DOCKER_BUILDKIT=1 docker build $(DOCKER_FLAGS) --debug -t $(ALLOY_IMAGE) -f Dockerfile .
 
 .PHONY: images-windows alloy-image-windows
 images: alloy-image-windows
@@ -280,8 +283,8 @@ drone: generate-drone
 # Alloy binary
 .PHONY: generate-beyla
 generate-beyla:
-	@go mod vendor
-	@GOOS=$(GOHOSTOS) GOARCH=$(GOHOSTARCH) go generate vendor/github.com/grafana/beyla/v2/bpf/build_ebpf.go > /dev/null
+	go mod vendor
+	GOOS=$(GOHOSTOS) GOARCH=$(GOHOSTARCH) go generate vendor/github.com/grafana/beyla/v2/bpf/build_ebpf.go
 
 .PHONY: clean
 clean: clean-dist clean-build-container-cache
