@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	_ "github.com/grafana/beyla/v2/bpf"
+	_ "github.com/grafana/beyla/v2/bpf" // nolint:all
 	"github.com/grafana/beyla/v2/pkg/beyla"
 	"github.com/grafana/beyla/v2/pkg/components"
 	beylaCfg "github.com/grafana/beyla/v2/pkg/config"
