@@ -66,8 +66,6 @@ func (s *Queue) Run(ctx context.Context) error {
 			ep.Stop()
 		}
 	}()
-	// This needs to be started before we export the onstatechange so that it can accept
-	// signals.
 	for _, ep := range s.endpoints {
 		ep.Start(ctx)
 	}
