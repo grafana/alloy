@@ -8,6 +8,10 @@ weight: 300
 
 # Generate a support bundle
 
+{{< admonition type="note" >}}
+Generate support bundle isn't available on {{< param "PRODUCT_NAME" >}} v1.4 and older.
+{{< /admonition >}}
+
 The `/-/support?duration=N` endpoint returns a support bundle, a compressed file that contains information
 about a running {{< param "PRODUCT_NAME" >}} instance, and can be used as a baseline of information when trying
 to debug an [issue][alloy-repo].

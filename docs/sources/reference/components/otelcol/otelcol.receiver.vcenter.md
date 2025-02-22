@@ -98,7 +98,7 @@ isn't provided, TLS won't be used for connections to the server.
 Name | Type | Description | Default | Required
 ---- | ---- | ----------- | ------- | --------
 `vcenter.cluster.cpu.effective` | [metric][] | Enables the `vcenter.cluster.cpu.effective` metric. | `true` | no
-`vcenter.cluster.cpu.usage` | [metric][] | Enables the `vcenter.cluster.cpu.usage` metric. | `true` | no
+`vcenter.cluster.cpu.limit` | [metric][] | Enables the `vcenter.cluster.cpu.limit` metric. | `true` | no
 `vcenter.cluster.host.count` | [metric][] | Enables the `vcenter.cluster.host.count` metric. | `true` | no
 `vcenter.cluster.memory.effective` | [metric][] | Enables the `vcenter.cluster.memory.effective` metric. | `true` | no
 `vcenter.cluster.memory.limit` | [metric][] | Enables the `vcenter.cluster.memory.limit` metric. | `true` | no
@@ -124,6 +124,7 @@ Name | Type | Description | Default | Required
 `vcenter.host.disk.latency.avg` | [metric][] | Enables the `vcenter.host.disk.latency.avg` metric. | `true` | no
 `vcenter.host.disk.latency.max` | [metric][] | Enables the `vcenter.host.disk.latency.max` metric. | `true` | no
 `vcenter.host.disk.throughput` | [metric][] | Enables the `vcenter.host.disk.throughput` metric. | `true` | no
+`vcenter.host.memory.capacity` | [metric][] | Enables the `vcenter.host.memory.capacity` metric. | `false` | no
 `vcenter.host.memory.usage` | [metric][] | Enables the `vcenter.host.memory.usage` metric. | `true` | no
 `vcenter.host.memory.utilization` | [metric][] | Enables the `vcenter.host.memory.utilization` metric. | `true` | no
 `vcenter.host.network.packet.rate` | [metric][] | Enables the `vcenter.host.network.packet.rate` metric. | `true` | no
@@ -152,6 +153,7 @@ Name | Type | Description | Default | Required
 `vcenter.vm.disk.usage` | [metric][] | Enables the `vcenter.vm.disk.usage` metric. | `true` | no
 `vcenter.vm.disk.utilization` | [metric][] | Enables the `vcenter.vm.disk.utilization` metric. | `true` | no
 `vcenter.vm.memory.ballooned` | [metric][] | Enables the `vcenter.vm.memory.ballooned` metric. | `true` | no
+`vcenter.vm.memory.granted` | [metric][] | Enables the `vcenter.vm.memory.granted` metric. | `false` | no
 `vcenter.vm.memory.swapped` | [metric][] | Enables the `vcenter.vm.memory.swapped` metric. | `true` | no
 `vcenter.vm.memory.swapped_ssd` | [metric][] | Enables the `vcenter.vm.memory.swapped_ssd` metric. | `true` | no
 `vcenter.vm.memory.usage` | [metric][] | Enables the `vcenter.vm.memory.usage` metric. | `true` | no

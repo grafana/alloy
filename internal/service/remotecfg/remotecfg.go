@@ -56,14 +56,14 @@ type Service struct {
 
 	ctrl service.Controller
 
-	mut               sync.RWMutex
-	asClient          collectorv1connect.CollectorServiceClient
-	ticker            *jitter.Ticker
-	dataPath          string
-	currentConfigHash string
-	systemAttrs       map[string]string
-	attrs             map[string]string
-	metrics           *metrics
+	mut                  sync.RWMutex
+	asClient             collectorv1connect.CollectorServiceClient
+	ticker               *jitter.Ticker
+	dataPath             string
+	lastLoadedConfigHash string
+	systemAttrs          map[string]string
+	attrs                map[string]string
+	metrics              *metrics
 
 	// This is the hash received from the API. It is used to determine if
 	// the configuration has changed since the last fetch
@@ -296,7 +296,7 @@ func (s *Service) Update(newConfig any) error {
 		s.args.HTTPClientConfig = config.CloneDefaultHTTPClientConfig()
 		s.mut.Unlock()
 
-		s.setCfgHash("")
+		s.setLastLoadedCfgHash("")
 		return nil
 	}
 
@@ -397,10 +397,10 @@ func (s *Service) fetchRemote() error {
 		s.metrics.lastFetchNotModified.Set(0)
 	}
 
-	// API return the same configuration, no need to reload.
+	// API returned the same configuration as the last one we loaded, no need to reload.
 	newConfigHash := getHash(b)
-	if s.getCfgHash() == newConfigHash {
-		level.Debug(s.opts.Logger).Log("msg", "skipping over API response since it contained the same hash")
+	if s.getLastLoadedCfgHash() == newConfigHash {
+		level.Debug(s.opts.Logger).Log("msg", "skipping over API response since it matched the last loaded one")
 		return nil
 	}
 
@@ -411,7 +411,6 @@ func (s *Service) fetchRemote() error {
 
 	// If successful, flush to disk and keep a copy.
 	s.setCachedConfig(b)
-	s.setCfgHash(newConfigHash)
 	return nil
 }
 
@@ -482,22 +481,21 @@ func (s *Service) parseAndLoad(b []byte) error {
 	if len(b) == 0 {
 		return nil
 	}
-
+	s.setLastLoadedCfgHash(getHash(b))
 	file, err := ctrl.LoadSource(b, nil, s.opts.ConfigPath)
 	if err != nil {
 		return err
 	}
 
 	s.setAstFile(file)
-	s.setCfgHash(getHash(b))
 	return nil
 }
 
-func (s *Service) getCfgHash() string {
+func (s *Service) getLastLoadedCfgHash() string {
 	s.mut.RLock()
 	defer s.mut.RUnlock()
 
-	return s.currentConfigHash
+	return s.lastLoadedConfigHash
 }
 
 func (s *Service) setAstFile(f *ast.File) {
@@ -506,14 +504,14 @@ func (s *Service) setAstFile(f *ast.File) {
 	s.astFile = f
 }
 
-func (s *Service) setCfgHash(h string) {
+func (s *Service) setLastLoadedCfgHash(h string) {
 	s.mut.Lock()
 	defer s.mut.Unlock()
 	if s.metrics != nil {
 		s.metrics.configHash.Reset()
 		s.metrics.configHash.WithLabelValues(h).Set(1)
 	}
-	s.currentConfigHash = h
+	s.lastLoadedConfigHash = h
 }
 
 func (s *Service) isEnabled() bool {
