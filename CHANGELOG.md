@@ -14,6 +14,8 @@ Main (unreleased)
 
 - Have `loki.echo` log the `entry_timestamp` and `structured_metadata` for any loki entries received (@dehaansa)
 
+- Add `rfc3164_default_to_current_year` argument to `loki.source.syslog` (@dehaansa)
+
 v1.7.0-rc.3
 -----------------
 

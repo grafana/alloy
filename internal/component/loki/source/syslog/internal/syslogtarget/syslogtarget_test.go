@@ -16,10 +16,10 @@ import (
 	"unicode/utf8"
 
 	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
+	"github.com/grafana/alloy/internal/component/loki/source/syslog/internal/syslogtarget/syslogparser"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/loki/v3/clients/pkg/promtail/scrapeconfig"
-	"github.com/grafana/loki/v3/clients/pkg/promtail/targets/syslog/syslogparser"
+	scrapeconfig "github.com/grafana/alloy/internal/component/loki/source/syslog/config"
 	"github.com/leodido/go-syslog/v4"
 	promconfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
@@ -535,6 +535,71 @@ func TestSyslogTarget_RFC5424Messages(t *testing.T) {
 	}
 }
 
+func TestSyslogTarget_RFC3164YearSetting(t *testing.T) {
+	for _, tt := range []struct {
+		name        string
+		currentYear bool
+	}{
+		{"rfc3164 unset year behavior", false},
+		{"rfc3164 current year behavior", true},
+	} {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			w := log.NewSyncWriter(os.Stderr)
+			logger := log.NewLogfmtLogger(w)
+			client := fake.NewClient(func() {})
+
+			metrics := NewMetrics(nil)
+			tgt, err := NewSyslogTarget(metrics, logger, client, []*relabel.Config{}, &scrapeconfig.SyslogTargetConfig{
+				ListenAddress:               "127.0.0.1:0",
+				RFC3164DefaultToCurrentYear: tt.currentYear,
+				UseIncomingTimestamp:        true,
+				SyslogFormat:                "rfc3164",
+				Labels: model.LabelSet{
+					"test": "syslog_target",
+				},
+			})
+			require.NoError(t, err)
+			require.Eventually(t, tgt.Ready, time.Second, 10*time.Millisecond)
+			defer func() {
+				require.NoError(t, tgt.Stop())
+			}()
+
+			addr := tgt.ListenAddress().String()
+			c, err := net.Dial("tcp", addr)
+			require.NoError(t, err)
+
+			messages := []string{
+				`<165>Feb 19 00:00:00 127.0.0.1 An application event log entry...`,
+			}
+
+			err = writeMessagesToStream(c, messages, fmtNewline)
+			require.NoError(t, err)
+			require.NoError(t, c.Close())
+
+			require.Eventuallyf(t, func() bool {
+				return len(client.Received()) == len(messages)
+			}, time.Second, time.Millisecond, "Expected to receive %d messages, got %d.", len(messages), len(client.Received()))
+
+			expectedLines := []string{
+				"An application event log entry...",
+			}
+
+			for i := range messages {
+				require.Equal(t, model.LabelSet{
+					"test": "syslog_target",
+				}, client.Received()[i].Labels)
+				require.Contains(t, expectedLines, client.Received()[i].Line)
+				if tt.currentYear {
+					require.Equal(t, time.Now().Year(), client.Received()[i].Timestamp.Year())
+				} else {
+					require.Equal(t, 0, client.Received()[i].Timestamp.Year())
+				}
+			}
+		})
+	}
+}
+
 func TestSyslogTarget_TLSConfigWithoutServerCertificate(t *testing.T) {
 	w := log.NewSyncWriter(os.Stderr)
 	logger := log.NewLogfmtLogger(w)
@@ -919,7 +984,7 @@ func TestParseStream_WithAsyncPipe(t *testing.T) {
 		results = append(results, res)
 	}
 
-	err := syslogparser.ParseStream(false, pipe, cb, DefaultMaxMessageLength)
+	err := syslogparser.ParseStream(false, false, pipe, cb, DefaultMaxMessageLength)
 	require.NoError(t, err)
 	require.Equal(t, 3, len(results))
 }
