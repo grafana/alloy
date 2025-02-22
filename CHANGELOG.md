@@ -10,6 +10,10 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Enhancements
+
+- Have `loki.echo` log the `entry_timestamp` and `structured_metadata` for any loki entries received (@dehaansa)
+
 ### Bugfixes
 
 - Fix issue with `prometheus.write.queue` that lead to excessive connections. (@mattdurham)
@@ -21,7 +25,6 @@ v1.7.0-rc.3
 
 - Fixed a bug where `loki.source.awsfirehose` and `loki.source.gcplog` could
   not be used from within a module. (@tpaschalis)
-
 
 v1.7.0-rc.2
 -----------------
