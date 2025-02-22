@@ -14,6 +14,8 @@ Main (unreleased)
 
 - Have `loki.echo` log the `entry_timestamp` and `structured_metadata` for any loki entries received (@dehaansa)
 
+- Add `rfc3164_default_to_current_year` argument to `loki.source.syslog` (@dehaansa)
+
 v1.7.0-rc.3
 -----------------
 
@@ -61,9 +63,6 @@ v1.7.0-rc.1
 
 ### Enhancements
 
-<<<<<<< HEAD
-- Add `rfc3164_default_to_current_year` argument to `loki.source.syslog` (@dehaansa)
-=======
 - Upgrade to OpenTelemetry Collector v0.119.0 (@dehaansa):
   - `otelcol.processor.resourcedetection`: additional configuration for the `ec2` detector to configure retry behavior 
   - `otelcol.processor.resourcedetection`: additional configuration for the `gcp` detector to collect Managed Instance Group attributes
@@ -74,7 +73,6 @@ v1.7.0-rc.1
   - `otelcol.exporter.otlphttp`: support configuring `compression_params`, which currently only includes `level`
   - `configtls`: opentelemetry components with tls config now support specifying TLS curve preferences
   - `sending_queue`: opentelemetry exporters with a `sending_queue` can now configure the queue to be `blocking`
->>>>>>> main
 
 - Add `go_table_fallback` arg to `pyroscope.ebpf` (@korniltsev)
 
