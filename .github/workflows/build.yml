@@ -10,7 +10,7 @@ concurrency:
 jobs:
   build_linux:
     name: Build on Linux
-    runs-on: ubuntu-latest
+    runs-on: github-hosted-ubuntu-x64-large
     container: grafana/alloy-build-image:v0.1.8
     strategy:
       matrix:
@@ -35,7 +35,7 @@ jobs:
 
   build_linux_boringcrypto:
     name: Build on Linux (boringcrypto)
-    runs-on: ubuntu-latest
+    runs-on: github-hosted-ubuntu-x64-large
     container: grafana/alloy-build-image:v0.1.8-boringcrypto
     strategy:
       matrix:

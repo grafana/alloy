@@ -206,8 +206,8 @@ endif
 .PHONY: images alloy-image
 images: alloy-image
 
-alloy-image:
-	DOCKER_BUILDKIT=1 docker build $(DOCKER_FLAGS) -t $(ALLOY_IMAGE) -f Dockerfile .
+alloy-image: generate-beyla
+	DOCKER_BUILDKIT=1 docker build $(DOCKER_FLAGS) --debug -t $(ALLOY_IMAGE) -f Dockerfile .
 
 .PHONY: images-windows alloy-image-windows
 images: alloy-image-windows
@@ -295,10 +295,13 @@ drone: generate-drone
 
 # Required by vendored Beyla to build eBPF artifacts prior to building the
 # Alloy binary
+# go mod vendor is require for GH workflows, as we cannot mount directories
+# outside of the source dir inside the beyla ebpf builder image
 .PHONY: generate-beyla
 generate-beyla:
-	@go mod vendor
-	@GOOS=$(GOHOSTOS) GOARCH=$(GOHOSTARCH) go generate vendor/github.com/grafana/beyla/v2/bpf/build_ebpf.go > /dev/null
+	if [ -n "$$GITHUB_WORKSPACE" ]; then go mod vendor; fi;                                \
+	MODULE_ROOT=$$(go list -tags beyla_bpf -f '{{.Dir}}' github.com/grafana/beyla/v2/bpf); \
+	GOOS=$(GOHOSTOS) GOARCH=$(GOHOSTARCH) go generate $$MODULE_ROOT/build_ebpf.go
 
 .PHONY: clean
 clean: clean-dist clean-build-container-cache
