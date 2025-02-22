@@ -4,12 +4,13 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"time"
 
+	"github.com/grafana/alloy/internal/util"
 	"github.com/leodido/go-syslog/v4"
 	"github.com/leodido/go-syslog/v4/nontransparent"
 	"github.com/leodido/go-syslog/v4/octetcounting"
 	"github.com/leodido/go-syslog/v4/rfc3164"
-	"github.com/leodido/go-syslog/v4/rfc5424"
 )
 
 // ParseStream parses a rfc5424 syslog stream from the given Reader, calling
@@ -24,30 +25,34 @@ func ParseStream(isRFC3164Message bool, useRFC3164DefaultYear bool, r io.Reader,
 		return err
 	}
 	_ = buf.UnreadByte()
+	cb := callback
+	if isRFC3164Message && useRFC3164DefaultYear {
+		cb = func(res *syslog.Result) {
+			if res.Message != nil {
+				rfc3164Msg := res.Message.(*rfc3164.SyslogMessage)
+				if rfc3164Msg.Timestamp != nil {
+					util.SetYearForLimitedTimeFormat(rfc3164Msg.Timestamp, time.Now())
+				}
+			}
+			callback(res)
+		}
+	}
 
 	if b == '<' {
 		if isRFC3164Message {
-			nontransparent.NewParserRFC3164(syslog.WithListener(callback), syslog.WithMaxMessageLength(maxMessageLength), syslog.WithMachineOptions(getRFC3164MachineOptions(useRFC3164DefaultYear)...)).Parse(buf)
+			nontransparent.NewParserRFC3164(syslog.WithListener(cb), syslog.WithMaxMessageLength(maxMessageLength), syslog.WithBestEffort()).Parse(buf)
 		} else {
-			nontransparent.NewParser(syslog.WithListener(callback), syslog.WithMaxMessageLength(maxMessageLength), syslog.WithMachineOptions(rfc5424.WithBestEffort())).Parse(buf)
+			nontransparent.NewParser(syslog.WithListener(cb), syslog.WithMaxMessageLength(maxMessageLength), syslog.WithBestEffort()).Parse(buf)
 		}
 	} else if b >= '0' && b <= '9' {
 		if isRFC3164Message {
-			octetcounting.NewParserRFC3164(syslog.WithListener(callback), syslog.WithMaxMessageLength(maxMessageLength), syslog.WithMachineOptions(getRFC3164MachineOptions(useRFC3164DefaultYear)...)).Parse(buf)
+			octetcounting.NewParserRFC3164(syslog.WithListener(cb), syslog.WithMaxMessageLength(maxMessageLength), syslog.WithBestEffort()).Parse(buf)
 		} else {
-			octetcounting.NewParser(syslog.WithListener(callback), syslog.WithMaxMessageLength(maxMessageLength), syslog.WithMachineOptions(rfc5424.WithBestEffort())).Parse(buf)
+			octetcounting.NewParser(syslog.WithListener(cb), syslog.WithMaxMessageLength(maxMessageLength), syslog.WithBestEffort()).Parse(buf)
 		}
 	} else {
 		return fmt.Errorf("invalid or unsupported framing. first byte: '%s'", string(b))
 	}
 
 	return nil
-}
-
-func getRFC3164MachineOptions(useRFC3164DefaultYear bool) []syslog.MachineOption {
-	options := []syslog.MachineOption{rfc3164.WithBestEffort()}
-	if useRFC3164DefaultYear {
-		options = append(options, rfc3164.WithYear(rfc3164.CurrentYear{}))
-	}
-	return options
 }

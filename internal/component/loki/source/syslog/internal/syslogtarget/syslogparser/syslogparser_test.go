@@ -4,9 +4,11 @@ import (
 	"io"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/grafana/alloy/internal/component/loki/source/syslog/internal/syslogtarget/syslogparser"
 	"github.com/leodido/go-syslog/v4"
+	"github.com/leodido/go-syslog/v4/rfc3164"
 	"github.com/leodido/go-syslog/v4/rfc5424"
 	"github.com/stretchr/testify/require"
 )
@@ -95,4 +97,40 @@ func TestParseStream_EmptyStream(t *testing.T) {
 
 	err := syslogparser.ParseStream(false, false, r, func(_ *syslog.Result) {}, defaultMaxMessageLength)
 	require.Equal(t, err, io.EOF)
+}
+
+func TestParseStream_RFC3164Timestamp(t *testing.T) {
+	r := strings.NewReader("<13>Dec  1 00:00:00 host Message")
+
+	results := make([]*syslog.Result, 0)
+	cb := func(res *syslog.Result) {
+		results = append(results, res)
+	}
+
+	err := syslogparser.ParseStream(true, false, r, cb, defaultMaxMessageLength)
+	require.NoError(t, err)
+
+	require.Equal(t, 1, len(results))
+	require.NoError(t, results[0].Error)
+	require.Equal(t, "Message", *results[0].Message.(*rfc3164.SyslogMessage).Message)
+	require.Equal(t, "host", *results[0].Message.(*rfc3164.SyslogMessage).Hostname)
+	require.Equal(t, time.Date(0, 12, 1, 0, 0, 0, 0, time.UTC), *results[0].Message.(*rfc3164.SyslogMessage).Timestamp)
+}
+
+func TestParseStream_RFC3164TimestampWithYear(t *testing.T) {
+	r := strings.NewReader("<13>Dec  1 00:00:00 host Message")
+
+	results := make([]*syslog.Result, 0)
+	cb := func(res *syslog.Result) {
+		results = append(results, res)
+	}
+
+	err := syslogparser.ParseStream(true, true, r, cb, defaultMaxMessageLength)
+	require.NoError(t, err)
+
+	require.Equal(t, 1, len(results))
+	require.NoError(t, results[0].Error)
+	require.Equal(t, "Message", *results[0].Message.(*rfc3164.SyslogMessage).Message)
+	require.Equal(t, "host", *results[0].Message.(*rfc3164.SyslogMessage).Hostname)
+	require.Equal(t, time.Date(time.Now().Year(), 12, 1, 0, 0, 0, 0, time.UTC), *results[0].Message.(*rfc3164.SyslogMessage).Timestamp)
 }
