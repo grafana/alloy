@@ -10,6 +10,10 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Bugfixes
+
+- Fix issue with `prometheus.write.queue` that lead to excessive connections. (@mattdurham)
+
 v1.7.0-rc.3
 -----------------
 
