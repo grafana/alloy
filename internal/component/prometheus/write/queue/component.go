@@ -33,16 +33,11 @@ func NewComponent(opts component.Options, args Arguments) (*Queue, error) {
 		endpoints: map[string]promqueue.Queue{},
 	}
 
+	s.opts.OnStateChange(Exports{Receiver: s})
 	err := s.createEndpoints()
 	if err != nil {
 		return nil, err
 	}
-	// This needs to be started before we export the onstatechange so that it can accept
-	// signals.
-	for _, ep := range s.endpoints {
-		ep.Start()
-	}
-	s.opts.OnStateChange(Exports{Receiver: s})
 
 	return s, nil
 }
@@ -55,12 +50,14 @@ type Queue struct {
 	opts      component.Options
 	log       log.Logger
 	endpoints map[string]promqueue.Queue
+	ctx       context.Context
 }
 
 // Run starts the component, blocking until ctx is canceled or the component
 // suffers a fatal error. Run is guaranteed to be called exactly once per
 // Component.
 func (s *Queue) Run(ctx context.Context) error {
+	s.ctx = ctx
 	defer func() {
 		s.mut.Lock()
 		defer s.mut.Unlock()
@@ -69,6 +66,9 @@ func (s *Queue) Run(ctx context.Context) error {
 			ep.Stop()
 		}
 	}()
+	for _, ep := range s.endpoints {
+		ep.Start(ctx)
+	}
 
 	<-ctx.Done()
 	return nil
@@ -113,7 +113,7 @@ func (s *Queue) Update(args component.Arguments) error {
 		if err != nil {
 			return err
 		}
-		end.Start()
+		end.Start(s.ctx)
 		s.endpoints[epCfg.Name] = end
 
 	}
