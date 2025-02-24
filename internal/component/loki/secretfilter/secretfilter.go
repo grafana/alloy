@@ -322,6 +322,15 @@ func (c *Component) Update(args component.Arguments) error {
 		if re.Match([]byte("")) {
 			continue
 		}
+		// If the rule regex matches the redaction string, skip this rule
+		redactionString := "<REDACTED-SECRET:" + rule.ID + ">"
+		if c.args.RedactWith != "" {
+			redactionString = c.args.RedactWith
+			redactionString = strings.ReplaceAll(redactionString, "$SECRET_NAME", rule.ID)
+		}
+		if re.Match([]byte(redactionString)) {
+			continue
+		}
 
 		// Compile rule-specific allowlist regexes
 		var allowlist []AllowRule
