@@ -1,6 +1,7 @@
 package vm
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"reflect"
@@ -104,6 +105,29 @@ func evalBinop(lhs value.Value, op token.Token, rhs value.Value) (value.Value, e
 
 	case token.DIV: // number / number
 		lhsNum, rhsNum := lhs.Number(), rhs.Number()
+		switch rhsNum.Kind() {
+		case value.NumberKindUint:
+			if rhsNum.Uint() == uint64(0) {
+				return value.Null, value.Error{
+					Value: origRHS,
+					Inner: errors.New("divide by zero error"),
+				}
+			}
+		case value.NumberKindInt:
+			if rhsNum.Int() == int64(0) {
+				return value.Null, value.Error{
+					Value: origRHS,
+					Inner: errors.New("divide by zero error"),
+				}
+			}
+		case value.NumberKindFloat:
+			if rhsNum.Float() == float64(0) {
+				return value.Null, value.Error{
+					Value: origRHS,
+					Inner: errors.New("divide by zero error"),
+				}
+			}
+		}
 		switch fitNumberKinds(lhsNum.Kind(), rhsNum.Kind()) {
 		case value.NumberKindUint:
 			return value.Uint(lhsNum.Uint() / rhsNum.Uint()), nil
@@ -115,6 +139,29 @@ func evalBinop(lhs value.Value, op token.Token, rhs value.Value) (value.Value, e
 
 	case token.MOD: // number % number
 		lhsNum, rhsNum := lhs.Number(), rhs.Number()
+		switch rhsNum.Kind() {
+		case value.NumberKindUint:
+			if rhsNum.Uint() == uint64(0) {
+				return value.Null, value.Error{
+					Value: origRHS,
+					Inner: errors.New("divide by zero error"),
+				}
+			}
+		case value.NumberKindInt:
+			if rhsNum.Int() == int64(0) {
+				return value.Null, value.Error{
+					Value: origRHS,
+					Inner: errors.New("divide by zero error"),
+				}
+			}
+		case value.NumberKindFloat:
+			if rhsNum.Float() == float64(0) {
+				return value.Null, value.Error{
+					Value: origRHS,
+					Inner: errors.New("divide by zero error"),
+				}
+			}
+		}
 		switch fitNumberKinds(lhsNum.Kind(), rhsNum.Kind()) {
 		case value.NumberKindUint:
 			return value.Uint(lhsNum.Uint() % rhsNum.Uint()), nil
@@ -349,8 +396,11 @@ var numberKindPrec = map[value.NumberKind]int{
 }
 
 func intPow[Number int64 | uint64](n, m Number) Number {
-	if m == 0 {
+	switch {
+	case m == 0 || n == 1:
 		return 1
+	case n == 0 && m > 0:
+		return 0
 	}
 	result := n
 	for i := Number(2); i <= m; i++ {
