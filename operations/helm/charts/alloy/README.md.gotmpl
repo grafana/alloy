@@ -113,6 +113,14 @@ components like [discovery.kubernetes][] to work properly.
 
 [discovery.kubernetes]: https://grafana.com/docs/alloy/latest/reference/components/discovery.kubernetes/
 
+### rbac.extraRules
+
+`rbac.extraRules` enabled specifying additional rules for alloy ClusterRole.
+
+Some providers require additional rules to be able to scrape the metrics of the
+api endpoints (e.g. EKS). This configuration option enables configuring special
+rules for such cases.
+
 ### controller.autoscaling
 
 `controller.autoscaling.enabled` enables the creation of a HorizontalPodAutoscaler. It is only used when `controller.type` is set to `deployment` or `statefulset`.
