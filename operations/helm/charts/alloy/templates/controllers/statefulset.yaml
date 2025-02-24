@@ -20,7 +20,7 @@ spec:
   podManagementPolicy: Parallel
   {{- end }}
   {{- if ge (int .Capabilities.KubeVersion.Minor) 22 }}
-  minReadySeconds: 10
+  minReadySeconds: {{ .Values.controller.minReadySeconds }}
   {{- end }}
   serviceName: {{ include "alloy.fullname" . }}
   selector:
