@@ -15,12 +15,5 @@ jobs:
         platform: [macos-latest-xlarge]
     runs-on: ${{ matrix.platform }}
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    - name: Set up Go 1.23
-      uses: actions/setup-go@v5
-      with:
-        go-version: "1.23"
-        cache: true
-    - name: Test
-      run: CGO_LDFLAGS="-ld_classic $CGO_LDFLAGS" make GO_TAGS="nodocker" test
+    - name: Log a workflow deprecation message
+      run: echo "This workflow has been moved to 'Build and test'. This file will be deleted soon."

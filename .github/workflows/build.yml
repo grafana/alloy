@@ -1,25 +1,181 @@
-name: Build
+name: Build and test
+
 on:
+  push:
+    branches:
+      # Build on the main branch so that newly created feature branches 
+      # can load its Go cache.branches-ignore: 
+      # https://docs.github.com/en/enterprise-server@3.6/actions/using-workflows/caching-dependencies-to-speed-up-workflows)
+      - main
   pull_request:
+
 concurrency:
   # Cancel any running workflow for the same branch when new commits are pushed.
   # We group both by ref_name (available when CI is triggered by a push to a branch/tag)
   # and head_ref (available when CI is triggered by a PR).
   group: "${{ github.ref_name }}-${{ github.head_ref }}"
   cancel-in-progress: true
+
 jobs:
+
+  setup-environment-unix:
+    strategy:
+      matrix:
+        platform: [ubuntu-latest, macos-latest-xlarge]
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set up Go 1.23
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+      - id: go-cache-paths
+        run: |
+          echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
+          echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
+      - name: Cache Go
+        id: go-cache
+        uses: actions/cache@v4.2.0
+        with:
+          path: |
+            ${{ steps.go-cache-paths.outputs.go-mod }}
+            ${{ steps.go-cache-paths.outputs.go-build }}
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+  setup-environment-windows:
+    runs-on: windows-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Set up Go 1.23
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: go.mod
+        cache: false
+    - name: Cache Go
+      id: go-cache
+      uses: actions/cache@v4.2.0
+      with:
+        path: |
+          ~\AppData\Local\go-build
+          ~\go\pkg\mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-   
+              
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    needs: setup-environment-unix
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: go.mod
+        cache: false
+    - id: go-cache-paths
+      run: |
+        echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
+        echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
+    - name: Cache Go
+      id: go-cache
+      uses: actions/cache@v4.2.0
+      with:
+        path: |
+          ${{ steps.go-cache-paths.outputs.go-mod }}
+          ${{ steps.go-cache-paths.outputs.go-build }}
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+         ${{ runner.os }}-go-
+    - run: sudo apt-get update -y && sudo apt-get install -y libsystemd-dev
+    - run: make lint
+
+  test_linux:
+    name: Test Linux
+    runs-on: ubuntu-latest
+    needs: setup-environment-unix
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Set up Go 1.23
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: go.mod
+        cache: false
+    - id: go-cache-paths
+      run: |
+        echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
+        echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
+    - name: Cache Go
+      id: go-cache
+      uses: actions/cache@v4.2.0
+      with:
+        path: |
+          ${{ steps.go-cache-paths.outputs.go-mod }}
+          ${{ steps.go-cache-paths.outputs.go-build }}
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+    - run: make GO_TAGS="nodocker" test
+
+  test:
+    name: Test Mac
+    strategy:
+      matrix:
+        platform: [macos-latest-xlarge]
+    runs-on: ${{ matrix.platform }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Set up Go 1.23
+      uses: actions/setup-go@v5
+      with:
+        go-version: "1.23"
+        cache: false
+    - id: go-cache-paths
+      run: |
+        echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
+        echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
+    - name: Cache Go
+      id: go-cache
+      uses: actions/cache@v4.2.0
+      with:
+        path: |
+          ${{ steps.go-cache-paths.outputs.go-mod }}
+          ${{ steps.go-cache-paths.outputs.go-build }}
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+    - name: Test
+      run: CGO_LDFLAGS="-ld_classic $CGO_LDFLAGS" make GO_TAGS="nodocker" test
+
   build_linux:
     name: Build on Linux
     runs-on: ubuntu-latest
+    needs: setup-environment-unix
     container: grafana/alloy-build-image:v0.1.8
     strategy:
       matrix:
         os: [linux]
         arch: [amd64, arm64, ppc64le, s390x]
     steps:
+    - name: Install zstd
+      # Install zstd when running inside a container.continue-on-error.
+      # Otherwise the Go cache won't be restored.
+      # TODO: Add zstd to Alloy's build image.
+      run: |
+        apt-get update
+        apt-get install zstd
     - name: Checkout code
       uses: actions/checkout@v4
     - name: Set ownership
+      # This is required when we checkout inside a container.
       # https://github.com/actions/runner/issues/2033#issuecomment-1204205989
       run: |
           # this is to fix GIT not liking owner of the checkout dir
@@ -28,23 +184,45 @@ jobs:
       uses: actions/setup-go@v5
       with:
         go-version-file: go.mod
-        # TODO: Try enabling caching later. It might use up too much disk space on runners so needs extra testing.
         cache: false
+    - id: go-cache-paths
+      run: |
+        echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
+        echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
+    - name: Cache Go
+      id: go-cache
+      uses: actions/cache@v4.2.0
+      with:
+        path: |
+          ${{ steps.go-cache-paths.outputs.go-mod }}
+          ${{ steps.go-cache-paths.outputs.go-build }}
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
     - run: make generate-ui
     - run: GO_TAGS="builtinassets promtail_journal_enabled" GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} GOARM= make alloy
 
   build_linux_boringcrypto:
     name: Build on Linux (boringcrypto)
     runs-on: ubuntu-latest
+    needs: setup-environment-unix
     container: grafana/alloy-build-image:v0.1.8-boringcrypto
     strategy:
       matrix:
         os: [linux]
         arch: [amd64, arm64]
     steps:
+    - name: Install zstd
+      # Install zstd when running inside a container.continue-on-error.
+      # Otherwise the Go cache won't be restored.
+      # TODO: Add zstd to Alloy's build image.
+      run: |
+        apt-get update
+        apt-get install zstd
     - name: Checkout code
       uses: actions/checkout@v4
     - name: Set ownership
+      # This is required when we checkout inside a container.
       # https://github.com/actions/runner/issues/2033#issuecomment-1204205989
       run: |
           # this is to fix GIT not liking owner of the checkout dir
@@ -53,14 +231,28 @@ jobs:
       uses: actions/setup-go@v5
       with:
         go-version-file: go.mod
-        # TODO: Try enabling caching later. It might use up too much disk space on runners so needs extra testing.
         cache: false
+    - id: go-cache-paths
+      run: |
+        echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
+        echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
+    - name: Cache Go
+      id: go-cache
+      uses: actions/cache@v4.2.0
+      with:
+        path: |
+          ${{ steps.go-cache-paths.outputs.go-mod }}
+          ${{ steps.go-cache-paths.outputs.go-build }}
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
     - run: make generate-ui
     - run: GO_TAGS="builtinassets promtail_journal_enabled" GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} GOARM= GOEXPERIMENT=boringcrypto make alloy
 
   build_mac_intel:
     name: Build on MacOS (Intel)
     runs-on: macos-14-large
+    needs: setup-environment-unix
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -68,14 +260,28 @@ jobs:
       uses: actions/setup-go@v5
       with:
         go-version-file: go.mod
-        # TODO: Try enabling caching later. It might use up too much disk space on runners so needs extra testing.
         cache: false
+    - id: go-cache-paths
+      run: |
+        echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
+        echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
+    - name: Cache Go
+      id: go-cache
+      uses: actions/cache@v4.2.0
+      with:
+        path: |
+          ${{ steps.go-cache-paths.outputs.go-mod }}
+          ${{ steps.go-cache-paths.outputs.go-build }}
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
     - run: make generate-ui
     - run: GO_TAGS="builtinassets" GOOS=darwin GOARCH=amd64 GOARM= make alloy
 
   build_mac_arm:
     name: Build on MacOS (ARM)
     runs-on: macos-14-xlarge
+    needs: setup-environment-unix
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -83,14 +289,28 @@ jobs:
       uses: actions/setup-go@v5
       with:
         go-version-file: go.mod
-        # TODO: Try enabling caching later. It might use up too much disk space on runners so needs extra testing.
         cache: false
+    - id: go-cache-paths
+      run: |
+        echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
+        echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
+    - name: Cache Go
+      id: go-cache
+      uses: actions/cache@v4.2.0
+      with:
+        path: |
+          ${{ steps.go-cache-paths.outputs.go-mod }}
+          ${{ steps.go-cache-paths.outputs.go-build }}
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
     - run: make generate-ui
     - run: GO_TAGS="builtinassets" GOOS=darwin GOARCH=arm64 GOARM= make alloy
 
   build_windows:
     name: Build on Windows (AMD64)
     runs-on: windows-latest
+    needs: setup-environment-windows
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -98,8 +318,26 @@ jobs:
       uses: actions/setup-go@v5
       with:
         go-version-file: go.mod
-        # TODO: Try enabling caching later. It might use up too much disk space on runners so needs extra testing.
         cache: false
+    # TODO: Find a way to get the cached locations from Go.
+    # - id: go-cache-paths
+    #   run: |
+    #     echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
+    #     echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
+    - name: Cache Go
+      # Windows won't restore the Linux cache because 
+      # Linux uses different line breaks and the hashes don't match.
+      # TODO: Change the line breaks on Windows? Or just leave it as it is?
+      # If it uses the same line breaks it can use setup-environment-unix.
+      id: go-cache
+      uses: actions/cache@v4.2.0
+      with:
+        path: |
+          ~\AppData\Local\go-build
+          ~\go\pkg\mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
     - run: make generate-ui
     - run: echo "GO_TAGS=builtinassets" | Out-File -FilePath $env:GITHUB_ENV -Append
     - run: echo "GOOS=windows" | Out-File -FilePath $env:GITHUB_ENV -Append
@@ -109,11 +347,20 @@ jobs:
   build_freebsd:
     name: Build on FreeBSD (AMD64)
     runs-on: ubuntu-latest
+    needs: setup-environment-unix
     container: grafana/alloy-build-image:v0.1.8
     steps:
+    - name: Install zstd
+      # Install zstd when running inside a container.continue-on-error.
+      # Otherwise the Go cache won't be restored.
+      # TODO: Add zstd to Alloy's build image.
+      run: |
+        apt-get update
+        apt-get install zstd
     - name: Checkout code
       uses: actions/checkout@v4
     - name: Set ownership
+      # This is required when we checkout inside a container.
       # https://github.com/actions/runner/issues/2033#issuecomment-1204205989
       run: |
           # this is to fix GIT not liking owner of the checkout dir
@@ -122,7 +369,20 @@ jobs:
       uses: actions/setup-go@v5
       with:
         go-version-file: go.mod
-        # TODO: Try enabling caching later. It might use up too much disk space on runners so needs extra testing.
         cache: false
+    - id: go-cache-paths
+      run: |
+        echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
+        echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
+    - name: Cache Go
+      id: go-cache
+      uses: actions/cache@v4.2.0
+      with:
+        path: |
+          ${{ steps.go-cache-paths.outputs.go-mod }}
+          ${{ steps.go-cache-paths.outputs.go-build }}
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
     - run: make generate-ui
     - run: GO_TAGS="builtinassets" GOOS=freebsd GOARCH=amd64 GOARM= make alloy
