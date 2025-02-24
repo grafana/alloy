@@ -6,7 +6,7 @@ import (
 
 	"github.com/go-kit/log"
 	commoncfg "github.com/grafana/alloy/internal/component/common/config"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/service/logging/level"
 	"github.com/grafana/alloy/internal/useragent"
 	promconfig "github.com/prometheus/common/config"
 	"k8s.io/client-go/rest"

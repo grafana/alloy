@@ -7,7 +7,7 @@ import (
 	"log/slog"
 
 	"github.com/KimMachineGun/automemlimit/memlimit"
-	"github.com/grafana/alloy/internal/runtime/logging"
+	"github.com/grafana/alloy/internal/service/logging"
 )
 
 func applyAutoMemLimit(l *logging.Logger) {

@@ -12,7 +12,6 @@ import (
 const (
 	argumentBlockID = "argument"
 	exportBlockID   = "export"
-	loggingBlockID  = "logging"
 	tracingBlockID  = "tracing"
 	foreachID       = "foreach"
 )
@@ -42,8 +41,6 @@ func NewConfigNode(block *ast.BlockStmt, globals ComponentGlobals, customReg *Cu
 		return NewArgumentConfigNode(block, globals), nil
 	case exportBlockID:
 		return NewExportConfigNode(block, globals), nil
-	case loggingBlockID:
-		return NewLoggingConfigNode(block, globals), nil
 	case tracingBlockID:
 		return NewTracingConfigNode(block, globals), nil
 	case importsource.BlockImportFile, importsource.BlockImportString, importsource.BlockImportHTTP, importsource.BlockImportGit:
@@ -73,7 +70,6 @@ func checkFeatureStability(blockName string, minStability featuregate.Stability)
 // This is helpful when validating node conditions specific to config node
 // types.
 type ConfigNodeMap struct {
-	logging     *LoggingConfigNode
 	tracing     *TracingConfigNode
 	argumentMap map[string]*ArgumentConfigNode
 	exportMap   map[string]*ExportConfigNode
@@ -85,7 +81,6 @@ type ConfigNodeMap struct {
 // to populate NewConfigNodeMap.
 func NewConfigNodeMap() *ConfigNodeMap {
 	return &ConfigNodeMap{
-		logging:     nil,
 		tracing:     nil,
 		argumentMap: map[string]*ArgumentConfigNode{},
 		exportMap:   map[string]*ExportConfigNode{},
@@ -104,8 +99,6 @@ func (nodeMap *ConfigNodeMap) Append(configNode BlockNode) diag.Diagnostics {
 		nodeMap.argumentMap[n.Label()] = n
 	case *ExportConfigNode:
 		nodeMap.exportMap[n.Label()] = n
-	case *LoggingConfigNode:
-		nodeMap.logging = n
 	case *TracingConfigNode:
 		nodeMap.tracing = n
 	case *ImportConfigNode:
@@ -143,15 +136,6 @@ func (nodeMap *ConfigNodeMap) ValidateModuleConstraints(isInModule bool) diag.Di
 	var diags diag.Diagnostics
 
 	if isInModule {
-		if nodeMap.logging != nil {
-			diags.Add(diag.Diagnostic{
-				Severity: diag.SeverityLevelError,
-				Message:  "logging block not allowed inside a module",
-				StartPos: ast.StartPos(nodeMap.logging.Block()).Position(),
-				EndPos:   ast.EndPos(nodeMap.logging.Block()).Position(),
-			})
-		}
-
 		if nodeMap.tracing != nil {
 			diags.Add(diag.Diagnostic{
 				Severity: diag.SeverityLevelError,

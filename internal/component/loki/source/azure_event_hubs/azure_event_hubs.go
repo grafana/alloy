@@ -13,7 +13,7 @@ import (
 	"github.com/grafana/alloy/internal/component/loki/source/azure_event_hubs/internal/parser"
 	kt "github.com/grafana/alloy/internal/component/loki/source/internal/kafkatarget"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/service/logging/level"
 	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/grafana/dskit/flagext"
 
