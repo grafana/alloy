@@ -1,7 +1,7 @@
 local dashboard = import './dashboard.jsonnet';
 
 {
-    newTemplateVariablesList(filterSelector='', enableK8sCluster=true, includeInstance=true, setenceCaseLabels=false):: (     
+    newTemplateVariablesList(filterSelector='', enableK8sCluster=true, enableAlloyCluster=true, includeInstance=true, setenceCaseLabels=false):: (        
 
         local clusterTemplateQuery = 
             if std.isEmpty(filterSelector) then
@@ -23,6 +23,16 @@ local dashboard = import './dashboard.jsonnet';
                 label_values(alloy_component_controller_running_components{%s, cluster=~"$cluster"}, namespace)
             ||| % filterSelector;
         
+        local k8sAlloyClusterTemplateQuery = 
+            if std.isEmpty(filterSelector) then
+            |||
+                label_values(alloy_component_controller_running_components{cluster=~"$cluster", namespace=~"$namespace"}, cluster_name)
+            |||
+            else
+            |||
+                label_values(alloy_component_controller_running_components{%s, cluster=~"$cluster", namespace=~"$namespace"}, cluster_name)
+            ||| % filterSelector;
+        
         local k8sJobTemplateQuery = 
             if std.isEmpty(filterSelector) then
             |||
@@ -41,6 +51,16 @@ local dashboard = import './dashboard.jsonnet';
             else
             |||
                 label_values(alloy_component_controller_running_components{%s, cluster=~"$cluster", namespace=~"$namespace", job=~"$job"}, instance)
+            ||| % filterSelector;
+
+        local alloyClusterTemplateQuery = 
+            if std.isEmpty(filterSelector) then
+            |||
+                label_values(alloy_component_controller_running_components, cluster_name)
+            |||
+            else
+            |||
+                label_values(alloy_component_controller_running_components{%s}, cluster_name)
             ||| % filterSelector;
 
         local jobTemplateQuery = 
@@ -78,6 +98,14 @@ local dashboard = import './dashboard.jsonnet';
                 query=k8sJobTemplateQuery,
                 setenceCaseLabels=setenceCaseLabels),
             ] + 
+            if enableAlloyCluster then
+                [
+                    dashboard.newTemplateVariable(
+                    name='alloyCluster',
+                    query=k8sAlloyClusterTemplateQuery,
+                    setenceCaseLabels=setenceCaseLabels),
+                ]
+            else [] +
             if includeInstance then
                 [   
                     dashboard.newMultiTemplateVariable(
@@ -91,8 +119,16 @@ local dashboard = import './dashboard.jsonnet';
                 dashboard.newTemplateVariable(
                 name='job', 
                 query=jobTemplateQuery,
-                setenceCaseLabels=setenceCaseLabels),                
+                setenceCaseLabels=setenceCaseLabels),                            
             ] + 
+            if enableAlloyCluster then
+                [
+                    dashboard.newTemplateVariable(
+                    name='alloyCluster',
+                    query=alloyClusterTemplateQuery,
+                    setenceCaseLabels=setenceCaseLabels), 
+                ]
+            else [] +
             if includeInstance then
                 [
                     dashboard.newMultiTemplateVariable(
