@@ -51,6 +51,22 @@ var customGitleaksConfig = map[string]string{
 		description = "Identified a fake short secret"
 		regex = '''(?i)\b(abc)(?:['|\"|\n|\r|\s|\x60|;]|$)'''
 	`,
+	"empty_secret": `
+		title = "gitleaks custom config"
+
+		[[rules]]
+		id = "empty-secret"
+		description = "Identified a possibly empty secret"
+		regex = '''(?i)(\w*)'''
+	`,
+	"sha1_secret": `
+		title = "gitleaks custom config"
+
+		[[rules]]
+		id = "sha1-secret"
+		description = "Identified a SHA1 secret"
+		regex = '''(?i)\b(?:[0-9a-f]{40})\b'''
+	`,
 	"allow_list_old": `
 		title = "gitleaks custom config"
 
@@ -132,6 +148,12 @@ var testConfigs = map[string]string{
 		forward_to = []
 		gitleaks_config = "not-empty" // This will be replaced with the actual path to the temporary gitleaks config file
 	`,
+	"custom_redact_string_with_hash_sha1": `
+		forward_to = []
+		redact_with = "<` + defaultRedactionString + `:$SECRET_NAME:$SECRET_HASH>"
+		types = ["sha1-secret"]
+		gitleaks_config = "not-empty" // This will be replaced with the actual path to the temporary gitleaks config file
+	`,
 }
 
 // List of fake secrets to use for testing
@@ -167,6 +189,10 @@ var fakeSecrets = map[string]fakeSecret{
 	"short-secret": {
 		name:  "short-secret",
 		value: "abc",
+	},
+	"sha1-secret": {
+		name:  "sha1-secret",
+		value: "0123456789abcdef0123456789abcdef01234567",
 	},
 }
 
@@ -225,6 +251,12 @@ var testLogs = map[string]testLog{
 			"message": "This is a simple log message with a secret value ` + fakeSecrets["short-secret"].value + ` !
 		}`,
 		secrets: []fakeSecret{fakeSecrets["short-secret"]},
+	},
+	"sha1_secret": {
+		log: `{
+			"message": "This is a simple log message with a secret value ` + fakeSecrets["sha1-secret"].value + ` !
+		}`,
+		secrets: []fakeSecret{fakeSecrets["sha1-secret"]},
 	},
 }
 
@@ -375,6 +407,20 @@ var tt = []struct {
 		"",
 		testLogs["multiple_secrets"].log,
 		replaceSecrets(testLogs["multiple_secrets"].log, testLogs["multiple_secrets"].secrets, false, false, defaultRedactionString),
+	},
+	{
+		"empty_secret",
+		testConfigs["custom_gitleaks_file_simple"],
+		customGitleaksConfig["empty_secret"],
+		testLogs["short_secret"].log,
+		testLogs["short_secret"].log,
+	},
+	{
+		"sha1_secret",
+		testConfigs["custom_redact_string_with_hash_sha1"],
+		customGitleaksConfig["sha1_secret"],
+		testLogs["sha1_secret"].log,
+		replaceSecrets(testLogs["sha1_secret"].log, testLogs["sha1_secret"].secrets, false, true, defaultRedactionString),
 	},
 }
 

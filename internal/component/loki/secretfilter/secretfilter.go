@@ -320,6 +320,7 @@ func (c *Component) Update(args component.Arguments) error {
 		}
 		// If the rule regex matches the empty string, skip this rule
 		if re.Match([]byte("")) {
+			level.Warn(c.opts.Logger).Log("msg", "excluded rule due to matching the empty string", "rule", rule.ID)
 			continue
 		}
 		// If the rule regex matches the redaction string, skip this rule
@@ -329,6 +330,7 @@ func (c *Component) Update(args component.Arguments) error {
 			redactionString = strings.ReplaceAll(redactionString, "$SECRET_NAME", rule.ID)
 		}
 		if re.Match([]byte(redactionString)) {
+			level.Warn(c.opts.Logger).Log("msg", "excluded rule due to matching the redaction string", "rule", rule.ID)
 			continue
 		}
 
