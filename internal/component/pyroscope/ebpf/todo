@@ -1,17 +1,15 @@
 
 ===================
-
-fix lint
-fix tests
-add integration test with symbolizer
-otel: nfs unit test
-
+make CI green
+update dockerfile
 organize alloy CGO build
 
 Create PRs for review
 
 =============== LATER =============
 
+add integration test with symbolizer
+otel: nfs unit test
 irsymtab cache shutdown
 test tracer shutdown / restart manually
 

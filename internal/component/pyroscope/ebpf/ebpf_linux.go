@@ -12,19 +12,18 @@ import (
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/pyroscope"
+	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"go.opentelemetry.io/ebpf-profiler/libpf"
 	"go.opentelemetry.io/ebpf-profiler/pyroscope/dynamicprofiling"
-	"go.opentelemetry.io/ebpf-profiler/pyroscope/reporter"
 	"go.opentelemetry.io/ebpf-profiler/pyroscope/symb/irsymcache"
 
 	"github.com/oklog/run"
 
+	sd "go.opentelemetry.io/ebpf-profiler/pyroscope/discovery"
 	"go.opentelemetry.io/ebpf-profiler/pyroscope/internalshim/controller"
 	"go.opentelemetry.io/ebpf-profiler/pyroscope/internalshim/helpers"
-	"go.opentelemetry.io/ebpf-profiler/pyroscope/sd"
-	"go.opentelemetry.io/ebpf-profiler/vc"
 )
 
 func init() {
@@ -44,7 +43,7 @@ func New(opts component.Options, args Arguments) (component.Component, error) {
 	cgroups, err := freelru.NewSynced[libpf.PID, string](args.ContainerIDCacheSize,
 		func(pid libpf.PID) uint32 { return uint32(pid) })
 
-	discovery, err := sd.NewTargetFinder(opts.Logger, cgroups, targetsOptionFromArguments(args))
+	discovery, err := sd.NewTargetProducer(cgroups, targetsOptionFromArguments(args))
 	if err != nil {
 		return nil, fmt.Errorf("ebpf target finder create: %w", err)
 	}
@@ -57,8 +56,8 @@ func New(opts component.Options, args Arguments) (component.Component, error) {
 		return nil, err
 	}
 
-	tf := irsymcache.NewTableFactory(cfg.PyroscopeSymbolizerTableGSYM)
-	nfs, err := irsymcache.NewFSCache(opts.Logger, tf, irsymcache.Options{
+	tf := irsymcache.NewTableFactory()
+	nfs, err := irsymcache.NewFSCache(tf, irsymcache.Options{
 		Enabled: cfg.PyroscopeSymbolizeNativeFrames,
 		Size:    cfg.PyroscopeSymbCacheSizeBytes,
 		Path:    cfg.PyroscopeSymbCachePath,
@@ -66,7 +65,7 @@ func New(opts component.Options, args Arguments) (component.Component, error) {
 	if err != nil {
 		return nil, err
 	}
-	cfg.NativeFrameSymbolizer = nfs
+	cfg.FileObserver = nfs
 	if cfg.PyroscopeDynamicProfilingPolicy {
 		cfg.Policy = &dynamicprofiling.ServiceDiscoveryTargetsOnlyPolicy{Discovery: discovery}
 	} else {
@@ -112,7 +111,7 @@ type Component struct {
 	args         Arguments
 	argsUpdate   chan Arguments
 	appendable   *pyroscope.Fanout
-	targetFinder sd.TargetFinder
+	targetFinder sd.TargetProducer
 
 	debugInfo     DebugInfo
 	debugInfoLock sync.Mutex
@@ -121,8 +120,6 @@ type Component struct {
 }
 
 func (c *Component) Run(ctx context.Context) error {
-	c.options.Logger.Log(fmt.Sprintf("Starting OTEL profiling agent %s (revision %s, build timestamp %s)",
-		vc.Version(), vc.Revision(), vc.BuildTimestamp())) //todo extract this info from mod if possible?
 	ctlr := controller.New(c.cfg)
 	err := ctlr.Start(ctx)
 	if err != nil {
@@ -171,9 +168,9 @@ func (c *Component) updateDebugInfo() {
 }
 
 func targetsOptionFromArguments(args Arguments) sd.TargetsOptions {
-	targets := make([]sd.DiscoveryTarget, 0, len(args.Targets))
+	targets := make([]sd.DiscoveredTarget, 0, len(args.Targets))
 	for _, t := range args.Targets {
-		targets = append(targets, sd.DiscoveryTarget(t))
+		targets = append(targets, sd.DiscoveredTarget(t))
 	}
 	return sd.TargetsOptions{
 		Targets:     targets,
