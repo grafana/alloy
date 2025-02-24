@@ -194,3 +194,7 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 
 	return nil
 }
+
+func (c *QuerySample) DebugInfo() interface{} {
+	return map[string]string{}
+}
