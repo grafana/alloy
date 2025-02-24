@@ -31,7 +31,7 @@ func Test(t *testing.T) {
 	require.NoError(t, err)
 
 	cfg := fmt.Sprintf(`
-		include = ["%s"]
+		include = [%q]
 
 		output {
 			// no-op: will be overridden by test code.

@@ -262,7 +262,7 @@ You can see that the components are healthy, and you are ready to explore the me
 
 ## Log into Grafana and explore metrics in Prometheus
 
-Open [http://localhost:3000/explore/metrics/](http://localhost:3000/explore/metrics/) to access the **Explore Metrics** feature in Grafana.
+Open [http://localhost:3000/explore/metrics/](http://localhost:3000/explore/metrics/) to access the **Metrics Drilldown** feature in Grafana.
 
 From here you can visually explore the metrics sent to Prometheus by {{< param "PRODUCT_NAME" >}}.
 

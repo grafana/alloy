@@ -85,12 +85,15 @@ The `include` block configures which metrics to convert to delta.
 
 The following attributes are supported:
 
-| Name         | Type           | Description                             | Default | Required |
-| ------------ | -------------- | --------------------------------------- | ------- | -------- |
-| `metrics`    | `list(string)` | Names or patterns to convert to delta   |         | no       |
-| `match_type` | `string`       | Match type to use, `strict` or `regexp` |         | no       |
+| Name           | Type           | Description                              | Default | Required |
+| -------------- | -------------- | ---------------------------------------- |-------- | -------- |
+| `metrics`      | `list(string)` | Names or patterns to convert to delta.   |         | no       |
+| `match_type`   | `string`       | Match type to use, `strict` or `regexp`. |         | no       |
+| `metric_types` | `list(string)` | Metric types to convert to delta.        |         | no       |
 
 If one of `metrics` or `match_type` is supplied, the other must be supplied too.
+
+Valid values for `metric_types` are `sum` and `histogram`.
 
 ### `exclude`
 
@@ -99,12 +102,15 @@ The `exclude` block configures which metrics not to convert to delta.
 
 The following attributes are supported:
 
-| Name         | Type           | Description                             | Default | Required |
-| ------------ | -------------- | --------------------------------------- | ------- | -------- |
-| `metrics`    | `list(string)` | Names or patterns to convert to delta   |         | no       |
-| `match_type` | `string`       | Match type to use, `strict` or `regexp` |         | no       |
+| Name           | Type           | Description                                           | Default | Required |
+| -------------- | -------------- | ------------------------------------------------------ | ------- | -------- |
+| `metrics`      | `list(string)` | Names or patterns to exclude when converting to delta. |         | no       |
+| `match_type`   | `string`       | Match type to use, `strict` or `regexp`.               |         | no       |
+| `metric_types` | `list(string)` | Metric types to exclude when converting to delta.      |         | no       |
 
 If one of `metrics` or `match_type` is supplied, the other must be supplied too.
+
+Valid values for `metric_types` are `sum` and `histogram`.
 
 ### `debug_metrics`
 
