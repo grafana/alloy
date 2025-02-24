@@ -14,6 +14,9 @@ Main (unreleased)
 
 - Have `loki.echo` log the `entry_timestamp` and `structured_metadata` for any loki entries received (@dehaansa)
 
+v1.7.0-rc.4
+-----------------
+
 ### Bugfixes
 
 - Fix issue with `prometheus.write.queue` that lead to excessive connections. (@mattdurham)
