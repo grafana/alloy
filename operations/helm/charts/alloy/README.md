@@ -126,6 +126,7 @@ useful if just using the default DaemonSet isn't sufficient.
 | nameOverride | string | `nil` | Overrides the chart's name. Used to change the infix in the resource names. |
 | rbac.create | bool | `true` | Whether to create RBAC resources for Alloy. |
 | service.annotations | object | `{}` |  |
+| service.labels | object | `{}` |  |
 | service.clusterIP | string | `""` | Cluster IP, can be set to None, empty "" or an IP address |
 | service.enabled | bool | `true` | Creates a Service for the controller's pods. |
 | service.internalTrafficPolicy | string | `"Cluster"` | Value for internal traffic policy. 'Cluster' or 'Local' |
