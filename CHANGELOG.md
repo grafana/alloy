@@ -14,31 +14,7 @@ Main (unreleased)
 
 - Have `loki.echo` log the `entry_timestamp` and `structured_metadata` for any loki entries received (@dehaansa)
 
-v1.7.0-rc.4
------------------
-
-### Bugfixes
-
-- Fix issue with `prometheus.write.queue` that lead to excessive connections. (@mattdurham)
-
-v1.7.0-rc.3
------------------
-
-### Bugfixes
-
-- Fixed a bug where `loki.source.awsfirehose` and `loki.source.gcplog` could
-  not be used from within a module. (@tpaschalis)
-
-v1.7.0-rc.2
------------------
-
-### Bugfixes
-
-- Fix an issue where Prometheus metric name validation scheme was set by default to UTF-8. It is now set back to the
-  previous "legacy" scheme. An experimental flag `--feature.prometheus.metric-validation-scheme` can be used to switch 
-  it to `utf-8` to experiment with UTF-8 support.
-
-v1.7.0-rc.1
+v1.7.0
 -----------------
 
 ### Breaking changes
@@ -133,6 +109,15 @@ v1.7.0-rc.1
 - Fixed a bug where components could be evaluated concurrently without the full context during a config reload (@wildum)
 
 - Fixed locks that wouldn't be released in the remotecfg service if some errors occurred during the configuration reload (@spartan0x117)
+
+- Fix issue with `prometheus.write.queue` that lead to excessive connections. (@mattdurham)
+
+- Fixed a bug where `loki.source.awsfirehose` and `loki.source.gcplog` could
+  not be used from within a module. (@tpaschalis)
+
+- Fix an issue where Prometheus metric name validation scheme was set by default to UTF-8. It is now set back to the
+  previous "legacy" scheme. An experimental flag `--feature.prometheus.metric-validation-scheme` can be used to switch
+  it to `utf-8` to experiment with UTF-8 support. (@thampiotr)
 
 ### Other changes
 
