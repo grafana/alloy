@@ -33,8 +33,8 @@ docker-compose up -d
 
 ## Access the {{% param "PRODUCT_NAME" %}} UI
 
-Open your browser and navigate to [`http://localhost:12345`][http://localhost:12345].
+Open your browser and navigate to [`http://localhost:12345`](http://localhost:12345).
 
 ## Access the Grafana UI
 
-Open your browser and navigate to [`http://localhost:3000`][http://localhost:3000].
+Open your browser and navigate to [`http://localhost:3000`](http://localhost:3000).

@@ -1,6 +1,6 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/tutorials/scenarios/monitor-syslog-messages/
-description: Learn how to use Grafana Alloy to monitor non-RFC5424 compliant syslog messages
+description: Learn how to use Grafana Alloy to monitor Windows servers and desktops
 menuTitle: Monitor Windows
 title: Monitor Microsoft Windows servers and desktops with Grafana Alloy
 weight: 400
