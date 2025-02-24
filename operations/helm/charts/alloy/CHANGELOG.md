@@ -7,6 +7,13 @@ This document contains a historical list of changes between releases. Only
 changes that impact end-user behavior are listed; changes to documentation or
 internal API changes are not present.
 
+0.12.0 (2025-02-24)
+----------
+
+### Enhancements
+
+- Update to Grafana Alloy v1.7.0. (@thampiotr)
+
 0.11.0 (2025-01-23)
 ----------
 
