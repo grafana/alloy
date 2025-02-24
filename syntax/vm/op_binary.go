@@ -396,8 +396,11 @@ var numberKindPrec = map[value.NumberKind]int{
 }
 
 func intPow[Number int64 | uint64](n, m Number) Number {
-	if m == 0 {
+	switch {
+	case m == 0 || n == 1:
 		return 1
+	case n == 0 && m > 0:
+		return 0
 	}
 	result := n
 	for i := Number(2); i <= m; i++ {
