@@ -10,6 +10,10 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Features
+
+- Add `otelcol.receiver.awscloudwatch` component to receive logs from AWS CloudWatch and forward them to other `otelcol.*` components. (@wildum)
+
 ### Enhancements
 
 - Have `loki.echo` log the `entry_timestamp` and `structured_metadata` for any loki entries received (@dehaansa)
