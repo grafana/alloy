@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'tools/build-image/*'
+      - '.github/workflows/check-linux-build-image.yml'
 
 jobs:
   check-linux-build-image:
