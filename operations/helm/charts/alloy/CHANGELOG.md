@@ -10,6 +10,13 @@ internal API changes are not present.
 Unreleased
 ----------
 
+### Enhancements
+
+- Add support for adding livenessProbe to agent container (@slimes28)
+
+0.12.1 (2025-02-25)
+----------
+
 ### Bug Fixes
 
 - Set resource namespace correctly (@shinebayar-g)
