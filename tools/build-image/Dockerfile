@@ -36,20 +36,7 @@ RUN wget -nv https://nsis.sourceforge.io/mediawiki/images/4/4a/AccessControl.zip
 # Dependency: Go and Go dependencies
 FROM ${GO_RUNTIME} as golang
 
-ENV CONTROLLER_GEN_VERSION v0.9.2
-
-
-#
-# Final image
-#
-
-# rfratto/viceroy contains C cross compilers can be used for our Cgo
-# dependencies.
-FROM rfratto/viceroy:v0.4.0
-
-# Set CC to viceroycc to ensure that the cross compilers are used for all C
-# compilation.
-ENV CC viceroycc
+ENV CONTROLLER_GEN_VERSION v0.17.2
 
 RUN go install sigs.k8s.io/controller-tools/cmd/controller-gen@$CONTROLLER_GEN_VERSION \
  && go install github.com/mitchellh/gox@v1.0.1                                         \
@@ -63,6 +50,13 @@ RUN go install sigs.k8s.io/controller-tools/cmd/controller-gen@$CONTROLLER_GEN_V
  && go install github.com/ahmetb/gen-crd-api-reference-docs@v0.3.1-0.20220618162802-424739b250f5 \
  && go install github.com/norwoodj/helm-docs/cmd/helm-docs@v1.11.0
 
+#
+# Final image
+#
+
+# rfratto/viceroy contains C cross compilers can be used for our Cgo
+# dependencies.
+FROM rfratto/viceroy:v0.4.0
 
 # Install NodeJS LTS. This is needed because the most recent version of NodeJS
 # from official Debian packages is v12, and we need version v18.
