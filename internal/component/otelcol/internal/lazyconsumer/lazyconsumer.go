@@ -6,6 +6,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/grafana/alloy/internal/component/otelcol"
 	otelconsumer "go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/plog"
 	"go.opentelemetry.io/collector/pdata/pmetric"
@@ -16,6 +17,8 @@ import (
 // Consumer is a lazily-loaded consumer.
 type Consumer struct {
 	ctx context.Context
+
+	componentID string
 
 	// pauseMut and pausedWg are used to implement Pause & Resume semantics. See Pause method for more info.
 	pauseMut sync.RWMutex
@@ -28,23 +31,30 @@ type Consumer struct {
 }
 
 var (
-	_ otelconsumer.Traces  = (*Consumer)(nil)
-	_ otelconsumer.Metrics = (*Consumer)(nil)
-	_ otelconsumer.Logs    = (*Consumer)(nil)
+	_ otelconsumer.Traces       = (*Consumer)(nil)
+	_ otelconsumer.Metrics      = (*Consumer)(nil)
+	_ otelconsumer.Logs         = (*Consumer)(nil)
+	_ otelcol.ComponentMetadata = (*Consumer)(nil)
 )
 
 // New creates a new Consumer. The provided ctx is used to determine when the
 // Consumer should stop accepting data; if the ctx is closed, no further data
 // will be accepted.
-func New(ctx context.Context) *Consumer {
-	return &Consumer{ctx: ctx}
+func New(ctx context.Context, componentID string) *Consumer {
+	return &Consumer{ctx: ctx, componentID: componentID}
 }
 
 // NewPaused is like New, but returns a Consumer that is paused by calling Pause method.
-func NewPaused(ctx context.Context) *Consumer {
-	c := New(ctx)
+func NewPaused(ctx context.Context, componentID string) *Consumer {
+	c := New(ctx, componentID)
 	c.Pause()
 	return c
+}
+
+// ComponentID returns the componentID associated with the consumer.
+// TODO: find a way to decouple the lazyconsumer from the component for better abstraction.
+func (c *Consumer) ComponentID() string {
+	return c.componentID
 }
 
 // Capabilities implements otelconsumer.baseConsumer.

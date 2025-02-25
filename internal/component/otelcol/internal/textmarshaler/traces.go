@@ -1,23 +1,16 @@
-// Copy from the OTLP text in the Opentelemetry collector
+// Adapted copy from the OTLP text in the Opentelemetry collector
 
 // Copyright The OpenTelemetry Authors
 // SPDX-License-Identifier: Apache-2.0
 
-package livedebuggingconsumer
+package textmarshaler
 
 import (
 	"go.opentelemetry.io/collector/pdata/ptrace"
 )
 
-// NewTextTracesMarshaler returns a ptrace.Marshaler to encode to OTLP text bytes.
-func NewTextTracesMarshaler() ptrace.Marshaler {
-	return textTracesMarshaler{}
-}
-
-type textTracesMarshaler struct{}
-
 // MarshalTraces ptrace.Traces to OTLP text.
-func (textTracesMarshaler) MarshalTraces(td ptrace.Traces) ([]byte, error) {
+func MarshalTraces(td ptrace.Traces) ([]byte, error) {
 	buf := dataBuffer{}
 	rss := td.ResourceSpans()
 	for i := 0; i < rss.Len(); i++ {
