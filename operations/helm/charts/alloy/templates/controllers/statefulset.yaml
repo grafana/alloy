@@ -6,6 +6,7 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: {{ include "alloy.fullname" . }}
+  namespace: {{ include "alloy.namespace" . }}
   labels:
     {{- include "alloy.labels" . | nindent 4 }}
   {{- with .Values.controller.extraAnnotations }}

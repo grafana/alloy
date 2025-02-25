@@ -107,5 +107,5 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: {{ include "alloy.serviceAccountName" . }}
-    namespace: {{ .Release.Namespace }}
+    namespace: {{ include "alloy.namespace" . }}
 {{- end }}
