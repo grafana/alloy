@@ -4,6 +4,7 @@ apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: alloy
+  namespace: default
   labels:
     helm.sh/chart: alloy
     app.kubernetes.io/name: alloy
@@ -29,7 +30,7 @@ spec:
       serviceAccountName: alloy
       containers:
         - name: alloy
-          image: docker.io/grafana/alloy:v1.6.1
+          image: docker.io/grafana/alloy:v1.7.0
           imagePullPolicy: IfNotPresent
           args:
             - run
