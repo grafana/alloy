@@ -7,6 +7,13 @@ This document contains a historical list of changes between releases. Only
 changes that impact end-user behavior are listed; changes to documentation or
 internal API changes are not present.
 
+Unreleased
+----------
+
+### Enhancement
+
+- Add ability to specify extra rules for alloy ClusterRole. (@nejec)
+
 0.12.0 (2025-02-24)
 ----------
 
