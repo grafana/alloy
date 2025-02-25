@@ -35,7 +35,7 @@ otelcol.receiver.awscloudwatch "LABEL" {
 
 The following arguments are supported:
 
-| Name            | Type     | Description                      | Default | Required |
+|      Name       |   Type   |           Description            | Default | Required |
 | --------------- | -------- | -------------------------------- | ------- | -------- |
 | `region`        | `string` | AWS region to collect logs from. |         | yes      |
 | `profile`       | `string` | AWS credentials profile to use.  |         | no       |
@@ -47,7 +47,7 @@ If `imds_endpoint` is not specified, and the environment variable `AWS_EC2_METAD
 
 You can use the following blocks with `otelcol.receiver.awscloudwatch`:
 
-| Block                            | Description                                                                | Required |
+|              Block               |                                Description                                 | Required |
 | -------------------------------- | -------------------------------------------------------------------------- | -------- |
 | [`output`][output]               | Configures where to send received telemetry data.                          | yes      |
 | [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |
@@ -63,14 +63,14 @@ The `logs` block configures how logs are collected from CloudWatch.
 
 The following arguments are supported:
 
-| Name                     | Type       | Description                                                    | Default | Required |
+|           Name           |    Type    |                          Description                           | Default | Required |
 | ------------------------ | ---------- | -------------------------------------------------------------- | ------- | -------- |
 | `poll_interval`          | `duration` | How frequently to poll for new log entries.                    | `"1m"`  | no       |
 | `max_events_per_request` | `int`      | Maximum number of events to process per request to Cloudwatch. | `1000`  | no       |
 
 The `logs` block supports the following blocks:
 
-| Block                   | Description                                  | Required |
+|          Block          |                 Description                  | Required |
 | ----------------------- | -------------------------------------------- | -------- |
 | [groups](#logs--groups) | Configures which log groups to collect from. | no       |
 
@@ -78,7 +78,7 @@ The `logs` block supports the following blocks:
 
 The `groups` block supports the following blocks:
 
-| Block                                       | Description                                     | Required |
+|                    Block                    |                   Description                   | Required |
 | ------------------------------------------- | ----------------------------------------------- | -------- |
 | [autodiscover](#logs--groups--autodiscover) | Configures automatic discovery of log groups.   | no       |
 | [named](#logs--groups--named)               | Configures specific log groups to collect from. | no       |
@@ -91,14 +91,14 @@ The `autodiscover` block configures automatic discovery of log groups.
 
 The following arguments are supported:
 
-| Name     | Type     | Description                               | Default | Required |
+|   Name   |   Type   |                Description                | Default | Required |
 | -------- | -------- | ----------------------------------------- | ------- | -------- |
 | `prefix` | `string` | Prefix to filter log groups by.           |         | no       |
 | `limit`  | `int`    | Maximum number of log groups to discover. | `50`    | no       |
 
 The `autodiscover` block supports the following blocks:
 
-| Block                                           | Description                       | Required |
+|                      Block                      |            Description            | Required |
 | ----------------------------------------------- | --------------------------------- | -------- |
 | [streams](#logs--groups--autodiscover--streams) | Configures log streams filtering. | no       |
 
@@ -108,7 +108,7 @@ The `streams` block configures filtering of log streams for the autodiscovered l
 
 The following arguments are supported:
 
-| Name       | Type       | Description                            | Default | Required |
+|    Name    |    Type    |              Description               | Default | Required |
 | ---------- | ---------- | -------------------------------------- | ------- | -------- |
 | `prefixes` | `[]string` | List of prefixes to filter streams by. |         | no       |
 | `names`    | `[]string` | List of exact stream names to collect. |         | no       |
@@ -119,7 +119,7 @@ The `named` block explicitly configures specific log groups to collect from. Mul
 
 The following arguments are supported:
 
-| Name         | Type       | Description                            | Required |
+|     Name     |    Type    |              Description               | Required |
 | ------------ | ---------- | -------------------------------------- | -------- |
 | `group_name` | `string`   | Name of the CloudWatch log group.      | yes      |
 | `prefixes`   | `[]string` | List of prefixes to filter streams by. | no       |
