@@ -22,6 +22,8 @@ Main (unreleased)
 
 - Added additional backwards compatibility metrics to `prometheus.write.queue`. (@mattdurham)
 
+- Added OpenTelemetry logs and metrics support to Alloy mixin's dashboards and alerts. (@thampiotr)
+
 v1.7.1
 -----------------
 
