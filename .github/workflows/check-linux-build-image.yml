@@ -29,6 +29,7 @@ jobs:
       - name: Create test Linux build image
         uses: docker/build-push-action@v6
         with:
+          platforms: linux/amd64,linux/arm64
           context: ./tools/build-image
           push: false
           tags: grafana/alloy-build-image:latest
@@ -38,6 +39,7 @@ jobs:
       - name: Create test Linux build image for boring crypto
         uses: docker/build-push-action@v6
         with:
+          platforms: linux/amd64,linux/arm64
           context: ./tools/build-image
           push: false
           tags: grafana/alloy-build-image:latest
