@@ -13,6 +13,8 @@ Main (unreleased)
 ### Enhancements
 
 - Have `loki.echo` log the `entry_timestamp` and `structured_metadata` for any loki entries received (@dehaansa)
+- Bump snmp_exporter and embedded modules in `prometheus.exporter.snmp` to v0.28.0 (@v-zhuravlev)
+
 
 - Update mysqld_exporter to v0.17.1, most notable changes: (@cristiangreco)
   - Add perf_schema quantile columns to collector
