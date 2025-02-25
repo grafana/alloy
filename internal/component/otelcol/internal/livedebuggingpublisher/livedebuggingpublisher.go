@@ -9,7 +9,7 @@ import (
 	"go.opentelemetry.io/collector/pdata/ptrace"
 )
 
-func PublishLogsIfActive(debugDataPublisher livedebugging.DebugDataPublisher, componentID string, ld plog.Logs, nextLogs []otelcol.Consumer) {
+func PublishLogsIfActive(debugDataPublisher livedebugging.DebugDataPublisher, componentID string, ld plog.Logs, nextLogs []otelcol.ComponentMetadata) {
 	debugDataPublisher.PublishIfActive(livedebugging.NewData(
 		livedebugging.ComponentID(componentID),
 		livedebugging.OtelLog,
@@ -25,7 +25,7 @@ func PublishLogsIfActive(debugDataPublisher livedebugging.DebugDataPublisher, co
 	))
 }
 
-func PublishTracesIfActive(debugDataPublisher livedebugging.DebugDataPublisher, componentID string, td ptrace.Traces, nextTraces []otelcol.Consumer) {
+func PublishTracesIfActive(debugDataPublisher livedebugging.DebugDataPublisher, componentID string, td ptrace.Traces, nextTraces []otelcol.ComponentMetadata) {
 	debugDataPublisher.PublishIfActive(livedebugging.NewData(
 		livedebugging.ComponentID(componentID),
 		livedebugging.OtelTrace,
@@ -41,7 +41,7 @@ func PublishTracesIfActive(debugDataPublisher livedebugging.DebugDataPublisher, 
 	))
 }
 
-func PublishMetricsIfActive(debugDataPublisher livedebugging.DebugDataPublisher, componentID string, md pmetric.Metrics, nextMetrics []otelcol.Consumer) {
+func PublishMetricsIfActive(debugDataPublisher livedebugging.DebugDataPublisher, componentID string, md pmetric.Metrics, nextMetrics []otelcol.ComponentMetadata) {
 	debugDataPublisher.PublishIfActive(livedebugging.NewData(
 		livedebugging.ComponentID(componentID),
 		livedebugging.OtelMetric,
@@ -57,12 +57,10 @@ func PublishMetricsIfActive(debugDataPublisher livedebugging.DebugDataPublisher,
 	))
 }
 
-func extractIds(consumers []otelcol.Consumer) []string {
+func extractIds(consumers []otelcol.ComponentMetadata) []string {
 	ids := make([]string, 0, len(consumers))
 	for _, cons := range consumers {
-		if consWithID, ok := cons.(otelcol.ComponentMetadata); ok {
-			ids = append(ids, consWithID.ComponentID())
-		}
+		ids = append(ids, cons.ComponentID())
 	}
 	return ids
 }

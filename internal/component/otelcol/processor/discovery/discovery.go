@@ -111,7 +111,7 @@ func New(o component.Options, c Arguments) (*Component, error) {
 	fanout := fanoutconsumer.Traces(nextTraces)
 	tracesInterceptor := interceptconsumer.Traces(fanout,
 		func(ctx context.Context, td ptrace.Traces) error {
-			livedebuggingpublisher.PublishTracesIfActive(debugDataPublisher.(livedebugging.DebugDataPublisher), o.ID, td, nextTraces)
+			livedebuggingpublisher.PublishTracesIfActive(debugDataPublisher.(livedebugging.DebugDataPublisher), o.ID, td, otelcol.GetComponentMetadata(nextTraces))
 			return fanout.ConsumeTraces(ctx, td)
 		},
 	)
@@ -176,9 +176,10 @@ func (c *Component) Update(newConfig component.Arguments) error {
 	}
 	nextTraces := c.args.Output.Traces
 	fanout := fanoutconsumer.Traces(nextTraces)
+
 	tracesInterceptor := interceptconsumer.Traces(fanout,
 		func(ctx context.Context, td ptrace.Traces) error {
-			livedebuggingpublisher.PublishTracesIfActive(c.debugDataPublisher.(livedebugging.DebugDataPublisher), c.opts.ID, td, nextTraces)
+			livedebuggingpublisher.PublishTracesIfActive(c.debugDataPublisher.(livedebugging.DebugDataPublisher), c.opts.ID, td, otelcol.GetComponentMetadata(nextTraces))
 			return fanout.ConsumeTraces(ctx, td)
 		},
 	)

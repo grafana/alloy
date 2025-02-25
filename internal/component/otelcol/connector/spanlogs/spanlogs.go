@@ -152,7 +152,7 @@ func (c *Component) Update(newConfig component.Arguments) error {
 	fanout := fanoutconsumer.Logs(nextLogs)
 	logsInterceptor := interceptconsumer.Logs(fanout,
 		func(ctx context.Context, ld plog.Logs) error {
-			livedebuggingpublisher.PublishLogsIfActive(c.debugDataPublisher, c.opts.ID, ld, nextLogs)
+			livedebuggingpublisher.PublishLogsIfActive(c.debugDataPublisher, c.opts.ID, ld, otelcol.GetComponentMetadata(nextLogs))
 			return fanout.ConsumeLogs(ctx, ld)
 		},
 	)

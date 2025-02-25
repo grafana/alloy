@@ -214,7 +214,7 @@ func (p *Connector) Update(args component.Arguments) error {
 			fanout := fanoutconsumer.Metrics(next.Metrics)
 			metricsInterceptor := interceptconsumer.Metrics(fanout,
 				func(ctx context.Context, md pmetric.Metrics) error {
-					livedebuggingpublisher.PublishMetricsIfActive(p.debugDataPublisher, p.opts.ID, md, next.Metrics)
+					livedebuggingpublisher.PublishMetricsIfActive(p.debugDataPublisher, p.opts.ID, md, otelcol.GetComponentMetadata(next.Metrics))
 					return fanout.ConsumeMetrics(ctx, md)
 				},
 			)

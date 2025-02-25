@@ -17,6 +17,17 @@ type ComponentMetadata interface {
 	ComponentID() string
 }
 
+// GetComponentMetadata returns a list of ComponentMetadata from a list of Consumers.
+func GetComponentMetadata(cons []Consumer) []ComponentMetadata {
+	metadata := make([]ComponentMetadata, 0, len(cons))
+	for _, cons := range cons {
+		if consWithID, ok := cons.(ComponentMetadata); ok {
+			metadata = append(metadata, consWithID)
+		}
+	}
+	return metadata
+}
+
 // ConsumerArguments is a common Arguments type for Alloy components which can
 // send data to otelcol consumers.
 //
