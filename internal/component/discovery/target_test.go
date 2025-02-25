@@ -123,15 +123,38 @@ func TestEncode_Decode_Targets(t *testing.T) {
 			encoded := string(f.Bytes())
 			require.Equal(t, tc.expected, encoded)
 
-			// Try decoding now
-			toDecode := strings.TrimPrefix(encoded, "target = ")
+			// Try decoding now ...
 			scope := vm.NewScope(map[string]interface{}{})
+			toDecode := strings.TrimPrefix(encoded, "target = ")
 			expr, err := parser.ParseExpression(toDecode)
 			require.NoError(t, err)
+
+			// ... into target
 			eval := vm.New(expr)
 			actual := Target{}
 			require.NoError(t, eval.Evaluate(scope, &actual))
 			require.Equal(t, NewTargetFromMap(tc.input), actual)
+
+			// ... into a map
+			eval = vm.New(expr)
+			actualMap := map[string]string{}
+			require.NoError(t, eval.Evaluate(scope, &actualMap))
+			require.Equal(t, tc.input, actualMap)
+
+			// ... into a map pointer
+			eval = vm.New(expr)
+			require.NoError(t, eval.Evaluate(scope, &actualMap))
+			require.Equal(t, &tc.input, &actualMap)
+
+			// Decode into a map directly from scope
+			// If not supported, this would lead to error: target::ConvertInto: conversion to '*map[string]string' is not supported
+			scope = vm.NewScope(map[string]interface{}{"export": NewTargetFromMap(tc.input)})
+			expr, err = parser.ParseExpression("export")
+			require.NoError(t, err)
+			eval = vm.New(expr)
+			actualMap = map[string]string{}
+			require.NoError(t, eval.Evaluate(scope, &actualMap))
+			require.Equal(t, tc.input, actualMap)
 		})
 	}
 }
@@ -198,7 +221,7 @@ func TestEncode_Decode_TargetArrays(t *testing.T) {
 			encoded := string(f.Bytes())
 			require.Equal(t, tc.expected, encoded, "using a target")
 
-			// Try decoding now
+			// Try decoding now ...
 			toDecode := strings.TrimPrefix(encoded, "target = ")
 			scope := vm.NewScope(map[string]interface{}{})
 			expr, err := parser.ParseExpression(toDecode)
