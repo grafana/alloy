@@ -38,7 +38,7 @@ Within this tutorial, we have included a docker-compose file that will deploy Gr
 
 ```shell
 cd alloy-scenarios/windows
-docker-compose up -d
+docker compose up -d
 ```
 
 You can check the status of the containers by running the following command:
