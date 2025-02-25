@@ -14,7 +14,8 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/fanoutconsumer"
-	"github.com/grafana/alloy/internal/component/otelcol/internal/livedebuggingconsumer"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/interceptconsumer"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/livedebuggingpublisher"
 	"github.com/grafana/alloy/internal/component/otelcol/receiver/prometheus/internal"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/service/livedebugging"
@@ -22,6 +23,7 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/storage"
 	otelcomponent "go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/pdata/pmetric"
 	otelreceiver "go.opentelemetry.io/collector/receiver"
 	metricNoop "go.opentelemetry.io/otel/metric/noop"
 	traceNoop "go.opentelemetry.io/otel/trace/noop"
@@ -68,8 +70,7 @@ type Component struct {
 	cfg        Arguments
 	appendable storage.Appendable
 
-	liveDebuggingConsumer *livedebuggingconsumer.Consumer
-	debugDataPublisher    livedebugging.DebugDataPublisher
+	debugDataPublisher livedebugging.DebugDataPublisher
 }
 
 var (
@@ -85,10 +86,9 @@ func New(o component.Options, c Arguments) (*Component, error) {
 	}
 
 	res := &Component{
-		log:                   o.Logger,
-		opts:                  o,
-		liveDebuggingConsumer: livedebuggingconsumer.New(debugDataPublisher.(livedebugging.DebugDataPublisher), o.ID),
-		debugDataPublisher:    debugDataPublisher.(livedebugging.DebugDataPublisher),
+		log:                o.Logger,
+		opts:               o,
+		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
 	}
 
 	if err := res.Update(c); err != nil {
@@ -160,11 +160,15 @@ func (c *Component) Update(newConfig component.Arguments) error {
 			Version:     build.Version,
 		},
 	}
-	metrics := cfg.Output.Metrics
-	if c.debugDataPublisher.IsActive(livedebugging.ComponentID(c.opts.ID)) {
-		metrics = append(metrics, c.liveDebuggingConsumer)
-	}
-	metricsSink := fanoutconsumer.Metrics(metrics)
+	nextMetrics := cfg.Output.Metrics
+	fanout := fanoutconsumer.Metrics(nextMetrics)
+	metricsInterceptor := interceptconsumer.Metrics(fanout,
+		func(ctx context.Context, md pmetric.Metrics) error {
+			livedebuggingpublisher.PublishMetricsIfActive(c.debugDataPublisher, c.opts.ID, md, otelcol.GetComponentMetadata(nextMetrics))
+			return fanout.ConsumeMetrics(ctx, md)
+		},
+	)
+	metricsSink := metricsInterceptor
 
 	appendable, err := internal.NewAppendable(
 		metricsSink,
@@ -188,6 +192,4 @@ func (c *Component) Update(newConfig component.Arguments) error {
 	return nil
 }
 
-func (c *Component) LiveDebugging(_ int) {
-	c.Update(c.cfg)
-}
+func (c *Component) LiveDebugging() {}

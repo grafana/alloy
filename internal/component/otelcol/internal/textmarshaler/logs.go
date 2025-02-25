@@ -1,23 +1,16 @@
-// Copy from the OTLP text in the Opentelemetry collector
+// Adapted copy from the OTLP text in the Opentelemetry collector
 
 // Copyright The OpenTelemetry Authors
 // SPDX-License-Identifier: Apache-2.0
 
-package livedebuggingconsumer
+package textmarshaler
 
 import (
 	"go.opentelemetry.io/collector/pdata/plog"
 )
 
-// NewTextLogsMarshaler returns a plog.Marshaler to encode to OTLP text bytes.
-func NewTextLogsMarshaler() plog.Marshaler {
-	return textLogsMarshaler{}
-}
-
-type textLogsMarshaler struct{}
-
 // MarshalLogs plog.Logs to OTLP text.
-func (textLogsMarshaler) MarshalLogs(ld plog.Logs) ([]byte, error) {
+func MarshalLogs(ld plog.Logs) ([]byte, error) {
 	buf := dataBuffer{}
 	rls := ld.ResourceLogs()
 	for i := 0; i < rls.Len(); i++ {

@@ -12,7 +12,8 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/fanoutconsumer"
-	"github.com/grafana/alloy/internal/component/otelcol/internal/livedebuggingconsumer"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/interceptconsumer"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/livedebuggingpublisher"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service/livedebugging"
@@ -57,8 +58,7 @@ type Component struct {
 	receiver loki.LogsReceiver
 	logsSink consumer.Logs
 
-	liveDebuggingConsumer *livedebuggingconsumer.Consumer
-	debugDataPublisher    livedebugging.DebugDataPublisher
+	debugDataPublisher livedebugging.DebugDataPublisher
 
 	args Arguments
 }
@@ -78,10 +78,9 @@ func New(o component.Options, c Arguments) (*Component, error) {
 	// TODO(@tpaschalis) Create a metrics struct to count
 	// total/successful/errored log entries?
 	res := &Component{
-		log:                   o.Logger,
-		opts:                  o,
-		liveDebuggingConsumer: livedebuggingconsumer.New(debugDataPublisher.(livedebugging.DebugDataPublisher), o.ID),
-		debugDataPublisher:    debugDataPublisher.(livedebugging.DebugDataPublisher),
+		log:                o.Logger,
+		opts:               o,
+		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
 	}
 
 	// Create and immediately export the receiver which remains the same for
@@ -120,11 +119,15 @@ func (c *Component) Update(newConfig component.Arguments) error {
 	defer c.mut.Unlock()
 
 	c.args = newConfig.(Arguments)
-	logs := c.args.Output.Logs
-	if c.debugDataPublisher.IsActive(livedebugging.ComponentID(c.opts.ID)) {
-		logs = append(logs, c.liveDebuggingConsumer)
-	}
-	c.logsSink = fanoutconsumer.Logs(logs)
+	nextLogs := c.args.Output.Logs
+	fanout := fanoutconsumer.Logs(nextLogs)
+	logsInterceptor := interceptconsumer.Logs(fanout,
+		func(ctx context.Context, ld plog.Logs) error {
+			livedebuggingpublisher.PublishLogsIfActive(c.debugDataPublisher, c.opts.ID, ld, otelcol.GetComponentMetadata(nextLogs))
+			return fanout.ConsumeLogs(ctx, ld)
+		},
+	)
+	c.logsSink = logsInterceptor
 
 	return nil
 }
@@ -171,6 +174,4 @@ func convertLokiEntryToPlog(lokiEntry loki.Entry) plog.Logs {
 	return logs
 }
 
-func (c *Component) LiveDebugging(_ int) {
-	c.Update(c.args)
-}
+func (c *Component) LiveDebugging() {}

@@ -6,11 +6,13 @@ import (
 	"context"
 	"errors"
 	"os"
+	"sync"
 
 	"github.com/prometheus/client_golang/prometheus"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelconnector "go.opentelemetry.io/collector/connector"
 	otelextension "go.opentelemetry.io/collector/extension"
+	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/pipeline"
 	sdkprometheus "go.opentelemetry.io/otel/exporters/prometheus"
 	"go.opentelemetry.io/otel/sdk/metric"
@@ -20,9 +22,10 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/fanoutconsumer"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/interceptconsumer"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/lazycollector"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/lazyconsumer"
-	"github.com/grafana/alloy/internal/component/otelcol/internal/livedebuggingconsumer"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/livedebuggingpublisher"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/scheduler"
 	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/util/zapadapter"
@@ -79,10 +82,11 @@ type Connector struct {
 	sched     *scheduler.Scheduler
 	collector *lazycollector.Collector
 
-	liveDebuggingConsumer *livedebuggingconsumer.Consumer
-	debugDataPublisher    livedebugging.DebugDataPublisher
+	debugDataPublisher livedebugging.DebugDataPublisher
 
 	args Arguments
+
+	updateMut sync.Mutex
 }
 
 var (
@@ -105,7 +109,7 @@ func New(opts component.Options, f otelconnector.Factory, args Arguments) (*Conn
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	consumer := lazyconsumer.NewPaused(ctx)
+	consumer := lazyconsumer.NewPaused(ctx, opts.ID)
 
 	// Create a lazy collector where metrics from the upstream component will be
 	// forwarded.
@@ -127,10 +131,9 @@ func New(opts component.Options, f otelconnector.Factory, args Arguments) (*Conn
 		factory:  f,
 		consumer: consumer,
 
-		liveDebuggingConsumer: livedebuggingconsumer.New(debugDataPublisher.(livedebugging.DebugDataPublisher), opts.ID),
-		debugDataPublisher:    debugDataPublisher.(livedebugging.DebugDataPublisher),
-		sched:                 scheduler.NewWithPauseCallbacks(opts.Logger, consumer.Pause, consumer.Resume),
-		collector:             collector,
+		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
+		sched:              scheduler.NewWithPauseCallbacks(opts.Logger, consumer.Pause, consumer.Resume),
+		collector:          collector,
 	}
 	if err := p.Update(args); err != nil {
 		return nil, err
@@ -193,8 +196,6 @@ func (p *Connector) Update(args component.Arguments) error {
 
 	next := p.args.NextConsumers()
 
-	liveDebuggingActive := p.debugDataPublisher.IsActive(livedebugging.ComponentID(p.opts.ID))
-
 	// Create instances of the connector from our factory for each of our
 	// supported telemetry signals.
 	var components []otelcomponent.Component
@@ -210,12 +211,14 @@ func (p *Connector) Update(args component.Arguments) error {
 		}
 
 		if len(next.Metrics) > 0 {
-			metrics := next.Metrics
-			if liveDebuggingActive {
-				metrics = append(metrics, p.liveDebuggingConsumer)
-			}
-			nextMetrics := fanoutconsumer.Metrics(metrics)
-			tracesConnector, err = p.factory.CreateTracesToMetrics(p.ctx, settings, connectorConfig, nextMetrics)
+			fanout := fanoutconsumer.Metrics(next.Metrics)
+			metricsInterceptor := interceptconsumer.Metrics(fanout,
+				func(ctx context.Context, md pmetric.Metrics) error {
+					livedebuggingpublisher.PublishMetricsIfActive(p.debugDataPublisher, p.opts.ID, md, otelcol.GetComponentMetadata(next.Metrics))
+					return fanout.ConsumeMetrics(ctx, md)
+				},
+			)
+			tracesConnector, err = p.factory.CreateTracesToMetrics(p.ctx, settings, connectorConfig, metricsInterceptor)
 			if err != nil && !errors.Is(err, pipeline.ErrSignalNotSupported) {
 				return err
 			} else if tracesConnector != nil {
@@ -240,6 +243,4 @@ func (p *Connector) CurrentHealth() component.Health {
 	return p.sched.CurrentHealth()
 }
 
-func (p *Connector) LiveDebugging(_ int) {
-	p.Update(p.args)
-}
+func (p *Connector) LiveDebugging() {}
