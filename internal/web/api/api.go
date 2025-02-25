@@ -13,9 +13,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-kit/log"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/service/cluster"
 	"github.com/grafana/alloy/internal/service/livedebugging"
@@ -27,11 +29,12 @@ import (
 type AlloyAPI struct {
 	alloy           service.Host
 	CallbackManager livedebugging.CallbackManager
+	logger          log.Logger
 }
 
 // NewAlloyAPI instantiates a new Alloy API.
-func NewAlloyAPI(alloy service.Host, CallbackManager livedebugging.CallbackManager) *AlloyAPI {
-	return &AlloyAPI{alloy: alloy, CallbackManager: CallbackManager}
+func NewAlloyAPI(alloy service.Host, CallbackManager livedebugging.CallbackManager, l log.Logger) *AlloyAPI {
+	return &AlloyAPI{alloy: alloy, CallbackManager: CallbackManager, logger: l}
 }
 
 // RegisterRoutes registers all the API's routes.
@@ -50,7 +53,10 @@ func (a *AlloyAPI) RegisterRoutes(urlPrefix string, r *mux.Router) {
 	r.Handle(path.Join(urlPrefix, "/remotecfg/components/{id:.+}"), httputil.CompressionHandler{Handler: getComponentHandlerRemoteCfg(a.alloy)})
 
 	r.Handle(path.Join(urlPrefix, "/peers"), httputil.CompressionHandler{Handler: getClusteringPeersHandler(a.alloy)})
-	r.Handle(path.Join(urlPrefix, "/debug/{id:.+}"), liveDebugging(a.alloy, a.CallbackManager))
+	r.Handle(path.Join(urlPrefix, "/debug/{id:.+}"), liveDebugging(a.alloy, a.CallbackManager, a.logger))
+
+	r.Handle(path.Join(urlPrefix, "/graph"), graph(a.alloy, a.CallbackManager, a.logger))
+	r.Handle(path.Join(urlPrefix, "/graph/{moduleID:.+}"), graph(a.alloy, a.CallbackManager, a.logger))
 }
 
 func listComponentsHandler(host service.Host) http.HandlerFunc {
@@ -166,7 +172,109 @@ func getClusteringPeersHandler(host service.Host) http.HandlerFunc {
 	}
 }
 
-func liveDebugging(_ service.Host, callbackManager livedebugging.CallbackManager) http.HandlerFunc {
+type dataKey struct {
+	ComponentID livedebugging.ComponentID
+	Type        livedebugging.DataType
+}
+
+func graph(_ service.Host, callbackManager livedebugging.CallbackManager, logger log.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var moduleID livedebugging.ModuleID
+		if vars := mux.Vars(r); vars != nil {
+			moduleID = livedebugging.ModuleID(vars["moduleID"])
+		}
+
+		windowSeconds := setWindow(w, r.URL.Query().Get("window"))
+
+		dataCh := make(chan livedebugging.Data, 1000)
+		dataMap := make(map[dataKey]liveDebuggingData)
+
+		ctx := r.Context()
+		id := livedebugging.CallbackID(uuid.New().String())
+
+		droppedData := false
+		err := callbackManager.AddCallbackMulti(id, moduleID, func(data livedebugging.Data) {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				select {
+				case dataCh <- data:
+				default:
+					if !droppedData {
+						level.Warn(logger).Log("msg", "data throughput is very high, not all debugging data can be sent to the graph")
+						droppedData = true
+					}
+				}
+			}
+		})
+
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		defer func() {
+			close(dataCh)
+			callbackManager.DeleteCallbackMulti(id, moduleID)
+		}()
+
+		ticker := time.NewTicker(time.Duration(windowSeconds))
+		defer ticker.Stop()
+
+		for {
+			select {
+			case data := <-dataCh:
+				// Aggregate incoming data
+				key := dataKey{ComponentID: data.ComponentID, Type: data.Type}
+				if existing, exists := dataMap[key]; exists {
+					existing.Count += data.Count
+				} else {
+					// The data is ignored for the graph.
+					dataMap[key] = liveDebuggingData{
+						ComponentID:        string(data.ComponentID),
+						Count:              data.Count,
+						Type:               string(data.Type),
+						TargetComponentIDs: data.TargetComponentIDs,
+					}
+				}
+
+			case <-ticker.C:
+				// Flush aggregated data
+				var builder strings.Builder
+				for _, data := range dataMap {
+					data.Rate = float64(data.Count) / windowSeconds.Seconds()
+					jsonData, err := json.Marshal(data)
+					if err != nil {
+						continue
+					}
+					builder.Write(jsonData)
+					builder.WriteString("|;|")
+				}
+
+				// Add an empty limiter to show the lack of data
+				if builder.Len() == 0 {
+					builder.WriteString("|;|")
+				}
+
+				_, writeErr := w.Write([]byte(builder.String()))
+				if writeErr != nil {
+					return
+				}
+				w.(http.Flusher).Flush()
+
+				for k := range dataMap {
+					delete(dataMap, k)
+				}
+
+			case <-ctx.Done():
+				return
+			}
+		}
+	}
+}
+
+func liveDebugging(_ service.Host, callbackManager livedebugging.CallbackManager, logger log.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		componentID := livedebugging.ComponentID(vars["id"])
@@ -178,7 +286,8 @@ func liveDebugging(_ service.Host, callbackManager livedebugging.CallbackManager
 
 		id := livedebugging.CallbackID(uuid.New().String())
 
-		err := callbackManager.AddCallback(id, componentID, func(data string) {
+		droppedData := false
+		err := callbackManager.AddCallback(id, componentID, func(data livedebugging.Data) {
 			select {
 			case <-ctx.Done():
 				return
@@ -188,8 +297,12 @@ func liveDebugging(_ service.Host, callbackManager livedebugging.CallbackManager
 				}
 				// Avoid blocking the channel when the channel is full
 				select {
-				case dataCh <- data:
+				case dataCh <- data.DataFunc():
 				default:
+					if !droppedData {
+						level.Warn(logger).Log("msg", "data throughput is very high, not all debugging data can be sent the live debugging stream")
+						droppedData = true
+					}
 				}
 			}
 		})
@@ -238,4 +351,21 @@ func setSampleProb(w http.ResponseWriter, sampleProbParam string) (sampleProb fl
 		}
 	}
 	return sampleProb
+}
+
+// window is expected to be in seconds, between 1 and 60.
+func setWindow(w http.ResponseWriter, windowParam string) time.Duration {
+	const defaultWindow = 5 * time.Second
+
+	if windowParam == "" {
+		return defaultWindow
+	}
+
+	window, err := strconv.Atoi(windowParam)
+	if err != nil || window < 1 || window > 60 {
+		http.Error(w, "Invalid window: must be an integer between 1 and 60", http.StatusBadRequest)
+		return defaultWindow
+	}
+
+	return time.Duration(window) * time.Second
 }

@@ -12,8 +12,9 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/fanoutconsumer"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/interceptconsumer"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/lazycollector"
-	"github.com/grafana/alloy/internal/component/otelcol/internal/livedebuggingconsumer"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/livedebuggingpublisher"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/scheduler"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/views"
 	"github.com/grafana/alloy/internal/service/livedebugging"
@@ -21,6 +22,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/extension"
+	"go.opentelemetry.io/collector/pdata/plog"
+	"go.opentelemetry.io/collector/pdata/pmetric"
+	"go.opentelemetry.io/collector/pdata/ptrace"
 	"go.opentelemetry.io/collector/pipeline"
 	otelreceiver "go.opentelemetry.io/collector/receiver"
 	sdkprometheus "go.opentelemetry.io/otel/exporters/prometheus"
@@ -63,8 +67,7 @@ type Receiver struct {
 	sched     *scheduler.Scheduler
 	collector *lazycollector.Collector
 
-	liveDebuggingConsumer *livedebuggingconsumer.Consumer
-	debugDataPublisher    livedebugging.DebugDataPublisher
+	debugDataPublisher livedebugging.DebugDataPublisher
 
 	args Arguments
 }
@@ -105,8 +108,7 @@ func New(opts component.Options, f otelreceiver.Factory, args Arguments) (*Recei
 		sched:     scheduler.New(opts.Logger),
 		collector: collector,
 
-		liveDebuggingConsumer: livedebuggingconsumer.New(debugDataPublisher.(livedebugging.DebugDataPublisher), opts.ID),
-		debugDataPublisher:    debugDataPublisher.(livedebugging.DebugDataPublisher),
+		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
 	}
 	if err := r.Update(args); err != nil {
 		return nil, err
@@ -125,7 +127,6 @@ func (r *Receiver) Run(ctx context.Context) error {
 // the underlying OpenTelemetry Collector receiver.
 func (r *Receiver) Update(args component.Arguments) error {
 	r.args = args.(Arguments)
-
 	host := scheduler.NewHost(
 		r.opts.Logger,
 		scheduler.WithHostExtensions(r.args.Extensions()),
@@ -179,15 +180,15 @@ func (r *Receiver) Update(args component.Arguments) error {
 	// supported telemetry signals.
 	var components []otelcomponent.Component
 
-	liveDebuggingActive := r.debugDataPublisher.IsActive(livedebugging.ComponentID(r.opts.ID))
-
 	if len(next.Traces) > 0 {
-		traces := next.Traces
-		if liveDebuggingActive {
-			traces = append(traces, r.liveDebuggingConsumer)
-		}
-		nextTraces := fanoutconsumer.Traces(traces)
-		tracesReceiver, err := r.factory.CreateTraces(r.ctx, settings, receiverConfig, nextTraces)
+		fanout := fanoutconsumer.Traces(next.Traces)
+		tracesInterceptor := interceptconsumer.Traces(fanout,
+			func(ctx context.Context, td ptrace.Traces) error {
+				livedebuggingpublisher.PublishTracesIfActive(r.debugDataPublisher, r.opts.ID, td, otelcol.GetComponentMetadata(next.Traces))
+				return fanout.ConsumeTraces(ctx, td)
+			},
+		)
+		tracesReceiver, err := r.factory.CreateTraces(r.ctx, settings, receiverConfig, tracesInterceptor)
 		if err != nil && !errors.Is(err, pipeline.ErrSignalNotSupported) {
 			return err
 		} else if tracesReceiver != nil {
@@ -196,12 +197,14 @@ func (r *Receiver) Update(args component.Arguments) error {
 	}
 
 	if len(next.Metrics) > 0 {
-		metrics := next.Metrics
-		if liveDebuggingActive {
-			metrics = append(metrics, r.liveDebuggingConsumer)
-		}
-		nextMetrics := fanoutconsumer.Metrics(metrics)
-		metricsReceiver, err := r.factory.CreateMetrics(r.ctx, settings, receiverConfig, nextMetrics)
+		fanout := fanoutconsumer.Metrics(next.Metrics)
+		metricsInterceptor := interceptconsumer.Metrics(fanout,
+			func(ctx context.Context, md pmetric.Metrics) error {
+				livedebuggingpublisher.PublishMetricsIfActive(r.debugDataPublisher, r.opts.ID, md, otelcol.GetComponentMetadata(next.Metrics))
+				return fanout.ConsumeMetrics(ctx, md)
+			},
+		)
+		metricsReceiver, err := r.factory.CreateMetrics(r.ctx, settings, receiverConfig, metricsInterceptor)
 		if err != nil && !errors.Is(err, pipeline.ErrSignalNotSupported) {
 			return err
 		} else if metricsReceiver != nil {
@@ -210,12 +213,14 @@ func (r *Receiver) Update(args component.Arguments) error {
 	}
 
 	if len(next.Logs) > 0 {
-		logs := next.Logs
-		if liveDebuggingActive {
-			logs = append(logs, r.liveDebuggingConsumer)
-		}
-		nextLogs := fanoutconsumer.Logs(logs)
-		logsReceiver, err := r.factory.CreateLogs(r.ctx, settings, receiverConfig, nextLogs)
+		fanout := fanoutconsumer.Logs(next.Logs)
+		logsInterceptor := interceptconsumer.Logs(fanout,
+			func(ctx context.Context, ld plog.Logs) error {
+				livedebuggingpublisher.PublishLogsIfActive(r.debugDataPublisher, r.opts.ID, ld, otelcol.GetComponentMetadata(next.Logs))
+				return fanout.ConsumeLogs(ctx, ld)
+			},
+		)
+		logsReceiver, err := r.factory.CreateLogs(r.ctx, settings, receiverConfig, logsInterceptor)
 		if err != nil && !errors.Is(err, pipeline.ErrSignalNotSupported) {
 			return err
 		} else if logsReceiver != nil {
@@ -233,6 +238,4 @@ func (r *Receiver) CurrentHealth() component.Health {
 	return r.sched.CurrentHealth()
 }
 
-func (p *Receiver) LiveDebugging(_ int) {
-	p.Update(p.args)
-}
+func (p *Receiver) LiveDebugging() {}
