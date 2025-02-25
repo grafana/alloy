@@ -24,6 +24,7 @@ local stackedPanelMixin = {
       setenceCaseLabels=$._config.useSetenceCaseTemplateLabels),
 
   local panelPosition(row, col) = panel.withPosition({x: col*8, y: row*10, w: 8, h: 10}),
+  local panelPosition4(row, col) = panel.withPosition({x: col*6, y: row*10, w: 6, h: 10}),
   local rowPosition(row) = panel.withPosition({h: 1, w: 24, x: 0, y: row*10}),
 
   [filename]:
@@ -32,9 +33,9 @@ local stackedPanelMixin = {
     dashboard.withUID(std.md5(filename)) +
     dashboard.withTemplateVariablesMixin(templateVariables) +
     dashboard.withPanelsMixin([
-      // "Receivers for metrics" row
+      // First row - Metrics and Logs
       (
-        panel.new('Receivers for metrics [otelcol.receiver]', 'row') +
+        panel.new('Receivers [otelcol.receiver.*]', 'row') +
         rowPosition(0)
       ),
       (
@@ -43,7 +44,7 @@ local stackedPanelMixin = {
           Number of metric points successfully pushed into the pipeline.
         |||) +
         stackedPanelMixin +
-        panelPosition(row=0, col=0) +
+        panelPosition4(row=0, col=0) +
         panel.withQueries([
           panel.newQuery(
             expr= |||
@@ -58,7 +59,7 @@ local stackedPanelMixin = {
           Number of metric points that could not be pushed into the pipeline.
         |||) +
         stackedPanelMixin +
-        panelPosition(row=0, col=1) +
+        panelPosition4(row=0, col=1) +
         panel.withQueries([
           panel.newQuery(
             expr= |||
@@ -68,26 +69,34 @@ local stackedPanelMixin = {
         ])
       ),
       (
-        panel.newHeatmap('RPC server duration for metrics', 'ms') +
+        panel.new(title='Accepted logs', type='timeseries') +
         panel.withDescription(|||
-          The duration of inbound RPCs for metrics.
+          Number of log records successfully pushed into the pipeline.
         |||) +
-        panelPosition(row=0, col=2) +
+        stackedPanelMixin +
+        panelPosition4(row=0, col=2) +
         panel.withQueries([
           panel.newQuery(
             expr= |||
-              sum by (le) (increase(rpc_server_duration_milliseconds_bucket{%(instanceSelector)s, rpc_service="opentelemetry.proto.collector.metrics.v1.MetricsService"}[$__rate_interval]))
+              sum by(instance) (rate(otelcol_receiver_accepted_log_records_total{%(instanceSelector)s}[$__rate_interval]))
             ||| % $._config,
-            format='heatmap',
-            legendFormat='{{le}}',
           ),
         ])
       ),
-
-      // "Receivers for traces" row
       (
-        panel.new('Receivers for traces [otelcol.receiver]', 'row') +
-        rowPosition(1)
+        panel.new(title='Refused logs', type='timeseries') +
+        panel.withDescription(|||
+          Number of log records that could not be pushed into the pipeline.
+        |||) +
+        stackedPanelMixin +
+        panelPosition4(row=0, col=3) +
+        panel.withQueries([
+          panel.newQuery(
+            expr= |||
+              sum by(instance) (rate(otelcol_receiver_refused_log_records_total{%(instanceSelector)s}[$__rate_interval]))
+            ||| % $._config,
+          ),
+        ])
       ),
       (
         panel.new(title='Accepted spans', type='timeseries') +
@@ -95,7 +104,7 @@ local stackedPanelMixin = {
           Number of spans successfully pushed into the pipeline.
         |||) +
         stackedPanelMixin +
-        panelPosition(row=1, col=0) +
+        panelPosition4(row=1, col=0) +
         panel.withQueries([
           panel.newQuery(
             expr= |||
@@ -106,12 +115,11 @@ local stackedPanelMixin = {
       ),
       (
         panel.new(title='Refused spans', type='timeseries') +
-        stackedPanelMixin +
         panel.withDescription(|||
           Number of spans that could not be pushed into the pipeline.
         |||) +
         stackedPanelMixin +
-        panelPosition(row=1, col=1) +
+        panelPosition4(row=1, col=1) +
         panel.withQueries([
           panel.newQuery(
             expr= |||
@@ -123,13 +131,29 @@ local stackedPanelMixin = {
       (
         panel.newHeatmap('RPC server duration', 'ms') +
         panel.withDescription(|||
-          The duration of inbound RPCs.
+          The duration of inbound RPCs for otelcol.receiver.* components.
         |||) +
-        panelPosition(row=1, col=2) +
+        panelPosition4(row=1, col=2) +
         panel.withQueries([
           panel.newQuery(
             expr= |||
-              sum by (le) (increase(rpc_server_duration_milliseconds_bucket{%(instanceSelector)s, rpc_service="opentelemetry.proto.collector.trace.v1.TraceService"}[$__rate_interval]))
+              sum by (le) (increase(rpc_server_duration_milliseconds_bucket{%(instanceSelector)s, component_id=~"otelcol.receiver.*"}[$__rate_interval]))
+            ||| % $._config,
+            format='heatmap',
+            legendFormat='{{le}}',
+          ),
+        ])
+      ),
+      (
+        panel.newHeatmap('HTTP server duration', 'ms') +
+        panel.withDescription(|||
+          The duration of inbound HTTP requests for otelcol.receiver.* components.
+        |||) +
+        panelPosition4(row=1, col=3) +
+        panel.withQueries([
+          panel.newQuery(
+            expr= |||
+              sum by (le) (increase(http_server_duration_milliseconds_bucket{%(instanceSelector)s, component_id=~"otelcol.receiver.*"}[$__rate_interval]))
             ||| % $._config,
             format='heatmap',
             legendFormat='{{le}}',
@@ -139,7 +163,7 @@ local stackedPanelMixin = {
 
       // "Batching" row
       (
-        panel.new('Batching of logs, metrics, and traces [otelcol.processor.batch]', 'row') +
+        panel.new('Batching [otelcol.processor.batch]', 'row') +
         rowPosition(2)
       ),
       (
@@ -191,38 +215,130 @@ local stackedPanelMixin = {
         ])
       ),
 
-      // "Exporters for traces" row
+      // "Exporters" row
       (
-        panel.new('Exporters for traces [otelcol.exporter]', 'row') +
+        panel.new('Exporters [otelcol.exporter.*]', 'row') +
         rowPosition(3)
       ),
       (
-        panel.new(title='Exported sent spans', type='timeseries') +
+        panel.new(title='Exported metric points', type='timeseries') +
+        panel.withDescription(|||
+          Number of metric points successfully sent to destination.
+        |||) +
+        stackedPanelMixin +
+        panelPosition4(row=3, col=0) +
+        panel.withQueries([
+          panel.newQuery(
+            expr= ||| 
+              sum by(instance) (rate(otelcol_exporter_sent_metric_points_total{%(instanceSelector)s}[$__rate_interval]))
+            ||| % $._config,
+          ),
+        ])
+      ),
+      (
+        panel.new(title='Failed metric points', type='timeseries') +
+        panel.withDescription(|||
+          Number of metric points that failed to be sent to destination.
+        |||) +
+        stackedPanelMixin +
+        panelPosition4(row=3, col=1) +
+        panel.withQueries([
+          panel.newQuery(
+            expr= |||
+              sum by(instance) (rate(otelcol_exporter_send_failed_metric_points_total{%(instanceSelector)s}[$__rate_interval]))
+            ||| % $._config,
+          ),
+        ])
+      ),
+      (
+        panel.new(title='Exported logs', type='timeseries') +
+        panel.withDescription(|||
+          Number of log records successfully sent to destination.
+        |||) +
+        stackedPanelMixin +
+        panelPosition4(row=3, col=2) +
+        panel.withQueries([
+          panel.newQuery(
+            expr= |||
+              sum by(instance) (rate(otelcol_exporter_sent_log_records_total{%(instanceSelector)s}[$__rate_interval]))
+            ||| % $._config,
+          ),
+        ])
+      ),
+      (
+        panel.new(title='Failed logs', type='timeseries') +
+        panel.withDescription(|||
+          Number of log records that failed to be sent to destination.
+        |||) +
+        stackedPanelMixin +
+        panelPosition4(row=3, col=3) +
+        panel.withQueries([
+          panel.newQuery(
+            expr= |||
+              sum by(instance) (rate(otelcol_exporter_send_failed_log_records_total{%(instanceSelector)s}[$__rate_interval]))
+            ||| % $._config,
+          ),
+        ])
+      ),
+      (
+        panel.new(title='Exported spans', type='timeseries') +
         panel.withDescription(|||
           Number of spans successfully sent to destination.
         |||) +
         stackedPanelMixin +
-        panelPosition(row=3, col=0) +
+        panelPosition4(row=4, col=0) +
         panel.withQueries([
           panel.newQuery(
-            expr= ||| 
+            expr= |||
               sum by(instance) (rate(otelcol_exporter_sent_spans_total{%(instanceSelector)s}[$__rate_interval]))
             ||| % $._config,
           ),
         ])
       ),
       (
-        panel.new(title='Exported failed spans', type='timeseries') +
+        panel.new(title='Failed spans', type='timeseries') +
         panel.withDescription(|||
-          Number of spans in failed attempts to send to destination.
+          Number of spans that failed to be sent to destination.
         |||) +
         stackedPanelMixin +
-        panelPosition(row=3, col=1) +
+        panelPosition4(row=4, col=1) +
         panel.withQueries([
           panel.newQuery(
             expr= |||
               sum by(instance) (rate(otelcol_exporter_send_failed_spans_total{%(instanceSelector)s}[$__rate_interval]))
             ||| % $._config,
+          ),
+        ])
+      ),
+      (
+        panel.newHeatmap('RPC client duration', 'ms') +
+        panel.withDescription(|||
+          The duration of outbound RPCs for otelcol.exporter.* components.
+        |||) +
+        panelPosition4(row=4, col=2) +
+        panel.withQueries([
+          panel.newQuery(
+            expr= |||
+              sum by (le) (increase(rpc_client_duration_milliseconds_bucket{%(instanceSelector)s, component_id=~"otelcol.exporter.*"}[$__rate_interval]))
+            ||| % $._config,
+            format='heatmap',
+            legendFormat='{{le}}',
+          ),
+        ])
+      ),
+      (
+        panel.newHeatmap('HTTP client duration', 'ms') +
+        panel.withDescription(|||
+          The duration of outbound HTTP requests for otelcol.exporter.* components.
+        |||) +
+        panelPosition4(row=4, col=3) +
+        panel.withQueries([
+          panel.newQuery(
+            expr= |||
+              sum by (le) (increase(http_client_duration_milliseconds_bucket{%(instanceSelector)s, component_id=~"otelcol.exporter.*"}[$__rate_interval]))
+            ||| % $._config,
+            format='heatmap',
+            legendFormat='{{le}}',
           ),
         ])
       ),
