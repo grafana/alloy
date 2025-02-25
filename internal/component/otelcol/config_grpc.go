@@ -10,7 +10,6 @@ import (
 	otelconfiggrpc "go.opentelemetry.io/collector/config/configgrpc"
 	"go.opentelemetry.io/collector/config/confignet"
 	"go.opentelemetry.io/collector/config/configopaque"
-	otelextension "go.opentelemetry.io/collector/extension"
 )
 
 const DefaultBalancerName = "round_robin"
@@ -30,21 +29,31 @@ type GRPCServerArguments struct {
 
 	Keepalive *KeepaliveServerArguments `alloy:"keepalive,block,optional"`
 
-	// TODO(rfratto): auth
-	//
-	// Figuring out how to do authentication isn't very straightforward here. The
-	// auth section links to an authenticator extension.
-	//
-	// We will need to generally figure out how we want to provide common
-	// authentication extensions to all of our components.
+	// Auth is a binding to an otelcol.auth.* component extension which handles
+	// authentication.
+	// alloy name is auth instead of authentication so the user interface is the same as exporter components.
+	Authentication *auth.Handler `alloy:"auth,attr,optional"`
 
 	IncludeMetadata bool `alloy:"include_metadata,attr,optional"`
 }
 
 // Convert converts args into the upstream type.
-func (args *GRPCServerArguments) Convert() *otelconfiggrpc.ServerConfig {
+func (args *GRPCServerArguments) Convert() (*otelconfiggrpc.ServerConfig, error) {
 	if args == nil {
-		return nil
+		return nil, nil
+	}
+
+	// If auth is set add that to the config.
+	var authentication *otelconfigauth.Authentication
+	if args.Authentication != nil {
+		// If a auth plugin does not implement server auth, an error will be returned here.
+		serverExtension, err := args.Authentication.GetExtension(auth.Server)
+		if err != nil {
+			return nil, err
+		}
+		authentication = &otelconfigauth.Authentication{
+			AuthenticatorID: serverExtension.ID,
+		}
 	}
 
 	return &otelconfiggrpc.ServerConfig{
@@ -59,11 +68,23 @@ func (args *GRPCServerArguments) Convert() *otelconfiggrpc.ServerConfig {
 		MaxConcurrentStreams: args.MaxConcurrentStreams,
 		ReadBufferSize:       int(args.ReadBufferSize),
 		WriteBufferSize:      int(args.WriteBufferSize),
+		Keepalive:            args.Keepalive.Convert(),
+		IncludeMetadata:      args.IncludeMetadata,
+		Auth:                 authentication,
+	}, nil
+}
 
-		Keepalive: args.Keepalive.Convert(),
-
-		IncludeMetadata: args.IncludeMetadata,
+// Extensions exposes extensions used by args.
+func (args *GRPCServerArguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
+	m := make(map[otelcomponent.ID]otelcomponent.Component)
+	if args.Authentication != nil {
+		ext, err := args.Authentication.GetExtension(auth.Server)
+		if err != nil {
+			return m
+		}
+		m[ext.ID] = ext.Extension
 	}
+	return m
 }
 
 // KeepaliveServerArguments holds shared keepalive settings for components
@@ -150,13 +171,14 @@ type GRPCClientArguments struct {
 
 	// Auth is a binding to an otelcol.auth.* component extension which handles
 	// authentication.
-	Auth *auth.Handler `alloy:"auth,attr,optional"`
+	// alloy name is auth instead of authentication to not break user interface compatibility.
+	Authentication *auth.Handler `alloy:"auth,attr,optional"`
 }
 
 // Convert converts args into the upstream type.
-func (args *GRPCClientArguments) Convert() *otelconfiggrpc.ClientConfig {
+func (args *GRPCClientArguments) Convert() (*otelconfiggrpc.ClientConfig, error) {
 	if args == nil {
-		return nil
+		return nil, nil
 	}
 
 	opaqueHeaders := make(map[string]configopaque.String)
@@ -164,10 +186,15 @@ func (args *GRPCClientArguments) Convert() *otelconfiggrpc.ClientConfig {
 		opaqueHeaders[headerName] = configopaque.String(headerVal)
 	}
 
-	// Configure the authentication if args.Auth is set.
-	var auth *otelconfigauth.Authentication
-	if args.Auth != nil {
-		auth = &otelconfigauth.Authentication{AuthenticatorID: args.Auth.ID}
+	// Configure authentication if args.Auth is set.
+	var authentication *otelconfigauth.Authentication
+	if args.Authentication != nil {
+		ext, err := args.Authentication.GetExtension(auth.Client)
+		if err != nil {
+			return nil, err
+		}
+
+		authentication = &otelconfigauth.Authentication{AuthenticatorID: ext.ID}
 	}
 
 	// Set default value for `balancer_name` to sync up with upstream's
@@ -191,15 +218,19 @@ func (args *GRPCClientArguments) Convert() *otelconfiggrpc.ClientConfig {
 		BalancerName:    balancerName,
 		Authority:       args.Authority,
 
-		Auth: auth,
-	}
+		Auth: authentication,
+	}, nil
 }
 
 // Extensions exposes extensions used by args.
-func (args *GRPCClientArguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
-	m := make(map[otelcomponent.ID]otelextension.Extension)
-	if args.Auth != nil {
-		m[args.Auth.ID] = args.Auth.Extension
+func (args *GRPCClientArguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
+	m := make(map[otelcomponent.ID]otelcomponent.Component)
+	if args.Authentication != nil {
+		ext, err := args.Authentication.GetExtension(auth.Client)
+		if err != nil {
+			return m
+		}
+		m[ext.ID] = ext.Extension
 	}
 	return m
 }

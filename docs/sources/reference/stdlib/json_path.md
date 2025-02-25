@@ -6,7 +6,7 @@ title: json_path
 
 # json_path
 
-The `json_path` function lookup values using [jsonpath][] syntax.
+The `json_path` function lookup values using [`jsonpath`][jsonpath] syntax.
 
 The function expects two strings. The first string is the JSON string used look up values. The second string is the JSONPath expression.
 
@@ -20,7 +20,7 @@ A common use case of `json_path` is to decode and filter the output of a [`local
 
 ## Examples
 
-```
+```alloy
 > json_path("{\"key\": \"value\"}", ".key")
 ["value"]
 

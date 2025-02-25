@@ -13,7 +13,6 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/exporter/otlphttpexporter"
-	otelextension "go.opentelemetry.io/collector/extension"
 	"go.opentelemetry.io/collector/pipeline"
 )
 
@@ -26,7 +25,7 @@ func init() {
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
 			fact := otlphttpexporter.NewFactory()
-			return exporter.New(opts, fact, args.(Arguments), exporter.TypeAll)
+			return exporter.New(opts, fact, args.(Arguments), exporter.TypeSignalConstFunc(exporter.TypeAll))
 		},
 	})
 }
@@ -71,8 +70,13 @@ func (args *Arguments) SetToDefault() {
 
 // Convert implements exporter.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
+	httpClientArgs := *(*otelcol.HTTPClientArguments)(&args.Client)
+	convertedClientArgs, err := httpClientArgs.Convert()
+	if err != nil {
+		return nil, err
+	}
 	return &otlphttpexporter.Config{
-		ClientConfig:    *(*otelcol.HTTPClientArguments)(&args.Client).Convert(),
+		ClientConfig:    *convertedClientArgs,
 		QueueConfig:     *args.Queue.Convert(),
 		RetryConfig:     *args.Retry.Convert(),
 		TracesEndpoint:  args.TracesEndpoint,
@@ -83,7 +87,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 }
 
 // Extensions implements exporter.Arguments.
-func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
+func (args Arguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
 	return (*otelcol.HTTPClientArguments)(&args.Client).Extensions()
 }
 

@@ -11,16 +11,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/discovery"
-	"github.com/grafana/alloy/internal/runtime/componenttest"
-	"github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
 	"golang.org/x/text/encoding/unicode"
+
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/runtime/componenttest"
+	"github.com/grafana/alloy/internal/util"
 )
 
 func Test(t *testing.T) {
@@ -41,10 +42,10 @@ func Test(t *testing.T) {
 
 	go func() {
 		err := ctrl.Run(ctx, Arguments{
-			Targets: []discovery.Target{{
+			Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{
 				"__path__": f.Name(),
 				"foo":      "bar",
-			}},
+			})},
 			ForwardTo: []loki.LogsReceiver{ch1, ch2},
 		})
 		require.NoError(t, err)
@@ -91,10 +92,10 @@ func TestFileWatch(t *testing.T) {
 	ch1 := loki.NewLogsReceiver()
 
 	args := Arguments{
-		Targets: []discovery.Target{{
+		Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{
 			"__path__": f.Name(),
 			"foo":      "bar",
-		}},
+		})},
 		ForwardTo: []loki.LogsReceiver{ch1},
 		FileWatch: FileWatch{
 			MinPollFrequency: time.Millisecond * 500,
@@ -150,10 +151,10 @@ func TestUpdate_NoLeak(t *testing.T) {
 	require.NoError(t, err)
 
 	args := Arguments{
-		Targets: []discovery.Target{{
+		Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{
 			"__path__": f.Name(),
 			"foo":      "bar",
-		}},
+		})},
 		ForwardTo: []loki.LogsReceiver{},
 	}
 
@@ -195,8 +196,8 @@ func TestTwoTargets(t *testing.T) {
 	ch1 := loki.NewLogsReceiver()
 	args := Arguments{}
 	args.Targets = []discovery.Target{
-		{"__path__": f.Name(), "foo": "bar"},
-		{"__path__": f2.Name(), "foo": "bar2"},
+		discovery.NewTargetFromMap(map[string]string{"__path__": f.Name(), "foo": "bar"}),
+		discovery.NewTargetFromMap(map[string]string{"__path__": f2.Name(), "foo": "bar2"}),
 	}
 	args.ForwardTo = []loki.LogsReceiver{ch1}
 
@@ -265,7 +266,7 @@ func TestEncoding(t *testing.T) {
 
 	ch1 := loki.NewLogsReceiver()
 	args := Arguments{}
-	args.Targets = []discovery.Target{{"__path__": f.Name(), "lbl1": "val1"}}
+	args.Targets = []discovery.Target{discovery.NewTargetFromMap(map[string]string{"__path__": f.Name(), "lbl1": "val1"})}
 	args.Encoding = "UTF-16BE"
 	args.ForwardTo = []loki.LogsReceiver{ch1}
 
@@ -313,4 +314,70 @@ func TestEncoding(t *testing.T) {
 		10*time.Millisecond,
 		"expected positions.yml file to be written eventually",
 	)
+}
+
+func TestDeleteRecreateFile(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
+
+	filename := "example"
+
+	ctx, cancel := context.WithCancel(componenttest.TestContext(t))
+	defer cancel()
+
+	// Create file to log to.
+	f, err := os.Create(filename)
+	require.NoError(t, err)
+
+	ctrl, err := componenttest.NewControllerFromID(util.TestLogger(t), "loki.source.file")
+	require.NoError(t, err)
+
+	ch1 := loki.NewLogsReceiver()
+
+	go func() {
+		err := ctrl.Run(ctx, Arguments{
+			Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{
+				"__path__": f.Name(),
+				"foo":      "bar",
+			})},
+			ForwardTo: []loki.LogsReceiver{ch1},
+		})
+		require.NoError(t, err)
+	}()
+
+	ctrl.WaitRunning(time.Minute)
+
+	_, err = f.Write([]byte("writing some text\n"))
+	require.NoError(t, err)
+
+	wantLabelSet := model.LabelSet{
+		"filename": model.LabelValue(f.Name()),
+		"foo":      "bar",
+	}
+
+	checkMsg(t, ch1, "writing some text", 5*time.Second, wantLabelSet)
+
+	require.NoError(t, f.Close())
+	require.NoError(t, os.Remove(f.Name()))
+
+	// Create a file with the same name
+	f, err = os.Create(filename)
+	require.NoError(t, err)
+	defer os.Remove(f.Name())
+	defer f.Close()
+
+	_, err = f.Write([]byte("writing some new text\n"))
+	require.NoError(t, err)
+
+	checkMsg(t, ch1, "writing some new text", 5*time.Second, wantLabelSet)
+}
+
+func checkMsg(t *testing.T, ch loki.LogsReceiver, msg string, timeout time.Duration, labelSet model.LabelSet) {
+	select {
+	case logEntry := <-ch.Chan():
+		require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
+		require.Equal(t, msg, logEntry.Line)
+		require.Equal(t, labelSet, logEntry.Labels)
+	case <-time.After(timeout):
+		require.FailNow(t, "failed waiting for log line")
+	}
 }

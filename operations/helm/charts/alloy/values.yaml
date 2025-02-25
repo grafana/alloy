@@ -163,7 +163,7 @@ configReloader:
     # -- Repository to get config reloader image from.
     repository: jimmidyson/configmap-reload
     # -- Tag of image to use for config reloading.
-    tag: v0.12.0
+    tag: v0.14.0
     # -- SHA256 digest of image to use for config reloading (either in format "sha256:XYZ" or "XYZ"). When set, will override `configReloader.image.tag`
     digest: ""
   # -- Override the args passed to the container.
@@ -369,3 +369,13 @@ ingress:
   #  - secretName: chart-example-tls
   #    hosts:
   #      - chart-example.local
+
+# -- Extra k8s manifests to deploy
+extraObjects: []
+# - apiVersion: v1
+#   kind: Secret
+#   metadata:
+#     name: grafana-cloud
+#   stringData:
+#     PROMETHEUS_HOST: 'https://prometheus-us-central1.grafana.net/api/prom/push'
+#     PROMETHEUS_USERNAME: '123456'

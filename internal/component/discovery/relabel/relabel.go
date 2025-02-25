@@ -2,14 +2,14 @@ package relabel
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/grafana/alloy/internal/component"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/prometheus/prometheus/model/labels"
-	"github.com/prometheus/prometheus/model/relabel"
+	"github.com/grafana/alloy/internal/service/livedebugging"
 )
 
 func init() {
@@ -45,14 +45,23 @@ type Component struct {
 	opts component.Options
 
 	mut sync.RWMutex
-	rcs []*relabel.Config
+
+	debugDataPublisher livedebugging.DebugDataPublisher
 }
 
 var _ component.Component = (*Component)(nil)
+var _ component.LiveDebugging = (*Component)(nil)
 
 // New creates a new discovery.relabel component.
 func New(o component.Options, args Arguments) (*Component, error) {
-	c := &Component{opts: o}
+	debugDataPublisher, err := o.GetServiceData(livedebugging.ServiceName)
+	if err != nil {
+		return nil, err
+	}
+	c := &Component{
+		opts:               o,
+		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
+	}
 
 	// Call to Update() to set the output once at the start
 	if err := c.Update(args); err != nil {
@@ -70,20 +79,23 @@ func (c *Component) Run(ctx context.Context) error {
 
 // Update implements component.Component.
 func (c *Component) Update(args component.Arguments) error {
-	c.mut.Lock()
-	defer c.mut.Unlock()
-
 	newArgs := args.(Arguments)
 
 	targets := make([]discovery.Target, 0, len(newArgs.Targets))
-	relabelConfigs := alloy_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelConfigs)
-	c.rcs = relabelConfigs
 
 	for _, t := range newArgs.Targets {
-		lset := componentMapToPromLabels(t)
-		lset, keep := relabel.Process(lset, relabelConfigs...)
+		var (
+			relabelled discovery.Target
+			builder    = discovery.NewTargetBuilderFrom(t)
+			keep       = alloy_relabel.ProcessBuilder(builder, newArgs.RelabelConfigs...)
+		)
 		if keep {
-			targets = append(targets, promLabelsToComponent(lset))
+			relabelled = builder.Target()
+			targets = append(targets, relabelled)
+		}
+		componentID := livedebugging.ComponentID(c.opts.ID)
+		if c.debugDataPublisher.IsActive(componentID) {
+			c.debugDataPublisher.Publish(componentID, fmt.Sprintf("%s => %s", t, relabelled))
 		}
 	}
 
@@ -95,20 +107,4 @@ func (c *Component) Update(args component.Arguments) error {
 	return nil
 }
 
-func componentMapToPromLabels(ls discovery.Target) labels.Labels {
-	res := make([]labels.Label, 0, len(ls))
-	for k, v := range ls {
-		res = append(res, labels.Label{Name: k, Value: v})
-	}
-
-	return res
-}
-
-func promLabelsToComponent(ls labels.Labels) discovery.Target {
-	res := make(map[string]string, len(ls))
-	for _, l := range ls {
-		res[l.Name] = l.Value
-	}
-
-	return res
-}
+func (c *Component) LiveDebugging(_ int) {}

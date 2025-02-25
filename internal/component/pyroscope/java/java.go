@@ -1,4 +1,4 @@
-//go:build linux && (amd64 || arm64)
+//go:build (linux || darwin) && (amd64 || arm64)
 
 package java
 
@@ -6,10 +6,13 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"sort"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/component/pyroscope/java/asprof"
 	"github.com/grafana/alloy/internal/featuregate"
@@ -51,6 +54,31 @@ func init() {
 	})
 }
 
+type debugInfo struct {
+	ProfiledTargets []*debugInfoProfiledTarget `alloy:"profiled_targets,block"`
+}
+
+type debugInfoBytesPerType struct {
+	Type  string `alloy:"type,attr"`
+	Bytes int64  `alloy:"bytes,attr"`
+}
+
+type debugInfoProfiledTarget struct {
+	TotalBytes              int64            `alloy:"total_bytes,attr,optional"`
+	TotalSamples            int64            `alloy:"total_samples,attr,optional"`
+	LastProfiled            time.Time        `alloy:"last_profiled,attr,optional"`
+	LastError               time.Time        `alloy:"last_error,attr,optional"`
+	LastProfileBytesPerType map[string]int64 `alloy:"last_profile_bytes_per_type,attr,optional"`
+	ErrorMsg                string           `alloy:"error_msg,attr,optional"`
+	PID                     int              `alloy:"pid,attr"`
+	Target                  discovery.Target `alloy:"target,attr"`
+}
+
+var (
+	_ component.DebugComponent = (*javaComponent)(nil)
+	_ component.Component      = (*javaComponent)(nil)
+)
+
 type javaComponent struct {
 	opts      component.Options
 	args      Arguments
@@ -69,6 +97,21 @@ func (j *javaComponent) Run(ctx context.Context) error {
 	return nil
 }
 
+func (j *javaComponent) DebugInfo() interface{} {
+	j.mutex.Lock()
+	defer j.mutex.Unlock()
+	var di debugInfo
+	di.ProfiledTargets = make([]*debugInfoProfiledTarget, 0, len(j.pid2process))
+	for _, proc := range j.pid2process {
+		di.ProfiledTargets = append(di.ProfiledTargets, proc.debugInfo())
+	}
+	// sort by pid
+	sort.Slice(di.ProfiledTargets, func(i, j int) bool {
+		return di.ProfiledTargets[i].PID < di.ProfiledTargets[j].PID
+	})
+	return &di
+}
+
 func (j *javaComponent) Update(args component.Arguments) error {
 	newArgs := args.(Arguments)
 	j.forwardTo.UpdateChildren(newArgs.ForwardTo)
@@ -83,7 +126,18 @@ func (j *javaComponent) updateTargets(args Arguments) {
 
 	active := make(map[int]struct{})
 	for _, target := range args.Targets {
-		pid, err := strconv.Atoi(target[labelProcessID])
+		pidStr, ok := target.Get(labelProcessID)
+		if !ok {
+			_ = level.Error(j.opts.Logger).Log("msg", "could not find PID label", "pid", pidStr)
+			continue
+		}
+		pid64, err := strconv.ParseInt(pidStr, 10, 32)
+		if err != nil {
+			_ = level.Error(j.opts.Logger).Log("msg", "could not convert process ID to a 32 bit integer", "pid", pidStr, "err", err)
+			continue
+		}
+		pid := int(pid64)
+
 		_ = level.Debug(j.opts.Logger).Log("msg", "active target",
 			"target", fmt.Sprintf("%+v", target),
 			"pid", pid)

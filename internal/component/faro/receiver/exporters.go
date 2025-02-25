@@ -2,6 +2,7 @@ package receiver
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sync"
@@ -17,6 +18,7 @@ import (
 	"github.com/grafana/alloy/internal/component/faro/receiver/internal/payload"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/util"
 )
 
 type exporter interface {
@@ -57,7 +59,10 @@ func newMetricsExporter(reg prometheus.Registerer) *metricsExporter {
 		}),
 	}
 
-	reg.MustRegister(exp.totalLogs, exp.totalExceptions, exp.totalMeasurements, exp.totalEvents)
+	exp.totalLogs = util.MustRegisterOrGet(reg, exp.totalLogs).(prometheus.Counter)
+	exp.totalMeasurements = util.MustRegisterOrGet(reg, exp.totalMeasurements).(prometheus.Counter)
+	exp.totalExceptions = util.MustRegisterOrGet(reg, exp.totalExceptions).(prometheus.Counter)
+	exp.totalEvents = util.MustRegisterOrGet(reg, exp.totalEvents).(prometheus.Counter)
 
 	return exp
 }
@@ -79,6 +84,7 @@ func (exp *metricsExporter) Export(ctx context.Context, p payload.Payload) error
 type logsExporter struct {
 	log        log.Logger
 	sourceMaps sourceMapsStore
+	format     LogFormat
 
 	receiversMut sync.RWMutex
 	receivers    []loki.LogsReceiver
@@ -89,10 +95,11 @@ type logsExporter struct {
 
 var _ exporter = (*logsExporter)(nil)
 
-func newLogsExporter(log log.Logger, sourceMaps sourceMapsStore) *logsExporter {
+func newLogsExporter(log log.Logger, sourceMaps sourceMapsStore, format LogFormat) *logsExporter {
 	return &logsExporter{
 		log:        log,
 		sourceMaps: sourceMaps,
+		format:     format,
 	}
 }
 
@@ -153,7 +160,19 @@ func (exp *logsExporter) sendKeyValsToLogsPipeline(ctx context.Context, kv *payl
 	)
 	exp.receiversMut.RUnlock()
 
-	line, err := logfmt.MarshalKeyvals(payload.KeyValToInterfaceSlice(kv)...)
+	var (
+		line []byte
+		err  error
+	)
+	switch exp.format {
+	case FormatLogfmt:
+		line, err = logfmt.MarshalKeyvals(payload.KeyValToInterfaceSlice(kv)...)
+	case FormatJSON:
+		line, err = json.Marshal(payload.KeyValToInterfaceMap(kv))
+	default:
+		line, err = logfmt.MarshalKeyvals(payload.KeyValToInterfaceSlice(kv)...)
+	}
+
 	if err != nil {
 		level.Error(exp.log).Log("msg", "failed to logfmt a frontend log event", "err", err)
 		return err

@@ -10,6 +10,12 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/dskit/backoff"
+	"github.com/hashicorp/go-multierror"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
+
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/internal/dag"
 	"github.com/grafana/alloy/internal/runtime/internal/worker"
@@ -19,11 +25,6 @@ import (
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/diag"
 	"github.com/grafana/alloy/syntax/vm"
-	"github.com/grafana/dskit/backoff"
-	"github.com/hashicorp/go-multierror"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/codes"
-	"go.opentelemetry.io/otel/trace"
 )
 
 // The Loader builds and evaluates ComponentNodes from Alloy blocks.
@@ -45,6 +46,7 @@ type Loader struct {
 	componentNodes       []ComponentNode
 	declareNodes         map[string]*DeclareNode
 	importConfigNodes    map[string]*ImportConfigNode
+	forEachNodes         map[string]*ForeachConfigNode
 	serviceNodes         []*ServiceNode
 	cache                *valueCache
 	blocks               []*ast.BlockStmt // Most recently loaded blocks, used for writing
@@ -92,10 +94,11 @@ func NewLoader(opts LoaderOptions) *Loader {
 		componentNodeManager: NewComponentNodeManager(globals, reg),
 
 		// This is a reasonable default which should work for most cases. If a component is completely stuck, we would
-		// retry and log an error every 10 seconds, at most.
+		// retry and log an error every 10 seconds, at most. We give up after some time to prevent lasting deadlocks.
 		backoffConfig: backoff.Config{
 			MinBackoff: 1 * time.Millisecond,
 			MaxBackoff: 10 * time.Second,
+			MaxRetries: 20, // Give up after 20 attempts - it could be a deadlock instead of an overload.
 		},
 
 		graph: &dag.Graph{},
@@ -149,7 +152,9 @@ func (l *Loader) Apply(options ApplyOptions) diag.Diagnostics {
 	l.cm.controllerEvaluation.Set(1)
 	defer l.cm.controllerEvaluation.Set(0)
 
-	l.cache.SetScope(options.ArgScope)
+	if options.ArgScope != nil {
+		l.cache.UpdateScopeVariables(options.ArgScope.Variables)
+	}
 
 	for key, value := range options.Args {
 		l.cache.CacheModuleArgument(key, value)
@@ -166,7 +171,7 @@ func (l *Loader) Apply(options ApplyOptions) diag.Diagnostics {
 
 	var (
 		components   = make([]ComponentNode, 0)
-		componentIDs = make([]ComponentID, 0)
+		componentIDs = make(map[string]ComponentID)
 		services     = make([]*ServiceNode, 0, len(l.services))
 	)
 
@@ -200,7 +205,7 @@ func (l *Loader) Apply(options ApplyOptions) diag.Diagnostics {
 		switch n := n.(type) {
 		case ComponentNode:
 			components = append(components, n)
-			componentIDs = append(componentIDs, n.ID())
+			componentIDs[n.ID().String()] = n.ID()
 
 			if err = l.evaluate(logger, n); err != nil {
 				var evalDiags diag.Diagnostics
@@ -260,7 +265,15 @@ func (l *Loader) Apply(options ApplyOptions) diag.Diagnostics {
 	l.componentNodes = components
 	l.serviceNodes = services
 	l.graph = &newGraph
-	l.cache.SyncIDs(componentIDs)
+	err := l.cache.SyncIDs(componentIDs)
+	if err != nil {
+		diags.Add(diag.Diagnostic{
+			Severity: diag.SeverityLevelError,
+			Message:  fmt.Sprintf("Failed to update the internal cache with the new list of components: %s", err),
+		})
+		// return it now because there is no point to process further
+		return diags
+	}
 	l.blocks = options.ComponentBlocks
 	if l.globals.OnExportsChange != nil && l.cache.ExportChangeIndex() != l.moduleExportIndex {
 		l.moduleExportIndex = l.cache.ExportChangeIndex()
@@ -499,7 +512,7 @@ func (l *Loader) populateConfigBlockNodes(args map[string]any, g *dag.Graph, con
 			node = exist.(BlockNode)
 			node.UpdateBlock(block)
 		} else {
-			node, newConfigNodeDiags = NewConfigNode(block, l.globals)
+			node, newConfigNodeDiags = NewConfigNode(block, l.globals, l.componentNodeManager.customComponentReg)
 			diags = append(diags, newConfigNodeDiags...)
 			if diags.HasErrors() {
 				continue
@@ -535,6 +548,7 @@ func (l *Loader) populateConfigBlockNodes(args map[string]any, g *dag.Graph, con
 	}
 
 	l.importConfigNodes = nodeMap.importMap
+	l.forEachNodes = nodeMap.foreachMap
 
 	return diags
 }
@@ -611,11 +625,13 @@ func (l *Loader) wireGraphEdges(g *dag.Graph) diag.Diagnostics {
 			continue
 		case *CustomComponentNode:
 			l.wireCustomComponentNode(g, n)
+		case *ForeachConfigNode:
+			l.wireForEachNode(g, n)
 		}
 
 		// Finally, wire component references.
 		l.cache.mut.RLock()
-		refs, nodeDiags := ComponentReferences(n, g, l.log, l.cache.scope, l.globals.MinStability)
+		refs, nodeDiags := ComponentReferences(n, g, l.log, l.cache.GetContext(), l.globals.MinStability)
 		l.cache.mut.RUnlock()
 		for _, ref := range refs {
 			g.AddEdge(dag.Edge{From: n, To: ref.Target})
@@ -642,10 +658,18 @@ func (l *Loader) wireCustomComponentNode(g *dag.Graph, cc *CustomComponentNode) 
 	}
 }
 
+// wireForEachNode add edges between a foreach node and declare/import nodes that are used in the foreach pipeline.
+func (l *Loader) wireForEachNode(g *dag.Graph, fn *ForeachConfigNode) {
+	refs := l.findCustomComponentReferences(fn.Block())
+	for ref := range refs {
+		g.AddEdge(dag.Edge{From: fn, To: ref})
+	}
+}
+
 // Variables returns the Variables the Loader exposes for other components to
 // reference.
 func (l *Loader) Variables() map[string]interface{} {
-	return l.cache.BuildContext().Variables
+	return l.cache.GetContext().Variables
 }
 
 // Components returns the current set of loaded components.
@@ -667,6 +691,13 @@ func (l *Loader) Imports() map[string]*ImportConfigNode {
 	l.mut.RLock()
 	defer l.mut.RUnlock()
 	return l.importConfigNodes
+}
+
+// ForEachs returns the current set of foreach nodes.
+func (l *Loader) ForEachs() map[string]*ForeachConfigNode {
+	l.mut.RLock()
+	defer l.mut.RUnlock()
+	return l.forEachNodes
 }
 
 // Graph returns a copy of the DAG managed by the Loader.
@@ -703,7 +734,10 @@ func (l *Loader) EvaluateDependants(ctx context.Context, updatedNodes []*QueuedN
 		switch parentNode := parent.Node.(type) {
 		case ComponentNode:
 			// Make sure we're in-sync with the current exports of parent.
-			l.cache.CacheExports(parentNode.ID(), parentNode.Exports())
+			err := l.cache.CacheExports(parentNode.ID(), parentNode.Exports())
+			if err != nil {
+				level.Error(l.log).Log("msg", "failed to cache exports during evaluation", "err", err)
+			}
 		case *ImportConfigNode:
 			// Update the scope with the imported content.
 			l.componentNodeManager.customComponentReg.updateImportContent(parentNode)
@@ -736,18 +770,30 @@ func (l *Loader) EvaluateDependants(ctx context.Context, updatedNodes []*QueuedN
 				l.concurrentEvalFn(nodeRef, dependantCtx, tracer, parentRef)
 			})
 			if err != nil {
-				level.Error(l.log).Log(
-					"msg", "failed to submit node for evaluation - Alloy is likely overloaded "+
-						"and cannot keep up with evaluating components - will retry",
+				level.Warn(l.log).Log(
+					"msg", "failed to submit node for evaluation - will retry",
 					"err", err,
 					"node_id", n.NodeID(),
 					"originator_id", parent.Node.NodeID(),
 					"retries", retryBackoff.NumRetries(),
 				)
+				// When backing off, release the mut in case the evaluation requires to interact with the loader itself.
+				l.mut.RUnlock()
 				retryBackoff.Wait()
+				l.mut.RLock()
 			} else {
 				break
 			}
+		}
+		if err != nil && !retryBackoff.Ongoing() {
+			level.Error(l.log).Log(
+				"msg", "retry attempts exhausted when submitting node for evaluation to the worker pool - "+
+					"this could be a deadlock, performance bottleneck or severe overload leading to goroutine starvation",
+				"err", err,
+				"node_id", n.NodeID(),
+				"originator_id", parent.Node.NodeID(),
+				"retries", retryBackoff.NumRetries(),
+			)
 		}
 		span.SetAttributes(attribute.Int("retries", retryBackoff.NumRetries()))
 		if err != nil {
@@ -780,10 +826,10 @@ func (l *Loader) concurrentEvalFn(n dag.Node, spanCtx context.Context, tracer tr
 	var err error
 	switch n := n.(type) {
 	case BlockNode:
-		ectx := l.cache.BuildContext()
 
 		// RLock before evaluate to prevent Evaluating while the config is being reloaded
 		l.mut.RLock()
+		ectx := l.cache.GetContext()
 		evalErr := n.Evaluate(ectx)
 
 		err = l.postEvaluate(l.log, n, evalErr)
@@ -796,12 +842,12 @@ func (l *Loader) concurrentEvalFn(n dag.Node, spanCtx context.Context, tracer tr
 			// Upgrade to write lock to update the module exports.
 			l.mut.RUnlock()
 			l.mut.Lock()
-			defer l.mut.Unlock()
 			// Check if the update still needed after obtaining the write lock and perform it.
 			if l.cache.ExportChangeIndex() != l.moduleExportIndex {
 				l.globals.OnExportsChange(l.cache.CreateModuleExports())
 				l.moduleExportIndex = l.cache.ExportChangeIndex()
 			}
+			l.mut.Unlock()
 		} else {
 			// No need to upgrade to write lock, just release the read lock.
 			l.mut.RUnlock()
@@ -819,22 +865,33 @@ func (l *Loader) concurrentEvalFn(n dag.Node, spanCtx context.Context, tracer tr
 // evaluate constructs the final context for the BlockNode and
 // evaluates it. mut must be held when calling evaluate.
 func (l *Loader) evaluate(logger log.Logger, bn BlockNode) error {
-	ectx := l.cache.BuildContext()
+	ectx := l.cache.GetContext()
 	err := bn.Evaluate(ectx)
 	return l.postEvaluate(logger, bn, err)
 }
 
 // postEvaluate is called after a node has been evaluated. It updates the caches and logs any errors.
 // mut must be held when calling postEvaluate.
+// The evaluation err is passed as an argument to allow shadowing it with an error that could be more relevant to the user
+// but cannot be determined before the evaluation (for example, we must evaluate the argument node to see if it's optional before
+// raising an error when a value is missing). When err is not nil, this function must return an error.
 func (l *Loader) postEvaluate(logger log.Logger, bn BlockNode, err error) error {
 	switch c := bn.(type) {
 	case ComponentNode:
-		// Always update the cache both the arguments and exports, since both might
-		// change when a component gets re-evaluated. We also want to cache the arguments and exports in case of an error
-		l.cache.CacheArguments(c.ID(), c.Arguments())
-		l.cache.CacheExports(c.ID(), c.Exports())
+		// Always update the cached exports, since that it might change when a component gets re-evaluated.
+		// We also want to cache it in case of an error
+		err2 := l.cache.CacheExports(c.ID(), c.Exports())
+		if err2 != nil {
+			if err != nil {
+				level.Error(logger).Log("msg", "evaluation and exports caching failed", "eval err", err, "caching err", err2)
+				return errors.Join(err, err2)
+			} else {
+				level.Error(logger).Log("msg", "failed to cache exports after evaluation", "err", err2)
+				return err2
+			}
+		}
 	case *ArgumentConfigNode:
-		if _, found := l.cache.moduleArguments[c.Label()]; !found {
+		if _, found := l.cache.GetModuleArgument(c.Label()); !found {
 			if c.Optional() {
 				l.cache.CacheModuleArgument(c.Label(), c.Default())
 			} else {
@@ -871,10 +928,10 @@ func (l *Loader) isRootController() bool {
 	return l.globals.ControllerID == ""
 }
 
-// findCustomComponentReferences returns references to import/declare nodes in a declare block.
-func (l *Loader) findCustomComponentReferences(declare *ast.BlockStmt) map[BlockNode]struct{} {
+// findCustomComponentReferences returns references to import/declare nodes in a block.
+func (l *Loader) findCustomComponentReferences(block *ast.BlockStmt) map[BlockNode]struct{} {
 	uniqueReferences := make(map[BlockNode]struct{})
-	l.collectCustomComponentReferences(declare.Body, uniqueReferences)
+	l.collectCustomComponentReferences(block.Body, uniqueReferences)
 	return uniqueReferences
 }
 
@@ -894,7 +951,7 @@ func (l *Loader) collectCustomComponentReferences(stmts ast.Body, uniqueReferenc
 		)
 
 		switch {
-		case componentName == declareType:
+		case componentName == declareType || componentName == templateType:
 			l.collectCustomComponentReferences(blockStmt.Body, uniqueReferences)
 		case foundDeclare:
 			uniqueReferences[declareNode] = struct{}{}

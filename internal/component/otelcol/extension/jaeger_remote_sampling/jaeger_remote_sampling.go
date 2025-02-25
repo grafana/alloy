@@ -2,6 +2,7 @@ package jaeger_remote_sampling
 
 import (
 	"fmt"
+	"maps"
 	"time"
 
 	"github.com/grafana/alloy/internal/component"
@@ -11,7 +12,6 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/extension/jaeger_remote_sampling/internal/jaegerremotesampling"
 	"github.com/grafana/alloy/internal/featuregate"
 	otelcomponent "go.opentelemetry.io/collector/component"
-	otelextension "go.opentelemetry.io/collector/extension"
 	"go.opentelemetry.io/collector/pipeline"
 )
 
@@ -68,11 +68,29 @@ func (args *Arguments) SetToDefault() {
 
 // Convert implements extension.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
+	httpServerConfig := (*otelcol.HTTPServerArguments)(args.HTTP)
+	httpConvertedServerConfig, err := httpServerConfig.Convert()
+	if err != nil {
+		return nil, err
+	}
+
+	grpcServerConfig := (*otelcol.GRPCServerArguments)(args.GRPC)
+	convertedGrpcServerConfig, err := grpcServerConfig.Convert()
+	if err != nil {
+		return nil, err
+	}
+
+	grpcClientConfig := (*otelcol.GRPCClientArguments)(args.Source.Remote)
+	convertedGrpcClientConfig, err := grpcClientConfig.Convert()
+	if err != nil {
+		return nil, err
+	}
+
 	return &jaegerremotesampling.Config{
-		HTTPServerConfig: (*otelcol.HTTPServerArguments)(args.HTTP).Convert(),
-		GRPCServerConfig: (*otelcol.GRPCServerArguments)(args.GRPC).Convert(),
+		HTTPServerConfig: httpConvertedServerConfig,
+		GRPCServerConfig: convertedGrpcServerConfig,
 		Source: jaegerremotesampling.Source{
-			Remote:         (*otelcol.GRPCClientArguments)(args.Source.Remote).Convert(),
+			Remote:         convertedGrpcClientConfig,
 			File:           args.Source.File,
 			ReloadInterval: args.Source.ReloadInterval,
 			Contents:       args.Source.Content,
@@ -81,8 +99,25 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 }
 
 // Extensions implements extension.Arguments.
-func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
-	return nil
+func (args Arguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
+	extensionMap := make(map[otelcomponent.ID]otelcomponent.Component)
+
+	// Gets the extensions for the HTTP server and GRPC server
+	if args.HTTP != nil {
+		httpExtensions := (*otelcol.HTTPServerArguments)(args.HTTP).Extensions()
+
+		// Copies the extensions for the HTTP server into the map
+		maps.Copy(extensionMap, httpExtensions)
+	}
+
+	if args.GRPC != nil {
+		grpcExtensions := (*otelcol.GRPCServerArguments)(args.GRPC).Extensions()
+
+		// Copies the extensions for the GRPC server into the map.
+		maps.Copy(extensionMap, grpcExtensions)
+	}
+
+	return extensionMap
 }
 
 // Exporters implements extension.Arguments.

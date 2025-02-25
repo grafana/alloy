@@ -8,6 +8,7 @@ import (
 	"path"
 
 	"github.com/gorilla/mux"
+
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/service"
 	http_service "github.com/grafana/alloy/internal/service/http"
@@ -78,10 +79,7 @@ func (s *Service) Data() any {
 func (s *Service) ServiceHandler(host service.Host) (base string, handler http.Handler) {
 	r := mux.NewRouter()
 
-	remotecfgSvc, _ := host.GetService(remotecfg_service.ServiceName)
-	remotecfgHost := remotecfgSvc.Data().(remotecfg_service.Data).Host
-
-	fa := api.NewAlloyAPI(host, remotecfgHost, s.opts.CallbackManager)
+	fa := api.NewAlloyAPI(host, s.opts.CallbackManager)
 	fa.RegisterRoutes(path.Join(s.opts.UIPrefix, "/api/v0/web"), r)
 	ui.RegisterRoutes(s.opts.UIPrefix, r)
 

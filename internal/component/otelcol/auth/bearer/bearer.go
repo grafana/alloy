@@ -10,7 +10,6 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/extension/bearertokenauthextension"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/configopaque"
-	otelextension "go.opentelemetry.io/collector/extension"
 	"go.opentelemetry.io/collector/pipeline"
 )
 
@@ -51,16 +50,30 @@ func (args *Arguments) SetToDefault() {
 	args.DebugMetrics.SetToDefault()
 }
 
-// Convert implements auth.Arguments.
-func (args Arguments) Convert() (otelcomponent.Config, error) {
+func (args Arguments) convert() (otelcomponent.Config, error) {
 	return &bearertokenauthextension.Config{
 		Scheme:      args.Scheme,
 		BearerToken: configopaque.String(args.Token),
 	}, nil
 }
 
+// ConvertClient implements auth.Arguments.
+func (args Arguments) ConvertClient() (otelcomponent.Config, error) {
+	return args.convert()
+}
+
+// ConvertServer implements auth.Arguments.
+func (args Arguments) ConvertServer() (otelcomponent.Config, error) {
+	return args.convert()
+}
+
+// AuthFeatures implements auth.Arguments.
+func (args Arguments) AuthFeatures() auth.AuthFeature {
+	return auth.ClientAndServerAuthSupported
+}
+
 // Extensions implements auth.Arguments.
-func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
+func (args Arguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 

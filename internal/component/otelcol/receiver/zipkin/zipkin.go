@@ -9,7 +9,6 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/zipkinreceiver"
 	otelcomponent "go.opentelemetry.io/collector/component"
-	otelextension "go.opentelemetry.io/collector/extension"
 	"go.opentelemetry.io/collector/pipeline"
 )
 
@@ -54,15 +53,19 @@ func (args *Arguments) SetToDefault() {
 
 // Convert implements receiver.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
+	httpServerConfig, err := args.HTTPServer.Convert()
+	if err != nil {
+		return nil, err
+	}
 	return &zipkinreceiver.Config{
 		ParseStringTags: args.ParseStringTags,
-		ServerConfig:    *args.HTTPServer.Convert(),
+		ServerConfig:    *httpServerConfig,
 	}, nil
 }
 
 // Extensions implements receiver.Arguments.
-func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
-	return nil
+func (args Arguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
+	return args.HTTPServer.Extensions()
 }
 
 // Exporters implements receiver.Arguments.

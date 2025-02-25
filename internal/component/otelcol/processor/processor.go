@@ -9,13 +9,9 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	otelcomponent "go.opentelemetry.io/collector/component"
-	"go.opentelemetry.io/collector/config/configtelemetry"
-	otelextension "go.opentelemetry.io/collector/extension"
 	"go.opentelemetry.io/collector/pipeline"
 	otelprocessor "go.opentelemetry.io/collector/processor"
 	sdkprometheus "go.opentelemetry.io/otel/exporters/prometheus"
-	otelmetric "go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/metric/noop"
 	"go.opentelemetry.io/otel/sdk/metric"
 
 	"github.com/grafana/alloy/internal/build"
@@ -42,7 +38,7 @@ type Arguments interface {
 
 	// Extensions returns the set of extensions that the configured component is
 	// allowed to use.
-	Extensions() map[otelcomponent.ID]otelextension.Extension
+	Extensions() map[otelcomponent.ID]otelcomponent.Component
 
 	// Exporters returns the set of exporters that are exposed to the configured
 	// component.
@@ -167,13 +163,7 @@ func (p *Processor) Update(args component.Arguments) error {
 
 			TracerProvider: p.opts.Tracer,
 			MeterProvider:  mp,
-			LeveledMeterProvider: func(level configtelemetry.Level) otelmetric.MeterProvider {
-				if level <= metricsLevel {
-					return mp
-				}
-				return noop.MeterProvider{}
-			},
-			MetricsLevel: metricsLevel,
+			MetricsLevel:   metricsLevel,
 		},
 
 		BuildInfo: otelcomponent.BuildInfo{
@@ -237,9 +227,13 @@ func (p *Processor) Update(args component.Arguments) error {
 		}
 	}
 
+	updateConsumersFunc := func() {
+		p.consumer.SetConsumers(tracesProcessor, metricsProcessor, logsProcessor)
+	}
+
 	// Schedule the components to run once our component is running.
-	p.sched.Schedule(host, components...)
-	p.consumer.SetConsumers(tracesProcessor, metricsProcessor, logsProcessor)
+	p.sched.Schedule(p.ctx, updateConsumersFunc, host, components...)
+
 	return nil
 }
 

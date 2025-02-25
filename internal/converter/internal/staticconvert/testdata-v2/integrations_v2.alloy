@@ -1,6 +1,6 @@
 prometheus.remote_write "metrics_default" {
 	endpoint {
-		name = "default-149bbd"
+		name = "default-c3a75f"
 		url  = "http://localhost:9009/api/prom/push"
 
 		queue_config { }
@@ -23,6 +23,7 @@ logging {
 
 faro.receiver "integrations_app_agent_receiver" {
 	extra_log_labels = {}
+	log_format       = ""
 
 	server {
 		listen_address           = "localhost"
@@ -720,7 +721,7 @@ prometheus.exporter.snmp "integrations_snmp" {
 	}, {
 		address      = "192.168.1.3",
 		auth         = "private",
-		module       = "mikrotik",
+		module       = "system,mikrotik",
 		name         = "network_router_2",
 		snmp_context = "dummyContext",
 		walk_params  = "private",

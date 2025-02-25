@@ -20,7 +20,7 @@ type EventLogMessageConfig struct {
 }
 
 func (e *EventLogMessageConfig) Validate() error {
-	if !model.LabelName(e.Source).IsValid() {
+	if !model.LabelName(e.Source).IsValidLegacy() {
 		return fmt.Errorf(ErrInvalidLabelName, e.Source)
 	}
 	return nil
@@ -78,11 +78,11 @@ func (m *eventLogMessageStage) processEntry(extracted map[string]interface{}, ke
 	for _, line := range lines {
 		parts := strings.SplitN(line, ":", 2)
 		if len(parts) < 2 {
-			level.Warn(m.logger).Log("msg", "invalid line parsed from message", "line", line)
+			level.Debug(m.logger).Log("msg", "invalid line parsed from message", "line", line)
 			continue
 		}
 		mkey := parts[0]
-		if !model.LabelName(mkey).IsValid() {
+		if !model.LabelName(mkey).IsValidLegacy() {
 			if m.cfg.DropInvalidLabels {
 				if Debug {
 					level.Debug(m.logger).Log("msg", "invalid label parsed from message", "key", mkey)

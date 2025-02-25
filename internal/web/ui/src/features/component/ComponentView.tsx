@@ -23,6 +23,7 @@ export const ComponentView: FC<ComponentViewProps> = (props) => {
 
   const referencedBy = props.component.referencedBy.filter((id) => props.info[id] !== undefined).map((id) => props.info[id]);
   const referencesTo = props.component.referencesTo.filter((id) => props.info[id] !== undefined).map((id) => props.info[id]);
+  const liveDebuggingEnabled = props.component.liveDebuggingEnabled;
 
   const argsPartition = partitionBody(props.component.arguments, 'Arguments');
   const exportsPartition = props.component.exports && partitionBody(props.component.exports, 'Exports');
@@ -44,6 +45,24 @@ export const ComponentView: FC<ComponentViewProps> = (props) => {
           </ul>
         )}
       </li>
+    );
+  }
+
+  function liveDebuggingButton(): ReactElement | string {
+    if (useRemotecfg) {
+      return 'Live debugging is not yet available for remote components';
+    }
+
+    if (!liveDebuggingEnabled) {
+      return 'Live debugging is not yet available for this component';
+    }
+
+    return (
+      <div className={styles.debugLink}>
+        <a href={`debug/${pathJoin([props.component.moduleID, props.component.localID])}`}>
+          <FontAwesomeIcon icon={faBug} /> Live debugging
+        </a>
+      </div>
     );
   }
 
@@ -103,15 +122,7 @@ export const ComponentView: FC<ComponentViewProps> = (props) => {
           </a>
         </div>
 
-        {useRemotecfg ? (
-          'Live debugging is not yet available for remote components'
-        ) : (
-          <div className={styles.debugLink}>
-            <a href={`debug/${pathJoin([props.component.moduleID, props.component.localID])}`}>
-              <FontAwesomeIcon icon={faBug} /> Live debugging
-            </a>
-          </div>
-        )}
+        {liveDebuggingButton()}
 
         {props.component.health.message && (
           <blockquote>
@@ -133,7 +144,7 @@ export const ComponentView: FC<ComponentViewProps> = (props) => {
           <section id="dependencies">
             <h2>Dependencies</h2>
             <div className={styles.sectionContent}>
-              <ComponentList components={referencesTo} useRemotecfg={useRemotecfg} moduleID={props.component.moduleID} />
+              <ComponentList components={referencesTo} useRemotecfg={useRemotecfg} />
             </div>
           </section>
         )}
@@ -142,7 +153,7 @@ export const ComponentView: FC<ComponentViewProps> = (props) => {
           <section id="dependants">
             <h2>Dependants</h2>
             <div className={styles.sectionContent}>
-              <ComponentList components={referencedBy} useRemotecfg={useRemotecfg} moduleID={props.component.moduleID} />
+              <ComponentList components={referencedBy} useRemotecfg={useRemotecfg} />
             </div>
           </section>
         )}
@@ -151,11 +162,7 @@ export const ComponentView: FC<ComponentViewProps> = (props) => {
           <section id="module">
             <h2>Module components</h2>
             <div className={styles.sectionContent}>
-              <ComponentList
-                components={props.component.moduleInfo}
-                useRemotecfg={useRemotecfg}
-                moduleID={pathJoin([props.component.moduleID, props.component.localID])}
-              />
+              <ComponentList components={props.component.moduleInfo} useRemotecfg={useRemotecfg} />
             </div>
           </section>
         )}

@@ -10,7 +10,6 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awss3exporter"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/configcompression"
-	otelextension "go.opentelemetry.io/collector/extension"
 	"go.opentelemetry.io/collector/pipeline"
 )
 
@@ -23,15 +22,14 @@ func init() {
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
 			fact := awss3exporter.NewFactory()
-			return exporter.New(opts, fact, args.(Arguments), exporter.TypeAll)
+			return exporter.New(opts, fact, args.(Arguments), exporter.TypeSignalConstFunc(exporter.TypeAll))
 		},
 	})
 }
 
 // Arguments configures the otelcol.exporter.awss3 component.
 type Arguments struct {
-	Encoding              string `alloy:"encoding,attr,optional"`
-	EncodingFileExtension string `alloy:"encoding_file_ext,attr,optional"`
+	Queue otelcol.QueueArguments `alloy:"sending_queue,block,optional"`
 
 	S3Uploader    S3Uploader    `alloy:"s3_uploader,block"`
 	MarshalerName MarshalerType `alloy:"marshaler,block,optional"`
@@ -46,6 +44,7 @@ func (args *Arguments) SetToDefault() {
 	args.MarshalerName.SetToDefault()
 	args.S3Uploader.SetToDefault()
 	args.DebugMetrics.SetToDefault()
+	args.Queue.SetToDefault()
 }
 
 func (args Arguments) Convert() (otelcomponent.Config, error) {
@@ -53,11 +52,12 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 
 	result.S3Uploader = args.S3Uploader.Convert()
 	result.MarshalerName = args.MarshalerName.Convert()
+	result.QueueSettings = *args.Queue.Convert()
 
 	return &result, nil
 }
 
-func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
+func (args Arguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 

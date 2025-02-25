@@ -14,7 +14,7 @@ The `constants` object exposes a list of constant values about the system {{< pa
 
 ## Examples
 
-```
+```alloy
 > constants.hostname
 "my-hostname"
 

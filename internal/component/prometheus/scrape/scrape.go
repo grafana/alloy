@@ -69,6 +69,8 @@ type Arguments struct {
 	Params url.Values `alloy:"params,attr,optional"`
 	// Whether to scrape a classic histogram that is also exposed as a native histogram.
 	ScrapeClassicHistograms bool `alloy:"scrape_classic_histograms,attr,optional"`
+	// Whether to scrape native histograms.
+	ScrapeNativeHistograms bool `alloy:"scrape_native_histograms,attr,optional"`
 	// How frequently to scrape the targets of this scrape config.
 	ScrapeInterval time.Duration `alloy:"scrape_interval,attr,optional"`
 	// The timeout for scraping targets of this config.
@@ -126,6 +128,7 @@ func (arg *Arguments) SetToDefault() {
 		ScrapeInterval:           1 * time.Minute,  // From config.DefaultGlobalConfig
 		ScrapeTimeout:            10 * time.Second, // From config.DefaultGlobalConfig
 		ScrapeProtocols:          slices.Clone(defaultScrapeProtocols),
+		ScrapeNativeHistograms:   true,
 	}
 }
 
@@ -220,6 +223,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		HTTPClientOptions: []config_util.HTTPClientOption{
 			config_util.WithDialContextFunc(httpData.DialFunc),
 		},
+		EnableNativeHistogramsIngestion: args.ScrapeNativeHistograms,
 	}
 
 	unregisterer := util.WrapWithUnregisterer(o.Registerer)
@@ -332,7 +336,7 @@ func (c *Component) distributeTargets(
 
 	newLocalTargets := newDistTargets.LocalTargets()
 	c.targetsGauge.Set(float64(len(newLocalTargets)))
-	promNewTargets := c.componentTargetsToPromTargetGroups(jobName, newLocalTargets)
+	promNewTargets := discovery.ComponentTargetsToPromTargetGroups(jobName, newLocalTargets)
 
 	movedTargets := newDistTargets.MovedToRemoteInstance(oldDistributedTargets)
 	c.movedTargetsCounter.Add(float64(len(movedTargets)))
@@ -479,34 +483,25 @@ func (c *Component) DebugInfo() interface{} {
 	}
 }
 
-func (c *Component) componentTargetsToPromTargetGroups(jobName string, tgs []discovery.Target) map[string][]*targetgroup.Group {
-	promGroup := &targetgroup.Group{Source: jobName}
-	for _, tg := range tgs {
-		promGroup.Targets = append(promGroup.Targets, convertLabelSet(tg))
-	}
-
-	return map[string][]*targetgroup.Group{jobName: {promGroup}}
-}
-
 func (c *Component) populatePromLabels(targets []discovery.Target, jobName string, args Arguments) []*scrape.Target {
-	lb := labels.NewBuilder(labels.EmptyLabels())
-	promTargets, errs := scrape.TargetsFromGroup(
-		c.componentTargetsToPromTargetGroups(jobName, targets)[jobName][0],
-		getPromScrapeConfigs(c.opts.ID, args),
-		false,                                /* noDefaultScrapePort - always false in this component */
-		make([]*scrape.Target, len(targets)), /* targets slice to reuse */
-		lb,
-	)
-	for _, err := range errs {
-		level.Warn(c.opts.Logger).Log("msg", "error while populating labels of targets using prom config", "err", err)
+	// We need to call scrape.TargetsFromGroup to reuse the rather complex logic of populating labels on targets.
+	allTargets := make([]*scrape.Target, 0, len(targets))
+	groups := discovery.ComponentTargetsToPromTargetGroups(jobName, targets)
+	for _, tgs := range groups {
+		for _, tg := range tgs {
+			promTargets, errs := scrape.TargetsFromGroup(
+				tg,
+				getPromScrapeConfigs(jobName, args),
+				false,                                /* noDefaultScrapePort - always false in this component */
+				make([]*scrape.Target, len(targets)), /* targets slice to reuse */
+				labels.NewBuilder(labels.EmptyLabels()),
+			)
+			for _, err := range errs {
+				level.Warn(c.opts.Logger).Log("msg", "error while populating labels of targets using prom config", "err", err)
+			}
+			allTargets = append(allTargets, promTargets...)
+		}
 	}
-	return promTargets
-}
 
-func convertLabelSet(tg discovery.Target) model.LabelSet {
-	lset := make(model.LabelSet, len(tg))
-	for k, v := range tg {
-		lset[model.LabelName(k)] = model.LabelValue(v)
-	}
-	return lset
+	return allTargets
 }

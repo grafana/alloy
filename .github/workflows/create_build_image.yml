@@ -1,0 +1,66 @@
+name: Create build images
+on:
+  push:
+    tags:
+      - build-image/v*
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  linux_build_image:
+    name: Create a Linux build image
+    runs-on:
+      labels: github-hosted-ubuntu-x64-large
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: go.mod
+        cache: false
+
+    - name: Get version from Git tag
+      env:
+        FULL_TAG: ${{ github.ref_name }}
+      id: get_image_version
+      run: echo "image_tag=${FULL_TAG##*/}" >> $GITHUB_OUTPUT
+
+    - name: Login to DockerHub (from vault)
+      uses: grafana/shared-workflows/actions/dockerhub-login@dockerhub-login-v1.0.1
+
+    - run: |
+       docker run --rm --privileged multiarch/qemu-user-static --reset -p yes     
+       docker buildx create --name multiarch --driver docker-container --use
+       docker buildx build --build-arg="GO_RUNTIME=golang:1.24.0-bullseye" --push --platform linux/amd64,linux/arm64 -t grafana/alloy-build-image:${{ steps.get_image_version.outputs.image_tag }} ./tools/build-image
+
+  linux_build_image_boringcrypto:
+    name: Create a Linux build image for boringcrypto
+    runs-on:
+      labels: github-hosted-ubuntu-x64-large
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: go.mod
+        cache: false
+
+    - name: Get version from Git tag
+      env:
+        FULL_TAG: ${{ github.ref_name }}
+      id: get_image_version
+      run: echo "image_tag=${FULL_TAG##*/}-boringcrypto" >> $GITHUB_OUTPUT
+
+    - name: Login to DockerHub (from vault)
+      uses: grafana/shared-workflows/actions/dockerhub-login@dockerhub-login-v1.0.1
+
+    - run: |
+       docker run --rm --privileged multiarch/qemu-user-static --reset -p yes     
+       docker buildx create --name multiarch --driver docker-container --use
+       docker buildx build --build-arg="GO_RUNTIME=mcr.microsoft.com/oss/go/microsoft/golang:1.24.0-bullseye" --push --platform linux/amd64,linux/arm64 -t grafana/alloy-build-image:${{ steps.get_image_version.outputs.image_tag }} ./tools/build-image

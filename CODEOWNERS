@@ -9,6 +9,7 @@
 * @grafana/grafana-alloy-maintainers
 
 #`make docs` procedure and related workflows are owned by @jdbaldry.
+/.github/workflows/deploy-pr-preview.yml                       @jdbaldry
 /.github/workflows/publish-technical-documentation-next.yml    @jdbaldry
 /.github/workflows/publish-technical-documentation-release.yml @jdbaldry
 /.github/workflows/update-make-docs.yml                        @jdbaldry
@@ -20,5 +21,6 @@
 /docs/sources/ @clayton-cornell
 
 # Components:
-/internal/component/pyroscope/ @grafana/grafana-alloy-profiling-maintainers
-/internal/component/beyla/     @marctc
+/internal/component/pyroscope/              @grafana/grafana-alloy-profiling-maintainers
+/internal/component/beyla/                  @grafana/beyla
+/internal/component/database_observability/ @cristiangreco @matthewnolf @fridgepoet

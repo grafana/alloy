@@ -51,3 +51,52 @@ func Test_FanOut(t *testing.T) {
 	require.Error(t, f.Appender().Append(context.Background(), lbls, []*RawSample{}))
 	require.Equal(t, int32(2), totalAppend.Load())
 }
+
+func Test_FanOut_AppendIngest(t *testing.T) {
+	totalAppend := atomic.NewInt32(0)
+	profile := &IncomingProfile{
+		RawBody: []byte("test"),
+		Labels:  labels.Labels{{Name: "foo", Value: "bar"}},
+	}
+
+	f := NewFanout([]Appendable{
+		AppendableIngestFunc(func(_ context.Context, p *IncomingProfile) error {
+			require.Equal(t, profile.RawBody, p.RawBody)
+			require.Equal(t, profile.Labels, p.Labels)
+			totalAppend.Inc()
+			return nil
+		}),
+		AppendableIngestFunc(func(_ context.Context, p *IncomingProfile) error {
+			require.Equal(t, profile.RawBody, p.RawBody)
+			require.Equal(t, profile.Labels, p.Labels)
+			totalAppend.Inc()
+			return nil
+		}),
+		AppendableIngestFunc(func(_ context.Context, p *IncomingProfile) error {
+			require.Equal(t, profile.RawBody, p.RawBody)
+			require.Equal(t, profile.Labels, p.Labels)
+			totalAppend.Inc()
+			return errors.New("foo")
+		}),
+	}, "foo", prometheus.NewRegistry())
+	totalAppend.Store(0)
+	require.Error(t, f.Appender().AppendIngest(context.Background(), profile))
+	require.Equal(t, int32(3), totalAppend.Load())
+	f.UpdateChildren([]Appendable{
+		AppendableIngestFunc(func(_ context.Context, p *IncomingProfile) error {
+			require.Equal(t, profile.RawBody, p.RawBody)
+			require.Equal(t, profile.Labels, p.Labels)
+			totalAppend.Inc()
+			return nil
+		}),
+		AppendableIngestFunc(func(_ context.Context, p *IncomingProfile) error {
+			require.Equal(t, profile.RawBody, p.RawBody)
+			require.Equal(t, profile.Labels, p.Labels)
+			totalAppend.Inc()
+			return errors.New("bar")
+		}),
+	})
+	totalAppend.Store(0)
+	require.Error(t, f.Appender().AppendIngest(context.Background(), profile))
+	require.Equal(t, int32(2), totalAppend.Load())
+}

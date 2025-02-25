@@ -18,7 +18,6 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter"
 	datadogOtelconfig "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/datadog/config"
 	otelcomponent "go.opentelemetry.io/collector/component"
-	otelextension "go.opentelemetry.io/collector/extension"
 	"go.opentelemetry.io/collector/featuregate"
 	"go.opentelemetry.io/collector/pipeline"
 )
@@ -42,7 +41,7 @@ func init() {
 			// Since we don't have that, we disable the feature gate to allow the exporter to compute APM stats.
 			// See https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/exporter/datadogexporter for more
 			featuregate.GlobalRegistry().Set("exporter.datadogexporter.DisableAPMStats", false)
-			return exporter.New(opts, fact, args.(Arguments), exporter.TypeAll)
+			return exporter.New(opts, fact, args.(Arguments), exporter.TypeSignalConstFunc(exporter.TypeAll))
 		},
 	})
 }
@@ -108,7 +107,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 }
 
 // Extensions implements exporter.Arguments.
-func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
+func (args Arguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 

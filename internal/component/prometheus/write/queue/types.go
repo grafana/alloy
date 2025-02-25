@@ -50,7 +50,16 @@ func defaultEndpointConfig() EndpointConfig {
 		MaxRetryAttempts: 0,
 		BatchCount:       1_000,
 		FlushInterval:    1 * time.Second,
-		Parallelism:      4,
+		Parallelism: ParallelismConfig{
+			DriftScaleUp:                60 * time.Second,
+			DriftScaleDown:              30 * time.Second,
+			MaxConnections:              50,
+			MinConnections:              2,
+			NetworkFlushInterval:        1 * time.Minute,
+			DesiredConnectionsLookback:  5 * time.Minute,
+			DesiredCheckInterval:        5 * time.Second,
+			AllowedNetworkErrorFraction: 0.50,
+		},
 	}
 }
 
@@ -65,6 +74,23 @@ func (r *Arguments) Validate() error {
 		}
 		if conn.FlushInterval < 1*time.Second {
 			return fmt.Errorf("flush_interval must be greater or equal to 1s, the internal timers resolution is 1s")
+		}
+		if conn.Parallelism.MaxConnections < conn.Parallelism.MinConnections {
+			return fmt.Errorf("max_connections less than min_connections")
+		}
+		if conn.Parallelism.MinConnections == 0 {
+			return fmt.Errorf("min_connections must be greater than 0")
+		}
+		if conn.Parallelism.DriftScaleUp <= conn.Parallelism.DriftScaleDown {
+			return fmt.Errorf("drift_scale_up_seconds less than or equal drift_scale_down_seconds")
+		}
+		// Any lower than 1 second and you spend a fair amount of time churning on the draining and
+		// refilling the write buffers.
+		if conn.Parallelism.DesiredCheckInterval < 1*time.Second {
+			return fmt.Errorf("desired_check_interval must be greater than or equal to 1 second")
+		}
+		if conn.Parallelism.AllowedNetworkErrorFraction < 0 || conn.Parallelism.AllowedNetworkErrorFraction > 1 {
+			return fmt.Errorf("allowed_network_error_percent must be between 0.00 and 1.00")
 		}
 	}
 
@@ -87,8 +113,28 @@ type EndpointConfig struct {
 	// How long to wait before sending regardless of batch count.
 	FlushInterval time.Duration `alloy:"flush_interval,attr,optional"`
 	// How many concurrent queues to have.
-	Parallelism    uint              `alloy:"parallelism,attr,optional"`
+	Parallelism    ParallelismConfig `alloy:"parallelism,block,optional"`
 	ExternalLabels map[string]string `alloy:"external_labels,attr,optional"`
+	TLSConfig      *TLSConfig        `alloy:"tls_config,block,optional"`
+	RoundRobin     bool              `alloy:"enable_round_robin,attr,optional"`
+}
+
+type TLSConfig struct {
+	CA                 string            `alloy:"ca_pem,attr,optional"`
+	Cert               string            `alloy:"cert_pem,attr,optional"`
+	Key                alloytypes.Secret `alloy:"key_pem,attr,optional"`
+	InsecureSkipVerify bool              `alloy:"insecure_skip_verify,attr,optional"`
+}
+
+type ParallelismConfig struct {
+	DriftScaleUp                time.Duration `alloy:"drift_scale_up,attr,optional"`
+	DriftScaleDown              time.Duration `alloy:"drift_scale_down,attr,optional"`
+	MaxConnections              uint          `alloy:"max_connections,attr,optional"`
+	MinConnections              uint          `alloy:"min_connections,attr,optional"`
+	NetworkFlushInterval        time.Duration `alloy:"network_flush_interval,attr,optional"`
+	DesiredConnectionsLookback  time.Duration `alloy:"desired_connections_lookback,attr,optional"`
+	DesiredCheckInterval        time.Duration `alloy:"desired_check_interval,attr,optional"`
+	AllowedNetworkErrorFraction float64       `alloy:"allowed_network_error_fraction,attr,optional"`
 }
 
 var UserAgent = fmt.Sprintf("Alloy/%s", version.Version)
@@ -104,13 +150,29 @@ func (cc EndpointConfig) ToNativeType() types.ConnectionConfig {
 		BatchCount:       cc.BatchCount,
 		FlushInterval:    cc.FlushInterval,
 		ExternalLabels:   cc.ExternalLabels,
-		Connections:      cc.Parallelism,
+		UseRoundRobin:    cc.RoundRobin,
+		Parallelism: types.ParallelismConfig{
+			AllowedDrift:                cc.Parallelism.DriftScaleUp,
+			MinimumScaleDownDrift:       cc.Parallelism.DriftScaleDown,
+			MaxConnections:              cc.Parallelism.MaxConnections,
+			MinConnections:              cc.Parallelism.MinConnections,
+			ResetInterval:               cc.Parallelism.NetworkFlushInterval,
+			Lookback:                    cc.Parallelism.DesiredConnectionsLookback,
+			CheckInterval:               cc.Parallelism.DesiredCheckInterval,
+			AllowedNetworkErrorFraction: cc.Parallelism.AllowedNetworkErrorFraction,
+		},
 	}
 	if cc.BasicAuth != nil {
 		tcc.BasicAuth = &types.BasicAuth{
 			Username: cc.BasicAuth.Username,
 			Password: string(cc.BasicAuth.Password),
 		}
+	}
+	if cc.TLSConfig != nil {
+		tcc.InsecureSkipVerify = cc.TLSConfig.InsecureSkipVerify
+		tcc.TLSCert = cc.TLSConfig.Cert
+		tcc.TLSKey = string(cc.TLSConfig.Key)
+		tcc.TLSCACert = cc.TLSConfig.CA
 	}
 	return tcc
 }
