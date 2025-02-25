@@ -1,4 +1,0 @@
-go test fuzz v1
-string("forward_to=[]")
-string("\n\t\ttitle = \"gitleaks custom config\"\n\n\t\t[[rules]]\n\t\tid = \"my-fake-secret\"\n\t\tdescription = \"Identified a fake secret\"\n\t\t")
-string("{\n\t\t\t\"message\": \"This is a simple log message with a secret value AIzaAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA !\n\t\t}")
