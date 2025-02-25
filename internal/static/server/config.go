@@ -3,7 +3,7 @@ package server
 import (
 	"flag"
 
-	"github.com/grafana/alloy/internal/runtime/logging"
+	"github.com/grafana/alloy/internal/service/logging"
 	"github.com/grafana/dskit/log"
 )
 

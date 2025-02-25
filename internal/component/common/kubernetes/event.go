@@ -2,7 +2,7 @@ package kubernetes
 
 import (
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/service/logging/level"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 )

@@ -16,7 +16,7 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	filedetector "github.com/grafana/alloy/internal/filedetector"
 	"github.com/grafana/alloy/internal/runtime/equality"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/service/logging/level"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax/vm"
 )

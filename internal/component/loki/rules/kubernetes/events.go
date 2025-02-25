@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/grafana/alloy/internal/component/common/kubernetes"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/service/logging/level"
 	"github.com/hashicorp/go-multierror"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/prometheus/prometheus/model/rulefmt"

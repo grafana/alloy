@@ -9,7 +9,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component/faro/receiver/internal/payload"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/service/logging/level"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/cors"

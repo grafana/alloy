@@ -14,7 +14,7 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/equality"
 	"github.com/grafana/alloy/internal/runtime/internal/testcomponents/module"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/service/logging/level"
 	"github.com/grafana/alloy/internal/vcs"
 )
 

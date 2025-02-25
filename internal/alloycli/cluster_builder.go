@@ -12,9 +12,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service/cluster"
 	"github.com/grafana/alloy/internal/service/cluster/discovery"
+	"github.com/grafana/alloy/internal/service/logging/level"
 )
 
 type clusterOptions struct {

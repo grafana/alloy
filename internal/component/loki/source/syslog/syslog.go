@@ -10,7 +10,7 @@ import (
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	st "github.com/grafana/alloy/internal/component/loki/source/syslog/internal/syslogtarget"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/service/logging/level"
 	"github.com/prometheus/prometheus/model/relabel"
 )
 

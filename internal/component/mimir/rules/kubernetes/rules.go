@@ -30,8 +30,8 @@ import (
 	commonK8s "github.com/grafana/alloy/internal/component/common/kubernetes"
 	"github.com/grafana/alloy/internal/featuregate"
 	mimirClient "github.com/grafana/alloy/internal/mimir/client"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service/cluster"
+	"github.com/grafana/alloy/internal/service/logging/level"
 )
 
 const (

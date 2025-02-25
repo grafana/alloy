@@ -21,7 +21,7 @@ import (
 	lokiutil "github.com/grafana/loki/v3/pkg/util"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/service/logging/level"
 	"github.com/grafana/alloy/internal/useragent"
 	"github.com/grafana/alloy/internal/util"
 )
