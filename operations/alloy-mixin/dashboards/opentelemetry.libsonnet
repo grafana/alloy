@@ -23,8 +23,8 @@ local stackedPanelMixin = {
       includeInstance=true,
       setenceCaseLabels=$._config.useSetenceCaseTemplateLabels),
 
-  local panelPosition(row, col) = panel.withPosition({x: col*8, y: row*10, w: 8, h: 10}),
-  local panelPosition4(row, col) = panel.withPosition({x: col*6, y: row*10, w: 6, h: 10}),
+  local panelPosition3Across(row, col) = panel.withPosition({x: col*8, y: row*10, w: 8, h: 10}),
+  local panelPosition4Across(row, col) = panel.withPosition({x: col*6, y: row*10, w: 6, h: 10}),
   local rowPosition(row) = panel.withPosition({h: 1, w: 24, x: 0, y: row*10}),
 
   [filename]:
@@ -44,7 +44,7 @@ local stackedPanelMixin = {
           Number of metric points successfully pushed into the pipeline.
         |||) +
         stackedPanelMixin +
-        panelPosition4(row=0, col=0) +
+        panelPosition4Across(row=0, col=0) +
         panel.withQueries([
           panel.newQuery(
             expr= |||
@@ -59,7 +59,7 @@ local stackedPanelMixin = {
           Number of metric points that could not be pushed into the pipeline.
         |||) +
         stackedPanelMixin +
-        panelPosition4(row=0, col=1) +
+        panelPosition4Across(row=0, col=1) +
         panel.withQueries([
           panel.newQuery(
             expr= |||
@@ -74,7 +74,7 @@ local stackedPanelMixin = {
           Number of log records successfully pushed into the pipeline.
         |||) +
         stackedPanelMixin +
-        panelPosition4(row=0, col=2) +
+        panelPosition4Across(row=0, col=2) +
         panel.withQueries([
           panel.newQuery(
             expr= |||
@@ -89,7 +89,7 @@ local stackedPanelMixin = {
           Number of log records that could not be pushed into the pipeline.
         |||) +
         stackedPanelMixin +
-        panelPosition4(row=0, col=3) +
+        panelPosition4Across(row=0, col=3) +
         panel.withQueries([
           panel.newQuery(
             expr= |||
@@ -104,7 +104,7 @@ local stackedPanelMixin = {
           Number of spans successfully pushed into the pipeline.
         |||) +
         stackedPanelMixin +
-        panelPosition4(row=1, col=0) +
+        panelPosition4Across(row=1, col=0) +
         panel.withQueries([
           panel.newQuery(
             expr= |||
@@ -119,7 +119,7 @@ local stackedPanelMixin = {
           Number of spans that could not be pushed into the pipeline.
         |||) +
         stackedPanelMixin +
-        panelPosition4(row=1, col=1) +
+        panelPosition4Across(row=1, col=1) +
         panel.withQueries([
           panel.newQuery(
             expr= |||
@@ -133,7 +133,7 @@ local stackedPanelMixin = {
         panel.withDescription(|||
           The duration of inbound RPCs for otelcol.receiver.* components.
         |||) +
-        panelPosition4(row=1, col=2) +
+        panelPosition4Across(row=1, col=2) +
         panel.withQueries([
           panel.newQuery(
             expr= |||
@@ -149,7 +149,7 @@ local stackedPanelMixin = {
         panel.withDescription(|||
           The duration of inbound HTTP requests for otelcol.receiver.* components.
         |||) +
-        panelPosition4(row=1, col=3) +
+        panelPosition4Across(row=1, col=3) +
         panel.withQueries([
           panel.newQuery(
             expr= |||
@@ -172,7 +172,7 @@ local stackedPanelMixin = {
         panel.withDescription(|||
           Number of spans, metric datapoints, or log lines in a batch
         |||) +
-        panelPosition(row=2, col=0) +
+        panelPosition3Across(row=2, col=0) +
         panel.withQueries([
           panel.newQuery(
             expr= |||
@@ -191,7 +191,7 @@ local stackedPanelMixin = {
         panel.withDescription(|||
           Number of distinct metadata value combinations being processed
         |||) +
-        panelPosition(row=2, col=1) +
+        panelPosition3Across(row=2, col=1) +
         panel.withQueries([
           panel.newQuery(
             expr= |||
@@ -205,7 +205,7 @@ local stackedPanelMixin = {
         panel.withDescription(|||
           Number of times the batch was sent due to a timeout trigger
         |||) +
-        panelPosition(row=2, col=2) +
+        panelPosition3Across(row=2, col=2) +
         panel.withQueries([
           panel.newQuery(
             expr= |||
@@ -226,7 +226,7 @@ local stackedPanelMixin = {
           Number of metric points successfully sent to destination.
         |||) +
         stackedPanelMixin +
-        panelPosition4(row=3, col=0) +
+        panelPosition4Across(row=3, col=0) +
         panel.withQueries([
           panel.newQuery(
             expr= ||| 
@@ -241,7 +241,7 @@ local stackedPanelMixin = {
           Number of metric points that failed to be sent to destination.
         |||) +
         stackedPanelMixin +
-        panelPosition4(row=3, col=1) +
+        panelPosition4Across(row=3, col=1) +
         panel.withQueries([
           panel.newQuery(
             expr= |||
@@ -256,7 +256,7 @@ local stackedPanelMixin = {
           Number of log records successfully sent to destination.
         |||) +
         stackedPanelMixin +
-        panelPosition4(row=3, col=2) +
+        panelPosition4Across(row=3, col=2) +
         panel.withQueries([
           panel.newQuery(
             expr= |||
@@ -271,7 +271,7 @@ local stackedPanelMixin = {
           Number of log records that failed to be sent to destination.
         |||) +
         stackedPanelMixin +
-        panelPosition4(row=3, col=3) +
+        panelPosition4Across(row=3, col=3) +
         panel.withQueries([
           panel.newQuery(
             expr= |||
@@ -286,7 +286,7 @@ local stackedPanelMixin = {
           Number of spans successfully sent to destination.
         |||) +
         stackedPanelMixin +
-        panelPosition4(row=4, col=0) +
+        panelPosition4Across(row=4, col=0) +
         panel.withQueries([
           panel.newQuery(
             expr= |||
@@ -301,7 +301,7 @@ local stackedPanelMixin = {
           Number of spans that failed to be sent to destination.
         |||) +
         stackedPanelMixin +
-        panelPosition4(row=4, col=1) +
+        panelPosition4Across(row=4, col=1) +
         panel.withQueries([
           panel.newQuery(
             expr= |||
@@ -315,7 +315,7 @@ local stackedPanelMixin = {
         panel.withDescription(|||
           The duration of outbound RPCs for otelcol.exporter.* components.
         |||) +
-        panelPosition4(row=4, col=2) +
+        panelPosition4Across(row=4, col=2) +
         panel.withQueries([
           panel.newQuery(
             expr= |||
@@ -331,7 +331,7 @@ local stackedPanelMixin = {
         panel.withDescription(|||
           The duration of outbound HTTP requests for otelcol.exporter.* components.
         |||) +
-        panelPosition4(row=4, col=3) +
+        panelPosition4Across(row=4, col=3) +
         panel.withQueries([
           panel.newQuery(
             expr= |||
