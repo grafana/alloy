@@ -48,7 +48,7 @@
 ##   generate-ui               Generate the UI assets.
 ##   generate-versioned-files  Generate versioned files.
 ##   generate-winmanifest      Generate the Windows application manifest.
-##   generate-snmp             Generate SNMP modules from prometheus/snmp_exporter for prometheus.exporter.snmp and bumps SNMP version in _index.md
+##   generate-snmp             Generate SNMP modules from prometheus/snmp_exporter for prometheus.exporter.snmp and bumps SNMP version in _index.md.
 ##
 ## Other targets:
 ##
