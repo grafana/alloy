@@ -1,6 +1,9 @@
 # -- Overrides the chart's name. Used to change the infix in the resource names.
 nameOverride: null
 
+# -- Overrides the chart's namespace.
+namespaceOverride: null
+
 # -- Overrides the chart's computed fullname. Used to change the full prefix of
 # resource names.
 fullnameOverride: null

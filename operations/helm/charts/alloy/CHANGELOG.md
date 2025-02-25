@@ -7,6 +7,13 @@ This document contains a historical list of changes between releases. Only
 changes that impact end-user behavior are listed; changes to documentation or
 internal API changes are not present.
 
+Unreleased
+----------
+
+### Bug Fixes
+
+- Set resource namespace correctly (@shinebayar-g)
+
 0.12.0 (2025-02-24)
 ----------
 
@@ -92,7 +99,6 @@ internal API changes are not present.
 
 - Update helm chart to use v1.3.1.
 
-
 0.6.0 (2024-08-05)
 ------------------
 
@@ -143,7 +149,6 @@ internal API changes are not present.
 ### Enhancements
 
 - Update to Grafana Alloy v1.1.0. (@rfratto)
-
 
 0.2.0 (2024-05-08)
 ------------------
