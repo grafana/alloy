@@ -1,0 +1,4 @@
+go test fuzz v1
+string("types=0+0^100%000")
+string("0")
+string("\xa9\xc1\xd3\xff\xf8\xf8,\xd3r")
