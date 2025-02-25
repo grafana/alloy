@@ -38,6 +38,10 @@ FROM ${GO_RUNTIME} as golang
 
 ENV CONTROLLER_GEN_VERSION v0.9.2
 
+# Set CC to viceroycc to ensure that the cross compilers are used for all C
+# compilation.
+ENV CC viceroycc
+
 RUN go install sigs.k8s.io/controller-tools/cmd/controller-gen@$CONTROLLER_GEN_VERSION \
  && go install github.com/mitchellh/gox@v1.0.1                                         \
  && go install github.com/tcnksm/ghr@v0.15.0                                           \
