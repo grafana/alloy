@@ -1,4 +1,0 @@
-go test fuzz v1
-string("types=0^100^10")
-string("\x9771\xb9J\xaaOu")
-string("\xa9\xe2\xc1\xd3\xff\xf8\xf8,\xd3r")

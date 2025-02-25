@@ -729,12 +729,9 @@ func FuzzConfig(f *testing.F) {
 }
 
 func FuzzGitleaksConfig(f *testing.F) {
-	for _, testConf := range testConfigs {
-		for _, testGitleaksConf := range customGitleaksConfig {
-			for _, testLog := range testLogs {
-				f.Add(testConf, testGitleaksConf, testLog.log)
-			}
-		}
+	for _, testLog := range testLogs {
+		f.Add("", "", "", "", "", 0, "", 0.0, "", "", "", testLog.log)                                                                                                                                // empty values
+		f.Add("Secret detection", "pattern1&pattern2", "pattern_1", "Look for a specific pattern", "(i?)pa(tt)+ern*", 0, "pa?er", 2.0, "keyword1,keyword2", "path/to/file", "tag1,tag2", testLog.log) // sane values
 	}
 	opts := component.Options{
 		Logger:         util.TestLogger(f),
@@ -742,14 +739,30 @@ func FuzzGitleaksConfig(f *testing.F) {
 		GetServiceData: getServiceData,
 	}
 	ch1 := loki.NewLogsReceiver()
+	args := Arguments{
+		ForwardTo:   []loki.LogsReceiver{ch1}, // not fuzzed
+		RedactWith:  "TEST_REDACTION:$SECRET_NAME",
+		PartialMask: 4,
+	}
+	f.Fuzz(func(t *testing.T, title string, global_allow_list string, id string, description string, match string, group int, rule_allow_list string, entropy float64, keywords string, path string, tags string, log string) {
+		// Includes all gitleaks config fields, even if they are not supported by the component
+		gitleaksConfig := fmt.Sprintf(`title = '''%s'''
 
-	f.Fuzz(func(t *testing.T, config string, gitleaksConfig string, log string) {
-		var args Arguments
-		err := syntax.Unmarshal([]byte(config), &args)
-		if err != nil {
-			// ignore parsing errors, as we aren't fuzz testing the Alloy config parser
-			return
-		}
+		[[rules]]
+		id = '''%s'''
+		description = '''%s'''
+		regex = '''%s'''
+		secretGroup = %d
+		entropy = %f
+		keywords = [%s]
+		path = '''%s'''
+		tags = [%s]
+
+		[[rules.allowlists]]
+		regexes = [%s]
+
+		[allowlist]
+		regexes = [%s]`, title, id, description, match, group, entropy, makeList(keywords, ","), path, makeList(tags, ","), makeList(rule_allow_list, "&"), makeList(global_allow_list, "&"))
 		args.GitleaksConfig = createTempGitleaksConfig(t, gitleaksConfig)
 		defer deleteTempGitLeaksConfig(t, args.GitleaksConfig)
 
@@ -770,6 +783,14 @@ func FuzzGitleaksConfig(f *testing.F) {
 		entry := loki.Entry{Labels: model.LabelSet{}, Entry: logproto.Entry{Timestamp: time.Now(), Line: log}}
 		c.processEntry(entry)
 	})
+}
+
+func makeList(input string, separator string) string {
+	parts := strings.Split(input, separator)
+	for i, part := range parts {
+		parts[i] = fmt.Sprintf(`"%s"`, strings.ReplaceAll(part, `"`, `\"`))
+	}
+	return strings.Join(parts, ",")
 }
 
 func getServiceData(name string) (interface{}, error) {
