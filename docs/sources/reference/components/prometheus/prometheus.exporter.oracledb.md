@@ -3,26 +3,27 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus
 aliases:
   - ../prometheus.exporter.oracledb/ # /docs/alloy/latest/reference/components/prometheus.exporter.oracledb/
 description: Learn about prometheus.exporter.oracledb
+labels:
+  stage: general-availability
 title: prometheus.exporter.oracledb
 ---
 
-# prometheus.exporter.oracledb
+# `prometheus.exporter.oracledb`
 
 The `prometheus.exporter.oracledb` component embeds
-[oracledb_exporter](https://github.com/iamseth/oracledb_exporter) for collecting statistics from a OracleDB server.
+[`oracledb_exporter`](https://github.com/iamseth/oracledb_exporter) for collecting statistics from a OracleDB server.
 
 ## Usage
 
 ```alloy
-prometheus.exporter.oracledb "LABEL" {
-    connection_string = CONNECTION_STRING
+prometheus.exporter.oracledb "<LABEL>" {
+    connection_string = "<CONNECTION_STRING>"
 }
 ```
 
 ## Arguments
 
-The following arguments can be used to configure the exporter's behavior.
-Omitted fields take their default values.
+You can use the following arguments with `prometheus.exporter.oracledb`:
 
 | Name                | Type     | Description                                                  | Default | Required |
 | ------------------- | -------- | ------------------------------------------------------------ | ------- | -------- |
@@ -31,7 +32,7 @@ Omitted fields take their default values.
 | `max_open_conns`    | `int`    | Number of maximum open connections in the connection pool.   | `10`    | no       |
 | `query_timeout`     | `int`    | The query timeout in seconds.                                | `5`     | no       |
 
-[The oracledb_exporter running documentation](https://github.com/iamseth/oracledb_exporter/tree/master#running) shows the format and provides examples of the `connection_string` argument:
+The [`oracledb_exporter` running](https://github.com/iamseth/oracledb_exporter/tree/master#running) documentation shows the format and provides examples of the `connection_string` argument:
 
 ```conn
 oracle://user:pass@server/service_name[?OPTION1=VALUE1[&OPTIONn=VALUEn]...]
@@ -39,8 +40,7 @@ oracle://user:pass@server/service_name[?OPTION1=VALUE1[&OPTIONn=VALUEn]...]
 
 ## Blocks
 
-The `prometheus.exporter.oracledb` component does not support any blocks, and is configured
-fully through arguments.
+The `prometheus.exporter.oracledb` component doesn't support any blocks. You can configure this component with arguments.
 
 ## Exported fields
 
@@ -48,24 +48,20 @@ fully through arguments.
 
 ## Component health
 
-`prometheus.exporter.oracledb` is only reported as unhealthy if given
-an invalid configuration. In those cases, exported fields retain their last
-healthy values.
+`prometheus.exporter.oracledb` is only reported as unhealthy if given an invalid configuration.
+In those cases, exported fields retain their last healthy values.
 
 ## Debug information
 
-`prometheus.exporter.oracledb` does not expose any component-specific
-debug information.
+`prometheus.exporter.oracledb` doesn't expose any component-specific debug information.
 
 ## Debug metrics
 
-`prometheus.exporter.oracledb` does not expose any component-specific
-debug metrics.
+`prometheus.exporter.oracledb` doesn't expose any component-specific debug metrics.
 
 ## Example
 
-This example uses a [`prometheus.scrape` component][scrape] to collect metrics
-from `prometheus.exporter.oracledb`:
+The following example uses a [`prometheus.scrape` component][scrape] to collect metrics from `prometheus.exporter.oracledb`:
 
 ```alloy
 prometheus.exporter.oracledb "example" {
@@ -80,11 +76,11 @@ prometheus.scrape "demo" {
 
 prometheus.remote_write "demo" {
   endpoint {
-    url = PROMETHEUS_REMOTE_WRITE_URL
+    url = "<PROMETHEUS_REMOTE_WRITE_URL>"
 
     basic_auth {
-      username = USERNAME
-      password = PASSWORD
+      username = "<USERNAME>"
+      password = "<PASSWORD>"
     }
   }
 }
@@ -92,9 +88,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-- `PROMETHEUS_REMOTE_WRITE_URL`: The URL of the Prometheus remote_write-compatible server to send metrics to.
-- `USERNAME`: The username to use for authentication to the remote_write API.
-- `PASSWORD`: The password to use for authentication to the remote_write API.
+* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
+* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 [scrape]: ../prometheus.scrape/
 
