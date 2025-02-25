@@ -21,13 +21,13 @@ Clone the {{< param "PRODUCT_NAME" >}} scenarios repository.
 git clone https://github.com/grafana/alloy-scenarios.git
 ```
 
-## Deploy the monitoring stack
+## Deploy the Grafana stack
 
 Start Docker to deploy the monitoring stack.
 
 ```shell
 cd alloy-scenarios/docker-monitoring
-docker-compose up -d
+docker compose up -d
 ```
 
 ## Access the {{% param "PRODUCT_NAME" %}} UI
@@ -37,3 +37,11 @@ Open your browser and navigate to [`http://localhost:12345`](http://localhost:12
 ## Access the Grafana UI
 
 Open your browser and navigate to [`http://localhost:3000`](http://localhost:3000).
+
+## Shut down the Grafana stack
+
+Stop docker to shut down the Grafana stack.
+
+```shell
+docker compose down
+```

@@ -28,7 +28,7 @@ Start Docker to deploy the monitoring stack.
 
 ```shell
 cd alloy-scenarios/mail-house
-docker-compose up -d
+docker compose up -d
 ```
 
 ## Access the {{% param "PRODUCT_NAME" %}} UI
