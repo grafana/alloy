@@ -32,10 +32,62 @@ local stackedPanelMixin = {
     dashboard.withUID(std.md5(filename)) +
     dashboard.withTemplateVariablesMixin(templateVariables) +
     dashboard.withPanelsMixin([
+      // "Receivers for metrics" row
+      (
+        panel.new('Receivers for metrics [otelcol.receiver]', 'row') +
+        rowPosition(0)
+      ),
+      (
+        panel.new(title='Accepted metric points', type='timeseries') +
+        panel.withDescription(|||
+          Number of metric points successfully pushed into the pipeline.
+        |||) +
+        stackedPanelMixin +
+        panelPosition(row=0, col=0) +
+        panel.withQueries([
+          panel.newQuery(
+            expr= |||
+              sum by(instance) (rate(otelcol_receiver_accepted_metric_points_total{%(instanceSelector)s}[$__rate_interval]))
+            ||| % $._config,
+          ),
+        ])
+      ),
+      (
+        panel.new(title='Refused metric points', type='timeseries') +
+        panel.withDescription(|||
+          Number of metric points that could not be pushed into the pipeline.
+        |||) +
+        stackedPanelMixin +
+        panelPosition(row=0, col=1) +
+        panel.withQueries([
+          panel.newQuery(
+            expr= |||
+              sum by(instance) (rate(otelcol_receiver_refused_metric_points_total{%(instanceSelector)s}[$__rate_interval]))
+            ||| % $._config,
+          ),
+        ])
+      ),
+      (
+        panel.newHeatmap('RPC server duration for metrics', 'ms') +
+        panel.withDescription(|||
+          The duration of inbound RPCs for metrics.
+        |||) +
+        panelPosition(row=0, col=2) +
+        panel.withQueries([
+          panel.newQuery(
+            expr= |||
+              sum by (le) (increase(rpc_server_duration_milliseconds_bucket{%(instanceSelector)s, rpc_service="opentelemetry.proto.collector.metrics.v1.MetricsService"}[$__rate_interval]))
+            ||| % $._config,
+            format='heatmap',
+            legendFormat='{{le}}',
+          ),
+        ])
+      ),
+
       // "Receivers for traces" row
       (
         panel.new('Receivers for traces [otelcol.receiver]', 'row') +
-        rowPosition(0)
+        rowPosition(1)
       ),
       (
         panel.new(title='Accepted spans', type='timeseries') +
@@ -43,7 +95,7 @@ local stackedPanelMixin = {
           Number of spans successfully pushed into the pipeline.
         |||) +
         stackedPanelMixin +
-        panelPosition(row=0, col=0) +
+        panelPosition(row=1, col=0) +
         panel.withQueries([
           panel.newQuery(
             expr= |||
@@ -59,7 +111,7 @@ local stackedPanelMixin = {
           Number of spans that could not be pushed into the pipeline.
         |||) +
         stackedPanelMixin +
-        panelPosition(row=0, col=1) +
+        panelPosition(row=1, col=1) +
         panel.withQueries([
           panel.newQuery(
             expr= |||
@@ -73,7 +125,7 @@ local stackedPanelMixin = {
         panel.withDescription(|||
           The duration of inbound RPCs.
         |||) +
-        panelPosition(row=0, col=2) +
+        panelPosition(row=1, col=2) +
         panel.withQueries([
           panel.newQuery(
             expr= |||
@@ -88,7 +140,7 @@ local stackedPanelMixin = {
       // "Batching" row
       (
         panel.new('Batching of logs, metrics, and traces [otelcol.processor.batch]', 'row') +
-        rowPosition(1)
+        rowPosition(2)
       ),
       (
         panel.newHeatmap('Number of units in the batch', 'short') +
@@ -96,7 +148,7 @@ local stackedPanelMixin = {
         panel.withDescription(|||
           Number of spans, metric datapoints, or log lines in a batch
         |||) +
-        panelPosition(row=1, col=0) +
+        panelPosition(row=2, col=0) +
         panel.withQueries([
           panel.newQuery(
             expr= |||
@@ -115,7 +167,7 @@ local stackedPanelMixin = {
         panel.withDescription(|||
           Number of distinct metadata value combinations being processed
         |||) +
-        panelPosition(row=1, col=1) +
+        panelPosition(row=2, col=1) +
         panel.withQueries([
           panel.newQuery(
             expr= |||
@@ -129,7 +181,7 @@ local stackedPanelMixin = {
         panel.withDescription(|||
           Number of times the batch was sent due to a timeout trigger
         |||) +
-        panelPosition(row=1, col=2) +
+        panelPosition(row=2, col=2) +
         panel.withQueries([
           panel.newQuery(
             expr= |||
@@ -142,7 +194,7 @@ local stackedPanelMixin = {
       // "Exporters for traces" row
       (
         panel.new('Exporters for traces [otelcol.exporter]', 'row') +
-        rowPosition(2)
+        rowPosition(3)
       ),
       (
         panel.new(title='Exported sent spans', type='timeseries') +
@@ -150,7 +202,7 @@ local stackedPanelMixin = {
           Number of spans successfully sent to destination.
         |||) +
         stackedPanelMixin +
-        panelPosition(row=2, col=0) +
+        panelPosition(row=3, col=0) +
         panel.withQueries([
           panel.newQuery(
             expr= ||| 
@@ -165,7 +217,7 @@ local stackedPanelMixin = {
           Number of spans in failed attempts to send to destination.
         |||) +
         stackedPanelMixin +
-        panelPosition(row=2, col=1) +
+        panelPosition(row=3, col=1) +
         panel.withQueries([
           panel.newQuery(
             expr= |||
