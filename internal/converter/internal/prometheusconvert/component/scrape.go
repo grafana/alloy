@@ -59,6 +59,7 @@ func toScrapeArguments(scrapeConfig *prom_config.ScrapeConfig, forwardTo []stora
 		ScrapeNativeHistograms:    true,
 		ScrapeInterval:            time.Duration(scrapeConfig.ScrapeInterval),
 		ScrapeTimeout:             time.Duration(scrapeConfig.ScrapeTimeout),
+		ScrapeFailureLogFile:      scrapeConfig.ScrapeFailureLogFile,
 		ScrapeProtocols:           convertScrapeProtocols(scrapeConfig.ScrapeProtocols),
 		MetricsPath:               scrapeConfig.MetricsPath,
 		Scheme:                    scrapeConfig.Scheme,
