@@ -24,8 +24,7 @@ jobs:
       - name: Setup QEMU
         uses: docker/setup-qemu-action@v3.4.0
         with:
-          #image: tonistiigi/binfmt:qemu-v7.0.0-28 # https://github.com/docker/setup-qemu-action/issues/198
-          image: tonistiigi/binfmt:qemu-v8.1.5 # recommended https://github.com/actions/runner-images/issues/11471#issuecomment-2656049177
+          image: tonistiigi/binfmt:qemu-v7.0.0-28 # https://github.com/docker/setup-qemu-action/issues/198
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -38,7 +37,7 @@ jobs:
           push: false
           tags: grafana/alloy-build-image:latest
           build-args: |
-            GO_RUNTIME=golang:1.24.0-bullseye
+            GO_RUNTIME=golang:1.24.0-bookworm
 
       - name: Create test Linux build image for boring crypto
         uses: docker/build-push-action@v6
@@ -48,4 +47,4 @@ jobs:
           push: false
           tags: grafana/alloy-build-image:latest
           build-args: |
-            GO_RUNTIME=mcr.microsoft.com/oss/go/microsoft/golang:1.24.0-bullseye
+            GO_RUNTIME=mcr.microsoft.com/oss/go/microsoft/golang:1.24.0-bookworm
