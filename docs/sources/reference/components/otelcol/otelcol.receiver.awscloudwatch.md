@@ -6,7 +6,7 @@ labels:
 title: otelcol.receiver.awscloudwatch
 ---
 
-# otelcol.receiver.awscloudwatch
+# `otelcol.receiver.awscloudwatch`
 
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
