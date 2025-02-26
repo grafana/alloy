@@ -20,6 +20,11 @@ Main (unreleased)
   - Use SUM_LOCK_TIME and SUM_CPU_TIME with mysql >= 8.0.28
   - Fix query on perf_schema.events_statements_summary_by_digest
 
+### Bugfixes
+
+- Fixed an issue where some exporters such as `prometheus.exporter.snmp` couldn't accept targets from other components
+  with an error `conversion to '*map[string]string' is not supported"`. (@thampiotr)
+
 v1.7.0
 -----------------
 
