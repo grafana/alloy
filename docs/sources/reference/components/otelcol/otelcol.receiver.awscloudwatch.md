@@ -139,8 +139,7 @@ The following arguments are supported:
 
 ## Component health
 
-`otelcol.receiver.awscloudwatch` is only reported as unhealthy if given an invalid
-configuration.
+`otelcol.receiver.awscloudwatch` is only reported as unhealthy if given an invalid configuration.
 
 ## Debug information
 
