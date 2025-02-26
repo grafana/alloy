@@ -2,10 +2,6 @@
 package awscloudwatch
 
 import (
-	"fmt"
-	"net/url"
-	"time"
-
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
@@ -46,10 +42,6 @@ type Arguments struct {
 
 var _ receiver.Arguments = Arguments{}
 
-// The defaultLogGroupLimit is not set in the SetToDefault but in the Validate method because
-// the block that contains it is optional.
-var defaultLogGroupLimit = 50
-
 // SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	args.Logs.SetToDefault()
@@ -58,50 +50,36 @@ func (args *Arguments) SetToDefault() {
 
 // Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
-	if args.IMDSEndpoint != "" {
-		_, err := url.ParseRequestURI(args.IMDSEndpoint)
-		if err != nil {
-			return fmt.Errorf("unable to parse URI for imds_endpoint: %w", err)
-		}
+	otelConfig, err := args.Convert()
+	if err != nil {
+		return err
 	}
 
-	if args.Logs.MaxEventsPerRequest <= 0 {
-		return fmt.Errorf("max_events_per_request must be greater than 0")
-	}
-
-	if args.Logs.PollInterval < time.Second {
-		return fmt.Errorf("poll_interval must be greater than 1 second")
-	}
-
-	if args.Logs.Groups.AutodiscoverConfig != nil && len(args.Logs.Groups.NamedConfigs) > 0 {
-		return fmt.Errorf("autodiscover and named configs cannot be configured at the same time")
-	}
-
-	if args.Logs.Groups.AutodiscoverConfig != nil {
-		if args.Logs.Groups.AutodiscoverConfig.Limit == nil {
-			args.Logs.Groups.AutodiscoverConfig.Limit = &defaultLogGroupLimit
-
-			if *args.Logs.Groups.AutodiscoverConfig.Limit <= 0 {
-				return fmt.Errorf("autodiscover limit must be greater than 0")
-			}
-		}
-	} else if len(args.Logs.Groups.NamedConfigs) == 0 {
-		args.Logs.Groups.AutodiscoverConfig = &AutodiscoverConfig{
-			Limit: &defaultLogGroupLimit,
-		}
-	}
-
-	return nil
+	return otelConfig.(*awscloudwatchreceiver.Config).Validate()
 }
 
 // Convert implements receiver.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
-	return &awscloudwatchreceiver.Config{
+	otelConfig := &awscloudwatchreceiver.Config{
 		Region:       args.Region,
 		Profile:      args.Profile,
 		IMDSEndpoint: args.IMDSEndpoint,
 		Logs:         args.Logs.Convert(),
-	}, nil
+	}
+
+	// If no autodiscover or named configs are provided, set the autodiscover config with a default limit.
+	if args.Logs.Groups.AutodiscoverConfig == nil && len(args.Logs.Groups.NamedConfigs) == 0 {
+		otelConfig.Logs.Groups.AutodiscoverConfig = &awscloudwatchreceiver.AutodiscoverConfig{
+			Limit: defaultLogGroupLimit,
+		}
+	}
+
+	// If the autodiscover config is provided but the limit is not set, set the limit to the default.
+	if args.Logs.Groups.AutodiscoverConfig != nil && args.Logs.Groups.AutodiscoverConfig.Limit == nil {
+		otelConfig.Logs.Groups.AutodiscoverConfig.Limit = defaultLogGroupLimit
+	}
+
+	return otelConfig, nil
 }
 
 // Extensions implements receiver.Arguments.

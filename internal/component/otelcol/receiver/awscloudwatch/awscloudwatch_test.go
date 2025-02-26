@@ -189,7 +189,7 @@ func TestArguments_Validate(t *testing.T) {
 				}
 				output {}
 			`,
-			expectedError: "poll_interval must be greater than 1 second",
+			expectedError: "poll interval is incorrect, it must be a duration greater than one second",
 		},
 		{
 			testName: "invalid max_events_per_request",
@@ -200,7 +200,7 @@ func TestArguments_Validate(t *testing.T) {
 				}
 				output {}
 			`,
-			expectedError: "max_events_per_request must be greater than 0",
+			expectedError: "event limit is improperly configured, value must be greater than 0",
 		},
 		{
 			testName: "invalid imds_endpoint",
@@ -231,7 +231,7 @@ func TestArguments_Validate(t *testing.T) {
 				}
 				output {}
 			`,
-			expectedError: "autodiscover and named configs cannot be configured at the same time",
+			expectedError: "both autodiscover and named configs are configured, Only one or the other is permitted",
 		},
 	}
 

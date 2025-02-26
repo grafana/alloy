@@ -6,6 +6,8 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscloudwatchreceiver"
 )
 
+var defaultLogGroupLimit = 50
+
 // LogsConfig is the configuration for the logs portion of this receiver
 type LogsConfig struct {
 	PollInterval        time.Duration `alloy:"poll_interval,attr,optional"`
@@ -78,6 +80,16 @@ func (args *AutodiscoverConfig) Convert() *awscloudwatchreceiver.AutodiscoverCon
 		Prefix:  args.Prefix,
 		Limit:   *args.Limit,
 		Streams: args.Streams.Convert(),
+	}
+}
+
+func (args *AutodiscoverConfig) SetToDefault() {
+	if args == nil {
+		return
+	}
+	defaultLimit := defaultLogGroupLimit
+	*args = AutodiscoverConfig{
+		Limit: &defaultLimit,
 	}
 }
 
