@@ -33,7 +33,7 @@ otelcol.receiver.awscloudwatch "<LABEL>" {
 
 ## Arguments
 
-The following arguments are supported:
+You can use the following arguments with `otelcol.receiver.awscloudwatch`:
 
 |      Name       |   Type   |           Description            | Default | Required |
 | --------------- | -------- | -------------------------------- | ------- | -------- |
