@@ -12,6 +12,8 @@ Main (unreleased)
 
 ### Enhancements
 
+- Add livedebugging support for `prometheus.scrape` (@ravishankar15, @wildum)
+
 - Have `loki.echo` log the `entry_timestamp` and `structured_metadata` for any loki entries received (@dehaansa)
 
 - Update mysqld_exporter to v0.17.1, most notable changes: (@cristiangreco)
@@ -221,8 +223,6 @@ v1.6.0
 - Add livedebugging support for discovery components (@ravishankar15)
 - Add livedebugging support for `discover.relabel` (@ravishankar15)
 - Performance optimization for live debugging feature (@ravishankar15)
-
-- Add livedebugging support for `prometheus.scrape` (@ravishankar15, @wildum)
 
 - Upgrade `github.com/goccy/go-json` to v0.10.4, which reduces the memory consumption of an Alloy instance by 20MB.
   If Alloy is running certain otelcol components, this reduction will not apply. (@ptodev)
