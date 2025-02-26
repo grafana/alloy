@@ -9,11 +9,17 @@ on:
 jobs:
   check-linux-build-image:
     runs-on: github-hosted-ubuntu-x64-large
-    env:
-      DOCKER_BUILDKIT: 1
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Remove unnecessary files
+        run: |
+            rm -rf /usr/share/dotnet
+            rm -rf "$AGENT_TOOLSDIRECTORY"
+            rm -rf /opt/ghc
+            rm -rf "/usr/local/share/boost"
+            rm -rf /opt/hostedtoolcache
 
       - name: Setup QEMU
         uses: docker/setup-qemu-action@v3.4.0
