@@ -20,7 +20,7 @@ Main (unreleased)
   - Use SUM_LOCK_TIME and SUM_CPU_TIME with mysql >= 8.0.28
   - Fix query on perf_schema.events_statements_summary_by_digest
 
-- Added additional backwards compatibility metrics to`prometheus.write.queue`. (@mattdurham)
+- Added additional backwards compatibility metrics to `prometheus.write.queue`. (@mattdurham)
 
 ### Bugfixes
 
