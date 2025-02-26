@@ -65,8 +65,8 @@ The following arguments are supported:
 
 |           Name           |    Type    |                          Description                           | Default | Required |
 | ------------------------ | ---------- | -------------------------------------------------------------- | ------- | -------- |
-| `poll_interval`          | `duration` | How frequently to poll for new log entries.                    | `"1m"`  | no       |
 | `max_events_per_request` | `int`      | Maximum number of events to process per request to Cloudwatch. | `1000`  | no       |
+| `poll_interval`          | `duration` | How frequently to poll for new log entries.                    | `"1m"`  | no       |
 
 The `logs` block supports the following blocks:
 
