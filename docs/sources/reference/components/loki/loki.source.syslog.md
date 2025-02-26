@@ -88,7 +88,7 @@ If `label_structured_data` is set, structured data in the syslog header is also 
 For example, a  structured data entry of `[example@99999 test="yes"]` becomes the label `__syslog_message_sd_example_99999_test` with the value `"yes"`.
 
 The `rfc3164_default_to_current_year` argument is only relevant when `use_incoming_timestamp` is also set to `true`.
-`rfc3164` message timestamps don't contain a year and the default behavior of this component is to mimic Promtail behavior and leave the year as 0.
+`rfc3164` message timestamps don't contain a year, and this component's default behavior is to mimic Promtail behavior and leave the year as 0.
 Setting `rfc3164_default_to_current_year` to `true` sets the year of the incoming timestamp to the current year using the local time of the {{< param "PRODUCT_NAME" >}} instance.
 
 ### `tls_config`
