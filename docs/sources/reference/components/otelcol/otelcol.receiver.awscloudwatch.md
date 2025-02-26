@@ -22,7 +22,7 @@ You can specify multiple `otelcol.receiver.awscloudwatch` components by giving t
 ## Usage
 
 ```alloy
-otelcol.receiver.awscloudwatch "LABEL" {
+otelcol.receiver.awscloudwatch "<LABEL>" {
   region = "us-west-2"
 
   output {
