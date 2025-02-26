@@ -89,7 +89,7 @@ For example, a  structured data entry of `[example@99999 test="yes"]` becomes th
 
 The `rfc3164_default_to_current_year` argument is only relevant when `use_incoming_timestamp` is also set to `true`.
 `rfc3164` message timestamps don't contain a year and the default behavior of this component is to mimic Promtail behavior and leave the year as 0.
-Setting `rfc3164_default_to_current_year` to true sets the year of the incoming timestamp to the current year using the local time of the {{< param "PRODUCT_NAME" >}} instance.
+Setting `rfc3164_default_to_current_year` to `true` sets the year of the incoming timestamp to the current year using the local time of the {{< param "PRODUCT_NAME" >}} instance.
 
 ### `tls_config`
 
