@@ -7,6 +7,13 @@ This document contains a historical list of changes between releases. Only
 changes that impact end-user behavior are listed; changes to documentation or
 internal API changes are not present.
 
+v1.7.1
+-----------------
+
+### Bugfixes
+
+- Fixed an issue where some exporters such as `prometheus.exporter.snmp` couldn't accept targets from other components
+  with an error `conversion to '*map[string]string' is not supported"`. (@thampiotr)
 
 v1.7.0
 -----------------
