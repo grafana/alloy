@@ -37,4 +37,4 @@ jobs:
           push: false
           tags: grafana/alloy-build-image:latest
           build-args: |
-            GO_RUNTIME=golang:1.24.0-bookworm
+            GO_RUNTIME=golang:1.24.0-alpine3.21
