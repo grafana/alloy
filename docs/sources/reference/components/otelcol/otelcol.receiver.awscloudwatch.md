@@ -122,8 +122,8 @@ The following arguments are supported:
 |     Name     |    Type    |              Description               | Required |
 | ------------ | ---------- | -------------------------------------- | -------- |
 | `group_name` | `string`   | Name of the CloudWatch log group.      | yes      |
-| `prefixes`   | `[]string` | List of prefixes to filter streams by. | no       |
 | `names`      | `[]string` | List of exact stream names to collect. | no       |
+| `prefixes`   | `[]string` | List of prefixes to filter streams by. | no       |
 
 ### debug_metrics
 
