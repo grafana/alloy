@@ -131,6 +131,8 @@ The following arguments are supported:
 
 ### output
 
+<span class="badge docs-labels__stage docs-labels__item">Required</span>
+
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
