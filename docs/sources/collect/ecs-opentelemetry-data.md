@@ -14,6 +14,11 @@ You can configure {{< param "FULL_PRODUCT_NAME" >}} or AWS ADOT to collect OpenT
 
 Metrics are available from various sources including ECS itself, the ECS instances when using EC2, X-Ray and your own application. You can also collect logs and traces from your applications instrumented for Prometheus or OTLP.
 
+1. [Collecting task and container metrics](#collecting-task-and-container-metrics)
+1. [Collecting application telemetry](#collecting-application-telemetry)
+1. [Collecting EC2 instance metrics](#collecting-ec2-instance-metrics)
+1. [Collecting application logs](#collecting-logs)
+
 ## Before you begin
 
 * Ensure that you have basic familiarity with instrumenting applications with OpenTelemetry.
@@ -21,7 +26,7 @@ Metrics are available from various sources including ECS itself, the ECS instanc
 * Identify where {{< param "PRODUCT_NAME" >}} writes received telemetry data.
 * Be familiar with the concept of [Components][] in {{< param "PRODUCT_NAME" >}}.
 
-## Running a collector in a task
+## Collecting task and container metrics
 
 In this configuration, an OTEL collector is added to the task running your application and uses the ECS Metadata Endpoint to gather task and container metrics in your cluster.
 
@@ -29,7 +34,7 @@ You can choose between two collector implementations:
 
 - AWS supports its own OpenTelemetry collector called ADOT. ADOT has native support for scraping task and container metrics. ADOT comes with default configurations that can be selected in the task definition.
 
-- Alloy can also be used as a collector alongside the ECS shim which exports ECS stats as Prometheus metrics.
+- Alloy can also be used as a collector alongside the [Prometheus ECS exporter](https://github.com/prometheus-community/ecs_exporter) which exposes the ECS metadatada endpoint metrics in Prometheus format.
 
 ### Configuring ADOT
 
@@ -141,7 +146,7 @@ For ECS Clusters running on EC2, you can collect instance metrics by using AWS A
 
 ### Alloy
 
-You can follow the steps described in [Configure Alloy](#configuring-alloy) above with the following changes:
+You can follow the steps described in [Configure Alloy](#configuring-alloy) above to create another task, with the following changes:
 
 * Only add the Alloy container, not the prometheus exporter, and run the task as daemon, so it will automatically run one instance per node in your cluster.
 * Update your Alloy configuration to collect metrics from the instance. Configuration varies depending on the type of EC2 node, refer to the [Alloy documentation](https://grafana.com/docs/alloy/latest/collect/) for details.
@@ -154,11 +159,11 @@ Just like described in the [Configuring ADOT](#configuring-adot) section, you ne
 
 ## Collecting application telemetry
 
-To collect telemetry emitted by your application, you can use the OTLP endpoints exposed by the collector side car containerm regardless of the collector implementation. Just use `localhost` as the host name.
+To collect telemetry emitted by your application, you can use the OTLP endpoints exposed by the collector side car container regardless of the collector implementation. Just use `localhost` as the host name.
 
-For prometheus endpoints, add a scrape job to the ADOT or Alloy config, and use `localhost` and your service port and endpoint path.
+For prometheus endpoints, add a scrape job to the ADOT or Alloy config, and use `localhost` , service port and endpoint path.
 
-## Logs
+## Collecting Logs
 
 The easiest way to collect application logs in ECS is to leverage the [AWS firelens log driver][firelens-doc]. Depending on your use case, you can forward your logs to the collector container in your task using the [FluentBit plugin for OpenTelemetry][fluentbit-otel-plugin] or using the FluentBit Loki plugin. You can also send everything directly to your final destination.
 
