@@ -22,12 +22,15 @@ Main (unreleased)
 
 - Added additional backwards compatibility metrics to `prometheus.write.queue`. (@mattdurham)
 
+v1.7.1
+-----------------
+
 ### Bugfixes
 
 - Fixed an issue where some exporters such as `prometheus.exporter.snmp` couldn't accept targets from other components
   with an error `conversion to '*map[string]string' is not supported"`. (@thampiotr)
 
-- Enable batching of calls to the appender in `prometheus.write.queue` to reduce lock contention when scraping, which 
+- Enable batching of calls to the appender in `prometheus.write.queue` to reduce lock contention when scraping, which
   will lead to reduced scrape duration. (@mattdurham)
 
 v1.7.0
