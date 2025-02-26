@@ -172,7 +172,7 @@ func TestEncode_Decode_Targets(t *testing.T) {
 				require.Equal(t, tc.input, actualMap)
 			})
 
-			t.Run("decode from map into target", func(t *testing.T) {
+			t.Run("decode from map into target via scope", func(t *testing.T) {
 				scope := vm.NewScope(map[string]interface{}{"map": tc.input})
 				expr, err := parser.ParseExpression("map")
 				require.NoError(t, err)
@@ -247,7 +247,7 @@ func TestEncode_Decode_TargetArrays(t *testing.T) {
 			encoded := string(f.Bytes())
 			require.Equal(t, tc.expected, encoded, "using a target")
 
-			// Try decoding now ...
+			// Try decoding now
 			toDecode := strings.TrimPrefix(encoded, "target = ")
 			scope := vm.NewScope(map[string]interface{}{})
 			expr, err := parser.ParseExpression(toDecode)
