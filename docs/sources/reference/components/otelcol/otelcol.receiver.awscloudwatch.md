@@ -147,7 +147,7 @@ The following arguments are supported:
 
 ## Example
 
-This example collects logs from specific EKS cluster log groups and forwards them through a batch processor:
+The following example collects logs from specific EKS cluster log groups and forwards them through a batch processor:
 
 ```alloy
 otelcol.receiver.awscloudwatch "default" {
