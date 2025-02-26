@@ -20,6 +20,9 @@ Main (unreleased)
   - Use SUM_LOCK_TIME and SUM_CPU_TIME with mysql >= 8.0.28
   - Fix query on perf_schema.events_statements_summary_by_digest
 
+- (_Experimental_) Various changes to the experimental component `database_observability.mysql`:
+  - `query_sample`: better handling of truncated queries (@cristiangreco)
+
 ### Bugfixes
 
 - Fixed an issue where some exporters such as `prometheus.exporter.snmp` couldn't accept targets from other components
@@ -35,7 +38,7 @@ v1.7.0
 - Remove `tls_basic_auth_config_path` attribute from `prometheus.exporter.mongodb` configuration as it does not configure TLS client
   behavior as previously documented.
 
-- Remove `encoding` and `encoding_file_ext` from `otelcol.exporter.awss3` component as it was not wired in to the otel component and 
+- Remove `encoding` and `encoding_file_ext` from `otelcol.exporter.awss3` component as it was not wired in to the otel component and
   Alloy does not currently integrate the upstream encoding extensions that this would utilize.
 
 ### Features
@@ -43,7 +46,7 @@ v1.7.0
 - Add a `otelcol.receiver.tcplog` component to receive OpenTelemetry logs over a TCP connection. (@nosammai)
 
 - (_Public preview_) Add `otelcol.receiver.filelog` component to read otel log entries from files (@dehaansa)
-  
+
 - (_Public preview_) Add a `otelcol.processor.cumulativetodelta` component to convert metrics from
   cumulative temporality to delta. (@madaraszg-tulip)
 
@@ -56,12 +59,12 @@ v1.7.0
 ### Enhancements
 
 - Upgrade to OpenTelemetry Collector v0.119.0 (@dehaansa):
-  - `otelcol.processor.resourcedetection`: additional configuration for the `ec2` detector to configure retry behavior 
+  - `otelcol.processor.resourcedetection`: additional configuration for the `ec2` detector to configure retry behavior
   - `otelcol.processor.resourcedetection`: additional configuration for the `gcp` detector to collect Managed Instance Group attributes
   - `otelcol.processor.resourcedetection`: additional configuration for the `eks` detector to collect cloud account attributes
   - `otelcol.processor.resourcedetection`: add `kubeadm` detector to collect local cluster attributes
   - `otelcol.processor.cumulativetodelta`: add `metric_types` filtering options
-  - `otelcol.exporter.awss3`: support configuring sending_queue behavior 
+  - `otelcol.exporter.awss3`: support configuring sending_queue behavior
   - `otelcol.exporter.otlphttp`: support configuring `compression_params`, which currently only includes `level`
   - `configtls`: opentelemetry components with tls config now support specifying TLS curve preferences
   - `sending_queue`: opentelemetry exporters with a `sending_queue` can now configure the queue to be `blocking`
