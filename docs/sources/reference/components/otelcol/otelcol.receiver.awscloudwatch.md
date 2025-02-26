@@ -135,7 +135,7 @@ The following arguments are supported:
 
 ## Exported fields
 
-`otelcol.receiver.awscloudwatch` does not export any fields.
+`otelcol.receiver.awscloudwatch` doesn't export any fields.
 
 ## Component health
 
