@@ -93,8 +93,8 @@ The following arguments are supported:
 
 |   Name   |   Type   |                Description                | Default | Required |
 | -------- | -------- | ----------------------------------------- | ------- | -------- |
-| `prefix` | `string` | Prefix to filter log groups by.           |         | no       |
 | `limit`  | `int`    | Maximum number of log groups to discover. | `50`    | no       |
+| `prefix` | `string` | Prefix to filter log groups by.           |         | no       |
 
 The `autodiscover` block supports the following blocks:
 
