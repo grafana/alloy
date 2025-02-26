@@ -143,8 +143,7 @@ The following arguments are supported:
 
 ## Debug information
 
-`otelcol.receiver.awscloudwatch` does not expose any component-specific debug
-information.
+`otelcol.receiver.awscloudwatch` doesn't expose any component-specific debug information.
 
 ## Example
 
