@@ -33,10 +33,10 @@ func init() {
 
 // Arguments configures the otelcol.receiver.awscloudwatch component.
 type Arguments struct {
-	Region       string      `alloy:"region,attr"`
-	Profile      string      `alloy:"profile,attr,optional"`
-	IMDSEndpoint string      `alloy:"imds_endpoint,attr,optional"`
-	Logs         *LogsConfig `alloy:"logs,block,optional"`
+	Region       string     `alloy:"region,attr"`
+	Profile      string     `alloy:"profile,attr,optional"`
+	IMDSEndpoint string     `alloy:"imds_endpoint,attr,optional"`
+	Logs         LogsConfig `alloy:"logs,block,optional"`
 
 	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
 
@@ -52,7 +52,6 @@ var defaultLogGroupLimit = 50
 
 // SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
-	args.Logs = &LogsConfig{}
 	args.Logs.SetToDefault()
 	args.DebugMetrics.SetToDefault()
 }
@@ -64,10 +63,6 @@ func (args *Arguments) Validate() error {
 		if err != nil {
 			return fmt.Errorf("unable to parse URI for imds_endpoint: %w", err)
 		}
-	}
-
-	if args.Logs == nil {
-		return fmt.Errorf("logs must be configured")
 	}
 
 	if args.Logs.MaxEventsPerRequest <= 0 {

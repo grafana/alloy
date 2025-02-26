@@ -57,12 +57,12 @@ func toAwsCloudWatchReceiver(state *State, id componentstatus.InstanceID, cfg *a
 	}
 }
 
-func toLogsConfig(cfg *awscloudwatchreceiver.LogsConfig) *awscloudwatch.LogsConfig {
+func toLogsConfig(cfg *awscloudwatchreceiver.LogsConfig) awscloudwatch.LogsConfig {
 	if cfg == nil {
-		return nil
+		return awscloudwatch.LogsConfig{}
 	}
 
-	return &awscloudwatch.LogsConfig{
+	return awscloudwatch.LogsConfig{
 		PollInterval:        cfg.PollInterval,
 		MaxEventsPerRequest: cfg.MaxEventsPerRequest,
 		Groups:              toGroupConfig(cfg.Groups),
