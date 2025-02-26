@@ -72,7 +72,7 @@ func (t targetBuilder) Get(label string) string {
 	if ok {
 		return string(lv)
 	}
-	lv, ok = t.group[commonlabels.LabelName(label)]
+	lv = t.group[commonlabels.LabelName(label)]
 	return string(lv)
 }
 
@@ -114,10 +114,8 @@ func (t targetBuilder) Set(label string, val string) {
 func (t targetBuilder) Del(labels ...string) {
 	for _, label := range labels {
 		t.toDel[label] = struct{}{}
-		// If we were adding one, need to clean it up too.
-		if _, ok := t.toAdd[label]; ok {
-			delete(t.toAdd, label)
-		}
+		// If we were adding one, may need to clean it up too.
+		delete(t.toAdd, label)
 	}
 }
 
