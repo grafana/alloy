@@ -129,7 +129,7 @@ The following arguments are supported:
 
 {{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### output
+### `output`
 
 <span class="badge docs-labels__stage docs-labels__item">Required</span>
 
