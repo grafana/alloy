@@ -159,7 +159,7 @@ Just like described in the [Configuring ADOT](#configuring-adot) section, you ne
 
 ## Collecting application telemetry
 
-To collect telemetry emitted by your application, you can use the OTLP endpoints exposed by the collector side car container regardless of the collector implementation. Just use `localhost` as the host name.
+To collect metrics and traces emitted by your application, use the OTLP endpoints exposed by the collector side car container regardless of the collector implementation. Just specify `localhost` as the host name, which is default for most instrumentation library and agents.
 
 For prometheus endpoints, add a scrape job to the ADOT or Alloy config, and use `localhost` , service port and endpoint path.
 
