@@ -38,8 +38,8 @@ You can use the following arguments with `otelcol.receiver.awscloudwatch`:
 |      Name       |   Type   |           Description            | Default | Required |
 | --------------- | -------- | -------------------------------- | ------- | -------- |
 | `region`        | `string` | AWS region to collect logs from. |         | yes      |
-| `profile`       | `string` | AWS credentials profile to use.  |         | no       |
 | `imds_endpoint` | `string` | Custom EC2 IMDS endpoint to use. |         | no       |
+| `profile`       | `string` | AWS credentials profile to use.  |         | no       |
 
 If `imds_endpoint` is not specified, and the environment variable `AWS_EC2_METADATA_SERVICE_ENDPOINT` has a value, it will be used as the IMDS endpoint.
 
