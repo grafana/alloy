@@ -182,7 +182,7 @@ otelcol.processor.batch "default" {
 
 otelcol.exporter.otlp "default" {
   client {
-    endpoint = env("OTLP_ENDPOINT")
+    endpoint = env("<OTLP_ENDPOINT>")
   }
 }
 ```
