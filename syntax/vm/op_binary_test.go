@@ -59,14 +59,43 @@ func TestVM_OptionalSecret_Conversion(t *testing.T) {
 			expect: bool(false),
 		},
 		{
-			name:        "secret + string",
-			input:       `secret_val + string_val`,
-			expectError: "secret_val should be one of [number string] for binop +",
+			name:        "secret - string",
+			input:       `secret_val - string_val`,
+			expectError: "secret_val should be one of [number] for binop -, got capsule",
 		},
 		{
-			name:        "string + secret",
-			input:       `string_val + secret_val`,
-			expectError: "secret_val should be one of [number string] for binop +",
+			name:        "string - secret",
+			input:       `string_val - secret_val`,
+			expectError: "string_val should be one of [number] for binop -, got capsule",
+		},
+		{
+			name:  "secret + string",
+			input: `secret_val + string_val`,
+			expect: alloytypes.OptionalSecret{
+				Value: "secrethello", IsSecret: true,
+			},
+		},
+		{
+			name:  "string + secret",
+			input: `string_val + secret_val`,
+			expect: alloytypes.OptionalSecret{
+				Value: "hellosecret", IsSecret: true,
+			},
+		},
+		{
+			name:   "secret + string",
+			input:  `non_secret_val + string_val`,
+			expect: string("worldhello"),
+		},
+		{
+			name:   "string + secret",
+			input:  `string_val + non_secret_val`,
+			expect: string("helloworld"),
+		},
+		{
+			name:   "string + string",
+			input:  `string_val + string_val`,
+			expect: string("hellohello"),
 		},
 	}
 
