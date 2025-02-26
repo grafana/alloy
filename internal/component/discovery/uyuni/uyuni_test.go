@@ -11,6 +11,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
 func TestUnmarshal(t *testing.T) {
@@ -66,4 +67,29 @@ func TestConvert(t *testing.T) {
 	require.Equal(t, promcfg.Secret("examplepassword"), converted.Password)
 	require.Equal(t, model.Duration(1*time.Minute), converted.RefreshInterval)
 	require.Equal(t, promcfg.DefaultHTTPClientConfig, converted.HTTPClientConfig)
+}
+
+func TestConvertHTTPHeaders(t *testing.T) {
+	args := Arguments{
+		Server:   "https://uyuni.com",
+		Username: "exampleuser",
+		Password: "examplepassword",
+		HTTPHeaders: &config.Headers{
+			Headers: map[string][]alloytypes.Secret{
+				"foo": {"foobar"},
+			},
+		},
+	}
+	require.NoError(t, args.Validate())
+
+	headerAlloy := args.HTTPHeaders.Headers["foo"][0]
+	require.Equal(t, "foobar", string(headerAlloy))
+
+	converted := args.Convert().(*prom_discovery.SDConfig)
+	require.Equal(t, "https://uyuni.com", converted.Server)
+	require.Equal(t, "exampleuser", converted.Username)
+	require.Equal(t, promcfg.Secret("examplepassword"), converted.Password)
+
+	headerProm := converted.HTTPClientConfig.HTTPHeaders.Headers["foo"].Secrets[0]
+	require.Equal(t, "foobar", string(headerProm))
 }
