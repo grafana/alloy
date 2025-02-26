@@ -59,7 +59,7 @@ require (
 	github.com/grafana/alloy-remote-config v0.0.10
 	github.com/grafana/alloy/syntax v0.1.0
 	github.com/grafana/catchpoint-prometheus-exporter v0.0.0-20250218151502-6e97feaee761
-	github.com/grafana/ckit v0.0.0-20241128150632-1e6dfe1c6183
+	github.com/grafana/ckit v0.0.0-20250226083311-4f9f4aacabb5
 	github.com/grafana/cloudflare-go v0.0.0-20230110200409-c627cf6792f2
 	github.com/grafana/dskit v0.0.0-20250131191929-eab36484cec2
 	github.com/grafana/go-gelf/v2 v2.0.1
@@ -75,7 +75,7 @@ require (
 	github.com/grafana/snowflake-prometheus-exporter v0.0.0-20240813124544-9995e8354548
 	github.com/grafana/tail v0.0.0-20230510142333-77b18831edf0
 	github.com/grafana/vmware_exporter v0.0.5-beta.0.20250218170317-73398ba08329
-	github.com/grafana/walqueue v0.0.0-20250222022458-49d08775d0f4
+	github.com/grafana/walqueue v0.0.0-20250226140916-7365e13bbede
 	github.com/hashicorp/consul/api v1.31.0
 	github.com/hashicorp/go-discover v0.0.0-20230724184603-e89ebd1b2f65
 	github.com/hashicorp/go-multierror v1.1.1
@@ -260,14 +260,14 @@ require (
 	go.uber.org/goleak v1.3.0
 	go.uber.org/multierr v1.11.0
 	go.uber.org/zap v1.27.0
-	golang.org/x/crypto v0.32.0
+	golang.org/x/crypto v0.33.0
 	golang.org/x/crypto/x509roots/fallback v0.0.0-20240208163226-62c9f1799c91
 	golang.org/x/exp v0.0.0-20241217172543-b2144cdd0a67
-	golang.org/x/net v0.34.0
+	golang.org/x/net v0.35.0
 	golang.org/x/oauth2 v0.25.0
-	golang.org/x/sync v0.10.0
-	golang.org/x/sys v0.29.0
-	golang.org/x/text v0.21.0
+	golang.org/x/sync v0.11.0
+	golang.org/x/sys v0.30.0
+	golang.org/x/text v0.22.0
 	golang.org/x/time v0.9.0
 	golang.org/x/tools v0.29.0
 	google.golang.org/api v0.217.0
@@ -584,6 +584,7 @@ require (
 	github.com/hashicorp/go-envparse v0.1.0 // indirect
 	github.com/hashicorp/go-hclog v1.6.3 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
+	github.com/hashicorp/go-metrics v0.5.4 // indirect
 	github.com/hashicorp/go-msgpack v1.1.5 // indirect
 	github.com/hashicorp/go-msgpack/v2 v2.1.1 // indirect
 	github.com/hashicorp/go-retryablehttp v0.7.7 // indirect
@@ -596,7 +597,7 @@ require (
 	github.com/hashicorp/go-version v1.7.0 // indirect
 	github.com/hashicorp/hcl v1.0.1-vault-5 // indirect
 	github.com/hashicorp/mdns v1.0.4 // indirect
-	github.com/hashicorp/memberlist v0.5.1 // indirect
+	github.com/hashicorp/memberlist v0.5.3 // indirect
 	github.com/hashicorp/nomad/api v0.0.0-20240717122358-3d93bd3778f3 // indirect
 	github.com/hashicorp/serf v0.10.1 // indirect
 	github.com/hashicorp/vic v1.5.1-0.20190403131502-bbfe86ec9443 // indirect
@@ -870,7 +871,7 @@ require (
 	golang.design/x/chann v0.1.2 // indirect
 	golang.org/x/arch v0.7.0 // indirect
 	golang.org/x/mod v0.22.0 // indirect
-	golang.org/x/term v0.28.0 // indirect
+	golang.org/x/term v0.29.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
 	gonum.org/v1/gonum v0.15.1 // indirect
