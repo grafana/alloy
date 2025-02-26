@@ -110,8 +110,8 @@ The following arguments are supported:
 
 |    Name    |    Type    |              Description               | Default | Required |
 | ---------- | ---------- | -------------------------------------- | ------- | -------- |
-| `prefixes` | `[]string` | List of prefixes to filter streams by. |         | no       |
 | `names`    | `[]string` | List of exact stream names to collect. |         | no       |
+| `prefixes` | `[]string` | List of prefixes to filter streams by. |         | no       |
 
 #### logs > groups > named
 
