@@ -57,7 +57,7 @@ You can use the following blocks with `otelcol.receiver.awscloudwatch`:
 [debug_metrics]: #debug_metrics
 [output]: #output
 
-### logs
+### `logs`
 
 The `logs` block configures how logs are collected from CloudWatch.
 
