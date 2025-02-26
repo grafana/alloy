@@ -181,6 +181,12 @@ They generally behave the same, but there are likely edge cases where they diffe
 * `prometheus_remote_write_wal_samples_appended_total` (counter): Total number of samples appended to the WAL.
 * `prometheus_remote_write_wal_storage_created_series_total` (counter): Total number of created series appended to the WAL.
 * `prometheus_remote_write_wal_storage_removed_series_total` (counter): Total number of series removed from the WAL.
+* `prometheus_remote_storage_bytes_total` (counter): Total number of bytes of data sent by queues after compression.
+* `prometheus_remote_storage_sent_bytes_total` (counter): Total number of bytes of data sent by queues after compression. (same as `prometheus_remote_storage_bytes_total`)
+* `prometheus_remote_storage_sent_batch_duration_seconds` (histogram): Duration of send calls to remote storage.
+* `prometheus_remote_storage_shards_max` (gauge): The maximum number of a shards a queue is allowed to run.
+* `prometheus_remote_storage_shards_min` (gauge): The minimum number of shards a queue is allowed to run.
+* `prometheus_remote_storage_shards` (gauge): The number of shards used for concurrent delivery of metrics to an endpoint.
 
 Metrics that are new to `prometheus.write.queue`. These are highly subject to change.
 

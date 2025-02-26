@@ -1303,8 +1303,8 @@ github.com/grafana/tail v0.0.0-20230510142333-77b18831edf0 h1:bjh0PVYSVVFxzINqPF
 github.com/grafana/tail v0.0.0-20230510142333-77b18831edf0/go.mod h1:7t5XR+2IA8P2qggOAHTj/GCZfoLBle3OvNSYh1VkRBU=
 github.com/grafana/vmware_exporter v0.0.5-beta.0.20250218170317-73398ba08329 h1:Rs4H1yv2Abk3xE82qpyhMGGA8rswAOA0HQZde/BYkFo=
 github.com/grafana/vmware_exporter v0.0.5-beta.0.20250218170317-73398ba08329/go.mod h1:Z28219aViNlsLlPvuCnlgHDagRdZBAZ7JOnQg1b3eWg=
-github.com/grafana/walqueue v0.0.0-20250222022458-49d08775d0f4 h1:oEDouKyuO62LKR46nb/4Z1nKx2tcxLK9eLMmHJtNdwQ=
-github.com/grafana/walqueue v0.0.0-20250222022458-49d08775d0f4/go.mod h1:++oxbVcfnIzbSKHNxpO3WpQJG5ufmnwtBJqh5rvEmVo=
+github.com/grafana/walqueue v0.0.0-20250226140916-7365e13bbede h1:9xJHxsGrN7RPwXNPDSwmE6ivdJMRVnTRQITopBtxKik=
+github.com/grafana/walqueue v0.0.0-20250226140916-7365e13bbede/go.mod h1:++oxbVcfnIzbSKHNxpO3WpQJG5ufmnwtBJqh5rvEmVo=
 github.com/gregjones/httpcache v0.0.0-20180305231024-9cad4c3443a7/go.mod h1:FecbI9+v66THATjSRHfNgh1IVFe/9kFxbXtjV0ctIMA=
 github.com/grobie/gomemcache v0.0.0-20230213081705-239240bbc445 h1:FlKQKUYPZ5yDCN248M3R7x8yu2E3yEZ0H7aLomE4EoE=
 github.com/grobie/gomemcache v0.0.0-20230213081705-239240bbc445/go.mod h1:L69/dBlPQlWkcnU76WgcppK5e4rrxzQdi6LhLnK/ytA=

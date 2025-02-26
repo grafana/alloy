@@ -10,10 +10,23 @@ internal API changes are not present.
 v1.7.1
 -----------------
 
+### Enhancements
+
+- Have `loki.echo` log the `entry_timestamp` and `structured_metadata` for any loki entries received (@dehaansa)
+
+- Update mysqld_exporter to v0.17.1, most notable changes: (@cristiangreco)
+  - Add perf_schema quantile columns to collector
+  - Fix database quoting problem in collector 'info_schema.tables'
+  - Use SUM_LOCK_TIME and SUM_CPU_TIME with mysql >= 8.0.28
+  - Fix query on perf_schema.events_statements_summary_by_digest
+
 ### Bugfixes
 
 - Fixed an issue where some exporters such as `prometheus.exporter.snmp` couldn't accept targets from other components
   with an error `conversion to '*map[string]string' is not supported"`. (@thampiotr)
+
+- Enable batching of calls to the appender in `prometheus.write.queue` to reduce lock contention when scraping, which 
+  will lead to reduced scrape duration. (@mattdurham)
 
 v1.7.0
 -----------------

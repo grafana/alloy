@@ -67,7 +67,11 @@ func (s *Queue) Run(ctx context.Context) error {
 		}
 	}()
 	for _, ep := range s.endpoints {
-		ep.Start(ctx)
+		// If any of these fail to start thats a problem.
+		err := ep.Start(ctx)
+		if err != nil {
+			return err
+		}
 	}
 
 	<-ctx.Done()
@@ -113,7 +117,10 @@ func (s *Queue) Update(args component.Arguments) error {
 		if err != nil {
 			return err
 		}
-		end.Start(s.ctx)
+		err = end.Start(s.ctx)
+		if err != nil {
+			return err
+		}
 		s.endpoints[epCfg.Name] = end
 
 	}
