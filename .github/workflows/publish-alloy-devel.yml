@@ -102,7 +102,7 @@ jobs:
         echo "grafana/alloy-dev:$(bash ./tools/image-tag-docker)" > .image-tag
 
     - name: Log in to Google Artifact Registry
-      uses: grafana/shared-workflows/actions/login-to-gar@main
+      uses: grafana/shared-workflows/actions/login-to-gar@login-to-gar-v0.2.2
       with:
         registry: "us-docker.pkg.dev"
         environment: "prod"
