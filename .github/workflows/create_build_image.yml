@@ -12,7 +12,7 @@ jobs:
   linux_build_image:
     name: Create a Linux build image
     runs-on:
-      labels: github-hosted-ubuntu-x64-large
+      labels: ubuntu-22.04 # related to https://github.com/docker/setup-qemu-action/issues/198
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -47,12 +47,12 @@ jobs:
         context: ./tools/build-image
         tags: grafana/alloy-build-image:${{ steps.get_image_version.outputs.image_tag }}
         build-args: |
-          GO_RUNTIME=golang:1.24.0-bullseye
+          GO_RUNTIME=golang:1.24.0-alpine3.21
 
   linux_build_image_boringcrypto:
     name: Create a Linux build image for boringcrypto
     runs-on:
-      labels: github-hosted-ubuntu-x64-large
+      labels: ubuntu-22.04 # related to https://github.com/docker/setup-qemu-action/issues/198
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
