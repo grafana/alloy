@@ -9,6 +9,8 @@ on:
 jobs:
   check-linux-build-image:
     runs-on: github-hosted-ubuntu-x64-large
+    env:
+      DOCKER_BUILDKIT: 1
     steps:
       - name: Checkout
         uses: actions/checkout@v4
