@@ -125,7 +125,7 @@ The following arguments are supported:
 | `names`      | `[]string` | List of exact stream names to collect. | no       |
 | `prefixes`   | `[]string` | List of prefixes to filter streams by. | no       |
 
-### debug_metrics
+### `debug_metrics`
 
 {{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
