@@ -268,11 +268,11 @@ func updateDiscoverer(comp *Component, discoverer *fakeDiscoverer) {
 
 type fakeDiscoverer struct {
 	publishChan chan<- []*targetgroup.Group
-	ready       sync.WaitGroup
+	ready       *sync.WaitGroup
 }
 
 func newFakeDiscoverer() *fakeDiscoverer {
-	ready := sync.WaitGroup{}
+	ready := &sync.WaitGroup{}
 	ready.Add(1)
 	return &fakeDiscoverer{
 		ready: ready,
@@ -287,9 +287,7 @@ func (f *fakeDiscoverer) Publish(tg []*targetgroup.Group) {
 func (f *fakeDiscoverer) Run(ctx context.Context, publishChan chan<- []*targetgroup.Group) {
 	f.publishChan = publishChan
 	f.ready.Done()
-	select {
-	case <-ctx.Done():
-	}
+	<-ctx.Done()
 }
 
 func (f *fakeDiscoverer) Register() error { return nil }

@@ -117,44 +117,70 @@ func TestEncode_Decode_Targets(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			// Test encoding
-			f := builder.NewFile()
-			f.Body().SetAttributeValue("target", NewTargetFromMap(tc.input))
-			encoded := string(f.Bytes())
-			require.Equal(t, tc.expected, encoded)
+			t.Run("encode into text", func(t *testing.T) {
+				f := builder.NewFile()
+				f.Body().SetAttributeValue("target", NewTargetFromMap(tc.input))
+				encoded := string(f.Bytes())
+				require.Equal(t, tc.expected, encoded)
+			})
 
-			// Try decoding now ...
-			scope := vm.NewScope(map[string]interface{}{})
-			toDecode := strings.TrimPrefix(encoded, "target = ")
-			expr, err := parser.ParseExpression(toDecode)
-			require.NoError(t, err)
+			var toDecode string
+			t.Run("encode target", func(t *testing.T) {
+				f := builder.NewFile()
+				f.Body().SetAttributeValue("target", NewTargetFromMap(tc.input))
+				encoded := string(f.Bytes())
+				require.Equal(t, tc.expected, encoded)
+				// store toDecode for other tests
+				toDecode = strings.TrimPrefix(encoded, "target = ")
+			})
 
-			// ... into target
-			eval := vm.New(expr)
-			actual := Target{}
-			require.NoError(t, eval.Evaluate(scope, &actual))
-			require.Equal(t, NewTargetFromMap(tc.input), actual)
+			t.Run("decode into target", func(t *testing.T) {
+				expr, err := parser.ParseExpression(toDecode)
+				require.NoError(t, err)
+				eval := vm.New(expr)
+				actual := Target{}
+				require.NoError(t, eval.Evaluate(vm.NewScope(map[string]interface{}{}), &actual))
+				require.Equal(t, NewTargetFromMap(tc.input), actual)
+			})
 
-			// ... into a map
-			eval = vm.New(expr)
-			actualMap := map[string]string{}
-			require.NoError(t, eval.Evaluate(scope, &actualMap))
-			require.Equal(t, tc.input, actualMap)
+			t.Run("decode into a map", func(t *testing.T) {
+				expr, err := parser.ParseExpression(toDecode)
+				require.NoError(t, err)
+				eval := vm.New(expr)
+				actualMap := map[string]string{}
+				require.NoError(t, eval.Evaluate(vm.NewScope(map[string]interface{}{}), &actualMap))
+				require.Equal(t, tc.input, actualMap)
+			})
 
-			// ... into a map pointer
-			eval = vm.New(expr)
-			require.NoError(t, eval.Evaluate(scope, &actualMap))
-			require.Equal(t, &tc.input, &actualMap)
+			t.Run("decode into a map pointer", func(t *testing.T) {
+				expr, err := parser.ParseExpression(toDecode)
+				require.NoError(t, err)
+				eval := vm.New(expr)
+				actualMap := map[string]string{}
+				require.NoError(t, eval.Evaluate(vm.NewScope(map[string]interface{}{}), &actualMap))
+				require.Equal(t, &tc.input, &actualMap)
+			})
 
-			// Decode into a map directly from scope
-			// If not supported, this would lead to error: target::ConvertInto: conversion to '*map[string]string' is not supported
-			scope = vm.NewScope(map[string]interface{}{"export": NewTargetFromMap(tc.input)})
-			expr, err = parser.ParseExpression("export")
-			require.NoError(t, err)
-			eval = vm.New(expr)
-			actualMap = map[string]string{}
-			require.NoError(t, eval.Evaluate(scope, &actualMap))
-			require.Equal(t, tc.input, actualMap)
+			t.Run("decode from target into map via scope", func(t *testing.T) {
+				// If not supported, this would lead to error: target::ConvertInto: conversion to '*map[string]string' is not supported
+				scope := vm.NewScope(map[string]interface{}{"export": NewTargetFromMap(tc.input)})
+				expr, err := parser.ParseExpression("export")
+				require.NoError(t, err)
+				eval := vm.New(expr)
+				actualMap := map[string]string{}
+				require.NoError(t, eval.Evaluate(scope, &actualMap))
+				require.Equal(t, tc.input, actualMap)
+			})
+
+			t.Run("decode from map into target", func(t *testing.T) {
+				scope := vm.NewScope(map[string]interface{}{"map": tc.input})
+				expr, err := parser.ParseExpression("map")
+				require.NoError(t, err)
+				eval := vm.New(expr)
+				actual := Target{}
+				require.NoError(t, eval.Evaluate(scope, &actual))
+				require.Equal(t, NewTargetFromMap(tc.input), actual)
+			})
 		})
 	}
 }
@@ -304,7 +330,7 @@ func TestTargetMisc(t *testing.T) {
 	require.Equal(t, []string{"a=5", "b=10"}, seen)
 
 	// Some loggers print targets out, check it's all good.
-	require.Equal(t, `{"a"="5", "b"="10"}`, fmt.Sprintf("%s", target))
+	require.Equal(t, `{"a"="5", "b"="10"}`, target.String())
 }
 
 func TestConvertFromNative(t *testing.T) {
