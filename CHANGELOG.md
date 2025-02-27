@@ -16,6 +16,8 @@ Main (unreleased)
 
 ### Enhancements
 
+- Add livedebugging support for `prometheus.scrape` (@ravishankar15, @wildum)
+
 - Have `loki.echo` log the `entry_timestamp` and `structured_metadata` for any loki entries received (@dehaansa)
 
 - Update mysqld_exporter to v0.17.2, most notable changes: (@cristiangreco)
