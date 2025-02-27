@@ -34,6 +34,9 @@ Main (unreleased)
 v1.7.1
 -----------------
 
+- (_Experimental_) Various changes to the experimental component `database_observability.mysql`:
+  - `query_sample`: better handling of truncated queries (@cristiangreco)
+
 ### Bugfixes
 
 - Fixed an issue where some exporters such as `prometheus.exporter.snmp` couldn't accept targets from other components

@@ -162,6 +162,18 @@ func TestQuerySample(t *testing.T) {
 			},
 		},
 		{
+			name: "truncated with properly closed comment",
+			rows: [][]driver.Value{{
+				"abc123",
+				"some_schema",
+				"select * from some_table where id = 1 /* comment that's closed */ and name = 'test...",
+				"2024-01-01T00:00:00.000Z",
+				"1000",
+			}},
+			logsLabels: []model.LabelSet{},
+			logsLines:  []string{},
+		},
+		{
 			name: "start transaction",
 			rows: [][]driver.Value{{
 				"abc123",

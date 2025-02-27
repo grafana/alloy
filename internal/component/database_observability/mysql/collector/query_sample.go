@@ -130,15 +130,19 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 
 		if strings.HasSuffix(sampleText, "...") {
 			// best-effort attempt to detect truncated trailing comment
-			if idx := strings.LastIndex(sampleText, "/*"); idx >= 0 {
-				trailingPart := sampleText[idx:]
-				if strings.LastIndex(trailingPart, "*/") < 0 {
-					sampleText = sampleText[:idx]
-				}
-			} else {
+			idx := strings.LastIndex(sampleText, "/*")
+			if idx < 0 {
 				level.Debug(c.logger).Log("msg", "skipping parsing truncated query", "schema", schemaName, "digest", digest)
 				continue
 			}
+
+			trailingText := sampleText[idx:]
+			if strings.LastIndex(trailingText, "*/") >= 0 {
+				level.Debug(c.logger).Log("msg", "skipping parsing truncated query with comment", "schema", schemaName, "digest", digest)
+				continue
+			}
+
+			sampleText = sampleText[:idx]
 		}
 
 		stmt, err := ParseSql(sampleText)
