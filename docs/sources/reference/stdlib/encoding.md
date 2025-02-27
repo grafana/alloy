@@ -61,6 +61,22 @@ The `encoding.to_base64` function encodes the original string into RFC4648-compl
 c3RyaW5nMTIzIT8kKiYoKSctPUB-
 ```
 
+## encoding.to_json
+
+The `encoding.to_json` function encodes a map into a JSON.
+`encoding.to_json` fails if the map argument provided can't be parsed as json string.
+
+A common use case of `encoding.to_json` is to encode a config of component which is expected to be a JSON
+For example, `config` of a [`prometheus.exporter.blackbox`][]
+
+### Examples
+
+```alloy
+> encoding.to_json({"key"={"key1"="val1"}, "key2"=2})
+{"foo":{"foo1":"Hello!"},"key":12}
+
+```
+
 ## encoding.from_json
 
 The `encoding.from_json` function decodes a string representing JSON into an {{< param "PRODUCT_NAME" >}} value.
@@ -125,4 +141,5 @@ null
 "Hello, world!"
 ```
 
-[`local.file`]: ../../components/local/local.file/
+[`local.file`]: ../components/local/local.file/
+[`prometheus.exporter.blackbox`]: ../components/prometheus/prometheus.exporter.blackbox
