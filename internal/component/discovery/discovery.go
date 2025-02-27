@@ -10,8 +10,8 @@ import (
 	"github.com/prometheus/prometheus/discovery/targetgroup"
 
 	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service/livedebugging"
+	"github.com/grafana/alloy/internal/service/logging/level"
 )
 
 // Exports holds values which are exported by all discovery components.

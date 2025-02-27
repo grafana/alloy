@@ -47,10 +47,14 @@ func TestGroups(t *testing.T) {
 
 func TestSlogTester(t *testing.T) {
 	var buf bytes.Buffer
-	l, err := New(&buf, Options{
+	s, err := NewService(&buf)
+	require.NoError(t, err)
+	err = s.Update(Options{
 		Level:  "debug",
 		Format: "json",
 	})
+	require.NoError(t, err)
+	l := s.Data().(*Logger)
 	require.NoError(t, err)
 	results := func() []map[string]any {
 		var ms []map[string]any
@@ -81,11 +85,14 @@ func newTestRecord(msg string) slog.Record {
 func getTestHandler(t *testing.T, w io.Writer) slog.Handler {
 	t.Helper()
 
-	l, err := New(w, Options{
+	s, err := NewService(w)
+	require.NoError(t, err)
+	err = s.Update(Options{
 		Level:  LevelDebug,
 		Format: FormatLogfmt,
 	})
 	require.NoError(t, err)
+	l := s.Data().(*Logger)
 
 	return l.handler
 }
@@ -111,14 +118,15 @@ func testReplace(groups []string, a slog.Attr) slog.Attr {
 	}
 }
 
-// newDeferredTest creates a new logger with the default log level and format. Used for tests.
+// newDeferredTest creates a new logging service with the default log level and format. Used for tests.
 // The logger is not updated during initialization.
-func newDeferredTest(w io.Writer) (*Logger, error) {
-	l, err := NewDeferred(w)
+func newDeferredTest(w io.Writer) (*Service, error) {
+	s, err := NewService(w)
 	if err != nil {
 		return nil, err
 	}
+	l := s.Data().(*Logger)
 	l.handler.replacer = testReplace
 
-	return l, nil
+	return s, nil
 }

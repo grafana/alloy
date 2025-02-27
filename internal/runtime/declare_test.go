@@ -10,8 +10,8 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime"
 	"github.com/grafana/alloy/internal/runtime/internal/testcomponents"
-	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/service"
+	"github.com/grafana/alloy/internal/service/logging"
 	"github.com/stretchr/testify/require"
 )
 

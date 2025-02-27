@@ -12,7 +12,7 @@ import (
 	"github.com/oschwald/maxminddb-golang"
 	"github.com/prometheus/common/model"
 
-	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/service/logging/level"
 )
 
 var (

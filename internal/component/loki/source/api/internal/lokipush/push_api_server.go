@@ -26,7 +26,7 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki/client"
 	fnet "github.com/grafana/alloy/internal/component/common/net"
 	frelabel "github.com/grafana/alloy/internal/component/common/relabel"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/service/logging/level"
 )
 
 type PushAPIServer struct {
