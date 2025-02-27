@@ -191,7 +191,7 @@ type Headers struct {
 
 func (p *Headers) Convert() *config.Headers {
 	if p == nil {
-		return &config.Headers{}
+		return nil
 	}
 
 	res := make(map[string]config.Header, len(p.Headers))
