@@ -284,7 +284,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 				} else if fh != nil {
 					data = fmt.Sprintf("ts=%d, labels=%s, float_histogram=%s", t, l, fh.String())
 				} else {
-					data = fmt.Sprintf("ts=%d, labels=%s, no_value", t, l)
+					data = fmt.Sprintf("ts=%d, labels=%s, histogram_with_no_value", t, l)
 				}
 				c.debugDataPublisher.Publish(componentID, data)
 			}
