@@ -22,6 +22,9 @@ basic_auth {
 	username = "123"
 	password = "456"
 }
+http_headers = {
+	"foo" = ["foobar"],
+}
 `
 
 func TestAlloyConfig(t *testing.T) {
@@ -34,6 +37,9 @@ func TestAlloyConfig(t *testing.T) {
 	assert.Equal(t, args.Query, "abc")
 	assert.Equal(t, args.IncludeParameters, true)
 	assert.Equal(t, args.Port, 29)
+
+	header := args.HTTPClientConfig.HTTPHeaders.Headers["foo"][0]
+	assert.Equal(t, "foobar", string(header))
 }
 
 func TestConvert(t *testing.T) {
@@ -47,6 +53,9 @@ func TestConvert(t *testing.T) {
 	assert.Equal(t, "abc", sd.Query)
 	assert.Equal(t, true, sd.IncludeParameters)
 	assert.Equal(t, 29, sd.Port)
+
+	header := sd.HTTPClientConfig.HTTPHeaders.Headers["foo"].Secrets[0]
+	assert.Equal(t, "foobar", string(header))
 }
 
 func TestValidate(t *testing.T) {

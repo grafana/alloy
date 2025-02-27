@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	go_kit_log "github.com/go-kit/log"
+
 	"github.com/alecthomas/units"
 	client_prometheus "github.com/prometheus/client_golang/prometheus"
 	config_util "github.com/prometheus/common/config"
@@ -30,6 +32,7 @@ import (
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/useragent"
 	"github.com/grafana/alloy/internal/util"
+	"github.com/prometheus/prometheus/util/logging"
 )
 
 func init() {
@@ -71,6 +74,8 @@ type Arguments struct {
 	ScrapeClassicHistograms bool `alloy:"scrape_classic_histograms,attr,optional"`
 	// Whether to scrape native histograms.
 	ScrapeNativeHistograms bool `alloy:"scrape_native_histograms,attr,optional"`
+	// File to which scrape failures are logged.
+	ScrapeFailureLogFile string `alloy:"scrape_failure_log_file,attr,optional"`
 	// How frequently to scrape the targets of this scrape config.
 	ScrapeInterval time.Duration `alloy:"scrape_interval,attr,optional"`
 	// The timeout for scraping targets of this config.
@@ -227,7 +232,12 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	}
 
 	unregisterer := util.WrapWithUnregisterer(o.Registerer)
-	scraper, err := scrape.NewManager(scrapeOptions, o.Logger, alloyAppendable, unregisterer)
+	scraper, err := scrape.NewManager(
+		scrapeOptions,
+		o.Logger,
+		func(s string) (go_kit_log.Logger, error) { return logging.NewJSONFileLogger(s) },
+		alloyAppendable,
+		unregisterer)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create scrape manager: %w", err)
 	}
@@ -412,6 +422,7 @@ func getPromScrapeConfigs(jobName string, c Arguments) *config.ScrapeConfig {
 	dec.ScrapeClassicHistograms = c.ScrapeClassicHistograms
 	dec.ScrapeInterval = model.Duration(c.ScrapeInterval)
 	dec.ScrapeTimeout = model.Duration(c.ScrapeTimeout)
+	dec.ScrapeFailureLogFile = c.ScrapeFailureLogFile
 	dec.MetricsPath = c.MetricsPath
 	dec.Scheme = c.Scheme
 	dec.BodySizeLimit = c.BodySizeLimit

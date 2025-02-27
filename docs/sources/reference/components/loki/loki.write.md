@@ -75,6 +75,7 @@ The following arguments are supported:
 | `bearer_token`           | `secret`            | Bearer token to authenticate with.                                                               |           | no       |
 | `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`    | no       |
 | `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`    | no       |
+| `http_headers`           | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.          |                      | no       |
 | `headers`                | `map(string)`       | Extra headers to deliver with the request.                                                       |           | no       |
 | `max_backoff_period`     | `duration`          | Maximum backoff time between retries.                                                            | `"5m"`    | no       |
 | `max_backoff_retries`    | `int`               | Maximum number of retries.                                                                       | 10        | no       |

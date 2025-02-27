@@ -142,7 +142,7 @@ func (c *crdManager) Run(ctx context.Context) error {
 	// Start prometheus scrape manager.
 	alloyAppendable := prometheus.NewFanout(c.args.ForwardTo, c.opts.ID, c.opts.Registerer, c.ls)
 	opts := &scrape.Options{}
-	c.scrapeManager, err = scrape.NewManager(opts, c.logger, alloyAppendable, unregisterer)
+	c.scrapeManager, err = scrape.NewManager(opts, c.logger, nil, alloyAppendable, unregisterer)
 	if err != nil {
 		return fmt.Errorf("creating scrape manager: %w", err)
 	}
