@@ -10,10 +10,17 @@ steps:
   - make lint
   image: grafana/alloy-build-image:v0.1.8
   name: Lint
+  volumes:
+  - name: docker
+    path: /var/run/docker.sock
 trigger:
   event:
   - pull_request
 type: docker
+volumes:
+- host:
+    path: /var/run/docker.sock
+  name: docker
 ---
 kind: pipeline
 name: Test
@@ -25,10 +32,17 @@ steps:
   - make GO_TAGS="nodocker" test
   image: grafana/alloy-build-image:v0.1.8
   name: Run Go tests
+  volumes:
+  - name: docker
+    path: /var/run/docker.sock
 trigger:
   event:
   - pull_request
 type: docker
+volumes:
+- host:
+    path: /var/run/docker.sock
+  name: docker
 ---
 kind: pipeline
 name: Test (Full)
@@ -579,6 +593,6 @@ kind: secret
 name: updater_private_key
 ---
 kind: signature
-hmac: 26b5613cbd5e5cd42656c10c372d44dc93af565ec2ae212d3b27c2fe366c6aeb
+hmac: e6b3e9929f79eab8e5e454b543705e080893abe81ebbd7f47b67dcb6981b0fa8
 
 ...
