@@ -144,6 +144,17 @@ func (tg *scrapePool) ActiveTargets() []*Target {
 	return result
 }
 
+func (tg *scrapePool) activeScrapeLoops() map[uint64]*scrapeLoop {
+	tg.mtx.RLock()
+	defer tg.mtx.RUnlock()
+
+	result := make(map[uint64]*scrapeLoop, len(tg.activeTargets))
+	for k, v := range tg.activeTargets {
+		result[k] = v
+	}
+	return result
+}
+
 type scrapeLoop struct {
 	*Target
 

@@ -8,6 +8,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/prometheus/client_golang/prometheus"
 	config_util "github.com/prometheus/common/config"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
 )
@@ -35,7 +36,7 @@ type Manager struct {
 	triggerReload chan struct{}
 }
 
-func NewManager(o Options, config Arguments, appendable pyroscope.Appendable, logger log.Logger) (*Manager, error) {
+func NewManager(o Options, config Arguments, appendable pyroscope.Appendable, logger log.Logger, registerer prometheus.Registerer) (*Manager, error) {
 	if logger == nil {
 		logger = log.NewNopLogger()
 	}
@@ -48,14 +49,16 @@ func NewManager(o Options, config Arguments, appendable pyroscope.Appendable, lo
 	if err != nil {
 		return nil, err
 	}
-	return &Manager{
+	manager := &Manager{
 		options:       o,
 		logger:        logger,
 		appendable:    appendable,
 		graceShut:     make(chan struct{}),
 		triggerReload: make(chan struct{}, 1),
 		sp:            sp,
-	}, nil
+	}
+	registerer.MustRegister(newDeltaMetricCollector(manager))
+	return manager, nil
 }
 
 // Run receives and saves target set updates and triggers the scraping loops reloading.

@@ -274,7 +274,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 			config_util.WithDialContextFunc(httpData.DialFunc),
 		},
 	}
-	scraper, err := NewManager(scrapeHttpOptions, args, alloyAppendable, o.Logger)
+	scraper, err := NewManager(scrapeHttpOptions, args, alloyAppendable, o.Logger, o.Registerer)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create scraper manager: %w", err)
 	}
