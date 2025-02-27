@@ -42,6 +42,7 @@ func TestVM_Stdlib(t *testing.T) {
 		{"encoding.from_URLbase64", `encoding.from_URLbase64("c3RyaW5nMTIzIT8kKiYoKSctPUB-")`, string(`string123!?$*&()'-=@~`)},
 		{"encoding.to_base64", `encoding.to_base64("string123!?$*&()'-=@~")`, string(`c3RyaW5nMTIzIT8kKiYoKSctPUB+`)},
 		{"encoding.to_URLbase64", `encoding.to_URLbase64("string123!?$*&()'-=@~")`, string(`c3RyaW5nMTIzIT8kKiYoKSctPUB-`)},
+		{"encoding.to_json", `encoding.to_json({"foo" = {"foo1" = sys.env("TEST_VAR")}, "key"=12})`, string(`{"foo":{"foo1":"Hello!"},"key":12}`)},
 
 		// Map tests
 		{
