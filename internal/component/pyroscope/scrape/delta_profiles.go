@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"sync"
+	"sync/atomic"
 
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/component/pyroscope/scrape/internal/fastdelta"
@@ -32,6 +33,7 @@ var deltaProfiles map[string][]fastdelta.ValueType = map[string][]fastdelta.Valu
 
 type DeltaProfiler interface {
 	Delta(p []byte, out io.Writer) error
+	DeltaMapSize() int
 }
 
 func NewDeltaAppender(appender pyroscope.Appender, labels labels.Labels) pyroscope.Appender {
@@ -58,6 +60,8 @@ type deltaAppender struct {
 
 	// true if we have seen at least one sample
 	initialized bool
+
+	lastDeltaMapSize atomic.Int64
 }
 
 type gzipBuffer struct {
@@ -120,6 +124,9 @@ func (d *deltaAppender) Append(ctx context.Context, lbs labels.Labels, samples [
 		if err != nil {
 			return err
 		}
+
+		d.lastDeltaMapSize.Store(int64(d.delta.DeltaMapSize()))
+
 		// The first sample should be skipped because we don't have a previous sample to compute delta with.
 		if !d.initialized {
 			d.initialized = true
@@ -173,4 +180,8 @@ func uncompressedSize(in []byte) int {
 		return -1
 	}
 	return int(binary.LittleEndian.Uint32(in[last-4 : last]))
+}
+
+func (d *deltaAppender) deltaMapSize() int {
+	return int(d.lastDeltaMapSize.Load())
 }
