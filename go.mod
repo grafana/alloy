@@ -575,6 +575,7 @@ require (
 	github.com/grafana/go-offsets-tracker v0.1.7 // indirect
 	github.com/grafana/gomemcache v0.0.0-20240229205252-cd6a66d6fb56 // indirect
 	github.com/grafana/jfr-parser v0.9.3 // indirect
+	github.com/grafana/jvmtools v0.0.3 // indirect
 	github.com/grobie/gomemcache v0.0.0-20230213081705-239240bbc445 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.26.0 // indirect
@@ -897,7 +898,7 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.1 // indirect
 )
 
-require github.com/grafana/beyla/v2 v2.0.1-0.20250227003200-4100d20b606e
+require github.com/grafana/beyla/v2 v2.0.1-0.20250228221137-faa829a3ecb3
 
 // NOTE: replace directives below must always be *temporary*.
 //

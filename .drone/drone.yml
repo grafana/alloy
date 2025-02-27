@@ -10,10 +10,17 @@ steps:
   - make lint
   image: grafana/alloy-build-image:v0.1.8
   name: Lint
+  volumes:
+  - name: docker
+    path: /var/run/docker.sock
 trigger:
   event:
   - pull_request
 type: docker
+volumes:
+- host:
+    path: /var/run/docker.sock
+  name: docker
 ---
 kind: pipeline
 name: Test
@@ -25,10 +32,17 @@ steps:
   - make GO_TAGS="nodocker" test
   image: grafana/alloy-build-image:v0.1.8
   name: Run Go tests
+  volumes:
+  - name: docker
+    path: /var/run/docker.sock
 trigger:
   event:
   - pull_request
 type: docker
+volumes:
+- host:
+    path: /var/run/docker.sock
+  name: docker
 ---
 kind: pipeline
 name: Test (Full)

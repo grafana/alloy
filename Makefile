@@ -178,6 +178,9 @@ else
 	$(GO_ENV) go build $(GO_FLAGS) -o $(ALLOY_BINARY) .
 endif
 
+alloy-for-image:
+	$(GO_ENV) go build $(GO_FLAGS) -o $(ALLOY_BINARY) .
+
 # alloy-service is not included in binaries since it's Windows-only.
 alloy-service:
 ifeq ($(USE_CONTAINER),1)
@@ -295,13 +298,14 @@ drone: generate-drone
 
 # Required by vendored Beyla to build eBPF artifacts prior to building the
 # Alloy binary
-# go mod vendor is require for GH workflows, as we cannot mount directories
+# go mod vendor is required for GH workflows, as we cannot mount directories
 # outside of the source dir inside the beyla ebpf builder image
+# GOHOSTOS and GOHOSTARCH are required to ensure that the tool runs on the
+# host context, rather than building target binaries when cross-compiling
 .PHONY: generate-beyla
 generate-beyla:
-	if [ -n "$$GITHUB_WORKSPACE" ]; then go mod vendor; fi;                                \
-	MODULE_ROOT=$$(go list -tags beyla_bpf -f '{{.Dir}}' github.com/grafana/beyla/v2/bpf); \
-	GOOS=$(GOHOSTOS) GOARCH=$(GOHOSTARCH) go generate $$MODULE_ROOT/build_ebpf.go
+	if [ -n "$$GITHUB_WORKSPACE" ] || [ -n "$$DRONE_SYSTEM_HOST" ]; then go mod vendor; fi; \
+	GOOS=$(GOHOSTOS) GOARCH=$(GOHOSTARCH) go run github.com/grafana/beyla/v2/cmd/beyla-genfiles@generate_tool
 
 .PHONY: clean
 clean: clean-dist clean-build-container-cache

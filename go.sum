@@ -1244,10 +1244,12 @@ github.com/gosnmp/gosnmp v1.38.0/go.mod h1:FE+PEZvKrFz9afP9ii1W3cprXuVZ17ypCcyyf
 github.com/gotestyourself/gotestyourself v2.2.0+incompatible/go.mod h1:zZKM6oeNM8k+FRljX1mnzVYeS8wiGgQyvST1/GafPbY=
 github.com/grafana/alloy-remote-config v0.0.10 h1:1Ge7lz2mjXI1rd6SmiZpFHyXeLehBuCi43+XTkdqgV4=
 github.com/grafana/alloy-remote-config v0.0.10/go.mod h1:kHE1usYo2WAVCikQkIXuoG1Clz8BSdiz3kF+DZSCQ4k=
-github.com/grafana/beyla/v2 v2.0.1-0.20250226224816-4aa2d9529c02 h1:XEzD03HJkN2HE1iKeHx91EQj0+H6pexxWd73Crxn8Vw=
-github.com/grafana/beyla/v2 v2.0.1-0.20250226224816-4aa2d9529c02/go.mod h1:MK9DL2NL9JoFKqs31CCoNToryajkUxSr7W0krbaIZhU=
-github.com/grafana/beyla/v2 v2.0.1-0.20250227003200-4100d20b606e h1:/9+0yWRlYQxNBMa24wEWTFv9mawllixMUdqbplqK1kU=
-github.com/grafana/beyla/v2 v2.0.1-0.20250227003200-4100d20b606e/go.mod h1:MK9DL2NL9JoFKqs31CCoNToryajkUxSr7W0krbaIZhU=
+github.com/grafana/beyla/v2 v2.0.1-0.20250228181844-8db4ab92d492 h1:4J1yKVr7Att990TfkUiVbaBQavJVxZmTM7ODJYumPPs=
+github.com/grafana/beyla/v2 v2.0.1-0.20250228181844-8db4ab92d492/go.mod h1:TBliYCPmQIPzUdW325AJDIXReB7kk13HtgUy9BidLIc=
+github.com/grafana/beyla/v2 v2.0.1-0.20250228191524-b9d12092ec96 h1:Klloqg3yBljXzaNYShgSh3EDpkmMQjbNlNMHafsWDoE=
+github.com/grafana/beyla/v2 v2.0.1-0.20250228191524-b9d12092ec96/go.mod h1:TBliYCPmQIPzUdW325AJDIXReB7kk13HtgUy9BidLIc=
+github.com/grafana/beyla/v2 v2.0.1-0.20250228221137-faa829a3ecb3 h1:aFPqI3R5Km/3cHCpeXECQth87hlCFKLJrruXFeeH2zg=
+github.com/grafana/beyla/v2 v2.0.1-0.20250228221137-faa829a3ecb3/go.mod h1:TBliYCPmQIPzUdW325AJDIXReB7kk13HtgUy9BidLIc=
 github.com/grafana/cadvisor v0.0.0-20240729082359-1f04a91701e2 h1:ju6EcY2aEobeBg185ETtFCKj5WzaQ48qfkbsSRRQrF4=
 github.com/grafana/cadvisor v0.0.0-20240729082359-1f04a91701e2/go.mod h1:8sLW/G7rcFe1CKMaA4pYT4mX3P1xQVGqM6luzEzx/2g=
 github.com/grafana/catchpoint-prometheus-exporter v0.0.0-20250218151502-6e97feaee761 h1:dPJOIEwtQ8uR3Qa79pb/lsSFJQ6j4P9vpCUQ4fKimG4=
@@ -1271,6 +1273,8 @@ github.com/grafana/jfr-parser/pprof v0.0.4 h1:QIpA0tTgG17m/l2B6X0tqf8dZu+AN/UY6B
 github.com/grafana/jfr-parser/pprof v0.0.4/go.mod h1:7aJk80IjMxc2iaUlliRUgA+bq2ZFTgEQfZgjioL4cvg=
 github.com/grafana/jsonparser v0.0.0-20240425183733-ea80629e1a32 h1:NznuPwItog+rwdVg8hAuGKP29ndRSzJAwhxKldkP8oQ=
 github.com/grafana/jsonparser v0.0.0-20240425183733-ea80629e1a32/go.mod h1:796sq+UcONnSlzA3RtlBZ+b/hrerkZXiEmO8oMjyRwY=
+github.com/grafana/jvmtools v0.0.3 h1:4uPquep5v+54Z04OQYOCldrv2SR42IRagHQXrNHsc4g=
+github.com/grafana/jvmtools v0.0.3/go.mod h1:b0tiPI5zNyIuPUz2DwvxUCI+5bFoG7A4i47F9sc8w98=
 github.com/grafana/kafka_exporter v0.0.0-20240409084445-5e3488ad9f9a h1:jqM4NNdx8LSquKo8bPx+XWn91S2b+sgNvEcFfSJQtHY=
 github.com/grafana/kafka_exporter v0.0.0-20240409084445-5e3488ad9f9a/go.mod h1:ZXGGyeTUMenf/H1CDBK9lv3azjswfa0nVzLoQAYmnDc=
 github.com/grafana/loki/pkg/push v0.0.0-20250218135905-f078e0e3f9b6 h1:s4B8mN2RvfKEd3TQRHRMQlfuUAyQ4if8UXnzysH4NSY=
