@@ -28,13 +28,6 @@ Unreleased
 
 - Update to Grafana Alloy v1.7.1. (@thampiotr)
 
-0.12.1 (2025-02-26)
-----------
-
-### Enhancements
-
-- Update to Grafana Alloy v1.7.1. (@thampiotr)
-
 0.12.0 (2025-02-24)
 ----------
 
