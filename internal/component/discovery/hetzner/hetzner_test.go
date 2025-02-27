@@ -28,7 +28,9 @@ func TestAlloyUnmarshal(t *testing.T) {
 	assert.Equal(t, 8080, args.Port)
 	assert.Equal(t, 10*time.Minute, args.RefreshInterval)
 	assert.Equal(t, "robot", args.Role)
-	assert.Equal(t, "foobar", args.HTTPClientConfig.HTTPHeaders.Headers["foo"][0])
+
+	header := args.HTTPClientConfig.HTTPHeaders.Headers["foo"][0]
+	assert.Equal(t, "foobar", string(header))
 }
 
 func TestValidate(t *testing.T) {
