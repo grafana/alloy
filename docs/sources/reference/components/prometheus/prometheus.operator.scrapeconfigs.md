@@ -3,6 +3,8 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus
 aliases:
   - ../prometheus.operator.scrapeconfigs/ # /docs/alloy/latest/reference/components/prometheus.operator.scrapeconfigs/
 description: Learn about prometheus.operator.scrapeconfigs
+labels:
+  stage: experimental
 title: prometheus.operator.scrapeconfigs
 ---
 
