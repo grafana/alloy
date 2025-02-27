@@ -10,16 +10,23 @@ internal API changes are not present.
 Unreleased
 ----------
 
+### Bug Fixes
+
+- Set resource namespace correctly (@shinebayar-g)
+
+0.12.2 (2025-02-27)
+----------
+
 ### Enhancements
 
 - Add support for adding livenessProbe to agent container (@slimes28)
 
-0.12.1 (2025-02-25)
+0.12.1 (2025-02-26)
 ----------
 
-### Bug Fixes
+### Enhancements
 
-- Set resource namespace correctly (@shinebayar-g)
+- Update to Grafana Alloy v1.7.1. (@thampiotr)
 
 0.12.1 (2025-02-26)
 ----------
