@@ -63,18 +63,33 @@ c3RyaW5nMTIzIT8kKiYoKSctPUB-
 
 ## encoding.to_json
 
-The `encoding.to_json` function encodes a map into a JSON.
-`encoding.to_json` fails if the map argument provided can't be parsed as json string.
+The `encoding.to_json` function encodes the alloy type into a JSON string.
+`encoding.to_json` fails if the input argument provided can't be parsed as JSON string.
 
-A common use case of `encoding.to_json` is to encode a config of component which is expected to be a JSON
-For example, `config` of a [`prometheus.exporter.blackbox`][]
+A common use case for `encoding.to_json` is to encode a configuration of component which is expected to be a JSON string
+For example, `config` param of [`prometheus.exporter.blackbox`][]
+
+{{< admonition type="note" >}}
+It produces inconsistent behaviour for capsules and secrets.
+{{< /admonition >}}
 
 ### Examples
 
 ```alloy
-> encoding.to_json({"key"={"key1"="val1"}, "key2"=2})
-{"foo":{"foo1":"Hello!"},"key":12}
+> encoding.to_json({"example"={"example1"="Hello!"}, "key"=12})
+{\"example\":{\"example1\":\"Hello!\"},\"key\":12}
 
+> encoding.to_json([0,1,2])
+"[0,1,2]"
+
+> encoding.to_json(15)
+"15"
+
+> encoding.to_json("Hello World")
+\"Hello World\"
+
+> encoding.to_json(null)
+"null"
 ```
 
 ## encoding.from_json
