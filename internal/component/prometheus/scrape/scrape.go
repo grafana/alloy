@@ -293,7 +293,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		prometheus.WithMetadataHook(func(globalRef storage.SeriesRef, l labels.Labels, m metadata.Metadata, next storage.Appender) (storage.SeriesRef, error) {
 			_, nextErr := next.UpdateMetadata(globalRef, l, m)
 			if c.debugDataPublisher.IsActive(componentID) {
-				c.debugDataPublisher.Publish(componentID, fmt.Sprintf("labels=%s, type=%s, unit=%s, help=%s", l, m.Type, m.Unit, m.Help))
+				c.debugDataPublisher.Publish(componentID, fmt.Sprintf("labels=%s, type=%q, unit=%q, help=%q", l, m.Type, m.Unit, m.Help))
 			}
 			return globalRef, nextErr
 		}),
