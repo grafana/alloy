@@ -145,6 +145,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/processor/spanprocessor v0.119.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/processor/tailsamplingprocessor v0.119.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor v0.119.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscloudwatchreceiver v0.119.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/datadogreceiver v0.119.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filelogreceiver v0.119.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filestatsreceiver v0.119.0

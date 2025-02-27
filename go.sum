@@ -2109,6 +2109,8 @@ github.com/open-telemetry/opentelemetry-collector-contrib/processor/tailsampling
 github.com/open-telemetry/opentelemetry-collector-contrib/processor/tailsamplingprocessor v0.119.0/go.mod h1:PUPBqK3YG1Tqkvf520K8zMgvLBrJHtYaRMrb+E72lj0=
 github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor v0.119.0 h1:8HlxU1CW9qRYBSp5LdJn904NhdXAuKsklQ8PGTbdiw8=
 github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor v0.119.0/go.mod h1:yRAFW+mmlDKUXAZ77h+EQ4s7z/RZaGK/YClpieva5aY=
+github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscloudwatchreceiver v0.119.0 h1:MwNJDZaVsT0Pmhr9qFRjweHbwC1NNwcwy2YSv9lEtQA=
+github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscloudwatchreceiver v0.119.0/go.mod h1:Pj3JHOuYa8IJkijnbqWhhBuWwD9kqBV4bVpxZk0siWU=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/datadogreceiver v0.119.0 h1:GyzYSarVdlx1RECWAV62XSmJdVGFOcXgXjnxQUzAn+8=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/datadogreceiver v0.119.0/go.mod h1:t5uzI1bkuKIHKaRFgH3vvSpOfrkWWJWgf8GPeh3OMCw=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/dockerstatsreceiver v0.119.0 h1:6T6uajXqfeB61x0IDqAFBCtRu9C9Usk+iy2NsdXOZlI=
