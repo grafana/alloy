@@ -271,7 +271,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		prometheus.WithAppendHook(func(globalRef storage.SeriesRef, l labels.Labels, t int64, v float64, next storage.Appender) (storage.SeriesRef, error) {
 			_, nextErr := next.Append(globalRef, l, t, v)
 			if c.debugDataPublisher.IsActive(componentID) {
-				c.debugDataPublisher.Publish(componentID, fmt.Sprintf("ts=%d, labels=%s, value=%f", t, l, v))
+				c.debugDataPublisher.Publish(componentID, fmt.Sprintf("ts=%d, type=histogram, labels=%s, value=%f", t, l, v))
 			}
 			return globalRef, nextErr
 		}),
