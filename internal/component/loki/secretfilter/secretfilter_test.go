@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -16,6 +17,8 @@ import (
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/jaswdr/faker/v2"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 )
@@ -615,4 +618,292 @@ type noopLogger struct{}
 
 func (d *noopLogger) Log(_ ...interface{}) error {
 	return nil
+}
+
+// TestMetrics verifies that the metrics for the secretfilter component are
+// correctly registered and incremented.
+func TestMetrics(t *testing.T) {
+	tests := []struct {
+		name                        string
+		inputLog                    string
+		expectedRedactedTotal       int
+		expectedRedactedByRule      map[string]int
+		expectedAllowlistedBySource map[string]int
+		allowlist                   []string
+	}{
+		{
+			name:                  "No secrets",
+			inputLog:              testLogs["no_secret"].log,
+			expectedRedactedTotal: 0,
+		},
+		{
+			name:                  "Single Grafana API key secret",
+			inputLog:              testLogs["simple_secret"].log,
+			expectedRedactedTotal: 1,
+			expectedRedactedByRule: map[string]int{
+				"grafana-api-key": 1,
+			},
+		},
+		{
+			name:                  "Multiple secrets",
+			inputLog:              testLogs["multiple_secrets"].log,
+			expectedRedactedTotal: 2,
+			expectedRedactedByRule: map[string]int{
+				"grafana-api-key": 1,
+				"gcp-api-key":     1,
+			},
+		},
+		{
+			name:                  "Secret in allowlist",
+			inputLog:              testLogs["simple_secret"].log,
+			expectedRedactedTotal: 0,
+			expectedAllowlistedBySource: map[string]int{
+				"alloy config": 1,
+			},
+			allowlist: []string{fakeSecrets["grafana-api-key"].value},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Create a new registry to collect metrics
+			registry := prometheus.NewRegistry()
+
+			// Initialize Arguments
+			args := Arguments{
+				ForwardTo: []loki.LogsReceiver{loki.NewLogsReceiver()},
+			}
+
+			// Set allowlist if provided
+			if len(tc.allowlist) > 0 {
+				for i, val := range tc.allowlist {
+					// Convert the raw secret value to a valid regex pattern
+					// by escaping special characters
+					tc.allowlist[i] = regexp.QuoteMeta(val)
+				}
+				args.AllowList = tc.allowlist
+			}
+
+			// Create options with the test registry
+			opts := component.Options{
+				Logger:         util.TestLogger(t),
+				OnStateChange:  func(e component.Exports) {},
+				GetServiceData: getServiceData,
+				Registerer:     registry,
+			}
+
+			// Create component
+			c, err := New(opts, args)
+			require.NoError(t, err)
+
+			// Create a test entry with labels
+			labels := model.LabelSet{
+				"job":      "test-job",
+				"instance": "test-instance",
+			}
+			entry := loki.Entry{
+				Labels: labels,
+				Entry: logproto.Entry{
+					Timestamp: time.Now(),
+					Line:      tc.inputLog,
+				},
+			}
+
+			// Process the entry
+			c.processEntry(entry)
+
+			// Verify the metrics
+
+			// Check secretsRedactedTotal
+			if tc.expectedRedactedTotal > 0 {
+				require.Equal(t, float64(tc.expectedRedactedTotal),
+					testutil.ToFloat64(c.metrics.secretsRedactedTotal),
+					"secretsRedactedTotal metric value is incorrect")
+			}
+
+			// Check secretsRedactedByRule - combine all metrics in a single string
+			if len(tc.expectedRedactedByRule) > 0 {
+				var metricStrings strings.Builder
+				metricStrings.WriteString("# HELP loki_secretfilter_secrets_redacted_by_rule_total Number of secrets redacted, partitioned by rule name.\n")
+				metricStrings.WriteString("# TYPE loki_secretfilter_secrets_redacted_by_rule_total counter\n")
+
+				// Add each rule metric
+				for ruleName, expectedCount := range tc.expectedRedactedByRule {
+					metric := fmt.Sprintf(`loki_secretfilter_secrets_redacted_by_rule_total{rule="%s"} %d`,
+						ruleName, expectedCount)
+					metricStrings.WriteString(metric + "\n")
+				}
+
+				// Compare all the metrics at once
+				require.NoError(t,
+					testutil.GatherAndCompare(registry, strings.NewReader(metricStrings.String()),
+						"loki_secretfilter_secrets_redacted_by_rule_total"))
+			}
+
+			// Check secretsAllowlistedTotal
+			for source, expectedCount := range tc.expectedAllowlistedBySource {
+				metric := fmt.Sprintf(`loki_secretfilter_secrets_allowlisted_total{source="%s"}`, source)
+				require.NoError(t,
+					testutil.GatherAndCompare(registry, strings.NewReader(fmt.Sprintf(`
+						# HELP loki_secretfilter_secrets_allowlisted_total Number of secrets that matched a rule but were in an allowlist, partitioned by source.
+						# TYPE loki_secretfilter_secrets_allowlisted_total counter
+						%s %d
+					`, metric, expectedCount)),
+						"loki_secretfilter_secrets_allowlisted_total"))
+			}
+
+			// Check secretsRedactedByLabel when redactions occurred
+			if tc.expectedRedactedTotal > 0 {
+				// Build all expected label metrics into a single string
+				var metricStrings strings.Builder
+				metricStrings.WriteString("# HELP loki_secretfilter_secrets_redacted_by_label_total Number of secrets redacted, partitioned by label name and value.\n")
+				metricStrings.WriteString("# TYPE loki_secretfilter_secrets_redacted_by_label_total counter\n")
+
+				// Add each label metric
+				for name, value := range labels {
+					metric := fmt.Sprintf(`loki_secretfilter_secrets_redacted_by_label_total{label_name="%s",label_value="%s"} %d`,
+						name, value, tc.expectedRedactedTotal)
+					metricStrings.WriteString(metric + "\n")
+				}
+
+				// Compare all the metrics at once
+				require.NoError(t,
+					testutil.GatherAndCompare(registry, strings.NewReader(metricStrings.String()),
+						"loki_secretfilter_secrets_redacted_by_label_total"))
+			}
+		})
+	}
+}
+
+// Test to verify that the component registers its metrics with the registry
+func TestMetricsRegistration(t *testing.T) {
+	registry := prometheus.NewRegistry()
+
+	opts := component.Options{
+		Logger:         util.TestLogger(t),
+		OnStateChange:  func(e component.Exports) {},
+		GetServiceData: getServiceData,
+		Registerer:     registry,
+		ID:             "test_secretfilter",
+	}
+
+	// Create component with empty arguments
+	args := Arguments{
+		ForwardTo: []loki.LogsReceiver{loki.NewLogsReceiver()},
+	}
+
+	c, err := New(opts, args)
+	require.NoError(t, err)
+
+	// Increment all metrics to ensure they will be gathered
+	c.metrics.secretsRedactedTotal.Inc()
+	c.metrics.secretsRedactedByRule.WithLabelValues("test_rule").Inc()
+	c.metrics.secretsRedactedByLabel.WithLabelValues("test_label", "test_value").Inc()
+	c.metrics.secretsAllowlistedTotal.WithLabelValues("test_source").Inc()
+
+	// Check that the metrics are registered
+	metricFamilies, err := registry.Gather()
+	require.NoError(t, err)
+
+	// Create a map of expected metrics
+	expectedMetrics := map[string]bool{
+		"loki_secretfilter_secrets_redacted_total":          false,
+		"loki_secretfilter_secrets_redacted_by_rule_total":  false,
+		"loki_secretfilter_secrets_redacted_by_label_total": false,
+		"loki_secretfilter_secrets_allowlisted_total":       false,
+	}
+
+	// Check each metric family
+	for _, metricFamily := range metricFamilies {
+		name := metricFamily.GetName()
+		if _, exists := expectedMetrics[name]; exists {
+			expectedMetrics[name] = true
+		}
+	}
+
+	// Verify all expected metrics were found
+	for metric, found := range expectedMetrics {
+		require.True(t, found, "Expected metric %s to be registered", metric)
+	}
+}
+
+// Test metrics for secrets across multiple log lines
+func TestMetricsMultipleEntries(t *testing.T) {
+	registry := prometheus.NewRegistry()
+
+	args := Arguments{
+		ForwardTo: []loki.LogsReceiver{loki.NewLogsReceiver()},
+	}
+
+	opts := component.Options{
+		Logger:         util.TestLogger(t),
+		OnStateChange:  func(e component.Exports) {},
+		GetServiceData: getServiceData,
+		Registerer:     registry,
+	}
+
+	c, err := New(opts, args)
+	require.NoError(t, err)
+
+	// Process multiple entries with secrets
+	entries := []loki.Entry{
+		{
+			Labels: model.LabelSet{"job": "test1"},
+			Entry: logproto.Entry{
+				Timestamp: time.Now(),
+				Line:      testLogs["simple_secret"].log,
+			},
+		},
+		{
+			Labels: model.LabelSet{"job": "test2"},
+			Entry: logproto.Entry{
+				Timestamp: time.Now(),
+				Line:      testLogs["simple_secret_gcp"].log,
+			},
+		},
+		{
+			Labels: model.LabelSet{"job": "test3"},
+			Entry: logproto.Entry{
+				Timestamp: time.Now(),
+				Line:      testLogs["no_secret"].log,
+			},
+		},
+		{
+			Labels: model.LabelSet{"job": "test4"},
+			Entry: logproto.Entry{
+				Timestamp: time.Now(),
+				Line:      testLogs["simple_secret"].log,
+			},
+		},
+	}
+
+	for _, entry := range entries {
+		c.processEntry(entry)
+	}
+
+	// Verify the metrics
+	// We should have 3 redacted secrets (2 grafana-api-key and 1 gcp-api-key)
+	require.Equal(t, float64(3), testutil.ToFloat64(c.metrics.secretsRedactedTotal),
+		"secretsRedactedTotal should count all secrets across multiple entries")
+
+	// Check secretsRedactedByRule for each rule type
+	require.NoError(t,
+		testutil.GatherAndCompare(registry, strings.NewReader(`
+			# HELP loki_secretfilter_secrets_redacted_by_rule_total Number of secrets redacted, partitioned by rule name.
+			# TYPE loki_secretfilter_secrets_redacted_by_rule_total counter
+			loki_secretfilter_secrets_redacted_by_rule_total{rule="grafana-api-key"} 2
+			loki_secretfilter_secrets_redacted_by_rule_total{rule="gcp-api-key"} 1
+		`),
+			"loki_secretfilter_secrets_redacted_by_rule_total"))
+
+	// Check secretsRedactedByLabel values
+	require.NoError(t,
+		testutil.GatherAndCompare(registry, strings.NewReader(`
+			# HELP loki_secretfilter_secrets_redacted_by_label_total Number of secrets redacted, partitioned by label name and value.
+			# TYPE loki_secretfilter_secrets_redacted_by_label_total counter
+			loki_secretfilter_secrets_redacted_by_label_total{label_name="job",label_value="test1"} 1
+			loki_secretfilter_secrets_redacted_by_label_total{label_name="job",label_value="test2"} 1
+			loki_secretfilter_secrets_redacted_by_label_total{label_name="job",label_value="test4"} 1
+		`),
+			"loki_secretfilter_secrets_redacted_by_label_total"))
 }

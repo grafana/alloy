@@ -15,6 +15,8 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service/livedebugging"
+	"github.com/grafana/alloy/internal/util"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 //go:embed gitleaks.toml
@@ -44,6 +46,13 @@ func init() {
 		},
 	})
 }
+
+// Metrics exposed by this component:
+//
+// - loki_secretfilter_secrets_redacted_total: Total number of secrets that have been redacted.
+// - loki_secretfilter_secrets_redacted_by_rule_total: Number of secrets redacted, partitioned by rule name.
+// - loki_secretfilter_secrets_redacted_by_label_total: Number of secrets redacted, partitioned by label name and value.
+// - loki_secretfilter_secrets_allowlisted_total: Number of secrets that matched a rule but were in an allowlist, partitioned by source.
 
 // Arguments holds values which are used to configure the secretfilter
 // component.
@@ -86,6 +95,7 @@ type Component struct {
 	Rules     []Rule
 	AllowList []AllowRule
 
+	metrics            *metrics
 	debugDataPublisher livedebugging.DebugDataPublisher
 }
 
@@ -115,6 +125,59 @@ type GitLeaksConfig struct {
 	}
 }
 
+// metrics holds the set of metrics for secrets that are being redacted.
+type metrics struct {
+	// Total number of secrets redacted
+	secretsRedactedTotal prometheus.Counter
+
+	// Number of secrets redacted by rule type
+	secretsRedactedByRule *prometheus.CounterVec
+
+	// Number of secrets redacted by label value (captures up to 10 most common labels)
+	secretsRedactedByLabel *prometheus.CounterVec
+
+	// Number of secrets that matched but were in allowlist
+	secretsAllowlistedTotal *prometheus.CounterVec
+}
+
+// newMetrics creates a new set of metrics for the secretfilter component.
+func newMetrics(reg prometheus.Registerer) *metrics {
+	var m metrics
+
+	m.secretsRedactedTotal = prometheus.NewCounter(prometheus.CounterOpts{
+		Subsystem: "loki_secretfilter",
+		Name:      "secrets_redacted_total",
+		Help:      "Total number of secrets that have been redacted.",
+	})
+
+	m.secretsRedactedByRule = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Subsystem: "loki_secretfilter",
+		Name:      "secrets_redacted_by_rule_total",
+		Help:      "Number of secrets redacted, partitioned by rule name.",
+	}, []string{"rule"})
+
+	m.secretsRedactedByLabel = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Subsystem: "loki_secretfilter",
+		Name:      "secrets_redacted_by_label_total",
+		Help:      "Number of secrets redacted, partitioned by label name and value.",
+	}, []string{"label_name", "label_value"})
+
+	m.secretsAllowlistedTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Subsystem: "loki_secretfilter",
+		Name:      "secrets_allowlisted_total",
+		Help:      "Number of secrets that matched a rule but were in an allowlist, partitioned by source.",
+	}, []string{"source"})
+
+	if reg != nil {
+		m.secretsRedactedTotal = util.MustRegisterOrGet(reg, m.secretsRedactedTotal).(prometheus.Counter)
+		m.secretsRedactedByRule = util.MustRegisterOrGet(reg, m.secretsRedactedByRule).(*prometheus.CounterVec)
+		m.secretsRedactedByLabel = util.MustRegisterOrGet(reg, m.secretsRedactedByLabel).(*prometheus.CounterVec)
+		m.secretsAllowlistedTotal = util.MustRegisterOrGet(reg, m.secretsAllowlistedTotal).(*prometheus.CounterVec)
+	}
+
+	return &m
+}
+
 // New creates a new loki.secretfilter component.
 func New(o component.Options, args Arguments) (*Component, error) {
 	debugDataPublisher, err := o.GetServiceData(livedebugging.ServiceName)
@@ -125,6 +188,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	c := &Component{
 		opts:               o,
 		receiver:           loki.NewLogsReceiver(),
+		metrics:            newMetrics(o.Registerer),
 		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
 	}
 
@@ -213,11 +277,32 @@ func (c *Component) processEntry(entry loki.Entry) loki.Entry {
 			// If allowed, skip redaction
 			if allowRule != nil {
 				level.Debug(c.opts.Logger).Log("msg", "secret in allowlist", "rule", r.name, "source", allowRule.Source)
+				// Record metric for secrets that were not redacted due to allowlist
+				c.metrics.secretsAllowlistedTotal.WithLabelValues(allowRule.Source).Inc()
 				continue
 			}
 
-			// Redact the secret
+			// Redact the secret (redactLine replaces ALL instances of the secret in the line)
 			entry.Line = c.redactLine(entry.Line, secret, r.name)
+
+			// Record metrics for the redacted secret
+			c.metrics.secretsRedactedTotal.Inc()
+			c.metrics.secretsRedactedByRule.WithLabelValues(r.name).Inc()
+
+			// Record metrics for labels
+			// We limit to avoid potential high cardinality issues
+			// Only track labels if they exist
+			if len(entry.Labels) > 0 {
+				// Track metrics for up to 5 labels to avoid excessive cardinality
+				count := 0
+				for name, value := range entry.Labels {
+					if count >= 5 {
+						break
+					}
+					c.metrics.secretsRedactedByLabel.WithLabelValues(string(name), string(value)).Inc()
+					count++
+				}
+			}
 		}
 	}
 
