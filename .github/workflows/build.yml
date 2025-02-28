@@ -15,45 +15,30 @@ jobs:
           - os: linux
             arch: amd64
             go_tags: "builtinassets promtail_journal_enabled"
-            runs_on: ubuntu-latest
           - os: linux
             arch: arm64
             go_tags: "builtinassets promtail_journal_enabled"
-            runs_on: ubuntu-latest
           - os: linux
             arch: ppc64le
             go_tags: "builtinassets promtail_journal_enabled"
-            runs_on: ubuntu-latest
           - os: linux
             arch: s390x
             go_tags: "builtinassets promtail_journal_enabled"
-            runs_on: ubuntu-latest
           - os: linux
             arch: amd64
             go_tags: "builtinassets promtail_journal_enabled"
-            runs_on: ubuntu-latest
             go_experiment: "GOEXPERIMENT=boringcrypto"
             suffix: "-boringcrypto"
           - os: linux
             arch: arm64
             go_tags: "builtinassets promtail_journal_enabled"
-            runs_on: ubuntu-latest
             go_experiment: "GOEXPERIMENT=boringcrypto"
             suffix: "-boringcrypto"
-          - os: darwin
-            arch: amd64
-            go_tags: "builtinassets"
-            runs_on: macos-14-large
-          - os: darwin
-            arch: arm64
-            go_tags: "builtinassets"
-            runs_on: macos-14-xlarge
           - os: freebsd
             arch: amd64
             go_tags: "builtinassets"
-            runs_on: ubuntu-latest
     name: Build
-    runs-on: ${{ matrix.build.runs_on }}
+    runs-on: ubuntu-latest
     container: grafana/alloy-build-image:v0.1.8${{ matrix.build.suffix }}
     steps:
     - name: Checkout code
@@ -71,6 +56,28 @@ jobs:
         cache: false
     - run: make generate-ui
     - run: GO_TAGS="${{ matrix.build.go_tags}}" GOOS=${{ matrix.build.os }} GOARCH=${{ matrix.build.arch }} GOARM= $${{ matrix.build.go_experiment}} make alloy
+
+  build_mac_intel:
+    strategy:
+      matrix:
+        build:
+          - arch: amd64
+            runs_on: macos-14-large
+          - arch: arm64
+            runs_on: macos-14-xlarge
+    name: Build on MacOS
+    runs-on: ${{ matrix.build.runs_on }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: go.mod
+        # TODO: Try enabling caching later. It might use up too much disk space on runners so needs extra testing.
+        cache: false
+    - run: make generate-ui
+    - run: GO_TAGS="builtinassets" GOOS=darwin GOARCH=${{ matrix.build.arch}} GOARM= make alloy
 
   build_windows:
     name: Build on Windows (AMD64)
