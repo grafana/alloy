@@ -86,8 +86,8 @@ type KubernetesService struct {
 }
 
 type Discovery struct {
-	Services                        Services `alloy:"services,block"`
-	Survey                          Services `alloy:"survey,block"`
+	Services                        Services `alloy:"services,block,optional"`
+	Survey                          Services `alloy:"survey,block,optional"`
 	ExcludeServices                 Services `alloy:"exclude_services,block,optional"`
 	ExcludeSurvey                   Services `alloy:"exclude_survey,block,optional"`
 	DefaultExcludeServices          Services `alloy:"default_exclude_services,block,optional"`
