@@ -31,6 +31,10 @@ Main (unreleased)
 
 - Added OpenTelemetry logs and metrics support to Alloy mixin's dashboards and alerts. (@thampiotr)
 
+### Other changes
+
+- Use Go 1.24.0 for builds. (@dehaansa)
+
 v1.7.1
 -----------------
 
