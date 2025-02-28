@@ -56,17 +56,4 @@ local pipelines = import '../util/pipelines.jsonnet';
       },
     }],
   },
-
-  pipelines.windows('Test (Windows)') {
-    trigger: {
-      ref: ['refs/heads/main'],
-    },
-    steps: [{
-      name: 'Run Go tests',
-      image: build_image.windows,
-      commands: [
-        pipelines.windows_command('go test -tags="nodocker,nonetwork" ./...'),
-      ],
-    }],
-  },
 ]

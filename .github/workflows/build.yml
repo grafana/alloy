@@ -11,7 +11,7 @@ jobs:
   build_linux:
     name: Build on Linux
     runs-on: ubuntu-latest
-    container: grafana/alloy-build-image:v0.1.12
+    container: grafana/alloy-build-image:v0.1.14
     strategy:
       matrix:
         os: [linux]
@@ -36,7 +36,7 @@ jobs:
   build_linux_boringcrypto:
     name: Build on Linux (boringcrypto)
     runs-on: ubuntu-latest
-    container: grafana/alloy-build-image:v0.1.12-boringcrypto
+    container: grafana/alloy-build-image:v0.1.14-boringcrypto
     strategy:
       matrix:
         os: [linux]
@@ -109,7 +109,7 @@ jobs:
   build_freebsd:
     name: Build on FreeBSD (AMD64)
     runs-on: ubuntu-latest
-    container: grafana/alloy-build-image:v0.1.12
+    container: grafana/alloy-build-image:v0.1.14
     steps:
     - name: Checkout code
       uses: actions/checkout@v4

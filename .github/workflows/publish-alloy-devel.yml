@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - main
+  pull_request:
 
 permissions:
   contents: read
@@ -11,7 +12,7 @@ permissions:
 jobs:
   publish_linux_container:
     name: Publish Linux alloy-devel container
-    container: grafana/alloy-build-image:v0.1.12
+    container: grafana/alloy-build-image:v0.1.14
     runs-on:
       labels: github-hosted-ubuntu-x64-large
     steps:
@@ -45,7 +46,7 @@ jobs:
 
   publish_linux_boringcrypto_container:
     name: Publish Linux alloy-devel-boringcrypto container
-    container: grafana/alloy-build-image:v0.1.12
+    container: grafana/alloy-build-image:v0.1.14
     runs-on:
       labels: github-hosted-ubuntu-x64-large
     steps:
@@ -77,12 +78,35 @@ jobs:
        ./tools/ci/docker-containers alloy-devel-boringcrypto
        docker buildx rm multiarch-alloy-alloy-devel-boringcrypto-${GITHUB_SHA}
 
+  publish_windows_container:
+    name: Publish Windows alloy-devel container
+    container: grafana/alloy-build-image:v0.1.14
+    runs-on: windows-latest
+    steps:
+    # This step needs to run before "Checkout code".
+    # That's because it generates a new file.
+    # We don't want this file to end up in the repo directory.
+    # Then "tools/image-tag" would get confused because "git status" no longer reports a clean repo.
+    - name: Login to DockerHub (from vault)
+      uses: grafana/shared-workflows/actions/dockerhub-login@dockerhub-login-v1.0.1
+
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: go.mod
+        cache: false
+    - run: ./tools/ci/docker-containers-windows alloy-devel
+
   update_deployment_tools:
     name: Update deployment_tools
     runs-on: ubuntu-latest
     needs:
     - publish_linux_container
     - publish_linux_boringcrypto_container
+    - publish_windows_container
     steps:
 
     - name: Get Vault secrets
@@ -135,10 +159,12 @@ jobs:
         }
         EOF
 
-        docker run --rm \
-          -e GITHUB_APP_ID \
-          -e GITHUB_APP_INSTALLATION_ID \
-          -e GITHUB_APP_PRIVATE_KEY \
-          -e CONFIG_JSON="$(cat config.json)" \
-          -v ./.image-tag:/app/.image-tag \
-          us-docker.pkg.dev/grafanalabs-global/docker-deployment-tools-prod/updater |& tee updater-output.log
+        echo "The config.json is: $(cat config.json)"
+
+        # docker run --rm \
+        #   -e GITHUB_APP_ID \
+        #   -e GITHUB_APP_INSTALLATION_ID \
+        #   -e GITHUB_APP_PRIVATE_KEY \
+        #   -e CONFIG_JSON="$(cat config.json)" \
+        #   -v ./.image-tag:/app/.image-tag \
+        #   us-docker.pkg.dev/grafanalabs-global/docker-deployment-tools-prod/updater |& tee updater-output.log

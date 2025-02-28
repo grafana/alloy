@@ -5,9 +5,8 @@ Grafana Alloy.
 
 There are the following images:
 
-* `grafana/alloy-build-image:vX.Y.Z` (for building Linux containers)
+* `grafana/alloy-build-image:vX.Y.Z` (for building Linux & Windows containers)
 * `grafana/alloy-build-image:vX.Y.Z-boringcrypto` (for building Linux containers with boringcrypto)
-* `grafana/alloy-build-image:vX.Y.Z-windows` (for building Windows containers)
 
 (Where `X.Y.Z` is replaced with some semantic version, like 0.1.0).
 
