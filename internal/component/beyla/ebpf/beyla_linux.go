@@ -139,18 +139,21 @@ func (args Discovery) Convert() (services.DiscoveryConfig, error) {
 		return d, err
 	}
 	d.Survey = survey
-	excludeSurvey, err := args.ExcludeSurvey.Convert()
-	if err != nil {
-		return d, err
-	}
-	d.ExcludeSurvey = excludeSurvey
-	if args.DefaultExcludeSurvey != nil {
-		defaultExcludeSrv, err := args.DefaultExcludeSurvey.Convert()
-		if err != nil {
-			return d, err
-		}
-		d.DefaultExcludeSurvey = defaultExcludeSrv
-	}
+
+	// TODO(@tpachalis) The exclude options are not yet wired in Beyla for Survey, commenting them out.
+	//
+	// excludeSurvey, err := args.ExcludeSurvey.Convert()
+	// if err != nil {
+	// 	return d, err
+	// }
+	// d.ExcludeSurvey = excludeSurvey
+	// if args.DefaultExcludeSurvey != nil {
+	// 	defaultExcludeSrv, err := args.DefaultExcludeSurvey.Convert()
+	// 	if err != nil {
+	// 		return d, err
+	// 	}
+	// 	d.DefaultExcludeSurvey = defaultExcludeSrv
+	// }
 
 	// Common fields
 	d.SkipGoSpecificTracers = args.SkipGoSpecificTracers
