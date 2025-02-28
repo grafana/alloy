@@ -64,12 +64,14 @@ type Selection struct {
 
 type Services []Service
 
+// NOTE(@tpaschalis) Used for both Services and Survey
 type Service struct {
-	Name       string            `alloy:"name,attr,optional"`
-	Namespace  string            `alloy:"namespace,attr,optional"`
-	OpenPorts  string            `alloy:"open_ports,attr,optional"`
-	Path       string            `alloy:"exe_path,attr,optional"`
-	Kubernetes KubernetesService `alloy:"kubernetes,block,optional"`
+	Name           string            `alloy:"name,attr,optional"`
+	Namespace      string            `alloy:"namespace,attr,optional"`
+	OpenPorts      string            `alloy:"open_ports,attr,optional"`
+	Path           string            `alloy:"exe_path,attr,optional"`
+	ContainersOnly bool              `alloy:"containers_only,attr,optional"`
+	Kubernetes     KubernetesService `alloy:"kubernetes,block,optional"`
 }
 
 type KubernetesService struct {
@@ -85,8 +87,11 @@ type KubernetesService struct {
 
 type Discovery struct {
 	Services                        Services `alloy:"services,block"`
+	Survey                          Services `alloy:"survey,block"`
 	ExcludeServices                 Services `alloy:"exclude_services,block,optional"`
+	ExcludeSurvey                   Services `alloy:"exclude_survey,block,optional"`
 	DefaultExcludeServices          Services `alloy:"default_exclude_services,block,optional"`
+	DefaultExcludeSurvey            Services `alloy:"default_exclude_survey,block,optional"`
 	SkipGoSpecificTracers           bool     `alloy:"skip_go_specific_tracers,attr,optional"`
 	ExcludeOTelInstrumentedServices bool     `alloy:"exclude_otel_instrumented_services,attr,optional"`
 }
