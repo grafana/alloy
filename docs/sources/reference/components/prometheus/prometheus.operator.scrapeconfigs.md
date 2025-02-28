@@ -16,7 +16,7 @@ title: prometheus.operator.scrapeconfigs
 This component performs two main functions:
 
 1. Discover ScrapeConfig resources from your Kubernetes cluster.
-2. Scrape metrics from the targets, and forward them to a receiver.
+1. Scrape metrics from the targets, and forward them to a receiver.
 
 The default configuration assumes {{< param "PRODUCT_NAME" >}} is running inside a Kubernetes cluster, and uses the in-cluster configuration to access the Kubernetes API.
 You can run {{< param "PRODUCT_NAME" >}} from outside the cluster by supplying connection info in the `client` block, but network level access to `scrapeconfigs` is required to scrape metrics from them.
