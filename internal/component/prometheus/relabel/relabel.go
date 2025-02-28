@@ -279,7 +279,7 @@ func (c *Component) relabel(val float64, lbls labels.Labels) labels.Labels {
 	c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
 		componentID,
 		livedebugging.PrometheusMetric,
-		uint64(relabelled.Len()),
+		1,
 		func() string {
 			return fmt.Sprintf("%s => %s", lbls.String(), relabelled.String())
 		},
