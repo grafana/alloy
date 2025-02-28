@@ -52,6 +52,7 @@ jobs:
       with:
         platforms: linux/amd64,linux/arm64
         context: ./tools/build-image
+        push: true
         tags: grafana/alloy-build-image:${{ steps.get_image_version.outputs.image_tag }}
         build-args: |
           GO_RUNTIME=${{ matrix.build.runtime }}
