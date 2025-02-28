@@ -53,7 +53,7 @@ jobs:
             go_tags: "builtinassets"
             runs_on: ubuntu-latest
     name: Build
-    runs-on: ${{ matrix.build.runs-on }}
+    runs-on: ${{ matrix.build.runs_on }}
     container: grafana/alloy-build-image:v0.1.8${{ matrix.build.suffix }}
     steps:
     - name: Checkout code
