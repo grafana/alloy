@@ -37,6 +37,7 @@ import (
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/runtime/tracing"
 	"github.com/grafana/alloy/internal/service"
+	"github.com/grafana/alloy/internal/service/diagnosis"
 	httpservice "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/service/livedebugging"
@@ -344,6 +345,11 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 	labelService := labelstore.New(l, reg)
 	alloyseed.Init(fr.storagePath, l)
 
+	diagnosisService := diagnosis.New(diagnosis.Options{
+		Log:     log.With(l, "service", "diagnosis"),
+		Metrics: reg,
+	})
+
 	f := alloy_runtime.New(alloy_runtime.Options{
 		Logger:               l,
 		Tracer:               t,
@@ -359,6 +365,7 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 			otelService,
 			remoteCfgService,
 			uiService,
+			diagnosisService,
 		},
 	})
 
