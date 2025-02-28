@@ -113,6 +113,8 @@ func (args Selections) Convert() attributes.Selection {
 
 func (args Discovery) Convert() (services.DiscoveryConfig, error) {
 	d := beyla.DefaultConfig.Discovery
+
+	// Services
 	srv, err := args.Services.Convert()
 	if err != nil {
 		return d, err
@@ -130,10 +132,32 @@ func (args Discovery) Convert() (services.DiscoveryConfig, error) {
 		}
 		d.DefaultExcludeServices = defaultExcludeSrv
 	}
+
+	// Survey
+	survey, err := args.Survey.Convert()
+	if err != nil {
+		return d, err
+	}
+	d.Survey = survey
+	excludeSurvey, err := args.ExcludeSurvey.Convert()
+	if err != nil {
+		return d, err
+	}
+	d.ExcludeSurvey = excludeSurvey
+	if args.DefaultExcludeSurvey != nil {
+		defaultExcludeSrv, err := args.DefaultExcludeSurvey.Convert()
+		if err != nil {
+			return d, err
+		}
+		d.DefaultExcludeSurvey = defaultExcludeSrv
+	}
+
+	// Common fields
 	d.SkipGoSpecificTracers = args.SkipGoSpecificTracers
 	if args.ExcludeOTelInstrumentedServices {
 		d.ExcludeOTelInstrumentedServices = args.ExcludeOTelInstrumentedServices
 	}
+
 	return d, nil
 }
 
@@ -162,12 +186,13 @@ func (args Services) Convert() (services.DefinitionCriteria, error) {
 		}
 
 		attrs = append(attrs, services.Attributes{
-			Name:      s.Name,
-			Namespace: s.Namespace,
-			OpenPorts: ports,
-			Path:      paths,
-			Metadata:  kubernetes,
-			PodLabels: podLabels,
+			Name:           s.Name,
+			Namespace:      s.Namespace,
+			OpenPorts:      ports,
+			Path:           paths,
+			Metadata:       kubernetes,
+			PodLabels:      podLabels,
+			ContainersOnly: s.ContainersOnly,
 		})
 	}
 	return attrs, nil
