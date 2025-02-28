@@ -152,6 +152,8 @@ serviceAccount:
   # -- The name of the existing service account to use when
   # serviceAccount.create is false.
   name: null
+  # Whether pods running as this service account should have an API token automatically mounted.
+  automountServiceAccountToken: true
 
 # Options for the extra controller used for config reloading.
 configReloader:
