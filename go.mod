@@ -75,7 +75,7 @@ require (
 	github.com/grafana/snowflake-prometheus-exporter v0.0.0-20240813124544-9995e8354548
 	github.com/grafana/tail v0.0.0-20230510142333-77b18831edf0
 	github.com/grafana/vmware_exporter v0.0.5-beta.0.20250218170317-73398ba08329
-	github.com/grafana/walqueue v0.0.0-20250226140916-7365e13bbede
+	github.com/grafana/walqueue v0.0.0-20250228204553-a37aabc20c0b
 	github.com/hashicorp/consul/api v1.31.0
 	github.com/hashicorp/go-discover v0.0.0-20230724184603-e89ebd1b2f65
 	github.com/hashicorp/go-multierror v1.1.1
