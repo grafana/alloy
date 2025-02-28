@@ -8,14 +8,53 @@ concurrency:
   group: "${{ github.ref_name }}-${{ github.head_ref }}"
   cancel-in-progress: true
 jobs:
-  build_linux:
-    name: Build on Linux
-    runs-on: ubuntu-latest
-    container: grafana/alloy-build-image:v0.1.8
+  build:
     strategy:
       matrix:
-        os: [linux]
-        arch: [amd64, arm64, ppc64le, s390x]
+        build:
+          - os: linux
+            arch: amd64
+            go_tags: "builtinassets promtail_journal_enabled"
+            runs_on: ubuntu-latest
+          - os: linux
+            arch: arm64
+            go_tags: "builtinassets promtail_journal_enabled"
+            runs_on: ubuntu-latest
+          - os: linux
+            arch: ppc64le
+            go_tags: "builtinassets promtail_journal_enabled"
+            runs_on: ubuntu-latest
+          - os: linux
+            arch: s390x
+            go_tags: "builtinassets promtail_journal_enabled"
+            runs_on: ubuntu-latest
+          - os: linux
+            arch: amd64
+            go_tags: "builtinassets promtail_journal_enabled"
+            runs_on: ubuntu-latest
+            go_experiment: "GOEXPERIMENT=boringcrypto"
+            suffix: "-boringcrypto"
+          - os: linux
+            arch: arm64
+            go_tags: "builtinassets promtail_journal_enabled"
+            runs_on: ubuntu-latest
+            go_experiment: "GOEXPERIMENT=boringcrypto"
+            suffix: "-boringcrypto"
+          - os: darwin
+            arch: amd64
+            go_tags: "builtinassets"
+            runs_on: macos-14-large
+          - os: darwin
+            arch: arm64
+            go_tags: "builtinassets"
+            runs_on: macos-14-xlarge
+          - os: freebsd
+            arch: amd64
+            go_tags: "builtinassets"
+            runs_on: ubuntu-latest
+    name: Build on ${{ matrix.build.os }}${{ matrix.build.suffix}} (${{ matrix.build.arch }})
+    runs-on: ${{ matrix.build.runs-on }}
+    container: grafana/alloy-build-image:v0.1.8{{ matrix.build.suffix }}
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -31,62 +70,7 @@ jobs:
         # TODO: Try enabling caching later. It might use up too much disk space on runners so needs extra testing.
         cache: false
     - run: make generate-ui
-    - run: GO_TAGS="builtinassets promtail_journal_enabled" GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} GOARM= make alloy
-
-  build_linux_boringcrypto:
-    name: Build on Linux (boringcrypto)
-    runs-on: ubuntu-latest
-    container: grafana/alloy-build-image:v0.1.8-boringcrypto
-    strategy:
-      matrix:
-        os: [linux]
-        arch: [amd64, arm64]
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    - name: Set ownership
-      # https://github.com/actions/runner/issues/2033#issuecomment-1204205989
-      run: |
-          # this is to fix GIT not liking owner of the checkout dir
-          chown -R $(id -u):$(id -g) $PWD
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version-file: go.mod
-        # TODO: Try enabling caching later. It might use up too much disk space on runners so needs extra testing.
-        cache: false
-    - run: make generate-ui
-    - run: GO_TAGS="builtinassets promtail_journal_enabled" GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} GOARM= GOEXPERIMENT=boringcrypto make alloy
-
-  build_mac_intel:
-    name: Build on MacOS (Intel)
-    runs-on: macos-14-large
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version-file: go.mod
-        # TODO: Try enabling caching later. It might use up too much disk space on runners so needs extra testing.
-        cache: false
-    - run: make generate-ui
-    - run: GO_TAGS="builtinassets" GOOS=darwin GOARCH=amd64 GOARM= make alloy
-
-  build_mac_arm:
-    name: Build on MacOS (ARM)
-    runs-on: macos-14-xlarge
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version-file: go.mod
-        # TODO: Try enabling caching later. It might use up too much disk space on runners so needs extra testing.
-        cache: false
-    - run: make generate-ui
-    - run: GO_TAGS="builtinassets" GOOS=darwin GOARCH=arm64 GOARM= make alloy
+    - run: GO_TAGS="${{ matrix.build.go_tags}}" GOOS=${{ matrix.build.os }} GOARCH=${{ matrix.build.arch }} GOARM= $${{ matrix.build.go_experiment}} make alloy
 
   build_windows:
     name: Build on Windows (AMD64)
@@ -106,23 +90,3 @@ jobs:
     - run: echo "GOARCH=amd64" | Out-File -FilePath $env:GITHUB_ENV -Append
     - run: make alloy
 
-  build_freebsd:
-    name: Build on FreeBSD (AMD64)
-    runs-on: ubuntu-latest
-    container: grafana/alloy-build-image:v0.1.8
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    - name: Set ownership
-      # https://github.com/actions/runner/issues/2033#issuecomment-1204205989
-      run: |
-          # this is to fix GIT not liking owner of the checkout dir
-          chown -R $(id -u):$(id -g) $PWD
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version-file: go.mod
-        # TODO: Try enabling caching later. It might use up too much disk space on runners so needs extra testing.
-        cache: false
-    - run: make generate-ui
-    - run: GO_TAGS="builtinassets" GOOS=freebsd GOARCH=amd64 GOARM= make alloy
