@@ -31,6 +31,8 @@ Main (unreleased)
 
 - Added OpenTelemetry logs and metrics support to Alloy mixin's dashboards and alerts. (@thampiotr)
 
+- Add support for proxy and headers in `prometheus.write.queue`. (@mattdurham)
+
 v1.7.1
 -----------------
 
