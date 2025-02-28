@@ -85,17 +85,6 @@ jobs:
     - publish_linux_boringcrypto_container
     steps:
 
-    - name: Log in to Google Artifact Registry
-      # This step needs to run before "Checkout code".
-      # That's because the login to GAR generates a new file.
-      # We don't want this file to end up in the repo directory.
-      # Then "tools/image-tag" would get confused because "git status" no longer reports a clean repo.
-      # TODO: Ask the platform team to rework the login to GAR to not generate such files?
-      uses: grafana/shared-workflows/actions/login-to-gar@main
-      with:
-        registry: "us-docker.pkg.dev"
-        environment: "prod"
-
     - name: Get Vault secrets
       uses: grafana/shared-workflows/actions/get-vault-secrets@main
       with:
@@ -111,6 +100,16 @@ jobs:
       run: |
         echo "$(bash ./tools/image-tag-docker)" > .tag-only
         echo "grafana/alloy-dev:$(bash ./tools/image-tag-docker)" > .image-tag
+
+      # This step needs to run after "Get the image tag".
+      # That's because the login to GAR generates a new file.
+      # We don't want this file to end up in the repo directory.
+      # Then "tools/image-tag" would get confused because "git status" no longer reports a clean repo.
+    - name: Log in to Google Artifact Registry
+      uses: grafana/shared-workflows/actions/login-to-gar@login-to-gar-v0.2.2
+      with:
+        registry: "us-docker.pkg.dev"
+        environment: "prod"
 
     - name: Update to latest image
       run: |
