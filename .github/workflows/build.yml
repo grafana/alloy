@@ -55,7 +55,7 @@ jobs:
         # TODO: Try enabling caching later. It might use up too much disk space on runners so needs extra testing.
         cache: false
     - run: make generate-ui
-    - run: GO_TAGS="${{ matrix.build.go_tags}}" GOOS=${{ matrix.build.os }} GOARCH=${{ matrix.build.arch }} GOARM= $${{ matrix.build.go_experiment}} make alloy
+    - run: GO_TAGS="${{ matrix.build.go_tags}}" GOOS=${{ matrix.build.os }} GOARCH=${{ matrix.build.arch }} GOARM= ${{ matrix.build.go_experiment}} make alloy
 
   build_mac_intel:
     strategy:
