@@ -52,7 +52,7 @@ jobs:
             arch: amd64
             go_tags: "builtinassets"
             runs_on: ubuntu-latest
-    name: Build on ${{ matrix.build.os }}${{ matrix.build.suffix}} (${{ matrix.build.arch }})
+    name: Build
     runs-on: ${{ matrix.build.runs-on }}
     container: grafana/alloy-build-image:v0.1.8{{ matrix.build.suffix }}
     steps:
