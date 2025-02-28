@@ -124,7 +124,7 @@ The following arguments are supported:
 
 {{< docs/shared lookup="reference/components/rule-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### scrape block
+### `scrape`
 
 {{< docs/shared lookup="reference/components/prom-operator-scrape.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
