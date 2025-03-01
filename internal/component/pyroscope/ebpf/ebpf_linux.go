@@ -10,16 +10,17 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/component/pyroscope"
-	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	ebpfspy "github.com/grafana/pyroscope/ebpf"
 	demangle2 "github.com/grafana/pyroscope/ebpf/cpp/demangle"
 	"github.com/grafana/pyroscope/ebpf/pprof"
 	"github.com/grafana/pyroscope/ebpf/sd"
 	"github.com/grafana/pyroscope/ebpf/symtab"
 	"github.com/oklog/run"
+
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/pyroscope"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 func init() {
@@ -221,7 +222,7 @@ func (c *Component) updateDebugInfo() {
 func targetsOptionFromArgs(args Arguments) sd.TargetsOptions {
 	targets := make([]sd.DiscoveryTarget, 0, len(args.Targets))
 	for _, t := range args.Targets {
-		targets = append(targets, sd.DiscoveryTarget(t))
+		targets = append(targets, t.AsMap())
 	}
 	return sd.TargetsOptions{
 		Targets:            targets,

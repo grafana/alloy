@@ -52,8 +52,8 @@ func toJaegerReceiver(state *State, id componentstatus.InstanceID, cfg *jaegerre
 		Protocols: jaeger.ProtocolsArguments{
 			GRPC:          toJaegerGRPCArguments(cfg.GRPC),
 			ThriftHTTP:    toJaegerThriftHTTPArguments(cfg.ThriftHTTP),
-			ThriftBinary:  toJaegerThriftBinaryArguments(cfg.ThriftBinary),
-			ThriftCompact: toJaegerThriftCompactArguments(cfg.ThriftCompact),
+			ThriftBinary:  toJaegerThriftBinaryArguments(cfg.ThriftBinaryUDP),
+			ThriftCompact: toJaegerThriftCompactArguments(cfg.ThriftCompactUDP),
 		},
 
 		DebugMetrics: common.DefaultValue[jaeger.Arguments]().DebugMetrics,

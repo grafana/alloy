@@ -19,7 +19,6 @@ jobs:
   test_linux:
     name: Test Linux
     runs-on: ubuntu-latest
-    container: grafana/alloy-build-image:v0.1.8
     steps:
     - name: Checkout code
       uses: actions/checkout@v4

@@ -7,13 +7,30 @@ This document contains a historical list of changes between releases. Only
 changes that impact end-user behavior are listed; changes to documentation or
 internal API changes are not present.
 
-Main (unreleased)
------------------
+Unreleased
+----------
 
 ### Enhancements
 
 - Add `checksum/config` pod annotation (@kimxogus)
 
+### Bug Fixes
+
+- Set resource namespace correctly (@shinebayar-g)
+
+0.12.1 (2025-02-26)
+----------
+
+### Enhancements
+
+- Update to Grafana Alloy v1.7.1. (@thampiotr)
+
+0.12.0 (2025-02-24)
+----------
+
+### Enhancements
+
+- Update to Grafana Alloy v1.7.0. (@thampiotr)
 
 0.11.0 (2025-01-23)
 ----------
@@ -93,7 +110,6 @@ Main (unreleased)
 
 - Update helm chart to use v1.3.1.
 
-
 0.6.0 (2024-08-05)
 ------------------
 
@@ -144,7 +160,6 @@ Main (unreleased)
 ### Enhancements
 
 - Update to Grafana Alloy v1.1.0. (@rfratto)
-
 
 0.2.0 (2024-05-08)
 ------------------

@@ -42,12 +42,7 @@ Replace the following:
 
 ## Arguments
 
-`otelcol.exporter.awss3` supports the following arguments:
-
-Name       | Type       | Description                                      | Default | Required
------------|------------|--------------------------------------------------|---------|---------
-`encoding` | `string`   | Encoding extension to use to marshal data. Overrides the `marshaler` configuration option if set. | `""`  | no
-`encoding_file_ext` | `string` | File format extension suffix when using the `encoding` configuration option. It can be left empty if a suffix shouldn't be appended. | `""` | no
+`otelcol.exporter.awss3` supports no arguments and is configured completely through inner blocks.
 
 ## Blocks
 
@@ -59,10 +54,12 @@ Hierarchy              | Block                | Description                     
 s3_uploader            | [s3_uploader][]      | Configures the AWS S3 bucket details to send telemetry data to.                      | yes
 marshaler              | [marshaler][]        | Marshaler used to produce output data.                                               | no
 debug_metrics          | [debug_metrics][]    | Configures the metrics that this component generates to monitor its state.           | no
+sending_queue          | [sending_queue][]    | Configures batching of data before sending.                                          | no
 
 [s3_uploader]: #s3_uploader-block
 [marshaler]: #marshaler-block
 [debug_metrics]: #debug_metrics-block
+[sending_queue]: #sending_queue-block
 
 ### s3_uploader block
 
@@ -106,13 +103,11 @@ Name                    | Type       | Description                              
 
 {{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### Encoding
+### sending_queue block
 
-Encoding overrides the marshaler if it's present and sets it to use the encoding extension defined in the collector configuration.
+The `sending_queue` block configures an in-memory buffer of batches before data is sent to s3.
 
-Refer to the Open Telemetry [encoding extensions][encoding] documentation for more information.
-
-[encoding]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/<OTEL_VERSION>/extension/encoding
+{{< docs/shared lookup="reference/components/otelcol-queue-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### Compression
 

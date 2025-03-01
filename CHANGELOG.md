@@ -12,36 +12,118 @@ Main (unreleased)
 
 ### Features
 
+- Add `otelcol.receiver.awscloudwatch` component to receive logs from AWS CloudWatch and forward them to other `otelcol.*` components. (@wildum)
+
+### Enhancements
+
+- Add livedebugging support for `prometheus.scrape` (@ravishankar15, @wildum)
+
+- Have `loki.echo` log the `entry_timestamp` and `structured_metadata` for any loki entries received (@dehaansa)
+
+- Update mysqld_exporter to v0.17.2, most notable changes: (@cristiangreco)
+  - [0.17.1] Add perf_schema quantile columns to collector
+  - [0.17.1] Fix database quoting problem in collector 'info_schema.tables'
+  - [0.17.1] Use SUM_LOCK_TIME and SUM_CPU_TIME with mysql >= 8.0.28
+  - [0.17.1] Fix query on perf_schema.events_statements_summary_by_digest
+  - [0.17.2] Fix query on events_statements_summary_by_digest for mariadb
+
+- Added additional backwards compatibility metrics to `prometheus.write.queue`. (@mattdurham)
+
+- Added OpenTelemetry logs and metrics support to Alloy mixin's dashboards and alerts. (@thampiotr)
+
+- Add support for proxy and headers in `prometheus.write.queue`. (@mattdurham)
+
+v1.7.1
+-----------------
+
+- (_Experimental_) Various changes to the experimental component `database_observability.mysql`:
+  - `query_sample`: better handling of truncated queries (@cristiangreco)
+
+### Bugfixes
+
+- Fixed an issue where some exporters such as `prometheus.exporter.snmp` couldn't accept targets from other components
+  with an error `conversion to '*map[string]string' is not supported"`. (@thampiotr)
+
+- Enable batching of calls to the appender in `prometheus.write.queue` to reduce lock contention when scraping, which
+  will lead to reduced scrape duration. (@mattdurham)
+
+v1.7.0
+-----------------
+
+### Breaking changes
+
+- (_Experimental_) In `prometheus.write.queue` changed `parallelism` from attribute to a block to allow for dynamic scaling. (@mattdurham)
+
+- Remove `tls_basic_auth_config_path` attribute from `prometheus.exporter.mongodb` configuration as it does not configure TLS client
+  behavior as previously documented.
+
+- Remove `encoding` and `encoding_file_ext` from `otelcol.exporter.awss3` component as it was not wired in to the otel component and
+  Alloy does not currently integrate the upstream encoding extensions that this would utilize.
+
+### Features
+
+- Add a `otelcol.receiver.tcplog` component to receive OpenTelemetry logs over a TCP connection. (@nosammai)
+
+- (_Public preview_) Add `otelcol.receiver.filelog` component to read otel log entries from files (@dehaansa)
+
+- (_Public preview_) Add a `otelcol.processor.cumulativetodelta` component to convert metrics from
+  cumulative temporality to delta. (@madaraszg-tulip)
+
 - (_Experimental_) Add a `stage.windowsevent` block in the `loki.process` component. This aims to replace the existing `stage.eventlogmessage`. (@wildum)
 
 - Add `pyroscope.relabel` component to modify or filter profiles using Prometheus relabeling rules. (@marcsanmi)
 
+- (_Experimental_) A new `foreach` block which starts an Alloy pipeline for each item inside a list. (@wildum, @thampiotr, @ptodev)
+
 ### Enhancements
+
+- Upgrade to OpenTelemetry Collector v0.119.0 (@dehaansa):
+  - `otelcol.processor.resourcedetection`: additional configuration for the `ec2` detector to configure retry behavior
+  - `otelcol.processor.resourcedetection`: additional configuration for the `gcp` detector to collect Managed Instance Group attributes
+  - `otelcol.processor.resourcedetection`: additional configuration for the `eks` detector to collect cloud account attributes
+  - `otelcol.processor.resourcedetection`: add `kubeadm` detector to collect local cluster attributes
+  - `otelcol.processor.cumulativetodelta`: add `metric_types` filtering options
+  - `otelcol.exporter.awss3`: support configuring sending_queue behavior
+  - `otelcol.exporter.otlphttp`: support configuring `compression_params`, which currently only includes `level`
+  - `configtls`: opentelemetry components with tls config now support specifying TLS curve preferences
+  - `sending_queue`: opentelemetry exporters with a `sending_queue` can now configure the queue to be `blocking`
 
 - Add `go_table_fallback` arg to `pyroscope.ebpf` (@korniltsev)
 
 - Memory optimizations in `pyroscope.scrape` (@korniltsev)
+
+- Do not drop `__meta` labels in `pyroscope.scrape`. (@korniltsev)
 
 - Add the possibility to export span events as logs in `otelcol.connector.spanlogs`. (@steve-hb)
 
 - Add json format support for log export via faro receiver (@ravishankar15)
 
 - (_Experimental_) Various changes to the experimental component `database_observability.mysql`:
-  - Always log `instance` label key (@cristiangreco)
-  - Improve parsing of truncated queries (@cristiangreco)
-  - Capture schema name for query samples (@cristiangreco)
-  - Fix handling of view table types when detecting schema (@matthewnolf)
-  - Fix error handling during result set iteration (@cristiangreco)
-  - Better support for table name parsing (@cristiangreco)
-  - Better error handling for components (@cristiangreco)
-  - Add namespace to `connection_info` metric (@cristiangreco)
-  - Added table columns parsing (@cristiagreco)
-  - Add enable/disable collector configurability to `database_observability.mysql`. This removes the `query_samples_enabled` argument, now configurable via enable/disable collector. (@fridgepoet)
-  - Refactor cache config in schema_table collector (@cristiangreco)
-  - Use labels for some indexed logs elements (@cristiangreco)
+  - `connection_info`: add namespace to the metric (@cristiangreco)
+  - `query_sample`: better support for table name parsing (@cristiangreco)
+  - `query_sample`: capture schema name for query samples (@cristiangreco)
+  - `query_sample`: fix error handling during result set iteration (@cristiangreco)
+  - `query_sample`: improve parsing of truncated queries (@cristiangreco)
+  - `query_sample`: split out sql parsing logic to a separate file (@cristiangreco)
+  - `schema_table`: add table columns parsing (@cristiagreco)
+  - `schema_table`: correctly quote schema and table name in SHOW CREATE (@cristiangreco)
+  - `schema_table`: fix handling of view table types when detecting schema (@matthewnolf)
+  - `schema_table`: refactor cache config in schema_table collector (@cristiangreco)
+  - Component: add enable/disable collector configurability to `database_observability.mysql`. This removes the `query_samples_enabled` argument, now configurable via enable/disable collector. (@fridgepoet)
+  - Component: always log `instance` label key (@cristiangreco)
+  - Component: better error handling for collectors (@cristiangreco)
+  - Component: use labels for some indexed logs elements (@cristiangreco)
 
-- Reduce CPU usage of `loki.source.windowsevent` by up to 85% by updating the bookmark file every 10 seconds instead of after every event and by 
+- Reduce CPU usage of `loki.source.windowsevent` by up to 85% by updating the bookmark file every 10 seconds instead of after every event and by
   optimizing the retrieval of the process name. (@wildum)
+
+- Ensure consistent service_name label handling in `pyroscope.receive_http` to match Pyroscope's behavior. (@marcsanmi)
+
+- Improved memory and CPU performance of Prometheus pipelines by changing the underlying implementation of targets (@thampiotr)
+
+- Add `config_merge_strategy` in `prometheus.exporter.snmp` to optionally merge custom snmp config with embedded config instead of replacing. Useful for providing SNMP auths. (@v-zhuravlev)
+
+- Upgrade `beyla.ebpf` to v2.0.4. The full list of changes can be found in the [Beyla release notes](https://github.com/grafana/beyla/releases/tag/v2.0.0). (@marctc)
 
 ### Bugfixes
 
@@ -56,6 +138,35 @@ Main (unreleased)
 - Add support for pushv1.PusherService Connect API in `pyroscope.receive_http`. (@simonswine)
 
 - Fixed an issue where `loki.process` would sometimes output live debugging entries out-of-order (@thampiotr)
+
+- Fixed a bug where components could be evaluated concurrently without the full context during a config reload (@wildum)
+
+- Fixed locks that wouldn't be released in the remotecfg service if some errors occurred during the configuration reload (@spartan0x117)
+
+- Fix issue with `prometheus.write.queue` that lead to excessive connections. (@mattdurham)
+
+- Fixed a bug where `loki.source.awsfirehose` and `loki.source.gcplog` could
+  not be used from within a module. (@tpaschalis)
+
+- Fix an issue where Prometheus metric name validation scheme was set by default to UTF-8. It is now set back to the
+  previous "legacy" scheme. An experimental flag `--feature.prometheus.metric-validation-scheme` can be used to switch
+  it to `utf-8` to experiment with UTF-8 support. (@thampiotr)
+
+### Other changes
+
+- Upgrading to Prometheus v2.54.1. (@ptodev)
+  - `discovery.docker` has a new `match_first_network` attribute for matching the first network
+    if the container has multiple networks defined, thus avoiding collecting duplicate targets.
+  - `discovery.ec2`, `discovery.kubernetes`, `discovery.openstack`, and `discovery.ovhcloud`
+    add extra `__meta_` labels.
+  - `prometheus.remote_write` supports Azure OAuth and Azure SDK authentication.
+  - `discovery.linode` has a new `region` attribute, as well as extra `__meta_` labels.
+  - A new `scrape_native_histograms` argument for `prometheus.scrape`.
+    This is enabled by default and can be used to explicitly disable native histogram support.
+    In previous versions of Alloy, native histogram support has also been enabled by default
+    as long as `scrape_protocols` starts with `PrometheusProto`.
+
+  - Change the stability of the `remotecfg` feature from "public preview" to "generally available". (@erikbaranowski)
 
 v1.6.1
 -----------------

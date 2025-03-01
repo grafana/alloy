@@ -19,7 +19,6 @@ import (
 	"hash/fnv"
 	"net"
 	"net/url"
-	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
@@ -119,9 +118,8 @@ func urlFromTarget(lbls labels.Labels, params url.Values) string {
 	return (&url.URL{
 		Scheme:   lbls.Get(model.SchemeLabel),
 		Host:     lbls.Get(model.AddressLabel),
-		Path:     filepath.Join(lbls.Get(ProfilePathPrefix), lbls.Get(ProfilePath)), // faster than URL.JoinPath
 		RawQuery: newParams.Encode(),
-	}).String()
+	}).JoinPath(lbls.Get(ProfilePathPrefix), lbls.Get(ProfilePath)).String()
 }
 
 func (t *Target) String() string {
@@ -284,14 +282,6 @@ func populateLabels(lb *labels.Builder, base labels.Labels, cfg Arguments) (res 
 
 	if err := config.CheckTargetAddress(model.LabelValue(addr)); err != nil {
 		return nil, err
-	}
-
-	// Meta labels are deleted after relabelling. Other internal labels propagate to
-	// the target which decides whether they will be part of their label set.
-	for _, l := range base {
-		if strings.HasPrefix(l.Name, model.MetaLabelPrefix) {
-			lb.Del(l.Name)
-		}
 	}
 
 	// Default the instance label to the target address.

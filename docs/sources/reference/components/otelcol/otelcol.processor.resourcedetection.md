@@ -59,6 +59,7 @@ Name        | Type           | Description                                      
 * `system`
 * `openshift`
 * `kubernetes_node`
+* `kubeadm`
 
 `env` is the only detector that is not configured through a block.
 The `env` detector reads resource information from the `OTEL_RESOURCE_ATTRIBUTES` environment variable.
@@ -100,6 +101,7 @@ heroku            | [heroku][]            |                                     
 system            | [system][]            |                                                   | no
 openshift         | [openshift][]         |                                                   | no
 kubernetes_node   | [kubernetes_node][]   |                                                   | no
+kubeadm           | [kubeadm][]           |                                                   | no
 debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
 
 [output]: #output
@@ -118,6 +120,7 @@ debug_metrics | [debug_metrics][] | Configures the metrics that this component g
 [system]: #system
 [openshift]: #openshift
 [kubernetes_node]: #kubernetes_node
+[kubadm]: #kubeadm
 [res-attr-cfg]: #resource-attribute-config
 
 ### output
@@ -134,9 +137,16 @@ The `ec2` block reads resource information from the [EC2 instance metadata API][
 
 The `ec2` block supports the following attributes:
 
-Attribute   | Type           | Description                                                                 | Default     | Required
------------ |----------------| --------------------------------------------------------------------------- |-------------| --------
-`tags`      | `list(string)` | A list of regular expressions to match against tag keys of an EC2 instance. | `[]`        | no
+| Attribute                  | Type           | Description                                                                 | Default | Required |
+|----------------------------|----------------|-----------------------------------------------------------------------------|---------|----------|
+| `tags`                     | `list(string)` | A list of regular expressions to match against tag keys of an EC2 instance. | `[]`    | no       |
+| `max_attempts`             | `int`          | The maximum number of attempts to retrieve metadata.                        | `3`     | no       |
+| `max_backoff`              | `duration`     | The maximum backoff time between retries.                                   | `"20s"` | no       |
+<!-- The below commented behavior is allegedly implemented in https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/37453 but it does not appear 
+that the code actually will cause the collector to fail to start, waiting for a response from the author >
+<!-- | `fail_on_missing_metadata` | `bool`         | Whether to fail if metadata is missing.                                     | `false` | no       |
+
+By default the ec2 detector will log errors if the metadata endpoint is unavailable, but if `fail_on_missing_metadata` is `true` it will propagate that error instead which will cause {{< param "PRODUCT_NAME" >}} to fail to start. -->
 
 If you are using a proxy server on your EC2 instance, it's important that you exempt requests for instance metadata as described in the [AWS cli user guide][].
 Failing to do so can result in proxied or missing instance data.
@@ -223,6 +233,7 @@ The `resource_attributes` block supports the following blocks:
 
 Block                            | Description                                                                                    | Required
 -------------------------------- | ---------------------------------------------------------------------------------------------- | --------
+[cloud.account.id][res-attr-cfg] | Toggles the `cloud.account.id` resource attribute. <br> Sets `enabled` to `false` by default.  | no
 [cloud.platform][res-attr-cfg]   | Toggles the `cloud.platform` resource attribute. <br> Sets `enabled` to `true` by default.     | no
 [cloud.provider][res-attr-cfg]   | Toggles the `cloud.provider` resource attribute. <br> Sets `enabled` to `true` by default.     | no
 [k8s.cluster.name][res-attr-cfg] | Toggles the `k8s.cluster.name` resource attribute. <br> Sets `enabled` to `false` by default.  | no
@@ -463,25 +474,28 @@ Block                                            | Description                  
 
 The `resource_attributes` block supports the following blocks:
 
-Block                                        | Description                                                                                              | Required
----------------------------------------------|----------------------------------------------------------------------------------------------------------|---------
-[cloud.account.id][res-attr-cfg]             | Toggles the `cloud.account.id` resource attribute. <br> Sets `enabled` to `true` by default.             | no
-[cloud.availability_zone][res-attr-cfg]      | Toggles the `cloud.availability_zone` resource attribute. <br> Sets `enabled` to `true` by default.      | no
-[cloud.platform][res-attr-cfg]               | Toggles the `cloud.platform` resource attribute. <br> Sets `enabled` to `true` by default.               | no
-[cloud.provider][res-attr-cfg]               | Toggles the `cloud.provider` resource attribute. <br> Sets `enabled` to `true` by default.               | no
-[cloud.region][res-attr-cfg]                 | Toggles the `cloud.region` resource attribute. <br> Sets `enabled` to `true` by default.                 | no
-[faas.id][res-attr-cfg]                      | Toggles the `faas.id` resource attribute. <br> Sets `enabled` to `true` by default.                      | no
-[faas.instance][res-attr-cfg]                | Toggles the `faas.instance` resource attribute. <br> Sets `enabled` to `true` by default.                | no
-[faas.name][res-attr-cfg]                    | Toggles the `faas.name` resource attribute. <br> Sets `enabled` to `true` by default.                    | no
-[faas.version][res-attr-cfg]                 | Toggles the `faas.version` resource attribute. <br> Sets `enabled` to `true` by default.                 | no
-[gcp.cloud_run.job.execution][res-attr-cfg]  | Toggles the `gcp.cloud_run.job.execution` resource attribute. <br> Sets `enabled` to `true` by default.  | no
-[gcp.cloud_run.job.task_index][res-attr-cfg] | Toggles the `gcp.cloud_run.job.task_index` resource attribute. <br> Sets `enabled` to `true` by default. | no
-[gcp.gce.instance.hostname][res-attr-cfg]    | Toggles the `gcp.gce.instance.hostname` resource attribute. <br> Sets `enabled` to `false` by default.   | no
-[gcp.gce.instance.name][res-attr-cfg]        | Toggles the `gcp.gce.instance.name` resource attribute. <br> Sets `enabled` to `false` by default.       | no
-[host.id][res-attr-cfg]                      | Toggles the `host.id` resource attribute. <br> Sets `enabled` to `true` by default.                      | no
-[host.name][res-attr-cfg]                    | Toggles the `host.name` resource attribute. <br> Sets `enabled` to `true` by default.                    | no
-[host.type][res-attr-cfg]                    | Toggles the `host.type` resource attribute. <br> Sets `enabled` to `true` by default.                    | no
-[k8s.cluster.name][res-attr-cfg]             | Toggles the `k8s.cluster.name` resource attribute. <br> Sets `enabled` to `true` by default.             | no
+| Block                                                 | Description                                                                                                       | Required |
+|-------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------|----------|
+| [cloud.account.id][res-attr-cfg]                      | Toggles the `cloud.account.id` resource attribute. Sets `enabled` to `true` by default.                      | no       |
+| [cloud.availability_zone][res-attr-cfg]               | Toggles the `cloud.availability_zone` resource attribute. Sets `enabled` to `true` by default.               | no       |
+| [cloud.platform][res-attr-cfg]                        | Toggles the `cloud.platform` resource attribute. Sets `enabled` to `true` by default.                        | no       |
+| [cloud.provider][res-attr-cfg]                        | Toggles the `cloud.provider` resource attribute. Sets `enabled` to `true` by default.                        | no       |
+| [cloud.region][res-attr-cfg]                          | Toggles the `cloud.region` resource attribute. Sets `enabled` to `true` by default.                          | no       |
+| [faas.id][res-attr-cfg]                               | Toggles the `faas.id` resource attribute. <br> Sets `enabled` to `true` by default.                               | no       |
+| [faas.instance][res-attr-cfg]                         | Toggles the `faas.instance` resource attribute. Sets `enabled` to `true` by default.                         | no       |
+| [faas.name][res-attr-cfg]                             | Toggles the `faas.name` resource attribute. Sets `enabled` to `true` by default.                             | no       |
+| [faas.version][res-attr-cfg]                          | Toggles the `faas.version` resource attribute. Sets `enabled` to `true` by default.                          | no       |
+| [gcp.cloud_run.job.execution][res-attr-cfg]           | Toggles the `gcp.cloud_run.job.execution` resource attribute. Sets `enabled` to `true` by default.           | no       |
+| [gcp.cloud_run.job.task_index][res-attr-cfg]          | Toggles the `gcp.cloud_run.job.task_index` resource attribute. Sets `enabled` to `true` by default.          | no       |
+| [gcp.gce.instance.hostname][res-attr-cfg]             | Toggles the `gcp.gce.instance.hostname` resource attribute. Sets `enabled` to `false` by default.            | no       |
+| [gcp.gce.instance.name][res-attr-cfg]                 | Toggles the `gcp.gce.instance.name` resource attribute. Sets `enabled` to `false` by default.                | no       |
+| [gcp.gce.instance.group_manager.name][res-attr-cfg]   | Toggles the `gcp.gce.instance.group_manager.name` resource attribute. Sets `enabled` to `true` by default.   | no       |
+| [gcp.gce.instance.group_manager.region][res-attr-cfg] | Toggles the `gcp.gce.instance.group_manager.region` resource attribute. Sets `enabled` to `true` by default. | no       |
+| [gcp.gce.instance.group_manager.zone][res-attr-cfg]   | Toggles the `gcp.gce.instance.group_manager.zone` resource attribute. Sets `enabled` to `true` by default.   | no       |
+| [host.id][res-attr-cfg]                               | Toggles the `host.id` resource attribute. Sets `enabled` to `true` by default.                               | no       |
+| [host.name][res-attr-cfg]                             | Toggles the `host.name` resource attribute. Sets `enabled` to `true` by default.                             | no       |
+| [host.type][res-attr-cfg]                             | Toggles the `host.type` resource attribute. Sets `enabled` to `true` by default.                             | no       |
+| [k8s.cluster.name][res-attr-cfg]                      | Toggles the `k8s.cluster.name` resource attribute. Sets `enabled` to `true` by default.                      | no       |
 
 #### Google Compute Engine (GCE) metadata
 
@@ -495,6 +509,9 @@ Block                                        | Description                      
 * `host.type`: machine type
 * (optional) `gcp.gce.instance.hostname`
 * (optional) `gcp.gce.instance.name`
+* `gcp.gce.instance.group_manager.name`:  managed instance group name
+* `gcp.gce.instance.group_manager.region`:  managed instance group region
+* `gcp.gce.instance.group_manager.zone`:  managed instance group zone
 
 #### Google Kubernetes Engine (GKE) metadata
 
@@ -748,6 +765,65 @@ Block                          | Description                                    
 ------------------------------ | ------------------------------------------------------------------------------------------ | --------
 [k8s.node.name][res-attr-cfg]  | Toggles the `k8s.node.name` resource attribute. <br> Sets `enabled` to `true` by default.  | no
 [k8s.node.uid][res-attr-cfg]   | Toggles the `k8s.node.uid` resource attribute. <br> Sets `enabled` to `true` by default.   | no
+
+### kubeadm
+
+The `kubeadm` block queries the Kubernetes API server to retrieve kubeadm resource attributes.
+
+The `kubeadm` block supports the following attributes:
+
+| Attribute   | Type     | Description                                                             | Default  | Required |
+| ----------- | -------- | ----------------------------------------------------------------------- | -------- | -------- |
+| `auth_type` | `string` | Configures how to authenticate to the Kubernetes API server.            | `"none"` | no       |
+| `context`   | `string` | Override the current context when `auth_type` is set to `"kubeConfig"`. | `""`     | no       |
+
+The following permissions are required:
+
+```yaml
+kind: Role
+metadata:
+  name: otel-collector
+  namespace: kube-system
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    resourceNames: ["kubeadm-config"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: otel-collector-rolebinding
+  namespace: kube-system
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: default
+roleRef:
+  kind: Role
+  name: otel-collector
+  apiGroup: rbac.authorization.k8s.io
+```
+
+You can set `auth_type` to one of the following:
+
+* `none`: no authentication.
+* `serviceAccount`: use the standard service account token provided to the {{< param "PRODUCT_NAME" >}} pod.
+* `kubeConfig`: use credentials from `~/.kube/config`.
+
+The `kubeadm` block supports the following blocks:
+
+| Block                                                | Description                                  | Required |
+| ---------------------------------------------------- | -------------------------------------------- | -------- |
+| [resource_attributes](#kubeadm--resource_attributes) | Configures which resource attributes to add. | no       |
+
+#### kubeadm > resource_attributes
+
+The `resource_attributes` block supports the following blocks:
+
+| Block                            | Description                                                                             | Required |
+| -------------------------------- | --------------------------------------------------------------------------------------- | -------- |
+| [k8s.cluster.name][res-attr-cfg] | Toggles the `k8s.cluster.name` resource attribute. Sets `enabled` to `true` by default. | no       |
 
 ## Common configuration
 

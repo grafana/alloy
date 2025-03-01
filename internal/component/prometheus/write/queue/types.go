@@ -50,7 +50,16 @@ func defaultEndpointConfig() EndpointConfig {
 		MaxRetryAttempts: 0,
 		BatchCount:       1_000,
 		FlushInterval:    1 * time.Second,
-		Parallelism:      4,
+		Parallelism: ParallelismConfig{
+			DriftScaleUp:                60 * time.Second,
+			DriftScaleDown:              30 * time.Second,
+			MaxConnections:              50,
+			MinConnections:              2,
+			NetworkFlushInterval:        1 * time.Minute,
+			DesiredConnectionsLookback:  5 * time.Minute,
+			DesiredCheckInterval:        5 * time.Second,
+			AllowedNetworkErrorFraction: 0.50,
+		},
 	}
 }
 
@@ -65,6 +74,23 @@ func (r *Arguments) Validate() error {
 		}
 		if conn.FlushInterval < 1*time.Second {
 			return fmt.Errorf("flush_interval must be greater or equal to 1s, the internal timers resolution is 1s")
+		}
+		if conn.Parallelism.MaxConnections < conn.Parallelism.MinConnections {
+			return fmt.Errorf("max_connections less than min_connections")
+		}
+		if conn.Parallelism.MinConnections == 0 {
+			return fmt.Errorf("min_connections must be greater than 0")
+		}
+		if conn.Parallelism.DriftScaleUp <= conn.Parallelism.DriftScaleDown {
+			return fmt.Errorf("drift_scale_up_seconds less than or equal drift_scale_down_seconds")
+		}
+		// Any lower than 1 second and you spend a fair amount of time churning on the draining and
+		// refilling the write buffers.
+		if conn.Parallelism.DesiredCheckInterval < 1*time.Second {
+			return fmt.Errorf("desired_check_interval must be greater than or equal to 1 second")
+		}
+		if conn.Parallelism.AllowedNetworkErrorFraction < 0 || conn.Parallelism.AllowedNetworkErrorFraction > 1 {
+			return fmt.Errorf("allowed_network_error_percent must be between 0.00 and 1.00")
 		}
 	}
 
@@ -87,10 +113,19 @@ type EndpointConfig struct {
 	// How long to wait before sending regardless of batch count.
 	FlushInterval time.Duration `alloy:"flush_interval,attr,optional"`
 	// How many concurrent queues to have.
-	Parallelism    uint              `alloy:"parallelism,attr,optional"`
+	Parallelism    ParallelismConfig `alloy:"parallelism,block,optional"`
 	ExternalLabels map[string]string `alloy:"external_labels,attr,optional"`
 	TLSConfig      *TLSConfig        `alloy:"tls_config,block,optional"`
 	RoundRobin     bool              `alloy:"enable_round_robin,attr,optional"`
+	// Headers specifies the HTTP headers to be added to all requests sent to the server.
+	Headers map[string]alloytypes.Secret `alloy:"headers,attr,optional"`
+	// ProxyURL is the URL of the HTTP proxy to use for requests.
+	ProxyURL string `alloy:"proxy_url,attr,optional"`
+	// ProxyFromEnvironment determines whether to read proxy configuration from environment
+	// variables HTTP_PROXY, HTTPS_PROXY and NO_PROXY.
+	ProxyFromEnvironment bool `alloy:"proxy_from_environment,attr,optional"`
+	// ProxyConnectHeaders specify the headers to send to proxies during CONNECT requests.
+	ProxyConnectHeaders map[string]alloytypes.Secret `alloy:"proxy_connect_headers,attr,optional"`
 }
 
 type TLSConfig struct {
@@ -100,21 +135,57 @@ type TLSConfig struct {
 	InsecureSkipVerify bool              `alloy:"insecure_skip_verify,attr,optional"`
 }
 
+type ParallelismConfig struct {
+	DriftScaleUp                time.Duration `alloy:"drift_scale_up,attr,optional"`
+	DriftScaleDown              time.Duration `alloy:"drift_scale_down,attr,optional"`
+	MaxConnections              uint          `alloy:"max_connections,attr,optional"`
+	MinConnections              uint          `alloy:"min_connections,attr,optional"`
+	NetworkFlushInterval        time.Duration `alloy:"network_flush_interval,attr,optional"`
+	DesiredConnectionsLookback  time.Duration `alloy:"desired_connections_lookback,attr,optional"`
+	DesiredCheckInterval        time.Duration `alloy:"desired_check_interval,attr,optional"`
+	AllowedNetworkErrorFraction float64       `alloy:"allowed_network_error_fraction,attr,optional"`
+}
+
 var UserAgent = fmt.Sprintf("Alloy/%s", version.Version)
 
 func (cc EndpointConfig) ToNativeType() types.ConnectionConfig {
+	// Convert map of alloytypes.Secret to map of strings for Headers
+	headers := make(map[string]string, len(cc.Headers))
+	for k, v := range cc.Headers {
+		headers[k] = string(v)
+	}
+	
+	// Convert map of alloytypes.Secret to map of strings for ProxyConnectHeaders
+	proxyConnectHeaders := make(map[string]string, len(cc.ProxyConnectHeaders))
+	for k, v := range cc.ProxyConnectHeaders {
+		proxyConnectHeaders[k] = string(v)
+	}
+	
 	tcc := types.ConnectionConfig{
-		URL:              cc.URL,
-		BearerToken:      string(cc.BearerToken),
-		UserAgent:        UserAgent,
-		Timeout:          cc.Timeout,
-		RetryBackoff:     cc.RetryBackoff,
-		MaxRetryAttempts: cc.MaxRetryAttempts,
-		BatchCount:       cc.BatchCount,
-		FlushInterval:    cc.FlushInterval,
-		ExternalLabels:   cc.ExternalLabels,
-		Connections:      cc.Parallelism,
-		UseRoundRobin:    cc.RoundRobin,
+		URL:                  cc.URL,
+		BearerToken:          string(cc.BearerToken),
+		UserAgent:            UserAgent,
+		Timeout:              cc.Timeout,
+		RetryBackoff:         cc.RetryBackoff,
+		MaxRetryAttempts:     cc.MaxRetryAttempts,
+		BatchCount:           cc.BatchCount,
+		FlushInterval:        cc.FlushInterval,
+		ExternalLabels:       cc.ExternalLabels,
+		UseRoundRobin:        cc.RoundRobin,
+		Headers:              headers,
+		ProxyURL:             cc.ProxyURL,
+		ProxyFromEnvironment: cc.ProxyFromEnvironment,
+		ProxyConnectHeaders:  proxyConnectHeaders,
+		Parallelism: types.ParallelismConfig{
+			AllowedDrift:                cc.Parallelism.DriftScaleUp,
+			MinimumScaleDownDrift:       cc.Parallelism.DriftScaleDown,
+			MaxConnections:              cc.Parallelism.MaxConnections,
+			MinConnections:              cc.Parallelism.MinConnections,
+			ResetInterval:               cc.Parallelism.NetworkFlushInterval,
+			Lookback:                    cc.Parallelism.DesiredConnectionsLookback,
+			CheckInterval:               cc.Parallelism.DesiredCheckInterval,
+			AllowedNetworkErrorFraction: cc.Parallelism.AllowedNetworkErrorFraction,
+		},
 	}
 	if cc.BasicAuth != nil {
 		tcc.BasicAuth = &types.BasicAuth{

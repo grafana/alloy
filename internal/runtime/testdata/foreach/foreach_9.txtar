@@ -1,0 +1,19 @@
+A collection containing maps.
+
+-- main.alloy --
+foreach "testForeach" {
+  collection = [{"a" = 4}, {"a" = 6}]
+  var = "num"
+
+  template {
+    testcomponents.pulse "pt" {
+      max = num["a"]
+      frequency = "10ms"
+      forward_to = [testcomponents.summation_receiver.sum.receiver]
+    }
+  }
+}
+
+// Similar to testcomponents.summation, but with a "receiver" export
+testcomponents.summation_receiver "sum" {
+}

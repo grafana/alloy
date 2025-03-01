@@ -4,6 +4,7 @@ apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
   name: alloy
+  namespace: default
   labels:
     helm.sh/chart: alloy
     app.kubernetes.io/name: alloy
