@@ -11,7 +11,7 @@ loki.source.api "cisco" {
   }
   labels = {
     job = "cisco_logs",
-    test_name = "cisco_enriched" 
+    test_name = "cisco_enriched",
   }
   forward_to = [loki.process.enrich.receiver]
 }
@@ -26,7 +26,7 @@ loki.process.enrich "enrich" {
   target_labels = [
     "environment",
     "datacenter",
-    "role"
+    "role",
   ]
 
   // Use file-based service discovery
@@ -41,6 +41,6 @@ loki.write "enriched" {
     url = "http://localhost:3100/loki/api/v1/push"
   }
   external_labels = {
-    test_name = "cisco_enriched"
+    test_name = "cisco_enriched",
   }
-} 
+}
