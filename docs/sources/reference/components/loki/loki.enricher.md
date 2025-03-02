@@ -3,12 +3,14 @@ aliases:
 - /docs/alloy/latest/reference/components/loki/loki.enricher/
 canonical: /docs/alloy/latest/reference/components/loki/loki.enricher/
 title: loki.enricher
+labels:
+  stage: experimental
 description: The loki.enricher component enriches logs with labels from service discovery.
 ---
 
 # loki.enricher
 
-<span class="badge docs-labels__stage docs-labels__item">Beta</span>
+{{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 The `loki.enricher` component enriches logs with additional labels from service discovery targets. It matches a label from incoming logs against a label from discovered targets, and copies specified labels from the matched target to the log entry.
 
@@ -107,4 +109,22 @@ The component matches logs to discovered targets and enriches them with addition
 
 * [loki.source.syslog](../loki.source.syslog/)
 * [discovery.dns](../discovery/discovery.dns/)
-* [discovery.http](../discovery/discovery.http/) 
+* [discovery.http](../discovery/discovery.http/) <!-- START GENERATED COMPATIBLE COMPONENTS -->
+
+## Compatible components
+
+`loki.enricher` can accept arguments from the following components:
+
+- Components that export [Targets](../../../compatibility/#targets-exporters)
+- Components that export [Loki `LogsReceiver`](../../../compatibility/#loki-logsreceiver-exporters)
+
+`loki.enricher` has exports that can be consumed by the following components:
+
+- Components that consume [Loki `LogsReceiver`](../../../compatibility/#loki-logsreceiver-consumers)
+
+{{< admonition type="note" >}}
+Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.
+Refer to the linked documentation for more details.
+{{< /admonition >}}
+
+<!-- END GENERATED COMPATIBLE COMPONENTS -->

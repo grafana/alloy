@@ -135,6 +135,7 @@ The following components, grouped by namespace, _consume_ Targets.
 {{< /collapse >}}
 
 {{< collapse title="loki" >}}
+- [loki.enricher](../components/loki/loki.enricher)
 - [loki.source.docker](../components/loki/loki.source.docker)
 - [loki.source.file](../components/loki/loki.source.file)
 - [loki.source.kubernetes](../components/loki/loki.source.kubernetes)
@@ -221,6 +222,7 @@ The following components, grouped by namespace, _export_ Loki `LogsReceiver`.
 
 {{< collapse title="loki" >}}
 - [loki.echo](../components/loki/loki.echo)
+- [loki.enricher](../components/loki/loki.enricher)
 - [loki.process](../components/loki/loki.process)
 - [loki.relabel](../components/loki/loki.relabel)
 - [loki.secretfilter](../components/loki/loki.secretfilter)
@@ -249,6 +251,7 @@ The following components, grouped by namespace, _consume_ Loki `LogsReceiver`.
 {{< /collapse >}}
 
 {{< collapse title="loki" >}}
+- [loki.enricher](../components/loki/loki.enricher)
 - [loki.process](../components/loki/loki.process)
 - [loki.relabel](../components/loki/loki.relabel)
 - [loki.secretfilter](../components/loki/loki.secretfilter)
