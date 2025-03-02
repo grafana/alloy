@@ -4,14 +4,14 @@ discovery.file "network_devices" {
 }
 
 // Receive logs via HTTP API
-loki.source.api "cisco" {
+loki.source.api "network_device" {
   http {
     listen_address = "0.0.0.0"
     listen_port = 1514
   }
   labels = {
-    job = "cisco_logs",
-    test_name = "cisco_enriched",
+    job = "network_device_logs",
+    test_name = "network_device_enriched",
   }
   forward_to = [loki.enrich.enricher.receiver]
 }
@@ -41,6 +41,6 @@ loki.write "enriched" {
     url = "http://localhost:3100/loki/api/v1/push"
   }
   external_labels = {
-    test_name = "cisco_enriched",
+    test_name = "network_device_enriched",
   }
 }

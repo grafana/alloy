@@ -33,7 +33,7 @@ func TestEnricherWithFileDiscovery(t *testing.T) {
 	var logResponse common.LogResponse
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		err := common.FetchDataFromURL(
-			"http://localhost:3100/loki/api/v1/query?query={test_name=\"cisco_enriched\"}",
+			"http://localhost:3100/loki/api/v1/query?query={test_name=\"network_device_enriched\"}",
 			&logResponse,
 		)
 		assert.NoError(c, err)
@@ -56,7 +56,7 @@ func TestEnricherWithFileDiscovery(t *testing.T) {
 }
 
 func generateLogs(t *testing.T) {
-	ciscoLogs := []string{
+	networkLogs := []string{
 		"%LINK-3-UPDOWN: Interface GigabitEthernet1/0/1, changed state to up",
 		"%SEC-6-IPACCESSLOGP: list 102 denied tcp 10.1.1.1(1234) -> 10.1.1.2(80), 1 packet",
 		"%SYS-5-CONFIG_I: Configured from console by admin on vty0 (10.1.1.1)",
@@ -65,14 +65,14 @@ func generateLogs(t *testing.T) {
 	stream := Stream{
 		Stream: map[string]string{
 			"host": "router1.example.com",
-			"job":  "cisco_logs",
+			"job":  "network_device_logs",
 		},
 		Values: make([][]string, 0),
 	}
 
 	// Add timestamps and messages
 	now := time.Now()
-	for _, msg := range ciscoLogs {
+	for _, msg := range networkLogs {
 		stream.Values = append(stream.Values, []string{
 			now.Format(time.RFC3339Nano),
 			msg,
@@ -89,7 +89,7 @@ func generateLogs(t *testing.T) {
 		body, err := json.Marshal(pushReq)
 		require.NoError(t, err)
 
-		resp, err := http.Post("http://localhost:1514/loki/api/v1/push", "application/json", bytes.NewReader(body))
+		resp, err := http.Post("http://127.0.0.1:1514/loki/api/v1/push", "application/json", bytes.NewReader(body))
 		require.NoError(t, err)
 		resp.Body.Close()
 
