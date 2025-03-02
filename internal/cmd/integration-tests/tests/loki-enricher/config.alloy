@@ -13,11 +13,11 @@ loki.source.api "cisco" {
     job = "cisco_logs",
     test_name = "cisco_enriched",
   }
-  forward_to = [loki.enrich.receiver]
+  forward_to = [loki.enricher.enricher.receiver]
 }
 
 // Enrich logs with device metadata
-loki.enrich "enrich" {
+loki.enricher "enricher" {
   // Match on hostname/IP from logs
   match_label = "hostname"
   source_label = "host"
