@@ -1,0 +1,20 @@
+[
+  {
+    "targets": ["router1.example.com"],
+    "labels": {
+      "hostname": "router1.example.com",
+      "environment": "production",
+      "datacenter": "us-east",
+      "role": "core-router"
+    }
+  },
+  {
+    "targets": ["router2.example.com"],
+    "labels": {
+      "hostname": "router2.example.com", 
+      "environment": "production",
+      "datacenter": "us-west",
+      "role": "edge-router"
+    }
+  }
+] 

@@ -1,0 +1,46 @@
+// Discover device metadata from file
+discovery.file "network_devices" {
+  files = ["./devices.json"]
+}
+
+// Receive logs via HTTP API
+loki.source.api "cisco" {
+  http {
+    listen_address = "0.0.0.0"
+    listen_port = 1514
+  }
+  labels = {
+    job = "cisco_logs",
+    test_name = "cisco_enriched" 
+  }
+  forward_to = [loki.process.enrich.receiver]
+}
+
+// Enrich logs with device metadata
+loki.process.enrich "enrich" {
+  // Match on hostname/IP from logs
+  match_label = "hostname"
+  source_label = "host"
+  
+  // Labels to copy from targets
+  target_labels = [
+    "environment",
+    "datacenter",
+    "role"
+  ]
+
+  // Use file-based service discovery
+  targets = discovery.file.network_devices.targets
+  
+  forward_to = [loki.write.enriched.receiver]
+}
+
+// Write enriched logs to Loki
+loki.write "enriched" {
+  endpoint {
+    url = "http://localhost:3100/loki/api/v1/push"
+  }
+  external_labels = {
+    test_name = "cisco_enriched"
+  }
+} 
