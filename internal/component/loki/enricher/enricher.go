@@ -17,7 +17,7 @@ import (
 
 func init() {
 	component.Register(component.Registration{
-		Name:      "loki.enricher",
+		Name:      "loki.enrich",
 		Stability: featuregate.StabilityExperimental,
 		Args:      Arguments{},
 		Exports:   Exports{},
@@ -156,7 +156,7 @@ func (c *Component) forwardLog(entry *logproto.Entry, labels model.LabelSet) err
 }
 
 func (c *Component) Name() string {
-	return "loki.enricher"
+	return "loki.enrich"
 }
 
 func (c *Component) Ready() bool {

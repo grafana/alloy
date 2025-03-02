@@ -1,14 +1,14 @@
 ---
 aliases:
-- /docs/alloy/latest/reference/components/loki/loki.enricher/
-canonical: /docs/alloy/latest/reference/components/loki/loki.enricher/
-title: loki.enricher
+- /docs/alloy/latest/reference/components/loki/loki.enrich/
+canonical: /docs/alloy/latest/reference/components/loki/loki.enrich/
+title: loki.enrich
 labels:
   stage: experimental
 description: The loki.enricher component enriches logs with labels from service discovery.
 ---
 
-# loki.enricher
+# loki.enrich
 
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
