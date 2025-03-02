@@ -5,19 +5,19 @@ canonical: /docs/alloy/latest/reference/components/loki/loki.enrich/
 title: loki.enrich
 labels:
   stage: experimental
-description: The loki.enricher component enriches logs with labels from service discovery.
+description: The loki.enrich component enriches logs with labels from service discovery.
 ---
 
 # loki.enrich
 
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-The `loki.enricher` component enriches logs with additional labels from service discovery targets. It matches a label from incoming logs against a label from discovered targets, and copies specified labels from the matched target to the log entry.
+The `loki.enrich` component enriches logs with additional labels from service discovery targets. It matches a label from incoming logs against a label from discovered targets, and copies specified labels from the matched target to the log entry.
 
 ## Usage
 
 ```alloy
-loki.enricher "LABEL" {
+loki.enrich "LABEL" {
   // List of targets from a discovery component
   targets = DISCOVERY_COMPONENT.targets
   
@@ -74,11 +74,11 @@ loki.source.syslog "incoming" {
             job = "syslog"
         }
     }
-    forward_to = [loki.enricher.default.receiver]
+    forward_to = [loki.enrich.default.receiver]
 }
 
 // Enrich logs using DNS discovery
-loki.enricher "default" {
+loki.enrich "default" {
     // Use targets from DNS discovery
     targets = discovery.dns.services.targets
 
@@ -113,12 +113,12 @@ The component matches logs to discovered targets and enriches them with addition
 
 ## Compatible components
 
-`loki.enricher` can accept arguments from the following components:
+`loki.enrich` can accept arguments from the following components:
 
 - Components that export [Targets](../../../compatibility/#targets-exporters)
 - Components that export [Loki `LogsReceiver`](../../../compatibility/#loki-logsreceiver-exporters)
 
-`loki.enricher` has exports that can be consumed by the following components:
+`loki.enrich` has exports that can be consumed by the following components:
 
 - Components that consume [Loki `LogsReceiver`](../../../compatibility/#loki-logsreceiver-consumers)
 
