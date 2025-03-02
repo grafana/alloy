@@ -13,7 +13,7 @@ loki.source.api "cisco" {
     job = "cisco_logs",
     test_name = "cisco_enriched",
   }
-  forward_to = [loki.process.enrich.receiver]
+  forward_to = [loki.process.enrich.enrich.receiver]
 }
 
 // Enrich logs with device metadata
