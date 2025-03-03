@@ -12,12 +12,13 @@ weight: 500
 
 You can configure {{< param "FULL_PRODUCT_NAME" >}} or AWS ADOT to collect OpenTelemetry-compatible data from Amazon Elastic Container Service (ECS) or AWS Fargate and forward it to any OpenTelemetry-compatible endpoint.
 
-Metrics are available from various sources including ECS itself, the ECS instances when using EC2, X-Ray and your own application. You can also collect logs and traces from your applications instrumented for Prometheus or OTLP.
+Metrics are available from various sources including ECS itself, the ECS instances when using EC2, X-Ray, and your own application.
+You can also collect logs and traces from your applications instrumented for Prometheus or OTLP.
 
-1. [Collecting task and container metrics](#collecting-task-and-container-metrics)
-1. [Collecting application telemetry](#collecting-application-telemetry)
-1. [Collecting EC2 instance metrics](#collecting-ec2-instance-metrics)
-1. [Collecting application logs](#collecting-logs)
+1. [Collect task and container metrics](#collect-task-and-container-metrics)
+1. [Collect application telemetry](#collect-application-telemetry)
+1. [Collect EC2 instance metrics](#collect-ec2-instance-metrics)
+1. [Collect application logs](#collect-logs)
 
 ## Before you begin
 
@@ -26,9 +27,9 @@ Metrics are available from various sources including ECS itself, the ECS instanc
 * Identify where {{< param "PRODUCT_NAME" >}} writes received telemetry data.
 * Be familiar with the concept of [Components][] in {{< param "PRODUCT_NAME" >}}.
 
-## Collecting task and container metrics
+## Collect task and container metrics
 
-In this configuration, an OTEL collector is added to the task running your application and uses the ECS Metadata Endpoint to gather task and container metrics in your cluster.
+In this configuration, you add an OTEL collector to the task running your application, and it uses the ECS Metadata Endpoint to gather task and container metrics in your cluster.
 
 You can choose between two collector implementations:
 
@@ -36,45 +37,46 @@ You can choose between two collector implementations:
 
 - Alloy can also be used as a collector alongside the [Prometheus ECS exporter](https://github.com/prometheus-community/ecs_exporter) which exposes the ECS metadatada endpoint metrics in Prometheus format.
 
-### Configuring ADOT
+### Configure ADOT
 
-When using ADOT as a collector, you simply add a new container to your task definition and use a custom configuration defined in AWS SSM Parameter Store.
+If you use ADOT as a collector, add a new container to your task definition and use a custom configuration you define in your AWS SSM Parameter Store.
 
-Sample OTEL configuration files can be found in the [AWS Observability repo][otel-templates]. Use those as a starting point and add the appropriate exporter configuration to send metrics to a Prometheus or Otel endpoint.
+You can find sample OTEL configuration files in the [AWS Observability repo][otel-templates].
+You can use these samples as a starting point and add the appropriate exporter configuration to send metrics to a Prometheus or Otel endpoint.
 
-* Use [ecs-default-config] to consume StatsD metrics, OTLP metrics and traces, and AWS X-Ray SDK traces
-* Use [otel-task-metrics-config] to consume StatsD, OTLP, AWS X-Ray, and Container Resource utilization metrics
-* Use [otel-prometheus] to find out how to set the prometheus remote write (AWS managed prometheus in the example)
+* Use [`ecs-default-config`][ecs-default-config] to consume StatsD metrics, OTLP metrics and traces, and AWS X-Ray SDK traces.
+* Use [`otel-task-metrics-config`][otel-task-metrics-config] to consume StatsD, OTLP, AWS X-Ray, and Container Resource utilization metrics.
+* Use [`otel-prometheus`]otel-prometheus[] to find out how to set the Prometheus remote write (AWS managed Prometheus in the example).
 
-You can create a sample task by completing the following steps (inspired by [the official ADOT doc][adot-doc])
+Complete the following steps to create a sample task. Refer to the [ADOT doc][adot-doc] for more information.
 
-1. Create a SSM Parameter Store entry to hold the collector configuration file
-Open the AWS Systems Manager console.
-
+1. Create an SSM Parameter Store entry to hold the collector configuration file.
+   
+   1. Open the AWS Console.
    1. In the AWS Console, choose Parameter Store.
-   1. Choose Create parameter.
+   1. Choose *Create parameter*.
    1. Create a parameter with the following values:
       
-      ```
-      Name: collector-config
-      Tier: Standard
-      Type: String
-      Data type: Text
-      Value: Copy and paste your custom OpenTelemetry configuration file.
-      ```
+      * Name: `collector-config`
+      * Tier: Standard
+      * Type: String
+      * Data type: Text
+      * Value: Copy and paste your custom OpenTelemetry configuration file.
 
 1. Download the [ECS Fargate][fargate-template] or [ECS EC2][ec2-template] task definition template from GitHub.
 1. Edit the task definition template and add the following parameters.
+
    * `{{region}}`: The region to send the data to.
    * `{{ecsTaskRoleArn}}`: The AWSOTTaskRole ARN.
    * `{{ecsExecutionRoleArn}}`: The AWSOTTaskExcutionRole ARN.
    * Add an environment variable named AOT_CONFIG_CONTENT.
-Select ValueFrom to tell ECS to get the value from the SSM Parameter, and set the value to collector-config (created above)
+   Select ValueFrom to tell ECS to get the value from the SSM Parameter, and set the value to `collector-config`.
+   
 1. Follow the ECS Fargate setup instructions to [create a task definition][task] using the template.
 
-### Configuring Alloy
+### Configure Alloy
 
-Use the following as a starting point for your Alloy configuration:
+Use the following as a starting point for your {{< param "PRODUCT_NAME" >}} configuration:
 
 ```
 prometheus.scrape "stats" {
@@ -104,68 +106,74 @@ prometheus.remote_write "default" {
 }
 ```
 
-This sets up a scrape job for the container metrics and export them to a prometheus endpoint.
+This configuration sets up a scrape job for the container metrics and export them to a Prometheus endpoint.
 
-You can create a sample task by completing the following steps (inspired by [the official ADOT doc][adot-doc])
+Complete the following steps to create a sample task.
 
-1. Create a SSM Parameter Store entry to hold the collector configuration file
-Open the AWS Systems Manager console.
-
+1. Create na SSM Parameter Store entry to hold the collector configuration file.
+    
+   1. Open the AWS Console.
    1. In the AWS Console, choose Parameter Store.
-   1. Choose Create parameter.
+   1. Choose *Create parameter*.
    1. Create a parameter with the following values:
       
-      ```
-      Name: collector-config
-      Tier: Standard
-      Type: String
-      Data type: Text
-      Value: Copy and paste your custom Alloy configuration file.
-      ```
+      * Name: `collector-config`
+      * Tier: Standard
+      * Type: String
+      * Data type: Text
+      * Value: Copy and paste your custom {{< param "PRODUCT_NAME" >}} configuration file.
 
 1. Download the [ECS Fargate][fargate-template] or [ECS EC2][ec2-template] task definition template from GitHub.
 1. Edit the task definition template and add the following parameters.
+
    * `{{region}}`: The region to send the data to.
    * `{{ecsTaskRoleArn}}`: The AWSOTTaskRole ARN.
    * `{{ecsExecutionRoleArn}}`: The AWSOTTaskExcutionRole ARN.
    * Add an environment variable named ALLOY_CONFIG_CONTENT.
-Select ValueFrom to tell ECS to get the value from the SSM Parameter, and set the value to collector-config (created above).
+   
+Select ValueFrom to tell ECS to get the value from the SSM Parameter, and set the value to `collector-config`.
+
    * In the docker configuration, change the Entrypoint to `bash,-c`
-   * `{{command}}`: `"echo \"$ALLOY_CONFIG_CONTENT\" > /tmp/config_file && exec alloy run --server.http.listen-addr=0.0.0.0:12345 /tmp/config_file"` *making sure you don't ommit the double quotes around the command*
+   * `{{command}}`: `"echo \"$ALLOY_CONFIG_CONTENT\" > /tmp/config_file && exec alloy run --server.http.listen-addr=0.0.0.0:12345 /tmp/config_file"` *Make sure you don't omit the double quotes around the command.*
    * Alloy doesn't currently support collecting container metrics from the ECS metadata endpoint directly, so you need to add a second container for the [prometheus exporter](https://github.com/prometheus-community/ecs_exporter) if needed:
 
-      1. Add a new container to the task
-      1. Set "ecs-exporter" as container name.
-      1. Set "quay.io/prometheuscommunity/ecs-exporter:latest" as image
-      1. Add tcp/9779 as a port mapping.
+      1. Add a new container to the task.
+      1. Set the container name to `"ecs-exporter"`.
+      1. Set the image to `"quay.io/prometheuscommunity/ecs-exporter:latest"`.
+      1. Add `tcp/9779` as a port mapping.
+
 1. Follow the ECS Fargate setup instructions to [create a task definition][task] using the template.
 
-## Collecting EC2 instance metrics
+## Collect EC2 instance metrics
 
-For ECS Clusters running on EC2, you can collect instance metrics by using AWS ADOT or Alloy in a separate ECS task deployed as a daemon.
+For ECS Clusters running on EC2, you can collect instance metrics by using AWS ADOT or {{< param "PRODUCT_NAME" >}} in a separate ECS task deployed as a daemon.
 
-### Alloy
+### {{% param "PRODUCT_NAME" %}}
 
-You can follow the steps described in [Configure Alloy](#configuring-alloy) above to create another task, with the following changes:
+You can follow the steps described in [Configure {{< param "PRODUCT_NAME" >}}](#configure-alloy) to create another task, with the following changes:
 
-* Only add the Alloy container, not the prometheus exporter, and run the task as daemon, so it will automatically run one instance per node in your cluster.
-* Update your Alloy configuration to collect metrics from the instance. Configuration varies depending on the type of EC2 node, refer to the [Alloy documentation](https://grafana.com/docs/alloy/latest/collect/) for details.
+* Only add the {{< param "PRODUCT_NAME" >}} container, not the Prometheus exporter, and run the task as daemon, so it will automatically run one instance per node in your cluster.
+* Update your {{< param "PRODUCT_NAME" >}} configuration to collect metrics from the instance.
+   The configuration varies depending on the type of EC2 node. Refer to the [`collect`](https://grafana.com/docs/alloy/latest/collect/) documentation for details.
 
 ### ADOT
 
-The approach described in [this document](https://aws-otel.github.io/docs/setup/ecs#3-setup-the-adot-collector-for-ecs-ec2-instance-metrics) uses the awscontainerinsightreceiver receiver from the OTEL contribs, included in ADOT out of the box.
+The approach described in [the AWS Otel documentation](https://aws-otel.github.io/docs/setup/ecs#3-setup-the-adot-collector-for-ecs-ec2-instance-metrics) uses the `awscontainerinsightreceiver` receiver from OTel. This receiver is included in ADOT.
 
-Just like described in the [Configuring ADOT](#configuring-adot) section, you need to use a custom configuration SSM Parameter based on the [sample](https://github.com/aws-observability/aws-otel-collector/blob/main/config/ecs/otel-instance-metrics-config.yaml) config file in order to route the telemetry to your final destination.
+You need to use a custom configuration SSM Parameter based on the [sample](https://github.com/aws-observability/aws-otel-collector/blob/main/config/ecs/otel-instance-metrics-config.yaml) configuration file to route the telemetry to your final destination.
 
-## Collecting application telemetry
+## Collect application telemetry
 
-To collect metrics and traces emitted by your application, use the OTLP endpoints exposed by the collector side car container regardless of the collector implementation. Just specify `localhost` as the host name, which is default for most instrumentation library and agents.
+To collect metrics and traces emitted by your application, use the OTLP endpoints exposed by the collector side car container regardless of the collector implementation.
+Specify `localhost` as the host name, which is default for most instrumentation library and agents.
 
-For prometheus endpoints, add a scrape job to the ADOT or Alloy config, and use `localhost` , service port and endpoint path.
+For Prometheus endpoints, add a scrape job to the ADOT or {{< param "PRODUCT_NAME" >}} configuration, and use `localhost` , service port, and endpoint path.
 
-## Collecting Logs
+## Collect Logs
 
-The easiest way to collect application logs in ECS is to leverage the [AWS firelens log driver][firelens-doc]. Depending on your use case, you can forward your logs to the collector container in your task using the [FluentBit plugin for OpenTelemetry][fluentbit-otel-plugin] or using the FluentBit Loki plugin. You can also send everything directly to your final destination.
+The easiest way to collect application logs in ECS is to leverage the [AWS firelens log driver][firelens-doc].
+Depending on your use case, you can forward your logs to the collector container in your task using the [FluentBit plugin for OpenTelemetry][fluentbit-otel-plugin] or using the FluentBit Loki plugin.
+You can also send everything directly to your final destination.
 
 [Components]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/get-started/components
 [firelens-doc]: https://docs.aws.amazon.com/AmazonECS/latest/developerguide/firelens-taskdef.html
