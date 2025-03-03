@@ -46,7 +46,7 @@ You can use these samples as a starting point and add the appropriate exporter c
 
 * Use [`ecs-default-config`][ecs-default-config] to consume StatsD metrics, OTLP metrics and traces, and AWS X-Ray SDK traces.
 * Use [`otel-task-metrics-config`][otel-task-metrics-config] to consume StatsD, OTLP, AWS X-Ray, and Container Resource utilization metrics.
-* Use [`otel-prometheus`]otel-prometheus[] to find out how to set the Prometheus remote write (AWS managed Prometheus in the example).
+* Use [`otel-prometheus`][otel-prometheus] to find out how to set the Prometheus remote write (AWS managed Prometheus in the example).
 
 Complete the following steps to create a sample task. Refer to the [ADOT doc][adot-doc] for more information.
 
@@ -181,7 +181,7 @@ You can also send everything directly to your final destination.
 [otel-templates]: https://github.com/aws-observability/aws-otel-collector/tree/main/config/ecs
 [otel-prometheus]: https://github.com/aws-observability/aws-otel-collector/blob/357f9c7b8896dba6ee0e03b8efd7ca7117024d2e/config/ecs/ecs-amp-xray-prometheus.yaml
 [adot-doc]: https://aws-otel.github.io/docs/setup/ecs
-[otel-task-metrics-config]: https://github.com/aws-observability/aws-otel-collector/blob/main/config/ecs/container-insights/
+[otel-task-metrics-config]: https://github.com/aws-observability/aws-otel-collector/blob/main/config/ecs/container-insights/otel-task-metrics-config.yaml
 [ecs-default-config]: https://github.com/aws-observability/aws-otel-collector/blob/main/config/ecs/ecs-default-config.yaml
 [fargate-template]: https://github.com/aws-observability/aws-otel-collector/blob/master/examples/ecs/aws-cloudwatch/ecs-fargate-sidecar.json
 [ec2-template]: https://github.com/aws-observability/aws-otel-collector/blob/main/examples/ecs/aws-prometheus/ecs-fargate-task-def.json
