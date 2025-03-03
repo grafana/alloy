@@ -33,9 +33,9 @@ In this configuration, you add an OTEL collector to the task running your applic
 
 You can choose between two collector implementations:
 
-- AWS supports its own OpenTelemetry collector called ADOT. ADOT has native support for scraping task and container metrics. ADOT comes with default configurations that can be selected in the task definition.
+- You can use ADOT, the AWS OpenTelemetry collector. ADOT has native support for scraping task and container metrics. ADOT comes with default configurations that can be selected in the task definition.
 
-- Alloy can also be used as a collector alongside the [Prometheus ECS exporter](https://github.com/prometheus-community/ecs_exporter) which exposes the ECS metadatada endpoint metrics in Prometheus format.
+- Alternatively you can use {{< param "PRODUCT_NAME" >}} as a collector alongside the [Prometheus ECS exporter](https://github.com/prometheus-community/ecs_exporter) which exposes the ECS metadatada endpoint metrics in Prometheus format.
 
 ### Configure ADOT
 
@@ -46,7 +46,8 @@ You can use these samples as a starting point and add the appropriate exporter c
 
 * Use [`ecs-default-config`][ecs-default-config] to consume StatsD metrics, OTLP metrics and traces, and AWS X-Ray SDK traces.
 * Use [`otel-task-metrics-config`][otel-task-metrics-config] to consume StatsD, OTLP, AWS X-Ray, and Container Resource utilization metrics.
-* Use [`otel-prometheus`][otel-prometheus] to find out how to set the Prometheus remote write (AWS managed Prometheus in the example).
+
+Read [`otel-prometheus`][otel-prometheus] to find out how to set the Prometheus remote write (AWS managed Prometheus in the example).
 
 Complete the following steps to create a sample task. Refer to the [ADOT doc][adot-doc] for more information.
 
@@ -110,7 +111,7 @@ This configuration sets up a scrape job for the container metrics and export the
 
 Complete the following steps to create a sample task.
 
-1. Create na SSM Parameter Store entry to hold the collector configuration file.
+1. Create an SSM Parameter Store entry to hold the collector configuration file.
     
    1. Open the AWS Console.
    1. In the AWS Console, choose Parameter Store.
@@ -130,9 +131,11 @@ Complete the following steps to create a sample task.
    * `{{ecsTaskRoleArn}}`: The AWSOTTaskRole ARN.
    * `{{ecsExecutionRoleArn}}`: The AWSOTTaskExcutionRole ARN.
    * Add an environment variable named ALLOY_CONFIG_CONTENT.
-   
-Select ValueFrom to tell ECS to get the value from the SSM Parameter, and set the value to `collector-config`.
-
+      * Select ValueFrom to tell ECS to get the value from the SSM Parameter, and set the value to `collector-config`.
+   * Add environment variables for Prometheus remote write
+      * PROMETHEUS_REMOTE_WRITE_URL
+      * PROMETHEUS_USERNAME
+      * PROMETHEUS_PASSWORD *- For increased security, create a password in AWS Secret Manager and reference the ARN of the secret in the ValueFrom field.*
    * In the docker configuration, change the Entrypoint to `bash,-c`
    * `{{command}}`: `"echo \"$ALLOY_CONFIG_CONTENT\" > /tmp/config_file && exec alloy run --server.http.listen-addr=0.0.0.0:12345 /tmp/config_file"` *Make sure you don't omit the double quotes around the command.*
    * Alloy doesn't currently support collecting container metrics from the ECS metadata endpoint directly, so you need to add a second container for the [prometheus exporter](https://github.com/prometheus-community/ecs_exporter) if needed:
