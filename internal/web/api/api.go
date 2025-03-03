@@ -20,6 +20,7 @@ import (
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/service/cluster"
+	diag "github.com/grafana/alloy/internal/service/diagnosis"
 	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/service/remotecfg"
 	"github.com/prometheus/prometheus/util/httputil"
@@ -57,6 +58,8 @@ func (a *AlloyAPI) RegisterRoutes(urlPrefix string, r *mux.Router) {
 
 	r.Handle(path.Join(urlPrefix, "/graph"), graph(a.alloy, a.CallbackManager, a.logger))
 	r.Handle(path.Join(urlPrefix, "/graph/{moduleID:.+}"), graph(a.alloy, a.CallbackManager, a.logger))
+
+	r.Handle(path.Join(urlPrefix, "/diagnosis"), diagnosis(a.alloy, a.CallbackManager))
 }
 
 func listComponentsHandler(host service.Host) http.HandlerFunc {
@@ -164,6 +167,37 @@ func getClusteringPeersHandler(host service.Host) http.HandlerFunc {
 		}
 		peers := svc.Data().(cluster.Cluster).Peers()
 		bb, err := json.Marshal(peers)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		_, _ = w.Write(bb)
+	}
+}
+
+func diagnosis(s service.Host, callbackManager livedebugging.CallbackManager) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		diagnosisService, exists := s.GetService(diag.ServiceName)
+		if !exists {
+			http.Error(w, "diagnosis service not running", http.StatusInternalServerError)
+			return
+		}
+
+		insights, err := diagnosisService.(diag.Diagnosis).Diagnosis()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		data := make([]insightData, 0, len(insights))
+		for _, insight := range insights {
+			data = append(data, insightData{
+				Level: insight.Level.String(),
+				Msg:   insight.Msg,
+				Link:  insight.Link,
+			})
+		}
+		bb, err := json.Marshal(data)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

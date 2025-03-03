@@ -10,19 +10,32 @@ const (
 	LevelTips
 )
 
+func (l Level) String() string {
+	switch l {
+	case LevelError:
+		return "error"
+	case LevelWarning:
+		return "warning"
+	case LevelTips:
+		return "tips"
+	default:
+		return "unknown"
+	}
+}
+
 type insight struct {
 	Level Level
 	Msg   string
 	Link  string
 }
 
-var rules = []func(d *diagnosis, insights []insight) []insight{
+var rules = []func(d *graph, insights []insight) []insight{
 	batchProcessor,
 	batchProcessorMaxSize,
 }
 
-func batchProcessor(d *diagnosis, insights []insight) []insight {
-	if d.containsNamespace("otelcol.receiver") && !d.containsNode("otelcol.processor.batch") {
+func batchProcessor(g *graph, insights []insight) []insight {
+	if g.containsNamespace("otelcol.receiver") && !g.containsNode("otelcol.processor.batch") {
 		insights = append(insights, insight{
 			Level: LevelTips,
 			Msg:   "using a batch processor is recommended in otel pipelines",
@@ -32,8 +45,8 @@ func batchProcessor(d *diagnosis, insights []insight) []insight {
 	return insights
 }
 
-func batchProcessorMaxSize(d *diagnosis, insights []insight) []insight {
-	edges := d.getEdges("otelcol.receiver.prometheus", "otelcol.processor.batch")
+func batchProcessorMaxSize(g *graph, insights []insight) []insight {
+	edges := g.getEdges("otelcol.receiver.prometheus", "otelcol.processor.batch")
 	for _, edge := range edges {
 		if edge.to.info.Arguments.(batch.Arguments).SendBatchMaxSize == 0 {
 			insights = append(insights, insight{

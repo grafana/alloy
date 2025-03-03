@@ -15,3 +15,9 @@ type liveDebuggingData struct {
 	// Count is the number of spans, metrics, logs that the data represent.
 	Count uint64 `json:"-"`
 }
+
+type insightData struct {
+	Level string `json:"level"`
+	Msg   string `json:"msg"`
+	Link  string `json:"link"`
+}
