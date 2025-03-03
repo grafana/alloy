@@ -20,7 +20,7 @@ import (
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/service/cluster"
-	diag "github.com/grafana/alloy/internal/service/diagnosis"
+	"github.com/grafana/alloy/internal/service/diagnosis"
 	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/service/remotecfg"
 	"github.com/prometheus/prometheus/util/httputil"
@@ -59,7 +59,7 @@ func (a *AlloyAPI) RegisterRoutes(urlPrefix string, r *mux.Router) {
 	r.Handle(path.Join(urlPrefix, "/graph"), graph(a.alloy, a.CallbackManager, a.logger))
 	r.Handle(path.Join(urlPrefix, "/graph/{moduleID:.+}"), graph(a.alloy, a.CallbackManager, a.logger))
 
-	r.Handle(path.Join(urlPrefix, "/diagnosis"), diagnosis(a.alloy, a.CallbackManager))
+	r.Handle(path.Join(urlPrefix, "/diagnosis"), httputil.CompressionHandler{Handler: diagnosisHandler(a.alloy)})
 }
 
 func listComponentsHandler(host service.Host) http.HandlerFunc {
@@ -175,15 +175,15 @@ func getClusteringPeersHandler(host service.Host) http.HandlerFunc {
 	}
 }
 
-func diagnosis(s service.Host, callbackManager livedebugging.CallbackManager) http.HandlerFunc {
+func diagnosisHandler(host service.Host) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		diagnosisService, exists := s.GetService(diag.ServiceName)
+		diagnosisService, exists := host.GetService(diagnosis.ServiceName)
 		if !exists {
 			http.Error(w, "diagnosis service not running", http.StatusInternalServerError)
 			return
 		}
 
-		insights, err := diagnosisService.(diag.Diagnosis).Diagnosis()
+		insights, err := diagnosisService.(diagnosis.Diagnosis).Diagnosis()
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
