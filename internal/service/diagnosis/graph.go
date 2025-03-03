@@ -10,6 +10,8 @@ type graph struct {
 	tree  map[string]map[string]*node // key is the component name, second key is the component id
 	nodes []*node
 	roots []*node
+
+	clusteringEnabled bool
 }
 
 type node struct {
@@ -22,11 +24,12 @@ type edge struct {
 	to   *node
 }
 
-func newGraph(components []*component.Info) *graph {
+func newGraph(components []*component.Info, clusteringEnabled bool) *graph {
 	graph := &graph{
-		tree:  make(map[string]map[string]*node, 0),
-		nodes: make([]*node, 0),
-		roots: make([]*node, 0),
+		tree:              make(map[string]map[string]*node, 0),
+		nodes:             make([]*node, 0),
+		roots:             make([]*node, 0),
+		clusteringEnabled: clusteringEnabled,
 	}
 	for _, c := range components {
 		if _, ok := graph.tree[c.ComponentName]; !ok {
@@ -71,6 +74,17 @@ func newGraph(components []*component.Info) *graph {
 func (g *graph) containsNode(componentName string) bool {
 	_, ok := g.tree[componentName]
 	return ok
+}
+
+func (g *graph) getNodes(componentNames ...string) []*node {
+	nodes := make([]*node, 0)
+	for _, componentName := range componentNames {
+		ids := g.tree[componentName]
+		for _, id := range ids {
+			nodes = append(nodes, id)
+		}
+	}
+	return nodes
 }
 
 func (g *graph) containsEdge(componentName1 string, componentName2 string) bool {

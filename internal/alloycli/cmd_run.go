@@ -346,8 +346,9 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 	alloyseed.Init(fr.storagePath, l)
 
 	diagnosisService := diagnosis.New(diagnosis.Options{
-		Log:     log.With(l, "service", "diagnosis"),
-		Metrics: reg,
+		Log:               log.With(l, "service", "diagnosis"),
+		Metrics:           reg,
+		ClusteringEnabled: fr.clusterEnabled,
 	})
 
 	f := alloy_runtime.New(alloy_runtime.Options{

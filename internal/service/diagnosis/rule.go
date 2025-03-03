@@ -1,6 +1,13 @@
 package diagnosis
 
-import "github.com/grafana/alloy/internal/component/otelcol/processor/batch"
+import (
+	"fmt"
+
+	"github.com/grafana/alloy/internal/component/otelcol/processor/batch"
+	"github.com/grafana/alloy/internal/component/prometheus/operator"
+	promScrape "github.com/grafana/alloy/internal/component/prometheus/scrape"
+	pyroScrape "github.com/grafana/alloy/internal/component/pyroscope/scrape"
+)
 
 type Level int
 
@@ -32,7 +39,11 @@ type insight struct {
 var rules = []func(d *graph, insights []insight) []insight{
 	batchProcessor,
 	batchProcessorMaxSize,
+	missingClusteringBlocks,
+	clusteringNotSupported,
 }
+
+// TODO instead of latest I should set the correct version in the link
 
 func batchProcessor(g *graph, insights []insight) []insight {
 	if g.containsNamespace("otelcol.receiver") && !g.containsNode("otelcol.processor.batch") {
@@ -58,3 +69,59 @@ func batchProcessorMaxSize(g *graph, insights []insight) []insight {
 	}
 	return insights
 }
+
+func missingClusteringBlocks(g *graph, insights []insight) []insight {
+	if !g.clusteringEnabled {
+		return insights
+	}
+
+	addMissingClusteringInsight := func(node *node, insights []insight, link string) {
+		insights = append(insights, insight{
+			Level: LevelError,
+			Msg:   fmt.Sprintf("clustering is enabled but the clustering block on the component %s is not defined", node.info.ID.LocalID),
+			Link:  link,
+		})
+	}
+
+	nodes := g.getNodes("prometheus.scrape", "prometheus.operator.podmonitors", "prometheus.operator.servicemonitors", "pyroscope.scrape")
+	for _, node := range nodes {
+		switch arg := node.info.Arguments.(type) {
+		case promScrape.Arguments:
+			if !arg.Clustering.Enabled {
+				addMissingClusteringInsight(node, insights, "https://grafana.com/docs/alloy/latest/reference/components/prometheus/prometheus.scrape/#clustering")
+			}
+		case pyroScrape.Arguments:
+			if !arg.Clustering.Enabled {
+				addMissingClusteringInsight(node, insights, "https://grafana.com/docs/alloy/latest/reference/components/pyroscope/pyroscope.scrape/#clustering")
+			}
+		case operator.Arguments:
+			if !arg.Clustering.Enabled {
+				switch node.info.ComponentName {
+				case "prometheus.operator.podmonitors":
+					addMissingClusteringInsight(node, insights, "https://grafana.com/docs/alloy/latest/reference/components/prometheus/prometheus.operator.podmonitors/#clustering")
+				case "prometheus.operator.servicemonitors":
+					addMissingClusteringInsight(node, insights, "https://grafana.com/docs/alloy/latest/reference/components/prometheus/prometheus.operator.servicemonitors/#clustering")
+				}
+			}
+		}
+	}
+	return insights
+}
+
+func clusteringNotSupported(g *graph, insights []insight) []insight {
+	if !g.clusteringEnabled {
+		return insights
+	}
+
+	nodes := g.getNodes("prometheus.exporter.unix", "prometheus.exporter.self", "prometheus.exporter.windows")
+	for _, node := range nodes {
+		insights = append(insights, insight{
+			Level: LevelError,
+			Msg:   fmt.Sprintf("the component %s should not be used with clustering enabled", node.info.ComponentName),
+			Link:  "https://grafana.com/docs/alloy/latest/get-started/clustering/",
+		})
+	}
+	return insights
+}
+
+// add rule for the loki process stage

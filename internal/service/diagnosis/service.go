@@ -17,16 +17,18 @@ import (
 const ServiceName = "diagnosis"
 
 type Options struct {
-	Log     log.Logger
-	Metrics prometheus.Registerer
+	Log               log.Logger
+	Metrics           prometheus.Registerer
+	ClusteringEnabled bool
 }
 
 type Service struct {
-	logger     log.Logger
-	registerer prometheus.Registerer
-	metrics    *metrics
-	enabled    bool
-	graph      *graph
+	logger            log.Logger
+	registerer        prometheus.Registerer
+	metrics           *metrics
+	enabled           bool
+	graph             *graph
+	clusteringEnabled bool
 }
 
 type metrics struct {
@@ -43,8 +45,9 @@ type Diagnosis interface {
 
 func New(opts Options) *Service {
 	return &Service{
-		logger:     opts.Log,
-		registerer: opts.Metrics,
+		logger:            opts.Log,
+		registerer:        opts.Metrics,
+		clusteringEnabled: opts.ClusteringEnabled,
 	}
 }
 
@@ -80,7 +83,7 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 	if err != nil {
 		return err
 	}
-	s.graph = newGraph(components)
+	s.graph = newGraph(components, s.clusteringEnabled)
 	insights := s.applyRules()
 	s.report(insights)
 	<-ctx.Done()
