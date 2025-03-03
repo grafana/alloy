@@ -183,7 +183,7 @@ func diagnosisHandler(host service.Host) http.HandlerFunc {
 			return
 		}
 
-		insights, err := diagnosisService.(diagnosis.Diagnosis).Diagnosis()
+		insights, err := diagnosisService.(diagnosis.Diagnosis).Diagnosis(r.Context(), host)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

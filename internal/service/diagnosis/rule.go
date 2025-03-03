@@ -3,6 +3,7 @@ package diagnosis
 import (
 	"fmt"
 
+	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/batch"
 	"github.com/grafana/alloy/internal/component/prometheus/operator"
 	promScrape "github.com/grafana/alloy/internal/component/prometheus/scrape"
@@ -14,7 +15,7 @@ type Level int
 const (
 	LevelError Level = iota
 	LevelWarning
-	LevelTips
+	LevelInfo
 )
 
 func (l Level) String() string {
@@ -23,8 +24,8 @@ func (l Level) String() string {
 		return "error"
 	case LevelWarning:
 		return "warning"
-	case LevelTips:
-		return "tips"
+	case LevelInfo:
+		return "info"
 	default:
 		return "unknown"
 	}
@@ -43,12 +44,16 @@ var rules = []func(d *graph, insights []insight) []insight{
 	clusteringNotSupported,
 }
 
+var dataRules = []func(d *graph, dataMap map[string]liveDebuggingData, insights []insight) []insight{
+	noDataExitingComponent,
+}
+
 // TODO instead of latest I should set the correct version in the link
 
 func batchProcessor(g *graph, insights []insight) []insight {
 	if g.containsNamespace("otelcol.receiver") && !g.containsNode("otelcol.processor.batch") {
 		insights = append(insights, insight{
-			Level: LevelTips,
+			Level: LevelInfo,
 			Msg:   "using a batch processor is recommended in otel pipelines",
 			Link:  "https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.processor.batch/",
 		})
@@ -124,4 +129,20 @@ func clusteringNotSupported(g *graph, insights []insight) []insight {
 	return insights
 }
 
+func noDataExitingComponent(d *graph, dataMap map[string]liveDebuggingData, insights []insight) []insight {
+	for _, node := range d.nodes {
+		if _, ok := node.info.Component.(component.LiveDebugging); ok {
+			if _, ok := dataMap[string(node.info.ID.LocalID)]; !ok {
+				insights = append(insights, insight{
+					Level: LevelInfo,
+					Msg:   fmt.Sprintf("no data exited the component %s during the diagnosis window", node.info.ID.LocalID),
+				})
+			}
+		}
+	}
+	return insights
+}
+
 // add rule for the loki process stage
+// add rule for the spanmetrics component
+// add rule for no export data from discovery components / exporters

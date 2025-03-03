@@ -24,23 +24,30 @@ type edge struct {
 	to   *node
 }
 
-func newGraph(components []*component.Info, clusteringEnabled bool) *graph {
-	graph := &graph{
-		tree:              make(map[string]map[string]*node, 0),
-		nodes:             make([]*node, 0),
-		roots:             make([]*node, 0),
+func newGraph(clusteringEnabled bool) *graph {
+	return &graph{
+		tree:  make(map[string]map[string]*node, 0),
+		nodes: make([]*node, 0),
+		roots: make([]*node, 0),
+
 		clusteringEnabled: clusteringEnabled,
 	}
+}
+
+func (g *graph) build(components []*component.Info) {
+	g.tree = make(map[string]map[string]*node, 0)
+	g.nodes = make([]*node, 0)
+	g.roots = make([]*node, 0)
 	for _, c := range components {
-		if _, ok := graph.tree[c.ComponentName]; !ok {
-			graph.tree[c.ComponentName] = make(map[string]*node, 0)
+		if _, ok := g.tree[c.ComponentName]; !ok {
+			g.tree[c.ComponentName] = make(map[string]*node, 0)
 		}
 		node := &node{
 			info:        c,
 			connections: make([]*node, 0),
 		}
-		graph.tree[c.ComponentName][c.ID.LocalID] = node
-		graph.nodes = append(graph.nodes, node)
+		g.tree[c.ComponentName][c.ID.LocalID] = node
+		g.nodes = append(g.nodes, node)
 	}
 
 	destNode := make(map[string]struct{})
@@ -48,7 +55,7 @@ func newGraph(components []*component.Info, clusteringEnabled bool) *graph {
 		if strings.HasPrefix(c.ID.LocalID, "prometheus.exporter") || strings.HasPrefix(c.ID.LocalID, "discovery") {
 			for _, ref := range c.ReferencedBy {
 				refCpName := getNameFromID(ref)
-				graph.tree[c.ComponentName][c.ID.LocalID].connections = append(graph.tree[c.ComponentName][c.ID.LocalID].connections, graph.tree[refCpName][ref])
+				g.tree[c.ComponentName][c.ID.LocalID].connections = append(g.tree[c.ComponentName][c.ID.LocalID].connections, g.tree[refCpName][ref])
 				destNode[ref] = struct{}{}
 			}
 		} else {
@@ -57,18 +64,17 @@ func newGraph(components []*component.Info, clusteringEnabled bool) *graph {
 					continue
 				}
 				refCpName := getNameFromID(ref)
-				graph.tree[c.ComponentName][c.ID.LocalID].connections = append(graph.tree[c.ComponentName][c.ID.LocalID].connections, graph.tree[refCpName][ref])
+				g.tree[c.ComponentName][c.ID.LocalID].connections = append(g.tree[c.ComponentName][c.ID.LocalID].connections, g.tree[refCpName][ref])
 				destNode[ref] = struct{}{}
 			}
 		}
 	}
 
-	for _, node := range graph.nodes {
+	for _, node := range g.nodes {
 		if _, ok := destNode[node.info.ID.LocalID]; !ok {
-			graph.roots = append(graph.roots, node)
+			g.roots = append(g.roots, node)
 		}
 	}
-	return graph
 }
 
 func (g *graph) containsNode(componentName string) bool {
