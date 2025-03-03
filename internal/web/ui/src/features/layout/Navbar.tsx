@@ -29,6 +29,11 @@ function Navbar() {
           </NavLink>
         </li>
         <li>
+          <NavLink to="/diagnosis" className="nav-link">
+            Diagnosis
+          </NavLink>
+        </li>
+        <li>
           <a href="https://grafana.com/docs/alloy/latest">Help</a>
         </li>
       </ul>

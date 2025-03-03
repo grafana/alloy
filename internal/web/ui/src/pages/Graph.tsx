@@ -50,12 +50,7 @@ function Graph() {
   );
 
   return (
-    <Page
-      name="Live Graph"
-      desc="Visualize data flow per second."
-      icon={faDiagramProject}
-      controls={controls}
-    >
+    <Page name="Live Graph" desc="Visualize data flow per second." icon={faDiagramProject} controls={controls}>
       {components.length > 0 && (
         <ComponentGraph components={components} moduleID={moduleID} enabled={enabled} window={window} />
       )}
