@@ -42,8 +42,11 @@ func TestVM_Stdlib(t *testing.T) {
 		{"encoding.from_URLbase64", `encoding.from_URLbase64("c3RyaW5nMTIzIT8kKiYoKSctPUB-")`, string(`string123!?$*&()'-=@~`)},
 		{"encoding.to_base64", `encoding.to_base64("string123!?$*&()'-=@~")`, string(`c3RyaW5nMTIzIT8kKiYoKSctPUB+`)},
 		{"encoding.to_URLbase64", `encoding.to_URLbase64("string123!?$*&()'-=@~")`, string(`c3RyaW5nMTIzIT8kKiYoKSctPUB-`)},
-		{"encoding.to_json object", `encoding.to_json({"foo" = {"foo1" = sys.env("TEST_VAR")}, "key"=12})`, string(`{"foo":{"foo1":"Hello!"},"key":12}`)},
-
+		{
+			"encoding.to_json object",
+			`encoding.to_json({"modules"={"http_2xx"={"prober"="http","timeout"="5s","http"={"headers"={"Authorization"=sys.env("TEST_VAR")}}}}})`,
+			string(`{"modules":{"http_2xx":{"http":{"headers":{"Authorization":"Hello!"}},"prober":"http","timeout":"5s"}}}`),
+		},
 		// Map tests
 		{
 			// Basic case. No conflicting key/val pairs.
@@ -175,6 +178,11 @@ func TestVM_Stdlib_Errors(t *testing.T) {
 			"array.combine_maps",
 			`array.combine_maps([{"a" = "a1", "b" = "b1"}], [{"a" = "a1", "c" = "b1"}], [])`,
 			`combine_maps: merge conditions must not be empty`,
+		},
+		{
+			"encoding.to_json",
+			`encoding.to_json(12)`,
+			`encoding.to_json jsonEncode only supports map`,
 		},
 	}
 

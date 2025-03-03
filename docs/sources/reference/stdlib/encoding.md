@@ -72,9 +72,8 @@ For example, `config` param of [`prometheus.exporter.blackbox`][]
 ### Examples
 
 ```alloy
-> encoding.to_json({"example"={"example1"="Hello!"}, "key"=12})
-{\"example\":{\"example1\":\"Hello!\"},\"key\":12}
-
+> encoding.to_json({"modules"={"http_2xx"={"prober"="http","timeout"="5s","http"={"headers"={"Authorization"=sys.env("TEST_VAR")}}}}})
+"{\"modules\":{\"http_2xx\":{\"http\":{\"headers\":{\"Authorization\":\"Hello!\"}},\"prober\":\"http\",\"timeout\":\"5s\"}}}"
 ```
 
 ## encoding.from_json
