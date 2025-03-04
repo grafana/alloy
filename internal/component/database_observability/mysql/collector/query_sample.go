@@ -13,6 +13,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability"
+	"github.com/grafana/alloy/internal/component/database_observability/mysql/collector/parser"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/loki/v3/pkg/logproto"
 )
@@ -39,6 +40,7 @@ type QuerySampleArguments struct {
 	InstanceKey     string
 	CollectInterval time.Duration
 	EntryHandler    loki.EntryHandler
+	UseTiDBParser   bool
 
 	Logger log.Logger
 }
@@ -48,6 +50,7 @@ type QuerySample struct {
 	instanceKey     string
 	collectInterval time.Duration
 	entryHandler    loki.EntryHandler
+	sqlParser       SqlParser
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -55,15 +58,36 @@ type QuerySample struct {
 	cancel  context.CancelFunc
 }
 
+type SqlParser interface {
+	ParseSql(sql string) (any, error)
+	RedactSQL(sql string) (string, error)
+	StmtType(stmt any) string
+	ParseTableName(t any) string
+	ExtractTableNames(logger log.Logger, digest string, stmt any) []string
+}
+
+var (
+	_ SqlParser = (*parser.XwbSqlParser)(nil)
+	_ SqlParser = (*parser.TiDBSqlParser)(nil)
+)
+
 func NewQuerySample(args QuerySampleArguments) (*QuerySample, error) {
-	return &QuerySample{
+	c := &QuerySample{
 		dbConnection:    args.DB,
 		instanceKey:     args.InstanceKey,
 		collectInterval: args.CollectInterval,
 		entryHandler:    args.EntryHandler,
 		logger:          log.With(args.Logger, "collector", QuerySampleName),
 		running:         &atomic.Bool{},
-	}, nil
+	}
+
+	if args.UseTiDBParser {
+		c.sqlParser = parser.NewTiDBSqlParser()
+	} else {
+		c.sqlParser = parser.NewXwbSqlParser()
+	}
+
+	return c, nil
 }
 
 func (c *QuerySample) Name() string {
@@ -145,13 +169,13 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 			sampleText = sampleText[:idx]
 		}
 
-		stmt, err := ParseSql(sampleText)
+		stmt, err := c.sqlParser.ParseSql(sampleText)
 		if err != nil {
 			level.Error(c.logger).Log("msg", "failed to parse sql query", "schema", schemaName, "digest", digest, "err", err)
 			continue
 		}
 
-		sampleRedactedText, err := RedactSQL(sampleText)
+		sampleRedactedText, err := c.sqlParser.RedactSQL(sampleText)
 		if err != nil {
 			level.Error(c.logger).Log("msg", "failed to redact sql query", "schema", schemaName, "digest", digest, "err", err)
 			continue
@@ -167,12 +191,12 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 				Timestamp: time.Unix(0, time.Now().UnixNano()),
 				Line: fmt.Sprintf(
 					`level=info msg="query samples fetched" schema="%s" digest="%s" query_type="%s" query_sample_seen="%s" query_sample_timer_wait="%s" query_sample_redacted="%s"`,
-					schemaName, digest, StmtType(stmt), sampleSeen, sampleTimerWait, sampleRedactedText,
+					schemaName, digest, c.sqlParser.StmtType(stmt), sampleSeen, sampleTimerWait, sampleRedactedText,
 				),
 			},
 		}
 
-		tables := ExtractTableNames(c.logger, digest, stmt)
+		tables := c.sqlParser.ExtractTableNames(c.logger, digest, stmt)
 		for _, table := range tables {
 			c.entryHandler.Chan() <- loki.Entry{
 				Labels: model.LabelSet{

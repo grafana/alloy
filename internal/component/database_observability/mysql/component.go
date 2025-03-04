@@ -55,10 +55,14 @@ type Arguments struct {
 	ForwardTo         []loki.LogsReceiver `alloy:"forward_to,attr"`
 	EnableCollectors  []string            `alloy:"enable_collectors,attr,optional"`
 	DisableCollectors []string            `alloy:"disable_collectors,attr,optional"`
+
+	// TODO(cristian): experimental, will be removed soon
+	UseTiDBParser bool `alloy:"use_tidb_parser,attr,optional"`
 }
 
 var DefaultArguments = Arguments{
 	CollectInterval: 1 * time.Minute,
+	UseTiDBParser:   false,
 }
 
 func (a *Arguments) SetToDefault() {
@@ -249,6 +253,7 @@ func (c *Component) startCollectors() error {
 			InstanceKey:     c.instanceKey,
 			CollectInterval: c.args.CollectInterval,
 			EntryHandler:    entryHandler,
+			UseTiDBParser:   c.args.UseTiDBParser,
 			Logger:          c.opts.Logger,
 		})
 		if err != nil {
