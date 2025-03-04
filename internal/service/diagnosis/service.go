@@ -28,7 +28,6 @@ type Service struct {
 	logger            log.Logger
 	registerer        prometheus.Registerer
 	metrics           *metrics
-	graph             *graph
 	recorder          *recorder
 	clusteringEnabled bool
 	updateCh          chan struct{} // Channel to signal updates
@@ -56,7 +55,6 @@ func New(opts Options) *Service {
 		registerer:        opts.Metrics,
 		clusteringEnabled: opts.ClusteringEnabled,
 		recorder:          newRecorder(opts.Log),
-		graph:             newGraph(opts.ClusteringEnabled),
 		updateCh:          make(chan struct{}, 1), // Buffer of 1 to avoid blocking
 	}
 }
@@ -99,38 +97,26 @@ func (*Service) Definition() service.Definition {
 
 // Run implements service.Service.
 func (s *Service) Run(ctx context.Context, host service.Host) error {
-	components, err := host.ListComponents("", component.InfoOptions{GetArguments: true})
-	if err != nil {
-		return err
-	}
-
-	s.graph.build(components)
-	insights := s.applyRules()
-	s.report(insights) // report early
-
 	// Process updates or wait for context cancellation
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
 		case <-s.updateCh:
-			level.Debug(s.logger).Log("msg", "Processing update notification")
-			// Refresh components and rebuild graph
-			components, err := host.ListComponents("", component.InfoOptions{GetArguments: true})
+			graphs, err := s.buildGraphs(host)
 			if err != nil {
-				level.Error(s.logger).Log("msg", "Failed to list components after update", "err", err)
+				level.Error(s.logger).Log("msg", "Failed to build graphs for diagnosis", "err", err)
 				continue
 			}
-			s.graph.build(components)
-			insights := s.applyRules()
-			s.report(insights)
 
-			// Get window value safely
+			insights := make([]insight, 0)
+			insights = s.applyRules(graphs, insights)
+			s.report(insights) // report early
+
 			s.mu.Lock()
 			window := s.args.Window
 			s.mu.Unlock()
 
-			// Record flow data if window is set
 			if window > 0 {
 				// Cancel any existing recording (this is an additional safety but it should not be needed)
 				s.mu.Lock()
@@ -141,7 +127,7 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 				s.recordCancel = recordCancel
 				s.mu.Unlock()
 				level.Info(s.logger).Log("msg", "Start recording data for diagnosis", "window", window)
-				flowInsights := s.recorder.record(recordContext, host, window, s.graph)
+				flowInsights := s.recorder.record(recordContext, host, window, graphs)
 				level.Info(s.logger).Log("msg", "Finished recording data for diagnosis", "insights", len(flowInsights))
 				s.extendReport(flowInsights)
 			}
@@ -175,6 +161,21 @@ func (s *Service) Update(args any) error {
 	return nil
 }
 
+func (s *Service) buildGraphs(host service.Host) ([]*graph, error) {
+	modules := host.ListModules()
+	modules = append(modules, "") // Add root module
+	graphs := make([]*graph, len(modules))
+	for i, module := range modules {
+		components, err := host.ListComponents(module, component.InfoOptions{GetArguments: true})
+		if err != nil {
+			return nil, err
+		}
+		graphs[i] = newGraph(module, s.clusteringEnabled)
+		graphs[i].build(components)
+	}
+	return graphs, nil
+}
+
 // Diagnosis implements the Diagnosis interface
 func (s *Service) Diagnosis(ctx context.Context, host service.Host) ([]insight, error) {
 	s.mu.Lock()
@@ -186,8 +187,14 @@ func (s *Service) Diagnosis(ctx context.Context, host service.Host) ([]insight, 
 		return nil, errors.New("diagnosis service is not enabled")
 	}
 
-	insights := s.applyRules()
-	flowInsights := s.recorder.record(ctx, host, window, s.graph)
+	graphs, err := s.buildGraphs(host)
+	if err != nil {
+		return nil, err
+	}
+
+	insights := make([]insight, 0)
+	insights = s.applyRules(graphs, insights)
+	flowInsights := s.recorder.record(ctx, host, window, graphs)
 	allInsights := append(insights, flowInsights...)
 	s.report(allInsights)
 	return allInsights, nil
@@ -200,13 +207,13 @@ func (s *Service) reportInsights(insights []insight, extend bool) {
 	for _, insight := range insights {
 		switch insight.Level {
 		case LevelError:
-			level.Error(s.logger).Log("msg", insight.Msg)
+			level.Error(s.logger).Log("msg", insight.Msg, "module", insight.Module)
 			errors++
 		case LevelWarning:
-			level.Warn(s.logger).Log("msg", insight.Msg)
+			level.Warn(s.logger).Log("msg", insight.Msg, "module", insight.Module)
 			warnings++
 		case LevelInfo:
-			level.Info(s.logger).Log("msg", insight.Msg)
+			level.Info(s.logger).Log("msg", insight.Msg, "module", insight.Module)
 			tips++
 		}
 	}
@@ -230,10 +237,11 @@ func (s *Service) extendReport(insights []insight) {
 	s.reportInsights(insights, true)
 }
 
-func (s *Service) applyRules() []insight {
-	insights := make([]insight, 0)
-	for _, rule := range rules {
-		insights = rule(s.graph, insights)
+func (s *Service) applyRules(graphs []*graph, insights []insight) []insight {
+	for _, graph := range graphs {
+		for _, rule := range rules {
+			insights = rule(graph, insights)
+		}
 	}
 	return insights
 }

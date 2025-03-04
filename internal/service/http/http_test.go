@@ -288,6 +288,8 @@ func (f fakeHost) ListComponents(moduleID string, opts component.InfoOptions) ([
 	return nil, fmt.Errorf("no such module %q", moduleID)
 }
 
+func (fakeHost) ListModules() []string { return nil }
+
 func (fakeHost) GetServiceConsumers(serviceName string) []service.Consumer { return nil }
 
 func (fakeHost) NewController(id string) service.Controller { return nil }

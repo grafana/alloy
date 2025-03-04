@@ -304,6 +304,8 @@ func (fakeHost) ListComponents(moduleID string, opts component.InfoOptions) ([]*
 	return nil, fmt.Errorf("no such module %q", moduleID)
 }
 
+func (fakeHost) ListModules() []string { return nil }
+
 func (fakeHost) GetServiceConsumers(_ string) []service.Consumer { return nil }
 func (fakeHost) GetService(_ string) (service.Service, bool)     { return nil, false }
 

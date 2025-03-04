@@ -7,9 +7,10 @@ import (
 )
 
 type graph struct {
-	tree  map[string]map[string]*node // key is the component name, second key is the component id
-	nodes []*node
-	roots []*node
+	module string
+	tree   map[string]map[string]*node // key is the component name, second key is the component id
+	nodes  []*node
+	roots  []*node
 
 	clusteringEnabled bool
 }
@@ -24,11 +25,12 @@ type edge struct {
 	to   *node
 }
 
-func newGraph(clusteringEnabled bool) *graph {
+func newGraph(module string, clusteringEnabled bool) *graph {
 	return &graph{
-		tree:  make(map[string]map[string]*node, 0),
-		nodes: make([]*node, 0),
-		roots: make([]*node, 0),
+		module: module,
+		tree:   make(map[string]map[string]*node, 0),
+		nodes:  make([]*node, 0),
+		roots:  make([]*node, 0),
 
 		clusteringEnabled: clusteringEnabled,
 	}

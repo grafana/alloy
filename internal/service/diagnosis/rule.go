@@ -32,9 +32,10 @@ func (l Level) String() string {
 }
 
 type insight struct {
-	Level Level
-	Msg   string
-	Link  string
+	Level  Level
+	Msg    string
+	Link   string
+	Module string
 }
 
 var rules = []func(d *graph, insights []insight) []insight{
@@ -53,9 +54,10 @@ var dataRules = []func(d *graph, dataMap map[string]liveDebuggingData, insights 
 func batchProcessor(g *graph, insights []insight) []insight {
 	if g.containsNamespace("otelcol.receiver") && !g.containsNode("otelcol.processor.batch") {
 		insights = append(insights, insight{
-			Level: LevelInfo,
-			Msg:   "using a batch processor is recommended in otel pipelines",
-			Link:  "https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.processor.batch/",
+			Level:  LevelInfo,
+			Msg:    "using a batch processor is recommended in otel pipelines",
+			Link:   "https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.processor.batch/",
+			Module: g.module,
 		})
 	}
 	return insights
@@ -66,9 +68,10 @@ func batchProcessorMaxSize(g *graph, insights []insight) []insight {
 	for _, edge := range edges {
 		if edge.to.info.Arguments.(batch.Arguments).SendBatchMaxSize == 0 {
 			insights = append(insights, insight{
-				Level: LevelWarning,
-				Msg:   "setting a max size for the batch processor is recommended when connected to a prometheus receiver",
-				Link:  "https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.processor.batch/#arguments",
+				Level:  LevelWarning,
+				Msg:    "setting a max size for the batch processor is recommended when connected to a prometheus receiver",
+				Link:   "https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.processor.batch/#arguments",
+				Module: g.module,
 			})
 		}
 	}
@@ -82,9 +85,10 @@ func missingClusteringBlocks(g *graph, insights []insight) []insight {
 
 	addMissingClusteringInsight := func(node *node, insights []insight, link string) {
 		insights = append(insights, insight{
-			Level: LevelError,
-			Msg:   fmt.Sprintf("clustering is enabled but the clustering block on the component %s is not defined", node.info.ID.LocalID),
-			Link:  link,
+			Level:  LevelError,
+			Msg:    fmt.Sprintf("clustering is enabled but the clustering block on the component %s is not defined", node.info.ID.LocalID),
+			Link:   link,
+			Module: g.module,
 		})
 	}
 
@@ -121,9 +125,10 @@ func clusteringNotSupported(g *graph, insights []insight) []insight {
 	nodes := g.getNodes("prometheus.exporter.unix", "prometheus.exporter.self", "prometheus.exporter.windows")
 	for _, node := range nodes {
 		insights = append(insights, insight{
-			Level: LevelError,
-			Msg:   fmt.Sprintf("the component %s should not be used with clustering enabled", node.info.ComponentName),
-			Link:  "https://grafana.com/docs/alloy/latest/get-started/clustering/",
+			Level:  LevelError,
+			Msg:    fmt.Sprintf("the component %s should not be used with clustering enabled", node.info.ComponentName),
+			Link:   "https://grafana.com/docs/alloy/latest/get-started/clustering/",
+			Module: g.module,
 		})
 	}
 	return insights
@@ -134,8 +139,9 @@ func noDataExitingComponent(d *graph, dataMap map[string]liveDebuggingData, insi
 		if _, ok := node.info.Component.(component.LiveDebugging); ok {
 			if _, ok := dataMap[string(node.info.ID.LocalID)]; !ok {
 				insights = append(insights, insight{
-					Level: LevelInfo,
-					Msg:   fmt.Sprintf("no data exited the component %s during the diagnosis window", node.info.ID.LocalID),
+					Level:  LevelInfo,
+					Msg:    fmt.Sprintf("no data exited the component %s during the diagnosis window", node.info.ID.LocalID),
+					Module: d.module,
 				})
 			}
 		}

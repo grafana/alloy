@@ -37,6 +37,14 @@ func (f *Runtime) GetService(name string) (service.Service, bool) {
 	return nil, false
 }
 
+func (f *Runtime) ListModules() []string {
+	modules := make([]string, len(f.modules.List()))
+	for i, mod := range f.modules.List() {
+		modules[i] = mod.o.ID
+	}
+	return modules
+}
+
 func serviceConsumersForGraph(graph *dag.Graph, serviceName string, includePeerServices bool) []service.Consumer {
 	serviceNode, _ := graph.GetByID(serviceName).(*controller.ServiceNode)
 	if serviceNode == nil {

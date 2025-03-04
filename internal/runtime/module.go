@@ -57,6 +57,10 @@ func (m *moduleController) NewModule(id string, export component.ExportFunc) (co
 		parent:                  m,
 	})
 
+	if err := m.addModule(mod); err != nil {
+		return nil, err
+	}
+
 	return mod, nil
 }
 
@@ -80,6 +84,10 @@ func (m *moduleController) NewCustomComponent(id string, export component.Export
 		parent:                  m,
 	})
 
+	if err := m.addModule(mod); err != nil {
+		return nil, err
+	}
+
 	return mod, nil
 }
 
@@ -92,8 +100,6 @@ func (m *moduleController) removeModule(mod *module) {
 }
 
 func (m *moduleController) addModule(mod *module) error {
-	m.mut.Lock()
-	defer m.mut.Unlock()
 	if err := m.o.ModuleRegistry.Register(mod.o.ID, mod); err != nil {
 		level.Error(m.o.Logger).Log("msg", "error registering module", "id", mod.o.ID, "err", err)
 		return err
@@ -177,9 +183,7 @@ func (c *module) LoadBody(body ast.Body, args map[string]any, customComponentReg
 //
 // Run blocks until the provided context is canceled.
 func (c *module) Run(ctx context.Context) error {
-	if err := c.o.parent.addModule(c); err != nil {
-		return err
-	}
+	// TODO: what happens if the module did not run?
 	defer c.o.parent.removeModule(c)
 
 	c.f.Run(ctx)

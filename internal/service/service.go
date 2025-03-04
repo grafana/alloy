@@ -61,6 +61,9 @@ type Host interface {
 	// exist.
 	ListComponents(moduleID string, opts component.InfoOptions) ([]*component.Info, error)
 
+	// ListModules lists all running modules.
+	ListModules() []string
+
 	// GetService gets a running service using its name.
 	GetService(name string) (Service, bool)
 

@@ -32,7 +32,7 @@ type liveDebuggingData struct {
 }
 
 // TODO: support modules
-func (r *recorder) record(ctx context.Context, host service.Host, window time.Duration, g *graph) []insight {
+func (r *recorder) record(ctx context.Context, host service.Host, window time.Duration, graphs []*graph) []insight {
 	livedebugginService, exist := host.GetService(livedebugging.ServiceName)
 	if !exist {
 		return nil
@@ -43,30 +43,36 @@ func (r *recorder) record(ctx context.Context, host service.Host, window time.Du
 	dataCh := make(chan livedebugging.Data, 1000)
 	dataMap := make(map[string]liveDebuggingData)
 	droppedData := false
-	err := callbackManager.AddCallbackMulti(id, "", func(data livedebugging.Data) {
-		select {
-		case <-ctx.Done():
-			return
-		default:
+	for _, g := range graphs {
+		err := callbackManager.AddCallbackMulti(id, livedebugging.ModuleID(g.module), func(data livedebugging.Data) {
+			// Scope the data to the module
+			data.ComponentID = livedebugging.ComponentID(g.module) + "/" + data.ComponentID
 			select {
-			case dataCh <- data:
+			case <-ctx.Done():
+				return
 			default:
-				if !droppedData {
-					level.Warn(r.logger).Log("msg", "data throughput is very high, not all debugging data can be sent to the graph")
-					droppedData = true
+				select {
+				case dataCh <- data:
+				default:
+					if !droppedData {
+						level.Warn(r.logger).Log("msg", "data throughput is very high, not all debugging data can be sent to the graph")
+						droppedData = true
+					}
 				}
 			}
+		})
+		if err != nil {
+			// The reason may just be that the livedebugging service is not enabled, which is fine.
+			level.Info(r.logger).Log("msg", "not recording diagnosis data", "reason", err)
+			return nil
 		}
-	})
-	if err != nil {
-		// The reason may just be that the livedebugging service is not enabled, which is fine.
-		level.Info(r.logger).Log("msg", "not recording diagnosis data", "reason", err)
-		return nil
 	}
 
 	defer func() {
 		close(dataCh)
-		callbackManager.DeleteCallbackMulti(id, "") // TODO: support modules
+		for _, g := range graphs {
+			callbackManager.DeleteCallbackMulti(id, livedebugging.ModuleID(g.module))
+		}
 	}()
 
 	ticker := time.NewTicker(window)
@@ -102,7 +108,9 @@ func (r *recorder) record(ctx context.Context, host service.Host, window time.Du
 		case <-ticker.C:
 			insights := make([]insight, 0)
 			for _, rule := range dataRules {
-				insights = rule(g, dataMap, insights)
+				for _, g := range graphs {
+					insights = rule(g, dataMap, insights)
+				}
 			}
 			return insights
 		case <-ctx.Done():
