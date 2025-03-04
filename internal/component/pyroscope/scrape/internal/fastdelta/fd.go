@@ -382,3 +382,12 @@ type valueType struct {
 	Type []byte
 	Unit []byte
 }
+
+// DeltaMapSize returns the number of entries in the underlying DeltaMap.
+// This can be used to monitor memory usage of the delta computer.
+func (dc *DeltaComputer) DeltaMapSize() int {
+	if dc.deltaMap == nil {
+		return 0
+	}
+	return len(dc.deltaMap.m)
+}

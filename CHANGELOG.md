@@ -33,6 +33,8 @@ Main (unreleased)
 
 - Add support for proxy and headers in `prometheus.write.queue`. (@mattdurham)
 
+- Add `pyroscope_delta_map_size` metric to `pyroscope.scrape` component. (@korniltsev)
+
 v1.7.1
 -----------------
 

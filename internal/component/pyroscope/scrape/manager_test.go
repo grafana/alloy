@@ -7,6 +7,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/util"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
 	"github.com/prometheus/prometheus/model/labels"
@@ -21,7 +22,7 @@ func TestManager(t *testing.T) {
 
 	m := NewManager(Options{}, pyroscope.AppendableFunc(func(ctx context.Context, labels labels.Labels, samples []*pyroscope.RawSample) error {
 		return nil
-	}), util.TestLogger(t))
+	}), util.TestLogger(t), prometheus.NewRegistry())
 
 	defer m.Stop()
 	targetSetsChan := make(chan map[string][]*targetgroup.Group)
