@@ -1,0 +1,78 @@
+.toolSection {
+  background-color: white;
+  border: 1px solid #e4e5e6;
+  border-radius: 3px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.toolSection h2 {
+  color: rgb(36, 41, 46);
+  font-size: 1.2em;
+  font-weight: normal;
+  margin-bottom: 16px;
+}
+
+.toolSection .content {
+  margin-top: 10px;
+}
+
+.toolsContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 1440px;
+}
+
+.searchControls {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.searchInput {
+  flex: 1;
+  padding: 8px;
+  border: 1px solid #e4e5e6;
+  border-radius: 3px;
+  font-size: 14px;
+}
+
+.searchButton {
+  padding: 8px 16px;
+  background-color: #3885dc;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.searchButton:hover {
+  background-color: #2a75cc;
+}
+
+.resultsContainer {
+  width: 97%;
+}
+
+.resultsArea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #e4e5e6;
+  border-radius: 3px;
+  font-family: 'Fira Code', monospace;
+  font-size: 14px;
+  background-color: #f8f9fa;
+  resize: vertical;
+}
+
+@media (min-width: 992px) {
+  .toolsContainer {
+    flex-direction: row;
+  }
+
+  .toolSection {
+    flex: 1;
+  }
+} 

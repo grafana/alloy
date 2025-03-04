@@ -56,7 +56,10 @@ func (a *AlloyAPI) RegisterRoutes(urlPrefix string, r *mux.Router) {
 
 	r.Handle(path.Join(urlPrefix, "/peers"), httputil.CompressionHandler{Handler: getClusteringPeersHandler(a.alloy)})
 	r.Handle(path.Join(urlPrefix, "/peers/{peerName}/components/{id:.+}"), httputil.CompressionHandler{Handler: getPeerComponentHandler(a.alloy)})
+
 	r.Handle(path.Join(urlPrefix, "/debug/{id:.+}"), liveDebugging(a.alloy, a.CallbackManager))
+
+	r.Handle(path.Join(urlPrefix, "/tools/prometheus-target-search"), httputil.CompressionHandler{Handler: prometheusTargetSearchHandler()})
 }
 
 func listComponentsHandler(host service.Host) http.HandlerFunc {
@@ -337,4 +340,65 @@ func getPeerComponentHandler(host service.Host) http.HandlerFunc {
 		fmt.Println("======= resp.Body", string(body))
 		_, _ = w.Write(body)
 	}
+}
+
+// prometheusTargetSearchHandler creates a handler to search for Prometheus targets
+func prometheusTargetSearchHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Only accept POST requests
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		// Parse the request body
+		var requestData struct {
+			SearchQuery string `json:"searchQuery"`
+		}
+
+		err := json.NewDecoder(r.Body).Decode(&requestData)
+		if err != nil {
+			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		// Create a placeholder response
+		response := searchPrometheusTargets(requestData.SearchQuery)
+
+		// Set content type header
+		w.Header().Set("Content-Type", "application/json")
+
+		// Marshal and write the response
+		jsonResponse, err := json.Marshal(response)
+		if err != nil {
+			http.Error(w, "Failed to generate response", http.StatusInternalServerError)
+			return
+		}
+
+		_, _ = w.Write(jsonResponse)
+	}
+}
+
+func searchPrometheusTargets(query string) Targets {
+	return Targets{
+		Targets: []Target{
+			{
+				Instance:    "test-01",
+				ComponentID: "prometheus.scrape",
+				Labels:      map[string]string{"instance": "foo", "team": "bar", "query": query},
+				DebugInfo:   map[string]string{"status": "up", "lastScrape": "yesterday"},
+			},
+		},
+	}
+}
+
+type Target struct {
+	Instance    string            `json:"instance"`
+	ComponentID string            `json:"componentID"`
+	Labels      map[string]string `json:"labels"`
+	DebugInfo   map[string]string `json:"debugInfo"`
+}
+
+type Targets struct {
+	Targets []Target `json:"targets"`
 }
