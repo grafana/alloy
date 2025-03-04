@@ -16,7 +16,7 @@ import (
 
 func TestEnrichWithFileDiscovery(t *testing.T) {
 	// Wait for services to be ready
-	time.Sleep(2 * time.Second)
+	time.Sleep(5 * time.Second)
 
 	// Send test logs directly to API
 	sendTestLogs(t)
@@ -42,6 +42,7 @@ func TestEnrichWithFileDiscovery(t *testing.T) {
 			"environment": "production",
 			"datacenter":  "us-east",
 			"role":        "core-router",
+			"rack":        "rack1",
 			"host":        "router1.example.com",
 		}
 		for k, v := range expectedLabels {

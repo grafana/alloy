@@ -5,7 +5,8 @@
       "hostname": "router1.example.com",
       "environment": "production",
       "datacenter": "us-east",
-      "role": "core-router"
+      "role": "core-router",
+      "__meta_rack": "rack1"
     }
   },
   {
@@ -14,7 +15,8 @@
       "hostname": "router2.example.com", 
       "environment": "production",
       "datacenter": "us-west",
-      "role": "edge-router"
+      "role": "edge-router",
+      "__meta_rack": "rack2"
     }
   }
-] 
+]
