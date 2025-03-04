@@ -14,6 +14,13 @@ Unreleased
 
 - Set resource namespace correctly (@shinebayar-g)
 
+0.12.2 (2025-02-27)
+----------
+
+### Enhancements
+
+- Add support for adding livenessProbe to agent container (@slimes28)
+
 0.12.1 (2025-02-26)
 ----------
 
