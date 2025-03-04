@@ -6,6 +6,8 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
+	"io"
 	"math/rand"
 	"net/http"
 	"path"
@@ -15,12 +17,15 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/grafana/ckit/peer"
+	"github.com/prometheus/prometheus/util/httputil"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/service/cluster"
+	httpservice "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/service/remotecfg"
-	"github.com/prometheus/prometheus/util/httputil"
 )
 
 // AlloyAPI is a wrapper around the component API.
@@ -50,6 +55,7 @@ func (a *AlloyAPI) RegisterRoutes(urlPrefix string, r *mux.Router) {
 	r.Handle(path.Join(urlPrefix, "/remotecfg/components/{id:.+}"), httputil.CompressionHandler{Handler: getComponentHandlerRemoteCfg(a.alloy)})
 
 	r.Handle(path.Join(urlPrefix, "/peers"), httputil.CompressionHandler{Handler: getClusteringPeersHandler(a.alloy)})
+	r.Handle(path.Join(urlPrefix, "/peers/{peerName}/components/{id:.+}"), httputil.CompressionHandler{Handler: getPeerComponentHandler(a.alloy)})
 	r.Handle(path.Join(urlPrefix, "/debug/{id:.+}"), liveDebugging(a.alloy, a.CallbackManager))
 }
 
@@ -128,7 +134,7 @@ func getComponentHandlerInternal(host service.Host, w http.ResponseWriter, r *ht
 	vars := mux.Vars(r)
 	requestedComponent := component.ParseID(vars["id"])
 
-	component, err := host.GetComponent(requestedComponent, component.InfoOptions{
+	comp, err := host.GetComponent(requestedComponent, component.InfoOptions{
 		GetHealth:    true,
 		GetArguments: true,
 		GetExports:   true,
@@ -139,7 +145,7 @@ func getComponentHandlerInternal(host service.Host, w http.ResponseWriter, r *ht
 		return
 	}
 
-	bb, err := json.Marshal(component)
+	bb, err := json.Marshal(comp)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -149,11 +155,12 @@ func getComponentHandlerInternal(host service.Host, w http.ResponseWriter, r *ht
 
 func getClusteringPeersHandler(host service.Host) http.HandlerFunc {
 	return func(w http.ResponseWriter, _ *http.Request) {
+		fmt.Println("======= getClusteringPeersHandler")
 		// TODO(@tpaschalis) Detect if clustering is disabled and propagate to
 		// the Typescript code (eg. via the returned status code?).
 		svc, found := host.GetService(cluster.ServiceName)
 		if !found {
-			http.Error(w, "cluster service not running", http.StatusInternalServerError)
+			http.Error(w, "cluster service not running", http.StatusNotFound)
 			return
 		}
 		peers := svc.Data().(cluster.Cluster).Peers()
@@ -238,4 +245,96 @@ func setSampleProb(w http.ResponseWriter, sampleProbParam string) (sampleProb fl
 		}
 	}
 	return sampleProb
+}
+
+// getPeerComponentHandler creates a handler to fetch component details from a specific peer in a cluster
+func getPeerComponentHandler(host service.Host) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("======= getPeerComponentHandler")
+		vars := mux.Vars(r)
+		peerName := vars["peerName"]
+		componentID := vars["id"]
+
+		// find the target peer from cluster service
+		clusterSvc, found := host.GetService(cluster.ServiceName)
+		if !found {
+			http.Error(w, "cluster service not running", http.StatusNotFound)
+			return
+		}
+		peers := clusterSvc.Data().(cluster.Cluster).Peers()
+		var targetPeer *peer.Peer
+		for _, p := range peers {
+			if p.Name == peerName {
+				targetPeer = &p
+				break
+			}
+		}
+		if targetPeer == nil {
+			http.Error(w, fmt.Sprintf("peer '%s' not found", peerName), http.StatusNotFound)
+			return
+		}
+
+		// Get the HTTP service to check if TLS is enabled
+		httpSvc, found := host.GetService(httpservice.ServiceName)
+		if !found {
+			http.Error(w, "HTTP service not running", http.StatusInternalServerError)
+			return
+		}
+
+		// Determine protocol based on TLS configuration
+		protocol := "http"
+		if httpService, ok := httpSvc.(*httpservice.Service); ok && httpService.IsTLS() {
+			protocol = "https"
+		}
+
+		// Construct the URL to forward the request to the peer
+		peerURL := fmt.Sprintf("%s://%s/api/v0/web/components/%s", protocol, targetPeer.Addr, componentID)
+
+		fmt.Println("======= peerURL", peerURL)
+
+		// Create a new request to forward to the peer
+		peerReq, err := http.NewRequestWithContext(r.Context(), "GET", peerURL, nil)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("error creating request to peer: %v", err), http.StatusInternalServerError)
+			return
+		}
+
+		// Forward relevant headers
+		for k, v := range r.Header {
+			if k == "Accept-Encoding" || k == "Accept" || k == "Authorization" {
+				peerReq.Header[k] = v
+			}
+		}
+
+		// Perform the request to the peer
+		client := &http.Client{Timeout: 10 * time.Second}
+		resp, err := client.Do(peerReq)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("error requesting data from peer '%s': %v", peerName, err), http.StatusBadGateway)
+			return
+		}
+		defer func(body io.ReadCloser) { _ = body.Close() }(resp.Body)
+
+		fmt.Println("======= resp.StatusCode", resp.StatusCode)
+		fmt.Println("======= resp.Header", resp.Header)
+
+		// Copy the status code
+		w.WriteHeader(resp.StatusCode)
+
+		// Copy the headers
+		for k, v := range resp.Header {
+			for _, val := range v {
+				w.Header().Add(k, val)
+			}
+		}
+
+		// Copy the body
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("error reading response body: %v", err), http.StatusInternalServerError)
+			return
+		}
+		fmt.Println("======= resp.Body", string(body))
+		_, _ = w.Write(body)
+	}
 }

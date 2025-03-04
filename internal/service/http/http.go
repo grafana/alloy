@@ -20,6 +20,16 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/gorilla/mux"
+	"github.com/grafana/ckit/memconn"
+	_ "github.com/grafana/pyroscope-go/godeltaprof/http/pprof" // Register godeltaprof handler
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
+	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/trace/noop"
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
 	alloy_runtime "github.com/grafana/alloy/internal/runtime"
@@ -30,15 +40,6 @@ import (
 	"github.com/grafana/alloy/internal/static/server"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/printer"
-	"github.com/grafana/ckit/memconn"
-	_ "github.com/grafana/pyroscope-go/godeltaprof/http/pprof" // Register godeltaprof handler
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
-	"go.opentelemetry.io/otel/trace"
-	"go.opentelemetry.io/otel/trace/noop"
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
 )
 
 // ServiceName defines the name used for the HTTP service.
@@ -74,6 +75,10 @@ type Service struct {
 	tracer       trace.TracerProvider
 	gatherer     prometheus.Gatherer
 	opts         Options
+
+	// Mutex to protect args
+	argsMut sync.RWMutex
+	args    Arguments
 
 	winMut sync.Mutex
 	win    *server.WinCertStoreHandler
@@ -442,6 +447,11 @@ func (s *Service) componentHandler(getHost func() (service.Host, error), pathPre
 func (s *Service) Update(newConfig any) error {
 	newArgs := newConfig.(Arguments)
 
+	// Use mutex when updating args
+	s.argsMut.Lock()
+	s.args = newArgs
+	s.argsMut.Unlock()
+
 	if newArgs.TLS != nil {
 		var tlsConfig *tls.Config
 		var err error
@@ -473,6 +483,13 @@ func (s *Service) Update(newConfig any) error {
 	}
 
 	return nil
+}
+
+// IsTLS returns true if TLS is enabled for the HTTP service.
+func (s *Service) IsTLS() bool {
+	s.argsMut.RLock()
+	defer s.argsMut.RUnlock()
+	return s.args.TLS != nil
 }
 
 // Data returns an instance of [Data]. Calls to Data are cachable by the
