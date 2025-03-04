@@ -1,6 +1,7 @@
 alloy:
   clustering:
     enabled: true
+    maxJoinPeers: 20
 
 controller:
   type: 'statefulset'
