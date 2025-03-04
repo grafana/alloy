@@ -1,3 +1,6 @@
+logging {
+	level = "debug"
+}
 // Discover device metadata from file
 discovery.file "network_devices" {
   files = ["./devices.json"]
@@ -29,11 +32,7 @@ loki.source.api "network_device" {
 // Enrich logs with device metadata
 loki.enrich "enricher" {
 
-  targets = discovery.file.network_devices.targets
-  // Match on hostname/IP from logs
-  match_label = "hostname"
-  source_label = "host"
-  
+  targets = discovery.relabel.network_devices.output
   // Labels to copy from targets
   target_labels = [
     "environment",
@@ -41,7 +40,9 @@ loki.enrich "enricher" {
     "role",
     "rack",
   ]
-
+  // Match on hostname/IP from logs
+  match_label = "hostname"
+  source_label = "host"
   
   forward_to = [loki.write.enriched.receiver]
 }
@@ -49,7 +50,7 @@ loki.enrich "enricher" {
 // Write enriched logs to Loki
 loki.write "enriched" {
   endpoint {
-    url = "http://localhost:3100/loki/api/v1/push"
+    url = "http://127.0.0.1:3100/loki/api/v1/push"
   }
   external_labels = {
     test_name = "network_device_enriched",

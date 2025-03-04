@@ -8,50 +8,45 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/cmd/integration-tests/common"
 )
 
 func TestEnrichWithFileDiscovery(t *testing.T) {
-	// Wait for services to be ready
-	time.Sleep(5 * time.Second)
-
 	// Send test logs directly to API
-	sendTestLogs(t)
+	sendTestLogsForDevice(t, "router1.example.com")
 
-	// Query Loki for enriched logs
-	var logResponse common.LogResponse
-	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		err := common.FetchDataFromURL(
-			"http://127.0.0.1:3100/loki/api/v1/query?query=%7Btest_name%3D%22network_device_enriched%22%7D",
-			&logResponse,
-		)
-		assert.NoError(c, err)
-		if len(logResponse.Data.Result) == 0 {
-			return
-		}
-
-		// Verify we got all logs
-		result := logResponse.Data.Result[0]
-		assert.Equal(c, 3, len(result.Values), "should have 3 log entries")
-
-		// Verify labels were enriched
-		expectedLabels := map[string]string{
-			"environment": "production",
-			"datacenter":  "us-east",
-			"role":        "core-router",
-			"rack":        "rack1",
-			"host":        "router1.example.com",
-		}
-		for k, v := range expectedLabels {
-			assert.Equal(c, v, result.Stream[k], "label %s should be %s", k, v)
-		}
-	}, 10*time.Second, 500*time.Millisecond)
+	// Verify logs were enriched with expected labels
+	common.AssertLogsPresent(t, "network_device_enriched", map[string]string{
+		"environment": "production",
+		"datacenter":  "us-east",
+		"role":        "core-router",
+		"rack":        "rack1",
+		"host":        "router1.example.com",
+	}, 3)
+	common.AssertLogsMissing(t, "network_device_enriched",
+		"__meta_rack",
+	)
 }
 
-func sendTestLogs(t *testing.T) {
+func TestEnrichWithMissingLabels(t *testing.T) {
+	// Send test logs for unknown device
+	sendTestLogsForDevice(t, "unknown.example.com")
+
+	// Verify logs passed through without enrichment
+	common.AssertLogsPresent(t, "network_device_enriched", map[string]string{
+		"host": "unknown.example.com",
+	}, 3)
+	common.AssertLogsMissing(t, "network_device_enriched",
+		"environment",
+		"datacenter",
+		"role",
+		"rack",
+	)
+}
+
+func sendTestLogsForDevice(t *testing.T, hostname string) {
 	networkLogs := []string{
 		"%LINK-3-UPDOWN: Interface GigabitEthernet1/0/1, changed state to up",
 		"%SEC-6-IPACCESSLOGP: list 102 denied tcp 10.1.1.1(1234) -> 10.1.1.2(80), 1 packet",
@@ -68,17 +63,13 @@ func sendTestLogs(t *testing.T) {
 		now = now.Add(time.Second)
 	}
 
-	pushReq := common.LogResponse{
-		Data: struct {
-			ResultType string           `json:"resultType"`
-			Result     []common.LogData `json:"result"`
-		}{
-			Result: []common.LogData{{
-				Stream: map[string]string{
-					"host": "router1.example.com",
-				},
-				Values: values,
-			}}},
+	pushReq := common.PushRequest{
+		Streams: []common.LogData{{
+			Stream: map[string]string{
+				"host": hostname,
+			},
+			Values: values,
+		}},
 	}
 
 	body, err := json.Marshal(pushReq)
