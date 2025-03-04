@@ -11,7 +11,6 @@ loki.source.api "network_device" {
   }
   labels = {
     job = "network_device_logs",
-    test_name = "network_device_enriched",
   }
   forward_to = [loki.enrich.enricher.receiver]
 }
