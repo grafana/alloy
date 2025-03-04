@@ -29,13 +29,14 @@ func TestEnricher(t *testing.T) {
 		expectedLabels model.LabelSet
 	}{
 		{
-			name: "basic label enrichment",
+			name: "label enrichment with target_labels and logs_match_label",
 			args: Arguments{
 				Targets: []discovery.Target{
 					discovery.NewTargetFromMap(map[string]string{
 						"service": "test-service",
 						"env":     "prod",
 						"owner":   "team-a",
+						"foo":     "bar",
 					}),
 				},
 				TargetMatchLabel: "service",
@@ -48,17 +49,16 @@ func TestEnricher(t *testing.T) {
 			},
 			inputLabels: model.LabelSet{
 				"service_name": "test-service",
-				"original":     "label",
 			},
+			// foo:bar is not added as it is not in the target labels.
 			expectedLabels: model.LabelSet{
 				"service_name": "test-service",
-				"original":     "label",
 				"env":          "prod",
 				"owner":        "team-a",
 			},
 		},
 		{
-			name: "no match found",
+			name: "no match found. Copy logs as is.",
 			args: Arguments{
 				Targets: []discovery.Target{
 					discovery.NewTargetFromMap(map[string]string{
@@ -76,11 +76,11 @@ func TestEnricher(t *testing.T) {
 			},
 			inputLabels: model.LabelSet{
 				"service_name": "test-service",
-				"original":     "label",
+				"foo":          "bar",
 			},
 			expectedLabels: model.LabelSet{
 				"service_name": "test-service",
-				"original":     "label",
+				"foo":          "bar",
 			},
 		},
 		{
@@ -90,28 +90,25 @@ func TestEnricher(t *testing.T) {
 					discovery.NewTargetFromMap(map[string]string{
 						"service": "test-service",
 						"env":     "prod",
-						"owner":   "team-a",
+						"owner":   "team-b",
 						"region":  "us-west",
 					}),
 				},
 				TargetMatchLabel: "service",
-				// TargetLabels intentionally empty
+				// LogsMatchLabel intentionally omitted as 'service' label exists in both.
 			},
 			inputLog: &logproto.Entry{
 				Timestamp: time.Now(),
 				Line:      "test log",
 			},
 			inputLabels: model.LabelSet{
-				"service_name": "test-service",
-				"original":     "label",
+				"service": "test-service",
 			},
 			expectedLabels: model.LabelSet{
-				"service_name": "test-service",
-				"original":     "label",
-				"service":      "test-service",
-				"env":          "prod",
-				"owner":        "team-a",
-				"region":       "us-west",
+				"service": "test-service",
+				"env":     "prod",
+				"owner":   "team-b",
+				"region":  "us-west",
 			},
 		},
 		{
@@ -121,11 +118,11 @@ func TestEnricher(t *testing.T) {
 					discovery.NewTargetFromMap(map[string]string{
 						"service": "test-service",
 						"env":     "prod",
-						"owner":   "team-a",
+						"owner":   "team-c",
 					}),
 				},
 				TargetMatchLabel: "service",
-				// LogsMatchLabel intentionally omitted
+				// LogsMatchLabel intentionally omitted as 'service' label exists in both.
 				TargetLabels: []string{"env", "owner"},
 			},
 			inputLog: &logproto.Entry{
@@ -140,7 +137,7 @@ func TestEnricher(t *testing.T) {
 				"service":  "test-service",
 				"original": "label",
 				"env":      "prod",
-				"owner":    "team-a",
+				"owner":    "team-c",
 			},
 		},
 	}
