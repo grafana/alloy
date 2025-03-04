@@ -1,5 +1,5 @@
-// Package enricher provides the loki.enricher component.
-package enricher
+// Package enrich provides the loki.enrich component.
+package enrich
 
 import (
 	"context"
@@ -27,7 +27,7 @@ func init() {
 	})
 }
 
-// Arguments configures the loki.enricher component.
+// Arguments configures the loki.enrich component.
 type Arguments struct {
 	// The targets to use for enrichment
 	Targets []discovery.Target `alloy:"targets,attr"`

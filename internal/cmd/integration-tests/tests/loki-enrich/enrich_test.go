@@ -14,7 +14,7 @@ import (
 	"github.com/grafana/alloy/internal/cmd/integration-tests/common"
 )
 
-func TestEnricherWithFileDiscovery(t *testing.T) {
+func TestEnrichWithFileDiscovery(t *testing.T) {
 	// Wait for services to be ready
 	time.Sleep(2 * time.Second)
 

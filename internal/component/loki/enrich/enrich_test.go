@@ -1,4 +1,4 @@
-package enricher
+package enrich
 
 import (
 	"testing"
@@ -149,5 +149,5 @@ func TestName(t *testing.T) {
 		OnStateChange: func(e component.Exports) {},
 	}, Arguments{})
 	require.NoError(t, err)
-	require.Equal(t, "loki.enricher", comp.Name())
+	require.Equal(t, "loki.enrich", comp.Name())
 }
