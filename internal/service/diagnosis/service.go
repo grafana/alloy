@@ -30,11 +30,13 @@ type Service struct {
 	metrics           *metrics
 	recorder          *recorder
 	clusteringEnabled bool
+	metricsRegistered bool
 	updateCh          chan struct{} // Channel to signal updates
 
 	mu           sync.Mutex // Protects shared fields below
 	recordCancel context.CancelFunc
 	args         Arguments
+	ticker       *time.Ticker // Ticker for periodic diagnoses
 }
 
 type metrics struct {
@@ -97,45 +99,70 @@ func (*Service) Definition() service.Definition {
 
 // Run implements service.Service.
 func (s *Service) Run(ctx context.Context, host service.Host) error {
-	// Process updates or wait for context cancellation
+	s.mu.Lock()
+	if s.args.Interval > 0 {
+		s.ticker = time.NewTicker(s.args.Interval)
+	}
+	s.mu.Unlock()
+
 	for {
 		select {
 		case <-ctx.Done():
+			s.mu.Lock()
+			if s.ticker != nil {
+				s.ticker.Stop()
+			}
+			s.mu.Unlock()
 			return nil
 		case <-s.updateCh:
-			graphs, err := s.buildGraphs(host)
-			if err != nil {
-				level.Error(s.logger).Log("msg", "Failed to build graphs for diagnosis", "err", err)
-				continue
-			}
-
-			insights := make([]insight, 0)
-			insights = s.applyRules(graphs, insights)
-			s.report(insights) // report early
-
-			s.mu.Lock()
-			window := s.args.Window
-			s.mu.Unlock()
-
-			if window > 0 {
-				// Cancel any existing recording (this is an additional safety but it should not be needed)
-				s.mu.Lock()
-				if s.recordCancel != nil {
-					s.recordCancel()
-				}
-				recordContext, recordCancel := context.WithCancel(ctx)
-				s.recordCancel = recordCancel
-				s.mu.Unlock()
-				level.Info(s.logger).Log("msg", "Start recording data for diagnosis", "window", window)
-				flowInsights, err := s.recorder.record(recordContext, host, window, graphs)
-				if err != nil {
-					level.Info(s.logger).Log("msg", "Recording data for diagnosis did not work", "reason", err)
-					continue
-				}
-				level.Info(s.logger).Log("msg", "Finished recording data for diagnosis", "insights", len(flowInsights))
-				s.extendReport(flowInsights)
-			}
+			s.diagnose(ctx, host)
+		case <-s.tickerChan():
+			s.diagnose(ctx, host)
 		}
+	}
+}
+
+func (s *Service) tickerChan() <-chan time.Time {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.ticker != nil {
+		return s.ticker.C
+	}
+	return nil // Returning nil is safe in select; it will be ignored.
+}
+
+func (s *Service) diagnose(ctx context.Context, host service.Host) {
+	graphs, err := s.buildGraphs(host)
+	if err != nil {
+		level.Error(s.logger).Log("msg", "Failed to build graphs for diagnosis", "err", err)
+		return
+	}
+
+	insights := make([]insight, 0)
+	insights = s.applyRules(graphs, insights)
+	s.report(insights) // report early
+
+	s.mu.Lock()
+	window := s.args.Window
+	s.mu.Unlock()
+
+	if window > 0 {
+		// Cancel any existing recording (this is an additional safety but it should not be needed)
+		s.mu.Lock()
+		if s.recordCancel != nil {
+			s.recordCancel()
+		}
+		recordContext, recordCancel := context.WithCancel(ctx)
+		s.recordCancel = recordCancel
+		s.mu.Unlock()
+		level.Info(s.logger).Log("msg", "Start recording data for diagnosis", "window", window)
+		flowInsights, err := s.recorder.record(recordContext, host, window, graphs)
+		if err != nil {
+			level.Info(s.logger).Log("msg", "Recording data for diagnosis did not work", "reason", err)
+			return
+		}
+		level.Info(s.logger).Log("msg", "Finished recording data for diagnosis", "insights", len(flowInsights))
+		s.extendReport(flowInsights)
 	}
 }
 
@@ -145,18 +172,22 @@ func (s *Service) Update(args any) error {
 
 	s.mu.Lock()
 	s.args = newArgs
-	// Cancel any existing recording when updating
 	if s.recordCancel != nil {
 		s.recordCancel()
 		s.recordCancel = nil
 	}
 	s.mu.Unlock()
 
-	if newArgs.Enabled {
+	if newArgs.Enabled && !s.metricsRegistered {
 		s.registerMetrics()
+		s.metricsRegistered = true
+	} else if !newArgs.Enabled && s.metricsRegistered {
+		s.metricsRegistered = false
+		s.registerer.Unregister(s.metrics.errors)
+		s.registerer.Unregister(s.metrics.warnings)
+		s.registerer.Unregister(s.metrics.tips)
 	}
 
-	// Send notification through channel (non-blocking)
 	select {
 	case s.updateCh <- struct{}{}:
 	default:
@@ -203,17 +234,16 @@ func (s *Service) Diagnosis(ctx context.Context, host service.Host, window time.
 			return nil, err
 		}
 		allInsights := append(insights, flowInsights...)
-		// TODO: should probably not update the metrics
-		s.report(allInsights)
+		s.reportWithoutMetrics(allInsights)
 		return allInsights, nil
 	}
-	s.report(insights)
+	s.reportWithoutMetrics(insights)
 	return insights, nil
 }
 
 // reportInsights logs insights and updates metrics
 // If extend is true, it adds to existing metrics; otherwise it sets them
-func (s *Service) reportInsights(insights []insight, extend bool) {
+func (s *Service) reportInsights(insights []insight, extend bool, withMetrics bool) {
 	errors, warnings, tips := 0, 0, 0
 	for _, insight := range insights {
 		switch insight.Level {
@@ -241,11 +271,15 @@ func (s *Service) reportInsights(insights []insight, extend bool) {
 }
 
 func (s *Service) report(insights []insight) {
-	s.reportInsights(insights, false)
+	s.reportInsights(insights, false, true)
+}
+
+func (s *Service) reportWithoutMetrics(insights []insight) {
+	s.reportInsights(insights, false, false)
 }
 
 func (s *Service) extendReport(insights []insight) {
-	s.reportInsights(insights, true)
+	s.reportInsights(insights, true, true)
 }
 
 func (s *Service) applyRules(graphs []*graph, insights []insight) []insight {
