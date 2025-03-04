@@ -44,7 +44,7 @@ Name | Type | Description | Default | Required
 `targets` | `[]discovery.Target` | List of targets from a discovery component. | | yes
 `match_label` | `string` | Which label from discovered targets to match against (e.g., "__meta_consul_service"). | | yes
 `source_label` | `string` | Which label from incoming logs to match against discovered targets (e.g., "service_name"). | | yes
-`target_labels` | `[]string` | List of labels to copy from discovered targets to logs. | | yes
+`target_labels` | `[]string` | List of labels to copy from discovered targets to logs. If empty, all labels will be copied. | | no
 `forward_to` | `[]loki.LogsReceiver` | List of receivers to send enriched logs to. | | yes
 
 ## Exports
@@ -57,7 +57,7 @@ Name | Type | Description
 
 ## Example
 
-```river
+```alloy
 // Configure DNS discovery
 discovery.dns "services" {
     names = ["*.service.consul"]

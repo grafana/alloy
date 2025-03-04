@@ -38,8 +38,8 @@ type Arguments struct {
 	// Which source label from logs to match against (e.g. "hostname", "ip")
 	SourceLabel string `alloy:"source_label,attr"`
 
-	// List of target labels to copy to logs
-	TargetLabels []string `alloy:"target_labels,attr"`
+	// List of target labels to copy to logs. If empty, all labels will be copied.
+	TargetLabels []string `alloy:"target_labels,attr,optional"`
 
 	// Where to forward logs after enrichment
 	ForwardTo []loki.LogsReceiver `alloy:"forward_to,attr"`
@@ -130,11 +130,19 @@ func (c *Component) processLog(entry *logproto.Entry, labels model.LabelSet) err
 		return c.forwardLog(entry, labels)
 	}
 
-	// Copy requested labels from target to log labels
+	// Copy labels from target to log labels
 	newLabels := labels.Clone()
-	for _, label := range c.args.TargetLabels {
-		if value := targetLabels[model.LabelName(label)]; value != "" {
-			newLabels[model.LabelName(label)] = value
+	if len(c.args.TargetLabels) == 0 {
+		// If no specific labels are requested, copy all labels
+		for k, v := range targetLabels {
+			newLabels[k] = v
+		}
+	} else {
+		// Copy only requested labels
+		for _, label := range c.args.TargetLabels {
+			if value := targetLabels[model.LabelName(label)]; value != "" {
+				newLabels[model.LabelName(label)] = value
+			}
 		}
 	}
 

@@ -83,6 +83,38 @@ func TestEnricher(t *testing.T) {
 				"original":     "label",
 			},
 		},
+		{
+			name: "copy all labels when target_labels is empty",
+			args: Arguments{
+				Targets: []discovery.Target{
+					discovery.NewTargetFromMap(map[string]string{
+						"service": "test-service",
+						"env":     "prod",
+						"owner":   "team-a",
+						"region":  "us-west",
+					}),
+				},
+				MatchLabel:  "service",
+				SourceLabel: "service_name",
+				// TargetLabels intentionally empty
+			},
+			inputLog: &logproto.Entry{
+				Timestamp: time.Now(),
+				Line:      "test log",
+			},
+			inputLabels: model.LabelSet{
+				"service_name": "test-service",
+				"original":     "label",
+			},
+			expectedLabels: model.LabelSet{
+				"service_name": "test-service",
+				"original":     "label",
+				"service":      "test-service",
+				"env":          "prod",
+				"owner":        "team-a",
+				"region":       "us-west",
+			},
+		},
 	}
 
 	for _, tt := range tests {
