@@ -1,14 +1,14 @@
-import { Alert, Box, Button, LoadingPlaceholder } from '@grafana/ui';
+import { DiagnosisInsight } from '../../hooks/diagnosis';
 
-import { DiagnosisInsight, useDiagnosis } from '../../hooks/diagnosis';
+import Table from './Table';
+
+import styles from './Table.module.css';
 
 interface ComponentDiagnosisProps {
   insights: DiagnosisInsight[];
-  loading: boolean;
-  error: string | null;
 }
 
-const ComponentDiagnosis = ({ insights, loading, error }: ComponentDiagnosisProps) => {
+const ComponentDiagnosis = ({ insights }: ComponentDiagnosisProps) => {
   const getLevelColor = (level: string): string => {
     switch (level.toLowerCase()) {
       case 'error':
@@ -22,59 +22,69 @@ const ComponentDiagnosis = ({ insights, loading, error }: ComponentDiagnosisProp
     }
   };
 
+  const tableStyles = { width: '130px' };
+
+  // Check if all modules are empty
+  const allModulesEmpty = insights.every((insight) => !insight.module || insight.module.trim() === '');
+
+  // Adjust table headers based on whether all modules are empty
+  const tableHeaders = allModulesEmpty ? ['Level', 'Message', 'Link'] : ['Level', 'Message', 'Module', 'Link'];
+
+  /**
+   * Custom renderer for table data
+   */
+  const renderTableData = () => {
+    // Sort insights by level priority: error > warning > info > others
+    const sortedInsights = [...insights].sort((a, b) => {
+      const levelPriority: Record<string, number> = {
+        error: 0,
+        warning: 1,
+        info: 2,
+      };
+
+      const levelA = a.level.toLowerCase();
+      const levelB = b.level.toLowerCase();
+
+      return (
+        (levelPriority[levelA] !== undefined ? levelPriority[levelA] : 3) -
+        (levelPriority[levelB] !== undefined ? levelPriority[levelB] : 3)
+      );
+    });
+
+    return sortedInsights.map(({ level, msg, module, link }) => {
+      const displayModule = !module || module.trim() === '' ? '' : module;
+
+      return (
+        <tr key={`${displayModule}-${msg}`} style={{ lineHeight: '2.5' }}>
+          <td>
+            <span style={{ color: getLevelColor(level) }}>{level.toUpperCase()}</span>
+          </td>
+          <td>
+            <span>{msg}</span>
+          </td>
+          {!allModulesEmpty && (
+            <td>
+              <span>{displayModule}</span>
+            </td>
+          )}
+          <td>
+            {link ? (
+              <a href={link} target="_blank" rel="noopener noreferrer">
+                Learn more
+              </a>
+            ) : (
+              <span></span>
+            )}
+          </td>
+        </tr>
+      );
+    });
+  };
+
   return (
-    <Box padding={3}>
-      {loading ? (
-        <Box display="flex" alignItems="center" justifyContent="center">
-          <LoadingPlaceholder text="Running diagnosis..." />
-        </Box>
-      ) : error ? (
-        <Alert title="Error" severity="error">
-          {error}
-        </Alert>
-      ) : insights.length === 0 && !loading ? (
-        <p>Click "Run Diagnosis" to analyze your system for potential issues.</p>
-      ) : insights.length === 0 ? (
-        <Alert title="No issues found" severity="success">
-          No diagnostic insights available. Your system appears to be running optimally.
-        </Alert>
-      ) : (
-        <Box marginTop={3}>
-          {insights.map((insight: DiagnosisInsight, index: number) => (
-            <div
-              key={index}
-              style={{
-                marginBottom: '16px',
-                padding: '16px',
-                border: '1px solid #ddd',
-                borderRadius: '4px',
-                backgroundColor: 'var(--background-secondary)',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
-                <span
-                  style={{
-                    color: getLevelColor(insight.level),
-                    marginRight: '8px',
-                    fontWeight: 'bold',
-                  }}
-                >
-                  {insight.level.toUpperCase()}
-                </span>
-                <span>{insight.msg}</span>
-              </div>
-              {insight.link && (
-                <div style={{ marginTop: '8px' }}>
-                  <a href={insight.link} target="_blank" rel="noopener noreferrer">
-                    Learn more
-                  </a>
-                </div>
-              )}
-            </div>
-          ))}
-        </Box>
-      )}
-    </Box>
+    <div className={styles.list}>
+      <Table tableHeaders={tableHeaders} renderTableData={renderTableData} style={tableStyles} />
+    </div>
   );
 };
 

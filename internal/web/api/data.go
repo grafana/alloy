@@ -17,7 +17,8 @@ type liveDebuggingData struct {
 }
 
 type insightData struct {
-	Level string `json:"level"`
-	Msg   string `json:"msg"`
-	Link  string `json:"link"`
+	Level  string `json:"level"`
+	Msg    string `json:"msg"`
+	Link   string `json:"link"`
+	Module string `json:"module"`
 }

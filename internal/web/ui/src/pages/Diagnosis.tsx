@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { faDiagnoses } from '@fortawesome/free-solid-svg-icons';
 
-import { Button, Checkbox, Field, Input } from '@grafana/ui';
+import { Alert, Button, Checkbox, Field, Input } from '@grafana/ui';
 
 import ComponentDiagnosis from '../features/diagnosis/ComponentDiagnosis';
 import Page from '../features/layout/Page';
@@ -93,7 +93,6 @@ const PageDiagnosis = () => {
               <div className={styles.progressBar}>
                 <div className={styles.progressFill} style={{ width: `${recordingProgress}%` }} />
               </div>
-              <div className={styles.progressText}>Recording for {window} seconds...</div>
             </div>
           )}
           <div className={styles.buttonContainer}>
@@ -112,6 +111,14 @@ const PageDiagnosis = () => {
     </div>
   );
 
+  if (error) {
+    return (
+      <Alert title="Error" severity="error">
+        {error}
+      </Alert>
+    );
+  }
+
   if (!insights || insights.length === 0) {
     return (
       <div className={styles.container}>
@@ -125,7 +132,7 @@ const PageDiagnosis = () => {
 
   return (
     <Page name="Diagnosis" desc="Run a diagnosis on your pipelines to check for issues and tips" icon={faDiagnoses}>
-      <ComponentDiagnosis insights={insights} loading={loading} error={error} />
+      <ComponentDiagnosis insights={insights} />
     </Page>
   );
 };

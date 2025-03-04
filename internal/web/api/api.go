@@ -186,7 +186,7 @@ func diagnosisHandler(host service.Host) http.HandlerFunc {
 
 		window := r.URL.Query().Get("window")
 		var windowSeconds time.Duration
-		if window != "" {
+		if window != "" && window != "0" {
 			windowSeconds = setWindow(w, window, 300*time.Second, 3600)
 		}
 
@@ -199,9 +199,10 @@ func diagnosisHandler(host service.Host) http.HandlerFunc {
 		data := make([]insightData, 0, len(insights))
 		for _, insight := range insights {
 			data = append(data, insightData{
-				Level: insight.Level.String(),
-				Msg:   insight.Msg,
-				Link:  insight.Link,
+				Level:  insight.Level.String(),
+				Msg:    insight.Msg,
+				Link:   insight.Link,
+				Module: insight.Module,
 			})
 		}
 		bb, err := json.Marshal(data)

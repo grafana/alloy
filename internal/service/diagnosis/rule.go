@@ -55,7 +55,7 @@ func batchProcessor(g *graph, insights []insight) []insight {
 	if g.containsNamespace("otelcol.receiver") && !g.containsNode("otelcol.processor.batch") {
 		insights = append(insights, insight{
 			Level:  LevelInfo,
-			Msg:    "using a batch processor is recommended in otel pipelines",
+			Msg:    "Using a batch processor is recommended in otel pipelines.",
 			Link:   "https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.processor.batch/",
 			Module: g.module,
 		})
@@ -69,7 +69,7 @@ func batchProcessorMaxSize(g *graph, insights []insight) []insight {
 		if edge.to.info.Arguments.(batch.Arguments).SendBatchMaxSize == 0 {
 			insights = append(insights, insight{
 				Level:  LevelWarning,
-				Msg:    "setting a max size for the batch processor is recommended when connected to a prometheus receiver",
+				Msg:    "Setting a max size for the batch processor is recommended when connected to a prometheus receiver.",
 				Link:   "https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.processor.batch/#arguments",
 				Module: g.module,
 			})
@@ -86,7 +86,7 @@ func missingClusteringBlocks(g *graph, insights []insight) []insight {
 	addMissingClusteringInsight := func(node *node, insights []insight, link string) {
 		insights = append(insights, insight{
 			Level:  LevelError,
-			Msg:    fmt.Sprintf("clustering is enabled but the clustering block on the component %s is not defined", node.info.ID.LocalID),
+			Msg:    fmt.Sprintf("Clustering is enabled but the clustering block on the component %q is not defined.", node.info.ID.LocalID),
 			Link:   link,
 			Module: g.module,
 		})
@@ -126,7 +126,7 @@ func clusteringNotSupported(g *graph, insights []insight) []insight {
 	for _, node := range nodes {
 		insights = append(insights, insight{
 			Level:  LevelError,
-			Msg:    fmt.Sprintf("the component %s should not be used with clustering enabled", node.info.ComponentName),
+			Msg:    fmt.Sprintf("The component %q should not be used with clustering enabled.", node.info.ComponentName),
 			Link:   "https://grafana.com/docs/alloy/latest/get-started/clustering/",
 			Module: g.module,
 		})
@@ -140,7 +140,7 @@ func noDataExitingComponent(d *graph, dataMap map[string]liveDebuggingData, insi
 			if _, ok := dataMap[string(node.info.ID.LocalID)]; !ok {
 				insights = append(insights, insight{
 					Level:  LevelInfo,
-					Msg:    fmt.Sprintf("no data exited the component %s during the diagnosis window", node.info.ID.LocalID),
+					Msg:    fmt.Sprintf("No data exited the component %q during the diagnosis window.", node.info.ID.LocalID),
 					Module: d.module,
 				})
 			}

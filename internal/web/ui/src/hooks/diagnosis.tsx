@@ -4,6 +4,7 @@ export interface DiagnosisInsight {
   level: string;
   msg: string;
   link: string;
+  module: string;
 }
 
 export const useDiagnosis = (window: number) => {
@@ -25,16 +26,35 @@ export const useDiagnosis = (window: number) => {
       const response = await fetch(`./api/v0/web/diagnosis?window=${window}`, {
         signal: controller.signal,
       });
+
       if (!response.ok) {
-        throw new Error(`Error fetching diagnosis data: ${response.statusText}`);
+        // Try to get more detailed error information from the response
+        let errorDetails = response.statusText;
+        try {
+          // Attempt to read the response body for more details
+          const errorText = await response.text();
+          if (errorText) {
+            errorDetails = `${errorDetails}: ${errorText}`;
+          }
+        } catch (readError) {
+          console.error('Failed to read error response body:', readError);
+        }
+
+        throw new Error(`Error fetching diagnosis data (${response.status}): ${errorDetails}`);
       }
+
       const data = await response.json();
       setInsights(data);
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') {
         setError('Diagnosis cancelled');
+      } else if (err instanceof Error) {
+        // Include more details from the error object
+        const errorMessage = err.message;
+
+        setError(`${errorMessage}`);
       } else {
-        setError(err instanceof Error ? err.message : 'Unknown error occurred');
+        setError(`Unknown error occurred: ${String(err)}`);
       }
     } finally {
       setLoading(false);

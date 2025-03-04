@@ -88,12 +88,6 @@
     transition: width 0.1s ease-in-out;
   }
   
-  .progressText {
-    margin-top: 8px;
-    font-size: 16px;
-    color: var(--color-text-secondary, #8e8e8e);
-  }
-  
   .buttonContainer {
     display: flex;
     justify-content: center;

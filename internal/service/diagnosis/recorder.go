@@ -2,6 +2,7 @@ package diagnosis
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/go-kit/log"
@@ -32,10 +33,10 @@ type liveDebuggingData struct {
 }
 
 // TODO: support modules
-func (r *recorder) record(ctx context.Context, host service.Host, window time.Duration, graphs []*graph) []insight {
+func (r *recorder) record(ctx context.Context, host service.Host, window time.Duration, graphs []*graph) ([]insight, error) {
 	livedebugginService, exist := host.GetService(livedebugging.ServiceName)
 	if !exist {
-		return nil
+		return nil, fmt.Errorf("livedebugging service not found")
 	}
 	callbackManager, _ := livedebugginService.Data().(livedebugging.CallbackManager)
 	id := livedebugging.CallbackID(uuid.New().String())
@@ -64,7 +65,7 @@ func (r *recorder) record(ctx context.Context, host service.Host, window time.Du
 		if err != nil {
 			// The reason may just be that the livedebugging service is not enabled, which is fine.
 			level.Info(r.logger).Log("msg", "not recording diagnosis data", "reason", err)
-			return nil
+			return nil, err
 		}
 	}
 
@@ -112,10 +113,10 @@ func (r *recorder) record(ctx context.Context, host service.Host, window time.Du
 					insights = rule(g, dataMap, insights)
 				}
 			}
-			return insights
+			return insights, nil
 		case <-ctx.Done():
 			level.Info(r.logger).Log("msg", "the diagnosis was interrupted")
-			return nil
+			return nil, nil
 		}
 	}
 }

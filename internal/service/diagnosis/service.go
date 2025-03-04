@@ -127,7 +127,11 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 				s.recordCancel = recordCancel
 				s.mu.Unlock()
 				level.Info(s.logger).Log("msg", "Start recording data for diagnosis", "window", window)
-				flowInsights := s.recorder.record(recordContext, host, window, graphs)
+				flowInsights, err := s.recorder.record(recordContext, host, window, graphs)
+				if err != nil {
+					level.Info(s.logger).Log("msg", "Recording data for diagnosis did not work", "reason", err)
+					continue
+				}
 				level.Info(s.logger).Log("msg", "Finished recording data for diagnosis", "insights", len(flowInsights))
 				s.extendReport(flowInsights)
 			}
@@ -194,7 +198,10 @@ func (s *Service) Diagnosis(ctx context.Context, host service.Host, window time.
 	insights := make([]insight, 0)
 	insights = s.applyRules(graphs, insights)
 	if window > 0 {
-		flowInsights := s.recorder.record(ctx, host, window, graphs)
+		flowInsights, err := s.recorder.record(ctx, host, window, graphs)
+		if err != nil {
+			return nil, err
+		}
 		allInsights := append(insights, flowInsights...)
 		// TODO: should probably not update the metrics
 		s.report(allInsights)
