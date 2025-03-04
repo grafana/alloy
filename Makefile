@@ -264,7 +264,7 @@ generate-snmp:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
-	@LATEST_SNMP_VERSION=$$(go list -m github.com/prometheus/snmp_exporter | cut -d' ' -f2); \
+	@LATEST_SNMP_VERSION=$$(go list -f '{{ .Version }}' -m github.com/prometheus/snmp_exporter); \
 	sed -i "s|snmp_exporter/[^/]*/snmp.yml|snmp_exporter/$$LATEST_SNMP_VERSION/snmp.yml|" internal/static/integrations/snmp_exporter/common/common.go; \
 	go generate ./internal/static/integrations/snmp_exporter/common; \
 	sed -i "s/SNMP_VERSION: v[0-9]\+\.[0-9]\+\.[0-9]\+/SNMP_VERSION: $$LATEST_SNMP_VERSION/" docs/sources/_index.md.t
