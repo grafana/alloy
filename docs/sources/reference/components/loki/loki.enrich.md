@@ -42,8 +42,8 @@ The following arguments are supported:
 Name | Type | Description | Default | Required
 ---- | ---- | ----------- | ------- | --------
 `targets` | `[]discovery.Target` | List of targets from a discovery component. | | yes
-`match_label` | `string` | Which label from discovered targets to match against (e.g., "__meta_consul_service"). | | yes
-`source_label` | `string` | Which label from incoming logs to match against discovered targets (e.g., "service_name"). | | yes
+`target_match_label` | `string` | Which label from discovered targets to match against (e.g., "__inventory_consul_service"). | | yes
+`logs_match_label` | `string` | Which label from incoming logs to match against discovered targets (e.g., "service_name"). If not specified, `target_match_label` will be used. | `target_match_label` | no
 `target_labels` | `[]string` | List of labels to copy from discovered targets to logs. If empty, all labels will be copied. | | no
 `forward_to` | `[]loki.LogsReceiver` | List of receivers to send enriched logs to. | | yes
 
@@ -58,17 +58,44 @@ Name | Type | Description
 ## Example
 
 ```alloy
-// Configure DNS discovery
-discovery.dns "services" {
-    names = ["*.service.consul"]
-    type = "A"
-    port = 80
+// Configure HTTP discovery
+discovery.http "default" {
+    url = "http://network-inventory.example.com/prometheus_sd"
+}
+
+discovery.relabel "default" {
+    targets = discovery.http.default.targets
+    rule {
+        action        = "replace"
+        source_labels = ["__inventory_rack"]
+        target_label  = "rack"
+    }
+    rule {
+        action        = "replace"
+        source_labels = ["__inventory_datacenter"]
+        target_label  = "datacenter"
+    }
+    rule {
+        action        = "replace"
+        source_labels = ["__inventory_environment"]
+        target_label  = "environment"
+    }
+    rule {
+        action        = "replace"
+        source_labels = ["__inventory_tenant"]
+        target_label  = "tenant"
+    }
+    rule {
+        action        = "replace"
+        source_labels = ["__inventory_primary_ip"]
+        target_label  = "primary_ip"
+    }
 }
 
 // Receive syslog messages
 loki.source.syslog "incoming" {
     listener {
-        address = ":1514"
+        address = ":514"
         protocol = "tcp"
         labels = {
             job = "syslog"
@@ -77,20 +104,15 @@ loki.source.syslog "incoming" {
     forward_to = [loki.enrich.default.receiver]
 }
 
-// Enrich logs using DNS discovery
+// Enrich logs using HTTP discovery
 loki.enrich "default" {
-    // Use targets from DNS discovery
-    targets = discovery.dns.services.targets
+    // Use targets from HTTP discovery (after relabeling)
+    targets = discovery.relabel.default.output
 
     // Match hostname from logs to DNS name
-    match_label = "__meta_dns_name"
-    source_label = "hostname"
+    target_match_label = "primary_ip"
 
-    // Copy these labels from discovered targets to logs
-    target_labels = [
-        "__meta_dns_name",
-        "__meta_dns_a_record"
-    ]
+
 
     forward_to = [loki.write.default.receiver]
 }
@@ -100,15 +122,16 @@ loki.enrich "default" {
 
 The component matches logs to discovered targets and enriches them with additional labels:
 
-1. For each log entry, it looks up the value of `source_label` from the log's labels
-2. It matches this value against the `match_label` in discovered targets
-3. If a match is found, it copies the requested `target_labels` from the discovered target to the log entry
+1. For each log entry, it looks up the value of `logs_match_label` from the log's labels (or `target_match_label` if `logs_match_label` is not specified)
+2. It matches this value against the `target_match_label` in discovered targets
+3. If a match is found, it copies the requested `target_labels` from the discovered target to the log entry (if `target_labels` is empty, all labels are copied)
 4. The log entry (enriched or unchanged) is forwarded to the configured receivers
 
 ## See also
 
 * [loki.source.syslog](../loki.source.syslog/)
-* [discovery.dns](../discovery/discovery.dns/)
+* [loki.source.api](../loki.source.api/)
+* [discovery.relabel](../discovery/discovery.relabel/)
 * [discovery.http](../discovery/discovery.http/) <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components

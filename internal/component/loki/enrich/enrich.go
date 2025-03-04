@@ -32,11 +32,12 @@ type Arguments struct {
 	// The targets to use for enrichment
 	Targets []discovery.Target `alloy:"targets,attr"`
 
-	// Which label to use for matching targets (e.g. "__meta_hostname", "__meta_ip")
-	MatchLabel string `alloy:"match_label,attr"`
+	// Which label from targets to use for matching (e.g. "hostname", "ip")
+	TargetMatchLabel string `alloy:"target_match_label,attr"`
 
-	// Which source label from logs to match against (e.g. "hostname", "ip")
-	SourceLabel string `alloy:"source_label,attr"`
+	// Which label from logs to match against (e.g. "hostname", "ip")
+	// If not specified, TargetMatchLabel will be used
+	LogsMatchLabel string `alloy:"logs_match_label,attr,optional"`
 
 	// List of target labels to copy to logs. If empty, all labels will be copied.
 	TargetLabels []string `alloy:"target_labels,attr,optional"`
@@ -102,7 +103,7 @@ func (c *Component) refreshCacheFromTargets(targets []discovery.Target) {
 			labelSet[model.LabelName(k)] = model.LabelValue(v)
 			return true
 		})
-		if matchValue := string(labelSet[model.LabelName(c.args.MatchLabel)]); matchValue != "" {
+		if matchValue := string(labelSet[model.LabelName(c.args.TargetMatchLabel)]); matchValue != "" {
 			newCache[matchValue] = labelSet
 		}
 	}
@@ -113,8 +114,14 @@ func (c *Component) refreshCacheFromTargets(targets []discovery.Target) {
 }
 
 func (c *Component) processLog(entry *logproto.Entry, labels model.LabelSet) error {
+	// Determine which label to use for matching
+	matchLabel := c.args.LogsMatchLabel
+	if matchLabel == "" {
+		matchLabel = c.args.TargetMatchLabel
+	}
+
 	// Get the source value to match against discovered targets
-	sourceValue := string(labels[model.LabelName(c.args.SourceLabel)])
+	sourceValue := string(labels[model.LabelName(matchLabel)])
 	if sourceValue == "" {
 		// No match label, forward as-is
 		return c.forwardLog(entry, labels)

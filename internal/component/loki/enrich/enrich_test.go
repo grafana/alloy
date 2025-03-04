@@ -38,9 +38,9 @@ func TestEnricher(t *testing.T) {
 						"owner":   "team-a",
 					}),
 				},
-				MatchLabel:   "service",
-				SourceLabel:  "service_name",
-				TargetLabels: []string{"env", "owner"},
+				TargetMatchLabel: "service",
+				LogsMatchLabel:   "service_name",
+				TargetLabels:     []string{"env", "owner"},
 			},
 			inputLog: &logproto.Entry{
 				Timestamp: time.Now(),
@@ -66,9 +66,9 @@ func TestEnricher(t *testing.T) {
 						"env":     "prod",
 					}),
 				},
-				MatchLabel:   "service",
-				SourceLabel:  "service_name",
-				TargetLabels: []string{"env"},
+				TargetMatchLabel: "service",
+				LogsMatchLabel:   "service_name",
+				TargetLabels:     []string{"env"},
 			},
 			inputLog: &logproto.Entry{
 				Timestamp: time.Now(),
@@ -94,8 +94,7 @@ func TestEnricher(t *testing.T) {
 						"region":  "us-west",
 					}),
 				},
-				MatchLabel:  "service",
-				SourceLabel: "service_name",
+				TargetMatchLabel: "service",
 				// TargetLabels intentionally empty
 			},
 			inputLog: &logproto.Entry{
@@ -113,6 +112,35 @@ func TestEnricher(t *testing.T) {
 				"env":          "prod",
 				"owner":        "team-a",
 				"region":       "us-west",
+			},
+		},
+		{
+			name: "match using target_match_label when logs_match_label is not specified",
+			args: Arguments{
+				Targets: []discovery.Target{
+					discovery.NewTargetFromMap(map[string]string{
+						"service": "test-service",
+						"env":     "prod",
+						"owner":   "team-a",
+					}),
+				},
+				TargetMatchLabel: "service",
+				// LogsMatchLabel intentionally omitted
+				TargetLabels: []string{"env", "owner"},
+			},
+			inputLog: &logproto.Entry{
+				Timestamp: time.Now(),
+				Line:      "test log",
+			},
+			inputLabels: model.LabelSet{
+				"service":  "test-service", // matches target_match_label
+				"original": "label",
+			},
+			expectedLabels: model.LabelSet{
+				"service":  "test-service",
+				"original": "label",
+				"env":      "prod",
+				"owner":    "team-a",
 			},
 		},
 	}
@@ -167,10 +195,10 @@ func TestUpdate(t *testing.T) {
 	}
 
 	err = comp.Update(Arguments{
-		Targets:      newTargets,
-		MatchLabel:   "service",
-		SourceLabel:  "service_name",
-		TargetLabels: []string{"env"},
+		Targets:          newTargets,
+		TargetMatchLabel: "service",
+		LogsMatchLabel:   "service_name",
+		TargetLabels:     []string{"env"},
 	})
 	require.NoError(t, err)
 }
