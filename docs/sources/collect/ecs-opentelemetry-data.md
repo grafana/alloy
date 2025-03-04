@@ -75,7 +75,7 @@ Complete the following steps to create a sample task. Refer to the [ADOT doc][ad
    
 1. Follow the ECS Fargate setup instructions to [create a task definition][task] using the template.
 
-### Configure Alloy
+### Configure {{% param "PRODUCT_NAME" %}}
 
 Use the following as a starting point for your {{< param "PRODUCT_NAME" >}} configuration:
 
@@ -132,7 +132,7 @@ Complete the following steps to create a sample task.
    * `{{ecsExecutionRoleArn}}`: The AWSOTTaskExcutionRole ARN.
    * Add an environment variable named ALLOY_CONFIG_CONTENT.
       * Select ValueFrom to tell ECS to get the value from the SSM Parameter, and set the value to `collector-config`.
-   * Add environment variables for Prometheus remote write
+   * Add environment variables for Prometheus remote write:
       * PROMETHEUS_REMOTE_WRITE_URL
       * PROMETHEUS_USERNAME
       * PROMETHEUS_PASSWORD *- For increased security, create a password in AWS Secret Manager and reference the ARN of the secret in the ValueFrom field.*
