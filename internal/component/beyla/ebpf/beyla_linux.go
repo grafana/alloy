@@ -490,8 +490,8 @@ func (a *Arguments) Convert() (*beyla.Config, error) {
 }
 
 func (args *Arguments) Validate() error {
-	if args.Port == "" && args.ExecutableName == "" && len(args.Discovery.Services) == 0 {
-		return fmt.Errorf("you need to define at least open_port, executable_name, or services in the discovery section")
+	if args.Port == "" && args.ExecutableName == "" && len(args.Discovery.Services) == 0 && len(args.Discovery.Survey) == 0 {
+		return fmt.Errorf("you need to define at least open_port, executable_name, or either a services/survey block in the discovery section")
 	}
 	validInstrumentations := map[string]struct{}{"*": {}, "http": {}, "grpc": {}, "redis": {}, "kafka": {}, "sql": {}}
 	for _, instrumentation := range args.Metrics.Instrumentations {
