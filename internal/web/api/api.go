@@ -6,6 +6,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"math/rand"
 	"net/http"
 	"path"
@@ -183,7 +184,13 @@ func diagnosisHandler(host service.Host) http.HandlerFunc {
 			return
 		}
 
-		insights, err := diagnosisService.(diagnosis.Diagnosis).Diagnosis(r.Context(), host)
+		window := r.URL.Query().Get("window")
+		var windowSeconds time.Duration
+		if window != "" {
+			windowSeconds = setWindow(w, window, 300*time.Second, 3600)
+		}
+
+		insights, err := diagnosisService.(diagnosis.Diagnosis).Diagnosis(r.Context(), host, windowSeconds)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -218,7 +225,7 @@ func graph(_ service.Host, callbackManager livedebugging.CallbackManager, logger
 			moduleID = livedebugging.ModuleID(vars["moduleID"])
 		}
 
-		windowSeconds := setWindow(w, r.URL.Query().Get("window"))
+		windowSeconds := setWindow(w, r.URL.Query().Get("window"), 5*time.Second, 60)
 
 		dataCh := make(chan livedebugging.Data, 1000)
 		dataMap := make(map[dataKey]liveDebuggingData)
@@ -387,17 +394,15 @@ func setSampleProb(w http.ResponseWriter, sampleProbParam string) (sampleProb fl
 	return sampleProb
 }
 
-// window is expected to be in seconds, between 1 and 60.
-func setWindow(w http.ResponseWriter, windowParam string) time.Duration {
-	const defaultWindow = 5 * time.Second
-
+// window is expected to be in seconds, between 1 and maxWindow.
+func setWindow(w http.ResponseWriter, windowParam string, defaultWindow time.Duration, maxWindow int) time.Duration {
 	if windowParam == "" {
 		return defaultWindow
 	}
 
 	window, err := strconv.Atoi(windowParam)
-	if err != nil || window < 1 || window > 60 {
-		http.Error(w, "Invalid window: must be an integer between 1 and 60", http.StatusBadRequest)
+	if err != nil || window < 1 || window > maxWindow {
+		http.Error(w, fmt.Sprintf("Invalid window: must be an integer between 1 and %d, switching to default of %d", maxWindow, defaultWindow), http.StatusBadRequest)
 		return defaultWindow
 	}
 

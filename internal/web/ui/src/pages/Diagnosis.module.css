@@ -1,0 +1,114 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+  
+  .customCard {
+    background-color: white;
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    padding: 24px;
+    text-align: left;
+  }
+  
+  .cardTitle {
+    font-size: 24px;
+    margin: 0 0 8px 0;
+    font-weight: 500;
+    color: #333;
+  }
+  
+  .cardDescription {
+    font-size: 18px;
+    margin: 0 0 24px 0;
+    color: #666;
+  }
+  
+  .cardContent {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+  
+  .checkboxContainer {
+    text-align: left;
+    padding: 0;
+    font-size: 18px;
+  }
+  
+  .fieldContainer {
+    margin-top: 16px;
+    width: 100%;
+    padding-right: 16px;
+    box-sizing: border-box;
+  }
+  
+  .fieldContainer label {
+    font-size: 18px;
+    display: block;
+    margin-bottom: 8px;
+  }
+  
+  .fieldContainer input {
+    font-size: 18px;
+    padding: 8px;
+    width: 100%;
+  }
+  
+  .progressContainer {
+    margin-top: 24px;
+    width: 100%;
+  }
+  
+  .progressHeader {
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    font-size: 16px;
+  }
+  
+  .progressBar {
+    width: 100%;
+    height: 8px;
+    background-color: rgba(204, 204, 220, 0.2);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  
+  .progressFill {
+    height: 100%;
+    background-color: var(--primary-text-color, #3871DC);
+    border-radius: 3px;
+    transition: width 0.1s ease-in-out;
+  }
+  
+  .progressText {
+    margin-top: 8px;
+    font-size: 16px;
+    color: var(--color-text-secondary, #8e8e8e);
+  }
+  
+  .buttonContainer {
+    display: flex;
+    justify-content: center;
+    margin-top: 40px;
+  }
+  
+  .noResultsMessage {
+    margin-top: 24px;
+    font-size: 18px;
+    text-align: center;
+  }
+  .checkboxContainer label {
+    font-size: 18px !important;
+  }
+  
+  .checkboxContainer span {
+    font-size: 18px !important;
+  }

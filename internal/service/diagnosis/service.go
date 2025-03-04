@@ -46,7 +46,7 @@ type metrics struct {
 var _ service.Service = (*Service)(nil)
 
 type Diagnosis interface {
-	Diagnosis(ctx context.Context, host service.Host) ([]insight, error)
+	Diagnosis(ctx context.Context, host service.Host, window time.Duration) ([]insight, error)
 }
 
 func New(opts Options) *Service {
@@ -177,10 +177,9 @@ func (s *Service) buildGraphs(host service.Host) ([]*graph, error) {
 }
 
 // Diagnosis implements the Diagnosis interface
-func (s *Service) Diagnosis(ctx context.Context, host service.Host) ([]insight, error) {
+func (s *Service) Diagnosis(ctx context.Context, host service.Host, window time.Duration) ([]insight, error) {
 	s.mu.Lock()
 	enabled := s.args.Enabled
-	window := s.args.Window
 	s.mu.Unlock()
 
 	if !enabled {
@@ -194,10 +193,15 @@ func (s *Service) Diagnosis(ctx context.Context, host service.Host) ([]insight, 
 
 	insights := make([]insight, 0)
 	insights = s.applyRules(graphs, insights)
-	flowInsights := s.recorder.record(ctx, host, window, graphs)
-	allInsights := append(insights, flowInsights...)
-	s.report(allInsights)
-	return allInsights, nil
+	if window > 0 {
+		flowInsights := s.recorder.record(ctx, host, window, graphs)
+		allInsights := append(insights, flowInsights...)
+		// TODO: should probably not update the metrics
+		s.report(allInsights)
+		return allInsights, nil
+	}
+	s.report(insights)
+	return insights, nil
 }
 
 // reportInsights logs insights and updates metrics
