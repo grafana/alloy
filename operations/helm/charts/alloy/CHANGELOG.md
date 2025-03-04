@@ -10,6 +10,10 @@ internal API changes are not present.
 Unreleased
 ----------
 
+### Enhancements
+
+- Add `checksum/config` pod annotation (@kimxogus)
+
 ### Bug Fixes
 
 - Set resource namespace correctly (@shinebayar-g)
