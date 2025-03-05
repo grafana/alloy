@@ -33,6 +33,11 @@ Main (unreleased)
 
 - Add support for proxy and headers in `prometheus.write.queue`. (@mattdurham)
 
+### Bugfixes
+
+- Fixed an issue where indexing targets as maps (e.g. `target["foo"]`) or objects (e.g. `target.foo`) didn't work in 
+  some circumstances resulting in `expected object or array, got capsule` error. (@thampiotr)
+
 ### Other changes
 
 - Upgrading to Prometheus v2.55.1. (@ptodev)
