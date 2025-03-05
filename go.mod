@@ -894,7 +894,7 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.1 // indirect
 )
 
-require github.com/grafana/beyla/v2 v2.0.1-0.20250304183602-53f080f35c63
+require github.com/grafana/beyla/v2 v2.0.1-0.20250304200359-22d362106348
 
 //require github.com/grafana/beyla/v2 v0.//v2.0.4-alloy.2
 
