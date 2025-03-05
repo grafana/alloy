@@ -53,7 +53,7 @@ cards:
 
 # Overview
 
-{{< figure src="/media/docs/alloy/flow-diagram-small-alloy.png" alt="Alloy flow diagram" >}}
+{{< figure src="/media/docs/alloy/flow-diagram-alloy_03-2025.png" alt="Alloy flow diagram" >}}
 
 Collect all your telemetry with one product
 
