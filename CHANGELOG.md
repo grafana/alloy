@@ -35,8 +35,9 @@ Main (unreleased)
 
 ### Bugfixes
 
-- Fixed an issue where indexing targets as maps (e.g. `target["foo"]`) or objects (e.g. `target.foo`) didn't work in 
-  some circumstances resulting in `expected object or array, got capsule` error. (@thampiotr)
+- Fixed an issue where indexing targets as maps (e.g. `target["foo"]`) or objects (e.g. `target.foo`) didn't work in
+  some circumstances resulting in `expected object or array, got capsule` error. This could also lead to
+  `foreach evaluation failed` errors when using the `foreach` configuration block. (@thampiotr)
 
 ### Other changes
 
