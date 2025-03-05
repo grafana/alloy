@@ -39,6 +39,8 @@ Main (unreleased)
   some circumstances resulting in `expected object or array, got capsule` error. This could also lead to
   `foreach evaluation failed` errors when using the `foreach` configuration block. (@thampiotr)
 
+- Fixed an issue where passing targets from some standard library functions was failing with `target::ConvertFrom` error. (@thampiotr)
+
 ### Other changes
 
 - Upgrading to Prometheus v2.55.1. (@ptodev)
