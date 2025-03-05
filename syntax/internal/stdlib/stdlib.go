@@ -10,11 +10,12 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/grafana/alloy/syntax/alloytypes"
-	"github.com/grafana/alloy/syntax/internal/value"
 	"github.com/ohler55/ojg/jp"
 	"github.com/ohler55/ojg/oj"
 	"gopkg.in/yaml.v3"
+
+	"github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/alloy/syntax/internal/value"
 )
 
 // TODO: refactor the stdlib to have consistent naming between namespaces and identifiers.
