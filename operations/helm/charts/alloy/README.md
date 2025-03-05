@@ -133,8 +133,8 @@ useful if just using the default DaemonSet isn't sufficient.
 | service.nodePort | int | `31128` | NodePort port. Only takes effect when `service.type: NodePort` |
 | service.type | string | `"ClusterIP"` | Service type |
 | serviceAccount.additionalLabels | object | `{}` | Additional labels to add to the created service account. |
-| serviceAccount.automountServiceAccountToken | bool | `true` | Whether the Alloy pod should automatically mount the service account token.
 | serviceAccount.annotations | object | `{}` | Annotations to add to the created service account. |
+| serviceAccount.automountServiceAccountToken | bool | `true` |  |
 | serviceAccount.create | bool | `true` | Whether to create a service account for the Grafana Alloy deployment. |
 | serviceAccount.name | string | `nil` | The name of the existing service account to use when serviceAccount.create is false. |
 | serviceMonitor.additionalLabels | object | `{}` | Additional labels for the service monitor. |
