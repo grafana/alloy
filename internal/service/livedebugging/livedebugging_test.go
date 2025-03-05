@@ -13,27 +13,33 @@ func TestAddCallback(t *testing.T) {
 	callbackID := CallbackID("callback1")
 	callback := func(data Data) {}
 
-	err := livedebugging.AddCallback(callbackID, "fake.liveDebugging", callback)
+	host := &testlivedebugging.FakeServiceHost{
+		ComponentsInfo: map[component.ID]testlivedebugging.FakeInfo{
+			component.ParseID(""): {ComponentName: "", Component: &testlivedebugging.FakeComponentLiveDebugging{}},
+		},
+	}
+
+	err := livedebugging.AddCallback(host, callbackID, "fake.liveDebugging", callback)
 	require.ErrorContains(t, err, "the live debugging service is disabled. Check the documentation to find out how to enable it")
 
 	livedebugging.SetEnabled(true)
 
-	err = livedebugging.AddCallback(callbackID, "fake.liveDebugging", callback)
+	err = livedebugging.AddCallback(host, callbackID, "fake.liveDebugging", callback)
 	require.ErrorContains(t, err, "the live debugging service is not ready yet")
 
 	setupServiceHost(livedebugging)
 
-	err = livedebugging.AddCallback(callbackID, "not found", callback)
+	err = livedebugging.AddCallback(host, callbackID, "not found", callback)
 	require.ErrorContains(t, err, "component not found")
 
-	require.NoError(t, livedebugging.AddCallback(callbackID, "fake.liveDebugging", callback))
+	require.NoError(t, livedebugging.AddCallback(host, callbackID, "fake.liveDebugging", callback))
 
-	err = livedebugging.AddCallback(callbackID, "fake.noLiveDebugging", callback)
+	err = livedebugging.AddCallback(host, callbackID, "fake.noLiveDebugging", callback)
 	require.ErrorContains(t, err, "the component \"fake.noLiveDebugging\" does not support live debugging")
 
-	require.NoError(t, livedebugging.AddCallback(callbackID, "declared.cmp/fake.liveDebugging", callback))
+	require.NoError(t, livedebugging.AddCallback(host, callbackID, "declared.cmp/fake.liveDebugging", callback))
 
-	err = livedebugging.AddCallback(callbackID, "declared.cmp/fake.noLiveDebugging", callback)
+	err = livedebugging.AddCallback(host, callbackID, "declared.cmp/fake.noLiveDebugging", callback)
 	require.ErrorContains(t, err, "the component \"fake.noLiveDebugging\" does not support live debugging")
 }
 
@@ -43,11 +49,17 @@ func TestStream(t *testing.T) {
 	componentID := ComponentID("fake.liveDebugging")
 	callbackID := CallbackID("callback1")
 
+	host := &testlivedebugging.FakeServiceHost{
+		ComponentsInfo: map[component.ID]testlivedebugging.FakeInfo{
+			component.ParseID(""): {ComponentName: "", Component: &testlivedebugging.FakeComponentLiveDebugging{}},
+		},
+	}
+
 	var receivedData Data
 	callback := func(data Data) {
 		receivedData = data
 	}
-	livedebugging.AddCallback(callbackID, componentID, callback)
+	livedebugging.AddCallback(host, callbackID, componentID, callback)
 
 	livedebugging.PublishIfActive(NewData(componentID, PrometheusMetric, 3, func() string { return "test data" }, WithTargetComponentIDs([]string{"component1"})))
 	require.Equal(t, componentID, receivedData.ComponentID)
@@ -75,6 +87,12 @@ func TestMultipleStreams(t *testing.T) {
 	callbackID1 := CallbackID("callback1")
 	callbackID2 := CallbackID("callback2")
 
+	host := &testlivedebugging.FakeServiceHost{
+		ComponentsInfo: map[component.ID]testlivedebugging.FakeInfo{
+			component.ParseID(""): {ComponentName: "", Component: &testlivedebugging.FakeComponentLiveDebugging{}},
+		},
+	}
+
 	var receivedData1 Data
 	callback1 := func(data Data) {
 		receivedData1 = data
@@ -85,8 +103,8 @@ func TestMultipleStreams(t *testing.T) {
 		receivedData2 = data
 	}
 
-	require.NoError(t, livedebugging.AddCallback(callbackID1, componentID, callback1))
-	require.NoError(t, livedebugging.AddCallback(callbackID2, componentID, callback2))
+	require.NoError(t, livedebugging.AddCallback(host, callbackID1, componentID, callback1))
+	require.NoError(t, livedebugging.AddCallback(host, callbackID2, componentID, callback2))
 	require.Len(t, livedebugging.callbacks[componentID], 2)
 
 	livedebugging.PublishIfActive(NewData(componentID, PrometheusMetric, 3, func() string { return "test data" }))
@@ -101,20 +119,26 @@ func TestDeleteCallback(t *testing.T) {
 	callbackID1 := CallbackID("callback1")
 	callbackID2 := CallbackID("callback2")
 
+	host := &testlivedebugging.FakeServiceHost{
+		ComponentsInfo: map[component.ID]testlivedebugging.FakeInfo{
+			component.ParseID(""): {ComponentName: "", Component: &testlivedebugging.FakeComponentLiveDebugging{}},
+		},
+	}
+
 	callback1 := func(data Data) {}
 	callback2 := func(data Data) {}
 
-	require.NoError(t, livedebugging.AddCallback(callbackID1, componentID, callback1))
-	require.NoError(t, livedebugging.AddCallback(callbackID2, componentID, callback2))
+	require.NoError(t, livedebugging.AddCallback(host, callbackID1, componentID, callback1))
+	require.NoError(t, livedebugging.AddCallback(host, callbackID2, componentID, callback2))
 
 	// Deleting callbacks that don't exist should not panic
-	require.NotPanics(t, func() { livedebugging.DeleteCallback(callbackID1, "fakeComponentID") })
-	require.NotPanics(t, func() { livedebugging.DeleteCallback("fakeCallbackID", componentID) })
+	require.NotPanics(t, func() { livedebugging.DeleteCallback(host, callbackID1, "fakeComponentID") })
+	require.NotPanics(t, func() { livedebugging.DeleteCallback(host, "fakeCallbackID", componentID) })
 
-	livedebugging.DeleteCallback(callbackID1, componentID)
+	livedebugging.DeleteCallback(host, callbackID1, componentID)
 	require.Len(t, livedebugging.callbacks[componentID], 1)
 
-	livedebugging.DeleteCallback(callbackID2, componentID)
+	livedebugging.DeleteCallback(host, callbackID2, componentID)
 	require.Empty(t, livedebugging.callbacks[componentID])
 }
 
@@ -136,22 +160,28 @@ func TestAddCallbackMulti(t *testing.T) {
 	callbackID := CallbackID("callback1")
 	callback := func(data Data) {}
 
-	err := livedebugging.AddCallbackMulti(callbackID, "", callback)
+	host := &testlivedebugging.FakeServiceHost{
+		ComponentsInfo: map[component.ID]testlivedebugging.FakeInfo{
+			component.ParseID(""): {ComponentName: "", Component: &testlivedebugging.FakeComponentLiveDebugging{}},
+		},
+	}
+
+	err := livedebugging.AddCallbackMulti(host, callbackID, "", callback)
 	require.ErrorContains(t, err, "the live debugging service is disabled. Check the documentation to find out how to enable it")
 
 	livedebugging.SetEnabled(true)
 
-	err = livedebugging.AddCallbackMulti(callbackID, "", callback)
+	err = livedebugging.AddCallbackMulti(host, callbackID, "", callback)
 	require.ErrorContains(t, err, "the live debugging service is not ready yet")
 
 	setupServiceHost(livedebugging)
 
-	err = livedebugging.AddCallbackMulti(callbackID, "not found", callback)
+	err = livedebugging.AddCallbackMulti(host, callbackID, "not found", callback)
 	require.ErrorContains(t, err, "module not found")
 
-	require.NoError(t, livedebugging.AddCallbackMulti(callbackID, "", callback))
+	require.NoError(t, livedebugging.AddCallbackMulti(host, callbackID, "", callback))
 
-	require.NoError(t, livedebugging.AddCallbackMulti(callbackID, "declared.cmp", callback))
+	require.NoError(t, livedebugging.AddCallbackMulti(host, callbackID, "declared.cmp", callback))
 }
 
 func TestDeleteCallbackMulti(t *testing.T) {
@@ -161,21 +191,27 @@ func TestDeleteCallbackMulti(t *testing.T) {
 	callbackID1 := CallbackID("callback1")
 	callbackID2 := CallbackID("callback2")
 
+	host := &testlivedebugging.FakeServiceHost{
+		ComponentsInfo: map[component.ID]testlivedebugging.FakeInfo{
+			component.ParseID(""): {ComponentName: "", Component: &testlivedebugging.FakeComponentLiveDebugging{}},
+		},
+	}
+
 	callback1 := func(data Data) {}
 	callback2 := func(data Data) {}
 
-	require.NoError(t, livedebugging.AddCallbackMulti(callbackID1, "", callback1))
-	require.NoError(t, livedebugging.AddCallbackMulti(callbackID2, "", callback2))
+	require.NoError(t, livedebugging.AddCallbackMulti(host, callbackID1, "", callback1))
+	require.NoError(t, livedebugging.AddCallbackMulti(host, callbackID2, "", callback2))
 	require.Len(t, livedebugging.callbacks[componentID], 2)
 
 	// Deleting callbacks that don't exist should not panic
-	require.NotPanics(t, func() { livedebugging.DeleteCallbackMulti(callbackID1, "fakeComponentID") })
-	require.NotPanics(t, func() { livedebugging.DeleteCallbackMulti("fakeCallbackID", "") })
+	require.NotPanics(t, func() { livedebugging.DeleteCallbackMulti(host, callbackID1, "") })
+	require.NotPanics(t, func() { livedebugging.DeleteCallbackMulti(host, "fakeCallbackID", "") })
 
-	livedebugging.DeleteCallbackMulti(callbackID1, "")
+	livedebugging.DeleteCallbackMulti(host, callbackID1, "")
 	require.Len(t, livedebugging.callbacks[componentID], 1)
 
-	livedebugging.DeleteCallbackMulti(callbackID2, "")
+	livedebugging.DeleteCallbackMulti(host, callbackID2, "")
 	require.Empty(t, livedebugging.callbacks[componentID])
 }
 
@@ -185,6 +221,12 @@ func TestMultiCallbacksMultipleStreams(t *testing.T) {
 	componentID := ComponentID("fake.liveDebugging")
 	callbackID1 := CallbackID("callback1")
 	callbackID2 := CallbackID("callback2")
+
+	host := &testlivedebugging.FakeServiceHost{
+		ComponentsInfo: map[component.ID]testlivedebugging.FakeInfo{
+			component.ParseID(""): {ComponentName: "", Component: &testlivedebugging.FakeComponentLiveDebugging{}},
+		},
+	}
 
 	var receivedData1 Data
 	callback1 := func(data Data) {
@@ -196,8 +238,8 @@ func TestMultiCallbacksMultipleStreams(t *testing.T) {
 		receivedData2 = data
 	}
 
-	require.NoError(t, livedebugging.AddCallbackMulti(callbackID1, "", callback1))
-	require.NoError(t, livedebugging.AddCallbackMulti(callbackID2, "", callback2))
+	require.NoError(t, livedebugging.AddCallbackMulti(host, callbackID1, "", callback1))
+	require.NoError(t, livedebugging.AddCallbackMulti(host, callbackID2, "", callback2))
 	require.Len(t, livedebugging.callbacks[componentID], 2)
 
 	livedebugging.PublishIfActive(NewData(componentID, PrometheusMetric, 3, func() string { return "test data" }))

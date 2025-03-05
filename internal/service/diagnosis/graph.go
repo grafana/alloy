@@ -13,6 +13,7 @@ type graph struct {
 	roots  []*node
 
 	clusteringEnabled bool
+	remoteCfg         bool
 }
 
 type node struct {
@@ -25,7 +26,7 @@ type edge struct {
 	to   *node
 }
 
-func newGraph(module string, clusteringEnabled bool) *graph {
+func newGraph(module string, clusteringEnabled bool, remoteCfg bool) *graph {
 	return &graph{
 		module: module,
 		tree:   make(map[string]map[string]*node, 0),
@@ -33,6 +34,7 @@ func newGraph(module string, clusteringEnabled bool) *graph {
 		roots:  make([]*node, 0),
 
 		clusteringEnabled: clusteringEnabled,
+		remoteCfg:         remoteCfg,
 	}
 }
 

@@ -11,6 +11,7 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service"
+	"github.com/grafana/alloy/internal/service/remotecfg"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -105,6 +106,11 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 	}
 	s.mu.Unlock()
 
+	remoteHost, err := s.getRemoteConfigHost(ctx, host)
+	if err != nil {
+		level.Error(s.logger).Log("msg", "Failed to get remote config host", "err", err)
+	}
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -115,9 +121,42 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 			s.mu.Unlock()
 			return nil
 		case <-s.updateCh:
-			s.diagnose(ctx, host)
+			s.diagnose(ctx, host, remoteHost)
 		case <-s.tickerChan():
-			s.diagnose(ctx, host)
+			s.diagnose(ctx, host, remoteHost)
+		}
+	}
+}
+
+// getRemoteConfigHost attempts to get the remote config host with a timeout.
+// Returns the host if found, or an error if not available within the timeout.
+func (s *Service) getRemoteConfigHost(ctx context.Context, host service.Host) (service.Host, error) {
+	// Wait up to 10 seconds for the remote config service and its host to be available
+	waitCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	for {
+		svc, found := host.GetService(remotecfg.ServiceName)
+		if !found {
+			select {
+			case <-waitCtx.Done():
+				return nil, errors.New("timed out waiting for remote config service to be available")
+			case <-time.After(500 * time.Millisecond):
+				continue
+			}
+		}
+
+		data := svc.Data().(remotecfg.Data)
+		if data.Host != nil {
+			return data.Host, nil
+		}
+
+		select {
+		case <-waitCtx.Done():
+			return nil, errors.New("timed out waiting for remote config host to be available")
+		case <-time.After(500 * time.Millisecond):
+			// Check again after a short delay
+			continue
 		}
 	}
 }
@@ -131,8 +170,8 @@ func (s *Service) tickerChan() <-chan time.Time {
 	return nil // Returning nil is safe in select; it will be ignored.
 }
 
-func (s *Service) diagnose(ctx context.Context, host service.Host) {
-	graphs, err := s.buildGraphs(host)
+func (s *Service) diagnose(ctx context.Context, host service.Host, remoteHost service.Host) {
+	graphs, err := s.buildGraphs(host, remoteHost)
 	if err != nil {
 		level.Error(s.logger).Log("msg", "Failed to build graphs for diagnosis", "err", err)
 		return
@@ -156,7 +195,7 @@ func (s *Service) diagnose(ctx context.Context, host service.Host) {
 		s.recordCancel = recordCancel
 		s.mu.Unlock()
 		level.Info(s.logger).Log("msg", "Start recording data for diagnosis", "window", window)
-		flowInsights, err := s.recorder.record(recordContext, host, window, graphs)
+		flowInsights, err := s.recorder.record(recordContext, host, remoteHost, window, graphs)
 		if err != nil {
 			level.Info(s.logger).Log("msg", "Recording data for diagnosis did not work", "reason", err)
 			return
@@ -196,18 +235,33 @@ func (s *Service) Update(args any) error {
 	return nil
 }
 
-func (s *Service) buildGraphs(host service.Host) ([]*graph, error) {
-	modules := host.ListModules()
-	modules = append(modules, "") // Add root module
-	graphs := make([]*graph, len(modules))
+func (s *Service) buildGraphs(host service.Host, remoteHost service.Host) ([]*graph, error) {
+	modules := []string{""}
+	modules = append(modules, host.ListModules()...)
+	remoteModules := make([]string, 0)
+	if remoteHost != nil {
+		remoteModules = remoteHost.ListModules()
+	}
+
+	graphs := make([]*graph, len(modules)+len(remoteModules))
 	for i, module := range modules {
 		components, err := host.ListComponents(module, component.InfoOptions{GetArguments: true})
 		if err != nil {
 			return nil, err
 		}
-		graphs[i] = newGraph(module, s.clusteringEnabled)
+		graphs[i] = newGraph(module, s.clusteringEnabled, false)
 		graphs[i].build(components)
 	}
+
+	for i, module := range remoteModules {
+		components, err := remoteHost.ListComponents(module, component.InfoOptions{GetArguments: true})
+		if err != nil {
+			return nil, err
+		}
+		graphs[i+len(modules)] = newGraph(module, s.clusteringEnabled, true)
+		graphs[i+len(modules)].build(components)
+	}
+
 	return graphs, nil
 }
 
@@ -221,7 +275,12 @@ func (s *Service) Diagnosis(ctx context.Context, host service.Host, window time.
 		return nil, errors.New("diagnosis service is not enabled")
 	}
 
-	graphs, err := s.buildGraphs(host)
+	remoteHost, err := s.getRemoteConfigHost(ctx, host)
+	if err != nil {
+		level.Error(s.logger).Log("msg", "Failed to get remote config host", "err", err)
+	}
+
+	graphs, err := s.buildGraphs(host, remoteHost)
 	if err != nil {
 		return nil, err
 	}
@@ -229,7 +288,7 @@ func (s *Service) Diagnosis(ctx context.Context, host service.Host, window time.
 	insights := make([]insight, 0)
 	insights = s.applyRules(graphs, insights)
 	if window > 0 {
-		flowInsights, err := s.recorder.record(ctx, host, window, graphs)
+		flowInsights, err := s.recorder.record(ctx, host, remoteHost, window, graphs)
 		if err != nil {
 			return nil, err
 		}

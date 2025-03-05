@@ -53,6 +53,7 @@ const ComponentDiagnosis = ({ insights }: ComponentDiagnosisProps) => {
 
     return sortedInsights.map(({ level, msg, module, link }) => {
       const displayModule = !module || module.trim() === '' ? '' : module;
+      const truncatedModule = displayModule.length > 30 ? `${displayModule.substring(0, 27)}...` : displayModule;
 
       return (
         <tr key={`${displayModule}-${msg}`} style={{ lineHeight: '2.5' }}>
@@ -64,7 +65,7 @@ const ComponentDiagnosis = ({ insights }: ComponentDiagnosisProps) => {
           </td>
           {!allModulesEmpty && (
             <td>
-              <span>{displayModule}</span>
+              <span title={displayModule}>{truncatedModule}</span>
             </td>
           )}
           <td>

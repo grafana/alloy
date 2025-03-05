@@ -137,10 +137,11 @@ func clusteringNotSupported(g *graph, insights []insight) []insight {
 func noDataExitingComponent(d *graph, dataMap map[string]liveDebuggingData, insights []insight) []insight {
 	for _, node := range d.nodes {
 		if _, ok := node.info.Component.(component.LiveDebugging); ok {
-			if _, ok := dataMap[string(node.info.ID.LocalID)]; !ok {
+			id := node.info.ID.String()
+			if _, ok := dataMap[id]; !ok {
 				insights = append(insights, insight{
 					Level:  LevelInfo,
-					Msg:    fmt.Sprintf("No data exited the component %q during the diagnosis window.", node.info.ID.LocalID),
+					Msg:    fmt.Sprintf("No data exited the component %q during the diagnosis window.", id),
 					Module: d.module,
 				})
 			}

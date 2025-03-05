@@ -16,14 +16,14 @@ type CallbackID string
 type CallbackManager interface {
 	// AddCallback sets a callback for a given componentID.
 	// The callback is used to send debugging data to live debugging consumers.
-	AddCallback(callbackID CallbackID, componentID ComponentID, callback func(Data)) error
+	AddCallback(host service.Host, callbackID CallbackID, componentID ComponentID, callback func(Data)) error
 	// DeleteCallback deletes a callback for a given componentID.
-	DeleteCallback(callbackID CallbackID, componentID ComponentID)
+	DeleteCallback(host service.Host, callbackID CallbackID, componentID ComponentID)
 	// AddCallbackMulti sets a callback to all components.
 	// The callbacks are used to send debugging data to live debugging consumers.
-	AddCallbackMulti(callbackID CallbackID, moduleID ModuleID, callback func(Data)) error
+	AddCallbackMulti(host service.Host, callbackID CallbackID, moduleID ModuleID, callback func(Data)) error
 	// DeleteCallbackMulti deletes callbacks for all components.
-	DeleteCallbackMulti(callbackID CallbackID, moduleID ModuleID)
+	DeleteCallbackMulti(host service.Host, callbackID CallbackID, moduleID ModuleID)
 }
 
 // DebugDataPublisher is used by components to push information to live debugging consumers.
@@ -65,7 +65,7 @@ func (s *liveDebugging) PublishIfActive(data Data) {
 	}
 }
 
-func (s *liveDebugging) AddCallback(callbackID CallbackID, componentID ComponentID, callback func(Data)) error {
+func (s *liveDebugging) AddCallback(host service.Host, callbackID CallbackID, componentID ComponentID, callback func(Data)) error {
 	s.loadMut.Lock()
 	defer s.loadMut.Unlock()
 
@@ -73,11 +73,11 @@ func (s *liveDebugging) AddCallback(callbackID CallbackID, componentID Component
 		return fmt.Errorf("the live debugging service is disabled. Check the documentation to find out how to enable it")
 	}
 
-	if s.host == nil {
+	if host == nil {
 		return fmt.Errorf("the live debugging service is not ready yet")
 	}
 
-	info, err := s.host.GetComponent(component.ParseID(string(componentID)), component.InfoOptions{})
+	info, err := host.GetComponent(component.ParseID(string(componentID)), component.InfoOptions{})
 	if err != nil {
 		return err
 	}
@@ -94,7 +94,7 @@ func (s *liveDebugging) AddCallback(callbackID CallbackID, componentID Component
 	return nil
 }
 
-func (s *liveDebugging) AddCallbackMulti(callbackID CallbackID, moduleID ModuleID, callback func(Data)) error {
+func (s *liveDebugging) AddCallbackMulti(host service.Host, callbackID CallbackID, moduleID ModuleID, callback func(Data)) error {
 	s.loadMut.Lock()
 	defer s.loadMut.Unlock()
 
@@ -102,11 +102,11 @@ func (s *liveDebugging) AddCallbackMulti(callbackID CallbackID, moduleID ModuleI
 		return fmt.Errorf("the live debugging service is disabled. Check the documentation to find out how to enable it")
 	}
 
-	if s.host == nil {
+	if host == nil {
 		return fmt.Errorf("the live debugging service is not ready yet")
 	}
 
-	components, err := s.host.ListComponents(string(moduleID), component.InfoOptions{GetHealth: true})
+	components, err := host.ListComponents(string(moduleID), component.InfoOptions{GetHealth: true})
 	if err != nil {
 		return err
 	}
@@ -124,17 +124,17 @@ func (s *liveDebugging) AddCallbackMulti(callbackID CallbackID, moduleID ModuleI
 	return nil
 }
 
-func (s *liveDebugging) DeleteCallback(callbackID CallbackID, componentID ComponentID) {
+func (s *liveDebugging) DeleteCallback(host service.Host, callbackID CallbackID, componentID ComponentID) {
 	s.loadMut.Lock()
 	defer s.loadMut.Unlock()
 	delete(s.callbacks[componentID], callbackID)
 }
 
-func (s *liveDebugging) DeleteCallbackMulti(callbackID CallbackID, moduleID ModuleID) {
+func (s *liveDebugging) DeleteCallbackMulti(host service.Host, callbackID CallbackID, moduleID ModuleID) {
 	s.loadMut.Lock()
 	defer s.loadMut.Unlock()
 	// ignore errors on delete
-	components, _ := s.host.ListComponents(string(moduleID), component.InfoOptions{})
+	components, _ := host.ListComponents(string(moduleID), component.InfoOptions{})
 	for _, cp := range components {
 		delete(s.callbacks[ComponentID(cp.ID.String())], callbackID)
 	}
@@ -143,6 +143,7 @@ func (s *liveDebugging) DeleteCallbackMulti(callbackID CallbackID, moduleID Modu
 	// If this ever become a realistic scenario we should cleanup the map here.
 }
 
+// TODO: remove this function
 func (s *liveDebugging) SetServiceHost(h service.Host) {
 	s.loadMut.Lock()
 	defer s.loadMut.Unlock()

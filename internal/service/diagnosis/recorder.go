@@ -33,7 +33,7 @@ type liveDebuggingData struct {
 }
 
 // TODO: support modules
-func (r *recorder) record(ctx context.Context, host service.Host, window time.Duration, graphs []*graph) ([]insight, error) {
+func (r *recorder) record(ctx context.Context, host service.Host, remoteHost service.Host, window time.Duration, graphs []*graph) ([]insight, error) {
 	livedebugginService, exist := host.GetService(livedebugging.ServiceName)
 	if !exist {
 		return nil, fmt.Errorf("livedebugging service not found")
@@ -45,9 +45,15 @@ func (r *recorder) record(ctx context.Context, host service.Host, window time.Du
 	dataMap := make(map[string]liveDebuggingData)
 	droppedData := false
 	for _, g := range graphs {
-		err := callbackManager.AddCallbackMulti(id, livedebugging.ModuleID(g.module), func(data livedebugging.Data) {
+		h := host
+		if g.remoteCfg {
+			h = remoteHost
+		}
+		err := callbackManager.AddCallbackMulti(h, id, livedebugging.ModuleID(g.module), func(data livedebugging.Data) {
 			// Scope the data to the module
-			data.ComponentID = livedebugging.ComponentID(g.module) + "/" + data.ComponentID
+			if g.module != "" && !g.remoteCfg {
+				data.ComponentID = livedebugging.ComponentID(g.module) + "/" + data.ComponentID
+			}
 			select {
 			case <-ctx.Done():
 				return
@@ -64,7 +70,7 @@ func (r *recorder) record(ctx context.Context, host service.Host, window time.Du
 		})
 		if err != nil {
 			// The reason may just be that the livedebugging service is not enabled, which is fine.
-			level.Info(r.logger).Log("msg", "not recording diagnosis data", "reason", err)
+			level.Info(r.logger).Log("msg", "not recording diagnosis data for module", "module", g.module, "reason", err)
 			return nil, err
 		}
 	}
@@ -72,7 +78,11 @@ func (r *recorder) record(ctx context.Context, host service.Host, window time.Du
 	defer func() {
 		close(dataCh)
 		for _, g := range graphs {
-			callbackManager.DeleteCallbackMulti(id, livedebugging.ModuleID(g.module))
+			h := host
+			if g.remoteCfg {
+				h = remoteHost
+			}
+			callbackManager.DeleteCallbackMulti(h, id, livedebugging.ModuleID(g.module))
 		}
 	}()
 
