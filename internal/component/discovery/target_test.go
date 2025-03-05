@@ -68,6 +68,11 @@ func TestDecodeMap(t *testing.T) {
 			input:    `{ "b" = string.format("%x", 31337), "a" = string.join(["2", "0"], ".") }`,
 			expected: map[string]string{"a": "2.0", "b": "7a69"},
 		},
+		{
+			name:     "decode with encoding.from_json function",
+			input:    "encoding.from_json(`{ \"__address__\": \"localhost:8080\", \"x\": 123 }`)",
+			expected: map[string]string{"__address__": "localhost:8080", "x": "123"},
+		},
 	}
 
 	for _, tc := range tests {
@@ -296,6 +301,40 @@ func TestDecode_TargetArrays(t *testing.T) {
 				{"a": "5", "b": "10"},
 				{"c": "5", "d": "10"},
 				{"e": "5", "f": "10"},
+			},
+		},
+		{
+			name:  "from_json",
+			input: "encoding.from_json(`[ { \"__address__\": \"localhost:8080\", \"foo\": 123 }, {}, {\"bap\": \"boom\"} ]`)",
+			expected: []map[string]string{
+				{"__address__": "localhost:8080", "foo": "123"},
+				{},
+				{"bap": "boom"},
+			},
+		},
+		{
+			name:  "from_json one by one",
+			input: "[encoding.from_json(`{ \"__address__\": \"localhost:8080\", \"foo\": 123 }`), encoding.from_json(`{ \"boom\": \"bap\", \"foo\": 321 }`)]",
+			expected: []map[string]string{
+				{"__address__": "localhost:8080", "foo": "123"},
+				{"boom": "bap", "foo": "321"},
+			},
+		},
+		{
+			name:  "from_yaml",
+			input: "encoding.from_yaml(`[ { __address__: localhost:8080, foo: 123 }, {}, {bap: boom} ]`)",
+			expected: []map[string]string{
+				{"__address__": "localhost:8080", "foo": "123"},
+				{},
+				{"bap": "boom"},
+			},
+		},
+		{
+			name:  "combine_maps",
+			input: `array.combine_maps([{"a" = "a1", "b" = "b1"}, {"a" = "a1", "b" = "b1"}], [{"a" = "a1", "c" = "c1"}], ["a"])`,
+			expected: []map[string]string{
+				{"a": "a1", "b": "b1", "c": "c1"},
+				{"a": "a1", "b": "b1", "c": "c1"},
 			},
 		},
 	}

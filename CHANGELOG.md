@@ -16,6 +16,8 @@ v1.7.2
 
 - Update `jfr-parser` dependency to v0.9.3 to fix jfr parsing issues in `pyroscope.java`. (@korniltsev)
 
+- Fixed an issue where passing targets from some standard library functions was failing with `target::ConvertFrom` error. (@thampiotr)
+
 
 v1.7.1
 -----------------
