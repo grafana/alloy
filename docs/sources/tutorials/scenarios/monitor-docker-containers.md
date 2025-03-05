@@ -43,8 +43,8 @@ The metrics configuration requires three components, `prometheus.exporter.cadvis
 You can use the [`prometheus.exporter.cadvisor`][prometheus.exporter.cadvisor] component to expose the Docker container metrics.
 This component needs the following arguments:
 
-* The `docker_host` argument defines the Docker endpoint.
-* The `storage_duration` argument sets the time that data is stored in memory to `"5m"`.
+* `docker_host`: Defines the Docker endpoint.
+* `storage_duration`: Sets the time that data is stored in memory.
 
 ```alloy
 prometheus.exporter.cadvisor "example" {
@@ -59,9 +59,9 @@ prometheus.exporter.cadvisor "example" {
 You can use the [`prometheus.scrape`][prometheus.scrape] component to scrape the cAdvisor metrics and forward them to a receiver.
 This component needs the following arguments:
 
-* The `targets` argument to scrape the metrics from the `prometheus.exporter.cadvisor` component.
-* The `forward_to` argument forwards the metrics to the `prometheus.remote_write` component.
-* The `scrape_interval` tells {{< param "PRODUCT_NAME" >}} how frequently it should scrape the target.
+* `targets`: The target to scrape the metrics from.
+* `forward_to`: The destination to forward the metrics to.
+* `scrape_interval`: How frequently to scrape the target.
 
 ```alloy
 prometheus.scrape "scraper" {
@@ -78,7 +78,7 @@ prometheus.scrape "scraper" {
 You can use the [`prometheus.remote_write`][prometheus.remote_write] component to send metrics to a Prometheus server.
 This component needs the following arguments:
 
-* The `url` argument in the `endpoint` block defines the full URL endpoint that {{< param "PRODUCT_NAME" >}} can the send metrics to.
+* `url`: Defines the full URL endpoint that {{< param "PRODUCT_NAME" >}} can the send metrics to.
 
 ```alloy
 prometheus.remote_write "demo" {
@@ -101,7 +101,7 @@ The logging configuration requires four components, `discovery.docker`, `discove
 You can use the [`discovery.docker`][discovery.docker] component to discover the Docker containers and extract the metadata.
 This component needs the following argument:
 
-* The `host` argument defines the address of the Docker Daemon that {{< param "PRODUCT_NAME" >}} can connect to.
+* `host`: Defines the address of the Docker Daemon that {{< param "PRODUCT_NAME" >}} can connect to.
 
 ```alloy
 discovery.docker "linux" {
@@ -114,10 +114,10 @@ discovery.docker "linux" {
 You can use the [`discovery.relabel`][discovery.relabel] component to define a relabeling rule to create a service name from the container name.
 This component needs the following arguments:
 
-* The `targets` argument is left empty. XXXXXXXXXX
-* The `source_labels` argument tells Alloy what label it needs to select for relabeling.
-* The `regex` argument matches any string, including an empty string.
-* The `target_label` XXXXXXXXXXXX
+* `targets`: argument is left empty. XXXXXXXXXX
+* `source_labels`: argument tells Alloy what label it needs to select for relabeling.
+* `regex`: argument matches any string, including an empty string.
+* `target_label`: XXXXXXXXXXXX
 
 ```alloy
 discovery.relabel "logs_integrations_docker" {
@@ -137,11 +137,11 @@ discovery.relabel "logs_integrations_docker" {
 You can use the [`loki.source.docker`][loki.source.docker] component to collect the logs from the Docker containers.
 This component needs the following arguments:
 
-* The `host` argument XXXX
-* The `targets` argument XXXX
-* The `labels` argument XXXXX
-* The `relabel_rules` argument XXXXXX
-* The `forward_to` argument XXXXX
+* `host`: argument XXXX
+* `targets`: argument XXXX
+* `labels`: argument XXXXX
+* `relabel_rules`: argument XXXXXX
+* `forward_to`: argument XXXXX
 
 ```alloy
 loki.source.docker "default" {
@@ -158,7 +158,7 @@ loki.source.docker "default" {
 You can use the [`loki.write`][loki.write] component to tell {{< param "PRODUCT_NAME" >}} to write the logs out to a Loki destination.
 This component needs the following argument:
 
-* The `url` argument in the `endpoint` block defines the full URL endpoint in Loki that {{< param "PRODUCT_NAME" >}} can the send logs to.
+* `url`: Defines the full URL endpoint in Loki that {{< param "PRODUCT_NAME" >}} can the send logs to.
 
 ```alloy
 loki.write "local" {
