@@ -36,9 +36,15 @@ The {{< param "PRODUCT_NAME" >}} configuration file is split into two parts, the
 
 ### Configure metrics
 
-The first part of the metrics configuration sets up the [`prometheus.exporter.cadvisor`][prometheus.exporter.cadvisor] component to expose the Docker container metrics.
-The `docker_host` argument defines the Docker endpoint.
-The `storage_duration` argument sets the time that data is stored in memory to `"5m"`.
+The metrics configuration requires three components, `prometheus.exporter.cadvisor`, `prometheus.scrape`, and `prometheus.remote_write`.
+
+#### `prometheus.exporter.cadvisor`
+
+You use the [`prometheus.exporter.cadvisor`][prometheus.exporter.cadvisor] component to expose the Docker container metrics.
+The component needs the following arguments:
+
+* The `docker_host` argument defines the Docker endpoint.
+* The `storage_duration` argument sets the time that data is stored in memory to `"5m"`.
 
 ```alloy
 prometheus.exporter.cadvisor "example" {
@@ -48,10 +54,14 @@ prometheus.exporter.cadvisor "example" {
 }
 ```
 
-The second part of the metrics configuration sets up the [`prometheus.scrape`][prometheus.scrape] component to scrape the cAdvisor metrics and forward them to a receiver.
-The `targets` argument to scrape the metrics from the `prometheus.exporter.cadvisor` component.
-The `forward_to` argument forwards the metrics to the `prometheus.remote_write` component.
-The `scrape_interval` tells {{< param "PRODUCT_NAME" >}} how frequently it should scrape the target.
+#### `prometheus.scrape`
+
+You use the [`prometheus.scrape`][prometheus.scrape] component to scrape the cAdvisor metrics and forward them to a receiver.
+The component needs the following arguments:
+
+* The `targets` argument to scrape the metrics from the `prometheus.exporter.cadvisor` component.
+* The `forward_to` argument forwards the metrics to the `prometheus.remote_write` component.
+* The `scrape_interval` tells {{< param "PRODUCT_NAME" >}} how frequently it should scrape the target.
 
 ```alloy
 prometheus.scrape "scraper" {
@@ -63,8 +73,12 @@ prometheus.scrape "scraper" {
 }
 ```
 
-The third part of the metrics configuration sets up the [`prometheus.remote_write`][prometheus.remote_write] component to send metrics to a Prometheus server.
-The `url` argument in the `endpoint` block defines the full URL endpoint that {{< param "PRODUCT_NAME" >}} can the send metrics to.
+#### `prometheus.remote_write`
+
+You use the [`prometheus.remote_write`][prometheus.remote_write] component to send metrics to a Prometheus server.
+The component needs the following arguments:
+
+* The `url` argument in the `endpoint` block defines the full URL endpoint that {{< param "PRODUCT_NAME" >}} can the send metrics to.
 
 ```alloy
 prometheus.remote_write "demo" {
@@ -80,8 +94,15 @@ prometheus.remote_write "demo" {
 
 ### Configure logging
 
-The first part of the logging configuration sets up the [`discovery.docker`][discovery.docker] component to discover the Docker containers and extract the metadata.
-The `host` argument defines the address of the Docker Daemon that {{< param "PRODUCT_NAME" >}} can connect to.
+The logging configuration requires four components, `discovery.docker`, `discovery.relabel`, `loki.source.docker`, and `loki.write`.
+
+
+#### `discovery.docker`
+
+You use the [`discovery.docker`][discovery.docker] component to discover the Docker containers and extract the metadata.
+The component needs the following argument:
+
+* The `host` argument defines the address of the Docker Daemon that {{< param "PRODUCT_NAME" >}} can connect to.
 
 ```alloy
 discovery.docker "linux" {
@@ -89,12 +110,15 @@ discovery.docker "linux" {
 }
 ```
 
-The second part of the logging configuration sets up the [`discovery.relabel`][discovery.relabel] component to define a relabeling rule to create a service name from the container name.
-The `targets` argument is left empty. XXXXXXXXXX
-The rule block defines the relabeling rules.
-The `source_labels` argument tells Alloy what label it needs to select for relabeling.
-The `regex` argument matches any string, including an empty string.
-The `target_label` XXXXXXXXXXXX
+#### `discovery.relabel`
+
+You use the [`discovery.relabel`][discovery.relabel] component to define a relabeling rule to create a service name from the container name.
+The component needs the following arguments:
+
+* The `targets` argument is left empty. XXXXXXXXXX
+* The `source_labels` argument tells Alloy what label it needs to select for relabeling.
+* The `regex` argument matches any string, including an empty string.
+* The `target_label` XXXXXXXXXXXX
 
 ```alloy
 discovery.relabel "logs_integrations_docker" {
@@ -109,13 +133,16 @@ discovery.relabel "logs_integrations_docker" {
   }
 ```
 
-The third part of the logging configuration sets up a [`loki.source.docker`][loki.source.docker] component to collect the logs from the Docker containers.
-The `host` argument XXXX
-The `targets` argument XXXX
-The `labels` argument XXXXX
-The `relabel_rules` argument XXXXXX
-The `forward_to` argument XXXXX
+#### `loki.source.docker`
 
+You use the [`loki.source.docker`][loki.source.docker] component to collect the logs from the Docker containers.
+The component needs the following arguments:
+
+* The `host` argument XXXX
+* The `targets` argument XXXX
+* The `labels` argument XXXXX
+* The `relabel_rules` argument XXXXXX
+* The `forward_to` argument XXXXX
 
 ```alloy
 loki.source.docker "default" {
@@ -127,8 +154,12 @@ loki.source.docker "default" {
 }
 ```
 
-The final part of the logging configuration sets up a [`loki.write`][loki.write] component to tell {{< param "PRODUCT_NAME" >}} to write the logs out to a Loki destination.
-The `url` argument in the `endpoint` block defines the full URL endpoint in Loki that {{< param "PRODUCT_NAME" >}} can the send logs to.
+#### `loki.write`
+
+You use the [`loki.write`][loki.write] component to tell {{< param "PRODUCT_NAME" >}} to write the logs out to a Loki destination.
+The component needs the following argument:
+
+* The `url` argument in the `endpoint` block defines the full URL endpoint in Loki that {{< param "PRODUCT_NAME" >}} can the send logs to.
 
 ```alloy
 loki.write "local" {
