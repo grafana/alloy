@@ -121,6 +121,7 @@ loki.write "local" {
     url = "http://loki:3100/loki/api/v1/push"
   }
 }
+```
 
 ## Access the {{% param "PRODUCT_NAME" %}} UI
 
