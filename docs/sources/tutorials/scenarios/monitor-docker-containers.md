@@ -40,8 +40,8 @@ The metrics configuration requires three components, `prometheus.exporter.cadvis
 
 #### `prometheus.exporter.cadvisor`
 
-You use the [`prometheus.exporter.cadvisor`][prometheus.exporter.cadvisor] component to expose the Docker container metrics.
-The component needs the following arguments:
+You can use the [`prometheus.exporter.cadvisor`][prometheus.exporter.cadvisor] component to expose the Docker container metrics.
+This component needs the following arguments:
 
 * The `docker_host` argument defines the Docker endpoint.
 * The `storage_duration` argument sets the time that data is stored in memory to `"5m"`.
@@ -56,8 +56,8 @@ prometheus.exporter.cadvisor "example" {
 
 #### `prometheus.scrape`
 
-You use the [`prometheus.scrape`][prometheus.scrape] component to scrape the cAdvisor metrics and forward them to a receiver.
-The component needs the following arguments:
+You can use the [`prometheus.scrape`][prometheus.scrape] component to scrape the cAdvisor metrics and forward them to a receiver.
+This component needs the following arguments:
 
 * The `targets` argument to scrape the metrics from the `prometheus.exporter.cadvisor` component.
 * The `forward_to` argument forwards the metrics to the `prometheus.remote_write` component.
@@ -75,8 +75,8 @@ prometheus.scrape "scraper" {
 
 #### `prometheus.remote_write`
 
-You use the [`prometheus.remote_write`][prometheus.remote_write] component to send metrics to a Prometheus server.
-The component needs the following arguments:
+You can use the [`prometheus.remote_write`][prometheus.remote_write] component to send metrics to a Prometheus server.
+This component needs the following arguments:
 
 * The `url` argument in the `endpoint` block defines the full URL endpoint that {{< param "PRODUCT_NAME" >}} can the send metrics to.
 
@@ -88,19 +88,18 @@ prometheus.remote_write "demo" {
 }
 ```
 
-[prometheus.exporter.cadvisor]: https://grafana.com/docs/alloy/<ALLOY_VERSION>>/reference/components/prometheus/prometheus.exporter.cadvisor/
-[prometheus.scrape]: https://grafana.com/docs/alloy/<ALLOY_VERSION>>/reference/components/prometheus/prometheus.scrape/
+[prometheus.exporter.cadvisor]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/prometheus/prometheus.exporter.cadvisor/
+[prometheus.scrape]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/prometheus/prometheus.scrape/
 [prometheus.remote_write]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/prometheus/prometheus.remote_write/
 
 ### Configure logging
 
 The logging configuration requires four components, `discovery.docker`, `discovery.relabel`, `loki.source.docker`, and `loki.write`.
 
-
 #### `discovery.docker`
 
-You use the [`discovery.docker`][discovery.docker] component to discover the Docker containers and extract the metadata.
-The component needs the following argument:
+You can use the [`discovery.docker`][discovery.docker] component to discover the Docker containers and extract the metadata.
+This component needs the following argument:
 
 * The `host` argument defines the address of the Docker Daemon that {{< param "PRODUCT_NAME" >}} can connect to.
 
@@ -112,8 +111,8 @@ discovery.docker "linux" {
 
 #### `discovery.relabel`
 
-You use the [`discovery.relabel`][discovery.relabel] component to define a relabeling rule to create a service name from the container name.
-The component needs the following arguments:
+You can use the [`discovery.relabel`][discovery.relabel] component to define a relabeling rule to create a service name from the container name.
+This component needs the following arguments:
 
 * The `targets` argument is left empty. XXXXXXXXXX
 * The `source_labels` argument tells Alloy what label it needs to select for relabeling.
@@ -135,8 +134,8 @@ discovery.relabel "logs_integrations_docker" {
 
 #### `loki.source.docker`
 
-You use the [`loki.source.docker`][loki.source.docker] component to collect the logs from the Docker containers.
-The component needs the following arguments:
+You can use the [`loki.source.docker`][loki.source.docker] component to collect the logs from the Docker containers.
+This component needs the following arguments:
 
 * The `host` argument XXXX
 * The `targets` argument XXXX
@@ -156,8 +155,8 @@ loki.source.docker "default" {
 
 #### `loki.write`
 
-You use the [`loki.write`][loki.write] component to tell {{< param "PRODUCT_NAME" >}} to write the logs out to a Loki destination.
-The component needs the following argument:
+You can use the [`loki.write`][loki.write] component to tell {{< param "PRODUCT_NAME" >}} to write the logs out to a Loki destination.
+This component needs the following argument:
 
 * The `url` argument in the `endpoint` block defines the full URL endpoint in Loki that {{< param "PRODUCT_NAME" >}} can the send logs to.
 
@@ -172,6 +171,7 @@ loki.write "local" {
 [discovery.docker]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/discovery/discovery.docker/
 [discovery.relabel]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/discovery/discovery.relabel/
 [loki.source.docker]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/loki/loki.source.docker/
+[loki.write]: https://grafana.com/docs/alloy/latest/reference/components/loki/loki.write/
 
 ## Access the {{% param "PRODUCT_NAME" %}} UI
 
