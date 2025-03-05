@@ -91,7 +91,7 @@ prometheus.relabel "metrics_agent_promobee" {
 
 prometheus.remote_write "metrics_agent" {
 	endpoint {
-		name = "agent-b8fb76"
+		name = "agent-b7ba8a"
 		url  = "https://prometheus-us-central1.grafana.net/api/prom/push"
 
 		basic_auth {

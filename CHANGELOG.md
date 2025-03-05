@@ -33,6 +33,12 @@ Main (unreleased)
 
 - Add support for proxy and headers in `prometheus.write.queue`. (@mattdurham)
 
+### Other changes
+
+- Upgrading to Prometheus v2.55.1. (@ptodev)
+  - Added a new `http_headers` argument to many `discovery` and `prometheus` components.
+  - Added a new `scrape_failure_log_file` argument to `prometheus.scrape`.
+
 v1.7.1
 -----------------
 
