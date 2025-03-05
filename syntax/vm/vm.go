@@ -358,7 +358,7 @@ func (vm *Evaluator) evaluateExpr(scope *Scope, assoc map[value.Value]ast.Node, 
 		switch val.Type() {
 		case value.TypeCapsule:
 			if val.Implements(reflect.TypeFor[value.ConvertibleIntoCapsule]()) {
-				// Check if this capsule can be converted into Alloy object for more detailed description:
+				// Check if this capsule can be converted into Alloy object to get the required field
 				newVal := make(map[string]value.Value)
 				if err := val.ReflectAddr().Interface().(value.ConvertibleIntoCapsule).ConvertInto(&newVal); err == nil {
 					field, ok := newVal[expr.Name.Name]
@@ -436,7 +436,7 @@ func (vm *Evaluator) evaluateExpr(scope *Scope, assoc map[value.Value]ast.Node, 
 
 		case value.TypeCapsule:
 			if val.Implements(reflect.TypeFor[value.ConvertibleIntoCapsule]()) {
-				// Check if this capsule can be converted into Alloy object for more detailed description:
+				// Check if this capsule can be converted into Alloy object to get the required field
 				newVal := make(map[string]value.Value)
 				if err := val.ReflectAddr().Interface().(value.ConvertibleIntoCapsule).ConvertInto(&newVal); err == nil {
 					// Objects are indexed with a string.
