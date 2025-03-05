@@ -13,6 +13,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.7.0"
+	tr "go.opentelemetry.io/otel/trace"
 )
 
 const otelExporterOtlpEndpoint = "OTEL_EXPORTER_ENDPOINT"
@@ -42,23 +43,55 @@ func main() {
 		log.Fatalf("failed to create metric exporter: %v", err)
 	}
 
-	resource, err := resource.New(ctx,
+	// Create a resource for the client service
+	clientResource, err := resource.New(ctx,
 		resource.WithAttributes(
-			semconv.ServiceNameKey.String("otel-gen"),
+			semconv.ServiceNameKey.String("client-service"),
 		),
 	)
 	if err != nil {
-		log.Fatalf("failed to create resource: %v", err)
+		log.Fatalf("failed to create client resource: %v", err)
 	}
 
-	tp := trace.NewTracerProvider(
-		trace.WithBatcher(traceExporter),
-		trace.WithResource(resource),
+	// Create a resource for the server service
+	serverResource, err := resource.New(ctx,
+		resource.WithAttributes(
+			semconv.ServiceNameKey.String("server-service"),
+		),
 	)
-	otel.SetTracerProvider(tp)
+	if err != nil {
+		log.Fatalf("failed to create server resource: %v", err)
+	}
+
+	// Create client tracer provider with explicit batch settings
+	clientTP := trace.NewTracerProvider(
+		trace.WithBatcher(
+			traceExporter,
+			// Set a shorter batching interval (default is 5s)
+			trace.WithBatchTimeout(100*time.Millisecond),
+		),
+		trace.WithResource(clientResource),
+	)
+
+	// Create server tracer provider with explicit batch settings
+	serverTP := trace.NewTracerProvider(
+		trace.WithBatcher(
+			traceExporter,
+			// Set a shorter batching interval (default is 5s)
+			trace.WithBatchTimeout(100*time.Millisecond),
+		),
+		trace.WithResource(serverResource),
+	)
+
+	// Set the global tracer provider to the client one (we'll use the server one explicitly)
+	otel.SetTracerProvider(clientTP)
+
 	defer func() {
-		if err := tp.Shutdown(ctx); err != nil {
-			log.Fatalf("failed to shut down tracer provider: %v", err)
+		if err := clientTP.Shutdown(ctx); err != nil {
+			log.Printf("failed to shut down client tracer provider: %v", err)
+		}
+		if err := serverTP.Shutdown(ctx); err != nil {
+			log.Printf("failed to shut down server tracer provider: %v", err)
 		}
 	}()
 
@@ -75,8 +108,10 @@ func main() {
 	)
 
 	provider := sdkmetric.NewMeterProvider(
-		sdkmetric.WithReader(sdkmetric.NewPeriodicReader(metricExporter, sdkmetric.WithInterval(1*time.Second))),
-		sdkmetric.WithResource(resource),
+		sdkmetric.WithReader(sdkmetric.NewPeriodicReader(
+			metricExporter,
+			sdkmetric.WithInterval(100*time.Millisecond))),
+		sdkmetric.WithResource(serverResource),
 		sdkmetric.WithView(exponentialHistogramView),
 	)
 	otel.SetMeterProvider(provider)
@@ -89,7 +124,10 @@ func main() {
 		}
 	}()
 
-	tracer := otel.Tracer("example-tracer")
+	// Get tracers for both client and server
+	clientTracer := clientTP.Tracer("client-tracer")
+	serverTracer := serverTP.Tracer("server-tracer")
+
 	meter := otel.Meter("example-meter")
 	counter, _ := meter.Int64Counter("example_counter")
 	floatCounter, _ := meter.Float64Counter("example_float_counter")
@@ -101,7 +139,28 @@ func main() {
 	exponentialFloatHistogram, _ := meter.Float64Histogram("example_exponential_float_histogram")
 
 	for {
-		ctx, span := tracer.Start(ctx, "sample-trace")
+		// Start a client span
+		ctx, clientSpan := clientTracer.Start(
+			ctx,
+			"client-request",
+			tr.WithSpanKind(tr.SpanKindClient),
+			tr.WithAttributes(
+				semconv.NetPeerNameKey.String("server-service"),
+				semconv.NetPeerPortKey.Int(8080),
+			),
+		)
+
+		// Start a server span as a child of the client span
+		ctx, serverSpan := serverTracer.Start(
+			ctx,
+			"server-handler",
+			tr.WithSpanKind(tr.SpanKindServer),
+			tr.WithAttributes(
+				semconv.NetHostNameKey.String("server-service"),
+				semconv.NetHostPortKey.Int(8080),
+			),
+		)
+
 		counter.Add(ctx, 10)
 		floatCounter.Add(ctx, 2.5)
 		upDownCounter.Add(ctx, -5)
@@ -111,7 +170,9 @@ func main() {
 		exponentialHistogram.Record(ctx, 5)
 		exponentialFloatHistogram.Record(ctx, 1.5)
 
-		time.Sleep(200 * time.Millisecond)
-		span.End()
+		serverSpan.End()
+		clientSpan.End()
+
+		time.Sleep(50 * time.Millisecond)
 	}
 }

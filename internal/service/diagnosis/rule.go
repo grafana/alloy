@@ -2,8 +2,13 @@ package diagnosis
 
 import (
 	"fmt"
+	"strings"
+	"time"
 
 	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/component/loki/process"
+	"github.com/grafana/alloy/internal/component/otelcol/connector/servicegraph"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/batch"
 	"github.com/grafana/alloy/internal/component/prometheus/operator"
 	promScrape "github.com/grafana/alloy/internal/component/prometheus/scrape"
@@ -43,10 +48,13 @@ var rules = []func(d *graph, insights []insight) []insight{
 	batchProcessorMaxSize,
 	missingClusteringBlocks,
 	clusteringNotSupported,
+	windowsProcessStage,
 }
 
-var dataRules = []func(d *graph, dataMap map[string]liveDebuggingData, insights []insight) []insight{
+var dataRules = []func(d *graph, dataMap map[string]liveDebuggingData, insights []insight, window time.Duration) []insight{
 	noDataExitingComponent,
+	batchProcessorSizeOverload,
+	serviceGraphFlushInterval,
 }
 
 // TODO instead of latest I should set the correct version in the link
@@ -134,15 +142,18 @@ func clusteringNotSupported(g *graph, insights []insight) []insight {
 	return insights
 }
 
-func noDataExitingComponent(d *graph, dataMap map[string]liveDebuggingData, insights []insight) []insight {
-	for _, node := range d.nodes {
+func noDataExitingComponent(g *graph, dataMap map[string]liveDebuggingData, insights []insight, window time.Duration) []insight {
+	for _, node := range g.nodes {
+		if strings.HasPrefix(node.info.ComponentName, "discovery") && len(node.info.Arguments.(discovery.Exports).Targets) != 0 {
+			continue
+		}
 		if _, ok := node.info.Component.(component.LiveDebugging); ok {
 			id := node.info.ID.String()
 			if _, ok := dataMap[id]; !ok {
 				insights = append(insights, insight{
 					Level:  LevelInfo,
 					Msg:    fmt.Sprintf("No data exited the component %q during the diagnosis window.", id),
-					Module: d.module,
+					Module: g.module,
 				})
 			}
 		}
@@ -150,6 +161,66 @@ func noDataExitingComponent(d *graph, dataMap map[string]liveDebuggingData, insi
 	return insights
 }
 
-// add rule for the loki process stage
-// add rule for the spanmetrics component
-// add rule for no export data from discovery components / exporters
+func windowsProcessStage(g *graph, insights []insight) []insight {
+	nodes := g.getNodes("loki.process")
+	for _, node := range nodes {
+		for _, stage := range node.info.Arguments.(process.Arguments).Stages {
+			if stage.EventLogMessageConfig != nil {
+				insights = append(insights, insight{
+					Level:  LevelInfo,
+					Msg:    "Consider using the windowsevent stage instead of the eventlogmessage stage.",
+					Link:   "https://grafana.com/docs/alloy/latest/reference/components/loki/loki.process/#stagewindowsevent",
+					Module: g.module,
+				})
+			}
+		}
+	}
+	return insights
+}
+
+func batchProcessorSizeOverload(g *graph, dataMap map[string]liveDebuggingData, insights []insight, window time.Duration) []insight {
+	nodes := g.getNodes("otelcol.processor.batch")
+	for _, node := range nodes {
+		if node.info.Arguments.(batch.Arguments).SendBatchMaxSize != 0 {
+			continue
+		}
+		batchSize := node.info.Arguments.(batch.Arguments).SendBatchSize
+		if data, ok := dataMap[node.info.ID.String()]; ok {
+			for _, v := range data.Data {
+				fmt.Println(v.Count, v.Events, batchSize)
+				if v.Events != 0 && float64(v.Count)/float64(v.Events) > float64(batchSize)*1.5 {
+					insights = append(insights, insight{
+						Level:  LevelWarning,
+						Msg:    fmt.Sprintf(`The %q component is sending on average batches that are more than 50%% larger than the configured batch size. Consider setting "send_batch_max_size".`, node.info.ID.String()),
+						Link:   "https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.processor.batch/#arguments",
+						Module: g.module,
+					})
+				}
+			}
+		}
+	}
+	return insights
+}
+
+func serviceGraphFlushInterval(g *graph, dataMap map[string]liveDebuggingData, insights []insight, window time.Duration) []insight {
+	nodes := g.getNodes("otelcol.connector.servicegraph")
+	for _, node := range nodes {
+		if node.info.Arguments.(servicegraph.Arguments).MetricsFlushInterval != 0 {
+			continue
+		}
+		windowsSeconds := window.Seconds()
+		if data, ok := dataMap[node.info.ID.String()]; ok {
+			for _, v := range data.Data {
+				if v.Events != 0 && float64(v.Events) > windowsSeconds {
+					insights = append(insights, insight{
+						Level:  LevelWarning,
+						Msg:    fmt.Sprintf(`The %q component is flushing metrics every %fs. Consider setting "metrics_flush_interval".`, node.info.ID.String(), windowsSeconds/float64(v.Events)),
+						Link:   "https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.connector.servicegraph/#arguments",
+						Module: g.module,
+					})
+				}
+			}
+		}
+	}
+	return insights
+}

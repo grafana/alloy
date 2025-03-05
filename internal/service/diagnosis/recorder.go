@@ -120,7 +120,7 @@ func (r *recorder) record(ctx context.Context, host service.Host, remoteHost ser
 			insights := make([]insight, 0)
 			for _, rule := range dataRules {
 				for _, g := range graphs {
-					insights = rule(g, dataMap, insights)
+					insights = rule(g, dataMap, insights, window)
 				}
 			}
 			return insights, nil
