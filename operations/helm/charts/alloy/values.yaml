@@ -123,6 +123,9 @@ alloy:
     #     - /bin/sleep
     #     - "10"
 
+  # -- Set livenessProbe for the Grafana Alloy container.
+  livenessProbe: {}
+
 image:
   # -- Grafana Alloy image registry (defaults to docker.io)
   registry: "docker.io"
