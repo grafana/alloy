@@ -98,9 +98,10 @@ func (s *liveDebugging) AddCallbackMulti(host service.Host, callbackID CallbackI
 	s.loadMut.Lock()
 	defer s.loadMut.Unlock()
 
-	if !s.enabled {
-		return fmt.Errorf("the live debugging service is disabled. Check the documentation to find out how to enable it")
-	}
+	// not needed here
+	// if !s.enabled {
+	// 	return fmt.Errorf("the live debugging service is disabled. Check the documentation to find out how to enable it")
+	// }
 
 	if host == nil {
 		return fmt.Errorf("the live debugging service is not ready yet")
