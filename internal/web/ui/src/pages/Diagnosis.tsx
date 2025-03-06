@@ -74,12 +74,12 @@ const PageDiagnosis = () => {
         <div className={styles.checkboxContainer}>
           <Checkbox
             value={record}
-            label="Record data for the diagnosis (live debugging must be enabled)"
+            label="Record data (live debugging must be enabled)"
             onChange={() => setRecord(!record)}
           />
           {record && (
             <div className={styles.fieldContainer}>
-              <Field label="How many seconds to record data for the diagnosis">
+              <Field label="How many seconds to record data">
                 <Input id="window" type="number" value={window} onChange={handleWindowChange} />
               </Field>
             </div>
@@ -131,7 +131,7 @@ const PageDiagnosis = () => {
   }
 
   return (
-    <Page name="Diagnosis" desc="Run a diagnosis on your pipelines to check for issues and tips" icon={faDiagnoses}>
+    <Page name="Diagnosis" desc="Use the pipeline diagnostics feature to scan for problems and discover best practice recommendations" icon={faDiagnoses}>
       <ComponentDiagnosis insights={insights} />
     </Page>
   );

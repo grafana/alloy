@@ -22,6 +22,15 @@ const ComponentDiagnosis = ({ insights }: ComponentDiagnosisProps) => {
     }
   };
 
+  // Helper function to make text between quotes bold and remove the quotes
+  const formatMessageWithBoldQuotes = (message: string): string => {
+    // Escape the message to prevent XSS
+    const escapedMessage = message.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+    // Make text between quotes bold and remove the quotes
+    return escapedMessage.replace(/"([^"]+)"/g, '<strong>$1</strong>');
+  };
+
   const tableStyles = { width: '130px' };
 
   // Check if all modules are empty
@@ -53,7 +62,7 @@ const ComponentDiagnosis = ({ insights }: ComponentDiagnosisProps) => {
 
     return sortedInsights.map(({ level, msg, module, link }) => {
       const displayModule = !module || module.trim() === '' ? '' : module;
-      const truncatedModule = displayModule.length > 30 ? `${displayModule.substring(0, 27)}...` : displayModule;
+      const truncatedModule = displayModule.length > 40 ? `${displayModule.substring(0, 37)}...` : displayModule;
 
       return (
         <tr key={`${displayModule}-${msg}`} style={{ lineHeight: '2.5' }}>
@@ -61,7 +70,7 @@ const ComponentDiagnosis = ({ insights }: ComponentDiagnosisProps) => {
             <span style={{ color: getLevelColor(level) }}>{level.toUpperCase()}</span>
           </td>
           <td>
-            <span>{msg}</span>
+            <span dangerouslySetInnerHTML={{ __html: formatMessageWithBoldQuotes(msg) }} />
           </td>
           {!allModulesEmpty && (
             <td>

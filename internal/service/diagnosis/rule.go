@@ -77,7 +77,7 @@ func batchProcessorMaxSize(g *graph, insights []insight) []insight {
 		if edge.to.info.Arguments.(batch.Arguments).SendBatchMaxSize == 0 {
 			insights = append(insights, insight{
 				Level:  LevelWarning,
-				Msg:    "Setting a max size for the batch processor is recommended when connected to a prometheus receiver.",
+				Msg:    fmt.Sprintf("Setting a max size for the %q is recommended when connected to a %q.", "otelcol.processor.batch", "otelcol.receiver.prometheus"),
 				Link:   "https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.processor.batch/#arguments",
 				Module: g.module,
 			})
@@ -182,7 +182,7 @@ func windowsProcessStage(g *graph, insights []insight) []insight {
 			if stage.EventLogMessageConfig != nil {
 				insights = append(insights, insight{
 					Level:  LevelInfo,
-					Msg:    "Consider using the windowsevent stage instead of the eventlogmessage stage.",
+					Msg:    `Consider using the "windowsevent" stage instead of the "eventlogmessage" stage.`,
 					Link:   "https://grafana.com/docs/alloy/latest/reference/components/loki/loki.process/#stagewindowsevent",
 					Module: g.module,
 				})
