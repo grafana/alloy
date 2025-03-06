@@ -5,18 +5,29 @@
 
 /**
  * Represents a single Prometheus target with its details.
- * Matches the Go struct in internal/web/api/api.go
+ * Matches the Go struct in internal/web/api/tools.go
  */
 export interface PrometheusTarget {
   instance: string;
   componentID: string;
-  labels: Record<string, string>;
-  debugInfo: Record<string, string>;
+  matchingArgs: Record<string, string>[];
+  matchingExports: Record<string, string>[];
 }
 
 /**
  * Response structure for the Prometheus target search API.
+ * Matches the Go struct in internal/web/api/tools.go
  */
 export interface PrometheusTargetSearchResponse {
-  targets: PrometheusTarget[];
+  results: Record<string, InstanceResults>;
+  errors: string[];
+}
+
+export interface InstanceResults {
+  components: Record<string, TargetResults>;
+}
+
+export interface TargetResults {
+  args: Record<string, string>[];
+  exports: Record<string, string>[];
 }

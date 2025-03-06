@@ -3,7 +3,8 @@
   border: 1px solid #e4e5e6;
   border-radius: 3px;
   padding: 16px;
-  margin-bottom: 20px;
+  margin-bottom: 2rem;
+  width: 100%;
 }
 
 .toolSection h2 {
@@ -22,6 +23,7 @@
   flex-direction: column;
   gap: 20px;
   max-width: 1440px;
+  width: 100%;
 }
 
 .searchControls {
@@ -75,4 +77,37 @@
   .toolSection {
     flex: 1;
   }
+}
+
+/* Add these new styles */
+.jsonViewWrapper {
+  width: 100%;
+  min-height: 500px;
+  overflow: auto;
+}
+
+.errorMessage {
+  color: #d32f2f;
+  padding: 10px;
+  background-color: #ffebee;
+  border: 1px solid #ffcdd2;
+  border-radius: 3px;
+  font-family: 'Fira Code', monospace;
+  font-size: 14px;
+  width: 100%;
+}
+
+.placeholderMessage {
+  color: #757575;
+  padding: 10px;
+  background-color: #f8f9fa;
+  border: 1px solid #e4e5e6;
+  border-radius: 3px;
+  font-family: 'Fira Code', monospace;
+  font-size: 14px;
+  width: 100%;
+  min-height: 500px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 } 

@@ -1,17 +1,21 @@
 import { useState } from 'react';
+import ReactJson from 'react-json-view';
 import { faTools } from '@fortawesome/free-solid-svg-icons';
 
 import Page from '../features/layout/Page';
-import { PrometheusTarget, PrometheusTargetSearchResponse } from '../types/prometheusTypes';
+import { PrometheusTargetSearchResponse } from '../types/prometheusTypes';
 
 import styles from './Tools.module.css';
 
 function PrometheusTargetSearch() {
   const [searchText, setSearchText] = useState('');
-  const [searchResults, setSearchResults] = useState('');
+  const [searchResults, setSearchResults] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSearch = async () => {
     try {
+      setError(null);
+
       // Make the actual API request to our new endpoint
       const response = await fetch('/api/v0/web/tools/prometheus-target-search', {
         method: 'POST',
@@ -25,33 +29,13 @@ function PrometheusTargetSearch() {
         throw new Error(`HTTP error ${response.status}`);
       }
 
-      const data = (await response.json()) as PrometheusTargetSearchResponse;
-
-      // Format the results
-      if (data.targets && data.targets.length > 0) {
-        // Format target data if we have results
-        const formattedResults = data.targets
-          .map((target: PrometheusTarget) => {
-            const labelString = Object.entries(target.labels || {})
-              .map(([key, value]) => `${key}=${value}`)
-              .join(', ');
-
-            const debugInfoString = Object.entries(target.debugInfo || {})
-              .map(([key, value]) => `  ${key}: ${value}`)
-              .join('\n');
-
-            return `Instance: ${target.instance}\nComponent: ${target.componentID}\nLabels: ${labelString}\nDebug Info:\n${debugInfoString}`;
-          })
-          .join('\n\n');
-
-        setSearchResults(formattedResults);
-      } else {
-        // No results found
-        setSearchResults(`No targets found matching: "${searchText}"`);
-      }
+      // Store the actual data object rather than a string
+      const data = await response.json();
+      setSearchResults(data);
     } catch (error) {
       console.error('Error fetching search results:', error);
-      setSearchResults(`Error searching for targets: ${(error as Error).message}`);
+      setError(`Error searching for targets: ${(error as Error).message}`);
+      setSearchResults(null);
     }
   };
 
@@ -64,7 +48,7 @@ function PrometheusTargetSearch() {
             type="text"
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
-            placeholder="Enter search query..."
+            placeholder="Enter search query as regex..."
             className={styles.searchInput}
           />
           <button onClick={handleSearch} className={styles.searchButton}>
@@ -73,26 +57,32 @@ function PrometheusTargetSearch() {
         </div>
 
         <div className={styles.resultsContainer}>
-          <textarea
-            readOnly
-            value={searchResults}
-            className={styles.resultsArea}
-            placeholder="Search results will appear here..."
-            rows={10}
-          />
+          {error ? (
+            <div className={styles.errorMessage}>{error}</div>
+          ) : searchResults ? (
+            <div className={styles.jsonViewWrapper}>
+              <ReactJson
+                src={searchResults}
+                theme="rjv-default"
+                collapsed={2}
+                enableClipboard={false}
+                displayDataTypes={false}
+                name={false}
+                style={{
+                  fontFamily: "'Fira Code', monospace",
+                  fontSize: '14px',
+                  backgroundColor: '#f8f9fa',
+                  padding: '10px',
+                  borderRadius: '3px',
+                  border: '1px solid #e4e5e6',
+                  minHeight: '500px',
+                }}
+              />
+            </div>
+          ) : (
+            <div className={styles.placeholderMessage}>Search results will appear here...</div>
+          )}
         </div>
-      </div>
-    </section>
-  );
-}
-
-function ClusterComponentHealth() {
-  return (
-    <section id="cluster-health" className={styles.toolSection}>
-      <h2>Cluster-wide Component Health</h2>
-      <div className={styles.content}>
-        <p>Placeholder for cluster-wide component health monitoring.</p>
-        {/* Add cluster health monitoring UI elements here */}
       </div>
     </section>
   );
@@ -103,7 +93,6 @@ function PageTools() {
     <Page name="Tools" desc="Collection of useful tools" icon={faTools}>
       <div className={styles.toolsContainer}>
         <PrometheusTargetSearch />
-        <ClusterComponentHealth />
       </div>
     </Page>
   );

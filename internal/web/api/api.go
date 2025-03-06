@@ -28,6 +28,11 @@ import (
 	"github.com/grafana/alloy/internal/service/remotecfg"
 )
 
+// defaultHTTPClient is used for making HTTP requests with a sensible default timeout
+var defaultHTTPClient = &http.Client{
+	Timeout: 10 * time.Second,
+}
+
 // AlloyAPI is a wrapper around the component API.
 type AlloyAPI struct {
 	alloy           service.Host
@@ -59,7 +64,7 @@ func (a *AlloyAPI) RegisterRoutes(urlPrefix string, r *mux.Router) {
 
 	r.Handle(path.Join(urlPrefix, "/debug/{id:.+}"), liveDebugging(a.alloy, a.CallbackManager))
 
-	r.Handle(path.Join(urlPrefix, "/tools/prometheus-target-search"), httputil.CompressionHandler{Handler: prometheusTargetSearchHandler()})
+	r.Handle(path.Join(urlPrefix, "/tools/prometheus-target-search"), httputil.CompressionHandler{Handler: prometheusTargetSearchHandler(a.alloy)})
 }
 
 func listComponentsHandler(host service.Host) http.HandlerFunc {
@@ -250,6 +255,21 @@ func setSampleProb(w http.ResponseWriter, sampleProbParam string) (sampleProb fl
 	return sampleProb
 }
 
+// isTLSEnabled checks if TLS is enabled for the HTTP service
+func isTLSEnabled(host service.Host) (bool, error) {
+	httpSvc, found := host.GetService(httpservice.ServiceName)
+	if !found {
+		return false, fmt.Errorf("HTTP service not running")
+	}
+
+	httpService, ok := httpSvc.(*httpservice.Service)
+	if !ok {
+		return false, fmt.Errorf("HTTP service has unexpected type")
+	}
+
+	return httpService.IsTLS(), nil
+}
+
 // getPeerComponentHandler creates a handler to fetch component details from a specific peer in a cluster
 func getPeerComponentHandler(host service.Host) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -277,16 +297,16 @@ func getPeerComponentHandler(host service.Host) http.HandlerFunc {
 			return
 		}
 
-		// Get the HTTP service to check if TLS is enabled
-		httpSvc, found := host.GetService(httpservice.ServiceName)
-		if !found {
-			http.Error(w, "HTTP service not running", http.StatusInternalServerError)
+		// Check if TLS is enabled
+		tlsEnabled, err := isTLSEnabled(host)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
 		// Determine protocol based on TLS configuration
 		protocol := "http"
-		if httpService, ok := httpSvc.(*httpservice.Service); ok && httpService.IsTLS() {
+		if tlsEnabled {
 			protocol = "https"
 		}
 
@@ -310,8 +330,7 @@ func getPeerComponentHandler(host service.Host) http.HandlerFunc {
 		}
 
 		// Perform the request to the peer
-		client := &http.Client{Timeout: 10 * time.Second}
-		resp, err := client.Do(peerReq)
+		resp, err := defaultHTTPClient.Do(peerReq)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("error requesting data from peer '%s': %v", peerName, err), http.StatusBadGateway)
 			return
@@ -340,65 +359,4 @@ func getPeerComponentHandler(host service.Host) http.HandlerFunc {
 		fmt.Println("======= resp.Body", string(body))
 		_, _ = w.Write(body)
 	}
-}
-
-// prometheusTargetSearchHandler creates a handler to search for Prometheus targets
-func prometheusTargetSearchHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		// Only accept POST requests
-		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-
-		// Parse the request body
-		var requestData struct {
-			SearchQuery string `json:"searchQuery"`
-		}
-
-		err := json.NewDecoder(r.Body).Decode(&requestData)
-		if err != nil {
-			http.Error(w, "Invalid request body", http.StatusBadRequest)
-			return
-		}
-
-		// Create a placeholder response
-		response := searchPrometheusTargets(requestData.SearchQuery)
-
-		// Set content type header
-		w.Header().Set("Content-Type", "application/json")
-
-		// Marshal and write the response
-		jsonResponse, err := json.Marshal(response)
-		if err != nil {
-			http.Error(w, "Failed to generate response", http.StatusInternalServerError)
-			return
-		}
-
-		_, _ = w.Write(jsonResponse)
-	}
-}
-
-func searchPrometheusTargets(query string) Targets {
-	return Targets{
-		Targets: []Target{
-			{
-				Instance:    "test-01",
-				ComponentID: "prometheus.scrape",
-				Labels:      map[string]string{"instance": "foo", "team": "bar", "query": query},
-				DebugInfo:   map[string]string{"status": "up", "lastScrape": "yesterday"},
-			},
-		},
-	}
-}
-
-type Target struct {
-	Instance    string            `json:"instance"`
-	ComponentID string            `json:"componentID"`
-	Labels      map[string]string `json:"labels"`
-	DebugInfo   map[string]string `json:"debugInfo"`
-}
-
-type Targets struct {
-	Targets []Target `json:"targets"`
 }
