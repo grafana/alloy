@@ -86,7 +86,6 @@ func batchProcessorMaxSize(g *graph, insights []insight) []insight {
 	return insights
 }
 
-// TODO: this should be a bit more clever
 func missingClusteringBlocks(g *graph, insights []insight) []insight {
 	if !g.clusteringEnabled {
 		return insights
@@ -94,7 +93,7 @@ func missingClusteringBlocks(g *graph, insights []insight) []insight {
 
 	addMissingClusteringInsight := func(node *node, insights []insight, link string) []insight {
 		insights = append(insights, insight{
-			Level:  LevelWarning,
+			Level:  LevelError,
 			Msg:    fmt.Sprintf("Clustering is enabled but the clustering block on the component %q is not defined.", node.info.ID.LocalID),
 			Link:   link,
 			Module: g.module,
@@ -102,12 +101,31 @@ func missingClusteringBlocks(g *graph, insights []insight) []insight {
 		return insights
 	}
 
+	scrapeEdges := g.getEdges("prometheus.exporter", "prometheus.scrape")
+	scrapeEdges = append(scrapeEdges, g.getEdges("discovery", "prometheus.scrape")...)
+	filteredEdges := make([]*edge, 0)
+	for _, edge := range scrapeEdges {
+		if edge.from.info.ComponentName == "prometheus.exporter.unix" || edge.from.info.ComponentName == "prometheus.exporter.self" {
+			continue
+		}
+		filteredEdges = append(filteredEdges, edge)
+	}
+
 	nodes := g.getNodes("prometheus.scrape", "prometheus.operator.podmonitors", "prometheus.operator.servicemonitors", "pyroscope.scrape")
 	for _, node := range nodes {
 		switch arg := node.info.Arguments.(type) {
 		case promScrape.Arguments:
 			if !arg.Clustering.Enabled {
-				insights = addMissingClusteringInsight(node, insights, "https://grafana.com/docs/alloy/latest/reference/components/prometheus/prometheus.scrape/#clustering")
+				trigger := false
+				for _, edge := range filteredEdges {
+					if edge.to.info.ID.LocalID == node.info.ID.LocalID {
+						trigger = true
+						break
+					}
+				}
+				if trigger {
+					insights = addMissingClusteringInsight(node, insights, "https://grafana.com/docs/alloy/latest/reference/components/prometheus/prometheus.scrape/#clustering")
+				}
 			}
 		case pyroScrape.Arguments:
 			if !arg.Clustering.Enabled {
@@ -139,7 +157,7 @@ func clusteringNotSupported(g *graph, insights []insight) []insight {
 			if edge.to.info.Arguments.(promScrape.Arguments).Clustering.Enabled {
 				insights = append(insights, insight{
 					Level:  LevelError,
-					Msg:    fmt.Sprintf("The component %q should not be connected to a prometheus.scrape component with clustering enabled.", edge.from.info.ID.LocalID),
+					Msg:    fmt.Sprintf("The component %q should not be connected to a %q component with clustering enabled.", edge.from.info.ID.LocalID, edge.to.info.ComponentName),
 					Link:   "https://grafana.com/docs/alloy/latest/get-started/clustering/",
 					Module: g.module,
 				})

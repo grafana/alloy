@@ -52,7 +52,7 @@ const ComponentGraph: React.FC<GraphProps> = ({ components, moduleID, enabled, w
         const matches = edges.filter((edge) => edge.source === localID && edge.data!.signal == DebugDataType.UNDEFINED);
         matches.forEach((edge) => {
           edge.style = { stroke: DebugDataTypeColorMap[feed.type] };
-          edge.label = feed.rate.toString();
+          edge.label = feed.rate.toFixed(2);
           edge.data = { ...edge.data, signal: feed.type };
         });
       } else {
@@ -67,7 +67,7 @@ const ComponentGraph: React.FC<GraphProps> = ({ components, moduleID, enabled, w
             edges[matchUnassigned] = {
               ...edges[matchUnassigned],
               style: { stroke: DebugDataTypeColorMap[feed.type] },
-              label: feed.rate.toString(),
+              label: feed.rate.toFixed(2),
               data: { ...edges[matchUnassigned].data, signal: feed.type },
             };
             return; // color an existing one
@@ -78,7 +78,7 @@ const ComponentGraph: React.FC<GraphProps> = ({ components, moduleID, enabled, w
               ...matchAny[0],
               id: matchAny[0].id + '|' + feed.type, // guarantees that it is unique
               style: { stroke: DebugDataTypeColorMap[feed.type] },
-              label: feed.rate.toString(),
+              label: feed.rate.toFixed(2),
               data: { ...matchAny[0].data, signal: feed.type },
               // TODO: fix this weird hack to use the interactionWidth param here
               interactionWidth:
@@ -100,7 +100,7 @@ const ComponentGraph: React.FC<GraphProps> = ({ components, moduleID, enabled, w
           return {
             ...edge,
             style: { stroke: DebugDataTypeColorMap[match.type] },
-            label: match.rate.toString(),
+            label: match.rate.toFixed(2),
             data: { ...edge.data },
           };
         }

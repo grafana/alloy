@@ -111,19 +111,27 @@ func (g *graph) containsEdge(componentName1 string, componentName2 string) bool 
 	return false
 }
 
-func (g *graph) getEdges(componentName1 string, componentName2 string) []*edge {
-	nodes, ok := g.tree[componentName1]
-	if !ok {
+// TODO: improve the logic here
+func (g *graph) getEdges(componentNamePrefix1 string, componentNamePrefix2 string) []*edge {
+	roots := make([]*node, 0)
+	for _, node := range g.nodes {
+		if strings.HasPrefix(node.info.ComponentName, componentNamePrefix1) {
+			roots = append(roots, node)
+		}
+	}
+	if len(roots) == 0 {
 		return nil
 	}
 	edges := make([]*edge, 0)
-	for _, node := range nodes {
-		result := searchNode(node, componentName2)
-		if result != nil {
-			edges = append(edges, &edge{
-				from: node,
-				to:   result,
-			})
+	for _, root := range roots {
+		for _, node := range root.connections {
+			result := searchNode(node, componentNamePrefix2)
+			if result != nil {
+				edges = append(edges, &edge{
+					from: root,
+					to:   result,
+				})
+			}
 		}
 	}
 	return edges
