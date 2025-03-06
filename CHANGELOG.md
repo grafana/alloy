@@ -41,6 +41,9 @@ Main (unreleased)
 
 - Fixed an issue where passing targets from some standard library functions was failing with `target::ConvertFrom` error. (@thampiotr)
 
+- Fixed `expected object or array, got capsule` errors that could be encountered when using targets with `coalesce` and
+  `array.combine_maps` functions. (@thampiotr)
+
 ### Other changes
 
 - Upgrading to Prometheus v2.55.1. (@ptodev)

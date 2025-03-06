@@ -203,6 +203,10 @@ func concatMaps(left, right value.Value) (value.Value, error) {
 	return value.Object(res), nil
 }
 
+// Inputs:
+// args[0]: []map[string]string: lhs array
+// args[1]: []map[string]string: rhs array
+// args[2]: []string:            merge conditions
 var combineMaps = value.RawFunction(func(funcValue value.Value, args ...value.Value) (value.Value, error) {
 	if len(args) != 3 {
 		return value.Value{}, fmt.Errorf("combine_maps: expected 3 arguments, got %d", len(args))
