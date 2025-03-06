@@ -1,8 +1,6 @@
 module github.com/grafana/alloy
 
-go 1.23.6
-
-toolchain go1.23.7
+go 1.23.7
 
 require (
 	cloud.google.com/go/pubsub v1.42.0
@@ -898,11 +896,7 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.1 // indirect
 )
 
-require (
-	github.com/elastic/go-freelru v0.16.0
-	github.com/grafana/beyla/v2 v2.0.4-alloy.2
-	go.opentelemetry.io/ebpf-profiler v0.0.0-00010101000000-000000000000
-)
+require github.com/grafana/beyla/v2 v2.0.4-alloy.2
 
 // NOTE: replace directives below must always be *temporary*.
 //
@@ -986,5 +980,10 @@ exclude (
 )
 
 replace github.com/prometheus/procfs => github.com/prometheus/procfs v0.12.0
+
+require (
+	github.com/elastic/go-freelru v0.16.0
+	go.opentelemetry.io/ebpf-profiler v0.0.0-00010101000000-000000000000
+)
 
 replace go.opentelemetry.io/ebpf-profiler => github.com/grafana/opentelemetry-ebpf-profiler v0.0.0-20250306044220-a9266220ba74
