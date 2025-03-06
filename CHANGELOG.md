@@ -19,8 +19,10 @@ Main (unreleased)
 - Add livedebugging support for `prometheus.scrape` (@ravishankar15, @wildum)
 
 - Have `loki.echo` log the `entry_timestamp` and `structured_metadata` for any loki entries received (@dehaansa)
+
 - Bump snmp_exporter and embedded modules in `prometheus.exporter.snmp` to v0.28.0 (@v-zhuravlev)
 
+- Update `prometheus.write.queue` to reduce memory fragmentation and increase sent throughput. (@mattdurham)
 
 - Update mysqld_exporter to v0.17.2, most notable changes: (@cristiangreco)
   - [0.17.1] Add perf_schema quantile columns to collector
