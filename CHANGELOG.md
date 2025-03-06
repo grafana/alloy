@@ -40,6 +40,8 @@ Main (unreleased)
   - `query_sample`: better handling of truncated queries (@cristiangreco)
   - `query_sample`: add option to use TiDB sql parser (@cristiangreco)
 
+- Add labels validation in `pyroscope.write` to prevent duplicate labels and invalid label names/values. (@marcsanmi)
+
 ### Breaking changes
 
 - Fixed the parsing of selections, application and network filter blocks for Beyla

@@ -425,3 +425,198 @@ func TestAppendIngestLabelTransformation(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, int32(1), appendCount.Load())
 }
+
+func Test_Write_AppendIngest_InvalidLabels(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	argument := DefaultArguments()
+	argument.Endpoints = []*EndpointOptions{{
+		URL:           server.URL,
+		RemoteTimeout: GetDefaultEndpointOptions().RemoteTimeout,
+	}}
+
+	var wg sync.WaitGroup
+	var export Exports
+	wg.Add(1)
+	c, err := New(component.Options{
+		ID:         "test-write-invalid",
+		Logger:     util.TestAlloyLogger(t),
+		Registerer: prometheus.NewRegistry(),
+		OnStateChange: func(e component.Exports) {
+			defer wg.Done()
+			export = e.(Exports)
+		},
+	}, argument)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go c.Run(ctx)
+	wg.Wait()
+	require.NotNil(t, export.Receiver)
+
+	testCases := []struct {
+		name    string
+		labels  labels.Labels
+		wantErr bool
+		errMsg  string
+	}{
+		{
+			name: "valid labels",
+			labels: labels.FromStrings(
+				"service_name", "test-service",
+				"valid_label", "value",
+				"__name__", "test-name",
+			),
+			wantErr: false,
+		},
+		{
+			name: "duplicate labels",
+			labels: labels.FromStrings(
+				"service_name", "test-service",
+				"duplicate", "value1",
+				"duplicate", "value2",
+			),
+			wantErr: true,
+			errMsg:  "duplicate label name",
+		},
+		{
+			name: "invalid label name",
+			labels: labels.FromStrings(
+				"service_name", "test-service",
+				"invalid-label", "value",
+			),
+			wantErr: true,
+			errMsg:  labelset.ErrInvalidLabelName.Error(),
+		},
+		{
+			name: "invalid label value",
+			labels: labels.FromStrings(
+				"service_name", "test-service",
+				"valid_label", string([]byte{0xff}), // Invalid UTF-8
+			),
+			wantErr: true,
+			errMsg:  "invalid label value",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			incomingProfile := &pyroscope.IncomingProfile{
+				RawBody: []byte("test-data"),
+				Labels:  tc.labels,
+				URL:     &url.URL{Path: "/ingest"},
+			}
+
+			err = export.Receiver.Appender().AppendIngest(context.Background(), incomingProfile)
+
+			if tc.wantErr {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tc.errMsg)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func Test_Write_FanOut_ValidateLabels(t *testing.T) {
+	_, handler := pushv1connect.NewPusherServiceHandler(PushFunc(
+		func(_ context.Context, req *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
+			return &connect.Response[pushv1.PushResponse]{}, nil
+		},
+	))
+
+	server := httptest.NewServer(handler)
+	defer server.Close()
+
+	argument := DefaultArguments()
+	argument.Endpoints = []*EndpointOptions{{
+		URL:           server.URL,
+		RemoteTimeout: GetDefaultEndpointOptions().RemoteTimeout,
+	}}
+
+	var wg sync.WaitGroup
+	var export Exports
+	wg.Add(1)
+	c, err := New(component.Options{
+		ID:         "test-write-fanout-validate-labels",
+		Logger:     util.TestAlloyLogger(t),
+		Registerer: prometheus.NewRegistry(),
+		OnStateChange: func(e component.Exports) {
+			defer wg.Done()
+			export = e.(Exports)
+		},
+	}, argument)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go c.Run(ctx)
+	wg.Wait()
+	require.NotNil(t, export.Receiver)
+
+	testCases := []struct {
+		name    string
+		labels  labels.Labels
+		wantErr bool
+		errMsg  string
+	}{
+		{
+			name: "valid labels",
+			labels: labels.FromStrings(
+				"service_name", "test-service",
+				"valid_label", "value",
+				"__name__", "test-name",
+			),
+			wantErr: false,
+		},
+		{
+			name: "duplicate labels",
+			labels: labels.FromStrings(
+				"service_name", "test-service",
+				"duplicate", "value1",
+				"duplicate", "value2",
+			),
+			wantErr: true,
+			errMsg:  "duplicate label name",
+		},
+		{
+			name: "invalid label name",
+			labels: labels.FromStrings(
+				"service_name", "test-service",
+				"invalid-label-name", "value",
+			),
+			wantErr: true,
+			errMsg:  labelset.ErrInvalidLabelName.Error(),
+		},
+		{
+			name: "invalid label value",
+			labels: labels.FromStrings(
+				"service_name", "test-service",
+				"valid_label", string([]byte{0xff}), // Invalid UTF-8
+			),
+			wantErr: true,
+			errMsg:  "invalid label value",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err = export.Receiver.Appender().Append(context.Background(), tc.labels, []*pyroscope.RawSample{
+				{RawProfile: []byte("test-data")},
+			})
+
+			if tc.wantErr {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), "invalid labels in profile")
+				require.Contains(t, err.Error(), tc.errMsg)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
