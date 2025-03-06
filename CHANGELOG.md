@@ -37,6 +37,8 @@ Main (unreleased)
 
 - Update `jfr-parser` dependency to v0.9.3 to fix jfr parsing issues in `pyroscope.java`. (@korniltsev)
 
+- Add validation for labels in `pyroscope.write` to prevent duplicate labels and invalid label names/values. (@marcsanmi)
+
 ### Bugfixes
 
 - Fixed an issue where indexing targets as maps (e.g. `target["foo"]`) or objects (e.g. `target.foo`) didn't work in
