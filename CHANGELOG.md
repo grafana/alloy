@@ -35,6 +35,8 @@ Main (unreleased)
 
 - Add support for proxy and headers in `prometheus.write.queue`. (@mattdurham)
 
+- Add labels validation in `pyroscope.write` to prevent duplicate labels and invalid label names/values. (@marcsanmi)
+
 ### Other changes
 
 - Upgrading to Prometheus v2.55.1. (@ptodev)
