@@ -86,18 +86,20 @@ func batchProcessorMaxSize(g *graph, insights []insight) []insight {
 	return insights
 }
 
+// TODO: this should be a bit more clever
 func missingClusteringBlocks(g *graph, insights []insight) []insight {
 	if !g.clusteringEnabled {
 		return insights
 	}
 
-	addMissingClusteringInsight := func(node *node, insights []insight, link string) {
+	addMissingClusteringInsight := func(node *node, insights []insight, link string) []insight {
 		insights = append(insights, insight{
-			Level:  LevelError,
+			Level:  LevelWarning,
 			Msg:    fmt.Sprintf("Clustering is enabled but the clustering block on the component %q is not defined.", node.info.ID.LocalID),
 			Link:   link,
 			Module: g.module,
 		})
+		return insights
 	}
 
 	nodes := g.getNodes("prometheus.scrape", "prometheus.operator.podmonitors", "prometheus.operator.servicemonitors", "pyroscope.scrape")
@@ -105,19 +107,19 @@ func missingClusteringBlocks(g *graph, insights []insight) []insight {
 		switch arg := node.info.Arguments.(type) {
 		case promScrape.Arguments:
 			if !arg.Clustering.Enabled {
-				addMissingClusteringInsight(node, insights, "https://grafana.com/docs/alloy/latest/reference/components/prometheus/prometheus.scrape/#clustering")
+				insights = addMissingClusteringInsight(node, insights, "https://grafana.com/docs/alloy/latest/reference/components/prometheus/prometheus.scrape/#clustering")
 			}
 		case pyroScrape.Arguments:
 			if !arg.Clustering.Enabled {
-				addMissingClusteringInsight(node, insights, "https://grafana.com/docs/alloy/latest/reference/components/pyroscope/pyroscope.scrape/#clustering")
+				insights = addMissingClusteringInsight(node, insights, "https://grafana.com/docs/alloy/latest/reference/components/pyroscope/pyroscope.scrape/#clustering")
 			}
 		case operator.Arguments:
 			if !arg.Clustering.Enabled {
 				switch node.info.ComponentName {
 				case "prometheus.operator.podmonitors":
-					addMissingClusteringInsight(node, insights, "https://grafana.com/docs/alloy/latest/reference/components/prometheus/prometheus.operator.podmonitors/#clustering")
+					insights = addMissingClusteringInsight(node, insights, "https://grafana.com/docs/alloy/latest/reference/components/prometheus/prometheus.operator.podmonitors/#clustering")
 				case "prometheus.operator.servicemonitors":
-					addMissingClusteringInsight(node, insights, "https://grafana.com/docs/alloy/latest/reference/components/prometheus/prometheus.operator.servicemonitors/#clustering")
+					insights = addMissingClusteringInsight(node, insights, "https://grafana.com/docs/alloy/latest/reference/components/prometheus/prometheus.operator.servicemonitors/#clustering")
 				}
 			}
 		}
@@ -130,29 +132,41 @@ func clusteringNotSupported(g *graph, insights []insight) []insight {
 		return insights
 	}
 
-	nodes := g.getNodes("prometheus.exporter.unix", "prometheus.exporter.self", "prometheus.exporter.windows")
-	for _, node := range nodes {
-		insights = append(insights, insight{
-			Level:  LevelError,
-			Msg:    fmt.Sprintf("The component %q should not be used with clustering enabled.", node.info.ComponentName),
-			Link:   "https://grafana.com/docs/alloy/latest/get-started/clustering/",
-			Module: g.module,
-		})
+	cpNoClustering := []string{"prometheus.exporter.unix", "prometheus.exporter.self", "prometheus.exporter.windows"}
+	for _, cp := range cpNoClustering {
+		edges := g.getEdges(cp, "prometheus.scrape")
+		for _, edge := range edges {
+			if edge.to.info.Arguments.(promScrape.Arguments).Clustering.Enabled {
+				insights = append(insights, insight{
+					Level:  LevelError,
+					Msg:    fmt.Sprintf("The component %q should not be connected to a prometheus.scrape component with clustering enabled.", edge.from.info.ID.LocalID),
+					Link:   "https://grafana.com/docs/alloy/latest/get-started/clustering/",
+					Module: g.module,
+				})
+			}
+		}
 	}
 	return insights
 }
 
 func noDataExitingComponent(g *graph, dataMap map[string]liveDebuggingData, insights []insight, window time.Duration) []insight {
 	for _, node := range g.nodes {
-		if strings.HasPrefix(node.info.ComponentName, "discovery") && len(node.info.Arguments.(discovery.Exports).Targets) != 0 {
+		if strings.HasPrefix(node.info.ComponentName, "discovery") && node.info.Exports != nil && len(node.info.Exports.(discovery.Exports).Targets) != 0 {
 			continue
 		}
 		if _, ok := node.info.Component.(component.LiveDebugging); ok {
-			id := node.info.ID.String()
-			if _, ok := dataMap[id]; !ok {
+			data, ok := dataMap[node.info.ID.String()]
+			var count uint64
+			if ok {
+				for _, v := range data.Data {
+					count += v.Count
+				}
+			}
+
+			if !ok || count == 0 {
 				insights = append(insights, insight{
 					Level:  LevelInfo,
-					Msg:    fmt.Sprintf("No data exited the component %q during the diagnosis window.", id),
+					Msg:    fmt.Sprintf("No data exited the component %q during the diagnosis window.", node.info.ID.LocalID),
 					Module: g.module,
 				})
 			}
@@ -187,7 +201,6 @@ func batchProcessorSizeOverload(g *graph, dataMap map[string]liveDebuggingData, 
 		batchSize := node.info.Arguments.(batch.Arguments).SendBatchSize
 		if data, ok := dataMap[node.info.ID.String()]; ok {
 			for _, v := range data.Data {
-				fmt.Println(v.Count, v.Events, batchSize)
 				if v.Events != 0 && float64(v.Count)/float64(v.Events) > float64(batchSize)*1.5 {
 					insights = append(insights, insight{
 						Level:  LevelWarning,
