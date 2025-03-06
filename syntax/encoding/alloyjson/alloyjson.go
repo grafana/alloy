@@ -287,12 +287,9 @@ func buildJSONValue(v value.Value) jsonValue {
 		return jsonValue{Type: "function", Value: v.Describe()}
 
 	case value.TypeCapsule:
-		if v.Implements(reflect.TypeFor[value.ConvertibleIntoCapsule]()) {
-			// Check if this capsule can be converted into Alloy object for more detailed description:
-			newVal := make(map[string]value.Value)
-			if err := v.ReflectAddr().Interface().(value.ConvertibleIntoCapsule).ConvertInto(&newVal); err == nil {
-				return tokenizeObject(value.Encode(newVal))
-			}
+		// Check if this capsule can be converted into Alloy object for more detailed description:
+		if newVal, ok := v.TryConvertToObject(); ok {
+			return tokenizeObject(value.Encode(newVal))
 		}
 		// Otherwise, describe the value
 		return jsonValue{Type: "capsule", Value: v.Describe()}

@@ -23,56 +23,56 @@ import (
 
 func TestUsingTargetCapsule(t *testing.T) {
 	type testCase struct {
-		name              string
-		inputTarget       map[string]string
-		expression        string
-		decodeInto        interface{}
-		decodedString     string
-		expectedEvalError string
+		name                  string
+		inputTarget           map[string]string
+		expression            string
+		decodeInto            interface{}
+		expectedDecodedString string
+		expectedEvalError     string
 	}
 
 	testCases := []testCase{
 		{
-			name:          "target to map of string -> string",
-			inputTarget:   map[string]string{"a1a": "beachfront avenue", "ice": "ice"},
-			expression:    "t",
-			decodeInto:    map[string]string{},
-			decodedString: `{"a1a"="beachfront avenue", "ice"="ice"}`,
+			name:                  "target to map of string -> string",
+			inputTarget:           map[string]string{"a1a": "beachfront avenue", "ice": "ice"},
+			expression:            "t",
+			decodeInto:            map[string]string{},
+			expectedDecodedString: `{"a1a"="beachfront avenue", "ice"="ice"}`,
 		},
 		{
-			name:          "target to map of string -> any",
-			inputTarget:   map[string]string{"a1a": "beachfront avenue", "ice": "ice"},
-			expression:    "t",
-			decodeInto:    map[string]any{},
-			decodedString: `{"a1a"="beachfront avenue", "ice"="ice"}`,
+			name:                  "target to map of string -> any",
+			inputTarget:           map[string]string{"a1a": "beachfront avenue", "ice": "ice"},
+			expression:            "t",
+			decodeInto:            map[string]any{},
+			expectedDecodedString: `{"a1a"="beachfront avenue", "ice"="ice"}`,
 		},
 		{
-			name:          "target to map of any -> any",
-			inputTarget:   map[string]string{"a1a": "beachfront avenue", "ice": "ice"},
-			expression:    "t",
-			decodeInto:    map[any]any{},
-			decodedString: `{"a1a"="beachfront avenue", "ice"="ice"}`,
+			name:                  "target to map of any -> any",
+			inputTarget:           map[string]string{"a1a": "beachfront avenue", "ice": "ice"},
+			expression:            "t",
+			decodeInto:            map[any]any{},
+			expectedDecodedString: `{"a1a"="beachfront avenue", "ice"="ice"}`,
 		},
 		{
-			name:          "target to map of string -> syntax.Value",
-			inputTarget:   map[string]string{"a1a": "beachfront avenue"},
-			expression:    "t",
-			decodeInto:    map[string]syntax.Value{},
-			decodedString: `{"a1a"="beachfront avenue"}`,
+			name:                  "target to map of string -> syntax.Value",
+			inputTarget:           map[string]string{"a1a": "beachfront avenue"},
+			expression:            "t",
+			decodeInto:            map[string]syntax.Value{},
+			expectedDecodedString: `{"a1a"="beachfront avenue"}`,
 		},
 		{
-			name:          "target indexing a string value",
-			inputTarget:   map[string]string{"a1a": "beachfront avenue", "hip": "hop"},
-			expression:    `t["hip"]`,
-			decodeInto:    "",
-			decodedString: `hop`,
+			name:                  "target indexing a string value",
+			inputTarget:           map[string]string{"a1a": "beachfront avenue", "hip": "hop"},
+			expression:            `t["hip"]`,
+			decodeInto:            "",
+			expectedDecodedString: `hop`,
 		},
 		{
-			name:          "target indexing a non-existing string value",
-			inputTarget:   map[string]string{"a1a": "beachfront avenue", "hip": "hop"},
-			expression:    `t["boom"]`,
-			decodeInto:    "",
-			decodedString: "<nil>",
+			name:                  "target indexing a non-existing string value",
+			inputTarget:           map[string]string{"a1a": "beachfront avenue", "hip": "hop"},
+			expression:            `t["boom"]`,
+			decodeInto:            "",
+			expectedDecodedString: "<nil>",
 		},
 		{
 			name:              "target indexing a value like an object field",
@@ -80,6 +80,34 @@ func TestUsingTargetCapsule(t *testing.T) {
 			expression:        `t.boom`,
 			decodeInto:        "",
 			expectedEvalError: `field "boom" does not exist`,
+		},
+		{
+			name:                  "targets passed to concat",
+			inputTarget:           map[string]string{"boom": "bap", "hip": "hop"},
+			expression:            `array.concat([t], [t])`,
+			decodeInto:            []Target{},
+			expectedDecodedString: `[{"boom"="bap", "hip"="hop"} {"boom"="bap", "hip"="hop"}]`,
+		},
+		{
+			name:                  "coalesce an empty target",
+			inputTarget:           map[string]string{},
+			expression:            `coalesce(t, [], t, {}, t, 123, t)`,
+			decodeInto:            []Target{},
+			expectedDecodedString: `123`,
+		},
+		{
+			name:                  "coalesce a non-empty target",
+			inputTarget:           map[string]string{"big": "bang"},
+			expression:            `coalesce([], {}, "", t, 321, [])`,
+			decodeInto:            []Target{},
+			expectedDecodedString: `{"big"="bang"}`,
+		},
+		{
+			name:                  "array.combine_maps with targets",
+			inputTarget:           map[string]string{"a": "a1", "b": "b1"},
+			expression:            `array.combine_maps([t, t], [{"a" = "a1", "c" = "c1"}, {"a" = "a2", "c" = "c2"}], ["a"])`,
+			decodeInto:            []Target{},
+			expectedDecodedString: `[map[a:a1 b:b1 c:c1] map[a:a1 b:b1 c:c1]]`,
 		},
 	}
 	for _, tc := range testCases {
@@ -95,7 +123,7 @@ func TestUsingTargetCapsule(t *testing.T) {
 			} else {
 				require.NoError(t, evalError)
 			}
-			require.Equal(t, tc.decodedString, fmt.Sprintf("%v", tc.decodeInto))
+			require.Equal(t, tc.expectedDecodedString, fmt.Sprintf("%v", tc.decodeInto))
 		})
 	}
 }

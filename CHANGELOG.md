@@ -18,9 +18,10 @@ v1.7.2
 
 - Fixed an issue where passing targets from some standard library functions was failing with `target::ConvertFrom` error. (@thampiotr)
 
-- Fixed an issue where indexing targets as maps (e.g. `target["foo"]`) or objects (e.g. `target.foo`) didn't work in
-  some circumstances resulting in `expected object or array, got capsule` error. This could also lead to
-  `foreach evaluation failed` errors when using the `foreach` configuration block. (@thampiotr)
+- Fixed an issue where indexing targets as maps (e.g. `target["foo"]`) or objects (e.g. `target.foo`) or using them with
+  certain standard library functions was resulting in `expected object or array, got capsule` error under some
+  circumstances. This could also lead to `foreach evaluation failed` errors when using the `foreach` configuration
+  block. (@thampiotr)
 
 v1.7.1
 -----------------
