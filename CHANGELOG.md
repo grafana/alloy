@@ -34,6 +34,9 @@ v1.7.1
 - Enable batching of calls to the appender in `prometheus.write.queue` to reduce lock contention when scraping, which
   will lead to reduced scrape duration. (@mattdurham)
 
+- Update `prometheus.write.queue` to reduce memory fragmentation and increase sent throughput. (@mattdurham)
+
+
 v1.7.0
 -----------------
 
