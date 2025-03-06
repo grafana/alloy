@@ -14,6 +14,9 @@ v1.7.2
 
 - Fixed an issue where the `otelcol.exporter.awss3` could not be started with the `sumo_ic` marshaler. (@wildum)
 
+- Update `jfr-parser` dependency to v0.9.3 to fix jfr parsing issues in `pyroscope.java`. (@korniltsev)
+
+
 v1.7.1
 -----------------
 
