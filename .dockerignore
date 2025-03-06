@@ -1,4 +1,5 @@
 build/
+/target/
 data/
 data-alloy/
 dist/
@@ -7,3 +8,4 @@ internal/web/ui/build/
 packaging/windows/LICENSE
 packaging/windows/agent-windows-amd64.exe
 cmd/grafana-agent/Dockerfile
+libsymblib_capi.a

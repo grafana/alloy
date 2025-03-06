@@ -13,6 +13,7 @@ data-alloy/
 /cmd/agent-operator/agent-operator
 /cmd/grafana-agent-crow/grafana-agent-crow
 /build/
+/target/
 /dist/
 /dist.temp/
 /packaging/windows/LICENSE
@@ -25,6 +26,7 @@ cover*.out
 .uptodate
 node_modules
 *.syso
+libsymblib_capi.a
 
 /docs/variables.mk.local
 

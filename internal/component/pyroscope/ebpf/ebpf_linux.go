@@ -1,26 +1,31 @@
-//go:build (linux && arm64) || (linux && amd64)
+//go:build linux && (arm64 || amd64) && pyroscope_ebpf
 
 package ebpf
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"os"
-	"sync"
 	"time"
 
-	ebpfspy "github.com/grafana/pyroscope/ebpf"
-	demangle2 "github.com/grafana/pyroscope/ebpf/cpp/demangle"
-	"github.com/grafana/pyroscope/ebpf/pprof"
-	"github.com/grafana/pyroscope/ebpf/sd"
-	"github.com/grafana/pyroscope/ebpf/symtab"
-	"github.com/oklog/run"
+	"github.com/elastic/go-freelru"
+	"github.com/go-kit/log"
+	"go.opentelemetry.io/ebpf-profiler/reporter/samples"
+
+	"go.opentelemetry.io/ebpf-profiler/libpf"
+	"go.opentelemetry.io/ebpf-profiler/pyroscope/dynamicprofiling"
+	"go.opentelemetry.io/ebpf-profiler/pyroscope/symb/irsymcache"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/pyroscope"
+	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+
+	"github.com/oklog/run"
+
+	sd "go.opentelemetry.io/ebpf-profiler/pyroscope/discovery"
+	"go.opentelemetry.io/ebpf-profiler/pyroscope/internalshim/controller"
+	"go.opentelemetry.io/ebpf-profiler/pyroscope/internalshim/helpers"
 )
 
 func init() {
@@ -37,54 +42,66 @@ func init() {
 }
 
 func New(opts component.Options, args Arguments) (component.Component, error) {
-	targetFinder, err := sd.NewTargetFinder(os.DirFS("/"), opts.Logger, targetsOptionFromArgs(args))
+	cgroups, err := freelru.NewSynced[libpf.PID, string](args.ContainerIDCacheSize,
+		func(pid libpf.PID) uint32 { return uint32(pid) })
+
+	discovery, err := sd.NewTargetProducer(cgroups, targetsOptionFromArguments(args))
 	if err != nil {
 		return nil, fmt.Errorf("ebpf target finder create: %w", err)
 	}
 	ms := newMetrics(opts.Registerer)
 
-	session, err := ebpfspy.NewSession(
-		opts.Logger,
-		targetFinder,
-		convertSessionOptions(args, ms),
-	)
+	appendable := pyroscope.NewFanout(args.ForwardTo, opts.ID, opts.Registerer)
+
+	cfg, err := createConfigFromArguments(args)
 	if err != nil {
-		return nil, fmt.Errorf("ebpf session create: %w", err)
+		return nil, err
 	}
 
-	alloyAppendable := pyroscope.NewFanout(args.ForwardTo, opts.ID, opts.Registerer)
+	var nfs samples.NativeSymbolResolver
+	if cfg.SymbolizeNativeFrames {
+		tf := irsymcache.NewTableFactory()
+		nfs, err = irsymcache.NewFSCache(tf, irsymcache.Options{
+			Size: cfg.SymbCacheSizeBytes,
+			Path: cfg.SymbCachePath,
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+	cfg.FileObserver = nfs
+	if cfg.PyroscopeDynamicProfilingPolicy {
+		cfg.Policy = &dynamicprofiling.ServiceDiscoveryTargetsOnlyPolicy{Discovery: discovery}
+	} else {
+		cfg.Policy = dynamicprofiling.AlwaysOnPolicy{}
+	}
 
+	cfg.Reporter, err = reporter.New(opts.Logger, cgroups, cfg, discovery, nfs, &pprofConsumer{fanout: appendable, logger: opts.Logger})
+	if err != nil {
+		return nil, err
+	}
 	res := &Component{
+		cfg:          cfg,
 		options:      opts,
 		metrics:      ms,
-		appendable:   alloyAppendable,
+		appendable:   appendable,
 		args:         args,
-		targetFinder: targetFinder,
-		session:      session,
+		targetFinder: discovery,
 		argsUpdate:   make(chan Arguments),
 	}
-	res.metrics.targetsActive.Set(float64(len(res.targetFinder.DebugInfo())))
 	return res, nil
 }
-
-var DefaultArguments = NewDefaultArguments()
 
 // NewDefaultArguments create the default settings for a scrape job.
 func NewDefaultArguments() Arguments {
 	return Arguments{
 		CollectInterval:      15 * time.Second,
-		SampleRate:           97,
-		PidCacheSize:         32,
+		SampleRate:           19,
 		ContainerIDCacheSize: 1024,
-		BuildIDCacheSize:     64,
-		SameFileCacheSize:    8,
-		CacheRounds:          3,
 		CollectUserProfile:   true,
 		CollectKernelProfile: true,
 		Demangle:             "none",
 		PythonEnabled:        true,
-		SymbolsMapSize:       2048,
-		PIDMapSize:           16384,
 	}
 }
 
@@ -98,50 +115,30 @@ type Component struct {
 	args         Arguments
 	argsUpdate   chan Arguments
 	appendable   *pyroscope.Fanout
-	targetFinder sd.TargetFinder
-	session      ebpfspy.Session
+	targetFinder sd.TargetProducer
 
-	debugInfo     DebugInfo
-	debugInfoLock sync.Mutex
-	metrics       *metrics
+	metrics *metrics
+	cfg     *controller.Config
 }
 
 func (c *Component) Run(ctx context.Context) error {
-	err := c.session.Start()
+	ctlr := controller.New(c.cfg)
+	err := ctlr.Start(ctx)
 	if err != nil {
-		return fmt.Errorf("ebpf profiling session start: %w", err)
+		return fmt.Errorf("failed to start agent controller: %v", err)
 	}
-	defer c.session.Stop()
+	defer ctlr.Shutdown()
 
 	var g run.Group
 	g.Add(func() error {
-		collectInterval := c.args.CollectInterval
-		t := time.NewTicker(collectInterval)
-		defer t.Stop()
 		for {
 			select {
 			case <-ctx.Done():
 				return nil
 			case newArgs := <-c.argsUpdate:
 				c.args = newArgs
-				c.session.UpdateTargets(targetsOptionFromArgs(c.args))
-				c.metrics.targetsActive.Set(float64(len(c.targetFinder.DebugInfo())))
-				err := c.session.Update(convertSessionOptions(c.args, c.metrics))
-				if err != nil {
-					return nil
-				}
+				c.targetFinder.Update(targetsOptionFromArguments(c.args))
 				c.appendable.UpdateChildren(newArgs.ForwardTo)
-				if c.args.CollectInterval != collectInterval {
-					t.Reset(c.args.CollectInterval)
-					collectInterval = c.args.CollectInterval
-				}
-			case <-t.C:
-				err := c.collectProfiles()
-				if err != nil {
-					c.metrics.profilingSessionsFailingTotal.Inc()
-					return err
-				}
-				c.updateDebugInfo()
 			}
 		}
 	}, func(error) {
@@ -156,109 +153,57 @@ func (c *Component) Update(args component.Arguments) error {
 	return nil
 }
 
-func (c *Component) DebugInfo() interface{} {
-	c.debugInfoLock.Lock()
-	defer c.debugInfoLock.Unlock()
-	return c.debugInfo
-}
-
-func (c *Component) collectProfiles() error {
-	c.metrics.profilingSessionsTotal.Inc()
-	level.Debug(c.options.Logger).Log("msg", "ebpf  collectProfiles")
-	args := c.args
-	builders := pprof.NewProfileBuilders(pprof.BuildersOptions{
-		SampleRate:    int64(args.SampleRate),
-		PerPIDProfile: true,
-	})
-	err := pprof.Collect(builders, c.session)
-
-	if err != nil {
-		return fmt.Errorf("ebpf session collectProfiles %w", err)
-	}
-	level.Debug(c.options.Logger).Log("msg", "ebpf collectProfiles done", "profiles", len(builders.Builders))
-	bytesSent := 0
-	for _, builder := range builders.Builders {
-		serviceName := builder.Labels.Get("service_name")
-		c.metrics.pprofsTotal.WithLabelValues(serviceName).Inc()
-		c.metrics.pprofSamplesTotal.WithLabelValues(serviceName).Add(float64(len(builder.Profile.Sample)))
-
-		buf := bytes.NewBuffer(nil)
-		_, err := builder.Write(buf)
-		if err != nil {
-			return fmt.Errorf("ebpf profile encode %w", err)
-		}
-		rawProfile := buf.Bytes()
-
-		appender := c.appendable.Appender()
-		bytesSent += len(rawProfile)
-		c.metrics.pprofBytesTotal.WithLabelValues(serviceName).Add(float64(len(rawProfile)))
-
-		samples := []*pyroscope.RawSample{{RawProfile: rawProfile}}
-		err = appender.Append(context.Background(), builder.Labels, samples)
-		if err != nil {
-			level.Error(c.options.Logger).Log("msg", "ebpf pprof write", "err", err)
-			continue
-		}
-	}
-	level.Debug(c.options.Logger).Log("msg", "ebpf append done", "bytes_sent", bytesSent)
-	return nil
-}
-
-type DebugInfo struct {
-	Targets interface{} `alloy:"targets,attr,optional"`
-	Session interface{} `alloy:"session,attr,optional"`
-}
-
-func (c *Component) updateDebugInfo() {
-	c.debugInfoLock.Lock()
-	defer c.debugInfoLock.Unlock()
-
-	c.debugInfo = DebugInfo{
-		Targets: c.targetFinder.DebugInfo(),
-		Session: c.session.DebugInfo(),
-	}
-}
-
-func targetsOptionFromArgs(args Arguments) sd.TargetsOptions {
-	targets := make([]sd.DiscoveryTarget, 0, len(args.Targets))
+func targetsOptionFromArguments(args Arguments) sd.TargetsOptions {
+	targets := make([]sd.DiscoveredTarget, 0, len(args.Targets))
 	for _, t := range args.Targets {
 		targets = append(targets, t.AsMap())
 	}
 	return sd.TargetsOptions{
-		Targets:            targets,
-		TargetsOnly:        true,
-		ContainerCacheSize: args.ContainerIDCacheSize,
+		Targets:     targets,
+		TargetsOnly: true,
 	}
 }
 
-func convertSessionOptions(args Arguments, ms *metrics) ebpfspy.SessionOptions {
-	return ebpfspy.SessionOptions{
-		CollectUser:   args.CollectUserProfile,
-		CollectKernel: args.CollectKernelProfile,
-		SampleRate:    args.SampleRate,
-		PythonEnabled: args.PythonEnabled,
-		Metrics:       ms.ebpfMetrics,
-		SymbolOptions: symtab.SymbolOptions{
-			GoTableFallback: args.GoTableFallback,
-			DemangleOptions: demangle2.ConvertDemangleOptions(args.Demangle),
-		},
-		CacheOptions: symtab.CacheOptions{
-			PidCacheOptions: symtab.GCacheOptions{
-				Size:       args.PidCacheSize,
-				KeepRounds: args.CacheRounds,
-			},
-			BuildIDCacheOptions: symtab.GCacheOptions{
-				Size:       args.BuildIDCacheSize,
-				KeepRounds: args.CacheRounds,
-			},
-			SameFileCacheOptions: symtab.GCacheOptions{
-				Size:       args.SameFileCacheSize,
-				KeepRounds: args.CacheRounds,
-			},
-		},
-		BPFMapsOptions: ebpfspy.BPFMapsOptions{
-			SymbolsMapSize: uint32(args.SymbolsMapSize),
-			PIDMapSize:     uint32(args.PIDMapSize),
-		},
+func createConfigFromArguments(args Arguments) (*controller.Config, error) {
+	cfgProtoType, err := controller.ParseArgs()
+	if err != nil {
+		return nil, err
+	}
+
+	if err = cfgProtoType.Validate(); err != nil {
+		return nil, err
+	}
+
+	// hostname and sourceIP will be populated from the root namespace.
+	hostname, sourceIP, err := helpers.GetHostnameAndSourceIP(cfgProtoType.CollAgentAddr)
+	if err != nil {
+		return nil, err
+	}
+	cfgProtoType.HostName, cfgProtoType.IPAddress = hostname, sourceIP
+
+	cfg := new(controller.Config)
+	*cfg = *cfgProtoType
+	cfg.ReporterInterval = args.CollectInterval
+	cfg.SamplesPerSecond = args.SampleRate
+	cfg.Tracers = "perl,php,hotspot,ruby,v8,dotnet"
+	if args.PythonEnabled { // todo create flags for other interpreters
+		cfg.Tracers += ",python"
+	}
+	return cfg, nil
+
+}
+
+type pprofConsumer struct {
+	fanout *pyroscope.Fanout
+	logger log.Logger
+}
+
+func (p2 *pprofConsumer) Next(p []reporter.PPROF) {
+	for _, pprof := range p {
+		appender := p2.fanout.Appender()
+		err := appender.Append(context.Background(), pprof.Labels, []*pyroscope.RawSample{{RawProfile: pprof.Raw}})
+		if err != nil {
+			level.Error(p2.logger).Log("msg", "pprof write", "err", err)
+		}
 	}
 }

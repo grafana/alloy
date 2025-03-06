@@ -4,6 +4,22 @@
 # default when running `docker buildx build` or when DOCKER_BUILDKIT=1 is set
 # in environment variables.
 
+FROM --platform=$BUILDPLATFORM grafana/alloy-build-image:v0.1.8 as pyroscope-build
+ARG TARGETARCH
+COPY go.mod Makefile ./
+COPY tools/make/*mk  tools/make/
+COPY tools/image-tag tools/image-tag-docker  tools/
+RUN make pyroscope-dependencies \
+        OTEL_PROFILER_ARCH=$TARGETARCH
+
+FROM --platform=$BUILDPLATFORM grafana/alloy-build-image:v0.1.8 as ui-build
+COPY internal/web/ui internal/web/ui
+COPY tools/make/*mk  tools/make/
+COPY tools/image-tag tools/image-tag-docker  tools/
+COPY Makefile ./
+RUN --mount=type=cache,target=/internal/web/ui/node_modules,sharing=locked \
+   make generate-ui
+
 FROM --platform=$BUILDPLATFORM grafana/alloy-build-image:v0.1.8 as build
 ARG BUILDPLATFORM
 ARG TARGETPLATFORM
@@ -17,16 +33,14 @@ ARG GOEXPERIMENT
 COPY . /src/alloy
 WORKDIR /src/alloy
 
-# Build the UI before building Alloy, which will then bake the final UI into
-# the binary.
-RUN --mount=type=cache,target=/src/alloy/web/ui/node_modules,sharing=locked \
-   make generate-ui
+COPY --from=ui-build           ./internal/web/ui/build ./internal/web/ui/build
+COPY --from=pyroscope-build    ./target                ./target
 
 RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg/mod \
     GOOS=$TARGETOS GOARCH=$TARGETARCH GOARM=${TARGETVARIANT#v} \
     RELEASE_BUILD=${RELEASE_BUILD} VERSION=${VERSION} \
-    GO_TAGS="netgo builtinassets promtail_journal_enabled" \
+    GO_TAGS="netgo builtinassets promtail_journal_enabled pyroscope_ebpf" \
     GOEXPERIMENT=${GOEXPERIMENT} \
     make alloy
 
