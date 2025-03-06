@@ -26,7 +26,6 @@ cover*.out
 .uptodate
 node_modules
 *.syso
-libsymblib_capi.a
 
 /docs/variables.mk.local
 
