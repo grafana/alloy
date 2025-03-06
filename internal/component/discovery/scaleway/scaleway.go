@@ -49,6 +49,7 @@ type Arguments struct {
 	TLSConfig       config.TLSConfig    `alloy:"tls_config,block,optional"`
 	FollowRedirects bool                `alloy:"follow_redirects,attr,optional"`
 	EnableHTTP2     bool                `alloy:"enable_http2,attr,optional"`
+	HTTPHeaders     *config.Headers     `alloy:",squash"`
 }
 
 var DefaultArguments = Arguments{
@@ -83,6 +84,10 @@ func (args *Arguments) Validate() error {
 	}
 
 	if err := args.ProxyConfig.Validate(); err != nil {
+		return err
+	}
+
+	if err := args.HTTPHeaders.Validate(); err != nil {
 		return err
 	}
 
@@ -124,6 +129,7 @@ func (args Arguments) Convert() discovery.DiscovererConfig {
 			TLSConfig:       *args.TLSConfig.Convert(),
 			FollowRedirects: args.FollowRedirects,
 			EnableHTTP2:     args.EnableHTTP2,
+			HTTPHeaders:     args.HTTPHeaders.Convert(),
 		},
 
 		RefreshInterval: model.Duration(args.RefreshInterval),

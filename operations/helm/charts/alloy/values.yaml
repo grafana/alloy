@@ -152,6 +152,8 @@ serviceAccount:
   # -- The name of the existing service account to use when
   # serviceAccount.create is false.
   name: null
+  # Whether the Alloy pod should automatically mount the service account token.
+  automountServiceAccountToken: true
 
 # Options for the extra controller used for config reloading.
 configReloader:

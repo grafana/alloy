@@ -78,6 +78,11 @@ func TestConvert(t *testing.T) {
 				Username: "username",
 				Password: "pass",
 			},
+			HTTPHeaders: &config.Headers{
+				Headers: map[string][]alloytypes.Secret{
+					"foo": {"foobar"},
+				},
+			},
 		},
 	}
 
@@ -88,6 +93,9 @@ func TestConvert(t *testing.T) {
 	assert.Equal(t, "auth_token_file", promArgs.AuthTokenFile)
 	assert.Equal(t, "username", promArgs.HTTPClientConfig.BasicAuth.Username)
 	assert.Equal(t, promConfig.Secret("pass"), promArgs.HTTPClientConfig.BasicAuth.Password)
+
+	header := promArgs.HTTPClientConfig.HTTPHeaders.Headers["foo"].Secrets[0]
+	assert.Equal(t, "foobar", string(header))
 }
 
 func TestValidateNoServers(t *testing.T) {

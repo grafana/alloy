@@ -14,6 +14,10 @@ Unreleased
 
 - Set resource namespace correctly (@shinebayar-g)
 
+### Enhancements
+
+- Add a new `automountServiceAccountToken` configuration value for `serviceAccount`. (@ptodev)
+
 0.12.1 (2025-02-26)
 ----------
 

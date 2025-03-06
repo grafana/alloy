@@ -15,10 +15,114 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/runtime/equality"
+	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/parser"
 	"github.com/grafana/alloy/syntax/token/builder"
 	"github.com/grafana/alloy/syntax/vm"
 )
+
+func TestUsingTargetCapsule(t *testing.T) {
+	type testCase struct {
+		name              string
+		inputTarget       map[string]string
+		expression        string
+		decodeInto        interface{}
+		decodedString     string
+		expectedEvalError string
+	}
+
+	testCases := []testCase{
+		{
+			name:          "target to map of string -> string",
+			inputTarget:   map[string]string{"a1a": "beachfront avenue", "ice": "ice"},
+			expression:    "t",
+			decodeInto:    map[string]string{},
+			decodedString: `{"a1a"="beachfront avenue", "ice"="ice"}`,
+		},
+		{
+			name:          "target to map of string -> any",
+			inputTarget:   map[string]string{"a1a": "beachfront avenue", "ice": "ice"},
+			expression:    "t",
+			decodeInto:    map[string]any{},
+			decodedString: `{"a1a"="beachfront avenue", "ice"="ice"}`,
+		},
+		{
+			name:          "target to map of any -> any",
+			inputTarget:   map[string]string{"a1a": "beachfront avenue", "ice": "ice"},
+			expression:    "t",
+			decodeInto:    map[any]any{},
+			decodedString: `{"a1a"="beachfront avenue", "ice"="ice"}`,
+		},
+		{
+			name:          "target to map of string -> syntax.Value",
+			inputTarget:   map[string]string{"a1a": "beachfront avenue"},
+			expression:    "t",
+			decodeInto:    map[string]syntax.Value{},
+			decodedString: `{"a1a"="beachfront avenue"}`,
+		},
+		{
+			name:          "target indexing a string value",
+			inputTarget:   map[string]string{"a1a": "beachfront avenue", "hip": "hop"},
+			expression:    `t["hip"]`,
+			decodeInto:    "",
+			decodedString: `hop`,
+		},
+		{
+			name:          "target indexing a non-existing string value",
+			inputTarget:   map[string]string{"a1a": "beachfront avenue", "hip": "hop"},
+			expression:    `t["boom"]`,
+			decodeInto:    "",
+			decodedString: "<nil>",
+		},
+		{
+			name:              "target indexing a value like an object field",
+			inputTarget:       map[string]string{"a1a": "beachfront avenue", "hip": "hop"},
+			expression:        `t.boom`,
+			decodeInto:        "",
+			expectedEvalError: `field "boom" does not exist`,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			target := NewTargetFromMap(tc.inputTarget)
+			scope := vm.NewScope(map[string]interface{}{"t": target})
+			expr, err := parser.ParseExpression(tc.expression)
+			require.NoError(t, err)
+			eval := vm.New(expr)
+			evalError := eval.Evaluate(scope, &tc.decodeInto)
+			if tc.expectedEvalError != "" {
+				require.ErrorContains(t, evalError, tc.expectedEvalError)
+			} else {
+				require.NoError(t, evalError)
+			}
+			require.Equal(t, tc.decodedString, fmt.Sprintf("%v", tc.decodeInto))
+		})
+	}
+}
+
+func TestNestedIndexing(t *testing.T) {
+	targets := []Target{
+		NewTargetFromMap(map[string]string{"foo": "bar", "boom": "bap"}),
+		NewTargetFromMap(map[string]string{"hip": "hop", "dont": "stop"}),
+	}
+	scope := vm.NewScope(map[string]interface{}{"targets": targets})
+
+	expr, err := parser.ParseExpression(`targets[1]["dont"]`)
+	require.NoError(t, err)
+	eval := vm.New(expr)
+	actual := ""
+	err = eval.Evaluate(scope, &actual)
+	require.NoError(t, err)
+	require.Equal(t, "stop", actual)
+
+	expr, err = parser.ParseExpression(`targets[0].boom`)
+	require.NoError(t, err)
+	eval = vm.New(expr)
+	actual = ""
+	err = eval.Evaluate(scope, &actual)
+	require.NoError(t, err)
+	require.Equal(t, "bap", actual)
+}
 
 func TestDecodeMap(t *testing.T) {
 	type testCase struct {
@@ -67,6 +171,11 @@ func TestDecodeMap(t *testing.T) {
 			name:     "decode with std function",
 			input:    `{ "b" = string.format("%x", 31337), "a" = string.join(["2", "0"], ".") }`,
 			expected: map[string]string{"a": "2.0", "b": "7a69"},
+		},
+		{
+			name:     "decode with encoding.from_json function",
+			input:    "encoding.from_json(`{ \"__address__\": \"localhost:8080\", \"x\": 123 }`)",
+			expected: map[string]string{"__address__": "localhost:8080", "x": "123"},
 		},
 	}
 
@@ -296,6 +405,40 @@ func TestDecode_TargetArrays(t *testing.T) {
 				{"a": "5", "b": "10"},
 				{"c": "5", "d": "10"},
 				{"e": "5", "f": "10"},
+			},
+		},
+		{
+			name:  "from_json",
+			input: "encoding.from_json(`[ { \"__address__\": \"localhost:8080\", \"foo\": 123 }, {}, {\"bap\": \"boom\"} ]`)",
+			expected: []map[string]string{
+				{"__address__": "localhost:8080", "foo": "123"},
+				{},
+				{"bap": "boom"},
+			},
+		},
+		{
+			name:  "from_json one by one",
+			input: "[encoding.from_json(`{ \"__address__\": \"localhost:8080\", \"foo\": 123 }`), encoding.from_json(`{ \"boom\": \"bap\", \"foo\": 321 }`)]",
+			expected: []map[string]string{
+				{"__address__": "localhost:8080", "foo": "123"},
+				{"boom": "bap", "foo": "321"},
+			},
+		},
+		{
+			name:  "from_yaml",
+			input: "encoding.from_yaml(`[ { __address__: localhost:8080, foo: 123 }, {}, {bap: boom} ]`)",
+			expected: []map[string]string{
+				{"__address__": "localhost:8080", "foo": "123"},
+				{},
+				{"bap": "boom"},
+			},
+		},
+		{
+			name:  "combine_maps",
+			input: `array.combine_maps([{"a" = "a1", "b" = "b1"}, {"a" = "a1", "b" = "b1"}], [{"a" = "a1", "c" = "c1"}], ["a"])`,
+			expected: []map[string]string{
+				{"a": "a1", "b": "b1", "c": "c1"},
+				{"a": "a1", "b": "b1", "c": "c1"},
 			},
 		},
 	}
