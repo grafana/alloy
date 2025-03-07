@@ -17,13 +17,13 @@ import (
 	httpservice "github.com/grafana/alloy/internal/service/http"
 )
 
-// prometheusTargetSearchDebugInfo handles searches for Prometheus targets' debug info across all peers in the cluster
-func prometheusTargetSearchDebugInfo(host service.Host) http.HandlerFunc {
+// getClusterTargetDebugInfo handles searches for Prometheus targets' debug info across all peers in the cluster
+func getClusterTargetDebugInfo(host service.Host) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		query := r.URL.Query().Get("query")
 
 		// Search for targets
-		response, err := searchPrometheusTargetsDebugInfos(query, host)
+		response, err := searchClusterTargetsDebugInfo(query, host)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -42,13 +42,13 @@ func prometheusTargetSearchDebugInfo(host service.Host) http.HandlerFunc {
 	}
 }
 
-// prometheusTargetDebugInfo handles requests for debug information about Prometheus targets
-func prometheusTargetDebugInfo(host service.Host) http.HandlerFunc {
+// getInstanceTargetDebugInfo handles requests for debug information about Prometheus targets
+func getInstanceTargetDebugInfo(host service.Host) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		query := r.URL.Query().Get("query")
 
 		// Find all prometheus.scrape components and extract their debug info
-		response, err := getPrometheusTargetsDebugInfo(host, query)
+		response, err := getLocalTargetsDebugInfo(host, query)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -67,8 +67,7 @@ func prometheusTargetDebugInfo(host service.Host) http.HandlerFunc {
 	}
 }
 
-func getPrometheusTargetsDebugInfo(host service.Host, query string) (PrometheusTargetDebugResponse, error) {
-	// Initialize response
+func getLocalTargetsDebugInfo(host service.Host, query string) (PrometheusTargetDebugResponse, error) {
 	response := PrometheusTargetDebugResponse{
 		Components: make(map[string]ComponentDebugInfo),
 	}
@@ -104,35 +103,8 @@ func getPrometheusTargetsDebugInfo(host service.Host, query string) (PrometheusT
 		}
 
 		for _, target := range scrapeStatus.TargetStatus {
-			// If query is provided, check if this target matches the query
-			shouldInclude := true
-			if query != "" {
-				shouldInclude = false
-
-				// Check if query matches URL
-				if matchString(target.URL, query) {
-					shouldInclude = true
-				} else {
-					// Check if query matches any label key or value
-					for key, value := range target.Labels {
-						if matchString(key, query) || matchString(value, query) {
-							shouldInclude = true
-							break // break the iteration over labels
-						}
-					}
-				}
-			}
-
-			if shouldInclude {
-				componentInfo.TargetsStatus = append(componentInfo.TargetsStatus, TargetStatus{
-					JobName:            target.JobName,
-					URL:                target.URL,
-					Health:             target.Health,
-					Labels:             target.Labels,
-					LastError:          target.LastError,
-					LastScrape:         target.LastScrape.Format(time.RFC3339),
-					LastScrapeDuration: fmt.Sprintf("%v", target.LastScrapeDuration),
-				})
+			if targetStatus := filterAndBuildTargetStatus(target, query); targetStatus != nil {
+				componentInfo.TargetsStatus = append(componentInfo.TargetsStatus, *targetStatus)
 			}
 		}
 
@@ -142,8 +114,44 @@ func getPrometheusTargetsDebugInfo(host service.Host, query string) (PrometheusT
 	return response, nil
 }
 
-func searchPrometheusTargetsDebugInfos(query string, host service.Host) (SearchPrometheusTargetsResponse, error) {
-	// Initialize results with empty maps to avoid null values in JSON
+// filterAndBuildTargetStatus checks if a target matches the query and if so,
+// builds and returns a TargetStatus. Returns nil if target doesn't match the query.
+func filterAndBuildTargetStatus(target scrape.TargetStatus, query string) *TargetStatus {
+	if shouldIncludeTarget(target, query) {
+		return &TargetStatus{
+			JobName:            target.JobName,
+			URL:                target.URL,
+			Health:             target.Health,
+			Labels:             target.Labels,
+			LastError:          target.LastError,
+			LastScrape:         target.LastScrape.Format(time.RFC3339),
+			LastScrapeDuration: fmt.Sprintf("%v", target.LastScrapeDuration),
+		}
+	}
+
+	return nil
+}
+
+// shouldIncludeTarget determines if a target should be included based on the query
+func shouldIncludeTarget(target scrape.TargetStatus, query string) bool {
+	if query == "" {
+		return true
+	}
+
+	if matchString(target.URL, query) {
+		return true
+	}
+
+	for key, value := range target.Labels {
+		if matchString(key, query) || matchString(value, query) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func searchClusterTargetsDebugInfo(query string, host service.Host) (SearchPrometheusTargetsResponse, error) {
 	response := SearchPrometheusTargetsResponse{
 		Results: make(map[string]PrometheusTargetDebugResponse),
 	}
@@ -167,14 +175,11 @@ func searchPrometheusTargetsDebugInfos(query string, host service.Host) (SearchP
 
 	// TODO: this could be done concurrently for all peers to speed things up
 	for _, p := range peers {
-		// Construct the URL to get prometheus targets debug info from the peer
-		// Include the query parameter to filter results at the peer level
 		peerURL := fmt.Sprintf("%s://%s/api/v0/web/tools/instance-prom-targets-debug-info", protocol, p.Addr)
 		if query != "" {
 			peerURL = fmt.Sprintf("%s?query=%s", peerURL, url.QueryEscape(query))
 		}
 
-		// Create a new request
 		peerReq, err := http.NewRequest("GET", peerURL, nil)
 		if err != nil {
 			errMsg := fmt.Sprintf("Error creating request for peer %s: %v", p.Name, err)
@@ -182,7 +187,6 @@ func searchPrometheusTargetsDebugInfos(query string, host service.Host) (SearchP
 			continue
 		}
 
-		// Make the request to the peer
 		resp, err := defaultHTTPClient.Do(peerReq)
 		if err != nil {
 			errMsg := fmt.Sprintf("Error requesting debug info from peer %s: %v", p.Name, err)
@@ -190,7 +194,6 @@ func searchPrometheusTargetsDebugInfos(query string, host service.Host) (SearchP
 			continue
 		}
 
-		// Process the response
 		if resp.StatusCode == http.StatusOK {
 			body, err := io.ReadAll(resp.Body)
 			_ = resp.Body.Close()
