@@ -7,14 +7,16 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/prometheus/scrape"
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/service/cluster"
 )
 
-// prometheusTargetSearchHandler handles searches for Prometheus targets
-func prometheusTargetSearchHandler(host service.Host) http.HandlerFunc {
+// prometheusTargetSearchDebugInfo handles searches for Prometheus targets' debug info across all peers in the cluster
+func prometheusTargetSearchDebugInfo(host service.Host) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Parse request body to get query
 		var requestBody struct {
@@ -31,7 +33,7 @@ func prometheusTargetSearchHandler(host service.Host) http.HandlerFunc {
 		query := requestBody.SearchQuery
 
 		// Search for targets
-		response, err := searchPrometheusTargets(query, host)
+		response, err := searchPrometheusTargetsDebugInfos(query, host)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -50,24 +52,85 @@ func prometheusTargetSearchHandler(host service.Host) http.HandlerFunc {
 	}
 }
 
-// searchPrometheusTargets searches for Prometheus targets across all peers
-func searchPrometheusTargets(query string, host service.Host) (SearchPrometheusTargetsResponse, error) {
-	fmt.Println("======= searchPrometheusTargets", query)
+// prometheusTargetDebugInfo handles requests for debug information about Prometheus targets
+func prometheusTargetDebugInfo(host service.Host) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Find all prometheus.scrape components and extract their debug info
+		response, err := getPrometheusTargetsDebugInfo(host)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 
-	// Initialize results with empty maps to avoid null values in JSON
-	response := SearchPrometheusTargetsResponse{
-		Results: make(map[string]InstanceResults),
-		Errors:  []string{},
+		// Marshal the result to JSON with indentation for pretty formatting
+		result, err := json.MarshalIndent(response, "", "  ")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(result)
+	}
+}
+
+func getPrometheusTargetsDebugInfo(host service.Host) (PrometheusTargetDebugResponse, error) {
+	// Initialize response
+	response := PrometheusTargetDebugResponse{
+		Components: make(map[string]ComponentDebugInfo),
 	}
 
-	// Get Prometheus target components
+	// Get all prometheus target components
 	prometheusComponents, err := listPrometheusTargetsComponents(host)
 	if err != nil {
-		return response, err
+		return response, fmt.Errorf("failed to list Prometheus components: %w", err)
 	}
-	fmt.Println("======= prometheus components:")
+
+	// For each component, get detailed debug info
 	for _, comp := range prometheusComponents {
-		fmt.Println(comp.ID.String())
+		compId := comp.ID.String()
+		// Get component with debug info
+		info, err := host.GetComponent(comp.ID, component.InfoOptions{
+			GetDebugInfo: true,
+		})
+		if err != nil {
+			errMsg := fmt.Sprintf("failed to get info for component %s: %v", compId, err)
+			response.Errors = append(response.Errors, errMsg)
+			continue
+		}
+
+		scrapeStatus, ok := info.DebugInfo.(scrape.ScraperStatus)
+		if !ok {
+			errMsg := fmt.Sprintf("component %s does not have expected scrape debug info", compId)
+			response.Errors = append(response.Errors, errMsg)
+			continue
+		}
+
+		response.Components[compId] = ComponentDebugInfo{
+			TargetsStatus: make([]TargetStatus, len(scrapeStatus.TargetStatus)),
+		}
+
+		for i, target := range scrapeStatus.TargetStatus {
+			response.Components[compId].TargetsStatus[i] = TargetStatus{
+				JobName:            target.JobName,
+				URL:                target.URL,
+				Health:             target.Health,
+				Labels:             target.Labels,
+				LastError:          target.LastError,
+				LastScrape:         target.LastScrape.Format(time.RFC3339),
+				LastScrapeDuration: fmt.Sprintf("%v", target.LastScrapeDuration),
+			}
+		}
+	}
+
+	return response, nil
+}
+
+func searchPrometheusTargetsDebugInfos(query string, host service.Host) (SearchPrometheusTargetsResponse, error) {
+	// Initialize results with empty maps to avoid null values in JSON
+	response := SearchPrometheusTargetsResponse{
+		Results: make(map[string]PrometheusTargetDebugResponse),
 	}
 
 	// Determine protocol based on TLS configuration
@@ -80,98 +143,118 @@ func searchPrometheusTargets(query string, host service.Host) (SearchPrometheusT
 		protocol = "https"
 	}
 
-	// For all peers, get the component details
+	// For all peers, get the details
 	clusterSvc, found := host.GetService(cluster.ServiceName)
 	if !found {
 		return response, fmt.Errorf("cluster service not running")
 	}
 	peers := clusterSvc.Data().(cluster.Cluster).Peers()
 
+	// TODO: this could be done concurrently for all peers to speed things up
+	// TODO: we could send the query term to all peers as well so the responses come filtered already
 	for _, p := range peers {
-		fmt.Println("======= processing peer", p.Name)
+		// Construct the URL to get prometheus targets debug info from the peer
+		peerURL := fmt.Sprintf("%s://%s/api/v0/web/tools/prometheus-targets-debug-info", protocol, p.Addr)
 
-		// Initialize instance data for this peer
-		instanceData := InstanceResults{
-			Components: make(map[string]TargetResults),
+		// Create a new request
+		peerReq, err := http.NewRequest("GET", peerURL, nil)
+		if err != nil {
+			errMsg := fmt.Sprintf("Error creating request for peer %s: %v", p.Name, err)
+			response.Errors = append(response.Errors, errMsg)
+			continue
 		}
-		foundMatches := false
 
-		// For each Prometheus component, make a request to the peer
-		for _, comp := range prometheusComponents {
-			// Construct the URL to get component details from the peer
-			peerURL := fmt.Sprintf("%s://%s/api/v0/web/components/%s", protocol, p.Addr, comp.ID)
-			fmt.Println("======= requesting", peerURL)
+		// Make the request to the peer
+		resp, err := defaultHTTPClient.Do(peerReq)
+		if err != nil {
+			errMsg := fmt.Sprintf("Error requesting debug info from peer %s: %v", p.Name, err)
+			response.Errors = append(response.Errors, errMsg)
+			continue
+		}
 
-			// Create a new request
-			peerReq, err := http.NewRequest("GET", peerURL, nil)
+		// Process the response
+		if resp.StatusCode == http.StatusOK {
+			body, err := io.ReadAll(resp.Body)
+			_ = resp.Body.Close()
 			if err != nil {
-				errMsg := fmt.Sprintf("Error creating request for peer %s, component %s: %v", p.Name, comp.ID, err)
-				fmt.Println(errMsg)
+				errMsg := fmt.Sprintf("Error reading response from peer %s: %v", p.Name, err)
 				response.Errors = append(response.Errors, errMsg)
 				continue
 			}
 
-			// Make the request to the peer
-			resp, err := defaultHTTPClient.Do(peerReq)
-			if err != nil {
-				errMsg := fmt.Sprintf("Error requesting data from peer %s, component %s: %v", p.Name, comp.ID, err)
-				fmt.Println(errMsg)
+			var debugInfo PrometheusTargetDebugResponse
+			if err := json.Unmarshal(body, &debugInfo); err != nil {
+				errMsg := fmt.Sprintf("Error parsing response from peer %s: %v", p.Name, err)
 				response.Errors = append(response.Errors, errMsg)
 				continue
 			}
 
-			// Process the response
-			if resp.StatusCode == http.StatusOK {
-				body, err := io.ReadAll(resp.Body)
-				_ = resp.Body.Close()
-				if err != nil {
-					errMsg := fmt.Sprintf("Error reading response from peer %s, component %s: %v", p.Name, comp.ID, err)
-					fmt.Println(errMsg)
-					response.Errors = append(response.Errors, errMsg)
-					continue
-				}
-
-				var compInfo map[string]interface{}
-				if err := json.Unmarshal(body, &compInfo); err != nil {
-					errMsg := fmt.Sprintf("Error parsing response from peer %s, component %s: %v", p.Name, comp.ID, err)
-					fmt.Println(errMsg)
-					response.Errors = append(response.Errors, errMsg)
-					continue
-				}
-
-				// Search for targets in the component
-				matchingArgs := searchTargetsInSection(query, compInfo, "arguments")
-				matchingExports := searchTargetsInSection(query, compInfo, "exports")
-
-				// Only add to results if we found matches
-				if len(matchingArgs) > 0 || len(matchingExports) > 0 {
-					// Get component ID
-					moduleID, _ := compInfo["moduleID"].(string)
-					localID, _ := compInfo["localID"].(string)
-					componentID := moduleID + "/" + localID
-
-					// Add target info to the instance data
-					instanceData.Components[componentID] = TargetResults{
-						Args:    matchingArgs,
-						Exports: matchingExports,
-					}
-					foundMatches = true
-				}
+			// If query is provided, filter the targets
+			if query != "" {
+				filteredDebugInfo := filterTargetsBasedOnQuery(debugInfo, query)
+				response.Results[p.Name] = filteredDebugInfo
 			} else {
-				errMsg := fmt.Sprintf("Error response from peer %s, component %s: %d", p.Name, comp.ID, resp.StatusCode)
-				fmt.Println(errMsg)
-				response.Errors = append(response.Errors, errMsg)
-				continue
+				response.Results[p.Name] = debugInfo
 			}
-		}
-
-		// Only add instance to results if we found matches in any component
-		if foundMatches {
-			response.Results[p.Name] = instanceData
+		} else {
+			errMsg := fmt.Sprintf("Error response from peer %s: %d", p.Name, resp.StatusCode)
+			response.Errors = append(response.Errors, errMsg)
+			continue
 		}
 	}
 
 	return response, nil
+}
+
+// filterTargetsBasedOnQuery filters targets that match the query string in URL or labels
+func filterTargetsBasedOnQuery(debugInfo PrometheusTargetDebugResponse, query string) PrometheusTargetDebugResponse {
+	result := PrometheusTargetDebugResponse{
+		Components: make(map[string]ComponentDebugInfo),
+		Errors:     debugInfo.Errors,
+	}
+
+	for compID, compInfo := range debugInfo.Components {
+		var filteredTargets []TargetStatus
+
+		for _, target := range compInfo.TargetsStatus {
+			// Check if query matches URL
+			if matchString(target.URL, query) {
+				filteredTargets = append(filteredTargets, target)
+				continue
+			}
+
+			// Check if query matches any label key or value
+			for key, value := range target.Labels {
+				if matchString(key, query) || matchString(value, query) {
+					filteredTargets = append(filteredTargets, target)
+					break // break the iteration over labels
+				}
+			}
+		}
+
+		result.Components[compID] = ComponentDebugInfo{
+			TargetsStatus: filteredTargets,
+		}
+	}
+
+	return result
+}
+
+// matchString tries to match a string with query, first using plaintext search,
+// then falling back to regex if needed
+func matchString(s, query string) bool {
+	// First try simple case-insensitive string containment
+	if strings.Contains(strings.ToLower(s), strings.ToLower(query)) {
+		return true
+	}
+
+	// Fall back to regex match if plaintext doesn't find a match
+	matched, err := regexp.MatchString(query, s)
+	if err == nil && matched {
+		return true
+	}
+
+	return false
 }
 
 // listPrometheusTargetsComponents returns components that represent Prometheus targets
@@ -181,17 +264,15 @@ func listPrometheusTargetsComponents(host service.Host) ([]*component.Info, erro
 		return nil, err
 	}
 
-	// Target component types that might have Prometheus targets
-	targetTypes := []string{
-		"discovery.",
-		"prometheus.",
-		"remote.prometheus.",
+	// Target component types that have Prometheus targets DebugInfo
+	supportedComponents := []string{
+		"prometheus.scrape",
 	}
 
 	var prometheusComponents []*component.Info
 	for _, comp := range allComponents {
-		for _, targetType := range targetTypes {
-			if strings.HasPrefix(comp.ComponentName, targetType) {
+		for _, supported := range supportedComponents {
+			if comp.ComponentName == supported {
 				prometheusComponents = append(prometheusComponents, comp)
 				break // Once we've matched, we can stop checking other types
 			}
@@ -201,119 +282,26 @@ func listPrometheusTargetsComponents(host service.Host) ([]*component.Info, erro
 	return prometheusComponents, nil
 }
 
-// searchTargetsInSection looks for targets in arguments or exports that match the query
-func searchTargetsInSection(query string, compInfo map[string]interface{}, section string) []map[string]string {
-	var results []map[string]string
-
-	// Check if the section exists
-	sectionData, ok := compInfo[section].([]interface{})
-	if !ok {
-		return results
-	}
-
-	// Look for targets in the section
-	for _, arg := range sectionData {
-		argMap, ok := arg.(map[string]interface{})
-		if !ok {
-			continue
-		}
-
-		// Get the value field
-		valueObj, ok := argMap["value"].(map[string]interface{})
-		if !ok {
-			continue
-		}
-
-		// Check if the value is an array
-		valueType, ok := valueObj["type"].(string)
-		if !ok || valueType != "array" {
-			continue
-		}
-
-		// Grab the array
-		targetsArray, ok := valueObj["value"].([]interface{})
-		if !ok {
-			continue
-		}
-
-		// Process each target object
-		for _, targetObj := range targetsArray {
-			target, ok := targetObj.(map[string]interface{})
-			if !ok {
-				continue
-			}
-
-			// Check if it has a value array (which contains key-value pairs)
-			targetValue, ok := target["value"].([]interface{})
-			if !ok {
-				continue
-			}
-
-			// Convert the target object to a simple map[string]string
-			targetMap := make(map[string]string)
-			matchFound := false
-
-			// Process each key-value pair in the target
-			for _, kv := range targetValue {
-				kvMap, ok := kv.(map[string]interface{})
-				if !ok {
-					continue
-				}
-
-				key, ok := kvMap["key"].(string)
-				if !ok {
-					continue
-				}
-
-				valueObj, ok := kvMap["value"].(map[string]interface{})
-				if !ok {
-					continue
-				}
-
-				valueStr, ok := valueObj["value"].(string)
-				if !ok {
-					continue
-				}
-
-				// Add to our map
-				targetMap[key] = valueStr
-
-				// Check if this value matches our query - either exact match or regex
-				if strings.Contains(valueStr, query) || strings.Contains(key, query) {
-					matchFound = true
-				} else {
-					// Try as regex
-					matched, err := regexp.MatchString(query, key)
-					if err == nil && matched {
-						matchFound = true
-					}
-					matched, err = regexp.MatchString(query, valueStr)
-					if err == nil && matched {
-						matchFound = true
-					}
-				}
-			}
-
-			// If we found a match, add this target to our results
-			if matchFound {
-				results = append(results, targetMap)
-			}
-		}
-	}
-
-	return results
-}
-
 type SearchPrometheusTargetsResponse struct {
-	Results map[string]InstanceResults `json:"results"`
-	Errors  []string                   `json:"errors"`
+	Results map[string]PrometheusTargetDebugResponse `json:"results"`
+	Errors  []string                                 `json:"errors"`
 }
 
-type InstanceResults struct {
-	Components map[string]TargetResults `json:"components"`
+type PrometheusTargetDebugResponse struct {
+	Components map[string]ComponentDebugInfo `json:"components"`
+	Errors     []string                      `json:"errors"`
 }
 
-type TargetResults struct {
-	Args    []map[string]string `json:"args"`
-	Exports []map[string]string `json:"exports"`
+type ComponentDebugInfo struct {
+	TargetsStatus []TargetStatus `json:"targetsStatus"`
+}
+
+type TargetStatus struct {
+	JobName            string            `json:"jobName"`
+	URL                string            `json:"url"`
+	Health             string            `json:"health"`
+	Labels             map[string]string `json:"labels"`
+	LastError          string            `json:"lastError"`
+	LastScrape         string            `json:"lastScrape"`
+	LastScrapeDuration string            `json:"lastScrapeDuration"`
 }

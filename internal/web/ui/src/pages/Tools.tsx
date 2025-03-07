@@ -17,7 +17,7 @@ function PrometheusTargetSearch() {
       setError(null);
 
       // Make the actual API request to our new endpoint
-      const response = await fetch('/api/v0/web/tools/prometheus-target-search', {
+      const response = await fetch('/api/v0/web/tools/prometheus-targets-search-debug-info', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -64,7 +64,7 @@ function PrometheusTargetSearch() {
               <ReactJson
                 src={searchResults}
                 theme="rjv-default"
-                collapsed={2}
+                collapsed={false}
                 enableClipboard={false}
                 displayDataTypes={false}
                 name={false}
