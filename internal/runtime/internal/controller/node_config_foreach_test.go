@@ -7,16 +7,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/trace/noop"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/parser"
 	"github.com/grafana/alloy/syntax/vm"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"go.opentelemetry.io/otel/trace/noop"
 )
 
 func TestCreateCustomComponents(t *testing.T) {
@@ -269,7 +270,7 @@ func TestNonAlphaNumericString3(t *testing.T) {
 	foreachConfigNode := NewForeachConfigNode(getBlockFromConfig(t, config), getComponentGlobals(t), nil)
 	require.NoError(t, foreachConfigNode.Evaluate(vm.NewScope(make(map[string]interface{}))))
 	customComponentIds := foreachConfigNode.moduleController.(*ModuleControllerMock).CustomComponents
-	//TODO: It's not very clear which item became "foreach_123__s4_1_1".
+	// TODO: It's not very clear which item became "foreach_123__s4_1_1".
 	// To avoid confusion, maybe we should log a mapping?
 	require.ElementsMatch(t, customComponentIds, []string{"foreach_123__s4_1", "foreach_123__s4_1_1"})
 }

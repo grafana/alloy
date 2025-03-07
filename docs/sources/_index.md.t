@@ -7,7 +7,7 @@ cascade:
   ALLOY_RELEASE: $ALLOY_VERSION
   OTEL_VERSION: v0.119.0
   PROM_WIN_EXP_VERSION: v0.27.3
-  SNMP_VERSION: v0.27.0
+  SNMP_VERSION: v0.28.0
   FULL_PRODUCT_NAME: Grafana Alloy
   PRODUCT_NAME: Alloy
 hero:
@@ -53,7 +53,7 @@ cards:
 
 # Overview
 
-{{< figure src="/media/docs/alloy/flow-diagram-small-alloy.png" alt="Alloy flow diagram" >}}
+{{< figure src="/media/docs/alloy/flow-diagram-alloy_03-2025.png" alt="Alloy flow diagram" >}}
 
 Collect all your telemetry with one product
 

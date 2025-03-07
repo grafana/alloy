@@ -19,6 +19,10 @@ func TestAlloyConfig(t *testing.T) {
 
 	refresh_interval = "10s"
 	fetch_timeout    = "50s"
+
+	http_headers = {
+		"foo" = ["foobar"],
+	}
 `
 
 	var args Arguments
