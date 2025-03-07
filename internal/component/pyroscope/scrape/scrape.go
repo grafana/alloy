@@ -274,7 +274,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 			config_util.WithDialContextFunc(httpData.DialFunc),
 		},
 	}
-	scraper := NewManager(scrapeHttpOptions, alloyAppendable, o.Logger)
+	scraper, _ := NewManager(scrapeHttpOptions, args, alloyAppendable, o.Logger)
 	c := &Component{
 		opts:          o,
 		cluster:       clusterData,
@@ -295,7 +295,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 func (c *Component) Run(ctx context.Context) error {
 	defer c.scraper.Stop()
 
-	targetSetsChan := make(chan map[string][]*targetgroup.Group)
+	targetSetsChan := make(chan []*targetgroup.Group)
 
 	go func() {
 		c.scraper.Run(targetSetsChan)
@@ -321,7 +321,7 @@ func (c *Component) Run(ctx context.Context) error {
 			// NOTE(@tpaschalis) First approach, manually building the
 			// 'clustered' targets implementation every time.
 			ct := discovery.NewDistributedTargets(clusteringEnabled, c.cluster, tgs)
-			promTargets := discovery.ComponentTargetsToPromTargetGroups(jobName, ct.LocalTargets())
+			promTargets := discovery.ComponentTargetsToPromTargetGroupsForSingleJob(jobName, ct.LocalTargets())
 
 			select {
 			case targetSetsChan <- promTargets:
@@ -377,23 +377,21 @@ func (c *Component) NotifyClusterChange() {
 func (c *Component) DebugInfo() interface{} {
 	var res []scrape.TargetStatus
 
-	for job, stt := range c.scraper.TargetsActive() {
-		for _, st := range stt {
-			var lastError string
-			if st.LastError() != nil {
-				lastError = st.LastError().Error()
-			}
-			if st != nil {
-				res = append(res, scrape.TargetStatus{
-					JobName:            job,
-					URL:                st.URL(),
-					Health:             string(st.Health()),
-					Labels:             st.allLabels.Map(),
-					LastError:          lastError,
-					LastScrape:         st.LastScrape(),
-					LastScrapeDuration: st.LastScrapeDuration(),
-				})
-			}
+	for _, st := range c.scraper.TargetsActive() {
+		var lastError string
+		if st.LastError() != nil {
+			lastError = st.LastError().Error()
+		}
+		if st != nil {
+			res = append(res, scrape.TargetStatus{
+				JobName:            c.args.JobName,
+				URL:                st.URL(),
+				Health:             string(st.Health()),
+				Labels:             st.allLabels.Map(),
+				LastError:          lastError,
+				LastScrape:         st.LastScrape(),
+				LastScrapeDuration: st.LastScrapeDuration(),
+			})
 		}
 	}
 

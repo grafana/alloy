@@ -351,6 +351,12 @@ func (t Target) hashLabelsInOrder(order []string) uint64 {
 }
 
 func ComponentTargetsToPromTargetGroups(jobName string, tgs []Target) map[string][]*targetgroup.Group {
+	allGroups := ComponentTargetsToPromTargetGroupsForSingleJob(jobName, tgs)
+
+	return map[string][]*targetgroup.Group{jobName: allGroups}
+}
+
+func ComponentTargetsToPromTargetGroupsForSingleJob(jobName string, tgs []Target) []*targetgroup.Group {
 	targetIndWithCommonGroupLabels := map[uint64][]int{} // target group hash --> index of target in tgs array
 	for ind, t := range tgs {
 		fp := t.groupLabelsHash()
@@ -394,6 +400,5 @@ func ComponentTargetsToPromTargetGroups(jobName string, tgs []Target) map[string
 			Targets: hashConflicts,
 		})
 	}
-
-	return map[string][]*targetgroup.Group{jobName: allGroups}
+	return allGroups
 }
