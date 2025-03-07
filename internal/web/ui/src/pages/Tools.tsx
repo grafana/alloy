@@ -3,7 +3,6 @@ import ReactJson from 'react-json-view';
 import { faTools } from '@fortawesome/free-solid-svg-icons';
 
 import Page from '../features/layout/Page';
-import { PrometheusTargetSearchResponse } from '../types/prometheusTypes';
 
 import styles from './Tools.module.css';
 
@@ -16,13 +15,16 @@ function PrometheusTargetSearch() {
     try {
       setError(null);
 
-      // Make the actual API request to our new endpoint
-      const response = await fetch('/api/v0/web/tools/prometheus-targets-search-debug-info', {
-        method: 'POST',
+      const url = new URL('/api/v0/web/tools/cluster-prom-targets-debug-info', window.location.origin);
+      if (searchText) {
+        url.searchParams.append('query', searchText);
+      }
+
+      const response = await fetch(url.toString(), {
+        method: 'GET',
         headers: {
-          'Content-Type': 'application/json',
+          Accept: 'application/json',
         },
-        body: JSON.stringify({ searchQuery: searchText }),
       });
 
       if (!response.ok) {
@@ -41,18 +43,18 @@ function PrometheusTargetSearch() {
 
   return (
     <section id="prometheus-search" className={styles.toolSection}>
-      <h2>Prometheus Target Search</h2>
+      <h2>Cluster-wide Prometheus Target Status Search</h2>
       <div className={styles.content}>
         <div className={styles.searchControls}>
           <input
             type="text"
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
-            placeholder="Enter search query as regex..."
+            placeholder="Enter search query (regex supported)"
             className={styles.searchInput}
           />
           <button onClick={handleSearch} className={styles.searchButton}>
-            Search
+            Search Cluster
           </button>
         </div>
 
@@ -80,7 +82,7 @@ function PrometheusTargetSearch() {
               />
             </div>
           ) : (
-            <div className={styles.placeholderMessage}>Search results will appear here...</div>
+            <div className={styles.placeholderMessage}>Search results from all cluster instances will appear here...</div>
           )}
         </div>
       </div>

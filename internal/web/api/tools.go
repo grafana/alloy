@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 	"time"
@@ -18,19 +19,7 @@ import (
 // prometheusTargetSearchDebugInfo handles searches for Prometheus targets' debug info across all peers in the cluster
 func prometheusTargetSearchDebugInfo(host service.Host) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Parse request body to get query
-		var requestBody struct {
-			SearchQuery string `json:"searchQuery"`
-		}
-
-		// Decode JSON body
-		if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
-			http.Error(w, "Invalid request body: "+err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		// Use search query from request body
-		query := requestBody.SearchQuery
+		query := r.URL.Query().Get("query")
 
 		// Search for targets
 		response, err := searchPrometheusTargetsDebugInfos(query, host)
@@ -55,8 +44,10 @@ func prometheusTargetSearchDebugInfo(host service.Host) http.HandlerFunc {
 // prometheusTargetDebugInfo handles requests for debug information about Prometheus targets
 func prometheusTargetDebugInfo(host service.Host) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		query := r.URL.Query().Get("query")
+
 		// Find all prometheus.scrape components and extract their debug info
-		response, err := getPrometheusTargetsDebugInfo(host)
+		response, err := getPrometheusTargetsDebugInfo(host, query)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -75,7 +66,7 @@ func prometheusTargetDebugInfo(host service.Host) http.HandlerFunc {
 	}
 }
 
-func getPrometheusTargetsDebugInfo(host service.Host) (PrometheusTargetDebugResponse, error) {
+func getPrometheusTargetsDebugInfo(host service.Host, query string) (PrometheusTargetDebugResponse, error) {
 	// Initialize response
 	response := PrometheusTargetDebugResponse{
 		Components: make(map[string]ComponentDebugInfo),
@@ -107,21 +98,44 @@ func getPrometheusTargetsDebugInfo(host service.Host) (PrometheusTargetDebugResp
 			continue
 		}
 
-		response.Components[compId] = ComponentDebugInfo{
-			TargetsStatus: make([]TargetStatus, len(scrapeStatus.TargetStatus)),
+		componentInfo := ComponentDebugInfo{
+			TargetsStatus: []TargetStatus{},
 		}
 
-		for i, target := range scrapeStatus.TargetStatus {
-			response.Components[compId].TargetsStatus[i] = TargetStatus{
-				JobName:            target.JobName,
-				URL:                target.URL,
-				Health:             target.Health,
-				Labels:             target.Labels,
-				LastError:          target.LastError,
-				LastScrape:         target.LastScrape.Format(time.RFC3339),
-				LastScrapeDuration: fmt.Sprintf("%v", target.LastScrapeDuration),
+		for _, target := range scrapeStatus.TargetStatus {
+			// If query is provided, check if this target matches the query
+			shouldInclude := true
+			if query != "" {
+				shouldInclude = false
+
+				// Check if query matches URL
+				if matchString(target.URL, query) {
+					shouldInclude = true
+				} else {
+					// Check if query matches any label key or value
+					for key, value := range target.Labels {
+						if matchString(key, query) || matchString(value, query) {
+							shouldInclude = true
+							break // break the iteration over labels
+						}
+					}
+				}
+			}
+
+			if shouldInclude {
+				componentInfo.TargetsStatus = append(componentInfo.TargetsStatus, TargetStatus{
+					JobName:            target.JobName,
+					URL:                target.URL,
+					Health:             target.Health,
+					Labels:             target.Labels,
+					LastError:          target.LastError,
+					LastScrape:         target.LastScrape.Format(time.RFC3339),
+					LastScrapeDuration: fmt.Sprintf("%v", target.LastScrapeDuration),
+				})
 			}
 		}
+
+		response.Components[compId] = componentInfo
 	}
 
 	return response, nil
@@ -151,10 +165,13 @@ func searchPrometheusTargetsDebugInfos(query string, host service.Host) (SearchP
 	peers := clusterSvc.Data().(cluster.Cluster).Peers()
 
 	// TODO: this could be done concurrently for all peers to speed things up
-	// TODO: we could send the query term to all peers as well so the responses come filtered already
 	for _, p := range peers {
 		// Construct the URL to get prometheus targets debug info from the peer
-		peerURL := fmt.Sprintf("%s://%s/api/v0/web/tools/prometheus-targets-debug-info", protocol, p.Addr)
+		// Include the query parameter to filter results at the peer level
+		peerURL := fmt.Sprintf("%s://%s/api/v0/web/tools/instance-prom-targets-debug-info", protocol, p.Addr)
+		if query != "" {
+			peerURL = fmt.Sprintf("%s?query=%s", peerURL, url.QueryEscape(query))
+		}
 
 		// Create a new request
 		peerReq, err := http.NewRequest("GET", peerURL, nil)
@@ -189,13 +206,7 @@ func searchPrometheusTargetsDebugInfos(query string, host service.Host) (SearchP
 				continue
 			}
 
-			// If query is provided, filter the targets
-			if query != "" {
-				filteredDebugInfo := filterTargetsBasedOnQuery(debugInfo, query)
-				response.Results[p.Name] = filteredDebugInfo
-			} else {
-				response.Results[p.Name] = debugInfo
-			}
+			response.Results[p.Name] = debugInfo
 		} else {
 			errMsg := fmt.Sprintf("Error response from peer %s: %d", p.Name, resp.StatusCode)
 			response.Errors = append(response.Errors, errMsg)
@@ -204,40 +215,6 @@ func searchPrometheusTargetsDebugInfos(query string, host service.Host) (SearchP
 	}
 
 	return response, nil
-}
-
-// filterTargetsBasedOnQuery filters targets that match the query string in URL or labels
-func filterTargetsBasedOnQuery(debugInfo PrometheusTargetDebugResponse, query string) PrometheusTargetDebugResponse {
-	result := PrometheusTargetDebugResponse{
-		Components: make(map[string]ComponentDebugInfo),
-		Errors:     debugInfo.Errors,
-	}
-
-	for compID, compInfo := range debugInfo.Components {
-		var filteredTargets []TargetStatus
-
-		for _, target := range compInfo.TargetsStatus {
-			// Check if query matches URL
-			if matchString(target.URL, query) {
-				filteredTargets = append(filteredTargets, target)
-				continue
-			}
-
-			// Check if query matches any label key or value
-			for key, value := range target.Labels {
-				if matchString(key, query) || matchString(value, query) {
-					filteredTargets = append(filteredTargets, target)
-					break // break the iteration over labels
-				}
-			}
-		}
-
-		result.Components[compID] = ComponentDebugInfo{
-			TargetsStatus: filteredTargets,
-		}
-	}
-
-	return result
 }
 
 // matchString tries to match a string with query, first using plaintext search,

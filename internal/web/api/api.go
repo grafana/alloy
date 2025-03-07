@@ -61,8 +61,8 @@ func (a *AlloyAPI) RegisterRoutes(urlPrefix string, r *mux.Router) {
 
 	r.Handle(path.Join(urlPrefix, "/debug/{id:.+}"), liveDebugging(a.alloy, a.CallbackManager))
 
-	r.Handle(path.Join(urlPrefix, "/tools/prometheus-targets-debug-info"), httputil.CompressionHandler{Handler: prometheusTargetDebugInfo(a.alloy)})
-	r.Handle(path.Join(urlPrefix, "/tools/prometheus-targets-search-debug-info"), httputil.CompressionHandler{Handler: prometheusTargetSearchDebugInfo(a.alloy)})
+	r.Handle(path.Join(urlPrefix, "/tools/instance-prom-targets-debug-info"), httputil.CompressionHandler{Handler: prometheusTargetDebugInfo(a.alloy)})
+	r.Handle(path.Join(urlPrefix, "/tools/cluster-prom-targets-debug-info"), httputil.CompressionHandler{Handler: prometheusTargetSearchDebugInfo(a.alloy)})
 }
 
 func listComponentsHandler(host service.Host) http.HandlerFunc {
