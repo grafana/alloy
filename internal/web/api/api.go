@@ -6,7 +6,6 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
 	"math/rand"
 	"net/http"
 	"path"
@@ -21,7 +20,6 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/service/cluster"
-	httpservice "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/service/remotecfg"
 )
@@ -161,7 +159,6 @@ func getComponentHandlerInternal(host service.Host, w http.ResponseWriter, r *ht
 
 func getClusteringPeersHandler(host service.Host) http.HandlerFunc {
 	return func(w http.ResponseWriter, _ *http.Request) {
-		fmt.Println("======= getClusteringPeersHandler")
 		// TODO(@tpaschalis) Detect if clustering is disabled and propagate to
 		// the Typescript code (eg. via the returned status code?).
 		svc, found := host.GetService(cluster.ServiceName)
@@ -251,19 +248,4 @@ func setSampleProb(w http.ResponseWriter, sampleProbParam string) (sampleProb fl
 		}
 	}
 	return sampleProb
-}
-
-// isTLSEnabled checks if TLS is enabled for the HTTP service
-func isTLSEnabled(host service.Host) (bool, error) {
-	httpSvc, found := host.GetService(httpservice.ServiceName)
-	if !found {
-		return false, fmt.Errorf("HTTP service not running")
-	}
-
-	httpService, ok := httpSvc.(*httpservice.Service)
-	if !ok {
-		return false, fmt.Errorf("HTTP service has unexpected type")
-	}
-
-	return httpService.IsTLS(), nil
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/grafana/alloy/internal/component/prometheus/scrape"
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/service/cluster"
+	httpservice "github.com/grafana/alloy/internal/service/http"
 )
 
 // prometheusTargetSearchDebugInfo handles searches for Prometheus targets' debug info across all peers in the cluster
@@ -257,6 +258,21 @@ func listPrometheusTargetsComponents(host service.Host) ([]*component.Info, erro
 	}
 
 	return prometheusComponents, nil
+}
+
+// isTLSEnabled checks if TLS is enabled for the HTTP service
+func isTLSEnabled(host service.Host) (bool, error) {
+	httpSvc, found := host.GetService(httpservice.ServiceName)
+	if !found {
+		return false, fmt.Errorf("HTTP service not running")
+	}
+
+	httpService, ok := httpSvc.(*httpservice.Service)
+	if !ok {
+		return false, fmt.Errorf("HTTP service has unexpected type")
+	}
+
+	return httpService.IsTLS(), nil
 }
 
 type SearchPrometheusTargetsResponse struct {
