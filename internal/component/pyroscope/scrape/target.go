@@ -50,6 +50,8 @@ type Target struct {
 	hash   uint64
 	url    string
 
+	scaler []float64
+
 	mtx                sync.RWMutex
 	lastError          error
 	lastScrape         time.Time
@@ -194,26 +196,26 @@ func (t *Target) Health() TargetHealth {
 	return t.health
 }
 
-// labelsByProfiles returns builders for each profiling type enabled in config
-func labelsByProfiles(base labels.Labels, c *ProfilingConfig) []*labels.Builder {
-	var res []*labels.Builder
+type targetBuilder struct {
+	lb *labels.Builder
+	pc ProfilingTarget
+}
 
-	add := func(profileType string, cfgs ...ProfilingTarget) {
-		for _, p := range cfgs {
-			if p.Enabled {
-				lb := labels.NewBuilder(base)
-				setIfNotPresentAndNotEmpty(lb, ProfilePath, p.Path)
-				setIfNotPresentAndNotEmpty(lb, ProfileName, profileType)
-				setIfNotPresentAndNotEmpty(lb, ProfilePathPrefix, c.PathPrefix)
-				res = append(res, lb)
-			}
+// labelsByProfiles returns builders for each profiling type enabled in config
+func labelsByProfiles(base labels.Labels, c *ProfilingConfig) []targetBuilder {
+	var res []targetBuilder
+	for profilingType, profilingConfig := range c.AllTargets() {
+		if profilingConfig.Enabled {
+			lb := labels.NewBuilder(base)
+			setIfNotPresentAndNotEmpty(lb, ProfilePath, profilingConfig.Path)
+			setIfNotPresentAndNotEmpty(lb, ProfileName, profilingType)
+			setIfNotPresentAndNotEmpty(lb, ProfilePathPrefix, c.PathPrefix)
+			res = append(res, targetBuilder{
+				lb: lb,
+				pc: profilingConfig,
+			})
 		}
 	}
-
-	for profilingType, profilingConfig := range c.AllTargets() {
-		add(profilingType, profilingConfig)
-	}
-
 	return res
 }
 
@@ -327,12 +329,12 @@ func targetsFromGroup(group *targetgroup.Group, cfg Arguments, targetTypes map[s
 		lsets := labelsByProfiles(lbls, &cfg.ProfilingConfig)
 
 		for _, lset := range lsets {
-			lbls, err := populateLabels(lset, lbls, cfg)
+			populatedLabels, err := populateLabels(lset.lb, lbls, cfg)
 			if err != nil {
 				return nil, fmt.Errorf("instance %d in group %s: %s", i, group, err)
 			}
-			if lbls != nil {
-				profType := lbls.Get(ProfileName)
+			if populatedLabels != nil {
+				profType := populatedLabels.Get(ProfileName)
 				params := cfg.Params
 				if params == nil {
 					params = url.Values{}
@@ -345,7 +347,9 @@ func targetsFromGroup(group *targetgroup.Group, cfg Arguments, targetTypes map[s
 					}
 					params.Add("seconds", strconv.Itoa(int(seconds)))
 				}
-				targets = append(targets, NewTarget(lbls, params))
+				t := NewTarget(populatedLabels, params)
+				t.scaler = lset.pc.Scaler // todo update if config changed?
+				targets = append(targets, t)
 			}
 		}
 	}
