@@ -4,10 +4,16 @@ on:
   pull_request:
     paths:
       - 'tools/build-image/*'
+      - '.github/workflows/check-linux-build-image.yml'
 
 jobs:
   check-linux-build-image:
-    runs-on: github-hosted-ubuntu-x64-large
+    strategy:
+      matrix:
+        build:
+          - runtime: golang:1.24.0-alpine3.21
+          - runtime: mcr.microsoft.com/oss/go/microsoft/golang:1.24.0-bookworm
+    runs-on: ubuntu-22.04 # related to https://github.com/docker/setup-qemu-action/issues/198
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -21,7 +27,9 @@ jobs:
             rm -rf /opt/hostedtoolcache
 
       - name: Setup QEMU
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v3.4.0
+        with:
+          image: tonistiigi/binfmt:qemu-v7.0.0-28 # https://github.com/docker/setup-qemu-action/issues/198
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -29,17 +37,9 @@ jobs:
       - name: Create test Linux build image
         uses: docker/build-push-action@v6
         with:
+          platforms: linux/amd64,linux/arm64
           context: ./tools/build-image
           push: false
           tags: grafana/alloy-build-image:latest
           build-args: |
-            GO_RUNTIME=golang:1.24.0-bullseye
-
-      - name: Create test Linux build image for boring crypto
-        uses: docker/build-push-action@v6
-        with:
-          context: ./tools/build-image
-          push: false
-          tags: grafana/alloy-build-image:latest
-          build-args: |
-            GO_RUNTIME=mcr.microsoft.com/oss/go/microsoft/golang:1.24.0-bullseye
+            GO_RUNTIME=${{ matrix.build.runtime }}

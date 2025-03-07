@@ -68,17 +68,21 @@ Each `endpoint` has its own WAL folder.
 
 The following arguments are supported:
 
-| Name                 | Type          | Description                                                                      | Default | Required |
-| -------------------- | ------------- | -------------------------------------------------------------------------------- | ------- | -------- |
-| `url`                | `string`      | Full URL to send metrics to.                                                     |         | yes      |
-| `batch_count`        | `uint`        | How many series to queue in each queue.                                          | `1000`  | no       |
-| `bearer_token`       | `secret`      | Bearer token to authenticate with.                                               |         | no       |
-| `enable_round_robin` | `bool`        | Use round robin load balancing when there are multiple IPs for a given endpoint. | `false` | no       |
-| `external_labels`    | `map(string)` | Labels to add to metrics sent over the network.                                  |         | no       |
-| `flush_interval`     | `duration`    | How long to wait until sending if `batch_count` isn't triggered.                 | `1s`    | no       |
-| `max_retry_attempts` | `uint`        | Maximum number of retries before dropping the batch.                             | `0`     | no       |
-| `retry_backoff`      | `duration`    | How long to wait between retries.                                                | `1s`    | no       |
-| `write_timeout`      | `duration`    | Timeout for requests made to the URL.                                            | `"30s"` | no       |
+| Name                     | Type                   | Description                                                                      | Default | Required |
+| ------------------------ | ---------------------- | -------------------------------------------------------------------------------- | ------- | -------- |
+| `url`                    | `string`               | Full URL to send metrics to.                                                     |         | yes      |
+| `batch_count`            | `uint`                 | How many series to queue in each queue.                                          | `1000`  | no       |
+| `bearer_token`           | `secret`               | Bearer token to authenticate with.                                               |         | no       |
+| `enable_round_robin`     | `bool`                 | Use round robin load balancing when there are multiple IPs for a given endpoint. | `false` | no       |
+| `external_labels`        | `map(string)`          | Labels to add to metrics sent over the network.                                  |         | no       |
+| `flush_interval`         | `duration`             | How long to wait until sending if `batch_count` isn't triggered.                 | `1s`    | no       |
+| `headers`                | `map(secret)`          | Custom HTTP headers to add to all requests sent to the server.                   |         | no       |
+| `max_retry_attempts`     | `uint`                 | Maximum number of retries before dropping the batch.                             | `0`     | no       |
+| `proxy_url`              | `string`               | URL of the HTTP proxy to use for requests.                                       |         | no       |
+| `proxy_from_environment` | `bool`                 | Whether to read proxy configuration from environment variables.                  | `false` | no       |
+| `proxy_connect_headers`  | `map(secret)`          | HTTP headers to send to proxies during CONNECT requests.                         |         | no       |
+| `retry_backoff`          | `duration`             | How long to wait between retries.                                                | `1s`    | no       |
+| `write_timeout`          | `duration`             | Timeout for requests made to the URL.                                            | `"30s"` | no       |
 
 ### `basic_auth`
 
@@ -241,7 +245,6 @@ prometheus.scrape "demo" {
   ]
   forward_to = [prometheus.write.queue.staging.receiver]
 }
-
 ```
 
 ## Technical details

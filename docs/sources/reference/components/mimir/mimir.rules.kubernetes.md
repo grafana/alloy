@@ -55,6 +55,7 @@ You can use the following arguments with `mimir.rules.kubernetes`:
 | `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`        | no       |
 | `external_labels`        | `map(string)`       | Labels to add to each rule.                                                                      | `{}`          | no       |
 | `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`        | no       |
+| `http_headers`           | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.          |                      | no       |
 | `mimir_namespace_prefix` | `string`            | Prefix used to differentiate multiple {{< param "PRODUCT_NAME" >}} deployments.                  | "alloy"       | no       |
 | `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |               | no       |
 | `prometheus_http_prefix` | `string`            | Path prefix for the [Mimir Prometheus endpoint][gem-path-prefix].                                | `/prometheus` | no       |
