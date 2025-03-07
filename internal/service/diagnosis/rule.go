@@ -93,7 +93,7 @@ func missingClusteringBlocks(g *graph, insights []insight) []insight {
 
 	addMissingClusteringInsight := func(node *node, insights []insight, link string) []insight {
 		insights = append(insights, insight{
-			Level:  LevelError,
+			Level:  LevelWarning,
 			Msg:    fmt.Sprintf("Clustering is enabled but the clustering block on the component %q is not defined.", node.info.ID.LocalID),
 			Link:   link,
 			Module: g.module,
