@@ -35,11 +35,13 @@ Main (unreleased)
 
 - Added OpenTelemetry logs and metrics support to Alloy mixin's dashboards and alerts. (@thampiotr)
 
+### Bugfixes
+
+- Fixed an issue where the `otelcol.exporter.awss3` could not be started with the `sumo_ic` marshaler. (@wildum)
+
 - Add support for proxy and headers in `prometheus.write.queue`. (@mattdurham)
 
 - Update `jfr-parser` dependency to v0.9.3 to fix jfr parsing issues in `pyroscope.java`. (@korniltsev)
-
-### Bugfixes
 
 - Fixed an issue where indexing targets as maps (e.g. `target["foo"]`) or objects (e.g. `target.foo`) didn't work in
   some circumstances resulting in `expected object or array, got capsule` error. This could also lead to
