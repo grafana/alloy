@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	gprofile "github.com/google/pprof/profile"
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/useragent"
@@ -231,6 +232,13 @@ func (t *scrapeLoop) scrape() {
 	if len(b) > 0 {
 		t.lastScrapeSize = len(b)
 	}
+	b, err := t.scaleProfile(b)
+	if err != nil {
+		level.Error(t.logger).Log("msg", "scale profile failed", "target", t, "err", err)
+		t.updateTargetStatus(start, err)
+		return
+	}
+
 	if err := t.appender.Append(context.Background(), t.allLabels, []*pyroscope.RawSample{{RawProfile: b}}); err != nil {
 		level.Error(t.logger).Log("msg", "push failed", "target", t, "err", err)
 		t.updateTargetStatus(start, err)
@@ -296,4 +304,24 @@ func (t *scrapeLoop) stop(wait bool) {
 	if wait {
 		t.wg.Wait()
 	}
+}
+
+func (t *scrapeLoop) scaleProfile(profile []byte) ([]byte, error) { // todo tests
+	if len(t.scaler) == 0 {
+		return profile, nil
+	}
+	pp, err := gprofile.ParseData(profile) // todo streaming parsing, same as in delta
+	if err != nil {
+		return nil, err
+	}
+	if err = pp.ScaleN(t.scaler); err != nil {
+		return nil, err
+	}
+	//pp = pp.Compact()
+	buf := bytes.NewBuffer(profile)
+	if err = pp.Write(buf); err != nil {
+		return nil, err
+	}
+	profile = buf.Bytes()
+	return profile, nil
 }

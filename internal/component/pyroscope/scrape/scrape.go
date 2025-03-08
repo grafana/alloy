@@ -127,6 +127,7 @@ func (cfg *ProfilingConfig) AllTargets() map[string]ProfilingTarget {
 			Enabled: custom.Enabled,
 			Path:    custom.Path,
 			Delta:   custom.Delta,
+			Scaler:  custom.Scaler,
 		}
 	}
 
@@ -181,16 +182,18 @@ func (cfg *ProfilingConfig) SetToDefault() {
 }
 
 type ProfilingTarget struct {
-	Enabled bool   `alloy:"enabled,attr,optional"`
-	Path    string `alloy:"path,attr,optional"`
-	Delta   bool   `alloy:"delta,attr,optional"`
+	Enabled bool      `alloy:"enabled,attr,optional"`
+	Path    string    `alloy:"path,attr,optional"`
+	Delta   bool      `alloy:"delta,attr,optional"`
+	Scaler  []float64 `alloy:"scaler,attr,optional"`
 }
 
 type CustomProfilingTarget struct {
-	Enabled bool   `alloy:"enabled,attr"`
-	Path    string `alloy:"path,attr"`
-	Delta   bool   `alloy:"delta,attr,optional"`
-	Name    string `alloy:",label"`
+	Enabled bool      `alloy:"enabled,attr"`
+	Path    string    `alloy:"path,attr"`
+	Delta   bool      `alloy:"delta,attr,optional"`
+	Name    string    `alloy:",label"`
+	Scaler  []float64 `alloy:"scaler,attr,optional"`
 }
 
 var DefaultArguments = NewDefaultArguments()
