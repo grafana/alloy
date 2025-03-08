@@ -9,6 +9,7 @@ import (
 	"github.com/grafana/alloy/internal/component/prometheus/relabel"
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/grafana/alloy/internal/converter/internal/prometheusconvert/build"
+	"github.com/grafana/alloy/internal/service/cache"
 	prom_relabel "github.com/prometheus/prometheus/model/relabel"
 	"github.com/prometheus/prometheus/storage"
 )
@@ -36,7 +37,12 @@ func toRelabelArguments(relabelConfigs []*prom_relabel.Config, forwardTo []stora
 	return &relabel.Arguments{
 		ForwardTo:            forwardTo,
 		MetricRelabelConfigs: ToAlloyRelabelConfigs(relabelConfigs),
-		CacheSize:            100_000,
+		CacheConfig: cache.CacheConfig{
+			Backend: cache.InMemory,
+			InMemory: cache.InMemoryCacheConfig{
+				CacheSize: 100_000,
+			},
+		},
 	}
 }
 
