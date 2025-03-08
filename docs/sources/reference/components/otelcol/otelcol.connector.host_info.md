@@ -3,17 +3,19 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/ot
 aliases:
   - ../otelcol.connector.host_info/ # /docs/alloy/latest/reference/components/otelcol.connector.host_info/
 description: Learn about otelcol.connector.host_info
+labels:
+  stage: general-availability
 title: otelcol.connector.host_info
 ---
 
-# otelcol.connector.host_info
+# `otelcol.connector.host_info`
 
 `otel.connector.host_info` accepts span data from other `otelcol` components and generates usage metrics.
 
 ## Usage
 
 ```alloy
-otelcol.connector.host_info "LABEL" {
+otelcol.connector.host_info "<LABEL>" {
   output {
     metrics = [...]
   }
@@ -22,7 +24,7 @@ otelcol.connector.host_info "LABEL" {
 
 ## Arguments
 
-`otelcol.connector.host_info` supports the following arguments:
+You can use the following arguments with `otelcol.connector.host_info`:
 
 | Name                     | Type           | Description                                                        | Default       | Required |
 | ------------------------ | -------------- | ------------------------------------------------------------------ | ------------- | -------- |
@@ -31,22 +33,23 @@ otelcol.connector.host_info "LABEL" {
 
 ## Blocks
 
-The following blocks are supported inside the definition of
-`otelcol.connector.host_info`:
+You can use the following blocks with `otelcol.connector.host_info`:
 
-| Hierarchy | Block      | Description                                       | Required |
-| --------- | ---------- | ------------------------------------------------- | -------- |
-| output    | [output][] | Configures where to send received telemetry data. | yes      |
-debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
+| Block                            | Description                                                                | Required |
+| -------------------------------- | -------------------------------------------------------------------------- | -------- |
+| [`output`][output]               | Configures where to send received telemetry data.                          | yes      |
+| [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |
 
-[output]: #output-block
-[debug_metrics]: #debug_metrics-block
+[output]: #output
+[debug_metrics]: #debug_metrics
 
-### output block
+### `output`
+
+<span class="badge docs-labels__stage docs-labels__item">Required</span>
 
 {{< docs/shared lookup="reference/components/output-block-metrics.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### debug_metrics block
+### `debug_metrics`
 
 {{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -58,12 +61,12 @@ The following fields are exported and can be referenced by other components:
 | ------- | ------------------ | ---------------------------------------------------------------- |
 | `input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to. |
 
-`input` accepts `otelcol.Consumer` traces telemetry data. It does not accept metrics and logs.
+`input` accepts `otelcol.Consumer` traces telemetry data.
+It doesn't accept metrics and logs.
 
 ## Example
 
-The example below accepts traces, adds the `host.id` resource attribute via the `otelcol.processor.resourcedetection` component,
-creates usage metrics from these traces, and writes the metrics to Mimir.
+The following example accepts traces, adds the `host.id` resource attribute via the `otelcol.processor.resourcedetection` component, creates usage metrics from these traces, and writes the metrics to Mimir.
 
 ```alloy
 otelcol.receiver.otlp "otlp" {
@@ -104,8 +107,8 @@ prometheus.remote_write "default" {
   endpoint {
     url = "https://prometheus-xxx.grafana.net/api/prom/push"
     basic_auth {
-      username = sys.env("PROMETHEUS_USERNAME")
-      password = sys.env("GRAFANA_CLOUD_API_KEY")
+      username = sys.env("<PROMETHEUS_USERNAME>")
+      password = sys.env("<GRAFANA_CLOUD_API_KEY>")
     }
   }
 }
