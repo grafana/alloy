@@ -28,12 +28,12 @@ var (
 type BuildersOptions struct {
 	SampleRate    int64
 	PerPIDProfile bool
+	Origin        libpf.Origin
 }
 
 type builderHashKey struct {
 	labelsHash uint64
 	pid        uint32
-	sampleType libpf.Origin
 }
 
 type ProfileBuilders struct {
@@ -52,11 +52,10 @@ func NewProfileBuilders(options BuildersOptions) *ProfileBuilders {
 func (b *ProfileBuilders) BuilderForSample(
 	target *discovery.Target,
 	pid uint32,
-	st libpf.Origin,
 ) *ProfileBuilder {
 	labelsHash, _ := target.Labels()
 
-	k := builderHashKey{labelsHash: labelsHash, sampleType: st}
+	k := builderHashKey{labelsHash: labelsHash}
 	if b.opt.PerPIDProfile {
 		k.pid = pid
 	}
@@ -68,11 +67,11 @@ func (b *ProfileBuilders) BuilderForSample(
 	var sampleType []*profile.ValueType
 	var periodType *profile.ValueType
 	var period int64
-	if st == support.TraceOriginSampling {
+	if b.opt.Origin == support.TraceOriginSampling {
 		sampleType = []*profile.ValueType{{Type: "cpu", Unit: "nanoseconds"}}
 		periodType = &profile.ValueType{Type: "cpu", Unit: "nanoseconds"}
 		period = time.Second.Nanoseconds() / b.opt.SampleRate
-	} else if st == support.TraceOriginOffCPU {
+	} else if b.opt.Origin == support.TraceOriginOffCPU {
 		sampleType = []*profile.ValueType{{Type: "offcpu", Unit: "nanoseconds"}}
 		period = 1
 	} else {

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"maps"
 	"sync"
 	"time"
@@ -28,7 +29,7 @@ type PPROF struct {
 	Origin libpf.Origin
 }
 type PPROFConsumer interface {
-	Next(p []PPROF)
+	ConsumePprofProfiles(p []PPROF)
 }
 
 type Config struct {
@@ -308,12 +309,12 @@ func (p *PPROFReporter) reportProfile(_ context.Context) {
 		profiles = append(profiles, pp...)
 	}
 
-	p.cfg.Consumer.Next(profiles)
+	p.cfg.Consumer.ConsumePprofProfiles(profiles)
 	sz := 0
 	for _, it := range profiles {
 		sz += len(it.Raw)
 	}
-	_ = p.log.Log("msg", "pprof report successful", "count", len(profiles), "total-size", sz)
+	_ = level.Debug(p.log).Log("msg", "pprof report successful", "count", len(profiles), "total-size", sz)
 }
 
 func (p *PPROFReporter) createProfile(
@@ -329,6 +330,7 @@ func (p *PPROFReporter) createProfile(
 	bs := NewProfileBuilders(BuildersOptions{
 		SampleRate:    p.cfg.SamplesPerSecond,
 		PerPIDProfile: true,
+		Origin:        origin,
 	})
 
 	for traceKey, traceInfo := range events {
@@ -336,7 +338,7 @@ func (p *PPROFReporter) createProfile(
 		if target == nil {
 			continue
 		}
-		b := bs.BuilderForSample(target, uint32(traceKey.Pid), origin)
+		b := bs.BuilderForSample(target, uint32(traceKey.Pid))
 
 		s := b.NewSample(len(traceInfo.FrameTypes))
 

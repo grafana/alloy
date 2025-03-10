@@ -5,10 +5,13 @@ package ebpf
 import (
 	"context"
 	"fmt"
+	"github.com/go-kit/log/level"
+	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter"
+	"strings"
 	"time"
 
 	"github.com/elastic/go-freelru"
-	"github.com/go-kit/log"
+
 	"go.opentelemetry.io/ebpf-profiler/reporter/samples"
 
 	"go.opentelemetry.io/ebpf-profiler/libpf"
@@ -17,9 +20,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/pyroscope"
-	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 
 	"github.com/oklog/run"
 
@@ -75,10 +76,6 @@ func New(opts component.Options, args Arguments) (component.Component, error) {
 		cfg.Policy = dynamicprofiling.AlwaysOnPolicy{}
 	}
 
-	cfg.Reporter, err = reporter.New(opts.Logger, cgroups, cfg, discovery, nfs, &pprofConsumer{fanout: appendable, logger: opts.Logger})
-	if err != nil {
-		return nil, err
-	}
 	res := &Component{
 		cfg:                    cfg,
 		options:                opts,
@@ -88,6 +85,11 @@ func New(opts component.Options, args Arguments) (component.Component, error) {
 		targetFinder:           discovery,
 		dynamicProfilingPolicy: dynamicProfilingPolicy,
 		argsUpdate:             make(chan Arguments),
+	}
+
+	cfg.Reporter, err = reporter.New(opts.Logger, cgroups, cfg, discovery, nfs, res)
+	if err != nil {
+		return nil, err
 	}
 	return res, nil
 }
@@ -157,7 +159,7 @@ func (c *Component) Update(args component.Arguments) error {
 func targetsOptions(dynamicProfilingPolicy bool, args Arguments) sd.TargetsOptions {
 	targets := make([]sd.DiscoveredTarget, 0, len(args.Targets))
 	for _, t := range args.Targets {
-		targets = append(targets, t.AsMap())
+		targets = append(targets, t.AsMap()) // todo optimize AsMap
 	}
 	return sd.TargetsOptions{
 		Targets:     targets,
@@ -182,25 +184,42 @@ func createConfigFromArguments(args Arguments) (*controller.Config, error) {
 	*cfg = *cfgProtoType
 	cfg.ReporterInterval = args.CollectInterval
 	cfg.SamplesPerSecond = args.SampleRate
-	cfg.Tracers = "perl,php,hotspot,ruby,v8,dotnet"
-	if args.PythonEnabled { // todo create flags for other interpreters
-		cfg.Tracers += ",python"
-	}
+	cfg.Tracers = tracersFromArgs(args)
 	return cfg, nil
-
 }
 
-type pprofConsumer struct {
-	fanout *pyroscope.Fanout
-	logger log.Logger
+func tracersFromArgs(args Arguments) string {
+	var tracers []string
+	if args.PythonEnabled {
+		tracers = append(tracers, "python")
+	}
+	if args.PerlEnabled {
+		tracers = append(tracers, "perl")
+	}
+	if args.PHPEnabled {
+		tracers = append(tracers, "php")
+	}
+	if args.HotspotEnabled {
+		tracers = append(tracers, "hotspot")
+	}
+	if args.V8Enabled {
+		tracers = append(tracers, "v8")
+	}
+	if args.RubyEnabled {
+		tracers = append(tracers, "ruby")
+	}
+	if args.DotNetEnabled {
+		tracers = append(tracers, "dotnet")
+	}
+	return strings.Join(tracers, ",")
 }
 
-func (p2 *pprofConsumer) Next(p []reporter.PPROF) {
-	for _, pprof := range p {
-		appender := p2.fanout.Appender()
+func (c *Component) ConsumePprofProfiles(pprofs []reporter.PPROF) {
+	for _, pprof := range pprofs {
+		appender := c.appendable.Appender()
 		err := appender.Append(context.Background(), pprof.Labels, []*pyroscope.RawSample{{RawProfile: pprof.Raw}})
 		if err != nil {
-			level.Error(p2.logger).Log("msg", "pprof write", "err", err)
+			_ = level.Error(c.options.Logger).Log("msg", "pprof write", "err", err)
 		}
 	}
 }
