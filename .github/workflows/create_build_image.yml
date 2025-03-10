@@ -40,7 +40,7 @@ jobs:
       uses: grafana/shared-workflows/actions/dockerhub-login@dockerhub-login-v1.0.1
 
     - name: Setup QEMU
-      uses: docker/setup-qemu-action@v3.4.0
+      uses: docker/setup-qemu-action@v3.6.0
       with:
         image: tonistiigi/binfmt:qemu-v7.0.0-28 # https://github.com/docker/setup-qemu-action/issues/198
 
