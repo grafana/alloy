@@ -22,8 +22,6 @@ Main (unreleased)
 
 - Bump snmp_exporter and embedded modules in `prometheus.exporter.snmp` to v0.28.0 (@v-zhuravlev)
 
-- Update `prometheus.write.queue` to reduce memory fragmentation and increase sent throughput. (@mattdurham)
-
 - Update mysqld_exporter to v0.17.2, most notable changes: (@cristiangreco)
   - [0.17.1] Add perf_schema quantile columns to collector
   - [0.17.1] Fix database quoting problem in collector 'info_schema.tables'
@@ -35,24 +33,7 @@ Main (unreleased)
 
 - Added OpenTelemetry logs and metrics support to Alloy mixin's dashboards and alerts. (@thampiotr)
 
-### Bugfixes
-
-- Fixed an issue where the `otelcol.exporter.awss3` could not be started with the `sumo_ic` marshaler. (@wildum)
-
 - Add support for proxy and headers in `prometheus.write.queue`. (@mattdurham)
-
-- Update `jfr-parser` dependency to v0.9.3 to fix jfr parsing issues in `pyroscope.java`. (@korniltsev)
-
-- Fixed an issue where indexing targets as maps (e.g. `target["foo"]`) or objects (e.g. `target.foo`) didn't work in
-  some circumstances resulting in `expected object or array, got capsule` error. This could also lead to
-  `foreach evaluation failed` errors when using the `foreach` configuration block. (@thampiotr)
-
-- Fixed an issue where passing targets from some standard library functions was failing with `target::ConvertFrom` error. (@thampiotr)
-
-- Fixed `expected object or array, got capsule` errors that could be encountered when using targets with `coalesce` and
-  `array.combine_maps` functions. (@thampiotr)
-
-- Fixed an issue where the `otelcol.exporter.kafka` component would not start if the `encoding` was specific to a signal type. (@wildum)
 
 ### Other changes
 
@@ -60,6 +41,25 @@ Main (unreleased)
   - Added a new `http_headers` argument to many `discovery` and `prometheus` components.
   - Added a new `scrape_failure_log_file` argument to `prometheus.scrape`.
 
+v1.7.2
+-----------------
+
+### Bugfixes
+
+- Fixed an issue where the `otelcol.exporter.awss3` could not be started with the `sumo_ic` marshaler. (@wildum)
+
+- Update `jfr-parser` dependency to v0.9.3 to fix jfr parsing issues in `pyroscope.java`. (@korniltsev)
+
+- Fixed an issue where passing targets from some standard library functions was failing with `target::ConvertFrom` error. (@thampiotr)
+
+- Fixed an issue where indexing targets as maps (e.g. `target["foo"]`) or objects (e.g. `target.foo`) or using them with
+  certain standard library functions was resulting in `expected object or array, got capsule` error under some
+  circumstances. This could also lead to `foreach evaluation failed` errors when using the `foreach` configuration
+  block. (@thampiotr)
+
+- Update `prometheus.write.queue` to reduce memory fragmentation and increase sent throughput. (@mattdurham)
+
+- Fixed an issue where the `otelcol.exporter.kafka` component would not start if the `encoding` was specific to a signal type. (@wildum)
 
 v1.7.1
 -----------------
