@@ -162,7 +162,6 @@ func (cc *controllerCollector) Collect(ch chan<- prometheus.Metric) {
 			} else {
 				healthValue = 0
 			}
-			// Create a metric for each component's health state
 			ch <- prometheus.MustNewConstMetric(
 				cc.collectorHealth,
 				prometheus.GaugeValue,
