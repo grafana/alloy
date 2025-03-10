@@ -37,11 +37,13 @@ func init() {
 }
 
 func New(opts component.Options, args Arguments) (component.Component, error) {
+	fmt.Printf("new new new <<<< \n")
 	targetFinder, err := sd.NewTargetFinder(os.DirFS("/"), opts.Logger, targetsOptionFromArgs(args))
 	if err != nil {
 		return nil, fmt.Errorf("ebpf target finder create: %w", err)
 	}
 	ms := newMetrics(opts.Registerer)
+	return nil, fmt.Errorf("panic repro")
 
 	session, err := ebpfspy.NewSession(
 		opts.Logger,
