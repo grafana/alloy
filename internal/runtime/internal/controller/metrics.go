@@ -123,7 +123,7 @@ type componentInfo struct {
 	Health string
 }
 
-var HEALTH_STATES = []string{"healthy", "unhealthy"}
+var HealthStates = []string{"healthy", "unhealthy"}
 
 func (cc *controllerCollector) Collect(ch chan<- prometheus.Metric) {
 	componentsByHealth := []componentInfo{}
@@ -156,7 +156,7 @@ func (cc *controllerCollector) Collect(ch chan<- prometheus.Metric) {
 
 	var healthValue float64
 	for _, component := range componentsByHealth {
-		for _, healthState := range HEALTH_STATES {
+		for _, healthState := range HealthStates {
 			if component.Health == healthState {
 				healthValue = 1
 			} else {
