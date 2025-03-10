@@ -1287,8 +1287,8 @@ github.com/grafana/node_exporter v0.18.1-grafana-r01.0.20250218170810-6300fab821
 github.com/grafana/node_exporter v0.18.1-grafana-r01.0.20250218170810-6300fab82195/go.mod h1:onpUlSx7BWY8aO+tr3DChzBJB06pZfZ4gltVtsRXLFA=
 github.com/grafana/opentelemetry-collector/featuregate v0.0.0-20240325174506-2fd1623b2ca0 h1:i/Ne0XwoRokYj52ZcSmnvuyID3h/uA91n0Ycg/grHU8=
 github.com/grafana/opentelemetry-collector/featuregate v0.0.0-20240325174506-2fd1623b2ca0/go.mod h1:mm8+xyQfgDmqhyegZRNIQmoKsNnDTwWKFLsdMoXAb7A=
-github.com/grafana/opentelemetry-ebpf-profiler v0.0.0-20250310060007-d92af7623101 h1:i0t5EqgVBpU7xf55jedNk438sAHLeXasCwl/uNtMdPw=
-github.com/grafana/opentelemetry-ebpf-profiler v0.0.0-20250310060007-d92af7623101/go.mod h1:iXsEkPu+7X2FKGbVRg1wTMyoYopZ9CmBJ0zo7T8UgDs=
+github.com/grafana/opentelemetry-ebpf-profiler v0.0.0-20250310064349-12014bdbb0c0 h1:3uphNk/Kxl5LbjujAXSHToWtaR4mxfzWrIW6g/uLx8k=
+github.com/grafana/opentelemetry-ebpf-profiler v0.0.0-20250310064349-12014bdbb0c0/go.mod h1:iXsEkPu+7X2FKGbVRg1wTMyoYopZ9CmBJ0zo7T8UgDs=
 github.com/grafana/postgres_exporter v0.15.1-0.20250218135316-21788f008d39 h1:wj3iiqI58qdPCU/OIlbc9LGIAD3WXZmsXiCKKI/qiBQ=
 github.com/grafana/postgres_exporter v0.15.1-0.20250218135316-21788f008d39/go.mod h1:ws2UAbpWWvs87mYgclemWvosRQjIp6fuOxDjLzfo7L0=
 github.com/grafana/prometheus v1.8.2-0.20250224181348-8257a54d8edd h1:9iE+jGhQ/gcsCaXmycN7zl8ZXqoCDM/ritZuuiUuajk=
