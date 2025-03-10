@@ -120,6 +120,25 @@ The following arguments are supported:
 
 {{< docs/shared lookup="reference/components/tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
+### `clustering`
+
+| Name      | Type   | Description                                       | Default | Required |
+| --------- | ------ | ------------------------------------------------- | ------- | -------- |
+| `enabled` | `bool` | Enables sharing targets with other cluster nodes. | `false` | yes      |
+
+When {{< param "PRODUCT_NAME" >}} is [using clustering][], and `enabled` is set to true, then this component instance opts-in to participating in the cluster to distribute scrape load between all cluster nodes.
+
+Clustering assumes that all cluster nodes are running with the same configuration file, and that all `prometheus.operator.scrapeconfigs` components that have opted-in to using clustering, over the course of a scrape interval have the same configuration.
+
+All `prometheus.operator.scrapeconfigs` components instances opting in to clustering use target labels and a consistent hashing algorithm to determine ownership for each of the targets between the cluster peers.
+Then, each peer only scrapes the subset of targets that it is responsible for, so that the scrape load is distributed.
+When a node joins or leaves the cluster, every peer recalculates ownership and continues scraping with the new target set.
+This performs better than hashmod sharding where _all_ nodes have to be re-distributed, as only 1/N of the target's ownership is transferred, but is eventually consistent (rather than fully consistent like hashmod sharding is).
+
+If {{< param "PRODUCT_NAME" >}} is _not_ running in clustered mode, then the block is a no-op, and `prometheus.operator.scrapeconfigs` scrapes every target it receives in its arguments.
+
+[using clustering]: ../../../../get-started/clustering/
+
 ### `rule`
 
 {{< docs/shared lookup="reference/components/rule-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
@@ -160,25 +179,6 @@ The `operator` argument must be one of the following strings:
 * `"DoesNotExist"`
 
 If there are multiple `match_expressions` blocks inside of a `selector` block, they are combined together with AND clauses.
-
-### `clustering`
-
-| Name      | Type   | Description                                       | Default | Required |
-| --------- | ------ | ------------------------------------------------- | ------- | -------- |
-| `enabled` | `bool` | Enables sharing targets with other cluster nodes. | `false` | yes      |
-
-When {{< param "PRODUCT_NAME" >}} is [using clustering][], and `enabled` is set to true, then this component instance opts-in to participating in the cluster to distribute scrape load between all cluster nodes.
-
-Clustering assumes that all cluster nodes are running with the same configuration file, and that all `prometheus.operator.scrapeconfigs` components that have opted-in to using clustering, over the course of a scrape interval have the same configuration.
-
-All `prometheus.operator.scrapeconfigs` components instances opting in to clustering use target labels and a consistent hashing algorithm to determine ownership for each of the targets between the cluster peers.
-Then, each peer only scrapes the subset of targets that it is responsible for, so that the scrape load is distributed.
-When a node joins or leaves the cluster, every peer recalculates ownership and continues scraping with the new target set.
-This performs better than hashmod sharding where _all_ nodes have to be re-distributed, as only 1/N of the target's ownership is transferred, but is eventually consistent (rather than fully consistent like hashmod sharding is).
-
-If {{< param "PRODUCT_NAME" >}} is _not_ running in clustered mode, then the block is a no-op, and `prometheus.operator.scrapeconfigs` scrapes every target it receives in its arguments.
-
-[using clustering]: ../../../../get-started/clustering/
 
 ## Exported fields
 
