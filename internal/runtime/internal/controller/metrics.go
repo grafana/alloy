@@ -98,42 +98,83 @@ func (cm *controllerMetrics) Describe(ch chan<- *prometheus.Desc) {
 type controllerCollector struct {
 	l                      *Loader
 	runningComponentsTotal *prometheus.Desc
+	collectorHealth        *prometheus.Desc
 }
 
 func newControllerCollector(l *Loader, parent, id string) *controllerCollector {
 	return &controllerCollector{
 		l: l,
+		collectorHealth: prometheus.NewDesc(
+			"alloy_component_controller_health",
+			"Component health",
+			[]string{"health_type", "component_name"},
+			map[string]string{"controller_path": parent, "controller_id": id},
+		),
 		runningComponentsTotal: prometheus.NewDesc(
 			"alloy_component_controller_running_components",
-			"Total number of running components.",
-			[]string{"health_type"},
+			"Total number of running components.", nil,
 			map[string]string{"controller_path": parent, "controller_id": id},
 		),
 	}
 }
 
-func (cc *controllerCollector) Collect(ch chan<- prometheus.Metric) {
-	componentsByHealth := make(map[string]int)
+type componentInfo struct {
+	Name   string
+	Health string
+}
 
+var HEALTH_STATES = []string{"healthy", "unhealthy"}
+
+func (cc *controllerCollector) Collect(ch chan<- prometheus.Metric) {
+	componentsByHealth := []componentInfo{}
+	var componentCount int
 	for _, component := range cc.l.Components() {
+		componentCount++
 		health := component.CurrentHealth().Health.String()
-		componentsByHealth[health]++
+		componentName := component.ComponentName()
+		componentInfo := componentInfo{Name: componentName, Health: health}
+		componentsByHealth = append(componentsByHealth, componentInfo)
+
 		if builtinComponent, ok := component.(*BuiltinComponentNode); ok {
 			builtinComponent.registry.Collect(ch)
 		}
+
 	}
 
 	for _, im := range cc.l.Imports() {
+		componentCount++
 		health := im.CurrentHealth().Health.String()
-		componentsByHealth[health]++
+		componentName := im.componentName
+		componentInfo := componentInfo{Name: componentName, Health: health}
+		componentsByHealth = append(componentsByHealth, componentInfo)
+
 		im.registry.Collect(ch)
+
 	}
 
-	for health, count := range componentsByHealth {
-		ch <- prometheus.MustNewConstMetric(cc.runningComponentsTotal, prometheus.GaugeValue, float64(count), health)
+	ch <- prometheus.MustNewConstMetric(cc.runningComponentsTotal, prometheus.GaugeValue, float64(componentCount))
+
+	var healthValue float64
+	for _, component := range componentsByHealth {
+		for _, healthState := range HEALTH_STATES {
+			if component.Health == healthState {
+				healthValue = 1
+			} else {
+				healthValue = 0
+			}
+			// Create a metric for each component's health state
+			ch <- prometheus.MustNewConstMetric(
+				cc.collectorHealth,
+				prometheus.GaugeValue,
+				healthValue,
+				healthState,
+				component.Name,
+			)
+		}
 	}
 }
 
 func (cc *controllerCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- cc.runningComponentsTotal
+	ch <- cc.collectorHealth
 }
