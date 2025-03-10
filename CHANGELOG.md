@@ -52,6 +52,8 @@ Main (unreleased)
 - Fixed `expected object or array, got capsule` errors that could be encountered when using targets with `coalesce` and
   `array.combine_maps` functions. (@thampiotr)
 
+- Fixed an issue where the `otelcol.exporter.kafka` component would not start if the `encoding` was specific to a signal type. (@wildum)
+
 ### Other changes
 
 - Upgrading to Prometheus v2.55.1. (@ptodev)

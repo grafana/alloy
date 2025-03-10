@@ -27,7 +27,17 @@ func init() {
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
 			fact := kafkaexporter.NewFactory()
-			return exporter.New(opts, fact, args.(Arguments), exporter.TypeSignalConstFunc(exporter.TypeAll))
+			typeSignalFunc := func(opts component.Options, args component.Arguments) exporter.TypeSignal {
+				switch args.(Arguments).Encoding {
+				case "raw":
+					return exporter.TypeLogs
+				case "jaeger_proto", "jaeger_json", "zipkin_proto", "zipkin_json":
+					return exporter.TypeTraces
+				default:
+					return exporter.TypeAll
+				}
+			}
+			return exporter.New(opts, fact, args.(Arguments), typeSignalFunc)
 		},
 	})
 }
