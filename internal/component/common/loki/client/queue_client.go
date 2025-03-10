@@ -233,12 +233,6 @@ func newQueueClient(metrics *Metrics, qcMetrics *QueueClientMetrics, cfg Config,
 
 	c.client.Timeout = cfg.Timeout
 
-	// Initialize counters to 0 so the metrics are exported before the first
-	// occurrence of incrementing to avoid missing metrics.
-	for _, counter := range c.metrics.countersWithHost {
-		counter.WithLabelValues(c.cfg.URL.Host).Add(0)
-	}
-
 	c.wg.Add(1)
 	go c.runSendOldBatches()
 	return c, nil
@@ -456,7 +450,7 @@ func (c *queueClient) sendBatch(ctx context.Context, tenantID string, batch *bat
 		return
 	}
 	bufBytes := float64(len(buf))
-	c.metrics.encodedBytes.WithLabelValues(c.cfg.URL.Host).Add(bufBytes)
+	c.metrics.encodedBytes.WithLabelValues(c.cfg.URL.Host, tenantID).Add(bufBytes)
 
 	backoff := backoff.New(c.ctx, c.cfg.BackoffConfig)
 	var status int
@@ -465,7 +459,7 @@ func (c *queueClient) sendBatch(ctx context.Context, tenantID string, batch *bat
 		// send uses `timeout` internally, so `context.Background` is good enough.
 		status, err = c.send(ctx, tenantID, buf)
 
-		c.metrics.requestDuration.WithLabelValues(strconv.Itoa(status), c.cfg.URL.Host).Observe(time.Since(start).Seconds())
+		c.metrics.requestDuration.WithLabelValues(strconv.Itoa(status), c.cfg.URL.Host, tenantID).Observe(time.Since(start).Seconds())
 
 		// Immediately drop rate limited batches to avoid HOL blocking for other tenants not experiencing throttling
 		if c.cfg.DropRateLimitedBatches && batchIsRateLimited(status) {
@@ -476,8 +470,8 @@ func (c *queueClient) sendBatch(ctx context.Context, tenantID string, batch *bat
 		}
 
 		if err == nil {
-			c.metrics.sentBytes.WithLabelValues(c.cfg.URL.Host).Add(bufBytes)
-			c.metrics.sentEntries.WithLabelValues(c.cfg.URL.Host).Add(float64(entriesCount))
+			c.metrics.sentBytes.WithLabelValues(c.cfg.URL.Host, tenantID).Add(bufBytes)
+			c.metrics.sentEntries.WithLabelValues(c.cfg.URL.Host, tenantID).Add(float64(entriesCount))
 
 			return
 		}
