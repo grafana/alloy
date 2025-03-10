@@ -17,6 +17,10 @@ The collected performance profiles are forwarded to the list of receivers passed
 To use the  `pyroscope.ebpf` component you must run {{< param "PRODUCT_NAME" >}} as root and inside the host PID namespace.
 {{< /admonition >}}
 
+{{< admonition type="note" >}}
+The profiler requires file system storage at `/tmp/symb-cache` to store symbol cache data. Ensure this directory is accessible and has sufficient storage space.
+{{< /admonition >}}
+
 You can specify multiple `pyroscope.ebpf` components by giving them different labels, however it's not recommended as it can lead to additional memory and CPU usage.
 
 ## Supported languages
