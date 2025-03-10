@@ -7,6 +7,26 @@ This document contains a historical list of changes between releases. Only
 changes that impact end-user behavior are listed; changes to documentation or
 internal API changes are not present.
 
+v1.7.2
+-----------------
+
+### Bugfixes
+
+- Fixed an issue where the `otelcol.exporter.awss3` could not be started with the `sumo_ic` marshaler. (@wildum)
+
+- Update `jfr-parser` dependency to v0.9.3 to fix jfr parsing issues in `pyroscope.java`. (@korniltsev)
+
+- Fixed an issue where passing targets from some standard library functions was failing with `target::ConvertFrom` error. (@thampiotr)
+
+- Fixed an issue where indexing targets as maps (e.g. `target["foo"]`) or objects (e.g. `target.foo`) or using them with
+  certain standard library functions was resulting in `expected object or array, got capsule` error under some
+  circumstances. This could also lead to `foreach evaluation failed` errors when using the `foreach` configuration
+  block. (@thampiotr)
+
+- Update `prometheus.write.queue` to reduce memory fragmentation and increase sent throughput. (@mattdurham)
+
+- Fixed an issue where the `otelcol.exporter.kafka` component would not start if the `encoding` was specific to a signal type. (@wildum)
+
 v1.7.1
 -----------------
 
@@ -15,7 +35,7 @@ v1.7.1
 - Fixed an issue where some exporters such as `prometheus.exporter.snmp` couldn't accept targets from other components
   with an error `conversion to '*map[string]string' is not supported"`. (@thampiotr)
 
-- Enable batching of calls to the appender in `prometheus.write.queue` to reduce lock contention when scraping, which 
+- Enable batching of calls to the appender in `prometheus.write.queue` to reduce lock contention when scraping, which
   will lead to reduced scrape duration. (@mattdurham)
 
 v1.7.0
