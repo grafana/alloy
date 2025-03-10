@@ -18,15 +18,13 @@ import (
 	"github.com/grafana/alloy/syntax/internal/value"
 )
 
-// TODO: refactor the stdlib to have consistent naming between namespaces and identifiers.
-
 // ExperimentalIdentifiers contains the full name (namespace + identifier's name) of stdlib
 // identifiers that are considered "experimental".
 var ExperimentalIdentifiers = map[string]bool{
 	"array.combine_maps": true,
 }
 
-// These identifiers are deprecated in favour of the namespaced ones.
+// DeprecatedIdentifiers are deprecated in favour of the namespaced ones.
 var DeprecatedIdentifiers = map[string]interface{}{
 	"env":           os.Getenv,
 	"nonsensitive":  nonSensitive,
@@ -228,15 +226,19 @@ var combineMaps = value.RawFunction(func(funcValue value.Value, args ...value.Va
 			}
 		}
 		for j := 0; j < args[i].Len(); j++ {
-			if args[i].Index(j).Type() != value.TypeObject {
-				return value.Null, value.ArgError{
-					Function: funcValue,
-					Argument: args[i].Index(j),
-					Index:    j,
-					Inner: value.TypeError{
-						Value:    args[i].Index(j),
-						Expected: value.TypeObject,
-					},
+			elem := args[i].Index(j)
+			// Check if elements are objects or are convertible to objects.
+			if elem.Type() != value.TypeObject {
+				if _, ok := elem.TryConvertToObject(); !ok {
+					return value.Null, value.ArgError{
+						Function: funcValue,
+						Argument: elem,
+						Index:    j,
+						Inner: value.TypeError{
+							Value:    elem,
+							Expected: value.TypeObject,
+						},
+					}
 				}
 			}
 		}
@@ -263,6 +265,14 @@ var combineMaps = value.RawFunction(func(funcValue value.Value, args ...value.Va
 		}
 	}
 
+	convertIfNeeded := func(v value.Value) value.Value {
+		if v.Type() != value.TypeObject {
+			obj, _ := v.TryConvertToObject() // no need to check result as arguments were validated earlier.
+			return value.Object(obj)
+		}
+		return v
+	}
+
 	// We cannot preallocate the size of the result array, because we don't know
 	// how well the merge is going to go. If none of the merge conditions are met,
 	// the result array will be empty.
@@ -270,8 +280,8 @@ var combineMaps = value.RawFunction(func(funcValue value.Value, args ...value.Va
 
 	for i := 0; i < args[0].Len(); i++ {
 		for j := 0; j < args[1].Len(); j++ {
-			left := args[0].Index(i)
-			right := args[1].Index(j)
+			left := convertIfNeeded(args[0].Index(i))
+			right := convertIfNeeded(args[1].Index(j))
 
 			join, err := shouldJoin(left, right, args[2])
 			if err != nil {
@@ -309,7 +319,7 @@ func yamlDecode(in string) (interface{}, error) {
 	return res, nil
 }
 
-func base64Decode(in string) (interface{}, error) {
+func base64Decode(in string) ([]byte, error) {
 	decoded, err := base64.StdEncoding.DecodeString(in)
 	if err != nil {
 		return nil, err
@@ -317,7 +327,7 @@ func base64Decode(in string) (interface{}, error) {
 	return decoded, nil
 }
 
-func base64URLDecode(in string) (interface{}, error) {
+func base64URLDecode(in string) ([]byte, error) {
 	decoded, err := base64.URLEncoding.DecodeString(in)
 	if err != nil {
 		return nil, err
@@ -325,17 +335,17 @@ func base64URLDecode(in string) (interface{}, error) {
 	return decoded, nil
 }
 
-func base64URLEncode(in string) (interface{}, error) {
+func base64URLEncode(in string) (string, error) {
 	encoded := base64.URLEncoding.EncodeToString([]byte(in))
 	return encoded, nil
 }
 
-func base64Encode(in string) (interface{}, error) {
+func base64Encode(in string) (string, error) {
 	encoded := base64.StdEncoding.EncodeToString([]byte(in))
 	return encoded, nil
 }
 
-func jsonPath(jsonString string, path string) (interface{}, error) {
+func jsonPath(jsonString string, path string) ([]interface{}, error) {
 	jsonPathExpr, err := jp.ParseString(path)
 	if err != nil {
 		return nil, err
@@ -360,13 +370,21 @@ var coalesce = value.RawFunction(func(funcValue value.Value, args ...value.Value
 		}
 
 		if !arg.Reflect().IsZero() {
-			if argType := value.AlloyType(arg.Reflect().Type()); (argType == value.TypeArray || argType == value.TypeObject) && arg.Len() == 0 {
+			argType := arg.Type()
+			// Check if it's a capsule that can be converted into an object and the object is empty.
+			if obj, ok := arg.TryConvertToObject(); ok && len(obj) == 0 {
+				continue
+			}
+			// Check if it's an array or an object that's empty.
+			if (argType == value.TypeArray || argType == value.TypeObject) && arg.Len() == 0 {
 				continue
 			}
 
+			// Else we found a non-empty argument.
 			return arg, nil
 		}
 	}
 
+	// Return the last arg if all are empty.
 	return args[len(args)-1], nil
 })
