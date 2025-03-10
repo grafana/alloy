@@ -127,7 +127,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
         Value: args.Value,
         AffectLogs: args.AffectLogs,
         AffectMetrics: args.AffectMetrics,
-    AffectTraces: args.AffectTraces,
+        AffectTraces: args.AffectTraces,
     }, nil
 }
 
@@ -205,7 +205,7 @@ The following example shows a sample configuration of the processor, along with 
 ```alloy
 otelcol.receiver.filelog "default" {
     include = ["/var/log/syslog"]
-        output {
+    output {
         logs = [otelcol.processor.example.default.input]
     }
 }
