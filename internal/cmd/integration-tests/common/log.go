@@ -2,6 +2,7 @@ package common
 
 import "encoding/json"
 
+// Query response types
 type LogResponse struct {
 	Status string `json:"status"`
 	Data   struct {
@@ -17,4 +18,9 @@ type LogData struct {
 
 func (m *LogResponse) Unmarshal(data []byte) error {
 	return json.Unmarshal(data, m)
+}
+
+// Push request types
+type PushRequest struct {
+	Streams []LogData `json:"streams"`
 }

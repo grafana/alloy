@@ -13,6 +13,7 @@ Main (unreleased)
 ### Features
 
 - Add `otelcol.receiver.awscloudwatch` component to receive logs from AWS CloudWatch and forward them to other `otelcol.*` components. (@wildum)
+- Add `loki.enrich` component to enrich logs using labels from `discovery.*` components. (@v-zhuravlev)
 
 ### Enhancements
 
