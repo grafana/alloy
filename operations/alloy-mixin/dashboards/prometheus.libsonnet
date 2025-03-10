@@ -21,7 +21,7 @@ local filename = 'alloy-prometheus-remote-write.json';
 
     // Scrape success rate
     (
-      panel.new(title='Scrape success rate in $cluster', type='timeseries') +
+      panel.new(title='Scrape success rate in k8s cluster $cluster' + if $._config.enableAlloyCluster then ', alloy cluster $alloyCluster' else '', type='timeseries') +
       panel.withUnit('percentunit') +
       panel.withDescription(|||
         Percentage of targets successfully scraped by prometheus.scrape
@@ -29,7 +29,7 @@ local filename = 'alloy-prometheus-remote-write.json';
 
         This metric is calculated by dividing the number of targets
         successfully scraped by the total number of targets scraped,
-        across all the namespaces in the selected cluster.
+        across all the namespaces in the selected k8s cluster and alloy cluster.
 
         Low success rates can indicate a problem with scrape targets,
         stale service discovery, or Alloy misconfiguration.
@@ -37,11 +37,19 @@ local filename = 'alloy-prometheus-remote-write.json';
       panel.withPosition({ x: 0, y: 1 + y_offset, w: 12, h: 10 }) +
       panel.withQueries([
         panel.newQuery(
-          expr=|||
-            sum(up{job=~"$job", cluster=~"$cluster"})
-            /
-            count (up{job=~"$job", cluster=~"$cluster"})
-          |||,
+          expr=
+          if $._config.enableAlloyCluster then
+            |||
+              sum(up{job=~"$job", cluster=~"$cluster", cluster_name=~"$alloyCluster"})
+              /
+              count (up{job=~"$job", cluster=~"$cluster", cluster_name=~"$alloyCluster"})
+            |||
+          else
+            |||
+              sum(up{job=~"$job", cluster=~"$cluster"})
+              /
+              count (up{job=~"$job", cluster=~"$cluster"})
+            |||,
           legendFormat='% of targets successfully scraped',
         ),
       ])
@@ -49,11 +57,11 @@ local filename = 'alloy-prometheus-remote-write.json';
 
     // Scrape duration
     (
-      panel.new(title='Scrape duration in $cluster', type='timeseries') +
+      panel.new(title='Scrape duration k8s cluster $cluster' + if $._config.enableAlloyCluster then ', alloy cluster $alloyCluster' else '', type='timeseries') +
       panel.withUnit('s') +
       panel.withDescription(|||
         Duration of successful scrapes by prometheus.scrape components,
-        across all the namespaces in the selected cluster.
+        across all the namespaces in the selected k8s cluster and alloy cluster.
 
         This metric should be below your configured scrape interval.
         High durations can indicate a problem with a scrape target or
@@ -62,21 +70,39 @@ local filename = 'alloy-prometheus-remote-write.json';
       panel.withPosition({ x: 12, y: 1 + y_offset, w: 12, h: 10 }) +
       panel.withQueries([
         panel.newQuery(
-          expr=|||
-            quantile(0.99, scrape_duration_seconds{job=~"$job", cluster=~"$cluster"})
-          |||,
+          expr=
+          if $._config.enableAlloyCluster then
+            |||
+              quantile(0.99, scrape_duration_seconds{job=~"$job", cluster=~"$cluster", cluster_name=~"$alloyCluster"})
+            |||
+          else
+            |||
+              quantile(0.99, scrape_duration_seconds{job=~"$job", cluster=~"$cluster"})
+            |||,
           legendFormat='p99',
         ),
         panel.newQuery(
-          expr=|||
-            quantile(0.95, scrape_duration_seconds{job=~"$job", cluster=~"$cluster"})
-          |||,
+          expr=
+          if $._config.enableAlloyCluster then
+            |||
+              quantile(0.95, scrape_duration_seconds{job=~"$job", cluster=~"$cluster", cluster_name=~"$alloyCluster"})
+            |||
+          else
+            |||
+              quantile(0.95, scrape_duration_seconds{job=~"$job", cluster=~"$cluster"})
+            |||,
           legendFormat='p95',
         ),
         panel.newQuery(
-          expr=|||
-            quantile(0.50, scrape_duration_seconds{job=~"$job", cluster=~"$cluster"})
-          |||,
+          expr=
+          if $._config.enableAlloyCluster then
+            |||
+              quantile(0.50, scrape_duration_seconds{job=~"$job", cluster=~"$cluster", cluster_name=~"$alloyCluster"})
+            |||
+          else
+            |||
+              quantile(0.50, scrape_duration_seconds{job=~"$job", cluster=~"$cluster"})
+            |||,
           legendFormat='p50',
         ),
 
@@ -89,7 +115,7 @@ local filename = 'alloy-prometheus-remote-write.json';
 
     // Remote write success rate
     (
-      panel.new(title='Remote write success rate in $cluster', type='timeseries') +
+      panel.new(title='Remote write success rate in k8s cluster $cluster' + if $._config.enableAlloyCluster then ', alloy cluster $alloyCluster' else '', type='timeseries') +
       panel.withUnit('percentunit') +
       panel.withDescription(|||
         Percentage of samples sent by prometheus.remote_write that succeeded.
@@ -118,7 +144,7 @@ local filename = 'alloy-prometheus-remote-write.json';
 
     // Write latency
     (
-      panel.new(title='Write latency in $cluster', type='timeseries') +
+      panel.new(title='Write latency in k8s cluster $cluster' + if $._config.enableAlloyCluster then ', alloy cluster $alloyCluster' else '', type='timeseries') +
       panel.withUnit('s') +
       panel.withDescription(|||
         Latency of writes to the remote system made by
@@ -430,63 +456,123 @@ local filename = 'alloy-prometheus-remote-write.json';
 
   local k8sComponentPathQuery = 
     if std.isEmpty($._config.filterSelector) then
-    |||
-        label_values(prometheus_remote_write_wal_samples_appended_total{cluster=~"$cluster", namespace=~"$namespace", job=~"$job", instance=~"$instance", component_id=~"prometheus.remote_write.*", component_path=~".*"}, component_path)
-    |||
+      if $._config.enableAlloyCluster then
+        |||
+            label_values(prometheus_remote_write_wal_samples_appended_total{cluster=~"$cluster", cluster_name=~"$alloyCluster", namespace=~"$namespace", job=~"$job", instance=~"$instance", component_id=~"prometheus.remote_write.*", component_path=~".*"}, component_path)
+        |||
+      else
+        |||
+            label_values(prometheus_remote_write_wal_samples_appended_total{cluster=~"$cluster", namespace=~"$namespace", job=~"$job", instance=~"$instance", component_id=~"prometheus.remote_write.*", component_path=~".*"}, component_path)
+        |||
     else
-    |||
-        label_values(prometheus_remote_write_wal_samples_appended_total{%(filterSelector)s, cluster=~"$cluster", namespace=~"$namespace", job=~"$job", instance=~"$instance", component_id=~"prometheus.remote_write.*", component_path=~".*"}, component_path)
-    ||| % $._config,
+      if $._config.enableAlloyCluster then
+        |||
+            label_values(prometheus_remote_write_wal_samples_appended_total{%(filterSelector)s, cluster=~"$cluster", cluster_name=~"$alloyCluster", namespace=~"$namespace", job=~"$job", instance=~"$instance", component_id=~"prometheus.remote_write.*", component_path=~".*"}, component_path)
+        ||| % $._config
+      else
+        |||
+            label_values(prometheus_remote_write_wal_samples_appended_total{%(filterSelector)s, cluster=~"$cluster", namespace=~"$namespace", job=~"$job", instance=~"$instance", component_id=~"prometheus.remote_write.*", component_path=~".*"}, component_path)
+        ||| % $._config,
 
   local k8sComponentQuery = 
     if std.isEmpty($._config.filterSelector) then
-    |||
-        label_values(prometheus_remote_write_wal_samples_appended_total{cluster=~"$cluster", namespace=~"$namespace", job=~"$job", instance=~"$instance", component_id=~"prometheus.remote_write.*"}, component_id)
-    |||
+      if $._config.enableAlloyCluster then
+        |||
+            label_values(prometheus_remote_write_wal_samples_appended_total{cluster=~"$cluster", cluster_name=~"$alloyCluster", namespace=~"$namespace", job=~"$job", instance=~"$instance", component_id=~"prometheus.remote_write.*"}, component_id)
+        |||
+      else
+        |||
+            label_values(prometheus_remote_write_wal_samples_appended_total{cluster=~"$cluster", namespace=~"$namespace", job=~"$job", instance=~"$instance", component_id=~"prometheus.remote_write.*"}, component_id)
+        |||
     else
-    |||
-        label_values(prometheus_remote_write_wal_samples_appended_total{%(filterSelector)s, cluster=~"$cluster", namespace=~"$namespace", job=~"$job", instance=~"$instance", component_id=~"prometheus.remote_write.*"}, component_id)
-    ||| % $._config,
+      if $._config.enableAlloyCluster then
+        |||
+            label_values(prometheus_remote_write_wal_samples_appended_total{%(filterSelector)s, cluster=~"$cluster", cluster_name=~"$alloyCluster", namespace=~"$namespace", job=~"$job", instance=~"$instance", component_id=~"prometheus.remote_write.*"}, component_id)
+        ||| % $._config
+      else
+        |||
+            label_values(prometheus_remote_write_wal_samples_appended_total{%(filterSelector)s, cluster=~"$cluster", namespace=~"$namespace", job=~"$job", instance=~"$instance", component_id=~"prometheus.remote_write.*"}, component_id)
+        ||| % $._config,
 
   local k8sUrlQuery = 
     if std.isEmpty($._config.filterSelector) then
-    |||
-        label_values(prometheus_remote_storage_sent_batch_duration_seconds_sum{cluster=~"$cluster", namespace=~"$namespace", job="$job", instance=~"$instance", component_id=~"$component"}, url)
-    |||
+      if $._config.enableAlloyCluster then
+        |||
+            label_values(prometheus_remote_storage_sent_batch_duration_seconds_sum{cluster=~"$cluster", cluster_name=~"$alloyCluster", namespace=~"$namespace", job="$job", instance=~"$instance", component_id=~"$component"}, url)
+        |||
+      else
+        |||
+            label_values(prometheus_remote_storage_sent_batch_duration_seconds_sum{cluster=~"$cluster", namespace=~"$namespace", job="$job", instance=~"$instance", component_id=~"$component"}, url)
+        |||
     else
-    |||
-        label_values(prometheus_remote_storage_sent_batch_duration_seconds_sum{%(filterSelector)s, cluster=~"$cluster", namespace=~"$namespace", job="$job", instance=~"$instance", component_id=~"$component"}, url)
-    ||| % $._config,
+      if $._config.enableAlloyCluster then
+        |||
+            label_values(prometheus_remote_storage_sent_batch_duration_seconds_sum{%(filterSelector)s, cluster=~"$cluster", cluster_name=~"$alloyCluster", namespace=~"$namespace", job="$job", instance=~"$instance", component_id=~"$component"}, url)
+        ||| % $._config
+      else
+        |||
+            label_values(prometheus_remote_storage_sent_batch_duration_seconds_sum{%(filterSelector)s, cluster=~"$cluster", namespace=~"$namespace", job="$job", instance=~"$instance", component_id=~"$component"}, url)
+        ||| % $._config,
   
   local componentPathQuery = 
     if std.isEmpty($._config.filterSelector) then
-    |||
-        label_values(prometheus_remote_write_wal_samples_appended_total{job=~"$job", instance=~"$instance", component_id=~"prometheus.remote_write.*", component_path=~".*"}, component_path)
-    |||
+      if $._config.enableAlloyCluster then
+        |||
+            label_values(prometheus_remote_write_wal_samples_appended_total{cluster_name=~"$alloyCluster", job=~"$job", instance=~"$instance", component_id=~"prometheus.remote_write.*", component_path=~".*"}, component_path)
+        |||
+      else
+        |||
+            label_values(prometheus_remote_write_wal_samples_appended_total{job=~"$job", instance=~"$instance", component_id=~"prometheus.remote_write.*", component_path=~".*"}, component_path)
+        |||
     else
-    |||
-        label_values(prometheus_remote_write_wal_samples_appended_total{%(filterSelector)s, job=~"$job", instance=~"$instance", component_id=~"prometheus.remote_write.*", component_path=~".*"}, component_path)
-    ||| % $._config,
+      if $._config.enableAlloyCluster then
+        |||
+            label_values(prometheus_remote_write_wal_samples_appended_total{%(filterSelector)s, cluster_name=~"$alloyCluster", job=~"$job", instance=~"$instance", component_id=~"prometheus.remote_write.*", component_path=~".*"}, component_path)
+        ||| % $._config
+      else
+        |||
+            label_values(prometheus_remote_write_wal_samples_appended_total{%(filterSelector)s, job=~"$job", instance=~"$instance", component_id=~"prometheus.remote_write.*", component_path=~".*"}, component_path)
+        ||| % $._config,
 
   local componentQuery = 
     if std.isEmpty($._config.filterSelector) then
-    |||
-        label_values(prometheus_remote_write_wal_samples_appended_total{job=~"$job", instance=~"$instance", component_id=~"prometheus.remote_write.*"}, component_id)
-    |||
+      if $._config.enableAlloyCluster then
+        |||
+            label_values(prometheus_remote_write_wal_samples_appended_total{cluster_name=~"$alloyCluster", job=~"$job", instance=~"$instance", component_id=~"prometheus.remote_write.*"}, component_id)
+        |||
+      else
+        |||
+            label_values(prometheus_remote_write_wal_samples_appended_total{job=~"$job", instance=~"$instance", component_id=~"prometheus.remote_write.*"}, component_id)
+        |||    
     else
-    |||
-        label_values(prometheus_remote_write_wal_samples_appended_total{%(filterSelector)s, job=~"$job", instance=~"$instance", component_id=~"prometheus.remote_write.*"}, component_id)
-    ||| % $._config,
+      if $._config.enableAlloyCluster then
+        |||
+            label_values(prometheus_remote_write_wal_samples_appended_total{%(filterSelector)s, cluster_name=~"$alloyCluster", job=~"$job", instance=~"$instance", component_id=~"prometheus.remote_write.*"}, component_id)
+        ||| % $._config
+      else
+        |||
+            label_values(prometheus_remote_write_wal_samples_appended_total{%(filterSelector)s, job=~"$job", instance=~"$instance", component_id=~"prometheus.remote_write.*"}, component_id)
+        ||| % $._config,
 
   local urlQuery = 
     if std.isEmpty($._config.filterSelector) then
-    |||
-        label_values(prometheus_remote_storage_sent_batch_duration_seconds_sum{job="$job", instance=~"$instance", component_id=~"$component"}, url)
-    |||
+      if $._config.enableAlloyCluster then
+        |||
+            label_values(prometheus_remote_storage_sent_batch_duration_seconds_sum{cluster_name=~"$alloyCluster", job="$job", instance=~"$instance", component_id=~"$component"}, url)
+        |||
+      else
+        |||
+            label_values(prometheus_remote_storage_sent_batch_duration_seconds_sum{job="$job", instance=~"$instance", component_id=~"$component"}, url)
+        |||
     else
-    |||
-        label_values(prometheus_remote_storage_sent_batch_duration_seconds_sum{%(filterSelector)s, job="$job", instance=~"$instance", component_id=~"$component"}, url)
-    ||| % $._config,
+      if $._config.enableAlloyCluster then
+        |||
+            label_values(prometheus_remote_storage_sent_batch_duration_seconds_sum{%(filterSelector)s, cluster_name=~"$alloyCluster", job="$job", instance=~"$instance", component_id=~"$component"}, url)
+        ||| % $._config
+      else
+        |||
+            label_values(prometheus_remote_storage_sent_batch_duration_seconds_sum{%(filterSelector)s, job="$job", instance=~"$instance", component_id=~"$component"}, url)
+        ||| % $._config,
 
   local prometheusTemplateVariables =
     if $._config.enableK8sCluster then
@@ -523,7 +609,8 @@ local filename = 'alloy-prometheus-remote-write.json';
     local templateVariables = 
       templates.newTemplateVariablesList(
         filterSelector=$._config.filterSelector, 
-        enableK8sCluster=$._config.enableK8sCluster, 
+        enableK8sCluster=$._config.enableK8sCluster,
+        enableAlloyCluster=$._config.enableAlloyCluster,
         includeInstance=true,
         setenceCaseLabels=$._config.useSetenceCaseTemplateLabels)
       + prometheusTemplateVariables,
