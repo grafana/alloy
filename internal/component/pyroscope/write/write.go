@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"sort"
 	"strings"
 	"time"
 
@@ -483,16 +484,22 @@ func validateLabels(lbls labels.Labels) error {
 		return labelset.ErrServiceNameIsRequired
 	}
 
-	seen := make(map[string]struct{}, lbls.Len())
+	sort.Sort(lbls)
 
+	lastLabelName := ""
 	for _, l := range lbls {
-		if _, exists := seen[l.Name]; exists {
+		if cmp := strings.Compare(lastLabelName, l.Name); cmp == 0 {
 			return fmt.Errorf("duplicate label name: %s", l.Name)
 		}
-		seen[l.Name] = struct{}{}
 
-		// Skip validation for reserved labels
+		// Validate label value
+		if !model.LabelValue(l.Value).IsValid() {
+			return fmt.Errorf("invalid label value for %s: %s", l.Name, l.Value)
+		}
+
+		// Skip label name validation for pyroscope reserved labels
 		if l.Name == pyroscope.LabelName {
+			lastLabelName = l.Name
 			continue
 		}
 
@@ -501,10 +508,7 @@ func validateLabels(lbls labels.Labels) error {
 			return fmt.Errorf("invalid label name: %w", err)
 		}
 
-		// Validate label value
-		if !model.LabelValue(l.Value).IsValid() {
-			return fmt.Errorf("invalid label value for %s: %s", l.Name, l.Value)
-		}
+		lastLabelName = l.Name
 	}
 
 	return nil

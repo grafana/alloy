@@ -594,6 +594,15 @@ func Test_Write_FanOut_ValidateLabels(t *testing.T) {
 			errMsg:  labelset.ErrInvalidLabelName.Error(),
 		},
 		{
+			name: "duplicate reserved labels",
+			labels: labels.FromStrings(
+				"__name__", "test-service",
+				"__name__", "test-service-2",
+			),
+			wantErr: true,
+			errMsg:  "duplicate label name",
+		},
+		{
 			name: "invalid label value",
 			labels: labels.FromStrings(
 				"service_name", "test-service",
