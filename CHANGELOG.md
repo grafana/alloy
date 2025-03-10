@@ -25,6 +25,8 @@ v1.7.2
 
 - Update `prometheus.write.queue` to reduce memory fragmentation and increase sent throughput. (@mattdurham)
 
+- Fixed an issue where the `otelcol.exporter.kafka` component would not start if the `encoding` was specific to a signal type. (@wildum)
+
 v1.7.1
 -----------------
 
