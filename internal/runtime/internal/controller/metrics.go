@@ -127,7 +127,7 @@ var HealthStates = []string{"healthy", "unhealthy"}
 
 func (cc *controllerCollector) Collect(ch chan<- prometheus.Metric) {
 	componentsByHealth := []componentInfo{}
-	var componentCount int
+	componentCount := 0
 	for _, component := range cc.l.Components() {
 		componentCount++
 		health := component.CurrentHealth().Health.String()
