@@ -455,9 +455,7 @@ func (a *AuthCustom) Login(ctx context.Context, client *vault.Client) (*vault.Se
 	for k, v := range a.Data {
 		data[k] = string(v)
 	}
-	s, err := client.Logical().WriteWithContext(ctx, a.Path, data)
-
-	return s, err
+	return client.Logical().WriteWithContext(ctx, a.Path, data)
 }
 
 func (a *AuthCustom) vaultAuthenticate(ctx context.Context, cli *vault.Client) (*vault.Secret, error) {
