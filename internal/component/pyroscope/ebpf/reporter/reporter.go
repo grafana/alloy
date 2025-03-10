@@ -2,7 +2,6 @@ package reporter
 
 import (
 	"errors"
-
 	"github.com/elastic/go-freelru"
 	"github.com/go-kit/log"
 	"go.opentelemetry.io/ebpf-profiler/libpf"
@@ -32,16 +31,6 @@ func New(
 	if err != nil {
 		return nil, err
 	}
-	if cfg.CollAgentAddr == "" {
-		return nil, errors.New("missing otlp collector address")
-	}
-
-	// hostname and sourceIP will be populated from the root namespace.
-	hostname, sourceIP, err := helpers.GetHostnameAndSourceIP(cfg.CollAgentAddr)
-	if err != nil {
-		return nil, err
-	}
-	cfg.HostName, cfg.IPAddress = hostname, sourceIP
 
 	otelReporter := false
 	if cfg.PyroscopeReporterType == "otel" || cfg.PyroscopeReporterType == "otlp" {
@@ -69,6 +58,14 @@ func New(
 		dialOption = append(dialOption, grpc.WithDefaultCallOptions(opt))
 	}
 
+	hostname, sourceIP, err := helpers.GetHostnameAndSourceIP(cfg.CollAgentAddr)
+	if err != nil {
+		return nil, err
+	}
+	cfg.HostName, cfg.IPAddress = hostname, sourceIP
+	if cfg.CollAgentAddr == "" {
+		return nil, errors.New("missing otlp collector address")
+	}
 	reporterConfig := &reporter.Config{
 		CollAgentAddr:            cfg.CollAgentAddr,
 		DisableTLS:               cfg.DisableTLS,

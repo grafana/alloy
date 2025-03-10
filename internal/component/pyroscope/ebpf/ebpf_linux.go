@@ -25,7 +25,6 @@ import (
 
 	sd "go.opentelemetry.io/ebpf-profiler/pyroscope/discovery"
 	"go.opentelemetry.io/ebpf-profiler/pyroscope/internalshim/controller"
-	"go.opentelemetry.io/ebpf-profiler/pyroscope/internalshim/helpers"
 )
 
 func init() {
@@ -44,19 +43,18 @@ func init() {
 func New(opts component.Options, args Arguments) (component.Component, error) {
 	cgroups, err := freelru.NewSynced[libpf.PID, string](args.ContainerIDCacheSize,
 		func(pid libpf.PID) uint32 { return uint32(pid) })
-
-	discovery, err := sd.NewTargetProducer(cgroups, targetsOptionFromArguments(args))
+	cfg, err := createConfigFromArguments(args)
+	if err != nil {
+		return nil, err
+	}
+	dynamicProfilingPolicy := cfg.PyroscopeDynamicProfilingPolicy
+	discovery, err := sd.NewTargetProducer(cgroups, targetsOptions(dynamicProfilingPolicy, args))
 	if err != nil {
 		return nil, fmt.Errorf("ebpf target finder create: %w", err)
 	}
 	ms := newMetrics(opts.Registerer)
 
 	appendable := pyroscope.NewFanout(args.ForwardTo, opts.ID, opts.Registerer)
-
-	cfg, err := createConfigFromArguments(args)
-	if err != nil {
-		return nil, err
-	}
 
 	var nfs samples.NativeSymbolResolver
 	if cfg.SymbolizeNativeFrames {
@@ -70,7 +68,8 @@ func New(opts component.Options, args Arguments) (component.Component, error) {
 		}
 	}
 	cfg.FileObserver = nfs
-	if cfg.PyroscopeDynamicProfilingPolicy {
+
+	if dynamicProfilingPolicy {
 		cfg.Policy = &dynamicprofiling.ServiceDiscoveryTargetsOnlyPolicy{Discovery: discovery}
 	} else {
 		cfg.Policy = dynamicprofiling.AlwaysOnPolicy{}
@@ -81,13 +80,14 @@ func New(opts component.Options, args Arguments) (component.Component, error) {
 		return nil, err
 	}
 	res := &Component{
-		cfg:          cfg,
-		options:      opts,
-		metrics:      ms,
-		appendable:   appendable,
-		args:         args,
-		targetFinder: discovery,
-		argsUpdate:   make(chan Arguments),
+		cfg:                    cfg,
+		options:                opts,
+		metrics:                ms,
+		appendable:             appendable,
+		args:                   args,
+		targetFinder:           discovery,
+		dynamicProfilingPolicy: dynamicProfilingPolicy,
+		argsUpdate:             make(chan Arguments),
 	}
 	return res, nil
 }
@@ -111,11 +111,12 @@ func (arg *Arguments) SetToDefault() {
 }
 
 type Component struct {
-	options      component.Options
-	args         Arguments
-	argsUpdate   chan Arguments
-	appendable   *pyroscope.Fanout
-	targetFinder sd.TargetProducer
+	options                component.Options
+	args                   Arguments
+	dynamicProfilingPolicy bool
+	argsUpdate             chan Arguments
+	appendable             *pyroscope.Fanout
+	targetFinder           sd.TargetProducer
 
 	metrics *metrics
 	cfg     *controller.Config
@@ -137,7 +138,7 @@ func (c *Component) Run(ctx context.Context) error {
 				return nil
 			case newArgs := <-c.argsUpdate:
 				c.args = newArgs
-				c.targetFinder.Update(targetsOptionFromArguments(c.args))
+				c.targetFinder.Update(targetsOptions(c.dynamicProfilingPolicy, c.args))
 				c.appendable.UpdateChildren(newArgs.ForwardTo)
 			}
 		}
@@ -153,14 +154,17 @@ func (c *Component) Update(args component.Arguments) error {
 	return nil
 }
 
-func targetsOptionFromArguments(args Arguments) sd.TargetsOptions {
+func targetsOptions(dynamicProfilingPolicy bool, args Arguments) sd.TargetsOptions {
 	targets := make([]sd.DiscoveredTarget, 0, len(args.Targets))
 	for _, t := range args.Targets {
 		targets = append(targets, t.AsMap())
 	}
 	return sd.TargetsOptions{
 		Targets:     targets,
-		TargetsOnly: true,
+		TargetsOnly: dynamicProfilingPolicy,
+		DefaultTarget: sd.DiscoveredTarget{
+			"service_name": "unspecified",
+		},
 	}
 }
 
@@ -173,13 +177,6 @@ func createConfigFromArguments(args Arguments) (*controller.Config, error) {
 	if err = cfgProtoType.Validate(); err != nil {
 		return nil, err
 	}
-
-	// hostname and sourceIP will be populated from the root namespace.
-	hostname, sourceIP, err := helpers.GetHostnameAndSourceIP(cfgProtoType.CollAgentAddr)
-	if err != nil {
-		return nil, err
-	}
-	cfgProtoType.HostName, cfgProtoType.IPAddress = hostname, sourceIP
 
 	cfg := new(controller.Config)
 	*cfg = *cfgProtoType
