@@ -149,7 +149,7 @@ loki.write "grafana_cloud_logs" {
     url = "https://logs-prod-us-central1.grafana.net/loki/api/v1/push"
 
     basic_auth {
-      username = 5252
+      username = "5252"
       password = sys.env("GRAFANA_CLOUD_API_KEY")
     }
   }
@@ -181,7 +181,7 @@ otelcol.exporter.otlp "grafana_cloud_traces" {
 }
 
 otelcol.auth.basic "grafana_cloud_traces" {
-  username = 4094
+  username = "4094"
   password = sys.env("GRAFANA_CLOUD_API_KEY")
 }
 ```
@@ -217,7 +217,7 @@ prometheus.remote_write "grafana_cloud_metrics" {
         url = "https://prometheus-us-central1.grafana.net/api/prom/push"
 
         basic_auth {
-            username = 12690
+            username = "12690"
             password = sys.env("GRAFANA_CLOUD_API_KEY")
         }
     }
@@ -262,7 +262,7 @@ otelcol.exporter.otlp "grafana_cloud_traces" {
 }
 
 otelcol.auth.basic "grafana_cloud_traces" {
-  username = 4094
+  username = "4094"
   password = sys.env("GRAFANA_CLOUD_API_KEY")
 }
 
@@ -275,7 +275,7 @@ prometheus.remote_write "grafana_cloud_metrics" {
         url = "https://prometheus-us-central1.grafana.net/api/prom/push"
 
         basic_auth {
-            username = 12690
+            username = "12690"
             password = sys.env("GRAFANA_CLOUD_API_KEY")
         }
     }
@@ -290,7 +290,7 @@ loki.write "grafana_cloud_logs" {
     url = "https://logs-prod-us-central1.grafana.net/loki/api/v1/push"
 
     basic_auth {
-      username = 5252
+      username = "5252"
       password = sys.env("GRAFANA_CLOUD_API_KEY")
     }
   }
