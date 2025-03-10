@@ -35,6 +35,8 @@ Main (unreleased)
 
 - Add support for proxy and headers in `prometheus.write.queue`. (@mattdurham)
 
+- Added support for switching namespace between authentication and kv retrieval to support Vault Enterprise (@notedop)
+
 ### Other changes
 
 - Upgrading to Prometheus v2.55.1. (@ptodev)
