@@ -1,0 +1,113 @@
+.toolSection {
+  background-color: white;
+  border: 1px solid #e4e5e6;
+  border-radius: 3px;
+  padding: 16px;
+  margin-bottom: 2rem;
+  width: 100%;
+}
+
+.toolSection h2 {
+  color: rgb(36, 41, 46);
+  font-size: 1.2em;
+  font-weight: normal;
+  margin-bottom: 16px;
+}
+
+.toolSection .content {
+  margin-top: 10px;
+}
+
+.toolsContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 1440px;
+  width: 100%;
+}
+
+.searchControls {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.searchInput {
+  flex: 1;
+  padding: 8px;
+  border: 1px solid #e4e5e6;
+  border-radius: 3px;
+  font-size: 14px;
+}
+
+.searchButton {
+  padding: 8px 16px;
+  background-color: #3885dc;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.searchButton:hover {
+  background-color: #2a75cc;
+}
+
+.resultsContainer {
+  width: 97%;
+}
+
+.resultsArea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #e4e5e6;
+  border-radius: 3px;
+  font-family: 'Fira Code', monospace;
+  font-size: 14px;
+  background-color: #f8f9fa;
+  resize: vertical;
+}
+
+@media (min-width: 992px) {
+  .toolsContainer {
+    flex-direction: row;
+  }
+
+  .toolSection {
+    flex: 1;
+  }
+}
+
+/* Add these new styles */
+.jsonViewWrapper {
+  width: 100%;
+  min-height: 500px;
+  overflow: auto;
+}
+
+.errorMessage {
+  color: #d32f2f;
+  padding: 10px;
+  background-color: #ffebee;
+  border: 1px solid #ffcdd2;
+  border-radius: 3px;
+  font-family: 'Fira Code', monospace;
+  font-size: 14px;
+  width: 100%;
+}
+
+.placeholderMessage {
+  color: #757575;
+  padding: 10px;
+  background-color: #f8f9fa;
+  border: 1px solid #e4e5e6;
+  border-radius: 3px;
+  font-family: 'Fira Code', monospace;
+  font-size: 14px;
+  width: 100%;
+  min-height: 500px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+} 
