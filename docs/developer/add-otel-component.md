@@ -6,7 +6,7 @@ You can dig deeper into the many components that come supported out of the box, 
 
 This document focuses on how to add additional OpenTelemetry Collector components from the upstream OpenTelemetry repositories which aren't shipped within Alloy by default.
 
-It's straightforward to add a new component to Alloy today, whether it's for your personal use or to contribute it back to the community.
+It's straightforward to add a component to Alloy today, whether it's for your personal use or to contribute it back to the community.
 The focus of this document is on adding an OpenTelemetry component that exists in an upstream OpenTelemetry Collector repository for this example.
 You can apply this information to add any part of an OpenTelemetry pipeline to Alloy.
 
@@ -28,8 +28,8 @@ By Alloy convention you would refer to that component as `otelcol.processor.exam
 
 ## Wrap the component
 
-To create a new component, you'll need a [fork](https://github.com/grafana/alloy/fork) of Alloy to work on.
-If you already have a fork you can work on, make sure it's up to date with the latest version of Alloy, or set to the Alloy version to which you want to add your component.
+To create a component, you'll need a [fork](https://github.com/grafana/alloy/fork) of Alloy to work on.
+If you already have a fork you can work on, make sure it's up to date with the current version of Alloy, or set to the Alloy version to which you want to add your component.
 
 Create a directory for your component in `internal/component/otelcol/processor/example`.
 
@@ -165,12 +165,12 @@ However, if you're looking to contribute back to the Alloy community there's a f
 
 ## Make a contribution
 
-The Alloy ecosystem already supports many components from the OpenTelemetry Collector (and Collector Contrib) repositories and we would greatly appreciate any contributions adding support for more upstream OpenTelemetry components.
+The Alloy ecosystem already supports many components from the OpenTelemetry Collector and Collector Contrib repositories and we would greatly appreciate any contributions adding support for more upstream OpenTelemetry components.
 If your OpenTelemetry component isn't in an upstream OpenTelemetry repository we will consider any contributions, but are also likely to recommend you contribute your component to OpenTelemetry first.
 
-The most important additional step for a new component within the Alloy ecosystem is documentation.
+The most important additional step for a component within the Alloy ecosystem is documentation.
 We provide in depth reference documentation for each component in Alloy.
-The documentation for this example component is a markdown file that you must add as `docs/sources/reference/components/otelcol/otelcol.processor.example.md`.
+The documentation for this example component is a Markdown file that you must add as `docs/sources/reference/components/otelcol/otelcol.processor.example.md`.
 The documentation should include an overview of the processor, its configuration arguments, and at least one example configuration.
 There are many examples to look through in the Alloy documentation that you can use as a starting point.
 
@@ -185,7 +185,7 @@ Grafana Labs provides commercial support for Alloy.
 If Grafana Labs can't offer commercial support for the component you are seeking to contribute to Alloy we recommend that you mark it as a [community component](https://grafana.com/docs/alloy/latest/get-started/community_components/).
 Current community components include the OpenTelemetry DataDog Exporter and OpenTelemetry Splunk HEC Exporter.
 While these components are a welcome part of the official releases of Alloy, we require users to opt-in to enabling them in Alloy due to Grafana Labs commercial support offerings.
-You can find [detailed Alloy developer documentation](https://github.com/grafana/alloy/blob/main/docs/developer/adding-community-components.md) about the process for proposing a new community component if the component you are contributing falls under that category.
+You can find [detailed Alloy developer documentation](https://github.com/grafana/alloy/blob/main/docs/developer/adding-community-components.md) about the process for proposing a community component if the component you are contributing falls under that category.
 
 ### Example contributions
 
@@ -199,7 +199,7 @@ These should provide good examples of Pull Requests that follow the guidelines a
 
 ## Example configuration
 
-Now that you have your Alloy executable or image, you can configure the new processor in Alloy configuration syntax and add it to your telemetry pipelines.
+Now that you have your Alloy executable or image, you can configure the processor in Alloy configuration syntax and add it to your telemetry pipelines.
 The following example shows a sample configuration of the processor, along with an `otelcol.receiver.filelog` component that would send logs to it and an `otelcol.exporter.debug` component that would receive telemetry from it.
 
 ```alloy
@@ -227,6 +227,6 @@ otelcol.exporter.debug "default" {}
 
 ## Reach out
 
-If you're interested in adding components to Alloy or any other Alloy related topic, you can find us most easily in the `#alloy` channel in the Grafana [community slack](https://slack.grafana.com/) or by raising a [Github issue](https://github.com/grafana/alloy/issues/new?template=feature_request.yaml).
+If you're interested in adding components to Alloy or any other Alloy related topic, you can find us most easily in the `#alloy` channel in the Grafana [community slack](https://slack.grafana.com/) or by raising a [GitHub issue](https://github.com/grafana/alloy/issues/new?template=feature_request.yaml).
 We also have monthly community calls that you can participate in.
 You can find more details in Slack or in the [community calendar](https://calendar.google.com/calendar/u/0/embed?src=grafana.com_n57lluqpn4h4edroeje6199o00@group.calendar.google.com).
