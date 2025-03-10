@@ -43,7 +43,7 @@ Other component-specific exports aren't necessary as they're not part of the par
 ```go
 import (
     ...
-"github.com/open-telemetry/opentelemetry-collector-contrib/processor/exampleprocessor"
+    "github.com/open-telemetry/opentelemetry-collector-contrib/processor/exampleprocessor"
     ...
     )
 
