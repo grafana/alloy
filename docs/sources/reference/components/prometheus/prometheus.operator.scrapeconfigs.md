@@ -236,6 +236,16 @@ prometheus.operator.scrapeconfigs "scrapeconfigs" {
 }
 ```
 
+## Extra Metric Labels
+
+`prometheus.operator.scrapeconfigs` adds the following extra
+labels to all metrics scraped for [ScrapeConfig](https://prometheus-operator.dev/docs/api-reference/api/#monitoring.coreos.com/v1alpha1.ScrapeConfig) objects.
+
+|Label|Description|
+|---|---|
+|`__meta_kubernetes_scrapeconfig_namespace`|Namespace of the *ScrapeConfig* object|
+|`__meta_kubernetes_scrapeconfig_name`|Name of the *ScrapeConfig* object|
+
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components
