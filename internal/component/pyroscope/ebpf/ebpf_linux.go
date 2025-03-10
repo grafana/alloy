@@ -25,7 +25,6 @@ import (
 
 	sd "go.opentelemetry.io/ebpf-profiler/pyroscope/discovery"
 	"go.opentelemetry.io/ebpf-profiler/pyroscope/internalshim/controller"
-	"go.opentelemetry.io/ebpf-profiler/pyroscope/internalshim/helpers"
 )
 
 func init() {
@@ -42,6 +41,7 @@ func init() {
 }
 
 func New(opts component.Options, args Arguments) (component.Component, error) {
+	fmt.Printf("NEW NEW NEW\n")
 	cgroups, err := freelru.NewSynced[libpf.PID, string](args.ContainerIDCacheSize,
 		func(pid libpf.PID) uint32 { return uint32(pid) })
 
@@ -173,13 +173,6 @@ func createConfigFromArguments(args Arguments) (*controller.Config, error) {
 	if err = cfgProtoType.Validate(); err != nil {
 		return nil, err
 	}
-
-	// hostname and sourceIP will be populated from the root namespace.
-	hostname, sourceIP, err := helpers.GetHostnameAndSourceIP(cfgProtoType.CollAgentAddr)
-	if err != nil {
-		return nil, err
-	}
-	cfgProtoType.HostName, cfgProtoType.IPAddress = hostname, sourceIP
 
 	cfg := new(controller.Config)
 	*cfg = *cfgProtoType
