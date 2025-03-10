@@ -143,13 +143,21 @@ The `auth.custom` blocks allows authenticating against Vault using an arbitrary 
 
 Using `auth.custom` is equivalent to calling `vault write PATH DATA` on the command line.
 
-| Name   | Type          | Description                                            | Default | Required |
-| ------ | ------------- | ------------------------------------------------------ | ------- | -------- |
-| `path` | `string`      | Path to write to for creating an authentication token. |         | yes      |
-| `data` | `map(secret)` | Authentication data.                                   |         | yes      |
+
+| Name         | Type            | Description                                            | Default | Required |
+|--------------|-----------------|--------------------------------------------------------| ------- |----------|
+| `path`       | `string`        | Path to write to for creating an authentication token. |         | yes      |
+| `data`       | `map(secret)`   | Authentication data.                                   |         | yes      |
+| `namespace`  | `string`        | The namespace to authenticate to.                      |         | no       |
 
 All values in the `data` attribute are considered secret, even if they contain nonsensitive information like usernames.
 
+With Vault Enterprise, you can authenticate against a parent namespace while storing secrets in a child namespace. 
+By specifying the namespace argument in `auth.custom`, you can authenticate to a different namespace than the one used to retrieve the secrets.
+
+You can also define Vault environment variables, which will be automatically loaded by the clients used by Alloy. 
+This approach allows you to use certificate-based authentication i.e. by setting the `VAULT_CACERT` and `VAULT_CAPATH` environment variables.
+Please refer to the [Vault Environment variables](https://developer.hashicorp.com/vault/docs/commands#configure-environment-variables)  documentation for more information.
 ### `auth.gcp`
 
 The `auth.gcp` block authenticates to Vault using the [GCP auth method][GCP].
