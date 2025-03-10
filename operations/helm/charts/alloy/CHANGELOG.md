@@ -10,6 +10,9 @@ internal API changes are not present.
 Unreleased
 ----------
 
+0.12.2 (2025-03-10)
+----------
+
 ### Bug Fixes
 
 - Set resource namespace correctly (@shinebayar-g)
@@ -17,6 +20,7 @@ Unreleased
 ### Enhancements
 
 - Add a new `automountServiceAccountToken` configuration value for `serviceAccount`. (@ptodev)
+- Update to Grafana Alloy v1.7.2. (@thampiotr)
 
 0.12.1 (2025-02-26)
 ----------
