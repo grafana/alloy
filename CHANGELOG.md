@@ -99,7 +99,7 @@ v1.7.0
 
 - (_Experimental_) Add a `stage.windowsevent` block in the `loki.process` component. This aims to replace the existing `stage.eventlogmessage`. (@wildum)
 
-- (_Experimental_) Add support for [ScrapeConfig](https://prometheus-operator.dev/docs/developer/scrapeconfig/) to the `prometheus.operator` component. (@alex-berger)
+- (_Experimental_) Adding a new `prometheus.operator.scrapeconfigs` which discovers and scrapes [ScrapeConfig](https://prometheus-operator.dev/docs/developer/scrapeconfig/) Kubernetes resources. (@alex-berger)
 
 - Add `pyroscope.relabel` component to modify or filter profiles using Prometheus relabeling rules. (@marcsanmi)
 
