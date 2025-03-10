@@ -198,6 +198,7 @@ The following components, grouped by namespace, _consume_ Prometheus `MetricsRec
 {{< collapse title="prometheus" >}}
 - [prometheus.operator.podmonitors](../components/prometheus/prometheus.operator.podmonitors)
 - [prometheus.operator.probes](../components/prometheus/prometheus.operator.probes)
+- [prometheus.operator.scrapeconfigs](../components/prometheus/prometheus.operator.scrapeconfigs)
 - [prometheus.operator.servicemonitors](../components/prometheus/prometheus.operator.servicemonitors)
 - [prometheus.receive_http](../components/prometheus/prometheus.receive_http)
 - [prometheus.relabel](../components/prometheus/prometheus.relabel)
