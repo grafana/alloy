@@ -8,7 +8,8 @@ title: prometheus.operator.scrapeconfigs
 
 # prometheus.operator.scrapeconfigs
 
-`prometheus.operator.scrapeconfigs` discovers [ScrapeConfig](https://prometheus-operator.dev/docs/api-reference/api/#monitoring.coreos.com/v1alpha1.ScrapeConfig) resources in your kubernetes cluster and scrapes the targets they reference. This component performs three main functions:
+`prometheus.operator.scrapeconfigs` discovers [ScrapeConfig](https://prometheus-operator.dev/docs/api-reference/api/#monitoring.coreos.com/v1alpha1.ScrapeConfig) resources in your Kubernetes cluster and scrapes the targets they reference.
+This component performs three main functions:
 
 1. Discover ScrapeConfig resources from your Kubernetes cluster.
 2. Scrape metrics from the targets, and forward them to a receiver.
