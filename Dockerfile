@@ -4,19 +4,8 @@
 # default when running `docker buildx build` or when DOCKER_BUILDKIT=1 is set
 # in environment variables.
 
-FROM --platform=$BUILDPLATFORM grafana/alloy-build-image:v0.1.8 as pyroscope-build
+FROM --platform=$BUILDPLATFORM grafana/alloy-build-image:v0.1.15 as pyroscope-build
 ARG TARGETARCH
-ARG RUST_TOOLCHAIN=1.77
-RUN <<EOF
-set -ex
-apt-get update
-apt-get install -y cmake
-rustup || curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
-  | sh -s -- -y --profile minimal --default-toolchain $RUST_TOOLCHAIN
-/root/.cargo/bin/rustup target add aarch64-unknown-linux-musl
-/root/.cargo/bin/rustup target add x86_64-unknown-linux-musl
-EOF
-ENV PATH $PATH:/root/.cargo/bin/
 COPY go.mod Makefile ./
 COPY tools/make/*mk  tools/make/
 COPY tools/image-tag tools/image-tag-docker  tools/
