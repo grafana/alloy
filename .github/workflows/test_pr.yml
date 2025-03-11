@@ -5,15 +5,26 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
+    container:
+      # The build image contains golangci-lint.
+      image: grafana/alloy-build-image:v0.1.8
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+
+    - name: Set ownership
+      # https://github.com/actions/runner/issues/2033#issuecomment-1204205989
+      run: |
+          # this is to fix GIT not liking owner of the checkout dir
+          chown -R $(id -u):$(id -g) $PWD
+
     - name: Set up Go 1.23
       uses: actions/setup-go@v5
       with:
         go-version-file: go.mod
         cache: false
-    - run: sudo apt-get update -y && sudo apt-get install -y libsystemd-dev
+
+    - run: apt-get update -y && apt-get install -y libsystemd-dev
     - run: make lint
 
   test_linux:
@@ -21,10 +32,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v4 
+
     - name: Set up Go 1.23
       uses: actions/setup-go@v5
       with:
         go-version-file: go.mod
         cache: false
+
     - run: make GO_TAGS="nodocker" test
