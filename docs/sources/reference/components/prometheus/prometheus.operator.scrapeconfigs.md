@@ -10,6 +10,8 @@ title: prometheus.operator.scrapeconfigs
 
 # `prometheus.operator.scrapeconfigs`
 
+{{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
 `prometheus.operator.scrapeconfigs` discovers [ScrapeConfig](https://prometheus-operator.dev/docs/api-reference/api/#monitoring.coreos.com/v1alpha1.ScrapeConfig) resources in your Kubernetes cluster and scrapes the targets they reference.
 This component performs two main functions:
 
