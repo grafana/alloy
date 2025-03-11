@@ -35,6 +35,10 @@ Main (unreleased)
 
 - Add support for proxy and headers in `prometheus.write.queue`. (@mattdurham)
 
+- (_Experimental_) Various changes to the experimental component `database_observability.mysql`:
+  - `query_sample`: better handling of truncated queries (@cristiangreco)
+  - `query_sample`: add option to use TiDB sql parser (@cristiangreco)
+
 ### Other changes
 
 - Upgrading to Prometheus v2.55.1. (@ptodev)
@@ -63,9 +67,6 @@ v1.7.2
 
 v1.7.1
 -----------------
-
-- (_Experimental_) Various changes to the experimental component `database_observability.mysql`:
-  - `query_sample`: better handling of truncated queries (@cristiangreco)
 
 ### Bugfixes
 
