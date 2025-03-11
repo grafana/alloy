@@ -22,7 +22,7 @@ The default configuration assumes {{< param "PRODUCT_NAME" >}} is running inside
 You can run {{< param "PRODUCT_NAME" >}} from outside the cluster by supplying connection info in the `client` block, but network level access to `scrapeconfigs` is required to scrape metrics from them.
 
 `scrapeconfigs` may reference secrets for authenticating to targets to scrape them.
-In these cases, the secrets are loaded and refreshed only when the ScrapeConfig is updated or when this component refreshes its' internal state, which happens on a 5-minute refresh cycle.
+In these cases, the secrets are loaded and refreshed only when the ScrapeConfig is updated or when this component refreshes its internal state, which happens on a 5-minute refresh cycle.
 
 ## Usage
 
