@@ -47,6 +47,7 @@ You can use the following arguments with `loki.rules.kubernetes`:
 | `bearer_token`          | `secret`   | Bearer token to authenticate with.                                              |         | no       |
 | `enable_http2`          | `bool`     | Whether HTTP2 is supported for requests.                                        | `true`  | no       |
 | `follow_redirects`      | `bool`     | Whether redirects returned by the server should be followed.                    | `true`  | no       |
+| `http_headers`           | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.          |                      | no       |
 | `loki_namespace_prefix` | `string`   | Prefix used to differentiate multiple {{< param "PRODUCT_NAME" >}} deployments. | "alloy" | no       |
 | `proxy_url`             | `string`   | HTTP proxy to proxy requests through.                                           |         | no       |
 | `sync_interval`         | `duration` | Amount of time between reconciliations with Loki.                               | "30s"   | no       |

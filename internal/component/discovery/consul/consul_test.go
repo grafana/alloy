@@ -14,11 +14,17 @@ func TestAlloyConfig(t *testing.T) {
 	token = "my-token"
 	allow_stale = false
 	node_meta = { foo = "bar" }
+	http_headers = {
+		"foo" = ["foobar"],
+	}
 `
 
 	var args Arguments
 	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.NoError(t, err)
+
+	header := args.HTTPClientConfig.HTTPHeaders.Headers["foo"][0]
+	require.Equal(t, "foobar", string(header))
 }
 
 func TestBadAlloyConfig(t *testing.T) {

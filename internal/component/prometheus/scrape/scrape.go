@@ -9,12 +9,15 @@ import (
 	"sync"
 	"time"
 
+	go_kit_log "github.com/go-kit/log"
+
 	"github.com/alecthomas/units"
 	client_prometheus "github.com/prometheus/client_golang/prometheus"
 	config_util "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
+	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/scrape"
 	"github.com/prometheus/prometheus/storage"
@@ -27,9 +30,13 @@ import (
 	"github.com/grafana/alloy/internal/service/cluster"
 	"github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/service/labelstore"
-	"github.com/grafana/alloy/internal/service/logging/level"
+	"github.com/grafana/alloy/internal/service/livedebugging"
+  "github.com/grafana/alloy/internal/service/logging/level"
 	"github.com/grafana/alloy/internal/useragent"
 	"github.com/grafana/alloy/internal/util"
+	"github.com/prometheus/prometheus/model/exemplar"
+	"github.com/prometheus/prometheus/model/metadata"
+	"github.com/prometheus/prometheus/util/logging"
 )
 
 func init() {
@@ -71,6 +78,8 @@ type Arguments struct {
 	ScrapeClassicHistograms bool `alloy:"scrape_classic_histograms,attr,optional"`
 	// Whether to scrape native histograms.
 	ScrapeNativeHistograms bool `alloy:"scrape_native_histograms,attr,optional"`
+	// File to which scrape failures are logged.
+	ScrapeFailureLogFile string `alloy:"scrape_failure_log_file,attr,optional"`
 	// How frequently to scrape the targets of this scrape config.
 	ScrapeInterval time.Duration `alloy:"scrape_interval,attr,optional"`
 	// The timeout for scraping targets of this config.
@@ -191,14 +200,22 @@ type Component struct {
 
 	dtMutex            sync.Mutex
 	distributedTargets *discovery.DistributedTargets
+
+	debugDataPublisher livedebugging.DebugDataPublisher
 }
 
 var (
-	_ component.Component = (*Component)(nil)
+	_ component.Component     = (*Component)(nil)
+	_ component.LiveDebugging = (*Component)(nil)
 )
 
 // New creates a new prometheus.scrape component.
 func New(o component.Options, args Arguments) (*Component, error) {
+	debugDataPublisher, err := o.GetServiceData(livedebugging.ServiceName)
+	if err != nil {
+		return nil, err
+	}
+
 	data, err := o.GetServiceData(http.ServiceName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get information about HTTP server: %w", err)
@@ -227,10 +244,6 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	}
 
 	unregisterer := util.WrapWithUnregisterer(o.Registerer)
-	scraper, err := scrape.NewManager(scrapeOptions, o.Logger, alloyAppendable, unregisterer)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create scrape manager: %w", err)
-	}
 
 	targetsGauge := client_prometheus.NewGauge(client_prometheus.GaugeOpts{
 		Name: "prometheus_scrape_targets_gauge",
@@ -252,12 +265,25 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		opts:                o,
 		cluster:             clusterData,
 		reloadTargets:       make(chan struct{}, 1),
-		scraper:             scraper,
+		debugDataPublisher:  debugDataPublisher.(livedebugging.DebugDataPublisher),
 		appendable:          alloyAppendable,
 		targetsGauge:        targetsGauge,
 		movedTargetsCounter: movedTargetsCounter,
 		unregisterer:        unregisterer,
 	}
+
+	interceptor := c.newInterceptor(ls)
+
+	scraper, err := scrape.NewManager(
+		scrapeOptions,
+		o.Logger,
+		func(s string) (go_kit_log.Logger, error) { return logging.NewJSONFileLogger(s) },
+		interceptor,
+		unregisterer)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create scrape manager: %w", err)
+	}
+	c.scraper = scraper
 
 	// Call to Update() to set the receivers and targets once at the start.
 	if err := c.Update(args); err != nil {
@@ -412,6 +438,7 @@ func getPromScrapeConfigs(jobName string, c Arguments) *config.ScrapeConfig {
 	dec.ScrapeClassicHistograms = c.ScrapeClassicHistograms
 	dec.ScrapeInterval = model.Duration(c.ScrapeInterval)
 	dec.ScrapeTimeout = model.Duration(c.ScrapeTimeout)
+	dec.ScrapeFailureLogFile = c.ScrapeFailureLogFile
 	dec.MetricsPath = c.MetricsPath
 	dec.Scheme = c.Scheme
 	dec.BodySizeLimit = c.BodySizeLimit
@@ -505,3 +532,47 @@ func (c *Component) populatePromLabels(targets []discovery.Target, jobName strin
 
 	return allTargets
 }
+
+func (c *Component) newInterceptor(ls labelstore.LabelStore) *prometheus.Interceptor {
+	componentID := livedebugging.ComponentID(c.opts.ID)
+	return prometheus.NewInterceptor(c.appendable, ls,
+		prometheus.WithAppendHook(func(globalRef storage.SeriesRef, l labels.Labels, t int64, v float64, next storage.Appender) (storage.SeriesRef, error) {
+			_, nextErr := next.Append(globalRef, l, t, v)
+			if c.debugDataPublisher.IsActive(componentID) {
+				c.debugDataPublisher.Publish(componentID, fmt.Sprintf("sample: ts=%d, labels=%s, value=%f", t, l, v))
+			}
+			return globalRef, nextErr
+		}),
+		prometheus.WithHistogramHook(func(globalRef storage.SeriesRef, l labels.Labels, t int64, h *histogram.Histogram, fh *histogram.FloatHistogram, next storage.Appender) (storage.SeriesRef, error) {
+			_, nextErr := next.AppendHistogram(globalRef, l, t, h, fh)
+			if c.debugDataPublisher.IsActive(componentID) {
+				var data string
+				if h != nil {
+					data = fmt.Sprintf("histogram: ts=%d, labels=%s, value=%s", t, l, h.String())
+				} else if fh != nil {
+					data = fmt.Sprintf("float_histogram: ts=%d, labels=%s, value=%s", t, l, fh.String())
+				} else {
+					data = fmt.Sprintf("histogram_with_no_value: ts=%d, labels=%s", t, l)
+				}
+				c.debugDataPublisher.Publish(componentID, data)
+			}
+			return globalRef, nextErr
+		}),
+		prometheus.WithMetadataHook(func(globalRef storage.SeriesRef, l labels.Labels, m metadata.Metadata, next storage.Appender) (storage.SeriesRef, error) {
+			_, nextErr := next.UpdateMetadata(globalRef, l, m)
+			if c.debugDataPublisher.IsActive(componentID) {
+				c.debugDataPublisher.Publish(componentID, fmt.Sprintf("metadata: labels=%s, type=%q, unit=%q, help=%q", l, m.Type, m.Unit, m.Help))
+			}
+			return globalRef, nextErr
+		}),
+		prometheus.WithExemplarHook(func(globalRef storage.SeriesRef, l labels.Labels, e exemplar.Exemplar, next storage.Appender) (storage.SeriesRef, error) {
+			_, nextErr := next.AppendExemplar(globalRef, l, e)
+			if c.debugDataPublisher.IsActive(componentID) {
+				c.debugDataPublisher.Publish(componentID, fmt.Sprintf("exemplar: ts=%d, labels=%s, exemplar_labels=%s, value=%f", e.Ts, l, e.Labels, e.Value))
+			}
+			return globalRef, nextErr
+		}),
+	)
+}
+
+func (c *Component) LiveDebugging(_ int) {}
