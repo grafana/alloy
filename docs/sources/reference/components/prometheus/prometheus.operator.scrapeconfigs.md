@@ -23,8 +23,8 @@ In these cases, the secrets are loaded and refreshed only when the ScrapeConfig 
 ## Usage
 
 ```alloy
-prometheus.operator.scrapeconfigs "LABEL" {
-    forward_to = RECEIVER_LIST
+prometheus.operator.scrapeconfigs "<LABEL>" {
+    forward_to = <RECEIVER_LIST>
 }
 ```
 
