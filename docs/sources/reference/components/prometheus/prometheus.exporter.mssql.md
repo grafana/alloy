@@ -27,12 +27,20 @@ You can use the following arguments with `prometheus.exporter.mssql`:
 | Name                   | Type       | Description                                                         | Default | Required |
 | ---------------------- | ---------- | ------------------------------------------------------------------- | ------- | -------- |
 | `connection_string`    | `secret`   | The connection string used to connect to an Microsoft SQL Server.   |         | yes      |
+| `connection_name`      | `string`   | The connection string used to connect to an Microsoft SQL Server.   |         | no       |
 | `max_idle_connections` | `int`      | Maximum number of idle connections to any one target.               | `3`     | no       |
 | `max_open_connections` | `int`      | Maximum number of open connections to any one target.               | `3`     | no       |
 | `timeout`              | `duration` | The query timeout in seconds.                                       | `"10s"` | no       |
 | `query_config`         | `string`   | MSSQL query to Prometheus metric configuration as an inline string. |         | no       |
 
 The [`sql_exporter` examples](https://github.com/burningalchemist/sql_exporter/blob/master/examples/azure-sql-mi/sql_exporter.yml#L21) show the format of the `connection_string` argument:
+
+```text
+sqlserver://<USERNAME>:<PASSWORD>@<SQLMI_ENDPOINT>.database.windows.net:1433?encrypt=true&hostNameInCertificate=%2A.<SQL_MI_DOMAIN>.database.windows.net&trustservercertificate=true
+```
+
+The `connection_name` parameter allows uptime metrics. Refer to the [`sql_exporter`](https://github.com/burningalchemist/sql_exporter#configuration) `target.name` setting.
+
 
 ```text
 sqlserver://<USERNAME>:<PASSWORD>@<SQLMI_ENDPOINT>.database.windows.net:1433?encrypt=true&hostNameInCertificate=%2A.<SQL_MI_DOMAIN>.database.windows.net&trustservercertificate=true

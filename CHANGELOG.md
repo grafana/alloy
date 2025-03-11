@@ -15,6 +15,7 @@ Main (unreleased)
 - Add `otelcol.receiver.awscloudwatch` component to receive logs from AWS CloudWatch and forward them to other `otelcol.*` components. (@wildum)
 
 ### Enhancements
+- Add `connection_name` support for `prometheus.exporter.mssql` (@bck01215)
 
 - Add livedebugging support for `prometheus.scrape` (@ravishankar15, @wildum)
 
