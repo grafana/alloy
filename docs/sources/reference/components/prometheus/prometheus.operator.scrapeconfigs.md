@@ -40,7 +40,7 @@ You can use the following arguments with `prometheus.operator.scrapeconfigs`:
 
 ## Blocks
 
-The following blocks are supported inside the definition of `prometheus.operator.scrapeconfigs`:
+You can use the following blocks with `prometheus.operator.scrapeconfigs`:
 
 Hierarchy | Block | Description | Required
 --------- | ----- | ----------- | --------
