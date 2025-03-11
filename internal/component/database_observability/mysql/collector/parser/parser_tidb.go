@@ -17,7 +17,7 @@ func NewTiDBSqlParser() *TiDBSqlParser {
 	return &TiDBSqlParser{}
 }
 
-func (p *TiDBSqlParser) ParseSql(sql string) (any, error) {
+func (p *TiDBSqlParser) Parse(sql string) (any, error) {
 	stmtNodes, _, err := parser.New().ParseSQL(sql)
 	if err != nil {
 		return nil, err
@@ -30,7 +30,7 @@ func (p *TiDBSqlParser) ParseSql(sql string) (any, error) {
 	return &stmtNodes[0], nil
 }
 
-func (p *TiDBSqlParser) RedactSQL(sql string) (string, error) {
+func (p *TiDBSqlParser) Redact(sql string) (string, error) {
 	res := parser.Normalize(sql, "ON")
 	if res == "" {
 		return "", fmt.Errorf("error normalizing SQL")

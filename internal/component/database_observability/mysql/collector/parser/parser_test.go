@@ -133,7 +133,7 @@ func TestExtractTableNames(t *testing.T) {
 	for _, tc := range testcases {
 		t.Run(tc.name+"_xwbparser", func(t *testing.T) {
 			p := parser.NewXwbSqlParser()
-			stmt, err := p.ParseSql(tc.sql)
+			stmt, err := p.Parse(tc.sql)
 			require.NoError(t, err)
 
 			got := p.ExtractTableNames(log.NewNopLogger(), "", stmt)
@@ -141,7 +141,7 @@ func TestExtractTableNames(t *testing.T) {
 		})
 		t.Run(tc.name+"_tidbparser", func(t *testing.T) {
 			p := parser.NewTiDBSqlParser()
-			stmt, err := p.ParseSql(tc.sql)
+			stmt, err := p.Parse(tc.sql)
 			require.NoError(t, err)
 
 			got := p.ExtractTableNames(log.NewNopLogger(), "", stmt)

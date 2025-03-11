@@ -12,11 +12,11 @@ func NewXwbSqlParser() *XwbSqlParser {
 	return &XwbSqlParser{}
 }
 
-func (p *XwbSqlParser) ParseSql(sql string) (any, error) {
+func (p *XwbSqlParser) Parse(sql string) (any, error) {
 	return sqlparser.Parse(sql)
 }
 
-func (p *XwbSqlParser) RedactSQL(sql string) (string, error) {
+func (p *XwbSqlParser) Redact(sql string) (string, error) {
 	return sqlparser.RedactSQLQuery(sql)
 }
 

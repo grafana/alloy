@@ -50,7 +50,7 @@ type QuerySample struct {
 	instanceKey     string
 	collectInterval time.Duration
 	entryHandler    loki.EntryHandler
-	sqlParser       SqlParser
+	sqlParser       Parser
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -58,17 +58,17 @@ type QuerySample struct {
 	cancel  context.CancelFunc
 }
 
-type SqlParser interface {
-	ParseSql(sql string) (any, error)
-	RedactSQL(sql string) (string, error)
+type Parser interface {
+	Parse(sql string) (any, error)
+	Redact(sql string) (string, error)
 	StmtType(stmt any) string
 	ParseTableName(t any) string
 	ExtractTableNames(logger log.Logger, digest string, stmt any) []string
 }
 
 var (
-	_ SqlParser = (*parser.XwbSqlParser)(nil)
-	_ SqlParser = (*parser.TiDBSqlParser)(nil)
+	_ Parser = (*parser.XwbSqlParser)(nil)
+	_ Parser = (*parser.TiDBSqlParser)(nil)
 )
 
 func NewQuerySample(args QuerySampleArguments) (*QuerySample, error) {
@@ -169,13 +169,13 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 			sampleText = sampleText[:idx]
 		}
 
-		stmt, err := c.sqlParser.ParseSql(sampleText)
+		stmt, err := c.sqlParser.Parse(sampleText)
 		if err != nil {
 			level.Error(c.logger).Log("msg", "failed to parse sql query", "schema", schemaName, "digest", digest, "err", err)
 			continue
 		}
 
-		sampleRedactedText, err := c.sqlParser.RedactSQL(sampleText)
+		sampleRedactedText, err := c.sqlParser.Redact(sampleText)
 		if err != nil {
 			level.Error(c.logger).Log("msg", "failed to redact sql query", "schema", schemaName, "digest", digest, "err", err)
 			continue
