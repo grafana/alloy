@@ -186,8 +186,7 @@ If {{< param "PRODUCT_NAME" >}} is _not_ running in clustered mode, then the blo
 
 ## Debug information
 
-`prometheus.operator.scrapeconfigs` reports the status of the last scrape for each configured
-scrape job on the component's debug endpoint, including discovered labels, and the last scrape time.
+`prometheus.operator.scrapeconfigs` reports the status of the last scrape for each configured scrape job on the component's debug endpoint, including discovered labels, and the last scrape time.
 
 It also exposes some debug information for each ScrapeConfig it has discovered, including any errors found while reconciling the scrape configuration from the ScrapeConfig.
 
