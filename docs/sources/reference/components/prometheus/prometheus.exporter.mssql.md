@@ -39,8 +39,8 @@ The [`sql_exporter` examples](https://github.com/burningalchemist/sql_exporter/b
 sqlserver://<USERNAME>:<PASSWORD>@<SQLMI_ENDPOINT>.database.windows.net:1433?encrypt=true&hostNameInCertificate=%2A.<SQL_MI_DOMAIN>.database.windows.net&trustservercertificate=true
 ```
 
-The `connection_name` parameter allows uptime metrics. Refer to the [`sql_exporter`](https://github.com/burningalchemist/sql_exporter#configuration) `target.name` setting.
-
+The `connection_name` parameter allows uptime metrics.
+Refer to the [`sql_exporter`](https://github.com/burningalchemist/sql_exporter#configuration) `target.name` setting.
 
 ```text
 sqlserver://<USERNAME>:<PASSWORD>@<SQLMI_ENDPOINT>.database.windows.net:1433?encrypt=true&hostNameInCertificate=%2A.<SQL_MI_DOMAIN>.database.windows.net&trustservercertificate=true
