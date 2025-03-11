@@ -70,7 +70,7 @@ For example, `client` > `basic_auth` refers to a `basic_auth` block defined insi
 [scrape]: #scrape
 [tls_config]: #tls_config
 
-### client block
+### `client`
 
 The `client` block configures the Kubernetes client used to discover scrapeconfigs. If the `client` block isn't provided, the default in-cluster
 configuration with the service account of the running {{< param "PRODUCT_NAME" >}} pod is
