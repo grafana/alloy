@@ -671,7 +671,8 @@ func TestMetrics(t *testing.T) {
 
 			// Initialize Arguments
 			args := Arguments{
-				ForwardTo: []loki.LogsReceiver{loki.NewLogsReceiver()},
+				ForwardTo:   []loki.LogsReceiver{loki.NewLogsReceiver()},
+				TrackLabels: []string{"job"},
 			}
 
 			// Set allowlist if provided
@@ -756,13 +757,13 @@ func TestMetrics(t *testing.T) {
 			if tc.expectedRedactedTotal > 0 {
 				// Build all expected label metrics into a single string
 				var metricStrings strings.Builder
-				metricStrings.WriteString("# HELP loki_secretfilter_secrets_redacted_by_label_total Number of secrets redacted, partitioned by label name and value.\n")
+				metricStrings.WriteString("# HELP loki_secretfilter_secrets_redacted_by_label_total Number of secrets redacted, partitioned by user-specified labels.\n")
 				metricStrings.WriteString("# TYPE loki_secretfilter_secrets_redacted_by_label_total counter\n")
 
 				// Add each label metric
-				for name, value := range labels {
-					metric := fmt.Sprintf(`loki_secretfilter_secrets_redacted_by_label_total{label_name="%s",label_value="%s"} %d`,
-						name, value, tc.expectedRedactedTotal)
+				for _, labelName := range args.TrackLabels {
+					metric := fmt.Sprintf(`loki_secretfilter_secrets_redacted_by_label_total{%s="%s"} %d`,
+						labelName, labels[model.LabelName(labelName)], tc.expectedRedactedTotal)
 					metricStrings.WriteString(metric + "\n")
 				}
 
@@ -815,7 +816,8 @@ func TestMetricsRegistration(t *testing.T) {
 
 	// Create component with empty arguments
 	args := Arguments{
-		ForwardTo: []loki.LogsReceiver{loki.NewLogsReceiver()},
+		ForwardTo:   []loki.LogsReceiver{loki.NewLogsReceiver()},
+		TrackLabels: []string{"test_label"},
 	}
 
 	c, err := New(opts, args)
@@ -824,7 +826,7 @@ func TestMetricsRegistration(t *testing.T) {
 	// Increment all metrics to ensure they will be gathered
 	c.metrics.secretsRedactedTotal.Inc()
 	c.metrics.secretsRedactedByRule.WithLabelValues("test_rule").Inc()
-	c.metrics.secretsRedactedByLabel.WithLabelValues("test_label", "test_value").Inc()
+	c.metrics.secretsRedactedByLabel.WithLabelValues("test_value").Inc()
 	c.metrics.secretsAllowlistedTotal.WithLabelValues("test_source").Inc()
 	c.metrics.processingDuration.Observe(0.123)
 
@@ -860,7 +862,8 @@ func TestMetricsMultipleEntries(t *testing.T) {
 	registry := prometheus.NewRegistry()
 
 	args := Arguments{
-		ForwardTo: []loki.LogsReceiver{loki.NewLogsReceiver()},
+		ForwardTo:   []loki.LogsReceiver{loki.NewLogsReceiver()},
+		TrackLabels: []string{"job"},
 	}
 
 	opts := component.Options{
@@ -927,11 +930,11 @@ func TestMetricsMultipleEntries(t *testing.T) {
 	// Check secretsRedactedByLabel values
 	require.NoError(t,
 		testutil.GatherAndCompare(registry, strings.NewReader(`
-			# HELP loki_secretfilter_secrets_redacted_by_label_total Number of secrets redacted, partitioned by label name and value.
+			# HELP loki_secretfilter_secrets_redacted_by_label_total Number of secrets redacted, partitioned by user-specified labels.
 			# TYPE loki_secretfilter_secrets_redacted_by_label_total counter
-			loki_secretfilter_secrets_redacted_by_label_total{label_name="job",label_value="test1"} 1
-			loki_secretfilter_secrets_redacted_by_label_total{label_name="job",label_value="test2"} 1
-			loki_secretfilter_secrets_redacted_by_label_total{label_name="job",label_value="test4"} 1
+			loki_secretfilter_secrets_redacted_by_label_total{job="test1"} 1
+			loki_secretfilter_secrets_redacted_by_label_total{job="test2"} 1
+			loki_secretfilter_secrets_redacted_by_label_total{job="test4"} 1
 		`),
 			"loki_secretfilter_secrets_redacted_by_label_total"))
 }
