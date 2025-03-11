@@ -38,7 +38,7 @@ The `database_observability.mysql` component doesn't support any blocks. You can
 
 ```alloy
 database_observability.mysql "orders_db" {
-  data_source_name = "user:pass@mysql:3306/"
+  data_source_name = "user:pass@tcp(mysql:3306)/"
   forward_to = [loki.write.logs_service.receiver]
 }
 
