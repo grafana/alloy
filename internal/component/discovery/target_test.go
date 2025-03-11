@@ -15,10 +15,142 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/runtime/equality"
+	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/parser"
 	"github.com/grafana/alloy/syntax/token/builder"
 	"github.com/grafana/alloy/syntax/vm"
 )
+
+func TestUsingTargetCapsule(t *testing.T) {
+	type testCase struct {
+		name                  string
+		inputTarget           map[string]string
+		expression            string
+		decodeInto            interface{}
+		expectedDecodedString string
+		expectedEvalError     string
+	}
+
+	testCases := []testCase{
+		{
+			name:                  "target to map of string -> string",
+			inputTarget:           map[string]string{"a1a": "beachfront avenue", "ice": "ice"},
+			expression:            "t",
+			decodeInto:            map[string]string{},
+			expectedDecodedString: `{"a1a"="beachfront avenue", "ice"="ice"}`,
+		},
+		{
+			name:                  "target to map of string -> any",
+			inputTarget:           map[string]string{"a1a": "beachfront avenue", "ice": "ice"},
+			expression:            "t",
+			decodeInto:            map[string]any{},
+			expectedDecodedString: `{"a1a"="beachfront avenue", "ice"="ice"}`,
+		},
+		{
+			name:                  "target to map of any -> any",
+			inputTarget:           map[string]string{"a1a": "beachfront avenue", "ice": "ice"},
+			expression:            "t",
+			decodeInto:            map[any]any{},
+			expectedDecodedString: `{"a1a"="beachfront avenue", "ice"="ice"}`,
+		},
+		{
+			name:                  "target to map of string -> syntax.Value",
+			inputTarget:           map[string]string{"a1a": "beachfront avenue"},
+			expression:            "t",
+			decodeInto:            map[string]syntax.Value{},
+			expectedDecodedString: `{"a1a"="beachfront avenue"}`,
+		},
+		{
+			name:                  "target indexing a string value",
+			inputTarget:           map[string]string{"a1a": "beachfront avenue", "hip": "hop"},
+			expression:            `t["hip"]`,
+			decodeInto:            "",
+			expectedDecodedString: `hop`,
+		},
+		{
+			name:                  "target indexing a non-existing string value",
+			inputTarget:           map[string]string{"a1a": "beachfront avenue", "hip": "hop"},
+			expression:            `t["boom"]`,
+			decodeInto:            "",
+			expectedDecodedString: "<nil>",
+		},
+		{
+			name:              "target indexing a value like an object field",
+			inputTarget:       map[string]string{"a1a": "beachfront avenue", "hip": "hop"},
+			expression:        `t.boom`,
+			decodeInto:        "",
+			expectedEvalError: `field "boom" does not exist`,
+		},
+		{
+			name:                  "targets passed to concat",
+			inputTarget:           map[string]string{"boom": "bap", "hip": "hop"},
+			expression:            `array.concat([t], [t])`,
+			decodeInto:            []Target{},
+			expectedDecodedString: `[{"boom"="bap", "hip"="hop"} {"boom"="bap", "hip"="hop"}]`,
+		},
+		{
+			name:                  "coalesce an empty target",
+			inputTarget:           map[string]string{},
+			expression:            `coalesce(t, [], t, {}, t, 123, t)`,
+			decodeInto:            []Target{},
+			expectedDecodedString: `123`,
+		},
+		{
+			name:                  "coalesce a non-empty target",
+			inputTarget:           map[string]string{"big": "bang"},
+			expression:            `coalesce([], {}, "", t, 321, [])`,
+			decodeInto:            []Target{},
+			expectedDecodedString: `{"big"="bang"}`,
+		},
+		{
+			name:                  "array.combine_maps with targets",
+			inputTarget:           map[string]string{"a": "a1", "b": "b1"},
+			expression:            `array.combine_maps([t, t], [{"a" = "a1", "c" = "c1"}, {"a" = "a2", "c" = "c2"}], ["a"])`,
+			decodeInto:            []Target{},
+			expectedDecodedString: `[map[a:a1 b:b1 c:c1] map[a:a1 b:b1 c:c1]]`,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			target := NewTargetFromMap(tc.inputTarget)
+			scope := vm.NewScope(map[string]interface{}{"t": target})
+			expr, err := parser.ParseExpression(tc.expression)
+			require.NoError(t, err)
+			eval := vm.New(expr)
+			evalError := eval.Evaluate(scope, &tc.decodeInto)
+			if tc.expectedEvalError != "" {
+				require.ErrorContains(t, evalError, tc.expectedEvalError)
+			} else {
+				require.NoError(t, evalError)
+			}
+			require.Equal(t, tc.expectedDecodedString, fmt.Sprintf("%v", tc.decodeInto))
+		})
+	}
+}
+
+func TestNestedIndexing(t *testing.T) {
+	targets := []Target{
+		NewTargetFromMap(map[string]string{"foo": "bar", "boom": "bap"}),
+		NewTargetFromMap(map[string]string{"hip": "hop", "dont": "stop"}),
+	}
+	scope := vm.NewScope(map[string]interface{}{"targets": targets})
+
+	expr, err := parser.ParseExpression(`targets[1]["dont"]`)
+	require.NoError(t, err)
+	eval := vm.New(expr)
+	actual := ""
+	err = eval.Evaluate(scope, &actual)
+	require.NoError(t, err)
+	require.Equal(t, "stop", actual)
+
+	expr, err = parser.ParseExpression(`targets[0].boom`)
+	require.NoError(t, err)
+	eval = vm.New(expr)
+	actual = ""
+	err = eval.Evaluate(scope, &actual)
+	require.NoError(t, err)
+	require.Equal(t, "bap", actual)
+}
 
 func TestDecodeMap(t *testing.T) {
 	type testCase struct {
@@ -67,6 +199,11 @@ func TestDecodeMap(t *testing.T) {
 			name:     "decode with std function",
 			input:    `{ "b" = string.format("%x", 31337), "a" = string.join(["2", "0"], ".") }`,
 			expected: map[string]string{"a": "2.0", "b": "7a69"},
+		},
+		{
+			name:     "decode with encoding.from_json function",
+			input:    "encoding.from_json(`{ \"__address__\": \"localhost:8080\", \"x\": 123 }`)",
+			expected: map[string]string{"__address__": "localhost:8080", "x": "123"},
 		},
 	}
 
@@ -117,21 +254,70 @@ func TestEncode_Decode_Targets(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			// Test encoding
-			f := builder.NewFile()
-			f.Body().SetAttributeValue("target", NewTargetFromMap(tc.input))
-			encoded := string(f.Bytes())
-			require.Equal(t, tc.expected, encoded)
+			t.Run("encode into text", func(t *testing.T) {
+				f := builder.NewFile()
+				f.Body().SetAttributeValue("target", NewTargetFromMap(tc.input))
+				encoded := string(f.Bytes())
+				require.Equal(t, tc.expected, encoded)
+			})
 
-			// Try decoding now
-			toDecode := strings.TrimPrefix(encoded, "target = ")
-			scope := vm.NewScope(map[string]interface{}{})
-			expr, err := parser.ParseExpression(toDecode)
-			require.NoError(t, err)
-			eval := vm.New(expr)
-			actual := Target{}
-			require.NoError(t, eval.Evaluate(scope, &actual))
-			require.Equal(t, NewTargetFromMap(tc.input), actual)
+			var toDecode string
+			t.Run("encode target", func(t *testing.T) {
+				f := builder.NewFile()
+				f.Body().SetAttributeValue("target", NewTargetFromMap(tc.input))
+				encoded := string(f.Bytes())
+				require.Equal(t, tc.expected, encoded)
+				// store toDecode for other tests
+				toDecode = strings.TrimPrefix(encoded, "target = ")
+			})
+
+			t.Run("decode into target", func(t *testing.T) {
+				expr, err := parser.ParseExpression(toDecode)
+				require.NoError(t, err)
+				eval := vm.New(expr)
+				actual := Target{}
+				require.NoError(t, eval.Evaluate(vm.NewScope(map[string]interface{}{}), &actual))
+				require.Equal(t, NewTargetFromMap(tc.input), actual)
+			})
+
+			t.Run("decode into a map", func(t *testing.T) {
+				expr, err := parser.ParseExpression(toDecode)
+				require.NoError(t, err)
+				eval := vm.New(expr)
+				actualMap := map[string]string{}
+				require.NoError(t, eval.Evaluate(vm.NewScope(map[string]interface{}{}), &actualMap))
+				require.Equal(t, tc.input, actualMap)
+			})
+
+			t.Run("decode into a map pointer", func(t *testing.T) {
+				expr, err := parser.ParseExpression(toDecode)
+				require.NoError(t, err)
+				eval := vm.New(expr)
+				actualMap := map[string]string{}
+				require.NoError(t, eval.Evaluate(vm.NewScope(map[string]interface{}{}), &actualMap))
+				require.Equal(t, &tc.input, &actualMap)
+			})
+
+			t.Run("decode from target into map via scope", func(t *testing.T) {
+				// If not supported, this would lead to error: target::ConvertInto: conversion to '*map[string]string' is not supported
+				scope := vm.NewScope(map[string]interface{}{"export": NewTargetFromMap(tc.input)})
+				expr, err := parser.ParseExpression("export")
+				require.NoError(t, err)
+				eval := vm.New(expr)
+				actualMap := map[string]string{}
+				require.NoError(t, eval.Evaluate(scope, &actualMap))
+				require.Equal(t, tc.input, actualMap)
+			})
+
+			t.Run("decode from map into target via scope", func(t *testing.T) {
+				scope := vm.NewScope(map[string]interface{}{"map": tc.input})
+				expr, err := parser.ParseExpression("map")
+				require.NoError(t, err)
+				eval := vm.New(expr)
+				actual := Target{}
+				require.NoError(t, eval.Evaluate(scope, &actual))
+				require.Equal(t, NewTargetFromMap(tc.input), actual)
+			})
 		})
 	}
 }
@@ -249,6 +435,40 @@ func TestDecode_TargetArrays(t *testing.T) {
 				{"e": "5", "f": "10"},
 			},
 		},
+		{
+			name:  "from_json",
+			input: "encoding.from_json(`[ { \"__address__\": \"localhost:8080\", \"foo\": 123 }, {}, {\"bap\": \"boom\"} ]`)",
+			expected: []map[string]string{
+				{"__address__": "localhost:8080", "foo": "123"},
+				{},
+				{"bap": "boom"},
+			},
+		},
+		{
+			name:  "from_json one by one",
+			input: "[encoding.from_json(`{ \"__address__\": \"localhost:8080\", \"foo\": 123 }`), encoding.from_json(`{ \"boom\": \"bap\", \"foo\": 321 }`)]",
+			expected: []map[string]string{
+				{"__address__": "localhost:8080", "foo": "123"},
+				{"boom": "bap", "foo": "321"},
+			},
+		},
+		{
+			name:  "from_yaml",
+			input: "encoding.from_yaml(`[ { __address__: localhost:8080, foo: 123 }, {}, {bap: boom} ]`)",
+			expected: []map[string]string{
+				{"__address__": "localhost:8080", "foo": "123"},
+				{},
+				{"bap": "boom"},
+			},
+		},
+		{
+			name:  "combine_maps",
+			input: `array.combine_maps([{"a" = "a1", "b" = "b1"}, {"a" = "a1", "b" = "b1"}], [{"a" = "a1", "c" = "c1"}], ["a"])`,
+			expected: []map[string]string{
+				{"a": "a1", "b": "b1", "c": "c1"},
+				{"a": "a1", "b": "b1", "c": "c1"},
+			},
+		},
 	}
 
 	for _, tc := range tests {
@@ -281,7 +501,7 @@ func TestTargetMisc(t *testing.T) {
 	require.Equal(t, []string{"a=5", "b=10"}, seen)
 
 	// Some loggers print targets out, check it's all good.
-	require.Equal(t, `{"a"="5", "b"="10"}`, fmt.Sprintf("%s", target))
+	require.Equal(t, `{"a"="5", "b"="10"}`, target.String())
 }
 
 func TestConvertFromNative(t *testing.T) {

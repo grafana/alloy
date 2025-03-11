@@ -117,6 +117,15 @@ type EndpointConfig struct {
 	ExternalLabels map[string]string `alloy:"external_labels,attr,optional"`
 	TLSConfig      *TLSConfig        `alloy:"tls_config,block,optional"`
 	RoundRobin     bool              `alloy:"enable_round_robin,attr,optional"`
+	// Headers specifies the HTTP headers to be added to all requests sent to the server.
+	Headers map[string]alloytypes.Secret `alloy:"headers,attr,optional"`
+	// ProxyURL is the URL of the HTTP proxy to use for requests.
+	ProxyURL string `alloy:"proxy_url,attr,optional"`
+	// ProxyFromEnvironment determines whether to read proxy configuration from environment
+	// variables HTTP_PROXY, HTTPS_PROXY and NO_PROXY.
+	ProxyFromEnvironment bool `alloy:"proxy_from_environment,attr,optional"`
+	// ProxyConnectHeaders specify the headers to send to proxies during CONNECT requests.
+	ProxyConnectHeaders map[string]alloytypes.Secret `alloy:"proxy_connect_headers,attr,optional"`
 }
 
 type TLSConfig struct {
@@ -140,17 +149,33 @@ type ParallelismConfig struct {
 var UserAgent = fmt.Sprintf("Alloy/%s", version.Version)
 
 func (cc EndpointConfig) ToNativeType() types.ConnectionConfig {
+	// Convert map of alloytypes.Secret to map of strings for Headers
+	headers := make(map[string]string, len(cc.Headers))
+	for k, v := range cc.Headers {
+		headers[k] = string(v)
+	}
+	
+	// Convert map of alloytypes.Secret to map of strings for ProxyConnectHeaders
+	proxyConnectHeaders := make(map[string]string, len(cc.ProxyConnectHeaders))
+	for k, v := range cc.ProxyConnectHeaders {
+		proxyConnectHeaders[k] = string(v)
+	}
+	
 	tcc := types.ConnectionConfig{
-		URL:              cc.URL,
-		BearerToken:      string(cc.BearerToken),
-		UserAgent:        UserAgent,
-		Timeout:          cc.Timeout,
-		RetryBackoff:     cc.RetryBackoff,
-		MaxRetryAttempts: cc.MaxRetryAttempts,
-		BatchCount:       cc.BatchCount,
-		FlushInterval:    cc.FlushInterval,
-		ExternalLabels:   cc.ExternalLabels,
-		UseRoundRobin:    cc.RoundRobin,
+		URL:                  cc.URL,
+		BearerToken:          string(cc.BearerToken),
+		UserAgent:            UserAgent,
+		Timeout:              cc.Timeout,
+		RetryBackoff:         cc.RetryBackoff,
+		MaxRetryAttempts:     cc.MaxRetryAttempts,
+		BatchCount:           cc.BatchCount,
+		FlushInterval:        cc.FlushInterval,
+		ExternalLabels:       cc.ExternalLabels,
+		UseRoundRobin:        cc.RoundRobin,
+		Headers:              headers,
+		ProxyURL:             cc.ProxyURL,
+		ProxyFromEnvironment: cc.ProxyFromEnvironment,
+		ProxyConnectHeaders:  proxyConnectHeaders,
 		Parallelism: types.ParallelismConfig{
 			AllowedDrift:                cc.Parallelism.DriftScaleUp,
 			MinimumScaleDownDrift:       cc.Parallelism.DriftScaleDown,

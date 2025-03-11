@@ -13,12 +13,13 @@ import (
 	"unicode"
 
 	"github.com/go-kit/log"
+	"github.com/prometheus/client_golang/prometheus"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/runner"
 	"github.com/grafana/alloy/internal/service/logging/level"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/vm"
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 const templateType = "template"
@@ -49,7 +50,7 @@ type ForeachConfigNode struct {
 
 	mut   sync.RWMutex
 	block *ast.BlockStmt
-	args  Arguments
+	args  ForEachArguments
 
 	moduleControllerFactory func(opts ModuleControllerOpts) ModuleController
 	moduleControllerOpts    ModuleControllerOpts
@@ -110,6 +111,8 @@ func (fn *ForeachConfigNode) ComponentName() string {
 	return fn.componentName
 }
 
+// Exports returns nil as `foreach` doesn't have the ability to export values.
+// This is something we could implement in the future if there is a need for it.
 func (fn *ForeachConfigNode) Exports() component.Exports {
 	return nil
 }
@@ -117,9 +120,7 @@ func (fn *ForeachConfigNode) ID() ComponentID {
 	return fn.id
 }
 
-// Foreach doesn't have the ability to export values.
-// This is something we could implement in the future if there is a need for it.
-type Arguments struct {
+type ForEachArguments struct {
 	Collection []any  `alloy:"collection,attr"`
 	Var        string `alloy:"var,attr"`
 
@@ -163,7 +164,7 @@ func (fn *ForeachConfigNode) evaluate(scope *vm.Scope) error {
 
 	eval := vm.New(argsBody)
 
-	var args Arguments
+	var args ForEachArguments
 	if err := eval.Evaluate(scope, &args); err != nil {
 		return fmt.Errorf("decoding configuration: %w", err)
 	}
@@ -386,7 +387,7 @@ func computeHash(s string) string {
 }
 
 func objectFingerprint(obj any) string {
-	//TODO: Test what happens if there is a "true" string and a true bool in the collection.
+	// TODO: Test what happens if there is a "true" string and a true bool in the collection.
 	switch v := obj.(type) {
 	case string:
 		return replaceNonAlphaNumeric(v)

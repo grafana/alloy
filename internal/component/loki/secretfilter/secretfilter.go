@@ -192,6 +192,12 @@ func (c *Component) processEntry(entry loki.Entry) loki.Entry {
 				secret = occ[1]
 			}
 
+			// If secret is empty string, ignore
+			if secret == "" {
+				level.Debug(c.opts.Logger).Log("msg", "empty secret found", "rule", r.name)
+				continue
+			}
+
 			// Check if the secret is in the allowlist
 			var allowRule *AllowRule = nil
 			// First check the global allowlist
@@ -289,6 +295,10 @@ func (c *Component) Update(args component.Arguments) error {
 
 	// Compile regexes
 	for _, rule := range gitleaksCfg.Rules {
+		// If the rule regex is empty, skip this rule
+		if rule.Regex == "" {
+			continue
+		}
 		// If specific secret types are provided, only include rules that match the types
 		if len(c.args.Types) > 0 {
 			var found bool
@@ -307,6 +317,21 @@ func (c *Component) Update(args component.Arguments) error {
 		if err != nil {
 			level.Error(c.opts.Logger).Log("msg", "error compiling regex", "error", err)
 			return err
+		}
+		// If the rule regex matches the empty string, skip this rule
+		if re.Match([]byte("")) {
+			level.Warn(c.opts.Logger).Log("msg", "excluded rule due to matching the empty string", "rule", rule.ID)
+			continue
+		}
+		// If the rule regex matches the redaction string, skip this rule
+		redactionString := "<REDACTED-SECRET:" + rule.ID + ">"
+		if c.args.RedactWith != "" {
+			redactionString = c.args.RedactWith
+			redactionString = strings.ReplaceAll(redactionString, "$SECRET_NAME", rule.ID)
+		}
+		if re.Match([]byte(redactionString)) {
+			level.Warn(c.opts.Logger).Log("msg", "excluded rule due to matching the redaction string", "rule", rule.ID)
+			continue
 		}
 
 		// Compile rule-specific allowlist regexes

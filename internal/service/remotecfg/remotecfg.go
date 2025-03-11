@@ -75,7 +75,7 @@ type Service struct {
 }
 
 type metrics struct {
-	lastFetchSuccess     prometheus.Gauge
+	lastLoadSuccess      prometheus.Gauge
 	lastFetchNotModified prometheus.Gauge
 	totalFailures        prometheus.Counter
 	configHash           *prometheus.GaugeVec
@@ -186,7 +186,7 @@ func (s *Service) registerMetrics() {
 			},
 			[]string{"hash"},
 		),
-		lastFetchSuccess: prom.NewGauge(
+		lastLoadSuccess: prom.NewGauge(
 			prometheus.GaugeOpts{
 				Name: "remotecfg_last_load_successful",
 				Help: "Remote config loaded successfully",
@@ -380,12 +380,12 @@ func (s *Service) fetchRemote() error {
 	b, err := s.getAPIConfig()
 	s.metrics.totalAttempts.Add(1)
 
-	if err == nil || err == errNotModified {
-		s.metrics.lastFetchSuccess.Set(1)
+	if err == nil {
+		s.metrics.lastLoadSuccess.Set(1)
 		s.metrics.lastFetchSuccessTime.SetToCurrentTime()
 	} else {
 		s.metrics.totalFailures.Add(1)
-		s.metrics.lastFetchSuccess.Set(0)
+		s.metrics.lastLoadSuccess.Set(0)
 		return err
 	}
 

@@ -2,6 +2,7 @@ package discovery
 
 import (
 	"fmt"
+	"reflect"
 	"slices"
 	"strings"
 	"sync"
@@ -188,7 +189,17 @@ func (t Target) ConvertInto(dst interface{}) error {
 		})
 		*dst = result
 		return nil
+	case *map[string]string:
+		result := make(map[string]string, t.Len())
+		// NOTE: no need to sort as value_tokens.go in syntax/token/builder package sorts the map's keys.
+		t.ForEachLabel(func(key string, value string) bool {
+			result[key] = value
+			return true
+		})
+		*dst = result
+		return nil
 	}
+
 	return fmt.Errorf("target::ConvertInto: conversion to '%T' is not supported", dst)
 }
 
@@ -211,8 +222,24 @@ func (t *Target) ConvertFrom(src interface{}) error {
 		}
 		*t = NewTargetFromLabelSet(labelSet)
 		return nil
+	default: // handle all other types of maps via reflection as Go generics don't support generics in switch/case.
+		rv := reflect.ValueOf(src)
+		switch rv.Kind() {
+		case reflect.Map:
+			labelSet := make(commonlabels.LabelSet, rv.Len())
+			for _, key := range rv.MapKeys() {
+				value := rv.MapIndex(key)
+				if !value.CanInterface() || !key.CanInterface() {
+					return fmt.Errorf("target::ConvertFrom: conversion from '%T' is not supported", src)
+				}
+				labelSet[commonlabels.LabelName(fmt.Sprintf("%v", key.Interface()))] = commonlabels.LabelValue(fmt.Sprintf("%v", value.Interface()))
+			}
+			*t = NewTargetFromLabelSet(labelSet)
+			return nil
+		default:
+			return fmt.Errorf("target::ConvertFrom: conversion from '%T' is not supported", src)
+		}
 	}
-	return fmt.Errorf("target: conversion from '%T' is not supported", src)
 }
 
 func (t Target) String() string {
