@@ -771,6 +771,32 @@ func TestMetrics(t *testing.T) {
 					testutil.GatherAndCompare(registry, strings.NewReader(metricStrings.String()),
 						"loki_secretfilter_secrets_redacted_by_label_total"))
 			}
+
+			// Check processingDuration metric
+			// We don't validate the exact value since it will vary, but we verify it exists and has the right structure
+			count, err := testutil.GatherAndCount(registry, "loki_secretfilter_processing_duration_seconds")
+			require.NoError(t, err)
+			require.Equal(t, count, 1, "processingDuration metric should be registered")
+
+			// We only check that the metric exists with the right type, not the actual values
+			require.NoError(t, err, "processingDuration metric should be properly registered")
+
+			// Additionally check that the metric has count > 0 (indicating it was observed at least once)
+			metricFamilies, err := registry.Gather()
+			require.NoError(t, err)
+
+			var foundMetric bool
+			for _, mf := range metricFamilies {
+				if mf.GetName() == "loki_secretfilter_processing_duration_seconds" {
+					foundMetric = true
+					for _, m := range mf.GetMetric() {
+						summary := m.GetSummary()
+						require.NotNil(t, summary, "should have a summary metric")
+						require.Greater(t, summary.GetSampleCount(), uint64(0), "summary should have samples")
+					}
+				}
+			}
+			require.True(t, foundMetric, "processingDuration metric should be gathered")
 		})
 	}
 }
@@ -800,6 +826,7 @@ func TestMetricsRegistration(t *testing.T) {
 	c.metrics.secretsRedactedByRule.WithLabelValues("test_rule").Inc()
 	c.metrics.secretsRedactedByLabel.WithLabelValues("test_label", "test_value").Inc()
 	c.metrics.secretsAllowlistedTotal.WithLabelValues("test_source").Inc()
+	c.metrics.processingDuration.Observe(0.123)
 
 	// Check that the metrics are registered
 	metricFamilies, err := registry.Gather()
@@ -811,6 +838,7 @@ func TestMetricsRegistration(t *testing.T) {
 		"loki_secretfilter_secrets_redacted_by_rule_total":  false,
 		"loki_secretfilter_secrets_redacted_by_label_total": false,
 		"loki_secretfilter_secrets_allowlisted_total":       false,
+		"loki_secretfilter_processing_duration_seconds":     false,
 	}
 
 	// Check each metric family

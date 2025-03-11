@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/BurntSushi/toml"
 	"github.com/grafana/alloy/internal/component"
@@ -138,6 +139,9 @@ type metrics struct {
 
 	// Number of secrets that matched but were in allowlist
 	secretsAllowlistedTotal *prometheus.CounterVec
+
+	// Summary of time taken for redaction log processing
+	processingDuration prometheus.Summary
 }
 
 // newMetrics creates a new set of metrics for the secretfilter component.
@@ -168,11 +172,23 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 		Help:      "Number of secrets that matched a rule but were in an allowlist, partitioned by source.",
 	}, []string{"source"})
 
+	m.processingDuration = prometheus.NewSummary(prometheus.SummaryOpts{
+		Subsystem: "loki_secretfilter",
+		Name:      "processing_duration_seconds",
+		Help:      "Summary of the time taken to process and redact logs in seconds.",
+		Objectives: map[float64]float64{
+			0.5:  0.05,
+			0.9:  0.01,
+			0.99: 0.001,
+		},
+	})
+
 	if reg != nil {
 		m.secretsRedactedTotal = util.MustRegisterOrGet(reg, m.secretsRedactedTotal).(prometheus.Counter)
 		m.secretsRedactedByRule = util.MustRegisterOrGet(reg, m.secretsRedactedByRule).(*prometheus.CounterVec)
 		m.secretsRedactedByLabel = util.MustRegisterOrGet(reg, m.secretsRedactedByLabel).(*prometheus.CounterVec)
 		m.secretsAllowlistedTotal = util.MustRegisterOrGet(reg, m.secretsAllowlistedTotal).(*prometheus.CounterVec)
+		m.processingDuration = util.MustRegisterOrGet(reg, m.processingDuration).(prometheus.Summary)
 	}
 
 	return &m
@@ -234,6 +250,11 @@ func (c *Component) Run(ctx context.Context) error {
 }
 
 func (c *Component) processEntry(entry loki.Entry) loki.Entry {
+	start := time.Now()
+	defer func() {
+		c.metrics.processingDuration.Observe(time.Since(start).Seconds())
+	}()
+
 	for _, r := range c.Rules {
 		// To find the secret within the text captured by the regex (and avoid being too greedy), we can use the 'secretGroup' field in the gitleaks.toml file.
 		// But it's rare for regexes to have this field set, so we can use a simple heuristic in other cases.
