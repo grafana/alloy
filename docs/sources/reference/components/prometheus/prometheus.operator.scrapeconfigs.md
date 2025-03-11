@@ -30,7 +30,7 @@ prometheus.operator.scrapeconfigs "<LABEL>" {
 
 ## Arguments
 
-The following arguments are supported:
+You can use the following arguments with `prometheus.operator.scrapeconfigs`:
 
 | Name                    | Type                    | Description                                                                                             | Default | Required |
 | ----------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------- | ------- | -------- |
