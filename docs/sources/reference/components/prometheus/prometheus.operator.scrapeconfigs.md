@@ -56,9 +56,8 @@ You can use the following blocks with `prometheus.operator.scrapeconfigs`:
 | [`selector`][selector]                              | Label selector for which `scrapeconfigs` to discover.                                       | no       |
 | `selector` > [`match_expression`][match_expression] | Label selector expression for which `scrapeconfigs` to discover.                            | no       |
 
-The `>` symbol indicates deeper levels of nesting. For example, `client >
-basic_auth` refers to a `basic_auth` block defined
-inside a `client` block.
+The > symbol indicates deeper levels of nesting.
+For example, `client` > `basic_auth` refers to a `basic_auth` block defined inside a `client` block.
 
 [client]: #client-block
 [basic_auth]: #basic_auth-block
