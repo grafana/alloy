@@ -178,7 +178,7 @@ If {{< param "PRODUCT_NAME" >}} is _not_ running in clustered mode, then the blo
 
 ## Exported fields
 
-`prometheus.operator.scrapeconfigs` does not export any fields. It forwards all metrics it scrapes to the receiver configures with the `forward_to` argument.
+`prometheus.operator.scrapeconfigs` doesn't export any fields. It forwards all metrics it scrapes to the receiver configures with the `forward_to` argument.
 
 ## Component health
 
