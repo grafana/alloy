@@ -15,7 +15,6 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/vcenterreceiver"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/configopaque"
-	otelextension "go.opentelemetry.io/collector/extension"
 	"go.opentelemetry.io/collector/pipeline"
 )
 
@@ -74,6 +73,7 @@ type MetricsConfig struct {
 	VcenterHostDiskLatencyAvg          MetricConfig `alloy:"vcenter.host.disk.latency.avg,block,optional"`
 	VcenterHostDiskLatencyMax          MetricConfig `alloy:"vcenter.host.disk.latency.max,block,optional"`
 	VcenterHostDiskThroughput          MetricConfig `alloy:"vcenter.host.disk.throughput,block,optional"`
+	VcenterHostMemoryCapacity          MetricConfig `alloy:"vcenter.host.memory.capacity,block,optional"`
 	VcenterHostMemoryUsage             MetricConfig `alloy:"vcenter.host.memory.usage,block,optional"`
 	VcenterHostMemoryUtilization       MetricConfig `alloy:"vcenter.host.memory.utilization,block,optional"`
 	VcenterHostNetworkPacketRate       MetricConfig `alloy:"vcenter.host.network.packet.rate,block,optional"`
@@ -102,6 +102,7 @@ type MetricsConfig struct {
 	VcenterVMDiskUsage                 MetricConfig `alloy:"vcenter.vm.disk.usage,block,optional"`
 	VcenterVMDiskUtilization           MetricConfig `alloy:"vcenter.vm.disk.utilization,block,optional"`
 	VcenterVMMemoryBallooned           MetricConfig `alloy:"vcenter.vm.memory.ballooned,block,optional"`
+	VcenterVMMemoryGranted             MetricConfig `alloy:"vcenter.vm.memory.granted,block,optional"`
 	VcenterVMMemorySwapped             MetricConfig `alloy:"vcenter.vm.memory.swapped,block,optional"`
 	VcenterVMMemorySwappedSsd          MetricConfig `alloy:"vcenter.vm.memory.swapped_ssd,block,optional"`
 	VcenterVMMemoryUsage               MetricConfig `alloy:"vcenter.vm.memory.usage,block,optional"`
@@ -144,6 +145,7 @@ func (args *MetricsConfig) SetToDefault() {
 		VcenterHostDiskLatencyAvg:          MetricConfig{Enabled: true},
 		VcenterHostDiskLatencyMax:          MetricConfig{Enabled: true},
 		VcenterHostDiskThroughput:          MetricConfig{Enabled: true},
+		VcenterHostMemoryCapacity:          MetricConfig{Enabled: false},
 		VcenterHostMemoryUsage:             MetricConfig{Enabled: true},
 		VcenterHostMemoryUtilization:       MetricConfig{Enabled: true},
 		VcenterHostNetworkPacketRate:       MetricConfig{Enabled: true},
@@ -172,6 +174,7 @@ func (args *MetricsConfig) SetToDefault() {
 		VcenterVMDiskUsage:                 MetricConfig{Enabled: true},
 		VcenterVMDiskUtilization:           MetricConfig{Enabled: true},
 		VcenterVMMemoryBallooned:           MetricConfig{Enabled: true},
+		VcenterVMMemoryGranted:             MetricConfig{Enabled: false},
 		VcenterVMMemorySwapped:             MetricConfig{Enabled: true},
 		VcenterVMMemorySwappedSsd:          MetricConfig{Enabled: true},
 		VcenterVMMemoryUsage:               MetricConfig{Enabled: true},
@@ -219,6 +222,7 @@ func (args *MetricsConfig) Convert() map[string]interface{} {
 		"vcenter.host.disk.latency.avg":          args.VcenterHostDiskLatencyAvg.Convert(),
 		"vcenter.host.disk.latency.max":          args.VcenterHostDiskLatencyMax.Convert(),
 		"vcenter.host.disk.throughput":           args.VcenterHostDiskThroughput.Convert(),
+		"vcenter.host.memory.capacity":           args.VcenterHostMemoryCapacity.Convert(),
 		"vcenter.host.memory.usage":              args.VcenterHostMemoryUsage.Convert(),
 		"vcenter.host.memory.utilization":        args.VcenterHostMemoryUtilization.Convert(),
 		"vcenter.host.network.packet.rate":       args.VcenterHostNetworkPacketRate.Convert(),
@@ -247,6 +251,7 @@ func (args *MetricsConfig) Convert() map[string]interface{} {
 		"vcenter.vm.disk.usage":                  args.VcenterVMDiskUsage.Convert(),
 		"vcenter.vm.disk.utilization":            args.VcenterVMDiskUtilization.Convert(),
 		"vcenter.vm.memory.ballooned":            args.VcenterVMMemoryBallooned.Convert(),
+		"vcenter.vm.memory.granted":              args.VcenterVMMemoryGranted.Convert(),
 		"vcenter.vm.memory.swapped":              args.VcenterVMMemorySwapped.Convert(),
 		"vcenter.vm.memory.swapped_ssd":          args.VcenterVMMemorySwappedSsd.Convert(),
 		"vcenter.vm.memory.usage":                args.VcenterVMMemoryUsage.Convert(),
@@ -416,7 +421,7 @@ func (args Arguments) Validate() error {
 }
 
 // Extensions implements receiver.Arguments.
-func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
+func (args Arguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 

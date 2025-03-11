@@ -376,7 +376,8 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 			if !profile.Labels.IsEmpty() {
 				ls := labelset.New(make(map[string]string))
 
-				profile.Labels.Range(func(l labels.Label) {
+				finalLabels := ensureNameMatchesService(profile.Labels)
+				finalLabels.Range(func(l labels.Label) {
 					ls.Add(l.Name, l.Value)
 				})
 
@@ -455,4 +456,13 @@ func (i *agentInterceptor) WrapStreamingClient(next connect.StreamingClientFunc)
 
 func (i *agentInterceptor) WrapStreamingHandler(next connect.StreamingHandlerFunc) connect.StreamingHandlerFunc {
 	return next
+}
+
+func ensureNameMatchesService(lbls labels.Labels) labels.Labels {
+	if serviceName := lbls.Get(pyroscope.LabelServiceName); serviceName != "" {
+		builder := labels.NewBuilder(lbls)
+		builder.Set(pyroscope.LabelName, serviceName)
+		return builder.Labels()
+	}
+	return lbls
 }

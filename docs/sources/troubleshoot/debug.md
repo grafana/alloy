@@ -113,6 +113,7 @@ Supported components:
 * `prometheus.remote_write`
 * `prometheus.relabel`
 * `discovery.*`
+* `prometheus.scrape`
 {{< /admonition >}}
 
 ## Debug using the UI

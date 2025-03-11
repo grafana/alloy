@@ -65,6 +65,7 @@ type TLSSetting struct {
 	ReloadInterval           time.Duration     `alloy:"reload_interval,attr,optional"`
 	CipherSuites             []string          `alloy:"cipher_suites,attr,optional"`
 	IncludeSystemCACertsPool bool              `alloy:"include_system_ca_certs_pool,attr,optional"`
+	CurvePreferences         []string          `alloy:"curve_preferences,attr,optional"`
 }
 
 func (args *TLSSetting) Convert() *otelconfigtls.Config {
@@ -84,6 +85,7 @@ func (args *TLSSetting) Convert() *otelconfigtls.Config {
 		ReloadInterval:           args.ReloadInterval,
 		CipherSuites:             args.CipherSuites,
 		IncludeSystemCACertsPool: args.IncludeSystemCACertsPool,
+		CurvePreferences:         args.CurvePreferences,
 	}
 }
 

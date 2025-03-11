@@ -16,7 +16,6 @@ import (
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelconsumer "go.opentelemetry.io/collector/consumer"
 	otelexporter "go.opentelemetry.io/collector/exporter"
-	otelextension "go.opentelemetry.io/collector/extension"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	"go.opentelemetry.io/collector/pipeline"
 )
@@ -131,7 +130,7 @@ func (fa fakeExporterArgs) Convert() (otelcomponent.Config, error) {
 	return &struct{}{}, nil
 }
 
-func (fa fakeExporterArgs) Extensions() map[otelcomponent.ID]otelextension.Extension {
+func (fa fakeExporterArgs) Extensions() map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 

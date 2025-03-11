@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"path"
-	"reflect"
 	"strings"
 	"sync"
 	"time"
@@ -12,6 +11,7 @@ import (
 	"github.com/go-kit/log"
 
 	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/runtime/equality"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/vm"
 )
@@ -114,7 +114,7 @@ func NewCustomComponentNode(globals ComponentGlobals, b *ast.BlockStmt, getConfi
 		componentName:       componentName,
 		importNamespace:     importNamespace,
 		customComponentName: customComponentName,
-		moduleController:    globals.NewModuleController(globalID),
+		moduleController:    globals.NewModuleController(ModuleControllerOpts{Id: globalID}),
 		OnBlockNodeUpdate:   globals.OnBlockNodeUpdate,
 		logger:              log.With(globals.Logger, "component_path", parent, "component_id", node),
 		getConfig:           getConfig,
@@ -264,7 +264,7 @@ func (cn *CustomComponentNode) setExports(e component.Exports) {
 	var changed bool
 
 	cn.exportsMut.Lock()
-	if !reflect.DeepEqual(cn.exports, e) {
+	if !equality.DeepEqual(cn.exports, e) {
 		changed = true
 		cn.exports = e
 	}

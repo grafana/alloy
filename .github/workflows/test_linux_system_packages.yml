@@ -1,0 +1,34 @@
+name: Test Linux system packages
+on:
+  push:
+    branches:
+      - main
+    paths:
+    - packaging/**
+    - internal/tools/packaging_test/**
+    - Makefile
+    - tools/make/*.mk
+jobs:
+  test_linux_system_packages:
+    name: Test Linux system packages
+    runs-on: ubuntu-latest
+    container:
+      image: grafana/alloy-build-image:v0.1.8
+      volumes:
+        - /var/run/docker.sock
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Set ownership
+      # https://github.com/actions/runner/issues/2033#issuecomment-1204205989
+      run: |
+          # this is to fix GIT not liking owner of the checkout dir
+          chown -R $(id -u):$(id -g) $PWD
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: go.mod
+        # TODO: Enable caching later
+        cache: false
+    - run: DOCKER_OPTS="" make dist/alloy-linux-amd64
+    - run: DOCKER_OPTS="" make test-packages

@@ -15,7 +15,6 @@ import (
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelconfiggrpc "go.opentelemetry.io/collector/config/configgrpc"
 	otelconfighttp "go.opentelemetry.io/collector/config/confighttp"
-	otelextension "go.opentelemetry.io/collector/extension"
 	"go.opentelemetry.io/collector/pipeline"
 )
 
@@ -77,17 +76,17 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	}
 	return &jaegerreceiver.Config{
 		Protocols: jaegerreceiver.Protocols{
-			GRPC:          grpcProtocol,
-			ThriftHTTP:    httpProtocol,
-			ThriftBinary:  args.Protocols.ThriftBinary.Convert(),
-			ThriftCompact: args.Protocols.ThriftCompact.Convert(),
+			GRPC:             grpcProtocol,
+			ThriftHTTP:       httpProtocol,
+			ThriftBinaryUDP:  args.Protocols.ThriftBinary.Convert(),
+			ThriftCompactUDP: args.Protocols.ThriftCompact.Convert(),
 		},
 	}, nil
 }
 
 // Extensions implements receiver.Arguments.
-func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
-	extensionMap := make(map[otelcomponent.ID]otelextension.Extension)
+func (args Arguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
+	extensionMap := make(map[otelcomponent.ID]otelcomponent.Component)
 
 	// Gets the extensions for the HTTP server and GRPC server
 	if args.Protocols.ThriftHTTP != nil && args.Protocols.ThriftHTTP.HTTPServerArguments != nil {

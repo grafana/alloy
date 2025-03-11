@@ -1,7 +1,6 @@
 package stages
 
 import (
-	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -90,7 +89,7 @@ func TestWindowsEvent(t *testing.T) {
 				"DetailedAuthenticationInformation_LogonProcess":          "Advapi",
 				"DetailedAuthenticationInformation_AuthenticationPackage": "Negotiate",
 				"DetailedAuthenticationInformation_TransitedServices":     "-",
-				"DetailedAuthenticationInformation_PackageName_NTLMonly_": "-",
+				"DetailedAuthenticationInformation_PackageName(NTLMonly)": "-",
 				"DetailedAuthenticationInformation_KeyLength":             "0",
 			},
 		},
@@ -146,7 +145,7 @@ func TestWindowsEventArgs(t *testing.T) {
 		"DropInvalid": {
 			config:    testWindowsEventMsgDropInvalidLabels,
 			sourcekey: "message",
-			msgdata:   "This is a test message.\r\n\r\nInvalid(label): Value 1\r\nKey2: Value 2",
+			msgdata:   "This is a test message.\r\n\r\n\xff\xfe\xfd: Value 1\r\nKey2: Value 2",
 			extractedValues: map[string]interface{}{
 				"Description":  "This is a test message.",
 				"Key2":         "Value 2",
@@ -204,14 +203,6 @@ func TestWindowsEventValidate(t *testing.T) {
 		"valid config": {
 			`stage.windowsevent { source = "msg"}`,
 			nil,
-		},
-		"invalid config": {
-			`stage.windowsevent { source = 1}`,
-			errors.New("invalid label name: 1"),
-		},
-		"invalid source": {
-			`stage.windowsevent { source = "the message"}`,
-			fmt.Errorf(ErrInvalidLabelName, "the message"),
 		},
 		"empty source": {
 			`stage.windowsevent { source = ""}`,

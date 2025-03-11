@@ -5,7 +5,7 @@ title: local
 weight: 100
 ---
 
-# local
+# `local`
 
 This section contains reference documentation for the `local` components.
 

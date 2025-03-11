@@ -2,7 +2,9 @@
 
 package process
 
-import "github.com/grafana/alloy/internal/component/discovery"
+import (
+	"github.com/grafana/alloy/internal/component/discovery"
+)
 
 func join(processes, containers []discovery.Target) []discovery.Target {
 	res := make([]discovery.Target, 0, len(processes)+len(containers))
@@ -27,14 +29,9 @@ func join(processes, containers []discovery.Target) []discovery.Target {
 			res = append(res, p)
 			continue
 		}
-		mergedTarget := make(discovery.Target, len(p)+len(container))
-		for k, v := range p {
-			mergedTarget[k] = v
-		}
-		for k, v := range container {
-			mergedTarget[k] = v
-		}
-		res = append(res, mergedTarget)
+		mergedBuilder := discovery.NewTargetBuilderFrom(p)
+		mergedBuilder.MergeWith(container)
+		res = append(res, mergedBuilder.Target())
 	}
 	for _, target := range cid2container {
 		res = append(res, target)

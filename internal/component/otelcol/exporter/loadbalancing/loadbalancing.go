@@ -22,7 +22,6 @@ import (
 	"go.opentelemetry.io/collector/config/configopaque"
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
 	"go.opentelemetry.io/collector/exporter/otlpexporter"
-	otelextension "go.opentelemetry.io/collector/extension"
 	"go.opentelemetry.io/collector/pipeline"
 )
 
@@ -346,7 +345,7 @@ func (r *AWSCloudMapResolver) Convert() *loadbalancingexporter.AWSCloudMapResolv
 }
 
 // Extensions implements exporter.Arguments.
-func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
+func (args Arguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
 	return args.Protocol.OTLP.Client.Extensions()
 }
 
@@ -427,8 +426,8 @@ func (args *GRPCClientArguments) Convert() (*otelconfiggrpc.ClientConfig, error)
 }
 
 // Extensions exposes extensions used by args.
-func (args *GRPCClientArguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
-	m := make(map[otelcomponent.ID]otelextension.Extension)
+func (args *GRPCClientArguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
+	m := make(map[otelcomponent.ID]otelcomponent.Component)
 	if args.Authentication != nil {
 		ext, err := args.Authentication.GetExtension(auth.Client)
 		if err != nil {

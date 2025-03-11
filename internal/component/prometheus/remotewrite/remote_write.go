@@ -85,7 +85,7 @@ func New(o component.Options, c Arguments) (*Component, error) {
 	}
 
 	remoteLogger := log.With(o.Logger, "subcomponent", "rw")
-	remoteStore := remote.NewStorage(remoteLogger, o.Registerer, startTime, o.DataPath, remoteFlushDeadline, nil)
+	remoteStore := remote.NewStorage(remoteLogger, o.Registerer, startTime, o.DataPath, remoteFlushDeadline, nil, false)
 
 	walStorage.SetNotifier(remoteStore)
 
@@ -130,7 +130,7 @@ func New(o component.Options, c Arguments) (*Component, error) {
 				ls.GetOrAddLink(res.opts.ID, uint64(newRef), l)
 			}
 			if res.debugDataPublisher.IsActive(componentID) {
-				res.debugDataPublisher.Publish(componentID, fmt.Sprintf("ts=%d, labels=%s, value=%f", t, l, v))
+				res.debugDataPublisher.Publish(componentID, fmt.Sprintf("sample: ts=%d, labels=%s, value=%f", t, l, v))
 			}
 			return globalRef, nextErr
 		}),
@@ -147,11 +147,11 @@ func New(o component.Options, c Arguments) (*Component, error) {
 			if res.debugDataPublisher.IsActive(componentID) {
 				var data string
 				if h != nil {
-					data = fmt.Sprintf("ts=%d, labels=%s, histogram=%s", t, l, h.String())
+					data = fmt.Sprintf("histogram: ts=%d, labels=%s, value=%s", t, l, h.String())
 				} else if fh != nil {
-					data = fmt.Sprintf("ts=%d, labels=%s, float_histogram=%s", t, l, fh.String())
+					data = fmt.Sprintf("float_histogram: ts=%d, labels=%s, value=%s", t, l, fh.String())
 				} else {
-					data = fmt.Sprintf("ts=%d, labels=%s, no_value", t, l)
+					data = fmt.Sprintf("histogram_with_no_value: ts=%d, labels=%s", t, l)
 				}
 				res.debugDataPublisher.Publish(componentID, data)
 			}
@@ -168,7 +168,7 @@ func New(o component.Options, c Arguments) (*Component, error) {
 				ls.GetOrAddLink(res.opts.ID, uint64(newRef), l)
 			}
 			if res.debugDataPublisher.IsActive(componentID) {
-				res.debugDataPublisher.Publish(componentID, fmt.Sprintf("labels=%s, type=%s, unit=%s, help=%s", l, m.Type, m.Unit, m.Help))
+				res.debugDataPublisher.Publish(componentID, fmt.Sprintf("metadata: labels=%s, type=%q, unit=%q, help=%q", l, m.Type, m.Unit, m.Help))
 			}
 			return globalRef, nextErr
 		}),
@@ -183,7 +183,7 @@ func New(o component.Options, c Arguments) (*Component, error) {
 				ls.GetOrAddLink(res.opts.ID, uint64(newRef), l)
 			}
 			if res.debugDataPublisher.IsActive(componentID) {
-				res.debugDataPublisher.Publish(componentID, fmt.Sprintf("ts=%d, labels=%s, exemplar_labels=%s, value=%f", e.Ts, l, e.Labels, e.Value))
+				res.debugDataPublisher.Publish(componentID, fmt.Sprintf("exemplar: ts=%d, labels=%s, exemplar_labels=%s, value=%f", e.Ts, l, e.Labels, e.Value))
 			}
 			return globalRef, nextErr
 		}),

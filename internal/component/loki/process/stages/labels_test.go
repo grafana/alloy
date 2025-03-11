@@ -92,9 +92,9 @@ func TestLabels(t *testing.T) {
 		},
 		"invalid label name": {
 			config: LabelsConfig{
-				Values: map[string]*string{"#*FDDS*": nil},
+				Values: map[string]*string{"\xfd": nil},
 			},
-			err:          fmt.Errorf(ErrInvalidLabelName, "#*FDDS*"),
+			err:          fmt.Errorf(ErrInvalidLabelName, "\xfd"),
 			expectedCfgs: nil,
 		},
 		"label value is set from name": {

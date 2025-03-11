@@ -264,7 +264,7 @@ func Test_parseMessage_message_without_time_with_time_stamp(t *testing.T) {
 	assert.Len(t, entries, 1)
 
 	expectedLine1 := "{\n      \"timeStamp\": \"2024-09-18T00:45:09+00:00\",\n      \"resourceId\": \"/RESOURCE_ID\",\n      \"operationName\": \"ApplicationGatewayAccess\",\n      \"category\": \"ApplicationGatewayAccessLog\"\n    }"
-	assert.Equal(t, expectedLine1, entries[0].Line)
+	assert.Equal(t, expectedLine1, removeCRLFIfWindows(entries[0].Line))
 
 	assert.Equal(t, time.Date(2024, time.September, 18, 00, 45, 9, 0, time.UTC), entries[0].Timestamp)
 }

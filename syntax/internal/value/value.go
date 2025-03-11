@@ -199,17 +199,10 @@ func (v Value) Text() string {
 		panic("syntax/value: Text called on non-string type")
 	}
 
-	// Attempt to get an address to v.rv for interface checking.
-	//
-	// The normal v.rv value is used for other checks.
-	addrRV := v.rv
-	if addrRV.CanAddr() {
-		addrRV = addrRV.Addr()
-	}
 	switch {
-	case addrRV.Type().Implements(goTextMarshaler):
+	case v.Implements(goTextMarshaler):
 		// TODO(rfratto): what should we do if this fails?
-		text, _ := addrRV.Interface().(encoding.TextMarshaler).MarshalText()
+		text, _ := v.ReflectAddr().Interface().(encoding.TextMarshaler).MarshalText()
 		return string(text)
 
 	case v.rv.Type() == goDuration:
@@ -219,6 +212,10 @@ func (v Value) Text() string {
 	default:
 		return v.rv.String()
 	}
+}
+
+func (v Value) IsString() bool {
+	return v.Type() == TypeString
 }
 
 // Len returns the length of v. Panics if v is not an array or object.
@@ -258,8 +255,34 @@ func (v Value) Interface() interface{} {
 	return v.rv.Interface()
 }
 
+func (v Value) Implements(t reflect.Type) bool {
+	return v.ReflectAddr().Type().Implements(t)
+}
+
 // Reflect returns the raw reflection value backing v.
 func (v Value) Reflect() reflect.Value { return v.rv }
+
+// ReflectAddr is like Reflect, but attempts to get an address of the raw reflection value where possible.
+func (v Value) ReflectAddr() reflect.Value {
+	// Attempt to get an address to v.rv
+	addrRV := v.rv
+	if addrRV.CanAddr() {
+		addrRV = addrRV.Addr()
+	}
+	return addrRV
+}
+
+// TryConvertToObject will try to convert v into an Alloy object in a map[string]Value form. Returns (object, true) if
+// successful or (nil, false) if conversion was not possible.
+func (v Value) TryConvertToObject() (map[string]Value, bool) {
+	if v.Type() == TypeCapsule && v.Implements(reflect.TypeFor[ConvertibleIntoCapsule]()) {
+		objVal := make(map[string]Value)
+		if err := v.ReflectAddr().Interface().(ConvertibleIntoCapsule).ConvertInto(&objVal); err == nil {
+			return objVal, true
+		}
+	}
+	return nil, false
+}
 
 // makeValue converts a reflect value into a Value, dereferencing any pointers or
 // interface{} values.

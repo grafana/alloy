@@ -3,15 +3,18 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus
 aliases:
   - ../prometheus.exporter.mongodb/ # /docs/alloy/latest/reference/components/prometheus.exporter.mongodb/
 description: Learn about prometheus.exporter.mongodb
+labels:
+  stage: general-availability
 title: prometheus.exporter.mongodb
 ---
 
-# prometheus.exporter.mongodb
+# `prometheus.exporter.mongodb`
 
-The `prometheus.exporter.mongodb` component embeds percona's [`mongodb_exporter`](https://github.com/percona/mongodb_exporter).
+The `prometheus.exporter.mongodb` component embeds the Percona [`mongodb_exporter`](https://github.com/percona/mongodb_exporter).
 
 {{< admonition type="note" >}}
-This exporter doesn't collect metrics from multiple nodes. For this integration to work properly, you must have connect each node of your MongoDB cluster to an {{< param "PRODUCT_NAME" >}} instance.
+This exporter doesn't collect metrics from multiple nodes.
+For this integration to work properly, you must connect each node of your MongoDB cluster to an {{< param "PRODUCT_NAME" >}} instance.
 {{< /admonition >}}
 
 We strongly recommend configuring a separate user for {{< param "PRODUCT_NAME" >}}, giving it only the strictly mandatory security privileges necessary for monitoring your node.
@@ -20,26 +23,26 @@ Refer to the [Percona documentation](https://github.com/percona/mongodb_exporter
 ## Usage
 
 ```alloy
-prometheus.exporter.mongodb "LABEL" {
-    mongodb_uri = "MONGODB_URI"
+prometheus.exporter.mongodb "<LABEL>" {
+    mongodb_uri = "<MONGODB_URI>"
 }
 ```
 
 ## Arguments
 
-You can use the following arguments to configure the exporter's behavior.
-Omitted fields take their default values.
+You can use the following arguments with `prometheus.exporter.mongodb`:
 
-| Name                         | Type      | Description                                                                                                                             | Default | Required |
-| ---------------------------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
-| `mongodb_uri`                | `string`  | MongoDB node connection URI.                                                                                                            |         | yes      |
-| `direct_connect`             | `boolean` | Whether or not a direct connect should be made. Direct connections are not valid if multiple hosts are specified or an SRV URI is used. | false   | no       |
-| `discovering_mode`           | `boolean` | Wheter or not to enable autodiscover collections.                                                                                       | false   | no       |
-| `tls_basic_auth_config_path` | `string`  | Path to the file having Prometheus TLS config for basic auth. Only enable if you want to use TLS based authentication.                  |         | no       |
+| Name                         | Type      | Description                                                                                                                            | Default | Required |
+| ---------------------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
+| `mongodb_uri`                | `string`  | MongoDB node connection URI.                                                                                                           |         | yes      |
+| `direct_connect`             | `boolean` | Whether or not a direct connect should be made. Direct connections aren't valid if multiple hosts are specified or an SRV URI is used. | false   | no       |
+| `discovering_mode`           | `boolean` | Whether or not to enable autodiscover collections.                                                                                     | false   | no       |
 
 MongoDB node connection URI must be in the [`Standard Connection String Format`](https://docs.mongodb.com/manual/reference/connection-string/#std-label-connections-standard-connection-string-format)
 
-For `tls_basic_auth_config_path`, check [`tls_config`](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#tls_config) for reference on the file format to be used.
+## Blocks
+
+The `prometheus.exporter.mongodb` component doesn't support any blocks. You can configure this component with arguments.
 
 ## Exported fields
 
@@ -47,24 +50,20 @@ For `tls_basic_auth_config_path`, check [`tls_config`](https://prometheus.io/doc
 
 ## Component health
 
-`prometheus.exporter.mongodb` is only reported as unhealthy if given
-an invalid configuration. In those cases, exported fields retain their last
-healthy values.
+`prometheus.exporter.mongodb` is only reported as unhealthy if given an invalid configuration.
+In those cases, exported fields retain their last healthy values.
 
 ## Debug information
 
-`prometheus.exporter.mongodb` does not expose any component-specific
-debug information.
+`prometheus.exporter.mongodb` doesn't expose any component-specific debug information.
 
 ## Debug metrics
 
-`prometheus.exporter.mongodb` does not expose any component-specific
-debug metrics.
+`prometheus.exporter.mongodb` doesn't expose any component-specific debug metrics.
 
 ## Example
 
-This example uses a [`prometheus.scrape` component][scrape] to collect metrics
-from `prometheus.exporter.mongodb`:
+The following example uses a [`prometheus.scrape` component][scrape] to collect metrics from `prometheus.exporter.mongodb`:
 
 ```alloy
 prometheus.exporter.mongodb "example" {
@@ -79,10 +78,14 @@ prometheus.scrape "demo" {
 
 prometheus.remote_write "default" {
   endpoint {
-    url = "REMOTE_WRITE_URL"
+    url = "<PROMETHEUS_REMOTE_WRITE_URL>"
   }
 }
 ```
+
+Replace the following:
+
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
 
 [scrape]: ../prometheus.scrape/
 

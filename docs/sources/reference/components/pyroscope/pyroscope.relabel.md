@@ -3,24 +3,27 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/pyroscope/
 aliases:
   - ../pyroscope.relabel/ # /docs/alloy/latest/reference/components/pyroscope.relabel/
 description: Learn about pyroscope.relabel
+labels:
+  stage: public-preview
 title: pyroscope.relabel
 ---
 
-<span class="badge docs-labels__stage docs-labels__item">Public preview</span>
-
 # `pyroscope.relabel`
+
+{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 The `pyroscope.relabel` component rewrites the label set of each profile passed to its receiver by applying one or more relabeling rules and forwards the results to the list of receivers.
 
 If no rules are defined or applicable to some profiles, then those profiles are forwarded as-is to each receiver passed in the component's arguments. 
 The profile is dropped if no labels remain after the relabeling rules are applied.
 
-The most common use of `pyroscope.relabel` is to filter profiles or standardize the label set that is passed to one or more downstream receivers. The `rule` blocks are applied to the label set of each profile in order of their appearance in the configuration file.
+The most common use of `pyroscope.relabel` is to filter profiles or standardize the label set that is passed to one or more downstream receivers.
+The `rule` blocks are applied to the label set of each profile in order of their appearance in the configuration file.
 
 ## Usage
 
 ```alloy
-pyroscope.relabel "LABEL" {
+pyroscope.relabel "<LABEL>" {
     forward_to = <RECEIVER_LIST>
 
     rule {
@@ -42,7 +45,7 @@ You can use the following arguments with `pyroscope.relabel`:
 
 ## Blocks
 
-You can use the following blocks with `pyroscope.relabel`:
+You can use the following block with `pyroscope.relabel`:
 
 |      Name      |                      Description                       | Required |
 | -------------- | ------------------------------------------------------ | -------- |

@@ -12,6 +12,7 @@ type QueueArguments struct {
 	Enabled      bool `alloy:"enabled,attr,optional"`
 	NumConsumers int  `alloy:"num_consumers,attr,optional"`
 	QueueSize    int  `alloy:"queue_size,attr,optional"`
+	Blocking     bool `alloy:"blocking,attr,optional"`
 
 	// TODO(rfratto): queues can send to persistent storage through an extension.
 }
@@ -41,6 +42,7 @@ func (args *QueueArguments) Convert() *otelexporterhelper.QueueConfig {
 		Enabled:      args.Enabled,
 		NumConsumers: args.NumConsumers,
 		QueueSize:    args.QueueSize,
+		Blocking:     args.Blocking,
 	}
 }
 
