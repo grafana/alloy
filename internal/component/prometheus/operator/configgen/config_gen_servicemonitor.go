@@ -66,8 +66,8 @@ func (cg *ConfigGenerator) GenerateServiceMonitorConfig(m *promopv1.ServiceMonit
 	}
 	if ep.BearerTokenFile != "" {
 		cfg.HTTPClientConfig.BearerTokenFile = ep.BearerTokenFile
-	} else if ep.BearerTokenSecret.Name != "" {
-		val, err := cg.Secrets.GetSecretValue(m.Namespace, ep.BearerTokenSecret)
+	} else if ep.BearerTokenSecret != nil && ep.BearerTokenSecret.Name != "" {
+		val, err := cg.Secrets.GetSecretValue(m.Namespace, *ep.BearerTokenSecret)
 		if err != nil {
 			return nil, err
 		}
@@ -302,11 +302,11 @@ func (cg *ConfigGenerator) GenerateServiceMonitorConfig(m *promopv1.ServiceMonit
 	}
 	cfg.MetricRelabelConfigs = metricRelabels.configs
 
-	cfg.SampleLimit = uint(m.Spec.SampleLimit)
-	cfg.TargetLimit = uint(m.Spec.TargetLimit)
-	cfg.LabelLimit = uint(m.Spec.LabelLimit)
-	cfg.LabelNameLengthLimit = uint(m.Spec.LabelNameLengthLimit)
-	cfg.LabelValueLengthLimit = uint(m.Spec.LabelValueLengthLimit)
+	cfg.SampleLimit = uint(defaultIfNil(m.Spec.SampleLimit, 0))
+	cfg.TargetLimit = uint(defaultIfNil(m.Spec.TargetLimit, 0))
+	cfg.LabelLimit = uint(defaultIfNil(m.Spec.LabelLimit, 0))
+	cfg.LabelNameLengthLimit = uint(defaultIfNil(m.Spec.LabelNameLengthLimit, 0))
+	cfg.LabelValueLengthLimit = uint(defaultIfNil(m.Spec.LabelValueLengthLimit, 0))
 
 	return cfg, cfg.Validate(cg.ScrapeOptions.GlobalConfig())
 }
