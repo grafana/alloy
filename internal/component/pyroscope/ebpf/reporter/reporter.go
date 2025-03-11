@@ -36,7 +36,7 @@ func New(
 		return nil, err
 	}
 
-	if !ReporterTypeOTEL(cfg) {
+	if !reporterTypeOTEL(cfg) {
 		return NewPPROF(log, cgroups, &Config{
 			ExtraNativeSymbolResolver: nfs,
 			CGroupCacheElements:       1024,
@@ -88,7 +88,8 @@ func New(
 		ExtraNativeSymbolResolver: nfs,
 		ExtraSampleAttrProd:       sap,
 	}
-	return reporter.NewOTLP(reporterConfig, cgroups)
+	cgroupsSynced := cgroups.(*freelru.SyncedLRU[libpf.PID, string])
+	return reporter.NewOTLP(reporterConfig, cgroupsSynced)
 }
 
 func reporterTypeOTEL(cfg *controller.Config) bool {
