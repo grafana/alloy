@@ -27,7 +27,7 @@ You can use the following arguments with `prometheus.exporter.mssql`:
 | Name                   | Type       | Description                                                         | Default | Required |
 | ---------------------- | ---------- | ------------------------------------------------------------------- | ------- | -------- |
 | `connection_string`    | `secret`   | The connection string used to connect to an Microsoft SQL Server.   |         | yes      |
-| `connection_name`      | `string`   | The name for the connection to report `up` metrics for.             |         | no       |
+| `connection_name`      | `string`   | The name for the connection to report `up` metrics for.             | `""`    | no       |
 | `max_idle_connections` | `int`      | Maximum number of idle connections to any one target.               | `3`     | no       |
 | `max_open_connections` | `int`      | Maximum number of open connections to any one target.               | `3`     | no       |
 | `timeout`              | `duration` | The query timeout in seconds.                                       | `"10s"` | no       |
