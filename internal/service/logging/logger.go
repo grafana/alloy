@@ -49,6 +49,19 @@ func New(w io.Writer, o Options) (*Logger, error) {
 		return nil, err
 	}
 
+	// Apply the options
+	l.level.Set(slogLevel(o.Level).Level())
+	l.format.Set(o.Format)
+	l.writer.SetInnerWriter(w)
+	if o.WriteTo != nil {
+		l.writer.SetLokiWriter(&lokiWriter{f: o.WriteTo})
+	}
+
+	// Mark that we have a log format configured
+	l.bufferMut.Lock()
+	l.hasLogFormat = true
+	l.bufferMut.Unlock()
+
 	return l, nil
 }
 
