@@ -35,6 +35,10 @@ Main (unreleased)
 
 - Add support for proxy and headers in `prometheus.write.queue`. (@mattdurham)
 
+- (_Experimental_) Various changes to the experimental component `database_observability.mysql`:
+  - `query_sample`: better handling of truncated queries (@cristiangreco)
+  - `query_sample`: add option to use TiDB sql parser (@cristiangreco)
+
 ### Other changes
 
 - Upgrading to Prometheus v2.55.1. (@ptodev)
@@ -63,9 +67,6 @@ v1.7.2
 
 v1.7.1
 -----------------
-
-- (_Experimental_) Various changes to the experimental component `database_observability.mysql`:
-  - `query_sample`: better handling of truncated queries (@cristiangreco)
 
 ### Bugfixes
 
@@ -98,6 +99,8 @@ v1.7.0
   cumulative temporality to delta. (@madaraszg-tulip)
 
 - (_Experimental_) Add a `stage.windowsevent` block in the `loki.process` component. This aims to replace the existing `stage.eventlogmessage`. (@wildum)
+
+- (_Experimental_) Adding a new `prometheus.operator.scrapeconfigs` which discovers and scrapes [ScrapeConfig](https://prometheus-operator.dev/docs/developer/scrapeconfig/) Kubernetes resources. (@alex-berger)
 
 - Add `pyroscope.relabel` component to modify or filter profiles using Prometheus relabeling rules. (@marcsanmi)
 
