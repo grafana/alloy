@@ -768,8 +768,6 @@ github.com/denverdino/aliyungo v0.0.0-20170926055100-d3308649c661/go.mod h1:dV8l
 github.com/denverdino/aliyungo v0.0.0-20190125010748-a747050bb1ba h1:p6poVbjHDkKa+wtC8frBMwQtT3BmqGYBjzMwJ63tuR4=
 github.com/denverdino/aliyungo v0.0.0-20190125010748-a747050bb1ba/go.mod h1:dV8lFg6daOBZbT6/BDGIz6Y3WFGn8juu6G+CQ6LHtl0=
 github.com/devigned/tab v0.1.1/go.mod h1:XG9mPq0dFghrYvoBF3xdRrJzSTX1b7IQrvaL9mzjeJY=
-github.com/dgraph-io/ristretto/v2 v2.1.0 h1:59LjpOJLNDULHh8MC4UaegN52lC4JnO2dITsie/Pa8I=
-github.com/dgraph-io/ristretto/v2 v2.1.0/go.mod h1:uejeqfYXpUomfse0+lO+13ATz4TypQYLJZzBSAemuB4=
 github.com/dgrijalva/jwt-go v3.2.0+incompatible/go.mod h1:E3ru+11k8xSBh+hMPgOLZmtrrCbhqsmaPHjLKYnJCaQ=
 github.com/dgrijalva/jwt-go/v4 v4.0.0-preview1/go.mod h1:+hnT3ywWDTAFrW5aE+u2Sa/wT555ZqwoCS+pk3p6ry4=
 github.com/dgryski/go-farm v0.0.0-20190423205320-6a90982ecee2/go.mod h1:SqUrOPUnsFjfmXRMNPybcSiG0BgUW2AuFH8PAnS2iTw=
@@ -1287,8 +1285,8 @@ github.com/grafana/node_exporter v0.18.1-grafana-r01.0.20250218170810-6300fab821
 github.com/grafana/node_exporter v0.18.1-grafana-r01.0.20250218170810-6300fab82195/go.mod h1:onpUlSx7BWY8aO+tr3DChzBJB06pZfZ4gltVtsRXLFA=
 github.com/grafana/opentelemetry-collector/featuregate v0.0.0-20240325174506-2fd1623b2ca0 h1:i/Ne0XwoRokYj52ZcSmnvuyID3h/uA91n0Ycg/grHU8=
 github.com/grafana/opentelemetry-collector/featuregate v0.0.0-20240325174506-2fd1623b2ca0/go.mod h1:mm8+xyQfgDmqhyegZRNIQmoKsNnDTwWKFLsdMoXAb7A=
-github.com/grafana/opentelemetry-ebpf-profiler v0.0.0-20250310125100-55475ecfb8c0 h1:0IkuoiWDQ58l3wtGMe8A+eHf4blK3vQWLGIDrW3ihVA=
-github.com/grafana/opentelemetry-ebpf-profiler v0.0.0-20250310125100-55475ecfb8c0/go.mod h1:L6K4u1zxFU6OfXq1uYbYLcEq89+blIZ5KO0MUXQZEOc=
+github.com/grafana/opentelemetry-ebpf-profiler v0.0.0-20250311061723-5e244086ef90 h1:3Ct3FkbIuq6DlrSUhgxZ+x1G3agMh2NkHFeYMtYZWQg=
+github.com/grafana/opentelemetry-ebpf-profiler v0.0.0-20250311061723-5e244086ef90/go.mod h1:PYO7UIGy7j873Z/86ITJP0V8/TKfTnDpNEmL36cRQPY=
 github.com/grafana/postgres_exporter v0.15.1-0.20250218135316-21788f008d39 h1:wj3iiqI58qdPCU/OIlbc9LGIAD3WXZmsXiCKKI/qiBQ=
 github.com/grafana/postgres_exporter v0.15.1-0.20250218135316-21788f008d39/go.mod h1:ws2UAbpWWvs87mYgclemWvosRQjIp6fuOxDjLzfo7L0=
 github.com/grafana/prometheus v1.8.2-0.20250224181348-8257a54d8edd h1:9iE+jGhQ/gcsCaXmycN7zl8ZXqoCDM/ritZuuiUuajk=

@@ -6,10 +6,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"maps"
 	"sync"
 	"time"
+
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 
 	"github.com/elastic/go-freelru"
 	"github.com/go-kit/log"
@@ -47,7 +48,7 @@ type Config struct {
 type PPROFReporter struct {
 	cfg         *Config
 	log         log.Logger
-	cgroups     *freelru.SyncedLRU[libpf.PID, string]
+	cgroups     freelru.Cache[libpf.PID, string]
 	traceEvents xsync.RWMutex[map[libpf.Origin]samples.KeyToEventMapping]
 	Executables *freelru.SyncedLRU[libpf.FileID, samples.ExecInfo]
 	Frames      *freelru.SyncedLRU[
@@ -62,7 +63,7 @@ type PPROFReporter struct {
 
 func NewPPROF(
 	log log.Logger,
-	cgroups *freelru.SyncedLRU[libpf.PID, string],
+	cgroups freelru.Cache[libpf.PID, string],
 	cfg *Config,
 	sd discovery.TargetProducer,
 ) (*PPROFReporter, error) {
@@ -123,24 +124,15 @@ func (p *PPROFReporter) ReportTraceEvent(trace *libpf.Trace, meta *samples.Trace
 		return
 	}
 
-	var extraMeta any
-
-	containerID, err := libpf.LookupCgroupv2(p.cgroups, meta.PID)
-	if err != nil {
-		_ = p.log.Log("msg", "Failed to get a cgroupv2 ID as container ID for",
-			"PID", meta.PID,
-			"err", err)
-	}
-
 	key := samples.TraceAndMetaKey{
 		Hash:           trace.Hash,
-		Comm:           meta.Comm,
-		ProcessName:    meta.ProcessName,
-		ExecutablePath: meta.ExecutablePath,
-		ApmServiceName: meta.APMServiceName,
-		ContainerID:    containerID,
+		Comm:           "",
+		ProcessName:    "",
+		ExecutablePath: "",
+		ApmServiceName: "",
+		ContainerID:    "",
 		Pid:            int64(meta.PID),
-		ExtraMeta:      extraMeta,
+		ExtraMeta:      nil,
 	}
 
 	traceEventsMap := p.traceEvents.WLock()

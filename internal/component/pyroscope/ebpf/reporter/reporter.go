@@ -4,6 +4,8 @@ package reporter
 
 import (
 	"errors"
+	"time"
+
 	"github.com/elastic/go-freelru"
 	"github.com/go-kit/log"
 	"go.opentelemetry.io/ebpf-profiler/libpf"
@@ -21,7 +23,7 @@ import (
 
 func New(
 	log log.Logger,
-	cgroups *freelru.SyncedLRU[libpf.PID, string],
+	cgroups freelru.Cache[libpf.PID, string],
 	cfg *controller.Config,
 	sd pyrosd.TargetProducer,
 	nfs samples2.NativeSymbolResolver,
@@ -34,11 +36,7 @@ func New(
 		return nil, err
 	}
 
-	otelReporter := false
-	if cfg.PyroscopeReporterType == "otel" || cfg.PyroscopeReporterType == "otlp" {
-		otelReporter = true
-	}
-	if !otelReporter {
+	if !ReporterTypeOTEL(cfg) {
 		return NewPPROF(log, cgroups, &Config{
 			ExtraNativeSymbolResolver: nfs,
 			CGroupCacheElements:       1024,
@@ -91,4 +89,27 @@ func New(
 		ExtraSampleAttrProd:       sap,
 	}
 	return reporter.NewOTLP(reporterConfig, cgroups)
+}
+
+func reporterTypeOTEL(cfg *controller.Config) bool {
+	if cfg.PyroscopeReporterType == "otel" || cfg.PyroscopeReporterType == "otlp" {
+		return true
+	}
+	return false
+}
+
+func NewContainerIDCache(size uint32, cfg *controller.Config) (freelru.Cache[libpf.PID, string], error) {
+	var cgroups freelru.Cache[libpf.PID, string]
+	var err error
+	h := func(pid libpf.PID) uint32 { return uint32(pid) }
+	if reporterTypeOTEL(cfg) {
+		cgroups, err = freelru.NewSynced[libpf.PID, string](size, h)
+	} else {
+		cgroups, err = freelru.New[libpf.PID, string](size, h)
+	}
+	if err != nil {
+		return nil, err
+	}
+	cgroups.SetLifetime(5 * time.Minute)
+	return cgroups, nil
 }

@@ -5,16 +5,14 @@ package ebpf
 import (
 	"context"
 	"fmt"
-	"github.com/go-kit/log/level"
-	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter"
 	"strings"
 	"time"
 
-	"github.com/elastic/go-freelru"
+	"github.com/go-kit/log/level"
+	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter"
 
 	"go.opentelemetry.io/ebpf-profiler/reporter/samples"
 
-	"go.opentelemetry.io/ebpf-profiler/libpf"
 	"go.opentelemetry.io/ebpf-profiler/pyroscope/dynamicprofiling"
 	"go.opentelemetry.io/ebpf-profiler/pyroscope/symb/irsymcache"
 
@@ -42,17 +40,16 @@ func init() {
 }
 
 func New(opts component.Options, args Arguments) (component.Component, error) {
-	cgroups, err := freelru.NewSynced[libpf.PID, string](args.ContainerIDCacheSize,
-		func(pid libpf.PID) uint32 { return uint32(pid) })
 	cfg, err := createConfigFromArguments(args)
 	if err != nil {
 		return nil, err
 	}
-	dynamicProfilingPolicy := cfg.PyroscopeDynamicProfilingPolicy
-	discovery, err := sd.NewTargetProducer(cgroups, targetsOptions(dynamicProfilingPolicy, args))
+	cgroups, err := reporter.NewContainerIDCache(args.ContainerIDCacheSize, cfg)
 	if err != nil {
-		return nil, fmt.Errorf("ebpf target finder create: %w", err)
+		return nil, err
 	}
+	dynamicProfilingPolicy := cfg.PyroscopeDynamicProfilingPolicy
+	discovery := sd.NewTargetProducer(cgroups, targetsOptions(dynamicProfilingPolicy, args))
 	ms := newMetrics(opts.Registerer)
 
 	appendable := pyroscope.NewFanout(args.ForwardTo, opts.ID, opts.Registerer)
@@ -61,8 +58,8 @@ func New(opts component.Options, args Arguments) (component.Component, error) {
 	if cfg.SymbolizeNativeFrames {
 		tf := irsymcache.NewTableFactory()
 		nfs, err = irsymcache.NewFSCache(tf, irsymcache.Options{
-			Size: cfg.SymbCacheSizeBytes,
-			Path: cfg.SymbCachePath,
+			SizeEntries: uint32(cfg.SymbCacheSizeEntries),
+			Path:        cfg.SymbCachePath,
 		})
 		if err != nil {
 			return nil, err
