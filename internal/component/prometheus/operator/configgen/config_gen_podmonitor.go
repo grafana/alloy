@@ -271,11 +271,18 @@ func (cg *ConfigGenerator) GeneratePodMonitorConfig(m *promopv1.PodMonitor, ep p
 	}
 	cfg.MetricRelabelConfigs = metricRelabels.configs
 
-	cfg.SampleLimit = uint(m.Spec.SampleLimit)
-	cfg.TargetLimit = uint(m.Spec.TargetLimit)
-	cfg.LabelLimit = uint(m.Spec.LabelLimit)
-	cfg.LabelNameLengthLimit = uint(m.Spec.LabelNameLengthLimit)
-	cfg.LabelValueLengthLimit = uint(m.Spec.LabelValueLengthLimit)
+	cfg.SampleLimit = uint(defaultIfNil(m.Spec.SampleLimit, 0))
+	cfg.TargetLimit = uint(defaultIfNil(m.Spec.TargetLimit, 0))
+	cfg.LabelLimit = uint(defaultIfNil(m.Spec.LabelLimit, 0))
+	cfg.LabelNameLengthLimit = uint(defaultIfNil(m.Spec.LabelNameLengthLimit, 0))
+	cfg.LabelValueLengthLimit = uint(defaultIfNil(m.Spec.LabelValueLengthLimit, 0))
 
 	return cfg, cfg.Validate(cg.ScrapeOptions.GlobalConfig())
+}
+
+func defaultIfNil[T any](ptr *T, defaultValue T) T {
+	if ptr == nil {
+		return defaultValue
+	}
+	return *ptr
 }
