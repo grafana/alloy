@@ -192,7 +192,7 @@ It also exposes some debug information for each ScrapeConfig it has discovered, 
 
 ## Debug metrics
 
-`prometheus.operator.scrapeconfigs` does not expose any component-specific debug metrics.
+`prometheus.operator.scrapeconfigs` doesn't expose any component-specific debug metrics.
 
 ## Example
 
