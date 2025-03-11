@@ -155,10 +155,10 @@ The `instance_id` block configures instance ID settings.
 #### `select`
 
 The `select` block configures which attributes to include or exclude for specific metric/trace sections.
-Each selected attribute is defined as a labeled block with the attribute name as the label.
 
 | Name      | Type           | Description                                            | Default | Required |
 | --------- | -------------- | ------------------------------------------------------ | ------- | -------- |
+| `attr`    | `string`       | The attribute name to select.                          | `[]`    | yes      |
 | `exclude` | `list(string)` | List of attributes to exclude.                         | `[]`    | no       |
 | `include` | `list(string)` | List of attributes to include. Use `*` to include all. | `[]`    | no       |
 

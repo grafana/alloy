@@ -57,7 +57,7 @@ type InstanceIDConfig struct {
 type Selections []Selection
 
 type Selection struct {
-	Section string   `alloy:",label"`
+	Section string   `alloy:"attr,attr"`
 	Include []string `alloy:"include,attr"`
 	Exclude []string `alloy:"exclude,attr"`
 }

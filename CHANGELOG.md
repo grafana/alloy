@@ -39,9 +39,9 @@ Main (unreleased)
   - `query_sample`: better handling of truncated queries (@cristiangreco)
   - `query_sample`: add option to use TiDB sql parser (@cristiangreco)
 
-### Bugfixes
+### Breaking changes
 
-- Fixed the parsing of application and network filter blocks for Beyla
+- Fixed the parsing of selections, application and network filter blocks for Beyla
 
 ### Other changes
 
