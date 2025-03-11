@@ -42,19 +42,19 @@ You can use the following arguments with `prometheus.operator.scrapeconfigs`:
 
 You can use the following blocks with `prometheus.operator.scrapeconfigs`:
 
-Hierarchy | Block | Description | Required
---------- | ----- | ----------- | --------
-client | [client][] | Configures Kubernetes client used to find scrapeconfigs. | no
-client > basic_auth | [basic_auth][] | Configure basic authentication to the Kubernetes API. | no
-client > authorization | [authorization][] | Configure generic authorization to the Kubernetes API. | no
-client > oauth2 | [oauth2][] | Configure OAuth2 for authenticating to the Kubernetes API. | no
-client > oauth2 > tls_config | [tls_config][] | Configure TLS settings for connecting to the Kubernetes API. | no
-client > tls_config | [tls_config][] | Configure TLS settings for connecting to the Kubernetes API. | no
-rule | [rule][] | Relabeling rules to apply to discovered targets. | no
-scrape | [scrape][] | Default scrape configuration to apply to discovered targets. | no
-selector | [selector][] | Label selector for which scrapeconfigs to discover. | no
-selector > match_expression | [match_expression][] | Label selector expression for which scrapeconfigs to discover. | no
-clustering | [clustering][] | Configure the component for when {{< param "PRODUCT_NAME" >}} is running in clustered mode. | no
+| Block                                               | Description                                                                                 | Required |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------- | -------- |
+| [`client`][client]                                  | Configures Kubernetes client used to find `scrapeconfigs`.                                  | no       |
+| `client` > [`authorization`][authorization]         | Configure generic authorization to the Kubernetes API.                                      | no       |
+| `client` > [`basic_auth`][basic_auth]               | Configure basic authentication to the Kubernetes API.                                       | no       |
+| `client` > [`oauth2`][oauth2]                       | Configure OAuth2 for authenticating to the Kubernetes API.                                  | no       |
+| `client` > `oauth2` > [`tls_config`][tls_config]    | Configure TLS settings for connecting to the Kubernetes API.                                | no       |
+| `client` > [`tls_config`][tls_config]               | Configure TLS settings for connecting to the Kubernetes API.                                | no       |
+| [`clustering`][clustering]                          | Configure the component for when {{< param "PRODUCT_NAME" >}} is running in clustered mode. | no       |
+| [`rule`][rule]                                      | Relabeling rules to apply to discovered targets.                                            | no       |
+| [`scrape`][scrape]                                  | Default scrape configuration to apply to discovered targets.                                | no       |
+| [`selector`][selector]                              | Label selector for which `scrapeconfigs` to discover.                                       | no       |
+| `selector` > [`match_expression`][match_expression] | Label selector expression for which `scrapeconfigs` to discover.                            | no       |
 
 The `>` symbol indicates deeper levels of nesting. For example, `client >
 basic_auth` refers to a `basic_auth` block defined
