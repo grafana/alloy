@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -24,6 +25,7 @@ import (
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/service/logging"
+	logging_service "github.com/grafana/alloy/internal/service/logging"
 	remotecfg_service "github.com/grafana/alloy/internal/service/remotecfg"
 )
 
@@ -204,6 +206,9 @@ func attemptLoadingAlloyConfig(t *testing.T, bb []byte) {
 	})
 	require.NoError(t, err)
 
+	loggingService, err := logging_service.NewService(io.Discard)
+	require.NoError(t, err)
+
 	f := alloy_runtime.New(alloy_runtime.Options{
 		Logger:       logger,
 		DataPath:     t.TempDir(),
@@ -217,6 +222,7 @@ func attemptLoadingAlloyConfig(t *testing.T, bb []byte) {
 			labelstore.New(nil, prometheus.DefaultRegisterer),
 			remotecfgService,
 			livedebugging.New(),
+			loggingService,
 		},
 		EnableCommunityComps: true,
 	})
