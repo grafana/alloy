@@ -50,14 +50,15 @@ You can use the following arguments with `pyroscope.ebpf`:
 |---------------------------|--------------------------|----------------------------------------------------------------------------------------------------------------------------------|---------|----------|
 | `forward_to`              | `list(ProfilesReceiver)` | List of receivers to send collected profiles to.                                                                                 |         | yes      |
 | `targets`                 | `list(map(string))`      | List of targets to group profiles by container id                                                                                |         | yes      |
-| `build_id_cache_size`     | `int`                    | The size of the elf file build id -> symbols table LRU cache                                                                     | 64      | no       |
+| `build_id_cache_size`     | `int`                    | Deprecated (no-op), previously controlled the size of the elf file build id -> symbols table LRU cache                           | 64      | no       |
+| `cache_rounds`            | `int`                    | Deprecated (no-op), previously controlled the number of cache rounds                                                             |         | no       |
 | `collect_interval`        | `duration`               | How frequently to collect profiles                                                                                               | `15s`   | no       |
 | `collect_kernel_profile`  | `bool`                   | A flag to enable/disable collection of kernelspace profiles                                                                      | true    | no       |
 | `collect_user_profile`    | `bool`                   | A flag to enable/disable collection of userspace profiles                                                                        | true    | no       |
 | `container_id_cache_size` | `int`                    | The size of the PID -> container ID table LRU cache                                                                              | 1024    | no       |
 | `demangle`                | `string`                 | C++ demangle mode. Available options are: `none`, `simplified`, `templates`, or `full`                                           | `none`  | no       |
-| `go_table_fallback`       | `bool`                   | A flag to enable symbol lookup in `.sym` / `.dynsym` sections when `.gopclntab` lookup failed. May be useful for `cgo` binaries. | false   | no       |
-| `pid_cache_size`          | `int`                    | The size of the PID -> proc symbols table LRU cache                                                                              | 32      | no       |
+| `go_table_fallback`       | `bool`                   | Deprecated (no-op), previously enabled symbol lookup in `.sym` / `.dynsym` sections when `.gopclntab` lookup failed              | false   | no       |
+| `pid_cache_size`          | `int`                    | Deprecated (no-op), previously controlled the size of the PID -> proc symbols table LRU cache                                    | 32      | no       |
 | `pid_map_size`            | `int`                    | The size of eBPF PID map                                                                                                         | 2048    | no       |
 | `python_enabled`          | `bool`                   | A flag to enable/disable python profiling                                                                                        | true    | no       |
 | `perl_enabled`            | `bool`                   | A flag to enable/disable perl profiling                                                                                          | true    | no       |
@@ -66,12 +67,14 @@ You can use the following arguments with `pyroscope.ebpf`:
 | `v8_enabled`              | `bool`                   | A flag to enable/disable v8 profiling                                                                                            | true    | no       |
 | `ruby_enabled`            | `bool`                   | A flag to enable/disable ruby profiling                                                                                          | true    | no       |
 | `dotnet_enabled`          | `bool`                   | A flag to enable/disable dotnet profiling                                                                                        | true    | no       |
-| `same_file_cache_size`    | `int`                    | The size of the elf file -> symbols table LRU cache                                                                              | 8       | no       |
+| `same_file_cache_size`    | `int`                    | Deprecated (no-op), previously controlled the size of the elf file -> symbols table LRU cache                                    | 8       | no       |
 | `sample_rate`             | `int`                    | How many times per second to collect profile samples                                                                             | 97      | no       |
-| `symbols_map_size`        | `int`                    | The size of eBPF symbols map                                                                                                     | 16384   | no       |
+| `symbols_map_size`        | `int`                    | Deprecated (no-op), previously controlled the size of eBPF symbols map                                                           | 16384   | no       |
 
 Only the `forward_to` and `targets` fields are required.
 Omitted fields take their default values.
+
+Several arguments are marked as "Deprecated (no-op)". These arguments were previously used for configuring various cache sizes and behaviors, but they no longer have any effect. They are kept for backward compatibility but will be removed in a future release. It is recommended to remove these arguments from your configuration.
 
 ## Blocks
 
