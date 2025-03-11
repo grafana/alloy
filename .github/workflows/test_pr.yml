@@ -2,8 +2,29 @@ name: Test
 on:
   pull_request:
 jobs:
-  noop:
-    name: Log a workflow deprecation message
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
     steps:
-    - run: echo "This workflow has been moved to 'Build and test'. This file will be deleted soon."
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Set up Go 1.23
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: go.mod
+        cache: false
+    - run: sudo apt-get update -y && sudo apt-get install -y libsystemd-dev
+    - run: make lint
+
+  test_linux:
+    name: Test Linux
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Set up Go 1.23
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: go.mod
+        cache: false
+    - run: make GO_TAGS="nodocker" test
