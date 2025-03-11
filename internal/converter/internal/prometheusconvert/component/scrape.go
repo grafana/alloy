@@ -56,8 +56,10 @@ func toScrapeArguments(scrapeConfig *prom_config.ScrapeConfig, forwardTo []stora
 		TrackTimestampsStaleness:  scrapeConfig.TrackTimestampsStaleness,
 		Params:                    scrapeConfig.Params,
 		ScrapeClassicHistograms:   scrapeConfig.ScrapeClassicHistograms,
+		ScrapeNativeHistograms:    true,
 		ScrapeInterval:            time.Duration(scrapeConfig.ScrapeInterval),
 		ScrapeTimeout:             time.Duration(scrapeConfig.ScrapeTimeout),
+		ScrapeFailureLogFile:      scrapeConfig.ScrapeFailureLogFile,
 		ScrapeProtocols:           convertScrapeProtocols(scrapeConfig.ScrapeProtocols),
 		MetricsPath:               scrapeConfig.MetricsPath,
 		Scheme:                    scrapeConfig.Scheme,
@@ -89,7 +91,7 @@ func getScrapeTargets(staticConfig prom_discovery.StaticConfig) []discovery.Targ
 				targetMap[string(labelName)] = string(labelValue)
 				newMap := map[string]string{}
 				maps.Copy(newMap, targetMap)
-				targets = append(targets, newMap)
+				targets = append(targets, discovery.NewTargetFromMap(newMap))
 			}
 		}
 	}

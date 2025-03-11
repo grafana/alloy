@@ -1,6 +1,7 @@
 package write
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -358,33 +359,11 @@ func (e *PyroscopeWriteError) Error() string {
 
 // AppendIngest implements the pyroscope.Appender interface.
 func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.IncomingProfile) error {
-	pipeWriters := make([]io.Writer, len(f.config.Endpoints))
-	pipeReaders := make([]io.Reader, len(f.config.Endpoints))
-	for i := range f.config.Endpoints {
-		pr, pw := io.Pipe()
-		pipeReaders[i] = pr
-		pipeWriters[i] = pw
-	}
-	mw := io.MultiWriter(pipeWriters...)
-
 	g, ctx := errgroup.WithContext(ctx)
 
-	// Start copying the profile body to all pipes
-	g.Go(func() error {
-		defer func() {
-			for _, pw := range pipeWriters {
-				pw.(io.WriteCloser).Close()
-			}
-		}()
-		_, err := io.Copy(mw, profile.Body)
-		return err
-	})
-
 	// Send to each endpoint concurrently
-	for i, endpoint := range f.config.Endpoints {
+	for _, endpoint := range f.config.Endpoints {
 		g.Go(func() error {
-			defer pipeReaders[i].(io.ReadCloser).Close()
-
 			u, err := url.Parse(endpoint.URL)
 			if err != nil {
 				return fmt.Errorf("parse endpoint URL: %w", err)
@@ -394,11 +373,15 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 
 			// Handle labels
 			query := profile.URL.Query()
-			if nameParam := query.Get("name"); nameParam != "" {
-				ls, err := labelset.Parse(nameParam)
-				if err != nil {
-					return err
-				}
+			if !profile.Labels.IsEmpty() {
+				ls := labelset.New(make(map[string]string))
+
+				finalLabels := ensureNameMatchesService(profile.Labels)
+				finalLabels.Range(func(l labels.Label) {
+					ls.Add(l.Name, l.Value)
+				})
+
+				// Add external labels (which will override any existing ones)
 				for k, v := range f.config.ExternalLabels {
 					ls.Add(k, v)
 				}
@@ -406,7 +389,7 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 			}
 			u.RawQuery = query.Encode()
 
-			req, err := http.NewRequestWithContext(ctx, "POST", u.String(), pipeReaders[i])
+			req, err := http.NewRequestWithContext(ctx, "POST", u.String(), bytes.NewReader(profile.RawBody))
 			if err != nil {
 				return fmt.Errorf("create request: %w", err)
 			}
@@ -473,4 +456,13 @@ func (i *agentInterceptor) WrapStreamingClient(next connect.StreamingClientFunc)
 
 func (i *agentInterceptor) WrapStreamingHandler(next connect.StreamingHandlerFunc) connect.StreamingHandlerFunc {
 	return next
+}
+
+func ensureNameMatchesService(lbls labels.Labels) labels.Labels {
+	if serviceName := lbls.Get(pyroscope.LabelServiceName); serviceName != "" {
+		builder := labels.NewBuilder(lbls)
+		builder.Set(pyroscope.LabelName, serviceName)
+		return builder.Labels()
+	}
+	return lbls
 }

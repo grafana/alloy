@@ -87,7 +87,7 @@ authentication > kerberos        | [kerberos][]         | Authenticates against 
 metadata                         | [metadata][]         | Configures how to retrieve metadata from Kafka brokers.                     | no
 metadata > retry                 | [retry][]            | Configures how to retry metadata retrieval.                                 | no
 retry_on_failure                 | [retry_on_failure][] | Configures retry mechanism for failed requests.                             | no
-queue                            | [queue][]            | Configures batching of data before sending.                                 | no
+sending_queue                    | [sending_queue][]    | Configures batching of data before sending.                                 | no
 producer                         | [producer][]         | Kafka producer configuration,                                               | no
 debug_metrics                    | [debug_metrics][]    | Configures the metrics which this component generates to monitor its state. | no
 
@@ -103,7 +103,7 @@ For example, `authentication > tls` refers to a `tls` block defined inside an `a
 [metadata]: #metadata-block
 [retry]: #retry-block
 [retry_on_failure]: #retry_on_failure-block
-[queue]: #queue-block
+[sending_queue]: #sending_queue-block
 [producer]: #producer-block
 [debug_metrics]: #debug_metrics-block
 
@@ -149,9 +149,9 @@ The `retry_on_failure` block configures how failed requests to Kafka are retried
 
 {{< docs/shared lookup="reference/components/otelcol-retry-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### queue block
+### sending_queue block
 
-The `queue` block configures an in-memory buffer of batches before data is sent to the gRPC server.
+The `sending_queue` block configures an in-memory buffer of batches before data is sent to the gRPC server.
 
 {{< docs/shared lookup="reference/components/otelcol-queue-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 

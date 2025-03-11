@@ -435,7 +435,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			}
 			output {}
 			`,
-			errorMsg: `unable to parse OTTL statement "set(body, \"bear\" where attributes[\"http.path\"] == \"/animal\"": statement has invalid syntax: 1:18: unexpected token "where" (expected ")" Key*)`,
+			errorMsg: `statement has invalid syntax: 1:18: unexpected token "where" (expected ")" Key*)`,
 		},
 		{
 			testName: "bad_syntax_metric",
@@ -449,7 +449,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			}
 			output {}
 			`,
-			errorMsg: `unable to parse OTTL statement "set(name, \"bear\" where attributes[\"http.path\"] == \"/animal\"": statement has invalid syntax: 1:18: unexpected token "where" (expected ")" Key*)`,
+			errorMsg: `statement has invalid syntax: 1:18: unexpected token "where" (expected ")" Key*)`,
 		},
 		{
 			testName: "bad_syntax_trace",
@@ -463,7 +463,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			}
 			output {}
 			`,
-			errorMsg: `unable to parse OTTL statement "set(name, \"bear\" where attributes[\"http.path\"] == \"/animal\"": statement has invalid syntax: 1:18: unexpected token "where" (expected ")" Key*)`,
+			errorMsg: `statement has invalid syntax: 1:18: unexpected token "where" (expected ")" Key*)`,
 		},
 		{
 			testName: "unknown_function_log",
@@ -477,7 +477,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			}
 			output {}
 			`,
-			errorMsg: `unable to parse OTTL statement "not_a_function(attributes, [\"http.method\", \"http.path\"])": undefined function "not_a_function"`,
+			errorMsg: `unable to parse OTTL statement "not_a_function(log.attributes, [\"http.method\", \"http.path\"])": undefined function "not_a_function"`,
 		},
 		{
 			testName: "unknown_function_metric",
@@ -491,7 +491,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			}
 			output {}
 			`,
-			errorMsg: `unable to parse OTTL statement "not_a_function(attributes, [\"http.method\", \"http.path\"])": undefined function "not_a_function"`,
+			errorMsg: `unable to parse OTTL statement "not_a_function(datapoint.attributes, [\"http.method\", \"http.path\"])": undefined function "not_a_function"`,
 		},
 		{
 			testName: "unknown_function_trace",
@@ -505,7 +505,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			}
 			output {}
 			`,
-			errorMsg: `unable to parse OTTL statement "not_a_function(attributes, [\"http.method\", \"http.path\"])": undefined function "not_a_function"`,
+			errorMsg: `unable to parse OTTL statement "not_a_function(span.attributes, [\"http.method\", \"http.path\"])": undefined function "not_a_function"`,
 		},
 		{
 			testName: "unknown_context",

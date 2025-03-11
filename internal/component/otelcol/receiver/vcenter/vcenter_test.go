@@ -106,6 +106,9 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			vcenter.host.disk.throughput {
 				enabled = true
 			}
+			vcenter.host.memory.capacity {
+				enabled = false
+			}
 			vcenter.host.memory.usage {
 				enabled = true
 			}
@@ -174,6 +177,9 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			}
 			vcenter.vm.memory.ballooned {
 				enabled = true
+			}
+			vcenter.vm.memory.granted {
+				enabled = false
 			}
 			vcenter.vm.memory.swapped {
 				enabled = true
@@ -257,6 +263,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 	require.True(t, otelArgs.Metrics.VcenterHostDiskLatencyAvg.Enabled)
 	require.True(t, otelArgs.Metrics.VcenterHostDiskLatencyMax.Enabled)
 	require.True(t, otelArgs.Metrics.VcenterHostDiskThroughput.Enabled)
+	require.False(t, otelArgs.Metrics.VcenterHostMemoryCapacity.Enabled)
 	require.True(t, otelArgs.Metrics.VcenterHostMemoryUsage.Enabled)
 	require.True(t, otelArgs.Metrics.VcenterHostMemoryUtilization.Enabled)
 	require.True(t, otelArgs.Metrics.VcenterHostNetworkPacketRate.Enabled)
@@ -280,6 +287,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 	require.True(t, otelArgs.Metrics.VcenterVMDiskUsage.Enabled)
 	require.True(t, otelArgs.Metrics.VcenterVMDiskUtilization.Enabled)
 	require.True(t, otelArgs.Metrics.VcenterVMMemoryBallooned.Enabled)
+	require.False(t, otelArgs.Metrics.VcenterVMMemoryGranted.Enabled)
 	require.True(t, otelArgs.Metrics.VcenterVMMemorySwapped.Enabled)
 	require.True(t, otelArgs.Metrics.VcenterVMMemorySwappedSsd.Enabled)
 	require.True(t, otelArgs.Metrics.VcenterVMMemoryUsage.Enabled)

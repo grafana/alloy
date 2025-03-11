@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	scraperhelper "go.opentelemetry.io/collector/receiver/scraperhelper"
+	scraperhelper "go.opentelemetry.io/collector/scraper/scraperhelper"
 )
 
 var (

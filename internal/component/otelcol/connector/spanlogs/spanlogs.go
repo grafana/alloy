@@ -9,8 +9,10 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/fanoutconsumer"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/lazyconsumer"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/livedebuggingconsumer"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/syntax"
 )
 
@@ -76,14 +78,29 @@ func (args *Arguments) SetToDefault() {
 // Component is the otelcol.exporter.spanlogs component.
 type Component struct {
 	consumer *consumer
+
+	opts component.Options
+
+	liveDebuggingConsumer *livedebuggingconsumer.Consumer
+	debugDataPublisher    livedebugging.DebugDataPublisher
+
+	args Arguments
 }
 
-var _ component.Component = (*Component)(nil)
+var (
+	_ component.Component     = (*Component)(nil)
+	_ component.LiveDebugging = (*Component)(nil)
+)
 
 // New creates a new otelcol.exporter.spanlogs component.
 func New(o component.Options, c Arguments) (*Component, error) {
 	if c.Output.Traces != nil || c.Output.Metrics != nil {
 		level.Warn(o.Logger).Log("msg", "non-log output detected; this component only works for log outputs and trace inputs")
+	}
+
+	debugDataPublisher, err := o.GetServiceData(livedebugging.ServiceName)
+	if err != nil {
+		return nil, err
 	}
 
 	nextLogs := fanoutconsumer.Logs(c.Output.Logs)
@@ -93,7 +110,10 @@ func New(o component.Options, c Arguments) (*Component, error) {
 	}
 
 	res := &Component{
-		consumer: consumer,
+		opts:                  o,
+		consumer:              consumer,
+		liveDebuggingConsumer: livedebuggingconsumer.New(debugDataPublisher.(livedebugging.DebugDataPublisher), o.ID),
+		debugDataPublisher:    debugDataPublisher.(livedebugging.DebugDataPublisher),
 	}
 
 	if err := res.Update(c); err != nil {
@@ -120,14 +140,24 @@ func (c *Component) Run(ctx context.Context) error {
 
 // Update implements Component.
 func (c *Component) Update(newConfig component.Arguments) error {
-	cfg := newConfig.(Arguments)
+	c.args = newConfig.(Arguments)
 
-	nextLogs := fanoutconsumer.Logs(cfg.Output.Logs)
+	fanoutConsumer := c.args.Output.Logs
 
-	err := c.consumer.UpdateOptions(cfg, nextLogs)
+	if c.debugDataPublisher.IsActive(livedebugging.ComponentID(c.opts.ID)) {
+		fanoutConsumer = append(fanoutConsumer, c.liveDebuggingConsumer)
+	}
+
+	nextLogs := fanoutconsumer.Logs(fanoutConsumer)
+
+	err := c.consumer.UpdateOptions(c.args, nextLogs)
 	if err != nil {
 		return fmt.Errorf("failed to update traces consumer due to error: %w", err)
 	}
 
 	return nil
+}
+
+func (c *Component) LiveDebugging(_ int) {
+	c.Update(c.args)
 }

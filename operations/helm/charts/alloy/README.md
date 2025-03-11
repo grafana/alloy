@@ -1,6 +1,6 @@
 # Grafana Alloy Helm chart
 
-![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![Version: 0.11.1](https://img.shields.io/badge/Version-0.11.1-informational?style=flat-square) ![AppVersion: v1.6.1](https://img.shields.io/badge/AppVersion-v1.6.1-informational?style=flat-square)
+![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![Version: 0.12.3](https://img.shields.io/badge/Version-0.12.3-informational?style=flat-square) ![AppVersion: v1.7.2](https://img.shields.io/badge/AppVersion-v1.7.2-informational?style=flat-square)
 
 Helm chart for deploying [Grafana Alloy][] to Kubernetes.
 
@@ -50,6 +50,7 @@ useful if just using the default DaemonSet isn't sufficient.
 | alloy.listenAddr | string | `"0.0.0.0"` | Address to listen for traffic on. 0.0.0.0 exposes the UI to other containers. |
 | alloy.listenPort | int | `12345` | Port to listen for traffic on. |
 | alloy.listenScheme | string | `"HTTP"` | Scheme is needed for readiness probes. If enabling tls in your configs, set to "HTTPS" |
+| alloy.livenessProbe | object | `{}` | Set livenessProbe for the Grafana Alloy container. |
 | alloy.mounts.dockercontainers | bool | `false` | Mount /var/lib/docker/containers from the host into the container for log collection. |
 | alloy.mounts.extra | list | `[]` | Extra volume mounts to add into the Grafana Alloy container. Does not affect the watch container. |
 | alloy.mounts.varlog | bool | `false` | Mount /var/log from the host into the container for log collection. |
@@ -124,19 +125,7 @@ useful if just using the default DaemonSet isn't sufficient.
 | ingress.pathType | string | `"Prefix"` |  |
 | ingress.tls | list | `[]` |  |
 | nameOverride | string | `nil` | Overrides the chart's name. Used to change the infix in the resource names. |
-| networkPolicy.egress[0].to[0].ports[0].port | int | `6443` |  |
-| networkPolicy.egress[0].to[0].ports[0].protocol | string | `"TCP"` |  |
-| networkPolicy.egress[1].to[0].podSelector | object | `{}` |  |
-| networkPolicy.egress[2].to[0].ipBlock.cidr | string | `"0.0.0.0/0"` |  |
-| networkPolicy.egress[2].to[0].ipBlock.except[0] | string | `"10.0.0.0/8"` |  |
-| networkPolicy.egress[2].to[0].ipBlock.except[1] | string | `"172.16.0.0/12"` |  |
-| networkPolicy.egress[2].to[0].ipBlock.except[2] | string | `"192.168.0.0/16"` |  |
-| networkPolicy.egress[2].to[1].ipBlock.cidr | string | `"::/0"` |  |
-| networkPolicy.egress[2].to[1].ipBlock.except[0] | string | `"fc00::/7"` |  |
-| networkPolicy.enabled | bool | `false` |  |
-| networkPolicy.flavor | string | `"kubernetes"` |  |
-| networkPolicy.ingress[0].from[0].podSelector | object | `{}` |  |
-| networkPolicy.ingress[1].from[0].ipBlock.cidr | string | `"0.0.0.0/0"` |  |
+| namespaceOverride | string | `nil` | Overrides the chart's namespace. |
 | rbac.create | bool | `true` | Whether to create RBAC resources for Alloy. |
 | service.annotations | object | `{}` |  |
 | service.clusterIP | string | `""` | Cluster IP, can be set to None, empty "" or an IP address |
@@ -146,6 +135,7 @@ useful if just using the default DaemonSet isn't sufficient.
 | service.type | string | `"ClusterIP"` | Service type |
 | serviceAccount.additionalLabels | object | `{}` | Additional labels to add to the created service account. |
 | serviceAccount.annotations | object | `{}` | Annotations to add to the created service account. |
+| serviceAccount.automountServiceAccountToken | bool | `true` |  |
 | serviceAccount.create | bool | `true` | Whether to create a service account for the Grafana Alloy deployment. |
 | serviceAccount.name | string | `nil` | The name of the existing service account to use when serviceAccount.create is false. |
 | serviceMonitor.additionalLabels | object | `{}` | Additional labels for the service monitor. |

@@ -2,14 +2,12 @@
 canonical: https://grafana.com/docs/alloy/latest/reference/config-blocks/remotecfg/
 description: Learn about the remotecfg configuration block
 menuTitle: remotecfg
+labels:
+  stage: general-availability
 title: remotecfg block
 ---
 
-<span class="badge docs-labels__stage docs-labels__item">Public preview</span>
-
 # remotecfg block
-
-{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `remotecfg` is an optional configuration block that enables {{< param "PRODUCT_NAME" >}} to fetch and load the configuration from a remote endpoint.
 `remotecfg` is specified without a label and can only be provided once per configuration file.
@@ -47,6 +45,7 @@ Name                     | Type                | Description                    
 `bearer_token`           | `secret`            | Bearer token to authenticate with.                                                               |             | no
 `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`      | no
 `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`      | no
+`http_headers`           | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.          |             | no
 `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |             | no
 `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |             | no
 `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false`     | no

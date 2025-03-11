@@ -57,39 +57,50 @@ func valueTokens(v value.Value) []Token {
 		toks = append(toks, Token{token.RBRACK, ""})
 
 	case value.TypeObject:
-		toks = append(toks, Token{token.LCURLY, ""}, Token{token.LITERAL, "\n"})
-
-		keys := v.Keys()
-
-		// If v isn't an ordered object (i.e., a go map), sort the keys so they
-		// have a deterministic print order.
-		if !v.OrderedKeys() {
-			sort.Strings(keys)
-		}
-
-		for i := 0; i < len(keys); i++ {
-			if scanner.IsValidIdentifier(keys[i]) {
-				toks = append(toks, Token{token.IDENT, keys[i]})
-			} else {
-				toks = append(toks, Token{token.STRING, fmt.Sprintf("%q", keys[i])})
-			}
-
-			field, _ := v.Key(keys[i])
-			toks = append(toks, Token{token.ASSIGN, ""})
-			toks = append(toks, valueTokens(field)...)
-			toks = append(toks, Token{token.COMMA, ""}, Token{token.LITERAL, "\n"})
-		}
-		toks = append(toks, Token{token.RCURLY, ""})
+		toks = objectTokens(v)
 
 	case value.TypeFunction:
 		toks = append(toks, Token{token.LITERAL, v.Describe()})
 
 	case value.TypeCapsule:
-		toks = append(toks, Token{token.LITERAL, v.Describe()})
+		// Check if this capsule can be converted into Alloy object for more detailed description:
+		if newVal, ok := v.TryConvertToObject(); ok {
+			toks = tokenEncode(newVal)
+		} else {
+			// Default to Describe() for capsules that don't support other representation.
+			toks = append(toks, Token{token.LITERAL, v.Describe()})
+		}
 
 	default:
 		panic(fmt.Sprintf("syntax/token/builder: unrecognized value type %q", v.Type()))
 	}
 
+	return toks
+}
+
+func objectTokens(v value.Value) []Token {
+	toks := []Token{{token.LCURLY, ""}, {token.LITERAL, "\n"}}
+
+	keys := v.Keys()
+
+	// If v isn't an ordered object (i.e. it is a go map), sort the keys so they
+	// have a deterministic print order.
+	if !v.OrderedKeys() {
+		sort.Strings(keys)
+	}
+
+	for i := 0; i < len(keys); i++ {
+		if scanner.IsValidIdentifier(keys[i]) {
+			toks = append(toks, Token{token.IDENT, keys[i]})
+		} else {
+			toks = append(toks, Token{token.STRING, fmt.Sprintf("%q", keys[i])})
+		}
+
+		field, _ := v.Key(keys[i])
+		toks = append(toks, Token{token.ASSIGN, ""})
+		toks = append(toks, valueTokens(field)...)
+		toks = append(toks, Token{token.COMMA, ""}, Token{token.LITERAL, "\n"})
+	}
+	toks = append(toks, Token{token.RCURLY, ""})
 	return toks
 }

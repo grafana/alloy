@@ -356,6 +356,24 @@ func (vm *Evaluator) evaluateExpr(scope *Scope, assoc map[value.Value]ast.Node, 
 		}
 
 		switch val.Type() {
+		case value.TypeCapsule:
+			// Check if this capsule can be converted into Alloy object to get the required field
+			if newVal, ok := val.TryConvertToObject(); ok {
+				field, found := newVal[expr.Name.Name]
+				if !found {
+					return value.Null, diag.Diagnostic{
+						Severity: diag.SeverityLevelError,
+						StartPos: ast.StartPos(expr.Name).Position(),
+						EndPos:   ast.EndPos(expr.Name).Position(),
+						Message:  fmt.Sprintf("field %q does not exist", expr.Name.Name),
+					}
+				}
+				return field, nil
+			}
+			return value.Null, value.Error{
+				Value: val,
+				Inner: fmt.Errorf("expected object or array or a capsule convertible to an object, got %s", val.Type()),
+			}
 		case value.TypeObject:
 			res, ok := val.Key(expr.Name.Name)
 			if !ok {
@@ -412,6 +430,26 @@ func (vm *Evaluator) evaluateExpr(scope *Scope, assoc map[value.Value]ast.Node, 
 				return value.Null, nil
 			}
 			return field, nil
+
+		case value.TypeCapsule:
+			// Check if this capsule can be converted into Alloy object to get the required field
+			if newVal, ok := val.TryConvertToObject(); ok {
+				// Objects are indexed with a string.
+				if idx.Type() != value.TypeString {
+					return value.Null, value.TypeError{Value: idx, Expected: value.TypeString}
+				}
+
+				field, ok := newVal[idx.Text()]
+				if !ok {
+					// If a key doesn't exist in an object accessed with [], return null.
+					return value.Null, nil
+				}
+				return field, nil
+			}
+			return value.Null, value.Error{
+				Value: val,
+				Inner: fmt.Errorf("expected object or array or a capsule convertible to an object, got %s", val.Type()),
+			}
 
 		default:
 			return value.Null, value.Error{

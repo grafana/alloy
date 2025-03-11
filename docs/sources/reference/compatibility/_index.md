@@ -310,6 +310,7 @@ The following components, grouped by namespace, _export_ OpenTelemetry `otelcol.
 - [otelcol.exporter.syslog](../components/otelcol/otelcol.exporter.syslog)
 - [otelcol.processor.attributes](../components/otelcol/otelcol.processor.attributes)
 - [otelcol.processor.batch](../components/otelcol/otelcol.processor.batch)
+- [otelcol.processor.cumulativetodelta](../components/otelcol/otelcol.processor.cumulativetodelta)
 - [otelcol.processor.deltatocumulative](../components/otelcol/otelcol.processor.deltatocumulative)
 - [otelcol.processor.discovery](../components/otelcol/otelcol.processor.discovery)
 - [otelcol.processor.filter](../components/otelcol/otelcol.processor.filter)
@@ -348,6 +349,7 @@ The following components, grouped by namespace, _consume_ OpenTelemetry `otelcol
 - [otelcol.connector.spanmetrics](../components/otelcol/otelcol.connector.spanmetrics)
 - [otelcol.processor.attributes](../components/otelcol/otelcol.processor.attributes)
 - [otelcol.processor.batch](../components/otelcol/otelcol.processor.batch)
+- [otelcol.processor.cumulativetodelta](../components/otelcol/otelcol.processor.cumulativetodelta)
 - [otelcol.processor.deltatocumulative](../components/otelcol/otelcol.processor.deltatocumulative)
 - [otelcol.processor.discovery](../components/otelcol/otelcol.processor.discovery)
 - [otelcol.processor.filter](../components/otelcol/otelcol.processor.filter)
@@ -360,8 +362,10 @@ The following components, grouped by namespace, _consume_ OpenTelemetry `otelcol
 - [otelcol.processor.span](../components/otelcol/otelcol.processor.span)
 - [otelcol.processor.tail_sampling](../components/otelcol/otelcol.processor.tail_sampling)
 - [otelcol.processor.transform](../components/otelcol/otelcol.processor.transform)
+- [otelcol.receiver.awscloudwatch](../components/otelcol/otelcol.receiver.awscloudwatch)
 - [otelcol.receiver.datadog](../components/otelcol/otelcol.receiver.datadog)
 - [otelcol.receiver.file_stats](../components/otelcol/otelcol.receiver.file_stats)
+- [otelcol.receiver.filelog](../components/otelcol/otelcol.receiver.filelog)
 - [otelcol.receiver.influxdb](../components/otelcol/otelcol.receiver.influxdb)
 - [otelcol.receiver.jaeger](../components/otelcol/otelcol.receiver.jaeger)
 - [otelcol.receiver.kafka](../components/otelcol/otelcol.receiver.kafka)
@@ -371,6 +375,7 @@ The following components, grouped by namespace, _consume_ OpenTelemetry `otelcol
 - [otelcol.receiver.prometheus](../components/otelcol/otelcol.receiver.prometheus)
 - [otelcol.receiver.solace](../components/otelcol/otelcol.receiver.solace)
 - [otelcol.receiver.syslog](../components/otelcol/otelcol.receiver.syslog)
+- [otelcol.receiver.tcplog](../components/otelcol/otelcol.receiver.tcplog)
 - [otelcol.receiver.vcenter](../components/otelcol/otelcol.receiver.vcenter)
 - [otelcol.receiver.zipkin](../components/otelcol/otelcol.receiver.zipkin)
 {{< /collapse >}}
@@ -392,6 +397,7 @@ The following components, grouped by namespace, _export_ Pyroscope `ProfilesRece
 <!-- START GENERATED SECTION: EXPORTERS OF Pyroscope `ProfilesReceiver` -->
 
 {{< collapse title="pyroscope" >}}
+- [pyroscope.relabel](../components/pyroscope/pyroscope.relabel)
 - [pyroscope.write](../components/pyroscope/pyroscope.write)
 {{< /collapse >}}
 
@@ -408,6 +414,7 @@ The following components, grouped by namespace, _consume_ Pyroscope `ProfilesRec
 - [pyroscope.ebpf](../components/pyroscope/pyroscope.ebpf)
 - [pyroscope.java](../components/pyroscope/pyroscope.java)
 - [pyroscope.receive_http](../components/pyroscope/pyroscope.receive_http)
+- [pyroscope.relabel](../components/pyroscope/pyroscope.relabel)
 - [pyroscope.scrape](../components/pyroscope/pyroscope.scrape)
 {{< /collapse >}}
 

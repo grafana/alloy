@@ -8,13 +8,13 @@ labels:
 title: discovery.ovhcloud
 ---
 
-# discovery.ovhcloud
+# `discovery.ovhcloud`
 
-`discovery.ovhcloud` discovers scrape targets from OVHcloud's [dedicated servers][] and [VPS][] using their [API][].
+`discovery.ovhcloud` discovers scrape targets from the OVHcloud [dedicated servers][] and [VPS][] using their [API][].
 {{< param "PRODUCT_NAME" >}} periodically checks the REST endpoint and create a target for every discovered server.
 The public IPv4 address is used by default. If there's no IPv4 address, the IPv6 address is used.
 This may be changed via relabeling with `discovery.relabel`.
-For OVHcloud's [public cloud][] instances you can use `discovery.openstack`.
+For the OVHcloud [public cloud][] instances you can use `discovery.openstack`.
 
 [API]: https://api.ovh.com/
 [public cloud]: https://www.ovhcloud.com/en/public-cloud/
@@ -36,14 +36,14 @@ discovery.ovhcloud "<LABEL>" {
 
 You can use the following arguments with `discovery.ovhcloud`:
 
-Name                 | Type       | Description                                     | Default  | Required
----------------------|------------|-------------------------------------------------|----------|---------
-`application_key`    | `string`   | [API][] application key.                        |          | yes
-`application_secret` | `secret`   | [API][] application secret.                     |          | yes
-`consumer_key`       | `secret`   | [API][] consumer key.                           |          | yes
-`service`            | `string`   | Service of the targets to retrieve.             |          | yes
-`endpoint`           | `string`   | [API][] endpoint.                               | "ovh-eu" | no
-`refresh_interval`   | `duration` | Refresh interval to re-read the resources list. | "60s"    | no
+| Name                 | Type       | Description                                     | Default  | Required |
+| -------------------- | ---------- | ----------------------------------------------- | -------- | -------- |
+| `application_key`    | `string`   | [API][] application key.                        |          | yes      |
+| `application_secret` | `secret`   | [API][] application secret.                     |          | yes      |
+| `consumer_key`       | `secret`   | [API][] consumer key.                           |          | yes      |
+| `service`            | `string`   | Service of the targets to retrieve.             |          | yes      |
+| `endpoint`           | `string`   | [API][] endpoint.                               | "ovh-eu" | no       |
+| `refresh_interval`   | `duration` | Refresh interval to re-read the resources list. | "60s"    | no       |
 
 `service` must be either `vps` or `dedicated_server`.
 
@@ -59,9 +59,9 @@ The `discovery.ovhcloud` component doesn't support any blocks. You can configure
 
 The following fields are exported and can be referenced by other components:
 
-Name      | Type                | Description
-----------|---------------------|-----------------------------------------------------
-`targets` | `list(map(string))` | The set of targets discovered from the OVHcloud API.
+| Name      | Type                | Description                                          |
+| --------- | ------------------- | ---------------------------------------------------- |
+| `targets` | `list(map(string))` | The set of targets discovered from the OVHcloud API. |
 
 Multiple meta labels are available on `targets` and can be used by the `discovery.relabel` component.
 
@@ -74,7 +74,7 @@ Multiple meta labels are available on `targets` and can be used by the `discover
 * `__meta_ovhcloud_vps_ipv4`: The IPv4 of the server.
 * `__meta_ovhcloud_vps_ipv6`: The IPv6 of the server.
 * `__meta_ovhcloud_vps_keymap`: The KVM keyboard layout of the server.
-* `__meta_ovhcloud_vps_maximum_additional_ip`: The maximum additional IPs of the server.
+* `__meta_ovhcloud_vps_maximum_additional_ip`: The maximum additional IP addresses of the server.
 * `__meta_ovhcloud_vps_memory_limit`: The memory limit of the server.
 * `__meta_ovhcloud_vps_memory`: The memory of the server.
 * `__meta_ovhcloud_vps_monitoring_ip_blocks`: The monitoring IP blocks of the server.
@@ -90,11 +90,12 @@ Multiple meta labels are available on `targets` and can be used by the `discover
 [Dedicated servers][] meta labels:
 
 * `__meta_ovhcloud_dedicated_server_commercial_range`: The commercial range of the server.
-* `__meta_ovhcloud_dedicated_server_datacenter`: The datacenter of the server.
+* `__meta_ovhcloud_dedicated_server_datacenter`: The data center of the server.
 * `__meta_ovhcloud_dedicated_server_ipv4`: The IPv4 of the server.
 * `__meta_ovhcloud_dedicated_server_ipv6`: The IPv6 of the server.
 * `__meta_ovhcloud_dedicated_server_link_speed`: The link speed of the server.
 * `__meta_ovhcloud_dedicated_server_name`: The name of the server.
+* `__meta_ovhcloud_dedicated_server_no_intervention`: Whether datacenter intervention is disabled for the server.
 * `__meta_ovhcloud_dedicated_server_os`: The operating system of the server.
 * `__meta_ovhcloud_dedicated_server_rack`: The rack of the server.
 * `__meta_ovhcloud_dedicated_server_reverse`: The reverse DNS name of the server.

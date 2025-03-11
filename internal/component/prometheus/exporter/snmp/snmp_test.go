@@ -16,7 +16,9 @@ import (
 func TestUnmarshalAlloy(t *testing.T) {
 	alloyCfg := `
 		config_file = "modules.yml"
+		config_merge_strategy = "replace"
 		concurrency = 2
+
 		target "network_switch_1" {
 			address = "192.168.1.2"
 			module = "if_mib"
@@ -40,6 +42,7 @@ func TestUnmarshalAlloy(t *testing.T) {
 	err := syntax.Unmarshal([]byte(alloyCfg), &args)
 	require.NoError(t, err)
 	require.Equal(t, 2, args.SnmpConcurrency)
+	require.Equal(t, "replace", args.ConfigMergeStrategy)
 	require.Equal(t, "modules.yml", args.ConfigFile)
 	require.Equal(t, 2, len(args.Targets))
 
@@ -344,22 +347,22 @@ func TestBuildSNMPTargets(t *testing.T) {
 			WalkParams: "public", Auth: "public_v2"}},
 		WalkParams: WalkParams{{Name: "public", Retries: 2}},
 	}
-	baseTarget := discovery.Target{
+	baseTarget := discovery.NewTargetFromMap(map[string]string{
 		model.SchemeLabel:                   "http",
 		model.MetricsPathLabel:              "component/prometheus.exporter.snmp.default/metrics",
 		"instance":                          "prometheus.exporter.snmp.default",
 		"job":                               "integrations/snmp",
 		"__meta_agent_integration_name":     "snmp",
 		"__meta_agent_integration_instance": "prometheus.exporter.snmp.default",
-	}
+	})
 	args := component.Arguments(baseArgs)
 	targets := buildSNMPTargets(baseTarget, args)
 	require.Equal(t, 1, len(targets))
-	require.Equal(t, "integrations/snmp/network_switch_1", targets[0]["job"])
-	require.Equal(t, "192.168.1.2", targets[0]["__param_target"])
-	require.Equal(t, "if_mib", targets[0]["__param_module"])
-	require.Equal(t, "public", targets[0]["__param_walk_params"])
-	require.Equal(t, "public_v2", targets[0]["__param_auth"])
+	requireTargetLabel(t, targets[0], "job", "integrations/snmp/network_switch_1")
+	requireTargetLabel(t, targets[0], "__param_target", "192.168.1.2")
+	requireTargetLabel(t, targets[0], "__param_module", "if_mib")
+	requireTargetLabel(t, targets[0], "__param_walk_params", "public")
+	requireTargetLabel(t, targets[0], "__param_auth", "public_v2")
 }
 
 func TestUnmarshalAlloyWithInlineConfig(t *testing.T) {
@@ -464,4 +467,11 @@ func TestUnmarshalAlloyWithInvalidInlineConfig(t *testing.T) {
 			require.EqualError(t, syntax.Unmarshal([]byte(tt.cfg), &args), tt.expectedError)
 		})
 	}
+}
+
+func requireTargetLabel(t *testing.T, target discovery.Target, label, expectedValue string) {
+	t.Helper()
+	actual, ok := target.Get(label)
+	require.True(t, ok)
+	require.Equal(t, expectedValue, actual)
 }

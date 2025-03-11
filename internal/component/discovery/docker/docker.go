@@ -34,6 +34,7 @@ type Arguments struct {
 	Port               int                     `alloy:"port,attr,optional"`
 	HostNetworkingHost string                  `alloy:"host_networking_host,attr,optional"`
 	RefreshInterval    time.Duration           `alloy:"refresh_interval,attr,optional"`
+	MatchFirstNetwork  bool                    `alloy:"match_first_network,attr,optional"`
 	Filters            []Filter                `alloy:"filter,block,optional"`
 	HTTPClientConfig   config.HTTPClientConfig `alloy:",squash"`
 }
@@ -59,6 +60,7 @@ var DefaultArguments = Arguments{
 	HostNetworkingHost: "localhost",
 	RefreshInterval:    time.Minute,
 	HTTPClientConfig:   config.DefaultHTTPClientConfig,
+	MatchFirstNetwork:  true,
 }
 
 // SetToDefault implements syntax.Defaulter.
@@ -94,6 +96,7 @@ func (args Arguments) Convert() discovery.DiscovererConfig {
 		Port:               args.Port,
 		Filters:            filters,
 		HostNetworkingHost: args.HostNetworkingHost,
+		MatchFirstNetwork:  args.MatchFirstNetwork,
 
 		RefreshInterval: model.Duration(args.RefreshInterval),
 	}

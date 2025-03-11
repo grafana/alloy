@@ -8,7 +8,7 @@ labels:
 title: discovery.serverset
 ---
 
-# discovery.serverset
+# `discovery.serverset`
 
 `discovery.serverset` discovers [Serversets][] stored in Zookeeper and exposes them as targets.
 Serversets are commonly used by [Finagle][] and [Aurora][].
@@ -33,11 +33,11 @@ The Thrift format isn't supported.
 
 You can use the following arguments with `discovery.serverset`:
 
-Name      | Type           | Description                                      | Default | Required
-----------|----------------|--------------------------------------------------|---------|---------
-`paths`   | `list(string)` | The Zookeeper paths to discover Serversets from. |         | yes
-`servers` | `list(string)` | The Zookeeper servers to connect to.             |         | yes
-`timeout` | `duration`     | The Zookeeper session timeout                    | `10s`   | no
+| Name      | Type           | Description                                      | Default | Required |
+| --------- | -------------- | ------------------------------------------------ | ------- | -------- |
+| `paths`   | `list(string)` | The Zookeeper paths to discover Serversets from. |         | yes      |
+| `servers` | `list(string)` | The Zookeeper servers to connect to.             |         | yes      |
+| `timeout` | `duration`     | The Zookeeper session timeout                    | `10s`   | no       |
 
 ## Blocks
 
@@ -47,9 +47,9 @@ The `discovery.serverset` component doesn't support any blocks. You can configur
 
 The following fields are exported and can be referenced by other components:
 
-Name      | Type                | Description
-----------|---------------------|-------------------------------
-`targets` | `list(map(string))` | The set of targets discovered.
+| Name      | Type                | Description                    |
+| --------- | ------------------- | ------------------------------ |
+| `targets` | `list(map(string))` | The set of targets discovered. |
 
 The following metadata labels are available on targets during relabeling:
 

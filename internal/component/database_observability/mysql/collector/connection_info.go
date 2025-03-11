@@ -11,6 +11,8 @@ import (
 	"go.uber.org/atomic"
 )
 
+const ConnectionInfoName = "connection_info"
+
 var rdsRegex = regexp.MustCompile(`(?P<identifier>[^\.]+)\.([^\.]+)\.(?P<region>[^\.]+)\.rds\.amazonaws\.com`)
 
 type ConnectionInfoArguments struct {
@@ -28,9 +30,10 @@ type ConnectionInfo struct {
 
 func NewConnectionInfo(args ConnectionInfoArguments) (*ConnectionInfo, error) {
 	infoMetric := prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "connection_info",
-		Help: "Information about the connection",
-	}, []string{"provider_name", "region", "db_instance_identifier"})
+		Namespace: "database_observability",
+		Name:      "connection_info",
+		Help:      "Information about the connection",
+	}, []string{"provider_name", "provider_region", "db_instance_identifier"})
 
 	args.Registry.MustRegister(infoMetric)
 
@@ -43,7 +46,7 @@ func NewConnectionInfo(args ConnectionInfoArguments) (*ConnectionInfo, error) {
 }
 
 func (c *ConnectionInfo) Name() string {
-	return "ConnectionInfo"
+	return ConnectionInfoName
 }
 
 func (c *ConnectionInfo) Start(ctx context.Context) error {

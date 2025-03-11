@@ -9,7 +9,7 @@ The `prometheus.write.queue` goals are to set reliable and repeatable memory and
 1. The `prometheus.write.queue` component itself. This handles the lifecycle of the Alloy system.
 2. The `serialization` converts an array of series into a serializable format. This is handled via [msgp]() library. 
 3. The `filequeue` is where the buffers are written to. This has a series of files that are committed to disk and then are read.
-4. The `network` handles sending data. The data is sharded by the label hash across any number of loops that send data.
+4. The `network` handles sending data. The data is sharded by the label hash across any number of loops that send data. The network layer supports HTTP proxy configuration and custom headers for increased flexibility.
 
 Flow
 
@@ -55,7 +55,15 @@ The `endpoint` handles uncompressing the data, unmarshalling it to a `SeriesGrou
 
 The `network` consists of two major sections, `manager` and `loop`. Inspired by the prometheus remote write the signals are placed in a queue by the label hash. This ensures that an out of order sample does not occur within a single instance and provides parrallelism. The `manager` handles picking which `loop` to send the data to and responding to configuration changes to change the configuration of a set of `loops`.
 
-The `loop` is responsible for converting a set of `TimeSeriesBinary` to bytes and sending the data and responding. Due to the nature of the tight retry loop, it has an atomic bool to allow a stop value to be set and break out of the retry loop. The `loop` also provides stats, it should be noted these stats are not prometheus or opentelemetry, they are a callback for when stats are updated. This allows the caller to determine how to present the stats. The only requirement is that the callback be threadsafe to the caller.  
+The `loop` is responsible for converting a set of `TimeSeriesBinary` to bytes and sending the data and responding. Due to the nature of the tight retry loop, it has an atomic bool to allow a stop value to be set and break out of the retry loop. The `loop` also provides stats, it should be noted these stats are not prometheus or opentelemetry, they are a callback for when stats are updated. This allows the caller to determine how to present the stats. The only requirement is that the callback be threadsafe to the caller.
+
+The network layer now supports:
+- HTTP proxy configuration (`proxy_url` parameter)
+- Environment-based proxy detection (`proxy_from_environment` parameter)
+- Custom HTTP headers for the main requests (`headers` parameter)
+- Custom HTTP headers for proxy CONNECT requests (`proxy_connect_headers` parameter)
+
+These features enhance the component's ability to work in enterprise environments with complex networking requirements and security configurations.  
 
 ### component
 

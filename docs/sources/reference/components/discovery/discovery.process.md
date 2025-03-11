@@ -8,7 +8,7 @@ labels:
 title: discovery.process
 ---
 
-# discovery.process
+# `discovery.process`
 
 `discovery.process` discovers processes running on the local Linux OS.
 
@@ -28,10 +28,10 @@ discovery.process "<LABEL>" {
 
 You can use the following arguments with `discovery.process`:
 
-Name               | Type                | Description                                                                              | Default | Required
--------------------|---------------------|------------------------------------------------------------------------------------------|---------|---------
-`join`             | `list(map(string))` | Join external targets to discovered processes targets based on `__container_id__` label. |         | no
-`refresh_interval` | `duration`          | How often to sync targets.                                                               | "60s"   | no
+| Name               | Type                | Description                                                                              | Default | Required |
+| ------------------ | ------------------- | ---------------------------------------------------------------------------------------- | ------- | -------- |
+| `join`             | `list(map(string))` | Join external targets to discovered processes targets based on `__container_id__` label. |         | no       |
+| `refresh_interval` | `duration`          | How often to sync targets.                                                               | "60s"   | no       |
 
 ### Targets joining
 
@@ -91,37 +91,37 @@ The resulting targets are:
 
 ## Blocks
 
-You can use the following blocks with `discovery.process`:
+You can use the following block with `discovery.process`:
 
-Block               | Description                                    | Required
---------------------|------------------------------------------------|---------
-[discover_config][] | Configures which process metadata to discover. | no
+| Block                                | Description                                    | Required |
+| ------------------------------------ | ---------------------------------------------- | -------- |
+| [`discover_config`][discover_config] | Configures which process metadata to discover. | no       |
 
 [discover_config]: #discover_config
 
-### discover_config
+### `discover_config`
 
 The `discover_config` block describes which process metadata to discover.
 
 The following arguments are supported:
 
-Name           | Type   | Description                                                      | Default | Required
----------------|--------|------------------------------------------------------------------|---------|---------
-`exe`          | `bool` | A flag to enable discovering `__meta_process_exe` label.         | `true`  | no
-`cwd`          | `bool` | A flag to enable discovering `__meta_process_cwd` label.         | `true`  | no
-`commandline`  | `bool` | A flag to enable discovering `__meta_process_commandline` label. | `true`  | no
-`uid`          | `bool` | A flag to enable discovering `__meta_process_uid`: label.        | `true`  | no
-`username`     | `bool` | A flag to enable discovering `__meta_process_username`: label.   | `true`  | no
-`cgroup_path`  | `bool` | A flag to enable discovering `__meta_cgroup_path__` label.       | `false` | no
-`container_id` | `bool` | A flag to enable discovering `__container_id__` label.           | `true`  | no
+| Name           | Type   | Description                                                      | Default | Required |
+| -------------- | ------ | ---------------------------------------------------------------- | ------- | -------- |
+| `exe`          | `bool` | A flag to enable discovering `__meta_process_exe` label.         | `true`  | no       |
+| `cwd`          | `bool` | A flag to enable discovering `__meta_process_cwd` label.         | `true`  | no       |
+| `commandline`  | `bool` | A flag to enable discovering `__meta_process_commandline` label. | `true`  | no       |
+| `uid`          | `bool` | A flag to enable discovering `__meta_process_uid`: label.        | `true`  | no       |
+| `username`     | `bool` | A flag to enable discovering `__meta_process_username`: label.   | `true`  | no       |
+| `cgroup_path`  | `bool` | A flag to enable discovering `__meta_cgroup_path__` label.       | `false` | no       |
+| `container_id` | `bool` | A flag to enable discovering `__container_id__` label.           | `true`  | no       |
 
 ## Exported fields
 
 The following fields are exported and can be referenced by other components:
 
-Name      | Type                | Description
-----------|---------------------|-------------------------------------------------------
-`targets` | `list(map(string))` | The set of processes discovered on the local Linux OS.
+| Name      | Type                | Description                                            |
+| --------- | ------------------- | ------------------------------------------------------ |
+| `targets` | `list(map(string))` | The set of processes discovered on the local Linux OS. |
 
 Each target includes the following labels:
 

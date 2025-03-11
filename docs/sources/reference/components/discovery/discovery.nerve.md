@@ -8,7 +8,7 @@ labels:
 title: discovery.nerve
 ---
 
-# discovery.nerve
+# `discovery.nerve`
 
 `discovery.nerve` discovers [airbnb/nerve][] targets stored in Zookeeper.
 
@@ -27,11 +27,11 @@ discovery.nerve "<LABEL>" {
 
 You can use the following arguments with `discovery.nerve`:
 
-Name      | Type           | Description                       | Default | Required
-----------|----------------|-----------------------------------|---------|---------
-`paths`   | `list(string)` | The paths to look for targets at. |         | yes
-`servers` | `list(string)` | The Zookeeper servers.            |         | yes
-`timeout` | `duration`     | The timeout to use.               | `"10s"` | no
+| Name      | Type           | Description                       | Default | Required |
+| --------- | -------------- | --------------------------------- | ------- | -------- |
+| `paths`   | `list(string)` | The paths to look for targets at. |         | yes      |
+| `servers` | `list(string)` | The Zookeeper servers.            |         | yes      |
+| `timeout` | `duration`     | The timeout to use.               | `"10s"` | no       |
 
 Each element in the `path` list can either point to a single service, or to the root of a tree of services.
 
@@ -43,9 +43,9 @@ The `discovery.nerve` component doesn't support any blocks. You can configure th
 
 The following fields are exported and can be referenced by other components:
 
-Name      | Type                | Description
-----------|---------------------|------------------------------------------------
-`targets` | `list(map(string))` | The set of targets discovered from Nerve's API.
+| Name      | Type                | Description                                     |
+| --------- | ------------------- | ----------------------------------------------- |
+| `targets` | `list(map(string))` | The set of targets discovered from Nerve's API. |
 
 The following meta labels are available on targets and can be used by the discovery.relabel component
 

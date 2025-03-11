@@ -8,7 +8,7 @@ labels:
 title: discovery.scaleway
 ---
 
-# discovery.scaleway
+# `discovery.scaleway`
 
 `discovery.scaleway` discovers targets from [Scaleway instances][instance] and [bare metal services][bare metal].
 
@@ -30,25 +30,26 @@ discovery.scaleway "<LABEL>" {
 
 You can use the following arguments with `discovery.scaleway`:
 
-Name                     | Type                | Description                                                                                      | Default                      | Required
--------------------------|---------------------|--------------------------------------------------------------------------------------------------|------------------------------|------------
-`access_key`             | `string`            | Access key for the Scaleway API.                                                                 |                              | yes
-`project_id`             | `string`            | Scaleway project ID of targets.                                                                  |                              | yes
-`role`                   | `string`            | Role of targets to retrieve.                                                                     |                              | yes
-`secret_key_file`        | `string`            | Path to file containing secret key for the Scaleway API.                                         |                              | conditional
-`secret_key`             | `secret`            | Secret key for the Scaleway API.                                                                 |                              | conditional
-`api_url`                | `string`            | Scaleway API URL.                                                                                | `"https://api.scaleway.com"` | no
-`enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`                       | no
-`follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`                       | no
-`name_filter`            | `string`            | Name filter to apply against the listing request.                                                |                              | no
-`no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |                              | no
-`port`                   | `number`            | Default port on servers to associate with generated targets.                                     | `80`                         | no
-`proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |                              | no
-`proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false`                      | no
-`proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |                              | no
-`refresh_interval`       | `duration`          | Frequency to rediscover targets.                                                                 | `"60s"`                      | no
-`tags_filter`            | `list(string)`      | List of tags to search for.                                                                      |                              | no
-`zone`                   | `string`            | Availability zone of targets.                                                                    | `"fr-par-1"`                 | no
+| Name                     | Type                | Description                                                                                      | Default                      | Required    |
+| ------------------------ | ------------------- | ------------------------------------------------------------------------------------------------ | ---------------------------- | ----------- |
+| `access_key`             | `string`            | Access key for the Scaleway API.                                                                 |                              | yes         |
+| `project_id`             | `string`            | Scaleway project ID of targets.                                                                  |                              | yes         |
+| `role`                   | `string`            | Role of targets to retrieve.                                                                     |                              | yes         |
+| `secret_key_file`        | `string`            | Path to file containing secret key for the Scaleway API.                                         |                              | conditional |
+| `secret_key`             | `secret`            | Secret key for the Scaleway API.                                                                 |                              | conditional |
+| `api_url`                | `string`            | Scaleway API URL.                                                                                | `"https://api.scaleway.com"` | no          |
+| `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`                       | no          |
+| `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`                       | no          |
+| `http_headers`           | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.          |                      | no       |
+| `name_filter`            | `string`            | Name filter to apply against the listing request.                                                |                              | no          |
+| `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |                              | no          |
+| `port`                   | `number`            | Default port on servers to associate with generated targets.                                     | `80`                         | no          |
+| `proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |                              | no          |
+| `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false`                      | no          |
+| `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |                              | no          |
+| `refresh_interval`       | `duration`          | Frequency to rediscover targets.                                                                 | `"60s"`                      | no          |
+| `tags_filter`            | `list(string)`      | List of tags to search for.                                                                      |                              | no          |
+| `zone`                   | `string`            | Availability zone of targets.                                                                    | `"fr-par-1"`                 | no          |
 
 The `role` argument determines what type of Scaleway machines to discover.
 It must be set to one of the following:
@@ -65,13 +66,13 @@ The `name_filter` and `tags_filter` arguments can be used to filter the set of d
 
 You can use the following blocks with `discovery.scaleway`:
 
- Block          | Description                                            | Required
-----------------|--------------------------------------------------------|---------
- [tls_config][] | Configure TLS settings for connecting to the endpoint. | no
+| Block                      | Description                                            | Required |
+| -------------------------- | ------------------------------------------------------ | -------- |
+| [`tls_config`][tls_config] | Configure TLS settings for connecting to the endpoint. | no       |
 
 [tls_config]: #tls_config
 
-### tls_config
+### `tls_config`
 
 The `tls_config` block configures TLS settings for connecting to the endpoint.
 
@@ -81,9 +82,9 @@ The `tls_config` block configures TLS settings for connecting to the endpoint.
 
 The following fields are exported and can be referenced by other components:
 
-Name      | Type                | Description
-----------|---------------------|-----------------------------------------------------------
-`targets` | `list(map(string))` | The set of targets discovered from the Consul catalog API.
+| Name      | Type                | Description                                                |
+| --------- | ------------------- | ---------------------------------------------------------- |
+| `targets` | `list(map(string))` | The set of targets discovered from the Consul catalog API. |
 
 When `role` is `baremetal`, discovered targets include the following labels:
 

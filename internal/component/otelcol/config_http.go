@@ -7,9 +7,9 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/auth"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelconfigauth "go.opentelemetry.io/collector/config/configauth"
+	"go.opentelemetry.io/collector/config/configcompression"
 	otelconfighttp "go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/config/configopaque"
-	otelextension "go.opentelemetry.io/collector/extension"
 )
 
 // HTTPServerArguments holds shared settings for components which launch HTTP
@@ -74,8 +74,8 @@ func (args *HTTPServerArguments) Convert() (*otelconfighttp.ServerConfig, error)
 }
 
 // Extensions exposes extensions used by args.
-func (args *HTTPServerArguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
-	m := make(map[otelcomponent.ID]otelextension.Extension)
+func (args *HTTPServerArguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
+	m := make(map[otelcomponent.ID]otelcomponent.Component)
 	if args.Authentication != nil {
 		ext, err := args.Authentication.GetExtension(auth.Server)
 		// Extension will not be registered if there was an error.
@@ -117,7 +117,8 @@ type HTTPClientArguments struct {
 
 	ProxyUrl string `alloy:"proxy_url,attr,optional"`
 
-	Compression CompressionType `alloy:"compression,attr,optional"`
+	Compression       CompressionType    `alloy:"compression,attr,optional"`
+	CompressionParams *CompressionParams `alloy:"compression_params,block,optional"`
 
 	TLS TLSClientArguments `alloy:"tls,block,optional"`
 
@@ -162,7 +163,7 @@ func (args *HTTPClientArguments) Convert() (*otelconfighttp.ClientConfig, error)
 		opaqueHeaders[headerName] = configopaque.String(headerVal)
 	}
 
-	return &otelconfighttp.ClientConfig{
+	v := otelconfighttp.ClientConfig{
 		Endpoint: args.Endpoint,
 
 		ProxyURL: args.ProxyUrl,
@@ -186,12 +187,18 @@ func (args *HTTPClientArguments) Convert() (*otelconfighttp.ClientConfig, error)
 		Auth: authentication,
 
 		Cookies: args.Cookies.Convert(),
-	}, nil
+	}
+
+	if args.CompressionParams != nil {
+		v.CompressionParams = *args.CompressionParams.Convert()
+	}
+
+	return &v, nil
 }
 
 // Extensions exposes extensions used by args.
-func (args *HTTPClientArguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
-	m := make(map[otelcomponent.ID]otelextension.Extension)
+func (args *HTTPClientArguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
+	m := make(map[otelcomponent.ID]otelcomponent.Component)
 	if args.Authentication != nil {
 		ext, err := args.Authentication.GetExtension(auth.Client)
 		if err != nil {
@@ -213,5 +220,19 @@ func (c *Cookies) Convert() *otelconfighttp.CookiesConfig {
 
 	return &otelconfighttp.CookiesConfig{
 		Enabled: c.Enabled,
+	}
+}
+
+type CompressionParams struct {
+	Level int `alloy:"level,attr"`
+}
+
+func (c *CompressionParams) Convert() *configcompression.CompressionParams {
+	if c == nil {
+		return nil
+	}
+
+	return &configcompression.CompressionParams{
+		Level: configcompression.Level(c.Level),
 	}
 }
