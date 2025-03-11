@@ -32,11 +32,11 @@ prometheus.operator.scrapeconfigs "<LABEL>" {
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`forward_to` | `list(MetricsReceiver)` | List of receivers to send scraped metrics to. | | yes
-`namespaces` | `list(string)` | List of namespaces to search for ScrapeConfig resources. If not specified, all namespaces will be searched. || no
-`informer_sync_timeout` | `duration` | Timeout for initial sync of ScrapeConfig resources. | `1m` | no
+| Name                    | Type                    | Description                                                                                             | Default | Required |
+| ----------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------- | ------- | -------- |
+| `forward_to`            | `list(MetricsReceiver)` | List of receivers to send scraped metrics to.                                                           |         | yes      |
+| `informer_sync_timeout` | `duration`              | Timeout for initial sync of ScrapeConfig resources.                                                     | `1m`    | no       |
+| `namespaces`            | `list(string)`          | List of namespaces to search for ScrapeConfig resources. If not specified, all namespaces are searched. |         | no       |
 
 ## Blocks
 
