@@ -498,14 +498,11 @@ func validateLabels(lbls labels.Labels) error {
 		}
 
 		// Skip label name validation for pyroscope reserved labels
-		if l.Name == pyroscope.LabelName {
-			lastLabelName = l.Name
-			continue
-		}
-
-		// Validate label name
-		if err := labelset.ValidateLabelName(l.Name); err != nil {
-			return fmt.Errorf("invalid label name: %w", err)
+		if l.Name != pyroscope.LabelName {
+			// Validate label name
+			if err := labelset.ValidateLabelName(l.Name); err != nil {
+				return fmt.Errorf("invalid label name: %w", err)
+			}
 		}
 
 		lastLabelName = l.Name
