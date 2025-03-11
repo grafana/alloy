@@ -245,10 +245,11 @@ It contains the following blocks:
 
 #### `application`
 
-The `application` block configures filtering of application attributes. Each attribute filter is defined as a labeled block with the attribute name as the label.
+The `application` block configures filtering of application attributes.
 
-| Name        | Type     | Description                                          | Required |
-| ----------- | -------- | ---------------------------------------------------- | -------- |
+| Name        | Type     | Description                              | Required |
+| ----------- | -------- | -----------------------------------------| -------- |
+| `attr`      | `string` | The name of the attribute to match.      | yes      |
 | `match`     | `string` | String to match attribute values.        | no       |
 | `not_match` | `string` | String to exclude matching values.       | no       |
 
@@ -258,10 +259,11 @@ wildcards).
 
 #### `network` filters
 
-The `network` block configures filtering of network attributes. Each attribute filter is defined as a labeled block with the attribute name as the label.
+The `network` block configures filtering of network attributes.
 
-| Name        | Type     | Description                                          | Required |
-| ----------- | -------- | ---------------------------------------------------- | -------- |
+| Name        | Type     | Description                              | Required |
+| ----------- | -------- | ---------------------------------------- | -------- |
+| `attr`      | `string` | The name of the attribute to match.      | yes      |
 | `match`     | `string` | String to match attribute values.        | no       |
 | `not_match` | `string` | String to exclude matching values.       | no       |
 

@@ -132,7 +132,7 @@ type Filters struct {
 type AttributeFamilies []AttributeFamily
 
 type AttributeFamily struct {
-	Attr     string `alloy:",label"`
+	Attr     string `alloy:"attr,attr"`
 	Match    string `alloy:"match,attr,optional"`
 	NotMatch string `alloy:"not_match,attr,optional"`
 }
