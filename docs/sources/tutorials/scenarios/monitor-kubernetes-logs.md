@@ -1,12 +1,12 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/tutorials/scenarios/monitor-syslog-messages/
 description: Learn how to use Grafana Alloy to monitor non-RFC5424 compliant syslog messages
-menuTitle: Monitor syslog messages
-title: Monitor non-RFC5424 compliant syslog messages with Grafana Alloy
+menuTitle: Monitor Kubernetes logs
+title: Monitor Kubernetes logs with Grafana Alloy and Loki
 weight: 700
 ---
 
-# Monitor Kubernetes Logs with {{% param "FULL_PRODUCT_NAME" %}} and Loki
+# Monitor Kubernetes logs with {{% param "FULL_PRODUCT_NAME" %}} and Loki
 
 This scenario uses the Kubernetes Monitoring Helm chart.
 This abstracts the need to configure {{< param "PRODUCT_NAME" >}} and deploys best practices for monitoring Kubernetes clusters.
