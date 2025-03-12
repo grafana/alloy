@@ -17,7 +17,7 @@ You can configure the component to collect telemetry data from a specific port o
 The component exposes metrics that can be collected by a Prometheus scrape component, and traces that can be forwarded to an OTel exporter component.
 
 {{< admonition type="note" >}}
-To run this component, {{< param "PRODUCT_NAME" >}} requires administrative privileges, or at least it needs to be granted the following capabilities: `BPF`, `SYS_PTRACE`, `NET_RAW` `CAP_CHECKPOINT_RESTORENET_RAW`, `DAC_READ_SEARCH`, and `PERFMON`. The amount of required capabilities depends on the specific use case, refer to [Beyla security, permissions, and capabilities][] for more information.
+To run this component, {{< param "PRODUCT_NAME" >}} requires administrative privileges, or at least it needs to be granted the following capabilities: `BPF`, `SYS_PTRACE`, `NET_RAW` `CAP_CHECKPOINT_RESTORENET_RAW`, `DAC_READ_SEARCH`, and `PERFMON`. The amount of required capabilities depends on the specific use case, refer to [Beyla capabilities][] for more information.
 
 In Kubernetes environments, the [AppArmor profile must be `Unconfined`](https://kubernetes.io/docs/tutorials/security/apparmor/#securing-a-pod) for the Deployment or DaemonSet running {{< param "PRODUCT_NAME" >}}.
 {{< /admonition >}}
@@ -83,6 +83,11 @@ For example,`attributes` > `kubernetes` refers to a `kubernetes` block defined i
 [kubernetes services]: #kubernetes-services
 [discovery]: #discovery
 [services]: #services
+[instance_id]: #instance_id
+[select]: #select
+[ebpf]: #ebpf
+[filters]: #filters
+[application filters]: #application
 [metrics]: #metrics
 [network metrics]: #network-metrics
 [network filters]: #network-filters
@@ -540,7 +545,7 @@ Replace the following:
 [scrape]: ../../prometheus/prometheus.scrape/
 [Distributed traces with Beyla]: /docs/beyla/latest/distributed-traces/
 [Beyla exported metrics]: /docs/beyla/latest/metrics/
-[Beyla security, permissions, and capabilities]: /docs/beyla/latest/security/
+[Beyla capabilities]: /docs/beyla/latest/security/
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
