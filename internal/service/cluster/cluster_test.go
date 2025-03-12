@@ -71,6 +71,7 @@ func TestReadyToAdmitTraffic(t *testing.T) {
 
 	tests := []struct {
 		name               string
+		enableClustering   bool
 		minimumClusterSize int
 		waitTimeout        time.Duration
 		deadline           time.Time
@@ -78,31 +79,43 @@ func TestReadyToAdmitTraffic(t *testing.T) {
 		expectedReady      bool
 	}{
 		{
-			name:               "defaults",
-			minimumClusterSize: 0,
-			waitTimeout:        0,
-			deadline:           time.Time{}, // zero value
-			peerCount:          1,
+			name:          "defaults",
+			peerCount:     1,
+			expectedReady: true,
+		},
+		{
+			name:               "clustering disabled",
+			enableClustering:   false,
+			minimumClusterSize: 5,
+			peerCount:          1, // less than minimum but clustering disabled
+			expectedReady:      true,
+		},
+		{
+			name:               "clustering disabled and zero peers",
+			enableClustering:   false,
+			minimumClusterSize: 5,
+			peerCount:          0, // no peers but clustering disabled
 			expectedReady:      true,
 		},
 		{
 			name:               "no minimum size requirement",
+			enableClustering:   true,
 			minimumClusterSize: 0,
 			waitTimeout:        5 * time.Minute,
-			deadline:           time.Time{}, // zero value
 			peerCount:          1,
 			expectedReady:      true,
 		},
 		{
 			name:               "no minimum size requirement zero peers",
+			enableClustering:   true,
 			minimumClusterSize: 0,
 			waitTimeout:        5 * time.Minute,
-			deadline:           time.Time{}, // zero value
 			peerCount:          0,
 			expectedReady:      true,
 		},
 		{
 			name:               "deadline passed",
+			enableClustering:   true,
 			minimumClusterSize: 5,
 			waitTimeout:        5 * time.Minute,
 			deadline:           now.Add(-1 * time.Minute), // deadline in the past
@@ -111,6 +124,7 @@ func TestReadyToAdmitTraffic(t *testing.T) {
 		},
 		{
 			name:               "enough peers",
+			enableClustering:   true,
 			minimumClusterSize: 3,
 			waitTimeout:        5 * time.Minute,
 			deadline:           now.Add(5 * time.Minute), // deadline in the future
@@ -119,6 +133,7 @@ func TestReadyToAdmitTraffic(t *testing.T) {
 		},
 		{
 			name:               "more than enough peers",
+			enableClustering:   true,
 			minimumClusterSize: 3,
 			waitTimeout:        5 * time.Minute,
 			deadline:           now.Add(5 * time.Minute), // deadline in the future
@@ -127,6 +142,7 @@ func TestReadyToAdmitTraffic(t *testing.T) {
 		},
 		{
 			name:               "not enough peers, deadline not passed",
+			enableClustering:   true,
 			minimumClusterSize: 5,
 			waitTimeout:        5 * time.Minute,
 			deadline:           now.Add(5 * time.Minute), // deadline in the future
@@ -135,6 +151,7 @@ func TestReadyToAdmitTraffic(t *testing.T) {
 		},
 		{
 			name:               "not enough peers, no deadline set",
+			enableClustering:   true,
 			minimumClusterSize: 5,
 			waitTimeout:        0,           // no timeout
 			deadline:           time.Time{}, // zero value
@@ -153,7 +170,9 @@ func TestReadyToAdmitTraffic(t *testing.T) {
 			}
 
 			s := &Service{
+				log: log.NewLogfmtLogger(os.Stdout),
 				opts: Options{
+					EnableClustering:       tt.enableClustering,
 					MinimumClusterSize:     tt.minimumClusterSize,
 					MinimumSizeWaitTimeout: tt.waitTimeout,
 				},
@@ -161,6 +180,8 @@ func TestReadyToAdmitTraffic(t *testing.T) {
 				sharder:             &mockSharder{peers: peers},
 			}
 
+			assert.False(t, s.readyToAdmitTraffic()) // starts as not ready
+			s.updateReadyToAdmitTraffic()
 			ready := s.readyToAdmitTraffic()
 			assert.Equal(t, tt.expectedReady, ready)
 		})
