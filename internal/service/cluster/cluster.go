@@ -349,6 +349,8 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 		"peers_count", len(peers),
 		"peers", strings.Join(peers, ","),
 		"advertise_addr", s.opts.AdvertiseAddress,
+		"minimum_cluster_size", s.opts.MinimumClusterSize,
+		"minimum_size_wait_timeout", s.opts.MinimumSizeWaitTimeout,
 	)
 
 	if err := s.node.Start(peers); err != nil {
