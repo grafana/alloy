@@ -56,8 +56,8 @@ The metrics configuration in this scenario requires three components, `prometheu
 
 #### `prometheus.exporter.cadvisor`
 
-You can use the [`prometheus.exporter.cadvisor`][prometheus.exporter.cadvisor] component to expose the Docker container metrics.
-This component needs the following arguments:
+The [`prometheus.exporter.cadvisor`][prometheus.exporter.cadvisor] component exposes the Docker container metrics.
+In this scenario, this component needs the following arguments:
 
 * `docker_host`: Defines the Docker endpoint.
 * `storage_duration`: Sets the time that data is stored in memory.
