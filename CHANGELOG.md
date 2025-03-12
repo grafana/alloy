@@ -39,6 +39,10 @@ Main (unreleased)
   - `query_sample`: better handling of truncated queries (@cristiangreco)
   - `query_sample`: add option to use TiDB sql parser (@cristiangreco)
 
+### Breaking changes
+
+- Fixed the parsing of selections, application and network filter blocks for Beyla
+
 ### Other changes
 
 - Upgrading to Prometheus v2.55.1. (@ptodev)
