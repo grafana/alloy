@@ -22,22 +22,23 @@ type clusterOptions struct {
 	Metrics prometheus.Registerer
 	Tracer  trace.TracerProvider
 
-	EnableClustering    bool
-	MinimumClusterSize  int
-	NodeName            string
-	AdvertiseAddress    string
-	ListenAddress       string
-	JoinPeers           []string
-	DiscoverPeers       string
-	RejoinInterval      time.Duration
-	AdvertiseInterfaces []string
-	ClusterMaxJoinPeers int
-	ClusterName         string
-	EnableTLS           bool
-	TLSCAPath           string
-	TLSCertPath         string
-	TLSKeyPath          string
-	TLSServerName       string
+	EnableClustering       bool
+	MinimumClusterSize     int
+	MinimumSizeWaitTimeout time.Duration
+	NodeName               string
+	AdvertiseAddress       string
+	ListenAddress          string
+	JoinPeers              []string
+	DiscoverPeers          string
+	RejoinInterval         time.Duration
+	AdvertiseInterfaces    []string
+	ClusterMaxJoinPeers    int
+	ClusterName            string
+	EnableTLS              bool
+	TLSCAPath              string
+	TLSCertPath            string
+	TLSKeyPath             string
+	TLSServerName          string
 }
 
 func buildClusterService(opts clusterOptions) (*cluster.Service, error) {
@@ -48,17 +49,18 @@ func buildClusterService(opts clusterOptions) (*cluster.Service, error) {
 		Metrics: opts.Metrics,
 		Tracer:  opts.Tracer,
 
-		EnableClustering:    opts.EnableClustering,
-		MinimumClusterSize:  opts.MinimumClusterSize,
-		NodeName:            opts.NodeName,
-		RejoinInterval:      opts.RejoinInterval,
-		ClusterMaxJoinPeers: opts.ClusterMaxJoinPeers,
-		ClusterName:         opts.ClusterName,
-		EnableTLS:           opts.EnableTLS,
-		TLSCAPath:           opts.TLSCAPath,
-		TLSCertPath:         opts.TLSCertPath,
-		TLSKeyPath:          opts.TLSKeyPath,
-		TLSServerName:       opts.TLSServerName,
+		EnableClustering:       opts.EnableClustering,
+		MinimumClusterSize:     opts.MinimumClusterSize,
+		MinimumSizeWaitTimeout: opts.MinimumSizeWaitTimeout,
+		NodeName:               opts.NodeName,
+		RejoinInterval:         opts.RejoinInterval,
+		ClusterMaxJoinPeers:    opts.ClusterMaxJoinPeers,
+		ClusterName:            opts.ClusterName,
+		EnableTLS:              opts.EnableTLS,
+		TLSCAPath:              opts.TLSCAPath,
+		TLSCertPath:            opts.TLSCertPath,
+		TLSKeyPath:             opts.TLSKeyPath,
+		TLSServerName:          opts.TLSServerName,
 	}
 
 	if config.NodeName == "" {
