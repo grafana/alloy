@@ -22,10 +22,6 @@ import (
 	"github.com/prometheus/prometheus/scrape"
 	"github.com/prometheus/prometheus/storage"
 
-	"github.com/prometheus/prometheus/model/exemplar"
-	"github.com/prometheus/prometheus/model/metadata"
-	"github.com/prometheus/prometheus/util/logging"
-
 	"github.com/grafana/alloy/internal/component"
 	component_config "github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/discovery"
@@ -38,6 +34,9 @@ import (
 	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/useragent"
 	"github.com/grafana/alloy/internal/util"
+	"github.com/prometheus/prometheus/model/exemplar"
+	"github.com/prometheus/prometheus/model/metadata"
+	"github.com/prometheus/prometheus/util/logging"
 )
 
 func init() {
@@ -336,9 +335,7 @@ func (c *Component) Run(ctx context.Context) error {
 			// Prometheus handles marking series as stale: it is the client's responsibility to inject the
 			// staleness markers. In our case, for targets that moved to another instance in the cluster, we hand
 			// over this responsibility to the new owning instance. We must not inject staleness marker here.
-			if len(movedTargets) > 0 {
-				c.scraper.DisableEndOfRunStalenessMarkers(jobName, movedTargets)
-			}
+			c.scraper.DisableEndOfRunStalenessMarkers(jobName, movedTargets)
 
 			select {
 			case targetSetsChan <- newTargetGroups:
