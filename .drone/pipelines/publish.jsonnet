@@ -14,37 +14,6 @@ local windows_containers = [
   { devel: 'alloy-devel', release: 'alloy' },
 ];
 
-local windows_containers_dev_jobs = std.map(function(container) (
-  pipelines.windows('Publish Windows %s container' % container.devel) {
-    trigger: {
-      ref: ['refs/heads/main'],
-    },
-    steps: [{
-      name: 'Build containers',
-      image: build_image.windows,
-      volumes: [{
-        name: 'docker',
-        path: '//./pipe/docker_engine/',
-      }],
-      environment: {
-        DOCKER_LOGIN: secrets.docker_login.fromSecret,
-        DOCKER_PASSWORD: secrets.docker_password.fromSecret,
-        GCR_CREDS: secrets.gcr_admin.fromSecret,
-      },
-      commands: [
-        pipelines.windows_command('mkdir -p $HOME/.docker'),
-        pipelines.windows_command('printenv GCR_CREDS > $HOME/.docker/config.json'),
-        pipelines.windows_command('docker login -u $DOCKER_LOGIN -p $DOCKER_PASSWORD'),
-        pipelines.windows_command('./tools/ci/docker-containers-windows %s' % container.devel),
-      ],
-    }],
-    volumes: [{
-      name: 'docker',
-      host: { path: '//./pipe/docker_engine/' },
-    }],
-  }
-), windows_containers);
-
 local linux_containers_jobs = std.map(function(container) (
   pipelines.linux('Publish Linux %s container' % container.release) {
     trigger: {
@@ -127,7 +96,6 @@ local windows_containers_jobs = std.map(function(container) (
   }
 ), windows_containers);
 
-windows_containers_dev_jobs +
 linux_containers_jobs + windows_containers_jobs + [
 
   pipelines.linux('Publish release') {
