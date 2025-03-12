@@ -15,13 +15,19 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/prometheus/prometheus/util/httputil"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/service/cluster"
 	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/service/remotecfg"
-	"github.com/prometheus/prometheus/util/httputil"
 )
+
+// defaultHTTPClient is used for making HTTP requests with a sensible default timeout
+var defaultHTTPClient = &http.Client{
+	Timeout: time.Minute,
+}
 
 // AlloyAPI is a wrapper around the component API.
 type AlloyAPI struct {
@@ -50,7 +56,11 @@ func (a *AlloyAPI) RegisterRoutes(urlPrefix string, r *mux.Router) {
 	r.Handle(path.Join(urlPrefix, "/remotecfg/components/{id:.+}"), httputil.CompressionHandler{Handler: getComponentHandlerRemoteCfg(a.alloy)})
 
 	r.Handle(path.Join(urlPrefix, "/peers"), httputil.CompressionHandler{Handler: getClusteringPeersHandler(a.alloy)})
+
 	r.Handle(path.Join(urlPrefix, "/debug/{id:.+}"), liveDebugging(a.alloy, a.CallbackManager))
+
+	r.Handle(path.Join(urlPrefix, "/tools/instance-prom-targets-debug-info"), httputil.CompressionHandler{Handler: getInstanceTargetDebugInfo(a.alloy)})
+	r.Handle(path.Join(urlPrefix, "/tools/cluster-prom-targets-debug-info"), httputil.CompressionHandler{Handler: getClusterTargetDebugInfo(a.alloy)})
 }
 
 func listComponentsHandler(host service.Host) http.HandlerFunc {
@@ -128,7 +138,7 @@ func getComponentHandlerInternal(host service.Host, w http.ResponseWriter, r *ht
 	vars := mux.Vars(r)
 	requestedComponent := component.ParseID(vars["id"])
 
-	component, err := host.GetComponent(requestedComponent, component.InfoOptions{
+	comp, err := host.GetComponent(requestedComponent, component.InfoOptions{
 		GetHealth:    true,
 		GetArguments: true,
 		GetExports:   true,
@@ -139,7 +149,7 @@ func getComponentHandlerInternal(host service.Host, w http.ResponseWriter, r *ht
 		return
 	}
 
-	bb, err := json.Marshal(component)
+	bb, err := json.Marshal(comp)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -153,7 +163,7 @@ func getClusteringPeersHandler(host service.Host) http.HandlerFunc {
 		// the Typescript code (eg. via the returned status code?).
 		svc, found := host.GetService(cluster.ServiceName)
 		if !found {
-			http.Error(w, "cluster service not running", http.StatusInternalServerError)
+			http.Error(w, "cluster service not running", http.StatusNotFound)
 			return
 		}
 		peers := svc.Data().(cluster.Cluster).Peers()
