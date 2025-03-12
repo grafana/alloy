@@ -1,12 +1,18 @@
 package cluster
 
 import (
+	"fmt"
 	"math/rand"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/ckit/peer"
+	"github.com/grafana/ckit/shard"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/atomic"
 )
 
 func mockDiscoverPeers(peers []string, err error) func() ([]string, error) {
@@ -59,3 +65,118 @@ func TestGetPeers(t *testing.T) {
 		})
 	}
 }
+
+func TestReadyToAdmitTraffic(t *testing.T) {
+	now := time.Now()
+
+	tests := []struct {
+		name               string
+		minimumClusterSize int
+		waitTimeout        time.Duration
+		deadline           time.Time
+		peerCount          int
+		expectedReady      bool
+	}{
+		{
+			name:               "defaults",
+			minimumClusterSize: 0,
+			waitTimeout:        0,
+			deadline:           time.Time{}, // zero value
+			peerCount:          1,
+			expectedReady:      true,
+		},
+		{
+			name:               "no minimum size requirement",
+			minimumClusterSize: 0,
+			waitTimeout:        5 * time.Minute,
+			deadline:           time.Time{}, // zero value
+			peerCount:          1,
+			expectedReady:      true,
+		},
+		{
+			name:               "no minimum size requirement zero peers",
+			minimumClusterSize: 0,
+			waitTimeout:        5 * time.Minute,
+			deadline:           time.Time{}, // zero value
+			peerCount:          0,
+			expectedReady:      true,
+		},
+		{
+			name:               "deadline passed",
+			minimumClusterSize: 5,
+			waitTimeout:        5 * time.Minute,
+			deadline:           now.Add(-1 * time.Minute), // deadline in the past
+			peerCount:          1,                         // less than minimum
+			expectedReady:      true,
+		},
+		{
+			name:               "enough peers",
+			minimumClusterSize: 3,
+			waitTimeout:        5 * time.Minute,
+			deadline:           now.Add(5 * time.Minute), // deadline in the future
+			peerCount:          3,                        // equal to minimum
+			expectedReady:      true,
+		},
+		{
+			name:               "more than enough peers",
+			minimumClusterSize: 3,
+			waitTimeout:        5 * time.Minute,
+			deadline:           now.Add(5 * time.Minute), // deadline in the future
+			peerCount:          5,                        // more than minimum
+			expectedReady:      true,
+		},
+		{
+			name:               "not enough peers, deadline not passed",
+			minimumClusterSize: 5,
+			waitTimeout:        5 * time.Minute,
+			deadline:           now.Add(5 * time.Minute), // deadline in the future
+			peerCount:          2,                        // less than minimum
+			expectedReady:      false,
+		},
+		{
+			name:               "not enough peers, no deadline set",
+			minimumClusterSize: 5,
+			waitTimeout:        0,           // no timeout
+			deadline:           time.Time{}, // zero value
+			peerCount:          2,           // less than minimum
+			expectedReady:      false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var peers []peer.Peer
+			for i := 0; i < tt.peerCount; i++ {
+				peers = append(peers, peer.Peer{
+					Name: fmt.Sprintf("peer_%d", i),
+				})
+			}
+
+			s := &Service{
+				opts: Options{
+					MinimumClusterSize:     tt.minimumClusterSize,
+					MinimumSizeWaitTimeout: tt.waitTimeout,
+				},
+				minimumSizeDeadline: *atomic.NewTime(tt.deadline),
+				sharder:             &mockSharder{peers: peers},
+			}
+
+			ready := s.readyToAdmitTraffic()
+			assert.Equal(t, tt.expectedReady, ready)
+		})
+	}
+}
+
+type mockSharder struct {
+	peers []peer.Peer
+}
+
+func (m *mockSharder) Lookup(key shard.Key, _ int, _ shard.Op) ([]peer.Peer, error) {
+	return m.peers, nil
+}
+
+func (m *mockSharder) Peers() []peer.Peer {
+	return m.peers
+}
+
+func (m *mockSharder) SetPeers(peers []peer.Peer) {}
