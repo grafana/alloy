@@ -3,8 +3,14 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'Dockerfile.windows'
+      - 'tools/ci/docker-containers-windows'
+      - '.github/workflows/check-windows-container.yml'
   pull_request:
     paths:
+      - 'Dockerfile.windows'
+      - 'tools/ci/docker-containers-windows'
       - '.github/workflows/check-windows-container.yml'
 jobs:
   publish_windows_container:

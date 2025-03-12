@@ -3,10 +3,15 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'Dockerfile'
+      - 'tools/ci/docker-containers'
+      - '.github/workflows/check-linux-container.yml'
   pull_request:
     paths:
+      - 'Dockerfile'
+      - 'tools/ci/docker-containers'
       - '.github/workflows/check-linux-container.yml'
-
 jobs:
   publish_windows_container:
     name: Check Linux container
