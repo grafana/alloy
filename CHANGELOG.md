@@ -20,6 +20,8 @@ Main (unreleased)
 
 - Have `loki.echo` log the `entry_timestamp` and `structured_metadata` for any loki entries received (@dehaansa)
 
+- Bump snmp_exporter and embedded modules in `prometheus.exporter.snmp` to v0.28.0 (@v-zhuravlev)
+
 - Update mysqld_exporter to v0.17.2, most notable changes: (@cristiangreco)
   - [0.17.1] Add perf_schema quantile columns to collector
   - [0.17.1] Fix database quoting problem in collector 'info_schema.tables'
@@ -33,11 +35,42 @@ Main (unreleased)
 
 - Add support for proxy and headers in `prometheus.write.queue`. (@mattdurham)
 
-v1.7.1
------------------
-
 - (_Experimental_) Various changes to the experimental component `database_observability.mysql`:
   - `query_sample`: better handling of truncated queries (@cristiangreco)
+  - `query_sample`: add option to use TiDB sql parser (@cristiangreco)
+
+### Breaking changes
+
+- Fixed the parsing of selections, application and network filter blocks for Beyla
+
+### Other changes
+
+- Upgrading to Prometheus v2.55.1. (@ptodev)
+  - Added a new `http_headers` argument to many `discovery` and `prometheus` components.
+  - Added a new `scrape_failure_log_file` argument to `prometheus.scrape`.
+
+v1.7.2
+-----------------
+
+### Bugfixes
+
+- Fixed an issue where the `otelcol.exporter.awss3` could not be started with the `sumo_ic` marshaler. (@wildum)
+
+- Update `jfr-parser` dependency to v0.9.3 to fix jfr parsing issues in `pyroscope.java`. (@korniltsev)
+
+- Fixed an issue where passing targets from some standard library functions was failing with `target::ConvertFrom` error. (@thampiotr)
+
+- Fixed an issue where indexing targets as maps (e.g. `target["foo"]`) or objects (e.g. `target.foo`) or using them with
+  certain standard library functions was resulting in `expected object or array, got capsule` error under some
+  circumstances. This could also lead to `foreach evaluation failed` errors when using the `foreach` configuration
+  block. (@thampiotr)
+
+- Update `prometheus.write.queue` to reduce memory fragmentation and increase sent throughput. (@mattdurham)
+
+- Fixed an issue where the `otelcol.exporter.kafka` component would not start if the `encoding` was specific to a signal type. (@wildum)
+
+v1.7.1
+-----------------
 
 ### Bugfixes
 
@@ -70,6 +103,8 @@ v1.7.0
   cumulative temporality to delta. (@madaraszg-tulip)
 
 - (_Experimental_) Add a `stage.windowsevent` block in the `loki.process` component. This aims to replace the existing `stage.eventlogmessage`. (@wildum)
+
+- (_Experimental_) Adding a new `prometheus.operator.scrapeconfigs` which discovers and scrapes [ScrapeConfig](https://prometheus-operator.dev/docs/developer/scrapeconfig/) Kubernetes resources. (@alex-berger)
 
 - Add `pyroscope.relabel` component to modify or filter profiles using Prometheus relabeling rules. (@marcsanmi)
 

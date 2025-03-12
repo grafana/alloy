@@ -10,14 +10,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime"
-	alloy_runtime "github.com/grafana/alloy/internal/runtime"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/tools/txtar"
+
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime"
+	alloy_runtime "github.com/grafana/alloy/internal/runtime"
+	_ "github.com/grafana/alloy/internal/runtime/internal/testcomponents/targets" // import targets test component
 )
 
 func TestForeach(t *testing.T) {
@@ -44,7 +46,7 @@ func TestForeachMetrics(t *testing.T) {
 	directory := "./testdata/foreach_metrics"
 	for _, file := range getTestFiles(directory, t) {
 		tc := buildTestForEach(t, filepath.Join(directory, file.Name()))
-		t.Run(tc.description, func(t *testing.T) {
+		t.Run(file.Name(), func(t *testing.T) {
 			if tc.module != "" {
 				defer os.Remove("module.alloy")
 				require.NoError(t, os.WriteFile("module.alloy", []byte(tc.module), 0664))

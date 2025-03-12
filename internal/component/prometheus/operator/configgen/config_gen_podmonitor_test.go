@@ -19,6 +19,7 @@ import (
 	"gopkg.in/yaml.v3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/ptr"
 
 	"github.com/grafana/alloy/internal/component/common/kubernetes"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
@@ -297,11 +298,11 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 						},
 					},
 					NamespaceSelector:     promopv1.NamespaceSelector{Any: false, MatchNames: []string{"ns_a", "ns_b"}},
-					SampleLimit:           101,
-					TargetLimit:           102,
-					LabelLimit:            103,
-					LabelNameLengthLimit:  104,
-					LabelValueLengthLimit: 105,
+					SampleLimit:           ptr.To(uint64(101)),
+					TargetLimit:           ptr.To(uint64(102)),
+					LabelLimit:            ptr.To(uint64(103)),
+					LabelNameLengthLimit:  ptr.To(uint64(104)),
+					LabelValueLengthLimit: ptr.To(uint64(105)),
 					AttachMetadata:        &promopv1.AttachMetadata{Node: true},
 				},
 			},

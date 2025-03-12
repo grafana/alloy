@@ -14,9 +14,25 @@ Unreleased
 
 - Add `checksum/config` pod annotation (@kimxogus)
 
+
+0.12.3 (2025-03-10)
+----------
+
+### Enhancements
+
+- Add support for adding livenessProbe to agent container (@slimes28)
+
+0.12.2 (2025-03-10)
+----------
+
 ### Bug Fixes
 
 - Set resource namespace correctly (@shinebayar-g)
+
+### Enhancements
+
+- Add a new `automountServiceAccountToken` configuration value for `serviceAccount`. (@ptodev)
+- Update to Grafana Alloy v1.7.2. (@thampiotr)
 
 0.12.1 (2025-02-26)
 ----------
