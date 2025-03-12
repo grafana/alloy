@@ -52,10 +52,6 @@ func (s *liveDebugging) PublishIfActive(data Data) {
 	s.loadMut.RLock()
 	defer s.loadMut.RUnlock()
 
-	if !s.enabled {
-		return
-	}
-
 	if callbacks, exist := s.callbacks[data.ComponentID]; !exist || len(callbacks) == 0 {
 		return
 	}
@@ -94,13 +90,10 @@ func (s *liveDebugging) AddCallback(callbackID CallbackID, componentID Component
 	return nil
 }
 
+// live debugging does not need to be enabled for the multi callback because the data func are not computed for the graph.
 func (s *liveDebugging) AddCallbackMulti(callbackID CallbackID, moduleID ModuleID, callback func(Data)) error {
 	s.loadMut.Lock()
 	defer s.loadMut.Unlock()
-
-	if !s.enabled {
-		return fmt.Errorf("the live debugging service is disabled. Check the documentation to find out how to enable it")
-	}
 
 	if s.host == nil {
 		return fmt.Errorf("the live debugging service is not ready yet")
@@ -152,5 +145,11 @@ func (s *liveDebugging) SetServiceHost(h service.Host) {
 func (s *liveDebugging) SetEnabled(enabled bool) {
 	s.loadMut.Lock()
 	defer s.loadMut.Unlock()
+	if s.enabled && !enabled {
+		// if the live debugging is disabled via reload, the callbacks should be cleared
+		for componentID := range s.callbacks {
+			delete(s.callbacks, componentID)
+		}
+	}
 	s.enabled = enabled
 }

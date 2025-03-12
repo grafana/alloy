@@ -3,11 +3,13 @@
   "private": true,
   "dependencies": {
     "@brianmcallister/react-auto-scroll": "^1.1.0",
+    "@dagrejs/dagre": "^1.1.4",
     "@fortawesome/fontawesome-svg-core": "^6.4.0",
     "@fortawesome/free-solid-svg-icons": "^6.4.0",
     "@fortawesome/react-fontawesome": "^0.2.0",
     "@grafana/data": "^11.0.0",
     "@grafana/ui": "^11.0.0",
+    "@xyflow/react": "^12.4.4",
     "d3": "^7.8.4",
     "d3-dag": "^0.11.5",
     "d3-zoom": "^3.0.0",
