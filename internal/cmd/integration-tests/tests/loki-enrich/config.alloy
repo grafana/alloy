@@ -33,8 +33,8 @@ loki.source.api "network_device" {
 loki.enrich "enricher" {
 
   targets = discovery.relabel.network_devices.output
-  // Labels to copy from targets
-  target_labels = [
+  // List of labels to copy from discovered targets to logs
+  labels_to_copy = [
     "environment",
     "datacenter",
     "role",

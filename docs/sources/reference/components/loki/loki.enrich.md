@@ -28,7 +28,7 @@ loki.enrich "LABEL" {
   source_label = "LABEL"
   
   // List of labels to copy from discovered targets to logs
-  target_labels = ["LABEL", ...]
+  labels_to_copy = ["LABEL", ...]
   
   // Where to send enriched logs
   forward_to = [RECEIVER_LIST]
@@ -44,7 +44,7 @@ Name | Type | Description | Default | Required
 `targets` | `[]discovery.Target` | List of targets from a discovery component. | | yes
 `target_match_label` | `string` | Which label from discovered targets to match against (e.g., "__inventory_consul_service"). | | yes
 `logs_match_label` | `string` | Which label from incoming logs to match against discovered targets (e.g., "service_name"). If not specified, `target_match_label` will be used. | `target_match_label` | no
-`target_labels` | `[]string` | List of labels to copy from discovered targets to logs. If empty, all labels will be copied. | | no
+`labels_to_copy` | `[]string` | List of labels to copy from discovered targets to logs. If empty, all labels will be copied. | | no
 `forward_to` | `[]loki.LogsReceiver` | List of receivers to send enriched logs to. | | yes
 
 ## Exports
@@ -124,7 +124,7 @@ The component matches logs to discovered targets and enriches them with addition
 
 1. For each log entry, it looks up the value of `logs_match_label` from the log's labels (or `target_match_label` if `logs_match_label` is not specified)
 2. It matches this value against the `target_match_label` in discovered targets
-3. If a match is found, it copies the requested `target_labels` from the discovered target to the log entry (if `target_labels` is empty, all labels are copied)
+3. If a match is found, it copies the requested `labels_to_copy` from the discovered target to the log entry (if `labels_to_copy` is empty, all labels are copied)
 4. The log entry (enriched or unchanged) is forwarded to the configured receivers
 
 ## See also

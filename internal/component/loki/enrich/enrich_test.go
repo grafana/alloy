@@ -41,7 +41,7 @@ func TestEnricher(t *testing.T) {
 				},
 				TargetMatchLabel: "service",
 				LogsMatchLabel:   "service_name",
-				TargetLabels:     []string{"env", "owner"},
+				LabelsToCopy:     []string{"env", "owner"},
 			},
 			inputLog: &logproto.Entry{
 				Timestamp: time.Now(),
@@ -68,7 +68,7 @@ func TestEnricher(t *testing.T) {
 				},
 				TargetMatchLabel: "service",
 				LogsMatchLabel:   "service_name",
-				TargetLabels:     []string{"env"},
+				LabelsToCopy:     []string{"env"},
 			},
 			inputLog: &logproto.Entry{
 				Timestamp: time.Now(),
@@ -123,7 +123,7 @@ func TestEnricher(t *testing.T) {
 				},
 				TargetMatchLabel: "service",
 				// LogsMatchLabel intentionally omitted as 'service' label exists in both.
-				TargetLabels: []string{"env", "owner"},
+				LabelsToCopy: []string{"env", "owner"},
 			},
 			inputLog: &logproto.Entry{
 				Timestamp: time.Now(),
@@ -195,7 +195,7 @@ func TestUpdate(t *testing.T) {
 		Targets:          newTargets,
 		TargetMatchLabel: "service",
 		LogsMatchLabel:   "service_name",
-		TargetLabels:     []string{"env"},
+		LabelsToCopy:     []string{"env"},
 	})
 	require.NoError(t, err)
 }

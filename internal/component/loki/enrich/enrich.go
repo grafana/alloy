@@ -39,8 +39,8 @@ type Arguments struct {
 	// If not specified, TargetMatchLabel will be used
 	LogsMatchLabel string `alloy:"logs_match_label,attr,optional"`
 
-	// List of target labels to copy to logs. If empty, all labels will be copied.
-	TargetLabels []string `alloy:"target_labels,attr,optional"`
+	// List of labels to copy from discovered targets to logs. If empty, all labels will be copied.
+	LabelsToCopy []string `alloy:"labels_to_copy,attr,optional"`
 
 	// Where to forward logs after enrichment
 	ForwardTo []loki.LogsReceiver `alloy:"forward_to,attr"`
@@ -139,14 +139,14 @@ func (c *Component) processLog(entry *logproto.Entry, labels model.LabelSet) err
 
 	// Copy labels from target to log labels
 	newLabels := labels.Clone()
-	if len(c.args.TargetLabels) == 0 {
+	if len(c.args.LabelsToCopy) == 0 {
 		// If no specific labels are requested, copy all labels
 		for k, v := range targetLabels {
 			newLabels[k] = v
 		}
 	} else {
 		// Copy only requested labels
-		for _, label := range c.args.TargetLabels {
+		for _, label := range c.args.LabelsToCopy {
 			if value := targetLabels[model.LabelName(label)]; value != "" {
 				newLabels[model.LabelName(label)] = value
 			}
