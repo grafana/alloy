@@ -298,7 +298,7 @@ func (c *Component) shutdownServer() {
 	}
 }
 
-// rename __name__ to service_name
+// ensureServiceName ensures that the service_name label is set
 func ensureServiceName(lbls labels.Labels) labels.Labels {
 	builder := labels.NewBuilder(lbls)
 	originalName := lbls.Get(pyroscope.LabelName)
