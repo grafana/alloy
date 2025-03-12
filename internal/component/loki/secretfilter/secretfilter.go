@@ -53,7 +53,7 @@ func init() {
 //
 // - loki_secretfilter_secrets_redacted_total: Total number of secrets that have been redacted.
 // - loki_secretfilter_secrets_redacted_by_rule_total: Number of secrets redacted, partitioned by rule name.
-// - loki_secretfilter_secrets_redacted_by_label_total: Number of secrets redacted, partitioned by user-specified labels.
+// - loki_secretfilter_secrets_redacted_by_origin: Number of secrets redacted, partitioned by origin label value.
 // - loki_secretfilter_secrets_allowlisted_total: Number of secrets that matched a rule but were in an allowlist, partitioned by source.
 
 // Arguments holds values which are used to configure the secretfilter
@@ -66,7 +66,7 @@ type Arguments struct {
 	IncludeGeneric bool                `alloy:"include_generic,attr,optional"` // Include the generic API key rule (default: false)
 	AllowList      []string            `alloy:"allowlist,attr,optional"`       // List of regexes to allowlist (on top of what's in the Gitleaks config)
 	PartialMask    uint                `alloy:"partial_mask,attr,optional"`    // Show the first N characters of the secret (default: 0)
-	TrackLabels    []string            `alloy:"track_labels,attr,optional"`    // List of label names to track in metrics (if empty, no label metrics are collected)
+	OriginLabel    string              `alloy:"origin_label,attr,optional"`    // The label name to use for tracking metrics by origin (if empty, no origin metrics are collected)
 }
 
 // Exports holds the values exported by the loki.secretfilter component.
@@ -137,7 +137,7 @@ type metrics struct {
 	secretsRedactedByRule *prometheus.CounterVec
 
 	// Number of secrets redacted by specified labels
-	secretsRedactedByLabel *prometheus.CounterVec
+	secretsRedactedByOrigin *prometheus.CounterVec
 
 	// Number of secrets that matched but were in allowlist
 	secretsAllowlistedTotal *prometheus.CounterVec
@@ -147,7 +147,7 @@ type metrics struct {
 }
 
 // newMetrics creates a new set of metrics for the secretfilter component.
-func newMetrics(reg prometheus.Registerer, trackLabels []string) *metrics {
+func newMetrics(reg prometheus.Registerer, originLabel string) *metrics {
 	var m metrics
 
 	m.secretsRedactedTotal = prometheus.NewCounter(prometheus.CounterOpts{
@@ -162,11 +162,13 @@ func newMetrics(reg prometheus.Registerer, trackLabels []string) *metrics {
 		Help:      "Number of secrets redacted, partitioned by rule name.",
 	}, []string{"rule"})
 
-	m.secretsRedactedByLabel = prometheus.NewCounterVec(prometheus.CounterOpts{
-		Subsystem: "loki_secretfilter",
-		Name:      "secrets_redacted_by_label_total",
-		Help:      "Number of secrets redacted, partitioned by user-specified labels.",
-	}, trackLabels)
+	if originLabel != "" {
+		m.secretsRedactedByOrigin = prometheus.NewCounterVec(prometheus.CounterOpts{
+			Subsystem: "loki_secretfilter",
+			Name:      "secrets_redacted_by_origin",
+			Help:      "Number of secrets redacted, partitioned by origin label value.",
+		}, []string{"origin"})
+	}
 
 	m.secretsAllowlistedTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Subsystem: "loki_secretfilter",
@@ -188,7 +190,9 @@ func newMetrics(reg prometheus.Registerer, trackLabels []string) *metrics {
 	if reg != nil {
 		m.secretsRedactedTotal = util.MustRegisterOrGet(reg, m.secretsRedactedTotal).(prometheus.Counter)
 		m.secretsRedactedByRule = util.MustRegisterOrGet(reg, m.secretsRedactedByRule).(*prometheus.CounterVec)
-		m.secretsRedactedByLabel = util.MustRegisterOrGet(reg, m.secretsRedactedByLabel).(*prometheus.CounterVec)
+		if originLabel != "" {
+			m.secretsRedactedByOrigin = util.MustRegisterOrGet(reg, m.secretsRedactedByOrigin).(*prometheus.CounterVec)
+		}
 		m.secretsAllowlistedTotal = util.MustRegisterOrGet(reg, m.secretsAllowlistedTotal).(*prometheus.CounterVec)
 		m.processingDuration = util.MustRegisterOrGet(reg, m.processingDuration).(prometheus.Summary)
 	}
@@ -206,7 +210,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	c := &Component{
 		opts:               o,
 		receiver:           loki.NewLogsReceiver(),
-		metrics:            newMetrics(o.Registerer, args.TrackLabels),
+		metrics:            newMetrics(o.Registerer, args.OriginLabel),
 		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
 	}
 
@@ -312,17 +316,12 @@ func (c *Component) processEntry(entry loki.Entry) loki.Entry {
 			c.metrics.secretsRedactedTotal.Inc()
 			c.metrics.secretsRedactedByRule.WithLabelValues(r.name).Inc()
 
-			// Record metrics for labels
-			// We limit to avoid potential high cardinality issues
-			// Only track labels if they exist
-			if len(entry.Labels) > 0 && len(c.args.TrackLabels) > 0 {
-				labelValues := make([]string, len(c.args.TrackLabels))
-				for i, labelName := range c.args.TrackLabels {
-					if value, ok := entry.Labels[model.LabelName(labelName)]; ok {
-						labelValues[i] = string(value)
-					}
+			// Record metrics for origin label
+			// Only track if the origin label is specified and the label exists in the log entry
+			if c.args.OriginLabel != "" && len(entry.Labels) > 0 {
+				if value, ok := entry.Labels[model.LabelName(c.args.OriginLabel)]; ok {
+					c.metrics.secretsRedactedByOrigin.WithLabelValues(string(value)).Inc()
 				}
-				c.metrics.secretsRedactedByLabel.WithLabelValues(labelValues...).Inc()
 			}
 		}
 	}
@@ -375,7 +374,7 @@ func (c *Component) Update(args component.Arguments) error {
 
 	c.fanout = newArgs.ForwardTo
 
-	c.metrics = newMetrics(c.opts.Registerer, newArgs.TrackLabels)
+	c.metrics = newMetrics(c.opts.Registerer, newArgs.OriginLabel)
 
 	// Parse GitLeaks configuration
 	var gitleaksCfg GitLeaksConfig
