@@ -15,9 +15,7 @@ The `prometheus.exporter.cadvisor` component collects container metrics using [c
 ## Usage
 
 ```alloy
-prometheus.exporter.cadvisor "container_metrics" {
-    docker_host      = "unix:///var/run/docker.sock"
-    storage_duration = "5m"
+prometheus.exporter.cadvisor "<LABEL>" {
 }
 ```
 
