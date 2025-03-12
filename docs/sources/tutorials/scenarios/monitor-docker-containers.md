@@ -8,12 +8,16 @@ weight: 200
 
 # Monitor Docker containers with {{% param "FULL_PRODUCT_NAME" %}}
 
+Docker containers provide statistics and logs.
+You can use the `docker stats` and `docker logs` commands to show the metrics and logs but this just shows the output in a terminal and it's a fixed snapshot in time.
+If you use {{< param "PRODUCT_NAME" >}} to collect the metrics and logs and forward them to a Grafana stack, you can create a Grafana dashboard to monitor your Docker container.
+
 ## Before you begin
 
-* Docker
-* Git
+* Install Docker
+* Install Git
 
-## Clone the repository
+## Clone the scenarios repository
 
 Clone the {{< param "PRODUCT_NAME" >}} scenarios repository.
 
@@ -30,17 +34,26 @@ cd alloy-scenarios/docker-monitoring
 docker compose up -d
 ```
 
-## Access the {{% param "PRODUCT_NAME" %}} UI
+## View the {{% param "PRODUCT_NAME" %}} UI
 
 Open your browser and navigate to [`http://localhost:12345`](http://localhost:12345).
+
+<!-- 
+Add info about what the user can see in this view and a link to the relevant docs
+-->
 
 ## Access the Grafana UI
 
 Open your browser and navigate to [`http://localhost:3000`](http://localhost:3000).
 
+<!--
+Add info about dashboards
+Add steps to create a basic dashboard to monitor some stats/logs that woudl be interesting to a user
+-->
+
 ## Shut down the Grafana stack
 
-Stop docker to shut down the Grafana stack.
+Stop Docker to shut down the Grafana stack.
 
 ```shell
 docker compose down
@@ -52,12 +65,12 @@ The {{< param "PRODUCT_NAME" >}} configuration file is split into two parts, the
 
 ### Configure metrics
 
-The metrics configuration in this scenario requires three components, `prometheus.exporter.cadvisor`, `prometheus.scrape`, and `prometheus.remote_write`.
+The metrics configuration in this example requires three components, `prometheus.exporter.cadvisor`, `prometheus.scrape`, and `prometheus.remote_write`.
 
 #### `prometheus.exporter.cadvisor`
 
 The [`prometheus.exporter.cadvisor`][prometheus.exporter.cadvisor] component exposes the Docker container metrics.
-In this scenario, this component needs the following arguments:
+In this example, this component needs the following arguments:
 
 * `docker_host`: Defines the Docker endpoint.
 * `storage_duration`: Sets the time that data is stored in memory.
@@ -73,7 +86,7 @@ prometheus.exporter.cadvisor "example" {
 #### `prometheus.scrape`
 
 The [`prometheus.scrape`][prometheus.scrape] component scrapes the cAdvisor metrics and forwards them to a receiver.
-In this scenario, the component needs the following arguments:
+In this example, the component needs the following arguments:
 
 * `targets`: The target to scrape the metrics from.
 * `forward_to`: The destination to forward the metrics to.
@@ -92,7 +105,7 @@ prometheus.scrape "scraper" {
 #### `prometheus.remote_write`
 
 The [`prometheus.remote_write`][prometheus.remote_write] component sends metrics to a Prometheus server.
-In this scenario, the component needs the following arguments:
+In this example, the component needs the following arguments:
 
 * `url`: Defines the full URL endpoint to send metrics to.
 
@@ -110,12 +123,12 @@ prometheus.remote_write "demo" {
 
 ### Configure logging
 
-The logging configuration in this scenario requires four components, `discovery.docker`, `discovery.relabel`, `loki.source.docker`, and `loki.write`.
+The logging configuration in this example requires four components, `discovery.docker`, `discovery.relabel`, `loki.source.docker`, and `loki.write`.
 
 #### `discovery.docker`
 
 The [`discovery.docker`][discovery.docker] component discovers the Docker containers and extracts the metadata.
-In this scenario, the component needs the following argument:
+In this example, the component needs the following argument:
 
 * `host`: Defines the address of the Docker Daemon to connect to.
 
@@ -128,9 +141,11 @@ discovery.docker "linux" {
 #### `discovery.relabel`
 
 The [`discovery.relabel`][discovery.relabel] component defines a relabeling rule to create a service name from the container name.
-In this scenario, the component needs the following arguments:
+In this example, the component needs the following arguments:
 
 * `targets`: The targets to relabel.
+  In this example, the `discovery.relabel` component is used only for its exported `relabel_rules` in the `loki.source.docker` component.
+  No targets are modified, so the `targets` argument is an empty array.
 * `source_labels`: The list of labels to select for relabeling.
 * `regex`: A regular expression argument that, in this case, matches any string, including an empty string.
 * `target_label`: The label that's written to the target.
@@ -150,7 +165,7 @@ discovery.relabel "logs_integrations_docker" {
 #### `loki.source.docker`
 
 The [`loki.source.docker`][loki.source.docker] component collects the logs from the Docker containers.
-In this scenario, the component needs the following arguments:
+In this example, the component needs the following arguments:
 
 * `host`: The address of the Docker daemon.
 * `targets`: The list of containers to read logs from.
@@ -171,7 +186,7 @@ loki.source.docker "default" {
 #### `loki.write`
 
 The [`loki.write`][loki.write] component writes the logs out to a Loki destination.
-In this scenario, the component needs the following argument:
+In this example, the component needs the following argument:
 
 * `url`: Defines the full URL endpoint in Loki to send logs to.
 
