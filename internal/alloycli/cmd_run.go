@@ -155,6 +155,8 @@ depending on the nature of the reload error.
 		StringVar(&r.clusterTLSKeyPath, "cluster.tls-key-path", r.clusterTLSKeyPath, "Path to the key file")
 	cmd.Flags().
 		StringVar(&r.clusterTLSServerName, "cluster.tls-server-name", r.clusterTLSServerName, "Server name to use for TLS communication")
+	cmd.Flags().
+		IntVar(&r.clusterWaitForSize, "cluster.wait-for-size", r.clusterWaitForSize, "Wait for the cluster to reach the specified number of instances before admitting traffic to components that use clustering")
 
 	// Config flags
 	cmd.Flags().StringVar(&r.configFormat, "config.format", r.configFormat, fmt.Sprintf("The format of the source file. Supported formats: %s.", supportedFormatsList()))
@@ -198,6 +200,7 @@ type alloyRun struct {
 	clusterTLSCertPath                   string
 	clusterTLSKeyPath                    string
 	clusterTLSServerName                 string
+	clusterWaitForSize                   int
 	configFormat                         string
 	configBypassConversionErrors         bool
 	configExtraArgs                      string
@@ -315,6 +318,7 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 		TLSCAPath:           fr.clusterTLSCAPath,
 		TLSKeyPath:          fr.clusterTLSKeyPath,
 		TLSServerName:       fr.clusterTLSServerName,
+		MinimumClusterSize:  fr.clusterWaitForSize,
 	})
 	if err != nil {
 		return err

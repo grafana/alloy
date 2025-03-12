@@ -85,6 +85,7 @@ type Options struct {
 	RejoinInterval      time.Duration // How frequently to rejoin the cluster to address split brain issues.
 	ClusterMaxJoinPeers int           // Number of initial peers to join from the discovered set.
 	ClusterName         string        // Name to prevent nodes without this identifier from joining the cluster.
+	MinimumClusterSize  int           // Minimum cluster size before admitting traffic to components that use clustering.
 
 	// Function to discover peers to join. If this function is nil or returns an
 	// empty slice, no peers will be joined.
