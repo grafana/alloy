@@ -100,7 +100,8 @@ type Service struct {
 	tracer trace.TracerProvider
 	opts   Options
 
-	minimumSizeDeadline atomic.Time
+	minimumSizeDeadline   atomic.Time
+	isReadyToAdmitTraffic atomic.Bool
 
 	sharder shard.Sharder
 	node    *ckit.Node
@@ -181,11 +182,17 @@ func New(opts Options) (*Service, error) {
 		node:    node,
 		randGen: rand.New(rand.NewSource(time.Now().UnixNano())),
 	}
+
+	// Initialize isReadyToAdmitTraffic. The cluster is ready when clustering is disabled or no minimum size is required.
+	s.isReadyToAdmitTraffic.Store(!opts.EnableClustering || opts.MinimumClusterSize == 0)
+
+	// Initialize the minimum size deadline if it's set.
 	if opts.MinimumClusterSize > 0 && opts.MinimumSizeWaitTimeout != 0 {
 		s.minimumSizeDeadline.Store(time.Now().Add(opts.MinimumSizeWaitTimeout))
 	} else {
 		s.minimumSizeDeadline.Store(time.Time{})
 	}
+
 	return s, nil
 }
 
@@ -310,6 +317,9 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 		s.logPeers("peers changed", toStringSlice(peers))
 		span.SetAttributes(attribute.Int("peers_count", len(peers)))
 
+		// Peers changed - update the ready-to-admit-traffic flag
+		s.updateReadyToAdmitTraffic()
+
 		// Notify all components about the clustering change.
 		components := component.GetAllComponents(host, component.InfoOptions{})
 		for _, comp := range components {
@@ -364,6 +374,9 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 			os.Exit(1)
 		}
 	}
+
+	// Update the ready-to-admit-traffic flag after node start
+	s.updateReadyToAdmitTraffic()
 
 	if s.opts.EnableClustering && s.opts.RejoinInterval > 0 {
 		wg.Add(1)
@@ -471,16 +484,34 @@ func (s *Service) logPeers(msg string, peers []string) {
 	)
 }
 
-func (s *Service) readyToAdmitTraffic() bool {
-	// No minimum cluster size is set = ready to admit traffic.
-	if s.opts.MinimumClusterSize == 0 {
-		return true
+// updateReadyToAdmitTraffic updates the isReadyToAdmitTraffic flag based on the current cluster state.
+func (s *Service) updateReadyToAdmitTraffic() {
+	// If clustering is disabled, the service is always ready to admit traffic
+	if !s.opts.EnableClustering {
+		s.isReadyToAdmitTraffic.Store(true)
+		return
 	}
+
+	// No minimum cluster size is set = always ready to admit traffic.
+	if s.opts.MinimumClusterSize == 0 {
+		s.isReadyToAdmitTraffic.Store(true)
+		return
+	}
+
 	// Deadline is set, and it's past the deadline = ready to admit traffic.
 	deadlineValue := s.minimumSizeDeadline.Load()
 	isDeadlineSet := deadlineValue != time.Time{}
 	if isDeadlineSet && time.Now().After(deadlineValue) {
-		return true
+		if !s.isReadyToAdmitTraffic.Load() { // log if previously not ready
+			level.Warn(s.log).Log(
+				"msg", "deadline passed, marking cluster as ready to admit traffic",
+				"minimum_cluster_size", s.opts.MinimumClusterSize,
+				"minimum_size_wait_timeout", s.opts.MinimumSizeWaitTimeout,
+				"peers_count", len(s.sharder.Peers()),
+			)
+		}
+		s.isReadyToAdmitTraffic.Store(true)
+		return
 	}
 
 	// Number of peers is greater than the minimum cluster size = ready to admit traffic.
@@ -489,12 +520,25 @@ func (s *Service) readyToAdmitTraffic() bool {
 		if s.opts.MinimumSizeWaitTimeout != 0 {
 			s.minimumSizeDeadline.Store(time.Now().Add(s.opts.MinimumSizeWaitTimeout))
 		}
-		return true
+		if !s.isReadyToAdmitTraffic.Load() { // log if previously not ready
+			level.Info(s.log).Log(
+				"msg", "minimum cluster size reached, marking cluster as ready to admit traffic",
+				"minimum_cluster_size", s.opts.MinimumClusterSize,
+				"peers_count", len(s.sharder.Peers()),
+			)
+		}
+		s.isReadyToAdmitTraffic.Store(true)
+		return
 	}
 
-	// MinimumClusterSize is set, deadline is either not set or it didn't yet pass, and the number of peers is less
+	// Deadline is either not set or it didn't yet pass, and the number of peers is less
 	// than the minimum.
-	return false
+	s.isReadyToAdmitTraffic.Store(false)
+}
+
+// readyToAdmitTraffic checks if the cluster is ready to admit traffic.
+func (s *Service) readyToAdmitTraffic() bool {
+	return s.isReadyToAdmitTraffic.Load()
 }
 
 // Component is a component which subscribes to clustering updates.
