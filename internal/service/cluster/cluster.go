@@ -24,6 +24,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"go.opentelemetry.io/otel/trace/noop"
+	"go.uber.org/atomic"
 	"golang.org/x/net/http2"
 	"golang.org/x/time/rate"
 
@@ -75,17 +76,18 @@ type Options struct {
 	// possible for other nodes to join the cluster.
 	EnableClustering bool
 
-	NodeName            string        // Name to use for this node in the cluster.
-	AdvertiseAddress    string        // Address to advertise to other nodes in the cluster.
-	EnableTLS           bool          // Specifies whether TLS should be used for communication between peers.
-	TLSCAPath           string        // Path to the CA file.
-	TLSCertPath         string        // Path to the certificate file.
-	TLSKeyPath          string        // Path to the key file.
-	TLSServerName       string        // Server name to use for TLS communication.
-	RejoinInterval      time.Duration // How frequently to rejoin the cluster to address split brain issues.
-	ClusterMaxJoinPeers int           // Number of initial peers to join from the discovered set.
-	ClusterName         string        // Name to prevent nodes without this identifier from joining the cluster.
-	MinimumClusterSize  int           // Minimum cluster size before admitting traffic to components that use clustering.
+	NodeName               string        // Name to use for this node in the cluster.
+	AdvertiseAddress       string        // Address to advertise to other nodes in the cluster.
+	EnableTLS              bool          // Specifies whether TLS should be used for communication between peers.
+	TLSCAPath              string        // Path to the CA file.
+	TLSCertPath            string        // Path to the certificate file.
+	TLSKeyPath             string        // Path to the key file.
+	TLSServerName          string        // Server name to use for TLS communication.
+	RejoinInterval         time.Duration // How frequently to rejoin the cluster to address split brain issues.
+	ClusterMaxJoinPeers    int           // Number of initial peers to join from the discovered set.
+	ClusterName            string        // Name to prevent nodes without this identifier from joining the cluster.
+	MinimumClusterSize     int           // Minimum cluster size before admitting traffic to components that use clustering.
+	MinimumSizeWaitTimeout time.Duration // Maximum duration to wait for minimum cluster size before proceeding; 0 means no timeout.
 
 	// Function to discover peers to join. If this function is nil or returns an
 	// empty slice, no peers will be joined.
@@ -97,6 +99,8 @@ type Service struct {
 	log    log.Logger
 	tracer trace.TracerProvider
 	opts   Options
+
+	minimumSizeDeadline atomic.Time
 
 	sharder shard.Sharder
 	node    *ckit.Node
@@ -168,7 +172,7 @@ func New(opts Options) (*Service, error) {
 		}
 	}
 
-	return &Service{
+	s := &Service{
 		log:    l,
 		tracer: t,
 		opts:   opts,
@@ -176,7 +180,13 @@ func New(opts Options) (*Service, error) {
 		sharder: ckitConfig.Sharder,
 		node:    node,
 		randGen: rand.New(rand.NewSource(time.Now().UnixNano())),
-	}, nil
+	}
+	if opts.MinimumClusterSize > 0 && opts.MinimumSizeWaitTimeout != 0 {
+		s.minimumSizeDeadline.Store(time.Now().Add(opts.MinimumSizeWaitTimeout))
+	} else {
+		s.minimumSizeDeadline.Store(time.Time{})
+	}
+	return s, nil
 }
 
 func loadTLSConfigFromFile(TLSCAPath string, TLSCertPath string, TLSKeyPath string, serverName string) (*tls.Config, error) {
@@ -411,6 +421,7 @@ func (s *Service) getPeers() ([]string, error) {
 	}
 
 	// We shuffle the list and return only a subset of the peers.
+	// TODO(thampiotr): verify that this can be called from multiple threads
 	s.randGen.Shuffle(len(peers), func(i, j int) {
 		peers[i], peers[j] = peers[j], peers[i]
 	})
@@ -443,7 +454,10 @@ func (s *Service) Update(_ any) error {
 
 // Data returns an instance of [Cluster].
 func (s *Service) Data() any {
-	return &sharderCluster{sharder: s.sharder}
+	return &sharderCluster{
+		sharder:        s.sharder,
+		isClusterReady: s.readyToAdmitTraffic,
+	}
 }
 
 func (s *Service) logPeers(msg string, peers []string) {
@@ -453,6 +467,32 @@ func (s *Service) logPeers(msg string, peers []string) {
 		"peers_count", len(peers),
 		"peers", util.JoinWithTruncation(peers, ",", maxPeersToLog, "..."),
 	)
+}
+
+func (s *Service) readyToAdmitTraffic() bool {
+	// No minimum cluster size is set = ready to admit traffic.
+	if s.opts.MinimumClusterSize == 0 {
+		return true
+	}
+	// Deadline is set, and it's past the deadline = ready to admit traffic.
+	deadlineValue := s.minimumSizeDeadline.Load()
+	isDeadlineSet := deadlineValue != time.Time{}
+	if isDeadlineSet && time.Now().After(deadlineValue) {
+		return true
+	}
+
+	// Number of peers is greater than the minimum cluster size = ready to admit traffic.
+	if len(s.sharder.Peers()) >= s.opts.MinimumClusterSize {
+		// Reset the deadline if it is configured:
+		if s.opts.MinimumSizeWaitTimeout != 0 {
+			s.minimumSizeDeadline.Store(time.Now().Add(s.opts.MinimumSizeWaitTimeout))
+		}
+		return true
+	}
+
+	// MinimumClusterSize is set, deadline is either not set or it didn't yet pass, and the number of peers is less
+	// than the minimum.
+	return false
 }
 
 // Component is a component which subscribes to clustering updates.
@@ -483,23 +523,41 @@ type Cluster interface {
 	//
 	// Callers can use github.com/grafana/ckit/shard.StringKey or
 	// shard.NewKeyBuilder to create a key.
+	//
+	// An error will be returned if the type of eligible peers for the provided
+	// op is less than numOwners.
+	//
+	// If the cluster is not ready to accept traffic, (nil, nil) will be returned, indicating there are no peers
+	// available.
 	Lookup(key shard.Key, replicationFactor int, op shard.Op) ([]peer.Peer, error)
 
-	// Peers returns the current set of peers for a Node.
+	// Peers returns the current set of peers for a Node. If the cluster is not yet ready to accept traffic, it will
+	// return nil.
 	Peers() []peer.Peer
 }
 
 // sharderCluster shims an implementation of [shard.Sharder] to [Cluster] which
 // removes the ability to change peers.
-type sharderCluster struct{ sharder shard.Sharder }
+type sharderCluster struct {
+	sharder        shard.Sharder
+	isClusterReady func() bool
+}
 
 var _ Cluster = (*sharderCluster)(nil)
 
 func (sc *sharderCluster) Lookup(key shard.Key, replicationFactor int, op shard.Op) ([]peer.Peer, error) {
+	if !sc.isClusterReady() {
+		// Return nil peers when cluster is not ready to admit traffic due to minimum size requirements
+		return nil, nil
+	}
 	return sc.sharder.Lookup(key, replicationFactor, op)
 }
 
 func (sc *sharderCluster) Peers() []peer.Peer {
+	if !sc.isClusterReady() {
+		// Return nil peers when cluster is not ready to admit traffic due to minimum size requirements
+		return nil
+	}
 	return sc.sharder.Peers()
 }
 
