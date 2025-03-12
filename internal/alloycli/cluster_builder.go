@@ -23,6 +23,7 @@ type clusterOptions struct {
 	Tracer  trace.TracerProvider
 
 	EnableClustering    bool
+	MinimumClusterSize  int
 	NodeName            string
 	AdvertiseAddress    string
 	ListenAddress       string
@@ -48,6 +49,7 @@ func buildClusterService(opts clusterOptions) (*cluster.Service, error) {
 		Tracer:  opts.Tracer,
 
 		EnableClustering:    opts.EnableClustering,
+		MinimumClusterSize:  opts.MinimumClusterSize,
 		NodeName:            opts.NodeName,
 		RejoinInterval:      opts.RejoinInterval,
 		ClusterMaxJoinPeers: opts.ClusterMaxJoinPeers,
