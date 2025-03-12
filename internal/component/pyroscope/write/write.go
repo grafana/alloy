@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"sort"
 	"strings"
 	"time"
 
@@ -309,6 +310,11 @@ func (f *fanOutClient) Appender() pyroscope.Appender {
 
 // Append implements the Appender interface.
 func (f *fanOutClient) Append(ctx context.Context, lbs labels.Labels, samples []*pyroscope.RawSample) error {
+	// Validate labels first
+	if err := validateLabels(lbs); err != nil {
+		return fmt.Errorf("invalid labels in profile: %w", err)
+	}
+
 	// todo(ctovena): we should probably pool the label pair arrays and label builder to avoid allocs.
 	var (
 		protoLabels  = make([]*typesv1.LabelPair, 0, len(lbs)+len(f.config.ExternalLabels))
@@ -377,6 +383,11 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 				ls := labelset.New(make(map[string]string))
 
 				finalLabels := ensureNameMatchesService(profile.Labels)
+
+				if err := validateLabels(finalLabels); err != nil {
+					return fmt.Errorf("invalid labels in profile: %w", err)
+				}
+
 				finalLabels.Range(func(l labels.Label) {
 					ls.Add(l.Name, l.Value)
 				})
@@ -465,4 +476,37 @@ func ensureNameMatchesService(lbls labels.Labels) labels.Labels {
 		return builder.Labels()
 	}
 	return lbls
+}
+
+// validateLabels checks for valid labels and doesn't contain duplicates.
+func validateLabels(lbls labels.Labels) error {
+	if lbls.Len() == 0 {
+		return labelset.ErrServiceNameIsRequired
+	}
+
+	sort.Sort(lbls)
+
+	lastLabelName := ""
+	for _, l := range lbls {
+		if cmp := strings.Compare(lastLabelName, l.Name); cmp == 0 {
+			return fmt.Errorf("duplicate label name: %s", l.Name)
+		}
+
+		// Validate label value
+		if !model.LabelValue(l.Value).IsValid() {
+			return fmt.Errorf("invalid label value for %s: %s", l.Name, l.Value)
+		}
+
+		// Skip label name validation for pyroscope reserved labels
+		if l.Name != pyroscope.LabelName {
+			// Validate label name
+			if err := labelset.ValidateLabelName(l.Name); err != nil {
+				return fmt.Errorf("invalid label name: %w", err)
+			}
+		}
+
+		lastLabelName = l.Name
+	}
+
+	return nil
 }
