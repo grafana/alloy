@@ -62,6 +62,7 @@ The following collectors are available for selection:
 * `replication_slot`
 * `stat_activity_autovacuum`
 * `stat_bgwriter`
+* `stat_checkpointer` - Only supported in Postgres 17 and later
 * `stat_database`
 * `stat_statements`
 * `stat_user_tables`
