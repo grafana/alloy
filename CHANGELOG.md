@@ -42,6 +42,8 @@ Main (unreleased)
 
 - Add labels validation in `pyroscope.write` to prevent duplicate labels and invalid label names/values. (@marcsanmi)
 
+- Reduced lock contention in `prometheus.scrape` component (@thampiotr)
+
 ### Breaking changes
 
 - Fixed the parsing of selections, application and network filter blocks for Beyla
