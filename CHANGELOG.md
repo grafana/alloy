@@ -45,6 +45,8 @@ Main (unreleased)
 
 - Add labels validation in `pyroscope.write` to prevent duplicate labels and invalid label names/values. (@marcsanmi)
 
+- Reduced lock contention in `prometheus.scrape` component (@thampiotr)
+
 ### Bugfixes
 
 - Update the `prometheus.exporter.postgres` component to correctly support Postgres17 when `stat_bgwriter` collector is enabled (@dehaansa)
