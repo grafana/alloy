@@ -34,15 +34,16 @@ loki.secretfilter "<LABEL>" {
 
 `loki.secretfilter` supports the following arguments:
 
-Name                     | Type                 | Description                                     | Default                          | Required
--------------------------|----------------------|-------------------------------------------------|----------------------------------|---------
-`forward_to`             | `list(LogsReceiver)` | List of receivers to send log entries to.       |                                  | yes
-`gitleaks_config`        | `string`             | Path to the custom `gitleaks.toml` file.        | Embedded Gitleaks file           | no
-`types`                  | `map(string)`        | Types of secret to look for.                    | All types                        | no
-`redact_with`            | `string`             | String to use to redact secrets.                | `<REDACTED-SECRET:$SECRET_NAME>` | no
-`include_generic`        | `bool`               | Include the generic API key rule.               | `false`                          | no
-`allowlist`              | `map(string)`        | List of regexes to allowlist matching secrets.  | `{}`                             | no
-`partial_mask`           | `number`             | Show the first N characters of the secret.      | `0`                              | no
+| Name              | Type                 | Description                                           | Default                          | Required |
+| ----------------- | -------------------- | ----------------------------------------------------- | -------------------------------- | -------- |
+| `forward_to`      | `list(LogsReceiver)` | List of receivers to send log entries to.             |                                  | yes      |
+| `gitleaks_config` | `string`             | Path to the custom `gitleaks.toml` file.              | Embedded Gitleaks file           | no       |
+| `types`           | `map(string)`        | Types of secret to look for.                          | All types                        | no       |
+| `redact_with`     | `string`             | String to use to redact secrets.                      | `<REDACTED-SECRET:$SECRET_NAME>` | no       |
+| `include_generic` | `bool`               | Include the generic API key rule.                     | `false`                          | no       |
+| `allowlist`       | `map(string)`        | List of regexes to allowlist matching secrets.        | `{}`                             | no       |
+| `partial_mask`    | `number`             | Show the first N characters of the secret.            | `0`                              | no       |
+| `origin_label`    | `string`             | The label name to use for tracking metrics by origin. | `""` (no origin metrics)         | no       |
 
 The `gitleaks_config` argument is the path to the custom `gitleaks.toml` file.
 The Gitleaks configuration file embedded in the component is used if you don't provide the path to a custom configuration file.
@@ -53,7 +54,7 @@ This component doesn't support all the features of the Gitleaks configuration fi
 
 The `types` argument is a map of secret types to look for.
 The values provided are used as prefixes to match rules IDs in the Gitleaks configuration.
-For example,  providing the type `grafana` will match the rules `grafana-api-key`, `grafana-cloud-api-token`, and `grafana-service-account-token`.
+For example, providing the type `grafana` will match the rules `grafana-api-key`, `grafana-cloud-api-token`, and `grafana-service-account-token`.
 If you don't provide this argument, all rules are used.
 
 {{< admonition type="note" >}}
@@ -82,6 +83,8 @@ If set to `0`, the entire secret is redacted.
 If a secret is not at least 6 characters long, it will be entirely redacted.
 For short secrets, at most half of the secret is shown.
 
+The `origin_label` argument specifies which Loki label's value should be used for the `secrets_redacted_by_origin` metric. This allows tracking how many secrets were redacted in logs from different sources or environments.
+
 ## Blocks
 
 The `loki.secretfilter` component doesn't support any blocks and is configured fully through arguments.
@@ -100,7 +103,17 @@ The following fields are exported and can be referenced by other components:
 
 ## Debug metrics
 
-`loki.secretfilter` doesn't expose any component-specific debug information.
+`loki.secretfilter` exposes the following Prometheus metrics:
+
+| Name                                               | Type    | Description                                                                            |
+| -------------------------------------------------- | ------- | -------------------------------------------------------------------------------------- |
+| `loki_secretfilter_secrets_redacted_total`         | Counter | Total number of secrets that have been redacted.                                       |
+| `loki_secretfilter_secrets_redacted_by_rule_total` | Counter | Number of secrets redacted, partitioned by rule name.                                  |
+| `loki_secretfilter_secrets_redacted_by_origin`     | Counter | Number of secrets redacted, partitioned by origin label value.                         |
+| `loki_secretfilter_secrets_allowlisted_total`      | Counter | Number of secrets that matched a rule but were in an allowlist, partitioned by source. |
+| `loki_secretfilter_processing_duration_seconds`    | Summary | Summary of the time taken to process and redact logs in seconds.                       |
+
+The `origin_label` argument specifies which Loki label's value should be used for the `secrets_redacted_by_origin` metric. This allows tracking how many secrets were redacted in logs from different sources or environments.
 
 ## Example
 
@@ -128,9 +141,11 @@ loki.write "local_loki" {
 	}
 }
 ```
+
 Replace the following:
-  - `<PATH_TARGETS>`: The paths to the log files to monitor.
-  - `<LOKI_ENDPOINT>`: The URL of the Loki instance to send logs to.
+
+- `<PATH_TARGETS>`: The paths to the log files to monitor.
+- `<LOKI_ENDPOINT>`: The URL of the Loki instance to send logs to.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
