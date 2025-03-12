@@ -7,6 +7,51 @@ This document contains a historical list of changes between releases. Only
 changes that impact end-user behavior are listed; changes to documentation or
 internal API changes are not present.
 
+<<<<<<< HEAD
+=======
+Main (unreleased)
+-----------------
+
+### Features
+
+- Add `otelcol.receiver.awscloudwatch` component to receive logs from AWS CloudWatch and forward them to other `otelcol.*` components. (@wildum)
+
+### Enhancements
+
+- Add livedebugging support for `prometheus.scrape` (@ravishankar15, @wildum)
+
+- Have `loki.echo` log the `entry_timestamp` and `structured_metadata` for any loki entries received (@dehaansa)
+
+- Bump snmp_exporter and embedded modules in `prometheus.exporter.snmp` to v0.28.0 (@v-zhuravlev)
+
+- Update mysqld_exporter to v0.17.2, most notable changes: (@cristiangreco)
+  - [0.17.1] Add perf_schema quantile columns to collector
+  - [0.17.1] Fix database quoting problem in collector 'info_schema.tables'
+  - [0.17.1] Use SUM_LOCK_TIME and SUM_CPU_TIME with mysql >= 8.0.28
+  - [0.17.1] Fix query on perf_schema.events_statements_summary_by_digest
+  - [0.17.2] Fix query on events_statements_summary_by_digest for mariadb
+
+- Added additional backwards compatibility metrics to `prometheus.write.queue`. (@mattdurham)
+
+- Added OpenTelemetry logs and metrics support to Alloy mixin's dashboards and alerts. (@thampiotr)
+
+- Add support for proxy and headers in `prometheus.write.queue`. (@mattdurham)
+
+- (_Experimental_) Various changes to the experimental component `database_observability.mysql`:
+  - `query_sample`: better handling of truncated queries (@cristiangreco)
+  - `query_sample`: add option to use TiDB sql parser (@cristiangreco)
+
+### Breaking changes
+
+- Fixed the parsing of selections, application and network filter blocks for Beyla
+
+### Other changes
+
+- Upgrading to Prometheus v2.55.1. (@ptodev)
+  - Added a new `http_headers` argument to many `discovery` and `prometheus` components.
+  - Added a new `scrape_failure_log_file` argument to `prometheus.scrape`.
+
+>>>>>>> 5b5752aeb (Fix attribute name in Beyla configuration. (#2966))
 v1.7.2
 -----------------
 
