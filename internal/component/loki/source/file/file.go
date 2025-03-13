@@ -171,7 +171,7 @@ func (c *Component) Run(ctx context.Context) error {
 			err := runner.ApplyTasks(ctx, tasks)
 			c.mut.Unlock()
 
-			if err != nil {
+			if err != nil && err != context.Canceled {
 				return err
 			}
 		}
