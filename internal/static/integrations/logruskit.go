@@ -53,8 +53,8 @@ func (o output) Write(data []byte) (n int, err error) {
 
 	// Protecting against a potential integer overflow as reported by GitHub CodeQL.
 	// The number of fields is expected to be well below this limit.
-	if fieldLen := len(ll.Data); fieldLen > 100000 {
-		return 0, fmt.Errorf("too many fields: %d", fieldLen)
+	if len(ll.Data) > 100000 {
+		return 0, fmt.Errorf("too many fields: %d", len(ll.Data))
 	}
 
 	vals := make([]interface{}, 0, 2*len(ll.Data)+2)

@@ -107,11 +107,13 @@ Supported components:
 * `loki.process`
 * `loki.relabel`
 * `loki.secretfilter`
+* `otelcol.connector.*`
 * `otelcol.processor.*`
 * `otelcol.receiver.*`
 * `prometheus.remote_write`
 * `prometheus.relabel`
 * `discovery.*`
+* `prometheus.scrape`
 {{< /admonition >}}
 
 ## Debug using the UI

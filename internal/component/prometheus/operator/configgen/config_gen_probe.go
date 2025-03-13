@@ -47,11 +47,11 @@ func (cg *ConfigGenerator) GenerateProbeConfig(m *promopv1.Probe) (cfg *config.S
 		cfg.Params.Set("module", m.Spec.Module)
 	}
 
-	cfg.SampleLimit = uint(m.Spec.SampleLimit)
-	cfg.TargetLimit = uint(m.Spec.TargetLimit)
-	cfg.LabelLimit = uint(m.Spec.LabelLimit)
-	cfg.LabelNameLengthLimit = uint(m.Spec.LabelNameLengthLimit)
-	cfg.LabelValueLengthLimit = uint(m.Spec.LabelValueLengthLimit)
+	cfg.SampleLimit = uint(defaultIfNil(m.Spec.SampleLimit, 0))
+	cfg.TargetLimit = uint(defaultIfNil(m.Spec.TargetLimit, 0))
+	cfg.LabelLimit = uint(defaultIfNil(m.Spec.LabelLimit, 0))
+	cfg.LabelNameLengthLimit = uint(defaultIfNil(m.Spec.LabelNameLengthLimit, 0))
+	cfg.LabelValueLengthLimit = uint(defaultIfNil(m.Spec.LabelValueLengthLimit, 0))
 
 	relabels := cg.initRelabelings()
 	if m.Spec.JobName != "" {

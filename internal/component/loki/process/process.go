@@ -141,7 +141,7 @@ func (c *Component) Update(args component.Arguments) error {
 			c.entryHandler.Stop()
 		}
 
-		pipeline, err := stages.NewPipeline(c.opts.Logger, newArgs.Stages, &c.opts.ID, c.opts.Registerer)
+		pipeline, err := stages.NewPipeline(c.opts.Logger, newArgs.Stages, &c.opts.ID, c.opts.Registerer, c.opts.MinStability)
 		if err != nil {
 			return err
 		}
@@ -163,13 +163,13 @@ func (c *Component) handleIn(ctx context.Context, wg *sync.WaitGroup) {
 			return
 		case entry := <-c.receiver.Chan():
 			c.mut.RLock()
+			if c.debugDataPublisher.IsActive(componentID) {
+				c.debugDataPublisher.Publish(componentID, fmt.Sprintf("[IN]: timestamp: %s, entry: %s, labels: %s", entry.Timestamp.Format(time.RFC3339Nano), entry.Line, entry.Labels.String()))
+			}
 			select {
 			case <-ctx.Done():
 				return
 			case c.processIn <- entry.Clone():
-				if c.debugDataPublisher.IsActive(componentID) {
-					c.debugDataPublisher.Publish(componentID, fmt.Sprintf("[IN]: timestamp: %s, entry: %s, labels: %s", entry.Timestamp.Format(time.RFC3339Nano), entry.Line, entry.Labels.String()))
-				}
 				// TODO(@tpaschalis) Instead of calling Clone() at the
 				// component's entrypoint here, we can try a copy-on-write
 				// approach instead, so that the copy only gets made on the

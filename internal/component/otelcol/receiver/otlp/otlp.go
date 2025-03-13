@@ -13,7 +13,6 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/receiver"
 	"github.com/grafana/alloy/internal/featuregate"
 	otelcomponent "go.opentelemetry.io/collector/component"
-	otelextension "go.opentelemetry.io/collector/extension"
 	"go.opentelemetry.io/collector/pipeline"
 	"go.opentelemetry.io/collector/receiver/otlpreceiver"
 )
@@ -105,8 +104,8 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 }
 
 // Extensions implements receiver.Arguments.
-func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
-	extensionMap := make(map[otelcomponent.ID]otelextension.Extension)
+func (args Arguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
+	extensionMap := make(map[otelcomponent.ID]otelcomponent.Component)
 
 	// Gets the extensions for the HTTP server and GRPC server
 	if args.HTTP != nil {

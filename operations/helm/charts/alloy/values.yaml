@@ -1,6 +1,9 @@
 # -- Overrides the chart's name. Used to change the infix in the resource names.
 nameOverride: null
 
+# -- Overrides the chart's namespace.
+namespaceOverride: null
+
 # -- Overrides the chart's computed fullname. Used to change the full prefix of
 # resource names.
 fullnameOverride: null
@@ -120,6 +123,9 @@ alloy:
     #     - /bin/sleep
     #     - "10"
 
+  # -- Set livenessProbe for the Grafana Alloy container.
+  livenessProbe: {}
+
 image:
   # -- Grafana Alloy image registry (defaults to docker.io)
   registry: "docker.io"
@@ -149,6 +155,8 @@ serviceAccount:
   # -- The name of the existing service account to use when
   # serviceAccount.create is false.
   name: null
+  # Whether the Alloy pod should automatically mount the service account token.
+  automountServiceAccountToken: true
 
 # Options for the extra controller used for config reloading.
 configReloader:

@@ -15,7 +15,6 @@ import (
 	"github.com/stretchr/testify/require"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelconsumer "go.opentelemetry.io/collector/consumer"
-	otelextension "go.opentelemetry.io/collector/extension"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	"go.opentelemetry.io/collector/pipeline"
 	otelreceiver "go.opentelemetry.io/collector/receiver"
@@ -186,7 +185,7 @@ func (fa fakeReceiverArgs) Convert() (otelcomponent.Config, error) {
 	return &struct{}{}, nil
 }
 
-func (fa fakeReceiverArgs) Extensions() map[otelcomponent.ID]otelextension.Extension {
+func (fa fakeReceiverArgs) Extensions() map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 

@@ -83,7 +83,7 @@ func TestLoader(t *testing.T) {
 				MinStability:      stability,
 				OnBlockNodeUpdate: func(cn controller.BlockNode) { /* no-op */ },
 				Registerer:        prometheus.NewRegistry(),
-				NewModuleController: func(id string) controller.ModuleController {
+				NewModuleController: func(opts controller.ModuleControllerOpts) controller.ModuleController {
 					return nil
 				},
 			},
@@ -353,6 +353,19 @@ func TestLoader(t *testing.T) {
 		diags = applyFromContent(t, l, nil, nil, []byte(invalidFile))
 		require.ErrorContains(t, diags.ErrorOrNil(), `block declare.a already declared at TestLoader/Declare_block_redefined_after_reload:2:4`)
 	})
+
+	t.Run("Foreach incorrect feature stability", func(t *testing.T) {
+		invalidFile := `
+			foreach "a" {
+				collection = [5]
+				var = "item"
+				template {}
+			}
+		`
+		l := controller.NewLoader(newLoaderOptions())
+		diags := applyFromContent(t, l, nil, []byte(invalidFile), nil)
+		require.ErrorContains(t, diags.ErrorOrNil(), `config block "foreach" is at stability level "experimental", which is below the minimum allowed stability level "public-preview". Use --stability.level command-line flag to enable "experimental"`)
+	})
 }
 
 func TestLoader_Services(t *testing.T) {
@@ -382,7 +395,7 @@ func TestLoader_Services(t *testing.T) {
 				MinStability:      stability,
 				OnBlockNodeUpdate: func(cn controller.BlockNode) { /* no-op */ },
 				Registerer:        prometheus.NewRegistry(),
-				NewModuleController: func(id string) controller.ModuleController {
+				NewModuleController: func(opts controller.ModuleControllerOpts) controller.ModuleController {
 					return nil
 				},
 			},
@@ -439,7 +452,7 @@ func TestScopeWithFailingComponent(t *testing.T) {
 				MinStability:      featuregate.StabilityPublicPreview,
 				OnBlockNodeUpdate: func(cn controller.BlockNode) { /* no-op */ },
 				Registerer:        prometheus.NewRegistry(),
-				NewModuleController: func(id string) controller.ModuleController {
+				NewModuleController: func(opts controller.ModuleControllerOpts) controller.ModuleController {
 					return fakeModuleController{}
 				},
 			},

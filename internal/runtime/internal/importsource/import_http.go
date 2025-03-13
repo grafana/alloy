@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"net/http"
 	"path"
-	"reflect"
 	"time"
 
 	"github.com/grafana/alloy/internal/component"
 	common_config "github.com/grafana/alloy/internal/component/common/config"
 	remote_http "github.com/grafana/alloy/internal/component/remote/http"
+	"github.com/grafana/alloy/internal/runtime/equality"
 	"github.com/grafana/alloy/syntax/vm"
 )
 
@@ -84,7 +84,7 @@ func (im *ImportHTTP) Evaluate(scope *vm.Scope) error {
 		im.arguments = arguments
 	}
 
-	if reflect.DeepEqual(im.arguments, arguments) {
+	if equality.DeepEqual(im.arguments, arguments) {
 		return nil
 	}
 

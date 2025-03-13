@@ -21,6 +21,7 @@ import (
 	"github.com/grafana/alloy/internal/service/cluster"
 	http_service "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/service/labelstore"
+	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 )
@@ -38,6 +39,8 @@ func TestAlloyConfig(t *testing.T) {
 	follow_redirects = true
 	enable_http2 = true
 
+	scrape_failure_log_file = "/path/to/file.log"
+
 	tls_config {
 		ca_file = "/path/to/file.ca"
 		cert_file = "/path/to/file.cert"
@@ -45,6 +48,10 @@ func TestAlloyConfig(t *testing.T) {
 		server_name = "server_name"
 		insecure_skip_verify = false
 		min_version = "TLS13"
+	}
+
+	http_headers = {
+		"foo" = ["foobar"],
 	}
 `
 
@@ -133,6 +140,8 @@ func TestForwardingToAppendable(t *testing.T) {
 				return cluster.Mock(), nil
 			case labelstore.ServiceName:
 				return labelstore.New(nil, prometheus_client.DefaultRegisterer), nil
+			case livedebugging.ServiceName:
+				return livedebugging.NewLiveDebugging(), nil
 			default:
 				return nil, fmt.Errorf("service %q does not exist", name)
 			}
@@ -239,6 +248,8 @@ func TestCustomDialer(t *testing.T) {
 				return cluster.Mock(), nil
 			case labelstore.ServiceName:
 				return labelstore.New(nil, prometheus_client.DefaultRegisterer), nil
+			case livedebugging.ServiceName:
+				return livedebugging.NewLiveDebugging(), nil
 
 			default:
 				return nil, fmt.Errorf("service %q does not exist", name)

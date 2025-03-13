@@ -1,0 +1,24 @@
+name: Check Windows container
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    paths:
+      - '.github/workflows/check-windows-container.yml'
+jobs:
+  publish_windows_container:
+    name: Check Windows container
+    runs-on: windows-2022
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: go.mod
+        cache: false
+
+    - run: |
+       & "C:/Program Files/git/bin/bash.exe" -c 'make alloy-image-windows'

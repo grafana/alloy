@@ -1,6 +1,7 @@
 package write
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -8,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"sort"
 	"strings"
 	"time"
 
@@ -308,6 +310,11 @@ func (f *fanOutClient) Appender() pyroscope.Appender {
 
 // Append implements the Appender interface.
 func (f *fanOutClient) Append(ctx context.Context, lbs labels.Labels, samples []*pyroscope.RawSample) error {
+	// Validate labels first
+	if err := validateLabels(lbs); err != nil {
+		return fmt.Errorf("invalid labels in profile: %w", err)
+	}
+
 	// todo(ctovena): we should probably pool the label pair arrays and label builder to avoid allocs.
 	var (
 		protoLabels  = make([]*typesv1.LabelPair, 0, len(lbs)+len(f.config.ExternalLabels))
@@ -358,33 +365,11 @@ func (e *PyroscopeWriteError) Error() string {
 
 // AppendIngest implements the pyroscope.Appender interface.
 func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.IncomingProfile) error {
-	pipeWriters := make([]io.Writer, len(f.config.Endpoints))
-	pipeReaders := make([]io.Reader, len(f.config.Endpoints))
-	for i := range f.config.Endpoints {
-		pr, pw := io.Pipe()
-		pipeReaders[i] = pr
-		pipeWriters[i] = pw
-	}
-	mw := io.MultiWriter(pipeWriters...)
-
 	g, ctx := errgroup.WithContext(ctx)
 
-	// Start copying the profile body to all pipes
-	g.Go(func() error {
-		defer func() {
-			for _, pw := range pipeWriters {
-				pw.(io.WriteCloser).Close()
-			}
-		}()
-		_, err := io.Copy(mw, profile.Body)
-		return err
-	})
-
 	// Send to each endpoint concurrently
-	for i, endpoint := range f.config.Endpoints {
+	for _, endpoint := range f.config.Endpoints {
 		g.Go(func() error {
-			defer pipeReaders[i].(io.ReadCloser).Close()
-
 			u, err := url.Parse(endpoint.URL)
 			if err != nil {
 				return fmt.Errorf("parse endpoint URL: %w", err)
@@ -394,11 +379,20 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 
 			// Handle labels
 			query := profile.URL.Query()
-			if nameParam := query.Get("name"); nameParam != "" {
-				ls, err := labelset.Parse(nameParam)
-				if err != nil {
-					return err
+			if !profile.Labels.IsEmpty() {
+				ls := labelset.New(make(map[string]string))
+
+				finalLabels := ensureNameMatchesService(profile.Labels)
+
+				if err := validateLabels(finalLabels); err != nil {
+					return fmt.Errorf("invalid labels in profile: %w", err)
 				}
+
+				finalLabels.Range(func(l labels.Label) {
+					ls.Add(l.Name, l.Value)
+				})
+
+				// Add external labels (which will override any existing ones)
 				for k, v := range f.config.ExternalLabels {
 					ls.Add(k, v)
 				}
@@ -406,7 +400,7 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 			}
 			u.RawQuery = query.Encode()
 
-			req, err := http.NewRequestWithContext(ctx, "POST", u.String(), pipeReaders[i])
+			req, err := http.NewRequestWithContext(ctx, "POST", u.String(), bytes.NewReader(profile.RawBody))
 			if err != nil {
 				return fmt.Errorf("create request: %w", err)
 			}
@@ -473,4 +467,46 @@ func (i *agentInterceptor) WrapStreamingClient(next connect.StreamingClientFunc)
 
 func (i *agentInterceptor) WrapStreamingHandler(next connect.StreamingHandlerFunc) connect.StreamingHandlerFunc {
 	return next
+}
+
+func ensureNameMatchesService(lbls labels.Labels) labels.Labels {
+	if serviceName := lbls.Get(pyroscope.LabelServiceName); serviceName != "" {
+		builder := labels.NewBuilder(lbls)
+		builder.Set(pyroscope.LabelName, serviceName)
+		return builder.Labels()
+	}
+	return lbls
+}
+
+// validateLabels checks for valid labels and doesn't contain duplicates.
+func validateLabels(lbls labels.Labels) error {
+	if lbls.Len() == 0 {
+		return labelset.ErrServiceNameIsRequired
+	}
+
+	sort.Sort(lbls)
+
+	lastLabelName := ""
+	for _, l := range lbls {
+		if cmp := strings.Compare(lastLabelName, l.Name); cmp == 0 {
+			return fmt.Errorf("duplicate label name: %s", l.Name)
+		}
+
+		// Validate label value
+		if !model.LabelValue(l.Value).IsValid() {
+			return fmt.Errorf("invalid label value for %s: %s", l.Name, l.Value)
+		}
+
+		// Skip label name validation for pyroscope reserved labels
+		if l.Name != pyroscope.LabelName {
+			// Validate label name
+			if err := labelset.ValidateLabelName(l.Name); err != nil {
+				return fmt.Errorf("invalid label name: %w", err)
+			}
+		}
+
+		lastLabelName = l.Name
+	}
+
+	return nil
 }

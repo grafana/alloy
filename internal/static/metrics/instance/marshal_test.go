@@ -48,6 +48,7 @@ scrape_configs:
     password: foobar
 remote_write:
 - url: http://admin:verysecret@localhost:9009/api/prom/push
+  protobuf_message: prometheus.WriteRequest
   remote_timeout: 30s
   name: test-d0f32c
   send_exemplars: true
@@ -106,6 +107,7 @@ scrape_configs:
     password: SCRUBME
 remote_write:
 - url: http://username:SCRUBURL@localhost:9009/api/prom/push
+  protobuf_message: prometheus.WriteRequest
   remote_timeout: 30s
   name: test-d0f32c
   send_exemplars: true

@@ -5,7 +5,7 @@ title: mimir
 weight: 100
 ---
 
-# mimir
+# `mimir`
 
 This section contains reference documentation for the `mimir` components.
 

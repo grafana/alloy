@@ -5,14 +5,15 @@ import (
 	"net"
 	"testing"
 
-	"github.com/grafana/alloy/internal/component/discovery"
-	"github.com/grafana/alloy/internal/util"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/consumer/consumertest"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	semconv "go.opentelemetry.io/collector/semconv/v1.5.0"
 	"gotest.tools/assert"
+
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/util"
 )
 
 func TestOperationType(t *testing.T) {
@@ -84,9 +85,9 @@ func TestOperationType(t *testing.T) {
 			}
 			consumerOpts := Options{
 				HostLabels: map[string]discovery.Target{
-					attrIP: {
+					attrIP: discovery.NewTargetFromMap(map[string]string{
 						attrKey: tc.newValue,
-					},
+					}),
 				},
 				OperationType:   tc.operationType,
 				PodAssociations: podAssociations,

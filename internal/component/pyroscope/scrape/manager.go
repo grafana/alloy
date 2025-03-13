@@ -158,7 +158,7 @@ func (m *Manager) TargetsAll() map[string][]*Target {
 
 	targets := make(map[string][]*Target, len(m.targetsGroups))
 	for tset, sp := range m.targetsGroups {
-		targets[tset] = append(sp.ActiveTargets(), sp.DroppedTargets()...)
+		targets[tset] = sp.ActiveTargets()
 	}
 	return targets
 }
@@ -186,18 +186,6 @@ func (m *Manager) TargetsActive() map[string][]*Target {
 		}(tset, sp)
 	}
 	wg.Wait()
-	return targets
-}
-
-// TargetsDropped returns the dropped targets during relabelling.
-func (m *Manager) TargetsDropped() map[string][]*Target {
-	m.mtxScrape.Lock()
-	defer m.mtxScrape.Unlock()
-
-	targets := make(map[string][]*Target, len(m.targetsGroups))
-	for tset, sp := range m.targetsGroups {
-		targets[tset] = sp.DroppedTargets()
-	}
 	return targets
 }
 
