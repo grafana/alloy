@@ -269,7 +269,7 @@ The `ebpf` block configures eBPF-specific settings.
 | `high_request_volume`         | `bool`        | Optimize for immediate request information when response is seen.          | `false` | no       |
 | `heuristic_sql_detect`        | `bool`        | Enable heuristic-based detection of SQL requests.                         | `false` | no       |
 
-`enable_context_propagation` enables context propagation using Linux Traffic Control probes. To know more about this topic, read [Distributed traces with Beyla][]
+`enable_context_propagation` enables context propagation using Linux Traffic Control probes. To know more about this topic, read [Distributed traces with Beyla][].
 
 ### `filters`
 
@@ -540,12 +540,12 @@ Replace the following:
 
 [Grafana Beyla]: https://github.com/grafana/beyla
 [eBPF]: https://ebpf.io/
+[Beyla capabilities]: /docs/beyla/latest/security/
 [in-memory traffic]: ../../../../get-started/component_controller/#in-memory-traffic
 [run command]: ../../../cli/run/
 [scrape]: ../../prometheus/prometheus.scrape/
 [Distributed traces with Beyla]: /docs/beyla/latest/distributed-traces/
 [Beyla exported metrics]: /docs/beyla/latest/metrics/
-[Beyla capabilities]: /docs/beyla/latest/security/
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
