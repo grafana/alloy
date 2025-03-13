@@ -38,7 +38,6 @@ func TestConfig_NewIntegration(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, i)
 	})
-
 }
 
 func TestConfig_AgentKey(t *testing.T) {

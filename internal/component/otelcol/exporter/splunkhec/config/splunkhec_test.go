@@ -215,5 +215,4 @@ func TestUnmarshalSplunkHecArguments(t *testing.T) {
 			}
 		})
 	}
-
 }

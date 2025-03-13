@@ -221,7 +221,6 @@ func Test_targetsFromGroup_withSpecifiedDeltaProfilingDuration(t *testing.T) {
 
 func TestProfileURL(t *testing.T) {
 	targets := func(t *testing.T, args Arguments, ls []model.LabelSet) []*Target {
-
 		active, err := targetsFromGroup(&targetgroup.Group{
 			Targets: ls,
 		}, args, args.ProfilingConfig.AllTargets())
@@ -463,7 +462,6 @@ func TestProfileURL(t *testing.T) {
 			slices.Sort(actualURLs)
 			require.Equal(t, td.expectedUrls, actualURLs)
 		})
-
 	}
 }
 

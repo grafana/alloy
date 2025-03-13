@@ -351,6 +351,7 @@ func (c *Component) distributeTargets(
 	jobName string,
 	args Arguments,
 ) (map[string][]*targetgroup.Group, []*scrape.Target) {
+
 	var (
 		newDistTargets        = discovery.NewDistributedTargets(args.Clustering.Enabled, c.cluster, targets)
 		oldDistributedTargets *discovery.DistributedTargets

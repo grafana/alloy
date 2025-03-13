@@ -113,9 +113,7 @@ func LoadSNMPConfig(snmpConfigFile string, customSnmpCfg *snmp_config.Config, st
 		}
 	}
 	switch strategy {
-
 	case "replace":
-
 		if len(customSnmpCfg.Modules) == 0 && len(customSnmpCfg.Auths) == 0 { // If the user didn't specify a config, load the embedded config.
 			customSnmpCfg, err = snmp_common.LoadEmbeddedConfig()
 			if err != nil {
@@ -123,7 +121,6 @@ func LoadSNMPConfig(snmpConfigFile string, customSnmpCfg *snmp_config.Config, st
 			}
 		}
 		return customSnmpCfg, nil
-
 	case "merge":
 		var finalCfg *snmp_config.Config
 		finalCfg, err = snmp_common.LoadEmbeddedConfig()
@@ -138,11 +135,9 @@ func LoadSNMPConfig(snmpConfigFile string, customSnmpCfg *snmp_config.Config, st
 			maps.Copy(finalCfg.Modules, customSnmpCfg.Modules)
 		}
 		return finalCfg, nil
-
 	default:
 		return nil, fmt.Errorf("unsupported snmp config merge strategy is used: '%s'", strategy)
 	}
-
 }
 
 func NewSNMPMetrics(reg prometheus.Registerer) collector.Metrics {

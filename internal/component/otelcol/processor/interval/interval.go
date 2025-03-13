@@ -54,9 +54,7 @@ func (args PassThrough) Convert() intervalprocessor.PassThrough {
 	}
 }
 
-var (
-	_ processor.Arguments = Arguments{}
-)
+var _ processor.Arguments = Arguments{}
 
 // DefaultArguments holds default settings for Arguments.
 var DefaultArguments = Arguments{

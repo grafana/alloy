@@ -28,6 +28,7 @@ type crdManagerFactoryHungRun struct {
 
 func (m crdManagerFactoryHungRun) New(_ component.Options, _ cluster.Cluster, _ log.Logger,
 	_ *operator.Arguments, _ string, _ labelstore.LabelStore) crdManagerInterface {
+
 	return &crdManagerHungRun{
 		stopRun: m.stopRun,
 	}

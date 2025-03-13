@@ -31,7 +31,7 @@ func TestStickyDir(t *testing.T) {
 }
 
 func TestOwnedDir(t *testing.T) {
-	dir := tempDir(t)
+	dir := t.TempDir()
 	err := os.Chmod(dir, 0755)
 	assert.NoError(t, err)
 	p := NewProfiler(dir, EmbeddedArchive)
@@ -40,7 +40,7 @@ func TestOwnedDir(t *testing.T) {
 }
 
 func TestOwnedDirWrongPermission(t *testing.T) {
-	dir := tempDir(t)
+	dir := t.TempDir()
 	err := os.Chmod(dir, 0777)
 	assert.NoError(t, err)
 	p := NewProfiler(dir, EmbeddedArchive)
@@ -49,10 +49,10 @@ func TestOwnedDirWrongPermission(t *testing.T) {
 }
 
 func TestDistSymlink(t *testing.T) {
-	root := tempDir(t)
+	root := t.TempDir()
 	err := os.Chmod(root, 0755)
 	assert.NoError(t, err)
-	manipulated := tempDir(t)
+	manipulated := t.TempDir()
 	err = os.Chmod(manipulated, 0755)
 	assert.NoError(t, err)
 	p := NewProfiler(root, EmbeddedArchive)
@@ -64,12 +64,4 @@ func TestDistSymlink(t *testing.T) {
 	err = p.ExtractDistributions()
 	t.Logf("expected %s", err)
 	assert.Error(t, err)
-}
-
-func tempDir(t *testing.T) string {
-	t.Helper()
-	dir, err := os.MkdirTemp(t.TempDir(), "asprof-test")
-	assert.NoError(t, err)
-	t.Logf("dir: %s", dir)
-	return dir
 }

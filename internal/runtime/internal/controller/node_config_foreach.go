@@ -186,7 +186,6 @@ func (fn *ForeachConfigNode) evaluate(scope *vm.Scope) error {
 	newCustomComponentIds := make(map[string]bool, len(args.Collection))
 	fn.customComponentHashCounts = make(map[string]int)
 	for i := 0; i < len(args.Collection); i++ {
-
 		// We must create an ID from the collection entries to avoid recreating all components on every updates.
 		// We track the hash counts because the collection might contain duplicates ([1, 1, 1] would result in the same ids
 		// so we handle it by adding the count at the end -> [11, 12, 13]

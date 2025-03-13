@@ -97,7 +97,6 @@ func Test_ConsumeWaitsForResume(t *testing.T) {
 			case <-time.After(5 * time.Second):
 				t.Fatal("consumer should have finished after resuming")
 			}
-
 		})
 	}
 }

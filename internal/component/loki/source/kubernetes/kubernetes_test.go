@@ -75,5 +75,4 @@ func TestClusteringDuplicateAddress(t *testing.T) {
 		kubetail.ClusteringLabels,
 	)
 	require.True(t, distTargets.TargetCount() == 1)
-
 }

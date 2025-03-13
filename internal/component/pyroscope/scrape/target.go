@@ -311,7 +311,6 @@ func targetsFromGroup(group *targetgroup.Group, cfg Arguments, targetTypes map[s
 	)
 
 	for i, tlset := range group.Targets {
-
 		lbls := make(labels.Labels, 0, len(tlset)+len(group.Labels))
 
 		for ln, lv := range tlset {

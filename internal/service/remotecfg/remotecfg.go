@@ -58,6 +58,7 @@ type Service struct {
 
 	mut                  sync.RWMutex
 	asClient             collectorv1connect.CollectorServiceClient
+	clientFactory        func(args Arguments) (collectorv1connect.CollectorServiceClient, error)
 	ticker               *jitter.Ticker
 	dataPath             string
 	lastLoadedConfigHash string
@@ -166,6 +167,17 @@ func New(opts Options) (*Service, error) {
 		opts:        opts,
 		systemAttrs: getSystemAttributes(),
 		ticker:      jitter.NewTicker(math.MaxInt64-baseJitter, baseJitter), // first argument is set as-is to avoid overflowing
+		clientFactory: func(args Arguments) (collectorv1connect.CollectorServiceClient, error) {
+			httpClient, err := commonconfig.NewClientFromConfig(*args.HTTPClientConfig.Convert(), "remoteconfig")
+			if err != nil {
+				return nil, err
+			}
+			return collectorv1connect.NewCollectorServiceClient(
+				httpClient,
+				args.URL,
+				connect.WithHTTPGet(),
+			), nil
+		},
 	}, nil
 }
 
@@ -313,16 +325,12 @@ func (s *Service) Update(newConfig any) error {
 	s.ticker.Reset(newArgs.PollFrequency)
 	// Update the HTTP client last since it might fail.
 	if !reflect.DeepEqual(s.args.HTTPClientConfig, newArgs.HTTPClientConfig) {
-		httpClient, err := commonconfig.NewClientFromConfig(*newArgs.HTTPClientConfig.Convert(), "remoteconfig")
+		client, err := s.clientFactory(newArgs)
 		if err != nil {
 			s.mut.Unlock()
 			return err
 		}
-		s.asClient = collectorv1connect.NewCollectorServiceClient(
-			httpClient,
-			newArgs.URL,
-			connect.WithHTTPGet(),
-		)
+		s.asClient = client
 	}
 	// Combine the new attributes on top of the system attributes
 	s.attrs = maps.Clone(s.systemAttrs)

@@ -144,9 +144,7 @@ func (c *Component) Run(ctx context.Context) error {
 				c.updateDebugInfo()
 			}
 		}
-	}, func(error) {
-
-	})
+	}, func(error) {})
 	return g.Run()
 }
 

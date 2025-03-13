@@ -91,6 +91,7 @@ func (c *serviceStrategyTTLCache) periodicallyClearCache(
 	ctx context.Context,
 	schedulingPeriod time.Duration,
 ) {
+
 	ticker := clockwork.FromContext(ctx).NewTicker(schedulingPeriod)
 	for {
 		select {
