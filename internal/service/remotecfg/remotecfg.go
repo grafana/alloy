@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"hash/fnv"
 	"maps"
-	"math"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -166,7 +165,6 @@ func New(opts Options) (*Service, error) {
 	return &Service{
 		opts:        opts,
 		systemAttrs: getSystemAttributes(),
-		ticker:      jitter.NewTicker(math.MaxInt64-baseJitter, baseJitter), // first argument is set as-is to avoid overflowing
 		clientFactory: func(args Arguments) (collectorv1connect.CollectorServiceClient, error) {
 			httpClient, err := commonconfig.NewClientFromConfig(*args.HTTPClientConfig.Convert(), "remoteconfig")
 			if err != nil {
@@ -272,7 +270,13 @@ var _ service.Service = (*Service)(nil)
 // run until the provided context is canceled or there is a fatal error.
 func (s *Service) Run(ctx context.Context, host service.Host) error {
 	s.ctrl = host.NewController(ServiceName)
-	defer s.ticker.Stop()
+	defer func() {
+		s.mut.Lock()
+		if s.ticker != nil {
+			s.ticker.Stop()
+		}
+		s.mut.Unlock()
+	}()
 
 	s.fetch()
 	err := s.registerCollector()
@@ -286,6 +290,18 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 	}()
 
 	for {
+		// If the ticker is nil just wait, allow an update to set it.
+		s.mut.Lock()
+		if s.ticker == nil {
+			s.mut.Unlock()
+			select {
+			case <-ctx.Done():
+				return nil
+			case <-time.After(100 * time.Millisecond):
+				continue
+			}
+		}
+		s.mut.Unlock()
 		select {
 		case <-s.ticker.C:
 			err := s.fetchRemote()
@@ -306,7 +322,7 @@ func (s *Service) Update(newConfig any) error {
 	// it. Make sure we stop everything gracefully before returning.
 	if newArgs.URL == "" {
 		s.mut.Lock()
-		s.ticker.Reset(math.MaxInt64 - baseJitter) // avoid overflowing
+		//s.ticker.Reset(math.MaxInt64 - baseJitter) // avoid overflowing
 		s.asClient = noopClient{}
 		s.args.HTTPClientConfig = config.CloneDefaultHTTPClientConfig()
 		s.mut.Unlock()
@@ -322,7 +338,10 @@ func (s *Service) Update(newConfig any) error {
 		return err
 	}
 	s.dataPath = filepath.Join(s.opts.StoragePath, ServiceName, hash)
-	s.ticker.Reset(newArgs.PollFrequency)
+	if s.ticker != nil {
+		s.ticker.Stop()
+	}
+	s.ticker = jitter.NewTicker(newArgs.PollFrequency, baseJitter) // avoid overflowing
 	// Update the HTTP client last since it might fail.
 	if !reflect.DeepEqual(s.args.HTTPClientConfig, newArgs.HTTPClientConfig) {
 		client, err := s.clientFactory(newArgs)
