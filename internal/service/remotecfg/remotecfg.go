@@ -272,6 +272,7 @@ var _ service.Service = (*Service)(nil)
 // run until the provided context is canceled or there is a fatal error.
 func (s *Service) Run(ctx context.Context, host service.Host) error {
 	s.ctrl = host.NewController(ServiceName)
+	defer s.ticker.Stop()
 
 	s.fetch()
 	err := s.registerCollector()
@@ -292,7 +293,6 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 				level.Error(s.opts.Logger).Log("msg", "failed to fetch remote configuration from the API", "err", err)
 			}
 		case <-ctx.Done():
-			s.ticker.Stop()
 			return nil
 		}
 	}
