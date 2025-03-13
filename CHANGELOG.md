@@ -18,8 +18,6 @@ v1.7.3
 
 - Add the `stat_checkpointer` collector in `prometheus.exporter.postgres` (@dehaansa)
 
-- Reduced lock contention in `prometheus.scrape` component (@thampiotr)
-
 ### Bugfixes
 
 - Update the `prometheus.exporter.postgres` component to correctly support Postgres17 when `stat_bgwriter` collector is enabled (@dehaansa)
