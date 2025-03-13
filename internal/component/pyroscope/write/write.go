@@ -373,7 +373,7 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 			defer wg.Done()
 			u, err := url.Parse(endpoint.URL)
 			if err != nil {
-				errs = errors.Join(errs, fmt.Errorf("parse endpoint URL: %w", err))
+				errs = multierr.Append(errs, fmt.Errorf("parse endpoint URL: %w", err))
 				return
 			}
 
@@ -387,7 +387,7 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 				finalLabels := ensureNameMatchesService(profile.Labels)
 
 				if err := validateLabels(finalLabels); err != nil {
-					errs = errors.Join(errs, fmt.Errorf("invalid labels in profile: %w", err))
+					errs = multierr.Append(errs, fmt.Errorf("invalid labels in profile: %w", err))
 					return
 				}
 
@@ -405,7 +405,7 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 
 			req, err := http.NewRequestWithContext(ctx, "POST", u.String(), bytes.NewReader(profile.RawBody))
 			if err != nil {
-				errs = errors.Join(errs, fmt.Errorf("create request: %w", err))
+				errs = multierr.Append(errs, fmt.Errorf("create request: %w", err))
 				return
 			}
 
@@ -426,19 +426,19 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 
 			resp, err := f.ingestClients[endpoint].Do(req)
 			if err != nil {
-				errs = errors.Join(errs, fmt.Errorf("do request: %w", err))
+				errs = multierr.Append(errs, fmt.Errorf("do request: %w", err))
 				return
 			}
 			defer resp.Body.Close()
 
 			_, err = io.Copy(io.Discard, resp.Body)
 			if err != nil {
-				errs = errors.Join(errs, fmt.Errorf("read response body: %w", err))
+				errs = multierr.Append(errs, fmt.Errorf("read response body: %w", err))
 				return
 			}
 
 			if resp.StatusCode != http.StatusOK {
-				errs = errors.Join(errs, &PyroscopeWriteError{StatusCode: resp.StatusCode})
+				errs = multierr.Append(errs, &PyroscopeWriteError{StatusCode: resp.StatusCode})
 			}
 		}()
 	}
