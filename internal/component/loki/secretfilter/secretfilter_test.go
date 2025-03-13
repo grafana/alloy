@@ -51,6 +51,22 @@ var customGitleaksConfig = map[string]string{
 		description = "Identified a fake short secret"
 		regex = '''(?i)\b(abc)(?:['|\"|\n|\r|\s|\x60|;]|$)'''
 	`,
+	"empty_secret": `
+		title = "gitleaks custom config"
+
+		[[rules]]
+		id = "empty-secret"
+		description = "Identified a possibly empty secret"
+		regex = '''(?i)(\w*)'''
+	`,
+	"sha1_secret": `
+		title = "gitleaks custom config"
+
+		[[rules]]
+		id = "sha1-secret"
+		description = "Identified a SHA1 secret"
+		regex = '''(?i)\b(?:[0-9a-f]{40})\b'''
+	`,
 	"allow_list_old": `
 		title = "gitleaks custom config"
 
@@ -132,6 +148,12 @@ var testConfigs = map[string]string{
 		forward_to = []
 		gitleaks_config = "not-empty" // This will be replaced with the actual path to the temporary gitleaks config file
 	`,
+	"custom_redact_string_with_hash_sha1": `
+		forward_to = []
+		redact_with = "<` + defaultRedactionString + `:$SECRET_NAME:$SECRET_HASH>"
+		types = ["sha1-secret"]
+		gitleaks_config = "not-empty" // This will be replaced with the actual path to the temporary gitleaks config file
+	`,
 }
 
 // List of fake secrets to use for testing
@@ -167,6 +189,10 @@ var fakeSecrets = map[string]fakeSecret{
 	"short-secret": {
 		name:  "short-secret",
 		value: "abc",
+	},
+	"sha1-secret": {
+		name:  "sha1-secret",
+		value: "0123456789abcdef0123456789abcdef01234567",
 	},
 }
 
@@ -225,6 +251,12 @@ var testLogs = map[string]testLog{
 			"message": "This is a simple log message with a secret value ` + fakeSecrets["short-secret"].value + ` !
 		}`,
 		secrets: []fakeSecret{fakeSecrets["short-secret"]},
+	},
+	"sha1_secret": {
+		log: `{
+			"message": "This is a simple log message with a secret value ` + fakeSecrets["sha1-secret"].value + ` !
+		}`,
+		secrets: []fakeSecret{fakeSecrets["sha1-secret"]},
 	},
 }
 
@@ -375,6 +407,20 @@ var tt = []struct {
 		"",
 		testLogs["multiple_secrets"].log,
 		replaceSecrets(testLogs["multiple_secrets"].log, testLogs["multiple_secrets"].secrets, false, false, defaultRedactionString),
+	},
+	{
+		"empty_secret",
+		testConfigs["custom_gitleaks_file_simple"],
+		customGitleaksConfig["empty_secret"],
+		testLogs["short_secret"].log,
+		testLogs["short_secret"].log,
+	},
+	{
+		"sha1_secret",
+		testConfigs["custom_redact_string_with_hash_sha1"],
+		customGitleaksConfig["sha1_secret"],
+		testLogs["sha1_secret"].log,
+		replaceSecrets(testLogs["sha1_secret"].log, testLogs["sha1_secret"].secrets, false, true, defaultRedactionString),
 	},
 }
 
@@ -600,6 +646,151 @@ func runBenchmarks(b *testing.B, config string, percentageSecrets int, secretNam
 			c.processEntry(entry)
 		}
 	}
+}
+
+var sampleFuzzLogLines = []string{
+	`key=value1,value2 log=fmt test=1 secret=password`,
+	`{"key":["value1","value2"],"log":"fmt","test":1,"secret":"password"}`,
+	`1970-01-01 00:00:00 pattern value1,value2 1 secret`,
+}
+
+func FuzzProcessEntry(f *testing.F) {
+	for _, line := range sampleFuzzLogLines {
+		f.Add(line)
+	}
+	for _, testLog := range testLogs {
+		f.Add(testLog.log)
+	}
+
+	comps := make([]*Component, 0, len(testConfigs))
+	opts := component.Options{
+		Logger:         util.TestLogger(f),
+		OnStateChange:  func(e component.Exports) {},
+		GetServiceData: getServiceData,
+	}
+	ch1 := loki.NewLogsReceiver()
+
+	// Create components
+	for _, config := range testConfigs {
+		var args Arguments
+		require.NoError(f, syntax.Unmarshal([]byte(config), &args))
+		if args.GitleaksConfig != "" {
+			continue // Skip the configs using a custom gitleaks config file
+		}
+
+		args.ForwardTo = []loki.LogsReceiver{ch1}
+		c, err := New(opts, args)
+		require.NoError(f, err)
+		comps = append(comps, c)
+	}
+
+	f.Fuzz(func(t *testing.T, log string) {
+		for _, c := range comps {
+			entry := loki.Entry{Labels: model.LabelSet{}, Entry: logproto.Entry{Timestamp: time.Now(), Line: log}}
+			c.processEntry(entry)
+		}
+	})
+}
+
+func FuzzConfig(f *testing.F) {
+	for _, testLog := range testLogs {
+		f.Add("", false, uint(0), "", "", testLog.log)                               // zero values
+		f.Add("REDACTED", true, uint(4), "aws,gcp", "abc.*&.*foobar.*", testLog.log) // sane values
+	}
+	opts := component.Options{
+		Logger:         util.TestLogger(f),
+		OnStateChange:  func(e component.Exports) {},
+		GetServiceData: getServiceData,
+	}
+	ch1 := loki.NewLogsReceiver()
+
+	f.Fuzz(func(t *testing.T, redact string, generic bool, partial uint, types string, allow string, log string) {
+		args := Arguments{
+			ForwardTo:      []loki.LogsReceiver{ch1}, // not fuzzed
+			Types:          strings.Split(types, ","),
+			RedactWith:     redact,
+			IncludeGeneric: generic,
+			AllowList:      strings.Split(allow, "&"), // a character that has no special meaning in go regexp and doesn't appear in the gitleaks regexes
+			PartialMask:    partial,
+			GitleaksConfig: "", // not fuzzed in this test
+		}
+		c, err := New(opts, args)
+		if err != nil {
+			// ignore regex parsing errors
+			if strings.HasPrefix(err.Error(), "error parsing regexp") {
+				return
+			}
+			t.Errorf("error configuring component: %v", err)
+		}
+
+		entry := loki.Entry{Labels: model.LabelSet{}, Entry: logproto.Entry{Timestamp: time.Now(), Line: log}}
+		c.processEntry(entry)
+	})
+}
+
+func FuzzGitleaksConfig(f *testing.F) {
+	for _, testLog := range testLogs {
+		f.Add("", "", "", "", "", 0, "", 0.0, "", "", "", testLog.log)                                                                                                                                // empty values
+		f.Add("Secret detection", "pattern1&pattern2", "pattern_1", "Look for a specific pattern", "(i?)pa(tt)+ern*", 0, "pa?er", 2.0, "keyword1,keyword2", "path/to/file", "tag1,tag2", testLog.log) // sane values
+	}
+	opts := component.Options{
+		Logger:         util.TestLogger(f),
+		OnStateChange:  func(e component.Exports) {},
+		GetServiceData: getServiceData,
+	}
+	ch1 := loki.NewLogsReceiver()
+	args := Arguments{
+		ForwardTo:   []loki.LogsReceiver{ch1}, // not fuzzed
+		RedactWith:  "TEST_REDACTION:$SECRET_NAME",
+		PartialMask: 4,
+	}
+	f.Fuzz(func(t *testing.T, title string, global_allow_list string, id string, description string, match string, group int, rule_allow_list string, entropy float64, keywords string, path string, tags string, log string) {
+		// Includes all gitleaks config fields, even if they are not supported by the component
+		gitleaksConfig := fmt.Sprintf(`title = '''%s'''
+
+		[[rules]]
+		id = '''%s'''
+		description = '''%s'''
+		regex = '''%s'''
+		secretGroup = %d
+		entropy = %f
+		keywords = [%s]
+		path = '''%s'''
+		tags = [%s]
+
+		[[rules.allowlists]]
+		regexes = [%s]
+
+		[allowlist]
+		regexes = [%s]`, title, id, description, match, group, entropy, makeList(keywords, ","), path, makeList(tags, ","), makeList(rule_allow_list, "&"), makeList(global_allow_list, "&"))
+		args.GitleaksConfig = createTempGitleaksConfig(t, gitleaksConfig)
+		defer deleteTempGitLeaksConfig(t, args.GitleaksConfig)
+
+		args.ForwardTo = []loki.LogsReceiver{ch1}
+		c, err := New(opts, args)
+		if err != nil {
+			// ignore regex parsing errors - out of scope
+			if strings.HasPrefix(err.Error(), "error parsing regexp") {
+				return
+			}
+			// ignore toml parsing errors - out of scope
+			if strings.HasPrefix(err.Error(), "toml:") {
+				return
+			}
+			t.Errorf("error configuring component: %v", err)
+		}
+
+		entry := loki.Entry{Labels: model.LabelSet{}, Entry: logproto.Entry{Timestamp: time.Now(), Line: log}}
+		c.processEntry(entry)
+	})
+}
+
+func makeList(input string, separator string) string {
+	parts := strings.Split(input, separator)
+	for i, part := range parts {
+		parts[i] = fmt.Sprintf(`"%s"`, strings.ReplaceAll(part, `"`, `\"`))
+	}
+	return strings.Join(parts, ",")
 }
 
 func getServiceData(name string) (interface{}, error) {

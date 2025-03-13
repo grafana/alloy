@@ -57,7 +57,7 @@ type InstanceIDConfig struct {
 type Selections []Selection
 
 type Selection struct {
-	Section string   `alloy:",label"`
+	Section string   `alloy:"attr,attr"`
 	Include []string `alloy:"include,attr"`
 	Exclude []string `alloy:"exclude,attr"`
 }
@@ -132,7 +132,7 @@ type Filters struct {
 type AttributeFamilies []AttributeFamily
 
 type AttributeFamily struct {
-	Attr     string `alloy:",label"`
+	Attr     string `alloy:"attr,attr"`
 	Match    string `alloy:"match,attr,optional"`
 	NotMatch string `alloy:"not_match,attr,optional"`
 }

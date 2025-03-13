@@ -2,7 +2,6 @@ package builder
 
 import (
 	"fmt"
-	"reflect"
 	"sort"
 
 	"github.com/grafana/alloy/syntax/internal/value"
@@ -64,16 +63,10 @@ func valueTokens(v value.Value) []Token {
 		toks = append(toks, Token{token.LITERAL, v.Describe()})
 
 	case value.TypeCapsule:
-		done := false
-		if v.Implements(reflect.TypeFor[value.ConvertibleIntoCapsule]()) {
-			// Check if this capsule can be converted into Alloy object for more detailed description:
-			newVal := make(map[string]value.Value)
-			if err := v.ReflectAddr().Interface().(value.ConvertibleIntoCapsule).ConvertInto(&newVal); err == nil {
-				toks = tokenEncode(newVal)
-				done = true
-			}
-		}
-		if !done {
+		// Check if this capsule can be converted into Alloy object for more detailed description:
+		if newVal, ok := v.TryConvertToObject(); ok {
+			toks = tokenEncode(newVal)
+		} else {
 			// Default to Describe() for capsules that don't support other representation.
 			toks = append(toks, Token{token.LITERAL, v.Describe()})
 		}

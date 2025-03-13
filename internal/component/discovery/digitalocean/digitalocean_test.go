@@ -37,6 +37,9 @@ func TestAlloyUnmarshal(t *testing.T) {
 	follow_redirects = true
 	enable_http2 = false
 	bearer_token = "token"
+	http_headers = {
+		"foo" = ["foobar"],
+	}
 	`
 	err = syntax.Unmarshal([]byte(fullerExampleAlloyConfig), &args)
 	require.NoError(t, err)
@@ -45,6 +48,10 @@ func TestAlloyUnmarshal(t *testing.T) {
 	assert.Equal(t, "http://proxy:8080", args.ProxyConfig.ProxyURL.String())
 	assert.Equal(t, true, args.FollowRedirects)
 	assert.Equal(t, false, args.EnableHTTP2)
+
+	promArgs := args.Convert().(*promdiscovery.SDConfig)
+	header := promArgs.HTTPClientConfig.HTTPHeaders.Headers["foo"].Secrets[0]
+	assert.Equal(t, "foobar", string(header))
 }
 
 func TestBadAlloyConfig(t *testing.T) {

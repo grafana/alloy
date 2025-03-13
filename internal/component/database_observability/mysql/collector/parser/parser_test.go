@@ -1,9 +1,10 @@
-package collector
+package parser_test
 
 import (
 	"testing"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/alloy/internal/component/database_observability/mysql/collector/parser"
 	"github.com/stretchr/testify/require"
 )
 
@@ -130,12 +131,21 @@ func TestExtractTableNames(t *testing.T) {
 	}
 
 	for _, tc := range testcases {
-		t.Run(tc.name, func(t *testing.T) {
-			stmt, err := ParseSql(tc.sql)
+		t.Run(tc.name+"_xwbparser", func(t *testing.T) {
+			p := parser.NewXwbSqlParser()
+			stmt, err := p.Parse(tc.sql)
 			require.NoError(t, err)
 
-			got := ExtractTableNames(log.NewNopLogger(), "", stmt)
-			require.Equal(t, tc.tables, got)
+			got := p.ExtractTableNames(log.NewNopLogger(), "", stmt)
+			require.ElementsMatch(t, tc.tables, got)
+		})
+		t.Run(tc.name+"_tidbparser", func(t *testing.T) {
+			p := parser.NewTiDBSqlParser()
+			stmt, err := p.Parse(tc.sql)
+			require.NoError(t, err)
+
+			got := p.ExtractTableNames(log.NewNopLogger(), "", stmt)
+			require.ElementsMatch(t, tc.tables, got)
 		})
 	}
 }

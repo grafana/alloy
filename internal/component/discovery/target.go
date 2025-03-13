@@ -2,6 +2,7 @@ package discovery
 
 import (
 	"fmt"
+	"reflect"
 	"slices"
 	"strings"
 	"sync"
@@ -221,15 +222,24 @@ func (t *Target) ConvertFrom(src interface{}) error {
 		}
 		*t = NewTargetFromLabelSet(labelSet)
 		return nil
-	case map[string]string:
-		labelSet := make(commonlabels.LabelSet, len(src))
-		for k, v := range src {
-			labelSet[commonlabels.LabelName(k)] = commonlabels.LabelValue(v)
+	default: // handle all other types of maps via reflection as Go generics don't support generics in switch/case.
+		rv := reflect.ValueOf(src)
+		switch rv.Kind() {
+		case reflect.Map:
+			labelSet := make(commonlabels.LabelSet, rv.Len())
+			for _, key := range rv.MapKeys() {
+				value := rv.MapIndex(key)
+				if !value.CanInterface() || !key.CanInterface() {
+					return fmt.Errorf("target::ConvertFrom: conversion from '%T' is not supported", src)
+				}
+				labelSet[commonlabels.LabelName(fmt.Sprintf("%v", key.Interface()))] = commonlabels.LabelValue(fmt.Sprintf("%v", value.Interface()))
+			}
+			*t = NewTargetFromLabelSet(labelSet)
+			return nil
+		default:
+			return fmt.Errorf("target::ConvertFrom: conversion from '%T' is not supported", src)
 		}
-		*t = NewTargetFromLabelSet(labelSet)
-		return nil
 	}
-	return fmt.Errorf("target::ConvertFrom: conversion from '%T' is not supported", src)
 }
 
 func (t Target) String() string {

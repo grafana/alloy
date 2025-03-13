@@ -76,6 +76,11 @@ func TestConvert(t *testing.T) {
 			},
 			FollowRedirects: false,
 			EnableHTTP2:     false,
+			HTTPHeaders: &config.Headers{
+				Headers: map[string][]alloytypes.Secret{
+					"foo": {"foobar"},
+				},
+			},
 		},
 	}
 
@@ -91,6 +96,13 @@ func TestConvert(t *testing.T) {
 			},
 			FollowRedirects: false,
 			EnableHTTP2:     false,
+			HTTPHeaders: &promcfg.Headers{
+				Headers: map[string]promcfg.Header{
+					"foo": {
+						Secrets: []promcfg.Secret{"foobar"},
+					},
+				},
+			},
 		},
 	}
 	require.Equal(t, &expected, sdConfig)

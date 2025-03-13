@@ -68,7 +68,7 @@ func TestSNMPMetrics(t *testing.T) {
 		"snmp_scrape_walk_duration_seconds",
 		"snmp_unexpected_pdu_type_total",
 		"sysDescr",
-		"hrDeviceIndex",
+		"hrDeviceID",
 		"up",
 	}
 	common.MimirMetricsTest(t, SNMPMetrics, []string{}, "snmp_metrics")

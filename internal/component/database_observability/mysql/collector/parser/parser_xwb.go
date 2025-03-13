@@ -1,4 +1,4 @@
-package collector
+package parser
 
 import (
 	"github.com/go-kit/log"
@@ -6,15 +6,21 @@ import (
 	"github.com/xwb1989/sqlparser"
 )
 
-func ParseSql(sql string) (sqlparser.Statement, error) {
+type XwbSqlParser struct{}
+
+func NewXwbSqlParser() *XwbSqlParser {
+	return &XwbSqlParser{}
+}
+
+func (p *XwbSqlParser) Parse(sql string) (any, error) {
 	return sqlparser.Parse(sql)
 }
 
-func RedactSQL(sql string) (string, error) {
+func (p *XwbSqlParser) Redact(sql string) (string, error) {
 	return sqlparser.RedactSQLQuery(sql)
 }
 
-func StmtType(stmt sqlparser.Statement) string {
+func (p *XwbSqlParser) StmtType(stmt any) string {
 	switch stmt.(type) {
 	case *sqlparser.Select:
 		return "select"
@@ -31,7 +37,8 @@ func StmtType(stmt sqlparser.Statement) string {
 	}
 }
 
-func ParseTableName(t sqlparser.TableName) string {
+func (p *XwbSqlParser) ParseTableName(table any) string {
+	t := table.(sqlparser.TableName)
 	qualifier := t.Qualifier.String()
 	tableName := t.Name.String()
 	if qualifier != "" {
@@ -40,7 +47,7 @@ func ParseTableName(t sqlparser.TableName) string {
 	return tableName
 }
 
-func ExtractTableNames(logger log.Logger, digest string, stmt sqlparser.Statement) []string {
+func (p *XwbSqlParser) ExtractTableNames(logger log.Logger, digest string, stmt any) []string {
 	var parsedTables []string
 
 	switch stmt := stmt.(type) {
@@ -49,43 +56,43 @@ func ExtractTableNames(logger log.Logger, digest string, stmt sqlparser.Statemen
 			if expr, ok := selExpr.(*sqlparser.AliasedExpr); ok {
 				switch exp := expr.Expr.(type) {
 				case *sqlparser.Subquery:
-					parsedTables = append(parsedTables, ExtractTableNames(logger, digest, exp.Select)...)
+					parsedTables = append(parsedTables, p.ExtractTableNames(logger, digest, exp.Select)...)
 				default:
 					// ignore anything else
 				}
 			}
 		}
-		parsedTables = append(parsedTables, parseTableExprs(logger, digest, stmt.From)...)
+		parsedTables = append(parsedTables, p.parseTableExprs(logger, digest, stmt.From)...)
 	case *sqlparser.Update:
-		parsedTables = parseTableExprs(logger, digest, stmt.TableExprs)
+		parsedTables = p.parseTableExprs(logger, digest, stmt.TableExprs)
 	case *sqlparser.Delete:
-		parsedTables = parseTableExprs(logger, digest, stmt.TableExprs)
+		parsedTables = p.parseTableExprs(logger, digest, stmt.TableExprs)
 	case *sqlparser.Insert:
-		parsedTables = []string{ParseTableName(stmt.Table)}
+		parsedTables = []string{p.ParseTableName(stmt.Table)}
 		switch insRowsStmt := stmt.Rows.(type) {
 		case sqlparser.Values:
 			// ignore raw values
 		case *sqlparser.Select:
-			parsedTables = append(parsedTables, ExtractTableNames(logger, digest, insRowsStmt)...)
+			parsedTables = append(parsedTables, p.ExtractTableNames(logger, digest, insRowsStmt)...)
 		case *sqlparser.Union:
 			for _, side := range []sqlparser.SelectStatement{insRowsStmt.Left, insRowsStmt.Right} {
-				parsedTables = append(parsedTables, ExtractTableNames(logger, digest, side)...)
+				parsedTables = append(parsedTables, p.ExtractTableNames(logger, digest, side)...)
 			}
 		case *sqlparser.ParenSelect:
-			parsedTables = append(parsedTables, ExtractTableNames(logger, digest, insRowsStmt.Select)...)
+			parsedTables = append(parsedTables, p.ExtractTableNames(logger, digest, insRowsStmt.Select)...)
 		default:
 			level.Error(logger).Log("msg", "unknown insert type", "digest", digest)
 		}
 	case *sqlparser.Union:
 		for _, side := range []sqlparser.SelectStatement{stmt.Left, stmt.Right} {
-			parsedTables = append(parsedTables, ExtractTableNames(logger, digest, side)...)
+			parsedTables = append(parsedTables, p.ExtractTableNames(logger, digest, side)...)
 		}
 	case *sqlparser.Show:
 		if stmt.HasOnTable() {
-			parsedTables = append(parsedTables, ParseTableName(stmt.OnTable))
+			parsedTables = append(parsedTables, p.ParseTableName(stmt.OnTable))
 		}
 	case *sqlparser.DDL:
-		parsedTables = append(parsedTables, ParseTableName(stmt.Table))
+		parsedTables = append(parsedTables, p.ParseTableName(stmt.Table))
 	case *sqlparser.Begin, *sqlparser.Commit, *sqlparser.Rollback, *sqlparser.Set, *sqlparser.DBDDL:
 		// ignore
 	default:
@@ -95,7 +102,7 @@ func ExtractTableNames(logger log.Logger, digest string, stmt sqlparser.Statemen
 	return parsedTables
 }
 
-func parseTableExprs(logger log.Logger, digest string, tables sqlparser.TableExprs) []string {
+func (p *XwbSqlParser) parseTableExprs(logger log.Logger, digest string, tables sqlparser.TableExprs) []string {
 	parsedTables := []string{}
 	for i := 0; i < len(tables); i++ {
 		t := tables[i]
@@ -103,17 +110,17 @@ func parseTableExprs(logger log.Logger, digest string, tables sqlparser.TableExp
 		case *sqlparser.AliasedTableExpr:
 			switch expr := tableExpr.Expr.(type) {
 			case sqlparser.TableName:
-				parsedTables = append(parsedTables, ParseTableName(expr))
+				parsedTables = append(parsedTables, p.ParseTableName(expr))
 			case *sqlparser.Subquery:
 				switch subqueryExpr := expr.Select.(type) {
 				case *sqlparser.Select:
-					parsedTables = append(parsedTables, parseTableExprs(logger, digest, subqueryExpr.From)...)
+					parsedTables = append(parsedTables, p.parseTableExprs(logger, digest, subqueryExpr.From)...)
 				case *sqlparser.Union:
 					for _, side := range []sqlparser.SelectStatement{subqueryExpr.Left, subqueryExpr.Right} {
-						parsedTables = append(parsedTables, ExtractTableNames(logger, digest, side)...)
+						parsedTables = append(parsedTables, p.ExtractTableNames(logger, digest, side)...)
 					}
 				case *sqlparser.ParenSelect:
-					parsedTables = append(parsedTables, ExtractTableNames(logger, digest, subqueryExpr.Select)...)
+					parsedTables = append(parsedTables, p.ExtractTableNames(logger, digest, subqueryExpr.Select)...)
 				default:
 					level.Error(logger).Log("msg", "unknown subquery type", "digest", digest)
 				}

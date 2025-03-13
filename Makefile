@@ -48,6 +48,7 @@
 ##   generate-ui               Generate the UI assets.
 ##   generate-versioned-files  Generate versioned files.
 ##   generate-winmanifest      Generate the Windows application manifest.
+##   generate-snmp             Generate SNMP modules from prometheus/snmp_exporter for prometheus.exporter.snmp and bumps SNMP version in _index.md.t.
 ##
 ## Other targets:
 ##
@@ -211,8 +212,8 @@ alloy-image-windows:
 # Targets for generating assets
 #
 
-.PHONY: generate generate-drone generate-helm-docs generate-helm-tests generate-ui generate-versioned-files generate-winmanifest
-generate: generate-drone generate-helm-docs generate-helm-tests generate-ui generate-versioned-files generate-docs generate-winmanifest
+.PHONY: generate generate-drone generate-helm-docs generate-helm-tests generate-ui generate-versioned-files generate-winmanifest generate-snmp
+generate: generate-drone generate-helm-docs generate-helm-tests generate-ui generate-versioned-files generate-docs generate-winmanifest generate-snmp
 
 generate-drone:
 	drone jsonnet -V BUILD_IMAGE_VERSION=$(BUILD_IMAGE_VERSION) --stream --format --source .drone/drone.jsonnet --target .drone/drone.yml
@@ -258,6 +259,18 @@ ifeq ($(USE_CONTAINER),1)
 else
 	go generate ./internal/winmanifest
 endif
+
+generate-snmp:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+# Fetch snmp.yml file of the same version as the snmp_exporter go module, use sed to update the file we need to fetch in common.go:
+	@LATEST_SNMP_VERSION=$$(go list -f '{{ .Version }}' -m github.com/prometheus/snmp_exporter); \
+	sed -i "s|snmp_exporter/[^/]*/snmp.yml|snmp_exporter/$$LATEST_SNMP_VERSION/snmp.yml|" internal/static/integrations/snmp_exporter/common/common.go; \
+	go generate ./internal/static/integrations/snmp_exporter/common; \
+	sed -i "s/SNMP_VERSION: v[0-9]\+\.[0-9]\+\.[0-9]\+/SNMP_VERSION: $$LATEST_SNMP_VERSION/" docs/sources/_index.md.t
+endif
+
 #
 # Other targets
 #

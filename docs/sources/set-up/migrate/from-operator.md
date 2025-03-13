@@ -12,7 +12,7 @@ weight: 120
 
 You can migrate from Grafana Agent Operator to {{< param "PRODUCT_NAME" >}}.
 
-- The Monitor types (`PodMonitor`, `ServiceMonitor`, `Probe`, and `PodLogs`) are all supported natively by {{< param "PRODUCT_NAME" >}}.
+- The Monitor types (`PodMonitor`, `ServiceMonitor`, `Probe`, `ScrapeConfig`, and `PodLogs`) are all supported natively by {{< param "PRODUCT_NAME" >}}.
 - The parts of Grafana Agent Operator that deploy Grafana Agent, `GrafanaAgent`, `MetricsInstance`, and `LogsInstance` CRDs, are deprecated.
 
 ## Deploy {{% param "PRODUCT_NAME" %}} with Helm
@@ -62,7 +62,7 @@ You can migrate from Grafana Agent Operator to {{< param "PRODUCT_NAME" >}}.
 A `MetricsInstance` resource primarily defines:
 
 - The remote endpoints Grafana Agent should send metrics to.
-- The `PodMonitor`, `ServiceMonitor`, and `Probe` resources this {{< param "PRODUCT_NAME" >}} should discover.
+- The `PodMonitor`, `ServiceMonitor`, `ScrapeConfig`, and `Probe` resources this {{< param "PRODUCT_NAME" >}} should discover.
 
 You can use these functions in {{< param "PRODUCT_NAME" >}} with the `prometheus.remote_write`, `prometheus.operator.podmonitors`, `prometheus.operator.servicemonitors`, and `prometheus.operator.probes` components respectively.
 
@@ -108,7 +108,7 @@ Replace the following:
 
 - _`<PROMETHEUS_URL>`_: The endpoint you want to send metrics to.
 
-This configuration discovers all `PodMonitor`, `ServiceMonitor`, and `Probe` resources in your cluster that match the label selector `instance=primary`.
+This configuration discovers all `PodMonitor`, `ServiceMonitor`, `ScrapeConfig`, and `Probe` resources in your cluster that match the label selector `instance=primary`.
 It then scrapes metrics from the targets and forward them to your remote write endpoint.
 
 You may need to customize this configuration further if you use additional features in your `MetricsInstance` resources.
@@ -118,6 +118,7 @@ Refer to the documentation for the relevant components for additional informatio
 - [`prometheus.remote_write`][prometheus.remote_write]
 - [`prometheus.operator.podmonitors`][prometheus.operator.podmonitors]
 - [`prometheus.operator.servicemonitors`][prometheus.operator.servicemonitors]
+- [`prometheus.operator.scrapeconfigs`][prometheus.operator.scrapeconfigs]
 - [`prometheus.operator.probes`][prometheus.operator.probes]
 - [`prometheus.scrape`][prometheus.scrape]
 

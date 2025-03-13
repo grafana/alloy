@@ -198,6 +198,7 @@ The following components, grouped by namespace, _consume_ Prometheus `MetricsRec
 {{< collapse title="prometheus" >}}
 - [prometheus.operator.podmonitors](../components/prometheus/prometheus.operator.podmonitors)
 - [prometheus.operator.probes](../components/prometheus/prometheus.operator.probes)
+- [prometheus.operator.scrapeconfigs](../components/prometheus/prometheus.operator.scrapeconfigs)
 - [prometheus.operator.servicemonitors](../components/prometheus/prometheus.operator.servicemonitors)
 - [prometheus.receive_http](../components/prometheus/prometheus.receive_http)
 - [prometheus.relabel](../components/prometheus/prometheus.relabel)
@@ -362,6 +363,7 @@ The following components, grouped by namespace, _consume_ OpenTelemetry `otelcol
 - [otelcol.processor.span](../components/otelcol/otelcol.processor.span)
 - [otelcol.processor.tail_sampling](../components/otelcol/otelcol.processor.tail_sampling)
 - [otelcol.processor.transform](../components/otelcol/otelcol.processor.transform)
+- [otelcol.receiver.awscloudwatch](../components/otelcol/otelcol.receiver.awscloudwatch)
 - [otelcol.receiver.datadog](../components/otelcol/otelcol.receiver.datadog)
 - [otelcol.receiver.file_stats](../components/otelcol/otelcol.receiver.file_stats)
 - [otelcol.receiver.filelog](../components/otelcol/otelcol.receiver.filelog)

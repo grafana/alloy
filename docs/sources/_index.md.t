@@ -5,9 +5,9 @@ description: Grafana Alloy is a vendor-neutral distribution of the OTel Collecto
 weight: 350
 cascade:
   ALLOY_RELEASE: $ALLOY_VERSION
-  OTEL_VERSION: v0.116.0
+  OTEL_VERSION: v0.119.0
   PROM_WIN_EXP_VERSION: v0.27.3
-  SNMP_VERSION: v0.27.0
+  SNMP_VERSION: v0.28.0
   FULL_PRODUCT_NAME: Grafana Alloy
   PRODUCT_NAME: Alloy
 hero:
@@ -53,24 +53,24 @@ cards:
 
 # Overview
 
-{{< figure src="/media/docs/alloy/flow-diagram-small-alloy.png" alt="Alloy flow diagram" >}}
+{{< figure src="/media/docs/alloy/alloy_diagram_v2.svg" alt="Alloy flow diagram" >}}
 
-Collect all your telemetry with one product
+**Collect all your telemetry with one product**
 
-: Choosing the right tools to collect, process, and export telemetry data can be a confusing and costly experience.
+Choosing the right tools to collect, process, and export telemetry data can be a confusing and costly experience.
 The broad range of telemetry you need to process and the collectors you choose can vary widely depending on your observability goals.
 In addition, you face the challenge of addressing the constantly evolving needs of your observability strategy.
 For example, you may initially only need application observability, but you then discover that you must add infrastructure observability.
 Many organizations manage and configure multiple collectors to address these challenges, introducing more complexity and potential errors in their obervability strategy.
 
-All signals, whether application, infrastructure, or both
+**All signals, whether application, infrastructure, or both**
 
-: {{< param "FULL_PRODUCT_NAME" >}} has native pipelines for leading telemetry signals, such as Prometheus and OpenTelemetry, and databases such as Loki and Pyroscope.
+{{< param "FULL_PRODUCT_NAME" >}} has native pipelines for leading telemetry signals, such as Prometheus and OpenTelemetry, and databases such as Loki and Pyroscope.
 This permits logs, metrics, traces, and even mature support for profiling.
 
-Enterprise strength observability
+**Enterprise strength observability**
 
-: {{< param "FULL_PRODUCT_NAME" >}} improves reliability and provides advanced features for Enterprise needs, such as clusters of fleets and balancing workloads.
+{{< param "FULL_PRODUCT_NAME" >}} improves reliability and provides advanced features for Enterprise needs, such as clusters of fleets and balancing workloads.
 Grafana [Fleet Management](https://grafana.com/docs/grafana-cloud/send-data/fleet-management/) helps you manage multiple {{< param "FULL_PRODUCT_NAME" >}} deployments at scale.
 
 ## Explore

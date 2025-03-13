@@ -352,7 +352,7 @@ curl localhost:9999/loki/api/v1/raw -XPOST -H "Content-Type: application/json" -
 ```
 
 Now that you have sent some logs, its time to see how they look in Grafana.
-Navigate to [http://localhost:3000/explore](http://localhost:3000/explore) and switch the Datasource to `Loki`.
+Navigate to [http://localhost:3000/explore](http://localhost:3000/explore) and switch the data source to `Loki`.
 Try querying for `{source="demo-api"}` and see if you can find the logs you sent.
 
 Try playing around with the values of `"level"`, `"message"`, `"timestamp"`, and `"is_secret"` and see how the logs change.
