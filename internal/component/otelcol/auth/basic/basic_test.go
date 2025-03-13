@@ -146,7 +146,7 @@ func waitHealthy(ctx context.Context, basicAuthComponent *auth.Auth, timeout tim
 	// Channel to signal whether the component is healthy or not.
 	healthChannel := make(chan bool)
 
-	// Loop continously checking for the current health of the component.
+	// Loop continuously checking for the current health of the component.
 	go func() {
 		for {
 			healthz := basicAuthComponent.CurrentHealth().Health

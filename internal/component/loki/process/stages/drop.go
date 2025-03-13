@@ -44,6 +44,7 @@ type DropConfig struct {
 func validateDropConfig(cfg *DropConfig) (*regexp.Regexp, error) {
 	if cfg == nil ||
 		(cfg.Source == "" && cfg.Expression == "" && cfg.OlderThan == emptyDuration && cfg.LongerThan == emptySize) {
+
 		return nil, errors.New(ErrDropStageEmptyConfig)
 	}
 	if cfg.DropReason == "" {

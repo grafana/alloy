@@ -97,7 +97,6 @@ func toOtelcolReceiversyslog(cfg *syslogreceiver.SysLogConfig) *syslog.Arguments
 	}
 
 	return args
-
 }
 
 func toOtelcolMultilineConfig(cfg split.Config) *otelcol.MultilineConfig {

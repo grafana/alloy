@@ -83,7 +83,6 @@ var (
 // The registered component must be registered to export the
 // otelcol.ConsumerExports type, otherwise New will panic.
 func New(opts component.Options, f otelprocessor.Factory, args Arguments) (*Processor, error) {
-
 	debugDataPublisher, err := opts.GetServiceData(livedebugging.ServiceName)
 	if err != nil {
 		return nil, err
@@ -243,5 +242,5 @@ func (p *Processor) CurrentHealth() component.Health {
 }
 
 func (p *Processor) LiveDebugging(_ int) {
-	p.Update(p.args)
+	_ = p.Update(p.args)
 }

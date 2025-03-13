@@ -40,14 +40,14 @@ func (p *TiDBSqlParser) Redact(sql string) (string, error) {
 
 func (p *TiDBSqlParser) StmtType(stmt any) string {
 	s := stmt.(*ast.StmtNode)
-	switch ast.GetStmtLabel(*s) {
-	case "Select":
+	switch (*s).(type) {
+	case *ast.SelectStmt:
 		return "select"
-	case "Insert":
+	case *ast.InsertStmt:
 		return "insert"
-	case "Update":
+	case *ast.UpdateStmt:
 		return "update"
-	case "Delete":
+	case *ast.DeleteStmt:
 		return "delete"
 	default:
 		return ""

@@ -262,7 +262,10 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 	s.ctrl = host.NewController(ServiceName)
 
 	s.fetch()
-	s.registerCollector()
+	err := s.registerCollector()
+	if err != nil {
+		return err
+	}
 
 	// Run the service's own controller.
 	go func() {
@@ -327,8 +330,11 @@ func (s *Service) Update(newConfig any) error {
 
 	// Update the args as the last step to avoid polluting any comparisons
 	s.args = newArgs
-	s.registerCollector()
+	err = s.registerCollector()
 	s.mut.Unlock()
+	if err != nil {
+		return err
+	}
 
 	// If we've already called Run, then immediately trigger an API call with
 	// the updated Arguments, and/or fall back to the updated cache location.

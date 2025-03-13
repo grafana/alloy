@@ -283,7 +283,7 @@ func TestAuthHandler(t *testing.T) {
 // validateHandler determines what the correct state of the extension handler should be depending
 // on the test case state. If the extension supports the authentication requested it should return
 // the extension. Otherwise it should return an error saying the extension does not support the requested
-// type of authenticaiton.
+// type of authentication.
 func validateHandler(t *testing.T, eh *auth.ExtensionHandler, authSupported bool, actualErr error, expectedError error) {
 	t.Helper()
 	if authSupported {

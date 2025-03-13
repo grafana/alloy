@@ -55,7 +55,7 @@ func deepCustomEqual(v1, v2 reflect.Value) result {
 		return couldNotCompare
 	}
 
-	pointerOrStruct := v1.Type().Kind() == reflect.Ptr || v1.Type().Kind() == reflect.Struct
+	pointerOrStruct := v1.Type().Kind() == reflect.Pointer || v1.Type().Kind() == reflect.Struct
 	if pointerOrStruct && v1.CanInterface() && v1.Type().Implements(customEqualityType) {
 		if v2Ptr := getAddr(v2); v2Ptr.CanInterface() {
 			return successfulCompare(v1.Interface().(CustomEquality).Equals(v2Ptr.Interface()))
@@ -125,7 +125,7 @@ func deepCustomEqual(v1, v2 reflect.Value) result {
 
 // getAddr grabs an address (if needed) to v. This function must be called with either a pointer or struct value.
 func getAddr(v reflect.Value) reflect.Value {
-	if v.Type().Kind() == reflect.Ptr { // already pointer
+	if v.Type().Kind() == reflect.Pointer { // already pointer
 		return v
 	}
 	// otherwise it's a struct

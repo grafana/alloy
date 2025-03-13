@@ -40,7 +40,7 @@ func Register(cfg Config, ty Type) {
 }
 
 func registerIntegration(v interface{}, name string, ty Type, upgrader UpgradeFunc) {
-	if reflect.TypeOf(v).Kind() != reflect.Ptr {
+	if reflect.TypeOf(v).Kind() != reflect.Pointer {
 		panic(fmt.Sprintf("Register must be given a pointer, got %T", v))
 	}
 	if _, exist := integrationByName[name]; exist {
@@ -140,8 +140,8 @@ func RegisteredType(c Config) (Type, bool) {
 	// as pointers, so we need to add indirection here if a non-pointer is loaded
 	// into the subsystem.
 	cType := reflect.TypeOf(c)
-	if cType.Kind() != reflect.Ptr {
-		cType = reflect.PtrTo(cType)
+	if cType.Kind() != reflect.Pointer {
+		cType = reflect.PointerTo(cType)
 	}
 
 	t, ok := integrationTypes[cType]
@@ -176,7 +176,7 @@ type Configs []Config
 // field that should be inlined in the YAML string.
 func MarshalYAML(v interface{}) (interface{}, error) {
 	inVal := reflect.ValueOf(v)
-	for inVal.Kind() == reflect.Ptr {
+	for inVal.Kind() == reflect.Pointer {
 		inVal = inVal.Elem()
 	}
 	if inVal.Kind() != reflect.Struct {
@@ -273,7 +273,7 @@ func MarshalYAML(v interface{}) (interface{}, error) {
 //	https://github.com/prometheus/prometheus/blob/511511324adfc4f4178f064cc104c2deac3335de/discovery/registry.go#L111
 func UnmarshalYAML(out interface{}, unmarshal func(interface{}) error) error {
 	outVal := reflect.ValueOf(out)
-	if outVal.Kind() != reflect.Ptr {
+	if outVal.Kind() != reflect.Pointer {
 		return fmt.Errorf("integrations: can only unmarshal into a struct pointer, got %T", out)
 	}
 	outVal = outVal.Elem()
@@ -422,7 +422,7 @@ func getConfigTypeForIntegrations(out reflect.Type) reflect.Type {
 		configTy := reflect.TypeOf(reg)
 		fieldName := nameByType[configTy]
 
-		singletonType := reflect.PtrTo(reflect.TypeOf(util.RawYAML{}))
+		singletonType := reflect.PointerTo(reflect.TypeOf(util.RawYAML{}))
 
 		fields = append(fields, reflect.StructField{
 			Name: "XXX_Config_" + fieldName,

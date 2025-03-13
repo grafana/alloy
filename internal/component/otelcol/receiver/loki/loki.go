@@ -172,5 +172,5 @@ func convertLokiEntryToPlog(lokiEntry loki.Entry) plog.Logs {
 }
 
 func (c *Component) LiveDebugging(_ int) {
-	c.Update(c.args)
+	_ = c.Update(c.args)
 }

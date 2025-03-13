@@ -285,19 +285,13 @@ func (fn *ForeachConfigNode) Run(ctx context.Context) error {
 		return fmt.Errorf("running foreach children failed: %w", err)
 	}
 
-	err = fn.run(ctx, updateTasks)
+	fn.run(ctx, updateTasks)
+	fn.setRunHealth(component.HealthTypeExited, "foreach node shut down cleanly")
 
-	// Note: logging of this error is handled by the scheduler.
-	if err != nil {
-		fn.setRunHealth(component.HealthTypeExited, fmt.Sprintf("foreach node shut down with error: %s", err))
-	} else {
-		fn.setRunHealth(component.HealthTypeExited, "foreach node shut down cleanly")
-	}
-
-	return err
+	return nil
 }
 
-func (fn *ForeachConfigNode) run(ctx context.Context, updateTasks func() error) error {
+func (fn *ForeachConfigNode) run(ctx context.Context, updateTasks func() error) {
 	for {
 		select {
 		case <-fn.forEachChildrenUpdateChan:
@@ -310,7 +304,7 @@ func (fn *ForeachConfigNode) run(ctx context.Context, updateTasks func() error) 
 				fn.setRunHealth(component.HealthTypeHealthy, "foreach children updated successfully")
 			}
 		case <-ctx.Done():
-			return nil
+			return
 		}
 	}
 }

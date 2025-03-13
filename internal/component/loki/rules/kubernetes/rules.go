@@ -59,7 +59,7 @@ type Component struct {
 	informerStopChan  chan struct{}
 	ticker            *time.Ticker
 
-	queue         workqueue.RateLimitingInterface
+	queue         workqueue.TypedRateLimitingInterface[commonK8s.Event]
 	configUpdates chan ConfigUpdate
 
 	namespaceSelector labels.Selector
@@ -211,8 +211,8 @@ func (c *Component) Run(ctx context.Context) error {
 
 // startup launches the informers and starts the event loop.
 func (c *Component) startup(ctx context.Context) error {
-	cfg := workqueue.RateLimitingQueueConfig{Name: "loki.rules.kubernetes"}
-	c.queue = workqueue.NewRateLimitingQueueWithConfig(workqueue.DefaultControllerRateLimiter(), cfg)
+	cfg := workqueue.TypedRateLimitingQueueConfig[commonK8s.Event]{Name: "loki.rules.kubernetes"}
+	c.queue = workqueue.NewTypedRateLimitingQueueWithConfig(workqueue.DefaultTypedControllerRateLimiter[commonK8s.Event](), cfg)
 	c.informerStopChan = make(chan struct{})
 
 	if err := c.startNamespaceInformer(); err != nil {

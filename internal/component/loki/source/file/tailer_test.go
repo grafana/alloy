@@ -123,6 +123,7 @@ func TestTailer(t *testing.T) {
 		false,
 		func() bool { return true },
 	)
+	require.NoError(t, err)
 	go tailer.Run()
 
 	_, err = logFile.Write([]byte("writing some text\n"))

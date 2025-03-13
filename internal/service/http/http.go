@@ -210,7 +210,7 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 			return
 		}
 
-		fmt.Fprintln(w, "All Alloy components are healthy.")
+		_, _ = fmt.Fprintln(w, "All Alloy components are healthy.")
 		w.WriteHeader(http.StatusOK)
 	})
 
@@ -232,10 +232,10 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 		r.HandleFunc("/-/ready", func(w http.ResponseWriter, _ *http.Request) {
 			if s.opts.ReadyFunc() {
 				w.WriteHeader(http.StatusOK)
-				fmt.Fprintln(w, "Alloy is ready.")
+				_, _ = fmt.Fprintln(w, "Alloy is ready.")
 			} else {
 				w.WriteHeader(http.StatusServiceUnavailable)
-				fmt.Fprintln(w, "Alloy is not ready.")
+				_, _ = fmt.Fprintln(w, "Alloy is not ready.")
 			}
 		})
 	}
@@ -401,7 +401,7 @@ func (s *Service) componentHandler(getHost func() (service.Host, error), pathPre
 		host, err := getHost()
 		if host == nil || err != nil {
 			w.WriteHeader(http.StatusServiceUnavailable)
-			fmt.Fprintf(w, "failed to get host: %s\n", err)
+			_, _ = fmt.Fprintf(w, "failed to get host: %s\n", err)
 			return
 		}
 		// Trim the path prefix to get our full path.

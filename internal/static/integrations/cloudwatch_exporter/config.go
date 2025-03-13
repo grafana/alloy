@@ -4,8 +4,9 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"time"
+
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 
 	"github.com/go-kit/log"
 	yaceConf "github.com/nerdswords/yet-another-cloudwatch-exporter/pkg/config"
@@ -167,7 +168,7 @@ func ToYACEConfig(c *Config, logger log.Logger) (yaceModel.JobsConfig, bool, err
 }
 
 // convertAliasesToNamespaces converts the deprecated service aliases to their corresponding namespaces.
-// This function is added for the backward compatibility of the deprecated service aliases. This compatability
+// This function is added for the backward compatibility of the deprecated service aliases. This compatibility
 // may be removed in the future.
 func convertAliasesToNamespaces(c *Config, logger log.Logger) {
 	for i, job := range c.Discovery.Jobs {

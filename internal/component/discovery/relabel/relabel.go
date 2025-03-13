@@ -79,6 +79,9 @@ func (c *Component) Run(ctx context.Context) error {
 
 // Update implements component.Component.
 func (c *Component) Update(args component.Arguments) error {
+	c.mut.Lock()
+	defer c.mut.Unlock()
+
 	newArgs := args.(Arguments)
 
 	targets := make([]discovery.Target, 0, len(newArgs.Targets))

@@ -240,5 +240,5 @@ func (p *Connector) CurrentHealth() component.Health {
 }
 
 func (p *Connector) LiveDebugging(_ int) {
-	p.Update(p.args)
+	_ = p.Update(p.args)
 }

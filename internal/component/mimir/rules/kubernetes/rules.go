@@ -308,8 +308,8 @@ func (c *Component) startup(ctx context.Context) error {
 		return nil
 	}
 
-	cfg := workqueue.RateLimitingQueueConfig{Name: "mimir.rules.kubernetes"}
-	queue := workqueue.NewRateLimitingQueueWithConfig(workqueue.DefaultControllerRateLimiter(), cfg)
+	cfg := workqueue.TypedRateLimitingQueueConfig[commonK8s.Event]{Name: "mimir.rules.kubernetes"}
+	queue := workqueue.NewTypedRateLimitingQueueWithConfig(workqueue.DefaultTypedControllerRateLimiter[commonK8s.Event](), cfg)
 	informerStopChan := make(chan struct{})
 
 	namespaceLister, err := c.startNamespaceInformer(queue, informerStopChan)
@@ -395,7 +395,7 @@ func (c *Component) init() error {
 	return nil
 }
 
-func (c *Component) startNamespaceInformer(queue workqueue.RateLimitingInterface, stopChan chan struct{}) (coreListers.NamespaceLister, error) {
+func (c *Component) startNamespaceInformer(queue workqueue.TypedRateLimitingInterface[commonK8s.Event], stopChan chan struct{}) (coreListers.NamespaceLister, error) {
 	factory := informers.NewSharedInformerFactoryWithOptions(
 		c.k8sClient,
 		24*time.Hour,
@@ -417,7 +417,7 @@ func (c *Component) startNamespaceInformer(queue workqueue.RateLimitingInterface
 	return namespaceLister, nil
 }
 
-func (c *Component) startRuleInformer(queue workqueue.RateLimitingInterface, stopChan chan struct{}) (promListers.PrometheusRuleLister, error) {
+func (c *Component) startRuleInformer(queue workqueue.TypedRateLimitingInterface[commonK8s.Event], stopChan chan struct{}) (promListers.PrometheusRuleLister, error) {
 	factory := promExternalVersions.NewSharedInformerFactoryWithOptions(
 		c.promClient,
 		24*time.Hour,
@@ -439,7 +439,7 @@ func (c *Component) startRuleInformer(queue workqueue.RateLimitingInterface, sto
 	return ruleLister, nil
 }
 
-func (c *Component) newEventProcessor(queue workqueue.RateLimitingInterface, stopChan chan struct{}, namespaceLister coreListers.NamespaceLister, ruleLister promListers.PrometheusRuleLister) *eventProcessor {
+func (c *Component) newEventProcessor(queue workqueue.TypedRateLimitingInterface[commonK8s.Event], stopChan chan struct{}, namespaceLister coreListers.NamespaceLister, ruleLister promListers.PrometheusRuleLister) *eventProcessor {
 	// Copy the label map to make sure that a change in arguments won't immediately propagate to the event processor.
 	externalLabels := make(map[string]string, len(c.args.ExternalLabels))
 	maps.Copy(externalLabels, c.args.ExternalLabels)

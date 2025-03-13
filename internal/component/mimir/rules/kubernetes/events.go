@@ -30,7 +30,7 @@ const (
 )
 
 type eventProcessor struct {
-	queue    workqueue.RateLimitingInterface
+	queue    workqueue.TypedRateLimitingInterface[kubernetes.Event]
 	stopChan chan struct{}
 	health   healthReporter
 
@@ -53,13 +53,12 @@ type eventProcessor struct {
 // run processes events added to the queue until the queue is shutdown.
 func (e *eventProcessor) run(ctx context.Context) {
 	for {
-		eventInterface, shutdown := e.queue.Get()
+		evt, shutdown := e.queue.Get()
 		if shutdown {
 			level.Info(e.logger).Log("msg", "shutting down event loop")
 			return
 		}
 
-		evt := eventInterface.(kubernetes.Event)
 		e.metrics.eventsTotal.WithLabelValues(string(evt.Typ)).Inc()
 		err := e.processEvent(ctx, evt)
 

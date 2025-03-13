@@ -233,5 +233,5 @@ func (r *Receiver) CurrentHealth() component.Health {
 }
 
 func (p *Receiver) LiveDebugging(_ int) {
-	p.Update(p.args)
+	_ = p.Update(p.args)
 }

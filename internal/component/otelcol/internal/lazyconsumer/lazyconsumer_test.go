@@ -51,13 +51,13 @@ func Test_ConsumeWaitsForResume(t *testing.T) {
 
 	method := map[string]func(){
 		"ConsumeTraces": func() {
-			_ = c.ConsumeTraces(nil, ptrace.NewTraces())
+			_ = c.ConsumeTraces(componenttest.TestContext(t), ptrace.NewTraces())
 		},
 		"ConsumeMetrics": func() {
-			_ = c.ConsumeMetrics(nil, pmetric.NewMetrics())
+			_ = c.ConsumeMetrics(componenttest.TestContext(t), pmetric.NewMetrics())
 		},
 		"ConsumeLogs": func() {
-			_ = c.ConsumeLogs(nil, plog.NewLogs())
+			_ = c.ConsumeLogs(componenttest.TestContext(t), plog.NewLogs())
 		},
 	}
 

@@ -990,7 +990,7 @@ func otelcolConfigFromStringMap(otelMapStructure map[string]interface{}, factori
 	}
 	cp, err := otelcol.NewConfigProvider(otelcol.ConfigProviderSettings{
 		ResolverSettings: confmap.ResolverSettings{
-			URIs: []string{"yaml:" + string(b.Bytes())},
+			URIs: []string{"yaml:" + b.String()},
 			ProviderFactories: []confmap.ProviderFactory{
 				yamlprovider.NewFactory(),
 			},

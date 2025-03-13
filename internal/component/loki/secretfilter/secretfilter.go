@@ -278,7 +278,7 @@ func (c *Component) Update(args component.Arguments) error {
 	// Parse GitLeaks configuration
 	var gitleaksCfg GitLeaksConfig
 	if c.args.GitleaksConfig == "" {
-		// If no config file is explicitely provided, use the embedded one
+		// If no config file is explicitly provided, use the embedded one
 		_, err := toml.DecodeFS(embedFs, "gitleaks.toml", &gitleaksCfg)
 		if err != nil {
 			return err

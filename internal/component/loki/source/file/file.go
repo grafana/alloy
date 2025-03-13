@@ -168,8 +168,12 @@ func (c *Component) Run(ctx context.Context) error {
 			for _, entry := range c.tasks {
 				tasks = append(tasks, &entry)
 			}
-			runner.ApplyTasks(ctx, tasks)
+			err := runner.ApplyTasks(ctx, tasks)
 			c.mut.Unlock()
+
+			if err != nil {
+				return err
+			}
 		}
 	}
 }

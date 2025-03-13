@@ -8,6 +8,6 @@ import (
 
 func TestEventTypeIsHashable(t *testing.T) {
 	// This test is here to ensure that the EventType type is hashable according to the workqueue implementation
-	queue := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
+	queue := workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[Event]())
 	queue.AddRateLimited(Event{})
 }

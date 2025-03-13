@@ -223,6 +223,8 @@ func TestDecompressor(t *testing.T) {
 		DecompressionConfig{Format: "gz"},
 		func() bool { return true },
 	)
+	require.NoError(t, err)
+
 	go decompressor.Run()
 
 	select {
@@ -281,6 +283,7 @@ func TestDecompressorPositionFileEntryDeleted(t *testing.T) {
 		DecompressionConfig{Format: "gz"},
 		func() bool { return false },
 	)
+	require.NoError(t, err)
 	go decompressor.Run()
 
 	select {

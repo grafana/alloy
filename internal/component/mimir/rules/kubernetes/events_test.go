@@ -120,7 +120,7 @@ func TestEventLoop(t *testing.T) {
 	}
 
 	processor := &eventProcessor{
-		queue:             workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
+		queue:             workqueue.NewTypedRateLimitingQueue[kubernetes.Event](workqueue.DefaultTypedControllerRateLimiter[kubernetes.Event]()),
 		stopChan:          make(chan struct{}),
 		health:            &fakeHealthReporter{},
 		mimirClient:       newFakeMimirClient(),
@@ -223,7 +223,7 @@ func TestAdditionalLabels(t *testing.T) {
 	}
 
 	processor := &eventProcessor{
-		queue:             workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
+		queue:             workqueue.NewTypedRateLimitingQueue[kubernetes.Event](workqueue.DefaultTypedControllerRateLimiter[kubernetes.Event]()),
 		stopChan:          make(chan struct{}),
 		health:            &fakeHealthReporter{},
 		mimirClient:       newFakeMimirClient(),
@@ -319,7 +319,7 @@ func TestExtraQueryMatchers(t *testing.T) {
 	}
 
 	processor := &eventProcessor{
-		queue:             workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
+		queue:             workqueue.NewTypedRateLimitingQueue[kubernetes.Event](workqueue.DefaultTypedControllerRateLimiter[kubernetes.Event]()),
 		stopChan:          make(chan struct{}),
 		health:            &fakeHealthReporter{},
 		mimirClient:       newFakeMimirClient(),

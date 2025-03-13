@@ -6,9 +6,10 @@ import (
 	"io"
 	"os"
 	"sync"
-	"sync/atomic"
 	"testing"
 	"time"
+
+	"go.uber.org/atomic"
 
 	"connectrpc.com/connect"
 	collectorv1 "github.com/grafana/alloy-remote-config/api/gen/proto/go/collector/v1"
