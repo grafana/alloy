@@ -12,9 +12,9 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/gorilla/mux"
+	"github.com/oklog/run"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
-	"golang.org/x/sync/errgroup"
 
 	"github.com/grafana/alloy/internal/component"
 	fnet "github.com/grafana/alloy/internal/component/common/net"
@@ -175,13 +175,14 @@ func (c *Component) Push(ctx context.Context, req *connect.Request[pushv1.PushRe
 ) (*connect.Response[pushv1.PushResponse], error) {
 	appendables := c.getAppendables()
 
-	// Create an errgroup with the timeout context
-	g, ctx := errgroup.WithContext(ctx)
+	// Don't flow the context down to the `run.Group`.
+	// We want to append to all even in case of failures to one.
+	var g run.Group
 
 	// Start copying the request body to all pipes
 	for i := range appendables {
 		appendable := appendables[i].Appender()
-		g.Go(func() error {
+		g.Add(func() error {
 			var (
 				errs error
 				lb   = labels.NewBuilder(nil)
@@ -201,9 +202,9 @@ func (c *Component) Push(ctx context.Context, req *connect.Request[pushv1.PushRe
 				}
 			}
 			return errs
-		})
+		}, func(err error) {})
 	}
-	if err := g.Wait(); err != nil {
+	if err := g.Run(); err != nil {
 		level.Error(c.opts.Logger).Log("msg", "Failed to forward profiles requests", "err", err)
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -255,11 +256,11 @@ func (c *Component) handleIngest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	g, ctx := errgroup.WithContext(r.Context())
+	var g run.Group
 
 	// Process each appendable with a new reader from the buffer
 	for i, appendable := range appendables {
-		g.Go(func() error {
+		g.Add(func() error {
 			profile := &pyroscope.IncomingProfile{
 				RawBody: buf.Bytes(),
 				Headers: r.Header.Clone(),
@@ -267,18 +268,17 @@ func (c *Component) handleIngest(w http.ResponseWriter, r *http.Request) {
 				Labels:  lbls,
 			}
 
-			if err := appendable.Appender().AppendIngest(ctx, profile); err != nil {
+			if err := appendable.Appender().AppendIngest(r.Context(), profile); err != nil {
 				level.Error(c.opts.Logger).Log("msg", "Failed to append profile", "appendable", i, "err", err)
 				return err
 			}
 
 			level.Debug(c.opts.Logger).Log("msg", "Profile appended successfully", "appendable", i)
 			return nil
-		})
+		}, func(err error) {})
 	}
 
-	err := g.Wait()
-	if err != nil {
+	if err := g.Run(); err != nil {
 		var writeErr *write.PyroscopeWriteError
 		if errors.As(err, &writeErr) {
 			http.Error(w, http.StatusText(writeErr.StatusCode), writeErr.StatusCode)

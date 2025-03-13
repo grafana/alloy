@@ -20,7 +20,6 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"go.uber.org/multierr"
-	"golang.org/x/sync/errgroup"
 
 	"github.com/grafana/alloy/internal/alloyseed"
 	"github.com/grafana/alloy/internal/component"
@@ -365,11 +364,11 @@ func (e *PyroscopeWriteError) Error() string {
 
 // AppendIngest implements the pyroscope.Appender interface.
 func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.IncomingProfile) error {
-	g, ctx := errgroup.WithContext(ctx)
+	var g run.Group
 
 	// Send to each endpoint concurrently
 	for _, endpoint := range f.config.Endpoints {
-		g.Go(func() error {
+		g.Add(func() error {
 			u, err := url.Parse(endpoint.URL)
 			if err != nil {
 				return fmt.Errorf("parse endpoint URL: %w", err)
@@ -435,10 +434,10 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 				return &PyroscopeWriteError{StatusCode: resp.StatusCode}
 			}
 			return nil
-		})
+		}, func(err error) {})
 	}
 
-	return g.Wait()
+	return g.Run()
 }
 
 // WithUserAgent returns a `connect.ClientOption` that sets the User-Agent header on.
