@@ -15,6 +15,9 @@ Main (unreleased)
 - Add `otelcol.receiver.awscloudwatch` component to receive logs from AWS CloudWatch and forward them to other `otelcol.*` components. (@wildum)
 
 ### Enhancements
+
+- Add the `stat_checkpointer` collector in `prometheus.exporter.postgres` (@dehaansa)
+
 - Add `connection_name` support for `prometheus.exporter.mssql` (@bck01215)
 
 - Add livedebugging support for `prometheus.scrape` (@ravishankar15, @wildum)
@@ -42,7 +45,13 @@ Main (unreleased)
 
 - Add labels validation in `pyroscope.write` to prevent duplicate labels and invalid label names/values. (@marcsanmi)
 
+- Reduced lock contention in `prometheus.scrape` component (@thampiotr)
+
 - Removed `alloy_component_controller_running_components`'s `health_type` label and added new metric: `alloy_component_controller_health` for monitoring component by health_types ["healthy", "unhealthy"].
+
+### Bugfixes
+
+- Update the `prometheus.exporter.postgres` component to correctly support Postgres17 when `stat_bgwriter` collector is enabled (@dehaansa)
 
 ### Breaking changes
 

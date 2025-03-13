@@ -17,7 +17,10 @@ You can configure the component to collect telemetry data from a specific port o
 The component exposes metrics that can be collected by a Prometheus scrape component, and traces that can be forwarded to an OTel exporter component.
 
 {{< admonition type="note" >}}
-To run this component, {{< param "PRODUCT_NAME" >}} requires administrative privileges, or at least it needs to be granted the `CAP_SYS_ADMIN` and `CAP_SYS_PTRACE` capability.
+To run this component, {{< param "PRODUCT_NAME" >}} requires administrative privileges, or at least it needs to be granted the following capabilities: `BPF`, `SYS_PTRACE`, `NET_RAW` `CAP_CHECKPOINT_RESTORENET_RAW`, `DAC_READ_SEARCH`, and `PERFMON`.
+The number of required capabilities depends on the specific use case.
+Refer to the [Beyla capabilities][] for more information.
+
 In Kubernetes environments, the [AppArmor profile must be `Unconfined`](https://kubernetes.io/docs/tutorials/security/apparmor/#securing-a-pod) for the Deployment or DaemonSet running {{< param "PRODUCT_NAME" >}}.
 {{< /admonition >}}
 
@@ -82,6 +85,11 @@ For example,`attributes` > `kubernetes` refers to a `kubernetes` block defined i
 [kubernetes services]: #kubernetes-services
 [discovery]: #discovery
 [services]: #services
+[instance_id]: #instance_id
+[select]: #select
+[ebpf]: #ebpf
+[filters]: #filters
+[application filters]: #application
 [metrics]: #metrics
 [network metrics]: #network-metrics
 [network filters]: #network-filters
@@ -162,14 +170,43 @@ The `select` block configures which attributes to include or exclude for specifi
 | `exclude` | `list(string)` | List of attributes to exclude.                         | `[]`    | no       |
 | `include` | `list(string)` | List of attributes to include. Use `*` to include all. | `[]`    | no       |
 
+`include` is a list of attributes that need to be reported.
+Each attribute can be an attribute name or a wildcard, for example, `k8s.dst.*` to include all the attributes starting with `k8s.dst`.
+
+`exclude` is a list to of attribute names/wildcards containing the attributes to remove from the `include` list, or from the default attribute set.
+
 The following example shows how you can include and exclude specific attributes:
 
 ```alloy
-select "sql_client_duration" {
-    include = ["*"]
-    exclude = ["db_statement"]
+attributes {
+  select {
+      attr = "sql_client_duration"
+      include = ["*"]
+      exclude = ["db_statement"]
+  }
 }
 ```
+
+Additionally, you can use `*` wildcards as metric names to add and exclude attributes for groups of metrics having the same name.
+For example:
+
+```alloy
+attributes {
+  select {
+      attr = "http_*"
+      include = ["*"]
+      exclude = ["http_path", "http_route"]
+  }
+  select {
+      attr = "http_client_*"
+      // override http_* exclusion
+      include = ["http_path"]
+  }  
+}
+```
+
+In the previous example, all the metrics with a name starting with `http_` or `http.` would include all the possible attributes but `http_path` and `http_route` or `http.path` and `http.route`.
+The `http_client_*` section would override the base configuration, enabling the `http_path` attribute for the HTTP client metrics and `http_route` for the HTTP server metrics.
 
 ### `discovery`
 
@@ -237,9 +274,14 @@ The `ebpf` block configures eBPF-specific settings.
 | `high_request_volume`         | `bool`        | Optimize for immediate request information when response is seen.          | `false` | no       |
 | `heuristic_sql_detect`        | `bool`        | Enable heuristic-based detection of SQL requests.                         | `false` | no       |
 
+`enable_context_propagation` enables context propagation using Linux Traffic Control probes. 
+For more information about this topic, refer to [Distributed traces with Beyla][].
+
 ### `filters`
 
-The `filters` block configures filtering of attributes.
+The `filters` block allows you to filter both application and network metrics by attribute values.
+
+For a list of metrics under the application and network family, as well as their attributes, refer to the [Beyla exported metrics][].
 
 It contains the following blocks:
 
@@ -270,6 +312,21 @@ The `network` block configures filtering of network attributes.
 Both properties accept a
 [glob-like](https://github.com/gobwas/glob) string (it can be a full value or include
 wildcards).
+
+Example:
+
+```alloy
+filters {
+	application {
+	  attr = "url.path"
+	  match = "/user/*"
+	}
+	network {
+	  attr = "k8s.src.owner.name"
+	  match = "*"
+	}
+}
+```
 
 ### `metrics`
 
@@ -489,9 +546,12 @@ Replace the following:
 
 [Grafana Beyla]: https://github.com/grafana/beyla
 [eBPF]: https://ebpf.io/
+[Beyla capabilities]: /docs/beyla/latest/security/
 [in-memory traffic]: ../../../../get-started/component_controller/#in-memory-traffic
 [run command]: ../../../cli/run/
 [scrape]: ../../prometheus/prometheus.scrape/
+[Distributed traces with Beyla]: /docs/beyla/latest/distributed-traces/
+[Beyla exported metrics]: /docs/beyla/latest/metrics/
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

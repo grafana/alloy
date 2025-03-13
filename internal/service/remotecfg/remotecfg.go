@@ -383,7 +383,7 @@ func (s *Service) fetchRemote() error {
 	if err == nil {
 		s.metrics.lastLoadSuccess.Set(1)
 		s.metrics.lastFetchSuccessTime.SetToCurrentTime()
-	} else {
+	} else if err != errNotModified {
 		s.metrics.totalFailures.Add(1)
 		s.metrics.lastLoadSuccess.Set(0)
 		return err
