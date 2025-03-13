@@ -139,9 +139,9 @@ func (p *Printer) printRange(w io.Writer, file []byte, diag Diagnostic) {
 			// Use 0 for the column number so we never consider the starting line for
 			// showing |.
 			if inRange(lineNum, 0, start, end) {
-				fmt.Fprint(w, "| ")
+				_, _ = fmt.Fprint(w, "| ")
 			} else {
-				fmt.Fprint(w, "  ")
+				_, _ = fmt.Fprint(w, "  ")
 			}
 		}
 
