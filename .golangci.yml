@@ -84,6 +84,8 @@ linters-settings:
     # at a glance.
     multi-if: true
     multi-func: true
+  goconst:
+    ignore-tests: true
 
   revive:
     rules:
