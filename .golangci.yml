@@ -23,7 +23,7 @@ linters:
     - typecheck   # Ensure code typechecks
     - depguard    # Allow/denylist specific imports
     - makezero    # Detect misuse of make with non-zero length and append
-    - tenv        # Use testing.(*T).Setenv instead of os.Setenv
+    - usetesting  # Use testing.(*T).Setenv instead of os.Setenv
     - whitespace  # Report unnecessary blank lines
 
 issues:

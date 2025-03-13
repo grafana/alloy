@@ -7,9 +7,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type fooArgs struct {
-	Something bool `alloy:"something,attr"`
-}
 type fooExports struct {
 	SomethingElse bool `alloy:"something_else,attr"`
 }
@@ -66,8 +63,6 @@ func TestValueCache(t *testing.T) {
 		actualKeys = append(actualKeys, varName)
 	}
 	require.ElementsMatch(t, expectKeys, actualKeys)
-
-	type object = map[string]interface{}
 
 	expectFoo := fooExports{SomethingElse: true}
 	require.Equal(t, expectFoo, res.Variables["foo"])
