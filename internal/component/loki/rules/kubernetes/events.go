@@ -18,13 +18,12 @@ const eventTypeSyncLoki kubernetes.EventType = "sync-loki"
 
 func (c *Component) eventLoop(ctx context.Context) {
 	for {
-		eventInterface, shutdown := c.queue.Get()
+		evt, shutdown := c.queue.Get()
 		if shutdown {
 			level.Info(c.log).Log("msg", "shutting down event loop")
 			return
 		}
 
-		evt := eventInterface.(kubernetes.Event)
 		c.metrics.eventsTotal.WithLabelValues(string(evt.Typ)).Inc()
 		err := c.processEvent(ctx, evt)
 
