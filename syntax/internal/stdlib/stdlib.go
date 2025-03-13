@@ -158,25 +158,25 @@ var concat = value.RawFunction(func(funcValue value.Value, args ...value.Value) 
 })
 
 // This function assumes that the types of the value.Value objects are correct.
-func shouldJoin(left value.Value, right value.Value, conditions value.Value) (bool, error) {
+func shouldJoin(left value.Value, right value.Value, conditions value.Value) bool {
 	for i := 0; i < conditions.Len(); i++ {
 		condition := conditions.Index(i).Text()
 
 		leftVal, ok := left.Key(condition)
 		if !ok {
-			return false, nil
+			return false
 		}
 
 		rightVal, ok := right.Key(condition)
 		if !ok {
-			return false, nil
+			return false
 		}
 
 		if !leftVal.Equal(rightVal) {
-			return false, nil
+			return false
 		}
 	}
-	return true, nil
+	return true
 }
 
 // Merge two maps.
@@ -283,12 +283,7 @@ var combineMaps = value.RawFunction(func(funcValue value.Value, args ...value.Va
 			left := convertIfNeeded(args[0].Index(i))
 			right := convertIfNeeded(args[1].Index(j))
 
-			join, err := shouldJoin(left, right, args[2])
-			if err != nil {
-				return value.Null, err
-			}
-
-			if join {
+			if shouldJoin(left, right, args[2]) {
 				val, err := concatMaps(left, right)
 				if err != nil {
 					return value.Null, err
