@@ -12,7 +12,6 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/gorilla/mux"
-	"github.com/oklog/run"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
 
@@ -173,21 +172,18 @@ func apiToAlloySamples(api []*pushv1.RawSample) []*pyroscope.RawSample {
 
 func (c *Component) Push(ctx context.Context, req *connect.Request[pushv1.PushRequest],
 ) (*connect.Response[pushv1.PushResponse], error) {
-
 	appendables := c.getAppendables()
 
-	// Don't flow the context down to the `run.Group`.
-	// We want to append to all even in case of failures to one.
-	var g run.Group
+	var wg sync.WaitGroup
+	var errs error
 
 	// Start copying the request body to all pipes
 	for i := range appendables {
 		appendable := appendables[i].Appender()
-		g.Add(func() error {
-			var (
-				errs error
-				lb   = labels.NewBuilder(nil)
-			)
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			var lb = labels.NewBuilder(nil)
 
 			for idx := range req.Msg.Series {
 				lb.Reset(nil)
@@ -202,12 +198,12 @@ func (c *Component) Push(ctx context.Context, req *connect.Request[pushv1.PushRe
 					)
 				}
 			}
-			return errs
-		}, func(err error) {})
+		}()
 	}
-	if err := g.Run(); err != nil {
-		level.Error(c.opts.Logger).Log("msg", "Failed to forward profiles requests", "err", err)
-		return nil, connect.NewError(connect.CodeInternal, err)
+	wg.Wait()
+	if errs != nil {
+		level.Error(c.opts.Logger).Log("msg", "Failed to forward profiles requests", "err", errs)
+		return nil, connect.NewError(connect.CodeInternal, errs)
 	}
 
 	level.Debug(c.opts.Logger).Log("msg", "Profiles successfully forwarded")
@@ -257,11 +253,14 @@ func (c *Component) handleIngest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var g run.Group
+	var wg sync.WaitGroup
+	var errs error
 
-	// Process each appendable with a new reader from the buffer
+	// Process each appendable with a new reader from the buffer]
 	for i, appendable := range appendables {
-		g.Add(func() error {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
 			profile := &pyroscope.IncomingProfile{
 				RawBody: buf.Bytes(),
 				Headers: r.Header.Clone(),
@@ -271,20 +270,21 @@ func (c *Component) handleIngest(w http.ResponseWriter, r *http.Request) {
 
 			if err := appendable.Appender().AppendIngest(r.Context(), profile); err != nil {
 				level.Error(c.opts.Logger).Log("msg", "Failed to append profile", "appendable", i, "err", err)
-				return err
+				errs = errors.Join(errs, err)
 			}
 
 			level.Debug(c.opts.Logger).Log("msg", "Profile appended successfully", "appendable", i)
-			return nil
-		}, func(err error) {})
+		}()
 	}
 
-	if err := g.Run(); err != nil {
+	wg.Wait()
+
+	if errs != nil {
 		var writeErr *write.PyroscopeWriteError
-		if errors.As(err, &writeErr) {
+		if errors.As(errs, &writeErr) {
 			http.Error(w, http.StatusText(writeErr.StatusCode), writeErr.StatusCode)
 		} else {
-			level.Error(c.opts.Logger).Log("msg", "Failed to process request", "err", err)
+			level.Error(c.opts.Logger).Log("msg", "Failed to process request", "err", errs)
 			http.Error(w, "Failed to process request", http.StatusInternalServerError)
 		}
 		return

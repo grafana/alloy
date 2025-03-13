@@ -11,11 +11,11 @@ import (
 	"path"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"connectrpc.com/connect"
 	"github.com/grafana/pyroscope/api/model/labelset"
-	"github.com/oklog/run"
 	commonconfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
@@ -211,10 +211,8 @@ func (f *fanOutClient) Push(
 	ctx context.Context,
 	req *connect.Request[pushv1.PushRequest],
 ) (*connect.Response[pushv1.PushResponse], error) {
-	// Don't flow the context down to the `run.Group`.
-	// We want to fan out to all even in case of failures to one.
 	var (
-		g                     run.Group
+		wg                    sync.WaitGroup
 		errs                  error
 		reqSize, profileCount = requestSize(req)
 	)
@@ -230,7 +228,9 @@ func (f *fanOutClient) Push(
 			})
 			err error
 		)
-		g.Add(func() error {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
 			req := connect.NewRequest(req.Msg)
 			for k, v := range f.config.Endpoints[i].Headers {
 				req.Header().Set(k, v)
@@ -266,12 +266,10 @@ func (f *fanOutClient) Push(
 					Log("msg", "final error sending to profiles to endpoint", "endpoint", f.config.Endpoints[i].URL, "err", err)
 				errs = multierr.Append(errs, err)
 			}
-			return err
-		}, func(err error) {})
+		}()
 	}
-	if err := g.Run(); err != nil {
-		return nil, err
-	}
+
+	wg.Wait()
 	if errs != nil {
 		return nil, errs
 	}
@@ -364,14 +362,18 @@ func (e *PyroscopeWriteError) Error() string {
 
 // AppendIngest implements the pyroscope.Appender interface.
 func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.IncomingProfile) error {
-	var g run.Group
+	var wg sync.WaitGroup
+	var errs error
 
 	// Send to each endpoint concurrently
 	for _, endpoint := range f.config.Endpoints {
-		g.Add(func() error {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
 			u, err := url.Parse(endpoint.URL)
 			if err != nil {
-				return fmt.Errorf("parse endpoint URL: %w", err)
+				errs = errors.Join(errs, fmt.Errorf("parse endpoint URL: %w", err))
+				return
 			}
 
 			u.Path = path.Join(u.Path, profile.URL.Path)
@@ -384,7 +386,8 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 				finalLabels := ensureNameMatchesService(profile.Labels)
 
 				if err := validateLabels(finalLabels); err != nil {
-					return fmt.Errorf("invalid labels in profile: %w", err)
+					errs = errors.Join(errs, fmt.Errorf("invalid labels in profile: %w", err))
+					return
 				}
 
 				finalLabels.Range(func(l labels.Label) {
@@ -401,7 +404,8 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 
 			req, err := http.NewRequestWithContext(ctx, "POST", u.String(), bytes.NewReader(profile.RawBody))
 			if err != nil {
-				return fmt.Errorf("create request: %w", err)
+				errs = errors.Join(errs, fmt.Errorf("create request: %w", err))
+				return
 			}
 
 			// First set profile headers as defaults
@@ -421,23 +425,26 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 
 			resp, err := f.ingestClients[endpoint].Do(req)
 			if err != nil {
-				return fmt.Errorf("do request: %w", err)
+				errs = errors.Join(errs, fmt.Errorf("do request: %w", err))
+				return
 			}
 			defer resp.Body.Close()
 
 			_, err = io.Copy(io.Discard, resp.Body)
 			if err != nil {
-				return fmt.Errorf("read response body: %w", err)
+				errs = errors.Join(errs, fmt.Errorf("read response body: %w", err))
+				return
 			}
 
 			if resp.StatusCode != http.StatusOK {
-				return &PyroscopeWriteError{StatusCode: resp.StatusCode}
+				errs = errors.Join(errs, &PyroscopeWriteError{StatusCode: resp.StatusCode})
 			}
-			return nil
-		}, func(err error) {})
+		}()
 	}
 
-	return g.Run()
+	wg.Wait()
+
+	return errs
 }
 
 // WithUserAgent returns a `connect.ClientOption` that sets the User-Agent header on.

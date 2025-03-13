@@ -20,18 +20,18 @@ func (p *XwbSqlParser) Redact(sql string) (string, error) {
 	return sqlparser.RedactSQLQuery(sql)
 }
 
-func (p *XwbSqlParser) StmtType(stmt any) string {
+func (p *XwbSqlParser) StmtType(stmt any) StatementType {
 	switch stmt.(type) {
 	case *sqlparser.Select:
-		return "select"
+		return StatementTypeSelect
 	case *sqlparser.Insert:
-		return "insert"
+		return StatementTypeInsert
 	case *sqlparser.Update:
-		return "update"
+		return StatementTypeUpdate
 	case *sqlparser.Delete:
-		return "delete"
+		return StatementTypeDelete
 	case *sqlparser.Union:
-		return "select" // label union as a select
+		return StatementTypeSelect // label union as a select
 	default:
 		return ""
 	}
