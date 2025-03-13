@@ -51,6 +51,12 @@ Main (unreleased)
   - Added a new `http_headers` argument to many `discovery` and `prometheus` components.
   - Added a new `scrape_failure_log_file` argument to `prometheus.scrape`.
 
+v1.7.4
+-----------------
+
+### Bugfixes
+
+- Revert the changes to `loki.source.file` from release v1.7.0. These changes introduced a potential deadlock. (@dehaansa)
 
 v1.7.3
 -----------------
