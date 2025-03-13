@@ -217,6 +217,7 @@ func TestUnhealthy(t *testing.T) {
 		defer resp.Body.Close()
 
 		buf, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
 		require.Equal(t, "unhealthy components: testCompName\n", string(buf))
 
 		require.Equal(t, http.StatusInternalServerError, resp.StatusCode)

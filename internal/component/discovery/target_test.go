@@ -791,7 +791,6 @@ func TestHashing(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestHashLargeLabelSets(t *testing.T) {

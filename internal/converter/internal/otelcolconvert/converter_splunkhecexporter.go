@@ -57,8 +57,8 @@ func toSplunkHecHTTPClientArguments(cfg *splunkhecexporter.Config) splunkhec_con
 	return splunkhec_config.SplunkHecClientArguments{
 		Endpoint:            cfg.Endpoint,
 		Timeout:             cfg.Timeout,
-		ReadBufferSize:      int(cfg.ReadBufferSize),
-		WriteBufferSize:     int(cfg.WriteBufferSize),
+		ReadBufferSize:      cfg.ReadBufferSize,
+		WriteBufferSize:     cfg.WriteBufferSize,
 		MaxIdleConns:        cfg.MaxIdleConns,
 		MaxIdleConnsPerHost: cfg.MaxIdleConnsPerHost,
 		MaxConnsPerHost:     cfg.MaxConnsPerHost,

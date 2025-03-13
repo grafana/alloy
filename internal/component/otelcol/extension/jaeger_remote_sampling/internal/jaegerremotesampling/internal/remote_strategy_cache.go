@@ -56,6 +56,7 @@ func (c *serviceStrategyTTLCache) get(
 	ctx context.Context,
 	serviceName string,
 ) (*api_v2.SamplingStrategyResponse, bool) {
+
 	c.rw.RLock()
 	defer c.rw.RUnlock()
 	found, ok := c.items[serviceName]
@@ -74,6 +75,7 @@ func (c *serviceStrategyTTLCache) put(
 	serviceName string,
 	response *api_v2.SamplingStrategyResponse,
 ) {
+
 	c.rw.Lock()
 	defer c.rw.Unlock()
 	c.items[serviceName] = serviceStrategyCacheEntry{

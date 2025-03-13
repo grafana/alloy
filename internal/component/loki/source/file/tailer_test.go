@@ -19,7 +19,7 @@ import (
 
 func createTempFileWithContent(t *testing.T, content []byte) string {
 	t.Helper()
-	tmpfile, err := os.CreateTemp("", "testfile")
+	tmpfile, err := os.CreateTemp(t.TempDir(), "testfile")
 	if err != nil {
 		t.Fatalf("Failed to create temp file: %v", err)
 	}

@@ -68,7 +68,7 @@ func TestDistSymlink(t *testing.T) {
 
 func tempDir(t *testing.T) string {
 	t.Helper()
-	dir, err := os.MkdirTemp("", "asprof-test")
+	dir, err := os.MkdirTemp(t.TempDir(), "asprof-test")
 	assert.NoError(t, err)
 	t.Logf("dir: %s", dir)
 	return dir

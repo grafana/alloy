@@ -27,6 +27,9 @@ linters:
     - whitespace  # Report unnecessary blank lines
 
 issues:
+  max-same-issues: 0
+  max-issues-per-linter: 0
+  
   # We want to use our own exclusion rules and ignore all the defaults.
   exclude-use-default: false
 

@@ -130,7 +130,7 @@ func (c *Component) Update(args component.Arguments) error {
 	if len(newArgs.RelabelRules) > 0 {
 		handlerNeedsUpdate = true
 		newRelabels = alloy_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules)
-	} else if c.rbs != nil && len(c.rbs) > 0 && (newArgs.RelabelRules == nil || len(newArgs.RelabelRules) == 0) {
+	} else if len(c.rbs) > 0 && len(newArgs.RelabelRules) == 0 {
 		// nil out relabel rules if they need to be cleared
 		handlerNeedsUpdate = true
 	}
