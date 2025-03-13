@@ -289,7 +289,7 @@ func (t Target) SpecificLabelsHash(labelNames []string) uint64 {
 func (t Target) HashLabelsWithPredicate(pred func(key string) bool) uint64 {
 	// For hash to be deterministic, we need labels order to be deterministic too. Figure this out first.
 	labelsInOrder := stringSlicesPool.Get().([]string)
-	defer stringSlicesPool.Put(labelsInOrder[:]) //nolint:staticcheck SA6002 //TODO(@piotr) take a look at this optimization
+	defer stringSlicesPool.Put(labelsInOrder[:]) //nolint:staticcheck //TODO(@piotr) take a look at this optimization SA6002
 	t.ForEachLabel(func(key string, value string) bool {
 		if pred(key) {
 			labelsInOrder = append(labelsInOrder, key)
@@ -303,7 +303,7 @@ func (t Target) HashLabelsWithPredicate(pred func(key string) bool) uint64 {
 func (t Target) groupLabelsHash() uint64 {
 	// For hash to be deterministic, we need labels order to be deterministic too. Figure this out first.
 	labelsInOrder := stringSlicesPool.Get().([]string)
-	defer stringSlicesPool.Put(labelsInOrder[:]) //nolint:staticcheck SA6002 //TODO(@piotr) take a look at this optimization
+	defer stringSlicesPool.Put(labelsInOrder[:]) //nolint:staticcheck //TODO(@piotr) take a look at this optimization SA6002
 
 	for name := range t.group {
 		labelsInOrder = append(labelsInOrder, string(name))

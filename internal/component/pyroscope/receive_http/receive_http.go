@@ -172,6 +172,7 @@ func apiToAlloySamples(api []*pushv1.RawSample) []*pyroscope.RawSample {
 
 func (c *Component) Push(ctx context.Context, req *connect.Request[pushv1.PushRequest],
 ) (*connect.Response[pushv1.PushResponse], error) {
+
 	appendables := c.getAppendables()
 
 	var wg sync.WaitGroup
