@@ -7,6 +7,13 @@ This document contains a historical list of changes between releases. Only
 changes that impact end-user behavior are listed; changes to documentation or
 internal API changes are not present.
 
+v1.7.4
+-----------------
+
+### Bugfixes
+
+- Revert the changes to `loki.source.file` from release v1.7.0. These changes introduced a potential deadlock. (@dehaansa)
+
 v1.7.3
 -----------------
 
