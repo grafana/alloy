@@ -187,7 +187,8 @@ attributes {
 }
 ```
 
-Additionally, you can use `*` wildcards as metric names to add and exclude attributes for groups of metrics having the same name. For example:
+Additionally, you can use `*` wildcards as metric names to add and exclude attributes for groups of metrics having the same name.
+For example:
 
 ```alloy
 attributes {
