@@ -2,8 +2,8 @@ apiVersion: v2
 name: alloy
 description: 'Grafana Alloy'
 type: application
-version: 0.12.4
-appVersion: 'v1.7.3'
+version: 0.12.5
+appVersion: 'v1.7.4'
 icon: https://raw.githubusercontent.com/grafana/alloy/main/docs/sources/assets/alloy_icon_orange.svg
 
 dependencies:
