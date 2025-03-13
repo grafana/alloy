@@ -173,7 +173,7 @@ The `select` block configures which attributes to include or exclude for specifi
 `include` is a list of attributes that need to be reported.
 Each attribute can be an attribute name or a wildcard, for example, `k8s.dst.*` to include all the attributes starting with `k8s.dst`.
 
-`exclude` is a list to of attribute names/wildcards containing the attributes to remove from the `include` list (or the default attribute set).
+`exclude` is a list to of attribute names/wildcards containing the attributes to remove from the `include` list, or from the default attribute set.
 
 The following example shows how you can include and exclude specific attributes:
 
