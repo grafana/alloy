@@ -1,0 +1,44 @@
+name: Publish alloy container
+on:
+  push:
+    tags:
+      - v*
+  # TODO: Delete this later
+  pull_request:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish_release:
+    name: Publish release
+    container: grafana/alloy-build-image:v0.1.8
+    runs-on:
+      labels: github-hosted-ubuntu-x64-large
+    steps:
+      # This step needs to run before "Checkout code".
+      # That's because it generates a new file.
+      # We don't want this file to end up in the repo directory.
+      # Then "tools/image-tag" would get confused because "git status" no longer reports a clean repo.
+    - name: Login to DockerHub (from vault)
+      uses: grafana/shared-workflows/actions/dockerhub-login@dockerhub-login-v1.0.1
+
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set ownership
+      # https://github.com/actions/runner/issues/2033#issuecomment-1204205989
+      run: |
+          # this is to fix GIT not liking owner of the checkout dir
+          chown -R $(id -u):$(id -g) $PWD   
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: go.mod
+        cache: false
+  
+    - run: |
+       RELEASE_BUILD=1 VERSION="${{ github.ref_name }}" make -j4 dist
+       VERSION="${{ github.ref_name }}" RELEASE_DOC_TAG=$(echo "${{ github.ref_name }}" | awk -F '.' '{print $1"."$2}') ./tools/release
