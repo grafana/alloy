@@ -16,8 +16,6 @@ Main (unreleased)
 
 ### Enhancements
 
-- Add the `stat_checkpointer` collector in `prometheus.exporter.postgres` (@dehaansa)
-
 - Add `connection_name` support for `prometheus.exporter.mssql` (@bck01215)
 
 - Add livedebugging support for `prometheus.scrape` (@ravishankar15, @wildum)
@@ -47,19 +45,30 @@ Main (unreleased)
 
 - Reduced lock contention in `prometheus.scrape` component (@thampiotr)
 
-### Bugfixes
-
-- Update the `prometheus.exporter.postgres` component to correctly support Postgres17 when `stat_bgwriter` collector is enabled (@dehaansa)
-
-### Breaking changes
-
-- Fixed the parsing of selections, application and network filter blocks for Beyla
-
 ### Other changes
 
 - Upgrading to Prometheus v2.55.1. (@ptodev)
   - Added a new `http_headers` argument to many `discovery` and `prometheus` components.
   - Added a new `scrape_failure_log_file` argument to `prometheus.scrape`.
+
+
+v1.7.3
+-----------------
+
+### Breaking changes
+
+- Fixed the parsing of selections, application and network filter blocks for Beyla
+
+### Enhancements
+
+- Add the `stat_checkpointer` collector in `prometheus.exporter.postgres` (@dehaansa)
+
+### Bugfixes
+
+- Update the `prometheus.exporter.postgres` component to correctly support Postgres17 when `stat_bgwriter` collector is enabled (@dehaansa)
+
+- Fix `remoteCfg` logging and metrics reporting of `errNotModified` as a failure (@zackman0010)
+
 
 v1.7.2
 -----------------
