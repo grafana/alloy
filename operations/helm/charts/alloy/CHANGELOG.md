@@ -10,7 +10,20 @@ internal API changes are not present.
 Unreleased
 ----------
 
+0.12.5 (2025-03-13)
+----------
+### Enhancements
+
+- Update to Grafana Alloy v1.7.4. (@dehaansa)
+
+0.12.4 (2025-03-13)
+----------
+### Enhancements
+
+- Update to Grafana Alloy v1.7.3. (@dehaansa)
+
 0.12.3 (2025-03-10)
+----------
 ### Enhancements
 
 - Add support for adding livenessProbe to agent container (@slimes28)
