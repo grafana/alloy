@@ -170,7 +170,8 @@ The `select` block configures which attributes to include or exclude for specifi
 | `exclude` | `list(string)` | List of attributes to exclude.                         | `[]`    | no       |
 | `include` | `list(string)` | List of attributes to include. Use `*` to include all. | `[]`    | no       |
 
-`include` is a list of attributes that need to be reported. Each attribute can be an attribute name or a wildcard (for example, `k8s.dst.*` to include all the attributes starting with `k8s.dst`).
+`include` is a list of attributes that need to be reported.
+Each attribute can be an attribute name or a wildcard, for example, `k8s.dst.*` to include all the attributes starting with `k8s.dst`.
 
 `exclude` is a list to of attribute names/wildcards containing the attributes to remove from the `include` list (or the default attribute set).
 
