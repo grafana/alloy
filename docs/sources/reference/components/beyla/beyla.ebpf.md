@@ -278,7 +278,7 @@ The `ebpf` block configures eBPF-specific settings.
 
 ### `filters`
 
-The `filters` block allows filtering both application and network metrics by attribute values.
+The `filters` block allows you to filter both application and network metrics by attribute values.
 
 For a list of metrics under the application and network family, as well as their attributes, check the [Beyla exported metrics][].
 
