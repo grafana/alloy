@@ -14,7 +14,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
-	"go.uber.org/multierr"
 
 	"github.com/grafana/alloy/internal/component"
 	fnet "github.com/grafana/alloy/internal/component/common/net"
@@ -194,7 +193,7 @@ func (c *Component) Push(ctx context.Context, req *connect.Request[pushv1.PushRe
 				lbls := ensureServiceName(lb.Labels())
 				err := appendable.Append(ctx, lbls, apiToAlloySamples(req.Msg.Series[idx].Samples))
 				if err != nil {
-					errs = multierr.Append(
+					errs = errors.Join(
 						errs,
 						fmt.Errorf("unable to append series %s to appendable %d: %w", lb.Labels().String(), i, err),
 					)
@@ -272,7 +271,7 @@ func (c *Component) handleIngest(w http.ResponseWriter, r *http.Request) {
 
 			if err := appendable.Appender().AppendIngest(r.Context(), profile); err != nil {
 				level.Error(c.opts.Logger).Log("msg", "Failed to append profile", "appendable", i, "err", err)
-				errs = multierr.Append(errs, err)
+				errs = errors.Join(errs, err)
 			}
 
 			level.Debug(c.opts.Logger).Log("msg", "Profile appended successfully", "appendable", i)
