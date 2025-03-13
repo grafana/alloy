@@ -296,6 +296,17 @@ controller:
   # -- Additional containers to run alongside the Alloy container and initContainers.
   extraContainers: []
 
+networkPolicy:
+  enabled: false
+  flavor: kubernetes
+
+  # Default allow all traffic because Alloy is so configurable
+  # It is recommended to change this before deploying to production
+  ingress:
+    - {}
+  egress:
+    - {}
+
 service:
   # -- Creates a Service for the controller's pods.
   enabled: true

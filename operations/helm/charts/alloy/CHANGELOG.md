@@ -10,6 +10,13 @@ internal API changes are not present.
 Unreleased
 ----------
 
+0.13.0 (2025-03-11)
+------------------
+
+### Enhancements
+
+- Add NetworkPolicy support. (@TheRealNoob)
+
 0.12.3 (2025-03-10)
 ### Enhancements
 
