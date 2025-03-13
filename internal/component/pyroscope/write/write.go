@@ -19,7 +19,6 @@ import (
 	commonconfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
-	"go.uber.org/multierr"
 
 	"github.com/grafana/alloy/internal/alloyseed"
 	"github.com/grafana/alloy/internal/component"
@@ -28,6 +27,7 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/useragent"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/dskit/backoff"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
@@ -215,6 +215,7 @@ func (f *fanOutClient) Push(
 	var (
 		wg                    sync.WaitGroup
 		errs                  error
+		errorMut              sync.Mutex
 		reqSize, profileCount = requestSize(req)
 	)
 
@@ -265,7 +266,7 @@ func (f *fanOutClient) Push(
 				f.metrics.droppedProfiles.WithLabelValues(f.config.Endpoints[i].URL).Add(float64(profileCount))
 				level.Warn(f.opts.Logger).
 					Log("msg", "final error sending to profiles to endpoint", "endpoint", f.config.Endpoints[i].URL, "err", err)
-				errs = multierr.Append(errs, err)
+				util.ErrorsJoinConcurrent(&errs, err, &errorMut)
 			}
 		}()
 	}
@@ -364,6 +365,7 @@ func (e *PyroscopeWriteError) Error() string {
 // AppendIngest implements the pyroscope.Appender interface.
 func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.IncomingProfile) error {
 	var wg sync.WaitGroup
+	var errorMut sync.Mutex
 	var errs error
 
 	// Send to each endpoint concurrently
@@ -373,7 +375,7 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 			defer wg.Done()
 			u, err := url.Parse(endpoint.URL)
 			if err != nil {
-				errs = errors.Join(errs, fmt.Errorf("parse endpoint URL: %w", err))
+				util.ErrorsJoinConcurrent(&errs, fmt.Errorf("parse endpoint URL: %w", err), &errorMut)
 				return
 			}
 
@@ -387,7 +389,7 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 				finalLabels := ensureNameMatchesService(profile.Labels)
 
 				if err := validateLabels(finalLabels); err != nil {
-					errs = errors.Join(errs, fmt.Errorf("invalid labels in profile: %w", err))
+					util.ErrorsJoinConcurrent(&errs, fmt.Errorf("invalid labels in profile: %w", err), &errorMut)
 					return
 				}
 
@@ -405,7 +407,7 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 
 			req, err := http.NewRequestWithContext(ctx, "POST", u.String(), bytes.NewReader(profile.RawBody))
 			if err != nil {
-				errs = errors.Join(errs, fmt.Errorf("create request: %w", err))
+				util.ErrorsJoinConcurrent(&errs, fmt.Errorf("create request: %w", err), &errorMut)
 				return
 			}
 
@@ -426,19 +428,19 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 
 			resp, err := f.ingestClients[endpoint].Do(req)
 			if err != nil {
-				errs = errors.Join(errs, fmt.Errorf("do request: %w", err))
+				util.ErrorsJoinConcurrent(&errs, fmt.Errorf("do request: %w", err), &errorMut)
 				return
 			}
 			defer resp.Body.Close()
 
 			_, err = io.Copy(io.Discard, resp.Body)
 			if err != nil {
-				errs = errors.Join(errs, fmt.Errorf("read response body: %w", err))
+				util.ErrorsJoinConcurrent(&errs, fmt.Errorf("read response body: %w", err), &errorMut)
 				return
 			}
 
 			if resp.StatusCode != http.StatusOK {
-				errs = errors.Join(errs, &PyroscopeWriteError{StatusCode: resp.StatusCode})
+				util.ErrorsJoinConcurrent(&errs, &PyroscopeWriteError{StatusCode: resp.StatusCode}, &errorMut)
 			}
 		}()
 	}
