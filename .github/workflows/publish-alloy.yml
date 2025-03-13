@@ -39,6 +39,10 @@ jobs:
         go-version-file: go.mod
         cache: false
   
+    # - run: |
+    #    RELEASE_BUILD=1 VERSION="${{ github.ref_name }}" make -j4 dist
+    #    VERSION="${{ github.ref_name }}" RELEASE_DOC_TAG=$(echo "${{ github.ref_name }}" | awk -F '.' '{print $1"."$2}') ./tools/release
+
     - run: |
-       RELEASE_BUILD=1 VERSION="${{ github.ref_name }}" make -j4 dist
-       VERSION="${{ github.ref_name }}" RELEASE_DOC_TAG=$(echo "${{ github.ref_name }}" | awk -F '.' '{print $1"."$2}') ./tools/release
+       RELEASE_BUILD=1 VERSION="0.0" make -j4 dist
+       VERSION="0.0" RELEASE_DOC_TAG=$(echo "0.0" | awk -F '.' '{print $1"."$2}') ./tools/release
