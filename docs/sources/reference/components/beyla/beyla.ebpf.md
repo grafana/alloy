@@ -274,7 +274,8 @@ The `ebpf` block configures eBPF-specific settings.
 | `high_request_volume`         | `bool`        | Optimize for immediate request information when response is seen.          | `false` | no       |
 | `heuristic_sql_detect`        | `bool`        | Enable heuristic-based detection of SQL requests.                         | `false` | no       |
 
-`enable_context_propagation` enables context propagation using Linux Traffic Control probes. To know more about this topic, read [Distributed traces with Beyla][].
+`enable_context_propagation` enables context propagation using Linux Traffic Control probes. 
+For more information about this topic, refer to [Distributed traces with Beyla][].
 
 ### `filters`
 
