@@ -113,7 +113,6 @@ v1.7.0
 
 - Add json format support for log export via faro receiver (@ravishankar15)
 
-<<<<<<< HEAD
 - (_Experimental_) Various changes to the experimental component `database_observability.mysql`:
   - `connection_info`: add namespace to the metric (@cristiangreco)
   - `query_sample`: better support for table name parsing (@cristiangreco)
@@ -145,8 +144,6 @@ v1.7.0
 
 - Fix log rotation for Windows in `loki.source.file` by refactoring the component to use the runner pkg. This should also reduce CPU consumption when tailing a lot of files in a dynamic environment. (@wildum)
 
-=======
->>>>>>> parent of f14dd01a8 (Use runner pkg in loki source file (#2428))
 - Add livedebugging support for `prometheus.remote_write` (@ravishankar15)
 
 - Add livedebugging support for `otelcol.connector.*` components (@wildum)
