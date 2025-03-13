@@ -7,6 +7,24 @@ This document contains a historical list of changes between releases. Only
 changes that impact end-user behavior are listed; changes to documentation or
 internal API changes are not present.
 
+v1.7.3
+-----------------
+
+### Breaking changes
+
+- Fixed the parsing of selections, application and network filter blocks for Beyla
+
+### Enhancements
+
+- Add the `stat_checkpointer` collector in `prometheus.exporter.postgres` (@dehaansa)
+
+- Reduced lock contention in `prometheus.scrape` component (@thampiotr)
+
+### Bugfixes
+
+- Update the `prometheus.exporter.postgres` component to correctly support Postgres17 when `stat_bgwriter` collector is enabled (@dehaansa)
+
+- Fix `remoteCfg` logging and metrics reporting of `errNotModified` as a failure (@zackman0010)
 
 v1.7.2
 -----------------
