@@ -78,7 +78,7 @@ func TestSlogHandle(t *testing.T) {
 	bb := &bytes.Buffer{}
 	bbSl := &bytes.Buffer{}
 	sl, alloy, l := newLoggers(t, bb, bbSl)
-	logInfo(sl, alloy, "test")
+	logInfo(sl, alloy, "simple_test")
 	err := l.Update(Options{
 		Level:   "debug",
 		Format:  "json",
@@ -92,7 +92,7 @@ func TestSlogHandleWithDifferingLevelDeny(t *testing.T) {
 	bb := &bytes.Buffer{}
 	bbSl := &bytes.Buffer{}
 	sl, alloy, l := newLoggers(t, bb, bbSl)
-	logInfo(sl, alloy, "test")
+	logInfo(sl, alloy, "test_denied")
 	err := l.Update(Options{
 		Level:   "warn",
 		Format:  "json",
@@ -106,7 +106,7 @@ func TestSlogHandleWithDifferingLevelAllow(t *testing.T) {
 	bb := &bytes.Buffer{}
 	bbSl := &bytes.Buffer{}
 	sl, alloy, l := newLoggers(t, bb, bbSl)
-	logError(sl, alloy, "test")
+	logError(sl, alloy, "test3")
 	err := l.Update(Options{
 		Level:   "warn",
 		Format:  "json",
@@ -158,7 +158,7 @@ func TestDeferredHandler(t *testing.T) {
 				sl, alloy, l := newLoggers(t, bb, bbSl)
 
 				sl, alloy = withAttrs(sl, alloy, "attr1", "value1")
-				logInfo(sl, alloy, "test")
+				logInfo(sl, alloy, "test_attr")
 				err := l.Update(Options{
 					Level:   "debug",
 					Format:  "json",
@@ -173,7 +173,7 @@ func TestDeferredHandler(t *testing.T) {
 				sl, alloy, l := newLoggers(t, bb, bbSl)
 				sl, alloy = withAttrs(sl, alloy, "attr1", "value1")
 				sl, alloy = withAttrs(sl, alloy, "nestedattr1", "nestedvalue1")
-				logInfo(sl, alloy, "test")
+				logInfo(sl, alloy, "test_nested")
 				err := l.Update(Options{
 					Level:   "debug",
 					Format:  "json",
@@ -188,7 +188,7 @@ func TestDeferredHandler(t *testing.T) {
 				sl, alloy, l := newLoggers(t, bb, bbSl)
 				sl, alloy = withGroup(sl, alloy, "gr1")
 				sl, alloy = withAttrs(sl, alloy, "nestedattr1", "nestedvalue1")
-				logInfo(sl, alloy, "test")
+				logInfo(sl, alloy, "test_group")
 				err := l.Update(Options{
 					Level:   "debug",
 					Format:  "json",
@@ -204,7 +204,7 @@ func TestDeferredHandler(t *testing.T) {
 				sl, alloy = withGroup(sl, alloy, "gr1")
 				sl, alloy = withGroup(sl, alloy, "gr2")
 				sl, alloy = withAttrs(sl, alloy, "nestedattr1", "nestedvalue1")
-				logInfo(sl, alloy, "test")
+				logInfo(sl, alloy, "test_nested_group")
 				err := l.Update(Options{
 					Level:   "debug",
 					Format:  "json",
