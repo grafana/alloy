@@ -261,17 +261,6 @@ type targetInfo struct {
 	ReadOffset int64  `alloy:"read_offset,attr"`
 }
 
-// Returns the elements from set b which are missing from set a
-func missing(as map[positions.Entry]reader, bs map[positions.Entry]struct{}) map[positions.Entry]struct{} {
-	c := map[positions.Entry]struct{}{}
-	for a := range bs {
-		if _, ok := as[a]; !ok {
-			c[a] = struct{}{}
-		}
-	}
-	return c
-}
-
 // For most files, createReader returns a tailer implementation. If the file suffix alludes to it being
 // a compressed file, then a decompressor will be created instead.
 func (c *Component) createReader(path string, labels model.LabelSet) (reader, error) {

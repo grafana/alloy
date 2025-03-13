@@ -66,7 +66,6 @@ func (s *PushAPIServer) Run() error {
 	level.Info(s.logger).Log("msg", "starting push API server")
 
 	err := s.server.MountAndRun(func(router *mux.Router) {
-
 		// Extract the tenant ID from the request and add it to the context.
 		tenantHeaderExtractor := func(next http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

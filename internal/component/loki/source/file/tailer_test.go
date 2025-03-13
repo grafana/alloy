@@ -206,6 +206,7 @@ func TestTailerPositionFileEntryDeleted(t *testing.T) {
 		false,
 		func() bool { return false },
 	)
+	require.NoError(t, err)
 	go tailer.Run()
 
 	_, err = logFile.Write([]byte("writing some text\n"))

@@ -61,6 +61,7 @@ func NewSyslogTarget(
 	relabel []*relabel.Config,
 	config *scrapeconfig.SyslogTargetConfig,
 ) (*SyslogTarget, error) {
+
 	t := &SyslogTarget{
 		metrics:       metrics,
 		logger:        logger,

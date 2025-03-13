@@ -746,7 +746,6 @@ func TestHashing(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-
 			// verifies that all hashes are equal to each other and the expected hash (if it's specified)
 			verifyCollectionEqual := func(hashes []uint64) {
 				require.Greater(t, len(hashes), 0)

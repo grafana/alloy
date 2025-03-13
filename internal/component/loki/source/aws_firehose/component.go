@@ -127,7 +127,7 @@ func (c *Component) Update(args component.Arguments) error {
 	var handlerNeedsUpdate = c.args.UseIncomingTimestamp != newArgs.UseIncomingTimestamp
 
 	// then, if the relabel rules changed
-	if newArgs.RelabelRules != nil && len(newArgs.RelabelRules) > 0 {
+	if len(newArgs.RelabelRules) > 0 {
 		handlerNeedsUpdate = true
 		newRelabels = alloy_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules)
 	} else if c.rbs != nil && len(c.rbs) > 0 && (newArgs.RelabelRules == nil || len(newArgs.RelabelRules) == 0) {

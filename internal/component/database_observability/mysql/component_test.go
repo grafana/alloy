@@ -126,5 +126,4 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.SchemaTableName: true,
 		}, actualCollectors)
 	})
-
 }

@@ -411,7 +411,7 @@ func (s *Service) componentHandler(getHost func() (service.Host, error), pathPre
 		componentID, componentPath, err := splitURLPath(host, trimmedPath)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintf(w, "failed to parse URL path %q: %s\n", r.URL.Path, err)
+			_, _ = fmt.Fprintf(w, "failed to parse URL path %q: %s\n", r.URL.Path, err)
 		}
 
 		info, err := host.GetComponent(componentID, component.InfoOptions{})

@@ -154,13 +154,13 @@ func (cc EndpointConfig) ToNativeType() types.ConnectionConfig {
 	for k, v := range cc.Headers {
 		headers[k] = string(v)
 	}
-	
+
 	// Convert map of alloytypes.Secret to map of strings for ProxyConnectHeaders
 	proxyConnectHeaders := make(map[string]string, len(cc.ProxyConnectHeaders))
 	for k, v := range cc.ProxyConnectHeaders {
 		proxyConnectHeaders[k] = string(v)
 	}
-	
+
 	tcc := types.ConnectionConfig{
 		URL:                  cc.URL,
 		BearerToken:          string(cc.BearerToken),

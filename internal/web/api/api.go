@@ -211,7 +211,7 @@ func liveDebugging(_ service.Host, callbackManager livedebugging.CallbackManager
 			select {
 			case data := <-dataCh:
 				var builder strings.Builder
-				builder.WriteString(string(data))
+				builder.WriteString(data)
 				// |;| delimiter is added at the end of every chunk
 				builder.WriteString("|;|")
 				_, writeErr := w.Write([]byte(builder.String()))

@@ -72,7 +72,6 @@ func generateServicesDocSection() string {
 		if i < len(yaceConf.SupportedServices)-1 {
 			sb.WriteString("\n")
 		}
-
 	}
 
 	doc := strings.Replace(docTemplate, servicesListReplacement, sb.String(), 1)

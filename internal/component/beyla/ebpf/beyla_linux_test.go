@@ -438,7 +438,6 @@ func TestConvert_Filters(t *testing.T) {
 	config := args.Convert()
 
 	require.Equal(t, expectedConfig, config)
-
 }
 
 func TestArguments_Validate(t *testing.T) {
