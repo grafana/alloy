@@ -205,7 +205,8 @@ attributes {
 }
 ```
 
-In the previous example, all the metrics with a name starting with `http_` (or `http`.) would include all the possible attributes but `http_path` and `http_route` (or `http.path`/`http.route`). The `http_client_*` section would override the base configuration, enabling the `http_path` attribute for the HTTP client metrics and `http_route` for the HTTP server metrics.
+In the previous example, all the metrics with a name starting with `http_` or `http.` would include all the possible attributes but `http_path` and `http_route` or `http.path` and `http.route`.
+The `http_client_*` section would override the base configuration, enabling the `http_path` attribute for the HTTP client metrics and `http_route` for the HTTP server metrics.
 
 ### `discovery`
 
