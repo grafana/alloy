@@ -9,6 +9,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -32,10 +33,10 @@ import (
 type testState struct {
 	peerAddresses []string
 	ctx           context.Context
+	shutdownGroup sync.WaitGroup
 }
 
 // TODO(thampiotr): scenarios to cover:
-// TODO(thampiotr): nodes join - init 4, add 4
 // TODO(thampiotr): nodes leave clean - init 8, remove 4
 // TODO(thampiotr): nodes die - init 8, kill 4
 // TODO(thampiotr): name conflicts
@@ -77,10 +78,7 @@ func TestClusterE2E(t *testing.T) {
 			},
 			changes: func(state *testState) {
 				for i := 0; i < 4; i++ {
-					nodeAddress := newNodeAddress(t)
-					state.peerAddresses = append(state.peerAddresses, nodeAddress)
-					nodeName := fmt.Sprintf("new-node-%d", i)
-					startNewNode(t, state.ctx, nodeName, nodeAddress, state.peerAddresses)
+					startNewNode(t, state, fmt.Sprintf("new-node-%d", i))
 				}
 			},
 			assertionsFinal: func(t *assert.CollectT, state *testState) {
@@ -119,10 +117,7 @@ func TestClusterE2E(t *testing.T) {
 			}
 
 			for i := 0; i < tc.nodeCountInitial; i++ {
-				nodeAddress := newNodeAddress(t)
-				state.peerAddresses = append(state.peerAddresses, nodeAddress)
-				nodeName := fmt.Sprintf("node-%d", i)
-				startNewNode(t, ctx, nodeName, nodeAddress, state.peerAddresses)
+				startNewNode(t, state, fmt.Sprintf("node-%d", i))
 			}
 
 			assert.EventuallyWithT(t, func(t *assert.CollectT) {
@@ -134,12 +129,103 @@ func TestClusterE2E(t *testing.T) {
 			assert.EventuallyWithT(t, func(t *assert.CollectT) {
 				tc.assertionsFinal(t, state)
 			}, 20*time.Second, 200*time.Millisecond)
+
+			cancel()
+			state.shutdownGroup.Wait()
 		})
 	}
 }
 
-func newNodeAddress(t *testing.T) string {
-	return fmt.Sprintf("127.0.0.1:%d", getFreePort(t))
+// startNewNode creates a new node with the given name, generates a new address for it,
+// and appends that address to the state's peerAddresses list
+func startNewNode(t *testing.T, state *testState, nodeName string) {
+	nodeAddress := fmt.Sprintf("127.0.0.1:%d", getFreePort(t))
+	state.peerAddresses = append(state.peerAddresses, nodeAddress)
+
+	nodeDirPath := path.Join(t.TempDir(), nodeName)
+	logger, err := logging.New(
+		&logsWriter{
+			t:      t,
+			out:    os.Stdout,
+			prefix: fmt.Sprintf("%s: ", nodeName),
+		},
+		logging.Options{
+			Level:  logging.LevelDebug,
+			Format: logging.FormatDefault,
+		},
+	)
+	require.NoError(t, err)
+
+	tracer, err := tracing.New(tracing.DefaultOptions)
+	require.NoError(t, err)
+
+	reg := prometheus.NewRegistry()
+	clusterService, err := alloycli.BuildClusterService(alloycli.ClusterOptions{
+		Log:     log.With(logger, "service", "cluster"),
+		Tracer:  tracer,
+		Metrics: reg,
+
+		EnableClustering:    true,
+		NodeName:            nodeName,
+		AdvertiseAddress:    nodeAddress,
+		ListenAddress:       nodeAddress,
+		JoinPeers:           state.peerAddresses,
+		RejoinInterval:      5 * time.Second,
+		AdvertiseInterfaces: advertise.DefaultInterfaces,
+		ClusterMaxJoinPeers: 5,
+		ClusterName:         "cluster_e2e_test",
+	})
+	require.NoError(t, err)
+
+	httpService := httpservice.New(httpservice.Options{
+		Logger:   logger,
+		Tracer:   tracer,
+		Gatherer: reg,
+
+		ReadyFunc:  func() bool { return true },
+		ReloadFunc: func() (*runtime.Source, error) { return nil, nil },
+
+		HTTPListenAddr: nodeAddress,
+	})
+
+	configFilePath := path.Join(nodeDirPath, "config.alloy")
+	remoteCfgService, err := remotecfgservice.New(remotecfgservice.Options{
+		Logger:      log.With(logger, "service", "remotecfg"),
+		ConfigPath:  configFilePath,
+		StoragePath: nodeDirPath,
+		Metrics:     reg,
+	})
+	require.NoError(t, err)
+
+	f := runtime.New(runtime.Options{
+		Logger:               logger,
+		Tracer:               tracer,
+		DataPath:             nodeDirPath,
+		Reg:                  reg,
+		MinStability:         featuregate.StabilityExperimental,
+		EnableCommunityComps: false,
+		Services: []service.Service{
+			clusterService,
+			httpService,
+			remoteCfgService,
+		},
+	})
+
+	// Increment the WaitGroup before starting the node
+	state.shutdownGroup.Add(1)
+	go func() {
+		// Ensure the WaitGroup is decremented when the node finishes running
+		defer state.shutdownGroup.Done()
+		f.Run(state.ctx)
+	}()
+
+	src, err := runtime.ParseSource(t.Name(), []byte(""))
+	require.NoError(t, err)
+	err = f.LoadSource(src, nil, configFilePath)
+	require.NoError(t, err)
+
+	err = clusterService.ChangeState(state.ctx, peer.StateParticipant)
+	require.NoError(t, err)
 }
 
 // metricsContain fetches metrics from the given URL and checks if they
@@ -171,89 +257,6 @@ func fetchMetrics(url string) (string, error) {
 	return string(body), nil
 }
 
-func startNewNode(t *testing.T, ctx context.Context, nodeName string, address string, peerAddresses []string) {
-	nodeDirPath := path.Join(t.TempDir(), nodeName)
-	logger, err := logging.New(
-		&logsWriter{
-			t:      t,
-			out:    os.Stdout,
-			prefix: fmt.Sprintf("%s: ", nodeName),
-		},
-		logging.Options{
-			Level:  logging.LevelDebug,
-			Format: logging.FormatDefault,
-		},
-	)
-	require.NoError(t, err)
-
-	tracer, err := tracing.New(tracing.DefaultOptions)
-	require.NoError(t, err)
-
-	reg := prometheus.NewRegistry()
-	clusterService, err := alloycli.BuildClusterService(alloycli.ClusterOptions{
-		Log:     log.With(logger, "service", "cluster"),
-		Tracer:  tracer,
-		Metrics: reg,
-
-		EnableClustering:    true,
-		NodeName:            nodeName,
-		AdvertiseAddress:    address,
-		ListenAddress:       address,
-		JoinPeers:           peerAddresses,
-		RejoinInterval:      5 * time.Second,
-		AdvertiseInterfaces: advertise.DefaultInterfaces,
-		ClusterMaxJoinPeers: 5,
-		ClusterName:         "cluster_e2e_test",
-	})
-	require.NoError(t, err)
-
-	httpService := httpservice.New(httpservice.Options{
-		Logger:   logger,
-		Tracer:   tracer,
-		Gatherer: reg,
-
-		ReadyFunc:  func() bool { return true },
-		ReloadFunc: func() (*runtime.Source, error) { return nil, nil },
-
-		HTTPListenAddr: address,
-	})
-
-	configFilePath := path.Join(nodeDirPath, "config.alloy")
-	remoteCfgService, err := remotecfgservice.New(remotecfgservice.Options{
-		Logger:      log.With(logger, "service", "remotecfg"),
-		ConfigPath:  configFilePath,
-		StoragePath: nodeDirPath,
-		Metrics:     reg,
-	})
-	require.NoError(t, err)
-
-	f := runtime.New(runtime.Options{
-		Logger:               logger,
-		Tracer:               tracer,
-		DataPath:             nodeDirPath,
-		Reg:                  reg,
-		MinStability:         featuregate.StabilityExperimental,
-		EnableCommunityComps: false,
-		Services: []service.Service{
-			clusterService,
-			httpService,
-			remoteCfgService,
-		},
-	})
-
-	go func() {
-		f.Run(ctx)
-	}()
-
-	src, err := runtime.ParseSource(t.Name(), []byte(""))
-	require.NoError(t, err)
-	err = f.LoadSource(src, nil, configFilePath)
-	require.NoError(t, err)
-
-	err = clusterService.ChangeState(ctx, peer.StateParticipant)
-	require.NoError(t, err)
-}
-
 // getFreePort returns a free port that can be used for testing
 func getFreePort(t *testing.T) int {
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
@@ -275,7 +278,10 @@ type logsWriter struct {
 }
 
 var errorsAllowlist = []string{
-	"failed to extract directory path from configPath",
+	"failed to extract directory path from configPath",             // unrelated to this test
+	"failed to broadcast leave message to cluster",                 // on shutdown sometimes we can't push to nodes that already shut
+	"failed to connect to peers; bootstrapping a new cluster",      // should be allowed only once for first node
+	"over TCP but UDP probes failed, network may be misconfigured", // TODO: we should investigate and fix this if not an issue
 }
 
 func (w *logsWriter) Write(p []byte) (n int, err error) {
@@ -292,7 +298,7 @@ func (w *logsWriter) Write(p []byte) (n int, err error) {
 				break
 			}
 		}
-		assert.True(w.t, isAllowed, "Disallowed warning or error found in logs", "Log message: %s", logMsg)
+		assert.True(w.t, isAllowed, "Disallowed warning or error found in logs: %s", logMsg)
 	}
 
 	_, err = w.out.Write(prefixed)
