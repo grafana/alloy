@@ -92,7 +92,8 @@ If set to `0`, the entire secret is redacted.
 If a secret isn't at least 6 characters long, it's entirely redacted.
 For short secrets, at most half of the secret is shown.
 
-The `origin_label` argument specifies which Loki label's value should be used for the `secrets_redacted_by_origin` metric. This allows tracking how many secrets were redacted in logs from different sources or environments.
+The `origin_label` argument specifies which Loki label value should be used for the `secrets_redacted_by_origin` metric.
+This allows tracking how many secrets were redacted in logs from different sources or environments.
 
 ## Blocks
 
@@ -122,7 +123,8 @@ The following fields are exported and can be referenced by other components:
 | `loki_secretfilter_secrets_allowlisted_total`      | Counter | Number of secrets that matched a rule but were in an allowlist, partitioned by source. |
 | `loki_secretfilter_processing_duration_seconds`    | Summary | Summary of the time taken to process and redact logs in seconds.                       |
 
-The `origin_label` argument specifies which Loki label's value should be used for the `secrets_redacted_by_origin` metric. This allows tracking how many secrets were redacted in logs from different sources or environments.
+The `origin_label` argument specifies which Loki label value should be used for the `secrets_redacted_by_origin` metric.
+This allows tracking how many secrets were redacted in logs from different sources or environments.
 
 ## Example
 
