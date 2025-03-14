@@ -125,17 +125,10 @@ loki.enrich "default" {
 
 The component matches logs to discovered targets and enriches them with additional labels:
 
-1. For each log entry, it looks up the value of `logs_match_label` from the log's labels (or `target_match_label` if `logs_match_label` is not specified)
-2. It matches this value against the `target_match_label` in discovered targets
-3. If a match is found, it copies the requested `labels_to_copy` from the discovered target to the log entry (if `labels_to_copy` is empty, all labels are copied)
-4. The log entry (enriched or unchanged) is forwarded to the configured receivers
-
-## See also
-
-* [loki.source.syslog](../loki.source.syslog/)
-* [loki.source.api](../loki.source.api/)
-* [discovery.relabel](../discovery/discovery.relabel/)
-* [discovery.http](../discovery/discovery.http/) 
+1. For each log entry, it looks up the value of `logs_match_label` from the log's labels or `target_match_label` if `logs_match_label` is not specified.
+1. It matches this value against the `target_match_label` in discovered targets.
+1. If a match is found, it copies the requested `labels_to_copy` from the discovered target to the log entry. If `labels_to_copy` is empty, all labels are copied.
+1. The log entry, enriched or unchanged, is forwarded to the configured receivers.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
