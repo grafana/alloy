@@ -40,19 +40,19 @@ cd alloy-scenarios/docker-monitoring
 docker compose up -d
 ```
 
-You can check the status of the containers by running the following command:
+You can check the status of the Docker containers by running the following command.
 
 ```shell
 docker ps
 ```
 
-## View the {{% param "PRODUCT_NAME" %}} UI
+## Monitor the health of your {{% param "PRODUCT_NAME" %}} deployment
 
 To monitor the health of your {{< param "PRODUCT_NAME" >}} deployment, open your browser and navigate to [`http://localhost:12345`](http://localhost:12345).
 
 Refer to [Debug Grafana Alloy](https://grafana.com/docs/alloy/latest/troubleshoot/debug/) for more information about the {{< param "PRODUCT_NAME" >}} UI.
 
-## Use the Grafana UI
+## Visualise your data
 
 To create a [dashboard](https://grafana.com/docs/grafana/latest/getting-started/build-first-dashboard/#create-a-dashboard) to visualise your metrics and logs, open your browser and navigate to [`http://localhost:3000/dashboards`](http://localhost:3000/dashboards).
 
