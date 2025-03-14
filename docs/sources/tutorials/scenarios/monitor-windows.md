@@ -101,3 +101,94 @@ You will now be able to view the Windows Performance Metrics and Event Logs in G
 
 * Open your browser and go to [http://localhost:3000/a/grafana-lokiexplore-app](http://localhost:3000/a/grafana-lokiexplore-app).
   This will take you to the Loki explorer in Grafana.
+
+
+```alloy
+// ####################################
+// Windows Server Metrics Configuration
+// ####################################
+
+prometheus.exporter.windows "default" {
+  enabled_collectors = ["cpu","cs","logical_disk","net","os","service","system", "memory", "scheduled_task", "tcp"]
+}
+
+// Configure a prometheus.scrape component to collect windows metrics.
+prometheus.scrape "example" {
+  targets    = prometheus.exporter.windows.default.targets
+  forward_to = [prometheus.remote_write.demo.receiver]
+}
+
+prometheus.remote_write "demo" {
+  endpoint {
+    url = "http://localhost:9090/api/v1/write"
+  }
+}
+
+// ####################################
+// Windows Server Logs Configuration
+// ####################################
+
+loki.source.windowsevent "application"  {
+    eventlog_name = "Application"
+    use_incoming_timestamp = true
+    forward_to = [loki.process.endpoint.receiver]
+}
+
+loki.source.windowsevent "System"  {
+    eventlog_name = "System"
+    use_incoming_timestamp = true
+    forward_to = [loki.process.endpoint.receiver]
+}
+
+loki.process "endpoint" {
+  forward_to = [loki.write.endpoint.receiver]
+  stage.json {
+      expressions = {
+          message = "",
+          Overwritten = "",
+          source = "",
+          computer = "",
+          eventRecordID = "",
+          channel = "",
+          component_id = "",
+          execution_processId = "",
+          execution_processName = "",
+      }
+  }
+
+  stage.structured_metadata {
+      values = {
+          "eventRecordID" = "",
+          "channel" = "",
+          "component_id" = "",
+          "execution_processId" = "",
+          "execution_processName" = "",
+      }
+  }
+
+  stage.eventlogmessage {
+      source = "message"
+      overwrite_existing = true
+  }
+
+  stage.labels {
+      values = {
+          "service_name" = "source",
+      }
+}
+
+stage.output {
+    source = "message"
+}
+
+}
+
+
+loki.write "endpoint" {
+    endpoint {
+        url ="http://localhost:3100/loki/api/v1/push"
+    }
+}
+
+livedebugging{}
+```
