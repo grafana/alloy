@@ -128,6 +128,7 @@ interface Box {
 
 export interface ComponentGraphProps {
   components: ComponentInfo[];
+  useRemotecfg?: boolean;
 }
 
 /**
@@ -328,7 +329,10 @@ export const ComponentGraph: FC<ComponentGraphProps> = (props) => {
         return `translate(${x}, ${y})`;
       });
 
-    const linkedNodes = nodes.append('a').attr('href', (n) => `${baseComponentPath}/${n.data.localID}`);
+    const linkedNodes = nodes.append('a').attr('href', (n) => {
+      const basePath = props.useRemotecfg ? '/remotecfg/component' : baseComponentPath;
+      return `${basePath}/${n.data.localID}`;
+    });
 
     // Check if above `a` element got rendered with latitude equaling to node's margin
     // If that's the case then we're running in quirks of Firefox SVG rendering

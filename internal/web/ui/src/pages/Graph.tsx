@@ -26,7 +26,9 @@ function Graph() {
         <div style={{ marginBottom: '16px' }}>
           <RadioButtonGroup options={options} value={configType} onChange={handleConfigChange} size="sm" />
         </div>
-        <div style={{ flex: 1, minHeight: 0 }}>{components.length > 0 && <ComponentGraph components={components} />}</div>
+        <div style={{ flex: 1, minHeight: 0 }}>
+          {components.length > 0 && <ComponentGraph components={components} useRemotecfg={configType === 'remote'} />}
+        </div>
       </div>
     </Page>
   );
