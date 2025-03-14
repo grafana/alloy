@@ -324,6 +324,8 @@ v1.6.0
 
 - Reduced memory allocation in discovery components by up to 30% (@thampiotr)
 
+- Add `tenant` label to remaining `loki_write_.+` metrics (@towolf)
+
 ### Bugfixes
 
 - Fix issue where `alloy_prometheus_relabel_metrics_processed` was not being incremented. (@mattdurham)
