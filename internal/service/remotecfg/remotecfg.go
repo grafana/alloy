@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"hash/fnv"
 	"maps"
+	"math"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -41,6 +42,10 @@ func getHash(in []byte) string {
 
 const baseJitter = 100 * time.Millisecond
 
+// This value is used when we want to disable polling. We use a value that is
+// slightly less than MaxInt to avoid overflowing
+const disablePollingFrequency = math.MaxInt64 - baseJitter
+
 var errNotModified = errors.New("config not modified since last fetch")
 
 // Service implements a service for remote configuration.
@@ -59,6 +64,8 @@ type Service struct {
 	asClient             collectorv1connect.CollectorServiceClient
 	clientFactory        func(args Arguments) (collectorv1connect.CollectorServiceClient, error)
 	ticker               *jitter.Ticker
+	updateTickerChan     chan struct{}
+	pollFrequency        time.Duration
 	dataPath             string
 	lastLoadedConfigHash string
 	systemAttrs          map[string]string
@@ -163,8 +170,10 @@ func New(opts Options) (*Service, error) {
 	}
 
 	return &Service{
-		opts:        opts,
-		systemAttrs: getSystemAttributes(),
+		opts:             opts,
+		systemAttrs:      getSystemAttributes(),
+		updateTickerChan: make(chan struct{}, 1),
+		pollFrequency:    disablePollingFrequency,
 		clientFactory: func(args Arguments) (collectorv1connect.CollectorServiceClient, error) {
 			httpClient, err := commonconfig.NewClientFromConfig(*args.HTTPClientConfig.Convert(), "remoteconfig")
 			if err != nil {
@@ -270,13 +279,6 @@ var _ service.Service = (*Service)(nil)
 // run until the provided context is canceled or there is a fatal error.
 func (s *Service) Run(ctx context.Context, host service.Host) error {
 	s.ctrl = host.NewController(ServiceName)
-	defer func() {
-		s.mut.Lock()
-		if s.ticker != nil {
-			s.ticker.Stop()
-		}
-		s.mut.Unlock()
-	}()
 
 	s.fetch()
 	err := s.registerCollector()
@@ -284,30 +286,33 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 		return err
 	}
 
+	s.mut.Lock()
+	s.ticker = jitter.NewTicker(s.pollFrequency, baseJitter)
+	s.mut.Unlock()
+
+	defer func() {
+		s.mut.Lock()
+		s.ticker.Stop()
+		s.ticker = nil
+		s.mut.Unlock()
+	}()
+
 	// Run the service's own controller.
 	go func() {
 		s.ctrl.Run(ctx)
 	}()
 
 	for {
-		// If the ticker is nil just wait, allow an update to set it.
-		s.mut.Lock()
-		if s.ticker == nil {
-			s.mut.Unlock()
-			select {
-			case <-ctx.Done():
-				return nil
-			case <-time.After(100 * time.Millisecond):
-				continue
-			}
-		}
-		s.mut.Unlock()
 		select {
 		case <-s.ticker.C:
 			err := s.fetchRemote()
 			if err != nil {
 				level.Error(s.opts.Logger).Log("msg", "failed to fetch remote configuration from the API", "err", err)
 			}
+		case <-s.updateTickerChan:
+			s.mut.Lock()
+			s.ticker.Reset(s.pollFrequency)
+			s.mut.Unlock()
 		case <-ctx.Done():
 			return nil
 		}
@@ -317,12 +322,12 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 // Update implements [service.Service] and applies settings.
 func (s *Service) Update(newConfig any) error {
 	newArgs := newConfig.(Arguments)
+	s.mut.Lock()
 
 	// We either never set the block on the first place, or recently removed
 	// it. Make sure we stop everything gracefully before returning.
 	if newArgs.URL == "" {
-		s.mut.Lock()
-		//s.ticker.Reset(math.MaxInt64 - baseJitter) // avoid overflowing
+		s.setPollFrequency(disablePollingFrequency)
 		s.asClient = noopClient{}
 		s.args.HTTPClientConfig = config.CloneDefaultHTTPClientConfig()
 		s.mut.Unlock()
@@ -331,17 +336,14 @@ func (s *Service) Update(newConfig any) error {
 		return nil
 	}
 
-	s.mut.Lock()
 	hash, err := newArgs.Hash()
 	if err != nil {
 		s.mut.Unlock()
 		return err
 	}
 	s.dataPath = filepath.Join(s.opts.StoragePath, ServiceName, hash)
-	if s.ticker != nil {
-		s.ticker.Stop()
-	}
-	s.ticker = jitter.NewTicker(newArgs.PollFrequency, baseJitter) // avoid overflowing
+
+	s.setPollFrequency(newArgs.PollFrequency)
 	// Update the HTTP client last since it might fail.
 	if !reflect.DeepEqual(s.args.HTTPClientConfig, newArgs.HTTPClientConfig) {
 		client, err := s.clientFactory(newArgs)
@@ -555,4 +557,15 @@ func (s *Service) isEnabled() bool {
 		s.registerMetrics()
 	}
 	return enabled
+}
+
+func (s *Service) setPollFrequency(t time.Duration) {
+	s.pollFrequency = t
+	select {
+	// If the channel is full it means there's already an update triggered
+	// or Run is not running. In both cases, we don't need to trigger another
+	// update or block.
+	case s.updateTickerChan <- struct{}{}:
+	default:
+	}
 }
