@@ -8,30 +8,31 @@ labels:
 description: The loki.enrich component enriches logs with labels from service discovery.
 ---
 
-# loki.enrich
+# `loki.enrich`
 
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-The `loki.enrich` component enriches logs with additional labels from service discovery targets. It matches a label from incoming logs against a label from discovered targets, and copies specified labels from the matched target to the log entry.
+The `loki.enrich` component enriches logs with additional labels from service discovery targets.
+It matches a label from incoming logs against a label from discovered targets, and copies specified labels from the matched target to the log entry.
 
 ## Usage
 
 ```alloy
-loki.enrich "LABEL" {
+loki.enrich "<LABEL>" {
   // List of targets from a discovery component
-  targets = DISCOVERY_COMPONENT.targets
+  targets = <DISCOVERY_COMPONENT>.targets
   
   // Which label from discovered targets to match against
-  match_label = "LABEL"
+  match_label = "<LABEL>"
   
   // Which label from incoming logs to match against
-  source_label = "LABEL"
+  source_label = "<LABEL>"
   
   // List of labels to copy from discovered targets to logs
-  labels_to_copy = ["LABEL", ...]
+  labels_to_copy = ["<LABEL>", ...]
   
   // Where to send enriched logs
-  forward_to = [RECEIVER_LIST]
+  forward_to = [<RECEIVER_LIST>]
 }
 ```
 
@@ -39,21 +40,25 @@ loki.enrich "LABEL" {
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`targets` | `[]discovery.Target` | List of targets from a discovery component. | | yes
-`target_match_label` | `string` | Which label from discovered targets to match against (e.g., "__inventory_consul_service"). | | yes
-`logs_match_label` | `string` | Which label from incoming logs to match against discovered targets (e.g., "service_name"). If not specified, `target_match_label` will be used. | `target_match_label` | no
-`labels_to_copy` | `[]string` | List of labels to copy from discovered targets to logs. If empty, all labels will be copied. | | no
-`forward_to` | `[]loki.LogsReceiver` | List of receivers to send enriched logs to. | | yes
+| Name                 | Type                  | Description                                                                                      | Default              | Required |
+| -------------------- | --------------------- | ------------------------------------------------------------------------------------------------ | -------------------- | -------- |
+| `forward_to`         | `[]loki.LogsReceiver` | List of receivers to send enriched logs to.                                                      |                      | yes      |
+| `target_match_label` | `string`              | The label from discovered targets to match against, for example, `"__inventory_consul_service"`. |                      | yes      |
+| `targets`            | `[]discovery.Target`  | List of targets from a discovery. component.                                                     |                      | yes      |
+| `labels_to_copy`     | `[]string`            | List of labels to copy from discovered targets to logs. If empty, all labels will be copied.     |                      | no       |
+| `logs_match_label`   | `string`              | The label from incoming logs to match against discovered targets, for example `"service_name"`.  | `target_match_label` | no       |
+
+## Blocks
+
+The `loki.enrich` component doesn't support any blocks. You can configure this component with arguments.
 
 ## Exports
 
 The following values are exported:
 
-Name | Type | Description
----- | ---- | -----------
-`receiver` | `loki.LogsReceiver` | A receiver that can be used to send logs to this component.
+| Name       | Type                | Description                                                 |
+| ---------- | ------------------- | ----------------------------------------------------------- |
+| `receiver` | `loki.LogsReceiver` | A receiver that can be used to send logs to this component. |
 
 ## Example
 
@@ -112,8 +117,6 @@ loki.enrich "default" {
     // Match hostname from logs to DNS name
     target_match_label = "primary_ip"
 
-
-
     forward_to = [loki.write.default.receiver]
 }
 ```
@@ -132,7 +135,9 @@ The component matches logs to discovered targets and enriches them with addition
 * [loki.source.syslog](../loki.source.syslog/)
 * [loki.source.api](../loki.source.api/)
 * [discovery.relabel](../discovery/discovery.relabel/)
-* [discovery.http](../discovery/discovery.http/) <!-- START GENERATED COMPATIBLE COMPONENTS -->
+* [discovery.http](../discovery/discovery.http/) 
+
+<!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components
 
