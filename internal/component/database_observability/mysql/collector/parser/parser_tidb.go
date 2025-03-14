@@ -1,7 +1,9 @@
 package parser
 
 import (
+	"errors"
 	"fmt"
+	"strings"
 
 	"golang.org/x/exp/maps"
 
@@ -18,9 +20,13 @@ func NewTiDBSqlParser() *TiDBSqlParser {
 }
 
 func (p *TiDBSqlParser) Parse(sql string) (any, error) {
+	// mysql will redact auth details with <secret> but the tidb parser
+	// will fail to parse it so we replace it with '<secret>'
+	sql = strings.Replace(sql, "IDENTIFIED BY <secret>", "IDENTIFIED BY '<secret>'", 1)
+
 	stmtNodes, _, err := parser.New().ParseSQL(sql)
 	if err != nil {
-		return nil, err
+		return nil, errors.Unwrap(err)
 	}
 
 	if len(stmtNodes) == 0 {
