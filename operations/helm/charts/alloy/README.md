@@ -68,7 +68,8 @@ useful if just using the default DaemonSet isn't sufficient.
 | configReloader.resources | object | `{"requests":{"cpu":"1m","memory":"5Mi"}}` | Resource requests and limits to apply to the config reloader container. |
 | configReloader.securityContext | object | `{}` | Security context to apply to the Grafana configReloader container. |
 | controller.affinity | object | `{}` | Affinity configuration for pods. |
-| controller.autoscaling.enabled | bool | `false` | Creates a HorizontalPodAutoscaler for controller type deployment. |
+| controller.autoscaling.enabled | bool | `false` | Creates an autoscaler for the controller. |
+| controller.autoscaling.flavor | string | `"horizontal"` | Type of autoscaler to use for the controller. Must be one of 'vertical' or 'horizontal'. |
 | controller.autoscaling.maxReplicas | int | `5` | The upper limit for the number of replicas to which the autoscaler can scale up. |
 | controller.autoscaling.minReplicas | int | `1` | The lower limit for the number of replicas to which the autoscaler can scale down. |
 | controller.autoscaling.scaleDown.policies | list | `[]` | List of policies to determine the scale-down behavior. |
@@ -79,6 +80,15 @@ useful if just using the default DaemonSet isn't sufficient.
 | controller.autoscaling.scaleUp.stabilizationWindowSeconds | int | `0` | The duration that the autoscaling mechanism should look back on to make decisions about scaling up. |
 | controller.autoscaling.targetCPUUtilizationPercentage | int | `0` | Average CPU utilization across all relevant pods, a percentage of the requested value of the resource for the pods. Setting `targetCPUUtilizationPercentage` to 0 will disable CPU scaling. |
 | controller.autoscaling.targetMemoryUtilizationPercentage | int | `80` | Average Memory utilization across all relevant pods, a percentage of the requested value of the resource for the pods. Setting `targetMemoryUtilizationPercentage` to 0 will disable Memory scaling. |
+| controller.autoscaling.vertical | object | `{"recommenders":[],"resourcePolicy":{"containerPolicies":[{"containerName":"alloy","controlledResources":["cpu","memory"],"controlledValues":"RequestsAndLimits","maxAllowed":{},"minAllowed":{}}]},"updatePolicy":null}` | Configures the Vertical Pod Autoscaler for the controller. |
+| controller.autoscaling.vertical.recommenders | list | `[]` | List of recommenders to use for the Vertical Pod Autoscaler. Recommenders are responsible for generating recommendation for the object. List should be empty (then the default recommender will generate the recommendation) or contain exactly one recommender. |
+| controller.autoscaling.vertical.resourcePolicy | object | `{"containerPolicies":[{"containerName":"alloy","controlledResources":["cpu","memory"],"controlledValues":"RequestsAndLimits","maxAllowed":{},"minAllowed":{}}]}` | Configures the resource policy for the Vertical Pod Autoscaler. |
+| controller.autoscaling.vertical.resourcePolicy.containerPolicies | list | `[{"containerName":"alloy","controlledResources":["cpu","memory"],"controlledValues":"RequestsAndLimits","maxAllowed":{},"minAllowed":{}}]` | Configures the container policies for the Vertical Pod Autoscaler. |
+| controller.autoscaling.vertical.resourcePolicy.containerPolicies[0].controlledResources | list | `["cpu","memory"]` | The controlled resources for the Vertical Pod Autoscaler. |
+| controller.autoscaling.vertical.resourcePolicy.containerPolicies[0].controlledValues | string | `"RequestsAndLimits"` | The controlled values for the Vertical Pod Autoscaler. Needs to be either RequestsOnly or RequestsAndLimits. |
+| controller.autoscaling.vertical.resourcePolicy.containerPolicies[0].maxAllowed | object | `{}` | The maximum allowed values for the pods. |
+| controller.autoscaling.vertical.resourcePolicy.containerPolicies[0].minAllowed | object | `{}` | Defines the min allowed resources for the pod |
+| controller.autoscaling.vertical.updatePolicy | string | `nil` | Configures the update policy for the Vertical Pod Autoscaler. |
 | controller.dnsPolicy | string | `"ClusterFirst"` | Configures the DNS policy for the pod. https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-s-dns-policy |
 | controller.enableStatefulSetAutoDeletePVC | bool | `false` | Whether to enable automatic deletion of stale PVCs due to a scale down operation, when controller.type is 'statefulset'. |
 | controller.extraAnnotations | object | `{}` | Annotations to add to controller. |
