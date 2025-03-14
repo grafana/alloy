@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path"
-	"sync"
+	"strings"
 	"testing"
 	"time"
 
@@ -29,8 +29,9 @@ import (
 	remotecfgservice "github.com/grafana/alloy/internal/service/remotecfg"
 )
 
-// TODO(thampiotr): to add:
-// TODO(thampiotr): check for error and warning messages that are not allow-listed
+type testState struct {
+	peerAddresses []string
+}
 
 // TODO(thampiotr): scenarios to cover:
 // TODO(thampiotr): nodes join - init 4, add 4
@@ -41,16 +42,21 @@ import (
 // TODO(thampiotr): when component evaluations are super slow?
 // TODO(thampiotr): when updating component's NotifyClusterChange is taking too long
 func TestClusterE2E(t *testing.T) {
-	tests := []struct {
-		name       string
-		nodeCount  int
-		assertions func(t *assert.CollectT, peerAddresses []string)
-	}{
+	type testCase struct {
+		name              string
+		nodeCountInitial  int
+		assertionsInitial func(t *assert.CollectT, state *testState)
+		changes           func(state *testState)
+		assertionsFinal   func(t *assert.CollectT, state *testState)
+		assertionsTimeout time.Duration
+	}
+
+	tests := []testCase{
 		{
-			name:      "three nodes",
-			nodeCount: 3,
-			assertions: func(t *assert.CollectT, peerAddresses []string) {
-				for _, address := range peerAddresses {
+			name:             "three nodes",
+			nodeCountInitial: 3,
+			assertionsInitial: func(t *assert.CollectT, state *testState) {
+				for _, address := range state.peerAddresses {
 					metricsContain(t, address, `cluster_node_info{state="participant"} 1`)
 					metricsContain(t, address, `cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 3`)
 					metricsContain(t, address, `cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 3`)
@@ -59,26 +65,44 @@ func TestClusterE2E(t *testing.T) {
 		},
 	}
 
+	setDefaults := func(tc *testCase) {
+		if tc.assertionsTimeout == 0 {
+			tc.assertionsTimeout = 20 * time.Second
+		}
+		if tc.assertionsInitial == nil {
+			tc.assertionsInitial = func(t *assert.CollectT, state *testState) {}
+		}
+		if tc.changes == nil {
+			tc.changes = func(state *testState) {}
+		}
+		if tc.assertionsFinal == nil {
+			tc.assertionsFinal = func(t *assert.CollectT, state *testState) {}
+		}
+	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			setDefaults(&tc)
+			ctx, cancel := context.WithTimeout(context.Background(), tc.assertionsTimeout*2+5*time.Second)
 			defer cancel()
 
-			var peerAddresses []string
-			wg := sync.WaitGroup{}
+			state := &testState{}
 
-			for i := 0; i < tc.nodeCount; i++ {
+			for i := 0; i < tc.nodeCountInitial; i++ {
 				nodeAddress := fmt.Sprintf("127.0.0.1:%d", getFreePort(t))
-				peerAddresses = append(peerAddresses, nodeAddress)
-				startNewNode(t, ctx, fmt.Sprintf("node-%d", i), nodeAddress, peerAddresses, &wg)
+				state.peerAddresses = append(state.peerAddresses, nodeAddress)
+				startNewNode(t, ctx, fmt.Sprintf("node-%d", i), nodeAddress, state.peerAddresses)
 			}
 
-			// Check that all nodes have the specified metric
-			if len(peerAddresses) > 0 {
-				assert.EventuallyWithT(t, func(t *assert.CollectT) {
-					tc.assertions(t, peerAddresses)
-				}, 20*time.Second, 500*time.Millisecond)
-			}
+			assert.EventuallyWithT(t, func(t *assert.CollectT) {
+				tc.assertionsInitial(t, state)
+			}, 20*time.Second, 200*time.Millisecond)
+
+			tc.changes(state)
+
+			assert.EventuallyWithT(t, func(t *assert.CollectT) {
+				tc.assertionsFinal(t, state)
+			}, 20*time.Second, 200*time.Millisecond)
 		})
 	}
 }
@@ -112,10 +136,11 @@ func fetchMetrics(url string) (string, error) {
 	return string(body), nil
 }
 
-func startNewNode(t *testing.T, ctx context.Context, nodeName string, address string, peerAddresses []string, wg *sync.WaitGroup) {
+func startNewNode(t *testing.T, ctx context.Context, nodeName string, address string, peerAddresses []string) {
 	nodeDirPath := path.Join(t.TempDir(), nodeName)
 	logger, err := logging.New(
-		&prefixWriter{
+		&logsWriter{
+			t:      t,
 			out:    os.Stdout,
 			prefix: fmt.Sprintf("%s: ", nodeName),
 		},
@@ -181,9 +206,7 @@ func startNewNode(t *testing.T, ctx context.Context, nodeName string, address st
 		},
 	})
 
-	wg.Add(1)
 	go func() {
-		defer wg.Done()
 		f.Run(ctx)
 	}()
 
@@ -210,14 +233,33 @@ func getFreePort(t *testing.T) int {
 	return port
 }
 
-type prefixWriter struct {
+type logsWriter struct {
+	t      *testing.T
 	out    io.Writer
 	prefix string
 }
 
-func (w *prefixWriter) Write(p []byte) (n int, err error) {
+var errorsAllowlist = []string{
+	"failed to extract directory path from configPath",
+}
+
+func (w *logsWriter) Write(p []byte) (n int, err error) {
 	prefixed := []byte(w.prefix)
 	prefixed = append(prefixed, p...)
+
+	// Check for warnings or errors in the log message
+	logMsg := string(p)
+	if strings.Contains(logMsg, "level=warn") || strings.Contains(logMsg, "level=error") {
+		isAllowed := false
+		for _, allowedErr := range errorsAllowlist {
+			if strings.Contains(logMsg, allowedErr) {
+				isAllowed = true
+				break
+			}
+		}
+		assert.True(w.t, isAllowed, "Disallowed warning or error found in logs", "Log message: %s", logMsg)
+	}
+
 	_, err = w.out.Write(prefixed)
 	return len(p), err
 }
