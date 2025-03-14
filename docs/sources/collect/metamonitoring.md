@@ -39,6 +39,9 @@ In this task, you use the [`prometheus.exporter.self`][prometheus.exporter.self]
    }
    ```
 
+   Replace the following:
+   * _`<SELF_LABEL>`_: The label for the component such as `default` or `metamonitoring`. The label must be unique across all `prometheus.exporter.self` components in the same configuration file.
+
 1. Add the following `prometheus.scrape` component to your configuration file.
 
    ```alloy
@@ -49,7 +52,6 @@ In this task, you use the [`prometheus.exporter.self`][prometheus.exporter.self]
    ```
 
    Replace the following:
-   * _`<SELF_LABEL>`_: The label for the component such as `default` or `metamonitoring`. The label must be unique across all `prometheus.exporter.self` components in the same configuration file.
    * _`<SCRAPE_LABEL>`_: The label for the scrape component such as `default`. The label must be unique across all `prometheus.scrape` components in the same configuration file.
    * _`<METRICS_RECEIVER_LIST>`_: A comma-delimited list of component receivers to forward metrics to.
      For example, to send to a remote write component, use `prometheus.remote_write.WRITE_LABEL.receiver`.
