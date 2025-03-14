@@ -38,6 +38,9 @@ docker compose up -d
 
 Open your browser and navigate to [`http://localhost:12345`](http://localhost:12345).
 
+With the Alloy UI, you can monitor the health of your Alloy deployment.
+Refer to [Debug Grafana Alloy](https://grafana.com/docs/alloy/latest/troubleshoot/debug/) for more information about the {{< param "PRODUCT_NAME" >}} UI.
+
 <!-- 
 Add info about what the user can see in this view and a link to the relevant docs
 -->
@@ -46,10 +49,8 @@ Add info about what the user can see in this view and a link to the relevant doc
 
 Open your browser and navigate to [`http://localhost:3000`](http://localhost:3000).
 
-<!--
-Add info about dashboards
-Add steps to create a basic dashboard to monitor some stats/logs that woudl be interesting to a user
--->
+With the Grafana UI, you can create your own dashboards to create queries and visualize any aspect of your Docker container metrics and logs.
+Refer to [Build your first dashboard](https://grafana.com/docs/grafana/latest/getting-started/build-first-dashboard/#create-a-dashboard) for detailed information about dashboards in Grafana.
 
 ## Shut down the Grafana stack
 
