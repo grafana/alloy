@@ -286,15 +286,11 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 		return err
 	}
 
-	s.mut.Lock()
 	s.ticker = jitter.NewTicker(s.pollFrequency, baseJitter)
-	s.mut.Unlock()
 
 	defer func() {
-		s.mut.Lock()
 		s.ticker.Stop()
 		s.ticker = nil
-		s.mut.Unlock()
 	}()
 
 	// Run the service's own controller.
@@ -310,9 +306,7 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 				level.Error(s.opts.Logger).Log("msg", "failed to fetch remote configuration from the API", "err", err)
 			}
 		case <-s.updateTickerChan:
-			s.mut.Lock()
 			s.ticker.Reset(s.pollFrequency)
-			s.mut.Unlock()
 		case <-ctx.Done():
 			return nil
 		}
