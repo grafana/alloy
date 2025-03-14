@@ -31,12 +31,14 @@ import (
 
 type testState struct {
 	peerAddresses []string
+	ctx           context.Context
 }
 
 // TODO(thampiotr): scenarios to cover:
 // TODO(thampiotr): nodes join - init 4, add 4
 // TODO(thampiotr): nodes leave clean - init 8, remove 4
 // TODO(thampiotr): nodes die - init 8, kill 4
+// TODO(thampiotr): name conflicts
 // TODO(thampiotr): split brain and then merge - init 4 + 4 separated, remove separation
 // TODO(thampiotr): network isolation -> all create own? - init 4 all separated, remove separation
 // TODO(thampiotr): when component evaluations are super slow?
@@ -53,13 +55,39 @@ func TestClusterE2E(t *testing.T) {
 
 	tests := []testCase{
 		{
-			name:             "three nodes",
+			name:             "three nodes just join",
 			nodeCountInitial: 3,
 			assertionsInitial: func(t *assert.CollectT, state *testState) {
 				for _, address := range state.peerAddresses {
 					metricsContain(t, address, `cluster_node_info{state="participant"} 1`)
 					metricsContain(t, address, `cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 3`)
 					metricsContain(t, address, `cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 3`)
+				}
+			},
+		},
+		{
+			name:             "4 nodes are joined by another 4 nodes",
+			nodeCountInitial: 4,
+			assertionsInitial: func(t *assert.CollectT, state *testState) {
+				for _, address := range state.peerAddresses {
+					metricsContain(t, address, `cluster_node_info{state="participant"} 1`)
+					metricsContain(t, address, `cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 4`)
+					metricsContain(t, address, `cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`)
+				}
+			},
+			changes: func(state *testState) {
+				for i := 0; i < 4; i++ {
+					nodeAddress := newNodeAddress(t)
+					state.peerAddresses = append(state.peerAddresses, nodeAddress)
+					nodeName := fmt.Sprintf("new-node-%d", i)
+					startNewNode(t, state.ctx, nodeName, nodeAddress, state.peerAddresses)
+				}
+			},
+			assertionsFinal: func(t *assert.CollectT, state *testState) {
+				for _, address := range state.peerAddresses {
+					metricsContain(t, address, `cluster_node_info{state="participant"} 1`)
+					metricsContain(t, address, `cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 8`)
+					metricsContain(t, address, `cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 8`)
 				}
 			},
 		},
@@ -86,12 +114,15 @@ func TestClusterE2E(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), tc.assertionsTimeout*2+5*time.Second)
 			defer cancel()
 
-			state := &testState{}
+			state := &testState{
+				ctx: ctx,
+			}
 
 			for i := 0; i < tc.nodeCountInitial; i++ {
-				nodeAddress := fmt.Sprintf("127.0.0.1:%d", getFreePort(t))
+				nodeAddress := newNodeAddress(t)
 				state.peerAddresses = append(state.peerAddresses, nodeAddress)
-				startNewNode(t, ctx, fmt.Sprintf("node-%d", i), nodeAddress, state.peerAddresses)
+				nodeName := fmt.Sprintf("node-%d", i)
+				startNewNode(t, ctx, nodeName, nodeAddress, state.peerAddresses)
 			}
 
 			assert.EventuallyWithT(t, func(t *assert.CollectT) {
@@ -107,13 +138,17 @@ func TestClusterE2E(t *testing.T) {
 	}
 }
 
+func newNodeAddress(t *testing.T) string {
+	return fmt.Sprintf("127.0.0.1:%d", getFreePort(t))
+}
+
 // metricsContain fetches metrics from the given URL and checks if they
 // contain a line with the specified metric name
-func metricsContain(t *assert.CollectT, nodeAddress string, metricName string) {
+func metricsContain(t *assert.CollectT, nodeAddress string, text string) {
 	metricsURL := fmt.Sprintf("http://%s/metrics", nodeAddress)
 	body, err := fetchMetrics(metricsURL)
 	require.NoError(t, err)
-	require.Contains(t, body, metricName)
+	require.Contains(t, body, text)
 }
 
 // fetchMetrics performs an HTTP GET request to the metrics endpoint and returns the response body
