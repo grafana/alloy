@@ -40,19 +40,25 @@ cd alloy-scenarios/docker-monitoring
 docker compose up -d
 ```
 
+You can check the status of the containers by running the following command:
+
+```shell
+docker ps
+```
+
 ## View the {{% param "PRODUCT_NAME" %}} UI
 
-Open your browser and navigate to [`http://localhost:12345`](http://localhost:12345).
+To monitor the health of your {{< param "PRODUCT_NAME" >}} deployment, open your browser and navigate to [`http://localhost:12345`](http://localhost:12345).
 
-With the Alloy UI, you can monitor the health of your Alloy deployment.
 Refer to [Debug Grafana Alloy](https://grafana.com/docs/alloy/latest/troubleshoot/debug/) for more information about the {{< param "PRODUCT_NAME" >}} UI.
 
 ## Use the Grafana UI
 
-Open your browser and navigate to [`http://localhost:3000`](http://localhost:3000).
+To create a [dashboard](https://grafana.com/docs/grafana/latest/getting-started/build-first-dashboard/#create-a-dashboard) to visualise your metrics and logs, open your browser and navigate to [`http://localhost:3000/dashboards`](http://localhost:3000/dashboards).
 
-With the Grafana UI, you can create your own dashboards to create queries and visualize any aspect of your Docker container metrics and logs.
-Refer to [Build your first dashboard](https://grafana.com/docs/grafana/latest/getting-started/build-first-dashboard/#create-a-dashboard) for detailed information about dashboards in Grafana.
+To explore metrics, open your browser and navigate to [http://localhost:3000/explore/metrics](http://localhost:3000/explore/metrics).
+
+To use the Grafana Logs Drilldown, open your browser and navigate to [http://localhost:3000/a/grafana-lokiexplore-app](http://localhost:3000/a/grafana-lokiexplore-app).
 
 ## Shut down the Grafana stack
 
