@@ -47,6 +47,10 @@ Main (unreleased)
 
 - Reduced lock contention in `prometheus.scrape` component (@thampiotr)
 
+### Bugfixes
+
+- Fix deadlocks in `loki.source.file` when tailing fails (@mblaschke)
+
 ### Other changes
 
 - Upgrading to Prometheus v2.55.1. (@ptodev)
