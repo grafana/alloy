@@ -66,13 +66,21 @@ docker compose down
 
 ## Understand the {{% param "PRODUCT_NAME" %}} configuration
 
+#### `livedebugging`
+
 ```alloy
-
-
 livedebugging {
   enabled = true
 }
+```
 
+### Configure logging
+
+The logging configuration in this example requires two components, `loki.source.syslog` and `loki.write`.
+
+#### `loki.source.syslog`
+
+```alloy
 loki.source.syslog "local" {
   listener {
     address  = "0.0.0.0:51893"
@@ -82,12 +90,16 @@ loki.source.syslog "local" {
   listener {
     address  = "0.0.0.0:51898"
     protocol = "udp"
-    labels   = { component = "loki.source.syslog", protocol = "udp"}
+    labels   = { component = "loki.source.syslog", protocol = "udp" }
   }
 
   forward_to = [loki.write.local.receiver]
 }
+```
 
+#### `loki.write`
+
+```alloy
 loki.write "local" {
   endpoint {
     url = "http://loki:3100/loki/api/v1/push"

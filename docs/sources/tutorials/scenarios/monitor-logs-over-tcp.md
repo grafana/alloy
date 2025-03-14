@@ -66,11 +66,23 @@ docker compose down
 
 ## Understand the {{% param "PRODUCT_NAME" %}} configuration
 
+### Configure debugging
+
+#### `livedebugging`
+
 ```alloy
 livedebugging {
   enabled = true
 }
+```
 
+### Configure logging
+
+The logging configuration in this example requires three components, `loki.source.api`, `loki.process`, and `loki-write`.
+
+#### `loki.source.api`
+
+```alloy
 loki.source.api "loki_push_api" {
     http {
         listen_address = "0.0.0.0"
@@ -80,7 +92,11 @@ loki.source.api "loki_push_api" {
         loki.process.lables.receiver,
     ]
 }
+```
 
+#### `loki.process`
+
+```alloy
 loki.process "lables" {
     stage.json {
       expressions = { "extracted_service" = "service_name", 
@@ -99,13 +115,16 @@ loki.process "lables" {
     values = {
       "code_line" = "extracted_code_line",
       "server" = "extracted_server",
+      }
     }
+
+  forward_to = [loki.write.local.receiver]
 }
+```
 
-forward_to = [loki.write.local.receiver]
+#### `loki-write`
 
-}
-
+```alloy
 loki.write "local" {
   endpoint {
     url = "http://loki:3100/loki/api/v1/push"
