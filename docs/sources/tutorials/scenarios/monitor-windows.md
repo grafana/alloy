@@ -111,43 +111,62 @@ To use the Grafana Logs Drilldown, open your browser and navigate to [http://loc
 
 ## Understand the {{% param "PRODUCT_NAME" %}} configuration
 
-```alloy
-// ####################################
-// Windows Server Metrics Configuration
-// ####################################
+The {{< param "PRODUCT_NAME" >}} configuration file is split into two parts, the metrics configuration and the logging configuration.
 
+### Configure Windows server metrics
+
+#### `prometheus.exporter.windows`
+
+```alloy
 prometheus.exporter.windows "default" {
   enabled_collectors = ["cpu","cs","logical_disk","net","os","service","system", "memory", "scheduled_task", "tcp"]
 }
+```
 
-// Configure a prometheus.scrape component to collect windows metrics.
+#### `prometheus.scrape`
+
+Configure a prometheus.scrape component to collect Windows metrics.
+
+```alloy
 prometheus.scrape "example" {
   targets    = prometheus.exporter.windows.default.targets
   forward_to = [prometheus.remote_write.demo.receiver]
 }
+```
 
+#### `prometheus.remote_write`
+
+```alloy
 prometheus.remote_write "demo" {
   endpoint {
     url = "http://localhost:9090/api/v1/write"
   }
 }
+```
 
-// ####################################
-// Windows Server Logs Configuration
-// ####################################
+### Configure Windows server logs
 
+#### `loki.source.windowsevent`
+
+```alloy
 loki.source.windowsevent "application"  {
     eventlog_name = "Application"
     use_incoming_timestamp = true
     forward_to = [loki.process.endpoint.receiver]
 }
+```
 
+```alloy
 loki.source.windowsevent "System"  {
     eventlog_name = "System"
     use_incoming_timestamp = true
     forward_to = [loki.process.endpoint.receiver]
 }
+```
 
+#### `loki.process`
+
+```alloy
 loki.process "endpoint" {
   forward_to = [loki.write.endpoint.receiver]
   stage.json {
@@ -183,20 +202,27 @@ loki.process "endpoint" {
       values = {
           "service_name" = "source",
       }
-}
+  }
 
-stage.output {
+  stage.output {
     source = "message"
-}
+  }
 
 }
+```
 
+#### `loki.write`
 
+```alloy
 loki.write "endpoint" {
     endpoint {
         url ="http://localhost:3100/loki/api/v1/push"
     }
 }
+```
 
+### Configure `livedebugging`
+
+```alloy
 livedebugging{}
 ```
