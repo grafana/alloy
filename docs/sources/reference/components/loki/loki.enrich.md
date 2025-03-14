@@ -1,7 +1,7 @@
 ---
 aliases:
 - /docs/alloy/latest/reference/components/loki/loki.enrich/
-canonical: /docs/alloy/latest/reference/components/loki/loki.enrich/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/loki/loki.enrich/
 title: loki.enrich
 labels:
   stage: experimental
