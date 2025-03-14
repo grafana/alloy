@@ -14,6 +14,8 @@ Main (unreleased)
 
 - Add `otelcol.receiver.awscloudwatch` component to receive logs from AWS CloudWatch and forward them to other `otelcol.*` components. (@wildum)
 
+- Show the graph of remotecfg component in the UI. (@tpaschalis)
+
 ### Enhancements
 
 - Add `rfc3164_default_to_current_year` argument to `loki.source.syslog` (@dehaansa)
