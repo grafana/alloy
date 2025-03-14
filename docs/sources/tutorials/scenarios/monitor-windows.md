@@ -16,12 +16,16 @@ This scenario shows you how to install {{< param "PRODUCT_NAME" >}} in Windows a
 
 ## Before you begin
 
-* Git - The scenario is in a Git repository.
-* Docker - You use Docker desktop for Windows for this scenario.
-  This is where Grafana, Loki and Prometheus are hosted.
-  You can also install native Windows versions of Grafana, Loki and Prometheus, or you can host them on a Linux server.
-* Windows Server or Desktop - This scenario monitors a computer running Windows.
-* Windows administrator access - You use administrator access to install {{< param "PRODUCT_NAME" >}} and configure it to collect metrics and logs.
+This example requires:
+
+* Docker
+* Git
+* Windows Server or Desktop. This scenario monitors a computer running Windows.
+* Windows administrator access. You use administrator access to install {{< param "PRODUCT_NAME" >}} and configure it to collect metrics and logs.
+
+{{< admonition type="note" >}}
+The `docker` commands require administrator privileges.
+{{< /admonition >}}
 
 ## Clone the repository
 
@@ -31,10 +35,9 @@ Clone the {{< param "PRODUCT_NAME" >}} scenarios repository.
 git clone https://github.com/grafana/alloy-scenarios.git
 ```
 
-## Deploy Grafana, Loki and Prometheus
+## Deploy the Grafana stack
 
-First, you need to deploy Grafana, Loki and Prometheus on your Windows machine.
-Within this tutorial, we have included a docker-compose file that will deploy Grafana, Loki and Prometheus on your Windows machine.
+Start Docker to deploy the Grafana stack.
 
 ```shell
 cd alloy-scenarios/windows
@@ -46,8 +49,6 @@ You can check the status of the containers by running the following command:
 ```shell
 docker ps
 ```
-
-Grafana should be running on [http://localhost:3000](http://localhost:3000).
 
 ## Install {{% param "PRODUCT_NAME" %}}
 

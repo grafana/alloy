@@ -14,8 +14,14 @@ If you use {{< param "PRODUCT_NAME" >}} to collect the metrics and logs and forw
 
 ## Before you begin
 
-* Install Docker
-* Install Git
+This example requires:
+
+* Docker
+* Git
+
+{{< admonition type="note" >}}
+The `docker` commands require administrator privileges.
+{{< /admonition >}}
 
 ## Clone the scenarios repository
 
@@ -27,7 +33,7 @@ git clone https://github.com/grafana/alloy-scenarios.git
 
 ## Deploy the Grafana stack
 
-Start Docker to deploy the monitoring stack.
+Start Docker to deploy the Grafana stack.
 
 ```shell
 cd alloy-scenarios/docker-monitoring
@@ -41,11 +47,7 @@ Open your browser and navigate to [`http://localhost:12345`](http://localhost:12
 With the Alloy UI, you can monitor the health of your Alloy deployment.
 Refer to [Debug Grafana Alloy](https://grafana.com/docs/alloy/latest/troubleshoot/debug/) for more information about the {{< param "PRODUCT_NAME" >}} UI.
 
-<!-- 
-Add info about what the user can see in this view and a link to the relevant docs
--->
-
-## Access the Grafana UI
+## Use the Grafana UI
 
 Open your browser and navigate to [`http://localhost:3000`](http://localhost:3000).
 
