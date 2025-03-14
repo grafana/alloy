@@ -162,6 +162,4 @@ helm install tempo grafana/tempo-distributed -n prod
 
 This will install the Tempo distributed tracing system in the `prod` namespace.
 
-## Understand the {{% param "PRODUCT_NAME" %}} configuration
-
-
+## Understand the Helm configuration
