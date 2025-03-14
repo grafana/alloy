@@ -148,26 +148,24 @@ func getLastLinePosition(path string) (int64, error) {
 
 func (t *tailer) Run() {
 	t.mut.Lock()
+	defer t.mut.Unlock()
 
 	// Check if the stop function was called between two Run.
 	if t.stopping {
 		close(t.done)
 		close(t.posdone)
 		close(t.posquit)
-		t.mut.Unlock()
 		return
 	}
 
 	fi, err := os.Stat(t.path)
 	if err != nil {
 		level.Error(t.logger).Log("msg", "failed to tail file", "path", t.path, "err", err)
-		t.mut.Unlock()
 		return
 	}
 	pos, err := t.positions.Get(t.path, t.labelsStr)
 	if err != nil {
 		level.Error(t.logger).Log("msg", "failed to get file position", "err", err)
-		t.mut.Unlock()
 		return
 	}
 
@@ -208,7 +206,6 @@ func (t *tailer) Run() {
 	})
 	if err != nil {
 		level.Error(t.logger).Log("msg", "failed to tail the file", "err", err)
-		t.mut.Unlock()
 		return
 	}
 	t.tail = tail
@@ -216,7 +213,6 @@ func (t *tailer) Run() {
 	t.posquit = make(chan struct{})
 	t.posdone = make(chan struct{})
 	t.done = make(chan struct{})
-	t.mut.Unlock()
 
 	go t.updatePosition()
 	t.metrics.filesActive.Add(1.)
