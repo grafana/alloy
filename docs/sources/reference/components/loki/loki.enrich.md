@@ -130,7 +130,8 @@ The component matches logs to discovered targets and enriches them with addition
 1. If a match is found, it copies the requested `labels_to_copy` from the discovered target to the log entry. If `labels_to_copy` is empty, all labels are copied.
 1. The log entry, enriched or unchanged, is forwarded to the configured receivers.
 
-Note that By default, `loki.enrich` is ready as soon as it starts, even if no targets has been discovered yet. If telemetry is sent to this processor before the metadata is synced, there will be no labels to enrich the telemetry with.
+By default, `loki.enrich` is ready as soon as it starts, even if no targets have been discovered.
+If telemetry is sent to this component before the metadata is synced, there will be no labels to enrich the telemetry with.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
