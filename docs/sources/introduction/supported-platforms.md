@@ -12,7 +12,6 @@ The following operating systems and hardware architecture are supported.
 
 ## Linux
 
-* Minimum version: kernel 4.x or later
 * Architectures: AMD64, ARM64
 * Within the Linux distribution lifecycle
 
