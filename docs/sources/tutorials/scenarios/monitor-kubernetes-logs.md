@@ -22,8 +22,10 @@ Loki is used to store the logs, Grafana is used to visualize the logs, and {{< p
 
 ## Before you begin
 
-* Git - You will need Git to clone the repository.
-* Docker - In this tutorial you use Docker containers to host the Grafana stack.
+This example requires:
+
+* Docker
+* Git
 
 ## Clone the repository
 
@@ -31,13 +33,16 @@ Loki is used to store the logs, Grafana is used to visualize the logs, and {{< p
 git clone https://github.com/grafana/alloy-scenarios.git
 ```
 
+## Deploy
+
 Change to the directory:
 
 ```bash
 cd alloy-scenarios/k8s-logs
 ```
 
-Next you will need a Kubernetes cluster.
+## Create a local Kubernetes cluster
+
 In this example, we will configure a local Kubernetes cluster using [Kind](https://kind.sigs.k8s.io/docs/user/quick-start/).
 
 An example kind cluster configuration is provided in the `kind.yml` file.
@@ -47,7 +52,8 @@ To create a kind cluster using this configuration, run the following command:
 kind create cluster --config kind.yml
 ```
 
-You will need to make sure you install Helm on your local machine.
+## Install Helm
+
 You can install Helm by following the instructions [here](https://helm.sh/docs/intro/install/).
 You will also need to install the Grafana Helm repository:
 
@@ -155,3 +161,7 @@ helm install tempo grafana/tempo-distributed -n prod
 ```
 
 This will install the Tempo distributed tracing system in the `prod` namespace.
+
+## Understand the {{% param "PRODUCT_NAME" %}} configuration
+
+
