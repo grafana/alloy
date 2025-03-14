@@ -65,3 +65,73 @@ docker compose down
 ```
 
 ## Understand the {{% param "PRODUCT_NAME" %}} configuration
+
+```alloy
+
+
+livedebugging {
+  enabled = true
+}
+
+loki.source.api "loki_push_api" {
+    http {
+        listen_address = "0.0.0.0"
+        listen_port = 9999
+    }
+    forward_to = [
+        loki.process.lables.receiver,
+    ]
+}
+
+loki.process "lables" {
+    stage.json {
+      expressions = { 
+                      "timestamp" = "",
+                      "state" = "", 
+                      "package_size" = "", 
+                      "package_status" = "", 
+                      "package_id" = "",
+                    }
+    }
+
+  stage.timestamp {
+    source = "timestamp"
+    format = "RFC3339"
+}
+
+  stage.labels {
+    values = {
+      "state" = "",
+      "package_size" = "",
+    }
+  }
+
+  stage.structured_metadata {
+    values = {
+      "package_status" = "",
+      "package_id" = "",
+    }
+  }
+
+  stage.static_labels {
+    values = {
+      "service_name" = "Delivery World",
+    }
+  }
+
+  stage.output {
+    source = "message"
+}
+  
+
+
+forward_to = [loki.write.local.receiver]
+
+}
+
+loki.write "local" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}
+```

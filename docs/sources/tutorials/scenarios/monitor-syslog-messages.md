@@ -59,3 +59,32 @@ docker compose down
 ```
 
 ## Understand the {{% param "PRODUCT_NAME" %}} configuration
+
+```alloy
+
+
+livedebugging {
+  enabled = true
+}
+
+loki.source.syslog "local" {
+  listener {
+    address  = "0.0.0.0:51893"
+    labels   = { component = "loki.source.syslog", protocol = "tcp" }
+  }
+
+  listener {
+    address  = "0.0.0.0:51898"
+    protocol = "udp"
+    labels   = { component = "loki.source.syslog", protocol = "udp"}
+  }
+
+  forward_to = [loki.write.local.receiver]
+}
+
+loki.write "local" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}
+```
