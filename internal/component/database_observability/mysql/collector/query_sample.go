@@ -8,14 +8,11 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/prometheus/common/model"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/component/database_observability/mysql/collector/parser"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/grafana/loki/v3/pkg/logproto"
 )
 
 const (
@@ -168,37 +165,22 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 			continue
 		}
 
-		c.entryHandler.Chan() <- loki.Entry{
-			Labels: model.LabelSet{
-				"job":      database_observability.JobName,
-				"op":       OP_QUERY_SAMPLE,
-				"instance": model.LabelValue(c.instanceKey),
-			},
-			Entry: logproto.Entry{
-				Timestamp: time.Unix(0, time.Now().UnixNano()),
-				Line: fmt.Sprintf(
-					`level=info msg="query samples fetched" schema="%s" digest="%s" query_type="%s" query_sample_seen="%s" query_sample_timer_wait="%s" query_sample_redacted="%s"`,
-					schemaName, digest, c.sqlParser.StmtType(stmt), sampleSeen, sampleTimerWait, sampleRedactedText,
-				),
-			},
-		}
+		c.entryHandler.Chan() <- buildLokiEntry(
+			OP_QUERY_SAMPLE,
+			c.instanceKey,
+			fmt.Sprintf(
+				`schema="%s" digest="%s" query_type="%s" query_sample_seen="%s" query_sample_timer_wait="%s" query_sample_redacted="%s"`,
+				schemaName, digest, c.sqlParser.StmtType(stmt), sampleSeen, sampleTimerWait, sampleRedactedText,
+			),
+		)
 
 		tables := c.sqlParser.ExtractTableNames(c.logger, digest, stmt)
 		for _, table := range tables {
-			c.entryHandler.Chan() <- loki.Entry{
-				Labels: model.LabelSet{
-					"job":      database_observability.JobName,
-					"op":       OP_QUERY_PARSED_TABLE_NAME,
-					"instance": model.LabelValue(c.instanceKey),
-				},
-				Entry: logproto.Entry{
-					Timestamp: time.Unix(0, time.Now().UnixNano()),
-					Line: fmt.Sprintf(
-						`level=info msg="table name parsed" schema="%s" digest="%s" table="%s"`,
-						schemaName, digest, table,
-					),
-				},
-			}
+			c.entryHandler.Chan() <- buildLokiEntry(
+				OP_QUERY_PARSED_TABLE_NAME,
+				c.instanceKey,
+				fmt.Sprintf(`schema="%s" digest="%s" table="%s"`, schemaName, digest, table),
+			)
 		}
 	}
 
