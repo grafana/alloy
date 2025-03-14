@@ -16,6 +16,8 @@ Main (unreleased)
 
 ### Enhancements
 
+- Add `rfc3164_default_to_current_year` argument to `loki.source.syslog` (@dehaansa)
+
 - Add `connection_name` support for `prometheus.exporter.mssql` (@bck01215)
 
 - Add livedebugging support for `prometheus.scrape` (@ravishankar15, @wildum)
