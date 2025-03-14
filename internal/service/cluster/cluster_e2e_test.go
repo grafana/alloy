@@ -19,6 +19,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/exp/maps"
 
 	"github.com/grafana/alloy/internal/alloycli"
 	"github.com/grafana/alloy/internal/featuregate"
@@ -30,14 +31,36 @@ import (
 	remotecfgservice "github.com/grafana/alloy/internal/service/remotecfg"
 )
 
-type testState struct {
-	peerAddresses []string
-	ctx           context.Context
-	shutdownGroup sync.WaitGroup
+type testPeer struct {
+	address        string
+	clusterService service.Service
+	httpService    service.Service
+	ctx            context.Context
+	shutdown       context.CancelFunc
 }
 
+type testState struct {
+	peers         map[string]*testPeer // map of nodeName to testPeer
+	ctx           context.Context
+	shutdownGroup sync.WaitGroup
+	testCase      *testCase
+}
+
+type testCase struct {
+	name               string
+	nodeCountInitial   int
+	assertionsInitial  func(t *assert.CollectT, state *testState)
+	changes            func(state *testState)
+	assertionsFinal    func(t *assert.CollectT, state *testState)
+	assertionsTimeout  time.Duration
+	extraAllowedErrors []string
+}
+
+// TODO(thampiotr): extra checks to add:
+// TODO(thampiotr): checking of []Peers
+// TODO(thampiotr): checking of Lookup?
+
 // TODO(thampiotr): scenarios to cover:
-// TODO(thampiotr): nodes leave clean - init 8, remove 4
 // TODO(thampiotr): nodes die - init 8, kill 4
 // TODO(thampiotr): name conflicts
 // TODO(thampiotr): split brain and then merge - init 4 + 4 separated, remove separation
@@ -45,24 +68,15 @@ type testState struct {
 // TODO(thampiotr): when component evaluations are super slow?
 // TODO(thampiotr): when updating component's NotifyClusterChange is taking too long
 func TestClusterE2E(t *testing.T) {
-	type testCase struct {
-		name              string
-		nodeCountInitial  int
-		assertionsInitial func(t *assert.CollectT, state *testState)
-		changes           func(state *testState)
-		assertionsFinal   func(t *assert.CollectT, state *testState)
-		assertionsTimeout time.Duration
-	}
-
 	tests := []testCase{
 		{
 			name:             "three nodes just join",
 			nodeCountInitial: 3,
 			assertionsInitial: func(t *assert.CollectT, state *testState) {
-				for _, address := range state.peerAddresses {
-					metricsContain(t, address, `cluster_node_info{state="participant"} 1`)
-					metricsContain(t, address, `cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 3`)
-					metricsContain(t, address, `cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 3`)
+				for _, p := range state.peers {
+					metricsContain(t, p.address, `cluster_node_info{state="participant"} 1`)
+					metricsContain(t, p.address, `cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 3`)
+					metricsContain(t, p.address, `cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 3`)
 				}
 			},
 		},
@@ -70,10 +84,10 @@ func TestClusterE2E(t *testing.T) {
 			name:             "4 nodes are joined by another 4 nodes",
 			nodeCountInitial: 4,
 			assertionsInitial: func(t *assert.CollectT, state *testState) {
-				for _, address := range state.peerAddresses {
-					metricsContain(t, address, `cluster_node_info{state="participant"} 1`)
-					metricsContain(t, address, `cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 4`)
-					metricsContain(t, address, `cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`)
+				for _, p := range state.peers {
+					metricsContain(t, p.address, `cluster_node_info{state="participant"} 1`)
+					metricsContain(t, p.address, `cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 4`)
+					metricsContain(t, p.address, `cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`)
 				}
 			},
 			changes: func(state *testState) {
@@ -82,10 +96,38 @@ func TestClusterE2E(t *testing.T) {
 				}
 			},
 			assertionsFinal: func(t *assert.CollectT, state *testState) {
-				for _, address := range state.peerAddresses {
-					metricsContain(t, address, `cluster_node_info{state="participant"} 1`)
-					metricsContain(t, address, `cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 8`)
-					metricsContain(t, address, `cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 8`)
+				for _, p := range state.peers {
+					metricsContain(t, p.address, `cluster_node_info{state="participant"} 1`)
+					metricsContain(t, p.address, `cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 8`)
+					metricsContain(t, p.address, `cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 8`)
+				}
+			},
+		},
+		{
+			name:             "8 node cluster - 4 nodes leave",
+			nodeCountInitial: 8,
+			extraAllowedErrors: []string{
+				"failed to rejoin list of peers",
+				"over TCP but UDP probes failed, network may be misconfigured", // TODO: we should investigate and fix this if not an issue
+			},
+			assertionsInitial: func(t *assert.CollectT, state *testState) {
+				for _, p := range state.peers {
+					metricsContain(t, p.address, `cluster_node_info{state="participant"} 1`)
+					metricsContain(t, p.address, `cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 8`)
+					metricsContain(t, p.address, `cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 8`)
+				}
+			},
+			changes: func(state *testState) {
+				for _, name := range maps.Keys(state.peers)[:4] {
+					state.peers[name].shutdown()
+					delete(state.peers, name)
+				}
+			},
+			assertionsFinal: func(t *assert.CollectT, state *testState) {
+				for _, p := range state.peers {
+					metricsContain(t, p.address, `cluster_node_info{state="participant"} 1`)
+					metricsContain(t, p.address, `cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 4`)
+					metricsContain(t, p.address, `cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`)
 				}
 			},
 		},
@@ -104,6 +146,9 @@ func TestClusterE2E(t *testing.T) {
 		if tc.assertionsFinal == nil {
 			tc.assertionsFinal = func(t *assert.CollectT, state *testState) {}
 		}
+		if tc.extraAllowedErrors == nil {
+			tc.extraAllowedErrors = []string{}
+		}
 	}
 
 	for _, tc := range tests {
@@ -113,7 +158,9 @@ func TestClusterE2E(t *testing.T) {
 			defer cancel()
 
 			state := &testState{
-				ctx: ctx,
+				ctx:      ctx,
+				peers:    make(map[string]*testPeer),
+				testCase: &tc,
 			}
 
 			for i := 0; i < tc.nodeCountInitial; i++ {
@@ -137,17 +184,26 @@ func TestClusterE2E(t *testing.T) {
 }
 
 // startNewNode creates a new node with the given name, generates a new address for it,
-// and appends that address to the state's peerAddresses list
+// and adds it to the state's peers map
 func startNewNode(t *testing.T, state *testState, nodeName string) {
 	nodeAddress := fmt.Sprintf("127.0.0.1:%d", getFreePort(t))
-	state.peerAddresses = append(state.peerAddresses, nodeAddress)
+
+	// Get list of join peers (addresses of existing peers)
+	joinPeers := make([]string, 0, len(state.peers))
+	for _, p := range state.peers {
+		joinPeers = append(joinPeers, p.address)
+	}
+
+	// Create a node-specific context
+	peerCtx, peerCancel := context.WithCancel(state.ctx)
 
 	nodeDirPath := path.Join(t.TempDir(), nodeName)
 	logger, err := logging.New(
 		&logsWriter{
-			t:      t,
-			out:    os.Stdout,
-			prefix: fmt.Sprintf("%s: ", nodeName),
+			t:                  t,
+			out:                os.Stdout,
+			prefix:             fmt.Sprintf("%s: ", nodeName),
+			extraAllowedErrors: state.testCase.extraAllowedErrors,
 		},
 		logging.Options{
 			Level:  logging.LevelDebug,
@@ -169,7 +225,7 @@ func startNewNode(t *testing.T, state *testState, nodeName string) {
 		NodeName:            nodeName,
 		AdvertiseAddress:    nodeAddress,
 		ListenAddress:       nodeAddress,
-		JoinPeers:           state.peerAddresses,
+		JoinPeers:           joinPeers,
 		RejoinInterval:      5 * time.Second,
 		AdvertiseInterfaces: advertise.DefaultInterfaces,
 		ClusterMaxJoinPeers: 5,
@@ -211,12 +267,21 @@ func startNewNode(t *testing.T, state *testState, nodeName string) {
 		},
 	})
 
+	// Add the new peer to the state
+	state.peers[nodeName] = &testPeer{
+		address:        nodeAddress,
+		clusterService: clusterService,
+		httpService:    httpService,
+		ctx:            peerCtx,
+		shutdown:       peerCancel,
+	}
+
 	// Increment the WaitGroup before starting the node
 	state.shutdownGroup.Add(1)
 	go func() {
 		// Ensure the WaitGroup is decremented when the node finishes running
 		defer state.shutdownGroup.Done()
-		f.Run(state.ctx)
+		f.Run(peerCtx)
 	}()
 
 	src, err := runtime.ParseSource(t.Name(), []byte(""))
@@ -224,7 +289,7 @@ func startNewNode(t *testing.T, state *testState, nodeName string) {
 	err = f.LoadSource(src, nil, configFilePath)
 	require.NoError(t, err)
 
-	err = clusterService.ChangeState(state.ctx, peer.StateParticipant)
+	err = clusterService.ChangeState(peerCtx, peer.StateParticipant)
 	require.NoError(t, err)
 }
 
@@ -234,7 +299,7 @@ func metricsContain(t *assert.CollectT, nodeAddress string, text string) {
 	metricsURL := fmt.Sprintf("http://%s/metrics", nodeAddress)
 	body, err := fetchMetrics(metricsURL)
 	require.NoError(t, err)
-	require.Contains(t, body, text)
+	require.Contains(t, body, text, "Could not find %q in the metrics of %q. All metrics: %s", text, nodeAddress, body)
 }
 
 // fetchMetrics performs an HTTP GET request to the metrics endpoint and returns the response body
@@ -272,16 +337,16 @@ func getFreePort(t *testing.T) int {
 }
 
 type logsWriter struct {
-	t      *testing.T
-	out    io.Writer
-	prefix string
+	t                  *testing.T
+	out                io.Writer
+	prefix             string
+	extraAllowedErrors []string
 }
 
 var errorsAllowlist = []string{
-	"failed to extract directory path from configPath",             // unrelated to this test
-	"failed to broadcast leave message to cluster",                 // on shutdown sometimes we can't push to nodes that already shut
-	"failed to connect to peers; bootstrapping a new cluster",      // should be allowed only once for first node
-	"over TCP but UDP probes failed, network may be misconfigured", // TODO: we should investigate and fix this if not an issue
+	"failed to extract directory path from configPath",        // unrelated to this test
+	"failed to broadcast leave message to cluster",            // on shutdown sometimes we can't push to nodes that already shut
+	"failed to connect to peers; bootstrapping a new cluster", // should be allowed only once for first node
 }
 
 func (w *logsWriter) Write(p []byte) (n int, err error) {
@@ -292,7 +357,9 @@ func (w *logsWriter) Write(p []byte) (n int, err error) {
 	logMsg := string(p)
 	if strings.Contains(logMsg, "level=warn") || strings.Contains(logMsg, "level=error") {
 		isAllowed := false
-		for _, allowedErr := range errorsAllowlist {
+
+		// Check against global allowlist
+		for _, allowedErr := range append(errorsAllowlist, w.extraAllowedErrors...) {
 			if strings.Contains(logMsg, allowedErr) {
 				isAllowed = true
 				break
