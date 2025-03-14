@@ -164,7 +164,6 @@ func cleanup(m map[string]any, id ComponentID) error {
 }
 
 func cleanupFromIndex(m map[string]any, id ComponentID, index int) error {
-
 	if _, ok := m[id[index]]; !ok {
 		return nil
 	}

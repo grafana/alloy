@@ -455,6 +455,7 @@ func (a *initialPointAdjuster) adjustMetricSummary(tsm *timeseriesMap, current p
 		if a.useCreatedMetric &&
 			!currentSummary.Flags().NoRecordedValue() &&
 			currentSummary.StartTimestamp() < currentSummary.Timestamp() {
+
 			continue
 		}
 

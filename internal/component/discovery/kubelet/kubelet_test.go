@@ -56,12 +56,10 @@ func TestPodDeletion(t *testing.T) {
 	kubeletDiscovery, err := NewKubeletDiscovery(args)
 	require.NoError(t, err)
 
-	_, err = kubeletDiscovery.refresh(podList1)
-	require.NoError(t, err)
+	kubeletDiscovery.refresh(podList1)
 	require.Len(t, kubeletDiscovery.discoveredPodSources, 2)
 
-	tg2, err := kubeletDiscovery.refresh(podList2)
-	require.NoError(t, err)
+	tg2 := kubeletDiscovery.refresh(podList2)
 	require.Len(t, kubeletDiscovery.discoveredPodSources, 1)
 	// should contain a target group for pod 1 with an empty target list as it has
 	// been deleted
@@ -107,8 +105,7 @@ func TestDiscoveryPodWithoutPod(t *testing.T) {
 	kubeletDiscovery, err := NewKubeletDiscovery(args)
 	require.NoError(t, err)
 
-	_, err = kubeletDiscovery.refresh(podList1)
-	require.NoError(t, err)
+	kubeletDiscovery.refresh(podList1)
 	require.Len(t, kubeletDiscovery.discoveredPodSources, 2)
 }
 

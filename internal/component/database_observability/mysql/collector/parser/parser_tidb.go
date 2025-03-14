@@ -38,17 +38,17 @@ func (p *TiDBSqlParser) Redact(sql string) (string, error) {
 	return res, nil
 }
 
-func (p *TiDBSqlParser) StmtType(stmt any) string {
+func (p *TiDBSqlParser) StmtType(stmt any) StatementType {
 	s := stmt.(*ast.StmtNode)
-	switch ast.GetStmtLabel(*s) {
-	case "Select":
-		return "select"
-	case "Insert":
-		return "insert"
-	case "Update":
-		return "update"
-	case "Delete":
-		return "delete"
+	switch (*s).(type) {
+	case *ast.SelectStmt:
+		return StatementTypeSelect
+	case *ast.InsertStmt:
+		return StatementTypeInsert
+	case *ast.UpdateStmt:
+		return StatementTypeUpdate
+	case *ast.DeleteStmt:
+		return StatementTypeDelete
 	default:
 		return ""
 	}

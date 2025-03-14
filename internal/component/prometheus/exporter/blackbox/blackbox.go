@@ -124,7 +124,6 @@ func (t TargetsList) Convert() []blackbox_exporter.BlackboxTarget {
 func (t TargetsList) convertInternal() []BlackboxTarget {
 	targets := make([]BlackboxTarget, 0, len(t))
 	for _, target := range t {
-
 		// extract the extra labels
 		labels := make(map[string]string)
 		for key, value := range target {

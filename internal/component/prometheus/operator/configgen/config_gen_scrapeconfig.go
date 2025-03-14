@@ -68,7 +68,7 @@ func (cg *ConfigGenerator) generateStaticScrapeConfigConfig(m *promopv1alpha1.Sc
 	return cfg, cfg.Validate(cg.ScrapeOptions.GlobalConfig())
 }
 
-func (cg *ConfigGenerator) commonScrapeConfigConfig(m *promopv1alpha1.ScrapeConfig, i int, relabels *relabeler, metricRelabels *relabeler) (cfg *config.ScrapeConfig, err error) {
+func (cg *ConfigGenerator) commonScrapeConfigConfig(m *promopv1alpha1.ScrapeConfig, _ int, relabels *relabeler, metricRelabels *relabeler) (cfg *config.ScrapeConfig, err error) {
 	cfg = cg.generateDefaultScrapeConfig()
 	if m.Spec.HonorLabels != nil {
 		cfg.HonorLabels = *m.Spec.HonorLabels

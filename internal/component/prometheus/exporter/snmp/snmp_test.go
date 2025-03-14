@@ -221,7 +221,6 @@ func TestConvertTargetsListWithLabels(t *testing.T) {
 	require.Len(t, res[0].Labels, 2)
 	require.Equal(t, "dev", res[0].Labels["env"])
 	require.Equal(t, "falcon", res[0].Labels["app"])
-
 }
 
 func TestConvertTargetsListAlternativeAddress(t *testing.T) {

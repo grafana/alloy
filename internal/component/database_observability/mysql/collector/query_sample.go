@@ -47,26 +47,13 @@ type QuerySample struct {
 	instanceKey     string
 	collectInterval time.Duration
 	entryHandler    loki.EntryHandler
-	sqlParser       Parser
+	sqlParser       parser.Parser
 
 	logger  log.Logger
 	running *atomic.Bool
 	ctx     context.Context
 	cancel  context.CancelFunc
 }
-
-type Parser interface {
-	Parse(sql string) (any, error)
-	Redact(sql string) (string, error)
-	StmtType(stmt any) string
-	ParseTableName(t any) string
-	ExtractTableNames(logger log.Logger, digest string, stmt any) []string
-}
-
-var (
-	_ Parser = (*parser.XwbSqlParser)(nil)
-	_ Parser = (*parser.TiDBSqlParser)(nil)
-)
 
 func NewQuerySample(args QuerySampleArguments) (*QuerySample, error) {
 	c := &QuerySample{

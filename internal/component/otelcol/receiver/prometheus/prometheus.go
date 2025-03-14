@@ -189,5 +189,5 @@ func (c *Component) Update(newConfig component.Arguments) error {
 }
 
 func (c *Component) LiveDebugging(_ int) {
-	c.Update(c.cfg)
+	_ = c.Update(c.cfg)
 }

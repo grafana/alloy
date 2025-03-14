@@ -363,6 +363,7 @@ func verifyForwardedProfiles(
 	expectedQueryParams string,
 	expectedLabels map[string]string,
 ) {
+
 	for i, app := range appendables {
 		testApp, ok := app.(*testAppender)
 		require.True(t, ok, "Appendable is not a testAppender")
@@ -445,6 +446,7 @@ func sendCustomRequest(
 	headers map[string]string,
 	profileSize int,
 ) ([]byte, *http.Response) {
+
 	t.Helper()
 	testProfile := make([]byte, profileSize)
 	_, err := rand.Read(testProfile)

@@ -141,7 +141,6 @@ func (args *Arguments) SetToDefault() {
 
 // Convert implements receiver.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
-
 	c := stanzainputsyslog.NewConfig()
 	c.BaseConfig = stanzaparsersyslog.BaseConfig{
 		Protocol:            string(args.Protocol),

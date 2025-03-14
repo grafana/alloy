@@ -46,10 +46,10 @@ func validateMatcherConfig(cfg *MatchConfig) (logql.Expr, error) {
 		return nil, ErrUnknownMatchAction
 	}
 
-	if cfg.Action == MatchActionKeep && (cfg.Stages == nil || len(cfg.Stages) == 0) {
+	if cfg.Action == MatchActionKeep && len(cfg.Stages) == 0 {
 		return nil, ErrMatchRequiresStages
 	}
-	if cfg.Action == MatchActionDrop && (cfg.Stages != nil && len(cfg.Stages) != 0) {
+	if cfg.Action == MatchActionDrop && len(cfg.Stages) != 0 {
 		return nil, ErrStagesWithDropLine
 	}
 

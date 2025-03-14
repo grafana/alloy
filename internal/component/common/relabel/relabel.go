@@ -230,7 +230,7 @@ func doRelabel(cfg *Config, lb LabelBuilder) (keep bool) {
 		values = make([]string, 0, len(cfg.SourceLabels))
 	}
 	for _, ln := range cfg.SourceLabels {
-		values = append(values, lb.Get(string(ln)))
+		values = append(values, lb.Get(ln))
 	}
 	val := strings.Join(values, cfg.Separator)
 

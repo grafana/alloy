@@ -2,11 +2,12 @@ package relabel
 
 import (
 	"fmt"
-	dto "github.com/prometheus/client_model/go"
 	"math"
 	"strconv"
 	"testing"
 	"time"
+
+	dto "github.com/prometheus/client_model/go"
 
 	"context"
 
