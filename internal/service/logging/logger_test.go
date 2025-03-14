@@ -12,8 +12,8 @@ import (
 	"github.com/go-kit/log"
 	gokitlevel "github.com/go-kit/log/level"
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/runtime/logging"
-	alloylevel "github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/service/logging"
+	alloylevel "github.com/grafana/alloy/internal/service/logging/level"
 	"github.com/stretchr/testify/require"
 )
 
@@ -21,7 +21,7 @@ import (
 $ go test -count=1 -benchmem ./internal/alloy/logging -run ^$ -bench BenchmarkLogging_
 goos: darwin
 goarch: arm64
-pkg: github.com/grafana/alloy/internal/runtime/logging
+pkg: github.com/grafana/alloy/internal/service/logging
 BenchmarkLogging_NoLevel_Prints-8             	  722358	      1524 ns/op	     368 B/op	      11 allocs/op
 BenchmarkLogging_NoLevel_Drops-8              	47103154	        25.59 ns/op	       8 B/op	       0 allocs/op
 BenchmarkLogging_GoKitLevel_Drops_Sprintf-8   	 3585387	       332.1 ns/op	     320 B/op	       8 allocs/op
@@ -169,10 +169,15 @@ func TestLevels(t *testing.T) {
 // Test_lokiWriter_nil ensures that writing to a lokiWriter doesn't panic when
 // given a nil receiver.
 func Test_lokiWriter_nil(t *testing.T) {
-	logger, err := logging.New(io.Discard, debugLevel())
+	s, err := logging.NewService(io.Discard)
+	require.NoError(t, err)
+	err = s.Update(logging.Options{
+		Level:  logging.LevelDebug,
+		Format: logging.FormatLogfmt,
+	})
 	require.NoError(t, err)
 
-	err = logger.Update(logging.Options{
+	err = s.Update(logging.Options{
 		Level:  logging.LevelDebug,
 		Format: logging.FormatLogfmt,
 
@@ -180,6 +185,7 @@ func Test_lokiWriter_nil(t *testing.T) {
 	})
 	require.NoError(t, err)
 
+	logger := s.Data().(*logging.Logger)
 	require.NotPanics(t, func() {
 		_ = logger.Log("msg", "test message")
 	})

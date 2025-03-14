@@ -7,8 +7,8 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	alloy_service "github.com/grafana/alloy/internal/service"
+	"github.com/grafana/alloy/internal/service/logging/level"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/value"

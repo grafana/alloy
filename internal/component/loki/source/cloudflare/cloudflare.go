@@ -18,7 +18,7 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki/positions"
 	cft "github.com/grafana/alloy/internal/component/loki/source/cloudflare/internal/cloudflaretarget"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/service/logging/level"
 	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/prometheus/common/model"
 )

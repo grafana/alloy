@@ -13,7 +13,7 @@ import (
 	"go.uber.org/multierr"
 
 	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/service/logging/level"
 )
 
 // Scheduler implements manages a set of OpenTelemetry Collector components.

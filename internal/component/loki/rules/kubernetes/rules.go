@@ -11,7 +11,7 @@ import (
 	commonK8s "github.com/grafana/alloy/internal/component/common/kubernetes"
 	"github.com/grafana/alloy/internal/featuregate"
 	lokiClient "github.com/grafana/alloy/internal/loki/client"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/service/logging/level"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/dskit/instrument"

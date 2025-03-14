@@ -33,13 +33,13 @@ import (
 	convert_diag "github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/featuregate"
 	alloy_runtime "github.com/grafana/alloy/internal/runtime"
-	"github.com/grafana/alloy/internal/runtime/logging"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/runtime/tracing"
 	"github.com/grafana/alloy/internal/service"
 	httpservice "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/service/livedebugging"
+	"github.com/grafana/alloy/internal/service/logging"
+	"github.com/grafana/alloy/internal/service/logging/level"
 	otel_service "github.com/grafana/alloy/internal/service/otel"
 	remotecfgservice "github.com/grafana/alloy/internal/service/remotecfg"
 	uiservice "github.com/grafana/alloy/internal/service/ui"
@@ -212,10 +212,12 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 	}
 
 	// Buffer logs until log format has been determined
-	l, err := logging.NewDeferred(os.Stderr)
+	loggingService, err := logging.NewService(os.Stderr)
 	if err != nil {
 		return fmt.Errorf("building logger: %w", err)
 	}
+
+	l := loggingService.Data().(*logging.Logger)
 
 	t, err := tracing.New(tracing.DefaultOptions)
 	if err != nil {
@@ -358,6 +360,7 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 			otelService,
 			remoteCfgService,
 			uiService,
+			loggingService,
 		},
 	})
 

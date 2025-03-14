@@ -19,9 +19,9 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/internal/dag"
 	"github.com/grafana/alloy/internal/runtime/internal/worker"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/runtime/tracing"
 	"github.com/grafana/alloy/internal/service"
+	"github.com/grafana/alloy/internal/service/logging/level"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/diag"
 	"github.com/grafana/alloy/syntax/vm"
@@ -534,12 +534,6 @@ func (l *Loader) populateConfigBlockNodes(args map[string]any, g *dag.Graph, con
 
 	validateDiags := nodeMap.Validate(!l.isRootController(), args)
 	diags = append(diags, validateDiags...)
-
-	// If a logging config block is not provided, we create an empty node which uses defaults.
-	if nodeMap.logging == nil && l.isRootController() {
-		c := NewDefaultLoggingConfigNode(l.globals)
-		g.Add(c)
-	}
 
 	// If a tracing config block is not provided, we create an empty node which uses defaults.
 	if nodeMap.tracing == nil && l.isRootController() {

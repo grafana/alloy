@@ -9,7 +9,7 @@ import (
 	godiscover "github.com/hashicorp/go-discover"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/service/logging/level"
 )
 
 type DiscoverFn func() ([]string, error)

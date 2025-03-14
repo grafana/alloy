@@ -26,7 +26,7 @@ import (
 	"github.com/prometheus/common/config"
 	"github.com/prometheus/prometheus/model/labels"
 
-	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/service/logging/level"
 )
 
 var (

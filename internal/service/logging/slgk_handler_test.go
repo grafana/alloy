@@ -11,7 +11,7 @@ import (
 	"github.com/go-logfmt/logfmt"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/alloy/internal/runtime/logging"
+	"github.com/grafana/alloy/internal/service/logging"
 )
 
 func TestWithSlogTester(t *testing.T) {
@@ -38,8 +38,11 @@ func TestWithSlogTester(t *testing.T) {
 
 func TestUpdateLevel(t *testing.T) {
 	buffer := bytes.NewBuffer(nil)
-	baseLogger, err := logging.New(buffer, logging.Options{Level: logging.LevelInfo, Format: logging.FormatLogfmt})
+	s, err := logging.NewService(buffer)
 	require.NoError(t, err)
+	err = s.Update(logging.Options{Level: logging.LevelInfo, Format: logging.FormatLogfmt})
+	require.NoError(t, err)
+	baseLogger := s.Data().(*logging.Logger)
 
 	gkLogger := log.With(baseLogger, "test", "test")
 	gkLogger.Log("msg", "hello")
@@ -58,7 +61,7 @@ func TestUpdateLevel(t *testing.T) {
 	sLogger.Debug("hello")
 	require.Equal(t, "", buffer.String())
 
-	err = baseLogger.Update(logging.Options{Level: logging.LevelDebug, Format: logging.FormatLogfmt})
+	err = s.Update(logging.Options{Level: logging.LevelDebug, Format: logging.FormatLogfmt})
 	require.NoError(t, err)
 
 	buffer.Reset()
