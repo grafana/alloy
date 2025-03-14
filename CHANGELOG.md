@@ -47,6 +47,8 @@ Main (unreleased)
 
 - Reduced lock contention in `prometheus.scrape` component (@thampiotr)
 
+- Removed `alloy_component_controller_running_components`'s `health_type` label and added new metric: `alloy_component_controller_health` for monitoring component by health_types ["healthy", "unhealthy"].
+=======
 ### Other changes
 
 - Upgrading to Prometheus v2.55.1. (@ptodev)
