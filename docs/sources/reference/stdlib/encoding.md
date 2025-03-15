@@ -64,7 +64,7 @@ c3RyaW5nMTIzIT8kKiYoKSctPUB-
 ## encoding.to_json
 
 The `encoding.to_json` function encodes the map into a JSON string.
-`encoding.to_json` fails if the input argument provided can't be parsed as JSON string.
+`encoding.to_json` fails if the input argument provided can't be parsed as a JSON string.
 
 A common use case for `encoding.to_json` is to encode a configuration of component which is expected to be a JSON string.
 For example, `config` argument of [`prometheus.exporter.blackbox`][].

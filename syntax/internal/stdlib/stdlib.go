@@ -8,6 +8,7 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 
 	"github.com/ohler55/ojg/jp"
@@ -341,14 +342,15 @@ func base64Encode(in string) (string, error) {
 	return encoded, nil
 }
 
-func jsonEncode(in interface{}) (interface{}, error) {
+func jsonEncode(in interface{}) (string, error) {
 	v, ok := in.(map[string]interface{})
+	fmt.Println(reflect.TypeOf(in))
 	if !ok {
-		return nil, fmt.Errorf("jsonEncode only supports map")
+		return "", fmt.Errorf("jsonEncode only supports map")
 	}
 	res, err := json.Marshal(v)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	return string(res), nil
 }
