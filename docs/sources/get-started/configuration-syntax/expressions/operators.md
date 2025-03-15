@@ -27,7 +27,7 @@ Operator | Description
 
 Operator | Description
 ---------|-------------------------
-`+`      | Concatenate two strings/secrets.
+`+`      | Concatenate two strings or two secrets or string and secret.
 
 ## Comparison operators
 

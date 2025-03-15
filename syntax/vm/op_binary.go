@@ -277,87 +277,70 @@ func evalBinop(lhs value.Value, op token.Token, rhs value.Value) (value.Value, e
 // tryUnwrapCapsules accepts two value and tries to unwarp them to similar types
 // If none of the condition matches it will return the inputs
 func tryUnwrapCapsules(lhs value.Value, rhs value.Value) (value.Value, value.Value) {
-	switch lhs.Interface().(type) {
+	switch lhsValue := lhs.Interface().(type) {
 	case alloytypes.OptionalSecret:
-		return tryUnwrapOptionalSecrets(lhs, rhs)
+		return tryUnwrapOptionalSecrets(lhs, lhsValue, rhs)
 	case alloytypes.Secret:
-		return tryUnwrapSecret(lhs, rhs)
+		return tryUnwrapSecret(lhs, lhsValue, rhs)
 	case string:
-		return tryUnwrapString(lhs, rhs)
+		return tryUnwrapString(lhs, lhsValue, rhs)
 	default:
 		return lhs, rhs
 	}
 }
 
 // tryUnwrapOptionalSecrets tries to Unwarp the rhs value corresponding to the
-// lhs value of type OptionalSecret. If lhs is not of type OptionalSecret it returns the input
-//  1. lhs(OptionalSecrets), rhs(Secret) = lhs(Secret), rhs(Secret)
-//  2. lhs(OptionalSecrets), rhs(string):
-//     2(a). lhs(OptionalSecrets{IsSecret: false}), rhs(string) = lhs(string), rhs(string)
-//     2(b). lhs(OptionalSecrets{IsSecret: true}), rhs(string) = lhs(OptionalSecrets), rhs(OptionalSecrets)
-//  3. If no condition matches it returns the inputs
-func tryUnwrapOptionalSecrets(lhs value.Value, rhs value.Value) (value.Value, value.Value) {
-	lhsOptSecret, lhsIsOptSecret := lhs.Interface().(alloytypes.OptionalSecret)
-	if !lhsIsOptSecret {
-		return lhs, rhs
-	}
-
+// lhs value of type OptionalSecret.
+func tryUnwrapOptionalSecrets(lhs value.Value, lhsValue alloytypes.OptionalSecret, rhs value.Value) (value.Value, value.Value) {
 	switch rhsValue := rhs.Interface().(type) {
 	case alloytypes.Secret:
-		return value.Encapsulate(alloytypes.Secret(lhsOptSecret.Value)), rhs
+		// OptionalSecrets, Secret = Secret, Secret
+		return value.Encapsulate(alloytypes.Secret(lhsValue.Value)), rhs
 	case string:
-		if lhsOptSecret.IsSecret {
+		if lhsValue.IsSecret {
+			// OptionalSecrets{IsSecret: true}, string = OptionalSecrets, OptionalSecrets
 			return lhs, value.Encapsulate(alloytypes.OptionalSecret{Value: rhsValue, IsSecret: true})
 		}
-		return value.String(lhsOptSecret.Value), value.String(rhsValue)
+		// OptionalSecrets{IsSecret: false}, string = string, string
+		return value.String(lhsValue.Value), value.String(rhsValue)
 	default:
+		// no condition matches return the inputs
 		return lhs, rhs
 	}
 }
 
 // tryUnwrapSecret tries to Unwarp the rhs value corresponding to the
-// lhs value of type Secret. If lhs is not of type Secret it returns the input
-//  1. lhs(Secret), rhs(OptionalSecret) = lhs(Secret), rhs(Secret)
-//  2. lhs(Secret), rhs(string) = lhs(Secret), rhs(Secret)
-//  3. If no condition matches it returns the inputs
-func tryUnwrapSecret(lhs value.Value, rhs value.Value) (value.Value, value.Value) {
-	_, lhsIsSecret := lhs.Interface().(alloytypes.Secret)
-	if !lhsIsSecret {
-		return lhs, rhs
-	}
-
+// lhs value of type Secret.
+func tryUnwrapSecret(lhs value.Value, _ alloytypes.Secret, rhs value.Value) (value.Value, value.Value) {
 	switch rhsValue := rhs.Interface().(type) {
 	case alloytypes.OptionalSecret:
+		// Secret, OptionalSecret = Secret, Secret
 		return lhs, value.Encapsulate(alloytypes.Secret(rhsValue.Value))
 	case string:
+		// Secret, string = Secret, Secret
 		return lhs, value.Encapsulate(alloytypes.Secret(rhsValue))
 	default:
+		//no condition matches return the inputs
 		return lhs, rhs
 	}
 }
 
 // tryUnwrapString tries to Unwarp the rhs value corresponding to the
-// lhs value of type string. If lhs is not of type string it returns the input
-//  1. lhs(string), rhs(OptionalSecrets):
-//     1(a). lhs(string), rhs(OptionalSecrets{IsSecret: false}) = lhs(string), rhs(string)
-//     1(b). lhs(string), rhs(OptionalSecrets{IsSecret: true}) = lhs(OptionalSecrets), rhs(OptionalSecrets)
-//  2. lhs(string), rhs(Secret) = lhs(Secret), rhs(Secret)
-//  3. If no condition matches it returns the inputs
-func tryUnwrapString(lhs value.Value, rhs value.Value) (value.Value, value.Value) {
-	lhsString, lhsIsString := lhs.Interface().(string)
-	if !lhsIsString {
-		return lhs, rhs
-	}
-
+// lhs value of type string.
+func tryUnwrapString(lhs value.Value, lhsValue string, rhs value.Value) (value.Value, value.Value) {
 	switch rhsValue := rhs.Interface().(type) {
 	case alloytypes.OptionalSecret:
 		if rhsValue.IsSecret {
-			return value.Encapsulate(alloytypes.OptionalSecret{Value: lhsString, IsSecret: true}), rhs
+			// string, OptionalSecrets{IsSecret: true} = OptionalSecrets, OptionalSecrets
+			return value.Encapsulate(alloytypes.OptionalSecret{Value: lhsValue, IsSecret: true}), rhs
 		}
-		return value.String(lhsString), value.String(rhsValue.Value)
+		// string, OptionalSecrets{IsSecret: false} = string, string
+		return lhs, value.String(rhsValue.Value)
 	case alloytypes.Secret:
-		return value.Encapsulate(alloytypes.Secret(lhsString)), rhs
+		// string, Secret = Secret, Secret
+		return value.Encapsulate(alloytypes.Secret(lhsValue)), rhs
 	default:
+		// no condition matches return the inputs
 		return lhs, rhs
 	}
 }
