@@ -244,6 +244,7 @@ func (c *Component) startupWithRetries(ctx context.Context, leader leadership, s
 			level.Error(c.log).Log("msg", "starting up component failed, will retry", "err", err)
 			health.reportUnhealthy(err)
 		} else {
+			health.reportHealthy()
 			break
 		}
 		startupBackoff.Wait()
