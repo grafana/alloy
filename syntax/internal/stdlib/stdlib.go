@@ -8,6 +8,7 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 
 	"github.com/ohler55/ojg/jp"
@@ -78,6 +79,7 @@ var encoding = map[string]interface{}{
 	"from_yaml":      yamlDecode,
 	"from_base64":    base64Decode,
 	"from_URLbase64": base64URLDecode,
+	"to_json":        jsonEncode,
 	"to_base64":      base64Encode,
 	"to_URLbase64":   base64URLEncode,
 }
@@ -338,6 +340,19 @@ func base64URLEncode(in string) (string, error) {
 func base64Encode(in string) (string, error) {
 	encoded := base64.StdEncoding.EncodeToString([]byte(in))
 	return encoded, nil
+}
+
+func jsonEncode(in interface{}) (string, error) {
+	v, ok := in.(map[string]interface{})
+	fmt.Println(reflect.TypeOf(in))
+	if !ok {
+		return "", fmt.Errorf("jsonEncode only supports map")
+	}
+	res, err := json.Marshal(v)
+	if err != nil {
+		return "", err
+	}
+	return string(res), nil
 }
 
 func jsonPath(jsonString string, path string) ([]interface{}, error) {
