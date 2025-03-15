@@ -205,6 +205,10 @@ v1.7.0
 
 - Add support for pushv1.PusherService Connect API in `pyroscope.receive_http`. (@simonswine)
 
+- Fix `otelcol.exporter.prometheus` that dropped valid exemplars.
+
+- Add support for path prefixes in `pyroscope.scrape` to allow scraping targets behind a proxy or with custom URL paths. (@korniltsev)
+
 - Fixed an issue where `loki.process` would sometimes output live debugging entries out-of-order (@thampiotr)
 
 - Fixed a bug where components could be evaluated concurrently without the full context during a config reload (@wildum)
