@@ -234,7 +234,7 @@ discovery.relabel "local_pods" {
   }
   rule {
     action = "replace"
-    source_labels = ["__meta_kubernetes_node_name"]
+    source_labels = ["__meta_kubernetes_pod_node_name"]
     target_label = "node"
   }
   rule {
