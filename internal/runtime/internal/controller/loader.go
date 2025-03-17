@@ -968,7 +968,16 @@ func setDataFlowEdges(n dag.Node, refs []Reference) {
 	if cn, ok := n.(ComponentNode); ok {
 		for _, ref := range refs {
 			if tn, ok := ref.Target.(ComponentNode); ok {
-				t := reflect.TypeOf(tn.Exports())
+				exports := tn.Exports()
+				if exports == nil {
+					continue
+				}
+
+				t := reflect.TypeOf(exports)
+
+				if t.Kind() != reflect.Struct {
+					continue
+				}
 
 				found := false
 				var field reflect.StructField
