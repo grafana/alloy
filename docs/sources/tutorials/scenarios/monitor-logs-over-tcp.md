@@ -44,7 +44,7 @@ docker ps
 
 ## Monitor the health of your {{% param "PRODUCT_NAME" %}} deployment
 
-To monitor the health of your {{< param "PRODUCT_NAME" >}} deployment, open your browser and navigate to [`http://localhost:12345`](http://localhost:12345).
+To monitor the health of your {{< param "PRODUCT_NAME" >}} deployment, open your browser and navigate to [http://localhost:12345](http://localhost:12345).
 
 Refer to [Debug Grafana Alloy](https://grafana.com/docs/alloy/latest/troubleshoot/debug/) for more information about the {{< param "PRODUCT_NAME" >}} UI.
 
@@ -66,9 +66,19 @@ docker compose down
 
 ## Understand the {{% param "PRODUCT_NAME" %}} configuration
 
+The {{< param "PRODUCT_NAME" >}} configuration file only requires the logging configuration and livedebugging is enabled.
+
 ### Configure debugging
 
+Livedebugging streams real-time data from your components directly to the Alloy UI.
+Refer to the [Troubleshooting documentation][troubleshooting] for more information about how you can use this feature in the {{< param "PRODUCT_NAME" >}} UI.
+
+[troubleshooting]: https://grafana.com/docs/alloy/latest/troubleshoot/debug/#live-debugging-page
+
 #### `livedebugging`
+
+Livedebugging is disabled by default.
+It must be explicitly enabled through the `livedebugging` configuration block to make the debugging data visible in the {{< param "PRODUCT_NAME" >}} UI.
 
 ```alloy
 livedebugging {
@@ -78,7 +88,11 @@ livedebugging {
 
 ### Configure logging
 
-The logging configuration in this example requires three components, `loki.source.api`, `loki.process`, and `loki-write`.
+The logging configuration in this example requires three components:
+
+* `loki.source.api`
+* `loki.process`
+* `loki-write`
 
 #### `loki.source.api`
 
