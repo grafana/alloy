@@ -8,14 +8,17 @@ import { DebugDataType } from './debugDataType';
 const dagreGraph = new dagre.graphlib.Graph({ multigraph: true }).setDefaultEdgeLabel(() => ({}));
 
 // Arbitrary values chosen to fit an average config in the graph.
-const NODE_WIDTH = 150;
+const NODE_WIDTH = 155;
 const NODE_HEIGHT = 72;
 const COMPONENT_NAME_MAX_LENGTH = 25;
 
 const position = { x: 0, y: 0 };
 
 export function buildGraph(components: ComponentInfo[]): [Node[], Edge[]] {
-  let edges: Edge[] = [];
+  const edges: Edge[] = [];
+  // Map to track the count of edges between the same source and target
+  const edgeCountMap: Record<string, number> = {};
+
   const nodes = components.map((component) => {
     let cpNameTruncated = component.name;
     if (cpNameTruncated.length > COMPONENT_NAME_MAX_LENGTH) {
@@ -33,19 +36,23 @@ export function buildGraph(components: ComponentInfo[]): [Node[], Edge[]] {
       },
       position: position,
     };
-    const componentEdges: Edge[] = component.referencesTo.map((edge) => ({
-      id: `${node.id}|${edge}`,
-      source: node.id,
-      target: edge,
-      type: 'multiedge',
-      animated: true,
-      data: { signal: DebugDataType.UNDEFINED },
-    }));
+    const componentEdges: Edge[] = component.dataFlowEdgesTo.map((edge) => {
+      const edgeKey = `${node.id}|${edge}`;
+      const count = edgeCountMap[edgeKey] || 0;
+      edgeCountMap[edgeKey] = count + 1;
+
+      return {
+        id: `${edgeKey}|${count}`,
+        source: node.id,
+        target: edge,
+        type: 'multiedge',
+        animated: true,
+        data: { signal: DebugDataType.UNDEFINED, edgeIndex: count },
+      };
+    });
     edges.push(...componentEdges);
     return node;
   });
-
-  edges = fixDirections(edges);
 
   dagreGraph.setGraph({ rankdir: 'LR' });
 
@@ -74,21 +81,4 @@ export function buildGraph(components: ComponentInfo[]): [Node[], Edge[]] {
   });
 
   return [newNodes, edges];
-}
-
-// The arrows of some components must be reversed because the graph that we receive from the backend
-// is a dependency graph, not a data flow graph.
-function fixDirections(edges: Edge[]): Edge[] {
-  return edges.map((edge) => {
-    if (edge.target.startsWith('discovery.') || edge.target.startsWith('prometheus.exporter.')) {
-      const tmp = edge.source;
-      edge.source = edge.target;
-      edge.target = tmp;
-      if (edge.id.includes('|')) {
-        const parts = edge.id.split('|');
-        edge.id = `${parts[1]}|${parts[0]}`;
-      }
-    }
-    return edge;
-  });
 }

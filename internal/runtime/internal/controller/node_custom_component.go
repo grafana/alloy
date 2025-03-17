@@ -54,6 +54,8 @@ type CustomComponentNode struct {
 
 	exportsMut sync.RWMutex
 	exports    component.Exports // Evaluated exports for the managed custom component
+
+	dataFlowEdgeRefs []string
 }
 
 var _ ComponentNode = (*CustomComponentNode)(nil)
@@ -124,6 +126,8 @@ func NewCustomComponentNode(globals ComponentGlobals, b *ast.BlockStmt, getConfi
 
 		evalHealth: initHealth,
 		runHealth:  initHealth,
+
+		dataFlowEdgeRefs: make([]string, 0),
 	}
 
 	return cn
@@ -323,4 +327,16 @@ func (cn *CustomComponentNode) ComponentName() string {
 // the custom components. Change it when getting rid of old modules.
 func (cn *CustomComponentNode) ModuleIDs() []string {
 	return cn.moduleController.ModuleIDs()
+}
+
+func (cn *CustomComponentNode) AddDataFlowEdgeTo(nodeID string) {
+	cn.dataFlowEdgeRefs = append(cn.dataFlowEdgeRefs, nodeID)
+}
+
+func (cn *CustomComponentNode) GetDataFlowEdgesTo() []string {
+	return cn.dataFlowEdgeRefs
+}
+
+func (cn *CustomComponentNode) ResetDataFlowEdgeTo() {
+	cn.dataFlowEdgeRefs = []string{}
 }

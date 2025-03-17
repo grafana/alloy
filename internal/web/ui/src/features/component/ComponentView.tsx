@@ -122,7 +122,7 @@ export const ComponentView: FC<ComponentViewProps> = (props) => {
           </a>
         </div>
 
-        {props.component.moduleInfo && (
+        {props.component.moduleInfo && !useRemotecfg && (
           <div className={styles.debugLink}>
             <a href={`graph/${pathJoin([props.component.moduleID, props.component.localID])}`}>
               <FontAwesomeIcon icon={faDiagramProject} /> Graph

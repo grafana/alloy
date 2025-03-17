@@ -54,9 +54,12 @@ function Graph() {
   return (
     <Page
       name="Graph"
-      desc="Visualize data flow per second for components that support live debugging."
+      desc="Visualize data flow per second for components."
       icon={faDiagramProject}
       controls={controls}
+      infoText={
+        <div className={styles.infoText}>Only edges from components that support live debugging will be colored.</div>
+      }
     >
       {components.length > 0 && (
         <ComponentGraph components={components} moduleID={moduleID} enabled={enabled} window={window} />

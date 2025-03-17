@@ -34,16 +34,13 @@ const ComponentGraph: React.FC<GraphProps> = ({ components, moduleID, enabled, w
     multiedge: MultiEdge,
   };
 
-  // Some components, like the Otel ones, can send different types of data to the same component.
-  // This is not an information that we can get from the dependency graph, so we need to adjust it at runtime by
-  // checking the edges that we have and the data that we receive to add the missing edges.
+  // Update the edges with the new data.
   useEffect(() => {
     // Sort by type to keep the edges in order when connected at the same node.
     const sortedDebugData = [...data].sort((a, b) => a.type.localeCompare(b.type));
 
     setEdges((prevEdges) => {
       const workingEdges = [...prevEdges];
-      const newEdges: Edge[] = [];
 
       sortedDebugData.forEach((debugData) => {
         const { localID } = parseID(debugData.componentID);
@@ -55,7 +52,7 @@ const ComponentGraph: React.FC<GraphProps> = ({ components, moduleID, enabled, w
           processDebugDataWithoutTargets(workingEdges, localID, debugData);
         } else {
           targetComponentIDs.forEach((target) => {
-            processDebugDataWithTargets(workingEdges, newEdges, localID, target, debugData);
+            processDebugDataWithTargets(workingEdges, localID, target, debugData);
           });
         }
       });
@@ -63,7 +60,7 @@ const ComponentGraph: React.FC<GraphProps> = ({ components, moduleID, enabled, w
       // Reset styles for edges did not receive data during the current window.
       resetUnmatchedEdges(workingEdges, sortedDebugData);
 
-      return [...workingEdges, ...newEdges];
+      return workingEdges;
     });
   }, [setEdges, data]);
 
@@ -108,15 +105,9 @@ function processDebugDataWithoutTargets(edges: Edge[], sourceID: string, debugDa
   });
 }
 
-// The debug data coming from the component only corresponds to specific edges.
-// If the initial edge is already used by another signal type, we need to create a new edge with the new signal type.
-function processDebugDataWithTargets(
-  edges: Edge[],
-  newEdges: Edge[],
-  sourceID: string,
-  targetID: string,
-  debugData: DebugData
-) {
+// The debug data coming from the component corresponds only to specific edges.
+// We need to find the right edge and update it with the new data.
+function processDebugDataWithTargets(edges: Edge[], sourceID: string, targetID: string, debugData: DebugData) {
   const existingEdge = edges.find(
     (edge) => edge.source === sourceID && edge.target === targetID && edge.data?.signal === debugData.type
   );
@@ -141,21 +132,9 @@ function processDebugDataWithTargets(
     return;
   }
 
-  // If there is no edge that is not assigned to any signal type, we need to create a new edge.
-  const matchingEdges = edges.filter((edge) => edge.source === sourceID && edge.target === targetID);
-
-  if (matchingEdges.length > 0) {
-    const existingEdgesCount = matchingEdges.length;
-    const newEdgesCount = newEdges.filter((edge) => edge.source === sourceID && edge.target === targetID).length;
-
-    newEdges.push({
-      ...matchingEdges[0],
-      id: matchingEdges[0].id + '|' + debugData.type, // Guarantees uniqueness
-      style: { stroke: DebugDataTypeColorMap[debugData.type] },
-      label: debugData.rate.toLocaleString(undefined, { maximumFractionDigits: 2, minimumFractionDigits: 0 }),
-      data: { ...(matchingEdges[0].data || {}), signal: debugData.type, edgeIndex: existingEdgesCount + newEdgesCount },
-    });
-  }
+  // The backend should provide enough edges to match the data. If this is triggered, then it
+  // means that the data is not aligned with the edges.
+  console.warn('No edge found, data will not be displayed', sourceID, targetID, debugData);
 }
 
 // Reset styles for edges did not receive data during the current window.

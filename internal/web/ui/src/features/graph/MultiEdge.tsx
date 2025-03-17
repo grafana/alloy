@@ -1,4 +1,4 @@
-import { BaseEdge, type EdgeProps, EdgeText, getBezierPath } from '@xyflow/react';
+import { BaseEdge, type EdgeProps, EdgeText, getBezierPath, getStraightPath } from '@xyflow/react';
 
 export type GetSpecialPathParams = {
   sourceX: number;
@@ -35,20 +35,25 @@ export default function CustomEdge({
   const edgeIndex = Number(data?.edgeIndex) || 0;
   const offset = 50 * edgeIndex * (edgeIndex % 2 === 0 ? 1 : -1);
 
-  // First edge has a normal bezier path, the rest have a special path that uses an offset to avoid overlapping.
-  if (offset !== 0) {
+  // Detect if the edge is mostly horizontal
+  const isHorizontal = Math.abs(targetY - sourceY) < 10;
+
+  // Horizontal edges with no offset should use a straight path because the bezier path makes the animation look weird.
+  if (isHorizontal && offset === 0) {
+    [path] = getStraightPath(edgePathParams);
+  } else if (offset !== 0) {
     path = getSpecialPath(edgePathParams, offset);
   } else {
     [path] = getBezierPath(edgePathParams);
   }
 
-  const flashyStyle = {
-    strokeWidth: 5,
+  const edgeStyle = {
+    strokeWidth: 4,
   };
 
   return (
     <>
-      <BaseEdge path={path} style={{ ...style, ...flashyStyle }} />
+      <BaseEdge path={path} style={{ ...style, ...edgeStyle }} />
       <EdgeText
         x={(sourceX + targetX) / 2}
         y={(sourceY + targetY + offset) / 2}
