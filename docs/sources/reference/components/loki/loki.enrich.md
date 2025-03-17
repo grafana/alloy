@@ -131,7 +131,8 @@ The component matches logs to discovered targets and enriches them with addition
 1. The log entry, enriched or unchanged, is forwarded to the configured receivers.
 
 By default, `loki.enrich` is ready as soon as it starts, even if no targets have been discovered.
-If telemetry is sent to this component before the metadata is synced, there will be no labels to enrich the telemetry with.
+If telemetry is sent to this component before the metadata is synced, then it will be passed though as-is, without enrichment.
+This is most likely to impact `loki.enrich` on startup for a short time before the `discovery` components have sent a new list of targets.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
