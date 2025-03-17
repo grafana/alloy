@@ -66,6 +66,9 @@ docker compose down
 
 ## Understand the {{% param "PRODUCT_NAME" %}} configuration
 
+This example requires you to configure components for logging.
+`livedebugging` is enabled so you can stream real-time data to the {{< param "PRODUCT_NAME" >}} UI.
+
 ### Configure debugging
 
 Livedebugging streams real-time data from your components directly to the Alloy UI.
@@ -90,6 +93,14 @@ The logging configuration in this example requires two components, `loki.source.
 
 #### `loki.source.syslog`
 
+The [`loki.source.syslog`][loki.source.syslog] component listens for syslog messages over TCP or UDP connections and forwards them to other Loki components.
+In this example, the component needs the following arguments:
+
+* `address`: The host and port address to listen to for syslog messages.
+* `protocol`: The protocol to listen to for syslog messages. The default is TCP.
+* `labels`: The labels to associate with each received syslog record.
+* `forward_to`: The list of receivers to send log entries to.
+
 ```alloy
 loki.source.syslog "local" {
   listener {
@@ -109,6 +120,11 @@ loki.source.syslog "local" {
 
 #### `loki.write`
 
+The [`loki.write`][loki.write] component writes the logs out to a Loki destination.
+In this example, the component needs the following argument:
+
+* `url`: Defines the full URL endpoint in Loki to send logs to.
+
 ```alloy
 loki.write "local" {
   endpoint {
@@ -116,3 +132,6 @@ loki.write "local" {
   }
 }
 ```
+
+[loki.source.syslog]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/loki/loki.source.syslog/
+[loki.write]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/loki/loki.write/

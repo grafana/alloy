@@ -66,11 +66,12 @@ docker compose down
 
 ## Understand the {{% param "PRODUCT_NAME" %}} configuration
 
-The {{< param "PRODUCT_NAME" >}} configuration file only requires the logging configuration and livedebugging is enabled.
+This example requires you to configure components for logging.
+`livedebugging` is enabled so you can stream real-time data to the {{< param "PRODUCT_NAME" >}} UI.
 
 ### Configure debugging
 
-Livedebugging streams real-time data from your components directly to the Alloy UI.
+Livedebugging streams real-time data from your components directly to the {{< param "PRODUCT_NAME" >}} UI.
 Refer to the [Troubleshooting documentation][troubleshooting] for more information about how you can use this feature in the {{< param "PRODUCT_NAME" >}} UI.
 
 [troubleshooting]: https://grafana.com/docs/alloy/latest/troubleshoot/debug/#live-debugging-page
@@ -96,6 +97,13 @@ The logging configuration in this example requires three components:
 
 #### `loki.source.api`
 
+The [`loki.source.api`][loki.source.api] component receives log entries over HTTP and forwards them to other Loki components.
+In this example, the component need the following arguments:
+
+* `listen_address`: The network address the server listens to for new connections. Setting this argument to `0.0.0.0` tells the server to listen on all IP addresses.
+* `listen_port`: The port the server listens to for new connections.
+* `forward_to`: The list of receivers to send log entries to.
+
 ```alloy
 loki.source.api "loki_push_api" {
     http {
@@ -109,6 +117,13 @@ loki.source.api "loki_push_api" {
 ```
 
 #### `loki.process`
+
+The [`loki.process`][loki.process] component receives log entries from other Loki components, applies one or more processing stages, and forwards the results to the list of receivers.
+In this example, the component needs the following arguments:
+
+* `expressions`: The key-value pairs that define the name of the data extracted and the value that it's populated with.
+* `values`: The key-value pairs that define the label to set and how to look them up.
+* `forward_to`: The list of receivers to send log entries to.
 
 ```alloy
 loki.process "lables" {
@@ -138,6 +153,11 @@ loki.process "lables" {
 
 #### `loki-write`
 
+The [`loki.write`][loki.write] component writes the logs out to a Loki destination.
+In this example, the component needs the following argument:
+
+* `url`: Defines the full URL endpoint in Loki to send logs to.
+
 ```alloy
 loki.write "local" {
   endpoint {
@@ -145,3 +165,7 @@ loki.write "local" {
   }
 }
 ```
+
+[loki.source.api]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/loki/loki.source.api/
+[loki.process]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/loki/loki.process/
+[loki.write]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/loki/loki.write/
