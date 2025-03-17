@@ -67,7 +67,7 @@ docker compose down
 ## Understand the {{% param "PRODUCT_NAME" %}} configuration
 
 This example requires you to configure components for logging.
-`livedebugging` is enabled so you can stream real-time data to the {{< param "PRODUCT_NAME" >}} UI.
+`livedebugging` is included in the configuration so you can stream real-time data to the {{< param "PRODUCT_NAME" >}} UI.
 
 ### Configure debugging
 
@@ -78,7 +78,7 @@ Refer to the [Troubleshooting documentation][troubleshooting] for more informati
 
 #### `livedebugging`
 
-Livedebugging is disabled by default.
+`livedebugging` is disabled by default.
 It must be explicitly enabled through the `livedebugging` configuration block to make the debugging data visible in the {{< param "PRODUCT_NAME" >}} UI.
 
 ```alloy
