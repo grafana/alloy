@@ -52,25 +52,13 @@ docker ps
 
 ## Install {{% param "PRODUCT_NAME" %}} in Windows
 
-Follow the instructions in the [Grafana Alloy documentation](https://grafana.com/docs/alloy/latest/set-up/install/windows/) to install {{< param "PRODUCT_NAME" >}} on your Windows machine.
-
-Recommended steps:
-
-* Install {{< param "PRODUCT_NAME" >}} as a Windows service.
-* Use Windows Installer to install {{< param "PRODUCT_NAME" >}}.
-
-Make sure to also checkout the [Grafana Alloy configuration](https://grafana.com/docs/alloy/latest/set-up/configuration/) documentation.
+Follow the instructions to [Install Grafana Alloy on Windows](https://grafana.com/docs/alloy/latest/set-up/install/windows/).
 
 ### Configure remote access to the {{% param "PRODUCT_NAME" %}} UI
 
 If you would like access the {{< param "PRODUCT_NAME" >}} UI from a remote machine you must change the runtime arguments of the {{< param "PRODUCT_NAME" >}} service.
 
-To configure the runtime arguments:
-
-1. Open Registry Editor.
-1. Navigate to `HKEY_LOCAL_MACHINE\SOFTWARE\GrafanaLabs\Alloy`.
-1. Double click on `Arguments`
-1. Change the contents to the following:
+Follow the instructions to [Change command line arguments][change]. Change the arguments to add the `--server.http.listen-addr` flag.
 
    ```shell
    run
@@ -79,21 +67,36 @@ To configure the runtime arguments:
    --server.http.listen-addr=0.0.0.0:12345
    ```
 
-1. Restart the {{< param "PRODUCT_NAME" >}} service.
-   Search for `Services` in the start menu, find `Grafana Alloy`, right click and restart.
+After you restart the services, you can access the {{< param "PRODUCT_NAME" >}} UI from a remote machine by going to `http://<windows-machine-ip>:12345`.
 
-You should be able to access the {{< param "PRODUCT_NAME" >}} UI from a remote machine by going to `http://<windows-machine-ip>:12345`.
+[change]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/configure/windows/#change-command-line-arguments
 
 ## Configure {{% param "PRODUCT_NAME" %}} to monitor Windows
 
-Now that you have Grafana Alloy installed, you need to configure it to monitor your Windows machine.
-Grafana Alloy will currently be running a default configuration file.
-This needs to be replaced with the `config.alloy` file that is included in the `alloy-scenarios/windows` directory.
-To do this:
+After you have installed {{< param "PRODUCT_NAME" >}}, you can configure it to monitor your Windows machine.
+
+Replace the default `config.alloy` file with the preconfigured `config.alloy` file included in the `alloy-scenarios/windows` directory.
 
 1. Stop the {{< param "PRODUCT_NAME" >}} service.
+
+   1. Open the Windows Services manager.
+
+      1. Right click on the Start Menu and select **Run**.
+      1. Type `services.msc` and click **OK**.
+
+   1. Right click on the service called **Alloy**.
+   1. Click on **All Tasks > Stop**.
+
 1. Replace the `config.alloy` file in `C:\Program Files\GrafanaLabs\Alloy` with the `config.alloy` file from the `alloy-scenarios/windows` directory.
 1. Start the {{< param "PRODUCT_NAME" >}} service.
+
+   1. Open the Windows Services manager.
+
+      1. Right click on the Start Menu and select **Run**.
+      1. Type `services.msc` and click **OK**.
+
+   1. Right click on the service called **Alloy**.
+   1. Click on **All Tasks > Start**.
 
 ## Monitor the health of your {{% param "PRODUCT_NAME" %}} deployment
 
@@ -114,7 +117,7 @@ To use the Grafana Logs Drilldown, open your browser and navigate to [http://loc
 This example requires you to configure components for metrics and logging.
 `livedebugging` is included in the configuration so you can stream real-time data to the {{< param "PRODUCT_NAME" >}} UI.
 
-### Configure Windows server metrics
+### Configure metrics
 
 The metrics configuration in this example requires three components:
 
@@ -124,6 +127,11 @@ The metrics configuration in this example requires three components:
 
 #### `prometheus.exporter.windows`
 
+The [`prometheus.exporter.windows`][prometheus.exporter.windows] component exposes the hardware and OS metrics for Windows-based systems.
+In this example, the component needs the following argument:
+
+* `enabled_collectors`: The list of collectors to enable.
+
 ```alloy
 prometheus.exporter.windows "default" {
   enabled_collectors = ["cpu","cs","logical_disk","net","os","service","system", "memory", "scheduled_task", "tcp"]
@@ -132,7 +140,11 @@ prometheus.exporter.windows "default" {
 
 #### `prometheus.scrape`
 
-Configure a prometheus.scrape component to collect Windows metrics.
+The [`prometheus.scrape`][prometheus.scrape] component scrapes the Windows metrics and forwards them to a receiver.
+In this example, the component needs the following arguments:
+
+* `targets`: The target to scrape the metrics from.
+* `forward_to`: The destination to forward the metrics to.
 
 ```alloy
 prometheus.scrape "example" {
@@ -143,6 +155,11 @@ prometheus.scrape "example" {
 
 #### `prometheus.remote_write`
 
+The [`prometheus.remote_write`][] component sends metrics to a Prometheus server.
+In this example, the component needs the following arguments:
+
+* `url`: Defines the full URL endpoint to send metrics to.
+
 ```alloy
 prometheus.remote_write "demo" {
   endpoint {
@@ -151,7 +168,7 @@ prometheus.remote_write "demo" {
 }
 ```
 
-### Configure Windows server logs
+### Configure logging
 
 The logging configuration in this example requires three components:
 
