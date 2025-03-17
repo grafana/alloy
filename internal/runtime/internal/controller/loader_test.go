@@ -124,6 +124,7 @@ func TestLoader(t *testing.T) {
 		requireGraph(t, l.Graph(), testGraphDefinition)
 	})
 
+	// TODO: add one more test with a receiver component to make sure the edge is added properly
 	t.Run("Check data flow edges", func(t *testing.T) {
 		invalidFile := `
 			testcomponents.passthrough "one" {
