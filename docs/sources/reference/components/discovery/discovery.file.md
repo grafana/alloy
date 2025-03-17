@@ -8,9 +8,9 @@ labels:
 title: discovery.file
 ---
 
-# discovery.file
+# `discovery.file`
 
-`discovery.file` discovers targets from a set of files, similar to the [Prometheus file_sd_config](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#file_sd_config).
+`discovery.file` discovers targets from a set of files, similar to the [Prometheus `file_sd_config`](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#file_sd_config).
 
 ## Usage
 
@@ -24,10 +24,10 @@ discovery.file "<LABEL>" {
 
 You can use the following arguments with `discovery.file`:
 
-Name               | Type           | Description                              | Default | Required
--------------------|----------------|------------------------------------------|---------|---------
-`files`            | `list(string)` | Files to read and discover targets from. |         | yes
-`refresh_interval` | `duration`     | How often to sync targets.               | "5m"    | no
+| Name               | Type           | Description                              | Default | Required |
+| ------------------ | -------------- | ---------------------------------------- | ------- | -------- |
+| `files`            | `list(string)` | Files to read and discover targets from. |         | yes      |
+| `refresh_interval` | `duration`     | How often to sync targets.               | "5m"    | no       |
 
 The last path segment of each element in `files` may contain a single `*` that matches any character sequence, for example, `my/path/tg_*.json`.
 
@@ -39,9 +39,9 @@ The `discovery.file` component doesn't support any blocks. You can configure thi
 
 The following fields are exported and can be referenced by other components:
 
-Name      | Type                | Description
-----------|---------------------|---------------------------------------------------
-`targets` | `list(map(string))` | The set of targets discovered from the filesystem.
+| Name      | Type                | Description                                        |
+| --------- | ------------------- | -------------------------------------------------- |
+| `targets` | `list(map(string))` | The set of targets discovered from the filesystem. |
 
 Each target includes the following labels:
 

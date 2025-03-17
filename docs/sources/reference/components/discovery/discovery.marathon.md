@@ -8,7 +8,7 @@ labels:
 title: discovery.marathon
 ---
 
-# discovery.marathon
+# `discovery.marathon`
 
 `discovery.marathon` allows you to retrieve scrape targets from [Marathon's](https://mesosphere.github.io/marathon/) Service API.
 
@@ -24,20 +24,21 @@ discovery.marathon "<LABEL>" {
 
 You can use the following arguments with `discovery.marathon`:
 
-Name                     | Type                | Description                                                                                      | Default | Required
--------------------------|---------------------|--------------------------------------------------------------------------------------------------|---------|---------
-`servers`                | `list(string)`      | List of Marathon servers.                                                                        |         | yes
-`auth_token_file`        | `string`            | File containing an auth token to authenticate with.                                              |         | no
-`auth_token`             | `secret`            | Auth token to authenticate with.                                                                 |         | no
-`bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                             |         | no
-`bearer_token`           | `secret`            | Bearer token to authenticate with.                                                               |         | no
-`enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`  | no
-`follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`  | no
-`no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |         | no
-`proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |         | no
-`proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false` | no
-`proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |         | no
-`refresh_interval`       | `duration`          | Interval at which to refresh the list of targets.                                                | `"30s"` | no
+| Name                     | Type                | Description                                                                                      | Default | Required |
+| ------------------------ | ------------------- | ------------------------------------------------------------------------------------------------ | ------- | -------- |
+| `servers`                | `list(string)`      | List of Marathon servers.                                                                        |         | yes      |
+| `auth_token_file`        | `string`            | File containing an auth token to authenticate with.                                              |         | no       |
+| `auth_token`             | `secret`            | Auth token to authenticate with.                                                                 |         | no       |
+| `bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                             |         | no       |
+| `bearer_token`           | `secret`            | Bearer token to authenticate with.                                                               |         | no       |
+| `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`  | no       |
+| `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`  | no       |
+| `http_headers`           | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.          |                      | no       |
+| `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |         | no       |
+| `proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |         | no       |
+| `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false` | no       |
+| `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |         | no       |
+| `refresh_interval`       | `duration`          | Interval at which to refresh the list of targets.                                                | `"30s"` | no       |
 
  At most, one of the following can be provided:
 
@@ -57,41 +58,41 @@ Name                     | Type                | Description                    
 
 You can use the following blocks with `discovery.marathon`:
 
-Block                   | Description                                                | Required
-------------------------|------------------------------------------------------------|---------
-[authorization][]       | Configure generic authorization to the endpoint.           | no
-[basic_auth][]          | Configure `basic_auth` for authenticating to the endpoint. | no
-[oauth2][]              | Configure OAuth 2.0 for authenticating to the endpoint.    | no
-oauth2 > [tls_config][] | Configure TLS settings for connecting to the endpoint.     | no
-[tls_config][]          | Configure TLS settings for connecting to the endpoint.     | no
+| Block                                 | Description                                                | Required |
+| ------------------------------------- | ---------------------------------------------------------- | -------- |
+| [`authorization`][authorization]      | Configure generic authorization to the endpoint.           | no       |
+| [`basic_auth`][basic_auth]            | Configure `basic_auth` for authenticating to the endpoint. | no       |
+| [`oauth2`][oauth2]                    | Configure OAuth 2.0 for authenticating to the endpoint.    | no       |
+| `oauth2` > [`tls_config`][tls_config] | Configure TLS settings for connecting to the endpoint.     | no       |
+| [`tls_config`][tls_config]            | Configure TLS settings for connecting to the endpoint.     | no       |
 
-The `>` symbol indicates deeper levels of nesting.
-For example, `oauth2 > tls_config` refers to a `tls_config` block defined inside an `oauth2` block.
+The > symbol indicates deeper levels of nesting.
+For example, `oauth2` > `tls_config` refers to a `tls_config` block defined inside an `oauth2` block.
 
 [authorization]: #authorization
 [basic_auth]: #basic_auth
 [oauth2]: #oauth2
 [tls_config]: #tls_config
 
-### authorization
+### `authorization`
 
 The `authorization` block configures generic authorization to the endpoint.
 
 {{< docs/shared lookup="reference/components/authorization-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### basic_auth
+### `basic_auth`
 
 The `basic_auth` block configures basic authentication to the endpoint.
 
 {{< docs/shared lookup="reference/components/basic-auth-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### oauth2
+### `oauth2`
 
 The `oauth` block configures OAuth 2.0 authentication to the endpoint.
 
 {{< docs/shared lookup="reference/components/oauth2-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### tls_config
+### `tls_config`
 
 The `tls_config` block configures TLS settings for connecting to the endpoint.
 
@@ -101,9 +102,9 @@ The `tls_config` block configures TLS settings for connecting to the endpoint.
 
 The following fields are exported and can be referenced by other components:
 
-Name      | Type                | Description
-----------|---------------------|---------------------------------------------------------
-`targets` | `list(map(string))` | The set of targets discovered from the Marathon servers.
+| Name      | Type                | Description                                              |
+| --------- | ------------------- | -------------------------------------------------------- |
+| `targets` | `list(map(string))` | The set of targets discovered from the Marathon servers. |
 
 Each target includes the following labels:
 
@@ -113,7 +114,7 @@ Each target includes the following labels:
 * `__meta_marathon_port_definition_label_<labelname>`: The port definition labels.
 * `__meta_marathon_port_index`: The port index number, for example 1 for PORT1.
 * `__meta_marathon_port_mapping_label_<labelname>`: The port mapping labels.
-* `__meta_marathon_task`: The ID of the Mesos task.
+* `__meta_marathon_task`: The ID of the Apache Mesos task.
 
 ## Component health
 

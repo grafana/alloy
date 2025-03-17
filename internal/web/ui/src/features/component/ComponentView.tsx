@@ -144,7 +144,7 @@ export const ComponentView: FC<ComponentViewProps> = (props) => {
           <section id="dependencies">
             <h2>Dependencies</h2>
             <div className={styles.sectionContent}>
-              <ComponentList components={referencesTo} useRemotecfg={useRemotecfg} moduleID={props.component.moduleID} />
+              <ComponentList components={referencesTo} useRemotecfg={useRemotecfg} />
             </div>
           </section>
         )}
@@ -153,7 +153,7 @@ export const ComponentView: FC<ComponentViewProps> = (props) => {
           <section id="dependants">
             <h2>Dependants</h2>
             <div className={styles.sectionContent}>
-              <ComponentList components={referencedBy} useRemotecfg={useRemotecfg} moduleID={props.component.moduleID} />
+              <ComponentList components={referencedBy} useRemotecfg={useRemotecfg} />
             </div>
           </section>
         )}
@@ -162,11 +162,7 @@ export const ComponentView: FC<ComponentViewProps> = (props) => {
           <section id="module">
             <h2>Module components</h2>
             <div className={styles.sectionContent}>
-              <ComponentList
-                components={props.component.moduleInfo}
-                useRemotecfg={useRemotecfg}
-                moduleID={pathJoin([props.component.moduleID, props.component.localID])}
-              />
+              <ComponentList components={props.component.moduleInfo} useRemotecfg={useRemotecfg} />
             </div>
           </section>
         )}

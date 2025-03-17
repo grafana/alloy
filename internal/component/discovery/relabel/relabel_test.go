@@ -4,12 +4,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/discovery/relabel"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/syntax"
-	"github.com/stretchr/testify/require"
 )
 
 func TestRelabelConfigApplication(t *testing.T) {
@@ -56,7 +57,7 @@ rule {
 }
 `
 	expectedOutput := []discovery.Target{
-		map[string]string{"__address__": "localhost", "app": "backend", "destination": "localhost/one", "meta_bar": "bar", "meta_foo": "foo", "name": "one"},
+		discovery.NewTargetFromMap(map[string]string{"__address__": "localhost", "app": "backend", "destination": "localhost/one", "meta_bar": "bar", "meta_foo": "foo", "name": "one"}),
 	}
 
 	var args relabel.Arguments

@@ -2,10 +2,10 @@ package controller
 
 import (
 	"fmt"
-	"reflect"
 	"sync"
 
 	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/runtime/equality"
 	"github.com/grafana/alloy/syntax/vm"
 )
 
@@ -96,7 +96,7 @@ func (vc *valueCache) CacheModuleExportValue(name string, value any) {
 	v, found := vc.moduleExports[name]
 	if !found {
 		vc.moduleChangedIndex++
-	} else if !reflect.DeepEqual(v, value) {
+	} else if !equality.DeepEqual(v, value) {
 		vc.moduleChangedIndex++
 	}
 
@@ -164,7 +164,6 @@ func cleanup(m map[string]any, id ComponentID) error {
 }
 
 func cleanupFromIndex(m map[string]any, id ComponentID, index int) error {
-
 	if _, ok := m[id[index]]; !ok {
 		return nil
 	}

@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"k8s.io/client-go/kubernetes"
+
 	"github.com/grafana/alloy/internal/component"
 	commonk8s "github.com/grafana/alloy/internal/component/common/kubernetes"
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -20,7 +22,6 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service/cluster"
-	"k8s.io/client-go/kubernetes"
 )
 
 func init() {
@@ -192,7 +193,7 @@ func (c *Component) resyncTargets(targets []discovery.Target) {
 
 	tailTargets := make([]*kubetail.Target, 0, len(targets))
 	for _, target := range targets {
-		lset := target.Labels()
+		lset := target.PromLabels()
 		processed, err := kubetail.PrepareLabels(lset, c.opts.ID)
 		if err != nil {
 			// TODO(rfratto): should this set the health of the component?

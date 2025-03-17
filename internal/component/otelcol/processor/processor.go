@@ -9,7 +9,6 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	otelcomponent "go.opentelemetry.io/collector/component"
-	otelextension "go.opentelemetry.io/collector/extension"
 	"go.opentelemetry.io/collector/pipeline"
 	otelprocessor "go.opentelemetry.io/collector/processor"
 	sdkprometheus "go.opentelemetry.io/otel/exporters/prometheus"
@@ -39,7 +38,7 @@ type Arguments interface {
 
 	// Extensions returns the set of extensions that the configured component is
 	// allowed to use.
-	Extensions() map[otelcomponent.ID]otelextension.Extension
+	Extensions() map[otelcomponent.ID]otelcomponent.Component
 
 	// Exporters returns the set of exporters that are exposed to the configured
 	// component.
@@ -84,7 +83,6 @@ var (
 // The registered component must be registered to export the
 // otelcol.ConsumerExports type, otherwise New will panic.
 func New(opts component.Options, f otelprocessor.Factory, args Arguments) (*Processor, error) {
-
 	debugDataPublisher, err := opts.GetServiceData(livedebugging.ServiceName)
 	if err != nil {
 		return nil, err
@@ -244,5 +242,5 @@ func (p *Processor) CurrentHealth() component.Health {
 }
 
 func (p *Processor) LiveDebugging(_ int) {
-	p.Update(p.args)
+	_ = p.Update(p.args)
 }

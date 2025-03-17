@@ -8,7 +8,7 @@ labels:
 title: discovery.azure
 ---
 
-# discovery.azure
+# `discovery.azure`
 
 `discovery.azure` discovers [Azure][] Virtual Machines and exposes them as targets.
 
@@ -25,18 +25,19 @@ discovery.azure "<LABEL>" {
 
 You can use the following arguments with `discovery.azure`:
 
-Name                     | Type                | Description                                                                                      | Default              | Required
--------------------------|---------------------|--------------------------------------------------------------------------------------------------|----------------------|---------
-`enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`               | no
-`environment`            | `string`            | Azure environment.                                                                               | `"AzurePublicCloud"` | no
-`follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`               | no
-`no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |                      | no
-`port`                   | `number`            | The port appended to the `__address__` label for each target.                                    | `80`                 | no
-`proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |                      | no
-`proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false`              | no
-`proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |                      | no
-`refresh_interval`       | `duration`          | Interval at which to refresh the list of targets.                                                | `5m`                 | no
-`subscription_id`        | `string`            | Azure subscription ID.                                                                           |                      | no
+| Name                     | Type                | Description                                                                                      | Default              | Required |
+| ------------------------ | ------------------- | ------------------------------------------------------------------------------------------------ | -------------------- | -------- |
+| `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`               | no       |
+| `environment`            | `string`            | Azure environment.                                                                               | `"AzurePublicCloud"` | no       |
+| `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`               | no       |
+| `http_headers`           | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.          |                      | no       |
+| `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |                      | no       |
+| `port`                   | `number`            | The port appended to the `__address__` label for each target.                                    | `80`                 | no       |
+| `proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |                      | no       |
+| `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false`              | no       |
+| `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |                      | no       |
+| `refresh_interval`       | `duration`          | Interval at which to refresh the list of targets.                                                | `5m`                 | no       |
+| `subscription_id`        | `string`            | Azure subscription ID.                                                                           |                      | no       |
 
 {{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -44,11 +45,11 @@ Name                     | Type                | Description                    
 
 You can use the following blocks with `discovery.azure`:
 
-Block                | Description                                      | Required
----------------------|--------------------------------------------------|---------
-[managed_identity][] | Managed Identity configuration for Azure API.    | no
-[oauth][]            | OAuth 2.0 configuration for Azure API.           | no
-[tls_config][]       | TLS configuration for requests to the Azure API. | no
+| Block                                  | Description                                      | Required |
+| -------------------------------------- | ------------------------------------------------ | -------- |
+| [`managed_identity`][managed_identity] | Managed Identity configuration for Azure API.    | no       |
+| [`oauth`][oauth]                       | OAuth 2.0 configuration for Azure API.           | no       |
+| [`tls_config`][tls_config]             | TLS configuration for requests to the Azure API. | no       |
 
 You must specify exactly one of the `oauth` or `managed_identity` blocks.
 
@@ -56,25 +57,25 @@ You must specify exactly one of the `oauth` or `managed_identity` blocks.
 [oauth]: #oauth
 [tls_config]: #tls_config
 
-### managed_identity
+### `managed_identity`
 
 The `managed_identity` block configures Managed Identity authentication for the Azure API.
 
-Name        | Type     | Description                 | Default | Required
-------------|----------|-----------------------------|---------|---------
-`client_id` | `string` | Managed Identity client ID. |         | yes
+| Name        | Type     | Description                 | Default | Required |
+| ----------- | -------- | --------------------------- | ------- | -------- |
+| `client_id` | `string` | Managed Identity client ID. |         | yes      |
 
-### oauth
+### `oauth`
 
 The `oauth` block configures OAuth 2.0 authentication for the Azure API.
 
-Name            | Type     | Description              | Default | Required
-----------------|----------|--------------------------|---------|---------
-`client_id`     | `string` | OAuth 2.0 client ID.     |         | yes
-`client_secret` | `string` | OAuth 2.0 client secret. |         | yes
-`tenant_id`     | `string` | OAuth 2.0 tenant ID.     |         | yes
+| Name            | Type     | Description              | Default | Required |
+| --------------- | -------- | ------------------------ | ------- | -------- |
+| `client_id`     | `string` | OAuth 2.0 client ID.     |         | yes      |
+| `client_secret` | `string` | OAuth 2.0 client secret. |         | yes      |
+| `tenant_id`     | `string` | OAuth 2.0 tenant ID.     |         | yes      |
 
-### tls_config
+### `tls_config`
 
 The `tls_config` block configures TLS settings for requests to the Azure API.
 
@@ -84,9 +85,9 @@ The `tls_config` block configures TLS settings for requests to the Azure API.
 
 The following fields are exported and can be referenced by other components:
 
-Name      | Type                | Description
-----------|---------------------|--------------------------------------------------
-`targets` | `list(map(string))` | The set of targets discovered from the Azure API.
+| Name      | Type                | Description                                       |
+| --------- | ------------------- | ------------------------------------------------- |
+| `targets` | `list(map(string))` | The set of targets discovered from the Azure API. |
 
 Each target includes the following labels:
 

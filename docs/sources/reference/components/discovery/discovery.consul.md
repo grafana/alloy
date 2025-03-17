@@ -8,7 +8,7 @@ labels:
 title: discovery.consul
 ---
 
-# discovery.consul
+# `discovery.consul`
 
 `discovery.consul` allows you to retrieve scrape targets from [Consul's Catalog API][].
 
@@ -26,30 +26,31 @@ discovery.consul "<LABEL>" {
 
 You can use the following arguments with `discovery.consul`:
 
-Name                     | Type                | Description                                                                                                     | Default          | Required
--------------------------|---------------------|-----------------------------------------------------------------------------------------------------------------|------------------|---------
-`allow_stale`            | `bool`              | Allow stale Consul results. Reduces load on Consul. Refer to the [Consul documentation][] for more information. | `true`           | no
-`bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                                            |                  | no
-`bearer_token`           | `secret`            | Bearer token to authenticate with.                                                                              |                  | no
-`datacenter`             | `string`            | Data center to query. If not provided, the default is used.                                                     |                  | no
-`enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                                        | `true`           | no
-`follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                                    | `true`           | no
-`namespace`              | `string`            | Namespace to use. Only supported in Consul Enterprise.                                                          |                  | no
-`no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying.                |                  | no
-`node_meta`              | `map(string)`       | Node metadata key/value pairs to filter nodes for a given service.                                              |                  | no
-`partition`              | `string`            | Admin partition to use. Only supported in Consul Enterprise.                                                    |                  | no
-`password`               | `secret`            | The password to use. Deprecated in favor of the `basic_auth` configuration.                                     |                  | no
-`proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                                   |                  | no
-`proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                                           | `false`          | no
-`proxy_url`              | `string`            | HTTP proxy to send requests through.                                                                            |                  | no
-`refresh_interval`       | `duration`          | Frequency to refresh list of containers.                                                                        | `"30s"`          | no
-`scheme`                 | `string`            | The scheme to use when talking to Consul.                                                                       | `http`           | no
-`server`                 | `string`            | Host and port of the Consul API.                                                                                | `localhost:8500` | no
-`services`               | `list(string)`      | A list of services for which targets are retrieved. If omitted, all services are scraped.                       |                  | no
-`tag_separator`          | `string`            | The string by which Consul tags are joined into the tag label.                                                  | `,`              | no
-`tags`                   | `list(string)`      | An optional list of tags used to filter nodes for a given service. Services must contain all tags in the list.  |                  | no
-`token`                  | `secret`            | Secret token used to access the Consul API.                                                                     |                  | no
-`username`               | `string`            | The username to use. Deprecated in favor of the `basic_auth` configuration.                                     |                  | no
+| Name                     | Type                | Description                                                                                                     | Default          | Required |
+| ------------------------ | ------------------- | --------------------------------------------------------------------------------------------------------------- | ---------------- | -------- |
+| `allow_stale`            | `bool`              | Allow stale Consul results. Reduces load on Consul. Refer to the [Consul documentation][] for more information. | `true`           | no       |
+| `bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                                            |                  | no       |
+| `bearer_token`           | `secret`            | Bearer token to authenticate with.                                                                              |                  | no       |
+| `datacenter`             | `string`            | Data center to query. If not provided, the default is used.                                                     |                  | no       |
+| `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                                        | `true`           | no       |
+| `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                                    | `true`           | no       |
+| `http_headers`           | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.          |                      | no       |
+| `namespace`              | `string`            | Namespace to use. Only supported in Consul Enterprise.                                                          |                  | no       |
+| `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying.                |                  | no       |
+| `node_meta`              | `map(string)`       | Node metadata key/value pairs to filter nodes for a given service.                                              |                  | no       |
+| `partition`              | `string`            | Admin partition to use. Only supported in Consul Enterprise.                                                    |                  | no       |
+| `password`               | `secret`            | The password to use. Deprecated in favor of the `basic_auth` configuration.                                     |                  | no       |
+| `proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                                   |                  | no       |
+| `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                                           | `false`          | no       |
+| `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                                            |                  | no       |
+| `refresh_interval`       | `duration`          | Frequency to refresh list of containers.                                                                        | `"30s"`          | no       |
+| `scheme`                 | `string`            | The scheme to use when talking to Consul.                                                                       | `http`           | no       |
+| `server`                 | `string`            | Host and port of the Consul API.                                                                                | `localhost:8500` | no       |
+| `services`               | `list(string)`      | A list of services for which targets are retrieved. If omitted, all services are scraped.                       |                  | no       |
+| `tag_separator`          | `string`            | The string by which Consul tags are joined into the tag label.                                                  | `,`              | no       |
+| `tags`                   | `list(string)`      | An optional list of tags used to filter nodes for a given service. Services must contain all tags in the list.  |                  | no       |
+| `token`                  | `secret`            | Secret token used to access the Consul API.                                                                     |                  | no       |
+| `username`               | `string`            | The username to use. Deprecated in favor of the `basic_auth` configuration.                                     |                  | no       |
 
  At most, one of the following can be provided:
 
@@ -68,41 +69,41 @@ Name                     | Type                | Description                    
 
 You can use the following blocks with `discovery.consul`:
 
-Block                   | Description                                                | Required
-------------------------|------------------------------------------------------------|---------
-[authorization][]       | Configure generic authorization to the endpoint.           | no
-[basic_auth][]          | Configure `basic_auth` for authenticating to the endpoint. | no
-[oauth2][]              | Configure OAuth 2.0 for authenticating to the endpoint.    | no
-oauth2 > [tls_config][] | Configure TLS settings for connecting to the endpoint.     | no
-[tls_config][]          | Configure TLS settings for connecting to the endpoint.     | no
+| Block                                 | Description                                                | Required |
+| ------------------------------------- | ---------------------------------------------------------- | -------- |
+| [`authorization`][authorization]      | Configure generic authorization to the endpoint.           | no       |
+| [`basic_auth`][basic_auth]            | Configure `basic_auth` for authenticating to the endpoint. | no       |
+| [`oauth2`][oauth2]                    | Configure OAuth 2.0 for authenticating to the endpoint.    | no       |
+| `oauth2` > [`tls_config`][tls_config] | Configure TLS settings for connecting to the endpoint.     | no       |
+| [`tls_config`][tls_config]            | Configure TLS settings for connecting to the endpoint.     | no       |
 
 The > symbol indicates deeper levels of nesting.
-For example, `oauth2 > tls_config` refers to a `tls_config` block defined inside an `oauth2` block.
+For example, `oauth2` > `tls_config` refers to a `tls_config` block defined inside an `oauth2` block.
 
 [authorization]: #authorization
 [basic_auth]: #basic_auth
 [oauth2]: #oauth2
 [tls_config]: #tls_config
 
-### authorization
+### `authorization`
 
 The `authorization` block configures generic authorization to the endpoint.
 
 {{< docs/shared lookup="reference/components/authorization-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### basic_auth
+### `basic_auth`
 
 The `basic_auth` block configures basic authentication to the endpoint.
 
 {{< docs/shared lookup="reference/components/basic-auth-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### oauth2
+### `oauth2`
 
 The `oauth` block configures OAuth 2.0 authentication to the endpoint.
 
 {{< docs/shared lookup="reference/components/oauth2-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### tls_config
+### `tls_config`
 
 The `tls_config` block configures TLS settings for connecting to the endpoint.
 
@@ -112,9 +113,9 @@ The `tls_config` block configures TLS settings for connecting to the endpoint.
 
 The following fields are exported and can be referenced by other components:
 
-Name      | Type                | Description
-----------|---------------------|-----------------------------------------------------------
-`targets` | `list(map(string))` | The set of targets discovered from the Consul catalog API.
+| Name      | Type                | Description                                                |
+| --------- | ------------------- | ---------------------------------------------------------- |
+| `targets` | `list(map(string))` | The set of targets discovered from the Consul catalog API. |
 
 Each target includes the following labels:
 

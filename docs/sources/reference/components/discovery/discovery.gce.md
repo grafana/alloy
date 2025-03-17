@@ -8,7 +8,7 @@ labels:
 title: discovery.gce
 ---
 
-# discovery.gce
+# `discovery.gce`
 
 `discovery.gce` allows you to retrieve scrape targets from [Google Compute Engine][] (GCE) instances.
 The private IP address is used by default, but may be changed to the public IP address with relabeling.
@@ -37,14 +37,14 @@ discovery.gce "<LABEL>" {
 
 You can use the following arguments with `discovery.gce`:
 
-Name               | Type       | Description                                                                                                             | Default | Required
--------------------|------------|-------------------------------------------------------------------------------------------------------------------------|---------|---------
-`project`          | `string`   | The Google Cloud Platform Project.                                                                                                        |         | yes
-`zone`             | `string`   | The zone of the scrape targets.                                                                                         |         | yes
-`filter`           | `string`   | Filter can be used optionally to filter the instance list by other criteria.                                            |         | no
-`port`             | `int`      | The port to scrape metrics from. If using the public IP address, this must instead be specified in the relabeling rule. | `80`    | no
-`refresh_interval` | `duration` | Refresh interval to re-read the instance list.                                                                          | `"60s"` | no
-`tag_separator`    | `string`   | The tag separator is used to separate the tags on concatenation.                                                        | `","`   | no
+| Name               | Type       | Description                                                                                                             | Default | Required |
+| ------------------ | ---------- | ----------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
+| `project`          | `string`   | The Google Cloud Platform Project.                                                                                      |         | yes      |
+| `zone`             | `string`   | The zone of the scrape targets.                                                                                         |         | yes      |
+| `filter`           | `string`   | Filter can be used optionally to filter the instance list by other criteria.                                            |         | no       |
+| `port`             | `int`      | The port to scrape metrics from. If using the public IP address, this must instead be specified in the relabeling rule. | `80`    | no       |
+| `refresh_interval` | `duration` | Refresh interval to re-read the instance list.                                                                          | `"60s"` | no       |
+| `tag_separator`    | `string`   | The tag separator is used to separate the tags on concatenation.                                                        | `","`   | no       |
 
 For more information on the syntax of the `filter` argument, refer to Google's `filter` documentation for [Method: instances.list][].
 
@@ -58,9 +58,9 @@ The `discovery.gce` component doesn't support any blocks. You can configure this
 
 The following fields are exported and can be referenced by other components:
 
-Name      | Type                | Description
-----------|---------------------|-----------------------------------
-`targets` | `list(map(string))` | The set of discovered GCE targets.
+| Name      | Type                | Description                        |
+| --------- | ------------------- | ---------------------------------- |
+| `targets` | `list(map(string))` | The set of discovered GCE targets. |
 
 Each target includes the following labels:
 

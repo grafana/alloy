@@ -14,7 +14,6 @@ import (
 	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/confignet"
 	otelpexporterhelper "go.opentelemetry.io/collector/exporter/exporterhelper"
-	otelextension "go.opentelemetry.io/collector/extension"
 	"go.opentelemetry.io/collector/pipeline"
 )
 
@@ -68,7 +67,6 @@ func (args *Arguments) SetToDefault() {
 	args.Queue.Enabled = false // Upstream has this disabled by default
 	args.Retry.SetToDefault()
 	args.DebugMetrics.SetToDefault()
-
 }
 
 // Convert implements exporter.Arguments.
@@ -89,7 +87,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 }
 
 // Extensions implements exporter.Arguments.
-func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
+func (args Arguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 

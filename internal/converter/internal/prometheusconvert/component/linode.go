@@ -32,6 +32,7 @@ func toDiscoveryLinode(sdConfig *prom_linode.SDConfig) *linode.Arguments {
 		RefreshInterval:  time.Duration(sdConfig.RefreshInterval),
 		Port:             sdConfig.Port,
 		TagSeparator:     sdConfig.TagSeparator,
+		Region:           sdConfig.Region,
 		HTTPClientConfig: *common.ToHttpClientConfig(&sdConfig.HTTPClientConfig),
 	}
 }

@@ -207,17 +207,24 @@ func newController(o controllerOptions) *Runtime {
 			OnExportsChange: o.OnExportsChange,
 			Registerer:      o.Reg,
 			ControllerID:    o.ControllerID,
-			NewModuleController: func(id string) controller.ModuleController {
+			NewModuleController: func(opts controller.ModuleControllerOpts) controller.ModuleController {
+				// The module controller registry should take precedence.,
+				// because it is tailored to this module.
+				reg := o.Reg
+				if opts.RegOverride != nil {
+					reg = opts.RegOverride
+				}
+
 				return newModuleController(&moduleControllerOptions{
 					ComponentRegistry:    o.ComponentRegistry,
 					ModuleRegistry:       o.ModuleRegistry,
 					Logger:               log,
 					Tracer:               tracer,
-					Reg:                  o.Reg,
+					Reg:                  reg,
 					DataPath:             o.DataPath,
 					MinStability:         o.MinStability,
 					EnableCommunityComps: o.EnableCommunityComps,
-					ID:                   id,
+					ID:                   opts.Id,
 					ServiceMap:           serviceMap,
 					WorkerPool:           workerPool,
 				})
@@ -265,6 +272,7 @@ func (f *Runtime) Run(ctx context.Context) {
 				components = f.loader.Components()
 				services   = f.loader.Services()
 				imports    = f.loader.Imports()
+				forEachs   = f.loader.ForEachs()
 
 				runnables = make([]controller.RunnableNode, 0, len(components)+len(services)+len(imports))
 			)
@@ -274,6 +282,10 @@ func (f *Runtime) Run(ctx context.Context) {
 
 			for _, i := range imports {
 				runnables = append(runnables, i)
+			}
+
+			for _, fe := range forEachs {
+				runnables = append(runnables, fe)
 			}
 
 			// Only the root controller should run services, since modules share the

@@ -194,7 +194,7 @@ func (h *Handler) postProcessLabels(lbs labels.Labels) model.LabelSet {
 		}
 
 		// ignore invalid labels
-		if !model.LabelName(lbl.Name).IsValid() || !model.LabelValue(lbl.Value).IsValid() {
+		if !model.LabelName(lbl.Name).IsValidLegacy() || !model.LabelValue(lbl.Value).IsValid() {
 			continue
 		}
 
@@ -316,13 +316,13 @@ func (h *Handler) tryToGetStaticLabelsFromRequest(req *http.Request, tenantID st
 		// construct model.LabelName from the header value, if the raw data is not valid label name, try to fix it and use
 		rawLabelName := strings.TrimPrefix(name, commonAttributesLabelPrefix)
 		labelName := model.LabelName(rawLabelName)
-		if !labelName.IsValid() {
+		if !labelName.IsValidLegacy() {
 			level.Debug(h.logger).Log(fmt.Sprintf("label name is not valid, trying to fix: %s", rawLabelName))
 
 			// try to sanitize label name
 			sanitizedLabelName := yacepromutil.PromString(rawLabelName)
 			labelName = model.LabelName(sanitizedLabelName)
-			if !labelName.IsValid() {
+			if !labelName.IsValidLegacy() {
 				// This situation can happen when:
 				// - the header with label information is a valid JSON
 				// - the label name is not valid and can not be sanitized

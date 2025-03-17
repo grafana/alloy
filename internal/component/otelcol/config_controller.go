@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/grafana/alloy/syntax"
-	"go.opentelemetry.io/collector/receiver/scraperhelper"
+	"go.opentelemetry.io/collector/scraper/scraperhelper"
 )
 
 // ControllerArguments defines common settings for a scraper controller

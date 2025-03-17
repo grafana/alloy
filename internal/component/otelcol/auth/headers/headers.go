@@ -14,7 +14,6 @@ import (
 	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/extension/headerssetterextension"
 	otelcomponent "go.opentelemetry.io/collector/component"
-	otelextension "go.opentelemetry.io/collector/extension"
 	"go.opentelemetry.io/collector/pipeline"
 )
 
@@ -76,13 +75,13 @@ func (args Arguments) ConvertClient() (otelcomponent.Config, error) {
 	}, nil
 }
 
-// ConvertServer returns nil since theheaders extension does not support server authenticaiton.
+// ConvertServer returns nil since theheaders extension does not support server authentication.
 func (args Arguments) ConvertServer() (otelcomponent.Config, error) {
 	return nil, nil
 }
 
 // Extensions implements auth.Arguments.
-func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
+func (args Arguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 

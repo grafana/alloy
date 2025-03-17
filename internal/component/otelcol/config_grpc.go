@@ -10,7 +10,6 @@ import (
 	otelconfiggrpc "go.opentelemetry.io/collector/config/configgrpc"
 	"go.opentelemetry.io/collector/config/confignet"
 	"go.opentelemetry.io/collector/config/configopaque"
-	otelextension "go.opentelemetry.io/collector/extension"
 )
 
 const DefaultBalancerName = "round_robin"
@@ -76,8 +75,8 @@ func (args *GRPCServerArguments) Convert() (*otelconfiggrpc.ServerConfig, error)
 }
 
 // Extensions exposes extensions used by args.
-func (args *GRPCServerArguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
-	m := make(map[otelcomponent.ID]otelextension.Extension)
+func (args *GRPCServerArguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
+	m := make(map[otelcomponent.ID]otelcomponent.Component)
 	if args.Authentication != nil {
 		ext, err := args.Authentication.GetExtension(auth.Server)
 		if err != nil {
@@ -224,8 +223,8 @@ func (args *GRPCClientArguments) Convert() (*otelconfiggrpc.ClientConfig, error)
 }
 
 // Extensions exposes extensions used by args.
-func (args *GRPCClientArguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
-	m := make(map[otelcomponent.ID]otelextension.Extension)
+func (args *GRPCClientArguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
+	m := make(map[otelcomponent.ID]otelcomponent.Component)
 	if args.Authentication != nil {
 		ext, err := args.Authentication.GetExtension(auth.Client)
 		if err != nil {

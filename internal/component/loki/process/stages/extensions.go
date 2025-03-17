@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/client_golang/prometheus"
@@ -55,7 +56,7 @@ func (args *CRIConfig) Validate() error {
 
 // NewDocker creates a predefined pipeline for parsing entries in the Docker
 // json log format.
-func NewDocker(logger log.Logger, registerer prometheus.Registerer) (Stage, error) {
+func NewDocker(logger log.Logger, registerer prometheus.Registerer, minStability featuregate.Stability) (Stage, error) {
 	stages := []StageConfig{
 		{
 			JSONConfig: &JSONConfig{
@@ -83,7 +84,7 @@ func NewDocker(logger log.Logger, registerer prometheus.Registerer) (Stage, erro
 			},
 		},
 	}
-	return NewPipeline(logger, stages, nil, registerer)
+	return NewPipeline(logger, stages, nil, registerer, minStability)
 }
 
 type cri struct {
@@ -169,7 +170,7 @@ func (c *cri) ensureTruncateIfRequired(e *Entry) {
 
 // NewCRI creates a predefined pipeline for parsing entries in the CRI log
 // format.
-func NewCRI(logger log.Logger, config CRIConfig, registerer prometheus.Registerer) (Stage, error) {
+func NewCRI(logger log.Logger, config CRIConfig, registerer prometheus.Registerer, minStability featuregate.Stability) (Stage, error) {
 	base := []StageConfig{
 		{
 			RegexConfig: &RegexConfig{
@@ -199,7 +200,7 @@ func NewCRI(logger log.Logger, config CRIConfig, registerer prometheus.Registere
 		},
 	}
 
-	p, err := NewPipeline(logger, base, nil, registerer)
+	p, err := NewPipeline(logger, base, nil, registerer, minStability)
 	if err != nil {
 		return nil, err
 	}

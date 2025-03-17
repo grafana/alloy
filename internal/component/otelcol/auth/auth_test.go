@@ -58,7 +58,7 @@ func newTestEnvironment(t *testing.T, onCreated func()) *testEnvironment {
 					_ context.Context,
 					_ otelextension.Settings,
 					_ otelcomponent.Config,
-				) (otelcomponent.Component, error) {
+				) (otelextension.Extension, error) {
 
 					onCreated()
 					return fakeOtelComponent{}, nil
@@ -113,7 +113,7 @@ func (fa *fakeAuthArgs) AuthFeatures() auth.AuthFeature {
 	return result.Get(0).(auth.AuthFeature)
 }
 
-func (fa *fakeAuthArgs) Extensions() map[otelcomponent.ID]otelextension.Extension {
+func (fa *fakeAuthArgs) Extensions() map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 
@@ -283,7 +283,7 @@ func TestAuthHandler(t *testing.T) {
 // validateHandler determines what the correct state of the extension handler should be depending
 // on the test case state. If the extension supports the authentication requested it should return
 // the extension. Otherwise it should return an error saying the extension does not support the requested
-// type of authenticaiton.
+// type of authentication.
 func validateHandler(t *testing.T, eh *auth.ExtensionHandler, authSupported bool, actualErr error, expectedError error) {
 	t.Helper()
 	if authSupported {

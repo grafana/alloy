@@ -8,7 +8,7 @@ labels:
 title: discovery.digitalocean
 ---
 
-# discovery.digitalocean
+# `discovery.digitalocean`
 
 `discovery.digitalocean` discovers [DigitalOcean][] Droplets and exposes them as targets.
 
@@ -28,18 +28,19 @@ discovery.digitalocean "<LABEL>" {
 
 You can use the following arguments with `discovery.digitalocean`:
 
-Name                     | Type                | Description                                                                                      | Default | Required
--------------------------|---------------------|--------------------------------------------------------------------------------------------------|---------|---------
-`bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                             |         | no
-`bearer_token`           | `secret`            | Bearer token to authenticate with.                                                               |         | no
-`enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`  | no
-`follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`  | no
-`no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |         | no
-`port`                   | `number`            | Port to be appended to the `__address__` label for each Droplet.                                 | `80`    | no
-`proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |         | no
-`proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false` | no
-`proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |         | no
-`refresh_interval`       | `duration`          | Frequency to refresh list of Droplets.                                                           | `"1m"`  | no
+| Name                     | Type                | Description                                                                                      | Default | Required |
+| ------------------------ | ------------------- | ------------------------------------------------------------------------------------------------ | ------- | -------- |
+| `bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                             |         | no       |
+| `bearer_token`           | `secret`            | Bearer token to authenticate with.                                                               |         | no       |
+| `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`  | no       |
+| `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`  | no       |
+| `http_headers`           | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.          |                      | no       |
+| `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |         | no       |
+| `port`                   | `number`            | Port to be appended to the `__address__` label for each Droplet.                                 | `80`    | no       |
+| `proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |         | no       |
+| `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false` | no       |
+| `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |         | no       |
+| `refresh_interval`       | `duration`          | Frequency to refresh list of Droplets.                                                           | `"1m"`  | no       |
 
 The DigitalOcean API uses bearer tokens for authentication, see more about it in the [DigitalOcean API documentation](https://docs.digitalocean.com/reference/api/api-reference/#section/Authentication).
 
@@ -57,9 +58,9 @@ The `discovery.digitalocean` component doesn't support any blocks. You can confi
 
 The following fields are exported and can be referenced by other components:
 
-Name      | Type                | Description
-----------|---------------------|---------------------------------------------------------
-`targets` | `list(map(string))` | The set of targets discovered from the DigitalOcean API.
+| Name      | Type                | Description                                              |
+| --------- | ------------------- | -------------------------------------------------------- |
+| `targets` | `list(map(string))` | The set of targets discovered from the DigitalOcean API. |
 
 Each target includes the following labels:
 
