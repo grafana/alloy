@@ -48,7 +48,7 @@ docker ps
 
 ## Monitor the health of your {{% param "PRODUCT_NAME" %}} deployment
 
-To monitor the health of your {{< param "PRODUCT_NAME" >}} deployment, open your browser and navigate to [`http://localhost:12345`](http://localhost:12345).
+To monitor the health of your {{< param "PRODUCT_NAME" >}} deployment, open your browser and navigate to [http://localhost:12345](http://localhost:12345).
 
 Refer to [Debug Grafana Alloy](https://grafana.com/docs/alloy/latest/troubleshoot/debug/) for more information about the {{< param "PRODUCT_NAME" >}} UI.
 
@@ -74,7 +74,11 @@ The {{< param "PRODUCT_NAME" >}} configuration file is split into two parts, the
 
 ### Configure metrics
 
-The metrics configuration in this example requires three components, `prometheus.exporter.cadvisor`, `prometheus.scrape`, and `prometheus.remote_write`.
+The metrics configuration in this example requires three components:
+
+* `prometheus.exporter.cadvisor`
+* `prometheus.scrape`
+* `prometheus.remote_write`
 
 #### `prometheus.exporter.cadvisor`
 
@@ -106,7 +110,6 @@ prometheus.scrape "scraper" {
   targets    = prometheus.exporter.cadvisor.example.targets
   forward_to = [ prometheus.remote_write.demo.receiver ]
 
-
   scrape_interval = "10s"
 }
 ```
@@ -132,7 +135,12 @@ prometheus.remote_write "demo" {
 
 ### Configure logging
 
-The logging configuration in this example requires four components, `discovery.docker`, `discovery.relabel`, `loki.source.docker`, and `loki.write`.
+The logging configuration in this example requires four components:
+
+* `discovery.docker`
+* `discovery.relabel`
+* `loki.source.docker`
+* `loki.write`
 
 #### `discovery.docker`
 
