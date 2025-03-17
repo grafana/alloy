@@ -1,12 +1,12 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/tutorials/scenarios/monitor-tcp-logs/
-description: Learn how to use Grafana Alloy to parse structured logs
-menuTitle: Parse structured logs
-title: Parse structured logs with Grafan Alloy
+description: Learn how to use Grafana Alloy to monitor structured logs
+menuTitle: Monitor structured logs
+title: Monitor structured logs with Grafan Alloy
 weight: 600
 ---
 
-# Parse structured logs with {{% param "FULL_PRODUCT_NAME" %}}
+# Monitor structured logs with {{% param "FULL_PRODUCT_NAME" %}}
 
 ## Before you begin
 
