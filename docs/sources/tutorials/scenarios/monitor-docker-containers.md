@@ -70,7 +70,7 @@ docker compose down
 
 ## Understand the {{% param "PRODUCT_NAME" %}} configuration
 
-The {{< param "PRODUCT_NAME" >}} configuration file is split into two parts, the metrics configuration and the logging configuration.
+This example requires you to configure components for metrics and logging.
 
 ### Configure metrics
 
@@ -218,4 +218,4 @@ loki.write "local" {
 [discovery.docker]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/discovery/discovery.docker/
 [discovery.relabel]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/discovery/discovery.relabel/
 [loki.source.docker]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/loki/loki.source.docker/
-[loki.write]: https://grafana.com/docs/alloy/latest/reference/components/loki/loki.write/
+[loki.write]: https://grafana.com/docs/alloy/<ALLOY__VERSION>/reference/components/loki/loki.write/
