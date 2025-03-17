@@ -111,9 +111,16 @@ To use the Grafana Logs Drilldown, open your browser and navigate to [http://loc
 
 ## Understand the {{% param "PRODUCT_NAME" %}} configuration
 
-The {{< param "PRODUCT_NAME" >}} configuration file is split into two parts, the metrics configuration and the logging configuration.
+This example requires you to configure components for metrics and logging.
+`livedebugging` is included in the configuration so you can stream real-time data to the {{< param "PRODUCT_NAME" >}} UI.
 
 ### Configure Windows server metrics
+
+The metrics configuration in this example requires three components:
+
+* `prometheus.exporter.windows`
+* `prometheus.scrape`
+* `prometheus.remote_write`
 
 #### `prometheus.exporter.windows`
 
@@ -146,7 +153,20 @@ prometheus.remote_write "demo" {
 
 ### Configure Windows server logs
 
+The logging configuration in this example requires three components:
+
+* `loki.source.windowsevent`
+* `loki.process`
+* `loki.write`
+
 #### `loki.source.windowsevent`
+
+The [`loki.source.windowsevent`][loki.source.windowsevent] component reads events from Windows Event Logs and forwards them to other Loki components.
+In this example, the component needs the following arguments:
+
+* `eventlog_name`: The event log to read from.
+* `use_incoming_timestamp`: Assigns the current timestamp to the log.
+* `forward_to`: The list of receivers to send log entries to.
 
 ```alloy
 loki.source.windowsevent "application"  {
@@ -165,6 +185,15 @@ loki.source.windowsevent "System"  {
 ```
 
 #### `loki.process`
+
+The [`loki.process`][loki.process] component receives log entries from other Loki components, applies one or more processing stages, and forwards the results to the list of receivers.
+In this example, the component needs the following arguments:
+
+* `forward_to`: The list of receivers to send log entries to.
+* `expressions`: The key-value pairs that define the name of the data extracted and the value that it's populated with.
+* `values`: The key-value pairs that define the label to set and how to look them up.
+* `souce`: Name from extracted values map to use for the timestamp.
+* `overwrite_existing`: Overwrite the existing extracted data fields.
 
 ```alloy
 loki.process "endpoint" {
@@ -213,6 +242,11 @@ loki.process "endpoint" {
 
 #### `loki.write`
 
+The [`loki.write`][loki.write] component writes the logs out to a Loki destination.
+In this example, the component needs the following argument:
+
+* `url`: Defines the full URL endpoint in Loki to send logs to.
+
 ```alloy
 loki.write "endpoint" {
     endpoint {
@@ -221,16 +255,16 @@ loki.write "endpoint" {
 }
 ```
 
-### Configure debugging
+### Configure `livedebugging`
 
-Livedebugging streams real-time data from your components directly to the Alloy UI.
+`livedebugging` streams real-time data from your components directly to the Alloy UI.
 Refer to the [Troubleshooting documentation][troubleshooting] for more information about how you can use this feature in the {{< param "PRODUCT_NAME" >}} UI.
 
 [troubleshooting]: https://grafana.com/docs/alloy/latest/troubleshoot/debug/#live-debugging-page
 
 #### `livedebugging`
 
-Livedebugging is disabled by default.
+`livedebugging` is disabled by default.
 It must be explicitly enabled through the `livedebugging` configuration block to make the debugging data visible in the {{< param "PRODUCT_NAME" >}} UI.
 
 ```alloy
@@ -238,3 +272,7 @@ livedebugging {
   enabled = true
 }
 ```
+
+[loki.source.windowsevent]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/loki/loki.source.windowsevent/
+[loki.process]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/loki/loki.process/
+[loki.write]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/loki/loki.write/

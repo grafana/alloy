@@ -67,7 +67,7 @@ docker compose down
 ## Understand the {{% param "PRODUCT_NAME" %}} configuration
 
 This example requires you to configure components for logging.
-`livedebugging` is enabled so you can stream real-time data to the {{< param "PRODUCT_NAME" >}} UI.
+`livedebugging` is included in the configuration so you can stream real-time data to the {{< param "PRODUCT_NAME" >}} UI.
 
 ### Configure `livedebugging`
 
@@ -188,5 +188,5 @@ loki.write "local" {
 ```
 
 [loki.source.api]:  https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/loki/loki.source.api/
-[loki.process]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/loki/loki.process
+[loki.process]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/loki/loki.process/
 [loki.write]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/loki/loki.write/
