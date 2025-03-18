@@ -198,6 +198,8 @@ func (r *reconciler) reconcilePodLogs(ctx context.Context, cli client.Client, po
 		return targets, discoveredPodLogs
 	}
 
+	// Extract labels and annotations from the PodLogs object outside of the container loop to spend less time sanitizing labels.
+	podLogsTargetLabels := buildPodLogsTargetLabels(podLogs)
 	opts := []client.ListOption{
 		client.MatchingLabelsSelector{Selector: sel},
 	}
@@ -234,14 +236,15 @@ func (r *reconciler) reconcilePodLogs(ctx context.Context, cli client.Client, po
 
 		level.Debug(r.log).Log("msg", "found matching Pod", "key", key, "pod", client.ObjectKeyFromObject(&pod))
 
+		// Extract labels and annotations from the Pods object outside of the container loop to spend less time sanitizing labels.
+		podTargetLabels := buildPodsAndNamespacesTargetLabels(podLogsTargetLabels, pod, namespace)
 		handleContainer := func(container *corev1.Container, initContainer bool) {
 			targetLabels := buildTargetLabels(discoveredContainer{
 				PodLogs:       podLogs,
-				PodNamespace:  &namespace,
 				Pod:           &pod,
 				Container:     container,
 				InitContainer: initContainer,
-			})
+			}, podTargetLabels)
 			processedLabels, _ := relabel.Process(targetLabels.Copy(), relabelRules...)
 
 			defaultJob := fmt.Sprintf("%s/%s:%s", podLogs.Namespace, podLogs.Name, container.Name)
@@ -280,6 +283,56 @@ func (r *reconciler) reconcilePodLogs(ctx context.Context, cli client.Client, po
 	return targets, discoveredPodLogs
 }
 
+// buildPodLogsTargetLabels builds the target labels for a PodLogs object.
+func buildPodLogsTargetLabels(podLogs *monitoringv1alpha2.PodLogs) promlabels.Labels {
+	podLogsTargetLabels := promlabels.NewBuilder(nil)
+	podLogsTargetLabels.Set("__meta_kubernetes_podlogs_namespace", podLogs.Namespace)
+	podLogsTargetLabels.Set("__meta_kubernetes_podlogs_name", podLogs.Name)
+	for key, value := range podLogs.Labels {
+		key = strutil.SanitizeLabelName(key)
+		podLogsTargetLabels.Set("__meta_kubernetes_podlogs_label_"+key, value)
+		podLogsTargetLabels.Set("__meta_kubernetes_podlogs_labelpresent_"+key, "true")
+	}
+	for key, value := range podLogs.Annotations {
+		key = strutil.SanitizeLabelName(key)
+		podLogsTargetLabels.Set("__meta_kubernetes_podlogs_annotation_"+key, value)
+		podLogsTargetLabels.Set("__meta_kubernetes_podlogs_annotationpresent_"+key, "true")
+	}
+	return podLogsTargetLabels.Labels()
+}
+
+// buildPodsAndNamespacesTargetLabels builds the target labels for a Pod and its
+// Namespace.
+func buildPodsAndNamespacesTargetLabels(podLogsTargetLabels promlabels.Labels, pod corev1.Pod, namespace corev1.Namespace) promlabels.Labels {
+	podTargetLabels := promlabels.NewBuilder(podLogsTargetLabels)
+
+	podTargetLabels.Set("__meta_kubernetes_namespace", pod.Namespace)
+	for key, value := range namespace.Labels {
+		key = strutil.SanitizeLabelName(key)
+		podTargetLabels.Set("__meta_kubernetes_namespace_label_"+key, value)
+		podTargetLabels.Set("__meta_kubernetes_namespace_labelpresent_"+key, "true")
+	}
+	for key, value := range namespace.Annotations {
+		key = strutil.SanitizeLabelName(key)
+		podTargetLabels.Set("__meta_kubernetes_namespace_annotation_"+key, value)
+		podTargetLabels.Set("__meta_kubernetes_namespace_annotationpresent_"+key, "true")
+	}
+
+	podTargetLabels.Set("__meta_kubernetes_pod_name", pod.Name)
+	podTargetLabels.Set("__meta_kubernetes_pod_ip", pod.Status.PodIP)
+	for key, value := range pod.Labels {
+		key = strutil.SanitizeLabelName(key)
+		podTargetLabels.Set("__meta_kubernetes_pod_label_"+key, value)
+		podTargetLabels.Set("__meta_kubernetes_pod_labelpresent_"+key, "true")
+	}
+	for key, value := range pod.Annotations {
+		key = strutil.SanitizeLabelName(key)
+		podTargetLabels.Set("__meta_kubernetes_pod_annotation_"+key, value)
+		podTargetLabels.Set("__meta_kubernetes_pod_annotationpresent_"+key, "true")
+	}
+	return podTargetLabels.Labels()
+}
+
 // DebugInfo returns the current debug information for the reconciler.
 func (r *reconciler) DebugInfo() []DiscoveredPodLogs {
 	r.debugMut.RLock()
@@ -290,52 +343,14 @@ func (r *reconciler) DebugInfo() []DiscoveredPodLogs {
 
 type discoveredContainer struct {
 	PodLogs       *monitoringv1alpha2.PodLogs
-	PodNamespace  *corev1.Namespace
 	Pod           *corev1.Pod
 	Container     *corev1.Container
 	InitContainer bool
 }
 
-func buildTargetLabels(opts discoveredContainer) promlabels.Labels {
-	targetLabels := promlabels.NewBuilder(nil)
+func buildTargetLabels(opts discoveredContainer, prediscoveredLabels promlabels.Labels) promlabels.Labels {
+	targetLabels := promlabels.NewBuilder(prediscoveredLabels)
 
-	targetLabels.Set("__meta_kubernetes_podlogs_namespace", opts.PodLogs.Namespace)
-	targetLabels.Set("__meta_kubernetes_podlogs_name", opts.PodLogs.Name)
-	for key, value := range opts.PodLogs.Labels {
-		key = strutil.SanitizeLabelName(key)
-		targetLabels.Set("__meta_kubernetes_podlogs_label_"+key, value)
-		targetLabels.Set("__meta_kubernetes_podlogs_labelpresent_"+key, "true")
-	}
-	for key, value := range opts.PodLogs.Annotations {
-		key = strutil.SanitizeLabelName(key)
-		targetLabels.Set("__meta_kubernetes_podlogs_annotation_"+key, value)
-		targetLabels.Set("__meta_kubernetes_podlogs_annotationpresent_"+key, "true")
-	}
-
-	targetLabels.Set("__meta_kubernetes_namespace", opts.Pod.Namespace)
-	for key, value := range opts.PodNamespace.Labels {
-		key = strutil.SanitizeLabelName(key)
-		targetLabels.Set("__meta_kubernetes_namespace_label_"+key, value)
-		targetLabels.Set("__meta_kubernetes_namespace_labelpresent_"+key, "true")
-	}
-	for key, value := range opts.PodNamespace.Annotations {
-		key = strutil.SanitizeLabelName(key)
-		targetLabels.Set("__meta_kubernetes_namespace_annotation_"+key, value)
-		targetLabels.Set("__meta_kubernetes_namespace_annotationpresent_"+key, "true")
-	}
-
-	targetLabels.Set("__meta_kubernetes_pod_name", opts.Pod.Name)
-	targetLabels.Set("__meta_kubernetes_pod_ip", opts.Pod.Status.PodIP)
-	for key, value := range opts.Pod.Labels {
-		key = strutil.SanitizeLabelName(key)
-		targetLabels.Set("__meta_kubernetes_pod_label_"+key, value)
-		targetLabels.Set("__meta_kubernetes_pod_labelpresent_"+key, "true")
-	}
-	for key, value := range opts.Pod.Annotations {
-		key = strutil.SanitizeLabelName(key)
-		targetLabels.Set("__meta_kubernetes_pod_annotation_"+key, value)
-		targetLabels.Set("__meta_kubernetes_pod_annotationpresent_"+key, "true")
-	}
 	targetLabels.Set("__meta_kubernetes_pod_container_init", fmt.Sprint(opts.InitContainer))
 	targetLabels.Set("__meta_kubernetes_pod_container_name", opts.Container.Name)
 	targetLabels.Set("__meta_kubernetes_pod_container_image", opts.Container.Image)

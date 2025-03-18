@@ -48,6 +48,8 @@ Main (unreleased)
 
 - Reduced lock contention in `prometheus.scrape` component (@thampiotr)
 
+- Reduce CPU usage of the `loki.source.podlogs` component when pods logs target lots of pods (@QuentinBisson)
+
 ### Bugfixes
 
 - Fix deadlocks in `loki.source.file` when tailing fails (@mblaschke)
