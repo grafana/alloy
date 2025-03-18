@@ -9,21 +9,17 @@ import (
 	"time"
 
 	"github.com/go-kit/log/level"
-	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter"
-
-	"go.opentelemetry.io/ebpf-profiler/reporter/samples"
-
-	"go.opentelemetry.io/ebpf-profiler/pyroscope/dynamicprofiling"
-	"go.opentelemetry.io/ebpf-profiler/pyroscope/symb/irsymcache"
-
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/pyroscope"
+	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter"
 	"github.com/grafana/alloy/internal/featuregate"
-
 	"github.com/oklog/run"
-
+	"github.com/sirupsen/logrus"
 	sd "go.opentelemetry.io/ebpf-profiler/pyroscope/discovery"
+	"go.opentelemetry.io/ebpf-profiler/pyroscope/dynamicprofiling"
 	"go.opentelemetry.io/ebpf-profiler/pyroscope/internalshim/controller"
+	"go.opentelemetry.io/ebpf-profiler/pyroscope/symb/irsymcache"
+	"go.opentelemetry.io/ebpf-profiler/reporter/samples"
 )
 
 func init() {
@@ -88,6 +84,10 @@ func New(opts component.Options, args Arguments) (component.Component, error) {
 	if err != nil {
 		return nil, err
 	}
+	if cfg.VerboseMode {
+		logrus.SetLevel(logrus.DebugLevel)
+	}
+
 	return res, nil
 }
 
