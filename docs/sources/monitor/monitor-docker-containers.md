@@ -88,6 +88,8 @@ In this example, this component needs the following arguments:
 * `docker_host`: Defines the Docker endpoint.
 * `storage_duration`: Sets the time that data is stored in memory.
 
+This component provides the `prometheus.exporter.cadvisor.example.targets` target for `prometheus.scrape`.
+
 ```alloy
 prometheus.exporter.cadvisor "example" {
   docker_host = "unix:///var/run/docker.sock"
@@ -120,6 +122,8 @@ The [`prometheus.remote_write`][prometheus.remote_write] component sends metrics
 In this example, the component needs the following arguments:
 
 * `url`: Defines the full URL endpoint to send metrics to.
+
+This component provides the `prometheus.remote_write.demo.receiver` destination for `prometheus.scrape`.
 
 ```alloy
 prometheus.remote_write "demo" {
