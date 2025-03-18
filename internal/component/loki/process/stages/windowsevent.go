@@ -85,7 +85,6 @@ func (w *WindowsEventStage) processEntry(extracted map[string]interface{}, key s
 	// Messages are expected to have sections that are split by empty lines.
 	sections := strings.Split(s, "\r\n\r\n")
 	for i, section := range sections {
-
 		// The first section is extracted as the description of the message.
 		if i == 0 {
 			ek, err := w.sanitizeKey(descriptionLabel, extracted)

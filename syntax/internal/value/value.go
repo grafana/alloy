@@ -272,6 +272,18 @@ func (v Value) ReflectAddr() reflect.Value {
 	return addrRV
 }
 
+// TryConvertToObject will try to convert v into an Alloy object in a map[string]Value form. Returns (object, true) if
+// successful or (nil, false) if conversion was not possible.
+func (v Value) TryConvertToObject() (map[string]Value, bool) {
+	if v.Type() == TypeCapsule && v.Implements(reflect.TypeFor[ConvertibleIntoCapsule]()) {
+		objVal := make(map[string]Value)
+		if err := v.ReflectAddr().Interface().(ConvertibleIntoCapsule).ConvertInto(&objVal); err == nil {
+			return objVal, true
+		}
+	}
+	return nil, false
+}
+
 // makeValue converts a reflect value into a Value, dereferencing any pointers or
 // interface{} values.
 func makeValue(v reflect.Value) Value {

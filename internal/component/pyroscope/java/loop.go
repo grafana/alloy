@@ -305,7 +305,6 @@ func (p *profilingLoop) debugInfo() *debugInfoProfiledTarget {
 		d.ErrorMsg = p.error.Error()
 	}
 	return d
-
 }
 
 func (p *profilingLoop) interval() time.Duration {

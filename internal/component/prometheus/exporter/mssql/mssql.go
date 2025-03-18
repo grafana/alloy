@@ -43,6 +43,7 @@ var DefaultArguments = Arguments{
 // Arguments controls the mssql exporter.
 type Arguments struct {
 	ConnectionString   alloytypes.Secret         `alloy:"connection_string,attr"`
+	ConnectionName     string                    `alloy:"connection_name,attr,optional"`
 	MaxIdleConnections int                       `alloy:"max_idle_connections,attr,optional"`
 	MaxOpenConnections int                       `alloy:"max_open_connections,attr,optional"`
 	Timeout            time.Duration             `alloy:"timeout,attr,optional"`

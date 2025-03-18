@@ -561,7 +561,7 @@ func replaceSecrets(log string, secrets []fakeSecret, withPrefix bool, withHash 
 }
 
 func createTempGitleaksConfig(t *testing.T, content string) string {
-	f, err := os.CreateTemp("", "sample")
+	f, err := os.CreateTemp(t.TempDir(), "sample")
 	require.NoError(t, err)
 
 	_, err = f.WriteString(content)

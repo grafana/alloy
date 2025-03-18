@@ -34,6 +34,7 @@ You can use the following arguments with `discovery.consul`:
 | `datacenter`             | `string`            | Data center to query. If not provided, the default is used.                                                     |                  | no       |
 | `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                                        | `true`           | no       |
 | `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                                    | `true`           | no       |
+| `http_headers`           | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.          |                      | no       |
 | `namespace`              | `string`            | Namespace to use. Only supported in Consul Enterprise.                                                          |                  | no       |
 | `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying.                |                  | no       |
 | `node_meta`              | `map(string)`       | Node metadata key/value pairs to filter nodes for a given service.                                              |                  | no       |

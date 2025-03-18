@@ -42,6 +42,10 @@ func getHash(in []byte) string {
 
 const baseJitter = 100 * time.Millisecond
 
+// This value is used when we want to disable polling. We use a value that is
+// slightly less than MaxInt to avoid overflowing
+const disablePollingFrequency = math.MaxInt64 - baseJitter
+
 var errNotModified = errors.New("config not modified since last fetch")
 
 // Service implements a service for remote configuration.
@@ -58,7 +62,10 @@ type Service struct {
 
 	mut                  sync.RWMutex
 	asClient             collectorv1connect.CollectorServiceClient
+	clientFactory        func(args Arguments) (collectorv1connect.CollectorServiceClient, error)
 	ticker               *jitter.Ticker
+	updateTickerChan     chan struct{}
+	pollFrequency        time.Duration
 	dataPath             string
 	lastLoadedConfigHash string
 	systemAttrs          map[string]string
@@ -75,7 +82,7 @@ type Service struct {
 }
 
 type metrics struct {
-	lastFetchSuccess     prometheus.Gauge
+	lastLoadSuccess      prometheus.Gauge
 	lastFetchNotModified prometheus.Gauge
 	totalFailures        prometheus.Counter
 	configHash           *prometheus.GaugeVec
@@ -163,9 +170,21 @@ func New(opts Options) (*Service, error) {
 	}
 
 	return &Service{
-		opts:        opts,
-		systemAttrs: getSystemAttributes(),
-		ticker:      jitter.NewTicker(math.MaxInt64-baseJitter, baseJitter), // first argument is set as-is to avoid overflowing
+		opts:             opts,
+		systemAttrs:      getSystemAttributes(),
+		updateTickerChan: make(chan struct{}, 1),
+		pollFrequency:    disablePollingFrequency,
+		clientFactory: func(args Arguments) (collectorv1connect.CollectorServiceClient, error) {
+			httpClient, err := commonconfig.NewClientFromConfig(*args.HTTPClientConfig.Convert(), "remoteconfig")
+			if err != nil {
+				return nil, err
+			}
+			return collectorv1connect.NewCollectorServiceClient(
+				httpClient,
+				args.URL,
+				connect.WithHTTPGet(),
+			), nil
+		},
 	}, nil
 }
 
@@ -186,7 +205,7 @@ func (s *Service) registerMetrics() {
 			},
 			[]string{"hash"},
 		),
-		lastFetchSuccess: prom.NewGauge(
+		lastLoadSuccess: prom.NewGauge(
 			prometheus.GaugeOpts{
 				Name: "remotecfg_last_load_successful",
 				Help: "Remote config loaded successfully",
@@ -262,7 +281,17 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 	s.ctrl = host.NewController(ServiceName)
 
 	s.fetch()
-	s.registerCollector()
+	err := s.registerCollector()
+	if err != nil {
+		return err
+	}
+
+	s.ticker = jitter.NewTicker(s.pollFrequency, baseJitter)
+
+	defer func() {
+		s.ticker.Stop()
+		s.ticker = nil
+	}()
 
 	// Run the service's own controller.
 	go func() {
@@ -276,8 +305,9 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 			if err != nil {
 				level.Error(s.opts.Logger).Log("msg", "failed to fetch remote configuration from the API", "err", err)
 			}
+		case <-s.updateTickerChan:
+			s.ticker.Reset(s.pollFrequency)
 		case <-ctx.Done():
-			s.ticker.Stop()
 			return nil
 		}
 	}
@@ -286,12 +316,12 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 // Update implements [service.Service] and applies settings.
 func (s *Service) Update(newConfig any) error {
 	newArgs := newConfig.(Arguments)
+	s.mut.Lock()
 
 	// We either never set the block on the first place, or recently removed
 	// it. Make sure we stop everything gracefully before returning.
 	if newArgs.URL == "" {
-		s.mut.Lock()
-		s.ticker.Reset(math.MaxInt64 - baseJitter) // avoid overflowing
+		s.setPollFrequency(disablePollingFrequency)
 		s.asClient = noopClient{}
 		s.args.HTTPClientConfig = config.CloneDefaultHTTPClientConfig()
 		s.mut.Unlock()
@@ -300,26 +330,22 @@ func (s *Service) Update(newConfig any) error {
 		return nil
 	}
 
-	s.mut.Lock()
 	hash, err := newArgs.Hash()
 	if err != nil {
 		s.mut.Unlock()
 		return err
 	}
 	s.dataPath = filepath.Join(s.opts.StoragePath, ServiceName, hash)
-	s.ticker.Reset(newArgs.PollFrequency)
+
+	s.setPollFrequency(newArgs.PollFrequency)
 	// Update the HTTP client last since it might fail.
 	if !reflect.DeepEqual(s.args.HTTPClientConfig, newArgs.HTTPClientConfig) {
-		httpClient, err := commonconfig.NewClientFromConfig(*newArgs.HTTPClientConfig.Convert(), "remoteconfig")
+		client, err := s.clientFactory(newArgs)
 		if err != nil {
 			s.mut.Unlock()
 			return err
 		}
-		s.asClient = collectorv1connect.NewCollectorServiceClient(
-			httpClient,
-			newArgs.URL,
-			connect.WithHTTPGet(),
-		)
+		s.asClient = client
 	}
 	// Combine the new attributes on top of the system attributes
 	s.attrs = maps.Clone(s.systemAttrs)
@@ -327,8 +353,11 @@ func (s *Service) Update(newConfig any) error {
 
 	// Update the args as the last step to avoid polluting any comparisons
 	s.args = newArgs
-	s.registerCollector()
+	err = s.registerCollector()
 	s.mut.Unlock()
+	if err != nil {
+		return err
+	}
 
 	// If we've already called Run, then immediately trigger an API call with
 	// the updated Arguments, and/or fall back to the updated cache location.
@@ -380,12 +409,12 @@ func (s *Service) fetchRemote() error {
 	b, err := s.getAPIConfig()
 	s.metrics.totalAttempts.Add(1)
 
-	if err == nil || err == errNotModified {
-		s.metrics.lastFetchSuccess.Set(1)
+	if err == nil {
+		s.metrics.lastLoadSuccess.Set(1)
 		s.metrics.lastFetchSuccessTime.SetToCurrentTime()
-	} else {
+	} else if err != errNotModified {
 		s.metrics.totalFailures.Add(1)
-		s.metrics.lastFetchSuccess.Set(0)
+		s.metrics.lastLoadSuccess.Set(0)
 		return err
 	}
 
@@ -522,4 +551,15 @@ func (s *Service) isEnabled() bool {
 		s.registerMetrics()
 	}
 	return enabled
+}
+
+func (s *Service) setPollFrequency(t time.Duration) {
+	s.pollFrequency = t
+	select {
+	// If the channel is full it means there's already an update triggered
+	// or Run is not running. In both cases, we don't need to trigger another
+	// update or block.
+	case s.updateTickerChan <- struct{}{}:
+	default:
+	}
 }

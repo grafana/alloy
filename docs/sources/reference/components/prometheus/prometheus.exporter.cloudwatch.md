@@ -474,8 +474,8 @@ When you configure a discovery job, make sure the `type` field of each `discover
 * Namespace: `AWS/Route53Resolver`
 * Namespace: `AWS/RUM`
 * Namespace: `AWS/S3`
-* Namespace: `AWS/Sagemaker/ModelBuildingPipeline`
 * Namespace: `AWS/SageMaker`
+* Namespace: `AWS/Sagemaker/ModelBuildingPipeline`
 * Namespace: `AWS/SecretsManager`
 * Namespace: `AWS/SES`
 * Namespace: `AWS/SNS`

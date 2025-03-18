@@ -5,9 +5,9 @@ package asprof
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
-	"path/filepath"
 )
 
 var embeddedArchiveVersion = 300

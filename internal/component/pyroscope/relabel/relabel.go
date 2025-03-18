@@ -17,14 +17,14 @@ import (
 	"reflect"
 	"sort"
 	"sync"
-	"sync/atomic"
+
+	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/grafana/pyroscope/api/model/labelset"
 
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/prometheus/common/model"
@@ -168,10 +168,7 @@ func (c *Component) Append(ctx context.Context, lbls labels.Labels, samples []*p
 		return c.fanout.Appender().Append(ctx, lbls, samples)
 	}
 
-	newLabels, keep, err := c.relabel(lbls)
-	if err != nil {
-		return err
-	}
+	newLabels, keep := c.relabel(lbls)
 	if !keep {
 		c.metrics.profilesDropped.Inc()
 		level.Debug(c.opts.Logger).Log("msg", "profile dropped by relabel rules", "labels", lbls.String())
@@ -197,10 +194,7 @@ func (c *Component) AppendIngest(ctx context.Context, profile *pyroscope.Incomin
 		return c.fanout.Appender().AppendIngest(ctx, profile)
 	}
 
-	newLabels, keep, err := c.relabel(profile.Labels)
-	if err != nil {
-		return fmt.Errorf("processing labels: %w", err)
-	}
+	newLabels, keep := c.relabel(profile.Labels)
 	if !keep {
 		c.metrics.profilesDropped.Inc()
 		level.Debug(c.opts.Logger).Log("msg", "profile dropped by relabel rules")
@@ -223,13 +217,13 @@ type cacheItem struct {
 
 // relabel applies the configured relabeling rules to the input labels
 // Returns the new labels, whether to keep the profile, and any error
-func (c *Component) relabel(lbls labels.Labels) (labels.Labels, bool, error) {
+func (c *Component) relabel(lbls labels.Labels) (labels.Labels, bool) {
 	labelSet := toModelLabelSet(lbls)
 	hash := labelSet.Fingerprint()
 
 	// Check cache
 	if result, keep, found := c.getCacheEntry(hash, labelSet); found {
-		return result, keep, nil
+		return result, keep
 	}
 
 	// Apply relabeling
@@ -237,7 +231,7 @@ func (c *Component) relabel(lbls labels.Labels) (labels.Labels, bool, error) {
 	keep := relabel.ProcessBuilder(builder, c.rcs...)
 	if !keep {
 		c.addToCache(hash, labelSet, labels.EmptyLabels())
-		return labels.EmptyLabels(), false, nil
+		return labels.EmptyLabels(), false
 	}
 
 	newLabels := builder.Labels()
@@ -245,7 +239,7 @@ func (c *Component) relabel(lbls labels.Labels) (labels.Labels, bool, error) {
 	// Cache result
 	c.addToCache(hash, labelSet, newLabels)
 
-	return newLabels, true, nil
+	return newLabels, true
 }
 
 func (c *Component) getCacheEntry(hash model.Fingerprint, labelSet model.LabelSet) (labels.Labels, bool, bool) {
@@ -275,37 +269,6 @@ func (c *Component) addToCache(hash model.Fingerprint, original model.LabelSet, 
 	})
 	c.cache.Add(hash, cacheValue)
 	c.metrics.cacheSize.Set(float64(c.cache.Len()))
-}
-
-// extractLabelsFromIncomingProfile converts profile labels to Prometheus labels
-func extractLabelsFromIncomingProfile(profile *pyroscope.IncomingProfile) (labels.Labels, error) {
-	nameParam := profile.URL.Query().Get("name")
-	if nameParam == "" {
-		return labels.Labels{}, nil
-	}
-
-	ls, err := labelset.Parse(nameParam)
-	if err != nil {
-		return labels.Labels{}, fmt.Errorf("parsing labels from name parameter: %w", err)
-	}
-
-	var lbls []labels.Label
-	for k, v := range ls.Labels() {
-		lbls = append(lbls, labels.Label{Name: k, Value: v})
-	}
-	return labels.New(lbls...), nil
-}
-
-// updateProfileLabels converts Prometheus labels back to pyroscope format
-func updateProfileLabels(profile *pyroscope.IncomingProfile, lbls labels.Labels) {
-	newLS := labelset.New(make(map[string]string))
-	for _, l := range lbls {
-		newLS.Add(l.Name, l.Value)
-	}
-
-	query := profile.URL.Query()
-	query.Set("name", newLS.Normalized())
-	profile.URL.RawQuery = query.Encode()
 }
 
 // Helper function to detect relabel config changes

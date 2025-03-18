@@ -22,7 +22,17 @@ func init() {
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
 			fact := awss3exporter.NewFactory()
-			return exporter.New(opts, fact, args.(Arguments), exporter.TypeSignalConstFunc(exporter.TypeAll))
+
+			typeSignalFunc := func(opts component.Options, args component.Arguments) exporter.TypeSignal {
+				switch args.(Arguments).MarshalerName.Type {
+				case "sumo_ic":
+					return exporter.TypeLogs
+				default:
+					return exporter.TypeAll
+				}
+			}
+
+			return exporter.New(opts, fact, args.(Arguments), typeSignalFunc)
 		},
 	})
 }

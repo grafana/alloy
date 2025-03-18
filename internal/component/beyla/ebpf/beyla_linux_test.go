@@ -39,7 +39,8 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 				disable_informers = ["node"]
 				meta_restrict_local_node = true
 			}
-			select "sql_client_duration" {
+			select {
+				attr = "sql_client_duration"
 				include = ["*"]
 				exclude = ["db_statement"]
 			}
@@ -97,10 +98,12 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 			heuristic_sql_detect = true
 		}
 		filters {
-			application "transport" {
+			application {
+				attr = "transport"
 				not_match = "UDP"
 			}
-			network "dst_port" {
+			network {
+				attr = "dst_port"
 				match = "53"
 			}
 		}
@@ -435,7 +438,6 @@ func TestConvert_Filters(t *testing.T) {
 	config := args.Convert()
 
 	require.Equal(t, expectedConfig, config)
-
 }
 
 func TestArguments_Validate(t *testing.T) {

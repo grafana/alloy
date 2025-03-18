@@ -11,6 +11,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
 func TestAlloyConfig(t *testing.T) {
@@ -21,6 +22,9 @@ func TestAlloyConfig(t *testing.T) {
 	basic_auth {
 		username = "test"
 		password = "pass"
+	}
+	http_headers = {
+		"foo" = ["foobar"],
 	}
 `
 	var args Arguments
@@ -40,6 +44,11 @@ func TestConvert(t *testing.T) {
 				Username: "test",
 				Password: "pass",
 			},
+			HTTPHeaders: &config.Headers{
+				Headers: map[string][]alloytypes.Secret{
+					"foo": {"foobar"},
+				},
+			},
 		},
 	}
 
@@ -51,6 +60,9 @@ func TestConvert(t *testing.T) {
 	require.Equal(t, promconfig.Secret("FOO"), promArgs.HTTPClientConfig.BearerToken)
 	require.Equal(t, "test", promArgs.HTTPClientConfig.BasicAuth.Username)
 	require.Equal(t, "pass", string(promArgs.HTTPClientConfig.BasicAuth.Password))
+
+	header := promArgs.HTTPClientConfig.HTTPHeaders.Headers["foo"].Secrets[0]
+	require.Equal(t, "foobar", string(header))
 }
 
 func TestValidate(t *testing.T) {

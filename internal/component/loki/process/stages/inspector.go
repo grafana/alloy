@@ -48,7 +48,7 @@ func (f *formatter) disable() {
 
 func (i inspector) inspect(stageName string, before *Entry, after Entry) {
 	if before == nil {
-		fmt.Fprintln(i.writer, i.formatter.red.Sprintf("could not copy entry in '%s' stage; inspect aborted", stageName))
+		_, _ = fmt.Fprintln(i.writer, i.formatter.red.Sprintf("could not copy entry in '%s' stage; inspect aborted", stageName))
 		return
 	}
 
@@ -63,7 +63,7 @@ func (i inspector) inspect(stageName string, before *Entry, after Entry) {
 		diff = i.formatter.red.Sprintf("none")
 	}
 
-	fmt.Fprintf(i.writer, "[inspect: %s stage]: %s\n", i.formatter.bold.Sprintf("%s", stageName), diff)
+	_, _ = fmt.Fprintf(i.writer, "[inspect: %s stage]: %s\n", i.formatter.bold.Sprintf("%s", stageName), diff)
 }
 
 // diffReporter is a simple custom reporter that only records differences

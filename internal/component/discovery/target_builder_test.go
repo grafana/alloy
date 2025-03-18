@@ -301,10 +301,8 @@ func TestTargetBuilder(t *testing.T) {
 				tb := NewTargetBuilderFromLabelSets(labelSetFromMap(first), labelSetFromMap(second))
 				runTest(t, tb)
 			})
-
 		})
 	}
-
 }
 
 func splitMap(firstSize int, m map[string]string) (map[string]string, map[string]string) {

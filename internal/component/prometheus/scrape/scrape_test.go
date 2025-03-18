@@ -39,6 +39,8 @@ func TestAlloyConfig(t *testing.T) {
 	follow_redirects = true
 	enable_http2 = true
 
+	scrape_failure_log_file = "/path/to/file.log"
+
 	tls_config {
 		ca_file = "/path/to/file.ca"
 		cert_file = "/path/to/file.cert"
@@ -46,6 +48,10 @@ func TestAlloyConfig(t *testing.T) {
 		server_name = "server_name"
 		insecure_skip_verify = false
 		min_version = "TLS13"
+	}
+
+	http_headers = {
+		"foo" = ["foobar"],
 	}
 `
 

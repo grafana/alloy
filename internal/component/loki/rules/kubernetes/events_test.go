@@ -127,7 +127,7 @@ func TestEventLoop(t *testing.T) {
 
 	component := Component{
 		log:               log.NewLogfmtLogger(os.Stdout),
-		queue:             workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
+		queue:             workqueue.NewTypedRateLimitingQueue[kubernetes.Event](workqueue.DefaultTypedControllerRateLimiter[kubernetes.Event]()),
 		namespaceLister:   nsLister,
 		namespaceSelector: labels.Everything(),
 		ruleLister:        ruleLister,

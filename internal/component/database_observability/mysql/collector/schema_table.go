@@ -10,13 +10,10 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/hashicorp/golang-lru/v2/expirable"
-	"github.com/prometheus/common/model"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
@@ -245,17 +242,11 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 		}
 		schemas = append(schemas, schema)
 
-		c.entryHandler.Chan() <- loki.Entry{
-			Labels: model.LabelSet{
-				"job":      database_observability.JobName,
-				"op":       OP_SCHEMA_DETECTION,
-				"instance": model.LabelValue(c.instanceKey),
-			},
-			Entry: logproto.Entry{
-				Timestamp: time.Unix(0, time.Now().UnixNano()),
-				Line:      fmt.Sprintf(`level=info msg="schema detected" schema="%s"`, schema),
-			},
-		}
+		c.entryHandler.Chan() <- buildLokiEntry(
+			OP_SCHEMA_DETECTION,
+			c.instanceKey,
+			fmt.Sprintf(`schema="%s"`, schema),
+		)
 	}
 
 	if err := rs.Err(); err != nil {
@@ -295,17 +286,11 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 				b64TableSpec:  "",
 			})
 
-			c.entryHandler.Chan() <- loki.Entry{
-				Labels: model.LabelSet{
-					"job":      database_observability.JobName,
-					"op":       OP_TABLE_DETECTION,
-					"instance": model.LabelValue(c.instanceKey),
-				},
-				Entry: logproto.Entry{
-					Timestamp: time.Unix(0, time.Now().UnixNano()),
-					Line:      fmt.Sprintf(`level=info msg="table detected" schema="%s" table="%s"`, schema, tableName),
-				},
-			}
+			c.entryHandler.Chan() <- buildLokiEntry(
+				OP_TABLE_DETECTION,
+				c.instanceKey,
+				fmt.Sprintf(`schema="%s" table="%s"`, schema, tableName),
+			)
 		}
 
 		if err := rs.Err(); err != nil {
@@ -343,20 +328,14 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 			}
 		}
 
-		c.entryHandler.Chan() <- loki.Entry{
-			Labels: model.LabelSet{
-				"job":      database_observability.JobName,
-				"op":       OP_CREATE_STATEMENT,
-				"instance": model.LabelValue(c.instanceKey),
-			},
-			Entry: logproto.Entry{
-				Timestamp: time.Unix(0, time.Now().UnixNano()),
-				Line: fmt.Sprintf(
-					`level=info msg="create table" schema="%s" table="%s" create_statement="%s" table_spec="%s"`,
-					table.schema, table.tableName, table.b64CreateStmt, table.b64TableSpec,
-				),
-			},
-		}
+		c.entryHandler.Chan() <- buildLokiEntry(
+			OP_CREATE_STATEMENT,
+			c.instanceKey,
+			fmt.Sprintf(
+				`schema="%s" table="%s" create_statement="%s" table_spec="%s"`,
+				table.schema, table.tableName, table.b64CreateStmt, table.b64TableSpec,
+			),
+		)
 	}
 
 	return nil

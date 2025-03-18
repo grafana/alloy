@@ -118,7 +118,7 @@ modules:
         oid: 1.3.6.1.2.1.1.1.0
         type: DisplayString
         help: "A textual description of the entity."
-  hrDevice:
+  hrDeviceForTest:
     walk:
     - 1.3.6.1.2.1.25.3
     metrics:
@@ -127,13 +127,13 @@ modules:
       type: gauge
       help: A unique value for each device contained by the host - 1.3.6.1.2.1.25.3.2.1.1
       indexes:
-      - labelname: hrDeviceIndex
+      - labelname: hrDevice
         type: gauge
 `
   concurrency = 2
   target "t1" {
       address     = "localhost:161"
-      module      = "default,hrDevice"
+      module      = "default,hrDeviceForTest"
       auth        = "public_v2"
   }
 }

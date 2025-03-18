@@ -13,12 +13,13 @@ import (
 	"unicode"
 
 	"github.com/go-kit/log"
+	"github.com/prometheus/client_golang/prometheus"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/runner"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/vm"
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 const templateType = "template"
@@ -49,7 +50,7 @@ type ForeachConfigNode struct {
 
 	mut   sync.RWMutex
 	block *ast.BlockStmt
-	args  Arguments
+	args  ForEachArguments
 
 	moduleControllerFactory func(opts ModuleControllerOpts) ModuleController
 	moduleControllerOpts    ModuleControllerOpts
@@ -110,6 +111,8 @@ func (fn *ForeachConfigNode) ComponentName() string {
 	return fn.componentName
 }
 
+// Exports returns nil as `foreach` doesn't have the ability to export values.
+// This is something we could implement in the future if there is a need for it.
 func (fn *ForeachConfigNode) Exports() component.Exports {
 	return nil
 }
@@ -117,9 +120,7 @@ func (fn *ForeachConfigNode) ID() ComponentID {
 	return fn.id
 }
 
-// Foreach doesn't have the ability to export values.
-// This is something we could implement in the future if there is a need for it.
-type Arguments struct {
+type ForEachArguments struct {
 	Collection []any  `alloy:"collection,attr"`
 	Var        string `alloy:"var,attr"`
 
@@ -163,7 +164,7 @@ func (fn *ForeachConfigNode) evaluate(scope *vm.Scope) error {
 
 	eval := vm.New(argsBody)
 
-	var args Arguments
+	var args ForEachArguments
 	if err := eval.Evaluate(scope, &args); err != nil {
 		return fmt.Errorf("decoding configuration: %w", err)
 	}
@@ -185,7 +186,6 @@ func (fn *ForeachConfigNode) evaluate(scope *vm.Scope) error {
 	newCustomComponentIds := make(map[string]bool, len(args.Collection))
 	fn.customComponentHashCounts = make(map[string]int)
 	for i := 0; i < len(args.Collection); i++ {
-
 		// We must create an ID from the collection entries to avoid recreating all components on every updates.
 		// We track the hash counts because the collection might contain duplicates ([1, 1, 1] would result in the same ids
 		// so we handle it by adding the count at the end -> [11, 12, 13]
@@ -284,19 +284,13 @@ func (fn *ForeachConfigNode) Run(ctx context.Context) error {
 		return fmt.Errorf("running foreach children failed: %w", err)
 	}
 
-	err = fn.run(ctx, updateTasks)
+	fn.run(ctx, updateTasks)
+	fn.setRunHealth(component.HealthTypeExited, "foreach node shut down cleanly")
 
-	// Note: logging of this error is handled by the scheduler.
-	if err != nil {
-		fn.setRunHealth(component.HealthTypeExited, fmt.Sprintf("foreach node shut down with error: %s", err))
-	} else {
-		fn.setRunHealth(component.HealthTypeExited, "foreach node shut down cleanly")
-	}
-
-	return err
+	return nil
 }
 
-func (fn *ForeachConfigNode) run(ctx context.Context, updateTasks func() error) error {
+func (fn *ForeachConfigNode) run(ctx context.Context, updateTasks func() error) {
 	for {
 		select {
 		case <-fn.forEachChildrenUpdateChan:
@@ -309,7 +303,7 @@ func (fn *ForeachConfigNode) run(ctx context.Context, updateTasks func() error) 
 				fn.setRunHealth(component.HealthTypeHealthy, "foreach children updated successfully")
 			}
 		case <-ctx.Done():
-			return nil
+			return
 		}
 	}
 }
@@ -386,7 +380,7 @@ func computeHash(s string) string {
 }
 
 func objectFingerprint(obj any) string {
-	//TODO: Test what happens if there is a "true" string and a true bool in the collection.
+	// TODO: Test what happens if there is a "true" string and a true bool in the collection.
 	switch v := obj.(type) {
 	case string:
 		return replaceNonAlphaNumeric(v)
