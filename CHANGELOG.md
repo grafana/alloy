@@ -52,6 +52,8 @@ Main (unreleased)
 
 - Fix deadlocks in `loki.source.file` when tailing fails (@mblaschke)
 
+- Fix duplicated `seconds` query parameter when scraping pyroscope profiles (@Pluggi)
+
 ### Other changes
 
 - Upgrading to Prometheus v2.55.1. (@ptodev)
