@@ -386,6 +386,11 @@ func (mf *metricFamily) loadMetricGroupOrCreate(groupKey uint64, ls labels.Label
 	return mg
 }
 
+func (mf *metricFamily) addCreationTimestamp(seriesRef uint64, ls labels.Labels, atMs, created int64) {
+	mg := mf.loadMetricGroupOrCreate(seriesRef, ls, atMs)
+	mg.created = float64(created)
+}
+
 func (mf *metricFamily) addSeries(seriesRef uint64, metricName string, ls labels.Labels, t int64, v float64) error {
 	mg := mf.loadMetricGroupOrCreate(seriesRef, ls, t)
 	if mg.ts != t {
