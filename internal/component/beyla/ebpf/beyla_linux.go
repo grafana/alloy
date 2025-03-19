@@ -173,6 +173,25 @@ func (args Services) Convert() (services.DefinitionCriteria, error) {
 	return attrs, nil
 }
 
+func (args Services) Validate() error {
+	for i, svc := range args {
+		// Check if any Kubernetes fields are defined
+		hasKubernetes := svc.Kubernetes.Namespace != "" ||
+			svc.Kubernetes.PodName != "" ||
+			svc.Kubernetes.DeploymentName != "" ||
+			svc.Kubernetes.ReplicaSetName != "" ||
+			svc.Kubernetes.StatefulSetName != "" ||
+			svc.Kubernetes.DaemonSetName != "" ||
+			svc.Kubernetes.OwnerName != "" ||
+			len(svc.Kubernetes.PodLabels) > 0
+
+		if svc.OpenPorts == "" && svc.Path == "" && !hasKubernetes {
+			return fmt.Errorf("discovery.services[%d] must define at least one of: open_ports, exe_path, or kubernetes configuration", i)
+		}
+	}
+	return nil
+}
+
 func (args KubernetesService) Convert() (map[string]*services.RegexpAttr, error) {
 	metadata := map[string]*services.RegexpAttr{}
 	if args.Namespace != "" {
@@ -237,6 +256,29 @@ func (args Metrics) Convert() prom.PrometheusConfig {
 	}
 	p.AllowServiceGraphSelfReferences = args.AllowServiceGraphSelfReferences
 	return p
+}
+
+func (args Metrics) Validate() error {
+	validInstrumentations := map[string]struct{}{
+		"*": {}, "http": {}, "grpc": {}, "redis": {}, "kafka": {}, "sql": {},
+	}
+	for _, instrumentation := range args.Instrumentations {
+		if _, ok := validInstrumentations[instrumentation]; !ok {
+			return fmt.Errorf("metrics.instrumentations: invalid value %q", instrumentation)
+		}
+	}
+
+	validFeatures := map[string]struct{}{
+		"application": {}, "application_span": {},
+		"application_service_graph": {}, "application_process": {},
+		"network": {},
+	}
+	for _, feature := range args.Features {
+		if _, ok := validFeatures[feature]; !ok {
+			return fmt.Errorf("metrics.features: invalid value %q", feature)
+		}
+	}
+	return nil
 }
 
 func (args Network) Convert() beyla.NetworkConfig {
@@ -430,14 +472,6 @@ func (a *Arguments) Convert() (*beyla.Config, error) {
 	if a.Output != nil {
 		cfg.TracesReceiver = convertTraceConsumers(a.Output.Traces)
 	}
-	cfg.Port, err = stringToPortEnum(a.Port)
-	if err != nil {
-		return nil, err
-	}
-	cfg.Exec, err = stringToRegexpAttr(a.ExecutableName)
-	if err != nil {
-		return nil, err
-	}
 	cfg.Routes = a.Routes.Convert()
 	cfg.Attributes = a.Attributes.Convert()
 	cfg.Discovery, err = a.Discovery.Convert()
@@ -462,30 +496,44 @@ func (a *Arguments) Convert() (*beyla.Config, error) {
 }
 
 func (args *Arguments) Validate() error {
-	if args.Port == "" && args.ExecutableName == "" && len(args.Discovery.Services) == 0 {
-		return fmt.Errorf("you need to define at least open_port, executable_name, or services in the discovery section")
-	}
-	validInstrumentations := map[string]struct{}{"*": {}, "http": {}, "grpc": {}, "redis": {}, "kafka": {}, "sql": {}}
-	for _, instrumentation := range args.Metrics.Instrumentations {
-		if _, ok := validInstrumentations[instrumentation]; !ok {
-			return fmt.Errorf("invalid prometheus.instrumentations entry: %s", instrumentation)
-		}
-	}
-	validFeatures := map[string]struct{}{
-		"application":               {},
-		"application_span":          {},
-		"application_service_graph": {},
-		"application_process":       {},
-		"network":                   {},
-	}
+	// Check if at least one feature is enabled
+	hasNetworkFeature := false
+	hasAppFeature := false
 	for _, feature := range args.Metrics.Features {
-		if _, ok := validFeatures[feature]; !ok {
-			return fmt.Errorf("invalid prometheus.features entry: %s", feature)
-		}
-		if feature == "network" && !args.Metrics.Network.Enable {
-			return fmt.Errorf("network feature can only be enabled if network is enabled")
+		switch feature {
+		case "network":
+			hasNetworkFeature = true
+		case "application", "application_span", "application_service_graph", "application_process":
+			hasAppFeature = true
 		}
 	}
+
+	// Services are required only when application observability is enabled
+	if hasAppFeature {
+		if len(args.Discovery.Services) == 0 {
+			return fmt.Errorf("discovery.services is required when application features are enabled")
+		}
+		if err := args.Discovery.Services.Validate(); err != nil {
+			return fmt.Errorf("invalid discovery configuration: %s", err.Error())
+		}
+	}
+
+	// Only validate exclude_services if they are defined (empty is valid)
+	if len(args.Discovery.ExcludeServices) > 0 {
+		if err := args.Discovery.ExcludeServices.Validate(); err != nil {
+			return fmt.Errorf("invalid exclude_services configuration: %s", err.Error())
+		}
+	}
+
+	// Check that at least one feature type is enabled
+	if !hasNetworkFeature && !hasAppFeature {
+		return fmt.Errorf("metrics.features must include at least one of: network, application, application_span, application_service_graph, or application_process")
+	}
+
+	if err := args.Metrics.Validate(); err != nil {
+		return err
+	}
+
 	return nil
 }
 

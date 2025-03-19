@@ -9,8 +9,6 @@ import (
 
 // Arguments configures the Beyla component.
 type Arguments struct {
-	Port           string                     `alloy:"open_port,attr,optional"`
-	ExecutableName string                     `alloy:"executable_name,attr,optional"`
 	Debug          bool                       `alloy:"debug,attr,optional"`
 	EnforceSysCaps bool                       `alloy:"enforce_sys_caps,attr,optional"`
 	Routes         Routes                     `alloy:"routes,block,optional"`
