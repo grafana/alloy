@@ -101,6 +101,12 @@ func NewDefaultArguments() Arguments {
 		CollectKernelProfile: true,
 		Demangle:             "none",
 		PythonEnabled:        true,
+		PerlEnabled:          true,
+		PHPEnabled:           true,
+		HotspotEnabled:       true,
+		RubyEnabled:          true,
+		V8Enabled:            true,
+		DotNetEnabled:        true,
 	}
 }
 

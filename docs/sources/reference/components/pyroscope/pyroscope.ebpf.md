@@ -25,11 +25,8 @@ You can specify multiple `pyroscope.ebpf` components by giving them different la
 
 ## Supported languages
 
-This eBPF profiler only collects CPU profiles. Generally, natively compiled languages like C/C++, Go, and Rust are supported. Refer to [Troubleshooting unknown symbols][troubleshooting] for additional requirements.
-
-Python is the only supported high-level language, as long as `python_enabled=true`.
-Other high-level languages like Java, Ruby, PHP, and JavaScript require additional work to show stack traces of methods in these languages correctly.
-Currently, the CPU usage for these languages is reported as belonging to the runtime's methods.
+- Native code (C/C++, Rust, Zig, Go, etc. without debug symbols on host)
+- Broad set of HLLs (Hotspot JVM, Python, Ruby, PHP, Node.JS, V8, Perl).
 
 ## Usage
 
