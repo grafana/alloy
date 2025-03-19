@@ -24,12 +24,12 @@ func init() {
 		Exports:   otelcol.ConsumerExports{},
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
 			fact := fileexporter.NewFactory()
-			return exporter.New(opts, fact, args.(Arguments), GetSigalType)
+			return exporter.New(opts, fact, args.(Arguments), GetSignalType)
 		},
 	})
 }
 
-func GetSigalType(opts component.Options, args component.Arguments) exporter.TypeSignal {
+func GetSignalType(opts component.Options, args component.Arguments) exporter.TypeSignal {
 	return exporter.TypeAll
 }
 
