@@ -70,7 +70,6 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 			features = ["application", "network"]
 			instrumentations = ["redis", "sql"]
 			network {
-				enable = true
 				agent_ip = "0.0.0.0"
 				interfaces = ["eth0"]
 				source = "tc"
@@ -374,7 +373,6 @@ func TestConvert_Prometheus(t *testing.T) {
 
 func TestConvert_Network(t *testing.T) {
 	args := Network{
-		Enable:           true,
 		AgentIP:          "0.0.0.0",
 		Interfaces:       []string{"eth0"},
 		Protocols:        []string{"TCP", "UDP"},
@@ -393,7 +391,7 @@ func TestConvert_Network(t *testing.T) {
 	expectedConfig.Print = false
 	expectedConfig.CIDRs = args.CIDRs
 
-	config := args.Convert()
+	config := args.Convert(true)
 
 	require.Equal(t, expectedConfig, config)
 }
@@ -599,9 +597,6 @@ func TestArguments_Validate(t *testing.T) {
 			args: Arguments{
 				Metrics: Metrics{
 					Features: []string{"network"},
-					Network: Network{
-						Enable: true,
-					},
 				},
 			},
 		},

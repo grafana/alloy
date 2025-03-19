@@ -361,7 +361,6 @@ The `network` block configures network metrics options for Beyla. You must appen
 | `cache_max_flows`      | `int`          | Maximum number of flows to cache.                                     | `5000`            | no       |
 | `cidrs`                | `list(string)` | List of CIDR ranges to monitor.                                       | `[]`              | no       |
 | `direction`            | `string`       | Direction of traffic to monitor.                                      | `"both"`          | no       |
-| `enabled`              | `bool`         | Enable network metrics collection.                                    | `false`           | no       |
 | `exclude_interfaces`   | `list(string)` | List of network interfaces to exclude from monitoring.                | `["lo"]`          | no       |
 | `exclude_protocols`    | `list(string)` | List of protocols to exclude from monitoring.                         | `[]`              | no       |
 | `interfaces`           | `list(string)` | List of network interfaces to monitor.                                | `[]`              | no       |

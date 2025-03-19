@@ -258,6 +258,25 @@ func (args Metrics) Convert() prom.PrometheusConfig {
 	return p
 }
 
+func (args Metrics) hasNetworkFeature() bool {
+	for _, feature := range args.Features {
+		if feature == "network" {
+			return true
+		}
+	}
+	return false
+}
+
+func (args Metrics) hasAppFeature() bool {
+	for _, feature := range args.Features {
+		switch feature {
+		case "application", "application_span", "application_service_graph", "application_process":
+			return true
+		}
+	}
+	return false
+}
+
 func (args Metrics) Validate() error {
 	validInstrumentations := map[string]struct{}{
 		"*": {}, "http": {}, "grpc": {}, "redis": {}, "kafka": {}, "sql": {},
@@ -281,11 +300,9 @@ func (args Metrics) Validate() error {
 	return nil
 }
 
-func (args Network) Convert() beyla.NetworkConfig {
+func (args Network) Convert(enable bool) beyla.NetworkConfig {
 	networks := beyla.DefaultConfig.NetworkFlows
-	if args.Enable {
-		networks.Enable = true
-	}
+	networks.Enable = enable
 	if args.Source != "" {
 		networks.Source = args.Source
 	}
@@ -479,7 +496,7 @@ func (a *Arguments) Convert() (*beyla.Config, error) {
 		return nil, err
 	}
 	cfg.Prometheus = a.Metrics.Convert()
-	cfg.NetworkFlows = a.Metrics.Network.Convert()
+	cfg.NetworkFlows = a.Metrics.Network.Convert(a.Metrics.hasNetworkFeature())
 	cfg.EnforceSysCaps = a.EnforceSysCaps
 	cfg.EBPF = a.EBPF.Convert()
 	cfg.Filters = a.Filters.Convert()
@@ -496,18 +513,8 @@ func (a *Arguments) Convert() (*beyla.Config, error) {
 }
 
 func (args *Arguments) Validate() error {
-	// Check if at least one feature is enabled
-	hasNetworkFeature := false
-	hasAppFeature := false
-	for _, feature := range args.Metrics.Features {
-		switch feature {
-		case "network":
-			hasNetworkFeature = true
-		case "application", "application_span", "application_service_graph", "application_process":
-			hasAppFeature = true
-		}
-	}
-
+	hasNetworkFeature := args.Metrics.hasNetworkFeature()
+	hasAppFeature := args.Metrics.hasAppFeature()
 	// Services are required only when application observability is enabled
 	if hasAppFeature {
 		if len(args.Discovery.Services) == 0 {

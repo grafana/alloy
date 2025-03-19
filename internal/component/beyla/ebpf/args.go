@@ -97,7 +97,6 @@ type Metrics struct {
 }
 
 type Network struct {
-	Enable             bool          `alloy:"enable,attr"`
 	Source             string        `alloy:"source,attr,optional"`
 	AgentIP            string        `alloy:"agent_ip,attr,optional"`
 	AgentIPIface       string        `alloy:"agent_ip_iface,attr,optional"`
