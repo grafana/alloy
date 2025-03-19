@@ -14,6 +14,11 @@ v1.7.5
 
 - Set zstd as default compression for `prometheus.write.queue`. (@mattdurham)
 
+### Bugfixes
+
+- Fix deadlocks in `loki.source.file` when tailing fails (@mblaschke)
+
+
 v1.7.4
 -----------------
 
