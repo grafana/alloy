@@ -213,7 +213,8 @@ The following list is specific to the convert command and not {{< param "PRODUCT
 * Meta-monitoring metrics exposed by {{< param "PRODUCT_NAME" >}} usually match OpenTelemetry Collector meta-monitoring metrics but uses a different name.
   Make sure that you use the new metric names, for example, in your alerts and dashboards queries.
 * The logs produced by {{< param "PRODUCT_NAME" >}} differ from those produced by OpenTelemetry Collector.
-* {{< param "FULL_PRODUCT_NAME" >}} exposes the {{< param "PRODUCT_NAME" >}} [UI][].
+* The {{< param "PRODUCT_NAME" >}} [UI][] uses Alloy naming conventions for components and their configuration blocks and arguments.
+* Not all arguments in the `service/telemetry` section are supported.
 * Environment variables with a scheme other than `env` aren't supported. Environment variables with no scheme default to `env`.
 
 [OpenTelemetry Collector]: https://opentelemetry.io/docs/collector/configuration/

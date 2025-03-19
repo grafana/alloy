@@ -174,6 +174,8 @@ func getFactories() otelcol.Factories {
 func AppendConfig(file *builder.File, cfg *otelcol.Config, labelPrefix string, extraConverters []ComponentConverter) diag.Diagnostics {
 	var diags diag.Diagnostics
 
+	diags.AddAll(convertTelemetry(file, cfg.Service.Telemetry))
+
 	groups, err := createPipelineGroups(cfg.Service.Pipelines)
 	if err != nil {
 		diags.Add(diag.SeverityLevelCritical, fmt.Sprintf("failed to interpret config: %s", err))
