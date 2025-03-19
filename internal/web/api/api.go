@@ -229,6 +229,7 @@ func graph(_ service.Host, callbackManager livedebugging.CallbackManager, logger
 				key := dataKey{ComponentID: data.ComponentID, Type: data.Type}
 				if existing, exists := dataMap[key]; exists {
 					existing.Count += data.Count
+					dataMap[key] = existing
 				} else {
 					// The data is ignored for the graph.
 					dataMap[key] = liveDebuggingData{
