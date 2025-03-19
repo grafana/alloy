@@ -110,6 +110,8 @@ type BuiltinComponentNode struct {
 
 	exportsMut sync.RWMutex
 	exports    component.Exports // Evaluated exports for the managed component
+
+	dataFlowEdgeRefs []string
 }
 
 var _ ComponentNode = (*BuiltinComponentNode)(nil)
@@ -158,6 +160,8 @@ func NewBuiltinComponentNode(globals ComponentGlobals, reg component.Registratio
 
 		evalHealth: initHealth,
 		runHealth:  initHealth,
+
+		dataFlowEdgeRefs: []string{},
 	}
 	cn.managedOpts = getManagedOptions(globals, cn)
 
@@ -448,4 +452,16 @@ func (cn *BuiltinComponentNode) setRunHealth(t component.HealthType, msg string)
 // managing.
 func (cn *BuiltinComponentNode) ModuleIDs() []string {
 	return cn.moduleController.ModuleIDs()
+}
+
+func (cn *BuiltinComponentNode) AddDataFlowEdgeTo(nodeID string) {
+	cn.dataFlowEdgeRefs = append(cn.dataFlowEdgeRefs, nodeID)
+}
+
+func (cn *BuiltinComponentNode) GetDataFlowEdgesTo() []string {
+	return cn.dataFlowEdgeRefs
+}
+
+func (cn *BuiltinComponentNode) ResetDataFlowEdgeTo() {
+	cn.dataFlowEdgeRefs = []string{}
 }

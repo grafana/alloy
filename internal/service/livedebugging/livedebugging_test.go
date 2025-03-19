@@ -137,11 +137,6 @@ func TestAddCallbackMulti(t *testing.T) {
 	callback := func(data Data) {}
 
 	err := livedebugging.AddCallbackMulti(callbackID, "", callback)
-	require.ErrorContains(t, err, "the live debugging service is disabled. Check the documentation to find out how to enable it")
-
-	livedebugging.SetEnabled(true)
-
-	err = livedebugging.AddCallbackMulti(callbackID, "", callback)
 	require.ErrorContains(t, err, "the live debugging service is not ready yet")
 
 	setupServiceHost(livedebugging)
