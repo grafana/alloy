@@ -1569,8 +1569,11 @@ The final example extracts the tenant ID from a label set by a previous stage:
 
 ```alloy
 stage.labels {
-    "namespace" = "k8s_namespace"
+  values = {
+    "namespace" = "k8s_namespace",
+  }
 }
+
 stage.tenant {
     label = "namespace"
 }
