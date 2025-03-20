@@ -70,8 +70,9 @@ Main (unreleased)
 v1.7.5
 -----------------
 
-- Set zstd as default compression for `prometheus.write.queue`. (@mattdurham)
+### Enhancements
 
+- Set zstd as default compression for `prometheus.write.queue`. (@mattdurham)
 
 v1.7.4
 -----------------
