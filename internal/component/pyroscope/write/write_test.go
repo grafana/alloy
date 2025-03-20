@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -267,6 +268,8 @@ func Test_Write_AppendIngest(t *testing.T) {
 		endpoints   = make([]*EndpointOptions, 0, serverCount)
 	)
 
+	var errorCallback = func(*http.Request) error { return nil }
+
 	testData := []byte("test-profile-data")
 	argument.ExternalLabels = map[string]string{
 		"env":     "prod",      // Should override env=staging
@@ -275,7 +278,6 @@ func Test_Write_AppendIngest(t *testing.T) {
 
 	handlerFn := func(expectedPath string) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
-			appendCount.Inc()
 			require.Equal(t, expectedPath, r.URL.Path, "Unexpected path")
 
 			// Header assertions
@@ -300,6 +302,15 @@ func Test_Write_AppendIngest(t *testing.T) {
 			body, err := io.ReadAll(r.Body)
 			require.NoError(t, err, "Failed to read request body")
 			require.Equal(t, testData, body, "Unexpected body content")
+
+			// eventually return error
+			if err := errorCallback(r); err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				_, _ = w.Write([]byte(err.Error()))
+				return
+			}
+
+			appendCount.Inc()
 			w.WriteHeader(http.StatusOK)
 		}
 	}
@@ -311,6 +322,7 @@ func Test_Write_AppendIngest(t *testing.T) {
 			RemoteTimeout: GetDefaultEndpointOptions().RemoteTimeout,
 			Headers: map[string]string{
 				"X-Test-Header": "endpoint-value",
+				"X-Server-ID":   strconv.Itoa(int(i)),
 			},
 		})
 	}
@@ -362,6 +374,18 @@ func Test_Write_AppendIngest(t *testing.T) {
 	err = export.Receiver.Appender().AppendIngest(context.Background(), incomingProfile)
 	require.NoError(t, err)
 	require.Equal(t, serverCount, appendCount.Load())
+
+	// now test with one error
+	errorCallback = func(req *http.Request) error {
+		if req.Header.Get("X-Server-ID") == "1" {
+			return errors.New("I don't like your profile")
+		}
+		return nil
+	}
+
+	err = export.Receiver.Appender().AppendIngest(context.Background(), incomingProfile)
+	require.ErrorContains(t, err, "remote error for endpoint[1]: pyroscope write error: status=400 msg=I don't like your profile")
+	require.Equal(t, 2*serverCount-1, appendCount.Load())
 }
 
 func TestAppendIngestLabelTransformation(t *testing.T) {
