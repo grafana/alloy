@@ -1303,8 +1303,8 @@ github.com/grafana/tail v0.0.0-20230510142333-77b18831edf0 h1:bjh0PVYSVVFxzINqPF
 github.com/grafana/tail v0.0.0-20230510142333-77b18831edf0/go.mod h1:7t5XR+2IA8P2qggOAHTj/GCZfoLBle3OvNSYh1VkRBU=
 github.com/grafana/vmware_exporter v0.0.5-beta.0.20250218170317-73398ba08329 h1:Rs4H1yv2Abk3xE82qpyhMGGA8rswAOA0HQZde/BYkFo=
 github.com/grafana/vmware_exporter v0.0.5-beta.0.20250218170317-73398ba08329/go.mod h1:Z28219aViNlsLlPvuCnlgHDagRdZBAZ7JOnQg1b3eWg=
-github.com/grafana/walqueue v0.0.0-20250306192434-b34b4277b995 h1:wempcAiffauW8l3BOEs9pxwma6z1NaEIEIVYyZ9V2so=
-github.com/grafana/walqueue v0.0.0-20250306192434-b34b4277b995/go.mod h1:jlJk5qY9flSeR4FfwPkk/SgdT0dmmW32opzLQD9aiIs=
+github.com/grafana/walqueue v0.0.0-20250320164132-8157339be76c h1:g3ZPyi+q3pQQWbLgzIyxmg4z7AIoph/wO3Nf8Swlhqc=
+github.com/grafana/walqueue v0.0.0-20250320164132-8157339be76c/go.mod h1:mgOAircFKdN03tt2gZUPTVw6EQr8XnRI+M3Qw1oT1NE=
 github.com/gregjones/httpcache v0.0.0-20180305231024-9cad4c3443a7/go.mod h1:FecbI9+v66THATjSRHfNgh1IVFe/9kFxbXtjV0ctIMA=
 github.com/grobie/gomemcache v0.0.0-20230213081705-239240bbc445 h1:FlKQKUYPZ5yDCN248M3R7x8yu2E3yEZ0H7aLomE4EoE=
 github.com/grobie/gomemcache v0.0.0-20230213081705-239240bbc445/go.mod h1:L69/dBlPQlWkcnU76WgcppK5e4rrxzQdi6LhLnK/ytA=
@@ -1700,8 +1700,8 @@ github.com/kisielk/sqlstruct v0.0.0-20201105191214-5f3e10d3ab46/go.mod h1:yyMNCy
 github.com/klauspost/asmfmt v1.3.2 h1:4Ri7ox3EwapiOjCki+hw14RyKk201CN4rzyCJRFLpK4=
 github.com/klauspost/asmfmt v1.3.2/go.mod h1:AG8TuvYojzulgDAMCnYn50l/5QV3Bs/tp6j0HLHbNSE=
 github.com/klauspost/compress v1.11.0/go.mod h1:aoV0uJVorq1K+umq18yTdKaF57EivdYsUV+/s2qKfXs=
-github.com/klauspost/compress v1.17.11 h1:In6xLpyWOi1+C7tXUUWv2ot1QvBjxevKAaI6IXrJmUc=
-github.com/klauspost/compress v1.17.11/go.mod h1:pMDklpSncoRMuLFrf1W9Ss9KT+0rH90U12bZKk7uwG0=
+github.com/klauspost/compress v1.18.0 h1:c/Cqfb0r+Yi+JtIEq73FWXVkRonBlf0CRNYc8Zttxdo=
+github.com/klauspost/compress v1.18.0/go.mod h1:2Pp+KzxcywXVXMr50+X0Q/Lsb43OQHYWRCY2AiWywWQ=
 github.com/klauspost/cpuid/v2 v2.2.8 h1:+StwCXwm9PdpiEkPyzBXIy+M9KUb4ODm0Zarf1kS5BM=
 github.com/klauspost/cpuid/v2 v2.2.8/go.mod h1:Lcz8mBdAVJIBVzewtcLocK12l3Y+JytZYpaMropDUws=
 github.com/klauspost/pgzip v1.2.6 h1:8RXeL5crjEUFnR2/Sn6GJNWtSQ3Dk8pq4CL3jvdDyjU=

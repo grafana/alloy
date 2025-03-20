@@ -246,13 +246,13 @@ prometheus.scrape "demo" {
 
 ## Technical details
 
-`prometheus.write.queue` uses [snappy][] for compression.
+`prometheus.write.queue` uses [zstd][] for compression.
 `prometheus.write.queue` sends native histograms by default.
 Any labels that start with `__` will be removed before sending to the endpoint.
 
 ### Data retention
 
-Data is written to disk in blocks utilizing [snappy][] compression. These blocks are read on startup and resent if they're still within the TTL.
+Data is written to disk in blocks utilizing [zstd][] compression. These blocks are read on startup and resent if they're still within the TTL.
 Any data that hasn't been written to disk, or that's in the network queues is lost if {{< param "PRODUCT_NAME" >}} is restarted.
 
 ### Retries
@@ -289,4 +289,4 @@ Refer to the linked documentation for more details.
 
 <!-- END GENERATED COMPATIBLE COMPONENTS -->
 
-[snappy]: https://en.wikipedia.org/wiki/Snappy_(compression)
+[zstd]: https://github.com/facebook/zstd/blob/dev/doc/zstd_compression_format.md
