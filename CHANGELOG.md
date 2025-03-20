@@ -50,6 +50,8 @@ Main (unreleased)
 
 - Reduce CPU usage of the `loki.source.podlogs` component when pods logs target lots of pods (@QuentinBisson)
 
+- Add error body propagation in `pyroscope.write`, for `/ingest` calls. (@simonswine)
+
 ### Bugfixes
 
 - Fix deadlocks in `loki.source.file` when tailing fails (@mblaschke)
