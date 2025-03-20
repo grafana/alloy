@@ -56,8 +56,6 @@ Main (unreleased)
 
 - Add error body propagation in `pyroscope.write`, for `/ingest` calls. (@simonswine)
 
-- Set zstd as default compression for `prometheus.write.queue`. (@mattdurham)
-
 ### Bugfixes
 
 - Fix deadlocks in `loki.source.file` when tailing fails (@mblaschke)
@@ -67,6 +65,14 @@ Main (unreleased)
 - Upgrading to Prometheus v2.55.1. (@ptodev)
   - Added a new `http_headers` argument to many `discovery` and `prometheus` components.
   - Added a new `scrape_failure_log_file` argument to `prometheus.scrape`.
+
+
+v1.7.5
+-----------------
+
+### Enhancements
+
+- Set zstd as default compression for `prometheus.write.queue`. (@mattdurham)
 
 v1.7.4
 -----------------
