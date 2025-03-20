@@ -123,7 +123,7 @@ func (c *QueryTables) Stop() {
 func (c *QueryTables) fetchQueryTables(ctx context.Context) error {
 	rs, err := c.dbConnection.QueryContext(ctx, selectQueryTablesSamples)
 	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to fetch query tables", "err", err)
+		level.Error(c.logger).Log("msg", "failed to fetch summary table samples", "err", err)
 		return err
 	}
 	defer rs.Close()
@@ -132,7 +132,7 @@ func (c *QueryTables) fetchQueryTables(ctx context.Context) error {
 		var digest, schemaName, sampleText, sampleSeen, sampleTimerWait string
 		err := rs.Scan(&digest, &schemaName, &sampleText, &sampleSeen, &sampleTimerWait)
 		if err != nil {
-			level.Error(c.logger).Log("msg", "failed to scan result set for query tables", "err", err)
+			level.Error(c.logger).Log("msg", "failed to scan result set from summary table samples", "err", err)
 			continue
 		}
 
