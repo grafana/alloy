@@ -18,7 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestQuerySample(t *testing.T) {
+func TestQueryTables(t *testing.T) {
 	defer goleak.VerifyNone(t)
 
 	testcases := []struct {
@@ -37,7 +37,7 @@ func TestQuerySample(t *testing.T) {
 				"1000",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
+				{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db"},
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
@@ -55,7 +55,7 @@ func TestQuerySample(t *testing.T) {
 				"1000",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
+				{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db"},
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
@@ -73,7 +73,7 @@ func TestQuerySample(t *testing.T) {
 				"1000",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
+				{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db"},
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
@@ -91,7 +91,7 @@ func TestQuerySample(t *testing.T) {
 				"1000",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
+				{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db"},
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
@@ -109,7 +109,7 @@ func TestQuerySample(t *testing.T) {
 				"1000",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
+				{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db"},
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
@@ -135,7 +135,7 @@ func TestQuerySample(t *testing.T) {
 				"1000",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
+				{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db"},
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
@@ -153,7 +153,7 @@ func TestQuerySample(t *testing.T) {
 				"1000",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
+				{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db"},
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
@@ -183,7 +183,7 @@ func TestQuerySample(t *testing.T) {
 				"1000",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
+				{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db"},
 			},
 			logsLines: []string{
 				`schema="some_schema" digest="abc123" query_type="" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="begin"`,
@@ -205,7 +205,7 @@ func TestQuerySample(t *testing.T) {
 				"1000",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
+				{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db"},
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
@@ -229,9 +229,9 @@ func TestQuerySample(t *testing.T) {
 				"1000",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
+				{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db"},
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
+				{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db"},
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
@@ -251,7 +251,7 @@ func TestQuerySample(t *testing.T) {
 				"1000",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
+				{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db"},
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
@@ -273,7 +273,7 @@ func TestQuerySample(t *testing.T) {
 				"1000",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
+				{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db"},
 			},
 			logsLines: []string{
 				`schema="some_schema" digest="abc123" query_type="" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="show create table"`,
@@ -289,7 +289,7 @@ func TestQuerySample(t *testing.T) {
 				"1000",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
+				{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db"},
 			},
 			logsLines: []string{
 				`schema="some_schema" digest="abc123" query_type="" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="show variables"`,
@@ -307,7 +307,7 @@ func TestQuerySample(t *testing.T) {
 
 			lokiClient := loki_fake.NewClient(func() {})
 
-			collector, err := NewQuerySample(QuerySampleArguments{
+			collector, err := NewQueryTables(QueryTablesArguments{
 				DB:              db,
 				InstanceKey:     "mysql-db",
 				CollectInterval: time.Second,
@@ -317,7 +317,7 @@ func TestQuerySample(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, collector)
 
-			mock.ExpectQuery(selectQuerySamples).WithoutArgs().RowsWillBeClosed().
+			mock.ExpectQuery(selectQueryTablesSamples).WithoutArgs().RowsWillBeClosed().
 				WillReturnRows(
 					sqlmock.NewRows([]string{
 						"digest",
@@ -369,7 +369,7 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 
 		lokiClient := loki_fake.NewClient(func() {})
 
-		collector, err := NewQuerySample(QuerySampleArguments{
+		collector, err := NewQueryTables(QueryTablesArguments{
 			DB:              db,
 			InstanceKey:     "mysql-db",
 			CollectInterval: time.Second,
@@ -379,7 +379,7 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectQuerySamples).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(selectQueryTablesSamples).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"digest", // not enough columns
@@ -387,7 +387,7 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 					"abc123",
 				))
 
-		mock.ExpectQuery(selectQuerySamples).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(selectQueryTablesSamples).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"digest",
@@ -422,7 +422,7 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 
 		lokiEntries := lokiClient.Received()
-		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"}, lokiEntries[0].Labels)
+		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db"}, lokiEntries[0].Labels)
 		require.Equal(t, `schema="some_schema" digest="abc123" query_type="select" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="select * from some_table where id = :redacted1"`, lokiEntries[0].Line)
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"}, lokiEntries[1].Labels)
 		require.Equal(t, `schema="some_schema" digest="abc123" table="some_table"`, lokiEntries[1].Line)
@@ -437,7 +437,7 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 
 		lokiClient := loki_fake.NewClient(func() {})
 
-		collector, err := NewQuerySample(QuerySampleArguments{
+		collector, err := NewQueryTables(QueryTablesArguments{
 			DB:              db,
 			InstanceKey:     "mysql-db",
 			CollectInterval: time.Second,
@@ -447,7 +447,7 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectQuerySamples).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(selectQueryTablesSamples).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"digest",
@@ -488,7 +488,7 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 
 		lokiEntries := lokiClient.Received()
-		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"}, lokiEntries[0].Labels)
+		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db"}, lokiEntries[0].Labels)
 		require.Equal(t, `schema="some_schema" digest="abc123" query_type="select" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="select * from some_table where id = :redacted1"`, lokiEntries[0].Line)
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"}, lokiEntries[1].Labels)
 		require.Equal(t, `schema="some_schema" digest="abc123" table="some_table"`, lokiEntries[1].Line)
@@ -503,7 +503,7 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 
 		lokiClient := loki_fake.NewClient(func() {})
 
-		collector, err := NewQuerySample(QuerySampleArguments{
+		collector, err := NewQueryTables(QueryTablesArguments{
 			DB:              db,
 			InstanceKey:     "mysql-db",
 			CollectInterval: time.Second,
@@ -513,9 +513,9 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectQuerySamples).WithoutArgs().WillReturnError(fmt.Errorf("connection error"))
+		mock.ExpectQuery(selectQueryTablesSamples).WithoutArgs().WillReturnError(fmt.Errorf("connection error"))
 
-		mock.ExpectQuery(selectQuerySamples).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(selectQueryTablesSamples).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"digest",
@@ -550,7 +550,7 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 
 		lokiEntries := lokiClient.Received()
-		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"}, lokiEntries[0].Labels)
+		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db"}, lokiEntries[0].Labels)
 		require.Equal(t, `schema="some_schema" digest="abc123" query_type="select" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="select * from some_table where id = :redacted1"`, lokiEntries[0].Line)
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"}, lokiEntries[1].Labels)
 		require.Equal(t, `schema="some_schema" digest="abc123" table="some_table"`, lokiEntries[1].Line)
