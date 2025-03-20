@@ -43,7 +43,7 @@ Click the {{< param "PRODUCT_NAME" >}} logo to navigate back to the home page.
 
 ### Graph page
 
-{{< figure src="/media/docs/alloy/ui_graph_page_new.png" alt="Alloy UI graph page" >}}
+{{< figure src="/media/docs/alloy/ui_graph_page_new_2.png" alt="Alloy UI graph page" >}}
 
 The **Graph** page shows a graph view of components defined in the configuration file.
 Clicking a component in the graph navigates to the [Component detail page](#component-detail-page) for that component.
