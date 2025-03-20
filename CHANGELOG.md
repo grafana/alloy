@@ -41,8 +41,6 @@ Main (unreleased)
 
 - Added OpenTelemetry logs and metrics support to Alloy mixin's dashboards and alerts. (@thampiotr)
 
-- Add support for proxy and headers in `prometheus.write.queue`. (@mattdurham)
-
 - (_Experimental_) Various changes to the experimental component `database_observability.mysql`:
   - `query_sample`: better handling of truncated queries (@cristiangreco)
   - `query_sample`: add option to use TiDB sql parser (@cristiangreco)
@@ -67,6 +65,14 @@ Main (unreleased)
 - Upgrading to Prometheus v2.55.1. (@ptodev)
   - Added a new `http_headers` argument to many `discovery` and `prometheus` components.
   - Added a new `scrape_failure_log_file` argument to `prometheus.scrape`.
+
+
+v1.7.5
+-----------------
+
+### Enhancements
+
+- Add support for proxy and headers in `prometheus.write.queue`. (@mattdurham)
 
 v1.7.4
 -----------------
