@@ -41,6 +41,8 @@ Main (unreleased)
 
 - Added OpenTelemetry logs and metrics support to Alloy mixin's dashboards and alerts. (@thampiotr)
 
+- Add support for proxy and headers in `prometheus.write.queue`. (@mattdurham)
+
 - (_Experimental_) Various changes to the experimental component `database_observability.mysql`:
   - `query_sample`: better handling of truncated queries (@cristiangreco)
   - `query_sample`: add option to use TiDB sql parser (@cristiangreco)
@@ -53,8 +55,6 @@ Main (unreleased)
 - Reduce CPU usage of the `loki.source.podlogs` component when pods logs target lots of pods (@QuentinBisson)
 
 - Add error body propagation in `pyroscope.write`, for `/ingest` calls. (@simonswine)
-
-- Set zstd as default compression for `prometheus.write.queue`. (@mattdurham)
 
 ### Bugfixes
 
@@ -70,9 +70,8 @@ Main (unreleased)
 v1.7.5
 -----------------
 
-### Enhancements
+- Set zstd as default compression for `prometheus.write.queue`. (@mattdurham)
 
-- Add support for proxy and headers in `prometheus.write.queue`. (@mattdurham)
 
 v1.7.4
 -----------------
