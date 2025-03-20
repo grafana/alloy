@@ -43,12 +43,17 @@ Main (unreleased)
 - (_Experimental_) Various changes to the experimental component `database_observability.mysql`:
   - `query_sample`: better handling of truncated queries (@cristiangreco)
   - `query_sample`: add option to use TiDB sql parser (@cristiangreco)
+  - `query_tables`: rename collector from `query_sample` to better reflect responsibility (@matthewnolf)
 
 - Add labels validation in `pyroscope.write` to prevent duplicate labels and invalid label names/values. (@marcsanmi)
 
 - Reduced lock contention in `prometheus.scrape` component (@thampiotr)
 
 - Support converting otel config which uses a common receiver across pipelines with different names. (@wildum)
+
+- Reduce CPU usage of the `loki.source.podlogs` component when pods logs target lots of pods (@QuentinBisson)
+
+- Add error body propagation in `pyroscope.write`, for `/ingest` calls. (@simonswine)
 
 ### Bugfixes
 

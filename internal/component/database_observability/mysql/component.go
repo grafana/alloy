@@ -211,7 +211,7 @@ func (c *Component) Update(args component.Arguments) error {
 func enableOrDisableCollectors(a Arguments) map[string]bool {
 	// configurable collectors and their default enabled/disabled value
 	collectors := map[string]bool{
-		collector.QuerySampleName: true,
+		collector.QueryTablesName: true,
 		collector.SchemaTableName: true,
 	}
 
@@ -247,8 +247,8 @@ func (c *Component) startCollectors() error {
 
 	collectors := enableOrDisableCollectors(c.args)
 
-	if collectors[collector.QuerySampleName] {
-		qsCollector, err := collector.NewQuerySample(collector.QuerySampleArguments{
+	if collectors[collector.QueryTablesName] {
+		qsCollector, err := collector.NewQueryTables(collector.QueryTablesArguments{
 			DB:              dbConnection,
 			InstanceKey:     c.instanceKey,
 			CollectInterval: c.args.CollectInterval,
@@ -267,7 +267,7 @@ func (c *Component) startCollectors() error {
 		c.collectors = append(c.collectors, qsCollector)
 	}
 
-	if collectors[collector.QuerySampleName] {
+	if collectors[collector.SchemaTableName] {
 		stCollector, err := collector.NewSchemaTable(collector.SchemaTableArguments{
 			DB:              dbConnection,
 			InstanceKey:     c.instanceKey,

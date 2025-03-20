@@ -35,7 +35,7 @@ The following collectors are enabled by default:
 
  Name           | Description                                           
 ----------------|-------------------------------------------------------
- `query_sample` | Collect query samples.                                
+ `query_tables` | Collect query table information..                                
  `schema_table` | Collect schemas and tables from `information_schema`. 
 
 ## Blocks
