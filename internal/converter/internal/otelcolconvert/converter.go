@@ -76,8 +76,8 @@ type converterKey struct {
 }
 
 type groupedInstanceID struct {
-	componentstatus.InstanceID
-	groupName string
+	componentstatus.InstanceID        // ID of the Otel component.
+	groupName                  string // Name of the Otel pipeline where the component is referenced.
 }
 
 // Body returns the body of the file being generated. Implementations of
