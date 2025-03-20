@@ -75,7 +75,7 @@ require (
 	github.com/grafana/snowflake-prometheus-exporter v0.0.0-20240813124544-9995e8354548
 	github.com/grafana/tail v0.0.0-20230510142333-77b18831edf0
 	github.com/grafana/vmware_exporter v0.0.5-beta.0.20250218170317-73398ba08329
-	github.com/grafana/walqueue v0.0.0-20250306192434-b34b4277b995
+	github.com/grafana/walqueue v0.0.0-20250320164132-8157339be76c
 	github.com/hashicorp/consul/api v1.31.0
 	github.com/hashicorp/go-discover v0.0.0-20230724184603-e89ebd1b2f65
 	github.com/hashicorp/go-multierror v1.1.1
@@ -98,7 +98,7 @@ require (
 	github.com/jmespath/go-jmespath v0.4.0
 	github.com/jonboulle/clockwork v0.4.0
 	github.com/json-iterator/go v1.1.12
-	github.com/klauspost/compress v1.17.11
+	github.com/klauspost/compress v1.18.0
 	github.com/leodido/go-syslog/v4 v4.2.0
 	github.com/lib/pq v1.10.9
 	github.com/mackerelio/go-osstat v0.2.5
