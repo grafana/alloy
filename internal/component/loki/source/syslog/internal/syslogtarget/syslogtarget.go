@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/loki/v3/clients/pkg/promtail/scrapeconfig"
+	scrapeconfig "github.com/grafana/alloy/internal/component/loki/source/syslog/config"
 	"github.com/grafana/loki/v3/clients/pkg/promtail/targets/target"
 	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/leodido/go-syslog/v4"
@@ -61,6 +61,7 @@ func NewSyslogTarget(
 	relabel []*relabel.Config,
 	config *scrapeconfig.SyslogTargetConfig,
 ) (*SyslogTarget, error) {
+
 	t := &SyslogTarget{
 		metrics:       metrics,
 		logger:        logger,

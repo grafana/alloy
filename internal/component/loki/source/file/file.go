@@ -168,8 +168,12 @@ func (c *Component) Run(ctx context.Context) error {
 			for _, entry := range c.tasks {
 				tasks = append(tasks, &entry)
 			}
-			runner.ApplyTasks(ctx, tasks)
+			err := runner.ApplyTasks(ctx, tasks)
 			c.mut.Unlock()
+
+			if err != nil && err != context.Canceled {
+				return err
+			}
 		}
 	}
 }
@@ -255,17 +259,6 @@ type targetInfo struct {
 	Labels     string `alloy:"labels,attr"`
 	IsRunning  bool   `alloy:"is_running,attr"`
 	ReadOffset int64  `alloy:"read_offset,attr"`
-}
-
-// Returns the elements from set b which are missing from set a
-func missing(as map[positions.Entry]reader, bs map[positions.Entry]struct{}) map[positions.Entry]struct{} {
-	c := map[positions.Entry]struct{}{}
-	for a := range bs {
-		if _, ok := as[a]; !ok {
-			c[a] = struct{}{}
-		}
-	}
-	return c
 }
 
 // For most files, createReader returns a tailer implementation. If the file suffix alludes to it being

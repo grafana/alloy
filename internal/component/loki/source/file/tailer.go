@@ -161,11 +161,13 @@ func (t *tailer) Run() {
 	fi, err := os.Stat(t.path)
 	if err != nil {
 		level.Error(t.logger).Log("msg", "failed to tail file", "path", t.path, "err", err)
+		t.mut.Unlock()
 		return
 	}
 	pos, err := t.positions.Get(t.path, t.labelsStr)
 	if err != nil {
 		level.Error(t.logger).Log("msg", "failed to get file position", "err", err)
+		t.mut.Unlock()
 		return
 	}
 
@@ -206,6 +208,7 @@ func (t *tailer) Run() {
 	})
 	if err != nil {
 		level.Error(t.logger).Log("msg", "failed to tail the file", "err", err)
+		t.mut.Unlock()
 		return
 	}
 	t.tail = tail

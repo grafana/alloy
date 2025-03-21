@@ -199,7 +199,7 @@ The `service_name` label is set to `{__meta_kubernetes_namespace}/{__meta_kubern
 discovery.kubernetes "all_pods" {
   role = "pod"
   selectors {
-    field = "spec.nodeName=" + sys.env("<HOSTNAME>")
+    field = "spec.nodeName=" + sys.env("HOSTNAME")
     role = "pod"
   }
 }
@@ -235,7 +235,7 @@ discovery.relabel "local_pods" {
   }
   rule {
     action = "replace"
-    source_labels = ["__meta_kubernetes_node_name"]
+    source_labels = ["__meta_kubernetes_pod_node_name"]
     target_label = "node"
   }
   rule {

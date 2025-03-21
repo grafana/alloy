@@ -65,8 +65,8 @@ func toDatadogExporter(cfg *datadogOtelconfig.Config) *datadog.Arguments {
 func toDatadogHTTPClientArguments(cfg confighttp.ClientConfig) datadog_config.DatadogClientArguments {
 	return datadog_config.DatadogClientArguments{
 		Timeout:             cfg.Timeout,
-		ReadBufferSize:      int(cfg.ReadBufferSize),
-		WriteBufferSize:     int(cfg.WriteBufferSize),
+		ReadBufferSize:      cfg.ReadBufferSize,
+		WriteBufferSize:     cfg.WriteBufferSize,
 		MaxIdleConns:        cfg.MaxIdleConns,
 		MaxIdleConnsPerHost: cfg.MaxIdleConnsPerHost,
 		MaxConnsPerHost:     cfg.MaxConnsPerHost,

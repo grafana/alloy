@@ -154,11 +154,11 @@ func (c *Config) NewIntegration(l log.Logger) (integrations.Integration, error) 
 func (c *Config) Validate() error {
 	configErrors := multierror.MultiError{}
 
-	if c.ProjectIDs == nil || len(c.ProjectIDs) == 0 {
+	if len(c.ProjectIDs) == 0 {
 		configErrors.Add(errors.New("no project_ids defined"))
 	}
 
-	if c.MetricPrefixes == nil || len(c.MetricPrefixes) == 0 {
+	if len(c.MetricPrefixes) == 0 {
 		configErrors.Add(errors.New("at least 1 metrics_prefixes is required"))
 	}
 
