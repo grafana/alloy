@@ -31,6 +31,9 @@ export const ComponentView: FC<ComponentViewProps> = (props) => {
   const location = useLocation();
   const useRemotecfg = location.pathname.startsWith('/remotecfg');
 
+  // TODO: update this condition when foreach and FM are supported
+  const showGraph = props.component.moduleInfo && !useRemotecfg && props.component.name !== 'foreach';
+
   function partitionTOC(partition: PartitionedBody): ReactElement {
     return (
       <li>
@@ -122,7 +125,7 @@ export const ComponentView: FC<ComponentViewProps> = (props) => {
           </a>
         </div>
 
-        {props.component.moduleInfo && !useRemotecfg && (
+        {showGraph && !useRemotecfg && (
           <div className={styles.debugLink}>
             <a href={`graph/${pathJoin([props.component.moduleID, props.component.localID])}`}>
               <FontAwesomeIcon icon={faDiagramProject} /> Graph
