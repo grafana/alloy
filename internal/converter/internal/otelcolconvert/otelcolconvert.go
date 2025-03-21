@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
+	"github.com/grafana/alloy/internal/converter/internal/otelcolconvert/envprovider"
 	"github.com/grafana/alloy/syntax/token/builder"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componentstatus"
@@ -39,6 +41,13 @@ import (
 //      func init() {
 //   	    addConverter(converterCOMPONENT{})
 //      }
+
+// envvarRegexp matches envvar-like strings in the form of ${env:ENV_NAME} or ${env:ENV_NAME:-DEFAULT_VALUE}.
+//
+// See: https://opentelemetry.io/docs/specs/otel/configuration/data-model/#environment-variable-substitution
+var envvarRegexp *regexp.Regexp = regexp.MustCompile(
+	`"\$\{(?:env:)?(?<ENV_NAME>[a-zA-Z_][a-zA-Z0-9_]*)(:-(?<DEFAULT_VALUE>[^\n]*))?\}"`,
+)
 
 // Convert implements an Opentelemetry Collector config converter.
 //
@@ -78,16 +87,32 @@ func Convert(in []byte, extraArgs []string) ([]byte, diag.Diagnostics) {
 		return nil, diags
 	}
 
-	prettyByte, newDiags := common.PrettyPrint(buf.Bytes())
+	converted := convertEnvvars(buf.String())
+
+	prettyByte, newDiags := common.PrettyPrint([]byte(converted))
 	diags.AddAll(newDiags)
 	return prettyByte, diags
+}
+
+// convertEnvvars converts envvar-like strings into alloy sys.env() calls.
+func convertEnvvars(str string) string {
+	// TODO: we can identify certain types of odd configs WRT envvars. Warnings should be emitted to
+	// the console to convey them.
+	return envvarRegexp.ReplaceAllString(
+		str,
+		`coalesce(sys.env("$ENV_NAME"), "$DEFAULT_VALUE")`,
+	)
 }
 
 func readOpentelemetryConfig(in []byte) (*otelcol.Config, error) {
 	configProvider, err := otelcol.NewConfigProvider(otelcol.ConfigProviderSettings{
 		ResolverSettings: confmap.ResolverSettings{
-			URIs:              []string{"yaml:" + string(in)},
-			ProviderFactories: []confmap.ProviderFactory{yamlprovider.NewFactory()},
+			URIs: []string{"yaml:" + string(in)},
+			ProviderFactories: []confmap.ProviderFactory{
+				yamlprovider.NewFactory(),
+				envprovider.NewFactory(),
+			},
+			DefaultScheme: envprovider.SchemeName,
 		},
 	})
 	if err != nil {
