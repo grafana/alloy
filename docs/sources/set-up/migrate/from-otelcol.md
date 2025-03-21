@@ -214,6 +214,7 @@ The following list is specific to the convert command and not {{< param "PRODUCT
   Make sure that you use the new metric names, for example, in your alerts and dashboards queries.
 * The logs produced by {{< param "PRODUCT_NAME" >}} differ from those produced by OpenTelemetry Collector.
 * {{< param "FULL_PRODUCT_NAME" >}} exposes the {{< param "PRODUCT_NAME" >}} [UI][].
+* Environment variables with a scheme other than `env` are not supported. Environment variables with no scheme will default to `env`.
 
 [OpenTelemetry Collector]: https://opentelemetry.io/docs/collector/configuration/
 [debugging]: #debugging
