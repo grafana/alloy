@@ -59,6 +59,7 @@ Main (unreleased)
 ### Bugfixes
 
 - Fix deadlocks in `loki.source.file` when tailing fails (@mblaschke)
+- Add missing RBAC permission for ScrapeConfig (@.alex-berger)
 
 ### Other changes
 
