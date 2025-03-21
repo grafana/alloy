@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"math/rand"
 	"net"
@@ -278,8 +279,10 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 		// of less than one second. This leads to a lot of unnecessary processing.
 		_, spanWait := tracer.Start(spanCtx, "RateLimitWait", trace.WithSpanKind(trace.SpanKindInternal))
 		if err := limiter.Wait(ctx); err != nil {
-			// This should never happen, but it should be safe to just ignore it and continue.
-			level.Warn(s.log).Log("msg", "failed to wait for rate limiter on peers update", "err", err)
+			if !errors.Is(err, context.DeadlineExceeded) && !errors.Is(err, context.Canceled) {
+				// This should never happen, but it should be safe to just ignore it and continue.
+				level.Warn(s.log).Log("msg", "failed to wait for rate limiter on peers update", "err", err)
+			}
 			spanWait.RecordError(err)
 		}
 		spanWait.End()

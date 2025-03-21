@@ -17,7 +17,7 @@ import (
 	"github.com/grafana/alloy/internal/service/cluster/discovery"
 )
 
-type clusterOptions struct {
+type ClusterOptions struct {
 	Log     log.Logger
 	Metrics prometheus.Registerer
 	Tracer  trace.TracerProvider
@@ -39,7 +39,8 @@ type clusterOptions struct {
 	TLSServerName       string
 }
 
-func buildClusterService(opts clusterOptions) (*cluster.Service, error) {
+// BuildClusterService is visible for testing
+func BuildClusterService(opts ClusterOptions) (*cluster.Service, error) {
 	listenPort := findPort(opts.ListenAddress, 80)
 
 	config := cluster.Options{
@@ -90,7 +91,7 @@ func useAllInterfaces(interfaces []string) bool {
 	return len(interfaces) == 1 && interfaces[0] == "all"
 }
 
-func getAdvertiseAddress(opts clusterOptions, listenPort int) (string, error) {
+func getAdvertiseAddress(opts ClusterOptions, listenPort int) (string, error) {
 	if opts.AdvertiseAddress != "" {
 		return appendDefaultPort(opts.AdvertiseAddress, listenPort), nil
 	}
