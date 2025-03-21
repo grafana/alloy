@@ -48,9 +48,10 @@ type ForeachConfigNode struct {
 	forEachChildrenUpdateChan chan struct{} // used to trigger an update of the running children
 	forEachChildrenRunning    bool
 
-	mut   sync.RWMutex
-	block *ast.BlockStmt
-	args  ForEachArguments
+	mut              sync.RWMutex
+	block            *ast.BlockStmt
+	args             ForEachArguments
+	dataFlowEdgeRefs []string
 
 	moduleControllerFactory func(opts ModuleControllerOpts) ModuleController
 	moduleControllerOpts    ModuleControllerOpts
@@ -340,6 +341,24 @@ func (fn *ForeachConfigNode) setRunHealth(t component.HealthType, msg string) {
 		Message:    msg,
 		UpdateTime: time.Now(),
 	}
+}
+
+func (fn *ForeachConfigNode) AddDataFlowEdgeTo(nodeID string) {
+	fn.mut.Lock()
+	defer fn.mut.Unlock()
+	fn.dataFlowEdgeRefs = append(fn.dataFlowEdgeRefs, nodeID)
+}
+
+func (fn *ForeachConfigNode) GetDataFlowEdgesTo() []string {
+	fn.mut.RLock()
+	defer fn.mut.RUnlock()
+	return fn.dataFlowEdgeRefs
+}
+
+func (fn *ForeachConfigNode) ResetDataFlowEdgeTo() {
+	fn.mut.Lock()
+	defer fn.mut.Unlock()
+	fn.dataFlowEdgeRefs = []string{}
 }
 
 type forEachChildRunner struct {
