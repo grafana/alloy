@@ -42,10 +42,73 @@ type (
 	}
 )
 
-type osFileService struct{}
+type osFileService struct {
+	basePath string
+}
 
-func (fs osFileService) Stat(name string) (fs.FileInfo, error) { return os.Stat(name) }
-func (fs osFileService) ReadFile(name string) ([]byte, error)  { return os.ReadFile(name) }
+func newOsFileService(basePath string) osFileService {
+	// Handle empty base path case
+	if basePath == "" {
+		return osFileService{basePath: ""}
+	}
+
+	// Add trailing separator if needed
+	if !strings.HasSuffix(basePath, string(filepath.Separator)) {
+		basePath = basePath + string(filepath.Separator)
+	}
+	return osFileService{basePath: basePath}
+}
+
+func (fs osFileService) Stat(name string) (fs.FileInfo, error) {
+	securedPath, err := fs.securePath(name)
+	if err != nil {
+		return nil, err
+	}
+	return os.Stat(securedPath)
+}
+
+func (fs osFileService) ReadFile(name string) ([]byte, error) {
+	securedPath, err := fs.securePath(name)
+	if err != nil {
+		return nil, err
+	}
+	return os.ReadFile(securedPath)
+}
+
+func (fs osFileService) securePath(name string) (string, error) {
+	if name == "" {
+		return ".", nil
+	}
+	cleanedPath := filepath.Clean(name)
+
+	if fs.basePath == "" {
+		return cleanedPath, nil
+	}
+
+	var fullPath string
+	isAbsPath := filepath.IsAbs(cleanedPath)
+	if isAbsPath {
+		fullPath = cleanedPath
+	} else {
+		fullPath = filepath.Join(fs.basePath, cleanedPath)
+	}
+
+	absPath, err := filepath.Abs(fullPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve absolute path: %w", err)
+	}
+
+	basePathAbs, err := filepath.Abs(fs.basePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve absolute base path: %w", err)
+	}
+
+	if !strings.HasPrefix(absPath, basePathAbs) {
+		return "", fmt.Errorf("path traversal attempt detected: %s", name)
+	}
+
+	return absPath, nil
+}
 
 type sourceMapMetrics struct {
 	cacheSize *prometheus.CounterVec
@@ -105,7 +168,11 @@ func newSourceMapsStore(log log.Logger, args SourceMapsArguments, metrics *sourc
 		cli = &http.Client{Timeout: args.DownloadTimeout}
 	}
 	if fs == nil {
-		fs = osFileService{}
+		basePath := args.BaseSourceMapsPath
+		if basePath == "" {
+			level.Warn(log).Log("msg", "No base path specified for source maps, file access is unrestricted")
+		}
+		fs = newOsFileService(basePath)
 	}
 
 	locs := []*sourcemapFileLocation{}
@@ -149,8 +216,7 @@ func (store *sourceMapsStoreImpl) GetSourceMap(sourceURL string, release string)
 	if err != nil || content == nil {
 		store.cache[cacheKey] = nil
 		return nil, err
-	}
-	if content != nil {
+	} else {
 		consumer, err := sourcemap.Parse(sourceMapURL, content)
 		if err != nil {
 			store.cache[cacheKey] = nil
@@ -162,8 +228,6 @@ func (store *sourceMapsStoreImpl) GetSourceMap(sourceURL string, release string)
 		store.metrics.cacheSize.WithLabelValues(getOrigin(sourceURL)).Inc()
 		return consumer, nil
 	}
-
-	return nil, nil
 }
 
 func (store *sourceMapsStoreImpl) getSourceMapContent(sourceURL string, release string) (content []byte, sourceMapURL string, err error) {
