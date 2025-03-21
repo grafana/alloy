@@ -10,6 +10,10 @@ internal API changes are not present.
 Unreleased
 ----------
 
+### Enhancements
+
+- Add `checksum/config` pod annotation (@kimxogus)
+
 0.12.5 (2025-03-13)
 ----------
 ### Enhancements
@@ -24,6 +28,7 @@ Unreleased
 
 0.12.3 (2025-03-10)
 ----------
+
 ### Enhancements
 
 - Add support for adding livenessProbe to agent container (@slimes28)
