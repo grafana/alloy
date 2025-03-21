@@ -213,6 +213,7 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 	collectors := map[string]bool{
 		collector.QueryTablesName: true,
 		collector.SchemaTableName: true,
+		collector.QuerySampleName: true,
 	}
 
 	for _, disabled := range a.DisableCollectors {
