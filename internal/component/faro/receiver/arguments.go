@@ -74,6 +74,7 @@ type SourceMapsArguments struct {
 	Download            bool                `alloy:"download,attr,optional"`
 	DownloadFromOrigins []string            `alloy:"download_from_origins,attr,optional"`
 	DownloadTimeout     time.Duration       `alloy:"download_timeout,attr,optional"`
+	BaseSourceMapsPath  string              `alloy:"base_sourcemaps_path,attr,optional"`
 	Locations           []LocationArguments `alloy:"location,block,optional"`
 }
 
@@ -82,6 +83,7 @@ func (s *SourceMapsArguments) SetToDefault() {
 		Download:            true,
 		DownloadFromOrigins: []string{"*"},
 		DownloadTimeout:     time.Second,
+		BaseSourceMapsPath:  "",
 	}
 }
 
