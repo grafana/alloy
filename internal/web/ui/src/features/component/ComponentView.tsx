@@ -1,7 +1,7 @@
 import { FC, Fragment, ReactElement } from 'react';
 import { Link } from 'react-router-dom';
 import { useLocation } from 'react-router-dom';
-import { faBug, faCubes, faLink } from '@fortawesome/free-solid-svg-icons';
+import { faBug, faCubes, faDiagramProject, faLink } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import { partitionBody } from '../../utils/partition';
@@ -30,6 +30,9 @@ export const ComponentView: FC<ComponentViewProps> = (props) => {
   const debugPartition = props.component.debugInfo && partitionBody(props.component.debugInfo, 'Debug info');
   const location = useLocation();
   const useRemotecfg = location.pathname.startsWith('/remotecfg');
+
+  // TODO: update this condition when foreach and FM are supported
+  const showGraph = props.component.moduleInfo && !useRemotecfg && props.component.name !== 'foreach';
 
   function partitionTOC(partition: PartitionedBody): ReactElement {
     return (
@@ -121,6 +124,14 @@ export const ComponentView: FC<ComponentViewProps> = (props) => {
             <FontAwesomeIcon icon={faLink} /> Documentation
           </a>
         </div>
+
+        {showGraph && !useRemotecfg && (
+          <div className={styles.debugLink}>
+            <a href={`graph/${pathJoin([props.component.moduleID, props.component.localID])}`}>
+              <FontAwesomeIcon icon={faDiagramProject} /> Graph
+            </a>
+          </div>
+        )}
 
         {liveDebuggingButton()}
 

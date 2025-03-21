@@ -182,9 +182,12 @@ func (c *Component) runDiscovery(ctx context.Context, d DiscovererWithMetrics) {
 	send := func() {
 		allTargets := toAlloyTargets(cache)
 		componentID := livedebugging.ComponentID(c.opts.ID)
-		if c.debugDataPublisher.IsActive(componentID) {
-			c.debugDataPublisher.Publish(componentID, fmt.Sprintf("%s", allTargets))
-		}
+		c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
+			componentID,
+			livedebugging.Target,
+			uint64(len(allTargets)),
+			func() string { return fmt.Sprintf("%s", allTargets) },
+		))
 		c.opts.OnStateChange(Exports{Targets: allTargets})
 	}
 
@@ -234,4 +237,4 @@ func toAlloyTargets(cache map[string]*targetgroup.Group) []Target {
 	return allTargets
 }
 
-func (c *Component) LiveDebugging(_ int) {}
+func (c *Component) LiveDebugging() {}

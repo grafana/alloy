@@ -120,6 +120,9 @@ type Info struct {
 	// this component depends on, or is depended on by, respectively.
 	References, ReferencedBy []string
 
+	// List of component ids that this component sends data to.
+	DataFlowEdgesTo []string
+
 	ComponentName string // Name of the component.
 	Health        Health // Current component health.
 
@@ -147,6 +150,7 @@ func (info *Info) MarshalJSON() ([]byte, error) {
 			Label                string               `json:"label,omitempty"`
 			References           []string             `json:"referencesTo"`
 			ReferencedBy         []string             `json:"referencedBy"`
+			DataFlowEdgesTo      []string             `json:"dataFlowEdgesTo"`
 			Health               *componentHealthJSON `json:"health"`
 			Original             string               `json:"original"`
 			Arguments            json.RawMessage      `json:"arguments,omitempty"`
@@ -158,8 +162,9 @@ func (info *Info) MarshalJSON() ([]byte, error) {
 	)
 
 	var (
-		references   = info.References
-		referencedBy = info.ReferencedBy
+		references      = info.References
+		referencedBy    = info.ReferencedBy
+		dataFlowEdgesTo = info.DataFlowEdgesTo
 
 		arguments, exports, debugInfo json.RawMessage
 		err                           error
@@ -170,6 +175,9 @@ func (info *Info) MarshalJSON() ([]byte, error) {
 	}
 	if referencedBy == nil {
 		referencedBy = []string{}
+	}
+	if dataFlowEdgesTo == nil {
+		dataFlowEdgesTo = []string{}
 	}
 
 	arguments, err = alloyjson.MarshalBody(info.Arguments)
@@ -186,13 +194,14 @@ func (info *Info) MarshalJSON() ([]byte, error) {
 	}
 
 	return json.Marshal(&componentDetailJSON{
-		Name:         info.ComponentName,
-		Type:         "block",
-		ModuleID:     info.ID.ModuleID,
-		LocalID:      info.ID.LocalID,
-		Label:        info.Label,
-		References:   references,
-		ReferencedBy: referencedBy,
+		Name:            info.ComponentName,
+		Type:            "block",
+		ModuleID:        info.ID.ModuleID,
+		LocalID:         info.ID.LocalID,
+		Label:           info.Label,
+		References:      references,
+		ReferencedBy:    referencedBy,
+		DataFlowEdgesTo: dataFlowEdgesTo,
 		Health: &componentHealthJSON{
 			State:       info.Health.Health.String(),
 			Message:     info.Health.Message,

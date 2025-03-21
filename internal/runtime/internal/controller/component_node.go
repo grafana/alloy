@@ -28,4 +28,13 @@ type ComponentNode interface {
 
 	// ModuleIDs returns the current list of modules managed by the component.
 	ModuleIDs() []string
+
+	// ResetDataFlowEdgeTo resets the current list of outgoing data flow edges.
+	ResetDataFlowEdgeTo()
+
+	// AddDataFlowEdgeTo adds an outgoing data flow edge to the component.
+	AddDataFlowEdgeTo(nodeID string)
+
+	// GetDataFlowEdgesTo returns the current list of outgoing data flow edges.
+	GetDataFlowEdgesTo() []string
 }

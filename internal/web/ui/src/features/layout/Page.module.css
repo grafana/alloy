@@ -62,3 +62,9 @@ div.page main {
   align-items: center;
   margin-left: auto;
 }
+
+.infoText {
+  color: rgba(36, 41, 46, 0.75);
+  text-align: center;
+  width: 100%;
+}
