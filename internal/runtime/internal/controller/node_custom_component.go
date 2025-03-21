@@ -330,13 +330,19 @@ func (cn *CustomComponentNode) ModuleIDs() []string {
 }
 
 func (cn *CustomComponentNode) AddDataFlowEdgeTo(nodeID string) {
+	cn.mut.Lock()
+	defer cn.mut.Unlock()
 	cn.dataFlowEdgeRefs = append(cn.dataFlowEdgeRefs, nodeID)
 }
 
 func (cn *CustomComponentNode) GetDataFlowEdgesTo() []string {
+	cn.mut.RLock()
+	defer cn.mut.RUnlock()
 	return cn.dataFlowEdgeRefs
 }
 
 func (cn *CustomComponentNode) ResetDataFlowEdgeTo() {
+	cn.mut.Lock()
+	defer cn.mut.Unlock()
 	cn.dataFlowEdgeRefs = []string{}
 }
