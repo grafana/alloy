@@ -1,0 +1,20 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+      http:
+
+exporters:
+  otlp:
+    endpoint: database:4317
+
+service:
+  pipelines:
+    metrics: # Group <empty>
+      receivers: [otlp]
+      processors: []
+      exporters: [otlp]
+    metrics/2: # Group 2
+      receivers: [otlp]
+      processors: []
+      exporters: [otlp]
