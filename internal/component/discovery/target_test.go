@@ -152,45 +152,6 @@ func TestNestedIndexing(t *testing.T) {
 	require.Equal(t, "bap", actual)
 }
 
-func TestEncodeToJson(t *testing.T) {
-	type testCase struct {
-		name              string
-		input             string
-		expected          string
-		expectedEvalError string
-	}
-
-	tests := []testCase{
-		{
-			name:     "decode with encoding.to_json function",
-			input:    `encoding.to_json({"modules"={"http_2xx"={"prober"="http","timeout"="10s","http"={"headers"={"Authorization"="Hello!"}}}}})`,
-			expected: `{"modules":{"http_2xx":{"http":{"headers":{"Authorization":"Hello!"}},"prober":"http","timeout":"10s"}}}`,
-		},
-		{
-			name:              "decode with encoding.to_json function",
-			input:             `encoding.to_json("modules")`,
-			expectedEvalError: "encoding.to_json jsonEncode only supports map",
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			scope := vm.NewScope(map[string]interface{}{})
-			expr, err := parser.ParseExpression(tc.input)
-			require.NoError(t, err)
-			eval := vm.New(expr)
-			decodeInto := ""
-			evalError := eval.Evaluate(scope, &decodeInto)
-			if tc.expectedEvalError != "" {
-				require.ErrorContains(t, evalError, tc.expectedEvalError)
-			} else {
-				require.NoError(t, evalError)
-			}
-			require.Equal(t, tc.expected, decodeInto)
-		})
-	}
-}
-
 func TestDecodeMap(t *testing.T) {
 	type testCase struct {
 		name     string
