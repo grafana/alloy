@@ -71,150 +71,98 @@ func Test_GetSecrets(t *testing.T) {
 	require.Equal(t, expectExports, actualExports)
 }
 
-func Test_PollSecretsWithoutKey(t *testing.T) {
-	var (
-		ctx = componenttest.TestContext(t)
-		l   = util.TestLogger(t)
-	)
+func Test_PollSecrets(t *testing.T) {
+	for name, tt := range map[string]struct {
+		cfgFormatString string
+	}{
+		"path and key": {
+			cfgFormatString: `
+				server = "%s"
+				path   = "secret"
+				key = "test"
 
-	cli := getTestVaultServer(t)
+				reread_frequency = "100ms"
 
-	// Store a secret in value to use from the component.
-	_, err := cli.KVv2("secret").Put(ctx, "test", map[string]any{
-		"key": "value",
-	})
-	require.NoError(t, err)
+				auth.token {
+					token = "%s"
+				}
+			`,
+		},
+		"path": {
+			cfgFormatString: `
+				server = "%s"
+				path   = "secret/test"
 
-	cfg := fmt.Sprintf(`
-		server = "%s"
-		path   = "secret/test"
+				reread_frequency = "100ms"
 
-		reread_frequency = "100ms"
+				auth.token {
+					token = "%s"
+				}
+			`,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			var (
+				ctx = componenttest.TestContext(t)
+				l   = util.TestLogger(t)
+			)
 
-		auth.token {
-			token = "%s"
-		}
-	`, cli.Address(), cli.Token())
+			cli := getTestVaultServer(t)
 
-	var args Arguments
-	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+			// Store a secret in value to use from the component.
+			_, err := cli.KVv2("secret").Put(ctx, "test", map[string]any{
+				"key": "value",
+			})
+			require.NoError(t, err)
 
-	ctrl, err := componenttest.NewControllerFromID(l, "remote.vault")
-	require.NoError(t, err)
+			cfg := fmt.Sprintf(tt.cfgFormatString, cli.Address(), cli.Token())
 
-	go func() {
-		require.NoError(t, ctrl.Run(ctx, args))
-	}()
-	require.NoError(t, ctrl.WaitRunning(time.Minute))
+			var args Arguments
+			require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
-	// Get the initial secret.
-	{
-		require.NoError(t, ctrl.WaitExports(time.Minute))
+			ctrl, err := componenttest.NewControllerFromID(l, "remote.vault")
+			require.NoError(t, err)
 
-		var (
-			expectExports = Exports{
-				Data: map[string]alloytypes.Secret{
-					"key": alloytypes.Secret("value"),
-				},
+			go func() {
+				require.NoError(t, ctrl.Run(ctx, args))
+			}()
+			require.NoError(t, ctrl.WaitRunning(time.Minute))
+
+			// Get the initial secret.
+			{
+				require.NoError(t, ctrl.WaitExports(time.Minute))
+
+				var (
+					expectExports = Exports{
+						Data: map[string]alloytypes.Secret{
+							"key": alloytypes.Secret("value"),
+						},
+					}
+					actualExports = ctrl.Exports().(Exports)
+				)
+				require.Equal(t, expectExports, actualExports)
 			}
-			actualExports = ctrl.Exports().(Exports)
-		)
-		require.Equal(t, expectExports, actualExports)
-	}
 
-	// Get an updated secret.
-	{
-		_, err := cli.KVv2("secret").Put(ctx, "test", map[string]any{
-			"key": "newvalue",
+			// Get an updated secret.
+			{
+				_, err := cli.KVv2("secret").Put(ctx, "test", map[string]any{
+					"key": "newvalue",
+				})
+				require.NoError(t, err)
+
+				require.NoError(t, ctrl.WaitExports(time.Minute))
+
+				var (
+					expectExports = Exports{
+						Data: map[string]alloytypes.Secret{
+							"key": alloytypes.Secret("newvalue"),
+						},
+					}
+					actualExports = ctrl.Exports().(Exports)
+				)
+				require.Equal(t, expectExports, actualExports)
+			}
 		})
-		require.NoError(t, err)
-
-		require.NoError(t, ctrl.WaitExports(time.Minute))
-
-		var (
-			expectExports = Exports{
-				Data: map[string]alloytypes.Secret{
-					"key": alloytypes.Secret("newvalue"),
-				},
-			}
-			actualExports = ctrl.Exports().(Exports)
-		)
-		require.Equal(t, expectExports, actualExports)
-	}
-}
-
-func Test_PollSecretsWithKey(t *testing.T) {
-	//TODO - understand if this test _should_ work? Introduced in PR #1605, when it was already skipped
-	t.Skip("This test is broken and should be fixed or removed")
-	var (
-		ctx = componenttest.TestContext(t)
-		l   = util.TestLogger(t)
-	)
-
-	cli := getTestVaultServer(t)
-
-	// Store a secret in value to use from the component.
-	_, err := cli.KVv2("secret").Put(ctx, "test", map[string]any{
-		"key": "value",
-	})
-	require.NoError(t, err)
-
-	cfg := fmt.Sprintf(`
-		server = "%s"
-		path   = ""
-  		key = "secret/test"
-
-		reread_frequency = "100ms"
-
-		auth.token {
-			token = "%s"
-		}
-	`, cli.Address(), cli.Token())
-
-	var args Arguments
-	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
-
-	ctrl, err := componenttest.NewControllerFromID(l, "remote.vault")
-	require.NoError(t, err)
-
-	go func() {
-		require.NoError(t, ctrl.Run(ctx, args))
-	}()
-	require.NoError(t, ctrl.WaitRunning(time.Minute))
-
-	// Get the initial secret.
-	{
-		require.NoError(t, ctrl.WaitExports(time.Minute))
-
-		var (
-			expectExports = Exports{
-				Data: map[string]alloytypes.Secret{
-					"key": alloytypes.Secret("value"),
-				},
-			}
-			actualExports = ctrl.Exports().(Exports)
-		)
-		require.Equal(t, expectExports, actualExports)
-	}
-
-	// Get an updated secret.
-	{
-		_, err := cli.KVv2("secret").Put(ctx, "test", map[string]any{
-			"key": "newvalue",
-		})
-		require.NoError(t, err)
-
-		require.NoError(t, ctrl.WaitExports(time.Minute))
-
-		var (
-			expectExports = Exports{
-				Data: map[string]alloytypes.Secret{
-					"key": alloytypes.Secret("newvalue"),
-				},
-			}
-			actualExports = ctrl.Exports().(Exports)
-		)
-		require.Equal(t, expectExports, actualExports)
 	}
 }
 
