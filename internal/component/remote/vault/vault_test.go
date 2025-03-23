@@ -38,7 +38,7 @@ func Test_GetSecrets(t *testing.T) {
 	cfg := fmt.Sprintf(`
 		server = "%s"
 		path   = "secret"
-  		secret = "test"
+  		key = "test"
 
 		reread_frequency = "0s"
 
@@ -144,6 +144,8 @@ func Test_PollSecretsWithoutKey(t *testing.T) {
 }
 
 func Test_PollSecretsWithKey(t *testing.T) {
+	//TODO - understand if this test _should_ work? Introduced in PR #1605, when it was already skipped
+	t.Skip("This test is broken and should be fixed or removed")
 	var (
 		ctx = componenttest.TestContext(t)
 		l   = util.TestLogger(t)
@@ -217,9 +219,6 @@ func Test_PollSecretsWithKey(t *testing.T) {
 }
 
 func getTestVaultServer(t *testing.T) *vaultapi.Client {
-	// TODO: this is broken with go 1.20.6
-	// waiting on https://github.com/testcontainers/testcontainers-go/issues/1359
-	t.Skip()
 	ctx := componenttest.TestContext(t)
 	l := util.TestLogger(t)
 
