@@ -72,10 +72,12 @@ func Test_GetSecrets(t *testing.T) {
 }
 
 func Test_PollSecrets(t *testing.T) {
-	for name, tt := range map[string]struct {
+	tests := []struct {
+		name            string
 		cfgFormatString string
 	}{
-		"path and key": {
+		{
+			name: "poll with path and key",
 			cfgFormatString: `
 				server = "%s"
 				path   = "secret"
@@ -88,7 +90,8 @@ func Test_PollSecrets(t *testing.T) {
 				}
 			`,
 		},
-		"path": {
+		{
+			name: "poll with path only",
 			cfgFormatString: `
 				server = "%s"
 				path   = "secret/test"
@@ -100,8 +103,9 @@ func Test_PollSecrets(t *testing.T) {
 				}
 			`,
 		},
-	} {
-		t.Run(name, func(t *testing.T) {
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
 			var (
 				ctx = componenttest.TestContext(t)
 				l   = util.TestLogger(t)
