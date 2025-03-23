@@ -60,6 +60,8 @@ Main (unreleased)
 
 - Fix deadlocks in `loki.source.file` when tailing fails (@mblaschke)
 
+- Allow kafka exporter to attempt to connect even if TLS enabled but cert & key are not specified (@dehaansa)
+
 ### Other changes
 
 - Upgrading to Prometheus v2.55.1. (@ptodev)
