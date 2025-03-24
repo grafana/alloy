@@ -38,5 +38,5 @@ func (b *BasicAuthRPCCreds) GetRequestMetadata(
 }
 
 func (b *BasicAuthRPCCreds) RequireTransportSecurity() bool {
-	return false
+	return true
 }
