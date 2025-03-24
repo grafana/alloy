@@ -3,7 +3,7 @@ canonical: https://grafana.com/docs/alloy/latest/tutorials/scenarios/monitor-log
 description: Learn how to use Grafana Alloy to monitor logs froma  file
 menuTitle: Monitor log files
 title: Monitor logs from a local file with Grafana Alloy
-weight: 350
+weight: 300
 ---
 
 # Monitor logs from a local file with {{% param "FULL_PRODUCT_NAME" %}}
