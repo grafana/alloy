@@ -48,7 +48,7 @@ Click the {{< param "PRODUCT_NAME" >}} logo to navigate back to the home page.
 The **Graph** page shows a graph view of components defined in the configuration file.
 Clicking a component in the graph navigates to the [Component detail page](#component-detail-page) for that component.
 
-The components can be moved around by dragging them.
+You can click and drag the components to move them around.
 
 To access the graph page of a module, click on the Graph button on the module's detail page.
 
