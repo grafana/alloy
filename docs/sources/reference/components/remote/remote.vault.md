@@ -157,7 +157,7 @@ By specifying the namespace argument in `auth.custom`, you can authenticate to a
 
 You can also define Vault environment variables, which the clients used by Alloy will automatically load. 
 This approach allows you to use certificate-based authentication i.e. by setting the `VAULT_CACERT` and `VAULT_CAPATH` environment variables.
-Refer to the [Vault Environment variables](https://developer.hashicorp.com/vault/docs/commands#configure-environment-variables)  documentation for more information.
+Refer to the [Vault Environment variables](https://developer.hashicorp.com/vault/docs/commands#configure-environment-variables) documentation for more information.
 ### `auth.gcp`
 
 The `auth.gcp` block authenticates to Vault using the [GCP auth method][GCP].
