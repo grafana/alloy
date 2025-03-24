@@ -13,6 +13,10 @@ title: pyroscope.ebpf
 `pyroscope.ebpf` configures an eBPF profiling job for the current host.
 The collected performance profiles are forwarded to the list of receivers passed in `forward_to`.
 
+The `pyroscope.ebpf` component embeds
+the [grafana/opentelemetry-ebpf-profiler](https://github.com/grafana/opentelemetry-ebpf-profiler) which is a fork
+of [open-telemetry/opentelemetry-ebpf-profiler](https://github.com/open-telemetry/opentelemetry-ebpf-profiler).
+
 {{< admonition type="note" >}}
 To use the  `pyroscope.ebpf` component you must run {{< param "PRODUCT_NAME" >}} as root and inside the host PID namespace.
 {{< /admonition >}}
