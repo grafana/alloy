@@ -455,14 +455,14 @@ func (p *PPROFReporter) symbolizeNativeFrame(
 	frameID := libpf.NewFrameID(fileID, addr)
 
 	irsymcache.SymbolizeNativeFrame(p.cfg.ExtraNativeSymbolResolver, p.Frames, loc.Mapping.File, frameID, func(si samples.SourceInfo) {
-		if len(si.Frames) == 0 {
+		if len(si.Frames) == 0 { //todo make this configurable and disable by default
 			functionName := fmt.Sprintf("%s %x", loc.Mapping.File, loc.Address)
 			line := profile.Line{Function: b.Function(functionName, "")}
 			loc.Line = append(loc.Line, line)
 			return
 		}
 		for _, fn := range si.Frames {
-			line := profile.Line{Function: b.Function(fn.FunctionName, fn.FunctionName)}
+			line := profile.Line{Function: b.Function(fn.FunctionName, fn.FilePath)}
 			line.Line = int64(fn.LineNumber)
 			loc.Line = append(loc.Line, line)
 		}
