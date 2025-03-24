@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -33,12 +34,19 @@ import (
 )
 
 type testPeer struct {
-	nodeName       string
-	address        string
-	clusterService *cluster.Service
-	httpService    *httpservice.Service
-	ctx            context.Context
-	shutdown       context.CancelFunc
+	nodeName          string
+	address           string
+	clusterService    *cluster.Service
+	httpService       *httpservice.Service
+	ctx               context.Context
+	shutdown          context.CancelFunc
+	discoverablePeers []string // list of peers that this peer can discover
+}
+
+func (p *testPeer) discoveryFn(_ discovery.Options) (discovery.DiscoverFn, error) {
+	return func() ([]string, error) {
+		return p.discoverablePeers, nil
+	}, nil
 }
 
 type testState struct {
@@ -239,12 +247,25 @@ func startNewNode(t *testing.T, state *testState, nodeName string) {
 
 	// Get list of join peers (addresses of existing peers)
 	joinPeers := make([]string, 0, len(state.peers))
+	isNewPeerIsolated := slices.Contains(state.testCase.initialIsolatedNodes, nodeName)
 	for _, p := range state.peers {
-		joinPeers = append(joinPeers, p.address)
+		isThisPeerIsolated := slices.Contains(state.testCase.initialIsolatedNodes, p.nodeName)
+		if isNewPeerIsolated && isThisPeerIsolated || !isNewPeerIsolated && !isThisPeerIsolated {
+			joinPeers = append(joinPeers, p.address)
+		}
 	}
+	t.Logf("Starting new node %s with join peers: %v", nodeName, joinPeers)
 
 	// Create a node-specific context
 	peerCtx, peerCancel := context.WithCancel(state.ctx)
+
+	newPeer := &testPeer{
+		nodeName:          nodeName,
+		address:           nodeAddress,
+		ctx:               peerCtx,
+		shutdown:          peerCancel,
+		discoverablePeers: joinPeers,
+	}
 
 	nodeDirPath := path.Join(t.TempDir(), nodeName)
 	logger, err := logging.New(
@@ -274,17 +295,13 @@ func startNewNode(t *testing.T, state *testState, nodeName string) {
 		NodeName:            nodeName,
 		AdvertiseAddress:    nodeAddress,
 		ListenAddress:       nodeAddress,
-		JoinPeers:           joinPeers,
-		RejoinInterval:      5 * time.Second,
+		RejoinInterval:      1 * time.Second,
 		AdvertiseInterfaces: advertise.DefaultInterfaces,
 		ClusterMaxJoinPeers: 5,
 		ClusterName:         "cluster_e2e_test",
-	}, func(options discovery.Options) (discovery.DiscoverFn, error) {
-		return func() ([]string, error) {
-			return joinPeers, nil
-		}, nil
-	})
+	}, newPeer.discoveryFn)
 	require.NoError(t, err)
+	newPeer.clusterService = clusterService
 
 	httpService := httpservice.New(httpservice.Options{
 		Logger:   logger,
@@ -296,6 +313,7 @@ func startNewNode(t *testing.T, state *testState, nodeName string) {
 
 		HTTPListenAddr: nodeAddress,
 	})
+	newPeer.httpService = httpService
 
 	configFilePath := path.Join(nodeDirPath, "config.alloy")
 	remoteCfgService, err := remotecfgservice.New(remotecfgservice.Options{
@@ -321,14 +339,7 @@ func startNewNode(t *testing.T, state *testState, nodeName string) {
 	})
 
 	// Add the new peer to the state
-	state.peers = append(state.peers, &testPeer{
-		nodeName:       nodeName,
-		address:        nodeAddress,
-		clusterService: clusterService,
-		httpService:    httpService,
-		ctx:            peerCtx,
-		shutdown:       peerCancel,
-	})
+	state.peers = append(state.peers, newPeer)
 
 	// Increment the WaitGroup before starting the node
 	state.shutdownGroup.Add(1)
@@ -353,7 +364,7 @@ func metricsContain(t *assert.CollectT, nodeAddress string, text string) {
 	metricsURL := fmt.Sprintf("http://%s/metrics", nodeAddress)
 	body, err := fetchMetrics(metricsURL)
 	require.NoError(t, err)
-	require.Contains(t, body, text, "Could not find %q in the metrics of %q. All metrics: %s", text, nodeAddress, body)
+	require.Contains(t, body, text, "Could not find %q in the metrics of %q. All metrics: %s", text, nodeAddress, body)	
 }
 
 // fetchMetrics performs an HTTP GET request to the metrics endpoint and returns the response body
