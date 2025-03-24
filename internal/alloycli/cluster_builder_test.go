@@ -21,7 +21,7 @@ func TestBuildClusterService(t *testing.T) {
 		Tracer:        tracer,
 	}
 
-	cs, err := BuildClusterService(opts)
+	cs, err := buildClusterService(opts)
 	require.Nil(t, cs)
 	require.ErrorContains(t, err, "at most one of join peers and discover peers may be set")
 }

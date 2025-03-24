@@ -39,8 +39,15 @@ type ClusterOptions struct {
 	TLSServerName       string
 }
 
-// BuildClusterService is visible for testing
-func BuildClusterService(opts ClusterOptions) (*cluster.Service, error) {
+func buildClusterService(opts ClusterOptions) (*cluster.Service, error) {
+	return NewClusterService(opts, discovery.NewPeerDiscoveryFn)
+}
+
+// NewClusterService is visible to make it easier to test clustering e2e.
+func NewClusterService(
+	opts ClusterOptions,
+	getDiscoveryFn func(options discovery.Options) (discovery.DiscoverFn, error),
+) (*cluster.Service, error) {
 	listenPort := findPort(opts.ListenAddress, 80)
 
 	config := cluster.Options{
@@ -74,7 +81,7 @@ func BuildClusterService(opts ClusterOptions) (*cluster.Service, error) {
 		return nil, err
 	}
 
-	config.DiscoverPeers, err = discovery.NewPeerDiscoveryFn(discovery.Options{
+	config.DiscoverPeers, err = getDiscoveryFn(discovery.Options{
 		JoinPeers:     opts.JoinPeers,
 		DiscoverPeers: opts.DiscoverPeers,
 		DefaultPort:   listenPort,
