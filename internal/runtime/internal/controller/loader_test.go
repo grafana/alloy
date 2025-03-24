@@ -124,6 +124,45 @@ func TestLoader(t *testing.T) {
 		requireGraph(t, l.Graph(), testGraphDefinition)
 	})
 
+	t.Run("Check data flow edges", func(t *testing.T) {
+		invalidFile := `
+			testcomponents.passthrough "one" {
+				input = "1"
+			}
+
+			testcomponents.passthrough "pass" {
+				input = testcomponents.passthrough.one.output
+				lag = testcomponents.passthrough.one.output + "s"
+			}
+
+			testcomponents.summation "sum" {
+				input = testcomponents.passthrough.pass.output 
+			}
+		`
+		l := controller.NewLoader(newLoaderOptions())
+		diags := applyFromContent(t, l, []byte(invalidFile), nil, nil)
+		require.NoError(t, diags.ErrorOrNil())
+		newGraph := l.Graph()
+
+		sum := newGraph.GetByID("testcomponents.summation.sum").(controller.ComponentNode)
+		pass := newGraph.GetByID("testcomponents.passthrough.pass").(controller.ComponentNode)
+		one := newGraph.GetByID("testcomponents.passthrough.one").(controller.ComponentNode)
+		require.Equal(t, []string{"testcomponents.passthrough.pass", "testcomponents.passthrough.pass"}, one.GetDataFlowEdgesTo())
+		require.Equal(t, []string{"testcomponents.summation.sum"}, pass.GetDataFlowEdgesTo())
+		require.Empty(t, sum.GetDataFlowEdgesTo())
+
+		// Check that the data flow edges are not duplicated after the reload
+		diags = applyFromContent(t, l, []byte(invalidFile), nil, nil)
+		require.NoError(t, diags.ErrorOrNil())
+		newGraph = l.Graph()
+		sum = newGraph.GetByID("testcomponents.summation.sum").(controller.ComponentNode)
+		pass = newGraph.GetByID("testcomponents.passthrough.pass").(controller.ComponentNode)
+		one = newGraph.GetByID("testcomponents.passthrough.one").(controller.ComponentNode)
+		require.Equal(t, []string{"testcomponents.passthrough.pass", "testcomponents.passthrough.pass"}, one.GetDataFlowEdgesTo())
+		require.Equal(t, []string{"testcomponents.summation.sum"}, pass.GetDataFlowEdgesTo())
+		require.Empty(t, sum.GetDataFlowEdgesTo())
+	})
+
 	t.Run("Copy existing components and delete stale ones", func(t *testing.T) {
 		startFile := `
 			// Component that should be copied over to the new graph
