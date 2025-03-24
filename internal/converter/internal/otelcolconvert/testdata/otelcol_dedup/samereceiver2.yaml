@@ -4,18 +4,20 @@ receivers:
       grpc:
       http:
 
+processors:
+  batch:
+
 exporters:
   otlp:
     endpoint: database:4317
 
-# A receiver may not appear in two different groups.
 service:
   pipelines:
     metrics: # Group <empty>
       receivers: [otlp]
       processors: []
       exporters: [otlp]
-    traces/2: # Group 2
+    metrics/2: # Group 2
       receivers: [otlp]
-      processors: []
+      processors: [batch]
       exporters: [otlp]

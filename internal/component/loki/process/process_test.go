@@ -651,7 +651,7 @@ func getServiceDataWithLiveDebugging(log *testlivedebugging.Log) func(string) (i
 	ld.AddCallback(
 		"callback1",
 		"",
-		func(data string) { log.Append(data) },
+		func(data livedebugging.Data) { log.Append(data.DataFunc()) },
 	)
 
 	return func(name string) (interface{}, error) {

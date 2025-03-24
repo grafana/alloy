@@ -16,6 +16,7 @@ Main (unreleased)
 - Add `loki.enrich` component to enrich logs using labels from `discovery.*` components. (@v-zhuravlev)
 - Add string concatenation for secrets type (@ravishankar15)
 - Add support for environment variables to OpenTelemetry Collector config. (@jharvey10)
+- Replace graph in Alloy UI with a new version that supports modules and data flow visualization. (@wildum)
 
 ### Enhancements
 
@@ -40,6 +41,8 @@ Main (unreleased)
 
 - Added additional backwards compatibility metrics to `prometheus.write.queue`. (@mattdurham)
 
+- Add new stdlib functions encoding.to_json (@ravishankar15)
+
 - Added OpenTelemetry logs and metrics support to Alloy mixin's dashboards and alerts. (@thampiotr)
 
 - Add support for proxy and headers in `prometheus.write.queue`. (@mattdurham)
@@ -53,6 +56,8 @@ Main (unreleased)
 
 - Reduced lock contention in `prometheus.scrape` component (@thampiotr)
 
+- Support converting otel config which uses a common receiver across pipelines with different names. (@wildum)
+
 - Reduce CPU usage of the `loki.source.podlogs` component when pods logs target lots of pods (@QuentinBisson)
 
 - Add error body propagation in `pyroscope.write`, for `/ingest` calls. (@simonswine)
@@ -60,6 +65,8 @@ Main (unreleased)
 ### Bugfixes
 
 - Fix deadlocks in `loki.source.file` when tailing fails (@mblaschke)
+
+- Fixed an issue in the `mimir.rules.kubernetes` component that would keep the component as unhealthy even when it managed to start after temporary errors (@nicolasvan)
 
 ### Other changes
 
