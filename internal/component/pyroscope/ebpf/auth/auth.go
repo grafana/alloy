@@ -28,10 +28,7 @@ type BasicAuthRPCCreds struct {
 	header string
 }
 
-func (b *BasicAuthRPCCreds) GetRequestMetadata(
-	context.Context,
-	...string,
-) (map[string]string, error) {
+func (b *BasicAuthRPCCreds) GetRequestMetadata(context.Context, ...string) (map[string]string, error) {
 	return map[string]string{
 		"Authorization": b.header,
 	}, nil

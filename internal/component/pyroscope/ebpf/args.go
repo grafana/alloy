@@ -44,6 +44,5 @@ type DeprecatedArguments struct {
 
 // Validate implements syntax.Validator.
 func (arg *Arguments) Validate() error {
-
 	return nil
 }
