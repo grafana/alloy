@@ -37,7 +37,6 @@ func (i *LogsInterceptor) Capabilities() otelconsumer.Capabilities {
 }
 
 func (i *LogsInterceptor) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
-
 	if i.onConsumeLogs != nil {
 		return i.onConsumeLogs(ctx, ld)
 	}

@@ -37,7 +37,6 @@ func (i *TracesInterceptor) Capabilities() otelconsumer.Capabilities {
 }
 
 func (i *TracesInterceptor) ConsumeTraces(ctx context.Context, ld ptrace.Traces) error {
-
 	if i.onConsumeTraces != nil {
 		return i.onConsumeTraces(ctx, ld)
 	}

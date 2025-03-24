@@ -179,7 +179,7 @@ func (c *Component) Update(newConfig component.Arguments) error {
 
 	tracesInterceptor := interceptconsumer.Traces(fanout,
 		func(ctx context.Context, td ptrace.Traces) error {
-			livedebuggingpublisher.PublishTracesIfActive(c.debugDataPublisher.(livedebugging.DebugDataPublisher), c.opts.ID, td, otelcol.GetComponentMetadata(nextTraces))
+			livedebuggingpublisher.PublishTracesIfActive(c.debugDataPublisher, c.opts.ID, td, otelcol.GetComponentMetadata(nextTraces))
 			return fanout.ConsumeTraces(ctx, td)
 		},
 	)

@@ -6,7 +6,6 @@ import (
 	"context"
 	"errors"
 	"os"
-	"sync"
 
 	"github.com/prometheus/client_golang/prometheus"
 	otelcomponent "go.opentelemetry.io/collector/component"
@@ -84,8 +83,6 @@ type Connector struct {
 	debugDataPublisher livedebugging.DebugDataPublisher
 
 	args Arguments
-
-	updateMut sync.Mutex
 }
 
 var (

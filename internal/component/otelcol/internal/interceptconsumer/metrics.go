@@ -37,7 +37,6 @@ func (i *MetricsInterceptor) Capabilities() otelconsumer.Capabilities {
 }
 
 func (i *MetricsInterceptor) ConsumeMetrics(ctx context.Context, ld pmetric.Metrics) error {
-
 	if i.onConsumeMetrics != nil {
 		return i.onConsumeMetrics(ctx, ld)
 	}

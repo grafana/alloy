@@ -219,7 +219,7 @@ func graph(_ service.Host, callbackManager livedebugging.CallbackManager, logger
 			callbackManager.DeleteCallbackMulti(id, moduleID)
 		}()
 
-		ticker := time.NewTicker(time.Duration(windowSeconds))
+		ticker := time.NewTicker(windowSeconds)
 		defer ticker.Stop()
 
 		for {

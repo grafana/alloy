@@ -29,7 +29,7 @@ func (h *FakeServiceHost) GetComponent(id component.ID, opts component.InfoOptio
 
 func (h *FakeServiceHost) ListComponents(moduleID string, opts component.InfoOptions) ([]*component.Info, error) {
 	if moduleID != "" {
-		for key, _ := range h.ComponentsInfo {
+		for key := range h.ComponentsInfo {
 			if key.ModuleID == moduleID {
 				return h.getComponentsInModule(moduleID), nil
 			}
