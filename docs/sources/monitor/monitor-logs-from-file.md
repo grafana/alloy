@@ -1,21 +1,18 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/tutorials/scenarios/monitor-docker-containers/
-description: Learn how to use Grafana Alloy to monitor Docker containers
-menuTitle: Monitor Docker
-title: Monitor Docker containers with Grafana Alloy
-weight: 200
+canonical: https://grafana.com/docs/alloy/latest/tutorials/scenarios/monitor-logs-from-file/
+description: Learn how to use Grafana Alloy to monitor logs froma  file
+menuTitle: Monitor log files
+title: Monitor logs from a local file with Grafana Alloy
+weight: 350
 ---
 
-# Monitor Docker containers with {{% param "FULL_PRODUCT_NAME" %}}
+# Monitor logs from a local file with {{% param "FULL_PRODUCT_NAME" %}}
 
-Docker containers provide statistics and logs.
-You can use the `docker stats` and `docker logs` commands to show the metrics and logs but this just shows the output in a terminal and it's a fixed snapshot in time.
-If you use {{< param "PRODUCT_NAME" >}} to collect the metrics and logs and forward them to a Grafana stack, you can create a Grafana dashboard to monitor your Docker container.
 
 The `alloy-scenarios` repository provides series of complete working examples of {{< param "PRODUCT_NAME" >}} deployments.
 You can clone the repository and use the example deployments to understand how {{< param "PRODUCT_NAME" >}} can collect, process, and export telemetry signals.
 
-In this example scenario, {{< param "PRODUCT_NAME" >}} collects the Docker container metrics and logs and forwards them to a Loki destination.
+In this example scenario, {{< param "PRODUCT_NAME" >}} collects logs from a local file and forwards them to a Loki destination.
 
 ## Before you begin
 
@@ -41,7 +38,7 @@ git clone https://github.com/grafana/alloy-scenarios.git
 Start Docker to deploy the Grafana stack.
 
 ```shell
-cd alloy-scenarios/docker-monitoring
+cd alloy-scenarios/logs-file
 docker compose up -d
 ```
 
@@ -76,76 +73,29 @@ docker compose down
 ## Understand the {{% param "PRODUCT_NAME" %}} configuration
 
 This example uses a `config.alloy` file to configure the {{< param "PRODUCT_NAME" >}} components for metrics and logging.
-You can find the `config.alloy` file used in this example in your cloned repository at `alloy-scenarios/docker-monitoring/`.
+You can find the `config.alloy` file used in this example in your cloned repository at `alloy-scenarios/logs-file/`.
 
-### Configure metrics
+### Configure `livedebugging`
 
-The metrics configuration in this example requires three components:
+`livedebugging` streams real-time data from your components directly to the {{< param "PRODUCT_NAME" >}} UI.
+Refer to the [Troubleshooting documentation][troubleshooting] for more information about how you can use this feature in the {{< param "PRODUCT_NAME" >}} UI.
 
-* `prometheus.exporter.cadvisor`
-* `prometheus.scrape`
-* `prometheus.remote_write`
+[troubleshooting]: https://grafana.com/docs/alloy/latest/troubleshoot/debug/#live-debugging-page
 
-#### `prometheus.exporter.cadvisor`
+#### `livedebugging`
 
-The [`prometheus.exporter.cadvisor`][prometheus.exporter.cadvisor] component exposes the Docker container metrics.
-In this example, this component needs the following arguments:
-
-* `docker_host`: Defines the Docker endpoint.
-* `storage_duration`: Sets the time that data is stored in memory.
-
-This component provides the `prometheus.exporter.cadvisor.example.targets` target for `prometheus.scrape`.
+`livedebugging` is disabled by default.
+It must be explicitly enabled through the `livedebugging` configuration block to make the debugging data visible in the {{< param "PRODUCT_NAME" >}} UI.
 
 ```alloy
-prometheus.exporter.cadvisor "example" {
-  docker_host = "unix:///var/run/docker.sock"
-
-  storage_duration = "5m"
+livedebugging {
+  enabled = true
 }
 ```
-
-#### `prometheus.scrape`
-
-The [`prometheus.scrape`][prometheus.scrape] component scrapes the cAdvisor metrics and forwards them to a receiver.
-In this example, the component needs the following arguments:
-
-* `targets`: The target to scrape the metrics from.
-* `forward_to`: The destination to forward the metrics to.
-* `scrape_interval`: How frequently to scrape the target.
-
-```alloy
-prometheus.scrape "scraper" {
-  targets    = prometheus.exporter.cadvisor.example.targets
-  forward_to = [ prometheus.remote_write.demo.receiver ]
-
-  scrape_interval = "10s"
-}
-```
-
-#### `prometheus.remote_write`
-
-The [`prometheus.remote_write`][prometheus.remote_write] component sends metrics to a Prometheus server.
-In this example, the component needs the following arguments:
-
-* `url`: Defines the full URL endpoint to send metrics to.
-
-This component provides the `prometheus.remote_write.demo.receiver` destination for `prometheus.scrape`.
-
-```alloy
-prometheus.remote_write "demo" {
-  endpoint {
-    url = "http://prometheus:9090/api/v1/write"
-  }
-}
-```
-
-[prometheus.exporter.cadvisor]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/prometheus/prometheus.exporter.cadvisor/
-[prometheus.scrape]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/prometheus/prometheus.scrape/
-[prometheus.remote_write]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/prometheus/prometheus.remote_write/
 
 ### Configure logging
 
-The logging configuration in this example requires four components:
+The logging configuration in this example requires three components:
 
 * `discovery.docker`
 * `discovery.relabel`
