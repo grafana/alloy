@@ -64,6 +64,7 @@ Main (unreleased)
 ### Bugfixes
 
 - Fix deadlocks in `loki.source.file` when tailing fails (@mblaschke)
+- Add missing RBAC permission for ScrapeConfig (@alex-berger)
 
 - Fixed an issue in the `mimir.rules.kubernetes` component that would keep the component as unhealthy even when it managed to start after temporary errors (@nicolasvan)
 
