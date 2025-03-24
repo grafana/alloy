@@ -1,0 +1,31 @@
+otelcol.receiver.otlp "default" {
+	grpc {
+		endpoint = "localhost:4317"
+	}
+
+	http {
+		endpoint = "localhost:4318"
+	}
+
+	output {
+		metrics = [otelcol.exporter.otlp.default.input, otelcol.processor.batch._2_default.input]
+	}
+}
+
+otelcol.exporter.otlp "default" {
+	client {
+		endpoint = "database:4317"
+	}
+}
+
+otelcol.processor.batch "_2_default" {
+	output {
+		metrics = [otelcol.exporter.otlp._2_default.input]
+	}
+}
+
+otelcol.exporter.otlp "_2_default" {
+	client {
+		endpoint = "database:4317"
+	}
+}

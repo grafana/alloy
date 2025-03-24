@@ -53,6 +53,8 @@ Main (unreleased)
 
 - Reduced lock contention in `prometheus.scrape` component (@thampiotr)
 
+- Support converting otel config which uses a common receiver across pipelines with different names. (@wildum)
+
 - Reduce CPU usage of the `loki.source.podlogs` component when pods logs target lots of pods (@QuentinBisson)
 
 - Add error body propagation in `pyroscope.write`, for `/ingest` calls. (@simonswine)
