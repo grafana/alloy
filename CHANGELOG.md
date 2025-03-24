@@ -40,6 +40,8 @@ Main (unreleased)
 
 - Added additional backwards compatibility metrics to `prometheus.write.queue`. (@mattdurham)
 
+- Add new stdlib functions encoding.to_json (@ravishankar15)
+
 - Added OpenTelemetry logs and metrics support to Alloy mixin's dashboards and alerts. (@thampiotr)
 
 - Add support for proxy and headers in `prometheus.write.queue`. (@mattdurham)
