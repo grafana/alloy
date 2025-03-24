@@ -62,7 +62,6 @@ func New(
 	if err != nil {
 		return nil, err
 	}
-	cfg.HostName, cfg.IPAddress = hostname, sourceIP
 	if cfg.CollAgentAddr == "" {
 		return nil, errors.New("missing otlp collector address")
 	}
