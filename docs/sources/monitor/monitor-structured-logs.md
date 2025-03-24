@@ -1,5 +1,5 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/tutorials/scenarios/monitor-tcp-logs/
+canonical: https://grafana.com/docs/alloy/latest/tutorials/scenarios/monitor-structured-logs/
 description: Learn how to use Grafana Alloy to monitor structured logs
 menuTitle: Monitor structured logs
 title: Monitor structured logs with Grafan Alloy
