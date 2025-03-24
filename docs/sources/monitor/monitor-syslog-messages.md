@@ -3,7 +3,7 @@ canonical: https://grafana.com/docs/alloy/latest/tutorials/scenarios/monitor-sys
 description: Learn how to use Grafana Alloy to monitor non-RFC5424 compliant syslog messages
 menuTitle: Monitor syslog messages
 title: Monitor non-RFC5424 compliant syslog messages with Grafana Alloy
-weight: 500
+weight: 400
 ---
 
 # Monitor non-RFC5424 compliant syslog messages with {{% param "FULL_PRODUCT_NAME" %}}

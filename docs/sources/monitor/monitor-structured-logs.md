@@ -3,7 +3,7 @@ canonical: https://grafana.com/docs/alloy/latest/tutorials/scenarios/monitor-str
 description: Learn how to use Grafana Alloy to monitor structured logs
 menuTitle: Monitor structured logs
 title: Monitor structured logs with Grafan Alloy
-weight: 600
+weight: 500
 ---
 
 # Monitor structured logs with {{% param "FULL_PRODUCT_NAME" %}}

@@ -3,7 +3,7 @@ canonical: https://grafana.com/docs/alloy/latest/tutorials/scenarios/monitor-win
 description: Learn how to use Grafana Alloy to monitor Windows servers and desktops
 menuTitle: Monitor Windows
 title: Monitor Microsoft Windows servers and desktops with Grafana Alloy
-weight: 400
+weight: 250
 ---
 
 # Monitor Microsoft Windows servers and desktops with {{% param "FULL_PRODUCT_NAME" %}}
