@@ -72,7 +72,7 @@ docker compose down
 
 ## Understand the {{% param "PRODUCT_NAME" %}} configuration
 
-This example uses a `config.alloy` file to configure the {{< param "PRODUCT_NAME" >}} components for metrics and logging.
+This example uses a `config.alloy` file to configure the {{< param "PRODUCT_NAME" >}} components for logging.
 You can find the `config.alloy` file used in this example in your cloned repository at `alloy-scenarios/logs-file/`.
 
 ### Configure `livedebugging`
@@ -97,68 +97,39 @@ livedebugging {
 
 The logging configuration in this example requires three components:
 
-* `discovery.docker`
-* `discovery.relabel`
-* `loki.source.docker`
+* `local.fule_match`
+* `loki.source.file`
 * `loki.write`
 
-#### `discovery.docker`
+#### `local.file_match`
 
-The [`discovery.docker`][discovery.docker] component discovers the Docker containers and extracts the metadata.
-In this example, the component needs the following argument:
+The [`local.file_match`][local.file_match] component discovers files on the local filesystem using glob patterns.
+In this example, the component needs the following arguments:
 
-* `host`: Defines the address of the Docker Daemon to connect to.
+* `path_targets`: Targets to expand. Looks for glob patterns on the `__path__` key.
+* `sync_period`: How often to sync filesystem and targets.
 
 ```alloy
-discovery.docker "linux" {
-  host = "unix:///var/run/docker.sock"
+local.file_match "local_files" {
+    path_targets = [{"__path__" = "/temp/logs/*.log", "job" = "python", "hostname" = constants.hostname}]
+    sync_period  = "5s"
 }
 ```
 
-#### `discovery.relabel`
+#### `loki.source.file`
 
-The [`discovery.relabel`][discovery.relabel] component defines a relabeling rule to create a service name from the container name.
+The [`loki.source.file`][loki.source.file] component reads log entries from files and forwards them to other Loki components.
 In this example, the component needs the following arguments:
 
-* `targets`: The targets to relabel.
-  In this example, the `discovery.relabel` component is used only for its exported `relabel_rules` in the `loki.source.docker` component.
-  No targets are modified, so the `targets` argument is an empty array.
-* `source_labels`: The list of labels to select for relabeling.
-* `regex`: A regular expression argument that, in this case, matches any string after `/`.
-  Docker container names often appear with a leading slash (/) in the Prometheus automatic discovery labels.
-  This expression keeps the container name.
-* `target_label`: The label that's written to the target.
-
-```alloy
-discovery.relabel "logs_integrations_docker" {
-  targets = []
-
-  rule {
-    source_labels = ["__meta_docker_container_name"]
-    regex = "/(.*)"
-    target_label = "service_name"
-    }
-  }
-```
-
-#### `loki.source.docker`
-
-The [`loki.source.docker`][loki.source.docker] component collects the logs from the Docker containers.
-In this example, the component needs the following arguments:
-
-* `host`: The address of the Docker daemon.
-* `targets`: The list of containers to read logs from.
-* `labels`: The default set of labels to apply on entries.
-* `relabel_rules`: The relabeling rules to apply on log entries.
+* `targets`: The list of files to read logs from.
 * `forward_to`: The list of receivers to send log entries to.
+* `tail_from_end`: Whether a log file is tailed from the end if a stored position isn't found.
 
 ```alloy
-loki.source.docker "default" {
-  host       = "unix:///var/run/docker.sock"
-  targets    = discovery.docker.linux.targets
-  labels     = {"platform" = "docker"}
-  relabel_rules = discovery.relabel.logs_integrations_docker.rules
-  forward_to = [loki.write.local.receiver]
+loki.source.file "log_scrape" {
+    targets    = local.file_match.local_files.targets
+    forward_to = [loki.write.local.receiver]
+    tail_from_end = true
 }
 ```
 
@@ -177,7 +148,6 @@ loki.write "local" {
 }
 ```
 
-[discovery.docker]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/discovery/discovery.docker/
-[discovery.relabel]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/discovery/discovery.relabel/
-[loki.source.docker]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/loki/loki.source.docker/
+[local.file_match]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/local/local.file_match/
+[loki.source.file]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/loki/loki.source.file/
 [loki.write]: https://grafana.com/docs/alloy/<ALLOY__VERSION>/reference/components/loki/loki.write/
