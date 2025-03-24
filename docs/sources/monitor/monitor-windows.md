@@ -9,10 +9,11 @@ weight: 400
 # Monitor Microsoft Windows servers and desktops with {{% param "FULL_PRODUCT_NAME" %}}
 
 You can use {{< param "FULL_PRODUCT_NAME" >}} to monitor Microsoft Windows servers and desktops.
-This example shows you how to install {{< param "PRODUCT_NAME" >}} in Windows and configure {{< param "PRODUCT_NAME" >}} to monitor the following system attributes:
 
-* Windows performance metrics
-* Windows event logs
+The `alloy-scenarios` repository provides series of complete working examples of {{< param "PRODUCT_NAME" >}} deployments.
+You can clone the repository and use the example deployments to understand how {{< param "PRODUCT_NAME" >}} can collect, process, and export telemetry signals.
+
+In this example scenario {{< param "PRODUCT_NAME" >}} collects Windows performance metrics and Windows event logs, and forwards them to a Loki destination..
 
 ## Before you begin
 
@@ -106,15 +107,17 @@ Refer to [Debug Grafana Alloy](https://grafana.com/docs/alloy/latest/troubleshoo
 
 ## Visualise your data
 
-To create a [dashboard](https://grafana.com/docs/grafana/latest/getting-started/build-first-dashboard/#create-a-dashboard) to visualise your metrics and logs, open your browser and navigate to [`http://localhost:3000/dashboards`](http://localhost:3000/dashboards).
-
 To explore metrics, open your browser and navigate to [http://localhost:3000/explore/metrics](http://localhost:3000/explore/metrics).
 
 To use the Grafana Logs Drilldown, open your browser and navigate to [http://localhost:3000/a/grafana-lokiexplore-app](http://localhost:3000/a/grafana-lokiexplore-app).
 
+To create a [dashboard](https://grafana.com/docs/grafana/latest/getting-started/build-first-dashboard/#create-a-dashboard) to visualise your metrics and logs, open your browser and navigate to [`http://localhost:3000/dashboards`](http://localhost:3000/dashboards).
+
 ## Understand the {{% param "PRODUCT_NAME" %}} configuration
 
-This example requires you to configure components for metrics and logging.
+This example uses a `config.alloy` file to configure the {{< param "PRODUCT_NAME" >}} components for metrics and logging.
+You can find the `config.alloy` file used in this example in your cloned repository at `alloy-scenarios/windows/`.
+
 `livedebugging` is included in the configuration so you can stream real-time data to the {{< param "PRODUCT_NAME" >}} UI.
 
 ### Configure metrics
