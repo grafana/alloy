@@ -57,11 +57,6 @@ To access the graph page of a module, click on the **Graph** button on the modul
 
 The amount of data that exits a component that supports [live debugging][#live-debugging-page] is shown on the outgoing edges of the component.
 The data is refreshed according to the `window` parameter.
-
-{{< admonition type="note" >}}
-The graph page is experimental and may change in the future. Feedback is welcome.
-{{< /admonition >}}
-
 ### Component detail page
 
 {{< figure src="/media/docs/alloy/ui_component_detail_page_2.png" alt="Alloy UI component detail page" >}}
