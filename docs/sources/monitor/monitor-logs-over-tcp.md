@@ -1,5 +1,5 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/tutorials/scenarios/monitor-tcp-logs/
+canonical: https://grafana.com/docs/alloy/latest/tutorials/scenarios/monitor-logs-over-tcp/
 description: Learn how to use Grafana Alloy to monitor TCP logs
 menuTitle: Monitor TCP logs
 title: Monitor TCP logs with Grafana Alloy

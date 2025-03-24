@@ -1,5 +1,5 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/tutorials/scenarios/monitor-syslog-messages/
+canonical: https://grafana.com/docs/alloy/latest/tutorials/scenarios/monitor-windows/
 description: Learn how to use Grafana Alloy to monitor Windows servers and desktops
 menuTitle: Monitor Windows
 title: Monitor Microsoft Windows servers and desktops with Grafana Alloy
