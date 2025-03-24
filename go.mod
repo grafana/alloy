@@ -75,7 +75,7 @@ require (
 	github.com/grafana/snowflake-prometheus-exporter v0.0.0-20240813124544-9995e8354548
 	github.com/grafana/tail v0.0.0-20230510142333-77b18831edf0
 	github.com/grafana/vmware_exporter v0.0.5-beta.0.20250218170317-73398ba08329
-	github.com/grafana/walqueue v0.0.0-20250306192434-b34b4277b995
+	github.com/grafana/walqueue v0.0.0-20250320164132-8157339be76c
 	github.com/hashicorp/consul/api v1.31.0
 	github.com/hashicorp/go-discover v0.0.0-20230724184603-e89ebd1b2f65
 	github.com/hashicorp/go-multierror v1.1.1
@@ -98,7 +98,7 @@ require (
 	github.com/jmespath/go-jmespath v0.4.0
 	github.com/jonboulle/clockwork v0.4.0
 	github.com/json-iterator/go v1.1.12
-	github.com/klauspost/compress v1.17.11
+	github.com/klauspost/compress v1.18.0
 	github.com/leodido/go-syslog/v4 v4.2.0
 	github.com/lib/pq v1.10.9
 	github.com/mackerelio/go-osstat v0.2.5
@@ -163,15 +163,16 @@ require (
 	github.com/oschwald/maxminddb-golang v1.13.0
 	github.com/percona/mongodb_exporter v0.43.1
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
+	github.com/pingcap/tidb/pkg/parser v0.0.0-20250220113329-fdf33cffaea7
 	github.com/pkg/errors v0.9.1
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2
 	github.com/prometheus-community/elasticsearch_exporter v1.5.0
 	github.com/prometheus-community/postgres_exporter v0.11.1
 	github.com/prometheus-community/stackdriver_exporter v0.18.0
 	github.com/prometheus-community/windows_exporter v0.27.4-0.20241010144849-a0f6d3bcf9a4 // if you update the windows_exporter version, make sure to update the PROM_WIN_EXP_VERSION in _index
-	github.com/prometheus-operator/prometheus-operator v0.66.0
-	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.66.0
-	github.com/prometheus-operator/prometheus-operator/pkg/client v0.66.0
+	github.com/prometheus-operator/prometheus-operator v0.69.1
+	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.69.1
+	github.com/prometheus-operator/prometheus-operator/pkg/client v0.69.1
 	github.com/prometheus/blackbox_exporter v0.24.1-0.20230623125439-bd22efa1c900
 	github.com/prometheus/client_golang v1.20.5
 	github.com/prometheus/client_model v0.6.1
@@ -266,7 +267,7 @@ require (
 	golang.org/x/exp v0.0.0-20241217172543-b2144cdd0a67
 	golang.org/x/net v0.37.0
 	golang.org/x/oauth2 v0.27.0
-	golang.org/x/sync v0.12.0
+	golang.org/x/sync v0.12.0 // indirect
 	golang.org/x/sys v0.31.0
 	golang.org/x/text v0.23.0
 	golang.org/x/time v0.9.0
@@ -504,7 +505,6 @@ require (
 	github.com/ebitengine/purego v0.8.1 // indirect
 	github.com/edsrzf/mmap-go v1.1.0 // indirect
 	github.com/efficientgo/core v1.0.0-rc.2 // indirect
-	github.com/efficientgo/tools/core v0.0.0-20220817170617-6c25e3b627dd // indirect
 	github.com/elastic/go-grok v0.3.1 // indirect
 	github.com/elastic/go-perf v0.0.0-20241016160959-1342461adb4a // indirect
 	github.com/elastic/go-sysinfo v1.8.1 // indirect
@@ -517,7 +517,7 @@ require (
 	github.com/envoyproxy/protoc-gen-validate v1.1.0 // indirect
 	github.com/euank/go-kmsg-parser v2.0.0+incompatible // indirect
 	github.com/evanphx/json-patch/v5 v5.9.0 // indirect
-	github.com/expr-lang/expr v1.16.9 // indirect
+	github.com/expr-lang/expr v1.17.0 // indirect
 	github.com/facette/natsort v0.0.0-20181210072756-2cd4dd1e2dcb // indirect
 	github.com/fatih/camelcase v1.0.0 // indirect
 	github.com/felixge/fgprof v0.9.4 // indirect
@@ -748,13 +748,16 @@ require (
 	github.com/philhofer/fwd v1.1.3-0.20240916144458-20a13a1f6b7c // indirect
 	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
 	github.com/pierrec/lz4/v4 v4.1.22 // indirect
+	github.com/pingcap/errors v0.11.5-0.20240311024730-e056997136bb // indirect
+	github.com/pingcap/failpoint v0.0.0-20240528011301-b51a646c7c86 // indirect
+	github.com/pingcap/log v1.1.0 // indirect
 	github.com/pires/go-proxyproto v0.7.0 // indirect
 	github.com/pjbgf/sha1cd v0.3.0 // indirect
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
 	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10 // indirect
 	github.com/power-devops/perfstat v0.0.0-20220216144756-c35f1ee13d7c // indirect
 	github.com/prometheus-community/go-runit v0.1.0 // indirect
-	github.com/prometheus-community/prom-label-proxy v0.6.0 // indirect
+	github.com/prometheus-community/prom-label-proxy v0.7.0 // indirect
 	github.com/prometheus/alertmanager v0.27.0 // indirect
 	github.com/prometheus/exporter-toolkit v0.14.0 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 // indirect
@@ -881,9 +884,11 @@ require (
 	google.golang.org/genproto/googleapis/api v0.0.0-20250115164207-1a7da9e5054f // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250115164207-1a7da9e5054f // indirect
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6 // indirect
+	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect
 	gopkg.in/fsnotify/fsnotify.v1 v1.4.7 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
+	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	gopkg.in/zorkian/go-datadog-api.v2 v2.30.0 // indirect
@@ -922,7 +927,7 @@ replace (
 // TODO: remove replace directive once:
 // * There is a release of Prometheus which addresses https://github.com/prometheus/prometheus/issues/14049,
 // for example, via this implementation: https://github.com/grafana/prometheus/pull/34
-replace github.com/prometheus/prometheus => github.com/grafana/prometheus v1.8.2-0.20250224181348-8257a54d8edd // staleness_disabling_v0.55.1 branch
+replace github.com/prometheus/prometheus => github.com/grafana/prometheus v1.8.2-0.20250312141819-a2b6722387bf // staleness_disabling_v0.55.1 branch
 
 replace gopkg.in/yaml.v2 => github.com/rfratto/go-yaml v0.0.0-20211119180816-77389c3526dc
 
@@ -949,7 +954,7 @@ replace (
 
 	// TODO(dehaansa): integrate the changes from the exporter-package-v0.15.0 branch into at least the
 	// grafana fork of the exporter, or completely into upstream
-	github.com/prometheus-community/postgres_exporter => github.com/grafana/postgres_exporter v0.15.1-0.20250218135316-21788f008d39
+	github.com/prometheus-community/postgres_exporter => github.com/grafana/postgres_exporter v0.15.1-0.20250312140329-3046b223bba0
 
 	// Needed until a bunch of exporters are updated, because 0.13.0 breaks compatibility in web.ListenAndServe
 	//github.com/prometheus/exporter-toolkit => github.com/prometheus/exporter-toolkit v0.11.0

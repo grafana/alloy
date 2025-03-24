@@ -30,6 +30,7 @@ var DefaultConfig = Config{
 // Config is the configuration for the mssql integration
 type Config struct {
 	ConnectionString   config_util.Secret `yaml:"connection_string,omitempty"`
+	ConnectionName     string             `yaml:"connection_name,omitempty"`
 	MaxIdleConnections int                `yaml:"max_idle_connections,omitempty"`
 	MaxOpenConnections int                `yaml:"max_open_connections,omitempty"`
 	Timeout            time.Duration      `yaml:"timeout,omitempty"`
@@ -119,7 +120,7 @@ func (c *Config) NewIntegration(l log.Logger) (integrations.Integration, error) 
 
 	t, err := sql_exporter.NewTarget(
 		"mssqlintegration",
-		"",
+		c.ConnectionName,
 		string(c.ConnectionString),
 		[]*config.CollectorConfig{
 			&collectorConfig,

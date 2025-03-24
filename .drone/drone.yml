@@ -287,40 +287,6 @@ trigger:
 type: docker
 ---
 kind: pipeline
-name: Publish Windows alloy-devel container
-platform:
-  arch: amd64
-  os: windows
-  version: "1809"
-steps:
-- commands:
-  - '& "C:/Program Files/git/bin/bash.exe" -c ''mkdir -p $HOME/.docker'''
-  - '& "C:/Program Files/git/bin/bash.exe" -c ''printenv GCR_CREDS > $HOME/.docker/config.json'''
-  - '& "C:/Program Files/git/bin/bash.exe" -c ''docker login -u $DOCKER_LOGIN -p $DOCKER_PASSWORD'''
-  - '& "C:/Program Files/git/bin/bash.exe" -c ''./tools/ci/docker-containers-windows
-    alloy-devel'''
-  environment:
-    DOCKER_LOGIN:
-      from_secret: docker_login
-    DOCKER_PASSWORD:
-      from_secret: docker_password
-    GCR_CREDS:
-      from_secret: gcr_admin
-  image: grafana/alloy-build-image:v0.1.8-windows
-  name: Build containers
-  volumes:
-  - name: docker
-    path: //./pipe/docker_engine/
-trigger:
-  ref:
-  - refs/heads/main
-type: docker
-volumes:
-- host:
-    path: //./pipe/docker_engine/
-  name: docker
----
-kind: pipeline
 name: Publish Linux alloy container
 platform:
   arch: amd64
@@ -579,6 +545,6 @@ kind: secret
 name: updater_private_key
 ---
 kind: signature
-hmac: 26b5613cbd5e5cd42656c10c372d44dc93af565ec2ae212d3b27c2fe366c6aeb
+hmac: e2780fbbbb87cc7ace40a9777675afdf2d2daf7f2448fd09e15f6837fd53d871
 
 ...

@@ -235,7 +235,10 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 
 	// Set the memory limit, this will honor GOMEMLIMIT if set
 	// If there is a cgroup on linux it will use that
-	applyAutoMemLimit(l)
+	err = applyAutoMemLimit(l)
+	if err != nil {
+		level.Error(l).Log("msg", "failed to apply memory limit", "err", err)
+	}
 
 	// Enable the profiling.
 	setMutexBlockProfiling(l)

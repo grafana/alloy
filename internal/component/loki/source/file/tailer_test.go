@@ -19,7 +19,7 @@ import (
 
 func createTempFileWithContent(t *testing.T, content []byte) string {
 	t.Helper()
-	tmpfile, err := os.CreateTemp("", "testfile")
+	tmpfile, err := os.CreateTemp(t.TempDir(), "testfile")
 	if err != nil {
 		t.Fatalf("Failed to create temp file: %v", err)
 	}
@@ -123,6 +123,7 @@ func TestTailer(t *testing.T) {
 		false,
 		func() bool { return true },
 	)
+	require.NoError(t, err)
 	go tailer.Run()
 
 	_, err = logFile.Write([]byte("writing some text\n"))
@@ -205,6 +206,7 @@ func TestTailerPositionFileEntryDeleted(t *testing.T) {
 		false,
 		func() bool { return false },
 	)
+	require.NoError(t, err)
 	go tailer.Run()
 
 	_, err = logFile.Write([]byte("writing some text\n"))

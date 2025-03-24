@@ -90,14 +90,14 @@ func (args Arguments) Extensions() map[otelcomponent.ID]otelcomponent.Component 
 
 	// Gets the extensions for the HTTP server and GRPC server
 	if args.Protocols.ThriftHTTP != nil && args.Protocols.ThriftHTTP.HTTPServerArguments != nil {
-		httpExtensions := (*otelcol.HTTPServerArguments)(args.Protocols.ThriftHTTP.HTTPServerArguments).Extensions()
+		httpExtensions := args.Protocols.ThriftHTTP.HTTPServerArguments.Extensions()
 
 		// Copies the extensions for the HTTP server into the map
 		maps.Copy(extensionMap, httpExtensions)
 	}
 
 	if args.Protocols.GRPC != nil && args.Protocols.GRPC.GRPCServerArguments != nil {
-		grpcExtensions := (*otelcol.GRPCServerArguments)(args.Protocols.GRPC.GRPCServerArguments).Extensions()
+		grpcExtensions := args.Protocols.GRPC.GRPCServerArguments.Extensions()
 
 		// Copies the extensions for the GRPC server into the map.
 		maps.Copy(extensionMap, grpcExtensions)

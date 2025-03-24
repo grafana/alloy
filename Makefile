@@ -136,6 +136,10 @@ lint: alloylint
 	find . -name go.mod -execdir golangci-lint run -v --timeout=10m \;
 	$(ALLOYLINT_BINARY) ./...
 
+.PHONY: run-alloylint
+run-alloylint: alloylint
+	$(ALLOYLINT_BINARY) ./...
+
 .PHONY: test
 # We have to run test twice: once for all packages with -race and then once
 # more without -race for packages that have known race detection issues. The

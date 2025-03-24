@@ -147,9 +147,7 @@ func (c *Component) Run(ctx context.Context) error {
 				c.appendable.UpdateChildren(newArgs.ForwardTo)
 			}
 		}
-	}, func(error) {
-
-	})
+	}, func(error) {})
 	return g.Run()
 }
 

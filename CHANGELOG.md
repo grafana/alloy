@@ -13,8 +13,16 @@ Main (unreleased)
 ### Features
 
 - Add `otelcol.receiver.awscloudwatch` component to receive logs from AWS CloudWatch and forward them to other `otelcol.*` components. (@wildum)
+- Add `loki.enrich` component to enrich logs using labels from `discovery.*` components. (@v-zhuravlev)
+- Add string concatenation for secrets type (@ravishankar15)
 
 ### Enhancements
+
+- (_Experimental_) Adding a new `prometheus.operator.scrapeconfigs` which discovers and scrapes [ScrapeConfig](https://prometheus-operator.dev/docs/developer/scrapeconfig/) Kubernetes resources. (@alex-berger)
+
+- Add `rfc3164_default_to_current_year` argument to `loki.source.syslog` (@dehaansa)
+
+- Add `connection_name` support for `prometheus.exporter.mssql` (@bck01215)
 
 - Add livedebugging support for `prometheus.scrape` (@ravishankar15, @wildum)
 
@@ -35,11 +43,61 @@ Main (unreleased)
 
 - Add support for proxy and headers in `prometheus.write.queue`. (@mattdurham)
 
+- (_Experimental_) Various changes to the experimental component `database_observability.mysql`:
+  - `query_sample`: better handling of truncated queries (@cristiangreco)
+  - `query_sample`: add option to use TiDB sql parser (@cristiangreco)
+  - `query_tables`: rename collector from `query_sample` to better reflect responsibility (@matthewnolf)
+
+- Add labels validation in `pyroscope.write` to prevent duplicate labels and invalid label names/values. (@marcsanmi)
+
+- Reduced lock contention in `prometheus.scrape` component (@thampiotr)
+
+- Reduce CPU usage of the `loki.source.podlogs` component when pods logs target lots of pods (@QuentinBisson)
+
+- Add error body propagation in `pyroscope.write`, for `/ingest` calls. (@simonswine)
+
+### Bugfixes
+
+- Fix deadlocks in `loki.source.file` when tailing fails (@mblaschke)
+
 ### Other changes
 
 - Upgrading to Prometheus v2.55.1. (@ptodev)
   - Added a new `http_headers` argument to many `discovery` and `prometheus` components.
   - Added a new `scrape_failure_log_file` argument to `prometheus.scrape`.
+
+
+v1.7.5
+-----------------
+
+### Enhancements
+
+- Set zstd as default compression for `prometheus.write.queue`. (@mattdurham)
+
+v1.7.4
+-----------------
+
+### Bugfixes
+
+- Revert the changes to `loki.source.file` from release v1.7.0. These changes introduced a potential deadlock. (@dehaansa)
+
+v1.7.3
+-----------------
+
+### Breaking changes
+
+- Fixed the parsing of selections, application and network filter blocks for Beyla
+
+### Enhancements
+
+- Add the `stat_checkpointer` collector in `prometheus.exporter.postgres` (@dehaansa)
+
+### Bugfixes
+
+- Update the `prometheus.exporter.postgres` component to correctly support Postgres17 when `stat_bgwriter` collector is enabled (@dehaansa)
+
+- Fix `remoteCfg` logging and metrics reporting of `errNotModified` as a failure (@zackman0010)
+
 
 v1.7.2
 -----------------
@@ -63,9 +121,6 @@ v1.7.2
 
 v1.7.1
 -----------------
-
-- (_Experimental_) Various changes to the experimental component `database_observability.mysql`:
-  - `query_sample`: better handling of truncated queries (@cristiangreco)
 
 ### Bugfixes
 

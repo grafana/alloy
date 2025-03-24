@@ -135,6 +135,7 @@ The following components, grouped by namespace, _consume_ Targets.
 {{< /collapse >}}
 
 {{< collapse title="loki" >}}
+- [loki.enrich](../components/loki/loki.enrich)
 - [loki.source.docker](../components/loki/loki.source.docker)
 - [loki.source.file](../components/loki/loki.source.file)
 - [loki.source.kubernetes](../components/loki/loki.source.kubernetes)
@@ -198,6 +199,7 @@ The following components, grouped by namespace, _consume_ Prometheus `MetricsRec
 {{< collapse title="prometheus" >}}
 - [prometheus.operator.podmonitors](../components/prometheus/prometheus.operator.podmonitors)
 - [prometheus.operator.probes](../components/prometheus/prometheus.operator.probes)
+- [prometheus.operator.scrapeconfigs](../components/prometheus/prometheus.operator.scrapeconfigs)
 - [prometheus.operator.servicemonitors](../components/prometheus/prometheus.operator.servicemonitors)
 - [prometheus.receive_http](../components/prometheus/prometheus.receive_http)
 - [prometheus.relabel](../components/prometheus/prometheus.relabel)
@@ -221,6 +223,7 @@ The following components, grouped by namespace, _export_ Loki `LogsReceiver`.
 
 {{< collapse title="loki" >}}
 - [loki.echo](../components/loki/loki.echo)
+- [loki.enrich](../components/loki/loki.enrich)
 - [loki.process](../components/loki/loki.process)
 - [loki.relabel](../components/loki/loki.relabel)
 - [loki.secretfilter](../components/loki/loki.secretfilter)
@@ -249,6 +252,7 @@ The following components, grouped by namespace, _consume_ Loki `LogsReceiver`.
 {{< /collapse >}}
 
 {{< collapse title="loki" >}}
+- [loki.enrich](../components/loki/loki.enrich)
 - [loki.process](../components/loki/loki.process)
 - [loki.relabel](../components/loki/loki.relabel)
 - [loki.secretfilter](../components/loki/loki.secretfilter)

@@ -9,6 +9,29 @@ permissions:
   id-token: write
 
 jobs:
+  publish_windows_container:
+    name: Publish Windows alloy-devel container
+    runs-on: windows-2022
+    steps:
+      # This step needs to run before "Checkout code".
+      # That's because it generates a new file.
+      # We don't want this file to end up in the repo directory.
+      # Then "tools/image-tag" would get confused because "git status" no longer reports a clean repo.
+    - name: Login to DockerHub (from vault)
+      uses: grafana/shared-workflows/actions/dockerhub-login@dockerhub-login-v1.0.1
+
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: go.mod
+        cache: false
+
+    - run: |
+       & "C:/Program Files/git/bin/bash.exe" -c './tools/ci/docker-containers-windows alloy-devel'
+
   publish_linux_container:
     name: Publish Linux alloy-devel container
     container: grafana/alloy-build-image:v0.1.8

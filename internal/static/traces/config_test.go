@@ -16,7 +16,7 @@ import (
 )
 
 func tmpFile(t *testing.T, content string) (*os.File, func()) {
-	f, err := os.CreateTemp("", "")
+	f, err := os.CreateTemp(t.TempDir(), "")
 	require.NoError(t, err)
 
 	_, err = f.Write([]byte(content))

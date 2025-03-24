@@ -38,6 +38,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/local/file"                               // Import local.file
 	_ "github.com/grafana/alloy/internal/component/local/file_match"                         // Import local.file_match
 	_ "github.com/grafana/alloy/internal/component/loki/echo"                                // Import loki.echo
+	_ "github.com/grafana/alloy/internal/component/loki/enrich"                              // Import loki.enrich
 	_ "github.com/grafana/alloy/internal/component/loki/process"                             // Import loki.process
 	_ "github.com/grafana/alloy/internal/component/loki/relabel"                             // Import loki.relabel
 	_ "github.com/grafana/alloy/internal/component/loki/rules/kubernetes"                    // Import loki.rules.kubernetes
@@ -141,6 +142,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/windows"              // Import prometheus.exporter.windows
 	_ "github.com/grafana/alloy/internal/component/prometheus/operator/podmonitors"          // Import prometheus.operator.podmonitors
 	_ "github.com/grafana/alloy/internal/component/prometheus/operator/probes"               // Import prometheus.operator.probes
+	_ "github.com/grafana/alloy/internal/component/prometheus/operator/scrapeconfigs"        // Import prometheus.operator.scrapeconfigs
 	_ "github.com/grafana/alloy/internal/component/prometheus/operator/servicemonitors"      // Import prometheus.operator.servicemonitors
 	_ "github.com/grafana/alloy/internal/component/prometheus/receive_http"                  // Import prometheus.receive_http
 	_ "github.com/grafana/alloy/internal/component/prometheus/relabel"                       // Import prometheus.relabel

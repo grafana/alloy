@@ -1,13 +1,14 @@
-package collector
+package parser_test
 
 import (
 	"testing"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/alloy/internal/component/database_observability/mysql/collector/parser"
 	"github.com/stretchr/testify/require"
 )
 
-func TestExtractTableNames(t *testing.T) {
+func TestParserTiDB_ExtractTableNames(t *testing.T) {
 	testcases := []struct {
 		name   string
 		sql    string
@@ -111,12 +112,6 @@ func TestExtractTableNames(t *testing.T) {
 			sql:    "INSERT INTO some_table SELECT * FROM departments dep JOIN (SELECT id, name FROM employees_us UNION SELECT id, name FROM employees_eu) employees ON dep.id = employees.id",
 			tables: []string{"some_table", "departments", "employees_us", "employees_eu"},
 		},
-		// TODO(cristian): currently unsupported
-		// {
-		// 	name:   "show create table",
-		// 	sql:    "SHOW CREATE TABLE some_table",
-		// 	tables: []string{"some_table"},
-		// },
 		{
 			name:   "show variables",
 			sql:    "SHOW VARIABLES LIKE 'version'",
@@ -127,15 +122,27 @@ func TestExtractTableNames(t *testing.T) {
 			sql:    "DROP TABLE IF EXISTS some_table",
 			tables: []string{"some_table"},
 		},
+		// the following tests pass only with tidb parser
+		{
+			name:   "show create table",
+			sql:    "SHOW CREATE TABLE some_table",
+			tables: []string{"some_table"},
+		},
+		{
+			name:   "create user with password",
+			sql:    "CREATE USER 'exporter'@'%' IDENTIFIED BY <secret>",
+			tables: nil,
+		},
 	}
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			stmt, err := ParseSql(tc.sql)
+			p := parser.NewTiDBSqlParser()
+			stmt, err := p.Parse(tc.sql)
 			require.NoError(t, err)
 
-			got := ExtractTableNames(log.NewNopLogger(), "", stmt)
-			require.Equal(t, tc.tables, got)
+			got := p.ExtractTableNames(log.NewNopLogger(), "", stmt)
+			require.ElementsMatch(t, tc.tables, got)
 		})
 	}
 }
