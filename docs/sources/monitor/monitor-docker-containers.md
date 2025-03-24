@@ -12,6 +12,9 @@ Docker containers provide statistics and logs.
 You can use the `docker stats` and `docker logs` commands to show the metrics and logs but this just shows the output in a terminal and it's a fixed snapshot in time.
 If you use {{< param "PRODUCT_NAME" >}} to collect the metrics and logs and forward them to a Grafana stack, you can create a Grafana dashboard to monitor your Docker container.
 
+The `alloy-scenarios` repository provides series of complete working examples of {{< param "PRODUCT_NAME" >}} deployments.
+You can clone the repository and use the example deployments to understand how {{< param "PRODUCT_NAME" >}} can collect, process, and export telemetry signals.
+
 ## Before you begin
 
 This example requires:
@@ -54,11 +57,11 @@ Refer to [Debug Grafana Alloy](https://grafana.com/docs/alloy/latest/troubleshoo
 
 ## Visualise your data
 
-To create a [dashboard](https://grafana.com/docs/grafana/latest/getting-started/build-first-dashboard/#create-a-dashboard) to visualise your metrics and logs, open your browser and navigate to [`http://localhost:3000/dashboards`](http://localhost:3000/dashboards).
-
 To explore metrics, open your browser and navigate to [http://localhost:3000/explore/metrics](http://localhost:3000/explore/metrics).
 
 To use the Grafana Logs Drilldown, open your browser and navigate to [http://localhost:3000/a/grafana-lokiexplore-app](http://localhost:3000/a/grafana-lokiexplore-app).
+
+To create a [dashboard](https://grafana.com/docs/grafana/latest/getting-started/build-first-dashboard/#create-a-dashboard) to visualise your metrics and logs, open your browser and navigate to [`http://localhost:3000/dashboards`](http://localhost:3000/dashboards).
 
 ## Shut down the Grafana stack
 
@@ -70,7 +73,8 @@ docker compose down
 
 ## Understand the {{% param "PRODUCT_NAME" %}} configuration
 
-This example requires you to configure components for metrics and logging.
+This example uses a `config.alloy` file to configure the {{< param "PRODUCT_NAME" >}} components for metrics and logging.
+You can find the `config.alloy` file used in this example in your cloned repository at `alloy-scenarios/docker-monitoring/`.
 
 ### Configure metrics
 
@@ -168,7 +172,9 @@ In this example, the component needs the following arguments:
   In this example, the `discovery.relabel` component is used only for its exported `relabel_rules` in the `loki.source.docker` component.
   No targets are modified, so the `targets` argument is an empty array.
 * `source_labels`: The list of labels to select for relabeling.
-* `regex`: A regular expression argument that, in this case, matches any string, including an empty string.
+* `regex`: A regular expression argument that, in this case, matches any string after `/`.
+  Docker container names often appear with a leading slash (/) in the Prometheus automatic discovery labels.
+  This expression keeps the container name.
 * `target_label`: The label that's written to the target.
 
 ```alloy
