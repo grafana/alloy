@@ -62,7 +62,6 @@ type testCase struct {
 	initialIsolatedNodes []string // list of node names that are initially in isolated network space
 	assertionsInitial    func(t *assert.CollectT, state *testState)
 	changes              func(state *testState)
-	finalIsolatedNodes   []string // list of node names that are in isolated network space at the final stage of the test
 	assertionsFinal      func(t *assert.CollectT, state *testState)
 	assertionsTimeout    time.Duration
 	extraAllowedErrors   []string
@@ -165,20 +164,20 @@ func TestClusterE2E(t *testing.T) {
 			},
 		},
 		{
-			name:             "two split brain clusters of 4 nodes each join together",
+			name:             "two split brain clusters join together after network fixed",
 			nodeCountInitial: 4,
-			extraAllowedErrors: []string{
-				`Conflicting address for`,
+			initialIsolatedNodes: []string{
+				"node-1", "node-2",
 			},
 			assertionsInitial: func(t *assert.CollectT, state *testState) {
 				for _, p := range state.peers {
 					metricsContain(t, p.address, `cluster_node_info{state="participant"} 1`)
-					metricsContain(t, p.address, `cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 4`)
-					metricsContain(t, p.address, `cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`)
+					metricsContain(t, p.address, `cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 2`)
+					metricsContain(t, p.address, `cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 2`)
 				}
 			},
 			changes: func(state *testState) {
-				startNewNode(t, state, "node-0") // this name conflicts with the initial names
+				joinIsolatedNetworks(state)
 			},
 			assertionsFinal: func(t *assert.CollectT, state *testState) {
 				for _, p := range state.peers {
@@ -223,19 +222,24 @@ func TestClusterE2E(t *testing.T) {
 			for i := 0; i < tc.nodeCountInitial; i++ {
 				startNewNode(t, state, fmt.Sprintf("node-%d", i))
 			}
+			t.Logf("Initial nodes started")
 
 			assert.EventuallyWithT(t, func(t *assert.CollectT) {
 				tc.assertionsInitial(t, state)
 			}, 20*time.Second, 200*time.Millisecond)
+			t.Logf("Initial assertions passed")
 
 			tc.changes(state)
+			t.Logf("Changes applied")
 
 			assert.EventuallyWithT(t, func(t *assert.CollectT) {
 				tc.assertionsFinal(t, state)
 			}, 20*time.Second, 200*time.Millisecond)
+			t.Logf("Final assertions passed")
 
 			cancel()
 			state.shutdownGroup.Wait()
+			t.Logf("Shutdown complete")
 		})
 	}
 }
@@ -358,13 +362,23 @@ func startNewNode(t *testing.T, state *testState, nodeName string) {
 	require.NoError(t, err)
 }
 
+func joinIsolatedNetworks(state *testState) {
+	allPeerAddresses := make([]string, 0, len(state.peers))
+	for _, p := range state.peers {
+		allPeerAddresses = append(allPeerAddresses, p.address)
+	}
+	for _, p := range state.peers {
+		p.discoverablePeers = allPeerAddresses
+	}
+}
+
 // metricsContain fetches metrics from the given URL and checks if they
 // contain a line with the specified metric name
 func metricsContain(t *assert.CollectT, nodeAddress string, text string) {
 	metricsURL := fmt.Sprintf("http://%s/metrics", nodeAddress)
 	body, err := fetchMetrics(metricsURL)
 	require.NoError(t, err)
-	require.Contains(t, body, text, "Could not find %q in the metrics of %q. All metrics: %s", text, nodeAddress, body)	
+	require.Contains(t, body, text, "Could not find %q in the metrics of %q. All metrics: %s", text, nodeAddress, body)
 }
 
 // fetchMetrics performs an HTTP GET request to the metrics endpoint and returns the response body
