@@ -60,6 +60,8 @@ Main (unreleased)
 
 - Fix deadlocks in `loki.source.file` when tailing fails (@mblaschke)
 
+- Fixed an issue in the `mimir.rules.kubernetes` component that would keep the component as unhealthy even when it managed to start after temporary errors (@nicolasvan)
+
 ### Other changes
 
 - Upgrading to Prometheus v2.55.1. (@ptodev)
