@@ -377,7 +377,7 @@ ingress:
 
 # -- Extra k8s manifests to deploy
 # extraObjects can be of type map or slice.  If map, keys are ignored and only values are used.
-# items contained within extraObjects can be defined as dict or string and are passed through tpl.
+# Items contained within extraObjects can be defined as dict or string and are passed through tpl.
 extraObjects: null
 # - apiVersion: v1
 #   kind: Secret
