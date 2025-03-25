@@ -5,7 +5,6 @@ package reporter
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"maps"
 	"sync"
 	"time"
