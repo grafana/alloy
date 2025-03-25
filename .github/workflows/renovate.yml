@@ -1,0 +1,61 @@
+name: Renovate Dependencies
+
+on:
+  # Schedule the workflow to run every Monday at 08:00 UTC.
+  # See: https://crontab.guru/
+  schedule:
+    - cron: '0 8 * * 1'
+
+  # TODO: remove before merge
+  pull_request:
+    branches:
+      - main
+
+  # Allow manual triggering from the GitHub Actions UI
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: "Run Renovate in dry-run mode"
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  renovate:
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-arm64-small
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout 🛎️
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Retrieve renovate secrets 🔑
+        id: get-secrets
+        uses: grafana/shared-workflows/actions/get-vault-secrets@get-vault-secrets-v1.1.0
+        with:
+          common_secrets: |
+            GRAFANA_RENOVATE_APP_ID=grafana-renovate-app:app-id
+            GRAFANA_RENOVATE_PRIVATE_KEY=grafana-renovate-app:private-key
+
+      - name: Generate token 🪙
+        id: generate-token
+        uses: actions/create-github-app-token@af35edadc00be37caa72ed9f3e6d5f7801bfdf09 # v1.11.7
+        with:
+          app-id: ${{ env.GRAFANA_RENOVATE_APP_ID }}
+          private-key: ${{ env.GRAFANA_RENOVATE_PRIVATE_KEY }}
+
+      - name: Run Renovate 🔍
+        uses: renovatebot/github-action@cf5954a2aac7999882d3de4e462499adde159d04 # v41.0.17
+        with:
+          configurationFile: .github/renovate-config.json5
+          # renovate: datasource=docker depName=ghcr.io/renovatebot/renovate
+          renovate-version: 39.215.2@sha256:644608e6c6e0956856b392c01bd2e5b71fb6fa2162a4f7e932de930743f92cf4
+          token: ${{ steps.generate-token.outputs.token }}
+        env:
+          RENOVATE_DRY_RUN: ${{ (github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && github.event.inputs.dry-run == 'true')) && 'full' || null }}
+          RENOVATE_PLATFORM: github
+          RENOVATE_REPOSITORIES: ${{ github.repository }}
+          RENOVATE_USERNAME: GrafanaRenovateBot
