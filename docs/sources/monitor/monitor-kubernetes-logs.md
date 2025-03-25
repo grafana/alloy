@@ -39,7 +39,7 @@ git clone https://github.com/grafana/alloy-scenarios.git
    cd alloy-scenarios/k8s-logs
    ```
 
-1. Use kind to create a local Kubernetes cluster using [kind](https://kind.sigs.k8s.io/docs/user/quick-start/).
+1. Use kind to create a local Kubernetes cluster.
    The `kind.yml` file provides the kind cluster configuration.
 
    ```shell
@@ -76,18 +76,16 @@ git clone https://github.com/grafana/alloy-scenarios.git
    helm install --values grafana-values.yml grafana grafana/grafana --namespace meta
    ```
 
-   The `grafana.ini` configuration uses the Loki data source.
-   The `datasources.datasources.yaml` field is set to the Loki data source configuration.
+   This Helm chart installs Grafana and sets the `datasources.datasources.yaml` field to the Loki data source configuration.
 
-1. Install the K8s Monitoring Helm chart to install {{< param "PRODUCT_NAME" >}} in the `meta` namespace.
-   The `k8s-monitoring-values.yml` file contains the configuration for the K8s monitoring Helm chart.
+1. Install the Kubernetes Monitoring Helm chart to install {{< param "PRODUCT_NAME" >}} in the `meta` namespace.
+   The `k8s-monitoring-values.yml` file contains the configuration for the Kubernetes monitoring Helm chart.
 
    ```shell
    helm install --values ./k8s-monitoring-values.yml k8s grafana/k8s-monitoring -n meta --create-namespace
    ```
 
-   The {{< param "PRODUCT_NAME" >}} configuration is defined in the `k8s-monitoring-values.yml` file.
-   This configuration specifies the log Pod Logs and Kubernetes Events sources that {{< param "PRODUCT_NAME" >}} collects logs from.
+   This Helm chart installs {{< param "PRODUCT_NAME" >}} and specifies the log Pod Logs and Kubernetes Events sources that {{< param "PRODUCT_NAME" >}} collects logs from.
 
 1. Port-forward the Grafana Pod to your local machine.
 
@@ -97,7 +95,7 @@ git clone https://github.com/grafana/alloy-scenarios.git
       export POD_NAME=$(kubectl get pods --namespace meta -l "app.kubernetes.io/name=grafana,app.kubernetes.io/instance=grafana" -o jsonpath="{.items[0].metadata.name}")
       ```
 
-   1. Use kubectl to set up the port-forwarding.
+   1. Use `kubectl` to set up the port-forwarding.
 
       ```shell
       kubectl --namespace meta port-forward $POD_NAME 3000
@@ -116,7 +114,7 @@ git clone https://github.com/grafana/alloy-scenarios.git
       export POD_NAME=$(kubectl get pods --namespace meta -l "app.kubernetes.io/name=alloy-logs,app.kubernetes.io/instance=k8s" -o jsonpath="{.items[0].metadata.name}")
       ```
 
-   1. Use kubectl to set up the port-forwarding.
+   1. Use `kubectl` to set up the port-forwarding.
 
       ```shell
       kubectl --namespace meta port-forward $POD_NAME 12345
