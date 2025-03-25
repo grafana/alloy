@@ -30,6 +30,7 @@ import (
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/service/cluster"
 	"github.com/grafana/alloy/internal/service/cluster/discovery"
+	_ "github.com/grafana/alloy/internal/service/cluster/internal/testcomponent"
 	httpservice "github.com/grafana/alloy/internal/service/http"
 	remotecfgservice "github.com/grafana/alloy/internal/service/remotecfg"
 )
@@ -51,7 +52,7 @@ func (p *testPeer) discoveryFn(_ discovery.Options) (discovery.DiscoverFn, error
 }
 
 type testState struct {
-	peers         []*testPeer // slice of testPeers
+	peers         []*testPeer
 	ctx           context.Context
 	shutdownGroup sync.WaitGroup
 	testCase      *testCase
@@ -66,14 +67,9 @@ type testCase struct {
 	assertionsFinal      func(t *assert.CollectT, state *testState)
 	assertionsTimeout    time.Duration
 	extraAllowedErrors   []string
+	alloyConfig          string
 }
 
-// TODO(thampiotr): further checks to add:
-// TODO(thampiotr): checking of Lookup?
-
-// TODO(thampiotr): further scenarios to cover:
-// TODO(thampiotr): when component evaluations are super slow?
-// TODO(thampiotr): when updating component's NotifyClusterChange is taking too long
 func TestClusterE2E(t *testing.T) {
 	tests := []testCase{
 		{
@@ -88,7 +84,35 @@ func TestClusterE2E(t *testing.T) {
 					)
 					verifyPeers(t, p, 3)
 				}
-				verifyLookupInvariants(t, state)
+				verifyLookupInvariants(t, state.peers)
+			},
+		},
+		{
+			name:             "three nodes with slow components",
+			nodeCountInitial: 3,
+			alloyConfig: `
+testcomponents.ticker "tick" {
+	period = "500ms"
+	max_value = 30
+}
+
+testcomponents.slow_update "test" {
+	counter = testcomponents.ticker.tick.counter
+	update_lag = "5s"
+}
+`,
+			assertionsInitial: func(t *assert.CollectT, state *testState) {
+				for _, p := range state.peers {
+					verifyMetrics(t, p,
+						`cluster_node_info{state="participant"} 1`,
+						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 3`,
+						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 3`,
+						`ticker_counter{component_id="testcomponents.ticker.tick",component_path="/"} 30`,
+						`slow_update_counter{component_id="testcomponents.slow_update.test",component_path="/"} 30`,
+					)
+					verifyPeers(t, p, 3)
+				}
+				verifyLookupInvariants(t, state.peers)
 			},
 		},
 		{
@@ -103,7 +127,7 @@ func TestClusterE2E(t *testing.T) {
 					)
 					verifyPeers(t, p, 4)
 				}
-				verifyLookupInvariants(t, state)
+				verifyLookupInvariants(t, state.peers)
 			},
 			changes: func(state *testState) {
 				for i := 0; i < 4; i++ {
@@ -119,7 +143,7 @@ func TestClusterE2E(t *testing.T) {
 					)
 					verifyPeers(t, p, 8)
 				}
-				verifyLookupInvariants(t, state)
+				verifyLookupInvariants(t, state.peers)
 			},
 		},
 		{
@@ -137,7 +161,7 @@ func TestClusterE2E(t *testing.T) {
 					)
 					verifyPeers(t, p, 8)
 				}
-				verifyLookupInvariants(t, state)
+				verifyLookupInvariants(t, state.peers)
 			},
 			changes: func(state *testState) {
 				for i := 0; i < 4; i++ {
@@ -154,7 +178,7 @@ func TestClusterE2E(t *testing.T) {
 					)
 					verifyPeers(t, p, 4)
 				}
-				verifyLookupInvariants(t, state)
+				verifyLookupInvariants(t, state.peers)
 			},
 		},
 		{
@@ -162,6 +186,7 @@ func TestClusterE2E(t *testing.T) {
 			nodeCountInitial: 4,
 			extraAllowedErrors: []string{
 				`Conflicting address for node-0`,
+				`Conflicting address for node-1`,
 			},
 			assertionsInitial: func(t *assert.CollectT, state *testState) {
 				for _, p := range state.peers {
@@ -172,10 +197,12 @@ func TestClusterE2E(t *testing.T) {
 					)
 					verifyPeers(t, p, 4)
 				}
-				verifyLookupInvariants(t, state)
+				verifyLookupInvariants(t, state.peers)
 			},
 			changes: func(state *testState) {
-				startNewNode(t, state, "node-0") // this name conflicts with the initial names
+				// These names conflict with existing node names
+				startNewNode(t, state, "node-0")
+				startNewNode(t, state, "node-1")
 			},
 			assertionsFinal: func(t *assert.CollectT, state *testState) {
 				for _, p := range state.peers {
@@ -185,8 +212,12 @@ func TestClusterE2E(t *testing.T) {
 						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`,
 					)
 					verifyPeers(t, p, 4)
+					// NOTE: this and error logs are the only reliable indication that something went wrong...
+					// Currently, the cluster will continue operating with name conflicts, potentially doing some
+					// duplicated work. But this is not necessarily a bad choice of how to handle this.
+					metricsContain(t, p.address, `cluster_node_gossip_received_events_total{cluster_name="cluster_e2e_test",event="node_conflict"}`)
 				}
-				verifyLookupInvariants(t, state)
+				verifyLookupInvariants(t, state.peers[:4]) // only check the healthy peers, ignore the conflicting ones
 			},
 		},
 		{
@@ -217,7 +248,7 @@ func TestClusterE2E(t *testing.T) {
 					)
 					verifyPeers(t, p, 4)
 				}
-				verifyLookupInvariants(t, state)
+				verifyLookupInvariants(t, state.peers)
 			},
 		},
 	}
@@ -259,7 +290,7 @@ func TestClusterE2E(t *testing.T) {
 
 			assert.EventuallyWithT(t, func(t *assert.CollectT) {
 				tc.assertionsInitial(t, state)
-			}, 20*time.Second, 200*time.Millisecond)
+			}, 60*time.Second, 200*time.Millisecond)
 			t.Logf("Initial assertions passed")
 
 			tc.changes(state)
@@ -267,7 +298,7 @@ func TestClusterE2E(t *testing.T) {
 
 			assert.EventuallyWithT(t, func(t *assert.CollectT) {
 				tc.assertionsFinal(t, state)
-			}, 20*time.Second, 200*time.Millisecond)
+			}, 60*time.Second, 200*time.Millisecond)
 			t.Logf("Final assertions passed")
 
 			cancel()
@@ -277,12 +308,10 @@ func TestClusterE2E(t *testing.T) {
 	}
 }
 
-// startNewNode creates a new node with the given name, generates a new address for it,
-// and adds it to the state's peers slice
 func startNewNode(t *testing.T, state *testState, nodeName string) {
 	nodeAddress := fmt.Sprintf("127.0.0.1:%d", getFreePort(t))
 
-	// Get list of join peers (addresses of existing peers)
+	// Get list of join peers addresses that exist so far
 	joinPeers := make([]string, 0, len(state.peers))
 	isNewPeerIsolated := slices.Contains(state.testCase.initialIsolatedNodes, nodeName)
 	for _, p := range state.peers {
@@ -291,6 +320,7 @@ func startNewNode(t *testing.T, state *testState, nodeName string) {
 			joinPeers = append(joinPeers, p.address)
 		}
 	}
+
 	t.Logf("Starting new node %s with join peers: %v", nodeName, joinPeers)
 
 	// Create a node-specific context
@@ -386,7 +416,7 @@ func startNewNode(t *testing.T, state *testState, nodeName string) {
 		f.Run(peerCtx)
 	}()
 
-	src, err := runtime.ParseSource(t.Name(), []byte(""))
+	src, err := runtime.ParseSource(t.Name(), []byte(state.testCase.alloyConfig))
 	require.NoError(t, err)
 	err = f.LoadSource(src, nil, configFilePath)
 	require.NoError(t, err)
@@ -421,9 +451,9 @@ func verifyPeers(t *assert.CollectT, p *testPeer, expectedLength int) {
 	require.Fail(t, "Could not find self in peers")
 }
 
-func verifyMetrics(t *assert.CollectT, p *testPeer, text ...string) {
-	for _, text := range text {
-		metricsContain(t, p.address, text)
+func verifyMetrics(t *assert.CollectT, p *testPeer, metrics ...string) {
+	for _, m := range metrics {
+		metricsContain(t, p.address, m+"\n") // add new line to validate the metric has exact value as required
 	}
 }
 
@@ -507,7 +537,7 @@ func (w *logsWriter) Write(p []byte) (n int, err error) {
 	return len(p), err
 }
 
-func verifyLookupInvariants(t *assert.CollectT, state *testState) {
+func verifyLookupInvariants(t *assert.CollectT, peers []*testPeer) {
 	const numStrings = 1000
 
 	// Generate random strings
@@ -521,7 +551,7 @@ func verifyLookupInvariants(t *assert.CollectT, state *testState) {
 		key := shard.StringKey(s)
 
 		ownerships := make(map[string][]string)
-		for _, p := range state.peers {
+		for _, p := range peers {
 			clusterService, ok := p.clusterService.Data().(cluster.Cluster)
 			require.True(t, ok)
 
@@ -534,7 +564,7 @@ func verifyLookupInvariants(t *assert.CollectT, state *testState) {
 			}
 			ownerships[p.nodeName] = ownerNames
 		}
-		require.Len(t, ownerships, len(state.peers), "Each peer should report an ownership for each key")
+		require.Len(t, ownerships, len(peers), "Each peer should report an ownership for each key")
 		owningPeersUnique := make(map[string]any)
 		for nodeName, owningPeers := range ownerships {
 			require.Len(t, owningPeers, 1, "Key %q should be owned by exactly one peer, but was owned by %d peers (as seen by %q)",
