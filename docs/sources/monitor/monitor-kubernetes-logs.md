@@ -90,6 +90,8 @@ git clone https://github.com/grafana/alloy-scenarios.git
 
    This Helm chart installs {{< param "PRODUCT_NAME" >}} and specifies the log Pod Logs and Kubernetes Events sources that {{< param "PRODUCT_NAME" >}} collects logs from.
 
+## Set up port forwarding
+
 1. Port-forward the Grafana Pod to your local machine.
 
    1. Get the name of the Grafana Pod.
@@ -103,11 +105,6 @@ git clone https://github.com/grafana/alloy-scenarios.git
       ```shell
       kubectl --namespace meta port-forward $POD_NAME 3000
       ```
-
-1. Log in to the Grafana UI.
-
-   1. Open your browser and go to [http://localhost:3000](http://localhost:3000).
-   1. Log in to Grafana with the default username `admin` and password `adminadminadmin`.
 
 1. Port-forward the {{< param "PRODUCT_NAME" >}} Pod to your local machine.
 
@@ -123,24 +120,21 @@ git clone https://github.com/grafana/alloy-scenarios.git
       kubectl --namespace meta port-forward $POD_NAME 12345
       ```
 
-## Visualise your data
+## Add a demo application to `prod`
 
-To explore metrics, open your browser and navigate to [http://localhost:3000/explore/metrics](http://localhost:3000/explore/metrics).
-
-To use the Grafana Logs Drilldown, open your browser and navigate to [http://localhost:3000/a/grafana-lokiexplore-app](http://localhost:3000/a/grafana-lokiexplore-app).
-
-To create a [dashboard](https://grafana.com/docs/grafana/latest/getting-started/build-first-dashboard/#create-a-dashboard) to visualise your metrics and logs, open your browser and navigate to [`http://localhost:3000/dashboards`](http://localhost:3000/dashboards).
-
-## Add a demo prod app
-
-The Kubernetes monitoring app collects logs from two namespaces: `meta` and `prod`.
-To add a demo prod app, run the following command:
+Deploy default version of Grafana Tempo as a sample application to the `prod` namespace and generate some logs.
+Tempo is a distributed tracing backend that's used to store and query traces.
+Normally Tempo would sit next to Loki and Grafana in the meta namespace, but for the purpose of this example, is functions as the primary application generating logs.
 
 ```shell
 helm install tempo grafana/tempo-distributed -n prod
 ```
 
-This installs the Tempo distributed tracing system in the `prod` namespace.
+## Visualise your data
+
+To use the Grafana Logs Drilldown, open your browser and navigate to [http://localhost:3000/a/grafana-lokiexplore-app](http://localhost:3000/a/grafana-lokiexplore-app).
+
+To create a [dashboard](https://grafana.com/docs/grafana/latest/getting-started/build-first-dashboard/#create-a-dashboard) to visualise your metrics and logs, open your browser and navigate to [`http://localhost:3000/dashboards`](http://localhost:3000/dashboards).
 
 ## Understand the Kubernetes Monitoring Helm chart
 
