@@ -36,7 +36,7 @@ git clone https://github.com/grafana/alloy-scenarios.git
 
 ## Deploy the Grafana stack
 
-1. Change directory to your local clone of the Git repository.
+1. Change directory to `alloy-scenarios/k8s-logs`.
 
    ```bash
    cd alloy-scenarios/k8s-logs
@@ -49,7 +49,7 @@ git clone https://github.com/grafana/alloy-scenarios.git
    kind create cluster --config kind.yml
    ```
 
-1. Install the Grafana Helm repository.
+1. Add the Grafana Helm repository.
 
    ```shell
    helm repo add grafana https://grafana.github.io/helm-charts
@@ -62,7 +62,7 @@ git clone https://github.com/grafana/alloy-scenarios.git
    kubectl create namespace prod
    ```
 
-1. Install the Loki Helm chart to install Loki in the `meta` namespace.
+1. Deploy Loki in the `meta` namespace. Loki stores the collected logs.
    The `loki-values.yml` file contains the configuration for the Loki Helm chart.
 
    ```bash
@@ -72,7 +72,7 @@ git clone https://github.com/grafana/alloy-scenarios.git
    This Helm chart installs Loki in monolithic mode.
    For more information on Loki modes, see the [Loki documentation](https://grafana.com/docs/loki/latest/get-started/deployment-modes/).
 
-1. Install the Grafana Helm chart to install Grafana in the `meta` namespace.
+1. Deploy Grafana in the `meta` namespace. You can Grafana to visualize the logs stored in Loki.
    The `grafana-values.yml` file contains the configuration for the Grafana Helm chart.
 
    ```shell
@@ -81,7 +81,7 @@ git clone https://github.com/grafana/alloy-scenarios.git
 
    This Helm chart installs Grafana and sets the `datasources.datasources.yaml` field to the Loki data source configuration.
 
-1. Install the Kubernetes Monitoring Helm chart to install {{< param "PRODUCT_NAME" >}} in the `meta` namespace.
+1. Deploy {{< param "PRODUCT_NAME" >}} in the `meta` namespace.
    The `k8s-monitoring-values.yml` file contains the configuration for the Kubernetes monitoring Helm chart.
 
    ```shell
@@ -141,3 +141,107 @@ helm install tempo grafana/tempo-distributed -n prod
 ```
 
 This installs the Tempo distributed tracing system in the `prod` namespace.
+
+## Understand the Kubernetes Monitoring Helm chart
+
+The Kubernetes Monitoring Helm chart, `k8s-monitoring-helm`, is used for gathering, scraping, and forwarding Kubernetes telemetry data to a Grafana stack.
+This includes the ability to collect metrics, logs, traces, and continuous profiling data.
+
+### Define the cluster
+
+Define the cluster name as `meta-monitoring-tutorial`.
+This a static label that is attached to all logs collected by the Kubernetes Monitoring Helm chart.
+
+```yaml
+cluster:
+  name: meta-monitoring-tutorial
+```
+
+### `destinations`
+
+Define a destination named `loki` that is used to forward logs to Loki.
+The `url` attribute specifies the URL of the Loki gateway.
+
+```yaml
+destinations:
+  - name: loki
+    type: loki
+    url: http://loki-gateway.meta.svc.cluster.local/loki/api/v1/push
+```
+
+### `clusterEvents`
+
+Enable the collection of cluster events.
+
+* `collector`: Use the `alloy-logs` collector to collect logs.
+* `namespaces`: specifies the namespaces to collect logs from. In this case, we are collecting logs from the meta and prod namespaces.
+
+```yaml
+clusterEvents:
+  enabled: true
+  collector: alloy-logs
+  namespaces:
+    - meta
+    - prod
+```
+
+### `nodeLogs`
+
+Disable the collection of node logs.
+Collecting node logs requires that you mount `/var/log/journal` and this is out of scope for this example.
+
+```yaml
+nodeLogs:
+  enabled: false
+```
+
+### `podLogs`
+
+Enable the collection of Pod logs.
+
+* `labelsToKeep`: The labels to keep when collecting logs.
+  This doesn't drop logs. This is useful when you don't want to apply a high cardinality label.
+  This configuration removes `pod` from the labels to keep.
+* `structuredMetadata`: The structured metadata to collect.
+  This configuration sets the structured metadata `pod` to keep the Pod name for querying.
+
+```yaml
+podLogs:
+  enabled: true
+  gatherMethod: kubernetesApi
+  collector: alloy-logs
+  labelsToKeep: ["app_kubernetes_io_name","container","instance","job","level","namespace","service_name","service_namespace","deployment_environment","deployment_environment_name"]
+  structuredMetadata:
+    pod: pod  # Set structured metadata "pod" from label "pod"
+  namespaces:
+    - meta
+    - prod
+```
+
+### Define the {{% param "PRODUCT_NAME" %}} role
+
+The Kubernetes Monitoring Helm chart deploys only what you need and nothing more.
+In this case, the configuration tells the Helm chart to deploy {{<> param "PRODUCT_NAME" >}} with the capability to collect logs.
+Metrics, traces, and continuous profiling are disabled.
+
+```yaml
+alloy-singleton:
+  enabled: false
+
+alloy-metrics:
+  enabled: false
+
+alloy-logs:
+  enabled: true
+  alloy:
+    mounts:
+      varlog: false
+    clustering:
+      enabled: true
+
+alloy-profiles:
+  enabled: false
+
+alloy-receiver:
+  enabled: false
+```
