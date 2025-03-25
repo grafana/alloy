@@ -253,7 +253,8 @@ func graph(_ service.Host, callbackManager livedebugging.CallbackManager, logger
 					continue
 				}
 
-				_, writeErr := w.Write(jsonData)
+				// Add |;| delimiter to the end of the data to help with parsing when the msg arrives in multiple chunks
+				_, writeErr := w.Write(append(jsonData, []byte("|;|")...))
 				if writeErr != nil {
 					level.Warn(logger).Log("msg", "error writing data to the graph", "error", writeErr)
 					return
