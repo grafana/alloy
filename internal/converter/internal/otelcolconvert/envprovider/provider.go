@@ -8,6 +8,15 @@ import (
 	"go.opentelemetry.io/collector/confmap"
 )
 
+// This is a custom implementation of OTel's envprovider. Its purpose is to escape incoming variable
+// references (by converting single "$" to "$$") so that these values can be passed through
+// untouched to the OTel->Alloy syntax converter.
+//
+// See: https://github.com/open-telemetry/opentelemetry-collector/blob/main/confmap/provider/envprovider/provider.go
+//
+// This provider will only be invoked for config values utilizing the 'env' scheme. Its Retrieve
+// method is invoked once per value with a matching scheme by the OTel config parser.
+
 const SchemeName = "env"
 
 // provider is a custom environment variable provider

@@ -105,6 +105,12 @@ func convertEnvvars(str string) string {
 	)
 }
 
+// readOpentelemetryConfig reads an OpenTelemetry config from a byte slice and returns an in-memory
+// representation of it.
+//
+// To extend the functionality of this parser, additional factories can be defined in the
+// ProviderFactories slice. These each handle one particular value "scheme" (e.g. "env", "yaml",
+// "file", etc).
 func readOpentelemetryConfig(in []byte) (*otelcol.Config, error) {
 	configProvider, err := otelcol.NewConfigProvider(otelcol.ConfigProviderSettings{
 		ResolverSettings: confmap.ResolverSettings{
@@ -113,6 +119,7 @@ func readOpentelemetryConfig(in []byte) (*otelcol.Config, error) {
 				yamlprovider.NewFactory(),
 				envprovider.NewFactory(),
 			},
+			// Treat all scheme-less values as having a scheme of envprovider.SchemeName
 			DefaultScheme: envprovider.SchemeName,
 		},
 	})
