@@ -387,6 +387,7 @@ func (p *PPROFReporter) createProfile(
 					FramesCacheLifetime)
 				var funcName string
 				var filePath string
+				var lineNo int64
 				if !exists {
 					funcName = "UNREPORTED"
 				} else {
@@ -395,6 +396,7 @@ func (p *PPROFReporter) createProfile(
 						if len(si.Frames) == 1 {
 							funcName = si.Frames[0].FunctionName
 							filePath = si.Frames[0].FilePath
+							lineNo = int64(si.Frames[0].LineNumber)
 						} else {
 							funcName = "UNRESOLVED"
 						}
@@ -403,8 +405,14 @@ func (p *PPROFReporter) createProfile(
 					}
 					fileIDInfoLock.RUnlock(&fileIDInfo)
 				}
-				location.Line = []profile.Line{{
-					Function: b.Function(funcName, filePath)},
+				if frameKind == libpf.PythonFrame && funcName == "<interpreter trampoline>" {
+					// skip
+				} else {
+					location.Line = []profile.Line{{
+						Line:     lineNo,
+						Function: b.Function(funcName, filePath)},
+					}
+
 				}
 			}
 		}
