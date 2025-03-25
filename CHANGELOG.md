@@ -68,6 +68,8 @@ Main (unreleased)
 
 - Fixed an issue in the `mimir.rules.kubernetes` component that would keep the component as unhealthy even when it managed to start after temporary errors (@nicolasvan)
 
+- Allow kafka exporter to attempt to connect even if TLS enabled but cert & key are not specified (@dehaansa)
+
 ### Other changes
 
 - Upgrading to Prometheus v2.55.1. (@ptodev)
