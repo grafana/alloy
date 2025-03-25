@@ -525,6 +525,7 @@ var errorsAllowlist = []string{
 	"failed to broadcast leave message to cluster",
 	`msg="Failed to send error: http2: stream closed`,
 	`msg="failed to receive: i/o timeout`,
+	`msg="failed to receive and remove the stream label header`,
 }
 
 func (w *logsWriter) Write(p []byte) (n int, err error) {
