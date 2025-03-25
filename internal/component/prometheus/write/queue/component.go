@@ -119,7 +119,6 @@ func (s *Queue) Update(args component.Arguments) error {
 			return err
 		}
 		s.endpoints[epCfg.Name] = end
-
 	}
 	// Now we need to figure out the endpoints that were not touched and able to be deleted.
 	for name := range deletableEndpoints {

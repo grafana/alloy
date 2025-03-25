@@ -33,7 +33,7 @@ func New(logger log.Logger) *Service {
 	// The ability to disable it through the code has been added but not yet released.
 	// This only affects the internal metrics of Alloy, not metrics that are sent to Alloy.
 	// TODO: Add exemplar support and remove this env var
-	os.Setenv("OTEL_METRICS_EXEMPLAR_FILTER", "always_off")
+	_ = os.Setenv("OTEL_METRICS_EXEMPLAR_FILTER", "always_off")
 
 	// The feature gates should be set in New() instead of Run().
 	// Otel checks the feature gate very early, during the creation of

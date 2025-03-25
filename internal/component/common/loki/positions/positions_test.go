@@ -21,7 +21,7 @@ import (
 func tempFilename(t *testing.T) string {
 	t.Helper()
 
-	temp, err := os.CreateTemp("", "positions")
+	temp, err := os.CreateTemp(t.TempDir(), "positions")
 	if err != nil {
 		t.Fatal("tempFilename:", err)
 	}

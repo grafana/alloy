@@ -35,7 +35,7 @@ The following collectors are enabled by default:
 
  Name           | Description                                           
 ----------------|-------------------------------------------------------
- `query_sample` | Collect query samples.                                
+ `query_tables` | Collect query table information..                                
  `schema_table` | Collect schemas and tables from `information_schema`. 
 
 ## Blocks
@@ -46,7 +46,7 @@ The `database_observability.mysql` component doesn't support any blocks. You can
 
 ```alloy
 database_observability.mysql "orders_db" {
-  data_source_name = "user:pass@mysql:3306/"
+  data_source_name = "user:pass@tcp(mysql:3306)/"
   forward_to = [loki.write.logs_service.receiver]
 }
 

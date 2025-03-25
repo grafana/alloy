@@ -36,6 +36,7 @@ func Untar(tarPath string, destPath string) error {
 		// https://security.snyk.io/research/zip-slip-vulnerability
 		if strings.Contains(header.Name, `../`) ||
 			strings.Contains(header.Name, `..\`) {
+
 			return fmt.Errorf("tar: invalid file path: %s", header.Name)
 		}
 

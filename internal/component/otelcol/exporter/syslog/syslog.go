@@ -67,7 +67,6 @@ func (args *Arguments) SetToDefault() {
 	args.Queue.Enabled = false // Upstream has this disabled by default
 	args.Retry.SetToDefault()
 	args.DebugMetrics.SetToDefault()
-
 }
 
 // Convert implements exporter.Arguments.

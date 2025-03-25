@@ -79,6 +79,9 @@ func (c *Component) Run(ctx context.Context) error {
 
 // Update implements component.Component.
 func (c *Component) Update(args component.Arguments) error {
+	c.mut.Lock()
+	defer c.mut.Unlock()
+
 	newArgs := args.(Arguments)
 
 	targets := make([]discovery.Target, 0, len(newArgs.Targets))
@@ -94,9 +97,12 @@ func (c *Component) Update(args component.Arguments) error {
 			targets = append(targets, relabelled)
 		}
 		componentID := livedebugging.ComponentID(c.opts.ID)
-		if c.debugDataPublisher.IsActive(componentID) {
-			c.debugDataPublisher.Publish(componentID, fmt.Sprintf("%s => %s", t, relabelled))
-		}
+		c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
+			componentID,
+			livedebugging.Target,
+			1,
+			func() string { return fmt.Sprintf("%s => %s", t, relabelled) },
+		))
 	}
 
 	c.opts.OnStateChange(Exports{
@@ -107,4 +113,4 @@ func (c *Component) Update(args component.Arguments) error {
 	return nil
 }
 
-func (c *Component) LiveDebugging(_ int) {}
+func (c *Component) LiveDebugging() {}

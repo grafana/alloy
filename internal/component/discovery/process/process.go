@@ -69,9 +69,12 @@ func (c *Component) Run(ctx context.Context) error {
 		c.changed()
 
 		componentID := livedebugging.ComponentID(c.opts.ID)
-		if c.debugDataPublisher.IsActive(componentID) {
-			c.debugDataPublisher.Publish(componentID, fmt.Sprintf("%s", c.processes))
-		}
+		c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
+			componentID,
+			livedebugging.Target,
+			uint64(len(c.processes)),
+			func() string { return fmt.Sprintf("%s", c.processes) },
+		))
 
 		return nil
 	}
@@ -109,4 +112,4 @@ func (c *Component) changed() {
 	})
 }
 
-func (c *Component) LiveDebugging(_ int) {}
+func (c *Component) LiveDebugging() {}

@@ -108,7 +108,7 @@ func (cs *Scheduler) Schedule(ctx context.Context, updateConsumers func(), h ote
 	cs.stopComponents(ctx, cs.schedComponents...)
 
 	// 3. Change the consumers
-	// This can only be done after stopping the pervious components and before starting the new ones.
+	// This can only be done after stopping the previous components and before starting the new ones.
 	updateConsumers()
 
 	// 4. Start the new components

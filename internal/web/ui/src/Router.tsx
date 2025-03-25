@@ -25,7 +25,7 @@ const Router = ({ basePath }: Props) => {
           <Route path="/component/*" element={<ComponentDetailPage />} />
           <Route path="/remotecfg/component/*" element={<RemoteComponentDetailPage />} />
 
-          <Route path="/graph" element={<Graph />} />
+          <Route path="/graph/*" element={<Graph />} />
           <Route path="/clustering" element={<PageClusteringPeers />} />
           <Route path="/debug/*" element={<PageLiveDebugging />} />
         </Routes>

@@ -8,22 +8,20 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/prometheus/common/model"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/database_observability"
+	"github.com/grafana/alloy/internal/component/database_observability/mysql/collector/parser"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/grafana/loki/v3/pkg/logproto"
 )
 
 const (
-	OP_QUERY_SAMPLE            = "query_sample"
+	OP_QUERY_TABLES            = "query_tables"
 	OP_QUERY_PARSED_TABLE_NAME = "query_parsed_table_name"
-	QuerySampleName            = "query_sample"
+	QueryTablesName            = "query_tables"
 )
 
-const selectQuerySamples = `
+const selectQueryTablesSamples = `
 	SELECT
 		digest,
 		schema_name,
@@ -34,20 +32,22 @@ const selectQuerySamples = `
 	WHERE schema_name NOT IN ('mysql', 'performance_schema', 'information_schema')
 	AND last_seen > DATE_SUB(NOW(), INTERVAL 1 DAY)`
 
-type QuerySampleArguments struct {
+type QueryTablesArguments struct {
 	DB              *sql.DB
 	InstanceKey     string
 	CollectInterval time.Duration
 	EntryHandler    loki.EntryHandler
+	UseTiDBParser   bool
 
 	Logger log.Logger
 }
 
-type QuerySample struct {
+type QueryTables struct {
 	dbConnection    *sql.DB
 	instanceKey     string
 	collectInterval time.Duration
 	entryHandler    loki.EntryHandler
+	sqlParser       parser.Parser
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -55,23 +55,31 @@ type QuerySample struct {
 	cancel  context.CancelFunc
 }
 
-func NewQuerySample(args QuerySampleArguments) (*QuerySample, error) {
-	return &QuerySample{
+func NewQueryTables(args QueryTablesArguments) (*QueryTables, error) {
+	c := &QueryTables{
 		dbConnection:    args.DB,
 		instanceKey:     args.InstanceKey,
 		collectInterval: args.CollectInterval,
 		entryHandler:    args.EntryHandler,
-		logger:          log.With(args.Logger, "collector", QuerySampleName),
+		logger:          log.With(args.Logger, "collector", QueryTablesName),
 		running:         &atomic.Bool{},
-	}, nil
+	}
+
+	if args.UseTiDBParser {
+		c.sqlParser = parser.NewTiDBSqlParser()
+	} else {
+		c.sqlParser = parser.NewXwbSqlParser()
+	}
+
+	return c, nil
 }
 
-func (c *QuerySample) Name() string {
-	return QuerySampleName
+func (c *QueryTables) Name() string {
+	return QueryTablesName
 }
 
-func (c *QuerySample) Start(ctx context.Context) error {
-	level.Debug(c.logger).Log("msg", QuerySampleName+" collector started")
+func (c *QueryTables) Start(ctx context.Context) error {
+	level.Debug(c.logger).Log("msg", QueryTablesName+" collector started")
 
 	c.running.Store(true)
 	ctx, cancel := context.WithCancel(ctx)
@@ -87,7 +95,7 @@ func (c *QuerySample) Start(ctx context.Context) error {
 		ticker := time.NewTicker(c.collectInterval)
 
 		for {
-			if err := c.fetchQuerySamples(c.ctx); err != nil {
+			if err := c.fetchQueryTables(c.ctx); err != nil {
 				level.Error(c.logger).Log("msg", "collector error", "err", err)
 			}
 
@@ -103,19 +111,19 @@ func (c *QuerySample) Start(ctx context.Context) error {
 	return nil
 }
 
-func (c *QuerySample) Stopped() bool {
+func (c *QueryTables) Stopped() bool {
 	return !c.running.Load()
 }
 
 // Stop should be kept idempotent
-func (c *QuerySample) Stop() {
+func (c *QueryTables) Stop() {
 	c.cancel()
 }
 
-func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
-	rs, err := c.dbConnection.QueryContext(ctx, selectQuerySamples)
+func (c *QueryTables) fetchQueryTables(ctx context.Context) error {
+	rs, err := c.dbConnection.QueryContext(ctx, selectQueryTablesSamples)
 	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to fetch query samples", "err", err)
+		level.Error(c.logger).Log("msg", "failed to fetch summary table samples", "err", err)
 		return err
 	}
 	defer rs.Close()
@@ -124,7 +132,7 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 		var digest, schemaName, sampleText, sampleSeen, sampleTimerWait string
 		err := rs.Scan(&digest, &schemaName, &sampleText, &sampleSeen, &sampleTimerWait)
 		if err != nil {
-			level.Error(c.logger).Log("msg", "failed to scan result set for query samples", "err", err)
+			level.Error(c.logger).Log("msg", "failed to scan result set from summary table samples", "err", err)
 			continue
 		}
 
@@ -145,49 +153,34 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 			sampleText = sampleText[:idx]
 		}
 
-		stmt, err := ParseSql(sampleText)
+		stmt, err := c.sqlParser.Parse(sampleText)
 		if err != nil {
 			level.Error(c.logger).Log("msg", "failed to parse sql query", "schema", schemaName, "digest", digest, "err", err)
 			continue
 		}
 
-		sampleRedactedText, err := RedactSQL(sampleText)
+		sampleRedactedText, err := c.sqlParser.Redact(sampleText)
 		if err != nil {
 			level.Error(c.logger).Log("msg", "failed to redact sql query", "schema", schemaName, "digest", digest, "err", err)
 			continue
 		}
 
-		c.entryHandler.Chan() <- loki.Entry{
-			Labels: model.LabelSet{
-				"job":      database_observability.JobName,
-				"op":       OP_QUERY_SAMPLE,
-				"instance": model.LabelValue(c.instanceKey),
-			},
-			Entry: logproto.Entry{
-				Timestamp: time.Unix(0, time.Now().UnixNano()),
-				Line: fmt.Sprintf(
-					`level=info msg="query samples fetched" schema="%s" digest="%s" query_type="%s" query_sample_seen="%s" query_sample_timer_wait="%s" query_sample_redacted="%s"`,
-					schemaName, digest, StmtType(stmt), sampleSeen, sampleTimerWait, sampleRedactedText,
-				),
-			},
-		}
+		c.entryHandler.Chan() <- buildLokiEntry(
+			OP_QUERY_TABLES,
+			c.instanceKey,
+			fmt.Sprintf(
+				`schema="%s" digest="%s" query_type="%s" query_sample_seen="%s" query_sample_timer_wait="%s" query_sample_redacted="%s"`,
+				schemaName, digest, c.sqlParser.StmtType(stmt), sampleSeen, sampleTimerWait, sampleRedactedText,
+			),
+		)
 
-		tables := ExtractTableNames(c.logger, digest, stmt)
+		tables := c.sqlParser.ExtractTableNames(c.logger, digest, stmt)
 		for _, table := range tables {
-			c.entryHandler.Chan() <- loki.Entry{
-				Labels: model.LabelSet{
-					"job":      database_observability.JobName,
-					"op":       OP_QUERY_PARSED_TABLE_NAME,
-					"instance": model.LabelValue(c.instanceKey),
-				},
-				Entry: logproto.Entry{
-					Timestamp: time.Unix(0, time.Now().UnixNano()),
-					Line: fmt.Sprintf(
-						`level=info msg="table name parsed" schema="%s" digest="%s" table="%s"`,
-						schemaName, digest, table,
-					),
-				},
-			}
+			c.entryHandler.Chan() <- buildLokiEntry(
+				OP_QUERY_PARSED_TABLE_NAME,
+				c.instanceKey,
+				fmt.Sprintf(`schema="%s" digest="%s" table="%s"`, schemaName, digest, table),
+			)
 		}
 	}
 
