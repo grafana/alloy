@@ -17,7 +17,10 @@ You can clone the repository and use the example deployments to understand how {
 This example scenario uses a Kubernetes Monitoring Helm chart to deploy and monitor Kubernetes logs and installs three Helm charts, Loki, Grafana, and {{< param "PRODUCT_NAME" >}}.
 The Helm chart abstracts the need to configure {{< param "PRODUCT_NAME" >}} and deploys best practices for monitoring Kubernetes clusters.
 
-{{< param "PRODUCT_NAME" >}}, installed with `k8s-monitoring-helm`, collects two different log sources, Pod Logs and Kubernetes Events.
+{{< param "PRODUCT_NAME" >}}, installed with `k8s-monitoring-helm`, collects two different log sources, [Pod Logs][] and [Kubernetes Events][].
+
+[Pod Logs]: https://kubernetes.io/docs/concepts/cluster-administration/logging/#basic-logging-in-kubernetes
+[Kubernetes Events]: https://kubernetes.io/docs/reference/kubernetes-api/cluster-resources/event-v1/
 
 ## Before you begin
 
