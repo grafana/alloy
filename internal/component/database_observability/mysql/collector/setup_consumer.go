@@ -16,12 +16,15 @@ import (
 const (
 	SetupConsumerName = "setup_consumer"
 )
+const (
+	selectSetupConsumers = `SELECT NAME, ENABLED FROM performance_schema.setup_consumers WHERE NAME IN ('events_statements_cpu', 'events_statements_history')`
+)
 
 type SetupConsumerArguments struct {
 	DB       *sql.DB
 	Registry *prometheus.Registry
 
-	logger log.Logger
+	Logger log.Logger
 }
 
 type setupConsumer struct {
@@ -39,18 +42,19 @@ type setupConsumer struct {
 func NewSetupConsumer(args SetupConsumerArguments) (*setupConsumer, error) {
 	infoMetric := prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: "database_observability",
-		Name:      "setup_consumer_info",
-		Help:      "Information about enabled consumers in the performance_schema.setup_consumer table",
-	}, []string{"events_statements_cpu", "events_statements_history"})
+		Name:      "setup_consumer_enabled",
+		Help:      "Whether each performance_schema consumer is enabled (1) or disabled (0)",
+	}, []string{"consumer_name"})
 
 	args.Registry.MustRegister(infoMetric)
 
 	return &setupConsumer{
-		dbConnection: args.DB,
-		Registry:     args.Registry,
-		InfoMetric:   infoMetric,
-		running:      &atomic.Bool{},
-		logger:       args.logger,
+		dbConnection:    args.DB,
+		Registry:        args.Registry,
+		InfoMetric:      infoMetric,
+		running:         &atomic.Bool{},
+		logger:          args.Logger,
+		collectInterval: 5 * time.Second,
 	}, nil
 }
 
@@ -59,7 +63,7 @@ func (c *setupConsumer) Name() string {
 }
 
 func (c *setupConsumer) Start(ctx context.Context) error {
-	level.Debug(c.logger).Log("msg", SchemaTableName+" collector started")
+	level.Debug(c.logger).Log("msg", SetupConsumerName+" collector started")
 	c.running.Store(true)
 	// c.InfoMetric //todo
 
@@ -101,13 +105,40 @@ func (c *setupConsumer) Stop() {
 	c.cancel()
 }
 
-func (c *setupConsumer) getSetupConsumers(ctx context.Context) error {
-	row := c.dbConnection.QueryRowContext(ctx, selectSchemaName)
+type consumer struct {
+	name    string
+	enabled string
+}
 
-	var someStuff string
-	if err := row.Scan(&someStuff); err != nil {
-		return fmt.Errorf("error scanning getSetupConsumers row: %w", err)
+func (c *setupConsumer) getSetupConsumers(ctx context.Context) error {
+	rs, err := c.dbConnection.QueryContext(ctx, selectSetupConsumers)
+	if err != nil {
+		level.Error(c.logger).Log("msg", "failed to query selectSetupConsumers", "err", err)
+		return err
+	}
+	defer rs.Close()
+
+	c.InfoMetric.Reset()
+
+	consumers := map[string]bool{}
+	for rs.Next() {
+		var consumer consumer
+		if err := rs.Scan(&consumer.name, &consumer.enabled); err != nil {
+			return fmt.Errorf("error scanning getSetupConsumers row: %w", err)
+		}
+
+		enabled := consumer.enabled == "YES"
+		consumers[consumer.name] = enabled
+
+		// Set the metric value (1 for enabled, 0 for disabled)
+		switch enabled {
+		case true:
+			c.InfoMetric.WithLabelValues(consumer.name).Set(1)
+		default:
+			c.InfoMetric.WithLabelValues(consumer.name).Set(0)
+		}
 	}
 
+	level.Info(c.logger).Log("msg", "consumers", "consumers", consumers)
 	return nil
 }

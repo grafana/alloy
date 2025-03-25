@@ -294,8 +294,9 @@ func (c *Component) startCollectors() error {
 
 	// TODO: set if condition
 	scCollector, err := collector.NewSetupConsumer(collector.SetupConsumerArguments{
-		DSN:      string(c.args.DataSourceName),
+		DB:       dbConnection,
 		Registry: c.registry,
+		Logger:   c.opts.Logger,
 	})
 	if err != nil {
 		level.Error(c.opts.Logger).Log("msg", "failed to create SetupConsumer collector", "err", err)
