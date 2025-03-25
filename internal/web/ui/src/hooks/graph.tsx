@@ -31,18 +31,36 @@ export const useGraph = (
 
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
+        let buffer = '';
+        let skipCount = 0;
+        const MAX_SKIP_COUNT = 30;
 
         while (enabled) {
           const { value, done } = await reader.read();
-          if (done) {
-            break;
-          }
+          if (done) break;
 
-          const decodedChunks = decoder
-            .decode(value, { stream: true })
-            .split('|;|')
-            .filter((entry) => entry.length !== 0);
-          setData(() => decodedChunks.map((chunk) => JSON.parse(chunk)));
+          // It happens sometimes that the message is partially received, so we need to buffer it
+          // and then parse it once we have a complete message.
+          buffer += decoder.decode(value, { stream: true });
+
+          try {
+            const data = JSON.parse(buffer) as DebugData[];
+            skipCount = 0;
+            buffer = '';
+            setData(data);
+          } catch (err) {
+            skipCount++;
+            // This is a safeguard to avoid growing the buffer indefinitely if the server is sending invalid data.
+            if (skipCount >= MAX_SKIP_COUNT) {
+              console.error(
+                'Failed to parse data. There is probably an issue with the response from the server. Current buffer:',
+                buffer
+              );
+              skipCount = 0;
+              buffer = '';
+            }
+            continue;
+          }
         }
       } catch (error) {
         if ((error as Error).name !== 'AbortError') {

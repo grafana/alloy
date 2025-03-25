@@ -241,25 +241,21 @@ func graph(_ service.Host, callbackManager livedebugging.CallbackManager, logger
 				}
 
 			case <-ticker.C:
-				// Flush aggregated data
-				var builder strings.Builder
+				dataArray := make([]interface{}, 0, len(dataMap))
 				for _, data := range dataMap {
 					data.Rate = float64(data.Count) / windowSeconds.Seconds()
-					jsonData, err := json.Marshal(data)
-					if err != nil {
-						continue
-					}
-					builder.Write(jsonData)
-					builder.WriteString("|;|")
+					dataArray = append(dataArray, data)
 				}
 
-				// Add an empty limiter to show the lack of data
-				if builder.Len() == 0 {
-					builder.WriteString("|;|")
+				jsonData, err := json.Marshal(dataArray)
+				if err != nil {
+					level.Warn(logger).Log("msg", "error marshalling data, not sending data to the graph", "error", err)
+					continue
 				}
 
-				_, writeErr := w.Write([]byte(builder.String()))
+				_, writeErr := w.Write(jsonData)
 				if writeErr != nil {
+					level.Warn(logger).Log("msg", "error writing data to the graph", "error", writeErr)
 					return
 				}
 				w.(http.Flusher).Flush()
