@@ -42,13 +42,22 @@ type testPeer struct {
 	httpService       *httpservice.Service
 	ctx               context.Context
 	shutdown          context.CancelFunc
+	mutex             sync.Mutex
 	discoverablePeers []string // list of peers that this peer can discover
 }
 
 func (p *testPeer) discoveryFn(_ discovery.Options) (discovery.DiscoverFn, error) {
 	return func() ([]string, error) {
+		p.mutex.Lock()
+		defer p.mutex.Unlock()
 		return p.discoverablePeers, nil
 	}, nil
+}
+
+func (p *testPeer) setDiscoverablePeers(addresses []string) {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+	p.discoverablePeers = addresses
 }
 
 type testState struct {
@@ -431,7 +440,7 @@ func joinIsolatedNetworks(state *testState) {
 		allPeerAddresses = append(allPeerAddresses, p.address)
 	}
 	for _, p := range state.peers {
-		p.discoverablePeers = allPeerAddresses
+		p.setDiscoverablePeers(allPeerAddresses)
 	}
 }
 
