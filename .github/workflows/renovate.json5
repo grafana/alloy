@@ -1,0 +1,34 @@
+{
+  $schema: 'https://docs.renovatebot.com/renovate-schema.json',
+  extends: [
+    'config:base',
+
+    // https://docs.renovatebot.com/presets-npm/#npmunpublishsafe
+    'npm:unpublishSafe',
+  ],
+
+  // Tell dependency dashboard to only require PR creation approval for major versions
+  major: {
+    dependencyDashboardApproval: true
+  },
+
+  packageRules: [
+    {
+      "matchManagers": ["npm"],
+      matchDepTypes: ['dependencies'],
+      matchUpdateTypes: ['minor', 'patch'],
+      groupName: 'dependencies (minor)'
+    },
+    {
+      "matchManagers": ["npm"],
+      matchDepTypes: ['devDependencies'],
+      matchUpdateTypes: ['minor', 'patch'],
+      groupName: 'devDependencies (minor)'
+    }
+    // TODO: group go deps
+    // TODO: group
+  ],
+
+  // Move package.json forward along with package-lock.json
+  rangeStrategy: 'bump'
+}
