@@ -50,7 +50,7 @@ jobs:
       - name: Run Renovate 🔍
         uses: renovatebot/github-action@cf5954a2aac7999882d3de4e462499adde159d04 # v41.0.17
         with:
-          configurationFile: .github/renovate-config.json5
+          configurationFile: .github/renovate.json5
           # renovate: datasource=docker depName=ghcr.io/renovatebot/renovate
           renovate-version: 39.215.2@sha256:644608e6c6e0956856b392c01bd2e5b71fb6fa2162a4f7e932de930743f92cf4
           token: ${{ steps.generate-token.outputs.token }}
