@@ -2,6 +2,7 @@ package testcomponent
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -34,6 +35,7 @@ type SlowUpdateExports struct{}
 type SlowUpdate struct {
 	opts      component.Options
 	gauge     prometheus.Gauge
+	mutex     sync.Mutex
 	updateLag time.Duration
 }
 
@@ -66,6 +68,8 @@ func (s *SlowUpdate) Run(ctx context.Context) error {
 }
 
 func (s *SlowUpdate) Update(args component.Arguments) error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 	c := args.(SlowUpdateConfig)
 	level.Info(s.opts.Logger).Log("msg", "Sleeping on Update()", "duration", c.UpdateLag)
 	s.updateLag = c.UpdateLag
@@ -76,6 +80,8 @@ func (s *SlowUpdate) Update(args component.Arguments) error {
 }
 
 func (s *SlowUpdate) NotifyClusterChange() {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 	level.Info(s.opts.Logger).Log("msg", "Sleeping on NotifyClusterChange()", "duration", s.updateLag)
 	time.Sleep(s.updateLag)
 	level.Info(s.opts.Logger).Log("msg", "Done sleeping on NotifyClusterChange()")
