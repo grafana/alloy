@@ -14,7 +14,7 @@ import (
 	"github.com/grafana/dskit/instrument"
 	promExternalVersions "github.com/prometheus-operator/prometheus-operator/pkg/client/informers/externalversions"
 	promListers "github.com/prometheus-operator/prometheus-operator/pkg/client/listers/monitoring/v1"
-	promVersioned "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
+	monitoringclient "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/atomic"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,9 +45,8 @@ var (
 
 func init() {
 	component.Register(component.Registration{
-		//TODO: Rename this "mimir.prometheus_rules.kubernetes"?
-		Name:      "mimir.rules.kubernetes",
-		Stability: featuregate.StabilityGenerallyAvailable,
+		Name:      "mimir.alertmanager_configs.kubernetes",
+		Stability: featuregate.StabilityExperimental,
 		Args:      Arguments{},
 		Exports:   nil,
 		Build: func(o component.Options, c component.Arguments) (component.Component, error) {
@@ -63,7 +62,7 @@ type Component struct {
 
 	mimirClient       mimirClient.Interface
 	k8sClient         kubernetes.Interface
-	promClient        promVersioned.Interface
+	monitoringClient  monitoringclient.Interface
 	namespaceSelector labels.Selector
 	ruleSelector      labels.Selector
 
@@ -309,7 +308,7 @@ func (c *Component) startup(ctx context.Context) error {
 		return nil
 	}
 
-	cfg := workqueue.RateLimitingQueueConfig{Name: "mimir.rules.kubernetes"}
+	cfg := workqueue.RateLimitingQueueConfig{Name: "mimir.alerting_cfgs.kubernetes"}
 	queue := workqueue.NewRateLimitingQueueWithConfig(workqueue.DefaultControllerRateLimiter(), cfg)
 	informerStopChan := make(chan struct{})
 
@@ -324,9 +323,9 @@ func (c *Component) startup(ctx context.Context) error {
 	}
 
 	c.eventProcessor = c.newEventProcessor(queue, informerStopChan, namespaceLister, ruleLister)
-	if err = c.eventProcessor.syncMimir(ctx); err != nil {
-		return err
-	}
+	// if err = c.eventProcessor.syncMimir(ctx); err != nil {
+	// 	return err
+	// }
 
 	go c.eventProcessor.run(ctx)
 	return nil
@@ -363,10 +362,11 @@ func (c *Component) init() error {
 		return fmt.Errorf("failed to create k8s client: %w", err)
 	}
 
-	c.promClient, err = promVersioned.NewForConfig(restConfig)
+	monitoringClient, err := monitoringclient.NewForConfig(restConfig)
 	if err != nil {
-		return fmt.Errorf("failed to create prometheus operator client: %w", err)
+		return fmt.Errorf("instantiating monitoring client failed: %w", err)
 	}
+	c.monitoringClient = monitoringClient
 
 	httpClient := c.args.HTTPClientConfig.Convert()
 
@@ -419,6 +419,7 @@ func (c *Component) startNamespaceInformer(queue workqueue.RateLimitingInterface
 }
 
 func (c *Component) startRuleInformer(queue workqueue.RateLimitingInterface, stopChan chan struct{}) (promListers.PrometheusRuleLister, error) {
+	// TODO: Update this to listen for alertmanager configs.
 	factory := promExternalVersions.NewSharedInformerFactoryWithOptions(
 		c.promClient,
 		24*time.Hour,
@@ -446,12 +447,12 @@ func (c *Component) newEventProcessor(queue workqueue.RateLimitingInterface, sto
 	maps.Copy(externalLabels, c.args.ExternalLabels)
 
 	return &eventProcessor{
-		queue:              queue,
-		stopChan:           stopChan,
-		health:             c,
-		mimirClient:        c.mimirClient,
-		namespaceLister:    namespaceLister,
-		ruleLister:         ruleLister,
+		queue:           queue,
+		stopChan:        stopChan,
+		health:          c,
+		mimirClient:     c.mimirClient,
+		namespaceLister: namespaceLister,
+		// ruleLister:         ruleLister,
 		namespaceSelector:  c.namespaceSelector,
 		ruleSelector:       c.ruleSelector,
 		namespacePrefix:    c.args.MimirNameSpacePrefix,
@@ -503,6 +504,8 @@ type leadership interface {
 	isLeader() bool
 }
 
+// TODO: Reuse this code from the other mimir component.
+//
 // componentLeadership implements leadership based on checking ownership of a specific
 // key using a cluster.Cluster service.
 type componentLeadership struct {

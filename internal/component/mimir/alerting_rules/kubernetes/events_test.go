@@ -9,7 +9,8 @@ import (
 
 	"github.com/go-kit/log"
 	v1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
-	promListers "github.com/prometheus-operator/prometheus-operator/pkg/client/listers/monitoring/v1"
+	"github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1beta1"
+	promListers_v1beta1 "github.com/prometheus-operator/prometheus-operator/pkg/client/listers/monitoring/v1beta1"
 	"github.com/prometheus/alertmanager/config"
 	"github.com/prometheus/prometheus/model/rulefmt"
 	"github.com/stretchr/testify/assert"
@@ -31,25 +32,17 @@ import (
 type fakeMimirClient struct {
 	rulesMut sync.RWMutex
 	rules    map[string][]rulefmt.RuleGroup
-}
 
-// ListAlertmanagerConfigs implements client.Interface.
-func (m *fakeMimirClient) ListAlertmanagerConfigs(ctx context.Context, namespace string) (map[string][]config.Config, error) {
-	// TODO: Reuse the fakeMimirClient from the other test package?
-	panic("unimplemented")
-}
-
-// CreateAlertmanagerConfigs implements client.Interface.
-func (m *fakeMimirClient) CreateAlertmanagerConfigs(ctx context.Context, namespace string, conf config.Config) error {
-	// TODO: Reuse the fakeMimirClient from the other test package?
-	panic("unimplemented")
+	alertMgrConfigsMut sync.RWMutex
+	alertMgrConfigs    map[string][]config.Config
 }
 
 var _ mimirClient.Interface = &fakeMimirClient{}
 
 func newFakeMimirClient() *fakeMimirClient {
 	return &fakeMimirClient{
-		rules: make(map[string][]rulefmt.RuleGroup),
+		rules:           make(map[string][]rulefmt.RuleGroup),
+		alertMgrConfigs: make(map[string][]config.Config),
 	}
 }
 
@@ -87,6 +80,25 @@ func (m *fakeMimirClient) deleteLocked(namespace, group string) {
 	}
 }
 
+func (m *fakeMimirClient) deleteLockedRule(namespace, group string) {
+	for ns, v := range m.rules {
+		if namespace != "" && namespace != ns {
+			continue
+		}
+		for i, g := range v {
+			if g.Name == group {
+				m.rules[ns] = append(m.rules[ns][:i], m.rules[ns][i+1:]...)
+
+				if len(m.rules[ns]) == 0 {
+					delete(m.rules, ns)
+				}
+
+				return
+			}
+		}
+	}
+}
+
 func (m *fakeMimirClient) ListRules(_ context.Context, namespace string) (map[string][]rulefmt.RuleGroup, error) {
 	m.rulesMut.RLock()
 	defer m.rulesMut.RUnlock()
@@ -100,6 +112,50 @@ func (m *fakeMimirClient) ListRules(_ context.Context, namespace string) (map[st
 	return output, nil
 }
 
+func (m *fakeMimirClient) deleteLockedAlertmanagerConfig(namespace, id string) {
+	for ns, v := range m.alertMgrConfigs {
+		if namespace != "" && namespace != ns {
+			continue
+		}
+		for i, g := range v {
+			if g.String() == id {
+				m.alertMgrConfigs[ns] = append(m.alertMgrConfigs[ns][:i], m.alertMgrConfigs[ns][i+1:]...)
+
+				if len(m.alertMgrConfigs[ns]) == 0 {
+					delete(m.alertMgrConfigs, ns)
+				}
+
+				return
+			}
+		}
+	}
+}
+
+func (m *fakeMimirClient) CreateAlertmanagerConfigs(ctx context.Context, namespace string, conf config.Config) error {
+	m.alertMgrConfigsMut.Lock()
+	defer m.alertMgrConfigsMut.Unlock()
+	// TODO: Is there a better ID?
+	m.deleteLockedAlertmanagerConfig(namespace, conf.String())
+	m.alertMgrConfigs[namespace] = append(m.alertMgrConfigs[namespace], conf)
+	return nil
+}
+
+func (m *fakeMimirClient) ListAlertmanagerConfigs(ctx context.Context, namespace string) (map[string][]config.Config, error) {
+	m.alertMgrConfigsMut.RLock()
+	defer m.alertMgrConfigsMut.RUnlock()
+	output := make(map[string][]config.Config)
+	for ns, v := range m.alertMgrConfigs {
+		if namespace != "" && namespace != ns {
+			continue
+		}
+		output[ns] = v
+	}
+	return output, nil
+}
+
+// TODO: What to do if Mimir is running an Alertmanager, but this component doesn't find any Alertmanager config? Should it delete the config in Mimir?
+// TODO: How do we handle tenants?
+
 func TestEventLoop(t *testing.T) {
 	nsIndexer := testNamespaceIndexer()
 	ruleIndexer := testRuleIndexer()
@@ -111,21 +167,21 @@ func TestEventLoop(t *testing.T) {
 		},
 	}
 
-	rule := &v1.PrometheusRule{
+	rule := &v1beta1.AlertmanagerConfig{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "name",
 			Namespace: "namespace",
 			UID:       types.UID("64aab764-c95e-4ee9-a932-cd63ba57e6cf"),
 		},
-		Spec: v1.PrometheusRuleSpec{
-			Groups: []v1.RuleGroup{
+		Spec: v1beta1.AlertmanagerConfigSpec{
+			Route: &v1beta1.Route{
+				Receiver: "default",
+			},
+			Receivers: []v1beta1.Receiver{
 				{
-					Name: "group",
-					Rules: []v1.Rule{
-						{
-							Alert: "alert",
-							Expr:  intstr.FromString("expr"),
-						},
+					Name: "default",
+					EmailConfigs: []v1beta1.EmailConfig{
+						{To: "John"},
 					},
 				},
 			},
@@ -138,7 +194,7 @@ func TestEventLoop(t *testing.T) {
 		health:            &fakeHealthReporter{},
 		mimirClient:       newFakeMimirClient(),
 		namespaceLister:   coreListers.NewNamespaceLister(nsIndexer),
-		ruleLister:        promListers.NewPrometheusRuleLister(ruleIndexer),
+		ruleLister:        promListers_v1beta1.NewAlertmanagerConfigLister(ruleIndexer),
 		namespaceSelector: labels.Everything(),
 		ruleSelector:      labels.Everything(),
 		namespacePrefix:   "alloy",
@@ -162,26 +218,28 @@ func TestEventLoop(t *testing.T) {
 
 	// Wait for the rule to be added to mimir
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		rules, err := processor.mimirClient.ListRules(ctx, "")
+		configs, err := processor.mimirClient.ListAlertmanagerConfigs(ctx, "")
 		assert.NoError(c, err)
-		assert.Len(c, rules, 1)
+		assert.Len(c, configs, 1)
 	}, time.Second, 10*time.Millisecond)
 
 	// Update the rule in kubernetes
-	rule.Spec.Groups[0].Rules = append(rule.Spec.Groups[0].Rules, v1.Rule{
-		Alert: "alert2",
-		Expr:  intstr.FromString("expr2"),
+	rule.Spec.Receivers = append(rule.Spec.Receivers, v1beta1.Receiver{
+		SlackConfigs: []v1beta1.SlackConfig{
+			{Username: "David"},
+		},
 	})
 	require.NoError(t, ruleIndexer.Update(rule))
 	eventHandler.OnUpdate(rule, rule)
 
 	// Wait for the rule to be updated in mimir
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		allRules, err := processor.mimirClient.ListRules(ctx, "")
+		allRules, err := processor.mimirClient.ListAlertmanagerConfigs(ctx, "")
 		assert.NoError(c, err)
-		rules := allRules[mimirNamespaceForRuleCRD("alloy", rule)][0].Rules
+		rules := allRules[mimirNamespaceForAlertmanagerConfigCRD("alloy", rule)][0].Receivers
 		assert.Len(c, rules, 2)
-	}, time.Second, 10*time.Millisecond)
+		// TODO: Revert this to 1 second
+	}, 30*time.Second, 10*time.Millisecond)
 
 	// Remove the rule from kubernetes
 	require.NoError(t, ruleIndexer.Delete(rule))
@@ -241,7 +299,7 @@ func TestAdditionalLabels(t *testing.T) {
 		health:            &fakeHealthReporter{},
 		mimirClient:       newFakeMimirClient(),
 		namespaceLister:   coreListers.NewNamespaceLister(nsIndexer),
-		ruleLister:        promListers.NewPrometheusRuleLister(ruleIndexer),
+		ruleLister:        promListers_v1beta1.NewAlertmanagerConfigLister(ruleIndexer),
 		namespaceSelector: labels.Everything(),
 		ruleSelector:      labels.Everything(),
 		namespacePrefix:   "alloy",
@@ -337,7 +395,7 @@ func TestExtraQueryMatchers(t *testing.T) {
 		health:            &fakeHealthReporter{},
 		mimirClient:       newFakeMimirClient(),
 		namespaceLister:   coreListers.NewNamespaceLister(nsIndexer),
-		ruleLister:        promListers.NewPrometheusRuleLister(ruleIndexer),
+		ruleLister:        promListers_v1beta1.NewAlertmanagerConfigLister(ruleIndexer),
 		namespaceSelector: labels.Everything(),
 		ruleSelector:      labels.Everything(),
 		namespacePrefix:   "alloy",

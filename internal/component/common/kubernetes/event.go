@@ -21,7 +21,8 @@ const (
 )
 
 type queuedEventHandler struct {
-	log   log.Logger
+	log log.Logger
+	// TODO: Use the non-deprecated type
 	queue workqueue.RateLimitingInterface
 }
 
