@@ -11,7 +11,7 @@ weight: 600
 The `alloy-scenarios` repository provides series of complete working examples of {{< param "PRODUCT_NAME" >}} deployments.
 You can clone the repository and use the example deployments to understand how {{< param "PRODUCT_NAME" >}} can collect, process, and export telemetry signals.
 
-This example scenario uses the Kubernetes Monitoring Helm chart to monitor Kubernetes logs and installs three Helm charts, Loki, Grafana, and Alloy.
+This example scenario uses the Kubernetes Monitoring Helm chart to monitor Kubernetes logs and installs three Helm charts, Loki, Grafana, and {{< param "PRODUCT_NAME" >}}.
 The Helm chart abstracts the need to configure {{< param "PRODUCT_NAME" >}} and deploys best practices for monitoring Kubernetes clusters.
 
 {{< param "PRODUCT_NAME" >}}, installed with `k8s-monitoring-helm`, collects two different log sources, Pod Logs and Kubernetes Events.
@@ -79,15 +79,15 @@ git clone https://github.com/grafana/alloy-scenarios.git
    The `grafana.ini` configuration uses the Loki data source.
    The `datasources.datasources.yaml` field is set to the Loki data source configuration.
 
-1. Install the K8s Monitoring Helm chart to install Alloy in the `meta` namespace.
+1. Install the K8s Monitoring Helm chart to install {{< param "PRODUCT_NAME" >}} in the `meta` namespace.
    The `k8s-monitoring-values.yml` file contains the configuration for the K8s monitoring Helm chart.
 
    ```shell
    helm install --values ./k8s-monitoring-values.yml k8s grafana/k8s-monitoring -n meta --create-namespace
    ```
 
-   The Alloy configuration is defined in the `k8s-monitoring-values.yml` file.
-   This configuration specifies the log Pod Logs and Kubernetes Events sources that Alloy collects logs from.
+   The {{< param "PRODUCT_NAME" >}} configuration is defined in the `k8s-monitoring-values.yml` file.
+   This configuration specifies the log Pod Logs and Kubernetes Events sources that {{< param "PRODUCT_NAME" >}} collects logs from.
 
 1. Port-forward the Grafana Pod to your local machine.
 
@@ -108,9 +108,9 @@ git clone https://github.com/grafana/alloy-scenarios.git
    1. Open your browser and go to [http://localhost:3000](http://localhost:3000).
    1. Log in to Grafana with the default username `admin` and password `adminadminadmin`.
 
-1. Port-forward the Alloy Pod to your local machine.
+1. Port-forward the {{< param "PRODUCT_NAME" >}} Pod to your local machine.
 
-   1. Get the name of the Alloy Pod.
+   1. Get the name of the {{< param "PRODUCT_NAME" >}} Pod.
 
       ```shell
       export POD_NAME=$(kubectl get pods --namespace meta -l "app.kubernetes.io/name=alloy-logs,app.kubernetes.io/instance=k8s" -o jsonpath="{.items[0].metadata.name}")
