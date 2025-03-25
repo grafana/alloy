@@ -10,6 +10,7 @@ weight: 350
 
 Writing logs over a network using raw TCP is one of the most widely used methods for transmitting log data between systems.
 It provides a direct, connection-oriented way to send logs from a client, such as an application or logging agent, to a remote server, such as a log aggregator or central logging system.
+You can use {{< param "PRODUCT_NAME" >}} to collect your logs, forward them to a Grafana stack, and create a Grafana dashboard to monitor your system behavior.
 
 The `alloy-scenarios` repository provides series of complete working examples of {{< param "PRODUCT_NAME" >}} deployments.
 You can clone the repository and use the example deployments to understand how {{< param "PRODUCT_NAME" >}} can collect, process, and export telemetry signals.

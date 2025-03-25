@@ -1,17 +1,20 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/tutorials/scenarios/monitor-syslog-messages/
-description: Learn how to use Grafana Alloy to monitor non-RFC5424 compliant syslog messages
+canonical: https://grafana.com/docs/alloy/latest/tutorials/scenarios/monitor-kubernetes-logs/
+description: Learn how to use Grafana Alloy to monitor Kubernetes logs
 menuTitle: Monitor Kubernetes logs
-title: Monitor Kubernetes logs with Grafana Alloy and Loki
+title: Monitor Kubernetes logs with Grafana Alloy
 weight: 600
 ---
 
-# Monitor Kubernetes logs with {{% param "FULL_PRODUCT_NAME" %}} and Loki
+# Monitor Kubernetes logs with {{% param "FULL_PRODUCT_NAME" %}}
+
+Kubernetes captures logs from each container in a running Pod.
+You can use {{< param "PRODUCT_NAME" >}} to collect your Kubernetes logs, forward them to a Grafana stack, and create a Grafana dashboard to monitor your Kubernetes deployment.
 
 The `alloy-scenarios` repository provides series of complete working examples of {{< param "PRODUCT_NAME" >}} deployments.
 You can clone the repository and use the example deployments to understand how {{< param "PRODUCT_NAME" >}} can collect, process, and export telemetry signals.
 
-This example scenario uses the Kubernetes Monitoring Helm chart to monitor Kubernetes logs and installs three Helm charts, Loki, Grafana, and {{< param "PRODUCT_NAME" >}}.
+This example scenario uses a Kubernetes Monitoring Helm chart to deploy and monitor Kubernetes logs and installs three Helm charts, Loki, Grafana, and {{< param "PRODUCT_NAME" >}}.
 The Helm chart abstracts the need to configure {{< param "PRODUCT_NAME" >}} and deploys best practices for monitoring Kubernetes clusters.
 
 {{< param "PRODUCT_NAME" >}}, installed with `k8s-monitoring-helm`, collects two different log sources, Pod Logs and Kubernetes Events.

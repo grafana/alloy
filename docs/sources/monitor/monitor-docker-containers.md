@@ -9,8 +9,8 @@ weight: 200
 # Monitor Docker containers with {{% param "FULL_PRODUCT_NAME" %}}
 
 Docker containers provide statistics and logs.
-You can use the `docker stats` and `docker logs` commands to show the metrics and logs but this just shows the output in a terminal and it's a fixed snapshot in time.
-If you use {{< param "PRODUCT_NAME" >}} to collect the metrics and logs and forward them to a Grafana stack, you can create a Grafana dashboard to monitor your Docker container.
+The `docker stats` and `docker logs` commands show the metrics and logs in a terminal as a fixed snapshot in time.
+You can use {{< param "PRODUCT_NAME" >}} to collect your metrics and logs, forward them to a Grafana stack, and create a Grafana dashboard to monitor your Docker container.
 
 The `alloy-scenarios` repository provides series of complete working examples of {{< param "PRODUCT_NAME" >}} deployments.
 You can clone the repository and use the example deployments to understand how {{< param "PRODUCT_NAME" >}} can collect, process, and export telemetry signals.

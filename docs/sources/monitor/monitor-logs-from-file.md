@@ -1,6 +1,6 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/tutorials/scenarios/monitor-logs-from-file/
-description: Learn how to use Grafana Alloy to monitor logs froma  file
+description: Learn how to use Grafana Alloy to monitor logs from a file
 menuTitle: Monitor log files
 title: Monitor logs from a local file with Grafana Alloy
 weight: 300
@@ -8,6 +8,9 @@ weight: 300
 
 # Monitor logs from a local file with {{% param "FULL_PRODUCT_NAME" %}}
 
+Log files are generated records that document events, activities, and usage patterns within a system, application, or network.
+These log files serve as a crucial tool for monitoring, troubleshooting, and understanding system behavior.
+You can use {{< param "PRODUCT_NAME" >}} to collect your logs, forward them to a Grafana stack, and create a Grafana dashboard to monitor your system behavior.
 
 The `alloy-scenarios` repository provides series of complete working examples of {{< param "PRODUCT_NAME" >}} deployments.
 You can clone the repository and use the example deployments to understand how {{< param "PRODUCT_NAME" >}} can collect, process, and export telemetry signals.
