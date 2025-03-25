@@ -508,10 +508,11 @@ type logsWriter struct {
 }
 
 var errorsAllowlist = []string{
-	"failed to extract directory path from configPath",             // unrelated to this test
-	"failed to broadcast leave message to cluster",                 // on shutdown sometimes we can't push to nodes that already shut
-	"failed to connect to peers; bootstrapping a new cluster",      // should be allowed only once for first node
-	"over TCP but UDP probes failed, network may be misconfigured", // TODO: we should investigate and fix this if a real issue
+	"failed to extract directory path from configPath",              // unrelated to this test
+	"failed to broadcast leave message to cluster",                  // on shutdown sometimes we can't push to nodes that already shut
+	"failed to connect to peers; bootstrapping a new cluster",       // should be allowed only once for first node
+	`msg="node exited with error" node=remotecfg err="noop client"`, // related to remotecfg service mock ups
+	"over TCP but UDP probes failed, network may be misconfigured",  // TODO: we should investigate and fix this if a real issue
 }
 
 func (w *logsWriter) Write(p []byte) (n int, err error) {
