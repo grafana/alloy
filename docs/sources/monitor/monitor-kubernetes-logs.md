@@ -144,7 +144,7 @@ This includes the ability to collect metrics, logs, traces, and continuous profi
 ### Define the cluster
 
 Define the cluster name as `meta-monitoring-tutorial`.
-This a static label that is attached to all logs collected by the Kubernetes Monitoring Helm chart.
+This a static label that's attached to all logs collected by the Kubernetes Monitoring Helm chart.
 
 ```yaml
 cluster:
@@ -153,7 +153,7 @@ cluster:
 
 ### `destinations`
 
-Define a destination named `loki` that is used to forward logs to Loki.
+Define a destination named `loki` that's used to forward logs to Loki.
 The `url` attribute specifies the URL of the Loki gateway.
 
 ```yaml
@@ -168,7 +168,7 @@ destinations:
 Enable the collection of cluster events.
 
 * `collector`: Use the `alloy-logs` collector to collect logs.
-* `namespaces`: specifies the namespaces to collect logs from. In this case, we are collecting logs from the meta and prod namespaces.
+* `namespaces`: specifies the meta and prod namespaces to collect logs from.
 
 ```yaml
 clusterEvents:
@@ -215,7 +215,7 @@ podLogs:
 ### Define the {{% param "PRODUCT_NAME" %}} role
 
 The Kubernetes Monitoring Helm chart deploys only what you need and nothing more.
-In this case, the configuration tells the Helm chart to deploy {{<> param "PRODUCT_NAME" >}} with the capability to collect logs.
+In this case, the configuration tells the Helm chart to deploy {{< param "PRODUCT_NAME" >}} with the capability to collect logs.
 Metrics, traces, and continuous profiling are disabled.
 
 ```yaml
