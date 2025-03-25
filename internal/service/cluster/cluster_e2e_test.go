@@ -522,7 +522,7 @@ var errorsAllowlist = []string{
 	"failed to connect to peers; bootstrapping a new cluster",       // should be allowed only once for first node
 	`msg="node exited with error" node=remotecfg err="noop client"`, // related to remotecfg service mock ups
 	`msg="failed to rejoin list of peers"`,                          // at shutdown, various failures can happen
-	"failed to broadcast leave message to cluster",
+	"failed to broadcast leave message to cluster",                  // TODO: don't fail test on shutdown errors?
 	`msg="Failed to send error: http2: stream closed`,
 	`msg="failed to receive: i/o timeout`,
 	`msg="failed to receive and remove the stream label header`,
