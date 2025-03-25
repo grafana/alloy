@@ -35,38 +35,6 @@ import (
 	remotecfgservice "github.com/grafana/alloy/internal/service/remotecfg"
 )
 
-type testPeer struct {
-	nodeName          string
-	address           string
-	clusterService    *cluster.Service
-	httpService       *httpservice.Service
-	ctx               context.Context
-	shutdown          context.CancelFunc
-	mutex             sync.Mutex
-	discoverablePeers []string // list of peers that this peer can discover
-}
-
-func (p *testPeer) discoveryFn(_ discovery.Options) (discovery.DiscoverFn, error) {
-	return func() ([]string, error) {
-		p.mutex.Lock()
-		defer p.mutex.Unlock()
-		return p.discoverablePeers, nil
-	}, nil
-}
-
-func (p *testPeer) setDiscoverablePeers(addresses []string) {
-	p.mutex.Lock()
-	defer p.mutex.Unlock()
-	p.discoverablePeers = addresses
-}
-
-type testState struct {
-	peers         []*testPeer
-	ctx           context.Context
-	shutdownGroup sync.WaitGroup
-	testCase      *testCase
-}
-
 type testCase struct {
 	name                 string
 	nodeCountInitial     int
@@ -315,6 +283,38 @@ testcomponents.slow_update "test" {
 			t.Logf("Shutdown complete")
 		})
 	}
+}
+
+type testPeer struct {
+	nodeName          string
+	address           string
+	clusterService    *cluster.Service
+	httpService       *httpservice.Service
+	ctx               context.Context
+	shutdown          context.CancelFunc
+	mutex             sync.Mutex
+	discoverablePeers []string // list of peers that this peer can discover
+}
+
+func (p *testPeer) discoveryFn(_ discovery.Options) (discovery.DiscoverFn, error) {
+	return func() ([]string, error) {
+		p.mutex.Lock()
+		defer p.mutex.Unlock()
+		return p.discoverablePeers, nil
+	}, nil
+}
+
+func (p *testPeer) setDiscoverablePeers(addresses []string) {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+	p.discoverablePeers = addresses
+}
+
+type testState struct {
+	peers         []*testPeer
+	ctx           context.Context
+	shutdownGroup sync.WaitGroup
+	testCase      *testCase
 }
 
 func startNewNode(t *testing.T, state *testState, nodeName string) {
