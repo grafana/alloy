@@ -17,6 +17,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/grafana/ckit/advertise"
 	"github.com/grafana/ckit/peer"
+	"github.com/grafana/ckit/shard"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -67,13 +68,10 @@ type testCase struct {
 	extraAllowedErrors   []string
 }
 
-// TODO(thampiotr): extra checks to add:
-// TODO(thampiotr): checking of []Peers
+// TODO(thampiotr): further checks to add:
 // TODO(thampiotr): checking of Lookup?
 
-// TODO(thampiotr): scenarios to cover:
-// TODO(thampiotr): split brain and then merge - init 4 + 4 separated, remove separation
-// TODO(thampiotr): network isolation -> all create own? - init 4 all separated, remove separation
+// TODO(thampiotr): further scenarios to cover:
 // TODO(thampiotr): when component evaluations are super slow?
 // TODO(thampiotr): when updating component's NotifyClusterChange is taking too long
 func TestClusterE2E(t *testing.T) {
@@ -83,10 +81,14 @@ func TestClusterE2E(t *testing.T) {
 			nodeCountInitial: 3,
 			assertionsInitial: func(t *assert.CollectT, state *testState) {
 				for _, p := range state.peers {
-					metricsContain(t, p.address, `cluster_node_info{state="participant"} 1`)
-					metricsContain(t, p.address, `cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 3`)
-					metricsContain(t, p.address, `cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 3`)
+					verifyMetrics(t, p,
+						`cluster_node_info{state="participant"} 1`,
+						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 3`,
+						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 3`,
+					)
+					verifyPeers(t, p, 3)
 				}
+				verifyLookupInvariants(t, state)
 			},
 		},
 		{
@@ -94,10 +96,14 @@ func TestClusterE2E(t *testing.T) {
 			nodeCountInitial: 4,
 			assertionsInitial: func(t *assert.CollectT, state *testState) {
 				for _, p := range state.peers {
-					metricsContain(t, p.address, `cluster_node_info{state="participant"} 1`)
-					metricsContain(t, p.address, `cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 4`)
-					metricsContain(t, p.address, `cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`)
+					verifyMetrics(t, p,
+						`cluster_node_info{state="participant"} 1`,
+						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 4`,
+						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`,
+					)
+					verifyPeers(t, p, 4)
 				}
+				verifyLookupInvariants(t, state)
 			},
 			changes: func(state *testState) {
 				for i := 0; i < 4; i++ {
@@ -106,10 +112,14 @@ func TestClusterE2E(t *testing.T) {
 			},
 			assertionsFinal: func(t *assert.CollectT, state *testState) {
 				for _, p := range state.peers {
-					metricsContain(t, p.address, `cluster_node_info{state="participant"} 1`)
-					metricsContain(t, p.address, `cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 8`)
-					metricsContain(t, p.address, `cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 8`)
+					verifyMetrics(t, p,
+						`cluster_node_info{state="participant"} 1`,
+						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 8`,
+						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 8`,
+					)
+					verifyPeers(t, p, 8)
 				}
+				verifyLookupInvariants(t, state)
 			},
 		},
 		{
@@ -120,10 +130,14 @@ func TestClusterE2E(t *testing.T) {
 			},
 			assertionsInitial: func(t *assert.CollectT, state *testState) {
 				for _, p := range state.peers {
-					metricsContain(t, p.address, `cluster_node_info{state="participant"} 1`)
-					metricsContain(t, p.address, `cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 8`)
-					metricsContain(t, p.address, `cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 8`)
+					verifyMetrics(t, p,
+						`cluster_node_info{state="participant"} 1`,
+						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 8`,
+						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 8`,
+					)
+					verifyPeers(t, p, 8)
 				}
+				verifyLookupInvariants(t, state)
 			},
 			changes: func(state *testState) {
 				for i := 0; i < 4; i++ {
@@ -133,10 +147,14 @@ func TestClusterE2E(t *testing.T) {
 			},
 			assertionsFinal: func(t *assert.CollectT, state *testState) {
 				for _, p := range state.peers {
-					metricsContain(t, p.address, `cluster_node_info{state="participant"} 1`)
-					metricsContain(t, p.address, `cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 4`)
-					metricsContain(t, p.address, `cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`)
+					verifyMetrics(t, p,
+						`cluster_node_info{state="participant"} 1`,
+						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 4`,
+						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`,
+					)
+					verifyPeers(t, p, 4)
 				}
+				verifyLookupInvariants(t, state)
 			},
 		},
 		{
@@ -147,20 +165,28 @@ func TestClusterE2E(t *testing.T) {
 			},
 			assertionsInitial: func(t *assert.CollectT, state *testState) {
 				for _, p := range state.peers {
-					metricsContain(t, p.address, `cluster_node_info{state="participant"} 1`)
-					metricsContain(t, p.address, `cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 4`)
-					metricsContain(t, p.address, `cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`)
+					verifyMetrics(t, p,
+						`cluster_node_info{state="participant"} 1`,
+						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 4`,
+						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`,
+					)
+					verifyPeers(t, p, 4)
 				}
+				verifyLookupInvariants(t, state)
 			},
 			changes: func(state *testState) {
 				startNewNode(t, state, "node-0") // this name conflicts with the initial names
 			},
 			assertionsFinal: func(t *assert.CollectT, state *testState) {
 				for _, p := range state.peers {
-					metricsContain(t, p.address, `cluster_node_info{state="participant"} 1`)
-					metricsContain(t, p.address, `cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 4`)
-					metricsContain(t, p.address, `cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`)
+					verifyMetrics(t, p,
+						`cluster_node_info{state="participant"} 1`,
+						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 4`,
+						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`,
+					)
+					verifyPeers(t, p, 4)
 				}
+				verifyLookupInvariants(t, state)
 			},
 		},
 		{
@@ -171,9 +197,12 @@ func TestClusterE2E(t *testing.T) {
 			},
 			assertionsInitial: func(t *assert.CollectT, state *testState) {
 				for _, p := range state.peers {
-					metricsContain(t, p.address, `cluster_node_info{state="participant"} 1`)
-					metricsContain(t, p.address, `cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 2`)
-					metricsContain(t, p.address, `cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 2`)
+					verifyMetrics(t, p,
+						`cluster_node_info{state="participant"} 1`,
+						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 2`,
+						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 2`,
+					)
+					verifyPeers(t, p, 2)
 				}
 			},
 			changes: func(state *testState) {
@@ -181,10 +210,14 @@ func TestClusterE2E(t *testing.T) {
 			},
 			assertionsFinal: func(t *assert.CollectT, state *testState) {
 				for _, p := range state.peers {
-					metricsContain(t, p.address, `cluster_node_info{state="participant"} 1`)
-					metricsContain(t, p.address, `cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 4`)
-					metricsContain(t, p.address, `cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`)
+					verifyMetrics(t, p,
+						`cluster_node_info{state="participant"} 1`,
+						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 4`,
+						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`,
+					)
+					verifyPeers(t, p, 4)
 				}
+				verifyLookupInvariants(t, state)
 			},
 		},
 	}
@@ -372,6 +405,28 @@ func joinIsolatedNetworks(state *testState) {
 	}
 }
 
+func verifyPeers(t *assert.CollectT, p *testPeer, expectedLength int) {
+	clusterService, ok := p.clusterService.Data().(cluster.Cluster)
+	require.True(t, ok)
+	peers := clusterService.Peers()
+	require.Len(t, peers, expectedLength)
+	for _, actualPeer := range peers {
+		if actualPeer.Self {
+			require.Equal(t, p.nodeName, actualPeer.Name)
+			require.Equal(t, p.address, actualPeer.Addr)
+			require.Equal(t, peer.StateParticipant, actualPeer.State)
+			return
+		}
+	}
+	require.Fail(t, "Could not find self in peers")
+}
+
+func verifyMetrics(t *assert.CollectT, p *testPeer, text ...string) {
+	for _, text := range text {
+		metricsContain(t, p.address, text)
+	}
+}
+
 // metricsContain fetches metrics from the given URL and checks if they
 // contain a line with the specified metric name
 func metricsContain(t *assert.CollectT, nodeAddress string, text string) {
@@ -450,4 +505,42 @@ func (w *logsWriter) Write(p []byte) (n int, err error) {
 
 	_, err = w.out.Write(prefixed)
 	return len(p), err
+}
+
+func verifyLookupInvariants(t *assert.CollectT, state *testState) {
+	const numStrings = 1000
+
+	// Generate random strings
+	randomStrings := make([]string, numStrings)
+	for i := range randomStrings {
+		randomStrings[i] = fmt.Sprintf("test-key-%d-%d", time.Now().UnixNano(), i)
+	}
+
+	// For each string, check which peer it's assigned to
+	for _, s := range randomStrings {
+		key := shard.StringKey(s)
+
+		ownerships := make(map[string][]string)
+		for _, p := range state.peers {
+			clusterService, ok := p.clusterService.Data().(cluster.Cluster)
+			require.True(t, ok)
+
+			owningPeers, err := clusterService.Lookup(key, 1, shard.OpReadWrite)
+			require.NoError(t, err, "Lookup should not fail")
+
+			var ownerNames []string
+			for _, owner := range owningPeers {
+				ownerNames = append(ownerNames, owner.Name)
+			}
+			ownerships[p.nodeName] = ownerNames
+		}
+		require.Len(t, ownerships, len(state.peers), "Each peer should report an ownership for each key")
+		owningPeersUnique := make(map[string]any)
+		for nodeName, owningPeers := range ownerships {
+			require.Len(t, owningPeers, 1, "Key %q should be owned by exactly one peer, but was owned by %d peers (as seen by %q)",
+				s, len(owningPeers), nodeName)
+			owningPeersUnique[owningPeers[0]] = struct{}{}
+		}
+		require.Len(t, owningPeersUnique, 1, "All peers should agree on the owner of key %q, but got different owners: %v", s, ownerships)
+	}
 }
