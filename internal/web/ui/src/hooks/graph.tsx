@@ -32,34 +32,30 @@ export const useGraph = (
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
-        let skipCount = 0;
-        const MAX_SKIP_COUNT = 30;
 
         while (enabled) {
           const { value, done } = await reader.read();
           if (done) break;
 
-          // It happens sometimes that the message is partially received, so we need to buffer it
-          // and then parse it once we have a complete message.
+          // It happens sometimes that the message is partially received (it can be late and arrive in multiple chunks
+          // and can even merge with the previous message)
           buffer += decoder.decode(value, { stream: true });
 
-          try {
-            const data = JSON.parse(buffer) as DebugData[];
-            skipCount = 0;
-            buffer = '';
-            setData(data);
-          } catch (err) {
-            skipCount++;
-            // This is a safeguard to avoid growing the buffer indefinitely if the server is sending invalid data.
-            if (skipCount >= MAX_SKIP_COUNT) {
-              console.error(
-                'Failed to parse data. There is probably an issue with the response from the server. Current buffer:',
-                buffer
-              );
-              skipCount = 0;
-              buffer = '';
+          // Split on the delimiter and process each complete message
+          const messages = buffer.split('|;|');
+
+          // The last element will either be empty or an incomplete message that will be used as the buffer for the next message
+          buffer = messages.pop() || '';
+
+          for (const message of messages) {
+            if (!message) continue; // Skip empty messages
+
+            try {
+              const data = JSON.parse(message) as DebugData[];
+              setData(data);
+            } catch (err) {
+              console.error('Failed to parse message:', message, err);
             }
-            continue;
           }
         }
       } catch (error) {
