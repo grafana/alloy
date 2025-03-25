@@ -8,7 +8,8 @@ weight: 250
 
 # Monitor Microsoft Windows servers and desktops with {{% param "FULL_PRODUCT_NAME" %}}
 
-You can use {{< param "FULL_PRODUCT_NAME" >}} to monitor Microsoft Windows servers and desktops.
+Microsoft Windows provides tools like Performance Monitor and Event Viewer to track system performance metrics and event logs.
+You can use {{< param "PRODUCT_NAME" >}} to collect your performance metrics and event logs, forward them to a Grafana stack, and create a Grafana dashboard to monitor your Windows performance and events.
 
 The `alloy-scenarios` repository provides series of complete working examples of {{< param "PRODUCT_NAME" >}} deployments.
 You can clone the repository and use the example deployments to understand how {{< param "PRODUCT_NAME" >}} can collect, process, and export telemetry signals.

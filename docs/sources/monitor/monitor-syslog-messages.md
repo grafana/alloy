@@ -10,7 +10,7 @@ weight: 400
 
 Non-RFC5424 compliant syslog messages are messages that deviate from the structured format defined in RFC 5424.
 This is often due to legacy systems or custom implementations, and can cause parsing issues.
-You can use {{< param "PRODUCT_NAME" >}} to collect these non-RFC5424 compliant syslog messages.
+You can use {{< param "PRODUCT_NAME" >}} to collect your logs, forward them to a Grafana stack, and create a Grafana dashboard to monitor your system behavior.
 
 The `alloy-scenarios` repository provides series of complete working examples of {{< param "PRODUCT_NAME" >}} deployments.
 You can clone the repository and use the example deployments to understand how {{< param "PRODUCT_NAME" >}} can collect, process, and export telemetry signals.

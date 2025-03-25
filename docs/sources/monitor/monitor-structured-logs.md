@@ -8,6 +8,10 @@ weight: 500
 
 # Monitor structured logs with {{% param "FULL_PRODUCT_NAME" %}}
 
+Structured logs are a well-structured and consistent log format such as JSON.
+The data in the log file is typically organized into key-value pairs, making it easier to search, filter, and analyze.
+You can use {{< param "PRODUCT_NAME" >}} to collect your structured logs, forward them to a Grafana stack, and create a Grafana dashboard to monitor your system behavior.
+
 The `alloy-scenarios` repository provides series of complete working examples of {{< param "PRODUCT_NAME" >}} deployments.
 You can clone the repository and use the example deployments to understand how {{< param "PRODUCT_NAME" >}} can collect, process, and export telemetry signals.
 
