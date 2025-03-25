@@ -141,7 +141,7 @@ To create a [dashboard](https://grafana.com/docs/grafana/latest/getting-started/
 The Kubernetes Monitoring Helm chart, `k8s-monitoring-helm`, is used for gathering, scraping, and forwarding Kubernetes telemetry data to a Grafana stack.
 This includes the ability to collect metrics, logs, traces, and continuous profiling data.
 
-### Define the cluster
+### `cluster`
 
 Define the cluster name as `meta-monitoring-tutorial`.
 This a static label that's attached to all logs collected by the Kubernetes Monitoring Helm chart.
