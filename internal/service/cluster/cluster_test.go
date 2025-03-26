@@ -21,6 +21,27 @@ func mockDiscoverPeers(peers []string, err error) func() ([]string, error) {
 	}
 }
 
+// buildPeers creates a slice of test peers with sequential names
+func buildPeers(count int) []peer.Peer {
+	var peers []peer.Peer
+	for i := 0; i < count; i++ {
+		peers = append(peers, peer.Peer{
+			Name: fmt.Sprintf("peer_%d", i),
+		})
+	}
+	return peers
+}
+
+// newTestService creates a Service instance for testing purposes
+func newTestService(opts Options, peers []peer.Peer, deadline time.Time) *Service {
+	return &Service{
+		log:                 log.NewLogfmtLogger(os.Stdout),
+		opts:                opts,
+		minimumSizeDeadline: *atomic.NewTime(deadline),
+		sharder:             &mockSharder{peers: peers},
+	}
+}
+
 func TestGetPeers(t *testing.T) {
 	tests := []struct {
 		name              string
@@ -162,23 +183,13 @@ func TestReadyToAdmitTraffic(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var peers []peer.Peer
-			for i := 0; i < tt.peerCount; i++ {
-				peers = append(peers, peer.Peer{
-					Name: fmt.Sprintf("peer_%d", i),
-				})
-			}
+			peers := buildPeers(tt.peerCount)
 
-			s := &Service{
-				log: log.NewLogfmtLogger(os.Stdout),
-				opts: Options{
-					EnableClustering:       tt.enableClustering,
-					MinimumClusterSize:     tt.minimumClusterSize,
-					MinimumSizeWaitTimeout: tt.waitTimeout,
-				},
-				minimumSizeDeadline: *atomic.NewTime(tt.deadline),
-				sharder:             &mockSharder{peers: peers},
-			}
+			s := newTestService(Options{
+				EnableClustering:       tt.enableClustering,
+				MinimumClusterSize:     tt.minimumClusterSize,
+				MinimumSizeWaitTimeout: tt.waitTimeout,
+			}, peers, tt.deadline)
 
 			assert.False(t, s.readyToAdmitTraffic()) // starts as not ready
 			s.updateReadyToAdmitTraffic()
@@ -186,6 +197,98 @@ func TestReadyToAdmitTraffic(t *testing.T) {
 			assert.Equal(t, tt.expectedReady, ready)
 		})
 	}
+}
+
+func TestAdmitTrafficSequence_WithDeadline(t *testing.T) {
+	minimumClusterSize := 10
+	clusterSizeWaitTimeout := time.Second
+
+	s := newTestService(Options{
+		EnableClustering:       true,
+		MinimumClusterSize:     minimumClusterSize,
+		MinimumSizeWaitTimeout: clusterSizeWaitTimeout,
+	}, buildPeers(1), time.Now().Add(1*time.Minute))
+
+	assert.False(t, s.readyToAdmitTraffic()) // starts as not ready
+	s.updateReadyToAdmitTraffic()
+	assert.False(t, s.readyToAdmitTraffic()) // still not ready
+
+	s.sharder = &mockSharder{peers: buildPeers(minimumClusterSize)} // we reach the minimum, should be ready now!
+	s.updateReadyToAdmitTraffic()
+	assert.True(t, s.readyToAdmitTraffic())
+	s.updateReadyToAdmitTraffic() // check again to be sure no funny business
+	assert.True(t, s.readyToAdmitTraffic())
+
+	s.sharder = &mockSharder{peers: buildPeers(minimumClusterSize - 1)} // we dip back under the minimum = not ready
+	s.updateReadyToAdmitTraffic()
+	assert.False(t, s.readyToAdmitTraffic())
+
+	time.Sleep(time.Second) // deadline passes though, so we are ready to admit traffic again
+	s.updateReadyToAdmitTraffic()
+	assert.True(t, s.readyToAdmitTraffic())
+	s.updateReadyToAdmitTraffic() // check again
+	assert.True(t, s.readyToAdmitTraffic())
+
+	s.sharder = &mockSharder{peers: buildPeers(minimumClusterSize + 1)} // we reach the minimum, should continue to be ready
+	s.updateReadyToAdmitTraffic()
+	assert.True(t, s.readyToAdmitTraffic())
+
+	s.sharder = &mockSharder{peers: buildPeers(minimumClusterSize - 5)} // we dip back under the minimum = not ready, deadline should have reset
+	s.updateReadyToAdmitTraffic()
+	assert.False(t, s.readyToAdmitTraffic())
+
+	time.Sleep(time.Second) // deadline passes again, so we are ready to admit traffic again
+	s.updateReadyToAdmitTraffic()
+	assert.True(t, s.readyToAdmitTraffic())
+
+	s.sharder = &mockSharder{peers: buildPeers(minimumClusterSize)} // we reach the minimum, should continue to be ready
+	s.updateReadyToAdmitTraffic()
+	assert.True(t, s.readyToAdmitTraffic())
+}
+
+func TestAdmitTrafficSequence_NoDeadline(t *testing.T) {
+	minimumClusterSize := 10
+
+	s := newTestService(Options{
+		EnableClustering:   true,
+		MinimumClusterSize: minimumClusterSize,
+	}, buildPeers(1), time.Now().Add(1*time.Minute))
+
+	assert.False(t, s.readyToAdmitTraffic()) // starts as not ready
+	s.updateReadyToAdmitTraffic()
+	assert.False(t, s.readyToAdmitTraffic()) // still not ready
+
+	s.sharder = &mockSharder{peers: buildPeers(minimumClusterSize)} // we reach the minimum, should be ready now!
+	s.updateReadyToAdmitTraffic()
+	assert.True(t, s.readyToAdmitTraffic())
+	s.updateReadyToAdmitTraffic() // check again to be sure no funny business
+	assert.True(t, s.readyToAdmitTraffic())
+
+	s.sharder = &mockSharder{peers: buildPeers(minimumClusterSize - 1)} // we dip back under the minimum = not ready
+	s.updateReadyToAdmitTraffic()
+	assert.False(t, s.readyToAdmitTraffic())
+
+	time.Sleep(time.Second) // even though time passes by, there is no deadline and we're still not ready
+	s.updateReadyToAdmitTraffic()
+	assert.False(t, s.readyToAdmitTraffic())
+	s.updateReadyToAdmitTraffic() // check again
+	assert.False(t, s.readyToAdmitTraffic())
+
+	s.sharder = &mockSharder{peers: buildPeers(minimumClusterSize + 1)} // we reach the minimum, should be ready
+	s.updateReadyToAdmitTraffic()
+	assert.True(t, s.readyToAdmitTraffic())
+
+	s.sharder = &mockSharder{peers: buildPeers(minimumClusterSize - 5)} // we dip back under the minimum = not ready
+	s.updateReadyToAdmitTraffic()
+	assert.False(t, s.readyToAdmitTraffic())
+
+	time.Sleep(time.Second) // time passes, but nothing will change
+	s.updateReadyToAdmitTraffic()
+	assert.False(t, s.readyToAdmitTraffic())
+
+	s.sharder = &mockSharder{peers: buildPeers(minimumClusterSize)} // we reach the minimum, should become ready
+	s.updateReadyToAdmitTraffic()
+	assert.True(t, s.readyToAdmitTraffic())
 }
 
 type mockSharder struct {

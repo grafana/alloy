@@ -498,22 +498,6 @@ func (s *Service) updateReadyToAdmitTraffic() {
 		return
 	}
 
-	// Deadline is set, and it's past the deadline = ready to admit traffic.
-	deadlineValue := s.minimumSizeDeadline.Load()
-	isDeadlineSet := deadlineValue != time.Time{}
-	if isDeadlineSet && time.Now().After(deadlineValue) {
-		if !s.isReadyToAdmitTraffic.Load() { // log if previously not ready
-			level.Warn(s.log).Log(
-				"msg", "deadline passed, marking cluster as ready to admit traffic",
-				"minimum_cluster_size", s.opts.MinimumClusterSize,
-				"minimum_size_wait_timeout", s.opts.MinimumSizeWaitTimeout,
-				"peers_count", len(s.sharder.Peers()),
-			)
-		}
-		s.isReadyToAdmitTraffic.Store(true)
-		return
-	}
-
 	// Number of peers is greater than the minimum cluster size = ready to admit traffic.
 	if len(s.sharder.Peers()) >= s.opts.MinimumClusterSize {
 		// Reset the deadline if it is configured:
@@ -531,9 +515,32 @@ func (s *Service) updateReadyToAdmitTraffic() {
 		return
 	}
 
+	// Deadline is set, and it's past the deadline = ready to admit traffic.
+	deadlineValue := s.minimumSizeDeadline.Load()
+	isDeadlineSet := deadlineValue != time.Time{}
+	if isDeadlineSet && time.Now().After(deadlineValue) {
+		if !s.isReadyToAdmitTraffic.Load() { // log if previously not ready
+			level.Warn(s.log).Log(
+				"msg", "deadline passed, marking cluster as ready to admit traffic",
+				"minimum_cluster_size", s.opts.MinimumClusterSize,
+				"minimum_size_wait_timeout", s.opts.MinimumSizeWaitTimeout,
+				"peers_count", len(s.sharder.Peers()),
+			)
+		}
+		s.isReadyToAdmitTraffic.Store(true)
+		return
+	}
+
 	// Deadline is either not set or it didn't yet pass, and the number of peers is less
-	// than the minimum.
-	s.isReadyToAdmitTraffic.Store(false)
+	// than the minimum. So we can't admit traffic.
+	if s.isReadyToAdmitTraffic.Load() { // log if previously was ready
+		level.Info(s.log).Log(
+			"msg", "minimum cluster size requirements are not met - marking cluster as not ready for traffic",
+			"minimum_cluster_size", s.opts.MinimumClusterSize,
+			"peers_count", len(s.sharder.Peers()),
+		)
+	}
+	s.isReadyToAdmitTraffic.Store(false) // set as not ready
 }
 
 // readyToAdmitTraffic checks if the cluster is ready to admit traffic.
