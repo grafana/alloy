@@ -233,7 +233,7 @@ func (store *sourceMapsStoreImpl) getSourceMapFromFileSystem(sourceURL string, r
 		level.Debug(store.log).Log("msg", "source map not found on filesystem", "url", sourceURL, "file_path", validMapFilePath)
 		return nil, "", nil
 	}
-	level.Debug(store.log).Log("msg", "source map found on filesystem", "url", mapFilePath, "file_path", validMapFilePath)
+	level.Debug(store.log).Log("msg", "source map found on filesystem", "url", sourceURL, "file_path", validMapFilePath)
 
 	content, err = store.fs.ReadFile(validMapFilePath)
 	if err != nil {
