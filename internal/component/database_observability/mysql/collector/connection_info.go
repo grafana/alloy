@@ -31,7 +31,7 @@ type ConnectionInfoArguments struct {
 
 type ConnectionInfo struct {
 	DSN                 string
-	dbConnection        *sql.DB // use DSN from here?
+	dbConnection        *sql.DB
 	Registry            *prometheus.Registry
 	InfoMetric          *prometheus.GaugeVec
 	SetupConsumerMetric *prometheus.GaugeVec
