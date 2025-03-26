@@ -69,51 +69,6 @@ func TestConnectionInfo_getProviderAndInstanceInfo(t *testing.T) {
 	}
 }
 
-func TestConnectionInfo_getSetupConsumers_AllEnabled(t *testing.T) {
-	defer goleak.VerifyNone(t)
-	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
-	require.NoError(t, err)
-	defer db.Close()
-	mock.ExpectQuery(selectSetupConsumers).WithoutArgs().
-		WillReturnRows(sqlmock.NewRows([]string{"NAME", "ENABLED"}).
-			AddRow("events_statements_cpu", "YES").
-			AddRow("events_statements_history", "YES"))
-
-	reg := prometheus.NewRegistry()
-	collector, err := NewConnectionInfo(ConnectionInfoArguments{
-		DSN:            "user:pass@tcp(localhost:3306)/schema",
-		Registry:       reg,
-		DB:             db,
-		ScrapeInterval: 1 * time.Second,
-		Logger:         log.NewLogfmtLogger(os.Stderr),
-	})
-	require.NoError(t, err)
-
-	err = collector.Start(context.Background())
-	require.NoError(t, err)
-	defer collector.Stop()
-
-	time.Sleep(800 * time.Millisecond)
-
-	const connectionInfoMetrics = `
-	# HELP database_observability_connection_info Information about the connection
-	# TYPE database_observability_connection_info gauge
-	database_observability_connection_info{db_instance_identifier="unknown",provider_name="unknown",provider_region="unknown"} 1`
-
-	const setupConsumerMetrics = `
-	# HELP database_observability_setup_consumer_enabled Whether each performance_schema consumer is enabled (1) or disabled (0)
-	# TYPE database_observability_setup_consumer_enabled gauge
-	database_observability_setup_consumer_enabled{consumer_name="events_statements_cpu"} 1
-	database_observability_setup_consumer_enabled{consumer_name="events_statements_history"} 1
-	`
-
-	err = testutil.GatherAndCompare(reg, strings.NewReader(connectionInfoMetrics+setupConsumerMetrics))
-	require.NoError(t, err)
-
-	err = mock.ExpectationsWereMet()
-	require.NoError(t, err)
-}
-
 func Test_getSetupConsumers(t *testing.T) {
 	t.Run("both consumers enabled", func(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
