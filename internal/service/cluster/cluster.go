@@ -534,7 +534,7 @@ func (s *Service) updateReadyToAdmitTraffic() {
 	// Deadline is either not set or it didn't yet pass, and the number of peers is less
 	// than the minimum. So we can't admit traffic.
 	if s.isReadyToAdmitTraffic.Load() { // log if previously was ready
-		level.Info(s.log).Log(
+		level.Warn(s.log).Log(
 			"msg", "minimum cluster size requirements are not met - marking cluster as not ready for traffic",
 			"minimum_cluster_size", s.opts.MinimumClusterSize,
 			"peers_count", len(s.sharder.Peers()),
