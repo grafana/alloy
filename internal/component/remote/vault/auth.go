@@ -463,6 +463,8 @@ func (a *AuthCustom) vaultAuthenticate(ctx context.Context, cli *vault.Client) (
 	var err error
 
 	if a.Namespace != "" {
+		// Authenticating to a namespace different from the one used by the KV store is likely applicable to other forms of authentication on enterprise vault
+		// but only testable with authCustom when added in https://github.com/grafana/alloy/pull/2945
 		s, err = cli.WithNamespace(a.Namespace).Auth().Login(ctx, a)
 		if err == nil {
 			// As the WithNameSpace function creates a shallow copy of the original client, we need to set the acquired
