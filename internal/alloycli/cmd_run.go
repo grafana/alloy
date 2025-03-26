@@ -169,7 +169,7 @@ depending on the nature of the reload error.
 	cmd.Flags().BoolVar(&r.enableCommunityComps, "feature.community-components.enabled", r.enableCommunityComps, "Enable community components.")
 	cmd.Flags().StringVar(&r.prometheusMetricNameValidationScheme, "feature.prometheus.metric-validation-scheme", prometheusLegacyMetricValidationScheme, fmt.Sprintf("Prometheus metric validation scheme to use. Supported values: %q, %q. NOTE: this is an experimental flag and may be removed in future releases.", prometheusLegacyMetricValidationScheme, prometheusUTF8MetricValidationScheme))
 	if runtime.GOOS == "windows" {
-		cmd.Flags().StringVar(&r.windowsPriority, "windows.priority", r.windowsPriority, fmt.Sprintf("Process priority to use when running on windows. Supported values: %s", strings.Join(slices.Collect(windowspriority.PriorityValues()), ", ")))
+		cmd.Flags().StringVar(&r.windowsPriority, "windows.priority", r.windowsPriority, fmt.Sprintf("Process priority to use when running on windows. This flag is currently in public preview. Supported values: %s", strings.Join(slices.Collect(windowspriority.PriorityValues()), ", ")))
 	}
 
 	addDeprecatedFlags(cmd)
