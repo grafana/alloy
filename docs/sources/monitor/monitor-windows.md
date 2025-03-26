@@ -52,15 +52,9 @@ Perform the following steps to clone the scenarios repository and deploy the mon
    docker ps
    ```
 
-## Install {{% param "PRODUCT_NAME" %}} in Windows
+1. [Install {{< param "PRODUCT_NAME" >}}][install] on Windows.
 
-Follow the instructions to [Install Grafana Alloy on Windows](https://grafana.com/docs/alloy/latest/set-up/install/windows/).
-
-### Configure remote access to the {{% param "PRODUCT_NAME" %}} UI
-
-If you would like access the {{< param "PRODUCT_NAME" >}} UI from a remote machine you must change the runtime arguments of the {{< param "PRODUCT_NAME" >}} service.
-
-[Change command line arguments][change] and add the `--server.http.listen-addr` flag.
+1. (Optional) To access the {{< param "PRODUCT_NAME" >}} UI from a remote machine you must [update the command line arguments][change] for the {{< param "PRODUCT_NAME" >}} service to add the `--server.http.listen-addr` flag.
 
    ```shell
    run
@@ -69,13 +63,12 @@ If you would like access the {{< param "PRODUCT_NAME" >}} UI from a remote machi
    --server.http.listen-addr=0.0.0.0:12345
    ```
 
-After you restart the services, you can access the {{< param "PRODUCT_NAME" >}} UI from a remote machine by going to `http://<windows-machine-ip>:12345`.
+   After you restart the services, you can access the {{< param "PRODUCT_NAME" >}} UI from a remote machine by going to `http://<windows-machine-ip>:12345`.
 
+[install]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/set-up/install/windows/
 [change]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/configure/windows/#change-command-line-arguments
 
 ## Configure {{% param "PRODUCT_NAME" %}} to monitor Windows
-
-After you have installed {{< param "PRODUCT_NAME" >}}, you can configure it to monitor your Windows machine.
 
 Replace the default `config.alloy` file with the preconfigured `config.alloy` file included in the `alloy-scenarios/windows` directory.
 
