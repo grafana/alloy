@@ -28,7 +28,11 @@ This example requires:
 The `docker` commands require administrator privileges.
 {{< /admonition >}}
 
-## Clone the scenarios repository
+## Set up and run the example
+
+The following steps show you how to clone and deploy the example.
+
+### Clone the scenarios repository
 
 Clone the {{< param "PRODUCT_NAME" >}} scenarios repository.
 
@@ -36,7 +40,7 @@ Clone the {{< param "PRODUCT_NAME" >}} scenarios repository.
 git clone https://github.com/grafana/alloy-scenarios.git
 ```
 
-## Deploy the Grafana stack
+### Deploy the Grafana stack
 
 Start Docker to deploy the Grafana stack.
 
@@ -51,27 +55,31 @@ You can check the status of the Docker containers by running the following comma
 docker ps
 ```
 
-## Monitor the health of your {{% param "PRODUCT_NAME" %}} deployment
+### Shut down the Grafana stack
+
+When you are finished exploring this example, you can stop Docker to shut down the Grafana stack.
+
+```shell
+docker compose down
+```
+
+## Monitor and visualize your data
+
+You can use Grafana to view the health of your deployment and visualize your data.
+
+### Monitor the health of your {{% param "PRODUCT_NAME" %}} deployment
 
 To monitor the health of your {{< param "PRODUCT_NAME" >}} deployment, open your browser and navigate to [http://localhost:12345](http://localhost:12345).
 
 Refer to [Debug Grafana Alloy](https://grafana.com/docs/alloy/latest/troubleshoot/debug/) for more information about the {{< param "PRODUCT_NAME" >}} UI.
 
-## Visualise your data
+### Visualise your data
 
 To explore metrics, open your browser and navigate to [http://localhost:3000/explore/metrics](http://localhost:3000/explore/metrics).
 
 To use the Grafana Logs Drilldown, open your browser and navigate to [http://localhost:3000/a/grafana-lokiexplore-app](http://localhost:3000/a/grafana-lokiexplore-app).
 
 To create a [dashboard](https://grafana.com/docs/grafana/latest/getting-started/build-first-dashboard/#create-a-dashboard) to visualise your metrics and logs, open your browser and navigate to [`http://localhost:3000/dashboards`](http://localhost:3000/dashboards).
-
-## Shut down the Grafana stack
-
-Stop Docker to shut down the Grafana stack.
-
-```shell
-docker compose down
-```
 
 ## Understand the {{% param "PRODUCT_NAME" %}} configuration
 
