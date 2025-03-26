@@ -4,8 +4,9 @@ import (
 	"testing"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/component/database_observability/mysql/collector/parser"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/internal/component/database_observability/mysql/collector/parser"
 )
 
 func TestParserTiDB_ExtractTableNames(t *testing.T) {
@@ -143,6 +144,54 @@ func TestParserTiDB_ExtractTableNames(t *testing.T) {
 
 			got := p.ExtractTableNames(log.NewNopLogger(), "", stmt)
 			require.ElementsMatch(t, tc.tables, got)
+		})
+	}
+}
+
+func TestParserTiDB_CleanTruncatedText(t *testing.T) {
+	testcases := []struct {
+		name    string
+		sql     string
+		want    string
+		wantErr bool
+	}{
+		{
+			name:    "simple select",
+			sql:     "select * from some_table where id = 1",
+			want:    "select * from some_table where id = 1",
+			wantErr: false,
+		},
+
+		{
+			name:    "truncated query",
+			sql:     "insert into some_table (`id1`, `id2`, `id3`, `id...",
+			want:    "insert into some_table (`id1`, `id2`, `id3`, `id...",
+			wantErr: true,
+		},
+		{
+			name:    "truncated in multi-line comment",
+			sql:     "select * from some_table where id = 1 /*traceparent='00-abc...",
+			want:    "select * from some_table where id = 1",
+			wantErr: false,
+		},
+		{
+			name:    "truncated with properly closed comment",
+			sql:     "select * from some_table where id = 1 /* comment that's closed */ and name = 'test...",
+			want:    "select * from some_table where id = 1 /* comment that's closed */ and name = 'test...",
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			p := parser.NewTiDBSqlParser()
+			got, err := p.CleanTruncatedText(tc.sql)
+			if tc.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tc.want, got)
+			}
 		})
 	}
 }
