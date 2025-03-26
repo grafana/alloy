@@ -1,34 +1,38 @@
 {
-  $schema: 'https://docs.renovatebot.com/renovate-schema.json',
-  extends: [
-    'config:base',
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended", "npm:unpublishSafe"
 
     // https://docs.renovatebot.com/presets-npm/#npmunpublishsafe
     'npm:unpublishSafe',
   ],
 
   // Tell dependency dashboard to only require PR creation approval for major versions
-  major: {
+  "major": {
     dependencyDashboardApproval: true
   },
-
-  packageRules: [
+  "packageRules": [
     {
       "matchManagers": ["npm"],
-      matchDepTypes: ['dependencies'],
-      matchUpdateTypes: ['minor', 'patch'],
-      groupName: 'dependencies (minor)'
+      "matchDepTypes": ["dependencies"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "dependencies (minor)"
     },
     {
       "matchManagers": ["npm"],
-      matchDepTypes: ['devDependencies'],
-      matchUpdateTypes: ['minor', 'patch'],
-      groupName: 'devDependencies (minor)'
-    }
+      "matchDepTypes": ["devDependencies"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "devDependencies (minor)"
+    },
     // TODO: group go deps
-    // TODO: group
+    // TODO: group gh actions deps?
+    {
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "dependencies (gh-actions)"
+    },
   ],
 
   // Move package.json forward along with package-lock.json
-  rangeStrategy: 'bump'
+  "rangeStrategy": "bump"
 }
