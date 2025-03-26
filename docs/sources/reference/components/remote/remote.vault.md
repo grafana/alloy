@@ -155,8 +155,8 @@ All values in the `data` attribute are considered secret, even if they contain n
 With Vault Enterprise, you can authenticate against a parent namespace while storing secrets in a child namespace. 
 By specifying the namespace argument in `auth.custom`, you can authenticate to a namespace different from the one used to retrieve the secrets.
 
-You can also define Vault environment variables, which the clients used by Alloy will automatically load. 
-This approach allows you to use certificate-based authentication i.e. by setting the `VAULT_CACERT` and `VAULT_CAPATH` environment variables.
+You can also define Vault environment variables, which the clients used by {{< param "PRODUCT_NAME" >}} will automatically load. 
+This approach allows you to use certificate-based authentication by setting the `VAULT_CACERT` and `VAULT_CAPATH` environment variables.
 Refer to the [Vault Environment variables](https://developer.hashicorp.com/vault/docs/commands#configure-environment-variables) documentation for more information.
 ### `auth.gcp`
 
