@@ -48,7 +48,7 @@ func NewClusterService(
 	opts ClusterOptions,
 	getDiscoveryFn func(options discovery.Options) (discovery.DiscoverFn, error),
 ) (*cluster.Service, error) {
-	
+
 	listenPort := findPort(opts.ListenAddress, 80)
 
 	config := cluster.Options{
