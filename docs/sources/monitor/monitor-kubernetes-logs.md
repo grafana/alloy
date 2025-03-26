@@ -31,39 +31,43 @@ This example requires:
 * [Helm](https://helm.sh/docs/intro/install/)
 * [kind](https://kind.sigs.k8s.io/docs/user/quick-start/)
 
-## Clone the repository
+## Clone and deploy the example
 
-```shell
-git clone https://github.com/grafana/alloy-scenarios.git
-```
+Perform the following steps to clone the scenarios repository and deploy the monitoring example.
 
-## Deploy the Grafana stack
-
-1. Change directory to `alloy-scenarios/k8s-logs`.
-
-   ```bash
-   cd alloy-scenarios/k8s-logs
-   ```
-
-1. Use kind to create a local Kubernetes cluster.
-   The `kind.yml` file provides the kind cluster configuration.
+1. Clone the {{< param "PRODUCT_NAME" >}} scenarios repository.
 
    ```shell
-   kind create cluster --config kind.yml
+   git clone https://github.com/grafana/alloy-scenarios.git
    ```
 
-1. Add the Grafana Helm repository.
+1. Set up the example Kubernetes environment.
 
-   ```shell
-   helm repo add grafana https://grafana.github.io/helm-charts
-   ```
+   1. Change directory to `alloy-scenarios/k8s-logs`.
 
-1. Create the `meta` and `prod` namespaces/
+      ```bash
+      cd alloy-scenarios/k8s-logs
+      ```
 
-   ```shell
-   kubectl create namespace meta && \
-   kubectl create namespace prod
-   ```
+   1. Use kind to create a local Kubernetes cluster.
+      The `kind.yml` file provides the kind cluster configuration.
+
+      ```shell
+      kind create cluster --config kind.yml
+      ```
+
+   1. Add the Grafana Helm repository.
+
+      ```shell
+      helm repo add grafana https://grafana.github.io/helm-charts
+      ```
+
+   1. Create the `meta` and `prod` namespaces/
+
+      ```shell
+      kubectl create namespace meta && \
+      kubectl create namespace prod
+      ```
 
 1. Deploy Loki in the `meta` namespace. Loki stores the collected logs.
    The `loki-values.yml` file contains the configuration for the Loki Helm chart.
@@ -93,8 +97,6 @@ git clone https://github.com/grafana/alloy-scenarios.git
 
    This Helm chart installs {{< param "PRODUCT_NAME" >}} and specifies the log Pod Logs and Kubernetes Events sources that {{< param "PRODUCT_NAME" >}} collects logs from.
 
-## Set up port forwarding
-
 1. Port-forward the Grafana Pod to your local machine.
 
    1. Get the name of the Grafana Pod.
@@ -123,17 +125,24 @@ git clone https://github.com/grafana/alloy-scenarios.git
       kubectl --namespace meta port-forward $POD_NAME 12345
       ```
 
-## Add a demo application to `prod`
+1. Deploy a default version of Grafana Tempo to the `prod` namespace.
+   In this example, Tempo functions as the primary application generating logs.
 
-Deploy default version of Grafana Tempo as a sample application to the `prod` namespace and generate some logs.
-Tempo is a distributed tracing backend that's used to store and query traces.
-Normally Tempo would sit next to Loki and Grafana in the meta namespace, but for the purpose of this example, is functions as the primary application generating logs.
+   ```shell
+   helm install tempo grafana/tempo-distributed -n prod
+   ```
 
-```shell
-helm install tempo grafana/tempo-distributed -n prod
-```
+## Monitor and visualize your data
 
-## Visualise your data
+You can use Grafana to view the health of your deployment and visualize your data.
+
+### Monitor the health of your {{% param "PRODUCT_NAME" %}} deployment
+
+To monitor the health of your {{< param "PRODUCT_NAME" >}} deployment, open your browser and navigate to [http://localhost:12345](http://localhost:12345).
+
+Refer to [Debug Grafana Alloy](https://grafana.com/docs/alloy/latest/troubleshoot/debug/) for more information about the {{< param "PRODUCT_NAME" >}} UI.
+
+### Visualise your data
 
 To use the Grafana Logs Drilldown, open your browser and navigate to [http://localhost:3000/a/grafana-lokiexplore-app](http://localhost:3000/a/grafana-lokiexplore-app).
 

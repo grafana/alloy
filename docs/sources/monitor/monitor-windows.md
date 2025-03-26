@@ -29,28 +29,28 @@ This example requires:
 The `docker` commands require administrator privileges.
 {{< /admonition >}}
 
-## Clone the repository
+## Clone and deploy the example
 
-Clone the {{< param "PRODUCT_NAME" >}} scenarios repository.
+Perform the following steps to clone the scenarios repository and deploy the monitoring example.
 
-```shell
-git clone https://github.com/grafana/alloy-scenarios.git
-```
+1. Clone the {{< param "PRODUCT_NAME" >}} scenarios repository.
 
-## Deploy the Grafana stack
+   ```shell
+   git clone https://github.com/grafana/alloy-scenarios.git
+   ```
 
-Start Docker to deploy the Grafana stack.
+1. Start Docker to deploy the Grafana stack.
 
-```shell
-cd alloy-scenarios/windows
-docker compose up -d
-```
+   ```shell
+   cd alloy-scenarios/windows
+   docker compose up -d
+   ```
 
-You can check the status of the containers by running the following command:
+   You can check the status of the containers by running the following command:
 
-```shell
-docker ps
-```
+   ```shell
+   docker ps
+   ```
 
 ## Install {{% param "PRODUCT_NAME" %}} in Windows
 
@@ -60,7 +60,7 @@ Follow the instructions to [Install Grafana Alloy on Windows](https://grafana.co
 
 If you would like access the {{< param "PRODUCT_NAME" >}} UI from a remote machine you must change the runtime arguments of the {{< param "PRODUCT_NAME" >}} service.
 
-Follow the instructions to [Change command line arguments][change]. Change the arguments to add the `--server.http.listen-addr` flag.
+[Change command line arguments][change] and add the `--server.http.listen-addr` flag.
 
    ```shell
    run
@@ -100,13 +100,17 @@ Replace the default `config.alloy` file with the preconfigured `config.alloy` fi
    1. Right click on the service called **Alloy**.
    1. Click on **All Tasks > Start**.
 
-## Monitor the health of your {{% param "PRODUCT_NAME" %}} deployment
+## Monitor and visualize your data
+
+You can use Grafana to view the health of your deployment and visualize your data.
+
+### Monitor the health of your {{% param "PRODUCT_NAME" %}} deployment
 
 To monitor the health of your {{< param "PRODUCT_NAME" >}} deployment, open your browser and navigate to [http://localhost:12345](http://localhost:12345).
 
 Refer to [Debug Grafana Alloy](https://grafana.com/docs/alloy/latest/troubleshoot/debug/) for more information about the {{< param "PRODUCT_NAME" >}} UI.
 
-## Visualise your data
+### Visualise your data
 
 To explore metrics, open your browser and navigate to [http://localhost:3000/explore/metrics](http://localhost:3000/explore/metrics).
 
