@@ -30,7 +30,7 @@ The `docker` commands require administrator privileges.
 
 ## Set up and run the example
 
-The following steps show you how to clone and deploy the example.
+The following steps show you how to clone the scenarios repository and deploy the monitoring example.
 
 ### Clone the scenarios repository
 
