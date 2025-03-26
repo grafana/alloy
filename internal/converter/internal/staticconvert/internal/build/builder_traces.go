@@ -52,7 +52,7 @@ func (b *ConfigBuilder) appendTraces() {
 		b.translateAutomaticLogging(otelCfg, cfg)
 		b.translateSpanMetrics(otelCfg, cfg)
 
-		b.diags.AddAll(otelcolconvert.AppendConfig(b.f, otelCfg, labelPrefix, converters))
+		b.diags.AddAll(otelcolconvert.AppendConfig(b.f, otelCfg, labelPrefix, converters, false))
 	}
 }
 

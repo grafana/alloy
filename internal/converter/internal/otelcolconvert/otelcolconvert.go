@@ -66,7 +66,7 @@ func Convert(in []byte, extraArgs []string) ([]byte, diag.Diagnostics) {
 
 	f := builder.NewFile()
 
-	diags.AddAll(AppendConfig(f, cfg, "", nil))
+	diags.AddAll(AppendConfig(f, cfg, "", nil, true))
 	diags.AddAll(common.ValidateNodes(f))
 
 	var buf bytes.Buffer
@@ -139,10 +139,12 @@ func getFactories() otelcol.Factories {
 
 // AppendConfig converts the provided OpenTelemetry config into an equivalent
 // Alloy config and appends the result to the provided file.
-func AppendConfig(file *builder.File, cfg *otelcol.Config, labelPrefix string, extraConverters []ComponentConverter) diag.Diagnostics {
+func AppendConfig(file *builder.File, cfg *otelcol.Config, labelPrefix string, extraConverters []ComponentConverter, convertServiceAttrs bool) diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	diags.AddAll(convertTelemetry(file, cfg.Service.Telemetry))
+	if convertServiceAttrs {
+		diags.AddAll(convertTelemetry(file, cfg.Service.Telemetry))
+	}
 
 	groups, err := createPipelineGroups(cfg.Service.Pipelines)
 	if err != nil {
