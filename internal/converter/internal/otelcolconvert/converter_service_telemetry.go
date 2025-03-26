@@ -106,7 +106,7 @@ func convertMetrics(file *builder.File, tel otel_tel.MetricsConfig) diag.Diagnos
 	var diags diag.Diagnostics
 
 	if len(tel.Readers) > 0 {
-		diags.Add(diag.SeverityLevelWarn, "the service/telemetry/metrics/readers configuration is not supported - use the `--server.http.listen-addr` cmd argument or the `prometheus.exporter.self` component instead")
+		diags.Add(diag.SeverityLevelWarn, "the service/telemetry/metrics/readers configuration is not supported - to gather Alloy's own telemetry refer to: https://grafana.com/docs/alloy/latest/collect/metamonitoring/")
 	}
 
 	if len(tel.Address) > 0 {

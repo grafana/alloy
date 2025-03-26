@@ -15,8 +15,8 @@ func init() {
 	// These diagnostics are expected and we only want to check them in TestConvertTelemetry.
 	// If we check them in every test we'd have to create too many ".diag" files.
 	diagsToIgnore = map[string]struct{}{
-		"(Warning) the service/telemetry/logs/sampling configuration is not supported":                                                                                                          {},
-		"(Warning) the service/telemetry/metrics/readers configuration is not supported - use the `--server.http.listen-addr` cmd argument or the `prometheus.exporter.self` component instead": {},
+		"(Warning) the service/telemetry/logs/sampling configuration is not supported":                                                                                                             {},
+		"(Warning) the service/telemetry/metrics/readers configuration is not supported - to gather Alloy's own telemetry refer to: https://grafana.com/docs/alloy/latest/collect/metamonitoring/": {},
 	}
 }
 
