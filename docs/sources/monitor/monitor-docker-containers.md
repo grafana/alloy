@@ -28,7 +28,7 @@ This example requires:
 The `docker` commands require administrator privileges.
 {{< /admonition >}}
 
-## Set up and run the example
+## Clone and deploy the example
 
 The following steps show you how to clone the scenarios repository and deploy the monitoring example.
 
