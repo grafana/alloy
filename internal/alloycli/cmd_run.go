@@ -235,15 +235,18 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 
 	// The non-windows path for this is just a return nil, but to protect against
 	// refactoring assumptions we confirm that we're running on windows before setting the priority.
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS == "windows" && fr.windowsPriority != "normal" {
+		if err := featuregate.CheckAllowed(
+			featuregate.StabilityPublicPreview,
+			fr.minStability,
+			"Windows process priority"); err != nil {
+			return err
+		}
+
 		if err := windowspriority.SetPriority(fr.windowsPriority); err != nil {
-			if fr.windowsPriority == windowspriority.PriorityNormal {
-				level.Warn(l).Log("msg", "failed to set process priority to normal", "err", err)
-			} else {
-				return fmt.Errorf("setting process priority: %w", err)
-			}
+			return fmt.Errorf("setting process priority: %w", err)
 		} else {
-			level.Debug(l).Log("msg", "set process priority", "priority", fr.windowsPriority)
+			level.Info(l).Log("msg", "set process priority", "priority", fr.windowsPriority)
 		}
 	}
 
