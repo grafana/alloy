@@ -28,48 +28,50 @@ This example requires:
 The `docker` commands require administrator privileges.
 {{< /admonition >}}
 
-## Clone the repository
+## Clone and deploy the example
 
-Clone the {{< param "PRODUCT_NAME" >}} scenarios repository.
+Perform the following steps to clone the scenarios repository and deploy the monitoring example.
 
-```shell
-git clone https://github.com/grafana/alloy-scenarios.git
-```
+1. Clone the {{< param "PRODUCT_NAME" >}} scenarios repository.
 
-## Deploy the Grafana stack
+   ```shell
+   git clone https://github.com/grafana/alloy-scenarios.git
+   ```
 
-Start Docker to deploy the Grafana stack.
+1. Start Docker to deploy the Grafana stack.
 
-```shell
-cd alloy-scenarios/logs-tcp
-docker compose up -d
-```
+   ```shell
+   cd alloy-scenarios/logs-tcp
+   docker compose up -d
+   ```
 
-You can check the status of the Docker containers by running the following command.
+   You can check the status of the Docker containers by running the following command.
 
-```shell
-docker ps
-```
+   ```shell
+   docker ps
+   ```
 
-## Monitor the health of your {{% param "PRODUCT_NAME" %}} deployment
+1. (Optional) When you finish exploring this example, you can stop Docker to shut down the Grafana stack.
+
+   ```shell
+   docker compose down
+   ```
+
+## Monitor and visualize your data
+
+You can use Grafana to view the health of your deployment and visualize your data.
+
+### Monitor {{% param "PRODUCT_NAME" %}}
 
 To monitor the health of your {{< param "PRODUCT_NAME" >}} deployment, open your browser and navigate to [http://localhost:12345](http://localhost:12345).
 
 Refer to [Debug Grafana Alloy](https://grafana.com/docs/alloy/latest/troubleshoot/debug/) for more information about the {{< param "PRODUCT_NAME" >}} UI.
 
-## Visualise your data
+### Visualise your data
 
 To use the Grafana Logs Drilldown, open your browser and navigate to [http://localhost:3000/a/grafana-lokiexplore-app](http://localhost:3000/a/grafana-lokiexplore-app).
 
 To create a [dashboard](https://grafana.com/docs/grafana/latest/getting-started/build-first-dashboard/#create-a-dashboard) to visualise your metrics and logs, open your browser and navigate to [`http://localhost:3000/dashboards`](http://localhost:3000/dashboards).
-
-## Shut down the Grafana stack
-
-Stop Docker to shut down the Grafana stack.
-
-```shell
-docker compose down
-```
 
 ## Understand the {{% param "PRODUCT_NAME" %}} configuration
 
