@@ -50,6 +50,7 @@ Main (unreleased)
   - `query_sample`: better handling of truncated queries (@cristiangreco)
   - `query_sample`: add option to use TiDB sql parser (@cristiangreco)
   - `query_tables`: rename collector from `query_sample` to better reflect responsibility (@matthewnolf)
+  - `query_sample`: add new collector that replaces previous implementation to collect more detailed sample information (@matthewnolf)
 
 - Add labels validation in `pyroscope.write` to prevent duplicate labels and invalid label names/values. (@marcsanmi)
 
