@@ -1,7 +1,7 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "config:recommended", "npm:unpublishSafe"
+    "config:recommended",
 
     // https://docs.renovatebot.com/presets-npm/#npmunpublishsafe
     'npm:unpublishSafe',
