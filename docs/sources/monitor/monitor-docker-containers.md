@@ -34,9 +34,9 @@ Perform the following steps to clone the scenarios repository and deploy the mon
 
 1. Clone the {{< param "PRODUCT_NAME" >}} scenarios repository.
 
-  ```shell
-  git clone https://github.com/grafana/alloy-scenarios.git
-  ```
+   ```shell
+   git clone https://github.com/grafana/alloy-scenarios.git
+   ```
 
 1. Start Docker to deploy the Grafana stack.
 
