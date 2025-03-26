@@ -49,7 +49,7 @@ The `/-/healthy` endpoint isn't suitable for a [Kubernetes liveness probe][k8s-l
 An {{< param "PRODUCT_NAME" >}} instance that reports as unhealthy should not necessarily be restarted.
 For example, a component may be unhealthy due to an invalid configuration or an unavailable external resource.
 In this case, restarting {{< param "PRODUCT_NAME" >}} would not fix the problem.
-A restart may make it worse, because it would could stop the flow of telemetry in healthy pipelines.
+A restart may make it worse, because it would stop the flow of telemetry in healthy pipelines.
 
 [k8s-liveness]: https://kubernetes.io/docs/concepts/configuration/liveness-readiness-startup-probes/
 {{< /admonition >}}
