@@ -30,7 +30,13 @@ This topic describes how to collect and forward metrics, logs, and traces data f
 
 {{< param "PRODUCT_NAME" >}} exposes its internal metrics using the Prometheus exposition format.
 
-In this task, you use the [`prometheus.exporter.self`][prometheus.exporter.self] and [`prometheus.scrape`][prometheus.scrape] components to scrape {{< param "PRODUCT_NAME" >}}'s  internal metrics and forward it to compatible {{< param "PRODUCT_NAME" >}} components.
+The metrics are exposed on a `/metrics` endpoint on an address configurable via the `--server.http.listen-addr` [command line flag][run].
+For example, `127.0.0.1:12345/metrics`.
+However, it's also possible to access the same metrics using the `prometheus.exporter.self` component.
+
+[run]: ../../reference/cli/run/
+
+In this task, you use the [`prometheus.exporter.self`][prometheus.exporter.self] and [`prometheus.scrape`][prometheus.scrape] components to scrape {{< param "PRODUCT_NAME" >}}'s internal metrics and forward it to compatible {{< param "PRODUCT_NAME" >}} components.
 
 1. Add the following `prometheus.exporter.self` component to your configuration. The component accepts no arguments.
 
