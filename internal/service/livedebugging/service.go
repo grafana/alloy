@@ -45,7 +45,6 @@ func (*Service) Definition() service.Definition {
 
 // Run implements service.Service.
 func (s *Service) Run(ctx context.Context, host service.Host) error {
-	s.liveDebugging.SetServiceHost(host)
 	<-ctx.Done()
 	return nil
 }

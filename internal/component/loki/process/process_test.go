@@ -646,9 +646,9 @@ func getServiceDataWithLiveDebugging(log *testlivedebugging.Log) func(string) (i
 			component.ParseID(""): {ComponentName: "", Component: &testlivedebugging.FakeComponentLiveDebugging{}},
 		},
 	}
-	ld.SetServiceHost(host)
 	ld.SetEnabled(true)
 	ld.AddCallback(
+		host,
 		"callback1",
 		"",
 		func(data livedebugging.Data) { log.Append(data.DataFunc()) },
