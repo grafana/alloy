@@ -1,21 +1,5 @@
 ---
 kind: pipeline
-name: Lint
-platform:
-  arch: amd64
-  os: linux
-steps:
-- commands:
-  - apt-get update -y && apt-get install -y libsystemd-dev
-  - make lint
-  image: grafana/alloy-build-image:v0.1.8
-  name: Lint
-trigger:
-  event:
-  - pull_request
-type: docker
----
-kind: pipeline
 name: Test
 platform:
   arch: amd64
@@ -545,6 +529,6 @@ kind: secret
 name: updater_private_key
 ---
 kind: signature
-hmac: e2780fbbbb87cc7ace40a9777675afdf2d2daf7f2448fd09e15f6837fd53d871
+hmac: 16b47c8e121cdd18c89bb3db6fa61f00946f54cdcfe793fed6bcfadb39dde8f3
 
 ...
