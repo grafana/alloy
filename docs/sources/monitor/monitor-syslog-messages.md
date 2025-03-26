@@ -1,15 +1,15 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/tutorials/scenarios/monitor-syslog-messages/
-description: Learn how to use Grafana Alloy to monitor non-RFC5424 compliant syslog messages
+description: Learn how to use Grafana Alloy to monitor RFC5424 compliant syslog messages
 menuTitle: Monitor syslog messages
-title: Monitor non-RFC5424 compliant syslog messages with Grafana Alloy
+title: Monitor RFC5424 compliant syslog messages with Grafana Alloy
 weight: 400
 ---
 
-# Monitor non-RFC5424 compliant syslog messages with {{% param "FULL_PRODUCT_NAME" %}}
+# Monitor RFC5424 compliant syslog messages with {{% param "FULL_PRODUCT_NAME" %}}
 
-Non-RFC5424 compliant syslog messages are messages that deviate from the structured format defined in RFC 5424.
-This is often due to legacy systems or custom implementations, and can cause parsing issues.
+RFC5424 compliant syslog messages follow a well defined structured and standardized way to log messages.
+These logs include common fields such as priority, timestamp, hostname, application name, process ID, message ID, structured data, and the actual message.
 You can use {{< param "PRODUCT_NAME" >}} to collect your logs, forward them to a Grafana stack, and create a Grafana dashboard to monitor your system behavior.
 
 The `alloy-scenarios` repository provides series of complete working examples of {{< param "PRODUCT_NAME" >}} deployments.
