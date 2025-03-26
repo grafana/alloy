@@ -202,7 +202,7 @@ func TestMultiCallbacksMultipleStreams(t *testing.T) {
 	require.Equal(t, "test data", receivedData2.DataFunc())
 }
 
-func assertNoDeadlock(t *testing.T, timeout time.Duration, f func()) {
+func assertNoDeadlock(t *testing.T, f func()) {
 	t.Helper()
 	done := make(chan struct{})
 
@@ -214,7 +214,7 @@ func assertNoDeadlock(t *testing.T, timeout time.Duration, f func()) {
 	select {
 	case <-done:
 		return
-	case <-time.After(timeout):
+	case <-time.After(2 * time.Second):
 		t.Fatal("Operation timed out - likely deadlocked")
 	}
 }
@@ -228,19 +228,19 @@ func TestDeadLock(t *testing.T) {
 
 	callbackID1 := CallbackID("callback1")
 
-	assertNoDeadlock(t, 2*time.Second, func() {
+	assertNoDeadlock(t, func() {
 		livedebugging.AddCallback(host, callbackID1, "", func(data Data) {})
 	})
 
-	assertNoDeadlock(t, 2*time.Second, func() {
+	assertNoDeadlock(t, func() {
 		livedebugging.AddCallbackMulti(host, callbackID1, "", func(data Data) {})
 	})
 
-	assertNoDeadlock(t, 2*time.Second, func() {
+	assertNoDeadlock(t, func() {
 		livedebugging.DeleteCallbackMulti(host, callbackID1, "")
 	})
 
-	assertNoDeadlock(t, 2*time.Second, func() {
+	assertNoDeadlock(t, func() {
 		livedebugging.DeleteCallback(callbackID1, "")
 	})
 }
@@ -268,19 +268,19 @@ func TestDeadLock2(t *testing.T) {
 		}
 	}()
 
-	assertNoDeadlock(t, 2*time.Second, func() {
+	assertNoDeadlock(t, func() {
 		livedebugging.AddCallback(host, callbackID1, "", func(data Data) {})
 	})
 
-	assertNoDeadlock(t, 2*time.Second, func() {
+	assertNoDeadlock(t, func() {
 		livedebugging.AddCallbackMulti(host, callbackID1, "", func(data Data) {})
 	})
 
-	assertNoDeadlock(t, 2*time.Second, func() {
+	assertNoDeadlock(t, func() {
 		livedebugging.DeleteCallbackMulti(host, callbackID1, "")
 	})
 
-	assertNoDeadlock(t, 2*time.Second, func() {
+	assertNoDeadlock(t, func() {
 		livedebugging.DeleteCallback(callbackID1, "")
 	})
 }

@@ -95,7 +95,6 @@ func (s *liveDebugging) AddCallback(host service.Host, callbackID CallbackID, co
 
 // live debugging does not need to be enabled for the multi callback because the data func are not computed for the graph.
 func (s *liveDebugging) AddCallbackMulti(host service.Host, callbackID CallbackID, moduleID ModuleID, callback func(Data)) error {
-
 	if host == nil {
 		return fmt.Errorf("the live debugging service is not ready yet")
 	}
