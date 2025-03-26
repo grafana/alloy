@@ -36,15 +36,17 @@ import (
 )
 
 type testCase struct {
-	name                 string
-	nodeCountInitial     int
-	initialIsolatedNodes []string // list of node names that are initially in isolated network space
-	assertionsInitial    func(t *assert.CollectT, state *testState)
-	changes              func(state *testState)
-	assertionsFinal      func(t *assert.CollectT, state *testState)
-	assertionsTimeout    time.Duration
-	extraAllowedErrors   []string
-	alloyConfig          string
+	name                   string
+	nodeCountInitial       int
+	initialIsolatedNodes   []string // list of node names that are initially in isolated network space
+	assertionsInitial      func(t *assert.CollectT, state *testState)
+	changes                func(state *testState)
+	assertionsFinal        func(t *assert.CollectT, state *testState)
+	assertionsTimeout      time.Duration
+	extraAllowedErrors     []string
+	alloyConfig            string
+	minimumClusterSize     int
+	minimumSizeWaitTimeout time.Duration
 }
 
 func TestClusterE2E(t *testing.T) {
@@ -228,6 +230,36 @@ testcomponents.slow_update "test" {
 				verifyLookupInvariants(t, state.peers)
 			},
 		},
+		{
+			name:                   "cluster with minimum size requirement",
+			nodeCountInitial:       4,
+			minimumClusterSize:     5,
+			minimumSizeWaitTimeout: 20 * time.Second,
+			assertionsInitial: func(t *assert.CollectT, state *testState) {
+				for _, p := range state.peers {
+					verifyMetrics(t, p,
+						`cluster_node_info{state="participant"} 1`,
+						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 4`,
+						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`,
+					)
+					verifyClusterNotReady(t, p)
+				}
+			},
+			changes: func(state *testState) {
+				startNewNode(t, state, "node-4")
+			},
+			assertionsFinal: func(t *assert.CollectT, state *testState) {
+				for _, p := range state.peers {
+					verifyMetrics(t, p,
+						`cluster_node_info{state="participant"} 1`,
+						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 5`,
+						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 5`,
+					)
+					verifyPeers(t, p, 5)
+				}
+				verifyLookupInvariants(t, state.peers)
+			},
+		},
 	}
 
 	setDefaults := func(tc *testCase) {
@@ -283,6 +315,18 @@ testcomponents.slow_update "test" {
 			t.Logf("Shutdown complete")
 		})
 	}
+}
+
+func verifyClusterNotReady(t *assert.CollectT, p *testPeer) {
+	clusterService, ok := p.clusterService.Data().(cluster.Cluster)
+	require.True(t, ok)
+	peers := clusterService.Peers()
+	require.Nil(t, peers, "Peers should be nil when cluster not ready")
+
+	key := shard.StringKey("test-key")
+	owningPeers, err := clusterService.Lookup(key, 1, shard.OpReadWrite)
+	require.NoError(t, err)
+	require.Nil(t, owningPeers, "Lookup should return nil when cluster not ready")
 }
 
 type testPeer struct {
@@ -367,14 +411,16 @@ func startNewNode(t *testing.T, state *testState, nodeName string) {
 		Tracer:  tracer,
 		Metrics: reg,
 
-		EnableClustering:    true,
-		NodeName:            nodeName,
-		AdvertiseAddress:    nodeAddress,
-		ListenAddress:       nodeAddress,
-		RejoinInterval:      1 * time.Second,
-		AdvertiseInterfaces: advertise.DefaultInterfaces,
-		ClusterMaxJoinPeers: 5,
-		ClusterName:         "cluster_e2e_test",
+		EnableClustering:       true,
+		NodeName:               nodeName,
+		AdvertiseAddress:       nodeAddress,
+		ListenAddress:          nodeAddress,
+		RejoinInterval:         1 * time.Second,
+		AdvertiseInterfaces:    advertise.DefaultInterfaces,
+		ClusterMaxJoinPeers:    5,
+		ClusterName:            "cluster_e2e_test",
+		MinimumClusterSize:     state.testCase.minimumClusterSize,
+		MinimumSizeWaitTimeout: state.testCase.minimumSizeWaitTimeout,
 	}, newPeer.discoveryFn)
 	require.NoError(t, err)
 	newPeer.clusterService = clusterService
@@ -571,6 +617,7 @@ func verifyLookupInvariants(t *assert.CollectT, peers []*testPeer) {
 
 			owningPeers, err := clusterService.Lookup(key, 1, shard.OpReadWrite)
 			require.NoError(t, err, "Lookup should not fail")
+			require.Len(t, owningPeers, 1, "Lookup should return exactly one peer for key %q", s)
 
 			var ownerNames []string
 			for _, owner := range owningPeers {
