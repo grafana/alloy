@@ -50,6 +50,7 @@ Main (unreleased)
   - `query_sample`: better handling of truncated queries (@cristiangreco)
   - `query_sample`: add option to use TiDB sql parser (@cristiangreco)
   - `query_tables`: rename collector from `query_sample` to better reflect responsibility (@matthewnolf)
+  - `query_sample`: add new collector that replaces previous implementation to collect more detailed sample information (@matthewnolf)
 
 - Add labels validation in `pyroscope.write` to prevent duplicate labels and invalid label names/values. (@marcsanmi)
 
@@ -67,6 +68,8 @@ Main (unreleased)
 - Add missing RBAC permission for ScrapeConfig (@alex-berger)
 
 - Fixed an issue in the `mimir.rules.kubernetes` component that would keep the component as unhealthy even when it managed to start after temporary errors (@nicolasvan)
+
+- Allow kafka exporter to attempt to connect even if TLS enabled but cert & key are not specified (@dehaansa)
 
 ### Other changes
 

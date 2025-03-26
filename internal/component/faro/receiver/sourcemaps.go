@@ -44,8 +44,18 @@ type (
 
 type osFileService struct{}
 
-func (fs osFileService) Stat(name string) (fs.FileInfo, error) { return os.Stat(name) }
-func (fs osFileService) ReadFile(name string) ([]byte, error)  { return os.ReadFile(name) }
+func (fs osFileService) Stat(name string) (fs.FileInfo, error) {
+	if strings.Contains(name, "/") || strings.Contains(name, "\\") || strings.Contains(name, "..") {
+		return nil, fmt.Errorf("invalid file name: %s", name)
+	}
+	return os.Stat(name)
+}
+func (fs osFileService) ReadFile(name string) ([]byte, error) {
+	if strings.Contains(name, "/") || strings.Contains(name, "\\") || strings.Contains(name, "..") {
+		return nil, fmt.Errorf("invalid file name: %s", name)
+	}
+	return os.ReadFile(name)
+}
 
 type sourceMapMetrics struct {
 	cacheSize *prometheus.CounterVec

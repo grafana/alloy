@@ -48,10 +48,9 @@ type ForeachConfigNode struct {
 	forEachChildrenUpdateChan chan struct{} // used to trigger an update of the running children
 	forEachChildrenRunning    bool
 
-	mut              sync.RWMutex
-	block            *ast.BlockStmt
-	args             ForEachArguments
-	dataFlowEdgeRefs []string
+	mut   sync.RWMutex
+	block *ast.BlockStmt
+	args  ForEachArguments
 
 	moduleControllerFactory func(opts ModuleControllerOpts) ModuleController
 	moduleControllerOpts    ModuleControllerOpts
@@ -59,6 +58,9 @@ type ForeachConfigNode struct {
 	healthMut  sync.RWMutex
 	evalHealth component.Health // Health of the last evaluate
 	runHealth  component.Health // Health of running the component
+
+	dataFlowEdgeMut  sync.RWMutex
+	dataFlowEdgeRefs []string
 }
 
 var _ ComponentNode = (*ForeachConfigNode)(nil)
@@ -344,20 +346,20 @@ func (fn *ForeachConfigNode) setRunHealth(t component.HealthType, msg string) {
 }
 
 func (fn *ForeachConfigNode) AddDataFlowEdgeTo(nodeID string) {
-	fn.mut.Lock()
-	defer fn.mut.Unlock()
+	fn.dataFlowEdgeMut.Lock()
+	defer fn.dataFlowEdgeMut.Unlock()
 	fn.dataFlowEdgeRefs = append(fn.dataFlowEdgeRefs, nodeID)
 }
 
 func (fn *ForeachConfigNode) GetDataFlowEdgesTo() []string {
-	fn.mut.RLock()
-	defer fn.mut.RUnlock()
+	fn.dataFlowEdgeMut.RLock()
+	defer fn.dataFlowEdgeMut.RUnlock()
 	return fn.dataFlowEdgeRefs
 }
 
 func (fn *ForeachConfigNode) ResetDataFlowEdgeTo() {
-	fn.mut.Lock()
-	defer fn.mut.Unlock()
+	fn.dataFlowEdgeMut.Lock()
+	defer fn.dataFlowEdgeMut.Unlock()
 	fn.dataFlowEdgeRefs = []string{}
 }
 

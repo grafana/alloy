@@ -1,10 +1,12 @@
 package secretfilter
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -516,9 +518,13 @@ func runTest(t *testing.T, config string, gitLeaksConfigContent string, inputLog
 	require.NoError(t, err)
 
 	// Run it
+	ctx, cancel := context.WithCancel(context.Background())
+	wg := sync.WaitGroup{}
+	wg.Add(1)
 	go func() {
-		err1 := tc.Run(componenttest.TestContext(t), args)
+		err1 := tc.Run(ctx, args)
 		require.NoError(t, err1)
+		wg.Done()
 	}()
 	require.NoError(t, tc.WaitExports(time.Second))
 
@@ -538,6 +544,10 @@ func runTest(t *testing.T, config string, gitLeaksConfigContent string, inputLog
 	case <-time.After(5 * time.Second):
 		require.FailNow(t, "failed waiting for log line")
 	}
+
+	// Stop the component
+	cancel()
+	wg.Wait()
 
 	// If created before, remove the temporary gitleaks config file
 	if args.GitleaksConfig != "" {
@@ -566,6 +576,8 @@ func createTempGitleaksConfig(t *testing.T, content string) string {
 
 	_, err = f.WriteString(content)
 	require.NoError(t, err)
+
+	require.NoError(t, f.Close())
 
 	return f.Name()
 }

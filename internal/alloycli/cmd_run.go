@@ -271,7 +271,7 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 		ready  func() bool
 	)
 
-	clusterService, err := buildClusterService(clusterOptions{
+	clusterService, err := buildClusterService(ClusterOptions{
 		Log:     log.With(l, "service", "cluster"),
 		Tracer:  t,
 		Metrics: reg,

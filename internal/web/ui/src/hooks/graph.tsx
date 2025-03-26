@@ -31,18 +31,32 @@ export const useGraph = (
 
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
+        let buffer = '';
 
         while (enabled) {
           const { value, done } = await reader.read();
-          if (done) {
-            break;
-          }
+          if (done) break;
 
-          const decodedChunks = decoder
-            .decode(value, { stream: true })
-            .split('|;|')
-            .filter((entry) => entry.length !== 0);
-          setData(() => decodedChunks.map((chunk) => JSON.parse(chunk)));
+          // It happens sometimes that the message is partially received (it can be late and arrive in multiple chunks
+          // and can even merge with the previous message)
+          buffer += decoder.decode(value, { stream: true });
+
+          // Split on the delimiter and process each complete message
+          const messages = buffer.split('|;|');
+
+          // The last element will either be empty or an incomplete message that will be used as the buffer for the next message
+          buffer = messages.pop() || '';
+
+          for (const message of messages) {
+            if (!message) continue; // Skip empty messages
+
+            try {
+              const data = JSON.parse(message) as DebugData[];
+              setData(data);
+            } catch (err) {
+              console.error('Failed to parse message:', message, err);
+            }
+          }
         }
       } catch (error) {
         if ((error as Error).name !== 'AbortError') {

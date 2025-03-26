@@ -177,7 +177,7 @@ type dataKey struct {
 	Type        livedebugging.DataType
 }
 
-func graph(_ service.Host, callbackManager livedebugging.CallbackManager, logger log.Logger) http.HandlerFunc {
+func graph(host service.Host, callbackManager livedebugging.CallbackManager, logger log.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var moduleID livedebugging.ModuleID
 		if vars := mux.Vars(r); vars != nil {
@@ -193,7 +193,7 @@ func graph(_ service.Host, callbackManager livedebugging.CallbackManager, logger
 		id := livedebugging.CallbackID(uuid.New().String())
 
 		droppedData := false
-		err := callbackManager.AddCallbackMulti(id, moduleID, func(data livedebugging.Data) {
+		err := callbackManager.AddCallbackMulti(host, id, moduleID, func(data livedebugging.Data) {
 			select {
 			case <-ctx.Done():
 				return
@@ -216,7 +216,7 @@ func graph(_ service.Host, callbackManager livedebugging.CallbackManager, logger
 
 		defer func() {
 			close(dataCh)
-			callbackManager.DeleteCallbackMulti(id, moduleID)
+			callbackManager.DeleteCallbackMulti(host, id, moduleID)
 		}()
 
 		ticker := time.NewTicker(windowSeconds)
@@ -241,25 +241,22 @@ func graph(_ service.Host, callbackManager livedebugging.CallbackManager, logger
 				}
 
 			case <-ticker.C:
-				// Flush aggregated data
-				var builder strings.Builder
+				dataArray := make([]interface{}, 0, len(dataMap))
 				for _, data := range dataMap {
 					data.Rate = float64(data.Count) / windowSeconds.Seconds()
-					jsonData, err := json.Marshal(data)
-					if err != nil {
-						continue
-					}
-					builder.Write(jsonData)
-					builder.WriteString("|;|")
+					dataArray = append(dataArray, data)
 				}
 
-				// Add an empty limiter to show the lack of data
-				if builder.Len() == 0 {
-					builder.WriteString("|;|")
+				jsonData, err := json.Marshal(dataArray)
+				if err != nil {
+					level.Warn(logger).Log("msg", "error marshalling data, not sending data to the graph", "error", err)
+					continue
 				}
 
-				_, writeErr := w.Write([]byte(builder.String()))
+				// Add |;| delimiter to the end of the data to help with parsing when the msg arrives in multiple chunks
+				_, writeErr := w.Write(append(jsonData, []byte("|;|")...))
 				if writeErr != nil {
+					level.Warn(logger).Log("msg", "error writing data to the graph", "error", writeErr)
 					return
 				}
 				w.(http.Flusher).Flush()
@@ -275,7 +272,7 @@ func graph(_ service.Host, callbackManager livedebugging.CallbackManager, logger
 	}
 }
 
-func liveDebugging(_ service.Host, callbackManager livedebugging.CallbackManager, logger log.Logger) http.HandlerFunc {
+func liveDebugging(host service.Host, callbackManager livedebugging.CallbackManager, logger log.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		componentID := livedebugging.ComponentID(vars["id"])
@@ -288,7 +285,7 @@ func liveDebugging(_ service.Host, callbackManager livedebugging.CallbackManager
 		id := livedebugging.CallbackID(uuid.New().String())
 
 		droppedData := false
-		err := callbackManager.AddCallback(id, componentID, func(data livedebugging.Data) {
+		err := callbackManager.AddCallback(host, id, componentID, func(data livedebugging.Data) {
 			select {
 			case <-ctx.Done():
 				return
