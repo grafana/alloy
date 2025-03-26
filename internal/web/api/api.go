@@ -177,7 +177,7 @@ type dataKey struct {
 	Type        livedebugging.DataType
 }
 
-func graph(_ service.Host, callbackManager livedebugging.CallbackManager, logger log.Logger) http.HandlerFunc {
+func graph(host service.Host, callbackManager livedebugging.CallbackManager, logger log.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var moduleID livedebugging.ModuleID
 		if vars := mux.Vars(r); vars != nil {
@@ -193,7 +193,7 @@ func graph(_ service.Host, callbackManager livedebugging.CallbackManager, logger
 		id := livedebugging.CallbackID(uuid.New().String())
 
 		droppedData := false
-		err := callbackManager.AddCallbackMulti(id, moduleID, func(data livedebugging.Data) {
+		err := callbackManager.AddCallbackMulti(host, id, moduleID, func(data livedebugging.Data) {
 			select {
 			case <-ctx.Done():
 				return
@@ -216,7 +216,7 @@ func graph(_ service.Host, callbackManager livedebugging.CallbackManager, logger
 
 		defer func() {
 			close(dataCh)
-			callbackManager.DeleteCallbackMulti(id, moduleID)
+			callbackManager.DeleteCallbackMulti(host, id, moduleID)
 		}()
 
 		ticker := time.NewTicker(windowSeconds)
@@ -272,7 +272,7 @@ func graph(_ service.Host, callbackManager livedebugging.CallbackManager, logger
 	}
 }
 
-func liveDebugging(_ service.Host, callbackManager livedebugging.CallbackManager, logger log.Logger) http.HandlerFunc {
+func liveDebugging(host service.Host, callbackManager livedebugging.CallbackManager, logger log.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		componentID := livedebugging.ComponentID(vars["id"])
@@ -285,7 +285,7 @@ func liveDebugging(_ service.Host, callbackManager livedebugging.CallbackManager
 		id := livedebugging.CallbackID(uuid.New().String())
 
 		droppedData := false
-		err := callbackManager.AddCallback(id, componentID, func(data livedebugging.Data) {
+		err := callbackManager.AddCallback(host, id, componentID, func(data livedebugging.Data) {
 			select {
 			case <-ctx.Done():
 				return
