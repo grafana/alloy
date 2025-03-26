@@ -297,7 +297,7 @@ func (c *Component) startCollectors() error {
 		Registry:       c.registry,
 		DB:             dbConnection,
 		Logger:         c.opts.Logger,
-		ScrapeInterval: 5 * time.Second,
+		ScrapeInterval: 1 * time.Hour,
 	})
 	if err != nil {
 		level.Error(c.opts.Logger).Log("msg", "failed to create ConnectionInfo collector", "err", err)
