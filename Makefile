@@ -90,6 +90,7 @@ GOARM                ?= $(shell go env GOARM)
 CGO_ENABLED          ?= 1
 RELEASE_BUILD        ?= 0
 GOEXPERIMENT         ?= $(shell go env GOEXPERIMENT)
+GOLANGCI_LINT_BINARY ?= $(shell go env GOPATH)/bin/golangci-lint
 
 # List of all environment variables which will propagate to the build
 # container. USE_CONTAINER must _not_ be included to avoid infinite recursion.
@@ -133,7 +134,7 @@ endif
 
 .PHONY: lint
 lint: alloylint
-	find . -name go.mod -execdir golangci-lint run -v --timeout=10m \;
+	find . -name go.mod | xargs dirname | xargs -I __dir__ $(GOLANGCI_LINT_BINARY) run -v --timeout=10m
 	$(ALLOYLINT_BINARY) ./...
 
 .PHONY: run-alloylint
