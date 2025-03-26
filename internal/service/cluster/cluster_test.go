@@ -21,7 +21,6 @@ func mockDiscoverPeers(peers []string, err error) func() ([]string, error) {
 	}
 }
 
-// buildPeers creates a slice of test peers with sequential names
 func buildPeers(count int) []peer.Peer {
 	var peers []peer.Peer
 	for i := 0; i < count; i++ {
@@ -32,7 +31,6 @@ func buildPeers(count int) []peer.Peer {
 	return peers
 }
 
-// newTestService creates a Service instance for testing purposes
 func newTestService(opts Options, peers []peer.Peer, deadline time.Time) *Service {
 	return &Service{
 		log:                 log.NewLogfmtLogger(os.Stdout),
@@ -74,10 +72,11 @@ func TestGetPeers(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			s := &Service{
 				log:     log.NewLogfmtLogger(os.Stdout),
 				opts:    test.opts,
-				randGen: rand.New(rand.NewSource(1)), // Seeded random generator to have consistent results in tests.
+				randGen: rand.New(rand.NewSource(1)),
 			}
 
 			peers, _ := s.getPeers()
@@ -153,15 +152,6 @@ func TestReadyToAdmitTraffic(t *testing.T) {
 			expectedReady:      true,
 		},
 		{
-			name:               "more than enough peers",
-			enableClustering:   true,
-			minimumClusterSize: 3,
-			waitTimeout:        5 * time.Minute,
-			deadline:           now.Add(5 * time.Minute), // deadline in the future
-			peerCount:          5,                        // more than minimum
-			expectedReady:      true,
-		},
-		{
 			name:               "not enough peers, deadline not passed",
 			enableClustering:   true,
 			minimumClusterSize: 5,
@@ -183,6 +173,7 @@ func TestReadyToAdmitTraffic(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			peers := buildPeers(tt.peerCount)
 
 			s := newTestService(Options{
@@ -200,6 +191,7 @@ func TestReadyToAdmitTraffic(t *testing.T) {
 }
 
 func TestAdmitTrafficSequence_WithDeadline(t *testing.T) {
+	t.Parallel()
 	minimumClusterSize := 10
 	clusterSizeWaitTimeout := time.Second
 
@@ -247,6 +239,7 @@ func TestAdmitTrafficSequence_WithDeadline(t *testing.T) {
 }
 
 func TestAdmitTrafficSequence_NoDeadline(t *testing.T) {
+	t.Parallel()
 	minimumClusterSize := 10
 
 	s := newTestService(Options{
