@@ -658,8 +658,8 @@ github.com/cihub/seelog v0.0.0-20151216151435-d2c6e5aa9fbf/go.mod h1:9d6lWj8KzO/
 github.com/cihub/seelog v0.0.0-20170130134532-f561c5e57575 h1:kHaBemcxl8o/pQ5VM1c8PVE1PubbNx3mjUr09OqWGCs=
 github.com/cihub/seelog v0.0.0-20170130134532-f561c5e57575/go.mod h1:9d6lWj8KzO/fd/NrVaLscBKmPigpZpn5YawRPw+e3Yo=
 github.com/cilium/ebpf v0.6.2/go.mod h1:4tRaxcgiL706VnOzHOdBlY8IEAIdxINsQBcU4xJJXRs=
-github.com/cilium/ebpf v0.16.0 h1:+BiEnHL6Z7lXnlGUsXQPPAE7+kenAd4ES8MQ5min0Ok=
-github.com/cilium/ebpf v0.16.0/go.mod h1:L7u2Blt2jMM/vLAVgjxluxtBKlz3/GWjB0dMOEngfwE=
+github.com/cilium/ebpf v0.17.3 h1:FnP4r16PWYSE4ux6zN+//jMcW4nMVRvuTLVTvCjyyjg=
+github.com/cilium/ebpf v0.17.3/go.mod h1:G5EDHij8yiLzaqn0WjyfJHvRa+3aDlReIaLVRMvOyJk=
 github.com/circonus-labs/circonus-gometrics v0.0.0-20161109192337-d17a8420c36e/go.mod h1:nmEj6Dob7S7YxXgwXpfOuvO54S+tGdZdw9fuRZt25Ag=
 github.com/circonus-labs/circonus-gometrics v2.3.1+incompatible/go.mod h1:nmEj6Dob7S7YxXgwXpfOuvO54S+tGdZdw9fuRZt25Ag=
 github.com/circonus-labs/circonusllhist v0.0.0-20161110002650-365d370cc145/go.mod h1:kMXHVDlOchFAehlya5ePtbp5jckzBHf4XRpQvBOLI+I=
@@ -1244,12 +1244,8 @@ github.com/gosnmp/gosnmp v1.38.0/go.mod h1:FE+PEZvKrFz9afP9ii1W3cprXuVZ17ypCcyyf
 github.com/gotestyourself/gotestyourself v2.2.0+incompatible/go.mod h1:zZKM6oeNM8k+FRljX1mnzVYeS8wiGgQyvST1/GafPbY=
 github.com/grafana/alloy-remote-config v0.0.10 h1:1Ge7lz2mjXI1rd6SmiZpFHyXeLehBuCi43+XTkdqgV4=
 github.com/grafana/alloy-remote-config v0.0.10/go.mod h1:kHE1usYo2WAVCikQkIXuoG1Clz8BSdiz3kF+DZSCQ4k=
-github.com/grafana/beyla/v2 v2.0.1-0.20250228181844-8db4ab92d492 h1:4J1yKVr7Att990TfkUiVbaBQavJVxZmTM7ODJYumPPs=
-github.com/grafana/beyla/v2 v2.0.1-0.20250228181844-8db4ab92d492/go.mod h1:TBliYCPmQIPzUdW325AJDIXReB7kk13HtgUy9BidLIc=
-github.com/grafana/beyla/v2 v2.0.1-0.20250228191524-b9d12092ec96 h1:Klloqg3yBljXzaNYShgSh3EDpkmMQjbNlNMHafsWDoE=
-github.com/grafana/beyla/v2 v2.0.1-0.20250228191524-b9d12092ec96/go.mod h1:TBliYCPmQIPzUdW325AJDIXReB7kk13HtgUy9BidLIc=
-github.com/grafana/beyla/v2 v2.0.1-0.20250228221137-faa829a3ecb3 h1:aFPqI3R5Km/3cHCpeXECQth87hlCFKLJrruXFeeH2zg=
-github.com/grafana/beyla/v2 v2.0.1-0.20250228221137-faa829a3ecb3/go.mod h1:TBliYCPmQIPzUdW325AJDIXReB7kk13HtgUy9BidLIc=
+github.com/grafana/beyla/v2 v2.0.1-0.20250324104430-37a987a4eb6e h1:YxcZdoCS7GpQqHw+6JdftUc/Uzt5/Rg/q9kPhEV2zNM=
+github.com/grafana/beyla/v2 v2.0.1-0.20250324104430-37a987a4eb6e/go.mod h1:cktMVbYjFWGSOPNLV5BeqDkBgD/4Tmv/7tzZjBnZS1c=
 github.com/grafana/cadvisor v0.0.0-20240729082359-1f04a91701e2 h1:ju6EcY2aEobeBg185ETtFCKj5WzaQ48qfkbsSRRQrF4=
 github.com/grafana/cadvisor v0.0.0-20240729082359-1f04a91701e2/go.mod h1:8sLW/G7rcFe1CKMaA4pYT4mX3P1xQVGqM6luzEzx/2g=
 github.com/grafana/catchpoint-prometheus-exporter v0.0.0-20250218151502-6e97feaee761 h1:dPJOIEwtQ8uR3Qa79pb/lsSFJQ6j4P9vpCUQ4fKimG4=
