@@ -1,5 +1,5 @@
-import { Fragment } from 'react';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import React, { Fragment } from 'react';
+import { Prism, SyntaxHighlighterProps } from 'react-syntax-highlighter';
 
 import { alloyStringify } from '../alloy-syntax-js/stringify';
 
@@ -8,6 +8,10 @@ import Table from './Table';
 import { PartitionedBody } from './types';
 
 import styles from './ComponentView.module.css';
+
+// This is a types-only issue with newer versions of React.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- See above
+const SyntaxHighlighter = Prism as any as typeof React.Component<SyntaxHighlighterProps>;
 
 interface ComponentBodyProps {
   partition: PartitionedBody;
