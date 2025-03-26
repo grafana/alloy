@@ -305,7 +305,7 @@ drone: generate-drone
 .PHONY: generate-beyla
 generate-beyla:
 	if [ -n "$$GITHUB_WORKSPACE" ] || [ -n "$$DRONE_SYSTEM_HOST" ]; then go mod vendor; fi; \
-	GOOS=$(GOHOSTOS) GOARCH=$(GOHOSTARCH) go run github.com/grafana/beyla/v2/cmd/beyla-genfiles@generate_tool
+	GOOS=$(GOHOSTOS) GOARCH=$(GOHOSTARCH) go run github.com/grafana/beyla/v2/cmd/beyla-genfiles@beyla_gen_tool
 
 .PHONY: clean
 clean: clean-dist clean-build-container-cache
