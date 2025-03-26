@@ -169,20 +169,17 @@ func (store *sourceMapsStoreImpl) GetSourceMap(sourceURL string, release string)
 		store.cache[cacheKey] = nil
 		return nil, err
 	}
-	if content != nil {
-		consumer, err := sourcemap.Parse(sourceMapURL, content)
-		if err != nil {
-			store.cache[cacheKey] = nil
-			level.Debug(store.log).Log("msg", "failed to parse source map", "url", sourceMapURL, "release", release, "err", err)
-			return nil, err
-		}
-		level.Info(store.log).Log("msg", "successfully parsed source map", "url", sourceMapURL, "release", release)
-		store.cache[cacheKey] = consumer
-		store.metrics.cacheSize.WithLabelValues(getOrigin(sourceURL)).Inc()
-		return consumer, nil
-	}
 
-	return nil, nil
+	consumer, err := sourcemap.Parse(sourceMapURL, content)
+	if err != nil {
+		store.cache[cacheKey] = nil
+		level.Debug(store.log).Log("msg", "failed to parse source map", "url", sourceMapURL, "release", release, "err", err)
+		return nil, err
+	}
+	level.Info(store.log).Log("msg", "successfully parsed source map", "url", sourceMapURL, "release", release)
+	store.cache[cacheKey] = consumer
+	store.metrics.cacheSize.WithLabelValues(getOrigin(sourceURL)).Inc()
+	return consumer, nil
 }
 
 func (store *sourceMapsStoreImpl) getSourceMapContent(sourceURL string, release string) (content []byte, sourceMapURL string, err error) {
