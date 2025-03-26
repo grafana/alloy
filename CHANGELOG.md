@@ -15,6 +15,7 @@ Main (unreleased)
 - Add `otelcol.receiver.awscloudwatch` component to receive logs from AWS CloudWatch and forward them to other `otelcol.*` components. (@wildum)
 - Add `loki.enrich` component to enrich logs using labels from `discovery.*` components. (@v-zhuravlev)
 - Add string concatenation for secrets type (@ravishankar15)
+- Add support for environment variables to OpenTelemetry Collector config. (@jharvey10)
 - Replace graph in Alloy UI with a new version that supports modules and data flow visualization. (@wildum)
 
 ### Enhancements
