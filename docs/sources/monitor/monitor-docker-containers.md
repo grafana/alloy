@@ -30,38 +30,32 @@ The `docker` commands require administrator privileges.
 
 ## Clone and deploy the example
 
-The following steps show you how to clone the scenarios repository and deploy the monitoring example.
+Perform the following steps to clone the scenarios repository and deploy the monitoring example.
 
-### Clone
+1. Clone the {{< param "PRODUCT_NAME" >}} scenarios repository.
 
-Clone the {{< param "PRODUCT_NAME" >}} scenarios repository.
+  ```shell
+  git clone https://github.com/grafana/alloy-scenarios.git
+  ```
 
-```shell
-git clone https://github.com/grafana/alloy-scenarios.git
-```
+1. Start Docker to deploy the Grafana stack.
 
-### Deploy
+   ```shell
+   cd alloy-scenarios/docker-monitoring
+   docker compose up -d
+   ```
 
-Start Docker to deploy the Grafana stack.
+   You can check the status of the Docker containers by running the following command.
 
-```shell
-cd alloy-scenarios/docker-monitoring
-docker compose up -d
-```
+   ```shell
+   docker ps
+   ```
 
-You can check the status of the Docker containers by running the following command.
+1. (Optional) When you finish exploring this example, you can stop Docker to shut down the Grafana stack.
 
-```shell
-docker ps
-```
-
-### Shut down
-
-When you are finished exploring this example, you can stop Docker to shut down the Grafana stack.
-
-```shell
-docker compose down
-```
+   ```shell
+   docker compose down
+   ```
 
 ## Monitor and visualize your data
 
