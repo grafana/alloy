@@ -32,7 +32,7 @@ The `docker` commands require administrator privileges.
 
 The following steps show you how to clone the scenarios repository and deploy the monitoring example.
 
-### Clone the scenarios repository
+### Clone
 
 Clone the {{< param "PRODUCT_NAME" >}} scenarios repository.
 
@@ -40,7 +40,7 @@ Clone the {{< param "PRODUCT_NAME" >}} scenarios repository.
 git clone https://github.com/grafana/alloy-scenarios.git
 ```
 
-### Deploy the Grafana stack
+### Deploy
 
 Start Docker to deploy the Grafana stack.
 
@@ -55,7 +55,7 @@ You can check the status of the Docker containers by running the following comma
 docker ps
 ```
 
-### Shut down the Grafana stack
+### Shut down
 
 When you are finished exploring this example, you can stop Docker to shut down the Grafana stack.
 
@@ -67,13 +67,13 @@ docker compose down
 
 You can use Grafana to view the health of your deployment and visualize your data.
 
-### Monitor the health of your {{% param "PRODUCT_NAME" %}} deployment
+### Monitor {{% param "PRODUCT_NAME" %}}
 
 To monitor the health of your {{< param "PRODUCT_NAME" >}} deployment, open your browser and navigate to [http://localhost:12345](http://localhost:12345).
 
 Refer to [Debug Grafana Alloy](https://grafana.com/docs/alloy/latest/troubleshoot/debug/) for more information about the {{< param "PRODUCT_NAME" >}} UI.
 
-### Visualise your data
+### Visualize your data
 
 To explore metrics, open your browser and navigate to [http://localhost:3000/explore/metrics](http://localhost:3000/explore/metrics).
 
