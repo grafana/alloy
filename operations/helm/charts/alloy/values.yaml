@@ -300,8 +300,13 @@ networkPolicy:
   enabled: false
   flavor: kubernetes
 
+  policyTypes:
+    - Ingress
+    - Egress
+
   # Default allow all traffic because Alloy is so configurable
   # It is recommended to change this before deploying to production
+  # To disable each policyType, set value to `null`
   ingress:
     - {}
   egress:
