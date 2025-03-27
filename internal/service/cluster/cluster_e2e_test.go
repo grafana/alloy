@@ -71,6 +71,13 @@ func TestClusterE2E(t *testing.T) {
 		{
 			name:             "three nodes with slow components",
 			nodeCountInitial: 3,
+			// slow components can currently lead to timeouts and communication errors
+			// TODO: consider decoupling cluster operations from runtime/components performance
+			extraAllowedErrors: []string{
+				`msg="Failed to send error: http2: stream closed`,
+				`msg="failed to receive: i/o timeout`,
+				`msg="failed to receive and remove the stream label header`,
+			},
 			alloyConfig: `
 		testcomponents.ticker "tick" {
 			period = "500ms"
