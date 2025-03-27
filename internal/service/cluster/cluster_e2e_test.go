@@ -21,6 +21,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/alloycli"
 	"github.com/grafana/alloy/internal/featuregate"
@@ -134,6 +135,10 @@ func TestClusterE2E(t *testing.T) {
 			nodeCountInitial: 8,
 			extraAllowedErrors: []string{
 				"failed to rejoin list of peers",
+				"failed to broadcast leave message to cluster",
+				`msg="Failed to send error: http2: stream closed`,
+				`msg="failed to receive: i/o timeout`,
+				`msg="failed to receive and remove the stream label header`,
 			},
 			assertionsInitial: func(t *assert.CollectT, state *testState) {
 				for _, p := range state.peers {
@@ -310,6 +315,10 @@ func TestClusterE2E(t *testing.T) {
 			minimumClusterSize: 5,
 			extraAllowedErrors: []string{
 				`"minimum cluster size requirements are not met - marking cluster as not ready for traffic"`,
+				"failed to broadcast leave message to cluster",
+				`msg="Failed to send error: http2: stream closed`,
+				`msg="failed to receive: i/o timeout`,
+				`msg="failed to receive and remove the stream label header`,
 			},
 			assertionsInitial: func(t *assert.CollectT, state *testState) {
 				for _, p := range state.peers {
@@ -387,6 +396,9 @@ func TestClusterE2E(t *testing.T) {
 			}, 60*time.Second, 1*time.Second)
 			t.Logf("Final assertions checked")
 
+			for _, p := range state.peers {
+				p.logsWriter.disableErrorChecking.Store(true) // stop checking log errors for shutdown
+			}
 			cancel()
 			state.shutdownGroup.Wait()
 			t.Logf("Shutdown complete")
@@ -415,6 +427,7 @@ type testPeer struct {
 	shutdown          context.CancelFunc
 	mutex             sync.Mutex
 	discoverablePeers []string // list of peers that this peer can discover
+	logsWriter        *logsWriter
 }
 
 func (p *testPeer) discoveryFn(_ discovery.Options) (discovery.DiscoverFn, error) {
@@ -465,13 +478,14 @@ func startNewNode(t *testing.T, state *testState, nodeName string) {
 	}
 
 	nodeDirPath := path.Join(t.TempDir(), nodeName)
+	newPeer.logsWriter = &logsWriter{
+		t:                  t,
+		out:                os.Stdout,
+		prefix:             fmt.Sprintf("%s: ", nodeName),
+		extraAllowedErrors: state.testCase.extraAllowedErrors,
+	}
 	logger, err := logging.New(
-		&logsWriter{
-			t:                  t,
-			out:                os.Stdout,
-			prefix:             fmt.Sprintf("%s: ", nodeName),
-			extraAllowedErrors: state.testCase.extraAllowedErrors,
-		},
+		newPeer.logsWriter,
 		logging.Options{
 			Level:  logging.LevelDebug,
 			Format: logging.FormatDefault,
@@ -633,10 +647,11 @@ func getFreePort(t *testing.T) int {
 }
 
 type logsWriter struct {
-	t                  *testing.T
-	out                io.Writer
-	prefix             string
-	extraAllowedErrors []string
+	t                    *testing.T
+	out                  io.Writer
+	prefix               string
+	extraAllowedErrors   []string
+	disableErrorChecking atomic.Bool
 }
 
 var errorsAllowlist = []string{
@@ -644,20 +659,16 @@ var errorsAllowlist = []string{
 	"failed to extract directory path from configPath",              // unrelated to this test
 	"failed to connect to peers; bootstrapping a new cluster",       // should be allowed only once for first node
 	`msg="node exited with error" node=remotecfg err="noop client"`, // related to remotecfg service mock ups
-	`msg="failed to rejoin list of peers"`,                          // at shutdown, various failures can happen
-	"failed to broadcast leave message to cluster",                  // TODO: don't fail test on shutdown errors?
-	`msg="Failed to send error: http2: stream closed`,
-	`msg="failed to receive: i/o timeout`,
-	`msg="failed to receive and remove the stream label header`,
+	`msg="failed to rejoin list of peers"`,                          // this is because list of initial join peers is fixed in tests
 }
 
 func (w *logsWriter) Write(p []byte) (n int, err error) {
 	prefixed := []byte(w.prefix)
 	prefixed = append(prefixed, p...)
 
-	// Check for warnings or errors in the log message
+	// Check for warnings or errors in the log message if not disabled
 	logMsg := string(p)
-	if strings.Contains(logMsg, "level=warn") || strings.Contains(logMsg, "level=error") {
+	if !w.disableErrorChecking.Load() && (strings.Contains(logMsg, "level=warn") || strings.Contains(logMsg, "level=error")) {
 		isAllowed := false
 
 		// Check against global allowlist
