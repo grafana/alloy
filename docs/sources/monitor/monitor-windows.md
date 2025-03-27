@@ -54,39 +54,16 @@ Perform the following steps to clone the scenarios repository and deploy the mon
 
 1. [Install {{< param "PRODUCT_NAME" >}}][install] on Windows.
 
-1. (Optional) To access the {{< param "PRODUCT_NAME" >}} UI from a remote machine you must [update the command line arguments][change] for the {{< param "PRODUCT_NAME" >}} service to add the `--server.http.listen-addr` flag.
-
-   ```shell
-   run
-   C:\Program Files\GrafanaLabs\Alloy\config.alloy
-   --storage.path=C:\ProgramData\GrafanaLabs\Alloy\data
-   --server.http.listen-addr=0.0.0.0:12345
-   ```
-
-   After you restart the services, you can access the {{< param "PRODUCT_NAME" >}} UI from a remote machine by going to `http://<windows-machine-ip>:12345`.
-
 1. Replace the default `config.alloy` file with the preconfigured `config.alloy` file included in the `alloy-scenarios/windows` directory.
+   For detailed steps explaining how to stop and start the {{< param "PRODUCT_NAME" >}} service, refer to [Configure {{< param "PRODUCT_NAME" >}} on WIndows][configure]
 
    1. Stop the {{< param "PRODUCT_NAME" >}} service.
-
-      1. Open the Windows Services manager.
-
-         1. Right click on the Start Menu and select **Run**.
-         1. Type `services.msc` and click **OK**.
-
-      1. Right click on the service called **Alloy**.
-      1. Click on **All Tasks > Stop**.
-
    1. Replace the `config.alloy` file in `C:\Program Files\GrafanaLabs\Alloy` with the `config.alloy` file from the `alloy-scenarios/windows` directory.
    1. Start the {{< param "PRODUCT_NAME" >}} service.
 
-      1. Open the Windows Services manager.
-
-         1. Right click on the Start Menu and select **Run**.
-         1. Type `services.msc` and click **OK**.
-
-      1. Right click on the service called **Alloy**.
-      1. Click on **All Tasks > Start**.
+1. (Optional) If you want to access the {{< param "PRODUCT_NAME" >}} UI from a remote computer, add `--server.http.listen-addr=0.0.0.0:12345` to the Alloy runtime arguments.
+   For detailed steps explaining how to update this command line argument, refer to [Expose the UI to other machines][expose].
+   This step makes the {{< param "PRODUCT_NAME" >}} UI available at `http://<WINDOWS_IP_ADDRESS>:12345`.
 
 1. (Optional) When you finish exploring this example, you can stop Docker to shut down the Grafana stack.
 
@@ -95,7 +72,8 @@ Perform the following steps to clone the scenarios repository and deploy the mon
    ```
 
 [install]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/set-up/install/windows/
-[change]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/configure/windows/#change-command-line-arguments
+[expose]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/configure/windows/#expose-the-ui-to-other-machines
+[configure]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/configure/windows/
 
 ## Monitor and visualize your data
 
