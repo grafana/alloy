@@ -608,6 +608,10 @@ func (s *mockFileService) ReadFile(name string) ([]byte, error) {
 	return nil, errors.New("file not found")
 }
 
+func (s *mockFileService) ValidateFilePath(name string) (string, error) {
+	return name, nil
+}
+
 func newResponseFromTestData(t *testing.T, file string) *http.Response {
 	return &http.Response{
 		Body:       io.NopCloser(bytes.NewReader(loadTestData(t, file))),

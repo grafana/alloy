@@ -39,20 +39,29 @@ type (
 	fileService interface {
 		Stat(name string) (fs.FileInfo, error)
 		ReadFile(name string) ([]byte, error)
+		ValidateFilePath(name string) (string, error)
 	}
 )
 
 type osFileService struct{}
 
-func (fs osFileService) Stat(name string) (fs.FileInfo, error) {
+func (fs osFileService) ValidateFilePath(name string) (string, error) {
 	if strings.Contains(name, "/") || strings.Contains(name, "\\") || strings.Contains(name, "..") {
-		return nil, fmt.Errorf("invalid file name: %s", name)
+		return "", fmt.Errorf("invalid file name: %s", name)
+	}
+	return name, nil
+}
+
+func (fs osFileService) Stat(name string) (fs.FileInfo, error) {
+	if _, err := fs.ValidateFilePath(name); err != nil {
+		return nil, err
 	}
 	return os.Stat(name)
 }
+
 func (fs osFileService) ReadFile(name string) ([]byte, error) {
-	if strings.Contains(name, "/") || strings.Contains(name, "\\") || strings.Contains(name, "..") {
-		return nil, fmt.Errorf("invalid file name: %s", name)
+	if _, err := fs.ValidateFilePath(name); err != nil {
+		return nil, err
 	}
 	return os.ReadFile(name)
 }
@@ -160,20 +169,17 @@ func (store *sourceMapsStoreImpl) GetSourceMap(sourceURL string, release string)
 		store.cache[cacheKey] = nil
 		return nil, err
 	}
-	if content != nil {
-		consumer, err := sourcemap.Parse(sourceMapURL, content)
-		if err != nil {
-			store.cache[cacheKey] = nil
-			level.Debug(store.log).Log("msg", "failed to parse source map", "url", sourceMapURL, "release", release, "err", err)
-			return nil, err
-		}
-		level.Info(store.log).Log("msg", "successfully parsed source map", "url", sourceMapURL, "release", release)
-		store.cache[cacheKey] = consumer
-		store.metrics.cacheSize.WithLabelValues(getOrigin(sourceURL)).Inc()
-		return consumer, nil
-	}
 
-	return nil, nil
+	consumer, err := sourcemap.Parse(sourceMapURL, content)
+	if err != nil {
+		store.cache[cacheKey] = nil
+		level.Debug(store.log).Log("msg", "failed to parse source map", "url", sourceMapURL, "release", release, "err", err)
+		return nil, err
+	}
+	level.Info(store.log).Log("msg", "successfully parsed source map", "url", sourceMapURL, "release", release)
+	store.cache[cacheKey] = consumer
+	store.metrics.cacheSize.WithLabelValues(getOrigin(sourceURL)).Inc()
+	return consumer, nil
 }
 
 func (store *sourceMapsStoreImpl) getSourceMapContent(sourceURL string, release string) (content []byte, sourceMapURL string, err error) {
@@ -212,14 +218,21 @@ func (store *sourceMapsStoreImpl) getSourceMapFromFileSystem(sourceURL string, r
 	}
 	mapFilePath := filepath.Join(pathParts...) + ".map"
 
-	if _, err := store.fs.Stat(mapFilePath); err != nil {
+	validMapFilePath, err := store.fs.ValidateFilePath(mapFilePath)
+	if err != nil {
+		store.metrics.fileReads.WithLabelValues(getOrigin(sourceURL), "invalid_path").Inc()
+		level.Debug(store.log).Log("msg", "source map path contains invalid characters", "url", sourceURL, "file_path", mapFilePath)
+		return nil, "", err
+	}
+
+	if _, err := store.fs.Stat(validMapFilePath); err != nil {
 		store.metrics.fileReads.WithLabelValues(getOrigin(sourceURL), "not_found").Inc()
-		level.Debug(store.log).Log("msg", "source map not found on filesystem", "url", sourceURL, "file_path", mapFilePath)
+		level.Debug(store.log).Log("msg", "source map not found on filesystem", "url", sourceURL, "file_path", validMapFilePath)
 		return nil, "", nil
 	}
-	level.Debug(store.log).Log("msg", "source map found on filesystem", "url", mapFilePath, "file_path", mapFilePath)
+	level.Debug(store.log).Log("msg", "source map found on filesystem", "url", sourceURL, "file_path", validMapFilePath)
 
-	content, err = store.fs.ReadFile(mapFilePath)
+	content, err = store.fs.ReadFile(validMapFilePath)
 	if err != nil {
 		store.metrics.fileReads.WithLabelValues(getOrigin(sourceURL), "error").Inc()
 	} else {

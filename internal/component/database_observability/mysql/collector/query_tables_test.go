@@ -357,7 +357,7 @@ func TestQueryTables(t *testing.T) {
 	}
 }
 
-func TestQuerySampleSQLDriverErrors(t *testing.T) {
+func TestQueryTablesSQLDriverErrors(t *testing.T) {
 	defer goleak.VerifyNone(t)
 
 	t.Run("recoverable sql error in result set", func(t *testing.T) {

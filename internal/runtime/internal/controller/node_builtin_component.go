@@ -121,6 +121,7 @@ type BuiltinComponentNode struct {
 	exportsMut sync.RWMutex
 	exports    component.Exports // Evaluated exports for the managed component
 
+	dataFlowEdgeMut  sync.RWMutex
 	dataFlowEdgeRefs []string
 }
 
@@ -465,19 +466,19 @@ func (cn *BuiltinComponentNode) ModuleIDs() []string {
 }
 
 func (cn *BuiltinComponentNode) AddDataFlowEdgeTo(nodeID string) {
-	cn.mut.Lock()
-	defer cn.mut.Unlock()
+	cn.dataFlowEdgeMut.Lock()
+	defer cn.dataFlowEdgeMut.Unlock()
 	cn.dataFlowEdgeRefs = append(cn.dataFlowEdgeRefs, nodeID)
 }
 
 func (cn *BuiltinComponentNode) GetDataFlowEdgesTo() []string {
-	cn.mut.RLock()
-	defer cn.mut.RUnlock()
+	cn.dataFlowEdgeMut.RLock()
+	defer cn.dataFlowEdgeMut.RUnlock()
 	return cn.dataFlowEdgeRefs
 }
 
 func (cn *BuiltinComponentNode) ResetDataFlowEdgeTo() {
-	cn.mut.Lock()
-	defer cn.mut.Unlock()
+	cn.dataFlowEdgeMut.Lock()
+	defer cn.dataFlowEdgeMut.Unlock()
 	cn.dataFlowEdgeRefs = []string{}
 }
