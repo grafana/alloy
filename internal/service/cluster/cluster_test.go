@@ -12,33 +12,7 @@ import (
 	"github.com/grafana/ckit/shard"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/atomic"
 )
-
-func mockDiscoverPeers(peers []string, err error) func() ([]string, error) {
-	return func() ([]string, error) {
-		return peers, err
-	}
-}
-
-func buildPeers(count int) []peer.Peer {
-	var peers []peer.Peer
-	for i := 0; i < count; i++ {
-		peers = append(peers, peer.Peer{
-			Name: fmt.Sprintf("peer_%d", i),
-		})
-	}
-	return peers
-}
-
-func newTestService(opts Options, peers []peer.Peer, deadline time.Time) *Service {
-	return &Service{
-		log:                 log.NewLogfmtLogger(os.Stdout),
-		opts:                opts,
-		minimumSizeDeadline: *atomic.NewTime(deadline),
-		sharder:             &mockSharder{peers: peers},
-	}
-}
 
 func TestGetPeers(t *testing.T) {
 	tests := []struct {
@@ -182,10 +156,7 @@ func TestReadyToAdmitTraffic(t *testing.T) {
 				MinimumSizeWaitTimeout: tt.waitTimeout,
 			}, peers, tt.deadline)
 
-			assert.False(t, s.readyToAdmitTraffic()) // starts as not ready
-			s.updateReadyToAdmitTraffic()
-			ready := s.readyToAdmitTraffic()
-			assert.Equal(t, tt.expectedReady, ready)
+			assert.Equal(t, tt.expectedReady, s.alloyCluster.readyToAdmitTraffic())
 		})
 	}
 }
@@ -201,41 +172,31 @@ func TestAdmitTrafficSequence_WithDeadline(t *testing.T) {
 		MinimumSizeWaitTimeout: clusterSizeWaitTimeout,
 	}, buildPeers(1), time.Now().Add(1*time.Minute))
 
-	assert.False(t, s.readyToAdmitTraffic()) // starts as not ready
-	s.updateReadyToAdmitTraffic()
-	assert.False(t, s.readyToAdmitTraffic()) // still not ready
+	assert.False(t, s.alloyCluster.readyToAdmitTraffic()) // starts as not ready
+	assert.False(t, s.alloyCluster.readyToAdmitTraffic()) // still not ready
 
 	s.sharder = &mockSharder{peers: buildPeers(minimumClusterSize)} // we reach the minimum, should be ready now!
-	s.updateReadyToAdmitTraffic()
-	assert.True(t, s.readyToAdmitTraffic())
-	s.updateReadyToAdmitTraffic() // check again to be sure no funny business
-	assert.True(t, s.readyToAdmitTraffic())
+	assert.True(t, s.alloyCluster.readyToAdmitTraffic())
+	assert.True(t, s.alloyCluster.readyToAdmitTraffic())
 
 	s.sharder = &mockSharder{peers: buildPeers(minimumClusterSize - 1)} // we dip back under the minimum = not ready
-	s.updateReadyToAdmitTraffic()
-	assert.False(t, s.readyToAdmitTraffic())
+	assert.False(t, s.alloyCluster.readyToAdmitTraffic())
 
 	time.Sleep(time.Second) // deadline passes though, so we are ready to admit traffic again
-	s.updateReadyToAdmitTraffic()
-	assert.True(t, s.readyToAdmitTraffic())
-	s.updateReadyToAdmitTraffic() // check again
-	assert.True(t, s.readyToAdmitTraffic())
+	assert.True(t, s.alloyCluster.readyToAdmitTraffic())
+	assert.True(t, s.alloyCluster.readyToAdmitTraffic())
 
 	s.sharder = &mockSharder{peers: buildPeers(minimumClusterSize + 1)} // we reach the minimum, should continue to be ready
-	s.updateReadyToAdmitTraffic()
-	assert.True(t, s.readyToAdmitTraffic())
+	assert.True(t, s.alloyCluster.readyToAdmitTraffic())
 
 	s.sharder = &mockSharder{peers: buildPeers(minimumClusterSize - 5)} // we dip back under the minimum = not ready, deadline should have reset
-	s.updateReadyToAdmitTraffic()
-	assert.False(t, s.readyToAdmitTraffic())
+	assert.False(t, s.alloyCluster.readyToAdmitTraffic())
 
 	time.Sleep(time.Second) // deadline passes again, so we are ready to admit traffic again
-	s.updateReadyToAdmitTraffic()
-	assert.True(t, s.readyToAdmitTraffic())
+	assert.True(t, s.alloyCluster.readyToAdmitTraffic())
 
 	s.sharder = &mockSharder{peers: buildPeers(minimumClusterSize)} // we reach the minimum, should continue to be ready
-	s.updateReadyToAdmitTraffic()
-	assert.True(t, s.readyToAdmitTraffic())
+	assert.True(t, s.alloyCluster.readyToAdmitTraffic())
 }
 
 func TestAdmitTrafficSequence_NoDeadline(t *testing.T) {
@@ -247,48 +208,43 @@ func TestAdmitTrafficSequence_NoDeadline(t *testing.T) {
 		MinimumClusterSize: minimumClusterSize,
 	}, buildPeers(1), time.Now().Add(1*time.Minute))
 
-	assert.False(t, s.readyToAdmitTraffic()) // starts as not ready
-	s.updateReadyToAdmitTraffic()
-	assert.False(t, s.readyToAdmitTraffic()) // still not ready
+	assert.False(t, s.alloyCluster.readyToAdmitTraffic()) // starts as not ready
+	assert.False(t, s.alloyCluster.readyToAdmitTraffic()) // still not ready
 
 	s.sharder = &mockSharder{peers: buildPeers(minimumClusterSize)} // we reach the minimum, should be ready now!
-	s.updateReadyToAdmitTraffic()
-	assert.True(t, s.readyToAdmitTraffic())
-	s.updateReadyToAdmitTraffic() // check again to be sure no funny business
-	assert.True(t, s.readyToAdmitTraffic())
+	assert.True(t, s.alloyCluster.readyToAdmitTraffic())
+	assert.True(t, s.alloyCluster.readyToAdmitTraffic())
 
 	s.sharder = &mockSharder{peers: buildPeers(minimumClusterSize - 1)} // we dip back under the minimum = not ready
-	s.updateReadyToAdmitTraffic()
-	assert.False(t, s.readyToAdmitTraffic())
+	assert.False(t, s.alloyCluster.readyToAdmitTraffic())
 
-	time.Sleep(time.Second) // even though time passes by, there is no deadline and we're still not ready
-	s.updateReadyToAdmitTraffic()
-	assert.False(t, s.readyToAdmitTraffic())
-	s.updateReadyToAdmitTraffic() // check again
-	assert.False(t, s.readyToAdmitTraffic())
+	time.Sleep(time.Second) // even though time passes by, there is no deadline, and we're still not ready
+	assert.False(t, s.alloyCluster.readyToAdmitTraffic())
+	assert.False(t, s.alloyCluster.readyToAdmitTraffic())
 
 	s.sharder = &mockSharder{peers: buildPeers(minimumClusterSize + 1)} // we reach the minimum, should be ready
-	s.updateReadyToAdmitTraffic()
-	assert.True(t, s.readyToAdmitTraffic())
+	assert.True(t, s.alloyCluster.readyToAdmitTraffic())
 
 	s.sharder = &mockSharder{peers: buildPeers(minimumClusterSize - 5)} // we dip back under the minimum = not ready
-	s.updateReadyToAdmitTraffic()
-	assert.False(t, s.readyToAdmitTraffic())
+	assert.False(t, s.alloyCluster.readyToAdmitTraffic())
 
 	time.Sleep(time.Second) // time passes, but nothing will change
-	s.updateReadyToAdmitTraffic()
-	assert.False(t, s.readyToAdmitTraffic())
+	assert.False(t, s.alloyCluster.readyToAdmitTraffic())
 
 	s.sharder = &mockSharder{peers: buildPeers(minimumClusterSize)} // we reach the minimum, should become ready
-	s.updateReadyToAdmitTraffic()
-	assert.True(t, s.readyToAdmitTraffic())
+	assert.True(t, s.alloyCluster.readyToAdmitTraffic())
+}
+
+func updateSharder(service *Service, sharder *mockSharder) {
+	service.sharder = sharder
+	service.alloyCluster.sharder = sharder
 }
 
 type mockSharder struct {
 	peers []peer.Peer
 }
 
-func (m *mockSharder) Lookup(key shard.Key, _ int, _ shard.Op) ([]peer.Peer, error) {
+func (m *mockSharder) Lookup(_ shard.Key, _ int, _ shard.Op) ([]peer.Peer, error) {
 	return m.peers, nil
 }
 
@@ -296,4 +252,33 @@ func (m *mockSharder) Peers() []peer.Peer {
 	return m.peers
 }
 
-func (m *mockSharder) SetPeers(peers []peer.Peer) {}
+func (m *mockSharder) SetPeers(_ []peer.Peer) {}
+
+func mockDiscoverPeers(peers []string, err error) func() ([]string, error) {
+	return func() ([]string, error) {
+		return peers, err
+	}
+}
+
+func buildPeers(count int) []peer.Peer {
+	var peers []peer.Peer
+	for i := 0; i < count; i++ {
+		peers = append(peers, peer.Peer{
+			Name: fmt.Sprintf("peer_%d", i),
+		})
+	}
+	return peers
+}
+
+func newTestService(opts Options, peers []peer.Peer, deadline time.Time) *Service {
+	logger := log.NewLogfmtLogger(os.Stdout)
+	sharder := &mockSharder{peers: peers}
+	ac := newAlloyCluster(log.With(logger, "subcomponent", "alloy_cluster"), sharder, opts)
+	ac.minimumSizeDeadline.Store(deadline)
+	return &Service{
+		log:          logger,
+		opts:         opts,
+		alloyCluster: ac,
+		sharder:      sharder,
+	}
+}
