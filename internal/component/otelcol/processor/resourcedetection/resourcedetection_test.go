@@ -1367,7 +1367,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				context = "fake_ctx"
 				resource_attributes {
 					k8s.cluster.name { enabled = true }
-				}
+					k8s.cluster.uid { enabled = true }
 			}
 			output {}
 			`,
@@ -1380,6 +1380,9 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					"context":   "fake_ctx",
 					"resource_attributes": map[string]interface{}{
 						"k8s.cluster.name": map[string]interface{}{
+							"enabled": true,
+						},
+						"k8s.cluster.uid": map[string]interface{}{
 							"enabled": true,
 						},
 					},
