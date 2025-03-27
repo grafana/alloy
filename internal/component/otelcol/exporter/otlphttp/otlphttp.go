@@ -127,8 +127,8 @@ func (args *HTTPClientArguments) SetToDefault() {
 	maxIdleConns := DefaultMaxIdleConns
 	idleConnTimeout := DefaultIdleConnTimeout
 	*args = HTTPClientArguments{
-		MaxIdleConns:    &maxIdleConns,
-		IdleConnTimeout: &idleConnTimeout,
+		MaxIdleConns:    maxIdleConns,
+		IdleConnTimeout: idleConnTimeout,
 
 		Timeout:          30 * time.Second,
 		Headers:          map[string]string{},
