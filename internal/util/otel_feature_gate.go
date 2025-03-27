@@ -30,6 +30,14 @@ var (
 			name:    "filelog.allowFileDeletion",
 			enabled: true,
 		},
+		{
+			name:    "receiver.prometheusreceiver.RemoveStartTimeAdjustment",
+			enabled: false,
+		},
+		{
+			name:    "receiver.prometheusreceiver.UseCollectorStartTimeFallback",
+			enabled: false,
+		},
 	}
 )
 

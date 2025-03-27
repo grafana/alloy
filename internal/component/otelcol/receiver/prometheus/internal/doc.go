@@ -1,5 +1,4 @@
-// Package internal is a near copy of
-// https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/90603afc2fe0c44c9398822e4afa3a4e045f4524/receiver/prometheusreceiver/internal
+// Package internal is a near copy of v0.122.0 of the upstream prometheus receiver.
 // A copy was made because the upstream package is internal. If it is ever made
 // public, our copy can be removed.
 //

@@ -30,12 +30,18 @@ var testMetadata = map[string]scrape.MetricMetadata{
 	"poor_name":       {Metric: "poor_name", Type: model.MetricTypeGauge, Help: "", Unit: ""},
 	"poor_name_count": {Metric: "poor_name_count", Type: model.MetricTypeCounter, Help: "", Unit: ""},
 	"scrape_foo":      {Metric: "scrape_foo", Type: model.MetricTypeCounter, Help: "", Unit: ""},
-	"example_process_start_time_seconds": {Metric: "example_process_start_time_seconds",
-		Type: model.MetricTypeGauge, Help: "", Unit: ""},
-	"process_start_time_seconds": {Metric: "process_start_time_seconds",
-		Type: model.MetricTypeGauge, Help: "", Unit: ""},
-	"subprocess_start_time_seconds": {Metric: "subprocess_start_time_seconds",
-		Type: model.MetricTypeGauge, Help: "", Unit: ""},
+	"example_process_start_time_seconds": {
+		Metric: "example_process_start_time_seconds",
+		Type:   model.MetricTypeGauge, Help: "", Unit: "",
+	},
+	"process_start_time_seconds": {
+		Metric: "process_start_time_seconds",
+		Type:   model.MetricTypeGauge, Help: "", Unit: "",
+	},
+	"subprocess_start_time_seconds": {
+		Metric: "subprocess_start_time_seconds",
+		Type:   model.MetricTypeGauge, Help: "", Unit: "",
+	},
 }
 
 func TestTimestampFromMs(t *testing.T) {
@@ -57,49 +63,49 @@ func TestConvToMetricType(t *testing.T) {
 		wantMonotonic bool
 	}{
 		{
-			name:          "textparse.counter",
+			name:          "model.counter",
 			mtype:         model.MetricTypeCounter,
 			want:          pmetric.MetricTypeSum,
 			wantMonotonic: true,
 		},
 		{
-			name:          "textparse.gauge",
+			name:          "model.gauge",
 			mtype:         model.MetricTypeGauge,
 			want:          pmetric.MetricTypeGauge,
 			wantMonotonic: false,
 		},
 		{
-			name:          "textparse.unknown",
+			name:          "model.unknown",
 			mtype:         model.MetricTypeUnknown,
 			want:          pmetric.MetricTypeGauge,
 			wantMonotonic: false,
 		},
 		{
-			name:          "textparse.histogram",
+			name:          "model.histogram",
 			mtype:         model.MetricTypeHistogram,
 			want:          pmetric.MetricTypeHistogram,
 			wantMonotonic: true,
 		},
 		{
-			name:          "textparse.summary",
+			name:          "model.summary",
 			mtype:         model.MetricTypeSummary,
 			want:          pmetric.MetricTypeSummary,
 			wantMonotonic: true,
 		},
 		{
-			name:          "textparse.metric_type_info",
+			name:          "model.metric_type_info",
 			mtype:         model.MetricTypeInfo,
 			want:          pmetric.MetricTypeSum,
 			wantMonotonic: false,
 		},
 		{
-			name:          "textparse.metric_state_set",
+			name:          "model.metric_state_set",
 			mtype:         model.MetricTypeStateset,
 			want:          pmetric.MetricTypeSum,
 			wantMonotonic: false,
 		},
 		{
-			name:          "textparse.metric_gauge_hostogram",
+			name:          "model.metric_gauge_histogram",
 			mtype:         model.MetricTypeGaugeHistogram,
 			want:          pmetric.MetricTypeEmpty,
 			wantMonotonic: false,
@@ -107,11 +113,10 @@ func TestConvToMetricType(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			got, monotonic := convToMetricType(tt.mtype)
 			require.Equal(t, got.String(), tt.want.String())
-			require.Equal(t, monotonic, tt.wantMonotonic)
+			require.Equal(t, tt.wantMonotonic, monotonic)
 		})
 	}
 }
@@ -163,7 +168,6 @@ func TestGetBoundary(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			value, err := getBoundary(tt.mtype, tt.labels)
 			if tt.wantErr != nil {
@@ -172,7 +176,7 @@ func TestGetBoundary(t *testing.T) {
 			}
 
 			assert.NoError(t, err)
-			assert.Equal(t, value, tt.wantValue)
+			assert.Equal(t, tt.wantValue, value)
 		})
 	}
 }

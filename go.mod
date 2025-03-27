@@ -859,7 +859,6 @@ require (
 	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/collector v0.122.1 // indirect
-	go.opentelemetry.io/collector/confmap/xconfmap v0.122.1 // indirect
 	go.opentelemetry.io/collector/connector/xconnector v0.122.1 // indirect
 	go.opentelemetry.io/collector/consumer/consumererror v0.122.1 // indirect
 	go.opentelemetry.io/collector/consumer/consumererror/xconsumererror v0.122.1 // indirect
@@ -932,6 +931,7 @@ require (
 
 require (
 	github.com/grafana/beyla/v2 v2.0.4-alloy.2
+	go.opentelemetry.io/collector/confmap/xconfmap v0.122.1
 	go.opentelemetry.io/collector/receiver/receiverhelper v0.122.1
 )
 
