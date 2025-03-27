@@ -16,6 +16,7 @@ connectors:
     cache_loop: 2m
     store_expiration_loop: 5s
     database_name_attribute: db_name3
+    metrics_flush_interval: 3m
 
 exporters:
   otlp:

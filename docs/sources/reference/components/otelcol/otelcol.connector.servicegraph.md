@@ -61,7 +61,7 @@ Name                        | Type             | Description                    
 `dimensions`                | `list(string)`   | A list of dimensions to add with the default dimensions.            | `[]`         | no
 `cache_loop`                | `duration`       | Configures how often to delete series which have not been updated.  | `"1m"`       | no
 `store_expiration_loop`     | `duration`       | The time to expire old entries from the store periodically.         | `"2s"`       | no
-`metrics_flush_interval`    | `duration`       | The interval at which metrics are flushed to downstream components. | `"0s"`       | no
+`metrics_flush_interval`    | `duration`       | The interval at which metrics are flushed to downstream components. | `"60s"`       | no
 `database_name_attribute`   | `string`         | The attribute name used to identify the database name from span attributes. | `"db.name"`  | no
 
 Service graphs work by inspecting traces and looking for spans with parent-children relationship that represent a request.

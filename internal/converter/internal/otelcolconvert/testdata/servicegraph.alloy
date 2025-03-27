@@ -25,6 +25,7 @@ otelcol.exporter.otlp "default" {
 otelcol.connector.servicegraph "default" {
 	latency_histogram_buckets = ["100ms", "250ms", "1s", "5s", "10s"]
 	dimensions                = ["dimension-1", "dimension-2"]
+	metrics_flush_interval    = "3m0s"
 
 	store {
 		max_items = 10
