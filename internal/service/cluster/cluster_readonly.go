@@ -63,6 +63,7 @@ func newAlloyCluster(
 	sharder shard.Sharder,
 	opts Options,
 ) *alloyCluster {
+
 	c := &alloyCluster{
 		log:     log,
 		sharder: sharder,
