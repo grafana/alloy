@@ -155,7 +155,6 @@ depending on the nature of the reload error.
 		StringVar(&r.clusterTLSKeyPath, "cluster.tls-key-path", r.clusterTLSKeyPath, "Path to the key file")
 	cmd.Flags().
 		StringVar(&r.clusterTLSServerName, "cluster.tls-server-name", r.clusterTLSServerName, "Server name to use for TLS communication")
-	// TODO(thampiotr): add to docs
 	cmd.Flags().
 		IntVar(&r.clusterWaitForSize, "cluster.wait-for-size", r.clusterWaitForSize, "Wait for the cluster to reach the specified number of instances before admitting traffic to components that use clustering. Zero means disabled")
 	cmd.Flags().
