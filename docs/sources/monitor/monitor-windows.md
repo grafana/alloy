@@ -11,17 +11,19 @@ weight: 250
 Microsoft Windows provides tools like Performance Monitor and Event Viewer to track system performance metrics and event logs.
 You can use {{< param "PRODUCT_NAME" >}} to collect your performance metrics and event logs, forward them to a Grafana stack, and create a Grafana dashboard to monitor your Windows performance and events.
 
-The `alloy-scenarios` repository provides series of complete working examples of {{< param "PRODUCT_NAME" >}} deployments.
+The [`alloy-scenarios`][scenarios] repository provides series of complete working examples of {{< param "PRODUCT_NAME" >}} deployments.
 You can clone the repository and use the example deployments to understand how {{< param "PRODUCT_NAME" >}} can collect, process, and export telemetry signals.
 
 In this example scenario {{< param "PRODUCT_NAME" >}} collects Windows performance metrics and Windows event logs, and forwards them to a Loki destination..
+
+[scenarios]: https://github.com/grafana/alloy-scenarios/
 
 ## Before you begin
 
 This example requires:
 
-* Docker
-* Git
+* [Docker](https://www.docker.com/)
+* [Git](https://git-scm.com/)
 * Windows Server or Desktop. This scenario monitors a computer running Windows.
 * Windows administrator access. You use administrator access to install {{< param "PRODUCT_NAME" >}} and configure it to collect metrics and logs.
 

@@ -12,17 +12,19 @@ RFC5424 compliant syslog messages follow a well defined structured and standardi
 These logs include common fields such as priority, timestamp, hostname, application name, process ID, message ID, structured data, and the actual message.
 You can use {{< param "PRODUCT_NAME" >}} to collect your logs, forward them to a Grafana stack, and create a Grafana dashboard to monitor your system behavior.
 
-The `alloy-scenarios` repository provides series of complete working examples of {{< param "PRODUCT_NAME" >}} deployments.
+The [`alloy-scenarios`][scenarios] repository provides series of complete working examples of {{< param "PRODUCT_NAME" >}} deployments.
 You can clone the repository and use the example deployments to understand how {{< param "PRODUCT_NAME" >}} can collect, process, and export telemetry signals.
 
 In this example scenario, {{< param "PRODUCT_NAME" >}} listens for syslog messages over TCP or UDP connections and forwards them to a Loki destination.
+
+[scenarios]: https://github.com/grafana/alloy-scenarios/
 
 ## Before you begin
 
 This example requires
 
-* Docker
-* Git
+* [Docker](https://www.docker.com/)
+* [Git](https://git-scm.com/)
 
 {{< admonition type="note" >}}
 The `docker` commands require administrator privileges.

@@ -12,17 +12,19 @@ Writing logs over a network using raw TCP is one of the most widely used methods
 It provides a direct, connection-oriented way to send logs from a client, such as an application or logging agent, to a remote server, such as a log aggregator or central logging system.
 You can use {{< param "PRODUCT_NAME" >}} to collect your logs, forward them to a Grafana stack, and create a Grafana dashboard to monitor your system behavior.
 
-The `alloy-scenarios` repository provides series of complete working examples of {{< param "PRODUCT_NAME" >}} deployments.
+The [`alloy-scenarios`][scenarios] repository provides series of complete working examples of {{< param "PRODUCT_NAME" >}} deployments.
 You can clone the repository and use the example deployments to understand how {{< param "PRODUCT_NAME" >}} can collect, process, and export telemetry signals.
 
 In this example scenario, {{< param "PRODUCT_NAME" >}} uses a TCP endpoint to collect logs written by an application as a JSON payload, and forwards them to a Loki destination.
+
+[scenarios]: https://github.com/grafana/alloy-scenarios/
 
 ## Before you begin
 
 This example requires:
 
-* Docker
-* Git
+* [Docker](https://www.docker.com/)
+* [Git](https://git-scm.com/)
 
 {{< admonition type="note" >}}
 The `docker` commands require administrator privileges.
