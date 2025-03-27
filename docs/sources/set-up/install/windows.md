@@ -56,6 +56,7 @@ To do a silent install of {{< param "PRODUCT_NAME" >}} on Windows, perform the f
 * `/DISABLEREPORTING=<yes|no>` Disable [data collection][]. Default: `no`
 * `/DISABLEPROFILING=<yes|no>` Disable profiling endpoint. Default: `no`
 * `/ENVIRONMENT="KEY=VALUE\0KEY2=VALUE2"` Define environment variables for Windows Service. Default: ``
+* `/RUNTIMEPRIORITY="normal|below_normal|above_normal|high|idle|realtime"` Set the runtime priority of the {{< param "PRODUCT_NAME" >}} process. Default: ``
 
 ## Service Configuration
 
