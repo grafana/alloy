@@ -24,7 +24,6 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"go.opentelemetry.io/otel/trace/noop"
-	"go.uber.org/atomic"
 	"golang.org/x/net/http2"
 	"golang.org/x/time/rate"
 
@@ -33,6 +32,7 @@ import (
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/service/cluster/discovery"
+	"github.com/grafana/alloy/internal/service/cluster/internal/admission"
 	httpservice "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/util"
 )
@@ -100,12 +100,12 @@ type Service struct {
 	tracer trace.TracerProvider
 	opts   Options
 
-	minimumSizeDeadline   atomic.Time
-	isReadyToAdmitTraffic atomic.Bool
-
 	sharder shard.Sharder
 	node    *ckit.Node
 	randGen *rand.Rand
+
+	// Admission controller for traffic
+	admissionController *admission.Controller
 }
 
 var (
@@ -183,15 +183,14 @@ func New(opts Options) (*Service, error) {
 		randGen: rand.New(rand.NewSource(time.Now().UnixNano())),
 	}
 
-	// Initialize isReadyToAdmitTraffic. The cluster is ready when clustering is disabled or no minimum size is required.
-	s.isReadyToAdmitTraffic.Store(!opts.EnableClustering || opts.MinimumClusterSize == 0)
-
-	// Initialize the minimum size deadline if it's set.
-	if opts.MinimumClusterSize > 0 && opts.MinimumSizeWaitTimeout != 0 {
-		s.minimumSizeDeadline.Store(time.Now().Add(opts.MinimumSizeWaitTimeout))
-	} else {
-		s.minimumSizeDeadline.Store(time.Time{})
-	}
+	// Initialize the admission controller
+	s.admissionController = admission.NewController(
+		l,
+		ckitConfig.Sharder,
+		opts.EnableClustering,
+		opts.MinimumClusterSize,
+		opts.MinimumSizeWaitTimeout,
+	)
 
 	return s, nil
 }
@@ -318,7 +317,7 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 		span.SetAttributes(attribute.Int("peers_count", len(peers)))
 
 		// Peers changed - update the ready-to-admit-traffic flag
-		s.updateReadyToAdmitTraffic()
+		s.admissionController.UpdateReadyToAdmitTraffic()
 
 		// Notify all components about the clustering change.
 		components := component.GetAllComponents(host, component.InfoOptions{})
@@ -376,7 +375,7 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 	}
 
 	// Update the ready-to-admit-traffic flag after node start
-	s.updateReadyToAdmitTraffic()
+	s.admissionController.UpdateReadyToAdmitTraffic()
 
 	if s.opts.EnableClustering && s.opts.RejoinInterval > 0 {
 		wg.Add(1)
@@ -471,7 +470,7 @@ func (s *Service) Update(_ any) error {
 func (s *Service) Data() any {
 	return &sharderCluster{
 		sharder:        s.sharder,
-		isClusterReady: s.readyToAdmitTraffic,
+		isClusterReady: s.admissionController.ReadyToAdmitTraffic,
 	}
 }
 
@@ -482,70 +481,6 @@ func (s *Service) logPeers(msg string, peers []string) {
 		"peers_count", len(peers),
 		"peers", util.JoinWithTruncation(peers, ",", maxPeersToLog, "..."),
 	)
-}
-
-// updateReadyToAdmitTraffic updates the isReadyToAdmitTraffic flag based on the current cluster state.
-func (s *Service) updateReadyToAdmitTraffic() {
-	// If clustering is disabled, the service is always ready to admit traffic
-	if !s.opts.EnableClustering {
-		s.isReadyToAdmitTraffic.Store(true)
-		return
-	}
-
-	// No minimum cluster size is set = always ready to admit traffic.
-	if s.opts.MinimumClusterSize == 0 {
-		s.isReadyToAdmitTraffic.Store(true)
-		return
-	}
-
-	// Number of peers is greater than the minimum cluster size = ready to admit traffic.
-	if len(s.sharder.Peers()) >= s.opts.MinimumClusterSize {
-		// Reset the deadline if it is configured:
-		if s.opts.MinimumSizeWaitTimeout != 0 {
-			s.minimumSizeDeadline.Store(time.Now().Add(s.opts.MinimumSizeWaitTimeout))
-		}
-		if !s.isReadyToAdmitTraffic.Load() { // log if previously not ready
-			level.Info(s.log).Log(
-				"msg", "minimum cluster size reached, marking cluster as ready to admit traffic",
-				"minimum_cluster_size", s.opts.MinimumClusterSize,
-				"peers_count", len(s.sharder.Peers()),
-			)
-		}
-		s.isReadyToAdmitTraffic.Store(true)
-		return
-	}
-
-	// Deadline is set, and it's past the deadline = ready to admit traffic.
-	deadlineValue := s.minimumSizeDeadline.Load()
-	isDeadlineSet := deadlineValue != time.Time{}
-	if isDeadlineSet && time.Now().After(deadlineValue) {
-		if !s.isReadyToAdmitTraffic.Load() { // log if previously not ready
-			level.Warn(s.log).Log(
-				"msg", "deadline passed, marking cluster as ready to admit traffic",
-				"minimum_cluster_size", s.opts.MinimumClusterSize,
-				"minimum_size_wait_timeout", s.opts.MinimumSizeWaitTimeout,
-				"peers_count", len(s.sharder.Peers()),
-			)
-		}
-		s.isReadyToAdmitTraffic.Store(true)
-		return
-	}
-
-	// Deadline is either not set or it didn't yet pass, and the number of peers is less
-	// than the minimum. So we can't admit traffic.
-	if s.isReadyToAdmitTraffic.Load() { // log if previously was ready
-		level.Warn(s.log).Log(
-			"msg", "minimum cluster size requirements are not met - marking cluster as not ready for traffic",
-			"minimum_cluster_size", s.opts.MinimumClusterSize,
-			"peers_count", len(s.sharder.Peers()),
-		)
-	}
-	s.isReadyToAdmitTraffic.Store(false) // set as not ready
-}
-
-// readyToAdmitTraffic checks if the cluster is ready to admit traffic.
-func (s *Service) readyToAdmitTraffic() bool {
-	return s.isReadyToAdmitTraffic.Load()
 }
 
 // Component is a component which subscribes to clustering updates.
