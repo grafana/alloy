@@ -24,13 +24,13 @@ type SplunkHecClientArguments struct {
 	// Timeout for the HTTP client. Defaults to 15 seconds.
 	Timeout time.Duration `alloy:"timeout,attr,optional"`
 	// MaxIdleConns for the HTTP client.
-	MaxIdleConns *int `alloy:"max_idle_conns,attr,optional"`
+	MaxIdleConns int `alloy:"max_idle_conns,attr,optional"`
 	// MaxIdleConnsPerHost for the HTTP client.
-	MaxIdleConnsPerHost *int `alloy:"max_idle_conns_per_host,attr,optional"`
+	MaxIdleConnsPerHost int `alloy:"max_idle_conns_per_host,attr,optional"`
 	// MaxConnsPerHost for the HTTP client.
-	MaxConnsPerHost *int `alloy:"max_conns_per_host,attr,optional"`
+	MaxConnsPerHost int `alloy:"max_conns_per_host,attr,optional"`
 	// IdleConnTimeout for the HTTP client.
-	IdleConnTimeout *time.Duration `alloy:"idle_conn_timeout,attr,optional"`
+	IdleConnTimeout time.Duration `alloy:"idle_conn_timeout,attr,optional"`
 	// DisableKeepAlives for the HTTP client.
 	DisableKeepAlives bool `alloy:"disable_keep_alives,attr,optional"`
 	// TLSSetting for the HTTP client.
@@ -207,6 +207,8 @@ func (args *SplunkHecClientArguments) Convert() *confighttp.ClientConfig {
 
 func (args *SplunkHecClientArguments) SetToDefault() {
 	args.Timeout = 15 * time.Second
+	args.MaxIdleConns = 100
+	args.IdleConnTimeout = 90 * time.Second
 }
 
 func (args *SplunkHecClientArguments) Validate() error {
