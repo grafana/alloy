@@ -38,6 +38,8 @@ Var DisableProfiling
 Var DisableProfilingFlag
 Var RuntimePriority
 Var RuntimePriorityFlag
+Var Stability
+Var StabilityFlag
 
 # Pages during the installer.
 Page license
@@ -55,6 +57,7 @@ Section "install"
   ${GetOptions} $PassedInParameters "/DISABLEPROFILING=" $DisableProfiling
   ${GetOptions} $PassedInParameters "/DISABLEREPORTING=" $DisableReporting
   ${GetOptions} $PassedInParameters "/RUNTIMEPRIORITY=" $RuntimePriority
+  ${GetOptions} $PassedInParameters "/STABILITY=" $Stability
   ${GetOptions} $PassedInParameters "/ENVIRONMENT=" $Environment
   ${GetOptions} $PassedInParameters "/CONFIG=" $Config
 
@@ -181,6 +184,12 @@ Function InitializeRegistry
     StrCpy $RuntimePriorityFlag ""
   ${EndIf}
 
+  ${If} $Stability != ""
+    StrCpy $StabilityFlag "--stability.level=\"${Stability}\"\0"
+  ${Else}
+    StrCpy $StabilityFlag ""
+  ${EndIf}
+
   ${If} $DisableProfiling == "yes"
     StrCpy $DisableProfilingFlag "--server.http.enable-pprof=false\0"
   ${Else}
@@ -192,7 +201,7 @@ Function InitializeRegistry
   nsExec::ExecToLog 'Reg.exe query "${REGKEY}" /reg:64 /v Arguments'
   Pop $0
   ${If} $0 == 1
-    nsExec::ExecToLog 'Reg.exe add "${REGKEY}" /reg:64 /v Arguments /t REG_MULTI_SZ /d "run"\0"$ConfigFlag"\0"--storage.path=$APPDATA\GrafanaLabs\${APPNAME}\data"\0"$DisableReportingFlag$DisableProfilingFlag$RuntimePriorityFlag"'
+    nsExec::ExecToLog 'Reg.exe add "${REGKEY}" /reg:64 /v Arguments /t REG_MULTI_SZ /d "run"\0"$ConfigFlag"\0"--storage.path=$APPDATA\GrafanaLabs\${APPNAME}\data"\0"$DisableReportingFlag$DisableProfilingFlag$RuntimePriorityFlag$StabilityFlag"'
     Pop $0 # Ignore return result
   ${EndIf}
 
