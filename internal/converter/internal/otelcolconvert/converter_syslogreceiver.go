@@ -56,6 +56,7 @@ func toOtelcolReceiversyslog(cfg *syslogreceiver.SysLogConfig) *syslog.Arguments
 		AllowSkipPriHeader:  cfg.InputConfig.AllowSkipPriHeader,
 		MaxOctets:           cfg.InputConfig.MaxOctets,
 		DebugMetrics:        common.DefaultValue[syslog.Arguments]().DebugMetrics,
+		OnError:             cfg.InputConfig.OnError,
 	}
 
 	if cfg.InputConfig.NonTransparentFramingTrailer != nil {

@@ -51,6 +51,8 @@ type Arguments struct {
 	TCP           *TCP                           `alloy:"tcp,block,optional"`
 	UDP           *UDP                           `alloy:"udp,block,optional"`
 
+	OnError string `alloy:"on_error,attr,optional"`
+
 	// DebugMetrics configures component internal metrics. Optional.
 	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
 
@@ -134,6 +136,7 @@ func (args *Arguments) SetToDefault() {
 		Location: "UTC",
 		Protocol: config.SyslogFormatRFC5424,
 		Output:   &otelcol.ConsumerArguments{},
+		OnError:  "send",
 	}
 	args.DebugMetrics.SetToDefault()
 	args.ConsumerRetry.SetToDefault()
@@ -197,6 +200,8 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 			c.UDP.AsyncConfig = async
 		}
 	}
+
+	c.OnError = args.OnError
 
 	def := syslogreceiver.ReceiverType{}.CreateDefaultConfig()
 	cfg := def.(*syslogreceiver.SysLogConfig)
@@ -265,6 +270,12 @@ func (args *Arguments) Validate() error {
 		if err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("invalid udp.encoding: %w", err))
 		}
+	}
+
+	switch args.OnError {
+	case "drop", "drop_quiet", "send", "send_quiet":
+	default:
+		errs = multierror.Append(errs, fmt.Errorf("invalid on_error: %s", args.OnError))
 	}
 
 	return errs
