@@ -19,6 +19,9 @@
   // Move dependency files forward along with lock files
   "rangeStrategy": "bump",
 
+  // Allow PR creation between 07:00 and 09:00 UTC on Mondays
+  "schedule": ["0 7-9 * * 1"]
+
   "packageRules": [
     {
       "matchManagers": ["docker-compose"],

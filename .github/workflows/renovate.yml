@@ -6,6 +6,17 @@ on:
   schedule:
     - cron: '0 8 * * 1'
 
+  # Run whenever code is pushed to the main branch
+  # TODO: does this update existing PRs without creating new ones?
+  push:
+    branches:
+      - main
+
+  # TODO: remove before merge
+  pull_request:
+    branches:
+      - main
+
   # Allow manual triggering from the GitHub Actions UI
   workflow_dispatch:
     inputs:
