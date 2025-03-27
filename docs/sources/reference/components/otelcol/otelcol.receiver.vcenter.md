@@ -145,6 +145,7 @@ Name | Type | Description | Default | Required
 `vcenter.resource_pool.memory.swapped` | [metric][] | Enables the `vcenter.resource_pool.memory.swapped` metric. | `true` | no
 `vcenter.resource_pool.memory.usage` | [metric][] | Enables the `vcenter.resource_pool.memory.usage` metric. | `true` | no
 `vcenter.vm.cpu.readiness` | [metric][] | Enables the `vcenter.vm.cpu.readiness` metric. | `true` | no
+`vcenter.vm.cpu.time` | [metric][] | Enables the `vcenter.vm.cpu.time` metric. | `false` | no
 `vcenter.vm.cpu.usage` | [metric][] | Enables the `vcenter.vm.cpu.usage` metric. | `true` | no
 `vcenter.vm.cpu.utilization` | [metric][] | Enables the `vcenter.vm.cpu.utilization` metric. | `true` | no
 `vcenter.vm.disk.latency.avg` | [metric][] | Enables the `vcenter.vm.disk.latency.avg` metric. | `true` | no
@@ -158,6 +159,8 @@ Name | Type | Description | Default | Required
 `vcenter.vm.memory.swapped_ssd` | [metric][] | Enables the `vcenter.vm.memory.swapped_ssd` metric. | `true` | no
 `vcenter.vm.memory.usage` | [metric][] | Enables the `vcenter.vm.memory.usage` metric. | `true` | no
 `vcenter.vm.memory.utilization` | [metric][] | Enables the `vcenter.vm.memory.utilization` metric. | `true` | no
+`vcenter.vm.network.broadcast.packet.rate` | [metric][] | Enables the `vcenter.vm.network.broadcast.packet.rate` metric. | `false` | no
+`vcenter.vm.network.multicast.packet.rate` | [metric][] | Enables the `vcenter.vm.network.multicast.packet.rate` metric. | `false` | no
 `vcenter.vm.network.packet.rate` | [metric][] | Enables the `vcenter.vm.network.packet.rate` metric. | `true` | no
 `vcenter.vm.network.packet.drop.rate` | [metric][] | Enables the `vcenter.vm.network.packet.drop.rate` metric. | `true` | no
 `vcenter.vm.network.throughput` | [metric][] | Enables the `vcenter.vm.network.throughput` metric. | `true` | no

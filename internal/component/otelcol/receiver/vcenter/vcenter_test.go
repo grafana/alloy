@@ -154,6 +154,9 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			vcenter.resource_pool.memory.usage {
 				enabled = true
 			}
+			vcenter.vm.cpu.time {
+				enabled = true
+			}
 			vcenter.vm.cpu.usage {
 				enabled = true
 			}
@@ -191,6 +194,12 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				enabled = true
 			}
 			vcenter.vm.memory.utilization {
+				enabled = true
+			}
+			vcenter.vm.network.broadcast.packet.rate {
+				enabled = true
+			}
+			vcenter.vm.network.multicast.packet.rate {
 				enabled = true
 			}
 			vcenter.vm.network.packet.rate {
@@ -279,6 +288,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 	require.True(t, otelArgs.Metrics.VcenterResourcePoolCPUUsage.Enabled)
 	require.True(t, otelArgs.Metrics.VcenterResourcePoolMemoryShares.Enabled)
 	require.True(t, otelArgs.Metrics.VcenterResourcePoolMemoryUsage.Enabled)
+	require.True(t, otelArgs.Metrics.VcenterVMCPUTime.Enabled)
 	require.True(t, otelArgs.Metrics.VcenterVMCPUUsage.Enabled)
 	require.True(t, otelArgs.Metrics.VcenterVMCPUUtilization.Enabled)
 	require.True(t, otelArgs.Metrics.VcenterVMDiskLatencyAvg.Enabled)
@@ -292,6 +302,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 	require.True(t, otelArgs.Metrics.VcenterVMMemorySwappedSsd.Enabled)
 	require.True(t, otelArgs.Metrics.VcenterVMMemoryUsage.Enabled)
 	require.True(t, otelArgs.Metrics.VcenterVMMemoryUtilization.Enabled)
+	require.True(t, otelArgs.Metrics.VcenterVMNetworkBroadcastPacketRate.Enabled)
+	require.True(t, otelArgs.Metrics.VcenterVMNetworkMulticastPacketRate.Enabled)
 	require.True(t, otelArgs.Metrics.VcenterVMNetworkPacketRate.Enabled)
 	require.True(t, otelArgs.Metrics.VcenterVMNetworkPacketDropRate.Enabled)
 	require.True(t, otelArgs.Metrics.VcenterVMNetworkThroughput.Enabled)
