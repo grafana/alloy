@@ -62,7 +62,7 @@ steps:
 - commands:
   - '& "C:/Program Files/git/bin/bash.exe" -c ''go test -tags="nodocker,nonetwork"
     ./...'''
-  image: grafana/alloy-build-image:v0.1.17-windows
+  image: grafana/alloy-build-image:v0.1.8-windows
   name: Run Go tests
 trigger:
   ref:
@@ -103,7 +103,7 @@ platform:
 steps:
 - commands:
   - '& "C:/Program Files/git/bin/bash.exe" -c "make alloy-image-windows"'
-  image: grafana/alloy-build-image:v0.1.17-windows
+  image: grafana/alloy-build-image:v0.1.8-windows
   name: Build container
   volumes:
   - name: docker
@@ -392,7 +392,7 @@ steps:
       from_secret: docker_password
     GCR_CREDS:
       from_secret: gcr_admin
-  image: grafana/alloy-build-image:v0.1.17-windows
+  image: grafana/alloy-build-image:v0.1.8-windows
   name: Build containers
   volumes:
   - name: docker
@@ -545,6 +545,6 @@ kind: secret
 name: updater_private_key
 ---
 kind: signature
-hmac: e403b4516884bcf97f8a35953db1582933b307462e707c399a6ad9627ffaa9d0
+hmac: 97f89e50b55b8aae91afb5a7708fe2b37c935ddc48c1a71d66bc0d56953fa68d
 
 ...
