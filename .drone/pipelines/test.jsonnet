@@ -9,10 +9,20 @@ local pipelines = import '../util/pipelines.jsonnet';
     steps: [{
       name: 'Lint',
       image: build_image.linux,
+      volumes: [{
+        name: 'docker',
+        path: '/var/run/docker.sock',
+      }],
       commands: [
         'apt-get update -y && apt-get install -y libsystemd-dev',
         'make lint',
       ],
+    }],
+    volumes: [{
+      name: 'docker',
+      host: {
+        path: '/var/run/docker.sock',
+      },
     }],
   },
 
@@ -23,10 +33,20 @@ local pipelines = import '../util/pipelines.jsonnet';
     steps: [{
       name: 'Run Go tests',
       image: build_image.linux,
+      volumes: [{
+        name: 'docker',
+        path: '/var/run/docker.sock',
+      }],
 
       commands: [
         'make GO_TAGS="nodocker" test',
       ],
+    }],
+    volumes: [{
+      name: 'docker',
+      host: {
+        path: '/var/run/docker.sock',
+      },
     }],
   },
 
