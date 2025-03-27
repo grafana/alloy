@@ -179,13 +179,13 @@ Function InitializeRegistry
   ${EndIf}
 
   ${If} $RuntimePriority != ""
-    StrCpy $RuntimePriorityFlag "--windows.priority=\"$RuntimePriority\"\0"
+    StrCpy $RuntimePriorityFlag "--windows.priority=$\"$RuntimePriority$\"\0"
   ${Else}
     StrCpy $RuntimePriorityFlag ""
   ${EndIf}
 
   ${If} $Stability != ""
-    StrCpy $StabilityFlag "--stability.level=\"$Stability\"\0"
+    StrCpy $StabilityFlag "--stability.level=$\"$Stability$\"\0"
   ${Else}
     StrCpy $StabilityFlag ""
   ${EndIf}
