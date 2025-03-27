@@ -827,7 +827,7 @@ The `resource_attributes` block supports the following blocks:
 | Block                            | Description                                                                             | Required |
 | -------------------------------- | --------------------------------------------------------------------------------------- | -------- |
 | [k8s.cluster.name][res-attr-cfg] | Toggles the `k8s.cluster.name` resource attribute. Sets `enabled` to `true` by default. | no       |
-
+| [k8s.cluster.uid][res-attr-cfg]  | Toggles the `k8s.cluster.uid` resource attribute. Sets `enabled` to `true` by default.  | no       |
 ### dynatrace
 
 The `dynatrace` block loads resource information from the `dt_host_metadata.properties` file which is located in
