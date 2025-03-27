@@ -251,7 +251,7 @@ testcomponents.slow_update "test" {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			setDefaults(&tc)
-			ctx, cancel := context.WithTimeout(context.Background(), tc.assertionsTimeout*2+5*time.Second)
+			ctx, cancel := context.WithTimeout(t.Context(), tc.assertionsTimeout*2+5*time.Second)
 			defer cancel()
 
 			state := &testState{

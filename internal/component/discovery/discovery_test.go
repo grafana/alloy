@@ -159,7 +159,7 @@ func TestDiscoveryUpdates(t *testing.T) {
 			discoverer := newFakeDiscoverer()
 			updateDiscoverer(comp, discoverer)
 
-			ctx, ctxCancel := context.WithCancel(context.Background())
+			ctx, ctxCancel := context.WithCancel(t.Context())
 			defer ctxCancel()
 
 			runDone := make(chan struct{})

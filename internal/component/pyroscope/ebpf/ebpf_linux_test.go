@@ -158,7 +158,7 @@ func TestContextShutdown(t *testing.T) {
 	}
 	session.dataTarget = sd.NewTarget("cid", 0, map[string]string{"service_name": "foo"})
 	var g run.Group
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*1))
+	ctx, cancel := context.WithDeadline(t.Context(), time.Now().Add(time.Second*1))
 	defer cancel()
 	g.Add(func() error {
 		err = c.Run(ctx)
