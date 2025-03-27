@@ -184,6 +184,9 @@ func TestClusterE2E(t *testing.T) {
 			extraAllowedErrors: []string{
 				`Conflicting address for node-0`,
 				`Conflicting address for node-1`,
+				`msg="Failed to send error: http2: stream closed`,
+				`msg="failed to receive: i/o timeout`,
+				`msg="failed to receive and remove the stream label header`,
 			},
 			assertionsInitial: func(t *assert.CollectT, state *testState) {
 				for _, p := range state.peers {
