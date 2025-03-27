@@ -320,9 +320,9 @@ testcomponents.slow_update "test" {
 						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 4`,
 						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`,
 					)
-					// verifyClusterNotReady(t, p)
+					verifyClusterNotReady(t, p)
 				}
-				// verifyLookupInvariants(t, state.peers)
+				verifyLookupInvariants(t, state.peers)
 			},
 		},
 	}
