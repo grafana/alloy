@@ -13,6 +13,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componentstatus"
+	"go.opentelemetry.io/collector/config/configretry"
 	"go.opentelemetry.io/collector/config/configtls"
 	"go.opentelemetry.io/collector/pipeline"
 )
@@ -74,6 +75,8 @@ func toKafkaReceiver(state *State, id componentstatus.InstanceID, cfg *kafkarece
 		DefaultFetchSize: cfg.DefaultFetchSize,
 		MaxFetchSize:     cfg.MaxFetchSize,
 
+		ErrorBackOff: toKafkaErrorBackOff(cfg.ErrorBackOff),
+
 		DebugMetrics: common.DefaultValue[kafka.Arguments]().DebugMetrics,
 
 		Output: &otelcol.ConsumerArguments{
@@ -81,6 +84,17 @@ func toKafkaReceiver(state *State, id componentstatus.InstanceID, cfg *kafkarece
 			Logs:    ToTokenizedConsumers(nextLogs),
 			Traces:  ToTokenizedConsumers(nextTraces),
 		},
+	}
+}
+
+func toKafkaErrorBackOff(cfg configretry.BackOffConfig) otelcol.RetryArguments {
+	return otelcol.RetryArguments{
+		Enabled:             cfg.Enabled,
+		InitialInterval:     cfg.InitialInterval,
+		RandomizationFactor: cfg.RandomizationFactor,
+		Multiplier:          cfg.Multiplier,
+		MaxInterval:         cfg.MaxInterval,
+		MaxElapsedTime:      cfg.MaxElapsedTime,
 	}
 }
 

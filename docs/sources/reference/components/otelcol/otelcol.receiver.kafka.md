@@ -107,6 +107,7 @@ autocommit | [autocommit][] | Configures how to automatically commit updated top
 message_marking | [message_marking][] | Configures when Kafka messages are marked as read. | no
 header_extraction | [header_extraction][] | Extract headers from Kafka records. | no
 debug_metrics | [debug_metrics][] | Configures the metrics which this component generates to monitor its state. | no
+error_backoff | [error_backoff][] | Configures how to handle errors when receiving messages from Kafka. | no
 output | [output][] | Configures where to send received telemetry data. | yes
 
 The `>` symbol indicates deeper levels of nesting. For example,
@@ -126,7 +127,7 @@ The `>` symbol indicates deeper levels of nesting. For example,
 [header_extraction]: #header_extraction-block
 [debug_metrics]: #debug_metrics-block
 [output]: #output-block
-
+[error_backoff]: #error_backoff-block
 ### authentication block
 
 {{< docs/shared lookup="reference/components/otelcol-kafka-authentication.md" source="alloy" version="<ALLOY_VERSION>" >}}
@@ -213,6 +214,12 @@ Name | Type | Description | Default | Required
 `headers` | `list(string)` | A list of headers to extract from the Kafka record. | `[]` | no
 
 Regular expressions are not allowed in the `headers` argument. Only exact matching will be performed.
+
+### error_backoff block
+
+The `error_backoff` block configures how failed requests to Kafka are retried.
+
+{{< docs/shared lookup="reference/components/otelcol-retry-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### debug_metrics block
 

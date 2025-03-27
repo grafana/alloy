@@ -4,6 +4,14 @@ otelcol.receiver.kafka "default" {
 	session_timeout    = "11s"
 	heartbeat_interval = "4s"
 
+	error_backoff {
+		enabled = true
+		initial_interval = "1s"
+		randomization_factor = 0.1
+		multiplier = 1
+		max_interval = "1s"
+		max_elapsed_time = "1m"
+	}
 	authentication {
 		plaintext {
 			username = "fakeusername"
