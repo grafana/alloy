@@ -6,11 +6,6 @@ on:
   schedule:
     - cron: '0 8 * * 1'
 
-  # TODO: remove before merge
-  pull_request:
-    branches:
-      - main
-
   # Allow manual triggering from the GitHub Actions UI
   workflow_dispatch:
     inputs:
@@ -59,4 +54,3 @@ jobs:
           RENOVATE_PLATFORM: github
           RENOVATE_REPOSITORIES: ${{ github.repository }}
           RENOVATE_USERNAME: GrafanaRenovateBot
-          LOG_LEVEL: debug
