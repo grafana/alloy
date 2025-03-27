@@ -126,7 +126,7 @@ func TestShutdownOnError(t *testing.T) {
 	)
 
 	session.collectError = fmt.Errorf("mocked error collecting profiles")
-	err = c.Run(context.TODO())
+	err = c.Run(t.Context())
 	require.Error(t, err)
 }
 

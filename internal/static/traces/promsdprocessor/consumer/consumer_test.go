@@ -102,7 +102,7 @@ func TestOperationType(t *testing.T) {
 			}
 			attrMap.PutStr(semconv.AttributeNetHostIP, attrIP)
 
-			c.processAttributes(context.TODO(), attrMap)
+			c.processAttributes(t.Context(), attrMap)
 
 			actualAttrValue, _ := attrMap.Get(attrKey)
 			assert.Equal(t, tc.expectedValue, actualAttrValue.Str())
