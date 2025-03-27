@@ -68,30 +68,28 @@ Perform the following steps to clone the scenarios repository and deploy the mon
 [install]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/set-up/install/windows/
 [change]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/configure/windows/#change-command-line-arguments
 
-## Configure {{% param "PRODUCT_NAME" %}} to monitor Windows
+1. Replace the default `config.alloy` file with the preconfigured `config.alloy` file included in the `alloy-scenarios/windows` directory.
 
-Replace the default `config.alloy` file with the preconfigured `config.alloy` file included in the `alloy-scenarios/windows` directory.
+   1. Stop the {{< param "PRODUCT_NAME" >}} service.
 
-1. Stop the {{< param "PRODUCT_NAME" >}} service.
+      1. Open the Windows Services manager.
 
-   1. Open the Windows Services manager.
+         1. Right click on the Start Menu and select **Run**.
+         1. Type `services.msc` and click **OK**.
 
-      1. Right click on the Start Menu and select **Run**.
-      1. Type `services.msc` and click **OK**.
+      1. Right click on the service called **Alloy**.
+      1. Click on **All Tasks > Stop**.
 
-   1. Right click on the service called **Alloy**.
-   1. Click on **All Tasks > Stop**.
+   1. Replace the `config.alloy` file in `C:\Program Files\GrafanaLabs\Alloy` with the `config.alloy` file from the `alloy-scenarios/windows` directory.
+   1. Start the {{< param "PRODUCT_NAME" >}} service.
 
-1. Replace the `config.alloy` file in `C:\Program Files\GrafanaLabs\Alloy` with the `config.alloy` file from the `alloy-scenarios/windows` directory.
-1. Start the {{< param "PRODUCT_NAME" >}} service.
+      1. Open the Windows Services manager.
 
-   1. Open the Windows Services manager.
+         1. Right click on the Start Menu and select **Run**.
+         1. Type `services.msc` and click **OK**.
 
-      1. Right click on the Start Menu and select **Run**.
-      1. Type `services.msc` and click **OK**.
-
-   1. Right click on the service called **Alloy**.
-   1. Click on **All Tasks > Start**.
+      1. Right click on the service called **Alloy**.
+      1. Click on **All Tasks > Start**.
 
 1. (Optional) When you finish exploring this example, you can stop Docker to shut down the Grafana stack.
 
