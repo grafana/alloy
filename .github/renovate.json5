@@ -14,6 +14,8 @@
     "dependencyDashboardApproval": true
   },
 
+  "prConcurrentLimit": 5,
+
   // Move dependency files forward along with lock files
   "rangeStrategy": "bump",
 
