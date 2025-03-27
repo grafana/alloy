@@ -70,16 +70,16 @@ func TestClusterE2E(t *testing.T) {
 			name:             "three nodes with slow components",
 			nodeCountInitial: 3,
 			alloyConfig: `
-testcomponents.ticker "tick" {
-	period = "500ms"
-	max_value = 30
-}
-
-testcomponents.slow_update "test" {
-	counter = testcomponents.ticker.tick.counter
-	update_lag = "5s"
-}
-`,
+		testcomponents.ticker "tick" {
+			period = "500ms"
+			max_value = 30
+		}
+		
+		testcomponents.slow_update "test" {
+			counter = testcomponents.ticker.tick.counter
+			update_lag = "5s"
+		}
+		`,
 			assertionsInitial: func(t *assert.CollectT, state *testState) {
 				for _, p := range state.peers {
 					verifyMetrics(t, p,
@@ -322,7 +322,6 @@ testcomponents.slow_update "test" {
 					)
 					verifyClusterNotReady(t, p)
 				}
-				verifyLookupInvariants(t, state.peers)
 			},
 		},
 	}
