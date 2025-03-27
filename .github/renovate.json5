@@ -4,35 +4,65 @@
     "config:recommended",
 
     // https://docs.renovatebot.com/presets-npm/#npmunpublishsafe
-    'npm:unpublishSafe',
+    "npm:unpublishSafe"
   ],
+
+  "commitMessageAction": "update",
 
   // Tell dependency dashboard to only require PR creation approval for major versions
   "major": {
-    dependencyDashboardApproval: true
+    "dependencyDashboardApproval": true
   },
+
+  // Move dependency files forward along with lock files
+  "rangeStrategy": "bump",
+
   "packageRules": [
     {
-      "matchManagers": ["npm"],
-      "matchDepTypes": ["dependencies"],
-      "matchUpdateTypes": ["minor", "patch"],
-      "groupName": "dependencies (minor)"
+      "matchManagers": ["docker-compose"],
+      // "matchUpdateTypes": ["minor", "patch"],
+      // "groupName": "docker-compose dependencies (minor, patch)",
+      "enabled": false // TODO: enable when ready
     },
     {
-      "matchManagers": ["npm"],
-      "matchDepTypes": ["devDependencies"],
-      "matchUpdateTypes": ["minor", "patch"],
-      "groupName": "devDependencies (minor)"
+      "matchManagers": ["dockerfile"],
+      // "matchUpdateTypes": ["minor", "patch"],
+      // "groupName": "dockerfile dependencies (minor, patch)",
+      "enabled": false // TODO: enable when ready
     },
-    // TODO: group go deps
-    // TODO: group gh actions deps?
     {
       "matchManagers": ["github-actions"],
       "matchUpdateTypes": ["minor", "patch"],
-      "groupName": "dependencies (gh-actions)"
+      "groupName": "github-actions dependencies (minor, patch)"
     },
-  ],
-
-  // Move package.json forward along with package-lock.json
-  "rangeStrategy": "bump"
+    {
+      "matchManagers": ["gomod"],
+      // "matchUpdateTypes": ["minor", "patch"],
+      // "groupName": "go dependencies (minor, patch)",
+      "enabled": false // TODO: enable when ready
+    },
+    {
+      "matchManagers": ["helm-values"],
+      // "matchUpdateTypes": ["minor", "patch"],
+      // "groupName": "helm-values dependencies (minor, patch)",
+      "enabled": false // TODO: enable when ready
+    },
+    {
+      "matchManagers": ["helmv3"],
+      // "matchUpdateTypes": ["minor", "patch"],
+      // "groupName": "helmv3 dependencies (minor, patch)",
+      "enabled": false // TODO: enable when ready
+    },
+    {
+      "matchManagers": ["jsonnet-bundler"],
+      // "matchUpdateTypes": ["minor", "patch"],
+      // "groupName": "jsonnet-bundler dependencies (minor, patch)",
+      "enabled": false // TODO: enable when ready
+    },
+    {
+      "matchManagers": ["npm"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "npm dependencies (minor, patch)"
+    }
+  ]
 }

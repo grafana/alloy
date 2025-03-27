@@ -55,7 +55,7 @@ jobs:
           renovate-version: 39.215.2@sha256:644608e6c6e0956856b392c01bd2e5b71fb6fa2162a4f7e932de930743f92cf4
           token: ${{ steps.generate-token.outputs.token }}
         env:
-          RENOVATE_DRY_RUN: ${{ (github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && github.event.inputs.dry-run == 'true')) && 'full' || null }}
+          RENOVATE_DRY_RUN: ${{ (github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && github.event.inputs.dry-run == 'true')) && 'lookup' || null }}
           RENOVATE_PLATFORM: github
           RENOVATE_REPOSITORIES: ${{ github.repository }}
           RENOVATE_USERNAME: GrafanaRenovateBot
