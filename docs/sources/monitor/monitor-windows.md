@@ -93,11 +93,17 @@ Replace the default `config.alloy` file with the preconfigured `config.alloy` fi
    1. Right click on the service called **Alloy**.
    1. Click on **All Tasks > Start**.
 
+1. (Optional) When you finish exploring this example, you can stop Docker to shut down the Grafana stack.
+
+   ```shell
+   docker compose down
+   ```
+
 ## Monitor and visualize your data
 
 You can use Grafana to view the health of your deployment and visualize your data.
 
-### Monitor the health of your {{% param "PRODUCT_NAME" %}} deployment
+### Monitor {{% param "PRODUCT_NAME" %}}
 
 To monitor the health of your {{< param "PRODUCT_NAME" >}} deployment, open your browser and navigate to [http://localhost:12345](http://localhost:12345).
 
