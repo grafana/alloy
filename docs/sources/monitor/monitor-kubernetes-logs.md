@@ -11,7 +11,7 @@ weight: 600
 Kubernetes captures logs from each container in a running Pod.
 You can use {{< param "PRODUCT_NAME" >}} to collect your Kubernetes logs, forward them to a Grafana stack, and create a Grafana dashboard to monitor your Kubernetes deployment.
 
-The `alloy-scenarios` repository provides series of complete working examples of {{< param "PRODUCT_NAME" >}} deployments.
+The [`alloy-scenarios`][scenarios] repository provides series of complete working examples of {{< param "PRODUCT_NAME" >}} deployments.
 You can clone the repository and use the example deployments to understand how {{< param "PRODUCT_NAME" >}} can collect, process, and export telemetry signals.
 
 This example scenario uses a Kubernetes Monitoring Helm chart to deploy and monitor Kubernetes logs and installs three Helm charts, Loki, Grafana, and {{< param "PRODUCT_NAME" >}}.
@@ -21,13 +21,14 @@ The Helm chart abstracts the need to configure {{< param "PRODUCT_NAME" >}} and 
 
 [Pod Logs]: https://kubernetes.io/docs/concepts/cluster-administration/logging/#basic-logging-in-kubernetes
 [Kubernetes Events]: https://kubernetes.io/docs/reference/kubernetes-api/cluster-resources/event-v1/
+[scenarios]: https://github.com/grafana/alloy-scenarios/
 
 ## Before you begin
 
 This example requires:
 
-* Docker
-* Git
+* [Docker](https://www.docker.com/)
+* [Git](https://git-scm.com/)
 * [Helm](https://helm.sh/docs/intro/install/)
 * [kind](https://kind.sigs.k8s.io/docs/user/quick-start/)
 

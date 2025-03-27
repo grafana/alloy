@@ -12,17 +12,19 @@ Docker containers provide statistics and logs.
 The `docker stats` and `docker logs` commands show the metrics and logs in a terminal as a fixed snapshot in time.
 You can use {{< param "PRODUCT_NAME" >}} to collect your metrics and logs, forward them to a Grafana stack, and create a Grafana dashboard to monitor your Docker container.
 
-The `alloy-scenarios` repository provides series of complete working examples of {{< param "PRODUCT_NAME" >}} deployments.
+The [`alloy-scenarios`][scenarios] repository provides series of complete working examples of {{< param "PRODUCT_NAME" >}} deployments.
 You can clone the repository and use the example deployments to understand how {{< param "PRODUCT_NAME" >}} can collect, process, and export telemetry signals.
 
 In this example scenario, {{< param "PRODUCT_NAME" >}} collects the Docker container metrics and logs and forwards them to a Loki destination.
+
+[scenarios]: https://github.com/grafana/alloy-scenarios/
 
 ## Before you begin
 
 This example requires:
 
-* Docker
-* Git
+* [Docker](https://www.docker.com/)
+* [Git](https://git-scm.com/)
 
 {{< admonition type="note" >}}
 The `docker` commands require administrator privileges.
