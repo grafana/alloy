@@ -12,6 +12,7 @@ import (
 	"github.com/grafana/ckit/shard"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/time/rate"
 )
 
 func TestGetPeers(t *testing.T) {
@@ -171,31 +172,29 @@ func TestAdmitTrafficSequence_WithDeadline(t *testing.T) {
 		MinimumClusterSize:     minimumClusterSize,
 		MinimumSizeWaitTimeout: clusterSizeWaitTimeout,
 	}, buildPeers(1), time.Now().Add(1*time.Minute))
+	s.alloyCluster.limiter = rate.NewLimiter(rate.Every(time.Millisecond), 1000) // effectively disable rate limiter for this test
 
 	assert.False(t, s.alloyCluster.readyToAdmitTraffic()) // starts as not ready
-	assert.False(t, s.alloyCluster.readyToAdmitTraffic()) // still not ready
 
-	s.sharder = &mockSharder{peers: buildPeers(minimumClusterSize)} // we reach the minimum, should be ready now!
-	assert.True(t, s.alloyCluster.readyToAdmitTraffic())
+	updateSharder(s, &mockSharder{peers: buildPeers(minimumClusterSize)}) // we reach the minimum, should be ready now!
 	assert.True(t, s.alloyCluster.readyToAdmitTraffic())
 
-	s.sharder = &mockSharder{peers: buildPeers(minimumClusterSize - 1)} // we dip back under the minimum = not ready
+	updateSharder(s, &mockSharder{peers: buildPeers(minimumClusterSize - 1)}) // we dip back under the minimum = not ready
 	assert.False(t, s.alloyCluster.readyToAdmitTraffic())
 
 	time.Sleep(time.Second) // deadline passes though, so we are ready to admit traffic again
 	assert.True(t, s.alloyCluster.readyToAdmitTraffic())
+
+	updateSharder(s, &mockSharder{peers: buildPeers(minimumClusterSize + 1)}) // we reach the minimum, should continue to be ready
 	assert.True(t, s.alloyCluster.readyToAdmitTraffic())
 
-	s.sharder = &mockSharder{peers: buildPeers(minimumClusterSize + 1)} // we reach the minimum, should continue to be ready
-	assert.True(t, s.alloyCluster.readyToAdmitTraffic())
-
-	s.sharder = &mockSharder{peers: buildPeers(minimumClusterSize - 5)} // we dip back under the minimum = not ready, deadline should have reset
+	updateSharder(s, &mockSharder{peers: buildPeers(minimumClusterSize - 5)}) // we dip back under the minimum = not ready, deadline should have reset
 	assert.False(t, s.alloyCluster.readyToAdmitTraffic())
 
 	time.Sleep(time.Second) // deadline passes again, so we are ready to admit traffic again
 	assert.True(t, s.alloyCluster.readyToAdmitTraffic())
 
-	s.sharder = &mockSharder{peers: buildPeers(minimumClusterSize)} // we reach the minimum, should continue to be ready
+	updateSharder(s, &mockSharder{peers: buildPeers(minimumClusterSize)}) // we reach the minimum, should continue to be ready
 	assert.True(t, s.alloyCluster.readyToAdmitTraffic())
 }
 
@@ -207,31 +206,29 @@ func TestAdmitTrafficSequence_NoDeadline(t *testing.T) {
 		EnableClustering:   true,
 		MinimumClusterSize: minimumClusterSize,
 	}, buildPeers(1), time.Now().Add(1*time.Minute))
+	s.alloyCluster.limiter = rate.NewLimiter(rate.Every(time.Millisecond), 1000) // effectively disable rate limiter for this test
 
 	assert.False(t, s.alloyCluster.readyToAdmitTraffic()) // starts as not ready
-	assert.False(t, s.alloyCluster.readyToAdmitTraffic()) // still not ready
 
-	s.sharder = &mockSharder{peers: buildPeers(minimumClusterSize)} // we reach the minimum, should be ready now!
-	assert.True(t, s.alloyCluster.readyToAdmitTraffic())
+	updateSharder(s, &mockSharder{peers: buildPeers(minimumClusterSize)}) // we reach the minimum, should be ready now!
 	assert.True(t, s.alloyCluster.readyToAdmitTraffic())
 
-	s.sharder = &mockSharder{peers: buildPeers(minimumClusterSize - 1)} // we dip back under the minimum = not ready
+	updateSharder(s, &mockSharder{peers: buildPeers(minimumClusterSize - 1)}) // we dip back under the minimum = not ready
 	assert.False(t, s.alloyCluster.readyToAdmitTraffic())
 
 	time.Sleep(time.Second) // even though time passes by, there is no deadline, and we're still not ready
 	assert.False(t, s.alloyCluster.readyToAdmitTraffic())
-	assert.False(t, s.alloyCluster.readyToAdmitTraffic())
 
-	s.sharder = &mockSharder{peers: buildPeers(minimumClusterSize + 1)} // we reach the minimum, should be ready
+	updateSharder(s, &mockSharder{peers: buildPeers(minimumClusterSize + 1)}) // we reach the minimum, should be ready
 	assert.True(t, s.alloyCluster.readyToAdmitTraffic())
 
-	s.sharder = &mockSharder{peers: buildPeers(minimumClusterSize - 5)} // we dip back under the minimum = not ready
+	updateSharder(s, &mockSharder{peers: buildPeers(minimumClusterSize - 5)}) // we dip back under the minimum = not ready
 	assert.False(t, s.alloyCluster.readyToAdmitTraffic())
 
 	time.Sleep(time.Second) // time passes, but nothing will change
 	assert.False(t, s.alloyCluster.readyToAdmitTraffic())
 
-	s.sharder = &mockSharder{peers: buildPeers(minimumClusterSize)} // we reach the minimum, should become ready
+	updateSharder(s, &mockSharder{peers: buildPeers(minimumClusterSize)}) // we reach the minimum, should become ready
 	assert.True(t, s.alloyCluster.readyToAdmitTraffic())
 }
 
