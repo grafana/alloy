@@ -65,9 +65,6 @@ Perform the following steps to clone the scenarios repository and deploy the mon
 
    After you restart the services, you can access the {{< param "PRODUCT_NAME" >}} UI from a remote machine by going to `http://<windows-machine-ip>:12345`.
 
-[install]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/set-up/install/windows/
-[change]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/configure/windows/#change-command-line-arguments
-
 1. Replace the default `config.alloy` file with the preconfigured `config.alloy` file included in the `alloy-scenarios/windows` directory.
 
    1. Stop the {{< param "PRODUCT_NAME" >}} service.
@@ -96,6 +93,9 @@ Perform the following steps to clone the scenarios repository and deploy the mon
    ```shell
    docker compose down
    ```
+
+[install]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/set-up/install/windows/
+[change]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/configure/windows/#change-command-line-arguments
 
 ## Monitor and visualize your data
 
