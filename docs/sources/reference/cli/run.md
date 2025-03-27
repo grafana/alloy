@@ -55,6 +55,8 @@ The following flags are supported:
 * `--cluster.tls-cert-path`: Path to the certificate file used for peer communication over TLS.
 * `--cluster.tls-key-path`: Path to the key file used for peer communication over TLS.
 * `--cluster.tls-server-name`: Server name used for peer communication over TLS.
+* `--cluster.wait-for-size`: Wait for the cluster to reach the specified number of instances before admitting traffic to components that use clustering. Zero means disabled (default `0`).
+* `--cluster.wait-timeout`: Maximum duration to wait for minimum cluster size before proceeding with available nodes. Zero means wait forever, no timeout (default `0`).
 * `--config.format`: The format of the source file. Supported formats: `alloy`, `otelcol`, `prometheus`, `promtail`, `static` (default `"alloy"`).
 * `--config.bypass-conversion-errors`: Enable bypassing errors when converting (default `false`).
 * `--config.extra-args`: Extra arguments from the original format used by the converter.
@@ -138,15 +140,24 @@ The `--cluster.rejoin-interval` flag defines how often each node should rediscov
 This operation is useful for addressing split-brain issues if the initial bootstrap is unsuccessful and for making clustering easier to manage in dynamic environments.
 To disable this behavior, set the `--cluster.rejoin-interval` flag to `"0s"`.
 
-Discovering peers using the `--cluster.join-addresses` and `--cluster.discover-peers` flags only happens on startup.
-After that, cluster nodes depend on gossiping messages with each other to converge on the cluster's state.
+If `--cluster.rejoin-interval` is set to `0s`, then discovering peers using the `--cluster.join-addresses` and `--cluster.discover-peers` flags only happens at startup. After that, cluster nodes depend on gossiping messages with each other to converge on the cluster's state.
 
 The first node that's used to bootstrap a new cluster (also known as the "seed node") can either omit the flags that specify peers to join or can try to connect to itself.
 
-To join or rejoin a cluster, {{< param "PRODUCT_NAME" >}} tries to connect to a certain number of peers limited by the `--cluster.max-join-peers` flag.
+To join or rejoin a cluster, {{< param "PRODUCT_NAME" >}} tries to connect to a number of random peers limited by the `--cluster.max-join-peers` flag.
 This flag can be useful for clusters of significant sizes because connecting to a high number of peers can be an expensive operation.
 To disable this behavior, set the `--cluster.max-join-peers` flag to 0.
 If the value of `--cluster.max-join-peers` is higher than the number of peers discovered, {{< param "PRODUCT_NAME" >}} connects to all of them.
+
+The `--cluster.wait-for-size` flag specifies the minimum cluster size required before components that use clustering
+begin processing traffic. When set to a value greater than zero, a node will join the cluster but the components that
+use clustering will not take on any work until enough nodes are available. This ensures adequate cluster capacity - see
+[estimate resource usage][] for guidelines. The default value is `0`, which disables this feature.
+
+The `--cluster.wait-timeout` flag sets how long a node will wait for the cluster to reach the size specified by
+`--cluster.wait-for-size`. If the timeout expires, the node will proceed with available nodes. Setting this to `0` (the
+default) means wait indefinitely. For production environments, consider setting a timeout of several minutes as a
+fallback.
 
 The `--cluster.name` flag can be used to prevent clusters from accidentally merging.
 When `--cluster.name` is provided, nodes only join peers who share the same cluster name value.
@@ -187,3 +198,4 @@ Refer to [alloy convert][] for more details on how `extra-args` work.
 [support bundle]: ../../../troubleshoot/support_bundle/
 [component controller]: ../../../get-started/component_controller/
 [UI]: ../../../troubleshoot/debug/#clustering-page
+[estimate resource usage]: ../../../introduction/estimate-resource-usage/
