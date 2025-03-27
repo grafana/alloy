@@ -232,7 +232,7 @@ require (
 	go.opentelemetry.io/collector/exporter/otlpexporter v0.122.1
 	go.opentelemetry.io/collector/exporter/otlphttpexporter v0.122.1
 	go.opentelemetry.io/collector/extension v1.28.1
-	go.opentelemetry.io/collector/extension/extensionauth v0.122.1 // indirect
+	go.opentelemetry.io/collector/extension/extensionauth v0.122.1
 	go.opentelemetry.io/collector/extension/extensiontest v0.122.1
 	go.opentelemetry.io/collector/featuregate v1.28.1
 	go.opentelemetry.io/collector/otelcol v0.122.1
@@ -932,7 +932,6 @@ require (
 
 require (
 	github.com/grafana/beyla/v2 v2.0.4-alloy.2
-	go.opentelemetry.io/collector/extension/auth v0.120.0
 	go.opentelemetry.io/collector/receiver/receiverhelper v0.122.1
 )
 

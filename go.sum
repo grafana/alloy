@@ -2846,8 +2846,6 @@ go.opentelemetry.io/collector/exporter/xexporter v0.122.1 h1:SJt9kiCEyXAxyGWA4tB
 go.opentelemetry.io/collector/exporter/xexporter v0.122.1/go.mod h1:5cgaRnGaWp0VtPbrTIIU717Eu4rW7kj1L8KluFlPPp0=
 go.opentelemetry.io/collector/extension v1.28.1 h1:2qiX/nuihDzHMmOxrVKZ5SURFL/oJBMlL6+kPDvb0+I=
 go.opentelemetry.io/collector/extension v1.28.1/go.mod h1:IaovGuJib5XGgLejcBmpgwFS5/mCV4xnW/J2Towy5lM=
-go.opentelemetry.io/collector/extension/auth v0.120.0 h1:Z4mgQay67BC43F3yK50V/hLdmegBNyMt1upJRV6YW4g=
-go.opentelemetry.io/collector/extension/auth v0.120.0/go.mod h1:2DyrUZYNlO3ExAVhflUwvifpxb077Q2aLndcPfkZIzM=
 go.opentelemetry.io/collector/extension/extensionauth v0.122.1 h1:rYzI7OpHVxtEftsBC++ob/mkZr03/xjUnzuzFje64tY=
 go.opentelemetry.io/collector/extension/extensionauth v0.122.1/go.mod h1:OMZA2hlWIL2uRvCLR954qKvDOjTB/tvHwdhPIkjro60=
 go.opentelemetry.io/collector/extension/extensionauth/extensionauthtest v0.122.1 h1:hbehPpzaY9GWCyQn6o3PYIfGhP4egF5RnACzwh9lZ3I=
