@@ -14,6 +14,7 @@ Unreleased
 
 - Update to Grafana Alloy v1.7.5. (@kimxogus)
 - Add `checksum/config` pod annotation (@kimxogus)
+- Add dnsConfig spec to pod template (@younsl)
 
 0.12.5 (2025-03-13)
 ----------
