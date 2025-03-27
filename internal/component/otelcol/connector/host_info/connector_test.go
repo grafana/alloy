@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/connector/connectortest"
 	"go.opentelemetry.io/collector/consumer/consumertest"
 )
@@ -41,7 +42,7 @@ func TestNewConnector(t *testing.T) {
 				cfg.MetricsFlushInterval = *tc.metricsFlushInterval
 			}
 
-			c, err := factory.CreateTracesToMetrics(context.Background(), connectortest.NewNopSettings(), cfg, consumertest.NewNop())
+			c, err := factory.CreateTracesToMetrics(context.Background(), connectortest.NewNopSettings(component.MustNewType("hostinfoconnector")), cfg, consumertest.NewNop())
 			imp := c.(*connectorImp)
 
 			assert.NoError(t, err)
