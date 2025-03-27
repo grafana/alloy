@@ -38,10 +38,6 @@ func TranslatePriority(priorityString string) (uint32, error) {
 }
 
 func SetPriority(priorityString string) error {
-	if priorityString == "" {
-		return nil
-	}
-
 	priority, err := TranslatePriority(priorityString)
 	if err != nil {
 		return err
