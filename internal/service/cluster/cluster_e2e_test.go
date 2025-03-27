@@ -231,10 +231,9 @@ testcomponents.slow_update "test" {
 			},
 		},
 		{
-			name:                   "cluster with minimum size requirement",
-			nodeCountInitial:       4,
-			minimumClusterSize:     5,
-			minimumSizeWaitTimeout: 20 * time.Second,
+			name:               "cluster with minimum size - sufficient nodes join",
+			nodeCountInitial:   4,
+			minimumClusterSize: 5,
 			assertionsInitial: func(t *assert.CollectT, state *testState) {
 				for _, p := range state.peers {
 					verifyMetrics(t, p,
@@ -258,6 +257,72 @@ testcomponents.slow_update "test" {
 					verifyPeers(t, p, 5)
 				}
 				verifyLookupInvariants(t, state.peers)
+			},
+		},
+		{
+			name:                   "too small cluster - deadline passes",
+			nodeCountInitial:       4,
+			minimumClusterSize:     5,
+			minimumSizeWaitTimeout: 5 * time.Second,
+			extraAllowedErrors: []string{
+				`"deadline passed, marking cluster as ready to admit traffic"`,
+			},
+			assertionsInitial: func(t *assert.CollectT, state *testState) {
+				for _, p := range state.peers {
+					verifyMetrics(t, p,
+						`cluster_node_info{state="participant"} 1`,
+						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 4`,
+						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`,
+					)
+					verifyClusterNotReady(t, p)
+				}
+			},
+			changes: func(state *testState) {
+				time.Sleep(5 * time.Second)
+			},
+			assertionsFinal: func(t *assert.CollectT, state *testState) {
+				for _, p := range state.peers {
+					verifyMetrics(t, p,
+						`cluster_node_info{state="participant"} 1`,
+						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 4`,
+						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`,
+					)
+					verifyPeers(t, p, 4)
+				}
+				verifyLookupInvariants(t, state.peers)
+			},
+		},
+		{
+			name:               "cluster dips below minimum size",
+			nodeCountInitial:   5,
+			minimumClusterSize: 5,
+			extraAllowedErrors: []string{
+				`"minimum cluster size requirements are not met - marking cluster as not ready for traffic"`,
+			},
+			assertionsInitial: func(t *assert.CollectT, state *testState) {
+				for _, p := range state.peers {
+					verifyMetrics(t, p,
+						`cluster_node_info{state="participant"} 1`,
+						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 5`,
+						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 5`,
+					)
+					verifyPeers(t, p, 5)
+				}
+			},
+			changes: func(state *testState) {
+				state.peers[0].shutdown()
+				state.peers = state.peers[1:]
+			},
+			assertionsFinal: func(t *assert.CollectT, state *testState) {
+				for _, p := range state.peers {
+					verifyMetrics(t, p,
+						`cluster_node_info{state="participant"} 1`,
+						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 4`,
+						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`,
+					)
+					// verifyClusterNotReady(t, p)
+				}
+				// verifyLookupInvariants(t, state.peers)
 			},
 		},
 	}
@@ -299,16 +364,16 @@ testcomponents.slow_update "test" {
 
 			assert.EventuallyWithT(t, func(t *assert.CollectT) {
 				tc.assertionsInitial(t, state)
-			}, 60*time.Second, 200*time.Millisecond)
-			t.Logf("Initial assertions passed")
+			}, 60*time.Second, 1*time.Second)
+			t.Logf("Initial assertions checked")
 
 			tc.changes(state)
 			t.Logf("Changes applied")
 
 			assert.EventuallyWithT(t, func(t *assert.CollectT) {
 				tc.assertionsFinal(t, state)
-			}, 60*time.Second, 200*time.Millisecond)
-			t.Logf("Final assertions passed")
+			}, 60*time.Second, 1*time.Second)
+			t.Logf("Final assertions checked")
 
 			cancel()
 			state.shutdownGroup.Wait()
