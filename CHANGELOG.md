@@ -20,6 +20,8 @@ Main (unreleased)
 
 ### Enhancements
 
+- Add livedebugging support for structured_metadata in `loki.process` (@dehaansa)
+
 - (_Experimental_) Adding a new `prometheus.operator.scrapeconfigs` which discovers and scrapes [ScrapeConfig](https://prometheus-operator.dev/docs/developer/scrapeconfig/) Kubernetes resources. (@alex-berger)
 
 - Add `rfc3164_default_to_current_year` argument to `loki.source.syslog` (@dehaansa)
