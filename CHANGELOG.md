@@ -24,6 +24,9 @@ Main (unreleased)
 
 - Fix panic in `prometheus.exporter.postgres` when using minimal url as data source name. (@kalleep)
 
+- (_Experimental_) Various changes to the experimental component `database_observability.mysql`:
+  - `schema_table`: add support for index expressions (@cristiangreco)
+
 ### Other changes
 
 - Update the zap logging adapter used by `otelcol` components to log arrays and objects. (@dehaansa)
