@@ -31,12 +31,18 @@ type Cluster interface {
 	// op is less than numOwners.
 	//
 	// If the cluster is not ready to accept traffic, (nil, nil) will be returned, indicating there are no peers
-	// available.
+	// available. The local node should not accept traffic in this case to prevent overload. Use Ready to verify if
+	// cluster is ready.
 	Lookup(key shard.Key, replicationFactor int, op shard.Op) ([]peer.Peer, error)
 
 	// Peers returns the current set of peers for a Node. If the cluster is not yet ready to accept traffic, it will
-	// return nil.
+	// still return all the peers that are currently available. This is useful when we want to, for example, determine
+	// leadership in a cluster. However, if the traffic is sharded, the local node should not accept traffic when
+	// cluster is not ready. Use Ready to verify if cluster is ready.
 	Peers() []peer.Peer
+
+	// Ready returns true if the cluster is ready to accept traffic; otherwise, false.
+	Ready() bool
 }
 
 // alloyCluster implements the Cluster interface and manages the admission control logic.
@@ -76,7 +82,7 @@ func newAlloyCluster(
 
 // Lookup implements the Cluster interface. It determines the set of replicationFactor owners for a given key.
 func (c *alloyCluster) Lookup(key shard.Key, replicationFactor int, op shard.Op) ([]peer.Peer, error) {
-	if !c.readyToAdmitTraffic() {
+	if !c.Ready() {
 		// Return nil peers when cluster is not ready to admit traffic due to minimum size requirements
 		return nil, nil
 	}
@@ -85,15 +91,11 @@ func (c *alloyCluster) Lookup(key shard.Key, replicationFactor int, op shard.Op)
 
 // Peers implements the Cluster interface. It returns the current set of peers for a Node.
 func (c *alloyCluster) Peers() []peer.Peer {
-	if !c.readyToAdmitTraffic() {
-		// Return nil peers when cluster is not ready to admit traffic due to minimum size requirements
-		return nil
-	}
 	return c.sharder.Peers()
 }
 
-// readyToAdmitTraffic checks if the cluster is ready to admit traffic.
-func (c *alloyCluster) readyToAdmitTraffic() bool {
+// Ready checks if the cluster is ready to admit traffic.
+func (c *alloyCluster) Ready() bool {
 	c.updateReadyToAdmitTraffic() // update if needed
 	return c.isReadyToAdmitTraffic.Load()
 }

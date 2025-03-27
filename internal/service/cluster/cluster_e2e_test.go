@@ -62,6 +62,7 @@ func TestClusterE2E(t *testing.T) {
 						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 3`,
 					)
 					verifyPeers(t, p, 3)
+					verifyClusterReady(t, p)
 				}
 				verifyLookupInvariants(t, state.peers)
 			},
@@ -90,6 +91,7 @@ func TestClusterE2E(t *testing.T) {
 						`slow_update_counter{component_id="testcomponents.slow_update.test",component_path="/"} 30`,
 					)
 					verifyPeers(t, p, 3)
+					verifyClusterReady(t, p)
 				}
 				verifyLookupInvariants(t, state.peers)
 			},
@@ -105,6 +107,7 @@ func TestClusterE2E(t *testing.T) {
 						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`,
 					)
 					verifyPeers(t, p, 4)
+					verifyClusterReady(t, p)
 				}
 				verifyLookupInvariants(t, state.peers)
 			},
@@ -121,6 +124,7 @@ func TestClusterE2E(t *testing.T) {
 						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 8`,
 					)
 					verifyPeers(t, p, 8)
+					verifyClusterReady(t, p)
 				}
 				verifyLookupInvariants(t, state.peers)
 			},
@@ -139,6 +143,7 @@ func TestClusterE2E(t *testing.T) {
 						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 8`,
 					)
 					verifyPeers(t, p, 8)
+					verifyClusterReady(t, p)
 				}
 				verifyLookupInvariants(t, state.peers)
 			},
@@ -156,6 +161,7 @@ func TestClusterE2E(t *testing.T) {
 						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`,
 					)
 					verifyPeers(t, p, 4)
+					verifyClusterReady(t, p)
 				}
 				verifyLookupInvariants(t, state.peers)
 			},
@@ -175,6 +181,7 @@ func TestClusterE2E(t *testing.T) {
 						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`,
 					)
 					verifyPeers(t, p, 4)
+					verifyClusterReady(t, p)
 				}
 				verifyLookupInvariants(t, state.peers)
 			},
@@ -190,6 +197,7 @@ func TestClusterE2E(t *testing.T) {
 						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 4`,
 						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`,
 					)
+					verifyClusterReady(t, p)
 					verifyPeers(t, p, 4)
 					// NOTE: this and error logs are the only reliable indication that something went wrong...
 					// Currently, the cluster will continue operating with name conflicts, potentially doing some
@@ -212,6 +220,7 @@ func TestClusterE2E(t *testing.T) {
 						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 2`,
 						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 2`,
 					)
+					verifyClusterReady(t, p)
 					verifyPeers(t, p, 2)
 				}
 			},
@@ -225,6 +234,7 @@ func TestClusterE2E(t *testing.T) {
 						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 4`,
 						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`,
 					)
+					verifyClusterReady(t, p)
 					verifyPeers(t, p, 4)
 				}
 				verifyLookupInvariants(t, state.peers)
@@ -254,6 +264,7 @@ func TestClusterE2E(t *testing.T) {
 						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 5`,
 						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 5`,
 					)
+					verifyClusterReady(t, p)
 					verifyPeers(t, p, 5)
 				}
 				verifyLookupInvariants(t, state.peers)
@@ -287,6 +298,7 @@ func TestClusterE2E(t *testing.T) {
 						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 4`,
 						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`,
 					)
+					verifyClusterReady(t, p)
 					verifyPeers(t, p, 4)
 				}
 				verifyLookupInvariants(t, state.peers)
@@ -306,6 +318,7 @@ func TestClusterE2E(t *testing.T) {
 						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 5`,
 						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 5`,
 					)
+					verifyClusterReady(t, p)
 					verifyPeers(t, p, 5)
 				}
 			},
@@ -384,13 +397,18 @@ func TestClusterE2E(t *testing.T) {
 func verifyClusterNotReady(t *assert.CollectT, p *testPeer) {
 	clusterService, ok := p.clusterService.Data().(cluster.Cluster)
 	require.True(t, ok)
-	peers := clusterService.Peers()
-	require.Nil(t, peers, "Peers should be nil when cluster not ready")
+	require.False(t, clusterService.Ready(), "Cluster should not be ready")
 
 	key := shard.StringKey("test-key")
 	owningPeers, err := clusterService.Lookup(key, 1, shard.OpReadWrite)
 	require.NoError(t, err)
 	require.Nil(t, owningPeers, "Lookup should return nil when cluster not ready")
+}
+
+func verifyClusterReady(t *assert.CollectT, p *testPeer) {
+	clusterService, ok := p.clusterService.Data().(cluster.Cluster)
+	require.True(t, ok)
+	require.True(t, clusterService.Ready(), "Cluster should be ready")
 }
 
 type testPeer struct {
