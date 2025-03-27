@@ -60,6 +60,7 @@ Name        | Type           | Description                                      
 * `openshift`
 * `kubernetes_node`
 * `kubeadm`
+* `dynatrace`
 
 `env` is the only detector that is not configured through a block.
 The `env` detector reads resource information from the `OTEL_RESOURCE_ATTRIBUTES` environment variable.
@@ -102,6 +103,7 @@ system            | [system][]            |                                     
 openshift         | [openshift][]         |                                                   | no
 kubernetes_node   | [kubernetes_node][]   |                                                   | no
 kubeadm           | [kubeadm][]           |                                                   | no
+dynatrace         | [dynatrace][]         |                                                   | no
 debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
 
 [output]: #output
@@ -122,6 +124,7 @@ debug_metrics | [debug_metrics][] | Configures the metrics that this component g
 [kubernetes_node]: #kubernetes_node
 [kubadm]: #kubeadm
 [res-attr-cfg]: #resource-attribute-config
+[dynatrace]: #dynatrace
 
 ### output
 
@@ -824,6 +827,26 @@ The `resource_attributes` block supports the following blocks:
 | Block                            | Description                                                                             | Required |
 | -------------------------------- | --------------------------------------------------------------------------------------- | -------- |
 | [k8s.cluster.name][res-attr-cfg] | Toggles the `k8s.cluster.name` resource attribute. Sets `enabled` to `true` by default. | no       |
+
+### dynatrace
+
+The `dynatrace` block loads resource information from the `dt_host_metadata.properties` file which is located in
+the `/var/lib/dynatrace/enrichment` (on *nix systems) or `%ProgramData%\dynatrace\enrichment` (on Windows) directories.
+
+The `dynatrace` block supports the following blocks:
+
+Block                                               | Description                                  | Required
+----------------------------------------------------|----------------------------------------------|---------
+[resource_attributes](#dynatrace--resource_attributes) | Configures which resource attributes to add. | no
+
+#### dynatrace > resource_attributes
+
+The `resource_attributes` block supports the following blocks:
+
+Block                                             | Description                                                                                                   | Required
+--------------------------------------------------|---------------------------------------------------------------------------------------------------------------|---------
+[host.name][res-attr-cfg]                        | Toggles the `host.name` resource attribute. <br> Sets `enabled` to `true` by default.                        | no
+[dt.entity.host][res-attr-cfg]                   | Toggles the `dt.entity.host` resource attribute. <br> Sets `enabled` to `true` by default.                   | no
 
 ## Common configuration
 
