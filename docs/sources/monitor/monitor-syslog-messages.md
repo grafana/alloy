@@ -73,14 +73,6 @@ To use the Grafana Logs Drilldown, open your browser and navigate to [http://loc
 
 To create a [dashboard](https://grafana.com/docs/grafana/latest/getting-started/build-first-dashboard/#create-a-dashboard) to visualise your metrics and logs, open your browser and navigate to [`http://localhost:3000/dashboards`](http://localhost:3000/dashboards).
 
-## Shut down the Grafana stack
-
-Stop Docker to shut down the Grafana stack.
-
-```shell
-docker compose down
-```
-
 ## Understand the {{% param "PRODUCT_NAME" %}} configuration
 
 This example uses a `config.alloy` file to configure the {{< param "PRODUCT_NAME" >}} components for logging.
