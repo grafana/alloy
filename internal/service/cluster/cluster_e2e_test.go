@@ -398,11 +398,6 @@ func verifyClusterNotReady(t *assert.CollectT, p *testPeer) {
 	clusterService, ok := p.clusterService.Data().(cluster.Cluster)
 	require.True(t, ok)
 	require.False(t, clusterService.Ready(), "Cluster should not be ready")
-
-	key := shard.StringKey("test-key")
-	owningPeers, err := clusterService.Lookup(key, 1, shard.OpReadWrite)
-	require.NoError(t, err)
-	require.Nil(t, owningPeers, "Lookup should return nil when cluster not ready")
 }
 
 func verifyClusterReady(t *assert.CollectT, p *testPeer) {

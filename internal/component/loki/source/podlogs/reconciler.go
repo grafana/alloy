@@ -175,7 +175,7 @@ func distributeTargets(c cluster.Cluster, targets []*kubetail.Target) []*kubetai
 	if c == nil {
 		return targets
 	}
-	if !c.Ready() {
+	if !c.Ready() { // take no traffic if cluster is not yet ready
 		return make([]*kubetail.Target, 0)
 	}
 
