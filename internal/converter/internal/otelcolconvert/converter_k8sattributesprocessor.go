@@ -128,7 +128,6 @@ func toFilterExtract(cfg []k8sattributesprocessor.FieldExtractConfig) []k8sattri
 			TagName:  c.TagName,
 			Key:      c.Key,
 			KeyRegex: c.KeyRegex,
-			Regex:    c.Regex,
 			From:     c.From,
 		})
 	}

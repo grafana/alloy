@@ -4,7 +4,6 @@ type FieldExtractConfig struct {
 	TagName  string `alloy:"tag_name,attr,optional"`
 	Key      string `alloy:"key,attr,optional"`
 	KeyRegex string `alloy:"key_regex,attr,optional"`
-	Regex    string `alloy:"regex,attr,optional"`
 	From     string `alloy:"from,attr,optional"`
 }
 
@@ -13,7 +12,6 @@ func (args FieldExtractConfig) convert() map[string]interface{} {
 		"tag_name":  args.TagName,
 		"key":       args.Key,
 		"key_regex": args.KeyRegex,
-		"regex":     args.Regex,
 		"from":      args.From,
 	}
 }
