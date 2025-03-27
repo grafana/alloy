@@ -16,7 +16,7 @@ import (
 	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	extauth "go.opentelemetry.io/collector/extension/auth"
+	extauth "go.opentelemetry.io/collector/extension/extensionauth"
 )
 
 // Test performs a basic integration test which runs the otelcol.auth.sigv4
