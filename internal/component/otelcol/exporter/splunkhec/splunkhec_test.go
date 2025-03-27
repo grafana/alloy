@@ -2,7 +2,6 @@ package splunkhec_test
 
 import (
 	"testing"
-	"time"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/splunkhecexporter"
 
@@ -45,10 +44,10 @@ func TestConfigConversion(t *testing.T) {
 			Headers:              map[string]configopaque.String(nil),
 			Auth:                 (*configauth.Authentication)(nil),
 			Compression:          "",
-			MaxIdleConns:         (*int)(nil),
-			MaxIdleConnsPerHost:  (*int)(nil),
-			MaxConnsPerHost:      (*int)(nil),
-			IdleConnTimeout:      (*time.Duration)(nil),
+			MaxIdleConns:         0,
+			MaxIdleConnsPerHost:  0,
+			MaxConnsPerHost:      0,
+			IdleConnTimeout:      0,
 			DisableKeepAlives:    false,
 			HTTP2ReadIdleTimeout: 0,
 			HTTP2PingTimeout:     0,
@@ -122,14 +121,15 @@ func TestConfigConversion(t *testing.T) {
 				InsecureSkipVerify: false,
 				ServerName:         "",
 			}, ReadBufferSize: 0,
-			WriteBufferSize: 0,
-			Timeout:         15000000000,
-			Headers:         map[string]configopaque.String(nil),
-			Auth:            (*configauth.Authentication)(nil),
-			Compression:     "", MaxIdleConns: (*int)(nil),
-			MaxIdleConnsPerHost:  (*int)(nil),
-			MaxConnsPerHost:      (*int)(nil),
-			IdleConnTimeout:      (*time.Duration)(nil),
+			WriteBufferSize:      0,
+			Timeout:              15000000000,
+			Headers:              map[string]configopaque.String(nil),
+			Auth:                 (*configauth.Authentication)(nil),
+			Compression:          "",
+			MaxIdleConns:         0,
+			MaxIdleConnsPerHost:  0,
+			MaxConnsPerHost:      0,
+			IdleConnTimeout:      0,
 			DisableKeepAlives:    false,
 			HTTP2ReadIdleTimeout: 0,
 			HTTP2PingTimeout:     0,
