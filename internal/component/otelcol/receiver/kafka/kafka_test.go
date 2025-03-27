@@ -12,6 +12,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/config/configretry"
 )
 
 func TestArguments_UnmarshalAlloy(t *testing.T) {
@@ -51,6 +52,14 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					ExtractHeaders: false,
 					Headers:        []string{},
 				},
+				ErrorBackOff: configretry.BackOffConfig{
+					Enabled:             false,
+					InitialInterval:     0,
+					RandomizationFactor: 0,
+					Multiplier:          0,
+					MaxInterval:         0,
+					MaxElapsedTime:      0,
+				},
 				MinFetchSize:     1,
 				DefaultFetchSize: 1048576,
 				MaxFetchSize:     0,
@@ -87,6 +96,14 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					extract_headers = true
 					headers = ["foo", "bar"]
 				}
+				error_backoff {
+					enabled = true
+					initial_interval = "1s"
+					randomization_factor = 0.1
+					multiplier = 1.2
+					max_interval = "1s"
+					max_elapsed_time = "1m"
+				}
 				min_fetch_size = 2
 				default_fetch_size = 10000
 				max_fetch_size = 20
@@ -120,6 +137,14 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				HeaderExtraction: kafkareceiver.HeaderExtraction{
 					ExtractHeaders: true,
 					Headers:        []string{"foo", "bar"},
+				},
+				ErrorBackOff: configretry.BackOffConfig{
+					Enabled:             true,
+					InitialInterval:     1 * time.Second,
+					RandomizationFactor: 0.1,
+					Multiplier:          1.2,
+					MaxInterval:         1 * time.Second,
+					MaxElapsedTime:      1 * time.Minute,
 				},
 				MinFetchSize:     2,
 				DefaultFetchSize: 10000,
@@ -191,6 +216,14 @@ func TestArguments_Auth(t *testing.T) {
 					ExtractHeaders: false,
 					Headers:        []string{},
 				},
+				"error_backoff": configretry.BackOffConfig{
+					Enabled:             false,
+					InitialInterval:     0,
+					RandomizationFactor: 0,
+					Multiplier:          0,
+					MaxInterval:         0,
+					MaxElapsedTime:      0,
+				},
 				"auth": map[string]interface{}{
 					"plain_text": map[string]interface{}{
 						"username": "test_username",
@@ -245,6 +278,14 @@ func TestArguments_Auth(t *testing.T) {
 				"header_extraction": kafkareceiver.HeaderExtraction{
 					ExtractHeaders: false,
 					Headers:        []string{},
+				},
+				"error_backoff": configretry.BackOffConfig{
+					Enabled:             false,
+					InitialInterval:     0,
+					RandomizationFactor: 0,
+					Multiplier:          0,
+					MaxInterval:         0,
+					MaxElapsedTime:      0,
 				},
 				"auth": map[string]interface{}{
 					"sasl": map[string]interface{}{
@@ -307,6 +348,14 @@ func TestArguments_Auth(t *testing.T) {
 					ExtractHeaders: false,
 					Headers:        []string{},
 				},
+				"error_backoff": configretry.BackOffConfig{
+					Enabled:             false,
+					InitialInterval:     0,
+					RandomizationFactor: 0,
+					Multiplier:          0,
+					MaxInterval:         0,
+					MaxElapsedTime:      0,
+				},
 				"auth": map[string]interface{}{
 					"tls": map[string]interface{}{
 						"insecure":             true,
@@ -367,6 +416,14 @@ func TestArguments_Auth(t *testing.T) {
 				"header_extraction": kafkareceiver.HeaderExtraction{
 					ExtractHeaders: false,
 					Headers:        []string{},
+				},
+				"error_backoff": configretry.BackOffConfig{
+					Enabled:             false,
+					InitialInterval:     0,
+					RandomizationFactor: 0,
+					Multiplier:          0,
+					MaxInterval:         0,
+					MaxElapsedTime:      0,
 				},
 				"auth": map[string]interface{}{
 					"kerberos": map[string]interface{}{

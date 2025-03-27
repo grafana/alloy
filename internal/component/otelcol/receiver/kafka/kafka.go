@@ -54,6 +54,8 @@ type Arguments struct {
 	DefaultFetchSize int32 `alloy:"default_fetch_size,attr,optional"`
 	MaxFetchSize     int32 `alloy:"max_fetch_size,attr,optional"`
 
+	ErrorBackOff otelcol.RetryArguments `alloy:"error_backoff,block,optional"`
+
 	// DebugMetrics configures component internal metrics. Optional.
 	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
 
@@ -86,6 +88,7 @@ func (args *Arguments) SetToDefault() {
 	args.MessageMarking.SetToDefault()
 	args.HeaderExtraction.SetToDefault()
 	args.DebugMetrics.SetToDefault()
+	// ErrorBackOff is not set by default upstream
 }
 
 // Validate implements syntax.Validator.
@@ -137,6 +140,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	result.MinFetchSize = args.MinFetchSize
 	result.DefaultFetchSize = args.DefaultFetchSize
 	result.MaxFetchSize = args.MaxFetchSize
+	result.ErrorBackOff = *args.ErrorBackOff.Convert()
 
 	return &result, nil
 }
