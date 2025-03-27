@@ -174,7 +174,7 @@ func (c *Component) handleIn(ctx context.Context, wg *sync.WaitGroup) {
 						level.Error(c.opts.Logger).Log("receiver", c.opts.ID, "error", err)
 						structured_metadata = []byte("{}")
 					}
-					return fmt.Sprintf("[OUT]: timestamp: %s, entry: %s, labels: %s, structured_metadata: %s", entry.Timestamp.Format(time.RFC3339Nano), entry.Line, entry.Labels.String(), string(structured_metadata))
+					return fmt.Sprintf("[IN]: timestamp: %s, entry: %s, labels: %s, structured_metadata: %s", entry.Timestamp.Format(time.RFC3339Nano), entry.Line, entry.Labels.String(), string(structured_metadata))
 				},
 			))
 			select {
