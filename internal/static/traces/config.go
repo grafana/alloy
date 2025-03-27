@@ -29,12 +29,12 @@ import (
 	"go.opentelemetry.io/collector/config/configopaque"
 	"go.opentelemetry.io/collector/confmap"
 	"go.opentelemetry.io/collector/confmap/provider/yamlprovider"
-	otelexporter "go.opentelemetry.io/collector/exporter"
+	otel_exporter "go.opentelemetry.io/collector/exporter"
 	"go.opentelemetry.io/collector/exporter/otlpexporter"
 	"go.opentelemetry.io/collector/exporter/otlphttpexporter"
 	"go.opentelemetry.io/collector/extension"
 	"go.opentelemetry.io/collector/otelcol"
-	otelprocessor "go.opentelemetry.io/collector/processor"
+	"go.opentelemetry.io/collector/processor"
 	"go.opentelemetry.io/collector/processor/batchprocessor"
 	"go.opentelemetry.io/collector/receiver"
 	"go.opentelemetry.io/collector/receiver/otlpreceiver"
@@ -868,7 +868,7 @@ func (c *InstanceConfig) OtelConfig() (*otelcol.Config, error) {
 // tracingFactories() only creates the needed factories.  if we decide to add support for a new
 // processor, exporter, receiver we need to add it here
 func tracingFactories() (otelcol.Factories, error) {
-	extensions, err := extension.MakeFactoryMap(
+	extensions, err := otelcol.MakeFactoryMap[extension.Factory](
 		oauth2clientauthextension.NewFactory(),
 		jaegerremotesampling.NewFactory(),
 	)
@@ -876,7 +876,7 @@ func tracingFactories() (otelcol.Factories, error) {
 		return otelcol.Factories{}, err
 	}
 
-	receivers, err := receiver.MakeFactoryMap(
+	receivers, err := otelcol.MakeFactoryMap[receiver.Factory](
 		jaegerreceiver.NewFactory(),
 		zipkinreceiver.NewFactory(),
 		otlpreceiver.NewFactory(),
@@ -889,7 +889,7 @@ func tracingFactories() (otelcol.Factories, error) {
 		return otelcol.Factories{}, err
 	}
 
-	exporters, err := otelexporter.MakeFactoryMap(
+	exporters, err := otelcol.MakeFactoryMap[otel_exporter.Factory](
 		otlpexporter.NewFactory(),
 		otlphttpexporter.NewFactory(),
 		loadbalancingexporter.NewFactory(),
@@ -900,7 +900,7 @@ func tracingFactories() (otelcol.Factories, error) {
 		return otelcol.Factories{}, err
 	}
 
-	processors, err := otelprocessor.MakeFactoryMap(
+	processors, err := otelcol.MakeFactoryMap[processor.Factory](
 		batchprocessor.NewFactory(),
 		attributesprocessor.NewFactory(),
 		promsdprocessor.NewFactory(),
