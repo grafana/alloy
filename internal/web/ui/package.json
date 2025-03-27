@@ -40,6 +40,7 @@
     "react-scripts/@svgr/webpack": "^8.0.1",
     "react-scripts/resolve-url-loader/postcss": "^8.4.31",
     "react-syntax-highlighter/refractor/prismjs": "^1.30.0",
+    "@types/react-syntax-highlighter/@types/react": "^18.3.20",
     "@grafana/data/dompurify": "^3.2.4",
     "@grafana/ui/prismjs": "^1.30.0"
   },
