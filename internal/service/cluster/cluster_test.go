@@ -232,6 +232,46 @@ func TestAdmitTrafficSequence_NoDeadline(t *testing.T) {
 	assert.True(t, s.alloyCluster.readyToAdmitTraffic())
 }
 
+func TestAdmitTrafficSequence_RateLimited(t *testing.T) {
+	t.Parallel()
+	minimumClusterSize := 10
+	limiterInterval := time.Second * 2 // makes a test a bit longer, but lower risk of flakes when GC happens
+
+	s := newTestService(Options{
+		EnableClustering:   true,
+		MinimumClusterSize: minimumClusterSize,
+	}, buildPeers(1), time.Time{})
+	s.alloyCluster.limiter = rate.NewLimiter(rate.Every(limiterInterval), 1)
+
+	// not enough peers - not ready
+	updateSharder(s, &mockSharder{peers: buildPeers(minimumClusterSize - 1)})
+	assert.False(t, s.alloyCluster.readyToAdmitTraffic())
+
+	// enough peers, but rate limited
+	updateSharder(s, &mockSharder{peers: buildPeers(minimumClusterSize)})
+	for i := 0; i < 10; i++ {
+		assert.False(t, s.alloyCluster.readyToAdmitTraffic())
+	}
+
+	// rate limit passed - ready
+	time.Sleep(limiterInterval)
+	for i := 0; i < 10; i++ {
+		assert.True(t, s.alloyCluster.readyToAdmitTraffic())
+	}
+
+	// dip below required - but we are rate limited - still ready
+	updateSharder(s, &mockSharder{peers: buildPeers(minimumClusterSize - 1)})
+	for i := 0; i < 10; i++ {
+		assert.True(t, s.alloyCluster.readyToAdmitTraffic())
+	}
+
+	// rate limit passed - we are not ready now
+	time.Sleep(limiterInterval)
+	for i := 0; i < 10; i++ {
+		assert.False(t, s.alloyCluster.readyToAdmitTraffic())
+	}
+}
+
 func updateSharder(service *Service, sharder *mockSharder) {
 	service.sharder = sharder
 	service.alloyCluster.sharder = sharder
