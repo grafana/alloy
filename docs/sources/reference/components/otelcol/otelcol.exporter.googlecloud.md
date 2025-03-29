@@ -169,7 +169,10 @@ information.
 
 ### Logging
 
-This example scrapes logs from local files through a receiver for conversion to OpenTelemetry format before finally sending them to Cloud Logging:
+This example scrapes logs from local files through a receiver for conversion to OpenTelemetry format before finally sending them to Cloud Logging.
+
+Note that this configuration includes the recommended `memory_limiter` and `batch` plugins, which avoid high latency for reporting telemetry,
+and ensure that the collector itself will stay stable (not run out of memory) by dropping telemetry if needed.
 
 ```alloy
 local.file_match "logs" {
@@ -183,16 +186,35 @@ local.file_match "logs" {
 
 loki.source.file "logs" {
   targets    = local.file_match.logs.targets
-  forward_to = [otelcol.receiver.loki.default.receiver]
+  forward_to = [otelcol.receiver.loki.gcp.receiver]
 }
 
-otelcol.receiver.loki "default" {
+otelcol.receiver.loki "gcp" {
   output {
-    logs = [otelcol.exporter.googlecloud.logs.input]
+    logs = [otelcol.processor.memory_limiter.gcp.input]
   }
 }
 
-otelcol.exporter.googlecloud "logs" {
+otelcol.processor.memory_limiter "gcp" {
+  check_interval = "1s"
+  limit = "200MiB"
+
+  output {
+    metrics = [otelcol.processor.batch.gcp.input]
+    logs = [otelcol.processor.batch.gcp.input]
+    traces = [otelcol.processor.batch.gcp.input]
+  }
+}
+
+otelcol.processor.batch "gcp" {
+  output {
+    metrics = [otelcol.exporter.googlecloud.default.input]
+    logs = [otelcol.exporter.googlecloud.default.input]
+    traces = [otelcol.exporter.googlecloud.default.input]
+  }
+}
+
+otelcol.exporter.googlecloud "default" {
   project = "my-gcp-project"
   log {
     default_log_name = "opentelemetry.io/collector-exported-log"
