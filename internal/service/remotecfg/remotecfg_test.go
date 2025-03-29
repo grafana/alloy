@@ -69,7 +69,7 @@ func TestOnDiskCache(t *testing.T) {
 }
 
 func TestGoodBadGood(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	url := "https://example.com/"
 	cfgGood := `loki.process "default" { forward_to = [] }`
 	cfgBad := `unparseable config`
@@ -136,7 +136,7 @@ func TestGoodBadGood(t *testing.T) {
 }
 
 func TestAPIResponse(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	url := "https://example.com/"
 	cfg1 := `loki.process "default" { forward_to = [] }`
 	cfg2 := `loki.process "updated" { forward_to = [] }`
@@ -184,7 +184,7 @@ func TestAPIResponse(t *testing.T) {
 }
 
 func TestAPIResponseNotModified(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	url := "https://example.com/"
 	cfg1 := `loki.process "default" { forward_to = [] }`
 

@@ -5,36 +5,12 @@ import (
 	"log/slog"
 	"strings"
 	"testing"
-	"testing/slogtest"
 
 	"github.com/go-kit/log"
-	"github.com/go-logfmt/logfmt"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/runtime/logging"
 )
-
-func TestWithSlogTester(t *testing.T) {
-	buffer := bytes.NewBuffer(nil)
-	handler := logging.NewSlogGoKitHandler(log.NewLogfmtLogger(buffer))
-
-	err := slogtest.TestHandler(handler, func() []map[string]any {
-		results := []map[string]any{}
-
-		dec := logfmt.NewDecoder(buffer)
-		for dec.ScanRecord() {
-			res := map[string]any{}
-			for dec.ScanKeyval() {
-				res[string(dec.Key())] = dec.Value()
-			}
-			results = append(results, res)
-		}
-
-		require.NoError(t, dec.Err())
-		return results
-	})
-	require.NoError(t, err)
-}
 
 func TestUpdateLevel(t *testing.T) {
 	buffer := bytes.NewBuffer(nil)

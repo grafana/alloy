@@ -101,7 +101,7 @@ func TestJSONLabelsStage(t *testing.T) {
 
 	c, err := New(opts, args)
 	require.NoError(t, err)
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	wgRun := sync.WaitGroup{}
 
 	wgRun.Add(1)
@@ -212,7 +212,7 @@ stage.label_keep {
 
 	c, err := New(opts, args)
 	require.NoError(t, err)
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	go c.Run(ctx)
 
@@ -308,7 +308,7 @@ stage.labels {
 
 	c, err := New(opts, args)
 	require.NoError(t, err)
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	go c.Run(ctx)
 
@@ -376,7 +376,7 @@ stage.static_labels {
 	args1.ForwardTo = []loki.LogsReceiver{ch1}
 	args2.ForwardTo = []loki.LogsReceiver{ch2}
 
-	ctx, ctxCancel := context.WithCancel(context.Background())
+	ctx, ctxCancel := context.WithCancel(t.Context())
 	defer ctxCancel()
 
 	// Start the loki.process components.
@@ -466,7 +466,7 @@ func startTestFrequentUpdate(t *testing.T, cfg string) *testFrequentUpdate {
 		stopReceiving: make(chan struct{}),
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 
 	res.keepSending.Store(true)
 	res.keepUpdating.Store(true)
@@ -838,7 +838,7 @@ func newTester(t *testing.T) *tester {
 	c, err := New(opts, args)
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	go c.Run(ctx)
 
 	logTimestamp := time.Now()

@@ -15,7 +15,6 @@
 package strategy_store
 
 import (
-	"context"
 	"fmt"
 	"testing"
 
@@ -73,19 +72,19 @@ func strategiesJSON(probability float32) string {
 func TestStrategyStore(t *testing.T) {
 	store, err := NewStrategyStore(strategiesJSON(.8), zap.NewNop())
 	require.NoError(t, err)
-	s, err := store.GetSamplingStrategy(context.Background(), "foo")
+	s, err := store.GetSamplingStrategy(t.Context(), "foo")
 	require.NoError(t, err)
 	assert.EqualValues(t, makeResponse(api_v2.SamplingStrategyType_PROBABILISTIC, 0.8), *s)
 
-	s, err = store.GetSamplingStrategy(context.Background(), "bar")
+	s, err = store.GetSamplingStrategy(t.Context(), "bar")
 	require.NoError(t, err)
 	assert.EqualValues(t, makeResponse(api_v2.SamplingStrategyType_RATE_LIMITING, 5), *s)
 
-	s, err = store.GetSamplingStrategy(context.Background(), "default")
+	s, err = store.GetSamplingStrategy(t.Context(), "default")
 	require.NoError(t, err)
 	assert.EqualValues(t, makeResponse(api_v2.SamplingStrategyType_PROBABILISTIC, 0.5), *s)
 
-	s, err = store.GetSamplingStrategy(context.Background(), "foo-per-op")
+	s, err = store.GetSamplingStrategy(t.Context(), "foo-per-op")
 	require.NoError(t, err)
 	expected := makeResponse(api_v2.SamplingStrategyType_PROBABILISTIC, 0.8)
 	expected.OperationSampling = &api_v2.PerOperationSamplingStrategies{

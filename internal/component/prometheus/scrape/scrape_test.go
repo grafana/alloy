@@ -158,7 +158,7 @@ func TestForwardingToAppendable(t *testing.T) {
 	require.NoError(t, err)
 
 	// Forwarding samples to the nil receivers shouldn't fail.
-	appender := s.appendable.Appender(context.Background())
+	appender := s.appendable.Appender(t.Context())
 	_, err = appender.Append(0, labels.FromStrings("foo", "bar"), 0, 0)
 	require.NoError(t, err)
 
@@ -180,7 +180,7 @@ func TestForwardingToAppendable(t *testing.T) {
 	require.NoError(t, err)
 
 	// Forwarding a sample to the mock receiver should succeed.
-	appender = s.appendable.Appender(context.Background())
+	appender = s.appendable.Appender(t.Context())
 	timestamp := time.Now().Unix()
 	sample := labels.FromStrings("foo", "bar")
 	_, err = appender.Append(0, sample, timestamp, 42.0)
@@ -197,7 +197,7 @@ func TestForwardingToAppendable(t *testing.T) {
 // TestCustomDialer ensures that prometheus.scrape respects the custom dialer
 // given to it.
 func TestCustomDialer(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	var (
