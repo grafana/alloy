@@ -8,6 +8,8 @@ changes that impact end-user behavior are listed; changes to documentation or
 internal API changes are not present.
 
 Main (unreleased)
+
+-  TODO - changelog entry for `otelcol.exporter.file`
 -----------------
 
 ### Features
