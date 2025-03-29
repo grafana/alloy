@@ -8,7 +8,8 @@ local cluster_node_filename = 'alloy-cluster-node.json';
   local templateVariables = 
     templates.newTemplateVariablesList(
       filterSelector=$._config.filterSelector, 
-      enableK8sCluster=$._config.enableK8sCluster, 
+      enableK8sCluster=$._config.enableK8sCluster,
+      enableAlloyCluster=$._config.enableAlloyCluster,
       includeInstance=false,
       setenceCaseLabels=$._config.useSetenceCaseTemplateLabels),
 
@@ -63,6 +64,7 @@ local cluster_node_filename = 'alloy-cluster-node.json';
                 __name__: true,
                 cluster: true,
                 namespace: true,
+                cluster_name: true,
                 state: false,
               },
               indexByName: {},
@@ -102,7 +104,7 @@ local cluster_node_filename = 'alloy-cluster-node.json';
                     {
                       targetBlank: false,
                       title: 'Detail dashboard for node',
-                      url: '/d/%(uid)s/alloy-cluster-node?var-instance=${__data.fields.instance}&var-datasource=${datasource}&var-loki_datasource=${loki_datasource}&var-job=${job}&var-cluster=${cluster}&var-namespace=${namespace}' % { uid: std.md5(cluster_node_filename) },
+                      url: '/d/%(uid)s/alloy-cluster-node?var-instance=${__data.fields.instance}&var-datasource=${datasource}&var-loki_datasource=${loki_datasource}&var-job=${job}&var-cluster=${cluster}&var-namespace=${namespace}&var-alloyCluster=${alloyCluster}' % { uid: std.md5(cluster_node_filename) },
                     },
                   ],
                 },
