@@ -75,16 +75,18 @@ type Options struct {
 	// possible for other nodes to join the cluster.
 	EnableClustering bool
 
-	NodeName            string        // Name to use for this node in the cluster.
-	AdvertiseAddress    string        // Address to advertise to other nodes in the cluster.
-	EnableTLS           bool          // Specifies whether TLS should be used for communication between peers.
-	TLSCAPath           string        // Path to the CA file.
-	TLSCertPath         string        // Path to the certificate file.
-	TLSKeyPath          string        // Path to the key file.
-	TLSServerName       string        // Server name to use for TLS communication.
-	RejoinInterval      time.Duration // How frequently to rejoin the cluster to address split brain issues.
-	ClusterMaxJoinPeers int           // Number of initial peers to join from the discovered set.
-	ClusterName         string        // Name to prevent nodes without this identifier from joining the cluster.
+	NodeName               string        // Name to use for this node in the cluster.
+	AdvertiseAddress       string        // Address to advertise to other nodes in the cluster.
+	EnableTLS              bool          // Specifies whether TLS should be used for communication between peers.
+	TLSCAPath              string        // Path to the CA file.
+	TLSCertPath            string        // Path to the certificate file.
+	TLSKeyPath             string        // Path to the key file.
+	TLSServerName          string        // Server name to use for TLS communication.
+	RejoinInterval         time.Duration // How frequently to rejoin the cluster to address split brain issues.
+	ClusterMaxJoinPeers    int           // Number of initial peers to join from the discovered set.
+	ClusterName            string        // Name to prevent nodes without this identifier from joining the cluster.
+	MinimumClusterSize     int           // Minimum cluster size before admitting traffic to components that use clustering.
+	MinimumSizeWaitTimeout time.Duration // Maximum duration to wait for minimum cluster size before proceeding; 0 means no timeout.
 
 	// Function to discover peers to join. If this function is nil or returns an
 	// empty slice, no peers will be joined.
@@ -100,6 +102,28 @@ type Service struct {
 	sharder shard.Sharder
 	node    *ckit.Node
 	randGen *rand.Rand
+
+	// alloyCluster is given to components via calls to Data() and implements Cluster.
+	alloyCluster *alloyCluster
+}
+
+// Component is a component which subscribes to clustering updates.
+type Component interface {
+	component.Component
+
+	// NotifyClusterChange notifies the component that the state of the cluster
+	// has changed.
+	//
+	// Implementations should ignore calls to this method if they are configured
+	// to not utilize clustering.
+	NotifyClusterChange()
+}
+
+// ComponentBlock holds common arguments for clustering settings within a
+// component. ComponentBlock is intended to be exposed as a block called
+// "clustering".
+type ComponentBlock struct {
+	Enabled bool `alloy:"enabled,attr"`
 }
 
 var (
@@ -167,7 +191,7 @@ func New(opts Options) (*Service, error) {
 		}
 	}
 
-	return &Service{
+	s := &Service{
 		log:    l,
 		tracer: t,
 		opts:   opts,
@@ -175,7 +199,11 @@ func New(opts Options) (*Service, error) {
 		sharder: ckitConfig.Sharder,
 		node:    node,
 		randGen: rand.New(rand.NewSource(time.Now().UnixNano())),
-	}, nil
+	}
+
+	s.alloyCluster = newAlloyCluster(l, ckitConfig.Sharder, opts)
+
+	return s, nil
 }
 
 func loadTLSConfigFromFile(TLSCAPath string, TLSCertPath string, TLSKeyPath string, serverName string) (*tls.Config, error) {
@@ -299,6 +327,9 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 		s.logPeers("peers changed", toStringSlice(peers))
 		span.SetAttributes(attribute.Int("peers_count", len(peers)))
 
+		// Peers changed - update the ready-to-admit-traffic state
+		s.alloyCluster.updateReadyToAdmitTraffic()
+
 		// Notify all components about the clustering change.
 		components := component.GetAllComponents(host, component.InfoOptions{})
 		for _, comp := range components {
@@ -338,6 +369,8 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 		"peers_count", len(peers),
 		"peers", strings.Join(peers, ","),
 		"advertise_addr", s.opts.AdvertiseAddress,
+		"minimum_cluster_size", s.opts.MinimumClusterSize,
+		"minimum_size_wait_timeout", s.opts.MinimumSizeWaitTimeout,
 	)
 
 	if err := s.node.Start(peers); err != nil {
@@ -351,6 +384,9 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 			os.Exit(1)
 		}
 	}
+
+	// Update the ready-to-admit state after node start
+	s.alloyCluster.updateReadyToAdmitTraffic()
 
 	if s.opts.EnableClustering && s.opts.RejoinInterval > 0 {
 		wg.Add(1)
@@ -410,6 +446,7 @@ func (s *Service) getPeers() ([]string, error) {
 	}
 
 	// We shuffle the list and return only a subset of the peers.
+	// TODO(thampiotr): verify that this can be called from multiple threads
 	s.randGen.Shuffle(len(peers), func(i, j int) {
 		peers[i], peers[j] = peers[j], peers[i]
 	})
@@ -442,7 +479,7 @@ func (s *Service) Update(_ any) error {
 
 // Data returns an instance of [Cluster].
 func (s *Service) Data() any {
-	return &sharderCluster{sharder: s.sharder}
+	return s.alloyCluster
 }
 
 func (s *Service) logPeers(msg string, peers []string) {
@@ -452,54 +489,6 @@ func (s *Service) logPeers(msg string, peers []string) {
 		"peers_count", len(peers),
 		"peers", util.JoinWithTruncation(peers, ",", maxPeersToLog, "..."),
 	)
-}
-
-// Component is a component which subscribes to clustering updates.
-type Component interface {
-	component.Component
-
-	// NotifyClusterChange notifies the component that the state of the cluster
-	// has changed.
-	//
-	// Implementations should ignore calls to this method if they are configured
-	// to not utilize clustering.
-	NotifyClusterChange()
-}
-
-// ComponentBlock holds common arguments for clustering settings within a
-// component. ComponentBlock is intended to be exposed as a block called
-// "clustering".
-type ComponentBlock struct {
-	Enabled bool `alloy:"enabled,attr"`
-}
-
-// Cluster is a read-only view of a cluster.
-type Cluster interface {
-	// Lookup determines the set of replicationFactor owners for a given key.
-	// peer.Peer.Self can be used to determine if the local node is the owner,
-	// allowing for short-circuiting logic to connect directly to the local node
-	// instead of using the network.
-	//
-	// Callers can use github.com/grafana/ckit/shard.StringKey or
-	// shard.NewKeyBuilder to create a key.
-	Lookup(key shard.Key, replicationFactor int, op shard.Op) ([]peer.Peer, error)
-
-	// Peers returns the current set of peers for a Node.
-	Peers() []peer.Peer
-}
-
-// sharderCluster shims an implementation of [shard.Sharder] to [Cluster] which
-// removes the ability to change peers.
-type sharderCluster struct{ sharder shard.Sharder }
-
-var _ Cluster = (*sharderCluster)(nil)
-
-func (sc *sharderCluster) Lookup(key shard.Key, replicationFactor int, op shard.Op) ([]peer.Peer, error) {
-	return sc.sharder.Lookup(key, replicationFactor, op)
-}
-
-func (sc *sharderCluster) Peers() []peer.Peer {
-	return sc.sharder.Peers()
 }
 
 func toStringSlice[T any](slice []T) []string {

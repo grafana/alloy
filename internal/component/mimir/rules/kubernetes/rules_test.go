@@ -116,6 +116,10 @@ func (f fakeCluster) Peers() []peer.Peer {
 	return nil
 }
 
+func (f fakeCluster) Ready() bool {
+	return true
+}
+
 type fakeLeadership struct {
 	leader    bool
 	changed   bool

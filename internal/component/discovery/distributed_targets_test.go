@@ -314,3 +314,7 @@ func (f *fakeCluster) Lookup(key shard.Key, _ int, _ shard.Op) ([]peer.Peer, err
 func (f *fakeCluster) Peers() []peer.Peer {
 	return f.peers
 }
+
+func (f *fakeCluster) Ready() bool {
+	return true
+}

@@ -21,6 +21,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/alloycli"
 	"github.com/grafana/alloy/internal/featuregate"
@@ -36,15 +37,17 @@ import (
 )
 
 type testCase struct {
-	name                 string
-	nodeCountInitial     int
-	initialIsolatedNodes []string // list of node names that are initially in isolated network space
-	assertionsInitial    func(t *assert.CollectT, state *testState)
-	changes              func(state *testState)
-	assertionsFinal      func(t *assert.CollectT, state *testState)
-	assertionsTimeout    time.Duration
-	extraAllowedErrors   []string
-	alloyConfig          string
+	name                   string
+	nodeCountInitial       int
+	initialIsolatedNodes   []string // list of node names that are initially in isolated network space
+	assertionsInitial      func(t *assert.CollectT, state *testState)
+	changes                func(state *testState)
+	assertionsFinal        func(t *assert.CollectT, state *testState)
+	assertionsTimeout      time.Duration
+	extraAllowedErrors     []string
+	alloyConfig            string
+	minimumClusterSize     int
+	minimumSizeWaitTimeout time.Duration
 }
 
 func TestClusterE2E(t *testing.T) {
@@ -60,6 +63,7 @@ func TestClusterE2E(t *testing.T) {
 						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 3`,
 					)
 					verifyPeers(t, p, 3)
+					verifyClusterReady(t, p)
 				}
 				verifyLookupInvariants(t, state.peers)
 			},
@@ -67,17 +71,24 @@ func TestClusterE2E(t *testing.T) {
 		{
 			name:             "three nodes with slow components",
 			nodeCountInitial: 3,
+			// slow components can currently lead to timeouts and communication errors
+			// TODO: consider decoupling cluster operations from runtime/components performance
+			extraAllowedErrors: []string{
+				`msg="Failed to send error: http2: stream closed`,
+				`msg="failed to receive: i/o timeout`,
+				`msg="failed to receive and remove the stream label header`,
+			},
 			alloyConfig: `
-testcomponents.ticker "tick" {
-	period = "500ms"
-	max_value = 30
-}
-
-testcomponents.slow_update "test" {
-	counter = testcomponents.ticker.tick.counter
-	update_lag = "5s"
-}
-`,
+		testcomponents.ticker "tick" {
+			period = "500ms"
+			max_value = 30
+		}
+		
+		testcomponents.slow_update "test" {
+			counter = testcomponents.ticker.tick.counter
+			update_lag = "5s"
+		}
+		`,
 			assertionsInitial: func(t *assert.CollectT, state *testState) {
 				for _, p := range state.peers {
 					verifyMetrics(t, p,
@@ -88,6 +99,7 @@ testcomponents.slow_update "test" {
 						`slow_update_counter{component_id="testcomponents.slow_update.test",component_path="/"} 30`,
 					)
 					verifyPeers(t, p, 3)
+					verifyClusterReady(t, p)
 				}
 				verifyLookupInvariants(t, state.peers)
 			},
@@ -103,6 +115,7 @@ testcomponents.slow_update "test" {
 						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`,
 					)
 					verifyPeers(t, p, 4)
+					verifyClusterReady(t, p)
 				}
 				verifyLookupInvariants(t, state.peers)
 			},
@@ -119,6 +132,7 @@ testcomponents.slow_update "test" {
 						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 8`,
 					)
 					verifyPeers(t, p, 8)
+					verifyClusterReady(t, p)
 				}
 				verifyLookupInvariants(t, state.peers)
 			},
@@ -128,6 +142,10 @@ testcomponents.slow_update "test" {
 			nodeCountInitial: 8,
 			extraAllowedErrors: []string{
 				"failed to rejoin list of peers",
+				"failed to broadcast leave message to cluster",
+				`msg="Failed to send error: http2: stream closed`,
+				`msg="failed to receive: i/o timeout`,
+				`msg="failed to receive and remove the stream label header`,
 			},
 			assertionsInitial: func(t *assert.CollectT, state *testState) {
 				for _, p := range state.peers {
@@ -137,6 +155,7 @@ testcomponents.slow_update "test" {
 						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 8`,
 					)
 					verifyPeers(t, p, 8)
+					verifyClusterReady(t, p)
 				}
 				verifyLookupInvariants(t, state.peers)
 			},
@@ -154,6 +173,7 @@ testcomponents.slow_update "test" {
 						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`,
 					)
 					verifyPeers(t, p, 4)
+					verifyClusterReady(t, p)
 				}
 				verifyLookupInvariants(t, state.peers)
 			},
@@ -164,6 +184,9 @@ testcomponents.slow_update "test" {
 			extraAllowedErrors: []string{
 				`Conflicting address for node-0`,
 				`Conflicting address for node-1`,
+				`msg="Failed to send error: http2: stream closed`,
+				`msg="failed to receive: i/o timeout`,
+				`msg="failed to receive and remove the stream label header`,
 			},
 			assertionsInitial: func(t *assert.CollectT, state *testState) {
 				for _, p := range state.peers {
@@ -173,6 +196,7 @@ testcomponents.slow_update "test" {
 						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`,
 					)
 					verifyPeers(t, p, 4)
+					verifyClusterReady(t, p)
 				}
 				verifyLookupInvariants(t, state.peers)
 			},
@@ -188,6 +212,7 @@ testcomponents.slow_update "test" {
 						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 4`,
 						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`,
 					)
+					verifyClusterReady(t, p)
 					verifyPeers(t, p, 4)
 					// NOTE: this and error logs are the only reliable indication that something went wrong...
 					// Currently, the cluster will continue operating with name conflicts, potentially doing some
@@ -210,6 +235,7 @@ testcomponents.slow_update "test" {
 						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 2`,
 						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 2`,
 					)
+					verifyClusterReady(t, p)
 					verifyPeers(t, p, 2)
 				}
 			},
@@ -223,9 +249,111 @@ testcomponents.slow_update "test" {
 						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 4`,
 						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`,
 					)
+					verifyClusterReady(t, p)
 					verifyPeers(t, p, 4)
 				}
 				verifyLookupInvariants(t, state.peers)
+			},
+		},
+		{
+			name:               "cluster with minimum size - sufficient nodes join",
+			nodeCountInitial:   4,
+			minimumClusterSize: 5,
+			assertionsInitial: func(t *assert.CollectT, state *testState) {
+				for _, p := range state.peers {
+					verifyMetrics(t, p,
+						`cluster_node_info{state="participant"} 1`,
+						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 4`,
+						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`,
+					)
+					verifyClusterNotReady(t, p)
+				}
+			},
+			changes: func(state *testState) {
+				startNewNode(t, state, "node-4")
+			},
+			assertionsFinal: func(t *assert.CollectT, state *testState) {
+				for _, p := range state.peers {
+					verifyMetrics(t, p,
+						`cluster_node_info{state="participant"} 1`,
+						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 5`,
+						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 5`,
+					)
+					verifyClusterReady(t, p)
+					verifyPeers(t, p, 5)
+				}
+				verifyLookupInvariants(t, state.peers)
+			},
+		},
+		{
+			name:                   "too small cluster - deadline passes",
+			nodeCountInitial:       4,
+			minimumClusterSize:     5,
+			minimumSizeWaitTimeout: 5 * time.Second,
+			extraAllowedErrors: []string{
+				`"deadline passed, marking cluster as ready to admit traffic"`,
+			},
+			assertionsInitial: func(t *assert.CollectT, state *testState) {
+				for _, p := range state.peers {
+					verifyMetrics(t, p,
+						`cluster_node_info{state="participant"} 1`,
+						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 4`,
+						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`,
+					)
+					verifyClusterNotReady(t, p)
+				}
+			},
+			changes: func(state *testState) {
+				time.Sleep(5 * time.Second)
+			},
+			assertionsFinal: func(t *assert.CollectT, state *testState) {
+				for _, p := range state.peers {
+					verifyMetrics(t, p,
+						`cluster_node_info{state="participant"} 1`,
+						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 4`,
+						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`,
+					)
+					verifyClusterReady(t, p)
+					verifyPeers(t, p, 4)
+				}
+				verifyLookupInvariants(t, state.peers)
+			},
+		},
+		{
+			name:               "cluster dips below minimum size",
+			nodeCountInitial:   5,
+			minimumClusterSize: 5,
+			extraAllowedErrors: []string{
+				`"minimum cluster size requirements are not met - marking cluster as not ready for traffic"`,
+				"failed to broadcast leave message to cluster",
+				`msg="Failed to send error: http2: stream closed`,
+				`msg="failed to receive: i/o timeout`,
+				`msg="failed to receive and remove the stream label header`,
+			},
+			assertionsInitial: func(t *assert.CollectT, state *testState) {
+				for _, p := range state.peers {
+					verifyMetrics(t, p,
+						`cluster_node_info{state="participant"} 1`,
+						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 5`,
+						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 5`,
+					)
+					verifyClusterReady(t, p)
+					verifyPeers(t, p, 5)
+				}
+			},
+			changes: func(state *testState) {
+				state.peers[0].shutdown()
+				state.peers = state.peers[1:]
+			},
+			assertionsFinal: func(t *assert.CollectT, state *testState) {
+				for _, p := range state.peers {
+					verifyMetrics(t, p,
+						`cluster_node_info{state="participant"} 1`,
+						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 4`,
+						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`,
+					)
+					verifyClusterNotReady(t, p)
+				}
 			},
 		},
 	}
@@ -267,22 +395,37 @@ testcomponents.slow_update "test" {
 
 			assert.EventuallyWithT(t, func(t *assert.CollectT) {
 				tc.assertionsInitial(t, state)
-			}, 60*time.Second, 200*time.Millisecond)
-			t.Logf("Initial assertions passed")
+			}, 60*time.Second, 1*time.Second)
+			t.Logf("Initial assertions checked")
 
 			tc.changes(state)
 			t.Logf("Changes applied")
 
 			assert.EventuallyWithT(t, func(t *assert.CollectT) {
 				tc.assertionsFinal(t, state)
-			}, 60*time.Second, 200*time.Millisecond)
-			t.Logf("Final assertions passed")
+			}, 60*time.Second, 1*time.Second)
+			t.Logf("Final assertions checked")
 
+			for _, p := range state.peers {
+				p.logsWriter.disableErrorChecking.Store(true) // stop checking log errors for shutdown
+			}
 			cancel()
 			state.shutdownGroup.Wait()
 			t.Logf("Shutdown complete")
 		})
 	}
+}
+
+func verifyClusterNotReady(t *assert.CollectT, p *testPeer) {
+	clusterService, ok := p.clusterService.Data().(cluster.Cluster)
+	require.True(t, ok)
+	require.False(t, clusterService.Ready(), "Cluster should not be ready")
+}
+
+func verifyClusterReady(t *assert.CollectT, p *testPeer) {
+	clusterService, ok := p.clusterService.Data().(cluster.Cluster)
+	require.True(t, ok)
+	require.True(t, clusterService.Ready(), "Cluster should be ready")
 }
 
 type testPeer struct {
@@ -294,6 +437,7 @@ type testPeer struct {
 	shutdown          context.CancelFunc
 	mutex             sync.Mutex
 	discoverablePeers []string // list of peers that this peer can discover
+	logsWriter        *logsWriter
 }
 
 func (p *testPeer) discoveryFn(_ discovery.Options) (discovery.DiscoverFn, error) {
@@ -344,13 +488,14 @@ func startNewNode(t *testing.T, state *testState, nodeName string) {
 	}
 
 	nodeDirPath := path.Join(t.TempDir(), nodeName)
+	newPeer.logsWriter = &logsWriter{
+		t:                  t,
+		out:                os.Stdout,
+		prefix:             fmt.Sprintf("%s: ", nodeName),
+		extraAllowedErrors: state.testCase.extraAllowedErrors,
+	}
 	logger, err := logging.New(
-		&logsWriter{
-			t:                  t,
-			out:                os.Stdout,
-			prefix:             fmt.Sprintf("%s: ", nodeName),
-			extraAllowedErrors: state.testCase.extraAllowedErrors,
-		},
+		newPeer.logsWriter,
 		logging.Options{
 			Level:  logging.LevelDebug,
 			Format: logging.FormatDefault,
@@ -367,14 +512,16 @@ func startNewNode(t *testing.T, state *testState, nodeName string) {
 		Tracer:  tracer,
 		Metrics: reg,
 
-		EnableClustering:    true,
-		NodeName:            nodeName,
-		AdvertiseAddress:    nodeAddress,
-		ListenAddress:       nodeAddress,
-		RejoinInterval:      1 * time.Second,
-		AdvertiseInterfaces: advertise.DefaultInterfaces,
-		ClusterMaxJoinPeers: 5,
-		ClusterName:         "cluster_e2e_test",
+		EnableClustering:       true,
+		NodeName:               nodeName,
+		AdvertiseAddress:       nodeAddress,
+		ListenAddress:          nodeAddress,
+		RejoinInterval:         1 * time.Second,
+		AdvertiseInterfaces:    advertise.DefaultInterfaces,
+		ClusterMaxJoinPeers:    5,
+		ClusterName:            "cluster_e2e_test",
+		MinimumClusterSize:     state.testCase.minimumClusterSize,
+		MinimumSizeWaitTimeout: state.testCase.minimumSizeWaitTimeout,
 	}, newPeer.discoveryFn)
 	require.NoError(t, err)
 	newPeer.clusterService = clusterService
@@ -510,10 +657,11 @@ func getFreePort(t *testing.T) int {
 }
 
 type logsWriter struct {
-	t                  *testing.T
-	out                io.Writer
-	prefix             string
-	extraAllowedErrors []string
+	t                    *testing.T
+	out                  io.Writer
+	prefix               string
+	extraAllowedErrors   []string
+	disableErrorChecking atomic.Bool
 }
 
 var errorsAllowlist = []string{
@@ -521,20 +669,16 @@ var errorsAllowlist = []string{
 	"failed to extract directory path from configPath",              // unrelated to this test
 	"failed to connect to peers; bootstrapping a new cluster",       // should be allowed only once for first node
 	`msg="node exited with error" node=remotecfg err="noop client"`, // related to remotecfg service mock ups
-	`msg="failed to rejoin list of peers"`,                          // at shutdown, various failures can happen
-	"failed to broadcast leave message to cluster",                  // TODO: don't fail test on shutdown errors?
-	`msg="Failed to send error: http2: stream closed`,
-	`msg="failed to receive: i/o timeout`,
-	`msg="failed to receive and remove the stream label header`,
+	`msg="failed to rejoin list of peers"`,                          // this is because list of initial join peers is fixed in tests
 }
 
 func (w *logsWriter) Write(p []byte) (n int, err error) {
 	prefixed := []byte(w.prefix)
 	prefixed = append(prefixed, p...)
 
-	// Check for warnings or errors in the log message
+	// Check for warnings or errors in the log message if not disabled
 	logMsg := string(p)
-	if strings.Contains(logMsg, "level=warn") || strings.Contains(logMsg, "level=error") {
+	if !w.disableErrorChecking.Load() && (strings.Contains(logMsg, "level=warn") || strings.Contains(logMsg, "level=error")) {
 		isAllowed := false
 
 		// Check against global allowlist
@@ -571,6 +715,7 @@ func verifyLookupInvariants(t *assert.CollectT, peers []*testPeer) {
 
 			owningPeers, err := clusterService.Lookup(key, 1, shard.OpReadWrite)
 			require.NoError(t, err, "Lookup should not fail")
+			require.Len(t, owningPeers, 1, "Lookup should return exactly one peer for key %q", s)
 
 			var ownerNames []string
 			for _, owner := range owningPeers {
