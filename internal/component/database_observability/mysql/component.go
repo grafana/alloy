@@ -313,8 +313,11 @@ func (c *Component) startCollectors() error {
 
 	// Connection Info collector is always enabled
 	ciCollector, err := collector.NewConnectionInfo(collector.ConnectionInfoArguments{
-		DSN:      string(c.args.DataSourceName),
-		Registry: c.registry,
+		DSN:            string(c.args.DataSourceName),
+		Registry:       c.registry,
+		DB:             dbConnection,
+		Logger:         c.opts.Logger,
+		ScrapeInterval: 1 * time.Hour,
 	})
 	if err != nil {
 		level.Error(c.opts.Logger).Log("msg", "failed to create ConnectionInfo collector", "err", err)
