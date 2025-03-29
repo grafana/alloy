@@ -76,6 +76,8 @@ Main (unreleased)
 
 - Allow kafka exporter to attempt to connect even if TLS enabled but cert & key are not specified (@dehaansa)
 
+- Fix duplicated `seconds` query parameter when scraping pyroscope profiles (@Pluggi)
+
 ### Other changes
 
 - Upgrading to Prometheus v2.55.1. (@ptodev)
