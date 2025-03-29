@@ -17,6 +17,7 @@ Main (unreleased)
 - Add string concatenation for secrets type (@ravishankar15)
 - Add support for environment variables to OpenTelemetry Collector config. (@jharvey10)
 - Replace graph in Alloy UI with a new version that supports modules and data flow visualization. (@wildum)
+- Add `otelcol.exporter.googlecloud` component to export metrics, traces, and logs to Google Cloud. (@motoki317)
 
 ### Enhancements
 
