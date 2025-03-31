@@ -327,9 +327,6 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 		s.logPeers("peers changed", toStringSlice(peers))
 		span.SetAttributes(attribute.Int("peers_count", len(peers)))
 
-		// Peers changed - update the ready-to-admit-traffic state
-		s.alloyCluster.updateReadyToAdmitTraffic()
-
 		// Notify all components about the clustering change.
 		components := component.GetAllComponents(host, component.InfoOptions{})
 		for _, comp := range components {
@@ -384,9 +381,6 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 			os.Exit(1)
 		}
 	}
-
-	// Update the ready-to-admit state after node start
-	s.alloyCluster.updateReadyToAdmitTraffic()
 
 	if s.opts.EnableClustering && s.opts.RejoinInterval > 0 {
 		wg.Add(1)
@@ -446,7 +440,6 @@ func (s *Service) getPeers() ([]string, error) {
 	}
 
 	// We shuffle the list and return only a subset of the peers.
-	// TODO(thampiotr): verify that this can be called from multiple threads
 	s.randGen.Shuffle(len(peers), func(i, j int) {
 		peers[i], peers[j] = peers[j], peers[i]
 	})
