@@ -56,7 +56,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 		{
 			testName: "invalid_detector_and_all_valid_ones",
 			cfg: `
-			detectors = ["non-existent-detector2", "env", "ec2", "ecs", "eks", "elasticbeanstalk", "lambda", "azure", "aks", "consul", "docker", "gcp", "heroku", "system", "openshift", "kubernetes_node"]
+			detectors = ["non-existent-detector2", "env", "ec2", "ecs", "eks", "elasticbeanstalk", "lambda", "azure", "aks", "consul", "docker", "gcp", "heroku", "system", "openshift", "kubernetes_node", "dynatrace", "kubeadm"]
 			output {}
 			`,
 			errorMsg: "invalid detector: non-existent-detector2",
@@ -64,11 +64,11 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 		{
 			testName: "all_detectors_with_defaults",
 			cfg: `
-			detectors = ["env", "ec2", "ecs", "eks", "elasticbeanstalk", "lambda", "azure", "aks", "consul", "docker", "gcp", "heroku", "system", "openshift", "kubernetes_node", "dynatrace"]
+			detectors = ["env", "ec2", "ecs", "eks", "elasticbeanstalk", "lambda", "azure", "aks", "consul", "docker", "gcp", "heroku", "system", "openshift", "kubernetes_node", "dynatrace", "kubeadm"]
 			output {}
 			`,
 			expected: map[string]interface{}{
-				"detectors":        []string{"env", "ec2", "ecs", "eks", "elasticbeanstalk", "lambda", "azure", "aks", "consul", "docker", "gcp", "heroku", "system", "openshift", "k8snode"},
+				"detectors":        []string{"env", "ec2", "ecs", "eks", "elasticbeanstalk", "lambda", "azure", "aks", "consul", "docker", "gcp", "heroku", "system", "openshift", "k8snode", "dynatrace", "kubeadm"},
 				"timeout":          5 * time.Second,
 				"override":         true,
 				"ec2":              ec2.DefaultArguments.Convert(),
@@ -1368,6 +1368,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				resource_attributes {
 					k8s.cluster.name { enabled = true }
 					k8s.cluster.uid { enabled = true }
+				}
 			}
 			output {}
 			`,
@@ -1660,6 +1661,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			testName: "dynatrace",
 			cfg: `
 			detectors = ["dynatrace"]
+			timeout = "7s"
+			override = false
 			dynatrace {
 				resource_attributes {
 					host.name {
@@ -1684,6 +1687,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					},
 				},
 				"detectors":        []string{"dynatrace"},
+				"timeout":          7 * time.Second,
+				"override":         false,
 				"ec2":              ec2.DefaultArguments.Convert(),
 				"ecs":              ecs.DefaultArguments.Convert(),
 				"eks":              eks.DefaultArguments.Convert(),
