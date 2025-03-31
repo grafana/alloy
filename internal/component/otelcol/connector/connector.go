@@ -165,6 +165,7 @@ func (p *Connector) Update(args component.Arguments) error {
 
 	mp := metric.NewMeterProvider(metric.WithReader(promExporter))
 	settings := otelconnector.Settings{
+		ID: otelcomponent.NewID(p.factory.Type()),
 		TelemetrySettings: otelcomponent.TelemetrySettings{
 			Logger: zapadapter.New(p.opts.Logger),
 

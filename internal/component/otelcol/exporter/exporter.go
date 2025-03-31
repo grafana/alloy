@@ -182,6 +182,7 @@ func (e *Exporter) Update(args component.Arguments) error {
 
 	mp := metric.NewMeterProvider(metricOpts...)
 	settings := otelexporter.Settings{
+		ID: otelcomponent.NewID(e.factory.Type()),
 		TelemetrySettings: otelcomponent.TelemetrySettings{
 			Logger: zapadapter.New(e.opts.Logger),
 

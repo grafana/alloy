@@ -226,6 +226,7 @@ func (a *Auth) Update(args component.Arguments) error {
 
 	mp := metric.NewMeterProvider(metric.WithReader(promExporter))
 	settings := otelextension.Settings{
+		ID: otelcomponent.NewID(a.factory.Type()),
 		TelemetrySettings: otelcomponent.TelemetrySettings{
 			Logger: zapadapter.New(a.opts.Logger),
 

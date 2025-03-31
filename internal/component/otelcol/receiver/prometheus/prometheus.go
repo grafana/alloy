@@ -140,6 +140,7 @@ func (c *Component) Update(newConfig component.Arguments) error {
 
 	mp := metricNoop.NewMeterProvider()
 	settings := otelreceiver.Settings{
+		ID: otelcomponent.MustNewID("prometheus"),
 		TelemetrySettings: otelcomponent.TelemetrySettings{
 			Logger: zapadapter.New(c.opts.Logger),
 
