@@ -25,11 +25,11 @@ type SetupConsumerArguments struct {
 	ScrapeInterval time.Duration
 }
 
-type setupConsumer struct {
-	dbConnection        *sql.DB
-	Registry            *prometheus.Registry
-	collectInterval     time.Duration
-	SetupConsumerMetric *prometheus.GaugeVec
+type SetupConsumers struct {
+	dbConnection         *sql.DB
+	Registry             *prometheus.Registry
+	collectInterval      time.Duration
+	SetupConsumersMetric *prometheus.GaugeVec
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -37,30 +37,30 @@ type setupConsumer struct {
 	cancel  context.CancelFunc
 }
 
-func NewSetupConsumer(args SetupConsumerArguments) (*setupConsumer, error) {
+func NewSetupConsumer(args SetupConsumerArguments) (*SetupConsumers, error) {
 	setupConsumerMetric := prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: "database_observability",
-		Name:      "setup_consumer_enabled",
+		Name:      "setup_consumers_enabled",
 		Help:      "Whether each performance_schema consumer is enabled (1) or disabled (0)",
 	}, []string{"consumer_name"})
 
 	args.Registry.MustRegister(setupConsumerMetric)
 
-	return &setupConsumer{
-		dbConnection:        args.DB,
-		Registry:            args.Registry,
-		SetupConsumerMetric: setupConsumerMetric,
-		running:             &atomic.Bool{},
-		logger:              args.Logger,
-		collectInterval:     5 * time.Second,
+	return &SetupConsumers{
+		dbConnection:         args.DB,
+		Registry:             args.Registry,
+		SetupConsumersMetric: setupConsumerMetric,
+		running:              &atomic.Bool{},
+		logger:               args.Logger,
+		collectInterval:      5 * time.Second,
 	}, nil
 }
 
-func (c *setupConsumer) Name() string {
+func (c *SetupConsumers) Name() string {
 	return SetupConsumersName
 }
 
-func (c *setupConsumer) Start(ctx context.Context) error {
+func (c *SetupConsumers) Start(ctx context.Context) error {
 	level.Debug(c.logger).Log("msg", SetupConsumersName+" collector started")
 	c.running.Store(true)
 
@@ -78,7 +78,7 @@ func (c *setupConsumer) Start(ctx context.Context) error {
 
 		for {
 			if err := c.getSetupConsumers(c.ctx); err != nil {
-				level.Error(c.logger).Log("msg", "setupConsumer collector error", "err", err)
+				level.Error(c.logger).Log("msg", "setupConsumers collector error", "err", err)
 			}
 
 			select {
@@ -93,13 +93,13 @@ func (c *setupConsumer) Start(ctx context.Context) error {
 	return nil
 }
 
-func (c *setupConsumer) Stopped() bool {
+func (c *SetupConsumers) Stopped() bool {
 	return !c.running.Load()
 }
 
-func (c *setupConsumer) Stop() {
+func (c *SetupConsumers) Stop() {
 	c.cancel()
-	c.Registry.Unregister(c.SetupConsumerMetric)
+	c.Registry.Unregister(c.SetupConsumersMetric)
 	c.running.Store(false)
 }
 
@@ -109,10 +109,10 @@ type consumer struct {
 }
 
 const (
-	selectSetupConsumers = `SELECT NAME, ENABLED FROM performance_schema.setup_consumers WHERE NAME IN ('events_statements_cpu', 'events_statements_history')`
+	selectSetupConsumers = `SELECT NAME, ENABLED FROM performance_schema.setup_consumers`
 )
 
-func (c *setupConsumer) getSetupConsumers(ctx context.Context) error {
+func (c *SetupConsumers) getSetupConsumers(ctx context.Context) error {
 	rs, err := c.dbConnection.QueryContext(ctx, selectSetupConsumers)
 	if err != nil {
 		level.Error(c.logger).Log("msg", "failed to query selectSetupConsumers", "err", err)
@@ -120,7 +120,7 @@ func (c *setupConsumer) getSetupConsumers(ctx context.Context) error {
 	}
 	defer rs.Close()
 
-	c.SetupConsumerMetric.Reset()
+	c.SetupConsumersMetric.Reset()
 
 	for rs.Next() {
 		var consumer consumer
@@ -131,9 +131,9 @@ func (c *setupConsumer) getSetupConsumers(ctx context.Context) error {
 		enabled := consumer.enabled == "YES"
 		switch enabled {
 		case true:
-			c.SetupConsumerMetric.WithLabelValues(consumer.name).Set(1)
+			c.SetupConsumersMetric.WithLabelValues(consumer.name).Set(1)
 		default:
-			c.SetupConsumerMetric.WithLabelValues(consumer.name).Set(0)
+			c.SetupConsumersMetric.WithLabelValues(consumer.name).Set(0)
 		}
 	}
 
