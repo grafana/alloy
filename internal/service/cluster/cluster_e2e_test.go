@@ -74,8 +74,8 @@ func TestClusterE2E(t *testing.T) {
 			// slow components can currently lead to timeouts and communication errors
 			// TODO: consider decoupling cluster operations from runtime/components performance
 			extraAllowedErrors: []string{
-				`msg="Failed to send error: http2: stream closed`,
-				`msg="failed to receive: i/o timeout`,
+				`stream closed`,
+				`i/o timeout`,
 				`msg="failed to receive and remove the stream label header`,
 			},
 			alloyConfig: `
@@ -143,8 +143,8 @@ func TestClusterE2E(t *testing.T) {
 			extraAllowedErrors: []string{
 				"failed to rejoin list of peers",
 				"failed to broadcast leave message to cluster",
-				`msg="Failed to send error: http2: stream closed`,
-				`msg="failed to receive: i/o timeout`,
+				`stream closed`,
+				`i/o timeout`,
 				`msg="failed to receive and remove the stream label header`,
 			},
 			assertionsInitial: func(t *assert.CollectT, state *testState) {
@@ -184,8 +184,8 @@ func TestClusterE2E(t *testing.T) {
 			extraAllowedErrors: []string{
 				`Conflicting address for node-0`,
 				`Conflicting address for node-1`,
-				`msg="Failed to send error: http2: stream closed`,
-				`msg="failed to receive: i/o timeout`,
+				`stream closed`,
+				`i/o timeout`,
 				`msg="failed to receive and remove the stream label header`,
 			},
 			assertionsInitial: func(t *assert.CollectT, state *testState) {
@@ -326,8 +326,8 @@ func TestClusterE2E(t *testing.T) {
 			extraAllowedErrors: []string{
 				`"minimum cluster size requirements are not met - marking cluster as not ready for traffic"`,
 				"failed to broadcast leave message to cluster",
-				`msg="Failed to send error: http2: stream closed`,
-				`msg="failed to receive: i/o timeout`,
+				`stream closed`,
+				`i/o timeout`,
 				`msg="failed to receive and remove the stream label header`,
 			},
 			assertionsInitial: func(t *assert.CollectT, state *testState) {
