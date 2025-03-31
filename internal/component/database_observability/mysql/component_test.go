@@ -135,7 +135,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.QueryTablesName:    true,
 			collector.SchemaTableName:    true,
 			collector.QuerySampleName:    false,
-			collector.SetupConsumersName: false,
+			collector.SetupConsumersName: true,
 		}, actualCollectors)
 	})
 }
