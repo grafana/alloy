@@ -50,7 +50,7 @@ The poll is successful if the URL returns a `200 OK` response code.
 All other response codes are treated as errors and mark the component as unhealthy.
 After a successful poll, the response body from the URL is exported.
 
-[secret]: ../../../get-started/configuration-syntax/expressions/types_and_values/#secrets
+[secret]: ../../../../get-started/configuration-syntax/expressions/types_and_values/#secrets
 
 ## Blocks
 
