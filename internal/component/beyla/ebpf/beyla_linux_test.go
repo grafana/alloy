@@ -12,6 +12,7 @@ import (
 
 	"github.com/grafana/beyla/v2/pkg/beyla"
 	"github.com/grafana/beyla/v2/pkg/export/attributes"
+	"github.com/grafana/beyla/v2/pkg/export/debug"
 	"github.com/grafana/beyla/v2/pkg/filter"
 	"github.com/grafana/beyla/v2/pkg/kubeflags"
 	"github.com/grafana/beyla/v2/pkg/services"
@@ -110,6 +111,7 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 				match = "53"
 			}
 		}
+		trace_printer = "json"
 		enforce_sys_caps = true
 		output { /* no-op */ }
 	`
@@ -167,6 +169,7 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 	require.Len(t, cfg.Filters.Network, 1)
 	require.Equal(t, filter.MatchDefinition{NotMatch: "UDP"}, cfg.Filters.Application["transport"])
 	require.Equal(t, filter.MatchDefinition{Match: "53"}, cfg.Filters.Network["dst_port"])
+	require.Equal(t, debug.TracePrinter("json"), cfg.TracePrinter)
 }
 
 func TestArguments_ConvertDefaultConfig(t *testing.T) {
@@ -657,6 +660,33 @@ func TestArguments_Validate(t *testing.T) {
 			},
 			wantErr: "metrics.features must include at least one of: network, application, application_span, application_service_graph, or application_process",
 		},
+		{
+			name: "valid trace printer",
+			args: Arguments{
+				TracePrinter: "json",
+				Metrics: Metrics{
+					Features: []string{"network"},
+				},
+			},
+		},
+		{
+			name: "empty trace printer is valid",
+			args: Arguments{
+				Metrics: Metrics{
+					Features: []string{"network"},
+				},
+			},
+		},
+		{
+			name: "invalid trace printer",
+			args: Arguments{
+				TracePrinter: "invalid",
+				Metrics: Metrics{
+					Features: []string{"network"},
+				},
+			},
+			wantErr: `trace_printer: invalid value "invalid". Valid values are: disabled, counter, text, json, json_indent`,
+		},
 	}
 
 	for _, tt := range tests {
@@ -698,8 +728,7 @@ func TestDeprecatedFields(t *testing.T) {
 		},
 	}
 
-	//nolint:usetesting
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	// Start component which should trigger warnings

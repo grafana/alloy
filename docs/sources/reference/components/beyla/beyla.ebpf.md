@@ -269,9 +269,18 @@ The `ebpf` block configures eBPF-specific settings.
 | `enable_context_propagation`  | `bool`        | Enable context propagation using Linux Traffic Control probes.             | `false` | no       |
 | `high_request_volume`         | `bool`        | Optimize for immediate request information when response is seen.          | `false` | no       |
 | `heuristic_sql_detect`        | `bool`        | Enable heuristic-based detection of SQL requests.                         | `false` | no       |
+| `trace_printer`              | `string`      | Format for printing trace information. | `"disabled"` | no |
 
 `enable_context_propagation` enables context propagation using Linux Traffic Control probes. 
 For more information about this topic, refer to [Distributed traces with Beyla][].
+
+`trace_printer` is used to print the trace information in a specific format. The following formats are supported:
+
+* `disabled` disables trace printing.
+* `counter` prints the trace information in a counter format.
+* `text` prints the trace information in a text format.
+* `json` prints the trace information in a JSON format.
+* `json_indent` prints the trace information in a JSON format with indentation.
 
 ### `filters`
 

@@ -14,6 +14,7 @@ type Arguments struct {
 	// Deprecated: Use discovery.services instead.
 	ExecutableName string                     `alloy:"executable_name,attr,optional"`
 	Debug          bool                       `alloy:"debug,attr,optional"`
+	TracePrinter   string                     `alloy:"trace_printer,attr,optional"`
 	EnforceSysCaps bool                       `alloy:"enforce_sys_caps,attr,optional"`
 	Routes         Routes                     `alloy:"routes,block,optional"`
 	Attributes     Attributes                 `alloy:"attributes,block,optional"`
