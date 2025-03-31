@@ -14,11 +14,11 @@ jobs:
         go-version-file: go.mod
         cache: false
     - name: golangci-lint
-      uses: golangci/golangci-lint-action@v6
+      uses: golangci/golangci-lint-action@v7
       with:
         version: v1.64.7
     - name: golangci-lint-syntax
-      uses: golangci/golangci-lint-action@v6
+      uses: golangci/golangci-lint-action@v7
       with:
         version: v1.64.7
         working-directory: ./syntax/
