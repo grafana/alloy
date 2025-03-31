@@ -102,6 +102,9 @@ func convertLogging(file *builder.File, tel otel_tel.LogsConfig) diag.Diagnostic
 	return diags
 }
 
+// TODO: Support metrics conversion once upstream's "metrics" section is not experimental.
+// We might also need a way to configure somethings in the config file instead of via cmd args.
+// For example, the HTTTP server address.
 func convertMetrics(file *builder.File, tel otel_tel.MetricsConfig) diag.Diagnostics {
 	var diags diag.Diagnostics
 
@@ -116,6 +119,7 @@ func convertMetrics(file *builder.File, tel otel_tel.MetricsConfig) diag.Diagnos
 	return diags
 }
 
+// TODO: Support metrics conversion once upstream's "traces" section is not experimental.
 func convertTraces(file *builder.File, tel otel_tel.TracesConfig) diag.Diagnostics {
 	var diags diag.Diagnostics
 
