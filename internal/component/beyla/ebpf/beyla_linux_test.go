@@ -3,6 +3,9 @@
 package beyla
 
 import (
+	"bytes"
+	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -14,6 +17,9 @@ import (
 	"github.com/grafana/beyla/v2/pkg/transform"
 	"github.com/stretchr/testify/require"
 
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
+	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/syntax"
 )
 
@@ -663,4 +669,36 @@ func TestArguments_Validate(t *testing.T) {
 			require.NoError(t, err)
 		})
 	}
+}
+
+func TestDeprecatedFields(t *testing.T) {
+	var buf bytes.Buffer
+	logger := level.NewFilter(log.NewLogfmtLogger(&buf), level.AllowAll())
+
+	comp := &Component{
+		opts: component.Options{
+			Logger: logger,
+		},
+		args: Arguments{
+			Port:           "8080",
+			ExecutableName: "test-app",
+			Metrics: Metrics{
+				Features: []string{"network"},
+			},
+		},
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Start component which should trigger warnings
+	go comp.Run(ctx)
+
+	// Verify warnings were logged
+	require.Eventually(t, func() bool {
+		output := buf.String()
+		return strings.Contains(output, "level=warn") &&
+			strings.Contains(output, "open_port' field is deprecated") &&
+			strings.Contains(output, "executable_name' field is deprecated")
+	}, time.Second, time.Millisecond*10)
 }

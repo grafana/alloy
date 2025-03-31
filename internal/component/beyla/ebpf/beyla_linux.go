@@ -385,6 +385,14 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
+	// Add deprecation warnings at the start of Run
+	if c.args.Port != "" {
+		level.Warn(c.opts.Logger).Log("msg", "The 'open_port' field is deprecated. Use 'discovery.services' instead.")
+	}
+	if c.args.ExecutableName != "" {
+		level.Warn(c.opts.Logger).Log("msg", "The 'executable_name' field is deprecated. Use 'discovery.services' instead.")
+	}
+
 	var cancel context.CancelFunc
 	for {
 		select {
@@ -515,6 +523,7 @@ func (a *Arguments) Convert() (*beyla.Config, error) {
 func (args *Arguments) Validate() error {
 	hasNetworkFeature := args.Metrics.hasNetworkFeature()
 	hasAppFeature := args.Metrics.hasAppFeature()
+
 	// Services are required only when application observability is enabled
 	if hasAppFeature {
 		if len(args.Discovery.Services) == 0 {
@@ -540,7 +549,6 @@ func (args *Arguments) Validate() error {
 	if err := args.Metrics.Validate(); err != nil {
 		return err
 	}
-
 	return nil
 }
 
