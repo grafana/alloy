@@ -88,6 +88,11 @@ Main (unreleased)
   - Added a new `http_headers` argument to many `discovery` and `prometheus` components.
   - Added a new `scrape_failure_log_file` argument to `prometheus.scrape`.
 
+- Upgrading to OpenTelemetry Collector v0.122
+  - `otelcol.processor.batch` telemetry is no longer emitted at "basic" level. If you want to keep the batch processor telemetry, you can switch to "normal" level.
+  - `otelcol.processor.tailsampling` change the unit of the decision timer metric from microseconds to milliseconds. (change unit of otelcol_processor_tail_sampling_sampling_decision_timer_latency, breaking change)
+  - `otelcol.processor.deltatocumulative` rename and remove some metrics (breaking change)
+
 
 v1.7.5
 -----------------
