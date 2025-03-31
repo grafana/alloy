@@ -3,7 +3,6 @@ otelcol.receiver.syslog "default" {
 	max_octets                      = 16000
 	allow_skip_pri_header           = true
 	non_transparent_framing_trailer = "NUL"
-	on_error                       = "drop"
 
 	retry_on_failure {
 		enabled          = true
@@ -44,6 +43,7 @@ otelcol.receiver.syslog "default" {
 			max_queue_length = 1000
 		}
 	}
+	on_error = "drop"
 }
 
 otelcol.exporter.syslog "default" {

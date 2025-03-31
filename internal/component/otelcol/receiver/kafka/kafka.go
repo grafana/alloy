@@ -14,6 +14,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver"
 	otelcomponent "go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/config/configretry"
 	"go.opentelemetry.io/collector/pipeline"
 )
 
@@ -54,7 +55,7 @@ type Arguments struct {
 	DefaultFetchSize int32 `alloy:"default_fetch_size,attr,optional"`
 	MaxFetchSize     int32 `alloy:"max_fetch_size,attr,optional"`
 
-	ErrorBackOff otelcol.RetryArguments `alloy:"error_backoff,block,optional"`
+	ErrorBackOff ErrorBackOffArguments `alloy:"error_backoff,block,optional"`
 
 	// DebugMetrics configures component internal metrics. Optional.
 	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
@@ -88,7 +89,6 @@ func (args *Arguments) SetToDefault() {
 	args.MessageMarking.SetToDefault()
 	args.HeaderExtraction.SetToDefault()
 	args.DebugMetrics.SetToDefault()
-	// ErrorBackOff is not set by default upstream
 }
 
 // Validate implements syntax.Validator.
@@ -109,7 +109,43 @@ func (args *Arguments) Validate() error {
 			return fmt.Errorf("only one signal can be set in the output block when a Kafka topic is explicitly set; currently set signals: %s", strings.Join(signals, ", "))
 		}
 	}
+
+	if args.ErrorBackOff.Enabled {
+		if args.ErrorBackOff.Multiplier <= 1 {
+			return fmt.Errorf("multiplier must be greater than 1.0")
+		}
+
+		if args.ErrorBackOff.RandomizationFactor < 0 {
+			return fmt.Errorf("randomization_factor must be greater or equal to 0")
+		}
+	}
+
 	return nil
+}
+
+type ErrorBackOffArguments struct {
+	Enabled             bool          `alloy:"enabled,attr,optional"`
+	InitialInterval     time.Duration `alloy:"initial_interval,attr,optional"`
+	RandomizationFactor float64       `alloy:"randomization_factor,attr,optional"`
+	Multiplier          float64       `alloy:"multiplier,attr,optional"`
+	MaxInterval         time.Duration `alloy:"max_interval,attr,optional"`
+	MaxElapsedTime      time.Duration `alloy:"max_elapsed_time,attr,optional"`
+}
+
+// Convert converts args into the upstream type.
+func (args *ErrorBackOffArguments) Convert() *configretry.BackOffConfig {
+	if args == nil {
+		return nil
+	}
+
+	return &configretry.BackOffConfig{
+		Enabled:             args.Enabled,
+		InitialInterval:     args.InitialInterval,
+		RandomizationFactor: args.RandomizationFactor,
+		Multiplier:          args.Multiplier,
+		MaxInterval:         args.MaxInterval,
+		MaxElapsedTime:      args.MaxElapsedTime,
+	}
 }
 
 // Convert implements receiver.Arguments.

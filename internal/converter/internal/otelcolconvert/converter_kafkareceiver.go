@@ -87,8 +87,8 @@ func toKafkaReceiver(state *State, id componentstatus.InstanceID, cfg *kafkarece
 	}
 }
 
-func toKafkaErrorBackOff(cfg configretry.BackOffConfig) otelcol.RetryArguments {
-	return otelcol.RetryArguments{
+func toKafkaErrorBackOff(cfg configretry.BackOffConfig) kafka.ErrorBackOffArguments {
+	return kafka.ErrorBackOffArguments{
 		Enabled:             cfg.Enabled,
 		InitialInterval:     cfg.InitialInterval,
 		RandomizationFactor: cfg.RandomizationFactor,
