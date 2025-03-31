@@ -41,7 +41,7 @@ Argument               | Description                                            
 
 {{< admonition type="note" >}}
 For many {{< param "PRODUCT_NAME" >}} components, there is an attribute named `proxy_from_environment` that must be set to `true` for the component's
-http client to use the proxy related environment variables. For example, in the `prometheus.remote_write` component this attribute is found within the 
+HTTP client to use the proxy related environment variables. For example, in the `prometheus.remote_write` component this attribute is found within the 
 `endpoint` block. If {{< param "PRODUCT_NAME" >}} does not appear to be respecting your proxy configuration, please ensure the component is
 configured properly to utilize proxy environment variables.
 {{< /admonition >}}
