@@ -40,5 +40,5 @@ func TestConvertTelemetry(t *testing.T) {
 }
 
 func TestConvertEnvvars(t *testing.T) {
-	test_common.TestDirectory(t, "testdata/envvars", ".yaml", true, []string{}, otelcolconvert.Convert)
+	test_common.TestDirectory(t, "testdata/envvars", ".yaml", true, []string{}, diagsToIgnore, otelcolconvert.Convert)
 }
