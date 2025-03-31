@@ -159,8 +159,6 @@ The following fields are exported and can be referenced by other components:
 
 ## Example
 
-### Logging
-
 This example scrapes logs from local files through a receiver for conversion to OpenTelemetry format before finally sending them to Cloud Logging.
 
 This configuration includes the recommended `memory_limiter` and `batch` plugins, which avoid high latency for reporting telemetry, and ensure that the collector itself will stay stable (not run out of memory) by dropping telemetry if needed.
