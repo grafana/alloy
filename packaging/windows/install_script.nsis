@@ -63,7 +63,7 @@ Section "install"
   ${GetOptions} $PassedInParameters "/STABILITY=" $Stability
   ${GetOptions} $PassedInParameters "/ENVIRONMENT=" $Environment
   ${GetOptions} $PassedInParameters "/CONFIG=" $Config
-  ${GetOptions} $PassedInParameters "/USER=" $User
+  ${GetOptions} $PassedInParameters "/USERNAME=" $User
   ${GetOptions} $PassedInParameters "/PASSWORD=" $Password
 
   # Calls to functions like nsExec::ExecToLog below push the exit code to the
