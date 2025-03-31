@@ -1,7 +1,6 @@
 package collector
 
 import (
-	"context"
 	"encoding/base64"
 	"fmt"
 	"os"
@@ -137,7 +136,7 @@ func TestSchemaTable(t *testing.T) {
 				),
 			)
 
-		err = collector.Start(context.Background())
+		err = collector.Start(t.Context())
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
@@ -282,7 +281,7 @@ func TestSchemaTable(t *testing.T) {
 					"id",
 				),
 			)
-		err = collector.Start(context.Background())
+		err = collector.Start(t.Context())
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
@@ -443,7 +442,7 @@ func TestSchemaTable(t *testing.T) {
 				),
 			)
 
-		err = collector.Start(context.Background())
+		err = collector.Start(t.Context())
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
@@ -586,7 +585,7 @@ func TestSchemaTable(t *testing.T) {
 					"referenced_column_name",
 				}),
 			)
-		err = collector.Start(context.Background())
+		err = collector.Start(t.Context())
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
@@ -643,7 +642,7 @@ func TestSchemaTable(t *testing.T) {
 				"another_schema",
 			).RowError(1, fmt.Errorf("rs error"))) // error on the second row
 
-		err = collector.Start(context.Background())
+		err = collector.Start(t.Context())
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
@@ -710,7 +709,7 @@ func TestSchemaTable(t *testing.T) {
 			).RowError(1, fmt.Errorf("rs error")), // error on the second row
 		)
 
-		err = collector.Start(context.Background())
+		err = collector.Start(t.Context())
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
@@ -833,7 +832,7 @@ func TestSchemaTable(t *testing.T) {
 				}),
 			)
 
-		err = collector.Start(context.Background())
+		err = collector.Start(t.Context())
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {

@@ -151,7 +151,7 @@ configs:
 
 	// Write some data, we should see this data but not old data.
 	fmt.Fprintf(tmpFile, "new thing!\n")
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cncl := context.WithTimeout(ctx, 10*time.Second)
 	defer cncl()
 	go func() {

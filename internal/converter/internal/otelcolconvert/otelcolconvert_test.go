@@ -12,6 +12,7 @@ import (
 func TestConvert(t *testing.T) {
 	// TODO(rfratto): support -update flag.
 	test_common.TestDirectory(t, "testdata", ".yaml", true, []string{}, otelcolconvert.Convert)
+	test_common.TestDirectory(t, "testdata/otelcol_dedup", ".yaml", true, []string{}, otelcolconvert.Convert)
 	test_common.TestDirectory(t, "testdata/otelcol_without_validation", ".yaml", true, []string{}, otelcolconvert.ConvertWithoutValidation)
 }
 
@@ -19,4 +20,8 @@ func TestConvert(t *testing.T) {
 // OpenTelemetry configurations.
 func TestConvertErrors(t *testing.T) {
 	test_common.TestDirectory(t, "testdata/otelcol_errors", ".yaml", true, []string{}, otelcolconvert.Convert)
+}
+
+func TestConvertEnvvars(t *testing.T) {
+	test_common.TestDirectory(t, "testdata/envvars", ".yaml", true, []string{}, otelcolconvert.Convert)
 }

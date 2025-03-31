@@ -211,8 +211,9 @@ func (c *Component) Update(args component.Arguments) error {
 func enableOrDisableCollectors(a Arguments) map[string]bool {
 	// configurable collectors and their default enabled/disabled value
 	collectors := map[string]bool{
-		collector.QuerySampleName: true,
+		collector.QueryTablesName: true,
 		collector.SchemaTableName: true,
+		collector.QuerySampleName: false,
 	}
 
 	for _, disabled := range a.DisableCollectors {
@@ -247,8 +248,8 @@ func (c *Component) startCollectors() error {
 
 	collectors := enableOrDisableCollectors(c.args)
 
-	if collectors[collector.QuerySampleName] {
-		qsCollector, err := collector.NewQuerySample(collector.QuerySampleArguments{
+	if collectors[collector.QueryTablesName] {
+		qtCollector, err := collector.NewQueryTables(collector.QueryTablesArguments{
 			DB:              dbConnection,
 			InstanceKey:     c.instanceKey,
 			CollectInterval: c.args.CollectInterval,
@@ -257,17 +258,17 @@ func (c *Component) startCollectors() error {
 			Logger:          c.opts.Logger,
 		})
 		if err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to create QuerySample collector", "err", err)
+			level.Error(c.opts.Logger).Log("msg", "failed to create QueryTable collector", "err", err)
 			return err
 		}
-		if err := qsCollector.Start(context.Background()); err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to start QuerySample collector", "err", err)
+		if err := qtCollector.Start(context.Background()); err != nil {
+			level.Error(c.opts.Logger).Log("msg", "failed to start QueryTable collector", "err", err)
 			return err
 		}
-		c.collectors = append(c.collectors, qsCollector)
+		c.collectors = append(c.collectors, qtCollector)
 	}
 
-	if collectors[collector.QuerySampleName] {
+	if collectors[collector.SchemaTableName] {
 		stCollector, err := collector.NewSchemaTable(collector.SchemaTableArguments{
 			DB:              dbConnection,
 			InstanceKey:     c.instanceKey,
@@ -289,6 +290,25 @@ func (c *Component) startCollectors() error {
 			return err
 		}
 		c.collectors = append(c.collectors, stCollector)
+	}
+
+	if collectors[collector.QuerySampleName] {
+		qsCollector, err := collector.NewQuerySample(collector.QuerySampleArguments{
+			DB:              dbConnection,
+			InstanceKey:     c.instanceKey,
+			CollectInterval: c.args.CollectInterval,
+			EntryHandler:    entryHandler,
+			Logger:          c.opts.Logger,
+		})
+		if err != nil {
+			level.Error(c.opts.Logger).Log("msg", "failed to create QuerySample collector", "err", err)
+			return err
+		}
+		if err := qsCollector.Start(context.Background()); err != nil {
+			level.Error(c.opts.Logger).Log("msg", "failed to start QuerySample collector", "err", err)
+			return err
+		}
+		c.collectors = append(c.collectors, qsCollector)
 	}
 
 	// Connection Info collector is always enabled

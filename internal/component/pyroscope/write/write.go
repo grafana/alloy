@@ -355,11 +355,23 @@ func (f *fanOutClient) Append(ctx context.Context, lbs labels.Labels, samples []
 }
 
 type PyroscopeWriteError struct {
+	Message    string
 	StatusCode int
 }
 
 func (e *PyroscopeWriteError) Error() string {
-	return fmt.Sprintf("pyroscope write error: status %d", e.StatusCode)
+	return fmt.Sprintf("pyroscope write error: status=%d msg=%s", e.StatusCode, e.Message)
+}
+
+func (e *PyroscopeWriteError) readBody(resp *http.Response) {
+	// read the first 2028 bytes of error body
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 2048))
+	if err == nil {
+		e.Message = string(body)
+	}
+
+	// ensure full body is read to keep http connection Keep-Alive
+	_, _ = io.Copy(io.Discard, resp.Body)
 }
 
 // AppendIngest implements the pyroscope.Appender interface.
@@ -368,46 +380,45 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 	var errorMut sync.Mutex
 	var errs error
 
+	// Handle labels
+	query := profile.URL.Query()
+	ls := labelset.New(make(map[string]string))
+
+	finalLabels := ensureNameMatchesService(profile.Labels)
+
+	if err := validateLabels(finalLabels); err != nil {
+		return fmt.Errorf("invalid labels in profile: %w", err)
+	}
+
+	finalLabels.Range(func(l labels.Label) {
+		ls.Add(l.Name, l.Value)
+	})
+
+	// Add external labels (which will override any existing ones)
+	for k, v := range f.config.ExternalLabels {
+		ls.Add(k, v)
+	}
+	query.Set("name", ls.Normalized())
+
 	// Send to each endpoint concurrently
-	for _, endpoint := range f.config.Endpoints {
+	for endpointIdx, endpoint := range f.config.Endpoints {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			u, err := url.Parse(endpoint.URL)
 			if err != nil {
-				util.ErrorsJoinConcurrent(&errs, fmt.Errorf("parse endpoint URL: %w", err), &errorMut)
+				util.ErrorsJoinConcurrent(&errs, fmt.Errorf("parse URL for endpoint[%d]: %w", endpointIdx, err), &errorMut)
 				return
 			}
 
 			u.Path = path.Join(u.Path, profile.URL.Path)
 
-			// Handle labels
-			query := profile.URL.Query()
-			if !profile.Labels.IsEmpty() {
-				ls := labelset.New(make(map[string]string))
-
-				finalLabels := ensureNameMatchesService(profile.Labels)
-
-				if err := validateLabels(finalLabels); err != nil {
-					util.ErrorsJoinConcurrent(&errs, fmt.Errorf("invalid labels in profile: %w", err), &errorMut)
-					return
-				}
-
-				finalLabels.Range(func(l labels.Label) {
-					ls.Add(l.Name, l.Value)
-				})
-
-				// Add external labels (which will override any existing ones)
-				for k, v := range f.config.ExternalLabels {
-					ls.Add(k, v)
-				}
-				query.Set("name", ls.Normalized())
-			}
+			// attch labels
 			u.RawQuery = query.Encode()
 
 			req, err := http.NewRequestWithContext(ctx, "POST", u.String(), bytes.NewReader(profile.RawBody))
 			if err != nil {
-				util.ErrorsJoinConcurrent(&errs, fmt.Errorf("create request: %w", err), &errorMut)
+				util.ErrorsJoinConcurrent(&errs, fmt.Errorf("create request for endpoint[%d]: %w", endpointIdx, err), &errorMut)
 				return
 			}
 
@@ -428,19 +439,23 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 
 			resp, err := f.ingestClients[endpoint].Do(req)
 			if err != nil {
-				util.ErrorsJoinConcurrent(&errs, fmt.Errorf("do request: %w", err), &errorMut)
+				util.ErrorsJoinConcurrent(&errs, fmt.Errorf("do request for endpoint[%d]: %w", endpointIdx, err), &errorMut)
 				return
 			}
 			defer resp.Body.Close()
 
-			_, err = io.Copy(io.Discard, resp.Body)
-			if err != nil {
-				util.ErrorsJoinConcurrent(&errs, fmt.Errorf("read response body: %w", err), &errorMut)
+			if resp.StatusCode != http.StatusOK {
+				wErr := &PyroscopeWriteError{StatusCode: resp.StatusCode}
+				wErr.readBody(resp)
+				util.ErrorsJoinConcurrent(&errs, fmt.Errorf("remote error for endpoint[%d]: %w", endpointIdx, wErr), &errorMut)
 				return
 			}
 
-			if resp.StatusCode != http.StatusOK {
-				util.ErrorsJoinConcurrent(&errs, &PyroscopeWriteError{StatusCode: resp.StatusCode}, &errorMut)
+			// Ensure full body is read to keep http connection Keep-Alive
+			_, err = io.Copy(io.Discard, resp.Body)
+			if err != nil {
+				util.ErrorsJoinConcurrent(&errs, fmt.Errorf("reading response body for endpoint[%d]: %w", endpointIdx, err), &errorMut)
+				return
 			}
 		}()
 	}

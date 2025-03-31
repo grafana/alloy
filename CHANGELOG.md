@@ -17,9 +17,18 @@ Main (unreleased)
 ### Features
 
 - Add `otelcol.receiver.awscloudwatch` component to receive logs from AWS CloudWatch and forward them to other `otelcol.*` components. (@wildum)
+- Add `loki.enrich` component to enrich logs using labels from `discovery.*` components. (@v-zhuravlev)
 - Add string concatenation for secrets type (@ravishankar15)
+- Add support for environment variables to OpenTelemetry Collector config. (@jharvey10)
+- Replace graph in Alloy UI with a new version that supports modules and data flow visualization. (@wildum)
 
 ### Enhancements
+
+- Add livedebugging support for structured_metadata in `loki.process` (@dehaansa)
+
+- (_Public Preview_) Add a `--windows.priority` flag to the run command, allowing users to set windows process priority for Alloy. (@dehaansa)
+
+- (_Experimental_) Adding a new `prometheus.operator.scrapeconfigs` which discovers and scrapes [ScrapeConfig](https://prometheus-operator.dev/docs/developer/scrapeconfig/) Kubernetes resources. (@alex-berger)
 
 - Add `rfc3164_default_to_current_year` argument to `loki.source.syslog` (@dehaansa)
 
@@ -40,27 +49,52 @@ Main (unreleased)
 
 - Added additional backwards compatibility metrics to `prometheus.write.queue`. (@mattdurham)
 
+- Add new stdlib functions encoding.to_json (@ravishankar15)
+
 - Added OpenTelemetry logs and metrics support to Alloy mixin's dashboards and alerts. (@thampiotr)
 
 - Add support for proxy and headers in `prometheus.write.queue`. (@mattdurham)
 
+- Added support for switching namespace between authentication and kv retrieval to support Vault Enterprise (@notedop)
+
 - (_Experimental_) Various changes to the experimental component `database_observability.mysql`:
   - `query_sample`: better handling of truncated queries (@cristiangreco)
   - `query_sample`: add option to use TiDB sql parser (@cristiangreco)
+  - `query_tables`: rename collector from `query_sample` to better reflect responsibility (@matthewnolf)
+  - `query_sample`: add new collector that replaces previous implementation to collect more detailed sample information (@matthewnolf)
 
 - Add labels validation in `pyroscope.write` to prevent duplicate labels and invalid label names/values. (@marcsanmi)
 
 - Reduced lock contention in `prometheus.scrape` component (@thampiotr)
 
+- Support converting otel config which uses a common receiver across pipelines with different names. (@wildum)
+
+- Reduce CPU usage of the `loki.source.podlogs` component when pods logs target lots of pods (@QuentinBisson)
+
+- Add error body propagation in `pyroscope.write`, for `/ingest` calls. (@simonswine)
+
 ### Bugfixes
 
 - Fix deadlocks in `loki.source.file` when tailing fails (@mblaschke)
+- Add missing RBAC permission for ScrapeConfig (@alex-berger)
+
+- Fixed an issue in the `mimir.rules.kubernetes` component that would keep the component as unhealthy even when it managed to start after temporary errors (@nicolasvan)
+
+- Allow kafka exporter to attempt to connect even if TLS enabled but cert & key are not specified (@dehaansa)
 
 ### Other changes
 
 - Upgrading to Prometheus v2.55.1. (@ptodev)
   - Added a new `http_headers` argument to many `discovery` and `prometheus` components.
   - Added a new `scrape_failure_log_file` argument to `prometheus.scrape`.
+
+
+v1.7.5
+-----------------
+
+### Enhancements
+
+- Set zstd as default compression for `prometheus.write.queue`. (@mattdurham)
 
 v1.7.4
 -----------------
@@ -141,8 +175,6 @@ v1.7.0
   cumulative temporality to delta. (@madaraszg-tulip)
 
 - (_Experimental_) Add a `stage.windowsevent` block in the `loki.process` component. This aims to replace the existing `stage.eventlogmessage`. (@wildum)
-
-- (_Experimental_) Adding a new `prometheus.operator.scrapeconfigs` which discovers and scrapes [ScrapeConfig](https://prometheus-operator.dev/docs/developer/scrapeconfig/) Kubernetes resources. (@alex-berger)
 
 - Add `pyroscope.relabel` component to modify or filter profiles using Prometheus relabeling rules. (@marcsanmi)
 
