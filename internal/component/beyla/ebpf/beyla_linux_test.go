@@ -673,12 +673,17 @@ func TestArguments_Validate(t *testing.T) {
 }
 
 func TestDeprecatedFields(t *testing.T) {
-	var (
-		buf bytes.Buffer
-		mu  sync.Mutex // Add mutex to protect buffer access
-	)
+	var buf bytes.Buffer
+	var mu sync.Mutex
 
-	logger := level.NewFilter(log.NewLogfmtLogger(&buf), level.AllowAll())
+	// Create a synchronized logger that protects both writing and reading
+	syncLogger := log.LoggerFunc(func(keyvals ...interface{}) error {
+		mu.Lock()
+		defer mu.Unlock()
+		return log.NewLogfmtLogger(&buf).Log(keyvals...)
+	})
+
+	logger := level.NewFilter(syncLogger, level.AllowAll())
 
 	comp := &Component{
 		opts: component.Options{
@@ -693,6 +698,7 @@ func TestDeprecatedFields(t *testing.T) {
 		},
 	}
 
+	//nolint:usetesting
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -702,8 +708,8 @@ func TestDeprecatedFields(t *testing.T) {
 	// Verify warnings were logged
 	require.Eventually(t, func() bool {
 		mu.Lock()
+		defer mu.Unlock()
 		output := buf.String()
-		mu.Unlock()
 		return strings.Contains(output, "level=warn") &&
 			strings.Contains(output, "open_port' field is deprecated") &&
 			strings.Contains(output, "executable_name' field is deprecated")
