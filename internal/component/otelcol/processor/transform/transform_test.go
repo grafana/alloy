@@ -90,6 +90,96 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			},
 		},
 		{
+			testName: "FlatConfiguration",
+			cfg: `
+			error_mode = "ignore"
+			trace_statements_flat = [
+				` + backtick + `set(span.name, "bear") where span.attributes["http.path"] == "/animal` + backtick + `,
+				` + backtick + `set(resource.attributes["name"], "bear")` + backtick + `,
+			]
+			metric_statements_flat = [
+				` + backtick + `set(metric.name, "bear") where resource.attributes["http.path"] == "/animal"` + backtick + `,
+				` + backtick + `set(resource.attributes["name"], "bear")` + backtick + `,
+			]
+			log_statements_flat = [
+				` + backtick + `set(log.body, "bear") where log.attributes["http.path"] == "/animal"` + backtick + `,
+				` + backtick + `set(resource.attributes["name"], "bear")` + backtick + `,
+			]
+			output {}
+			`,
+			expected: map[string]interface{}{
+				"error_mode": "ignore",
+				"trace_statements": []interface{}{
+					map[string]interface{}{
+						"context": "resource",
+						"statements": []interface{}{
+							`set(attributes["namespace"], attributes["k8s.namespace.name"])`,
+							`delete_key(attributes, "k8s.namespace.name")`,
+						},
+					},
+				},
+			},
+		},
+		{
+			testName: "MixedConfigurationStyles",
+			cfg: `
+			error_mode = "ignore"
+			trace_statements_flat = [
+				` + backtick + `set(span.name, "bear") where span.attributes["http.path"] == "/animal"` + backtick + `,
+			]
+			trace_statements {
+				context = "span"
+				statements = [
+					` + backtick + `set(attributes["name"], "bear"` + backtick + `,
+					` + backtick + `keep_keys(attributes, ["http.method", "http.path"])` + backtick + `,
+				]
+			}
+			trace_statements_flat = [
+				` + backtick + `set(span.attributes["name"], "lion"` + backtick + `,
+			]
+			metric_statements_flat = [
+				` + backtick + `set(metric.name, "bear") where resource.attributes["http.path"] == "/animal` + backtick + `,
+			]
+			metric_statements {
+				context = "resource"
+				statements = [
+					` + backtick + `set(attributes["name"], "bear"` + backtick + `,
+					` + backtick + `keep_keys(attributes, ["http.method", "http.path"])` + backtick + `,
+				]
+			}
+			metric_statements_flat = [
+				` + backtick + `set(metric.name, "lion")` + backtick + `,
+			]
+			log_statements_flat = [
+				` + backtick + `set(log.body, "bear") where log.attributes["http.path"] == "/animal"` + backtick + `,
+			]
+			log_statements {
+				context = "resource"
+				statements = [
+					` + backtick + `set(attributes["name"], "bear"` + backtick + `,
+					` + backtick + `keep_keys(attributes, ["http.method", "http.path"])` + backtick + `,
+				]
+			}
+			log_statements_flat = [
+				` + backtick + `set(log.attributes["name"], "lion")` + backtick + `,
+			]
+			output {}
+			`,
+			// TODO: What about the "SharedCache" param?
+			expected: map[string]interface{}{
+				"error_mode": "ignore",
+				"trace_statements": []interface{}{
+					map[string]interface{}{
+						"context": "resource",
+						"statements": []interface{}{
+							`set(attributes["namespace"], attributes["k8s.namespace.name"])`,
+							`delete_key(attributes, "k8s.namespace.name")`,
+						},
+					},
+				},
+			},
+		},
+		{
 			testName: "RenameAttribute2",
 			cfg: `
 			error_mode = "ignore"
