@@ -180,11 +180,6 @@ func (e *Exporter) Update(args component.Arguments) error {
 		metricOpts = append(metricOpts, metric.WithView(views.DropHighCardinalityServerAttributes()...))
 	}
 
-	metricsLevel, err := debugMetricsConfig.Level.Convert()
-	if err != nil {
-		return err
-	}
-
 	mp := metric.NewMeterProvider(metricOpts...)
 	settings := otelexporter.Settings{
 		TelemetrySettings: otelcomponent.TelemetrySettings{
@@ -192,7 +187,6 @@ func (e *Exporter) Update(args component.Arguments) error {
 
 			TracerProvider: e.opts.Tracer,
 			MeterProvider:  mp,
-			MetricsLevel:   metricsLevel,
 		},
 
 		BuildInfo: otelcomponent.BuildInfo{

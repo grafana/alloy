@@ -157,11 +157,6 @@ func (p *Processor) Update(args component.Arguments) error {
 		return err
 	}
 
-	metricsLevel, err := p.args.DebugMetricsConfig().Level.Convert()
-	if err != nil {
-		return err
-	}
-
 	mp := metric.NewMeterProvider(metric.WithReader(promExporter))
 	settings := otelprocessor.Settings{
 		TelemetrySettings: otelcomponent.TelemetrySettings{
@@ -169,7 +164,6 @@ func (p *Processor) Update(args component.Arguments) error {
 
 			TracerProvider: p.opts.Tracer,
 			MeterProvider:  mp,
-			MetricsLevel:   metricsLevel,
 		},
 
 		BuildInfo: otelcomponent.BuildInfo{
