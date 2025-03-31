@@ -60,9 +60,9 @@ OTLP metrics can have a lot of resource attributes.
 Setting `resource_to_telemetry_conversion` to `true` would convert all of them to Prometheus labels, which may not be what you want.
 Instead of using `resource_to_telemetry_conversion`, most users need to use `otelcol.processor.transform`
 to convert OTLP resource attributes to OTLP metric datapoint attributes before using `otelcol.exporter.prometheus`.
-See [Creating Prometheus labels from OTLP resource attributes][] for an example.
+See [Create Prometheus labels from OTLP resource attributes][] for an example.
 
-[Creating Prometheus labels from OTLP resource attributes]: #creating-prometheus-labels-from-otlp-resource-attributes
+[Create Prometheus labels from OTLP resource attributes]: #create-prometheus-labels-from-otlp-resource-attributes
 {{< /admonition >}}
 
 ## Blocks
