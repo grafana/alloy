@@ -1,7 +1,6 @@
 package collector
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -35,7 +34,7 @@ func Test_getSetupConsumers(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		assert.NoError(t, c.getSetupConsumers(context.Background()))
+		assert.NoError(t, c.getSetupConsumers(t.Context()))
 
 		assert.NoError(t, testutil.GatherAndCompare(reg, strings.NewReader(`
 			# HELP database_observability_setup_consumers_enabled Whether each performance_schema consumer is enabled (1) or disabled (0)
@@ -64,7 +63,7 @@ func Test_getSetupConsumers(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		assert.NoError(t, c.getSetupConsumers(context.Background()))
+		assert.NoError(t, c.getSetupConsumers(t.Context()))
 
 		assert.NoError(t, testutil.GatherAndCompare(reg, strings.NewReader(`
 			# HELP database_observability_setup_consumers_enabled Whether each performance_schema consumer is enabled (1) or disabled (0)
@@ -89,6 +88,6 @@ func Test_getSetupConsumers(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		assert.Error(t, c.getSetupConsumers(context.Background()))
+		assert.Error(t, c.getSetupConsumers(t.Context()))
 	})
 }
