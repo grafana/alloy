@@ -3,7 +3,10 @@
 package beyla
 
 import (
-	"errors"
+	"bytes"
+	"context"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -15,13 +18,14 @@ import (
 	"github.com/grafana/beyla/v2/pkg/transform"
 	"github.com/stretchr/testify/require"
 
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
+	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/syntax"
 )
 
 func TestArguments_UnmarshalSyntax(t *testing.T) {
 	in := `
-		open_port = "80,443,8000-8999"
-		executable_name = "test"
 		routes {
 			unmatched = "wildcard"
 			patterns = ["/api/v1/*"]
@@ -65,7 +69,7 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 				}
 			}
 			exclude_services {
-				name = "test3"
+				exe_path = "test3"
 				namespace = "default"
 			}
 		}
@@ -73,7 +77,6 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 			features = ["application", "network"]
 			instrumentations = ["redis", "sql"]
 			network {
-				enable = true
 				agent_ip = "0.0.0.0"
 				interfaces = ["eth0"]
 				source = "tc"
@@ -114,8 +117,6 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 	require.NoError(t, syntax.Unmarshal([]byte(in), &args))
 	cfg, err := args.Convert()
 	require.NoError(t, err)
-	require.Equal(t, services.PortEnum{Ranges: []services.PortRange{{Start: 80, End: 0}, {Start: 443, End: 0}, {Start: 8000, End: 8999}}}, cfg.Port)
-	require.True(t, cfg.Exec.IsSet())
 	require.Equal(t, transform.UnmatchType("wildcard"), cfg.Routes.Unmatch)
 	require.Equal(t, []string{"/api/v1/*"}, cfg.Routes.Patterns)
 	require.Equal(t, []string{"/api/v1/health"}, cfg.Routes.IgnorePatterns)
@@ -151,7 +152,7 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 	require.True(t, cfg.Discovery.Services[0].Metadata[services.AttrNamespace].IsSet())
 	require.True(t, cfg.Discovery.Services[1].PodLabels["test"].IsSet())
 	require.Len(t, cfg.Discovery.ExcludeServices, 1)
-	require.Equal(t, "test3", cfg.Discovery.ExcludeServices[0].Name)
+	require.True(t, cfg.Discovery.ExcludeServices[0].Path.IsSet())
 	require.Equal(t, "default", cfg.Discovery.ExcludeServices[0].Namespace)
 	require.Equal(t, []string{"application", "network"}, cfg.Prometheus.Features)
 	require.Equal(t, []string{"redis", "sql"}, cfg.Prometheus.Instrumentations)
@@ -188,33 +189,48 @@ func TestArguments_ConvertDefaultConfig(t *testing.T) {
 	require.Equal(t, cfg.EnforceSysCaps, beyla.DefaultConfig.EnforceSysCaps)
 }
 
-func TestArguments_UnmarshalInvalidSyntax(t *testing.T) {
-	var tests = []struct {
-		testname      string
-		cfg           string
-		expectedError string
+func TestArguments_ValidationErrors(t *testing.T) {
+	tests := []struct {
+		name    string
+		config  string
+		wantErr string
 	}{
 		{
-			"invalid regex",
-			`
-		executable_name = "["
-		`,
-			"error parsing regexp: missing closing ]: `[`",
+			name: "invalid regex",
+			config: `
+				discovery {
+					services {
+						exe_path = "["
+					}
+				}
+				metrics {
+					features = ["application"]
+				}
+			`,
+			wantErr: "error parsing regexp: missing closing ]: `[`",
 		},
 		{
-			"invalid port range",
-			`
-		open_port = "-8000"
-		`,
-			"invalid port range \"-8000\". Must be a comma-separated list of numeric ports or port ranges (e.g. 8000-8999)",
+			name: "invalid port range",
+			config: `
+				discovery {
+					services {
+						open_ports = "-8000"
+					}
+				}
+				metrics {
+					features = ["application"]
+				}
+			`,
+			wantErr: `invalid port range "-8000". Must be a comma-separated list of numeric ports or port ranges (e.g. 8000-8999)`,
 		},
 	}
+
 	for _, tt := range tests {
-		t.Run(tt.testname, func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			var args Arguments
-			require.NoError(t, syntax.Unmarshal([]byte(tt.cfg), &args))
+			require.NoError(t, syntax.Unmarshal([]byte(tt.config), &args))
 			_, err := args.Convert()
-			require.EqualError(t, err, tt.expectedError)
+			require.EqualError(t, err, tt.wantErr)
 		})
 	}
 }
@@ -364,7 +380,6 @@ func TestConvert_Prometheus(t *testing.T) {
 
 func TestConvert_Network(t *testing.T) {
 	args := Network{
-		Enable:           true,
 		AgentIP:          "0.0.0.0",
 		Interfaces:       []string{"eth0"},
 		Protocols:        []string{"TCP", "UDP"},
@@ -383,7 +398,7 @@ func TestConvert_Network(t *testing.T) {
 	expectedConfig.Print = false
 	expectedConfig.CIDRs = args.CIDRs
 
-	config := args.Convert()
+	config := args.Convert(true)
 
 	require.Equal(t, expectedConfig, config)
 }
@@ -440,83 +455,263 @@ func TestConvert_Filters(t *testing.T) {
 	require.Equal(t, expectedConfig, config)
 }
 
-func TestArguments_Validate(t *testing.T) {
+func TestServices_Validate(t *testing.T) {
 	tests := []struct {
-		name     string
-		args     Arguments
-		expected error
+		name    string
+		args    Services
+		wantErr string
 	}{
 		{
-			name:     "empty arguments",
-			args:     Arguments{},
-			expected: errors.New("you need to define at least open_port, executable_name, or services in the discovery section"),
+			name: "valid service with open_ports",
+			args: Services{
+				{
+					OpenPorts: "80",
+				},
+			},
 		},
 		{
-			name: "with service discovery",
-			args: Arguments{
-				Discovery: Discovery{
-					Services: []Service{
-						{
-							Name:      "test",
-							Namespace: "default",
-							OpenPorts: "80",
-							Path:      "/api/v1/*",
-						},
+			name: "valid service with exe_path",
+			args: Services{
+				{
+					Path: "/usr/bin/app",
+				},
+			},
+		},
+		{
+			name: "valid service with kubernetes config",
+			args: Services{
+				{
+					Kubernetes: KubernetesService{
+						Namespace: "default",
 					},
 				},
 			},
-			expected: nil,
 		},
 		{
-			name: "with port",
-			args: Arguments{
-				Port: "80",
-			},
-			expected: nil,
-		},
-		{
-			name: "with executable name",
-			args: Arguments{
-				ExecutableName: "test",
-			},
-			expected: nil,
-		},
-		{
-			name: "invalid Metrics instrumentation",
-			args: Arguments{
-				Port: "849",
-				Metrics: Metrics{
-					Instrumentations: []string{"*", "kafka", "redis", "superprotocol"},
+			name: "valid service with kubernetes pod labels",
+			args: Services{
+				{
+					Kubernetes: KubernetesService{
+						PodLabels: map[string]string{"app": "myapp"},
+					},
 				},
 			},
-			expected: errors.New("invalid prometheus.instrumentations entry: superprotocol"),
 		},
 		{
-			name: "invalid Metrics feature",
-			args: Arguments{
-				Port: "849",
-				Metrics: Metrics{
-					Features: []string{"application_service_graph", "tralara"},
+			name: "invalid service - no criteria",
+			args: Services{
+				{
+					Name: "test",
 				},
 			},
-			expected: errors.New("invalid prometheus.features entry: tralara"),
+			wantErr: "discovery.services[0] must define at least one of: open_ports, exe_path, or kubernetes configuration",
 		},
 		{
-			name: "network feature without network enabled",
-			args: Arguments{
-				Port: "849",
-				Metrics: Metrics{
-					Features: []string{"network"},
+			name: "multiple valid services",
+			args: Services{
+				{
+					OpenPorts: "80",
+				},
+				{
+					Path: "/usr/bin/app",
+				},
+				{
+					Kubernetes: KubernetesService{
+						Namespace: "default",
+					},
 				},
 			},
-			expected: errors.New("network feature can only be enabled if network is enabled"),
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.args.Validate()
-			require.Equal(t, tt.expected, err)
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
 		})
 	}
+}
+
+func TestMetrics_Validate(t *testing.T) {
+	tests := []struct {
+		name    string
+		args    Metrics
+		wantErr string
+	}{
+		{
+			name: "valid empty metrics",
+			args: Metrics{},
+		},
+		{
+			name: "valid instrumentations",
+			args: Metrics{
+				Instrumentations: []string{"http", "grpc", "*"},
+			},
+		},
+		{
+			name: "invalid instrumentation",
+			args: Metrics{
+				Instrumentations: []string{"invalid"},
+			},
+			wantErr: `metrics.instrumentations: invalid value "invalid"`,
+		},
+		{
+			name: "valid features",
+			args: Metrics{
+				Features: []string{"application", "network"},
+			},
+		},
+		{
+			name: "invalid feature",
+			args: Metrics{
+				Features: []string{"invalid"},
+			},
+			wantErr: `metrics.features: invalid value "invalid"`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.args.Validate()
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+		})
+	}
+}
+
+func TestArguments_Validate(t *testing.T) {
+	tests := []struct {
+		name    string
+		args    Arguments
+		wantErr string
+	}{
+		{
+			name:    "empty arguments",
+			args:    Arguments{},
+			wantErr: "metrics.features must include at least one of: network, application",
+		},
+		{
+			name: "valid network-only configuration",
+			args: Arguments{
+				Metrics: Metrics{
+					Features: []string{"network"},
+				},
+			},
+		},
+		{
+			name: "application feature with empty services",
+			args: Arguments{
+				Metrics: Metrics{
+					Features: []string{"application"},
+				},
+				Discovery: Discovery{
+					Services: Services{}, // Empty services
+				},
+			},
+			wantErr: "discovery.services is required when application features are enabled",
+		},
+		{
+			name: "valid application configuration",
+			args: Arguments{
+				Discovery: Discovery{
+					Services: Services{
+						{
+							OpenPorts: "80",
+						},
+					},
+				},
+				Metrics: Metrics{
+					Features: []string{"application"},
+				},
+			},
+		},
+		{
+			name: "invalid service configuration with application feature",
+			args: Arguments{
+				Discovery: Discovery{
+					Services: Services{
+						{}, // Empty service
+					},
+				},
+				Metrics: Metrics{
+					Features: []string{"application"},
+				},
+			},
+			wantErr: "must define at least one of: open_ports, exe_path, or kubernetes configuration",
+		},
+		{
+			name: "invalid metrics configuration",
+			args: Arguments{
+				Metrics: Metrics{
+					Features: []string{"invalid"},
+				},
+			},
+			wantErr: "metrics.features must include at least one of: network, application, application_span, application_service_graph, or application_process",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.args.Validate()
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+		})
+	}
+}
+
+func TestDeprecatedFields(t *testing.T) {
+	var buf bytes.Buffer
+	var mu sync.Mutex
+
+	// Create a synchronized logger that protects both writing and reading
+	syncLogger := log.LoggerFunc(func(keyvals ...interface{}) error {
+		mu.Lock()
+		defer mu.Unlock()
+		return log.NewLogfmtLogger(&buf).Log(keyvals...)
+	})
+
+	logger := level.NewFilter(syncLogger, level.AllowAll())
+
+	comp := &Component{
+		opts: component.Options{
+			Logger: logger,
+		},
+		args: Arguments{
+			Port:           "8080",
+			ExecutableName: "test-app",
+			Metrics: Metrics{
+				Features: []string{"network"},
+			},
+		},
+	}
+
+	//nolint:usetesting
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Start component which should trigger warnings
+	go comp.Run(ctx)
+
+	// Verify warnings were logged
+	require.Eventually(t, func() bool {
+		mu.Lock()
+		defer mu.Unlock()
+		output := buf.String()
+		return strings.Contains(output, "level=warn") &&
+			strings.Contains(output, "open_port' field is deprecated") &&
+			strings.Contains(output, "executable_name' field is deprecated")
+	}, time.Second, time.Millisecond*10)
 }

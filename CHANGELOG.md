@@ -10,6 +10,10 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Breaking changes
+
+- Removed `open_port` and `executable_name` from top level configuration of Beyla component. Removed `enabled` argument from `network` block. (@marctc)
+
 ### Features
 
 - Add `otelcol.receiver.awscloudwatch` component to receive logs from AWS CloudWatch and forward them to other `otelcol.*` components. (@wildum)
@@ -104,7 +108,7 @@ v1.7.3
 
 ### Breaking changes
 
-- Fixed the parsing of selections, application and network filter blocks for Beyla
+- Fixed the parsing of selections, application and network filter blocks for Beyla. (@raffaelroquetto)
 
 ### Enhancements
 
