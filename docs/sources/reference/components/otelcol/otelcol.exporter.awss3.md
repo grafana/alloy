@@ -67,18 +67,18 @@ The `s3_uploader` block configures the AWS S3 bucket details used by the compone
 
 The following arguments are supported:
 
-Name                  | Type                       | Description                                                                      | Default      | Required
-----------------------|----------------------------|----------------------------------------------------------------------------------|--------------|---------
-`region`              | `string`                   | The AWS region.                                                                      | `"us-east-1"`| no
-`s3_bucket`           | `string`                   | The S3 bucket.                                                                        |              | yes
-`s3_prefix`           | `string`                   | Prefix for the S3 key (root directory inside the bucket).                            |              | yes
-`s3_partition`        | `string`                   | Time granularity of S3 key: hour or minute.                                       | `"minute"`   | no
-`role_arn`            | `string`                   | The Role ARN to be assumed.                                                       |              | no
-`file_prefix`         | `string`                   | The file prefix defined by the user.                                                      |              | no
-`endpoint`            | `string`                   | Overrides the endpoint used by the exporter instead of constructing it from `region` and `s3_bucket`. |      | no
-`s3_force_path_style` | `boolean`                  |  Set this to `true` to force the request to use [path-style requests](https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html#path-style-access) | `false`             | no
-`disable_ssl`         | `boolean`                  |  Set this to `true` to disable SSL when sending requests.           |              | `false`
-`compression`         | `string`                   | How should the file be compressed? `none`, `gzip`                                                    | `none`      | no
+Name                  | Type      | Description                                                                                                                                                       | Default                                       | Required
+--------------------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- | --------
+`region`              | `string`  | The AWS region.                                                                                                                                                   | `"us-east-1"`                                 | no
+`s3_bucket`           | `string`  | The S3 bucket.                                                                                                                                                    |                                               | yes
+`s3_prefix`           | `string`  | Prefix for the S3 key (root directory inside the bucket).                                                                                                         |                                               | yes
+`s3_partition_format` | `string`  | Filepath formatting for the partition; See [strftime](https://www.man7.org/linux/man-pages/man3/strftime.3.html) for format specification.                        | `"year=%Y/month=%m/day=%d/hour=%H/minute=%M"` | no
+`role_arn`            | `string`  | The Role ARN to be assumed.                                                                                                                                       |                                               | no
+`file_prefix`         | `string`  | The file prefix defined by the user.                                                                                                                              |                                               | no
+`endpoint`            | `string`  | Overrides the endpoint used by the exporter instead of constructing it from `region` and `s3_bucket`.                                                             |                                               | no
+`s3_force_path_style` | `boolean` | Set this to `true` to force the request to use [path-style requests](https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html#path-style-access) | `false`                                       | no
+`disable_ssl`         | `boolean` | Set this to `true` to disable SSL when sending requests.                                                                                                          |                                               | `false`
+`compression`         | `string`  | How should the file be compressed? `none`, `gzip`                                                                                                                 | `none`                                        | no
 
 [path-style requests]: https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html#path-style-access
 
