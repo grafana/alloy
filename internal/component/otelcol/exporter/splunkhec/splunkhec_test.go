@@ -44,10 +44,10 @@ func TestConfigConversion(t *testing.T) {
 			Headers:              map[string]configopaque.String(nil),
 			Auth:                 (*configauth.Authentication)(nil),
 			Compression:          "",
-			MaxIdleConns:         0,
+			MaxIdleConns:         100,
 			MaxIdleConnsPerHost:  0,
 			MaxConnsPerHost:      0,
-			IdleConnTimeout:      0,
+			IdleConnTimeout:      90000000000,
 			DisableKeepAlives:    false,
 			HTTP2ReadIdleTimeout: 0,
 			HTTP2PingTimeout:     0,
@@ -68,10 +68,17 @@ func TestConfigConversion(t *testing.T) {
 			MaxElapsedTime:      300000000000,
 		},
 		BatcherConfig: exporterbatcher.Config{
-			Enabled:       false,
-			FlushTimeout:  200000000,
-			MinSizeConfig: exporterbatcher.MinSizeConfig{MinSizeItems: 8192},
-			MaxSizeConfig: exporterbatcher.MaxSizeConfig{MaxSizeItems: 0},
+			Enabled:      false,
+			FlushTimeout: 200000000,
+			SizeConfig: exporterbatcher.SizeConfig{
+				MinSize: 8192,
+				MaxSize: 0,
+				Sizer: func() exporterbatcher.SizerType {
+					var s exporterbatcher.SizerType
+					require.NoError(t, s.UnmarshalText([]byte("items")))
+					return s
+				}(),
+			},
 		},
 		LogDataEnabled:          true,
 		ProfilingDataEnabled:    true,
@@ -126,10 +133,10 @@ func TestConfigConversion(t *testing.T) {
 			Headers:              map[string]configopaque.String(nil),
 			Auth:                 (*configauth.Authentication)(nil),
 			Compression:          "",
-			MaxIdleConns:         0,
+			MaxIdleConns:         100,
 			MaxIdleConnsPerHost:  0,
 			MaxConnsPerHost:      0,
-			IdleConnTimeout:      0,
+			IdleConnTimeout:      90000000000,
 			DisableKeepAlives:    false,
 			HTTP2ReadIdleTimeout: 0,
 			HTTP2PingTimeout:     0,
@@ -148,10 +155,19 @@ func TestConfigConversion(t *testing.T) {
 			MaxInterval:         30000000000,
 			MaxElapsedTime:      300000000000,
 		},
-		BatcherConfig: exporterbatcher.Config{Enabled: false,
-			FlushTimeout:  200000000,
-			MinSizeConfig: exporterbatcher.MinSizeConfig{MinSizeItems: 8192},
-			MaxSizeConfig: exporterbatcher.MaxSizeConfig{MaxSizeItems: 0}},
+		BatcherConfig: exporterbatcher.Config{
+			Enabled:      false,
+			FlushTimeout: 200000000,
+			SizeConfig: exporterbatcher.SizeConfig{
+				MinSize: 8192,
+				MaxSize: 0,
+				Sizer: func() exporterbatcher.SizerType {
+					var s exporterbatcher.SizerType
+					require.NoError(t, s.UnmarshalText([]byte("items")))
+					return s
+				}(),
+			},
+		},
 		LogDataEnabled:       true,
 		ProfilingDataEnabled: true,
 		Token:                "token", Source: "",

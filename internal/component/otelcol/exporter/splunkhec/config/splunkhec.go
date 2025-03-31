@@ -95,25 +95,27 @@ type BatcherConfig struct {
 
 	// FlushTimeout sets the time after which a batch will be sent regardless of its size.
 	FlushTimeout time.Duration `alloy:"flush_timeout,attr,optional"`
-	// MinSizeItems is the number of items (spans, data points or log records for OTLP) at which the batch should be
-	// sent regardless of the timeout. There is no guarantee that the batch size always greater than this value.
-	// This option requires the Request to implement RequestItemsCounter interface. Otherwise, it will be ignored.
-	MinSizeItems int `alloy:"min_size_items,attr,optional"`
-	// MaxSizeItems is the maximum number of the batch items, i.e. spans, data points or log records for OTLP.
-	// If the batch size exceeds this value, it will be broken up into smaller batches if possible.
-	// Setting this value to zero disables the maximum size limit.
-	MaxSizeItems int `alloy:"max_size_items,attr,optional"`
+
+	MinSize int    `alloy:"min_size,attr,optional"`
+	MaxSize int    `alloy:"max_size,attr,optional"`
+	Sizer   string `alloy:"sizer,attr,optional"`
 }
 
 func (args *BatcherConfig) Convert() *exporterbatcher.Config {
 	if args == nil {
 		return nil
 	}
+	sizer := exporterbatcher.SizerType{}
+	// ignore error here because we check for valid sizer in Validate()
+	_ = sizer.UnmarshalText([]byte(args.Sizer))
 	return &exporterbatcher.Config{
-		Enabled:       args.Enabled,
-		FlushTimeout:  args.FlushTimeout,
-		MinSizeConfig: exporterbatcher.MinSizeConfig{MinSizeItems: args.MinSizeItems},
-		MaxSizeConfig: exporterbatcher.MaxSizeConfig{MaxSizeItems: args.MaxSizeItems},
+		Enabled:      args.Enabled,
+		FlushTimeout: args.FlushTimeout,
+		SizeConfig: exporterbatcher.SizeConfig{
+			Sizer:   sizer,
+			MinSize: args.MinSize,
+			MaxSize: args.MaxSize,
+		},
 	}
 }
 
@@ -222,8 +224,9 @@ func (args *SplunkConf) SetToDefault() {
 	args.BatcherConfig = BatcherConfig{
 		Enabled:      false,
 		FlushTimeout: 200 * time.Millisecond,
-		MinSizeItems: 8192,
-		MaxSizeItems: 0,
+		MinSize:      8192,
+		MaxSize:      0,
+		Sizer:        "items",
 	}
 	args.LogDataEnabled = true
 	args.ProfilingDataEnabled = true
@@ -260,6 +263,9 @@ func (args *SplunkConf) Validate() error {
 	}
 	if args.MaxContentLengthTraces > 838860800 {
 		return errors.New("max_content_length_traces must be less than 838860800")
+	}
+	if args.BatcherConfig.Sizer != "items" && args.BatcherConfig.Sizer != "bytes" && args.BatcherConfig.Sizer != "requests" {
+		return errors.New("sizer must be one of items, bytes, or requests")
 	}
 
 	return nil
