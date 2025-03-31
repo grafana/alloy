@@ -39,6 +39,13 @@ Argument               | Description                                            
 
 ## HTTP_PROXY, HTTPS_PROXY, NO_PROXY
 
+{{< admonition type="note" >}}
+For many {{< param "PRODUCT_NAME" >}} components, there is an attribute named `proxy_from_environment` that must be set for the component's
+http client to use the proxy related environment variables. For example, in the `prometheus.remote_write` component this attribute is found within the 
+`endpoint` block. If {{< param "PRODUCT_NAME" >}} does not appear to be respecting your proxy configuration, please ensure the component is
+configured properly to utilize proxy environment variables.
+{{< /admonition >}}
+
 You can use the `HTTP_PROXY` environment variable to define the hostname or IP address of the proxy server for HTTP requests. For example, you can set the proxy to `http://proxy.example.com`.
 
 You can use the `HTTPS_PROXY` environment variable to define the proxy server for HTTPS requests in the same manner as `HTTP_PROXY`.
