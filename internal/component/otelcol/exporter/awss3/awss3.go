@@ -57,6 +57,16 @@ func (args *Arguments) SetToDefault() {
 	args.Queue.SetToDefault()
 }
 
+// Validate implements syntax.Validator.
+func (args *Arguments) Validate() error {
+	otelCfg, err := args.Convert()
+	if err != nil {
+		return err
+	}
+	awss3Cfg := otelCfg.(*awss3exporter.Config)
+	return awss3Cfg.Validate()
+}
+
 func (args Arguments) Convert() (otelcomponent.Config, error) {
 	var result awss3exporter.Config
 
@@ -91,6 +101,8 @@ type S3Uploader struct {
 	S3ForcePathStyle  bool                   `alloy:"s3_force_path_style,attr,optional"`
 	DisableSSL        bool                   `alloy:"disable_ssl,attr,optional"`
 	Compression       configcompression.Type `alloy:"compression,attr,optional"`
+	ACL               string                 `alloy:"acl,attr,optional"`
+	StorageClass      string                 `alloy:"storage_class,attr,optional"`
 }
 
 func (args *S3Uploader) SetToDefault() {
@@ -99,6 +111,9 @@ func (args *S3Uploader) SetToDefault() {
 		S3ForcePathStyle:  false,
 		DisableSSL:        false,
 		S3PartitionFormat: "year=%Y/month=%m/day=%d/hour=%H/minute=%M",
+		Compression:       "none",
+		ACL:               "private",
+		StorageClass:      "STANDARD",
 	}
 }
 
@@ -113,6 +128,9 @@ func (args *S3Uploader) Convert() awss3exporter.S3UploaderConfig {
 		RoleArn:           args.RoleArn,
 		S3ForcePathStyle:  args.S3ForcePathStyle,
 		DisableSSL:        args.DisableSSL,
+		Compression:       configcompression.Type(args.Compression),
+		ACL:               args.ACL,
+		StorageClass:      args.StorageClass,
 	}
 }
 

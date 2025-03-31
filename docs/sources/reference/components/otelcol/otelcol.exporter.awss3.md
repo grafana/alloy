@@ -79,6 +79,8 @@ Name                  | Type      | Description                                 
 `s3_force_path_style` | `boolean` | Set this to `true` to force the request to use [path-style requests](https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html#path-style-access) | `false`                                       | no
 `disable_ssl`         | `boolean` | Set this to `true` to disable SSL when sending requests.                                                                                                          |                                               | `false`
 `compression`         | `string`  | How should the file be compressed? `none`, `gzip`                                                                                                                 | `none`                                        | no
+`acl`                 | `string`  | The canned ACL to use when uploading objects.                                                                                                                     | `"private"`                                   | no
+`storage_class`       | `string`  | The storage class to use when uploading objects.                                                                                                                     | `"STANDARD"`                                  | no
 
 [path-style requests]: https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html#path-style-access
 

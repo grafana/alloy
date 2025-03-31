@@ -207,6 +207,9 @@ func TestConfig(t *testing.T) {
 				S3ForcePathStyle:  false,
 				DisableSSL:        false,
 				Compression:       "none",
+				Region:            "us-east-1",
+				ACL:               "private",
+				StorageClass:      "STANDARD",
 			},
 		},
 		{
@@ -222,6 +225,7 @@ func TestConfig(t *testing.T) {
 				s3_force_path_style = true
 				disable_ssl = true
 				compression = "gzip"
+				region = "us-east-2"
 			}
 			`,
 			expected: awss3exporter.S3UploaderConfig{
@@ -234,6 +238,9 @@ func TestConfig(t *testing.T) {
 				S3ForcePathStyle:  true,
 				DisableSSL:        true,
 				Compression:       "gzip",
+				Region:            "us-east-2",
+				ACL:               "private",
+				StorageClass:      "STANDARD",
 			},
 		},
 	}
