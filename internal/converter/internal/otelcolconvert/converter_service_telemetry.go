@@ -84,12 +84,14 @@ func convertLogging(file *builder.File, tel otel_tel.LogsConfig) diag.Diagnostic
 		// If this is set to the default (stderr) then it's the same as Alloy default.
 		// There's no need to a diagnostic.
 		!(len(tel.OutputPaths) == 1 && tel.OutputPaths[0] == "stderr") {
+
 		diags.Add(diag.SeverityLevelCritical, "the service/telemetry/logs/output_paths configuration is not supported")
 	}
 	if tel.ErrorOutputPaths != nil &&
 		// If this is set to the default (stderr) then it's the same as Alloy default.
 		// There's no need to a diagnostic.
 		!(len(tel.ErrorOutputPaths) == 1 && tel.ErrorOutputPaths[0] == "stderr") {
+
 		diags.Add(diag.SeverityLevelCritical, "the service/telemetry/logs/error_output_paths configuration is not supported")
 	}
 	if tel.InitialFields != nil {
@@ -105,7 +107,7 @@ func convertLogging(file *builder.File, tel otel_tel.LogsConfig) diag.Diagnostic
 // TODO: Support metrics conversion once upstream's "metrics" section is not experimental.
 // We might also need a way to configure somethings in the config file instead of via cmd args.
 // For example, the HTTTP server address.
-func convertMetrics(file *builder.File, tel otel_tel.MetricsConfig) diag.Diagnostics {
+func convertMetrics(_ *builder.File, tel otel_tel.MetricsConfig) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	if len(tel.Readers) > 0 {
@@ -120,7 +122,7 @@ func convertMetrics(file *builder.File, tel otel_tel.MetricsConfig) diag.Diagnos
 }
 
 // TODO: Support metrics conversion once upstream's "traces" section is not experimental.
-func convertTraces(file *builder.File, tel otel_tel.TracesConfig) diag.Diagnostics {
+func convertTraces(_ *builder.File, tel otel_tel.TracesConfig) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	if len(tel.Processors) > 0 {
