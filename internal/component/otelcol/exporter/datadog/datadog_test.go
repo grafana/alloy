@@ -46,8 +46,7 @@ func TestConfigConversion(t *testing.T) {
 		defaultClient = confighttp.ClientConfig{
 			Timeout: defaultTimeout,
 		}
-		connsPerHost    = 10
-		connsPerHostPtr = &connsPerHost
+		connsPerHost = 10
 	)
 
 	tests := []struct {
@@ -96,7 +95,7 @@ func TestConfigConversion(t *testing.T) {
 				}
 			`,
 			expected: datadogOtelconfig.Config{
-				ClientConfig:  confighttp.ClientConfig{Timeout: 10 * time.Second, Endpoint: "", MaxConnsPerHost: connsPerHostPtr},
+				ClientConfig:  confighttp.ClientConfig{Timeout: 10 * time.Second, Endpoint: "", MaxConnsPerHost: connsPerHost},
 				QueueSettings: defaultQueueConfig,
 				BackOffConfig: defaultRetrySettings,
 				TagsConfig:    datadogOtelconfig.TagsConfig{Hostname: "customhostname"},
