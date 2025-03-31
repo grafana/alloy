@@ -34,9 +34,6 @@ Refer to the original [Google Cloud Exporter][] document.
 
 ## Arguments
 
-If there are any discrepancies between the argument descriptions here and those in the original [Google Cloud Exporter][] documentation, the original documentation takes precedence.
-Argument descriptions are excerpted directly from the original documentation.
-
 You can use the following arguments with `otelcol.exporter.googlecloud`:
 
 | Name                        | Type     | Description                                                                                                                                                                                                                       | Default                                       | Required |
