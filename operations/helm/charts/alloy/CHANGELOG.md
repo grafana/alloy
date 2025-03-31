@@ -10,6 +10,8 @@ internal API changes are not present.
 Unreleased
 ----------
 
+0.12.6 (2025-04-01)
+----------
 ### Breaking changes
 
 - configReloader.customArgs are likely to break as the prometheus maintained config reloader does not have the same arguments as the previous image (@dehaansa)
