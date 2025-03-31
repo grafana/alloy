@@ -656,7 +656,6 @@ require (
 	github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a // indirect
 	github.com/jackc/pgtype v1.14.0 // indirect
 	github.com/jackc/pgx/v4 v4.18.2 // indirect
-	github.com/jaegertracing/jaeger-idl v0.5.0 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/jcmturner/aescts/v2 v2.0.0 // indirect
 	github.com/jcmturner/dnsutils/v2 v2.0.0 // indirect
@@ -931,7 +930,10 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.5.0 // indirect
 )
 
-require github.com/grafana/beyla/v2 v2.0.4-alloy.2
+require (
+	github.com/grafana/beyla/v2 v2.0.4-alloy.2
+	github.com/jaegertracing/jaeger-idl v0.5.0
+)
 
 // NOTE: replace directives below must always be *temporary*.
 //
