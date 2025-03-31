@@ -4,13 +4,16 @@ aliases:
   - ../beyla.ebpf/ # /docs/alloy/latest/reference/components/beyla.ebpf/
 description: Learn about beyla.ebpf
 labels:
-  stage: public-preview
+  stage: general-availability
 title: beyla.ebpf
 ---
 
 # `beyla.ebpf`
 
-{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< admonition type="note" >}}
+`beyla.ebpf` component uses version {{< param "BEYLA_VERSION" >}} of Grafana Beyla.
+{{< /admonition >}}
+
 
 The `beyla.ebpf` component is a wrapper for [Grafana Beyla][] which uses [eBPF][] to automatically inspect application executables and the OS networking layer, and capture trace spans related to web transactions and Rate Errors Duration (RED) metrics for Linux HTTP/S and gRPC services.
 You can configure the component to collect telemetry data from a specific port or executable path, and other criteria from Kubernetes metadata.
