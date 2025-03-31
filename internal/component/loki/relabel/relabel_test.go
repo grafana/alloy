@@ -69,7 +69,7 @@ func TestRelabeling(t *testing.T) {
 
 	c, err := New(opts, args)
 	require.NoError(t, err)
-	go c.Run(context.Background())
+	go c.Run(t.Context())
 
 	// Send a log entry to the component's receiver.
 	logEntry := loki.Entry{
@@ -130,7 +130,7 @@ func BenchmarkRelabelComponent(b *testing.B) {
 	}
 
 	c, _ := New(opts, args)
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(b.Context())
 	go c.Run(ctx)
 
 	var entry loki.Entry
@@ -188,7 +188,7 @@ func TestCache(t *testing.T) {
 
 	c, err := New(opts, args)
 	require.NoError(t, err)
-	go c.Run(context.Background())
+	go c.Run(t.Context())
 
 	go func() {
 		for e := range ch1.Chan() {
@@ -345,7 +345,7 @@ rule {
 	require.NoError(t, err)
 
 	go func() {
-		err := ctrl.Run(context.Background(), lsf.Arguments{
+		err := ctrl.Run(t.Context(), lsf.Arguments{
 			Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{"__path__": f.Name(), "somelbl": "somevalue"})},
 			ForwardTo: []loki.LogsReceiver{
 				tc1.Exports().(Exports).Receiver,

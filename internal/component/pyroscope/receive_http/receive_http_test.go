@@ -280,7 +280,7 @@ func TestForwardsProfilesPushV1(t *testing.T) {
 				tc.appendableErrors = []error{nil}
 			}
 
-			ctx, cancel := context.WithCancel(context.Background())
+			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
 
 			appendables := createTestAppendables(tc.appendableErrors)
@@ -428,7 +428,7 @@ func startComponent(t *testing.T, appendables []pyroscope.Appendable) int {
 	comp, err := New(testOptions(t), args)
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
 	go func() {
@@ -559,7 +559,7 @@ func TestUpdateArgs(t *testing.T) {
 	comp, err := New(testOptions(t), args)
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
 	go func() {

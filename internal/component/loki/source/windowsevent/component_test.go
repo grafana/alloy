@@ -52,7 +52,7 @@ func TestEventLogger(t *testing.T) {
 		Labels:               map[string]string{"job": "windows"},
 	})
 	require.NoError(t, err)
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancelFunc := context.WithTimeout(ctx, 10*time.Second)
 	found := false
 	go c.Run(ctx)
@@ -116,7 +116,7 @@ func TestLegacyBookmarkConversion(t *testing.T) {
 	require.True(t, string(dd) == bookmarkText)
 
 	// Run the component and cancel it to stop the target that was started in New()
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancelFunc := context.WithTimeout(ctx, 10*time.Second)
 	go c.Run(ctx)
 	cancelFunc()

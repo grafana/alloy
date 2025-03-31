@@ -1,7 +1,6 @@
 package collector
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -48,7 +47,7 @@ func TestConnectionInfo(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		err = collector.Start(context.Background())
+		err = collector.Start(t.Context())
 		require.NoError(t, err)
 
 		err = testutil.GatherAndCompare(reg, strings.NewReader(tc.expectedMetrics))

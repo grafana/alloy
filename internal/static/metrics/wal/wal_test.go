@@ -1,7 +1,6 @@
 package wal
 
 import (
-	"context"
 	"math"
 	"os"
 	"path/filepath"
@@ -30,7 +29,7 @@ func TestStorage_InvalidSeries(t *testing.T) {
 		require.NoError(t, s.Close())
 	}()
 
-	app := s.Appender(context.Background())
+	app := s.Appender(t.Context())
 
 	// Samples
 	_, err = app.Append(0, labels.Labels{}, 0, 0)
@@ -74,7 +73,7 @@ func TestStorage(t *testing.T) {
 	}()
 	s.SetNotifier(notifier)
 
-	app := s.Appender(context.Background())
+	app := s.Appender(t.Context())
 
 	// Write some samples
 	payload := buildSeries([]string{"foo", "bar", "baz"})
@@ -115,7 +114,7 @@ func TestStorage_Rollback(t *testing.T) {
 		require.NoError(t, s.Close())
 	})
 
-	app := s.Appender(context.Background())
+	app := s.Appender(t.Context())
 
 	payload := buildSeries([]string{"foo", "bar", "baz", "blerg"})
 	for _, metric := range payload {
@@ -145,7 +144,7 @@ func TestStorage_DuplicateExemplarsIgnored(t *testing.T) {
 		require.NoError(t, s.Close())
 	}()
 
-	app := s.Appender(context.Background())
+	app := s.Appender(t.Context())
 
 	sRef, err := app.Append(0, labels.Labels{{Name: "a", Value: "1"}}, 0, 0)
 	require.NoError(t, err, "should not reject valid series")
@@ -188,7 +187,7 @@ func TestStorage_ExistingWAL(t *testing.T) {
 	s, err := NewStorage(log.NewNopLogger(), nil, walDir)
 	require.NoError(t, err)
 
-	app := s.Appender(context.Background())
+	app := s.Appender(t.Context())
 	payload := buildSeries([]string{"foo", "bar", "baz", "blerg"})
 
 	// Write half of the samples.
@@ -216,7 +215,7 @@ func TestStorage_ExistingWAL(t *testing.T) {
 		require.Greater(t, series.lastTs, int64(0), "series timestamp not updated")
 	}
 
-	app = s.Appender(context.Background())
+	app = s.Appender(t.Context())
 
 	for _, metric := range payload[len(payload)/2:] {
 		metric.Write(t, app)
@@ -253,7 +252,7 @@ func TestStorage_ExistingWAL_RefID(t *testing.T) {
 	s, err := NewStorage(l, nil, walDir)
 	require.NoError(t, err)
 
-	app := s.Appender(context.Background())
+	app := s.Appender(t.Context())
 	payload := buildSeries([]string{"foo", "bar", "baz", "blerg"})
 
 	// Write all the samples
@@ -287,7 +286,7 @@ func TestStorage_Truncate(t *testing.T) {
 		require.NoError(t, s.Close())
 	}()
 
-	app := s.Appender(context.Background())
+	app := s.Appender(t.Context())
 
 	payload := buildSeries([]string{"foo", "bar", "baz", "blerg"})
 
@@ -347,7 +346,7 @@ func TestStorage_WriteStalenessMarkers(t *testing.T) {
 		require.NoError(t, s.Close())
 	}()
 
-	app := s.Appender(context.Background())
+	app := s.Appender(t.Context())
 
 	// Write some samples
 	payload := seriesList{
@@ -422,7 +421,7 @@ func TestGlobalReferenceID_Normal(t *testing.T) {
 
 	s, _ := NewStorage(log.NewNopLogger(), nil, walDir)
 	defer s.Close()
-	app := s.Appender(context.Background())
+	app := s.Appender(t.Context())
 	l := labels.New(labels.Label{
 		Name:  "__name__",
 		Value: "label1",
@@ -453,7 +452,7 @@ func TestDBAllowOOOSamples(t *testing.T) {
 		require.NoError(t, s.Close())
 	}()
 
-	app := s.Appender(context.Background())
+	app := s.Appender(t.Context())
 
 	// Write some samples
 	payload := buildSeries([]string{"foo", "bar", "baz"})
@@ -475,7 +474,7 @@ func BenchmarkAppendExemplar(b *testing.B) {
 
 	s, _ := NewStorage(log.NewNopLogger(), nil, walDir)
 	defer s.Close()
-	app := s.Appender(context.Background())
+	app := s.Appender(b.Context())
 	sRef, _ := app.Append(0, labels.Labels{{Name: "a", Value: "1"}}, 0, 0)
 	e := exemplar.Exemplar{Labels: labels.Labels{{Name: "a", Value: "1"}}, Value: 20, Ts: 10, HasTs: true}
 

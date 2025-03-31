@@ -1,7 +1,6 @@
 package receiver
 
 import (
-	"context"
 	"strings"
 	"testing"
 	"time"
@@ -54,7 +53,7 @@ func Test_metricsExporter_Export(t *testing.T) {
 		Exceptions:   make([]payload.Exception, 4),
 		Events:       make([]payload.Event, 5),
 	}
-	require.NoError(t, exp.Export(context.Background(), p))
+	require.NoError(t, exp.Export(t.Context(), p))
 
 	err := promtestutil.CollectAndCompare(reg, strings.NewReader(expect), metricNames...)
 	require.NoError(t, err)

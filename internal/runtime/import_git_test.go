@@ -59,7 +59,7 @@ testImport.add "cc" {
 	ctrl, f := setup(t, main, nil, featuregate.StabilityPublicPreview)
 	err = ctrl.LoadSource(f, nil, "")
 	require.NoError(t, err)
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 
 	var wg sync.WaitGroup
 	defer func() {
@@ -126,7 +126,7 @@ testImport.add "cc" {
 	ctrl, f := setup(t, main, nil, featuregate.StabilityPublicPreview)
 	err = ctrl.LoadSource(f, nil, "")
 	require.NoError(t, err)
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 
 	var wg sync.WaitGroup
 	defer func() {
@@ -209,7 +209,7 @@ testImport.add "cc" {
 	ctrl, f := setup(t, main, nil, featuregate.StabilityPublicPreview)
 	err = ctrl.LoadSource(f, nil, "")
 	require.NoError(t, err)
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 
 	var wg sync.WaitGroup
 	defer func() {
@@ -273,7 +273,7 @@ testImport.add "cc" {
 	ctrl, f := setup(t, main, nil, featuregate.StabilityPublicPreview)
 	err = ctrl.LoadSource(f, nil, "")
 	require.NoError(t, err)
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 
 	var wg sync.WaitGroup
 	defer func() {
@@ -368,7 +368,7 @@ testImport.add "cc" {
 	}
 	require.ErrorContains(t, err, expectedErr.Error())
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	var wg sync.WaitGroup
 	defer func() {
 		cancel()

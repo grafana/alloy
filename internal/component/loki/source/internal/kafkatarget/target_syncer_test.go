@@ -21,7 +21,7 @@ import (
 )
 
 func Test_TopicDiscovery(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	group := &testConsumerGroupHandler{}
 	TopicPollInterval = time.Microsecond
 	var closed bool
@@ -38,7 +38,7 @@ func Test_TopicDiscovery(t *testing.T) {
 			return nil
 		},
 		consumer: consumer{
-			ctx:           context.Background(),
+			ctx:           t.Context(),
 			cancel:        func() {},
 			ConsumerGroup: group,
 			logger:        log.NewNopLogger(),

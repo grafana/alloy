@@ -339,7 +339,7 @@ func TestDeclare(t *testing.T) {
 			err = ctrl.LoadSource(f, nil, "")
 			require.NoError(t, err)
 
-			ctx, cancel := context.WithCancel(context.Background())
+			ctx, cancel := context.WithCancel(t.Context())
 			done := make(chan struct{})
 			go func() {
 				ctrl.Run(ctx)
@@ -381,7 +381,7 @@ func TestDeclareModulePath(t *testing.T) {
 	err = ctrl.LoadSource(f, nil, "")
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan struct{})
 	go func() {
 		ctrl.Run(ctx)
@@ -506,7 +506,7 @@ func TestDeclareError(t *testing.T) {
 				t.Errorf("Expected error to match regex %q, but got: %v", tc.expectedError, err)
 			}
 
-			ctx, cancel := context.WithCancel(context.Background())
+			ctx, cancel := context.WithCancel(t.Context())
 			done := make(chan struct{})
 			go func() {
 				ctrl.Run(ctx)
@@ -586,7 +586,7 @@ func TestDeclareUpdateConfig(t *testing.T) {
 			err = ctrl.LoadSource(f, nil, "")
 			require.NoError(t, err)
 
-			ctx, cancel := context.WithCancel(context.Background())
+			ctx, cancel := context.WithCancel(t.Context())
 			done := make(chan struct{})
 			go func() {
 				ctrl.Run(ctx)

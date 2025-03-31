@@ -21,3 +21,7 @@ func TestConvert(t *testing.T) {
 func TestConvertErrors(t *testing.T) {
 	test_common.TestDirectory(t, "testdata/otelcol_errors", ".yaml", true, []string{}, otelcolconvert.Convert)
 }
+
+func TestConvertEnvvars(t *testing.T) {
+	test_common.TestDirectory(t, "testdata/envvars", ".yaml", true, []string{}, otelcolconvert.Convert)
+}
