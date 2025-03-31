@@ -40,6 +40,9 @@ Var RuntimePriority
 Var RuntimePriorityFlag
 Var Stability
 Var StabilityFlag
+Var User
+Var Password
+Var AuthFlag
 
 # Pages during the installer.
 Page license
@@ -60,6 +63,8 @@ Section "install"
   ${GetOptions} $PassedInParameters "/STABILITY=" $Stability
   ${GetOptions} $PassedInParameters "/ENVIRONMENT=" $Environment
   ${GetOptions} $PassedInParameters "/CONFIG=" $Config
+  ${GetOptions} $PassedInParameters "/USER=" $User
+  ${GetOptions} $PassedInParameters "/PASSWORD=" $Password
 
   # Calls to functions like nsExec::ExecToLog below push the exit code to the
   # stack, and must be popped after calling.
@@ -103,8 +108,15 @@ Section "install"
   Call CreateDataDirectory
   Call InitializeRegistry
 
+  ${If} $User != ""
+    StrCpy $AuthFlag "obj= $\"$User$\""
+    ${If} $Password != ""
+      StrCpy $AuthFlag "$AuthFlag password= $\"$Password$\""
+    ${EndIf}  
+  ${EndIf}
+
   # Create the service.
-  nsExec::ExecToLog 'sc create "Alloy" start= delayed-auto binpath= "\"$INSTDIR\alloy-service-windows-amd64.exe\""'
+  nsExec::ExecToLog 'sc create "Alloy" start= delayed-auto $AuthFlag binpath= "\"$INSTDIR\alloy-service-windows-amd64.exe\""'
   Pop $0
 
   # Start the service.
