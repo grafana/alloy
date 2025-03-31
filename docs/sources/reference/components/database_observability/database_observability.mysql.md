@@ -59,20 +59,20 @@ prometheus.scrape "orders_db" {
 
 prometheus.remote_write "metrics_service" {
   endpoint {
-    url = sys.env("<GCLOUD_HOSTED_METRICS_URL>")
+    url = sys.env("<GRAFANA_CLOUD_HOSTED_METRICS_URL>")
     basic_auth {
-      username = sys.env("<GCLOUD_HOSTED_METRICS_ID>")
-      password = sys.env("<GCLOUD_RW_API_KEY>")
+      username = sys.env("<GRAFANA_CLOUD_HOSTED_METRICS_ID>")
+      password = sys.env("<GRAFANA_CLOUD_RW_API_KEY>")
     }
   }
 }
 
 loki.write "logs_service" {
   endpoint {
-    url = sys.env("<GCLOUD_HOSTED_LOGS_URL>")
+    url = sys.env("<GRAFANA_CLOUD_HOSTED_LOGS_URL>")
     basic_auth {
-      username = sys.env("<GCLOUD_HOSTED_LOGS_ID>")
-      password = sys.env("<GCLOUD_RW_API_KEY>")
+      username = sys.env("<GRAFANA_CLOUD_HOSTED_LOGS_ID>")
+      password = sys.env("<GRAFANA_CLOUD_RW_API_KEY>")
     }
   }
 }
@@ -80,11 +80,11 @@ loki.write "logs_service" {
 
 Replace the following:
 
-* _`<GCLOUD_HOSTED_METRICS_URL>`_: The URL for your Google Cloud hosted metrics.
-* _`<GCLOUD_HOSTED_METRICS_ID>`_: The user ID for your Google Cloud hosted metrics.
-* _`<GCLOUD_RW_API_KEY>`_: Your Google Cloud API key.
-* _`<GCLOUD_HOSTED_LOGS_URL>`_: The URL for your Google Cloud hosted logs.
-* _`<GCLOUD_HOSTED_LOGS_ID>`_: The user ID for your Google Cloud hosted logs.
+* _`<GRAFANA_CLOUD_HOSTED_METRICS_URL>`_: The URL for your Grafana Cloud hosted metrics.
+* _`<GRAFANA_CLOUD_HOSTED_METRICS_ID>`_: The user ID for your Grafana Cloud hosted metrics.
+* _`<GRAFANA_CLOUD_RW_API_KEY>`_: Your Grafana Cloud API key.
+* _`<GRAFANA_CLOUD_HOSTED_LOGS_URL>`_: The URL for your Grafana Cloud hosted logs.
+* _`<GRAFANA_CLOUD_HOSTED_LOGS_ID>`_: The user ID for your Grafana Cloud hosted logs.
 
 [Data Source Name]: https://github.com/go-sql-driver/mysql#dsn-data-source-name
 
