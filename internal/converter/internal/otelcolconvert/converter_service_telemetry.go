@@ -114,7 +114,7 @@ func convertMetrics(_ *builder.File, tel otel_tel.MetricsConfig) diag.Diagnostic
 		diags.Add(diag.SeverityLevelWarn, "the service/telemetry/metrics/readers configuration is not supported - to gather Alloy's own telemetry refer to: https://grafana.com/docs/alloy/latest/collect/metamonitoring/")
 	}
 
-	if len(tel.Address) > 0 {
+	if len(tel.Address) > 0 { //nolint:staticcheck //TODO: remove this check once the field is removed from upstream.
 		diags.Add(diag.SeverityLevelWarn, "the service/telemetry/metrics/address configuration is not supported - use the `--server.http.listen-addr` cmd argument or the `prometheus.exporter.self` component instead")
 	}
 
