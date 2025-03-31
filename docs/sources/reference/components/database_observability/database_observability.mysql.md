@@ -31,13 +31,14 @@ You can use the following arguments with `database_observability.mysql`:
  `disable_collectors` | `list(string)`       | A list of collectors to disable from the default set.     |         | no       
  `enable_collectors`  | `list(string)`       | A list of collectors to enable on top of the default set. |         | no       
 
-The following collectors are enabled by default:
+The following collectors are configurable:
 
- Name           | Description                                           
-----------------|-------------------------------------------------------
- `query_tables` | Collect query table information.
- `schema_table` | Collect schemas and tables from `information_schema`. 
- `query_sample` | Collect query samples.
+ Name              | Enabled by default | Description                                           
+-------------------|--------------------|-------------------------------------------------------
+ `query_tables`    | true               | Collect query table information.                      
+ `schema_table`    | true               | Collect schemas and tables from `information_schema`. 
+ `query_sample`    | false              | Collect query samples.                                
+ `setup_consumers` | true               | Collect enabled `performance_schema.setup_consumers`. 
 
 ## Blocks
 
