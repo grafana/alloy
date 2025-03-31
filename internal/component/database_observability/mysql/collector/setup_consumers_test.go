@@ -17,7 +17,7 @@ import (
 )
 
 func Test_getSetupConsumers(t *testing.T) {
-	t.Run("both consumers enabled", func(t *testing.T) {
+	t.Run("two consumers enabled", func(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer db.Close()
@@ -38,10 +38,10 @@ func Test_getSetupConsumers(t *testing.T) {
 		assert.NoError(t, c.getSetupConsumers(context.Background()))
 
 		assert.NoError(t, testutil.GatherAndCompare(reg, strings.NewReader(`
-			# HELP database_observability_setup_consumer_enabled Whether each performance_schema consumer is enabled (1) or disabled (0)
-			# TYPE database_observability_setup_consumer_enabled gauge
-			database_observability_setup_consumer_enabled{consumer_name="events_statements_cpu"} 1
-			database_observability_setup_consumer_enabled{consumer_name="events_statements_history"} 1
+			# HELP database_observability_setup_consumers_enabled Whether each performance_schema consumer is enabled (1) or disabled (0)
+			# TYPE database_observability_setup_consumers_enabled gauge
+			database_observability_setup_consumers_enabled{consumer_name="events_statements_cpu"} 1
+			database_observability_setup_consumers_enabled{consumer_name="events_statements_history"} 1
 			`)))
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
@@ -67,10 +67,10 @@ func Test_getSetupConsumers(t *testing.T) {
 		assert.NoError(t, c.getSetupConsumers(context.Background()))
 
 		assert.NoError(t, testutil.GatherAndCompare(reg, strings.NewReader(`
-			# HELP database_observability_setup_consumer_enabled Whether each performance_schema consumer is enabled (1) or disabled (0)
-			# TYPE database_observability_setup_consumer_enabled gauge
-			database_observability_setup_consumer_enabled{consumer_name="events_statements_cpu"} 1
-			database_observability_setup_consumer_enabled{consumer_name="events_statements_history"} 0
+			# HELP database_observability_setup_consumers_enabled Whether each performance_schema consumer is enabled (1) or disabled (0)
+			# TYPE database_observability_setup_consumers_enabled gauge
+			database_observability_setup_consumers_enabled{consumer_name="events_statements_cpu"} 1
+			database_observability_setup_consumers_enabled{consumer_name="events_statements_history"} 0
 			`)))
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
