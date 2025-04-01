@@ -63,7 +63,8 @@ type Options struct {
 
 // Arguments holds runtime settings for the HTTP service.
 type Arguments struct {
-	TLS *TLSArguments `alloy:"tls,block,optional"`
+	Auth *AuthArguments `alloy:"auth,block,optional"`
+	TLS  *TLSArguments  `alloy:"tls,block,optional"`
 }
 
 type Service struct {
@@ -83,6 +84,10 @@ type Service struct {
 
 	// Track the raw config for use with the support bundle
 	sources map[string]*ast.File
+
+	authenticatorMut sync.Mutex
+	// authentcator is applied to every request made to http server
+	authenticator authenticator
 
 	// publicLis and tcpLis are used to lazily enable TLS, since TLS is
 	// optionally configurable at runtime.
@@ -137,6 +142,8 @@ func New(opts Options) *Service {
 		gatherer:     r,
 		opts:         opts,
 
+		authenticator: allowAuthenticator,
+
 		publicLis: publicLis,
 		tcpLis:    tcpLis,
 		memLis:    memconn.NewListener(l),
@@ -187,6 +194,21 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 		"alloy",
 		otelmux.WithTracerProvider(s.tracer),
 	))
+
+	// apply authenticator middleware, if non is configured allowAuthenticator is used and no authentication is required
+	r.Use(func(h http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			s.authenticatorMut.Lock()
+			err := s.authenticator(w, r)
+			s.authenticatorMut.Unlock()
+			if err != nil {
+				level.Info(s.log).Log("msg", "failed to authenticate request", "err", err)
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			h.ServeHTTP(w, r)
+		})
+	})
 
 	// The implementation for "/-/healthy" is inspired by
 	// the "/components" web API endpoint in /internal/web/api/api.go
@@ -470,6 +492,12 @@ func (s *Service) Update(newConfig any) error {
 		if err := s.publicLis.SetInner(s.tcpLis); err != nil {
 			return err
 		}
+	}
+
+	if newArgs.Auth != nil {
+		s.authenticatorMut.Lock()
+		s.authenticator = newArgs.Auth.authenticator()
+		s.authenticatorMut.Unlock()
 	}
 
 	return nil
