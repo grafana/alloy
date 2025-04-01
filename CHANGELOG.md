@@ -24,6 +24,8 @@ Main (unreleased)
 
 ### Enhancements
 
+- Add the ability to set user for Windows Service with silent install (@dehaansa)
+
 - Add livedebugging support for structured_metadata in `loki.process` (@dehaansa)
 
 - (_Public Preview_) Add a `--windows.priority` flag to the run command, allowing users to set windows process priority for Alloy. (@dehaansa)
