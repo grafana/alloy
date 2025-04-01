@@ -54,6 +54,7 @@ func TestClusterE2E(t *testing.T) {
 	tests := []testCase{
 		{
 			name:             "three nodes just join",
+			alloyConfig:      `testcomponents.cluster_state_tracker "foo" {}`,
 			nodeCountInitial: 3,
 			assertionsInitial: func(t *assert.CollectT, state *testState) {
 				for _, p := range state.peers {
@@ -61,6 +62,7 @@ func TestClusterE2E(t *testing.T) {
 						`cluster_node_info{state="participant"} 1`,
 						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 3`,
 						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 3`,
+						`cluster_state{component_id="testcomponents.cluster_state_tracker.foo",component_path="/",peers="node-0___node-1___node-2",ready="true"} 3`,
 					)
 					verifyPeers(t, p, 3)
 					verifyClusterReady(t, p)
@@ -79,6 +81,8 @@ func TestClusterE2E(t *testing.T) {
 				`msg="failed to receive and remove the stream label header`,
 			},
 			alloyConfig: `
+   		testcomponents.cluster_state_tracker "foo" {}
+
 		testcomponents.ticker "tick" {
 			period = "500ms"
 			max_value = 30
@@ -97,6 +101,7 @@ func TestClusterE2E(t *testing.T) {
 						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 3`,
 						`ticker_counter{component_id="testcomponents.ticker.tick",component_path="/"} 30`,
 						`slow_update_counter{component_id="testcomponents.slow_update.test",component_path="/"} 30`,
+						`cluster_state{component_id="testcomponents.cluster_state_tracker.foo",component_path="/",peers="node-0___node-1___node-2",ready="true"} 3`,
 					)
 					verifyPeers(t, p, 3)
 					verifyClusterReady(t, p)
@@ -106,6 +111,7 @@ func TestClusterE2E(t *testing.T) {
 		},
 		{
 			name:             "4 nodes are joined by another 4 nodes",
+			alloyConfig:      `testcomponents.cluster_state_tracker "foo" {}`,
 			nodeCountInitial: 4,
 			assertionsInitial: func(t *assert.CollectT, state *testState) {
 				for _, p := range state.peers {
@@ -113,6 +119,7 @@ func TestClusterE2E(t *testing.T) {
 						`cluster_node_info{state="participant"} 1`,
 						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 4`,
 						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`,
+						`cluster_state{component_id="testcomponents.cluster_state_tracker.foo",component_path="/",peers="node-0___node-1___node-2___node-3",ready="true"} 4`,
 					)
 					verifyPeers(t, p, 4)
 					verifyClusterReady(t, p)
@@ -130,6 +137,7 @@ func TestClusterE2E(t *testing.T) {
 						`cluster_node_info{state="participant"} 1`,
 						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 8`,
 						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 8`,
+						`cluster_state{component_id="testcomponents.cluster_state_tracker.foo",component_path="/",peers="new-node-0___new-node-1___new-node-2___new-node-3___node-0___node-1___node-2___node-3",ready="true"} 8`,
 					)
 					verifyPeers(t, p, 8)
 					verifyClusterReady(t, p)
@@ -139,6 +147,7 @@ func TestClusterE2E(t *testing.T) {
 		},
 		{
 			name:             "8 node cluster - 4 nodes leave",
+			alloyConfig:      `testcomponents.cluster_state_tracker "foo" {}`,
 			nodeCountInitial: 8,
 			extraAllowedErrors: []string{
 				"failed to rejoin list of peers",
@@ -153,6 +162,7 @@ func TestClusterE2E(t *testing.T) {
 						`cluster_node_info{state="participant"} 1`,
 						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 8`,
 						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 8`,
+						`cluster_state{component_id="testcomponents.cluster_state_tracker.foo",component_path="/",peers="node-0___node-1___node-2___node-3___node-4___node-5___node-6___node-7",ready="true"} 8`,
 					)
 					verifyPeers(t, p, 8)
 					verifyClusterReady(t, p)
@@ -171,6 +181,7 @@ func TestClusterE2E(t *testing.T) {
 						`cluster_node_info{state="participant"} 1`,
 						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 4`,
 						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`,
+						`cluster_state{component_id="testcomponents.cluster_state_tracker.foo",component_path="/",peers="node-4___node-5___node-6___node-7",ready="true"} 4`,
 					)
 					verifyPeers(t, p, 4)
 					verifyClusterReady(t, p)
@@ -180,6 +191,7 @@ func TestClusterE2E(t *testing.T) {
 		},
 		{
 			name:             "4 nodes are joined by a node with a name conflict",
+			alloyConfig:      `testcomponents.cluster_state_tracker "foo" {}`,
 			nodeCountInitial: 4,
 			extraAllowedErrors: []string{
 				`Conflicting address for node-0`,
@@ -194,6 +206,7 @@ func TestClusterE2E(t *testing.T) {
 						`cluster_node_info{state="participant"} 1`,
 						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 4`,
 						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`,
+						`cluster_state{component_id="testcomponents.cluster_state_tracker.foo",component_path="/",peers="node-0___node-1___node-2___node-3",ready="true"} 4`,
 					)
 					verifyPeers(t, p, 4)
 					verifyClusterReady(t, p)
@@ -211,6 +224,7 @@ func TestClusterE2E(t *testing.T) {
 						`cluster_node_info{state="participant"} 1`,
 						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 4`,
 						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`,
+						`cluster_state{component_id="testcomponents.cluster_state_tracker.foo",component_path="/",peers="node-0___node-1___node-2___node-3",ready="true"} 4`,
 					)
 					verifyClusterReady(t, p)
 					verifyPeers(t, p, 4)
@@ -224,6 +238,7 @@ func TestClusterE2E(t *testing.T) {
 		},
 		{
 			name:             "two split brain clusters join together after network fixed",
+			alloyConfig:      `testcomponents.cluster_state_tracker "foo" {}`,
 			nodeCountInitial: 4,
 			initialIsolatedNodes: []string{
 				"node-1", "node-2",
@@ -235,6 +250,15 @@ func TestClusterE2E(t *testing.T) {
 						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 2`,
 						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 2`,
 					)
+					if p.nodeName == "node-1" || p.nodeName == "node-2" {
+						verifyMetrics(t, p,
+							`cluster_state{component_id="testcomponents.cluster_state_tracker.foo",component_path="/",peers="node-1___node-2",ready="true"} 2`,
+						)
+					} else {
+						verifyMetrics(t, p,
+							`cluster_state{component_id="testcomponents.cluster_state_tracker.foo",component_path="/",peers="node-0___node-3",ready="true"} 2`,
+						)
+					}
 					verifyClusterReady(t, p)
 					verifyPeers(t, p, 2)
 				}
@@ -248,6 +272,7 @@ func TestClusterE2E(t *testing.T) {
 						`cluster_node_info{state="participant"} 1`,
 						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 4`,
 						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`,
+						`cluster_state{component_id="testcomponents.cluster_state_tracker.foo",component_path="/",peers="node-0___node-1___node-2___node-3",ready="true"} 4`,
 					)
 					verifyClusterReady(t, p)
 					verifyPeers(t, p, 4)
@@ -257,6 +282,7 @@ func TestClusterE2E(t *testing.T) {
 		},
 		{
 			name:               "cluster with minimum size - sufficient nodes join",
+			alloyConfig:        `testcomponents.cluster_state_tracker "foo" {}`,
 			nodeCountInitial:   4,
 			minimumClusterSize: 5,
 			assertionsInitial: func(t *assert.CollectT, state *testState) {
@@ -265,6 +291,7 @@ func TestClusterE2E(t *testing.T) {
 						`cluster_node_info{state="participant"} 1`,
 						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 4`,
 						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`,
+						`cluster_state{component_id="testcomponents.cluster_state_tracker.foo",component_path="/",peers="node-0___node-1___node-2___node-3",ready="false"} 4`,
 					)
 					verifyClusterNotReady(t, p)
 				}
@@ -278,6 +305,7 @@ func TestClusterE2E(t *testing.T) {
 						`cluster_node_info{state="participant"} 1`,
 						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 5`,
 						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 5`,
+						`cluster_state{component_id="testcomponents.cluster_state_tracker.foo",component_path="/",peers="node-0___node-1___node-2___node-3___node-4",ready="true"} 5`,
 					)
 					verifyClusterReady(t, p)
 					verifyPeers(t, p, 5)
@@ -287,6 +315,7 @@ func TestClusterE2E(t *testing.T) {
 		},
 		{
 			name:                   "too small cluster - deadline passes",
+			alloyConfig:            `testcomponents.cluster_state_tracker "foo" {}`,
 			nodeCountInitial:       4,
 			minimumClusterSize:     5,
 			minimumSizeWaitTimeout: 5 * time.Second,
@@ -299,11 +328,13 @@ func TestClusterE2E(t *testing.T) {
 						`cluster_node_info{state="participant"} 1`,
 						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 4`,
 						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`,
+						`cluster_state{component_id="testcomponents.cluster_state_tracker.foo",component_path="/",peers="node-0___node-1___node-2___node-3",ready="false"} 4`,
 					)
 					verifyClusterNotReady(t, p)
 				}
 			},
 			changes: func(state *testState) {
+				// TODO(thampiotr): will need a timer that after deadline passed we trigger updates
 				time.Sleep(5 * time.Second)
 			},
 			assertionsFinal: func(t *assert.CollectT, state *testState) {
@@ -312,6 +343,7 @@ func TestClusterE2E(t *testing.T) {
 						`cluster_node_info{state="participant"} 1`,
 						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 4`,
 						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`,
+						`cluster_state{component_id="testcomponents.cluster_state_tracker.foo",component_path="/",peers="node-0___node-1___node-2___node-3",ready="true"} 4`,
 					)
 					verifyClusterReady(t, p)
 					verifyPeers(t, p, 4)
@@ -321,6 +353,7 @@ func TestClusterE2E(t *testing.T) {
 		},
 		{
 			name:               "cluster dips below minimum size",
+			alloyConfig:        `testcomponents.cluster_state_tracker "foo" {}`,
 			nodeCountInitial:   5,
 			minimumClusterSize: 5,
 			extraAllowedErrors: []string{
@@ -336,6 +369,7 @@ func TestClusterE2E(t *testing.T) {
 						`cluster_node_info{state="participant"} 1`,
 						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 5`,
 						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 5`,
+						`cluster_state{component_id="testcomponents.cluster_state_tracker.foo",component_path="/",peers="node-0___node-1___node-2___node-3___node-4",ready="true"} 5`,
 					)
 					verifyClusterReady(t, p)
 					verifyPeers(t, p, 5)
@@ -351,6 +385,7 @@ func TestClusterE2E(t *testing.T) {
 						`cluster_node_info{state="participant"} 1`,
 						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 4`,
 						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`,
+						`cluster_state{component_id="testcomponents.cluster_state_tracker.foo",component_path="/",peers="node-1___node-2___node-3___node-4",ready="false"} 4`,
 					)
 					verifyClusterNotReady(t, p)
 				}

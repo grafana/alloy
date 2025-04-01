@@ -54,7 +54,6 @@ func NewTicker(o component.Options, cfg TickerConfig) (*Ticker, error) {
 		}),
 	}
 
-	// Register the gauge metric
 	if err := o.Registerer.Register(t.counterGauge); err != nil {
 		return nil, fmt.Errorf("failed to register counter gauge: %w", err)
 	}

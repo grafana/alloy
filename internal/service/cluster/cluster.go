@@ -105,6 +105,8 @@ type Service struct {
 
 	// alloyCluster is given to components via calls to Data() and implements Cluster.
 	alloyCluster *alloyCluster
+	// notifyClusterChange is used to signal that cluster has changed, and we need to notify all the components
+	notifyClusterChange chan struct{}
 }
 
 // Component is a component which subscribes to clustering updates.
@@ -196,12 +198,12 @@ func New(opts Options) (*Service, error) {
 		tracer: t,
 		opts:   opts,
 
-		sharder: ckitConfig.Sharder,
-		node:    node,
-		randGen: rand.New(rand.NewSource(time.Now().UnixNano())),
+		sharder:             ckitConfig.Sharder,
+		node:                node,
+		randGen:             rand.New(rand.NewSource(time.Now().UnixNano())),
+		notifyClusterChange: make(chan struct{}, 1),
 	}
-
-	s.alloyCluster = newAlloyCluster(l, ckitConfig.Sharder, opts)
+	s.alloyCluster = newAlloyCluster(ckitConfig.Sharder, s.triggerClusterChangeNotification, opts, l)
 
 	return s, nil
 }
@@ -297,62 +299,16 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	limiter := rate.NewLimiter(rate.Every(stateUpdateMinInterval), 1)
-	s.node.Observe(ckit.FuncObserver(func(peers []peer.Peer) (reregister bool) {
-		tracer := s.tracer.Tracer("")
-		spanCtx, span := tracer.Start(ctx, "NotifyClusterChange", trace.WithSpanKind(trace.SpanKindInternal))
-		defer span.End()
-
-		// Limit how often we notify components about peer changes. At start up we may receive N updates in a period
-		// of less than one second. This leads to a lot of unnecessary processing.
-		_, spanWait := tracer.Start(spanCtx, "RateLimitWait", trace.WithSpanKind(trace.SpanKindInternal))
-		if err := limiter.Wait(ctx); err != nil {
-			if !errors.Is(err, context.DeadlineExceeded) && !errors.Is(err, context.Canceled) {
-				// This should never happen, but it should be safe to just ignore it and continue.
-				level.Warn(s.log).Log("msg", "failed to wait for rate limiter on peers update", "err", err)
-			}
-			spanWait.RecordError(err)
-		}
-		spanWait.End()
-
-		// NOTE: after waiting for the limiter, the `peers` may be slightly outdated, but that's fine as the
-		// most up-to-date peers will be dispatched to the Observer by ckit eventually. The intermediate updates
-		// will be skipped, which is exactly what we want here.
-
+	s.node.Observe(ckit.FuncObserver(func(_ []peer.Peer) (reregister bool) {
 		if ctx.Err() != nil {
 			// Unregister our observer if we exited.
 			return false
 		}
-
-		s.logPeers("peers changed", toStringSlice(peers))
-		span.SetAttributes(attribute.Int("peers_count", len(peers)))
-
-		// Notify all components about the clustering change.
-		components := component.GetAllComponents(host, component.InfoOptions{})
-		for _, comp := range components {
-			if ctx.Err() != nil {
-				// Stop early if we exited, so we don't do unnecessary work notifying
-				// consumers that do not need to be notified.
-				break
-			}
-
-			clusterComponent, ok := comp.Component.(Component)
-			if !ok {
-				continue
-			}
-
-			_, span := tracer.Start(spanCtx, "NotifyClusterChange", trace.WithSpanKind(trace.SpanKindInternal))
-			span.SetAttributes(attribute.String("component_id", comp.ID.String()))
-
-			clusterComponent.NotifyClusterChange()
-
-			span.End()
-		}
-
+		s.triggerClusterChangeNotification()
 		return true
 	}))
 
-	peers, err := s.getPeers()
+	peers, err := s.getRandomPeers()
 	if err != nil {
 		// Warn when failed to get peers on startup as it can result in a split brain. We do not fail hard here
 		// because it would complicate the process of bootstrapping a new cluster.
@@ -382,6 +338,20 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 		}
 	}
 
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		limiter := rate.NewLimiter(rate.Every(stateUpdateMinInterval), 1)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-s.notifyClusterChange:
+				s.notifyComponentsOfClusterChanges(ctx, limiter, host)
+			}
+		}
+	}()
+
 	if s.opts.EnableClustering && s.opts.RejoinInterval > 0 {
 		wg.Add(1)
 
@@ -397,7 +367,7 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 					return
 
 				case <-t.C:
-					peers, err := s.getPeers()
+					peers, err := s.getRandomPeers()
 					if err != nil {
 						level.Warn(s.log).Log("msg", "failed to refresh list of peers", "err", err)
 						continue
@@ -417,7 +387,59 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 	return nil
 }
 
-func (s *Service) getPeers() ([]string, error) {
+func (s *Service) notifyComponentsOfClusterChanges(ctx context.Context, limiter *rate.Limiter, host service.Host) {
+	tracer := s.tracer.Tracer("")
+	spanCtx, span := tracer.Start(ctx, "NotifyClusterChange", trace.WithSpanKind(trace.SpanKindInternal))
+
+	// Limit how often we notify components about peer changes. At start up we may receive N updates in a period
+	// of less than one second. This leads to a lot of unnecessary processing.
+	_, spanWait := tracer.Start(spanCtx, "RateLimitWait", trace.WithSpanKind(trace.SpanKindInternal))
+	if err := limiter.Wait(ctx); err != nil {
+		if !errors.Is(err, context.DeadlineExceeded) && !errors.Is(err, context.Canceled) {
+			// This should never happen, but it should be safe to just ignore it and continue.
+			level.Warn(s.log).Log("msg", "failed to wait for rate limiter on peers update", "err", err)
+		}
+		spanWait.RecordError(err)
+	}
+	spanWait.End()
+
+	peers := s.node.Peers()
+	s.logPeers("peers changed", toStringSlice(peers))
+	span.SetAttributes(attribute.Int("peers_count", len(peers)))
+	span.SetAttributes(attribute.Int("minimum_cluster_size", s.opts.MinimumClusterSize))
+
+	// Notify all components about the clustering change.
+	components := component.GetAllComponents(host, component.InfoOptions{})
+	for _, comp := range components {
+		if ctx.Err() != nil {
+			// Stop early if we exited, so we don't do unnecessary work notifying
+			// consumers that do not need to be notified.
+			break
+		}
+
+		clusterComponent, ok := comp.Component.(Component)
+		if !ok {
+			continue
+		}
+
+		_, subSpan := tracer.Start(spanCtx, "NotifyClusterChange", trace.WithSpanKind(trace.SpanKindInternal))
+		subSpan.SetAttributes(attribute.String("component_id", comp.ID.String()))
+
+		clusterComponent.NotifyClusterChange()
+
+		subSpan.End()
+	}
+	span.End()
+}
+
+func (s *Service) triggerClusterChangeNotification() {
+	select {
+	case s.notifyClusterChange <- struct{}{}:
+	default:
+	}
+}
+
+func (s *Service) getRandomPeers() ([]string, error) {
 	if !s.opts.EnableClustering || s.opts.DiscoverPeers == nil {
 		return nil, nil
 	}
@@ -480,6 +502,7 @@ func (s *Service) logPeers(msg string, peers []string) {
 	level.Info(s.log).Log(
 		"msg", msg,
 		"peers_count", len(peers),
+		"min_cluster_size", s.opts.MinimumClusterSize,
 		"peers", util.JoinWithTruncation(peers, ",", maxPeersToLog, "..."),
 	)
 }

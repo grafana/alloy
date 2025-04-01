@@ -1,12 +1,12 @@
 package cluster
 
 import (
+	"sync"
 	"time"
 
 	"github.com/go-kit/log"
 	"github.com/grafana/ckit/peer"
 	"github.com/grafana/ckit/shard"
-	"go.uber.org/atomic"
 	"golang.org/x/time/rate"
 
 	"github.com/grafana/alloy/internal/runtime/logging/level"
@@ -15,6 +15,17 @@ import (
 const (
 	// admissionUpdateMinInterval defines the minimum time interval between updates to the admission control state.
 	admissionUpdateMinInterval = time.Second
+)
+
+type clusterState int
+
+const (
+	// stateNotReady is the state when the minimum cluster size is NOT reached and the deadline timer is NOT expired.
+	stateNotReady clusterState = iota
+	// stateReady is the state when the minimum cluster size is reached. There should be no deadline timer running in this state.
+	stateReady
+	// stateDeadlinePassed is the state when the minimum cluster size is NOT reached and the deadline timer is expired.
+	stateDeadlinePassed
 )
 
 // Cluster is a read-only view of a cluster.
@@ -50,32 +61,35 @@ type alloyCluster struct {
 	sharder shard.Sharder
 	opts    Options
 
-	limiter *rate.Limiter
+	clusterChangeCallback func()
+	limiter               *rate.Limiter
 
-	minimumSizeDeadline   atomic.Time
-	isReadyToAdmitTraffic atomic.Bool
+	rwMutex       sync.RWMutex
+	deadlineTimer *time.Timer
+	clusterState  clusterState
 }
 
 var _ Cluster = (*alloyCluster)(nil)
 
-func newAlloyCluster(
-	log log.Logger,
-	sharder shard.Sharder,
-	opts Options,
-) *alloyCluster {
-
+func newAlloyCluster(sharder shard.Sharder, clusterChangeCallback func(), opts Options, log log.Logger) *alloyCluster {
 	c := &alloyCluster{
-		log:     log,
-		sharder: sharder,
-		opts:    opts,
-		limiter: rate.NewLimiter(rate.Every(admissionUpdateMinInterval), 1),
+		log:                   log,
+		sharder:               sharder,
+		opts:                  opts,
+		limiter:               rate.NewLimiter(rate.Every(admissionUpdateMinInterval), 1),
+		clusterChangeCallback: clusterChangeCallback,
 	}
 
-	// Initialize the minimum size deadline if it's set.
-	if opts.MinimumSizeWaitTimeout != 0 {
-		c.minimumSizeDeadline.Store(time.Now().Add(opts.MinimumSizeWaitTimeout))
-	} else {
-		c.minimumSizeDeadline.Store(time.Time{})
+	// For consistency, set cluster to always ready when clustering is disabled or no minimum size is set.
+	if !c.opts.EnableClustering || c.opts.MinimumClusterSize == 0 {
+		c.clusterState = stateReady
+	} else if opts.MinimumSizeWaitTimeout != 0 {
+		// Start the deadline timer if the minimum size wait timeout is set
+		c.deadlineTimer = time.AfterFunc(c.opts.MinimumSizeWaitTimeout, func() {
+			c.rwMutex.Lock()
+			defer c.rwMutex.Unlock()
+			c.transitionToStateDeadlinePassed()
+		})
 	}
 	return c
 }
@@ -89,71 +103,96 @@ func (c *alloyCluster) Peers() []peer.Peer {
 }
 
 func (c *alloyCluster) Ready() bool {
-	c.updateReadyToAdmitTraffic() // update if needed
-	return c.isReadyToAdmitTraffic.Load()
+	// Lock-free path: if clustering is disabled or no minimum size is set, the cluster is always ready.
+	if !c.opts.EnableClustering || c.opts.MinimumClusterSize == 0 {
+		return true
+	}
+
+	// Don't update state too frequently. Use read-only lock if it's not yet time to update the ready state.
+	if !c.limiter.Allow() {
+		c.rwMutex.RLock()
+		defer c.rwMutex.RUnlock()
+		return c.clusterState == stateReady || c.clusterState == stateDeadlinePassed
+	}
+
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
+
+	// Number of peers is greater or equal the minimum cluster size = ready to admit traffic.
+	if len(c.sharder.Peers()) >= c.opts.MinimumClusterSize {
+		c.transitionToStateReady()
+		return true
+	}
+
+	// The number of peers is less than the minimum. If the deadline timer has expired, the cluster is ready to admit traffic.
+	if c.clusterState == stateDeadlinePassed {
+		return true // Logging and callback already handled in c.transitionToStateDeadlinePassed
+	}
+
+	// The number of peers is less than the minimum and the deadline is NOT expired = not ready to admit traffic
+	c.transitionToStateNotReady()
+	return false
 }
 
-// updateReadyToAdmitTraffic updates the isReadyToAdmitTraffic flag based on the current cluster state.
-func (c *alloyCluster) updateReadyToAdmitTraffic() {
-	// Don't update too frequently.
-	if !c.limiter.Allow() {
+// transitionToStateReady is called when the minimum cluster size is reached. rwMutex must be locked for writes by the caller.
+func (c *alloyCluster) transitionToStateReady() {
+	if c.clusterState == stateReady {
 		return
 	}
+	c.clusterState = stateReady
 
-	// If clustering is disabled, the service is always ready to admit traffic
-	if !c.opts.EnableClustering {
-		c.isReadyToAdmitTraffic.Store(true)
+	// Stop the deadline timer if it was running
+	if c.deadlineTimer != nil {
+		c.deadlineTimer.Stop()
+		c.deadlineTimer = nil
+	}
+	level.Info(c.log).Log(
+		"msg", "minimum cluster size reached, marking cluster as ready to admit traffic",
+		"minimum_cluster_size", c.opts.MinimumClusterSize,
+		"peers_count", len(c.sharder.Peers()),
+	)
+	c.clusterChangeCallback()
+}
+
+// transitionToStateNotReady is called when the minimum cluster size is not reached. rwMutex must be locked for writes by the caller.
+func (c *alloyCluster) transitionToStateNotReady() {
+	if c.clusterState == stateNotReady {
 		return
 	}
+	c.clusterState = stateNotReady
 
-	// No minimum cluster size is set = always ready to admit traffic.
-	if c.opts.MinimumClusterSize == 0 {
-		c.isReadyToAdmitTraffic.Store(true)
-		return
-	}
-
-	// Number of peers is greater than the minimum cluster size = ready to admit traffic.
-	if len(c.sharder.Peers()) >= c.opts.MinimumClusterSize {
-		// Reset the deadline if it is configured:
-		if c.opts.MinimumSizeWaitTimeout != 0 {
-			c.minimumSizeDeadline.Store(time.Now().Add(c.opts.MinimumSizeWaitTimeout))
+	// Restart the deadline timer if it is configured and we just transitioned to not ready
+	if c.opts.MinimumSizeWaitTimeout != 0 {
+		if c.deadlineTimer != nil {
+			c.deadlineTimer.Stop()
 		}
-		if !c.isReadyToAdmitTraffic.Load() { // log if previously not ready
-			level.Info(c.log).Log(
-				"msg", "minimum cluster size reached, marking cluster as ready to admit traffic",
-				"minimum_cluster_size", c.opts.MinimumClusterSize,
-				"peers_count", len(c.sharder.Peers()),
-			)
-		}
+		c.deadlineTimer = time.AfterFunc(c.opts.MinimumSizeWaitTimeout, func() {
+			c.rwMutex.Lock()
+			defer c.rwMutex.Unlock()
+			c.transitionToStateDeadlinePassed()
+		})
+	}
+	level.Warn(c.log).Log(
+		"msg", "minimum cluster size requirements are not met - marking cluster as not ready for traffic",
+		"minimum_cluster_size", c.opts.MinimumClusterSize,
+		"minimum_size_wait_timeout", c.opts.MinimumSizeWaitTimeout,
+		"peers_count", len(c.sharder.Peers()),
+	)
+	c.clusterChangeCallback()
+}
 
-		c.isReadyToAdmitTraffic.Store(true)
+// transitionToStateDeadlinePassed is called when the deadline timer expires. rwMutex must be locked for writes by the caller.
+func (c *alloyCluster) transitionToStateDeadlinePassed() {
+	if c.clusterState == stateDeadlinePassed {
 		return
 	}
+	c.clusterState = stateDeadlinePassed
 
-	// Deadline is set, and it's past the deadline = ready to admit traffic.
-	deadlineValue := c.minimumSizeDeadline.Load()
-	isDeadlineSet := deadlineValue != time.Time{}
-	if isDeadlineSet && time.Now().After(deadlineValue) {
-		if !c.isReadyToAdmitTraffic.Load() { // log if previously not ready
-			level.Warn(c.log).Log(
-				"msg", "deadline passed, marking cluster as ready to admit traffic",
-				"minimum_cluster_size", c.opts.MinimumClusterSize,
-				"minimum_size_wait_timeout", c.opts.MinimumSizeWaitTimeout,
-				"peers_count", len(c.sharder.Peers()),
-			)
-		}
-		c.isReadyToAdmitTraffic.Store(true)
-		return
-	}
-
-	// Deadline is either not set or it didn't yet pass, and the number of peers is less
-	// than the minimum. So we can't admit traffic.
-	if c.isReadyToAdmitTraffic.Load() { // log if previously was ready
-		level.Warn(c.log).Log(
-			"msg", "minimum cluster size requirements are not met - marking cluster as not ready for traffic",
-			"minimum_cluster_size", c.opts.MinimumClusterSize,
-			"peers_count", len(c.sharder.Peers()),
-		)
-	}
-	c.isReadyToAdmitTraffic.Store(false) // set as not ready
+	level.Warn(c.log).Log(
+		"msg", "deadline passed, marking cluster as ready to admit traffic",
+		"minimum_cluster_size", c.opts.MinimumClusterSize,
+		"minimum_size_wait_timeout", c.opts.MinimumSizeWaitTimeout,
+		"peers_count", len(c.sharder.Peers()),
+	)
+	c.clusterChangeCallback()
 }
