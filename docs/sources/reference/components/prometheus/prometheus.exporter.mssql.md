@@ -69,7 +69,7 @@ sqlserver://@<HOST>:<PORT>?authenticator=winsspi
 
 If you want to use Windows credentials to authenticate, instead of SQL Server credentials, you can use the parameter `authenticator=ntlm` within the `connection_string`.
 The _`<USERNAME>`_ and _`<PASSWORD>`_ then corresponds to a Windows username and password.
-You must use a percent-encoded backslash, `%5C`, when you prefix the Windows domain to the username.
+You must use a URL encoded backslash, `%5C`, when you prefix the Windows domain to the username.
 
 ```text
 sqlserver://<DOMAIN>%5C<USERNAME>:<PASSWORD>@<HOST>:<PORT>?authenticator=ntlm
