@@ -191,22 +191,6 @@ func New(opts Options) (*Service, error) {
 		if err := opts.Metrics.Register(node.Metrics()); err != nil {
 			return nil, fmt.Errorf("failed to register metrics: %w", err)
 		}
-
-		// Register a gauge for minimum cluster size
-		minClusterSizeGauge := prometheus.NewGauge(prometheus.GaugeOpts{
-			Name: "cluster_minimum_size",
-			Help: "The configured minimum cluster size required before admitting traffic to components that use clustering.",
-			ConstLabels: prometheus.Labels{
-				"cluster_name": opts.ClusterName,
-			},
-		})
-
-		if err := opts.Metrics.Register(minClusterSizeGauge); err != nil {
-			return nil, fmt.Errorf("failed to register minimum cluster size metric: %w", err)
-		}
-
-		// Set the gauge to the configured minimum cluster size
-		minClusterSizeGauge.Set(float64(opts.MinimumClusterSize))
 	}
 
 	s := &Service{

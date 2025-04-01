@@ -7,6 +7,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/grafana/ckit/peer"
 	"github.com/grafana/ckit/shard"
+	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/time/rate"
 
 	"github.com/grafana/alloy/internal/runtime/logging/level"
@@ -63,6 +64,7 @@ type alloyCluster struct {
 
 	clusterChangeCallback func()
 	limiter               *rate.Limiter
+	clusterReadyGauge     prometheus.Gauge
 
 	rwMutex       sync.RWMutex
 	deadlineTimer *time.Timer
@@ -80,9 +82,41 @@ func newAlloyCluster(sharder shard.Sharder, clusterChangeCallback func(), opts O
 		clusterChangeCallback: clusterChangeCallback,
 	}
 
+	c.clusterReadyGauge = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "cluster_ready_for_traffic",
+		Help: "Reports 1 when the cluster is ready to admit traffic, 0 otherwise.",
+		ConstLabels: prometheus.Labels{
+			"cluster_name": opts.ClusterName,
+		},
+	})
+
+	minClusterSizeGauge := prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "cluster_minimum_size",
+		Help: "The configured minimum cluster size required before admitting traffic to components that use clustering.",
+		ConstLabels: prometheus.Labels{
+			"cluster_name": opts.ClusterName,
+		},
+	})
+
+	// Register metrics if clustering is enabled and metrics are provided
+	if opts.EnableClustering && opts.Metrics != nil {
+		if err := opts.Metrics.Register(minClusterSizeGauge); err != nil {
+			level.Warn(log).Log("msg", "failed to register minimum cluster size metric", "err", err)
+		} else {
+			// Set the gauge to the configured minimum cluster size
+			minClusterSizeGauge.Set(float64(opts.MinimumClusterSize))
+		}
+
+		// Register the cluster ready gauge that was created above
+		if err := opts.Metrics.Register(c.clusterReadyGauge); err != nil {
+			level.Warn(log).Log("msg", "failed to register cluster ready metric", "err", err)
+		}
+	}
+
 	// For consistency, set cluster to always ready when clustering is disabled or no minimum size is set.
 	if !c.opts.EnableClustering || c.opts.MinimumClusterSize == 0 {
 		c.clusterState = stateReady
+		c.clusterReadyGauge.Set(1)
 	} else if opts.MinimumSizeWaitTimeout != 0 {
 		// Start the deadline timer if the minimum size wait timeout is set
 		c.deadlineTimer = time.AfterFunc(c.opts.MinimumSizeWaitTimeout, func() {
@@ -90,6 +124,7 @@ func newAlloyCluster(sharder shard.Sharder, clusterChangeCallback func(), opts O
 			defer c.rwMutex.Unlock()
 			c.transitionToStateDeadlinePassed()
 		})
+		c.clusterReadyGauge.Set(0)
 	}
 	return c
 }
@@ -140,6 +175,7 @@ func (c *alloyCluster) transitionToStateReady() {
 		return
 	}
 	c.clusterState = stateReady
+	c.clusterReadyGauge.Set(1)
 
 	// Stop the deadline timer if it was running
 	if c.deadlineTimer != nil {
@@ -160,6 +196,7 @@ func (c *alloyCluster) transitionToStateNotReady() {
 		return
 	}
 	c.clusterState = stateNotReady
+	c.clusterReadyGauge.Set(0)
 
 	// Restart the deadline timer if it is configured and we just transitioned to not ready
 	if c.opts.MinimumSizeWaitTimeout != 0 {
@@ -187,6 +224,7 @@ func (c *alloyCluster) transitionToStateDeadlinePassed() {
 		return
 	}
 	c.clusterState = stateDeadlinePassed
+	c.clusterReadyGauge.Set(1)
 
 	level.Warn(c.log).Log(
 		"msg", "deadline passed, marking cluster as ready to admit traffic",
