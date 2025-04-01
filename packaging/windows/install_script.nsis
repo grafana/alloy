@@ -168,7 +168,7 @@ Function CreateDataDirectory
     ${If} $User != ""
       AccessControl::SetOnFile    "$APPDATA\GrafanaLabs\${APPNAME}\data" "$User" "FullAccess"
     ${EndIf}
-    
+
     Return
 FunctionEnd
 
@@ -247,7 +247,6 @@ Function SetFolderPermissions
     AccessControl::GrantOnFile  $INSTDIR "Everyone" "GenericExecute"
     AccessControl::GrantOnFile  $INSTDIR "Everyone" "GenericRead"
     AccessControl::GrantOnFile  $INSTDIR "Everyone" "ReadAttributes"
-
     ${If} $User != ""
       AccessControl::SetOnFile    $INSTDIR "$User" "FullAccess"
     ${EndIf}
