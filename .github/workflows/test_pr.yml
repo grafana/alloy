@@ -16,11 +16,11 @@ jobs:
     - name: golangci-lint
       uses: golangci/golangci-lint-action@v7
       with:
-        version: v1.64.7
+        version: v2.0
     - name: golangci-lint-syntax
       uses: golangci/golangci-lint-action@v7
       with:
-        version: v1.64.7
+        version: v2.0
         working-directory: ./syntax/
     - run: make run-alloylint
 
