@@ -90,9 +90,17 @@ Main (unreleased)
 
 - Upgrading to OpenTelemetry Collector v0.122
   - `otelcol.processor.batch` telemetry is no longer emitted at "basic" level. If you want to keep the batch processor telemetry, you can switch to "normal" level.
-  - `otelcol.processor.tailsampling` change the unit of the decision timer metric from microseconds to milliseconds. (change unit of otelcol_processor_tail_sampling_sampling_decision_timer_latency, breaking change)
-  - `otelcol.processor.deltatocumulative` rename and remove some metrics (breaking change)
+  - `otelcol.processor.tailsampling` changed the unit of the decision timer metric from microseconds to milliseconds. (change unit of otelcol_processor_tail_sampling_sampling_decision_timer_latency)
+  - `otelcol.processor.deltatocumulative`: rename `otelcol_deltatocumulative_datapoints_processed` to `otelcol_deltatocumulative_datapoints` and remove the metrics `otelcol_deltatocumulative_streams_evicted`, `otelcol_deltatocumulative_datapoints_dropped` and `otelcol_deltatocumulative_gaps_length`.
   - `otelcol.processor.transform` has a new `statements` block for transformations which don't require a context to be specified explicitly.
+  - `otelcol.receiver.syslog` has a new `on_error` argument to specify the action to take when an error occurs while receiving logs.
+  - `otelcol.processor.resourcedetection` now supports `dynatrace` as a resource detector.
+  - `otelcol.receiver.kafka` has a new `error_backoff` block to configure how failed requests are retried.
+  - `otelcol.receiver.vcenter` has three new metrics `vcenter.vm.cpu.time`, `vcenter.vm.network.broadcast.packet.rate` and `vcenter.vm.network.multicast.packet.rate`.
+  -  The `regex` attribute was removed from `otelcol.processor.k8sattributes`. The extract-patterns function from `otelcol.processor.transform` can be used instead.
+  - The default value of `metrics_flush_interval` in `otelcol.connector.servicegraph` was changed from `0s` to `60s`.
+  - `s3_partition` in `otelcol.exporter.awss3` was replaced by `s3_partition_format`.
+  - `otelcol.exporter.awss3` has two new arguments `acl` and `storage_class`.
 
 
 v1.7.5
