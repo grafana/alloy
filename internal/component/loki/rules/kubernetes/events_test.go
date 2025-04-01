@@ -138,7 +138,7 @@ func TestEventLoop(t *testing.T) {
 	}
 	eventHandler := kubernetes.NewQueuedEventHandler(component.log, component.queue)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	go component.eventLoop(ctx)

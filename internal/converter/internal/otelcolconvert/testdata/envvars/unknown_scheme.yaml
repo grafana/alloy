@@ -2,20 +2,16 @@ receivers:
   otlp:
     protocols:
       grpc:
+        endpoint: ${wow:NO_SCHEME}
       http:
 
 exporters:
   otlp:
     endpoint: database:4317
 
-# A receiver may not appear in two different groups.
 service:
   pipelines:
-    metrics: # Group <empty>
-      receivers: [otlp]
-      processors: []
-      exporters: [otlp]
-    traces/2: # Group 2
+    metrics:
       receivers: [otlp]
       processors: []
       exporters: [otlp]

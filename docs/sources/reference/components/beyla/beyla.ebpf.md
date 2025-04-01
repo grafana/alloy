@@ -40,15 +40,8 @@ You can use the following arguments with `beyla.ebpf`:
 | ----------------- | -------- | ----------------------------------------------------------------------------------- | ------- | -------- |
 | `debug`           | `bool`   | Enable debug mode for Beyla.                                                        | `false` | no       |
 | `enforce_sys_caps`| `bool`   | Enforce system capabilities required for eBPF instrumentation.                      | `false` | no       |
-| `executable_name` | `string` | The name of the executable to match for Beyla automatically instrumented with eBPF. | `""`    | no       |
-| `open_port`       | `string` | The port of the running service for Beyla automatically instrumented with eBPF.     | `""`    | no       |
 
 `debug` enables debug mode for Beyla. This mode logs BPF logs, network logs, trace representation logs, and other debug information.
-
-`executable_name` accepts a regular expression to be matched against the full executable command line, including the directory where the executable resides on the file system.
-
-`open_port` accepts a comma-separated list of ports (for example, `80,443`), and port ranges (for example, `8000-8999`).
-If the executable matches only one of the ports in the list, it's considered to match the selection criteria.
 
 When `enforce_sys_caps`  is set to true and the required system capabilities aren't present, Beyla aborts its startup and logs a list of the missing capabilities.
 
@@ -368,7 +361,6 @@ The `network` block configures network metrics options for Beyla. You must appen
 | `cache_max_flows`      | `int`          | Maximum number of flows to cache.                                     | `5000`            | no       |
 | `cidrs`                | `list(string)` | List of CIDR ranges to monitor.                                       | `[]`              | no       |
 | `direction`            | `string`       | Direction of traffic to monitor.                                      | `"both"`          | no       |
-| `enabled`              | `bool`         | Enable network metrics collection.                                    | `false`           | no       |
 | `exclude_interfaces`   | `list(string)` | List of network interfaces to exclude from monitoring.                | `["lo"]`          | no       |
 | `exclude_protocols`    | `list(string)` | List of protocols to exclude from monitoring.                         | `[]`              | no       |
 | `interfaces`           | `list(string)` | List of network interfaces to monitor.                                | `[]`              | no       |

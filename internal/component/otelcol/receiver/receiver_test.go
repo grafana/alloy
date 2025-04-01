@@ -52,7 +52,7 @@ func TestReceiver(t *testing.T) {
 
 	require.NoError(t, waitConsumerTrigger.Wait(time.Second), "no traces consumer sent")
 
-	err := consumer.ConsumeTraces(context.Background(), ptrace.NewTraces())
+	err := consumer.ConsumeTraces(t.Context(), ptrace.NewTraces())
 	require.NoError(t, err)
 
 	require.NoError(t, waitTracesTrigger.Wait(time.Second), "consumer did not get invoked")
@@ -110,7 +110,7 @@ func TestReceiverUpdate(t *testing.T) {
 	// Now the trace receiver is started.
 	require.NoError(t, waitConsumerTrigger.Wait(time.Second), "no traces consumer sent")
 
-	err := consumer.ConsumeTraces(context.Background(), ptrace.NewTraces())
+	err := consumer.ConsumeTraces(t.Context(), ptrace.NewTraces())
 	require.NoError(t, err)
 
 	require.NoError(t, waitTracesTrigger.Wait(time.Second), "consumer did not get invoked")

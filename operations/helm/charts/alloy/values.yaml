@@ -12,7 +12,7 @@ fullnameOverride: null
 ## If you want to override only one image registry, use the specific fields but if you want to override them all, use `global.image.registry`
 global:
   image:
-    # -- Global image registry to use if it needs to be overriden for some specific use cases (e.g local registries, custom images, ...)
+    # -- Global image registry to use if it needs to be overridden for some specific use cases (e.g local registries, custom images, ...)
     registry: ""
 
     # -- Optional set of global image pull secrets.

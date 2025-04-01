@@ -67,6 +67,7 @@ rules:
       - podmonitors
       - servicemonitors
       - probes
+      - scrapeconfigs
     verbs:
       - get
       - list

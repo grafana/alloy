@@ -12,7 +12,13 @@ Unreleased
 
 ### Enhancements
 
+- Update to Grafana Alloy v1.7.5. (@kimxogus)
+- Add `checksum/config` pod annotation (@kimxogus)
 - Add Vertical Pod Autoscaler support (@QuentinBisson)
+
+### Other changes
+
+- Fix typo in values.yaml documentation (@petewall)
 
 0.12.5 (2025-03-13)
 ----------
@@ -28,6 +34,7 @@ Unreleased
 
 0.12.3 (2025-03-10)
 ----------
+
 ### Enhancements
 
 - Add support for adding livenessProbe to agent container (@slimes28)

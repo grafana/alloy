@@ -34,7 +34,7 @@ You can use the following arguments with `prometheus.exporter.mongodb`:
 
 | Name                         | Type      | Description                                                                                                                            | Default | Required |
 | ---------------------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
-| `mongodb_uri`                | `string`  | MongoDB node connection URI.                                                                                                           |         | yes      |
+| `mongodb_uri`                | `secret`  | MongoDB node connection URI.                                                                                                           |         | yes      |
 | `direct_connect`             | `boolean` | Whether or not a direct connect should be made. Direct connections aren't valid if multiple hosts are specified or an SRV URI is used. | false   | no       |
 | `discovering_mode`           | `boolean` | Whether or not to enable autodiscover collections.                                                                                     | false   | no       |
 

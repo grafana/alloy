@@ -102,7 +102,7 @@ func TestOperationType(t *testing.T) {
 			}
 			attrMap.PutStr(semconv.AttributeNetHostIP, attrIP)
 
-			c.processAttributes(context.TODO(), attrMap)
+			c.processAttributes(t.Context(), attrMap)
 
 			actualAttrValue, _ := attrMap.Get(attrKey)
 			assert.Equal(t, tc.expectedValue, actualAttrValue.Str())
@@ -128,7 +128,7 @@ func TestPodAssociation(t *testing.T) {
 						IP: net.ParseIP(net.ParseIP(ipStr).String()),
 					},
 				}
-				return client.NewContext(context.Background(), info)
+				return client.NewContext(t.Context(), info)
 			},
 			attrMapFn:  func(*testing.T) pcommon.Map { return pcommon.NewMap() },
 			expectedIP: ipStr,
@@ -142,7 +142,7 @@ func TestPodAssociation(t *testing.T) {
 						Port: 1234,
 					},
 				}
-				return client.NewContext(context.Background(), info)
+				return client.NewContext(t.Context(), info)
 			},
 			attrMapFn:  func(*testing.T) pcommon.Map { return pcommon.NewMap() },
 			expectedIP: ipStr,
@@ -151,15 +151,15 @@ func TestPodAssociation(t *testing.T) {
 			name:            "connection IP is empty",
 			podAssociations: []string{PodAssociationConnectionIP},
 			ctxFn: func(t *testing.T) context.Context {
-				c := client.FromContext(context.Background())
-				return client.NewContext(context.Background(), c)
+				c := client.FromContext(t.Context())
+				return client.NewContext(t.Context(), c)
 			},
 			attrMapFn:  func(*testing.T) pcommon.Map { return pcommon.NewMap() },
 			expectedIP: "",
 		},
 		{
 			name:  "ip attribute",
-			ctxFn: func(t *testing.T) context.Context { return context.Background() },
+			ctxFn: func(t *testing.T) context.Context { return t.Context() },
 			attrMapFn: func(*testing.T) pcommon.Map {
 				attrMap := pcommon.NewMap()
 				attrMap.PutStr("ip", ipStr)
@@ -169,7 +169,7 @@ func TestPodAssociation(t *testing.T) {
 		},
 		{
 			name:  "net.host.ip attribute",
-			ctxFn: func(t *testing.T) context.Context { return context.Background() },
+			ctxFn: func(t *testing.T) context.Context { return t.Context() },
 			attrMapFn: func(*testing.T) pcommon.Map {
 				attrMap := pcommon.NewMap()
 				attrMap.PutStr(semconv.AttributeNetHostIP, ipStr)
@@ -179,7 +179,7 @@ func TestPodAssociation(t *testing.T) {
 		},
 		{
 			name:  "k8s ip attribute",
-			ctxFn: func(t *testing.T) context.Context { return context.Background() },
+			ctxFn: func(t *testing.T) context.Context { return t.Context() },
 			attrMapFn: func(*testing.T) pcommon.Map {
 				attrMap := pcommon.NewMap()
 				attrMap.PutStr("k8s.pod.ip", ipStr)
@@ -189,7 +189,7 @@ func TestPodAssociation(t *testing.T) {
 		},
 		{
 			name:  "ip from hostname",
-			ctxFn: func(t *testing.T) context.Context { return context.Background() },
+			ctxFn: func(t *testing.T) context.Context { return t.Context() },
 			attrMapFn: func(*testing.T) pcommon.Map {
 				attrMap := pcommon.NewMap()
 				attrMap.PutStr(semconv.AttributeHostName, ipStr)
@@ -205,7 +205,7 @@ func TestPodAssociation(t *testing.T) {
 						IP: net.ParseIP("2.2.2.2"),
 					},
 				}
-				return client.NewContext(context.Background(), info)
+				return client.NewContext(t.Context(), info)
 			},
 			attrMapFn: func(*testing.T) pcommon.Map {
 				attrMap := pcommon.NewMap()
@@ -216,7 +216,7 @@ func TestPodAssociation(t *testing.T) {
 		},
 		{
 			name:  "uses attr before hostname (default associations)",
-			ctxFn: func(t *testing.T) context.Context { return context.Background() },
+			ctxFn: func(t *testing.T) context.Context { return t.Context() },
 			attrMapFn: func(*testing.T) pcommon.Map {
 				attrMap := pcommon.NewMap()
 				attrMap.PutStr(semconv.AttributeNetHostIP, ipStr)
@@ -228,7 +228,7 @@ func TestPodAssociation(t *testing.T) {
 		{
 			name:            "ip attribute but not as pod association",
 			podAssociations: []string{PodAssociationk8sIPLabel},
-			ctxFn:           func(t *testing.T) context.Context { return context.Background() },
+			ctxFn:           func(t *testing.T) context.Context { return t.Context() },
 			attrMapFn: func(*testing.T) pcommon.Map {
 				attrMap := pcommon.NewMap()
 				attrMap.PutStr("ip", ipStr)
@@ -239,7 +239,7 @@ func TestPodAssociation(t *testing.T) {
 		{
 			name:            "uses hostname before attribute (reverse order from default)",
 			podAssociations: []string{PodAssociationHostnameLabel, PodAssociationOTelIPLabel},
-			ctxFn:           func(t *testing.T) context.Context { return context.Background() },
+			ctxFn:           func(t *testing.T) context.Context { return t.Context() },
 			attrMapFn: func(*testing.T) pcommon.Map {
 				attrMap := pcommon.NewMap()
 				attrMap.PutStr(semconv.AttributeNetHostIP, "3.3.3.3")

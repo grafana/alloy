@@ -70,7 +70,7 @@ func TestComponentFromNestedController(t *testing.T) {
 	r1, r2 := newReceiver(ch1.Chan()), newReceiver(ch2.Chan())
 
 	// call cancelReceivers to terminate them
-	receiverContext, cancelReceivers := context.WithCancel(context.Background())
+	receiverContext, cancelReceivers := context.WithCancel(t.Context())
 	go r1.run(receiverContext)
 	go r2.run(receiverContext)
 
@@ -108,7 +108,7 @@ func TestComponent(t *testing.T) {
 	r1, r2 := newReceiver(ch1.Chan()), newReceiver(ch2.Chan())
 
 	// call cancelReceivers to terminate them
-	receiverContext, cancelReceivers := context.WithCancel(context.Background())
+	receiverContext, cancelReceivers := context.WithCancel(t.Context())
 	go r1.run(receiverContext)
 	go r2.run(receiverContext)
 
@@ -130,7 +130,7 @@ func TestComponent(t *testing.T) {
 	c, err := New(opts, args)
 	require.NoError(t, err)
 
-	componentCtx, cancelComponent := context.WithCancel(context.Background())
+	componentCtx, cancelComponent := context.WithCancel(t.Context())
 	go c.Run(componentCtx)
 	defer cancelComponent()
 
@@ -186,7 +186,7 @@ func TestComponent_UpdateWithNewArguments(t *testing.T) {
 	r1, r2 := newReceiver(ch1.Chan()), newReceiver(ch2.Chan())
 
 	// call cancelReceivers to terminate them
-	receiverContext, cancelReceivers := context.WithCancel(context.Background())
+	receiverContext, cancelReceivers := context.WithCancel(t.Context())
 	go r1.run(receiverContext)
 	go r2.run(receiverContext)
 	defer cancelReceivers()
@@ -223,7 +223,7 @@ func TestComponent_UpdateWithNewArguments(t *testing.T) {
 	c, err := New(opts, args)
 	require.NoError(t, err)
 
-	componentCtx, cancelComponent := context.WithCancel(context.Background())
+	componentCtx, cancelComponent := context.WithCancel(t.Context())
 	go c.Run(componentCtx)
 	defer cancelComponent()
 
