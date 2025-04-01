@@ -92,6 +92,7 @@ Main (unreleased)
   - `otelcol.processor.batch` telemetry is no longer emitted at "basic" level. If you want to keep the batch processor telemetry, you can switch to "normal" level.
   - `otelcol.processor.tailsampling` change the unit of the decision timer metric from microseconds to milliseconds. (change unit of otelcol_processor_tail_sampling_sampling_decision_timer_latency, breaking change)
   - `otelcol.processor.deltatocumulative` rename and remove some metrics (breaking change)
+  - `otelcol.processor.transform` has a new `statements` block for transformations which don't require a context to be specified explicitly.
 
 
 v1.7.5
