@@ -204,7 +204,7 @@ func TestTwoTargets(t *testing.T) {
 	c, err := New(opts, args)
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	go c.Run(ctx)
 	time.Sleep(100 * time.Millisecond)
 
@@ -274,7 +274,7 @@ func TestEncoding(t *testing.T) {
 	c, err := New(opts, args)
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	go c.Run(ctx)
 	require.Eventually(t, func() bool { return c.DebugInfo() != nil }, 500*time.Millisecond, 20*time.Millisecond)
 

@@ -1,7 +1,6 @@
 package collector
 
 import (
-	"context"
 	"database/sql/driver"
 	"fmt"
 	"os"
@@ -330,7 +329,7 @@ func TestQueryTables(t *testing.T) {
 					),
 				)
 
-			err = collector.Start(context.Background())
+			err = collector.Start(t.Context())
 			require.NoError(t, err)
 
 			require.Eventually(t, func() bool {
@@ -404,7 +403,7 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 				),
 			)
 
-		err = collector.Start(context.Background())
+		err = collector.Start(t.Context())
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
@@ -470,7 +469,7 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 				).RowError(1, fmt.Errorf("rs error")), // error on second row
 			)
 
-		err = collector.Start(context.Background())
+		err = collector.Start(t.Context())
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
@@ -532,7 +531,7 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 				),
 			)
 
-		err = collector.Start(context.Background())
+		err = collector.Start(t.Context())
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {

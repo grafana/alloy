@@ -10,14 +10,25 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Breaking changes
+
+- Removed `open_port` and `executable_name` from top level configuration of Beyla component. Removed `enabled` argument from `network` block. (@marctc)
+
 ### Features
 
 - Add `otelcol.receiver.awscloudwatch` component to receive logs from AWS CloudWatch and forward them to other `otelcol.*` components. (@wildum)
 - Add `loki.enrich` component to enrich logs using labels from `discovery.*` components. (@v-zhuravlev)
 - Add string concatenation for secrets type (@ravishankar15)
+- Add support for environment variables to OpenTelemetry Collector config. (@jharvey10)
 - Replace graph in Alloy UI with a new version that supports modules and data flow visualization. (@wildum)
 
 ### Enhancements
+
+- Add the ability to set user for Windows Service with silent install (@dehaansa)
+
+- Add livedebugging support for structured_metadata in `loki.process` (@dehaansa)
+
+- (_Public Preview_) Add a `--windows.priority` flag to the run command, allowing users to set windows process priority for Alloy. (@dehaansa)
 
 - (_Experimental_) Adding a new `prometheus.operator.scrapeconfigs` which discovers and scrapes [ScrapeConfig](https://prometheus-operator.dev/docs/developer/scrapeconfig/) Kubernetes resources. (@alex-berger)
 
@@ -45,6 +56,8 @@ Main (unreleased)
 - Added OpenTelemetry logs and metrics support to Alloy mixin's dashboards and alerts. (@thampiotr)
 
 - Add support for proxy and headers in `prometheus.write.queue`. (@mattdurham)
+
+- Added support for switching namespace between authentication and kv retrieval to support Vault Enterprise (@notedop)
 
 - (_Experimental_) Various changes to the experimental component `database_observability.mysql`:
   - `query_sample`: better handling of truncated queries (@cristiangreco)
@@ -97,7 +110,7 @@ v1.7.3
 
 ### Breaking changes
 
-- Fixed the parsing of selections, application and network filter blocks for Beyla
+- Fixed the parsing of selections, application and network filter blocks for Beyla. (@raffaelroquetto)
 
 ### Enhancements
 

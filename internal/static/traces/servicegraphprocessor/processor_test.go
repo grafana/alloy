@@ -90,11 +90,11 @@ func TestConsumeMetrics(t *testing.T) {
 
 			close(p.closeCh) // Don't collect any edges, leave that to the test.
 
-			err = p.Start(context.Background(), nil)
+			err = p.Start(t.Context(), nil)
 			require.NoError(t, err)
 
 			traces := traceSamples(t, tc.sampleDataPath)
-			err = p.ConsumeTraces(context.Background(), traces)
+			err = p.ConsumeTraces(t.Context(), traces)
 			require.NoError(t, err)
 
 			collectMetrics(p)

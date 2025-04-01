@@ -80,7 +80,7 @@ To install {{< param "PRODUCT_NAME" >}} on Linux, run the following commands in 
    ```
 
    ```suse-opensuse
-   sudo zypper install alloy
+   sudo zypper -r grafana install alloy
    ```
 
    {{< /code >}}

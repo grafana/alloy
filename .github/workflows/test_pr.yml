@@ -4,8 +4,6 @@ on:
 jobs:
   lint:
     uses: ./.github/workflows/lint.yml
-    with:
-      go-version: '1.23'
 
   test_linux:
     name: Test Linux
@@ -14,7 +12,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Set up Go 1.23
+    - name: Set up Go
       uses: actions/setup-go@v5
       with:
         go-version-file: go.mod

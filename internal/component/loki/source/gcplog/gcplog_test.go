@@ -1,7 +1,6 @@
 package gcplog
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"strings"
@@ -96,7 +95,7 @@ func TestPush(t *testing.T) {
 	c, err := New(opts, args)
 	require.NoError(t, err)
 
-	go c.Run(context.Background())
+	go c.Run(t.Context())
 	time.Sleep(200 * time.Millisecond)
 
 	// Create a GCP PushRequest and send it to the launched server.

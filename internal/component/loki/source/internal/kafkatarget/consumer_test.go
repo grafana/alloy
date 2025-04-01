@@ -40,10 +40,10 @@ func Test_ConsumerConsume(t *testing.T) {
 	var (
 		group       = &testConsumerGroupHandler{}
 		session     = &testSession{}
-		ctx, cancel = context.WithCancel(context.Background())
+		ctx, cancel = context.WithCancel(t.Context())
 		c           = &consumer{
 			logger:        log.NewNopLogger(),
-			ctx:           context.Background(),
+			ctx:           t.Context(),
 			cancel:        func() {},
 			ConsumerGroup: group,
 			discoverer: DiscovererFn(func(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) (RunnableTarget, error) {
@@ -92,10 +92,10 @@ func Test_ConsumerRetry(t *testing.T) {
 		group = &testConsumerGroupHandler{
 			returnErr: errors.New("foo"),
 		}
-		ctx, cancel = context.WithCancel(context.Background())
+		ctx, cancel = context.WithCancel(t.Context())
 		c           = &consumer{
 			logger:        log.NewNopLogger(),
-			ctx:           context.Background(),
+			ctx:           t.Context(),
 			cancel:        func() {},
 			ConsumerGroup: group,
 		}

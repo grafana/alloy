@@ -18,7 +18,7 @@ import (
 
 func TestServices(t *testing.T) {
 	defer verifyNoGoroutineLeaks(t)
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	var (
@@ -52,7 +52,7 @@ func TestServices_Configurable(t *testing.T) {
 		Name string `alloy:"name,attr"`
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	var (
@@ -107,7 +107,7 @@ func TestServices_Configurable_Optional(t *testing.T) {
 		Name string `alloy:"name,attr,optional"`
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	var (
@@ -170,7 +170,7 @@ func TestAlloy_GetServiceConsumers(t *testing.T) {
 	opts.Services = append(opts.Services, svcA, svcB)
 
 	ctrl := New(opts)
-	defer cleanUpController(ctrl)
+	defer cleanUpController(t.Context(), ctrl)
 	require.NoError(t, ctrl.LoadSource(makeEmptyFile(t), nil, ""))
 
 	expectConsumers := []service.Consumer{{
@@ -183,7 +183,7 @@ func TestAlloy_GetServiceConsumers(t *testing.T) {
 
 func TestComponents_Using_Services(t *testing.T) {
 	defer verifyNoGoroutineLeaks(t)
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	var (
@@ -262,7 +262,7 @@ func TestComponents_Using_Services(t *testing.T) {
 
 func TestComponents_Using_Services_In_Modules(t *testing.T) {
 	defer verifyNoGoroutineLeaks(t)
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	componentBuilt := util.NewWaitTrigger()
@@ -340,7 +340,7 @@ func TestComponents_Using_Services_In_Modules(t *testing.T) {
 
 func TestNewControllerNoLeak(t *testing.T) {
 	defer verifyNoGoroutineLeaks(t)
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	var (

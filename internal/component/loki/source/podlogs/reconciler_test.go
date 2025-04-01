@@ -1,7 +1,6 @@
 package podlogs
 
 import (
-	"context"
 	"fmt"
 	"testing"
 
@@ -159,7 +158,7 @@ func TestReconcilePodLogs_DefaultLabels(t *testing.T) {
 	r := newReconciler(log.NewNopLogger(), nil, nil)
 
 	// Call reconcilePodLogs.
-	targets, _ := r.reconcilePodLogs(context.Background(), cl, podLogs)
+	targets, _ := r.reconcilePodLogs(t.Context(), cl, podLogs)
 
 	// Verify that one target was discovered.
 	if len(targets) != 1 {

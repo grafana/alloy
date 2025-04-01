@@ -1,11 +1,6 @@
 name: Lint
 on:
   workflow_call:
-    inputs:
-      go-version:
-        required: true
-        type: string
-        description: "Go version to use"
 
 jobs:
   lint:
@@ -18,7 +13,7 @@ jobs:
     - name: Set up Go 🏗️
       uses: actions/setup-go@v5
       with:
-        go-version: ${{ inputs.go-version }}
+        go-version-file: go.mod
         cache: false
 
     - name: Lint Go (main module) 🔍

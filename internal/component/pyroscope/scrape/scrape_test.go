@@ -38,7 +38,7 @@ func TestComponent(t *testing.T) {
 		GetServiceData: getServiceData,
 	}, arg)
 	require.NoError(t, err)
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	go func() {
 		err := c.Run(ctx)
@@ -247,7 +247,7 @@ func TestUpdateWhileScraping(t *testing.T) {
 	}, args)
 	require.NoError(t, err)
 	scraping := atomic.NewBool(false)
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		scraping.Store(true)

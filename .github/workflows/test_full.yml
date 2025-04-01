@@ -6,14 +6,12 @@ on:
 jobs:
   lint:
     uses: ./.github/workflows/lint.yml
-    with:
-      go-version: '1.23'
 
   test_linux:
     name: Test (Full)
     runs-on: ubuntu-latest
     container:
-      image: grafana/alloy-build-image:v0.1.8
+      image: grafana/alloy-build-image:v0.1.17
       volumes:
         - /var/run/docker.sock
     steps:
