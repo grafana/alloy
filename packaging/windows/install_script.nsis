@@ -118,11 +118,6 @@ Section "install"
   # Create the service.
   nsExec::ExecToLog 'sc create "Alloy" start= delayed-auto $AuthFlag binpath= "\"$INSTDIR\alloy-service-windows-amd64.exe\""'
   Pop $0
-  ${If} $0 <> 0
-    DetailPrint "Failed to create service."
-    Abort
-  ${EndIf}
-  
 
   # Start the service.
   nsExec::ExecToLog 'sc start "Alloy"'
