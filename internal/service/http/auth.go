@@ -5,13 +5,14 @@ import (
 	"crypto/subtle"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
 type AuthArguments struct {
 	Basic *BasicAuthArguments `alloy:"basic,block,optional"`
-	// Filter is used to apply authentication to matching api endpoints
+	// Filter is used to apply authentication to matching api endpoints.
 	Filter []string `alloy:"filter,attr,optional"`
 }
 
@@ -22,8 +23,9 @@ type BasicAuthArguments struct {
 
 func (a *AuthArguments) authenticator() authenticator {
 	if a.Basic != nil {
-		return basicAuthenticator(a.Basic.Username, string(a.Basic.Password))
+		return routeAuthenticator(a.Filter, basicAuthenticator(a.Basic.Username, string(a.Basic.Password)))
 	}
+	// No need to wrap with routeAuthenticator because authentication is not configured.
 	return allowAuthenticator
 }
 
@@ -56,6 +58,18 @@ func basicAuthenticator(username, password string) authenticator {
 			return errors.New("unauthorized")
 		}
 
+		return nil
+	}
+}
+
+// routeAuthenticator will apply provided authenticator if the any of the any filter is a prefix of the path.
+func routeAuthenticator(filter []string, auth authenticator) authenticator {
+	return func(w http.ResponseWriter, r *http.Request) error {
+		for _, f := range filter {
+			if strings.HasPrefix(r.URL.Path, f) {
+				return auth(w, r)
+			}
+		}
 		return nil
 	}
 }
