@@ -107,7 +107,7 @@ useful if just using the default DaemonSet isn't sufficient.
 | extraObjects | list | `[]` | Extra k8s manifests to deploy |
 | fullnameOverride | string | `nil` | Overrides the chart's computed fullname. Used to change the full prefix of resource names. |
 | global.image.pullSecrets | list | `[]` | Optional set of global image pull secrets. |
-| global.image.registry | string | `""` | Global image registry to use if it needs to be overriden for some specific use cases (e.g local registries, custom images, ...) |
+| global.image.registry | string | `""` | Global image registry to use if it needs to be overridden for some specific use cases (e.g local registries, custom images, ...) |
 | global.podSecurityContext | object | `{}` | Security context to apply to the Grafana Alloy pod. |
 | image.digest | string | `nil` | Grafana Alloy image's SHA256 digest (either in format "sha256:XYZ" or "XYZ"). When set, will override `image.tag`. |
 | image.pullPolicy | string | `"IfNotPresent"` | Grafana Alloy image pull policy. |
