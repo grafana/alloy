@@ -62,7 +62,6 @@ jobs:
           token: ${{ steps.generate-token.outputs.token }}
         env:
           RENOVATE_DRY_RUN: ${{ (github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && github.event.inputs.dry-run == 'true')) && 'full' || null }}
-          RENOVATE_ONBOARDING: false
           RENOVATE_PLATFORM: github
           RENOVATE_REPOSITORIES: ${{ github.repository }}
           RENOVATE_USERNAME: GrafanaRenovateBot
