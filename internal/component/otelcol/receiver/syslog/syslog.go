@@ -251,7 +251,7 @@ func (args *Arguments) Validate() error {
 			errs = multierror.Append(errs, fmt.Errorf("invalid non_transparent_framing_trailer, must be one of 'LF', 'NUL': %s", *args.NonTransparentFramingTrailer))
 		}
 
-		_, err := decode.LookupEncoding(args.TCP.Encoding)
+		_, err := decode.LookupEncoding(args.TCP.Encoding) //nolint:staticcheck // TODO: deprecated, internal only, will have to vendor the list
 		if err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("invalid tcp.encoding: %w", err))
 		}
@@ -266,7 +266,7 @@ func (args *Arguments) Validate() error {
 			errs = multierror.Append(errs, err)
 		}
 
-		_, err := decode.LookupEncoding(args.UDP.Encoding)
+		_, err := decode.LookupEncoding(args.UDP.Encoding) //nolint:staticcheck // TODO: deprecated, internal only, will have to vendor the list
 		if err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("invalid udp.encoding: %w", err))
 		}

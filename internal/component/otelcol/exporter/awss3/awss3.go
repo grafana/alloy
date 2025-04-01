@@ -128,7 +128,7 @@ func (args *S3Uploader) Convert() awss3exporter.S3UploaderConfig {
 		RoleArn:           args.RoleArn,
 		S3ForcePathStyle:  args.S3ForcePathStyle,
 		DisableSSL:        args.DisableSSL,
-		Compression:       configcompression.Type(args.Compression),
+		Compression:       args.Compression,
 		ACL:               args.ACL,
 		StorageClass:      args.StorageClass,
 	}
