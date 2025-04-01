@@ -15,6 +15,10 @@ Unreleased
 - Update to Grafana Alloy v1.7.5. (@kimxogus)
 - Add `checksum/config` pod annotation (@kimxogus)
 
+### Other changes
+
+- Fix typo in values.yaml documentation (@petewall)
+
 0.12.5 (2025-03-13)
 ----------
 ### Enhancements
