@@ -33,12 +33,12 @@ You can use the following arguments with `database_observability.mysql`:
 
 The following collectors are configurable:
 
- Name              | Enabled by default | Description                                           
--------------------|--------------------|-------------------------------------------------------
- `query_tables`    | true               | Collect query table information.                      
- `schema_table`    | true               | Collect schemas and tables from `information_schema`. 
- `query_sample`    | false              | Collect query samples.                                
- `setup_consumers` | true               | Collect enabled `performance_schema.setup_consumers`. 
+| Name              | Description                                           | Enabled by default |
+| ----------------- | ----------------------------------------------------- | ------------------ |
+| `query_tables`    | Collect query table information.                      | yes                |
+| `schema_table`    | Collect schemas and tables from `information_schema`. | yes                |
+| `query_sample`    | Collect query samples.                                | no                 |
+| `setup_consumers` | Collect enabled `performance_schema.setup_consumers`. | yes                |
 
 ## Blocks
 
