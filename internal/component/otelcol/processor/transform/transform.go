@@ -63,16 +63,18 @@ type ContextStatements struct {
 	Statements Statements `alloy:"statements,attr"`
 }
 
-type FlatContextStatements []Statements
+type NoContextStatements struct {
+	Trace  Statements `alloy:"trace,attr,optional"`
+	Metric Statements `alloy:"metric,attr,optional"`
+	Log    Statements `alloy:"log,attr,optional"`
+}
 
 // Arguments configures the otelcol.processor.transform component.
 type Arguments struct {
 	// ErrorMode determines how the processor reacts to errors that occur while processing a statement.
 	ErrorMode ottl.ErrorMode `alloy:"error_mode,attr,optional"`
 
-	TraceStatementsAttr  FlatContextStatements `alloy:"trace_statements_flat,attr,optional"`
-	MetricStatementsAttr FlatContextStatements `alloy:"metric_statements_flat,attr,optional"`
-	LogStatementsAttr    FlatContextStatements `alloy:"log_statements_flat,attr,optional"`
+	Statements NoContextStatements `alloy:"statements,block,optional"`
 
 	TraceStatements  ContextStatementsSlice `alloy:"trace_statements,block,optional"`
 	MetricStatements ContextStatementsSlice `alloy:"metric_statements,block,optional"`
@@ -109,21 +111,17 @@ func (args *Arguments) Validate() error {
 	return otelArgs.Validate()
 }
 
-func (stmts *FlatContextStatements) convert() ContextStatementsSlice {
+func convertNoContext(stmts Statements) ContextStatementsSlice {
 	if stmts == nil {
 		return nil
 	}
 
-	res := make([]ContextStatements, 0, len(*stmts))
-
-	for _, stmt := range *stmts {
-		res = append(res, ContextStatements{
-			Context: "",
-			// TODO: Deep copy?
-			Statements: stmt,
-		})
+	return ContextStatementsSlice{
+		{
+			Context:    "",
+			Statements: stmts,
+		},
 	}
-	return res
 }
 
 func (stmts *ContextStatementsSlice) convert() []interface{} {
@@ -166,17 +164,17 @@ func (args Arguments) convertImpl() (*transformprocessor.Config, error) {
 
 	input["error_mode"] = args.ErrorMode
 
-	args.TraceStatements = append(args.TraceStatements, args.TraceStatementsAttr.convert()...)
+	args.TraceStatements = append(args.TraceStatements, convertNoContext(args.Statements.Trace)...)
 	if len(args.TraceStatements) > 0 {
 		input["trace_statements"] = args.TraceStatements.convert()
 	}
 
-	args.MetricStatements = append(args.MetricStatements, args.MetricStatementsAttr.convert()...)
+	args.MetricStatements = append(args.MetricStatements, convertNoContext(args.Statements.Metric)...)
 	if len(args.MetricStatements) > 0 {
 		input["metric_statements"] = args.MetricStatements.convert()
 	}
 
-	args.LogStatements = append(args.LogStatements, args.LogStatementsAttr.convert()...)
+	args.LogStatements = append(args.LogStatements, convertNoContext(args.Statements.Log)...)
 	if len(args.LogStatements) > 0 {
 		input["log_statements"] = args.LogStatements.convert()
 	}

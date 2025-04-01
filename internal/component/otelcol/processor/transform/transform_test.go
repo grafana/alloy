@@ -45,7 +45,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			trace_statements {
 				context = "span"
 				statements = [
-					// Accessing a map with a key that does not exist will return nil. 
+					// Accessing a map with a key that does not exist will return nil.
 					` + backtick + `set(attributes["test"], "pass") where attributes["test"] == nil` + backtick + `,
 				]
 			}
@@ -93,28 +93,48 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			testName: "FlatConfiguration",
 			cfg: `
 			error_mode = "ignore"
-			trace_statements_flat = [
-				` + backtick + `set(span.name, "bear") where span.attributes["http.path"] == "/animal` + backtick + `,
-				` + backtick + `set(resource.attributes["name"], "bear")` + backtick + `,
-			]
-			metric_statements_flat = [
-				` + backtick + `set(metric.name, "bear") where resource.attributes["http.path"] == "/animal"` + backtick + `,
-				` + backtick + `set(resource.attributes["name"], "bear")` + backtick + `,
-			]
-			log_statements_flat = [
-				` + backtick + `set(log.body, "bear") where log.attributes["http.path"] == "/animal"` + backtick + `,
-				` + backtick + `set(resource.attributes["name"], "bear")` + backtick + `,
-			]
+			statements {
+				trace = [
+					` + backtick + `set(span.name, "bear") where span.attributes["http.path"] == "/animal"` + backtick + `,
+					` + backtick + `set(resource.attributes["name"], "bear")` + backtick + `,
+				]
+				metric = [
+					` + backtick + `set(metric.name, "bear") where resource.attributes["http.path"] == "/animal"` + backtick + `,
+					` + backtick + `set(resource.attributes["name"], "bear")` + backtick + `,
+				]
+				log = [
+					` + backtick + `set(log.body, "bear") where log.attributes["http.path"] == "/animal"` + backtick + `,
+					` + backtick + `set(resource.attributes["name"], "bear")` + backtick + `,
+				]
+			}
 			output {}
 			`,
 			expected: map[string]interface{}{
 				"error_mode": "ignore",
 				"trace_statements": []interface{}{
 					map[string]interface{}{
-						"context": "resource",
+						"context": "",
 						"statements": []interface{}{
-							`set(attributes["namespace"], attributes["k8s.namespace.name"])`,
-							`delete_key(attributes, "k8s.namespace.name")`,
+							`set(span.name, "bear") where span.attributes["http.path"] == "/animal"`,
+							`set(resource.attributes["name"], "bear")`,
+						},
+					},
+				},
+				"metric_statements": []interface{}{
+					map[string]interface{}{
+						"context": "",
+						"statements": []interface{}{
+							`set(metric.name, "bear") where resource.attributes["http.path"] == "/animal"`,
+							`set(resource.attributes["name"], "bear")`,
+						},
+					},
+				},
+				"log_statements": []interface{}{
+					map[string]interface{}{
+						"context": "",
+						"statements": []interface{}{
+							`set(log.body, "bear") where log.attributes["http.path"] == "/animal"`,
+							`set(resource.attributes["name"], "bear")`,
 						},
 					},
 				},
@@ -124,60 +144,103 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			testName: "MixedConfigurationStyles",
 			cfg: `
 			error_mode = "ignore"
-			trace_statements_flat = [
-				` + backtick + `set(span.name, "bear") where span.attributes["http.path"] == "/animal"` + backtick + `,
-			]
+			statements {
+				trace = [
+					` + backtick + `set(span.name, "bear") where span.attributes["http.path"] == "/animal"` + backtick + `,
+				]
+				metric = [
+					` + backtick + `set(metric.name, "bear") where resource.attributes["http.path"] == "/animal"` + backtick + `,
+				]
+				log = [
+					` + backtick + `set(log.body, "bear") where log.attributes["http.path"] == "/animal"` + backtick + `,
+				]
+			}
 			trace_statements {
 				context = "span"
 				statements = [
-					` + backtick + `set(attributes["name"], "bear"` + backtick + `,
+					` + backtick + `set(attributes["name"], "bear")` + backtick + `,
 					` + backtick + `keep_keys(attributes, ["http.method", "http.path"])` + backtick + `,
 				]
 			}
-			trace_statements_flat = [
-				` + backtick + `set(span.attributes["name"], "lion"` + backtick + `,
-			]
-			metric_statements_flat = [
-				` + backtick + `set(metric.name, "bear") where resource.attributes["http.path"] == "/animal` + backtick + `,
-			]
 			metric_statements {
 				context = "resource"
 				statements = [
-					` + backtick + `set(attributes["name"], "bear"` + backtick + `,
+					` + backtick + `set(attributes["name"], "bear")` + backtick + `,
 					` + backtick + `keep_keys(attributes, ["http.method", "http.path"])` + backtick + `,
 				]
 			}
-			metric_statements_flat = [
-				` + backtick + `set(metric.name, "lion")` + backtick + `,
-			]
-			log_statements_flat = [
-				` + backtick + `set(log.body, "bear") where log.attributes["http.path"] == "/animal"` + backtick + `,
-			]
 			log_statements {
 				context = "resource"
 				statements = [
-					` + backtick + `set(attributes["name"], "bear"` + backtick + `,
+					` + backtick + `set(attributes["name"], "bear")` + backtick + `,
 					` + backtick + `keep_keys(attributes, ["http.method", "http.path"])` + backtick + `,
 				]
 			}
-			log_statements_flat = [
-				` + backtick + `set(log.attributes["name"], "lion")` + backtick + `,
-			]
 			output {}
 			`,
-			// TODO: What about the "SharedCache" param?
 			expected: map[string]interface{}{
 				"error_mode": "ignore",
 				"trace_statements": []interface{}{
 					map[string]interface{}{
+						"context": "span",
+						"statements": []interface{}{
+							`set(attributes["name"], "bear")`,
+							`keep_keys(attributes, ["http.method", "http.path"])`,
+						},
+					},
+					map[string]interface{}{
+						"context": "",
+						"statements": []interface{}{
+							`set(span.name, "bear") where span.attributes["http.path"] == "/animal"`,
+						},
+					},
+				},
+				"metric_statements": []interface{}{
+					map[string]interface{}{
 						"context": "resource",
 						"statements": []interface{}{
-							`set(attributes["namespace"], attributes["k8s.namespace.name"])`,
-							`delete_key(attributes, "k8s.namespace.name")`,
+							`set(attributes["name"], "bear")`,
+							`keep_keys(attributes, ["http.method", "http.path"])`,
+						},
+					},
+					map[string]interface{}{
+						"context": "",
+						"statements": []interface{}{
+							`set(metric.name, "bear") where resource.attributes["http.path"] == "/animal"`,
+						},
+					},
+				},
+				"log_statements": []interface{}{
+					map[string]interface{}{
+						"context": "resource",
+						"statements": []interface{}{
+							`set(attributes["name"], "bear")`,
+							`keep_keys(attributes, ["http.method", "http.path"])`,
+						},
+					},
+					map[string]interface{}{
+						"context": "",
+						"statements": []interface{}{
+							`set(log.body, "bear") where log.attributes["http.path"] == "/animal"`,
 						},
 					},
 				},
 			},
+		},
+		{
+			testName: "InvalidFlatConfiguration",
+			cfg: `
+			error_mode = "ignore"
+			statements {
+				trace = [
+					` + backtick + `set(span.name, "bear") where span.attributes["http.path"] == "/animal"` + backtick + `,
+					` + backtick + `set(resource.attributes["name"], "bear")` + backtick + `,
+					` + backtick + `set(metric.name, "bear") where resource.attributes["http.path"] == "/animal"` + backtick + `,
+				]
+			}
+			output {}
+			`,
+			errorMsg: `unable to infer context from statements, path's first segment must be a valid context name:`,
 		},
 		{
 			testName: "RenameAttribute2",
