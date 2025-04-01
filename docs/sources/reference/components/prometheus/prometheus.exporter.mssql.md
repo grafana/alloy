@@ -40,7 +40,7 @@ sqlserver://<USERNAME>:<PASSWORD>@<SQLMI_ENDPOINT>.database.windows.net:1433?enc
 ```
 
 {{< admonition type="note" >}}
-If your username or password contain special characters, you might need to apply URL encoding.
+If your username or password contain special characters, you must URL encode the characters in the `connection_string` argument.
 For more information, refer to the [Data Source Names](https://github.com/burningalchemist/sql_exporter#data-source-names-dsn) section in the `sql_exporter` documentation
 {{< /admonition >}}
 
