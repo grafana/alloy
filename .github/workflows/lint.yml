@@ -1,0 +1,47 @@
+name: Lint
+on:
+  workflow_call:
+    inputs:
+      go-version:
+        required: true
+        type: string
+        description: "Go version to use"
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code 🛎️
+      uses: actions/checkout@v4
+
+    - name: Set up Go 🏗️
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ inputs.go-version }}
+        cache: false
+
+    - name: Lint Go (main module) 🔍
+      uses: golangci/golangci-lint-action@v6
+      with:
+        version: v1.64.7
+
+    - name: Lint Go (syntax module) 🔍
+      uses: golangci/golangci-lint-action@v6
+      with:
+        version: v1.64.7
+        working-directory: ./syntax/
+
+    - name: Lint Alloy 🔍
+      run: make run-alloylint
+
+    - name: Shellcheck 🔍
+      uses: azohra/shell-linter@latest
+      with:
+        path: "\
+          packaging,\
+          production,\
+          tools/ci,\
+          tools/release,\
+          docs/sources/tutorials/assets\
+          "

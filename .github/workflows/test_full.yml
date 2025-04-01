@@ -4,6 +4,11 @@ on:
     branches:
       - main
 jobs:
+  lint:
+    uses: ./.github/workflows/lint.yml
+    with:
+      go-version: '1.23'
+
   test_linux:
     name: Test (Full)
     runs-on: ubuntu-latest
