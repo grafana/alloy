@@ -55,7 +55,7 @@ The following flags are supported:
 * `--cluster.tls-cert-path`: Path to the certificate file used for peer communication over TLS.
 * `--cluster.tls-key-path`: Path to the key file used for peer communication over TLS.
 * `--cluster.tls-server-name`: Server name used for peer communication over TLS.
-* `--cluster.wait-for-size`: Wait for the cluster to reach the specified number of instances before admitting traffic to components that use clustering. Zero means disabled (default `0`).
+* `--cluster.wait-for-size`: Wait for the cluster to reach the specified number of instances before allowing components that use clustering to begin processing. Zero means disabled (default `0`).
 * `--cluster.wait-timeout`: Maximum duration to wait for minimum cluster size before proceeding with available nodes. Zero means wait forever, no timeout (default `0`).
 * `--config.format`: The format of the source file. Supported formats: `alloy`, `otelcol`, `prometheus`, `promtail`, `static` (default `"alloy"`).
 * `--config.bypass-conversion-errors`: Enable bypassing errors when converting (default `false`).
@@ -151,7 +151,7 @@ If the value of `--cluster.max-join-peers` is higher than the number of peers di
 
 The `--cluster.wait-for-size` flag specifies the minimum cluster size required before components that use clustering
 begin processing traffic. When set to a value greater than zero, a node will join the cluster but the components that
-use clustering will not take on any work until enough nodes are available. This ensures adequate cluster capacity - see
+use clustering will not take on any work until enough nodes are available. This ensures adequate cluster capacity - refer to
 [estimate resource usage][] for guidelines. The default value is `0`, which disables this feature.
 
 The `--cluster.wait-timeout` flag sets how long a node will wait for the cluster to reach the size specified by
