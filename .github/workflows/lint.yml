@@ -4,7 +4,7 @@ on:
 
 jobs:
   lint_go:
-    name: Lint Go
+    name: Lint Go 🔍
     runs-on: ubuntu-latest
 
     steps:
