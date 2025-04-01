@@ -44,7 +44,7 @@ func NewDistributedTargetsWithCustomLabels(clusteringEnabled bool, cluster clust
 	remoteTargetKeys := make(map[shard.Key]struct{}, len(allTargets)-localCap)
 
 	// Need to handle duplicate entries.
-	singlular := make(map[shard.Key]struct{})
+	unique := make(map[shard.Key]struct{})
 	for _, tgt := range allTargets {
 		var targetKey shard.Key
 		// If we have no custom labels check all non-meta labels.
@@ -55,10 +55,10 @@ func NewDistributedTargetsWithCustomLabels(clusteringEnabled bool, cluster clust
 		}
 
 		// check if we have already seen this target
-		if _, ok := singlular[targetKey]; ok {
+		if _, ok := unique[targetKey]; ok {
 			continue
 		}
-		singlular[targetKey] = struct{}{}
+		unique[targetKey] = struct{}{}
 
 		// Determine if target belongs locally. Make sure it doesn't if cluster not ready.
 		belongsToLocal := false

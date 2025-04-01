@@ -292,6 +292,7 @@ func TestClusterE2E(t *testing.T) {
 						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 4`,
 						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`,
 						`cluster_state{component_id="testcomponents.cluster_state_tracker.foo",component_path="/",peers="node-0___node-1___node-2___node-3",ready="false"} 4`,
+						`cluster_minimum_size{cluster_name="cluster_e2e_test"} 5`,
 					)
 					verifyClusterNotReady(t, p)
 				}
@@ -306,6 +307,7 @@ func TestClusterE2E(t *testing.T) {
 						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 5`,
 						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 5`,
 						`cluster_state{component_id="testcomponents.cluster_state_tracker.foo",component_path="/",peers="node-0___node-1___node-2___node-3___node-4",ready="true"} 5`,
+						`cluster_minimum_size{cluster_name="cluster_e2e_test"} 5`,
 					)
 					verifyClusterReady(t, p)
 					verifyPeers(t, p, 5)
@@ -329,6 +331,7 @@ func TestClusterE2E(t *testing.T) {
 						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 4`,
 						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`,
 						`cluster_state{component_id="testcomponents.cluster_state_tracker.foo",component_path="/",peers="node-0___node-1___node-2___node-3",ready="false"} 4`,
+						`cluster_minimum_size{cluster_name="cluster_e2e_test"} 5`,
 					)
 					verifyClusterNotReady(t, p)
 				}
@@ -344,6 +347,7 @@ func TestClusterE2E(t *testing.T) {
 						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 4`,
 						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`,
 						`cluster_state{component_id="testcomponents.cluster_state_tracker.foo",component_path="/",peers="node-0___node-1___node-2___node-3",ready="true"} 4`,
+						`cluster_minimum_size{cluster_name="cluster_e2e_test"} 5`,
 					)
 					verifyClusterReady(t, p)
 					verifyPeers(t, p, 4)
@@ -370,6 +374,7 @@ func TestClusterE2E(t *testing.T) {
 						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 5`,
 						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 5`,
 						`cluster_state{component_id="testcomponents.cluster_state_tracker.foo",component_path="/",peers="node-0___node-1___node-2___node-3___node-4",ready="true"} 5`,
+						`cluster_minimum_size{cluster_name="cluster_e2e_test"} 5`,
 					)
 					verifyClusterReady(t, p)
 					verifyPeers(t, p, 5)
@@ -386,6 +391,7 @@ func TestClusterE2E(t *testing.T) {
 						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 4`,
 						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`,
 						`cluster_state{component_id="testcomponents.cluster_state_tracker.foo",component_path="/",peers="node-1___node-2___node-3___node-4",ready="false"} 4`,
+						`cluster_minimum_size{cluster_name="cluster_e2e_test"} 5`,
 					)
 					verifyClusterNotReady(t, p)
 				}

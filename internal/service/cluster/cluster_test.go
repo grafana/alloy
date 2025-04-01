@@ -12,6 +12,7 @@ import (
 	"github.com/grafana/ckit/shard"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/atomic"
 	"golang.org/x/time/rate"
 )
 
@@ -173,95 +174,95 @@ func TestAdmitTrafficSequence_WithDeadline(t *testing.T) {
 	minimumClusterSize := 10
 	clusterSizeWaitTimeout := time.Second
 
-	notifyChangeCallsCount := 0
+	notifyChangeCallsCount := atomic.NewInt32(0)
 	s := newTestService(Options{
 		EnableClustering:       true,
 		MinimumClusterSize:     minimumClusterSize,
 		MinimumSizeWaitTimeout: clusterSizeWaitTimeout,
 	}, buildPeers(1), func() {
-		notifyChangeCallsCount += 1
+		notifyChangeCallsCount.Inc()
 	})
 	s.alloyCluster.limiter = rate.NewLimiter(rate.Every(time.Millisecond), 1000) // effectively disable rate limiter for this test
 
 	assert.False(t, s.alloyCluster.Ready()) // starts as not ready
-	assert.Equal(t, 0, notifyChangeCallsCount)
+	assert.Equal(t, int32(0), notifyChangeCallsCount.Load())
 
 	updateSharder(s, &mockSharder{peers: buildPeers(minimumClusterSize)}) // we reach the minimum, should be ready now!
 	assert.True(t, s.alloyCluster.Ready())
-	assert.Equal(t, 1, notifyChangeCallsCount)
+	assert.Equal(t, int32(1), notifyChangeCallsCount.Load())
 
 	updateSharder(s, &mockSharder{peers: buildPeers(minimumClusterSize - 1)}) // we dip back under the minimum = not ready
 	assert.False(t, s.alloyCluster.Ready())
-	assert.Equal(t, 2, notifyChangeCallsCount)
+	assert.Equal(t, int32(2), notifyChangeCallsCount.Load())
 
 	time.Sleep(time.Second) // deadline passes though, so we are ready to admit traffic again
 	require.Eventually(t, func() bool {
 		return s.alloyCluster.Ready()
 	}, 3*time.Second, time.Millisecond)
-	assert.Equal(t, 3, notifyChangeCallsCount)
+	assert.Equal(t, int32(3), notifyChangeCallsCount.Load())
 
 	updateSharder(s, &mockSharder{peers: buildPeers(minimumClusterSize + 1)}) // we reach the minimum, should continue to be ready
 	assert.True(t, s.alloyCluster.Ready())
-	assert.Equal(t, 4, notifyChangeCallsCount)
+	assert.Equal(t, int32(4), notifyChangeCallsCount.Load())
 
 	updateSharder(s, &mockSharder{peers: buildPeers(minimumClusterSize - 5)}) // we dip back under the minimum = not ready, deadline should have reset
 	assert.False(t, s.alloyCluster.Ready())
-	assert.Equal(t, 5, notifyChangeCallsCount)
+	assert.Equal(t, int32(5), notifyChangeCallsCount.Load())
 
 	time.Sleep(time.Second) // deadline passes again, so we are ready to admit traffic again
 	require.Eventually(t, func() bool {
 		return s.alloyCluster.Ready()
 	}, 3*time.Second, time.Millisecond)
-	assert.Equal(t, 6, notifyChangeCallsCount)
+	assert.Equal(t, int32(6), notifyChangeCallsCount.Load())
 
 	updateSharder(s, &mockSharder{peers: buildPeers(minimumClusterSize)}) // we reach the minimum, should continue to be ready
 	assert.True(t, s.alloyCluster.Ready())
-	assert.Equal(t, 7, notifyChangeCallsCount)
+	assert.Equal(t, int32(7), notifyChangeCallsCount.Load())
 }
 
 func TestAdmitTrafficSequence_NoDeadline(t *testing.T) {
 	t.Parallel()
 	minimumClusterSize := 10
 
-	notifyChangeCallsCount := 0
+	notifyChangeCallsCount := atomic.NewInt32(0)
 	s := newTestService(Options{
 		EnableClustering:   true,
 		MinimumClusterSize: minimumClusterSize,
 	}, buildPeers(1), func() {
-		notifyChangeCallsCount += 1
+		notifyChangeCallsCount.Inc()
 	})
 	s.alloyCluster.limiter = rate.NewLimiter(rate.Every(time.Millisecond), 1000) // effectively disable rate limiter for this test
 
 	assert.False(t, s.alloyCluster.Ready()) // starts as not ready
-	assert.Equal(t, 0, notifyChangeCallsCount)
+	assert.Equal(t, int32(0), notifyChangeCallsCount.Load())
 
 	updateSharder(s, &mockSharder{peers: buildPeers(minimumClusterSize)}) // we reach the minimum, should be ready now!
 	assert.True(t, s.alloyCluster.Ready())
-	assert.Equal(t, 1, notifyChangeCallsCount)
+	assert.Equal(t, int32(1), notifyChangeCallsCount.Load())
 
 	updateSharder(s, &mockSharder{peers: buildPeers(minimumClusterSize - 1)}) // we dip back under the minimum = not ready
 	assert.False(t, s.alloyCluster.Ready())
-	assert.Equal(t, 2, notifyChangeCallsCount)
+	assert.Equal(t, int32(2), notifyChangeCallsCount.Load())
 
 	time.Sleep(time.Second) // even though time passes by, there is no deadline, and we're still not ready
 	assert.False(t, s.alloyCluster.Ready())
-	assert.Equal(t, 2, notifyChangeCallsCount)
+	assert.Equal(t, int32(2), notifyChangeCallsCount.Load())
 
 	updateSharder(s, &mockSharder{peers: buildPeers(minimumClusterSize + 1)}) // we reach the minimum, should be ready
 	assert.True(t, s.alloyCluster.Ready())
-	assert.Equal(t, 3, notifyChangeCallsCount)
+	assert.Equal(t, int32(3), notifyChangeCallsCount.Load())
 
 	updateSharder(s, &mockSharder{peers: buildPeers(minimumClusterSize - 5)}) // we dip back under the minimum = not ready
 	assert.False(t, s.alloyCluster.Ready())
-	assert.Equal(t, 4, notifyChangeCallsCount)
+	assert.Equal(t, int32(4), notifyChangeCallsCount.Load())
 
 	time.Sleep(time.Second) // time passes, but nothing will change
 	assert.False(t, s.alloyCluster.Ready())
-	assert.Equal(t, 4, notifyChangeCallsCount)
+	assert.Equal(t, int32(4), notifyChangeCallsCount.Load())
 
 	updateSharder(s, &mockSharder{peers: buildPeers(minimumClusterSize)}) // we reach the minimum, should become ready
 	assert.True(t, s.alloyCluster.Ready())
-	assert.Equal(t, 5, notifyChangeCallsCount)
+	assert.Equal(t, int32(5), notifyChangeCallsCount.Load())
 }
 
 func TestAdmitTrafficSequence_RateLimited(t *testing.T) {
@@ -269,47 +270,47 @@ func TestAdmitTrafficSequence_RateLimited(t *testing.T) {
 	minimumClusterSize := 10
 	limiterInterval := time.Second * 2 // makes a test a bit longer, but lower risk of flakes when GC happens
 
-	notifyChangeCallsCount := 0
+	notifyChangeCallsCount := atomic.NewInt32(0)
 	s := newTestService(Options{
 		EnableClustering:   true,
 		MinimumClusterSize: minimumClusterSize,
 	}, buildPeers(1), func() {
-		notifyChangeCallsCount += 1
+		notifyChangeCallsCount.Inc()
 	})
 	s.alloyCluster.limiter = rate.NewLimiter(rate.Every(limiterInterval), 1)
 
 	// not enough peers - not ready
 	updateSharder(s, &mockSharder{peers: buildPeers(minimumClusterSize - 1)})
 	assert.False(t, s.alloyCluster.Ready())
-	assert.Equal(t, 0, notifyChangeCallsCount)
+	assert.Equal(t, int32(0), notifyChangeCallsCount.Load())
 
 	// enough peers, but rate limited
 	updateSharder(s, &mockSharder{peers: buildPeers(minimumClusterSize)})
 	for i := 0; i < 10; i++ {
 		assert.False(t, s.alloyCluster.Ready())
 	}
-	assert.Equal(t, 0, notifyChangeCallsCount)
+	assert.Equal(t, int32(0), notifyChangeCallsCount.Load())
 
 	// rate limit passed - ready
 	time.Sleep(limiterInterval + time.Millisecond)
 	for i := 0; i < 10; i++ {
 		assert.True(t, s.alloyCluster.Ready())
 	}
-	assert.Equal(t, 1, notifyChangeCallsCount)
+	assert.Equal(t, int32(1), notifyChangeCallsCount.Load())
 
 	// dip below required - but we are rate limited - still ready
 	updateSharder(s, &mockSharder{peers: buildPeers(minimumClusterSize - 1)})
 	for i := 0; i < 10; i++ {
 		assert.True(t, s.alloyCluster.Ready())
 	}
-	assert.Equal(t, 1, notifyChangeCallsCount)
+	assert.Equal(t, int32(1), notifyChangeCallsCount.Load())
 
 	// rate limit passed - we are not ready now
 	time.Sleep(limiterInterval + time.Millisecond)
 	for i := 0; i < 10; i++ {
 		assert.False(t, s.alloyCluster.Ready())
 	}
-	assert.Equal(t, 2, notifyChangeCallsCount)
+	assert.Equal(t, int32(2), notifyChangeCallsCount.Load())
 }
 
 func updateSharder(service *Service, sharder *mockSharder) {
