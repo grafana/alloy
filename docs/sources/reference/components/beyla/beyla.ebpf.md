@@ -11,7 +11,7 @@ title: beyla.ebpf
 # `beyla.ebpf`
 
 {{< admonition type="note" >}}
-`beyla.ebpf` component uses version {{< param "BEYLA_VERSION" >}} of Grafana Beyla.
+The `beyla.ebpf` component uses Grafana Beyla version {{< param "BEYLA_VERSION" >}}.
 {{< /admonition >}}
 
 
