@@ -39,6 +39,11 @@ The [`sql_exporter` examples](https://github.com/burningalchemist/sql_exporter/b
 sqlserver://<USERNAME>:<PASSWORD>@<SQLMI_ENDPOINT>.database.windows.net:1433?encrypt=true&hostNameInCertificate=%2A.<SQL_MI_DOMAIN>.database.windows.net&trustservercertificate=true
 ```
 
+{{< admonition type="note" >}}
+If your username or password contain special characters, you might need to apply URL encoding.
+For more information, refer to the [Data Source Names](https://github.com/burningalchemist/sql_exporter#data-source-names-dsn) section in the `sql_exporter` documentation
+{{< /admonition >}}
+
 The `connection_name` parameter allows uptime metrics.
 Refer to the [`sql_exporter`](https://github.com/burningalchemist/sql_exporter#configuration) `target.name` setting.
 
@@ -64,10 +69,10 @@ sqlserver://@<HOST>:<PORT>?authenticator=winsspi
 
 If you want to use Windows credentials to authenticate, instead of SQL Server credentials, you can use the parameter `authenticator=ntlm` within the `connection_string`.
 The _`<USERNAME>`_ and _`<PASSWORD>`_ then corresponds to a Windows username and password.
-The Windows domain may need to be prefixed to the username with a trailing `\`.
+You must use a percent-encoded backslash, `%5C`, when you prefix the Windows domain to the username.
 
 ```text
-sqlserver://<DOMAIN>\<USERNAME>:<PASSWORD>@<HOST>:<PORT>?authenticator=ntlm
+sqlserver://<DOMAIN>%5C<USERNAME>:<PASSWORD>@<HOST>:<PORT>?authenticator=ntlm
 ```
 
 ## Blocks
