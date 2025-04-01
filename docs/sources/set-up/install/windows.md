@@ -58,8 +58,8 @@ To do a silent install of {{< param "PRODUCT_NAME" >}} on Windows, perform the f
 * `/ENVIRONMENT="KEY=VALUE\0KEY2=VALUE2"` Define environment variables for Windows Service. Default: ``
 * `/RUNTIMEPRIORITY="normal|below_normal|above_normal|high|idle|realtime"` Set the runtime priority of the {{< param "PRODUCT_NAME" >}} process. Default: `normal`
 * `/STABILITY="generally-available|public-preview|experimental"` Set the stability level of {{< param "PRODUCT_NAME" >}}. Default: `generally-available`
-* `/USERNAME="<username>"` Set the user that Windows will use to run the service. Default: `LocalSystem`
-* `/PASSWORD="<password>"` Set the password of the user that Windows will use to run the service. This is not required for standard Windows Service Accounts like LocalSystem, LocalService, or NetworkService. Default: ``
+* `/USERNAME="<username>"` Set the fully qualified user that Windows will use to run the service. Default: `NT AUTHORITY\LocalSystem`
+* `/PASSWORD="<password>"` Set the password of the user that Windows will use to run the service. This is not required for standard Windows Service Accounts like LocalSystem. Default: ``
 
 {{< admonition type="note" >}}
 The `--windows.priority` flag is in [Public preview][stability] and is not covered by {{< param "FULL_PRODUCT_NAME" >}} [backward compatibility][] guarantees.
