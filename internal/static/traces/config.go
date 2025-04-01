@@ -446,9 +446,12 @@ func exporter(rwCfg RemoteWriteConfig) (map[string]interface{}, error) {
 	exporter := map[string]interface{}{
 		"endpoint":         rwCfg.Endpoint,
 		"compression":      compression,
-		"headers":          headers,
 		"sending_queue":    rwCfg.SendingQueue,
 		"retry_on_failure": rwCfg.RetryOnFailure,
+	}
+
+	if len(headers) > 0 {
+		exporter["headers"] = headers
 	}
 
 	tlsConfig := map[string]interface{}{
