@@ -495,11 +495,13 @@ func (s *Service) Update(newConfig any) error {
 		}
 	}
 
+	s.authenticatorMut.Lock()
 	if newArgs.Auth != nil {
-		s.authenticatorMut.Lock()
 		s.authenticator = newArgs.Auth.authenticator()
-		s.authenticatorMut.Unlock()
+	} else {
+		s.authenticator = allowAuthenticator
 	}
+	s.authenticatorMut.Unlock()
 
 	return nil
 }
