@@ -12,7 +12,7 @@ Main (unreleased)
 
 ### Features
 
-- Add `otelcol.exporter.googlecloud` component to export metrics, traces, and logs to Google Cloud. (@motoki317)
+- Add `otelcol.exporter.googlecloud` community component to export metrics, traces, and logs to Google Cloud. (@motoki317)
 
 v1.8.0-rc.2
 -----------------
