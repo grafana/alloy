@@ -845,8 +845,8 @@ The `resource_attributes` block supports the following blocks:
 
 Block                                             | Description                                                                                                   | Required
 --------------------------------------------------|---------------------------------------------------------------------------------------------------------------|---------
-[host.name][res-attr-cfg]                        | Toggles the `host.name` resource attribute. <br> Sets `enabled` to `true` by default.                        | no
-[dt.entity.host][res-attr-cfg]                   | Toggles the `dt.entity.host` resource attribute. <br> Sets `enabled` to `true` by default.                   | no
+[host.name][res-attr-cfg]                        | Toggles the `host.name` resource attribute.  Sets `enabled` to `true` by default.                        | no
+[dt.entity.host][res-attr-cfg]                   | Toggles the `dt.entity.host` resource attribute. Sets `enabled` to `true` by default.                   | no
 
 ## Common configuration
 
