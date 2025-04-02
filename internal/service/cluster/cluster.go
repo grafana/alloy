@@ -408,6 +408,9 @@ func (s *Service) notifyComponentsOfClusterChanges(ctx context.Context, limiter 
 	span.SetAttributes(attribute.Int("peers_count", len(peers)))
 	span.SetAttributes(attribute.Int("minimum_cluster_size", s.opts.MinimumClusterSize))
 
+	// Update Ready() state of cluster service that components use.
+	s.alloyCluster.updateReadyState()
+
 	// Notify all components about the clustering change.
 	components := component.GetAllComponents(host, component.InfoOptions{})
 	for _, comp := range components {
@@ -469,6 +472,8 @@ func (s *Service) getRandomPeers() ([]string, error) {
 }
 
 func (s *Service) stop() {
+	s.alloyCluster.shutdown()
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 

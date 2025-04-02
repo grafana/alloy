@@ -73,8 +73,6 @@ func TestClusterE2E(t *testing.T) {
 		{
 			name:             "three nodes with slow components",
 			nodeCountInitial: 3,
-			// slow components can currently lead to timeouts and communication errors
-			// TODO: consider decoupling cluster operations from runtime/components performance
 			extraAllowedErrors: []string{
 				`stream closed`,
 				`i/o timeout`,

@@ -8,14 +8,8 @@ import (
 	"github.com/grafana/ckit/peer"
 	"github.com/grafana/ckit/shard"
 	"github.com/prometheus/client_golang/prometheus"
-	"golang.org/x/time/rate"
 
 	"github.com/grafana/alloy/internal/runtime/logging/level"
-)
-
-const (
-	// admissionUpdateMinInterval defines the minimum time interval between updates to the admission control state.
-	admissionUpdateMinInterval = time.Second
 )
 
 type clusterState int
@@ -52,7 +46,11 @@ type Cluster interface {
 	// traffic to prevent overload. Always use Ready to verify before assigning work to instance.
 	Peers() []peer.Peer
 
-	// Ready returns true if the cluster is ready to accept traffic; otherwise, false.
+	// Ready returns true if the cluster is ready to accept traffic; otherwise, false. The cluster is ready to accept
+	// traffic when:
+	// - there is no minimum size requirement specified
+	// - there is a minimum size requirement and the cluster size is >= that size
+	// - there is a minimum size requirement and cluster size is too small, but the configured wait deadline has passed.
 	Ready() bool
 }
 
@@ -63,7 +61,6 @@ type alloyCluster struct {
 	opts    Options
 
 	clusterChangeCallback func()
-	limiter               *rate.Limiter
 	clusterReadyGauge     prometheus.Gauge
 
 	rwMutex       sync.RWMutex
@@ -78,7 +75,6 @@ func newAlloyCluster(sharder shard.Sharder, clusterChangeCallback func(), opts O
 		log:                   log,
 		sharder:               sharder,
 		opts:                  opts,
-		limiter:               rate.NewLimiter(rate.Every(admissionUpdateMinInterval), 1),
 		clusterChangeCallback: clusterChangeCallback,
 	}
 
@@ -143,30 +139,30 @@ func (c *alloyCluster) Ready() bool {
 		return true
 	}
 
-	// Don't update state too frequently. Use read-only lock if it's not yet time to update the ready state.
-	if !c.limiter.Allow() {
-		c.rwMutex.RLock()
-		defer c.rwMutex.RUnlock()
-		return c.clusterState == stateReady || c.clusterState == stateDeadlinePassed
-	}
+	c.rwMutex.RLock()
+	defer c.rwMutex.RUnlock()
+	return c.clusterState == stateReady || c.clusterState == stateDeadlinePassed
+}
 
+func (c *alloyCluster) updateReadyState() {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
-	// Number of peers is greater or equal the minimum cluster size = ready to admit traffic.
+	// Number of peers is greater or equal the minimum cluster size = update to ready to admit traffic.
 	if len(c.sharder.Peers()) >= c.opts.MinimumClusterSize {
 		c.transitionToStateReady()
-		return true
+		return
 	}
 
-	// The number of peers is less than the minimum. If the deadline timer has expired, the cluster is ready to admit traffic.
+	// The number of peers is less than the minimum and the deadline timer has expired, the cluster is ready to admit
+	// traffic and should remain in this state.
 	if c.clusterState == stateDeadlinePassed {
-		return true // Logging and callback already handled in c.transitionToStateDeadlinePassed
+		return // Logging and callback already handled in c.transitionToStateDeadlinePassed
 	}
 
-	// The number of peers is less than the minimum and the deadline is NOT expired = not ready to admit traffic
+	// The number of peers is less than the minimum, and the deadline is NOT expired = update to not ready to admit traffic
 	c.transitionToStateNotReady()
-	return false
+	return
 }
 
 // transitionToStateReady is called when the minimum cluster size is reached. rwMutex must be locked for writes by the caller.
@@ -187,7 +183,6 @@ func (c *alloyCluster) transitionToStateReady() {
 		"minimum_cluster_size", c.opts.MinimumClusterSize,
 		"peers_count", len(c.sharder.Peers()),
 	)
-	c.clusterChangeCallback()
 }
 
 // transitionToStateNotReady is called when the minimum cluster size is not reached. rwMutex must be locked for writes by the caller.
@@ -215,7 +210,6 @@ func (c *alloyCluster) transitionToStateNotReady() {
 		"minimum_size_wait_timeout", c.opts.MinimumSizeWaitTimeout,
 		"peers_count", len(c.sharder.Peers()),
 	)
-	c.clusterChangeCallback()
 }
 
 // transitionToStateDeadlinePassed is called when the deadline timer expires. rwMutex must be locked for writes by the caller.
@@ -232,5 +226,15 @@ func (c *alloyCluster) transitionToStateDeadlinePassed() {
 		"minimum_size_wait_timeout", c.opts.MinimumSizeWaitTimeout,
 		"peers_count", len(c.sharder.Peers()),
 	)
+	// The timer must trigger notification of all components as we may have no changes to peers, but there is
+	// a change to cluster readiness that components need to handle.
 	c.clusterChangeCallback()
+}
+
+func (c *alloyCluster) shutdown() {
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
+	if c.deadlineTimer != nil {
+		c.deadlineTimer.Stop()
+	}
 }
