@@ -262,7 +262,7 @@ func (args *Arguments) Validate() error {
 		errs = multierror.Append(errs, errors.New("'delete_after_read' cannot be used with 'start_at = end'"))
 	}
 
-	_, err := decode.LookupEncoding(args.Encoding)
+	_, err := decode.LookupEncoding(args.Encoding) //nolint:staticcheck // TODO: deprecated, internal only, will have to vendor the list
 	if err != nil {
 		errs = multierror.Append(errs, fmt.Errorf("invalid 'encoding': %w", err))
 	}
