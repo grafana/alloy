@@ -254,7 +254,7 @@ func GetClientName(cfg Config) string {
 
 func asSha256(o interface{}) string {
 	h := sha256.New()
-	fmt.Fprintf(h, "%v", o)
+	_, _ = fmt.Fprintf(h, "%v", o)
 
 	temp := fmt.Sprintf("%x", h.Sum(nil))
 	return temp[:6]
