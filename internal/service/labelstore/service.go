@@ -2,7 +2,6 @@ package labelstore
 
 import (
 	"context"
-	"go.uber.org/atomic"
 	"sync"
 	"time"
 
@@ -13,6 +12,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/value"
+	"go.uber.org/atomic"
 )
 
 const ServiceName = "labelstore"
