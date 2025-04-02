@@ -94,6 +94,8 @@ Main (unreleased)
 
 - Allow kafka exporter to attempt to connect even if TLS enabled but cert & key are not specified (@dehaansa)
 
+- Fixed bug where all resources were not being collected from `prometheus.exporter.azure` when using `regions` (@kgeckhart)
+
 ### Other changes
 
 - Upgrading to Prometheus v2.55.1. (@ptodev)
