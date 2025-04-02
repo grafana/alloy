@@ -1,0 +1,73 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+
+    // https://docs.renovatebot.com/presets-npm/#npmunpublishsafe
+    "npm:unpublishSafe"
+  ],
+
+  "commitMessageAction": "update",
+
+  // Tell dependency dashboard to only require PR creation approval for major versions
+  "major": {
+    "dependencyDashboardApproval": true
+  },
+
+  "prConcurrentLimit": 5,
+
+  // Move dependency files forward along with lock files
+  "rangeStrategy": "bump",
+
+  // Allow PR creation between 07:00 and 09:00 UTC on Mondays
+  "schedule": ["* 7-9 * * 1"],
+
+  "packageRules": [
+    {
+      "matchManagers": ["docker-compose"],
+      // "matchUpdateTypes": ["minor", "patch"],
+      // "groupName": "docker-compose dependencies (minor, patch)",
+      "enabled": false // TODO: enable when ready
+    },
+    {
+      "matchManagers": ["dockerfile"],
+      // "matchUpdateTypes": ["minor", "patch"],
+      // "groupName": "dockerfile dependencies (minor, patch)",
+      "enabled": false // TODO: enable when ready
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "github-actions dependencies (minor, patch)"
+    },
+    {
+      "matchManagers": ["gomod"],
+      // "matchUpdateTypes": ["minor", "patch"],
+      // "groupName": "go dependencies (minor, patch)",
+      "enabled": false // TODO: enable when ready
+    },
+    {
+      "matchManagers": ["helm-values"],
+      // "matchUpdateTypes": ["minor", "patch"],
+      // "groupName": "helm-values dependencies (minor, patch)",
+      "enabled": false // TODO: enable when ready
+    },
+    {
+      "matchManagers": ["helmv3"],
+      // "matchUpdateTypes": ["minor", "patch"],
+      // "groupName": "helmv3 dependencies (minor, patch)",
+      "enabled": false // TODO: enable when ready
+    },
+    {
+      "matchManagers": ["jsonnet-bundler"],
+      // "matchUpdateTypes": ["minor", "patch"],
+      // "groupName": "jsonnet-bundler dependencies (minor, patch)",
+      "enabled": false // TODO: enable when ready
+    },
+    {
+      "matchManagers": ["npm"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "npm dependencies (minor, patch)"
+    }
+  ]
+}
