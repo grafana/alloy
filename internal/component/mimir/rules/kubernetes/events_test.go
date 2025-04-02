@@ -120,7 +120,7 @@ func TestEventLoop(t *testing.T) {
 	}
 
 	processor := &eventProcessor{
-		queue:             workqueue.NewTypedRateLimitingQueue[kubernetes.Event](workqueue.DefaultTypedControllerRateLimiter[kubernetes.Event]()),
+		queue:             workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[kubernetes.Event]()),
 		stopChan:          make(chan struct{}),
 		health:            &fakeHealthReporter{},
 		mimirClient:       newFakeMimirClient(),
@@ -223,7 +223,7 @@ func TestAdditionalLabels(t *testing.T) {
 	}
 
 	processor := &eventProcessor{
-		queue:             workqueue.NewTypedRateLimitingQueue[kubernetes.Event](workqueue.DefaultTypedControllerRateLimiter[kubernetes.Event]()),
+		queue:             workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[kubernetes.Event]()),
 		stopChan:          make(chan struct{}),
 		health:            &fakeHealthReporter{},
 		mimirClient:       newFakeMimirClient(),
@@ -298,6 +298,9 @@ func TestExtraQueryMatchers(t *testing.T) {
 			Name:      "name",
 			Namespace: "namespace",
 			UID:       types.UID("64aab764-c95e-4ee9-a932-cd63ba57e6cf"),
+			Labels: map[string]string{
+				"foo": "bar",
+			},
 		},
 		Spec: v1.PrometheusRuleSpec{
 			Groups: []v1.RuleGroup{
@@ -319,7 +322,7 @@ func TestExtraQueryMatchers(t *testing.T) {
 	}
 
 	processor := &eventProcessor{
-		queue:             workqueue.NewTypedRateLimitingQueue[kubernetes.Event](workqueue.DefaultTypedControllerRateLimiter[kubernetes.Event]()),
+		queue:             workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[kubernetes.Event]()),
 		stopChan:          make(chan struct{}),
 		health:            &fakeHealthReporter{},
 		mimirClient:       newFakeMimirClient(),
@@ -340,6 +343,11 @@ func TestExtraQueryMatchers(t *testing.T) {
 				Name:      "job",
 				MatchType: "=",
 				Value:     "good",
+			},
+			{
+				Name:           "label",
+				MatchType:      "=",
+				ValueFromLabel: "foo",
 			},
 		}},
 	}
@@ -376,10 +384,10 @@ func TestExtraQueryMatchers(t *testing.T) {
 
 		expectedRule := `- name: group1
   rules:
-    - expr: "sum by (namespace) (rate(success{cluster=~\"prod-.*\",job=\"good\"}[10m]) / rate(total{cluster=~\"prod-.*\",job=\"good\"}[10m]))"
+    - expr: "sum by (namespace) (rate(success{cluster=~\"prod-.*\",job=\"good\",label=\"bar\"}[10m]) / rate(total{cluster=~\"prod-.*\",job=\"good\",label=\"bar\"}[10m]))"
       record: record_rule_1
     - alert: alert_1
-      expr: "sum by (namespace) (rate(success{cluster=~\"prod-.*\",foo=\"bar\",job=\"good\"}[10m]) / (rate(success{cluster=~\"prod-.*\",job=\"good\"}[10m]) + rate(failure{cluster=~\"prod-.*\",job=\"good\"}[10m]))) < 0.995"
+      expr: "sum by (namespace) (rate(success{cluster=~\"prod-.*\",foo=\"bar\",job=\"good\",label=\"bar\"}[10m]) / (rate(success{cluster=~\"prod-.*\",job=\"good\",label=\"bar\"}[10m]) + rate(failure{cluster=~\"prod-.*\",job=\"good\",label=\"bar\"}[10m]))) < 0.995"
 `
 		require.YAMLEq(t, expectedRule, string(ruleBuf))
 	}

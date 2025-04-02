@@ -149,11 +149,14 @@ The `matcher` block describes a label matcher that's added to each query found i
 
 The following arguments are supported:
 
-| Name         | Type     | Description                                         | Default | Required |
-| ------------ | -------- | --------------------------------------------------- | ------- | -------- |
-| `match_type` | `string` | The type of match. One of `=`, `!=`, `=~` and `!~`. |         | yes      |
-| `name`       | `string` | Name of the label to match.                         |         | yes      |
-| `value`      | `string` | Value of the label to match.                        |         | yes      |
+| Name                    | Type     | Description                                         | Default | Required |
+| ----------------------- | -------- | --------------------------------------------------- | ------- | -------- |
+| `match_type`            | `string` | The type of match. One of `=`, `!=`, `=~` and `!~`. |         | yes      |
+| `name`                  | `string` | Name of the label to match.                         |         | yes      |
+| `value`                 | `string` | Value of the label to match.                        |         | no       |
+| `value_from_label`      | `string` | Value extracted from the rule label to match.       |         | no       |
+
+Only one of `value` or `value_from_label` can be used. 
 
 ### `rule_selector` and `rule_namespace_selector`
 

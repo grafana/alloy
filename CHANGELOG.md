@@ -48,6 +48,9 @@ Main (unreleased)
 
 - Reduced lock contention in `prometheus.scrape` component (@thampiotr)
 
+- The `mimir.rules.kubernetes` component now supports adding extra label matchers
+  to all queries discovered via `PrometheusRule` CRDs by extracting label values defined on the `PrometheusRule`. (@QuentinBisson)
+
 ### Bugfixes
 
 - Fix deadlocks in `loki.source.file` when tailing fails (@mblaschke)
