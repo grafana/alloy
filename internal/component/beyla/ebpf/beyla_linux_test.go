@@ -173,7 +173,6 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 	require.Equal(t, debug.TracePrinter("json"), cfg.TracePrinter)
 }
 
-
 func TestArguments_TracePrinterDebug(t *testing.T) {
 	test := func(debugEnabled bool, printer string, expected string) {
 		const format = `
@@ -202,7 +201,7 @@ func TestArguments_TracePrinterDebug(t *testing.T) {
 		require.Equal(t, debug.TracePrinter(expected), cfg.TracePrinter)
 	}
 
-	// when debug is enabled, the printer will always be overriden to "text"
+	// when debug is enabled, the printer will always be overridden to "text"
 	// regardless of what is specified
 	test(true, "json", "text")
 	test(true, "text", "text")
