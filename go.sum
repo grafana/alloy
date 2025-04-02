@@ -1995,6 +1995,8 @@ github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awss3exporter
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awss3exporter v0.119.0/go.mod h1:3wvrLx2DPLts6vLXG6u+GdC/yvn1lpSDfiwiDnQGzZI=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter v0.119.0 h1:7KBXKZ3yGpjAGm79CSfZJtQWUcX0UCH+WD9CvmRoL8A=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter v0.119.0/go.mod h1:wSlyROPOwEGT4oGe5jJahToUCEnT4kzz0rAVf4p2GSY=
+github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter v0.119.0 h1:W5ptAjJAf5vNidVdzeN6GHlRAaxk+wZmJO/dVd8EqEg=
+github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter v0.119.0/go.mod h1:WDlcIb8ujayQKaz6+yWIvfCL5Uo6WpoZKQFBWqCTZyE=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter v0.119.0 h1:zQm1CkEuk7HjLNcXQ8WIH1t8WHiJDqIQUMjbTHWRFIY=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter v0.119.0/go.mod h1:6Lo1g1yHyIubBggpk+ify0ORGI7Z0C4xCCpEIzyMXdY=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancingexporter v0.119.0 h1:+X/CvlCtEQOlhAmM4vMqlPyy3gocwmzZewh7gAEo7po=
