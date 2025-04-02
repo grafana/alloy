@@ -38,7 +38,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "beyla.ebpf",
-		Stability: featuregate.StabilityPublicPreview,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   Exports{},
 
@@ -519,7 +519,7 @@ func (a *Arguments) Convert() (*beyla.Config, error) {
 			Level: &lvl,
 		})).Handler(), a.Debug)
 	}
-	cfg.TracePrinter = debug.TracePrinter(a.TracePrinter)
+
 	return &cfg, nil
 }
 
@@ -528,17 +528,10 @@ func (args *Arguments) Validate() error {
 	hasAppFeature := args.Metrics.hasAppFeature()
 
 	// Validate TracePrinter
-	if args.TracePrinter != "" {
-		validTracePrinters := map[string]struct{}{
-			"disabled":    {},
-			"counter":     {},
-			"text":        {},
-			"json":        {},
-			"json_indent": {},
-		}
-		if _, ok := validTracePrinters[args.TracePrinter]; !ok {
-			return fmt.Errorf("trace_printer: invalid value %q. Valid values are: disabled, counter, text, json, json_indent", args.TracePrinter)
-		}
+	if args.TracePrinter == "" {
+		args.TracePrinter = string(debug.TracePrinterDisabled)
+	} else if !debug.TracePrinter(args.TracePrinter).Valid() {
+		return fmt.Errorf("trace_printer: invalid value %q. Valid values are: disabled, counter, text, json, json_indent", args.TracePrinter)
 	}
 
 	// Services are required only when application observability is enabled
