@@ -88,6 +88,8 @@ Main (unreleased)
 
 - Add error body propagation in `pyroscope.write`, for `/ingest` calls. (@simonswine)
 
+- Add `tenant` label to remaining `loki_write_.+` metrics (@towolf)
+
 ### Bugfixes
 
 - Fix deadlocks in `loki.source.file` when tailing fails (@mblaschke)
