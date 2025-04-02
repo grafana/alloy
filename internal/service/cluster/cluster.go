@@ -391,6 +391,12 @@ func (s *Service) notifyComponentsOfClusterChanges(ctx context.Context, limiter 
 	tracer := s.tracer.Tracer("")
 	spanCtx, span := tracer.Start(ctx, "NotifyClusterChange", trace.WithSpanKind(trace.SpanKindInternal))
 
+	// Update Ready() state of cluster service that components use. Doing it before the limiter to reduce the time
+	// during which the components' view of cluster is not fully consistent (e.g. cluster not Ready() even though
+	// the number of peers is sufficient). Calls to `updateReadyState()` will still be effectively rate-limited
+	// because only one goroutine performs the notification.
+	s.alloyCluster.updateReadyState()
+
 	// Limit how often we notify components about peer changes. At start up we may receive N updates in a period
 	// of less than one second. This leads to a lot of unnecessary processing.
 	_, spanWait := tracer.Start(spanCtx, "RateLimitWait", trace.WithSpanKind(trace.SpanKindInternal))
@@ -407,9 +413,6 @@ func (s *Service) notifyComponentsOfClusterChanges(ctx context.Context, limiter 
 	s.logPeers("peers changed", toStringSlice(peers))
 	span.SetAttributes(attribute.Int("peers_count", len(peers)))
 	span.SetAttributes(attribute.Int("minimum_cluster_size", s.opts.MinimumClusterSize))
-
-	// Update Ready() state of cluster service that components use.
-	s.alloyCluster.updateReadyState()
 
 	// Notify all components about the clustering change.
 	components := component.GetAllComponents(host, component.InfoOptions{})
