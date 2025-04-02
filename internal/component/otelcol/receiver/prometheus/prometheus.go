@@ -138,19 +138,14 @@ func (c *Component) Update(newConfig component.Arguments) error {
 		gcInterval = 5 * time.Minute
 	)
 
-	metricsLevel, err := cfg.DebugMetrics.Level.Convert()
-	if err != nil {
-		return err
-	}
-
 	mp := metricNoop.NewMeterProvider()
 	settings := otelreceiver.Settings{
+		ID: otelcomponent.MustNewID("prometheus"),
 		TelemetrySettings: otelcomponent.TelemetrySettings{
 			Logger: zapadapter.New(c.opts.Logger),
 
 			// TODO(tpaschalis): expose tracing and logging statistics.
 			TracerProvider: traceNoop.NewTracerProvider(),
-			MetricsLevel:   metricsLevel,
 			MeterProvider:  mp,
 		},
 

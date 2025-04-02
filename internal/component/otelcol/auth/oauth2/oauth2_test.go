@@ -14,7 +14,7 @@ import (
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
-	extauth "go.opentelemetry.io/collector/extension/auth"
+	extauth "go.opentelemetry.io/collector/extension/extensionauth"
 	"gotest.tools/assert"
 )
 

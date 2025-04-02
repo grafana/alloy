@@ -17,6 +17,7 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/azure/aks"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/consul"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/docker"
+	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/dynatrace"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/gcp"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/heroku"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/k8snode"
@@ -122,6 +123,9 @@ type DetectorConfig struct {
 
 	// KubeADMConfig contains user-specified configurations for the KubeADM detector
 	KubeADMConfig kubeadm.Config `alloy:"kubeadm,block,optional"`
+
+	// Dynatrace contains user-specified configurations for the Dynatrace detector
+	DynatraceConfig dynatrace.Config `alloy:"dynatrace,block,optional"`
 }
 
 func (dc *DetectorConfig) SetToDefault() {
@@ -140,6 +144,7 @@ func (dc *DetectorConfig) SetToDefault() {
 		OpenShiftConfig:        openshift.DefaultArguments,
 		KubernetesNodeConfig:   k8snode.DefaultArguments,
 		KubeADMConfig:          kubeadm.DefaultArguments,
+		DynatraceConfig:        dynatrace.DefaultArguments,
 	}
 	dc.SystemConfig.SetToDefault()
 }
@@ -184,7 +189,8 @@ func (args *Arguments) Validate() error {
 			system.Name,
 			openshift.Name,
 			k8snode.Name,
-			kubeadm.Name:
+			kubeadm.Name,
+			dynatrace.Name:
 		// Valid option - nothing to do
 		default:
 			return fmt.Errorf("invalid detector: %s", detector)
@@ -234,7 +240,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	input["openshift"] = args.DetectorConfig.OpenShiftConfig.Convert()
 	input["k8snode"] = args.DetectorConfig.KubernetesNodeConfig.Convert()
 	input["kubeadm"] = args.DetectorConfig.KubeADMConfig.Convert()
-
+	input["dynatrace"] = args.DetectorConfig.DynatraceConfig.Convert()
 	var result resourcedetectionprocessor.Config
 	err := mapstructure.Decode(input, &result)
 

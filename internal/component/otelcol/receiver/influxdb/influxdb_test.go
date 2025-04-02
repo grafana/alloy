@@ -16,6 +16,7 @@ import (
 	influxdbreceiver "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/influxdbreceiver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/consumer"
@@ -105,7 +106,7 @@ func TestWriteLineProtocol_Alloy(t *testing.T) {
 	}
 	nextConsumer := new(mockConsumer)
 
-	receiver, outerErr := influxdbreceiver.NewFactory().CreateMetrics(t.Context(), receivertest.NewNopSettings(), config, nextConsumer)
+	receiver, outerErr := influxdbreceiver.NewFactory().CreateMetrics(t.Context(), receivertest.NewNopSettings(component.MustNewType("influxdb")), config, nextConsumer)
 	require.NoError(t, outerErr)
 	require.NotNil(t, receiver)
 
@@ -174,7 +175,7 @@ func TestReceiverStart(t *testing.T) {
 
 	receiver, err := influxdbreceiver.NewFactory().CreateMetrics(
 		t.Context(),
-		receivertest.NewNopSettings(),
+		receivertest.NewNopSettings(component.MustNewType("influxdb")),
 		convertedConfig,
 		new(mockConsumer),
 	)
@@ -202,7 +203,7 @@ func TestReceiverProcessesMetrics(t *testing.T) {
 
 	receiver, err := influxdbreceiver.NewFactory().CreateMetrics(
 		t.Context(),
-		receivertest.NewNopSettings(),
+		receivertest.NewNopSettings(component.MustNewType("influxdb")),
 		convertedConfig,
 		nextConsumer,
 	)

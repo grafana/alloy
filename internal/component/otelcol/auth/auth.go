@@ -224,19 +224,14 @@ func (a *Auth) Update(args component.Arguments) error {
 		return err
 	}
 
-	metricsLevel, err := rargs.DebugMetricsConfig().Level.Convert()
-	if err != nil {
-		return err
-	}
-
 	mp := metric.NewMeterProvider(metric.WithReader(promExporter))
 	settings := otelextension.Settings{
+		ID: otelcomponent.NewID(a.factory.Type()),
 		TelemetrySettings: otelcomponent.TelemetrySettings{
 			Logger: zapadapter.New(a.opts.Logger),
 
 			TracerProvider: a.opts.Tracer,
 			MeterProvider:  mp,
-			MetricsLevel:   metricsLevel,
 		},
 
 		BuildInfo: otelcomponent.BuildInfo{

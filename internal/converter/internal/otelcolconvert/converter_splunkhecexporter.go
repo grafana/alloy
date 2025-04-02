@@ -110,11 +110,13 @@ func toSplunkHecTelemetry(cfg splunkhecexporter.HecTelemetry) splunkhec_config.S
 }
 
 func toSplunkHecBatcherConfig(cfg exporterbatcher.Config) splunkhec_config.BatcherConfig {
+	sizer, _ := cfg.SizeConfig.Sizer.MarshalText()
 	return splunkhec_config.BatcherConfig{
 		Enabled:      cfg.Enabled,
 		FlushTimeout: cfg.FlushTimeout,
-		MinSizeItems: cfg.MinSizeItems,
-		MaxSizeItems: cfg.MaxSizeItems,
+		MinSize:      cfg.SizeConfig.MinSize,
+		MaxSize:      cfg.SizeConfig.MaxSize,
+		Sizer:        string(sizer),
 	}
 }
 

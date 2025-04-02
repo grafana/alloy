@@ -14,6 +14,16 @@ Main (unreleased)
 
 - Removed `open_port` and `executable_name` from top level configuration of Beyla component. Removed `enabled` argument from `network` block. (@marctc)
 
+- Breaking changes from the OpenTelemetry Collector v0.122 update: (@wildum)
+  - `otelcol.exporter.splunkhec`: `min_size_items` and `max_size_items` were replaced by `min_size`, `max_size` and `sizer` in the `batcher` block to allow
+  users to configure the size of the batch in a more flexible way.
+  - The telemetry level of Otel components is no longer configurable. The `level` argument in the `debug_metrics` block is kept to avoid breaking changes but it is not used anymore.
+  - `otelcol.processor.tailsampling` changed the unit of the decision timer metric from microseconds to milliseconds. (change unit of otelcol_processor_tail_sampling_sampling_decision_timer_latency)
+  - `otelcol.processor.deltatocumulative`: rename `otelcol_deltatocumulative_datapoints_processed` to `otelcol_deltatocumulative_datapoints` and remove the metrics `otelcol_deltatocumulative_streams_evicted`, `otelcol_deltatocumulative_datapoints_dropped` and `otelcol_deltatocumulative_gaps_length`.
+  - The `regex` attribute was removed from `otelcol.processor.k8sattributes`. The extract-patterns function from `otelcol.processor.transform` can be used instead.
+  - The default value of `metrics_flush_interval` in `otelcol.connector.servicegraph` was changed from `0s` to `60s`.
+  - `s3_partition` in `otelcol.exporter.awss3` was replaced by `s3_partition_format`.
+
 ### Features
 
 - Add `otelcol.receiver.awscloudwatch` component to receive logs from AWS CloudWatch and forward them to other `otelcol.*` components. (@wildum)
@@ -89,6 +99,14 @@ Main (unreleased)
 - Upgrading to Prometheus v2.55.1. (@ptodev)
   - Added a new `http_headers` argument to many `discovery` and `prometheus` components.
   - Added a new `scrape_failure_log_file` argument to `prometheus.scrape`.
+
+- Non-breaking changes from the OpenTelemetry Collector v0.122 update: (@wildum)
+  - `otelcol.processor.transform` has a new `statements` block for transformations which don't require a context to be specified explicitly.
+  - `otelcol.receiver.syslog` has a new `on_error` argument to specify the action to take when an error occurs while receiving logs.
+  - `otelcol.processor.resourcedetection` now supports `dynatrace` as a resource detector.
+  - `otelcol.receiver.kafka` has a new `error_backoff` block to configure how failed requests are retried.
+  - `otelcol.receiver.vcenter` has three new metrics `vcenter.vm.cpu.time`, `vcenter.vm.network.broadcast.packet.rate` and `vcenter.vm.network.multicast.packet.rate`.
+  - `otelcol.exporter.awss3` has two new arguments `acl` and `storage_class`.
 
 
 v1.7.5

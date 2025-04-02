@@ -146,19 +146,14 @@ func (r *Receiver) Update(args component.Arguments) error {
 		metricOpts = append(metricOpts, metric.WithView(views.DropHighCardinalityServerAttributes()...))
 	}
 
-	metricsLevel, err := debugMetricsCfg.Level.Convert()
-	if err != nil {
-		return err
-	}
-
 	mp := metric.NewMeterProvider(metricOpts...)
 	settings := otelreceiver.Settings{
+		ID: otelcomponent.NewID(r.factory.Type()),
 		TelemetrySettings: otelcomponent.TelemetrySettings{
 			Logger: zapadapter.New(r.opts.Logger),
 
 			TracerProvider: r.opts.Tracer,
 			MeterProvider:  mp,
-			MetricsLevel:   metricsLevel,
 		},
 
 		BuildInfo: otelcomponent.BuildInfo{
