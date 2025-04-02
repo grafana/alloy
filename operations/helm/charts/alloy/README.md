@@ -68,7 +68,7 @@ useful if just using the default DaemonSet isn't sufficient.
 | configReloader.resources | object | `{"requests":{"cpu":"1m","memory":"5Mi"}}` | Resource requests and limits to apply to the config reloader container. |
 | configReloader.securityContext | object | `{}` | Security context to apply to the Grafana configReloader container. |
 | controller.affinity | object | `{}` | Affinity configuration for pods. |
-| controller.autoscaling.enabled | bool | `false` | Creates a HorizontalPodAutoscaler for controller type deployment. Deprecated, please use controller.autoscaling.horizontal.enabled instead |
+| controller.autoscaling.enabled | bool | `false` | Creates a HorizontalPodAutoscaler for controller type deployment. Deprecated: Please use controller.autoscaling.horizontal.enabled instead |
 | controller.autoscaling.horizontal | object | `{"enabled":false,"maxReplicas":5,"minReplicas":1,"scaleDown":{"policies":[],"selectPolicy":"Max","stabilizationWindowSeconds":300},"scaleUp":{"policies":[],"selectPolicy":"Max","stabilizationWindowSeconds":0},"targetCPUUtilizationPercentage":0,"targetMemoryUtilizationPercentage":80}` | Configures the Horizontal Pod Autoscaler for the controller. |
 | controller.autoscaling.horizontal.enabled | bool | `false` | Enables the Horizontal Pod Autoscaler for the controller. |
 | controller.autoscaling.horizontal.maxReplicas | int | `5` | The upper limit for the number of replicas to which the autoscaler can scale up. |
