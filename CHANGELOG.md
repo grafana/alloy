@@ -112,6 +112,7 @@ Main (unreleased)
   - `otelcol.receiver.kafka` has a new `error_backoff` block to configure how failed requests are retried.
   - `otelcol.receiver.vcenter` has three new metrics `vcenter.vm.cpu.time`, `vcenter.vm.network.broadcast.packet.rate` and `vcenter.vm.network.multicast.packet.rate`.
   - `otelcol.exporter.awss3` has two new arguments `acl` and `storage_class`.
+  - `otelcol.auth.headers` headers can now be populated using Authentication metadata using from_attribute
 
 
 v1.7.5
