@@ -10,8 +10,13 @@ internal API changes are not present.
 Unreleased
 ----------
 
+### Breaking changes
+
+- configReloader.customArgs are likely to break as the prometheus maintained config reloader does not have the same arguments as the previous image (@dehaansa)
+
 ### Enhancements
 
+- Change configReloader from jimmydyson/configmap-reload to prometheus-operator/prometheus-config-reloader (@dehaansa)
 - Update to Grafana Alloy v1.7.5. (@kimxogus)
 - Add `checksum/config` pod annotation (@kimxogus)
 
