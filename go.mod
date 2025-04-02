@@ -67,7 +67,7 @@ require (
 	github.com/grafana/jsonparser v0.0.0-20240425183733-ea80629e1a32
 	github.com/grafana/kafka_exporter v0.0.0-20240409084445-5e3488ad9f9a
 	github.com/grafana/loki/pkg/push v0.0.0-20250218135905-f078e0e3f9b6 // k217-alloy-v1.7-fork branch
-	github.com/grafana/loki/v3 v3.0.0-20250218135905-f078e0e3f9b6 // k217-alloy-v1.7-fork branch
+	github.com/grahfana/loki/tv3 v3.0.0-20250218135905-f078e0e3f9b6 // k217-alloy-v1.7-fork branch
 	github.com/grafana/pyroscope-go/godeltaprof v0.1.8
 	github.com/grafana/pyroscope/api v1.2.0
 	github.com/grafana/pyroscope/ebpf v0.4.9
@@ -75,7 +75,7 @@ require (
 	github.com/grafana/snowflake-prometheus-exporter v0.0.0-20240813124544-9995e8354548
 	github.com/grafana/tail v0.0.0-20230510142333-77b18831edf0
 	github.com/grafana/vmware_exporter v0.0.5-beta.0.20250218170317-73398ba08329
-	github.com/grafana/walqueue v0.0.0-20250320164132-8157339be76c
+	github.com/grafana/walqueue v0.0.0-20250402195023-cd132d6ff0bc
 	github.com/hashicorp/consul/api v1.31.2
 	github.com/hashicorp/go-discover v0.0.0-20230724184603-e89ebd1b2f65
 	github.com/hashicorp/go-multierror v1.1.1
