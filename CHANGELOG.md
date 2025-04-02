@@ -34,6 +34,7 @@ Main (unreleased)
 - Added `--cluster.wait-for-size` and `--cluster.wait-timeout` flags which allow to specify the minimum cluster size
   required before components that use clustering begin processing traffic to ensure adequate cluster capacity is
   available. (@thampiotr)
+- Add `trace_printer` to `beyla.ebpf` component to print trace information in a specific format. (@marctc)
 
 ### Enhancements
 
@@ -113,6 +114,7 @@ Main (unreleased)
   - `otelcol.receiver.vcenter` has three new metrics `vcenter.vm.cpu.time`, `vcenter.vm.network.broadcast.packet.rate` and `vcenter.vm.network.multicast.packet.rate`.
   - `otelcol.exporter.awss3` has two new arguments `acl` and `storage_class`.
 
+- Change the stability of the `beyla.ebpf` component from "public preview" to "generally available". (@marctc)
 
 v1.7.5
 -----------------

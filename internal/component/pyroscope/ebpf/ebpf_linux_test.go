@@ -82,6 +82,7 @@ func (m *mockSession) DebugInfo() interface{} {
 					{
 						Name:          "X",
 						Size:          123,
+						MiniDebugInfo: false,
 						LastUsedRound: 1,
 					},
 				},
