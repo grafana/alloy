@@ -191,7 +191,9 @@ func TestAuth(t *testing.T) {
 				username = "username"
 				password = "password"
 			}
-		    filter = ["/"]
+			filter {
+				paths = ["/"]
+			}
 		}
 	`))
 
@@ -254,7 +256,9 @@ func Test_Toggle_Auth(t *testing.T) {
 					username = "username"
 					password = "password"
 				}
-				filter = ["/"]
+				filter {
+					paths = ["/"]
+				}
 			}
 		`))
 

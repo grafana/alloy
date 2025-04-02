@@ -5,20 +5,33 @@ import (
 	"crypto/subtle"
 	"errors"
 	"net/http"
+	"slices"
 	"strings"
 
+	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
 type AuthArguments struct {
-	Basic *BasicAuthArguments `alloy:"basic,block,optional"`
-	// Filter is used to apply authentication to matching api endpoints.
-	Filter []string `alloy:"filter,attr,optional"`
+	Basic  *BasicAuthArguments `alloy:"basic,block,optional"`
+	Filter FilterAuthArguments `alloy:"filter,block,optional"`
 }
 
 type BasicAuthArguments struct {
 	Username string            `alloy:"username,attr"`
 	Password alloytypes.Secret `alloy:"password,attr"`
+}
+
+type FilterAuthArguments struct {
+	Paths       []string `alloy:"paths,attr,optional"`
+	AuthIfMatch bool     `alloy:"auth_if_match,attr,optional"`
+}
+
+var _ syntax.Defaulter = (*FilterAuthArguments)(nil)
+
+// SetToDefault implements syntax.Defaulter.
+func (f *FilterAuthArguments) SetToDefault() {
+	f.AuthIfMatch = true
 }
 
 func (a *AuthArguments) authenticator() authenticator {
@@ -44,6 +57,7 @@ func basicAuthenticator(username, password string) authenticator {
 	return func(w http.ResponseWriter, r *http.Request) error {
 		username, password, ok := r.BasicAuth()
 		if !ok {
+			w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
 			return errors.New("unauthorized")
 		}
 
@@ -62,14 +76,22 @@ func basicAuthenticator(username, password string) authenticator {
 	}
 }
 
-// routeAuthenticator will apply provided authenticator if any filter is a prefix of the path.
-func routeAuthenticator(filter []string, auth authenticator) authenticator {
+func routeAuthenticator(filter FilterAuthArguments, auth authenticator) authenticator {
 	return func(w http.ResponseWriter, r *http.Request) error {
-		for _, f := range filter {
-			if strings.HasPrefix(r.URL.Path, f) {
+		compare := func(s string) bool { return strings.HasPrefix(r.URL.Path, s) }
+
+		// If AuthIfMatch is true we perform authentication on matching paths
+		// otherwise we perform authentication on paths that don't match.
+		if filter.AuthIfMatch {
+			if slices.ContainsFunc(filter.Paths, compare) {
+				return auth(w, r)
+			}
+		} else {
+			if !slices.ContainsFunc(filter.Paths, compare) {
 				return auth(w, r)
 			}
 		}
+
 		return nil
 	}
 }
