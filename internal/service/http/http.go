@@ -195,7 +195,8 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 		otelmux.WithTracerProvider(s.tracer),
 	))
 
-	// apply authenticator middleware, if non is configured allowAuthenticator is used and no authentication is required
+	// Apply authenticator middleware.
+	// If none is configured allowAuthenticator is used and no authentication is required.
 	r.Use(func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			s.authenticatorMut.Lock()
