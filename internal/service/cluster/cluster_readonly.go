@@ -162,7 +162,6 @@ func (c *alloyCluster) updateReadyState() {
 
 	// The number of peers is less than the minimum, and the deadline is NOT expired = update to not ready to admit traffic
 	c.transitionToStateNotReady()
-	return
 }
 
 // transitionToStateReady is called when the minimum cluster size is reached. rwMutex must be locked for writes by the caller.
