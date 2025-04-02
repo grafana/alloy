@@ -46,19 +46,24 @@ You can use the following arguments with `otelcol.exporter.googlecloud`:
 
 You can use the following blocks with `otelcol.exporter.googlecloud`:
 
-| Block                            | Description                                                                | Required |
-|----------------------------------|----------------------------------------------------------------------------|----------|
-| [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |
-| [`impersonate`][impersonate]     | Configuration for service account impersonation                            | no       |
-| [`log`][log]                     | Configuration for sending metrics to Cloud Logging.                        | no       |
-| [`metric`][metric]               | Configuration for sending metrics to Cloud Monitoring.                     | no       |
-| [`sending_queue`][sending_queue] | Configures batching of data before sending.                                | no       |
-| [`trace`][trace]                 | Configuration for sending traces to Cloud Trace.                           | no       |
+| Block                                             | Description                                                                | Required |
+|---------------------------------------------------|----------------------------------------------------------------------------|----------|
+| [`debug_metrics`][debug_metrics]                  | Configures the metrics that this component generates to monitor its state. | no       |
+| [`impersonate`][impersonate]                      | Configuration for service account impersonation                            | no       |
+| [`log`][log]                                      | Configuration for sending metrics to Cloud Logging.                        | no       |
+| [`metric`][metric]                                | Configuration for sending metrics to Cloud Monitoring.                     | no       |
+| [`metric` > `experimental_wal`][experimental_wal] | Configuration for write ahead log for time series requests.                | no       |
+| [`sending_queue`][sending_queue]                  | Configures batching of data before sending.                                | no       |
+| [`trace`][trace]                                  | Configuration for sending traces to Cloud Trace.                           | no       |
+
+The > symbol indicates deeper levels of nesting.
+For example, `metric` > `experimental_wal` refers to a `experimental_wal` block defined inside a `metric` block.
 
 [debug_metrics]: #debug_metrics
 [impersonate]: #impersonate
 [log]: #log
 [metric]: #metric
+[experimental_wal]: #experimental_wal
 [sending_queue]: #sending_queue
 [trace]: #trace
 
@@ -104,9 +109,6 @@ The following arguments are supported:
 | `create_service_timeseries`            | `bool`         | If true, this sends all timeseries using `CreateServiceTimeSeries`. Implicitly, this sets `skip_create_descriptor` to true.                                                                                                 | `false`                                                  | no       |
 | `cumulative_normalization`             | `bool`         | If true, normalizes cumulative metrics without start times or with explicit reset points by subtracting subsequent points from the initial point. Since it caches starting points, it may result in increased memory usage. | `true`                                                   | no       |
 | `endpoint`                             | `string`       | Endpoint where metric data is sent to.                                                                                                                                                                                      | `monitoring.googleapis.com:443`                          | no       |
-| `experimental_wal`                     | `list(object)` | If provided, enables use of a write ahead log for time series requests. Each object must contain `directory`                                                                                                                | `[]`                                                     | no       |
-| `experimental_wal` > `directory`       | `string`       | Path to local directory for the WAL file.                                                                                                                                                                                   | `./`                                                     | no       |
-| `experimental_wal` > `max_backoff`     | `string`       | Max duration to retry requests on network errors (`UNAVAILABLE` or `DEADLINE_EXCEEDED`).                                                                                                                                    | `1h`                                                     | no       |
 | `grpc_pool_size`                       | `number`       | Sets the size of the connection pool in the GCP client.                                                                                                                                                                     | `1`                                                      | no       |
 | `instrumentation_library_labels`       | `bool`         | If true, set the `instrumentation_source` and `instrumentation_version` labels.                                                                                                                                             | `true`                                                   | no       |
 | `known_domains`                        | `list(string)` | If a metric belongs to one of these domains it doesn't get a prefix.                                                                                                                                                        | `[googleapis.com, kubernetes.io, istio.io, knative.dev]` | no       |
@@ -119,8 +121,14 @@ The following arguments are supported:
 | `sum_of_squared_deviation`             | `bool`         | If true, enables calculation of an estimated sum of squared deviation. It's an estimate, and isn't exact.                                                                                                                   | `false`                                                  | no       |
 | `use_insecure`                         | `bool`         | If true, disables gRPC client transport security. Only has effect if Endpoint isn't `""`.                                                                                                                                   | `false`                                                  | no       |
 
-The > symbol indicates deeper levels of nesting.
-For example, `experimental_wal` > `directory` refers to a `directory` argument defined inside a `experimental_wal` block.
+### `experimental_wal`
+
+The following arguments are supported:
+
+| Name          | Type     | Description                                                                              | Default | Required |
+|---------------|----------|------------------------------------------------------------------------------------------|---------|----------|
+| `directory`   | `string` | Path to local directory for the WAL file.                                                | `./`    | yes      |
+| `max_backoff` | `string` | Max duration to retry requests on network errors (`UNAVAILABLE` or `DEADLINE_EXCEEDED`). | `1h`    | no       |
 
 ### `sending_queue`
 
