@@ -40,7 +40,7 @@ func Test_Extract(t *testing.T) {
 	otelObj := (convertedArgs).(*k8sattributesprocessor.Config)
 
 	authType := &otelObj.AuthType
-	require.Equal(t, *authType, "kubeConfig")
+	require.Equal(t, string(*authType), "kubeConfig")
 
 	extract := &otelObj.Extract
 	require.Equal(t, []string{"k8s.namespace.name", "k8s.job.name", "k8s.node.name"}, extract.Metadata)
