@@ -9,9 +9,6 @@ type LabelStore interface {
 	// GetOrAddGlobalRefID finds or adds a global id for the given label map.
 	GetOrAddGlobalRefID(l labels.Labels) uint64
 
-	// GetGlobalRefID returns the global id for a component and the local id. Returns 0 if nothing found.
-	GetGlobalRefID(componentID string, localRefID uint64) uint64
-
 	// GetLocalRefID gets the mapping from global to local id specific to a component. Returns 0 if nothing found.
 	GetLocalRefID(componentID string, globalRefID uint64) uint64
 
@@ -21,6 +18,10 @@ type LabelStore interface {
 
 	// CheckAndRemoveStaleMarkers identifies any series with a stale marker and removes those entries from the LabelStore.
 	CheckAndRemoveStaleMarkers()
+
+	// Enable enables operation of the labelstore. Labelstore only exists to support remote_write, so if remote_write is not
+	// being used then we can default to disabled.
+	Enable()
 }
 
 type StalenessTracker struct {

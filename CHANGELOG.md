@@ -116,6 +116,8 @@ Main (unreleased)
 
 - Change the stability of the `beyla.ebpf` component from "public preview" to "generally available". (@marctc)
 
+- Only use labelstore if `prometheus.remote_write` is enabled. (@mattdurham) 
+
 v1.7.5
 -----------------
 

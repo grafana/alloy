@@ -14,8 +14,26 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestActionsIfDisabled(t *testing.T) {
+	mapping := New(log.NewNopLogger(), prometheus.DefaultRegisterer)
+	l := labels.Labels{}
+	l = append(l, labels.Label{
+		Name:  "__name__",
+		Value: "test",
+	})
+	globalID := mapping.GetOrAddGlobalRefID(l)
+	require.Equal(t, globalID, l.Hash())
+
+	localID := mapping.GetLocalRefID("", l.Hash())
+	require.Equal(t, localID, uint64(0))
+
+	id := mapping.GetOrAddLink("", 0, l)
+	require.Equal(t, id, l.Hash())
+}
+
 func TestAddingMarker(t *testing.T) {
 	mapping := New(log.NewNopLogger(), prometheus.DefaultRegisterer)
+	mapping.Enable()
 	l := labels.Labels{}
 	l = append(l, labels.Label{
 		Name:  "__name__",
@@ -29,6 +47,7 @@ func TestAddingMarker(t *testing.T) {
 
 func TestAddingDifferentMarkers(t *testing.T) {
 	mapping := New(log.NewNopLogger(), prometheus.DefaultRegisterer)
+	mapping.Enable()
 	l := labels.Labels{}
 	l = append(l, labels.Label{
 		Name:  "__name__",
@@ -47,6 +66,7 @@ func TestAddingDifferentMarkers(t *testing.T) {
 
 func TestAddingLocalMapping(t *testing.T) {
 	mapping := New(log.NewNopLogger(), prometheus.DefaultRegisterer)
+	mapping.Enable()
 	l := labels.Labels{}
 	l = append(l, labels.Label{
 		Name:  "__name__",
@@ -65,6 +85,7 @@ func TestAddingLocalMapping(t *testing.T) {
 
 func TestAddingLocalMappings(t *testing.T) {
 	mapping := New(log.NewNopLogger(), prometheus.DefaultRegisterer)
+	mapping.Enable()
 	l := labels.Labels{}
 	l = append(l, labels.Label{
 		Name:  "__name__",
@@ -90,6 +111,7 @@ func TestAddingLocalMappings(t *testing.T) {
 
 func TestAddingLocalMappingsWithoutCreatingGlobalUpfront(t *testing.T) {
 	mapping := New(log.NewNopLogger(), prometheus.DefaultRegisterer)
+	mapping.Enable()
 	l := labels.Labels{}
 	l = append(l, labels.Label{
 		Name:  "__name__",
@@ -113,6 +135,7 @@ func TestAddingLocalMappingsWithoutCreatingGlobalUpfront(t *testing.T) {
 
 func TestStaleness(t *testing.T) {
 	mapping := New(log.NewNopLogger(), prometheus.DefaultRegisterer)
+	mapping.Enable()
 	l := labels.Labels{}
 	l = append(l, labels.Label{
 		Name:  "__name__",
@@ -144,6 +167,7 @@ func TestStaleness(t *testing.T) {
 
 func TestRemovingStaleness(t *testing.T) {
 	mapping := New(log.NewNopLogger(), prometheus.DefaultRegisterer)
+	mapping.Enable()
 	l := labels.Labels{}
 	l = append(l, labels.Label{
 		Name:  "__name__",
