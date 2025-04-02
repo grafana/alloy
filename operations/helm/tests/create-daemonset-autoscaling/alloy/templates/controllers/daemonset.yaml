@@ -1,7 +1,7 @@
 ---
-# Source: alloy/templates/controllers/deployment.yaml
+# Source: alloy/templates/controllers/daemonset.yaml
 apiVersion: apps/v1
-kind: Deployment
+kind: DaemonSet
 metadata:
   name: alloy
   namespace: default
@@ -12,7 +12,6 @@ metadata:
     app.kubernetes.io/version: "vX.Y.Z"
     app.kubernetes.io/managed-by: Helm
 spec:
-  replicas: 1
   minReadySeconds: 10
   selector:
     matchLabels:
@@ -55,9 +54,6 @@ spec:
               scheme: HTTP
             initialDelaySeconds: 10
             timeoutSeconds: 1
-          resources:
-            requests:
-              memory: 100Mi
           volumeMounts:
             - name: config
               mountPath: /etc/alloy
