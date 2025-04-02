@@ -245,7 +245,8 @@ controller:
   enableStatefulSetAutoDeletePVC: false
 
   autoscaling:
-    # -- Creates an autoscaler for the controller.
+    # -- Creates a HorizontalPodAutoscaler for controller type deployment. 
+    # Deprecated, please use controller.autoscaling.horizontal.enabled instead
     enabled: false
     # -- Configures the Horizontal Pod Autoscaler for the controller.
     horizontal:
