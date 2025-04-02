@@ -85,7 +85,7 @@ type Service struct {
 	// Track the raw config for use with the support bundle
 	sources map[string]*ast.File
 
-	authenticatorMut sync.Mutex
+	authenticatorMut sync.RWMutex
 	// authentcator is applied to every request made to http server
 	authenticator authenticator
 
@@ -199,9 +199,9 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 	// If none is configured allowAuthenticator is used and no authentication is required.
 	r.Use(func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			s.authenticatorMut.Lock()
+			s.authenticatorMut.RLock()
 			err := s.authenticator(w, r)
-			s.authenticatorMut.Unlock()
+			s.authenticatorMut.RUnlock()
 			if err != nil {
 				level.Info(s.log).Log("msg", "failed to authenticate request", "err", err)
 				w.WriteHeader(http.StatusUnauthorized)
