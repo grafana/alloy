@@ -269,7 +269,6 @@ func Test_Toggle_Auth(t *testing.T) {
 			}})
 			require.NoError(t, resp.Body.Close())
 			require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
-
 		})
 	}
 
