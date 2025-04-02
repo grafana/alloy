@@ -246,8 +246,39 @@ controller:
 
   autoscaling:
     # -- Creates a HorizontalPodAutoscaler for controller type deployment.
-    # Deprecated: Please use controller.autoscaling.horizontal.enabled instead
+    # Deprecated: Please use controller.autoscaling.horizontal instead
     enabled: false
+    # -- The lower limit for the number of replicas to which the autoscaler can scale down.
+    minReplicas: 1
+    # -- The upper limit for the number of replicas to which the autoscaler can scale up.
+    maxReplicas: 5
+    # -- Average CPU utilization across all relevant pods, a percentage of the requested value of the resource for the pods. Setting `targetCPUUtilizationPercentage` to 0 will disable CPU scaling.
+    targetCPUUtilizationPercentage: 0
+    # -- Average Memory utilization across all relevant pods, a percentage of the requested value of the resource for the pods. Setting `targetMemoryUtilizationPercentage` to 0 will disable Memory scaling.
+    targetMemoryUtilizationPercentage: 80
+
+    scaleDown:
+      # -- List of policies to determine the scale-down behavior.
+      policies: []
+        # - type: Pods
+        #   value: 4
+        #   periodSeconds: 60
+      # -- Determines which of the provided scaling-down policies to apply if multiple are specified.
+      selectPolicy: Max
+      # -- The duration that the autoscaling mechanism should look back on to make decisions about scaling down.
+      stabilizationWindowSeconds: 300
+
+    scaleUp:
+      # -- List of policies to determine the scale-up behavior.
+      policies: []
+        # - type: Pods
+        #   value: 4
+        #   periodSeconds: 60
+      # -- Determines which of the provided scaling-up policies to apply if multiple are specified.
+      selectPolicy: Max
+      # -- The duration that the autoscaling mechanism should look back on to make decisions about scaling up.
+      stabilizationWindowSeconds: 0
+
     # -- Configures the Horizontal Pod Autoscaler for the controller.
     horizontal:
       # -- Enables the Horizontal Pod Autoscaler for the controller.
