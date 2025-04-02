@@ -164,11 +164,11 @@ configReloader:
   enabled: true
   image:
     # -- Config reloader image registry (defaults to docker.io)
-    registry: "ghcr.io"
+    registry: "quay.io"
     # -- Repository to get config reloader image from.
-    repository: jimmidyson/configmap-reload
+    repository: prometheus-operator/prometheus-config-reloader
     # -- Tag of image to use for config reloading.
-    tag: v0.14.0
+    tag: v0.66.0
     # -- SHA256 digest of image to use for config reloading (either in format "sha256:XYZ" or "XYZ"). When set, will override `configReloader.image.tag`
     digest: ""
   # -- Override the args passed to the container.

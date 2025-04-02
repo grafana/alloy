@@ -12,6 +12,7 @@ Unreleased
 
 ### Enhancements
 
+- Change configreloader from jimmydyson/configmap-reload to prometheys-operator/prometheus-config-reloader (@dehaansa)
 - Update to Grafana Alloy v1.7.5. (@kimxogus)
 - Add `checksum/config` pod annotation (@kimxogus)
 
