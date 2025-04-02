@@ -1534,7 +1534,7 @@ service:
 			sortService(actualConfig)
 			sortService(expectedConfig)
 
-			assert.Equal(t, expectedConfig, actualConfig)
+			require.Equal(t, expectedConfig, actualConfig)
 		})
 	}
 }

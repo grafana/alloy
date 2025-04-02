@@ -3,7 +3,6 @@ package otelcolconvert
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/alecthomas/units"
 	"github.com/grafana/alloy/internal/component/otelcol"
@@ -72,15 +71,6 @@ func toHTTPClientArguments(cfg confighttp.ClientConfig) otelcol.HTTPClientArgume
 		a = &auth.Handler{}
 	}
 
-	var mic *int
-	var ict *time.Duration
-	defaults := confighttp.NewDefaultClientConfig()
-	if mic = cfg.MaxIdleConns; mic == nil {
-		mic = defaults.MaxIdleConns
-	}
-	if ict = cfg.IdleConnTimeout; ict == nil {
-		ict = defaults.IdleConnTimeout
-	}
 	return otelcol.HTTPClientArguments{
 		Endpoint:        cfg.Endpoint,
 		ProxyUrl:        cfg.ProxyURL,
@@ -91,10 +81,10 @@ func toHTTPClientArguments(cfg confighttp.ClientConfig) otelcol.HTTPClientArgume
 
 		Timeout:              cfg.Timeout,
 		Headers:              toHeadersMap(cfg.Headers),
-		MaxIdleConns:         mic,
+		MaxIdleConns:         cfg.MaxIdleConns,
 		MaxIdleConnsPerHost:  cfg.MaxIdleConnsPerHost,
 		MaxConnsPerHost:      cfg.MaxConnsPerHost,
-		IdleConnTimeout:      ict,
+		IdleConnTimeout:      cfg.IdleConnTimeout,
 		DisableKeepAlives:    cfg.DisableKeepAlives,
 		HTTP2PingTimeout:     cfg.HTTP2PingTimeout,
 		HTTP2ReadIdleTimeout: cfg.HTTP2ReadIdleTimeout,

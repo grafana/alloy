@@ -107,6 +107,7 @@ autocommit | [autocommit][] | Configures how to automatically commit updated top
 message_marking | [message_marking][] | Configures when Kafka messages are marked as read. | no
 header_extraction | [header_extraction][] | Extract headers from Kafka records. | no
 debug_metrics | [debug_metrics][] | Configures the metrics which this component generates to monitor its state. | no
+error_backoff | [error_backoff][] | Configures how to handle errors when receiving messages from Kafka. | no
 output | [output][] | Configures where to send received telemetry data. | yes
 
 The `>` symbol indicates deeper levels of nesting. For example,
@@ -126,7 +127,7 @@ The `>` symbol indicates deeper levels of nesting. For example,
 [header_extraction]: #header_extraction-block
 [debug_metrics]: #debug_metrics-block
 [output]: #output-block
-
+[error_backoff]: #error_backoff-block
 ### authentication block
 
 {{< docs/shared lookup="reference/components/otelcol-kafka-authentication.md" source="alloy" version="<ALLOY_VERSION>" >}}
@@ -213,6 +214,32 @@ Name | Type | Description | Default | Required
 `headers` | `list(string)` | A list of headers to extract from the Kafka record. | `[]` | no
 
 Regular expressions are not allowed in the `headers` argument. Only exact matching will be performed.
+
+### error_backoff block
+
+The `error_backoff` block configures how failed requests to Kafka are retried.
+
+The following arguments are supported:
+
+Name                   | Type       | Description                                            | Default | Required
+-----------------------|------------|--------------------------------------------------------|---------|---------
+`enabled`              | `boolean`  | Enables retrying failed requests.                      | `false` | no
+`initial_interval`     | `duration` | Initial time to wait before retrying a failed request. | `"0s"`  | no
+`max_elapsed_time`     | `duration` | Maximum time to wait before discarding a failed batch. | `"0s"`  | no
+`max_interval`         | `duration` | Maximum time to wait between retries.                  | `"0s"`  | no
+`multiplier`           | `number`   | Factor to grow wait time before retrying.              | `0`     | no
+`randomization_factor` | `number`   | Factor to randomize wait time before retrying.         | `0`     | no
+
+When `enabled` is `true`, failed batches are retried after a given interval.
+The `initial_interval` argument specifies how long to wait before the first retry attempt.
+If requests continue to fail, the time to wait before retrying increases by the factor specified by the `multiplier` argument, which must be greater than `1.0`.
+The `max_interval` argument specifies the upper bound of how long to wait between retries.
+
+The `randomization_factor` argument is useful for adding jitter between retrying Alloy instances.
+If `randomization_factor` is greater than `0`, the wait time before retries is multiplied by a random factor in the range `[ I - randomization_factor * I, I + randomization_factor * I]`, where `I` is the current interval.
+
+If a batch hasn't been sent successfully, it's discarded after the time specified by `max_elapsed_time` elapses.
+If `max_elapsed_time` is set to `"0s"`, failed requests are retried forever until they succeed.
 
 ### debug_metrics block
 

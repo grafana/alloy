@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/collector/config/configgrpc"
 	"go.opentelemetry.io/collector/config/confighttp"
@@ -35,7 +36,7 @@ func TestCreateDefaultConfig(t *testing.T) {
 func TestCreateExtension(t *testing.T) {
 	cfg := createDefaultConfig().(*Config)
 
-	ext, err := createExtension(t.Context(), extensiontest.NewNopSettings(), cfg)
+	ext, err := createExtension(t.Context(), extensiontest.NewNopSettings(component.MustNewType("jaegerremotesampling")), cfg)
 	assert.NoError(t, err)
 	assert.NotNil(t, ext)
 }
