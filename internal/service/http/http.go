@@ -203,10 +203,11 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 			err := s.authenticator(w, r)
 			s.authenticatorMut.RUnlock()
 			if err != nil {
-				level.Info(s.log).Log("msg", "failed to authenticate request", "err", err)
+				level.Info(s.log).Log("msg", "failed to authenticate request", "path", r.URL.Path, "err", err)
 				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
+
 			h.ServeHTTP(w, r)
 		})
 	})
