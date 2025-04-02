@@ -48,6 +48,7 @@ The following arguments are supported:
 | `max_octets`                      | `int`    | The maximum octets for messages when octet counting is enabled.    | `8192`    | no       |
 | `allow_skip_pri_header`           | `bool`   | Allow parsing records without a priority header.                   | `false`   | no       |
 | `non_transparent_framing_trailer` | `string` | The framing trailer when using RFC6587 Non-Transparent-Framing.    | `nil`     | no       |
+| `on_error`                        | `string` | The action to take when an error occurs.                           | `send`    | no       |
 
 The `protocol` argument specifies the syslog format supported by the receiver.
 `protocol` must be one of `rfc5424` or `rfc3164`
@@ -60,6 +61,11 @@ These arguments are mutually exclusive.
 They can't be used with a UDP syslog listener configured.
 If configured, the `non_transparent_framing_trailer` argument must be one of `LF`, `NUL`.
 
+The `on_error` argument can take the following values:
+- `drop`: Drop the message.
+- `drop_quiet`: Same as `drop` but logs are emitted at debug level.
+- `send`: Send the message even if it failed to process. This may result in an error downstream.
+- `send_quiet`: Same as `send` but logs are emitted at debug level.
 
 [RFC6587]: https://datatracker.ietf.org/doc/html/rfc6587
 [tz-wiki]: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones

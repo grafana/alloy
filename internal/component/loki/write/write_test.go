@@ -1,7 +1,6 @@
 package write
 
 import (
-	"context"
 	"fmt"
 	"math"
 	"net/http"
@@ -140,7 +139,7 @@ func testSingleEndpoint(t *testing.T, alterConfig func(arguments *Arguments)) {
 	ch := make(chan logproto.PushRequest)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var pushReq logproto.PushRequest
-		err := loki_util.ParseProtoReader(context.Background(), r.Body, int(r.ContentLength), math.MaxInt32, &pushReq, loki_util.RawSnappy)
+		err := loki_util.ParseProtoReader(t.Context(), r.Body, int(r.ContentLength), math.MaxInt32, &pushReq, loki_util.RawSnappy)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return
@@ -217,12 +216,12 @@ func testMultipleEndpoint(t *testing.T, alterArgs func(arguments *Arguments)) {
 	ch1, ch2 := make(chan logproto.PushRequest), make(chan logproto.PushRequest)
 	srv1 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var pushReq logproto.PushRequest
-		require.NoError(t, loki_util.ParseProtoReader(context.Background(), r.Body, int(r.ContentLength), math.MaxInt32, &pushReq, loki_util.RawSnappy))
+		require.NoError(t, loki_util.ParseProtoReader(t.Context(), r.Body, int(r.ContentLength), math.MaxInt32, &pushReq, loki_util.RawSnappy))
 		ch1 <- pushReq
 	}))
 	srv2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var pushReq logproto.PushRequest
-		require.NoError(t, loki_util.ParseProtoReader(context.Background(), r.Body, int(r.ContentLength), math.MaxInt32, &pushReq, loki_util.RawSnappy))
+		require.NoError(t, loki_util.ParseProtoReader(t.Context(), r.Body, int(r.ContentLength), math.MaxInt32, &pushReq, loki_util.RawSnappy))
 		ch2 <- pushReq
 	}))
 	defer srv1.Close()
@@ -271,7 +270,7 @@ func testMultipleEndpoint(t *testing.T, alterArgs func(arguments *Arguments)) {
 	require.NoError(t, err)
 
 	go func() {
-		err := ctrl.Run(context.Background(), lsf.Arguments{
+		err := ctrl.Run(t.Context(), lsf.Arguments{
 			Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{"__path__": f.Name(), "somelbl": "somevalue"})},
 			ForwardTo: []loki.LogsReceiver{
 				tc1.Exports().(Exports).Receiver,
@@ -350,7 +349,7 @@ func benchSingleEndpoint(b *testing.B, tc testCase, alterConfig func(arguments *
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var pushReq logproto.PushRequest
-		err := loki_util.ParseProtoReader(context.Background(), r.Body, int(r.ContentLength), math.MaxInt32, &pushReq, loki_util.RawSnappy)
+		err := loki_util.ParseProtoReader(b.Context(), r.Body, int(r.ContentLength), math.MaxInt32, &pushReq, loki_util.RawSnappy)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return

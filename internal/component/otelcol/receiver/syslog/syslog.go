@@ -51,6 +51,8 @@ type Arguments struct {
 	TCP           *TCP                           `alloy:"tcp,block,optional"`
 	UDP           *UDP                           `alloy:"udp,block,optional"`
 
+	OnError string `alloy:"on_error,attr,optional"`
+
 	// DebugMetrics configures component internal metrics. Optional.
 	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
 
@@ -134,6 +136,7 @@ func (args *Arguments) SetToDefault() {
 		Location: "UTC",
 		Protocol: config.SyslogFormatRFC5424,
 		Output:   &otelcol.ConsumerArguments{},
+		OnError:  "send",
 	}
 	args.DebugMetrics.SetToDefault()
 	args.ConsumerRetry.SetToDefault()
@@ -198,6 +201,8 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		}
 	}
 
+	c.OnError = args.OnError
+
 	def := syslogreceiver.ReceiverType{}.CreateDefaultConfig()
 	cfg := def.(*syslogreceiver.SysLogConfig)
 	cfg.InputConfig = *c
@@ -246,7 +251,7 @@ func (args *Arguments) Validate() error {
 			errs = multierror.Append(errs, fmt.Errorf("invalid non_transparent_framing_trailer, must be one of 'LF', 'NUL': %s", *args.NonTransparentFramingTrailer))
 		}
 
-		_, err := decode.LookupEncoding(args.TCP.Encoding)
+		_, err := decode.LookupEncoding(args.TCP.Encoding) //nolint:staticcheck // TODO: deprecated, internal only, will have to vendor the list
 		if err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("invalid tcp.encoding: %w", err))
 		}
@@ -261,10 +266,16 @@ func (args *Arguments) Validate() error {
 			errs = multierror.Append(errs, err)
 		}
 
-		_, err := decode.LookupEncoding(args.UDP.Encoding)
+		_, err := decode.LookupEncoding(args.UDP.Encoding) //nolint:staticcheck // TODO: deprecated, internal only, will have to vendor the list
 		if err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("invalid udp.encoding: %w", err))
 		}
+	}
+
+	switch args.OnError {
+	case "drop", "drop_quiet", "send", "send_quiet":
+	default:
+		errs = multierror.Append(errs, fmt.Errorf("invalid on_error: %s", args.OnError))
 	}
 
 	return errs

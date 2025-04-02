@@ -1127,7 +1127,7 @@ func TestConverter(t *testing.T) {
 				AddMetricSuffixes:             tc.addMetricSuffixes,
 				ResourceToTelemetryConversion: tc.resourceToTelemetryConversion,
 			})
-			require.NoError(t, conv.ConsumeMetrics(context.Background(), payload))
+			require.NoError(t, conv.ConsumeMetrics(t.Context(), payload))
 
 			families, err := app.MetricFamilies()
 			require.NoError(t, err)
@@ -1317,7 +1317,7 @@ func TestConverterExponentialHistograms(t *testing.T) {
 			var app testappender.Appender
 			l := util.TestLogger(t)
 			conv := convert.New(l, appenderAppendable{Inner: &app}, convert.Options{})
-			require.NoError(t, conv.ConsumeMetrics(context.Background(), payload))
+			require.NoError(t, conv.ConsumeMetrics(t.Context(), payload))
 
 			families, err := app.MetricFamilies()
 			require.NoError(t, err)

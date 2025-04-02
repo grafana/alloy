@@ -58,6 +58,9 @@ type ForeachConfigNode struct {
 	healthMut  sync.RWMutex
 	evalHealth component.Health // Health of the last evaluate
 	runHealth  component.Health // Health of running the component
+
+	dataFlowEdgeMut  sync.RWMutex
+	dataFlowEdgeRefs []string
 }
 
 var _ ComponentNode = (*ForeachConfigNode)(nil)
@@ -340,6 +343,24 @@ func (fn *ForeachConfigNode) setRunHealth(t component.HealthType, msg string) {
 		Message:    msg,
 		UpdateTime: time.Now(),
 	}
+}
+
+func (fn *ForeachConfigNode) AddDataFlowEdgeTo(nodeID string) {
+	fn.dataFlowEdgeMut.Lock()
+	defer fn.dataFlowEdgeMut.Unlock()
+	fn.dataFlowEdgeRefs = append(fn.dataFlowEdgeRefs, nodeID)
+}
+
+func (fn *ForeachConfigNode) GetDataFlowEdgesTo() []string {
+	fn.dataFlowEdgeMut.RLock()
+	defer fn.dataFlowEdgeMut.RUnlock()
+	return fn.dataFlowEdgeRefs
+}
+
+func (fn *ForeachConfigNode) ResetDataFlowEdgeTo() {
+	fn.dataFlowEdgeMut.Lock()
+	defer fn.dataFlowEdgeMut.Unlock()
+	fn.dataFlowEdgeRefs = []string{}
 }
 
 type forEachChildRunner struct {

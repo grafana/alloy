@@ -113,6 +113,8 @@ func (f *Runtime) getComponentDetail(cn controller.ComponentNode, graph *dag.Gra
 		References:   references,
 		ReferencedBy: referencedBy,
 
+		DataFlowEdgesTo: cn.GetDataFlowEdgesTo(),
+
 		ComponentName: cn.ComponentName(),
 		Health:        health,
 

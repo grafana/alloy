@@ -278,7 +278,7 @@ func TestManager_WALDisabled_MultipleConfigs(t *testing.T) {
 	require.Equal(t, "multi:test-client,test-client-2", manager.Name())
 
 	receivedRequests := utils.NewSyncSlice[utils.RemoteWriteRequest]()
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	go func(ctx context.Context) {
 		for {
 			select {

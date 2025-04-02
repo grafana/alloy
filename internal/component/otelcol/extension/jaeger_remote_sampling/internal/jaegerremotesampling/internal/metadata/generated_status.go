@@ -7,7 +7,8 @@ import (
 )
 
 var (
-	Type = component.MustNewType("jaegerremotesampling")
+	Type      = component.MustNewType("jaegerremotesampling")
+	ScopeName = "otelcol/jaegerremotesampling"
 )
 
 const (

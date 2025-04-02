@@ -126,7 +126,7 @@ func TestShutdownOnError(t *testing.T) {
 	)
 
 	session.collectError = fmt.Errorf("mocked error collecting profiles")
-	err = c.Run(context.TODO())
+	err = c.Run(t.Context())
 	require.Error(t, err)
 }
 
@@ -158,7 +158,7 @@ func TestContextShutdown(t *testing.T) {
 	}
 	session.dataTarget = sd.NewTarget("cid", 0, map[string]string{"service_name": "foo"})
 	var g run.Group
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*1))
+	ctx, cancel := context.WithDeadline(t.Context(), time.Now().Add(time.Second*1))
 	defer cancel()
 	g.Add(func() error {
 		err = c.Run(ctx)
@@ -325,6 +325,7 @@ session = {
 				name            = "X",
 				symbol_count    = 123,
 				file            = "",
+				mini_debug_info = false,
 				last_used_round = 1,
 			}],
 			round_dump = [],

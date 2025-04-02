@@ -120,8 +120,9 @@ Name                       | Type                  | Description                
 ---------------------------|-----------------------|-----------------------------------------------------------------|-------------------------------|---------
 `enabled`                  | `bool`                | Whether to not enqueue batches before sending to the consumerSender.                            |   `false`                     | no
 `flush_timeout`             | `time.Duration`       | The time after which a batch will be sent regardless of its size.    | `200ms`  | no
-`min_size_items`   | `uint`   |  The number of items at which the batch is sent regardless of the timeout.          |  `8192`              | no
-`max_size_items`   | `uint`   | Maximum number of batch items, if the batch exceeds this value, it will be broken up into smaller batches. Must be greater than or equal to min_size_items. Setting this value to zero disables the maximum size limit.          |  `0`           |  no
+`min_size`   | `uint`   | The minimum size of a batch.          |  `8192`              | no
+`max_size`   | `uint`   | The maximum size of a batch. If the batch exceeds this value, it will be broken up into smaller batches. Must be greater than or equal to min_size. Setting this value to zero disables the maximum size limit.          |  `0`           |  no
+`sizer`   | `string`   | The unit of measure for the batch size. Must be one of `items`, `bytes`, or `requests`.          |  `items`           |  no
 
 ### client block
 
@@ -136,7 +137,7 @@ Name                      | Type       | Description                            
 `write_buffer_size`       | `int`      | Size of the write buffer the HTTP client uses for writing requests.         |   `0`     | no
 `timeout`                 | `duration` | Time to wait before marking a request as failed.                            | `"15s"` | no
 `max_idle_conns`          | `int`      | Limits the number of idle HTTP connections the client can keep open.        |   `100`      | no
-`max_idle_conns_per_host` | `int`      | Limits the number of idle HTTP connections the host can keep open.          |   `2`      | no
+`max_idle_conns_per_host` | `int`      | Limits the number of idle HTTP connections the host can keep open.          |   `0`      | no
 `max_conns_per_host`      | `int`      | Limits the total (dialing,active, and idle) number of connections per host. Zero means no limit |    `0`     | no
 `idle_conn_timeout`       | `duration` | Time to wait before an idle connection closes itself.                       | `"45s"` | no
 `disable_keep_alives`     | `bool`     | Disable HTTP keep-alive.                                                    |   `false`      | no

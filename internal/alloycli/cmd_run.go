@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -45,6 +46,7 @@ import (
 	uiservice "github.com/grafana/alloy/internal/service/ui"
 	"github.com/grafana/alloy/internal/static/config/instrumentation"
 	"github.com/grafana/alloy/internal/usagestats"
+	"github.com/grafana/alloy/internal/util/windowspriority"
 	"github.com/grafana/alloy/syntax/diag"
 
 	// Install Components
@@ -73,6 +75,7 @@ func runCommand() *cobra.Command {
 		// For backwards compatibility - use the LegacyValidation of Prometheus metrics name. This is a global variable
 		// setting that has changed upstream. See https://github.com/prometheus/common/pull/724.
 		prometheusMetricNameValidationScheme: prometheusLegacyMetricValidationScheme,
+		windowsPriority:                      windowspriority.PriorityNormal,
 	}
 
 	cmd := &cobra.Command{
@@ -152,6 +155,10 @@ depending on the nature of the reload error.
 		StringVar(&r.clusterTLSKeyPath, "cluster.tls-key-path", r.clusterTLSKeyPath, "Path to the key file")
 	cmd.Flags().
 		StringVar(&r.clusterTLSServerName, "cluster.tls-server-name", r.clusterTLSServerName, "Server name to use for TLS communication")
+	cmd.Flags().
+		IntVar(&r.clusterWaitForSize, "cluster.wait-for-size", r.clusterWaitForSize, "Wait for the cluster to reach the specified number of instances before allowing components that use clustering to begin processing. Zero means disabled")
+	cmd.Flags().
+		DurationVar(&r.clusterWaitTimeout, "cluster.wait-timeout", 0, "Maximum duration to wait for minimum cluster size before proceeding with available nodes. Zero means wait forever, no timeout")
 
 	// Config flags
 	cmd.Flags().StringVar(&r.configFormat, "config.format", r.configFormat, fmt.Sprintf("The format of the source file. Supported formats: %s.", supportedFormatsList()))
@@ -165,6 +172,9 @@ depending on the nature of the reload error.
 	cmd.Flags().Var(&r.minStability, "stability.level", fmt.Sprintf("Minimum stability level of features to enable. Supported values: %s", strings.Join(featuregate.AllowedValues(), ", ")))
 	cmd.Flags().BoolVar(&r.enableCommunityComps, "feature.community-components.enabled", r.enableCommunityComps, "Enable community components.")
 	cmd.Flags().StringVar(&r.prometheusMetricNameValidationScheme, "feature.prometheus.metric-validation-scheme", prometheusLegacyMetricValidationScheme, fmt.Sprintf("Prometheus metric validation scheme to use. Supported values: %q, %q. NOTE: this is an experimental flag and may be removed in future releases.", prometheusLegacyMetricValidationScheme, prometheusUTF8MetricValidationScheme))
+	if runtime.GOOS == "windows" {
+		cmd.Flags().StringVar(&r.windowsPriority, "windows.priority", r.windowsPriority, fmt.Sprintf("Process priority to use when running on windows. This flag is currently in public preview. Supported values: %s", strings.Join(slices.Collect(windowspriority.PriorityValues()), ", ")))
+	}
 
 	addDeprecatedFlags(cmd)
 	return cmd
@@ -192,12 +202,15 @@ type alloyRun struct {
 	clusterTLSCertPath                   string
 	clusterTLSKeyPath                    string
 	clusterTLSServerName                 string
+	clusterWaitForSize                   int
+	clusterWaitTimeout                   time.Duration
 	configFormat                         string
 	configBypassConversionErrors         bool
 	configExtraArgs                      string
 	enableCommunityComps                 bool
 	disableSupportBundle                 bool
 	prometheusMetricNameValidationScheme string
+	windowsPriority                      string
 }
 
 func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
@@ -224,6 +237,23 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 
 	if err := fr.configurePrometheusMetricNameValidationScheme(l); err != nil {
 		return err
+	}
+
+	// The non-windows path for this is just a return nil, but to protect against
+	// refactoring assumptions we confirm that we're running on windows before setting the priority.
+	if runtime.GOOS == "windows" && fr.windowsPriority != "normal" {
+		if err := featuregate.CheckAllowed(
+			featuregate.StabilityPublicPreview,
+			fr.minStability,
+			"Windows process priority"); err != nil {
+			return err
+		}
+
+		if err := windowspriority.SetPriority(fr.windowsPriority); err != nil {
+			return fmt.Errorf("setting process priority: %w", err)
+		} else {
+			level.Info(l).Log("msg", "set process priority", "priority", fr.windowsPriority)
+		}
 	}
 
 	// Set the global tracer provider to catch global traces, but ideally things
@@ -271,26 +301,28 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 		ready  func() bool
 	)
 
-	clusterService, err := buildClusterService(clusterOptions{
+	clusterService, err := buildClusterService(ClusterOptions{
 		Log:     log.With(l, "service", "cluster"),
 		Tracer:  t,
 		Metrics: reg,
 
-		EnableClustering:    fr.clusterEnabled,
-		NodeName:            fr.clusterNodeName,
-		AdvertiseAddress:    fr.clusterAdvAddr,
-		ListenAddress:       fr.httpListenAddr,
-		JoinPeers:           splitPeers(fr.clusterJoinAddr, ","),
-		DiscoverPeers:       fr.clusterDiscoverPeers,
-		RejoinInterval:      fr.clusterRejoinInterval,
-		AdvertiseInterfaces: fr.clusterAdvInterfaces,
-		ClusterMaxJoinPeers: fr.clusterMaxJoinPeers,
-		ClusterName:         fr.clusterName,
-		EnableTLS:           fr.clusterEnableTLS,
-		TLSCertPath:         fr.clusterTLSCertPath,
-		TLSCAPath:           fr.clusterTLSCAPath,
-		TLSKeyPath:          fr.clusterTLSKeyPath,
-		TLSServerName:       fr.clusterTLSServerName,
+		EnableClustering:       fr.clusterEnabled,
+		NodeName:               fr.clusterNodeName,
+		AdvertiseAddress:       fr.clusterAdvAddr,
+		ListenAddress:          fr.httpListenAddr,
+		JoinPeers:              splitPeers(fr.clusterJoinAddr, ","),
+		DiscoverPeers:          fr.clusterDiscoverPeers,
+		RejoinInterval:         fr.clusterRejoinInterval,
+		AdvertiseInterfaces:    fr.clusterAdvInterfaces,
+		ClusterMaxJoinPeers:    fr.clusterMaxJoinPeers,
+		ClusterName:            fr.clusterName,
+		EnableTLS:              fr.clusterEnableTLS,
+		TLSCertPath:            fr.clusterTLSCertPath,
+		TLSCAPath:              fr.clusterTLSCAPath,
+		TLSKeyPath:             fr.clusterTLSKeyPath,
+		TLSServerName:          fr.clusterTLSServerName,
+		MinimumClusterSize:     fr.clusterWaitForSize,
+		MinimumSizeWaitTimeout: fr.clusterWaitTimeout,
 	})
 	if err != nil {
 		return err
@@ -336,6 +368,7 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 	uiService := uiservice.New(uiservice.Options{
 		UIPrefix:        fr.uiPrefix,
 		CallbackManager: liveDebuggingService.Data().(livedebugging.CallbackManager),
+		Logger:          log.With(l, "service", "ui"),
 	})
 
 	otelService := otel_service.New(l)
