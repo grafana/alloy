@@ -53,10 +53,11 @@ func toHeadersSetterExtension(cfg *headerssetterextension.Config) *headers.Argum
 		}
 
 		res = append(res, headers.Header{
-			Key:         *h.Key, // h.Key cannot be nil or it's not valid configuration for the upstream component.
-			Value:       val,
-			FromContext: h.FromContext,
-			Action:      headers.Action(h.Action),
+			Key:           *h.Key, // h.Key cannot be nil or it's not valid configuration for the upstream component.
+			Value:         val,
+			FromContext:   h.FromContext,
+			FromAttribute: h.FromAttribute,
+			Action:        headers.Action(h.Action),
 		})
 	}
 
