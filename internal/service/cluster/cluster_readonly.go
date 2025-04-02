@@ -213,6 +213,15 @@ func (c *alloyCluster) transitionToStateNotReady() {
 
 // transitionToStateDeadlinePassed is called when the deadline timer expires. rwMutex must be locked for writes by the caller.
 func (c *alloyCluster) transitionToStateDeadlinePassed() {
+	if c.clusterState == stateReady {
+		level.Info(c.log).Log(
+			"msg", "minimum cluster size deadline passed, but cluster is already ready to admit traffic - ignoring",
+			"minimum_cluster_size", c.opts.MinimumClusterSize,
+			"minimum_size_wait_timeout", c.opts.MinimumSizeWaitTimeout,
+			"peers_count", len(c.sharder.Peers()),
+		)
+		return
+	}
 	if c.clusterState == stateDeadlinePassed {
 		return
 	}
