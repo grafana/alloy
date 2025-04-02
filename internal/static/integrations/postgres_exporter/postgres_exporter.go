@@ -1,5 +1,5 @@
 // Package postgres_exporter embeds https://github.com/prometheus/postgres_exporter
-package postgres_exporter //nolint:golint
+package postgres_exporter
 
 import (
 	"fmt"

@@ -219,9 +219,10 @@ func TestTwoTargets(t *testing.T) {
 		select {
 		case logEntry := <-ch1.Chan():
 			require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
-			if logEntry.Line == "text" {
+			switch logEntry.Line {
+			case "text":
 				foundF1 = true
-			} else if logEntry.Line == "text2" {
+			case "text2":
 				foundF2 = true
 			}
 

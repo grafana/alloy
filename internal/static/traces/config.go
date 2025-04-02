@@ -527,7 +527,7 @@ func (c *InstanceConfig) exporters() (map[string]interface{}, error) {
 }
 
 func getAuthExtensionName(exporterName string) string {
-	return fmt.Sprintf("oauth2client/%s", strings.Replace(exporterName, "/", "", -1))
+	return fmt.Sprintf("oauth2client/%s", strings.ReplaceAll(exporterName, "/", ""))
 }
 
 // builds oauth2clientauth extensions required to support RemoteWriteConfigurations.

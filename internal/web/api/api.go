@@ -184,7 +184,7 @@ func graph(host service.Host, callbackManager livedebugging.CallbackManager, log
 			moduleID = livedebugging.ModuleID(vars["moduleID"])
 		}
 
-		windowSeconds := setWindow(w, r.URL.Query().Get("window"))
+		window := setWindow(w, r.URL.Query().Get("window"))
 
 		dataCh := make(chan livedebugging.Data, 1000)
 		dataMap := make(map[dataKey]liveDebuggingData)
@@ -219,7 +219,7 @@ func graph(host service.Host, callbackManager livedebugging.CallbackManager, log
 			callbackManager.DeleteCallbackMulti(host, id, moduleID)
 		}()
 
-		ticker := time.NewTicker(windowSeconds)
+		ticker := time.NewTicker(window)
 		defer ticker.Stop()
 
 		for {
@@ -243,7 +243,7 @@ func graph(host service.Host, callbackManager livedebugging.CallbackManager, log
 			case <-ticker.C:
 				dataArray := make([]interface{}, 0, len(dataMap))
 				for _, data := range dataMap {
-					data.Rate = float64(data.Count) / windowSeconds.Seconds()
+					data.Rate = float64(data.Count) / window.Seconds()
 					dataArray = append(dataArray, data)
 				}
 

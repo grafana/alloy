@@ -16,7 +16,6 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/decode"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator/helper"
 	stanzainputsyslog "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator/input/syslog"
-	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator/input/tcp"
 	stanzainputtcp "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator/input/tcp"
 	stanzainputudp "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator/input/udp"
 	stanzaparsersyslog "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator/parser/syslog"
@@ -84,7 +83,7 @@ func (s *FramingTrailer) UnmarshalText(text []byte) error {
 }
 
 // Values taken from tcp input Build function
-const tcpDefaultMaxLogSize = helper.ByteSize(tcp.DefaultMaxLogSize)
+const tcpDefaultMaxLogSize = helper.ByteSize(stanzainputtcp.DefaultMaxLogSize)
 const minMaxLogSize = helper.ByteSize(64 * 1024)
 
 type TCP struct {

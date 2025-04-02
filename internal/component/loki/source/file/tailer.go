@@ -112,7 +112,7 @@ func getLastLinePosition(path string) (int64, error) {
 		return 0, nil
 	}
 
-	var pos int64 = fi.Size() - chunkSize
+	var pos = fi.Size() - chunkSize
 	if pos < 0 {
 		pos = 0
 	}

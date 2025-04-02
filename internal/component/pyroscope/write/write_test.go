@@ -36,11 +36,11 @@ func (p PushFunc) Push(ctx context.Context, r *connect.Request[pushv1.PushReques
 func Test_Write_FanOut(t *testing.T) {
 	var (
 		export      Exports
-		argument                       = DefaultArguments()
-		pushTotal                      = atomic.NewInt32(0)
-		serverCount                    = int32(10)
-		servers     []*httptest.Server = make([]*httptest.Server, serverCount)
-		endpoints   []*EndpointOptions = make([]*EndpointOptions, 0, serverCount)
+		argument    = DefaultArguments()
+		pushTotal   = atomic.NewInt32(0)
+		serverCount = int32(10)
+		servers     = make([]*httptest.Server, serverCount)
+		endpoints   = make([]*EndpointOptions, 0, serverCount)
 	)
 	argument.ExternalLabels = map[string]string{"foo": "buzz"}
 	handlerFn := func(err error) http.Handler {
