@@ -18,6 +18,18 @@ http {
     cert_file = sys.env("TLS_CERT_FILE_PATH")
     key_file  = sys.env("TLS_KEY_FILE_PATH")
   }
+
+  http {
+    basic {
+      username = sys.env("BASIC_AUTH_USERNAME")
+      password = sys.env("BASIC_AUTH_PASSWORD")
+    }
+
+    filter {
+      paths         = ["/"]
+      auth_if_match = true
+    }
+  }
 }
 ```
 
@@ -35,6 +47,9 @@ The following blocks are supported inside the definition of `http`:
 | tls > windows_certificate_filter          | [windows_certificate_filter][] | Configure Windows certificate store for all certificates.     | no       |
 | tls > windows_certificate_filter > client | [client][]                     | Configure client certificates for Windows certificate filter. | no       |
 | tls > windows_certificate_filter > server | [server][]                     | Configure server certificates for Windows certificate filter. | no       |
+| auth                                      | [auth][]                       | Configure server authentication.                              | no       |
+| auth > basic                              | [basic][]                      | Configure basic authentication.                               | no       |
+| auth > filter                             | [filter][]                     | Configure authentication filter.                              | no       |
 
 ### tls block
 
@@ -175,3 +190,24 @@ The `client` block is used to check the certificate presented to the server.
 [windows_certificate_filter]: #windows-certificate-filter-block
 [server]: #server-block
 [client]: #client-block
+
+### auth block
+The auth block configures server authentication for the http block. This can be used to enable basic authentication and to set authentication filters for specified API paths.
+
+### basic block
+The basic block enables basic HTTP authentication by requiring both a username and password for access.
+
+| Name                  | Type           | Description                                                       | Default | Required |
+| --------------------- | -------------- | ----------------------------------------------------------------- | ------- | -------- |
+| `username`            | `string`       | The username to use for basic authentication.                     |   N/A   | yes      |
+| `password`            | `string`       | The password to use for basic authentication.                     |   N/A   | yes      |
+
+
+# filter block
+The filter block is used to configure which API paths should be protected by authentication. It allows you to specify a list of paths, using prefix matching, that will require authentication.
+
+| Name                  | Type           | Description                                                                                                            | Default | Required |
+| --------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
+| `path`                | `list(string)` | List of API paths to be protected by authentication. The paths are matched using prefix matching.                      | `[]`    | no       |
+| `auth_if_match`       | `bool`         | If true, authentication is required for all matching paths. If false, authentication is excluded for these paths.      | `true`  | no       |
+
