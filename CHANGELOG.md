@@ -89,7 +89,7 @@ Main (unreleased)
   - Added a new `scrape_failure_log_file` argument to `prometheus.scrape`.
 
 - Upgrading to OpenTelemetry Collector v0.122
-  - `otelcol.processor.batch` telemetry is no longer emitted at "basic" level. If you want to keep the batch processor telemetry, you can switch to "normal" level.
+  - The telemetry level of Otel components is no longer configurable. The `level` argument in the `debug_metrics` block is kept to avoid breaking changes but it is not used anymore.
   - `otelcol.processor.tailsampling` changed the unit of the decision timer metric from microseconds to milliseconds. (change unit of otelcol_processor_tail_sampling_sampling_decision_timer_latency)
   - `otelcol.processor.deltatocumulative`: rename `otelcol_deltatocumulative_datapoints_processed` to `otelcol_deltatocumulative_datapoints` and remove the metrics `otelcol_deltatocumulative_streams_evicted`, `otelcol_deltatocumulative_datapoints_dropped` and `otelcol_deltatocumulative_gaps_length`.
   - `otelcol.processor.transform` has a new `statements` block for transformations which don't require a context to be specified explicitly.
