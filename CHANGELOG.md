@@ -24,6 +24,8 @@ Main (unreleased)
   - The default value of `metrics_flush_interval` in `otelcol.connector.servicegraph` was changed from `0s` to `60s`.
   - `s3_partition` in `otelcol.exporter.awss3` was replaced by `s3_partition_format`.
 
+- (_Experimental_) `prometheus.write.queue` metric names changed to align better with prometheus standards. (@mattdurham)
+
 ### Features
 
 - Add `otelcol.receiver.awscloudwatch` component to receive logs from AWS CloudWatch and forward them to other `otelcol.*` components. (@wildum)
