@@ -33,12 +33,14 @@
       "matchManagers": ["dockerfile"],
       // "matchUpdateTypes": ["minor", "patch"],
       // "groupName": "dockerfile dependencies (minor, patch)",
+      // "pinDigests": true,
       "enabled": false // TODO: enable when ready
     },
     {
       "matchManagers": ["github-actions"],
       "matchUpdateTypes": ["minor", "patch"],
-      "groupName": "github-actions dependencies (minor, patch)"
+      "groupName": "github-actions dependencies (minor, patch)",
+      "pinDigests": true
     },
     {
       "matchManagers": ["gomod"],
