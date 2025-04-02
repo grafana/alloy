@@ -5,6 +5,7 @@ package beyla
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"strings"
 	"sync"
 	"testing"
@@ -34,7 +35,7 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 			ignore_mode = "all"
 			wildcard_char = "*"
 		}
-		debug = true
+		debug = false
 		attributes {
 			kubernetes {
 				enable = "true"
@@ -170,6 +171,44 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 	require.Equal(t, filter.MatchDefinition{NotMatch: "UDP"}, cfg.Filters.Application["transport"])
 	require.Equal(t, filter.MatchDefinition{Match: "53"}, cfg.Filters.Network["dst_port"])
 	require.Equal(t, debug.TracePrinter("json"), cfg.TracePrinter)
+}
+
+
+func TestArguments_TracePrinterDebug(t *testing.T) {
+	test := func(debugEnabled bool, printer string, expected string) {
+		const format = `
+		debug = %t
+		discovery {
+			services {
+				open_ports = "80,443"
+			}
+		}
+		metrics {
+			features = ["application", "network"]
+		}
+		trace_printer = "%s"
+		output { /* no-op */ }
+		`
+
+		in := fmt.Sprintf(format, debugEnabled, printer)
+
+		var args Arguments
+
+		require.NoError(t, syntax.Unmarshal([]byte(in), &args))
+		cfg, err := args.Convert()
+
+		require.NoError(t, err)
+
+		require.Equal(t, debug.TracePrinter(expected), cfg.TracePrinter)
+	}
+
+	// when debug is enabled, the printer will always be overriden to "text"
+	// regardless of what is specified
+	test(true, "json", "text")
+	test(true, "text", "text")
+
+	test(false, "text", "text")
+	test(false, "json", "json")
 }
 
 func TestArguments_ConvertDefaultConfig(t *testing.T) {
