@@ -73,11 +73,6 @@ func TestClusterE2E(t *testing.T) {
 		{
 			name:             "three nodes with slow components",
 			nodeCountInitial: 3,
-			extraAllowedErrors: []string{
-				`stream closed`,
-				`i/o timeout`,
-				`msg="failed to receive and remove the stream label header`,
-			},
 			alloyConfig: `
    		testcomponents.cluster_state_tracker "foo" {}
 
@@ -150,9 +145,6 @@ func TestClusterE2E(t *testing.T) {
 			extraAllowedErrors: []string{
 				"failed to rejoin list of peers",
 				"failed to broadcast leave message to cluster",
-				`stream closed`,
-				`i/o timeout`,
-				`msg="failed to receive and remove the stream label header`,
 			},
 			assertionsInitial: func(t *assert.CollectT, state *testState) {
 				for _, p := range state.peers {
@@ -194,9 +186,6 @@ func TestClusterE2E(t *testing.T) {
 			extraAllowedErrors: []string{
 				`Conflicting address for node-0`,
 				`Conflicting address for node-1`,
-				`stream closed`,
-				`i/o timeout`,
-				`msg="failed to receive and remove the stream label header`,
 			},
 			assertionsInitial: func(t *assert.CollectT, state *testState) {
 				for _, p := range state.peers {
@@ -365,9 +354,6 @@ func TestClusterE2E(t *testing.T) {
 			extraAllowedErrors: []string{
 				`"minimum cluster size requirements are not met - marking cluster as not ready for traffic"`,
 				"failed to broadcast leave message to cluster",
-				`stream closed`,
-				`i/o timeout`,
-				`msg="failed to receive and remove the stream label header`,
 			},
 			assertionsInitial: func(t *assert.CollectT, state *testState) {
 				for _, p := range state.peers {
@@ -715,6 +701,9 @@ var errorsAllowlist = []string{
 	"failed to connect to peers; bootstrapping a new cluster",       // should be allowed only once for first node
 	`msg="node exited with error" node=remotecfg err="noop client"`, // related to remotecfg service mock ups
 	`msg="failed to rejoin list of peers"`,                          // this is because list of initial join peers is fixed in tests
+	`stream closed`,
+	`i/o timeout`,
+	`failed to receive and remove the stream label header`,
 }
 
 func (w *logsWriter) Write(p []byte) (n int, err error) {
