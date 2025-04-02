@@ -62,7 +62,7 @@ func basicAuthenticator(username, password string) authenticator {
 	}
 }
 
-// routeAuthenticator will apply provided authenticator if the any of the any filter is a prefix of the path.
+// routeAuthenticator will apply provided authenticator if any filter is a prefix of the path.
 func routeAuthenticator(filter []string, auth authenticator) authenticator {
 	return func(w http.ResponseWriter, r *http.Request) error {
 		for _, f := range filter {
