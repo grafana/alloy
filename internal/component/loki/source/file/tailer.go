@@ -71,9 +71,6 @@ func newTailer(metrics *metrics, logger log.Logger, receiver loki.LogsReceiver, 
 		running:           atomic.NewBool(false),
 		tailFromEnd:       tailFromEnd,
 		pollOptions:       pollOptions,
-		posquit:           make(chan struct{}),
-		posdone:           make(chan struct{}),
-		done:              make(chan struct{}),
 		componentStopping: componentStopping,
 	}
 
@@ -147,28 +144,40 @@ func getLastLinePosition(path string) (int64, error) {
 }
 
 func (t *tailer) Run() {
+	// only if initRun succeeds, the channels t.done, t.posdone, t.posquit are initialized
+	handler, err := t.initRun()
+	if err != nil {
+		level.Error(t.logger).Log("msg", "failed to run tailer", "err", err)
+		return
+	}
+
+	defer handler.Stop()
+
+	// updatePosition closes the channel t.posdone on exit
+	go t.updatePosition()
+	t.metrics.filesActive.Add(1.)
+
+	// readLines closes the channels t.done and t.posquit on exit
+	t.readLines(handler)
+}
+
+func (t *tailer) initRun() (loki.EntryHandler, error) {
 	t.mut.Lock()
+	defer t.mut.Unlock()
 
 	// Check if the stop function was called between two Run.
 	if t.stopping {
-		close(t.done)
-		close(t.posdone)
-		close(t.posquit)
-		t.mut.Unlock()
-		return
+		return nil, fmt.Errorf("tailer stopped")
 	}
 
 	fi, err := os.Stat(t.path)
 	if err != nil {
-		level.Error(t.logger).Log("msg", "failed to tail file", "path", t.path, "err", err)
-		t.mut.Unlock()
-		return
+		return nil, fmt.Errorf("failed to tail file: %w", err)
 	}
+
 	pos, err := t.positions.Get(t.path, t.labelsStr)
 	if err != nil {
-		level.Error(t.logger).Log("msg", "failed to get file position", "err", err)
-		t.mut.Unlock()
-		return
+		return nil, fmt.Errorf("failed to get file position: %w", err)
 	}
 
 	// NOTE: The code assumes that if a position is available and that the file is bigger than the position, then
@@ -190,9 +199,6 @@ func (t *tailer) Run() {
 			level.Info(t.logger).Log("msg", "retrieved and stored the position of the last line")
 		}
 	}
-	labelsMiddleware := t.labels.Merge(model.LabelSet{filenameLabel: model.LabelValue(t.path)})
-	handler := loki.AddLabelsMiddleware(labelsMiddleware).Wrap(loki.NewEntryHandler(t.receiver.Chan(), func() {}))
-	defer handler.Stop()
 
 	tail, err := tail.TailFile(t.path, tail.Config{
 		Follow:    true,
@@ -207,20 +213,16 @@ func (t *tailer) Run() {
 		PollOptions: t.pollOptions,
 	})
 	if err != nil {
-		level.Error(t.logger).Log("msg", "failed to tail the file", "err", err)
-		t.mut.Unlock()
-		return
+		return nil, fmt.Errorf("failed to tail the file: %w", err)
 	}
-	t.tail = tail
 
+	t.tail = tail
+	labelsMiddleware := t.labels.Merge(model.LabelSet{filenameLabel: model.LabelValue(t.path)})
+	handler := loki.AddLabelsMiddleware(labelsMiddleware).Wrap(loki.NewEntryHandler(t.receiver.Chan(), func() {}))
 	t.posquit = make(chan struct{})
 	t.posdone = make(chan struct{})
 	t.done = make(chan struct{})
-	t.mut.Unlock()
-
-	go t.updatePosition()
-	t.metrics.filesActive.Add(1.)
-	t.readLines(handler)
+	return handler, nil
 }
 
 // updatePosition is run in a goroutine and checks the current size of the file
@@ -351,7 +353,8 @@ func (t *tailer) Stop() {
 	var err error
 	// Stop the underlying tailer to prevent resource leak.
 	if t.tail != nil {
-		// Save the current position before shutting down tailer
+		// Save the current position before shutting down tailer to ensure that if the file is tailed again
+		// it start where it left off.
 		err = t.markPositionAndSize()
 		if err != nil {
 			level.Error(t.logger).Log("msg", "error marking file position when stopping tailer", "path", t.path, "error", err)
@@ -370,10 +373,18 @@ func (t *tailer) Stop() {
 			level.Error(t.logger).Log("msg", "error stopping tailer", "path", t.path, "error", err)
 		}
 	}
-	// Wait for readLines() to consume all the remaining messages and exit when the channel is closed
-	<-t.done
-	// Wait for the position marker thread to exit
-	<-t.posdone
+	level.Debug(t.logger).Log("msg", "waiting for readline and position marker to exit", "path", t.path)
+	if t.done != nil {
+		// Wait for readLines() to consume all the remaining messages and exit when the channel is closed
+		<-t.done
+		t.done = nil
+	}
+	if t.posdone != nil {
+		// Wait for the position marker thread to exit
+		<-t.posdone
+		t.posdone = nil
+		t.posquit = nil
+	}
 	level.Info(t.logger).Log("msg", "stopped tailing file", "path", t.path)
 
 	// If the component is not stopping, then it means that the target for this component is gone and that
