@@ -26,8 +26,8 @@ http {
     }
 
     filter {
-      paths         = ["/"]
-      auth_if_match = true
+      paths                       = ["/"]
+      authenticate_matching_paths = true
     }
   }
 }
@@ -207,7 +207,7 @@ The basic block enables basic HTTP authentication by requiring both a username a
 The filter block is used to configure which API paths should be protected by authentication. It allows you to specify a list of paths, using prefix matching, that will require authentication.
 
 | Name                  | Type           | Description                                                                                                            | Default | Required |
-| --------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
-| `path`                | `list(string)` | List of API paths to be protected by authentication. The paths are matched using prefix matching.                      | `[]`    | no       |
-| `auth_if_match`       | `bool`         | If true, authentication is required for all matching paths. If false, authentication is excluded for these paths.      | `true`  | no       |
+| ----------------------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
+| `path`                              | `list(string)` | List of API paths to be protected by authentication. The paths are matched using prefix matching.                      | `[]`    | no       |
+| `authenticate_matching_paths`       | `bool`         | If true, authentication is required for all matching paths. If false, authentication is excluded for these paths.      | `true`  | no       |
 

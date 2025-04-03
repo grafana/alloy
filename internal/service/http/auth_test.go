@@ -16,8 +16,8 @@ func Test_basicAuthenticatorInclude(t *testing.T) {
 			Password: "password",
 		},
 		Filter: FilterAuthArguments{
-			Paths:       []string{"/v1"},
-			AuthIfMatch: true,
+			Paths:             []string{"/v1"},
+			AuthMatchingPaths: true,
 		},
 	}
 
@@ -87,8 +87,8 @@ func Test_basicAuthenticatorExclude(t *testing.T) {
 			Password: "password",
 		},
 		Filter: FilterAuthArguments{
-			Paths:       []string{"/v1/exclude"},
-			AuthIfMatch: false,
+			Paths:             []string{"/v1/exclude"},
+			AuthMatchingPaths: false,
 		},
 	}
 
