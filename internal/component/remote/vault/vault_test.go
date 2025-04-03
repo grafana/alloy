@@ -190,7 +190,10 @@ func getTestVaultServer(t *testing.T) *vaultapi.Client {
 	})
 	require.NoError(t, err)
 
-	defer testcontainers.TerminateContainer(container)
+	t.Cleanup(func() {
+		err := testcontainers.TerminateContainer(container)
+		require.NoError(t, err)
+	})
 
 	ep, err := container.PortEndpoint(ctx, nat.Port("80/tcp"), "http")
 	require.NoError(t, err)
