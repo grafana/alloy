@@ -42,11 +42,8 @@ SELECT statements.CURRENT_SCHEMA,
 	statements.MAX_CONTROLLED_MEMORY,
 	statements.MAX_TOTAL_MEMORY
 FROM performance_schema.events_statements_history AS statements
-JOIN performance_schema.global_status
 WHERE statements.sql_text IS NOT NULL
-	AND global_status.variable_name = 'UPTIME'
-	AND statements.CURRENT_SCHEMA NOT IN ('mysql', 'performance_schema', 'sys', 'information_schema')
-	AND statements.TIMER_END >= ?;`
+  AND statements.CURRENT_SCHEMA NOT IN ('mysql', 'performance_schema', 'sys', 'information_schema')`
 
 type QuerySampleArguments struct {
 	DB              *sql.DB
