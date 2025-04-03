@@ -19,7 +19,7 @@ http {
     key_file  = sys.env("TLS_KEY_FILE_PATH")
   }
 
-  http {
+  auth {
     basic {
       username = sys.env("BASIC_AUTH_USERNAME")
       password = sys.env("BASIC_AUTH_PASSWORD")
@@ -199,8 +199,8 @@ The basic block enables basic HTTP authentication by requiring both a username a
 
 | Name                  | Type           | Description                                                       | Default | Required |
 | --------------------- | -------------- | ----------------------------------------------------------------- | ------- | -------- |
-| `username`            | `string`       | The username to use for basic authentication.                     |   N/A   | yes      |
-| `password`            | `string`       | The password to use for basic authentication.                     |   N/A   | yes      |
+| `username`            | `string`       | The username to use for basic authentication.                     |         | yes      |
+| `password`            | `string`       | The password to use for basic authentication.                     |         | yes      |
 
 
 # filter block
