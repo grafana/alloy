@@ -479,6 +479,8 @@ func (c *Component) Update(args component.Arguments) error {
 	}
 
 	// Compiling global allowlist regexes
+	// Reset the allowlist
+	c.AllowList = make([]AllowRule, 0, len(c.args.AllowList)+len(gitleaksCfg.AllowList.Regexes))
 	// From the arguments
 	for _, r := range c.args.AllowList {
 		re, err := regexp.Compile(r)

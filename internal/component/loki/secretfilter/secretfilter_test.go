@@ -2,6 +2,7 @@ package secretfilter
 
 import (
 	"fmt"
+	"maps"
 	"math/rand"
 	"os"
 	"regexp"
@@ -1160,18 +1161,20 @@ func TestArgumentsUpdate(t *testing.T) {
 
 	// Test data for different configurations
 	testData := []struct {
-		description    string
-		args           Arguments
-		inputLog       string
-		expectedRedact bool
-		labelToCheck   string
+		description          string
+		args                 Arguments
+		inputLog             string
+		expectedRedact       bool
+		expectedOriginCounts map[string]int64
+		labelToCheck         string
 	}{
 		{
-			description:    "Initial config - should redact Grafana API key but not GCP key",
-			args:           initialArgs,
-			inputLog:       testLogs["simple_secret"].log, // Grafana API key
-			expectedRedact: true,
-			labelToCheck:   "",
+			description:          "Initial config - should redact Grafana API key but not GCP key",
+			args:                 initialArgs,
+			inputLog:             testLogs["simple_secret"].log, // Grafana API key
+			expectedRedact:       true,
+			labelToCheck:         "",
+			expectedOriginCounts: map[string]int64{},
 		},
 		{
 			description: "Update 1 - Change to only track GCP keys",
@@ -1180,9 +1183,10 @@ func TestArgumentsUpdate(t *testing.T) {
 				OriginLabel: "job",
 				Types:       []string{"gcp"}, // Only track GCP API keys
 			},
-			inputLog:       testLogs["simple_secret_gcp"].log, // GCP API key
-			expectedRedact: true,
-			labelToCheck:   "job",
+			inputLog:             testLogs["simple_secret_gcp"].log, // GCP API key
+			expectedRedact:       true,
+			labelToCheck:         "job",
+			expectedOriginCounts: map[string]int64{"test-job": 1},
 		},
 		{
 			description: "Update 2 - Add custom redaction string and use instance label as origin",
@@ -1192,9 +1196,10 @@ func TestArgumentsUpdate(t *testing.T) {
 				Types:       []string{"gcp"},
 				RedactWith:  "<CUSTOM-REDACTED:$SECRET_NAME>",
 			},
-			inputLog:       testLogs["simple_secret_gcp"].log, // GCP API key
-			expectedRedact: true,
-			labelToCheck:   "instance",
+			inputLog:             testLogs["simple_secret_gcp"].log, // GCP API key
+			expectedRedact:       true,
+			labelToCheck:         "instance",
+			expectedOriginCounts: map[string]int64{"test-job": 1, "test-instance": 1},
 		},
 		{
 			description: "Update 3 - Add allowlist for GCP keys",
@@ -1205,9 +1210,23 @@ func TestArgumentsUpdate(t *testing.T) {
 				RedactWith:  "<CUSTOM-REDACTED:$SECRET_NAME>",
 				AllowList:   []string{regexp.QuoteMeta(fakeSecrets["gcp-api-key"].value)},
 			},
-			inputLog:       testLogs["simple_secret_gcp"].log, // GCP API key (now allowlisted)
-			expectedRedact: false,
-			labelToCheck:   "instance",
+			inputLog:             testLogs["simple_secret_gcp"].log, // GCP API key (now allowlisted)
+			expectedRedact:       false,
+			labelToCheck:         "instance",
+			expectedOriginCounts: map[string]int64{"test-job": 1, "test-instance": 1}, // no increase due to allowlist
+		},
+		{
+			description: "Update 4 - Change origin label back to job",
+			args: Arguments{
+				ForwardTo:   []loki.LogsReceiver{ch1},
+				OriginLabel: "job",
+				Types:       []string{"gcp"},
+				RedactWith:  "<CUSTOM-REDACTED:$SECRET_NAME>",
+			},
+			inputLog:             testLogs["simple_secret_gcp"].log, // GCP API key
+			expectedRedact:       true,
+			labelToCheck:         "job",
+			expectedOriginCounts: map[string]int64{"test-job": 2, "test-instance": 1},
 		},
 	}
 
@@ -1254,6 +1273,7 @@ func TestArgumentsUpdate(t *testing.T) {
 				require.NoError(t, err)
 
 				var foundLabelMetric bool
+				foundOriginMetric := make(map[string]int64, len(td.expectedOriginCounts))
 				for _, mf := range metricFamilies {
 					if mf.GetName() == "loki_secretfilter_secrets_redacted_by_origin" {
 						for _, m := range mf.GetMetric() {
@@ -1263,10 +1283,17 @@ func TestArgumentsUpdate(t *testing.T) {
 									require.GreaterOrEqual(t, m.GetCounter().GetValue(), 1.0,
 										"Origin metric should have been incremented")
 								}
+								if l.GetName() == "origin" {
+									foundOriginMetric[l.GetValue()] = int64(m.GetCounter().GetValue())
+								}
 							}
 						}
 					}
 				}
+
+				// Check that the origin metric counts match the expected values
+				require.True(t, maps.Equal(td.expectedOriginCounts, foundOriginMetric),
+					"Origin metric counts should match the expected values")
 
 				// Skip label check if running first test with new registry
 				if i != 0 {
