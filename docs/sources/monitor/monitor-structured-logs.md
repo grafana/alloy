@@ -84,7 +84,7 @@ The configuration includes `livedebugging` to stream real-time data to the {{< p
 
 ### Configure `livedebugging`
 
-`livedebugging` streams real-time data from your components directly to the Alloy UI.
+`livedebugging` streams real-time data from your components directly to the {{< param "PRODUCT_NAME" >}} UI.
 Refer to the [Troubleshooting documentation][troubleshooting] for more details about this feature.
 
 [troubleshooting]: https://grafana.com/docs/alloy/latest/troubleshoot/debug/#live-debugging-page

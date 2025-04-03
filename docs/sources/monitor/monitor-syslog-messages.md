@@ -67,7 +67,7 @@ Use Grafana to monitor your deployment's health and visualize your data.
 
 To monitor the health of your {{< param "PRODUCT_NAME" >}} deployment, open your browser and go to [http://localhost:12345](http://localhost:12345).
 
-Refer to [Debug Grafana Alloy](https://grafana.com/docs/alloy/latest/troubleshoot/debug/) for more information about the {{< param "PRODUCT_NAME" >}} UI.
+For more information about the {{< param "PRODUCT_NAME" >}} UI, refer to [Debug Grafana Alloy](https://grafana.com/docs/alloy/latest/troubleshoot/debug/).
 
 ### Visualize your data
 
@@ -84,7 +84,7 @@ The configuration includes `livedebugging` to stream real-time data to the {{< p
 
 ### Configure debugging
 
-Livedebugging streams real-time data from components directly to the Alloy UI.
+Livedebugging streams real-time data from components directly to the {{< param "PRODUCT_NAME" >}} UI.
 Refer to the [Troubleshooting documentation][troubleshooting] for more details about this feature.
 
 [troubleshooting]: https://grafana.com/docs/alloy/latest/troubleshoot/debug/#live-debugging-page

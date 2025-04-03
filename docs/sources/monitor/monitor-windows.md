@@ -63,7 +63,7 @@ Follow these steps to clone the scenarios repository and deploy the monitoring e
    1. Replace the `config.alloy` file in `C:\Program Files\GrafanaLabs\Alloy` with the `config.alloy` file from the `alloy-scenarios/windows` directory.
    1. Start the {{< param "PRODUCT_NAME" >}} service.
 
-1. (Optional) To access the {{< param "PRODUCT_NAME" >}} UI from a remote computer, add `--server.http.listen-addr=0.0.0.0:12345` to the Alloy runtime arguments.
+1. (Optional) To access the {{< param "PRODUCT_NAME" >}} UI from a remote computer, add `--server.http.listen-addr=0.0.0.0:12345` to the {{< param "PRODUCT_NAME" >}} runtime arguments.
    For detailed steps explaining how to update this command-line argument, refer to [Expose the UI to other machines][expose].
    This step makes the {{< param "PRODUCT_NAME" >}} UI available at `http://<WINDOWS_IP_ADDRESS>:12345`.
 
@@ -85,7 +85,7 @@ Use Grafana to monitor your deployment's health and visualize your data.
 
 To monitor the health of your {{< param "PRODUCT_NAME" >}} deployment, open your browser and go to [http://localhost:12345](http://localhost:12345).
 
-Refer to [Debug Grafana Alloy](https://grafana.com/docs/alloy/latest/troubleshoot/debug/) for more information about the {{< param "PRODUCT_NAME" >}} UI.
+For more information about the {{< param "PRODUCT_NAME" >}} UI, refer to [Debug Grafana Alloy](https://grafana.com/docs/alloy/latest/troubleshoot/debug/).
 
 ### Visualize your data
 
@@ -259,7 +259,7 @@ loki.write "endpoint" {
 
 ### Configure `livedebugging`
 
-Livedebugging streams real-time data from components directly to the Alloy UI.
+Livedebugging streams real-time data from components directly to the {{< param "PRODUCT_NAME" >}} UI.
 Refer to the [Troubleshooting documentation][troubleshooting] for more details about this feature.
 
 [troubleshooting]: https://grafana.com/docs/alloy/latest/troubleshoot/debug/#live-debugging-page
