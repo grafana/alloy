@@ -10,7 +10,7 @@ internal API changes are not present.
 Unreleased
 ----------
 
-0.12.6 (2025-04-01)
+0.12.6 (2025-04-03)
 ----------
 ### Breaking changes
 
