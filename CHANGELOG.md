@@ -10,6 +10,9 @@ internal API changes are not present.
 v1.8.0-rc.0
 -----------------
 
+v1.8.0-rc.0
+-----------------
+
 ### Breaking changes
 
 - Removed `open_port` and `executable_name` from top level configuration of Beyla component. Removed `enabled` argument from `network` block. (@marctc)
