@@ -5,7 +5,6 @@ package vault
 import (
 	"fmt"
 	stdlog "log"
-	"strings"
 	"testing"
 	"time"
 
@@ -191,12 +190,7 @@ func getTestVaultServer(t *testing.T) *vaultapi.Client {
 	})
 	require.NoError(t, err)
 
-	t.Cleanup(func() {
-		terminateErr := container.Terminate(ctx)
-		if !strings.Contains(terminateErr.Error(), "context canceled") { // avoid race condition on test context cancelled
-			require.NoError(t, terminateErr)
-		}
-	})
+	defer testcontainers.TerminateContainer(container)
 
 	ep, err := container.PortEndpoint(ctx, nat.Port("80/tcp"), "http")
 	require.NoError(t, err)
