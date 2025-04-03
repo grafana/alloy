@@ -208,6 +208,40 @@ The filter block is used to configure which API paths should be protected by aut
 
 | Name                  | Type           | Description                                                                                                            | Default | Required |
 | ----------------------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
-| `path`                              | `list(string)` | List of API paths to be protected by authentication. The paths are matched using prefix matching.                      | `[]`    | no       |
+| `paths`                             | `list(string)` | List of API paths to be protected by authentication. The paths are matched using prefix matching.                      | `[]`    | no       |
 | `authenticate_matching_paths`       | `bool`         | If true, authentication is required for all matching paths. If false, authentication is excluded for these paths.      | `true`  | no       |
 
+
+Example of enforcing authentication on `/metrics` and every enpoint that has `/v1` as prefix:
+```alloy
+http {
+  auth {
+    basic {
+      username = sys.env("BASIC_AUTH_USERNAME")
+      password = sys.env("BASIC_AUTH_PASSWORD")
+    }
+
+    filter {
+      paths                       = ["/metrics", "/v1"]
+      authenticate_matching_paths = true
+    }
+  }
+}
+```
+
+Example enforcing authentication on all endpoints except `/metrics`:
+```alloy
+http {
+  auth {
+    basic {
+      username = sys.env("BASIC_AUTH_USERNAME")
+      password = sys.env("BASIC_AUTH_PASSWORD")
+    }
+
+    filter {
+      paths                       = ["/metrics"]
+      authenticate_matching_paths = false
+    }
+  }
+}
+```
