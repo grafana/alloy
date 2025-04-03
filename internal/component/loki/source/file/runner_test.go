@@ -6,7 +6,6 @@ import (
 	"context"
 	"os"
 	"path/filepath"
-	"sync"
 	"testing"
 	"time"
 
@@ -61,23 +60,9 @@ func TestRunnerTailer(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 
 	cancel()
-
-	// Run in a goroutine to catch any panics
-	var panicErr interface{}
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				panicErr = r
-			}
-		}()
-		runner.Run(ctx)
-		wg.Done()
-	}()
-	wg.Wait()
-	require.Nil(t, panicErr, "Run() should not panic when context is cancelled")
+	runner.Run(ctx)
 	positionsFile.Stop()
+	require.NoError(t, logFile.Close())
 }
 
 func TestRunnerDecompressor(t *testing.T) {
@@ -116,21 +101,6 @@ func TestRunnerDecompressor(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-
-	// Run in a goroutine to catch any panics
-	var panicErr interface{}
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				panicErr = r
-			}
-		}()
-		runner.Run(ctx)
-		wg.Done()
-	}()
-	wg.Wait()
-	require.Nil(t, panicErr, "Run() should not panic when context is cancelled")
+	runner.Run(ctx)
 	positionsFile.Stop()
 }
