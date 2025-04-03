@@ -107,6 +107,8 @@ v1.8.0-rc.0
 
 - Fixed bug where all resources were not being collected from `prometheus.exporter.azure` when using `regions` (@kgeckhart)
 
+- Fix panic in `loki.source.file` when the tailer had no time to run before the runner was stopped (@wildum)
+
 ### Other changes
 
 - Upgrading to Prometheus v2.55.1. (@ptodev)
