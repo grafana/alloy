@@ -119,6 +119,8 @@ Main (unreleased)
 
 - Change the stability of the `beyla.ebpf` component from "public preview" to "generally available". (@marctc)
 
+- The ingest API of `pyrscope.receive_http` no longer forwards all received headers, instead only passes through the `Content-Type` header. 
+
 v1.7.5
 -----------------
 
