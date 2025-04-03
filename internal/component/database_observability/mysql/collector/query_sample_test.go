@@ -793,6 +793,8 @@ func Test_fetchQuerySampleSummary_handles_timer_overflows(t *testing.T) {
 		assert.Equal(t, 5e12, c.timerBookmark) // timerBookmark is updated to the uptime in picoseconds
 		assert.EqualValues(t, 5, c.lastUptime) // lastUptime is updated to the uptime in seconds
 
+		lokiClient.Stop()
+
 		require.Eventually(t, func() bool {
 			return len(lokiClient.Received()) == 1
 		}, 5*time.Second, 100*time.Millisecond)
@@ -841,7 +843,11 @@ func Test_fetchQuerySampleSummary_handles_timer_overflows(t *testing.T) {
 			"max_total_memory",
 			"errors",
 		}))
-		c := &QuerySample{sqlParser: &parser.TiDBSqlParser{}, dbConnection: db, timerBookmark: 3e12}
+		c := &QuerySample{
+			sqlParser:     &parser.TiDBSqlParser{},
+			dbConnection:  db,
+			timerBookmark: 3e12,
+		}
 
 		require.NoError(t, c.fetchQuerySamples(t.Context()))
 
