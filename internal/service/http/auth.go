@@ -23,15 +23,15 @@ type BasicAuthArguments struct {
 }
 
 type FilterAuthArguments struct {
-	Paths       []string `alloy:"paths,attr,optional"`
-	AuthIfMatch bool     `alloy:"auth_if_match,attr,optional"`
+	Paths             []string `alloy:"paths,attr,optional"`
+	AuthMatchingPaths bool     `alloy:"authenticate_matching_paths,attr,optional"`
 }
 
 var _ syntax.Defaulter = (*FilterAuthArguments)(nil)
 
 // SetToDefault implements syntax.Defaulter.
 func (f *FilterAuthArguments) SetToDefault() {
-	f.AuthIfMatch = true
+	f.AuthMatchingPaths = true
 }
 
 func (a *AuthArguments) authenticator() authenticator {
@@ -80,9 +80,9 @@ func routeAuthenticator(filter FilterAuthArguments, auth authenticator) authenti
 	return func(w http.ResponseWriter, r *http.Request) error {
 		compare := func(s string) bool { return strings.HasPrefix(r.URL.Path, s) }
 
-		// If AuthIfMatch is true we perform authentication on matching paths
+		// If AuthMatchingPaths is true we perform authentication on matching paths
 		// otherwise we perform authentication on paths that don't match.
-		if filter.AuthIfMatch {
+		if filter.AuthMatchingPaths {
 			if slices.ContainsFunc(filter.Paths, compare) {
 				return auth(w, r)
 			}
