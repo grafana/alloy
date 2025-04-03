@@ -172,7 +172,6 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 	rs, err := c.dbConnection.QueryContext(ctx, selectQuerySamples+timerClause, c.timerBookmark, limit)
 	if err != nil {
 		return fmt.Errorf("failed to fetch query samples: %w", err)
-
 	}
 	defer rs.Close()
 
