@@ -20,8 +20,8 @@ ENV GOROOT=/usr/local/go
 ENV GOPATH=/go
 ENV PATH=$GOPATH/bin:$GOROOT/bin:$PATH
 
-# Create Go workspace directory
-RUN mkdir -p "$GOPATH/src" "$GOPATH/bin" "$GOPATH/pkg" \
+# Create Go workspace directory with proper permissions
+RUN mkdir -p "$GOPATH/src" "$GOPATH/bin" "$GOPATH/pkg/mod/cache/download" \
     && chmod -R 777 "$GOPATH"
 
 # Install Grafana development tools
