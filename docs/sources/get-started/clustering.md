@@ -55,6 +55,24 @@ Refer to component reference documentation to discover whether it supports clust
 - [`prometheus.operator.podmonitors`][prometheus.operator.podmonitors]
 - [`prometheus.operator.servicemonitors`][prometheus.operator.servicemonitors]
 
+## Best practices
+
+### Avoid issues with disproportionately large targets
+
+When your environment has a mix of very large and average-sized targets, avoid running too cluster many instances. While clustering generally does a good job of sharding targets to achieve balanced workload distribution, significant target size disparity can lead to uneven load distribution. When you have a few disproportionately large targets among many instances, the nodes assigned these large targets will experience much higher load compard to others (e.g. samples/second in case of Prometheus metrics), potentially causing uneven load balancing or hitting resource limitations. In these scenarios, it's often better to scale vertically rather than horizontally to reduce the impact of outlier large targets. This approach ensures more consistent resource utilization across your deployment and prevents overloading specific instances.
+
+### Use `--cluster.wait-for-size`, but with caution
+
+When using clustering in a deployment where a single instance cannot handle the entire load, it's recommended to use the `--cluster.wait-for-size` flag to ensure a minimum cluster size before accepting traffic. However, leave a significant safety margin when configuring this value - when condition is not met, the instances will completely stop processing traffic in cluster-enabled components.
+
+Furthermore, if you're using Horizontal Pod Autoscalers (HPA) or PodDisruptionBudgets (PDB) in Kubernetes, ensure that the `--cluster.wait-for-size` flag is set to a value lower than your HPA and PDB allows. This prevents traffic from stopping when Kubernetes instance counts temporarily drop below these thresholds during normal operations like pod termination or rolling updates. 
+
+We recommend to use the `--cluster.wait-timeout` flag to set a reasonable timeout for the waiting period to limit the impact of potential misconfiguration. The appropriate timeout duration should be based on how quickly you expect your orchestration or incident response team to provision required number of instances. 
+
+### Do not enable clustering when you don't need it
+
+While clustering scales to very large numbers of instances, it introduces additional overhead in the form of logs, metrics, potential alerts, and processing requirements. If you're not using components that specifically support and benefit from clustering, it's best to not enable clustering at all. A particularly common mistake is enabling clustering on logs collecting DaemonSets. Collecting logs from mounted node's pod logs does not benefit from having clustering enabled since each instance typically collects logs only from its own node. In such cases, enabling clustering only adds unnecessary complexity and resource usage without providing functional benefits.
+
 ## Cluster monitoring and troubleshooting
 
 You can use the {{< param "PRODUCT_NAME" >}} UI [clustering page][] to monitor your cluster status.
