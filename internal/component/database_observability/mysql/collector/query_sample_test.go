@@ -810,6 +810,71 @@ func Test_fetchQuerySampleSummary_handles_timer_overflows(t *testing.T) {
 			lokiClient.Received()[0].Line)
 	})
 
+	t.Run("assertions on the queries", func(t *testing.T) {
+		// this tests that expected query text is used in the constants
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		mock.ExpectQuery(`
+SELECT unix_timestamp() AS now,
+       global_status.variable_value AS uptime
+FROM performance_schema.global_status
+WHERE global_status.variable_name = 'UPTIME'`).WithoutArgs().WillReturnRows(
+			sqlmock.NewRows([]string{
+				"now",
+				"uptime",
+			}).AddRow(
+				6,
+				5,
+			),
+		)
+		mock.ExpectQuery(`
+SELECT statements.CURRENT_SCHEMA,
+	statements.DIGEST,
+	statements.DIGEST_TEXT,
+	statements.TIMER_END,
+	statements.TIMER_WAIT,
+	statements.CPU_TIME,
+	statements.ROWS_EXAMINED,
+	statements.ROWS_SENT,
+	statements.ROWS_AFFECTED,
+	statements.ERRORS,
+	statements.MAX_CONTROLLED_MEMORY,
+	statements.MAX_TOTAL_MEMORY
+FROM performance_schema.events_statements_history AS statements
+WHERE statements.sql_text IS NOT NULL
+  AND statements.CURRENT_SCHEMA NOT IN ('mysql', 'performance_schema', 'sys', 'information_schema')
+  AND statements.TIMER_END > ? AND statements.TIMER_END <= ?;`).WithArgs(
+			1e12, // initial timerBookmark
+			5e12, // uptime of 5 seconds in picoseconds (modulo 0 overflows)
+		).WillReturnRows(sqlmock.NewRows([]string{
+			"current_schema",
+			"digest",
+			"digest_text",
+			"timer_end",
+			"timer_wait",
+			"cpu_time",
+			"rows_examined",
+			"rows_sent",
+			"rows_affected",
+			"errors",
+			"max_controlled_memory",
+			"max_total_memory",
+		}))
+
+		c := &QuerySample{
+			sqlParser:     &parser.TiDBSqlParser{},
+			instanceKey:   "some instance key",
+			dbConnection:  db,
+			timerBookmark: 1e12,
+			lastUptime:    4,
+			logger:        log.NewLogfmtLogger(os.Stderr),
+		}
+
+		require.NoError(t, c.fetchQuerySamples(t.Context()))
+	})
+
 	t.Run("overflow has just happened: select with beginningAndEndOfTimeline clause, uptimeLimit is modulo overflows", func(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
