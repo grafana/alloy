@@ -102,6 +102,8 @@ Main (unreleased)
 
 - Allow kafka exporter to attempt to connect even if TLS enabled but cert & key are not specified (@dehaansa)
 
+- Fix panic in `loki.source.file` when the tailer had no time to run before the runner was stopped (@wildum)
+
 ### Other changes
 
 - Upgrading to Prometheus v2.55.1. (@ptodev)
