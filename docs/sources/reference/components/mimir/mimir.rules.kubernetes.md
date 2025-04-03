@@ -235,7 +235,7 @@ Only resources managed by the component are exposed, regardless of how many actu
 | `mimir_rules_events_retried_total`            | `counter`   | Number of events that were retried, partitioned by event type.           |
 | `mimir_rules_events_total`                    | `counter`   | Number of events processed, partitioned by event type.                   |
 
-## Example
+## Examples
 
 This example creates a `mimir.rules.kubernetes` component that loads discovered rules to a local Mimir instance under the `team-a` tenant.
 Only namespaces and rules with the `alloy` label set to `yes` are included.
@@ -291,6 +291,31 @@ mimir.rules.kubernetes "default" {
 ```
 
 If a query in the form of `up != 1` is found in `PrometheusRule` CRDs, it's' modified to `up{cluster=~"prod-.*"} != 1` before sending it to Mimir.
+
+This example extracts the value from the label `application.kubernetes.io/name` of the PrometheusRules CR and adds a label matcher with the value `{app=~"extracted_value"}` to all the queries discovered by `mimir.rules.kubernetes`.
+
+```yaml
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+  metadata:
+    labels:
+      application.kubernetes.io/name: my-app
+```
+
+```alloy
+mimir.rules.kubernetes "default" {
+    address = "<GRAFANA_CLOUD_METRICS_URL>"
+    extra_query_matchers {
+        matcher {
+            name = "app"
+            match_type = "="
+            value_from_label = "application.kubernetes.io/name"
+        }
+    }
+}
+```
+
+If a query in the form of `up != 1` is found in `PrometheusRule` CRDs, it's' modified to `up{app="my-app"} != 1` before sending it to Mimir.
 
 The following example is an RBAC configuration for Kubernetes.
 It authorizes {{< param "PRODUCT_NAME" >}} to query the Kubernetes REST API:
