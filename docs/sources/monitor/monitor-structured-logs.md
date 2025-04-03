@@ -8,52 +8,52 @@ weight: 500
 
 # Monitor structured logs with {{% param "FULL_PRODUCT_NAME" %}}
 
-Structured logs are a well-structured and consistent log format such as JSON.
-The data in the log file is typically organized into key-value pairs, making it easier to search, filter, and analyze.
-You can use {{< param "PRODUCT_NAME" >}} to collect your structured logs, forward them to a Grafana stack, and create a Grafana dashboard to monitor your system behavior.
+Structured logs use a consistent format, such as JSON, to organize data into key-value pairs.
+This format makes it easier to search, filter, and analyze log data.
+You can use {{< param "PRODUCT_NAME" >}} to collect structured logs, forward them to a Grafana stack, and create a Grafana dashboard to monitor system behavior.
 
-The [`alloy-scenarios`][scenarios] repository provides series of complete working examples of {{< param "PRODUCT_NAME" >}} deployments.
-You can clone the repository and use the example deployments to understand how {{< param "PRODUCT_NAME" >}} can collect, process, and export telemetry signals.
+The [`alloy-scenarios`][scenarios] repository provides complete working examples of {{< param "PRODUCT_NAME" >}} deployments.
+Clone the repository to explore how {{< param "PRODUCT_NAME" >}} collects, processes, and exports telemetry signals.
 
-In this example scenario, {{< param "PRODUCT_NAME" >}} collects log entries over HTTP, parses the logs into labels and structured metadata, and forwards the results to a Loki destination.
+In this example scenario, {{< param "PRODUCT_NAME" >}} collects log entries over HTTP, parses them into labels and structured metadata, and forwards the results to a Loki destination.
 
 [scenarios]: https://github.com/grafana/alloy-scenarios/
 
 ## Before you begin
 
-This example requires:
+Ensure you have the following:
 
 * [Docker](https://www.docker.com/)
 * [Git](https://git-scm.com/)
 
 {{< admonition type="note" >}}
-The `docker` commands require administrator privileges.
+You need administrator privileges to run `docker` commands.
 {{< /admonition >}}
 
 ## Clone and deploy the example
 
-Perform the following steps to clone the scenarios repository and deploy the monitoring example.
+Follow these steps to clone the scenarios repository and deploy the monitoring example:
 
-1. Clone the {{< param "PRODUCT_NAME" >}} scenarios repository.
+1. Clone the {{< param "PRODUCT_NAME" >}} scenarios repository:
 
    ```shell
    git clone https://github.com/grafana/alloy-scenarios.git
    ```
 
-1. Start Docker to deploy the Grafana stack.
+1. Start Docker to deploy the Grafana stack:
 
    ```shell
    cd alloy-scenarios/mail-house
    docker compose up -d
    ```
 
-   You can check the status of the containers by running the following command:
+   Check the status of the Docker containers:
 
    ```shell
    docker ps
    ```
 
-1. (Optional) When you finish exploring this example, you can stop Docker to shut down the Grafana stack.
+1. (Optional) Stop Docker to shut down the Grafana stack when you finish exploring this example:
 
    ```shell
    docker compose down
@@ -61,38 +61,38 @@ Perform the following steps to clone the scenarios repository and deploy the mon
 
 ## Monitor and visualize your data
 
-You can use Grafana to view the health of your deployment and visualize your data.
+Use Grafana to monitor your deployment's health and visualize your data.
 
 ### Monitor {{% param "PRODUCT_NAME" %}}
 
-To monitor the health of your {{< param "PRODUCT_NAME" >}} deployment, open your browser and navigate to [http://localhost:12345](http://localhost:12345).
+To monitor the health of your {{< param "PRODUCT_NAME" >}} deployment, open your browser and go to [http://localhost:12345](http://localhost:12345).
 
-Refer to [Debug Grafana Alloy](https://grafana.com/docs/alloy/latest/troubleshoot/debug/) for more information about the {{< param "PRODUCT_NAME" >}} UI.
+For more information about the {{< param "PRODUCT_NAME" >}} UI, refer to [Debug Grafana Alloy](https://grafana.com/docs/alloy/latest/troubleshoot/debug/).
 
-### Visualise your data
+### Visualize your data
 
-To use the Grafana Logs Drilldown, open your browser and navigate to [http://localhost:3000/a/grafana-lokiexplore-app](http://localhost:3000/a/grafana-lokiexplore-app).
+To use the Grafana Logs Drilldown, open your browser and go to [http://localhost:3000/a/grafana-lokiexplore-app](http://localhost:3000/a/grafana-lokiexplore-app).
 
-To create a [dashboard](https://grafana.com/docs/grafana/latest/getting-started/build-first-dashboard/#create-a-dashboard) to visualise your metrics and logs, open your browser and navigate to [`http://localhost:3000/dashboards`](http://localhost:3000/dashboards).
+To create a [dashboard](https://grafana.com/docs/grafana/latest/getting-started/build-first-dashboard/#create-a-dashboard) to visualize your metrics and logs, open your browser and go to [`http://localhost:3000/dashboards`](http://localhost:3000/dashboards).
 
 ## Understand the {{% param "PRODUCT_NAME" %}} configuration
 
 This example uses a `config.alloy` file to configure the {{< param "PRODUCT_NAME" >}} components for logging.
-You can find the `config.alloy` file used in this example in your cloned repository at `alloy-scenarios/mail-house/`.
+You can find the `config.alloy` file in the cloned repository at `alloy-scenarios/mail-house/`.
 
-`livedebugging` is included in the configuration so you can stream real-time data to the {{< param "PRODUCT_NAME" >}} UI.
+The configuration includes `livedebugging` to stream real-time data to the {{< param "PRODUCT_NAME" >}} UI.
 
 ### Configure `livedebugging`
 
 `livedebugging` streams real-time data from your components directly to the Alloy UI.
-Refer to the [Troubleshooting documentation][troubleshooting] for more information about how you can use this feature in the {{< param "PRODUCT_NAME" >}} UI.
+Refer to the [Troubleshooting documentation][troubleshooting] for more details about this feature.
 
 [troubleshooting]: https://grafana.com/docs/alloy/latest/troubleshoot/debug/#live-debugging-page
 
 #### `livedebugging`
 
 `livedebugging` is disabled by default.
-It must be explicitly enabled through the `livedebugging` configuration block to make the debugging data visible in the {{< param "PRODUCT_NAME" >}} UI.
+Enable it explicitly through the `livedebugging` configuration block to make debugging data visible in the {{< param "PRODUCT_NAME" >}} UI.
 
 ```alloy
 livedebugging {
@@ -111,9 +111,10 @@ The logging configuration in this example requires three components:
 #### `loki.source.api`
 
 The [`loki.source.api`][loki.source.api] component receives log entries over HTTP and forwards them to other Loki components.
-In this example, the component need the following arguments:
+In this example, the component requires the following arguments:
 
-* `listen_address`: The network address the server listens to for new connections. Setting this argument to `0.0.0.0` tells the server to listen on all IP addresses.
+* `listen_address`: The network address the server listens to for new connections.
+  Setting this argument to `0.0.0.0` tells the server to listen on all IP addresses.
 * `listen_port`: The port the server listens to for new connections.
 * `forward_to`: The list of receivers to send log entries to.
 
@@ -131,13 +132,13 @@ loki.source.api "loki_push_api" {
 
 #### `loki.process`
 
-The [`loki.process`][loki.process] component receives log entries from other Loki components, applies one or more processing stages, and forwards the results to the list of receivers.
-In this example, the component needs the following arguments:
+The [`loki.process`][loki.process] component receives log entries from other Loki components, applies processing stages, and forwards the results to the list of receivers.
+In this example, the component requires the following arguments:
 
-* `expressions`: The key-value pairs that define the name of the data extracted and the value that it's populated with.
-* `souce`: Name from extracted values map to use for the timestamp.
+* `expressions`: Key-value pairs defining the name of the data extracted and the value it's populated with.
+* `source`: Name from extracted values map to use for the timestamp.
 * `format`: Determines how to parse the source string.
-* `values`: The key-value pairs that define the label to set and how to look them up.
+* `values`: Key-value pairs defining the label to set and how to look them up.
 * `forward_to`: The list of receivers to send log entries to.
 
 ```alloy
@@ -187,8 +188,8 @@ loki.process "lables" {
 
 #### `loki.write`
 
-The [`loki.write`][loki.write] component writes the logs out to a Loki destination.
-In this example, the component needs the following argument:
+The [`loki.write`][loki.write] component writes logs to a Loki destination.
+In this example, the component requires the following argument:
 
 * `url`: Defines the full URL endpoint in Loki to send logs to.
 
@@ -200,6 +201,6 @@ loki.write "local" {
 }
 ```
 
-[loki.source.api]:  https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/loki/loki.source.api/
+[loki.source.api]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/loki/loki.source.api/
 [loki.process]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/loki/loki.process/
 [loki.write]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/loki/loki.write/

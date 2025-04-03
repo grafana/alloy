@@ -9,31 +9,31 @@ weight: 250
 # Monitor Microsoft Windows servers and desktops with {{% param "FULL_PRODUCT_NAME" %}}
 
 Microsoft Windows provides tools like Performance Monitor and Event Viewer to track system performance metrics and event logs.
-You can use {{< param "PRODUCT_NAME" >}} to collect your performance metrics and event logs, forward them to a Grafana stack, and create a Grafana dashboard to monitor your Windows performance and events.
+You can use {{< param "PRODUCT_NAME" >}} to collect performance metrics and event logs, forward them to a Grafana stack, and create a Grafana dashboard to monitor Windows performance and events.
 
-The [`alloy-scenarios`][scenarios] repository provides series of complete working examples of {{< param "PRODUCT_NAME" >}} deployments.
-You can clone the repository and use the example deployments to understand how {{< param "PRODUCT_NAME" >}} can collect, process, and export telemetry signals.
+The [`alloy-scenarios`][scenarios] repository contains complete working examples of {{< param "PRODUCT_NAME" >}} deployments.
+Clone the repository to explore how {{< param "PRODUCT_NAME" >}} collects, processes, and exports telemetry signals.
 
-In this example scenario {{< param "PRODUCT_NAME" >}} collects Windows performance metrics and Windows event logs, and forwards them to a Loki destination..
+In this example scenario, {{< param "PRODUCT_NAME" >}} collects Windows performance metrics and event logs, and forwards them to a Loki destination.
 
 [scenarios]: https://github.com/grafana/alloy-scenarios/
 
 ## Before you begin
 
-This example requires:
+Ensure you have the following:
 
 * [Docker](https://www.docker.com/)
 * [Git](https://git-scm.com/)
-* Windows Server or Desktop. This scenario monitors a computer running Windows.
-* Windows administrator access. You use administrator access to install {{< param "PRODUCT_NAME" >}} and configure it to collect metrics and logs.
+* A Windows Server or Desktop. This scenario monitors a computer running Windows.
+* Windows administrator access. You need administrator access to install {{< param "PRODUCT_NAME" >}} and configure it to collect metrics and logs.
 
 {{< admonition type="note" >}}
-The `docker` commands require administrator privileges.
+You need administrator privileges to run `docker` commands.
 {{< /admonition >}}
 
 ## Clone and deploy the example
 
-Perform the following steps to clone the scenarios repository and deploy the monitoring example.
+Follow these steps to clone the scenarios repository and deploy the monitoring example:
 
 1. Clone the {{< param "PRODUCT_NAME" >}} scenarios repository.
 
@@ -48,7 +48,7 @@ Perform the following steps to clone the scenarios repository and deploy the mon
    docker compose up -d
    ```
 
-   You can check the status of the containers by running the following command:
+   Check the status of the Docker containers:
 
    ```shell
    docker ps
@@ -57,17 +57,17 @@ Perform the following steps to clone the scenarios repository and deploy the mon
 1. [Install {{< param "PRODUCT_NAME" >}}][install] on Windows.
 
 1. Replace the default `config.alloy` file with the preconfigured `config.alloy` file included in the `alloy-scenarios/windows` directory.
-   For detailed steps explaining how to stop and start the {{< param "PRODUCT_NAME" >}} service, refer to [Configure {{< param "PRODUCT_NAME" >}} on WIndows][configure]
+   For detailed steps explaining how to stop and start the {{< param "PRODUCT_NAME" >}} service, refer to [Configure {{< param "PRODUCT_NAME" >}} on Windows][configure]
 
    1. Stop the {{< param "PRODUCT_NAME" >}} service.
    1. Replace the `config.alloy` file in `C:\Program Files\GrafanaLabs\Alloy` with the `config.alloy` file from the `alloy-scenarios/windows` directory.
    1. Start the {{< param "PRODUCT_NAME" >}} service.
 
-1. (Optional) If you want to access the {{< param "PRODUCT_NAME" >}} UI from a remote computer, add `--server.http.listen-addr=0.0.0.0:12345` to the Alloy runtime arguments.
-   For detailed steps explaining how to update this command line argument, refer to [Expose the UI to other machines][expose].
+1. (Optional) To access the {{< param "PRODUCT_NAME" >}} UI from a remote computer, add `--server.http.listen-addr=0.0.0.0:12345` to the Alloy runtime arguments.
+   For detailed steps explaining how to update this command-line argument, refer to [Expose the UI to other machines][expose].
    This step makes the {{< param "PRODUCT_NAME" >}} UI available at `http://<WINDOWS_IP_ADDRESS>:12345`.
 
-1. (Optional) When you finish exploring this example, you can stop Docker to shut down the Grafana stack.
+1. (Optional) Stop Docker to shut down the Grafana stack when you finish exploring this example.
 
    ```shell
    docker compose down
@@ -79,28 +79,28 @@ Perform the following steps to clone the scenarios repository and deploy the mon
 
 ## Monitor and visualize your data
 
-You can use Grafana to view the health of your deployment and visualize your data.
+Use Grafana to monitor your deployment's health and visualize your data.
 
 ### Monitor {{% param "PRODUCT_NAME" %}}
 
-To monitor the health of your {{< param "PRODUCT_NAME" >}} deployment, open your browser and navigate to [http://localhost:12345](http://localhost:12345).
+To monitor the health of your {{< param "PRODUCT_NAME" >}} deployment, open your browser and go to [http://localhost:12345](http://localhost:12345).
 
 Refer to [Debug Grafana Alloy](https://grafana.com/docs/alloy/latest/troubleshoot/debug/) for more information about the {{< param "PRODUCT_NAME" >}} UI.
 
-### Visualise your data
+### Visualize your data
 
-To explore metrics, open your browser and navigate to [http://localhost:3000/explore/metrics](http://localhost:3000/explore/metrics).
+To explore metrics, open your browser and go to [http://localhost:3000/explore/metrics](http://localhost:3000/explore/metrics).
 
-To use the Grafana Logs Drilldown, open your browser and navigate to [http://localhost:3000/a/grafana-lokiexplore-app](http://localhost:3000/a/grafana-lokiexplore-app).
+To use the Grafana Logs Drilldown, open your browser and go to [http://localhost:3000/a/grafana-lokiexplore-app](http://localhost:3000/a/grafana-lokiexplore-app).
 
-To create a [dashboard](https://grafana.com/docs/grafana/latest/getting-started/build-first-dashboard/#create-a-dashboard) to visualise your metrics and logs, open your browser and navigate to [`http://localhost:3000/dashboards`](http://localhost:3000/dashboards).
+To create a [dashboard](https://grafana.com/docs/grafana/latest/getting-started/build-first-dashboard/#create-a-dashboard) to visualize metrics and logs, open your browser and go to [`http://localhost:3000/dashboards`](http://localhost:3000/dashboards).
 
 ## Understand the {{% param "PRODUCT_NAME" %}} configuration
 
 This example uses a `config.alloy` file to configure the {{< param "PRODUCT_NAME" >}} components for metrics and logging.
-You can find the `config.alloy` file used in this example in your cloned repository at `alloy-scenarios/windows/`.
+You can find the `config.alloy` file in the cloned repository at `alloy-scenarios/windows/`.
 
-`livedebugging` is included in the configuration so you can stream real-time data to the {{< param "PRODUCT_NAME" >}} UI.
+The configuration includes `livedebugging` to stream real-time data to the {{< param "PRODUCT_NAME" >}} UI.
 
 ### Configure metrics
 
@@ -113,7 +113,7 @@ The metrics configuration in this example requires three components:
 #### `prometheus.exporter.windows`
 
 The [`prometheus.exporter.windows`][prometheus.exporter.windows] component exposes the hardware and OS metrics for Windows-based systems.
-In this example, the component needs the following argument:
+In this example, the component requires the following arguments:
 
 * `enabled_collectors`: The list of collectors to enable.
 
@@ -126,7 +126,7 @@ prometheus.exporter.windows "default" {
 #### `prometheus.scrape`
 
 The [`prometheus.scrape`][prometheus.scrape] component scrapes the Windows metrics and forwards them to a receiver.
-In this example, the component needs the following arguments:
+In this example, the component requires the following arguments:
 
 * `targets`: The target to scrape the metrics from.
 * `forward_to`: The destination to forward the metrics to.
@@ -141,7 +141,7 @@ prometheus.scrape "example" {
 #### `prometheus.remote_write`
 
 The [`prometheus.remote_write`][] component sends metrics to a Prometheus server.
-In this example, the component needs the following arguments:
+In this example, the component requires the following arguments:
 
 * `url`: Defines the full URL endpoint to send metrics to.
 
@@ -259,15 +259,15 @@ loki.write "endpoint" {
 
 ### Configure `livedebugging`
 
-`livedebugging` streams real-time data from your components directly to the Alloy UI.
-Refer to the [Troubleshooting documentation][troubleshooting] for more information about how you can use this feature in the {{< param "PRODUCT_NAME" >}} UI.
+Livedebugging streams real-time data from components directly to the Alloy UI.
+Refer to the [Troubleshooting documentation][troubleshooting] for more details about this feature.
 
 [troubleshooting]: https://grafana.com/docs/alloy/latest/troubleshoot/debug/#live-debugging-page
 
 #### `livedebugging`
 
 `livedebugging` is disabled by default.
-It must be explicitly enabled through the `livedebugging` configuration block to make the debugging data visible in the {{< param "PRODUCT_NAME" >}} UI.
+Enable it explicitly through the `livedebugging` configuration block to make debugging data visible in the {{< param "PRODUCT_NAME" >}} UI.
 
 ```alloy
 livedebugging {
