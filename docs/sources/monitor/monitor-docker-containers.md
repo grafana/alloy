@@ -9,51 +9,51 @@ weight: 200
 # Monitor Docker containers with {{% param "FULL_PRODUCT_NAME" %}}
 
 Docker containers provide statistics and logs.
-The `docker stats` and `docker logs` commands show the metrics and logs in a terminal as a fixed snapshot in time.
-You can use {{< param "PRODUCT_NAME" >}} to collect your metrics and logs, forward them to a Grafana stack, and create a Grafana dashboard to monitor your Docker container.
+The `docker stats` and `docker logs` commands display metrics and logs in a terminal as a fixed snapshot in time.
+You can use {{< param "PRODUCT_NAME" >}} to collect metrics and logs, forward them to a Grafana stack, and create a Grafana dashboard to monitor your Docker containers.
 
-The [`alloy-scenarios`][scenarios] repository provides series of complete working examples of {{< param "PRODUCT_NAME" >}} deployments.
-You can clone the repository and use the example deployments to understand how {{< param "PRODUCT_NAME" >}} can collect, process, and export telemetry signals.
+The [`alloy-scenarios`][scenarios] repository contains complete working examples of {{< param "PRODUCT_NAME" >}} deployments.
+Clone the repository and use the example deployments to understand how {{< param "PRODUCT_NAME" >}} collects, processes, and exports telemetry signals.
 
-In this example scenario, {{< param "PRODUCT_NAME" >}} collects the Docker container metrics and logs and forwards them to a Loki destination.
+In this example scenario, {{< param "PRODUCT_NAME" >}} collects Docker container metrics and logs and forwards them to a Loki destination.
 
 [scenarios]: https://github.com/grafana/alloy-scenarios/
 
 ## Before you begin
 
-This example requires:
+Ensure you have the following:
 
 * [Docker](https://www.docker.com/)
 * [Git](https://git-scm.com/)
 
 {{< admonition type="note" >}}
-The `docker` commands require administrator privileges.
+You need administrator privileges to run `docker` commands.
 {{< /admonition >}}
 
 ## Clone and deploy the example
 
-Perform the following steps to clone the scenarios repository and deploy the monitoring example.
+Follow these steps to clone the scenarios repository and deploy the monitoring example:
 
-1. Clone the {{< param "PRODUCT_NAME" >}} scenarios repository.
+1. Clone the {{< param "PRODUCT_NAME" >}} scenarios repository:
 
    ```shell
    git clone https://github.com/grafana/alloy-scenarios.git
    ```
 
-1. Start Docker to deploy the Grafana stack.
+1. Start Docker to deploy the Grafana stack:
 
    ```shell
    cd alloy-scenarios/docker-monitoring
    docker compose up -d
    ```
 
-   You can check the status of the Docker containers by running the following command.
+   Check the status of the Docker containers:
 
    ```shell
    docker ps
    ```
 
-1. (Optional) When you finish exploring this example, you can stop Docker to shut down the Grafana stack.
+1. (Optional) Stop Docker to shut down the Grafana stack when you finish exploring this example:
 
    ```shell
    docker compose down
@@ -61,30 +61,30 @@ Perform the following steps to clone the scenarios repository and deploy the mon
 
 ## Monitor and visualize your data
 
-You can use Grafana to view the health of your deployment and visualize your data.
+Use Grafana to monitor your deployment's health and visualize your data.
 
 ### Monitor {{% param "PRODUCT_NAME" %}}
 
-To monitor the health of your {{< param "PRODUCT_NAME" >}} deployment, open your browser and navigate to [http://localhost:12345](http://localhost:12345).
+To monitor the health of your {{< param "PRODUCT_NAME" >}} deployment, open [http://localhost:12345](http://localhost:12345) in your browser.
 
-Refer to [Debug Grafana Alloy](https://grafana.com/docs/alloy/latest/troubleshoot/debug/) for more information about the {{< param "PRODUCT_NAME" >}} UI.
+For more information about the {{< param "PRODUCT_NAME" >}} UI, refer to [Debug Grafana Alloy](https://grafana.com/docs/alloy/latest/troubleshoot/debug/).
 
 ### Visualize your data
 
-To explore metrics, open your browser and navigate to [http://localhost:3000/explore/metrics](http://localhost:3000/explore/metrics).
+To explore metrics, open [http://localhost:3000/explore/metrics](http://localhost:3000/explore/metrics) in your browser.
 
-To use the Grafana Logs Drilldown, open your browser and navigate to [http://localhost:3000/a/grafana-lokiexplore-app](http://localhost:3000/a/grafana-lokiexplore-app).
+To use the Grafana Logs Drilldown, navigate to [http://localhost:3000/a/grafana-lokiexplore-app](http://localhost:3000/a/grafana-lokiexplore-app).
 
-To create a [dashboard](https://grafana.com/docs/grafana/latest/getting-started/build-first-dashboard/#create-a-dashboard) to visualise your metrics and logs, open your browser and navigate to [`http://localhost:3000/dashboards`](http://localhost:3000/dashboards).
+To create a [dashboard](https://grafana.com/docs/grafana/latest/getting-started/build-first-dashboard/#create-a-dashboard) for visualizing metrics and logs, go to [http://localhost:3000/dashboards](http://localhost:3000/dashboards).
 
 ## Understand the {{% param "PRODUCT_NAME" %}} configuration
 
 This example uses a `config.alloy` file to configure the {{< param "PRODUCT_NAME" >}} components for metrics and logging.
-You can find the `config.alloy` file used in this example in your cloned repository at `alloy-scenarios/docker-monitoring/`.
+You can find this file in the cloned repository at `alloy-scenarios/docker-monitoring/`.
 
 ### Configure metrics
 
-The metrics configuration in this example requires three components:
+The metrics configuration in this example uses three components:
 
 * `prometheus.exporter.cadvisor`
 * `prometheus.scrape`
@@ -92,11 +92,11 @@ The metrics configuration in this example requires three components:
 
 #### `prometheus.exporter.cadvisor`
 
-The [`prometheus.exporter.cadvisor`][prometheus.exporter.cadvisor] component exposes the Docker container metrics.
-In this example, this component needs the following arguments:
+The [`prometheus.exporter.cadvisor`][prometheus.exporter.cadvisor] component exposes Docker container metrics.
+In this example, the component requires the following arguments:
 
 * `docker_host`: Defines the Docker endpoint.
-* `storage_duration`: Sets the time that data is stored in memory.
+* `storage_duration`: Sets the time data is stored in memory.
 
 This component provides the `prometheus.exporter.cadvisor.example.targets` target for `prometheus.scrape`.
 
@@ -110,12 +110,12 @@ prometheus.exporter.cadvisor "example" {
 
 #### `prometheus.scrape`
 
-The [`prometheus.scrape`][prometheus.scrape] component scrapes the cAdvisor metrics and forwards them to a receiver.
-In this example, the component needs the following arguments:
+The [`prometheus.scrape`][prometheus.scrape] component scrapes cAdvisor metrics and forwards them to a receiver.
+In this example, the component requires the following arguments:
 
-* `targets`: The target to scrape the metrics from.
-* `forward_to`: The destination to forward the metrics to.
-* `scrape_interval`: How frequently to scrape the target.
+* `targets`: The target to scrape metrics from.
+* `forward_to`: The destination to forward metrics to.
+* `scrape_interval`: The frequency of scraping the target.
 
 ```alloy
 prometheus.scrape "scraper" {
@@ -129,7 +129,7 @@ prometheus.scrape "scraper" {
 #### `prometheus.remote_write`
 
 The [`prometheus.remote_write`][prometheus.remote_write] component sends metrics to a Prometheus server.
-In this example, the component needs the following arguments:
+In this example, the component requires the following argument:
 
 * `url`: Defines the full URL endpoint to send metrics to.
 
@@ -149,7 +149,7 @@ prometheus.remote_write "demo" {
 
 ### Configure logging
 
-The logging configuration in this example requires four components:
+The logging configuration in this example uses four components:
 
 * `discovery.docker`
 * `discovery.relabel`
@@ -158,10 +158,10 @@ The logging configuration in this example requires four components:
 
 #### `discovery.docker`
 
-The [`discovery.docker`][discovery.docker] component discovers the Docker containers and extracts the metadata.
-In this example, the component needs the following argument:
+The [`discovery.docker`][discovery.docker] component discovers Docker containers and extracts metadata.
+In this example, the component requires the following argument:
 
-* `host`: Defines the address of the Docker Daemon to connect to.
+* `host`: Defines the address of the Docker daemon.
 
 ```alloy
 discovery.docker "linux" {
@@ -172,16 +172,16 @@ discovery.docker "linux" {
 #### `discovery.relabel`
 
 The [`discovery.relabel`][discovery.relabel] component defines a relabeling rule to create a service name from the container name.
-In this example, the component needs the following arguments:
+In this example, the component requires the following arguments:
 
 * `targets`: The targets to relabel.
   In this example, the `discovery.relabel` component is used only for its exported `relabel_rules` in the `loki.source.docker` component.
   No targets are modified, so the `targets` argument is an empty array.
 * `source_labels`: The list of labels to select for relabeling.
-* `regex`: A regular expression argument that, in this case, matches any string after `/`.
-  Docker container names often appear with a leading slash (/) in the Prometheus automatic discovery labels.
+* `regex`: A regular expression that matches any string after `/`.
+  Docker container names often appear with a leading slash (/) in Prometheus automatic discovery labels.
   This expression keeps the container name.
-* `target_label`: The label that's written to the target.
+* `target_label`: The label written to the target.
 
 ```alloy
 discovery.relabel "logs_integrations_docker" {
@@ -197,13 +197,13 @@ discovery.relabel "logs_integrations_docker" {
 
 #### `loki.source.docker`
 
-The [`loki.source.docker`][loki.source.docker] component collects the logs from the Docker containers.
-In this example, the component needs the following arguments:
+The [`loki.source.docker`][loki.source.docker] component collects logs from Docker containers.
+In this example, the component requires the following arguments:
 
 * `host`: The address of the Docker daemon.
 * `targets`: The list of containers to read logs from.
-* `labels`: The default set of labels to apply on entries.
-* `relabel_rules`: The relabeling rules to apply on log entries.
+* `labels`: The default set of labels to apply to entries.
+* `relabel_rules`: The relabeling rules to apply to log entries.
 * `forward_to`: The list of receivers to send log entries to.
 
 ```alloy
@@ -218,8 +218,8 @@ loki.source.docker "default" {
 
 #### `loki.write`
 
-The [`loki.write`][loki.write] component writes the logs out to a Loki destination.
-In this example, the component needs the following argument:
+The [`loki.write`][loki.write] component writes logs to a Loki destination.
+In this example, the component requires the following argument:
 
 * `url`: Defines the full URL endpoint in Loki to send logs to.
 
