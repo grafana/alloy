@@ -9,6 +9,10 @@ internal API changes are not present.
 
 ## Main (unreleased)
 
+### Enhancements
+
+- Update `loki.secretfilter` to include metrics about redactions (@kelnage)
+
 ## v1.8.0-rc.0
 
 ### Breaking changes
@@ -96,8 +100,6 @@ internal API changes are not present.
 - Add error body propagation in `pyroscope.write`, for `/ingest` calls. (@simonswine)
 
 - Add `tenant` label to remaining `loki_write_.+` metrics (@towolf)
-
-- Update `loki.secretfilter` to include metrics about redactions (@kelnage)
 
 ### Bugfixes
 
