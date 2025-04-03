@@ -203,7 +203,7 @@ The basic block enables basic HTTP authentication by requiring both a username a
 | `password`            | `string`       | The password to use for basic authentication.                     |         | yes      |
 
 
-# filter block
+### filter block
 The filter block is used to configure which API paths should be protected by authentication. It allows you to specify a list of paths, using prefix matching, that will require authentication.
 
 | Name                  | Type           | Description                                                                                                            | Default | Required |
