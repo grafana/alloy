@@ -348,14 +348,14 @@ func (t *tailer) Stop() {
 		t.stopping = false
 	}()
 
-	// Save the current position before shutting down tailer
-	err := t.markPositionAndSize()
-	if err != nil {
-		level.Error(t.logger).Log("msg", "error marking file position when stopping tailer", "path", t.path, "error", err)
-	}
-
+	var err error
 	// Stop the underlying tailer to prevent resource leak.
 	if t.tail != nil {
+		// Save the current position before shutting down tailer
+		err = t.markPositionAndSize()
+		if err != nil {
+			level.Error(t.logger).Log("msg", "error marking file position when stopping tailer", "path", t.path, "error", err)
+		}
 		err = t.tail.Stop()
 	}
 	t.mut.Unlock()
