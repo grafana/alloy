@@ -78,6 +78,7 @@ func TestRunnerTailer(t *testing.T) {
 	wg.Wait()
 	require.Nil(t, panicErr, "Run() should not panic when context is cancelled")
 	positionsFile.Stop()
+	require.NoError(t, logFile.Close())
 }
 
 func TestRunnerDecompressor(t *testing.T) {
