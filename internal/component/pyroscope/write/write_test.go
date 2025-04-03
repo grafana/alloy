@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -96,7 +97,7 @@ func Test_Write_FanOut(t *testing.T) {
 			},
 		}, arg)
 		require.NoError(t, err)
-		ctx, cancel := context.WithCancel(context.Background())
+		ctx, cancel := context.WithCancel(t.Context())
 		defer cancel()
 		go c.Run(ctx)
 		wg.Wait() // wait for the state change to happen
@@ -108,7 +109,7 @@ func Test_Write_FanOut(t *testing.T) {
 		argument.Endpoints = endpoints
 		r := createReceiver(t, argument)
 		pushTotal.Store(0)
-		err := r.Appender().Append(context.Background(), labels.FromMap(map[string]string{
+		err := r.Appender().Append(t.Context(), labels.FromMap(map[string]string{
 			"__name__": "test",
 			"__type__": "type",
 			"job":      "foo",
@@ -124,7 +125,7 @@ func Test_Write_FanOut(t *testing.T) {
 		argument.Endpoints = endpoints[1:]
 		r := createReceiver(t, argument)
 		pushTotal.Store(0)
-		err := r.Appender().Append(context.Background(), labels.FromMap(map[string]string{
+		err := r.Appender().Append(t.Context(), labels.FromMap(map[string]string{
 			"__name__": "test",
 			"__type__": "type",
 			"job":      "foo",
@@ -141,7 +142,7 @@ func Test_Write_FanOut(t *testing.T) {
 		argument.Endpoints[0].MaxBackoffRetries = 3
 		r := createReceiver(t, argument)
 		pushTotal.Store(0)
-		err := r.Appender().Append(context.Background(), labels.FromMap(map[string]string{
+		err := r.Appender().Append(t.Context(), labels.FromMap(map[string]string{
 			"__name__": "test",
 			"__type__": "type",
 			"job":      "foo",
@@ -172,13 +173,13 @@ func Test_Write_Update(t *testing.T) {
 		},
 	}, argument)
 	require.NoError(t, err)
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	go c.Run(ctx)
 	wg.Wait() // wait for the state change to happen
 	require.NotNil(t, export.Receiver)
 	// First one is a noop
-	err = export.Receiver.Appender().Append(context.Background(), labels.FromMap(map[string]string{
+	err = export.Receiver.Appender().Append(t.Context(), labels.FromMap(map[string]string{
 		"__name__": "test",
 	}), []*pyroscope.RawSample{
 		{RawProfile: []byte("pprofraw")},
@@ -202,7 +203,7 @@ func Test_Write_Update(t *testing.T) {
 	wg.Add(1)
 	require.NoError(t, c.Update(argument))
 	wg.Wait()
-	err = export.Receiver.Appender().Append(context.Background(), labels.FromMap(map[string]string{
+	err = export.Receiver.Appender().Append(t.Context(), labels.FromMap(map[string]string{
 		"__name__": "test",
 	}), []*pyroscope.RawSample{
 		{RawProfile: []byte("pprofraw")},
@@ -267,6 +268,8 @@ func Test_Write_AppendIngest(t *testing.T) {
 		endpoints   = make([]*EndpointOptions, 0, serverCount)
 	)
 
+	var errorCallback = func(*http.Request) error { return nil }
+
 	testData := []byte("test-profile-data")
 	argument.ExternalLabels = map[string]string{
 		"env":     "prod",      // Should override env=staging
@@ -275,12 +278,11 @@ func Test_Write_AppendIngest(t *testing.T) {
 
 	handlerFn := func(expectedPath string) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
-			appendCount.Inc()
 			require.Equal(t, expectedPath, r.URL.Path, "Unexpected path")
 
 			// Header assertions
-			require.Equal(t, "endpoint-value", r.Header.Get("X-Test-Header"))
-			require.Equal(t, []string{"profile-value1", "profile-value2"}, r.Header["X-Profile-Header"])
+			require.Equal(t, "i-am-so-good", r.Header.Get("X-Good-Header"))
+			require.Equal(t, []string{"profile-value1", "profile-value2"}, r.Header["Content-Type"])
 
 			// Label assertions - parse the name parameter once
 			ls, err := labelset.Parse(r.URL.Query().Get("name"))
@@ -300,6 +302,15 @@ func Test_Write_AppendIngest(t *testing.T) {
 			body, err := io.ReadAll(r.Body)
 			require.NoError(t, err, "Failed to read request body")
 			require.Equal(t, testData, body, "Unexpected body content")
+
+			// eventually return error
+			if err := errorCallback(r); err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				_, _ = w.Write([]byte(err.Error()))
+				return
+			}
+
+			appendCount.Inc()
 			w.WriteHeader(http.StatusOK)
 		}
 	}
@@ -310,7 +321,9 @@ func Test_Write_AppendIngest(t *testing.T) {
 			URL:           servers[i].URL,
 			RemoteTimeout: GetDefaultEndpointOptions().RemoteTimeout,
 			Headers: map[string]string{
-				"X-Test-Header": "endpoint-value",
+				"ContentType":   "evil-content-type",
+				"X-Good-Header": "i-am-so-good",
+				"X-Server-ID":   strconv.Itoa(int(i)),
 			},
 		})
 	}
@@ -336,7 +349,7 @@ func Test_Write_AppendIngest(t *testing.T) {
 	}, argument)
 	require.NoError(t, err, "Failed to create component")
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	go c.Run(ctx)
 	wg.Wait() // wait for the state change to happen
@@ -344,9 +357,8 @@ func Test_Write_AppendIngest(t *testing.T) {
 
 	incomingProfile := &pyroscope.IncomingProfile{
 		RawBody: testData,
-		Headers: http.Header{
-			"X-Test-Header":    []string{"profile-value"},                    // This should be overridden by endpoint
-			"X-Profile-Header": []string{"profile-value1", "profile-value2"}, // This should be preserved
+		ContentType: []string{
+			"profile-value1", "profile-value2", // This should be preserved
 		},
 		URL: &url.URL{
 			Path:     "/ingest",
@@ -359,9 +371,21 @@ func Test_Write_AppendIngest(t *testing.T) {
 		}),
 	}
 
-	err = export.Receiver.Appender().AppendIngest(context.Background(), incomingProfile)
+	err = export.Receiver.Appender().AppendIngest(t.Context(), incomingProfile)
 	require.NoError(t, err)
 	require.Equal(t, serverCount, appendCount.Load())
+
+	// now test with one error
+	errorCallback = func(req *http.Request) error {
+		if req.Header.Get("X-Server-ID") == "1" {
+			return errors.New("I don't like your profile")
+		}
+		return nil
+	}
+
+	err = export.Receiver.Appender().AppendIngest(t.Context(), incomingProfile)
+	require.ErrorContains(t, err, "remote error for endpoint[1]: pyroscope write error: status=400 msg=I don't like your profile")
+	require.Equal(t, 2*serverCount-1, appendCount.Load())
 }
 
 func TestAppendIngestLabelTransformation(t *testing.T) {
@@ -406,7 +430,7 @@ func TestAppendIngestLabelTransformation(t *testing.T) {
 	}, argument)
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	go c.Run(ctx)
 	wg.Wait()
@@ -421,7 +445,7 @@ func TestAppendIngestLabelTransformation(t *testing.T) {
 		URL: &url.URL{Path: "/ingest"},
 	}
 
-	err = export.Receiver.Appender().AppendIngest(context.Background(), incomingProfile)
+	err = export.Receiver.Appender().AppendIngest(t.Context(), incomingProfile)
 	require.NoError(t, err)
 	require.Equal(t, int32(1), appendCount.Load())
 }
@@ -452,7 +476,7 @@ func Test_Write_AppendIngest_InvalidLabels(t *testing.T) {
 	}, argument)
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	go c.Run(ctx)
 	wg.Wait()
@@ -511,7 +535,7 @@ func Test_Write_AppendIngest_InvalidLabels(t *testing.T) {
 				URL:     &url.URL{Path: "/ingest"},
 			}
 
-			err = export.Receiver.Appender().AppendIngest(context.Background(), incomingProfile)
+			err = export.Receiver.Appender().AppendIngest(t.Context(), incomingProfile)
 
 			if tc.wantErr {
 				require.Error(t, err)
@@ -553,7 +577,7 @@ func Test_Write_FanOut_ValidateLabels(t *testing.T) {
 	}, argument)
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	go c.Run(ctx)
 	wg.Wait()
@@ -615,7 +639,7 @@ func Test_Write_FanOut_ValidateLabels(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			err = export.Receiver.Appender().Append(context.Background(), tc.labels, []*pyroscope.RawSample{
+			err = export.Receiver.Appender().Append(t.Context(), tc.labels, []*pyroscope.RawSample{
 				{RawProfile: []byte("test-data")},
 			})
 

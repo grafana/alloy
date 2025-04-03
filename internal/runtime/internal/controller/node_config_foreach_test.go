@@ -3,9 +3,10 @@ package controller
 import (
 	"context"
 	"os"
-	"sync/atomic"
 	"testing"
 	"time"
+
+	"go.uber.org/atomic"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
@@ -104,7 +105,7 @@ func TestRunCustomComponents(t *testing.T) {
 	}`
 	foreachConfigNode := NewForeachConfigNode(getBlockFromConfig(t, config), getComponentGlobals(t), nil)
 	require.NoError(t, foreachConfigNode.Evaluate(vm.NewScope(make(map[string]interface{}))))
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	go foreachConfigNode.Run(ctx)
 
 	// check that all custom components are running correctly
@@ -132,7 +133,7 @@ func TestRunCustomComponentsAfterUpdate(t *testing.T) {
 	}`
 	foreachConfigNode := NewForeachConfigNode(getBlockFromConfig(t, config), getComponentGlobals(t), nil)
 	require.NoError(t, foreachConfigNode.Evaluate(vm.NewScope(make(map[string]interface{}))))
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	go foreachConfigNode.Run(ctx)
 
 	// check that all custom components are running correctly

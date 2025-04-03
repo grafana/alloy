@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"math"
-	"os"
 	"reflect"
 	"testing"
 
@@ -775,8 +774,7 @@ func TestVM_AnnotatesSecrets(t *testing.T) {
 		Password         alloytypes.Secret         `alloy:"password,attr"`
 	}
 
-	os.Setenv("SECRET", "my_password")
-	defer os.Setenv("SECRET", "")
+	t.Setenv("SECRET", "my_password")
 
 	input := `
 	password = "my_password"

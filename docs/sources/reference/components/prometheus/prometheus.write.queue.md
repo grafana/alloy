@@ -194,26 +194,33 @@ They generally behave the same, but there are likely edge cases where they diffe
 
 Metrics that are new to `prometheus.write.queue`. These are highly subject to change.
 
-* `alloy_queue_metadata_network_sent` (counter): Number of metadata sent successfully.
-* `alloy_queue_metadata_serializer_errors` (gauge): Number of errors for metadata written to serializer.
-* `alloy_queue_metadata_serializer_incoming_signals` (counter): Total number of metadata written to serialization.
-* `alloy_queue_network_metadata_failed` (counter): Number of metadata failed.
+* `alloy_queue_metadata_network_sent_total` (counter): Number of metadata sent successfully.
+* `alloy_queue_metadata_serializer_errors_total` (counter): Number of errors for metadata written to serializer.
+* `alloy_queue_metadata_serializer_incoming_signals_total` (counter): Total number of metadata written to serialization.
+* `alloy_queue_network_metadata_failed_total` (counter): Number of metadata failed.
 * `alloy_queue_network_metadata_network_duration_seconds` (histogram): Duration writing metadata to endpoint.
-* `alloy_queue_network_metadata_network_errors` (counter): Number of errors writing metadata to network.
-* `alloy_queue_network_metadata_retried_429` (counter): Number of metadata retried due to status code 429.
-* `alloy_queue_network_metadata_retried_5xx` (counter): Number of metadata retried due to status code 5xx.
-* `alloy_queue_network_metadata_retried` (counter): Number of metadata retried due to network issues.
-* `alloy_queue_network_series_failed` (counter): Number of series failed.
+* `alloy_queue_network_metadata_network_errors_total` (counter): Number of errors writing metadata to network.
+* `alloy_queue_network_metadata_retried_429_total` (counter): Number of metadata retried due to status code 429.
+* `alloy_queue_network_metadata_retried_5xx_total` (counter): Number of metadata retried due to status code 5xx.
+* `alloy_queue_network_metadata_retried_total` (counter): Number of metadata retried due to network issues.
+* `alloy_queue_network_series_failed_total` (counter): Number of series failed.
 * `alloy_queue_network_series_network_duration_seconds` (histogram): Duration writing series to endpoint.
-* `alloy_queue_network_series_network_errors` (counter): Number of errors writing series to network.
-* `alloy_queue_network_series_retried_429` (counter): Number of series retried due to status code 429.
-* `alloy_queue_network_series_retried_5xx` (counter): Number of series retried due to status code 5xx.
-* `alloy_queue_network_series_retried` (counter): Number of series retried due to network issues.
-* `alloy_queue_series_network_sent` (counter): Number of series sent successfully.
+* `alloy_queue_network_series_network_errors_total` (counter): Number of errors writing series to network.
+* `alloy_queue_network_series_retried_429_total` (counter): Number of series retried due to status code 429.
+* `alloy_queue_network_series_retried_5xx_total` (counter): Number of series retried due to status code 5xx.
+* `alloy_queue_network_series_retried_total` (counter): Number of series retried due to network issues.
+* `alloy_queue_series_network_sent_total` (counter): Number of series sent successfully.
 * `alloy_queue_series_network_timestamp_seconds` (gauge): Highest timestamp written to an endpoint.
-* `alloy_queue_series_serializer_errors` (gauge): Number of errors for series written to serializer.
-* `alloy_queue_series_serializer_incoming_signals` (counter): Total number of series written to serialization.
+* `alloy_queue_series_serializer_errors_total` (counter): Number of errors for series written to serializer.
+* `alloy_queue_series_serializer_incoming_signals_total` (counter): Total number of series written to serialization.
 * `alloy_queue_series_serializer_incoming_timestamp_seconds` (gauge): Highest timestamp of incoming series.
+* `alloy_queue_series_disk_compressed_bytes_read_total` (counter): Total number of compressed bytes read from disk.
+* `alloy_queue_series_disk_compressed_bytes_written_total` (counter): Total number of compressed bytes written to disk.
+* `alloy_queue_series_disk_uncompressed_bytes_read_total` (counter): Total number of uncompressed bytes read from disk.
+* `alloy_queue_series_disk_uncompressed_bytes_written_total` (counter): Total number of uncompressed bytes written to disk.
+* `alloy_queue_series_file_id_written` (gauge): Current file id written, file id being a numeric number.
+* `alloy_queue_series_file_id_read` (gauge): Current file id read, file id being a numeric number.
+
 
 ## Examples
 
@@ -249,13 +256,13 @@ prometheus.scrape "demo" {
 
 ## Technical details
 
-`prometheus.write.queue` uses [snappy][] for compression.
+`prometheus.write.queue` uses [zstd][] for compression.
 `prometheus.write.queue` sends native histograms by default.
 Any labels that start with `__` will be removed before sending to the endpoint.
 
 ### Data retention
 
-Data is written to disk in blocks utilizing [snappy][] compression. These blocks are read on startup and resent if they're still within the TTL.
+Data is written to disk in blocks utilizing [zstd][] compression. These blocks are read on startup and resent if they're still within the TTL.
 Any data that hasn't been written to disk, or that's in the network queues is lost if {{< param "PRODUCT_NAME" >}} is restarted.
 
 ### Retries
@@ -292,4 +299,4 @@ Refer to the linked documentation for more details.
 
 <!-- END GENERATED COMPATIBLE COMPONENTS -->
 
-[snappy]: https://en.wikipedia.org/wiki/Snappy_(compression)
+[zstd]: https://github.com/facebook/zstd/blob/dev/doc/zstd_compression_format.md

@@ -13,6 +13,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
 	"golang.org/x/text/encoding/unicode"
@@ -204,7 +205,7 @@ func TestTwoTargets(t *testing.T) {
 	c, err := New(opts, args)
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	go c.Run(ctx)
 	time.Sleep(100 * time.Millisecond)
 
@@ -274,7 +275,7 @@ func TestEncoding(t *testing.T) {
 	c, err := New(opts, args)
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	go c.Run(ctx)
 	require.Eventually(t, func() bool { return c.DebugInfo() != nil }, 500*time.Millisecond, 20*time.Millisecond)
 
@@ -359,9 +360,11 @@ func TestDeleteRecreateFile(t *testing.T) {
 	require.NoError(t, f.Close())
 	require.NoError(t, os.Remove(f.Name()))
 
-	// Create a file with the same name
-	f, err = os.Create(filename)
-	require.NoError(t, err)
+	// Create a file with the same name. Use eventually because of Windows FS can deny access if this test runs too fast.
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		f, err = os.Create(filename)
+		assert.NoError(collect, err)
+	}, 30*time.Second, 100*time.Millisecond)
 	defer os.Remove(f.Name())
 	defer f.Close()
 

@@ -1,7 +1,6 @@
 package collector
 
 import (
-	"context"
 	"encoding/base64"
 	"fmt"
 	"os"
@@ -137,7 +136,7 @@ func TestSchemaTable(t *testing.T) {
 				),
 			)
 
-		err = collector.Start(context.Background())
+		err = collector.Start(t.Context())
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
@@ -159,11 +158,11 @@ func TestSchemaTable(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_SCHEMA_DETECTION, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		require.Equal(t, `level=info msg="schema detected" schema="some_schema"`, lokiEntries[0].Line)
+		require.Equal(t, `schema="some_schema"`, lokiEntries[0].Line)
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_TABLE_DETECTION, "instance": "mysql-db"}, lokiEntries[1].Labels)
-		require.Equal(t, `level=info msg="table detected" schema="some_schema" table="some_table"`, lokiEntries[1].Line)
+		require.Equal(t, `schema="some_schema" table="some_table"`, lokiEntries[1].Line)
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_CREATE_STATEMENT, "instance": "mysql-db"}, lokiEntries[2].Labels)
-		require.Equal(t, fmt.Sprintf(`level=info msg="create table" schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, expectedCreateStmt, expectedTableSpec), lokiEntries[2].Line)
+		require.Equal(t, fmt.Sprintf(`schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, expectedCreateStmt, expectedTableSpec), lokiEntries[2].Line)
 	})
 	t.Run("detect table schema, cache enabled (write)", func(t *testing.T) {
 		t.Parallel()
@@ -282,7 +281,7 @@ func TestSchemaTable(t *testing.T) {
 					"id",
 				),
 			)
-		err = collector.Start(context.Background())
+		err = collector.Start(t.Context())
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
@@ -306,11 +305,11 @@ func TestSchemaTable(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_SCHEMA_DETECTION, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		require.Equal(t, `level=info msg="schema detected" schema="some_schema"`, lokiEntries[0].Line)
+		require.Equal(t, `schema="some_schema"`, lokiEntries[0].Line)
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_TABLE_DETECTION, "instance": "mysql-db"}, lokiEntries[1].Labels)
-		require.Equal(t, `level=info msg="table detected" schema="some_schema" table="some_table"`, lokiEntries[1].Line)
+		require.Equal(t, `schema="some_schema" table="some_table"`, lokiEntries[1].Line)
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_CREATE_STATEMENT, "instance": "mysql-db"}, lokiEntries[2].Labels)
-		require.Equal(t, fmt.Sprintf(`level=info msg="create table" schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, expectedCreateStmt, expectedTableSpec), lokiEntries[2].Line)
+		require.Equal(t, fmt.Sprintf(`schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, expectedCreateStmt, expectedTableSpec), lokiEntries[2].Line)
 	})
 	t.Run("detect table schema, cache enabled (write and read)", func(t *testing.T) {
 		t.Parallel()
@@ -443,7 +442,7 @@ func TestSchemaTable(t *testing.T) {
 				),
 			)
 
-		err = collector.Start(context.Background())
+		err = collector.Start(t.Context())
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
@@ -467,17 +466,17 @@ func TestSchemaTable(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_SCHEMA_DETECTION, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		require.Equal(t, `level=info msg="schema detected" schema="some_schema"`, lokiEntries[0].Line)
+		require.Equal(t, `schema="some_schema"`, lokiEntries[0].Line)
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_TABLE_DETECTION, "instance": "mysql-db"}, lokiEntries[1].Labels)
-		require.Equal(t, `level=info msg="table detected" schema="some_schema" table="some_table"`, lokiEntries[1].Line)
+		require.Equal(t, `schema="some_schema" table="some_table"`, lokiEntries[1].Line)
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_CREATE_STATEMENT, "instance": "mysql-db"}, lokiEntries[2].Labels)
-		require.Equal(t, fmt.Sprintf(`level=info msg="create table" schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, expectedCreateStmt, expectedTableSpec), lokiEntries[2].Line)
+		require.Equal(t, fmt.Sprintf(`schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, expectedCreateStmt, expectedTableSpec), lokiEntries[2].Line)
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_SCHEMA_DETECTION, "instance": "mysql-db"}, lokiEntries[3].Labels)
-		require.Equal(t, `level=info msg="schema detected" schema="some_schema"`, lokiEntries[3].Line)
+		require.Equal(t, `schema="some_schema"`, lokiEntries[3].Line)
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_TABLE_DETECTION, "instance": "mysql-db"}, lokiEntries[4].Labels)
-		require.Equal(t, `level=info msg="table detected" schema="some_schema" table="some_table"`, lokiEntries[4].Line)
+		require.Equal(t, `schema="some_schema" table="some_table"`, lokiEntries[4].Line)
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_CREATE_STATEMENT, "instance": "mysql-db"}, lokiEntries[5].Labels)
-		require.Equal(t, fmt.Sprintf(`level=info msg="create table" schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, expectedCreateStmt, expectedTableSpec), lokiEntries[5].Line)
+		require.Equal(t, fmt.Sprintf(`schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, expectedCreateStmt, expectedTableSpec), lokiEntries[5].Line)
 	})
 	t.Run("detect view schema", func(t *testing.T) {
 		t.Parallel()
@@ -586,7 +585,7 @@ func TestSchemaTable(t *testing.T) {
 					"referenced_column_name",
 				}),
 			)
-		err = collector.Start(context.Background())
+		err = collector.Start(t.Context())
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
@@ -608,11 +607,11 @@ func TestSchemaTable(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_SCHEMA_DETECTION, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		require.Equal(t, `level=info msg="schema detected" schema="some_schema"`, lokiEntries[0].Line)
+		require.Equal(t, `schema="some_schema"`, lokiEntries[0].Line)
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_TABLE_DETECTION, "instance": "mysql-db"}, lokiEntries[1].Labels)
-		require.Equal(t, `level=info msg="table detected" schema="some_schema" table="some_table"`, lokiEntries[1].Line)
+		require.Equal(t, `schema="some_schema" table="some_table"`, lokiEntries[1].Line)
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_CREATE_STATEMENT, "instance": "mysql-db"}, lokiEntries[2].Labels)
-		require.Equal(t, fmt.Sprintf(`level=info msg="create table" schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, expectedCreateStmt, expectedTableSpec), lokiEntries[2].Line)
+		require.Equal(t, fmt.Sprintf(`schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, expectedCreateStmt, expectedTableSpec), lokiEntries[2].Line)
 	})
 	t.Run("schemas result set iteration error", func(t *testing.T) {
 		t.Parallel()
@@ -643,7 +642,7 @@ func TestSchemaTable(t *testing.T) {
 				"another_schema",
 			).RowError(1, fmt.Errorf("rs error"))) // error on the second row
 
-		err = collector.Start(context.Background())
+		err = collector.Start(t.Context())
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
@@ -662,7 +661,7 @@ func TestSchemaTable(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_SCHEMA_DETECTION, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		require.Equal(t, `level=info msg="schema detected" schema="some_schema"`, lokiEntries[0].Line)
+		require.Equal(t, `schema="some_schema"`, lokiEntries[0].Line)
 	})
 	t.Run("tables result set iteration error", func(t *testing.T) {
 		t.Parallel()
@@ -710,7 +709,7 @@ func TestSchemaTable(t *testing.T) {
 			).RowError(1, fmt.Errorf("rs error")), // error on the second row
 		)
 
-		err = collector.Start(context.Background())
+		err = collector.Start(t.Context())
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
@@ -729,9 +728,9 @@ func TestSchemaTable(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_SCHEMA_DETECTION, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		require.Equal(t, `level=info msg="schema detected" schema="some_schema"`, lokiEntries[0].Line)
+		require.Equal(t, `schema="some_schema"`, lokiEntries[0].Line)
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_TABLE_DETECTION, "instance": "mysql-db"}, lokiEntries[1].Labels)
-		require.Equal(t, `level=info msg="table detected" schema="some_schema" table="some_table"`, lokiEntries[1].Line)
+		require.Equal(t, `schema="some_schema" table="some_table"`, lokiEntries[1].Line)
 	})
 	t.Run("connection error recovery", func(t *testing.T) {
 		t.Parallel()
@@ -833,7 +832,7 @@ func TestSchemaTable(t *testing.T) {
 				}),
 			)
 
-		err = collector.Start(context.Background())
+		err = collector.Start(t.Context())
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
@@ -852,10 +851,10 @@ func TestSchemaTable(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_SCHEMA_DETECTION, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		require.Equal(t, `level=info msg="schema detected" schema="some_schema"`, lokiEntries[0].Line)
+		require.Equal(t, `schema="some_schema"`, lokiEntries[0].Line)
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_TABLE_DETECTION, "instance": "mysql-db"}, lokiEntries[1].Labels)
-		require.Equal(t, `level=info msg="table detected" schema="some_schema" table="some_table"`, lokiEntries[1].Line)
+		require.Equal(t, `schema="some_schema" table="some_table"`, lokiEntries[1].Line)
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_CREATE_STATEMENT, "instance": "mysql-db"}, lokiEntries[2].Labels)
-		require.Equal(t, fmt.Sprintf(`level=info msg="create table" schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, expectedCreateStmt, expectedTableSpec), lokiEntries[2].Line)
+		require.Equal(t, fmt.Sprintf(`schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, expectedCreateStmt, expectedTableSpec), lokiEntries[2].Line)
 	})
 }

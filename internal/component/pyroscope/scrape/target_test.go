@@ -221,7 +221,6 @@ func Test_targetsFromGroup_withSpecifiedDeltaProfilingDuration(t *testing.T) {
 
 func TestProfileURL(t *testing.T) {
 	targets := func(t *testing.T, args Arguments, ls []model.LabelSet) []*Target {
-
 		active, err := targetsFromGroup(&targetgroup.Group{
 			Targets: ls,
 		}, args, args.ProfilingConfig.AllTargets())
@@ -463,7 +462,6 @@ func TestProfileURL(t *testing.T) {
 			slices.Sort(actualURLs)
 			require.Equal(t, td.expectedUrls, actualURLs)
 		})
-
 	}
 }
 
@@ -542,10 +540,10 @@ func TestLabelsByProfiles(t *testing.T) {
 		{
 			name: "no duplicates",
 			target: labels.Labels{
-				{model.AddressLabel, "localhost:9090"},
-				{ProfilePath, "/debug/pprof/custom_profile"},
-				{ProfileName, "custom_process_cpu"},
-				{ProfilePathPrefix, "/prefix"},
+				{Name: model.AddressLabel, Value: "localhost:9090"},
+				{Name: ProfilePath, Value: "/debug/pprof/custom_profile"},
+				{Name: ProfileName, Value: "custom_process_cpu"},
+				{Name: ProfilePathPrefix, Value: "/prefix"},
 			},
 			cfg: &ProfilingConfig{
 				ProcessCPU: ProfilingTarget{
@@ -557,10 +555,10 @@ func TestLabelsByProfiles(t *testing.T) {
 			},
 			expected: []labels.Labels{
 				{
-					{model.AddressLabel, "localhost:9090"},
-					{ProfileName, "custom_process_cpu"},
-					{ProfilePath, "/debug/pprof/custom_profile"},
-					{ProfilePathPrefix, "/prefix"},
+					{Name: model.AddressLabel, Value: "localhost:9090"},
+					{Name: ProfileName, Value: "custom_process_cpu"},
+					{Name: ProfilePath, Value: "/debug/pprof/custom_profile"},
+					{Name: ProfilePathPrefix, Value: "/prefix"},
 				},
 			},
 		},

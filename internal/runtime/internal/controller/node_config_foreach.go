@@ -58,6 +58,9 @@ type ForeachConfigNode struct {
 	healthMut  sync.RWMutex
 	evalHealth component.Health // Health of the last evaluate
 	runHealth  component.Health // Health of running the component
+
+	dataFlowEdgeMut  sync.RWMutex
+	dataFlowEdgeRefs []string
 }
 
 var _ ComponentNode = (*ForeachConfigNode)(nil)
@@ -186,7 +189,6 @@ func (fn *ForeachConfigNode) evaluate(scope *vm.Scope) error {
 	newCustomComponentIds := make(map[string]bool, len(args.Collection))
 	fn.customComponentHashCounts = make(map[string]int)
 	for i := 0; i < len(args.Collection); i++ {
-
 		// We must create an ID from the collection entries to avoid recreating all components on every updates.
 		// We track the hash counts because the collection might contain duplicates ([1, 1, 1] would result in the same ids
 		// so we handle it by adding the count at the end -> [11, 12, 13]
@@ -285,19 +287,13 @@ func (fn *ForeachConfigNode) Run(ctx context.Context) error {
 		return fmt.Errorf("running foreach children failed: %w", err)
 	}
 
-	err = fn.run(ctx, updateTasks)
+	fn.run(ctx, updateTasks)
+	fn.setRunHealth(component.HealthTypeExited, "foreach node shut down cleanly")
 
-	// Note: logging of this error is handled by the scheduler.
-	if err != nil {
-		fn.setRunHealth(component.HealthTypeExited, fmt.Sprintf("foreach node shut down with error: %s", err))
-	} else {
-		fn.setRunHealth(component.HealthTypeExited, "foreach node shut down cleanly")
-	}
-
-	return err
+	return nil
 }
 
-func (fn *ForeachConfigNode) run(ctx context.Context, updateTasks func() error) error {
+func (fn *ForeachConfigNode) run(ctx context.Context, updateTasks func() error) {
 	for {
 		select {
 		case <-fn.forEachChildrenUpdateChan:
@@ -310,7 +306,7 @@ func (fn *ForeachConfigNode) run(ctx context.Context, updateTasks func() error) 
 				fn.setRunHealth(component.HealthTypeHealthy, "foreach children updated successfully")
 			}
 		case <-ctx.Done():
-			return nil
+			return
 		}
 	}
 }
@@ -347,6 +343,24 @@ func (fn *ForeachConfigNode) setRunHealth(t component.HealthType, msg string) {
 		Message:    msg,
 		UpdateTime: time.Now(),
 	}
+}
+
+func (fn *ForeachConfigNode) AddDataFlowEdgeTo(nodeID string) {
+	fn.dataFlowEdgeMut.Lock()
+	defer fn.dataFlowEdgeMut.Unlock()
+	fn.dataFlowEdgeRefs = append(fn.dataFlowEdgeRefs, nodeID)
+}
+
+func (fn *ForeachConfigNode) GetDataFlowEdgesTo() []string {
+	fn.dataFlowEdgeMut.RLock()
+	defer fn.dataFlowEdgeMut.RUnlock()
+	return fn.dataFlowEdgeRefs
+}
+
+func (fn *ForeachConfigNode) ResetDataFlowEdgeTo() {
+	fn.dataFlowEdgeMut.Lock()
+	defer fn.dataFlowEdgeMut.Unlock()
+	fn.dataFlowEdgeRefs = []string{}
 }
 
 type forEachChildRunner struct {

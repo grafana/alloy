@@ -533,6 +533,40 @@ func Test_urlMatchesOrigins(t *testing.T) {
 	}
 }
 
+func TestOsFileService_RejectsInvalidPaths(t *testing.T) {
+	fs := osFileService{}
+
+	invalidPaths := []string{
+		"file/with/slash",
+		"file\\with\\backslash",
+		"file/../with/parent/dir",
+		"../parent/dir",
+		"./current/dir",
+		"file..with..dots",
+	}
+
+	for _, path := range invalidPaths {
+		_, errStat := fs.Stat(path)
+		if errStat == nil {
+			t.Errorf("Expected error for path %q containing illegal characters, but got nil", path)
+		}
+		_, errReadFile := fs.ReadFile(path)
+		if errReadFile == nil {
+			t.Errorf("Expected error for path %q containing illegal characters, but got nil", path)
+		}
+	}
+
+	validPath := "validfilename.txt"
+	_, errStat := fs.Stat(validPath)
+	if errStat != nil && errStat.Error() == "invalid file name: "+validPath {
+		t.Errorf("Expected valid path %q to not trigger invalid file name error", validPath)
+	}
+	_, errReadFile := fs.ReadFile(validPath)
+	if errReadFile != nil && errReadFile.Error() == "invalid file name: "+validPath {
+		t.Errorf("Expected valid path %q to not trigger invalid file name error", validPath)
+	}
+}
+
 type mockHTTPClient struct {
 	responses []struct {
 		*http.Response
@@ -572,6 +606,10 @@ func (s *mockFileService) ReadFile(name string) ([]byte, error) {
 		return content, nil
 	}
 	return nil, errors.New("file not found")
+}
+
+func (s *mockFileService) ValidateFilePath(name string) (string, error) {
+	return name, nil
 }
 
 func newResponseFromTestData(t *testing.T, file string) *http.Response {

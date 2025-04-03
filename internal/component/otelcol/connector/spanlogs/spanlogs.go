@@ -4,16 +4,19 @@ package spanlogs
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/fanoutconsumer"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/interceptconsumer"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/lazyconsumer"
-	"github.com/grafana/alloy/internal/component/otelcol/internal/livedebuggingconsumer"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/livedebuggingpublisher"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/syntax"
+	"go.opentelemetry.io/collector/pdata/plog"
 )
 
 func init() {
@@ -81,10 +84,11 @@ type Component struct {
 
 	opts component.Options
 
-	liveDebuggingConsumer *livedebuggingconsumer.Consumer
-	debugDataPublisher    livedebugging.DebugDataPublisher
+	debugDataPublisher livedebugging.DebugDataPublisher
 
 	args Arguments
+
+	updateMut sync.Mutex
 }
 
 var (
@@ -110,10 +114,9 @@ func New(o component.Options, c Arguments) (*Component, error) {
 	}
 
 	res := &Component{
-		opts:                  o,
-		consumer:              consumer,
-		liveDebuggingConsumer: livedebuggingconsumer.New(debugDataPublisher.(livedebugging.DebugDataPublisher), o.ID),
-		debugDataPublisher:    debugDataPublisher.(livedebugging.DebugDataPublisher),
+		opts:               o,
+		consumer:           consumer,
+		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
 	}
 
 	if err := res.Update(c); err != nil {
@@ -123,7 +126,7 @@ func New(o component.Options, c Arguments) (*Component, error) {
 	// Export the consumer.
 	// This will remain the same throughout the component's lifetime,
 	// so we do this during component construction.
-	export := lazyconsumer.New(context.Background())
+	export := lazyconsumer.New(context.Background(), o.ID)
 	export.SetConsumers(res.consumer, nil, nil)
 	o.OnStateChange(otelcol.ConsumerExports{Input: export})
 
@@ -140,17 +143,21 @@ func (c *Component) Run(ctx context.Context) error {
 
 // Update implements Component.
 func (c *Component) Update(newConfig component.Arguments) error {
+	c.updateMut.Lock()
+	defer c.updateMut.Unlock()
 	c.args = newConfig.(Arguments)
 
-	fanoutConsumer := c.args.Output.Logs
+	nextLogs := c.args.Output.Logs
 
-	if c.debugDataPublisher.IsActive(livedebugging.ComponentID(c.opts.ID)) {
-		fanoutConsumer = append(fanoutConsumer, c.liveDebuggingConsumer)
-	}
+	fanout := fanoutconsumer.Logs(nextLogs)
+	logsInterceptor := interceptconsumer.Logs(fanout,
+		func(ctx context.Context, ld plog.Logs) error {
+			livedebuggingpublisher.PublishLogsIfActive(c.debugDataPublisher, c.opts.ID, ld, otelcol.GetComponentMetadata(nextLogs))
+			return fanout.ConsumeLogs(ctx, ld)
+		},
+	)
 
-	nextLogs := fanoutconsumer.Logs(fanoutConsumer)
-
-	err := c.consumer.UpdateOptions(c.args, nextLogs)
+	err := c.consumer.UpdateOptions(c.args, logsInterceptor)
 	if err != nil {
 		return fmt.Errorf("failed to update traces consumer due to error: %w", err)
 	}
@@ -158,6 +165,4 @@ func (c *Component) Update(newConfig component.Arguments) error {
 	return nil
 }
 
-func (c *Component) LiveDebugging(_ int) {
-	c.Update(c.args)
-}
+func (c *Component) LiveDebugging() {}

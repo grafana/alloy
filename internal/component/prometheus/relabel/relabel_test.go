@@ -2,13 +2,12 @@ package relabel
 
 import (
 	"fmt"
-	dto "github.com/prometheus/client_model/go"
 	"math"
 	"strconv"
 	"testing"
 	"time"
 
-	"context"
+	dto "github.com/prometheus/client_model/go"
 
 	"github.com/grafana/alloy/internal/component"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
@@ -152,7 +151,7 @@ func BenchmarkCache(b *testing.B) {
 	})
 
 	lbls := labels.FromStrings("__address__", "localhost")
-	app := entry.Appender(context.Background())
+	app := entry.Appender(b.Context())
 	for i := 0; i < b.N; i++ {
 		app.Append(0, lbls, time.Now().UnixMilli(), 0)
 	}

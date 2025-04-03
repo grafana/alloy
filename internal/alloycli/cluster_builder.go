@@ -17,29 +17,40 @@ import (
 	"github.com/grafana/alloy/internal/service/cluster/discovery"
 )
 
-type clusterOptions struct {
+type ClusterOptions struct {
 	Log     log.Logger
 	Metrics prometheus.Registerer
 	Tracer  trace.TracerProvider
 
-	EnableClustering    bool
-	NodeName            string
-	AdvertiseAddress    string
-	ListenAddress       string
-	JoinPeers           []string
-	DiscoverPeers       string
-	RejoinInterval      time.Duration
-	AdvertiseInterfaces []string
-	ClusterMaxJoinPeers int
-	ClusterName         string
-	EnableTLS           bool
-	TLSCAPath           string
-	TLSCertPath         string
-	TLSKeyPath          string
-	TLSServerName       string
+	EnableClustering       bool
+	MinimumClusterSize     int
+	MinimumSizeWaitTimeout time.Duration
+	NodeName               string
+	AdvertiseAddress       string
+	ListenAddress          string
+	JoinPeers              []string
+	DiscoverPeers          string
+	RejoinInterval         time.Duration
+	AdvertiseInterfaces    []string
+	ClusterMaxJoinPeers    int
+	ClusterName            string
+	EnableTLS              bool
+	TLSCAPath              string
+	TLSCertPath            string
+	TLSKeyPath             string
+	TLSServerName          string
 }
 
-func buildClusterService(opts clusterOptions) (*cluster.Service, error) {
+func buildClusterService(opts ClusterOptions) (*cluster.Service, error) {
+	return NewClusterService(opts, discovery.NewPeerDiscoveryFn)
+}
+
+// NewClusterService is visible to make it easier to test clustering e2e.
+func NewClusterService(
+	opts ClusterOptions,
+	getDiscoveryFn func(options discovery.Options) (discovery.DiscoverFn, error),
+) (*cluster.Service, error) {
+
 	listenPort := findPort(opts.ListenAddress, 80)
 
 	config := cluster.Options{
@@ -47,16 +58,18 @@ func buildClusterService(opts clusterOptions) (*cluster.Service, error) {
 		Metrics: opts.Metrics,
 		Tracer:  opts.Tracer,
 
-		EnableClustering:    opts.EnableClustering,
-		NodeName:            opts.NodeName,
-		RejoinInterval:      opts.RejoinInterval,
-		ClusterMaxJoinPeers: opts.ClusterMaxJoinPeers,
-		ClusterName:         opts.ClusterName,
-		EnableTLS:           opts.EnableTLS,
-		TLSCAPath:           opts.TLSCAPath,
-		TLSCertPath:         opts.TLSCertPath,
-		TLSKeyPath:          opts.TLSKeyPath,
-		TLSServerName:       opts.TLSServerName,
+		EnableClustering:       opts.EnableClustering,
+		MinimumClusterSize:     opts.MinimumClusterSize,
+		MinimumSizeWaitTimeout: opts.MinimumSizeWaitTimeout,
+		NodeName:               opts.NodeName,
+		RejoinInterval:         opts.RejoinInterval,
+		ClusterMaxJoinPeers:    opts.ClusterMaxJoinPeers,
+		ClusterName:            opts.ClusterName,
+		EnableTLS:              opts.EnableTLS,
+		TLSCAPath:              opts.TLSCAPath,
+		TLSCertPath:            opts.TLSCertPath,
+		TLSKeyPath:             opts.TLSKeyPath,
+		TLSServerName:          opts.TLSServerName,
 	}
 
 	if config.NodeName == "" {
@@ -73,7 +86,7 @@ func buildClusterService(opts clusterOptions) (*cluster.Service, error) {
 		return nil, err
 	}
 
-	config.DiscoverPeers, err = discovery.NewPeerDiscoveryFn(discovery.Options{
+	config.DiscoverPeers, err = getDiscoveryFn(discovery.Options{
 		JoinPeers:     opts.JoinPeers,
 		DiscoverPeers: opts.DiscoverPeers,
 		DefaultPort:   listenPort,
@@ -90,7 +103,7 @@ func useAllInterfaces(interfaces []string) bool {
 	return len(interfaces) == 1 && interfaces[0] == "all"
 }
 
-func getAdvertiseAddress(opts clusterOptions, listenPort int) (string, error) {
+func getAdvertiseAddress(opts ClusterOptions, listenPort int) (string, error) {
 	if opts.AdvertiseAddress != "" {
 		return appendDefaultPort(opts.AdvertiseAddress, listenPort), nil
 	}

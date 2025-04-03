@@ -14,7 +14,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
-	"golang.org/x/sync/errgroup"
 
 	"github.com/grafana/alloy/internal/component"
 	fnet "github.com/grafana/alloy/internal/component/common/net"
@@ -173,19 +172,20 @@ func apiToAlloySamples(api []*pushv1.RawSample) []*pyroscope.RawSample {
 
 func (c *Component) Push(ctx context.Context, req *connect.Request[pushv1.PushRequest],
 ) (*connect.Response[pushv1.PushResponse], error) {
+
 	appendables := c.getAppendables()
 
-	// Create an errgroup with the timeout context
-	g, ctx := errgroup.WithContext(ctx)
+	var wg sync.WaitGroup
+	var errs error
+	var errorMut sync.Mutex
 
 	// Start copying the request body to all pipes
 	for i := range appendables {
 		appendable := appendables[i].Appender()
-		g.Go(func() error {
-			var (
-				errs error
-				lb   = labels.NewBuilder(nil)
-			)
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			var lb = labels.NewBuilder(nil)
 
 			for idx := range req.Msg.Series {
 				lb.Reset(nil)
@@ -194,18 +194,19 @@ func (c *Component) Push(ctx context.Context, req *connect.Request[pushv1.PushRe
 				lbls := ensureServiceName(lb.Labels())
 				err := appendable.Append(ctx, lbls, apiToAlloySamples(req.Msg.Series[idx].Samples))
 				if err != nil {
-					errs = errors.Join(
-						errs,
+					util.ErrorsJoinConcurrent(
+						&errs,
 						fmt.Errorf("unable to append series %s to appendable %d: %w", lb.Labels().String(), i, err),
+						&errorMut,
 					)
 				}
 			}
-			return errs
-		})
+		}()
 	}
-	if err := g.Wait(); err != nil {
-		level.Error(c.opts.Logger).Log("msg", "Failed to forward profiles requests", "err", err)
-		return nil, connect.NewError(connect.CodeInternal, err)
+	wg.Wait()
+	if errs != nil {
+		level.Error(c.opts.Logger).Log("msg", "Failed to forward profiles requests", "err", errs)
+		return nil, connect.NewError(connect.CodeInternal, errs)
 	}
 
 	level.Debug(c.opts.Logger).Log("msg", "Profiles successfully forwarded")
@@ -255,35 +256,39 @@ func (c *Component) handleIngest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	g, ctx := errgroup.WithContext(r.Context())
+	var wg sync.WaitGroup
+	var errs error
+	var errorMut sync.Mutex
 
-	// Process each appendable with a new reader from the buffer
+	// Process each appendable with a new reader from the buffer]
 	for i, appendable := range appendables {
-		g.Go(func() error {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
 			profile := &pyroscope.IncomingProfile{
-				RawBody: buf.Bytes(),
-				Headers: r.Header.Clone(),
-				URL:     r.URL,
-				Labels:  lbls,
+				RawBody:     buf.Bytes(),
+				ContentType: r.Header.Values(pyroscope.HeaderContentType),
+				URL:         r.URL,
+				Labels:      lbls,
 			}
 
-			if err := appendable.Appender().AppendIngest(ctx, profile); err != nil {
+			if err := appendable.Appender().AppendIngest(r.Context(), profile); err != nil {
 				level.Error(c.opts.Logger).Log("msg", "Failed to append profile", "appendable", i, "err", err)
-				return err
+				util.ErrorsJoinConcurrent(&errs, err, &errorMut)
 			}
 
 			level.Debug(c.opts.Logger).Log("msg", "Profile appended successfully", "appendable", i)
-			return nil
-		})
+		}()
 	}
 
-	err := g.Wait()
-	if err != nil {
+	wg.Wait()
+
+	if errs != nil {
 		var writeErr *write.PyroscopeWriteError
-		if errors.As(err, &writeErr) {
+		if errors.As(errs, &writeErr) {
 			http.Error(w, http.StatusText(writeErr.StatusCode), writeErr.StatusCode)
 		} else {
-			level.Error(c.opts.Logger).Log("msg", "Failed to process request", "err", err)
+			level.Error(c.opts.Logger).Log("msg", "Failed to process request", "err", errs)
 			http.Error(w, "Failed to process request", http.StatusInternalServerError)
 		}
 		return

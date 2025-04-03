@@ -51,7 +51,6 @@ func (args *Arguments) SetToDefault() {
 }
 
 func (args Arguments) Convert() (otelcomponent.Config, error) {
-
 	return (&splunkhec_config.SplunkHecArguments{
 		Splunk:                   args.Splunk,
 		QueueSettings:            *args.Queue.Convert(),

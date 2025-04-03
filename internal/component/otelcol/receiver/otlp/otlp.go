@@ -109,7 +109,7 @@ func (args Arguments) Extensions() map[otelcomponent.ID]otelcomponent.Component 
 
 	// Gets the extensions for the HTTP server and GRPC server
 	if args.HTTP != nil {
-		httpExtensions := (*otelcol.HTTPServerArguments)(args.HTTP.HTTPServerArguments).Extensions()
+		httpExtensions := args.HTTP.HTTPServerArguments.Extensions()
 
 		// Copies the extensions for the HTTP server into the map
 		maps.Copy(extensionMap, httpExtensions)
@@ -172,6 +172,10 @@ func (args *GRPCServerArguments) SetToDefault() {
 	*args = GRPCServerArguments{
 		Endpoint:  "0.0.0.0:4317",
 		Transport: "tcp",
+		Keepalive: &otelcol.KeepaliveServerArguments{
+			ServerParameters:  &otelcol.KeepaliveServerParamaters{},
+			EnforcementPolicy: &otelcol.KeepaliveEnforcementPolicy{},
+		},
 
 		ReadBufferSize: 512 * units.Kibibyte,
 		// We almost write 0 bytes, so no need to tune WriteBufferSize.
@@ -184,6 +188,7 @@ func (args *HTTPConfigArguments) SetToDefault() {
 		HTTPServerArguments: &otelcol.HTTPServerArguments{
 			Endpoint:              "0.0.0.0:4318",
 			CompressionAlgorithms: append([]string(nil), otelcol.DefaultCompressionAlgorithms...),
+			CORS:                  &otelcol.CORSArguments{},
 		},
 		MetricsURLPath: "/v1/metrics",
 		LogsURLPath:    "/v1/logs",

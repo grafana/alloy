@@ -1,7 +1,9 @@
 package parser
 
 import (
+	"errors"
 	"fmt"
+	"strings"
 
 	"golang.org/x/exp/maps"
 
@@ -18,9 +20,13 @@ func NewTiDBSqlParser() *TiDBSqlParser {
 }
 
 func (p *TiDBSqlParser) Parse(sql string) (any, error) {
+	// mysql will redact auth details with <secret> but the tidb parser
+	// will fail to parse it so we replace it with '<secret>'
+	sql = strings.Replace(sql, "IDENTIFIED BY <secret>", "IDENTIFIED BY '<secret>'", 1)
+
 	stmtNodes, _, err := parser.New().ParseSQL(sql)
 	if err != nil {
-		return nil, err
+		return nil, errors.Unwrap(err)
 	}
 
 	if len(stmtNodes) == 0 {
@@ -38,17 +44,17 @@ func (p *TiDBSqlParser) Redact(sql string) (string, error) {
 	return res, nil
 }
 
-func (p *TiDBSqlParser) StmtType(stmt any) string {
+func (p *TiDBSqlParser) StmtType(stmt any) StatementType {
 	s := stmt.(*ast.StmtNode)
-	switch ast.GetStmtLabel(*s) {
-	case "Select":
-		return "select"
-	case "Insert":
-		return "insert"
-	case "Update":
-		return "update"
-	case "Delete":
-		return "delete"
+	switch (*s).(type) {
+	case *ast.SelectStmt:
+		return StatementTypeSelect
+	case *ast.InsertStmt:
+		return StatementTypeInsert
+	case *ast.UpdateStmt:
+		return StatementTypeUpdate
+	case *ast.DeleteStmt:
+		return StatementTypeDelete
 	default:
 		return ""
 	}

@@ -120,7 +120,7 @@ func TestEventLoop(t *testing.T) {
 	}
 
 	processor := &eventProcessor{
-		queue:             workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
+		queue:             workqueue.NewTypedRateLimitingQueue[kubernetes.Event](workqueue.DefaultTypedControllerRateLimiter[kubernetes.Event]()),
 		stopChan:          make(chan struct{}),
 		health:            &fakeHealthReporter{},
 		mimirClient:       newFakeMimirClient(),
@@ -133,7 +133,7 @@ func TestEventLoop(t *testing.T) {
 		logger:            log.With(log.NewLogfmtLogger(os.Stdout), "ts", log.DefaultTimestampUTC),
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Do an initial sync of the Mimir ruler state before starting the event processing loop.
 	require.NoError(t, processor.syncMimir(ctx))
@@ -223,7 +223,7 @@ func TestAdditionalLabels(t *testing.T) {
 	}
 
 	processor := &eventProcessor{
-		queue:             workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
+		queue:             workqueue.NewTypedRateLimitingQueue[kubernetes.Event](workqueue.DefaultTypedControllerRateLimiter[kubernetes.Event]()),
 		stopChan:          make(chan struct{}),
 		health:            &fakeHealthReporter{},
 		mimirClient:       newFakeMimirClient(),
@@ -237,7 +237,7 @@ func TestAdditionalLabels(t *testing.T) {
 		externalLabels:    map[string]string{"foo": "bar"},
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Do an initial sync of the Mimir ruler state before starting the event processing loop.
 	require.NoError(t, processor.syncMimir(ctx))
@@ -319,7 +319,7 @@ func TestExtraQueryMatchers(t *testing.T) {
 	}
 
 	processor := &eventProcessor{
-		queue:             workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
+		queue:             workqueue.NewTypedRateLimitingQueue[kubernetes.Event](workqueue.DefaultTypedControllerRateLimiter[kubernetes.Event]()),
 		stopChan:          make(chan struct{}),
 		health:            &fakeHealthReporter{},
 		mimirClient:       newFakeMimirClient(),
@@ -344,7 +344,7 @@ func TestExtraQueryMatchers(t *testing.T) {
 		}},
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Do an initial sync of the Mimir ruler state before starting the event processing loop.
 	require.NoError(t, processor.syncMimir(ctx))

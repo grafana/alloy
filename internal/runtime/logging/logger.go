@@ -128,7 +128,7 @@ func (l *Logger) Update(o Options) error {
 			// We now can check to see if if our buffered log is at the right level.
 			if bufferedLogChunk.handler.Enabled(context.Background(), bufferedLogChunk.record.Level) {
 				// These will always be valid due to the build handlers call above.
-				bufferedLogChunk.handler.Handle(context.Background(), bufferedLogChunk.record)
+				_ = bufferedLogChunk.handler.Handle(context.Background(), bufferedLogChunk.record)
 			}
 		}
 	}

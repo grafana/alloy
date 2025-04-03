@@ -17,7 +17,7 @@ import (
 	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	extauth "go.opentelemetry.io/collector/extension/auth"
+	extauth "go.opentelemetry.io/collector/extension/extensionauth"
 )
 
 const (
@@ -146,7 +146,7 @@ func waitHealthy(ctx context.Context, basicAuthComponent *auth.Auth, timeout tim
 	// Channel to signal whether the component is healthy or not.
 	healthChannel := make(chan bool)
 
-	// Loop continously checking for the current health of the component.
+	// Loop continuously checking for the current health of the component.
 	go func() {
 		for {
 			healthz := basicAuthComponent.CurrentHealth().Health

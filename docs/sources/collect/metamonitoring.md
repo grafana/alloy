@@ -30,7 +30,13 @@ This topic describes how to collect and forward metrics, logs, and traces data f
 
 {{< param "PRODUCT_NAME" >}} exposes its internal metrics using the Prometheus exposition format.
 
-In this task, you use the [`prometheus.exporter.self`][prometheus.exporter.self] and [`prometheus.scrape`][prometheus.scrape] components to scrape {{< param "PRODUCT_NAME" >}}'s  internal metrics and forward it to compatible {{< param "PRODUCT_NAME" >}} components.
+The metrics are exposed on a `/metrics` endpoint on an address configurable via the `--server.http.listen-addr` [command line flag][run].
+For example, `127.0.0.1:12345/metrics`.
+However, it's also possible to access the same metrics using the `prometheus.exporter.self` component.
+
+[run]: ../../reference/cli/run/
+
+In this task, you use the [`prometheus.exporter.self`][prometheus.exporter.self] and [`prometheus.scrape`][prometheus.scrape] components to scrape {{< param "PRODUCT_NAME" >}}'s internal metrics and forward it to compatible {{< param "PRODUCT_NAME" >}} components.
 
 1. Add the following `prometheus.exporter.self` component to your configuration. The component accepts no arguments.
 
@@ -38,6 +44,9 @@ In this task, you use the [`prometheus.exporter.self`][prometheus.exporter.self]
    prometheus.exporter.self "<SELF_LABEL>" {
    }
    ```
+
+   Replace the following:
+   * _`<SELF_LABEL>`_: The label for the component such as `default` or `metamonitoring`. The label must be unique across all `prometheus.exporter.self` components in the same configuration file.
 
 1. Add the following `prometheus.scrape` component to your configuration file.
 
@@ -49,7 +58,6 @@ In this task, you use the [`prometheus.exporter.self`][prometheus.exporter.self]
    ```
 
    Replace the following:
-   * _`<SELF_LABEL>`_: The label for the component such as `default` or `metamonitoring`. The label must be unique across all `prometheus.exporter.self` components in the same configuration file.
    * _`<SCRAPE_LABEL>`_: The label for the scrape component such as `default`. The label must be unique across all `prometheus.scrape` components in the same configuration file.
    * _`<METRICS_RECEIVER_LIST>`_: A comma-delimited list of component receivers to forward metrics to.
      For example, to send to a remote write component, use `prometheus.remote_write.WRITE_LABEL.receiver`.

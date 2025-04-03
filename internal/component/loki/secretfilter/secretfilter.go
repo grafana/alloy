@@ -238,9 +238,15 @@ func (c *Component) Run(ctx context.Context) error {
 			c.mut.RLock()
 			// Start processing the log entry to redact secrets
 			newEntry := c.processEntry(entry)
-			if c.debugDataPublisher.IsActive(componentID) {
-				c.debugDataPublisher.Publish(componentID, fmt.Sprintf("%s => %s", entry.Line, newEntry.Line))
-			}
+
+			c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
+				componentID,
+				livedebugging.LokiLog,
+				1,
+				func() string {
+					return fmt.Sprintf("%s => %s", entry.Line, newEntry.Line)
+				},
+			))
 
 			for _, f := range c.fanout {
 				select {
@@ -385,7 +391,7 @@ func (c *Component) Update(args component.Arguments) error {
 	// Parse GitLeaks configuration
 	var gitleaksCfg GitLeaksConfig
 	if c.args.GitleaksConfig == "" {
-		// If no config file is explicitely provided, use the embedded one
+		// If no config file is explicitly provided, use the embedded one
 		_, err := toml.DecodeFS(embedFs, "gitleaks.toml", &gitleaksCfg)
 		if err != nil {
 			return err
@@ -510,4 +516,4 @@ func (c *Component) Update(args component.Arguments) error {
 	return nil
 }
 
-func (c *Component) LiveDebugging(_ int) {}
+func (c *Component) LiveDebugging() {}

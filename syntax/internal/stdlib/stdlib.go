@@ -78,6 +78,7 @@ var encoding = map[string]interface{}{
 	"from_yaml":      yamlDecode,
 	"from_base64":    base64Decode,
 	"from_URLbase64": base64URLDecode,
+	"to_json":        jsonEncode,
 	"to_base64":      base64Encode,
 	"to_URLbase64":   base64URLEncode,
 }
@@ -158,25 +159,25 @@ var concat = value.RawFunction(func(funcValue value.Value, args ...value.Value) 
 })
 
 // This function assumes that the types of the value.Value objects are correct.
-func shouldJoin(left value.Value, right value.Value, conditions value.Value) (bool, error) {
+func shouldJoin(left value.Value, right value.Value, conditions value.Value) bool {
 	for i := 0; i < conditions.Len(); i++ {
 		condition := conditions.Index(i).Text()
 
 		leftVal, ok := left.Key(condition)
 		if !ok {
-			return false, nil
+			return false
 		}
 
 		rightVal, ok := right.Key(condition)
 		if !ok {
-			return false, nil
+			return false
 		}
 
 		if !leftVal.Equal(rightVal) {
-			return false, nil
+			return false
 		}
 	}
-	return true, nil
+	return true
 }
 
 // Merge two maps.
@@ -283,12 +284,7 @@ var combineMaps = value.RawFunction(func(funcValue value.Value, args ...value.Va
 			left := convertIfNeeded(args[0].Index(i))
 			right := convertIfNeeded(args[1].Index(j))
 
-			join, err := shouldJoin(left, right, args[2])
-			if err != nil {
-				return value.Null, err
-			}
-
-			if join {
+			if shouldJoin(left, right, args[2]) {
 				val, err := concatMaps(left, right)
 				if err != nil {
 					return value.Null, err
@@ -343,6 +339,18 @@ func base64URLEncode(in string) (string, error) {
 func base64Encode(in string) (string, error) {
 	encoded := base64.StdEncoding.EncodeToString([]byte(in))
 	return encoded, nil
+}
+
+func jsonEncode(in interface{}) (string, error) {
+	v, ok := in.(map[string]interface{})
+	if !ok {
+		return "", fmt.Errorf("jsonEncode only supports map")
+	}
+	res, err := json.Marshal(v)
+	if err != nil {
+		return "", err
+	}
+	return string(res), nil
 }
 
 func jsonPath(jsonString string, path string) ([]interface{}, error) {

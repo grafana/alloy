@@ -28,6 +28,7 @@ type crdManagerFactoryHungRun struct {
 
 func (m crdManagerFactoryHungRun) New(_ component.Options, _ cluster.Cluster, _ log.Logger,
 	_ *operator.Arguments, _ string, _ labelstore.LabelStore) crdManagerInterface {
+
 	return &crdManagerHungRun{
 		stopRun: m.stopRun,
 	}
@@ -93,7 +94,7 @@ func TestRunExit(t *testing.T) {
 	}
 
 	// Run the component
-	ctx, cancelFunc := context.WithCancel(context.Background())
+	ctx, cancelFunc := context.WithCancel(t.Context())
 	cmpRunExited := atomic.Bool{}
 	cmpRunExited.Store(false)
 

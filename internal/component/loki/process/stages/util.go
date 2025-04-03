@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/grafana/alloy/internal/util"
 )
 
 var (
@@ -150,14 +152,7 @@ func parseTimestampWithoutYear(layout string, location *time.Location, timestamp
 		return parsedTime, fmt.Errorf(ErrTimestampContainsYear, timestamp)
 	}
 
-	// Handle the case we're crossing the New Year's Eve midnight
-	if parsedTime.Month() == 12 && now.Month() == 1 {
-		parsedTime = parsedTime.AddDate(now.Year()-1, 0, 0)
-	} else if parsedTime.Month() == 1 && now.Month() == 12 {
-		parsedTime = parsedTime.AddDate(now.Year()+1, 0, 0)
-	} else {
-		parsedTime = parsedTime.AddDate(now.Year(), 0, 0)
-	}
+	util.SetYearForLimitedTimeFormat(&parsedTime, now)
 
 	return parsedTime, nil
 }

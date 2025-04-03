@@ -18,7 +18,7 @@ func TestIDRemovalIfFailedToLoad(t *testing.T) {
 	require.NoError(t, err)
 	err = f.LoadSource(fl, nil, "")
 	require.NoError(t, err)
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cnc := context.WithTimeout(ctx, 600*time.Second)
 
 	go f.Run(ctx)

@@ -1,4 +1,4 @@
-FROM library/golang:1.24.1-windowsservercore-ltsc2022 as builder
+FROM library/golang:1.24-windowsservercore-ltsc2022 as builder
 ARG VERSION
 ARG RELEASE_BUILD=1
 ARG GO_TAGS

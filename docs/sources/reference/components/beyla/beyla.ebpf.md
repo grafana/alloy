@@ -4,20 +4,26 @@ aliases:
   - ../beyla.ebpf/ # /docs/alloy/latest/reference/components/beyla.ebpf/
 description: Learn about beyla.ebpf
 labels:
-  stage: public-preview
+  stage: general-availability
 title: beyla.ebpf
 ---
 
 # `beyla.ebpf`
 
-{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< admonition type="note" >}}
+The `beyla.ebpf` component uses Grafana Beyla version {{< param "BEYLA_VERSION" >}}.
+{{< /admonition >}}
+
 
 The `beyla.ebpf` component is a wrapper for [Grafana Beyla][] which uses [eBPF][] to automatically inspect application executables and the OS networking layer, and capture trace spans related to web transactions and Rate Errors Duration (RED) metrics for Linux HTTP/S and gRPC services.
 You can configure the component to collect telemetry data from a specific port or executable path, and other criteria from Kubernetes metadata.
 The component exposes metrics that can be collected by a Prometheus scrape component, and traces that can be forwarded to an OTel exporter component.
 
 {{< admonition type="note" >}}
-To run this component, {{< param "PRODUCT_NAME" >}} requires administrative privileges, or at least it needs to be granted the `CAP_SYS_ADMIN` and `CAP_SYS_PTRACE` capability.
+To run this component, {{< param "PRODUCT_NAME" >}} requires administrative privileges, or at least it needs to be granted the following capabilities: `BPF`, `SYS_PTRACE`, `NET_RAW` `CAP_CHECKPOINT_RESTORENET_RAW`, `DAC_READ_SEARCH`, and `PERFMON`.
+The number of required capabilities depends on the specific use case.
+Refer to the [Beyla capabilities][] for more information.
+
 In Kubernetes environments, the [AppArmor profile must be `Unconfined`](https://kubernetes.io/docs/tutorials/security/apparmor/#securing-a-pod) for the Deployment or DaemonSet running {{< param "PRODUCT_NAME" >}}.
 {{< /admonition >}}
 
@@ -37,15 +43,8 @@ You can use the following arguments with `beyla.ebpf`:
 | ----------------- | -------- | ----------------------------------------------------------------------------------- | ------- | -------- |
 | `debug`           | `bool`   | Enable debug mode for Beyla.                                                        | `false` | no       |
 | `enforce_sys_caps`| `bool`   | Enforce system capabilities required for eBPF instrumentation.                      | `false` | no       |
-| `executable_name` | `string` | The name of the executable to match for Beyla automatically instrumented with eBPF. | `""`    | no       |
-| `open_port`       | `string` | The port of the running service for Beyla automatically instrumented with eBPF.     | `""`    | no       |
 
 `debug` enables debug mode for Beyla. This mode logs BPF logs, network logs, trace representation logs, and other debug information.
-
-`executable_name` accepts a regular expression to be matched against the full executable command line, including the directory where the executable resides on the file system.
-
-`open_port` accepts a comma-separated list of ports (for example, `80,443`), and port ranges (for example, `8000-8999`).
-If the executable matches only one of the ports in the list, it's considered to match the selection criteria.
 
 When `enforce_sys_caps`  is set to true and the required system capabilities aren't present, Beyla aborts its startup and logs a list of the missing capabilities.
 
@@ -82,6 +81,11 @@ For example,`attributes` > `kubernetes` refers to a `kubernetes` block defined i
 [kubernetes services]: #kubernetes-services
 [discovery]: #discovery
 [services]: #services
+[instance_id]: #instance_id
+[select]: #select
+[ebpf]: #ebpf
+[filters]: #filters
+[application filters]: #application
 [metrics]: #metrics
 [network metrics]: #network-metrics
 [network filters]: #network-filters
@@ -162,14 +166,43 @@ The `select` block configures which attributes to include or exclude for specifi
 | `exclude` | `list(string)` | List of attributes to exclude.                         | `[]`    | no       |
 | `include` | `list(string)` | List of attributes to include. Use `*` to include all. | `[]`    | no       |
 
+`include` is a list of attributes that need to be reported.
+Each attribute can be an attribute name or a wildcard, for example, `k8s.dst.*` to include all the attributes starting with `k8s.dst`.
+
+`exclude` is a list to of attribute names/wildcards containing the attributes to remove from the `include` list, or from the default attribute set.
+
 The following example shows how you can include and exclude specific attributes:
 
 ```alloy
-select "sql_client_duration" {
-    include = ["*"]
-    exclude = ["db_statement"]
+attributes {
+  select {
+      attr = "sql_client_duration"
+      include = ["*"]
+      exclude = ["db_statement"]
+  }
 }
 ```
+
+Additionally, you can use `*` wildcards as metric names to add and exclude attributes for groups of metrics having the same name.
+For example:
+
+```alloy
+attributes {
+  select {
+      attr = "http_*"
+      include = ["*"]
+      exclude = ["http_path", "http_route"]
+  }
+  select {
+      attr = "http_client_*"
+      // override http_* exclusion
+      include = ["http_path"]
+  }  
+}
+```
+
+In the previous example, all the metrics with a name starting with `http_` or `http.` would include all the possible attributes but `http_path` and `http_route` or `http.path` and `http.route`.
+The `http_client_*` section would override the base configuration, enabling the `http_path` attribute for the HTTP client metrics and `http_route` for the HTTP server metrics.
 
 ### `discovery`
 
@@ -236,10 +269,24 @@ The `ebpf` block configures eBPF-specific settings.
 | `enable_context_propagation`  | `bool`        | Enable context propagation using Linux Traffic Control probes.             | `false` | no       |
 | `high_request_volume`         | `bool`        | Optimize for immediate request information when response is seen.          | `false` | no       |
 | `heuristic_sql_detect`        | `bool`        | Enable heuristic-based detection of SQL requests.                         | `false` | no       |
+| `trace_printer`              | `string`      | Format for printing trace information. | `"disabled"` | no |
+
+`enable_context_propagation` enables context propagation using Linux Traffic Control probes. 
+For more information about this topic, refer to [Distributed traces with Beyla][].
+
+`trace_printer` is used to print the trace information in a specific format. The following formats are supported:
+
+* `disabled` disables trace printing.
+* `counter` prints the trace information in a counter format.
+* `text` prints the trace information in a text format.
+* `json` prints the trace information in a JSON format.
+* `json_indent` prints the trace information in a JSON format with indentation.
 
 ### `filters`
 
-The `filters` block configures filtering of attributes.
+The `filters` block allows you to filter both application and network metrics by attribute values.
+
+For a list of metrics under the application and network family, as well as their attributes, refer to the [Beyla exported metrics][].
 
 It contains the following blocks:
 
@@ -270,6 +317,21 @@ The `network` block configures filtering of network attributes.
 Both properties accept a
 [glob-like](https://github.com/gobwas/glob) string (it can be a full value or include
 wildcards).
+
+Example:
+
+```alloy
+filters {
+	application {
+	  attr = "url.path"
+	  match = "/user/*"
+	}
+	network {
+	  attr = "k8s.src.owner.name"
+	  match = "*"
+	}
+}
+```
 
 ### `metrics`
 
@@ -311,7 +373,6 @@ The `network` block configures network metrics options for Beyla. You must appen
 | `cache_max_flows`      | `int`          | Maximum number of flows to cache.                                     | `5000`            | no       |
 | `cidrs`                | `list(string)` | List of CIDR ranges to monitor.                                       | `[]`              | no       |
 | `direction`            | `string`       | Direction of traffic to monitor.                                      | `"both"`          | no       |
-| `enabled`              | `bool`         | Enable network metrics collection.                                    | `false`           | no       |
 | `exclude_interfaces`   | `list(string)` | List of network interfaces to exclude from monitoring.                | `["lo"]`          | no       |
 | `exclude_protocols`    | `list(string)` | List of protocols to exclude from monitoring.                         | `[]`              | no       |
 | `interfaces`           | `list(string)` | List of network interfaces to monitor.                                | `[]`              | no       |
@@ -489,9 +550,12 @@ Replace the following:
 
 [Grafana Beyla]: https://github.com/grafana/beyla
 [eBPF]: https://ebpf.io/
+[Beyla capabilities]: /docs/beyla/latest/security/
 [in-memory traffic]: ../../../../get-started/component_controller/#in-memory-traffic
 [run command]: ../../../cli/run/
 [scrape]: ../../prometheus/prometheus.scrape/
+[Distributed traces with Beyla]: /docs/beyla/latest/distributed-traces/
+[Beyla exported metrics]: /docs/beyla/latest/metrics/
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
