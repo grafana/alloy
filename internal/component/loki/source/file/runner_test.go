@@ -6,6 +6,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -18,7 +19,7 @@ import (
 	"go.uber.org/goleak"
 )
 
-func TestRunner(t *testing.T) {
+func TestRunnerTailer(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
 	l := util.TestLogger(t)
 	ch1 := loki.NewLogsReceiver()
@@ -59,8 +60,12 @@ func TestRunner(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(t.Context())
 
+	cancel()
+
 	// Run in a goroutine to catch any panics
 	var panicErr interface{}
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
@@ -68,10 +73,64 @@ func TestRunner(t *testing.T) {
 			}
 		}()
 		runner.Run(ctx)
+		wg.Done()
 	}()
-
-	cancel()
+	wg.Wait()
 	require.Nil(t, panicErr, "Run() should not panic when context is cancelled")
 	positionsFile.Stop()
-	require.NoError(t, logFile.Close())
+}
+
+func TestRunnerDecompressor(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
+	l := util.TestLogger(t)
+	ch1 := loki.NewLogsReceiver()
+	tempDir := t.TempDir()
+	positionsFile, err := positions.New(l, positions.Config{
+		SyncPeriod:        50 * time.Millisecond,
+		PositionsFile:     filepath.Join(tempDir, "positions.yaml"),
+		IgnoreInvalidYaml: false,
+		ReadOnly:          false,
+	})
+	require.NoError(t, err)
+	filename := "testdata/onelinelog.tar.gz"
+	labels := model.LabelSet{
+		"filename": model.LabelValue(filename),
+		"foo":      "bar",
+	}
+	decompressor, err := newDecompressor(
+		newMetrics(nil),
+		l,
+		ch1,
+		positionsFile,
+		filename,
+		labels,
+		"",
+		DecompressionConfig{Format: "gz"},
+		func() bool { return true },
+	)
+	require.NoError(t, err)
+
+	runner := &runnerReader{
+		reader: decompressor,
+	}
+
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+
+	// Run in a goroutine to catch any panics
+	var panicErr interface{}
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				panicErr = r
+			}
+		}()
+		runner.Run(ctx)
+		wg.Done()
+	}()
+	wg.Wait()
+	require.Nil(t, panicErr, "Run() should not panic when context is cancelled")
+	positionsFile.Stop()
 }

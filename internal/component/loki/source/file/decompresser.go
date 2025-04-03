@@ -109,9 +109,6 @@ func newDecompressor(
 		labels:            labels,
 		labelsStr:         labelsStr,
 		running:           atomic.NewBool(false),
-		posquit:           make(chan struct{}),
-		posdone:           make(chan struct{}),
-		done:              make(chan struct{}),
 		position:          pos,
 		decoder:           decoder,
 		cfg:               cfg,
@@ -163,8 +160,6 @@ func (d *decompressor) Run() {
 
 	// Check if the stop function was called between two Run.
 	if d.stopping {
-		close(d.done)
-		close(d.posdone)
 		d.mut.Unlock()
 		return
 	}
@@ -177,8 +172,12 @@ func (d *decompressor) Run() {
 	d.done = make(chan struct{})
 	d.mut.Unlock()
 
+	// updatePosition closes the channel t.posdone on exit
 	go d.updatePosition()
+
 	d.metrics.filesActive.Add(1.)
+
+	// readLines closes the channels t.done on exit
 	d.readLines(handler)
 }
 
@@ -319,11 +318,18 @@ func (d *decompressor) Stop() {
 	d.mut.Unlock()
 
 	// Shut down the position marker thread
-	close(d.posquit)
-	<-d.posdone
+	if d.posquit != nil {
+		close(d.posquit)
+		<-d.posdone
+		d.posquit = nil
+		d.posdone = nil
+	}
 
 	// Wait for readLines() to consume all the remaining messages and exit when the channel is closed
-	<-d.done
+	if d.done != nil {
+		<-d.done
+		d.done = nil
+	}
 	level.Info(d.logger).Log("msg", "stopped decompressor", "path", d.path)
 
 	// If the component is not stopping, then it means that the target for this component is gone and that
