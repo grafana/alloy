@@ -363,7 +363,7 @@ func TestDeleteRecreateFile(t *testing.T) {
 	// Create a file with the same name. Use eventually because of Windows FS can deny access if this test runs too fast.
 	require.EventuallyWithT(t, func(collect *assert.CollectT) {
 		f, err = os.Create(filename)
-		require.NoError(collect, err)
+		assert.NoError(collect, err)
 	}, 30*time.Second, 100*time.Millisecond)
 	defer os.Remove(f.Name())
 	defer f.Close()
