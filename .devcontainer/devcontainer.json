@@ -1,0 +1,35 @@
+{
+    "name": "Grafana Alloy Development",
+    "build": {
+      "dockerfile": "Dockerfile"
+    },
+    "features": {
+      "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
+    },
+    "runArgs": [
+      "--cap-add=SYS_PTRACE",
+      "--security-opt", "seccomp=unconfined"
+    ],
+    "customizations": {
+      "vscode": {
+        "settings": {
+          "go.toolsManagement.checkForUpdates": "local",
+          "go.useLanguageServer": true,
+          "go.gopath": "/go",
+          "go.goroot": "/usr/local/go",
+          "go.lintTool": "golangci-lint",
+          "go.lintFlags": [
+            "--fast"
+          ]
+        },
+        "extensions": [
+          "golang.go",
+          "ms-azuretools.vscode-docker",
+          "GitHub.vscode-pull-request-github",
+          "redhat.vscode-yaml"
+        ]
+      }
+    },
+    "remoteUser": "vscode",
+    "postCreateCommand": "go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest"
+  }
