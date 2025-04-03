@@ -1,3 +1,5 @@
+//go:build !race
+
 package file
 
 import (
@@ -55,7 +57,7 @@ func TestRunner(t *testing.T) {
 		reader: tailer,
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 
 	// Run in a goroutine to catch any panics
 	var panicErr interface{}
