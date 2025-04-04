@@ -159,7 +159,7 @@ func (p *Processor) Update(args component.Arguments) error {
 
 	mp := metric.NewMeterProvider(metric.WithReader(promExporter))
 	settings := otelprocessor.Settings{
-		ID: otelcomponent.NewID(p.factory.Type()),
+		ID: otelcomponent.NewIDWithName(p.factory.Type(), p.opts.ID),
 		TelemetrySettings: otelcomponent.TelemetrySettings{
 			Logger: zapadapter.New(p.opts.Logger),
 
