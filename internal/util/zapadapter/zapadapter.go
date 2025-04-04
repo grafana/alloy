@@ -133,7 +133,10 @@ func (fe *fieldEncoder) Close() error {
 
 func (fe *fieldEncoder) AddArray(key string, marshaler zapcore.ArrayMarshaler) error {
 	enc := newArrayFieldEncoder()
-	marshaler.MarshalLogArray(enc)
+	err := marshaler.MarshalLogArray(enc)
+	if err != nil {
+		return err
+	}
 	b, err := enc.jsonMarshal()
 	if err != nil {
 		return err
@@ -144,7 +147,10 @@ func (fe *fieldEncoder) AddArray(key string, marshaler zapcore.ArrayMarshaler) e
 
 func (fe *fieldEncoder) AddObject(key string, marshaler zapcore.ObjectMarshaler) error {
 	enc := newObjectFieldEncoder()
-	marshaler.MarshalLogObject(enc)
+	err := marshaler.MarshalLogObject(enc)
+	if err != nil {
+		return err
+	}
 	b, err := enc.jsonMarshal()
 	if err != nil {
 		return err
@@ -293,14 +299,20 @@ func (fe *objectFieldEncoder) jsonMarshal() ([]byte, error) {
 
 func (fe *objectFieldEncoder) AddArray(key string, marshaler zapcore.ArrayMarshaler) error {
 	subFieldEncoder := newArrayFieldEncoder()
-	marshaler.MarshalLogArray(subFieldEncoder)
+	err := marshaler.MarshalLogArray(subFieldEncoder)
+	if err != nil {
+		return err
+	}
 	fe.obj[key] = subFieldEncoder.arr
 	return nil
 }
 
 func (fe *objectFieldEncoder) AddObject(key string, marshaler zapcore.ObjectMarshaler) error {
 	subFieldEncoder := newObjectFieldEncoder()
-	marshaler.MarshalLogObject(subFieldEncoder)
+	err := marshaler.MarshalLogObject(subFieldEncoder)
+	if err != nil {
+		return err
+	}
 	fe.obj[key] = subFieldEncoder.obj
 	return nil
 }
@@ -379,8 +391,7 @@ func (fe *objectFieldEncoder) OpenNamespace(key string) {
 var _ zapcore.ArrayEncoder = (*arrayFieldEncoder)(nil)
 
 type arrayFieldEncoder struct {
-	arr       []interface{}
-	namespace []string
+	arr []interface{}
 }
 
 func newArrayFieldEncoder() *arrayFieldEncoder {
@@ -395,14 +406,20 @@ func (fe *arrayFieldEncoder) jsonMarshal() ([]byte, error) {
 
 func (fe *arrayFieldEncoder) AppendArray(marshaler zapcore.ArrayMarshaler) error {
 	subFieldEncoder := newArrayFieldEncoder()
-	marshaler.MarshalLogArray(subFieldEncoder)
+	err := marshaler.MarshalLogArray(subFieldEncoder)
+	if err != nil {
+		return err
+	}
 	fe.arr = append(fe.arr, subFieldEncoder.arr)
 	return nil
 }
 
 func (fe *arrayFieldEncoder) AppendObject(marshaler zapcore.ObjectMarshaler) error {
 	subFieldEncoder := newObjectFieldEncoder()
-	marshaler.MarshalLogObject(subFieldEncoder)
+	err := marshaler.MarshalLogObject(subFieldEncoder)
+	if err != nil {
+		return err
+	}
 	fe.arr = append(fe.arr, subFieldEncoder.obj)
 	return nil
 }
