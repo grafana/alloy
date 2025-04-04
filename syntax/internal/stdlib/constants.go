@@ -2,8 +2,10 @@ package stdlib
 
 import (
 	"os"
-	"runtime"
 	"strings"
+
+	"runtime"
+
 	"github.com/blang/semver/v4"
 )
 
@@ -31,7 +33,7 @@ func init() {
 func normalizeVersion(version string) string {
 	version = strings.TrimSpace(version)
 	if version == "" {
-		return  "v0.0.0"
+		return "v0.0.0"
 	}
 
 	parsed, err := semver.ParseTolerant(version)
