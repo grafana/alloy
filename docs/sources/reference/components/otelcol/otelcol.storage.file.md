@@ -107,6 +107,37 @@ configuration.
 
 `otelcol.storage.file` does not expose any component-specific debug information.
 
-## Example
+## Examples
 
-TBD
+### `otelcol.receiver.filelog`
+
+This examples uses an `otelcol.storage.file` component to store file offsets for an `otelcol.receiver.filelog` component.
+This will only use a small amount of data for each file that has been read so it's unlikely that you will need to be concerned
+about compaction settings.
+
+The default settings of the component will place the [bbolt] file for the receiver in `<STORAGE_PATH>/otelcol.storage.file.default/receiver_filelog_default`
+
+```alloy
+
+otelcol.storage.file "default" {}
+
+otelcol.receiver.filelog "default" {
+    include = ["/var/log/*.log"]
+    storage = otelcol.storage.file.default.handler
+    operators = [{
+      type = "regex_parser",
+      regex = "^(?P<timestamp>[^ ]+)",
+      timestamp = {
+        parse_from = "attributes.timestamp",
+        layout = "%Y-%m-%dT%H:%M:%S.%fZ",
+        location = "UTC",
+      },
+    }]
+    output {
+        logs = [otelcol.exporter.debug.default.input]
+    }
+}
+
+
+otelcol.exporter.debug "default" {}
+```
