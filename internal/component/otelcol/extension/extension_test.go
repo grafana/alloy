@@ -84,6 +84,10 @@ type fakeExtensionArgs struct {
 
 var _ extension.Arguments = fakeExtensionArgs{}
 
+func (fakeExtensionArgs) ExportsHandler() bool {
+	return false
+}
+
 func (fa fakeExtensionArgs) Convert() (otelcomponent.Config, error) {
 	return &struct{}{}, nil
 }

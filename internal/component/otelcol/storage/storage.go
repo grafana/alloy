@@ -1,13 +1,13 @@
-// Package extension provides utilities to create an Alloy component from
-// OpenTelemetry Collector extensions.
-//
-// Other OpenTelemetry Collector extensions are better served as generic Alloy
-// components rather than being placed in the otelcol namespace.
-package extension
+// Package storage provides utilities to create an Alloy component from
+// OpenTelemetry Collector storage extensions.
+package storage
 
 import (
 	"context"
+	"fmt"
+	"hash/fnv"
 	"os"
+	"strings"
 
 	"github.com/grafana/alloy/internal/build"
 	"github.com/grafana/alloy/internal/component"
@@ -25,12 +25,12 @@ import (
 )
 
 // Arguments is an extension of component.Arguments which contains necessary
-// settings for OpenTelemetry Collector extensions.
+// settings for OpenTelemetry Collector storage extensions.
 type Arguments interface {
 	component.Arguments
 
 	// Convert converts the Arguments into an OpenTelemetry Collector
-	// extension configuration.
+	// storage extension configuration.
 	Convert() (otelcomponent.Config, error)
 
 	// Extensions returns the set of extensions that the configured component is
@@ -43,10 +43,6 @@ type Arguments interface {
 
 	// DebugMetricsConfig returns the configuration for debug metrics
 	DebugMetricsConfig() otelcolCfg.DebugMetricsArguments
-
-	// ExportsHandler returns a boolean indicating whether the component
-	// should export the handler for other components to reference.
-	ExportsHandler() bool
 }
 
 // Exports is a common Exports type for Alloy components which expose
@@ -60,6 +56,14 @@ type Exports struct {
 type ExtensionHandler struct {
 	ID        otelcomponent.ID
 	Extension otelextension.Extension
+
+	componentID string
+}
+
+func NewHandler(componentID string) *ExtensionHandler {
+	return &ExtensionHandler{
+		componentID: componentID,
+	}
 }
 
 var _ syntax.Capsule = ExtensionHandler{}
@@ -67,9 +71,9 @@ var _ syntax.Capsule = ExtensionHandler{}
 // AlloyCapsule marks Handler as a capsule type.
 func (ExtensionHandler) AlloyCapsule() {}
 
-// Extension is an Alloy component shim which manages an OpenTelemetry
-// Collector extension.
-type Extension struct {
+// Storage is an Alloy component shim which manages an OpenTelemetry Collector
+// storage extension.
+type Storage struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
@@ -81,14 +85,17 @@ type Extension struct {
 }
 
 var (
-	_ component.Component       = (*Extension)(nil)
-	_ component.HealthComponent = (*Extension)(nil)
+	_ component.Component       = (*Storage)(nil)
+	_ component.HealthComponent = (*Storage)(nil)
 )
 
 // New creates a new Alloy component which encapsulates an OpenTelemetry
-// Collector extension. args must hold a value of the argument
+// Collector storage extension. args must hold a value of the argument
 // type registered with the Alloy component.
-func New(opts component.Options, f otelextension.Factory, args Arguments) (*Extension, error) {
+//
+// The registered component must be registered to export the Exports type from
+// this package, otherwise New will panic.
+func New(opts component.Options, f otelextension.Factory, args Arguments) (*Storage, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	// Create a lazy collector where metrics from the upstream component will be
@@ -96,7 +103,7 @@ func New(opts component.Options, f otelextension.Factory, args Arguments) (*Exte
 	collector := lazycollector.New()
 	opts.Registerer.MustRegister(collector)
 
-	r := &Extension{
+	r := &Storage{
 		ctx:    ctx,
 		cancel: cancel,
 
@@ -112,26 +119,26 @@ func New(opts component.Options, f otelextension.Factory, args Arguments) (*Exte
 	return r, nil
 }
 
-// Run starts the Extension component.
-func (e *Extension) Run(ctx context.Context) error {
-	defer e.cancel()
-	return e.sched.Run(ctx)
+// Run starts the Storage component.
+func (s *Storage) Run(ctx context.Context) error {
+	defer s.cancel()
+	return s.sched.Run(ctx)
 }
 
 // Update implements component.Component. It will convert the Arguments into
-// configuration for OpenTelemetry Collector extension
+// configuration for OpenTelemetry Collector storage extension
 // configuration and manage the underlying OpenTelemetry Collector extension.
-func (e *Extension) Update(args component.Arguments) error {
+func (s *Storage) Update(args component.Arguments) error {
 	rargs := args.(Arguments)
 
 	host := scheduler.NewHost(
-		e.opts.Logger,
+		s.opts.Logger,
 		scheduler.WithHostExtensions(rargs.Extensions()),
 		scheduler.WithHostExporters(rargs.Exporters()),
 	)
 
 	reg := prometheus.NewRegistry()
-	e.collector.Set(reg)
+	s.collector.Set(reg)
 
 	promExporter, err := sdkprometheus.New(sdkprometheus.WithRegisterer(reg), sdkprometheus.WithoutTargetInfo())
 	if err != nil {
@@ -140,11 +147,11 @@ func (e *Extension) Update(args component.Arguments) error {
 
 	mp := metric.NewMeterProvider(metric.WithReader(promExporter))
 	settings := otelextension.Settings{
-		ID: otelcomponent.NewID(e.factory.Type()),
+		ID: otelcomponent.NewID(s.factory.Type()),
 		TelemetrySettings: otelcomponent.TelemetrySettings{
-			Logger: zapadapter.New(e.opts.Logger),
+			Logger: zapadapter.New(s.opts.Logger),
 
-			TracerProvider: e.opts.Tracer,
+			TracerProvider: s.opts.Tracer,
 			MeterProvider:  mp,
 		},
 
@@ -155,40 +162,68 @@ func (e *Extension) Update(args component.Arguments) error {
 		},
 	}
 
-	extensionConfig, err := rargs.Convert()
+	// Registers the extension for the otel collector plugin
+	handler, err := s.SetupExtension(rargs, settings)
 	if err != nil {
 		return err
 	}
 
-	// Create instances of the extension from our factory.
-	var components []otelcomponent.Component
+	// Inform listeners that our handler changed.
+	s.opts.OnStateChange(Exports{
+		Handler: handler,
+	})
 
-	ext, err := e.factory.Create(e.ctx, settings, extensionConfig)
-	if err != nil {
-		return err
-	} else if ext != nil {
-		components = append(components, ext)
-	}
-
-	if rargs.ExportsHandler() {
-		// Registers the extension for the otel collector plugin
-		handler := &ExtensionHandler{
-			ID:        settings.ID,
-			Extension: ext,
-		}
-
-		// Inform listeners that our handler changed.
-		e.opts.OnStateChange(Exports{
-			Handler: handler,
-		})
-	}
-
-	// Schedule the components to run once our component is running.
-	e.sched.Schedule(e.ctx, func() {}, host, components...)
+	// Schedule the component to run once our component is running.
+	s.sched.Schedule(s.ctx, func() {}, host, handler.Extension)
 	return nil
 }
 
 // CurrentHealth implements component.HealthComponent.
-func (e *Extension) CurrentHealth() component.Health {
-	return e.sched.CurrentHealth()
+func (s *Storage) CurrentHealth() component.Health {
+	return s.sched.CurrentHealth()
+}
+
+func getHash(in string) string {
+	fnvHash := fnv.New32()
+	fnvHash.Write([]byte(in))
+	return fmt.Sprintf("%x", fnvHash.Sum(nil))
+}
+
+func NormalizeType(in string) string {
+	res := strings.ReplaceAll(strings.ReplaceAll(in, ".", "_"), "/", "_")
+
+	if len(res) > 63 {
+		res = res[:40] + getHash(res)
+	}
+
+	return res
+}
+
+// SetupExtension sets up the extension handler object with the appropriate fields to map the alloy
+// capsule to the underlying otel storage extension.
+func (s *Storage) SetupExtension(rargs Arguments, settings otelextension.Settings) (*ExtensionHandler, error) {
+	handler := &ExtensionHandler{}
+
+	otelConfig, err := rargs.Convert()
+	if err != nil {
+		return nil, err
+	}
+
+	// Create the otel extension via its factory.
+	otelExtension, err := s.factory.Create(s.ctx, settings, otelConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	// sanity check
+	if otelExtension == nil {
+		return nil, fmt.Errorf("extension was not created")
+	}
+
+	// Create an extension id based off the alloy name
+	cTypeStr := NormalizeType(s.opts.ID)
+	handler.ID = otelcomponent.NewID(otelcomponent.MustNewType(cTypeStr))
+	handler.Extension = otelExtension
+
+	return handler, nil
 }
