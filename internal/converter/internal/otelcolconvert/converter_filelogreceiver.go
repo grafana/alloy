@@ -40,7 +40,7 @@ func (filelogReceiverConverter) ConvertAndAppend(state *State, id componentstatu
 			ext := state.LookupExtension(*cfg.(*filelogreceiver.FileLogConfig).StorageID)
 			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
 		}
-		return val
+		return common.GetAlloyTypesOverrideHook()(val)
 	}
 
 	args := toOtelcolReceiverfilelog(cfg.(*filelogreceiver.FileLogConfig))

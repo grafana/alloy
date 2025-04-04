@@ -38,7 +38,7 @@ func (splunkhecExporterConverter) ConvertAndAppend(state *State, id componentsta
 			ext := state.LookupExtension(*cfg.(*splunkhecexporter.Config).QueueSettings.StorageID)
 			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
 		}
-		return val
+		return common.GetAlloyTypesOverrideHook()(val)
 	}
 
 	args := toSplunkHecExporter(cfg.(*splunkhecexporter.Config))

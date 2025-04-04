@@ -38,7 +38,7 @@ func (syslogExporterConverter) ConvertAndAppend(state *State, id componentstatus
 			ext := state.LookupExtension(*cfg.(*syslogexporter.Config).QueueSettings.StorageID)
 			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
 		}
-		return val
+		return common.GetAlloyTypesOverrideHook()(val)
 	}
 
 	args := toOtelcolExportersyslog(cfg.(*syslogexporter.Config))

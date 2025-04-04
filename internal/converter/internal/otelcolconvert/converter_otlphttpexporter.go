@@ -44,7 +44,7 @@ func (otlpHTTPExporterConverter) ConvertAndAppend(state *State, id componentstat
 			ext := state.LookupExtension(*cfg.(*otlphttpexporter.Config).QueueConfig.StorageID)
 			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
 		}
-		return val
+		return common.GetAlloyTypesOverrideHook()(val)
 	}
 
 	args := toOtelcolExporterOTLPHTTP(cfg.(*otlphttpexporter.Config))
