@@ -1251,7 +1251,7 @@ func TestConverterExponentialHistograms(t *testing.T) {
 				}]
 			}]
 		}`,
-			// The tests only allow one exemplar/series because it uses a map[series]exemplar as storage. Therefore only the exemplar "bbbbbbbbbbbbbbbb" is stored.
+			// The tests only allow one exemplar/series because it uses a map[series]exemplar as storage. Therefore only the exemplar "cccccccccccccccc" is stored(bbbbbbbbbbbbbbbb is out-of-order).
 			expect: `{
 				"bucket": [
 				  {
@@ -1259,14 +1259,14 @@ func TestConverterExponentialHistograms(t *testing.T) {
 					  "label": [
 						{
 						  "name": "span_id",
-						  "value": "bbbbbbbbbbbbbbbb"
+						  "value": "cccccccccccccccc"
 						},
 						{
 						  "name": "trace_id",
-						  "value": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+						  "value": "cccccccccccccccccccccccccccccccc"
 						}
 					  ],
-					  "value": 1.5
+					  "value": 1.0
 					}
 				  }
 				],
