@@ -58,6 +58,11 @@ func (f ResourceFilter) convert(_ int) collector.ResourceFilter {
 	}
 }
 
+// ExperimentalWAL represents experimental_wal config.
+//
+// Here, we could default the `directory` argument to Alloy's storage.path config value.
+// However, to maintain simplicity as a wrapper around the upstream contrib library and ensure predictable behavior for users,
+// we decided to keep the configuration style consistent with the upstream library.
 type ExperimentalWAL struct {
 	Directory  string        `alloy:"directory,attr,optional"`
 	MaxBackoff time.Duration `alloy:"max_backoff,attr,optional"`
