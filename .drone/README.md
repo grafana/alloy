@@ -24,7 +24,7 @@ configuration is limited to Grafana employees for security reasons.
 
 **IMPORTANT: IT MAY NOT BE SAFE TO RUN ALL PIPELINES LOCALLY WITHOUT MODIFICATION**
 
-For validating your setup, the `Lint` or `Windows-Test` pipelines are safe to
+For validating your setup, the `Test` or `Test (Windows)` pipelines are safe to
 run depending on which architecture you are working on.
 
 ## **EASIER** (recommended)
@@ -35,7 +35,7 @@ Run the drone CLI locally following the drone documentation [here](https://docs.
 2. If editing the pipeline, run `make generate-drone` to generate the updated
    `.drone/drone.yml from Jsonnet without signing.
 3. Run a command like the following the repo root:
-  `drone exec --secret-file=secrets.txt --trusted --pipeline=Lint .drone/drone.yml`
+  `drone exec --secret-file=secrets.txt --trusted --pipeline=Test .drone/drone.yml`
 
 Pros
 - Works with Linux or Windows containers depending on which environment it is

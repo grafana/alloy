@@ -1,35 +1,16 @@
-name: Test
+name: Test PR
 on:
   pull_request:
 jobs:
   lint:
-    name: Lint
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version-file: go.mod
-        cache: false
-    - name: golangci-lint
-      uses: golangci/golangci-lint-action@v6
-      with:
-        version: v1.64.7
-    - name: golangci-lint-syntax
-      uses: golangci/golangci-lint-action@v6
-      with:
-        version: v1.64.7
-        working-directory: ./syntax/
-    - run: make run-alloylint
+    uses: ./.github/workflows/lint.yml
 
   test_linux:
     name: Test Linux
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4 
+      uses: actions/checkout@v4
 
     - name: Set up Go
       uses: actions/setup-go@v5

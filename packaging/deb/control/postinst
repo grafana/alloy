@@ -28,17 +28,17 @@ case "$1" in
 
         if [ ! -d /var/lib/alloy ]; then
           mkdir /var/lib/alloy
-          chown $ALLOY_USER:$ALLOY_GROUP /var/lib/alloy
+          chown "$ALLOY_USER":"$ALLOY_GROUP" /var/lib/alloy
           chmod 770 /var/lib/alloy
         fi
 
         if [ ! -d /var/lib/alloy/data ]; then
           mkdir /var/lib/alloy/data
-          chown $ALLOY_USER:$ALLOY_GROUP /var/lib/alloy/data
+          chown "$ALLOY_USER":"$ALLOY_GROUP" /var/lib/alloy/data
           chmod 770 /var/lib/alloy/data
         fi
 
-        chown root:$ALLOY_GROUP /etc/alloy
+        chown root:"$ALLOY_GROUP" /etc/alloy
         chmod 770 /etc/alloy
 
         if [ -z ${2+x} ] && [ "$RESTART_ON_UPGRADE" = "true" ]; then
