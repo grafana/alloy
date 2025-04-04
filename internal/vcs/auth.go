@@ -62,7 +62,7 @@ func (s *SSHKey) Convert() (transport.AuthMethod, error) {
 	if s.Key != "" {
 		publickeys, err := ssh.NewPublicKeys(s.Username, []byte(s.Key), string(s.Passphrase))
 		if err != nil {
-			return nil, fmt.Errorf("Loading SSH keys failed: %s", err.Error())
+			return nil, fmt.Errorf("loading SSH keys failed: %s", err.Error())
 		}
 		return publickeys, nil
 	}
@@ -70,7 +70,7 @@ func (s *SSHKey) Convert() (transport.AuthMethod, error) {
 	if s.Keyfile != "" {
 		publickeys, err := ssh.NewPublicKeysFromFile(s.Username, s.Keyfile, string(s.Passphrase))
 		if err != nil {
-			return nil, fmt.Errorf("Loading SSH keys failed: %s", err.Error())
+			return nil, fmt.Errorf("loading SSH keys failed: %s", err.Error())
 		}
 		return publickeys, nil
 	}

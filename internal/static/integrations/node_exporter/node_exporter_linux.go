@@ -1,4 +1,4 @@
-package node_exporter //nolint:golint
+package node_exporter
 
 import (
 	"github.com/prometheus/procfs/sysfs"

@@ -27,7 +27,7 @@ const (
 )
 
 var (
-	ErrNoConfig         = errors.New("No config exists for this user")
+	ErrNoConfig         = errors.New("no config exists for this user")
 	ErrResourceNotFound = errors.New("requested resource not found")
 )
 

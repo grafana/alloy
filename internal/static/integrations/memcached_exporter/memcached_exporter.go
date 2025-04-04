@@ -1,5 +1,5 @@
 // Package memcached_exporter embeds https://github.com/google/memcached_exporter
-package memcached_exporter //nolint:golint
+package memcached_exporter
 
 import (
 	"time"

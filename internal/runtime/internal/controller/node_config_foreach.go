@@ -410,7 +410,7 @@ func objectFingerprint(obj any) string {
 	case float64:
 		// Dots are not valid characters in Alloy syntax identifiers.
 		// For example, "foreach_3.14_1" should become "foreach_3_14_1".
-		return strings.Replace(fmt.Sprintf("%f", v), ".", "_", -1)
+		return strings.ReplaceAll(fmt.Sprintf("%f", v), ".", "_")
 	default:
 		return computeHash(fmt.Sprintf("%#v", v))
 	}

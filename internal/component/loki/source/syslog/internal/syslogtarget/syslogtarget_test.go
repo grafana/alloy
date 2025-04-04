@@ -63,7 +63,7 @@ ig==
 `)
 
 	// Unused, but can be useful to (re)generate some certificates
-	// nolint:deadcode,unused,varcheck
+	// nolint:unused
 	caKey = []byte(`
 -----BEGIN RSA PRIVATE KEY-----
 MIIJJwIBAAKCAgEA1wHnEwW3Gc1Q3v4FBgFL9N2rayHA7yFqViEwG8AiliaCnnN5

@@ -1,4 +1,4 @@
-package windows_exporter //nolint:golint
+package windows_exporter
 
 import (
 	"github.com/go-kit/log"

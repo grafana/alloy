@@ -1,4 +1,4 @@
-package statsd_exporter //nolint:golint
+package statsd_exporter
 
 import "github.com/prometheus/client_golang/prometheus"
 

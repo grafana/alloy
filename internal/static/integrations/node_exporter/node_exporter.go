@@ -1,6 +1,6 @@
 //go:build !windows
 
-package node_exporter //nolint:golint
+package node_exporter
 
 import (
 	"context"

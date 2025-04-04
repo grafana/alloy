@@ -67,6 +67,6 @@ func TestManager(t *testing.T) {
 	targetSetsChan <- []*targetgroup.Group{}
 
 	require.Eventually(t, func() bool {
-		return 0 == len(m.TargetsAll())
+		return len(m.TargetsAll()) == 0
 	}, time.Second, 10*time.Millisecond)
 }

@@ -324,7 +324,7 @@ func appendJsonMsg(msg *strings.Builder, fields map[string]any, key string, valu
 func appendTextMsg(msg *strings.Builder, fields map[string]any, key string, value any, format string) {
 	msg.WriteString(key)
 	msg.WriteByte('=')
-	msg.WriteString(fmt.Sprintf(format, value))
+	fmt.Fprintf(msg, format, value)
 	msg.WriteByte(' ')
 }
 

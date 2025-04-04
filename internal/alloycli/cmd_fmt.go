@@ -68,7 +68,7 @@ type alloyFmt struct {
 
 func (ff *alloyFmt) Run(configFile string) error {
 	if ff.write && ff.test {
-		return fmt.Errorf("Cannot use -w/--write and -t/--test at the same time")
+		return fmt.Errorf("cannot use -w/--write and -t/--test at the same time")
 	}
 
 	switch configFile {
@@ -118,7 +118,7 @@ func format(filename string, fi os.FileInfo, r io.Reader, write bool, test bool)
 	// If -t/--test flag is check, only check if file is formatted correctly
 	if test {
 		if !reflect.DeepEqual(bb, buf.Bytes()) {
-			return fmt.Errorf("File %s is not formatted correctly", filename)
+			return fmt.Errorf("file %s is not formatted correctly", filename)
 		}
 		return nil
 	}
