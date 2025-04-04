@@ -86,7 +86,7 @@ type Service struct {
 	sources map[string]*ast.File
 
 	authenticatorMut sync.RWMutex
-	// authentcator is applied to every request made to http server
+	// authenticator is applied to every request made to http server
 	authenticator authenticator
 
 	// publicLis and tcpLis are used to lazily enable TLS, since TLS is
