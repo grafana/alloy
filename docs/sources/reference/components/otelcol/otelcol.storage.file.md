@@ -1,9 +1,9 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.storage.file/
-aliases:
-  - ../otelcol.storage.file/ # /docs/alloy/latest/reference/components/otelcol.storage.file/
 description: Learn about otelcol.storage.file
 title: otelcol.storage.file
+labels:
+  stage: public-preview
 ---
 
 # `otelcol.storage.file`
@@ -19,14 +19,14 @@ The current implementation of this component uses [bbolt][] to store and read da
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
 {{< /admonition >}}
 
-Multiple `otelcol.storage.file` components can be specified by giving them different labels.
+You can specify multiple `otelcol.storage.file` components by giving them different labels.
 
 [bbolt]: https://github.com/etcd-io/bbolt
 
 ## Usage
 
 ```alloy
-otelcol.storage.file "LABEL" {
+otelcol.storage.file "<LABEL>" {
 }
 ```
 
@@ -43,22 +43,20 @@ You can use the following arguments with `otelcol.storage.file`:
 | `timeout`               | `time.Duration` | The timeout for file storage operations.                                                    | `1s`    | no       |
 
 The default `directory` used for file storage is a subdirectory of the `data-alloy` directory located in the {{< param "PRODUCT_NAME" >}} working directory.
-   This will vary depending on the path specified by the [command line flag][run] `--storage-path`.
+This will vary depending on the path specified by the [command line flag][run] `--storage-path`.
 
-`create_directory` is default `false` in the upstream receiver, but as `directory` defaults to using the `data-alloy` path in {{< param "PRODUCT_NAME" >}} it defaults
-to `true` as that directory is treated as owned by the {{< param "PRODUCT_NAME" >}} process.
+`create_directory` is `false` by default in the upstream receiver.  `create_directory` is `true` by default in {{< param "PRODUCT_NAME" >}} because `directory` defaults to the `data-alloy` path in {{< param "PRODUCT_NAME" >}} and that directory is owned by the {{< param "PRODUCT_NAME" >}} process.
 
 [run]: ../../../cli/run/
 
 ## Blocks
 
-The following blocks are supported inside the definition of
-`otelcol.storage.file`:
+You can use the following blocks with `otelcol.storage.file`:
 
-| Hierarchy       | Block             | Description                                                                | Required |
-|-----------------|-------------------|----------------------------------------------------------------------------|----------|
-| `compaction`    | [compaction][]    | Configures file storage compaction.                                        | no       |
-| `debug_metrics` | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no       |
+| Block                            | Description                                                                | Required |
+| -------------------------------- | -------------------------------------------------------------------------- | -------- |
+| [`compaction`][compaction]       | Configures file storage compaction.                                        | no       |
+| [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |
 
 [compaction]: #compaction
 [debug_metrics]: #debug_metrics
@@ -79,7 +77,7 @@ The `compaction` block defines the compaction parameters for the file storage.
 | `rebound_trigger_threshold_mib` | `int`           | File storage used allocated size boundary to trigger online compaction.        | `10`    | no       |
 
 The default `directory` used for file storage is a subdirectory of the `data-alloy` directory located in the {{< param "PRODUCT_NAME" >}} working directory.
-   This will vary depending on the path specified by the [command line flag][run] `--storage-path`.
+This will vary depending on the path specified by the [command line flag][run] `--storage-path`.
 
 If `on_rebound` online compaction is enabled, compaction will be triggered when total allocated data is greater than `rebound_needed_threshold_mib` and 
 used allocated data is less than `rebound_trigger_threshold_mib`. More detailed information about the way the component supports file compaction for allocated disk storage recovery can be found in the upstream component's [documentation][compaction_docs].
@@ -94,18 +92,17 @@ used allocated data is less than `rebound_trigger_threshold_mib`. More detailed 
 
 The following fields are exported and can be referenced by other components:
 
-Name | Type | Description
----- | ---- | -----------
-`handler` | `capsule(otelcol.Handler)` | A value that other components can use to persist state to file storage.
+| Name      | Type                       | Description                                                             |
+| --------- | -------------------------- | ----------------------------------------------------------------------- |
+| `handler` | `capsule(otelcol.Handler)` | A value that other components can use to persist state to file storage. |
 
 ## Component health
 
-`otelcol.storage.file` is only reported as unhealthy if given an invalid
-configuration.
+`otelcol.storage.file` is only reported as unhealthy if given an invalid configuration.
 
 ## Debug information
 
-`otelcol.storage.file` does not expose any component-specific debug information.
+`otelcol.storage.file` doesn't expose any component-specific debug information.
 
 ## Example
 
