@@ -13,7 +13,7 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/exporter"
-	"github.com/grafana/alloy/internal/component/otelcol/exporter/googlecloud/config"
+	googlecloudconfig "github.com/grafana/alloy/internal/component/otelcol/exporter/googlecloud/config"
 )
 
 func init() {
