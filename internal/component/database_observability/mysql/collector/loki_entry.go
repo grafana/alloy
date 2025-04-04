@@ -8,11 +8,13 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability"
+	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
-func buildLokiEntry(op string, instanceKey string, line string) loki.Entry {
+func buildLokiEntry(level logging.Level, op, instanceKey, line string) loki.Entry {
 	return loki.Entry{
 		Labels: model.LabelSet{
+			"level":    model.LabelValue(level),
 			"job":      database_observability.JobName,
 			"op":       model.LabelValue(op),
 			"instance": model.LabelValue(instanceKey),
