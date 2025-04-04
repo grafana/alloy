@@ -33,7 +33,7 @@ func NewBlockWithOverrideFn(name []string, label string, args component.Argument
 	return block
 }
 
-// GetValueOverrideHook returns a hook for overriding the go value of
+// GetAlloyTypesOverrideHook returns a hook for overriding the go value of
 // specific go types for converting configs from one type to another.
 func GetAlloyTypesOverrideHook() builder.ValueOverrideHook {
 	return func(val interface{}) interface{} {
