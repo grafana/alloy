@@ -279,7 +279,8 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 				cpuTime,
 				elapsedTime,
 				elapsedTime,
-			))
+			),
+		)
 	}
 
 	if err := rs.Err(); err != nil {
