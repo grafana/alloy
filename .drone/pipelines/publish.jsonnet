@@ -10,9 +10,6 @@ local linux_containers = [
   { devel: 'alloy-devel', release: 'alloy' },
   { devel: 'alloy-devel-boringcrypto', release: 'alloy-boringcrypto' },
 ];
-local windows_containers = [
-  { devel: 'alloy-devel', release: 'alloy' },
-];
 
 local linux_containers_jobs = std.map(function(container) (
   pipelines.linux('Publish Linux %s container' % container.release) {
@@ -65,44 +62,13 @@ local linux_containers_jobs = std.map(function(container) (
 ), linux_containers);
 
 
-local windows_containers_jobs = std.map(function(container) (
-  pipelines.windows('Publish Windows %s container' % container.release) {
-    trigger: {
-      ref: ['refs/tags/v*'],
-    },
-    steps: [{
-      name: 'Build containers',
-      image: build_image.windows,
-      volumes: [{
-        name: 'docker',
-        path: '//./pipe/docker_engine/',
-      }],
-      environment: {
-        DOCKER_LOGIN: secrets.docker_login.fromSecret,
-        DOCKER_PASSWORD: secrets.docker_password.fromSecret,
-        GCR_CREDS: secrets.gcr_admin.fromSecret,
-      },
-      commands: [
-        pipelines.windows_command('mkdir -p $HOME/.docker'),
-        pipelines.windows_command('printenv GCR_CREDS > $HOME/.docker/config.json'),
-        pipelines.windows_command('docker login -u $DOCKER_LOGIN -p $DOCKER_PASSWORD'),
-        pipelines.windows_command('./tools/ci/docker-containers-windows %s' % container.release),
-      ],
-    }],
-    volumes: [{
-      name: 'docker',
-      host: { path: '//./pipe/docker_engine/' },
-    }],
-  }
-), windows_containers);
-
-linux_containers_jobs + windows_containers_jobs + [
+linux_containers_jobs + [
 
   pipelines.linux('Publish release') {
     trigger: {
       ref: ['refs/tags/v*'],
     },
-    depends_on: job_names(linux_containers_jobs + windows_containers_jobs),
+    depends_on: job_names(linux_containers_jobs),
     image_pull_secrets: ['dockerconfigjson'],
     steps: [
       {
