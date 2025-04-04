@@ -8,13 +8,25 @@ logging {
 	level = "debug"
 
 	// Forward internal logs to the local Loki instance.
-	write_to = [loki.relabel.alloy_logs.receiver]
+	write_to = [loki.process.example.receiver]
+}
+
+loki.process "example" {
+   forward_to = [loki.relabel.alloy_logs.receiver]
+
+      stage.labels {
+        values = {
+            version = string.format("Hello%s", constants.version),
+        }
+    }
 }
 
 loki.relabel "alloy_logs"{
+
+
 	rule {
 		target_label = "instance"
-		replacement = constants.hostname
+		replacement = string.format("version%s", constants.version)
 	}
 
 	rule {
