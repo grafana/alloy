@@ -31,8 +31,8 @@ export const ComponentView: FC<ComponentViewProps> = (props) => {
   const location = useLocation();
   const useRemotecfg = location.pathname.startsWith('/remotecfg');
 
-  // TODO: update this condition when foreach and FM are supported
-  const showGraph = props.component.moduleInfo && !useRemotecfg && props.component.name !== 'foreach';
+  // TODO: update this condition when foreach is supported
+  const showGraph = props.component.moduleInfo && props.component.name !== 'foreach';
 
   function partitionTOC(partition: PartitionedBody): ReactElement {
     return (
@@ -52,10 +52,6 @@ export const ComponentView: FC<ComponentViewProps> = (props) => {
   }
 
   function liveDebuggingButton(): ReactElement | string {
-    if (useRemotecfg) {
-      return 'Live debugging is not yet available for remote components';
-    }
-
     if (!liveDebuggingEnabled) {
       return 'Live debugging is not yet available for this component';
     }
@@ -125,7 +121,7 @@ export const ComponentView: FC<ComponentViewProps> = (props) => {
           </a>
         </div>
 
-        {showGraph && !useRemotecfg && (
+        {showGraph && (
           <div className={styles.debugLink}>
             <a href={`graph/${pathJoin([props.component.moduleID, props.component.localID])}`}>
               <FontAwesomeIcon icon={faDiagramProject} /> Graph

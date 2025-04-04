@@ -10,7 +10,12 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Features
+
+- Add support for live debugging and graph in the UI for components imported via remotecfg. (@wildum)
+
 v1.8.0-rc.2
+
 -----------------
 
 ### Breaking changes

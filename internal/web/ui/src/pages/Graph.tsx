@@ -16,7 +16,7 @@ const DEFAULT_WINDOW = 5;
 function Graph() {
   const { '*': id } = useParams();
   const moduleID = id || '';
-  const [components] = useComponentInfo(moduleID, false);
+  const [components] = useComponentInfo(moduleID, moduleID.startsWith('remotecfg/'));
   const [window, setWindow] = useState(DEFAULT_WINDOW);
   const [sliderWindow, setSliderWindow] = useState(DEFAULT_WINDOW);
   const [enabled, setEnabled] = useState(true);
