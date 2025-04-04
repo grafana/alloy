@@ -69,7 +69,8 @@ func newTestComponent(t *testing.T, ctx context.Context) *componenttest.Controll
 	ctrl, err := componenttest.NewControllerFromID(l, "otelcol.storage.file")
 	require.NoError(t, err)
 
-	args := file.DefaultConfig
+	args := file.Arguments{}
+	args.SetToDefault()
 
 	go func() {
 		err := ctrl.Run(ctx, args)
