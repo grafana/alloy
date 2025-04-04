@@ -10,6 +10,10 @@ internal API changes are not present.
 Unreleased
 ----------
 
+### Enhancement
+
+- Add ability to specify extra rules for alloy ClusterRole. (@nejec)
+
 0.12.6 (2025-04-03)
 ----------
 ### Breaking changes
