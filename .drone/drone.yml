@@ -372,44 +372,9 @@ volumes:
     path: /var/run/docker.sock
   name: docker
 ---
-kind: pipeline
-name: Publish Windows alloy container
-platform:
-  arch: amd64
-  os: windows
-  version: "1809"
-steps:
-- commands:
-  - '& "C:/Program Files/git/bin/bash.exe" -c ''mkdir -p $HOME/.docker'''
-  - '& "C:/Program Files/git/bin/bash.exe" -c ''printenv GCR_CREDS > $HOME/.docker/config.json'''
-  - '& "C:/Program Files/git/bin/bash.exe" -c ''docker login -u $DOCKER_LOGIN -p $DOCKER_PASSWORD'''
-  - '& "C:/Program Files/git/bin/bash.exe" -c ''./tools/ci/docker-containers-windows
-    alloy'''
-  environment:
-    DOCKER_LOGIN:
-      from_secret: docker_login
-    DOCKER_PASSWORD:
-      from_secret: docker_password
-    GCR_CREDS:
-      from_secret: gcr_admin
-  image: grafana/alloy-build-image:v0.1.8-windows
-  name: Build containers
-  volumes:
-  - name: docker
-    path: //./pipe/docker_engine/
-trigger:
-  ref:
-  - refs/tags/v*
-type: docker
-volumes:
-- host:
-    path: //./pipe/docker_engine/
-  name: docker
----
 depends_on:
 - Publish Linux alloy container
 - Publish Linux alloy-boringcrypto container
-- Publish Windows alloy container
 image_pull_secrets:
 - dockerconfigjson
 kind: pipeline
@@ -545,6 +510,6 @@ kind: secret
 name: updater_private_key
 ---
 kind: signature
-hmac: 97f89e50b55b8aae91afb5a7708fe2b37c935ddc48c1a71d66bc0d56953fa68d
+hmac: 89ceb7461db70e853b2d0be511054b745584d503c3fd9b45961c991b47d99727
 
 ...
