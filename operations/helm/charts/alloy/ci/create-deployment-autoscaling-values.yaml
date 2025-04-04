@@ -2,23 +2,24 @@
 controller:
   type: deployment
   autoscaling:
-    enabled: true
-    scaleDown:
-      policies:
-        - type: Pods
-          value: 4
-          periodSeconds: 60
-      selectPolicy: Min
-      stabilizationWindowSeconds: 100
-    scaleUp:
-      policies:
-        - type: Pods
-          value: 4
-          periodSeconds: 60
-        - type: Percent
-          value: 100
-          periodSeconds: 15
-      stabilizationWindowSeconds: 80
+    horizontal:
+      enabled: true
+      scaleDown:
+        policies:
+          - type: Pods
+            value: 4
+            periodSeconds: 60
+        selectPolicy: Min
+        stabilizationWindowSeconds: 100
+      scaleUp:
+        policies:
+          - type: Pods
+            value: 4
+            periodSeconds: 60
+          - type: Percent
+            value: 100
+            periodSeconds: 15
+        stabilizationWindowSeconds: 80
 alloy:
   resources:
     requests:
