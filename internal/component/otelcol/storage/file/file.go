@@ -122,19 +122,21 @@ var (
 	defaultReboundNeededThresholdMib  int64 = 100
 	defaultCompactionInterval               = time.Second * 5
 
+	defaultCompaction = CompactionConfig{
+		// Directory:                  getDefaultDirectory(),
+		OnStart:                    false,
+		OnRebound:                  false,
+		MaxTransactionSize:         defaultMaxTransactionSize,
+		ReboundNeededThresholdMiB:  defaultReboundNeededThresholdMib,
+		ReboundTriggerThresholdMiB: defaultReboundTriggerThresholdMib,
+		CheckInterval:              defaultCompactionInterval,
+		CleanupOnStart:             false,
+	}
+
 	DefaultConfig = Arguments{
 		// Directory: getDefaultDirectory(), // Default directory must have the context of Alloy's storage.path
 		Timeout: time.Second,
-		Compaction: &CompactionConfig{
-			// Directory:                  getDefaultDirectory(),
-			OnStart:                    false,
-			OnRebound:                  false,
-			MaxTransactionSize:         defaultMaxTransactionSize,
-			ReboundNeededThresholdMiB:  defaultReboundNeededThresholdMib,
-			ReboundTriggerThresholdMiB: defaultReboundTriggerThresholdMib,
-			CheckInterval:              defaultCompactionInterval,
-			CleanupOnStart:             false,
-		},
+		// Compaction:           &defaultCompaction, // Default compaction must not be the same pointer across SetToDefault calls
 		FSync:                false,
 		CreateDirectory:      true,
 		DirectoryPermissions: "0750",
@@ -144,6 +146,9 @@ var (
 // SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = DefaultConfig
+	// Copy the default compaction config to avoid reusing the same pointer.
+	compaction := defaultCompaction
+	args.Compaction = &compaction
 	args.DebugMetrics.SetToDefault()
 }
 
