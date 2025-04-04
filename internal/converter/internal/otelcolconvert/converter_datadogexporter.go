@@ -4,9 +4,11 @@ package otelcolconvert
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/grafana/alloy/internal/component/otelcol/exporter/datadog"
 	datadog_config "github.com/grafana/alloy/internal/component/otelcol/exporter/datadog/config"
+	"github.com/grafana/alloy/internal/component/otelcol/extension"
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/grafana/alloy/syntax/alloytypes"
@@ -33,9 +35,17 @@ func (datadogExporterConverter) ConvertAndAppend(state *State, id componentstatu
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
+	overrideHook := func(val interface{}) interface{} {
+		switch val.(type) {
+		case extension.ExtensionHandler:
+			ext := state.LookupExtension(*cfg.(*datadogOtelconfig.Config).QueueSettings.StorageID)
+			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
+		}
+		return common.GetAlloyTypesOverrideHook()(val)
+	}
 
 	args := toDatadogExporter(cfg.(*datadogOtelconfig.Config))
-	block := common.NewBlockWithOverride([]string{"otelcol", "exporter", "datadog"}, label, args)
+	block := common.NewBlockWithOverrideFn([]string{"otelcol", "exporter", "datadog"}, label, args, overrideHook)
 
 	diags.Add(
 		diag.SeverityLevelInfo,

@@ -2,9 +2,11 @@ package otelcolconvert
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/otelcol/exporter/syslog"
+	"github.com/grafana/alloy/internal/component/otelcol/extension"
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/syslogexporter"
@@ -30,9 +32,17 @@ func (syslogExporterConverter) ConvertAndAppend(state *State, id componentstatus
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
+	overrideHook := func(val interface{}) interface{} {
+		switch val.(type) {
+		case extension.ExtensionHandler:
+			ext := state.LookupExtension(*cfg.(*syslogexporter.Config).QueueSettings.StorageID)
+			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
+		}
+		return common.GetAlloyTypesOverrideHook()(val)
+	}
 
 	args := toOtelcolExportersyslog(cfg.(*syslogexporter.Config))
-	block := common.NewBlockWithOverride([]string{"otelcol", "exporter", "syslog"}, label, args)
+	block := common.NewBlockWithOverrideFn([]string{"otelcol", "exporter", "syslog"}, label, args, overrideHook)
 
 	diags.Add(
 		diag.SeverityLevelInfo,

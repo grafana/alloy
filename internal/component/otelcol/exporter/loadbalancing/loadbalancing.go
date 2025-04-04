@@ -3,6 +3,7 @@ package loadbalancing
 
 import (
 	"fmt"
+	"maps"
 	"time"
 
 	"github.com/alecthomas/units"
@@ -118,6 +119,12 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	q, err := args.Queue.Convert()
+	if err != nil {
+		return nil, err
+	}
+
 	return &loadbalancingexporter.Config{
 		Protocol:   *protocol,
 		Resolver:   args.Resolver.Convert(),
@@ -126,7 +133,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 			Timeout: args.Timeout,
 		},
 		BackOffConfig: *args.Retry.Convert(),
-		QueueSettings: *args.Queue.Convert(),
+		QueueSettings: *q,
 	}, nil
 }
 
@@ -169,11 +176,16 @@ func (oc OtlpConfig) Convert() (*otlpexporter.Config, error) {
 	if err != nil {
 		return nil, err
 	}
+	q, err := oc.Queue.Convert()
+	if err != nil {
+		return nil, err
+	}
+
 	return &otlpexporter.Config{
 		TimeoutConfig: exporterhelper.TimeoutConfig{
 			Timeout: oc.Timeout,
 		},
-		QueueConfig:  *oc.Queue.Convert(),
+		QueueConfig:  *q,
 		RetryConfig:  *oc.Retry.Convert(),
 		ClientConfig: *clientConfig,
 	}, nil
@@ -346,7 +358,10 @@ func (r *AWSCloudMapResolver) Convert() *loadbalancingexporter.AWSCloudMapResolv
 
 // Extensions implements exporter.Arguments.
 func (args Arguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
-	return args.Protocol.OTLP.Client.Extensions()
+	ext := args.Protocol.OTLP.Client.Extensions()
+	maps.Copy(ext, args.Queue.Extensions())
+	maps.Copy(ext, args.Protocol.OTLP.Queue.Extensions())
+	return ext
 }
 
 // Exporters implements exporter.Arguments.

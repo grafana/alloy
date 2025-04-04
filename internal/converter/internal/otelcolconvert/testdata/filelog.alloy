@@ -1,3 +1,17 @@
+otelcol.storage.file "default" {
+	directory = "/var/lib/otelcol/file_storage"
+
+	compaction {
+		directory                     = "/var/lib/otelcol/file_storage"
+		rebound_needed_threshold_mib  = 100
+		rebound_trigger_threshold_mib = 10
+		max_transaction_size          = 65536
+		check_interval                = "5s"
+	}
+	fsync            = true
+	create_directory = false
+}
+
 otelcol.receiver.filelog "default" {
 	include            = ["/var/log/*.log"]
 	exclude            = ["/var/log/excluded.log"]
@@ -51,6 +65,7 @@ otelcol.receiver.filelog "default" {
 	include_file_path_resolved    = true
 	include_file_owner_name       = true
 	include_file_owner_group_name = true
+	storage                       = otelcol.storage.file.default.handler
 }
 
 otelcol.exporter.otlp "default" {

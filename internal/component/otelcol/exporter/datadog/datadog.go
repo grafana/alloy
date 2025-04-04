@@ -90,9 +90,14 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	defaultMetricsEndpoint := fmt.Sprintf(DATADOG_METRICS_ENDPOINT, args.APISettings.Site)
 	defaultLogsEndpoint := fmt.Sprintf(DATADOG_LOGS_ENDPOINT, args.APISettings.Site)
 
+	q, err := args.Queue.Convert()
+	if err != nil {
+		return nil, err
+	}
+
 	return &datadogOtelconfig.Config{
 		ClientConfig:  *args.Client.Convert(),
-		QueueSettings: *args.Queue.Convert(),
+		QueueSettings: *q,
 		BackOffConfig: *args.Retry.Convert(),
 		TagsConfig: datadogOtelconfig.TagsConfig{
 			Hostname: args.Hostname,
@@ -108,7 +113,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 
 // Extensions implements exporter.Arguments.
 func (args Arguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
-	return nil
+	return args.Queue.Extensions()
 }
 
 // Exporters implements exporter.Arguments.

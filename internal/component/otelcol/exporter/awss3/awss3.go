@@ -72,13 +72,18 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 
 	result.S3Uploader = args.S3Uploader.Convert()
 	result.MarshalerName = args.MarshalerName.Convert()
-	result.QueueSettings = *args.Queue.Convert()
+
+	q, err := args.Queue.Convert()
+	if err != nil {
+		return nil, err
+	}
+	result.QueueSettings = *q
 
 	return &result, nil
 }
 
 func (args Arguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
-	return nil
+	return args.Queue.Extensions()
 }
 
 func (args Arguments) Exporters() map[pipeline.Signal]map[otelcomponent.ID]otelcomponent.Component {

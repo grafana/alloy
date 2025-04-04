@@ -2,6 +2,7 @@
 package otlp
 
 import (
+	"maps"
 	"time"
 
 	"github.com/grafana/alloy/internal/component"
@@ -66,11 +67,16 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	q, err := args.Queue.Convert()
+	if err != nil {
+		return nil, err
+	}
 	return &otlpexporter.Config{
 		TimeoutConfig: otelpexporterhelper.TimeoutConfig{
 			Timeout: args.Timeout,
 		},
-		QueueConfig:  *args.Queue.Convert(),
+		QueueConfig:  *q,
 		RetryConfig:  *args.Retry.Convert(),
 		ClientConfig: *convertedClientArgs,
 	}, nil
@@ -78,7 +84,9 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 
 // Extensions implements exporter.Arguments.
 func (args Arguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
-	return (*otelcol.GRPCClientArguments)(&args.Client).Extensions()
+	ext := (*otelcol.GRPCClientArguments)(&args.Client).Extensions()
+	maps.Copy(ext, args.Queue.Extensions())
+	return ext
 }
 
 // Exporters implements exporter.Arguments.
