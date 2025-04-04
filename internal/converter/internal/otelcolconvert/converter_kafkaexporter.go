@@ -2,8 +2,10 @@ package otelcolconvert
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/grafana/alloy/internal/component/otelcol/exporter/kafka"
+	"github.com/grafana/alloy/internal/component/otelcol/extension"
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter"
@@ -27,9 +29,17 @@ func (kafkaExporterConverter) ConvertAndAppend(state *State, id componentstatus.
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
+	overrideHook := func(val interface{}) interface{} {
+		switch val.(type) {
+		case extension.ExtensionHandler:
+			ext := state.LookupExtension(*cfg.(*kafkaexporter.Config).QueueSettings.StorageID)
+			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
+		}
+		return val
+	}
 
 	args := toKafkaExporter(cfg.(*kafkaexporter.Config))
-	block := common.NewBlockWithOverride([]string{"otelcol", "exporter", "kafka"}, label, args)
+	block := common.NewBlockWithOverrideFn([]string{"otelcol", "exporter", "kafka"}, label, args, overrideHook)
 
 	diags.Add(
 		diag.SeverityLevelInfo,

@@ -8,6 +8,7 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/auth"
 	"github.com/grafana/alloy/internal/component/otelcol/exporter/otlphttp"
+	"github.com/grafana/alloy/internal/component/otelcol/extension"
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"go.opentelemetry.io/collector/component"
@@ -38,6 +39,9 @@ func (otlpHTTPExporterConverter) ConvertAndAppend(state *State, id componentstat
 		switch val.(type) {
 		case auth.Handler:
 			ext := state.LookupExtension(cfg.(*otlphttpexporter.Config).Auth.AuthenticatorID)
+			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
+		case extension.ExtensionHandler:
+			ext := state.LookupExtension(*cfg.(*otlphttpexporter.Config).QueueConfig.StorageID)
 			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
 		}
 		return val
