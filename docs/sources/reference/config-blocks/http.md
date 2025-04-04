@@ -200,7 +200,7 @@ The basic block enables basic HTTP authentication by requiring both a username a
 | Name                  | Type           | Description                                                       | Default | Required |
 | --------------------- | -------------- | ----------------------------------------------------------------- | ------- | -------- |
 | `username`            | `string`       | The username to use for basic authentication.                     |         | yes      |
-| `password`            | `string`       | The password to use for basic authentication.                     |         | yes      |
+| `password`            | `secret`       | The password to use for basic authentication.                     |         | yes      |
 
 
 ### filter block
