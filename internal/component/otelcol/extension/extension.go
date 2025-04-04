@@ -114,6 +114,7 @@ func New(opts component.Options, f otelextension.Factory, args Arguments) (*Exte
 
 // Run starts the Extension component.
 func (e *Extension) Run(ctx context.Context) error {
+	e.opts.Logger.Log("level", "info", "msg", "starting extension", "component", e.opts.ID)
 	defer e.cancel()
 	return e.sched.Run(ctx)
 }
@@ -140,7 +141,7 @@ func (e *Extension) Update(args component.Arguments) error {
 
 	mp := metric.NewMeterProvider(metric.WithReader(promExporter))
 	settings := otelextension.Settings{
-		ID: otelcomponent.NewID(e.factory.Type()),
+		ID: otelcomponent.NewIDWithName(e.factory.Type(), e.opts.ID),
 		TelemetrySettings: otelcomponent.TelemetrySettings{
 			Logger: zapadapter.New(e.opts.Logger),
 

@@ -35,6 +35,7 @@ func init() {
 			if xargs.Compaction.Directory == "" {
 				xargs.Compaction.Directory = xargs.Directory
 			}
+			opts.Logger.Log("component", "otelcol.storage.file", "name", opts.ID, "directory", xargs.Directory)
 			return extension.New(opts, fact, xargs)
 		},
 	})
@@ -78,7 +79,7 @@ type CompactionConfig struct {
 	// to mark the need for online compaction.
 	ReboundNeededThresholdMiB int64 `alloy:"rebound_needed_threshold_mib,attr,optional"`
 
-	// ReboundTriggerThresholdMiB is used when compaction is marked as needed. When allocated data size drops
+	// ReboundTriggerThresholdMiB is used when compaction is marked as needed. When used allocated data size drops
 	// below the specified value, the compaction starts and the flag marking need for compaction is cleared.
 	ReboundTriggerThresholdMiB int64 `alloy:"rebound_trigger_threshold_mib,attr,optional"`
 
@@ -135,7 +136,7 @@ var (
 			CleanupOnStart:             false,
 		},
 		FSync:                false,
-		CreateDirectory:      false,
+		CreateDirectory:      true,
 		DirectoryPermissions: "0750",
 	}
 )
@@ -203,14 +204,21 @@ func validateDirectory(dir string, createDirectory bool) error {
 // Convert implements extension.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
 	// Convert the Arguments to the underlying config type.
-	return &filestorage.Config{
+	f := &filestorage.Config{
 		Directory:            args.Directory,
 		Timeout:              args.Timeout,
 		Compaction:           args.Compaction.Convert(),
 		FSync:                args.FSync,
 		CreateDirectory:      args.CreateDirectory,
 		DirectoryPermissions: args.DirectoryPermissions,
-	}, nil
+	}
+
+	// Validate sets the internal directorypermissions mask
+	if err := f.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid file storage config: %w", err)
+	}
+
+	return f, nil
 }
 
 // ExportsHandler implements extension.Arguments.
