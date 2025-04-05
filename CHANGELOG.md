@@ -96,6 +96,9 @@ v1.8.0-rc.2
 
 - Add `tenant` label to remaining `loki_write_.+` metrics (@towolf)
 
+- The `mimir.rules.kubernetes` component now supports adding extra label matchers
+  to all queries discovered via `PrometheusRule` CRDs by extracting label values defined on the `PrometheusRule`. (@QuentinBisson)
+
 ### Bugfixes
 
 - Fix deadlocks in `loki.source.file` when tailing fails (@mblaschke)
