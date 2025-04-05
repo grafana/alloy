@@ -315,7 +315,7 @@ mimir.rules.kubernetes "default" {
 }
 ```
 
-If a query in the form of `up != 1` is found in `PrometheusRule` CRDs, it's' modified to `up{app="my-app"} != 1` before sending it to Mimir.
+If a query in the form of `up != 1` is found in `PrometheusRule` CRDs, it's modified to `up{app="my-app"} != 1` before sending it to Mimir.
 
 The following example is an RBAC configuration for Kubernetes.
 It authorizes {{< param "PRODUCT_NAME" >}} to query the Kubernetes REST API:
