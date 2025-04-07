@@ -21,6 +21,8 @@ Main (unreleased)
 - Removed syntax highlighting from the component details UI view to improve
   rendering performance. (@tpaschalis)
 
+- Add binary version to constants exposed in configuration file syntatx. (@adlots)
+
 ### Other changes
 
 - Update the zap logging adapter used by `otelcol` components to log arrays and objects. (@dehaansa)
@@ -142,7 +144,7 @@ v1.8.0-rc.2
 
 - Change the stability of the `beyla.ebpf` component from "public preview" to "generally available". (@marctc)
 
-- The ingest API of `pyrscope.receive_http` no longer forwards all received headers, instead only passes through the `Content-Type` header.
+- The ingest API of `pyrscope.receive_http` no longer forwards all received headers, instead only passes through the `Content-Type` header. 
 
 v1.7.5
 -----------------
