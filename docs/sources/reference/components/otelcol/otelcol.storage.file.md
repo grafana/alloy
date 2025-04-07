@@ -37,7 +37,7 @@ You can use the following arguments with `otelcol.storage.file`:
 | Name                    | Type            | Description                                                                                 | Default | Required |
 |-------------------------|-----------------|---------------------------------------------------------------------------------------------|---------|----------|
 | `create_directory`      | `bool`          | Will the component be responsible for creating the `directory`.                             | `true`  | no       |
-| `directory`             | `string`        | The path to the dedicated data storage directory .                                          | *       | no       |
+| `directory`             | `string`        | The path to the dedicated data storage directory.                                          | *       | no       |
 | `directory_permissions` | `string`        | The octal file permissions used when creating the `directory` if `create_directory` is set. | `0750`  | no       |
 | `fsync`                 | `bool`          | Will fsync be called after each write operation.                                            | `false` | no       |
 | `timeout`               | `time.Duration` | The timeout for file storage operations.                                                    | `1s`    | no       |
