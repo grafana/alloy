@@ -146,6 +146,11 @@ func (fn *ForeachConfigNode) Evaluate(evalScope *vm.Scope) error {
 	return err
 }
 
+func (fn *ForeachConfigNode) TypeCheck(evalScope *vm.Scope) error {
+	// FIXME: look into how this works
+	return fn.evaluate(evalScope)
+}
+
 func (fn *ForeachConfigNode) evaluate(scope *vm.Scope) error {
 	fn.mut.Lock()
 	defer fn.mut.Unlock()

@@ -121,6 +121,11 @@ func (sn *ServiceNode) Evaluate(scope *vm.Scope) error {
 	return nil
 }
 
+func (sn *ServiceNode) TypeCheck(scope *vm.Scope) error {
+	// FIXME(kalleep): Figure out how to only type check services, they are created ahead of time..
+	return nil
+}
+
 func (sn *ServiceNode) Run(ctx context.Context) error {
 	return sn.svc.Run(ctx, sn.host)
 }

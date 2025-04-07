@@ -36,6 +36,10 @@ func (cn *DeclareNode) Evaluate(scope *vm.Scope) error {
 	return nil
 }
 
+func (cn *DeclareNode) TypeCheck(scope *vm.Scope) error {
+	return nil
+}
+
 // Label returns the label of the block.
 func (cn *DeclareNode) Label() string { return cn.label }
 

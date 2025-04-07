@@ -260,7 +260,7 @@ func (cn *BuiltinComponentNode) UpdateBlock(b *ast.BlockStmt) {
 // Evaluate will return an error if the Alloy block cannot be evaluated or if
 // decoding to arguments fails.
 func (cn *BuiltinComponentNode) Evaluate(scope *vm.Scope) error {
-	err := cn.evaluate(scope)
+	err := cn.evaluate(scope, false)
 
 	switch err {
 	case nil:
@@ -272,13 +272,21 @@ func (cn *BuiltinComponentNode) Evaluate(scope *vm.Scope) error {
 	return err
 }
 
-func (cn *BuiltinComponentNode) evaluate(scope *vm.Scope) error {
+func (cn *BuiltinComponentNode) TypeCheck(scope *vm.Scope) error {
+	return cn.evaluate(scope, true)
+}
+
+func (cn *BuiltinComponentNode) evaluate(scope *vm.Scope, typeCheck bool) error {
 	cn.mut.Lock()
 	defer cn.mut.Unlock()
 
 	argsPointer := cn.reg.CloneArguments()
 	if err := cn.eval.Evaluate(scope, argsPointer); err != nil {
 		return fmt.Errorf("decoding configuration: %w", err)
+	}
+
+	if typeCheck {
+		return nil
 	}
 
 	// args is always a pointer to the args type, so we want to deference it since

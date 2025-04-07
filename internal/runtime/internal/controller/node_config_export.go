@@ -57,6 +57,10 @@ func (cn *ExportConfigNode) Evaluate(scope *vm.Scope) error {
 	return nil
 }
 
+func (cn *ExportConfigNode) TypeCheck(scope *vm.Scope) error {
+	return cn.Evaluate(scope)
+}
+
 func (cn *ExportConfigNode) Label() string { return cn.label }
 
 // Value returns the value of the export.

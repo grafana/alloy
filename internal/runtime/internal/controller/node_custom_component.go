@@ -181,6 +181,11 @@ func (cn *CustomComponentNode) Evaluate(evalScope *vm.Scope) error {
 	return err
 }
 
+func (cn *CustomComponentNode) TypeCheck(evalScope *vm.Scope) error {
+	// FIXME(kalleep): Figure out how customComponentNodes work
+	return nil
+}
+
 func (cn *CustomComponentNode) evaluate(evalScope *vm.Scope) error {
 	cn.mut.Lock()
 	defer cn.mut.Unlock()

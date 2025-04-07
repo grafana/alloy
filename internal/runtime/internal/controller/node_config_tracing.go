@@ -56,6 +56,14 @@ func NewDefaulTracingConfigNode(globals ComponentGlobals) *TracingConfigNode {
 // Evaluate will return an error if the Alloy block cannot be evaluated or if
 // decoding to arguments fails.
 func (cn *TracingConfigNode) Evaluate(scope *vm.Scope) error {
+	return cn.evaluate(scope, false)
+}
+
+func (cn *TracingConfigNode) TypeCheck(scope *vm.Scope) error {
+	return cn.evaluate(scope, true)
+}
+
+func (cn *TracingConfigNode) evaluate(scope *vm.Scope, typeCheck bool) error {
 	cn.mut.RLock()
 	defer cn.mut.RUnlock()
 	args := tracing.DefaultOptions
@@ -63,6 +71,10 @@ func (cn *TracingConfigNode) Evaluate(scope *vm.Scope) error {
 		if err := cn.eval.Evaluate(scope, &args); err != nil {
 			return fmt.Errorf("decoding configuration: %w", err)
 		}
+	}
+
+	if typeCheck {
+		return nil
 	}
 
 	t, ok := cn.traceProvider.(*tracing.Tracer)

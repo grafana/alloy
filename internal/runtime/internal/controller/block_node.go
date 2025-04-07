@@ -20,6 +20,8 @@ type BlockNode interface {
 	// decoding to arguments fails.
 	Evaluate(scope *vm.Scope) error
 
+	TypeCheck(scope *vm.Scope) error
+
 	// UpdateBlock updates the Alloy block used to construct arguments.
 	UpdateBlock(b *ast.BlockStmt)
 }

@@ -194,6 +194,11 @@ func (cn *ImportConfigNode) Evaluate(scope *vm.Scope) error {
 	return err
 }
 
+func (cn *ImportConfigNode) TypeCheck(scope *vm.Scope) error {
+	// FIXME(kalleep): Ignore import typecheck for now
+	return nil
+}
+
 // onContentUpdate is triggered every time the managed import source has new content.
 func (cn *ImportConfigNode) onContentUpdate(importedContent map[string]string) {
 	cn.mut.Lock()

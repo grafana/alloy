@@ -63,6 +63,10 @@ func (cn *ArgumentConfigNode) Evaluate(scope *vm.Scope) error {
 	return nil
 }
 
+func (cn *ArgumentConfigNode) TypeCheck(scope *vm.Scope) error {
+	return cn.Evaluate(scope)
+}
+
 func (cn *ArgumentConfigNode) Optional() bool {
 	cn.mut.RLock()
 	defer cn.mut.RUnlock()
