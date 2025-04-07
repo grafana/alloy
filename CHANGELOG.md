@@ -14,6 +14,9 @@ Main (unreleased)
 
 - Add `otelcol.exporter.googlecloud` community component to export metrics, traces, and logs to Google Cloud. (@motoki317)
 
+- Add support to configure basic authentication for alloy http server. (@kalleep)
+
+
 v1.8.0-rc.2
 -----------------
 
