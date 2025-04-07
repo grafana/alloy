@@ -8,12 +8,12 @@ weight: 300
 
 # Monitor logs from a local file with {{% param "FULL_PRODUCT_NAME" %}}
 
-Log files document events, activities, and usage patterns within a system, application, or network.
+Log files record events, activities, and usage patterns within a system, application, or network.
 These files are essential for monitoring, troubleshooting, and understanding system behavior.
-You can use {{< param "PRODUCT_NAME" >}} to collect logs, forward them to a Grafana stack, and create a Grafana dashboard to monitor system behavior.
+With {{< param "PRODUCT_NAME" >}}, you can collect your logs, forward them to a Grafana stack, and create dashboards to monitor your system behavior.
 
-The [`alloy-scenarios`][scenarios] repository contains complete working examples of {{< param "PRODUCT_NAME" >}} deployments.
-Clone the repository and use the example deployments to understand how {{< param "PRODUCT_NAME" >}} collects, processes, and exports telemetry signals.
+The [`alloy-scenarios`][scenarios] repository contains complete examples of {{< param "PRODUCT_NAME" >}} deployments.
+Clone the repository and use the examples to understand how {{< param "PRODUCT_NAME" >}} collects, processes, and exports telemetry signals.
 
 In this example scenario, {{< param "PRODUCT_NAME" >}} collects logs from a local file and forwards them to a Loki destination.
 
@@ -47,7 +47,7 @@ Follow these steps to clone the scenarios repository and deploy the monitoring e
    docker compose up -d
    ```
 
-   Check the status of the Docker containers:
+   Verify the status of the Docker containers:
 
    ```shell
    docker ps
@@ -126,7 +126,7 @@ local.file_match "local_files" {
 #### `loki.source.file`
 
 The [`loki.source.file`][loki.source.file] component reads log entries from files and forwards them to other Loki components.
-In this example, the component requires the following argument:
+In this example, the component requires the following arguments:
 
 * `targets`: The list of files to read logs from.
 * `forward_to`: The list of receivers to send log entries to.
@@ -157,4 +157,4 @@ loki.write "local" {
 
 [local.file_match]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/local/local.file_match/
 [loki.source.file]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/loki/loki.source.file/
-[loki.write]: https://grafana.com/docs/alloy/<ALLOY__VERSION>/reference/components/loki/loki.write/
+[loki.write]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/loki/loki.write/

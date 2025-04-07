@@ -9,14 +9,14 @@ weight: 600
 # Monitor Kubernetes logs with {{% param "FULL_PRODUCT_NAME" %}}
 
 Kubernetes captures logs from each container in a running Pod.  
-You can use {{< param "PRODUCT_NAME" >}} to collect Kubernetes logs, forward them to a Grafana stack, and create a Grafana dashboard to monitor your Kubernetes deployment.
+With {{< param "PRODUCT_NAME" >}}, you can collect Kubernetes logs, forward them to a Grafana stack, and create dashboards to monitor your Kubernetes Deployment.
 
-The [`alloy-scenarios`][scenarios] repository contains complete working examples of {{< param "PRODUCT_NAME" >}} deployments.  
-Clone the repository to explore how {{< param "PRODUCT_NAME" >}} collects, processes, and exports telemetry signals.
+The [`alloy-scenarios`][scenarios] repository contains complete examples of {{< param "PRODUCT_NAME" >}} deployments.  
+Clone the repository and use the examples to understand how {{< param "PRODUCT_NAME" >}} collects, processes, and exports telemetry signals.
 
 This example scenario uses a Kubernetes Monitoring Helm chart to deploy and monitor Kubernetes logs.  
 It installs three Helm charts: Loki, Grafana, and {{< param "PRODUCT_NAME" >}}.  
-The Helm chart abstracts the need to configure {{< param "PRODUCT_NAME" >}} and deploys best practices for monitoring Kubernetes clusters.
+The Helm chart simplifies configuration and deploys best practices for monitoring Kubernetes clusters.
 
 {{< param "PRODUCT_NAME" >}}, installed with `k8s-monitoring-helm`, collects two log sources: [Pod Logs][] and [Kubernetes Events][].
 
@@ -26,7 +26,7 @@ The Helm chart abstracts the need to configure {{< param "PRODUCT_NAME" >}} and 
 
 ## Before you begin
 
-This example requires:
+Ensure you have the following:
 
 * [Docker](https://www.docker.com/)  
 * [Git](https://git-scm.com/)  
@@ -35,36 +35,36 @@ This example requires:
 
 ## Clone and deploy the example
 
-Follow these steps to clone the scenarios repository and deploy the monitoring example.
+Follow these steps to clone the scenarios repository and deploy the monitoring example:
 
-1. Clone the {{< param "PRODUCT_NAME" >}} scenarios repository.
+1. Clone the {{< param "PRODUCT_NAME" >}} scenarios repository:
 
    ```shell
    git clone https://github.com/grafana/alloy-scenarios.git
    ```
 
-1. Set up the example Kubernetes environment.
+1. Set up the example Kubernetes environment:
 
-   1. Change to the `alloy-scenarios/k8s-logs` directory.
+   1. Navigate to the `alloy-scenarios/k8s-logs` directory:
 
-      ```bash
+      ```shell
       cd alloy-scenarios/k8s-logs
       ```
 
-   1. Use kind to create a local Kubernetes cluster.  
-      The `kind.yml` file provides the kind cluster configuration.
+   1. Create a local Kubernetes cluster using kind.  
+      The `kind.yml` file provides the cluster configuration:
 
       ```shell
       kind create cluster --config kind.yml
       ```
 
-   1. Add the Grafana Helm repository.
+   1. Add the Grafana Helm repository:
 
       ```shell
       helm repo add grafana https://grafana.github.io/helm-charts
       ```
 
-   1. Create the `meta` and `prod` namespaces.
+   1. Create the `meta` and `prod` namespaces:
 
       ```shell
       kubectl create namespace meta && \
@@ -73,18 +73,18 @@ Follow these steps to clone the scenarios repository and deploy the monitoring e
 
 1. Deploy Loki in the `meta` namespace.  
    Loki stores the collected logs.  
-   The `loki-values.yml` file contains the configuration for the Loki Helm chart.
+   The `loki-values.yml` file contains the Loki Helm chart configuration:
 
-   ```bash
+   ```shell
    helm install --values loki-values.yml loki grafana/loki -n meta
    ```
 
    This Helm chart installs Loki in monolithic mode.  
-   For more information on Loki modes, see the [Loki documentation](https://grafana.com/docs/loki/latest/get-started/deployment-modes/).
+   For more details, refer to the [Loki documentation](https://grafana.com/docs/loki/latest/get-started/deployment-modes/).
 
 1. Deploy Grafana in the `meta` namespace.  
    You can use Grafana to visualize the logs stored in Loki.  
-   The `grafana-values.yml` file contains the configuration for the Grafana Helm chart.
+   The `grafana-values.yml` file contains the Grafana Helm chart configuration:
 
    ```shell
    helm install --values grafana-values.yml grafana grafana/grafana --namespace meta
@@ -93,7 +93,7 @@ Follow these steps to clone the scenarios repository and deploy the monitoring e
    This Helm chart installs Grafana and sets the `datasources.datasources.yaml` field to the Loki data source configuration.
 
 1. Deploy {{< param "PRODUCT_NAME" >}} in the `meta` namespace.  
-   The `k8s-monitoring-values.yml` file contains the configuration for the Kubernetes monitoring Helm chart.
+   The `k8s-monitoring-values.yml` file contains the Kubernetes monitoring Helm chart configuration:
 
    ```shell
    helm install --values ./k8s-monitoring-values.yml k8s grafana/k8s-monitoring -n meta --create-namespace
@@ -101,36 +101,36 @@ Follow these steps to clone the scenarios repository and deploy the monitoring e
 
    This Helm chart installs {{< param "PRODUCT_NAME" >}} and specifies the Pod logs and Kubernetes Events sources that {{< param "PRODUCT_NAME" >}} collects logs from.
 
-1. Port-forward the Grafana Pod to your local machine.
+1. Port-forward the Grafana Pod to your local machine:
 
-   1. Get the name of the Grafana Pod.
+   1. Get the name of the Grafana Pod:
 
       ```shell
       export POD_NAME=$(kubectl get pods --namespace meta -l "app.kubernetes.io/name=grafana,app.kubernetes.io/instance=grafana" -o jsonpath="{.items[0].metadata.name}")
       ```
 
-   1. Use `kubectl` to set up port-forwarding.
+   1. Set up port-forwarding:
 
       ```shell
       kubectl --namespace meta port-forward $POD_NAME 3000
       ```
 
-1. Port-forward the {{< param "PRODUCT_NAME" >}} Pod to your local machine.
+1. Port-forward the {{< param "PRODUCT_NAME" >}} Pod to your local machine:
 
-   1. Get the name of the {{< param "PRODUCT_NAME" >}} Pod.
+   1. Get the name of the {{< param "PRODUCT_NAME" >}} Pod:
 
       ```shell
       export POD_NAME=$(kubectl get pods --namespace meta -l "app.kubernetes.io/name=alloy-logs,app.kubernetes.io/instance=k8s" -o jsonpath="{.items[0].metadata.name}")
       ```
 
-   1. Use `kubectl` to set up port-forwarding.
+   1. Set up port-forwarding:
 
       ```shell
       kubectl --namespace meta port-forward $POD_NAME 12345
       ```
 
-1. Deploy a default version of Grafana Tempo to the `prod` namespace.  
-   In this example, Tempo functions as the primary application generating logs.
+1. Deploy Grafana Tempo to the `prod` namespace.  
+   Tempo generates logs for this example:
 
    ```shell
    helm install tempo grafana/tempo-distributed -n prod
@@ -154,7 +154,7 @@ To create a [dashboard](https://grafana.com/docs/grafana/latest/getting-started/
 
 ## Understand the Kubernetes Monitoring Helm chart
 
-The Kubernetes Monitoring Helm chart, `k8s-monitoring-helm`, gathers, scrapes, and forwards Kubernetes telemetry data to a Grafana stack.  
+The Kubernetes Monitoring Helm chart, `k8s-monitoring-helm`, collects, scrapes, and forwards Kubernetes telemetry data to a Grafana stack.  
 This includes metrics, logs, traces, and continuous profiling data.
 
 ### `cluster`

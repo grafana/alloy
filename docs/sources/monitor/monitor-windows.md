@@ -9,12 +9,12 @@ weight: 250
 # Monitor Microsoft Windows servers and desktops with {{% param "FULL_PRODUCT_NAME" %}}
 
 Microsoft Windows provides tools like Performance Monitor and Event Viewer to track system performance metrics and event logs.
-You can use {{< param "PRODUCT_NAME" >}} to collect performance metrics and event logs, forward them to a Grafana stack, and create a Grafana dashboard to monitor Windows performance and events.
+With {{< param "PRODUCT_NAME" >}}, you can collect your performance metrics and event logs, forward them to a Grafana stack, and create dashboards to monitor your Windows performance and events.
 
-The [`alloy-scenarios`][scenarios] repository contains complete working examples of {{< param "PRODUCT_NAME" >}} deployments.
-Clone the repository to explore how {{< param "PRODUCT_NAME" >}} collects, processes, and exports telemetry signals.
+The [`alloy-scenarios`][scenarios] repository contains complete examples of {{< param "PRODUCT_NAME" >}} deployments.
+Clone the repository and use the examples to understand how {{< param "PRODUCT_NAME" >}} collects, processes, and exports telemetry signals.
 
-In this example scenario, {{< param "PRODUCT_NAME" >}} collects Windows performance metrics and event logs, and forwards them to a Loki destination.
+In this example scenario, {{< param "PRODUCT_NAME" >}} collects Windows performance metrics and event logs and forwards them to a Loki destination.
 
 [scenarios]: https://github.com/grafana/alloy-scenarios/
 
@@ -48,7 +48,7 @@ Follow these steps to clone the scenarios repository and deploy the monitoring e
    docker compose up -d
    ```
 
-   Check the status of the Docker containers:
+   Verify the status of the Docker containers:
 
    ```shell
    docker ps
@@ -57,7 +57,7 @@ Follow these steps to clone the scenarios repository and deploy the monitoring e
 1. [Install {{< param "PRODUCT_NAME" >}}][install] on Windows.
 
 1. Replace the default `config.alloy` file with the preconfigured `config.alloy` file included in the `alloy-scenarios/windows` directory.
-   For detailed steps explaining how to stop and start the {{< param "PRODUCT_NAME" >}} service, refer to [Configure {{< param "PRODUCT_NAME" >}} on Windows][configure]
+   For detailed steps explaining how to stop and start the {{< param "PRODUCT_NAME" >}} service, refer to [Configure {{< param "PRODUCT_NAME" >}} on Windows][configure].
 
    1. Stop the {{< param "PRODUCT_NAME" >}} service.
    1. Replace the `config.alloy` file in `C:\Program Files\GrafanaLabs\Alloy` with the `config.alloy` file from the `alloy-scenarios/windows` directory.
@@ -112,7 +112,7 @@ The metrics configuration in this example requires three components:
 
 #### `prometheus.exporter.windows`
 
-The [`prometheus.exporter.windows`][prometheus.exporter.windows] component exposes the hardware and OS metrics for Windows-based systems.
+The [`prometheus.exporter.windows`][prometheus.exporter.windows] component exposes hardware and OS metrics for Windows-based systems.
 In this example, the component requires the following arguments:
 
 * `enabled_collectors`: The list of collectors to enable.
@@ -125,11 +125,11 @@ prometheus.exporter.windows "default" {
 
 #### `prometheus.scrape`
 
-The [`prometheus.scrape`][prometheus.scrape] component scrapes the Windows metrics and forwards them to a receiver.
+The [`prometheus.scrape`][prometheus.scrape] component scrapes Windows metrics and forwards them to a receiver.
 In this example, the component requires the following arguments:
 
-* `targets`: The target to scrape the metrics from.
-* `forward_to`: The destination to forward the metrics to.
+* `targets`: The target to scrape metrics from.
+* `forward_to`: The destination to forward metrics to.
 
 ```alloy
 prometheus.scrape "example" {
@@ -140,8 +140,8 @@ prometheus.scrape "example" {
 
 #### `prometheus.remote_write`
 
-The [`prometheus.remote_write`][] component sends metrics to a Prometheus server.
-In this example, the component requires the following arguments:
+The [`prometheus.remote_write`][prometheus.remote_write] component sends metrics to a Prometheus server.
+In this example, the component requires the following argument:
 
 * `url`: Defines the full URL endpoint to send metrics to.
 
@@ -164,7 +164,7 @@ The logging configuration in this example requires three components:
 #### `loki.source.windowsevent`
 
 The [`loki.source.windowsevent`][loki.source.windowsevent] component reads events from Windows Event Logs and forwards them to other Loki components.
-In this example, the component needs the following arguments:
+In this example, the component requires the following arguments:
 
 * `eventlog_name`: The event log to read from.
 * `use_incoming_timestamp`: Assigns the current timestamp to the log.
@@ -189,12 +189,12 @@ loki.source.windowsevent "System"  {
 #### `loki.process`
 
 The [`loki.process`][loki.process] component receives log entries from other Loki components, applies one or more processing stages, and forwards the results to the list of receivers.
-In this example, the component needs the following arguments:
+In this example, the component requires the following arguments:
 
 * `forward_to`: The list of receivers to send log entries to.
 * `expressions`: The key-value pairs that define the name of the data extracted and the value that it's populated with.
 * `values`: The key-value pairs that define the label to set and how to look them up.
-* `souce`: Name from extracted values map to use for the timestamp.
+* `source`: Name from extracted values map to use for the timestamp.
 * `overwrite_existing`: Overwrite the existing extracted data fields.
 
 ```alloy
@@ -245,7 +245,7 @@ loki.process "endpoint" {
 #### `loki.write`
 
 The [`loki.write`][loki.write] component writes the logs out to a Loki destination.
-In this example, the component needs the following argument:
+In this example, the component requires the following argument:
 
 * `url`: Defines the full URL endpoint in Loki to send logs to.
 

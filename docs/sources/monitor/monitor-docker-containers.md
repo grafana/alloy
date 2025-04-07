@@ -9,11 +9,11 @@ weight: 200
 # Monitor Docker containers with {{% param "FULL_PRODUCT_NAME" %}}
 
 Docker containers provide statistics and logs.
-The `docker stats` and `docker logs` commands display metrics and logs in a terminal as a fixed snapshot in time.
-You can use {{< param "PRODUCT_NAME" >}} to collect metrics and logs, forward them to a Grafana stack, and create a Grafana dashboard to monitor your Docker containers.
+The `docker stats` and `docker logs` commands display metrics and logs in a terminal as a fixed snapshot.
+With {{< param "PRODUCT_NAME" >}}, you can collect your metrics and logs, forward them to a Grafana stack, and create dashboards to monitor your Docker containers.
 
-The [`alloy-scenarios`][scenarios] repository contains complete working examples of {{< param "PRODUCT_NAME" >}} deployments.
-Clone the repository and use the example deployments to understand how {{< param "PRODUCT_NAME" >}} collects, processes, and exports telemetry signals.
+The [`alloy-scenarios`][scenarios] repository contains complete examples of {{< param "PRODUCT_NAME" >}} deployments.
+Clone the repository and use the examples to understand how {{< param "PRODUCT_NAME" >}} collects, processes, and exports telemetry signals.
 
 In this example scenario, {{< param "PRODUCT_NAME" >}} collects Docker container metrics and logs and forwards them to a Loki destination.
 
@@ -32,7 +32,7 @@ You need administrator privileges to run `docker` commands.
 
 ## Clone and deploy the example
 
-Follow these steps to clone the scenarios repository and deploy the monitoring example:
+Follow these steps to clone the repository and deploy the monitoring example:
 
 1. Clone the {{< param "PRODUCT_NAME" >}} scenarios repository:
 
@@ -47,7 +47,7 @@ Follow these steps to clone the scenarios repository and deploy the monitoring e
    docker compose up -d
    ```
 
-   Check the status of the Docker containers:
+   Verify the status of the Docker containers:
 
    ```shell
    docker ps
@@ -61,7 +61,7 @@ Follow these steps to clone the scenarios repository and deploy the monitoring e
 
 ## Monitor and visualize your data
 
-Use Grafana to monitor your deployment's health and visualize your data.
+Use Grafana to monitor deployment health and visualize data.
 
 ### Monitor {{% param "PRODUCT_NAME" %}}
 
@@ -71,7 +71,7 @@ For more information about the {{< param "PRODUCT_NAME" >}} UI, refer to [Debug 
 
 ### Visualize your data
 
-To explore metrics, open your browser and go to [http://localhost:3000/explore/metrics](http://localhost:3000/explore/metrics) in your browser.
+To explore metrics, open your browser and go to [http://localhost:3000/explore/metrics](http://localhost:3000/explore/metrics).
 
 To use the Grafana Logs Drilldown, open your browser and go to [http://localhost:3000/a/grafana-lokiexplore-app](http://localhost:3000/a/grafana-lokiexplore-app).
 
@@ -79,7 +79,7 @@ To create a [dashboard](https://grafana.com/docs/grafana/latest/getting-started/
 
 ## Understand the {{% param "PRODUCT_NAME" %}} configuration
 
-This example uses a `config.alloy` file to configure the {{< param "PRODUCT_NAME" >}} components for metrics and logging.
+This example uses a `config.alloy` file to configure {{< param "PRODUCT_NAME" >}} components for metrics and logging.
 You can find this file in the cloned repository at `alloy-scenarios/docker-monitoring/`.
 
 ### Configure metrics
@@ -191,8 +191,8 @@ discovery.relabel "logs_integrations_docker" {
     source_labels = ["__meta_docker_container_name"]
     regex = "/(.*)"
     target_label = "service_name"
-    }
   }
+}
 ```
 
 #### `loki.source.docker`
@@ -234,4 +234,4 @@ loki.write "local" {
 [discovery.docker]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/discovery/discovery.docker/
 [discovery.relabel]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/discovery/discovery.relabel/
 [loki.source.docker]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/loki/loki.source.docker/
-[loki.write]: https://grafana.com/docs/alloy/<ALLOY__VERSION>/reference/components/loki/loki.write/
+[loki.write]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/loki/loki.write/

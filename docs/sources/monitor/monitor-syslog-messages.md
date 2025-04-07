@@ -2,18 +2,18 @@
 canonical: https://grafana.com/docs/alloy/latest/tutorials/scenarios/monitor-syslog-messages/
 description: Learn how to use Grafana Alloy to monitor RFC5424 compliant syslog messages
 menuTitle: Monitor syslog messages
-title: Monitor RFC5424 compliant syslog messages with Grafana Alloy
+title: Monitor RFC5424-compliant syslog messages with Grafana Alloy
 weight: 400
 ---
 
-# Monitor RFC5424 compliant syslog messages with {{% param "FULL_PRODUCT_NAME" %}}
+# Monitor RFC5424-compliant syslog messages with {{% param "FULL_PRODUCT_NAME" %}}
 
 RFC5424-compliant syslog messages follow a well-defined, standardized structure for logging.
 These logs include fields such as priority, timestamp, hostname, application name, process ID, message ID, structured data, and the actual message.
-You can use {{< param "PRODUCT_NAME" >}} to collect logs, forward them to a Grafana stack, and create a Grafana dashboard to monitor system behavior.
+With {{< param "PRODUCT_NAME" >}}, you can collect your logs, forward them to a Grafana stack, and create dashboards to monitor your system behavior.
 
-The [`alloy-scenarios`][scenarios] repository contains complete working examples of {{< param "PRODUCT_NAME" >}} deployments.
-Clone the repository to explore how {{< param "PRODUCT_NAME" >}} collects, processes, and exports telemetry signals.
+The [`alloy-scenarios`][scenarios] repository contains complete examples of {{< param "PRODUCT_NAME" >}} deployments.
+Clone the repository and use the examples to understand how {{< param "PRODUCT_NAME" >}} collects, processes, and exports telemetry signals.
 
 In this example scenario, {{< param "PRODUCT_NAME" >}} listens for syslog messages over TCP or UDP connections and forwards them to a Loki destination.
 
@@ -47,7 +47,7 @@ Follow these steps to clone the scenarios repository and deploy the monitoring e
    docker compose up -d
    ```
 
-   Check the status of the Docker containers:
+   Verify the status of the Docker containers:
 
    ```shell
    docker ps

@@ -1,6 +1,6 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/tutorials/scenarios/monitor-logs-over-tcp/
-description: Learn how to use Grafana Alloy to monitor TCP logs
+description: Learn how to use Grafana Alloy to monitor TCP logs.
 menuTitle: Monitor TCP logs
 title: Monitor TCP logs with Grafana Alloy
 weight: 350
@@ -9,8 +9,8 @@ weight: 350
 # Monitor TCP logs with {{% param "FULL_PRODUCT_NAME" %}}
 
 Writing logs over a network using raw TCP is a widely used method for transmitting log data between systems.
-It provides a direct, connection-oriented way to send logs from a client, such as an application or logging agent, to a remote server, such as a log aggregator or central logging system.
-You can use {{< param "PRODUCT_NAME" >}} to collect your logs, forward them to a Grafana stack, and create a Grafana dashboard to monitor your system behavior.
+This method provides a direct, connection-oriented way to send logs from a client, such as an application or logging agent, to a remote server, such as a log aggregator or central logging system.
+With {{< param "PRODUCT_NAME" >}}, you can collect your logs, forward them to a Grafana stack, and create dashboards to monitor your system behavior.
 
 The [`alloy-scenarios`][scenarios] repository contains complete working examples of {{< param "PRODUCT_NAME" >}} deployments.
 Clone the repository and use the example deployments to understand how {{< param "PRODUCT_NAME" >}} collects, processes, and exports telemetry signals.
@@ -47,7 +47,7 @@ Follow these steps to clone the scenarios repository and deploy the monitoring e
    docker compose up -d
    ```
 
-   Check the status of the Docker containers:
+   Verify the status of the Docker containers:
 
    ```shell
    docker ps
@@ -124,14 +124,14 @@ loki.source.api "loki_push_api" {
         listen_port = 9999
     }
     forward_to = [
-        loki.process.lables.receiver,
+        loki.process.labels.receiver,
     ]
 }
 ```
 
 #### `loki.process`
 
-The [`loki.process`][loki.process] component receives log entries from other Loki components, applies one or more processing stages, and forwards the results to the list of receivers.
+The [`loki.process`][loki.process] component receives log entries from other Loki components, applies processing stages, and forwards the results to the list of receivers.
 In this example, the component requires the following arguments:
 
 * `expressions`: Key-value pairs defining the name of the data extracted and the value it's populated with.
@@ -139,7 +139,7 @@ In this example, the component requires the following arguments:
 * `forward_to`: The list of receivers to send log entries to.
 
 ```alloy
-loki.process "lables" {
+loki.process "labels" {
     stage.json {
       expressions = { "extracted_service" = "service_name", 
                       "extracted_code_line" = "code_line", 

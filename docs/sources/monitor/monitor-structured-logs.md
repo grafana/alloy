@@ -10,10 +10,10 @@ weight: 500
 
 Structured logs use a consistent format, such as JSON, to organize data into key-value pairs.
 This format makes it easier to search, filter, and analyze log data.
-You can use {{< param "PRODUCT_NAME" >}} to collect structured logs, forward them to a Grafana stack, and create a Grafana dashboard to monitor system behavior.
+With {{< param "PRODUCT_NAME" >}}, you can collect your logs, forward them to a Grafana stack, and create dashboards to monitor your system behavior.
 
-The [`alloy-scenarios`][scenarios] repository provides complete working examples of {{< param "PRODUCT_NAME" >}} deployments.
-Clone the repository to explore how {{< param "PRODUCT_NAME" >}} collects, processes, and exports telemetry signals.
+The [`alloy-scenarios`][scenarios] repository contains complete examples of {{< param "PRODUCT_NAME" >}} deployments.
+Clone the repository and use the examples to understand how {{< param "PRODUCT_NAME" >}} collects, processes, and exports telemetry signals.
 
 In this example scenario, {{< param "PRODUCT_NAME" >}} collects log entries over HTTP, parses them into labels and structured metadata, and forwards the results to a Loki destination.
 
@@ -47,7 +47,7 @@ Follow these steps to clone the scenarios repository and deploy the monitoring e
    docker compose up -d
    ```
 
-   Check the status of the Docker containers:
+   Verify the status of the Docker containers:
 
    ```shell
    docker ps
