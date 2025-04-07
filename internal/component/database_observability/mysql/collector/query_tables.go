@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/go-kit/log"
@@ -132,25 +131,14 @@ func (c *QueryTables) fetchQueryTables(ctx context.Context) error {
 		var digest, schemaName, sampleText, sampleSeen, sampleTimerWait string
 		err := rs.Scan(&digest, &schemaName, &sampleText, &sampleSeen, &sampleTimerWait)
 		if err != nil {
-			level.Error(c.logger).Log("msg", "failed to scan result set from summary table samples", "err", err)
+			level.Error(c.logger).Log("msg", "failed to scan result set from summary table samples", "schema", schemaName, "err", err)
 			continue
 		}
 
-		if strings.HasSuffix(sampleText, "...") {
-			// best-effort attempt to detect truncated trailing comment
-			idx := strings.LastIndex(sampleText, "/*")
-			if idx < 0 {
-				level.Debug(c.logger).Log("msg", "skipping parsing truncated query", "schema", schemaName, "digest", digest)
-				continue
-			}
-
-			trailingText := sampleText[idx:]
-			if strings.LastIndex(trailingText, "*/") >= 0 {
-				level.Debug(c.logger).Log("msg", "skipping parsing truncated query with comment", "schema", schemaName, "digest", digest)
-				continue
-			}
-
-			sampleText = sampleText[:idx]
+		sampleText, err = c.sqlParser.CleanTruncatedText(sampleText)
+		if err != nil {
+			level.Error(c.logger).Log("msg", "failed to handle truncated sql query", "schema", schemaName, "digest", digest, "err", err)
+			continue
 		}
 
 		stmt, err := c.sqlParser.Parse(sampleText)
