@@ -21,6 +21,10 @@ Main (unreleased)
 - Removed syntax highlighting from the component details UI view to improve
   rendering performance. (@tpaschalis)
 
+### Other changes
+
+- Update the zap logging adapter used by `otelcol` components to log arrays and objects. (@dehaansa)
+
 v1.8.0-rc.2
 -----------------
 
