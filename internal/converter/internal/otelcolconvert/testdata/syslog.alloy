@@ -43,6 +43,7 @@ otelcol.receiver.syslog "default" {
 			max_queue_length = 1000
 		}
 	}
+	on_error = "drop"
 }
 
 otelcol.exporter.syslog "default" {

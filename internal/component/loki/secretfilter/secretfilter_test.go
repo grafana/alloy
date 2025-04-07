@@ -518,7 +518,7 @@ func runTest(t *testing.T, config string, gitLeaksConfigContent string, inputLog
 	require.NoError(t, err)
 
 	// Run it
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	go func() {

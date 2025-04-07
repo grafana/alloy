@@ -57,6 +57,16 @@ func (args *Arguments) SetToDefault() {
 	args.Queue.SetToDefault()
 }
 
+// Validate implements syntax.Validator.
+func (args *Arguments) Validate() error {
+	otelCfg, err := args.Convert()
+	if err != nil {
+		return err
+	}
+	awss3Cfg := otelCfg.(*awss3exporter.Config)
+	return awss3Cfg.Validate()
+}
+
 func (args Arguments) Convert() (otelcomponent.Config, error) {
 	var result awss3exporter.Config
 
@@ -81,37 +91,46 @@ func (args Arguments) DebugMetricsConfig() otelcolCfg.DebugMetricsArguments {
 
 // S3 Uploader Arguments Block
 type S3Uploader struct {
-	Region           string                 `alloy:"region,attr,optional"`
-	S3Bucket         string                 `alloy:"s3_bucket,attr"`
-	S3Prefix         string                 `alloy:"s3_prefix,attr"`
-	S3Partition      string                 `alloy:"s3_partition,attr,optional"`
-	RoleArn          string                 `alloy:"role_arn,attr,optional"`
-	FilePrefix       string                 `alloy:"file_prefix,attr,optional"`
-	Endpoint         string                 `alloy:"endpoint,attr,optional"`
-	S3ForcePathStyle bool                   `alloy:"s3_force_path_style,attr,optional"`
-	DisableSSL       bool                   `alloy:"disable_ssl,attr,optional"`
-	Compression      configcompression.Type `alloy:"compression,attr,optional"`
+	Region            string                 `alloy:"region,attr,optional"`
+	S3Bucket          string                 `alloy:"s3_bucket,attr"`
+	S3Prefix          string                 `alloy:"s3_prefix,attr"`
+	S3PartitionFormat string                 `alloy:"s3_partition_format,attr,optional"`
+	RoleArn           string                 `alloy:"role_arn,attr,optional"`
+	FilePrefix        string                 `alloy:"file_prefix,attr,optional"`
+	Endpoint          string                 `alloy:"endpoint,attr,optional"`
+	S3ForcePathStyle  bool                   `alloy:"s3_force_path_style,attr,optional"`
+	DisableSSL        bool                   `alloy:"disable_ssl,attr,optional"`
+	Compression       configcompression.Type `alloy:"compression,attr,optional"`
+	ACL               string                 `alloy:"acl,attr,optional"`
+	StorageClass      string                 `alloy:"storage_class,attr,optional"`
 }
 
 func (args *S3Uploader) SetToDefault() {
 	*args = S3Uploader{
-		Region:           "us-east-1",
-		S3ForcePathStyle: false,
-		DisableSSL:       false,
+		Region:            "us-east-1",
+		S3ForcePathStyle:  false,
+		DisableSSL:        false,
+		S3PartitionFormat: "year=%Y/month=%m/day=%d/hour=%H/minute=%M",
+		Compression:       "none",
+		ACL:               "private",
+		StorageClass:      "STANDARD",
 	}
 }
 
 func (args *S3Uploader) Convert() awss3exporter.S3UploaderConfig {
 	return awss3exporter.S3UploaderConfig{
-		Region:           args.Region,
-		S3Bucket:         args.S3Bucket,
-		S3Prefix:         args.S3Prefix,
-		S3Partition:      args.S3Partition,
-		FilePrefix:       args.FilePrefix,
-		Endpoint:         args.Endpoint,
-		RoleArn:          args.RoleArn,
-		S3ForcePathStyle: args.S3ForcePathStyle,
-		DisableSSL:       args.DisableSSL,
+		Region:            args.Region,
+		S3Bucket:          args.S3Bucket,
+		S3Prefix:          args.S3Prefix,
+		S3PartitionFormat: args.S3PartitionFormat,
+		FilePrefix:        args.FilePrefix,
+		Endpoint:          args.Endpoint,
+		RoleArn:           args.RoleArn,
+		S3ForcePathStyle:  args.S3ForcePathStyle,
+		DisableSSL:        args.DisableSSL,
+		Compression:       args.Compression,
+		ACL:               args.ACL,
+		StorageClass:      args.StorageClass,
 	}
 }
 

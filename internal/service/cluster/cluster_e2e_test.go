@@ -21,6 +21,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/alloycli"
 	"github.com/grafana/alloy/internal/featuregate"
@@ -36,21 +37,24 @@ import (
 )
 
 type testCase struct {
-	name                 string
-	nodeCountInitial     int
-	initialIsolatedNodes []string // list of node names that are initially in isolated network space
-	assertionsInitial    func(t *assert.CollectT, state *testState)
-	changes              func(state *testState)
-	assertionsFinal      func(t *assert.CollectT, state *testState)
-	assertionsTimeout    time.Duration
-	extraAllowedErrors   []string
-	alloyConfig          string
+	name                   string
+	nodeCountInitial       int
+	initialIsolatedNodes   []string // list of node names that are initially in isolated network space
+	assertionsInitial      func(t *assert.CollectT, state *testState)
+	changes                func(state *testState)
+	assertionsFinal        func(t *assert.CollectT, state *testState)
+	assertionsTimeout      time.Duration
+	extraAllowedErrors     []string
+	alloyConfig            string
+	minimumClusterSize     int
+	minimumSizeWaitTimeout time.Duration
 }
 
 func TestClusterE2E(t *testing.T) {
 	tests := []testCase{
 		{
 			name:             "three nodes just join",
+			alloyConfig:      `testcomponents.cluster_state_tracker "foo" {}`,
 			nodeCountInitial: 3,
 			assertionsInitial: func(t *assert.CollectT, state *testState) {
 				for _, p := range state.peers {
@@ -58,8 +62,10 @@ func TestClusterE2E(t *testing.T) {
 						`cluster_node_info{state="participant"} 1`,
 						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 3`,
 						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 3`,
+						`cluster_state{component_id="testcomponents.cluster_state_tracker.foo",component_path="/",peers="node-0___node-1___node-2",ready="true"} 3`,
 					)
 					verifyPeers(t, p, 3)
+					verifyClusterReady(t, p)
 				}
 				verifyLookupInvariants(t, state.peers)
 			},
@@ -68,16 +74,18 @@ func TestClusterE2E(t *testing.T) {
 			name:             "three nodes with slow components",
 			nodeCountInitial: 3,
 			alloyConfig: `
-testcomponents.ticker "tick" {
-	period = "500ms"
-	max_value = 30
-}
+   		testcomponents.cluster_state_tracker "foo" {}
 
-testcomponents.slow_update "test" {
-	counter = testcomponents.ticker.tick.counter
-	update_lag = "5s"
-}
-`,
+		testcomponents.ticker "tick" {
+			period = "500ms"
+			max_value = 30
+		}
+		
+		testcomponents.slow_update "test" {
+			counter = testcomponents.ticker.tick.counter
+			update_lag = "5s"
+		}
+		`,
 			assertionsInitial: func(t *assert.CollectT, state *testState) {
 				for _, p := range state.peers {
 					verifyMetrics(t, p,
@@ -86,14 +94,17 @@ testcomponents.slow_update "test" {
 						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 3`,
 						`ticker_counter{component_id="testcomponents.ticker.tick",component_path="/"} 30`,
 						`slow_update_counter{component_id="testcomponents.slow_update.test",component_path="/"} 30`,
+						`cluster_state{component_id="testcomponents.cluster_state_tracker.foo",component_path="/",peers="node-0___node-1___node-2",ready="true"} 3`,
 					)
 					verifyPeers(t, p, 3)
+					verifyClusterReady(t, p)
 				}
 				verifyLookupInvariants(t, state.peers)
 			},
 		},
 		{
 			name:             "4 nodes are joined by another 4 nodes",
+			alloyConfig:      `testcomponents.cluster_state_tracker "foo" {}`,
 			nodeCountInitial: 4,
 			assertionsInitial: func(t *assert.CollectT, state *testState) {
 				for _, p := range state.peers {
@@ -101,8 +112,10 @@ testcomponents.slow_update "test" {
 						`cluster_node_info{state="participant"} 1`,
 						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 4`,
 						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`,
+						`cluster_state{component_id="testcomponents.cluster_state_tracker.foo",component_path="/",peers="node-0___node-1___node-2___node-3",ready="true"} 4`,
 					)
 					verifyPeers(t, p, 4)
+					verifyClusterReady(t, p)
 				}
 				verifyLookupInvariants(t, state.peers)
 			},
@@ -117,17 +130,21 @@ testcomponents.slow_update "test" {
 						`cluster_node_info{state="participant"} 1`,
 						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 8`,
 						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 8`,
+						`cluster_state{component_id="testcomponents.cluster_state_tracker.foo",component_path="/",peers="new-node-0___new-node-1___new-node-2___new-node-3___node-0___node-1___node-2___node-3",ready="true"} 8`,
 					)
 					verifyPeers(t, p, 8)
+					verifyClusterReady(t, p)
 				}
 				verifyLookupInvariants(t, state.peers)
 			},
 		},
 		{
 			name:             "8 node cluster - 4 nodes leave",
+			alloyConfig:      `testcomponents.cluster_state_tracker "foo" {}`,
 			nodeCountInitial: 8,
 			extraAllowedErrors: []string{
 				"failed to rejoin list of peers",
+				"failed to broadcast leave message to cluster",
 			},
 			assertionsInitial: func(t *assert.CollectT, state *testState) {
 				for _, p := range state.peers {
@@ -135,8 +152,10 @@ testcomponents.slow_update "test" {
 						`cluster_node_info{state="participant"} 1`,
 						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 8`,
 						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 8`,
+						`cluster_state{component_id="testcomponents.cluster_state_tracker.foo",component_path="/",peers="node-0___node-1___node-2___node-3___node-4___node-5___node-6___node-7",ready="true"} 8`,
 					)
 					verifyPeers(t, p, 8)
+					verifyClusterReady(t, p)
 				}
 				verifyLookupInvariants(t, state.peers)
 			},
@@ -152,14 +171,17 @@ testcomponents.slow_update "test" {
 						`cluster_node_info{state="participant"} 1`,
 						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 4`,
 						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`,
+						`cluster_state{component_id="testcomponents.cluster_state_tracker.foo",component_path="/",peers="node-4___node-5___node-6___node-7",ready="true"} 4`,
 					)
 					verifyPeers(t, p, 4)
+					verifyClusterReady(t, p)
 				}
 				verifyLookupInvariants(t, state.peers)
 			},
 		},
 		{
 			name:             "4 nodes are joined by a node with a name conflict",
+			alloyConfig:      `testcomponents.cluster_state_tracker "foo" {}`,
 			nodeCountInitial: 4,
 			extraAllowedErrors: []string{
 				`Conflicting address for node-0`,
@@ -171,8 +193,10 @@ testcomponents.slow_update "test" {
 						`cluster_node_info{state="participant"} 1`,
 						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 4`,
 						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`,
+						`cluster_state{component_id="testcomponents.cluster_state_tracker.foo",component_path="/",peers="node-0___node-1___node-2___node-3",ready="true"} 4`,
 					)
 					verifyPeers(t, p, 4)
+					verifyClusterReady(t, p)
 				}
 				verifyLookupInvariants(t, state.peers)
 			},
@@ -187,7 +211,9 @@ testcomponents.slow_update "test" {
 						`cluster_node_info{state="participant"} 1`,
 						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 4`,
 						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`,
+						`cluster_state{component_id="testcomponents.cluster_state_tracker.foo",component_path="/",peers="node-0___node-1___node-2___node-3",ready="true"} 4`,
 					)
+					verifyClusterReady(t, p)
 					verifyPeers(t, p, 4)
 					// NOTE: this and error logs are the only reliable indication that something went wrong...
 					// Currently, the cluster will continue operating with name conflicts, potentially doing some
@@ -199,6 +225,7 @@ testcomponents.slow_update "test" {
 		},
 		{
 			name:             "two split brain clusters join together after network fixed",
+			alloyConfig:      `testcomponents.cluster_state_tracker "foo" {}`,
 			nodeCountInitial: 4,
 			initialIsolatedNodes: []string{
 				"node-1", "node-2",
@@ -210,6 +237,16 @@ testcomponents.slow_update "test" {
 						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 2`,
 						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 2`,
 					)
+					if p.nodeName == "node-1" || p.nodeName == "node-2" {
+						verifyMetrics(t, p,
+							`cluster_state{component_id="testcomponents.cluster_state_tracker.foo",component_path="/",peers="node-1___node-2",ready="true"} 2`,
+						)
+					} else {
+						verifyMetrics(t, p,
+							`cluster_state{component_id="testcomponents.cluster_state_tracker.foo",component_path="/",peers="node-0___node-3",ready="true"} 2`,
+						)
+					}
+					verifyClusterReady(t, p)
 					verifyPeers(t, p, 2)
 				}
 			},
@@ -222,10 +259,132 @@ testcomponents.slow_update "test" {
 						`cluster_node_info{state="participant"} 1`,
 						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 4`,
 						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`,
+						`cluster_state{component_id="testcomponents.cluster_state_tracker.foo",component_path="/",peers="node-0___node-1___node-2___node-3",ready="true"} 4`,
 					)
+					verifyClusterReady(t, p)
 					verifyPeers(t, p, 4)
 				}
 				verifyLookupInvariants(t, state.peers)
+			},
+		},
+		{
+			name:               "cluster with minimum size - sufficient nodes join",
+			alloyConfig:        `testcomponents.cluster_state_tracker "foo" {}`,
+			nodeCountInitial:   4,
+			minimumClusterSize: 5,
+			assertionsInitial: func(t *assert.CollectT, state *testState) {
+				for _, p := range state.peers {
+					verifyMetrics(t, p,
+						`cluster_node_info{state="participant"} 1`,
+						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 4`,
+						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`,
+						`cluster_state{component_id="testcomponents.cluster_state_tracker.foo",component_path="/",peers="node-0___node-1___node-2___node-3",ready="false"} 4`,
+						`cluster_minimum_size{cluster_name="cluster_e2e_test"} 5`,
+						`cluster_ready_for_traffic{cluster_name="cluster_e2e_test"} 0`,
+					)
+					verifyClusterNotReady(t, p)
+				}
+			},
+			changes: func(state *testState) {
+				startNewNode(t, state, "node-4")
+			},
+			assertionsFinal: func(t *assert.CollectT, state *testState) {
+				for _, p := range state.peers {
+					verifyMetrics(t, p,
+						`cluster_node_info{state="participant"} 1`,
+						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 5`,
+						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 5`,
+						`cluster_state{component_id="testcomponents.cluster_state_tracker.foo",component_path="/",peers="node-0___node-1___node-2___node-3___node-4",ready="true"} 5`,
+						`cluster_minimum_size{cluster_name="cluster_e2e_test"} 5`,
+						`cluster_ready_for_traffic{cluster_name="cluster_e2e_test"} 1`,
+					)
+					verifyClusterReady(t, p)
+					verifyPeers(t, p, 5)
+				}
+				verifyLookupInvariants(t, state.peers)
+			},
+		},
+		{
+			name:                   "too small cluster - deadline passes",
+			alloyConfig:            `testcomponents.cluster_state_tracker "foo" {}`,
+			nodeCountInitial:       4,
+			minimumClusterSize:     5,
+			minimumSizeWaitTimeout: 5 * time.Second,
+			extraAllowedErrors: []string{
+				`"deadline passed, marking cluster as ready to admit traffic"`,
+			},
+			assertionsInitial: func(t *assert.CollectT, state *testState) {
+				for _, p := range state.peers {
+					verifyMetrics(t, p,
+						`cluster_node_info{state="participant"} 1`,
+						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 4`,
+						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`,
+						`cluster_state{component_id="testcomponents.cluster_state_tracker.foo",component_path="/",peers="node-0___node-1___node-2___node-3",ready="false"} 4`,
+						`cluster_minimum_size{cluster_name="cluster_e2e_test"} 5`,
+						`cluster_ready_for_traffic{cluster_name="cluster_e2e_test"} 0`,
+					)
+					verifyClusterNotReady(t, p)
+				}
+			},
+			changes: func(state *testState) {
+				// TODO(thampiotr): will need a timer that after deadline passed we trigger updates
+				time.Sleep(5 * time.Second)
+			},
+			assertionsFinal: func(t *assert.CollectT, state *testState) {
+				for _, p := range state.peers {
+					verifyMetrics(t, p,
+						`cluster_node_info{state="participant"} 1`,
+						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 4`,
+						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`,
+						`cluster_state{component_id="testcomponents.cluster_state_tracker.foo",component_path="/",peers="node-0___node-1___node-2___node-3",ready="true"} 4`,
+						`cluster_minimum_size{cluster_name="cluster_e2e_test"} 5`,
+						`cluster_ready_for_traffic{cluster_name="cluster_e2e_test"} 1`,
+					)
+					verifyClusterReady(t, p)
+					verifyPeers(t, p, 4)
+				}
+				verifyLookupInvariants(t, state.peers)
+			},
+		},
+		{
+			name:               "cluster dips below minimum size",
+			alloyConfig:        `testcomponents.cluster_state_tracker "foo" {}`,
+			nodeCountInitial:   5,
+			minimumClusterSize: 5,
+			extraAllowedErrors: []string{
+				`"minimum cluster size requirements are not met - marking cluster as not ready for traffic"`,
+				"failed to broadcast leave message to cluster",
+			},
+			assertionsInitial: func(t *assert.CollectT, state *testState) {
+				for _, p := range state.peers {
+					verifyMetrics(t, p,
+						`cluster_node_info{state="participant"} 1`,
+						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 5`,
+						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 5`,
+						`cluster_state{component_id="testcomponents.cluster_state_tracker.foo",component_path="/",peers="node-0___node-1___node-2___node-3___node-4",ready="true"} 5`,
+						`cluster_minimum_size{cluster_name="cluster_e2e_test"} 5`,
+						`cluster_ready_for_traffic{cluster_name="cluster_e2e_test"} 1`,
+					)
+					verifyClusterReady(t, p)
+					verifyPeers(t, p, 5)
+				}
+			},
+			changes: func(state *testState) {
+				state.peers[0].shutdown()
+				state.peers = state.peers[1:]
+			},
+			assertionsFinal: func(t *assert.CollectT, state *testState) {
+				for _, p := range state.peers {
+					verifyMetrics(t, p,
+						`cluster_node_info{state="participant"} 1`,
+						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 4`,
+						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`,
+						`cluster_state{component_id="testcomponents.cluster_state_tracker.foo",component_path="/",peers="node-1___node-2___node-3___node-4",ready="false"} 4`,
+						`cluster_minimum_size{cluster_name="cluster_e2e_test"} 5`,
+						`cluster_ready_for_traffic{cluster_name="cluster_e2e_test"} 0`,
+					)
+					verifyClusterNotReady(t, p)
+				}
 			},
 		},
 	}
@@ -251,7 +410,7 @@ testcomponents.slow_update "test" {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			setDefaults(&tc)
-			ctx, cancel := context.WithTimeout(context.Background(), tc.assertionsTimeout*2+5*time.Second)
+			ctx, cancel := context.WithTimeout(t.Context(), tc.assertionsTimeout*2+5*time.Second)
 			defer cancel()
 
 			state := &testState{
@@ -267,22 +426,37 @@ testcomponents.slow_update "test" {
 
 			assert.EventuallyWithT(t, func(t *assert.CollectT) {
 				tc.assertionsInitial(t, state)
-			}, 60*time.Second, 200*time.Millisecond)
-			t.Logf("Initial assertions passed")
+			}, 60*time.Second, 1*time.Second)
+			t.Logf("Initial assertions checked")
 
 			tc.changes(state)
 			t.Logf("Changes applied")
 
 			assert.EventuallyWithT(t, func(t *assert.CollectT) {
 				tc.assertionsFinal(t, state)
-			}, 60*time.Second, 200*time.Millisecond)
-			t.Logf("Final assertions passed")
+			}, 60*time.Second, 1*time.Second)
+			t.Logf("Final assertions checked")
 
+			for _, p := range state.peers {
+				p.logsWriter.disableErrorChecking.Store(true) // stop checking log errors for shutdown
+			}
 			cancel()
 			state.shutdownGroup.Wait()
 			t.Logf("Shutdown complete")
 		})
 	}
+}
+
+func verifyClusterNotReady(t *assert.CollectT, p *testPeer) {
+	clusterService, ok := p.clusterService.Data().(cluster.Cluster)
+	require.True(t, ok)
+	require.False(t, clusterService.Ready(), "Cluster should not be ready")
+}
+
+func verifyClusterReady(t *assert.CollectT, p *testPeer) {
+	clusterService, ok := p.clusterService.Data().(cluster.Cluster)
+	require.True(t, ok)
+	require.True(t, clusterService.Ready(), "Cluster should be ready")
 }
 
 type testPeer struct {
@@ -294,6 +468,7 @@ type testPeer struct {
 	shutdown          context.CancelFunc
 	mutex             sync.Mutex
 	discoverablePeers []string // list of peers that this peer can discover
+	logsWriter        *logsWriter
 }
 
 func (p *testPeer) discoveryFn(_ discovery.Options) (discovery.DiscoverFn, error) {
@@ -344,13 +519,14 @@ func startNewNode(t *testing.T, state *testState, nodeName string) {
 	}
 
 	nodeDirPath := path.Join(t.TempDir(), nodeName)
+	newPeer.logsWriter = &logsWriter{
+		t:                  t,
+		out:                os.Stdout,
+		prefix:             fmt.Sprintf("%s: ", nodeName),
+		extraAllowedErrors: state.testCase.extraAllowedErrors,
+	}
 	logger, err := logging.New(
-		&logsWriter{
-			t:                  t,
-			out:                os.Stdout,
-			prefix:             fmt.Sprintf("%s: ", nodeName),
-			extraAllowedErrors: state.testCase.extraAllowedErrors,
-		},
+		newPeer.logsWriter,
 		logging.Options{
 			Level:  logging.LevelDebug,
 			Format: logging.FormatDefault,
@@ -367,14 +543,16 @@ func startNewNode(t *testing.T, state *testState, nodeName string) {
 		Tracer:  tracer,
 		Metrics: reg,
 
-		EnableClustering:    true,
-		NodeName:            nodeName,
-		AdvertiseAddress:    nodeAddress,
-		ListenAddress:       nodeAddress,
-		RejoinInterval:      1 * time.Second,
-		AdvertiseInterfaces: advertise.DefaultInterfaces,
-		ClusterMaxJoinPeers: 5,
-		ClusterName:         "cluster_e2e_test",
+		EnableClustering:       true,
+		NodeName:               nodeName,
+		AdvertiseAddress:       nodeAddress,
+		ListenAddress:          nodeAddress,
+		RejoinInterval:         1 * time.Second,
+		AdvertiseInterfaces:    advertise.DefaultInterfaces,
+		ClusterMaxJoinPeers:    5,
+		ClusterName:            "cluster_e2e_test",
+		MinimumClusterSize:     state.testCase.minimumClusterSize,
+		MinimumSizeWaitTimeout: state.testCase.minimumSizeWaitTimeout,
 	}, newPeer.discoveryFn)
 	require.NoError(t, err)
 	newPeer.clusterService = clusterService
@@ -510,10 +688,11 @@ func getFreePort(t *testing.T) int {
 }
 
 type logsWriter struct {
-	t                  *testing.T
-	out                io.Writer
-	prefix             string
-	extraAllowedErrors []string
+	t                    *testing.T
+	out                  io.Writer
+	prefix               string
+	extraAllowedErrors   []string
+	disableErrorChecking atomic.Bool
 }
 
 var errorsAllowlist = []string{
@@ -521,20 +700,19 @@ var errorsAllowlist = []string{
 	"failed to extract directory path from configPath",              // unrelated to this test
 	"failed to connect to peers; bootstrapping a new cluster",       // should be allowed only once for first node
 	`msg="node exited with error" node=remotecfg err="noop client"`, // related to remotecfg service mock ups
-	`msg="failed to rejoin list of peers"`,                          // at shutdown, various failures can happen
-	"failed to broadcast leave message to cluster",                  // TODO: don't fail test on shutdown errors?
-	`msg="Failed to send error: http2: stream closed`,
-	`msg="failed to receive: i/o timeout`,
-	`msg="failed to receive and remove the stream label header`,
+	`msg="failed to rejoin list of peers"`,                          // this is because list of initial join peers is fixed in tests
+	`stream closed`,
+	`i/o timeout`,
+	`failed to receive and remove the stream label header`,
 }
 
 func (w *logsWriter) Write(p []byte) (n int, err error) {
 	prefixed := []byte(w.prefix)
 	prefixed = append(prefixed, p...)
 
-	// Check for warnings or errors in the log message
+	// Check for warnings or errors in the log message if not disabled
 	logMsg := string(p)
-	if strings.Contains(logMsg, "level=warn") || strings.Contains(logMsg, "level=error") {
+	if !w.disableErrorChecking.Load() && (strings.Contains(logMsg, "level=warn") || strings.Contains(logMsg, "level=error")) {
 		isAllowed := false
 
 		// Check against global allowlist
@@ -571,6 +749,7 @@ func verifyLookupInvariants(t *assert.CollectT, peers []*testPeer) {
 
 			owningPeers, err := clusterService.Lookup(key, 1, shard.OpReadWrite)
 			require.NoError(t, err, "Lookup should not fail")
+			require.Len(t, owningPeers, 1, "Lookup should return exactly one peer for key %q", s)
 
 			var ownerNames []string
 			for _, owner := range owningPeers {

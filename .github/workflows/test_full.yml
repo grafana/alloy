@@ -6,9 +6,9 @@ on:
 jobs:
   test_linux:
     name: Test (Full)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-8-cores
     container:
-      image: grafana/alloy-build-image:v0.1.8
+      image: grafana/alloy-build-image:v0.1.17
       volumes:
         - /var/run/docker.sock
     steps:

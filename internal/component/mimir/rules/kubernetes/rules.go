@@ -521,6 +521,7 @@ func newComponentLeadership(id string, logger log.Logger, cluster cluster.Cluste
 }
 
 func (l *componentLeadership) update() (bool, error) {
+	// NOTE: since this is leader election, it is okay to NOT check if cluster is ready.
 	peers, err := l.cluster.Lookup(shard.StringKey(l.id), 1, shard.OpReadWrite)
 	if err != nil {
 		return false, fmt.Errorf("unable to determine leader for %s: %w", l.id, err)

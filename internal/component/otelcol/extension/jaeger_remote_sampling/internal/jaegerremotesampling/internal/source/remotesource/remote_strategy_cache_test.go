@@ -1,7 +1,7 @@
 // Copyright The OpenTelemetry Authors
 // SPDX-License-Identifier: Apache-2.0
 
-package internal
+package remotesource
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/fortytw2/leaktest"
-	"github.com/jaegertracing/jaeger/proto-gen/api_v2"
+	"github.com/jaegertracing/jaeger-idl/proto-gen/api_v2"
 	"github.com/jonboulle/clockwork"
 	"github.com/stretchr/testify/assert"
 )
@@ -51,7 +51,7 @@ func Test_serviceStrategyCache_ReadWriteSequence(t *testing.T) {
 	mock := clockwork.NewFakeClockAt(testTime)
 	_ = mock.After(3 * time.Minute)
 
-	ctx, cancel := context.WithCancel(clockwork.AddToContext(context.Background(), mock))
+	ctx, cancel := context.WithCancel(clockwork.AddToContext(t.Context(), mock))
 	defer cancel()
 
 	cache := newServiceStrategyCache(cacheTestItemTTL).(*serviceStrategyTTLCache)
@@ -136,7 +136,7 @@ func Test_serviceStrategyCache_WritesUpdateTimestamp(t *testing.T) {
 	mock := clockwork.NewFakeClockAt(startTime)
 	_ = mock.After(3 * time.Minute)
 
-	ctx, cancel := context.WithCancel(clockwork.AddToContext(context.Background(), mock))
+	ctx, cancel := context.WithCancel(clockwork.AddToContext(t.Context(), mock))
 	defer cancel()
 
 	cache := newServiceStrategyCache(cacheTestItemTTL).(*serviceStrategyTTLCache)
@@ -239,7 +239,7 @@ func Test_serviceStrategyCache_Concurrency(t *testing.T) {
 	// newServiceStrategyCache invokes this as well but with a practically-motivated period that is too long for tests.
 	// We should at least exercise it for consideration by the race detector.
 	// NB: We don't use a mock clock in this concurrency test case.
-	go cache.periodicallyClearCache(context.Background(), time.Millisecond*1)
+	go cache.periodicallyClearCache(t.Context(), time.Millisecond*1)
 
 	numThreads := 4
 	numIterationsPerThread := 32
@@ -247,15 +247,14 @@ func Test_serviceStrategyCache_Concurrency(t *testing.T) {
 	wg := sync.WaitGroup{}
 	wg.Add(numThreads)
 	for i := 0; i < numThreads; i++ {
-		ii := i
 		go func() {
 			for j := 0; j < numIterationsPerThread; j++ {
 				for _, svcName := range []string{
-					fmt.Sprintf("thread-specific-service-%d", ii),
+					fmt.Sprintf("thread-specific-service-%d", i),
 					"contended-for-service",
 				} {
-					if _, ok := cache.get(context.Background(), svcName); !ok {
-						cache.put(context.Background(), svcName, &api_v2.SamplingStrategyResponse{})
+					if _, ok := cache.get(t.Context(), svcName); !ok {
+						cache.put(t.Context(), svcName, &api_v2.SamplingStrategyResponse{})
 					}
 				}
 			}

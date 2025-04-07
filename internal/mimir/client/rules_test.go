@@ -1,7 +1,6 @@
 package client
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -79,7 +78,7 @@ func TestMimirClient_X(t *testing.T) {
 			}, prometheus.NewHistogramVec(prometheus.HistogramOpts{}, instrument.HistogramCollectorBuckets))
 			require.NoError(t, err)
 
-			ctx := context.Background()
+			ctx := t.Context()
 			require.NoError(t, client.DeleteRuleGroup(ctx, tc.namespace, tc.name))
 
 			req := <-requestCh

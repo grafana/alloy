@@ -9,9 +9,12 @@ import (
 
 // Arguments configures the Beyla component.
 type Arguments struct {
-	Port           string                     `alloy:"open_port,attr,optional"`
+	// Deprecated: Use discovery.services instead.
+	Port string `alloy:"open_port,attr,optional"`
+	// Deprecated: Use discovery.services instead.
 	ExecutableName string                     `alloy:"executable_name,attr,optional"`
 	Debug          bool                       `alloy:"debug,attr,optional"`
+	TracePrinter   string                     `alloy:"trace_printer,attr,optional"`
 	EnforceSysCaps bool                       `alloy:"enforce_sys_caps,attr,optional"`
 	Routes         Routes                     `alloy:"routes,block,optional"`
 	Attributes     Attributes                 `alloy:"attributes,block,optional"`
@@ -99,7 +102,8 @@ type Metrics struct {
 }
 
 type Network struct {
-	Enable             bool          `alloy:"enable,attr"`
+	// Deprecated: Use Metrics.Features instead.
+	Enable             bool          `alloy:"enable,attr,optional"`
 	Source             string        `alloy:"source,attr,optional"`
 	AgentIP            string        `alloy:"agent_ip,attr,optional"`
 	AgentIPIface       string        `alloy:"agent_ip_iface,attr,optional"`

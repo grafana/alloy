@@ -224,19 +224,14 @@ func (a *Auth) Update(args component.Arguments) error {
 		return err
 	}
 
-	metricsLevel, err := rargs.DebugMetricsConfig().Level.Convert()
-	if err != nil {
-		return err
-	}
-
 	mp := metric.NewMeterProvider(metric.WithReader(promExporter))
 	settings := otelextension.Settings{
+		ID: otelcomponent.NewIDWithName(a.factory.Type(), a.opts.ID),
 		TelemetrySettings: otelcomponent.TelemetrySettings{
 			Logger: zapadapter.New(a.opts.Logger),
 
 			TracerProvider: a.opts.Tracer,
 			MeterProvider:  mp,
-			MetricsLevel:   metricsLevel,
 		},
 
 		BuildInfo: otelcomponent.BuildInfo{
@@ -371,7 +366,7 @@ func (a *Auth) SetupExtension(t ExtensionType, rargs Arguments, settings otelext
 	// auth.basic.creds.LABEL will become auth.basic.creds.LABEL.client or auth.basic.creds.LABEL.server
 	// depending on the type.
 	cTypeStr := NormalizeType(fmt.Sprintf("%s.%s", a.opts.ID, t))
-	eh.ID = otelcomponent.NewID(otelcomponent.MustNewType(cTypeStr))
+	eh.ID = otelcomponent.NewIDWithName(a.factory.Type(), cTypeStr)
 	eh.Extension = otelExtension
 
 	return eh, nil

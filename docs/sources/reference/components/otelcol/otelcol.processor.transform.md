@@ -122,6 +122,7 @@ Hierarchy | Block | Description | Required
 trace_statements | [trace_statements][] | Statements which transform traces. | no
 metric_statements | [metric_statements][] | Statements which transform metrics. | no
 log_statements | [log_statements][] | Statements which transform logs. | no
+statements | [statements][] | Statements which transform logs, metrics, and traces without specifying a context explicitly. | no
 output | [output][] | Configures where to send received telemetry data. | yes
 debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
 
@@ -185,6 +186,47 @@ The supported values for `context` are:
 * `log`: Use when interacting only with OTLP logs.
 
 Refer to [OTTL Context][] for more information about how to use contexts.
+
+### statements block
+
+The `statements` block specifies statements which transform logs, metrics, or traces telemetry signals.
+There is no `context` configuration argument - the context will be inferred from the statement.
+This inference is based on the path names, functions, and enums present in the statements.
+At least one context must be capable of parsing all statements.
+
+The `statements` block can replace the `log_statements`, `metric_statements`, and `trace_statements` blocks.
+It can also be used alongside them.
+
+Name     | Type           | Description                                                      | Default | Required
+---------|----------------|------------------------------------------------------------------|---------|---------
+`log`    | `list(string)` | A list of OTTL statements which transform logs.                  | `[]`    | no
+`metric` | `list(string)` | A list of OTTL statements which transform metrics.               | `[]`    | no
+`trace`  | `list(string)` | A list of OTTL statements which transform traces.                | `[]`    | no
+
+The inference happens automatically because path names are prefixed with the context name. 
+In the following example, the inferred context value is `datapoint`, as it is the only context that supports parsing both datapoint and metric paths:
+
+```alloy
+statements {
+    metric = [`set(metric.description, "test passed") where datapoint.attributes["test"] == "pass"`]
+}
+```
+
+In the following example, the inferred context is `metric`, as `metric` is the context capable of parsing both metric and resource data:
+
+```alloy
+statements {
+    metric = [
+        `resource.attributes["test"], "passed"`,
+        `set(metric.description, "test passed"`,
+    ]
+}
+```
+
+The primary benefit of context inference is that it enhances the efficiency of statement processing by linking them to the most suitable context. 
+This optimization ensures that data transformations are both accurate and performant, 
+leveraging the hierarchical structure of contexts to avoid unnecessary iterations and improve overall processing efficiency. 
+All of this happens automatically, leaving you to write OTTL statements without worrying about contexts.
 
 ### OTTL Context
 

@@ -1,7 +1,6 @@
 package syslog
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"net"
@@ -47,7 +46,7 @@ func Test(t *testing.T) {
 	c, err := New(opts, args)
 	require.NoError(t, err)
 
-	go c.Run(context.Background())
+	go c.Run(t.Context())
 	time.Sleep(200 * time.Millisecond)
 
 	// Create and send a Syslog message over TCP to the first listener.
@@ -136,7 +135,7 @@ func TestWithRelabelRules(t *testing.T) {
 	c, err := New(opts, args)
 	require.NoError(t, err)
 
-	go c.Run(context.Background())
+	go c.Run(t.Context())
 	time.Sleep(200 * time.Millisecond)
 
 	// Create and send a Syslog message over TCP to the first listener.

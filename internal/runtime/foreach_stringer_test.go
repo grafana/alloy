@@ -36,7 +36,7 @@ func testConfigForEachStringer(t *testing.T, config string, expectedDebugInfo *s
 	err := ctrl.LoadSource(f, nil, "")
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	var wg sync.WaitGroup
 	defer func() {
 		cancel()

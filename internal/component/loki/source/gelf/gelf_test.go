@@ -32,7 +32,7 @@ func TestGelf(t *testing.T) {
 		Receivers:     []loki.LogsReceiver{ch1},
 	}
 	c, err := New(opts, args)
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancelFunc := context.WithTimeout(ctx, 5*time.Second)
 	defer cancelFunc()
 	go c.Run(ctx)
