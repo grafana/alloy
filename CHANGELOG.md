@@ -7,6 +7,14 @@ This document contains a historical list of changes between releases. Only
 changes that impact end-user behavior are listed; changes to documentation or
 internal API changes are not present.
 
+v1.8.0-rc.3
+-----------------
+
+### Enhancements
+
+- Removed syntax highlighting from the component details UI view to improve
+  rendering performance. (@tpaschalis)
+
 v1.8.0-rc.2
 -----------------
 
