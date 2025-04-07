@@ -150,12 +150,12 @@ func (p *XwbSqlParser) CleanTruncatedText(sql string) (string, error) {
 	// best-effort attempt to detect truncated trailing comment
 	idx := strings.LastIndex(sql, "/*")
 	if idx < 0 {
-		return sql, fmt.Errorf("sql text is truncated")
+		return "", fmt.Errorf("sql text is truncated")
 	}
 
 	trailingText := sql[idx:]
 	if strings.LastIndex(trailingText, "*/") >= 0 {
-		return sql, fmt.Errorf("sql text is truncated after a comment")
+		return "", fmt.Errorf("sql text is truncated after a comment")
 	}
 
 	return strings.TrimSpace(sql[:idx]), nil
