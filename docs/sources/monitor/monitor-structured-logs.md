@@ -125,7 +125,7 @@ loki.source.api "loki_push_api" {
         listen_port = 9999
     }
     forward_to = [
-        loki.process.lables.receiver,
+        loki.process.labels.receiver,
     ]
 }
 ```
@@ -142,7 +142,7 @@ In this example, the component requires the following arguments:
 * `forward_to`: The list of receivers to send log entries to.
 
 ```alloy
-loki.process "lables" {
+loki.process "labels" {
     stage.json {
       expressions = { 
                       "timestamp" = "",
