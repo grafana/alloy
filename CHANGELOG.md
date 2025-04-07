@@ -10,6 +10,10 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Features
+
+- Add support to configure basic authentication for alloy http server. (@kalleep)
+
 v1.8.0-rc.2
 -----------------
 
