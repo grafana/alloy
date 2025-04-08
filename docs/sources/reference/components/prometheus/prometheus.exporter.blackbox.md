@@ -260,7 +260,7 @@ Replace the following:
 * _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 [scrape]: ../prometheus.scrape/
-[disc]: ../../doscovery/discovery.file/
+[disc]: ../../discovery/discovery.file/
 [relabel]: ../../discovery/discovery.relabel/
 
 ### Set instance label to target URL
