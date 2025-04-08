@@ -1,4 +1,8 @@
-FROM library/golang:1.24-windowsservercore-ltsc2022 as builder
+ARG BASE_IMAGE_GO=library/golang:1.24-windowsservercore-ltsc2022
+ARG BASE_IMAGE_WINDOWS=mcr.microsoft.com/windows/nanoserver:ltsc2022
+
+FROM ${BASE_IMAGE_GO} AS builder
+
 ARG VERSION
 ARG RELEASE_BUILD=1
 ARG GO_TAGS
@@ -82,7 +86,7 @@ RUN ""C:\Program Files\git\bin\bash.exe" -c "RELEASE_BUILD=${RELEASE_BUILD} VERS
 RUN ""C:\Program Files\git\bin\bash.exe" -c "go clean -cache -modcache""
 
 # Use the smallest container possible for the final image
-FROM mcr.microsoft.com/windows/nanoserver:1809
+FROM ${BASE_IMAGE_WINDOWS}
 
 COPY --from=builder ["/src/alloy/build/alloy", "C:/Program Files/GrafanaLabs/Alloy/alloy.exe"]
 COPY --from=builder ["/src/alloy/example-config.alloy", "C:/Program Files/GrafanaLabs/Alloy/config.alloy"]
