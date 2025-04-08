@@ -23,6 +23,10 @@ Main (unreleased)
 
 - Add binary version to constants exposed in configuration file syntatx. (@adlots)
 
+### Bugfixes
+
+- Fix panic in `prometheus.exporter.postgres` when using minimal url as data source name. (@kalleep)
+
 ### Other changes
 
 - Update the zap logging adapter used by `otelcol` components to log arrays and objects. (@dehaansa)
