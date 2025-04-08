@@ -348,10 +348,12 @@ func writeSeries(app storage.Appender, series *memorySeries, dp otelcolDataPoint
 
 func (conv *Converter) writeExemplar(app storage.Appender, series *memorySeries, otelExemplar pmetric.Exemplar) error {
 	ts := otelExemplar.Timestamp().AsTime()
-	if ts.Before(series.Timestamp()) {
+	if ts.Before(series.ExemplarTimestamp()) {
 		// Out-of-order; skip.
 		return nil
 	}
+	series.SetExemplarTimestamp(ts)
+
 	promExemplar := conv.convertExemplar(otelExemplar, ts)
 	return series.WriteExemplarsTo(app, promExemplar)
 }
