@@ -26,3 +26,7 @@ Larger values of `num_consumers` allow data to be sent more quickly at the expen
 
 If an `otelcol.storage.*` component is configured and provided in the queue's `storage` argument, the queue uses the
 provided storage extension to provide a persistent queue and the queue is no longer stored in memory.
+Any data persisted will be processed on startup if {{< param "PRODUCT_NAME" >}} is killed or restarted.
+See the [exporterhelper documentation][queue_docs] in the OpenTelemetry Collector repository for more details.
+
+[queue_docs]: https://github.com/open-telemetry/opentelemetry-collector/blob/<OTEL_VERSION>/exporter/exporterhelper/README.md#persistent-queue
