@@ -22,7 +22,6 @@ func Test_ParsePostgresURL(t *testing.T) {
 		actual, err := parsePostgresURL(dsn)
 		require.NoError(t, err)
 		require.Equal(t, actual, expected)
-
 	})
 
 	t.Run("with minimal url", func(t *testing.T) {
