@@ -12,16 +12,11 @@ Main (unreleased)
 
 ### Features
 
-- Add support for live debugging and graph in the UI for components imported via remotecfg. (@wildum)
-
 - Add `otelcol.exporter.googlecloud` community component to export metrics, traces, and logs to Google Cloud. (@motoki317)
 
 - Add support to configure basic authentication for alloy http server. (@kalleep)
 
 ### Enhancements
-
-- Removed syntax highlighting from the component details UI view to improve
-  rendering performance. (@tpaschalis)
 
 - Add binary version to constants exposed in configuration file syntatx. (@adlots)
 
@@ -33,10 +28,21 @@ Main (unreleased)
 
 - Update the zap logging adapter used by `otelcol` components to log arrays and objects. (@dehaansa)
 
+v1.8.0-rc.3
+-----------------
+
+### Features
+
+- Add support for live debugging and graph in the UI for components imported via remotecfg. (@wildum)
+
+### Enhancements
+
+- Removed syntax highlighting from the component details UI view to improve
+  rendering performance. (@tpaschalis)
+
 - A new `grafana/alloy:vX.Y.Z-windowsservercore-ltsc2022` Docker image is now published on DockerHub. (@ptodev)
 
 v1.8.0-rc.2
-
 -----------------
 
 ### Breaking changes
