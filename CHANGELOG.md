@@ -18,16 +18,31 @@ Main (unreleased)
 
 ### Enhancements
 
-- Removed syntax highlighting from the component details UI view to improve
-  rendering performance. (@tpaschalis)
-
 - Add binary version to constants exposed in configuration file syntatx. (@adlots)
 
 - Update `loki.secretfilter` to include metrics about redactions (@kelnage)
 
+### Bugfixes
+
+- Fix panic in `prometheus.exporter.postgres` when using minimal url as data source name. (@kalleep)
+
 ### Other changes
 
 - Update the zap logging adapter used by `otelcol` components to log arrays and objects. (@dehaansa)
+
+v1.8.0-rc.3
+-----------------
+
+### Features
+
+- Add support for live debugging and graph in the UI for components imported via remotecfg. (@wildum)
+
+### Enhancements
+
+- Removed syntax highlighting from the component details UI view to improve
+  rendering performance. (@tpaschalis)
+
+- A new `grafana/alloy:vX.Y.Z-windowsservercore-ltsc2022` Docker image is now published on DockerHub. (@ptodev)
 
 v1.8.0-rc.2
 -----------------
