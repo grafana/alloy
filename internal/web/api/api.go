@@ -185,14 +185,10 @@ func graph(h service.Host, callbackManager livedebugging.CallbackManager, logger
 			moduleID = livedebugging.ModuleID(vars["moduleID"])
 		}
 
-		host := h
-		if strings.HasPrefix(string(moduleID), "remotecfg/") {
-			remoteCfgHost, err := getRemoteCfgHost(host)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			host = remoteCfgHost
+		host, err := resolveServiceHost(h, string(moduleID))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 
 		windowSeconds := setWindow(w, r.URL.Query().Get("window"))
@@ -204,7 +200,7 @@ func graph(h service.Host, callbackManager livedebugging.CallbackManager, logger
 		id := livedebugging.CallbackID(uuid.New().String())
 
 		droppedData := false
-		err := callbackManager.AddCallbackMulti(host, id, moduleID, func(data livedebugging.Data) {
+		err = callbackManager.AddCallbackMulti(host, id, moduleID, func(data livedebugging.Data) {
 			select {
 			case <-ctx.Done():
 				return
@@ -288,14 +284,10 @@ func liveDebugging(h service.Host, callbackManager livedebugging.CallbackManager
 		vars := mux.Vars(r)
 		componentID := livedebugging.ComponentID(vars["id"])
 
-		host := h
-		if strings.HasPrefix(string(componentID), "remotecfg/") {
-			remoteCfgHost, err := getRemoteCfgHost(host)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			host = remoteCfgHost
+		host, err := resolveServiceHost(h, string(componentID))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 
 		dataCh := make(chan string, 1000)
@@ -306,7 +298,7 @@ func liveDebugging(h service.Host, callbackManager livedebugging.CallbackManager
 		id := livedebugging.CallbackID(uuid.New().String())
 
 		droppedData := false
-		err := callbackManager.AddCallback(host, id, componentID, func(data livedebugging.Data) {
+		err = callbackManager.AddCallback(host, id, componentID, func(data livedebugging.Data) {
 			select {
 			case <-ctx.Done():
 				return
@@ -357,6 +349,17 @@ func liveDebugging(h service.Host, callbackManager livedebugging.CallbackManager
 			}
 		}
 	}
+}
+
+func resolveServiceHost(host service.Host, id string) (service.Host, error) {
+	if strings.HasPrefix(id, "remotecfg/") {
+		remoteCfgHost, err := getRemoteCfgHost(host)
+		if err != nil {
+			return nil, err
+		}
+		return remoteCfgHost, nil
+	}
+	return host, nil
 }
 
 func setSampleProb(w http.ResponseWriter, sampleProbParam string) (sampleProb float64) {
