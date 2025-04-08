@@ -88,7 +88,7 @@ func (c *Config) InstanceKey(_ string) (string, error) {
 }
 
 func parsePostgresURL(url string) (map[string]string, error) {
-	if url == "postgresql://" || url == "postgres://" {
+	if url == "postgres://" {
 		return map[string]string{}, nil
 	}
 
