@@ -24,6 +24,8 @@ Main (unreleased)
 
 - Fix panic in `prometheus.exporter.postgres` when using minimal url as data source name. (@kalleep)
 
+- Fix issue with `remoteCfg` service stopping immediately and logging noop error if not configured (@dehaansa)
+
 ### Other changes
 
 - Update the zap logging adapter used by `otelcol` components to log arrays and objects. (@dehaansa)
