@@ -8,6 +8,7 @@ cascade:
   OTEL_VERSION: v0.122.0
   PROM_WIN_EXP_VERSION: v0.27.3
   SNMP_VERSION: v0.28.0
+  BEYLA_VERSION: v2.1
   FULL_PRODUCT_NAME: Grafana Alloy
   PRODUCT_NAME: Alloy
 hero:

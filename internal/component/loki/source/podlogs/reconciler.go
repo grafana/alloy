@@ -10,10 +10,6 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/component/loki/source/kubernetes/kubetail"
-	monitoringv1alpha2 "github.com/grafana/alloy/internal/component/loki/source/podlogs/internal/apis/monitoring/v1alpha2"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/grafana/alloy/internal/service/cluster"
 	"github.com/grafana/ckit/shard"
 	"github.com/prometheus/common/model"
 	promlabels "github.com/prometheus/prometheus/model/labels"
@@ -23,6 +19,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/grafana/alloy/internal/component/loki/source/kubernetes/kubetail"
+	monitoringv1alpha2 "github.com/grafana/alloy/internal/component/loki/source/podlogs/internal/apis/monitoring/v1alpha2"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/service/cluster"
 )
 
 const (
@@ -172,6 +173,9 @@ func filterLabels(lbls promlabels.Labels, keysToKeep []string) promlabels.Labels
 func distributeTargets(c cluster.Cluster, targets []*kubetail.Target) []*kubetail.Target {
 	if c == nil {
 		return targets
+	}
+	if !c.Ready() { // take no traffic if cluster is not yet ready
+		return make([]*kubetail.Target, 0)
 	}
 
 	peerCount := len(c.Peers())

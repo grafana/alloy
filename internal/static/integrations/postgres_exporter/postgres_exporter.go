@@ -88,6 +88,10 @@ func (c *Config) InstanceKey(_ string) (string, error) {
 }
 
 func parsePostgresURL(url string) (map[string]string, error) {
+	if url == "postgresql://" || url == "postgres://" {
+		return map[string]string{}, nil
+	}
+
 	raw, err := pq.ParseURL(url)
 	if err != nil {
 		return nil, err
@@ -97,10 +101,10 @@ func parsePostgresURL(url string) (map[string]string, error) {
 
 	unescaper := strings.NewReplacer(`\'`, `'`, `\\`, `\`)
 
-	for _, keypair := range strings.Split(raw, " ") {
+	for keypair := range strings.SplitSeq(raw, " ") {
 		parts := strings.SplitN(keypair, "=", 2)
 		if len(parts) != 2 {
-			panic(fmt.Sprintf("unexpected keypair %s from pq", keypair))
+			return nil, fmt.Errorf("unexpected keypair %s from pq", keypair)
 		}
 
 		key := parts[0]

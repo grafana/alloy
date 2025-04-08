@@ -321,8 +321,6 @@ func (c *Component) Run(ctx context.Context) error {
 			}
 			c.mut.RUnlock()
 
-			// NOTE(@tpaschalis) First approach, manually building the
-			// 'clustered' targets implementation every time.
 			ct := discovery.NewDistributedTargets(clusteringEnabled, c.cluster, tgs)
 			promTargets := discovery.ComponentTargetsToPromTargetGroupsForSingleJob(jobName, ct.LocalTargets())
 

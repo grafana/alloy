@@ -10,6 +10,41 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Features
+
+- Add `otelcol.exporter.googlecloud` community component to export metrics, traces, and logs to Google Cloud. (@motoki317)
+
+- Add support to configure basic authentication for alloy http server. (@kalleep)
+
+### Enhancements
+
+- Add binary version to constants exposed in configuration file syntatx. (@adlots)
+
+### Bugfixes
+
+- Fix panic in `prometheus.exporter.postgres` when using minimal url as data source name. (@kalleep)
+
+### Other changes
+
+- Update the zap logging adapter used by `otelcol` components to log arrays and objects. (@dehaansa)
+
+v1.8.0-rc.3
+-----------------
+
+### Features
+
+- Add support for live debugging and graph in the UI for components imported via remotecfg. (@wildum)
+
+### Enhancements
+
+- Removed syntax highlighting from the component details UI view to improve
+  rendering performance. (@tpaschalis)
+
+- A new `grafana/alloy:vX.Y.Z-windowsservercore-ltsc2022` Docker image is now published on DockerHub. (@ptodev)
+
+v1.8.0-rc.2
+-----------------
+
 ### Breaking changes
 
 - Removed `open_port` and `executable_name` from top level configuration of Beyla component. Removed `enabled` argument from `network` block. (@marctc)
@@ -24,6 +59,8 @@ Main (unreleased)
   - The default value of `metrics_flush_interval` in `otelcol.connector.servicegraph` was changed from `0s` to `60s`.
   - `s3_partition` in `otelcol.exporter.awss3` was replaced by `s3_partition_format`.
 
+- (_Experimental_) `prometheus.write.queue` metric names changed to align better with prometheus standards. (@mattdurham)
+
 ### Features
 
 - Add `otelcol.receiver.awscloudwatch` component to receive logs from AWS CloudWatch and forward them to other `otelcol.*` components. (@wildum)
@@ -31,6 +68,10 @@ Main (unreleased)
 - Add string concatenation for secrets type (@ravishankar15)
 - Add support for environment variables to OpenTelemetry Collector config. (@jharvey10)
 - Replace graph in Alloy UI with a new version that supports modules and data flow visualization. (@wildum)
+- Added `--cluster.wait-for-size` and `--cluster.wait-timeout` flags which allow to specify the minimum cluster size
+  required before components that use clustering begin processing traffic to ensure adequate cluster capacity is
+  available. (@thampiotr)
+- Add `trace_printer` to `beyla.ebpf` component to print trace information in a specific format. (@marctc)
 
 ### Enhancements
 
@@ -74,6 +115,7 @@ Main (unreleased)
   - `query_sample`: add option to use TiDB sql parser (@cristiangreco)
   - `query_tables`: rename collector from `query_sample` to better reflect responsibility (@matthewnolf)
   - `query_sample`: add new collector that replaces previous implementation to collect more detailed sample information (@matthewnolf)
+  - `query_sample`: refactor parsing of truncated queries (@cristiangreco)
 
 - Add labels validation in `pyroscope.write` to prevent duplicate labels and invalid label names/values. (@marcsanmi)
 
@@ -85,6 +127,8 @@ Main (unreleased)
 
 - Add error body propagation in `pyroscope.write`, for `/ingest` calls. (@simonswine)
 
+- Add `tenant` label to remaining `loki_write_.+` metrics (@towolf)
+
 ### Bugfixes
 
 - Fix deadlocks in `loki.source.file` when tailing fails (@mblaschke)
@@ -93,6 +137,10 @@ Main (unreleased)
 - Fixed an issue in the `mimir.rules.kubernetes` component that would keep the component as unhealthy even when it managed to start after temporary errors (@nicolasvan)
 
 - Allow kafka exporter to attempt to connect even if TLS enabled but cert & key are not specified (@dehaansa)
+
+- Fixed bug where all resources were not being collected from `prometheus.exporter.azure` when using `regions` (@kgeckhart)
+
+- Fix panic in `loki.source.file` when the tailer had no time to run before the runner was stopped (@wildum)
 
 ### Other changes
 
@@ -107,7 +155,11 @@ Main (unreleased)
   - `otelcol.receiver.kafka` has a new `error_backoff` block to configure how failed requests are retried.
   - `otelcol.receiver.vcenter` has three new metrics `vcenter.vm.cpu.time`, `vcenter.vm.network.broadcast.packet.rate` and `vcenter.vm.network.multicast.packet.rate`.
   - `otelcol.exporter.awss3` has two new arguments `acl` and `storage_class`.
+  - `otelcol.auth.headers` headers can now be populated using Authentication metadata using from_attribute
 
+- Change the stability of the `beyla.ebpf` component from "public preview" to "generally available". (@marctc)
+
+- The ingest API of `pyroscope.receive_http` no longer forwards all received headers, instead only passes through the `Content-Type` header. (@simonswine)
 
 v1.7.5
 -----------------
@@ -276,6 +328,8 @@ v1.7.0
 - Fix an issue where Prometheus metric name validation scheme was set by default to UTF-8. It is now set back to the
   previous "legacy" scheme. An experimental flag `--feature.prometheus.metric-validation-scheme` can be used to switch
   it to `utf-8` to experiment with UTF-8 support. (@thampiotr)
+
+- Fix `otelcol.exporter.prometheus` that dropped valid exemplars. (@github-vincent-miszczak)
 
 ### Other changes
 
