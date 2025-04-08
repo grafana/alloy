@@ -154,7 +154,7 @@ The following arguments are supported:
 | `match_type`            | `string` | The type of match. One of `=`, `!=`, `=~` and `!~`. |         | yes      |
 | `name`                  | `string` | Name of the label to match.                         |         | yes      |
 | `value`                 | `string` | Value of the label to match.                        |         | no       |
-| `value_from_label`      | `string` | Value extracted from the rule label to match.       |         | no       |
+| `value_from_label`      | `string` | Value of the PrometheusRule label in Kubernetes to match.       |         | no       |
 
 Only one of `value` or `value_from_label` can be used. 
 
