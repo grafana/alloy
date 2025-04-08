@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { faDiagramProject } from '@fortawesome/free-solid-svg-icons';
 
@@ -16,10 +16,19 @@ const DEFAULT_WINDOW = 5;
 function Graph() {
   const { '*': id } = useParams();
   const moduleID = id || '';
-  const [components] = useComponentInfo(moduleID, false);
+  const [components, setComponents] = useComponentInfo(moduleID, moduleID.startsWith('remotecfg/'));
   const [window, setWindow] = useState(DEFAULT_WINDOW);
   const [sliderWindow, setSliderWindow] = useState(DEFAULT_WINDOW);
   const [enabled, setEnabled] = useState(true);
+
+  // Reset component state when moduleID changes
+  useEffect(() => {
+    setEnabled(false);
+    setComponents([]);
+    setTimeout(() => {
+      setEnabled(true);
+    }, 200);
+  }, [moduleID, setComponents]);
 
   function handleWindowChange(value?: number) {
     setSliderWindow(value ? value : DEFAULT_WINDOW);

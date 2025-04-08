@@ -10,6 +10,10 @@ internal API changes are not present.
 v1.8.0-rc.3
 -----------------
 
+### Features
+
+- Add support for live debugging and graph in the UI for components imported via remotecfg. (@wildum)
+
 ### Enhancements
 
 - Removed syntax highlighting from the component details UI view to improve
