@@ -56,14 +56,6 @@ func NewDefaultLoggingConfigNode(globals ComponentGlobals) *LoggingConfigNode {
 // Evaluate will return an error if the Alloy block cannot be evaluated or if
 // decoding to arguments fails.
 func (cn *LoggingConfigNode) Evaluate(scope *vm.Scope) error {
-	return cn.evaluate(scope, false)
-}
-
-func (cn *LoggingConfigNode) TypeCheck(scope *vm.Scope) error {
-	return cn.evaluate(scope, true)
-}
-
-func (cn *LoggingConfigNode) evaluate(scope *vm.Scope, typeCheck bool) error {
 	cn.mut.RLock()
 	defer cn.mut.RUnlock()
 	args := logging.DefaultOptions
@@ -71,10 +63,6 @@ func (cn *LoggingConfigNode) evaluate(scope *vm.Scope, typeCheck bool) error {
 		if err := cn.eval.Evaluate(scope, &args); err != nil {
 			return fmt.Errorf("decoding configuration: %w", err)
 		}
-	}
-
-	if typeCheck {
-		return nil
 	}
 
 	if err := cn.l.(*logging.Logger).Update(args); err != nil {

@@ -31,13 +31,6 @@ import (
 	"github.com/grafana/alloy/syntax/vm"
 )
 
-type EvalMode uint8
-
-const (
-	EvalModeDefault EvalMode = iota
-	EvalModeTypeCheck
-)
-
 // The Loader builds and evaluates ComponentNodes from Alloy blocks.
 type Loader struct {
 	log        log.Logger
@@ -65,7 +58,6 @@ type Loader struct {
 	cc                   *controllerCollector
 	moduleExportIndex    int
 	componentNodeManager *ComponentNodeManager
-	evalMode             EvalMode
 }
 
 // LoaderOptions holds options for creating a Loader.
@@ -77,7 +69,6 @@ type LoaderOptions struct {
 	Host              service.Host      // Service host (when running services).
 	ComponentRegistry ComponentRegistry // Registry to search for components.
 	WorkerPool        worker.Pool       // Worker pool to use for async tasks.
-	EvalMode          EvalMode
 }
 
 // NewLoader creates a new Loader. Components built by the Loader will be built
@@ -114,10 +105,9 @@ func NewLoader(opts LoaderOptions) *Loader {
 			MaxRetries: 20, // Give up after 20 attempts - it could be a deadlock instead of an overload.
 		},
 
-		graph:    &dag.Graph{},
-		cache:    newValueCache(),
-		cm:       newControllerMetrics(parent, id),
-		evalMode: opts.EvalMode,
+		graph: &dag.Graph{},
+		cache: newValueCache(),
+		cm:    newControllerMetrics(parent, id),
 	}
 	l.cc = newControllerCollector(l, parent, id)
 
@@ -889,13 +879,7 @@ func (l *Loader) concurrentEvalFn(n dag.Node, spanCtx context.Context, tracer tr
 // evaluates it. mut must be held when calling evaluate.
 func (l *Loader) evaluate(logger log.Logger, bn BlockNode) error {
 	ectx := l.cache.GetContext()
-	var err error
-	if l.evalMode == EvalModeTypeCheck {
-		err = bn.TypeCheck(ectx)
-	} else {
-		err = bn.Evaluate(ectx)
-	}
-
+	err := bn.Evaluate(ectx)
 	return l.postEvaluate(logger, bn, err)
 }
 

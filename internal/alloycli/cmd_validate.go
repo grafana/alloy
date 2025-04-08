@@ -10,10 +10,7 @@ import (
 
 	"github.com/grafana/alloy/syntax/diag"
 
-	"github.com/grafana/alloy/internal/featuregate"
 	alloy_runtime "github.com/grafana/alloy/internal/runtime"
-	"github.com/grafana/alloy/internal/runtime/logging"
-	"github.com/grafana/alloy/internal/service"
 )
 
 func validateCommand() *cobra.Command {
@@ -64,34 +61,36 @@ func (fv *alloyValidate) Run(configFile string) error {
 		return err
 	}
 
-	source, err := alloy_runtime.ParseSource(configFile, bb)
+	_, err = alloy_runtime.ParseSource(configFile, bb)
 	if err != nil {
 		return err
 	}
 
-	err = alloy_runtime.TypeCheck(source, alloy_runtime.Options{
-		ControllerID: "",
-		Logger:       logging.NewNop(),
-		DataPath:     "",
-		Reg:          nil,
-		MinStability: featuregate.StabilityExperimental,
-		OnExportsChange: func(exports map[string]any) {
-			fmt.Println("On exports change")
-		},
-		Services:             []service.Service{},
-		EnableCommunityComps: false,
-	})
+	/*
+		err = alloy_runtime.TypeCheck(source, alloy_runtime.Options{
+			ControllerID: "",
+			Logger:       logging.NewNop(),
+			DataPath:     "",
+			Reg:          nil,
+			MinStability: featuregate.StabilityExperimental,
+			OnExportsChange: func(exports map[string]any) {
+				fmt.Println("On exports change")
+			},
+			Services:             []service.Service{},
+			EnableCommunityComps: false,
+		})
 
-	if err != nil {
-		var diags diag.Diagnostics
-		if errors.As(err, &diags) {
-			printDiagnostics(diags, source)
-			return fmt.Errorf("could not perform the initial load successfully")
+		if err != nil {
+			var diags diag.Diagnostics
+			if errors.As(err, &diags) {
+				printDiagnostics(diags, source)
+				return fmt.Errorf("could not perform the initial load successfully")
+			}
+
+			// Exit if the initial load fails.
+			return err
 		}
-
-		// Exit if the initial load fails.
-		return err
-	}
+	*/
 
 	return nil
 }
