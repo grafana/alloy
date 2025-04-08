@@ -20,6 +20,8 @@ Main (unreleased)
 
 - Add binary version to constants exposed in configuration file syntatx. (@adlots)
 
+- Update `loki.secretfilter` to include metrics about redactions (@kelnage)
+
 ### Bugfixes
 
 - Fix panic in `prometheus.exporter.postgres` when using minimal url as data source name. (@kalleep)
