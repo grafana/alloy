@@ -31,7 +31,7 @@ type Arguments interface {
 
 	// Convert converts the Arguments into an OpenTelemetry Collector
 	// extension configuration.
-	Convert() (otelcomponent.Config, error)
+	Convert(component.Options) (otelcomponent.Config, error)
 
 	// Extensions returns the set of extensions that the configured component is
 	// allowed to use.
@@ -156,7 +156,7 @@ func (e *Extension) Update(args component.Arguments) error {
 		},
 	}
 
-	extensionConfig, err := rargs.Convert()
+	extensionConfig, err := rargs.Convert(e.opts)
 	if err != nil {
 		return err
 	}

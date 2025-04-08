@@ -69,13 +69,17 @@ func (args Arguments) ExportsHandler() bool {
 	return false
 }
 
+func (args Arguments) OnUpdate(_ component.Options) error {
+	return nil
+}
+
 // SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	args.DebugMetrics.SetToDefault()
 }
 
 // Convert implements extension.Arguments.
-func (args Arguments) Convert() (otelcomponent.Config, error) {
+func (args Arguments) Convert(_ component.Options) (otelcomponent.Config, error) {
 	httpServerConfig := (*otelcol.HTTPServerArguments)(args.HTTP)
 	httpConvertedServerConfig, err := httpServerConfig.Convert()
 	if err != nil {

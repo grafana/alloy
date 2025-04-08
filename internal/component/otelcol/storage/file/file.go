@@ -29,13 +29,6 @@ func init() {
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
 			fact := filestorage.NewFactory()
 			xargs := args.(Arguments)
-			if xargs.Directory == "" {
-				xargs.Directory = opts.DataPath
-			}
-			if xargs.Compaction.Directory == "" {
-				xargs.Compaction.Directory = xargs.Directory
-			}
-			opts.Logger.Log("component", "otelcol.storage.file", "name", opts.ID, "directory", xargs.Directory)
 			return extension.New(opts, fact, xargs)
 		},
 	})
@@ -153,10 +146,6 @@ func (args *Arguments) SetToDefault() {
 }
 
 func (args *Arguments) Validate() error {
-	_, err := args.Convert()
-	if err != nil {
-		return err
-	}
 	var errs error
 	// Unlike the upstream, we don't set the default directory here as its dependent on Alloy's storage.path.
 	// Without that context we cannot set the default directory.
@@ -167,24 +156,24 @@ func (args *Arguments) Validate() error {
 	}
 	if args.Compaction.Directory != "" {
 		if err := validateDirectory(args.Compaction.Directory, args.CreateDirectory); err != nil {
-			errs = errors.Join(err, fmt.Errorf("compaction directory: %w", err))
+			errs = errors.Join(errs, fmt.Errorf("compaction directory: %w", err))
 		}
 	}
 
 	if args.Compaction.MaxTransactionSize < 0 {
-		errs = errors.Join(err, errors.New("max transaction size for compaction cannot be less than 0"))
+		errs = errors.Join(errs, errors.New("max transaction size for compaction cannot be less than 0"))
 	}
 
 	if args.Compaction.OnRebound && args.Compaction.CheckInterval <= 0 {
-		errs = errors.Join(err, errors.New("compaction check interval must be positive when rebound compaction is set"))
+		errs = errors.Join(errs, errors.New("compaction check interval must be positive when rebound compaction is set"))
 	}
 
 	if args.CreateDirectory {
 		permissions, err := strconv.ParseInt(args.DirectoryPermissions, 8, 32)
 		if err != nil {
-			errs = errors.Join(err, errors.New("directory_permissions value must be a valid octal representation"))
+			errs = errors.Join(errs, errors.New("directory_permissions value must be a valid octal representation"))
 		} else if permissions&int64(os.ModePerm) != permissions {
-			errs = errors.Join(err, errors.New("directory_permissions contain invalid bits for file access"))
+			errs = errors.Join(errs, errors.New("directory_permissions contain invalid bits for file access"))
 		}
 	}
 	return errs
@@ -207,7 +196,7 @@ func validateDirectory(dir string, createDirectory bool) error {
 }
 
 // Convert implements extension.Arguments.
-func (args Arguments) Convert() (otelcomponent.Config, error) {
+func (args Arguments) Convert(opts component.Options) (otelcomponent.Config, error) {
 	// Convert the Arguments to the underlying config type.
 	f := &filestorage.Config{
 		Directory:            args.Directory,
@@ -216,6 +205,17 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		FSync:                args.FSync,
 		CreateDirectory:      args.CreateDirectory,
 		DirectoryPermissions: args.DirectoryPermissions,
+	}
+
+	// TODO - find a way to make these default values visible in the UI.
+	// Without them being settable in syntax.Defaulter they are not exposed at that layer.
+	if f.Directory == "" {
+		// If the directory is not set, use the default directory.
+		f.Directory = opts.DataPath
+	}
+
+	if f.Compaction.Directory == "" {
+		f.Compaction.Directory = f.Directory
 	}
 
 	// Validate sets the internal directorypermissions mask
