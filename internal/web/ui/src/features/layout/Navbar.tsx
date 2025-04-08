@@ -14,10 +14,9 @@ function Navbar() {
       </header>
       <ul>
         <li>
-          {/* Use a regular <a> tag to reload the page when the link is clicked */}
-          <a href="/graph" className="nav-link">
+          <NavLink to="/graph" className="nav-link">
             Graph
-          </a>
+          </NavLink>
         </li>
         <li>
           <NavLink to="/clustering" className="nav-link">
