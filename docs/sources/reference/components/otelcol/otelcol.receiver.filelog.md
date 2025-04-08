@@ -71,7 +71,7 @@ Refer to the upstream receiver [documentation][encoding-documentation] for more 
 
 `compression` must be either `` or `gzip`.
 
-To persist state between restarts of the {{< param "PRODUCT_NAME" >}} process, you can set the `storage` attribute to the `handler` exported from an `otelcol.storage.*` component.
+To persist state between restarts of the {{< param "PRODUCT_NAME" >}} process, set the `storage` attribute to the `handler` exported from an `otelcol.storage.*` component.
 
 [encoding-documentation]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/{{< param "OTEL_VERSION" >}}/receiver/filelogreceiver/README.md#supported-encodings
 

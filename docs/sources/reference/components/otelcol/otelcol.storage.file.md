@@ -10,8 +10,7 @@ labels:
 
 {{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-`otelcol.storage.file` exposes a `handler` that can be used by other `otelcol`
-components to write state to a local directory. 
+`otelcol.storage.file` exposes a `handler` that other `otelcol` components can use to write state to a local directory. 
 The current implementation of this component uses [bbolt][] to store and read data on disk.
 
 {{< admonition type="note" >}}
@@ -45,7 +44,8 @@ You can use the following arguments with `otelcol.storage.file`:
 The default `directory` used for file storage is a subdirectory of the `data-alloy` directory located in the {{< param "PRODUCT_NAME" >}} working directory.
 This will vary depending on the path specified by the [command line flag][run] `--storage-path`.
 
-`create_directory` is `false` by default in the upstream receiver.  `create_directory` is `true` by default in {{< param "PRODUCT_NAME" >}} because `directory` defaults to the `data-alloy` path in {{< param "PRODUCT_NAME" >}} and that directory is owned by the {{< param "PRODUCT_NAME" >}} process.
+`create_directory` is `false` by default in the upstream receiver.
+`create_directory` is `true` by default in {{< param "PRODUCT_NAME" >}} because `directory` defaults to the `data-alloy` path in {{< param "PRODUCT_NAME" >}} and that directory is owned by the {{< param "PRODUCT_NAME" >}} process.
 
 [run]: ../../../cli/run/
 
