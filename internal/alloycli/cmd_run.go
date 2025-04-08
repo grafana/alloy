@@ -442,16 +442,7 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 	if source, err := reload(); err != nil {
 		var diags diag.Diagnostics
 		if errors.As(err, &diags) {
-			p := diag.NewPrinter(diag.PrinterConfig{
-				Color:              !color.NoColor,
-				ContextLinesBefore: 1,
-				ContextLinesAfter:  1,
-			})
-			_ = p.Fprint(os.Stderr, source.RawConfigs(), diags)
-
-			// Print newline after the diagnostics.
-			fmt.Println()
-
+			printDiagnostics(diags, source)
 			return fmt.Errorf("could not perform the initial load successfully")
 		}
 
@@ -643,4 +634,16 @@ func setMutexBlockProfiling(l log.Logger) {
 		// Default taken from https://github.com/DataDog/go-profiler-notes/blob/main/block.md
 		runtime.SetBlockProfileRate(10_000)
 	}
+}
+
+func printDiagnostics(diags diag.Diagnostics, source *alloy_runtime.Source) {
+	p := diag.NewPrinter(diag.PrinterConfig{
+		Color:              !color.NoColor,
+		ContextLinesBefore: 1,
+		ContextLinesAfter:  1,
+	})
+	_ = p.Fprint(os.Stderr, source.RawConfigs(), diags)
+
+	// Print newline after the diagnostics.
+	fmt.Println()
 }

@@ -1,14 +1,13 @@
 package alloycli
 
 import (
-	"errors"
 	"fmt"
-	"io"
+	"io/fs"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
-
-	"github.com/grafana/alloy/syntax/diag"
 
 	alloy_runtime "github.com/grafana/alloy/internal/runtime"
 )
@@ -23,24 +22,17 @@ func validateCommand() *cobra.Command {
 		Args:         cobra.RangeArgs(0, 1),
 		SilenceUsage: true,
 		RunE: func(_ *cobra.Command, args []string) error {
-			var err error
-
-			if len(args) == 0 {
-				// Read from stdin when there are no args provided.
-				err = v.Run("-")
-			} else {
-				err = v.Run(args[0])
+			source, err := v.Run(args[0])
+			if err != nil {
+				return fmt.Errorf("encountered errors during validation: %w", err)
 			}
 
-			var diags diag.Diagnostics
-			if errors.As(err, &diags) {
-				for _, diag := range diags {
-					fmt.Fprintln(os.Stderr, diag)
-				}
-				return fmt.Errorf("encountered errors during formatting")
+			diags := source.Diagnostics()
+			if len(diags) > 0 {
+				printDiagnostics(diags, source)
 			}
 
-			return err
+			return fmt.Errorf("encountered errors during validation")
 		},
 	}
 
@@ -49,70 +41,54 @@ func validateCommand() *cobra.Command {
 
 type alloyValidate struct{}
 
-func (fv *alloyValidate) Run(configFile string) error {
-	r, err := configReader(configFile)
-	if err != nil {
-		return err
-	}
-	defer r.Close()
+func (fv *alloyValidate) Run(configFile string) (*alloy_runtime.Source, error) {
+	return loadSources(configFile)
+}
 
-	bb, err := io.ReadAll(r)
+func loadSources(path string) (*alloy_runtime.Source, error) {
+	fi, err := os.Stat(path)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	_, err = alloy_runtime.ParseSource(configFile, bb)
-	if err != nil {
-		return err
-	}
+	if fi.IsDir() {
+		raw := map[string][]byte{}
+		err := filepath.WalkDir(path, func(curPath string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			// Skip all directories and don't recurse into child dirs that aren't at top-level
+			if d.IsDir() {
+				if curPath != path {
+					return filepath.SkipDir
+				}
+				return nil
+			}
+			// Ignore files not ending in .alloy extension
+			if !strings.HasSuffix(curPath, ".alloy") {
+				return nil
+			}
 
-	/*
-		err = alloy_runtime.TypeCheck(source, alloy_runtime.Options{
-			ControllerID: "",
-			Logger:       logging.NewNop(),
-			DataPath:     "",
-			Reg:          nil,
-			MinStability: featuregate.StabilityExperimental,
-			OnExportsChange: func(exports map[string]any) {
-				fmt.Println("On exports change")
-			},
-			Services:             []service.Service{},
-			EnableCommunityComps: false,
+			bb, err := os.ReadFile(curPath)
+			if err != nil {
+				return err
+			}
+
+			raw[curPath] = bb
+			return err
 		})
 
 		if err != nil {
-			var diags diag.Diagnostics
-			if errors.As(err, &diags) {
-				printDiagnostics(diags, source)
-				return fmt.Errorf("could not perform the initial load successfully")
-			}
-
-			// Exit if the initial load fails.
-			return err
-		}
-	*/
-
-	return nil
-}
-
-func configReader(configFile string) (io.ReadCloser, error) {
-	switch configFile {
-	case "-":
-		return os.Stdin, nil
-	default:
-		fi, err := os.Stat(configFile)
-		if err != nil {
 			return nil, err
 		}
-		if fi.IsDir() {
-			// FIXME(better error):
-			return nil, fmt.Errorf("cannot format a directory")
-		}
 
-		f, err := os.Open(configFile)
-		if err != nil {
-			return nil, err
-		}
-		return f, nil
+		return alloy_runtime.ParseSources2(raw), nil
 	}
+
+	bb, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	return alloy_runtime.ParseSources2(map[string][]byte{path: bb}), nil
 }

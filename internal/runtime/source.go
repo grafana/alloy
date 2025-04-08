@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -12,10 +13,9 @@ import (
 	"github.com/grafana/alloy/syntax/parser"
 )
 
-// FIXME: Shared package for this??
-
 // A Source holds the contents of a parsed Alloy configuration source module.
 type Source struct {
+	errors    map[string]error  // Map that links Alloy parser errors with source name
 	sourceMap map[string][]byte // Map that links parsed Alloy source's name with its content.
 	fileMap   map[string]*ast.File
 	hash      [sha256.Size]byte // Hash of all files in sourceMap sorted by name.
@@ -41,6 +41,7 @@ func ParseSource(name string, bb []byte) (*Source, error) {
 		return nil, err
 	}
 	source, err := sourceFromBody(node.Body)
+
 	if err != nil {
 		return nil, err
 	}
@@ -48,6 +49,37 @@ func ParseSource(name string, bb []byte) (*Source, error) {
 	source.fileMap = map[string]*ast.File{name: node}
 	source.hash = sha256.Sum256(bb)
 	return source, nil
+}
+
+func ParseSource2(name string, bb []byte) *Source {
+	s := &Source{
+		errors:    map[string]error{},
+		sourceMap: map[string][]byte{name: bb},
+	}
+
+	bb, err := encoder.EnsureUTF8(bb, true)
+	if err != nil {
+		s.errors[name] = err
+		return s
+	}
+	node, err := parser.ParseFile(name, bb)
+	if err != nil {
+		s.errors[name] = err
+		return s
+	}
+	source, err := sourceFromBody(node.Body)
+	if err != nil {
+		s.errors[name] = err
+		return s
+	}
+
+	s.components = source.components
+	s.declareBlocks = source.declareBlocks
+	s.configBlocks = source.configBlocks
+	s.fileMap = map[string]*ast.File{name: node}
+	s.hash = sha256.Sum256(bb)
+	return source
+
 }
 
 // sourceFromBody creates a Source from an existing AST. This must only be used
@@ -151,6 +183,52 @@ func ParseSources(sources map[string][]byte) (*Source, error) {
 	return mergedSource, nil
 }
 
+// ParseSources parses the map of sources and combines them into a single
+// Source. sources must not be modified after calling ParseSources.
+func ParseSources2(sources map[string][]byte) *Source {
+	var (
+		// Combined source from all the input content.
+		mergedSource = &Source{
+			sourceMap: sources,
+			errors:    map[string]error{},
+			fileMap:   make(map[string]*ast.File, len(sources)),
+		}
+		hash = sha256.New() // Combined hash of all the sources.
+	)
+
+	// Sorted slice so ParseSources always does the same thing.
+	sortedSources := make([]namedSource, 0, len(sources))
+	for name, bb := range sources {
+		sortedSources = append(sortedSources, namedSource{
+			Name:    name,
+			Content: bb,
+		})
+	}
+	sort.Slice(sortedSources, func(i, j int) bool {
+		return sortedSources[i].Name < sortedSources[j].Name
+	})
+
+	// Parse each .alloy source and compute new hash for the whole sourceMap
+	for _, namedSource := range sortedSources {
+		hash.Write(namedSource.Content)
+
+		sourceFragment, err := ParseSource(namedSource.Name, namedSource.Content)
+		// We recod error and continue to collect additial parse errors
+		if err != nil {
+			mergedSource.errors[namedSource.Name] = err
+			continue
+		}
+
+		mergedSource.fileMap[namedSource.Name] = sourceFragment.fileMap[namedSource.Name]
+		mergedSource.components = append(mergedSource.components, sourceFragment.components...)
+		mergedSource.configBlocks = append(mergedSource.configBlocks, sourceFragment.configBlocks...)
+		mergedSource.declareBlocks = append(mergedSource.declareBlocks, sourceFragment.declareBlocks...)
+	}
+
+	mergedSource.hash = [32]byte(hash.Sum(nil))
+	return mergedSource
+}
+
 // RawConfigs returns the raw source content used to create Source.
 // Do not modify the returned map.
 func (s *Source) RawConfigs() map[string][]byte {
@@ -176,4 +254,39 @@ func (s *Source) SHA256() [sha256.Size]byte {
 		return [sha256.Size]byte{}
 	}
 	return s.hash
+}
+
+func (s *Source) Diagnostics() diag.Diagnostics {
+	if s == nil {
+		return nil
+	}
+
+	var merged diag.Diagnostics
+
+	for _, err := range s.errors {
+		var diags diag.Diagnostics
+		if errors.As(err, &diags) {
+			merged = append(merged, diags...)
+		}
+	}
+
+	return merged
+}
+
+// FIXME how should we handle non diagnostics errors?
+func (s *Source) Errors() error {
+	if s == nil {
+		return nil
+	}
+
+	var merged diag.Diagnostics
+
+	for _, err := range s.errors {
+		var diags diag.Diagnostics
+		if errors.As(err, &diags) {
+			merged = append(merged, diags...)
+		}
+	}
+
+	return merged
 }
