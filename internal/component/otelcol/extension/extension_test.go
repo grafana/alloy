@@ -88,7 +88,7 @@ func (fakeExtensionArgs) ExportsHandler() bool {
 	return false
 }
 
-func (fa fakeExtensionArgs) Convert() (otelcomponent.Config, error) {
+func (fa fakeExtensionArgs) Convert(_ component.Options) (otelcomponent.Config, error) {
 	return &struct{}{}, nil
 }
 
