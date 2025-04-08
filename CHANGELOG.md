@@ -12,6 +12,8 @@ Main (unreleased)
 
 ### Features
 
+- Add support for live debugging and graph in the UI for components imported via remotecfg. (@wildum)
+
 - Add `otelcol.exporter.googlecloud` community component to export metrics, traces, and logs to Google Cloud. (@motoki317)
 
 - Add support to configure basic authentication for alloy http server. (@kalleep)
@@ -30,6 +32,7 @@ Main (unreleased)
 - A new `grafana/alloy:vX.Y.Z-windowsservercore-ltsc2022` Docker image is now published on DockerHub. (@ptodev)
 
 v1.8.0-rc.2
+
 -----------------
 
 ### Breaking changes
