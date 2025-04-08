@@ -12,6 +12,8 @@ import (
 	"github.com/grafana/alloy/syntax/parser"
 )
 
+// FIXME: Shared package for this??
+
 // A Source holds the contents of a parsed Alloy configuration source module.
 type Source struct {
 	sourceMap map[string][]byte // Map that links parsed Alloy source's name with its content.
