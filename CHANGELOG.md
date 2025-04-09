@@ -22,6 +22,9 @@ Main (unreleased)
 
 - Update `loki.secretfilter` to include metrics about redactions (@kelnage)
 
+- (_Experimental_) Various changes to the experimental component `database_observability.mysql`:
+  - `schema_table`: add support for index expressions (@cristiangreco)
+
 ### Bugfixes
 
 - Fix panic in `prometheus.exporter.postgres` when using minimal url as data source name. (@kalleep)
