@@ -12,6 +12,8 @@ Main (unreleased)
 
 ### Features
 
+- Add the `otelcol.storage.file` extension to support persistent sending queues and `otelcol.receiver.filelog` file state tracking between restarts. (@dehaansa)
+
 - Add `otelcol.exporter.googlecloud` community component to export metrics, traces, and logs to Google Cloud. (@motoki317)
 
 - Add support to configure basic authentication for alloy http server. (@kalleep)
@@ -28,6 +30,8 @@ Main (unreleased)
 ### Bugfixes
 
 - Fix panic in `prometheus.exporter.postgres` when using minimal url as data source name. (@kalleep)
+
+- Fix issue with `remoteCfg` service stopping immediately and logging noop error if not configured (@dehaansa)
 
 - Fix `otelcol.exporter.prometheus` dropping valid exemplars. (@github-vincent-miszczak)
 
