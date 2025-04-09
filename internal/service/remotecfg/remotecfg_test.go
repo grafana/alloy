@@ -234,12 +234,12 @@ func TestAPIResponseNotModified(t *testing.T) {
 		assert.Equal(c, getHash([]byte(cfg1)), env.svc.getLastLoadedCfgHash())
 	}, time.Second, 10*time.Millisecond)
 
-	calls := client.getConfigCalls.Load()
-
 	// Update the response returned by the API.
 	client.mut.Lock()
 	client.getConfigFunc = buildGetConfigHandler("", "12345", true)
 	client.mut.Unlock()
+
+	calls := client.getConfigCalls.Load()
 
 	// Verify that the service has loaded the updated response.
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
