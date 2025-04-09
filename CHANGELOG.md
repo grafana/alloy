@@ -12,6 +12,8 @@ Main (unreleased)
 
 ### Features
 
+- Add the `otelcol.storage.file` extension to support persistent sending queues and `otelcol.receiver.filelog` file state tracking between restarts. (@dehaansa)
+
 - Add `otelcol.exporter.googlecloud` community component to export metrics, traces, and logs to Google Cloud. (@motoki317)
 
 - Add support to configure basic authentication for alloy http server. (@kalleep)
