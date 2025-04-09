@@ -4,8 +4,6 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-
-	alloy_runtime "github.com/grafana/alloy/internal/runtime"
 )
 
 func validateCommand() *cobra.Command {
@@ -20,17 +18,7 @@ func validateCommand() *cobra.Command {
 		Args:         cobra.RangeArgs(0, 1),
 		SilenceUsage: true,
 		RunE: func(_ *cobra.Command, args []string) error {
-			source, err := v.Run(args[0])
-			if err != nil {
-				return fmt.Errorf("encountered errors during validation: %w", err)
-			}
-
-			if !source.HasErrors() {
-				return nil
-			}
-
-			printSourceErrors(source)
-			return fmt.Errorf("encountered errors during validation")
+			return v.Run(args[0])
 		},
 	}
 
@@ -48,6 +36,16 @@ type alloyValidate struct {
 	configExtraArgs              string
 }
 
-func (v *alloyValidate) Run(configFile string) (*alloy_runtime.Source, error) {
-	return loadAlloySource(configFile, v.configFormat, v.configBypassConversionErrors, v.configExtraArgs)
+func (v *alloyValidate) Run(configFile string) error {
+	source, err := loadAlloySource(configFile, v.configFormat, v.configBypassConversionErrors, v.configExtraArgs)
+	if err != nil {
+		return err
+	}
+
+	if source.HasErrors() {
+		printSourceErrors(source)
+		return fmt.Errorf("encountered errors during validation")
+	}
+
+	return nil
 }
