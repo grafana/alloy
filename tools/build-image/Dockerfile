@@ -14,10 +14,6 @@ ARG GO_RUNTIME=mustoverride
 # We retrieve many of our dependencies by using various smaller containers.
 #
 
-# Dependency: golangci-lint (for linting)
-FROM alpine as golangci
-RUN wget -O- -nv https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.54.2
-
 # Dependency: docker (for building images)
 FROM alpine:3.17 as docker
 RUN apk add --no-cache docker-cli docker-cli-buildx
@@ -95,7 +91,6 @@ RUN apt-get update                                                      \
  && /root/.cargo/bin/rustup target add aarch64-unknown-linux-musl       \
  && /root/.cargo/bin/rustup target add x86_64-unknown-linux-musl
 
-COPY --from=golangci /bin/golangci-lint                  /usr/local/bin
 COPY --from=docker   /usr/bin/docker                     /usr/bin/docker
 COPY --from=docker   /usr/libexec/docker/cli-plugins     /usr/libexec/docker/cli-plugins
 COPY --from=helm     /usr/bin/helm                       /usr/bin/helm
