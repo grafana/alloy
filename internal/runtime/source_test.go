@@ -24,6 +24,7 @@ func TestParseSource(t *testing.T) {
 
 	f := ParseSource(t.Name(), []byte(content))
 	require.NoError(t, f.Error(t.Name()))
+	require.NoError(t, f.CollectErrors())
 
 	require.Len(t, f.components, 2)
 	require.Equal(t, "testcomponents.tick.ticker_a", getBlockID(f.components[0]))

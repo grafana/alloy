@@ -563,7 +563,7 @@ func startNewNode(t *testing.T, state *testState, nodeName string) {
 		Gatherer: reg,
 
 		ReadyFunc:  func() bool { return true },
-		ReloadFunc: func() (*runtime.Source, error) { return nil, nil },
+		ReloadFunc: func() error { return nil },
 
 		HTTPListenAddr: nodeAddress,
 	})
