@@ -225,7 +225,7 @@ func TestCache(t *testing.T) {
 	c.receiver.Chan() <- e
 
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		require.Equal(t, 3, receivedMessages.Load())
+		require.EqualValues(t, 3, receivedMessages.Load())
 	}, 250*time.Millisecond, 25*time.Millisecond)
 
 	// Let's look into the cache's structure now!
@@ -250,7 +250,7 @@ func TestCache(t *testing.T) {
 	c.receiver.Chan() <- e
 
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		require.Equal(t, 4, receivedMessages.Load())
+		require.EqualValues(t, 4, receivedMessages.Load())
 	}, 250*time.Millisecond, 25*time.Millisecond)
 
 	require.Equal(t, c.cache.Len(), 3)
@@ -275,7 +275,7 @@ func TestCache(t *testing.T) {
 	c.receiver.Chan() <- e
 
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		require.Equal(t, 6, receivedMessages.Load())
+		require.EqualValues(t, 6, receivedMessages.Load())
 	}, 250*time.Millisecond, 25*time.Millisecond)
 
 	// Both of these should be under a single, new cache key which will contain
@@ -299,7 +299,7 @@ func TestCache(t *testing.T) {
 	c.receiver.Chan() <- e
 
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		require.Equal(t, 8, receivedMessages.Load())
+		require.EqualValues(t, 8, receivedMessages.Load())
 	}, 250*time.Millisecond, 25*time.Millisecond)
 
 	require.Equal(t, c.cache.Len(), 4)
