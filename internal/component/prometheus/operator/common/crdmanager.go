@@ -194,6 +194,9 @@ func (c *crdManager) ClusteringUpdated() {
 // TODO: merge this code with the code in prometheus.scrape. This is a copy of that code, mostly because
 // we operate on slightly different data structures.
 func filterTargets(m map[string][]*targetgroup.Group, c cluster.Cluster) map[string][]*targetgroup.Group {
+	if !c.Ready() { // if cluster not ready, we don't take any traffic locally
+		return make(map[string][]*targetgroup.Group)
+	}
 	// the key in the map is the job name.
 	// the targetGroups have zero or more targets inside them.
 	// we should keep the same structure even when there are no targets in a group for this node to scrape,

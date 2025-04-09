@@ -12,8 +12,32 @@ Unreleased
 
 ### Enhancements
 
+- Add Vertical Pod Autoscaler support (@QuentinBisson)
+
+1.0.0 (2025-04-09)
+----------
+
+### Enhancements
+
+- Update version to `1.0.0`. This Helm chart is now covered with the [backward-compatibility](https://grafana.com/docs/alloy/latest/introduction/backward-compatibility/) policy.
+
+- Update to Grafana Alloy v1.8.0. (@thampiotr)
+
+0.12.6 (2025-04-03)
+----------
+### Breaking changes
+
+- configReloader.customArgs are likely to break as the prometheus maintained config reloader does not have the same arguments as the previous image (@dehaansa)
+
+### Enhancements
+
+- Change configReloader from jimmydyson/configmap-reload to prometheus-operator/prometheus-config-reloader (@dehaansa)
 - Update to Grafana Alloy v1.7.5. (@kimxogus)
 - Add `checksum/config` pod annotation (@kimxogus)
+
+### Other changes
+
+- Fix typo in values.yaml documentation (@petewall)
 
 0.12.5 (2025-03-13)
 ----------

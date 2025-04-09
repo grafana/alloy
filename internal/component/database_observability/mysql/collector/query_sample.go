@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/go-kit/log"
@@ -233,22 +232,10 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 			c.lastSampleSeenTimestamp = row.TimerEndPicoseconds.Float64
 		}
 
-		digestText := row.DigestText.String
-		if strings.HasSuffix(row.DigestText.String, "...") {
-			// best-effort attempt to detect truncated trailing comment
-			idx := strings.LastIndex(row.DigestText.String, "/*")
-			if idx < 0 {
-				level.Debug(c.logger).Log("msg", "skipping parsing truncated query", "schema", row.Schema.String, "digest", row.Digest.String)
-				continue
-			}
-
-			trailingText := row.DigestText.String[idx:]
-			if strings.LastIndex(trailingText, "*/") >= 0 {
-				level.Debug(c.logger).Log("msg", "skipping parsing truncated query with comment", "schema", row.Schema.String, "digest", row.Digest.String)
-				continue
-			}
-
-			digestText = row.DigestText.String[:idx]
+		digestText, err := c.sqlParser.CleanTruncatedText(row.DigestText.String)
+		if err != nil {
+			level.Error(c.logger).Log("msg", "failed to handle truncated sql query", "schema", row.Schema.String, "digest", row.Digest.String, "err", err)
+			continue
 		}
 
 		digestText, err = c.sqlParser.Redact(digestText)

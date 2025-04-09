@@ -36,6 +36,8 @@ issues:
   exclude-dirs:
     - component/pyroscope/scrape/internal/fastdelta
     - component/pyroscope/scrape/internal/pproflite
+    - component/otelcol/extension/jaeger_remote_sampling/internal # Copied with attribution from OTel Collector
+    - component/otelcol/receiver/prometheus/internal # Copied with attribution from OTel Collector
 
   exclude-rules:
     # It's fine if tests ignore errors.

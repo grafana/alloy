@@ -17,6 +17,7 @@ import (
 	"github.com/grafana/beyla/v2/pkg/components"
 	beylaCfg "github.com/grafana/beyla/v2/pkg/config"
 	"github.com/grafana/beyla/v2/pkg/export/attributes"
+	"github.com/grafana/beyla/v2/pkg/export/debug"
 	"github.com/grafana/beyla/v2/pkg/export/prom"
 	"github.com/grafana/beyla/v2/pkg/filter"
 	"github.com/grafana/beyla/v2/pkg/kubeflags"
@@ -37,7 +38,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "beyla.ebpf",
-		Stability: featuregate.StabilityPublicPreview,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   Exports{},
 
@@ -508,6 +509,7 @@ func (a *Arguments) Convert() (*beyla.Config, error) {
 	cfg.EnforceSysCaps = a.EnforceSysCaps
 	cfg.EBPF = a.EBPF.Convert()
 	cfg.Filters = a.Filters.Convert()
+	cfg.TracePrinter = debug.TracePrinter(a.TracePrinter)
 
 	if a.Debug {
 		// TODO: integrate Beyla internal logging with Alloy global logging
@@ -517,12 +519,20 @@ func (a *Arguments) Convert() (*beyla.Config, error) {
 			Level: &lvl,
 		})).Handler(), a.Debug)
 	}
+
 	return &cfg, nil
 }
 
 func (args *Arguments) Validate() error {
 	hasNetworkFeature := args.Metrics.hasNetworkFeature()
 	hasAppFeature := args.Metrics.hasAppFeature()
+
+	// Validate TracePrinter
+	if args.TracePrinter == "" {
+		args.TracePrinter = string(debug.TracePrinterDisabled)
+	} else if !debug.TracePrinter(args.TracePrinter).Valid() {
+		return fmt.Errorf("trace_printer: invalid value %q. Valid values are: disabled, counter, text, json, json_indent", args.TracePrinter)
+	}
 
 	// Services are required only when application observability is enabled
 	if hasAppFeature {

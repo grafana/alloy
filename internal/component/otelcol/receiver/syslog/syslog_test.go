@@ -47,6 +47,8 @@ func Test(t *testing.T) {
 	var args syslog.Arguments
 	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
+	require.Equal(t, "send", args.OnError)
+
 	// Override our settings so logs get forwarded to logsCh.
 	logCh := make(chan plog.Logs)
 	args.Output = makeLogsOutput(logCh)
@@ -132,7 +134,7 @@ func TestUnmarshal(t *testing.T) {
 		max_octets = 16000
 		allow_skip_pri_header = true
 		non_transparent_framing_trailer = "NUL"
-
+		on_error = "drop_quiet"
 		tcp {
 			listen_address = "localhost:1514"
 			max_log_size = "2MiB"
@@ -179,4 +181,15 @@ func TestUnmarshal(t *testing.T) {
 	var args syslog.Arguments
 	err := syntax.Unmarshal([]byte(alloyCfg), &args)
 	require.NoError(t, err)
+}
+
+func TestValidateOnError(t *testing.T) {
+	alloyCfg := `
+		on_error = "invalid"
+		output {
+		}
+	`
+	var args syslog.Arguments
+	err := syntax.Unmarshal([]byte(alloyCfg), &args)
+	require.ErrorContains(t, err, "invalid on_error: invalid")
 }

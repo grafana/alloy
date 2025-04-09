@@ -79,32 +79,6 @@ volumes:
   name: docker
 ---
 kind: pipeline
-name: Check Windows container (grafana/alloy)
-platform:
-  arch: amd64
-  os: windows
-  version: "1809"
-steps:
-- commands:
-  - '& "C:/Program Files/git/bin/bash.exe" -c "make alloy-image-windows"'
-  image: grafana/alloy-build-image:v0.1.8-windows
-  name: Build container
-  volumes:
-  - name: docker
-    path: //./pipe/docker_engine/
-trigger:
-  paths:
-  - Dockerfile.windows
-  - tools/ci/docker-containers-windows
-  ref:
-  - refs/heads/main
-type: docker
-volumes:
-- host:
-    path: //./pipe/docker_engine/
-  name: docker
----
-kind: pipeline
 name: Build alloy (Linux amd64)
 platform:
   arch: amd64
@@ -356,44 +330,9 @@ volumes:
     path: /var/run/docker.sock
   name: docker
 ---
-kind: pipeline
-name: Publish Windows alloy container
-platform:
-  arch: amd64
-  os: windows
-  version: "1809"
-steps:
-- commands:
-  - '& "C:/Program Files/git/bin/bash.exe" -c ''mkdir -p $HOME/.docker'''
-  - '& "C:/Program Files/git/bin/bash.exe" -c ''printenv GCR_CREDS > $HOME/.docker/config.json'''
-  - '& "C:/Program Files/git/bin/bash.exe" -c ''docker login -u $DOCKER_LOGIN -p $DOCKER_PASSWORD'''
-  - '& "C:/Program Files/git/bin/bash.exe" -c ''./tools/ci/docker-containers-windows
-    alloy'''
-  environment:
-    DOCKER_LOGIN:
-      from_secret: docker_login
-    DOCKER_PASSWORD:
-      from_secret: docker_password
-    GCR_CREDS:
-      from_secret: gcr_admin
-  image: grafana/alloy-build-image:v0.1.8-windows
-  name: Build containers
-  volumes:
-  - name: docker
-    path: //./pipe/docker_engine/
-trigger:
-  ref:
-  - refs/tags/v*
-type: docker
-volumes:
-- host:
-    path: //./pipe/docker_engine/
-  name: docker
----
 depends_on:
 - Publish Linux alloy container
 - Publish Linux alloy-boringcrypto container
-- Publish Windows alloy container
 image_pull_secrets:
 - dockerconfigjson
 kind: pipeline
@@ -529,6 +468,6 @@ kind: secret
 name: updater_private_key
 ---
 kind: signature
-hmac: 789532dcb81b41983eafd52f1b6d8a0eb764b986a8edf12c530eb8c07dc36a9d
+hmac: f758e7045e509a576d48f91a729f114967d02604b27b87e4c454ef3c71498283
 
 ...
