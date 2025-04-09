@@ -56,8 +56,10 @@ type Loader struct {
 	blocks               []*ast.BlockStmt // Most recently loaded blocks, used for writing
 	cm                   *controllerMetrics
 	cc                   *controllerCollector
-	moduleExportIndex    int
 	componentNodeManager *ComponentNodeManager
+
+	moduleExportIndexMutex sync.Mutex
+	moduleExportIndex      int
 }
 
 // LoaderOptions holds options for creating a Loader.
@@ -279,10 +281,7 @@ func (l *Loader) Apply(options ApplyOptions) diag.Diagnostics {
 		return diags
 	}
 	l.blocks = options.ComponentBlocks
-	if l.globals.OnExportsChange != nil && l.cache.ExportChangeIndex() != l.moduleExportIndex {
-		l.moduleExportIndex = l.cache.ExportChangeIndex()
-		l.globals.OnExportsChange(l.cache.CreateModuleExports())
-	}
+	l.triggerOnExportsChangeIfNeeded()
 	return diags
 }
 
@@ -851,20 +850,7 @@ func (l *Loader) concurrentEvalFn(n dag.Node, spanCtx context.Context, tracer tr
 		if exp, ok := n.(*ExportConfigNode); ok {
 			l.cache.CacheModuleExportValue(exp.Label(), exp.Value())
 		}
-		if l.globals.OnExportsChange != nil && l.cache.ExportChangeIndex() != l.moduleExportIndex {
-			// Upgrade to write lock to update the module exports.
-			l.mut.RUnlock()
-			l.mut.Lock()
-			// Check if the update still needed after obtaining the write lock and perform it.
-			if l.cache.ExportChangeIndex() != l.moduleExportIndex {
-				l.globals.OnExportsChange(l.cache.CreateModuleExports())
-				l.moduleExportIndex = l.cache.ExportChangeIndex()
-			}
-			l.mut.Unlock()
-		} else {
-			// No need to upgrade to write lock, just release the read lock.
-			l.mut.RUnlock()
-		}
+		l.triggerOnExportsChangeIfNeeded()
 	}
 
 	// We only use the error for updating the span status
@@ -922,6 +908,15 @@ func (l *Loader) postEvaluate(logger log.Logger, bn BlockNode, err error) error 
 		return err
 	}
 	return nil
+}
+
+func (l *Loader) triggerOnExportsChangeIfNeeded() {
+	l.moduleExportIndexMutex.Lock()
+	defer l.moduleExportIndexMutex.Unlock()
+	if l.globals.OnExportsChange != nil && l.cache.ExportChangeIndex() != l.moduleExportIndex {
+		l.moduleExportIndex = l.cache.ExportChangeIndex()
+		l.globals.OnExportsChange(l.cache.CreateModuleExports())
+	}
 }
 
 func multierrToDiags(errors error) diag.Diagnostics {
