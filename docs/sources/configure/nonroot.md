@@ -34,9 +34,15 @@ alloy:
   securityContext:
     runAsUser: 473
     runAsGroup: 473
+
+configReloader:
+  securityContext:
+    # this is the UID of the "nobody" user that the configReloader image runs as
+    runAsUser: 65534
+    runAsGroup: 65534
 ```
 
-This configuration makes the {{< param "PRODUCT_NAME" >}} binary run with UID 473 and GID 473 rather than as root.
+This configuration makes the {{< param "PRODUCT_NAME" >}} binary run with UID 473 and GID 473 rather than as root. It also runs the config reloader sidecar as UID 65534 and GID 65534.
 
 ## Is the root user a security risk?
 
