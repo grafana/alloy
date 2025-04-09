@@ -112,6 +112,7 @@ v1.8.0
   - `query_tables`: rename collector from `query_sample` to better reflect responsibility (@matthewnolf)
   - `query_sample`: add new collector that replaces previous implementation to collect more detailed sample information (@matthewnolf)
   - `query_sample`: refactor parsing of truncated queries (@cristiangreco)
+  - `query_sample`: enable opt-in support to extract unredacted sql query (sql_text) (@matthewnolf)
 
 - Add labels validation in `pyroscope.write` to prevent duplicate labels and invalid label names/values. (@marcsanmi)
 

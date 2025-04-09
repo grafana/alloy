@@ -58,6 +58,8 @@ type Arguments struct {
 
 	// TODO(cristian): experimental, will be removed soon
 	UseTiDBParser bool `alloy:"use_tidb_parser,attr,optional"`
+
+	CollectSQLText bool `alloy:"collect_sql_text,attr,optional"`
 }
 
 var DefaultArguments = Arguments{
@@ -299,6 +301,7 @@ func (c *Component) startCollectors() error {
 			CollectInterval: c.args.CollectInterval,
 			EntryHandler:    entryHandler,
 			Logger:          c.opts.Logger,
+			SelectSQLText:   c.args.CollectSQLText,
 		})
 		if err != nil {
 			level.Error(c.opts.Logger).Log("msg", "failed to create QuerySample collector", "err", err)
