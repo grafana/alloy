@@ -6,7 +6,7 @@ discovery.linode "prometheus1" {
 discovery.linode "prometheus2" { }
 
 prometheus.scrape "prometheus1" {
-	targets = concat(
+	targets = array.concat(
 		discovery.linode.prometheus1.targets,
 		[{
 			__address__ = "localhost:9090",

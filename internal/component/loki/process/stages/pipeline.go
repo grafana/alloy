@@ -6,16 +6,17 @@ import (
 	"sync"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/time/rate"
+
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/featuregate"
 )
 
 // StageConfig defines a single stage in a processing pipeline.
 // We define these as pointers types so we can use reflection to check that
 // exactly one is set.
 type StageConfig struct {
-	//TODO(thampiotr): sync these with new stages
 	CRIConfig             *CRIConfig             `alloy:"cri,block,optional"`
 	DecolorizeConfig      *DecolorizeConfig      `alloy:"decolorize,block,optional"`
 	DockerConfig          *DockerConfig          `alloy:"docker,block,optional"`
@@ -42,6 +43,7 @@ type StageConfig struct {
 	TemplateConfig        *TemplateConfig        `alloy:"template,block,optional"`
 	TenantConfig          *TenantConfig          `alloy:"tenant,block,optional"`
 	TimestampConfig       *TimestampConfig       `alloy:"timestamp,block,optional"`
+	WindowsEventConfig    *WindowsEventConfig    `alloy:"windowsevent,block,optional"`
 }
 
 var rateLimiter *rate.Limiter
@@ -57,10 +59,10 @@ type Pipeline struct {
 }
 
 // NewPipeline creates a new log entry pipeline from a configuration
-func NewPipeline(logger log.Logger, stages []StageConfig, jobName *string, registerer prometheus.Registerer) (*Pipeline, error) {
+func NewPipeline(logger log.Logger, stages []StageConfig, jobName *string, registerer prometheus.Registerer, minStability featuregate.Stability) (*Pipeline, error) {
 	st := []Stage{}
 	for _, stage := range stages {
-		newStage, err := New(logger, jobName, stage, registerer)
+		newStage, err := New(logger, jobName, stage, registerer, minStability)
 		if err != nil {
 			return nil, fmt.Errorf("invalid stage config %w", err)
 		}
@@ -86,24 +88,8 @@ func RunWith(input chan Entry, process func(e Entry) Entry) chan Entry {
 	return out
 }
 
-// RunWithSkip same as RunWith, except it skip sending it to output channel, if `process` functions returns `skip` true.
-func RunWithSkip(input chan Entry, process func(e Entry) (Entry, bool)) chan Entry {
-	out := make(chan Entry)
-	go func() {
-		defer close(out)
-		for e := range input {
-			ee, skip := process(e)
-			if skip {
-				continue
-			}
-			out <- ee
-		}
-	}()
-
-	return out
-}
-
-// RunWithSkiporSendMany same as RunWithSkip, except it can either skip sending it to output channel, if `process` functions returns `skip` true. Or send many entries.
+// RunWithSkipOrSendMany same as RunWith, except it handles sending multiple entries at the same time and it wil skip
+// sending the batch to output channel, if `process` functions returns `skip` true.
 func RunWithSkipOrSendMany(input chan Entry, process func(e Entry) ([]Entry, bool)) chan Entry {
 	out := make(chan Entry)
 	go func() {

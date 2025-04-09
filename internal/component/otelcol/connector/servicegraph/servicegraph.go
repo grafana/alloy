@@ -12,7 +12,7 @@ import (
 	"github.com/grafana/alloy/syntax"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraphconnector"
 	otelcomponent "go.opentelemetry.io/collector/component"
-	otelextension "go.opentelemetry.io/collector/extension"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 func init() {
@@ -113,6 +113,7 @@ func (args *Arguments) SetToDefault() {
 		CacheLoop:             1 * time.Minute,
 		StoreExpirationLoop:   2 * time.Second,
 		DatabaseNameAttribute: "db.name",
+		MetricsFlushInterval:  60 * time.Second,
 		//TODO: Add VirtualNodePeerAttributes when it's no longer controlled by
 		// the "processor.servicegraph.virtualNode" feature gate.
 		// VirtualNodePeerAttributes: []string{
@@ -166,7 +167,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		},
 		CacheLoop:             args.CacheLoop,
 		StoreExpirationLoop:   args.StoreExpirationLoop,
-		MetricsFlushInterval:  args.MetricsFlushInterval,
+		MetricsFlushInterval:  &args.MetricsFlushInterval,
 		DatabaseNameAttribute: args.DatabaseNameAttribute,
 		//TODO: Add VirtualNodePeerAttributes when it's no longer controlled by
 		// the "processor.servicegraph.virtualNode" feature gate.
@@ -175,12 +176,12 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 }
 
 // Extensions implements connector.Arguments.
-func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
+func (args Arguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 
 // Exporters implements connector.Arguments.
-func (args Arguments) Exporters() map[otelcomponent.DataType]map[otelcomponent.ID]otelcomponent.Component {
+func (args Arguments) Exporters() map[pipeline.Signal]map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 

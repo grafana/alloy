@@ -1,0 +1,30 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+      http:
+
+exporters:
+  otlp:
+    endpoint: database:4317
+
+processors:
+  groupbyattrs:
+    keys:
+      - k8s.namespace.name
+      - k8s.deployment.name
+service:
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: [groupbyattrs]
+      exporters: [otlp]
+    logs:
+      receivers: [otlp]
+      processors: [groupbyattrs]
+      exporters: [otlp]
+    traces:
+      receivers: [otlp]
+      processors: [groupbyattrs]
+      exporters: [otlp]
+

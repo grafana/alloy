@@ -1,7 +1,6 @@
 package syslog
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"net"
@@ -30,25 +29,24 @@ func Test(t *testing.T) {
 	args := Arguments{}
 	tcpListenerAddr, udpListenerAddr := getFreeAddr(t), getFreeAddr(t)
 
-	args.SyslogListeners = []ListenerConfig{
-		{
-			ListenAddress:  tcpListenerAddr,
-			ListenProtocol: "tcp",
-			Labels:         map[string]string{"protocol": "tcp"},
-		},
-		{
-			ListenAddress:  udpListenerAddr,
-			ListenProtocol: "udp",
-			Labels:         map[string]string{"protocol": "udp"},
-		},
-	}
+	l1 := DefaultListenerConfig
+	l1.ListenAddress = tcpListenerAddr
+	l1.ListenProtocol = "tcp"
+	l1.Labels = map[string]string{"protocol": "tcp"}
+
+	l2 := DefaultListenerConfig
+	l2.ListenAddress = udpListenerAddr
+	l2.ListenProtocol = "udp"
+	l2.Labels = map[string]string{"protocol": "udp"}
+
+	args.SyslogListeners = []ListenerConfig{l1, l2}
 	args.ForwardTo = []loki.LogsReceiver{ch1, ch2}
 
 	// Create and run the component.
 	c, err := New(opts, args)
 	require.NoError(t, err)
 
-	go c.Run(context.Background())
+	go c.Run(t.Context())
 	time.Sleep(200 * time.Millisecond)
 
 	// Create and send a Syslog message over TCP to the first listener.
@@ -112,12 +110,11 @@ func TestWithRelabelRules(t *testing.T) {
 	args := Arguments{}
 	tcpListenerAddr := getFreeAddr(t)
 
-	args.SyslogListeners = []ListenerConfig{
-		{
-			ListenAddress: tcpListenerAddr,
-			Labels:        map[string]string{"protocol": "tcp"},
-		},
-	}
+	l := DefaultListenerConfig
+	l.ListenAddress = tcpListenerAddr
+	l.Labels = map[string]string{"protocol": "tcp"}
+
+	args.SyslogListeners = []ListenerConfig{l}
 	args.ForwardTo = []loki.LogsReceiver{ch1}
 
 	// Create a handler which will be used to retrieve relabeling rules.
@@ -138,7 +135,7 @@ func TestWithRelabelRules(t *testing.T) {
 	c, err := New(opts, args)
 	require.NoError(t, err)
 
-	go c.Run(context.Background())
+	go c.Run(t.Context())
 	time.Sleep(200 * time.Millisecond)
 
 	// Create and send a Syslog message over TCP to the first listener.

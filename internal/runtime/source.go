@@ -15,6 +15,7 @@ import (
 // A Source holds the contents of a parsed Alloy configuration source module.
 type Source struct {
 	sourceMap map[string][]byte // Map that links parsed Alloy source's name with its content.
+	fileMap   map[string]*ast.File
 	hash      [sha256.Size]byte // Hash of all files in sourceMap sorted by name.
 
 	// Components holds the list of raw Alloy AST blocks describing components.
@@ -42,6 +43,7 @@ func ParseSource(name string, bb []byte) (*Source, error) {
 		return nil, err
 	}
 	source.sourceMap = map[string][]byte{name: bb}
+	source.fileMap = map[string]*ast.File{name: node}
 	source.hash = sha256.Sum256(bb)
 	return source, nil
 }
@@ -75,7 +77,7 @@ func sourceFromBody(body ast.Body) (*Source, error) {
 			switch fullName {
 			case "declare":
 				declares = append(declares, stmt)
-			case "logging", "tracing", "argument", "export", "import.file", "import.string", "import.http", "import.git":
+			case "logging", "tracing", "argument", "export", "import.file", "import.string", "import.http", "import.git", "foreach":
 				configs = append(configs, stmt)
 			default:
 				components = append(components, stmt)
@@ -107,8 +109,12 @@ type namedSource struct {
 // Source. sources must not be modified after calling ParseSources.
 func ParseSources(sources map[string][]byte) (*Source, error) {
 	var (
-		mergedSource = &Source{sourceMap: sources} // Combined source from all the input content.
-		hash         = sha256.New()                // Combined hash of all the sources.
+		// Combined source from all the input content.
+		mergedSource = &Source{
+			sourceMap: sources,
+			fileMap:   make(map[string]*ast.File, len(sources)),
+		}
+		hash = sha256.New() // Combined hash of all the sources.
 	)
 
 	// Sorted slice so ParseSources always does the same thing.
@@ -132,6 +138,8 @@ func ParseSources(sources map[string][]byte) (*Source, error) {
 			return nil, err
 		}
 
+		mergedSource.fileMap[namedSource.Name] = sourceFragment.fileMap[namedSource.Name]
+
 		mergedSource.components = append(mergedSource.components, sourceFragment.components...)
 		mergedSource.configBlocks = append(mergedSource.configBlocks, sourceFragment.configBlocks...)
 		mergedSource.declareBlocks = append(mergedSource.declareBlocks, sourceFragment.declareBlocks...)
@@ -148,6 +156,15 @@ func (s *Source) RawConfigs() map[string][]byte {
 		return nil
 	}
 	return s.sourceMap
+}
+
+// SourceFiles returns the parsed source content used to create Source.
+// Do not modify the returned map.
+func (s *Source) SourceFiles() map[string]*ast.File {
+	if s == nil {
+		return nil
+	}
+	return s.fileMap
 }
 
 // SHA256 returns the sha256 checksum of the source.

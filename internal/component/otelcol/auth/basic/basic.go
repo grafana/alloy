@@ -2,6 +2,8 @@
 package basic
 
 import (
+	"fmt"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol/auth"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
@@ -10,7 +12,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/extension/basicauthextension"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/configopaque"
-	otelextension "go.opentelemetry.io/collector/extension"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 func init() {
@@ -29,8 +31,6 @@ func init() {
 
 // Arguments configures the otelcol.auth.basic component.
 type Arguments struct {
-	// TODO(rfratto): should we support htpasswd?
-
 	Username string            `alloy:"username,attr"`
 	Password alloytypes.Secret `alloy:"password,attr"`
 
@@ -45,8 +45,8 @@ func (args *Arguments) SetToDefault() {
 	args.DebugMetrics.SetToDefault()
 }
 
-// Convert implements auth.Arguments.
-func (args Arguments) Convert() (otelcomponent.Config, error) {
+// ConvertClient implements auth.Arguments.
+func (args Arguments) ConvertClient() (otelcomponent.Config, error) {
 	return &basicauthextension.Config{
 		ClientAuth: &basicauthextension.ClientAuthSettings{
 			Username: args.Username,
@@ -55,13 +55,27 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	}, nil
 }
 
+// ConvertServer implements auth.Arguments.
+func (args Arguments) ConvertServer() (otelcomponent.Config, error) {
+	return &basicauthextension.Config{
+		Htpasswd: &basicauthextension.HtpasswdSettings{
+			Inline: fmt.Sprintf("%s:%s", args.Username, args.Password),
+		},
+	}, nil
+}
+
+// AuthFeatures implements auth.Arguments.
+func (args Arguments) AuthFeatures() auth.AuthFeature {
+	return auth.ClientAndServerAuthSupported
+}
+
 // Extensions implements auth.Arguments.
-func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
+func (args Arguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 
 // Exporters implements auth.Arguments.
-func (args Arguments) Exporters() map[otelcomponent.DataType]map[otelcomponent.ID]otelcomponent.Component {
+func (args Arguments) Exporters() map[pipeline.Signal]map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 

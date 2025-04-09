@@ -1,6 +1,7 @@
 import { FC, Fragment, ReactElement } from 'react';
 import { Link } from 'react-router-dom';
-import { faBug, faCubes, faLink } from '@fortawesome/free-solid-svg-icons';
+import { useLocation } from 'react-router-dom';
+import { faBug, faCubes, faDiagramProject, faLink } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import { partitionBody } from '../../utils/partition';
@@ -22,10 +23,16 @@ export const ComponentView: FC<ComponentViewProps> = (props) => {
 
   const referencedBy = props.component.referencedBy.filter((id) => props.info[id] !== undefined).map((id) => props.info[id]);
   const referencesTo = props.component.referencesTo.filter((id) => props.info[id] !== undefined).map((id) => props.info[id]);
+  const liveDebuggingEnabled = props.component.liveDebuggingEnabled;
 
   const argsPartition = partitionBody(props.component.arguments, 'Arguments');
   const exportsPartition = props.component.exports && partitionBody(props.component.exports, 'Exports');
   const debugPartition = props.component.debugInfo && partitionBody(props.component.debugInfo, 'Debug info');
+  const location = useLocation();
+  const useRemotecfg = location.pathname.startsWith('/remotecfg');
+
+  // TODO: update this condition when foreach is supported
+  const showGraph = props.component.moduleInfo && props.component.name !== 'foreach';
 
   function partitionTOC(partition: PartitionedBody): ReactElement {
     return (
@@ -41,6 +48,20 @@ export const ComponentView: FC<ComponentViewProps> = (props) => {
           </ul>
         )}
       </li>
+    );
+  }
+
+  function liveDebuggingButton(): ReactElement | string {
+    if (!liveDebuggingEnabled) {
+      return 'Live debugging is not yet available for this component';
+    }
+
+    return (
+      <div className={styles.debugLink}>
+        <a href={`debug/${pathJoin([props.component.moduleID, props.component.localID])}`}>
+          <FontAwesomeIcon icon={faBug} /> Live debugging
+        </a>
+      </div>
     );
   }
 
@@ -100,11 +121,15 @@ export const ComponentView: FC<ComponentViewProps> = (props) => {
           </a>
         </div>
 
-        <div className={styles.debugLink}>
-          <a href={`debug/${pathJoin([props.component.moduleID, props.component.localID])}`}>
-            <FontAwesomeIcon icon={faBug} /> Live debugging
-          </a>
-        </div>
+        {showGraph && (
+          <div className={styles.debugLink}>
+            <a href={`graph/${pathJoin([props.component.moduleID, props.component.localID])}`}>
+              <FontAwesomeIcon icon={faDiagramProject} /> Graph
+            </a>
+          </div>
+        )}
+
+        {liveDebuggingButton()}
 
         {props.component.health.message && (
           <blockquote>
@@ -126,7 +151,7 @@ export const ComponentView: FC<ComponentViewProps> = (props) => {
           <section id="dependencies">
             <h2>Dependencies</h2>
             <div className={styles.sectionContent}>
-              <ComponentList components={referencesTo} moduleID={props.component.moduleID} />
+              <ComponentList components={referencesTo} useRemotecfg={useRemotecfg} />
             </div>
           </section>
         )}
@@ -135,7 +160,7 @@ export const ComponentView: FC<ComponentViewProps> = (props) => {
           <section id="dependants">
             <h2>Dependants</h2>
             <div className={styles.sectionContent}>
-              <ComponentList components={referencedBy} moduleID={props.component.moduleID} />
+              <ComponentList components={referencedBy} useRemotecfg={useRemotecfg} />
             </div>
           </section>
         )}
@@ -144,10 +169,7 @@ export const ComponentView: FC<ComponentViewProps> = (props) => {
           <section id="module">
             <h2>Module components</h2>
             <div className={styles.sectionContent}>
-              <ComponentList
-                components={props.component.moduleInfo}
-                moduleID={pathJoin([props.component.moduleID, props.component.localID])}
-              />
+              <ComponentList components={props.component.moduleInfo} useRemotecfg={useRemotecfg} />
             </div>
           </section>
         )}

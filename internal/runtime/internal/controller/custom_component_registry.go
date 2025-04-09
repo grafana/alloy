@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/grafana/alloy/syntax/ast"
+	"github.com/grafana/alloy/syntax/vm"
 )
 
 // CustomComponentRegistry holds custom component definitions that are available in the context.
@@ -14,15 +15,17 @@ type CustomComponentRegistry struct {
 	parent *CustomComponentRegistry // nil if root config
 
 	mut      sync.RWMutex
+	scope    *vm.Scope
 	imports  map[string]*CustomComponentRegistry // importNamespace: importScope
 	declares map[string]ast.Body                 // customComponentName: template
 }
 
 // NewCustomComponentRegistry creates a new CustomComponentRegistry with a parent.
 // parent can be nil.
-func NewCustomComponentRegistry(parent *CustomComponentRegistry) *CustomComponentRegistry {
+func NewCustomComponentRegistry(parent *CustomComponentRegistry, scope *vm.Scope) *CustomComponentRegistry {
 	return &CustomComponentRegistry{
 		parent:   parent,
+		scope:    scope,
 		declares: make(map[string]ast.Body),
 		imports:  make(map[string]*CustomComponentRegistry),
 	}
@@ -40,6 +43,12 @@ func (s *CustomComponentRegistry) getImport(name string) (*CustomComponentRegist
 	defer s.mut.RUnlock()
 	im, ok := s.imports[name]
 	return im, ok
+}
+
+func (s *CustomComponentRegistry) Scope() *vm.Scope {
+	s.mut.RLock()
+	defer s.mut.RUnlock()
+	return s.scope
 }
 
 // registerDeclare stores a local declare block.
@@ -69,7 +78,7 @@ func (s *CustomComponentRegistry) updateImportContent(importNode *ImportConfigNo
 	if _, exist := s.imports[importNode.label]; !exist {
 		panic(fmt.Errorf("import %q was not registered", importNode.label))
 	}
-	importScope := NewCustomComponentRegistry(nil)
+	importScope := NewCustomComponentRegistry(nil, importNode.Scope())
 	importScope.declares = importNode.ImportedDeclares()
 	importScope.updateImportContentChildren(importNode)
 	s.imports[importNode.label] = importScope
@@ -79,7 +88,7 @@ func (s *CustomComponentRegistry) updateImportContent(importNode *ImportConfigNo
 // and update their scope with the imported declare blocks.
 func (s *CustomComponentRegistry) updateImportContentChildren(importNode *ImportConfigNode) {
 	for _, child := range importNode.ImportConfigNodesChildren() {
-		childScope := NewCustomComponentRegistry(nil)
+		childScope := NewCustomComponentRegistry(nil, child.Scope())
 		childScope.declares = child.ImportedDeclares()
 		childScope.updateImportContentChildren(child)
 		s.imports[child.label] = childScope

@@ -7,12 +7,14 @@ import (
 	"time"
 
 	"github.com/alecthomas/units"
-	"github.com/grafana/alloy/internal/util"
 	dskit "github.com/grafana/dskit/server"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/util"
 )
 
 // Not all these are tested but are here to make sure the different types marshal without error
@@ -411,7 +413,7 @@ func Test_dropStage_Process(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validateDropConfig(tt.config)
+			_, err := validateDropConfig(tt.config)
 			if err != nil {
 				t.Error(err)
 			}
@@ -432,7 +434,7 @@ func TestDropPipeline(t *testing.T) {
 	registry := prometheus.NewRegistry()
 	plName := "test_drop_pipeline"
 	logger := util.TestAlloyLogger(t)
-	pl, err := NewPipeline(logger, loadConfig(testDropAlloy), &plName, registry)
+	pl, err := NewPipeline(logger, loadConfig(testDropAlloy), &plName, registry, featuregate.StabilityGenerallyAvailable)
 	require.NoError(t, err)
 	out := processEntries(pl,
 		newEntry(nil, nil, testMatchLogLineApp1, time.Now()),
@@ -465,7 +467,7 @@ func Test_validateDropConfig(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := validateDropConfig(tt.config); ((err != nil) && (err.Error() != tt.wantErr.Error())) || (err == nil && tt.wantErr != nil) {
+			if _, err := validateDropConfig(tt.config); ((err != nil) && (err.Error() != tt.wantErr.Error())) || (err == nil && tt.wantErr != nil) {
 				t.Errorf("validateDropConfig() error = %v, wantErr = %v", err, tt.wantErr)
 			}
 		})

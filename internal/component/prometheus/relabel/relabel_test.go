@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"context"
+	dto "github.com/prometheus/client_model/go"
 
 	"github.com/grafana/alloy/internal/component"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
@@ -111,6 +111,17 @@ func TestLRUNaN(t *testing.T) {
 	require.True(t, relabeller.cache.Len() == 0)
 }
 
+func TestMetrics(t *testing.T) {
+	relabeller := generateRelabel(t)
+	lbls := labels.FromStrings("__address__", "localhost")
+
+	relabeller.relabel(0, lbls)
+	m := &dto.Metric{}
+	err := relabeller.metricsProcessed.Write(m)
+	require.NoError(t, err)
+	require.True(t, *(m.Counter.Value) == 1)
+}
+
 func BenchmarkCache(b *testing.B) {
 	ls := labelstore.New(nil, prom.DefaultRegisterer)
 	fanout := prometheus.NewInterceptor(nil, ls, prometheus.WithAppendHook(func(ref storage.SeriesRef, l labels.Labels, _ int64, _ float64, _ storage.Appender) (storage.SeriesRef, error) {
@@ -140,7 +151,7 @@ func BenchmarkCache(b *testing.B) {
 	})
 
 	lbls := labels.FromStrings("__address__", "localhost")
-	app := entry.Appender(context.Background())
+	app := entry.Appender(b.Context())
 	for i := 0; i < b.N; i++ {
 		app.Append(0, lbls, time.Now().UnixMilli(), 0)
 	}

@@ -2,40 +2,55 @@ package alloycli
 
 import (
 	"fmt"
-	stdlog "log"
 	"net"
 	"os"
 	"strconv"
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/grafana/alloy/internal/service/cluster"
 	"github.com/grafana/ckit/advertise"
-	"github.com/hashicorp/go-discover"
-	"github.com/hashicorp/go-discover/provider/k8s"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.opentelemetry.io/otel/trace"
+
+	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/service/cluster"
+	"github.com/grafana/alloy/internal/service/cluster/discovery"
 )
 
-type clusterOptions struct {
+type ClusterOptions struct {
 	Log     log.Logger
 	Metrics prometheus.Registerer
 	Tracer  trace.TracerProvider
 
-	EnableClustering    bool
-	NodeName            string
-	AdvertiseAddress    string
-	ListenAddress       string
-	JoinPeers           []string
-	DiscoverPeers       string
-	RejoinInterval      time.Duration
-	AdvertiseInterfaces []string
-	ClusterMaxJoinPeers int
-	ClusterName         string
+	EnableClustering       bool
+	MinimumClusterSize     int
+	MinimumSizeWaitTimeout time.Duration
+	NodeName               string
+	AdvertiseAddress       string
+	ListenAddress          string
+	JoinPeers              []string
+	DiscoverPeers          string
+	RejoinInterval         time.Duration
+	AdvertiseInterfaces    []string
+	ClusterMaxJoinPeers    int
+	ClusterName            string
+	EnableTLS              bool
+	TLSCAPath              string
+	TLSCertPath            string
+	TLSKeyPath             string
+	TLSServerName          string
 }
 
-func buildClusterService(opts clusterOptions) (*cluster.Service, error) {
+func buildClusterService(opts ClusterOptions) (*cluster.Service, error) {
+	return NewClusterService(opts, discovery.NewPeerDiscoveryFn)
+}
+
+// NewClusterService is visible to make it easier to test clustering e2e.
+func NewClusterService(
+	opts ClusterOptions,
+	getDiscoveryFn func(options discovery.Options) (discovery.DiscoverFn, error),
+) (*cluster.Service, error) {
+
 	listenPort := findPort(opts.ListenAddress, 80)
 
 	config := cluster.Options{
@@ -43,11 +58,18 @@ func buildClusterService(opts clusterOptions) (*cluster.Service, error) {
 		Metrics: opts.Metrics,
 		Tracer:  opts.Tracer,
 
-		EnableClustering:    opts.EnableClustering,
-		NodeName:            opts.NodeName,
-		RejoinInterval:      opts.RejoinInterval,
-		ClusterMaxJoinPeers: opts.ClusterMaxJoinPeers,
-		ClusterName:         opts.ClusterName,
+		EnableClustering:       opts.EnableClustering,
+		MinimumClusterSize:     opts.MinimumClusterSize,
+		MinimumSizeWaitTimeout: opts.MinimumSizeWaitTimeout,
+		NodeName:               opts.NodeName,
+		RejoinInterval:         opts.RejoinInterval,
+		ClusterMaxJoinPeers:    opts.ClusterMaxJoinPeers,
+		ClusterName:            opts.ClusterName,
+		EnableTLS:              opts.EnableTLS,
+		TLSCAPath:              opts.TLSCAPath,
+		TLSCertPath:            opts.TLSCertPath,
+		TLSKeyPath:             opts.TLSKeyPath,
+		TLSServerName:          opts.TLSServerName,
 	}
 
 	if config.NodeName == "" {
@@ -64,26 +86,16 @@ func buildClusterService(opts clusterOptions) (*cluster.Service, error) {
 		return nil, err
 	}
 
-	switch {
-	case len(opts.JoinPeers) > 0 && opts.DiscoverPeers != "":
-		return nil, fmt.Errorf("at most one of join peers and discover peers may be set")
-
-	case len(opts.JoinPeers) > 0:
-		config.DiscoverPeers = newStaticDiscovery(opts.JoinPeers, listenPort)
-
-	case opts.DiscoverPeers != "":
-		discoverFunc, err := newDynamicDiscovery(config.Log, opts.DiscoverPeers, listenPort)
-		if err != nil {
-			return nil, err
-		}
-		config.DiscoverPeers = discoverFunc
-
-	default:
-		// Here, both JoinPeers and DiscoverPeers are empty. This is desirable when
-		// starting a seed node that other nodes connect to, so we don't require
-		// one of the fields to be set.
+	config.DiscoverPeers, err = getDiscoveryFn(discovery.Options{
+		JoinPeers:     opts.JoinPeers,
+		DiscoverPeers: opts.DiscoverPeers,
+		DefaultPort:   listenPort,
+		Logger:        opts.Log,
+		Tracer:        opts.Tracer,
+	})
+	if err != nil {
+		return nil, err
 	}
-
 	return cluster.New(config)
 }
 
@@ -91,7 +103,7 @@ func useAllInterfaces(interfaces []string) bool {
 	return len(interfaces) == 1 && interfaces[0] == "all"
 }
 
-func getAdvertiseAddress(opts clusterOptions, listenPort int) (string, error) {
+func getAdvertiseAddress(opts ClusterOptions, listenPort int) (string, error) {
 	if opts.AdvertiseAddress != "" {
 		return appendDefaultPort(opts.AdvertiseAddress, listenPort), nil
 	}
@@ -133,79 +145,4 @@ func appendDefaultPort(addr string, port int) string {
 		return addr
 	}
 	return net.JoinHostPort(addr, strconv.Itoa(port))
-}
-
-type discoverFunc func() ([]string, error)
-
-func newStaticDiscovery(peers []string, defaultPort int) discoverFunc {
-	return func() ([]string, error) {
-		var addrs []string
-
-		for _, addr := range peers {
-			addrs = appendJoinAddr(addrs, addr)
-		}
-
-		for i := range addrs {
-			// Default to using the same advertise port as the local node. This may
-			// break in some cases, so the user should make sure the port numbers
-			// align on as many nodes as possible.
-			addrs[i] = appendDefaultPort(addrs[i], defaultPort)
-		}
-
-		return addrs, nil
-	}
-}
-
-func appendJoinAddr(addrs []string, in string) []string {
-	_, _, err := net.SplitHostPort(in)
-	if err == nil {
-		addrs = append(addrs, in)
-		return addrs
-	}
-
-	ip := net.ParseIP(in)
-	if ip != nil {
-		addrs = append(addrs, ip.String())
-		return addrs
-	}
-
-	_, srvs, err := net.LookupSRV("", "", in)
-	if err == nil {
-		for _, srv := range srvs {
-			addrs = append(addrs, srv.Target)
-		}
-	}
-
-	return addrs
-}
-
-func newDynamicDiscovery(l log.Logger, config string, defaultPort int) (discoverFunc, error) {
-	providers := make(map[string]discover.Provider, len(discover.Providers)+1)
-	for k, v := range discover.Providers {
-		providers[k] = v
-	}
-
-	// Custom providers that aren't enabled by default
-	providers["k8s"] = &k8s.Provider{}
-
-	discoverer, err := discover.New(discover.WithProviders(providers))
-	if err != nil {
-		return nil, fmt.Errorf("bootstrapping peer discovery: %w", err)
-	}
-
-	return func() ([]string, error) {
-		addrs, err := discoverer.Addrs(config, stdlog.New(log.NewStdlibAdapter(l), "", 0))
-		if err != nil {
-			return nil, fmt.Errorf("discovering peers: %w", err)
-		}
-
-		for i := range addrs {
-			// Default to using the same advertise port as the local node. This may
-			// break in some cases, so the user should make sure the port numbers
-			// align on as many nodes as possible.
-			addrs[i] = appendDefaultPort(addrs[i], defaultPort)
-		}
-
-		return addrs, nil
-	}, nil
 }

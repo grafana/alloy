@@ -3,15 +3,16 @@ package otelcolconvert
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/alecthomas/units"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/auth"
 	"github.com/grafana/alloy/internal/component/otelcol/exporter/otlphttp"
+	"github.com/grafana/alloy/internal/component/otelcol/extension"
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/component/componentstatus"
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/exporter/otlphttpexporter"
 )
@@ -30,7 +31,7 @@ func (otlpHTTPExporterConverter) InputComponentName() string {
 	return "otelcol.exporter.otlphttp"
 }
 
-func (otlpHTTPExporterConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
+func (otlpHTTPExporterConverter) ConvertAndAppend(state *State, id componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -39,8 +40,11 @@ func (otlpHTTPExporterConverter) ConvertAndAppend(state *State, id component.Ins
 		case auth.Handler:
 			ext := state.LookupExtension(cfg.(*otlphttpexporter.Config).Auth.AuthenticatorID)
 			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
+		case extension.ExtensionHandler:
+			ext := state.LookupExtension(*cfg.(*otlphttpexporter.Config).QueueConfig.StorageID)
+			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
 		}
-		return val
+		return common.GetAlloyTypesOverrideHook()(val)
 	}
 
 	args := toOtelcolExporterOTLPHTTP(cfg.(*otlphttpexporter.Config))
@@ -71,17 +75,9 @@ func toHTTPClientArguments(cfg confighttp.ClientConfig) otelcol.HTTPClientArgume
 		a = &auth.Handler{}
 	}
 
-	var mic *int
-	var ict *time.Duration
-	defaults := confighttp.NewDefaultClientConfig()
-	if mic = cfg.MaxIdleConns; mic == nil {
-		mic = defaults.MaxIdleConns
-	}
-	if ict = cfg.IdleConnTimeout; ict == nil {
-		ict = defaults.IdleConnTimeout
-	}
 	return otelcol.HTTPClientArguments{
 		Endpoint:        cfg.Endpoint,
+		ProxyUrl:        cfg.ProxyURL,
 		Compression:     otelcol.CompressionType(cfg.Compression),
 		TLS:             toTLSClientArguments(cfg.TLSSetting),
 		ReadBufferSize:  units.Base2Bytes(cfg.ReadBufferSize),
@@ -89,14 +85,14 @@ func toHTTPClientArguments(cfg confighttp.ClientConfig) otelcol.HTTPClientArgume
 
 		Timeout:              cfg.Timeout,
 		Headers:              toHeadersMap(cfg.Headers),
-		MaxIdleConns:         mic,
+		MaxIdleConns:         cfg.MaxIdleConns,
 		MaxIdleConnsPerHost:  cfg.MaxIdleConnsPerHost,
 		MaxConnsPerHost:      cfg.MaxConnsPerHost,
-		IdleConnTimeout:      ict,
+		IdleConnTimeout:      cfg.IdleConnTimeout,
 		DisableKeepAlives:    cfg.DisableKeepAlives,
 		HTTP2PingTimeout:     cfg.HTTP2PingTimeout,
 		HTTP2ReadIdleTimeout: cfg.HTTP2ReadIdleTimeout,
 
-		Auth: a,
+		Authentication: a,
 	}
 }

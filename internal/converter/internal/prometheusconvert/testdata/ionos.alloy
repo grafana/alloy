@@ -14,7 +14,7 @@ discovery.ionos "prometheus2" {
 }
 
 prometheus.scrape "prometheus1" {
-	targets = concat(
+	targets = array.concat(
 		discovery.ionos.prometheus1.targets,
 		[{
 			__address__ = "localhost:9090",

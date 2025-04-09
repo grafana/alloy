@@ -132,6 +132,11 @@ func (d *deltaAppender) Append(ctx context.Context, lbs labels.Labels, samples [
 	return nil
 }
 
+func (d *deltaAppender) AppendIngest(_ context.Context, _ *pyroscope.IncomingProfile) error {
+	// No-op: AppendIngest is not used in deltaAppender
+	return nil
+}
+
 // computeDelta computes the delta between the given profile and the last
 // data is uncompressed if it is gzip compressed.
 // The returned data is always gzip compressed.

@@ -15,6 +15,7 @@ import (
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/config/confignet"
 	"go.opentelemetry.io/collector/confmap/confmaptest"
+	"go.opentelemetry.io/collector/confmap/xconfmap"
 )
 
 func TestLoadConfig(t *testing.T) {
@@ -30,7 +31,7 @@ func TestLoadConfig(t *testing.T) {
 				HTTPServerConfig: &confighttp.ServerConfig{Endpoint: ":5778"},
 				GRPCServerConfig: &configgrpc.ServerConfig{NetAddr: confignet.AddrConfig{
 					Endpoint:  ":14250",
-					Transport: "tcp",
+					Transport: confignet.TransportTypeTCP,
 				}},
 				Source: Source{
 					Remote: &configgrpc.ClientConfig{
@@ -45,7 +46,7 @@ func TestLoadConfig(t *testing.T) {
 				HTTPServerConfig: &confighttp.ServerConfig{Endpoint: ":5778"},
 				GRPCServerConfig: &configgrpc.ServerConfig{NetAddr: confignet.AddrConfig{
 					Endpoint:  ":14250",
-					Transport: "tcp",
+					Transport: confignet.TransportTypeTCP,
 				}},
 				Source: Source{
 					ReloadInterval: time.Second,
@@ -62,8 +63,8 @@ func TestLoadConfig(t *testing.T) {
 			cfg := factory.CreateDefaultConfig()
 			sub, err := cm.Sub(tt.id.String())
 			require.NoError(t, err)
-			require.NoError(t, component.UnmarshalConfig(sub, cfg))
-			assert.NoError(t, component.ValidateConfig(cfg))
+			require.NoError(t, sub.Unmarshal(cfg))
+			assert.NoError(t, xconfmap.Validate(cfg))
 			assert.Equal(t, tt.expected, cfg)
 		})
 	}

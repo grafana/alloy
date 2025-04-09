@@ -1,0 +1,31 @@
+A collection containing targets capsules.
+
+-- main.alloy --
+
+testcomponents.targets "static" {
+    targets = [
+        {"nu" = "jazz", "n" = "4"},
+        {"bossa" ="nova", "n" = "4"},
+        {"lo"="fi", "n" = "4"},
+    ]
+}
+
+foreach "testForeach" {
+  collection = testcomponents.targets.static.output
+  var = "t"
+
+  template {
+      testcomponents.targets "in_template" {
+          targets = [t]
+      }
+      testcomponents.pulse "pt" {
+          max = t["n"]
+          frequency = "10ms"
+          forward_to = [testcomponents.summation_receiver.sum.receiver]
+      }
+  }
+}
+
+// Similar to testcomponents.summation, but with a "receiver" export
+testcomponents.summation_receiver "sum" {
+}

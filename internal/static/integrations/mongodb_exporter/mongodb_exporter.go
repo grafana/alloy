@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-	"os"
 
 	"github.com/go-kit/log"
 	"github.com/percona/mongodb_exporter/exporter"
@@ -22,10 +21,9 @@ var DefaultConfig = Config{
 // Config controls mongodb_exporter
 type Config struct {
 	// MongoDB connection URI. example:mongodb://user:pass@127.0.0.1:27017/admin?ssl=true"
-	URI                    config_util.Secret `yaml:"mongodb_uri"`
-	DirectConnect          bool               `yaml:"direct_connect,omitempty"`
-	DiscoveringMode        bool               `yaml:"discovering_mode,omitempty"`
-	TLSBasicAuthConfigPath string             `yaml:"tls_basic_auth_config_path,omitempty"`
+	URI             config_util.Secret `yaml:"mongodb_uri"`
+	DirectConnect   bool               `yaml:"direct_connect,omitempty"`
+	DiscoveringMode bool               `yaml:"discovering_mode,omitempty"`
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler for Config
@@ -63,12 +61,6 @@ func init() {
 func New(logger log.Logger, c *Config) (integrations.Integration, error) {
 	logrusLogger := integrations.NewLogger(logger)
 
-	if c.TLSBasicAuthConfigPath != "" {
-		if _, err := os.Stat(c.TLSBasicAuthConfigPath); err != nil {
-			return nil, fmt.Errorf("tls config file path is invalid: %s. error: %w", c.TLSBasicAuthConfigPath, errors.Unwrap(err))
-		}
-	}
-
 	exp := exporter.New(&exporter.Opts{
 		URI:                    string(c.URI),
 		Logger:                 logrusLogger,
@@ -82,7 +74,6 @@ func New(logger log.Logger, c *Config) (integrations.Integration, error) {
 		CollectAll:      true,
 		DirectConnect:   c.DirectConnect,
 		DiscoveringMode: c.DiscoveringMode,
-		TLSConfigPath:   c.TLSBasicAuthConfigPath,
 	})
 
 	return integrations.NewHandlerIntegration(c.Name(), exp.Handler()), nil

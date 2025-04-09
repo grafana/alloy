@@ -13,6 +13,7 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/grafana/alloy/internal/featuregate"
 	util_log "github.com/grafana/loki/v3/pkg/util/log"
 )
 
@@ -40,7 +41,7 @@ var testLabelsLogLineWithMissingKey = `
 `
 
 func TestLabelsPipeline_Labels(t *testing.T) {
-	pl, err := NewPipeline(util_log.Logger, loadConfig(testLabelsYaml), nil, prometheus.DefaultRegisterer)
+	pl, err := NewPipeline(util_log.Logger, loadConfig(testLabelsYaml), nil, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,7 +58,7 @@ func TestLabelsPipelineWithMissingKey_Labels(t *testing.T) {
 	var buf bytes.Buffer
 	w := log.NewSyncWriter(&buf)
 	logger := log.NewLogfmtLogger(w)
-	pl, err := NewPipeline(logger, loadConfig(testLabelsYaml), nil, prometheus.DefaultRegisterer)
+	pl, err := NewPipeline(logger, loadConfig(testLabelsYaml), nil, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,10 +73,8 @@ func TestLabelsPipelineWithMissingKey_Labels(t *testing.T) {
 }
 
 var (
-	lv1  = "lv1"
-	lv2c = "l2"
-	lv3  = ""
-	lv3c = "l3"
+	lv1 = "lv1"
+	lv3 = ""
 )
 
 var emptyLabelsConfig = LabelsConfig{nil}
@@ -84,19 +83,19 @@ func TestLabels(t *testing.T) {
 	tests := map[string]struct {
 		config       LabelsConfig
 		err          error
-		expectedCfgs LabelsConfig
+		expectedCfgs map[string]string
 	}{
 		"missing config": {
 			config:       emptyLabelsConfig,
 			err:          errors.New(ErrEmptyLabelStageConfig),
-			expectedCfgs: emptyLabelsConfig,
+			expectedCfgs: nil,
 		},
 		"invalid label name": {
 			config: LabelsConfig{
-				Values: map[string]*string{"#*FDDS*": nil},
+				Values: map[string]*string{"\xfd": nil},
 			},
-			err:          fmt.Errorf(ErrInvalidLabelName, "#*FDDS*"),
-			expectedCfgs: emptyLabelsConfig,
+			err:          fmt.Errorf(ErrInvalidLabelName, "\xfd"),
+			expectedCfgs: nil,
 		},
 		"label value is set from name": {
 			config: LabelsConfig{Values: map[string]*string{
@@ -105,18 +104,18 @@ func TestLabels(t *testing.T) {
 				"l3": &lv3,
 			}},
 			err: nil,
-			expectedCfgs: LabelsConfig{Values: map[string]*string{
-				"l1": &lv1,
-				"l2": &lv2c,
-				"l3": &lv3c,
-			}},
+			expectedCfgs: map[string]string{
+				"l1": lv1,
+				"l2": "l2",
+				"l3": "l3",
+			},
 		},
 	}
 	for name, test := range tests {
 		test := test
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			err := validateLabelsConfig(test.config)
+			actual, err := validateLabelsConfig(test.config)
 			if (err != nil) != (test.err != nil) {
 				t.Errorf("validateLabelsConfig() expected error = %v, actual error = %v", test.err, err)
 				return
@@ -125,8 +124,8 @@ func TestLabels(t *testing.T) {
 				t.Errorf("validateLabelsConfig() expected error = %v, actual error = %v", test.err, err)
 				return
 			}
-			if test.expectedCfgs.Values != nil {
-				assert.Equal(t, test.expectedCfgs, test.config)
+			if test.expectedCfgs != nil {
+				assert.Equal(t, test.expectedCfgs, actual)
 			}
 		})
 	}

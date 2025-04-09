@@ -36,7 +36,6 @@ var DefaultArguments = Arguments{
 	MaxOpenConns: 10,
 	QueryTimeout: 5,
 }
-
 var (
 	errNoConnectionString = errors.New("no connection string was provided")
 	errNoHostname         = errors.New("no hostname in connection string")
@@ -44,10 +43,11 @@ var (
 
 // Arguments controls the oracledb exporter.
 type Arguments struct {
-	ConnectionString alloytypes.Secret `alloy:"connection_string,attr"`
-	MaxIdleConns     int               `alloy:"max_idle_conns,attr,optional"`
-	MaxOpenConns     int               `alloy:"max_open_conns,attr,optional"`
-	QueryTimeout     int               `alloy:"query_timeout,attr,optional"`
+	ConnectionString alloytypes.Secret         `alloy:"connection_string,attr"`
+	MaxIdleConns     int                       `alloy:"max_idle_conns,attr,optional"`
+	MaxOpenConns     int                       `alloy:"max_open_conns,attr,optional"`
+	QueryTimeout     int                       `alloy:"query_timeout,attr,optional"`
+	CustomMetrics    alloytypes.OptionalSecret `alloy:"custom_metrics,attr,optional"`
 }
 
 // SetToDefault implements syntax.Defaulter.
@@ -82,5 +82,6 @@ func (a *Arguments) Convert() *oracledb_exporter.Config {
 		MaxIdleConns:     a.MaxIdleConns,
 		MaxOpenConns:     a.MaxOpenConns,
 		QueryTimeout:     a.QueryTimeout,
+		CustomMetrics:    a.CustomMetrics.Value,
 	}
 }

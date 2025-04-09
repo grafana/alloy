@@ -4,7 +4,7 @@
 # default when running `docker buildx build` or when DOCKER_BUILDKIT=1 is set
 # in environment variables.
 
-# NOTE: The GO_RUNTIME is used to switch between the default Google go runtime and mcr.microsoft.com/oss/go/microsoft/golang:1.22.3-bullseye which is a Microsoft
+# NOTE: The GO_RUNTIME is used to switch between the default Google go runtime and mcr.microsoft.com/oss/go/microsoft/golang:1.22.7-bullseye which is a Microsoft
 # fork of go that allows using windows crypto instead of boring crypto. Details at https://github.com/microsoft/go/tree/microsoft/main/eng/doc/fips
 ARG GO_RUNTIME=mustoverride
 
@@ -13,10 +13,6 @@ ARG GO_RUNTIME=mustoverride
 #
 # We retrieve many of our dependencies by using various smaller containers.
 #
-
-# Dependency: golangci-lint (for linting)
-FROM alpine as golangci
-RUN wget -O- -nv https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.54.2
 
 # Dependency: docker (for building images)
 FROM alpine:3.17 as docker
@@ -81,16 +77,20 @@ RUN corepack enable
 #
 # NOTE(rfratto): musl is installed so the Docker binaries from alpine work
 # properly.
-RUN apt-get update                                \
- && apt-get install -qy                           \
-      build-essential file zip unzip gettext git  \
-      musl libsystemd-dev nsis                    \
-      rpm ruby ruby-dev rubygems                  \
-      protobuf-compiler libprotobuf-dev yamllint  \
- && gem install --no-document fpm                 \
- && rm -rf /var/lib/apt/lists/*
+ARG RUST_TOOLCHAIN=1.77
+RUN apt-get update                                                      \
+ && apt-get install -qy                                                 \
+      build-essential file zip unzip gettext git                        \
+      musl libsystemd-dev nsis cmake                                    \
+      rpm ruby ruby-dev rubygems                                        \
+      protobuf-compiler libprotobuf-dev yamllint                        \
+ && gem install --no-document fpm                                       \
+ && rm -rf /var/lib/apt/lists/*                                         \
+ && curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs           \
+    | sh -s -- -y --profile minimal --default-toolchain $RUST_TOOLCHAIN \
+ && /root/.cargo/bin/rustup target add aarch64-unknown-linux-musl       \
+ && /root/.cargo/bin/rustup target add x86_64-unknown-linux-musl
 
-COPY --from=golangci /bin/golangci-lint                  /usr/local/bin
 COPY --from=docker   /usr/bin/docker                     /usr/bin/docker
 COPY --from=docker   /usr/libexec/docker/cli-plugins     /usr/libexec/docker/cli-plugins
 COPY --from=helm     /usr/bin/helm                       /usr/bin/helm
@@ -110,4 +110,4 @@ RUN git config --global --add safe.directory \*
 ENV CC viceroycc
 
 ENV GOPATH /go
-ENV PATH /usr/local/go/bin:/go/bin:$PATH
+ENV PATH /usr/local/go/bin:/go/bin:/root/.cargo/bin/:$PATH

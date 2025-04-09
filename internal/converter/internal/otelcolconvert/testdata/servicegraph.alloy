@@ -1,7 +1,11 @@
 otelcol.receiver.otlp "default" {
-	grpc { }
+	grpc {
+		endpoint = "localhost:4317"
+	}
 
-	http { }
+	http {
+		endpoint = "localhost:4318"
+	}
 
 	output {
 		traces = [otelcol.connector.servicegraph.default.input]
@@ -28,6 +32,7 @@ otelcol.connector.servicegraph "default" {
 	}
 	cache_loop              = "2m0s"
 	store_expiration_loop   = "5s"
+	metrics_flush_interval  = "3m0s"
 	database_name_attribute = "db_name3"
 
 	output {

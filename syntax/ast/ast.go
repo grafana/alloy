@@ -27,6 +27,8 @@ type Stmt interface {
 type Expr interface {
 	Node
 	astExpr()
+	IsSecret() bool // Used when printing, annotated in struct decoding
+	SetSecret(bool) // Used when printing, annotated in struct decoding
 }
 
 // File is a parsed file.
@@ -81,6 +83,8 @@ type Ident struct {
 // IdentifierExpr refers to a named value.
 type IdentifierExpr struct {
 	Ident *Ident
+
+	Secret bool
 }
 
 // LiteralExpr is a constant value of a specific token kind.
@@ -92,18 +96,24 @@ type LiteralExpr struct {
 	// token.STRING, then Value would be wrapped in the original quotes (e.g.,
 	// `"foobar"`).
 	Value string
+
+	Secret bool
 }
 
 // ArrayExpr is an array of values.
 type ArrayExpr struct {
 	Elements             []Expr
 	LBrackPos, RBrackPos token.Pos
+
+	Secret bool
 }
 
 // ObjectExpr declares an object of key-value pairs.
 type ObjectExpr struct {
 	Fields               []*ObjectField
 	LCurlyPos, RCurlyPos token.Pos
+
+	Secret bool
 }
 
 // ObjectField defines an individual key-value pair within an object.
@@ -118,12 +128,16 @@ type ObjectField struct {
 type AccessExpr struct {
 	Value Expr
 	Name  *Ident
+
+	Secret bool
 }
 
 // IndexExpr accesses an index in an array value.
 type IndexExpr struct {
 	Value, Index         Expr
 	LBrackPos, RBrackPos token.Pos
+
+	Secret bool
 }
 
 // CallExpr invokes a function value with a set of arguments.
@@ -132,6 +146,8 @@ type CallExpr struct {
 	Args  []Expr
 
 	LParenPos, RParenPos token.Pos
+
+	Secret bool
 }
 
 // UnaryExpr performs a unary operation on a single value.
@@ -139,6 +155,8 @@ type UnaryExpr struct {
 	Kind    token.Token
 	KindPos token.Pos
 	Value   Expr
+
+	Secret bool
 }
 
 // BinaryExpr performs a binary operation against two values.
@@ -146,12 +164,16 @@ type BinaryExpr struct {
 	Kind        token.Token
 	KindPos     token.Pos
 	Left, Right Expr
+
+	Secret bool
 }
 
 // ParenExpr represents an expression wrapped in parentheses.
 type ParenExpr struct {
 	Inner                Expr
 	LParenPos, RParenPos token.Pos
+
+	Secret bool
 }
 
 // Type assertions
@@ -219,6 +241,28 @@ func (n *CallExpr) astExpr()       {}
 func (n *UnaryExpr) astExpr()      {}
 func (n *BinaryExpr) astExpr()     {}
 func (n *ParenExpr) astExpr()      {}
+
+func (n *IdentifierExpr) IsSecret() bool { return n.Secret }
+func (n *LiteralExpr) IsSecret() bool    { return n.Secret }
+func (n *ArrayExpr) IsSecret() bool      { return n.Secret }
+func (n *ObjectExpr) IsSecret() bool     { return n.Secret }
+func (n *AccessExpr) IsSecret() bool     { return n.Secret }
+func (n *IndexExpr) IsSecret() bool      { return n.Secret }
+func (n *CallExpr) IsSecret() bool       { return n.Secret }
+func (n *UnaryExpr) IsSecret() bool      { return n.Secret }
+func (n *BinaryExpr) IsSecret() bool     { return n.Secret }
+func (n *ParenExpr) IsSecret() bool      { return n.Secret }
+
+func (n *IdentifierExpr) SetSecret(s bool) { n.Secret = s }
+func (n *LiteralExpr) SetSecret(s bool)    { n.Secret = s }
+func (n *ArrayExpr) SetSecret(s bool)      { n.Secret = s }
+func (n *ObjectExpr) SetSecret(s bool)     { n.Secret = s }
+func (n *AccessExpr) SetSecret(s bool)     { n.Secret = s }
+func (n *IndexExpr) SetSecret(s bool)      { n.Secret = s }
+func (n *CallExpr) SetSecret(s bool)       { n.Secret = s }
+func (n *UnaryExpr) SetSecret(s bool)      { n.Secret = s }
+func (n *BinaryExpr) SetSecret(s bool)     { n.Secret = s }
+func (n *ParenExpr) SetSecret(s bool)      { n.Secret = s }
 
 // StartPos returns the position of the first character belonging to a Node.
 func StartPos(n Node) token.Pos {

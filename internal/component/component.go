@@ -114,8 +114,7 @@ type DebugComponent interface {
 	DebugInfo() interface{}
 }
 
-// LiveDebugging is an interface marker used by the components that support the live debugging feature.
+// LiveDebugging is a marker interface to check if a component supports live debugging.
 type LiveDebugging interface {
-	// LiveDebugging marks the component for live debugging support. It is never invoked.
-	LiveDebugging()
+	LiveDebugging() // This function is never called.
 }

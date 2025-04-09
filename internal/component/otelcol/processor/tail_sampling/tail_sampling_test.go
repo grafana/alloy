@@ -195,6 +195,7 @@ func TestBigConfig(t *testing.T) {
       boolean_attribute {
         key = "key4"
         value = true
+        invert_match = true
       }
     }
     policy {

@@ -9,6 +9,8 @@ import (
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/datadogreceiver"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/component/componentstatus"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 func init() {
@@ -21,7 +23,7 @@ func (datadogReceiverConverter) Factory() component.Factory { return datadogrece
 
 func (datadogReceiverConverter) InputComponentName() string { return "" }
 
-func (datadogReceiverConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
+func (datadogReceiverConverter) ConvertAndAppend(state *State, id componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -38,10 +40,10 @@ func (datadogReceiverConverter) ConvertAndAppend(state *State, id component.Inst
 	return diags
 }
 
-func toDatadogReceiver(state *State, id component.InstanceID, cfg *datadogreceiver.Config) *datadog.Arguments {
+func toDatadogReceiver(state *State, id componentstatus.InstanceID, cfg *datadogreceiver.Config) *datadog.Arguments {
 	var (
-		nextMetrics = state.Next(id, component.DataTypeMetrics)
-		nextTraces  = state.Next(id, component.DataTypeTraces)
+		nextMetrics = state.Next(id, pipeline.SignalMetrics)
+		nextTraces  = state.Next(id, pipeline.SignalTraces)
 	)
 
 	return &datadog.Arguments{

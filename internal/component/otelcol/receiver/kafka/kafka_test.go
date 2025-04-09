@@ -12,6 +12,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/config/configretry"
 )
 
 func TestArguments_UnmarshalAlloy(t *testing.T) {
@@ -28,12 +29,14 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				output {}
 			`,
 			expected: kafkareceiver.Config{
-				Brokers:         []string{"10.10.10.10:9092"},
-				ProtocolVersion: "2.0.0",
-				Encoding:        "otlp_proto",
-				GroupID:         "otel-collector",
-				ClientID:        "otel-collector",
-				InitialOffset:   "latest",
+				Brokers:           []string{"10.10.10.10:9092"},
+				ProtocolVersion:   "2.0.0",
+				SessionTimeout:    10 * time.Second,
+				HeartbeatInterval: 3 * time.Second,
+				Encoding:          "otlp_proto",
+				GroupID:           "otel-collector",
+				ClientID:          "otel-collector",
+				InitialOffset:     "latest",
 				Metadata: kafkaexporter.Metadata{
 					Full: true,
 					Retry: kafkaexporter.MetadataRetry{
@@ -49,6 +52,17 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					ExtractHeaders: false,
 					Headers:        []string{},
 				},
+				ErrorBackOff: configretry.BackOffConfig{
+					Enabled:             false,
+					InitialInterval:     0,
+					RandomizationFactor: 0,
+					Multiplier:          0,
+					MaxInterval:         0,
+					MaxElapsedTime:      0,
+				},
+				MinFetchSize:     1,
+				DefaultFetchSize: 1048576,
+				MaxFetchSize:     0,
 			},
 		},
 		{
@@ -56,6 +70,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			cfg: `
 				brokers = ["10.10.10.10:9092"]
 				protocol_version = "2.0.0"
+				session_timeout = "11s"
+				heartbeat_interval = "4s"
 				topic = "test_topic"
 				encoding = "test_encoding"
 				group_id = "test_group_id"
@@ -80,16 +96,29 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					extract_headers = true
 					headers = ["foo", "bar"]
 				}
+				error_backoff {
+					enabled = true
+					initial_interval = "1s"
+					randomization_factor = 0.1
+					multiplier = 1.2
+					max_interval = "1s"
+					max_elapsed_time = "1m"
+				}
+				min_fetch_size = 2
+				default_fetch_size = 10000
+				max_fetch_size = 20
 				output {}
 			`,
 			expected: kafkareceiver.Config{
-				Brokers:         []string{"10.10.10.10:9092"},
-				ProtocolVersion: "2.0.0",
-				Topic:           "test_topic",
-				Encoding:        "test_encoding",
-				GroupID:         "test_group_id",
-				ClientID:        "test_client_id",
-				InitialOffset:   "test_offset",
+				Brokers:           []string{"10.10.10.10:9092"},
+				ProtocolVersion:   "2.0.0",
+				SessionTimeout:    11 * time.Second,
+				HeartbeatInterval: 4 * time.Second,
+				Topic:             "test_topic",
+				Encoding:          "test_encoding",
+				GroupID:           "test_group_id",
+				ClientID:          "test_client_id",
+				InitialOffset:     "test_offset",
 				Metadata: kafkaexporter.Metadata{
 					Full: true,
 					Retry: kafkaexporter.MetadataRetry{
@@ -109,6 +138,17 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					ExtractHeaders: true,
 					Headers:        []string{"foo", "bar"},
 				},
+				ErrorBackOff: configretry.BackOffConfig{
+					Enabled:             true,
+					InitialInterval:     1 * time.Second,
+					RandomizationFactor: 0.1,
+					Multiplier:          1.2,
+					MaxInterval:         1 * time.Second,
+					MaxElapsedTime:      1 * time.Minute,
+				},
+				MinFetchSize:     2,
+				DefaultFetchSize: 10000,
+				MaxFetchSize:     20,
 			},
 		},
 	}
@@ -151,12 +191,16 @@ func TestArguments_Auth(t *testing.T) {
 				output {}
 			`,
 			expected: map[string]interface{}{
-				"brokers":          []string{"10.10.10.10:9092"},
-				"protocol_version": "2.0.0",
-				"encoding":         "otlp_proto",
-				"group_id":         "otel-collector",
-				"client_id":        "otel-collector",
-				"initial_offset":   "latest",
+				"brokers":            []string{"10.10.10.10:9092"},
+				"protocol_version":   "2.0.0",
+				"session_timeout":    10 * time.Second,
+				"heartbeat_interval": 3 * time.Second,
+				"encoding":           "otlp_proto",
+				"group_id":           "otel-collector",
+				"client_id":          "otel-collector",
+				"initial_offset":     "latest",
+				"min_fetch_size":     1,
+				"default_fetch_size": 1048576,
 				"metadata": kafkaexporter.Metadata{
 					Full: true,
 					Retry: kafkaexporter.MetadataRetry{
@@ -171,6 +215,14 @@ func TestArguments_Auth(t *testing.T) {
 				"header_extraction": kafkareceiver.HeaderExtraction{
 					ExtractHeaders: false,
 					Headers:        []string{},
+				},
+				"error_backoff": configretry.BackOffConfig{
+					Enabled:             false,
+					InitialInterval:     0,
+					RandomizationFactor: 0,
+					Multiplier:          0,
+					MaxInterval:         0,
+					MaxElapsedTime:      0,
 				},
 				"auth": map[string]interface{}{
 					"plain_text": map[string]interface{}{
@@ -202,12 +254,16 @@ func TestArguments_Auth(t *testing.T) {
 				output {}
 			`,
 			expected: map[string]interface{}{
-				"brokers":          []string{"10.10.10.10:9092"},
-				"protocol_version": "2.0.0",
-				"encoding":         "otlp_proto",
-				"group_id":         "otel-collector",
-				"client_id":        "otel-collector",
-				"initial_offset":   "latest",
+				"brokers":            []string{"10.10.10.10:9092"},
+				"protocol_version":   "2.0.0",
+				"session_timeout":    10 * time.Second,
+				"heartbeat_interval": 3 * time.Second,
+				"encoding":           "otlp_proto",
+				"group_id":           "otel-collector",
+				"client_id":          "otel-collector",
+				"initial_offset":     "latest",
+				"min_fetch_size":     1,
+				"default_fetch_size": 1048576,
 				"metadata": kafkaexporter.Metadata{
 					Full: true,
 					Retry: kafkaexporter.MetadataRetry{
@@ -222,6 +278,14 @@ func TestArguments_Auth(t *testing.T) {
 				"header_extraction": kafkareceiver.HeaderExtraction{
 					ExtractHeaders: false,
 					Headers:        []string{},
+				},
+				"error_backoff": configretry.BackOffConfig{
+					Enabled:             false,
+					InitialInterval:     0,
+					RandomizationFactor: 0,
+					Multiplier:          0,
+					MaxInterval:         0,
+					MaxElapsedTime:      0,
 				},
 				"auth": map[string]interface{}{
 					"sasl": map[string]interface{}{
@@ -259,12 +323,16 @@ func TestArguments_Auth(t *testing.T) {
 				output {}
 			`,
 			expected: map[string]interface{}{
-				"brokers":          []string{"10.10.10.10:9092"},
-				"protocol_version": "2.0.0",
-				"encoding":         "otlp_proto",
-				"group_id":         "otel-collector",
-				"client_id":        "otel-collector",
-				"initial_offset":   "latest",
+				"brokers":            []string{"10.10.10.10:9092"},
+				"protocol_version":   "2.0.0",
+				"session_timeout":    10 * time.Second,
+				"heartbeat_interval": 3 * time.Second,
+				"encoding":           "otlp_proto",
+				"group_id":           "otel-collector",
+				"client_id":          "otel-collector",
+				"initial_offset":     "latest",
+				"min_fetch_size":     1,
+				"default_fetch_size": 1048576,
 				"metadata": kafkaexporter.Metadata{
 					Full: true,
 					Retry: kafkaexporter.MetadataRetry{
@@ -279,6 +347,14 @@ func TestArguments_Auth(t *testing.T) {
 				"header_extraction": kafkareceiver.HeaderExtraction{
 					ExtractHeaders: false,
 					Headers:        []string{},
+				},
+				"error_backoff": configretry.BackOffConfig{
+					Enabled:             false,
+					InitialInterval:     0,
+					RandomizationFactor: 0,
+					Multiplier:          0,
+					MaxInterval:         0,
+					MaxElapsedTime:      0,
 				},
 				"auth": map[string]interface{}{
 					"tls": map[string]interface{}{
@@ -309,18 +385,23 @@ func TestArguments_Auth(t *testing.T) {
 						password = "test_password"
 						config_file = "test_config_filem"
 						keytab_file = "test_keytab_file"
+						disable_fast_negotiation = true
 					}
 				}
 
 				output {}
 			`,
 			expected: map[string]interface{}{
-				"brokers":          []string{"10.10.10.10:9092"},
-				"protocol_version": "2.0.0",
-				"encoding":         "otlp_proto",
-				"group_id":         "otel-collector",
-				"client_id":        "otel-collector",
-				"initial_offset":   "latest",
+				"brokers":            []string{"10.10.10.10:9092"},
+				"protocol_version":   "2.0.0",
+				"session_timeout":    10 * time.Second,
+				"heartbeat_interval": 3 * time.Second,
+				"encoding":           "otlp_proto",
+				"group_id":           "otel-collector",
+				"client_id":          "otel-collector",
+				"initial_offset":     "latest",
+				"min_fetch_size":     1,
+				"default_fetch_size": 1048576,
 				"metadata": kafkaexporter.Metadata{
 					Full: true,
 					Retry: kafkaexporter.MetadataRetry{
@@ -336,15 +417,24 @@ func TestArguments_Auth(t *testing.T) {
 					ExtractHeaders: false,
 					Headers:        []string{},
 				},
+				"error_backoff": configretry.BackOffConfig{
+					Enabled:             false,
+					InitialInterval:     0,
+					RandomizationFactor: 0,
+					Multiplier:          0,
+					MaxInterval:         0,
+					MaxElapsedTime:      0,
+				},
 				"auth": map[string]interface{}{
 					"kerberos": map[string]interface{}{
-						"service_name": "test_service_name",
-						"realm":        "test_realm",
-						"use_keytab":   true,
-						"username":     "test_username",
-						"password":     "test_password",
-						"config_file":  "test_config_filem",
-						"keytab_file":  "test_keytab_file",
+						"service_name":             "test_service_name",
+						"realm":                    "test_realm",
+						"use_keytab":               true,
+						"username":                 "test_username",
+						"password":                 "test_password",
+						"config_file":              "test_config_filem",
+						"keytab_file":              "test_keytab_file",
+						"disable_fast_negotiation": true,
 					},
 				},
 			},

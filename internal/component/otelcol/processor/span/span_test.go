@@ -70,6 +70,26 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 		},
 		{
 			alloyCfg: `
+			name {
+				to_attributes {
+					keep_original_name = true
+					rules = [` + "`" + `^\/api\/v1\/document\/(?P<documentId>.*)\/update$` + "`" + `]
+				}
+			}
+
+			output {}
+			`,
+			otelCfg: map[string]interface{}{
+				"name": spanprocessor.Name{
+					ToAttributes: &spanprocessor.ToAttributes{
+						KeepOriginalName: true,
+						Rules:            []string{`^\/api\/v1\/document\/(?P<documentId>.*)\/update$`},
+					},
+				},
+			},
+		},
+		{
+			alloyCfg: `
 			include {
 				match_type = "regexp"
 				services   = ["banks"]

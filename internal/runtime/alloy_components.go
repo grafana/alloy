@@ -22,7 +22,7 @@ func (f *Runtime) GetComponent(id component.ID, opts component.InfoOptions) (*co
 		return mod.f.GetComponent(component.ID{LocalID: id.LocalID}, opts)
 	}
 
-	graph := f.loader.OriginalGraph()
+	graph := f.loader.Graph()
 
 	node := graph.GetByID(id.LocalID)
 	if node == nil {
@@ -53,7 +53,7 @@ func (f *Runtime) ListComponents(moduleID string, opts component.InfoOptions) ([
 
 	var (
 		components = f.loader.Components()
-		graph      = f.loader.OriginalGraph()
+		graph      = f.loader.Graph()
 	)
 
 	detail := make([]*component.Info, len(components))
@@ -113,6 +113,8 @@ func (f *Runtime) getComponentDetail(cn controller.ComponentNode, graph *dag.Gra
 		References:   references,
 		ReferencedBy: referencedBy,
 
+		DataFlowEdgesTo: cn.GetDataFlowEdgesTo(),
+
 		ComponentName: cn.ComponentName(),
 		Health:        health,
 
@@ -128,6 +130,10 @@ func (f *Runtime) getComponentDetail(cn controller.ComponentNode, graph *dag.Gra
 			componentInfo.DebugInfo = builtinComponent.DebugInfo()
 		}
 	}
+
+	_, liveDebuggingEnabled := componentInfo.Component.(component.LiveDebugging)
+	componentInfo.LiveDebuggingEnabled = liveDebuggingEnabled
+
 	return componentInfo
 }
 

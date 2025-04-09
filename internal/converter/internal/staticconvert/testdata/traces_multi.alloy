@@ -1,9 +1,11 @@
 otelcol.receiver.otlp "trace_config_1_default" {
 	grpc {
+		endpoint         = "localhost:4317"
 		include_metadata = true
 	}
 
 	http {
+		endpoint         = "localhost:4318"
 		include_metadata = true
 	}
 
@@ -35,10 +37,12 @@ otelcol.exporter.otlp "trace_config_1_default_0" {
 
 otelcol.receiver.otlp "trace_config_2_default" {
 	grpc {
+		endpoint         = "localhost:4317"
 		include_metadata = true
 	}
 
 	http {
+		endpoint         = "localhost:4318"
 		include_metadata = true
 	}
 

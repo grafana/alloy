@@ -16,9 +16,10 @@ enabled: true
 connection_string: oracle://user:password@localhost:1521/orcl.localnet
 scrape_timeout: "1m"
 scrape_integration: true
-max_idle_connections: 0
-max_open_connections: 10
-query_timeout: 5`
+max_idle_conns: 0
+max_open_conns: 10
+query_timeout: 5
+custom_metrics: ""`
 
 	var c Config
 	require.NoError(t, yaml.Unmarshal([]byte(strConfig), &c))
@@ -28,6 +29,7 @@ query_timeout: 5`
 		MaxIdleConns:     0,
 		MaxOpenConns:     10,
 		QueryTimeout:     5,
+		CustomMetrics:    "",
 	}, c)
 }
 
@@ -73,7 +75,7 @@ func TestConfigValidate(t *testing.T) {
 			name: "invalid scheme - cockroachdb",
 			getConfig: func() Config {
 				c := DefaultConfig
-				c.ConnectionString = "postgres://maxroach@localhost:26257/movr?password=pwd"
+				c.ConnectionString = config_util.Secret("postgres://maxroach@localhost:26257/movr?password=pwd")
 				return c
 			},
 			expectedErr: errors.New("unexpected scheme of type 'postgres'. Was expecting 'oracle'"),
@@ -82,7 +84,7 @@ func TestConfigValidate(t *testing.T) {
 			name: "invalid connection string",
 			getConfig: func() Config {
 				c := DefaultConfig
-				c.ConnectionString = "localhost:1521"
+				c.ConnectionString = config_util.Secret("localhost:1521")
 				return c
 			},
 			expectedErr: errors.New("unexpected scheme of type 'localhost'. Was expecting 'oracle'"),
@@ -103,7 +105,7 @@ func TestConfigValidate(t *testing.T) {
 
 func TestConfig_InstanceKey(t *testing.T) {
 	c := DefaultConfig
-	c.ConnectionString = "oracle://user:password@localhost:1521/orcl.localnet"
+	c.ConnectionString = config_util.Secret("oracle://user:password@localhost:1521/orcl.localnet")
 
 	ik := "agent-key"
 	id, err := c.InstanceKey(ik)

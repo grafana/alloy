@@ -8,7 +8,7 @@ prometheus.scrape "metrics_agent_prometheus" {
 
 prometheus.remote_write "metrics_agent" {
 	endpoint {
-		name = "agent-eea444"
+		name = "agent-f579d1"
 		url  = "https://prometheus-us-central1.grafana.net/api/prom/push"
 
 		queue_config { }
@@ -41,7 +41,7 @@ prometheus.scrape "integrations_statsd_exporter" {
 
 prometheus.remote_write "integrations" {
 	endpoint {
-		name = "agent-eea444"
+		name = "agent-f579d1"
 		url  = "https://prometheus-us-central1.grafana.net/api/prom/push"
 
 		queue_config { }
@@ -52,15 +52,17 @@ prometheus.remote_write "integrations" {
 
 otelcol.receiver.otlp "default" {
 	grpc {
+		endpoint         = "localhost:4317"
 		include_metadata = true
 	}
 
 	http {
+		endpoint         = "localhost:4318"
 		include_metadata = true
 	}
 
 	output {
-		traces = [otelcol.exporter.otlp.default_0.input, otelcol.exporter.logging.default.input]
+		traces = [otelcol.exporter.otlp.default_0.input, otelcol.exporter.debug.default.input]
 	}
 }
 
@@ -74,4 +76,6 @@ otelcol.exporter.otlp "default_0" {
 	}
 }
 
-otelcol.exporter.logging "default" { }
+otelcol.exporter.debug "default" {
+	verbosity = "Basic"
+}

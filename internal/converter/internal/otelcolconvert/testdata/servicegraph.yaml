@@ -16,13 +16,14 @@ connectors:
     cache_loop: 2m
     store_expiration_loop: 5s
     database_name_attribute: db_name3
+    metrics_flush_interval: 3m
 
 exporters:
   otlp:
     # Our defaults have drifted from upstream, so we explicitly set our
     # defaults below (balancer_name and queue_size).
     endpoint: database:4317
-    balancer_name: pick_first
+    balancer_name: round_robin
     sending_queue:
       queue_size: 5000
 

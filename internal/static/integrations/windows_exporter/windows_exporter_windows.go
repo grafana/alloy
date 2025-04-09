@@ -1,6 +1,8 @@
 package windows_exporter //nolint:golint
 
 import (
+	"context"
+	"errors"
 	"sort"
 	"strings"
 	"time"
@@ -15,12 +17,17 @@ import (
 func New(logger log.Logger, c *Config) (integrations.Integration, error) {
 	// Filter down to the enabled collectors
 	enabledCollectorNames := enabledCollectors(c.EnabledCollectors)
-	winCol := collector.NewWithConfig(logger, c.ToWindowsExporterConfig())
+	winExporterConfig, err := c.ToWindowsExporterConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	winCol := collector.NewWithConfig(logger, winExporterConfig)
 	winCol.Enable(enabledCollectorNames)
 	sort.Strings(enabledCollectorNames)
 	level.Info(logger).Log("msg", "enabled windows_exporter collectors", "collectors", strings.Join(enabledCollectorNames, ","))
 
-	err := winCol.Build()
+	err = winCol.Build()
 	if err != nil {
 		return nil, err
 	}
@@ -29,11 +36,22 @@ func New(logger log.Logger, c *Config) (integrations.Integration, error) {
 		return nil, err
 	}
 
-	return integrations.NewCollectorIntegration(c.Name(), integrations.WithCollectors(
-		// Hard-coded 4m timeout to represent the time a series goes stale.
-		// TODO: Make configurable if useful.
-		collector.NewPrometheus(4*time.Minute, &winCol, logger),
-	)), nil
+	return integrations.NewCollectorIntegration(
+		c.Name(),
+		integrations.WithCollectors(
+			// Hard-coded 4m timeout to represent the time a series goes stale.
+			// TODO: Make configurable if useful.
+			collector.NewPrometheus(4*time.Minute, &winCol, logger),
+		),
+		integrations.WithRunner(func(ctx context.Context) error {
+			<-ctx.Done()
+
+			// Stop the collector
+			err := winCol.Close()
+
+			return errors.Join(ctx.Err(), err)
+		}),
+	), nil
 }
 
 func enabledCollectors(input string) []string {

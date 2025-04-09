@@ -4,14 +4,35 @@ receivers:
 exporters:
   otlp:
     endpoint: database:4317
+  datadog:
+    api:
+      key: "abc"
+      fail_on_invalid_key: true
+    timeout: "10s"
+    metrics:
+      delta_ttl: 1200
+      resource_attributes_as_tags: true
+      histograms:
+        mode: "counters"
+      sums:
+        initial_cumulative_monotonic_value: "keep"
+      summaries:
+        mode: "noquantiles"
+    traces:
+      ignore_resources: ["(GET|POST) /healthcheck"]
+      span_name_remappings:
+        instrumentation:express.server: "express"
+    logs:
+      use_compression: true
+      compression_level: 7
 
 service:
   pipelines:
     metrics:
       receivers: [datadog]
       processors: []
-      exporters: [otlp]
+      exporters: [otlp, datadog]
     traces:
       receivers: [datadog]
       processors: []
-      exporters: [otlp]
+      exporters: [otlp, datadog]

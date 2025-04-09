@@ -20,6 +20,9 @@ func getStringPtr(str string) *string {
 }
 
 func TestArguments_UnmarshalAlloy(t *testing.T) {
+	defaultTimestampCacheSize := 1000
+	timestampCacheSize := 12389
+
 	tests := []struct {
 		testName string
 		cfg      string
@@ -39,6 +42,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				Dimensions:               []spanmetricsconnector.Dimension{},
 				ExcludeDimensions:        nil,
 				DimensionsCacheSize:      1000,
+				TimestampCacheSize:       &defaultTimestampCacheSize,
 				AggregationTemporality:   "AGGREGATION_TEMPORALITY_CUMULATIVE",
 				ResourceMetricsCacheSize: 1000,
 				Histogram: spanmetricsconnector.HistogramConfig{
@@ -67,7 +71,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					},
 				},
 				MetricsFlushInterval: 60 * time.Second,
-				Namespace:            "",
+				Namespace:            "traces.span.metrics",
 				Exemplars: spanmetricsconnector.ExemplarsConfig{
 					Enabled: false,
 				},
@@ -92,6 +96,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				ExcludeDimensions:        nil,
 				AggregationTemporality:   "AGGREGATION_TEMPORALITY_CUMULATIVE",
 				ResourceMetricsCacheSize: 1000,
+				TimestampCacheSize:       &defaultTimestampCacheSize,
 				Histogram: spanmetricsconnector.HistogramConfig{
 					Disable:     false,
 					Unit:        0,
@@ -99,7 +104,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					Explicit:    nil,
 				},
 				MetricsFlushInterval: 60 * time.Second,
-				Namespace:            "",
+				Namespace:            "traces.span.metrics",
 				Events: spanmetricsconnector.EventsConfig{
 					Enabled:    false,
 					Dimensions: []spanmetricsconnector.Dimension{},
@@ -120,6 +125,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			dimensions_cache_size = 333
 			aggregation_temporality = "DELTA"
 			resource_metrics_cache_size = 12345
+			metric_timestamp_cache_size = 12389
 			histogram {
 				disable = true
 				unit = "s"
@@ -150,6 +156,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				DimensionsCacheSize:      333,
 				AggregationTemporality:   "AGGREGATION_TEMPORALITY_DELTA",
 				ResourceMetricsCacheSize: 12345,
+				TimestampCacheSize:       &timestampCacheSize,
 				Histogram: spanmetricsconnector.HistogramConfig{
 					Disable:     true,
 					Unit:        1,
@@ -193,13 +200,14 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				DimensionsCacheSize:      1000,
 				AggregationTemporality:   "AGGREGATION_TEMPORALITY_CUMULATIVE",
 				ResourceMetricsCacheSize: 1000,
+				TimestampCacheSize:       &defaultTimestampCacheSize,
 				Histogram: spanmetricsconnector.HistogramConfig{
 					Unit:        0,
 					Exponential: &spanmetricsconnector.ExponentialHistogramConfig{MaxSize: 123},
 					Explicit:    nil,
 				},
 				MetricsFlushInterval: 60 * time.Second,
-				Namespace:            "",
+				Namespace:            "traces.span.metrics",
 				Events: spanmetricsconnector.EventsConfig{
 					Enabled:    false,
 					Dimensions: []spanmetricsconnector.Dimension{},
@@ -480,7 +488,7 @@ func Test_ComponentIO(t *testing.T) {
 							"name": "spanmetricsconnector"
 						},
 						"metrics": [{
-							"name": "calls",
+							"name": "traces.span.metrics.calls",
 							"sum": {
 								"dataPoints": [{
 									"attributes": [{
@@ -588,7 +596,7 @@ func Test_ComponentIO(t *testing.T) {
 							"name": "spanmetricsconnector"
 						},
 						"metrics": [{
-							"name": "calls",
+							"name": "traces.span.metrics.calls",
 							"sum": {
 								"dataPoints": [{
 									"attributes": [{
@@ -633,7 +641,7 @@ func Test_ComponentIO(t *testing.T) {
 							"name": "spanmetricsconnector"
 						},
 						"metrics": [{
-							"name": "calls",
+							"name": "traces.span.metrics.calls",
 							"sum": {
 								"dataPoints": [{
 									"attributes": [{
@@ -696,7 +704,7 @@ func Test_ComponentIO(t *testing.T) {
 							"name": "spanmetricsconnector"
 						},
 						"metrics": [{
-							"name": "calls",
+							"name": "traces.span.metrics.calls",
 							"sum": {
 								"dataPoints": [{
 									"attributes": [{
@@ -724,7 +732,7 @@ func Test_ComponentIO(t *testing.T) {
 							}
 						},
                         {
-                            "name": "duration",
+                            "name": "traces.span.metrics.duration",
                             "unit": "ms",
                             "histogram": {
                                 "dataPoints": [

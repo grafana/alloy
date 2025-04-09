@@ -4,14 +4,14 @@ import (
 	"context"
 	"fmt"
 	"path"
-	"reflect"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/go-kit/log"
+
 	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/runtime/equality"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/vm"
 )
@@ -54,6 +54,9 @@ type CustomComponentNode struct {
 
 	exportsMut sync.RWMutex
 	exports    component.Exports // Evaluated exports for the managed custom component
+
+	dataFlowEdgeMut  sync.RWMutex
+	dataFlowEdgeRefs []string
 }
 
 var _ ComponentNode = (*CustomComponentNode)(nil)
@@ -114,7 +117,7 @@ func NewCustomComponentNode(globals ComponentGlobals, b *ast.BlockStmt, getConfi
 		componentName:       componentName,
 		importNamespace:     importNamespace,
 		customComponentName: customComponentName,
-		moduleController:    globals.NewModuleController(globalID),
+		moduleController:    globals.NewModuleController(ModuleControllerOpts{Id: globalID}),
 		OnBlockNodeUpdate:   globals.OnBlockNodeUpdate,
 		logger:              log.With(globals.Logger, "component_path", parent, "component_id", node),
 		getConfig:           getConfig,
@@ -124,6 +127,8 @@ func NewCustomComponentNode(globals ComponentGlobals, b *ast.BlockStmt, getConfi
 
 		evalHealth: initHealth,
 		runHealth:  initHealth,
+
+		dataFlowEdgeRefs: make([]string, 0),
 	}
 
 	return cn
@@ -211,7 +216,6 @@ func (cn *CustomComponentNode) evaluate(evalScope *vm.Scope) error {
 func (cn *CustomComponentNode) Run(ctx context.Context) error {
 	cn.mut.RLock()
 	managed := cn.managed
-	logger := cn.logger
 	cn.mut.RUnlock()
 
 	if managed == nil {
@@ -220,12 +224,13 @@ func (cn *CustomComponentNode) Run(ctx context.Context) error {
 
 	cn.setRunHealth(component.HealthTypeHealthy, "started custom component")
 	err := managed.Run(ctx)
-	if err != nil {
-		level.Error(logger).Log("msg", "error running custom component", "id", cn.nodeID, "err", err)
-	}
 
-	level.Info(logger).Log("msg", "custom component exited")
-	cn.setRunHealth(component.HealthTypeExited, "custom component shut down")
+	// Note: logging of this error is handled by the scheduler.
+	if err != nil {
+		cn.setRunHealth(component.HealthTypeExited, fmt.Sprintf("custom component shut down with error: %s", err))
+	} else {
+		cn.setRunHealth(component.HealthTypeExited, "custom component shut down cleanly")
+	}
 	return err
 }
 
@@ -264,7 +269,7 @@ func (cn *CustomComponentNode) setExports(e component.Exports) {
 	var changed bool
 
 	cn.exportsMut.Lock()
-	if !reflect.DeepEqual(cn.exports, e) {
+	if !equality.DeepEqual(cn.exports, e) {
 		changed = true
 		cn.exports = e
 	}
@@ -323,4 +328,22 @@ func (cn *CustomComponentNode) ComponentName() string {
 // the custom components. Change it when getting rid of old modules.
 func (cn *CustomComponentNode) ModuleIDs() []string {
 	return cn.moduleController.ModuleIDs()
+}
+
+func (cn *CustomComponentNode) AddDataFlowEdgeTo(nodeID string) {
+	cn.dataFlowEdgeMut.Lock()
+	defer cn.dataFlowEdgeMut.Unlock()
+	cn.dataFlowEdgeRefs = append(cn.dataFlowEdgeRefs, nodeID)
+}
+
+func (cn *CustomComponentNode) GetDataFlowEdgesTo() []string {
+	cn.dataFlowEdgeMut.RLock()
+	defer cn.dataFlowEdgeMut.RUnlock()
+	return cn.dataFlowEdgeRefs
+}
+
+func (cn *CustomComponentNode) ResetDataFlowEdgeTo() {
+	cn.dataFlowEdgeMut.Lock()
+	defer cn.dataFlowEdgeMut.Unlock()
+	cn.dataFlowEdgeRefs = []string{}
 }

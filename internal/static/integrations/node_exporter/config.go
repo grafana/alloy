@@ -112,6 +112,8 @@ type Config struct {
 	FilesystemFSTypesExclude         string              `yaml:"filesystem_fs_types_exclude,omitempty"`
 	FilesystemMountPointsExclude     string              `yaml:"filesystem_mount_points_exclude,omitempty"`
 	FilesystemMountTimeout           time.Duration       `yaml:"filesystem_mount_timeout,omitempty"`
+	HwMonChipInclude                 string              `yaml:"hwmon_chip_include,omitempty"`
+	HwMonChipExclude                 string              `yaml:"hwmon_chip_exclude,omitempty"`
 	IPVSBackendLabels                []string            `yaml:"ipvs_backend_labels,omitempty"`
 	NTPIPTTL                         int                 `yaml:"ntp_ip_ttl,omitempty"`
 	NTPLocalOffsetTolerance          time.Duration       `yaml:"ntp_local_offset_tolerance,omitempty"`
@@ -380,6 +382,11 @@ func (c *Config) mapConfigToNodeConfig() *collector.NodeCollectorConfig {
 		OldFSTypesExcluded:     &blankString,
 		OldMountPointsExcluded: &blankString,
 		StatWorkerCount:        &blankInt,
+	}
+
+	cfg.HwMon = collector.HwMonConfig{
+		ChipInclude: &c.HwMonChipInclude,
+		ChipExclude: &c.HwMonChipExclude,
 	}
 
 	var joinedLabels string

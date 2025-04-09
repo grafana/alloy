@@ -5,9 +5,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/util"
 )
 
 var testMatchAlloy = `
@@ -65,7 +68,7 @@ func TestMatchStage(t *testing.T) {
 	registry := prometheus.NewRegistry()
 	plName := "test_match_pipeline"
 	logger := util.TestAlloyLogger(t)
-	pl, err := NewPipeline(logger, loadConfig(testMatchAlloy), &plName, registry)
+	pl, err := NewPipeline(logger, loadConfig(testMatchAlloy), &plName, registry, featuregate.StabilityGenerallyAvailable)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -160,7 +163,7 @@ func TestMatcher(t *testing.T) {
 				"",
 			}
 			logger := util.TestAlloyLogger(t)
-			s, err := newMatcherStage(logger, nil, matchConfig, prometheus.DefaultRegisterer)
+			s, err := newMatcherStage(logger, nil, matchConfig, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("withMatcher() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -191,19 +194,26 @@ func TestValidateMatcherConfig(t *testing.T) {
 	emptyStages := []StageConfig{}
 	defaultStage := []StageConfig{{MatchConfig: &MatchConfig{}}}
 	tests := []struct {
-		name    string
-		cfg     *MatchConfig
-		wantErr bool
+		name     string
+		cfg      *MatchConfig
+		wantErr  bool
+		expected *MatchConfig
 	}{
-		{"pipeline name required", &MatchConfig{}, true},
-		{"selector required", &MatchConfig{Selector: ""}, true},
-		{"nil stages without dropping", &MatchConfig{PipelineName: "", Selector: `{app="foo"}`, Action: MatchActionKeep, Stages: nil}, true},
-		{"empty stages without dropping", &MatchConfig{Selector: `{app="foo"}`, Action: MatchActionKeep, Stages: emptyStages}, true},
-		{"stages with dropping", &MatchConfig{Selector: `{app="foo"}`, Action: MatchActionDrop, Stages: defaultStage}, true},
-		{"empty stages dropping", &MatchConfig{Selector: `{app="foo"}`, Action: MatchActionDrop, Stages: emptyStages}, false},
-		{"stages without dropping", &MatchConfig{Selector: `{app="foo"}`, Action: MatchActionKeep, Stages: defaultStage}, false},
-		{"bad selector", &MatchConfig{Selector: `{app="foo}`, Action: MatchActionKeep, Stages: defaultStage}, true},
-		{"bad action", &MatchConfig{Selector: `{app="foo}`, Action: "nope", Stages: emptyStages}, true},
+		{name: "pipeline name required", cfg: &MatchConfig{}, wantErr: true},
+		{name: "selector required", cfg: &MatchConfig{Selector: ""}, wantErr: true},
+		{name: "nil stages without dropping", cfg: &MatchConfig{PipelineName: "", Selector: `{app="foo"}`, Action: MatchActionKeep, Stages: nil}, wantErr: true},
+		{name: "empty stages without dropping", cfg: &MatchConfig{Selector: `{app="foo"}`, Action: MatchActionKeep, Stages: emptyStages}, wantErr: true},
+		{name: "stages with dropping", cfg: &MatchConfig{Selector: `{app="foo"}`, Action: MatchActionDrop, Stages: defaultStage}, wantErr: true},
+		{name: "empty stages dropping", cfg: &MatchConfig{Selector: `{app="foo"}`, Action: MatchActionDrop, Stages: emptyStages}},
+		{name: "stages without dropping", cfg: &MatchConfig{Selector: `{app="foo"}`, Action: MatchActionKeep, Stages: defaultStage}},
+		{name: "bad selector", cfg: &MatchConfig{Selector: `{app="foo}`, Action: MatchActionKeep, Stages: defaultStage}, wantErr: true},
+		{name: "bad action", cfg: &MatchConfig{Selector: `{app="foo}`, Action: "nope", Stages: emptyStages}, wantErr: true},
+		{
+			name:     "sets default action to keep",
+			cfg:      &MatchConfig{Selector: `{app="foo"}`, Stages: defaultStage},
+			wantErr:  false,
+			expected: &MatchConfig{Selector: `{app="foo"}`, Action: MatchActionKeep, Stages: defaultStage},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -211,6 +221,9 @@ func TestValidateMatcherConfig(t *testing.T) {
 			if (err != nil) != tt.wantErr {
 				t.Errorf("validateMatcherConfig() error = %v, wantErr %v", err, tt.wantErr)
 				return
+			}
+			if tt.expected != nil {
+				require.Equal(t, tt.expected, tt.cfg)
 			}
 		})
 	}

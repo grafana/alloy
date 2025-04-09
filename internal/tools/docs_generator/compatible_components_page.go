@@ -5,8 +5,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/grafana/alloy/internal/component/metadata"
 	"golang.org/x/exp/maps"
+
+	"github.com/grafana/alloy/internal/component/metadata"
 )
 
 type CompatibleComponentsListGenerator struct {
@@ -94,7 +95,7 @@ func listOfLinksToComponents(components []string) string {
 	for _, namespace := range sortedNamespaces {
 		str += fmt.Sprintf("\n{{< collapse title=%q >}}\n", namespace)
 		for _, component := range groups[namespace] {
-			str += fmt.Sprintf("- [%[1]s](../components/%[1]s)\n", component)
+			str += fmt.Sprintf("- [%[2]s](../components/%[1]s/%[2]s)\n", namespace, component)
 		}
 		str += "{{< /collapse >}}\n"
 	}

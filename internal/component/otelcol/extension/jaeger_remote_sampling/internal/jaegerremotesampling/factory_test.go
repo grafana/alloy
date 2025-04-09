@@ -4,10 +4,10 @@
 package jaegerremotesampling
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/collector/config/configgrpc"
 	"go.opentelemetry.io/collector/config/confighttp"
@@ -21,7 +21,7 @@ func TestCreateDefaultConfig(t *testing.T) {
 		HTTPServerConfig: &confighttp.ServerConfig{Endpoint: ":5778"},
 		GRPCServerConfig: &configgrpc.ServerConfig{NetAddr: confignet.AddrConfig{
 			Endpoint:  ":14250",
-			Transport: "tcp",
+			Transport: confignet.TransportTypeTCP,
 		}},
 	}
 
@@ -36,7 +36,7 @@ func TestCreateDefaultConfig(t *testing.T) {
 func TestCreateExtension(t *testing.T) {
 	cfg := createDefaultConfig().(*Config)
 
-	ext, err := createExtension(context.Background(), extensiontest.NewNopCreateSettings(), cfg)
+	ext, err := createExtension(t.Context(), extensiontest.NewNopSettings(component.MustNewType("jaegerremotesampling")), cfg)
 	assert.NoError(t, err)
 	assert.NotNil(t, ext)
 }

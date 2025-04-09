@@ -118,7 +118,7 @@ func createDefaultConfig() component.Config {
 
 func createTraceProcessor(
 	_ context.Context,
-	cp processor.CreateSettings,
+	cp processor.Settings,
 	cfg component.Config,
 	nextConsumer consumer.Traces,
 ) (processor.Traces, error) {

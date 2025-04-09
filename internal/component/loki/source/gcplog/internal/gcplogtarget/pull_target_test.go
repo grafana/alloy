@@ -107,7 +107,7 @@ type testContext struct {
 func testPullTarget(t *testing.T) *testContext {
 	t.Helper()
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	sub := newFakeSubscription()
 	promClient := fake.NewClient(func() {})
 	target := &PullTarget{

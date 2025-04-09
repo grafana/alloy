@@ -51,15 +51,19 @@ import (
 	"sync"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"go.uber.org/atomic"
+
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/internal/controller"
+	"github.com/grafana/alloy/internal/runtime/internal/importsource"
 	"github.com/grafana/alloy/internal/runtime/internal/worker"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/runtime/tracing"
 	"github.com/grafana/alloy/internal/service"
-	"github.com/prometheus/client_golang/prometheus"
-	"go.uber.org/atomic"
+	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/syntax/vm"
 )
 
 // Options holds static options for an Alloy controller.
@@ -106,6 +110,9 @@ type Options struct {
 	// Services are configured when LoadFile is invoked. Services are started
 	// when the Alloy controller runs after LoadFile is invoked at least once.
 	Services []service.Service
+
+	// EnableCommunityComps enables the use of community components.
+	EnableCommunityComps bool
 }
 
 // Runtime is the Alloy system.
@@ -177,7 +184,7 @@ func newController(o controllerOptions) *Runtime {
 		opts:   o,
 
 		updateQueue: controller.NewQueue(),
-		sched:       controller.NewScheduler(),
+		sched:       controller.NewScheduler(log),
 
 		modules: o.ModuleRegistry,
 
@@ -188,10 +195,11 @@ func newController(o controllerOptions) *Runtime {
 
 	f.loader = controller.NewLoader(controller.LoaderOptions{
 		ComponentGlobals: controller.ComponentGlobals{
-			Logger:        log,
-			TraceProvider: tracer,
-			DataPath:      o.DataPath,
-			MinStability:  o.MinStability,
+			Logger:               log,
+			TraceProvider:        tracer,
+			DataPath:             o.DataPath,
+			MinStability:         o.MinStability,
+			EnableCommunityComps: o.EnableCommunityComps,
 			OnBlockNodeUpdate: func(cn controller.BlockNode) {
 				// Changed node should be queued for reevaluation.
 				f.updateQueue.Enqueue(&controller.QueuedNode{Node: cn, LastUpdatedTime: time.Now()})
@@ -199,18 +207,26 @@ func newController(o controllerOptions) *Runtime {
 			OnExportsChange: o.OnExportsChange,
 			Registerer:      o.Reg,
 			ControllerID:    o.ControllerID,
-			NewModuleController: func(id string) controller.ModuleController {
+			NewModuleController: func(opts controller.ModuleControllerOpts) controller.ModuleController {
+				// The module controller registry should take precedence.,
+				// because it is tailored to this module.
+				reg := o.Reg
+				if opts.RegOverride != nil {
+					reg = opts.RegOverride
+				}
+
 				return newModuleController(&moduleControllerOptions{
-					ComponentRegistry: o.ComponentRegistry,
-					ModuleRegistry:    o.ModuleRegistry,
-					Logger:            log,
-					Tracer:            tracer,
-					Reg:               o.Reg,
-					DataPath:          o.DataPath,
-					MinStability:      o.MinStability,
-					ID:                id,
-					ServiceMap:        serviceMap,
-					WorkerPool:        workerPool,
+					ComponentRegistry:    o.ComponentRegistry,
+					ModuleRegistry:       o.ModuleRegistry,
+					Logger:               log,
+					Tracer:               tracer,
+					Reg:                  reg,
+					DataPath:             o.DataPath,
+					MinStability:         o.MinStability,
+					EnableCommunityComps: o.EnableCommunityComps,
+					ID:                   opts.Id,
+					ServiceMap:           serviceMap,
+					WorkerPool:           workerPool,
 				})
 			},
 			GetServiceData: func(name string) (interface{}, error) {
@@ -256,6 +272,7 @@ func (f *Runtime) Run(ctx context.Context) {
 				components = f.loader.Components()
 				services   = f.loader.Services()
 				imports    = f.loader.Imports()
+				forEachs   = f.loader.ForEachs()
 
 				runnables = make([]controller.RunnableNode, 0, len(components)+len(services)+len(imports))
 			)
@@ -265,6 +282,10 @@ func (f *Runtime) Run(ctx context.Context) {
 
 			for _, i := range imports {
 				runnables = append(runnables, i)
+			}
+
+			for _, fe := range forEachs {
+				runnables = append(runnables, fe)
 			}
 
 			// Only the root controller should run services, since modules share the
@@ -290,22 +311,37 @@ func (f *Runtime) Run(ctx context.Context) {
 // The controller will only start running components after Load is called once
 // without any configuration errors.
 // LoadSource uses default loader configuration.
-func (f *Runtime) LoadSource(source *Source, args map[string]any) error {
-	return f.loadSource(source, args, nil)
+func (f *Runtime) LoadSource(source *Source, args map[string]any, configPath string) error {
+	modulePath, err := util.ExtractDirPath(configPath)
+	if err != nil {
+		level.Warn(f.log).Log("msg", "failed to extract directory path from configPath", "configPath", configPath, "err", err)
+	}
+	return f.applyLoaderConfig(controller.ApplyOptions{
+		Args:            args,
+		ComponentBlocks: source.components,
+		ConfigBlocks:    source.configBlocks,
+		DeclareBlocks:   source.declareBlocks,
+		ArgScope: vm.NewScope(map[string]interface{}{
+			importsource.ModulePath: modulePath,
+		}),
+	})
 }
 
 // Same as above but with a customComponentRegistry that provides custom component definitions.
 func (f *Runtime) loadSource(source *Source, args map[string]any, customComponentRegistry *controller.CustomComponentRegistry) error {
-	f.loadMut.Lock()
-	defer f.loadMut.Unlock()
-
-	applyOptions := controller.ApplyOptions{
+	return f.applyLoaderConfig(controller.ApplyOptions{
 		Args:                    args,
 		ComponentBlocks:         source.components,
 		ConfigBlocks:            source.configBlocks,
 		DeclareBlocks:           source.declareBlocks,
 		CustomComponentRegistry: customComponentRegistry,
-	}
+		ArgScope:                customComponentRegistry.Scope(),
+	})
+}
+
+func (f *Runtime) applyLoaderConfig(applyOptions controller.ApplyOptions) error {
+	f.loadMut.Lock()
+	defer f.loadMut.Unlock()
 
 	diags := f.loader.Apply(applyOptions)
 	if !f.loadedOnce.Load() && diags.HasErrors() {

@@ -2,6 +2,7 @@ package otelcolconvert
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/connector/servicegraph"
@@ -9,6 +10,8 @@ import (
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraphconnector"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/component/componentstatus"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 func init() {
@@ -25,7 +28,7 @@ func (servicegraphConnectorConverter) InputComponentName() string {
 	return "otelcol.connector.servicegraph"
 }
 
-func (servicegraphConnectorConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
+func (servicegraphConnectorConverter) ConvertAndAppend(state *State, id componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -42,13 +45,21 @@ func (servicegraphConnectorConverter) ConvertAndAppend(state *State, id componen
 	return diags
 }
 
-func toServicegraphConnector(state *State, id component.InstanceID, cfg *servicegraphconnector.Config) *servicegraph.Arguments {
+func toServicegraphConnector(state *State, id componentstatus.InstanceID, cfg *servicegraphconnector.Config) *servicegraph.Arguments {
 	if cfg == nil {
 		return nil
 	}
 	var (
-		nextMetrics = state.Next(id, component.DataTypeMetrics)
+		nextMetrics = state.Next(id, pipeline.SignalMetrics)
 	)
+
+	metricsFlushInterval := cfg.MetricsFlushInterval
+	var metricsFlushIntervalValue time.Duration
+	if metricsFlushInterval == nil {
+		metricsFlushIntervalValue = 60 * time.Second
+	} else {
+		metricsFlushIntervalValue = *metricsFlushInterval
+	}
 
 	return &servicegraph.Arguments{
 		LatencyHistogramBuckets: cfg.LatencyHistogramBuckets,
@@ -59,7 +70,7 @@ func toServicegraphConnector(state *State, id component.InstanceID, cfg *service
 		},
 		CacheLoop:             cfg.CacheLoop,
 		StoreExpirationLoop:   cfg.StoreExpirationLoop,
-		MetricsFlushInterval:  cfg.MetricsFlushInterval,
+		MetricsFlushInterval:  metricsFlushIntervalValue,
 		DatabaseNameAttribute: cfg.DatabaseNameAttribute,
 		Output: &otelcol.ConsumerArguments{
 			Metrics: ToTokenizedConsumers(nextMetrics),

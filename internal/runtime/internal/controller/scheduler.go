@@ -4,6 +4,10 @@ import (
 	"context"
 	"fmt"
 	"sync"
+
+	"github.com/go-kit/log"
+
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 // RunnableNode is any BlockNode which can also be run.
@@ -17,6 +21,7 @@ type Scheduler struct {
 	ctx     context.Context
 	cancel  context.CancelFunc
 	running sync.WaitGroup
+	logger  log.Logger
 
 	tasksMut sync.Mutex
 	tasks    map[string]*task
@@ -26,11 +31,12 @@ type Scheduler struct {
 // components which are running.
 //
 // Call Close to stop the Scheduler and all running components.
-func NewScheduler() *Scheduler {
+func NewScheduler(logger log.Logger) *Scheduler {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Scheduler{
 		ctx:    ctx,
 		cancel: cancel,
+		logger: logger,
 
 		tasks: make(map[string]*task),
 	}
@@ -85,8 +91,14 @@ func (s *Scheduler) Synchronize(rr []RunnableNode) error {
 		opts := taskOptions{
 			Context:  s.ctx,
 			Runnable: newRunnable,
-			OnDone: func() {
+			OnDone: func(err error) {
 				defer s.running.Done()
+
+				if err != nil {
+					level.Error(s.logger).Log("msg", "node exited with error", "node", nodeID, "err", err)
+				} else {
+					level.Info(s.logger).Log("msg", "node exited without error", "node", nodeID)
+				}
 
 				s.tasksMut.Lock()
 				defer s.tasksMut.Unlock()
@@ -121,7 +133,7 @@ type task struct {
 type taskOptions struct {
 	Context  context.Context
 	Runnable RunnableNode
-	OnDone   func()
+	OnDone   func(error)
 }
 
 // newTask creates and starts a new task.
@@ -135,9 +147,9 @@ func newTask(opts taskOptions) *task {
 	}
 
 	go func() {
-		defer opts.OnDone()
-		defer close(t.exited)
-		_ = opts.Runnable.Run(t.ctx)
+		err := opts.Runnable.Run(t.ctx)
+		close(t.exited)
+		opts.OnDone(err)
 	}()
 	return t
 }

@@ -21,6 +21,22 @@ scrape_configs:
       - source_labels:
           - host
         target_label: hostname
+  - job_name: test_rfc3164
+    syslog:
+      listen_address: localhost:4000
+      listen_protocol: udp
+      idle_timeout: 1m
+      label_structured_data: true
+      use_incoming_timestamp: true
+      syslog_format: rfc3164
+  - job_name: test_rfc5424
+    syslog:
+      listen_address: localhost:4000
+      listen_protocol: udp
+      idle_timeout: 1m
+      label_structured_data: true
+      use_incoming_timestamp: true
+      syslog_format: rfc5424
 
 tracing: {enabled: false}
 server: {register_instrumentation: false}

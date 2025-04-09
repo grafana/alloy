@@ -30,7 +30,7 @@ func (cg *ConfigGenerator) GenerateProbeConfig(m *promopv1.Probe) (cfg *config.S
 		cfg.ScrapeInterval, _ = model.ParseDuration(string(m.Spec.Interval))
 	}
 	if m.Spec.ScrapeTimeout != "" {
-		cfg.ScrapeInterval, _ = model.ParseDuration(string(m.Spec.ScrapeTimeout))
+		cfg.ScrapeTimeout, _ = model.ParseDuration(string(m.Spec.ScrapeTimeout))
 	}
 	if m.Spec.ProberSpec.Scheme != "" {
 		cfg.Scheme = m.Spec.ProberSpec.Scheme
@@ -47,11 +47,11 @@ func (cg *ConfigGenerator) GenerateProbeConfig(m *promopv1.Probe) (cfg *config.S
 		cfg.Params.Set("module", m.Spec.Module)
 	}
 
-	cfg.SampleLimit = uint(m.Spec.SampleLimit)
-	cfg.TargetLimit = uint(m.Spec.TargetLimit)
-	cfg.LabelLimit = uint(m.Spec.LabelLimit)
-	cfg.LabelNameLengthLimit = uint(m.Spec.LabelNameLengthLimit)
-	cfg.LabelValueLengthLimit = uint(m.Spec.LabelValueLengthLimit)
+	cfg.SampleLimit = uint(defaultIfNil(m.Spec.SampleLimit, 0))
+	cfg.TargetLimit = uint(defaultIfNil(m.Spec.TargetLimit, 0))
+	cfg.LabelLimit = uint(defaultIfNil(m.Spec.LabelLimit, 0))
+	cfg.LabelNameLengthLimit = uint(defaultIfNil(m.Spec.LabelNameLengthLimit, 0))
+	cfg.LabelValueLengthLimit = uint(defaultIfNil(m.Spec.LabelValueLengthLimit, 0))
 
 	relabels := cg.initRelabelings()
 	if m.Spec.JobName != "" {
@@ -70,6 +70,10 @@ func (cg *ConfigGenerator) GenerateProbeConfig(m *promopv1.Probe) (cfg *config.S
 		}
 		for k, v := range static.Labels {
 			grp.Labels[model.LabelName(k)] = model.LabelValue(v)
+		}
+		// Add a namespace label if not already set. See https://github.com/prometheus-operator/prometheus-operator/commit/ffce8d01ff798135d5bbfcba1a88a87a418ee9fc.
+		if _, ok := grp.Labels["namespace"]; !ok {
+			grp.Labels["namespace"] = model.LabelValue(m.Namespace)
 		}
 		for _, t := range static.Targets {
 			grp.Targets = append(grp.Targets, model.LabelSet{

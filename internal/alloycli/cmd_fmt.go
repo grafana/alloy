@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"reflect"
 
 	"github.com/spf13/cobra"
 
@@ -17,6 +18,7 @@ import (
 func fmtCommand() *cobra.Command {
 	f := &alloyFmt{
 		write: false,
+		test:  false,
 	}
 
 	cmd := &cobra.Command{
@@ -55,20 +57,26 @@ The -w flag can be used to write the formatted file back to disk. -w can not be 
 	}
 
 	cmd.Flags().BoolVarP(&f.write, "write", "w", f.write, "write result to (source) file instead of stdout")
+	cmd.Flags().BoolVarP(&f.test, "test", "t", f.test, "exit with non-zero when changes would be made. Cannot be used with -w/--write")
 	return cmd
 }
 
 type alloyFmt struct {
 	write bool
+	test  bool
 }
 
 func (ff *alloyFmt) Run(configFile string) error {
+	if ff.write && ff.test {
+		return fmt.Errorf("Cannot use -w/--write and -t/--test at the same time")
+	}
+
 	switch configFile {
 	case "-":
 		if ff.write {
 			return fmt.Errorf("cannot use -w with standard input")
 		}
-		return format("<stdin>", nil, os.Stdin, false)
+		return format("<stdin>", nil, os.Stdin, false, ff.test)
 
 	default:
 		fi, err := os.Stat(configFile)
@@ -84,11 +92,11 @@ func (ff *alloyFmt) Run(configFile string) error {
 			return err
 		}
 		defer f.Close()
-		return format(configFile, fi, f, ff.write)
+		return format(configFile, fi, f, ff.write, ff.test)
 	}
 }
 
-func format(filename string, fi os.FileInfo, r io.Reader, write bool) error {
+func format(filename string, fi os.FileInfo, r io.Reader, write bool, test bool) error {
 	bb, err := io.ReadAll(r)
 	if err != nil {
 		return err
@@ -106,6 +114,14 @@ func format(filename string, fi os.FileInfo, r io.Reader, write bool) error {
 
 	// Add a newline at the end of the file.
 	_, _ = buf.Write([]byte{'\n'})
+
+	// If -t/--test flag is check, only check if file is formatted correctly
+	if test {
+		if !reflect.DeepEqual(bb, buf.Bytes()) {
+			return fmt.Errorf("File %s is not formatted correctly", filename)
+		}
+		return nil
+	}
 
 	if !write {
 		_, err := io.Copy(os.Stdout, &buf)

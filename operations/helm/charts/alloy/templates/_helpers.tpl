@@ -54,7 +54,7 @@ helm.sh/chart: {{ include "alloy.chart" . }}
 {{- if index .Values "$chart_tests" }}
 app.kubernetes.io/version: "vX.Y.Z"
 app.kubernetes.io/managed-by: {{ .Release.Service }}
-{{- else }}
+{{- else -}}
 {{/* substr trims delimeter prefix char from alloy.imageId output
     e.g. ':' for tags and '@' for digests.
     For digests, we crop the string to a 7-char (short) sha. */}}
@@ -149,3 +149,14 @@ Return if ingress supports pathType.
 {{- define "alloy.ingress.supportsPathType" -}}
 {{- or (eq (include "alloy.ingress.isStable" .) "true") (and (eq (include "alloy.ingress.apiVersion" .) "networking.k8s.io/v1beta1") (semverCompare ">= 1.18-0" .Capabilities.KubeVersion.Version)) }}
 {{- end }}
+
+{{/*
+Return the appropriate apiVersion for PodDisruptionBudget.
+*/}}
+{{- define "alloy.controller.pdb.apiVersion" -}}
+  {{- if and (.Capabilities.APIVersions.Has "policy/v1") (semverCompare ">=1.21-0" .Capabilities.KubeVersion.Version) -}}
+    {{- print "policy/v1" -}}
+  {{- else -}}
+    {{- print "policy/v1beta1" -}}
+  {{- end -}}
+{{- end -}}

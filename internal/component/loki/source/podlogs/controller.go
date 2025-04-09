@@ -32,7 +32,7 @@ type controller struct {
 }
 
 // Generous timeout period for configuring all informers
-const informerSyncTimeout = 10 * time.Second
+const informerSyncTimeout = 10 * time.Minute
 
 // newController creates a new, unstarted controller. The controller will
 // request a reconcile when the state of Kubernetes changes.

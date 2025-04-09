@@ -8,10 +8,12 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/auth"
 	"github.com/grafana/alloy/internal/component/otelcol/exporter/loadbalancing"
+	"github.com/grafana/alloy/internal/component/otelcol/extension"
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancingexporter"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/component/componentstatus"
 )
 
 func init() {
@@ -28,7 +30,7 @@ func (loadbalancingExporterConverter) InputComponentName() string {
 	return "otelcol.exporter.loadbalancing"
 }
 
-func (loadbalancingExporterConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
+func (loadbalancingExporterConverter) ConvertAndAppend(state *State, id componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -37,8 +39,11 @@ func (loadbalancingExporterConverter) ConvertAndAppend(state *State, id componen
 		case auth.Handler:
 			ext := state.LookupExtension(cfg.(*loadbalancingexporter.Config).Protocol.OTLP.Auth.AuthenticatorID)
 			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
+		case extension.ExtensionHandler:
+			ext := state.LookupExtension(*cfg.(*loadbalancingexporter.Config).QueueSettings.StorageID)
+			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
 		}
-		return val
+		return common.GetAlloyTypesOverrideHook()(val)
 	}
 
 	args := toLoadbalancingExporter(cfg.(*loadbalancingexporter.Config))
@@ -62,6 +67,9 @@ func toLoadbalancingExporter(cfg *loadbalancingexporter.Config) *loadbalancing.A
 		Protocol:   toProtocol(cfg.Protocol),
 		Resolver:   toResolver(cfg.Resolver),
 		RoutingKey: routingKey,
+		Timeout:    cfg.TimeoutSettings.Timeout,
+		Queue:      toQueueArguments(cfg.QueueSettings),
+		Retry:      toRetryArguments(cfg.BackOffConfig),
 
 		DebugMetrics: common.DefaultValue[loadbalancing.Arguments]().DebugMetrics,
 	}
@@ -100,7 +108,7 @@ func toProtocol(cfg loadbalancingexporter.Protocol) loadbalancing.Protocol {
 				BalancerName:    balancerName,
 				Authority:       cfg.OTLP.Authority,
 
-				Auth: a,
+				Authentication: a,
 			},
 		},
 	}
@@ -144,9 +152,10 @@ func toKubernetesResolver(cfg *loadbalancingexporter.K8sSvcResolver) *loadbalanc
 	}
 
 	return &loadbalancing.KubernetesResolver{
-		Service: cfg.Service,
-		Ports:   cfg.Ports,
-		Timeout: cfg.Timeout,
+		Service:         cfg.Service,
+		Ports:           cfg.Ports,
+		Timeout:         cfg.Timeout,
+		ReturnHostnames: cfg.ReturnHostnames,
 	}
 }
 

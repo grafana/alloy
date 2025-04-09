@@ -14,29 +14,32 @@ func TestConfig_UnmarshalYaml(t *testing.T) {
 account_name: "some_account"
 username: "some_user"
 password: "some_password"
-warehouse: "some_warehouse"`
+warehouse: "some_warehouse"
+exclude_deleted_tables: true`
 
 	var c Config
 
 	require.NoError(t, yaml.UnmarshalStrict([]byte(strConfig), &c))
 
 	require.Equal(t, Config{
-		AccountName: "some_account",
-		Username:    "some_user",
-		Password:    "some_password",
-		Warehouse:   "some_warehouse",
-		Role:        "ACCOUNTADMIN",
+		AccountName:          "some_account",
+		Username:             "some_user",
+		Password:             "some_password",
+		Warehouse:            "some_warehouse",
+		Role:                 "ACCOUNTADMIN",
+		ExcludeDeletedTables: true,
 	}, c)
 }
 
 func TestConfig_NewIntegration(t *testing.T) {
 	t.Run("integration with valid config", func(t *testing.T) {
 		c := &Config{
-			AccountName: "some_account",
-			Username:    "some_user",
-			Password:    "some_password",
-			Warehouse:   "some_warehouse",
-			Role:        "ACCOUNTADMIN",
+			AccountName:          "some_account",
+			Username:             "some_user",
+			Password:             "some_password",
+			Warehouse:            "some_warehouse",
+			Role:                 "ACCOUNTADMIN",
+			ExcludeDeletedTables: true,
 		}
 
 		i, err := c.NewIntegration(log.NewJSONLogger(os.Stdout))

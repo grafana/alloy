@@ -80,7 +80,7 @@ func ExampleUnmarshal_functions() {
 	}
 
 	input := `
-		string = env("EXAMPLE")
+		string = sys.env("EXAMPLE")
 	`
 
 	var d Data

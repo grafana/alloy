@@ -22,7 +22,7 @@ tracing {
 otelcol.exporter.otlp "tempo" {
   // Send traces to a locally running Tempo without TLS enabled.
   client {
-    endpoint = env("TEMPO_OTLP_ENDPOINT")
+    endpoint = sys.env("TEMPO_OTLP_ENDPOINT")
 
     tls {
       insecure = true
@@ -40,10 +40,9 @@ Name                | Type                     | Description                    
 `sampling_fraction` | `number`                 | Fraction of traces to keep.                         | `0.1`   | no
 `write_to`          | `list(otelcol.Consumer)` | Inputs from `otelcol` components to send traces to. | `[]`    | no
 
-The `write_to` argument controls which components to send traces to for
-processing. The elements in the array can be any `otelcol` component that
-accept traces, including processors and exporters. When `write_to` is set
-to an empty array `[]`, all traces are dropped.
+The `write_to` argument controls which components to send traces to for processing.
+The elements in the array can be any `otelcol` component that accept traces, including processors and exporters.
+When `write_to` is set to an empty array `[]`, all traces are dropped.
 
 {{< admonition type="note" >}}
 Any traces generated before the `tracing` block has been evaluated,such as at the early start of the process' lifetime, are dropped.
@@ -82,16 +81,9 @@ Name               | Type       | Description                                   
 
 The remote sampling strategies are retrieved from the URL specified by the `url` argument, and polled for updates on a timer. The frequency for how often polling occurs is controlled by the `refresh_interval` argument.
 
-Name               | Type           | Description                                                      | Default | Required
--------------------|----------------|------------------------------------------------------------------|---------|---------
-`names`            | `list(string)` | DNS names to look up.                                            |         | yes
-`port`             | `number`       | Port to use for collecting metrics. Not used for SRV records.    | `0`     | no
-`refresh_interval` | `duration`     | How often to query DNS for updates.                              | `"30s"` | no
-`type`             | `string`       | Type of DNS record to query. Must be one of SRV, A, AAAA, or MX. | `"SRV"` | no
-
 Requests to the remote sampling strategies server are made through an HTTP `GET` request to the configured `url` argument.
 A `service=alloy` query parameter is always added to the URL to allow the server to respond with service-specific strategies.
-The HTTP response body is read as JSON matching the schema specified by Jaeger's [`strategies.json` file][Jaeger sampling strategies].
+The HTTP response body is read as JSON matching the schema specified in the Jaeger [`strategies.json` file][Jaeger sampling strategies].
 
 The `max_operations` limits the amount of custom span names that can have custom sampling rules.
 If the remote sampling strategy exceeds the limit, sampling decisions fall back to the default sampler.

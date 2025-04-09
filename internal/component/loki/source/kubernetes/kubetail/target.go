@@ -25,6 +25,21 @@ const (
 	kubePodUID           = "__meta_kubernetes_pod_uid"
 )
 
+var ClusteringLabels = []string{
+	LabelPodNamespace,
+	LabelPodName,
+	LabelPodContainerName,
+	LabelPodUID,
+	kubePodNamespace,
+	kubePodName,
+	kubePodContainerName,
+	kubePodUID,
+	"container",
+	"pod",
+	"job",
+	"namespace",
+}
+
 // Target represents an individual container being tailed for logs.
 type Target struct {
 	origLabels   labels.Labels // Original discovery labels
@@ -61,9 +76,9 @@ func NewTarget(origLabels labels.Labels, lset labels.Labels) *Target {
 	// Precompute the hash of the target from the public labels and the ID of the
 	// target.
 	hasher := xxhash.New()
-	fmt.Fprintf(hasher, "%016d", publicLabels.Hash())
-	fmt.Fprint(hasher, id)
-	fmt.Fprint(hasher, uid)
+	_, _ = fmt.Fprintf(hasher, "%016d", publicLabels.Hash())
+	_, _ = fmt.Fprint(hasher, id)
+	_, _ = fmt.Fprint(hasher, uid)
 	hash := hasher.Sum64()
 
 	return &Target{

@@ -27,6 +27,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				`,
 			expected: probabilisticsamplerprocessor.Config{
 				SamplingPercentage: 0,
+				SamplingPrecision:  4,
 				HashSeed:           0,
 				FailClosed:         true,
 				AttributeSource:    "traceID",
@@ -39,7 +40,9 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			cfg: `
 					sampling_percentage = 10
 					hash_seed = 123
+					mode = "equalizing"
 					fail_closed = false
+					sampling_precision = 13
 					attribute_source = "record"
 					from_attribute = "logID"
 					sampling_priority = "priority"
@@ -48,7 +51,9 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			expected: probabilisticsamplerprocessor.Config{
 				SamplingPercentage: 10,
 				HashSeed:           123,
+				Mode:               "equalizing",
 				FailClosed:         false,
+				SamplingPrecision:  13,
 				AttributeSource:    "record",
 				FromAttribute:      "logID",
 				SamplingPriority:   "priority",
@@ -60,7 +65,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					sampling_percentage = -1
 					output {}
 				`,
-			errorMsg: "negative sampling rate: -1.00",
+			errorMsg: "sampling rate is negative: -1.000000%",
 		},
 		{
 			testName: "Invalid AttributeSource",
@@ -157,6 +162,18 @@ func TestLogProcessing(t *testing.T) {
 						"value": {
 							"stringValue": "bar"
 						}
+					},
+					{
+						"key": "sampling.randomness",
+						"value": {
+							"stringValue": "37e0313b4df207"
+						}
+					},
+					{
+						"key": "sampling.threshold",
+						"value": {
+							"stringValue": "0"
+						}
 					}]
 				}]
 			}]
@@ -194,7 +211,8 @@ func TestTraceProcessing(t *testing.T) {
 			"scopeSpans": [{
 				"spans": [{
 					"name": "TestSpan",
-					"traceId": "0123456789abcdef0123456789abcdef"
+					"traceId": "0123456789abcdef0123456789abcdef",
+					"traceState": "ot=rv:db840a0a82091e;th:0"
 				}]
 			}]
 		}]

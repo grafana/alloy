@@ -5,6 +5,7 @@ package beyla
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"path"
@@ -12,25 +13,32 @@ import (
 	"sync"
 	"time"
 
+	"github.com/grafana/beyla/v2/pkg/beyla"
+	"github.com/grafana/beyla/v2/pkg/components"
+	beylaCfg "github.com/grafana/beyla/v2/pkg/config"
+	"github.com/grafana/beyla/v2/pkg/export/attributes"
+	"github.com/grafana/beyla/v2/pkg/export/debug"
+	"github.com/grafana/beyla/v2/pkg/export/prom"
+	"github.com/grafana/beyla/v2/pkg/filter"
+	"github.com/grafana/beyla/v2/pkg/kubeflags"
+	"github.com/grafana/beyla/v2/pkg/services"
+	"github.com/grafana/beyla/v2/pkg/transform"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/prometheus/common/model"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	http_service "github.com/grafana/alloy/internal/service/http"
-	"github.com/grafana/beyla/pkg/beyla"
-	"github.com/grafana/beyla/pkg/components"
-	"github.com/grafana/beyla/pkg/services"
-	"github.com/grafana/beyla/pkg/transform"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/prometheus/common/model"
 )
 
 func init() {
 	component.Register(component.Registration{
 		Name:      "beyla.ebpf",
-		Stability: featuregate.StabilityPublicPreview,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   Exports{},
 
@@ -53,30 +61,81 @@ type Component struct {
 var _ component.HealthComponent = (*Component)(nil)
 
 func (args Routes) Convert() *transform.RoutesConfig {
-	return &transform.RoutesConfig{
-		Unmatch:        transform.UnmatchType(args.Unmatch),
-		Patterns:       args.Patterns,
-		IgnorePatterns: args.IgnorePatterns,
-		IgnoredEvents:  transform.IgnoreMode(args.IgnoredEvents),
+	routes := beyla.DefaultConfig.Routes
+	if args.Unmatch != "" {
+		routes.Unmatch = transform.UnmatchType(args.Unmatch)
 	}
+	routes.Patterns = args.Patterns
+	routes.IgnorePatterns = args.IgnorePatterns
+	routes.IgnoredEvents = transform.IgnoreMode(args.IgnoredEvents)
+	if args.WildcardChar != "" {
+		routes.WildcardChar = args.WildcardChar
+	}
+	return routes
 }
 
 func (args Attributes) Convert() beyla.Attributes {
 	attrs := beyla.DefaultConfig.Attributes
+	// Kubernetes
 	if args.Kubernetes.Enable != "" {
-		attrs.Kubernetes.Enable = transform.KubeEnableFlag(args.Kubernetes.Enable)
+		attrs.Kubernetes.Enable = kubeflags.EnableFlag(args.Kubernetes.Enable)
+	}
+	if args.Kubernetes.InformersSyncTimeout != 0 {
+		attrs.Kubernetes.InformersSyncTimeout = args.Kubernetes.InformersSyncTimeout
+	}
+	if args.Kubernetes.InformersResyncPeriod != 0 {
+		attrs.Kubernetes.InformersResyncPeriod = args.Kubernetes.InformersResyncPeriod
+	}
+	attrs.Kubernetes.DisableInformers = args.Kubernetes.DisableInformers
+	attrs.Kubernetes.MetaRestrictLocalNode = args.Kubernetes.MetaRestrictLocalNode
+	attrs.Kubernetes.ClusterName = args.Kubernetes.ClusterName
+	// InstanceID
+	if args.InstanceID.HostnameDNSResolution {
+		attrs.InstanceID.HostnameDNSResolution = args.InstanceID.HostnameDNSResolution
+	}
+	attrs.InstanceID.OverrideHostname = args.InstanceID.OverrideHostname
+	// Selection
+	if args.Select != nil {
+		attrs.Select = args.Select.Convert()
 	}
 	return attrs
 }
 
+func (args Selections) Convert() attributes.Selection {
+	s := attributes.Selection{}
+	for _, a := range args {
+		s[attributes.Section(a.Section)] = attributes.InclusionLists{
+			Include: a.Include,
+			Exclude: a.Exclude,
+		}
+	}
+	return s
+}
+
 func (args Discovery) Convert() (services.DiscoveryConfig, error) {
+	d := beyla.DefaultConfig.Discovery
 	srv, err := args.Services.Convert()
 	if err != nil {
-		return services.DiscoveryConfig{}, err
+		return d, err
 	}
-	return services.DiscoveryConfig{
-		Services: srv,
-	}, nil
+	d.Services = srv
+	excludeSrv, err := args.ExcludeServices.Convert()
+	if err != nil {
+		return d, err
+	}
+	d.ExcludeServices = excludeSrv
+	if args.DefaultExcludeServices != nil {
+		defaultExcludeSrv, err := args.DefaultExcludeServices.Convert()
+		if err != nil {
+			return d, err
+		}
+		d.DefaultExcludeServices = defaultExcludeSrv
+	}
+	d.SkipGoSpecificTracers = args.SkipGoSpecificTracers
+	if args.ExcludeOTelInstrumentedServices {
+		d.ExcludeOTelInstrumentedServices = args.ExcludeOTelInstrumentedServices
+	}
+	return d, nil
 }
 
 func (args Services) Convert() (services.DefinitionCriteria, error) {
@@ -115,44 +174,199 @@ func (args Services) Convert() (services.DefinitionCriteria, error) {
 	return attrs, nil
 }
 
+func (args Services) Validate() error {
+	for i, svc := range args {
+		// Check if any Kubernetes fields are defined
+		hasKubernetes := svc.Kubernetes.Namespace != "" ||
+			svc.Kubernetes.PodName != "" ||
+			svc.Kubernetes.DeploymentName != "" ||
+			svc.Kubernetes.ReplicaSetName != "" ||
+			svc.Kubernetes.StatefulSetName != "" ||
+			svc.Kubernetes.DaemonSetName != "" ||
+			svc.Kubernetes.OwnerName != "" ||
+			len(svc.Kubernetes.PodLabels) > 0
+
+		if svc.OpenPorts == "" && svc.Path == "" && !hasKubernetes {
+			return fmt.Errorf("discovery.services[%d] must define at least one of: open_ports, exe_path, or kubernetes configuration", i)
+		}
+	}
+	return nil
+}
+
 func (args KubernetesService) Convert() (map[string]*services.RegexpAttr, error) {
-	namespace, err := stringToRegexpAttr(args.Namespace)
-	if err != nil {
-		return nil, err
+	metadata := map[string]*services.RegexpAttr{}
+	if args.Namespace != "" {
+		namespace, err := stringToRegexpAttr(args.Namespace)
+		metadata[services.AttrNamespace] = &namespace
+		if err != nil {
+			return nil, err
+		}
 	}
-	podName, err := stringToRegexpAttr(args.PodName)
-	if err != nil {
-		return nil, err
+	if args.PodName != "" {
+		podName, err := stringToRegexpAttr(args.PodName)
+		metadata[services.AttrPodName] = &podName
+		if err != nil {
+			return nil, err
+		}
 	}
-	deploymentName, err := stringToRegexpAttr(args.DeploymentName)
-	if err != nil {
-		return nil, err
+	if args.DeploymentName != "" {
+		deploymentName, err := stringToRegexpAttr(args.DeploymentName)
+		metadata[services.AttrDeploymentName] = &deploymentName
+		if err != nil {
+			return nil, err
+		}
 	}
-	replicaSetName, err := stringToRegexpAttr(args.ReplicaSetName)
-	if err != nil {
-		return nil, err
+	if args.ReplicaSetName != "" {
+		replicaSetName, err := stringToRegexpAttr(args.ReplicaSetName)
+		metadata[services.AttrReplicaSetName] = &replicaSetName
+		if err != nil {
+			return nil, err
+		}
 	}
-	statefulSetName, err := stringToRegexpAttr(args.StatefulSetName)
-	if err != nil {
-		return nil, err
+	if args.StatefulSetName != "" {
+		statefulSetName, err := stringToRegexpAttr(args.StatefulSetName)
+		metadata[services.AttrStatefulSetName] = &statefulSetName
+		if err != nil {
+			return nil, err
+		}
 	}
-	dataaemonSetName, err := stringToRegexpAttr(args.DaemonSetName)
-	if err != nil {
-		return nil, err
+	if args.DaemonSetName != "" {
+		daemonSetName, err := stringToRegexpAttr(args.DaemonSetName)
+		metadata[services.AttrDaemonSetName] = &daemonSetName
+		if err != nil {
+			return nil, err
+		}
 	}
-	ownerName, err := stringToRegexpAttr(args.OwnerName)
-	if err != nil {
-		return nil, err
+	if args.OwnerName != "" {
+		ownerName, err := stringToRegexpAttr(args.OwnerName)
+		metadata[services.AttrOwnerName] = &ownerName
+		if err != nil {
+			return nil, err
+		}
 	}
-	return map[string]*services.RegexpAttr{
-		services.AttrNamespace:       &namespace,
-		services.AttrPodName:         &podName,
-		services.AttrDeploymentName:  &deploymentName,
-		services.AttrReplicaSetName:  &replicaSetName,
-		services.AttrStatefulSetName: &statefulSetName,
-		services.AttrDaemonSetName:   &dataaemonSetName,
-		services.AttrOwnerName:       &ownerName,
-	}, nil
+	return metadata, nil
+}
+
+func (args Metrics) Convert() prom.PrometheusConfig {
+	p := beyla.DefaultConfig.Prometheus
+	if args.Features != nil {
+		p.Features = args.Features
+	}
+	if args.Instrumentations != nil {
+		p.Instrumentations = args.Instrumentations
+	}
+	p.AllowServiceGraphSelfReferences = args.AllowServiceGraphSelfReferences
+	return p
+}
+
+func (args Metrics) hasNetworkFeature() bool {
+	for _, feature := range args.Features {
+		if feature == "network" {
+			return true
+		}
+	}
+	return false
+}
+
+func (args Metrics) hasAppFeature() bool {
+	for _, feature := range args.Features {
+		switch feature {
+		case "application", "application_span", "application_service_graph", "application_process":
+			return true
+		}
+	}
+	return false
+}
+
+func (args Metrics) Validate() error {
+	validInstrumentations := map[string]struct{}{
+		"*": {}, "http": {}, "grpc": {}, "redis": {}, "kafka": {}, "sql": {},
+	}
+	for _, instrumentation := range args.Instrumentations {
+		if _, ok := validInstrumentations[instrumentation]; !ok {
+			return fmt.Errorf("metrics.instrumentations: invalid value %q", instrumentation)
+		}
+	}
+
+	validFeatures := map[string]struct{}{
+		"application": {}, "application_span": {},
+		"application_service_graph": {}, "application_process": {},
+		"network": {},
+	}
+	for _, feature := range args.Features {
+		if _, ok := validFeatures[feature]; !ok {
+			return fmt.Errorf("metrics.features: invalid value %q", feature)
+		}
+	}
+	return nil
+}
+
+func (args Network) Convert(enable bool) beyla.NetworkConfig {
+	networks := beyla.DefaultConfig.NetworkFlows
+	networks.Enable = enable
+	if args.Source != "" {
+		networks.Source = args.Source
+	}
+	if args.AgentIP != "" {
+		networks.AgentIP = args.AgentIP
+	}
+	if args.AgentIPIface != "" {
+		networks.AgentIPIface = args.AgentIPIface
+	}
+	if args.AgentIPType != "" {
+		networks.AgentIPType = args.AgentIPType
+	}
+	if args.ExcludeInterfaces != nil {
+		networks.ExcludeInterfaces = args.ExcludeInterfaces
+	}
+	if args.CacheMaxFlows != 0 {
+		networks.CacheMaxFlows = args.CacheMaxFlows
+	}
+	if args.CacheActiveTimeout != 0 {
+		networks.CacheActiveTimeout = args.CacheActiveTimeout
+	}
+	if args.Direction != "" {
+		networks.Direction = args.Direction
+	}
+	networks.Interfaces = args.Interfaces
+	networks.Protocols = args.Protocols
+	networks.ExcludeProtocols = args.ExcludeProtocols
+	networks.Sampling = args.Sampling
+	networks.CIDRs = args.CIDRs
+	return networks
+}
+
+func (args EBPF) Convert() beylaCfg.EBPFTracer {
+	ebpf := beyla.DefaultConfig.EBPF
+	if args.HTTPRequestTimeout != 0 {
+		ebpf.HTTPRequestTimeout = args.HTTPRequestTimeout
+	}
+	ebpf.ContextPropagationEnabled = args.ContextPropagationEnabled
+	ebpf.WakeupLen = args.WakeupLen
+	ebpf.TrackRequestHeaders = args.TrackRequestHeaders
+	ebpf.HighRequestVolume = args.HighRequestVolume
+	ebpf.HeuristicSQLDetect = args.HeuristicSQLDetect
+	return ebpf
+}
+
+func (args Filters) Convert() filter.AttributesConfig {
+	filters := filter.AttributesConfig{
+		Application: map[string]filter.MatchDefinition{},
+		Network:     map[string]filter.MatchDefinition{},
+	}
+	for _, app := range args.Application {
+		filters.Application[app.Attr] = filter.MatchDefinition{
+			Match:    app.Match,
+			NotMatch: app.NotMatch,
+		}
+	}
+	for _, net := range args.Network {
+		filters.Network[net.Attr] = filter.MatchDefinition{
+			Match:    net.Match,
+			NotMatch: net.NotMatch,
+		}
+	}
+	return filters
 }
 
 func New(opts component.Options, args Arguments) (*Component, error) {
@@ -172,6 +386,14 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
+	// Add deprecation warnings at the start of Run
+	if c.args.Port != "" {
+		level.Warn(c.opts.Logger).Log("msg", "The 'open_port' field is deprecated. Use 'discovery.services' instead.")
+	}
+	if c.args.ExecutableName != "" {
+		level.Warn(c.opts.Logger).Log("msg", "The 'executable_name' field is deprecated. Use 'discovery.services' instead.")
+	}
+
 	var cancel context.CancelFunc
 	for {
 		select {
@@ -196,7 +418,12 @@ func (c *Component) Run(ctx context.Context) error {
 			c.reportHealthy()
 			cfg.Prometheus.Registry = c.reg
 			c.mut.Unlock()
-			components.RunBeyla(newCtx, cfg)
+			err = components.RunBeyla(newCtx, cfg)
+			if err != nil {
+				level.Error(c.opts.Logger).Log("msg", "failed to run Beyla", "err", err)
+				c.reportUnhealthy(err)
+				continue
+			}
 		}
 	}
 }
@@ -223,17 +450,17 @@ func (c *Component) Update(args component.Arguments) error {
 func (c *Component) baseTarget() (discovery.Target, error) {
 	data, err := c.opts.GetServiceData(http_service.ServiceName)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get HTTP information: %w", err)
+		return discovery.EmptyTarget, fmt.Errorf("failed to get HTTP information: %w", err)
 	}
 	httpData := data.(http_service.Data)
 
-	return discovery.Target{
+	return discovery.NewTargetFromMap(map[string]string{
 		model.AddressLabel:     httpData.MemoryListenAddr,
 		model.SchemeLabel:      "http",
 		model.MetricsPathLabel: path.Join(httpData.HTTPPathForComponent(c.opts.ID), "metrics"),
 		"instance":             defaultInstance(),
 		"job":                  "beyla",
-	}, nil
+	}), nil
 }
 
 func (c *Component) reportUnhealthy(err error) {
@@ -271,26 +498,66 @@ func (a *Arguments) Convert() (*beyla.Config, error) {
 	if a.Output != nil {
 		cfg.TracesReceiver = convertTraceConsumers(a.Output.Traces)
 	}
-	cfg.Port, err = stringToPortEnum(a.Port)
-	if err != nil {
-		return nil, err
-	}
-	cfg.Exec, err = stringToRegexpAttr(a.ExecutableName)
-	if err != nil {
-		return nil, err
-	}
 	cfg.Routes = a.Routes.Convert()
 	cfg.Attributes = a.Attributes.Convert()
 	cfg.Discovery, err = a.Discovery.Convert()
 	if err != nil {
 		return nil, err
 	}
+	cfg.Prometheus = a.Metrics.Convert()
+	cfg.NetworkFlows = a.Metrics.Network.Convert(a.Metrics.hasNetworkFeature())
+	cfg.EnforceSysCaps = a.EnforceSysCaps
+	cfg.EBPF = a.EBPF.Convert()
+	cfg.Filters = a.Filters.Convert()
+	cfg.TracePrinter = debug.TracePrinter(a.TracePrinter)
+
+	if a.Debug {
+		// TODO: integrate Beyla internal logging with Alloy global logging
+		lvl := slog.LevelVar{}
+		lvl.Set(slog.LevelDebug)
+		cfg.ExternalLogger(slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+			Level: &lvl,
+		})).Handler(), a.Debug)
+	}
+
 	return &cfg, nil
 }
 
 func (args *Arguments) Validate() error {
-	if args.Port == "" && args.ExecutableName == "" && len(args.Discovery.Services) == 0 {
-		return fmt.Errorf("you need to define at least open_port, executable_name, or services in the discovery section")
+	hasNetworkFeature := args.Metrics.hasNetworkFeature()
+	hasAppFeature := args.Metrics.hasAppFeature()
+
+	// Validate TracePrinter
+	if args.TracePrinter == "" {
+		args.TracePrinter = string(debug.TracePrinterDisabled)
+	} else if !debug.TracePrinter(args.TracePrinter).Valid() {
+		return fmt.Errorf("trace_printer: invalid value %q. Valid values are: disabled, counter, text, json, json_indent", args.TracePrinter)
+	}
+
+	// Services are required only when application observability is enabled
+	if hasAppFeature {
+		if len(args.Discovery.Services) == 0 {
+			return fmt.Errorf("discovery.services is required when application features are enabled")
+		}
+		if err := args.Discovery.Services.Validate(); err != nil {
+			return fmt.Errorf("invalid discovery configuration: %s", err.Error())
+		}
+	}
+
+	// Only validate exclude_services if they are defined (empty is valid)
+	if len(args.Discovery.ExcludeServices) > 0 {
+		if err := args.Discovery.ExcludeServices.Validate(); err != nil {
+			return fmt.Errorf("invalid exclude_services configuration: %s", err.Error())
+		}
+	}
+
+	// Check that at least one feature type is enabled
+	if !hasNetworkFeature && !hasAppFeature {
+		return fmt.Errorf("metrics.features must include at least one of: network, application, application_span, application_service_graph, or application_process")
+	}
+
+	if err := args.Metrics.Validate(); err != nil {
+		return err
 	}
 	return nil
 }

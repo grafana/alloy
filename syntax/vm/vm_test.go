@@ -63,11 +63,9 @@ func TestVM_Evaluate_Literals(t *testing.T) {
 
 func TestVM_Evaluate(t *testing.T) {
 	// Shared scope across all tests below
-	scope := &vm.Scope{
-		Variables: map[string]interface{}{
-			"foobar": int(42),
-		},
-	}
+	scope := vm.NewScope(map[string]interface{}{
+		"foobar": int(42),
+	})
 
 	tt := []struct {
 		input  string
@@ -91,6 +89,9 @@ func TestVM_Evaluate(t *testing.T) {
 		{`3.0 / 5.0`, float64(0.6)},
 		{`5 % 3`, int(2)},
 		{`3 ^ 5`, int(243)},
+		{`3 ^ 0`, int(1)},
+		{`3 ^ 1`, int(3)},
+		{`0 ^ 1`, int(0)},
 		{`3 + 5 * 2`, int(13)}, // Chain multiple binops
 		{`42.0^-2`, float64(0.0005668934240362812)},
 
@@ -176,11 +177,9 @@ func TestVM_Evaluate_Null(t *testing.T) {
 
 func TestVM_Evaluate_IdentifierExpr(t *testing.T) {
 	t.Run("Valid lookup", func(t *testing.T) {
-		scope := &vm.Scope{
-			Variables: map[string]interface{}{
-				"foobar": 15,
-			},
-		}
+		scope := vm.NewScope(map[string]interface{}{
+			"foobar": 15,
+		})
 
 		expr, err := parser.ParseExpression(`foobar`)
 		require.NoError(t, err)
@@ -210,11 +209,9 @@ func TestVM_Evaluate_AccessExpr(t *testing.T) {
 			Name string `alloy:"name,attr,optional"`
 		}
 
-		scope := &vm.Scope{
-			Variables: map[string]interface{}{
-				"person": Person{},
-			},
-		}
+		scope := vm.NewScope(map[string]interface{}{
+			"person": Person{},
+		})
 
 		expr, err := parser.ParseExpression(`person.name`)
 		require.NoError(t, err)

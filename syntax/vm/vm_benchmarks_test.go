@@ -13,11 +13,9 @@ import (
 
 func BenchmarkExprs(b *testing.B) {
 	// Shared scope across all tests below
-	scope := &vm.Scope{
-		Variables: map[string]interface{}{
-			"foobar": int(42),
-		},
-	}
+	scope := vm.NewScope(map[string]interface{}{
+		"foobar": int(42),
+	})
 
 	tt := []struct {
 		name   string

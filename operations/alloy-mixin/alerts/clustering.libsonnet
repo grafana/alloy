@@ -9,7 +9,7 @@ local alert = import './utils/alert.jsonnet';
         alert.newRule(
           'ClusterNotConverging',
           if enableK8sCluster then 
-            'stddev by (cluster, namespace, job) (sum without (state) (cluster_node_peers)) != 0' 
+            'stddev by (cluster, namespace, job, cluster_name) (sum without (state) (cluster_node_peers)) != 0' 
           else 
             'stddev by (job) (sum without (state) (cluster_node_peers)) != 0',
           'Cluster is not converging.',
@@ -25,8 +25,8 @@ local alert = import './utils/alert.jsonnet';
           // metrics.
           if enableK8sCluster then |||
             sum without (state) (cluster_node_peers) !=
-            on (cluster, namespace, job) group_left
-            count by (cluster, namespace, job) (cluster_node_info)
+            on (cluster, namespace, job, cluster_name) group_left
+            count by (cluster, namespace, job, cluster_name) (cluster_node_info)
           ||| else |||
             sum without (state) (cluster_node_peers) !=
             on (job) group_left
@@ -53,7 +53,7 @@ local alert = import './utils/alert.jsonnet';
         alert.newRule(
           'ClusterNodeNameConflict',
           if enableK8sCluster then 
-            'sum by (cluster, namespace, job) (rate(cluster_node_gossip_received_events_total{event="node_conflict"}[2m])) > 0'
+            'sum by (cluster, namespace, job, cluster_name) (rate(cluster_node_gossip_received_events_total{event="node_conflict"}[2m])) > 0'
           else
             'sum by (job) (rate(cluster_node_gossip_received_events_total{event="node_conflict"}[2m])) > 0'
           ,
@@ -66,7 +66,7 @@ local alert = import './utils/alert.jsonnet';
         alert.newRule(
           'ClusterNodeStuckTerminating',
           if enableK8sCluster then
-            'sum by (cluster, namespace, job, instance) (cluster_node_peers{state="terminating"}) > 0'
+            'sum by (cluster, namespace, job, instance, cluster_name) (cluster_node_peers{state="terminating"}) > 0'
           else
             'sum by (job, instance) (cluster_node_peers{state="terminating"}) > 0'
           ,
@@ -80,7 +80,7 @@ local alert = import './utils/alert.jsonnet';
           'ClusterConfigurationDrift',
           if enableK8sCluster then |||
             count without (sha256) (
-                max by (cluster, namespace, sha256, job) (alloy_config_hash and on(cluster, namespace, job) cluster_node_info)
+                max by (cluster, namespace, sha256, job, cluster_name) (alloy_config_hash and on(cluster, namespace, job, cluster_name) cluster_node_info)
             ) > 1
           ||| else |||
             count without (sha256) (

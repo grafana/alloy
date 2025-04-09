@@ -1,6 +1,7 @@
 package relabel
 
 import (
+	"github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/client_golang/prometheus"
 	prometheus_client "github.com/prometheus/client_golang/prometheus"
 )
@@ -40,13 +41,11 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 	})
 
 	if reg != nil {
-		reg.MustRegister(
-			m.entriesProcessed,
-			m.entriesOutgoing,
-			m.cacheMisses,
-			m.cacheHits,
-			m.cacheSize,
-		)
+		m.entriesProcessed = util.MustRegisterOrGet(reg, m.entriesProcessed).(prometheus_client.Counter)
+		m.entriesOutgoing = util.MustRegisterOrGet(reg, m.entriesOutgoing).(prometheus_client.Counter)
+		m.cacheMisses = util.MustRegisterOrGet(reg, m.cacheMisses).(prometheus_client.Counter)
+		m.cacheHits = util.MustRegisterOrGet(reg, m.cacheHits).(prometheus_client.Counter)
+		m.cacheSize = util.MustRegisterOrGet(reg, m.cacheSize).(prometheus_client.Gauge)
 	}
 
 	return &m

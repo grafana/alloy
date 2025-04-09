@@ -46,7 +46,7 @@ func Test(t *testing.T) {
 	require.NoError(t, err)
 
 	go func() {
-		err := ctrl.Run(context.Background(), args)
+		err := ctrl.Run(t.Context(), args)
 		require.NoError(t, err)
 	}()
 
@@ -72,7 +72,7 @@ func TestDuplicateTargets(t *testing.T) {
 	require.NoError(t, err)
 
 	go func() {
-		err := ctrl.Run(context.Background(), args)
+		err := ctrl.Run(t.Context(), args)
 		require.NoError(t, err)
 	}()
 
@@ -114,7 +114,7 @@ func TestRestart(t *testing.T) {
 	expectedLogLine := "caller=module_service.go:114 msg=\"module stopped\" module=distributor"
 
 	tailer, entryHandler := setupTailer(t, client)
-	go tailer.Run(context.Background())
+	go tailer.Run(t.Context())
 
 	// The container is already running, expect log lines.
 	assert.EventuallyWithT(t, func(c *assert.CollectT) {
@@ -149,7 +149,7 @@ func TestTargetNeverStarted(t *testing.T) {
 	}
 
 	tailer, _ := setupTailer(t, client)
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	go tailer.Run(ctx)
 
 	time.Sleep(20 * time.Millisecond)
@@ -207,6 +207,6 @@ func (mock clientMock) ContainerInspect(ctx context.Context, c string) (types.Co
 	}, nil
 }
 
-func (mock clientMock) ContainerLogs(ctx context.Context, container string, options types.ContainerLogsOptions) (io.ReadCloser, error) {
+func (mock clientMock) ContainerLogs(ctx context.Context, container string, options container.LogsOptions) (io.ReadCloser, error) {
 	return io.NopCloser(strings.NewReader(mock.logLine)), nil
 }

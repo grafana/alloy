@@ -2,20 +2,6 @@ local build_image = import '../util/build_image.jsonnet';
 local pipelines = import '../util/pipelines.jsonnet';
 
 [
-  pipelines.linux('Lint') {
-    trigger: {
-      event: ['pull_request'],
-    },
-    steps: [{
-      name: 'Lint',
-      image: build_image.linux,
-      commands: [
-        'apt-get update -y && apt-get install -y libsystemd-dev',
-        'make lint',
-      ],
-    }],
-  },
-
   pipelines.linux('Test') {
     trigger: {
       event: ['pull_request'],
@@ -64,7 +50,9 @@ local pipelines = import '../util/pipelines.jsonnet';
     steps: [{
       name: 'Run Go tests',
       image: build_image.windows,
-      commands: ['go test -tags="nodocker,nonetwork" ./...'],
+      commands: [
+        pipelines.windows_command('go test -tags="nodocker,nonetwork" ./...'),
+      ],
     }],
   },
 ]

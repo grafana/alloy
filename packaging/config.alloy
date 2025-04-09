@@ -11,7 +11,7 @@ prometheus.exporter.unix "default" {
 }
 
 prometheus.scrape "default" {
-  targets = concat(
+  targets = array.concat(
     prometheus.exporter.unix.default.targets,
     [{
       // Self-collect metrics

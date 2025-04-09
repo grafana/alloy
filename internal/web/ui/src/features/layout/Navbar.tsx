@@ -24,6 +24,11 @@ function Navbar() {
           </NavLink>
         </li>
         <li>
+          <NavLink to="/remotecfg" className="nav-link">
+            Remote Configuration
+          </NavLink>
+        </li>
+        <li>
           <a href="https://grafana.com/docs/alloy/latest">Help</a>
         </li>
       </ul>

@@ -32,7 +32,7 @@ discovery.openstack "prometheus1_2" {
 }
 
 local.file_match "prometheus1" {
-	path_targets = concat(
+	path_targets = array.concat(
 		discovery.openstack.prometheus1.targets,
 		discovery.openstack.prometheus1_2.targets,
 		[{

@@ -12,7 +12,10 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/component/componentstatus"
+	"go.opentelemetry.io/collector/config/configretry"
 	"go.opentelemetry.io/collector/config/configtls"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 func init() {
@@ -25,7 +28,7 @@ func (kafkaReceiverConverter) Factory() component.Factory { return kafkareceiver
 
 func (kafkaReceiverConverter) InputComponentName() string { return "" }
 
-func (kafkaReceiverConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
+func (kafkaReceiverConverter) ConvertAndAppend(state *State, id componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -42,21 +45,23 @@ func (kafkaReceiverConverter) ConvertAndAppend(state *State, id component.Instan
 	return diags
 }
 
-func toKafkaReceiver(state *State, id component.InstanceID, cfg *kafkareceiver.Config) *kafka.Arguments {
+func toKafkaReceiver(state *State, id componentstatus.InstanceID, cfg *kafkareceiver.Config) *kafka.Arguments {
 	var (
-		nextMetrics = state.Next(id, component.DataTypeMetrics)
-		nextLogs    = state.Next(id, component.DataTypeLogs)
-		nextTraces  = state.Next(id, component.DataTypeTraces)
+		nextMetrics = state.Next(id, pipeline.SignalMetrics)
+		nextLogs    = state.Next(id, pipeline.SignalLogs)
+		nextTraces  = state.Next(id, pipeline.SignalTraces)
 	)
 
 	return &kafka.Arguments{
-		Brokers:         cfg.Brokers,
-		ProtocolVersion: cfg.ProtocolVersion,
-		Topic:           cfg.Topic,
-		Encoding:        cfg.Encoding,
-		GroupID:         cfg.GroupID,
-		ClientID:        cfg.ClientID,
-		InitialOffset:   cfg.InitialOffset,
+		Brokers:           cfg.Brokers,
+		ProtocolVersion:   cfg.ProtocolVersion,
+		SessionTimeout:    cfg.SessionTimeout,
+		HeartbeatInterval: cfg.HeartbeatInterval,
+		Topic:             cfg.Topic,
+		Encoding:          cfg.Encoding,
+		GroupID:           cfg.GroupID,
+		ClientID:          cfg.ClientID,
+		InitialOffset:     cfg.InitialOffset,
 
 		ResolveCanonicalBootstrapServersOnly: cfg.ResolveCanonicalBootstrapServersOnly,
 
@@ -66,6 +71,12 @@ func toKafkaReceiver(state *State, id component.InstanceID, cfg *kafkareceiver.C
 		MessageMarking:   toKafkaMessageMarking(cfg.MessageMarking),
 		HeaderExtraction: toKafkaHeaderExtraction(cfg.HeaderExtraction),
 
+		MinFetchSize:     cfg.MinFetchSize,
+		DefaultFetchSize: cfg.DefaultFetchSize,
+		MaxFetchSize:     cfg.MaxFetchSize,
+
+		ErrorBackOff: toKafkaErrorBackOff(cfg.ErrorBackOff),
+
 		DebugMetrics: common.DefaultValue[kafka.Arguments]().DebugMetrics,
 
 		Output: &otelcol.ConsumerArguments{
@@ -73,6 +84,17 @@ func toKafkaReceiver(state *State, id component.InstanceID, cfg *kafkareceiver.C
 			Logs:    ToTokenizedConsumers(nextLogs),
 			Traces:  ToTokenizedConsumers(nextTraces),
 		},
+	}
+}
+
+func toKafkaErrorBackOff(cfg configretry.BackOffConfig) kafka.ErrorBackOffArguments {
+	return kafka.ErrorBackOffArguments{
+		Enabled:             cfg.Enabled,
+		InitialInterval:     cfg.InitialInterval,
+		RandomizationFactor: cfg.RandomizationFactor,
+		Multiplier:          cfg.Multiplier,
+		MaxInterval:         cfg.MaxInterval,
+		MaxElapsedTime:      cfg.MaxElapsedTime,
 	}
 }
 
@@ -142,13 +164,14 @@ func toKafkaKerberos(cfg map[string]any) *otelcol.KafkaKerberosArguments {
 	}
 
 	return &otelcol.KafkaKerberosArguments{
-		ServiceName: cfg["service_name"].(string),
-		Realm:       cfg["realm"].(string),
-		UseKeyTab:   cfg["use_keytab"].(bool),
-		Username:    cfg["username"].(string),
-		Password:    alloytypes.Secret(cfg["password"].(string)),
-		ConfigPath:  cfg["config_file"].(string),
-		KeyTabPath:  cfg["keytab_file"].(string),
+		ServiceName:     cfg["service_name"].(string),
+		Realm:           cfg["realm"].(string),
+		UseKeyTab:       cfg["use_keytab"].(bool),
+		Username:        cfg["username"].(string),
+		Password:        alloytypes.Secret(cfg["password"].(string)),
+		ConfigPath:      cfg["config_file"].(string),
+		KeyTabPath:      cfg["keytab_file"].(string),
+		DisablePAFXFAST: cfg["disable_fast_negotiation"].(bool),
 	}
 }
 

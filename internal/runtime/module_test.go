@@ -134,7 +134,7 @@ func TestModule(t *testing.T) {
 				args:    tc.args,
 				opts:    component.Options{ModuleController: mc},
 			}
-			ctx, cnc := context.WithTimeout(context.Background(), 1*time.Second)
+			ctx, cnc := context.WithTimeout(t.Context(), 1*time.Second)
 			defer cnc()
 			err := tm.Run(ctx)
 			if tc.expectedErrorContains == "" {
@@ -153,20 +153,20 @@ func TestModule(t *testing.T) {
 func TestArgsNotInModules(t *testing.T) {
 	defer verifyNoGoroutineLeaks(t)
 	f := New(testOptions(t))
-	defer cleanUpController(f)
+	defer cleanUpController(t.Context(), f)
 	fl, err := ParseSource("test", []byte("argument \"arg\"{}"))
 	require.NoError(t, err)
-	err = f.LoadSource(fl, nil)
+	err = f.LoadSource(fl, nil, "")
 	require.ErrorContains(t, err, "argument blocks only allowed inside a module")
 }
 
 func TestExportsNotInModules(t *testing.T) {
 	defer verifyNoGoroutineLeaks(t)
 	f := New(testOptions(t))
-	defer cleanUpController(f)
+	defer cleanUpController(t.Context(), f)
 	fl, err := ParseSource("test", []byte("export \"arg\"{ value = 1}"))
 	require.NoError(t, err)
-	err = f.LoadSource(fl, nil)
+	err = f.LoadSource(fl, nil, "")
 	require.ErrorContains(t, err, "export blocks only allowed inside a module")
 }
 
@@ -177,10 +177,9 @@ func TestExportsWhenNotUsed(t *testing.T) {
 	fullContent := "test.module \"t1\" { content = \"" + content + "\" }"
 	fl, err := ParseSource("test", []byte(fullContent))
 	require.NoError(t, err)
-	err = f.LoadSource(fl, nil)
+	err = f.LoadSource(fl, nil, "")
 	require.NoError(t, err)
-	ctx := context.Background()
-	ctx, cnc := context.WithTimeout(ctx, 1*time.Second)
+	ctx, cnc := context.WithTimeout(t.Context(), 1*time.Second)
 	defer cnc()
 	f.Run(ctx)
 	exps := f.loader.Components()[0].Exports().(TestExports)
@@ -199,8 +198,7 @@ func TestIDList(t *testing.T) {
 
 	mod1, err := nc.NewModule("t1", nil)
 	require.NoError(t, err)
-	ctx := context.Background()
-	ctx, cncl := context.WithCancel(ctx)
+	ctx, cncl := context.WithCancel(t.Context())
 	go func() {
 		m1err := mod1.Run(ctx)
 		require.NoError(t, m1err)
@@ -234,8 +232,7 @@ func TestDuplicateIDList(t *testing.T) {
 
 	mod1, err := nc.NewModule("t1", nil)
 	require.NoError(t, err)
-	ctx := context.Background()
-	ctx, cncl := context.WithCancel(ctx)
+	ctx, cncl := context.WithCancel(t.Context())
 	defer cncl()
 	go func() {
 		m1err := mod1.Run(ctx)

@@ -3,9 +3,9 @@ package importsource
 import (
 	"context"
 	"fmt"
-	"reflect"
 
 	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/runtime/equality"
 	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/grafana/alloy/syntax/vm"
 )
@@ -15,6 +15,7 @@ type ImportString struct {
 	arguments       component.Arguments
 	eval            *vm.Evaluator
 	onContentChange func(map[string]string)
+	modulePath      string
 }
 
 var _ ImportSource = (*ImportString)(nil)
@@ -36,10 +37,12 @@ func (im *ImportString) Evaluate(scope *vm.Scope) error {
 		return fmt.Errorf("decoding configuration: %w", err)
 	}
 
-	if reflect.DeepEqual(im.arguments, arguments) {
+	if equality.DeepEqual(im.arguments, arguments) {
 		return nil
 	}
 	im.arguments = arguments
+
+	im.modulePath, _ = scope.Variables[ModulePath].(string)
 
 	// notifies that the content has changed
 	im.onContentChange(map[string]string{"import_string": arguments.Content.Value})
@@ -62,4 +65,8 @@ func (im *ImportString) CurrentHealth() component.Health {
 // Update the evaluator.
 func (im *ImportString) SetEval(eval *vm.Evaluator) {
 	im.eval = eval
+}
+
+func (im *ImportString) ModulePath() string {
+	return im.modulePath
 }

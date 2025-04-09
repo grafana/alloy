@@ -2,17 +2,21 @@ package controller_test
 
 import (
 	"context"
+	"os"
 	"sync"
 	"testing"
+
+	"github.com/go-kit/log"
+	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/runtime/internal/controller"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/vm"
-	"github.com/stretchr/testify/require"
 )
 
 func TestScheduler_Synchronize(t *testing.T) {
+	logger := log.NewLogfmtLogger(os.Stdout)
 	t.Run("Can start new jobs", func(t *testing.T) {
 		var started, finished sync.WaitGroup
 		started.Add(3)
@@ -26,7 +30,7 @@ func TestScheduler_Synchronize(t *testing.T) {
 			return nil
 		}
 
-		sched := controller.NewScheduler()
+		sched := controller.NewScheduler(logger)
 		sched.Synchronize([]controller.RunnableNode{
 			fakeRunnable{ID: "component-a", Component: mockComponent{RunFunc: runFunc}},
 			fakeRunnable{ID: "component-b", Component: mockComponent{RunFunc: runFunc}},
@@ -48,7 +52,7 @@ func TestScheduler_Synchronize(t *testing.T) {
 			return nil
 		}
 
-		sched := controller.NewScheduler()
+		sched := controller.NewScheduler(logger)
 
 		for i := 0; i < 10; i++ {
 			// If a new runnable is created, runFunc will panic since the WaitGroup
@@ -74,7 +78,7 @@ func TestScheduler_Synchronize(t *testing.T) {
 			return nil
 		}
 
-		sched := controller.NewScheduler()
+		sched := controller.NewScheduler(logger)
 
 		sched.Synchronize([]controller.RunnableNode{
 			fakeRunnable{ID: "component-a", Component: mockComponent{RunFunc: runFunc}},

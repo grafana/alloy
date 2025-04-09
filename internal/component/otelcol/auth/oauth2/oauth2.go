@@ -13,7 +13,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/extension/oauth2clientauthextension"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/configopaque"
-	otelextension "go.opentelemetry.io/collector/extension"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 func init() {
@@ -52,8 +52,8 @@ func (args *Arguments) SetToDefault() {
 	args.DebugMetrics.SetToDefault()
 }
 
-// Convert implements auth.Arguments.
-func (args Arguments) Convert() (otelcomponent.Config, error) {
+// ConvertClient implements auth.Arguments.
+func (args Arguments) ConvertClient() (otelcomponent.Config, error) {
 	return &oauth2clientauthextension.Config{
 		ClientID:         args.ClientID,
 		ClientIDFile:     args.ClientIDFile,
@@ -67,14 +67,24 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	}, nil
 }
 
+// ConvertServer returns nil since the ouath2 client extension does not support server auth.
+func (args Arguments) ConvertServer() (otelcomponent.Config, error) {
+	return nil, nil
+}
+
 // Extensions implements auth.Arguments.
-func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
+func (args Arguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 
 // Exporters implements auth.Arguments.
-func (args Arguments) Exporters() map[otelcomponent.DataType]map[otelcomponent.ID]otelcomponent.Component {
+func (args Arguments) Exporters() map[pipeline.Signal]map[otelcomponent.ID]otelcomponent.Component {
 	return nil
+}
+
+// AuthFeatures implements auth.Arguments.
+func (args Arguments) AuthFeatures() auth.AuthFeature {
+	return auth.ClientAuthSupported
 }
 
 // DebugMetricsConfig implements auth.Arguments.

@@ -14,9 +14,8 @@ func (b *ConfigBuilder) appendMongodbExporter(config *mongodb_exporter.Config, i
 
 func toMongodbExporter(config *mongodb_exporter.Config) *mongodb.Arguments {
 	return &mongodb.Arguments{
-		URI:                    alloytypes.Secret(config.URI),
-		DirectConnect:          config.DirectConnect,
-		DiscoveringMode:        config.DiscoveringMode,
-		TLSBasicAuthConfigPath: config.TLSBasicAuthConfigPath,
+		URI:             alloytypes.Secret(config.URI),
+		DirectConnect:   config.DirectConnect,
+		DiscoveringMode: config.DiscoveringMode,
 	}
 }

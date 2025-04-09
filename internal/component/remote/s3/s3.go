@@ -135,11 +135,14 @@ func generateS3Config(args Arguments) (*aws.Config, error) {
 	configOptions := make([]func(*aws_config.LoadOptions) error, 0)
 	// Override the endpoint.
 	if args.Options.Endpoint != "" {
+		//nolint:staticcheck // TODO update to use EndpointResolverV2 in s3.NewFromConfig
 		endFunc := aws.EndpointResolverWithOptionsFunc(func(service, region string, _ ...interface{}) (aws.Endpoint, error) {
 			// The S3 compatible system used for testing with does not require signing region, so it's fine to be blank
 			// but when using a proxy to real S3 it needs to be injected.
+			//nolint:staticcheck
 			return aws.Endpoint{URL: args.Options.Endpoint, SigningRegion: args.Options.SigningRegion}, nil
 		})
+		//nolint:staticcheck
 		endResolver := aws_config.WithEndpointResolverWithOptions(endFunc)
 		configOptions = append(configOptions, endResolver)
 	}

@@ -19,7 +19,7 @@ exporters:
     endpoint: database:4317
     auth:
       authenticator: bearertokenauth/fromfile
-    balancer_name: pick_first
+    balancer_name: round_robin
   otlphttp/withauth:
     endpoint: database:4318
     auth:

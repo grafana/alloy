@@ -1,0 +1,14 @@
+Use of an imported community component without specifying the flag propagates the error
+
+-- main.alloy --
+
+import.string "testImport" {
+  content = ` declare "a" {
+    testcomponents.community "com" {}
+  }`
+}
+
+testImport.a "cc" {}
+
+-- error --
+the component "testcomponents.community" is a community component. Use the --feature.community-components.enabled command-line flag to enable community components

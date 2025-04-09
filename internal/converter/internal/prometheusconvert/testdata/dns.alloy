@@ -10,7 +10,7 @@ discovery.dns "prometheus2" {
 }
 
 prometheus.scrape "prometheus1" {
-	targets = concat(
+	targets = array.concat(
 		discovery.dns.prometheus1.targets,
 		[{
 			__address__ = "localhost:9090",

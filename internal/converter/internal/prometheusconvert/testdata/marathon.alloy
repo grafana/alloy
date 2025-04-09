@@ -14,7 +14,7 @@ discovery.marathon "prometheus2" {
 }
 
 prometheus.scrape "prometheus1" {
-	targets = concat(
+	targets = array.concat(
 		discovery.marathon.prometheus1.targets,
 		[{
 			__address__ = "localhost:9090",

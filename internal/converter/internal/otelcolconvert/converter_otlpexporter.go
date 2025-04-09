@@ -8,9 +8,11 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/auth"
 	"github.com/grafana/alloy/internal/component/otelcol/exporter/otlp"
+	"github.com/grafana/alloy/internal/component/otelcol/extension"
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/component/componentstatus"
 	"go.opentelemetry.io/collector/config/configgrpc"
 	"go.opentelemetry.io/collector/config/configopaque"
 	"go.opentelemetry.io/collector/config/configretry"
@@ -31,7 +33,7 @@ func (otlpExporterConverter) Factory() component.Factory {
 
 func (otlpExporterConverter) InputComponentName() string { return "otelcol.exporter.otlp" }
 
-func (otlpExporterConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
+func (otlpExporterConverter) ConvertAndAppend(state *State, id componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -39,6 +41,9 @@ func (otlpExporterConverter) ConvertAndAppend(state *State, id component.Instanc
 		switch val.(type) {
 		case auth.Handler:
 			ext := state.LookupExtension(cfg.(*otlpexporter.Config).Auth.AuthenticatorID)
+			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
+		case extension.ExtensionHandler:
+			ext := state.LookupExtension(*cfg.(*otlpexporter.Config).QueueConfig.StorageID)
 			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
 		}
 		return val
@@ -69,12 +74,20 @@ func toOtelcolExporterOTLP(cfg *otlpexporter.Config) *otlp.Arguments {
 	}
 }
 
-func toQueueArguments(cfg exporterhelper.QueueSettings) otelcol.QueueArguments {
-	return otelcol.QueueArguments{
+func toQueueArguments(cfg exporterhelper.QueueConfig) otelcol.QueueArguments {
+	q := otelcol.QueueArguments{
 		Enabled:      cfg.Enabled,
 		NumConsumers: cfg.NumConsumers,
 		QueueSize:    cfg.QueueSize,
+		Blocking:     cfg.Blocking,
 	}
+
+	if cfg.StorageID != nil {
+		q.Storage = &extension.ExtensionHandler{
+			ID: *cfg.StorageID,
+		}
+	}
+	return q
 }
 
 func toRetryArguments(cfg configretry.BackOffConfig) otelcol.RetryArguments {
@@ -115,7 +128,7 @@ func toGRPCClientArguments(cfg configgrpc.ClientConfig) otelcol.GRPCClientArgume
 		BalancerName:    balancerName,
 		Authority:       cfg.Authority,
 
-		Auth: a,
+		Authentication: a,
 	}
 }
 

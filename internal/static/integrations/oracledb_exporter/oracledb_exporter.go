@@ -24,6 +24,7 @@ var DefaultConfig = Config{
 	MaxOpenConns:     10,
 	MaxIdleConns:     0,
 	QueryTimeout:     5,
+	// CustomMetrics:    "",
 }
 
 var (
@@ -37,6 +38,7 @@ type Config struct {
 	MaxIdleConns     int                `yaml:"max_idle_connections"`
 	MaxOpenConns     int                `yaml:"max_open_connections"`
 	QueryTimeout     int                `yaml:"query_timeout"`
+	CustomMetrics    string             `yaml:"custom_metrics,omitempty"`
 }
 
 // ValidateConnString attempts to ensure the connection string supplied is valid
@@ -101,11 +103,10 @@ func New(logger log.Logger, c *Config) (integrations.Integration, error) {
 	}
 
 	oeExporter, err := oe.NewExporter(logger, &oe.Config{
-		DSN:          string(c.ConnectionString),
-		MaxIdleConns: c.MaxIdleConns,
-		MaxOpenConns: c.MaxOpenConns,
-		// no custom metrics file for this integration
-		CustomMetrics: "",
+		DSN:           string(c.ConnectionString),
+		MaxIdleConns:  c.MaxIdleConns,
+		MaxOpenConns:  c.MaxOpenConns,
+		CustomMetrics: c.CustomMetrics,
 		QueryTimeout:  c.QueryTimeout,
 	})
 

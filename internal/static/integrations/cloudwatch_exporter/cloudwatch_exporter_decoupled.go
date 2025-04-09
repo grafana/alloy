@@ -8,7 +8,8 @@ import (
 	"github.com/go-kit/log"
 	yace "github.com/nerdswords/yet-another-cloudwatch-exporter/pkg"
 	yaceClientsV1 "github.com/nerdswords/yet-another-cloudwatch-exporter/pkg/clients/v1"
-	yaceConf "github.com/nerdswords/yet-another-cloudwatch-exporter/pkg/config"
+	yaceClientsV2 "github.com/nerdswords/yet-another-cloudwatch-exporter/pkg/clients/v2"
+	yaceModel "github.com/nerdswords/yet-another-cloudwatch-exporter/pkg/model"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/atomic"
@@ -21,7 +22,7 @@ type asyncExporter struct {
 	name                 string
 	logger               yaceLoggerWrapper
 	cachingClientFactory cachingFactory
-	scrapeConf           yaceConf.ScrapeConf
+	scrapeConf           yaceModel.JobsConfig
 	registry             atomic.Pointer[prometheus.Registry]
 	// scrapeInterval is the frequency in which a background go-routine collects new AWS metrics via YACE.
 	scrapeInterval time.Duration
@@ -30,19 +31,33 @@ type asyncExporter struct {
 // NewDecoupledCloudwatchExporter creates a new YACE wrapper, that implements Integration. The decouple feature spawns a
 // background go-routine to perform YACE metric collection allowing for a decoupled collection of AWS metrics from the
 // ServerHandler.
-func NewDecoupledCloudwatchExporter(name string, logger log.Logger, conf yaceConf.ScrapeConf, scrapeInterval time.Duration, fipsEnabled, debug bool) *asyncExporter {
+func NewDecoupledCloudwatchExporter(name string, logger log.Logger, conf yaceModel.JobsConfig, scrapeInterval time.Duration, fipsEnabled, debug bool, useAWSSDKVersionV2 bool) (*asyncExporter, error) {
 	loggerWrapper := yaceLoggerWrapper{
 		debug: debug,
 		log:   logger,
 	}
+
+	var factory cachingFactory
+	var err error
+
+	if useAWSSDKVersionV2 {
+		factory, err = yaceClientsV2.NewFactory(loggerWrapper, conf, fipsEnabled)
+	} else {
+		factory = yaceClientsV1.NewFactory(loggerWrapper, conf, fipsEnabled)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
 	return &asyncExporter{
 		name:                 name,
 		logger:               loggerWrapper,
-		cachingClientFactory: yaceClientsV1.NewFactory(conf, fipsEnabled, loggerWrapper),
+		cachingClientFactory: factory,
 		scrapeConf:           conf,
 		registry:             atomic.Pointer[prometheus.Registry]{},
 		scrapeInterval:       scrapeInterval,
-	}
+	}, nil
 }
 
 func (e *asyncExporter) MetricsHandler() (http.Handler, error) {
@@ -98,9 +113,6 @@ func (e *asyncExporter) scrape(ctx context.Context) {
 		yace.LabelsSnakeCase(labelsSnakeCase),
 		yace.CloudWatchAPIConcurrency(cloudWatchConcurrency),
 		yace.TaggingAPIConcurrency(tagConcurrency),
-		// Enable max-dimension-associator feature flag
-		// https://github.com/nerdswords/yet-another-cloudwatch-exporter/blob/master/docs/feature_flags.md#new-associator-algorithm
-		yace.EnableFeatureFlag(yaceConf.MaxDimensionsAssociator),
 	)
 	if err != nil {
 		e.logger.Error(err, "Error collecting cloudwatch metrics")

@@ -4,6 +4,7 @@ package mysqld_exporter //nolint:golint
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 
 	config_util "github.com/prometheus/common/config"
@@ -11,6 +12,8 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/go-sql-driver/mysql"
+
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/static/integrations"
 	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
 	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
@@ -122,7 +125,8 @@ func New(log log.Logger, c *Config) (integrations.Integration, error) {
 	}
 
 	scrapers := GetScrapers(c)
-	exporter := collector.New(context.Background(), string(dsn), scrapers, log, collector.Config{
+	logger := slog.New(logging.NewSlogGoKitHandler(log))
+	exporter := collector.New(context.Background(), string(dsn), scrapers, logger, collector.Config{
 		LockTimeout:   c.LockWaitTimeout,
 		SlowLogFilter: c.LogSlowFilter,
 	})

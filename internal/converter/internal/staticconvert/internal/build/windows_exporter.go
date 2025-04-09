@@ -13,14 +13,23 @@ func (b *ConfigBuilder) appendWindowsExporter(config *windows_exporter.Config, i
 	return b.appendExporterBlock(args, config.Name(), instanceKey, "windows")
 }
 
+// Splits a string such as "example1,example2"
+// into a list such as []string{"example1", "example2"}.
+func split(collectorList string) []string {
+	if collectorList == "" {
+		return []string{}
+	}
+	return strings.Split(collectorList, ",")
+}
+
 func toWindowsExporter(config *windows_exporter.Config) *windows.Arguments {
 	return &windows.Arguments{
-		EnabledCollectors: strings.Split(config.EnabledCollectors, ","),
+		EnabledCollectors: split(config.EnabledCollectors),
 		Dfsr: windows.DfsrConfig{
-			SourcesEnabled: strings.Split(config.Dfsr.SourcesEnabled, ","),
+			SourcesEnabled: split(config.Dfsr.SourcesEnabled),
 		},
 		Exchange: windows.ExchangeConfig{
-			EnabledList: strings.Split(config.Exchange.EnabledList, ","),
+			EnabledList: split(config.Exchange.EnabledList),
 		},
 		IIS: windows.IISConfig{
 			AppBlackList:  config.IIS.AppBlackList,
@@ -42,7 +51,7 @@ func toWindowsExporter(config *windows_exporter.Config) *windows.Arguments {
 			Where: config.MSMQ.Where,
 		},
 		MSSQL: windows.MSSQLConfig{
-			EnabledClasses: strings.Split(config.MSSQL.EnabledClasses, ","),
+			EnabledClasses: split(config.MSSQL.EnabledClasses),
 		},
 		Network: windows.NetworkConfig{
 			BlackList: config.Network.BlackList,
@@ -53,6 +62,10 @@ func toWindowsExporter(config *windows_exporter.Config) *windows.Arguments {
 		PhysicalDisk: windows.PhysicalDiskConfig{
 			Exclude: config.PhysicalDisk.Exclude,
 			Include: config.PhysicalDisk.Include,
+		},
+		Printer: windows.PrinterConfig{
+			Exclude: config.Printer.Exclude,
+			Include: config.Printer.Include,
 		},
 		Process: windows.ProcessConfig{
 			BlackList: config.Process.BlackList,
@@ -67,6 +80,12 @@ func toWindowsExporter(config *windows_exporter.Config) *windows.Arguments {
 		Service: windows.ServiceConfig{
 			UseApi: config.Service.UseApi,
 			Where:  config.Service.Where,
+		},
+		SMB: windows.SMBConfig{
+			EnabledList: split(config.SMB.EnabledList),
+		},
+		SMBClient: windows.SMBClientConfig{
+			EnabledList: split(config.SMBClient.EnabledList),
 		},
 		SMTP: windows.SMTPConfig{
 			BlackList: config.SMTP.BlackList,

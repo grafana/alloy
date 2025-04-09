@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/diag"
 	"github.com/grafana/alloy/syntax/internal/reflectutil"
@@ -181,6 +182,12 @@ func (st *structDecoder) decodeAttr(attr *ast.AttributeStmt, rv reflect.Value, s
 	if err := value.Decode(val, field.Addr().Interface()); err != nil {
 		// TODO(rfratto): get error as diagnostics.
 		return err
+	}
+
+	// This annotation on the AST is used when printing the value.
+	switch field.Addr().Interface().(type) {
+	case *alloytypes.Secret, *alloytypes.OptionalSecret:
+		attr.Value.SetSecret(true)
 	}
 
 	return nil

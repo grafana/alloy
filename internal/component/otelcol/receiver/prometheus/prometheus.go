@@ -14,12 +14,16 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/fanoutconsumer"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/interceptconsumer"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/livedebuggingpublisher"
 	"github.com/grafana/alloy/internal/component/otelcol/receiver/prometheus/internal"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/util/zapadapter"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/storage"
 	otelcomponent "go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/pdata/pmetric"
 	otelreceiver "go.opentelemetry.io/collector/receiver"
 	metricNoop "go.opentelemetry.io/otel/metric/noop"
 	traceNoop "go.opentelemetry.io/otel/trace/noop"
@@ -65,15 +69,26 @@ type Component struct {
 	mut        sync.RWMutex
 	cfg        Arguments
 	appendable storage.Appendable
+
+	debugDataPublisher livedebugging.DebugDataPublisher
 }
 
-var _ component.Component = (*Component)(nil)
+var (
+	_ component.Component     = (*Component)(nil)
+	_ component.LiveDebugging = (*Component)(nil)
+)
 
 // New creates a new otelcol.receiver.prometheus component.
 func New(o component.Options, c Arguments) (*Component, error) {
+	debugDataPublisher, err := o.GetServiceData(livedebugging.ServiceName)
+	if err != nil {
+		return nil, err
+	}
+
 	res := &Component{
-		log:  o.Logger,
-		opts: o,
+		log:                o.Logger,
+		opts:               o,
+		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
 	}
 
 	if err := res.Update(c); err != nil {
@@ -123,21 +138,15 @@ func (c *Component) Update(newConfig component.Arguments) error {
 		gcInterval = 5 * time.Minute
 	)
 
-	metricsLevel, err := cfg.DebugMetrics.Level.Convert()
-	if err != nil {
-		return err
-	}
-
-	settings := otelreceiver.CreateSettings{
+	mp := metricNoop.NewMeterProvider()
+	settings := otelreceiver.Settings{
+		ID: otelcomponent.NewIDWithName(otelcomponent.MustNewType("prometheus"), c.opts.ID),
 		TelemetrySettings: otelcomponent.TelemetrySettings{
 			Logger: zapadapter.New(c.opts.Logger),
 
 			// TODO(tpaschalis): expose tracing and logging statistics.
 			TracerProvider: traceNoop.NewTracerProvider(),
-			MeterProvider:  metricNoop.NewMeterProvider(),
-			MetricsLevel:   metricsLevel,
-
-			ReportStatus: func(*otelcomponent.StatusEvent) {},
+			MeterProvider:  mp,
 		},
 
 		BuildInfo: otelcomponent.BuildInfo{
@@ -146,7 +155,15 @@ func (c *Component) Update(newConfig component.Arguments) error {
 			Version:     build.Version,
 		},
 	}
-	metricsSink := fanoutconsumer.Metrics(cfg.Output.Metrics)
+	nextMetrics := cfg.Output.Metrics
+	fanout := fanoutconsumer.Metrics(nextMetrics)
+	metricsInterceptor := interceptconsumer.Metrics(fanout,
+		func(ctx context.Context, md pmetric.Metrics) error {
+			livedebuggingpublisher.PublishMetricsIfActive(c.debugDataPublisher, c.opts.ID, md, otelcol.GetComponentMetadata(nextMetrics))
+			return fanout.ConsumeMetrics(ctx, md)
+		},
+	)
+	metricsSink := metricsInterceptor
 
 	appendable, err := internal.NewAppendable(
 		metricsSink,
@@ -169,3 +186,5 @@ func (c *Component) Update(newConfig component.Arguments) error {
 
 	return nil
 }
+
+func (c *Component) LiveDebugging() {}

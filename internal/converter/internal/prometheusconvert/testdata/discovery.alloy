@@ -27,7 +27,7 @@ discovery.azure "prometheus1_2" {
 }
 
 discovery.relabel "prometheus1" {
-	targets = concat(
+	targets = array.concat(
 		discovery.azure.prometheus1.targets,
 		discovery.azure.prometheus1_2.targets,
 		[{

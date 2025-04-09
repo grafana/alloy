@@ -1,0 +1,49 @@
+Import string with import file with relative import path.
+
+-- main.alloy --
+testcomponents.count "inc" {
+  frequency = "10ms"
+  max = 10
+}
+
+import.string "testImport" {
+  content = `
+    import.file "testImport" {
+      filename = file.path_join(module_path, "nested_test/module.alloy")
+    }
+
+    declare "a" {
+      argument "input" {}
+
+      testImport.a "cc" {
+        input = argument.input.value
+      }
+
+      export "output" {
+        value = testImport.a.cc.output
+      }
+    }
+  `
+}
+
+testImport.a "cc" {
+  input = testcomponents.count.inc.count
+}
+
+testcomponents.summation "sum" {
+  input = testImport.a.cc.output
+}
+
+-- nested_test/module.alloy --
+declare "a" {
+  argument "input" {}
+
+  testcomponents.passthrough "pt" {
+    input = argument.input.value
+    lag = "1ms"
+  }
+
+  export "output" {
+    value = testcomponents.passthrough.pt.output
+  }
+}

@@ -1,6 +1,6 @@
 prometheus.remote_write "metrics_default" {
 	endpoint {
-		name = "default-149bbd"
+		name = "default-b174ee"
 		url  = "http://localhost:9009/api/prom/push"
 
 		queue_config { }
@@ -23,6 +23,7 @@ logging {
 
 faro.receiver "integrations_app_agent_receiver" {
 	extra_log_labels = {}
+	log_format       = ""
 
 	server {
 		listen_address           = "localhost"
@@ -185,6 +186,7 @@ prometheus.exporter.cloudwatch "integrations_cloudwatch_exporter" {
 	}
 
 	decoupled_scraping { }
+	aws_sdk_version_v2 = true
 }
 
 discovery.relabel "integrations_cloudwatch" {
@@ -684,14 +686,13 @@ prometheus.scrape "integrations_apache2" {
 }
 
 prometheus.exporter.blackbox "integrations_blackbox" {
-	config = "modules:\n  http_2xx:\n    prober: http\n    timeout: 5s\n    http:\n      method: POST\n      headers:\n        Content-Type: application/json\n      body: '{}'\n      preferred_ip_protocol: ip4\n"
-
-	target {
-		name    = "example"
-		address = "http://example.com"
-		module  = "http_2xx"
-	}
+	config               = "modules:\n  http_2xx:\n    prober: http\n    timeout: 5s\n    http:\n      method: POST\n      headers:\n        Content-Type: application/json\n      body: '{}'\n      preferred_ip_protocol: ip4\n"
 	probe_timeout_offset = "0s"
+	targets              = [{
+		address = "http://example.com",
+		module  = "http_2xx",
+		name    = "example",
+	}]
 }
 
 discovery.relabel "integrations_blackbox" {
@@ -720,7 +721,7 @@ prometheus.exporter.snmp "integrations_snmp" {
 	}, {
 		address      = "192.168.1.3",
 		auth         = "private",
-		module       = "mikrotik",
+		module       = "system,mikrotik",
 		name         = "network_router_2",
 		snmp_context = "dummyContext",
 		walk_params  = "private",

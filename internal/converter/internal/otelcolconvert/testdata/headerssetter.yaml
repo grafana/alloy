@@ -4,6 +4,9 @@ extensions:
       - action: insert
         key: X-Scope-OrgID
         from_context: tenant_id
+      - action: insert
+        key: X-Scope-OrgID-Fake
+        from_attribute: tenant_id
       - action: upsert
         key: User-ID
         value: user_id
@@ -26,7 +29,7 @@ exporters:
     endpoint: database:4317
     auth:
       authenticator: headers_setter
-    balancer_name: pick_first
+    balancer_name: round_robin
 
 service:
   extensions: [ headers_setter ]

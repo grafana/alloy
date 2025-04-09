@@ -20,7 +20,7 @@ dashboards for monitoring Grafana Alloy.
 To start the environment, run:
 
 ```bash
-docker compose up -d
+docker compose up --build -d
 ```
 
 To stop the environment, run:
@@ -39,7 +39,7 @@ To run Alloy within Docker Compose, pass `--profile=alloy` to `docker compose`
 when starting and stopping the environment:
 
 ```bash
-docker compose --profile=alloy up -d
+docker compose --profile=alloy up --build -d
 ```
 
 ```bash

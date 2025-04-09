@@ -44,6 +44,10 @@ func toNodeExporter(config *node_exporter.Config) *unix.Arguments {
 			MountPointsExclude: config.FilesystemMountPointsExclude,
 			MountTimeout:       config.FilesystemMountTimeout,
 		},
+		HwMon: unix.HwMonConfig{
+			ChipExclude: config.HwMonChipExclude,
+			ChipInclude: config.HwMonChipInclude,
+		},
 		IPVS: unix.IPVSConfig{
 			BackendLabels: config.IPVSBackendLabels,
 		},

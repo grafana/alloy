@@ -4,7 +4,10 @@ package syslogtarget
 // configure and run the targets that can read syslog entries and forward them
 // to other loki components.
 
-import "github.com/prometheus/client_golang/prometheus"
+import (
+	"github.com/grafana/alloy/internal/util"
+	"github.com/prometheus/client_golang/prometheus"
+)
 
 // Metrics holds a set of syslog metrics.
 type Metrics struct {
@@ -35,11 +38,9 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 	})
 
 	if reg != nil {
-		reg.MustRegister(
-			m.syslogEntries,
-			m.syslogParsingErrors,
-			m.syslogEmptyMessages,
-		)
+		m.syslogEntries = util.MustRegisterOrGet(reg, m.syslogEntries).(prometheus.Counter)
+		m.syslogParsingErrors = util.MustRegisterOrGet(reg, m.syslogParsingErrors).(prometheus.Counter)
+		m.syslogEmptyMessages = util.MustRegisterOrGet(reg, m.syslogEmptyMessages).(prometheus.Counter)
 	}
 
 	return &m

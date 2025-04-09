@@ -17,9 +17,11 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/azure/aks"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/consul"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/docker"
+	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/dynatrace"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/gcp"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/heroku"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/k8snode"
+	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/kubeadm"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/openshift"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/system"
 	"github.com/grafana/alloy/internal/featuregate"
@@ -27,7 +29,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/resourcedetectionprocessor"
 	otelcomponent "go.opentelemetry.io/collector/component"
-	otelextension "go.opentelemetry.io/collector/extension"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 func init() {
@@ -118,6 +120,12 @@ type DetectorConfig struct {
 
 	// KubernetesNode contains user-specified configurations for the K8SNode detector
 	KubernetesNodeConfig k8snode.Config `alloy:"kubernetes_node,block,optional"`
+
+	// KubeADMConfig contains user-specified configurations for the KubeADM detector
+	KubeADMConfig kubeadm.Config `alloy:"kubeadm,block,optional"`
+
+	// Dynatrace contains user-specified configurations for the Dynatrace detector
+	DynatraceConfig dynatrace.Config `alloy:"dynatrace,block,optional"`
 }
 
 func (dc *DetectorConfig) SetToDefault() {
@@ -135,6 +143,8 @@ func (dc *DetectorConfig) SetToDefault() {
 		HerokuConfig:           heroku.DefaultArguments,
 		OpenShiftConfig:        openshift.DefaultArguments,
 		KubernetesNodeConfig:   k8snode.DefaultArguments,
+		KubeADMConfig:          kubeadm.DefaultArguments,
+		DynatraceConfig:        dynatrace.DefaultArguments,
 	}
 	dc.SystemConfig.SetToDefault()
 }
@@ -178,7 +188,9 @@ func (args *Arguments) Validate() error {
 			heroku.Name,
 			system.Name,
 			openshift.Name,
-			k8snode.Name:
+			k8snode.Name,
+			kubeadm.Name,
+			dynatrace.Name:
 		// Valid option - nothing to do
 		default:
 			return fmt.Errorf("invalid detector: %s", detector)
@@ -227,7 +239,8 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	input["system"] = args.DetectorConfig.SystemConfig.Convert()
 	input["openshift"] = args.DetectorConfig.OpenShiftConfig.Convert()
 	input["k8snode"] = args.DetectorConfig.KubernetesNodeConfig.Convert()
-
+	input["kubeadm"] = args.DetectorConfig.KubeADMConfig.Convert()
+	input["dynatrace"] = args.DetectorConfig.DynatraceConfig.Convert()
 	var result resourcedetectionprocessor.Config
 	err := mapstructure.Decode(input, &result)
 
@@ -239,12 +252,12 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 }
 
 // Extensions implements processor.Arguments.
-func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
+func (args Arguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 
 // Exporters implements processor.Arguments.
-func (args Arguments) Exporters() map[otelcomponent.DataType]map[otelcomponent.ID]otelcomponent.Component {
+func (args Arguments) Exporters() map[pipeline.Signal]map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 

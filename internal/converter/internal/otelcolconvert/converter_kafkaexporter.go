@@ -2,12 +2,15 @@ package otelcolconvert
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/grafana/alloy/internal/component/otelcol/exporter/kafka"
+	"github.com/grafana/alloy/internal/component/otelcol/extension"
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/component/componentstatus"
 )
 
 func init() {
@@ -22,13 +25,21 @@ func (kafkaExporterConverter) InputComponentName() string {
 	return "otelcol.exporter.kafka"
 }
 
-func (kafkaExporterConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
+func (kafkaExporterConverter) ConvertAndAppend(state *State, id componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
+	overrideHook := func(val interface{}) interface{} {
+		switch val.(type) {
+		case extension.ExtensionHandler:
+			ext := state.LookupExtension(*cfg.(*kafkaexporter.Config).QueueSettings.StorageID)
+			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
+		}
+		return common.GetAlloyTypesOverrideHook()(val)
+	}
 
 	args := toKafkaExporter(cfg.(*kafkaexporter.Config))
-	block := common.NewBlockWithOverride([]string{"otelcol", "exporter", "kafka"}, label, args)
+	block := common.NewBlockWithOverrideFn([]string{"otelcol", "exporter", "kafka"}, label, args, overrideHook)
 
 	diags.Add(
 		diag.SeverityLevelInfo,
@@ -50,7 +61,7 @@ func toKafkaExporter(cfg *kafkaexporter.Config) *kafka.Arguments {
 		Encoding:                             cfg.Encoding,
 		PartitionTracesByID:                  cfg.PartitionTracesByID,
 		PartitionMetricsByResourceAttributes: cfg.PartitionMetricsByResourceAttributes,
-		Timeout:                              cfg.Timeout,
+		Timeout:                              cfg.TimeoutSettings.Timeout,
 
 		Authentication: toKafkaAuthentication(encodeMapstruct(cfg.Authentication)),
 		Metadata:       toKafkaMetadata(cfg.Metadata),

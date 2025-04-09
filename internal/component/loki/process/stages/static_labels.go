@@ -7,8 +7,9 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/prometheus/common/model"
+
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 // ErrEmptyStaticLabelStageConfig error returned if the config is empty.
@@ -26,7 +27,7 @@ func newStaticLabelsStage(logger log.Logger, config StaticLabelsConfig) (Stage, 
 	}
 
 	return toStage(&staticLabelStage{
-		Config: config,
+		config: config,
 		logger: logger,
 	}), nil
 }
@@ -45,13 +46,13 @@ func validateLabelStaticConfig(c StaticLabelsConfig) error {
 
 // staticLabelStage implements Stage.
 type staticLabelStage struct {
-	Config StaticLabelsConfig
+	config StaticLabelsConfig
 	logger log.Logger
 }
 
 // Process implements Stage.
 func (l *staticLabelStage) Process(labels model.LabelSet, extracted map[string]interface{}, t *time.Time, entry *string) {
-	for lName, lSrc := range l.Config.Values {
+	for lName, lSrc := range l.config.Values {
 		if lSrc == nil || *lSrc == "" {
 			continue
 		}

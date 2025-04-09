@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/loki/v3/clients/pkg/logentry/logql"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
@@ -13,13 +14,11 @@ import (
 
 // Configuration errors.
 var (
-	ErrEmptyMatchStageConfig = errors.New("match stage config cannot be empty")
-	ErrPipelineNameRequired  = errors.New("match stage pipeline name can be omitted but cannot be an empty string")
-	ErrSelectorRequired      = errors.New("selector statement required for match stage")
-	ErrMatchRequiresStages   = errors.New("match stage requires at least one additional stage to be defined in '- stages'")
-	ErrSelectorSyntax        = errors.New("invalid selector syntax for match stage")
-	ErrStagesWithDropLine    = errors.New("match stage configured to drop entries cannot contains stages")
-	ErrUnknownMatchAction    = errors.New("match stage action should be 'keep' or 'drop'")
+	ErrSelectorRequired    = errors.New("selector statement required for match stage")
+	ErrMatchRequiresStages = errors.New("match stage requires at least one additional stage to be defined in '- stages'")
+	ErrSelectorSyntax      = errors.New("invalid selector syntax for match stage")
+	ErrStagesWithDropLine  = errors.New("match stage configured to drop entries cannot contains stages")
+	ErrUnknownMatchAction  = errors.New("match stage action should be 'keep' or 'drop'")
 
 	MatchActionKeep = "keep"
 	MatchActionDrop = "drop"
@@ -47,10 +46,10 @@ func validateMatcherConfig(cfg *MatchConfig) (logql.Expr, error) {
 		return nil, ErrUnknownMatchAction
 	}
 
-	if cfg.Action == MatchActionKeep && (cfg.Stages == nil || len(cfg.Stages) == 0) {
+	if cfg.Action == MatchActionKeep && len(cfg.Stages) == 0 {
 		return nil, ErrMatchRequiresStages
 	}
-	if cfg.Action == MatchActionDrop && (cfg.Stages != nil && len(cfg.Stages) != 0) {
+	if cfg.Action == MatchActionDrop && len(cfg.Stages) != 0 {
 		return nil, ErrStagesWithDropLine
 	}
 
@@ -62,7 +61,7 @@ func validateMatcherConfig(cfg *MatchConfig) (logql.Expr, error) {
 }
 
 // newMatcherStage creates a new matcherStage from config
-func newMatcherStage(logger log.Logger, jobName *string, config MatchConfig, registerer prometheus.Registerer) (Stage, error) {
+func newMatcherStage(logger log.Logger, jobName *string, config MatchConfig, registerer prometheus.Registerer, minStability featuregate.Stability) (Stage, error) {
 	selector, err := validateMatcherConfig(&config)
 	if err != nil {
 		return nil, err
@@ -77,7 +76,7 @@ func newMatcherStage(logger log.Logger, jobName *string, config MatchConfig, reg
 	var pl *Pipeline
 	if config.Action == MatchActionKeep {
 		var err error
-		pl, err = NewPipeline(logger, config.Stages, nPtr, registerer)
+		pl, err = NewPipeline(logger, config.Stages, nPtr, registerer, minStability)
 		if err != nil {
 			return nil, fmt.Errorf("%v: %w", err, fmt.Errorf("match stage failed to create pipeline from config: %v", config))
 		}

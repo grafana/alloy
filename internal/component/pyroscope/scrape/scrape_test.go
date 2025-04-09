@@ -10,6 +10,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/common/model"
+	"github.com/stretchr/testify/require"
+	"go.uber.org/atomic"
+	"go.uber.org/goleak"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/prometheus/scrape"
@@ -18,11 +24,6 @@ import (
 	http_service "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/common/model"
-	"github.com/stretchr/testify/require"
-	"go.uber.org/atomic"
-	"go.uber.org/goleak"
 )
 
 func TestComponent(t *testing.T) {
@@ -37,7 +38,7 @@ func TestComponent(t *testing.T) {
 		GetServiceData: getServiceData,
 	}, arg)
 	require.NoError(t, err)
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	go func() {
 		err := c.Run(ctx)
@@ -50,14 +51,14 @@ func TestComponent(t *testing.T) {
 
 	arg.ForwardTo = []pyroscope.Appendable{pyroscope.NoopAppendable}
 	arg.Targets = []discovery.Target{
-		{
+		discovery.NewTargetFromMap(map[string]string{
 			model.AddressLabel: "foo",
 			serviceNameLabel:   "s",
-		},
-		{
+		}),
+		discovery.NewTargetFromMap(map[string]string{
 			model.AddressLabel:  "bar",
 			serviceNameK8SLabel: "k",
-		},
+		}),
 	}
 	c.Update(arg)
 
@@ -99,10 +100,10 @@ func TestUnmarshalConfig(t *testing.T) {
 			expected: func() Arguments {
 				r := NewDefaultArguments()
 				r.Targets = []discovery.Target{
-					{
+					discovery.NewTargetFromMap(map[string]string{
 						"__address__": "localhost:9090",
 						"foo":         "bar",
-					},
+					}),
 				}
 				return r
 			},
@@ -131,14 +132,14 @@ func TestUnmarshalConfig(t *testing.T) {
 			expected: func() Arguments {
 				r := NewDefaultArguments()
 				r.Targets = []discovery.Target{
-					{
+					discovery.NewTargetFromMap(map[string]string{
 						"__address__": "localhost:9090",
 						"foo":         "bar",
-					},
-					{
+					}),
+					discovery.NewTargetFromMap(map[string]string{
 						"__address__": "localhost:8080",
 						"foo":         "buzz",
-					},
+					}),
 				}
 				r.ProfilingConfig.Block.Enabled = false
 				r.ProfilingConfig.Custom = append(r.ProfilingConfig.Custom, CustomProfilingTarget{
@@ -147,7 +148,7 @@ func TestUnmarshalConfig(t *testing.T) {
 					Delta:   true,
 					Name:    "something",
 				})
-				r.ProfilingConfig.PprofPrefix = "v1/"
+				r.ProfilingConfig.PathPrefix = "v1/"
 				return r
 			},
 		},
@@ -246,7 +247,7 @@ func TestUpdateWhileScraping(t *testing.T) {
 	}, args)
 	require.NoError(t, err)
 	scraping := atomic.NewBool(false)
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		scraping.Store(true)
@@ -266,16 +267,16 @@ func TestUpdateWhileScraping(t *testing.T) {
 	go c.Run(ctx)
 
 	args.Targets = []discovery.Target{
-		{
+		discovery.NewTargetFromMap(map[string]string{
 			model.AddressLabel: address,
 			serviceNameLabel:   "s",
 			"foo":              "bar",
-		},
-		{
+		}),
+		discovery.NewTargetFromMap(map[string]string{
 			model.AddressLabel:  address,
 			serviceNameK8SLabel: "k",
 			"foo":               "buz",
-		},
+		}),
 	}
 
 	c.Update(args)
@@ -290,11 +291,11 @@ func TestUpdateWhileScraping(t *testing.T) {
 	go func() {
 		for i := 0; i < 100; i++ {
 			args.Targets = []discovery.Target{
-				{
+				discovery.NewTargetFromMap(map[string]string{
 					model.AddressLabel: address,
 					serviceNameLabel:   "s",
 					"foo":              fmt.Sprintf("%d", i),
-				},
+				}),
 			}
 			require.NoError(t, c.Update(args))
 			c.scraper.reload()

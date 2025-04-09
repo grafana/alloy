@@ -25,27 +25,27 @@ type appendable struct {
 	startTimeMetricRegex   *regexp.Regexp
 	externalLabels         labels.Labels
 
-	settings receiver.CreateSettings
+	settings receiver.Settings
 	obsrecv  *receiverhelper.ObsReport
 }
 
 // NewAppendable returns a storage.Appendable instance that emits metrics to the sink.
 func NewAppendable(
 	sink consumer.Metrics,
-	set receiver.CreateSettings,
+	set receiver.Settings,
 	gcInterval time.Duration,
 	useStartTimeMetric bool,
 	startTimeMetricRegex *regexp.Regexp,
 	useCreatedMetric bool,
 	enableNativeHistograms bool,
 	externalLabels labels.Labels,
-	trimSuffixes bool) (storage.Appendable, error) {
-
+	trimSuffixes bool,
+) (storage.Appendable, error) {
 	var metricAdjuster MetricsAdjuster
 	if !useStartTimeMetric {
 		metricAdjuster = NewInitialPointAdjuster(set.Logger, gcInterval, useCreatedMetric)
 	} else {
-		metricAdjuster = NewStartTimeMetricAdjuster(set.Logger, startTimeMetricRegex)
+		metricAdjuster = NewStartTimeMetricAdjuster(set.Logger, startTimeMetricRegex, gcInterval)
 	}
 
 	obsrecv, err := receiverhelper.NewObsReport(receiverhelper.ObsReportSettings{ReceiverID: set.ID, Transport: transport, ReceiverCreateSettings: set})

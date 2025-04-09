@@ -3,13 +3,16 @@ package http
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"testing"
 
 	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/service"
+	"github.com/grafana/alloy/internal/service/remotecfg"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 	"github.com/phayes/freeport"
@@ -40,6 +43,28 @@ func TestHTTP(t *testing.T) {
 		resp, err := cli.Do(req)
 		require.NoError(t, err)
 		defer resp.Body.Close()
+
+		buf, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		require.Equal(t, "Alloy is ready.\n", string(buf))
+
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+	})
+
+	util.Eventually(t, func(t require.TestingT) {
+		cli, err := config.NewClientFromConfig(config.HTTPClientConfig{}, "test")
+		require.NoError(t, err)
+
+		req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://%s/-/healthy", env.ListenAddr()), nil)
+		require.NoError(t, err)
+
+		resp, err := cli.Do(req)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+
+		buf, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		require.Equal(t, "All Alloy components are healthy.\n", string(buf))
 
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 	})
@@ -155,9 +180,161 @@ func Test_Toggle_TLS(t *testing.T) {
 	}
 }
 
+func TestAuth(t *testing.T) {
+	ctx := componenttest.TestContext(t)
+
+	env, err := newTestEnvironment(t)
+	require.NoError(t, err)
+	require.NoError(t, env.ApplyConfig(`
+		auth {
+			basic {
+				username = "username"
+				password = "password"
+			}
+			filter {
+				paths = ["/"]
+			}
+		}
+	`))
+
+	go func() {
+		require.NoError(t, env.Run(ctx))
+	}()
+
+	util.Eventually(t, func(t require.TestingT) {
+		cli, err := config.NewClientFromConfig(config.HTTPClientConfig{}, "test")
+		require.NoError(t, err)
+
+		req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://%s/-/ready", env.ListenAddr()), nil)
+		require.NoError(t, err)
+
+		resp, err := cli.Do(req)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+
+		require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+	})
+}
+
+func Test_Toggle_Auth(t *testing.T) {
+	ctx := componenttest.TestContext(t)
+
+	env, err := newTestEnvironment(t)
+	require.NoError(t, err)
+
+	go func() {
+		require.NoError(t, env.Run(ctx))
+	}()
+
+	request := func(t require.TestingT, cfg config.HTTPClientConfig) *http.Response {
+		cli, err := config.NewClientFromConfig(cfg, "test")
+		require.NoError(t, err)
+
+		req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://%s/-/ready", env.ListenAddr()), nil)
+		require.NoError(t, err)
+
+		resp, err := cli.Do(req)
+		require.NoError(t, err)
+		return resp
+	}
+
+	{
+		// Start without auth.
+		require.NoError(t, env.ApplyConfig(`/* empty */`))
+		util.Eventually(t, func(t require.TestingT) {
+			resp := request(t, config.HTTPClientConfig{})
+			require.NoError(t, resp.Body.Close())
+			require.Equal(t, http.StatusOK, resp.StatusCode)
+		})
+	}
+
+	{
+		// Toggle Auth.
+		require.NoError(t, env.ApplyConfig(`
+			auth {
+				basic {
+					username = "username"
+					password = "password"
+				}
+				filter {
+					paths = ["/"]
+				}
+			}
+		`))
+
+		util.Eventually(t, func(t require.TestingT) {
+			resp := request(t, config.HTTPClientConfig{})
+			require.NoError(t, resp.Body.Close())
+			require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+
+			resp = request(t, config.HTTPClientConfig{BasicAuth: &config.BasicAuth{
+				Username: "user",
+				Password: "password",
+			}})
+			require.NoError(t, resp.Body.Close())
+			require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+		})
+	}
+
+	{
+		// Disable Auth.
+		require.NoError(t, env.ApplyConfig(``))
+		util.Eventually(t, func(t require.TestingT) {
+			resp := request(t, config.HTTPClientConfig{})
+			require.NoError(t, resp.Body.Close())
+			require.Equal(t, http.StatusOK, resp.StatusCode)
+		})
+	}
+}
+
+func TestUnhealthy(t *testing.T) {
+	ctx := componenttest.TestContext(t)
+
+	env, err := newTestEnvironment(t)
+	require.NoError(t, err)
+
+	env.components = []*component.Info{
+		{
+			ID: component.ID{
+				ModuleID: "",
+				LocalID:  "testCompId",
+			},
+			Label:         "testCompLabel",
+			ComponentName: "testCompName",
+			Health: component.Health{
+				Health: component.HealthTypeUnhealthy,
+			},
+		},
+	}
+	require.NoError(t, env.ApplyConfig(""))
+
+	go func() {
+		require.NoError(t, env.Run(ctx))
+	}()
+
+	util.Eventually(t, func(t require.TestingT) {
+		cli, err := config.NewClientFromConfig(config.HTTPClientConfig{}, "test")
+		require.NoError(t, err)
+
+		req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://%s/-/healthy", env.ListenAddr()), nil)
+		require.NoError(t, err)
+
+		resp, err := cli.Do(req)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+
+		buf, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		require.Equal(t, "unhealthy components: testCompName\n", string(buf))
+
+		require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+	})
+}
+
 type testEnvironment struct {
-	svc  *Service
-	addr string
+	svc        *Service
+	addr       string
+	components []*component.Info
 }
 
 func newTestEnvironment(t *testing.T) (*testEnvironment, error) {
@@ -167,7 +344,7 @@ func newTestEnvironment(t *testing.T) (*testEnvironment, error) {
 	}
 
 	svc := New(Options{
-		Logger:   util.TestLogger(t),
+		Logger:   util.TestAlloyLogger(t),
 		Tracer:   noop.NewTracerProvider(),
 		Gatherer: prometheus.NewRegistry(),
 
@@ -194,12 +371,16 @@ func (env *testEnvironment) ApplyConfig(config string) error {
 }
 
 func (env *testEnvironment) Run(ctx context.Context) error {
-	return env.svc.Run(ctx, fakeHost{})
+	return env.svc.Run(ctx, fakeHost{
+		components: env.components,
+	})
 }
 
 func (env *testEnvironment) ListenAddr() string { return env.addr }
 
-type fakeHost struct{}
+type fakeHost struct {
+	components []*component.Info
+}
 
 var _ service.Host = (fakeHost{})
 
@@ -207,7 +388,10 @@ func (fakeHost) GetComponent(id component.ID, opts component.InfoOptions) (*comp
 	return nil, fmt.Errorf("no such component %s", id)
 }
 
-func (fakeHost) ListComponents(moduleID string, opts component.InfoOptions) ([]*component.Info, error) {
+func (f fakeHost) ListComponents(moduleID string, opts component.InfoOptions) ([]*component.Info, error) {
+	if f.components != nil {
+		return f.components, nil
+	}
 	if moduleID == "" {
 		return nil, nil
 	}
@@ -218,4 +402,23 @@ func (fakeHost) GetServiceConsumers(serviceName string) []service.Consumer { ret
 
 func (fakeHost) NewController(id string) service.Controller { return nil }
 
-func (fakeHost) GetService(_ string) (service.Service, bool) { return nil, false }
+func (fakeHost) GetService(svc string) (service.Service, bool) {
+	if svc == remotecfg.ServiceName {
+		return fakeRemotecfg{}, true
+	}
+	return nil, false
+}
+
+type fakeRemotecfg struct{}
+
+func (f fakeRemotecfg) Definition() service.Definition {
+	return service.Definition{
+		Name:       remotecfg.ServiceName,
+		ConfigType: remotecfg.Arguments{},
+		DependsOn:  nil, // remotecfg has no dependencies.
+		Stability:  featuregate.StabilityPublicPreview,
+	}
+}
+func (f fakeRemotecfg) Run(ctx context.Context, host service.Host) error { return nil }
+func (f fakeRemotecfg) Update(newConfig any) error                       { return nil }
+func (f fakeRemotecfg) Data() any                                        { return remotecfg.Data{} }

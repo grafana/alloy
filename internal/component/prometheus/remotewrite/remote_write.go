@@ -16,6 +16,7 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service/labelstore"
+	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/static/metrics/wal"
 	"github.com/grafana/alloy/internal/useragent"
 	"github.com/prometheus/prometheus/model/exemplar"
@@ -62,6 +63,8 @@ type Component struct {
 	cfg Arguments
 
 	receiver *prometheus.Interceptor
+
+	debugDataPublisher livedebugging.DebugDataPublisher
 }
 
 // New creates a new prometheus.remote_write component.
@@ -82,7 +85,7 @@ func New(o component.Options, c Arguments) (*Component, error) {
 	}
 
 	remoteLogger := log.With(o.Logger, "subcomponent", "rw")
-	remoteStore := remote.NewStorage(remoteLogger, o.Registerer, startTime, o.DataPath, remoteFlushDeadline, nil)
+	remoteStore := remote.NewStorage(remoteLogger, o.Registerer, startTime, o.DataPath, remoteFlushDeadline, nil, false)
 
 	walStorage.SetNotifier(remoteStore)
 
@@ -92,13 +95,20 @@ func New(o component.Options, c Arguments) (*Component, error) {
 	}
 	ls := service.(labelstore.LabelStore)
 
-	res := &Component{
-		log:         o.Logger,
-		opts:        o,
-		walStore:    walStorage,
-		remoteStore: remoteStore,
-		storage:     storage.NewFanout(o.Logger, walStorage, remoteStore),
+	debugDataPublisher, err := o.GetServiceData(livedebugging.ServiceName)
+	if err != nil {
+		return nil, err
 	}
+
+	res := &Component{
+		log:                o.Logger,
+		opts:               o,
+		walStore:           walStorage,
+		remoteStore:        remoteStore,
+		storage:            storage.NewFanout(o.Logger, walStorage, remoteStore),
+		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
+	}
+	componentID := livedebugging.ComponentID(res.opts.ID)
 	res.receiver = prometheus.NewInterceptor(
 		res.storage,
 		ls,
@@ -119,6 +129,14 @@ func New(o component.Options, c Arguments) (*Component, error) {
 			if localID == 0 {
 				ls.GetOrAddLink(res.opts.ID, uint64(newRef), l)
 			}
+			res.debugDataPublisher.PublishIfActive(livedebugging.NewData(
+				componentID,
+				livedebugging.PrometheusMetric,
+				1,
+				func() string {
+					return fmt.Sprintf("sample: ts=%d, labels=%s, value=%f", t, l, v)
+				},
+			))
 			return globalRef, nextErr
 		}),
 		prometheus.WithHistogramHook(func(globalRef storage.SeriesRef, l labels.Labels, t int64, h *histogram.Histogram, fh *histogram.FloatHistogram, next storage.Appender) (storage.SeriesRef, error) {
@@ -131,6 +149,22 @@ func New(o component.Options, c Arguments) (*Component, error) {
 			if localID == 0 {
 				ls.GetOrAddLink(res.opts.ID, uint64(newRef), l)
 			}
+			res.debugDataPublisher.PublishIfActive(livedebugging.NewData(
+				componentID,
+				livedebugging.PrometheusMetric,
+				1,
+				func() string {
+					var data string
+					if h != nil {
+						data = fmt.Sprintf("histogram: ts=%d, labels=%s, value=%s", t, l, h.String())
+					} else if fh != nil {
+						data = fmt.Sprintf("float_histogram: ts=%d, labels=%s, value=%s", t, l, fh.String())
+					} else {
+						data = fmt.Sprintf("histogram_with_no_value: ts=%d, labels=%s", t, l)
+					}
+					return data
+				},
+			))
 			return globalRef, nextErr
 		}),
 		prometheus.WithMetadataHook(func(globalRef storage.SeriesRef, l labels.Labels, m metadata.Metadata, next storage.Appender) (storage.SeriesRef, error) {
@@ -143,6 +177,14 @@ func New(o component.Options, c Arguments) (*Component, error) {
 			if localID == 0 {
 				ls.GetOrAddLink(res.opts.ID, uint64(newRef), l)
 			}
+			res.debugDataPublisher.PublishIfActive(livedebugging.NewData(
+				componentID,
+				livedebugging.PrometheusMetric,
+				1,
+				func() string {
+					return fmt.Sprintf("metadata: labels=%s, type=%q, unit=%q, help=%q", l, m.Type, m.Unit, m.Help)
+				},
+			))
 			return globalRef, nextErr
 		}),
 		prometheus.WithExemplarHook(func(globalRef storage.SeriesRef, l labels.Labels, e exemplar.Exemplar, next storage.Appender) (storage.SeriesRef, error) {
@@ -155,6 +197,14 @@ func New(o component.Options, c Arguments) (*Component, error) {
 			if localID == 0 {
 				ls.GetOrAddLink(res.opts.ID, uint64(newRef), l)
 			}
+			res.debugDataPublisher.PublishIfActive(livedebugging.NewData(
+				componentID,
+				livedebugging.PrometheusMetric,
+				1,
+				func() string {
+					return fmt.Sprintf("exemplar: ts=%d, labels=%s, exemplar_labels=%s, value=%f", e.Ts, l, e.Labels, e.Value)
+				},
+			))
 			return globalRef, nextErr
 		}),
 	)
@@ -172,6 +222,7 @@ func New(o component.Options, c Arguments) (*Component, error) {
 func startTime() (int64, error) { return 0, nil }
 
 var _ component.Component = (*Component)(nil)
+var _ component.LiveDebugging = (*Component)(nil)
 
 // Run implements Component.
 func (c *Component) Run(ctx context.Context) error {
@@ -275,3 +326,5 @@ func (c *Component) Update(newConfig component.Arguments) error {
 	c.cfg = cfg
 	return nil
 }
+
+func (c *Component) LiveDebugging() {}

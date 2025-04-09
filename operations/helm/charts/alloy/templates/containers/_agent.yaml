@@ -15,6 +15,9 @@
     {{- if $values.clustering.enabled }}
     - --cluster.enabled=true
     - --cluster.join-addresses={{ include "alloy.fullname" . }}-cluster
+    {{- if $values.clustering.name }}
+    - --cluster.name={{ $values.clustering.name }}
+    {{- end}}
     {{- end}}
     {{- if $values.stabilityLevel }}
     - --stability.level={{ $values.stabilityLevel }}
@@ -54,9 +57,17 @@
       scheme: {{ $values.listenScheme }}
     initialDelaySeconds: 10
     timeoutSeconds: 1
+  {{- with $values.livenessProbe }}
+  livenessProbe:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   {{- with $values.resources }}
   resources:
     {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with $values.lifecycle }}
+  lifecycle:
+  {{- toYaml . | nindent 4 }}
   {{- end }}
   {{- with $values.securityContext }}
   securityContext:

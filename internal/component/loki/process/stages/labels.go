@@ -7,8 +7,9 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/prometheus/common/model"
+
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 const (
@@ -22,53 +23,56 @@ type LabelsConfig struct {
 }
 
 // validateLabelsConfig validates the Label stage configuration
-func validateLabelsConfig(c LabelsConfig) error {
+func validateLabelsConfig(c LabelsConfig) (map[string]string, error) {
+	// We must not mutate the c.Values, create a copy with changes we need.
+	ret := map[string]string{}
 	if c.Values == nil {
-		return errors.New(ErrEmptyLabelStageConfig)
+		return nil, errors.New(ErrEmptyLabelStageConfig)
 	}
 	for labelName, labelSrc := range c.Values {
 		if !model.LabelName(labelName).IsValid() {
-			return fmt.Errorf(ErrInvalidLabelName, labelName)
+			return nil, fmt.Errorf(ErrInvalidLabelName, labelName)
 		}
 		// If no label source was specified, use the key name
 		if labelSrc == nil || *labelSrc == "" {
-			lName := labelName
-			c.Values[labelName] = &lName
+			ret[labelName] = labelName
+		} else {
+			ret[labelName] = *labelSrc
 		}
 	}
-	return nil
+	return ret, nil
 }
 
 // newLabelStage creates a new label stage to set labels from extracted data
 func newLabelStage(logger log.Logger, configs LabelsConfig) (Stage, error) {
-	err := validateLabelsConfig(configs)
+	labelsConfig, err := validateLabelsConfig(configs)
 	if err != nil {
 		return nil, err
 	}
 	return toStage(&labelStage{
-		cfgs:   configs,
-		logger: logger,
+		labelsConfig: labelsConfig,
+		logger:       logger,
 	}), nil
 }
 
 // labelStage sets labels from extracted data
 type labelStage struct {
-	cfgs   LabelsConfig
-	logger log.Logger
+	labelsConfig map[string]string
+	logger       log.Logger
 }
 
 // Process implements Stage
 func (l *labelStage) Process(labels model.LabelSet, extracted map[string]interface{}, _ *time.Time, _ *string) {
-	processLabelsConfigs(l.logger, extracted, l.cfgs, func(labelName model.LabelName, labelValue model.LabelValue) {
+	processLabelsConfigs(l.logger, extracted, l.labelsConfig, func(labelName model.LabelName, labelValue model.LabelValue) {
 		labels[labelName] = labelValue
 	})
 }
 
 type labelsConsumer func(labelName model.LabelName, labelValue model.LabelValue)
 
-func processLabelsConfigs(logger log.Logger, extracted map[string]interface{}, configs LabelsConfig, consumer labelsConsumer) {
-	for lName, lSrc := range configs.Values {
-		if lValue, ok := extracted[*lSrc]; ok {
+func processLabelsConfigs(logger log.Logger, extracted map[string]interface{}, labelsConfig map[string]string, consumer labelsConsumer) {
+	for lName, lSrc := range labelsConfig {
+		if lValue, ok := extracted[lSrc]; ok {
 			s, err := getString(lValue)
 			if err != nil {
 				if Debug {

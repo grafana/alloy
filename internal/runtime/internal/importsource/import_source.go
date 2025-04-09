@@ -24,6 +24,8 @@ const (
 	BlockImportGit    = "import.git"
 )
 
+const ModulePath = "module_path"
+
 // ImportSource retrieves a module from a source.
 type ImportSource interface {
 	// Evaluate updates the arguments provided via the Alloy block.
@@ -34,6 +36,8 @@ type ImportSource interface {
 	CurrentHealth() component.Health
 	// Update evaluator
 	SetEval(eval *vm.Evaluator)
+	// ModulePath is the path where the module is stored locally.
+	ModulePath() string
 }
 
 // NewImportSource creates a new ImportSource depending on the type.

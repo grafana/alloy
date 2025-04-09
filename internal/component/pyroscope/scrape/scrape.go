@@ -8,7 +8,6 @@ import (
 	"time"
 
 	config_util "github.com/prometheus/common/config"
-	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
 
 	"github.com/grafana/alloy/internal/component/pyroscope"
@@ -104,7 +103,7 @@ type ProfilingConfig struct {
 	GoDeltaProfBlock  ProfilingTarget         `alloy:"profile.godeltaprof_block,block,optional"`
 	Custom            []CustomProfilingTarget `alloy:"profile.custom,block,optional"`
 
-	PprofPrefix string `alloy:"path_prefix,attr,optional"`
+	PathPrefix string `alloy:"path_prefix,attr,optional"`
 }
 
 // AllTargets returns the set of all standard and custom profiling targets,
@@ -275,7 +274,10 @@ func New(o component.Options, args Arguments) (*Component, error) {
 			config_util.WithDialContextFunc(httpData.DialFunc),
 		},
 	}
-	scraper := NewManager(scrapeHttpOptions, alloyAppendable, o.Logger)
+	scraper, err := NewManager(scrapeHttpOptions, args, alloyAppendable, o.Logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create scraper manager: %w", err)
+	}
 	c := &Component{
 		opts:          o,
 		cluster:       clusterData,
@@ -296,7 +298,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 func (c *Component) Run(ctx context.Context) error {
 	defer c.scraper.Stop()
 
-	targetSetsChan := make(chan map[string][]*targetgroup.Group)
+	targetSetsChan := make(chan []*targetgroup.Group)
 
 	go func() {
 		c.scraper.Run(targetSetsChan)
@@ -319,10 +321,8 @@ func (c *Component) Run(ctx context.Context) error {
 			}
 			c.mut.RUnlock()
 
-			// NOTE(@tpaschalis) First approach, manually building the
-			// 'clustered' targets implementation every time.
 			ct := discovery.NewDistributedTargets(clusteringEnabled, c.cluster, tgs)
-			promTargets := c.componentTargetsToProm(jobName, ct.LocalTargets())
+			promTargets := discovery.ComponentTargetsToPromTargetGroupsForSingleJob(jobName, ct.LocalTargets())
 
 			select {
 			case targetSetsChan <- promTargets:
@@ -374,44 +374,25 @@ func (c *Component) NotifyClusterChange() {
 	}
 }
 
-func (c *Component) componentTargetsToProm(jobName string, tgs []discovery.Target) map[string][]*targetgroup.Group {
-	promGroup := &targetgroup.Group{Source: jobName}
-	for _, tg := range tgs {
-		promGroup.Targets = append(promGroup.Targets, convertLabelSet(tg))
-	}
-
-	return map[string][]*targetgroup.Group{jobName: {promGroup}}
-}
-
-func convertLabelSet(tg discovery.Target) model.LabelSet {
-	lset := make(model.LabelSet, len(tg))
-	for k, v := range tg {
-		lset[model.LabelName(k)] = model.LabelValue(v)
-	}
-	return lset
-}
-
 // DebugInfo implements component.DebugComponent.
 func (c *Component) DebugInfo() interface{} {
 	var res []scrape.TargetStatus
 
-	for job, stt := range c.scraper.TargetsActive() {
-		for _, st := range stt {
-			var lastError string
-			if st.LastError() != nil {
-				lastError = st.LastError().Error()
-			}
-			if st != nil {
-				res = append(res, scrape.TargetStatus{
-					JobName:            job,
-					URL:                st.URL(),
-					Health:             string(st.Health()),
-					Labels:             st.discoveredLabels.Map(),
-					LastError:          lastError,
-					LastScrape:         st.LastScrape(),
-					LastScrapeDuration: st.LastScrapeDuration(),
-				})
-			}
+	for _, st := range c.scraper.TargetsActive() {
+		var lastError string
+		if st.LastError() != nil {
+			lastError = st.LastError().Error()
+		}
+		if st != nil {
+			res = append(res, scrape.TargetStatus{
+				JobName:            c.args.JobName,
+				URL:                st.URL(),
+				Health:             string(st.Health()),
+				Labels:             st.allLabels.Map(),
+				LastError:          lastError,
+				LastScrape:         st.LastScrape(),
+				LastScrapeDuration: st.LastScrapeDuration(),
+			})
 		}
 	}
 

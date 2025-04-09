@@ -736,9 +736,13 @@ func TestGetStaticLabelsFromRequest_NoError_InvalidData(t *testing.T) {
 			got := handler.tryToGetStaticLabelsFromRequest(req, "001")
 
 			require.Equal(t, tt.want, got)
-
-			err := testutil.GatherAndCompare(registry, strings.NewReader(tt.expectedMetrics), "loki_source_awsfirehose_invalid_static_labels_errors")
-			require.NoError(t, err)
+			if tt.expectedMetrics != "" {
+				err := testutil.GatherAndCompare(registry, strings.NewReader(tt.expectedMetrics), "loki_source_awsfirehose_invalid_static_labels_errors")
+				require.NoError(t, err)
+			} else {
+				err := testutil.GatherAndCompare(registry, strings.NewReader(tt.expectedMetrics))
+				require.NoError(t, err)
+			}
 		})
 	}
 }
