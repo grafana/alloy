@@ -60,7 +60,6 @@ func ParseSource(name string, bb []byte) *Source {
 	s.fileMap = map[string]*ast.File{name: node}
 	s.hash = sha256.Sum256(bb)
 	return source
-
 }
 
 // sourceFromBody creates a Source from an existing AST. This must only be used
