@@ -282,7 +282,7 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 
 	s.fetch()
 	err := s.registerCollector()
-	if err != nil {
+	if err != nil && err != errNoopClient {
 		return err
 	}
 
@@ -302,7 +302,7 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 		select {
 		case <-s.ticker.C:
 			err := s.fetchRemote()
-			if err != nil {
+			if err != nil && err != errNoopClient {
 				level.Error(s.opts.Logger).Log("msg", "failed to fetch remote configuration from the API", "err", err)
 			}
 		case <-s.updateTickerChan:
