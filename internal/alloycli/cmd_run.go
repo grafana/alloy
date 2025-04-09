@@ -407,7 +407,7 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 	ready = f.Ready
 	reload = func() (*alloy_runtime.Source, error) {
 		alloySource, err := loadAlloySource(configPath, fr.configFormat, fr.configBypassConversionErrors, fr.configExtraArgs)
-		defer instrumentation.InstrumentConfig(err == nil || !alloySource.HasErrors(), alloySource.SHA256(), fr.clusterName)
+		defer instrumentation.InstrumentConfig(err == nil && !alloySource.HasErrors(), alloySource.SHA256(), fr.clusterName)
 
 		if err != nil {
 			return nil, fmt.Errorf("reading config path %q: %w", configPath, err)
