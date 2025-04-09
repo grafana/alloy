@@ -340,8 +340,15 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 		Tracer:   t,
 		Gatherer: prometheus.DefaultGatherer,
 
-		ReadyFunc:  func() bool { return ready() },
-		ReloadFunc: func() (*alloy_runtime.Source, error) { return reload() },
+		ReadyFunc: func() bool { return ready() },
+		ReloadFunc: func() error {
+			source, err := reload()
+			if err != nil {
+				return err
+			}
+
+			return source.CollectErrors()
+		},
 
 		HTTPListenAddr:   fr.httpListenAddr,
 		MemoryListenAddr: fr.inMemoryAddr,
@@ -474,11 +481,10 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 			return nil
 		case <-reloadSignal:
 			if source, err := reload(); err != nil || source.HasErrors() {
-				if err != nil {
-					level.Error(l).Log("msg", "failed to reload config", "err", err)
-				} else {
-					level.Error(l).Log("msg", "failed to reload config", "err", source.CollectErrors())
+				if err == nil {
+					err = source.CollectErrors()
 				}
+				level.Error(l).Log("msg", "failed to reload config", "err", err)
 			} else {
 				level.Info(l).Log("msg", "config reloaded")
 			}
