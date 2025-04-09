@@ -111,8 +111,8 @@ func TestReadyToAdmitTraffic(t *testing.T) {
 			name:                 "deadline passed",
 			enableClustering:     true,
 			minimumClusterSize:   5,
-			waitTimeout:          10 * time.Millisecond,
-			sleepFor:             15 * time.Millisecond,
+			waitTimeout:          150 * time.Millisecond,
+			sleepFor:             200 * time.Millisecond,
 			peerCount:            1, // less than minimum
 			expectedReady:        true,
 			expectNotifyCallback: true,
@@ -149,13 +149,13 @@ func TestReadyToAdmitTraffic(t *testing.T) {
 			t.Parallel()
 			peers := buildPeers(tt.peerCount)
 
-			notifyChangeCallbackCalled := false
+			notifyChangeCallbackCalled := atomic.NewBool(false)
 			s := newTestService(Options{
 				EnableClustering:       tt.enableClustering,
 				MinimumClusterSize:     tt.minimumClusterSize,
 				MinimumSizeWaitTimeout: tt.waitTimeout,
 			}, peers, func() {
-				notifyChangeCallbackCalled = true
+				notifyChangeCallbackCalled.Store(true)
 			})
 			defer s.alloyCluster.shutdown()
 
@@ -165,7 +165,7 @@ func TestReadyToAdmitTraffic(t *testing.T) {
 
 			s.alloyCluster.updateReadyState()
 			assert.Equal(t, tt.expectedReady, s.alloyCluster.Ready())
-			assert.Equal(t, tt.expectNotifyCallback, notifyChangeCallbackCalled)
+			assert.Equal(t, tt.expectNotifyCallback, notifyChangeCallbackCalled.Load())
 		})
 	}
 }
