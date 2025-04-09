@@ -69,7 +69,11 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	result.Config = collector.DefaultConfig()
 
 	result.TimeoutSettings.Timeout = 12 * time.Second // https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/70d8986fa3a30e1f26927abffe1880345e2afa3f/exporter/googlecloudexporter/factory.go#L48
-	result.QueueSettings = *args.Queue.Convert()
+	q, err := args.Queue.Convert()
+	if err != nil {
+		return nil, err
+	}
+	result.QueueSettings = *q
 
 	result.ProjectID = args.Project
 	result.DestinationProjectQuota = args.DestinationProjectQuota

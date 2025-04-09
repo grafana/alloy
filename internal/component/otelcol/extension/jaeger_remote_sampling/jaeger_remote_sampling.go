@@ -11,6 +11,7 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/extension"
 	"github.com/grafana/alloy/internal/component/otelcol/extension/jaeger_remote_sampling/internal/jaegerremotesampling"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/syntax"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/pipeline"
 )
@@ -59,7 +60,18 @@ type ArgumentsSource struct {
 
 var (
 	_ extension.Arguments = Arguments{}
+	_ syntax.Defaulter    = (*Arguments)(nil)
+	_ syntax.Validator    = (*Arguments)(nil)
 )
+
+// ExportsHandler implements extension.Arguments.
+func (args Arguments) ExportsHandler() bool {
+	return false
+}
+
+func (args Arguments) OnUpdate(_ component.Options) error {
+	return nil
+}
 
 // SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
@@ -67,7 +79,7 @@ func (args *Arguments) SetToDefault() {
 }
 
 // Convert implements extension.Arguments.
-func (args Arguments) Convert() (otelcomponent.Config, error) {
+func (args Arguments) Convert(_ component.Options) (otelcomponent.Config, error) {
 	httpServerConfig := (*otelcol.HTTPServerArguments)(args.HTTP)
 	httpConvertedServerConfig, err := httpServerConfig.Convert()
 	if err != nil {
@@ -183,6 +195,8 @@ func (args *HTTPServerArguments) SetToDefault() {
 // otelcol.extension.jaeger_remote_sampling with
 // component-specific defaults.
 type GRPCClientArguments otelcol.GRPCClientArguments
+
+var _ syntax.Defaulter = (*GRPCClientArguments)(nil)
 
 // SetToDefault implements syntax.Defaulter.
 func (args *GRPCClientArguments) SetToDefault() {
