@@ -675,6 +675,5 @@ func printSourceErrors(source *alloy_runtime.Source) {
 
 	if err != nil {
 		fmt.Printf("%s\n", err)
-		fmt.Println()
 	}
 }
