@@ -2,7 +2,9 @@ package alloycli
 
 import (
 	"fmt"
+	"os"
 
+	"github.com/grafana/alloy/internal/validator"
 	"github.com/spf13/cobra"
 )
 
@@ -37,15 +39,13 @@ type alloyValidate struct {
 }
 
 func (v *alloyValidate) Run(configFile string) error {
-	source, err := loadAlloySource(configFile, v.configFormat, v.configBypassConversionErrors, v.configExtraArgs)
+	sources, err := loadSourceFiles(configFile, v.configFormat, v.configBypassConversionErrors, v.configExtraArgs)
 	if err != nil {
 		return err
 	}
 
-	if source.HasErrors() {
-		printSourceErrors(source)
-		return fmt.Errorf("encountered errors during validation")
-	}
-
+	validator := validator.New(sources)
+	validator.Run()
+	validator.Report(os.Stderr)
 	return nil
 }

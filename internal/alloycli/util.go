@@ -1,6 +1,5 @@
 package alloycli
 
-/*
 import (
 	"errors"
 	"fmt"
@@ -10,13 +9,14 @@ import (
 	"strings"
 
 	"github.com/fatih/color"
+
 	"github.com/grafana/alloy/internal/converter"
 	convert_diag "github.com/grafana/alloy/internal/converter/diag"
 	alloy_runtime "github.com/grafana/alloy/internal/runtime"
 	"github.com/grafana/alloy/syntax/diag"
 )
 
-func loadFiles(path string, converterSourceFormat string, converterBypassErrors bool, configExtraArgs string) (map[string][]byte, error) {
+func loadSourceFiles(path string, converterSourceFormat string, converterBypassErrors bool, configExtraArgs string) (map[string][]byte, error) {
 	fi, err := os.Stat(path)
 	if err != nil {
 		return nil, err
@@ -105,4 +105,3 @@ func printSourceErrors(source *alloy_runtime.Source) {
 		fmt.Printf("%s\n", err)
 	}
 }
-*/

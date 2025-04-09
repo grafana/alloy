@@ -2,12 +2,9 @@ package alloycli
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"io/fs"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"runtime"
 	"slices"
 	"strconv"
@@ -16,7 +13,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/fatih/color"
 	"github.com/go-kit/log"
 	"github.com/grafana/ckit/advertise"
 	"github.com/grafana/ckit/peer"
@@ -30,8 +26,6 @@ import (
 	"github.com/grafana/alloy/internal/alloyseed"
 	"github.com/grafana/alloy/internal/boringcrypto"
 	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/converter"
-	convert_diag "github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/featuregate"
 	alloy_runtime "github.com/grafana/alloy/internal/runtime"
 	"github.com/grafana/alloy/internal/runtime/logging"
@@ -47,7 +41,6 @@ import (
 	"github.com/grafana/alloy/internal/static/config/instrumentation"
 	"github.com/grafana/alloy/internal/usagestats"
 	"github.com/grafana/alloy/internal/util/windowspriority"
-	"github.com/grafana/alloy/syntax/diag"
 
 	// Install Components
 	_ "github.com/grafana/alloy/internal/component/all"
@@ -528,60 +521,11 @@ func getEnabledComponentsFunc(f *alloy_runtime.Runtime) func() map[string]interf
 }
 
 func loadAlloySource(path string, converterSourceFormat string, converterBypassErrors bool, configExtraArgs string) (*alloy_runtime.Source, error) {
-	fi, err := os.Stat(path)
+	sources, err := loadSourceFiles(path, converterSourceFormat, converterBypassErrors, configExtraArgs)
 	if err != nil {
 		return nil, err
 	}
-
-	if fi.IsDir() {
-		sources := map[string][]byte{}
-		err := filepath.WalkDir(path, func(curPath string, d fs.DirEntry, err error) error {
-			if err != nil {
-				return err
-			}
-			// Skip all directories and don't recurse into child dirs that aren't at top-level
-			if d.IsDir() {
-				if curPath != path {
-					return filepath.SkipDir
-				}
-				return nil
-			}
-			// Ignore files not ending in .alloy extension
-			if !strings.HasSuffix(curPath, ".alloy") {
-				return nil
-			}
-
-			bb, err := os.ReadFile(curPath)
-			sources[curPath] = bb
-			return err
-		})
-		if err != nil {
-			return nil, err
-		}
-
-		return alloy_runtime.ParseSources(sources), nil
-	}
-
-	bb, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-	if converterSourceFormat != "alloy" {
-		var diags convert_diag.Diagnostics
-		ea, err := parseExtraArgs(configExtraArgs)
-		if err != nil {
-			return nil, err
-		}
-
-		bb, diags = converter.Convert(bb, converter.Input(converterSourceFormat), ea)
-		hasError := hasErrorLevel(diags, convert_diag.SeverityLevelError)
-		hasCritical := hasErrorLevel(diags, convert_diag.SeverityLevelCritical)
-		if hasCritical || (!converterBypassErrors && hasError) {
-			return nil, diags
-		}
-	}
-
-	return alloy_runtime.ParseSource(path, bb), nil
+	return alloy_runtime.ParseSources(sources), nil
 }
 
 // addDeprecatedFlags adds flags that are deprecated, but we keep them for backwards compatibility.
@@ -648,38 +592,5 @@ func setMutexBlockProfiling(l log.Logger) {
 		// This should have a negligible impact. This will track anything over 10_000ns, and will randomly sample shorter durations.
 		// Default taken from https://github.com/DataDog/go-profiler-notes/blob/main/block.md
 		runtime.SetBlockProfileRate(10_000)
-	}
-}
-
-func printSourceErrors(source *alloy_runtime.Source) {
-	var (
-		diags diag.Diagnostics
-		err   error
-	)
-
-	for name, e := range source.Errors() {
-		// merge diagnostics for all files
-		var d diag.Diagnostics
-		if errors.As(e, &d) {
-			diags = append(diags, d...)
-			continue
-		}
-		err = errors.Join(err, fmt.Errorf("%s: %w", name, e))
-	}
-
-	if len(diags) > 0 {
-		p := diag.NewPrinter(diag.PrinterConfig{
-			Color:              !color.NoColor,
-			ContextLinesBefore: 1,
-			ContextLinesAfter:  1,
-		})
-		_ = p.Fprint(os.Stderr, source.RawConfigs(), diags)
-
-		// Print newline after the diagnostics.
-		fmt.Println()
-	}
-
-	if err != nil {
-		fmt.Printf("%s\n", err)
 	}
 }
