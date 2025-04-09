@@ -299,7 +299,6 @@ func TestImportError(t *testing.T) {
 
 func testConfig(t *testing.T, config string, reloadConfig string, update func()) {
 	defer verifyNoGoroutineLeaks(t)
-
 	ctrl, f := setup(t, config, nil, featuregate.StabilityPublicPreview)
 
 	err := ctrl.LoadSource(f, nil, "")
