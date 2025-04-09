@@ -327,8 +327,8 @@ func Test_LogsExporter_Export(t *testing.T) {
 			})
 			ctx := componenttest.TestContext(t)
 			require.NoError(t, exp.Export(ctx, tc.payload))
-			// Sleep for 2ms since fake logger process in separate go routine
-			time.Sleep(2 * time.Millisecond)
+
+			lr.wg.Wait() // Wait for the fakelogreceiver goroutine to process
 			require.Len(t, lr.GetEntries(), 1)
 			require.Equal(t, tc.expect, lr.entries[0])
 		})

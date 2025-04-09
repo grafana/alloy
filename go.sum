@@ -2094,6 +2094,8 @@ github.com/open-telemetry/opentelemetry-collector-contrib/extension/sigv4authext
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/sigv4authextension v0.122.0/go.mod h1:TtvkMUueffnMMYvxbISkmiNx6jCGOkEiC5bn1RI8ofM=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/storage v0.122.0 h1:MQW032yJFd+OzMiXCQUEwSp2jnJQzImSEebtOA4RPVI=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/storage v0.122.0/go.mod h1:6R2OIWpFuXVtb1HNO8iYde3GnzTCW5ws97Bxwb0PBwU=
+github.com/open-telemetry/opentelemetry-collector-contrib/extension/storage/filestorage v0.122.0 h1:VmsiJEFnsNRHXOU4GRxZAr+BFl6n/Igxy/PH15RyIZ4=
+github.com/open-telemetry/opentelemetry-collector-contrib/extension/storage/filestorage v0.122.0/go.mod h1:AEo5EsfxK125e/kgzz9g64pnSyo8orvPqjDMdK6TVWU=
 github.com/open-telemetry/opentelemetry-collector-contrib/internal/aws/ecsutil v0.122.0 h1:8PPbpbqNjYooeiMAZaNjrCHS0R5CKbkt/pb/R3IyxXI=
 github.com/open-telemetry/opentelemetry-collector-contrib/internal/aws/ecsutil v0.122.0/go.mod h1:CsKCJUa2Vl3CEGruDfoEOakmKxaKouN4PgrZyEy6Gwg=
 github.com/open-telemetry/opentelemetry-collector-contrib/internal/common v0.122.0 h1:hLkeq/gGvhK/c5Y86GZiaKvrYz+AxUr1A4Ez0ZgZfLo=
@@ -2774,6 +2776,8 @@ go.etcd.io/bbolt v1.3.2/go.mod h1:IbVyRI1SCnLcuJnV2u8VeU0CEYM7e686BmAb1XKL+uU=
 go.etcd.io/bbolt v1.3.3/go.mod h1:IbVyRI1SCnLcuJnV2u8VeU0CEYM7e686BmAb1XKL+uU=
 go.etcd.io/bbolt v1.3.11 h1:yGEzV1wPz2yVCLsD8ZAiGHhHVlczyC9d1rP43/VCRJ0=
 go.etcd.io/bbolt v1.3.11/go.mod h1:dksAq7YMXoljX0xu6VF5DMZGbhYYoLUalEiSySYAS4I=
+go.etcd.io/bbolt v1.4.0 h1:TU77id3TnN/zKr7CO/uk+fBCwF2jGcMuw2B/FMAzYIk=
+go.etcd.io/bbolt v1.4.0/go.mod h1:AsD+OCi/qPN1giOX1aiLAha3o1U8rAz65bvN4j0sRuk=
 go.etcd.io/etcd v0.0.0-20191023171146-3cf2f69b5738/go.mod h1:dnLIgRNXwCJa5e+c6mIZCrds/GIG4ncV9HhK5PX7jPg=
 go.etcd.io/etcd/api/v3 v3.5.4/go.mod h1:5GB2vv4A4AOn3yk7MftYGHkUfGtDHnEraIjym4dYz5A=
 go.etcd.io/etcd/api/v3 v3.5.16 h1:WvmyJVbjWqK4R1E+B12RRHz3bRGy9XVfh++MgbN+6n0=
