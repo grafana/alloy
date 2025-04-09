@@ -603,8 +603,8 @@ func startNewNode(t *testing.T, state *testState, nodeName string) {
 		f.Run(peerCtx)
 	}()
 
-	src, err := runtime.ParseSource(t.Name(), []byte(state.testCase.alloyConfig))
-	require.NoError(t, err)
+	src := runtime.ParseSource(t.Name(), []byte(state.testCase.alloyConfig))
+	require.NoError(t, src.Error(t.Name()))
 	err = f.LoadSource(src, nil, configFilePath)
 	require.NoError(t, err)
 

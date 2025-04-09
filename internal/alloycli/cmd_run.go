@@ -400,11 +400,16 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 	ready = f.Ready
 	reload = func() (*alloy_runtime.Source, error) {
 		alloySource, err := loadAlloySource(configPath, fr.configFormat, fr.configBypassConversionErrors, fr.configExtraArgs)
-		defer instrumentation.InstrumentConfig(err == nil, alloySource.SHA256(), fr.clusterName)
+		defer instrumentation.InstrumentConfig(err == nil || !alloySource.HasErrors(), alloySource.SHA256(), fr.clusterName)
 
 		if err != nil {
 			return nil, fmt.Errorf("reading config path %q: %w", configPath, err)
 		}
+
+		if alloySource.HasErrors() {
+			return alloySource, nil
+		}
+
 		httpService.SetSources(alloySource.SourceFiles())
 		if err := f.LoadSource(alloySource, nil, configPath); err != nil {
 			return alloySource, fmt.Errorf("error during the initial load: %w", err)
@@ -439,15 +444,15 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 	// Perform the initial reload. This is done after starting the HTTP server so
 	// that /metric and pprof endpoints are available while the Alloy controller
 	// is loading.
-	if source, err := reload(); err != nil {
-		var diags diag.Diagnostics
-		if errors.As(err, &diags) {
-			printDiagnostics(diags, source)
-			return fmt.Errorf("could not perform the initial load successfully")
+	if source, err := reload(); err != nil || source.HasErrors() {
+		if err != nil {
+			// Exit if the initial load fails.
+			return err
 		}
 
 		// Exit if the initial load fails.
-		return err
+		printSourceErrors(source)
+		return fmt.Errorf("could not perform the initial load successfully")
 	}
 
 	// By now, have either joined or started a new cluster.
@@ -468,8 +473,12 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 		case <-ctx.Done():
 			return nil
 		case <-reloadSignal:
-			if _, err := reload(); err != nil {
-				level.Error(l).Log("msg", "failed to reload config", "err", err)
+			if source, err := reload(); err != nil || source.HasErrors() {
+				if err != nil {
+					level.Error(l).Log("msg", "failed to reload config", "err", err)
+				} else {
+					level.Error(l).Log("msg", "failed to reload config", "err", source.CollectErrors())
+				}
 			} else {
 				level.Info(l).Log("msg", "config reloaded")
 			}
@@ -544,7 +553,7 @@ func loadAlloySource(path string, converterSourceFormat string, converterBypassE
 			return nil, err
 		}
 
-		return alloy_runtime.ParseSources(sources)
+		return alloy_runtime.ParseSources(sources), nil
 	}
 
 	bb, err := os.ReadFile(path)
@@ -566,7 +575,7 @@ func loadAlloySource(path string, converterSourceFormat string, converterBypassE
 		}
 	}
 
-	return alloy_runtime.ParseSource(path, bb)
+	return alloy_runtime.ParseSource(path, bb), nil
 }
 
 // addDeprecatedFlags adds flags that are deprecated, but we keep them for backwards compatibility.
@@ -636,14 +645,36 @@ func setMutexBlockProfiling(l log.Logger) {
 	}
 }
 
-func printDiagnostics(diags diag.Diagnostics, source *alloy_runtime.Source) {
-	p := diag.NewPrinter(diag.PrinterConfig{
-		Color:              !color.NoColor,
-		ContextLinesBefore: 1,
-		ContextLinesAfter:  1,
-	})
-	_ = p.Fprint(os.Stderr, source.RawConfigs(), diags)
+func printSourceErrors(source *alloy_runtime.Source) {
+	var (
+		diags diag.Diagnostics
+		err   error
+	)
 
-	// Print newline after the diagnostics.
-	fmt.Println()
+	for name, err := range source.Errors() {
+		// merge diagnostics for all files
+		var d diag.Diagnostics
+		if errors.As(err, &d) {
+			diags = append(diags, d...)
+			continue
+		}
+		err = errors.Join(err, fmt.Errorf("%s: %w", name, err))
+	}
+
+	if len(diags) > 0 {
+		p := diag.NewPrinter(diag.PrinterConfig{
+			Color:              !color.NoColor,
+			ContextLinesBefore: 1,
+			ContextLinesAfter:  1,
+		})
+		_ = p.Fprint(os.Stderr, source.RawConfigs(), diags)
+
+		// Print newline after the diagnostics.
+		fmt.Println()
+	}
+
+	if err != nil {
+		fmt.Printf("%s\n", err)
+		fmt.Println()
+	}
 }

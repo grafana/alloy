@@ -38,11 +38,11 @@ func TestController_Updates(t *testing.T) {
 	ctrl := newTestController(t)
 
 	// Use testUpdatesFile from graph_builder_test.go.
-	f, err := ParseSource(t.Name(), []byte(config))
-	require.NoError(t, err)
+	f := ParseSource(t.Name(), []byte(config))
+	require.NoError(t, f.Error(t.Name()))
 	require.NotNil(t, f)
 
-	err = ctrl.LoadSource(f, nil, "")
+	err := ctrl.LoadSource(f, nil, "")
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(t.Context())
@@ -118,11 +118,11 @@ func TestController_Updates_WithQueueFull(t *testing.T) {
 	})
 
 	// Use testUpdatesFile from graph_builder_test.go.
-	f, err := ParseSource(t.Name(), []byte(config))
-	require.NoError(t, err)
+	f := ParseSource(t.Name(), []byte(config))
+	require.NoError(t, f.Error(t.Name()))
 	require.NotNil(t, f)
 
-	err = ctrl.LoadSource(f, nil, "")
+	err := ctrl.LoadSource(f, nil, "")
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(t.Context())
@@ -191,8 +191,8 @@ func TestController_Updates_WithLag(t *testing.T) {
 	ctrl := newTestController(t)
 
 	// Use testUpdatesFile from graph_builder_test.go.
-	f, err := ParseSource(t.Name(), []byte(config))
-	require.NoError(t, err)
+	f := ParseSource(t.Name(), []byte(config))
+	require.NoError(t, f.Error(t.Name()))
 	require.NotNil(t, f)
 
 	err = ctrl.LoadSource(f, nil, "")
@@ -265,11 +265,11 @@ func TestController_Updates_WithOtherLaggingPipeline(t *testing.T) {
 	ctrl := newTestController(t)
 
 	// Use testUpdatesFile from graph_builder_test.go.
-	f, err := ParseSource(t.Name(), []byte(config))
-	require.NoError(t, err)
+	f := ParseSource(t.Name(), []byte(config))
+	require.NoError(t, f.Error(t.Name()))
 	require.NotNil(t, f)
 
-	err = ctrl.LoadSource(f, nil, "")
+	err := ctrl.LoadSource(f, nil, "")
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(t.Context())
@@ -334,11 +334,11 @@ func TestController_Updates_WithLaggingComponent(t *testing.T) {
 	ctrl := newTestController(t)
 
 	// Use testUpdatesFile from graph_builder_test.go.
-	f, err := ParseSource(t.Name(), []byte(config))
-	require.NoError(t, err)
+	f := ParseSource(t.Name(), []byte(config))
+	require.NoError(t, f.Error(t.Name()))
 	require.NotNil(t, f)
 
-	err = ctrl.LoadSource(f, nil, "")
+	err := ctrl.LoadSource(f, nil, "")
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(t.Context())

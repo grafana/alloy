@@ -44,11 +44,11 @@ func TestController_LoadSource_Evaluation(t *testing.T) {
 	defer cleanUpController(t.Context(), ctrl)
 
 	// Use testFile from graph_builder_test.go.
-	f, err := ParseSource(t.Name(), []byte(testFile))
-	require.NoError(t, err)
+	f := ParseSource(t.Name(), []byte(testFile))
+	require.NoError(t, f.Error(t.Name()))
 	require.NotNil(t, f)
 
-	err = ctrl.LoadSource(f, nil, "")
+	err := ctrl.LoadSource(f, nil, "")
 	require.NoError(t, err)
 	require.Len(t, ctrl.loader.Components(), 4)
 
@@ -79,8 +79,8 @@ func TestController_LoadSource_WithModulePath_Evaluation(t *testing.T) {
 	ctrl := New(testOptions(t))
 	defer cleanUpController(t.Context(), ctrl)
 
-	f, err := ParseSource(t.Name(), []byte(modulePathTestFile))
-	require.NoError(t, err)
+	f := ParseSource(t.Name(), []byte(modulePathTestFile))
+	require.NoError(t, f.Error(t.Name()))
 	require.NotNil(t, f)
 
 	filePath := filepath.Join("tmp_modulePath_test", "test", "main.alloy")
@@ -89,7 +89,7 @@ func TestController_LoadSource_WithModulePath_Evaluation(t *testing.T) {
 	defer os.RemoveAll("tmp_modulePath_test")
 	require.NoError(t, os.WriteFile(filePath, []byte(""), 0664))
 
-	err = ctrl.LoadSource(f, nil, filePath)
+	err := ctrl.LoadSource(f, nil, filePath)
 	require.NoError(t, err)
 	require.Len(t, ctrl.loader.Components(), 4)
 
@@ -105,8 +105,8 @@ func TestController_LoadSource_WithModulePathWithoutFileExtension_Evaluation(t *
 	ctrl := New(testOptions(t))
 	defer cleanUpController(t.Context(), ctrl)
 
-	f, err := ParseSource(t.Name(), []byte(modulePathTestFile))
-	require.NoError(t, err)
+	f := ParseSource(t.Name(), []byte(modulePathTestFile))
+	require.NoError(t, f.Error(t.Name()))
 	require.NotNil(t, f)
 
 	filePath := filepath.Join("tmp_modulePath_test", "test", "main.alloy")
@@ -154,11 +154,11 @@ func TestController_ReloadLoaderNoErrorLog(t *testing.T) {
 	syncBuff := log.NewSyncWriter(&logsBuffer)
 	ctrl.log.SetTemporaryWriter(syncBuff)
 
-	f, err := ParseSource(t.Name(), []byte(testFileFastTick))
-	require.NoError(t, err)
+	f := ParseSource(t.Name(), []byte(testFileFastTick))
+	require.NoError(t, f.Error(t.Name()))
 	require.NotNil(t, f)
 
-	err = ctrl.LoadSource(f, nil, "")
+	err := ctrl.LoadSource(f, nil, "")
 	require.NoError(t, err)
 	require.Len(t, ctrl.loader.Components(), 4)
 

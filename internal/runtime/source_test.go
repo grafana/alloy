@@ -22,9 +22,8 @@ func TestParseSource(t *testing.T) {
 		}
 	`
 
-	f, err := ParseSource(t.Name(), []byte(content))
-	require.NoError(t, err)
-	require.NotNil(t, f)
+	f := ParseSource(t.Name(), []byte(content))
+	require.NoError(t, f.Error(t.Name()))
 
 	require.Len(t, f.components, 2)
 	require.Equal(t, "testcomponents.tick.ticker_a", getBlockID(f.components[0]))
@@ -42,9 +41,8 @@ func TestParseSourceWithConfigBlock(t *testing.T) {
 		}
 	`
 
-	f, err := ParseSource(t.Name(), []byte(content))
-	require.NoError(t, err)
-	require.NotNil(t, f)
+	f := ParseSource(t.Name(), []byte(content))
+	require.NoError(t, f.Error(t.Name()))
 
 	require.Len(t, f.components, 1)
 	require.Equal(t, "testcomponents.tick.ticker_with_config_block", getBlockID(f.components[0]))
@@ -53,10 +51,8 @@ func TestParseSourceWithConfigBlock(t *testing.T) {
 }
 
 func TestParseSource_Defaults(t *testing.T) {
-	f, err := ParseSource(t.Name(), []byte(``))
-	require.NotNil(t, f)
-	require.NoError(t, err)
-
+	f := ParseSource(t.Name(), []byte(``))
+	require.NoError(t, f.Error(t.Name()))
 	require.Len(t, f.components, 0)
 }
 
@@ -82,14 +78,14 @@ func TestParseSources_DuplicateComponent(t *testing.T) {
 		}
 	`
 
-	s, err := ParseSources(map[string][]byte{
+	s := ParseSources(map[string][]byte{
 		"t1": []byte(content),
 		"t2": []byte(content2),
 	})
-	require.NoError(t, err)
+	require.False(t, s.HasErrors())
 	ctrl := New(testOptions(t))
 	defer cleanUpController(t.Context(), ctrl)
-	err = ctrl.LoadSource(s, nil, "")
+	err := ctrl.LoadSource(s, nil, "")
 	diagErrs, ok := err.(diag.Diagnostics)
 	require.True(t, ok)
 	require.Len(t, diagErrs, 2)
@@ -113,14 +109,14 @@ func TestParseSources_UniqueComponent(t *testing.T) {
 		}
 	`
 
-	s, err := ParseSources(map[string][]byte{
+	s := ParseSources(map[string][]byte{
 		"t1": []byte(content),
 		"t2": []byte(content2),
 	})
-	require.NoError(t, err)
+	require.False(t, s.HasErrors())
 	ctrl := New(testOptions(t))
 	defer cleanUpController(t.Context(), ctrl)
-	err = ctrl.LoadSource(s, nil, "")
+	err := ctrl.LoadSource(s, nil, "")
 	require.NoError(t, err)
 }
 

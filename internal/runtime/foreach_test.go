@@ -176,8 +176,8 @@ func testConfigForEach(t *testing.T, config string, reloadConfig string, update 
 	}
 
 	if reloadConfig != "" {
-		f, err = alloy_runtime.ParseSource(t.Name(), []byte(reloadConfig))
-		require.NoError(t, err)
+		f = alloy_runtime.ParseSource(t.Name(), []byte(reloadConfig))
+		require.NoError(t, f.Error(t.Name()))
 		require.NotNil(t, f)
 
 		// Reload the controller with the new config.

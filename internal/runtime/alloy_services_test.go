@@ -77,12 +77,12 @@ func TestServices_Configurable(t *testing.T) {
 		}
 	)
 
-	f, err := ParseSource(t.Name(), []byte(`
+	f := ParseSource(t.Name(), []byte(`
 		fake {
 			name = "John Doe"
 		}
 	`))
-	require.NoError(t, err)
+	require.NoError(t, f.Error(t.Name()))
 	require.NotNil(t, f)
 
 	opts := testOptions(t)
@@ -241,8 +241,8 @@ func TestComponents_Using_Services(t *testing.T) {
 		service_consumer "example" {}
 	`
 
-	f, err := ParseSource(t.Name(), []byte(cfg))
-	require.NoError(t, err)
+	f := ParseSource(t.Name(), []byte(cfg))
+	require.NoError(t, f.Error(t.Name()))
 	require.NotNil(t, f)
 
 	opts := testOptions(t)
@@ -320,8 +320,8 @@ func TestComponents_Using_Services_In_Modules(t *testing.T) {
 
 	cfg := `module_loader "example" {}`
 
-	f, err := ParseSource(t.Name(), []byte(cfg))
-	require.NoError(t, err)
+	f := ParseSource(t.Name(), []byte(cfg))
+	require.NoError(t, f.Error(t.Name()))
 	require.NotNil(t, f)
 
 	opts := testOptions(t)
@@ -376,8 +376,8 @@ func TestNewControllerNoLeak(t *testing.T) {
 func makeEmptyFile(t *testing.T) *Source {
 	t.Helper()
 
-	f, err := ParseSource(t.Name(), nil)
-	require.NoError(t, err)
+	f := ParseSource(t.Name(), nil)
+	require.NoError(t, f.Error(t.Name()))
 	require.NotNil(t, f)
 
 	return f

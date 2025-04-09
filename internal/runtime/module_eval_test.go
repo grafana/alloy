@@ -58,11 +58,11 @@ func TestUpdates_EmptyModule(t *testing.T) {
 `
 
 	ctrl := runtime.New(testOptions(t))
-	f, err := runtime.ParseSource(t.Name(), []byte(config))
-	require.NoError(t, err)
+	f := runtime.ParseSource(t.Name(), []byte(config))
+	require.NoError(t, f.Error(t.Name()))
 	require.NotNil(t, f)
 
-	err = ctrl.LoadSource(f, nil, "")
+	err := ctrl.LoadSource(f, nil, "")
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(t.Context())
@@ -119,11 +119,11 @@ func TestUpdates_ThroughModule(t *testing.T) {
 `
 
 	ctrl := runtime.New(testOptions(t))
-	f, err := runtime.ParseSource(t.Name(), []byte(config))
-	require.NoError(t, err)
+	f := runtime.ParseSource(t.Name(), []byte(config))
+	require.NoError(t, f.Error(t.Name()))
 	require.NotNil(t, f)
 
-	err = ctrl.LoadSource(f, nil, "")
+	err := ctrl.LoadSource(f, nil, "")
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(t.Context())
@@ -181,11 +181,11 @@ func TestUpdates_TwoModules_SameCompNames(t *testing.T) {
 `
 
 	ctrl := runtime.New(testOptions(t))
-	f, err := runtime.ParseSource(t.Name(), []byte(config))
-	require.NoError(t, err)
+	f := runtime.ParseSource(t.Name(), []byte(config))
+	require.NoError(t, f.Error(t.Name()))
 	require.NotNil(t, f)
 
-	err = ctrl.LoadSource(f, nil, "")
+	err := ctrl.LoadSource(f, nil, "")
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(t.Context())
@@ -248,11 +248,11 @@ func TestUpdates_ReloadConfig(t *testing.T) {
 `
 
 	ctrl := runtime.New(testOptions(t))
-	f, err := runtime.ParseSource(t.Name(), []byte(config))
-	require.NoError(t, err)
+	f := runtime.ParseSource(t.Name(), []byte(config))
+	require.NoError(t, f.Error(t.Name()))
 	require.NotNil(t, f)
 
-	err = ctrl.LoadSource(f, nil, "")
+	err := ctrl.LoadSource(f, nil, "")
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(t.Context())
@@ -303,8 +303,8 @@ func TestUpdates_ReloadConfig(t *testing.T) {
 		input = module.string.test.exports.output
 	}
 `
-	f, err = runtime.ParseSource(t.Name(), []byte(config))
-	require.NoError(t, err)
+	f = runtime.ParseSource(t.Name(), []byte(config))
+	require.NoError(t, f.Error(t.Name()))
 	require.NotNil(t, f)
 
 	err = ctrl.LoadSource(f, nil, "")

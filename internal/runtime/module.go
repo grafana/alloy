@@ -156,8 +156,8 @@ func newModule(o *moduleOptions) *module {
 
 // LoadConfig parses Alloy config and loads it.
 func (c *module) LoadConfig(config []byte, args map[string]any) error {
-	ff, err := ParseSource(c.o.ID, config)
-	if err != nil {
+	ff := ParseSource(c.o.ID, config)
+	if err := ff.Error(c.o.ID); err != nil {
 		return err
 	}
 	return c.f.LoadSource(ff, args, "")
