@@ -226,7 +226,7 @@ func Test_Toggle_Auth(t *testing.T) {
 		require.NoError(t, env.Run(ctx))
 	}()
 
-	request := func(cfg config.HTTPClientConfig) *http.Response {
+	request := func(t require.TestingT, cfg config.HTTPClientConfig) *http.Response {
 		cli, err := config.NewClientFromConfig(cfg, "test")
 		require.NoError(t, err)
 
@@ -242,7 +242,7 @@ func Test_Toggle_Auth(t *testing.T) {
 		// Start without auth.
 		require.NoError(t, env.ApplyConfig(`/* empty */`))
 		util.Eventually(t, func(t require.TestingT) {
-			resp := request(config.HTTPClientConfig{})
+			resp := request(t, config.HTTPClientConfig{})
 			require.NoError(t, resp.Body.Close())
 			require.Equal(t, http.StatusOK, resp.StatusCode)
 		})
@@ -263,11 +263,11 @@ func Test_Toggle_Auth(t *testing.T) {
 		`))
 
 		util.Eventually(t, func(t require.TestingT) {
-			resp := request(config.HTTPClientConfig{})
+			resp := request(t, config.HTTPClientConfig{})
 			require.NoError(t, resp.Body.Close())
 			require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 
-			resp = request(config.HTTPClientConfig{BasicAuth: &config.BasicAuth{
+			resp = request(t, config.HTTPClientConfig{BasicAuth: &config.BasicAuth{
 				Username: "user",
 				Password: "password",
 			}})
@@ -280,7 +280,7 @@ func Test_Toggle_Auth(t *testing.T) {
 		// Disable Auth.
 		require.NoError(t, env.ApplyConfig(``))
 		util.Eventually(t, func(t require.TestingT) {
-			resp := request(config.HTTPClientConfig{})
+			resp := request(t, config.HTTPClientConfig{})
 			require.NoError(t, resp.Body.Close())
 			require.Equal(t, http.StatusOK, resp.StatusCode)
 		})
