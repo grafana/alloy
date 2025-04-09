@@ -27,9 +27,9 @@ type SetupConsumerArguments struct {
 
 type SetupConsumers struct {
 	dbConnection         *sql.DB
-	Registry             *prometheus.Registry
+	registry             *prometheus.Registry
 	collectInterval      time.Duration
-	SetupConsumersMetric *prometheus.GaugeVec
+	setupConsumersMetric *prometheus.GaugeVec
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -48,11 +48,11 @@ func NewSetupConsumer(args SetupConsumerArguments) (*SetupConsumers, error) {
 
 	return &SetupConsumers{
 		dbConnection:         args.DB,
-		Registry:             args.Registry,
-		SetupConsumersMetric: setupConsumerMetric,
+		registry:             args.Registry,
+		setupConsumersMetric: setupConsumerMetric,
 		running:              &atomic.Bool{},
 		logger:               args.Logger,
-		collectInterval:      5 * time.Second,
+		collectInterval:      args.ScrapeInterval,
 	}, nil
 }
 
@@ -99,7 +99,7 @@ func (c *SetupConsumers) Stopped() bool {
 
 func (c *SetupConsumers) Stop() {
 	c.cancel()
-	c.Registry.Unregister(c.SetupConsumersMetric)
+	c.registry.Unregister(c.setupConsumersMetric)
 	c.running.Store(false)
 }
 
@@ -120,7 +120,7 @@ func (c *SetupConsumers) getSetupConsumers(ctx context.Context) error {
 	}
 	defer rs.Close()
 
-	c.SetupConsumersMetric.Reset()
+	c.setupConsumersMetric.Reset()
 
 	for rs.Next() {
 		var consumer consumer
@@ -128,12 +128,10 @@ func (c *SetupConsumers) getSetupConsumers(ctx context.Context) error {
 			return fmt.Errorf("error scanning getSetupConsumers row: %w", err)
 		}
 
-		enabled := consumer.enabled == "YES"
-		switch enabled {
-		case true:
-			c.SetupConsumersMetric.WithLabelValues(consumer.name).Set(1)
-		default:
-			c.SetupConsumersMetric.WithLabelValues(consumer.name).Set(0)
+		if consumer.enabled == "YES" {
+			c.setupConsumersMetric.WithLabelValues(consumer.name).Set(1)
+		} else {
+			c.setupConsumersMetric.WithLabelValues(consumer.name).Set(0)
 		}
 	}
 
