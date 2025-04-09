@@ -224,7 +224,7 @@ func (s *Source) Errors() iter.Seq2[string, error] {
 	}
 }
 
-// CollectErrors return an error containning all collected errors accross different sources.
+// CollectErrors return an error containning all collected errors across different sources.
 func (s *Source) CollectErrors() error {
 	var err error
 	for name, e := range s.Errors() {

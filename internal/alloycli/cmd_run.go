@@ -651,14 +651,14 @@ func printSourceErrors(source *alloy_runtime.Source) {
 		err   error
 	)
 
-	for name, err := range source.Errors() {
+	for name, e := range source.Errors() {
 		// merge diagnostics for all files
 		var d diag.Diagnostics
-		if errors.As(err, &d) {
+		if errors.As(e, &d) {
 			diags = append(diags, d...)
 			continue
 		}
-		err = errors.Join(err, fmt.Errorf("%s: %w", name, err))
+		err = errors.Join(err, fmt.Errorf("%s: %w", name, e))
 	}
 
 	if len(diags) > 0 {
