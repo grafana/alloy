@@ -56,6 +56,37 @@ func TestParseSource_Defaults(t *testing.T) {
 	require.Len(t, f.components, 0)
 }
 
+func TestParseSources_Errors(t *testing.T) {
+	content := `
+        logging {
+		    format = "json"
+		}
+
+		testcomponents.tick "ticker_duplicate_component_1" {
+			frequency = "1s"
+		}
+	`
+
+	content2 := `
+        logging {
+		    format = json"
+		}
+
+		testcomponents.tick "ticker_duplicate_component_1" {
+			frequency = "1s"
+		}
+	`
+	s := ParseSources(map[string][]byte{
+		"t1": []byte(content),
+		"t2": []byte(content2),
+	})
+
+	require.True(t, s.HasErrors())
+	require.NoError(t, s.Error("t1"))
+	require.Error(t, s.Error("t2"))
+	require.Error(t, s.CollectErrors())
+}
+
 func TestParseSources_DuplicateComponent(t *testing.T) {
 	defer verifyNoGoroutineLeaks(t)
 	content := `

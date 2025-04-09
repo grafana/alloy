@@ -195,7 +195,7 @@ func TestController_Updates_WithLag(t *testing.T) {
 	require.NoError(t, f.Error(t.Name()))
 	require.NotNil(t, f)
 
-	err = ctrl.LoadSource(f, nil, "")
+	err := ctrl.LoadSource(f, nil, "")
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(t.Context())

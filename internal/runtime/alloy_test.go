@@ -115,7 +115,7 @@ func TestController_LoadSource_WithModulePathWithoutFileExtension_Evaluation(t *
 	defer os.RemoveAll("tmp_modulePath_test")
 	require.NoError(t, os.WriteFile(filePath, []byte(""), 0664))
 
-	err = ctrl.LoadSource(f, nil, filePath)
+	err := ctrl.LoadSource(f, nil, filePath)
 	require.NoError(t, err)
 	require.Len(t, ctrl.loader.Components(), 4)
 
