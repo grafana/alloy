@@ -1,14 +1,14 @@
 // Copyright The OpenTelemetry Authors
 // SPDX-License-Identifier: Apache-2.0
 
-package internal // import "github.com/open-telemetry/opentelemetry-collector-contrib/extension/jaegerremotesampling/internal"
+package remotesource // import "github.com/open-telemetry/opentelemetry-collector-contrib/extension/jaegerremotesampling/internal/source/remotesource"
 
 import (
 	"context"
 	"sync"
 	"time"
 
-	"github.com/jaegertracing/jaeger/proto-gen/api_v2"
+	"github.com/jaegertracing/jaeger-idl/proto-gen/api_v2"
 	"github.com/jonboulle/clockwork"
 )
 
@@ -56,7 +56,6 @@ func (c *serviceStrategyTTLCache) get(
 	ctx context.Context,
 	serviceName string,
 ) (*api_v2.SamplingStrategyResponse, bool) {
-
 	c.rw.RLock()
 	defer c.rw.RUnlock()
 	found, ok := c.items[serviceName]
@@ -75,7 +74,6 @@ func (c *serviceStrategyTTLCache) put(
 	serviceName string,
 	response *api_v2.SamplingStrategyResponse,
 ) {
-
 	c.rw.Lock()
 	defer c.rw.Unlock()
 	c.items[serviceName] = serviceStrategyCacheEntry{
@@ -91,7 +89,6 @@ func (c *serviceStrategyTTLCache) periodicallyClearCache(
 	ctx context.Context,
 	schedulingPeriod time.Duration,
 ) {
-
 	ticker := clockwork.FromContext(ctx).NewTicker(schedulingPeriod)
 	for {
 		select {

@@ -19,6 +19,7 @@ var DefaultArguments = Config{
 	},
 	ResourceAttributes: ResourceAttributesConfig{
 		K8sClusterName: rac.ResourceAttributeConfig{Enabled: true},
+		K8sClusterUID:  rac.ResourceAttributeConfig{Enabled: true},
 	},
 }
 
@@ -40,10 +41,12 @@ func (args Config) Convert() map[string]interface{} {
 // ResourceAttributesConfig provides config for k8snode resource attributes.
 type ResourceAttributesConfig struct {
 	K8sClusterName rac.ResourceAttributeConfig `alloy:"k8s.cluster.name,block,optional"`
+	K8sClusterUID  rac.ResourceAttributeConfig `alloy:"k8s.cluster.uid,block,optional"`
 }
 
 func (r ResourceAttributesConfig) Convert() map[string]interface{} {
 	return map[string]interface{}{
 		"k8s.cluster.name": r.K8sClusterName.Convert(),
+		"k8s.cluster.uid":  r.K8sClusterUID.Convert(),
 	}
 }

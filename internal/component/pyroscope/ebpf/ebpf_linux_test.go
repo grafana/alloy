@@ -82,6 +82,7 @@ func (m *mockSession) DebugInfo() interface{} {
 					{
 						Name:          "X",
 						Size:          123,
+						MiniDebugInfo: false,
 						LastUsedRound: 1,
 					},
 				},
@@ -325,6 +326,7 @@ session = {
 				name            = "X",
 				symbol_count    = 123,
 				file            = "",
+				mini_debug_info = false,
 				last_used_round = 1,
 			}],
 			round_dump = [],

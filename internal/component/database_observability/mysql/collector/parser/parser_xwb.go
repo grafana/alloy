@@ -1,6 +1,9 @@
 package parser
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/xwb1989/sqlparser"
@@ -137,4 +140,23 @@ func (p *XwbSqlParser) parseTableExprs(logger log.Logger, digest string, tables 
 		}
 	}
 	return parsedTables
+}
+
+func (p *XwbSqlParser) CleanTruncatedText(sql string) (string, error) {
+	if !strings.HasSuffix(sql, "...") {
+		return sql, nil
+	}
+
+	// best-effort attempt to detect truncated trailing comment
+	idx := strings.LastIndex(sql, "/*")
+	if idx < 0 {
+		return "", fmt.Errorf("sql text is truncated")
+	}
+
+	trailingText := sql[idx:]
+	if strings.LastIndex(trailingText, "*/") >= 0 {
+		return "", fmt.Errorf("sql text is truncated after a comment")
+	}
+
+	return strings.TrimSpace(sql[:idx]), nil
 }

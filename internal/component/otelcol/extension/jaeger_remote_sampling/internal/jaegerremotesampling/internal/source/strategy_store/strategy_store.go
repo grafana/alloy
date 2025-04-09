@@ -22,8 +22,8 @@ import (
 	"go.uber.org/atomic"
 	"go.uber.org/zap"
 
-	ss "github.com/jaegertracing/jaeger/cmd/collector/app/sampling/samplingstrategy"
-	"github.com/jaegertracing/jaeger/proto-gen/api_v2"
+	"github.com/grafana/alloy/internal/component/otelcol/extension/jaeger_remote_sampling/internal/jaegerremotesampling/internal/source"
+	"github.com/jaegertracing/jaeger-idl/proto-gen/api_v2"
 )
 
 type strategyStore struct {
@@ -39,7 +39,7 @@ type storedStrategies struct {
 type strategyLoader func() ([]byte, error)
 
 // NewStrategyStore creates a strategy store that holds static sampling strategies.
-func NewStrategyStore(strats string, logger *zap.Logger) (ss.Provider, error) {
+func NewStrategyStore(strats string, logger *zap.Logger) (source.Source, error) {
 	h := &strategyStore{
 		logger: logger,
 	}

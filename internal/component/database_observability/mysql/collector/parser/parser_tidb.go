@@ -96,3 +96,22 @@ func parseTableName(t *ast.TableName) string {
 	}
 	return tableName
 }
+
+func (p *TiDBSqlParser) CleanTruncatedText(sql string) (string, error) {
+	if !strings.HasSuffix(sql, "...") {
+		return sql, nil
+	}
+
+	// best-effort attempt to detect truncated trailing comment
+	idx := strings.LastIndex(sql, "/*")
+	if idx < 0 {
+		return "", fmt.Errorf("sql text is truncated")
+	}
+
+	trailingText := sql[idx:]
+	if strings.LastIndex(trailingText, "*/") >= 0 {
+		return "", fmt.Errorf("sql text is truncated after a comment")
+	}
+
+	return strings.TrimSpace(sql[:idx]), nil
+}

@@ -12,13 +12,14 @@ import (
 
 	"github.com/docker/go-connections/nat"
 	"github.com/go-kit/log"
+	"github.com/stretchr/testify/require"
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/wait"
+
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/alloytypes"
-	"github.com/stretchr/testify/require"
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
 )
 
 func Test_GetSecrets(t *testing.T) {
@@ -190,7 +191,8 @@ func getTestVaultServer(t *testing.T) *vaultapi.Client {
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
-		require.NoError(t, container.Terminate(ctx))
+		err := testcontainers.TerminateContainer(container)
+		require.NoError(t, err)
 	})
 
 	ep, err := container.PortEndpoint(ctx, nat.Port("80/tcp"), "http")

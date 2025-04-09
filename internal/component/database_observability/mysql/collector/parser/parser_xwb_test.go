@@ -1,6 +1,7 @@
 package parser_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/go-kit/log"
@@ -132,6 +133,55 @@ func TestParserXwb_ExtractTableNames(t *testing.T) {
 
 			got := p.ExtractTableNames(log.NewNopLogger(), "", stmt)
 			require.ElementsMatch(t, tc.tables, got)
+		})
+	}
+}
+
+func TestParserXwb_CleanTruncatedText(t *testing.T) {
+	testcases := []struct {
+		name    string
+		sql     string
+		want    string
+		wantErr error
+	}{
+		{
+			name:    "simple select",
+			sql:     "select * from some_table where id = 1",
+			want:    "select * from some_table where id = 1",
+			wantErr: nil,
+		},
+
+		{
+			name:    "truncated query",
+			sql:     "insert into some_table (`id1`, `id2`, `id3`, `id...",
+			want:    "insert into some_table (`id1`, `id2`, `id3`, `id...",
+			wantErr: fmt.Errorf("sql text is truncated"),
+		},
+		{
+			name:    "truncated in multi-line comment",
+			sql:     "select * from some_table where id = 1 /*traceparent='00-abc...",
+			want:    "select * from some_table where id = 1",
+			wantErr: nil,
+		},
+		{
+			name:    "truncated with properly closed comment",
+			sql:     "select * from some_table where id = 1 /* comment that's closed */ and name = 'test...",
+			want:    "select * from some_table where id = 1 /* comment that's closed */ and name = 'test...",
+			wantErr: fmt.Errorf("sql text is truncated after a comment"),
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			p := parser.NewTiDBSqlParser()
+			got, err := p.CleanTruncatedText(tc.sql)
+			if tc.wantErr != nil {
+				require.Error(t, err)
+				require.EqualError(t, tc.wantErr, err.Error())
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tc.want, got)
+			}
 		})
 	}
 }

@@ -28,7 +28,7 @@ spec:
       serviceAccountName: alloy
       containers:
         - name: alloy
-          image: docker.io/grafana/alloy:v1.7.5
+          image: docker.io/grafana/alloy:v1.8.0
           imagePullPolicy: IfNotPresent
           args:
             - run
@@ -67,10 +67,10 @@ spec:
             - name: config
               mountPath: /etc/alloy
         - name: config-reloader
-          image: ghcr.io/jimmidyson/configmap-reload:v0.14.0
+          image: quay.io/prometheus-operator/prometheus-config-reloader:v0.81.0
           args:
-            - --volume-dir=/etc/alloy
-            - --webhook-url=http://localhost:12345/-/reload
+            - --watched-dir=/etc/alloy
+            - --reload-url=http://localhost:12345/-/reload
           volumeMounts:
             - name: config
               mountPath: /etc/alloy

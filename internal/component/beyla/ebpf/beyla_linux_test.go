@@ -5,6 +5,7 @@ package beyla
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"strings"
 	"sync"
 	"testing"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/grafana/beyla/v2/pkg/beyla"
 	"github.com/grafana/beyla/v2/pkg/export/attributes"
+	"github.com/grafana/beyla/v2/pkg/export/debug"
 	"github.com/grafana/beyla/v2/pkg/filter"
 	"github.com/grafana/beyla/v2/pkg/kubeflags"
 	"github.com/grafana/beyla/v2/pkg/services"
@@ -33,7 +35,7 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 			ignore_mode = "all"
 			wildcard_char = "*"
 		}
-		debug = true
+		debug = false
 		attributes {
 			kubernetes {
 				enable = "true"
@@ -110,6 +112,7 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 				match = "53"
 			}
 		}
+		trace_printer = "json"
 		enforce_sys_caps = true
 		output { /* no-op */ }
 	`
@@ -167,6 +170,44 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 	require.Len(t, cfg.Filters.Network, 1)
 	require.Equal(t, filter.MatchDefinition{NotMatch: "UDP"}, cfg.Filters.Application["transport"])
 	require.Equal(t, filter.MatchDefinition{Match: "53"}, cfg.Filters.Network["dst_port"])
+	require.Equal(t, debug.TracePrinter("json"), cfg.TracePrinter)
+}
+
+func TestArguments_TracePrinterDebug(t *testing.T) {
+	test := func(debugEnabled bool, printer string, expected string) {
+		const format = `
+		debug = %t
+		discovery {
+			services {
+				open_ports = "80,443"
+			}
+		}
+		metrics {
+			features = ["application", "network"]
+		}
+		trace_printer = "%s"
+		output { /* no-op */ }
+		`
+
+		in := fmt.Sprintf(format, debugEnabled, printer)
+
+		var args Arguments
+
+		require.NoError(t, syntax.Unmarshal([]byte(in), &args))
+		cfg, err := args.Convert()
+
+		require.NoError(t, err)
+
+		require.Equal(t, debug.TracePrinter(expected), cfg.TracePrinter)
+	}
+
+	// when debug is enabled, the printer will always be overridden to "text"
+	// regardless of what is specified
+	test(true, "json", "text")
+	test(true, "text", "text")
+
+	test(false, "text", "text")
+	test(false, "json", "json")
 }
 
 func TestArguments_ConvertDefaultConfig(t *testing.T) {
@@ -657,6 +698,33 @@ func TestArguments_Validate(t *testing.T) {
 			},
 			wantErr: "metrics.features must include at least one of: network, application, application_span, application_service_graph, or application_process",
 		},
+		{
+			name: "valid trace printer",
+			args: Arguments{
+				TracePrinter: "json",
+				Metrics: Metrics{
+					Features: []string{"network"},
+				},
+			},
+		},
+		{
+			name: "empty trace printer is valid",
+			args: Arguments{
+				Metrics: Metrics{
+					Features: []string{"network"},
+				},
+			},
+		},
+		{
+			name: "invalid trace printer",
+			args: Arguments{
+				TracePrinter: "invalid",
+				Metrics: Metrics{
+					Features: []string{"network"},
+				},
+			},
+			wantErr: `trace_printer: invalid value "invalid". Valid values are: disabled, counter, text, json, json_indent`,
+		},
 	}
 
 	for _, tt := range tests {
@@ -698,8 +766,7 @@ func TestDeprecatedFields(t *testing.T) {
 		},
 	}
 
-	//nolint:usetesting
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	// Start component which should trigger warnings

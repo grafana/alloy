@@ -2,7 +2,6 @@ package pyroscope
 
 import (
 	"context"
-	"net/http"
 	"net/url"
 	"sync"
 	"time"
@@ -16,6 +15,8 @@ const (
 	LabelNameDelta   = "__delta__"
 	LabelName        = "__name__"
 	LabelServiceName = "service_name"
+
+	HeaderContentType = "Content-Type"
 )
 
 var NoopAppendable = AppendableFunc(func(_ context.Context, _ labels.Labels, _ []*RawSample) error { return nil })
@@ -35,10 +36,12 @@ type RawSample struct {
 }
 
 type IncomingProfile struct {
+	// RawBody is the set of bytes of the pprof profile, as its sent by the client
 	RawBody []byte
-	Headers http.Header
-	URL     *url.URL
-	Labels  labels.Labels
+	// ContentType is the content type of the RawBody. This must be sent on to the endpoints.
+	ContentType []string
+	URL         *url.URL
+	Labels      labels.Labels
 }
 
 var _ Appendable = (*Fanout)(nil)
@@ -134,10 +137,10 @@ func (a *appender) AppendIngest(ctx context.Context, profile *IncomingProfile) e
 	for _, x := range a.children {
 		// Create a copy for each child
 		profileCopy := &IncomingProfile{
-			RawBody: profile.RawBody, // []byte is immutable, safe to share
-			Headers: profile.Headers.Clone(),
-			URL:     profile.URL, // URL is immutable once created
-			Labels:  profile.Labels.Copy(),
+			RawBody:     profile.RawBody,     // []byte is immutable, safe to share
+			ContentType: profile.ContentType, // []string is immutable, safe to share
+			URL:         profile.URL,         // URL is immutable once created
+			Labels:      profile.Labels.Copy(),
 		}
 
 		err := x.AppendIngest(ctx, profileCopy)

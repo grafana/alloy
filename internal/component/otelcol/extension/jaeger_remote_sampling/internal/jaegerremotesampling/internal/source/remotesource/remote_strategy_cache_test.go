@@ -1,7 +1,7 @@
 // Copyright The OpenTelemetry Authors
 // SPDX-License-Identifier: Apache-2.0
 
-package internal
+package remotesource
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/fortytw2/leaktest"
-	"github.com/jaegertracing/jaeger/proto-gen/api_v2"
+	"github.com/jaegertracing/jaeger-idl/proto-gen/api_v2"
 	"github.com/jonboulle/clockwork"
 	"github.com/stretchr/testify/assert"
 )
@@ -247,11 +247,10 @@ func Test_serviceStrategyCache_Concurrency(t *testing.T) {
 	wg := sync.WaitGroup{}
 	wg.Add(numThreads)
 	for i := 0; i < numThreads; i++ {
-		ii := i
 		go func() {
 			for j := 0; j < numIterationsPerThread; j++ {
 				for _, svcName := range []string{
-					fmt.Sprintf("thread-specific-service-%d", ii),
+					fmt.Sprintf("thread-specific-service-%d", i),
 					"contended-for-service",
 				} {
 					if _, ok := cache.get(t.Context(), svcName); !ok {
