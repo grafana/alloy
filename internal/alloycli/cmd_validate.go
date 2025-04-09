@@ -9,7 +9,9 @@ import (
 )
 
 func validateCommand() *cobra.Command {
-	v := &alloyValidate{}
+	v := &alloyValidate{
+		configFormat: "alloy",
+	}
 
 	cmd := &cobra.Command{
 		Use:          "validate [flags] file",
@@ -32,11 +34,20 @@ func validateCommand() *cobra.Command {
 		},
 	}
 
+	// Config flags
+	cmd.Flags().StringVar(&v.configFormat, "config.format", v.configFormat, fmt.Sprintf("The format of the source file. Supported formats: %s.", supportedFormatsList()))
+	cmd.Flags().BoolVar(&v.configBypassConversionErrors, "config.bypass-conversion-errors", v.configBypassConversionErrors, "Enable bypassing errors when converting")
+	cmd.Flags().StringVar(&v.configExtraArgs, "config.extra-args", v.configExtraArgs, "Extra arguments from the original format used by the converter. Multiple arguments can be passed by separating them with a space.")
+
 	return cmd
 }
 
-type alloyValidate struct{}
+type alloyValidate struct {
+	configFormat                 string
+	configBypassConversionErrors bool
+	configExtraArgs              string
+}
 
-func (fv *alloyValidate) Run(configFile string) (*alloy_runtime.Source, error) {
-	return loadAlloySource(configFile, "", false, "")
+func (v *alloyValidate) Run(configFile string) (*alloy_runtime.Source, error) {
+	return loadAlloySource(configFile, v.configFormat, v.configBypassConversionErrors, v.configExtraArgs)
 }
