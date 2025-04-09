@@ -10,6 +10,8 @@ internal API changes are not present.
 Unreleased
 ----------
 
+- Update default configreloader resources to match what is set in prometheus-operator project (@dehaansa)
+
 1.0.0 (2025-04-09)
 ----------
 
