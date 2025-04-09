@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/grafana/loki/v3/pkg/logproto"
@@ -14,14 +15,13 @@ import (
 func buildLokiEntry(level logging.Level, op, instanceKey, line string) loki.Entry {
 	return loki.Entry{
 		Labels: model.LabelSet{
-			"level":    model.LabelValue(level),
 			"job":      database_observability.JobName,
 			"op":       model.LabelValue(op),
 			"instance": model.LabelValue(instanceKey),
 		},
 		Entry: logproto.Entry{
 			Timestamp: time.Unix(0, time.Now().UnixNano()),
-			Line:      line,
+			Line:      fmt.Sprintf(`level="%s" %s`, model.LabelValue(level), line),
 		},
 	}
 }

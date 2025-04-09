@@ -37,12 +37,12 @@ func TestQueryTables(t *testing.T) {
 				"1000",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db", "level": "info"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db", "level": "info"},
+				{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db"},
+				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="abc123" query_type="select" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="select * from some_table where id = :redacted1"`,
-				`schema="some_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="some_schema" digest="abc123" query_type="select" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="select * from some_table where id = :redacted1"`,
+				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
 			},
 		},
 		{
@@ -55,12 +55,12 @@ func TestQueryTables(t *testing.T) {
 				"1000",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db", "level": "info"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db", "level": "info"},
+				{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db"},
+				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="abc123" query_type="insert" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="insert into some_table(id, name) values (:redacted1, :redacted2)"`,
-				`schema="some_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="some_schema" digest="abc123" query_type="insert" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="insert into some_table(id, name) values (:redacted1, :redacted2)"`,
+				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
 			},
 		},
 		{
@@ -73,12 +73,12 @@ func TestQueryTables(t *testing.T) {
 				"1000",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db", "level": "info"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db", "level": "info"},
+				{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db"},
+				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="abc123" query_type="update" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="update some_table set active = false, reason = null where id = :redacted1 and name = :redacted2"`,
-				`schema="some_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="some_schema" digest="abc123" query_type="update" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="update some_table set active = false, reason = null where id = :redacted1 and name = :redacted2"`,
+				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
 			},
 		},
 		{
@@ -91,12 +91,12 @@ func TestQueryTables(t *testing.T) {
 				"1000",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db", "level": "info"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db", "level": "info"},
+				{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db"},
+				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="abc123" query_type="delete" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="delete from some_table where id = :redacted1"`,
-				`schema="some_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="some_schema" digest="abc123" query_type="delete" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="delete from some_table where id = :redacted1"`,
+				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
 			},
 		},
 		{
@@ -109,14 +109,14 @@ func TestQueryTables(t *testing.T) {
 				"1000",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db", "level": "info"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db", "level": "info"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db", "level": "info"},
+				{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db"},
+				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
+				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="abc123" query_type="select" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="select t.id, t.val1, o.val2 from some_table as t join other_table as o on t.id = o.id where o.val2 = :redacted1 order by t.val1 desc"`,
-				`schema="some_schema" digest="abc123" table="some_table"`,
-				`schema="some_schema" digest="abc123" table="other_table"`,
+				`level="info" schema="some_schema" digest="abc123" query_type="select" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="select t.id, t.val1, o.val2 from some_table as t join other_table as o on t.id = o.id where o.val2 = :redacted1 order by t.val1 desc"`,
+				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="some_schema" digest="abc123" table="other_table"`,
 			},
 		},
 		{
@@ -135,12 +135,12 @@ func TestQueryTables(t *testing.T) {
 				"1000",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db", "level": "info"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db", "level": "info"},
+				{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db"},
+				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="abc123" query_type="select" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="select * from some_table where id = :redacted1"`,
-				`schema="some_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="some_schema" digest="abc123" query_type="select" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="select * from some_table where id = :redacted1"`,
+				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
 			},
 		},
 		{
@@ -153,12 +153,12 @@ func TestQueryTables(t *testing.T) {
 				"1000",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db", "level": "info"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db", "level": "info"},
+				{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db"},
+				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="abc123" query_type="select" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="select * from some_table where id = :redacted1"`,
-				`schema="some_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="some_schema" digest="abc123" query_type="select" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="select * from some_table where id = :redacted1"`,
+				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
 			},
 		},
 		{
@@ -183,10 +183,10 @@ func TestQueryTables(t *testing.T) {
 				"1000",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db", "level": "info"},
+				{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="abc123" query_type="" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="begin"`,
+				`level="info" schema="some_schema" digest="abc123" query_type="" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="begin"`,
 			},
 		},
 		{
@@ -205,12 +205,12 @@ func TestQueryTables(t *testing.T) {
 				"1000",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db", "level": "info"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db", "level": "info"},
+				{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db"},
+				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="abc123" query_type="select" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="select * from some_table where id = :redacted1"`,
-				`schema="some_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="some_schema" digest="abc123" query_type="select" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="select * from some_table where id = :redacted1"`,
+				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
 			},
 		},
 		{
@@ -229,16 +229,16 @@ func TestQueryTables(t *testing.T) {
 				"1000",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db", "level": "info"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db", "level": "info"},
-				{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db", "level": "info"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db", "level": "info"},
+				{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db"},
+				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
+				{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db"},
+				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="abc123" query_type="select" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="select * from some_table where id = :redacted1"`,
-				`schema="some_schema" digest="abc123" table="some_table"`,
-				`schema="other_schema" digest="abc123" query_type="select" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="select * from some_table where id = :redacted1"`,
-				`schema="other_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="some_schema" digest="abc123" query_type="select" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="select * from some_table where id = :redacted1"`,
+				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="other_schema" digest="abc123" query_type="select" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="select * from some_table where id = :redacted1"`,
+				`level="info" schema="other_schema" digest="abc123" table="some_table"`,
 			},
 		},
 		{
@@ -251,16 +251,16 @@ func TestQueryTables(t *testing.T) {
 				"1000",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db", "level": "info"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db", "level": "info"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db", "level": "info"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db", "level": "info"},
+				{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db"},
+				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
+				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
+				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="abc123" query_type="select" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="select * from (select id, name from employees_us_east union select id, name from employees_us_west) as employees_us union select id, name from employees_emea"`,
-				`schema="some_schema" digest="abc123" table="employees_us_east"`,
-				`schema="some_schema" digest="abc123" table="employees_us_west"`,
-				`schema="some_schema" digest="abc123" table="employees_emea"`,
+				`level="info" schema="some_schema" digest="abc123" query_type="select" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="select * from (select id, name from employees_us_east union select id, name from employees_us_west) as employees_us union select id, name from employees_emea"`,
+				`level="info" schema="some_schema" digest="abc123" table="employees_us_east"`,
+				`level="info" schema="some_schema" digest="abc123" table="employees_us_west"`,
+				`level="info" schema="some_schema" digest="abc123" table="employees_emea"`,
 			},
 		},
 		{
@@ -273,10 +273,10 @@ func TestQueryTables(t *testing.T) {
 				"1000",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db", "level": "info"},
+				{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="abc123" query_type="" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="show create table"`,
+				`level="info" schema="some_schema" digest="abc123" query_type="" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="show create table"`,
 			},
 		},
 		{
@@ -289,10 +289,10 @@ func TestQueryTables(t *testing.T) {
 				"1000",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db", "level": "info"},
+				{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="abc123" query_type="" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="show variables"`,
+				`level="info" schema="some_schema" digest="abc123" query_type="" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="show variables"`,
 			},
 		},
 	}
@@ -422,10 +422,10 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 
 		lokiEntries := lokiClient.Received()
-		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db", "level": "info"}, lokiEntries[0].Labels)
-		require.Equal(t, `schema="some_schema" digest="abc123" query_type="select" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="select * from some_table where id = :redacted1"`, lokiEntries[0].Line)
-		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db", "level": "info"}, lokiEntries[1].Labels)
-		require.Equal(t, `schema="some_schema" digest="abc123" table="some_table"`, lokiEntries[1].Line)
+		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db"}, lokiEntries[0].Labels)
+		require.Equal(t, `level="info" schema="some_schema" digest="abc123" query_type="select" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="select * from some_table where id = :redacted1"`, lokiEntries[0].Line)
+		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"}, lokiEntries[1].Labels)
+		require.Equal(t, `level="info" schema="some_schema" digest="abc123" table="some_table"`, lokiEntries[1].Line)
 	})
 
 	t.Run("result set iteration error", func(t *testing.T) {
@@ -488,10 +488,10 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 
 		lokiEntries := lokiClient.Received()
-		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db", "level": "info"}, lokiEntries[0].Labels)
-		require.Equal(t, `schema="some_schema" digest="abc123" query_type="select" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="select * from some_table where id = :redacted1"`, lokiEntries[0].Line)
-		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db", "level": "info"}, lokiEntries[1].Labels)
-		require.Equal(t, `schema="some_schema" digest="abc123" table="some_table"`, lokiEntries[1].Line)
+		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db"}, lokiEntries[0].Labels)
+		require.Equal(t, `level="info" schema="some_schema" digest="abc123" query_type="select" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="select * from some_table where id = :redacted1"`, lokiEntries[0].Line)
+		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"}, lokiEntries[1].Labels)
+		require.Equal(t, `level="info" schema="some_schema" digest="abc123" table="some_table"`, lokiEntries[1].Line)
 	})
 
 	t.Run("connection error recovery", func(t *testing.T) {
@@ -550,9 +550,9 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 
 		lokiEntries := lokiClient.Received()
-		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db", "level": "info"}, lokiEntries[0].Labels)
-		require.Equal(t, `schema="some_schema" digest="abc123" query_type="select" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="select * from some_table where id = :redacted1"`, lokiEntries[0].Line)
-		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db", "level": "info"}, lokiEntries[1].Labels)
-		require.Equal(t, `schema="some_schema" digest="abc123" table="some_table"`, lokiEntries[1].Line)
+		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db"}, lokiEntries[0].Labels)
+		require.Equal(t, `level="info" schema="some_schema" digest="abc123" query_type="select" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="select * from some_table where id = :redacted1"`, lokiEntries[0].Line)
+		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"}, lokiEntries[1].Labels)
+		require.Equal(t, `level="info" schema="some_schema" digest="abc123" table="some_table"`, lokiEntries[1].Line)
 	})
 }
