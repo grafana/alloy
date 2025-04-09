@@ -6,7 +6,11 @@ on:
       img-name:
         required: true
         type: string
-        
+      push:
+        required: false
+        type: boolean
+        default: true
+
 permissions:
   contents: read
   id-token: write
@@ -45,5 +49,7 @@ jobs:
         $go_short_version = $go_version_split[0] + "." + $go_version_split[1]
         "alloy_go_version=$go_short_version" >> $env:GITHUB_OUTPUT
   
-    - run: |
-       & "C:/Program Files/git/bin/bash.exe" -c 'WINDOWS_VERSION=${{matrix.os}} ALLOY_GO_VERSION=${{steps.get_go_version.outputs.alloy_go_version}} ./tools/ci/docker-containers-windows ${{ inputs.img-name }}'
+    - name: Build and publish the container
+      # TODO: Run "make alloy-image-windows" instead?
+      run: |
+       & "C:/Program Files/git/bin/bash.exe" -c 'PUSH_ALLOY_IMAGE=${{inputs.push}} WINDOWS_VERSION=${{matrix.os}} ALLOY_GO_VERSION=${{steps.get_go_version.outputs.alloy_go_version}} ./tools/ci/docker-containers-windows ${{ inputs.img-name }}'
