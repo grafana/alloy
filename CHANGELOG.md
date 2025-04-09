@@ -14,6 +14,8 @@ v1.8.1
 
 - `rfc3164_default_to_current_year` argument was not fully added to `loki.source.syslog` (@dehaansa)
 
+- Fix issue with `remoteCfg` service stopping immediately and logging noop error if not configured (@dehaansa)
+
 v1.8.0
 -----------------
 
