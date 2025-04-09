@@ -31,6 +31,8 @@ Main (unreleased)
 
 - Fix panic in `prometheus.exporter.postgres` when using minimal url as data source name. (@kalleep)
 
+- Fix issue with `remoteCfg` service stopping immediately and logging noop error if not configured (@dehaansa)
+
 - Fix `otelcol.exporter.prometheus` dropping valid exemplars. (@github-vincent-miszczak)
 
 ### Other changes
