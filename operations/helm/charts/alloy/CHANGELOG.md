@@ -10,6 +10,10 @@ internal API changes are not present.
 Unreleased
 ----------
 
+### Enhancements
+
+- Add Vertical Pod Autoscaler support (@QuentinBisson)
+
 1.0.0 (2025-04-09)
 ----------
 
@@ -30,7 +34,6 @@ Unreleased
 - Change configReloader from jimmydyson/configmap-reload to prometheus-operator/prometheus-config-reloader (@dehaansa)
 - Update to Grafana Alloy v1.7.5. (@kimxogus)
 - Add `checksum/config` pod annotation (@kimxogus)
-- Add Vertical Pod Autoscaler support (@QuentinBisson)
 
 ### Other changes
 
