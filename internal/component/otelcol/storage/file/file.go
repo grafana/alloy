@@ -207,7 +207,7 @@ func (args Arguments) Convert(opts component.Options) (otelcomponent.Config, err
 		DirectoryPermissions: args.DirectoryPermissions,
 	}
 
-	// TODO - find a way to make these default values visible in the UI.
+	// TODO - find a way to sync these default values with the node.
 	// Without them being settable in syntax.Defaulter they are not exposed at that layer.
 	if f.Directory == "" {
 		// If the directory is not set, use the default directory.
