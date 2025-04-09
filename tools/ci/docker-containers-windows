@@ -14,6 +14,8 @@ set -euxo pipefail
 # If the environment variables are unset, the variables below default to an
 # empty string.
 export TARGET_CONTAINER=${1:-}
+PUSH_ALLOY_IMAGE=${PUSH_ALLOY_IMAGE:-}
+GITHUB_REF_TYPE=${GITHUB_REF_TYPE:-}
 
 if [ "$GITHUB_REF_TYPE" = "tag" ]; then
   export GITHUB_TAG="$GITHUB_REF_NAME"
@@ -87,8 +89,10 @@ case "$TARGET_CONTAINER" in
       -f ./Dockerfile.windows                \
       .
 
-    docker push "$RELEASE_ALLOY_IMAGE:$VERSION_TAG"
-    docker push "$RELEASE_ALLOY_IMAGE:$BRANCH_TAG"
+    if [[ $PUSH_ALLOY_IMAGE == "true"  ]]; then
+      docker push "$RELEASE_ALLOY_IMAGE:$VERSION_TAG"
+      docker push "$RELEASE_ALLOY_IMAGE:$BRANCH_TAG"
+    fi
     ;;
 
   alloy-cngcrypto)
@@ -108,8 +112,10 @@ case "$TARGET_CONTAINER" in
       -f ./Dockerfile.windows                \
       .
 
-    docker push "$RELEASE_ALLOY_IMAGE:$VERSION_TAG"
-    docker push "$RELEASE_ALLOY_IMAGE:$BRANCH_TAG"
+    if [[ $PUSH_ALLOY_IMAGE == "true"  ]]; then
+      docker push "$RELEASE_ALLOY_IMAGE:$VERSION_TAG"
+      docker push "$RELEASE_ALLOY_IMAGE:$BRANCH_TAG"
+    fi
     ;;
 
   alloy-devel)
@@ -123,8 +129,10 @@ case "$TARGET_CONTAINER" in
       -f ./Dockerfile.windows              \
       .
 
-    docker push "$DEVEL_ALLOY_IMAGE:$VERSION_TAG"
-    docker push "$DEVEL_ALLOY_IMAGE:$BRANCH_TAG"
+    if [[ $PUSH_ALLOY_IMAGE == "true"  ]]; then
+      docker push "$DEVEL_ALLOY_IMAGE:$VERSION_TAG"
+      docker push "$DEVEL_ALLOY_IMAGE:$BRANCH_TAG"
+    fi
     ;;
 
   alloy-devel-cngcrypto)
@@ -144,8 +152,10 @@ case "$TARGET_CONTAINER" in
       -f ./Dockerfile.windows              \
       .
 
-    docker push "$DEVEL_ALLOY_IMAGE:$VERSION_TAG"
-    docker push "$DEVEL_ALLOY_IMAGE:$BRANCH_TAG"
+    if [[ $PUSH_ALLOY_IMAGE == "true"  ]]; then
+      docker push "$DEVEL_ALLOY_IMAGE:$VERSION_TAG"
+      docker push "$DEVEL_ALLOY_IMAGE:$BRANCH_TAG"
+    fi
     ;;
 
   *)

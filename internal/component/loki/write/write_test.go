@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/loki/pkg/push"
 	"github.com/grafana/loki/v3/pkg/logproto"
 	loki_util "github.com/grafana/loki/v3/pkg/util"
 	"github.com/prometheus/common/model"
@@ -188,16 +189,21 @@ func testSingleEndpoint(t *testing.T, alterConfig func(arguments *Arguments)) {
 
 	// Wait for our exporter to finish and pass data to our HTTP server.
 	// Make sure the log entries were received correctly.
-	select {
-	case <-time.After(2 * time.Second):
-		require.FailNow(t, "failed waiting for logs")
-	case req := <-ch:
-		require.Len(t, req.Streams, 1)
-		require.Equal(t, req.Streams[0].Labels, logEntry.Labels.String())
-		require.Len(t, req.Streams[0].Entries, 2)
-		require.Equal(t, req.Streams[0].Entries[0].Line, logEntry.Line)
-		require.Equal(t, req.Streams[0].Entries[1].Line, logEntry.Line)
+	entries := []push.Entry{}
+LOOP:
+	for {
+		select {
+		case <-time.After(500 * time.Millisecond):
+			break LOOP
+		case req := <-ch:
+			require.Len(t, req.Streams, 1)
+			require.Equal(t, req.Streams[0].Labels, logEntry.Labels.String())
+			entries = append(entries, req.Streams[0].Entries...)
+		}
 	}
+	require.Len(t, entries, 2)
+	require.Equal(t, entries[0].Line, logEntry.Entry.Line)
+	require.Equal(t, entries[1].Line, logEntry.Entry.Line)
 }
 
 func TestEntrySentToTwoWriteComponents(t *testing.T) {

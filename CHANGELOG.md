@@ -12,6 +12,8 @@ Main (unreleased)
 
 ### Features
 
+- Add the `otelcol.storage.file` extension to support persistent sending queues and `otelcol.receiver.filelog` file state tracking between restarts. (@dehaansa)
+
 - Add `otelcol.exporter.googlecloud` community component to export metrics, traces, and logs to Google Cloud. (@motoki317)
 
 - Add support to configure basic authentication for alloy http server. (@kalleep)
@@ -20,29 +22,24 @@ Main (unreleased)
 
 - Add binary version to constants exposed in configuration file syntatx. (@adlots)
 
+- Update `loki.secretfilter` to include metrics about redactions (@kelnage)
+
+- (_Experimental_) Various changes to the experimental component `database_observability.mysql`:
+  - `schema_table`: add support for index expressions (@cristiangreco)
+
 ### Bugfixes
 
 - Fix panic in `prometheus.exporter.postgres` when using minimal url as data source name. (@kalleep)
+
+- Fix issue with `remoteCfg` service stopping immediately and logging noop error if not configured (@dehaansa)
+
+- Fix `otelcol.exporter.prometheus` dropping valid exemplars. (@github-vincent-miszczak)
 
 ### Other changes
 
 - Update the zap logging adapter used by `otelcol` components to log arrays and objects. (@dehaansa)
 
-v1.8.0-rc.3
------------------
-
-### Features
-
-- Add support for live debugging and graph in the UI for components imported via remotecfg. (@wildum)
-
-### Enhancements
-
-- Removed syntax highlighting from the component details UI view to improve
-  rendering performance. (@tpaschalis)
-
-- A new `grafana/alloy:vX.Y.Z-windowsservercore-ltsc2022` Docker image is now published on DockerHub. (@ptodev)
-
-v1.8.0-rc.2
+v1.8.0
 -----------------
 
 ### Breaking changes
@@ -72,6 +69,7 @@ v1.8.0-rc.2
   required before components that use clustering begin processing traffic to ensure adequate cluster capacity is
   available. (@thampiotr)
 - Add `trace_printer` to `beyla.ebpf` component to print trace information in a specific format. (@marctc)
+- Add support for live debugging and graph in the UI for components imported via remotecfg. (@wildum)
 
 ### Enhancements
 
@@ -128,6 +126,11 @@ v1.8.0-rc.2
 - Add error body propagation in `pyroscope.write`, for `/ingest` calls. (@simonswine)
 
 - Add `tenant` label to remaining `loki_write_.+` metrics (@towolf)
+
+- Removed syntax highlighting from the component details UI view to improve
+  rendering performance. (@tpaschalis)
+
+- A new `grafana/alloy:vX.Y.Z-windowsservercore-ltsc2022` Docker image is now published on DockerHub. (@ptodev)
 
 ### Bugfixes
 
@@ -328,8 +331,6 @@ v1.7.0
 - Fix an issue where Prometheus metric name validation scheme was set by default to UTF-8. It is now set back to the
   previous "legacy" scheme. An experimental flag `--feature.prometheus.metric-validation-scheme` can be used to switch
   it to `utf-8` to experiment with UTF-8 support. (@thampiotr)
-
-- Fix `otelcol.exporter.prometheus` that dropped valid exemplars. (@github-vincent-miszczak)
 
 ### Other changes
 

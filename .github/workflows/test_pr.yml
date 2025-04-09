@@ -1,8 +1,9 @@
-name: Test
+name: Test PR
 on:
   pull_request:
 jobs:
   lint:
+<<<<<<< HEAD
     name: Lint
     runs-on: ubuntu-latest
     steps:
@@ -23,13 +24,16 @@ jobs:
         version: v2.0
         working-directory: ./syntax/
     - run: make run-alloylint
+=======
+    uses: ./.github/workflows/lint.yml
+>>>>>>> main
 
   test_linux:
     name: Test Linux
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4 
+      uses: actions/checkout@v4
 
     - name: Set up Go
       uses: actions/setup-go@v5

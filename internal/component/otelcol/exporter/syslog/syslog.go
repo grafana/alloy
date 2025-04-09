@@ -71,11 +71,15 @@ func (args *Arguments) SetToDefault() {
 
 // Convert implements exporter.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
+	q, err := args.Queue.Convert()
+	if err != nil {
+		return nil, err
+	}
 	return &syslogexporter.Config{
 		TimeoutSettings: otelpexporterhelper.TimeoutConfig{
 			Timeout: args.Timeout,
 		},
-		QueueSettings:       *args.Queue.Convert(),
+		QueueSettings:       *q,
 		BackOffConfig:       *args.Retry.Convert(),
 		Endpoint:            args.Endpoint,
 		Port:                args.Port,
@@ -88,7 +92,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 
 // Extensions implements exporter.Arguments.
 func (args Arguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
-	return nil
+	return args.Queue.Extensions()
 }
 
 // Exporters implements exporter.Arguments.
