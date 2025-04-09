@@ -95,32 +95,6 @@ volumes:
   name: docker
 ---
 kind: pipeline
-name: Check Windows container (grafana/alloy)
-platform:
-  arch: amd64
-  os: windows
-  version: "1809"
-steps:
-- commands:
-  - '& "C:/Program Files/git/bin/bash.exe" -c "make alloy-image-windows"'
-  image: grafana/alloy-build-image:v0.1.8-windows
-  name: Build container
-  volumes:
-  - name: docker
-    path: //./pipe/docker_engine/
-trigger:
-  paths:
-  - Dockerfile.windows
-  - tools/ci/docker-containers-windows
-  ref:
-  - refs/heads/main
-type: docker
-volumes:
-- host:
-    path: //./pipe/docker_engine/
-  name: docker
----
-kind: pipeline
 name: Build alloy (Linux amd64)
 platform:
   arch: amd64
@@ -510,6 +484,6 @@ kind: secret
 name: updater_private_key
 ---
 kind: signature
-hmac: 89ceb7461db70e853b2d0be511054b745584d503c3fd9b45961c991b47d99727
+hmac: f758e7045e509a576d48f91a729f114967d02604b27b87e4c454ef3c71498283
 
 ...

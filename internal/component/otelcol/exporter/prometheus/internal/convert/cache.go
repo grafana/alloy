@@ -29,6 +29,8 @@ type memorySeries struct {
 	timestamp time.Time // Timestamp used for out-of-order detection.
 	lastSeen  time.Time // Timestamp used for garbage collection.
 
+	exemplarTimestamp time.Time // Timestamp used for exemplars out-of-order detection.
+
 	value float64 // Value used for writing.
 }
 
@@ -60,6 +62,18 @@ func (series *memorySeries) SetTimestamp(newTime time.Time) {
 	series.Lock()
 	defer series.Unlock()
 	series.timestamp = newTime
+}
+
+func (series *memorySeries) SetExemplarTimestamp(newTime time.Time) {
+	series.Lock()
+	defer series.Unlock()
+	series.exemplarTimestamp = newTime
+}
+
+func (series *memorySeries) ExemplarTimestamp() time.Time {
+	series.Lock()
+	defer series.Unlock()
+	return series.exemplarTimestamp
 }
 
 // LastSeen returns the timestamp when this series was last seen.
