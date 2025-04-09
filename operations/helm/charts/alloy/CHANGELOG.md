@@ -10,9 +10,20 @@ internal API changes are not present.
 Unreleased
 ----------
 
-### Enhancement
+### Enhancements
+
+- Add Vertical Pod Autoscaler support (@QuentinBisson)
 
 - Add ability to specify extra rules for alloy ClusterRole. (@nejec)
+
+1.0.0 (2025-04-09)
+----------
+
+### Enhancements
+
+- Update version to `1.0.0`. This Helm chart is now covered with the [backward-compatibility](https://grafana.com/docs/alloy/latest/introduction/backward-compatibility/) policy.
+
+- Update to Grafana Alloy v1.8.0. (@thampiotr)
 
 0.12.6 (2025-04-03)
 ----------

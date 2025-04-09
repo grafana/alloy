@@ -10,7 +10,34 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
-v1.8.0-rc.2
+### Features
+
+- Add the `otelcol.storage.file` extension to support persistent sending queues and `otelcol.receiver.filelog` file state tracking between restarts. (@dehaansa)
+
+- Add `otelcol.exporter.googlecloud` community component to export metrics, traces, and logs to Google Cloud. (@motoki317)
+
+- Add support to configure basic authentication for alloy http server. (@kalleep)
+
+### Enhancements
+
+- Add binary version to constants exposed in configuration file syntatx. (@adlots)
+
+- Update `loki.secretfilter` to include metrics about redactions (@kelnage)
+
+- (_Experimental_) Various changes to the experimental component `database_observability.mysql`:
+  - `schema_table`: add support for index expressions (@cristiangreco)
+
+### Bugfixes
+
+- Fix panic in `prometheus.exporter.postgres` when using minimal url as data source name. (@kalleep)
+
+- Fix `otelcol.exporter.prometheus` dropping valid exemplars. (@github-vincent-miszczak)
+
+### Other changes
+
+- Update the zap logging adapter used by `otelcol` components to log arrays and objects. (@dehaansa)
+
+v1.8.0
 -----------------
 
 ### Breaking changes
@@ -40,6 +67,7 @@ v1.8.0-rc.2
   required before components that use clustering begin processing traffic to ensure adequate cluster capacity is
   available. (@thampiotr)
 - Add `trace_printer` to `beyla.ebpf` component to print trace information in a specific format. (@marctc)
+- Add support for live debugging and graph in the UI for components imported via remotecfg. (@wildum)
 
 ### Enhancements
 
@@ -83,6 +111,7 @@ v1.8.0-rc.2
   - `query_sample`: add option to use TiDB sql parser (@cristiangreco)
   - `query_tables`: rename collector from `query_sample` to better reflect responsibility (@matthewnolf)
   - `query_sample`: add new collector that replaces previous implementation to collect more detailed sample information (@matthewnolf)
+  - `query_sample`: refactor parsing of truncated queries (@cristiangreco)
 
 - Add labels validation in `pyroscope.write` to prevent duplicate labels and invalid label names/values. (@marcsanmi)
 
@@ -95,6 +124,11 @@ v1.8.0-rc.2
 - Add error body propagation in `pyroscope.write`, for `/ingest` calls. (@simonswine)
 
 - Add `tenant` label to remaining `loki_write_.+` metrics (@towolf)
+
+- Removed syntax highlighting from the component details UI view to improve
+  rendering performance. (@tpaschalis)
+
+- A new `grafana/alloy:vX.Y.Z-windowsservercore-ltsc2022` Docker image is now published on DockerHub. (@ptodev)
 
 ### Bugfixes
 
@@ -126,7 +160,7 @@ v1.8.0-rc.2
 
 - Change the stability of the `beyla.ebpf` component from "public preview" to "generally available". (@marctc)
 
-- The ingest API of `pyrscope.receive_http` no longer forwards all received headers, instead only passes through the `Content-Type` header. 
+- The ingest API of `pyroscope.receive_http` no longer forwards all received headers, instead only passes through the `Content-Type` header. (@simonswine)
 
 v1.7.5
 -----------------
