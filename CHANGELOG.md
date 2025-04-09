@@ -16,7 +16,7 @@ v1.8.0
 
 - Breaking changes from the OpenTelemetry Collector v0.122 update: (@wildum)
   - `otelcol.exporter.splunkhec`: `min_size_items` and `max_size_items` were replaced by `min_size`, `max_size` and `sizer` in the `batcher` block to allow
-  users to configure the size of the batch in a more flexible way.
+    users to configure the size of the batch in a more flexible way.
   - The telemetry level of Otel components is no longer configurable. The `level` argument in the `debug_metrics` block is kept to avoid breaking changes but it is not used anymore.
   - `otelcol.processor.tailsampling` changed the unit of the decision timer metric from microseconds to milliseconds. (change unit of otelcol_processor_tail_sampling_sampling_decision_timer_latency)
   - `otelcol.processor.deltatocumulative`: rename `otelcol_deltatocumulative_datapoints_processed` to `otelcol_deltatocumulative_datapoints` and remove the metrics `otelcol_deltatocumulative_streams_evicted`, `otelcol_deltatocumulative_datapoints_dropped` and `otelcol_deltatocumulative_gaps_length`.
@@ -81,6 +81,7 @@ v1.8.0
   - `query_sample`: add option to use TiDB sql parser (@cristiangreco)
   - `query_tables`: rename collector from `query_sample` to better reflect responsibility (@matthewnolf)
   - `query_sample`: add new collector that replaces previous implementation to collect more detailed sample information (@matthewnolf)
+  - `query_sample`: refactor parsing of truncated queries (@cristiangreco)
 
 - Add labels validation in `pyroscope.write` to prevent duplicate labels and invalid label names/values. (@marcsanmi)
 
@@ -129,7 +130,7 @@ v1.8.0
 
 - Change the stability of the `beyla.ebpf` component from "public preview" to "generally available". (@marctc)
 
-- The ingest API of `pyrscope.receive_http` no longer forwards all received headers, instead only passes through the `Content-Type` header. 
+- The ingest API of `pyroscope.receive_http` no longer forwards all received headers, instead only passes through the `Content-Type` header. (@simonswine)
 
 v1.7.5
 -----------------
