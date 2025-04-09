@@ -7,21 +7,7 @@ This document contains a historical list of changes between releases. Only
 changes that impact end-user behavior are listed; changes to documentation or
 internal API changes are not present.
 
-v1.8.0-rc.3
------------------
-
-### Features
-
-- Add support for live debugging and graph in the UI for components imported via remotecfg. (@wildum)
-
-### Enhancements
-
-- Removed syntax highlighting from the component details UI view to improve
-  rendering performance. (@tpaschalis)
-
-- A new `grafana/alloy:vX.Y.Z-windowsservercore-ltsc2022` Docker image is now published on DockerHub. (@ptodev)
-
-v1.8.0-rc.2
+v1.8.0
 -----------------
 
 ### Breaking changes
@@ -51,6 +37,7 @@ v1.8.0-rc.2
   required before components that use clustering begin processing traffic to ensure adequate cluster capacity is
   available. (@thampiotr)
 - Add `trace_printer` to `beyla.ebpf` component to print trace information in a specific format. (@marctc)
+- Add support for live debugging and graph in the UI for components imported via remotecfg. (@wildum)
 
 ### Enhancements
 
@@ -106,6 +93,11 @@ v1.8.0-rc.2
 - Add error body propagation in `pyroscope.write`, for `/ingest` calls. (@simonswine)
 
 - Add `tenant` label to remaining `loki_write_.+` metrics (@towolf)
+
+- Removed syntax highlighting from the component details UI view to improve
+  rendering performance. (@tpaschalis)
+
+- A new `grafana/alloy:vX.Y.Z-windowsservercore-ltsc2022` Docker image is now published on DockerHub. (@ptodev)
 
 ### Bugfixes
 
