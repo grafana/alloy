@@ -18,7 +18,6 @@ import (
 	"github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/goleak"
 	"golang.org/x/tools/txtar"
 
 	_ "github.com/grafana/alloy/internal/runtime/internal/testcomponents/module/string"
@@ -299,15 +298,7 @@ func TestImportError(t *testing.T) {
 }
 
 func testConfig(t *testing.T, config string, reloadConfig string, update func()) {
-	defer goleak.VerifyNone(
-		t,
-		goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"),
-		goleak.IgnoreTopFunction("go.opentelemetry.io/otel/sdk/trace.(*batchSpanProcessor).processQueue"),
-		// TODO - #3257: There is a small race condition where the file detector's cancel func is closed but it has
-		// not yet been scheduled to run & then terminate. The refactor to fix this is significant,
-		// and not currently worth the investment.
-		goleak.IgnoreTopFunction("github.com/grafana/alloy/internal/filedetector.(*FSNotify).wait"),
-	)
+	defer verifyNoGoroutineLeaks(t)
 
 	ctrl, f := setup(t, config, nil, featuregate.StabilityPublicPreview)
 
