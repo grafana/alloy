@@ -29,19 +29,26 @@ Main (unreleased)
 
 ### Bugfixes
 
-- Fix panic in `prometheus.exporter.postgres` when using minimal url as data source name. (@kalleep)
-
-- Fix issue with `remoteCfg` service stopping immediately and logging noop error if not configured (@dehaansa)
-
 - Fix `otelcol.exporter.prometheus` dropping valid exemplars. (@github-vincent-miszczak)
-
-- `rfc3164_default_to_current_year` argument was not fully added to `loki.source.syslog` (@dehaansa)
 
 ### Other changes
 
 - Update the zap logging adapter used by `otelcol` components to log arrays and objects. (@dehaansa)
 
 - Updated Windows install script to add DisplayVersion into registry on install (@enessene)
+
+v1.8.1
+-----------------
+
+### Bugfixes
+
+- `rfc3164_default_to_current_year` argument was not fully added to `loki.source.syslog` (@dehaansa)
+
+- Fix issue with `remoteCfg` service stopping immediately and logging noop error if not configured (@dehaansa)
+
+- Fix potential race condition in `remoteCfg` service metrics registration (@kalleep)
+
+- Fix panic in `prometheus.exporter.postgres` when using minimal url as data source name. (@kalleep)
 
 v1.8.0
 -----------------
