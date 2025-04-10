@@ -9,7 +9,7 @@ import (
 )
 
 // validateComponents will perform validation on component blocks.
-func validateComponents(components []*ast.BlockStmt) diag.Diagnostics {
+func validateComponents(components []*ast.BlockStmt, reg component.Registry) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	for _, c := range components {
@@ -25,9 +25,16 @@ func validateComponents(components []*ast.BlockStmt) diag.Diagnostics {
 			})
 		}
 
-		// FIXME
-		reg, ok := component.Get(name)
-		fmt.Println(reg, ok)
+		// 2. Check if component exists and can be used.
+		_, err := reg.Get(name)
+		if err != nil {
+			diags.Add(diag.Diagnostic{
+				Severity: diag.SeverityLevelError,
+				StartPos: c.NamePos.Position(),
+				EndPos:   c.NamePos.Add(len(name) - 1).Position(),
+				Message:  err.Error(),
+			})
+		}
 	}
 
 	return diags

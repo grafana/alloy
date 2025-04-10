@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/fatih/color"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/service/cluster"
 	"github.com/grafana/alloy/internal/service/http"
@@ -22,6 +25,7 @@ import (
 func validateCommand() *cobra.Command {
 	v := &alloyValidate{
 		configFormat: "alloy",
+		minStability: featuregate.StabilityGenerallyAvailable,
 	}
 
 	cmd := &cobra.Command{
@@ -35,10 +39,15 @@ func validateCommand() *cobra.Command {
 		},
 	}
 
+	// FIXME(kalleep): these flags are shared with `run`.
 	// Config flags
 	cmd.Flags().StringVar(&v.configFormat, "config.format", v.configFormat, fmt.Sprintf("The format of the source file. Supported formats: %s.", supportedFormatsList()))
 	cmd.Flags().BoolVar(&v.configBypassConversionErrors, "config.bypass-conversion-errors", v.configBypassConversionErrors, "Enable bypassing errors when converting")
 	cmd.Flags().StringVar(&v.configExtraArgs, "config.extra-args", v.configExtraArgs, "Extra arguments from the original format used by the converter. Multiple arguments can be passed by separating them with a space.")
+
+	// Misc flags
+	cmd.Flags().Var(&v.minStability, "stability.level", fmt.Sprintf("Minimum stability level of features to enable. Supported values: %s", strings.Join(featuregate.AllowedValues(), ", ")))
+	cmd.Flags().BoolVar(&v.enableCommunityComps, "feature.community-components.enabled", v.enableCommunityComps, "Enable community components.")
 
 	return cmd
 }
@@ -47,6 +56,9 @@ type alloyValidate struct {
 	configFormat                 string
 	configBypassConversionErrors bool
 	configExtraArgs              string
+
+	minStability         featuregate.Stability
+	enableCommunityComps bool
 }
 
 func (v *alloyValidate) Run(configFile string) error {
@@ -57,14 +69,17 @@ func (v *alloyValidate) Run(configFile string) error {
 
 	if err := validator.Validate(
 		sources,
-		getServiceDefinitions(
-			&cluster.Service{},
-			&http.Service{},
-			&labelstore.Service{},
-			&otel.Service{},
-			&remotecfg.Service{},
-			&ui.Service{},
-		),
+		validator.Options{
+			ServiceDefinitions: getServiceDefinitions(
+				&cluster.Service{},
+				&http.Service{},
+				&labelstore.Service{},
+				&otel.Service{},
+				&remotecfg.Service{},
+				&ui.Service{},
+			),
+			ComponentRegistry: component.NewDefaultComponentRegistry(v.minStability, v.enableCommunityComps),
+		},
 	); err != nil {
 		report(os.Stderr, err, sources)
 	}
@@ -87,7 +102,7 @@ func report(w io.Writer, err error, sources map[string][]byte) {
 		return
 	}
 
-	fmt.Fprintf(w, "validation failed: %s", err)
+	_, _ = fmt.Fprintf(w, "validation failed: %s", err)
 }
 
 func getServiceDefinitions(services ...service.Service) []service.Definition {

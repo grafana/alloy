@@ -3,21 +3,34 @@ package validator
 import (
 	"strings"
 
+	"github.com/grafana/alloy/internal/component"
 	alloy_runtime "github.com/grafana/alloy/internal/runtime"
 	"github.com/grafana/alloy/internal/service"
 
 	"github.com/grafana/alloy/syntax/ast"
 )
 
-func Validate(sources map[string][]byte, serviceDefinitions []service.Definition) error {
+type Options struct {
+	// ServiceDefinitions is used to validate service config.
+	ServiceDefinitions []service.Definition
+	// ComponentRegistry is used to validate component config.
+	ComponentRegistry component.Registry
+}
+
+func Validate(sources map[string][]byte, opts Options) error {
 	source, err := alloy_runtime.ParseSources(sources)
 	if err != nil {
 		return err
 	}
 
-	componants, _ := splitComponents(source.Components(), serviceDefinitions)
+	components, _ := splitComponents(source.Components(), opts.ServiceDefinitions)
 
-	return validateComponents(componants)
+	diags := validateComponents(components, opts.ComponentRegistry)
+	if diags != nil {
+		return diags
+	}
+
+	return nil
 }
 
 func splitComponents(blocks []*ast.BlockStmt, serviceDefinitions []service.Definition) ([]*ast.BlockStmt, []*ast.BlockStmt) {
