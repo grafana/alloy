@@ -39,6 +39,8 @@ Main (unreleased)
 
 - Update the zap logging adapter used by `otelcol` components to log arrays and objects. (@dehaansa)
 
+- Updated Windows install script to add DisplayVersion into registry on install (@enessene)
+
 v1.8.0
 -----------------
 
