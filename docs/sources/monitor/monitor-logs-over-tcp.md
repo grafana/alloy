@@ -1,5 +1,5 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/tutorials/scenarios/monitor-logs-over-tcp/
+canonical: https://grafana.com/docs/alloy/latest/monitor/monitor-logs-over-tcp/
 description: Learn how to use Grafana Alloy to monitor TCP logs.
 menuTitle: Monitor TCP logs
 title: Monitor TCP logs with Grafana Alloy
@@ -73,7 +73,7 @@ For more information about the {{< param "PRODUCT_NAME" >}} UI, refer to [Debug 
 
 To use the Grafana Logs Drilldown, open your browser and go to [http://localhost:3000/a/grafana-lokiexplore-app](http://localhost:3000/a/grafana-lokiexplore-app).
 
-To create a [dashboard](https://grafana.com/docs/grafana/latest/getting-started/build-first-dashboard/#create-a-dashboard) to visualize your metrics and logs, open your browser and go to [`http://localhost:3000/dashboards`](http://localhost:3000/dashboards).
+To create a [dashboard](https://grafana.com/docs/grafana/latest/getting-started/build-first-dashboard/#create-a-dashboard) to visualize your metrics and logs, open your browser and go to [http://localhost:3000/dashboards](http://localhost:3000/dashboards).
 
 ## Understand the {{% param "PRODUCT_NAME" %}} configuration
 

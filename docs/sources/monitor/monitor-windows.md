@@ -1,5 +1,5 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/tutorials/scenarios/monitor-windows/
+canonical: https://grafana.com/docs/alloy/latest/monitor/monitor-windows/
 description: Learn how to use Grafana Alloy to monitor Windows servers and desktops
 menuTitle: Monitor Windows
 title: Monitor Microsoft Windows servers and desktops with Grafana Alloy
@@ -93,7 +93,7 @@ To explore metrics, open your browser and go to [http://localhost:3000/explore/m
 
 To use the Grafana Logs Drilldown, open your browser and go to [http://localhost:3000/a/grafana-lokiexplore-app](http://localhost:3000/a/grafana-lokiexplore-app).
 
-To create a [dashboard](https://grafana.com/docs/grafana/latest/getting-started/build-first-dashboard/#create-a-dashboard) to visualize metrics and logs, open your browser and go to [`http://localhost:3000/dashboards`](http://localhost:3000/dashboards).
+To create a [dashboard](https://grafana.com/docs/grafana/latest/getting-started/build-first-dashboard/#create-a-dashboard) to visualize metrics and logs, open your browser and go to [http://localhost:3000/dashboards](http://localhost:3000/dashboards).
 
 ## Understand the {{% param "PRODUCT_NAME" %}} configuration
 
@@ -152,6 +152,10 @@ prometheus.remote_write "demo" {
   }
 }
 ```
+
+[`prometheus.exporter.windows`]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/prometheus/prometheus.exporter.windows/
+[`prometheus.scrape`]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/prometheus/prometheus.scrape/
+[`prometheus.remote_write`]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/prometheus/prometheus.remote.write/
 
 ### Configure logging
 
