@@ -7,6 +7,13 @@ import (
 	"os"
 
 	"github.com/fatih/color"
+	"github.com/grafana/alloy/internal/service"
+	"github.com/grafana/alloy/internal/service/cluster"
+	"github.com/grafana/alloy/internal/service/http"
+	"github.com/grafana/alloy/internal/service/labelstore"
+	"github.com/grafana/alloy/internal/service/otel"
+	"github.com/grafana/alloy/internal/service/remotecfg"
+	"github.com/grafana/alloy/internal/service/ui"
 	"github.com/grafana/alloy/internal/validator"
 	"github.com/grafana/alloy/syntax/diag"
 	"github.com/spf13/cobra"
@@ -48,7 +55,17 @@ func (v *alloyValidate) Run(configFile string) error {
 		return err
 	}
 
-	if err := validator.Validate(sources); err != nil {
+	if err := validator.Validate(
+		sources,
+		getServiceDefinitions(
+			&cluster.Service{},
+			&http.Service{},
+			&labelstore.Service{},
+			&otel.Service{},
+			&remotecfg.Service{},
+			&ui.Service{},
+		),
+	); err != nil {
 		report(os.Stderr, err, sources)
 	}
 
@@ -71,4 +88,12 @@ func report(w io.Writer, err error, sources map[string][]byte) {
 	}
 
 	fmt.Fprintf(w, "validation failed: %s", err)
+}
+
+func getServiceDefinitions(services ...service.Service) []service.Definition {
+	def := make([]service.Definition, 0, len(services))
+	for _, s := range services {
+		def = append(def, s.Definition())
+	}
+	return def
 }
