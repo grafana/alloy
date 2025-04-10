@@ -7,6 +7,13 @@ This document contains a historical list of changes between releases. Only
 changes that impact end-user behavior are listed; changes to documentation or
 internal API changes are not present.
 
+v1.8.1
+-----------------
+
+### Bugfixes
+
+- `rfc3164_default_to_current_year` argument was not fully added to `loki.source.syslog` (@dehaansa)
+
 v1.8.0
 -----------------
 
