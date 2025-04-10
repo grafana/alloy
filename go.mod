@@ -563,7 +563,7 @@ require (
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
 	github.com/go-git/go-billy/v5 v5.6.0 // indirect
 	github.com/go-ini/ini v1.67.0 // indirect
-	github.com/go-jose/go-jose/v4 v4.0.4 // indirect
+	github.com/go-jose/go-jose/v4 v4.0.5 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
@@ -739,7 +739,6 @@ require (
 	github.com/oapi-codegen/runtime v1.0.0 // indirect
 	github.com/ohler55/ojg v1.20.1 // indirect
 	github.com/oklog/ulid v1.3.1 // indirect
-	github.com/open-telemetry/opentelemetry-collector-contrib/extension/storage/filestorage v0.122.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/aws/ecsutil v0.122.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/common v0.122.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/coreinternal v0.122.0 // indirect
@@ -878,7 +877,6 @@ require (
 	go.opentelemetry.io/collector/exporter/exportertest v0.122.1 // indirect
 	go.opentelemetry.io/collector/exporter/xexporter v0.122.1 // indirect
 	go.opentelemetry.io/collector/extension/extensioncapabilities v0.122.1 // indirect
-	go.opentelemetry.io/collector/extension/xextension v0.122.1 // indirect
 	go.opentelemetry.io/collector/filter v0.122.1 // indirect
 	go.opentelemetry.io/collector/internal/fanoutconsumer v0.122.1 // indirect
 	go.opentelemetry.io/collector/internal/memorylimiter v0.122.1 // indirect
@@ -940,7 +938,11 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.5.0 // indirect
 )
 
-require github.com/grafana/beyla/v2 v2.1.0-alloy-1
+require (
+	github.com/grafana/beyla/v2 v2.1.0-alloy-1
+	github.com/open-telemetry/opentelemetry-collector-contrib/extension/storage/filestorage v0.122.0
+	go.opentelemetry.io/collector/extension/xextension v0.122.1
+)
 
 // NOTE: replace directives below must always be *temporary*.
 //
