@@ -1,5 +1,5 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/tutorials/scenarios/monitor-kubernetes-logs/
+canonical: https://grafana.com/docs/alloy/latest/monitor/monitor-kubernetes-logs/
 description: Learn how to use Grafana Alloy to monitor Kubernetes logs
 menuTitle: Monitor Kubernetes logs
 title: Monitor Kubernetes logs with Grafana Alloy
@@ -150,7 +150,7 @@ For more information about the {{< param "PRODUCT_NAME" >}} UI, refer to [Debug 
 
 To use the Grafana Logs Drilldown, open your browser and go to [http://localhost:3000/a/grafana-lokiexplore-app](http://localhost:3000/a/grafana-lokiexplore-app).
 
-To create a [dashboard](https://grafana.com/docs/grafana/latest/getting-started/build-first-dashboard/#create-a-dashboard) to visualize your metrics and logs, open your browser and go to [`http://localhost:3000/dashboards`](http://localhost:3000/dashboards).
+To create a [dashboard](https://grafana.com/docs/grafana/latest/getting-started/build-first-dashboard/#create-a-dashboard) to visualize your metrics and logs, open your browser and go to [http://localhost:3000/dashboards](http://localhost:3000/dashboards).
 
 ## Understand the Kubernetes Monitoring Helm chart
 
