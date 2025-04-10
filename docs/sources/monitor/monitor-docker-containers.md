@@ -1,5 +1,5 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/tutorials/scenarios/monitor-docker-containers/
+canonical: https://grafana.com/docs/alloy/latest/monitor/monitor-docker-containers/
 description: Learn how to use Grafana Alloy to monitor Docker containers
 menuTitle: Monitor Docker
 title: Monitor Docker containers with Grafana Alloy
@@ -65,7 +65,7 @@ Use Grafana to monitor deployment health and visualize data.
 
 ### Monitor {{% param "PRODUCT_NAME" %}}
 
-To monitor the health of your {{< param "PRODUCT_NAME" >}} deployment, open [http://localhost:12345](http://localhost:12345) in your browser.
+To monitor the health of your {{< param "PRODUCT_NAME" >}} deployment, open your browser and go to [http://localhost:12345](http://localhost:12345).
 
 For more information about the {{< param "PRODUCT_NAME" >}} UI, refer to [Debug Grafana Alloy](https://grafana.com/docs/alloy/latest/troubleshoot/debug/).
 
