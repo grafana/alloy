@@ -148,9 +148,9 @@ func New(o Options) *Runtime {
 type controllerOptions struct {
 	Options
 
-	ComponentRegistry component.ComponentRegistry // Custom component registry used in tests.
-	ModuleRegistry    *moduleRegistry             // Where to register created modules.
-	IsModule          bool                        // Whether this controller is for a module.
+	ComponentRegistry component.Registry // Custom component registry used in tests.
+	ModuleRegistry    *moduleRegistry    // Where to register created modules.
+	IsModule          bool               // Whether this controller is for a module.
 	// A worker pool to evaluate components asynchronously. A default one will be created if this is nil.
 	WorkerPool worker.Pool
 }
