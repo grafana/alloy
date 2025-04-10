@@ -65,7 +65,7 @@ useful if just using the default DaemonSet isn't sufficient.
 | configReloader.image.registry | string | `"quay.io"` | Config reloader image registry (defaults to docker.io) |
 | configReloader.image.repository | string | `"prometheus-operator/prometheus-config-reloader"` | Repository to get config reloader image from. |
 | configReloader.image.tag | string | `"v0.81.0"` | Tag of image to use for config reloading. |
-| configReloader.resources | object | `{"requests":{"cpu":"1m","memory":"5Mi"}}` | Resource requests and limits to apply to the config reloader container. |
+| configReloader.resources | object | `{"requests":{"cpu":"10m","memory":"50Mi"}}` | Resource requests and limits to apply to the config reloader container. |
 | configReloader.securityContext | object | `{}` | Security context to apply to the Grafana configReloader container. |
 | controller.affinity | object | `{}` | Affinity configuration for pods. |
 | controller.autoscaling.enabled | bool | `false` | Creates a HorizontalPodAutoscaler for controller type deployment. Deprecated: Please use controller.autoscaling.horizontal instead |

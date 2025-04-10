@@ -12,6 +12,8 @@ Unreleased
 
 ### Enhancements
 
+- Update default configreloader resources to match what is set in prometheus-operator project (@dehaansa)
+
 - Add Vertical Pod Autoscaler support (@QuentinBisson)
 
 1.0.0 (2025-04-09)
