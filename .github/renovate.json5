@@ -6,6 +6,7 @@
   ],
 
   "commitMessageAction": "update",
+  "commitMessageTopic": "{{manager}} dependency {{depName}}",
 
   // Tell dependency dashboard to only require PR creation approval for major versions
   "major": {
