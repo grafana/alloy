@@ -13,7 +13,6 @@ import (
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	promListers "github.com/prometheus-operator/prometheus-operator/pkg/client/listers/monitoring/v1"
 	promlabels "github.com/prometheus/prometheus/model/labels"
-	"github.com/prometheus/prometheus/model/rulefmt"
 	"github.com/prometheus/prometheus/promql/parser"
 	"k8s.io/apimachinery/pkg/labels"
 	coreListers "k8s.io/client-go/listers/core/v1"
@@ -46,7 +45,7 @@ type eventProcessor struct {
 	metrics *metrics
 	logger  log.Logger
 
-	currentState    kubernetes.RuleGroupsByNamespace
+	currentState    kubernetes.MimirRuleGroupsByNamespace
 	currentStateMtx sync.RWMutex
 }
 
@@ -154,7 +153,7 @@ func (e *eventProcessor) reconcileState(ctx context.Context) error {
 	}
 
 	currentState := e.getMimirState()
-	diffs := kubernetes.DiffRuleState(desiredState, currentState)
+	diffs := kubernetes.DiffMimirRuleGroupState(desiredState, currentState)
 
 	var errs error
 	for ns, diff := range diffs {
@@ -170,19 +169,29 @@ func (e *eventProcessor) reconcileState(ctx context.Context) error {
 
 // desiredStateFromKubernetes loads PrometheusRule resources from Kubernetes and converts
 // them to corresponding Mimir rule groups, indexed by Mimir namespace.
-func (e *eventProcessor) desiredStateFromKubernetes() (kubernetes.RuleGroupsByNamespace, error) {
+func (e *eventProcessor) desiredStateFromKubernetes() (kubernetes.MimirRuleGroupsByNamespace, error) {
 	kubernetesState, err := e.getKubernetesState()
 	if err != nil {
 		return nil, err
 	}
 
-	desiredState := make(kubernetes.RuleGroupsByNamespace)
+	desiredState := make(kubernetes.MimirRuleGroupsByNamespace)
 	for _, rules := range kubernetesState {
 		for _, rule := range rules {
 			mimirNs := mimirNamespaceForRuleCRD(e.namespacePrefix, rule)
 			groups, err := convertCRDRuleGroupToRuleGroup(rule.Spec)
 			if err != nil {
 				return nil, fmt.Errorf("failed to convert rule group: %w", err)
+			}
+
+			var sourceTenants []string
+			if rule.Annotations[AnnotationsSourceTenants] != "" {
+				sourceTenants = regexp.MustCompile(`\s*,\s*`).
+					Split(rule.Annotations[AnnotationsSourceTenants], -1)
+			}
+
+			for i := range groups {
+				groups[i].SourceTenants = sourceTenants
 			}
 
 			if len(e.externalLabels) > 0 {
@@ -286,13 +295,13 @@ func labelsSetPromQL(query, labelMatchType, name, value string) (string, error) 
 	return expr.String(), nil
 }
 
-func convertCRDRuleGroupToRuleGroup(crd promv1.PrometheusRuleSpec) ([]rulefmt.RuleGroup, error) {
+func convertCRDRuleGroupToRuleGroup(crd promv1.PrometheusRuleSpec) ([]client.MimirRuleGroup, error) {
 	buf, err := yaml.Marshal(crd)
 	if err != nil {
 		return nil, err
 	}
 
-	groups, errs := rulefmt.Parse(buf)
+	groups, errs := client.Parse(buf)
 	if len(errs) > 0 {
 		return nil, multierror.Append(nil, errs...)
 	}
@@ -300,7 +309,7 @@ func convertCRDRuleGroupToRuleGroup(crd promv1.PrometheusRuleSpec) ([]rulefmt.Ru
 	return groups.Groups, nil
 }
 
-func (e *eventProcessor) applyChanges(ctx context.Context, namespace string, diffs []kubernetes.RuleGroupDiff) error {
+func (e *eventProcessor) applyChanges(ctx context.Context, namespace string, diffs []kubernetes.MimirRuleGroupDiff) error {
 	if len(diffs) == 0 {
 		return nil
 	}
@@ -335,11 +344,11 @@ func (e *eventProcessor) applyChanges(ctx context.Context, namespace string, dif
 }
 
 // getMimirState returns the cached Mimir ruler state, rule groups indexed by Mimir namespace.
-func (e *eventProcessor) getMimirState() kubernetes.RuleGroupsByNamespace {
+func (e *eventProcessor) getMimirState() kubernetes.MimirRuleGroupsByNamespace {
 	e.currentStateMtx.RLock()
 	defer e.currentStateMtx.RUnlock()
 
-	out := make(kubernetes.RuleGroupsByNamespace, len(e.currentState))
+	out := make(kubernetes.MimirRuleGroupsByNamespace, len(e.currentState))
 	for ns, groups := range e.currentState {
 		out[ns] = groups
 	}

@@ -3,37 +3,30 @@ package kubernetes
 import (
 	"bytes"
 
-	"github.com/prometheus/prometheus/model/rulefmt"
 	"gopkg.in/yaml.v3" // Used for prometheus rulefmt compatibility instead of gopkg.in/yaml.v2
+
+	"github.com/grafana/alloy/internal/mimir/client"
 )
 
-type RuleGroupDiffKind string
-
-const (
-	RuleGroupDiffKindAdd    RuleGroupDiffKind = "add"
-	RuleGroupDiffKindRemove RuleGroupDiffKind = "remove"
-	RuleGroupDiffKindUpdate RuleGroupDiffKind = "update"
-)
-
-type RuleGroupDiff struct {
+type MimirRuleGroupDiff struct {
 	Kind    RuleGroupDiffKind
-	Actual  rulefmt.RuleGroup
-	Desired rulefmt.RuleGroup
+	Actual  client.MimirRuleGroup
+	Desired client.MimirRuleGroup
 }
 
-type RuleGroupsByNamespace map[string][]rulefmt.RuleGroup
-type RuleGroupDiffsByNamespace map[string][]RuleGroupDiff
+type MimirRuleGroupsByNamespace map[string][]client.MimirRuleGroup
+type MimirRuleGroupDiffsByNamespace map[string][]MimirRuleGroupDiff
 
-func DiffRuleState(desired, actual RuleGroupsByNamespace) RuleGroupDiffsByNamespace {
+func DiffMimirRuleGroupState(desired, actual MimirRuleGroupsByNamespace) MimirRuleGroupDiffsByNamespace {
 	seenNamespaces := map[string]bool{}
 
-	diff := make(RuleGroupDiffsByNamespace)
+	diff := make(MimirRuleGroupDiffsByNamespace)
 
 	for namespace, desiredRuleGroups := range desired {
 		seenNamespaces[namespace] = true
 
 		actualRuleGroups := actual[namespace]
-		subDiff := diffRuleNamespaceState(desiredRuleGroups, actualRuleGroups)
+		subDiff := diffMimirRuleGroupNamespaceState(desiredRuleGroups, actualRuleGroups)
 
 		if len(subDiff) == 0 {
 			continue
@@ -47,7 +40,7 @@ func DiffRuleState(desired, actual RuleGroupsByNamespace) RuleGroupDiffsByNamesp
 			continue
 		}
 
-		subDiff := diffRuleNamespaceState(nil, actualRuleGroups)
+		subDiff := diffMimirRuleGroupNamespaceState(nil, actualRuleGroups)
 
 		diff[namespace] = subDiff
 	}
@@ -55,8 +48,8 @@ func DiffRuleState(desired, actual RuleGroupsByNamespace) RuleGroupDiffsByNamesp
 	return diff
 }
 
-func diffRuleNamespaceState(desired []rulefmt.RuleGroup, actual []rulefmt.RuleGroup) []RuleGroupDiff {
-	var diff []RuleGroupDiff
+func diffMimirRuleGroupNamespaceState(desired []client.MimirRuleGroup, actual []client.MimirRuleGroup) []MimirRuleGroupDiff {
+	var diff []MimirRuleGroupDiff
 
 	seenGroups := map[string]bool{}
 
@@ -66,11 +59,11 @@ desiredGroups:
 
 		for _, actualRuleGroup := range actual {
 			if desiredRuleGroup.Name == actualRuleGroup.Name {
-				if equalRuleGroups(desiredRuleGroup, actualRuleGroup) {
+				if equalMimirRuleGroups(desiredRuleGroup, actualRuleGroup) {
 					continue desiredGroups
 				}
 
-				diff = append(diff, RuleGroupDiff{
+				diff = append(diff, MimirRuleGroupDiff{
 					Kind:    RuleGroupDiffKindUpdate,
 					Actual:  actualRuleGroup,
 					Desired: desiredRuleGroup,
@@ -79,7 +72,7 @@ desiredGroups:
 			}
 		}
 
-		diff = append(diff, RuleGroupDiff{
+		diff = append(diff, MimirRuleGroupDiff{
 			Kind:    RuleGroupDiffKindAdd,
 			Desired: desiredRuleGroup,
 		})
@@ -90,7 +83,7 @@ desiredGroups:
 			continue
 		}
 
-		diff = append(diff, RuleGroupDiff{
+		diff = append(diff, MimirRuleGroupDiff{
 			Kind:   RuleGroupDiffKindRemove,
 			Actual: actualRuleGroup,
 		})
@@ -99,7 +92,7 @@ desiredGroups:
 	return diff
 }
 
-func equalRuleGroups(a, b rulefmt.RuleGroup) bool {
+func equalMimirRuleGroups(a, b client.MimirRuleGroup) bool {
 	aBuf, err := yaml.Marshal(a)
 	if err != nil {
 		return false

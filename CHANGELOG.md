@@ -33,6 +33,8 @@ Main (unreleased)
 
 - Add `otelcol.receiver.splunkhec` component to receive events in splunk hec format and forward them to other `otelcol.*` components. (@kalleep)
 
+- Add support for Mimir federated rule groups in `mimir.rules.kubernetes` (@QuentinBisson)
+
 ### Enhancements
 
 - `prometheus.exporter.mongodb` now offers fine-grained control over collected metrics with new configuration options. (@TeTeHacko)

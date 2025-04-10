@@ -10,7 +10,6 @@ import (
 	"github.com/go-kit/log"
 	v1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	promListers "github.com/prometheus-operator/prometheus-operator/pkg/client/listers/monitoring/v1"
-	"github.com/prometheus/prometheus/model/rulefmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
@@ -24,23 +23,24 @@ import (
 	"k8s.io/client-go/util/workqueue"
 
 	"github.com/grafana/alloy/internal/component/common/kubernetes"
+	"github.com/grafana/alloy/internal/mimir/client"
 	mimirClient "github.com/grafana/alloy/internal/mimir/client"
 )
 
 type fakeMimirClient struct {
 	rulesMut sync.RWMutex
-	rules    map[string][]rulefmt.RuleGroup
+	rules    map[string][]client.MimirRuleGroup
 }
 
 var _ mimirClient.Interface = &fakeMimirClient{}
 
 func newFakeMimirClient() *fakeMimirClient {
 	return &fakeMimirClient{
-		rules: make(map[string][]rulefmt.RuleGroup),
+		rules: make(map[string][]client.MimirRuleGroup),
 	}
 }
 
-func (m *fakeMimirClient) CreateRuleGroup(_ context.Context, namespace string, rule rulefmt.RuleGroup) error {
+func (m *fakeMimirClient) CreateRuleGroup(_ context.Context, namespace string, rule client.MimirRuleGroup) error {
 	m.rulesMut.Lock()
 	defer m.rulesMut.Unlock()
 	m.deleteLocked(namespace, rule.Name)
@@ -74,10 +74,10 @@ func (m *fakeMimirClient) deleteLocked(namespace, group string) {
 	}
 }
 
-func (m *fakeMimirClient) ListRules(_ context.Context, namespace string) (map[string][]rulefmt.RuleGroup, error) {
+func (m *fakeMimirClient) ListRules(_ context.Context, namespace string) (map[string][]client.MimirRuleGroup, error) {
 	m.rulesMut.RLock()
 	defer m.rulesMut.RUnlock()
-	output := make(map[string][]rulefmt.RuleGroup)
+	output := make(map[string][]client.MimirRuleGroup)
 	for ns, v := range m.rules {
 		if namespace != "" && namespace != ns {
 			continue
@@ -252,7 +252,7 @@ func TestAdditionalLabels(t *testing.T) {
 	eventHandler.OnAdd(rule, false)
 
 	// Wait for the rule to be added to mimir
-	rules := map[string][]rulefmt.RuleGroup{}
+	rules := map[string][]client.MimirRuleGroup{}
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		var err error
 		rules, err = processor.mimirClient.ListRules(ctx, "")
@@ -367,7 +367,7 @@ func TestExtraQueryMatchers(t *testing.T) {
 	eventHandler.OnAdd(rule, false)
 
 	// Wait for the rule to be added to mimir
-	rules := map[string][]rulefmt.RuleGroup{}
+	rules := map[string][]client.MimirRuleGroup{}
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		var err error
 		rules, err = processor.mimirClient.ListRules(ctx, "")
