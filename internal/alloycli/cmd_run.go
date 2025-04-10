@@ -527,15 +527,6 @@ func getEnabledComponentsFunc(f *alloy_runtime.Runtime) func() map[string]interf
 	}
 }
 
-func loadAlloySource(path string, converterSourceFormat string, converterBypassErrors bool, configExtraArgs string) (*alloy_runtime.Source, error) {
-	files, err := loadSourceFiles(path, converterSourceFormat, converterBypassErrors, configExtraArgs)
-	if err != nil {
-		return nil, err
-	}
-
-	return alloy_runtime.ParseSources(files)
-}
-
 // addDeprecatedFlags adds flags that are deprecated, but we keep them for backwards compatibility.
 func addDeprecatedFlags(cmd *cobra.Command) {
 	_ = cmd.Flags().
