@@ -137,7 +137,7 @@ func ParseSources(sources map[string][]byte) (*Source, error) {
 
 		sourceFragment, err := ParseSource(namedSource.Name, namedSource.Content)
 		if err != nil {
-			// If we encounter digagnostic errors we combine them and
+			// If we encounter diagnostic errors we combine them and
 			// later return the merge
 			var diags diag.Diagnostics
 			if errors.As(err, &diags) {
