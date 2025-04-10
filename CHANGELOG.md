@@ -29,6 +29,8 @@ Main (unreleased)
   - `query_tables`: improve queries parsing (@cristiangreco)
   - make tidbparser the default choice (@cristiangreco)
 
+- Reduced the lag time during targets handover in a cluster in `prometheus.scrape` components by reducing thread contention. (@thampiotr)
+
 ### Bugfixes
 
 - Fix `otelcol.exporter.prometheus` dropping valid exemplars. (@github-vincent-miszczak)
