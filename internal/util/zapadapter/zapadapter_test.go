@@ -13,6 +13,7 @@ import (
 	"github.com/grafana/alloy/internal/util/zapadapter"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 func Test(t *testing.T) {
@@ -81,6 +82,29 @@ func Test(t *testing.T) {
 			},
 			expect: `level=info msg="Hello, world!" key=foo ns.key=bar`,
 		},
+		{
+			name: "Array",
+			field: []zap.Field{
+				zap.Strings("arr", []string{"foo", "bar"}),
+			},
+			expect: `level=info msg="Hello, world!" arr="[\"foo\",\"bar\"]"`,
+		},
+		{
+			name: "Object",
+			field: []zap.Field{
+				zap.Object("obj", testObject{
+					obj: map[string]any{
+						"foo": "bar",
+						"bar": 123,
+						"baz": true,
+						"qux": map[string]any{
+							"foo": "car",
+						},
+					},
+				}),
+			},
+			expect: `level=info msg="Hello, world!" obj="{\"bar\":123,\"baz\":true,\"foo\":\"bar\",\"qux\":{\"foo\":\"car\"}}"`,
+		},
 	}
 
 	for _, tc := range tt {
@@ -99,9 +123,6 @@ func Test(t *testing.T) {
 
 func Benchmark(b *testing.B) {
 	// Benchmark various fields that may be commonly printed.
-	//
-	// NOTE(rfratto): Array and Object are skipped as benchmarks since they
-	// currently only print placeholder text in place of actual values.
 
 	runBenchmark(b, "No fields")
 	runBenchmark(b, "Any", zap.Any("key", 12345))
@@ -113,6 +134,17 @@ func Benchmark(b *testing.B) {
 	runBenchmark(b, "Int", zap.Int("key", 1234))
 	runBenchmark(b, "String", zap.String("key", "test"))
 	runBenchmark(b, "Time", zap.Time("key", time.Date(2022, 12, 1, 1, 1, 1, 1, time.UTC)))
+	runBenchmark(b, "Array", zap.Strings("key", []string{"foo", "bar"}))
+	runBenchmark(b, "Object", zap.Object("key", testObject{
+		obj: map[string]any{
+			"foo": "bar",
+			"bar": 123,
+			"baz": true,
+			"qux": map[string]any{
+				"foo": "car",
+			},
+		},
+	}))
 }
 
 func runBenchmark(b *testing.B, name string, fields ...zap.Field) {
@@ -126,4 +158,26 @@ func runBenchmark(b *testing.B, name string, fields ...zap.Field) {
 			zapLogger.Info("Hello, world!", fields...)
 		}
 	})
+}
+
+type testObject struct {
+	obj map[string]any
+}
+
+func (o testObject) MarshalLogObject(enc zapcore.ObjectEncoder) error {
+	for k, v := range o.obj {
+		switch v := v.(type) {
+		case string:
+			enc.AddString(k, v)
+		case int:
+			enc.AddInt(k, v)
+		case bool:
+			enc.AddBool(k, v)
+		case map[string]any:
+			enc.AddObject(k, &testObject{obj: v})
+		default:
+			return fmt.Errorf("unsupported type %T", v)
+		}
+	}
+	return nil
 }

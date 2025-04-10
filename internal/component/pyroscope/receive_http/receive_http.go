@@ -266,10 +266,10 @@ func (c *Component) handleIngest(w http.ResponseWriter, r *http.Request) {
 		go func() {
 			defer wg.Done()
 			profile := &pyroscope.IncomingProfile{
-				RawBody: buf.Bytes(),
-				Headers: r.Header.Clone(),
-				URL:     r.URL,
-				Labels:  lbls,
+				RawBody:     buf.Bytes(),
+				ContentType: r.Header.Values(pyroscope.HeaderContentType),
+				URL:         r.URL,
+				Labels:      lbls,
 			}
 
 			if err := appendable.Appender().AppendIngest(r.Context(), profile); err != nil {

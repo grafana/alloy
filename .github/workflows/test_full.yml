@@ -3,10 +3,14 @@ on:
   push:
     branches:
       - main
+
 jobs:
+  lint:
+    uses: ./.github/workflows/lint.yml
+
   test_linux:
     name: Test (Full)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-8-cores
     container:
       image: grafana/alloy-build-image:v0.1.17
       volumes:
