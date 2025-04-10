@@ -27,6 +27,8 @@ Main (unreleased)
 - (_Experimental_) Various changes to the experimental component `database_observability.mysql`:
   - `schema_table`: add support for index expressions (@cristiangreco)
 
+- Reduced the lag time during targets handover in a cluster in `prometheus.scrape` components by reducing thread contention. (@thampiotr)
+
 ### Bugfixes
 
 - Fix panic in `prometheus.exporter.postgres` when using minimal url as data source name. (@kalleep)
