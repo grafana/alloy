@@ -35,6 +35,8 @@ Main (unreleased)
 
 - Fix `otelcol.exporter.prometheus` dropping valid exemplars. (@github-vincent-miszczak)
 
+- `rfc3164_default_to_current_year` argument was not fully added to `loki.source.syslog` (@dehaansa)
+
 ### Other changes
 
 - Update the zap logging adapter used by `otelcol` components to log arrays and objects. (@dehaansa)
