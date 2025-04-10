@@ -18,12 +18,12 @@ jobs:
         cache: false
 
     - name: Lint alloy module
-      uses: golangci/golangci-lint-action@v7
+      uses: golangci/golangci-lint-action@1481404843c368bc19ca9406f87d6e0fc97bdcfd #v7
       with:
         version: v2.0
 
     - name: Lint syntax module
-      uses: golangci/golangci-lint-action@v7
+      uses: golangci/golangci-lint-action@1481404843c368bc19ca9406f87d6e0fc97bdcfd #v7
       with:
         version: v2.0
         working-directory: ./syntax/
