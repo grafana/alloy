@@ -3,30 +3,7 @@ on:
   pull_request:
 jobs:
   lint:
-<<<<<<< HEAD
-    name: Lint
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version-file: go.mod
-        cache: false
-    - name: golangci-lint
-      uses: golangci/golangci-lint-action@v7
-      with:
-        version: v2.0
-    - name: golangci-lint-syntax
-      uses: golangci/golangci-lint-action@v7
-      with:
-        version: v2.0
-        working-directory: ./syntax/
-    - run: make run-alloylint
-=======
     uses: ./.github/workflows/lint.yml
->>>>>>> main
 
   test_linux:
     name: Test Linux
