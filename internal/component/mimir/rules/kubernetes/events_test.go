@@ -24,6 +24,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/kubernetes"
 	"github.com/grafana/alloy/internal/mimir/client"
+	mimirClient "github.com/grafana/alloy/internal/mimir/client"
 )
 
 type fakeMimirClient struct {
