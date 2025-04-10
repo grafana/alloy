@@ -2,9 +2,7 @@ package runtime
 
 import (
 	"crypto/sha256"
-	"errors"
 	"fmt"
-	"iter"
 	"sort"
 	"strings"
 
@@ -16,7 +14,6 @@ import (
 
 // A Source holds the contents of a parsed Alloy configuration source module.
 type Source struct {
-	errors    map[string]error  // Map that links errors to source name.
 	sourceMap map[string][]byte // Map that links parsed Alloy source's name with its content.
 	fileMap   map[string]*ast.File
 	hash      [sha256.Size]byte // Hash of all files in sourceMap sorted by name.
@@ -32,34 +29,23 @@ type Source struct {
 // the name of the file used for reporting errors.
 //
 // bb must not be modified after passing to ParseSource.
-func ParseSource(name string, bb []byte) *Source {
-	s := &Source{
-		errors:    map[string]error{},
-		sourceMap: map[string][]byte{name: bb},
-	}
-
+func ParseSource(name string, bb []byte) (*Source, error) {
 	bb, err := encoder.EnsureUTF8(bb, true)
 	if err != nil {
-		s.errors[name] = err
-		return s
+		return nil, err
 	}
 	node, err := parser.ParseFile(name, bb)
 	if err != nil {
-		s.errors[name] = err
-		return s
+		return nil, err
 	}
 	source, err := sourceFromBody(node.Body)
 	if err != nil {
-		s.errors[name] = err
-		return s
+		return nil, err
 	}
-
-	s.components = source.components
-	s.declareBlocks = source.declareBlocks
-	s.configBlocks = source.configBlocks
-	s.fileMap = map[string]*ast.File{name: node}
-	s.hash = sha256.Sum256(bb)
-	return source
+	source.sourceMap = map[string][]byte{name: bb}
+	source.fileMap = map[string]*ast.File{name: node}
+	source.hash = sha256.Sum256(bb)
+	return source, nil
 }
 
 // sourceFromBody creates a Source from an existing AST. This must only be used
@@ -121,12 +107,11 @@ type namedSource struct {
 
 // ParseSources parses the map of sources and combines them into a single
 // Source. sources must not be modified after calling ParseSources.
-func ParseSources(sources map[string][]byte) *Source {
+func ParseSources(sources map[string][]byte) (*Source, error) {
 	var (
 		// Combined source from all the input content.
 		mergedSource = &Source{
 			sourceMap: sources,
-			errors:    map[string]error{},
 			fileMap:   make(map[string]*ast.File, len(sources)),
 		}
 		hash = sha256.New() // Combined hash of all the sources.
@@ -148,21 +133,20 @@ func ParseSources(sources map[string][]byte) *Source {
 	for _, namedSource := range sortedSources {
 		hash.Write(namedSource.Content)
 
-		sourceFragment := ParseSource(namedSource.Name, namedSource.Content)
-		// We recod error and continue to collect additial parse errors
-		if err := sourceFragment.Error(namedSource.Name); err != nil {
-			mergedSource.errors[namedSource.Name] = err
-			continue
+		sourceFragment, err := ParseSource(namedSource.Name, namedSource.Content)
+		if err != nil {
+			return nil, err
 		}
 
 		mergedSource.fileMap[namedSource.Name] = sourceFragment.fileMap[namedSource.Name]
+
 		mergedSource.components = append(mergedSource.components, sourceFragment.components...)
 		mergedSource.configBlocks = append(mergedSource.configBlocks, sourceFragment.configBlocks...)
 		mergedSource.declareBlocks = append(mergedSource.declareBlocks, sourceFragment.declareBlocks...)
 	}
 
 	mergedSource.hash = [32]byte(hash.Sum(nil))
-	return mergedSource
+	return mergedSource, nil
 }
 
 // RawConfigs returns the raw source content used to create Source.
@@ -190,44 +174,4 @@ func (s *Source) SHA256() [sha256.Size]byte {
 		return [sha256.Size]byte{}
 	}
 	return s.hash
-}
-
-// HasErrors returns true if any error was recorded during parsing.
-func (s *Source) HasErrors() bool {
-	if s == nil {
-		return false
-	}
-	return len(s.errors) > 0
-}
-
-// Error returns error for source name if it was recorded.
-func (s *Source) Error(name string) error {
-	if s == nil {
-		return nil
-	}
-	return s.errors[name]
-}
-
-// Errors returns an iterator over all collected errors.
-func (s *Source) Errors() iter.Seq2[string, error] {
-	if s == nil {
-		return nil
-	}
-
-	return func(yield func(string, error) bool) {
-		for name, err := range s.errors {
-			if !yield(name, err) {
-				break
-			}
-		}
-	}
-}
-
-// CollectErrors return an error containning all collected errors across different sources.
-func (s *Source) CollectErrors() error {
-	var err error
-	for name, e := range s.Errors() {
-		err = errors.Join(err, fmt.Errorf("%q: %w", name, e))
-	}
-	return err
 }

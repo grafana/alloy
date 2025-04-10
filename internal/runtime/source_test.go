@@ -22,9 +22,9 @@ func TestParseSource(t *testing.T) {
 		}
 	`
 
-	f := ParseSource(t.Name(), []byte(content))
-	require.NoError(t, f.Error(t.Name()))
-	require.NoError(t, f.CollectErrors())
+	f, err := ParseSource(t.Name(), []byte(content))
+	require.NoError(t, err)
+	require.NotNil(t, f)
 
 	require.Len(t, f.components, 2)
 	require.Equal(t, "testcomponents.tick.ticker_a", getBlockID(f.components[0]))
@@ -42,8 +42,9 @@ func TestParseSourceWithConfigBlock(t *testing.T) {
 		}
 	`
 
-	f := ParseSource(t.Name(), []byte(content))
-	require.NoError(t, f.Error(t.Name()))
+	f, err := ParseSource(t.Name(), []byte(content))
+	require.NoError(t, err)
+	require.NotNil(t, f)
 
 	require.Len(t, f.components, 1)
 	require.Equal(t, "testcomponents.tick.ticker_with_config_block", getBlockID(f.components[0]))
@@ -52,40 +53,11 @@ func TestParseSourceWithConfigBlock(t *testing.T) {
 }
 
 func TestParseSource_Defaults(t *testing.T) {
-	f := ParseSource(t.Name(), []byte(``))
-	require.NoError(t, f.Error(t.Name()))
+	f, err := ParseSource(t.Name(), []byte(``))
+	require.NotNil(t, f)
+	require.NoError(t, err)
+
 	require.Len(t, f.components, 0)
-}
-
-func TestParseSources_Errors(t *testing.T) {
-	content := `
-        logging {
-		    format = "json"
-		}
-
-		testcomponents.tick "ticker_duplicate_component_1" {
-			frequency = "1s"
-		}
-	`
-
-	content2 := `
-        logging {
-		    format = json"
-		}
-
-		testcomponents.tick "ticker_duplicate_component_1" {
-			frequency = "1s"
-		}
-	`
-	s := ParseSources(map[string][]byte{
-		"t1": []byte(content),
-		"t2": []byte(content2),
-	})
-
-	require.True(t, s.HasErrors())
-	require.NoError(t, s.Error("t1"))
-	require.Error(t, s.Error("t2"))
-	require.Error(t, s.CollectErrors())
 }
 
 func TestParseSources_DuplicateComponent(t *testing.T) {
@@ -110,14 +82,14 @@ func TestParseSources_DuplicateComponent(t *testing.T) {
 		}
 	`
 
-	s := ParseSources(map[string][]byte{
+	s, err := ParseSources(map[string][]byte{
 		"t1": []byte(content),
 		"t2": []byte(content2),
 	})
-	require.False(t, s.HasErrors())
+	require.NoError(t, err)
 	ctrl := New(testOptions(t))
 	defer cleanUpController(t.Context(), ctrl)
-	err := ctrl.LoadSource(s, nil, "")
+	err = ctrl.LoadSource(s, nil, "")
 	diagErrs, ok := err.(diag.Diagnostics)
 	require.True(t, ok)
 	require.Len(t, diagErrs, 2)
@@ -141,14 +113,14 @@ func TestParseSources_UniqueComponent(t *testing.T) {
 		}
 	`
 
-	s := ParseSources(map[string][]byte{
+	s, err := ParseSources(map[string][]byte{
 		"t1": []byte(content),
 		"t2": []byte(content2),
 	})
-	require.False(t, s.HasErrors())
+	require.NoError(t, err)
 	ctrl := New(testOptions(t))
 	defer cleanUpController(t.Context(), ctrl)
-	err := ctrl.LoadSource(s, nil, "")
+	err = ctrl.LoadSource(s, nil, "")
 	require.NoError(t, err)
 }
 

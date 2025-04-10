@@ -267,7 +267,8 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 		r.HandleFunc("/-/reload", func(w http.ResponseWriter, _ *http.Request) {
 			level.Info(s.log).Log("msg", "reload requested via /-/reload endpoint")
 
-			if err := s.opts.ReloadFunc(); err != nil {
+			err := s.opts.ReloadFunc()
+			if err != nil {
 				level.Error(s.log).Log("msg", "failed to reload config", "err", err.Error())
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return

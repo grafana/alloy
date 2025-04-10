@@ -332,11 +332,11 @@ func TestDeclare(t *testing.T) {
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := runtime.New(testOptions(t))
-			f := runtime.ParseSource(t.Name(), []byte(tc.config))
-			require.NoError(t, f.Error(t.Name()))
+			f, err := runtime.ParseSource(t.Name(), []byte(tc.config))
+			require.NoError(t, err)
 			require.NotNil(t, f)
 
-			err := ctrl.LoadSource(f, nil, "")
+			err = ctrl.LoadSource(f, nil, "")
 			require.NoError(t, err)
 
 			ctx, cancel := context.WithCancel(t.Context())
@@ -374,11 +374,11 @@ func TestDeclareModulePath(t *testing.T) {
 		}
 	`
 	ctrl := runtime.New(testOptions(t))
-	f := runtime.ParseSource(t.Name(), []byte(config))
-	require.NoError(t, f.Error(t.Name()))
+	f, err := runtime.ParseSource(t.Name(), []byte(config))
+	require.NoError(t, err)
 	require.NotNil(t, f)
 
-	err := ctrl.LoadSource(f, nil, "")
+	err = ctrl.LoadSource(f, nil, "")
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(t.Context())
@@ -495,8 +495,8 @@ func TestDeclareError(t *testing.T) {
 				Reg:          nil,
 				Services:     []service.Service{},
 			})
-			f := runtime.ParseSource(t.Name(), []byte(tc.config))
-			require.NoError(t, f.Error(t.Name()))
+			f, err := runtime.ParseSource(t.Name(), []byte(tc.config))
+			require.NoError(t, err)
 			require.NotNil(t, f)
 
 			err = ctrl.LoadSource(f, nil, "")
@@ -579,11 +579,11 @@ func TestDeclareUpdateConfig(t *testing.T) {
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := runtime.New(testOptions(t))
-			f := runtime.ParseSource(t.Name(), []byte(tc.config))
-			require.NoError(t, f.Error(t.Name()))
+			f, err := runtime.ParseSource(t.Name(), []byte(tc.config))
+			require.NoError(t, err)
 			require.NotNil(t, f)
 
-			err := ctrl.LoadSource(f, nil, "")
+			err = ctrl.LoadSource(f, nil, "")
 			require.NoError(t, err)
 
 			ctx, cancel := context.WithCancel(t.Context())
@@ -602,8 +602,8 @@ func TestDeclareUpdateConfig(t *testing.T) {
 				return export.LastAdded == tc.expected
 			}, 3*time.Second, 10*time.Millisecond)
 
-			f = runtime.ParseSource(t.Name(), []byte(tc.newConfig))
-			require.NoError(t, f.Error(t.Name()))
+			f, err = runtime.ParseSource(t.Name(), []byte(tc.newConfig))
+			require.NoError(t, err)
 			require.NotNil(t, f)
 
 			// Reload the controller with the new config.

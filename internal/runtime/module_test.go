@@ -154,9 +154,9 @@ func TestArgsNotInModules(t *testing.T) {
 	defer verifyNoGoroutineLeaks(t)
 	f := New(testOptions(t))
 	defer cleanUpController(t.Context(), f)
-	fl := ParseSource("test", []byte("argument \"arg\"{}"))
-	require.NoError(t, fl.Error("test"))
-	err := f.LoadSource(fl, nil, "")
+	fl, err := ParseSource("test", []byte("argument \"arg\"{}"))
+	require.NoError(t, err)
+	err = f.LoadSource(fl, nil, "")
 	require.ErrorContains(t, err, "argument blocks only allowed inside a module")
 }
 
@@ -164,9 +164,9 @@ func TestExportsNotInModules(t *testing.T) {
 	defer verifyNoGoroutineLeaks(t)
 	f := New(testOptions(t))
 	defer cleanUpController(t.Context(), f)
-	fl := ParseSource("test", []byte("export \"arg\"{ value = 1}"))
-	require.NoError(t, fl.Error("test"))
-	err := f.LoadSource(fl, nil, "")
+	fl, err := ParseSource("test", []byte("export \"arg\"{ value = 1}"))
+	require.NoError(t, err)
+	err = f.LoadSource(fl, nil, "")
 	require.ErrorContains(t, err, "export blocks only allowed inside a module")
 }
 
@@ -175,9 +175,9 @@ func TestExportsWhenNotUsed(t *testing.T) {
 	f := New(testOptions(t))
 	content := " export \\\"username\\\"  { value  = 1 } \\n export \\\"dummy\\\" { value = 2 } "
 	fullContent := "test.module \"t1\" { content = \"" + content + "\" }"
-	fl := ParseSource("test", []byte(fullContent))
-	require.NoError(t, fl.Error("test"))
-	err := f.LoadSource(fl, nil, "")
+	fl, err := ParseSource("test", []byte(fullContent))
+	require.NoError(t, err)
+	err = f.LoadSource(fl, nil, "")
 	require.NoError(t, err)
 	ctx, cnc := context.WithTimeout(t.Context(), 1*time.Second)
 	defer cnc()

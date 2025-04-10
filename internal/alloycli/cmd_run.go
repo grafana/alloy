@@ -2,6 +2,7 @@ package alloycli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/signal"
@@ -13,6 +14,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/fatih/color"
 	"github.com/go-kit/log"
 	"github.com/grafana/ckit/advertise"
 	"github.com/grafana/ckit/peer"
@@ -41,6 +43,7 @@ import (
 	"github.com/grafana/alloy/internal/static/config/instrumentation"
 	"github.com/grafana/alloy/internal/usagestats"
 	"github.com/grafana/alloy/internal/util/windowspriority"
+	"github.com/grafana/alloy/syntax/diag"
 
 	// Install Components
 	_ "github.com/grafana/alloy/internal/component/all"
@@ -290,7 +293,7 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 	// To work around this, we lazily create variables for the functions the HTTP
 	// service needs and set them after the Alloy controller exists.
 	var (
-		reload func() (*alloy_runtime.Source, error)
+		reload func() (map[string][]byte, error)
 		ready  func() bool
 	)
 
@@ -335,12 +338,8 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 
 		ReadyFunc: func() bool { return ready() },
 		ReloadFunc: func() error {
-			source, err := reload()
-			if err != nil {
-				return err
-			}
-
-			return source.CollectErrors()
+			_, err := reload()
+			return err
 		},
 
 		HTTPListenAddr:   fr.httpListenAddr,
@@ -398,24 +397,26 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 	})
 
 	ready = f.Ready
-	reload = func() (*alloy_runtime.Source, error) {
-		alloySource, err := loadAlloySource(configPath, fr.configFormat, fr.configBypassConversionErrors, fr.configExtraArgs)
-		defer instrumentation.InstrumentConfig(err == nil && !alloySource.HasErrors(), alloySource.SHA256(), fr.clusterName)
-
+	reload = func() (map[string][]byte, error) {
+		sources, err := loadSourceFiles(configPath, fr.configFormat, fr.configBypassConversionErrors, fr.configExtraArgs)
 		if err != nil {
+			instrumentation.InstrumentConfig(false, [32]byte{}, fr.clusterName)
 			return nil, fmt.Errorf("reading config path %q: %w", configPath, err)
 		}
 
-		if alloySource.HasErrors() {
-			return alloySource, nil
+		alloySource, err := alloy_runtime.ParseSources(sources)
+		if err != nil {
+			instrumentation.InstrumentConfig(false, [32]byte{}, fr.clusterName)
+			return sources, fmt.Errorf("reading config path %q: %w", configPath, err)
 		}
 
 		httpService.SetSources(alloySource.SourceFiles())
 		if err := f.LoadSource(alloySource, nil, configPath); err != nil {
-			return alloySource, fmt.Errorf("error during the initial load: %w", err)
+			instrumentation.InstrumentConfig(false, [32]byte{}, fr.clusterName)
+			return sources, fmt.Errorf("error during the initial load: %w", err)
 		}
 
-		return alloySource, nil
+		return sources, nil
 	}
 
 	// Alloy controller
@@ -444,15 +445,24 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 	// Perform the initial reload. This is done after starting the HTTP server so
 	// that /metric and pprof endpoints are available while the Alloy controller
 	// is loading.
-	if source, err := reload(); err != nil || source.HasErrors() {
-		if err != nil {
-			// Exit if the initial load fails.
-			return err
+	if sources, err := reload(); err != nil {
+		var diags diag.Diagnostics
+		if errors.As(err, &diags) {
+			p := diag.NewPrinter(diag.PrinterConfig{
+				Color:              !color.NoColor,
+				ContextLinesBefore: 1,
+				ContextLinesAfter:  1,
+			})
+			_ = p.Fprint(os.Stderr, sources, diags)
+
+			// Print newline after the diagnostics.
+			fmt.Println()
+
+			return fmt.Errorf("could not perform the initial load successfully")
 		}
 
 		// Exit if the initial load fails.
-		printSourceErrors(source)
-		return fmt.Errorf("could not perform the initial load successfully")
+		return err
 	}
 
 	// By now, have either joined or started a new cluster.
@@ -473,10 +483,7 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 		case <-ctx.Done():
 			return nil
 		case <-reloadSignal:
-			if source, err := reload(); err != nil || source.HasErrors() {
-				if err == nil {
-					err = source.CollectErrors()
-				}
+			if _, err := reload(); err != nil {
 				level.Error(l).Log("msg", "failed to reload config", "err", err)
 			} else {
 				level.Info(l).Log("msg", "config reloaded")
@@ -521,11 +528,12 @@ func getEnabledComponentsFunc(f *alloy_runtime.Runtime) func() map[string]interf
 }
 
 func loadAlloySource(path string, converterSourceFormat string, converterBypassErrors bool, configExtraArgs string) (*alloy_runtime.Source, error) {
-	sources, err := loadSourceFiles(path, converterSourceFormat, converterBypassErrors, configExtraArgs)
+	files, err := loadSourceFiles(path, converterSourceFormat, converterBypassErrors, configExtraArgs)
 	if err != nil {
 		return nil, err
 	}
-	return alloy_runtime.ParseSources(sources), nil
+
+	return alloy_runtime.ParseSources(files)
 }
 
 // addDeprecatedFlags adds flags that are deprecated, but we keep them for backwards compatibility.

@@ -361,8 +361,8 @@ type serviceController struct {
 
 func (sc serviceController) Run(ctx context.Context) { sc.f.Run(ctx) }
 func (sc serviceController) LoadSource(b []byte, args map[string]any, configPath string) (*ast.File, error) {
-	source := alloy_runtime.ParseSource("", b)
-	if err := source.Error(""); err != nil {
+	source, err := alloy_runtime.ParseSource("", b)
+	if err != nil {
 		return nil, err
 	}
 	return source.SourceFiles()[""], sc.f.LoadSource(source, args, configPath)

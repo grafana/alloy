@@ -181,8 +181,8 @@ func validateAlloy(t *testing.T, expectedAlloy []byte, actualAlloy []byte, loadA
 
 // attemptLoadingAlloyConfig will attempt to load the Alloy config and report any errors.
 func attemptLoadingAlloyConfig(t *testing.T, bb []byte) {
-	cfg := alloy_runtime.ParseSource(t.Name(), bb)
-	require.NoError(t, cfg.Error(t.Name()), "the output Alloy config failed to parse: %s", string(normalizeLineEndings(bb)))
+	cfg, err := alloy_runtime.ParseSource(t.Name(), bb)
+	require.NoError(t, err, "the output Alloy config failed to parse: %s", string(normalizeLineEndings(bb)))
 
 	// The below check suffers from test race conditions on Windows. Our goal here is to verify config conversions,
 	// which is platform independent, so we can skip this check on Windows as a workaround.

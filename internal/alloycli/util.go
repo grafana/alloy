@@ -1,19 +1,13 @@
 package alloycli
 
 import (
-	"errors"
-	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/fatih/color"
-
 	"github.com/grafana/alloy/internal/converter"
 	convert_diag "github.com/grafana/alloy/internal/converter/diag"
-	alloy_runtime "github.com/grafana/alloy/internal/runtime"
-	"github.com/grafana/alloy/syntax/diag"
 )
 
 func loadSourceFiles(path string, converterSourceFormat string, converterBypassErrors bool, configExtraArgs string) (map[string][]byte, error) {
@@ -71,37 +65,4 @@ func loadSourceFiles(path string, converterSourceFormat string, converterBypassE
 	}
 
 	return map[string][]byte{path: bb}, nil
-}
-
-func printSourceErrors(source *alloy_runtime.Source) {
-	var (
-		diags diag.Diagnostics
-		err   error
-	)
-
-	for name, e := range source.Errors() {
-		// merge diagnostics for all files
-		var d diag.Diagnostics
-		if errors.As(e, &d) {
-			diags = append(diags, d...)
-			continue
-		}
-		err = errors.Join(err, fmt.Errorf("%s: %w", name, e))
-	}
-
-	if len(diags) > 0 {
-		p := diag.NewPrinter(diag.PrinterConfig{
-			Color:              !color.NoColor,
-			ContextLinesBefore: 1,
-			ContextLinesAfter:  1,
-		})
-		_ = p.Fprint(os.Stderr, source.RawConfigs(), diags)
-
-		// Print newline after the diagnostics.
-		fmt.Println()
-	}
-
-	if err != nil {
-		fmt.Printf("%s\n", err)
-	}
 }

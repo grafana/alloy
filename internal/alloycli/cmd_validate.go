@@ -1,10 +1,14 @@
 package alloycli
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"os"
 
+	"github.com/fatih/color"
 	"github.com/grafana/alloy/internal/validator"
+	"github.com/grafana/alloy/syntax/diag"
 	"github.com/spf13/cobra"
 )
 
@@ -44,8 +48,27 @@ func (v *alloyValidate) Run(configFile string) error {
 		return err
 	}
 
-	validator := validator.New(sources)
-	validator.Run()
-	validator.Report(os.Stderr)
+	if err := validator.Validate(sources); err != nil {
+		report(os.Stderr, err, sources)
+	}
+
 	return nil
+}
+
+func report(w io.Writer, err error, sources map[string][]byte) {
+	var diags diag.Diagnostics
+	if errors.As(err, &diags) {
+		p := diag.NewPrinter(diag.PrinterConfig{
+			Color:              !color.NoColor,
+			ContextLinesBefore: 1,
+			ContextLinesAfter:  1,
+		})
+		_ = p.Fprint(w, sources, diags)
+
+		// Print newline after the diagnostics.
+		fmt.Println()
+		return
+	}
+
+	fmt.Fprintf(w, "validation failed: %s", err)
 }
