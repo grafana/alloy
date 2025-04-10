@@ -16,6 +16,8 @@ v1.8.1
 
 - Fix issue with `remoteCfg` service stopping immediately and logging noop error if not configured (@dehaansa)
 
+- Fix potential race condition in `remoteCfg` service metrics registration (@kalleep)
+
 v1.8.0
 -----------------
 
