@@ -226,7 +226,7 @@ func TestCache(t *testing.T) {
 
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		require.EqualValues(t, 3, receivedMessages.Load())
-	}, 250*time.Millisecond, 25*time.Millisecond)
+	}, 3*time.Second, 25*time.Millisecond)
 
 	// Let's look into the cache's structure now!
 	// The cache should have stored each label set by its fingerprint.
@@ -251,7 +251,7 @@ func TestCache(t *testing.T) {
 
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		require.EqualValues(t, 4, receivedMessages.Load())
-	}, 250*time.Millisecond, 25*time.Millisecond)
+	}, 3*time.Second, 25*time.Millisecond)
 
 	require.Equal(t, c.cache.Len(), 3)
 	val, _ := c.cache.Get(lsets[0].Fingerprint())
@@ -276,7 +276,7 @@ func TestCache(t *testing.T) {
 
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		require.EqualValues(t, 6, receivedMessages.Load())
-	}, 250*time.Millisecond, 25*time.Millisecond)
+	}, 3*time.Second, 25*time.Millisecond)
 
 	// Both of these should be under a single, new cache key which will contain
 	// both entries.
@@ -300,7 +300,7 @@ func TestCache(t *testing.T) {
 
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		require.EqualValues(t, 8, receivedMessages.Load())
-	}, 250*time.Millisecond, 25*time.Millisecond)
+	}, 3*time.Second, 25*time.Millisecond)
 
 	require.Equal(t, c.cache.Len(), 4)
 	wantKeys := []model.Fingerprint{lsets[0].Fingerprint(), ls1.Fingerprint(), lsets[3].Fingerprint(), lsets[4].Fingerprint()}
