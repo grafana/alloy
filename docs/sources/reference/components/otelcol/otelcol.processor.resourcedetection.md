@@ -120,7 +120,7 @@ debug_metrics | [debug_metrics][] | Configures the metrics that this component g
 [system]: #system
 [openshift]: #openshift
 [kubernetes_node]: #kubernetes_node
-[kubadm]: #kubeadm
+[kubeadm]: #kubeadm
 [res-attr-cfg]: #resource-attribute-config
 
 ### output
@@ -780,6 +780,7 @@ The `kubeadm` block supports the following attributes:
 The following permissions are required:
 
 ```yaml
+apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: otel-collector
