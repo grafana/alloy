@@ -28,6 +28,9 @@ Main (unreleased)
   - `schema_table`: add support for index expressions (@cristiangreco)
   - `query_tables`: improve queries parsing (@cristiangreco)
 
+- The `mimir.rules.kubernetes` component now supports adding extra label matchers
+  to all queries discovered via `PrometheusRule` CRDs by extracting label values defined on the `PrometheusRule`. (@QuentinBisson)
+
 ### Bugfixes
 
 - Fix `otelcol.exporter.prometheus` dropping valid exemplars. (@github-vincent-miszczak)
