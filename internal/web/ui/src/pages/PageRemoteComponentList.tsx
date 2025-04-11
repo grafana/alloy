@@ -38,7 +38,7 @@ function PageRemoteComponentList() {
 
   return (
     <Page name="Remote Configuration" desc="List of remote configuration pipelines" icon={faCubes}>
-      <ComponentList components={components} useRemotecfg={true} handleSorting={handleSorting} />
+      <ComponentList overrideModuleID={''} components={components} useRemotecfg={true} handleSorting={handleSorting} />
     </Page>
   );
 }

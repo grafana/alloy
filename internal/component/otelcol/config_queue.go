@@ -3,6 +3,9 @@ package otelcol
 import (
 	"fmt"
 
+	"github.com/grafana/alloy/internal/component/otelcol/extension"
+	"github.com/grafana/alloy/syntax"
+	otelcomponent "go.opentelemetry.io/collector/component"
 	otelexporterhelper "go.opentelemetry.io/collector/exporter/exporterhelper"
 )
 
@@ -12,9 +15,15 @@ type QueueArguments struct {
 	Enabled      bool `alloy:"enabled,attr,optional"`
 	NumConsumers int  `alloy:"num_consumers,attr,optional"`
 	QueueSize    int  `alloy:"queue_size,attr,optional"`
+	Blocking     bool `alloy:"blocking,attr,optional"`
 
-	// TODO(rfratto): queues can send to persistent storage through an extension.
+	// Storage is a binding to an otelcol.storage.* component extension which handles
+	// reading and writing to disk
+	Storage *extension.ExtensionHandler `alloy:"storage,attr,optional"`
 }
+
+var _ syntax.Defaulter = (*QueueArguments)(nil)
+var _ syntax.Validator = (*QueueArguments)(nil)
 
 // SetToDefault implements syntax.Defaulter.
 func (args *QueueArguments) SetToDefault() {
@@ -31,17 +40,41 @@ func (args *QueueArguments) SetToDefault() {
 	}
 }
 
-// Convert converts args into the upstream type.
-func (args *QueueArguments) Convert() *otelexporterhelper.QueueConfig {
+// Extensions returns a map of extensions to be used by the component.
+func (args *QueueArguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
 	if args == nil {
 		return nil
 	}
+	m := make(map[otelcomponent.ID]otelcomponent.Component)
+	if args.Storage != nil {
+		m[args.Storage.ID] = args.Storage.Extension
+	}
+	return m
+}
 
-	return &otelexporterhelper.QueueConfig{
+// Convert converts args into the upstream type.
+func (args *QueueArguments) Convert() (*otelexporterhelper.QueueConfig, error) {
+	if args == nil {
+		return nil, nil
+	}
+
+	q := &otelexporterhelper.QueueConfig{
 		Enabled:      args.Enabled,
 		NumConsumers: args.NumConsumers,
 		QueueSize:    args.QueueSize,
+		Blocking:     args.Blocking,
 	}
+
+	// Configure storage if args.Storage is set.
+	if args.Storage != nil {
+		if args.Storage.Extension == nil {
+			return nil, fmt.Errorf("missing storage extension")
+		}
+
+		q.StorageID = &args.Storage.ID
+	}
+
+	return q, nil
 }
 
 // Validate returns an error if args is invalid.

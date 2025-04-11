@@ -5,7 +5,7 @@ title: database_observability
 weight: 100
 ---
 
-# database_observability
+# `database_observability`
 
 This section contains reference documentation for the `database_observability` components.
 

@@ -3,6 +3,7 @@ package loadbalancing
 
 import (
 	"fmt"
+	"maps"
 	"time"
 
 	"github.com/alecthomas/units"
@@ -22,7 +23,6 @@ import (
 	"go.opentelemetry.io/collector/config/configopaque"
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
 	"go.opentelemetry.io/collector/exporter/otlpexporter"
-	otelextension "go.opentelemetry.io/collector/extension"
 	"go.opentelemetry.io/collector/pipeline"
 )
 
@@ -119,6 +119,12 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	q, err := args.Queue.Convert()
+	if err != nil {
+		return nil, err
+	}
+
 	return &loadbalancingexporter.Config{
 		Protocol:   *protocol,
 		Resolver:   args.Resolver.Convert(),
@@ -127,7 +133,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 			Timeout: args.Timeout,
 		},
 		BackOffConfig: *args.Retry.Convert(),
-		QueueSettings: *args.Queue.Convert(),
+		QueueSettings: *q,
 	}, nil
 }
 
@@ -170,11 +176,16 @@ func (oc OtlpConfig) Convert() (*otlpexporter.Config, error) {
 	if err != nil {
 		return nil, err
 	}
+	q, err := oc.Queue.Convert()
+	if err != nil {
+		return nil, err
+	}
+
 	return &otlpexporter.Config{
 		TimeoutConfig: exporterhelper.TimeoutConfig{
 			Timeout: oc.Timeout,
 		},
-		QueueConfig:  *oc.Queue.Convert(),
+		QueueConfig:  *q,
 		RetryConfig:  *oc.Retry.Convert(),
 		ClientConfig: *clientConfig,
 	}, nil
@@ -346,8 +357,11 @@ func (r *AWSCloudMapResolver) Convert() *loadbalancingexporter.AWSCloudMapResolv
 }
 
 // Extensions implements exporter.Arguments.
-func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
-	return args.Protocol.OTLP.Client.Extensions()
+func (args Arguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
+	ext := args.Protocol.OTLP.Client.Extensions()
+	maps.Copy(ext, args.Queue.Extensions())
+	maps.Copy(ext, args.Protocol.OTLP.Queue.Extensions())
+	return ext
 }
 
 // Exporters implements exporter.Arguments.
@@ -427,8 +441,8 @@ func (args *GRPCClientArguments) Convert() (*otelconfiggrpc.ClientConfig, error)
 }
 
 // Extensions exposes extensions used by args.
-func (args *GRPCClientArguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
-	m := make(map[otelcomponent.ID]otelextension.Extension)
+func (args *GRPCClientArguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
+	m := make(map[otelcomponent.ID]otelcomponent.Component)
 	if args.Authentication != nil {
 		ext, err := args.Authentication.GetExtension(auth.Client)
 		if err != nil {

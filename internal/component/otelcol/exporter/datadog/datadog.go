@@ -18,7 +18,6 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter"
 	datadogOtelconfig "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/datadog/config"
 	otelcomponent "go.opentelemetry.io/collector/component"
-	otelextension "go.opentelemetry.io/collector/extension"
 	"go.opentelemetry.io/collector/featuregate"
 	"go.opentelemetry.io/collector/pipeline"
 )
@@ -41,7 +40,7 @@ func init() {
 			// The Exporter skips APM stat computation by default, suggesting to use the Connector to do this.
 			// Since we don't have that, we disable the feature gate to allow the exporter to compute APM stats.
 			// See https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/exporter/datadogexporter for more
-			featuregate.GlobalRegistry().Set("exporter.datadogexporter.DisableAPMStats", false)
+			_ = featuregate.GlobalRegistry().Set("exporter.datadogexporter.DisableAPMStats", false)
 			return exporter.New(opts, fact, args.(Arguments), exporter.TypeSignalConstFunc(exporter.TypeAll))
 		},
 	})
@@ -91,9 +90,14 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	defaultMetricsEndpoint := fmt.Sprintf(DATADOG_METRICS_ENDPOINT, args.APISettings.Site)
 	defaultLogsEndpoint := fmt.Sprintf(DATADOG_LOGS_ENDPOINT, args.APISettings.Site)
 
+	q, err := args.Queue.Convert()
+	if err != nil {
+		return nil, err
+	}
+
 	return &datadogOtelconfig.Config{
 		ClientConfig:  *args.Client.Convert(),
-		QueueSettings: *args.Queue.Convert(),
+		QueueSettings: *q,
 		BackOffConfig: *args.Retry.Convert(),
 		TagsConfig: datadogOtelconfig.TagsConfig{
 			Hostname: args.Hostname,
@@ -108,8 +112,8 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 }
 
 // Extensions implements exporter.Arguments.
-func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
-	return nil
+func (args Arguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
+	return args.Queue.Extensions()
 }
 
 // Exporters implements exporter.Arguments.

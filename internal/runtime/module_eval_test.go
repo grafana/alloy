@@ -65,7 +65,7 @@ func TestUpdates_EmptyModule(t *testing.T) {
 	err = ctrl.LoadSource(f, nil, "")
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan struct{})
 	go func() {
 		ctrl.Run(ctx)
@@ -126,7 +126,7 @@ func TestUpdates_ThroughModule(t *testing.T) {
 	err = ctrl.LoadSource(f, nil, "")
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan struct{})
 	go func() {
 		ctrl.Run(ctx)
@@ -188,7 +188,7 @@ func TestUpdates_TwoModules_SameCompNames(t *testing.T) {
 	err = ctrl.LoadSource(f, nil, "")
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan struct{})
 	go func() {
 		ctrl.Run(ctx)
@@ -255,7 +255,7 @@ func TestUpdates_ReloadConfig(t *testing.T) {
 	err = ctrl.LoadSource(f, nil, "")
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan struct{})
 	go func() {
 		ctrl.Run(ctx)
@@ -377,5 +377,9 @@ func verifyNoGoroutineLeaks(t *testing.T) {
 		goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"),
 		goleak.IgnoreTopFunction("go.opentelemetry.io/otel/sdk/trace.(*batchSpanProcessor).processQueue"),
 		goleak.IgnoreTopFunction("internal/poll.runtime_pollWait"), // related to TCP keep alive
+		// TODO - #3257: There is a small race condition where the file detector's cancel func is closed but it has
+		// not yet been scheduled to run & then terminate. The refactor to fix this is significant,
+		// and not currently worth the investment.
+		goleak.IgnoreTopFunction("github.com/grafana/alloy/internal/filedetector.(*FSNotify).wait"),
 	)
 }

@@ -1,7 +1,6 @@
 package receiver
 
 import (
-	"context"
 	"strings"
 	"testing"
 	"time"
@@ -54,7 +53,7 @@ func Test_metricsExporter_Export(t *testing.T) {
 		Exceptions:   make([]payload.Exception, 4),
 		Events:       make([]payload.Event, 5),
 	}
-	require.NoError(t, exp.Export(context.Background(), p))
+	require.NoError(t, exp.Export(t.Context(), p))
 
 	err := promtestutil.CollectAndCompare(reg, strings.NewReader(expect), metricNames...)
 	require.NoError(t, err)
@@ -328,8 +327,8 @@ func Test_LogsExporter_Export(t *testing.T) {
 			})
 			ctx := componenttest.TestContext(t)
 			require.NoError(t, exp.Export(ctx, tc.payload))
-			// Sleep for 2ms since fake logger process in separate go routine
-			time.Sleep(2 * time.Millisecond)
+
+			lr.wg.Wait() // Wait for the fakelogreceiver goroutine to process
 			require.Len(t, lr.GetEntries(), 1)
 			require.Equal(t, tc.expect, lr.entries[0])
 		})

@@ -10,7 +10,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelexporter "go.opentelemetry.io/collector/exporter"
-	otelextension "go.opentelemetry.io/collector/extension"
 	"go.opentelemetry.io/collector/pipeline"
 	sdkprometheus "go.opentelemetry.io/otel/exporters/prometheus"
 	"go.opentelemetry.io/otel/sdk/metric"
@@ -37,7 +36,7 @@ type Arguments interface {
 
 	// Extensions returns the set of extensions that the configured component is
 	// allowed to use.
-	Extensions() map[otelcomponent.ID]otelextension.Extension
+	Extensions() map[otelcomponent.ID]otelcomponent.Component
 
 	// Exporters returns the set of exporters that are exposed to the configured
 	// component.
@@ -115,7 +114,7 @@ var (
 func New(opts component.Options, f otelexporter.Factory, args Arguments, supportedSignals TypeSignalFunc) (*Exporter, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	consumer := lazyconsumer.NewPaused(ctx)
+	consumer := lazyconsumer.NewPaused(ctx, opts.ID)
 
 	// Create a lazy collector where metrics from the upstream component will be
 	// forwarded.
@@ -181,19 +180,14 @@ func (e *Exporter) Update(args component.Arguments) error {
 		metricOpts = append(metricOpts, metric.WithView(views.DropHighCardinalityServerAttributes()...))
 	}
 
-	metricsLevel, err := debugMetricsConfig.Level.Convert()
-	if err != nil {
-		return err
-	}
-
 	mp := metric.NewMeterProvider(metricOpts...)
 	settings := otelexporter.Settings{
+		ID: otelcomponent.NewIDWithName(e.factory.Type(), e.opts.ID),
 		TelemetrySettings: otelcomponent.TelemetrySettings{
 			Logger: zapadapter.New(e.opts.Logger),
 
 			TracerProvider: e.opts.Tracer,
 			MeterProvider:  mp,
-			MetricsLevel:   metricsLevel,
 		},
 
 		BuildInfo: otelcomponent.BuildInfo{

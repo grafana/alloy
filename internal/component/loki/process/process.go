@@ -14,6 +14,7 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/loki/process/stages"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service/livedebugging"
 )
 
@@ -141,7 +142,7 @@ func (c *Component) Update(args component.Arguments) error {
 			c.entryHandler.Stop()
 		}
 
-		pipeline, err := stages.NewPipeline(c.opts.Logger, newArgs.Stages, &c.opts.ID, c.opts.Registerer)
+		pipeline, err := stages.NewPipeline(c.opts.Logger, newArgs.Stages, &c.opts.ID, c.opts.Registerer, c.opts.MinStability)
 		if err != nil {
 			return err
 		}
@@ -163,13 +164,23 @@ func (c *Component) handleIn(ctx context.Context, wg *sync.WaitGroup) {
 			return
 		case entry := <-c.receiver.Chan():
 			c.mut.RLock()
+			c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
+				componentID,
+				livedebugging.LokiLog,
+				0, // does not count because we count only the data that exists
+				func() string {
+					structured_metadata, err := entry.StructuredMetadata.MarshalJSON()
+					if err != nil {
+						level.Error(c.opts.Logger).Log("receiver", c.opts.ID, "error", err)
+						structured_metadata = []byte("{}")
+					}
+					return fmt.Sprintf("[IN]: timestamp: %s, entry: %s, labels: %s, structured_metadata: %s", entry.Timestamp.Format(time.RFC3339Nano), entry.Line, entry.Labels.String(), string(structured_metadata))
+				},
+			))
 			select {
 			case <-ctx.Done():
 				return
 			case c.processIn <- entry.Clone():
-				if c.debugDataPublisher.IsActive(componentID) {
-					c.debugDataPublisher.Publish(componentID, fmt.Sprintf("[IN]: timestamp: %s, entry: %s, labels: %s", entry.Timestamp.Format(time.RFC3339Nano), entry.Line, entry.Labels.String()))
-				}
 				// TODO(@tpaschalis) Instead of calling Clone() at the
 				// component's entrypoint here, we can try a copy-on-write
 				// approach instead, so that the copy only gets made on the
@@ -194,9 +205,19 @@ func (c *Component) handleOut(shutdownCh chan struct{}, wg *sync.WaitGroup) {
 
 			// The log entry is the same for every fanout,
 			// so we can publish it only once.
-			if c.debugDataPublisher.IsActive(componentID) {
-				c.debugDataPublisher.Publish(componentID, fmt.Sprintf("[OUT]: timestamp: %s, entry: %s, labels: %s", entry.Timestamp.Format(time.RFC3339Nano), entry.Line, entry.Labels.String()))
-			}
+			c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
+				componentID,
+				livedebugging.LokiLog,
+				1,
+				func() string {
+					structured_metadata, err := entry.StructuredMetadata.MarshalJSON()
+					if err != nil {
+						level.Error(c.opts.Logger).Log("receiver", c.opts.ID, "error", err)
+						structured_metadata = []byte("{}")
+					}
+					return fmt.Sprintf("[OUT]: timestamp: %s, entry: %s, labels: %s, structured_metadata: %s", entry.Timestamp.Format(time.RFC3339Nano), entry.Line, entry.Labels.String(), string(structured_metadata))
+				},
+			))
 
 			for _, f := range fanout {
 				select {
@@ -221,4 +242,4 @@ func stagesChanged(prev, next []stages.StageConfig) bool {
 	return false
 }
 
-func (c *Component) LiveDebugging(_ int) {}
+func (c *Component) LiveDebugging() {}

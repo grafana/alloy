@@ -45,6 +45,7 @@ func TestHTTP(t *testing.T) {
 		defer resp.Body.Close()
 
 		buf, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
 		require.Equal(t, "Alloy is ready.\n", string(buf))
 
 		require.Equal(t, http.StatusOK, resp.StatusCode)
@@ -62,6 +63,7 @@ func TestHTTP(t *testing.T) {
 		defer resp.Body.Close()
 
 		buf, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
 		require.Equal(t, "All Alloy components are healthy.\n", string(buf))
 
 		require.Equal(t, http.StatusOK, resp.StatusCode)
@@ -178,6 +180,113 @@ func Test_Toggle_TLS(t *testing.T) {
 	}
 }
 
+func TestAuth(t *testing.T) {
+	ctx := componenttest.TestContext(t)
+
+	env, err := newTestEnvironment(t)
+	require.NoError(t, err)
+	require.NoError(t, env.ApplyConfig(`
+		auth {
+			basic {
+				username = "username"
+				password = "password"
+			}
+			filter {
+				paths = ["/"]
+			}
+		}
+	`))
+
+	go func() {
+		require.NoError(t, env.Run(ctx))
+	}()
+
+	util.Eventually(t, func(t require.TestingT) {
+		cli, err := config.NewClientFromConfig(config.HTTPClientConfig{}, "test")
+		require.NoError(t, err)
+
+		req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://%s/-/ready", env.ListenAddr()), nil)
+		require.NoError(t, err)
+
+		resp, err := cli.Do(req)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+
+		require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+	})
+}
+
+func Test_Toggle_Auth(t *testing.T) {
+	ctx := componenttest.TestContext(t)
+
+	env, err := newTestEnvironment(t)
+	require.NoError(t, err)
+
+	go func() {
+		require.NoError(t, env.Run(ctx))
+	}()
+
+	request := func(t require.TestingT, cfg config.HTTPClientConfig) *http.Response {
+		cli, err := config.NewClientFromConfig(cfg, "test")
+		require.NoError(t, err)
+
+		req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://%s/-/ready", env.ListenAddr()), nil)
+		require.NoError(t, err)
+
+		resp, err := cli.Do(req)
+		require.NoError(t, err)
+		return resp
+	}
+
+	{
+		// Start without auth.
+		require.NoError(t, env.ApplyConfig(`/* empty */`))
+		util.Eventually(t, func(t require.TestingT) {
+			resp := request(t, config.HTTPClientConfig{})
+			require.NoError(t, resp.Body.Close())
+			require.Equal(t, http.StatusOK, resp.StatusCode)
+		})
+	}
+
+	{
+		// Toggle Auth.
+		require.NoError(t, env.ApplyConfig(`
+			auth {
+				basic {
+					username = "username"
+					password = "password"
+				}
+				filter {
+					paths = ["/"]
+				}
+			}
+		`))
+
+		util.Eventually(t, func(t require.TestingT) {
+			resp := request(t, config.HTTPClientConfig{})
+			require.NoError(t, resp.Body.Close())
+			require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+
+			resp = request(t, config.HTTPClientConfig{BasicAuth: &config.BasicAuth{
+				Username: "user",
+				Password: "password",
+			}})
+			require.NoError(t, resp.Body.Close())
+			require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+		})
+	}
+
+	{
+		// Disable Auth.
+		require.NoError(t, env.ApplyConfig(``))
+		util.Eventually(t, func(t require.TestingT) {
+			resp := request(t, config.HTTPClientConfig{})
+			require.NoError(t, resp.Body.Close())
+			require.Equal(t, http.StatusOK, resp.StatusCode)
+		})
+	}
+}
+
 func TestUnhealthy(t *testing.T) {
 	ctx := componenttest.TestContext(t)
 
@@ -215,6 +324,7 @@ func TestUnhealthy(t *testing.T) {
 		defer resp.Body.Close()
 
 		buf, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
 		require.Equal(t, "unhealthy components: testCompName\n", string(buf))
 
 		require.Equal(t, http.StatusInternalServerError, resp.StatusCode)

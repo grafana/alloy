@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/BurntSushi/toml"
 	"github.com/grafana/alloy/internal/component"
@@ -15,6 +16,9 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service/livedebugging"
+	"github.com/grafana/alloy/internal/util"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/common/model"
 )
 
 //go:embed gitleaks.toml
@@ -45,6 +49,13 @@ func init() {
 	})
 }
 
+// Metrics exposed by this component:
+//
+// - loki_secretfilter_secrets_redacted_total: Total number of secrets that have been redacted.
+// - loki_secretfilter_secrets_redacted_by_rule_total: Number of secrets redacted, partitioned by rule name.
+// - loki_secretfilter_secrets_redacted_by_origin: Number of secrets redacted, partitioned by origin label value.
+// - loki_secretfilter_secrets_allowlisted_total: Number of secrets that matched a rule but were in an allowlist, partitioned by source.
+
 // Arguments holds values which are used to configure the secretfilter
 // component.
 type Arguments struct {
@@ -55,6 +66,7 @@ type Arguments struct {
 	IncludeGeneric bool                `alloy:"include_generic,attr,optional"` // Include the generic API key rule (default: false)
 	AllowList      []string            `alloy:"allowlist,attr,optional"`       // List of regexes to allowlist (on top of what's in the Gitleaks config)
 	PartialMask    uint                `alloy:"partial_mask,attr,optional"`    // Show the first N characters of the secret (default: 0)
+	OriginLabel    string              `alloy:"origin_label,attr,optional"`    // The label name to use for tracking metrics by origin (if empty, no origin metrics are collected)
 }
 
 // Exports holds the values exported by the loki.secretfilter component.
@@ -86,6 +98,7 @@ type Component struct {
 	Rules     []Rule
 	AllowList []AllowRule
 
+	metrics            *metrics
 	debugDataPublisher livedebugging.DebugDataPublisher
 }
 
@@ -115,6 +128,78 @@ type GitLeaksConfig struct {
 	}
 }
 
+// metrics holds the set of metrics for secrets that are being redacted.
+type metrics struct {
+	// Total number of secrets redacted
+	secretsRedactedTotal prometheus.Counter
+
+	// Number of secrets redacted by rule type
+	secretsRedactedByRule *prometheus.CounterVec
+
+	// Number of secrets redacted by specified labels
+	secretsRedactedByOrigin *prometheus.CounterVec
+
+	// Number of secrets that matched but were in allowlist
+	secretsAllowlistedTotal *prometheus.CounterVec
+
+	// Summary of time taken for redaction log processing
+	processingDuration prometheus.Summary
+}
+
+// newMetrics creates a new set of metrics for the secretfilter component.
+func newMetrics(reg prometheus.Registerer, originLabel string) *metrics {
+	var m metrics
+
+	m.secretsRedactedTotal = prometheus.NewCounter(prometheus.CounterOpts{
+		Subsystem: "loki_secretfilter",
+		Name:      "secrets_redacted_total",
+		Help:      "Total number of secrets that have been redacted.",
+	})
+
+	m.secretsRedactedByRule = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Subsystem: "loki_secretfilter",
+		Name:      "secrets_redacted_by_rule_total",
+		Help:      "Number of secrets redacted, partitioned by rule name.",
+	}, []string{"rule"})
+
+	if originLabel != "" {
+		m.secretsRedactedByOrigin = prometheus.NewCounterVec(prometheus.CounterOpts{
+			Subsystem: "loki_secretfilter",
+			Name:      "secrets_redacted_by_origin",
+			Help:      "Number of secrets redacted, partitioned by origin label value.",
+		}, []string{"origin"})
+	}
+
+	m.secretsAllowlistedTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Subsystem: "loki_secretfilter",
+		Name:      "secrets_allowlisted_total",
+		Help:      "Number of secrets that matched a rule but were in an allowlist, partitioned by source.",
+	}, []string{"source"})
+
+	m.processingDuration = prometheus.NewSummary(prometheus.SummaryOpts{
+		Subsystem: "loki_secretfilter",
+		Name:      "processing_duration_seconds",
+		Help:      "Summary of the time taken to process and redact logs in seconds.",
+		Objectives: map[float64]float64{
+			0.5:  0.05,
+			0.9:  0.01,
+			0.99: 0.001,
+		},
+	})
+
+	if reg != nil {
+		m.secretsRedactedTotal = util.MustRegisterOrGet(reg, m.secretsRedactedTotal).(prometheus.Counter)
+		m.secretsRedactedByRule = util.MustRegisterOrGet(reg, m.secretsRedactedByRule).(*prometheus.CounterVec)
+		if originLabel != "" {
+			m.secretsRedactedByOrigin = util.MustRegisterOrGet(reg, m.secretsRedactedByOrigin).(*prometheus.CounterVec)
+		}
+		m.secretsAllowlistedTotal = util.MustRegisterOrGet(reg, m.secretsAllowlistedTotal).(*prometheus.CounterVec)
+		m.processingDuration = util.MustRegisterOrGet(reg, m.processingDuration).(prometheus.Summary)
+	}
+
+	return &m
+}
+
 // New creates a new loki.secretfilter component.
 func New(o component.Options, args Arguments) (*Component, error) {
 	debugDataPublisher, err := o.GetServiceData(livedebugging.ServiceName)
@@ -125,6 +210,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	c := &Component{
 		opts:               o,
 		receiver:           loki.NewLogsReceiver(),
+		metrics:            newMetrics(o.Registerer, args.OriginLabel),
 		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
 	}
 
@@ -152,9 +238,15 @@ func (c *Component) Run(ctx context.Context) error {
 			c.mut.RLock()
 			// Start processing the log entry to redact secrets
 			newEntry := c.processEntry(entry)
-			if c.debugDataPublisher.IsActive(componentID) {
-				c.debugDataPublisher.Publish(componentID, fmt.Sprintf("%s => %s", entry.Line, newEntry.Line))
-			}
+
+			c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
+				componentID,
+				livedebugging.LokiLog,
+				1,
+				func() string {
+					return fmt.Sprintf("%s => %s", entry.Line, newEntry.Line)
+				},
+			))
 
 			for _, f := range c.fanout {
 				select {
@@ -170,6 +262,11 @@ func (c *Component) Run(ctx context.Context) error {
 }
 
 func (c *Component) processEntry(entry loki.Entry) loki.Entry {
+	start := time.Now()
+	defer func() {
+		c.metrics.processingDuration.Observe(time.Since(start).Seconds())
+	}()
+
 	for _, r := range c.Rules {
 		// To find the secret within the text captured by the regex (and avoid being too greedy), we can use the 'secretGroup' field in the gitleaks.toml file.
 		// But it's rare for regexes to have this field set, so we can use a simple heuristic in other cases.
@@ -190,6 +287,12 @@ func (c *Component) processEntry(entry loki.Entry) loki.Entry {
 			} else if len(occ) == 2 {
 				// If not and there are two submatches, the first one is the secret
 				secret = occ[1]
+			}
+
+			// If secret is empty string, ignore
+			if secret == "" {
+				level.Debug(c.opts.Logger).Log("msg", "empty secret found", "rule", r.name)
+				continue
 			}
 
 			// Check if the secret is in the allowlist
@@ -213,11 +316,25 @@ func (c *Component) processEntry(entry loki.Entry) loki.Entry {
 			// If allowed, skip redaction
 			if allowRule != nil {
 				level.Debug(c.opts.Logger).Log("msg", "secret in allowlist", "rule", r.name, "source", allowRule.Source)
+				// Record metric for secrets that were not redacted due to allowlist
+				c.metrics.secretsAllowlistedTotal.WithLabelValues(allowRule.Source).Inc()
 				continue
 			}
 
-			// Redact the secret
+			// Redact the secret (redactLine replaces ALL instances of the secret in the line)
 			entry.Line = c.redactLine(entry.Line, secret, r.name)
+
+			// Record metrics for the redacted secret
+			c.metrics.secretsRedactedTotal.Inc()
+			c.metrics.secretsRedactedByRule.WithLabelValues(r.name).Inc()
+
+			// Record metrics for origin label
+			// Only track if the origin label is specified and the label exists in the log entry
+			if c.args.OriginLabel != "" && len(entry.Labels) > 0 {
+				if value, ok := entry.Labels[model.LabelName(c.args.OriginLabel)]; ok {
+					c.metrics.secretsRedactedByOrigin.WithLabelValues(string(value)).Inc()
+				}
+			}
 		}
 	}
 
@@ -269,10 +386,12 @@ func (c *Component) Update(args component.Arguments) error {
 
 	c.fanout = newArgs.ForwardTo
 
+	c.metrics = newMetrics(c.opts.Registerer, newArgs.OriginLabel)
+
 	// Parse GitLeaks configuration
 	var gitleaksCfg GitLeaksConfig
 	if c.args.GitleaksConfig == "" {
-		// If no config file is explicitely provided, use the embedded one
+		// If no config file is explicitly provided, use the embedded one
 		_, err := toml.DecodeFS(embedFs, "gitleaks.toml", &gitleaksCfg)
 		if err != nil {
 			return err
@@ -289,6 +408,10 @@ func (c *Component) Update(args component.Arguments) error {
 
 	// Compile regexes
 	for _, rule := range gitleaksCfg.Rules {
+		// If the rule regex is empty, skip this rule
+		if rule.Regex == "" {
+			continue
+		}
 		// If specific secret types are provided, only include rules that match the types
 		if len(c.args.Types) > 0 {
 			var found bool
@@ -307,6 +430,21 @@ func (c *Component) Update(args component.Arguments) error {
 		if err != nil {
 			level.Error(c.opts.Logger).Log("msg", "error compiling regex", "error", err)
 			return err
+		}
+		// If the rule regex matches the empty string, skip this rule
+		if re.Match([]byte("")) {
+			level.Warn(c.opts.Logger).Log("msg", "excluded rule due to matching the empty string", "rule", rule.ID)
+			continue
+		}
+		// If the rule regex matches the redaction string, skip this rule
+		redactionString := "<REDACTED-SECRET:" + rule.ID + ">"
+		if c.args.RedactWith != "" {
+			redactionString = c.args.RedactWith
+			redactionString = strings.ReplaceAll(redactionString, "$SECRET_NAME", rule.ID)
+		}
+		if re.Match([]byte(redactionString)) {
+			level.Warn(c.opts.Logger).Log("msg", "excluded rule due to matching the redaction string", "rule", rule.ID)
+			continue
 		}
 
 		// Compile rule-specific allowlist regexes
@@ -347,6 +485,8 @@ func (c *Component) Update(args component.Arguments) error {
 	}
 
 	// Compiling global allowlist regexes
+	// Reset the allowlist
+	c.AllowList = make([]AllowRule, 0, len(c.args.AllowList)+len(gitleaksCfg.AllowList.Regexes))
 	// From the arguments
 	for _, r := range c.args.AllowList {
 		re, err := regexp.Compile(r)
@@ -376,4 +516,4 @@ func (c *Component) Update(args component.Arguments) error {
 	return nil
 }
 
-func (c *Component) LiveDebugging(_ int) {}
+func (c *Component) LiveDebugging() {}

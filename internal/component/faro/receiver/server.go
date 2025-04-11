@@ -85,16 +85,20 @@ func (s *server) Run(ctx context.Context) error {
 	})
 
 	mw := middleware.Instrument{
-		RouteMatcher:     r,
 		Duration:         s.metrics.requestDuration,
 		RequestBodySize:  s.metrics.rxMessageSize,
 		ResponseBodySize: s.metrics.txMessageSize,
 		InflightRequests: s.metrics.inflightRequests,
 	}
 
+	ri := middleware.RouteInjector{
+		RouteMatcher: r,
+	}
+	riHandler := ri.Wrap(r)
+
 	srv := &http.Server{
 		Addr:    fmt.Sprintf("%s:%d", s.args.Host, s.args.Port),
-		Handler: mw.Wrap(r),
+		Handler: mw.Wrap(riHandler),
 	}
 
 	errCh := make(chan error, 1)

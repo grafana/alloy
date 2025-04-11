@@ -20,11 +20,8 @@ import (
 	stanzainputtcp "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator/input/tcp"
 	stanzainputudp "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator/input/udp"
 	stanzaparsersyslog "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator/parser/syslog"
-	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/split"
-	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/trim"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/syslogreceiver"
 	otelcomponent "go.opentelemetry.io/collector/component"
-	otelextension "go.opentelemetry.io/collector/extension"
 	"go.opentelemetry.io/collector/pipeline"
 )
 
@@ -53,6 +50,8 @@ type Arguments struct {
 	ConsumerRetry otelcol.ConsumerRetryArguments `alloy:"retry_on_failure,block,optional"`
 	TCP           *TCP                           `alloy:"tcp,block,optional"`
 	UDP           *UDP                           `alloy:"udp,block,optional"`
+
+	OnError string `alloy:"on_error,attr,optional"`
 
 	// DebugMetrics configures component internal metrics. Optional.
 	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
@@ -97,52 +96,18 @@ type TCP struct {
 	AddAttributes   bool                        `alloy:"add_attributes,attr,optional"`
 	OneLogPerPacket bool                        `alloy:"one_log_per_packet,attr,optional"`
 	Encoding        string                      `alloy:"encoding,attr,optional"`
-	MultilineConfig *MultilineConfig            `alloy:"multiline,block,optional"`
-	TrimConfig      *TrimConfig                 `alloy:",squash"`
+	MultilineConfig *otelcol.MultilineConfig    `alloy:"multiline,block,optional"`
+	TrimConfig      *otelcol.TrimConfig         `alloy:",squash"`
 }
 
 type UDP struct {
-	ListenAddress   string           `alloy:"listen_address,attr,optional"`
-	OneLogPerPacket bool             `alloy:"one_log_per_packet,attr,optional"`
-	AddAttributes   bool             `alloy:"add_attributes,attr,optional"`
-	Encoding        string           `alloy:"encoding,attr,optional"`
-	MultilineConfig *MultilineConfig `alloy:"multiline,block,optional"`
-	TrimConfig      *TrimConfig      `alloy:",squash"`
-	Async           *AsyncConfig     `alloy:"async,block,optional"`
-}
-
-type TrimConfig struct {
-	PreserveLeadingWhitespace  bool `alloy:"preserve_leading_whitespaces,attr,optional"`
-	PreserveTrailingWhitespace bool `alloy:"preserve_trailing_whitespaces,attr,optional"`
-}
-
-func (c *TrimConfig) Convert() *trim.Config {
-	if c == nil {
-		return nil
-	}
-
-	return &trim.Config{
-		PreserveLeading:  c.PreserveLeadingWhitespace,
-		PreserveTrailing: c.PreserveTrailingWhitespace,
-	}
-}
-
-type MultilineConfig struct {
-	LineStartPattern string `alloy:"line_start_pattern,attr,optional"`
-	LineEndPattern   string `alloy:"line_end_pattern,attr,optional"`
-	OmitPattern      bool   `alloy:"omit_pattern,attr,optional"`
-}
-
-func (c *MultilineConfig) Convert() *split.Config {
-	if c == nil {
-		return nil
-	}
-
-	return &split.Config{
-		LineStartPattern: c.LineStartPattern,
-		LineEndPattern:   c.LineEndPattern,
-		OmitPattern:      c.OmitPattern,
-	}
+	ListenAddress   string                   `alloy:"listen_address,attr,optional"`
+	OneLogPerPacket bool                     `alloy:"one_log_per_packet,attr,optional"`
+	AddAttributes   bool                     `alloy:"add_attributes,attr,optional"`
+	Encoding        string                   `alloy:"encoding,attr,optional"`
+	MultilineConfig *otelcol.MultilineConfig `alloy:"multiline,block,optional"`
+	TrimConfig      *otelcol.TrimConfig      `alloy:",squash"`
+	Async           *AsyncConfig             `alloy:"async,block,optional"`
 }
 
 type AsyncConfig struct {
@@ -171,6 +136,7 @@ func (args *Arguments) SetToDefault() {
 		Location: "UTC",
 		Protocol: config.SyslogFormatRFC5424,
 		Output:   &otelcol.ConsumerArguments{},
+		OnError:  "send",
 	}
 	args.DebugMetrics.SetToDefault()
 	args.ConsumerRetry.SetToDefault()
@@ -178,7 +144,6 @@ func (args *Arguments) SetToDefault() {
 
 // Convert implements receiver.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
-
 	c := stanzainputsyslog.NewConfig()
 	c.BaseConfig = stanzaparsersyslog.BaseConfig{
 		Protocol:            string(args.Protocol),
@@ -236,6 +201,8 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		}
 	}
 
+	c.OnError = args.OnError
+
 	def := syslogreceiver.ReceiverType{}.CreateDefaultConfig()
 	cfg := def.(*syslogreceiver.SysLogConfig)
 	cfg.InputConfig = *c
@@ -250,7 +217,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 }
 
 // Extensions implements receiver.Arguments.
-func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
+func (args Arguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 
@@ -284,7 +251,7 @@ func (args *Arguments) Validate() error {
 			errs = multierror.Append(errs, fmt.Errorf("invalid non_transparent_framing_trailer, must be one of 'LF', 'NUL': %s", *args.NonTransparentFramingTrailer))
 		}
 
-		_, err := decode.LookupEncoding(args.TCP.Encoding)
+		_, err := decode.LookupEncoding(args.TCP.Encoding) //nolint:staticcheck // TODO: deprecated, internal only, will have to vendor the list
 		if err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("invalid tcp.encoding: %w", err))
 		}
@@ -299,10 +266,16 @@ func (args *Arguments) Validate() error {
 			errs = multierror.Append(errs, err)
 		}
 
-		_, err := decode.LookupEncoding(args.UDP.Encoding)
+		_, err := decode.LookupEncoding(args.UDP.Encoding) //nolint:staticcheck // TODO: deprecated, internal only, will have to vendor the list
 		if err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("invalid udp.encoding: %w", err))
 		}
+	}
+
+	switch args.OnError {
+	case "drop", "drop_quiet", "send", "send_quiet":
+	default:
+		errs = multierror.Append(errs, fmt.Errorf("invalid on_error: %s", args.OnError))
 	}
 
 	return errs

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
@@ -44,7 +45,7 @@ var testOutputLogLineWithMissingKey = `
 
 func TestPipeline_Output(t *testing.T) {
 	logger := util.TestAlloyLogger(t)
-	pl, err := NewPipeline(logger, loadConfig(testOutputAlloy), nil, prometheus.DefaultRegisterer)
+	pl, err := NewPipeline(logger, loadConfig(testOutputAlloy), nil, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 	require.NoError(t, err)
 
 	out := processEntries(pl, newEntry(nil, nil, testOutputLogLine, time.Now()))[0]
@@ -55,7 +56,7 @@ func TestPipelineWithMissingKey_Output(t *testing.T) {
 	var buf bytes.Buffer
 	w := log.NewSyncWriter(&buf)
 	logger := log.NewLogfmtLogger(w)
-	pl, err := NewPipeline(logger, loadConfig(testOutputAlloy), nil, prometheus.DefaultRegisterer)
+	pl, err := NewPipeline(logger, loadConfig(testOutputAlloy), nil, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 	require.NoError(t, err)
 
 	_ = processEntries(pl, newEntry(nil, nil, testOutputLogLineWithMissingKey, time.Now()))

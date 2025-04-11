@@ -8,7 +8,7 @@ labels:
 title: discovery.uyuni
 ---
 
-# discovery.uyuni
+# `discovery.uyuni`
 
 `discovery.uyuni` discovers [Uyuni][] Monitoring Endpoints and exposes them as targets.
 
@@ -28,34 +28,35 @@ discovery.uyuni "<LABEL>" {
 
 You can use the following arguments with `discovery.uyuni`:
 
-Name                     | Type                | Description                                                                                      | Default                 | Required
--------------------------|---------------------|--------------------------------------------------------------------------------------------------|-------------------------|---------
-`password`               | `Secret`            | The password to use for authentication to the Uyuni API.                                         |                         | yes
-`server`                 | `string`            | The primary Uyuni Server.                                                                        |                         | yes
-`username`               | `string`            | The username to use for authentication to the Uyuni API.                                         |                         | yes
-`enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`                  | no
-`entitlement`            | `string`            | The entitlement to filter on when listing targets.                                               | `"monitoring_entitled"` | no
-`follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`                  | no
-`no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |                         | no
-`proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |                         | no
-`proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false`                 | no
-`proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |                         | no
-`refresh_interval`       | `duration`          | Interval at which to refresh the list of targets.                                                | `1m`                    | no
-`separator`              | `string`            | The separator to use when building the `__meta_uyuni_groups` label.                              | `","`                   | no
+| Name                     | Type                | Description                                                                                      | Default                 | Required |
+| ------------------------ | ------------------- | ------------------------------------------------------------------------------------------------ | ----------------------- | -------- |
+| `password`               | `Secret`            | The password to use for authentication to the Uyuni API.                                         |                         | yes      |
+| `server`                 | `string`            | The primary Uyuni Server.                                                                        |                         | yes      |
+| `username`               | `string`            | The username to use for authentication to the Uyuni API.                                         |                         | yes      |
+| `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`                  | no       |
+| `entitlement`            | `string`            | The entitlement to filter on when listing targets.                                               | `"monitoring_entitled"` | no       |
+| `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`                  | no       |
+| `http_headers`           | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.          |                      | no       |
+| `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |                         | no       |
+| `proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |                         | no       |
+| `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false`                 | no       |
+| `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |                         | no       |
+| `refresh_interval`       | `duration`          | Interval at which to refresh the list of targets.                                                | `1m`                    | no       |
+| `separator`              | `string`            | The separator to use when building the `__meta_uyuni_groups` label.                              | `","`                   | no       |
 
 {{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Blocks
 
-You can use the following blocks with `discovery.uyuni`:
+You can use the following block with `discovery.uyuni`:
 
-Block          | Description                                      | Required
----------------|--------------------------------------------------|---------
-[tls_config][] | TLS configuration for requests to the Uyuni API. | no
+| Block                      | Description                                      | Required |
+| -------------------------- | ------------------------------------------------ | -------- |
+| [`tls_config`][tls_config] | TLS configuration for requests to the Uyuni API. | no       |
 
 [tls_config]: #tls_config
 
-### tls_config
+### `tls_config`
 
 The `tls_config` block configures TLS settings for requests to the Uyuni API.
 
@@ -65,9 +66,9 @@ The `tls_config` block configures TLS settings for requests to the Uyuni API.
 
 The following fields are exported and can be referenced by other components:
 
-Name      | Type                | Description
-----------|---------------------|--------------------------------------------------
-`targets` | `list(map(string))` | The set of targets discovered from the Uyuni API.
+| Name      | Type                | Description                                       |
+| --------- | ------------------- | ------------------------------------------------- |
+| `targets` | `list(map(string))` | The set of targets discovered from the Uyuni API. |
 
 Each target includes the following labels:
 

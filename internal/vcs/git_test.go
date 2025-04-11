@@ -1,7 +1,6 @@
 package vcs_test
 
 import (
-	"context"
 	"fmt"
 	"testing"
 
@@ -19,7 +18,7 @@ func Test_BasicUsage_Branch(t *testing.T) {
 	msg1 := origRepo.commit()
 
 	newRepoDir := t.TempDir()
-	newRepo, err := vcs.NewGitRepo(context.Background(), newRepoDir, vcs.GitRepoOptions{
+	newRepo, err := vcs.NewGitRepo(t.Context(), newRepoDir, vcs.GitRepoOptions{
 		Repository: repoDirectory,
 		Revision:   branchName,
 	})
@@ -31,7 +30,7 @@ func Test_BasicUsage_Branch(t *testing.T) {
 
 	msg2 := origRepo.commit()
 
-	err = newRepo.Update(context.Background())
+	err = newRepo.Update(t.Context())
 	require.NoError(t, err)
 
 	bb, err = newRepo.ReadFile("a.txt")
@@ -55,7 +54,7 @@ func Test_NonFastForward(t *testing.T) {
 	repo.commit()
 
 	newRepoDir := t.TempDir()
-	tracker, err := vcs.NewGitRepo(context.Background(), newRepoDir, vcs.GitRepoOptions{
+	tracker, err := vcs.NewGitRepo(t.Context(), newRepoDir, vcs.GitRepoOptions{
 		Repository: repoDirectory,
 		Revision:   firstBranch,
 	})
@@ -63,13 +62,13 @@ func Test_NonFastForward(t *testing.T) {
 
 	repo.validate(tracker, firstBranchMsg)
 
-	err = tracker.Update(context.Background())
+	err = tracker.Update(t.Context())
 	require.NoError(t, err)
 
 	repo.checkout(firstBranch)
 	msg := repo.commit()
 
-	err = tracker.Update(context.Background())
+	err = tracker.Update(t.Context())
 	require.NoError(t, err)
 
 	repo.validate(tracker, msg)

@@ -1,7 +1,7 @@
 import { FC, Fragment, ReactElement } from 'react';
 import { Link } from 'react-router-dom';
 import { useLocation } from 'react-router-dom';
-import { faBug, faCubes, faLink } from '@fortawesome/free-solid-svg-icons';
+import { faBug, faCubes, faDiagramProject, faLink } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import { partitionBody } from '../../utils/partition';
@@ -31,6 +31,9 @@ export const ComponentView: FC<ComponentViewProps> = (props) => {
   const location = useLocation();
   const useRemotecfg = location.pathname.startsWith('/remotecfg');
 
+  // TODO: update this condition when foreach is supported
+  const showGraph = props.component.moduleInfo && props.component.name !== 'foreach';
+
   function partitionTOC(partition: PartitionedBody): ReactElement {
     return (
       <li>
@@ -49,10 +52,6 @@ export const ComponentView: FC<ComponentViewProps> = (props) => {
   }
 
   function liveDebuggingButton(): ReactElement | string {
-    if (useRemotecfg) {
-      return 'Live debugging is not yet available for remote components';
-    }
-
     if (!liveDebuggingEnabled) {
       return 'Live debugging is not yet available for this component';
     }
@@ -122,6 +121,14 @@ export const ComponentView: FC<ComponentViewProps> = (props) => {
           </a>
         </div>
 
+        {showGraph && (
+          <div className={styles.debugLink}>
+            <a href={`graph/${pathJoin([props.component.moduleID, props.component.localID])}`}>
+              <FontAwesomeIcon icon={faDiagramProject} /> Graph
+            </a>
+          </div>
+        )}
+
         {liveDebuggingButton()}
 
         {props.component.health.message && (
@@ -144,7 +151,7 @@ export const ComponentView: FC<ComponentViewProps> = (props) => {
           <section id="dependencies">
             <h2>Dependencies</h2>
             <div className={styles.sectionContent}>
-              <ComponentList components={referencesTo} useRemotecfg={useRemotecfg} moduleID={props.component.moduleID} />
+              <ComponentList components={referencesTo} useRemotecfg={useRemotecfg} />
             </div>
           </section>
         )}
@@ -153,7 +160,7 @@ export const ComponentView: FC<ComponentViewProps> = (props) => {
           <section id="dependants">
             <h2>Dependants</h2>
             <div className={styles.sectionContent}>
-              <ComponentList components={referencedBy} useRemotecfg={useRemotecfg} moduleID={props.component.moduleID} />
+              <ComponentList components={referencedBy} useRemotecfg={useRemotecfg} />
             </div>
           </section>
         )}
@@ -162,11 +169,7 @@ export const ComponentView: FC<ComponentViewProps> = (props) => {
           <section id="module">
             <h2>Module components</h2>
             <div className={styles.sectionContent}>
-              <ComponentList
-                components={props.component.moduleInfo}
-                useRemotecfg={useRemotecfg}
-                moduleID={pathJoin([props.component.moduleID, props.component.localID])}
-              />
+              <ComponentList components={props.component.moduleInfo} useRemotecfg={useRemotecfg} />
             </div>
           </section>
         )}

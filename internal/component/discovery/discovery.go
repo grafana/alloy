@@ -3,57 +3,16 @@ package discovery
 import (
 	"context"
 	"fmt"
-	"slices"
-	"sort"
-	"strings"
 	"sync"
 	"time"
 
-	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/discovery"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
-	"github.com/prometheus/prometheus/model/labels"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service/livedebugging"
 )
-
-// Target refers to a singular discovered endpoint found by a discovery
-// component.
-type Target map[string]string
-
-// Labels converts Target into a set of sorted labels.
-func (t Target) Labels() labels.Labels {
-	var lset labels.Labels
-	for k, v := range t {
-		lset = append(lset, labels.Label{Name: k, Value: v})
-	}
-	sort.Sort(lset)
-	return lset
-}
-
-func (t Target) NonMetaLabels() labels.Labels {
-	var lset labels.Labels
-	for k, v := range t {
-		if !strings.HasPrefix(k, model.MetaLabelPrefix) {
-			lset = append(lset, labels.Label{Name: k, Value: v})
-		}
-	}
-	sort.Sort(lset)
-	return lset
-}
-
-func (t Target) SpecificLabels(lbls []string) labels.Labels {
-	var lset labels.Labels
-	for k, v := range t {
-		if slices.Contains(lbls, k) {
-			lset = append(lset, labels.Label{Name: k, Value: v})
-		}
-	}
-	sort.Sort(lset)
-	return lset
-}
 
 // Exports holds values which are exported by all discovery components.
 type Exports struct {
@@ -223,9 +182,12 @@ func (c *Component) runDiscovery(ctx context.Context, d DiscovererWithMetrics) {
 	send := func() {
 		allTargets := toAlloyTargets(cache)
 		componentID := livedebugging.ComponentID(c.opts.ID)
-		if c.debugDataPublisher.IsActive(componentID) {
-			c.debugDataPublisher.Publish(componentID, fmt.Sprintf("%s", allTargets))
-		}
+		c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
+			componentID,
+			livedebugging.Target,
+			uint64(len(allTargets)),
+			func() string { return fmt.Sprintf("%s", allTargets) },
+		))
 		c.opts.OnStateChange(Exports{Targets: allTargets})
 	}
 
@@ -269,20 +231,10 @@ func toAlloyTargets(cache map[string]*targetgroup.Group) []Target {
 
 	for _, group := range cache {
 		for _, target := range group.Targets {
-			tLabels := make(map[string]string, len(group.Labels)+len(target))
-
-			// first add the group labels, and then the
-			// target labels, so that target labels take precedence.
-			for k, v := range group.Labels {
-				tLabels[string(k)] = string(v)
-			}
-			for k, v := range target {
-				tLabels[string(k)] = string(v)
-			}
-			allTargets = append(allTargets, tLabels)
+			allTargets = append(allTargets, NewTargetFromSpecificAndBaseLabelSet(target, group.Labels))
 		}
 	}
 	return allTargets
 }
 
-func (c *Component) LiveDebugging(_ int) {}
+func (c *Component) LiveDebugging() {}

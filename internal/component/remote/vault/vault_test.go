@@ -12,13 +12,14 @@ import (
 
 	"github.com/docker/go-connections/nat"
 	"github.com/go-kit/log"
+	"github.com/stretchr/testify/require"
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/wait"
+
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/alloytypes"
-	"github.com/stretchr/testify/require"
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
 )
 
 func Test_GetSecrets(t *testing.T) {
@@ -38,7 +39,7 @@ func Test_GetSecrets(t *testing.T) {
 	cfg := fmt.Sprintf(`
 		server = "%s"
 		path   = "secret"
-  		secret = "test"
+  		key = "test"
 
 		reread_frequency = "0s"
 
@@ -71,155 +72,106 @@ func Test_GetSecrets(t *testing.T) {
 	require.Equal(t, expectExports, actualExports)
 }
 
-func Test_PollSecretsWithoutKey(t *testing.T) {
-	var (
-		ctx = componenttest.TestContext(t)
-		l   = util.TestLogger(t)
-	)
+func Test_PollSecrets(t *testing.T) {
+	tests := []struct {
+		name            string
+		cfgFormatString string
+	}{
+		{
+			name: "poll with path and key",
+			cfgFormatString: `
+				server = "%s"
+				path   = "secret"
+				key = "test"
 
-	cli := getTestVaultServer(t)
+				reread_frequency = "100ms"
 
-	// Store a secret in value to use from the component.
-	_, err := cli.KVv2("secret").Put(ctx, "test", map[string]any{
-		"key": "value",
-	})
-	require.NoError(t, err)
+				auth.token {
+					token = "%s"
+				}
+			`,
+		},
+		{
+			name: "poll with path only",
+			cfgFormatString: `
+				server = "%s"
+				path   = "secret/test"
 
-	cfg := fmt.Sprintf(`
-		server = "%s"
-		path   = "secret/test"
+				reread_frequency = "100ms"
 
-		reread_frequency = "100ms"
-
-		auth.token {
-			token = "%s"
-		}
-	`, cli.Address(), cli.Token())
-
-	var args Arguments
-	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
-
-	ctrl, err := componenttest.NewControllerFromID(l, "remote.vault")
-	require.NoError(t, err)
-
-	go func() {
-		require.NoError(t, ctrl.Run(ctx, args))
-	}()
-	require.NoError(t, ctrl.WaitRunning(time.Minute))
-
-	// Get the initial secret.
-	{
-		require.NoError(t, ctrl.WaitExports(time.Minute))
-
-		var (
-			expectExports = Exports{
-				Data: map[string]alloytypes.Secret{
-					"key": alloytypes.Secret("value"),
-				},
-			}
-			actualExports = ctrl.Exports().(Exports)
-		)
-		require.Equal(t, expectExports, actualExports)
+				auth.token {
+					token = "%s"
+				}
+			`,
+		},
 	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var (
+				ctx = componenttest.TestContext(t)
+				l   = util.TestLogger(t)
+			)
 
-	// Get an updated secret.
-	{
-		_, err := cli.KVv2("secret").Put(ctx, "test", map[string]any{
-			"key": "newvalue",
+			cli := getTestVaultServer(t)
+
+			// Store a secret in value to use from the component.
+			_, err := cli.KVv2("secret").Put(ctx, "test", map[string]any{
+				"key": "value",
+			})
+			require.NoError(t, err)
+
+			cfg := fmt.Sprintf(tt.cfgFormatString, cli.Address(), cli.Token())
+
+			var args Arguments
+			require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+
+			ctrl, err := componenttest.NewControllerFromID(l, "remote.vault")
+			require.NoError(t, err)
+
+			go func() {
+				require.NoError(t, ctrl.Run(ctx, args))
+			}()
+			require.NoError(t, ctrl.WaitRunning(time.Minute))
+
+			// Get the initial secret.
+			{
+				require.NoError(t, ctrl.WaitExports(time.Minute))
+
+				var (
+					expectExports = Exports{
+						Data: map[string]alloytypes.Secret{
+							"key": alloytypes.Secret("value"),
+						},
+					}
+					actualExports = ctrl.Exports().(Exports)
+				)
+				require.Equal(t, expectExports, actualExports)
+			}
+
+			// Get an updated secret.
+			{
+				_, err := cli.KVv2("secret").Put(ctx, "test", map[string]any{
+					"key": "newvalue",
+				})
+				require.NoError(t, err)
+
+				require.NoError(t, ctrl.WaitExports(time.Minute))
+
+				var (
+					expectExports = Exports{
+						Data: map[string]alloytypes.Secret{
+							"key": alloytypes.Secret("newvalue"),
+						},
+					}
+					actualExports = ctrl.Exports().(Exports)
+				)
+				require.Equal(t, expectExports, actualExports)
+			}
 		})
-		require.NoError(t, err)
-
-		require.NoError(t, ctrl.WaitExports(time.Minute))
-
-		var (
-			expectExports = Exports{
-				Data: map[string]alloytypes.Secret{
-					"key": alloytypes.Secret("newvalue"),
-				},
-			}
-			actualExports = ctrl.Exports().(Exports)
-		)
-		require.Equal(t, expectExports, actualExports)
-	}
-}
-
-func Test_PollSecretsWithKey(t *testing.T) {
-	var (
-		ctx = componenttest.TestContext(t)
-		l   = util.TestLogger(t)
-	)
-
-	cli := getTestVaultServer(t)
-
-	// Store a secret in value to use from the component.
-	_, err := cli.KVv2("secret").Put(ctx, "test", map[string]any{
-		"key": "value",
-	})
-	require.NoError(t, err)
-
-	cfg := fmt.Sprintf(`
-		server = "%s"
-		path   = ""
-  		key = "secret/test"
-
-		reread_frequency = "100ms"
-
-		auth.token {
-			token = "%s"
-		}
-	`, cli.Address(), cli.Token())
-
-	var args Arguments
-	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
-
-	ctrl, err := componenttest.NewControllerFromID(l, "remote.vault")
-	require.NoError(t, err)
-
-	go func() {
-		require.NoError(t, ctrl.Run(ctx, args))
-	}()
-	require.NoError(t, ctrl.WaitRunning(time.Minute))
-
-	// Get the initial secret.
-	{
-		require.NoError(t, ctrl.WaitExports(time.Minute))
-
-		var (
-			expectExports = Exports{
-				Data: map[string]alloytypes.Secret{
-					"key": alloytypes.Secret("value"),
-				},
-			}
-			actualExports = ctrl.Exports().(Exports)
-		)
-		require.Equal(t, expectExports, actualExports)
-	}
-
-	// Get an updated secret.
-	{
-		_, err := cli.KVv2("secret").Put(ctx, "test", map[string]any{
-			"key": "newvalue",
-		})
-		require.NoError(t, err)
-
-		require.NoError(t, ctrl.WaitExports(time.Minute))
-
-		var (
-			expectExports = Exports{
-				Data: map[string]alloytypes.Secret{
-					"key": alloytypes.Secret("newvalue"),
-				},
-			}
-			actualExports = ctrl.Exports().(Exports)
-		)
-		require.Equal(t, expectExports, actualExports)
 	}
 }
 
 func getTestVaultServer(t *testing.T) *vaultapi.Client {
-	// TODO: this is broken with go 1.20.6
-	// waiting on https://github.com/testcontainers/testcontainers-go/issues/1359
-	t.Skip()
 	ctx := componenttest.TestContext(t)
 	l := util.TestLogger(t)
 
@@ -239,7 +191,8 @@ func getTestVaultServer(t *testing.T) *vaultapi.Client {
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
-		require.NoError(t, container.Terminate(ctx))
+		err := testcontainers.TerminateContainer(container)
+		require.NoError(t, err)
 	})
 
 	ep, err := container.PortEndpoint(ctx, nat.Port("80/tcp"), "http")

@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/util"
 )
 
@@ -39,7 +40,7 @@ func TestPackPipeline(t *testing.T) {
 	registry := prometheus.NewRegistry()
 	plName := "test_pack_pipeline"
 	logger := util.TestAlloyLogger(t)
-	pl, err := NewPipeline(logger, loadConfig(testPackAlloy), &plName, registry)
+	pl, err := NewPipeline(logger, loadConfig(testPackAlloy), &plName, registry, featuregate.StabilityGenerallyAvailable)
 	require.NoError(t, err)
 
 	l1Lbls := model.LabelSet{

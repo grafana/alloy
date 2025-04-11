@@ -129,10 +129,29 @@ func toAzureAD(azureADConfig *azuread.AzureADConfig) *remotewrite.AzureADConfig 
 		return nil
 	}
 
-	return &remotewrite.AzureADConfig{
+	res := &remotewrite.AzureADConfig{
 		Cloud: azureADConfig.Cloud,
-		ManagedIdentity: remotewrite.ManagedIdentityConfig{
-			ClientID: azureADConfig.ManagedIdentity.ClientID,
-		},
 	}
+
+	if azureADConfig.ManagedIdentity != nil {
+		res.ManagedIdentity = &remotewrite.ManagedIdentityConfig{
+			ClientID: azureADConfig.ManagedIdentity.ClientID,
+		}
+	}
+
+	if azureADConfig.OAuth != nil {
+		res.OAuth = &remotewrite.OAuthConfig{
+			ClientID:     azureADConfig.OAuth.ClientID,
+			ClientSecret: alloytypes.Secret(azureADConfig.OAuth.ClientSecret),
+			TenantID:     azureADConfig.OAuth.TenantID,
+		}
+	}
+
+	if azureADConfig.SDK != nil {
+		res.SDK = &remotewrite.SDKConfig{
+			TenantID: azureADConfig.SDK.TenantID,
+		}
+	}
+
+	return res
 }

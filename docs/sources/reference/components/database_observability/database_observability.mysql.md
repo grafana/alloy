@@ -6,7 +6,7 @@ labels:
   stage: experimental
 ---
 
-# database_observability.mysql
+# `database_observability.mysql`
 
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -23,12 +23,21 @@ database_observability.mysql "<LABEL>" {
 
 You can use the following arguments with `database_observability.mysql`:
 
-Name                    | Type                 | Description                                              | Default | Required
-------------------------|----------------------|----------------------------------------------------------|---------|---------
-`data_source_name`      | `secret`             | [Data Source Name][] for the MySQL server to connect to. |         | yes
-`forward_to`            | `list(LogsReceiver)` | Where to forward log entries after processing.           |         | yes
-`collect_interval`      | `duration`           | How frequently to collect information from database.     | `"10s"` | no
-`query_samples_enabled` | `bool`               | Whether to enable collection of query samples.           | `true`  | no
+ Name                 | Type                 | Description                                               | Default | Required 
+----------------------|----------------------|-----------------------------------------------------------|---------|----------
+ `data_source_name`   | `secret`             | [Data Source Name][] for the MySQL server to connect to.  |         | yes      
+ `forward_to`         | `list(LogsReceiver)` | Where to forward log entries after processing.            |         | yes      
+ `collect_interval`   | `duration`           | How frequently to collect information from database.      | `"1m"`  | no       
+ `disable_collectors` | `list(string)`       | A list of collectors to disable from the default set.     |         | no       
+ `enable_collectors`  | `list(string)`       | A list of collectors to enable on top of the default set. |         | no       
+
+The following collectors are enabled by default:
+
+ Name           | Description                                           
+----------------|-------------------------------------------------------
+ `query_tables` | Collect query table information.
+ `schema_table` | Collect schemas and tables from `information_schema`. 
+ `query_sample` | Collect query samples.
 
 ## Blocks
 
@@ -38,7 +47,7 @@ The `database_observability.mysql` component doesn't support any blocks. You can
 
 ```alloy
 database_observability.mysql "orders_db" {
-  data_source_name = "user:pass@mysql:3306/"
+  data_source_name = "user:pass@tcp(mysql:3306)/"
   forward_to = [loki.write.logs_service.receiver]
 }
 
@@ -50,20 +59,20 @@ prometheus.scrape "orders_db" {
 
 prometheus.remote_write "metrics_service" {
   endpoint {
-    url = sys.env("<GCLOUD_HOSTED_METRICS_URL>")
+    url = sys.env("<GRAFANA_CLOUD_HOSTED_METRICS_URL>")
     basic_auth {
-      username = sys.env("<GCLOUD_HOSTED_METRICS_ID>")
-      password = sys.env("<GCLOUD_RW_API_KEY>")
+      username = sys.env("<GRAFANA_CLOUD_HOSTED_METRICS_ID>")
+      password = sys.env("<GRAFANA_CLOUD_RW_API_KEY>")
     }
   }
 }
 
 loki.write "logs_service" {
   endpoint {
-    url = sys.env("<GCLOUD_HOSTED_LOGS_URL>")
+    url = sys.env("<GRAFANA_CLOUD_HOSTED_LOGS_URL>")
     basic_auth {
-      username = sys.env("<GCLOUD_HOSTED_LOGS_ID>")
-      password = sys.env("<GCLOUD_RW_API_KEY>")
+      username = sys.env("<GRAFANA_CLOUD_HOSTED_LOGS_ID>")
+      password = sys.env("<GRAFANA_CLOUD_RW_API_KEY>")
     }
   }
 }
@@ -71,11 +80,11 @@ loki.write "logs_service" {
 
 Replace the following:
 
-* _`<GCLOUD_HOSTED_METRICS_URL>`_: The URL for your Google Cloud hosted metrics.
-* _`<GCLOUD_HOSTED_METRICS_ID>`_: The user ID for your Google Cloud hosted metrics.
-* _`<GCLOUD_RW_API_KEY>`_: Your Google Cloud API key.
-* _`<GCLOUD_HOSTED_LOGS_URL>`_: The URL for your Google Cloud hosted logs.
-* _`<GCLOUD_HOSTED_LOGS_ID>`_: The user ID for your Google Cloud hosted logs.
+* _`<GRAFANA_CLOUD_HOSTED_METRICS_URL>`_: The URL for your Grafana Cloud hosted metrics.
+* _`<GRAFANA_CLOUD_HOSTED_METRICS_ID>`_: The user ID for your Grafana Cloud hosted metrics.
+* _`<GRAFANA_CLOUD_RW_API_KEY>`_: Your Grafana Cloud API key.
+* _`<GRAFANA_CLOUD_HOSTED_LOGS_URL>`_: The URL for your Grafana Cloud hosted logs.
+* _`<GRAFANA_CLOUD_HOSTED_LOGS_ID>`_: The user ID for your Grafana Cloud hosted logs.
 
 [Data Source Name]: https://github.com/go-sql-driver/mysql#dsn-data-source-name
 

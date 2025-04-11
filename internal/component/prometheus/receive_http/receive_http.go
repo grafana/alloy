@@ -16,6 +16,7 @@ import (
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/prometheus/prometheus/storage/remote"
 )
@@ -66,9 +67,12 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 	uncheckedCollector := util.NewUncheckedCollector(nil)
 	opts.Registerer.MustRegister(uncheckedCollector)
 
+	//TODO: Make this configurable in the future?
+	supportedRemoteWriteProtoMsgs := config.RemoteWriteProtoMsgs{config.RemoteWriteProtoMsgV1}
+
 	c := &Component{
 		opts:               opts,
-		handler:            remote.NewWriteHandler(opts.Logger, opts.Registerer, fanout),
+		handler:            remote.NewWriteHandler(opts.Logger, opts.Registerer, fanout, supportedRemoteWriteProtoMsgs),
 		fanout:             fanout,
 		uncheckedCollector: uncheckedCollector,
 	}

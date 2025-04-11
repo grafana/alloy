@@ -63,7 +63,8 @@ type Options struct {
 
 // Arguments holds runtime settings for the HTTP service.
 type Arguments struct {
-	TLS *TLSArguments `alloy:"tls,block,optional"`
+	Auth *AuthArguments `alloy:"auth,block,optional"`
+	TLS  *TLSArguments  `alloy:"tls,block,optional"`
 }
 
 type Service struct {
@@ -83,6 +84,10 @@ type Service struct {
 
 	// Track the raw config for use with the support bundle
 	sources map[string]*ast.File
+
+	authenticatorMut sync.RWMutex
+	// authenticator is applied to every request made to http server
+	authenticator authenticator
 
 	// publicLis and tcpLis are used to lazily enable TLS, since TLS is
 	// optionally configurable at runtime.
@@ -137,6 +142,8 @@ func New(opts Options) *Service {
 		gatherer:     r,
 		opts:         opts,
 
+		authenticator: allowAuthenticator,
+
 		publicLis: publicLis,
 		tcpLis:    tcpLis,
 		memLis:    memconn.NewListener(l),
@@ -188,6 +195,23 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 		otelmux.WithTracerProvider(s.tracer),
 	))
 
+	// Apply authenticator middleware.
+	// If none is configured allowAuthenticator is used and no authentication is required.
+	r.Use(func(h http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			s.authenticatorMut.RLock()
+			err := s.authenticator(w, r)
+			s.authenticatorMut.RUnlock()
+			if err != nil {
+				level.Info(s.log).Log("msg", "failed to authenticate request", "path", r.URL.Path, "err", err)
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+
+			h.ServeHTTP(w, r)
+		})
+	})
+
 	// The implementation for "/-/healthy" is inspired by
 	// the "/components" web API endpoint in /internal/web/api/api.go
 	r.HandleFunc("/-/healthy", func(w http.ResponseWriter, r *http.Request) {
@@ -210,7 +234,7 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 			return
 		}
 
-		fmt.Fprintln(w, "All Alloy components are healthy.")
+		_, _ = fmt.Fprintln(w, "All Alloy components are healthy.")
 		w.WriteHeader(http.StatusOK)
 	})
 
@@ -232,10 +256,10 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 		r.HandleFunc("/-/ready", func(w http.ResponseWriter, _ *http.Request) {
 			if s.opts.ReadyFunc() {
 				w.WriteHeader(http.StatusOK)
-				fmt.Fprintln(w, "Alloy is ready.")
+				_, _ = fmt.Fprintln(w, "Alloy is ready.")
 			} else {
 				w.WriteHeader(http.StatusServiceUnavailable)
-				fmt.Fprintln(w, "Alloy is not ready.")
+				_, _ = fmt.Fprintln(w, "Alloy is not ready.")
 			}
 		})
 	}
@@ -401,7 +425,7 @@ func (s *Service) componentHandler(getHost func() (service.Host, error), pathPre
 		host, err := getHost()
 		if host == nil || err != nil {
 			w.WriteHeader(http.StatusServiceUnavailable)
-			fmt.Fprintf(w, "failed to get host: %s\n", err)
+			_, _ = fmt.Fprintf(w, "failed to get host: %s\n", err)
 			return
 		}
 		// Trim the path prefix to get our full path.
@@ -411,7 +435,7 @@ func (s *Service) componentHandler(getHost func() (service.Host, error), pathPre
 		componentID, componentPath, err := splitURLPath(host, trimmedPath)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintf(w, "failed to parse URL path %q: %s\n", r.URL.Path, err)
+			_, _ = fmt.Fprintf(w, "failed to parse URL path %q: %s\n", r.URL.Path, err)
 		}
 
 		info, err := host.GetComponent(componentID, component.InfoOptions{})
@@ -471,6 +495,14 @@ func (s *Service) Update(newConfig any) error {
 			return err
 		}
 	}
+
+	s.authenticatorMut.Lock()
+	if newArgs.Auth != nil {
+		s.authenticator = newArgs.Auth.authenticator()
+	} else {
+		s.authenticator = allowAuthenticator
+	}
+	s.authenticatorMut.Unlock()
 
 	return nil
 }

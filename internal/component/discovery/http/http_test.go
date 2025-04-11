@@ -32,11 +32,17 @@ func TestAlloyConfig(t *testing.T) {
 		username = "123"
 		password = "456"
 	}
+	http_headers = {
+		"foo" = ["foobar"],
+	}
 `
 	var args Arguments
 	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.NoError(t, err)
 	assert.Equal(t, args.HTTPClientConfig.BasicAuth.Username, "123")
+
+	header := args.HTTPClientConfig.HTTPHeaders.Headers["foo"][0]
+	assert.Equal(t, "foobar", string(header))
 }
 
 func TestConvert(t *testing.T) {
@@ -116,7 +122,7 @@ func TestComponent(t *testing.T) {
 	assert.NilError(t, err)
 	wg := sync.WaitGroup{}
 	var ctx context.Context
-	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel = context.WithTimeout(t.Context(), 10*time.Second)
 	wg.Add(1)
 	go func() {
 		err := component.Run(ctx)

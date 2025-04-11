@@ -1,0 +1,38 @@
+otelcol.receiver.otlp "default" {
+	grpc {
+		endpoint = "localhost:4317"
+	}
+
+	http {
+		endpoint = "localhost:4318"
+	}
+
+	output {
+		metrics = [otelcol.processor.cumulativetodelta.default.input]
+	}
+}
+
+otelcol.processor.cumulativetodelta "default" {
+	max_staleness = "24h0m0s"
+	initial_value = "drop"
+
+	include {
+		metrics    = ["metric1", "metric2"]
+		match_type = "strict"
+	}
+
+	exclude {
+		metrics    = [".*metric.*"]
+		match_type = "regexp"
+	}
+
+	output {
+		metrics = [otelcol.exporter.otlp.default.input]
+	}
+}
+
+otelcol.exporter.otlp "default" {
+	client {
+		endpoint = "database:4317"
+	}
+}

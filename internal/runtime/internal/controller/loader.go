@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"path"
+	"reflect"
 	"strings"
 	"sync"
 	"time"
@@ -12,10 +13,13 @@ import (
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/backoff"
 	"github.com/hashicorp/go-multierror"
+	"github.com/prometheus/prometheus/storage"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/internal/dag"
 	"github.com/grafana/alloy/internal/runtime/internal/worker"
@@ -46,6 +50,7 @@ type Loader struct {
 	componentNodes       []ComponentNode
 	declareNodes         map[string]*DeclareNode
 	importConfigNodes    map[string]*ImportConfigNode
+	forEachNodes         map[string]*ForeachConfigNode
 	serviceNodes         []*ServiceNode
 	cache                *valueCache
 	blocks               []*ast.BlockStmt // Most recently loaded blocks, used for writing
@@ -511,7 +516,7 @@ func (l *Loader) populateConfigBlockNodes(args map[string]any, g *dag.Graph, con
 			node = exist.(BlockNode)
 			node.UpdateBlock(block)
 		} else {
-			node, newConfigNodeDiags = NewConfigNode(block, l.globals)
+			node, newConfigNodeDiags = NewConfigNode(block, l.globals, l.componentNodeManager.customComponentReg)
 			diags = append(diags, newConfigNodeDiags...)
 			if diags.HasErrors() {
 				continue
@@ -547,6 +552,7 @@ func (l *Loader) populateConfigBlockNodes(args map[string]any, g *dag.Graph, con
 	}
 
 	l.importConfigNodes = nodeMap.importMap
+	l.forEachNodes = nodeMap.foreachMap
 
 	return diags
 }
@@ -592,6 +598,14 @@ func (l *Loader) populateComponentNodes(g *dag.Graph, componentBlocks []*ast.Blo
 func (l *Loader) wireGraphEdges(g *dag.Graph) diag.Diagnostics {
 	var diags diag.Diagnostics
 
+	// Reset outgoing data flow edges for all component nodes.
+	for _, n := range g.Nodes() {
+		switch n := n.(type) {
+		case ComponentNode:
+			n.ResetDataFlowEdgeTo()
+		}
+	}
+
 	for _, n := range g.Nodes() {
 		switch n := n.(type) {
 		case *ServiceNode: // Service depending on other services.
@@ -623,12 +637,15 @@ func (l *Loader) wireGraphEdges(g *dag.Graph) diag.Diagnostics {
 			continue
 		case *CustomComponentNode:
 			l.wireCustomComponentNode(g, n)
+		case *ForeachConfigNode:
+			l.wireForEachNode(g, n)
 		}
 
 		// Finally, wire component references.
 		l.cache.mut.RLock()
 		refs, nodeDiags := ComponentReferences(n, g, l.log, l.cache.GetContext(), l.globals.MinStability)
 		l.cache.mut.RUnlock()
+		setDataFlowEdges(n, refs)
 		for _, ref := range refs {
 			g.AddEdge(dag.Edge{From: n, To: ref.Target})
 		}
@@ -651,6 +668,14 @@ func (l *Loader) wireCustomComponentNode(g *dag.Graph, cc *CustomComponentNode) 
 			// add edges between the custom component and declare/import nodes.
 			g.AddEdge(dag.Edge{From: cc, To: ref})
 		}
+	}
+}
+
+// wireForEachNode add edges between a foreach node and declare/import nodes that are used in the foreach pipeline.
+func (l *Loader) wireForEachNode(g *dag.Graph, fn *ForeachConfigNode) {
+	refs := l.findCustomComponentReferences(fn.Block())
+	for ref := range refs {
+		g.AddEdge(dag.Edge{From: fn, To: ref})
 	}
 }
 
@@ -679,6 +704,13 @@ func (l *Loader) Imports() map[string]*ImportConfigNode {
 	l.mut.RLock()
 	defer l.mut.RUnlock()
 	return l.importConfigNodes
+}
+
+// ForEachs returns the current set of foreach nodes.
+func (l *Loader) ForEachs() map[string]*ForeachConfigNode {
+	l.mut.RLock()
+	defer l.mut.RUnlock()
+	return l.forEachNodes
 }
 
 // Graph returns a copy of the DAG managed by the Loader.
@@ -807,10 +839,10 @@ func (l *Loader) concurrentEvalFn(n dag.Node, spanCtx context.Context, tracer tr
 	var err error
 	switch n := n.(type) {
 	case BlockNode:
-		ectx := l.cache.GetContext()
 
 		// RLock before evaluate to prevent Evaluating while the config is being reloaded
 		l.mut.RLock()
+		ectx := l.cache.GetContext()
 		evalErr := n.Evaluate(ectx)
 
 		err = l.postEvaluate(l.log, n, evalErr)
@@ -823,12 +855,12 @@ func (l *Loader) concurrentEvalFn(n dag.Node, spanCtx context.Context, tracer tr
 			// Upgrade to write lock to update the module exports.
 			l.mut.RUnlock()
 			l.mut.Lock()
-			defer l.mut.Unlock()
 			// Check if the update still needed after obtaining the write lock and perform it.
 			if l.cache.ExportChangeIndex() != l.moduleExportIndex {
 				l.globals.OnExportsChange(l.cache.CreateModuleExports())
 				l.moduleExportIndex = l.cache.ExportChangeIndex()
 			}
+			l.mut.Unlock()
 		} else {
 			// No need to upgrade to write lock, just release the read lock.
 			l.mut.RUnlock()
@@ -909,10 +941,10 @@ func (l *Loader) isRootController() bool {
 	return l.globals.ControllerID == ""
 }
 
-// findCustomComponentReferences returns references to import/declare nodes in a declare block.
-func (l *Loader) findCustomComponentReferences(declare *ast.BlockStmt) map[BlockNode]struct{} {
+// findCustomComponentReferences returns references to import/declare nodes in a block.
+func (l *Loader) findCustomComponentReferences(block *ast.BlockStmt) map[BlockNode]struct{} {
 	uniqueReferences := make(map[BlockNode]struct{})
-	l.collectCustomComponentReferences(declare.Body, uniqueReferences)
+	l.collectCustomComponentReferences(block.Body, uniqueReferences)
 	return uniqueReferences
 }
 
@@ -932,7 +964,7 @@ func (l *Loader) collectCustomComponentReferences(stmts ast.Body, uniqueReferenc
 		)
 
 		switch {
-		case componentName == declareType:
+		case componentName == declareType || componentName == templateType:
 			l.collectCustomComponentReferences(blockStmt.Body, uniqueReferences)
 		case foundDeclare:
 			uniqueReferences[declareNode] = struct{}{}
@@ -946,4 +978,51 @@ func splitPath(id string) (string, string) {
 	parent, id := path.Split(id)
 	parent, _ = strings.CutSuffix(parent, "/")
 	return "/" + parent, id
+}
+
+func setDataFlowEdges(n dag.Node, refs []Reference) {
+	otelConsumerType := reflect.TypeOf((*otelcol.Consumer)(nil)).Elem()
+	appendableType := reflect.TypeOf((*storage.Appendable)(nil)).Elem()
+	logsReceiverType := reflect.TypeOf((*loki.LogsReceiver)(nil)).Elem()
+	if cn, ok := n.(ComponentNode); ok {
+		for _, ref := range refs {
+			if tn, ok := ref.Target.(ComponentNode); ok {
+				exports := tn.Exports()
+				if exports == nil {
+					continue
+				}
+
+				t := reflect.TypeOf(exports)
+
+				if t.Kind() != reflect.Struct {
+					continue
+				}
+
+				found := false
+				var field reflect.StructField
+				for i := 0; i < t.NumField(); i++ {
+					field = t.Field(i)
+
+					// Extracts the alloy arg tag value from the field.
+					tagValue := field.Tag.Get("alloy")
+					tagParts := strings.Split(tagValue, ",")
+					// After the component references search, the traversal string refers to the export field.
+					if len(tagParts) > 0 && tagParts[0] == ref.Traversal.String() {
+						found = true
+						break
+					}
+				}
+
+				// For most export types, the data flow edge has the opposite direction of the reference.
+				if found {
+					switch field.Type {
+					case otelConsumerType, appendableType, logsReceiverType:
+						cn.AddDataFlowEdgeTo(tn.NodeID())
+					default:
+						tn.AddDataFlowEdgeTo(cn.NodeID())
+					}
+				}
+			}
+		}
+	}
 }

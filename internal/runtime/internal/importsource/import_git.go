@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
-	"reflect"
 	"strings"
 	"sync"
 	"time"
@@ -13,6 +12,7 @@ import (
 	"github.com/go-kit/log"
 
 	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/runtime/equality"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/vcs"
 	"github.com/grafana/alloy/syntax"
@@ -93,7 +93,7 @@ func (im *ImportGit) Evaluate(scope *vm.Scope) error {
 		return fmt.Errorf("decoding configuration: %w", err)
 	}
 
-	if reflect.DeepEqual(im.args, arguments) {
+	if equality.DeepEqual(im.args, arguments) {
 		return nil
 	}
 
@@ -208,7 +208,7 @@ func (im *ImportGit) Update(args component.Arguments) (err error) {
 
 	// Create or update the repo field.
 	// Failure to update repository makes the module loader temporarily use cached contents on disk
-	if im.repo == nil || !reflect.DeepEqual(repoOpts, im.repoOpts) {
+	if im.repo == nil || !equality.DeepEqual(repoOpts, im.repoOpts) {
 		r, err := vcs.NewGitRepo(context.Background(), im.repoPath, repoOpts)
 		if err != nil {
 			if errors.As(err, &vcs.UpdateFailedError{}) {

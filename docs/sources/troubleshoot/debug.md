@@ -43,11 +43,20 @@ Click the {{< param "PRODUCT_NAME" >}} logo to navigate back to the home page.
 
 ### Graph page
 
-{{< figure src="/media/docs/alloy/ui_graph_page.png" alt="Alloy UI graph page" >}}
+> **EXPERIMENTAL**: This is an [experimental][] feature.
+> Experimental features are subject to frequent breaking changes, and may be removed with no equivalent replacement.
 
-The **Graph** page shows a graph view of components defined in the configuration file and their health.
+{{< figure src="/media/docs/alloy/ui_graph_page_new_2.png" alt="Alloy UI graph page" >}}
+
+The **Graph** page shows a graph view of components defined in the configuration file.
 Clicking a component in the graph navigates to the [Component detail page](#component-detail-page) for that component.
 
+You can click and drag the components to move them around.
+
+To access the graph page of a module, click on the **Graph** button on the module's detail page.
+
+The amount of data that exits a component that supports [live debugging][#live-debugging-page] is shown on the outgoing edges of the component.
+The data is refreshed according to the `window` parameter.
 ### Component detail page
 
 {{< figure src="/media/docs/alloy/ui_component_detail_page_2.png" alt="Alloy UI component detail page" >}}
@@ -107,11 +116,13 @@ Supported components:
 * `loki.process`
 * `loki.relabel`
 * `loki.secretfilter`
+* `otelcol.connector.*`
 * `otelcol.processor.*`
 * `otelcol.receiver.*`
 * `prometheus.remote_write`
 * `prometheus.relabel`
 * `discovery.*`
+* `prometheus.scrape`
 {{< /admonition >}}
 
 ## Debug using the UI
