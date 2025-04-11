@@ -54,6 +54,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/atomic"
 
+	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/internal/controller"
 	"github.com/grafana/alloy/internal/runtime/internal/importsource"
@@ -147,9 +148,9 @@ func New(o Options) *Runtime {
 type controllerOptions struct {
 	Options
 
-	ComponentRegistry controller.ComponentRegistry // Custom component registry used in tests.
-	ModuleRegistry    *moduleRegistry              // Where to register created modules.
-	IsModule          bool                         // Whether this controller is for a module.
+	ComponentRegistry component.Registry // Custom component registry used in tests.
+	ModuleRegistry    *moduleRegistry    // Where to register created modules.
+	IsModule          bool               // Whether this controller is for a module.
 	// A worker pool to evaluate components asynchronously. A default one will be created if this is nil.
 	WorkerPool worker.Pool
 }

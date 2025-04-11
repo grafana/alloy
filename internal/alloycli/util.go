@@ -1,0 +1,68 @@
+package alloycli
+
+import (
+	"io/fs"
+	"os"
+	"path/filepath"
+	"strings"
+
+	"github.com/grafana/alloy/internal/converter"
+	convert_diag "github.com/grafana/alloy/internal/converter/diag"
+)
+
+func loadSourceFiles(path string, converterSourceFormat string, converterBypassErrors bool, configExtraArgs string) (map[string][]byte, error) {
+	fi, err := os.Stat(path)
+	if err != nil {
+		return nil, err
+	}
+
+	if fi.IsDir() {
+		sources := map[string][]byte{}
+		err := filepath.WalkDir(path, func(curPath string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			// Skip all directories and don't recurse into child dirs that aren't at top-level
+			if d.IsDir() {
+				if curPath != path {
+					return filepath.SkipDir
+				}
+				return nil
+			}
+			// Ignore files not ending in .alloy extension
+			if !strings.HasSuffix(curPath, ".alloy") {
+				return nil
+			}
+
+			bb, err := os.ReadFile(curPath)
+			sources[curPath] = bb
+			return err
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		return sources, nil
+	}
+
+	bb, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	if converterSourceFormat != "alloy" {
+		var diags convert_diag.Diagnostics
+		ea, err := parseExtraArgs(configExtraArgs)
+		if err != nil {
+			return nil, err
+		}
+
+		bb, diags = converter.Convert(bb, converter.Input(converterSourceFormat), ea)
+		hasError := hasErrorLevel(diags, convert_diag.SeverityLevelError)
+		hasCritical := hasErrorLevel(diags, convert_diag.SeverityLevelCritical)
+		if hasCritical || (!converterBypassErrors && hasError) {
+			return nil, diags
+		}
+	}
+
+	return map[string][]byte{path: bb}, nil
+}
