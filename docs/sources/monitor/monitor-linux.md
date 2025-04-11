@@ -24,7 +24,7 @@ Ensure you have the following:
 
 * [Docker](https://www.docker.com/)
 * [Git](https://git-scm.com/)
-* A Linux host or Linux running in e Virtual Machine
+* A Linux host or Linux running in a Virtual Machine
 
 {{< admonition type="note" >}}
 You need administrator privileges to run `docker` commands.
