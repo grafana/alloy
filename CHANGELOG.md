@@ -28,6 +28,8 @@ Main (unreleased)
   - `schema_table`: add support for index expressions (@cristiangreco)
   - `query_tables`: improve queries parsing (@cristiangreco)
 
+- Reduced the lag time during targets handover in a cluster in `prometheus.scrape` components by reducing thread contention. (@thampiotr)
+
 ### Bugfixes
 
 - Fix `otelcol.exporter.prometheus` dropping valid exemplars. (@github-vincent-miszczak)
