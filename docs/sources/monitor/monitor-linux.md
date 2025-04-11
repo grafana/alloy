@@ -8,7 +8,7 @@ weight: 225
 
 # Monitor Linux servers with {{% param "FULL_PRODUCT_NAME" %}}
 
-The Linux operating system generates a wide range of metrics that you can use to monitor the health and performance if your hardware and operating system.
+The Linux operating system generates a wide range of metrics that you can use to monitor the health and performance of your hardware and operating system.
 With {{< param "PRODUCT_NAME" >}}, you can collect your metrics, forward them to a Grafana stack, and create dashboards to monitor your Docker containers.
 
 The [`alloy-scenarios`][scenarios] repository contains complete examples of {{< param "PRODUCT_NAME" >}} deployments.
