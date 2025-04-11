@@ -1,0 +1,9 @@
+rbac:
+  create: true
+  extraRules:
+    - apiGroups: ["metrics.eks.amazonaws.com"]
+      resources: [
+        "kcm/metrics",
+        "ksh/metrics"
+      ]
+      verbs: ["get"]
