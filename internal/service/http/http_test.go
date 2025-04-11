@@ -9,7 +9,6 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/service/remotecfg"
@@ -349,7 +348,7 @@ func newTestEnvironment(t *testing.T) (*testEnvironment, error) {
 		Gatherer: prometheus.NewRegistry(),
 
 		ReadyFunc:  func() bool { return true },
-		ReloadFunc: func() (*runtime.Source, error) { return nil, nil },
+		ReloadFunc: func() error { return nil },
 
 		HTTPListenAddr:   fmt.Sprintf("127.0.0.1:%d", port),
 		MemoryListenAddr: "alloy.internal:12345",
