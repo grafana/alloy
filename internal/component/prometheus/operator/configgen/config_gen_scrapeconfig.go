@@ -12,7 +12,6 @@ import (
 	"github.com/prometheus/prometheus/discovery"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
 	"github.com/prometheus/prometheus/model/relabel"
-	prelabel "github.com/prometheus/prometheus/model/relabel"
 )
 
 func (cg *ConfigGenerator) GenerateScrapeConfigConfigs(m *promopv1alpha1.ScrapeConfig) (cfg []*config.ScrapeConfig, errors []error) {
@@ -48,7 +47,7 @@ func (cg *ConfigGenerator) generateStaticScrapeConfigConfig(m *promopv1alpha1.Sc
 	}
 	labels := model.LabelSet{}
 	// promote "__address__" to "instance" label.
-	relabels.add(&prelabel.Config{
+	relabels.add(&relabel.Config{
 		SourceLabels: model.LabelNames{model.AddressLabel},
 		TargetLabel:  model.InstanceLabel,
 	})

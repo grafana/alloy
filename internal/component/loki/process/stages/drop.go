@@ -17,7 +17,7 @@ import (
 
 const (
 	ErrDropStageEmptyConfig       = "drop stage config must contain at least one of `source`, `expression`, `older_than` or `longer_than`"
-	ErrDropStageInvalidConfig     = "drop stage config error, `value` and `expression` cannot both be defined at the same time."
+	ErrDropStageInvalidConfig     = "drop stage config error, `value` and `expression` cannot both be defined at the same time"
 	ErrDropStageInvalidRegex      = "drop stage regex compilation error: %v"
 	ErrDropStageNoSourceWithValue = "drop stage config must contain `source` if `value` is specified"
 )
