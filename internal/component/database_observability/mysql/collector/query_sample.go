@@ -27,6 +27,7 @@ SELECT unix_timestamp()             AS now,
 	statements.CURRENT_SCHEMA,
 	statements.DIGEST,
 	statements.DIGEST_TEXT,
+	%s
 	statements.TIMER_START,
 	statements.TIMER_END,
 	statements.TIMER_WAIT,
@@ -50,6 +51,7 @@ type QuerySampleArguments struct {
 	CollectInterval time.Duration
 	EntryHandler    loki.EntryHandler
 	UseTiDBParser   bool
+	SelectSQLText   bool
 
 	Logger log.Logger
 }
@@ -60,6 +62,7 @@ type QuerySample struct {
 	collectInterval time.Duration
 	entryHandler    loki.EntryHandler
 	sqlParser       parser.Parser
+	selectSQLText   bool
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -75,6 +78,7 @@ func NewQuerySample(args QuerySampleArguments) (*QuerySample, error) {
 		instanceKey:     args.InstanceKey,
 		collectInterval: args.CollectInterval,
 		entryHandler:    args.EntryHandler,
+		selectSQLText:   args.SelectSQLText,
 		logger:          log.With(args.Logger, "collector", QuerySampleName),
 		running:         &atomic.Bool{},
 	}
@@ -166,7 +170,13 @@ func (c *QuerySample) setLastSampleSeenTimestamp(ctx context.Context) error {
 }
 
 func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
-	rs, err := c.dbConnection.QueryContext(ctx, selectQuerySamples, c.lastSampleSeenTimestamp)
+	var sqlTextField string
+	if c.selectSQLText {
+		sqlTextField = "statements.SQL_TEXT,"
+	}
+	query := fmt.Sprintf(selectQuerySamples, sqlTextField)
+
+	rs, err := c.dbConnection.QueryContext(ctx, query, c.lastSampleSeenTimestamp)
 	if err != nil {
 		level.Error(c.logger).Log("msg", "failed to fetch history table samples", "err", err)
 		return err
@@ -183,6 +193,7 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 			Schema     sql.NullString
 			Digest     sql.NullString
 			DigestText sql.NullString
+			SQLText    sql.NullString
 
 			// sample time
 			TimerStartPicoseconds  sql.NullFloat64
@@ -201,12 +212,17 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 			MaxTotalMemory      uint64
 		}{}
 
-		err := rs.Scan(
+		scanArgs := []interface{}{
 			&row.NowSeconds,
 			&row.UptimeSeconds,
 			&row.Schema,
 			&row.Digest,
 			&row.DigestText,
+		}
+		if c.selectSQLText {
+			scanArgs = append(scanArgs, &row.SQLText)
+		}
+		scanArgs = append(scanArgs,
 			&row.TimerStartPicoseconds,
 			&row.TimerEndPicoseconds,
 			&row.ElapsedTimePicoseconds,
@@ -218,6 +234,8 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 			&row.MaxControlledMemory,
 			&row.MaxTotalMemory,
 		)
+
+		err := rs.Scan(scanArgs...)
 		if err != nil {
 			level.Error(c.logger).Log("msg", "failed to scan history table samples", "err", err)
 			continue
@@ -251,10 +269,16 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 			OP_QUERY_SAMPLE,
 			c.instanceKey,
 			fmt.Sprintf(
-				`schema="%s" digest="%s" digest_text="%s" rows_examined="%d" rows_sent="%d" rows_affected="%d" errors="%d" max_controlled_memory="%db" max_total_memory="%db" cpu_time="%fms" elapsed_time="%fms" elapsed_time_ms="%fms"`,
+				`schema="%s" digest="%s" digest_text="%s" %srows_examined="%d" rows_sent="%d" rows_affected="%d" errors="%d" max_controlled_memory="%db" max_total_memory="%db" cpu_time="%fms" elapsed_time="%fms" elapsed_time_ms="%fms"`,
 				row.Schema.String,
 				row.Digest.String,
 				digestText,
+				func() string {
+					if c.selectSQLText && row.SQLText.Valid {
+						return fmt.Sprintf(`sql_text="%s" `, row.SQLText.String)
+					}
+					return ""
+				}(),
 				row.RowsExamined,
 				row.RowsSent,
 				row.RowsAffected,
