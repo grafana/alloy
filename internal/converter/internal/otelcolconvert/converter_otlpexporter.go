@@ -8,6 +8,7 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/auth"
 	"github.com/grafana/alloy/internal/component/otelcol/exporter/otlp"
+	"github.com/grafana/alloy/internal/component/otelcol/extension"
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"go.opentelemetry.io/collector/component"
@@ -41,6 +42,9 @@ func (otlpExporterConverter) ConvertAndAppend(state *State, id componentstatus.I
 		case auth.Handler:
 			ext := state.LookupExtension(cfg.(*otlpexporter.Config).Auth.AuthenticatorID)
 			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
+		case extension.ExtensionHandler:
+			ext := state.LookupExtension(*cfg.(*otlpexporter.Config).QueueConfig.StorageID)
+			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
 		}
 		return val
 	}
@@ -71,11 +75,19 @@ func toOtelcolExporterOTLP(cfg *otlpexporter.Config) *otlp.Arguments {
 }
 
 func toQueueArguments(cfg exporterhelper.QueueConfig) otelcol.QueueArguments {
-	return otelcol.QueueArguments{
+	q := otelcol.QueueArguments{
 		Enabled:      cfg.Enabled,
 		NumConsumers: cfg.NumConsumers,
 		QueueSize:    cfg.QueueSize,
+		Blocking:     cfg.Blocking,
 	}
+
+	if cfg.StorageID != nil {
+		q.Storage = &extension.ExtensionHandler{
+			ID: *cfg.StorageID,
+		}
+	}
+	return q
 }
 
 func toRetryArguments(cfg configretry.BackOffConfig) otelcol.RetryArguments {

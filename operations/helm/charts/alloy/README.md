@@ -1,6 +1,6 @@
 # Grafana Alloy Helm chart
 
-![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![Version: 0.12.6](https://img.shields.io/badge/Version-0.12.6-informational?style=flat-square) ![AppVersion: v1.7.5](https://img.shields.io/badge/AppVersion-v1.7.5-informational?style=flat-square)
+![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![Version: 1.0.0](https://img.shields.io/badge/Version-1.0.0-informational?style=flat-square) ![AppVersion: v1.8.0](https://img.shields.io/badge/AppVersion-v1.8.0-informational?style=flat-square)
 
 Helm chart for deploying [Grafana Alloy][] to Kubernetes.
 
@@ -65,10 +65,22 @@ useful if just using the default DaemonSet isn't sufficient.
 | configReloader.image.registry | string | `"quay.io"` | Config reloader image registry (defaults to docker.io) |
 | configReloader.image.repository | string | `"prometheus-operator/prometheus-config-reloader"` | Repository to get config reloader image from. |
 | configReloader.image.tag | string | `"v0.81.0"` | Tag of image to use for config reloading. |
-| configReloader.resources | object | `{"requests":{"cpu":"1m","memory":"5Mi"}}` | Resource requests and limits to apply to the config reloader container. |
+| configReloader.resources | object | `{"requests":{"cpu":"10m","memory":"50Mi"}}` | Resource requests and limits to apply to the config reloader container. |
 | configReloader.securityContext | object | `{}` | Security context to apply to the Grafana configReloader container. |
 | controller.affinity | object | `{}` | Affinity configuration for pods. |
-| controller.autoscaling.enabled | bool | `false` | Creates a HorizontalPodAutoscaler for controller type deployment. |
+| controller.autoscaling.enabled | bool | `false` | Creates a HorizontalPodAutoscaler for controller type deployment. Deprecated: Please use controller.autoscaling.horizontal instead |
+| controller.autoscaling.horizontal | object | `{"enabled":false,"maxReplicas":5,"minReplicas":1,"scaleDown":{"policies":[],"selectPolicy":"Max","stabilizationWindowSeconds":300},"scaleUp":{"policies":[],"selectPolicy":"Max","stabilizationWindowSeconds":0},"targetCPUUtilizationPercentage":0,"targetMemoryUtilizationPercentage":80}` | Configures the Horizontal Pod Autoscaler for the controller. |
+| controller.autoscaling.horizontal.enabled | bool | `false` | Enables the Horizontal Pod Autoscaler for the controller. |
+| controller.autoscaling.horizontal.maxReplicas | int | `5` | The upper limit for the number of replicas to which the autoscaler can scale up. |
+| controller.autoscaling.horizontal.minReplicas | int | `1` | The lower limit for the number of replicas to which the autoscaler can scale down. |
+| controller.autoscaling.horizontal.scaleDown.policies | list | `[]` | List of policies to determine the scale-down behavior. |
+| controller.autoscaling.horizontal.scaleDown.selectPolicy | string | `"Max"` | Determines which of the provided scaling-down policies to apply if multiple are specified. |
+| controller.autoscaling.horizontal.scaleDown.stabilizationWindowSeconds | int | `300` | The duration that the autoscaling mechanism should look back on to make decisions about scaling down. |
+| controller.autoscaling.horizontal.scaleUp.policies | list | `[]` | List of policies to determine the scale-up behavior. |
+| controller.autoscaling.horizontal.scaleUp.selectPolicy | string | `"Max"` | Determines which of the provided scaling-up policies to apply if multiple are specified. |
+| controller.autoscaling.horizontal.scaleUp.stabilizationWindowSeconds | int | `0` | The duration that the autoscaling mechanism should look back on to make decisions about scaling up. |
+| controller.autoscaling.horizontal.targetCPUUtilizationPercentage | int | `0` | Average CPU utilization across all relevant pods, a percentage of the requested value of the resource for the pods. Setting `targetCPUUtilizationPercentage` to 0 will disable CPU scaling. |
+| controller.autoscaling.horizontal.targetMemoryUtilizationPercentage | int | `80` | Average Memory utilization across all relevant pods, a percentage of the requested value of the resource for the pods. Setting `targetMemoryUtilizationPercentage` to 0 will disable Memory scaling. |
 | controller.autoscaling.maxReplicas | int | `5` | The upper limit for the number of replicas to which the autoscaler can scale up. |
 | controller.autoscaling.minReplicas | int | `1` | The lower limit for the number of replicas to which the autoscaler can scale down. |
 | controller.autoscaling.scaleDown.policies | list | `[]` | List of policies to determine the scale-down behavior. |
@@ -79,6 +91,16 @@ useful if just using the default DaemonSet isn't sufficient.
 | controller.autoscaling.scaleUp.stabilizationWindowSeconds | int | `0` | The duration that the autoscaling mechanism should look back on to make decisions about scaling up. |
 | controller.autoscaling.targetCPUUtilizationPercentage | int | `0` | Average CPU utilization across all relevant pods, a percentage of the requested value of the resource for the pods. Setting `targetCPUUtilizationPercentage` to 0 will disable CPU scaling. |
 | controller.autoscaling.targetMemoryUtilizationPercentage | int | `80` | Average Memory utilization across all relevant pods, a percentage of the requested value of the resource for the pods. Setting `targetMemoryUtilizationPercentage` to 0 will disable Memory scaling. |
+| controller.autoscaling.vertical | object | `{"enabled":false,"recommenders":[],"resourcePolicy":{"containerPolicies":[{"containerName":"alloy","controlledResources":["cpu","memory"],"controlledValues":"RequestsAndLimits","maxAllowed":{},"minAllowed":{}}]},"updatePolicy":null}` | Configures the Vertical Pod Autoscaler for the controller. |
+| controller.autoscaling.vertical.enabled | bool | `false` | Enables the Vertical Pod Autoscaler for the controller. |
+| controller.autoscaling.vertical.recommenders | list | `[]` | List of recommenders to use for the Vertical Pod Autoscaler. Recommenders are responsible for generating recommendation for the object. List should be empty (then the default recommender will generate the recommendation) or contain exactly one recommender. |
+| controller.autoscaling.vertical.resourcePolicy | object | `{"containerPolicies":[{"containerName":"alloy","controlledResources":["cpu","memory"],"controlledValues":"RequestsAndLimits","maxAllowed":{},"minAllowed":{}}]}` | Configures the resource policy for the Vertical Pod Autoscaler. |
+| controller.autoscaling.vertical.resourcePolicy.containerPolicies | list | `[{"containerName":"alloy","controlledResources":["cpu","memory"],"controlledValues":"RequestsAndLimits","maxAllowed":{},"minAllowed":{}}]` | Configures the container policies for the Vertical Pod Autoscaler. |
+| controller.autoscaling.vertical.resourcePolicy.containerPolicies[0].controlledResources | list | `["cpu","memory"]` | The controlled resources for the Vertical Pod Autoscaler. |
+| controller.autoscaling.vertical.resourcePolicy.containerPolicies[0].controlledValues | string | `"RequestsAndLimits"` | The controlled values for the Vertical Pod Autoscaler. Needs to be either RequestsOnly or RequestsAndLimits. |
+| controller.autoscaling.vertical.resourcePolicy.containerPolicies[0].maxAllowed | object | `{}` | The maximum allowed values for the pods. |
+| controller.autoscaling.vertical.resourcePolicy.containerPolicies[0].minAllowed | object | `{}` | Defines the min allowed resources for the pod |
+| controller.autoscaling.vertical.updatePolicy | string | `nil` | Configures the update policy for the Vertical Pod Autoscaler. |
 | controller.dnsPolicy | string | `"ClusterFirst"` | Configures the DNS policy for the pod. https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-s-dns-policy |
 | controller.enableStatefulSetAutoDeletePVC | bool | `false` | Whether to enable automatic deletion of stale PVCs due to a scale down operation, when controller.type is 'statefulset'. |
 | controller.extraAnnotations | object | `{}` | Annotations to add to controller. |
