@@ -25,7 +25,6 @@ linters:
     - makezero    # Detect misuse of make with non-zero length and append
     - usetesting  # Use testing.(*T).Setenv instead of os.Setenv
     - whitespace  # Report unnecessary blank lines
-    - fieldalignment # Check struct field alignment
 
 issues:
   max-same-issues: 0
@@ -92,6 +91,9 @@ linters-settings:
     multi-func: true
   goconst:
     ignore-tests: true
+  govet:
+    enable:
+      - fieldalignment
 
   revive:
     rules:
