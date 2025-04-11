@@ -8,9 +8,9 @@ title: otelcol.processor.filter
 
 # otelcol.processor.filter
 
-`otelcol.processor.filter` accepts and filters telemetry data from other `otelcol`
+`otelcol.processor.filter` filters out accepted telemetry data from other `otelcol`
 components using the [OpenTelemetry Transformation Language (OTTL)][OTTL].
-If any of the OTTL statements evaluates to true, the telemetry data is dropped.
+If any of the OTTL statements evaluates to **true**, the telemetry data is **dropped**.
 
 OTTL statements consist of [OTTL Converter functions][], which act on paths.
 A path is a reference to a telemetry data such as:
