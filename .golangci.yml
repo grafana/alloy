@@ -91,6 +91,9 @@ linters-settings:
     multi-func: true
   goconst:
     ignore-tests: true
+  govet:
+    enable:
+      - fieldalignment
 
   revive:
     rules:
