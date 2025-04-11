@@ -28,6 +28,8 @@ Main (unreleased)
   - `schema_table`: add support for index expressions (@cristiangreco)
   - `query_tables`: improve queries parsing (@cristiangreco)
 
+- Pretty print diagnostic errors when using `alloy run` (@kalleep)
+
 ### Bugfixes
 
 - Fix `otelcol.exporter.prometheus` dropping valid exemplars. (@github-vincent-miszczak)
