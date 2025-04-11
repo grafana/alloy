@@ -244,12 +244,27 @@ func TestQueryTables(t *testing.T) {
 			logsLines:  []string{},
 		},
 		{
-			name: "fallback to digest_text",
+			name: "query truncated with dots fallback to digest_text",
 			rows: [][]driver.Value{{
 				"abc123",
 				"SELECT * FROM `some_table` WHERE `id` = ?",
 				"some_schema",
 				"select * from some_table whe...",
+			}},
+			logsLabels: []model.LabelSet{
+				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
+			},
+			logsLines: []string{
+				`schema="some_schema" digest="abc123" table="some_table"`,
+			},
+		},
+		{
+			name: "query truncated without dots fallback to digest_text",
+			rows: [][]driver.Value{{
+				"abc123",
+				"SELECT * FROM `some_table` WHERE `id` = ?",
+				"some_schema",
+				"select * from some_table where",
 			}},
 			logsLabels: []model.LabelSet{
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},

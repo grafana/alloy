@@ -147,8 +147,15 @@ func (c *QueryTables) fetchQueryTables(ctx context.Context) error {
 
 		stmt, err := c.sqlParser.Parse(sqlText)
 		if err != nil {
-			level.Warn(c.logger).Log("msg", "failed to parse sql query", "schema", schemaName, "digest", digest, "err", err)
-			continue
+			level.Warn(c.logger).Log("msg", "failed to parse sql query from sample_text", "schema", schemaName, "digest", digest, "err", err)
+
+			if sqlText != digestText {
+				stmt, err = c.sqlParser.Parse(digestText)
+				if err != nil {
+					level.Warn(c.logger).Log("msg", "failed to parse sql query from digest_text", "schema", schemaName, "digest", digest, "err", err)
+					continue
+				}
+			}
 		}
 
 		tables := c.sqlParser.ExtractTableNames(c.logger, digest, stmt)
