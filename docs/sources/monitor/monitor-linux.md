@@ -8,7 +8,7 @@ weight: 225
 
 # Monitor Linux servers with {{% param "FULL_PRODUCT_NAME" %}}
 
-The Prometheus Node Exporter exposes hardware and Linux kernel metrics.
+The Linux operating system generates a wide range of metrics that you can use to monitor the health and performance if your hardware and operating system.
 With {{< param "PRODUCT_NAME" >}}, you can collect your metrics, forward them to a Grafana stack, and create dashboards to monitor your Docker containers.
 
 The [`alloy-scenarios`][scenarios] repository contains complete examples of {{< param "PRODUCT_NAME" >}} deployments.
@@ -104,21 +104,27 @@ The metrics configuration in this example uses nine components:
 * `loki.write`
 * `livedebugging`
 
-#### `discovery.relabel`
+#### `discovery.relabel` instance and job labels
+
+There are two `discovery.relabel` components in this configuration.
+This [`discovery.relabel`][discovery.relabel] component replaces the instance and job labels that come in from the `node_exporter` with the hostname of the machine and a standard job name for all metrics.
+
+In this example, this component requires the following arguments:
+
+* `targets`: The targets to relabel.
+* `source_labels`: The list of labels to select for relabeling. The rules extract the instance and job labels.
+* `replacement`: The value that replaces the source label. The rules set the target labels to `constants.hostname`, and `integrations/node_exporter`.
 
 ```alloy
-// This block relabels metrics coming from node_exporter to add standard labels
 discovery.relabel "integrations_node_exporter" {
   targets = prometheus.exporter.unix.integrations_node_exporter.targets
 
   rule {
-    // Set the instance label to the hostname of the machine
     target_label = "instance"
     replacement  = constants.hostname
   }
 
   rule {
-    // Set a standard job name for all node_exporter metrics
     target_label = "job"
     replacement = "integrations/node_exporter"
   }
@@ -127,33 +133,37 @@ discovery.relabel "integrations_node_exporter" {
 
 #### `prometheus.exporter.unix`
 
+The [`prometheus.exporter.unix`][prometheus.exporter.unix] component exposes hardware and Linux kernel metrics.
+This is the primary component that you configure to collect your Linux system metrics.
+
+In this example, this component requires the following arguments:
+
+* `disable_collectors`: Disable specific collectors to reduce unnecessary overhead.
+* `enable_collectors`: Enable the `meminfo` collector.
+* `fs_types_exclude`: A regular expression of filesystem types to ignore.
+* `mount_points_exclude`: A regular expression of mount types to ignore.
+* `mount_timeout`: How long to wait for a mount to respond before marking it as stale.
+* `ignored_devices`: Regular expression of virtual and container network interfaces to ignore.
+* `device_exclude`: Regular expression of virtual and container network interfaces to exclude.
+
 ```alloy
-// Configure the node_exporter integration to collect system metrics
 prometheus.exporter.unix "integrations_node_exporter" {
-  // Disable unnecessary collectors to reduce overhead
   disable_collectors = ["ipvs", "btrfs", "infiniband", "xfs", "zfs"]
   enable_collectors = ["meminfo"]
 
   filesystem {
-    // Exclude filesystem types that aren't relevant for monitoring
     fs_types_exclude     = "^(autofs|binfmt_misc|bpf|cgroup2?|configfs|debugfs|devpts|devtmpfs|tmpfs|fusectl|hugetlbfs|iso9660|mqueue|nsfs|overlay|proc|procfs|pstore|rpc_pipefs|securityfs|selinuxfs|squashfs|sysfs|tracefs)$"
-    // Exclude mount points that aren't relevant for monitoring
     mount_points_exclude = "^/(dev|proc|run/credentials/.+|sys|var/lib/docker/.+)($|/)"
-    // Timeout for filesystem operations
     mount_timeout        = "5s"
   }
 
   netclass {
-    // Ignore virtual and container network interfaces
     ignored_devices = "^(veth.*|cali.*|[a-f0-9]{15})$"
   }
 
   netdev {
-    // Exclude virtual and container network interfaces from device metrics
     device_exclude = "^(veth.*|cali.*|[a-f0-9]{15})$"
   }
-
-
 }
 ```
 
@@ -193,31 +203,38 @@ prometheus.remote_write "local" {
 
 #### `loki.source.journal`
 
+The [`loki.source.journal`][loki.source.journal] component collects logs from the systemd journal and forwards them to a Loki receiver.
+In this example, the component requires the following arguments:
+
+* `max_age`: Only collect logs from the last 24 hours.
+* `relabel_rules`: Relabeling rules to apply on log entries.
+* `forward_to`:Send logs to the local Loki instance.
+
 ```alloy
-// Collect logs from systemd journal for node_exporter integration
 loki.source.journal "logs_integrations_integrations_node_exporter_journal_scrape" {
-  // Only collect logs from the last 24 hours
   max_age       = "24h0m0s"
-  // Apply relabeling rules to the logs
   relabel_rules = discovery.relabel.logs_integrations_integrations_node_exporter_journal_scrape.rules
-  // Send logs to the local Loki instance
   forward_to    = [loki.write.local.receiver]
 }
 ```
 
 #### `local.file_match`
 
+The [`local.file_match`][local.file_match] component discovers files on the local filesystem using glob patterns.
+In this example, the component requires the following arguments:
+
+* `path_targets`: Targets to expand:
+  * `__address__`: Targets the localhost for log collection.
+  * `__path__`: Collect standard system logs.
+  * `instance`: Add an instance label with hostname.
+  * `job`: Add a job label for logs.
+
 ```alloy
-// Define which log files to collect for node_exporter
 local.file_match "logs_integrations_integrations_node_exporter_direct_scrape" {
   path_targets = [{
-    // Target localhost for log collection
     __address__ = "localhost",
-    // Collect standard system logs
     __path__    = "/var/log/{syslog,messages,*.log}",
-    // Add instance label with hostname
     instance    = constants.hostname,
-    // Add job label for logs
     job         = "integrations/node_exporter",
   }]
 }
@@ -261,12 +278,15 @@ discovery.relabel "logs_integrations_integrations_node_exporter_journal_scrape" 
 
 #### `loki.source.file`
 
+The [`loki.source.file`][loki.source.file] component reads log entries from files and forwards them to other Loki components.
+In this example, the component requires the following arguments:
+
+* `targets`: The list of files to read logs from.
+* `forward_to`: The list of receivers to send log entries to.
+
 ```alloy
-// Collect logs from files for node_exporter
 loki.source.file "logs_integrations_integrations_node_exporter_direct_scrape" {
-  // Use targets defined in local.file_match
   targets    = local.file_match.logs_integrations_integrations_node_exporter_direct_scrape.targets
-  // Send logs to the local Loki instance
   forward_to = [loki.write.local.receiver]
 }
 ```
@@ -289,7 +309,8 @@ loki.write "local" {
 #### `livedebugging`
 
 `livedebugging` is disabled by default.
-Enable it explicitly through the `livedebugging` configuration block to make debugging data visible in the {{< param "PRODUCT_NAME" >}} UI. You can use an empty configuration for this block and Alloy uses the default values.
+Enable it explicitly through the `livedebugging` configuration block to make debugging data visible in the {{< param "PRODUCT_NAME" >}} UI.
+You can use an empty configuration for this block and {{< param "PRODUCT_NAME" >}} uses the default values.
 
 ```alloy
 livedebugging{}
@@ -299,3 +320,7 @@ livedebugging{}
 [prometheus.remote_write]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/prometheus/prometheus.remote_write/
 [discovery.relabel]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/discovery/discovery.relabel/
 [loki.write]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/loki/loki.write/
+[loki.source.file]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/loki/loki.source.file/
+[local.file_match]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/local/local.file_match/
+[loki.source.journal]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/loki/loki.source.journal/
+[prometheus.exporter.unix]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/prometheus/prometheus.exporter.unix/
