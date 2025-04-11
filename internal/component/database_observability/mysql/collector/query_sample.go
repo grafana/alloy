@@ -11,6 +11,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability/mysql/collector/parser"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
@@ -248,6 +249,7 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 		elapsedTime := float64(row.ElapsedTimePicoseconds.Int64) / 1e9
 
 		c.entryHandler.Chan() <- buildLokiEntry(
+			logging.LevelInfo,
 			OP_QUERY_SAMPLE,
 			c.instanceKey,
 			fmt.Sprintf(
