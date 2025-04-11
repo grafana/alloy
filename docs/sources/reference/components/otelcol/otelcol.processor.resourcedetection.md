@@ -783,6 +783,7 @@ The `kubeadm` block supports the following attributes:
 The following permissions are required:
 
 ```yaml
+apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: otel-collector
