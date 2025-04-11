@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -109,6 +110,8 @@ type namedSource struct {
 // Source. sources must not be modified after calling ParseSources.
 func ParseSources(sources map[string][]byte) (*Source, error) {
 	var (
+		// Collect diagnostic errors from several sources.
+		mergedDiags diag.Diagnostics
 		// Combined source from all the input content.
 		mergedSource = &Source{
 			sourceMap: sources,
@@ -135,6 +138,13 @@ func ParseSources(sources map[string][]byte) (*Source, error) {
 
 		sourceFragment, err := ParseSource(namedSource.Name, namedSource.Content)
 		if err != nil {
+			// If we encounter diagnostic errors we combine them and
+			// later return all of them
+			var diags diag.Diagnostics
+			if errors.As(err, &diags) {
+				mergedDiags = append(mergedDiags, diags...)
+				continue
+			}
 			return nil, err
 		}
 
@@ -143,6 +153,10 @@ func ParseSources(sources map[string][]byte) (*Source, error) {
 		mergedSource.components = append(mergedSource.components, sourceFragment.components...)
 		mergedSource.configBlocks = append(mergedSource.configBlocks, sourceFragment.configBlocks...)
 		mergedSource.declareBlocks = append(mergedSource.declareBlocks, sourceFragment.declareBlocks...)
+	}
+
+	if len(mergedDiags) > 0 {
+		return nil, mergedDiags
 	}
 
 	mergedSource.hash = [32]byte(hash.Sum(nil))
