@@ -18,6 +18,8 @@ Main (unreleased)
 
 - Add support to configure basic authentication for alloy http server. (@kalleep)
 
+- Add support for Mimir federated rule groups in `mimir.rules.kubernetes` (@QuentinBisson)
+
 ### Enhancements
 
 - Add binary version to constants exposed in configuration file syntatx. (@adlots)
