@@ -243,22 +243,22 @@ func AllNames() []string {
 	return keys
 }
 
-// ComponentRegistry is a collection of registered components.
-type ComponentRegistry interface {
+// Registry is a collection of registered components.
+type Registry interface {
 	// Get looks up a component by name. It returns an error if the component does not exist or its usage is restricted,
 	// for example, because of the component's stability level.
 	Get(name string) (Registration, error)
 }
 
-type defaultComponentRegistry struct {
+type defaultRegistry struct {
 	minStability featuregate.Stability
 	community    bool
 }
 
-// NewDefaultComponentRegistry creates a new [ComponentRegistry] which gets
+// NewDefaultRegistry creates a new [Registry] which gets
 // components registered to github.com/grafana/alloy/internal/component.
-func NewDefaultComponentRegistry(minStability featuregate.Stability, enableCommunityComps bool) ComponentRegistry {
-	return defaultComponentRegistry{
+func NewDefaultRegistry(minStability featuregate.Stability, enableCommunityComps bool) Registry {
+	return defaultRegistry{
 		minStability: minStability,
 		community:    enableCommunityComps,
 	}
@@ -266,7 +266,7 @@ func NewDefaultComponentRegistry(minStability featuregate.Stability, enableCommu
 
 // Get retrieves a component using [component.Get]. It returns an error if the component does not exist,
 // or if the component's stability is below the minimum required stability level.
-func (reg defaultComponentRegistry) Get(name string) (Registration, error) {
+func (reg defaultRegistry) Get(name string) (Registration, error) {
 	cr, exists := Get(name)
 	if !exists {
 		return Registration{}, fmt.Errorf("cannot find the definition of component name %q", name)
@@ -292,13 +292,13 @@ type registryMap struct {
 	community     bool
 }
 
-// NewRegistryMap creates a new [ComponentRegistry] which uses a map to store components.
+// NewRegistryMap creates a new [Registry] which uses a map to store components.
 // Currently, it is only used in tests.
 func NewRegistryMap(
 	minStability featuregate.Stability,
 	community bool,
 	registrations map[string]Registration,
-) ComponentRegistry {
+) Registry {
 
 	return &registryMap{
 		registrations: registrations,

@@ -13,7 +13,7 @@ import (
 type ComponentNodeManager struct {
 	globals ComponentGlobals
 	// builtinComponentReg returns information to build and run built-in components.
-	builtinComponentReg component.ComponentRegistry
+	builtinComponentReg component.Registry
 
 	mut sync.RWMutex
 	// customComponentReg returns information to build and run custom components.
@@ -21,7 +21,7 @@ type ComponentNodeManager struct {
 }
 
 // NewComponentNodeManager creates a new ComponentNodeManager without custom component registry.
-func NewComponentNodeManager(globals ComponentGlobals, componentReg component.ComponentRegistry) *ComponentNodeManager {
+func NewComponentNodeManager(globals ComponentGlobals, componentReg component.Registry) *ComponentNodeManager {
 	return &ComponentNodeManager{
 		globals:             globals,
 		builtinComponentReg: componentReg,

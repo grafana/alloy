@@ -66,10 +66,10 @@ type LoaderOptions struct {
 	// ComponentGlobals contains data to use when creating components.
 	ComponentGlobals ComponentGlobals
 
-	Services          []service.Service           // Services to load into the DAG.
-	Host              service.Host                // Service host (when running services).
-	ComponentRegistry component.ComponentRegistry // Registry to search for components.
-	WorkerPool        worker.Pool                 // Worker pool to use for async tasks.
+	Services          []service.Service  // Services to load into the DAG.
+	Host              service.Host       // Service host (when running services).
+	ComponentRegistry component.Registry // Registry to search for components.
+	WorkerPool        worker.Pool        // Worker pool to use for async tasks.
 }
 
 // NewLoader creates a new Loader. Components built by the Loader will be built
@@ -85,7 +85,7 @@ func NewLoader(opts LoaderOptions) *Loader {
 	parent, id := splitPath(globals.ControllerID)
 
 	if reg == nil {
-		reg = component.NewDefaultComponentRegistry(opts.ComponentGlobals.MinStability, opts.ComponentGlobals.EnableCommunityComps)
+		reg = component.NewDefaultRegistry(opts.ComponentGlobals.MinStability, opts.ComponentGlobals.EnableCommunityComps)
 	}
 
 	l := &Loader{
