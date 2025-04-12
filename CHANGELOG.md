@@ -12,6 +12,8 @@ Main (unreleased)
 
 ### Features
 
+- Add the `otelcol.storage.file` extension to support persistent sending queues and `otelcol.receiver.filelog` file state tracking between restarts. (@dehaansa)
+
 - Add `otelcol.exporter.googlecloud` community component to export metrics, traces, and logs to Google Cloud. (@motoki317)
 
 - Add support to configure basic authentication for alloy http server. (@kalleep)
@@ -22,9 +24,11 @@ Main (unreleased)
 
 - Update `loki.secretfilter` to include metrics about redactions (@kelnage)
 
-### Bugfixes
+- (_Experimental_) Various changes to the experimental component `database_observability.mysql`:
+  - `schema_table`: add support for index expressions (@cristiangreco)
+  - `query_tables`: improve queries parsing (@cristiangreco)
 
-- Fix panic in `prometheus.exporter.postgres` when using minimal url as data source name. (@kalleep)
+### Bugfixes
 
 - Fix `otelcol.exporter.prometheus` dropping valid exemplars. (@github-vincent-miszczak)
 
@@ -32,21 +36,22 @@ Main (unreleased)
 
 - Update the zap logging adapter used by `otelcol` components to log arrays and objects. (@dehaansa)
 
-v1.8.0-rc.3
+- Updated Windows install script to add DisplayVersion into registry on install (@enessene)
+
+v1.8.1
 -----------------
 
-### Features
+### Bugfixes
 
-- Add support for live debugging and graph in the UI for components imported via remotecfg. (@wildum)
+- `rfc3164_default_to_current_year` argument was not fully added to `loki.source.syslog` (@dehaansa)
 
-### Enhancements
+- Fix issue with `remoteCfg` service stopping immediately and logging noop error if not configured (@dehaansa)
 
-- Removed syntax highlighting from the component details UI view to improve
-  rendering performance. (@tpaschalis)
+- Fix potential race condition in `remoteCfg` service metrics registration (@kalleep)
 
-- A new `grafana/alloy:vX.Y.Z-windowsservercore-ltsc2022` Docker image is now published on DockerHub. (@ptodev)
+- Fix panic in `prometheus.exporter.postgres` when using minimal url as data source name. (@kalleep)
 
-v1.8.0-rc.2
+v1.8.0
 -----------------
 
 ### Breaking changes
@@ -76,6 +81,7 @@ v1.8.0-rc.2
   required before components that use clustering begin processing traffic to ensure adequate cluster capacity is
   available. (@thampiotr)
 - Add `trace_printer` to `beyla.ebpf` component to print trace information in a specific format. (@marctc)
+- Add support for live debugging and graph in the UI for components imported via remotecfg. (@wildum)
 
 ### Enhancements
 
@@ -132,6 +138,11 @@ v1.8.0-rc.2
 - Add error body propagation in `pyroscope.write`, for `/ingest` calls. (@simonswine)
 
 - Add `tenant` label to remaining `loki_write_.+` metrics (@towolf)
+
+- Removed syntax highlighting from the component details UI view to improve
+  rendering performance. (@tpaschalis)
+
+- A new `grafana/alloy:vX.Y.Z-windowsservercore-ltsc2022` Docker image is now published on DockerHub. (@ptodev)
 
 ### Bugfixes
 

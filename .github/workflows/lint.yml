@@ -1,0 +1,73 @@
+name: Lint
+on:
+  workflow_call:
+
+jobs:
+  lint_go:
+    name: Lint Go
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: go.mod
+        cache: false
+
+    - name: Lint alloy module
+      uses: golangci/golangci-lint-action@1481404843c368bc19ca9406f87d6e0fc97bdcfd #v7
+      with:
+        version: v2.0
+
+    - name: Lint syntax module
+      uses: golangci/golangci-lint-action@1481404843c368bc19ca9406f87d6e0fc97bdcfd #v7
+      with:
+        version: v2.0
+        working-directory: ./syntax/
+
+    - name: Run custom linters
+      run: make run-alloylint
+
+  shellcheck:
+    name: Shellcheck
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Shellcheck
+      uses: Azbagheri/shell-linter@30a9cf3f6cf25c08fc98f10d7dc4167f7b5c0c00 # v0.8.0
+      with:
+        path: "\
+          packaging,\
+          production,\
+          tools/ci,\
+          tools/release,\
+          docs/sources/tutorials/assets\
+          "
+
+  lint_ui:
+    name: Lint UI
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: internal/web/ui
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 22
+
+    - name: Install dependencies
+      run: yarn
+
+    - name: Lint
+      run: yarn run lint:ci

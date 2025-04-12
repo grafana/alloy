@@ -91,13 +91,25 @@ CGO_ENABLED          ?= 1
 RELEASE_BUILD        ?= 0
 GOEXPERIMENT         ?= $(shell go env GOEXPERIMENT)
 
+# Determine the golangci-lint binary path using Make functions where possible.
+# Priority: GOBIN, GOPATH/bin, PATH (via shell), Fallback Name.
+# Uses GNU Make's $(or ...) function for lazy evaluation based on priority.
+# $(wildcard ...) checks for existence. PATH check still uses shell for practicality.
+# Allows override via environment/command line using ?=
+GOLANGCI_LINT_BINARY ?= $(or \
+    $(if $(shell go env GOBIN),$(wildcard $(shell go env GOBIN)/golangci-lint)), \
+    $(wildcard $(shell go env GOPATH)/bin/golangci-lint), \
+    $(shell command -v golangci-lint 2>/dev/null), \
+    golangci-lint \
+)
+
 # List of all environment variables which will propagate to the build
 # container. USE_CONTAINER must _not_ be included to avoid infinite recursion.
 PROPAGATE_VARS := \
     ALLOY_IMAGE ALLOY_IMAGE_WINDOWS \
     BUILD_IMAGE GOOS GOARCH GOARM CGO_ENABLED RELEASE_BUILD \
     ALLOY_BINARY \
-    VERSION GO_TAGS GOEXPERIMENT
+    VERSION GO_TAGS GOEXPERIMENT GOLANGCI_LINT_BINARY \
 
 #
 # Constants for targets
@@ -135,7 +147,7 @@ endif
 
 .PHONY: lint
 lint: alloylint
-	find . -name go.mod -execdir golangci-lint run -v --timeout=10m \;
+	find . -name go.mod | xargs dirname | xargs -I __dir__ $(GOLANGCI_LINT_BINARY) run -v --timeout=10m
 	$(ALLOYLINT_BINARY) ./...
 
 .PHONY: run-alloylint

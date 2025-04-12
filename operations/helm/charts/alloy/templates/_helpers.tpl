@@ -54,7 +54,7 @@ helm.sh/chart: {{ include "alloy.chart" . }}
 {{- if index .Values "$chart_tests" }}
 app.kubernetes.io/version: "vX.Y.Z"
 app.kubernetes.io/managed-by: {{ .Release.Service }}
-{{- else }}
+{{- else -}}
 {{/* substr trims delimeter prefix char from alloy.imageId output
     e.g. ':' for tags and '@' for digests.
     For digests, we crop the string to a 7-char (short) sha. */}}

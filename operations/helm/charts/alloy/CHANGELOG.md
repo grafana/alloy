@@ -10,6 +10,26 @@ internal API changes are not present.
 Unreleased
 ----------
 
+1.0.1 (2025-04-10)
+----------
+
+### Enhancements
+
+- Update to Grafana Alloy v1.8.1. (@dehaansa)
+
+- Update default configreloader resources to match what is set in prometheus-operator project (@dehaansa)
+
+- Add Vertical Pod Autoscaler support (@QuentinBisson)
+
+1.0.0 (2025-04-09)
+----------
+
+### Enhancements
+
+- Update version to `1.0.0`. This Helm chart is now covered with the [backward-compatibility](https://grafana.com/docs/alloy/latest/introduction/backward-compatibility/) policy.
+
+- Update to Grafana Alloy v1.8.0. (@thampiotr)
+
 0.12.6 (2025-04-03)
 ----------
 ### Breaking changes

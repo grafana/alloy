@@ -12,7 +12,6 @@ import (
 	"github.com/go-kit/log"
 	"github.com/grafana/ckit/shard"
 	"github.com/prometheus/common/model"
-	prom_lbls "github.com/prometheus/prometheus/model/labels"
 	promlabels "github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/prometheus/prometheus/util/strutil"
@@ -160,11 +159,11 @@ func (r *reconciler) Reconcile(ctx context.Context, cli client.Client) error {
 	return nil
 }
 
-func filterLabels(lbls prom_lbls.Labels, keysToKeep []string) prom_lbls.Labels {
-	var res prom_lbls.Labels
+func filterLabels(lbls promlabels.Labels, keysToKeep []string) promlabels.Labels {
+	var res promlabels.Labels
 	for _, k := range lbls {
 		if slices.Contains(keysToKeep, k.Name) {
-			res = append(res, prom_lbls.Label{Name: k.Name, Value: k.Value})
+			res = append(res, promlabels.Label{Name: k.Name, Value: k.Value})
 		}
 	}
 	sort.Sort(res)
