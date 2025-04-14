@@ -97,7 +97,11 @@ func (c *QuerySample) Name() string {
 }
 
 func (c *QuerySample) Start(ctx context.Context) error {
-	level.Debug(c.logger).Log("msg", QuerySampleName+" collector started")
+	if c.disableQueryRedaction {
+		level.Warn(c.logger).Log("msg", QuerySampleName+" collector started with query redaction disabled. Query samples will include complete SQL text including query parameters.")
+	} else {
+		level.Debug(c.logger).Log("msg", QuerySampleName+" collector started")
+	}
 
 	c.running.Store(true)
 	ctx, cancel := context.WithCancel(ctx)
