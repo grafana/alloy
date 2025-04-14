@@ -10,13 +10,13 @@ weight: 500
 
 # Clustering
 
-Clustering enables a fleet of {{< param "PRODUCT_NAME" >}} deployments to work together for workload distribution and high availability.
-It helps create horizontally scalable deployments with minimal resource and operational overhead.
+Clustering allows a fleet of {{< param "PRODUCT_NAME" >}} deployments to work together for workload distribution and high availability.
+It enables horizontally scalable deployments with minimal resource and operational overhead.
 
-To achieve this, {{< param "PRODUCT_NAME" >}} makes use of an eventually consistent model that assumes all participating
-{{< param "PRODUCT_NAME" >}} deployments are interchangeable and converge on using the same configuration file.
+{{< param "PRODUCT_NAME" >}} uses an eventually consistent model to achieve clustering.
+This model assumes all participating {{< param "PRODUCT_NAME" >}} deployments are interchangeable and converge on the same configuration file.
 
-The behavior of a standalone, non-clustered {{< param "PRODUCT_NAME" >}} is the same as if it were a single-node cluster.
+A standalone, non-clustered {{< param "PRODUCT_NAME" >}} behaves the same as a single-node cluster.
 
 You configure clustering by passing `cluster` command-line flags to the [run][] command.
 
@@ -24,9 +24,9 @@ You configure clustering by passing `cluster` command-line flags to the [run][] 
 
 ### Target auto-distribution
 
-Target auto-distribution is the most basic use case of clustering.
-It allows scraping components running on all peers to distribute the scrape load between themselves.
-Target auto-distribution requires that all {{< param "PRODUCT_NAME" >}} deployments in the same cluster can reach the same service discovery APIs and scrape the same targets.
+Target auto-distribution is the simplest use case of clustering.
+It lets scraping components running on all peers distribute the scrape load among themselves.
+Target auto-distribution requires all {{< param "PRODUCT_NAME" >}} deployments in the same cluster to access the same service discovery APIs and scrape the same targets.
 
 You must explicitly enable target auto-distribution on components by defining a `clustering` block.
 
@@ -40,15 +40,16 @@ prometheus.scrape "default" {
 }
 ```
 
-A cluster state change is detected when a node joins or a node leaves.
+A cluster detects state changes when a node joins or leaves.
 All participating components locally recalculate target ownership and re-balance the number of targets they're scraping without explicitly communicating ownership over the network.
 
-Target auto-distribution allows you to dynamically scale the number of {{< param "PRODUCT_NAME" >}} deployments to distribute workload during peaks.
-It also provides resiliency because targets are automatically picked up by one of the node peers if a node leaves.
+Target auto-distribution lets you dynamically scale the number of {{< param "PRODUCT_NAME" >}} deployments to handle workload peaks.
+It also provides resiliency because one of the node peers automatically picks up targets if a node leaves.
 
-{{< param "PRODUCT_NAME" >}} uses a local consistent hashing algorithm to distribute targets, meaning that, on average, only ~1/N of the targets are redistributed.
+{{< param "PRODUCT_NAME" >}} uses a local consistent hashing algorithm to distribute targets.
+On average, only ~1/N of the targets are redistributed.
 
-Refer to component reference documentation to discover whether it supports clustering, such as:
+Refer to the component reference documentation to check if a component supports clustering, such as:
 
 - [`prometheus.scrape`][prometheus.scrape]
 - [`pyroscope.scrape`][pyroscope.scrape]
@@ -57,7 +58,7 @@ Refer to component reference documentation to discover whether it supports clust
 
 ## Cluster monitoring and troubleshooting
 
-You can use the {{< param "PRODUCT_NAME" >}} UI [clustering page][] to monitor your cluster status.
+You can monitor your cluster status using the {{< param "PRODUCT_NAME" >}} UI [clustering page][].
 Refer to [Debug clustering issues][debugging] for additional troubleshooting information.
 
 [run]: ../../reference/cli/run/#clustering
