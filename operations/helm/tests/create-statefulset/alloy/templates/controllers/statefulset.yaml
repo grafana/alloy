@@ -14,7 +14,7 @@ metadata:
 spec:
   replicas: 1
   podManagementPolicy: Parallel
-  minReadySeconds: 10
+  minReadySeconds: 60
   serviceName: alloy
   selector:
     matchLabels:
