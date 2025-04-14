@@ -18,14 +18,14 @@ jobs:
         arch: [amd64, arm64, ppc64le, s390x]
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4.2.2
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
     - name: Set ownership
       # https://github.com/actions/runner/issues/2033#issuecomment-1204205989
       run: |
           # this is to fix GIT not liking owner of the checkout dir
           chown -R $(id -u):$(id -g) $PWD
     - name: Set up Go
-      uses: actions/setup-go@v5.4.0
+      uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
       with:
         go-version-file: go.mod
         # TODO: Try enabling caching later. It might use up too much disk space on runners so needs extra testing.
@@ -43,14 +43,14 @@ jobs:
         arch: [amd64, arm64]
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4.2.2
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
     - name: Set ownership
       # https://github.com/actions/runner/issues/2033#issuecomment-1204205989
       run: |
           # this is to fix GIT not liking owner of the checkout dir
           chown -R $(id -u):$(id -g) $PWD
     - name: Set up Go
-      uses: actions/setup-go@v5.4.0
+      uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
       with:
         go-version-file: go.mod
         # TODO: Try enabling caching later. It might use up too much disk space on runners so needs extra testing.
@@ -63,9 +63,9 @@ jobs:
     runs-on: macos-14-large
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4.2.2
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
     - name: Set up Go
-      uses: actions/setup-go@v5.4.0
+      uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
       with:
         go-version-file: go.mod
         # TODO: Try enabling caching later. It might use up too much disk space on runners so needs extra testing.
@@ -78,9 +78,9 @@ jobs:
     runs-on: macos-14-xlarge
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4.2.2
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
     - name: Set up Go
-      uses: actions/setup-go@v5.4.0
+      uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
       with:
         go-version-file: go.mod
         # TODO: Try enabling caching later. It might use up too much disk space on runners so needs extra testing.
@@ -93,9 +93,9 @@ jobs:
     runs-on: windows-latest
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4.2.2
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
     - name: Set up Go
-      uses: actions/setup-go@v5.4.0
+      uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
       with:
         go-version-file: go.mod
         # TODO: Try enabling caching later. It might use up too much disk space on runners so needs extra testing.
@@ -112,14 +112,14 @@ jobs:
     container: grafana/alloy-build-image:v0.1.17
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4.2.2
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
     - name: Set ownership
       # https://github.com/actions/runner/issues/2033#issuecomment-1204205989
       run: |
           # this is to fix GIT not liking owner of the checkout dir
           chown -R $(id -u):$(id -g) $PWD
     - name: Set up Go
-      uses: actions/setup-go@v5.4.0
+      uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
       with:
         go-version-file: go.mod
         # TODO: Try enabling caching later. It might use up too much disk space on runners so needs extra testing.

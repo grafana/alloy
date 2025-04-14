@@ -10,6 +10,6 @@ on:
 
 jobs:
   snyk-scan-ci:
-    uses: grafana/security-github-actions/.github/workflows/snyk_monitor.yml@main
+    uses: grafana/security-github-actions/.github/workflows/snyk_monitor.yml@ae330403c3a5a8b6aaa653ce6f3d059b3a772488 # main
     secrets:
       SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
