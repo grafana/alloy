@@ -62,7 +62,7 @@ type Arguments struct {
 
 var DefaultArguments = Arguments{
 	CollectInterval: 1 * time.Minute,
-	UseTiDBParser:   false,
+	UseTiDBParser:   true,
 }
 
 func (a *Arguments) SetToDefault() {
@@ -298,6 +298,7 @@ func (c *Component) startCollectors() error {
 			InstanceKey:     c.instanceKey,
 			CollectInterval: c.args.CollectInterval,
 			EntryHandler:    entryHandler,
+			UseTiDBParser:   c.args.UseTiDBParser,
 			Logger:          c.opts.Logger,
 		})
 		if err != nil {
