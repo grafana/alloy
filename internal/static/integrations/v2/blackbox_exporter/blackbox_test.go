@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/grafana/alloy/internal/static/integrations/blackbox_exporter"
-	"github.com/grafana/alloy/internal/static/integrations/v2"
 	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
 	autoscrape "github.com/grafana/alloy/internal/static/integrations/v2/autoscrape"
 	"github.com/grafana/alloy/internal/static/integrations/v2/common"
@@ -35,8 +34,8 @@ func TestBlackbox(t *testing.T) {
 		integration, err := c.NewIntegration(nil, integrations_v2.Globals{})
 		require.NoError(t, err)
 
-		i := integration.(integrations.MetricsIntegration)
-		actual := i.Targets(integrations.Endpoint{Host: "test", Prefix: "/test/"})
+		i := integration.(integrations_v2.MetricsIntegration)
+		actual := i.Targets(integrations_v2.Endpoint{Host: "test", Prefix: "/test/"})
 		expect := []*targetgroup.Group{{
 			Source: "blackbox/blackbox",
 			Labels: model.LabelSet{

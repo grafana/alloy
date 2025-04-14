@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/component/loki/source/podlogs/internal/apis/monitoring/v1alpha2"
 	monitoringv1alpha2 "github.com/grafana/alloy/internal/component/loki/source/podlogs/internal/apis/monitoring/v1alpha2"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/util/strutil"
@@ -18,12 +17,12 @@ import (
 func TestBuildPodLogsTargetLabels(t *testing.T) {
 	tests := []struct {
 		name           string
-		podLogs        *v1alpha2.PodLogs
+		podLogs        *monitoringv1alpha2.PodLogs
 		expectedLabels map[string]string
 	}{
 		{
 			name: "with labels and annotations",
-			podLogs: &v1alpha2.PodLogs{
+			podLogs: &monitoringv1alpha2.PodLogs{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "default",
 					Name:      "test",
@@ -52,7 +51,7 @@ func TestBuildPodLogsTargetLabels(t *testing.T) {
 		},
 		{
 			name: "empty labels and annotations",
-			podLogs: &v1alpha2.PodLogs{
+			podLogs: &monitoringv1alpha2.PodLogs{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "myns",
 					Name:      "noprops",
