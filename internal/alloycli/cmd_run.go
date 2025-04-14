@@ -2,6 +2,7 @@ package alloycli
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -409,14 +410,13 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 		}
 
 		alloySource, err := alloy_runtime.ParseSources(sources)
+		defer instrumentation.InstrumentConfig(err == nil, hashSourceFiles(sources), fr.clusterName)
 		if err != nil {
-			instrumentation.InstrumentConfig(false, [32]byte{}, fr.clusterName)
 			return sources, fmt.Errorf("reading config path %q: %w", configPath, err)
 		}
 
 		httpService.SetSources(alloySource.SourceFiles())
 		if err := f.LoadSource(alloySource, nil, configPath); err != nil {
-			instrumentation.InstrumentConfig(false, [32]byte{}, fr.clusterName)
 			return sources, fmt.Errorf("error during the initial load: %w", err)
 		}
 
@@ -586,6 +586,20 @@ func loadSourceFiles(path string, converterSourceFormat string, converterBypassE
 	}
 
 	return map[string][]byte{path: bb}, nil
+}
+
+func hashSourceFiles(sources map[string][]byte) [sha256.Size]byte {
+	// Combined hash of all the sources.
+	hash := sha256.New()
+
+	// Sort keys so they are always added in the same order.
+	keys := maps.Keys(sources)
+	slices.Sort(keys)
+	for _, key := range keys {
+		hash.Write(sources[key])
+	}
+
+	return [32]byte(hash.Sum(nil))
 }
 
 // addDeprecatedFlags adds flags that are deprecated, but we keep them for backwards compatibility.
