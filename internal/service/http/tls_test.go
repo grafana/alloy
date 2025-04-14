@@ -16,12 +16,12 @@ func TestTLSWindowsCertificate(t *testing.T) {
 	}
 	err := cfg.validateWindowsCertificateFilterTLS()
 	require.Error(t, err)
-	require.True(t, "cannot specify any key, certificate or CA when using windows certificate filter" == err.Error())
+	require.Equal(t, "cannot specify any key, certificate or CA when using windows certificate filter", err.Error())
 	cfg.Cert = ""
 	cfg.CertFile = "asdf"
 	err = cfg.validateWindowsCertificateFilterTLS()
 	require.Error(t, err)
-	require.True(t, "cannot specify any key, certificate or CA when using windows certificate filter" == err.Error())
+	require.Equal(t, "cannot specify any key, certificate or CA when using windows certificate filter", err.Error())
 	cfg.Cert = ""
 	cfg.CertFile = ""
 	err = cfg.validateWindowsCertificateFilterTLS()

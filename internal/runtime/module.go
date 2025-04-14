@@ -214,7 +214,7 @@ type moduleControllerOptions struct {
 	ID string
 
 	// ComponentRegistry is where controllers can look up components.
-	ComponentRegistry controller.ComponentRegistry
+	ComponentRegistry component.Registry
 
 	// ModuleRegistry is a shared registry of running modules from the same root
 	// controller.
