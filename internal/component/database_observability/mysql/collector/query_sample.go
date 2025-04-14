@@ -24,9 +24,9 @@ const selectUptime = `SELECT global_status.variable_value FROM performance_schem
 
 const selectNowAndUptime = `
 SELECT unix_timestamp() AS now,
-       global_status.variable_value AS uptime
+       variable_value AS uptime
 FROM performance_schema.global_status
-WHERE global_status.variable_name = 'UPTIME'`
+WHERE variable_name = 'UPTIME'`
 
 const selectQuerySamples = `
 SELECT statements.CURRENT_SCHEMA,
@@ -246,7 +246,7 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 			OP_QUERY_SAMPLE,
 			c.instanceKey,
 			fmt.Sprintf(
-				`schema="%s" digest="%s" digest_text="%s" rows_examined="%d" rows_sent="%d" rows_affected="%d" errors="%d" max_controlled_memory="%db" max_total_memory="%db" cpu_time="%fms" elapsed_time="%fms" elapsed_time_ms="%fms" time="%dms" level="INFO"`, // TODO: modify buildLokiEntry to take in a level entry and set it there
+				`schema="%s" digest="%s" digest_text="%s" rows_examined="%d" rows_sent="%d" rows_affected="%d" errors="%d" max_controlled_memory="%db" max_total_memory="%db" cpu_time="%fms" elapsed_time="%fms" elapsed_time_ms="%fms" time="%dms" level="INFO"`,
 				row.Schema.String,
 				row.Digest.String,
 				digestText,

@@ -27,6 +27,7 @@ Main (unreleased)
 - (_Experimental_) Various changes to the experimental component `database_observability.mysql`:
   - `schema_table`: add support for index expressions (@cristiangreco)
   - `query_tables`: improve queries parsing (@cristiangreco)
+  - `query_sample`: better handling of timer overflows (@fridgepoet)
   - make tidbparser the default choice (@cristiangreco)
 
 ### Bugfixes
@@ -127,7 +128,6 @@ v1.8.0
   - `query_tables`: rename collector from `query_sample` to better reflect responsibility (@matthewnolf)
   - `query_sample`: add new collector that replaces previous implementation to collect more detailed sample information (@matthewnolf)
   - `query_sample`: refactor parsing of truncated queries (@cristiangreco)
-  - `query_sample`: better handling of timer overflows (@fridgepoet)
 
 - Add labels validation in `pyroscope.write` to prevent duplicate labels and invalid label names/values. (@marcsanmi)
 

@@ -12,7 +12,6 @@ import (
 	"github.com/go-kit/log"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
 
@@ -366,7 +365,7 @@ func TestQuerySample(t *testing.T) {
 	}
 }
 
-func TestQuerySampleSQLDriverErrors(t *testing.T) {
+func TestQuerySample_SQLDriverErrors(t *testing.T) {
 	defer goleak.VerifyNone(t)
 
 	t.Run("recoverable sql error in result set", func(t *testing.T) {
@@ -693,7 +692,7 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 	})
 }
 
-func TestQuerySampleSummary_initializeTimer(t *testing.T) {
+func TestQuerySample_initializeTimer(t *testing.T) {
 	t.Run("selects uptime, sets timerBookmark", func(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
@@ -729,7 +728,7 @@ func TestQuerySampleSummary_initializeTimer(t *testing.T) {
 	})
 }
 
-func Test_fetchQuerySampleSummary_handles_timer_overflows(t *testing.T) {
+func TestQuerySample_handles_timer_overflows(t *testing.T) {
 	t.Run("selects query sample summary: first run uses initialized timerBookmark and uptime limit", func(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
@@ -818,10 +817,10 @@ func Test_fetchQuerySampleSummary_handles_timer_overflows(t *testing.T) {
 		defer db.Close()
 
 		mock.ExpectQuery(`
-SELECT unix_timestamp() AS now,
-       global_status.variable_value AS uptime
-FROM performance_schema.global_status
-WHERE global_status.variable_name = 'UPTIME'`).WithoutArgs().WillReturnRows(
+			SELECT unix_timestamp() AS now,
+			       variable_value AS uptime
+			FROM performance_schema.global_status
+			WHERE variable_name = 'UPTIME'`).WithoutArgs().WillReturnRows(
 			sqlmock.NewRows([]string{
 				"now",
 				"uptime",
@@ -831,22 +830,22 @@ WHERE global_status.variable_name = 'UPTIME'`).WithoutArgs().WillReturnRows(
 			),
 		)
 		mock.ExpectQuery(`
-SELECT statements.CURRENT_SCHEMA,
-	statements.DIGEST,
-	statements.DIGEST_TEXT,
-	statements.TIMER_END,
-	statements.TIMER_WAIT,
-	statements.CPU_TIME,
-	statements.ROWS_EXAMINED,
-	statements.ROWS_SENT,
-	statements.ROWS_AFFECTED,
-	statements.ERRORS,
-	statements.MAX_CONTROLLED_MEMORY,
-	statements.MAX_TOTAL_MEMORY
-FROM performance_schema.events_statements_history AS statements
-WHERE statements.sql_text IS NOT NULL
-  AND statements.CURRENT_SCHEMA NOT IN ('mysql', 'performance_schema', 'sys', 'information_schema')
-  AND statements.TIMER_END > ? AND statements.TIMER_END <= ?;`).WithArgs(
+			SELECT statements.CURRENT_SCHEMA,
+				statements.DIGEST,
+				statements.DIGEST_TEXT,
+				statements.TIMER_END,
+				statements.TIMER_WAIT,
+				statements.CPU_TIME,
+				statements.ROWS_EXAMINED,
+				statements.ROWS_SENT,
+				statements.ROWS_AFFECTED,
+				statements.ERRORS,
+				statements.MAX_CONTROLLED_MEMORY,
+				statements.MAX_TOTAL_MEMORY
+			FROM performance_schema.events_statements_history AS statements
+			WHERE statements.sql_text IS NOT NULL
+			  AND statements.CURRENT_SCHEMA NOT IN ('mysql', 'performance_schema', 'sys', 'information_schema')
+			  AND statements.TIMER_END > ? AND statements.TIMER_END <= ?;`).WithArgs(
 			1e12, // initial timerBookmark
 			5e12, // uptime of 5 seconds in picoseconds (modulo 0 overflows)
 		).WillReturnRows(sqlmock.NewRows([]string{
@@ -1149,13 +1148,15 @@ WHERE statements.sql_text IS NOT NULL
 				2097152,               // max_total_memory (2MB)
 			),
 		)
-		mockParser := &mockParser{}
+		mockParser := &parser.MockParser{}
 		c := &QuerySample{
 			dbConnection:  db,
 			sqlParser:     mockParser,
 			timerBookmark: 2e12,
 			logger:        log.NewLogfmtLogger(os.Stderr),
 		}
+
+		mockParser.On("CleanTruncatedText", "SELECT * FROM users").Return("SELECT * FROM users", nil)
 		mockParser.On("Redact", "SELECT * FROM users").Return("", fmt.Errorf("some error"))
 
 		err = c.fetchQuerySamples(t.Context())
@@ -1164,7 +1165,7 @@ WHERE statements.sql_text IS NOT NULL
 	})
 }
 
-func Test_calculateTimestamp(t *testing.T) {
+func TestQuerySample_calculateTimestamp(t *testing.T) {
 	t.Run("calculates the timestamp at which an event happened", func(t *testing.T) {
 		c := &QuerySample{}
 		serverStartTime := float64(2)
@@ -1185,7 +1186,7 @@ func Test_calculateTimestamp(t *testing.T) {
 	})
 }
 
-func Test_calculateNumberOfOverflows(t *testing.T) {
+func TestQuerySample_calculateNumberOfOverflows(t *testing.T) {
 	testCases := map[string]struct {
 		expected uint64
 		uptime   float64
@@ -1201,7 +1202,7 @@ func Test_calculateNumberOfOverflows(t *testing.T) {
 		})
 	}
 }
-func TestQuerySampleSummary_calculateTimerClauseAndLimit(t *testing.T) {
+func TestQuerySample_calculateTimerClauseAndLimit(t *testing.T) {
 	tests := map[string]struct {
 		lastUptime          float64
 		uptime              float64
@@ -1246,33 +1247,4 @@ func TestQuerySampleSummary_calculateTimerClauseAndLimit(t *testing.T) {
 			assert.Equal(t, tc.expectedLimit, actualLimit)
 		})
 	}
-}
-
-type mockParser struct {
-	mock.Mock
-}
-
-func (m *mockParser) Parse(sql string) (any, error) {
-	args := m.Called(sql)
-	return args.Get(0), args.Error(1)
-}
-
-func (m *mockParser) Redact(sql string) (string, error) {
-	args := m.Called(sql)
-	return args.String(0), args.Error(1)
-}
-
-func (m *mockParser) StmtType(stmt any) parser.StatementType {
-	args := m.Called(stmt)
-	return args.Get(0).(parser.StatementType)
-}
-
-func (m *mockParser) ParseTableName(t any) string {
-	args := m.Called(t)
-	return args.String(0)
-}
-
-func (m *mockParser) ExtractTableNames(logger log.Logger, digest string, stmt any) []string {
-	args := m.Called(logger, digest, stmt)
-	return args.Get(0).([]string)
 }
