@@ -183,7 +183,7 @@ The null value is represented by the symbol `null`.
 
 A `secret` is a special type of string that's never displayed to the user.
 You can assign `string` values to an attribute expecting a `secret`, but not the inverse.
-You can use [`convert.nonsensitive`] to convert a secret to a string. 
+You can use [`convert.nonsensitive`][nonsensitive] to convert a secret to a string.
 You can't assign a secret to an attribute expecting a string.
 
 ### Capsules
@@ -215,3 +215,4 @@ prometheus.scrape "default" {
 
 [component reference]: ../../../../reference/components/
 [valid]: ../syntax#identifiers
+[nonsensitive]: ../../../reference/stdlib/convert/
