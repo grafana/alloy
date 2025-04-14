@@ -214,5 +214,5 @@ prometheus.scrape "default" {
 ```
 
 [component reference]: ../../../../reference/components/
-[valid]: ../syntax#identifiers
-[nonsensitive]: ../../../reference/stdlib/convert/
+[valid]: ../../syntax#identifiers
+[nonsensitive]: ../../../../reference/stdlib/convert/
