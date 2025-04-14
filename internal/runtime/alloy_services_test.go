@@ -7,7 +7,6 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/internal/controller"
 	"github.com/grafana/alloy/internal/runtime/internal/testcomponents"
 	"github.com/grafana/alloy/internal/runtime/internal/testservices"
 	"github.com/grafana/alloy/internal/service"
@@ -211,7 +210,7 @@ func TestComponents_Using_Services(t *testing.T) {
 			},
 		}
 
-		registry = controller.NewRegistryMap(
+		registry = component.NewRegistryMap(
 			featuregate.StabilityGenerallyAvailable,
 			true,
 			map[string]component.Registration{
@@ -274,7 +273,7 @@ func TestComponents_Using_Services_In_Modules(t *testing.T) {
 			},
 		}
 
-		registry = controller.NewRegistryMap(
+		registry = component.NewRegistryMap(
 			featuregate.StabilityGenerallyAvailable,
 			true,
 			map[string]component.Registration{
