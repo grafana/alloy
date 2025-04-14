@@ -20,12 +20,14 @@ jobs:
     - name: Lint alloy module
       uses: golangci/golangci-lint-action@1481404843c368bc19ca9406f87d6e0fc97bdcfd # v7.0.0
       with:
-        version: v2.0
+        # renovate: datasource=github-releases packageName=golangci/golangci-lint-action
+        version: v2.1.1
 
     - name: Lint syntax module
       uses: golangci/golangci-lint-action@1481404843c368bc19ca9406f87d6e0fc97bdcfd # v7.0.0
       with:
-        version: v2.0
+        # renovate: datasource=github-releases packageName=golangci/golangci-lint-action
+        version: v2.1.1
         working-directory: ./syntax/
 
     - name: Run custom linters

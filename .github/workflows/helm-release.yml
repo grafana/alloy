@@ -101,6 +101,7 @@ jobs:
       - name: Set up Helm
         uses: azure/setup-helm@b9e51907a09c216f16ebe8536097933489208112 # v4.3.0
         with:
+          # renovate: datasource=github-releases packageName=helm/helm
           version: v3.10.3
 
       - name: Parse Chart.yaml
