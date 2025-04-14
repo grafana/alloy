@@ -10,12 +10,31 @@ import (
 	"path/filepath"
 	"syscall"
 
+	"encoding/xml"
+	"slices"
+
 	jsoniter "github.com/json-iterator/go"
 	"golang.org/x/sys/windows"
 
 	"github.com/grafana/loki/v3/clients/pkg/promtail/scrapeconfig"
 	"github.com/grafana/loki/v3/clients/pkg/promtail/targets/windows/win_eventlog"
 )
+
+// This type is used to unmarshal the event_data map from the XML tags <Data>...</Data>
+// Definition of this type is based on Microsoft's documentation
+// https://learn.microsoft.com/en-us/windows/win32/wes/eventschema-datafieldtype-complextype
+type EventDataMap map[string]string
+func (e *EventDataMap) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
+	var dataStruct struct {
+		Text *xml.CharData    `xml:",chardata"`
+		Name xml.Attr         `xml:"Name,attr"`
+	}
+	if err := d.DecodeElement(&dataStruct, &start); err != nil {
+		return err
+	}
+	(*e)[dataStruct.Name.Value] = string(*dataStruct.Text)
+	return nil
+}
 
 type Event struct {
 	Source   string `json:"source,omitempty"`
@@ -41,6 +60,7 @@ type Event struct {
 	Security  *Security `json:"security,omitempty"`
 	UserData  string    `json:"user_data,omitempty"`
 	EventData string    `json:"event_data,omitempty"`
+	EventDataMap EventDataMap `json:"event_data_map,omitempty"`
 	Message   string    `json:"message,omitempty"`
 }
 
@@ -80,6 +100,20 @@ func formatLine(cfg *scrapeconfig.WindowsEventsTargetConfig, event win_eventlog.
 	}
 
 	if !cfg.ExcludeEventData {
+		var temp struct {
+			Data EventDataMap `xml:"Data"`
+		}
+		temp.Data =  make(EventDataMap)
+		// TODO: win_eventlog library creates the event struct with event_data as a []byte that
+		// only contains the XML tags <Data>...</Data> unwrapped from the <EventData>...</EventData> tags.
+		// This hack wraps the list of <Data>...</Data> tags in <d>...</d> tags so that the
+		// xml.Unmarshal will work.
+		fullxml := slices.Concat([]byte("<d>"), event.EventData.InnerXML, []byte("</d>"))
+		err := xml.Unmarshal(fullxml, &temp)
+		if err != nil {
+			return "", fmt.Errorf("failed to unmarshal event data: %w", err)
+		}
+		structuredEvent.EventDataMap = temp.Data
 		structuredEvent.EventData = string(event.EventData.InnerXML)
 	}
 	if !cfg.ExcludeUserData {
