@@ -17,14 +17,14 @@ func Test_collectSQLText(t *testing.T) {
 		var exampleDBO11yAlloyConfig = `
 		data_source_name = ""
 		forward_to = []
-		collect_sql_text = true
+		disable_query_redaction = true
 	`
 
 		var args Arguments
 		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
 		require.NoError(t, err)
 
-		assert.True(t, args.CollectSQLText)
+		assert.True(t, args.DisableQueryRedaction)
 	})
 
 	t.Run("disable sql text when not provided (default behavior)", func(t *testing.T) {
@@ -39,7 +39,7 @@ func Test_collectSQLText(t *testing.T) {
 		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
 		require.NoError(t, err)
 
-		assert.False(t, args.CollectSQLText)
+		assert.False(t, args.DisableQueryRedaction)
 	})
 }
 

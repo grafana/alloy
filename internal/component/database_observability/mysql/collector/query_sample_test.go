@@ -388,7 +388,7 @@ func TestQuerySample(t *testing.T) {
 	}
 }
 
-func TestQuerySampleCollectsSQLText(t *testing.T) {
+func TestQuerySampleDisableQueryRedaction(t *testing.T) {
 	defer goleak.VerifyNone(t)
 	t.Run("collects sql text when enabled", func(t *testing.T) {
 		t.Parallel()
@@ -400,12 +400,12 @@ func TestQuerySampleCollectsSQLText(t *testing.T) {
 		lokiClient := loki_fake.NewClient(func() {})
 
 		collector, err := NewQuerySample(QuerySampleArguments{
-			DB:              db,
-			InstanceKey:     "mysql-db",
-			CollectInterval: time.Second,
-			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
-			SelectSQLText:   true,
+			DB:                    db,
+			InstanceKey:           "mysql-db",
+			CollectInterval:       time.Second,
+			EntryHandler:          lokiClient,
+			Logger:                log.NewLogfmtLogger(os.Stderr),
+			DisableQueryRedaction: true,
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -419,7 +419,7 @@ func TestQuerySampleCollectsSQLText(t *testing.T) {
 				),
 			)
 
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, "statements.SQL_TEXT,")).WithArgs(float64(1)).RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, ",statements.SQL_TEXT")).WithArgs(float64(1)).RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"now",
@@ -427,7 +427,6 @@ func TestQuerySampleCollectsSQLText(t *testing.T) {
 					"statements.CURRENT_SCHEMA",
 					"statements.DIGEST",
 					"statements.DIGEST_TEXT",
-					"statements.SQL_TEXT",
 					"statements.TIMER_START",
 					"statements.TIMER_END",
 					"statements.TIMER_WAIT",
@@ -438,13 +437,13 @@ func TestQuerySampleCollectsSQLText(t *testing.T) {
 					"statements.ERRORS",
 					"statements.MAX_CONTROLLED_MEMORY",
 					"statements.MAX_TOTAL_MEMORY",
+					"statements.SQL_TEXT",
 				}).AddRow(
 					"1",
 					"2",
 					"some_schema",
 					"some_digest",
 					"select * from some_table where id = ?",
-					"select * from some_table where id = 1",
 					"50000000",
 					"70000000",
 					"20000000",
@@ -455,6 +454,7 @@ func TestQuerySampleCollectsSQLText(t *testing.T) {
 					"0",
 					"456",
 					"457",
+					"select * from some_table where id = 1",
 				),
 			)
 
@@ -477,7 +477,7 @@ func TestQuerySampleCollectsSQLText(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		require.Equal(t, `schema="some_schema" digest="some_digest" digest_text="select * from some_table where id = :v1" sql_text="select * from some_table where id = 1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`, lokiEntries[0].Line)
+		require.Equal(t, `schema="some_schema" digest="some_digest" digest_text="select * from some_table where id = :v1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms" sql_text="select * from some_table where id = 1"`, lokiEntries[0].Line)
 	})
 
 	t.Run("does not collect sql text when disabled", func(t *testing.T) {
@@ -490,12 +490,12 @@ func TestQuerySampleCollectsSQLText(t *testing.T) {
 		lokiClient := loki_fake.NewClient(func() {})
 
 		collector, err := NewQuerySample(QuerySampleArguments{
-			DB:              db,
-			InstanceKey:     "mysql-db",
-			CollectInterval: time.Second,
-			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
-			SelectSQLText:   false,
+			DB:                    db,
+			InstanceKey:           "mysql-db",
+			CollectInterval:       time.Second,
+			EntryHandler:          lokiClient,
+			Logger:                log.NewLogfmtLogger(os.Stderr),
+			DisableQueryRedaction: false,
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
