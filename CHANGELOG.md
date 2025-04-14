@@ -27,6 +27,7 @@ Main (unreleased)
 - (_Experimental_) Various changes to the experimental component `database_observability.mysql`:
   - `schema_table`: add support for index expressions (@cristiangreco)
   - `query_tables`: improve queries parsing (@cristiangreco)
+  - make tidbparser the default choice (@cristiangreco)
 
 ### Bugfixes
 
