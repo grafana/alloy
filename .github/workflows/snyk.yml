@@ -4,12 +4,12 @@ on:
    types: [published]
  push:
     branches:
-      - 'main'
-      - 'master'
+      - main
+      - master
  workflow_dispatch:
 
 jobs:
   snyk-scan-ci:
-    uses: 'grafana/security-github-actions/.github/workflows/snyk_monitor.yml@main'
+    uses: grafana/security-github-actions/.github/workflows/snyk_monitor.yml@main
     secrets:
       SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}

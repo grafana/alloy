@@ -1,3 +1,6 @@
+#
+# TODO: Can this be removed in favor of renovatebot?
+#
 name: Check Dependencies
 on:
   workflow_dispatch: {}
@@ -9,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
 
       - name: Invoke action
         uses: rfratto/depcheck@main

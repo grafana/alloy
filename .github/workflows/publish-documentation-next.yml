@@ -15,7 +15,7 @@ jobs:
       id-token: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.2.2
       - uses: grafana/writers-toolkit/publish-technical-documentation@publish-technical-documentation/v1
         with:
           website_directory: content/docs/alloy/next

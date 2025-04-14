@@ -31,10 +31,10 @@ jobs:
       uses: grafana/shared-workflows/actions/dockerhub-login@dockerhub-login-v1.0.1
 
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v4.2.2
 
     - name: Set up Go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@v5.4.0
       with:
         go-version-file: go.mod
         cache: false
@@ -48,7 +48,7 @@ jobs:
         $go_version_split = $go_version.ToString().split(".")
         $go_short_version = $go_version_split[0] + "." + $go_version_split[1]
         "alloy_go_version=$go_short_version" >> $env:GITHUB_OUTPUT
-  
+
     - name: Build and publish the container
       # TODO: Run "make alloy-image-windows" instead?
       run: |

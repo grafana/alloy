@@ -16,7 +16,7 @@ jobs:
     # We use a large runner for the additional disk space.
     runs-on: github-hosted-ubuntu-x64-large
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.2.2
       - name: Build image
         run: |
           docker build -t alloy-test:latest -f Dockerfile .
@@ -24,9 +24,7 @@ jobs:
   windows:
     runs-on: windows-2022
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.2.2
       - name: Build image
         run: |
           docker build -t alloy-test:latest -f Dockerfile.windows .
-
-
