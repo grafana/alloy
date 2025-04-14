@@ -142,13 +142,13 @@ Construct objects using a sequence of comma-separated key-value pairs enclosed i
 }
 ```
 
-Omit the comma after the final key-value pair if the closing curly brace `}` is on the same line.
+Include a comma after the final key-value pair if the closing curly brace `}` is on a different line.
 
 ```alloy
 { name = "John" }
 ```
 
-Wrap keys in double quotes if they aren't valid identifiers.
+Wrap keys in double quotes if they aren't [valid identifiers][valid].
 
 ```alloy
 {
@@ -183,7 +183,8 @@ The null value is represented by the symbol `null`.
 
 A `secret` is a special type of string that's never displayed to the user.
 You can assign `string` values to an attribute expecting a `secret`, but not the inverse.
-You can't convert a secret to a string or assign a secret to an attribute expecting a string.
+You can use [`convert.nonsensitive`] to convert a secret to a string. 
+You can't assign a secret to an attribute expecting a string.
 
 ### Capsules
 
@@ -213,3 +214,4 @@ prometheus.scrape "default" {
 ```
 
 [component reference]: ../../../../reference/components/
+[valid]: ../syntax#identifiers

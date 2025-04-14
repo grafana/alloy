@@ -46,9 +46,9 @@ local.file "b" {
 
 ## Component evaluation
 
-A component is _evaluated_ when its expressions compute into concrete values.
+Component evaluation is the process of computing expressions into concrete values.
 These values configure the component's runtime behavior.
-The component controller finishes loading once all components are evaluated, configured, and running.
+The component controller is fully loaded once all components are evaluated, configured, and running.
 
 The component controller evaluates a component only after evaluating all its dependencies.
 Components without dependencies can be evaluated at any time during the process.
