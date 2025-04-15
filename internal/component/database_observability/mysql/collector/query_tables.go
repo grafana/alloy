@@ -133,29 +133,10 @@ func (c *QueryTables) fetchQueryTables(ctx context.Context) error {
 			continue
 		}
 
-		sqlText, err := c.sqlParser.CleanTruncatedText(sampleText)
+		stmt, err := c.tryParse(schemaName, digest, digestText, sampleText)
 		if err != nil {
-			level.Warn(c.logger).Log("msg", "failed to handle truncated sample_text", "schema", schemaName, "digest", digest, "err", err)
-
-			// try to switch to digest_text
-			sqlText, err = c.sqlParser.CleanTruncatedText(digestText)
-			if err != nil {
-				level.Warn(c.logger).Log("msg", "failed to handle truncated digest_text", "schema", schemaName, "digest", digest, "err", err)
-				continue
-			}
-		}
-
-		stmt, err := c.sqlParser.Parse(sqlText)
-		if err != nil {
-			level.Warn(c.logger).Log("msg", "failed to parse sql query from sample_text", "schema", schemaName, "digest", digest, "err", err)
-
-			if sqlText != digestText {
-				stmt, err = c.sqlParser.Parse(digestText)
-				if err != nil {
-					level.Warn(c.logger).Log("msg", "failed to parse sql query from digest_text", "schema", schemaName, "digest", digest, "err", err)
-					continue
-				}
-			}
+			level.Warn(c.logger).Log("msg", "failed to parse sql query", "schema", schemaName, "digest", digest, "err", err)
+			continue
 		}
 
 		tables := c.sqlParser.ExtractTableNames(c.logger, digest, stmt)
@@ -174,4 +155,35 @@ func (c *QueryTables) fetchQueryTables(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (c *QueryTables) tryParse(schema, digest, digestText, sampleText string) (any, error) {
+	sqlText, err := c.sqlParser.CleanTruncatedText(sampleText)
+	if err != nil {
+		level.Warn(c.logger).Log("msg", "failed to handle truncated sample_text", "schema", schema, "digest", digest, "err", err)
+
+		// try to switch to digest_text
+		sqlText, err = c.sqlParser.CleanTruncatedText(digestText)
+		if err != nil {
+			level.Warn(c.logger).Log("msg", "failed to handle truncated digest_text", "schema", schema, "digest", digest, "err", err)
+			return nil, err
+		}
+	}
+
+	stmt, err := c.sqlParser.Parse(sqlText)
+	if err != nil {
+		level.Warn(c.logger).Log("msg", "failed to parse sql query from sample_text", "schema", schema, "digest", digest, "err", err)
+
+		if digestText == "" || sqlText == digestText {
+			return nil, err
+		}
+
+		stmt, err = c.sqlParser.Parse(digestText)
+		if err != nil {
+			level.Warn(c.logger).Log("msg", "failed to parse sql query from digest_text", "schema", schema, "digest", digest, "err", err)
+			return nil, err
+		}
+	}
+
+	return stmt, nil
 }
