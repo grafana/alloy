@@ -11,7 +11,7 @@ labels:
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `loki.secretfilter` receives log entries and redacts detected secrets from the log lines.
-The detection is based on regular expression patterns, defined in a Gitleaks configuration file embedded within the component.
+The detection is based on regular expression patterns, defined in the Gitleaks configuration file embedded within the component.
 `loki.secretfilter` can also use a [custom configuration file](#arguments) based on the [Gitleaks configuration file structure][gitleaks-config].
 
 {{< admonition type="caution" >}}
@@ -99,7 +99,7 @@ For short secrets, at most half of the secret is shown.
 The `origin_label` argument specifies which Loki label value to use for the `secrets_redacted_by_origin` metric.
 This metric tracks how many secrets were redacted in logs from different sources or environments.
 
-[embedded-config]: https://github.com/grafana/alloy/blob/<ALLOY_VERSION>/internal/component/loki/secretfilter/gitleaks.toml
+[embedded-config]: https://github.com/grafana/alloy/blob/{{< param "ALLOY_RELEASE" >}}/internal/component/loki/secretfilter/gitleaks.toml
 
 ## Blocks
 
