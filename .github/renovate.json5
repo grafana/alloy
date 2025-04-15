@@ -1,3 +1,9 @@
+//
+// Renovate config options: https://docs.renovatebot.com/configuration-options/
+//
+// To validate config, run:
+// npx --package renovate -- renovate-config-validator --strict ./.github/renovate.json5
+//
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
@@ -57,9 +63,9 @@
         "github.com/open-telemetry/opentelemetry-collector-contrib/*",
         "go.opentelemetry.io/collector"
       ],
-      "groupName": "go otel collector dependencies"
+      "groupName": "go otel collector dependencies",
       "dependencyDashboardApproval": true
-    }
+    },
     {
       "matchManagers": ["helm-values"],
       // "matchUpdateTypes": ["minor", "patch"],
