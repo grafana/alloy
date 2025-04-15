@@ -5,13 +5,15 @@ import (
 	"testing"
 
 	"github.com/go-kit/log"
-	monitoringv1alpha2 "github.com/grafana/alloy/internal/component/loki/source/podlogs/internal/apis/monitoring/v1alpha2"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/util/strutil"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	"github.com/grafana/alloy/internal/component/loki/source/kubernetes/kubetail"
+	monitoringv1alpha2 "github.com/grafana/alloy/internal/component/loki/source/podlogs/internal/apis/monitoring/v1alpha2"
 )
 
 func TestBuildPodLogsTargetLabels(t *testing.T) {
@@ -184,19 +186,6 @@ func TestReconcilePodLogs_DefaultLabels(t *testing.T) {
 	target := targets[0]
 	labelsMap := target.Labels().Map()
 
-	// Expected default labels.
-	expectedInstance := fmt.Sprintf("%s/%s:%s", pod.Namespace, pod.Name, "container1")
-	expectedJob := fmt.Sprintf("%s/%s", podLogs.Namespace, podLogs.Name)
-
-	if labelsMap[model.InstanceLabel] != expectedInstance {
-		t.Errorf("expected instance label %q, got %q", expectedInstance, labelsMap[model.InstanceLabel])
-	}
-	if labelsMap[model.JobLabel] != expectedJob {
-		t.Errorf("expected job label %q, got %q", expectedJob, labelsMap[model.JobLabel])
-	}
-
-	discoveryLabelsMap := target.DiscoveryLabels().Map()
-
 	assertLabelAndPresent := func(labels map[string]string, kind, typ, key, expected string) {
 		base := fmt.Sprintf("__meta_kubernetes_%s_%s", kind, typ)
 
@@ -210,13 +199,24 @@ func TestReconcilePodLogs_DefaultLabels(t *testing.T) {
 		}
 	}
 
+	assert := func(labels map[string]string, key, expected string) {
+		if labels[key] != expected {
+			t.Errorf("expected %s to be %q, got %q", key, expected, labels[key])
+		}
+	}
+
+	// Expected default labels.
+	expectedInstance := fmt.Sprintf("%s/%s:%s", pod.Namespace, pod.Name, "container1")
+	expectedJob := fmt.Sprintf("%s/%s", podLogs.Namespace, podLogs.Name)
+
+	assert(labelsMap, model.InstanceLabel, expectedInstance)
+	assert(labelsMap, model.JobLabel, expectedJob)
+
+	discoveryLabelsMap := target.DiscoveryLabels().Map()
+
 	// Check expected pod logs labels.
-	if discoveryLabelsMap[kubePodlogsNamespace] != podLogs.Namespace {
-		t.Errorf("expected pod logs namespace %q, got %q", podLogs.Namespace, labelsMap[kubePodlogsNamespace])
-	}
-	if discoveryLabelsMap[kubePodlogsName] != podLogs.Name {
-		t.Errorf("expected pod logs name %q, got %q", podLogs.Name, labelsMap[kubePodlogsName])
-	}
+	assert(discoveryLabelsMap, kubePodlogsNamespace, podLogs.Namespace)
+	assert(discoveryLabelsMap, kubePodlogsName, podLogs.Name)
 
 	for k, v := range podLogs.Labels {
 		assertLabelAndPresent(discoveryLabelsMap, "podlogs", "label", k, v)
@@ -227,9 +227,7 @@ func TestReconcilePodLogs_DefaultLabels(t *testing.T) {
 	}
 
 	// Check namespace labels
-	if discoveryLabelsMap[kubeNamespace] != pod.Namespace {
-		t.Errorf("expected pod logs namespace %q, got %q", podLogs.Namespace, labelsMap[kubePodlogsNamespace])
-	}
+	assert(discoveryLabelsMap, kubeNamespace, pod.Namespace)
 
 	for k, v := range ns.Labels {
 		assertLabelAndPresent(discoveryLabelsMap, "namespace", "label", k, v)
@@ -239,18 +237,12 @@ func TestReconcilePodLogs_DefaultLabels(t *testing.T) {
 		assertLabelAndPresent(discoveryLabelsMap, "namespace", "annotation", k, v)
 	}
 
-	if discoveryLabelsMap[kubePodReady] != "true" {
-		t.Errorf("expected %s to be 'true', got %q", kubePodReady, labelsMap[kubePodReady])
-	}
-	if discoveryLabelsMap[kubePodPhase] != string(corev1.PodRunning) {
-		t.Errorf("expected %s to be %q, got %q", kubePodPhase, string(corev1.PodRunning), labelsMap[kubePodPhase])
-	}
-	if discoveryLabelsMap[kubePodNodeName] != "node1" {
-		t.Errorf("expected %s to be 'node1', got %q", kubePodNodeName, labelsMap[kubePodNodeName])
-	}
-	if discoveryLabelsMap[kubePodHostIP] != "192.168.1.1" {
-		t.Errorf("expected %s to be '192.168.1.1', got %q", kubePodHostIP, labelsMap[kubePodHostIP])
-	}
+	assert(discoveryLabelsMap, kubePodReady, "true")
+	assert(discoveryLabelsMap, kubePodName, pod.Name)
+	assert(discoveryLabelsMap, kubePodPhase, string(corev1.PodRunning))
+	assert(discoveryLabelsMap, kubePodNodeName, pod.Spec.NodeName)
+	assert(discoveryLabelsMap, kubePodHostIP, pod.Status.HostIP)
+	assert(discoveryLabelsMap, kubePodIP, pod.Status.PodIP)
 
 	for k, v := range pod.Labels {
 		assertLabelAndPresent(discoveryLabelsMap, "pod", "label", k, v)
@@ -259,4 +251,14 @@ func TestReconcilePodLogs_DefaultLabels(t *testing.T) {
 	for k, v := range pod.Annotations {
 		assertLabelAndPresent(discoveryLabelsMap, "pod", "annotation", k, v)
 	}
+
+	container := pod.Spec.Containers[0]
+	assert(discoveryLabelsMap, kubePodContainerName, container.Name)
+	assert(discoveryLabelsMap, kubePodContainerImage, container.Image)
+	assert(discoveryLabelsMap, kubePodContainerInit, "false")
+
+	assert(discoveryLabelsMap, kubetail.LabelPodName, pod.Name)
+	assert(discoveryLabelsMap, kubetail.LabelPodUID, string(pod.UID))
+	assert(discoveryLabelsMap, kubetail.LabelPodNamespace, pod.Namespace)
+	assert(discoveryLabelsMap, kubetail.LabelPodContainerName, container.Name)
 }
