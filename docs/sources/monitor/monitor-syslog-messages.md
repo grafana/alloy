@@ -82,7 +82,7 @@ You can find the `config.alloy` file in the cloned repository at `alloy-scenario
 
 The configuration includes `livedebugging` to stream real-time data to the {{< param "PRODUCT_NAME" >}} UI.
 
-### Configure debugging
+### Configure `livedebugging`
 
 Livedebugging streams real-time data from components directly to the {{< param "PRODUCT_NAME" >}} UI.
 Refer to the [Troubleshooting documentation][troubleshooting] for more details about this feature.
