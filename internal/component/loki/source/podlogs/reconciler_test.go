@@ -216,7 +216,6 @@ func TestReconcilePodLogs_DefaultLabels(t *testing.T) {
 	}
 	if discoveryLabelsMap[kubePodlogsName] != podLogs.Name {
 		t.Errorf("expected pod logs name %q, got %q", podLogs.Name, labelsMap[kubePodlogsName])
-
 	}
 
 	for k, v := range podLogs.Labels {
