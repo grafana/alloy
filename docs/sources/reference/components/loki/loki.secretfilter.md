@@ -10,8 +10,8 @@ labels:
 
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-`loki.secretfilter` receives log entries and redacts sensitive information from them, such as secrets.
-The detection is based on regular expression patterns, defined in the [Gitleaks configuration file][gitleaks] embedded within the component.
+`loki.secretfilter` receives log entries and redacts detected secrets from them.
+The detection is based on regular expression patterns, defined in the [Gitleaks configuration file](#arguments) embedded within the component.
 `loki.secretfilter` can also use a custom configuration file based on the Gitleaks configuration file structure.
 
 {{< admonition type="caution" >}}
@@ -23,8 +23,6 @@ Don't rely solely on this component to redact sensitive information.
 {{< admonition type="note" >}}
 This component operates on log lines and doesn't scan labels or other metadata.
 {{< /admonition >}}
-
-[gitleaks]: https://github.com/gitleaks/gitleaks/blob/master/config/gitleaks.toml
 
 ## Usage
 
@@ -49,15 +47,19 @@ loki.secretfilter "<LABEL>" {
 | `types`           | `map(string)`        | Types of secret to look for.                               | All types                        | no       |
 
 The `gitleaks_config` argument is the path to the custom `gitleaks.toml` file.
-The Gitleaks configuration file embedded in the component is used if you don't provide the path to a custom configuration file.
+The Gitleaks configuration file [embedded in the component][embedded-config] is used if you don't provide the path to a custom configuration file.
 
 {{< admonition type="note" >}}
-This component doesn't support all the features of the Gitleaks configuration file.
+This component doesn't support all the features of the [Gitleaks configuration file][gitleaks-config].
 It only supports regular expression-based rules, `secretGroup`, and allowlist regular expressions. `regexTarget` only supports the default value `secret`.
 Other features such as `keywords`, `entropy`, `paths`, and `stopwords` aren't supported.
 The `extend` feature isn't supported.
 If you use a custom configuration file, you must include all the rules you want to use within the configuration file.
 Unsupported fields and values in the configuration file are ignored.
+{{< /admonition >}}
+
+{{< admonition type="note" >}}
+The embedded configuration file can change from one version of Alloy to another. It's advised to use an external configuration file to ensure consistency.
 {{< /admonition >}}
 
 The `types` argument is a map of secret types to look for.
@@ -94,6 +96,9 @@ For short secrets, at most half of the secret is shown.
 
 The `origin_label` argument specifies which Loki label value to use for the `secrets_redacted_by_origin` metric.
 This metric tracks how many secrets were redacted in logs from different sources or environments.
+
+[embedded-config]: https://github.com/grafana/alloy/blob/{{< param "ALLOY_RELEASE" >}}/internal/component/loki/secretfilter/gitleaks.toml
+[gitleaks-config]: https://github.com/gitleaks/gitleaks/blob/master/config/gitleaks.toml
 
 ## Blocks
 
