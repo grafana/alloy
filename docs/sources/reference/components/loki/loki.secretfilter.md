@@ -10,9 +10,9 @@ labels:
 
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-`loki.secretfilter` receives log entries and redacts detected secrets from them.
-The detection is based on regular expression patterns, defined in the [Gitleaks configuration file](#arguments) embedded within the component.
-`loki.secretfilter` can also use a custom configuration file based on the Gitleaks configuration file structure.
+`loki.secretfilter` receives log entries and redacts detected secrets from the log lines.
+The detection is based on regular expression patterns, defined in a Gitleaks configuration file embedded within the component.
+`loki.secretfilter` can also use a [custom configuration file](#arguments) based on the [Gitleaks configuration file structure][gitleaks-config].
 
 {{< admonition type="caution" >}}
 Personally Identifiable Information (PII) isn't currently in scope and some secrets could remain undetected.
@@ -23,6 +23,8 @@ Don't rely solely on this component to redact sensitive information.
 {{< admonition type="note" >}}
 This component operates on log lines and doesn't scan labels or other metadata.
 {{< /admonition >}}
+
+[gitleaks-config]: https://github.com/gitleaks/gitleaks/blob/master/config/gitleaks.toml
 
 ## Usage
 
@@ -50,7 +52,7 @@ The `gitleaks_config` argument is the path to the custom `gitleaks.toml` file.
 The Gitleaks configuration file [embedded in the component][embedded-config] is used if you don't provide the path to a custom configuration file.
 
 {{< admonition type="note" >}}
-This component doesn't support all the features of the [Gitleaks configuration file][gitleaks-config].
+This component doesn't support all the features of the Gitleaks configuration file.
 It only supports regular expression-based rules, `secretGroup`, and allowlist regular expressions. `regexTarget` only supports the default value `secret`.
 Other features such as `keywords`, `entropy`, `paths`, and `stopwords` aren't supported.
 The `extend` feature isn't supported.
@@ -98,7 +100,6 @@ The `origin_label` argument specifies which Loki label value to use for the `sec
 This metric tracks how many secrets were redacted in logs from different sources or environments.
 
 [embedded-config]: https://github.com/grafana/alloy/blob/{{< param "ALLOY_RELEASE" >}}/internal/component/loki/secretfilter/gitleaks.toml
-[gitleaks-config]: https://github.com/gitleaks/gitleaks/blob/master/config/gitleaks.toml
 
 ## Blocks
 
