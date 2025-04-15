@@ -275,7 +275,7 @@ func (r *reconciler) reconcilePodLogs(ctx context.Context, cli client.Client, po
 		podTargetLabels := buildPodsAndNamespacesTargetLabels(podLogsTargetLabels, pod, namespace)
 
 		handleContainer := func(container *corev1.Container, initContainer bool) {
-			targetLabels := buildTargetLabels(discoveredContainer{
+			targetLabels := buildContainerTargetLabels(discoveredContainer{
 				PodLogs:       podLogs,
 				Pod:           &pod,
 				Container:     container,
@@ -407,7 +407,8 @@ type discoveredContainer struct {
 	InitContainer bool
 }
 
-func buildTargetLabels(opts discoveredContainer, prediscoveredLabels promlabels.Labels) promlabels.Labels {
+// buildContainerTargetLabels builds the target labels for a container and merge it with prediscoveredLabels.
+func buildContainerTargetLabels(opts discoveredContainer, prediscoveredLabels promlabels.Labels) promlabels.Labels {
 	targetLabels := promlabels.NewBuilder(prediscoveredLabels)
 
 	targetLabels.Set(kubePodContainerInit, fmt.Sprint(opts.InitContainer))
