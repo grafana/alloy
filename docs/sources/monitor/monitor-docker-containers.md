@@ -84,7 +84,7 @@ You can find this file in the cloned repository at `alloy-scenarios/docker-monit
 
 ### Configure metrics
 
-The metrics configuration in this example uses three components:
+The metrics configuration in this example requires three components:
 
 * `prometheus.exporter.cadvisor`
 * `prometheus.scrape`
@@ -149,7 +149,7 @@ prometheus.remote_write "demo" {
 
 ### Configure logging
 
-The logging configuration in this example uses four components:
+The logging configuration in this example requires four components:
 
 * `discovery.docker`
 * `discovery.relabel`
