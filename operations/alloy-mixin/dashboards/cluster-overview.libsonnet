@@ -277,7 +277,7 @@ local cluster_node_filename = 'alloy-cluster-node.json';
           ),
           panel.newQuery(
             expr= |||
-              avg(cluster_minimum_size{%(groupSelector)s}) or vector(0)
+              avg(cluster_minimum_size{%(groupSelector)s})
             ||| % $._config,
             legendFormat='Minimum cluster size',
           )
