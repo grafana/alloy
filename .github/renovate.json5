@@ -50,15 +50,15 @@
       "groupName": "go dependencies (minor, patch)",
     },
     {
-      // Disable renovate for specific go dependencies
-      // TODO: can renovate help make these updates easier?
+      // Group and hold some otel-specific go dependencies
       "matchManagers": ["gomod"],
       "matchPackageNames": [
-      // OpenTelemetry needs special handling due to a temporary fork
+        // OpenTelemetry needs special handling due to a temporary fork
         "github.com/open-telemetry/opentelemetry-collector-contrib/*",
         "go.opentelemetry.io/collector"
       ],
-      "enabled": false
+      "groupName": "go otel collector dependencies"
+      "dependencyDashboardApproval": true
     }
     {
       "matchManagers": ["helm-values"],
