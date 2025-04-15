@@ -31,6 +31,8 @@ Main (unreleased)
 
 - Reduced the lag time during targets handover in a cluster in `prometheus.scrape` components by reducing thread contention. (@thampiotr)
 
+- Pretty print diagnostic errors when using `alloy run` (@kalleep)
+
 ### Bugfixes
 
 - Fix `otelcol.exporter.prometheus` dropping valid exemplars. (@github-vincent-miszczak)
