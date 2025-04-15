@@ -135,6 +135,8 @@ prometheus.exporter.unix "integrations_node_exporter" {
 }
 ```
 
+This component provides the `prometheus.exporter.unix.integrations_node_exporter.output` target for `prometheus.scrape`.
+
 #### `discovery.relabel` instance and job labels
 
 There are two `discovery.relabel` components in this configuration.
@@ -231,6 +233,8 @@ prometheus.remote_write "local" {
   }
 }
 ```
+
+This component provides the `prometheus.remote_write.local.receiver` destination for `prometheus.scrape`.
 
 ### Configure logging
 
