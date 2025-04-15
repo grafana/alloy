@@ -46,9 +46,9 @@
     },
     {
       "matchManagers": ["gomod"],
-      // "matchUpdateTypes": ["minor", "patch"],
-      // "groupName": "go dependencies (minor, patch)",
-      "enabled": false // TODO: enable when ready
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "go dependencies (minor, patch)",
+      "enabled": true
     },
     {
       "matchManagers": ["helm-values"],
