@@ -8,8 +8,8 @@ weight: 225
 
 # Monitor Linux servers with {{% param "FULL_PRODUCT_NAME" %}}
 
-The Linux operating system generates a wide range of metrics that you can use to monitor the health and performance of your hardware and operating system.
-With {{< param "PRODUCT_NAME" >}}, you can collect your metrics, forward them to a Grafana stack, and create dashboards to monitor your Linux servers.
+The Linux operating system generates a wide range of metrics and logs that you can use to monitor the health and performance of your hardware and operating system.
+With {{< param "PRODUCT_NAME" >}}, you can collect your metrics and logs, forward them to a Grafana stack, and create dashboards to monitor your Linux servers.
 
 The [`alloy-scenarios`][scenarios] repository contains complete examples of {{< param "PRODUCT_NAME" >}} deployments.
 Clone the repository and use the examples to understand how {{< param "PRODUCT_NAME" >}} collects, processes, and exports telemetry signals.
@@ -92,44 +92,12 @@ You can find this file in the cloned repository at `alloy-scenarios/linux/`.
 
 ### Configure metrics
 
-The metrics configuration in this example uses nine components:
+The metrics configuration in this example requires four components:
 
-* `discovery.relabel`
 * `prometheus.exporter.unix`
+* `discovery.relabel`
 * `prometheus.scrape`
 * `prometheus.remote_write`
-* `loki.source.journal`
-* `local.file_match`
-* `loki.source.file`
-* `loki.write`
-* `livedebugging`
-
-#### `discovery.relabel` instance and job labels
-
-There are two `discovery.relabel` components in this configuration.
-This [`discovery.relabel`][discovery.relabel] component replaces the instance and job labels that come in from the `node_exporter` with the hostname of the machine and a standard job name for all metrics.
-
-In this example, this component requires the following arguments:
-
-* `targets`: The targets to relabel.
-* `source_labels`: The list of labels to select for relabeling. The rules extract the instance and job labels.
-* `replacement`: The value that replaces the source label. The rules set the target labels to `constants.hostname`, and `integrations/node_exporter`.
-
-```alloy
-discovery.relabel "integrations_node_exporter" {
-  targets = prometheus.exporter.unix.integrations_node_exporter.targets
-
-  rule {
-    target_label = "instance"
-    replacement  = constants.hostname
-  }
-
-  rule {
-    target_label = "job"
-    replacement = "integrations/node_exporter"
-  }
-}
-```
 
 #### `prometheus.exporter.unix`
 
@@ -167,6 +135,69 @@ prometheus.exporter.unix "integrations_node_exporter" {
 }
 ```
 
+#### `discovery.relabel` instance and job labels
+
+There are two `discovery.relabel` components in this configuration.
+This [`discovery.relabel`][discovery.relabel] component replaces the instance and job labels that come in from the `node_exporter` with the hostname of the machine and a standard job name for all metrics.
+
+In this example, this component requires the following arguments:
+
+* `targets`: The targets to relabel.
+* `source_labels`: The list of labels to select for relabeling. The rules extract the instance and job labels.
+* `replacement`: The value that replaces the source label. The rules set the target labels to `constants.hostname`, and `integrations/node_exporter`.
+
+```alloy
+discovery.relabel "integrations_node_exporter" {
+  targets = prometheus.exporter.unix.integrations_node_exporter.targets
+
+  rule {
+    target_label = "instance"
+    replacement  = constants.hostname
+  }
+
+  rule {
+    target_label = "job"
+    replacement = "integrations/node_exporter"
+  }
+}
+```
+
+#### `discovery.relabel` for systemd journal logs
+
+This [`discovery.relabel`][discovery.relabel] component defines the relabeling rules for the systemd journal logs.
+In this example, this component requires the following arguments:
+
+* `targets`: The targets to relabel.
+  No targets are modified, so the `targets` argument is an empty array.
+* `source_labels`: The list of labels to select for relabeling. The rules extract the systemd unit, ID, transport, and log priority.
+* `target_label`: The label written to the target. The rules set the target labels to `unit`, `boot_id`, `transport`, and `level`.
+
+```alloy
+discovery.relabel "logs_integrations_integrations_node_exporter_journal_scrape" {
+  targets = []
+
+  rule {
+    source_labels = ["__journal__systemd_unit"]
+    target_label  = "unit"
+  }
+
+  rule {
+    source_labels = ["__journal__boot_id"]
+    target_label  = "boot_id"
+  }
+
+  rule {
+    source_labels = ["__journal__transport"]
+    target_label  = "transport"
+  }
+
+  rule {
+    source_labels = ["__journal_priority_keyword"]
+    target_label  = "level"
+  }
+}
+```
+
 #### `prometheus.scrape`
 
 The [`prometheus.scrape`][prometheus.scrape] component scrapes `node_exporter` metrics and forwards them to a receiver.
@@ -200,6 +231,15 @@ prometheus.remote_write "local" {
   }
 }
 ```
+
+### Configure logging
+
+The logging configuration in this example requires four components:
+
+* `loki.source.journal`
+* `local.file_match`
+* `loki.source.file`
+* `loki.write`
 
 #### `loki.source.journal`
 
@@ -240,42 +280,6 @@ local.file_match "logs_integrations_integrations_node_exporter_direct_scrape" {
 }
 ```
 
-#### `discovery.relabel` for systemd journal logs
-
-This [`discovery.relabel`][discovery.relabel] component defines the relabeling rules for the systemd journal logs.
-In this example, this component requires the following arguments:
-
-* `targets`: The targets to relabel.
-  No targets are modified, so the `targets` argument is an empty array.
-* `source_labels`: The list of labels to select for relabeling. The rules extract the systemd unit, ID, transport, and log priority.
-* `target_label`: The label written to the target. The rules set the target labels to `unit`, `boot_id`, `transport`, and `level`.
-
-```alloy
-discovery.relabel "logs_integrations_integrations_node_exporter_journal_scrape" {
-  targets = []
-
-  rule {
-    source_labels = ["__journal__systemd_unit"]
-    target_label  = "unit"
-  }
-
-  rule {
-    source_labels = ["__journal__boot_id"]
-    target_label  = "boot_id"
-  }
-
-  rule {
-    source_labels = ["__journal__transport"]
-    target_label  = "transport"
-  }
-
-  rule {
-    source_labels = ["__journal_priority_keyword"]
-    target_label  = "level"
-  }
-}
-```
-
 #### `loki.source.file`
 
 The [`loki.source.file`][loki.source.file] component reads log entries from files and forwards them to other Loki components.
@@ -305,6 +309,13 @@ loki.write "local" {
   }
 }
 ```
+
+### Configure `livedebugging`
+
+`livedebugging` streams real-time data from your components directly to the {{< param "PRODUCT_NAME" >}} UI.
+Refer to the [Troubleshooting documentation][troubleshooting] for more details about this feature.
+
+[troubleshooting]: https://grafana.com/docs/alloy/latest/troubleshoot/debug/#live-debugging-page
 
 #### `livedebugging`
 
