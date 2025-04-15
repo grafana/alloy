@@ -32,7 +32,7 @@ Main (unreleased)
 
 - Fix `otelcol.exporter.prometheus` dropping valid exemplars. (@github-vincent-miszczak)
 
-- Fix `loki.source.podlogs` add missing labels `__meta_kubernetes_pod_name` and `__meta_kubernetes_pod_label_*`. (@kalleep)
+- Fix `loki.source.podlogs` add missing labels `__meta_kubernetes_namespace` and `__meta_kubernetes_pod_label_*`. (@kalleep)
 
 ### Other changes
 
