@@ -95,6 +95,12 @@ func TestReconcilePodLogs_DefaultLabels(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "default",
 			Name:      "testlogs",
+			Labels: map[string]string{
+				"podloglabel": "podlog",
+			},
+			Annotations: map[string]string{
+				"podlogannotation": "podlogannotation",
+			},
 		},
 		Spec: monitoringv1alpha2.PodLogsSpec{
 			Selector:          metav1.LabelSelector{}, // matches all Pods
@@ -105,8 +111,13 @@ func TestReconcilePodLogs_DefaultLabels(t *testing.T) {
 	// Create a Namespace with some dummy labels.
 	ns := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   "default",
-			Labels: map[string]string{"env": "test"},
+			Name: "default",
+			Labels: map[string]string{
+				"env": "test",
+			},
+			Annotations: map[string]string{
+				"namespaceannotationa": "a",
+			},
 		},
 	}
 
@@ -116,6 +127,13 @@ func TestReconcilePodLogs_DefaultLabels(t *testing.T) {
 			Namespace: "default",
 			Name:      "mypod",
 			UID:       "12345",
+			Labels: map[string]string{
+				"podlabela": "a",
+				"podlabelb": "b",
+			},
+			Annotations: map[string]string{
+				"podannotationa": "a",
+			},
 		},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
@@ -164,23 +182,11 @@ func TestReconcilePodLogs_DefaultLabels(t *testing.T) {
 		t.Fatalf("expected 1 target, got %d", len(targets))
 	}
 	target := targets[0]
-	discoveryLabelsMap := target.DiscoveryLabels().Map()
 	labelsMap := target.Labels().Map()
 
 	// Expected default labels.
 	expectedInstance := fmt.Sprintf("%s/%s:%s", pod.Namespace, pod.Name, "container1")
 	expectedJob := fmt.Sprintf("%s/%s", podLogs.Namespace, podLogs.Name)
-
-	// Check expected pod logs labels.
-	if discoveryLabelsMap[kubePodlogsNamespace] != podLogs.Namespace {
-		t.Errorf("expected pod logs namespace %q, got %q", podLogs.Namespace, labelsMap[kubePodlogsNamespace])
-	}
-	if discoveryLabelsMap[kubePodlogsName] != podLogs.Name {
-		t.Errorf("expected pod logs name %q, got %q", podLogs.Name, labelsMap[kubePodlogsName])
-	}
-	if discoveryLabelsMap[kubeNamespaceLabel+strutil.SanitizeLabelName("env")] != "test" {
-		t.Errorf("expected namespace label 'env' to be 'test', got %q", labelsMap[kubeNamespaceLabel+strutil.SanitizeLabelName("env")])
-	}
 
 	if labelsMap[model.InstanceLabel] != expectedInstance {
 		t.Errorf("expected instance label %q, got %q", expectedInstance, labelsMap[model.InstanceLabel])
@@ -188,15 +194,52 @@ func TestReconcilePodLogs_DefaultLabels(t *testing.T) {
 	if labelsMap[model.JobLabel] != expectedJob {
 		t.Errorf("expected job label %q, got %q", expectedJob, labelsMap[model.JobLabel])
 	}
-	if discoveryLabelsMap[kubePodContainerInit] != "false" {
-		t.Errorf("expected %s to be false, got %q", kubePodContainerInit, labelsMap[kubePodContainerInit])
+
+	discoveryLabelsMap := target.DiscoveryLabels().Map()
+
+	assertLabelAndPresent := func(labels map[string]string, kind, typ, key, expected string) {
+		base := fmt.Sprintf("__meta_kubernetes_%s_%s", kind, typ)
+
+		labelKey := base + "_" + strutil.SanitizeLabelName(key)
+		if labels[labelKey] != expected {
+			t.Errorf("expected %s %s %q to be %q, got %q", kind, typ, key, expected, labels[labelKey])
+		}
+		presentKey := base + "present_" + strutil.SanitizeLabelName(key)
+		if labels[presentKey] != "true" {
+			t.Errorf("expected %s %spresent %q to be \"true\", got %q", kind, typ, key, labels[presentKey])
+		}
 	}
-	if discoveryLabelsMap[kubePodContainerName] != "container1" {
-		t.Errorf("expected %s to be 'container1', got %q", kubePodContainerName, labelsMap[kubePodContainerName])
+
+	// Check expected pod logs labels.
+	if discoveryLabelsMap[kubePodlogsNamespace] != podLogs.Namespace {
+		t.Errorf("expected pod logs namespace %q, got %q", podLogs.Namespace, labelsMap[kubePodlogsNamespace])
 	}
-	if discoveryLabelsMap[kubePodContainerImage] != "nginx" {
-		t.Errorf("expected %s to be 'nginx', got %q", kubePodContainerImage, labelsMap[kubePodContainerImage])
+	if discoveryLabelsMap[kubePodlogsName] != podLogs.Name {
+		t.Errorf("expected pod logs name %q, got %q", podLogs.Name, labelsMap[kubePodlogsName])
+
 	}
+
+	for k, v := range podLogs.Labels {
+		assertLabelAndPresent(discoveryLabelsMap, "podlogs", "label", k, v)
+	}
+
+	for k, v := range podLogs.Annotations {
+		assertLabelAndPresent(discoveryLabelsMap, "podlogs", "annotation", k, v)
+	}
+
+	// Check namespace labels
+	if discoveryLabelsMap[kubeNamespace] != pod.Namespace {
+		t.Errorf("expected pod logs namespace %q, got %q", podLogs.Namespace, labelsMap[kubePodlogsNamespace])
+	}
+
+	for k, v := range ns.Labels {
+		assertLabelAndPresent(discoveryLabelsMap, "namespace", "label", k, v)
+	}
+
+	for k, v := range ns.Annotations {
+		assertLabelAndPresent(discoveryLabelsMap, "namespace", "annotation", k, v)
+	}
+
 	if discoveryLabelsMap[kubePodReady] != "true" {
 		t.Errorf("expected %s to be 'true', got %q", kubePodReady, labelsMap[kubePodReady])
 	}
@@ -209,7 +252,12 @@ func TestReconcilePodLogs_DefaultLabels(t *testing.T) {
 	if discoveryLabelsMap[kubePodHostIP] != "192.168.1.1" {
 		t.Errorf("expected %s to be '192.168.1.1', got %q", kubePodHostIP, labelsMap[kubePodHostIP])
 	}
-	if discoveryLabelsMap[kubePodUID] != "12345" {
-		t.Errorf("expected %s to be '12345', got %q", kubePodUID, labelsMap[kubePodUID])
+
+	for k, v := range pod.Labels {
+		assertLabelAndPresent(discoveryLabelsMap, "pod", "label", k, v)
+	}
+
+	for k, v := range pod.Annotations {
+		assertLabelAndPresent(discoveryLabelsMap, "pod", "annotation", k, v)
 	}
 }
