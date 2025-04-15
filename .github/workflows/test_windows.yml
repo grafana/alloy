@@ -1,6 +1,6 @@
 name: Test (Windows)
 on:
-  # TODO: Run the Windows tests for each PR? 
+  # TODO: Run the Windows tests for each PR?
   # For now we don't do it just because it takes time.
   push:
     # TODO: Also run the tests when a Windows-specific features is changed.
@@ -13,9 +13,9 @@ jobs:
     runs-on: windows-latest
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
     - name: Set up Go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
       with:
         go-version-file: go.mod
         # TODO: Enable caching later.
