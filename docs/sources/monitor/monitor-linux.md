@@ -9,7 +9,7 @@ weight: 225
 # Monitor Linux servers with {{% param "FULL_PRODUCT_NAME" %}}
 
 The Linux operating system generates a wide range of metrics that you can use to monitor the health and performance of your hardware and operating system.
-With {{< param "PRODUCT_NAME" >}}, you can collect your metrics, forward them to a Grafana stack, and create dashboards to monitor your Docker containers.
+With {{< param "PRODUCT_NAME" >}}, you can collect your metrics, forward them to a Grafana stack, and create dashboards to monitor your Linux servers.
 
 The [`alloy-scenarios`][scenarios] repository contains complete examples of {{< param "PRODUCT_NAME" >}} deployments.
 Clone the repository and use the examples to understand how {{< param "PRODUCT_NAME" >}} collects, processes, and exports telemetry signals.
@@ -178,7 +178,7 @@ In this example, the component requires the following arguments:
 
 ```alloy
 prometheus.scrape "integrations_node_exporter" {
-scrape_interval = "15s"
+  scrape_interval = "15s"
   targets    = discovery.relabel.integrations_node_exporter.output
   forward_to = [prometheus.remote_write.local.receiver]
 }
@@ -208,7 +208,7 @@ In this example, the component requires the following arguments:
 
 * `max_age`: Only collect logs from the last 24 hours.
 * `relabel_rules`: Relabeling rules to apply on log entries.
-* `forward_to`:Send logs to the local Loki instance.
+* `forward_to`: Send logs to the local Loki instance.
 
 ```alloy
 loki.source.journal "logs_integrations_integrations_node_exporter_journal_scrape" {
