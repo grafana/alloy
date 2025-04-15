@@ -29,6 +29,8 @@ Main (unreleased)
   - `query_tables`: improve queries parsing (@cristiangreco)
   - make tidbparser the default choice (@cristiangreco)
 
+- Mixin dashboards improvements: added minimum cluster size to Cluster Overview dashboard, fixed units in OpenTelemetry dashboard, fixed slow components evaluation time units in Controller dashboard and updated Prometheus dashboard to correctly aggregate across instances. (@thampiotr)
+
 ### Bugfixes
 
 - Fix `otelcol.exporter.prometheus` dropping valid exemplars. (@github-vincent-miszczak)
