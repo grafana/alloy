@@ -26,6 +26,7 @@ Main (unreleased)
 
 - (_Experimental_) Various changes to the experimental component `database_observability.mysql`:
   - `schema_table`: add support for index expressions (@cristiangreco)
+  - `query_sample`: enable opt-in support to extract unredacted sql query (sql_text) (@matthewnolf)
   - `query_tables`: improve queries parsing (@cristiangreco)
   - make tidbparser the default choice (@cristiangreco)
 
