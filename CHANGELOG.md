@@ -10,11 +10,61 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
-### Other changes 
+
+### Features
+
+- Add the `otelcol.storage.file` extension to support persistent sending queues and `otelcol.receiver.filelog` file state tracking between restarts. (@dehaansa)
+
+- Add `otelcol.exporter.googlecloud` community component to export metrics, traces, and logs to Google Cloud. (@motoki317)
+
+- Add support to configure basic authentication for alloy http server. (@kalleep)
+
+### Enhancements
+
+- Add binary version to constants exposed in configuration file syntatx. (@adlots)
+
+- Update `loki.secretfilter` to include metrics about redactions (@kelnage)
+
+- (_Experimental_) Various changes to the experimental component `database_observability.mysql`:
+  - `schema_table`: add support for index expressions (@cristiangreco)
+  - `query_tables`: improve queries parsing (@cristiangreco)
+  - make tidbparser the default choice (@cristiangreco)
+
+- Mixin dashboards improvements: added minimum cluster size to Cluster Overview dashboard, fixed units in OpenTelemetry dashboard, fixed slow components evaluation time units in Controller dashboard and updated Prometheus dashboard to correctly aggregate across instances. (@thampiotr)
+
+- Reduced the lag time during targets handover in a cluster in `prometheus.scrape` components by reducing thread contention. (@thampiotr)
+
+- Pretty print diagnostic errors when using `alloy run` (@kalleep)
+
+### Bugfixes
+
+- Fix `otelcol.exporter.prometheus` dropping valid exemplars. (@github-vincent-miszczak)
+
+- Fix `loki.source.podlogs` add missing labels `__meta_kubernetes_namespace` and `__meta_kubernetes_pod_label_*`. (@kalleep)
+
+### Other changes
+
+- Update the zap logging adapter used by `otelcol` components to log arrays and objects. (@dehaansa)
+
+- Updated Windows install script to add DisplayVersion into registry on install (@enessene)
 
 - Only use labelstore cache if `prometheus.remote_write` is enabled. (@mattdurham)
 
-v1.8.0-rc.0
+v1.8.1
+-----------------
+
+### Bugfixes
+
+- `rfc3164_default_to_current_year` argument was not fully added to `loki.source.syslog` (@dehaansa)
+
+- Fix issue with `remoteCfg` service stopping immediately and logging noop error if not configured (@dehaansa)
+
+- Fix potential race condition in `remoteCfg` service metrics registration (@kalleep)
+
+- Fix panic in `prometheus.exporter.postgres` when using minimal url as data source name. (@kalleep)
+
+
+v1.8.0
 -----------------
 
 ### Breaking changes
