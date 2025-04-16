@@ -52,6 +52,7 @@ func (v *validator) run() error {
 	}
 	var diags diag.Diagnostics
 
+	// Need to validate declares first becuse we will register "custom" components.
 	declareDiags := v.validateDeclares(s.Declares())
 	diags = append(diags, declareDiags...)
 
@@ -85,9 +86,11 @@ func (v *validator) validateDeclares(declares []*ast.BlockStmt) diag.Diagnostics
 				EndPos:   d.NamePos.Add(len(name) - 1).Position(),
 				Message:  "declare block must have a label",
 			})
+		} else {
+			// Only register custom component if we have a label
+			// Without a label there is no way to create one.
+			v.cr.registerCustomComponent(d)
 		}
-
-		v.cr.registerCustomComponent(d)
 
 		// 2. Two of the same declare blocks cannot share label.
 		if diag, ok := blockAlreadyDefined(mem, d); ok {
