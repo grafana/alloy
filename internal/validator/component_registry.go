@@ -27,7 +27,6 @@ func (cr *componentRegistry) Get(name string) (component.Registration, error) {
 	}
 
 	return cr.parent.Get(name)
-
 }
 
 func (cr *componentRegistry) registerCustomComponent(c *ast.BlockStmt) {
