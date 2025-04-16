@@ -12,7 +12,7 @@ on:
 
 jobs:
   test_windows:
-    if: ${{ github.event.label.name == 'os:windows' }}
+    if: ${{ contains(github.event.pull_request.labels.*.name, 'os:windows') || github.event_name == 'push' || github.event_name == 'merge_group' }}
     name: Test (Windows)
     runs-on: windows-latest
     steps:
