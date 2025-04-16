@@ -2,16 +2,21 @@ package rules
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 	"time"
 
+	"github.com/grafana/loki/v3/pkg/logql/syntax"
+	pkgerrors "github.com/pkg/errors"
+	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	"github.com/prometheus/prometheus/model/labels"
+	"github.com/prometheus/prometheus/model/rulefmt"
+	"github.com/prometheus/prometheus/promql/parser"
+	"sigs.k8s.io/yaml" // Used for CRD compatibility instead of gopkg.in/yaml.v2
+
 	"github.com/grafana/alloy/internal/component/common/kubernetes"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/hashicorp/go-multierror"
-	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
-	"github.com/prometheus/prometheus/model/rulefmt"
-	"sigs.k8s.io/yaml" // Used for CRD compatibility instead of gopkg.in/yaml.v2
 )
 
 const eventTypeSyncLoki kubernetes.EventType = "sync-loki"
@@ -106,7 +111,7 @@ func (c *Component) reconcileState(ctx context.Context) error {
 	for ns, diff := range diffs {
 		err = c.applyChanges(ctx, ns, diff)
 		if err != nil {
-			result = multierror.Append(result, err)
+			result = errors.Join(result, err)
 			continue
 		}
 	}
@@ -127,12 +132,24 @@ func (c *Component) loadStateFromK8s() (kubernetes.RuleGroupsByNamespace, error)
 			return nil, fmt.Errorf("failed to list rules: %w", err)
 		}
 
-		for _, pr := range crdState {
-			lokiNs := lokiNamespaceForRuleCRD(c.args.LokiNameSpacePrefix, pr)
-
-			groups, err := convertCRDRuleGroupToRuleGroup(pr.Spec)
+		for _, rule := range crdState {
+			lokiNs := lokiNamespaceForRuleCRD(c.args.LokiNameSpacePrefix, rule)
+			groups, err := convertCRDRuleGroupToRuleGroup(rule.Spec)
 			if err != nil {
 				return nil, fmt.Errorf("failed to convert rule group: %w", err)
+			}
+
+			if c.args.ExtraQueryMatchers != nil {
+				for _, ruleGroup := range groups {
+					for i := range ruleGroup.Rules {
+						query := ruleGroup.Rules[i].Expr.Value
+						newQuery, err := addMatchersToQuery(query, c.args.ExtraQueryMatchers.Matchers)
+						if err != nil {
+							level.Error(c.log).Log("msg", "failed to add labels to PrometheusRule query", "query", query, "err", err)
+						}
+						ruleGroup.Rules[i].Expr.Value = newQuery
+					}
+				}
 			}
 
 			desiredState[lokiNs] = groups
@@ -142,6 +159,64 @@ func (c *Component) loadStateFromK8s() (kubernetes.RuleGroupsByNamespace, error)
 	return desiredState, nil
 }
 
+func addMatchersToQuery(query string, matchers []Matcher) (string, error) {
+	var err error
+	for _, s := range matchers {
+		query, err = labelsSetLogQL(query, s.MatchType, s.Name, s.Value)
+		if err != nil {
+			return "", err
+		}
+	}
+	return query, nil
+}
+
+// Inspired from the labelsSetPromQL function from the mimir.rules.kubernetes component
+// this function was modified to use the logql parser instead
+func labelsSetLogQL(query, labelMatchType, name, value string) (string, error) {
+	expr, err := syntax.ParseExpr(query)
+	if err != nil {
+		return query, err
+	}
+
+	var matchType labels.MatchType
+	switch labelMatchType {
+	case parser.ItemType(parser.EQL).String():
+		matchType = labels.MatchEqual
+	case parser.ItemType(parser.NEQ).String():
+		matchType = labels.MatchNotEqual
+	case parser.ItemType(parser.EQL_REGEX).String():
+		matchType = labels.MatchRegexp
+	case parser.ItemType(parser.NEQ_REGEX).String():
+		matchType = labels.MatchNotRegexp
+	default:
+		return query, fmt.Errorf("invalid label match type: %s", labelMatchType)
+	}
+	expr.Walk(func(e syntax.Expr) {
+		switch concrete := e.(type) {
+		case *syntax.MatchersExpr:
+			var found bool
+			for _, l := range concrete.Mts {
+				if l.Name == name {
+					l.Type = matchType
+					l.Value = value
+					found = true
+				}
+			}
+			if !found {
+				concrete.Mts = append(concrete.Mts, &labels.Matcher{
+					Type:  matchType,
+					Name:  name,
+					Value: value,
+				})
+			}
+		}
+	})
+
+	// matchers := expr.Matchers()
+
+	return expr.String(), nil
+}
+
 func convertCRDRuleGroupToRuleGroup(crd promv1.PrometheusRuleSpec) ([]rulefmt.RuleGroup, error) {
 	buf, err := yaml.Marshal(crd)
 	if err != nil {
@@ -149,11 +224,19 @@ func convertCRDRuleGroupToRuleGroup(crd promv1.PrometheusRuleSpec) ([]rulefmt.Ru
 	}
 
 	groups, _ := rulefmt.Parse(buf)
-
-	// Disable looking for errors, loki queries won't be valid prometheus queries, but still want the similar information
-	//if len(errs) > 0 {
-	//	return nil, multierror.Append(nil, errs...)
-	//}
+	for _, group := range groups.Groups {
+		for _, rule := range group.Rules {
+			if _, err := syntax.ParseExpr(rule.Expr.Value); err != nil {
+				if rule.Record.Value != "" {
+					err = errors.Join(err, pkgerrors.Wrapf(err, "could not parse expression for record '%s' in group '%s'", rule.Record.Value, group.Name))
+				}
+				err = errors.Join(err, pkgerrors.Wrapf(err, "could not parse expression for alert '%s' in group '%s'", rule.Alert.Value, group.Name))
+			}
+		}
+	}
+	if err != nil {
+		return nil, err
+	}
 
 	return groups.Groups, nil
 }
