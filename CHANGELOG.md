@@ -10,7 +10,6 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
-
 ### Features
 
 - Add the `otelcol.storage.file` extension to support persistent sending queues and `otelcol.receiver.filelog` file state tracking between restarts. (@dehaansa)
@@ -62,7 +61,6 @@ v1.8.1
 - Fix potential race condition in `remoteCfg` service metrics registration (@kalleep)
 
 - Fix panic in `prometheus.exporter.postgres` when using minimal url as data source name. (@kalleep)
-
 
 v1.8.0
 -----------------
