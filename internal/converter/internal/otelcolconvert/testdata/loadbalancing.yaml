@@ -19,6 +19,9 @@ exporters:
 
 extensions:
   file_storage/fs:
+    directory: /var/lib/otelcol/file_storage
+    compression:
+      directory: /var/lib/otelcol/file_storage
 
 service:
   extensions: [ file_storage/fs ]
