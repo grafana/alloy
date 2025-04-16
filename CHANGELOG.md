@@ -42,6 +42,8 @@ Main (unreleased)
 
 - Fix `loki.source.podlogs` add missing labels `__meta_kubernetes_namespace` and `__meta_kubernetes_pod_label_*`. (@kalleep)
 
+- Fix `otelcol.receiver.filelog` documentation's default value for `start_at`. (@petewall)
+
 ### Other changes
 
 - Update the zap logging adapter used by `otelcol` components to log arrays and objects. (@dehaansa)
