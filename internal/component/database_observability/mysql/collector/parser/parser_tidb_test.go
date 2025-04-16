@@ -1,11 +1,13 @@
 package parser_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/component/database_observability/mysql/collector/parser"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/internal/component/database_observability/mysql/collector/parser"
 )
 
 func TestParserTiDB_ExtractTableNames(t *testing.T) {
@@ -133,6 +135,16 @@ func TestParserTiDB_ExtractTableNames(t *testing.T) {
 			sql:    "CREATE USER 'exporter'@'%' IDENTIFIED BY <secret>",
 			tables: nil,
 		},
+		{
+			name:   "insert with redacted values",
+			sql:    "INSERT INTO some_table(id, url) VALUES (...)",
+			tables: []string{"some_table"},
+		},
+		{
+			name:   "trim function (sql mode ignore case)",
+			sql:    "SELECT TRIM (TRAILING '/' FROM url)",
+			tables: nil,
+		},
 	}
 
 	for _, tc := range testcases {
@@ -143,6 +155,55 @@ func TestParserTiDB_ExtractTableNames(t *testing.T) {
 
 			got := p.ExtractTableNames(log.NewNopLogger(), "", stmt)
 			require.ElementsMatch(t, tc.tables, got)
+		})
+	}
+}
+
+func TestParserTiDB_CleanTruncatedText(t *testing.T) {
+	testcases := []struct {
+		name    string
+		sql     string
+		want    string
+		wantErr error
+	}{
+		{
+			name:    "simple select",
+			sql:     "select * from some_table where id = 1",
+			want:    "select * from some_table where id = 1",
+			wantErr: nil,
+		},
+
+		{
+			name:    "truncated query",
+			sql:     "insert into some_table (`id1`, `id2`, `id3`, `id...",
+			want:    "insert into some_table (`id1`, `id2`, `id3`, `id...",
+			wantErr: fmt.Errorf("sql text is truncated"),
+		},
+		{
+			name:    "truncated in multi-line comment",
+			sql:     "select * from some_table where id = 1 /*traceparent='00-abc...",
+			want:    "select * from some_table where id = 1",
+			wantErr: nil,
+		},
+		{
+			name:    "truncated with properly closed comment",
+			sql:     "select * from some_table where id = 1 /* comment that's closed */ and name = 'test...",
+			want:    "select * from some_table where id = 1 /* comment that's closed */ and name = 'test...",
+			wantErr: fmt.Errorf("sql text is truncated after a comment"),
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			p := parser.NewTiDBSqlParser()
+			got, err := p.CleanTruncatedText(tc.sql)
+			if tc.wantErr != nil {
+				require.Error(t, err)
+				require.EqualError(t, tc.wantErr, err.Error())
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tc.want, got)
+			}
 		})
 	}
 }

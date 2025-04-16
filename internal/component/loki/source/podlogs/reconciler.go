@@ -12,7 +12,6 @@ import (
 	"github.com/go-kit/log"
 	"github.com/grafana/ckit/shard"
 	"github.com/prometheus/common/model"
-	prom_lbls "github.com/prometheus/prometheus/model/labels"
 	promlabels "github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/prometheus/prometheus/util/strutil"
@@ -35,6 +34,7 @@ const (
 	kubePodlogsAnnotation        = "__meta_kubernetes_podlogs_annotation_"
 	kubePodlogsAnnotationPresent = "__meta_kubernetes_podlogs_annotationpresent_"
 
+	kubeNamespace                  = "__meta_kubernetes_namespace"
 	kubeNamespaceLabel             = "__meta_kubernetes_namespace_label_"
 	kubeNamespaceLabelPresent      = "__meta_kubernetes_namespace_labelpresent_"
 	kubeNamespaceAnnotation        = "__meta_kubernetes_namespace_annotation_"
@@ -160,11 +160,11 @@ func (r *reconciler) Reconcile(ctx context.Context, cli client.Client) error {
 	return nil
 }
 
-func filterLabels(lbls prom_lbls.Labels, keysToKeep []string) prom_lbls.Labels {
-	var res prom_lbls.Labels
+func filterLabels(lbls promlabels.Labels, keysToKeep []string) promlabels.Labels {
+	var res promlabels.Labels
 	for _, k := range lbls {
 		if slices.Contains(keysToKeep, k.Name) {
-			res = append(res, prom_lbls.Label{Name: k.Name, Value: k.Value})
+			res = append(res, promlabels.Label{Name: k.Name, Value: k.Value})
 		}
 	}
 	sort.Sort(res)
@@ -275,7 +275,7 @@ func (r *reconciler) reconcilePodLogs(ctx context.Context, cli client.Client, po
 		podTargetLabels := buildPodsAndNamespacesTargetLabels(podLogsTargetLabels, pod, namespace)
 
 		handleContainer := func(container *corev1.Container, initContainer bool) {
-			targetLabels := buildTargetLabels(discoveredContainer{
+			targetLabels := buildContainerTargetLabels(discoveredContainer{
 				PodLogs:       podLogs,
 				Pod:           &pod,
 				Container:     container,
@@ -319,6 +319,14 @@ func (r *reconciler) reconcilePodLogs(ctx context.Context, cli client.Client, po
 	return targets, discoveredPodLogs
 }
 
+// DebugInfo returns the current debug information for the reconciler.
+func (r *reconciler) DebugInfo() []DiscoveredPodLogs {
+	r.debugMut.RLock()
+	defer r.debugMut.RUnlock()
+
+	return r.debugInfo
+}
+
 // buildPodLogsTargetLabels builds the target labels for a PodLogs object.
 func buildPodLogsTargetLabels(podLogs *monitoringv1alpha2.PodLogs) promlabels.Labels {
 	podLogsTargetLabels := promlabels.NewBuilder(nil)
@@ -342,7 +350,8 @@ func buildPodLogsTargetLabels(podLogs *monitoringv1alpha2.PodLogs) promlabels.La
 func buildPodsAndNamespacesTargetLabels(podLogsTargetLabels promlabels.Labels, pod corev1.Pod, namespace corev1.Namespace) promlabels.Labels {
 	podTargetLabels := promlabels.NewBuilder(podLogsTargetLabels)
 
-	podTargetLabels.Set(kubetail.LabelPodNamespace, pod.Namespace)
+	// Namespace specific labels
+	podTargetLabels.Set(kubeNamespace, pod.Namespace)
 	for key, value := range namespace.Labels {
 		key = strutil.SanitizeLabelName(key)
 		podTargetLabels.Set(kubeNamespaceLabel+key, value)
@@ -354,27 +363,41 @@ func buildPodsAndNamespacesTargetLabels(podLogsTargetLabels promlabels.Labels, p
 		podTargetLabels.Set(kubeNamespaceAnnotationPresent+key, "true")
 	}
 
+	// Pod specific labels
+	podTargetLabels.Set(kubePodUID, string(pod.UID))
 	podTargetLabels.Set(kubePodName, pod.Name)
+	podTargetLabels.Set(kubePodNodeName, pod.Spec.NodeName)
 	podTargetLabels.Set(kubePodIP, pod.Status.PodIP)
+	podTargetLabels.Set(kubePodHostIP, pod.Status.HostIP)
+	podTargetLabels.Set(kubePodReady, string(podReady(&pod)))
+	podTargetLabels.Set(kubePodPhase, string(pod.Status.Phase))
+
 	for key, value := range pod.Labels {
 		key = strutil.SanitizeLabelName(key)
-		podTargetLabels.Set(kubePodLabelPresent+key, value)
+		podTargetLabels.Set(kubePodLabel+key, value)
 		podTargetLabels.Set(kubePodLabelPresent+key, "true")
 	}
+
 	for key, value := range pod.Annotations {
 		key = strutil.SanitizeLabelName(key)
 		podTargetLabels.Set(kubePodAnnotation+key, value)
 		podTargetLabels.Set(kubePodAnnotationPresent+key, "true")
 	}
+
+	for _, ref := range pod.GetOwnerReferences() {
+		if ref.Controller != nil && *ref.Controller {
+			podTargetLabels.Set(kubePodControllerKind, ref.Kind)
+			podTargetLabels.Set(kubePodControllerName, ref.Name)
+			break
+		}
+	}
+
+	// Add labels needed for collecting.
+	podTargetLabels.Set(kubetail.LabelPodNamespace, pod.Namespace)
+	podTargetLabels.Set(kubetail.LabelPodName, pod.Name)
+	podTargetLabels.Set(kubetail.LabelPodUID, string(pod.GetUID()))
+
 	return podTargetLabels.Labels()
-}
-
-// DebugInfo returns the current debug information for the reconciler.
-func (r *reconciler) DebugInfo() []DiscoveredPodLogs {
-	r.debugMut.RLock()
-	defer r.debugMut.RUnlock()
-
-	return r.debugInfo
 }
 
 type discoveredContainer struct {
@@ -384,31 +407,16 @@ type discoveredContainer struct {
 	InitContainer bool
 }
 
-func buildTargetLabels(opts discoveredContainer, prediscoveredLabels promlabels.Labels) promlabels.Labels {
+// buildContainerTargetLabels builds the target labels for a container and merge it with prediscoveredLabels.
+func buildContainerTargetLabels(opts discoveredContainer, prediscoveredLabels promlabels.Labels) promlabels.Labels {
 	targetLabels := promlabels.NewBuilder(prediscoveredLabels)
 
 	targetLabels.Set(kubePodContainerInit, fmt.Sprint(opts.InitContainer))
 	targetLabels.Set(kubePodContainerName, opts.Container.Name)
 	targetLabels.Set(kubePodContainerImage, opts.Container.Image)
-	targetLabels.Set(kubePodReady, string(podReady(opts.Pod)))
-	targetLabels.Set(kubePodPhase, string(opts.Pod.Status.Phase))
-	targetLabels.Set(kubePodNodeName, opts.Pod.Spec.NodeName)
-	targetLabels.Set(kubePodHostIP, opts.Pod.Status.HostIP)
-	targetLabels.Set(kubePodUID, string(opts.Pod.UID))
-
-	for _, ref := range opts.Pod.GetOwnerReferences() {
-		if ref.Controller != nil && *ref.Controller {
-			targetLabels.Set(kubePodControllerKind, ref.Kind)
-			targetLabels.Set(kubePodControllerName, ref.Name)
-			break
-		}
-	}
 
 	// Add labels needed for collecting.
-	targetLabels.Set(kubetail.LabelPodNamespace, opts.Pod.Namespace)
-	targetLabels.Set(kubetail.LabelPodName, opts.Pod.Name)
 	targetLabels.Set(kubetail.LabelPodContainerName, opts.Container.Name)
-	targetLabels.Set(kubetail.LabelPodUID, string(opts.Pod.GetUID()))
 
 	// Add default labels (job, instance)
 	targetLabels.Set(model.InstanceLabel, fmt.Sprintf("%s/%s:%s", opts.Pod.Namespace, opts.Pod.Name, opts.Container.Name))

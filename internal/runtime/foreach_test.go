@@ -18,7 +18,6 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime"
-	alloy_runtime "github.com/grafana/alloy/internal/runtime"
 	_ "github.com/grafana/alloy/internal/runtime/internal/testcomponents/targets" // import targets test component
 )
 
@@ -157,7 +156,7 @@ func testConfigForEach(t *testing.T, config string, reloadConfig string, update 
 		metricsToCheck := []string{
 			"alloy_component_controller_evaluating",
 			"alloy_component_controller_running_components",
-			"alloy_component_evaluation_queue_size",
+			// "alloy_component_evaluation_queue_size", // TODO - metric value is inconsistent depending on timing
 			"pulse_count",
 		}
 
@@ -176,7 +175,7 @@ func testConfigForEach(t *testing.T, config string, reloadConfig string, update 
 	}
 
 	if reloadConfig != "" {
-		f, err = alloy_runtime.ParseSource(t.Name(), []byte(reloadConfig))
+		f, err = runtime.ParseSource(t.Name(), []byte(reloadConfig))
 		require.NoError(t, err)
 		require.NotNil(t, f)
 

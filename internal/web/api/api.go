@@ -6,6 +6,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"math/rand"
 	"net/http"
 	"path"
@@ -59,6 +60,19 @@ func (a *AlloyAPI) RegisterRoutes(urlPrefix string, r *mux.Router) {
 	r.Handle(path.Join(urlPrefix, "/graph/{moduleID:.+}"), graph(a.alloy, a.CallbackManager, a.logger))
 }
 
+func getRemoteCfgHost(host service.Host) (service.Host, error) {
+	svc, found := host.GetService(remotecfg.ServiceName)
+	if !found {
+		return nil, fmt.Errorf("remote config service not available")
+	}
+
+	data := svc.Data().(remotecfg.Data)
+	if data.Host == nil {
+		return nil, fmt.Errorf("remote config service startup in progress")
+	}
+	return data.Host, nil
+}
+
 func listComponentsHandler(host service.Host) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		listComponentsHandlerInternal(host, w, r)
@@ -67,18 +81,12 @@ func listComponentsHandler(host service.Host) http.HandlerFunc {
 
 func listComponentsHandlerRemoteCfg(host service.Host) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		svc, found := host.GetService(remotecfg.ServiceName)
-		if !found {
-			http.Error(w, "remote config service not available", http.StatusInternalServerError)
+		remoteCfgHost, err := getRemoteCfgHost(host)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-
-		data := svc.Data().(remotecfg.Data)
-		if data.Host == nil {
-			http.Error(w, "remote config service startup in progress", http.StatusInternalServerError)
-			return
-		}
-		listComponentsHandlerInternal(data.Host, w, r)
+		listComponentsHandlerInternal(remoteCfgHost, w, r)
 	}
 }
 
@@ -114,19 +122,12 @@ func getComponentHandler(host service.Host) http.HandlerFunc {
 
 func getComponentHandlerRemoteCfg(host service.Host) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		svc, found := host.GetService(remotecfg.ServiceName)
-		if !found {
-			http.Error(w, "remote config service not available", http.StatusInternalServerError)
+		remoteCfgHost, err := getRemoteCfgHost(host)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-
-		data := svc.Data().(remotecfg.Data)
-		if data.Host == nil {
-			http.Error(w, "remote config service startup in progress", http.StatusInternalServerError)
-			return
-		}
-
-		getComponentHandlerInternal(data.Host, w, r)
+		getComponentHandlerInternal(remoteCfgHost, w, r)
 	}
 }
 
@@ -177,14 +178,20 @@ type dataKey struct {
 	Type        livedebugging.DataType
 }
 
-func graph(host service.Host, callbackManager livedebugging.CallbackManager, logger log.Logger) http.HandlerFunc {
+func graph(h service.Host, callbackManager livedebugging.CallbackManager, logger log.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var moduleID livedebugging.ModuleID
 		if vars := mux.Vars(r); vars != nil {
 			moduleID = livedebugging.ModuleID(vars["moduleID"])
 		}
 
-		windowSeconds := setWindow(w, r.URL.Query().Get("window"))
+		host, err := resolveServiceHost(h, string(moduleID))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		window := setWindow(w, r.URL.Query().Get("window"))
 
 		dataCh := make(chan livedebugging.Data, 1000)
 		dataMap := make(map[dataKey]liveDebuggingData)
@@ -193,7 +200,7 @@ func graph(host service.Host, callbackManager livedebugging.CallbackManager, log
 		id := livedebugging.CallbackID(uuid.New().String())
 
 		droppedData := false
-		err := callbackManager.AddCallbackMulti(host, id, moduleID, func(data livedebugging.Data) {
+		err = callbackManager.AddCallbackMulti(host, id, moduleID, func(data livedebugging.Data) {
 			select {
 			case <-ctx.Done():
 				return
@@ -219,7 +226,7 @@ func graph(host service.Host, callbackManager livedebugging.CallbackManager, log
 			callbackManager.DeleteCallbackMulti(host, id, moduleID)
 		}()
 
-		ticker := time.NewTicker(windowSeconds)
+		ticker := time.NewTicker(window)
 		defer ticker.Stop()
 
 		for {
@@ -243,7 +250,7 @@ func graph(host service.Host, callbackManager livedebugging.CallbackManager, log
 			case <-ticker.C:
 				dataArray := make([]interface{}, 0, len(dataMap))
 				for _, data := range dataMap {
-					data.Rate = float64(data.Count) / windowSeconds.Seconds()
+					data.Rate = float64(data.Count) / window.Seconds()
 					dataArray = append(dataArray, data)
 				}
 
@@ -272,10 +279,16 @@ func graph(host service.Host, callbackManager livedebugging.CallbackManager, log
 	}
 }
 
-func liveDebugging(host service.Host, callbackManager livedebugging.CallbackManager, logger log.Logger) http.HandlerFunc {
+func liveDebugging(h service.Host, callbackManager livedebugging.CallbackManager, logger log.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		componentID := livedebugging.ComponentID(vars["id"])
+
+		host, err := resolveServiceHost(h, string(componentID))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 
 		dataCh := make(chan string, 1000)
 		ctx := r.Context()
@@ -285,7 +298,7 @@ func liveDebugging(host service.Host, callbackManager livedebugging.CallbackMana
 		id := livedebugging.CallbackID(uuid.New().String())
 
 		droppedData := false
-		err := callbackManager.AddCallback(host, id, componentID, func(data livedebugging.Data) {
+		err = callbackManager.AddCallback(host, id, componentID, func(data livedebugging.Data) {
 			select {
 			case <-ctx.Done():
 				return
@@ -336,6 +349,17 @@ func liveDebugging(host service.Host, callbackManager livedebugging.CallbackMana
 			}
 		}
 	}
+}
+
+func resolveServiceHost(host service.Host, id string) (service.Host, error) {
+	if strings.HasPrefix(id, "remotecfg/") {
+		remoteCfgHost, err := getRemoteCfgHost(host)
+		if err != nil {
+			return nil, err
+		}
+		return remoteCfgHost, nil
+	}
+	return host, nil
 }
 
 func setSampleProb(w http.ResponseWriter, sampleProbParam string) (sampleProb float64) {

@@ -44,6 +44,7 @@ v1.8.0-rc.0
   required before components that use clustering begin processing traffic to ensure adequate cluster capacity is
   available. (@thampiotr)
 - Add `trace_printer` to `beyla.ebpf` component to print trace information in a specific format. (@marctc)
+- Add support for live debugging and graph in the UI for components imported via remotecfg. (@wildum)
 
 ### Enhancements
 
@@ -87,6 +88,7 @@ v1.8.0-rc.0
   - `query_sample`: add option to use TiDB sql parser (@cristiangreco)
   - `query_tables`: rename collector from `query_sample` to better reflect responsibility (@matthewnolf)
   - `query_sample`: add new collector that replaces previous implementation to collect more detailed sample information (@matthewnolf)
+  - `query_sample`: refactor parsing of truncated queries (@cristiangreco)
 
 - Add labels validation in `pyroscope.write` to prevent duplicate labels and invalid label names/values. (@marcsanmi)
 
@@ -100,6 +102,11 @@ v1.8.0-rc.0
 
 - Add `tenant` label to remaining `loki_write_.+` metrics (@towolf)
 
+- Removed syntax highlighting from the component details UI view to improve
+  rendering performance. (@tpaschalis)
+
+- A new `grafana/alloy:vX.Y.Z-windowsservercore-ltsc2022` Docker image is now published on DockerHub. (@ptodev)
+
 ### Bugfixes
 
 - Fix deadlocks in `loki.source.file` when tailing fails (@mblaschke)
@@ -110,6 +117,8 @@ v1.8.0-rc.0
 - Allow kafka exporter to attempt to connect even if TLS enabled but cert & key are not specified (@dehaansa)
 
 - Fixed bug where all resources were not being collected from `prometheus.exporter.azure` when using `regions` (@kgeckhart)
+
+- Fix panic in `loki.source.file` when the tailer had no time to run before the runner was stopped (@wildum)
 
 ### Other changes
 
@@ -128,7 +137,7 @@ v1.8.0-rc.0
 
 - Change the stability of the `beyla.ebpf` component from "public preview" to "generally available". (@marctc)
 
-- The ingest API of `pyrscope.receive_http` no longer forwards all received headers, instead only passes through the `Content-Type` header. 
+- The ingest API of `pyroscope.receive_http` no longer forwards all received headers, instead only passes through the `Content-Type` header. (@simonswine)
 
 v1.7.5
 -----------------

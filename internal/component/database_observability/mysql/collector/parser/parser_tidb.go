@@ -10,6 +10,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/pingcap/tidb/pkg/parser"
 	"github.com/pingcap/tidb/pkg/parser/ast"
+	"github.com/pingcap/tidb/pkg/parser/mysql"
 	_ "github.com/pingcap/tidb/pkg/parser/test_driver"
 )
 
@@ -24,9 +25,18 @@ func (p *TiDBSqlParser) Parse(sql string) (any, error) {
 	// will fail to parse it so we replace it with '<secret>'
 	sql = strings.Replace(sql, "IDENTIFIED BY <secret>", "IDENTIFIED BY '<secret>'", 1)
 
-	stmtNodes, _, err := parser.New().ParseSQL(sql)
+	// tidb parser doesn't support text line IN (...), so we replace it with (?)
+	sql = strings.Replace(sql, "( ... )", "(?)", 1)
+	sql = strings.Replace(sql, "(...)", "(?)", 1)
+
+	tParser := parser.New()
+	stmtNodes, _, err := tParser.ParseSQL(sql)
 	if err != nil {
-		return nil, errors.Unwrap(err)
+		tParser.SetSQLMode(mysql.ModeIgnoreSpace)
+		stmtNodes, _, err = tParser.ParseSQL(sql)
+		if err != nil {
+			return nil, errors.Unwrap(err)
+		}
 	}
 
 	if len(stmtNodes) == 0 {
@@ -95,4 +105,23 @@ func parseTableName(t *ast.TableName) string {
 		return schema + "." + tableName
 	}
 	return tableName
+}
+
+func (p *TiDBSqlParser) CleanTruncatedText(sql string) (string, error) {
+	if !strings.HasSuffix(sql, "...") {
+		return sql, nil
+	}
+
+	// best-effort attempt to detect truncated trailing comment
+	idx := strings.LastIndex(sql, "/*")
+	if idx < 0 {
+		return "", fmt.Errorf("sql text is truncated")
+	}
+
+	trailingText := sql[idx:]
+	if strings.LastIndex(trailingText, "*/") >= 0 {
+		return "", fmt.Errorf("sql text is truncated after a comment")
+	}
+
+	return strings.TrimSpace(sql[:idx]), nil
 }

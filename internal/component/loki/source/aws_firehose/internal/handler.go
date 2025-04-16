@@ -210,9 +210,9 @@ func sendAPIResponse(w http.ResponseWriter, firehoseID, errMsg string, status in
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	if errMsg != "" {
-		_, _ = w.Write([]byte(fmt.Sprintf(errorResponseTemplate, firehoseID, timestamp, errMsg)))
+		_, _ = fmt.Fprintf(w, errorResponseTemplate, firehoseID, timestamp, errMsg)
 	} else {
-		_, _ = w.Write([]byte(fmt.Sprintf(successResponseTemplate, firehoseID, timestamp)))
+		_, _ = fmt.Fprintf(w, successResponseTemplate, firehoseID, timestamp)
 	}
 }
 

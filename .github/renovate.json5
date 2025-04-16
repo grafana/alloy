@@ -1,0 +1,93 @@
+//
+// Renovate config options: https://docs.renovatebot.com/configuration-options/
+//
+// To validate config, run:
+// npx --package renovate -- renovate-config-validator --strict ./.github/renovate.json5
+//
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+
+  ],
+
+  "commitMessageAction": "update",
+  "commitMessageTopic": "{{manager}} dependency {{depName}}",
+
+  // Tell dependency dashboard to only require PR creation approval for major versions
+  "major": {
+    "dependencyDashboardApproval": true
+  },
+
+  // Updates must be published for at least 7 to be considered
+  "minimumReleaseAge": "7 days",
+
+  "prConcurrentLimit": 5,
+
+  // Move dependency files forward along with lock files
+  "rangeStrategy": "bump",
+
+  // Allow PR creation between 06:00 and 10:00 UTC on Mondays
+  "schedule": ["* 6-10 * * 1"],
+
+  "packageRules": [
+    {
+      "matchManagers": ["docker-compose"],
+      // "matchUpdateTypes": ["minor", "patch"],
+      // "groupName": "docker-compose dependencies (minor, patch)",
+      "enabled": false // TODO: remove to enable when ready
+    },
+    {
+      "matchManagers": ["dockerfile"],
+      // "matchUpdateTypes": ["minor", "patch"],
+      // "groupName": "dockerfile dependencies (minor, patch)",
+      // "pinDigests": true,
+      "enabled": false // TODO: remove to enable when ready
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "github-actions dependencies (minor, patch)",
+      "pinDigests": true
+    },
+    {
+      "matchManagers": ["gomod"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "go dependencies (minor, patch)",
+    },
+    {
+      // Group and hold some otel-specific go dependencies
+      "matchManagers": ["gomod"],
+      "matchPackageNames": [
+        // OpenTelemetry needs special handling due to a temporary fork
+        "github.com/open-telemetry/opentelemetry-collector-contrib/*",
+        "go.opentelemetry.io/collector"
+      ],
+      "groupName": "go otel collector dependencies",
+      "dependencyDashboardApproval": true
+    },
+    {
+      "matchManagers": ["helm-values"],
+      // "matchUpdateTypes": ["minor", "patch"],
+      // "groupName": "helm-values dependencies (minor, patch)",
+      "enabled": false // TODO: remove to enable when ready
+    },
+    {
+      "matchManagers": ["helmv3"],
+      // "matchUpdateTypes": ["minor", "patch"],
+      // "groupName": "helmv3 dependencies (minor, patch)",
+      "enabled": false // TODO: remove to enable when ready
+    },
+    {
+      "matchManagers": ["jsonnet-bundler"],
+      // "matchUpdateTypes": ["minor", "patch"],
+      // "groupName": "jsonnet-bundler dependencies (minor, patch)",
+      "enabled": false // TODO: remove to enable when ready
+    },
+    {
+      "matchManagers": ["npm"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "npm dependencies (minor, patch)"
+    }
+  ]
+}

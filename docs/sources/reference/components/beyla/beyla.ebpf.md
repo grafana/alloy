@@ -22,7 +22,7 @@ The component exposes metrics that can be collected by a Prometheus scrape compo
 {{< admonition type="note" >}}
 To run this component, {{< param "PRODUCT_NAME" >}} requires administrative privileges, or at least it needs to be granted the following capabilities: `BPF`, `SYS_PTRACE`, `NET_RAW` `CAP_CHECKPOINT_RESTORENET_RAW`, `DAC_READ_SEARCH`, and `PERFMON`.
 The number of required capabilities depends on the specific use case.
-Refer to the [Beyla capabilities][] for more information.
+Refer to the [Beyla capabilities](https://grafana.com/docs/beyla/<BEYLA_VERSION>/security/#list-of-capabilities-required-by-beyla) for more information.
 
 In Kubernetes environments, the [AppArmor profile must be `Unconfined`](https://kubernetes.io/docs/tutorials/security/apparmor/#securing-a-pod) for the Deployment or DaemonSet running {{< param "PRODUCT_NAME" >}}.
 {{< /admonition >}}
