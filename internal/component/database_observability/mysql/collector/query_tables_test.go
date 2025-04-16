@@ -21,15 +21,15 @@ func TestQueryTables(t *testing.T) {
 	defer goleak.VerifyNone(t)
 
 	testcases := []struct {
-		name       string
-		qRows      [][]driver.Value
-		psRows     [][]driver.Value
-		logsLabels []model.LabelSet
-		logsLines  []string
+		name                  string
+		eventStatementsRows   [][]driver.Value
+		preparedStatementRows [][]driver.Value
+		logsLabels            []model.LabelSet
+		logsLines             []string
 	}{
 		{
 			name: "select query",
-			qRows: [][]driver.Value{{
+			eventStatementsRows: [][]driver.Value{{
 				"abc123",
 				"SELECT * FROM `some_table` WHERE `id` = ?",
 				"some_schema",
@@ -44,7 +44,7 @@ func TestQueryTables(t *testing.T) {
 		},
 		{
 			name: "insert query",
-			qRows: [][]driver.Value{{
+			eventStatementsRows: [][]driver.Value{{
 				"abc123",
 				"INSERT INTO `some_table` (`id`, `name`) VALUES (...)",
 				"some_schema",
@@ -59,7 +59,7 @@ func TestQueryTables(t *testing.T) {
 		},
 		{
 			name: "update query",
-			qRows: [][]driver.Value{{
+			eventStatementsRows: [][]driver.Value{{
 				"abc123",
 				"UPDATE `some_table` SET `active` = false, `reason` = ? WHERE `id` = ? AND `name` = ?",
 				"some_schema",
@@ -74,7 +74,7 @@ func TestQueryTables(t *testing.T) {
 		},
 		{
 			name: "delete query",
-			qRows: [][]driver.Value{{
+			eventStatementsRows: [][]driver.Value{{
 				"abc123",
 				"DELETE FROM `some_table` WHERE `id` = ?",
 				"some_schema",
@@ -89,7 +89,7 @@ func TestQueryTables(t *testing.T) {
 		},
 		{
 			name: "join two tables",
-			qRows: [][]driver.Value{{
+			eventStatementsRows: [][]driver.Value{{
 				"abc123",
 				"SELECT `t`.`id`, `t`.`val1`, `o`.`val2` FROM `some_table` `t` INNER JOIN `other_table` AS `o` ON `t`.`id` = `o`.`id` WHERE `o`.`val2` = ? ORDER BY `t`.`val1` DESC",
 				"some_schema",
@@ -106,7 +106,7 @@ func TestQueryTables(t *testing.T) {
 		},
 		{
 			name: "truncated query",
-			qRows: [][]driver.Value{{
+			eventStatementsRows: [][]driver.Value{{
 				"xyz456",
 				"INSERT INTO `some_table`...",
 				"some_schema",
@@ -126,7 +126,7 @@ func TestQueryTables(t *testing.T) {
 		},
 		{
 			name: "truncated in multi-line comment",
-			qRows: [][]driver.Value{{
+			eventStatementsRows: [][]driver.Value{{
 				"abc123",
 				"SELECT * FROM `some_table` WHERE `id` = ?",
 				"some_schema",
@@ -141,7 +141,7 @@ func TestQueryTables(t *testing.T) {
 		},
 		{
 			name: "truncated with properly closed comment",
-			qRows: [][]driver.Value{{
+			eventStatementsRows: [][]driver.Value{{
 				"abc123",
 				"SELECT * FROM `some_table` WHERE `id` = ? AND `name` =",
 				"some_schema",
@@ -152,7 +152,7 @@ func TestQueryTables(t *testing.T) {
 		},
 		{
 			name: "start transaction",
-			qRows: [][]driver.Value{{
+			eventStatementsRows: [][]driver.Value{{
 				"abc123",
 				"START TRANSACTION",
 				"some_schema",
@@ -163,7 +163,7 @@ func TestQueryTables(t *testing.T) {
 		},
 		{
 			name: "sql parse error",
-			qRows: [][]driver.Value{{
+			eventStatementsRows: [][]driver.Value{{
 				"xyz456",
 				"not valid sql",
 				"some_schema",
@@ -183,7 +183,7 @@ func TestQueryTables(t *testing.T) {
 		},
 		{
 			name: "multiple schemas",
-			qRows: [][]driver.Value{{
+			eventStatementsRows: [][]driver.Value{{
 				"abc123",
 				"SELECT * FROM `some_table` WHERE `id` = ?",
 				"some_schema",
@@ -205,7 +205,7 @@ func TestQueryTables(t *testing.T) {
 		},
 		{
 			name: "subquery and union",
-			qRows: [][]driver.Value{{
+			eventStatementsRows: [][]driver.Value{{
 				"abc123",
 				"SELECT * FROM (SELECT `id`, `name` FROM `employees_us_east` UNION SELECT `id`, `name` FROM `employees_us_west`) AS `employees_us` UNION SELECT `id`, `name` FROM `employees_emea`",
 				"some_schema",
@@ -224,7 +224,7 @@ func TestQueryTables(t *testing.T) {
 		},
 		{
 			name: "show create table",
-			qRows: [][]driver.Value{{
+			eventStatementsRows: [][]driver.Value{{
 				"abc123",
 				"SHOW CREATE TABLE `some_table`",
 				"some_schema",
@@ -239,7 +239,7 @@ func TestQueryTables(t *testing.T) {
 		},
 		{
 			name: "show variables",
-			qRows: [][]driver.Value{{
+			eventStatementsRows: [][]driver.Value{{
 				"abc123",
 				"SHOW VARIABLES LIKE ?",
 				"some_schema",
@@ -250,7 +250,7 @@ func TestQueryTables(t *testing.T) {
 		},
 		{
 			name: "query truncated with dots fallback to digest_text",
-			qRows: [][]driver.Value{{
+			eventStatementsRows: [][]driver.Value{{
 				"abc123",
 				"SELECT * FROM `some_table` WHERE `id` = ?",
 				"some_schema",
@@ -265,7 +265,7 @@ func TestQueryTables(t *testing.T) {
 		},
 		{
 			name: "query truncated without dots fallback to digest_text",
-			qRows: [][]driver.Value{{
+			eventStatementsRows: [][]driver.Value{{
 				"abc123",
 				"SELECT * FROM `some_table` WHERE `id` = ?",
 				"some_schema",
@@ -280,7 +280,7 @@ func TestQueryTables(t *testing.T) {
 		},
 		{
 			name: "both query and fallback query are unparseable",
-			qRows: [][]driver.Value{{
+			eventStatementsRows: [][]driver.Value{{
 				"abc123",
 				"SELECT * FROM `some_table` WHERE",
 				"some_schema",
@@ -291,7 +291,7 @@ func TestQueryTables(t *testing.T) {
 		},
 		{
 			name: "select prepared statement",
-			psRows: [][]driver.Value{{
+			preparedStatementRows: [][]driver.Value{{
 				"select * from some_table where id = 1",
 				"some_schema",
 			}},
@@ -304,7 +304,7 @@ func TestQueryTables(t *testing.T) {
 		},
 		{
 			name: "select prepared statement with parameters",
-			psRows: [][]driver.Value{{
+			preparedStatementRows: [][]driver.Value{{
 				"select * from some_table where id = ?",
 				"some_schema",
 			}},
@@ -317,7 +317,7 @@ func TestQueryTables(t *testing.T) {
 		},
 		{
 			name: "prepared statements with same digest",
-			psRows: [][]driver.Value{{
+			preparedStatementRows: [][]driver.Value{{
 				"select * from some_table where created_at > date_sub(now(), interval 1 day)",
 				"some_schema",
 			}, {
@@ -333,7 +333,7 @@ func TestQueryTables(t *testing.T) {
 		},
 		{
 			name: "prepared statements parse error",
-			psRows: [][]driver.Value{{
+			preparedStatementRows: [][]driver.Value{{
 				"not valid sql",
 				"some_schema",
 			}, {
@@ -378,7 +378,7 @@ func TestQueryTables(t *testing.T) {
 						"schema_name",
 						"query_sample_text",
 					}).AddRows(
-						tc.qRows...,
+						tc.eventStatementsRows...,
 					),
 				)
 
@@ -388,7 +388,7 @@ func TestQueryTables(t *testing.T) {
 						"sql_text",
 						"current_schema",
 					}).AddRows(
-						tc.psRows...,
+						tc.preparedStatementRows...,
 					),
 				)
 

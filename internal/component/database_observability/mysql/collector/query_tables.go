@@ -103,7 +103,7 @@ func (c *QueryTables) Start(ctx context.Context) error {
 		ticker := time.NewTicker(c.collectInterval)
 
 		for {
-			if err := c.tablesFromQuerySamples(c.ctx); err != nil {
+			if err := c.tablesFromEventsStatements(c.ctx); err != nil {
 				level.Error(c.logger).Log("msg", "collector error", "err", err)
 			}
 			if err := c.tablesFromPreparedStatements(c.ctx); err != nil {
@@ -131,7 +131,7 @@ func (c *QueryTables) Stop() {
 	c.cancel()
 }
 
-func (c *QueryTables) tablesFromQuerySamples(ctx context.Context) error {
+func (c *QueryTables) tablesFromEventsStatements(ctx context.Context) error {
 	rs, err := c.dbConnection.QueryContext(ctx, selectQueryTablesSamples)
 	if err != nil {
 		level.Error(c.logger).Log("msg", "failed to fetch summary table samples", "err", err)
