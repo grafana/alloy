@@ -41,10 +41,10 @@ through inner blocks.
 The following blocks are supported inside the definition of
 `otelcol.auth.headers`:
 
-Hierarchy | Block      | Description                          | Required
-----------|------------|--------------------------------------|---------
-header    | [header][] | Custom header to attach to requests. | no
-debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
+| Hierarchy     | Block             | Description                                                                | Required |
+|---------------|-------------------|----------------------------------------------------------------------------|----------|
+| header        | [header][]        | Custom header to attach to requests.                                       | no       |
+| debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no       |
 
 [header]: #header-block
 [debug_metrics]: #debug_metrics-block
@@ -54,12 +54,13 @@ debug_metrics | [debug_metrics][] | Configures the metrics that this component g
 The `header` block defines a custom header to attach to requests. It is valid
 to provide multiple `header` blocks to set more than one header.
 
-Name           | Type                 | Description                             | Default  | Required
----------------|----------------------|-----------------------------------------|----------|---------
-`key`          | `string`             | Name of the header to set.              |          | yes
-`value`        | `string` or `secret` | Value of the header.                    |          | no
-`from_context` | `string`             | Metadata name to get header value from. |          | no
-`action`       | `string`             | An action to perform on the header      | "upsert" | no
+| Name             | Type                 | Description                                                 | Default  | Required |
+|------------------|----------------------|-------------------------------------------------------------|----------|----------|
+| `key`            | `string`             | Name of the header to set.                                  |          | yes      |
+| `value`          | `string` or `secret` | Value of the header.                                        |          | no       |
+| `from_attribute` | `string`             | Metadata name used to retrieve header value                 |          | no       |
+| `from_context`   | `string`             | Authentication attribute name used to retrieve header value |          | no       |
+| `action`         | `string`             | An action to perform on the header                          | "upsert" | no       |
 
 The supported values for `action` are:
 * `insert`: Inserts the new header if it does not exist.
@@ -71,12 +72,17 @@ Exactly one of `value` or `from_context` must be provided for each `header`
 block.
 
 The `value` attribute sets the value of the header directly.
-Alternatively, `from_context` can be used to dynamically retrieve the header value from request metadata.
+Alternatively, `from_context` can be used to dynamically retrieve the header value from request metadata,
+or `from_attribute` can be used to dynamically retrieve the header value from request authentication metadata.
+
 
 For `from_context` to work, other components in the pipeline also need to be configured appropriately:
 * If an `otelcol.processor.batch` is present in the pipeline, it must be configured to preserve client metadata. 
   Do this by adding the value that `from_context` needs to the `metadata_keys` of the batch processor.
 * `otelcol` receivers must be configured with `include_metadata` set to `true` so that metadata keys are available to the pipeline.
+
+`from_attribute` metadata cannot at this time be preserved through an `otelcol.processor.batch` component, and is only 
+provided from the `otelcol.auth.basic` extension.
 
 ### debug_metrics block
 

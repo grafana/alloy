@@ -10,6 +10,9 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+v1.8.0-rc.0
+-----------------
+
 ### Breaking changes
 
 - Removed `open_port` and `executable_name` from top level configuration of Beyla component. Removed `enabled` argument from `network` block. (@marctc)
@@ -23,6 +26,8 @@ Main (unreleased)
   - The `regex` attribute was removed from `otelcol.processor.k8sattributes`. The extract-patterns function from `otelcol.processor.transform` can be used instead.
   - The default value of `metrics_flush_interval` in `otelcol.connector.servicegraph` was changed from `0s` to `60s`.
   - `s3_partition` in `otelcol.exporter.awss3` was replaced by `s3_partition_format`.
+
+- (_Experimental_) `prometheus.write.queue` metric names changed to align better with prometheus standards. (@mattdurham)
 
 ### Features
 
@@ -100,6 +105,8 @@ Main (unreleased)
 
 - Allow kafka exporter to attempt to connect even if TLS enabled but cert & key are not specified (@dehaansa)
 
+- Fixed bug where all resources were not being collected from `prometheus.exporter.azure` when using `regions` (@kgeckhart)
+
 ### Other changes
 
 - Upgrading to Prometheus v2.55.1. (@ptodev)
@@ -113,10 +120,11 @@ Main (unreleased)
   - `otelcol.receiver.kafka` has a new `error_backoff` block to configure how failed requests are retried.
   - `otelcol.receiver.vcenter` has three new metrics `vcenter.vm.cpu.time`, `vcenter.vm.network.broadcast.packet.rate` and `vcenter.vm.network.multicast.packet.rate`.
   - `otelcol.exporter.awss3` has two new arguments `acl` and `storage_class`.
+  - `otelcol.auth.headers` headers can now be populated using Authentication metadata using from_attribute
 
 - Change the stability of the `beyla.ebpf` component from "public preview" to "generally available". (@marctc)
 
-- Only use labelstore if `prometheus.remote_write` is enabled. (@mattdurham) 
+- The ingest API of `pyrscope.receive_http` no longer forwards all received headers, instead only passes through the `Content-Type` header. 
 
 v1.7.5
 -----------------

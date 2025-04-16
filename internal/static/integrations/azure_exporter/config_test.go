@@ -96,6 +96,18 @@ func TestConfig_ToScrapeSettings(t *testing.T) {
 				return settings
 			},
 		},
+		{
+			name: "sets regions and top when using regions with no dimensions",
+			configModifier: func(config azure_exporter.Config) azure_exporter.Config {
+				config.Regions = []string{"uswest", "useast"}
+				return config
+			},
+			toExpectedSettings: func(settings metrics.RequestMetricSettings) metrics.RequestMetricSettings {
+				settings.MetricTop = to.Ptr[int32](100_000_000)
+				settings.Regions = []string{"uswest", "useast"}
+				return settings
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
