@@ -292,7 +292,7 @@ mimir.rules.kubernetes "default" {
 
 If a query in the form of `up != 1` is found in `PrometheusRule` CRDs, it's' modified to `up{cluster=~"prod-.*"} != 1` before sending it to Mimir.
 
-This example is showing a Prometheus Rules labelled with the `application.kubernetes.io/name=my-app`.
+This example shows a `PrometheusRule` with a label set to `application.kubernetes.io/name=my-app`.
 
 ```yaml
 apiVersion: monitoring.coreos.com/v1
