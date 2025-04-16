@@ -12,7 +12,7 @@ on:
 
 jobs:
   test_windows:
-    if: ${{ github.event.label.name == 'test-windows' }}
+    if: ${{ github.event.label.name == 'os:windows' }}
     name: Test (Windows)
     runs-on: windows-latest
     steps:
