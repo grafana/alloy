@@ -353,12 +353,11 @@ func TestInstanceKey(t *testing.T) {
 			testName:      "statsd",
 			componentName: "prometheus.exporter.statsd",
 			args: statsd.Arguments{
-				ListenUDP:     "localhost:9125",
-				ListenTCP:     "localhost:9125",
-				MappingConfig: "test_mapping.yml",
-				ReadBuffer:    8192,
-				CacheSize:     1000,
-				CacheType:     "lru",
+				ListenUDP:  "localhost:9125",
+				ListenTCP:  "localhost:9125",
+				ReadBuffer: 8192,
+				CacheSize:  1000,
+				CacheType:  "lru",
 			},
 			temporaryHostname: "test-agent",
 			// TODO: this is likely not desired - statsd opens a listener and receives data from different sources
