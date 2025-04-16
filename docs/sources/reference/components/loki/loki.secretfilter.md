@@ -61,7 +61,7 @@ Unsupported fields and values in the configuration file are ignored.
 {{< /admonition >}}
 
 {{< admonition type="note" >}}
-The embedded configuration file may change between Alloy versions.
+The embedded configuration file may change between {{< param "PRODUCT_NAME" >}} versions.
 To ensure consistency, use an external configuration file.
 {{< /admonition >}}
 
