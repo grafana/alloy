@@ -27,6 +27,7 @@ Main (unreleased)
 - (_Experimental_) Various changes to the experimental component `database_observability.mysql`:
   - `schema_table`: add support for index expressions (@cristiangreco)
   - `query_tables`: improve queries parsing (@cristiangreco)
+  - `query_sample`: better handling of timer overflows (@fridgepoet)
   - make tidbparser the default choice (@cristiangreco)
 
 - Mixin dashboards improvements: added minimum cluster size to Cluster Overview dashboard, fixed units in OpenTelemetry dashboard, fixed slow components evaluation time units in Controller dashboard and updated Prometheus dashboard to correctly aggregate across instances. (@thampiotr)
