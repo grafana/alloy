@@ -1,5 +1,5 @@
 // Package statsd_exporter embeds https://github.com/prometheus/statsd_exporter
-package statsd_exporter //nolint:golint
+package statsd_exporter
 
 import (
 	"context"

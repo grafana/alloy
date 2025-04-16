@@ -569,7 +569,7 @@ func replaceSecrets(log string, secrets []fakeSecret, withPrefix bool, withHash 
 		hash = ":" + hashSecret(secrets[0].value)
 	}
 	for _, secret := range secrets {
-		log = strings.Replace(log, secret.value, fmt.Sprintf("%s<%s:%s%s>", prefix, redactionString, secret.name, hash), -1)
+		log = strings.ReplaceAll(log, secret.value, fmt.Sprintf("%s<%s:%s%s>", prefix, redactionString, secret.name, hash))
 	}
 	return log
 }

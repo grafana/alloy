@@ -1,5 +1,5 @@
 // Package apache_http embeds https://github.com/Lusitaniae/apache_exporter
-package apache_http //nolint:golint
+package apache_http
 
 import (
 	"net/http"

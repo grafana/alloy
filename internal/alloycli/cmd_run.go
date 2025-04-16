@@ -2,6 +2,7 @@ package alloycli
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -297,7 +298,7 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 	// To work around this, we lazily create variables for the functions the HTTP
 	// service needs and set them after the Alloy controller exists.
 	var (
-		reload func() (*alloy_runtime.Source, error)
+		reload func() (map[string][]byte, error)
 		ready  func() bool
 	)
 
@@ -340,8 +341,11 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 		Tracer:   t,
 		Gatherer: prometheus.DefaultGatherer,
 
-		ReadyFunc:  func() bool { return ready() },
-		ReloadFunc: func() (*alloy_runtime.Source, error) { return reload() },
+		ReadyFunc: func() bool { return ready() },
+		ReloadFunc: func() error {
+			_, err := reload()
+			return err
+		},
 
 		HTTPListenAddr:   fr.httpListenAddr,
 		MemoryListenAddr: fr.inMemoryAddr,
@@ -398,19 +402,25 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 	})
 
 	ready = f.Ready
-	reload = func() (*alloy_runtime.Source, error) {
-		alloySource, err := loadAlloySource(configPath, fr.configFormat, fr.configBypassConversionErrors, fr.configExtraArgs)
-		defer instrumentation.InstrumentConfig(err == nil, alloySource.SHA256(), fr.clusterName)
-
+	reload = func() (map[string][]byte, error) {
+		sources, err := loadSourceFiles(configPath, fr.configFormat, fr.configBypassConversionErrors, fr.configExtraArgs)
 		if err != nil {
+			instrumentation.InstrumentConfig(false, [32]byte{}, fr.clusterName)
 			return nil, fmt.Errorf("reading config path %q: %w", configPath, err)
 		}
-		httpService.SetSources(alloySource.SourceFiles())
-		if err := f.LoadSource(alloySource, nil, configPath); err != nil {
-			return alloySource, fmt.Errorf("error during the initial load: %w", err)
+
+		alloySource, err := alloy_runtime.ParseSources(sources)
+		defer instrumentation.InstrumentConfig(err == nil, hashSourceFiles(sources), fr.clusterName)
+		if err != nil {
+			return sources, fmt.Errorf("reading config path %q: %w", configPath, err)
 		}
 
-		return alloySource, nil
+		httpService.SetSources(alloySource.SourceFiles())
+		if err := f.LoadSource(alloySource, nil, configPath); err != nil {
+			return sources, fmt.Errorf("error during the initial load: %w", err)
+		}
+
+		return sources, nil
 	}
 
 	// Alloy controller
@@ -447,7 +457,7 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 				ContextLinesBefore: 1,
 				ContextLinesAfter:  1,
 			})
-			_ = p.Fprint(os.Stderr, source.RawConfigs(), diags)
+			_ = p.Fprint(os.Stderr, source, diags)
 
 			// Print newline after the diagnostics.
 			fmt.Println()
@@ -521,7 +531,7 @@ func getEnabledComponentsFunc(f *alloy_runtime.Runtime) func() map[string]interf
 	}
 }
 
-func loadAlloySource(path string, converterSourceFormat string, converterBypassErrors bool, configExtraArgs string) (*alloy_runtime.Source, error) {
+func loadSourceFiles(path string, converterSourceFormat string, converterBypassErrors bool, configExtraArgs string) (map[string][]byte, error) {
 	fi, err := os.Stat(path)
 	if err != nil {
 		return nil, err
@@ -553,7 +563,7 @@ func loadAlloySource(path string, converterSourceFormat string, converterBypassE
 			return nil, err
 		}
 
-		return alloy_runtime.ParseSources(sources)
+		return sources, nil
 	}
 
 	bb, err := os.ReadFile(path)
@@ -575,7 +585,21 @@ func loadAlloySource(path string, converterSourceFormat string, converterBypassE
 		}
 	}
 
-	return alloy_runtime.ParseSource(path, bb)
+	return map[string][]byte{path: bb}, nil
+}
+
+func hashSourceFiles(sources map[string][]byte) [sha256.Size]byte {
+	// Combined hash of all the sources.
+	hash := sha256.New()
+
+	// Sort keys so they are always added in the same order.
+	keys := maps.Keys(sources)
+	slices.Sort(keys)
+	for _, key := range keys {
+		hash.Write(sources[key])
+	}
+
+	return [32]byte(hash.Sum(nil))
 }
 
 // addDeprecatedFlags adds flags that are deprecated, but we keep them for backwards compatibility.

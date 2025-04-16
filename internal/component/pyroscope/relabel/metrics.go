@@ -3,20 +3,19 @@ package relabel
 import (
 	"github.com/grafana/alloy/internal/util"
 
-	"github.com/prometheus/client_golang/prometheus"
 	prometheus_client "github.com/prometheus/client_golang/prometheus"
 )
 
 type metrics struct {
-	profilesProcessed prometheus.Counter
-	profilesOutgoing  prometheus.Counter
-	profilesDropped   prometheus.Counter
-	cacheHits         prometheus.Counter
-	cacheMisses       prometheus.Counter
-	cacheSize         prometheus.Gauge
+	profilesProcessed prometheus_client.Counter
+	profilesOutgoing  prometheus_client.Counter
+	profilesDropped   prometheus_client.Counter
+	cacheHits         prometheus_client.Counter
+	cacheMisses       prometheus_client.Counter
+	cacheSize         prometheus_client.Gauge
 }
 
-func newMetrics(reg prometheus.Registerer) *metrics {
+func newMetrics(reg prometheus_client.Registerer) *metrics {
 	m := metrics{
 		profilesProcessed: prometheus_client.NewCounter(prometheus_client.CounterOpts{
 			Name: "pyroscope_relabel_profiles_processed",

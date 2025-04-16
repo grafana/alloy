@@ -26,23 +26,45 @@ Main (unreleased)
 
 - (_Experimental_) Various changes to the experimental component `database_observability.mysql`:
   - `schema_table`: add support for index expressions (@cristiangreco)
+  - `query_sample`: enable opt-in support to extract unredacted sql query (sql_text) (@matthewnolf)
+  - `query_tables`: improve queries parsing (@cristiangreco)
+  - make tidbparser the default choice (@cristiangreco)
+
+- Mixin dashboards improvements: added minimum cluster size to Cluster Overview dashboard, fixed units in OpenTelemetry dashboard, fixed slow components evaluation time units in Controller dashboard and updated Prometheus dashboard to correctly aggregate across instances. (@thampiotr)
+
+- Reduced the lag time during targets handover in a cluster in `prometheus.scrape` components by reducing thread contention. (@thampiotr)
+
+- Pretty print diagnostic errors when using `alloy run` (@kalleep)
 
 - The `mimir.rules.kubernetes` component now supports adding extra label matchers
   to all queries discovered via `PrometheusRule` CRDs by extracting label values defined on the `PrometheusRule`. (@QuentinBisson)
 
 ### Bugfixes
 
-- Fix panic in `prometheus.exporter.postgres` when using minimal url as data source name. (@kalleep)
-
-- Fix issue with `remoteCfg` service stopping immediately and logging noop error if not configured (@dehaansa)
-
 - Fix `otelcol.exporter.prometheus` dropping valid exemplars. (@github-vincent-miszczak)
+
+- Fix `loki.source.podlogs` add missing labels `__meta_kubernetes_namespace` and `__meta_kubernetes_pod_label_*`. (@kalleep)
+
+- Fix `otelcol.receiver.filelog` documentation's default value for `start_at`. (@petewall)
 
 ### Other changes
 
 - Update the zap logging adapter used by `otelcol` components to log arrays and objects. (@dehaansa)
 
 - Updated Windows install script to add DisplayVersion into registry on install (@enessene)
+
+v1.8.1
+-----------------
+
+### Bugfixes
+
+- `rfc3164_default_to_current_year` argument was not fully added to `loki.source.syslog` (@dehaansa)
+
+- Fix issue with `remoteCfg` service stopping immediately and logging noop error if not configured (@dehaansa)
+
+- Fix potential race condition in `remoteCfg` service metrics registration (@kalleep)
+
+- Fix panic in `prometheus.exporter.postgres` when using minimal url as data source name. (@kalleep)
 
 v1.8.0
 -----------------

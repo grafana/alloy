@@ -52,7 +52,7 @@ var (
 		MaxKeepaliveTime:  8 * time.Hour,
 	}
 
-	tooManyAuthErr = errors.New("at most one of sigv4, azuread, basic_auth, oauth2, bearer_token & bearer_token_file must be configured")
+	errTooManyAuth = errors.New("at most one of sigv4, azuread, basic_auth, oauth2, bearer_token & bearer_token_file must be configured")
 )
 
 // Arguments represents the input state of the prometheus.remote_write
@@ -113,13 +113,13 @@ func (r *EndpointOptions) Validate() error {
 
 	if r.SigV4 != nil {
 		if r.AzureAD != nil || isAuthSetInHttpClientConfig(r.HTTPClientConfig) {
-			return tooManyAuthErr
+			return errTooManyAuth
 		}
 	}
 
 	if r.AzureAD != nil {
 		if r.SigV4 != nil || isAuthSetInHttpClientConfig(r.HTTPClientConfig) {
-			return tooManyAuthErr
+			return errTooManyAuth
 		}
 	}
 

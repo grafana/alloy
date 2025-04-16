@@ -15,7 +15,6 @@ import (
 )
 
 const (
-	OP_QUERY_TABLES            = "query_tables"
 	OP_QUERY_PARSED_TABLE_NAME = "query_parsed_table_name"
 	QueryTablesName            = "query_tables"
 )
@@ -23,10 +22,9 @@ const (
 const selectQueryTablesSamples = `
 	SELECT
 		digest,
+		digest_text,
 		schema_name,
-		query_sample_text,
-		query_sample_seen,
-		query_sample_timer_wait
+		query_sample_text
 	FROM performance_schema.events_statements_summary_by_digest
 	WHERE schema_name NOT IN ('mysql', 'performance_schema', 'information_schema')
 	AND last_seen > DATE_SUB(NOW(), INTERVAL 1 DAY)`
@@ -128,39 +126,18 @@ func (c *QueryTables) fetchQueryTables(ctx context.Context) error {
 	defer rs.Close()
 
 	for rs.Next() {
-		var digest, schemaName, sampleText, sampleSeen, sampleTimerWait string
-		err := rs.Scan(&digest, &schemaName, &sampleText, &sampleSeen, &sampleTimerWait)
+		var digest, digestText, schemaName, sampleText string
+		err := rs.Scan(&digest, &digestText, &schemaName, &sampleText)
 		if err != nil {
 			level.Error(c.logger).Log("msg", "failed to scan result set from summary table samples", "schema", schemaName, "err", err)
 			continue
 		}
 
-		sampleText, err = c.sqlParser.CleanTruncatedText(sampleText)
+		stmt, err := c.tryParse(schemaName, digest, digestText, sampleText)
 		if err != nil {
-			level.Error(c.logger).Log("msg", "failed to handle truncated sql query", "schema", schemaName, "digest", digest, "err", err)
+			level.Warn(c.logger).Log("msg", "failed to parse sql query", "schema", schemaName, "digest", digest, "err", err)
 			continue
 		}
-
-		stmt, err := c.sqlParser.Parse(sampleText)
-		if err != nil {
-			level.Error(c.logger).Log("msg", "failed to parse sql query", "schema", schemaName, "digest", digest, "err", err)
-			continue
-		}
-
-		sampleRedactedText, err := c.sqlParser.Redact(sampleText)
-		if err != nil {
-			level.Error(c.logger).Log("msg", "failed to redact sql query", "schema", schemaName, "digest", digest, "err", err)
-			continue
-		}
-
-		c.entryHandler.Chan() <- buildLokiEntry(
-			OP_QUERY_TABLES,
-			c.instanceKey,
-			fmt.Sprintf(
-				`schema="%s" digest="%s" query_type="%s" query_sample_seen="%s" query_sample_timer_wait="%s" query_sample_redacted="%s"`,
-				schemaName, digest, c.sqlParser.StmtType(stmt), sampleSeen, sampleTimerWait, sampleRedactedText,
-			),
-		)
 
 		tables := c.sqlParser.ExtractTableNames(c.logger, digest, stmt)
 		for _, table := range tables {
@@ -178,4 +155,35 @@ func (c *QueryTables) fetchQueryTables(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (c *QueryTables) tryParse(schema, digest, digestText, sampleText string) (any, error) {
+	sqlText, err := c.sqlParser.CleanTruncatedText(sampleText)
+	if err != nil {
+		level.Warn(c.logger).Log("msg", "failed to handle truncated sample_text", "schema", schema, "digest", digest, "err", err)
+
+		// try to switch to digest_text
+		sqlText, err = c.sqlParser.CleanTruncatedText(digestText)
+		if err != nil {
+			level.Warn(c.logger).Log("msg", "failed to handle truncated digest_text", "schema", schema, "digest", digest, "err", err)
+			return nil, err
+		}
+	}
+
+	stmt, err := c.sqlParser.Parse(sqlText)
+	if err != nil {
+		level.Warn(c.logger).Log("msg", "failed to parse sql query from sample_text", "schema", schema, "digest", digest, "err", err)
+
+		if digestText == "" || sqlText == digestText {
+			return nil, err
+		}
+
+		stmt, err = c.sqlParser.Parse(digestText)
+		if err != nil {
+			level.Warn(c.logger).Log("msg", "failed to parse sql query from digest_text", "schema", schema, "digest", digest, "err", err)
+			return nil, err
+		}
+	}
+
+	return stmt, nil
 }

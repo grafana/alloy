@@ -7,7 +7,7 @@
 // mixin and continually deploy all dashboards.
 //
 
-(import './grizzly/dashboards.jsonnet') +
+(import './grizzly/dashboards.jsonnet')
 
 // By default, alerts get also deployed; This should work out-of-the-box when 
 // using the example docker-compose environment. If you are using grizzly with
