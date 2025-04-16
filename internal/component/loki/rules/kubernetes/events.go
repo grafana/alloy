@@ -2,13 +2,12 @@ package rules
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"regexp"
 	"time"
 
 	"github.com/grafana/loki/v3/pkg/logql/syntax"
-	pkgerrors "github.com/pkg/errors"
+	"github.com/hashicorp/go-multierror"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/rulefmt"
@@ -111,7 +110,7 @@ func (c *Component) reconcileState(ctx context.Context) error {
 	for ns, diff := range diffs {
 		err = c.applyChanges(ctx, ns, diff)
 		if err != nil {
-			result = errors.Join(result, err)
+			result = multierror.Append(result, err)
 			continue
 		}
 	}
@@ -223,19 +222,20 @@ func convertCRDRuleGroupToRuleGroup(crd promv1.PrometheusRuleSpec) ([]rulefmt.Ru
 		return nil, err
 	}
 
+	var result error
 	groups, _ := rulefmt.Parse(buf)
 	for _, group := range groups.Groups {
 		for _, rule := range group.Rules {
 			if _, err := syntax.ParseExpr(rule.Expr.Value); err != nil {
 				if rule.Record.Value != "" {
-					err = errors.Join(err, pkgerrors.Wrapf(err, "could not parse expression for record '%s' in group '%s'", rule.Record.Value, group.Name))
+					result = multierror.Append(result, fmt.Errorf("could not parse expression for record '%s' in group '%s': %w", rule.Record.Value, group.Name, err))
 				}
-				err = errors.Join(err, pkgerrors.Wrapf(err, "could not parse expression for alert '%s' in group '%s'", rule.Alert.Value, group.Name))
+				result = multierror.Append(result, fmt.Errorf("could not parse expression for alert '%s' in group '%s': %w", rule.Alert.Value, group.Name, err))
 			}
 		}
 	}
-	if err != nil {
-		return nil, err
+	if result != nil {
+		return nil, result
 	}
 
 	return groups.Groups, nil
