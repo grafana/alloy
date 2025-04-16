@@ -11,7 +11,7 @@ labels:
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `loki.secretfilter` receives log entries and redacts detected secrets from the log lines.
-The detection is based on regular expression patterns, defined in the Gitleaks configuration file embedded within the component.
+The detection relies on regular expression patterns, defined in the Gitleaks configuration file embedded within the component.
 `loki.secretfilter` can also use a [custom configuration file](#arguments) based on the [Gitleaks configuration file structure][gitleaks-config].
 
 {{< admonition type="caution" >}}
@@ -49,7 +49,7 @@ loki.secretfilter "<LABEL>" {
 | `types`           | `map(string)`        | Types of secret to look for.                               | All types                        | no       |
 
 The `gitleaks_config` argument is the path to the custom `gitleaks.toml` file.
-The Gitleaks configuration file [embedded in the component][embedded-config] is used if you don't provide the path to a custom configuration file.
+If you don't provide the path to a custom configuration file, the Gitleaks configuration file [embedded in the component][embedded-config] is used.
 
 {{< admonition type="note" >}}
 This component doesn't support all the features of the Gitleaks configuration file.
@@ -61,7 +61,8 @@ Unsupported fields and values in the configuration file are ignored.
 {{< /admonition >}}
 
 {{< admonition type="note" >}}
-The embedded configuration file can change from one version of Alloy to another. It's advised to use an external configuration file to ensure consistency.
+The embedded configuration file may change between Alloy versions.
+To ensure consistency, use an external configuration file.
 {{< /admonition >}}
 
 The `types` argument is a map of secret types to look for.
