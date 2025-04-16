@@ -416,11 +416,7 @@ func TestInstanceKey(t *testing.T) {
 			require.True(t, ok, "expected component to exist in registry")
 
 			if tt.temporaryHostname != "" {
-				ogHostname := os.Getenv("HOSTNAME")
-				assert.NoError(t, os.Setenv("HOSTNAME", tt.temporaryHostname))
-				defer func() {
-					assert.NoError(t, os.Setenv("HOSTNAME", ogHostname))
-				}()
+				t.Setenv("HOSTNAME", tt.temporaryHostname)
 			}
 			c, err := reg.Build(opts, tt.args)
 			if tt.expectedErrorContains != "" {
