@@ -211,8 +211,6 @@ func labelsSetLogQL(query, labelMatchType, name, value string) (string, error) {
 		}
 	})
 
-	// matchers := expr.Matchers()
-
 	return expr.String(), nil
 }
 

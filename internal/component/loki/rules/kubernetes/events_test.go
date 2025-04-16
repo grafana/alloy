@@ -112,7 +112,7 @@ func TestEventLoop(t *testing.T) {
 					Rules: []v1.Rule{
 						{
 							Alert: "alert",
-							Expr:  intstr.FromString("expr"),
+							Expr:  intstr.FromString("{component=\"alloy\"}"),
 						},
 					},
 				},
@@ -154,7 +154,7 @@ func TestEventLoop(t *testing.T) {
 	// Update the rule in kubernetes
 	rule.Spec.Groups[0].Rules = append(rule.Spec.Groups[0].Rules, v1.Rule{
 		Alert: "alert2",
-		Expr:  intstr.FromString("expr2"),
+		Expr:  intstr.FromString("{component=\"alloy-2\"}"),
 	})
 	ruleIndexer.Update(rule)
 	eventHandler.OnUpdate(rule, rule)
