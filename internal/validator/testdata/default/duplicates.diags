@@ -1,0 +1,13 @@
+Error: main.alloy:5:1: block declare.self_collect already declared at main.alloy:4:1
+
+4 | declare "self_collect" {}
+5 | declare "self_collect" {}
+  | ^^^^^^^^^^^^^^^^^^^^
+6 | 
+
+Error: main.alloy:2:1: block local.file_match.applogs already declared at main.alloy:1:1
+
+1 | local.file_match "applogs" {}
+2 | local.file_match "applogs" {}
+  | ^^^^^^^^^^^^^^^^^^^^^^^^
+3 | 

@@ -31,3 +31,18 @@ loki.write "local_loki" {
         url = "http://loki:3100/loki/api/v1/push"
     }
 }
+
+declare "self_collect" {
+  argument "metrics_output" {
+    optional = false
+    comment  = "Where to send collected metrics."
+  }
+
+  prometheus.scrape "selfmonitor" {
+    targets = [{
+      __address__ = "127.0.0.1:12345",
+    }]
+
+    forward_to = [argument.metrics_output.value]
+  }
+}

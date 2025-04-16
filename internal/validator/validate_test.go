@@ -45,7 +45,8 @@ func testDirectory(t *testing.T, dir string, minStability featuregate.Stability,
 					sources[f.Name] = f.Data
 				}
 
-				validateErr := Validate(sources, Options{
+				validateErr := Validate(Options{
+					Sources:           sources,
 					ComponentRegistry: component.NewDefaultRegistry(minStability, enableCommunityComps),
 				})
 

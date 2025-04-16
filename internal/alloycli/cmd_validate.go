@@ -64,8 +64,8 @@ func (v *alloyValidate) Run(configFile string) error {
 	}
 
 	if err := validator.Validate(
-		sources,
 		validator.Options{
+			Sources: sources,
 			ServiceDefinitions: getServiceDefinitions(
 				&cluster.Service{},
 				&http.Service{},

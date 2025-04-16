@@ -1,0 +1,7 @@
+duplicated components and declares
+-- main.alloy --
+local.file_match "applogs" {}
+local.file_match "applogs" {}
+
+declare "self_collect" {}
+declare "self_collect" {}

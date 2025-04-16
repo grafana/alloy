@@ -1,12 +1,9 @@
 package validator
 
 import (
-	"errors"
 	"fmt"
-	"io"
 	"strings"
 
-	"github.com/fatih/color"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/diag"
 
@@ -16,40 +13,100 @@ import (
 )
 
 type Options struct {
+	// Sources are all source files to validate.
+	Sources map[string][]byte
 	// ServiceDefinitions is used to validate service config.
 	ServiceDefinitions []service.Definition
 	// ComponentRegistry is used to validate component config.
 	ComponentRegistry component.Registry
 }
 
-func Validate(sources map[string][]byte, opts Options) error {
-	source, err := alloy_runtime.ParseSources(sources)
-	if err != nil {
-		return err
-	}
+func Validate(opts Options) error {
+	v := newValidator(opts)
+	return v.run()
+}
 
+type validator struct {
+	sources map[string][]byte
+	sm      map[string]service.Definition
+	cr      *componentRegistry
+}
+
+func newValidator(opts Options) *validator {
 	sm := make(map[string]service.Definition)
 	for _, def := range opts.ServiceDefinitions {
 		sm[def.Name] = def
 	}
 
-	components, _ := splitComponents(source.Components(), sm)
+	return &validator{
+		sources: opts.Sources,
+		sm:      sm,
+		cr:      newComponentRegistry(opts.ComponentRegistry),
+	}
+}
 
-	diags := validateComponents(components, opts.ComponentRegistry)
-	if diags != nil {
+func (v *validator) run() error {
+	s, err := alloy_runtime.ParseSources(v.sources)
+	if err != nil {
+		return err
+	}
+	var diags diag.Diagnostics
+
+	declareDiags := v.validateDeclares(s.Declares())
+	diags = append(diags, declareDiags...)
+
+	components, _ := splitComponents(s.Components(), v.sm)
+
+	componentDiags := v.validateComponents(components)
+	diags = append(diags, componentDiags...)
+
+	if diags.HasErrors() {
 		return diags
 	}
 
 	return nil
 }
 
+// validateDeclares will perform validation on declare blocks and register them as "custom" component.
+func (v *validator) validateDeclares(declares []*ast.BlockStmt) diag.Diagnostics {
+	var (
+		diags diag.Diagnostics
+		mem   = make(map[string]*ast.BlockStmt, len(declares))
+	)
+
+	for _, d := range declares {
+		name := d.GetBlockName()
+
+		// 1. Declare blocks must have a label.
+		if d.Label == "" {
+			diags.Add(diag.Diagnostic{
+				Severity: diag.SeverityLevelError,
+				StartPos: d.NamePos.Position(),
+				EndPos:   d.NamePos.Add(len(name) - 1).Position(),
+				Message:  "declare block must have a label",
+			})
+		}
+
+		v.cr.registerCustomComponent(d)
+
+		// 2. Two of the same declare blocks cannot share label.
+		if diag, ok := blockAlreadyDefined(mem, d); ok {
+			diags.Add(diag)
+		}
+	}
+
+	return diags
+}
+
 // validateComponents will perform validation on component blocks.
-func validateComponents(components []*ast.BlockStmt, registry component.Registry) diag.Diagnostics {
-	var diags diag.Diagnostics
+func (v *validator) validateComponents(components []*ast.BlockStmt) diag.Diagnostics {
+	var (
+		diags diag.Diagnostics
+		mem   = make(map[string]*ast.BlockStmt, len(components))
+	)
 
 	for _, c := range components {
 		name := c.GetBlockName()
-
 		// 1. All components must have a label.
 		if c.Label == "" {
 			diags.Add(diag.Diagnostic{
@@ -61,7 +118,7 @@ func validateComponents(components []*ast.BlockStmt, registry component.Registry
 		}
 
 		// 2. Check if component exists and can be used.
-		_, err := registry.Get(name)
+		_, err := v.cr.Get(name)
 		if err != nil {
 			diags.Add(diag.Diagnostic{
 				Severity: diag.SeverityLevelError,
@@ -72,6 +129,11 @@ func validateComponents(components []*ast.BlockStmt, registry component.Registry
 
 			// We cannot do further validation if the component don't exist.
 			continue
+		}
+
+		// 2. Two of the same component cannot share label.
+		if diag, ok := blockAlreadyDefined(mem, c); ok {
+			diags.Add(diag)
 		}
 	}
 
@@ -102,20 +164,16 @@ func blockID(b *ast.BlockStmt) string {
 	return strings.Join(id, ".")
 }
 
-func Report(w io.Writer, err error, sources map[string][]byte) {
-	var diags diag.Diagnostics
-	if errors.As(err, &diags) {
-		p := diag.NewPrinter(diag.PrinterConfig{
-			Color:              !color.NoColor,
-			ContextLinesBefore: 1,
-			ContextLinesAfter:  1,
-		})
-		_ = p.Fprint(w, sources, diags)
-
-		// Print newline after the diagnostics.
-		fmt.Println()
-		return
+func blockAlreadyDefined(mem map[string]*ast.BlockStmt, b *ast.BlockStmt) (diag.Diagnostic, bool) {
+	id := blockID(b)
+	if orig, redefined := mem[id]; redefined {
+		return diag.Diagnostic{
+			Severity: diag.SeverityLevelError,
+			Message:  fmt.Sprintf("block %s already declared at %s", id, ast.StartPos(orig).Position()),
+			StartPos: b.NamePos.Position(),
+			EndPos:   b.NamePos.Add(len(id) - 1).Position(),
+		}, true
 	}
-
-	_, _ = fmt.Fprintf(w, "validation failed: %s", err)
+	mem[id] = b
+	return diag.Diagnostic{}, false
 }
