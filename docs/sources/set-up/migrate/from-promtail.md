@@ -180,9 +180,9 @@ The following list is specific to the convert command and not {{< param "PRODUCT
 * The logs produced by {{< param "PRODUCT_NAME" >}} differ from those produced by Promtail.
 * {{< param "PRODUCT_NAME" >}} exposes the {{< param "PRODUCT_NAME" >}} [UI][], which differs from the Promtail Web UI.
 
-[Promtail]: https://www.grafana.com/docs/loki/<LOKI_VERSION>/clients/promtail/
+[Promtail]: https://www.grafana.com/docs/loki/latest/clients/promtail/
 [debugging]: #debugging
-[expanded in the configuration file]: https://www.grafana.com/docs/loki/<LOKI_VERSION>/clients/promtail/configuration/#use-environment-variables-in-the-configuration
+[expanded in the configuration file]: https://www.grafana.com/docs/loki/latest/clients/promtail/configuration/#use-environment-variables-in-the-configuration
 [local.file_match]: ../../../reference/components/local/local.file_match/
 [loki.source.file]: ../../../reference/components/loki/loki.source.file/
 [loki.write]: ../../../reference/components/loki/loki.write/
