@@ -9,13 +9,14 @@ import (
 	"net/url"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/static/integrations"
-	"github.com/grafana/alloy/internal/static/integrations/config"
-	snmp_common "github.com/grafana/alloy/internal/static/integrations/snmp_exporter/common"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/snmp_exporter/collector"
 	snmp_config "github.com/prometheus/snmp_exporter/config"
+
+	"github.com/grafana/alloy/internal/static/integrations"
+	"github.com/grafana/alloy/internal/static/integrations/config"
+	snmp_common "github.com/grafana/alloy/internal/static/integrations/snmp_exporter/common"
 )
 
 // DefaultConfig holds the default settings for the snmp_exporter integration.
@@ -62,9 +63,8 @@ func (c *Config) Name() string {
 	return "snmp"
 }
 
-// InstanceKey returns the hostname:port of the agent.
-func (c *Config) InstanceKey(agentKey string) (string, error) {
-	return agentKey, nil
+func (c *Config) InstanceKey(defaultKey string) (string, error) {
+	return defaultKey, nil
 }
 
 // NewIntegration creates a new SNMP integration.

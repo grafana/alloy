@@ -5,6 +5,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter"
+	"github.com/grafana/alloy/internal/component/prometheus/exporter/common"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/static/integrations"
 	"github.com/grafana/alloy/internal/static/integrations/cadvisor"
@@ -21,8 +22,9 @@ func init() {
 	})
 }
 
-func createExporter(opts component.Options, args component.Arguments, defaultInstanceKey string) (integrations.Integration, string, error) {
+func createExporter(opts component.Options, args component.Arguments) (integrations.Integration, string, error) {
 	a := args.(Arguments)
+	defaultInstanceKey := common.HostNameInstanceKey() // if cannot resolve instance key, use the host name for cadvisor
 	return integrations.NewIntegrationWithInstanceKey(opts.Logger, a.Convert(), defaultInstanceKey)
 }
 

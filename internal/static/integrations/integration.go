@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/go-kit/log"
+
 	"github.com/grafana/alloy/internal/static/integrations/config"
 )
 
@@ -17,13 +18,14 @@ type Config interface {
 	// InstanceKey should return the key that represents the config, which will be
 	// used to populate the value of the `instance` label for metrics.
 	//
-	// InstanceKey is given an agentKey that represents the agent process. This
-	// may be used if the integration being configured applies to an entire
-	// machine.
+	// InstanceKey is given a defaultKey that can be used to represent this exporter if
+	// the implementation cannot provide a better alternative based on config. What defaultKey
+	// is set to, will depend on the scope of the exporter. For example, if the exporter collects
+	// metrics from the entire machine, it may be the hostname of the local machine.
 	//
 	// This method may not be invoked if the instance key for a Config is
 	// overridden.
-	InstanceKey(agentKey string) (string, error)
+	InstanceKey(defaultKey string) (string, error)
 
 	// NewIntegration returns an integration for the given with the given logger.
 	NewIntegration(l log.Logger) (Integration, error)
@@ -51,8 +53,8 @@ type Integration interface {
 
 // NewIntegrationWithInstanceKey uses cfg to construct an integration and
 // return it along its instance key.
-func NewIntegrationWithInstanceKey(l log.Logger, cfg Config, key string) (Integration, string, error) {
-	key, err := cfg.InstanceKey(key)
+func NewIntegrationWithInstanceKey(l log.Logger, cfg Config, defaultKey string) (Integration, string, error) {
+	key, err := cfg.InstanceKey(defaultKey)
 	if err != nil {
 		return nil, key, err
 	}

@@ -3,6 +3,7 @@ package process
 import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter"
+	"github.com/grafana/alloy/internal/component/prometheus/exporter/common"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/static/integrations"
 	"github.com/grafana/alloy/internal/static/integrations/process_exporter"
@@ -20,8 +21,9 @@ func init() {
 	})
 }
 
-func createIntegration(opts component.Options, args component.Arguments, defaultInstanceKey string) (integrations.Integration, string, error) {
+func createIntegration(opts component.Options, args component.Arguments) (integrations.Integration, string, error) {
 	a := args.(Arguments)
+	defaultInstanceKey := common.HostNameInstanceKey() // if cannot resolve instance key, use the host name for process exporter
 	return integrations.NewIntegrationWithInstanceKey(opts.Logger, a.Convert(), defaultInstanceKey)
 }
 
