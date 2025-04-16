@@ -302,7 +302,7 @@ kind: PrometheusRule
       application.kubernetes.io/name: my-app
 ```
 
-The following configuration extracts the value from the label `application.kubernetes.io/name` of the PrometheusRules CR and adds a label matcher with the value `{app=~"extracted_value"}` to all the queries discovered by the `mimir.rules.kubernetes` component.
+The following configuration extracts the value from the PrometheusRules CR label `application.kubernetes.io/name` and adds a label matcher with the value `{app=~"extracted_value"}` to all the queries discovered by the `mimir.rules.kubernetes` component.
 
 ```alloy
 mimir.rules.kubernetes "default" {
