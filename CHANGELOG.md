@@ -10,6 +10,10 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Other changes 
+
+- Only use labelstore cache if `prometheus.remote_write` is enabled. (@mattdurham)
+
 v1.8.0-rc.0
 -----------------
 
