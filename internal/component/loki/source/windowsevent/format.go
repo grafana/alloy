@@ -16,7 +16,6 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	"golang.org/x/sys/windows"
 
-	"github.com/grafana/loki/v3/clients/pkg/promtail/scrapeconfig"
 	"github.com/grafana/loki/v3/clients/pkg/promtail/targets/windows/win_eventlog"
 )
 
@@ -81,7 +80,7 @@ type Correlation struct {
 }
 
 // formatLine format a Loki log line from a windows event.
-func formatLine(cfg *scrapeconfig.WindowsEventsTargetConfig, event win_eventlog.Event) (string, error) {
+func formatLine(args Arguments, event win_eventlog.Event) (string, error) {
 	structuredEvent := Event{
 		Source:        event.Source.Name,
 		Channel:       event.Channel,
@@ -99,7 +98,7 @@ func formatLine(cfg *scrapeconfig.WindowsEventsTargetConfig, event win_eventlog.
 		EventRecordID: event.EventRecordID,
 	}
 
-	if !cfg.ExcludeEventData {
+	if args.IncludeEventDataMap {
 		var temp struct {
 			Data EventDataMap `xml:"Data"`
 		}
@@ -114,12 +113,14 @@ func formatLine(cfg *scrapeconfig.WindowsEventsTargetConfig, event win_eventlog.
 			return "", fmt.Errorf("failed to unmarshal event data: %w", err)
 		}
 		structuredEvent.EventDataMap = temp.Data
+	}
+	if !args.ExcludeEventData {
 		structuredEvent.EventData = string(event.EventData.InnerXML)
 	}
-	if !cfg.ExcludeUserData {
+	if !args.ExcludeUserdata {
 		structuredEvent.UserData = string(event.UserData.InnerXML)
 	}
-	if !cfg.ExcludeEventMessage {
+	if !args.ExcludeEventMessage {
 		structuredEvent.Message = event.Message
 	}
 	if event.Correlation.ActivityID != "" || event.Correlation.RelatedActivityID != "" {

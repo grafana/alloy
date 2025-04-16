@@ -7,7 +7,6 @@ import (
 
 	jsoniter "github.com/json-iterator/go"
 	"go.uber.org/goleak"
-	"github.com/grafana/loki/v3/clients/pkg/promtail/scrapeconfig"
 	"github.com/grafana/loki/v3/clients/pkg/promtail/targets/windows/win_eventlog"
 	"github.com/stretchr/testify/require"
 )
@@ -15,15 +14,16 @@ import (
 func TestFormatIncludeEventData(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
 
-	scrapeConfig := &scrapeconfig.WindowsEventsTargetConfig{
+	args := Arguments{
 		Locale:               0,
-		EventlogName:         "Application",
-		Query:                "*",
+		EventLogName:         "Application",
+		XPathQuery:           "*",
 		UseIncomingTimestamp: false,
 		BookmarkPath:         "",
 		ExcludeEventData:     false,
 		ExcludeEventMessage:  false,
-		ExcludeUserData:      false,
+		ExcludeUserdata:      false,
+		IncludeEventDataMap:  true,
 	}
 
 	event := win_eventlog.Event{
@@ -33,7 +33,7 @@ func TestFormatIncludeEventData(t *testing.T) {
 		},
 	}
 
-	formatted, err := formatLine(scrapeConfig, event)
+	formatted, err := formatLine(args, event)
 	require.NoError(t, err)
 	var jdata map[string]interface{}
 	err = jsoniter.Unmarshal([]byte(formatted), &jdata)
@@ -45,15 +45,16 @@ func TestFormatIncludeEventData(t *testing.T) {
 func TestFormatExcludeEventData(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
 
-	scrapeConfig := &scrapeconfig.WindowsEventsTargetConfig{
+	args := Arguments{
 		Locale:               0,
-		EventlogName:         "Application",
-		Query:                "*",
+		EventLogName:         "Application",
+		XPathQuery:           "*",
 		UseIncomingTimestamp: false,
 		BookmarkPath:         "",
 		ExcludeEventData:     true,
 		ExcludeEventMessage:  false,
-		ExcludeUserData:      false,
+		ExcludeUserdata:      false,
+		IncludeEventDataMap:  false,
 	}
 	
 	event := win_eventlog.Event{
@@ -63,7 +64,7 @@ func TestFormatExcludeEventData(t *testing.T) {
 		},
 	}
 
-	formatted, err := formatLine(scrapeConfig, event)
+	formatted, err := formatLine(args, event)
 	require.NoError(t, err)
 	var jdata map[string]interface{}
 	err = jsoniter.Unmarshal([]byte(formatted), &jdata)
