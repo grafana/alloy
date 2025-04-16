@@ -97,6 +97,8 @@ If set to `0`, the entire secret is redacted.
 If a secret isn't at least 6 characters long, it's entirely redacted.
 For short secrets, at most half of the secret is shown.
 
+[embedded-config]: https://github.com/grafana/alloy/blob/{{< param "ALLOY_RELEASE" >}}/internal/component/loki/secretfilter/gitleaks.toml
+
 ## Blocks
 
 The `loki.secretfilter` component doesn't support any blocks. You can configure this component with arguments.
