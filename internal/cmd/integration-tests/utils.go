@@ -39,9 +39,9 @@ func buildAlloy() {
 }
 
 func setupEnvironment() {
-	executeCommand("docker", []string{"compose", "up", "-d"}, "Setting up environment with Docker Compose")
-	fmt.Println("Sleep for 45 seconds to ensure that the env has time to initialize...")
-	time.Sleep(45 * time.Second)
+	start := time.Now()
+	executeCommand("docker", []string{"compose", "up", "-d", "--wait"}, "Setting up environment with Docker Compose")
+	fmt.Printf("Environment setup completed in %s\n", time.Since(start))
 }
 
 func runSingleTest(testDir string, port int) {
