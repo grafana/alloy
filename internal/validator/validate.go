@@ -127,7 +127,6 @@ func (v *validator) validateConfigs(configs []*ast.BlockStmt) diag.Diagnostics {
 			// We need to register import blocks as a custom component.
 			v.cr.registerCustomComponent(c)
 		}
-
 	}
 
 	return diags
