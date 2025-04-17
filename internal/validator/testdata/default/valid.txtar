@@ -47,6 +47,8 @@ declare "self_collect" {
   }
 }
 
+self_collect "selfmonitor" {}
+
 logging {
 
 }

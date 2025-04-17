@@ -25,8 +25,6 @@ type componentRegistry struct {
 
 func (cr *componentRegistry) Get(name string) (component.Registration, error) {
 	parts := strings.Split(name, ".")
-	// Custom component registered with their label and should be the first part of the name.
-	// This does hower.
 	// FIXME(kalleep): right now we register modules as custom components and only validate the
 	// namespace part. We can't really know what components are contained within a module without
 	// importing it first. Maybe we could have an option for validation to resolve modules so we could
