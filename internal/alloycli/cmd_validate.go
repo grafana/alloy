@@ -35,7 +35,6 @@ func validateCommand() *cobra.Command {
 		},
 	}
 
-	// FIXME(kalleep): these flags are shared with `run`.
 	// Config flags
 	cmd.Flags().StringVar(&v.configFormat, "config.format", v.configFormat, fmt.Sprintf("The format of the source file. Supported formats: %s.", supportedFormatsList()))
 	cmd.Flags().BoolVar(&v.configBypassConversionErrors, "config.bypass-conversion-errors", v.configBypassConversionErrors, "Enable bypassing errors when converting")
