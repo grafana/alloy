@@ -64,7 +64,7 @@ func testDirectory(t *testing.T, dir string, minStability featuregate.Stability,
 					}
 
 					require.NoError(t, f.Close())
-					t.Logf("updated diag file %s", diagsFile)
+					t.Logf("updated diags file %s", diagsFile)
 				}
 
 				if !fileExists(diagsFile) {

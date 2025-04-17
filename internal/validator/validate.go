@@ -50,14 +50,15 @@ func (v *validator) run() error {
 	if err != nil {
 		return err
 	}
-	var diags diag.Diagnostics
 
+	// Register all "import" blocks as custom component.
 	for _, c := range s.Configs() {
 		if c.Name[0] == "import" {
 			v.cr.registerCustomComponent(c)
 		}
 	}
 
+	var diags diag.Diagnostics
 	// Need to validate declares first becuse we will register "custom" components.
 	declareDiags := v.validateDeclares(s.Declares())
 	diags = append(diags, declareDiags...)
