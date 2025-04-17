@@ -16,6 +16,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - uses: grafana/writers-toolkit/publish-technical-documentation@8916505070a10d0a5db19e850722f124861bbce2 # publish-technical-documentation/v1
+      - uses: grafana/writers-toolkit/publish-technical-documentation@publish-technical-documentation/v1
         with:
           website_directory: content/docs/alloy/next

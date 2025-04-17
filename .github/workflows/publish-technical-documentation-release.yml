@@ -20,7 +20,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
-      - uses: grafana/writers-toolkit/publish-technical-documentation-release@8916505070a10d0a5db19e850722f124861bbce2 # publish-technical-documentation-release/v1
+      - uses: grafana/writers-toolkit/publish-technical-documentation-release@publish-technical-documentation-release/v1
         with:
           release_tag_regexp: "^v(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$"
           release_branch_regexp: "^release/v(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$"
