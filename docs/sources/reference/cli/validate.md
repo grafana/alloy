@@ -31,6 +31,11 @@ The following flags are supported:
 * `--stability.level`: The minimum permitted stability level of functionality. Supported values: `experimental`, `public-preview`, `generally-available` (default `"generally-available"`).
 * `--feature.community-components.enabled`: Enable community components (default `false`).
 
+{{< admonition type="note" >}}
+`--stability.level` and `--feature.community-components.enabled` should be set too the same values that is used when running alloy.
+{{< /admonition >}}
+
+
 ## Limitations
 
 Validation performed is limited in what it can check. Currently it will check for:
