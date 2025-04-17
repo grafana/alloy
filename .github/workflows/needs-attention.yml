@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/stale@5bef64f19d7facfb25b37b414482c7164d639639 # v9.1.0
         with:
-          days-before-stale: 30
+          days-before-stale: 90
           days-before-close: -1 # never close automatically
           stale-issue-message: >
             This issue has not had any activity in the past 30 days, so the

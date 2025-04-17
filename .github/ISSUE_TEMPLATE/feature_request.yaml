@@ -1,6 +1,6 @@
 name: Feature request
 description: Suggest an idea to be added to Grafana Alloy.
-labels: ["enhancement"]
+labels: ["enhancement", "needs-triage"]
 body:
   - type: markdown
     attributes:

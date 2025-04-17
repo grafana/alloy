@@ -1,6 +1,6 @@
 name: Proposal
 description: Propose a way to solve a problem.
-labels: ["proposal"]
+labels: ["proposal", "needs-triage"]
 body:
   - type: markdown
     attributes:
