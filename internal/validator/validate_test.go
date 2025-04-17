@@ -2,6 +2,7 @@ package validator
 
 import (
 	"bytes"
+	"flag"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -18,6 +19,9 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
 )
+
+// Set this flag to update snapshots e.g. `go test -v ./interal/validation/...` -fix-tests
+var fixTestsFlag = flag.Bool("fix-tests", false, "update the test files with the current generated content")
 
 const (
 	txtarSuffix = ".txtar"
@@ -51,13 +55,20 @@ func testDirectory(t *testing.T, dir string, minStability featuregate.Stability,
 				})
 
 				diagsFile := strings.TrimSuffix(path, txtarSuffix) + diagsSuffix
-				if !fileExists(diagsFile) {
-					f, createErr := os.Create(diagsFile)
-					require.NoError(t, createErr)
+
+				if *fixTestsFlag {
+					f, err := os.OpenFile(diagsFile, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
+					require.NoError(t, err)
 					if validateErr != nil {
 						Report(f, validateErr, sources)
 					}
+
 					require.NoError(t, f.Close())
+					t.Logf("updated diag file %s", diagsFile)
+				}
+
+				if !fileExists(diagsFile) {
+					t.Fatalf("no expected diags for %s - missing test expectations. run with -fix-tests to create missing and update existing diag files", path)
 				}
 
 				snapshot, err := os.ReadFile(diagsFile)
