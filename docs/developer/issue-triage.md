@@ -31,6 +31,7 @@ After an effort has been made to triage an issue, the issue should be in one of 
   * An issue is ready to implement or fix if the scope is well understood, and if it is an issue it should be replicatable
   * These issues should be tagged `bug`, `enhancement`, `type/docs`, or `flaky-test`
   * If the issue should be in the next release, it should be tagged `release-blocker`
+  * If an attempt is being made to internally prioritize the issue at Grafana, it should be tagged `backlog`. If there is a time or release commitment associated with this decision it should be in a comment on the issue.
   * If the issue is a good candidate for a first time contributor or another interested community member, it should be tagged `good first issue`
   * If the issue is a good candidate for a larger investment by an interested community member, it should be tagged `help wanted`
   * *These issues should no longer have the `needs-triage` label*
