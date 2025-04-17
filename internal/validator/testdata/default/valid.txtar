@@ -46,3 +46,13 @@ declare "self_collect" {
     forward_to = [argument.metrics_output.value]
   }
 }
+
+logging {
+
+}
+
+import.file "math" {
+  filename = "module.alloy"
+}
+
+math.add "default" {}

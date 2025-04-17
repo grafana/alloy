@@ -5,6 +5,20 @@ Error: main.alloy:5:1: block declare.self_collect already declared at main.alloy
   | ^^^^^^^^^^^^^^^^^^^^
 6 | 
 
+Error: main.alloy:8:1: block import.file.math already declared at main.alloy:7:1
+
+7 | import.file "math" {}
+8 | import.file "math" {}
+  | ^^^^^^^^^^^^^^^^
+9 | 
+
+Error: main.alloy:11:1: block logging already declared at main.alloy:10:1
+
+10 | logging {}
+11 | logging {}
+   | ^^^^^^^
+12 | 
+
 Error: main.alloy:2:1: block local.file_match.applogs already declared at main.alloy:1:1
 
 1 | local.file_match "applogs" {}

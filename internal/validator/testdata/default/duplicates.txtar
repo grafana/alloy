@@ -5,3 +5,9 @@ local.file_match "applogs" {}
 
 declare "self_collect" {}
 declare "self_collect" {}
+
+import.file "math" {}
+import.file "math" {}
+
+logging {}
+logging {}

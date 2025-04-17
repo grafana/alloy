@@ -52,9 +52,18 @@ func (v *validator) run() error {
 	}
 	var diags diag.Diagnostics
 
+	for _, c := range s.Configs() {
+		if c.Name[0] == "import" {
+			v.cr.registerCustomComponent(c)
+		}
+	}
+
 	// Need to validate declares first becuse we will register "custom" components.
 	declareDiags := v.validateDeclares(s.Declares())
 	diags = append(diags, declareDiags...)
+
+	configDiags := v.validateConfigs(s.Configs())
+	diags = append(diags, configDiags...)
 
 	components, _ := splitComponents(s.Components(), v.sm)
 
@@ -92,10 +101,33 @@ func (v *validator) validateDeclares(declares []*ast.BlockStmt) diag.Diagnostics
 			v.cr.registerCustomComponent(d)
 		}
 
-		// 2. Two of the same declare blocks cannot share label.
+		// 2. Declares need to be unique
 		if diag, ok := blockAlreadyDefined(mem, d); ok {
 			diags.Add(diag)
 		}
+	}
+
+	return diags
+}
+
+// validateConfigs will perform validation on config blocks.
+func (v *validator) validateConfigs(configs []*ast.BlockStmt) diag.Diagnostics {
+	var (
+		diags diag.Diagnostics
+		mem   = make(map[string]*ast.BlockStmt, len(configs))
+	)
+
+	for _, c := range configs {
+		// 1. Config blocks needs to be unique.
+		if diag, ok := blockAlreadyDefined(mem, c); ok {
+			diags.Add(diag)
+		}
+
+		if c.Name[0] == "import" {
+			// We need to register import blocks as a custom component.
+			v.cr.registerCustomComponent(c)
+		}
+
 	}
 
 	return diags
@@ -134,7 +166,7 @@ func (v *validator) validateComponents(components []*ast.BlockStmt) diag.Diagnos
 			continue
 		}
 
-		// 2. Two of the same component cannot share label.
+		// 3. Components need to be unique
 		if diag, ok := blockAlreadyDefined(mem, c); ok {
 			diags.Add(diag)
 		}

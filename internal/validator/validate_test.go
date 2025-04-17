@@ -39,7 +39,7 @@ func testDirectory(t *testing.T, dir string, minStability featuregate.Stability,
 			archive, err := txtar.ParseFile(path)
 			require.NoError(t, err)
 
-			t.Run(strings.TrimSuffix(string(archive.Comment), "\n"), func(t *testing.T) {
+			t.Run(strings.TrimSpace(string(archive.Comment)), func(t *testing.T) {
 				sources := make(map[string][]byte, len(archive.Files))
 				for _, f := range archive.Files {
 					sources[f.Name] = f.Data
