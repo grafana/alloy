@@ -24,8 +24,8 @@ After an effort has been made to triage an issue, the issue should be in one of 
     * An answer to the author's problem was proposed using existing functionality
   * These issues should be tagged `waiting-for-author` in addition to any other categorizing tags (`bug`, `enhancement`, etc)
 * Waiting for codeowner
-  * Some issues related to community components within Alloy will be dependent on the community maintainer of the component
-  * These issues should be tagged `waiting-for-codeowner`
+  * Some issues related to community components within Alloy will be dependent on the community maintainer of the component, and other issues may be dependent on codeowners of components that are not maintained by additional teams within Grafana (beyla, pyroscope, database_observability)
+  * These issues should be tagged `waiting-for-codeowner` in addition to any other triage that is initially possible
   * These issues should retain the `needs-triage` label until the codeowner has responded
 * Ready to implement/fix/document
   * An issue is ready to implement or fix if the scope is well understood, and if it is an issue it should be replicatable
@@ -42,12 +42,15 @@ After an effort has been made to triage an issue, the issue should be in one of 
     * based on discussion, the issue should be re-opened as a new `proposal` based on concensus in the issue comments
   * It's unlikely an issue will be closed after first triage, unless it doesn't meet community standards.
 
-### Additional labels
+### Stale issues
 
 The `needs-attention` label is applied to issues that are seen as stale in a github action.
 This includes issues that have not been interacted with in 90 days.
 Issues with the `needs-attention` label may be closed if they are not in an actionable state.  
+
 The `keepalive` label can be applied to exempt an issue or pull request from being marked as stale.
+
+### Additional labels
 
 There are a variety of other labels that can be applied to issues and pull requests to help provide context to the issue. Wherever possible, relevant labels should be applied.
 
