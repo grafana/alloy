@@ -100,7 +100,7 @@ For short secrets, at most half of the secret is shown.
 The `origin_label` argument specifies which Loki label value to use for the `secrets_redacted_by_origin` metric.
 This metric tracks how many secrets were redacted in logs from different sources or environments.
 
-[embedded-config]: https://github.com/grafana/alloy/blob/{{< param "ALLOY_RELEASE" >}}/internal/component/loki/secretfilter/gitleaks.toml
+[embedded-config]: https://github.com/grafana/alloy/blob/{{< param "LOKI_SECRET_FILTER_CONFIG_VERSION" >}}/internal/component/loki/secretfilter/gitleaks.toml
 
 ## Blocks
 
