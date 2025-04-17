@@ -41,7 +41,7 @@ You can use the following arguments with `otelcol.receiver.filelog`:
 | `poll_interval`                 | `time.Duration`     | The interval at which the file is polled for new entries.                                  | `200ms`     | no       |
 | `max_concurrent_files`          | `int`               | The maximum number of files to read concurrently.                                          | `10`        | no       |
 | `max_batches`                   | `int`               | The maximum number of batches to process concurrently.                                     | `10`        | no       |
-| `start_at`                      | `string`            | The position to start reading the file from.                                               | `beginning` | no       |
+| `start_at`                      | `string`            | The position to start reading the file from.                                               | `end`       | no       |
 | `fingerprint_size`              | `units.Base2Bytes`  | The size of the fingerprint used to detect file changes.                                   | `1KiB`      | no       |
 | `max_log_size`                  | `units.Base2Bytes`  | The maximum size of a log entry.                                                           | `1MiB`      | no       |
 | `encoding`                      | `string`            | The encoding of the log file.                                                              | `utf-8`     | no       |
