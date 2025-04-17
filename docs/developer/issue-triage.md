@@ -29,15 +29,17 @@ After an effort has been made to triage an issue, the issue should be in one of 
   * These issues should retain the `needs-triage` label until the codeowner has responded
 * Ready to implement/fix/document
   * An issue is ready to implement or fix if the scope is well understood, and if it is an issue it should be replicatable
-  * These issues should be tagged `bug`, `enhancement`, `type/docs`, `flaky-test`
+  * These issues should be tagged `bug`, `enhancement`, `type/docs`, or `flaky-test`
   * If the issue should be in the next release, it should be tagged `release-blocker`
   * If the issue is a good candidate for a first time contributor or another interested community member, it should be tagged `good first issue`
+  * If the issue is a good candidate for a larger investment by an interested community member, it should be tagged `help wanted`
   * *These issues should no longer have the `needs-triage` label*
 * Closed
   * An issue might be closed after triage if
-    * a solution was offered, tagged `waiting-for-author`, and the author confirms their need was met
+    * a solution was offered, the issue was labelled `waiting-for-author`, and the author confirmed their need was met
     * there is an existing duplicate issue with sufficient context to resolve the issue
-    * the issue was already solved (there will be a duplicate closed issue in most cases)
+    * the issue was already solved (there should be a duplicate closed issue in most cases, link to it)
+    * based on discussion, the issue should be re-opened as a new `proposal` based on concensus in the issue comments
   * It's unlikely an issue will be closed after first triage, unless it doesn't meet community standards.
 
 ### Additional labels
@@ -45,16 +47,17 @@ After an effort has been made to triage an issue, the issue should be in one of 
 The `needs-attention` label is applied to issues that are seen as stale in a github action.
 This includes issues that have not been interacted with in 90 days.
 Issues with the `needs-attention` label may be closed if they are not in an actionable state.  
-The `keepalive` label can be applied to exempt an issue or PR from being marked as stale.
+The `keepalive` label can be applied to exempt an issue or pull request from being marked as stale.
 
 There are a variety of other labels that can be applied to issues and pull requests to help provide context to the issue. Wherever possible, relevant labels should be applied.
 
-The `component-request` label can help identify requests for new components.  
-The `os:windows` should be used when changes are relevant to the Windows OS, as it will trigger the full suite of tests on Windows.
-At this time there are not other OS-based labels.
-The `area/ui`, `area/pyroscope`, etc.  
-Component labels like `component/prometheus.remote_write` should be applied whenever possible. These should be generated from a github action, and should not need to be created manually.  
-The `v2.0-breaking-change` label may be applied if the issue represents a breaking change that will need to be delayed until Alloy v2.x.  
+* The `component-request` label can help identify requests for new components.
+* The `os:windows` should be used when changes are relevant to the Windows OS.
+Adding the label to a pull request will trigger the full suite of tests on Windows on a pull request.
+At this time there are no other OS-based labels.
+* There are various `dependencies` and language (`go`, `javascript`, etc) labels that may be applied by bots.
+* Component labels like `prometheus.remote_write` should be applied whenever possible. These labels should all be generated (but not automatically applied) by a github action.
+* The `v2.0-breaking-change` label may be applied if the issue represents a breaking change that will need to be delayed until Alloy v2.x.
 
 ## Community Members
 
