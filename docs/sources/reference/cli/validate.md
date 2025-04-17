@@ -33,8 +33,8 @@ The following flags are supported:
 
 ## Limitations
 
-Validation performed is limited in what it can check. Currently it will check:
+Validation performed is limited in what it can check. Currently it will check for:
 
 * Syntax errors.
-* Components exist.
-* Components are **unique** across all {{< param "PRODUCT_NAME" >}} configuration file and are not repeated.
+* Missing components.
+* Components name conflicts.
