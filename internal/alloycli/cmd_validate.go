@@ -1,6 +1,7 @@
 package alloycli
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -77,6 +78,7 @@ func (v *alloyValidate) Run(configFile string) error {
 		},
 	); err != nil {
 		validator.Report(os.Stderr, err, sources)
+		return errors.New("validation failed")
 	}
 
 	return nil
