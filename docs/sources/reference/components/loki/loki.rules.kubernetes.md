@@ -115,7 +115,7 @@ For example, `oauth2` > `tls_config` refers to a `tls_config` block defined insi
 
 The `extra_query_matchers` block has no attributes.
 It contains zero or more [matcher][] blocks.
-These blocks allow you to add extra label matchers to all queries that are discovered by `mimir.rules.kubernetes` component.
+These blocks allow you to add extra label matchers to all queries that are discovered by the `loki.rules.kubernetes` component.
 The algorithm of adding the label matchers to queries is the same as the one provided by the [`promtool promql label-matchers set` command](https://prometheus.io/docs/prometheus/latest/command-line/promtool/#promtool-promql).
 
 ### `matcher`
