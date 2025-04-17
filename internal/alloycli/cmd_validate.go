@@ -28,7 +28,7 @@ func validateCommand() *cobra.Command {
 		Use:          "validate [flags] file",
 		Short:        "Validate a configuration file",
 		Long:         ``,
-		Args:         cobra.RangeArgs(0, 1),
+		Args:         cobra.ExactArgs(1),
 		SilenceUsage: true,
 		RunE: func(_ *cobra.Command, args []string) error {
 			return v.Run(args[0])
