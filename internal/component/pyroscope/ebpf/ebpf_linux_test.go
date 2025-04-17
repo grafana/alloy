@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -26,11 +27,11 @@ import (
 )
 
 type mockSession struct {
-	options      ebpfspy.SessionOptions
-	collectError error
-	collected    int
-	data         [][]string
-	dataTarget   *sd.Target
+	options         ebpfspy.SessionOptions
+	collectCallback func() error
+	collected       int
+	data            [][]string
+	dataTarget      *sd.Target
 }
 
 func (m *mockSession) Start() error {
@@ -52,8 +53,8 @@ func (m *mockSession) UpdateTargets(_ sd.TargetsOptions) {
 
 func (m *mockSession) CollectProfiles(f pprof.CollectProfilesCallback) error {
 	m.collected++
-	if m.collectError != nil {
-		return m.collectError
+	if m.collectCallback != nil {
+		return m.collectCallback()
 	}
 	for _, stack := range m.data {
 		f(
@@ -104,7 +105,7 @@ func (m *mockSession) DebugInfo() interface{} {
 	}
 }
 
-func TestShutdownOnError(t *testing.T) {
+func TestTargetUpdatesWithLongCollection(t *testing.T) {
 	logger := util.TestAlloyLogger(t)
 	ms := newMetrics(nil)
 	targetFinder, err := sd.NewTargetFinder(os.DirFS("/foo"), logger, sd.TargetsOptions{
@@ -126,9 +127,90 @@ func TestShutdownOnError(t *testing.T) {
 		ms,
 	)
 
-	session.collectError = fmt.Errorf("mocked error collecting profiles")
-	err = c.Run(t.Context())
-	require.Error(t, err)
+	collection := make(chan struct{})
+
+	// simulate a long collection
+	session.collectCallback = func() error {
+		<-collection
+		return nil
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	ctx, cancel := context.WithCancel(t.Context())
+	go func() {
+		err = c.Run(ctx)
+		require.NoError(t, err)
+		wg.Done()
+	}()
+
+	// now schedule 3 updates
+	c.Update(arguments)
+	c.Update(arguments)
+	c.Update(arguments)
+	argX := NewDefaultArguments()
+	argX.SampleRate = 1234
+	c.Update(argX)
+
+	// unblock the collection
+	close(collection)
+
+	// wait for the session to be updated
+	require.Eventually(t, func() bool {
+		return session.options.SampleRate == 1234
+	}, time.Second*1, time.Millisecond*10)
+
+	cancel()
+	wg.Wait()
+}
+
+func TestReportingCollectError(t *testing.T) {
+	logger := util.TestAlloyLogger(t)
+	ms := newMetrics(nil)
+	targetFinder, err := sd.NewTargetFinder(os.DirFS("/foo"), logger, sd.TargetsOptions{
+		ContainerCacheSize: 1024,
+	})
+	require.NoError(t, err)
+	session := &mockSession{}
+	arguments := NewDefaultArguments()
+	arguments.CollectInterval = time.Millisecond * 100
+	c := newTestComponent(
+		component.Options{
+			Logger:        logger,
+			Registerer:    prometheus.NewRegistry(),
+			OnStateChange: func(e component.Exports) {},
+		},
+		arguments,
+		session,
+		targetFinder,
+		ms,
+	)
+
+	session.collectCallback = func() error { return fmt.Errorf("mocked error collecting profiles") }
+	var wg sync.WaitGroup
+	wg.Add(1)
+	ctx, cancel := context.WithCancel(t.Context())
+	go func() {
+		err = c.Run(ctx)
+		require.NoError(t, err)
+		wg.Done()
+	}()
+
+	// expect the component to be unhealthy
+	require.Eventually(t, func() bool {
+		if c.CurrentHealth().Health == component.HealthTypeUnhealthy {
+			require.Equal(t, c.CurrentHealth().Message, "ebpf session collectProfiles mocked error collecting profiles")
+			return true
+		}
+		return false
+	}, time.Second*1, time.Millisecond*10)
+
+	// the component should still be handling update requests
+	err = c.Update(arguments)
+	require.NoError(t, err)
+
+	cancel()
+	wg.Wait()
 }
 
 func TestContextShutdown(t *testing.T) {
