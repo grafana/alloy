@@ -51,6 +51,8 @@ Main (unreleased)
 
 - Updated Windows install script to add DisplayVersion into registry on install (@enessene)
 
+- Only use labelstore cache if `prometheus.remote_write` is enabled. (@mattdurham)
+
 v1.8.1
 -----------------
 
