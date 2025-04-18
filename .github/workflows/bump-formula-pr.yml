@@ -2,6 +2,7 @@ name: bump-formula-pr
 on:
   release:
     types: [released]
+  pull_request:
 
 jobs:
   homebrew-grafana:
@@ -12,7 +13,7 @@ jobs:
       id: app-token
       with:
         app-id: ${{ secrets.ALLOYBOT_APP_ID }}
-        private-key: ${{ secrets.ALLOYBOT_PRIVATE_KEY }}
+        private-key: ${{ secrets.ALLOYBOT_PRIVATE_KEY_2 }}
         owner: grafana
         repositories: alloy,homebrew-grafana
 
@@ -31,23 +32,42 @@ jobs:
         repository: "${{ github.repository }}"
         type: "stable"
 
-    - name: Setup Homebrew
-      uses: Homebrew/actions/setup-homebrew@4a509e36a728d1c8e147158247eb0446838a8d63 # master
-      with:
-        token: ${{ steps.app-token.outputs.token }}
-
-    - name: Tap Grafana formula repository
-      run: brew tap grafana/grafana
-
     - name: Update Homebrew formula
-      if: 'steps.latest_release.outputs.release_id == github.event.release.id'
-      run: |
-        brew bump-formula-pr \
-          --no-browse \
-          --no-audit \
-          --no-fork \
-          --url https://github.com/grafana/alloy/archive/refs/tags/${{ github.ref_name }}.tar.gz \
-          grafana/grafana/alloy
+      # if: 'steps.latest_release.outputs.release_id == github.event.release.id'
+      uses: dawidd6/action-homebrew-bump-formula@v4
+      with:
+        # Required, custom GitHub access token with the 'public_repo' and 'workflow' scopes
+        token: ${{ steps.app-token.outputs.token }}
+        # Optional, defaults to homebrew/core
+        tap: grafana/grafana
+        # Formula name, required
+        formula: alloy
+        # Optional, will be determined automatically
+        # tag: ${{github.ref}}
+        tag: v1.8.2
+        # Optional, will be determined automatically
+        # revision: ${{github.sha}}
+        revision: 14b3fa4
+        # Optional, if don't want to check for already open PRs
+        force: false # true
+        user_name: grafana-alloybot[bot]
+        user_email: 879451+grafana-alloybot[bot]@users.noreply.github.com
       env:
         HOMEBREW_DEVELOPER: "1"
         HOMEBREW_GITHUB_API_TOKEN: ${{ steps.app-token.outputs.token }}
+  
+    # - name: Update Homebrew formula
+    #   # if: 'steps.latest_release.outputs.release_id == github.event.release.id'
+    #   run: |
+    #     brew bump-formula-pr \
+    #       --no-browse \
+    #       --no-audit \
+    #       --no-fork \
+    #       --dry-run \
+    #       --verbose \
+    #       --debug \
+    #       --url https://github.com/grafana/alloy/archive/refs/tags/v1.7.0.tar.gz \
+    #       grafana/grafana/alloy
+    #   env:
+    #     HOMEBREW_DEVELOPER: "1"
+    #     HOMEBREW_GITHUB_API_TOKEN: ${{ steps.app-token.outputs.token }}
