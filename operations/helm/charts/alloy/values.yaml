@@ -34,6 +34,8 @@ alloy:
     create: true
     # -- Content to assign to the new ConfigMap.  This is passed into `tpl` allowing for templating from values.
     content: ''
+    # -- Create a `checksum/config` pod annotation with sha256sum of the `content`.
+    checksum: true
 
     # -- Name of existing ConfigMap to use. Used when create is false.
     name: null
