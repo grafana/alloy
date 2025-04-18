@@ -65,7 +65,7 @@ type Component struct {
 	namespaceSelector labels.Selector
 	ruleSelector      labels.Selector
 
-	currentState commonK8s.RuleGroupsByNamespace
+	currentState commonK8s.PrometheusRuleGroupsByNamespace
 
 	metrics   *metrics
 	healthMut sync.RWMutex
