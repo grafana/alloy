@@ -17,5 +17,7 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - uses: grafana/writers-toolkit/publish-technical-documentation@publish-technical-documentation/v1
+        # ^ This action's version is left as a tag instead of a pinned hash because renovate does
+        # not support this type of tag/version format without custom configuration.
         with:
           website_directory: content/docs/alloy/next
