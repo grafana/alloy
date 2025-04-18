@@ -12,11 +12,6 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/grafana/alloy/internal/build"
-	"github.com/grafana/alloy/internal/static/integrations"
-	"github.com/grafana/alloy/internal/static/integrations/config"
-	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
-	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/statsd_exporter/pkg/address"
@@ -29,6 +24,12 @@ import (
 	"github.com/prometheus/statsd_exporter/pkg/mappercache/randomreplacement"
 	"github.com/prometheus/statsd_exporter/pkg/relay"
 	"gopkg.in/yaml.v2"
+
+	"github.com/grafana/alloy/internal/build"
+	"github.com/grafana/alloy/internal/static/integrations"
+	"github.com/grafana/alloy/internal/static/integrations/config"
+	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
+	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
 )
 
 // DefaultConfig holds the default settings for the statsd_exporter integration.
@@ -88,9 +89,8 @@ func (c *Config) Name() string {
 	return "statsd_exporter"
 }
 
-// InstanceKey returns the hostname:port of the agent.
-func (c *Config) InstanceKey(agentKey string) (string, error) {
-	return agentKey, nil
+func (c *Config) InstanceKey(defaultKey string) (string, error) {
+	return defaultKey, nil
 }
 
 // NewIntegration converts this config into an instance of an integration.
