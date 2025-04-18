@@ -18,6 +18,8 @@ Main (unreleased)
 
 - Add support to configure basic authentication for alloy http server. (@kalleep)
 
+- Add `validate` command to alloy that will perform limited validation of alloy configuration files. (@kalleep)
+
 ### Enhancements
 
 - Add binary version to constants exposed in configuration file syntatx. (@adlots)

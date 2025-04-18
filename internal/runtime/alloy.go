@@ -319,9 +319,9 @@ func (f *Runtime) LoadSource(source *Source, args map[string]any, configPath str
 	}
 	return f.applyLoaderConfig(controller.ApplyOptions{
 		Args:            args,
-		ComponentBlocks: source.components,
-		ConfigBlocks:    source.configBlocks,
-		DeclareBlocks:   source.declareBlocks,
+		ComponentBlocks: source.Components(),
+		ConfigBlocks:    source.Configs(),
+		DeclareBlocks:   source.Declares(),
 		ArgScope: vm.NewScope(map[string]interface{}{
 			importsource.ModulePath: modulePath,
 		}),
@@ -332,9 +332,9 @@ func (f *Runtime) LoadSource(source *Source, args map[string]any, configPath str
 func (f *Runtime) loadSource(source *Source, args map[string]any, customComponentRegistry *controller.CustomComponentRegistry) error {
 	return f.applyLoaderConfig(controller.ApplyOptions{
 		Args:                    args,
-		ComponentBlocks:         source.components,
-		ConfigBlocks:            source.configBlocks,
-		DeclareBlocks:           source.declareBlocks,
+		ComponentBlocks:         source.Components(),
+		ConfigBlocks:            source.Configs(),
+		DeclareBlocks:           source.Declares(),
 		CustomComponentRegistry: customComponentRegistry,
 		ArgScope:                customComponentRegistry.Scope(),
 	})

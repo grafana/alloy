@@ -1,0 +1,5 @@
+missing component
+-- main.alloy --
+local.missing "applogs" {
+    path_targets = [{"__path__" = "/tmp/app-logs/app.log"}]
+}
