@@ -7,7 +7,6 @@ menuTitle: foreach
 title: foreach
 ---
 
-
 # foreach
 
 {{< docs/shared lookup="stability/experimental_feature.md" source="alloy" version="<ALLOY_VERSION>" >}}
@@ -30,16 +29,45 @@ foreach "<LABEL>" {
 
 You can use the following arguments with `foreach`:
 
-Name             | Type        | Description                                                                              | Default | Required
------------------|-------------|------------------------------------------------------------------------------------------|---------|---------
-`collection`     | `list(any)` | A list of items to loop over.                                                            |         | yes
-`var`            | `string`    | Name of the variable referring to the current item in the collection.                    |         | yes
-`enable_metrics` | `bool`      | Whether to expose debug metrics in the {{< param "PRODUCT_NAME" >}} `/metrics` endpoint. | `false` | no
+| Name             | Type        | Description                                                                              | Default | Required |
+| ---------------- | ----------- | ---------------------------------------------------------------------------------------- | ------- | -------- |
+| `collection`     | `list(any)` | A list of items to loop over.                                                            |         | yes      |
+| `var`            | `string`    | Name of the variable referring to the current item in the collection.                    |         | yes      |
+| `enable_metrics` | `bool`      | Whether to expose debug metrics in the {{< param "PRODUCT_NAME" >}} `/metrics` endpoint. | `false` | no       |
+| `id`             | `string`    | Name of the field to use from collection items for child component's identification.     | `""`    | no       |
 
 The items in the `collection` list can be of any type [type][types], such as a bool, a string, a list, or a map.
 
 {{< admonition type="warning" >}}
 Setting `enable_metrics` to `true` when `collection` has lots of elements may cause a large number of metrics to appear on the {{< param "PRODUCT_NAME" >}} `/metric` endpoint.
+{{< /admonition >}}
+
+{{< admonition type="note" >}}
+When `id` is set and `enable_metrics` is true, component paths in metrics will use the value of the specified field from collection items instead of a hash of the entire item. For example:
+
+```alloy
+foreach "pods" {
+    collection = [
+        { namespace = "prod", name = "app-1" },
+        { namespace = "dev", name = "app-1" },
+        { namespace = "prod", name = "app-2" }
+    ]
+    var = "each"
+    id = "name"
+    enable_metrics = true
+    template { ... }
+}
+```
+
+This will result in component paths like:
+
+```
+/foreach.pods/foreach_app-1_1/component.default
+/foreach.pods/foreach_app-1_2/component.default
+/foreach.pods/foreach_app-2_1/component.default
+```
+
+If the collection item is not a object or the specified field doesn't exist, it falls back to using the entire item for identification.
 {{< /admonition >}}
 
 [types]: ../../../get-started/configuration-syntax/expressions/types_and_values
@@ -48,9 +76,9 @@ Setting `enable_metrics` to `true` when `collection` has lots of elements may ca
 
 You can use the following blocks with `foreach`:
 
-Block        | Description                  | Required
---------------|------------------------------|---------
-[template][] | A component pipeline to run. | yes
+| Block        | Description                  | Required |
+| ------------ | ---------------------------- | -------- |
+| [template][] | A component pipeline to run. | yes      |
 
 [template]: #template
 
@@ -72,6 +100,7 @@ For example, `prometheus.exporter.redis` has a `redis_addr` attribute for the Re
 On the other hand, `discovery.*` components such as `discovery.kubernetes` output a list of targets such as this:
 
 {{< collapse title="Example targets output by `discovery.kubernetes`" >}}
+
 ```json
 [
     {
@@ -124,6 +153,7 @@ On the other hand, `discovery.*` components such as `discovery.kubernetes` outpu
     }
 ]
 ```
+
 {{< /collapse >}}
 
 You can use a `foreach` to loop over each target and start a separate component pipeline for it.
@@ -195,6 +225,5 @@ prometheus.remote_write "mimir" {
 
 Replace the following:
 
-* _`<PROMETHEUS_USERNAME>`_: Your Prometheus username.
-* _`<GRAFANA_CLOUD_API_KEY>`_: Your Grafana Cloud API key.
-
+- _`<PROMETHEUS_USERNAME>`_: Your Prometheus username.
+- _`<GRAFANA_CLOUD_API_KEY>`_: Your Grafana Cloud API key.

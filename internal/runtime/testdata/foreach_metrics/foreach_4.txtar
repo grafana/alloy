@@ -1,4 +1,4 @@
-This test uses objects in collection with use of id attribute using collection object's field.
+This test uses objects in collection with id attribute using object's field.
 
 -- main.alloy --
 foreach "testForeach" {

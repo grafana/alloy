@@ -41,6 +41,8 @@ Main (unreleased)
 
 - Pretty print diagnostic errors when using `alloy run` (@kalleep)
 
+-  Add optional `id` field to `foreach` block to generate more meaningful component paths in metrics by using a specific field from collection items. (@harshrai654)
+  
 ### Bugfixes
 
 - Fix `otelcol.receiver.filelog` documentation's default value for `start_at`. (@petewall)
