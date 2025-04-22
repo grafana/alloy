@@ -14,8 +14,7 @@ title: beyla.ebpf
 The `beyla.ebpf` component uses Grafana Beyla version {{< param "BEYLA_VERSION" >}}.
 {{< /admonition >}}
 
-
-The `beyla.ebpf` component is a wrapper for [Grafana Beyla][] which uses [eBPF][] to automatically inspect application executables and the OS networking layer, and capture trace spans related to web transactions and Rate Errors Duration (RED) metrics for Linux HTTP/S and gRPC services.
+The `beyla.ebpf` component is a wrapper for [Grafana Beyla][] which uses [eBPF][[eBPF website]] to automatically inspect application executables and the OS networking layer, and capture trace spans related to web transactions and Rate Errors Duration (RED) metrics for Linux HTTP/S and gRPC services.
 You can configure the component to collect telemetry data from a specific port or executable path, and other criteria from Kubernetes metadata.
 The component exposes metrics that can be collected by a Prometheus scrape component, and traces that can be forwarded to an OTel exporter component.
 
@@ -73,7 +72,7 @@ You can use the following blocks with `beyla.ebpf`:
 | [`routes`][routes]                                                     | Configures the routes to match HTTP paths into user-provided HTTP routes.                          | no       |
 
 The > symbol indicates deeper levels of nesting.
-For example,`attributes` > `kubernetes` refers to a `kubernetes` block defined inside an `attributes` block.
+For example, `attributes` > `kubernetes` refers to a `kubernetes` block defined inside an `attributes` block.
 
 [routes]: #routes
 [attributes]: #attributes
@@ -238,7 +237,7 @@ If the executable matches only one of the ports in the list, it's considered to 
 
 #### `default_exclude_services`
 
-The `default_exclude_services` is special services block that disables instrumentation of Grafana Alloy. The default value for `exe_path` is `"(?:^|\/)(beyla$|alloy$|otelcol[^\/]*$)"`. 
+The `default_exclude_services` is special services block that disables instrumentation of Grafana Alloy. The default value for `exe_path` is `"(?:^|\/)(beyla$|alloy$|otelcol[^\/]*$)"`.
 Set to empty to allow Alloy to instrument itself as well as these other components.
 
 #### `kubernetes` services
@@ -271,7 +270,7 @@ The `ebpf` block configures eBPF-specific settings.
 | `heuristic_sql_detect`        | `bool`        | Enable heuristic-based detection of SQL requests.                         | `false` | no       |
 | `trace_printer`              | `string`      | Format for printing trace information. | `"disabled"` | no |
 
-`enable_context_propagation` enables context propagation using Linux Traffic Control probes. 
+`enable_context_propagation` enables context propagation using Linux Traffic Control probes.
 For more information about this topic, refer to [Distributed traces with Beyla][].
 
 `trace_printer` is used to print the trace information in a specific format. The following formats are supported:
@@ -322,14 +321,14 @@ Example:
 
 ```alloy
 filters {
-	application {
-	  attr = "url.path"
-	  match = "/user/*"
-	}
-	network {
-	  attr = "k8s.src.owner.name"
-	  match = "*"
-	}
+  application {
+    attr = "url.path"
+    match = "/user/*"
+  }
+  network {
+    attr = "k8s.src.owner.name"
+    match = "*"
+  }
 }
 ```
 
@@ -337,11 +336,11 @@ filters {
 
 The `metrics` block configures which metrics Beyla collects.
 
-| Name                                   | Type           | Description                                                           | Default           | Required |
-| -------------------------------------- | -------------- | --------------------------------------------------------------------- | ----------------- | -------- |
-| `features`                             | `list(string)` | List of features to enable for the metrics.                           | `["application"]` | no       |
-| `instrumentations`                     | `list(string)` | List of instrumentations to enable for the metrics.                   | `["*"]`           | no       |
-| `allow_service_graph_self_references`  | `bool`        | Allow service graph metrics to reference the same service.            | `false`           | no       |
+| Name                                  | Type           | Description                                                | Default           | Required |
+| ------------------------------------- | -------------- | ---------------------------------------------------------- | ----------------- | -------- |
+| `allow_service_graph_self_references` | `bool`         | Allow service graph metrics to reference the same service. | `false`           | no       |
+| `features`                            | `list(string)` | List of features to enable for the metrics.                | `["application"]` | no       |
+| `instrumentations`                    | `list(string)` | List of instrumentations to enable for the metrics.        | `["*"]`           | no       |
 
 `features` is a list of features to enable for the metrics. The following features are available:
 
@@ -549,8 +548,7 @@ Replace the following:
 * _`<OTLP_ENDPOINT>`_: The endpoint of the OpenTelemetry Collector to send traces to.
 
 [Grafana Beyla]: https://github.com/grafana/beyla
-[eBPF]: https://ebpf.io/
-[Beyla capabilities]: /docs/beyla/latest/security/
+[eBPF website]: https://ebpf.io/
 [in-memory traffic]: ../../../../get-started/component_controller/#in-memory-traffic
 [run command]: ../../../cli/run/
 [scrape]: ../../prometheus/prometheus.scrape/
