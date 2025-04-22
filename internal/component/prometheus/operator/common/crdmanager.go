@@ -4,15 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	promk8s "github.com/prometheus/prometheus/discovery/kubernetes"
 	"sort"
 	"strings"
 	"sync"
 	"time"
 
+	promk8s "github.com/prometheus/prometheus/discovery/kubernetes"
+
 	"github.com/go-kit/log"
 	"github.com/grafana/ckit/shard"
 	promopv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	promopv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/discovery"
@@ -37,9 +39,6 @@ import (
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/util"
 )
-
-// Generous timeout period for configuring all informers
-const informerSyncTimeout = 10 * time.Second
 
 type crdManagerInterface interface {
 	Run(ctx context.Context) error
@@ -91,11 +90,12 @@ const (
 	KindPodMonitor     string = "podMonitor"
 	KindServiceMonitor string = "serviceMonitor"
 	KindProbe          string = "probe"
+	KindScrapeConfig   string = "scrapeConfig"
 )
 
 func newCrdManager(opts component.Options, cluster cluster.Cluster, logger log.Logger, args *operator.Arguments, kind string, ls labelstore.LabelStore) *crdManager {
 	switch kind {
-	case KindPodMonitor, KindServiceMonitor, KindProbe:
+	case KindPodMonitor, KindServiceMonitor, KindProbe, KindScrapeConfig:
 	default:
 		panic(fmt.Sprintf("Unknown kind for crdManager: %s", kind))
 	}
@@ -144,7 +144,7 @@ func (c *crdManager) Run(ctx context.Context) error {
 	// Start prometheus scrape manager.
 	alloyAppendable := prometheus.NewFanout(c.args.ForwardTo, c.opts.ID, c.opts.Registerer, c.ls)
 	opts := &scrape.Options{}
-	c.scrapeManager, err = scrape.NewManager(opts, c.logger, alloyAppendable, unregisterer)
+	c.scrapeManager, err = scrape.NewManager(opts, c.logger, nil, alloyAppendable, unregisterer)
 	if err != nil {
 		return fmt.Errorf("creating scrape manager: %w", err)
 	}
@@ -194,6 +194,9 @@ func (c *crdManager) ClusteringUpdated() {
 // TODO: merge this code with the code in prometheus.scrape. This is a copy of that code, mostly because
 // we operate on slightly different data structures.
 func filterTargets(m map[string][]*targetgroup.Group, c cluster.Cluster) map[string][]*targetgroup.Group {
+	if !c.Ready() { // if cluster not ready, we don't take any traffic locally
+		return make(map[string][]*targetgroup.Group)
+	}
 	// the key in the map is the job name.
 	// the targetGroups have zero or more targets inside them.
 	// we should keep the same structure even when there are no targets in a group for this node to scrape,
@@ -271,6 +274,7 @@ func (c *crdManager) runInformers(restConfig *rest.Config, ctx context.Context) 
 	scheme := runtime.NewScheme()
 	for _, add := range []func(*runtime.Scheme) error{
 		promopv1.AddToScheme,
+		promopv1alpha1.AddToScheme,
 	} {
 		if err := add(scheme); err != nil {
 			return fmt.Errorf("unable to register scheme: %w", err)
@@ -329,11 +333,13 @@ func (c *crdManager) configureInformers(ctx context.Context, informers cache.Inf
 		prototype = &promopv1.ServiceMonitor{}
 	case KindProbe:
 		prototype = &promopv1.Probe{}
+	case KindScrapeConfig:
+		prototype = &promopv1alpha1.ScrapeConfig{}
 	default:
 		return fmt.Errorf("unknown kind to configure Informers: %s", c.kind)
 	}
 
-	informerCtx, cancel := context.WithTimeout(ctx, informerSyncTimeout)
+	informerCtx, cancel := context.WithTimeout(ctx, c.args.InformerSyncTimeout)
 	defer cancel()
 
 	informer, err := informers.GetInformer(informerCtx, prototype)
@@ -364,6 +370,12 @@ func (c *crdManager) configureInformers(ctx context.Context, informers cache.Inf
 			AddFunc:    c.onAddProbe,
 			UpdateFunc: c.onUpdateProbe,
 			DeleteFunc: c.onDeleteProbe,
+		}), resync)
+	case KindScrapeConfig:
+		_, err = informer.AddEventHandlerWithResyncPeriod((toolscache.ResourceEventHandlerFuncs{
+			AddFunc:    c.onAddScrapeConfig,
+			UpdateFunc: c.onUpdateScrapeConfig,
+			DeleteFunc: c.onDeleteScrapeConfig,
 		}), resync)
 	default:
 		return fmt.Errorf("unknown kind to configure Informers: %s", c.kind)
@@ -572,6 +584,59 @@ func (c *crdManager) onUpdateProbe(oldObj, newObj interface{}) {
 
 func (c *crdManager) onDeleteProbe(obj interface{}) {
 	pm := obj.(*promopv1.Probe)
+	c.clearConfigs(pm.Namespace, pm.Name)
+	if err := c.apply(); err != nil {
+		level.Error(c.logger).Log("name", pm.Name, "err", err, "msg", "error applying scrape configs after deleting "+c.kind)
+	}
+}
+
+func (c *crdManager) addScrapeConfig(pm *promopv1alpha1.ScrapeConfig) {
+	var err error
+	gen := configgen.ConfigGenerator{
+		Secrets:                  configgen.NewSecretManager(c.client),
+		Client:                   &c.args.Client,
+		AdditionalRelabelConfigs: c.args.RelabelConfigs,
+		ScrapeOptions:            c.args.Scrape,
+	}
+	mapKeys := []string{}
+	scrapeConfigs, errs := gen.GenerateScrapeConfigConfigs(pm)
+	objName := fmt.Sprintf("%s/%s", pm.Namespace, pm.Name)
+	for _, err := range errs {
+		level.Warn(c.logger).Log("msg", "error in scrape config", "source", objName, "err", err)
+	}
+	if len(errs) > 0 {
+		c.addDebugInfo(pm.Namespace, pm.Name, errors.Join(errs...))
+		if len(scrapeConfigs) == 0 {
+			return
+		}
+	}
+	c.mut.Lock()
+	for _, scrapeConfig := range scrapeConfigs {
+		mapKeys = append(mapKeys, scrapeConfig.JobName)
+		c.discoveryConfigs[scrapeConfig.JobName] = scrapeConfig.ServiceDiscoveryConfigs
+		c.scrapeConfigs[scrapeConfig.JobName] = scrapeConfig
+	}
+	c.crdsToMapKeys[objName] = mapKeys
+	c.mut.Unlock()
+	if err = c.apply(); err != nil {
+		level.Error(c.logger).Log("name", pm.Name, "err", err, "msg", "error applying scrape configs from "+c.kind)
+	}
+	c.addDebugInfo(pm.Namespace, pm.Name, err)
+}
+
+func (c *crdManager) onAddScrapeConfig(obj interface{}) {
+	pm := obj.(*promopv1alpha1.ScrapeConfig)
+	level.Info(c.logger).Log("msg", "found scrape config", "name", pm.Name)
+	c.addScrapeConfig(pm)
+}
+func (c *crdManager) onUpdateScrapeConfig(oldObj, newObj interface{}) {
+	pm := oldObj.(*promopv1alpha1.ScrapeConfig)
+	c.clearConfigs(pm.Namespace, pm.Name)
+	c.addScrapeConfig(newObj.(*promopv1alpha1.ScrapeConfig))
+}
+
+func (c *crdManager) onDeleteScrapeConfig(obj interface{}) {
+	pm := obj.(*promopv1alpha1.ScrapeConfig)
 	c.clearConfigs(pm.Namespace, pm.Name)
 	if err := c.apply(); err != nil {
 		level.Error(c.logger).Log("name", pm.Name, "err", err, "msg", "error applying scrape configs after deleting "+c.kind)

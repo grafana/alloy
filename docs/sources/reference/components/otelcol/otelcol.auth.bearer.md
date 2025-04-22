@@ -11,7 +11,7 @@ title: otelcol.auth.bearer
 `otelcol.auth.bearer` exposes a `handler` that can be used by other `otelcol`
 components to authenticate requests using bearer token authentication.
 
-This extension supports both server and client authentication.
+This component supports both server and client authentication.
 
 {{< admonition type="note" >}}
 `otelcol.auth.bearer` is a wrapper over the upstream OpenTelemetry Collector `bearertokenauth` extension.
@@ -39,6 +39,10 @@ Name     | Type     | Description                                      | Default
 
 When sending the token, the value of `scheme` is prepended to the `token` value.
 The string is then sent out as either a header (in case of HTTP) or as metadata (in case of gRPC).
+
+If you use a file to store the token, you can use `[local.file`][local.file] to retrieve the `token` value from the file.
+
+[local.file]: ../../local/local.file/
 
 ## Blocks
 
@@ -97,7 +101,7 @@ otelcol.auth.bearer "creds" {
 
 The example below configures [otelcol.exporter.otlphttp][] to use a bearer token authentication.
 
-If we assume that the value of the `API_KEY` environment variable is `SECRET_API_KEY`, then 
+If we assume that the value of the `API_KEY` environment variable is `SECRET_API_KEY`, then
 the `Authorization` HTTP header is set to `MyScheme SECRET_API_KEY`.
 
 ```alloy

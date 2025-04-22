@@ -2,7 +2,6 @@ package postgres
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter"
@@ -10,7 +9,6 @@ import (
 	"github.com/grafana/alloy/internal/static/integrations"
 	"github.com/grafana/alloy/internal/static/integrations/postgres_exporter"
 	"github.com/grafana/alloy/syntax/alloytypes"
-	"github.com/lib/pq"
 	config_util "github.com/prometheus/common/config"
 )
 
@@ -28,37 +26,6 @@ func init() {
 func createExporter(opts component.Options, args component.Arguments, defaultInstanceKey string) (integrations.Integration, string, error) {
 	a := args.(Arguments)
 	return integrations.NewIntegrationWithInstanceKey(opts.Logger, a.convert(opts.ID), defaultInstanceKey)
-}
-
-func parsePostgresURL(url string) (map[string]string, error) {
-	raw, err := pq.ParseURL(url)
-	if err != nil {
-		return nil, err
-	}
-
-	res := map[string]string{}
-
-	unescaper := strings.NewReplacer(`\'`, `'`, `\\`, `\`)
-
-	for _, keypair := range strings.Split(raw, " ") {
-		parts := strings.SplitN(keypair, "=", 2)
-		if len(parts) != 2 {
-			return nil, fmt.Errorf("unexpected keypair %s from pq", keypair)
-		}
-
-		key := parts[0]
-		value := parts[1]
-
-		// Undo all the transformations ParseURL did: remove wrapping
-		// quotes and then unescape the escaped characters.
-		value = strings.TrimPrefix(value, "'")
-		value = strings.TrimSuffix(value, "'")
-		value = unescaper.Replace(value)
-
-		res[key] = value
-	}
-
-	return res, nil
 }
 
 // DefaultArguments holds the default arguments for the prometheus.exporter.postgres

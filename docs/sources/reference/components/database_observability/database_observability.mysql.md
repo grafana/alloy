@@ -2,42 +2,54 @@
 canonical: https://grafana.com/docs/alloy/latest/reference/components/database_observability.mysql/
 description: Learn about database_observability.mysql
 title: database_observability.mysql
+labels:
+  stage: experimental
 ---
 
-<span class="badge docs-labels__stage docs-labels__item">Experimental</span>
-
-# database_observability.mysql
+# `database_observability.mysql`
 
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Usage
 
 ```alloy
-database_observability.mysql "LABEL" {
-  data_source_name = DATA_SOURCE_NAME
-  forward_to       = [LOKI_RECEIVERS]
+database_observability.mysql "<LABEL>" {
+  data_source_name = <DATA_SOURCE_NAME>
+  forward_to       = [<LOKI_RECEIVERS>]
 }
 ```
 
 ## Arguments
 
-The following arguments are supported:
+You can use the following arguments with `database_observability.mysql`:
 
-| Name                 | Type           | Description                                                                                                         | Default | Required |
-| -------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
-| `data_source_name` | `secret`             | [Data Source Name](https://github.com/go-sql-driver/mysql#dsn-data-source-name) for the MySQL server to connect to.                   |         | yes      |
-| `forward_to`       | `list(LogsReceiver)` | Where to forward log entries after processing.     |         | yes      |
-| `collect_interval` | `duration`           | How frequently to collect query samples from database | `"10s"` | no       |
+ Name                      | Type                 | Description                                                       | Default | Required 
+---------------------------|----------------------|-------------------------------------------------------------------|---------|----------
+ `data_source_name`        | `secret`             | [Data Source Name][] for the MySQL server to connect to.          |         | yes      
+ `forward_to`              | `list(LogsReceiver)` | Where to forward log entries after processing.                    |         | yes      
+ `collect_interval`        | `duration`           | How frequently to collect information from database.              | `"1m"`  | no       
+ `disable_query_redaction` | `bool`               | Collect unredacted sql query text including parameters.           | `false` | no       
+ `disable_collectors`      | `list(string)`       | A list of collectors to disable from the default set.             |         | no       
+ `enable_collectors`       | `list(string)`       | A list of collectors to enable on top of the default set.         |         | no       
+
+
+The following collectors are enabled by default:
+
+ Name           | Description                                           
+----------------|-------------------------------------------------------
+ `query_tables` | Collect query table information.
+ `schema_table` | Collect schemas and tables from `information_schema`. 
+ `query_sample` | Collect query samples.
 
 ## Blocks
 
-The `database_observability.mysql` component does not support any blocks, and is configured fully through arguments.
+The `database_observability.mysql` component doesn't support any blocks. You can configure this component with arguments.
 
 ## Example
 
 ```alloy
 database_observability.mysql "orders_db" {
-  data_source_name = "user:pass@mysql:3306/"
+  data_source_name = "user:pass@tcp(mysql:3306)/"
   forward_to = [loki.write.logs_service.receiver]
 }
 
@@ -49,24 +61,34 @@ prometheus.scrape "orders_db" {
 
 prometheus.remote_write "metrics_service" {
   endpoint {
-    url = sys.env("GCLOUD_HOSTED_METRICS_URL")
+    url = sys.env("<GRAFANA_CLOUD_HOSTED_METRICS_URL>")
     basic_auth {
-      username = sys.env("GCLOUD_HOSTED_METRICS_ID")
-      password = sys.env("GCLOUD_RW_API_KEY")
+      username = sys.env("<GRAFANA_CLOUD_HOSTED_METRICS_ID>")
+      password = sys.env("<GRAFANA_CLOUD_RW_API_KEY>")
     }
   }
 }
 
 loki.write "logs_service" {
   endpoint {
-    url = sys.env("GCLOUD_HOSTED_LOGS_URL")
+    url = sys.env("<GRAFANA_CLOUD_HOSTED_LOGS_URL>")
     basic_auth {
-      username = sys.env("GCLOUD_HOSTED_LOGS_ID")
-      password = sys.env("GCLOUD_RW_API_KEY")
+      username = sys.env("<GRAFANA_CLOUD_HOSTED_LOGS_ID>")
+      password = sys.env("<GRAFANA_CLOUD_RW_API_KEY>")
     }
   }
 }
 ```
+
+Replace the following:
+
+* _`<GRAFANA_CLOUD_HOSTED_METRICS_URL>`_: The URL for your Grafana Cloud hosted metrics.
+* _`<GRAFANA_CLOUD_HOSTED_METRICS_ID>`_: The user ID for your Grafana Cloud hosted metrics.
+* _`<GRAFANA_CLOUD_RW_API_KEY>`_: Your Grafana Cloud API key.
+* _`<GRAFANA_CLOUD_HOSTED_LOGS_URL>`_: The URL for your Grafana Cloud hosted logs.
+* _`<GRAFANA_CLOUD_HOSTED_LOGS_ID>`_: The user ID for your Grafana Cloud hosted logs.
+
+[Data Source Name]: https://github.com/go-sql-driver/mysql#dsn-data-source-name
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

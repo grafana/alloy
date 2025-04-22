@@ -17,10 +17,9 @@ The components you select and configure depend on the telemetry signals you want
 ## Metrics for infrastructure
 
 Use `prometheus.*` components to collect infrastructure metrics.
-This will give you the best experience with [Grafana Infrastructure Observability][].
+This gives you the best experience with [Grafana Infrastructure Observability][].
 
-For example, you can get metrics for a Linux host using `prometheus.exporter.unix`, 
-and metrics for a MongoDB instance using `prometheus.exporter.mongodb`. 
+For example, you can get metrics for a Linux host using `prometheus.exporter.unix`, and metrics for a MongoDB instance using `prometheus.exporter.mongodb`.
 
 You can also scrape any Prometheus endpoint using `prometheus.scrape`.
 Use `discovery.*` components to find targets for `prometheus.scrape`.
@@ -30,7 +29,7 @@ Use `discovery.*` components to find targets for `prometheus.scrape`.
 ## Metrics for applications
 
 Use `otelcol.receiver.*` components to collect application metrics.
-This will give you the best experience with [Grafana Application Observability][], which is OpenTelemetry-native.
+This gives you the best experience with [Grafana Application Observability][], which is OpenTelemetry-native.
 
 For example, use `otelcol.receiver.otlp` to collect metrics from OpenTelemetry-instrumented applications.
 
@@ -48,12 +47,12 @@ with logs collected by `loki.*` components.
 
 For example, the label that both `prometheus.*` and `loki.*` components would use for a Kubernetes namespace is called `namespace`.
 On the other hand, gathering logs using an `otelcol.*` component might use the [OpenTelemetry semantics][OTel-semantics] label called `k8s.namespace.name`,
-which wouldn't correspond to the `namespace` label that is common in the Prometheus ecosystem.
+which wouldn't correspond to the `namespace` label that's common in the Prometheus ecosystem.
 
 ## Logs from applications
 
 Use `otelcol.receiver.*` components to collect application logs.
-This will gather the application logs in an OpenTelemetry-native way, making it easier to 
+This gathers the application logs in an OpenTelemetry-native way, making it easier to
 correlate the logs with OpenTelemetry metrics and traces coming from the application.
 All application telemetry must follow the [OpenTelemetry semantic conventions][OTel-semantics], simplifying this correlation.
 
@@ -65,7 +64,7 @@ For example, if your application runs on Kubernetes, every trace, log, and metri
 
 Use `otelcol.receiver.*` components to collect traces.
 
-If your application is not yet instrumented for tracing, use `beyla.ebpf` to generate traces for it automatically.
+If your application isn't yet instrumented for tracing, use `beyla.ebpf` to generate traces for it automatically.
 
 ## Profiles
 

@@ -1,6 +1,6 @@
 services:
   grafana:
-    image: grafana/grafana:10.1.9
+    image: grafana/grafana:11.5.1
     restart: on-failure
     command:
       - --config=/etc/grafana-config/grafana.ini
@@ -10,11 +10,15 @@ services:
     ports:
       - "3000:3000"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/healthz"]
+      test: [ "CMD", "curl", "-f", "http://localhost:3000/healthz" ]
       interval: 1s
       start_interval: 0s
       timeout: 10s
       retries: 5
+    env_file:
+      # Use this optional env file to add any secrets required by data sources you can add to config/grafana/datasources
+      - path: ~/.grafana_dev_datasources
+        required: false
 
   install-dashboard-dependencies:
     build: images/jb
@@ -50,9 +54,11 @@ services:
         condition: service_completed_successfully
     environment:
       - GRAFANA_URL=http://grafana:3000
+      - MIMIR_ADDRESS=http://mimir:9009
+      - MIMIR_TENANT_ID=fake
     volumes:
       - ../operations/alloy-mixin:/etc/alloy-mixin
     working_dir: /etc/alloy-mixin
-    command: grr watch dashboards/ grizzly/dashboards.jsonnet
+    command: grr watch . ./grizzly.jsonnet
 
 

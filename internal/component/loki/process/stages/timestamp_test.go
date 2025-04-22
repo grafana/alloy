@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/util"
 )
 
@@ -44,7 +45,7 @@ var testTimestampLogLineWithMissingKey = `
 
 func TestTimestampPipeline(t *testing.T) {
 	logger := util.TestAlloyLogger(t)
-	pl, err := NewPipeline(logger, loadConfig(testTimestampAlloy), nil, prometheus.DefaultRegisterer)
+	pl, err := NewPipeline(logger, loadConfig(testTimestampAlloy), nil, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 	require.NoError(t, err)
 
 	out := processEntries(pl, newEntry(nil, nil, testTimestampLogLine, time.Now()))[0]
@@ -61,11 +62,11 @@ func TestPipelineWithMissingKey_Timestamp(t *testing.T) {
 	var buf bytes.Buffer
 	w := log.NewSyncWriter(&buf)
 	logger := log.NewLogfmtLogger(w)
-	pl, err := NewPipeline(logger, loadConfig(testTimestampAlloy), nil, prometheus.DefaultRegisterer)
+	pl, err := NewPipeline(logger, loadConfig(testTimestampAlloy), nil, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 	require.NoError(t, err)
 
 	_ = processEntries(pl, newEntry(nil, nil, testTimestampLogLineWithMissingKey, time.Now()))
-	expectedLog := fmt.Sprintf("level=debug msg=\"%s\" err=\"Can't convert <nil> to string\" type=null", ErrTimestampConversionFailed)
+	expectedLog := fmt.Sprintf("level=debug msg=\"%s\" err=\"can't convert <nil> to string\" type=null", ErrTimestampConversionFailed)
 	if !(strings.Contains(buf.String(), expectedLog)) {
 		t.Errorf("\nexpected: %s\n+actual: %s", expectedLog, buf.String())
 	}

@@ -23,5 +23,5 @@ The `max_interval` argument specifies the upper bound of how long to wait betwee
 The `randomization_factor` argument is useful for adding jitter between retrying Alloy instances.
 If `randomization_factor` is greater than `0`, the wait time before retries is multiplied by a random factor in the range `[ I - randomization_factor * I, I + randomization_factor * I]`, where `I` is the current interval.
 
-If a batch hasn't been sent successfully, it is discarded after the time specified by `max_elapsed_time` elapses.
+If a batch hasn't been sent successfully, it's discarded after the time specified by `max_elapsed_time` elapses.
 If `max_elapsed_time` is set to `"0s"`, failed requests are retried forever until they succeed.

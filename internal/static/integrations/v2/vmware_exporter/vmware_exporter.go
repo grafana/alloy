@@ -2,10 +2,12 @@ package vmware_exporter_v2
 
 import (
 	"fmt"
+	"log/slog"
 	"net/url"
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/static/integrations/v2"
 	"github.com/grafana/alloy/internal/static/integrations/v2/common"
 	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
@@ -86,7 +88,7 @@ func (c *Config) NewIntegration(log log.Logger, g integrations.Globals) (integra
 		ObjectDiscoveryInterval: c.ObjectDiscoveryInterval,
 		EnableExporterMetrics:   c.EnableExporterMetrics,
 	}
-	exporter, err := vsphere.NewExporter(log, &exporterConfig)
+	exporter, err := vsphere.NewExporter(slog.New(logging.NewSlogGoKitHandler(log)), &exporterConfig)
 	if err != nil {
 		return nil, err
 	}

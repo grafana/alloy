@@ -1,7 +1,6 @@
 package collector
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -16,9 +15,9 @@ func TestConnectionInfo(t *testing.T) {
 	defer goleak.VerifyNone(t)
 
 	const baseExpectedMetrics = `
-	# HELP connection_info Information about the connection
-	# TYPE connection_info gauge
-	connection_info{db_instance_identifier="%s",provider_name="%s",region="%s"} 1
+	# HELP database_observability_connection_info Information about the connection
+	# TYPE database_observability_connection_info gauge
+	database_observability_connection_info{db_instance_identifier="%s",provider_name="%s",provider_region="%s"} 1
 `
 
 	testCases := []struct {
@@ -28,12 +27,12 @@ func TestConnectionInfo(t *testing.T) {
 	}{
 		{
 			name:            "generic dsn",
-			dsn:             "user:pass@tcp(localhost:3306)/db",
+			dsn:             "user:pass@tcp(localhost:3306)/schema",
 			expectedMetrics: fmt.Sprintf(baseExpectedMetrics, "unknown", "unknown", "unknown"),
 		},
 		{
 			name:            "AWS/RDS dsn",
-			dsn:             "user:pass@tcp(products-db.abc123xyz.us-east-1.rds.amazonaws.com:3306)/db",
+			dsn:             "user:pass@tcp(products-db.abc123xyz.us-east-1.rds.amazonaws.com:3306)/schema",
 			expectedMetrics: fmt.Sprintf(baseExpectedMetrics, "products-db", "aws", "us-east-1"),
 		},
 	}
@@ -48,7 +47,7 @@ func TestConnectionInfo(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		err = collector.Start(context.Background())
+		err = collector.Start(t.Context())
 		require.NoError(t, err)
 
 		err = testutil.GatherAndCompare(reg, strings.NewReader(tc.expectedMetrics))

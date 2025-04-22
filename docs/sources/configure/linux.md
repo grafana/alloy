@@ -27,7 +27,7 @@ To change the configuration file used by the service, perform the following step
    * Debian or Ubuntu: edit `/etc/default/alloy`
    * RHEL/Fedora or SUSE/openSUSE: edit `/etc/sysconfig/alloy`
 
-1. Change the contents of the `CONFIG_FILE` environment variable to point at the new configuration file to use.
+1. Change the contents of the `CONFIG_FILE` environment variable to point at the new configuration file.
 
 1. Restart the {{< param "PRODUCT_NAME" >}} service:
 

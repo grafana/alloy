@@ -35,6 +35,7 @@ func toDiscoveryDocker(sdConfig *prom_moby.DockerSDConfig) *docker.Arguments {
 		RefreshInterval:    time.Duration(sdConfig.RefreshInterval),
 		Filters:            toDockerFilters(sdConfig.Filters),
 		HTTPClientConfig:   *common.ToHttpClientConfig(&sdConfig.HTTPClientConfig),
+		MatchFirstNetwork:  sdConfig.MatchFirstNetwork,
 	}
 }
 

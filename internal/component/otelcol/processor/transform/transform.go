@@ -14,7 +14,6 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor"
 	otelcomponent "go.opentelemetry.io/collector/component"
-	otelextension "go.opentelemetry.io/collector/extension"
 	"go.opentelemetry.io/collector/pipeline"
 )
 
@@ -55,17 +54,28 @@ func (c *ContextID) UnmarshalText(text []byte) error {
 	}
 }
 
+type Statements []string
+
 type ContextStatementsSlice []ContextStatements
 
 type ContextStatements struct {
-	Context    ContextID `alloy:"context,attr"`
-	Statements []string  `alloy:"statements,attr"`
+	Context    ContextID  `alloy:"context,attr"`
+	Statements Statements `alloy:"statements,attr"`
+}
+
+type NoContextStatements struct {
+	Trace  Statements `alloy:"trace,attr,optional"`
+	Metric Statements `alloy:"metric,attr,optional"`
+	Log    Statements `alloy:"log,attr,optional"`
 }
 
 // Arguments configures the otelcol.processor.transform component.
 type Arguments struct {
 	// ErrorMode determines how the processor reacts to errors that occur while processing a statement.
-	ErrorMode        ottl.ErrorMode         `alloy:"error_mode,attr,optional"`
+	ErrorMode ottl.ErrorMode `alloy:"error_mode,attr,optional"`
+
+	Statements NoContextStatements `alloy:"statements,block,optional"`
+
 	TraceStatements  ContextStatementsSlice `alloy:"trace_statements,block,optional"`
 	MetricStatements ContextStatementsSlice `alloy:"metric_statements,block,optional"`
 	LogStatements    ContextStatementsSlice `alloy:"log_statements,block,optional"`
@@ -99,6 +109,19 @@ func (args *Arguments) Validate() error {
 		return err
 	}
 	return otelArgs.Validate()
+}
+
+func convertNoContext(stmts Statements) ContextStatementsSlice {
+	if stmts == nil {
+		return nil
+	}
+
+	return ContextStatementsSlice{
+		{
+			Context:    "",
+			Statements: stmts,
+		},
+	}
 }
 
 func (stmts *ContextStatementsSlice) convert() []interface{} {
@@ -141,14 +164,17 @@ func (args Arguments) convertImpl() (*transformprocessor.Config, error) {
 
 	input["error_mode"] = args.ErrorMode
 
+	args.TraceStatements = append(args.TraceStatements, convertNoContext(args.Statements.Trace)...)
 	if len(args.TraceStatements) > 0 {
 		input["trace_statements"] = args.TraceStatements.convert()
 	}
 
+	args.MetricStatements = append(args.MetricStatements, convertNoContext(args.Statements.Metric)...)
 	if len(args.MetricStatements) > 0 {
 		input["metric_statements"] = args.MetricStatements.convert()
 	}
 
+	args.LogStatements = append(args.LogStatements, convertNoContext(args.Statements.Log)...)
 	if len(args.LogStatements) > 0 {
 		input["log_statements"] = args.LogStatements.convert()
 	}
@@ -164,7 +190,7 @@ func (args Arguments) convertImpl() (*transformprocessor.Config, error) {
 }
 
 // Extensions implements processor.Arguments.
-func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
+func (args Arguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 

@@ -4,7 +4,10 @@ package file
 // The metrics struct provides a common set of metrics that are reused between all
 // implementations of the reader interface.
 
-import "github.com/prometheus/client_golang/prometheus"
+import (
+	"github.com/grafana/alloy/internal/util"
+	"github.com/prometheus/client_golang/prometheus"
+)
 
 // metrics hold the set of file-based metrics.
 type metrics struct {
@@ -47,13 +50,11 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 	})
 
 	if reg != nil {
-		reg.MustRegister(
-			m.readBytes,
-			m.totalBytes,
-			m.readLines,
-			m.encodingFailures,
-			m.filesActive,
-		)
+		m.readBytes = util.MustRegisterOrGet(reg, m.readBytes).(*prometheus.GaugeVec)
+		m.totalBytes = util.MustRegisterOrGet(reg, m.totalBytes).(*prometheus.GaugeVec)
+		m.readLines = util.MustRegisterOrGet(reg, m.readLines).(*prometheus.CounterVec)
+		m.encodingFailures = util.MustRegisterOrGet(reg, m.encodingFailures).(*prometheus.CounterVec)
+		m.filesActive = util.MustRegisterOrGet(reg, m.filesActive).(prometheus.Gauge)
 	}
 
 	return &m

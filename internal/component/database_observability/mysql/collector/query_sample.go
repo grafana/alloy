@@ -4,75 +4,126 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/prometheus/common/model"
-	"github.com/xwb1989/sqlparser"
+	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/database_observability/mysql/collector/parser"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/grafana/loki/v3/pkg/logproto"
 )
 
 const (
-	OP_QUERY_SAMPLE            = "query_sample"
-	OP_QUERY_PARSED_TABLE_NAME = "query_parsed_table_name"
+	OP_QUERY_SAMPLE = "query_sample"
+	QuerySampleName = "query_sample"
 )
 
+const selectLatestTimerEnd = `SELECT MAX(TIMER_END) FROM performance_schema.events_statements_history`
+
 const selectQuerySamples = `
-	SELECT
-		digest,
-		query_sample_text,
-		query_sample_seen,
-		query_sample_timer_wait
-	FROM performance_schema.events_statements_summary_by_digest
-	WHERE last_seen > DATE_SUB(NOW(), INTERVAL 1 DAY)`
+SELECT unix_timestamp()             AS now,
+	global_status.variable_value AS uptime,
+	statements.CURRENT_SCHEMA,
+	statements.DIGEST,
+	statements.DIGEST_TEXT,
+	statements.TIMER_START,
+	statements.TIMER_END,
+	statements.TIMER_WAIT,
+	statements.CPU_TIME,
+	statements.ROWS_EXAMINED,
+	statements.ROWS_SENT,
+	statements.ROWS_AFFECTED,
+	statements.ERRORS,
+	statements.MAX_CONTROLLED_MEMORY,
+	statements.MAX_TOTAL_MEMORY
+	%s
+FROM performance_schema.events_statements_history AS statements
+JOIN performance_schema.global_status
+WHERE statements.sql_text IS NOT NULL
+	AND global_status.variable_name = 'UPTIME'
+	AND statements.CURRENT_SCHEMA NOT IN ('mysql', 'performance_schema', 'sys', 'information_schema')
+	AND statements.TIMER_END >= ?;`
 
 type QuerySampleArguments struct {
-	DB              *sql.DB
-	CollectInterval time.Duration
-	EntryHandler    loki.EntryHandler
+	DB                    *sql.DB
+	InstanceKey           string
+	CollectInterval       time.Duration
+	EntryHandler          loki.EntryHandler
+	UseTiDBParser         bool
+	DisableQueryRedaction bool
 
 	Logger log.Logger
 }
 
 type QuerySample struct {
-	dbConnection    *sql.DB
-	collectInterval time.Duration
-	entryHandler    loki.EntryHandler
+	dbConnection          *sql.DB
+	instanceKey           string
+	collectInterval       time.Duration
+	entryHandler          loki.EntryHandler
+	sqlParser             parser.Parser
+	disableQueryRedaction bool
 
-	logger log.Logger
+	logger  log.Logger
+	running *atomic.Bool
+	ctx     context.Context
+	cancel  context.CancelFunc
 
-	ctx    context.Context
-	cancel context.CancelFunc
+	lastSampleSeenTimestamp float64
 }
 
 func NewQuerySample(args QuerySampleArguments) (*QuerySample, error) {
-	return &QuerySample{
-		dbConnection:    args.DB,
-		collectInterval: args.CollectInterval,
-		entryHandler:    args.EntryHandler,
-		logger:          args.Logger,
-	}, nil
+	c := &QuerySample{
+		dbConnection:          args.DB,
+		instanceKey:           args.InstanceKey,
+		collectInterval:       args.CollectInterval,
+		entryHandler:          args.EntryHandler,
+		disableQueryRedaction: args.DisableQueryRedaction,
+		logger:                log.With(args.Logger, "collector", QuerySampleName),
+		running:               &atomic.Bool{},
+	}
+
+	if args.UseTiDBParser {
+		c.sqlParser = parser.NewTiDBSqlParser()
+	} else {
+		c.sqlParser = parser.NewXwbSqlParser()
+	}
+
+	return c, nil
+}
+
+func (c *QuerySample) Name() string {
+	return QuerySampleName
 }
 
 func (c *QuerySample) Start(ctx context.Context) error {
-	level.Debug(c.logger).Log("msg", "QuerySample collector started")
+	if c.disableQueryRedaction {
+		level.Warn(c.logger).Log("msg", "collector started with query redaction disabled. Query samples will include complete SQL text including query parameters.")
+	} else {
+		level.Debug(c.logger).Log("msg", "collector started")
+	}
 
+	c.running.Store(true)
 	ctx, cancel := context.WithCancel(ctx)
 	c.ctx = ctx
 	c.cancel = cancel
 
+	if err := c.setLastSampleSeenTimestamp(c.ctx); err != nil {
+		level.Error(c.logger).Log("msg", "failed to set last sample seen timestamp", "err", err)
+		return err
+	}
+
 	go func() {
+		defer func() {
+			c.Stop()
+			c.running.Store(false)
+		}()
+
 		ticker := time.NewTicker(c.collectInterval)
 
 		for {
 			if err := c.fetchQuerySamples(c.ctx); err != nil {
-				level.Error(c.logger).Log("msg", "collector stopping due to error", "err", err)
-				c.Stop()
-				break
+				level.Error(c.logger).Log("msg", "collector error", "err", err)
 			}
 
 			select {
@@ -87,109 +138,165 @@ func (c *QuerySample) Start(ctx context.Context) error {
 	return nil
 }
 
+func (c *QuerySample) Stopped() bool {
+	return !c.running.Load()
+}
+
 // Stop should be kept idempotent
 func (c *QuerySample) Stop() {
 	c.cancel()
 }
 
-func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
-	rs, err := c.dbConnection.QueryContext(ctx, selectQuerySamples)
+// setLastSampleSeenTimestamp queries the database for the latest sample seen timestamp so that upon startup we don't collect
+// samples that may have been collected previously.
+func (c *QuerySample) setLastSampleSeenTimestamp(ctx context.Context) error {
+	rs, err := c.dbConnection.QueryContext(ctx, selectLatestTimerEnd)
 	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to fetch query samples", "err", err)
+		return fmt.Errorf("failed to fetch last sample seen timestamp: %w", err)
+	}
+	defer rs.Close()
+
+	for rs.Next() {
+		var ts sql.NullFloat64
+		err := rs.Scan(&ts)
+		if err != nil {
+			return fmt.Errorf("failed to scan row: %w", err)
+		}
+		if !ts.Valid {
+			return fmt.Errorf("no valid timestamp found: %w", err)
+		}
+		c.lastSampleSeenTimestamp = ts.Float64
+	}
+	if err := rs.Err(); err != nil {
+		return fmt.Errorf("failed to iterate rows: %w", err)
+	}
+	return nil
+}
+
+func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
+	var sqlTextField string
+	if c.disableQueryRedaction {
+		sqlTextField = ",statements.SQL_TEXT"
+	}
+	query := fmt.Sprintf(selectQuerySamples, sqlTextField)
+
+	rs, err := c.dbConnection.QueryContext(ctx, query, c.lastSampleSeenTimestamp)
+	if err != nil {
+		level.Error(c.logger).Log("msg", "failed to fetch history table samples", "err", err)
 		return err
 	}
 	defer rs.Close()
 
 	for rs.Next() {
-		if err := rs.Err(); err != nil {
-			level.Error(c.logger).Log("msg", "failed to iterate rs", "err", err)
-			break
+		row := struct {
+			// system times
+			NowSeconds    uint64
+			UptimeSeconds uint64
+
+			// sample query details
+			Schema     sql.NullString
+			Digest     sql.NullString
+			DigestText sql.NullString
+			SQLText    sql.NullString
+
+			// sample time
+			TimerStartPicoseconds  sql.NullFloat64
+			TimerEndPicoseconds    sql.NullFloat64
+			ElapsedTimePicoseconds sql.NullInt64
+			CPUTime                uint64
+
+			// sample row info
+			RowsExamined uint64
+			RowsSent     uint64
+			RowsAffected uint64
+			Errors       uint64
+
+			// sample memory info
+			MaxControlledMemory uint64
+			MaxTotalMemory      uint64
+		}{}
+
+		scanArgs := []interface{}{
+			&row.NowSeconds,
+			&row.UptimeSeconds,
+			&row.Schema,
+			&row.Digest,
+			&row.DigestText,
+			&row.TimerStartPicoseconds,
+			&row.TimerEndPicoseconds,
+			&row.ElapsedTimePicoseconds,
+			&row.CPUTime,
+			&row.RowsExamined,
+			&row.RowsSent,
+			&row.RowsAffected,
+			&row.Errors,
+			&row.MaxControlledMemory,
+			&row.MaxTotalMemory,
 		}
-		var digest, query_sample_text, query_sample_seen, query_sample_timer_wait string
-		err := rs.Scan(&digest, &query_sample_text, &query_sample_seen, &query_sample_timer_wait)
+		if c.disableQueryRedaction {
+			scanArgs = append(scanArgs, &row.SQLText)
+		}
+
+		err := rs.Scan(scanArgs...)
 		if err != nil {
-			level.Error(c.logger).Log("msg", "failed to scan query samples", "err", err)
-			break
+			level.Error(c.logger).Log("msg", "failed to scan history table samples", "err", err)
+			continue
 		}
 
-		redacted, err := sqlparser.RedactSQLQuery(query_sample_text)
+		if !row.TimerEndPicoseconds.Valid {
+			level.Debug(c.logger).Log("msg", "skipping query with invalid timer end timestamp", "schema", row.Schema.String, "digest", row.Digest.String, "timer_end", row.TimerEndPicoseconds.Float64)
+			continue
+		}
+
+		if row.TimerEndPicoseconds.Float64 > c.lastSampleSeenTimestamp {
+			c.lastSampleSeenTimestamp = row.TimerEndPicoseconds.Float64
+		}
+
+		digestText, err := c.sqlParser.CleanTruncatedText(row.DigestText.String)
 		if err != nil {
-			level.Error(c.logger).Log("msg", "failed to redact sql query", "err", err)
+			level.Error(c.logger).Log("msg", "failed to handle truncated sql query", "schema", row.Schema.String, "digest", row.Digest.String, "err", err)
+			continue
 		}
 
-		c.entryHandler.Chan() <- loki.Entry{
-			Labels: model.LabelSet{"job": "integrations/db-o11y"},
-			Entry: logproto.Entry{
-				Timestamp: time.Unix(0, time.Now().UnixNano()),
-				Line:      fmt.Sprintf(`level=info msg="query samples fetched" op="%s" digest="%s" query_sample_text="%s" query_sample_seen="%s" query_sample_timer_wait="%s" query_redacted="%s"`, OP_QUERY_SAMPLE, digest, query_sample_text, query_sample_seen, query_sample_timer_wait, redacted),
-			},
+		digestText, err = c.sqlParser.Redact(digestText)
+		if err != nil {
+			level.Error(c.logger).Log("msg", "failed to redact sql query", "schema", row.Schema.String, "digest", row.Digest.String, "err", err)
+			continue
 		}
 
-		tables := c.tablesFromQuery(query_sample_text)
-		for _, table := range tables {
-			c.entryHandler.Chan() <- loki.Entry{
-				Labels: model.LabelSet{"job": "integrations/db-o11y"},
-				Entry: logproto.Entry{
-					Timestamp: time.Unix(0, time.Now().UnixNano()),
-					Line:      fmt.Sprintf(`level=info msg="table name parsed" op="%s" digest="%s" table="%s"`, OP_QUERY_PARSED_TABLE_NAME, digest, table),
-				},
-			}
+		cpuTime := float64(row.CPUTime) / 1e9
+		elapsedTime := float64(row.ElapsedTimePicoseconds.Int64) / 1e9
+
+		logMessage := fmt.Sprintf(
+			`schema="%s" digest="%s" digest_text="%s" rows_examined="%d" rows_sent="%d" rows_affected="%d" errors="%d" max_controlled_memory="%db" max_total_memory="%db" cpu_time="%fms" elapsed_time="%fms" elapsed_time_ms="%fms"`,
+			row.Schema.String,
+			row.Digest.String,
+			digestText,
+			row.RowsExamined,
+			row.RowsSent,
+			row.RowsAffected,
+			row.Errors,
+			row.MaxControlledMemory,
+			row.MaxTotalMemory,
+			cpuTime,
+			elapsedTime,
+			elapsedTime,
+		)
+		if c.disableQueryRedaction && row.SQLText.Valid {
+			logMessage += fmt.Sprintf(` sql_text="%s"`, row.SQLText.String)
 		}
+
+		c.entryHandler.Chan() <- buildLokiEntry(
+			OP_QUERY_SAMPLE,
+			c.instanceKey,
+			logMessage,
+		)
+	}
+
+	if err := rs.Err(); err != nil {
+		level.Error(c.logger).Log("msg", "error during iterating over samples result set", "err", err)
+		return err
 	}
 
 	return nil
-}
-
-func (c QuerySample) tablesFromQuery(query string) []string {
-	if strings.HasSuffix(query, "...") {
-		level.Info(c.logger).Log("msg", "skipping parsing truncated query")
-		return []string{}
-	}
-
-	stmt, err := sqlparser.Parse(query)
-	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to parse sql query", "err", err)
-		return []string{}
-	}
-
-	var parsedTables []string
-
-	switch stmt := stmt.(type) {
-	case *sqlparser.Select:
-		parsedTables = c.parseTableExprs(stmt.From)
-	case *sqlparser.Insert:
-		parsedTables = []string{c.parseTableName(stmt.Table)}
-	case *sqlparser.Update:
-		parsedTables = c.parseTableExprs(stmt.TableExprs)
-	case *sqlparser.Delete:
-		parsedTables = c.parseTableExprs(stmt.TableExprs)
-	}
-
-	return parsedTables
-}
-
-func (c QuerySample) parseTableExprs(tables sqlparser.TableExprs) []string {
-	parsedTables := []string{}
-	for i := 0; i < len(tables); i++ {
-		t := tables[i]
-		switch tableExpr := t.(type) {
-		case *sqlparser.AliasedTableExpr:
-			parsedTables = append(parsedTables, c.parseTableName(tableExpr.Expr.(sqlparser.TableName)))
-		case *sqlparser.JoinTableExpr:
-			// continue parsing both sides of join
-			tables = append(tables, tableExpr.LeftExpr, tableExpr.RightExpr)
-		default:
-			level.Error(c.logger).Log("msg", "unknown table type", "table", t)
-		}
-	}
-	return parsedTables
-}
-
-func (c QuerySample) parseTableName(t sqlparser.TableName) string {
-	qualifier := t.Qualifier.String()
-	tableName := t.Name.String()
-	if qualifier != "" {
-		return qualifier + "." + tableName
-	}
-	return tableName
 }

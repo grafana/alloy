@@ -5,7 +5,7 @@ on:
     inputs:
       directory:
         description: "Directory to search for Go fuzz tests in."
-        default: '.'
+        default: "."
         required: false
         type: string
       fuzz-time:
@@ -24,7 +24,7 @@ jobs:
     outputs:
       tests: ${{ steps.find-tests.outputs.tests }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Find fuzz tests
         id: find-tests
         run: |
@@ -33,15 +33,20 @@ jobs:
           RESULTS=()
 
           for FILE in $TEST_FILES; do
-            FUZZ_FUNC=$(grep -E 'func Fuzz\w*' $FILE | sed 's/func //' | sed 's/(.*$//')
-            if [ -z "$FUZZ_FUNC" ]; then
+            FUZZ_FUNCS=$(grep -E 'func Fuzz\w*' $FILE | sed 's/func //' | sed 's/(.*$//')
+            if [ -z "$FUZZ_FUNCS" ]; then
               continue
             fi
 
             PACKAGE_PATH=$(dirname ${FILE#${{ inputs.directory }}/})
-            RESULTS+=("{\"package\":\"$PACKAGE_PATH\",\"function\":\"$FUZZ_FUNC\"}")
+            for FUZZ_FUNC in $FUZZ_FUNCS; do
+              if [ -z "$FUZZ_FUNC" ]; then
+                continue
+              fi
 
-            echo "Found $FUZZ_FUNC in $PACKAGE_PATH"
+              RESULTS+=("{\"package\":\"$PACKAGE_PATH\",\"function\":\"$FUZZ_FUNC\"}")
+              echo "Found $FUZZ_FUNC in $PACKAGE_PATH"
+            done
           done
 
           NUM_RESULTS=${#RESULTS[@]}
@@ -65,20 +70,19 @@ jobs:
       matrix:
         include: ${{ fromJson(needs.find-tests.outputs.tests) }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - name: Set up Go 1.23
-        uses: actions/setup-go@v5
+      - name: Set up Go
+        uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
         with:
-          go-version: "1.23"
+          go-version-file: go.mod
           cache: false
 
       - name: Find cache location
-        run:
-          echo "FUZZ_CACHE=$(go env GOCACHE)/fuzz" >> $GITHUB_ENV
+        run: echo "FUZZ_CACHE=$(go env GOCACHE)/fuzz" >> $GITHUB_ENV
 
       - name: Restore fuzz cache
-        uses: actions/cache@v4
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
         with:
           path: ${{ env.FUZZ_CACHE }}
           key: fuzz-${{ matrix.package }}-${{ matrix.function }}-${{ github.sha }}
@@ -117,7 +121,7 @@ jobs:
       - name: Upload fuzz failure as artifact
         id: artifact
         if: ${{ failure() && steps.new-failure.outputs.file != '' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: failure-${{ steps.new-failure.outputs.package }}-${{ steps.new-failure.outputs.function }}
           path: ${{ steps.new-failure.outputs.file }}
@@ -139,7 +143,7 @@ jobs:
 
       - name: Create new issue
         if: ${{ failure() && steps.new-failure.outputs.file != '' && inputs.create-issue }}
-        uses: actions/github-script@v7
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         with:
           script: |
             const failureName = "${{ steps.new-failure.outputs.name }}";

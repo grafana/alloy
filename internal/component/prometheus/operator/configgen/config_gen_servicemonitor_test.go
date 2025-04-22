@@ -19,6 +19,7 @@ import (
 	"gopkg.in/yaml.v3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/ptr"
 
 	"github.com/grafana/alloy/internal/component/common/kubernetes"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
@@ -349,11 +350,11 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 						},
 					},
 					NamespaceSelector:     promopv1.NamespaceSelector{Any: false, MatchNames: []string{"ns_a", "ns_b"}},
-					SampleLimit:           101,
-					TargetLimit:           102,
-					LabelLimit:            103,
-					LabelNameLengthLimit:  104,
-					LabelValueLengthLimit: 105,
+					SampleLimit:           ptr.To(uint64(101)),
+					TargetLimit:           ptr.To(uint64(102)),
+					LabelLimit:            ptr.To(uint64(103)),
+					LabelNameLengthLimit:  ptr.To(uint64(104)),
+					LabelValueLengthLimit: ptr.To(uint64(105)),
 					AttachMetadata:        &promopv1.AttachMetadata{Node: true},
 				},
 			},
@@ -492,6 +493,82 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 				LabelLimit:            103,
 				LabelNameLengthLimit:  104,
 				LabelValueLengthLimit: 105,
+			},
+		},
+		{
+			name: "invalid-relabelling-action",
+			m: &promopv1.ServiceMonitor{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "operator",
+					Name:      "svcmonitor",
+				},
+			},
+			ep: promopv1.Endpoint{
+				MetricRelabelConfigs: []*promopv1.RelabelConfig{
+					{
+						SourceLabels: []promopv1.LabelName{"foo"},
+						TargetLabel:  "bar",
+						Action:       "Replace",
+					},
+				},
+			},
+			role: promk8s.RoleEndpoint,
+			expectedRelabels: util.Untab(`
+				- target_label: __meta_foo
+				  replacement: bar
+				- source_labels: [job]
+				  target_label: __tmp_prometheus_job_name
+				- source_labels: [__meta_kubernetes_endpoint_address_target_kind, __meta_kubernetes_endpoint_address_target_name]
+				  regex: Node;(.*)
+				  target_label: node
+				  replacement: ${1}
+				- source_labels: [__meta_kubernetes_endpoint_address_target_kind, __meta_kubernetes_endpoint_address_target_name]
+				  regex: Pod;(.*)
+				  target_label: pod
+				  action: replace
+				  replacement: ${1}
+				- source_labels: [__meta_kubernetes_namespace]
+				  target_label: namespace
+				- source_labels: [__meta_kubernetes_service_name]
+				  target_label: service
+				- source_labels: [__meta_kubernetes_pod_container_name]
+				  target_label: container
+				- source_labels: [__meta_kubernetes_pod_name]
+				  target_label: pod
+				- source_labels: [__meta_kubernetes_pod_phase]
+				  regex: (Failed|Succeeded)
+				  action: drop
+				- source_labels: [__meta_kubernetes_service_name]
+				  target_label: job
+				  replacement: ${1}
+			`),
+			expectedMetricRelabels: util.Untab(`
+				- action: replace
+				  source_labels: [foo]
+				  target_label: bar
+			`),
+			expected: &config.ScrapeConfig{
+				JobName:           "serviceMonitor/operator/svcmonitor/1",
+				HonorTimestamps:   true,
+				ScrapeInterval:    model.Duration(time.Minute),
+				ScrapeTimeout:     model.Duration(10 * time.Second),
+				ScrapeProtocols:   config.DefaultScrapeProtocols,
+				EnableCompression: true,
+				MetricsPath:       "/metrics",
+				Scheme:            "http",
+				HTTPClientConfig: commonConfig.HTTPClientConfig{
+					FollowRedirects: true,
+					EnableHTTP2:     true,
+				},
+				ServiceDiscoveryConfigs: discovery.Configs{
+					&promk8s.SDConfig{
+						Role: "endpoints",
+						NamespaceDiscovery: promk8s.NamespaceDiscovery{
+							IncludeOwnNamespace: false,
+							Names:               []string{"operator"},
+						},
+					},
+				},
 			},
 		},
 	}

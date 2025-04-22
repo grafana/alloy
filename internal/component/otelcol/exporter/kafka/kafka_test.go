@@ -4,7 +4,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/alloy/internal/component"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
+	"github.com/grafana/alloy/internal/component/otelcol/exporter"
 	"github.com/grafana/alloy/internal/component/otelcol/exporter/kafka"
 	"github.com/grafana/alloy/syntax"
 	"github.com/mitchellh/mapstructure"
@@ -235,6 +237,36 @@ func TestDebugMetricsConfig(t *testing.T) {
 			require.NoError(t, err)
 
 			require.Equal(t, tc.expected, args.DebugMetricsConfig())
+		})
+	}
+}
+
+func TestEncoding(t *testing.T) {
+	encodings := []string{
+		"otlp_proto",
+		"otlp_json",
+		"raw",
+		"jaeger_proto",
+		"jaeger_json",
+		"zipkin_proto",
+		"zipkin_json",
+	}
+
+	for _, encoding := range encodings {
+		t.Run(encoding, func(t *testing.T) {
+			args := kafka.Arguments{
+				Encoding: encoding,
+			}
+			signalType := kafka.GetSignalType(component.Options{}, args)
+
+			switch encoding {
+			case "raw":
+				require.Equal(t, exporter.TypeLogs, signalType)
+			case "jaeger_proto", "jaeger_json", "zipkin_proto", "zipkin_json":
+				require.Equal(t, exporter.TypeTraces, signalType)
+			default:
+				require.Equal(t, exporter.TypeAll, signalType)
+			}
 		})
 	}
 }

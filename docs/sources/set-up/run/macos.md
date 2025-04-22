@@ -22,7 +22,7 @@ brew services start alloy
 
 {{< param "PRODUCT_NAME" >}} automatically runs when the system starts.
 
-(Optional) To verify that the service is running, run the following command in a terminal window:
+Optional: To verify that the service is running, run the following command in a terminal window:
 
 ```shell
 brew services info alloy

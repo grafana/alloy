@@ -82,6 +82,7 @@ func (m *mockSession) DebugInfo() interface{} {
 					{
 						Name:          "X",
 						Size:          123,
+						MiniDebugInfo: false,
 						LastUsedRound: 1,
 					},
 				},
@@ -126,7 +127,7 @@ func TestShutdownOnError(t *testing.T) {
 	)
 
 	session.collectError = fmt.Errorf("mocked error collecting profiles")
-	err = c.Run(context.TODO())
+	err = c.Run(t.Context())
 	require.Error(t, err)
 }
 
@@ -158,7 +159,7 @@ func TestContextShutdown(t *testing.T) {
 	}
 	session.dataTarget = sd.NewTarget("cid", 0, map[string]string{"service_name": "foo"})
 	var g run.Group
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*1))
+	ctx, cancel := context.WithDeadline(t.Context(), time.Now().Add(time.Second*1))
 	defer cancel()
 	g.Add(func() error {
 		err = c.Run(ctx)
@@ -198,10 +199,10 @@ forward_to = []
 			expected: func() Arguments {
 				x := NewDefaultArguments()
 				x.Targets = []discovery.Target{
-					map[string]string{
+					discovery.NewTargetFromMap(map[string]string{
 						"container_id": "cid",
 						"service_name": "foo",
-					},
+					}),
 				}
 				x.ForwardTo = []pyroscope.Appendable{}
 				return x
@@ -224,10 +225,10 @@ collect_kernel_profile = false`,
 			expected: func() Arguments {
 				x := NewDefaultArguments()
 				x.Targets = []discovery.Target{
-					map[string]string{
+					discovery.NewTargetFromMap(map[string]string{
 						"container_id": "cid",
 						"service_name": "foo",
-					},
+					}),
 				}
 				x.ForwardTo = []pyroscope.Appendable{}
 				x.CollectInterval = time.Second * 3
@@ -325,6 +326,7 @@ session = {
 				name            = "X",
 				symbol_count    = 123,
 				file            = "",
+				mini_debug_info = false,
 				last_used_round = 1,
 			}],
 			round_dump = [],

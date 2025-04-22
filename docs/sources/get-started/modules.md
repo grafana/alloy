@@ -9,34 +9,37 @@ weight: 400
 
 # Modules
 
-A _Module_ is a unit of {{< param "PRODUCT_NAME" >}} configuration, which combines all the other concepts, containing a mix of configuration blocks, instantiated components, and custom component definitions.
-The module passed as an argument to [the `run` command][run] is called the _main configuration_.
+A _Module_ is a unit of {{< param "PRODUCT_NAME" >}} configuration that combines all other concepts.
+It contains a mix of configuration blocks, instantiated components, and custom component definitions.
+The module you pass as an argument to [the `run` command][run] is called the _main configuration_.
 
-Modules can be [imported](#importing-modules) to enable the reuse of [custom components][] defined by that module.
+You can [import modules](#import-modules) to reuse [custom components][] defined by that module.
 
-## Importing modules
+## Import modules
 
-A module can be _imported_, allowing the custom components defined by that module to be used by other modules, called the _importing module_.
-Modules can be imported from multiple locations using one of the `import` configuration blocks:
+You can _import_ a module to use its custom components in other modules, called _importing modules_.
+Import modules from multiple locations using one of the `import` configuration blocks:
 
-* [import.file][]: Imports a module from a file on disk.
-* [import.git][]: Imports a module from a file located in a Git repository.
-* [import.http][]: Imports a module from the response of an HTTP request.
-* [import.string][]: Imports a module from a string.
+* [`import.file`][import.file]: Imports a module from a file on disk.
+* [`import.git`][import.git]: Imports a module from a file in a Git repository.
+* [`import.http`][import.http]: Imports a module from an HTTP request response.
+* [`import.string`][import.string]: Imports a module from a string.
 
 {{< admonition type="warning" >}}
 You can't import a module that contains top-level blocks other than `declare` or `import`.
 {{< /admonition >}}
 
-Modules are imported into a _namespace_ where the top-level custom components of the imported module are exposed to the importing module.
+Modules are imported into a _namespace_, exposing the top-level custom components of the imported module to the importing module.
 The label of the import block specifies the namespace of an import.
-For example, if a configuration contains a block called `import.file "my_module"`, then custom components defined by that module are exposed as `my_module.CUSTOM_COMPONENT_NAME`. Imported namespaces must be unique across a given importing module.
+For example, if a configuration contains a block called `import.file "my_module"`, then custom components defined by that module are exposed as `my_module.CUSTOM_COMPONENT_NAME`.
+Namespaces for imports must be unique within a given importing module.
 
-If an import namespace matches the name of a built-in component namespace, such as `prometheus`, the built-in namespace is hidden from the importing module, and only components defined in the imported module may be used.
+If an import namespace matches the name of a built-in component namespace, such as `prometheus`, the built-in namespace is hidden from the importing module.
+Only components defined in the imported module are available.
 
 {{< admonition type="warning" >}}
-If you choose a label that corresponds to an existing component for an `import` or a `declare` block, the component will be shadowed and you won't be able to use it in your configuration.
-For example, if you use the label `import.file "mimir"`, you won't be able to use the existing components that start with `mimir` such as `mimir.rules.kubernetes` because it refers to the module imported via the `import` block.
+If you use a label for an `import` or `declare` block that matches an existing component, the component is shadowed and becomes unavailable in your configuration.
+For example, if you use the label `import.file "mimir"`, you can't use existing components starting with `mimir`, such as `mimir.rules.kubernetes`, because the label refers to the imported module.
 {{< /admonition >}}
 
 ## Example
@@ -106,9 +109,9 @@ loki.write "default" {
 
 ## Security
 
-Since modules can load an arbitrary configuration from a potentially remote source, it is important to carefully consider the security of your solution. 
-The best practice is to ensure that Alloy configuration cannot be changed by attackers. This includes Alloy's main configuration files as well as 
-modules fetched from remote locations such as Git repositories or HTTP servers.
+Since modules can load arbitrary configurations from potentially remote sources, carefully consider the security of your solution.
+The best practice is to ensure attackers can't modify the {{< param "PRODUCT_NAME" >}} configuration.
+This includes the main {{< param "PRODUCT_NAME" >}} configuration files and modules fetched from remote locations, such as Git repositories or HTTP servers.
 
 [custom components]: ../custom_components/
 [run]: ../../reference/cli/run/

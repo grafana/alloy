@@ -35,7 +35,7 @@ You can set up and manage the standalone binary for {{< param "PRODUCT_NAME" >}}
 These steps assume you have a default systemd and {{< param "PRODUCT_NAME" >}} configuration.
 {{< /admonition >}}
 
-1. To create a new user called `alloy` run the following command in a terminal window:
+1. To create a user called `alloy` run the following command in a terminal window:
 
    ```shell
    sudo useradd --no-create-home --shell /bin/false alloy

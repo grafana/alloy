@@ -61,7 +61,7 @@ Name                        | Type             | Description                    
 `dimensions`                | `list(string)`   | A list of dimensions to add with the default dimensions.            | `[]`         | no
 `cache_loop`                | `duration`       | Configures how often to delete series which have not been updated.  | `"1m"`       | no
 `store_expiration_loop`     | `duration`       | The time to expire old entries from the store periodically.         | `"2s"`       | no
-`metrics_flush_interval`    | `duration`       | The interval at which metrics are flushed to downstream components. | `"0s"`       | no
+`metrics_flush_interval`    | `duration`       | The interval at which metrics are flushed to downstream components. | `"60s"`       | no
 `database_name_attribute`   | `string`         | The attribute name used to identify the database name from span attributes. | `"db.name"`  | no
 
 Service graphs work by inspecting traces and looking for spans with parent-children relationship that represent a request.
@@ -86,15 +86,15 @@ The following metrics are emitted by the processor:
 |---------------------------------------------|-----------|---------------------------------|--------------------------------------------------------------|
 | traces_service_graph_request_total          | Counter   | client, server, connection_type | Total count of requests between two nodes                    |
 | traces_service_graph_request_failed_total   | Counter   | client, server, connection_type | Total count of failed requests between two nodes             |
-| traces_service_graph_request_server_seconds | Histogram | client, server, connection_type | Time for a request between two nodes as seen from the server |
-| traces_service_graph_request_client_seconds | Histogram | client, server, connection_type | Time for a request between two nodes as seen from the client |
+| traces_service_graph_request_server | Histogram | client, server, connection_type | Number of seconds for a request between two nodes as seen from the server |
+| traces_service_graph_request_client | Histogram | client, server, connection_type | Number of seconds for a request between two nodes as seen from the client |
 | traces_service_graph_unpaired_spans_total   | Counter   | client, server, connection_type | Total count of unpaired spans                                |
 | traces_service_graph_dropped_spans_total    | Counter   | client, server, connection_type | Total count of dropped spans                                 |
 
 Duration is measured both from the client and the server sides.
 
 The `latency_histogram_buckets` argument controls the buckets for
-`traces_service_graph_request_server_seconds` and `traces_service_graph_request_client_seconds`.
+`traces_service_graph_request_server` and `traces_service_graph_request_client`.
 
 Each emitted metrics series have a `client` and a `server` label corresponding with the service doing the request and the service receiving the request.
 The value of the label is derived from the `service.name` resource attribute of the two spans.

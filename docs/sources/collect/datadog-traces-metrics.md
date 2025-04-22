@@ -20,9 +20,9 @@ This topic describes how to:
 
 ## Before you begin
 
-* Ensure that at least one instance of the [Datadog Agent][] is collecting metrics and/or traces.
-* Identify where you will write the collected telemetry.
-  Metrics can be written to [Prometheus]() or any other OpenTelemetry-compatible database such as Grafana Mimir, Grafana Cloud, or Grafana Enterprise Metrics.
+* Ensure that at least one instance of the [Datadog Agent][] is collecting metrics and traces.
+* Identify where to write the collected telemetry.
+  Metrics can be written to [Prometheus][] or any other OpenTelemetry-compatible database such as Grafana Mimir, Grafana Cloud, or Grafana Enterprise Metrics.
   Traces can be written to Grafana Tempo, Grafana Cloud, or Grafana Enterprise Traces.
 * Be familiar with the concept of [Components][] in {{< param "PRODUCT_NAME" >}}.
 
@@ -45,7 +45,7 @@ The [otelcol.exporter.otlp][] component is responsible for delivering OTLP data 
 
    Replace the following:
 
-    - _`<OTLP_ENDPOINT_URL>`_: The full URL of the OpenTelemetry-compatible endpoint where metrics and traces will be sent, such as `https://otlp-gateway-prod-eu-west-2.grafana.net/otlp`.
+   * _`<OTLP_ENDPOINT_URL>`_: The full URL of the OpenTelemetry-compatible endpoint where metrics and traces are sent, such as `https://otlp-gateway-prod-eu-west-2.grafana.net/otlp`.
 
 1. If your endpoint requires basic authentication, paste the following inside the `endpoint` block.
 
@@ -58,8 +58,8 @@ The [otelcol.exporter.otlp][] component is responsible for delivering OTLP data 
 
    Replace the following:
 
-    - _`<USERNAME>`_: The basic authentication username.
-    - _`<PASSWORD>`_: The basic authentication password or API key.
+   * _`<USERNAME>`_: The basic authentication username.
+   * _`<PASSWORD>`_: The basic authentication password or API key.
 
 ## Configure the {{% param "PRODUCT_NAME" %}} Datadog Receiver
 
@@ -78,7 +78,7 @@ The [otelcol.exporter.otlp][] component is responsible for delivering OTLP data 
 
    ```alloy
    otelcol.processor.deltatocumulative "default" {
-     max_stale = “<MAX_STALE>”
+     max_stale = "<MAX_STALE>"
      max_streams = <MAX_STREAMS>
      output {
        metrics = [otelcol.processor.batch.default.input]
@@ -88,14 +88,14 @@ The [otelcol.exporter.otlp][] component is responsible for delivering OTLP data 
 
    Replace the following:
 
-    - _`<MAX_STALE>`_: How long until a series not receiving new samples is removed, such as "5m".
-    - _`<MAX_STREAMS>`_: The upper limit of streams to track. New streams exceeding this limit are dropped.
+   * _`<MAX_STALE>`_: How long until a series not receiving new samples is removed, such as "5m".
+   * _`<MAX_STREAMS>`_: The upper limit of streams to track. New streams exceeding this limit are dropped.
 
 1. Add the following `otelcol.receiver.datadog` component to your configuration file.
 
    ```alloy
    otelcol.receiver.datadog "default" {
-     endpoint = “<HOST>:<PORT>”
+     endpoint = "<HOST>:<PORT>"
      output {
        metrics = [otelcol.processor.deltatocumulative.default.input]
        traces  = [otelcol.processor.batch.default.input]
@@ -105,8 +105,8 @@ The [otelcol.exporter.otlp][] component is responsible for delivering OTLP data 
 
     Replace the following:
 
-    - _`<HOST>`_: The host address where the receiver will listen.
-    - _`<PORT>`_: The port where the receiver will listen.
+    * _`<HOST>`_: The host address where the receiver listens.
+    * _`<PORT>`_: The port where the receiver listens.
 
 1. If your endpoint requires basic authentication, paste the following inside the `endpoint` block.
 
@@ -119,8 +119,8 @@ The [otelcol.exporter.otlp][] component is responsible for delivering OTLP data 
 
     Replace the following:
 
-    - _`<USERNAME>`_: The basic authentication username.
-    - _`<PASSWORD>`_: The basic authentication password or API key.
+    * _`<USERNAME>`_: The basic authentication username.
+    * _`<PASSWORD>`_: The basic authentication password or API key.
 
 ## Configure Datadog Agent to forward telemetry to the {{% param "PRODUCT_NAME" %}} Datadog Receiver
 
@@ -139,10 +139,10 @@ We recommend this approach for current Datadog users who want to try using {{< p
 
    Replace the following:
 
-    - _`<DATADOG_RECEIVER_HOST>`_: The hostname where the {{< param "PRODUCT_NAME" >}} receiver is found.
-    - _`<DATADOG_RECEIVER_PORT>`_: The port where the {{< param "PRODUCT_NAME" >}} receiver is exposed.
+   * _`<DATADOG_RECEIVER_HOST>`_: The hostname where the {{< param "PRODUCT_NAME" >}} receiver is found.
+   * _`<DATADOG_RECEIVER_PORT>`_: The port where the {{< param "PRODUCT_NAME" >}} receiver is exposed.
 
-Alternatively, you might want your Datadog Agent to send metrics only to {{< param "PRODUCT_NAME" >}}. 
+Alternatively, you might want your Datadog Agent to send metrics only to {{< param "PRODUCT_NAME" >}}.
 You can do this by setting up your Datadog Agent in the following way:
 
 1. Replace the DD_URL in the configuration YAML:
@@ -150,8 +150,8 @@ You can do this by setting up your Datadog Agent in the following way:
    ```yaml
     dd_url: http://<DATADOG_RECEIVER_HOST>:<DATADOG_RECEIVER_PORT>
    ```
-Or by setting an environment variable:
 
+   Or by setting an environment variable:
 
    ```bash
    DD_DD_URL='{"http://<DATADOG_RECEIVER_HOST>:<DATADOG_RECEIVER_PORT>": ["datadog-receiver"]}'
@@ -169,7 +169,5 @@ To use this component, you need to start {{< param "PRODUCT_NAME" >}} with addit
 [Datadog]: https://www.datadoghq.com/
 [Datadog Agent]: https://docs.datadoghq.com/agent/
 [Prometheus]: https://prometheus.io
-[OTLP]: https://opentelemetry.io/docs/specs/otlp/
-[otelcol.exporter.otlp]: ../../reference/components/otelcol/otelcol.exporter.otlp
-[otelcol.exporter.otlp]: ../../reference/components/otelcol/otelcol.exporter.otlp
-[Components]: ../../get-started/components
+[otelcol.exporter.otlp]: ../../reference/components/otelcol/otelcol.exporter.otlp/
+[Components]: ../../get-started/components/

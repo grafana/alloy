@@ -1,0 +1,56 @@
+otelcol.receiver.syslog "default" {
+	enable_octet_counting           = true
+	max_octets                      = 16000
+	allow_skip_pri_header           = true
+	non_transparent_framing_trailer = "NUL"
+
+	retry_on_failure {
+		enabled          = true
+		initial_interval = "10s"
+		max_interval     = "1m0s"
+		max_elapsed_time = "10m0s"
+	}
+
+	tcp {
+		max_log_size   = "2MiB"
+		listen_address = "localhost:1514"
+
+		tls {
+			reload_interval              = "1m0s"
+			include_system_ca_certs_pool = true
+		}
+		add_attributes     = true
+		one_log_per_packet = true
+		encoding           = "utf-16be"
+
+		multiline { }
+		preserve_leading_whitespaces  = true
+		preserve_trailing_whitespaces = true
+	}
+
+	udp {
+		listen_address = "localhost:1515"
+		encoding       = "utf-16le"
+
+		multiline {
+			line_end_pattern = "logend"
+			omit_pattern     = true
+		}
+
+		async {
+			readers          = 2
+			processors       = 4
+			max_queue_length = 1000
+		}
+	}
+	on_error = "drop"
+}
+
+otelcol.exporter.syslog "default" {
+	tls {
+		insecure_skip_verify = true
+	}
+	endpoint              = "localhost"
+	port                  = 1514
+	enable_octet_counting = true
+}

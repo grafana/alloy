@@ -115,19 +115,3 @@ func TestRiverConfigValidate(t *testing.T) {
 		})
 	}
 }
-
-func TestParsePostgresURL(t *testing.T) {
-	dsn := "postgresql://linus:42secret@localhost:5432/postgres?sslmode=disable"
-	expected := map[string]string{
-		"dbname":   "postgres",
-		"host":     "localhost",
-		"password": "42secret",
-		"port":     "5432",
-		"sslmode":  "disable",
-		"user":     "linus",
-	}
-
-	actual, err := parsePostgresURL(dsn)
-	require.NoError(t, err)
-	require.Equal(t, actual, expected)
-}

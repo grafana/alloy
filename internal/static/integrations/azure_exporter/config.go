@@ -115,7 +115,7 @@ func (c *Config) NewIntegration(l log.Logger) (integrations.Integration, error) 
 func (c *Config) Validate() error {
 	var configErrors []string
 
-	if c.Subscriptions == nil || len(c.Subscriptions) == 0 {
+	if len(c.Subscriptions) == 0 {
 		configErrors = append(configErrors, "subscriptions cannot be empty")
 	}
 
@@ -123,7 +123,7 @@ func (c *Config) Validate() error {
 		configErrors = append(configErrors, "resource_type cannot be empty")
 	}
 
-	if c.Metrics == nil || len(c.Metrics) == 0 {
+	if len(c.Metrics) == 0 {
 		configErrors = append(configErrors, "metrics cannot be empty")
 	}
 
@@ -213,6 +213,12 @@ func (c *Config) ToScrapeSettings() (*metrics.RequestMetricSettings, error) {
 		settings.MetricTop = to.Ptr[int32](100_000_000)
 		settings.MetricOrderBy = "" // Order is only relevant if top won't return all the results our high value should prevent this
 	}
+
+	// Using regions is at subscription scope which adds a default filter that respects top
+	if len(settings.Regions) > 0 && settings.MetricTop == nil {
+		settings.MetricTop = to.Ptr[int32](100_000_000)
+	}
+
 	return &settings, nil
 }
 

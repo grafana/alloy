@@ -9,6 +9,7 @@ Name    | Type     | Description      | Default         | Required
 `cloud` | `string` | The Azure Cloud. | `"AzurePublic"` | no
 
 The supported values for `cloud` are:
+
 * `"AzurePublic"`
 * `"AzureChina"`
 * `"AzureGovernment"`

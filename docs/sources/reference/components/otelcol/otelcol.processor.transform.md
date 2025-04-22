@@ -122,6 +122,7 @@ Hierarchy | Block | Description | Required
 trace_statements | [trace_statements][] | Statements which transform traces. | no
 metric_statements | [metric_statements][] | Statements which transform metrics. | no
 log_statements | [log_statements][] | Statements which transform logs. | no
+statements | [statements][] | Statements which transform logs, metrics, and traces without specifying a context explicitly. | no
 output | [output][] | Configures where to send received telemetry data. | yes
 debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
 
@@ -185,6 +186,47 @@ The supported values for `context` are:
 * `log`: Use when interacting only with OTLP logs.
 
 Refer to [OTTL Context][] for more information about how to use contexts.
+
+### statements block
+
+The `statements` block specifies statements which transform logs, metrics, or traces telemetry signals.
+There is no `context` configuration argument - the context will be inferred from the statement.
+This inference is based on the path names, functions, and enums present in the statements.
+At least one context must be capable of parsing all statements.
+
+The `statements` block can replace the `log_statements`, `metric_statements`, and `trace_statements` blocks.
+It can also be used alongside them.
+
+Name     | Type           | Description                                                      | Default | Required
+---------|----------------|------------------------------------------------------------------|---------|---------
+`log`    | `list(string)` | A list of OTTL statements which transform logs.                  | `[]`    | no
+`metric` | `list(string)` | A list of OTTL statements which transform metrics.               | `[]`    | no
+`trace`  | `list(string)` | A list of OTTL statements which transform traces.                | `[]`    | no
+
+The inference happens automatically because path names are prefixed with the context name. 
+In the following example, the inferred context value is `datapoint`, as it is the only context that supports parsing both datapoint and metric paths:
+
+```alloy
+statements {
+    metric = [`set(metric.description, "test passed") where datapoint.attributes["test"] == "pass"`]
+}
+```
+
+In the following example, the inferred context is `metric`, as `metric` is the context capable of parsing both metric and resource data:
+
+```alloy
+statements {
+    metric = [
+        `resource.attributes["test"], "passed"`,
+        `set(metric.description, "test passed"`,
+    ]
+}
+```
+
+The primary benefit of context inference is that it enhances the efficiency of statement processing by linking them to the most suitable context. 
+This optimization ensures that data transformations are both accurate and performant, 
+leveraging the hierarchical structure of contexts to avoid unnecessary iterations and improve overall processing efficiency. 
+All of this happens automatically, leaving you to write OTTL statements without worrying about contexts.
 
 ### OTTL Context
 
@@ -306,10 +348,6 @@ otelcol.processor.transform "default" {
 }
 ```
 
-Each statement is enclosed in backticks instead of quotation marks.
-This constitutes a [raw string][raw-strings], and lets us avoid the need to escape
-each `"` with a `\"` inside a [normal][strings] {{< param "PRODUCT_NAME" >}} syntax string.
-
 ### Rename a resource attribute
 
 The are two ways to rename an attribute key.
@@ -356,10 +394,6 @@ otelcol.processor.transform "default" {
 }
 ```
 
-Each statement is enclosed in backticks instead of quotation marks.
-This constitutes a [raw string][raw-strings], and lets us avoid the need to escape
-each `"` with a `\"`, and each `\` with a `\\` inside a [normal][strings] {{< param "PRODUCT_NAME" >}} syntax string.
-
 ### Create an attribute from the contents of a log body
 
 This example sets the attribute `body` to the value of the log body:
@@ -383,10 +417,6 @@ otelcol.processor.transform "default" {
 }
 ```
 
-Each statement is enclosed in backticks instead of quotation marks.
-This constitutes a [raw string][raw-strings], and lets us avoid the need to escape
-each `"` with a `\"` inside a [normal][strings] {{< param "PRODUCT_NAME" >}} syntax string.
-
 ### Combine two attributes
 
 This example sets the attribute `test` to the value of attributes `service.name` and `service.version` combined.
@@ -399,7 +429,7 @@ otelcol.processor.transform "default" {
     context = "resource"
     statements = [
       // The Concat function combines any number of strings, separated by a delimiter.
-      `set(attributes["test"], Concat([attributes["foo"], attributes["bar"]], " "))`,
+      `set(attributes["test"], Concat([attributes["service.name"], attributes["service.version"]], " "))`,
     ]
   }
 
@@ -410,10 +440,6 @@ otelcol.processor.transform "default" {
   }
 }
 ```
-
-Each statement is enclosed in backticks instead of quotation marks.
-This constitutes a [raw string][raw-strings], and lets us avoid the need to escape
-each `"` with a `\"` inside a [normal][strings] {{< param "PRODUCT_NAME" >}} syntax string.
 
 ### Parsing JSON logs
 
@@ -462,10 +488,6 @@ otelcol.processor.transform "default" {
   }
 }
 ```
-
-Each statement is enclosed in backticks instead of quotation marks.
-This constitutes a [raw string][raw-strings], and lets us avoid the need to escape
-each `"` with a `\"`, and each `\` with a `\\` inside a [normal][strings] {{< param "PRODUCT_NAME" >}} syntax string.
 
 ### Various transformations of attributes and status codes
 
@@ -564,10 +586,6 @@ otelcol.exporter.otlp "default" {
   }
 }
 ```
-
-Each statement is enclosed in backticks instead of quotation marks.
-This constitutes a [raw string][raw-strings], and lets us avoid the need to escape
-each `"` with a `\"`, and each `\` with a `\\` inside a [normal][strings] {{< param "PRODUCT_NAME" >}} syntax string.
 
 [strings]: ../../../../get-started/configuration-syntax/expressions/types_and_values/#strings
 [raw-strings]: ../../../../get-started/configuration-syntax/expressions/types_and_values/#raw-strings

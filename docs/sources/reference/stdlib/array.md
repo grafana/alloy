@@ -19,7 +19,7 @@ Elements within the list can be any type.
 
 ### Examples
 
-```
+```alloy
 > array.concat([])
 []
 
@@ -35,22 +35,20 @@ Elements within the list can be any type.
 
 ## array.combine_maps
 
-> **EXPERIMENTAL**: This is an [experimental][] feature. Experimental
-> features are subject to frequent breaking changes, and may be removed with
-> no equivalent replacement. The `stability.level` flag must be set to `experimental`
-> to use the feature.
+{{< docs/shared lookup="stability/experimental_feature.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 The `array.combine_maps` function allows you to join two arrays of maps if certain keys have matching values in both maps. It's particularly useful when combining labels of targets coming from different `prometheus.discovery.*` or `prometheus.exporter.*` components.
 It takes three arguments:
 
-* The first two arguments are a of type `list(map(string))`. The keys of the map are strings. 
+* The first two arguments are a of type `list(map(string))`. The keys of the map are strings.
   The value for each key could be of any Alloy type such as a `string`, `integer`, `map`, or a `capsule`.
 * The third input is an `array` containing strings. The strings are the keys whose value has to match for maps to be combined.
 
 The maps that don't contain all the keys provided in the third argument will be discarded. When maps are combined and both contain the same keys, the last value from the second argument will be used.
 
 Pseudo function code:
-```
+
+```text
 for every map in arg1:
   for every map in arg2:
     if the condition key matches in both:
@@ -73,6 +71,7 @@ for every map in arg1:
 ```
 
 Examples using discovery and exporter components:
+
 ```alloy
 > array.combine_maps(discovery.kubernetes.k8s_pods.targets, prometheus.exporter.postgres, ["instance"])
 

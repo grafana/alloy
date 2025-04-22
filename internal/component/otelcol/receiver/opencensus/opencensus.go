@@ -10,7 +10,6 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/opencensusreceiver"
 	otelcomponent "go.opentelemetry.io/collector/component"
-	"go.opentelemetry.io/collector/extension"
 	"go.opentelemetry.io/collector/pipeline"
 )
 
@@ -58,15 +57,19 @@ func (args *Arguments) SetToDefault() {
 
 // Convert implements receiver.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
+	grpcServerConfig, err := args.GRPC.Convert()
+	if err != nil {
+		return nil, err
+	}
 	return &opencensusreceiver.Config{
 		CorsOrigins:  args.CorsAllowedOrigins,
-		ServerConfig: *args.GRPC.Convert(),
+		ServerConfig: *grpcServerConfig,
 	}, nil
 }
 
 // Extensions implements receiver.Arguments.
-func (args Arguments) Extensions() map[otelcomponent.ID]extension.Extension {
-	return nil
+func (args Arguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
+	return args.GRPC.Extensions()
 }
 
 // Exporters implements receiver.Arguments.

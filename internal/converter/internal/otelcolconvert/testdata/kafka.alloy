@@ -37,6 +37,15 @@ otelcol.receiver.kafka "default" {
 	default_fetch_size = 1048575
 	max_fetch_size     = 2000000
 
+	error_backoff {
+		enabled              = true
+		initial_interval     = "1s"
+		randomization_factor = 0.1
+		multiplier           = 1
+		max_interval         = "1s"
+		max_elapsed_time     = "1m0s"
+	}
+
 	output {
 		metrics = [otelcol.exporter.kafka.default.input]
 		logs    = [otelcol.exporter.kafka.default.input]

@@ -53,7 +53,7 @@ Subsequent calls without an explicit index will then proceed with `n`+1, `n`+2, 
 The function produces an error if the format string requests an impossible conversion or accesses more arguments than are given.
 An error is also produced for an unsupported format verb.
 
-##### Verbs
+#### Verbs
 
 The specification may contain the following verbs.
 
@@ -194,13 +194,13 @@ If the string doesn't start with the prefix, the string is returned unchanged.
 "hello"
 ```
 
-## strings.trim_space
+## string.trim_space
 
-`strings.trim_space` removes any whitespace characters from the start and end of a string.
+`string.trim_space` removes any whitespace characters from the start and end of a string.
 
 ### Examples
 
 ```alloy
-> strings.trim_space("  hello\n\n")
+> string.trim_space("  hello\n\n")
 "hello"
 ```

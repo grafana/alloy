@@ -4,7 +4,10 @@ package target
 // configure and run the targets that can read gelf entries and forward them
 // to other loki components.
 
-import "github.com/prometheus/client_golang/prometheus"
+import (
+	"github.com/grafana/alloy/internal/util"
+	"github.com/prometheus/client_golang/prometheus"
+)
 
 // Metrics holds a set of gelf metrics.
 type Metrics struct {
@@ -30,10 +33,8 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 	})
 
 	if reg != nil {
-		reg.MustRegister(
-			m.gelfEntries,
-			m.gelfErrors,
-		)
+		m.gelfEntries = util.MustRegisterOrGet(reg, m.gelfEntries).(prometheus.Counter)
+		m.gelfErrors = util.MustRegisterOrGet(reg, m.gelfErrors).(prometheus.Counter)
 	}
 
 	return &m

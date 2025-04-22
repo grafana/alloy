@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"sync"
 	"testing"
 	"time"
 
@@ -24,20 +23,31 @@ import (
 
 type crdManagerFactoryHungRun struct {
 	stopRun chan struct{}
+	onRun   chan struct{}
 }
 
 func (m crdManagerFactoryHungRun) New(_ component.Options, _ cluster.Cluster, _ log.Logger,
 	_ *operator.Arguments, _ string, _ labelstore.LabelStore) crdManagerInterface {
+
 	return &crdManagerHungRun{
+		onRun:   m.onRun,
 		stopRun: m.stopRun,
 	}
 }
 
 type crdManagerHungRun struct {
 	stopRun chan struct{}
+	onRun   chan struct{}
 }
 
 func (c *crdManagerHungRun) Run(ctx context.Context) error {
+	// Notify that run has been called for tests to register the component is fully started
+	select {
+	case c.onRun <- struct{}{}:
+	default:
+	}
+
+	// Wait for the context to be done
 	<-ctx.Done()
 	<-c.stopRun
 	return nil
@@ -88,26 +98,29 @@ func TestRunExit(t *testing.T) {
 	require.NoError(t, err)
 
 	stopRun := make(chan struct{})
+	onRun := make(chan struct{})
 	c.crdManagerFactory = crdManagerFactoryHungRun{
 		stopRun: stopRun,
+		onRun:   onRun,
 	}
 
 	// Run the component
-	ctx, cancelFunc := context.WithCancel(context.Background())
+	ctx, cancelFunc := context.WithCancel(t.Context())
 	cmpRunExited := atomic.Bool{}
 	cmpRunExited.Store(false)
 
-	wg := &sync.WaitGroup{}
-	wg.Add(1)
 	go func() {
-		wg.Done()
 		err := c.Run(ctx)
 		require.NoError(t, err)
 		cmpRunExited.Store(true)
 	}()
-	// Wait until the component.Run goroutine starts
+	// Wait until the Hung CRD Manager starts
 	// The test can be flaky without this.
-	wg.Wait()
+	select {
+	case <-onRun:
+	case <-time.After(3 * time.Second):
+		require.Fail(t, "Hung CRD Manager didn't start")
+	}
 
 	// Stop the component.
 	// It shouldn't stop immediately, because the CRD Manager is hung.
@@ -119,6 +132,8 @@ func TestRunExit(t *testing.T) {
 
 	// Make crdManager.Run exit
 	close(stopRun)
+	// clean up extra channel
+	close(onRun)
 
 	// Make sure component.Run exits
 	require.Eventually(t, func() bool {
