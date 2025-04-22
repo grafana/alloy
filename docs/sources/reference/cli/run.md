@@ -57,10 +57,10 @@ The following flags are supported:
 * `--cluster.tls-server-name`: Server name used for peer communication over TLS.
 * `--cluster.wait-for-size`: Wait for the cluster to reach the specified number of instances before allowing components that use clustering to begin processing. Zero means disabled (default `0`).
 * `--cluster.wait-timeout`: Maximum duration to wait for minimum cluster size before proceeding with available nodes. Zero means wait forever, no timeout (default `0`).
-* `--config.format`: The format of the source file. Supported formats: `alloy`, `otelcol`, `prometheus`, `promtail`, `static` (default `"alloy"`).
-* `--config.bypass-conversion-errors`: Enable bypassing errors when converting (default `false`).
+* `--config.format`: Specifies the source file format. Supported formats: `alloy`, `otelcol`, `prometheus`, `promtail`, and `static` (default `"alloy"`).
+* `--config.bypass-conversion-errors`: Enable bypassing errors during conversion (default `false`).
 * `--config.extra-args`: Extra arguments from the original format used by the converter.
-* `--stability.level`: The minimum permitted stability level of functionality to run. Supported values: `experimental`, `public-preview`, `generally-available` (default `"generally-available"`).
+* `--stability.level`: The minimum permitted stability level of functionality. Supported values: `experimental`, `public-preview`, and `generally-available` (default `"generally-available"`).
 * `--feature.community-components.enabled`: Enable community components (default `false`).
 * `--feature.prometheus.metric-validation-scheme`: Prometheus metric validation scheme to use. Supported values: `legacy`, `utf-8`. NOTE: this is an experimental flag and may be removed in future releases (default `"legacy"`).
 * `--windows.priority`: The priority to set for the {{< param "PRODUCT_NAME" >}} process when running on Windows. This is only available on Windows. Supported values: `above_normal`, `below_normal`, `normal`, `high`, `idle`, or `realtime` (default `"normal"`).
