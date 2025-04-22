@@ -1,0 +1,12 @@
+diff --git a/Library/Homebrew/dev-cmd/bump-formula-pr.rb b/Library/Homebrew/dev-cmd/bump-formula-pr.rb
+index 167ea9134a..e07aecfe83 100644
+--- a/Library/Homebrew/dev-cmd/bump-formula-pr.rb
++++ b/Library/Homebrew/dev-cmd/bump-formula-pr.rb
+@@ -472,6 +472,7 @@ module Homebrew
+       def check_pull_requests(formula, tap_remote_repo, state: nil, version: nil)
+         tap = formula.tap
+         return if tap.nil?
++        return if args.force?
+ 
+         # if we haven't already found open requests, try for an exact match across all pull requests
+         GitHub.check_for_duplicate_pull_requests(
