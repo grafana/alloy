@@ -129,13 +129,16 @@ func runSingleTest(ctx context.Context, testDir string, port int) {
 	}
 
 	if dirName == "beyla" {
-		containerID, err := findContainerID(ctx, "otel-metrics-gen-1")
-		if err != nil {
-			panic(err)
-		}
 		req.HostConfigModifier = func(hostConfig *container.HostConfig) {
-			hostConfig.PidMode = container.PidMode("container:" + containerID)
+			hostConfig.Privileged = true
+			hostConfig.CapAdd = []string{"SYS_ADMIN", "SYS_PTRACE", "SYS_RESOURCE"}
+			hostConfig.SecurityOpt = []string{"apparmor:unconfined"}
+			hostConfig.PidMode = container.PidMode("host")
 		}
+	}
+
+	if dirName == "loki-enrich" {
+		req.ExposedPorts = append(req.ExposedPorts, "1514/tcp")
 	}
 
 	alloyContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
@@ -153,6 +156,34 @@ func runSingleTest(ctx context.Context, testDir string, port int) {
 
 	testCmd := exec.Command("go", "test")
 	testCmd.Dir = testDir
+
+	if dirName == "loki-enrich" {
+		mappedPort, err := alloyContainer.MappedPort(ctx, "1514/tcp")
+		if err != nil {
+			logChan <- TestLog{
+				TestDir:  dirName,
+				AlloyLog: fmt.Sprintf("failed to get mapped port: %v", err),
+			}
+			return
+		}
+
+		host, err := alloyContainer.Host(ctx)
+		if err != nil {
+			logChan <- TestLog{
+				TestDir:  dirName,
+				AlloyLog: fmt.Sprintf("failed to get container host: %v", err),
+			}
+			return
+		}
+
+		fmt.Printf("Loki API should be available at http://%s:%s/loki/api/v1/push\n",
+			host, mappedPort.Port())
+
+		testCmd.Env = append(os.Environ(),
+			fmt.Sprintf("ALLOY_HOST=%s", host),
+			fmt.Sprintf("ALLOY_PORT=%s", mappedPort.Port()))
+	}
+
 	testOutput, errTest := testCmd.CombinedOutput()
 
 	alloyLogs, _ := alloyContainer.Logs(ctx)
@@ -227,28 +258,6 @@ func collectFiles(root string) ([]fileInfo, error) {
 		return nil
 	})
 	return filesToAdd, err
-}
-
-func findContainerID(ctx context.Context, targetName string) (string, error) {
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	if err != nil {
-		return "", err
-	}
-
-	containers, err := cli.ContainerList(ctx, container.ListOptions{})
-	if err != nil {
-		return "", err
-	}
-
-	for _, c := range containers {
-		for _, name := range c.Names {
-			if strings.HasSuffix(name, targetName) {
-				return c.ID, nil
-			}
-		}
-	}
-
-	return "", fmt.Errorf("container with name suffix %s not found", targetName)
 }
 
 func getTestcontainersNetworkName(ctx context.Context) (string, error) {

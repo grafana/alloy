@@ -1,5 +1,15 @@
 beyla.ebpf "default" {
-  executable_name	 = "main" // this is instrumenting the otel-metrics-gen app
+  discovery {
+    services {
+      exe_path	 = "main" // this is instrumenting the otel-metrics-gen app
+    }
+  }
+  debug = true
+  metrics {
+    features = [
+      "application", 
+      ]
+  }
 }
 
 prometheus.scrape "beyla" {
