@@ -34,7 +34,7 @@ The following flags are supported:
 * `--feature.community-components.enabled`: Enable community components (default `false`).
 
 {{< admonition type="note" >}}
-`--stability.level` and `--feature.community-components.enabled` should be set to the same value that is used when running alloy.
+Set `--stability.level` and `--feature.community-components.enabled` to the same value used when running {{< param "PRODUCT_NAME" >}}.
 {{< /admonition >}}
 
 
