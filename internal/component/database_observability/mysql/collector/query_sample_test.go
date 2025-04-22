@@ -882,7 +882,9 @@ func TestQuerySample_initializeTimer(t *testing.T) {
 			5,
 		))
 
-		c := &QuerySample{dbConnection: db}
+		c, err := NewQuerySample(QuerySampleArguments{DB: db})
+		require.NoError(t, err)
+
 		require.NoError(t, c.initializeBookmark(t.Context()))
 
 		assert.Equal(t, 5e12, c.timerBookmark)
@@ -899,7 +901,9 @@ func TestQuerySample_initializeTimer(t *testing.T) {
 			picosecondsToSeconds(math.MaxUint64) + 5,
 		))
 
-		c := &QuerySample{dbConnection: db}
+		c, err := NewQuerySample(QuerySampleArguments{DB: db})
+		require.NoError(t, err)
+
 		require.NoError(t, c.initializeBookmark(t.Context()))
 
 		assert.Equal(t, 5e12, c.timerBookmark)
@@ -1263,7 +1267,8 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 
 		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnError(fmt.Errorf("some error"))
 
-		c := &QuerySample{dbConnection: db}
+		c, err := NewQuerySample(QuerySampleArguments{DB: db})
+		require.NoError(t, err)
 
 		err = c.fetchQuerySamples(t.Context())
 
