@@ -1,4 +1,4 @@
- name: bump-formula-pr
+name: bump-formula-pr
 on:
   release:
     types: [released]
