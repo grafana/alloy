@@ -44,4 +44,4 @@ Validation is limited in scope. It currently checks for:
 
 * Syntax errors.
 * Missing components.
-* Components name conflicts.
+* Component name conflicts.
