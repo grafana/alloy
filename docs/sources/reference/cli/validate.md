@@ -40,7 +40,7 @@ Set `--stability.level` and `--feature.community-components.enabled` to the same
 
 ## Limitations
 
-Validation performed is limited in what it can check. Currently it will check for:
+Validation is limited in scope. It currently checks for:
 
 * Syntax errors.
 * Missing components.
