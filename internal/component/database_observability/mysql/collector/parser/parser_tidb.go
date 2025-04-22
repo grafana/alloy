@@ -3,6 +3,7 @@ package parser
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"golang.org/x/exp/maps"
@@ -75,7 +76,9 @@ func (p *TiDBSqlParser) ExtractTableNames(_ log.Logger, _ string, stmt any) []st
 		tables: map[string]struct{}{},
 	}
 	(*stmt.(*ast.StmtNode)).Accept(v)
-	return maps.Keys(v.tables)
+	keys := maps.Keys(v.tables)
+	slices.Sort(keys)
+	return keys
 }
 
 func (p *TiDBSqlParser) ParseTableName(t any) string {

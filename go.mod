@@ -269,7 +269,7 @@ require (
 	golang.org/x/crypto v0.36.0
 	golang.org/x/crypto/x509roots/fallback v0.0.0-20240208163226-62c9f1799c91
 	golang.org/x/exp v0.0.0-20250218142911-aa4b98e5adaa
-	golang.org/x/net v0.37.0
+	golang.org/x/net v0.38.0
 	golang.org/x/oauth2 v0.28.0
 	golang.org/x/sync v0.12.0 // indirect
 	golang.org/x/sys v0.31.0
@@ -970,7 +970,7 @@ replace (
 // TODO: remove replace directive once:
 // * There is a release of Prometheus which addresses https://github.com/prometheus/prometheus/issues/14049,
 // for example, via this implementation: https://github.com/grafana/prometheus/pull/34
-replace github.com/prometheus/prometheus => github.com/grafana/prometheus v1.8.2-0.20250312141819-a2b6722387bf // staleness_disabling_v0.55.1 branch
+replace github.com/prometheus/prometheus => github.com/grafana/prometheus v1.8.2-0.20250410112059-2c3eb5bff000 // staleness_disabling_v0.55.1 branch
 
 replace gopkg.in/yaml.v2 => github.com/rfratto/go-yaml v0.0.0-20211119180816-77389c3526dc
 

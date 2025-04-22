@@ -41,26 +41,29 @@ SELECT statements.CURRENT_SCHEMA,
 	statements.ERRORS,
 	statements.MAX_CONTROLLED_MEMORY,
 	statements.MAX_TOTAL_MEMORY
+	%s
 FROM performance_schema.events_statements_history AS statements
 WHERE statements.sql_text IS NOT NULL
   AND statements.CURRENT_SCHEMA NOT IN ('mysql', 'performance_schema', 'sys', 'information_schema')`
 
 type QuerySampleArguments struct {
-	DB              *sql.DB
-	InstanceKey     string
-	CollectInterval time.Duration
-	EntryHandler    loki.EntryHandler
-	UseTiDBParser   bool
+	DB                    *sql.DB
+	InstanceKey           string
+	CollectInterval       time.Duration
+	EntryHandler          loki.EntryHandler
+	UseTiDBParser         bool
+	DisableQueryRedaction bool
 
 	Logger log.Logger
 }
 
 type QuerySample struct {
-	dbConnection    *sql.DB
-	instanceKey     string
-	collectInterval time.Duration
-	entryHandler    loki.EntryHandler
-	sqlParser       parser.Parser
+	dbConnection          *sql.DB
+	instanceKey           string
+	collectInterval       time.Duration
+	entryHandler          loki.EntryHandler
+	sqlParser             parser.Parser
+	disableQueryRedaction bool
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -73,12 +76,13 @@ type QuerySample struct {
 
 func NewQuerySample(args QuerySampleArguments) (*QuerySample, error) {
 	c := &QuerySample{
-		dbConnection:    args.DB,
-		instanceKey:     args.InstanceKey,
-		collectInterval: args.CollectInterval,
-		entryHandler:    args.EntryHandler,
-		logger:          log.With(args.Logger, "collector", QuerySampleName),
-		running:         &atomic.Bool{},
+		dbConnection:          args.DB,
+		instanceKey:           args.InstanceKey,
+		collectInterval:       args.CollectInterval,
+		entryHandler:          args.EntryHandler,
+		disableQueryRedaction: args.DisableQueryRedaction,
+		logger:                log.With(args.Logger, "collector", QuerySampleName),
+		running:               &atomic.Bool{},
 	}
 
 	if args.UseTiDBParser {
@@ -95,7 +99,11 @@ func (c *QuerySample) Name() string {
 }
 
 func (c *QuerySample) Start(ctx context.Context) error {
-	level.Debug(c.logger).Log("msg", QuerySampleName+" collector started")
+	if c.disableQueryRedaction {
+		level.Warn(c.logger).Log("msg", "collector started with query redaction disabled. Query samples will include complete SQL text including query parameters.")
+	} else {
+		level.Debug(c.logger).Log("msg", "collector started")
+	}
 
 	c.running.Store(true)
 	ctx, cancel := context.WithCancel(ctx)
@@ -165,8 +173,15 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 		return fmt.Errorf("failed to scan now and uptime info: %w", err)
 	}
 
+	var sqlTextField string
+	if c.disableQueryRedaction {
+		sqlTextField = ",statements.SQL_TEXT"
+	}
+	query := fmt.Sprintf(selectQuerySamples, sqlTextField)
+
 	timerClause, limit := c.determineTimerClauseAndLimit(uptime)
-	rs, err := c.dbConnection.QueryContext(ctx, selectQuerySamples+timerClause, c.timerBookmark, limit)
+
+	rs, err := c.dbConnection.QueryContext(ctx, query+timerClause, c.timerBookmark, limit)
 	if err != nil {
 		return fmt.Errorf("failed to fetch query samples: %w", err)
 	}
@@ -178,10 +193,11 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 
 	for rs.Next() {
 		row := struct {
-			// sample metadata
+			// sample query details
 			Schema     sql.NullString
 			Digest     sql.NullString
 			DigestText sql.NullString
+			SQLText    sql.NullString
 
 			// sample time
 			TimerEndPicoseconds    sql.NullFloat64
@@ -200,7 +216,7 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 			MaxTotalMemory      uint64
 		}{}
 
-		err := rs.Scan(
+		scanArgs := []interface{}{
 			&row.Schema,
 			&row.Digest,
 			&row.DigestText,
@@ -213,7 +229,12 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 			&row.Errors,
 			&row.MaxControlledMemory,
 			&row.MaxTotalMemory,
-		)
+		}
+		if c.disableQueryRedaction {
+			scanArgs = append(scanArgs, &row.SQLText)
+		}
+
+		err := rs.Scan(scanArgs...)
 		if err != nil {
 			level.Error(c.logger).Log("msg", "failed to scan history table samples", "err", err)
 			continue
@@ -242,9 +263,7 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 		cpuTime := picosecondsToMilliseconds(row.CPUTime)
 		elapsedTime := picosecondsToMilliseconds(row.ElapsedTimePicoseconds.Float64)
 
-		c.entryHandler.Chan() <- buildLokiEntry(
-			OP_QUERY_SAMPLE,
-			c.instanceKey,
+		logMessage :=
 			fmt.Sprintf(
 				`schema="%s" digest="%s" digest_text="%s" rows_examined="%d" rows_sent="%d" rows_affected="%d" errors="%d" max_controlled_memory="%db" max_total_memory="%db" cpu_time="%fms" elapsed_time="%fms" elapsed_time_ms="%fms" time="%dms" level="INFO"`,
 				row.Schema.String,
@@ -260,7 +279,15 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 				elapsedTime,
 				elapsedTime,
 				row.TimestampMilliseconds,
-			),
+			)
+		if c.disableQueryRedaction && row.SQLText.Valid {
+			logMessage += fmt.Sprintf(` sql_text="%s"`, row.SQLText.String)
+		}
+
+		c.entryHandler.Chan() <- buildLokiEntry(
+			OP_QUERY_SAMPLE,
+			c.instanceKey,
+			logMessage,
 		)
 	}
 

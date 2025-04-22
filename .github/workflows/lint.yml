@@ -9,23 +9,25 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
     - name: Set up Go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
       with:
         go-version-file: go.mod
         cache: false
 
     - name: Lint alloy module
-      uses: golangci/golangci-lint-action@1481404843c368bc19ca9406f87d6e0fc97bdcfd #v7
+      uses: golangci/golangci-lint-action@1481404843c368bc19ca9406f87d6e0fc97bdcfd # v7.0.0
       with:
-        version: v2.0
+        # renovate: datasource=github-releases packageName=golangci/golangci-lint
+        version: v2.1.1
 
     - name: Lint syntax module
-      uses: golangci/golangci-lint-action@1481404843c368bc19ca9406f87d6e0fc97bdcfd #v7
+      uses: golangci/golangci-lint-action@1481404843c368bc19ca9406f87d6e0fc97bdcfd # v7.0.0
       with:
-        version: v2.0
+        # renovate: datasource=github-releases packageName=golangci/golangci-lint
+        version: v2.1.1
         working-directory: ./syntax/
 
     - name: Run custom linters
@@ -37,7 +39,7 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
     - name: Shellcheck
       uses: Azbagheri/shell-linter@30a9cf3f6cf25c08fc98f10d7dc4167f7b5c0c00 # v0.8.0
@@ -59,10 +61,10 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
     - name: Set up Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
       with:
         node-version: 22
 

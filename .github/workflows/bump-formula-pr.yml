@@ -8,7 +8,7 @@ jobs:
     name: homebrew-grafana
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/create-github-app-token@v1
+    - uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1.12.0
       id: app-token
       with:
         app-id: ${{ secrets.ALLOYBOT_APP_ID }}
@@ -24,7 +24,7 @@ jobs:
         git config --global user.email "879451+grafana-alloybot[bot]@users.noreply.github.com"
 
     - name: Get latest release
-      uses: rez0n/actions-github-release@main
+      uses: rez0n/actions-github-release@794c12f5e8d629e6ca329cf2e2daeb0f0ce6a3ce # main
       id: latest_release
       with:
         token: ${{ steps.app-token.outputs.token }}
@@ -32,7 +32,7 @@ jobs:
         type: "stable"
 
     - name: Setup Homebrew
-      uses: Homebrew/actions/setup-homebrew@master
+      uses: Homebrew/actions/setup-homebrew@4a509e36a728d1c8e147158247eb0446838a8d63 # master
       with:
         token: ${{ steps.app-token.outputs.token }}
 

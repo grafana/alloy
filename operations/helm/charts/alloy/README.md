@@ -108,6 +108,7 @@ useful if just using the default DaemonSet isn't sufficient.
 | controller.hostNetwork | bool | `false` | Configures Pods to use the host network. When set to true, the ports that will be used must be specified. |
 | controller.hostPID | bool | `false` | Configures Pods to use the host PID namespace. |
 | controller.initContainers | list | `[]` |  |
+| controller.minReadySeconds | int | `10` | How many additional seconds to wait before considering a pod ready. |
 | controller.nodeSelector | object | `{}` | nodeSelector to apply to Grafana Alloy pods. |
 | controller.parallelRollout | bool | `true` | Whether to deploy pods in parallel. Only used when controller.type is 'statefulset'. |
 | controller.podAnnotations | object | `{}` | Extra pod annotations to add. |

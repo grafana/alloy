@@ -18,8 +18,8 @@ Unreleased
 - Update to Grafana Alloy v1.8.1. (@dehaansa)
 
 - Update default configreloader resources to match what is set in prometheus-operator project (@dehaansa)
-
 - Add Vertical Pod Autoscaler support (@QuentinBisson)
+- Add support for configuring minReadySeconds in Helm chart. (@PabloPie)
 
 1.0.0 (2025-04-09)
 ----------
