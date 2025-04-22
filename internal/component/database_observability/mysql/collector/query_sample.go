@@ -177,11 +177,12 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 	if c.disableQueryRedaction {
 		sqlTextField = ",statements.SQL_TEXT"
 	}
-	query := fmt.Sprintf(selectQuerySamples, sqlTextField)
 
 	timerClause, limit := c.determineTimerClauseAndLimit(uptime)
 
-	rs, err := c.dbConnection.QueryContext(ctx, query+timerClause, c.timerBookmark, limit)
+	query := fmt.Sprintf(selectQuerySamples, sqlTextField) + timerClause
+
+	rs, err := c.dbConnection.QueryContext(ctx, query, c.timerBookmark, limit)
 	if err != nil {
 		return fmt.Errorf("failed to fetch query samples: %w", err)
 	}
