@@ -21,7 +21,7 @@ This command will fail with a non-zero exit code and print diagnostics to stderr
 Replace the following:
 
 * _`<FLAG>`_: One or more flags that define the input and output of the command.
-* _`<PATH_NAME>`_: Required. The {{< param "PRODUCT_NAME" >}} configuration file/directory path.
+* _`<PATH_NAME>`_: Required. The {{< param "PRODUCT_NAME" >}} configuration file or directory path.
 
 If you provide a directory path for  the _`<PATH_NAME>`_, {{< param "PRODUCT_NAME" >}} finds `*.alloy` files, ignoring nested directories, and loads them as a single configuration source.
 
