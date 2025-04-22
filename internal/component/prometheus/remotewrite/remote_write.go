@@ -94,6 +94,8 @@ func New(o component.Options, c Arguments) (*Component, error) {
 		return nil, err
 	}
 	ls := service.(labelstore.LabelStore)
+	// Enable the labelstore since it only exists to serve remote_write.
+	ls.Enable()
 
 	debugDataPublisher, err := o.GetServiceData(livedebugging.ServiceName)
 	if err != nil {

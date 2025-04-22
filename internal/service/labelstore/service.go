@@ -12,6 +12,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/value"
+	"go.uber.org/atomic"
 )
 
 const ServiceName = "labelstore"
@@ -26,7 +27,9 @@ type service struct {
 	totalIDs            *prometheus.Desc
 	idsInRemoteWrapping *prometheus.Desc
 	lastStaleCheck      prometheus.Gauge
+	enabled             *atomic.Bool
 }
+
 type staleMarker struct {
 	globalID        uint64
 	lastMarkedStale time.Time
@@ -36,6 +39,7 @@ type staleMarker struct {
 type Arguments struct{}
 
 var _ alloy_service.Service = (*service)(nil)
+var _ LabelStore = (*service)(nil)
 
 func New(l log.Logger, r prometheus.Registerer) *service {
 	if l == nil {
@@ -53,6 +57,7 @@ func New(l log.Logger, r prometheus.Registerer) *service {
 			Name: "alloy_labelstore_last_stale_check_timestamp",
 			Help: "Last time stale check was ran expressed in unix timestamp.",
 		}),
+		enabled: atomic.NewBool(false),
 	}
 	_ = r.Register(s.lastStaleCheck)
 	_ = r.Register(s)
@@ -122,8 +127,16 @@ func (s *service) Data() any {
 	return s
 }
 
+func (s *service) Enable() {
+	s.enabled.Store(true)
+}
+
 // GetOrAddLink is called by a remote_write endpoint component to add mapping and get back the global id.
 func (s *service) GetOrAddLink(componentID string, localRefID uint64, lbls labels.Labels) uint64 {
+	if !s.enabled.Load() {
+		return lbls.Hash()
+	}
+
 	s.mut.Lock()
 	defer s.mut.Unlock()
 
@@ -155,13 +168,17 @@ func (s *service) GetOrAddLink(componentID string, localRefID uint64, lbls label
 
 // GetOrAddGlobalRefID is used to create a global refid for a labelset
 func (s *service) GetOrAddGlobalRefID(l labels.Labels) uint64 {
-	s.mut.Lock()
-	defer s.mut.Unlock()
-
 	// Guard against bad input.
 	if l == nil {
 		return 0
 	}
+
+	if !s.enabled.Load() {
+		return l.Hash()
+	}
+
+	s.mut.Lock()
+	defer s.mut.Unlock()
 
 	labelHash := l.Hash()
 	globalID, found := s.labelsHashToGlobal[labelHash]
@@ -173,21 +190,13 @@ func (s *service) GetOrAddGlobalRefID(l labels.Labels) uint64 {
 	return s.globalRefID
 }
 
-// GetGlobalRefID returns the global refid for a component local combo, or 0 if not found
-func (s *service) GetGlobalRefID(componentID string, localRefID uint64) uint64 {
-	s.mut.Lock()
-	defer s.mut.Unlock()
-
-	m, found := s.mappings[componentID]
-	if !found {
-		return 0
-	}
-	global := m.localToGlobal[localRefID]
-	return global
-}
-
 // GetLocalRefID returns the local refid for a component global combo, or 0 if not found
 func (s *service) GetLocalRefID(componentID string, globalRefID uint64) uint64 {
+	// This is only used by remote_write so if its disabled this will never be called.
+	if !s.enabled.Load() {
+		return 0
+	}
+
 	s.mut.Lock()
 	defer s.mut.Unlock()
 
@@ -234,6 +243,9 @@ var staleDuration = time.Minute * 10
 
 // CheckAndRemoveStaleMarkers is called to garbage collect and items that have grown stale over stale duration (10m)
 func (s *service) CheckAndRemoveStaleMarkers() {
+	// Technically this could be nooped if disabled but I have noticed some people using the timestamp for alerts.
+	// So it will run just not doing anything.
+
 	s.mut.Lock()
 	defer s.mut.Unlock()
 
