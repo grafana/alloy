@@ -16,7 +16,8 @@ The `validate` command validates {{< param "PRODUCT_NAME" >}} configuration file
 alloy validate [<FLAG> ...] <PATH_NAME>
 ```
 
-This command will fail with a non-zero exit code and print diagnostics to stderr if validation fails.
+If the configuration file is valid, the `validate` command returns a zero exit code.
+If the configuration file is invalid, the command  returns a non-zero exit code and prints diagnostics generated during validation to stderr.
 
 Replace the following:
 
