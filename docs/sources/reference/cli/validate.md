@@ -27,10 +27,10 @@ If you provide a directory path for  the _`<PATH_NAME>`_, {{< param "PRODUCT_NAM
 
 The following flags are supported:
 
-* `--config.format`: The format of the source file. Supported formats: `alloy`, `otelcol`, `prometheus`, `promtail`, `static` (default `"alloy"`).
-* `--config.bypass-conversion-errors`: Enable bypassing errors when converting (default `false`).
+* `--config.format`: Specifies the source file format. Supported formats: `alloy`, `otelcol`, `prometheus`, `promtail`, and `static` (default `"alloy"`).
+* `--config.bypass-conversion-errors`: Enable bypassing errors during conversion (default `false`).
 * `--config.extra-args`: Extra arguments from the original format used by the converter.
-* `--stability.level`: The minimum permitted stability level of functionality. Supported values: `experimental`, `public-preview`, `generally-available` (default `"generally-available"`).
+* `--stability.level`: The minimum permitted stability level of functionality. Supported values: `experimental`, `public-preview`, and `generally-available` (default `"generally-available"`).
 * `--feature.community-components.enabled`: Enable community components (default `false`).
 
 {{< admonition type="note" >}}
