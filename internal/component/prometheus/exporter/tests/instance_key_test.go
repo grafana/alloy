@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component"
+	_ "github.com/grafana/alloy/internal/component/all" // import all components for the check if all exporters covered
 	"github.com/grafana/alloy/internal/component/prometheus/exporter"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter/apache"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter/azure"
@@ -22,6 +24,7 @@ import (
 	"github.com/grafana/alloy/internal/component/prometheus/exporter/consul"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter/dnsmasq"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter/elasticsearch"
+	"github.com/grafana/alloy/internal/component/prometheus/exporter/gcp"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter/github"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter/kafka"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter/memcached"
@@ -180,6 +183,12 @@ func TestInstanceKey(t *testing.T) {
 		// 	},
 		// 	expectedInstanceLabel: "d624903751412e27de94ecfce264e25e",
 		// },
+		{
+			testName:              "gcp",
+			componentName:         "prometheus.exporter.gcp",
+			args:                  gcp.Arguments{},
+			expectedErrorContains: "no project_ids defined",
+		},
 		{
 			testName:      "github",
 			componentName: "prometheus.exporter.github",
@@ -385,6 +394,7 @@ func TestInstanceKey(t *testing.T) {
 		},
 	}
 
+	componentsCovered := map[string]any{}
 	for _, tt := range tests {
 		t.Run(tt.testName, func(t *testing.T) {
 			var capturedExports exporter.Exports
@@ -415,6 +425,8 @@ func TestInstanceKey(t *testing.T) {
 			reg, ok := component.Get(tt.componentName)
 			require.True(t, ok, "expected component to exist in registry")
 
+			componentsCovered[tt.componentName] = struct{}{}
+
 			if tt.temporaryHostname != "" {
 				t.Setenv("HOSTNAME", tt.temporaryHostname)
 			}
@@ -434,4 +446,13 @@ func TestInstanceKey(t *testing.T) {
 			assert.Equal(t, tt.expectedInstanceLabel, actualInstance, "expected instance label to be %q, got %q", tt.expectedInstanceLabel, actualInstance)
 		})
 	}
+	t.Run("verify all exporters are covered", func(t *testing.T) {
+		allExporters := map[string]any{}
+		for _, n := range component.AllNames() {
+			if strings.HasPrefix(n, "prometheus.exporter.") {
+				allExporters[n] = struct{}{}
+			}
+		}
+		assert.Equal(t, componentsCovered, allExporters, "expected all exporters to be covered")
+	})
 }
