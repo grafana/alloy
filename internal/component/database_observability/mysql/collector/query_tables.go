@@ -218,6 +218,7 @@ func (c *QueryTables) tablesFromPreparedStatements(ctx context.Context) error {
 		tables := c.sqlParser.ExtractTableNames(c.logger, schema, stmt)
 		for _, table := range tables {
 			c.entryHandler.Chan() <- buildLokiEntry(
+				logging.LevelInfo,
 				OP_QUERY_PARSED_TABLE_NAME,
 				c.instanceKey,
 				fmt.Sprintf(`schema="%s" digest="%s" table="%s"`, schema, digest, table),
