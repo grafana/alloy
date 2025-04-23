@@ -21,7 +21,7 @@ func buildLokiEntry(level logging.Level, op, instanceKey, line string) loki.Entr
 		},
 		Entry: logproto.Entry{
 			Timestamp: time.Unix(0, time.Now().UnixNano()),
-			Line:      fmt.Sprintf(`level="%s" %s`, model.LabelValue(level), line),
+			Line:      fmt.Sprintf(`level="%s" %s`, level, line),
 		},
 	}
 }
