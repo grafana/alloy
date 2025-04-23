@@ -49,6 +49,7 @@ Main (unreleased)
 
 v1.8.2
 -----------------
+
 ### Bugfixes
 
 - Fix `otelcol.exporter.prometheus` dropping valid exemplars. (@github-vincent-miszczak)
