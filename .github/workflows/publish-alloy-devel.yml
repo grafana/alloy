@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   publish_windows_container:
-    uses: ./.github/workflows/publish-alloy.yaml
+    uses: ./.github/workflows/publish-alloy.yml
     with:
       img-name: alloy-devel
 
@@ -25,10 +25,10 @@ jobs:
       # We don't want this file to end up in the repo directory.
       # Then "tools/image-tag" would get confused because "git status" no longer reports a clean repo.
     - name: Login to DockerHub (from vault)
-      uses: grafana/shared-workflows/actions/dockerhub-login@dockerhub-login-v1.0.1
+      uses: grafana/shared-workflows/actions/dockerhub-login@13fb504e3bfe323c1188bf244970d94b2d336e86 # dockerhub-login-v1.0.1
 
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
     - name: Set ownership
       # https://github.com/actions/runner/issues/2033#issuecomment-1204205989
@@ -37,16 +37,16 @@ jobs:
           chown -R $(id -u):$(id -g) $PWD
 
     - name: Set up Go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
       with:
         go-version-file: go.mod
         cache: false
 
     - run: |
-       docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
-       docker buildx create --name multiarch-alloy-alloy-devel-${GITHUB_SHA} --driver docker-container --use
-       ./tools/ci/docker-containers alloy-devel
-       docker buildx rm multiarch-alloy-alloy-devel-${GITHUB_SHA}
+        docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+        docker buildx create --name multiarch-alloy-alloy-devel-${GITHUB_SHA} --driver docker-container --use
+        ./tools/ci/docker-containers alloy-devel
+        docker buildx rm multiarch-alloy-alloy-devel-${GITHUB_SHA}
 
   publish_linux_boringcrypto_container:
     name: Publish Linux alloy-devel-boringcrypto container
@@ -59,10 +59,10 @@ jobs:
     # We don't want this file to end up in the repo directory.
     # Then "tools/image-tag" would get confused because "git status" no longer reports a clean repo.
     - name: Login to DockerHub (from vault)
-      uses: grafana/shared-workflows/actions/dockerhub-login@dockerhub-login-v1.0.1
+      uses: grafana/shared-workflows/actions/dockerhub-login@13fb504e3bfe323c1188bf244970d94b2d336e86 # dockerhub-login-v1.0.1
 
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
     - name: Set ownership
       # https://github.com/actions/runner/issues/2033#issuecomment-1204205989
@@ -71,7 +71,7 @@ jobs:
           chown -R $(id -u):$(id -g) $PWD
 
     - name: Set up Go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
       with:
         go-version-file: go.mod
         cache: false
@@ -91,7 +91,7 @@ jobs:
     steps:
 
     - name: Get Vault secrets
-      uses: grafana/shared-workflows/actions/get-vault-secrets@main
+      uses: grafana/shared-workflows/actions/get-vault-secrets@28361cdb22223e5f1e34358c86c20908e7248760 # get-vault-secrets-v1.1.0
       with:
         common_secrets: |
           GITHUB_APP_ID=updater-app:app-id
@@ -99,7 +99,7 @@ jobs:
           GITHUB_APP_PRIVATE_KEY=updater-app:private-key
 
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
     - name: Get the image tag
       run: |
@@ -111,7 +111,7 @@ jobs:
       # We don't want this file to end up in the repo directory.
       # Then "tools/image-tag" would get confused because "git status" no longer reports a clean repo.
     - name: Log in to Google Artifact Registry
-      uses: grafana/shared-workflows/actions/login-to-gar@login-to-gar-v0.2.2
+      uses: grafana/shared-workflows/actions/login-to-gar@ebcac324fecb38bbeb7a2e59c82da34010c14014 # login-to-gar-v0.2.2
       with:
         registry: "us-docker.pkg.dev"
         environment: "prod"

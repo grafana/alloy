@@ -20,7 +20,7 @@ on:
       - '.github/workflows/publish-alloy-release.yml'
 jobs:
   check_windows_container:
-    uses: ./.github/workflows/publish-alloy.yaml
+    uses: ./.github/workflows/publish-alloy.yml
     with:
       img-name: alloy-devel
       push: false
