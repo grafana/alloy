@@ -16,13 +16,13 @@ The `validate` command validates an {{< param "PRODUCT_NAME" >}} configuration f
 alloy validate [<FLAG> ...] <PATH_NAME>
 ```
 
-If the configuration file is valid, the `validate` command returns a zero exit code.
-If the configuration file is invalid, the command  returns a non-zero exit code and prints diagnostics generated during validation to stderr.
-
 Replace the following:
 
 * _`<FLAG>`_: One or more flags that define the input and output of the command.
 * _`<PATH_NAME>`_: Required. The {{< param "PRODUCT_NAME" >}} configuration file or directory path.
+
+If the configuration file is valid, the `validate` command returns a zero exit code.
+If the configuration file is invalid, the command  returns a non-zero exit code and prints diagnostics generated during validation to stderr.
 
 If you provide a directory path for  the _`<PATH_NAME>`_, {{< param "PRODUCT_NAME" >}} finds `*.alloy` files, ignoring nested directories, and loads them as a single configuration source.
 
