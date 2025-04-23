@@ -21,8 +21,8 @@ type SetupConsumerArguments struct {
 	DB       *sql.DB
 	Registry *prometheus.Registry
 
-	Logger         log.Logger
-	ScrapeInterval time.Duration
+	Logger          log.Logger
+	CollectInterval time.Duration
 }
 
 type SetupConsumers struct {
@@ -52,7 +52,7 @@ func NewSetupConsumer(args SetupConsumerArguments) (*SetupConsumers, error) {
 		setupConsumersMetric: setupConsumerMetric,
 		running:              &atomic.Bool{},
 		logger:               args.Logger,
-		collectInterval:      args.ScrapeInterval,
+		collectInterval:      args.CollectInterval,
 	}, nil
 }
 

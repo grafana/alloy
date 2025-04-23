@@ -50,11 +50,12 @@ var (
 )
 
 type Arguments struct {
-	DataSourceName    alloytypes.Secret   `alloy:"data_source_name,attr"`
-	CollectInterval   time.Duration       `alloy:"collect_interval,attr,optional"`
-	ForwardTo         []loki.LogsReceiver `alloy:"forward_to,attr"`
-	EnableCollectors  []string            `alloy:"enable_collectors,attr,optional"`
-	DisableCollectors []string            `alloy:"disable_collectors,attr,optional"`
+	DataSourceName                alloytypes.Secret   `alloy:"data_source_name,attr"`
+	CollectInterval               time.Duration       `alloy:"collect_interval,attr,optional"`
+	SetupConsumersCollectInterval time.Duration       `alloy:"setup_consumers_collect_interval,attr,optional"`
+	ForwardTo                     []loki.LogsReceiver `alloy:"forward_to,attr"`
+	EnableCollectors              []string            `alloy:"enable_collectors,attr,optional"`
+	DisableCollectors             []string            `alloy:"disable_collectors,attr,optional"`
 
 	// TODO(cristian): experimental, will be removed soon
 	UseTiDBParser bool `alloy:"use_tidb_parser,attr,optional"`
@@ -63,8 +64,9 @@ type Arguments struct {
 }
 
 var DefaultArguments = Arguments{
-	CollectInterval: 1 * time.Minute,
-	UseTiDBParser:   true,
+	CollectInterval:               1 * time.Minute,
+	UseTiDBParser:                 true,
+	SetupConsumersCollectInterval: 1 * time.Hour,
 }
 
 func (a *Arguments) SetToDefault() {
@@ -318,10 +320,10 @@ func (c *Component) startCollectors() error {
 
 	if collectors[collector.SetupConsumersName] {
 		scCollector, err := collector.NewSetupConsumer(collector.SetupConsumerArguments{
-			DB:             dbConnection,
-			Registry:       c.registry,
-			Logger:         c.opts.Logger,
-			ScrapeInterval: 1 * time.Hour,
+			DB:              dbConnection,
+			Registry:        c.registry,
+			Logger:          c.opts.Logger,
+			CollectInterval: c.args.SetupConsumersCollectInterval,
 		})
 		if err != nil {
 			level.Error(c.opts.Logger).Log("msg", "failed to create SetupConsumer collector", "err", err)

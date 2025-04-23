@@ -27,10 +27,10 @@ func Test_getSetupConsumers(t *testing.T) {
 
 		reg := prometheus.NewRegistry()
 		c, err := NewSetupConsumer(SetupConsumerArguments{
-			Registry:       reg,
-			DB:             db,
-			ScrapeInterval: 1 * time.Second,
-			Logger:         log.NewLogfmtLogger(os.Stderr),
+			Registry:        reg,
+			DB:              db,
+			CollectInterval: 1 * time.Second,
+			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
 		require.NoError(t, err)
 
@@ -56,10 +56,10 @@ func Test_getSetupConsumers(t *testing.T) {
 
 		reg := prometheus.NewRegistry()
 		c, err := NewSetupConsumer(SetupConsumerArguments{
-			Registry:       reg,
-			DB:             db,
-			ScrapeInterval: 1 * time.Second,
-			Logger:         log.NewLogfmtLogger(os.Stderr),
+			Registry:        reg,
+			DB:              db,
+			CollectInterval: 1 * time.Second,
+			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
 		require.NoError(t, err)
 
@@ -81,10 +81,10 @@ func Test_getSetupConsumers(t *testing.T) {
 		mock.ExpectQuery(selectSetupConsumers).WillReturnError(fmt.Errorf("some error"))
 
 		c, err := NewSetupConsumer(SetupConsumerArguments{
-			DB:             db,
-			Registry:       prometheus.NewRegistry(),
-			ScrapeInterval: 1 * time.Second,
-			Logger:         log.NewLogfmtLogger(os.Stderr),
+			DB:              db,
+			Registry:        prometheus.NewRegistry(),
+			CollectInterval: 1 * time.Second,
+			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
 		require.NoError(t, err)
 

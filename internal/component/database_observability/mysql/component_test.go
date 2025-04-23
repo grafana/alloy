@@ -2,6 +2,7 @@ package mysql
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -41,6 +42,23 @@ func Test_collectSQLText(t *testing.T) {
 
 		assert.False(t, args.DisableQueryRedaction)
 	})
+
+	t.Run("setup consumers scrape interval is correctly parsed from config", func(t *testing.T) {
+		t.Parallel()
+
+		var exampleDBO11yAlloyConfig = `
+		data_source_name = ""
+		forward_to = []
+		setup_consumers_collect_interval = "1h"
+	`
+
+		var args Arguments
+		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
+		require.NoError(t, err)
+
+		assert.Equal(t, time.Hour, args.SetupConsumersCollectInterval)
+	})
+
 }
 
 func Test_enableOrDisableCollectors(t *testing.T) {
