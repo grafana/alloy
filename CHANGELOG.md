@@ -12,13 +12,98 @@ Main (unreleased)
 
 ### Features
 
+- Add the `otelcol.storage.file` extension to support persistent sending queues and `otelcol.receiver.filelog` file state tracking between restarts. (@dehaansa)
+
+- Add `otelcol.exporter.googlecloud` community component to export metrics, traces, and logs to Google Cloud. (@motoki317)
+
+- Add support to configure basic authentication for alloy http server. (@kalleep)
+
+### Enhancements
+
+- Add binary version to constants exposed in configuration file syntatx. (@adlots)
+
+- Update `loki.secretfilter` to include metrics about redactions (@kelnage)
+
+- (_Experimental_) Various changes to the experimental component `database_observability.mysql`:
+  - `schema_table`: add support for index expressions (@cristiangreco)
+  - `query_sample`: enable opt-in support to extract unredacted sql query (sql_text) (@matthewnolf)
+  - `query_tables`: improve queries parsing (@cristiangreco)
+  - `query_tables`: add support for prepared statements (@cristiangreco)
+  - make tidbparser the default choice (@cristiangreco)
+
+- Mixin dashboards improvements: added minimum cluster size to Cluster Overview dashboard, fixed units in OpenTelemetry dashboard, fixed slow components evaluation time units in Controller dashboard and updated Prometheus dashboard to correctly aggregate across instances. (@thampiotr)
+
+- Reduced the lag time during targets handover in a cluster in `prometheus.scrape` components by reducing thread contention. (@thampiotr)
+
+- Pretty print diagnostic errors when using `alloy run` (@kalleep)
+
+### Bugfixes
+
+- Fix `otelcol.receiver.filelog` documentation's default value for `start_at`. (@petewall)
+
+### Other changes
+
+- Update the zap logging adapter used by `otelcol` components to log arrays and objects. (@dehaansa)
+
+- Updated Windows install script to add DisplayVersion into registry on install (@enessene)
+
+v1.8.2
+-----------------
+
+### Bugfixes
+
+- Fix `otelcol.exporter.prometheus` dropping valid exemplars. (@github-vincent-miszczak)
+
+- Fix `loki.source.podlogs` not adding labels `__meta_kubernetes_namespace` and `__meta_kubernetes_pod_label_*`. (@kalleep)
+
+v1.8.1
+-----------------
+
+### Bugfixes
+
+- `rfc3164_default_to_current_year` argument was not fully added to `loki.source.syslog` (@dehaansa)
+
+- Fix issue with `remoteCfg` service stopping immediately and logging noop error if not configured (@dehaansa)
+
+- Fix potential race condition in `remoteCfg` service metrics registration (@kalleep)
+
+- Fix panic in `prometheus.exporter.postgres` when using minimal url as data source name. (@kalleep)
+
+v1.8.0
+-----------------
+
+### Breaking changes
+
+- Removed `open_port` and `executable_name` from top level configuration of Beyla component. Removed `enabled` argument from `network` block. (@marctc)
+
+- Breaking changes from the OpenTelemetry Collector v0.122 update: (@wildum)
+  - `otelcol.exporter.splunkhec`: `min_size_items` and `max_size_items` were replaced by `min_size`, `max_size` and `sizer` in the `batcher` block to allow
+  users to configure the size of the batch in a more flexible way.
+  - The telemetry level of Otel components is no longer configurable. The `level` argument in the `debug_metrics` block is kept to avoid breaking changes but it is not used anymore.
+  - `otelcol.processor.tailsampling` changed the unit of the decision timer metric from microseconds to milliseconds. (change unit of otelcol_processor_tail_sampling_sampling_decision_timer_latency)
+  - `otelcol.processor.deltatocumulative`: rename `otelcol_deltatocumulative_datapoints_processed` to `otelcol_deltatocumulative_datapoints` and remove the metrics `otelcol_deltatocumulative_streams_evicted`, `otelcol_deltatocumulative_datapoints_dropped` and `otelcol_deltatocumulative_gaps_length`.
+  - The `regex` attribute was removed from `otelcol.processor.k8sattributes`. The extract-patterns function from `otelcol.processor.transform` can be used instead.
+  - The default value of `metrics_flush_interval` in `otelcol.connector.servicegraph` was changed from `0s` to `60s`.
+  - `s3_partition` in `otelcol.exporter.awss3` was replaced by `s3_partition_format`.
+
+- (_Experimental_) `prometheus.write.queue` metric names changed to align better with prometheus standards. (@mattdurham)
+
+### Features
+
 - Add `otelcol.receiver.awscloudwatch` component to receive logs from AWS CloudWatch and forward them to other `otelcol.*` components. (@wildum)
 - Add `loki.enrich` component to enrich logs using labels from `discovery.*` components. (@v-zhuravlev)
 - Add string concatenation for secrets type (@ravishankar15)
 - Add support for environment variables to OpenTelemetry Collector config. (@jharvey10)
 - Replace graph in Alloy UI with a new version that supports modules and data flow visualization. (@wildum)
+- Added `--cluster.wait-for-size` and `--cluster.wait-timeout` flags which allow to specify the minimum cluster size
+  required before components that use clustering begin processing traffic to ensure adequate cluster capacity is
+  available. (@thampiotr)
+- Add `trace_printer` to `beyla.ebpf` component to print trace information in a specific format. (@marctc)
+- Add support for live debugging and graph in the UI for components imported via remotecfg. (@wildum)
 
 ### Enhancements
+
+- Add the ability to set user for Windows Service with silent install (@dehaansa)
 
 - Add livedebugging support for structured_metadata in `loki.process` (@dehaansa)
 
@@ -58,7 +143,6 @@ Main (unreleased)
   - `query_sample`: add option to use TiDB sql parser (@cristiangreco)
   - `query_tables`: rename collector from `query_sample` to better reflect responsibility (@matthewnolf)
   - `query_sample`: add new collector that replaces previous implementation to collect more detailed sample information (@matthewnolf)
-  - component now also collects metrics on enabled `performance_schema.setup_consumers` (@fridgepoet)
 
 - Add labels validation in `pyroscope.write` to prevent duplicate labels and invalid label names/values. (@marcsanmi)
 
@@ -70,6 +154,13 @@ Main (unreleased)
 
 - Add error body propagation in `pyroscope.write`, for `/ingest` calls. (@simonswine)
 
+- Add `tenant` label to remaining `loki_write_.+` metrics (@towolf)
+
+- Removed syntax highlighting from the component details UI view to improve
+  rendering performance. (@tpaschalis)
+
+- A new `grafana/alloy:vX.Y.Z-windowsservercore-ltsc2022` Docker image is now published on DockerHub. (@ptodev)
+
 ### Bugfixes
 
 - Fix deadlocks in `loki.source.file` when tailing fails (@mblaschke)
@@ -79,12 +170,28 @@ Main (unreleased)
 
 - Allow kafka exporter to attempt to connect even if TLS enabled but cert & key are not specified (@dehaansa)
 
+- Fixed bug where all resources were not being collected from `prometheus.exporter.azure` when using `regions` (@kgeckhart)
+
+- Fix panic in `loki.source.file` when the tailer had no time to run before the runner was stopped (@wildum)
+
 ### Other changes
 
 - Upgrading to Prometheus v2.55.1. (@ptodev)
   - Added a new `http_headers` argument to many `discovery` and `prometheus` components.
   - Added a new `scrape_failure_log_file` argument to `prometheus.scrape`.
 
+- Non-breaking changes from the OpenTelemetry Collector v0.122 update: (@wildum)
+  - `otelcol.processor.transform` has a new `statements` block for transformations which don't require a context to be specified explicitly.
+  - `otelcol.receiver.syslog` has a new `on_error` argument to specify the action to take when an error occurs while receiving logs.
+  - `otelcol.processor.resourcedetection` now supports `dynatrace` as a resource detector.
+  - `otelcol.receiver.kafka` has a new `error_backoff` block to configure how failed requests are retried.
+  - `otelcol.receiver.vcenter` has three new metrics `vcenter.vm.cpu.time`, `vcenter.vm.network.broadcast.packet.rate` and `vcenter.vm.network.multicast.packet.rate`.
+  - `otelcol.exporter.awss3` has two new arguments `acl` and `storage_class`.
+  - `otelcol.auth.headers` headers can now be populated using Authentication metadata using from_attribute
+
+- Change the stability of the `beyla.ebpf` component from "public preview" to "generally available". (@marctc)
+
+- The ingest API of `pyroscope.receive_http` no longer forwards all received headers, instead only passes through the `Content-Type` header. (@simonswine)
 
 v1.7.5
 -----------------
@@ -105,7 +212,7 @@ v1.7.3
 
 ### Breaking changes
 
-- Fixed the parsing of selections, application and network filter blocks for Beyla
+- Fixed the parsing of selections, application and network filter blocks for Beyla. (@raffaelroquetto)
 
 ### Enhancements
 

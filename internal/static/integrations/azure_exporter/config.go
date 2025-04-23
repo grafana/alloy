@@ -213,6 +213,12 @@ func (c *Config) ToScrapeSettings() (*metrics.RequestMetricSettings, error) {
 		settings.MetricTop = to.Ptr[int32](100_000_000)
 		settings.MetricOrderBy = "" // Order is only relevant if top won't return all the results our high value should prevent this
 	}
+
+	// Using regions is at subscription scope which adds a default filter that respects top
+	if len(settings.Regions) > 0 && settings.MetricTop == nil {
+		settings.MetricTop = to.Ptr[int32](100_000_000)
+	}
+
 	return &settings, nil
 }
 

@@ -98,4 +98,4 @@ If {{< param "PRODUCT_NAME" >}} consumes an abnormally large amount of resources
 Attach your pprof files and your {{< param "PRODUCT_NAME" >}} configuration file.
 Make sure you redact any secrets in the attachments.
 
-[alloy-repo]: https://github.com/grafana/alloy/issue/
+[alloy-repo]: https://github.com/grafana/alloy/issues/

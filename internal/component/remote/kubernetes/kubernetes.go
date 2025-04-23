@@ -172,7 +172,8 @@ func (c *Component) pollError() error {
 	defer cancel()
 
 	data := map[string]alloytypes.OptionalSecret{}
-	if c.kind == TypeSecret {
+	switch c.kind {
+	case TypeSecret:
 		secret, err := c.client.CoreV1().Secrets(c.args.Namespace).Get(ctx, c.args.Name, v1.GetOptions{})
 		if err != nil {
 			return err
@@ -183,7 +184,7 @@ func (c *Component) pollError() error {
 				IsSecret: true,
 			}
 		}
-	} else if c.kind == TypeConfigMap {
+	case TypeConfigMap:
 		cmap, err := c.client.CoreV1().ConfigMaps(c.args.Namespace).Get(ctx, c.args.Name, v1.GetOptions{})
 		if err != nil {
 			return err

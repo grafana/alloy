@@ -36,11 +36,11 @@ func (p PushFunc) Push(ctx context.Context, r *connect.Request[pushv1.PushReques
 func Test_Write_FanOut(t *testing.T) {
 	var (
 		export      Exports
-		argument                       = DefaultArguments()
-		pushTotal                      = atomic.NewInt32(0)
-		serverCount                    = int32(10)
-		servers     []*httptest.Server = make([]*httptest.Server, serverCount)
-		endpoints   []*EndpointOptions = make([]*EndpointOptions, 0, serverCount)
+		argument    = DefaultArguments()
+		pushTotal   = atomic.NewInt32(0)
+		serverCount = int32(10)
+		servers     = make([]*httptest.Server, serverCount)
+		endpoints   = make([]*EndpointOptions, 0, serverCount)
 	)
 	argument.ExternalLabels = map[string]string{"foo": "buzz"}
 	handlerFn := func(err error) http.Handler {
@@ -281,8 +281,8 @@ func Test_Write_AppendIngest(t *testing.T) {
 			require.Equal(t, expectedPath, r.URL.Path, "Unexpected path")
 
 			// Header assertions
-			require.Equal(t, "endpoint-value", r.Header.Get("X-Test-Header"))
-			require.Equal(t, []string{"profile-value1", "profile-value2"}, r.Header["X-Profile-Header"])
+			require.Equal(t, "i-am-so-good", r.Header.Get("X-Good-Header"))
+			require.Equal(t, []string{"profile-value1", "profile-value2"}, r.Header["Content-Type"])
 
 			// Label assertions - parse the name parameter once
 			ls, err := labelset.Parse(r.URL.Query().Get("name"))
@@ -321,7 +321,8 @@ func Test_Write_AppendIngest(t *testing.T) {
 			URL:           servers[i].URL,
 			RemoteTimeout: GetDefaultEndpointOptions().RemoteTimeout,
 			Headers: map[string]string{
-				"X-Test-Header": "endpoint-value",
+				"ContentType":   "evil-content-type",
+				"X-Good-Header": "i-am-so-good",
 				"X-Server-ID":   strconv.Itoa(int(i)),
 			},
 		})
@@ -356,9 +357,8 @@ func Test_Write_AppendIngest(t *testing.T) {
 
 	incomingProfile := &pyroscope.IncomingProfile{
 		RawBody: testData,
-		Headers: http.Header{
-			"X-Test-Header":    []string{"profile-value"},                    // This should be overridden by endpoint
-			"X-Profile-Header": []string{"profile-value1", "profile-value2"}, // This should be preserved
+		ContentType: []string{
+			"profile-value1", "profile-value2", // This should be preserved
 		},
 		URL: &url.URL{
 			Path:     "/ingest",

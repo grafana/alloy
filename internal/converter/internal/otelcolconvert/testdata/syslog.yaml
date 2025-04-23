@@ -6,6 +6,7 @@ receivers:
     max_octets: 16000
     allow_skip_pri_header: true
     non_transparent_framing_trailer: "NUL"
+    on_error: "drop"
     tcp:
       listen_address: "localhost:1514"
       max_log_size: "2MiB"

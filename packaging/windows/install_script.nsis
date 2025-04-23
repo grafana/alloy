@@ -40,6 +40,9 @@ Var RuntimePriority
 Var RuntimePriorityFlag
 Var Stability
 Var StabilityFlag
+Var User
+Var Password
+Var AuthFlag
 
 # Pages during the installer.
 Page license
@@ -60,6 +63,8 @@ Section "install"
   ${GetOptions} $PassedInParameters "/STABILITY=" $Stability
   ${GetOptions} $PassedInParameters "/ENVIRONMENT=" $Environment
   ${GetOptions} $PassedInParameters "/CONFIG=" $Config
+  ${GetOptions} $PassedInParameters "/USERNAME=" $User
+  ${GetOptions} $PassedInParameters "/PASSWORD=" $Password
 
   # Calls to functions like nsExec::ExecToLog below push the exit code to the
   # stack, and must be popped after calling.
@@ -88,6 +93,7 @@ Section "install"
   # the current installed version.
   !define UNINSTALLKEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}"
   WriteRegStr   HKLM "${UNINSTALLKEY}" "DisplayName"          '${APPNAME} ${VERSION}'
+  WriteRegStr   HKLM "${UNINSTALLKEY}" "DisplayVersion"       '${VERSION}'
   WriteRegStr   HKLM "${UNINSTALLKEY}" "UninstallString"      '"$INSTDIR\uninstall.exe"'
   WriteRegStr   HKLM "${UNINSTALLKEY}" "QuietUninstallString" '"$INSTDIR\uninstall.exe" /S'
   WriteRegStr   HKLM "${UNINSTALLKEY}" "InstallLocation"      '"$INSTDIR"'
@@ -103,8 +109,15 @@ Section "install"
   Call CreateDataDirectory
   Call InitializeRegistry
 
+  ${If} $User != ""
+    StrCpy $AuthFlag "obj= $\"$User$\""
+    ${If} $Password != ""
+      StrCpy $AuthFlag "$AuthFlag password= $\"$Password$\""
+    ${EndIf}  
+  ${EndIf}
+
   # Create the service.
-  nsExec::ExecToLog 'sc create "Alloy" start= delayed-auto binpath= "\"$INSTDIR\alloy-service-windows-amd64.exe\""'
+  nsExec::ExecToLog 'sc create "Alloy" start= delayed-auto $AuthFlag binpath= "\"$INSTDIR\alloy-service-windows-amd64.exe\""'
   Pop $0
 
   # Start the service.
@@ -130,6 +143,10 @@ Function CreateConfig
     AccessControl::SetOnFile    "$INSTDIR\config.alloy" "SYSTEM" "FullAccess"
     AccessControl::GrantOnFile  "$INSTDIR\config.alloy" "Everyone" "ListDirectory"
     AccessControl::GrantOnFile  "$INSTDIR\config.alloy" "Everyone" "ReadAttributes"
+    ${If} $User != ""
+      AccessControl::SetOnFile    "$INSTDIR\config.alloy" "$User" "FullAccess"
+    ${EndIf}
+
     Return
 FunctionEnd
 
@@ -149,6 +166,10 @@ Function CreateDataDirectory
     AccessControl::SetOnFile    "$APPDATA\GrafanaLabs\${APPNAME}\data" "SYSTEM" "FullAccess"
     AccessControl::GrantOnFile  "$APPDATA\GrafanaLabs\${APPNAME}\data" "Everyone" "ListDirectory"
     AccessControl::GrantOnFile  "$APPDATA\GrafanaLabs\${APPNAME}\data" "Everyone" "ReadAttributes"
+    ${If} $User != ""
+      AccessControl::SetOnFile    "$APPDATA\GrafanaLabs\${APPNAME}\data" "$User" "FullAccess"
+    ${EndIf}
+
     Return
 FunctionEnd
 
@@ -227,6 +248,9 @@ Function SetFolderPermissions
     AccessControl::GrantOnFile  $INSTDIR "Everyone" "GenericExecute"
     AccessControl::GrantOnFile  $INSTDIR "Everyone" "GenericRead"
     AccessControl::GrantOnFile  $INSTDIR "Everyone" "ReadAttributes"
+    ${If} $User != ""
+      AccessControl::SetOnFile    $INSTDIR "$User" "FullAccess"
+    ${EndIf}
 FunctionEnd
 
 # Automatically called when uninstalling.

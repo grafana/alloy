@@ -165,10 +165,12 @@ func (c *Component) Run(ctx context.Context) error {
 		case <-c.updateReaders:
 			c.mut.Lock()
 			var tasks []*runnerTask
+			level.Debug(c.opts.Logger).Log("msg", "updating tasks", "tasks", len(c.tasks))
 			for _, entry := range c.tasks {
 				tasks = append(tasks, &entry)
 			}
 			err := runner.ApplyTasks(ctx, tasks)
+			level.Debug(c.opts.Logger).Log("msg", "workers successfully updated", "workers", len(runner.Workers()))
 			c.mut.Unlock()
 
 			if err != nil && err != context.Canceled {

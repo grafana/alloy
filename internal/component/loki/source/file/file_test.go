@@ -13,6 +13,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
 	"golang.org/x/text/encoding/unicode"
@@ -219,9 +220,10 @@ func TestTwoTargets(t *testing.T) {
 		select {
 		case logEntry := <-ch1.Chan():
 			require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
-			if logEntry.Line == "text" {
+			switch logEntry.Line {
+			case "text":
 				foundF1 = true
-			} else if logEntry.Line == "text2" {
+			case "text2":
 				foundF2 = true
 			}
 
@@ -359,9 +361,11 @@ func TestDeleteRecreateFile(t *testing.T) {
 	require.NoError(t, f.Close())
 	require.NoError(t, os.Remove(f.Name()))
 
-	// Create a file with the same name
-	f, err = os.Create(filename)
-	require.NoError(t, err)
+	// Create a file with the same name. Use eventually because of Windows FS can deny access if this test runs too fast.
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		f, err = os.Create(filename)
+		assert.NoError(collect, err)
+	}, 30*time.Second, 100*time.Millisecond)
 	defer os.Remove(f.Name())
 	defer f.Close()
 

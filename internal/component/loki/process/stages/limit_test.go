@@ -120,11 +120,12 @@ func TestLimitByLabelPipeline(t *testing.T) {
 	var hasTotal, hasByLabel bool
 	mfs, _ := registry.Gather()
 	for _, mf := range mfs {
-		if *mf.Name == "loki_process_dropped_lines_total" {
+		switch *mf.Name {
+		case "loki_process_dropped_lines_total":
 			hasTotal = true
 			assert.Len(t, mf.Metric, 1)
 			assert.Equal(t, 8, int(mf.Metric[0].Counter.GetValue()))
-		} else if *mf.Name == "loki_process_dropped_lines_by_label_total" {
+		case "loki_process_dropped_lines_by_label_total":
 			hasByLabel = true
 			assert.Len(t, mf.Metric, 2)
 			assert.Equal(t, 4, int(mf.Metric[0].Counter.GetValue()))
