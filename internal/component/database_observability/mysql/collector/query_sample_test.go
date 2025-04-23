@@ -477,7 +477,7 @@ func TestQuerySampleDisableQueryRedaction(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		require.Equal(t, `schema="some_schema" digest="some_digest" digest_text="select * from some_table where id = :v1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms" sql_text="select * from some_table where id = 1"`, lokiEntries[0].Line)
+		require.Equal(t, `level="info" schema="some_schema" digest="some_digest" digest_text="select * from some_table where id = :v1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms" sql_text="select * from some_table where id = 1"`, lokiEntries[0].Line)
 	})
 
 	t.Run("does not collect sql text when disabled", func(t *testing.T) {
@@ -565,7 +565,7 @@ func TestQuerySampleDisableQueryRedaction(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		require.Equal(t, `schema="some_schema" digest="some_digest" digest_text="select * from some_table where id = :v1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`, lokiEntries[0].Line)
+		require.Equal(t, `level="info" schema="some_schema" digest="some_digest" digest_text="select * from some_table where id = :v1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`, lokiEntries[0].Line)
 	})
 }
 
