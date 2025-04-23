@@ -91,6 +91,20 @@
     },
   },
 
+  withOverridesByName(name, properties):: {
+    fieldConfig+: {
+      overrides+: [
+        {
+          matcher: {
+            id: 'byName',
+            options: name,
+          },
+          properties: properties,
+        },
+      ],
+    },
+  },
+
   withMappings(mappings):: {
     fieldConfig+: {
       defaults+: {

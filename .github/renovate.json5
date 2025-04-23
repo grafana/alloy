@@ -1,3 +1,9 @@
+//
+// Renovate config options: https://docs.renovatebot.com/configuration-options/
+//
+// To validate config, run:
+// npx --package renovate -- renovate-config-validator --strict ./.github/renovate.json5
+//
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
@@ -29,14 +35,14 @@
       "matchManagers": ["docker-compose"],
       // "matchUpdateTypes": ["minor", "patch"],
       // "groupName": "docker-compose dependencies (minor, patch)",
-      "enabled": false // TODO: enable when ready
+      "enabled": false // TODO: remove to enable when ready
     },
     {
       "matchManagers": ["dockerfile"],
       // "matchUpdateTypes": ["minor", "patch"],
       // "groupName": "dockerfile dependencies (minor, patch)",
       // "pinDigests": true,
-      "enabled": false // TODO: enable when ready
+      "enabled": false // TODO: remove to enable when ready
     },
     {
       "matchManagers": ["github-actions"],
@@ -46,27 +52,37 @@
     },
     {
       "matchManagers": ["gomod"],
-      // "matchUpdateTypes": ["minor", "patch"],
-      // "groupName": "go dependencies (minor, patch)",
-      "enabled": false // TODO: enable when ready
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "go dependencies (minor, patch)",
+    },
+    {
+      // Group and hold some otel-specific go dependencies
+      "matchManagers": ["gomod"],
+      "matchPackageNames": [
+        // OpenTelemetry needs special handling due to a temporary fork
+        "github.com/open-telemetry/opentelemetry-collector-contrib/**",
+        "go.opentelemetry.io/collector"
+      ],
+      "groupName": "go otel collector dependencies",
+      "dependencyDashboardApproval": true
     },
     {
       "matchManagers": ["helm-values"],
       // "matchUpdateTypes": ["minor", "patch"],
       // "groupName": "helm-values dependencies (minor, patch)",
-      "enabled": false // TODO: enable when ready
+      "enabled": false // TODO: remove to enable when ready
     },
     {
       "matchManagers": ["helmv3"],
       // "matchUpdateTypes": ["minor", "patch"],
       // "groupName": "helmv3 dependencies (minor, patch)",
-      "enabled": false // TODO: enable when ready
+      "enabled": false // TODO: remove to enable when ready
     },
     {
       "matchManagers": ["jsonnet-bundler"],
       // "matchUpdateTypes": ["minor", "patch"],
       // "groupName": "jsonnet-bundler dependencies (minor, patch)",
-      "enabled": false // TODO: enable when ready
+      "enabled": false // TODO: remove to enable when ready
     },
     {
       "matchManagers": ["npm"],

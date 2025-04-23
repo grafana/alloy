@@ -1,5 +1,5 @@
 // Package consul_exporter embeds https://github.com/prometheus/consul_exporter
-package consul_exporter //nolint:golint
+package consul_exporter
 
 import (
 	"fmt"
