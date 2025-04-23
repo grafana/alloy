@@ -58,7 +58,6 @@ func Test_collectSQLText(t *testing.T) {
 
 		assert.Equal(t, time.Hour, args.SetupConsumersCollectInterval)
 	})
-
 }
 
 func Test_enableOrDisableCollectors(t *testing.T) {
