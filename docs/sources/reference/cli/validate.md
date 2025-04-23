@@ -38,7 +38,6 @@ The following flags are supported:
 Set `--stability.level` and `--feature.community-components.enabled` to the same value used when running {{< param "PRODUCT_NAME" >}}.
 {{< /admonition >}}
 
-
 ## Limitations
 
 Validation is limited in scope. It currently checks for:
