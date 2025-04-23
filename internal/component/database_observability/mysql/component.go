@@ -87,6 +87,7 @@ var (
 	_ component.Component       = (*Component)(nil)
 	_ http_service.Component    = (*Component)(nil)
 	_ component.HealthComponent = (*Component)(nil)
+	_ component.DebugComponent  = (*Component)(nil)
 )
 
 type Collector interface {
@@ -94,6 +95,7 @@ type Collector interface {
 	Start(context.Context) error
 	Stopped() bool
 	Stop()
+	DebugInfo() interface{}
 }
 
 type Component struct {
@@ -402,4 +404,14 @@ func formatDSN(dsn string, params ...string) string {
 		dsn = dsn + "?"
 	}
 	return dsn + strings.Join(params, "&")
+}
+
+func (c *Component) DebugInfo() interface{} {
+	m := map[string]interface{}{
+		"collectors": c.collectors,
+	}
+	for _, collector := range c.collectors {
+		m["collector:"+collector.Name()] = collector.DebugInfo()
+	}
+	return m
 }
