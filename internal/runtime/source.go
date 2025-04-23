@@ -173,3 +173,15 @@ func (s *Source) SourceFiles() map[string]*ast.File {
 	}
 	return s.fileMap
 }
+
+func (s *Source) Components() []*ast.BlockStmt {
+	return s.components
+}
+
+func (s *Source) Configs() []*ast.BlockStmt {
+	return s.configBlocks
+}
+
+func (s *Source) Declares() []*ast.BlockStmt {
+	return s.declareBlocks
+}
