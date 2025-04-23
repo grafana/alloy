@@ -8,7 +8,7 @@ weight: 200
 
 # The `validate` command
 
-The `validate` command validates {{< param "PRODUCT_NAME" >}} configuration file or directory path.
+The `validate` command validates an {{< param "PRODUCT_NAME" >}} configuration file or directory path.
 
 ## Usage
 
