@@ -162,10 +162,11 @@ User-supplied `exclude` and `include` strings are [wrapped][wrap-regex] in a reg
 
 ### `process`
 
-| Name      | Type     | Description                                 | Default  | Required |
-| --------- | -------- | ------------------------------------------- | -------- | -------- |
-| `exclude` | `string` | Regular expression of processes to exclude. | `"^$"`   | no       |
-| `include` | `string` | Regular expression of processes to include. | `"^.+$"` | no       |
+| Name                 | Type     | Description                                 | Default   | Required |
+| -------------------- | -------- | ------------------------------------------- | --------- | -------- |
+| `exclude`            | `string` | Regular expression of processes to exclude. | `"^$"`    | no       |
+| `include`            | `string` | Regular expression of processes to include. | `"^.+$"`  | no       |
+| `iis_process_lookup` | `string` | Enables IIS process name queries.           | `"false"` | no       |
 
 Processes must match the regular expression specified by `include` and must _not_ match the regular expression specified by `exclude` to be included.
 

@@ -56,10 +56,11 @@ func (a *Arguments) SetToDefault() {
 			Exclude: col.ConfigDefaults.Printer.PrinterExclude.String(),
 		},
 		Process: ProcessConfig{
-			BlackList: col.ConfigDefaults.Process.ProcessExclude.String(),
-			WhiteList: col.ConfigDefaults.Process.ProcessInclude.String(),
-			Include:   col.ConfigDefaults.Process.ProcessInclude.String(),
-			Exclude:   col.ConfigDefaults.Process.ProcessExclude.String(),
+			BlackList:           col.ConfigDefaults.Process.ProcessExclude.String(),
+			WhiteList:           col.ConfigDefaults.Process.ProcessInclude.String(),
+			Include:             col.ConfigDefaults.Process.ProcessInclude.String(),
+			Exclude:             col.ConfigDefaults.Process.ProcessExclude.String(),
+			EnableWorkerProcess: strconv.FormatBool(col.ConfigDefaults.Process.EnableWorkerProcess),
 		},
 		ScheduledTask: ScheduledTaskConfig{
 			Include: col.ConfigDefaults.ScheduledTask.TaskInclude.String(),

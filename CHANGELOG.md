@@ -37,6 +37,9 @@ Main (unreleased)
 
 - Pretty print diagnostic errors when using `alloy run` (@kalleep)
 
+- Update config options for windows_exporter process collector (@jaco-vanzyl)
+  The `process.iis` argument can now be passed to the process collector to enable IIS process name queries.
+
 ### Bugfixes
 
 - Fix `otelcol.receiver.filelog` documentation's default value for `start_at`. (@petewall)

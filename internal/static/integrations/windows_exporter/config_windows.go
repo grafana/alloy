@@ -52,6 +52,8 @@ func (c *Config) ToWindowsExporterConfig() (collector.Config, error) {
 	errs = append(errs, err)
 	cfg.Process.ProcessInclude, err = regexp.Compile(coalesceString(c.Process.Include, c.Process.WhiteList))
 	errs = append(errs, err)
+	cfg.Process.EnableWorkerProcess, err = strconv.ParseBool(c.Process.IIS)
+	errs = append(errs, err)
 
 	cfg.Net.NicExclude, err = regexp.Compile(coalesceString(c.Network.Exclude, c.Network.BlackList))
 	errs = append(errs, err)

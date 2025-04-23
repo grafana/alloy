@@ -166,10 +166,11 @@ func (t ServiceConfig) Convert() windows_integration.ServiceConfig {
 
 // ProcessConfig handles settings for the windows_exporter process collector
 type ProcessConfig struct {
-	BlackList string `alloy:"blacklist,attr,optional"`
-	WhiteList string `alloy:"whitelist,attr,optional"`
-	Exclude   string `alloy:"exclude,attr,optional"`
-	Include   string `alloy:"include,attr,optional"`
+	BlackList           string `alloy:"blacklist,attr,optional"`
+	WhiteList           string `alloy:"whitelist,attr,optional"`
+	Exclude             string `alloy:"exclude,attr,optional"`
+	Include             string `alloy:"include,attr,optional"`
+	EnableWorkerProcess string `alloy:"iis_process_lookup,attr,optional"`
 }
 
 // Convert converts the component's ProcessConfig to the integration's ProcessConfig.
@@ -179,6 +180,7 @@ func (t ProcessConfig) Convert() windows_integration.ProcessConfig {
 		WhiteList: wrapRegex(t.WhiteList),
 		Exclude:   wrapRegex(t.Exclude),
 		Include:   wrapRegex(t.Include),
+		IIS:       t.EnableWorkerProcess,
 	}
 }
 

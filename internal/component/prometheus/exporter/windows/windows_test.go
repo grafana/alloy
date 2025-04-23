@@ -49,6 +49,7 @@ var (
 		process {
 			include = ".+"
 			exclude = ""
+			iis_process_lookup = "false"
 		}
 		
 		smb {
@@ -102,6 +103,7 @@ func TestAlloyUnmarshal(t *testing.T) {
 	require.Equal(t, []string{"example"}, args.SMBClient.EnabledList)
 	require.Equal(t, "", args.Process.Exclude)
 	require.Equal(t, ".+", args.Process.Include)
+	require.Equal(t, "false", args.Process.EnableWorkerProcess)
 	require.Equal(t, "", args.Network.Exclude)
 	require.Equal(t, ".+", args.Network.Include)
 	require.Equal(t, []string{"accessmethods"}, args.MSSQL.EnabledClasses)
@@ -132,6 +134,7 @@ func TestConvert(t *testing.T) {
 	require.Equal(t, "^(?:.+)$", conf.PhysicalDisk.Include)
 	require.Equal(t, "^(?:)$", conf.Process.Exclude)
 	require.Equal(t, "^(?:.+)$", conf.Process.Include)
+	require.Equal(t, "false", conf.Process.IIS)
 	require.Equal(t, "^(?:)$", conf.Printer.Exclude)
 	require.Equal(t, "^(?:.+)$", conf.Printer.Include)
 	require.Equal(t, "example", conf.SMB.EnabledList)
