@@ -35,7 +35,7 @@ The following flags are supported:
 * `--feature.community-components.enabled`: Enable community components (default `false`).
 
 {{< admonition type="note" >}}
-Set `--stability.level` and `--feature.community-components.enabled` to the same value used when running {{< param "PRODUCT_NAME" >}}.
+When you validate the {{< param "PRODUCT_NAME" >}} configuration, you must set the `--stability.level` and `--feature.community-components.enabled` arguments to the same values you want to use when you run {{< param "PRODUCT_NAME" >}}.
 {{< /admonition >}}
 
 ## Limitations
