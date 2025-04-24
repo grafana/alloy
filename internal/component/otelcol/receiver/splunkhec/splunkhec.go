@@ -20,7 +20,7 @@ type SplittingStrategy string
 
 const (
 	SplittingStrategyNone SplittingStrategy = "none"
-	splittingStrategyLine SplittingStrategy = "line"
+	SplittingStrategyLine SplittingStrategy = "line"
 )
 
 // MarshalText implements encoding.TextMarshaler
@@ -35,7 +35,7 @@ func (s *SplittingStrategy) UnmarshalText(text []byte) error {
 	case "none":
 		*s = SplittingStrategyNone
 	case "line":
-		*s = splittingStrategyLine
+		*s = SplittingStrategyLine
 	default:
 		return fmt.Errorf("unknown splitting strategy: %s", str)
 	}
@@ -117,7 +117,7 @@ func (a *Arguments) SetToDefault() {
 		RawPath: "/services/collector/raw",
 		// Default value https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/4b29766cfde3a0eea46439707167084bfc48bad1/receiver/splunkhecreceiver/config.go#L32
 		HealthPath: "/services/collector/health",
-		Splitting:  splittingStrategyLine,
+		Splitting:  SplittingStrategyLine,
 	}
 	a.HecToOtelAttrs.SetToDefault()
 	a.DebugMetrics.SetToDefault()
