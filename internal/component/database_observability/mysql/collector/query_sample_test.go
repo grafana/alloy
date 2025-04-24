@@ -49,7 +49,7 @@ func TestQuerySample(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="some_digest" digest_text="select * from some_table where id = :redacted1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms" time="4000ms" level="INFO"`,
+				`schema="some_schema" digest="some_digest" digest_text="select * from some_table where id = :redacted1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms" level="INFO"`,
 			},
 		},
 		{
@@ -85,7 +85,7 @@ func TestQuerySample(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="some_digest" digest_text="select * from some_table where id = :redacted1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms" time="4000ms" level="INFO"`,
+				`schema="some_schema" digest="some_digest" digest_text="select * from some_table where id = :redacted1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms" level="INFO"`,
 			},
 		},
 		{
@@ -109,7 +109,7 @@ func TestQuerySample(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="some_digest" digest_text="select * from some_table where id = :redacted1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms" time="4000ms" level="INFO"`,
+				`schema="some_schema" digest="some_digest" digest_text="select * from some_table where id = :redacted1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms" level="INFO"`,
 			},
 		},
 		{
@@ -151,7 +151,7 @@ func TestQuerySample(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="some_digest" digest_text="begin" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms" time="4000ms" level="INFO"`,
+				`schema="some_schema" digest="some_digest" digest_text="begin" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms" level="INFO"`,
 			},
 		},
 		{
@@ -187,7 +187,7 @@ func TestQuerySample(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="some_digest" digest_text="select * from some_table where id = :redacted1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms" time="4000ms" level="INFO"`,
+				`schema="some_schema" digest="some_digest" digest_text="select * from some_table where id = :redacted1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms" level="INFO"`,
 			},
 		},
 		{
@@ -224,8 +224,8 @@ func TestQuerySample(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="some_digest" digest_text="select * from some_table where id = :redacted1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms" time="4000ms" level="INFO"`,
-				`schema="some_other_schema" digest="some_digest" digest_text="select * from some_table where id = :redacted1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms" time="4000ms" level="INFO"`,
+				`schema="some_schema" digest="some_digest" digest_text="select * from some_table where id = :redacted1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms" level="INFO"`,
+				`schema="some_other_schema" digest="some_digest" digest_text="select * from some_table where id = :redacted1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms" level="INFO"`,
 			},
 		},
 		{
@@ -248,7 +248,7 @@ func TestQuerySample(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="some_digest" digest_text="select * from (select id, name from employees_us_east union select id, name from employees_us_west) as employees_us union select id, name from employees_emea" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms" time="4000ms" level="INFO"`,
+				`schema="some_schema" digest="some_digest" digest_text="select * from (select id, name from employees_us_east union select id, name from employees_us_west) as employees_us union select id, name from employees_emea" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms" level="INFO"`,
 			},
 		},
 		{
@@ -271,7 +271,7 @@ func TestQuerySample(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="some_digest" digest_text="show create table" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms" time="4000ms" level="INFO"`,
+				`schema="some_schema" digest="some_digest" digest_text="show create table" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms" level="INFO"`,
 			},
 		},
 	}
@@ -455,7 +455,7 @@ func TestQuerySampleDisableQueryRedaction(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		require.Equal(t, `schema="some_schema" digest="some_digest" digest_text="select * from some_table where id = :v1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms" time="4000ms" level="INFO" sql_text="select * from some_table where id = 1"`, lokiEntries[0].Line)
+		require.Equal(t, `schema="some_schema" digest="some_digest" digest_text="select * from some_table where id = :v1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms" level="INFO" sql_text="select * from some_table where id = 1"`, lokiEntries[0].Line)
 	})
 
 	t.Run("does not collect sql text when disabled", func(t *testing.T) {
@@ -545,7 +545,7 @@ func TestQuerySampleDisableQueryRedaction(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		require.Equal(t, `schema="some_schema" digest="some_digest" digest_text="select * from some_table where id = :v1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms" time="4000ms" level="INFO"`, lokiEntries[0].Line)
+		require.Equal(t, `schema="some_schema" digest="some_digest" digest_text="select * from some_table where id = :v1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms" level="INFO"`, lokiEntries[0].Line)
 	})
 }
 
@@ -658,7 +658,7 @@ func TestQuerySample_SQLDriverErrors(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		require.Equal(t, `schema="some_schema" digest="some_digest" digest_text="select * from some_table where id = :redacted1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms" time="4000ms" level="INFO"`, lokiEntries[0].Line)
+		require.Equal(t, `schema="some_schema" digest="some_digest" digest_text="select * from some_table where id = :redacted1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms" level="INFO"`, lokiEntries[0].Line)
 	})
 
 	t.Run("result set iteration error", func(t *testing.T) {
@@ -760,7 +760,7 @@ func TestQuerySample_SQLDriverErrors(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		require.Equal(t, `schema="some_schema" digest="some_digest" digest_text="select * from some_table where id = :redacted1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms" time="3000ms" level="INFO"`, lokiEntries[0].Line)
+		require.Equal(t, `schema="some_schema" digest="some_digest" digest_text="select * from some_table where id = :redacted1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms" level="INFO"`, lokiEntries[0].Line)
 	})
 
 	t.Run("connection error recovery", func(t *testing.T) {
@@ -866,7 +866,7 @@ func TestQuerySample_SQLDriverErrors(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		require.Equal(t, `schema="some_schema" digest="some_digest" digest_text="select * from some_table where id = :redacted1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms" time="3000ms" level="INFO"`, lokiEntries[0].Line)
+		require.Equal(t, `schema="some_schema" digest="some_digest" digest_text="select * from some_table where id = :redacted1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms" level="INFO"`, lokiEntries[0].Line)
 	})
 }
 
@@ -988,7 +988,7 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 		assert.Equal(t, "schema=\"test_schema\" digest=\"some digest\" digest_text=\"select * from `users`\" "+
 			"rows_examined=\"1000\" rows_sent=\"100\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"1048576b\" "+
 			"max_total_memory=\"2097152b\" cpu_time=\"0.000556ms\" elapsed_time=\"2000.000000ms\" elapsed_time_ms=\"2000.000000ms\" "+
-			"time=\"3000ms\" level=\"INFO\"",
+			"level=\"INFO\"",
 			lokiClient.Received()[0].Line)
 	})
 
