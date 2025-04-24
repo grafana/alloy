@@ -148,7 +148,7 @@ func convertCRDRuleGroupToRuleGroup(crd promv1.PrometheusRuleSpec) ([]rulefmt.Ru
 		return nil, err
 	}
 
-	groups, _ := rulefmt.Parse(buf)
+	groups, _ := rulefmt.Parse(buf, false)
 
 	// Disable looking for errors, loki queries won't be valid prometheus queries, but still want the similar information
 	//if len(errs) > 0 {

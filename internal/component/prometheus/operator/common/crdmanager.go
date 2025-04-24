@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sort"
 	"strings"
 	"sync"
@@ -33,6 +34,7 @@ import (
 	"github.com/grafana/alloy/internal/component/prometheus/operator"
 	"github.com/grafana/alloy/internal/component/prometheus/operator/configgen"
 	compscrape "github.com/grafana/alloy/internal/component/prometheus/scrape"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service/cluster"
 	"github.com/grafana/alloy/internal/service/http"
@@ -133,7 +135,7 @@ func (c *crdManager) Run(ctx context.Context) error {
 	}
 
 	// Start prometheus service discovery manager
-	c.discoveryManager = discovery.NewManager(ctx, c.logger, unregisterer, sdMetrics, discovery.Name(c.opts.ID))
+	c.discoveryManager = discovery.NewManager(ctx, slog.New(logging.NewSlogGoKitHandler(c.logger)), unregisterer, sdMetrics, discovery.Name(c.opts.ID))
 	go func() {
 		err := c.discoveryManager.Run()
 		if err != nil {
@@ -144,7 +146,7 @@ func (c *crdManager) Run(ctx context.Context) error {
 	// Start prometheus scrape manager.
 	alloyAppendable := prometheus.NewFanout(c.args.ForwardTo, c.opts.ID, c.opts.Registerer, c.ls)
 	opts := &scrape.Options{}
-	c.scrapeManager, err = scrape.NewManager(opts, c.logger, nil, alloyAppendable, unregisterer)
+	c.scrapeManager, err = scrape.NewManager(opts, slog.New(logging.NewSlogGoKitHandler(c.logger)), nil, alloyAppendable, unregisterer)
 	if err != nil {
 		return fmt.Errorf("creating scrape manager: %w", err)
 	}

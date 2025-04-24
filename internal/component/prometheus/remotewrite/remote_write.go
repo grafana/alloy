@@ -3,6 +3,7 @@ package remotewrite
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"math"
 	"os"
 	"path/filepath"
@@ -14,6 +15,7 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/prometheus"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/service/livedebugging"
@@ -85,7 +87,7 @@ func New(o component.Options, c Arguments) (*Component, error) {
 	}
 
 	remoteLogger := log.With(o.Logger, "subcomponent", "rw")
-	remoteStore := remote.NewStorage(remoteLogger, o.Registerer, startTime, o.DataPath, remoteFlushDeadline, nil, false)
+	remoteStore := remote.NewStorage(slog.New(logging.NewSlogGoKitHandler(remoteLogger)), o.Registerer, startTime, o.DataPath, remoteFlushDeadline, nil, false)
 
 	walStorage.SetNotifier(remoteStore)
 
@@ -105,7 +107,7 @@ func New(o component.Options, c Arguments) (*Component, error) {
 		opts:               o,
 		walStore:           walStorage,
 		remoteStore:        remoteStore,
-		storage:            storage.NewFanout(o.Logger, walStorage, remoteStore),
+		storage:            storage.NewFanout(slog.New(logging.NewSlogGoKitHandler(o.Logger)), walStorage, remoteStore),
 		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
 	}
 	componentID := livedebugging.ComponentID(res.opts.ID)

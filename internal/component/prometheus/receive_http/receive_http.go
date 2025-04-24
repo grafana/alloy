@@ -3,6 +3,7 @@ package receive_http
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"reflect"
 	"sync"
@@ -12,6 +13,7 @@ import (
 	fnet "github.com/grafana/alloy/internal/component/common/net"
 	alloyprom "github.com/grafana/alloy/internal/component/prometheus"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/util"
@@ -72,7 +74,7 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 
 	c := &Component{
 		opts:               opts,
-		handler:            remote.NewWriteHandler(opts.Logger, opts.Registerer, fanout, supportedRemoteWriteProtoMsgs),
+		handler:            remote.NewWriteHandler(slog.New(logging.NewSlogGoKitHandler(opts.Logger)), opts.Registerer, fanout, supportedRemoteWriteProtoMsgs, false),
 		fanout:             fanout,
 		uncheckedCollector: uncheckedCollector,
 	}

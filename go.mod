@@ -77,7 +77,7 @@ require (
 	github.com/grafana/snowflake-prometheus-exporter v0.0.0-20240813124544-9995e8354548
 	github.com/grafana/tail v0.0.0-20230510142333-77b18831edf0
 	github.com/grafana/vmware_exporter v0.0.5-beta.0.20250218170317-73398ba08329
-	github.com/grafana/walqueue v0.0.0-20250402195023-cd132d6ff0bc
+	github.com/grafana/walqueue v0.0.0-20250424184817-530197d97e46
 	github.com/hashicorp/consul/api v1.31.2
 	github.com/hashicorp/go-discover v0.0.0-20230724184603-e89ebd1b2f65
 	github.com/hashicorp/go-multierror v1.1.1
@@ -187,7 +187,7 @@ require (
 	github.com/prometheus/mysqld_exporter v0.17.2
 	github.com/prometheus/node_exporter v1.6.0
 	github.com/prometheus/procfs v0.15.1
-	github.com/prometheus/prometheus v0.302.1 // replaced by a fork of v3.3.0 further down this file
+	github.com/prometheus/prometheus v0.303.0 // replaced by a fork of v3.3.0 further down this file
 	github.com/prometheus/snmp_exporter v0.28.0 // if you update the snmp_exporter version, make sure to update the SNMP_VERSION in _index
 	github.com/prometheus/statsd_exporter v0.22.8
 	github.com/richardartoul/molecule v1.0.1-0.20240531184615-7ca0df43c0b3

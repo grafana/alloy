@@ -201,12 +201,12 @@ func (e *eventProcessor) desiredStateFromKubernetes() (kubernetes.RuleGroupsByNa
 			if e.extraQueryMatchers != nil {
 				for _, ruleGroup := range groups {
 					for i := range ruleGroup.Rules {
-						query := ruleGroup.Rules[i].Expr.Value
+						query := ruleGroup.Rules[i].Expr
 						newQuery, err := addMatchersToQuery(query, e.extraQueryMatchers.Matchers)
 						if err != nil {
 							level.Error(e.logger).Log("msg", "failed to add labels to PrometheusRule query", "query", query, "err", err)
 						}
-						ruleGroup.Rules[i].Expr.Value = newQuery
+						ruleGroup.Rules[i].Expr = newQuery
 					}
 				}
 			}
@@ -280,7 +280,7 @@ func convertCRDRuleGroupToRuleGroup(crd promv1.PrometheusRuleSpec) ([]rulefmt.Ru
 		return nil, err
 	}
 
-	groups, errs := rulefmt.Parse(buf)
+	groups, errs := rulefmt.Parse(buf, false)
 	if len(errs) > 0 {
 		return nil, multierror.Append(nil, errs...)
 	}
