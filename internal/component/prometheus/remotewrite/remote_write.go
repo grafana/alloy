@@ -87,7 +87,8 @@ func New(o component.Options, c Arguments) (*Component, error) {
 	}
 
 	remoteLogger := log.With(o.Logger, "subcomponent", "rw")
-	remoteStore := remote.NewStorage(slog.New(logging.NewSlogGoKitHandler(remoteLogger)), o.Registerer, startTime, o.DataPath, remoteFlushDeadline, nil, false)
+	// TODO3 - check in to metadataInWAL
+	remoteStore := remote.NewStorage(slog.New(logging.NewSlogGoKitHandler(remoteLogger)), o.Registerer, startTime, o.DataPath, remoteFlushDeadline, nil)
 
 	walStorage.SetNotifier(remoteStore)
 
