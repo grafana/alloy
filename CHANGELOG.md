@@ -18,6 +18,8 @@ Main (unreleased)
 
 - Add support to configure basic authentication for alloy http server. (@kalleep)
 
+- Add `validate` command to alloy that will perform limited validation of alloy configuration files. (@kalleep)
+
 ### Enhancements
 
 - Add binary version to constants exposed in configuration file syntatx. (@adlots)
@@ -40,10 +42,6 @@ Main (unreleased)
 
 ### Bugfixes
 
-- Fix `otelcol.exporter.prometheus` dropping valid exemplars. (@github-vincent-miszczak)
-
-- Fix `loki.source.podlogs` add missing labels `__meta_kubernetes_namespace` and `__meta_kubernetes_pod_label_*`. (@kalleep)
-
 - Fix `otelcol.receiver.filelog` documentation's default value for `start_at`. (@petewall)
 
 ### Other changes
@@ -51,6 +49,15 @@ Main (unreleased)
 - Update the zap logging adapter used by `otelcol` components to log arrays and objects. (@dehaansa)
 
 - Updated Windows install script to add DisplayVersion into registry on install (@enessene)
+
+v1.8.2
+-----------------
+
+### Bugfixes
+
+- Fix `otelcol.exporter.prometheus` dropping valid exemplars. (@github-vincent-miszczak)
+
+- Fix `loki.source.podlogs` not adding labels `__meta_kubernetes_namespace` and `__meta_kubernetes_pod_label_*`. (@kalleep)
 
 v1.8.1
 -----------------
