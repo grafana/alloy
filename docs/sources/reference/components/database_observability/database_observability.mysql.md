@@ -28,10 +28,10 @@ You can use the following arguments with `database_observability.mysql`:
 | `data_source_name`                 | `secret`             | [Data Source Name][] for the MySQL server to connect to.                                |         | yes      |
 | `forward_to`                       | `list(LogsReceiver)` | Where to forward log entries after processing.                                          |         | yes      |
 | `collect_interval`                 | `duration`           | How frequently to collect information from database.                                    | `"1m"`  | no       |
-| `setup_consumers_collect_interval` | `duration`           | How frequently to collect performance_schema.setup_consumers information from database. | `"1h"`  | no       |
-| `disable_query_redaction`          | `bool`               | Collect unredacted sql query text including parameters.                                 | `false` | no       |
 | `disable_collectors`               | `list(string)`       | A list of collectors to disable from the default set.                                   |         | no       |
+| `disable_query_redaction`          | `bool`               | Collect unredacted sql query text including parameters.                                 | `false` | no       |
 | `enable_collectors`                | `list(string)`       | A list of collectors to enable on top of the default set.                               |         | no       |
+| `setup_consumers_collect_interval` | `duration`           | How frequently to collect performance_schema.setup_consumers information from database. | `"1h"`  | no       |
 
 The following collectors are configurable:
 
