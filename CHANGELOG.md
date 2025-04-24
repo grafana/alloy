@@ -22,7 +22,7 @@ Main (unreleased)
 
 - Add `validate` command to alloy that will perform limited validation of alloy configuration files. (@kalleep)
 
-- Add `otelcol.receiver.splunkhec` component to receive events in splunk hec format forward them to other `otelcol.*` components. (@ralleep)
+- Add `otelcol.receiver.splunkhec` component to receive events in splunk hec format forward them to other `otelcol.*` components. (@kalleep)
 
 ### Enhancements
 
