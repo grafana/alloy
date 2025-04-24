@@ -16,6 +16,19 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 )
 
+func init() {
+	component.Register(component.Registration{
+		Name:      "otelcol.receiver.splunkhec",
+		Stability: featuregate.StabilityPublicPreview,
+		Args:      Arguments{},
+
+		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
+			f := splunkhecreceiver.NewFactory()
+			return receiver.New(opts, f, args.(Arguments))
+		},
+	})
+}
+
 type SplittingStrategy string
 
 const (
@@ -41,19 +54,6 @@ func (s *SplittingStrategy) UnmarshalText(text []byte) error {
 	}
 
 	return nil
-}
-
-func init() {
-	component.Register(component.Registration{
-		Name:      "otelcol.receiver.splunkhec",
-		Stability: featuregate.StabilityPublicPreview,
-		Args:      Arguments{},
-
-		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
-			f := splunkhecreceiver.NewFactory()
-			return receiver.New(opts, f, args.(Arguments))
-		},
-	})
 }
 
 type Arguments struct {
