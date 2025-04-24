@@ -35,20 +35,23 @@ otelcol.receiver.splunkhec "LABEL" {
 ## Arguments
 `otelcol.receiver.splunkhec` supports the following arguments:
 
-| Name                     | Type                       | Description                                                                                                    | Default                                                    | Required |
-| ------------------------ | -------------------------- | ---------------------------------------------------------------------------------------------------------------| ---------------------------------------------------------- | -------- |
-| `endpoint`               | `string`                   | `host:port` to listen for traffic on.                                                                          | `"localhost:8088"`                                         | no       |
-| `max_request_body_size`  | `string`                   | Maximum request body size the server will allow.                                                               | `20MiB`                                                    | no       |
-| `include_metadata`       | `boolean`                  | Propagate incoming connection metadata to downstream consumers.                                                |                                                            | no       |
-| `compression_algorithms` | `list(string)`             | A list of compression algorithms the server can accept.                                                        | `["", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"]` | no       |
-| `auth`                   | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests.                                   |                                                            | no       |
-| `raw_path`               | `string`                   | The path accepting raw HEC events. Only applies when the receiver is used for logs.                            | `/services/collector/raw`                                  | no       |
-| `health_path`            | `string`                   | The path reporting health checks.                                                                              | `/services/collector/health`                               | no       |
-| `splitting`              | `string`                   | Defines the splitting strategy used by the receiver when ingesting raw events. Can be set to "line" or "none". | `"line"`                                                   | no       |
+| Name                       | Type                       | Description                                                                                                    | Default                                                    | Required |
+| -------------------------- | -------------------------- | ---------------------------------------------------------------------------------------------------------------| ---------------------------------------------------------- | -------- |
+| `endpoint`                 | `string`                   | `host:port` to listen for traffic on.                                                                          | `"localhost:8088"`                                         | no       |
+| `max_request_body_size`    | `string`                   | Maximum request body size the server will allow.                                                               | `20MiB`                                                    | no       |
+| `include_metadata`         | `boolean`                  | Propagate incoming connection metadata to downstream consumers.                                                |                                                            | no       |
+| `compression_algorithms`   | `list(string)`             | A list of compression algorithms the server can accept.                                                        | `["", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"]` | no       |
+| `auth`                     | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests.                                   |                                                            | no       |
+| `raw_path`                 | `string`                   | The path accepting raw HEC events. Only applies when the receiver is used for logs.                            | `/services/collector/raw`                                  | no       |
+| `health_path`              | `string`                   | The path reporting health checks.                                                                              | `/services/collector/health`                               | no       |
+| `splitting`                | `string`                   | Defines the splitting strategy used by the receiver when ingesting raw events. Can be set to "line" or "none". | `"line"`                                                   | no       |
+| `access_token_passthrough` | `boolean`                  | If enabled perserves incomming access token as a attribute `com.splunk.hec.access_token`                       | `false`                                                    | no       |
 
 
 By default, `otelcol.receiver.splunkhec` listens for HTTP connections on `localhost:8088`.
 To expose the HTTP server to other machines on your network, configure `endpoint` with the IP address to listen on, or `0.0.0.0:8088` to listen on all network interfaces.
+
+If `access_token_passthrough` is enabled it will be preserved as a attribute `com.splunk.hec.access_token`. If logs or metrics are exported with `otelcol.exporter.splunkhec` it will check for this attribute and if present forward it with outgoing request.
 
 ## Blocks
 

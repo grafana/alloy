@@ -68,6 +68,10 @@ type Arguments struct {
 	// Splitting strategy used, can be either "line" or "none". Optional.
 	Splitting SplittingStrategy `alloy:"splitting,attr,optional"`
 
+	// AccessTokenPassthrough if enabled perserves incomming access token as a attribute "com.splunk.hec.access_token".
+	// `otelcol.exporter.splunkhec` will check for this attribute and if present forward it.
+	AccessTokenPassthrough bool `alloy:"access_token_passthrough,attr,optional"`
+
 	// HecToOtelAttrs creates a mapping from HEC metadata to attributes. Optional.
 	HecToOtelAttrs HecToOtelAttrsArguments `alloy:"hec_metadata_to_otel_attrs,block,optional"`
 
@@ -137,6 +141,7 @@ func (a Arguments) Convert() (otelcomponent.Config, error) {
 		Splitting:    splunkhecreceiver.SplittingStrategy(a.Splitting),
 	}
 
+	c.AccessTokenPassthroughConfig.AccessTokenPassthrough = a.AccessTokenPassthrough
 	c.HecToOtelAttrs.Source = a.HecToOtelAttrs.Source
 	c.HecToOtelAttrs.SourceType = a.HecToOtelAttrs.SourceType
 	c.HecToOtelAttrs.Index = a.HecToOtelAttrs.Index
