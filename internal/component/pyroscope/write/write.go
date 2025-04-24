@@ -146,7 +146,6 @@ func (c *Component) Run(ctx context.Context) error {
 // Update implements Component.
 func (c *Component) Update(newConfig component.Arguments) error {
 	c.cfg = newConfig.(Arguments)
-	level.Debug(c.opts.Logger).Log("msg", "updating pyroscope.write config", "old", c.cfg, "new", newConfig)
 	receiver, err := NewFanOut(c.opts, newConfig.(Arguments), c.metrics)
 	if err != nil {
 		return err

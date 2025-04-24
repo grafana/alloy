@@ -43,6 +43,7 @@ local stackedPanelMixin = {
         panel.withDescription(|||
           Number of metric points successfully pushed into the pipeline.
         |||) +
+        panel.withUnit('cps') +
         stackedPanelMixin +
         panelPosition4Across(row=0, col=0) +
         panel.withQueries([
@@ -58,6 +59,7 @@ local stackedPanelMixin = {
         panel.withDescription(|||
           Number of metric points that could not be pushed into the pipeline.
         |||) +
+        panel.withUnit('cps') +
         stackedPanelMixin +
         panelPosition4Across(row=0, col=1) +
         panel.withQueries([
@@ -73,6 +75,7 @@ local stackedPanelMixin = {
         panel.withDescription(|||
           Number of log records successfully pushed into the pipeline.
         |||) +
+        panel.withUnit('cps') +
         stackedPanelMixin +
         panelPosition4Across(row=0, col=2) +
         panel.withQueries([
@@ -88,6 +91,7 @@ local stackedPanelMixin = {
         panel.withDescription(|||
           Number of log records that could not be pushed into the pipeline.
         |||) +
+        panel.withUnit('cps') +
         stackedPanelMixin +
         panelPosition4Across(row=0, col=3) +
         panel.withQueries([
@@ -103,6 +107,7 @@ local stackedPanelMixin = {
         panel.withDescription(|||
           Number of spans successfully pushed into the pipeline.
         |||) +
+        panel.withUnit('cps') +
         stackedPanelMixin +
         panelPosition4Across(row=1, col=0) +
         panel.withQueries([
@@ -118,6 +123,7 @@ local stackedPanelMixin = {
         panel.withDescription(|||
           Number of spans that could not be pushed into the pipeline.
         |||) +
+        panel.withUnit('cps') +
         stackedPanelMixin +
         panelPosition4Across(row=1, col=1) +
         panel.withQueries([
@@ -191,6 +197,7 @@ local stackedPanelMixin = {
         panel.withDescription(|||
           Number of distinct metadata value combinations being processed
         |||) +
+        panel.withUnit('short') +
         panelPosition3Across(row=2, col=1) +
         panel.withQueries([
           panel.newQuery(
@@ -205,6 +212,7 @@ local stackedPanelMixin = {
         panel.withDescription(|||
           Number of times the batch was sent due to a timeout trigger
         |||) +
+        panel.withUnit('cps') +
         panelPosition3Across(row=2, col=2) +
         panel.withQueries([
           panel.newQuery(
@@ -225,6 +233,7 @@ local stackedPanelMixin = {
         panel.withDescription(|||
           Number of metric points successfully sent to destination.
         |||) +
+        panel.withUnit('cps') +
         stackedPanelMixin +
         panelPosition4Across(row=3, col=0) +
         panel.withQueries([
@@ -240,6 +249,7 @@ local stackedPanelMixin = {
         panel.withDescription(|||
           Number of metric points that failed to be sent to destination.
         |||) +
+        panel.withUnit('cps') +
         stackedPanelMixin +
         panelPosition4Across(row=3, col=1) +
         panel.withQueries([
@@ -255,6 +265,7 @@ local stackedPanelMixin = {
         panel.withDescription(|||
           Number of log records successfully sent to destination.
         |||) +
+        panel.withUnit('cps') +
         stackedPanelMixin +
         panelPosition4Across(row=3, col=2) +
         panel.withQueries([
@@ -270,6 +281,7 @@ local stackedPanelMixin = {
         panel.withDescription(|||
           Number of log records that failed to be sent to destination.
         |||) +
+        panel.withUnit('cps') +
         stackedPanelMixin +
         panelPosition4Across(row=3, col=3) +
         panel.withQueries([
@@ -285,6 +297,7 @@ local stackedPanelMixin = {
         panel.withDescription(|||
           Number of spans successfully sent to destination.
         |||) +
+        panel.withUnit('cps') +
         stackedPanelMixin +
         panelPosition4Across(row=4, col=0) +
         panel.withQueries([
@@ -300,6 +313,7 @@ local stackedPanelMixin = {
         panel.withDescription(|||
           Number of spans that failed to be sent to destination.
         |||) +
+        panel.withUnit('cps') +
         stackedPanelMixin +
         panelPosition4Across(row=4, col=1) +
         panel.withQueries([

@@ -82,7 +82,7 @@ func Test(t *testing.T) {
 
 			srvProvidingTokens := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusOK)
-				w.Write([]byte(fmt.Sprintf("access_token=%s&token_type=%s&refresh_token=%s", tt.accessToken, tt.tokenType, tt.refreshToken)))
+				fmt.Fprintf(w, "access_token=%s&token_type=%s&refresh_token=%s", tt.accessToken, tt.tokenType, tt.refreshToken)
 			}))
 			defer srvProvidingTokens.Close()
 			t.Logf("Created server which will provide authentication tokens on address %s", srvProvidingTokens.URL)

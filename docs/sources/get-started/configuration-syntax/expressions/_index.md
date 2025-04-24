@@ -9,12 +9,12 @@ weight: 400
 
 # Expressions
 
-Expressions represent or compute values you can assign to attributes within a configuration.
+Expressions represent or compute values you can assign to attributes in a configuration.
 
 Basic expressions are literal values, like `"Hello, world!"` or `true`.
-Expressions may also do things like [refer to values][] exported by components, perform arithmetic, or [call functions][].
+Expressions can also [refer to values][] exported by components, perform arithmetic, or [call functions][].
 
-You use expressions when you configure any component.
+You use expressions to configure any component.
 All component arguments have an underlying [type][].
 {{< param "PRODUCT_NAME" >}} checks the expression type before assigning the result to an attribute.
 

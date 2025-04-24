@@ -10,9 +10,23 @@ internal API changes are not present.
 Unreleased
 ----------
 
+1.0.2 (2025-04-23)
+----------
+
 ### Enhancements
 
+- Update to Grafana Alloy v1.8.2. (@kalleep)
+
+1.0.1 (2025-04-10)
+----------
+
+### Enhancements
+
+- Update to Grafana Alloy v1.8.1. (@dehaansa)
+
+- Update default configreloader resources to match what is set in prometheus-operator project (@dehaansa)
 - Add Vertical Pod Autoscaler support (@QuentinBisson)
+- Add support for configuring minReadySeconds in Helm chart. (@PabloPie)
 
 1.0.0 (2025-04-09)
 ----------

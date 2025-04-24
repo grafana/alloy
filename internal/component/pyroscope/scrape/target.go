@@ -272,7 +272,7 @@ func populateLabels(lb *labels.Builder, base labels.Labels, cfg Arguments) (res 
 		switch lb.Get(model.SchemeLabel) {
 		case "http", "":
 			addr = addr + ":80"
-		case "https":
+		case "https": //nolint:goconst
 			addr = addr + ":443"
 		default:
 			return nil, fmt.Errorf("invalid scheme: %q", cfg.Scheme)

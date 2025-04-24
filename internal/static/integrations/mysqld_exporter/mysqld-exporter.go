@@ -1,5 +1,5 @@
 // Package mysqld_exporter embeds https://github.com/prometheus/mysqld_exporter
-package mysqld_exporter //nolint:golint
+package mysqld_exporter
 
 import (
 	"context"

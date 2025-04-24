@@ -145,6 +145,7 @@ func TestClusterE2E(t *testing.T) {
 			extraAllowedErrors: []string{
 				"failed to rejoin list of peers",
 				"failed to broadcast leave message to cluster",
+				"timeout waiting for leave broadcast",
 			},
 			assertionsInitial: func(t *assert.CollectT, state *testState) {
 				for _, p := range state.peers {
@@ -311,7 +312,9 @@ func TestClusterE2E(t *testing.T) {
 			minimumClusterSize:     5,
 			minimumSizeWaitTimeout: 5 * time.Second,
 			extraAllowedErrors: []string{
-				`"deadline passed, marking cluster as ready to admit traffic"`,
+				"deadline passed, marking cluster as ready to admit traffic",
+				"failed to broadcast leave message to cluster",
+				"timeout waiting for leave broadcast",
 			},
 			assertionsInitial: func(t *assert.CollectT, state *testState) {
 				for _, p := range state.peers {
@@ -327,7 +330,7 @@ func TestClusterE2E(t *testing.T) {
 				}
 			},
 			changes: func(state *testState) {
-				// TODO(thampiotr): will need a timer that after deadline passed we trigger updates
+				// Wait for the minimum size wait timeout to pass
 				time.Sleep(5 * time.Second)
 			},
 			assertionsFinal: func(t *assert.CollectT, state *testState) {
@@ -352,8 +355,9 @@ func TestClusterE2E(t *testing.T) {
 			nodeCountInitial:   5,
 			minimumClusterSize: 5,
 			extraAllowedErrors: []string{
-				`"minimum cluster size requirements are not met - marking cluster as not ready for traffic"`,
+				"minimum cluster size requirements are not met - marking cluster as not ready for traffic",
 				"failed to broadcast leave message to cluster",
+				"timeout waiting for leave broadcast",
 			},
 			assertionsInitial: func(t *assert.CollectT, state *testState) {
 				for _, p := range state.peers {
@@ -563,7 +567,7 @@ func startNewNode(t *testing.T, state *testState, nodeName string) {
 		Gatherer: reg,
 
 		ReadyFunc:  func() bool { return true },
-		ReloadFunc: func() (*runtime.Source, error) { return nil, nil },
+		ReloadFunc: func() error { return nil },
 
 		HTTPListenAddr: nodeAddress,
 	})

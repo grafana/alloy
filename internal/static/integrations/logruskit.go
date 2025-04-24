@@ -1,4 +1,4 @@
-package integrations //nolint:golint
+package integrations
 
 import (
 	"encoding/json"

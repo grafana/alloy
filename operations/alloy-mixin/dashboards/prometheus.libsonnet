@@ -197,7 +197,7 @@ local filename = 'alloy-prometheus-remote-write.json';
       panel.withQueries([
         panel.newQuery(
           expr= |||
-            sum without (remote_name, url) (
+            sum by (instance, component_path, component_id) (
                 rate(prometheus_remote_storage_bytes_total{%(instanceSelector)s, component_path=~"$component_path", component_id=~"$component", url=~"$url"}[$__rate_interval]) +
                 rate(prometheus_remote_storage_metadata_bytes_total{%(instanceSelector)s, component_path=~"$component_path", component_id=~"$component", url=~"$url"}[$__rate_interval])
             )
@@ -254,7 +254,7 @@ local filename = 'alloy-prometheus-remote-write.json';
       panel.withQueries([
         panel.newQuery(
           expr= |||
-            sum without (remote_name, url) (
+            sum by (instance, component_path, component_id) (
                 prometheus_remote_storage_shards{%(instanceSelector)s, component_path=~"$component_path", component_id=~"$component", url=~"$url"}
             )
           ||| % $._config,
@@ -291,7 +291,7 @@ local filename = 'alloy-prometheus-remote-write.json';
       panel.withQueries([
         panel.newQuery(
           expr= |||
-            sum without (url, remote_name) (
+            sum by (instance, component_path, component_id) (
               rate(prometheus_remote_storage_samples_total{%(instanceSelector)s, component_path=~"$component_path", component_id=~"$component", url=~"$url"}[$__rate_interval])
             )
           ||| % $._config,
@@ -313,7 +313,7 @@ local filename = 'alloy-prometheus-remote-write.json';
       panel.withQueries([
         panel.newQuery(
           expr= |||
-            sum without (url,remote_name) (
+            sum by (instance, component_path, component_id) (
               rate(prometheus_remote_storage_samples_failed_total{%(instanceSelector)s, component_path=~"$component_path", component_id=~"$component", url=~"$url"}[$__rate_interval])
             )
           ||| % $._config,
@@ -335,7 +335,7 @@ local filename = 'alloy-prometheus-remote-write.json';
       panel.withQueries([
         panel.newQuery(
           expr= |||
-            sum without (url,remote_name) (
+            sum by (instance, component_path, component_id) (
               rate(prometheus_remote_storage_samples_retried_total{%(instanceSelector)s, component_path=~"$component_path", component_id=~"$component", url=~"$url"}[$__rate_interval])
             )
           ||| % $._config,
@@ -360,6 +360,8 @@ local filename = 'alloy-prometheus-remote-write.json';
         An "active series" is a series that prometheus.remote_write recently
         received a sample for. Active series are garbage collected whenever a
         truncation of the WAL occurs.
+        
+        NOTE: This metric is not available when using prometheus.write.queue component.
       |||) +
       panel.withPosition({ x: 0, y: 31 + y_offset, w: 8, h: 10 }) +
       panel.withQueries([
@@ -383,6 +385,8 @@ local filename = 'alloy-prometheus-remote-write.json';
         An "active series" is a series that prometheus.remote_write recently
         received a sample for. Active series are garbage collected whenever a
         truncation of the WAL occurs.
+        
+        NOTE: This metric is not available when using prometheus.write.queue component.
       |||) +
       panel.withPosition({ x: 8, y: 31 + y_offset, w: 8, h: 10 }) +
       panel.withQueries([
@@ -406,6 +410,8 @@ local filename = 'alloy-prometheus-remote-write.json';
         An "active series" is a series that prometheus.remote_write recently
         received a sample for. Active series are garbage collected whenever a
         truncation of the WAL occurs.
+        
+        NOTE: This metric is not available when using prometheus.write.queue component.
       |||) +
       panel.withPosition({ x: 16, y: 31 + y_offset, w: 8, h: 10 }) +
       panel.withQueries([

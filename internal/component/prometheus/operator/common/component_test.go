@@ -118,7 +118,7 @@ func TestRunExit(t *testing.T) {
 	// The test can be flaky without this.
 	select {
 	case <-onRun:
-	case <-time.After(1 * time.Second):
+	case <-time.After(3 * time.Second):
 		require.Fail(t, "Hung CRD Manager didn't start")
 	}
 

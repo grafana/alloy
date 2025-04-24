@@ -3,6 +3,7 @@ package parser
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"golang.org/x/exp/maps"
@@ -10,6 +11,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/pingcap/tidb/pkg/parser"
 	"github.com/pingcap/tidb/pkg/parser/ast"
+	"github.com/pingcap/tidb/pkg/parser/mysql"
 	_ "github.com/pingcap/tidb/pkg/parser/test_driver"
 )
 
@@ -24,9 +26,18 @@ func (p *TiDBSqlParser) Parse(sql string) (any, error) {
 	// will fail to parse it so we replace it with '<secret>'
 	sql = strings.Replace(sql, "IDENTIFIED BY <secret>", "IDENTIFIED BY '<secret>'", 1)
 
-	stmtNodes, _, err := parser.New().ParseSQL(sql)
+	// tidb parser doesn't support text line IN (...), so we replace it with (?)
+	sql = strings.Replace(sql, "( ... )", "(?)", 1)
+	sql = strings.Replace(sql, "(...)", "(?)", 1)
+
+	tParser := parser.New()
+	stmtNodes, _, err := tParser.ParseSQL(sql)
 	if err != nil {
-		return nil, errors.Unwrap(err)
+		tParser.SetSQLMode(mysql.ModeIgnoreSpace)
+		stmtNodes, _, err = tParser.ParseSQL(sql)
+		if err != nil {
+			return nil, errors.Unwrap(err)
+		}
 	}
 
 	if len(stmtNodes) == 0 {
@@ -65,7 +76,9 @@ func (p *TiDBSqlParser) ExtractTableNames(_ log.Logger, _ string, stmt any) []st
 		tables: map[string]struct{}{},
 	}
 	(*stmt.(*ast.StmtNode)).Accept(v)
-	return maps.Keys(v.tables)
+	keys := maps.Keys(v.tables)
+	slices.Sort(keys)
+	return keys
 }
 
 func (p *TiDBSqlParser) ParseTableName(t any) string {

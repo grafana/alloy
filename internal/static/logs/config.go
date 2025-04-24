@@ -54,7 +54,7 @@ func (c *Config) ApplyDefaults() error {
 
 	for idx, ic := range c.Configs {
 		if ic.Name == "" {
-			return fmt.Errorf("Loki config index %d must have a name", idx)
+			return fmt.Errorf("loki config index %d must have a name", idx)
 		}
 		if _, ok := names[ic.Name]; ok {
 			return fmt.Errorf("found two Loki configs with name %s", ic.Name)
@@ -68,7 +68,7 @@ func (c *Config) ApplyDefaults() error {
 			ic.PositionsConfig.PositionsFile = filepath.Join(c.PositionsDirectory, ic.Name+".yml")
 		}
 		if orig, ok := positions[ic.PositionsConfig.PositionsFile]; ok {
-			return fmt.Errorf("Loki configs %s and %s must have different positions file paths", orig, ic.Name)
+			return fmt.Errorf("loki configs %s and %s must have different positions file paths", orig, ic.Name)
 		}
 		positions[ic.PositionsConfig.PositionsFile] = ic.Name
 

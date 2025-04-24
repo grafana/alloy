@@ -338,7 +338,7 @@ func TestQuerySample(t *testing.T) {
 					),
 				)
 
-			mock.ExpectQuery(selectQuerySamples).WithArgs(float64(1)).RowsWillBeClosed().
+			mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, "")).WithArgs(float64(1)).RowsWillBeClosed().
 				WillReturnRows(
 					sqlmock.NewRows([]string{
 						"now",
@@ -388,6 +388,187 @@ func TestQuerySample(t *testing.T) {
 	}
 }
 
+func TestQuerySampleDisableQueryRedaction(t *testing.T) {
+	defer goleak.VerifyNone(t)
+	t.Run("collects sql text when enabled", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		lokiClient := loki_fake.NewClient(func() {})
+
+		collector, err := NewQuerySample(QuerySampleArguments{
+			DB:                    db,
+			InstanceKey:           "mysql-db",
+			CollectInterval:       time.Second,
+			EntryHandler:          lokiClient,
+			Logger:                log.NewLogfmtLogger(os.Stderr),
+			DisableQueryRedaction: true,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, collector)
+
+		mock.ExpectQuery(selectLatestTimerEnd).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"timer_end",
+				}).AddRow(
+					"1",
+				),
+			)
+
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, ",statements.SQL_TEXT")).WithArgs(float64(1)).RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"now",
+					"uptime",
+					"statements.CURRENT_SCHEMA",
+					"statements.DIGEST",
+					"statements.DIGEST_TEXT",
+					"statements.TIMER_START",
+					"statements.TIMER_END",
+					"statements.TIMER_WAIT",
+					"statements.CPU_TIME",
+					"statements.ROWS_EXAMINED",
+					"statements.ROWS_SENT",
+					"statements.ROWS_AFFECTED",
+					"statements.ERRORS",
+					"statements.MAX_CONTROLLED_MEMORY",
+					"statements.MAX_TOTAL_MEMORY",
+					"statements.SQL_TEXT",
+				}).AddRow(
+					"1",
+					"2",
+					"some_schema",
+					"some_digest",
+					"select * from some_table where id = ?",
+					"50000000",
+					"70000000",
+					"20000000",
+					"10000000",
+					"5",
+					"5",
+					"0",
+					"0",
+					"456",
+					"457",
+					"select * from some_table where id = 1",
+				),
+			)
+
+		err = collector.Start(t.Context())
+		require.NoError(t, err)
+
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 1
+		}, 5*time.Second, 100*time.Millisecond)
+
+		collector.Stop()
+		lokiClient.Stop()
+
+		require.Eventually(t, func() bool {
+			return collector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
+
+		err = mock.ExpectationsWereMet()
+		require.NoError(t, err)
+
+		lokiEntries := lokiClient.Received()
+		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"}, lokiEntries[0].Labels)
+		require.Equal(t, `schema="some_schema" digest="some_digest" digest_text="select * from some_table where id = :v1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms" sql_text="select * from some_table where id = 1"`, lokiEntries[0].Line)
+	})
+
+	t.Run("does not collect sql text when disabled", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		lokiClient := loki_fake.NewClient(func() {})
+
+		collector, err := NewQuerySample(QuerySampleArguments{
+			DB:                    db,
+			InstanceKey:           "mysql-db",
+			CollectInterval:       time.Second,
+			EntryHandler:          lokiClient,
+			Logger:                log.NewLogfmtLogger(os.Stderr),
+			DisableQueryRedaction: false,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, collector)
+
+		mock.ExpectQuery(selectLatestTimerEnd).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"timer_end",
+				}).AddRow(
+					"1",
+				),
+			)
+
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, "")).WithArgs(float64(1)).RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"now",
+					"uptime",
+					"statements.CURRENT_SCHEMA",
+					"statements.DIGEST",
+					"statements.DIGEST_TEXT",
+					"statements.TIMER_START",
+					"statements.TIMER_END",
+					"statements.TIMER_WAIT",
+					"statements.CPU_TIME",
+					"statements.ROWS_EXAMINED",
+					"statements.ROWS_SENT",
+					"statements.ROWS_AFFECTED",
+					"statements.ERRORS",
+					"statements.MAX_CONTROLLED_MEMORY",
+					"statements.MAX_TOTAL_MEMORY",
+				}).AddRow(
+					"1",
+					"2",
+					"some_schema",
+					"some_digest",
+					"select * from some_table where id = ?",
+					"50000000",
+					"70000000",
+					"20000000",
+					"10000000",
+					"5",
+					"5",
+					"0",
+					"0",
+					"456",
+					"457",
+				),
+			)
+
+		err = collector.Start(t.Context())
+		require.NoError(t, err)
+
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 1
+		}, 5*time.Second, 100*time.Millisecond)
+
+		collector.Stop()
+		lokiClient.Stop()
+
+		require.Eventually(t, func() bool {
+			return collector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
+
+		err = mock.ExpectationsWereMet()
+		require.NoError(t, err)
+
+		lokiEntries := lokiClient.Received()
+		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"}, lokiEntries[0].Labels)
+		require.Equal(t, `schema="some_schema" digest="some_digest" digest_text="select * from some_table where id = :v1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`, lokiEntries[0].Line)
+	})
+}
+
 func TestQuerySampleUpdatesLastSampleSeenTimestamp(t *testing.T) {
 	defer goleak.VerifyNone(t)
 	t.Run("fetch new samples after the last sample seen timestamp", func(t *testing.T) {
@@ -417,7 +598,7 @@ func TestQuerySampleUpdatesLastSampleSeenTimestamp(t *testing.T) {
 					"1",
 				))
 
-		mock.ExpectQuery(selectQuerySamples).WithArgs(float64(1)).RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, "")).WithArgs(float64(1)).RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"now",
@@ -454,7 +635,7 @@ func TestQuerySampleUpdatesLastSampleSeenTimestamp(t *testing.T) {
 				),
 			)
 
-		mock.ExpectQuery(selectQuerySamples).WithArgs(float64(70000000)).RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, "")).WithArgs(float64(70000000)).RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"now",
@@ -545,7 +726,7 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 					"1",
 				))
 
-		mock.ExpectQuery(selectQuerySamples).WithArgs(float64(1)).RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, "")).WithArgs(float64(1)).RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"digest", // not enough columns
@@ -553,7 +734,7 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 					"abc123",
 				))
 
-		mock.ExpectQuery(selectQuerySamples).WithArgs(float64(1)).RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, "")).WithArgs(float64(1)).RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"now",
@@ -639,7 +820,7 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 					"1",
 				))
 
-		mock.ExpectQuery(selectQuerySamples).WithArgs(float64(1)).RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, "")).WithArgs(float64(1)).RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"now",
@@ -741,8 +922,8 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 					"1",
 				))
 
-		mock.ExpectQuery(selectQuerySamples).WithArgs(float64(1)).WillReturnError(fmt.Errorf("connection error"))
-		mock.ExpectQuery(selectQuerySamples).WithArgs(float64(1)).RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, "")).WithArgs(float64(1)).WillReturnError(fmt.Errorf("connection error"))
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, "")).WithArgs(float64(1)).RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"now",

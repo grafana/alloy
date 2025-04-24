@@ -13,6 +13,8 @@ jobs:
   deploy-pr-preview:
     if: "!github.event.pull_request.head.repo.fork"
     uses: grafana/writers-toolkit/.github/workflows/deploy-preview.yml@main
+    # ^ We can't pin a hash for this action because deploy-preview's checkout step relies on it
+    # having been called against the main branch
     with:
       branch: ${{ github.head_ref }}
       event_number: ${{ github.event.number }}

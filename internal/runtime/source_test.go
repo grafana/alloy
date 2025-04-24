@@ -1,6 +1,7 @@
 package runtime
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
@@ -122,6 +123,33 @@ func TestParseSources_UniqueComponent(t *testing.T) {
 	defer cleanUpController(t.Context(), ctrl)
 	err = ctrl.LoadSource(s, nil, "")
 	require.NoError(t, err)
+}
+
+func TestParseSources_SyntaxErrors(t *testing.T) {
+	defer verifyNoGoroutineLeaks(t)
+	file1 := `
+		testcomponents.tick "tick1" {
+			frequency = "1s"
+	`
+
+	file2 := `
+		testcomponents.tick "tick2" {
+			frequency = "1s"
+	`
+
+	s, err := ParseSources(map[string][]byte{
+		"1": []byte(file1),
+		"2": []byte(file2),
+	})
+
+	require.Nil(t, s)
+	require.Error(t, err)
+
+	var diags diag.Diagnostics
+	require.True(t, errors.As(err, &diags))
+	require.Len(t, diags, 2)
+	require.Equal(t, "1", diags[0].StartPos.Filename)
+	require.Equal(t, "2", diags[1].StartPos.Filename)
 }
 
 func getBlockID(b *ast.BlockStmt) string {

@@ -6,6 +6,6 @@ on:
 
 jobs:
   publish_windows_container:
-    uses: ./.github/workflows/publish-alloy.yaml
+    uses: ./.github/workflows/publish-alloy.yml
     with:
       img-name: alloy

@@ -60,6 +60,9 @@ exporters:
 
 extensions:
   file_storage:
+    directory: /var/lib/otelcol/file_storage
+    compaction:
+      directory: /var/lib/otelcol/file_storage
     fsync: true
     
 service:

@@ -58,7 +58,7 @@ func Test(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	// Add a log message to the file
-	f.WriteString(fmt.Sprintf("%s INFO test\n", time.Now().Format(time.RFC3339)))
+	fmt.Fprintf(f, "%s INFO test\n", time.Now().Format(time.RFC3339))
 
 	// Wait for our client to get a span.
 	select {

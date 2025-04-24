@@ -156,11 +156,11 @@ func (t *Target) processLoop(ctx context.Context) {
 func extractTs(line string) (time.Time, string, error) {
 	pair := strings.SplitN(line, " ", 2)
 	if len(pair) != 2 {
-		return time.Now(), line, fmt.Errorf("Could not find timestamp in '%s'", line)
+		return time.Now(), line, fmt.Errorf("could not find timestamp in '%s'", line)
 	}
 	ts, err := time.Parse("2006-01-02T15:04:05.999999999Z07:00", pair[0])
 	if err != nil {
-		return time.Now(), line, fmt.Errorf("Could not parse timestamp from '%s': %w", pair[0], err)
+		return time.Now(), line, fmt.Errorf("could not parse timestamp from '%s': %w", pair[0], err)
 	}
 	return ts, pair[1], nil
 }

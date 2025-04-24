@@ -135,6 +135,16 @@ func TestParserTiDB_ExtractTableNames(t *testing.T) {
 			sql:    "CREATE USER 'exporter'@'%' IDENTIFIED BY <secret>",
 			tables: nil,
 		},
+		{
+			name:   "insert with redacted values",
+			sql:    "INSERT INTO some_table(id, url) VALUES (...)",
+			tables: []string{"some_table"},
+		},
+		{
+			name:   "trim function (sql mode ignore case)",
+			sql:    "SELECT TRIM (TRAILING '/' FROM url)",
+			tables: nil,
+		},
 	}
 
 	for _, tc := range testcases {

@@ -98,9 +98,9 @@ Replace the following:
 This example uses the simplest volume type, `emptyDir`. In this example configuration, if your node restarts, your data will be lost. Make sure you set the volume type to a persistent storage location for production environments. Refer to [Using volumes to persist container data](https://docs.openshift.com/container-platform/latest/nodes/containers/nodes-containers-volumes.html) in the OpenShift documentation for more information.
 {{< /admonition >}}
 
-## Example SSC definition
+## Example SCC definition
 
-The following example shows an SSC definition that deploys {{< param "PRODUCT_NAME" >}} as a non-root user:
+The following example shows an SCC definition that deploys {{< param "PRODUCT_NAME" >}} as a non-root user:
 
 ```yaml
 kind: SecurityContextConstraints
