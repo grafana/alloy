@@ -48,6 +48,8 @@ Main (unreleased)
 
 -  Add optional `id` field to `foreach` block to generate more meaningful component paths in metrics by using a specific field from collection items. (@harshrai654)
   
+- Fix validation logic in `beyla.ebpf` component to ensure that either metrics or traces are enabled. (@marctc)
+
 ### Bugfixes
 
 - Fix `otelcol.receiver.filelog` documentation's default value for `start_at`. (@petewall)

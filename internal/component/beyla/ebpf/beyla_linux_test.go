@@ -23,6 +23,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/syntax"
 )
 
@@ -638,7 +639,7 @@ func TestArguments_Validate(t *testing.T) {
 		{
 			name:    "empty arguments",
 			args:    Arguments{},
-			wantErr: "metrics.features must include at least one of: network, application",
+			wantErr: "either metrics.features must include at least one of: network, application, application_span, application_service_graph, application_process, or tracing must be enabled",
 		},
 		{
 			name: "valid network-only configuration",
@@ -696,7 +697,7 @@ func TestArguments_Validate(t *testing.T) {
 					Features: []string{"invalid"},
 				},
 			},
-			wantErr: "metrics.features must include at least one of: network, application, application_span, application_service_graph, or application_process",
+			wantErr: "metrics.features: invalid value \"invalid\"",
 		},
 		{
 			name: "valid trace printer",
@@ -724,6 +725,30 @@ func TestArguments_Validate(t *testing.T) {
 				},
 			},
 			wantErr: `trace_printer: invalid value "invalid". Valid values are: disabled, counter, text, json, json_indent`,
+		},
+		{
+			name: "valid tracing-only configuration with trace_printer",
+			args: Arguments{
+				TracePrinter: "json",
+				// No metrics features defined
+			},
+		},
+		{
+			name: "valid tracing-only configuration with output section",
+			args: Arguments{
+				Output: &otelcol.ConsumerArguments{
+					Traces: []otelcol.Consumer{},
+				},
+				// No metrics features defined
+			},
+		},
+		{
+			name: "invalid configuration with disabled tracing and no metrics",
+			args: Arguments{
+				TracePrinter: "disabled",
+				// No metrics features and disabled tracing
+			},
+			wantErr: "either metrics.features must include at least one of: network, application, application_span, application_service_graph, application_process, or tracing must be enabled",
 		},
 	}
 
