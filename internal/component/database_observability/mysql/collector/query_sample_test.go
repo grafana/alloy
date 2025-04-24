@@ -1348,7 +1348,7 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 	})
 }
 
-func TestQuerySample_calculateTimestamp(t *testing.T) {
+func TestQuerySample_calculateWallTime(t *testing.T) {
 	t.Run("calculates the timestamp at which an event happened", func(t *testing.T) {
 		c := &QuerySample{}
 		serverStartTime := float64(2)
@@ -1366,6 +1366,16 @@ func TestQuerySample_calculateTimestamp(t *testing.T) {
 		result := c.calculateWallTime(serverStartTime, timer)
 
 		assert.Equalf(t, uint64(18446749073), result, "got %d, want 18446749073", result)
+	})
+
+	t.Run("calculates another timestamp", func(t *testing.T) {
+		c := &QuerySample{lastUptime: picosecondsToSeconds(math.MaxUint64) + 1}
+		serverStartTime := float64(3)
+		timer := float64(math.MaxUint64 - 5)
+
+		result := c.calculateWallTime(serverStartTime, timer)
+
+		assert.Equalf(t, uint64(36893491147), result, "got %d, want 36893491147", result)
 	})
 }
 
