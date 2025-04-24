@@ -11,12 +11,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/oklog/run"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/splunkhecreceiver"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/pdata/plog"
 	"go.opentelemetry.io/collector/pdata/pmetric"
-	"golang.org/x/sync/errgroup"
 
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/fakeconsumer"
@@ -102,10 +102,10 @@ func Test(t *testing.T) {
 	require.NoError(t, ctrl.WaitRunning(time.Second))
 
 	url := fmt.Sprintf("http://%s", httpAddr)
-	g := &errgroup.Group{}
 
+	g := &run.Group{}
 	// send log event
-	g.Go(func() error {
+	g.Add(func() error {
 		event := HecEvent{
 			Event: map[string]string{
 				"msg":      "some message",
@@ -127,10 +127,10 @@ func Test(t *testing.T) {
 
 		_, err = http.DefaultClient.Post(url, "application/json", buf)
 		return err
-	})
+	}, func(_ error) {})
 
 	// send metric event
-	g.Go(func() error {
+	g.Add(func() error {
 		event := HecEvent{
 			Event:      "metric",
 			Host:       "my_host",
@@ -152,14 +152,14 @@ func Test(t *testing.T) {
 
 		_, err = http.DefaultClient.Post(url, "application/json", buf)
 		return err
-	})
+	}, func(err error) {})
 
-	require.NoError(t, g.Wait())
+	require.NoError(t, g.Run())
 
-	resg := &errgroup.Group{}
+	resg := &run.Group{}
 
 	// Wait for our client to get log.
-	resg.Go(func() error {
+	resg.Add(func() error {
 		select {
 		case l := <-logsCh:
 			if l.LogRecordCount() != 1 {
@@ -169,10 +169,10 @@ func Test(t *testing.T) {
 		case <-time.After(time.Second):
 			return errors.New("failed waiting for logs")
 		}
-	})
+	}, func(_ error) {})
 
 	// Wait for our client to get metric.
-	resg.Go(func() error {
+	resg.Add(func() error {
 		select {
 		case m := <-metricsCh:
 			if m.MetricCount() != 1 {
@@ -182,9 +182,9 @@ func Test(t *testing.T) {
 		case <-time.After(time.Second):
 			return errors.New("failed waiting for metrics")
 		}
-	})
+	}, func(_ error) {})
 
-	require.NoError(t, resg.Wait())
+	require.NoError(t, resg.Run())
 }
 
 func TestUnmarshalDefault(t *testing.T) {
