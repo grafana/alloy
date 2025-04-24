@@ -44,7 +44,8 @@ SELECT statements.CURRENT_SCHEMA,
 	%s
 FROM performance_schema.events_statements_history AS statements
 WHERE statements.sql_text IS NOT NULL
-  AND statements.CURRENT_SCHEMA NOT IN ('mysql', 'performance_schema', 'sys', 'information_schema')`
+  AND statements.CURRENT_SCHEMA NOT IN ('mysql', 'performance_schema', 'sys', 'information_schema')
+  %s`
 
 type QuerySampleArguments struct {
 	DB                    *sql.DB
@@ -180,7 +181,7 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 		sqlTextField = ",statements.SQL_TEXT"
 	}
 
-	query := fmt.Sprintf(selectQuerySamples, sqlTextField) + timerClause
+	query := fmt.Sprintf(selectQuerySamples, sqlTextField, timerClause)
 
 	rs, err := c.dbConnection.QueryContext(ctx, query, c.timerBookmark, limit)
 	if err != nil {
