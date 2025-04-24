@@ -267,7 +267,7 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 
 		logMessage :=
 			fmt.Sprintf(
-				`schema="%s" digest="%s" digest_text="%s" rows_examined="%d" rows_sent="%d" rows_affected="%d" errors="%d" max_controlled_memory="%db" max_total_memory="%db" cpu_time="%fms" elapsed_time="%fms" elapsed_time_ms="%fms" time="%dms" level="INFO"`,
+				`schema="%s" digest="%s" digest_text="%s" rows_examined="%d" rows_sent="%d" rows_affected="%d" errors="%d" max_controlled_memory="%db" max_total_memory="%db" cpu_time="%fms" elapsed_time="%fms" elapsed_time_ms="%fms" level="INFO"`,
 				row.Schema.String,
 				row.Digest.String,
 				digestText,
@@ -280,7 +280,6 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 				cpuTime,
 				elapsedTime,
 				elapsedTime,
-				row.TimestampMilliseconds,
 			)
 		if c.disableQueryRedaction && row.SQLText.Valid {
 			logMessage += fmt.Sprintf(` sql_text="%s"`, row.SQLText.String)
