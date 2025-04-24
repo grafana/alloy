@@ -5,6 +5,8 @@ aliases:
 description: Learn about prometheus.scrape
 labels:
   stage: general-availability
+  products:
+    - oss
 title: prometheus.scrape
 ---
 

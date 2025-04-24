@@ -5,6 +5,8 @@ aliases:
 description: Learn about prometheus.operator.podmonitors
 labels:
   stage: general-availability
+  products:
+    - oss
 title: prometheus.operator.podmonitors
 ---
 
