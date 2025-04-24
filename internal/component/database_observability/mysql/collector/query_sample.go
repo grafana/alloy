@@ -352,17 +352,16 @@ func uptimeSinceOverflow(uptime float64) float64 {
 var picosecondsOverflowInSeconds = picosecondsToSeconds(float64(math.MaxUint64))
 
 const (
-  picosecondsPerSecond float64 = 1e12
-  millisecondsPerSecond float64 = 1e3
+	picosecondsPerSecond      float64 = 1e12
+	millisecondsPerSecond     float64 = 1e3
+	millisecondsPerPicosecond float64 = 1e9
 )
-const millisecondsPerSecond float64 = 1e3
 
 func picosecondsToSeconds(picoseconds float64) float64 {
 	return picoseconds / picosecondsPerSecond
 }
 
 func picosecondsToMilliseconds(picoseconds float64) float64 {
-	const millisecondsPerPicosecond float64 = 1e9
 	return picoseconds / millisecondsPerPicosecond
 }
 
