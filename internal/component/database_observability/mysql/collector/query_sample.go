@@ -161,7 +161,7 @@ func (c *QuerySample) initializeBookmark(ctx context.Context) error {
 	}
 
 	c.lastUptime = uptime
-	c.timerBookmark = uptimeModuloOverflows(uptime)
+	c.timerBookmark = uptimeSinceOverflow(uptime)
 	return nil
 }
 
@@ -173,12 +173,12 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 		return fmt.Errorf("failed to scan now and uptime info: %w", err)
 	}
 
+	timerClause, limit := c.determineTimerClauseAndLimit(uptime)
+
 	var sqlTextField string
 	if c.disableQueryRedaction {
 		sqlTextField = ",statements.SQL_TEXT"
 	}
-
-	timerClause, limit := c.determineTimerClauseAndLimit(uptime)
 
 	query := fmt.Sprintf(selectQuerySamples, sqlTextField) + timerClause
 
@@ -247,7 +247,7 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 		}
 
 		serverStartTime := now - uptime
-		row.TimestampMilliseconds = c.calculateTimestamp(serverStartTime, row.TimerEndPicoseconds.Float64)
+		row.TimestampMilliseconds = c.calculateWallTime(serverStartTime, row.TimerEndPicoseconds.Float64)
 
 		digestText, err := c.sqlParser.CleanTruncatedText(row.DigestText.String)
 		if err != nil {
@@ -300,7 +300,7 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 	return nil
 }
 
-func (c *QuerySample) calculateTimestamp(serverStartTime, timer float64) uint64 {
+func (c *QuerySample) calculateWallTime(serverStartTime, timer float64) uint64 {
 	// timer indicates event timing since server startup.
 	// The timer value is in picoseconds with a column type of bigint unsigned. This value can overflow after about ~213 days.
 	// We need to account for this overflow when calculating the timestamp.
@@ -338,13 +338,14 @@ func (c *QuerySample) determineTimerClauseAndLimit(uptime float64) (string, floa
 		c.timerBookmark = 0
 	}
 
-	limit := uptimeModuloOverflows(uptime)
+	limit := uptimeSinceOverflow(uptime)
 
 	return timerClause, limit
 }
 
-// uptime "modulo" overflows returns the remainder of the uptime value with any overflowed time removed
-func uptimeModuloOverflows(uptime float64) float64 {
+// uptimeSinceOverflow calculates the uptime "modulo" overflows: it returns the remainder of the uptime value with any
+// overflowed time removed
+func uptimeSinceOverflow(uptime float64) float64 {
 	overflowAdjustment := float64(calculateNumberOfOverflows(uptime)) * picosecondsOverflowInSeconds
 	return secondsToPicoseconds(uptime - overflowAdjustment)
 }
@@ -352,22 +353,21 @@ func uptimeModuloOverflows(uptime float64) float64 {
 var picosecondsOverflowInSeconds = picosecondsToSeconds(float64(math.MaxUint64))
 
 const picosecondsPerSecond float64 = 1e12
+const millisecondsPerSecond float64 = 1e3
 
 func picosecondsToSeconds(picoseconds float64) float64 {
 	return picoseconds / picosecondsPerSecond
+}
+
+func picosecondsToMilliseconds(picoseconds float64) float64 {
+	const millisecondsPerPicosecond float64 = 1e9
+	return picoseconds / millisecondsPerPicosecond
 }
 
 func secondsToPicoseconds(seconds float64) float64 {
 	return seconds * picosecondsPerSecond
 }
 
-const millisecondsPerSecond float64 = 1e3
-
 func secondsToMilliseconds(seconds float64) uint64 {
 	return uint64(seconds * millisecondsPerSecond)
-}
-
-func picosecondsToMilliseconds(picoseconds float64) float64 {
-	const millisecondsPerPicosecond float64 = 1e9
-	return picoseconds / millisecondsPerPicosecond
 }

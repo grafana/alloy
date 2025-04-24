@@ -1354,7 +1354,7 @@ func TestQuerySample_calculateTimestamp(t *testing.T) {
 		serverStartTime := float64(2)
 		timer := 2e12 // Timer indicates event timing, counted since server startup. 2 seconds in picoseconds
 
-		result := c.calculateTimestamp(serverStartTime, timer)
+		result := c.calculateWallTime(serverStartTime, timer)
 		assert.Equalf(t, uint64(4000), result, "got %d, want 4000", result)
 	})
 
@@ -1363,7 +1363,7 @@ func TestQuerySample_calculateTimestamp(t *testing.T) {
 		serverStartTime := float64(3)
 		timer := 2e12 // 2 seconds in picoseconds
 
-		result := c.calculateTimestamp(serverStartTime, timer)
+		result := c.calculateWallTime(serverStartTime, timer)
 
 		assert.Equalf(t, uint64(18446749073), result, "got %d, want 18446749073", result)
 	})
