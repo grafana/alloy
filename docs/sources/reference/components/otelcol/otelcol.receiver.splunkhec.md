@@ -1,6 +1,10 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.receiver.splunkhec/
 description: Learn about otelcol.receiver.splunkhec
+labels:
+  stage: public-preview
+  products:
+    - oss
 title: otelcol.receiver.splunkhec
 ---
 
