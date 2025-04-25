@@ -186,8 +186,8 @@ otelcol.receiver.splunkhec "default" {
 }
 
 otelcol.auth.basic "creds" {
-    username = sys.env("USERNAME")
-    password = sys.env("PASSWORD")
+    username = sys.env("<USERNAME>")
+    password = sys.env("<PASSWORD>")
 }
 ```
 
