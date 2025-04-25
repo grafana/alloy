@@ -51,7 +51,7 @@ local pipelines = import '../util/pipelines.jsonnet';
       name: 'Run Go tests',
       image: build_image.windows,
       commands: [
-        pipelines.windows_command('go test -tags="nodocker,nonetwork" $(go list ./... | grep -v /integration-tests/)'),
+        pipelines.windows_command('go test -tags="nodocker,nonetwork" $(go list ./... | grep -v /integration-tests/ | grep -v /integration-tests-k8s/)'),
       ],
     }],
   },

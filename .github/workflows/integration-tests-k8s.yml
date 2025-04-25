@@ -1,0 +1,23 @@
+name: Integration Tests on Kubernetes
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - internal/cmd/integration-tests-k8s/
+
+permissions:
+  contents: read
+
+jobs:
+  run_tests:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Setup Go
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: go.mod
+    - name: Run tests
+      run: make integration-test-k8s

@@ -159,7 +159,7 @@ run-alloylint: alloylint
 # more without -race for packages that have known race detection issues. The
 # final command runs tests for all other submodules.
 test:
-	$(GO_ENV) go test $(GO_FLAGS) -race $(shell go list ./... | grep -v /integration-tests/)
+	$(GO_ENV) go test $(GO_FLAGS) -race $(shell go list ./... | grep -v /integration-tests/ /integration-tests-k8s/ | grep -v /integration-tests-k8s/)
 	$(GO_ENV) go test $(GO_FLAGS) ./internal/static/integrations/node_exporter ./internal/static/logs ./internal/component/otelcol/processor/tail_sampling ./internal/component/loki/source/file ./internal/component/loki/source/docker
 	$(GO_ENV) find . -name go.mod -not -path "./go.mod" -execdir go test -race ./... \;
 
@@ -174,6 +174,10 @@ endif
 .PHONY: integration-test
 integration-test:
 	cd internal/cmd/integration-tests && $(GO_ENV) go run .
+
+.PHONY: integration-test-k8s
+integration-test-k8s: alloy-image
+	./internal/cmd/integration-tests-k8s/run.sh
 
 #
 # Targets for building binaries
