@@ -106,10 +106,10 @@ The `hec_metadata_to_otel_attrs` block configures otel attributes from hec metad
 
 | Name         | Type     | Description                                                   | Default                 | Required |
 | ------------ | -------- | --------------------------------------------------------------| ----------------------- |--------- |
+| `host`       | `string` | Specifies the mapping of the host field to a attribute.       | `host.name`             | no       |
+| `index`      | `string` | Specifies the mapping of the index field to a attribute.      | `com.splunk.index`      | no       |
 | `source`     | `string` | Specifies the mapping of the source field to a attribute.     | `com.splunk.source`     | no       |
 | `sourcetype` | `string` | Specifies the mapping of the sourcetype field to a attribute. | `com.splunk.sourcetype` | no       |
-| `index`      | `string` | Specifies the mapping of the index field to a attribute.      | `com.splunk.index`      | no       |
-| `host`       | `string` | Specifies the mapping of the host field to a attribute.       | `host.name`             | no       |
 
 ### `debug_metrics`
 
