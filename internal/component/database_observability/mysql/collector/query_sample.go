@@ -12,6 +12,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability/mysql/collector/parser"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
@@ -267,7 +268,7 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 
 		logMessage :=
 			fmt.Sprintf(
-				`schema="%s" digest="%s" digest_text="%s" rows_examined="%d" rows_sent="%d" rows_affected="%d" errors="%d" max_controlled_memory="%db" max_total_memory="%db" cpu_time="%fms" elapsed_time="%fms" elapsed_time_ms="%fms" level="INFO"`,
+				`schema="%s" digest="%s" digest_text="%s" rows_examined="%d" rows_sent="%d" rows_affected="%d" errors="%d" max_controlled_memory="%db" max_total_memory="%db" cpu_time="%fms" elapsed_time="%fms" elapsed_time_ms="%fms"`,
 				row.Schema.String,
 				row.Digest.String,
 				digestText,
@@ -286,6 +287,7 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 		}
 
 		c.entryHandler.Chan() <- buildLokiEntry(
+			logging.LevelInfo,
 			OP_QUERY_SAMPLE,
 			c.instanceKey,
 			logMessage,
