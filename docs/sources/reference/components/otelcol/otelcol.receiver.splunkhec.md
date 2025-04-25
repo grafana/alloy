@@ -79,7 +79,7 @@ If the `tls` block isn't provided, TLS isn't used for connections to the server.
 
 {{< docs/shared lookup="reference/components/otelcol-tls-server-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### cors block
+### `cors`
 
 The `cors` block configures CORS settings for an HTTP server.
 
