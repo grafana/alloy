@@ -120,8 +120,6 @@ func (c *SetupConsumers) getSetupConsumers(ctx context.Context) error {
 	}
 	defer rs.Close()
 
-	c.setupConsumersMetric.Reset()
-
 	for rs.Next() {
 		var consumer consumer
 		if err := rs.Scan(&consumer.name, &consumer.enabled); err != nil {
