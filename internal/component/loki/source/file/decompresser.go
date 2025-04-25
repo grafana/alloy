@@ -61,6 +61,8 @@ type decompressor struct {
 	size     int64
 	cfg      DecompressionConfig
 
+	// initOnce must be called from `Run` and mut most be locked.
+	initOnce          func()
 	componentStopping func() bool
 
 	mut     sync.RWMutex
@@ -111,15 +113,18 @@ func newDecompressor(
 		running:           atomic.NewBool(false),
 		stopped:           atomic.NewBool(false),
 		position:          pos,
-		posquit:           make(chan struct{}),
-		posdone:           make(chan struct{}),
 		decoder:           decoder,
 		cfg:               cfg,
 		componentStopping: componentStopping,
 	}
 
-	// updatePosition closes the channel t.posdone on exit
-	go decompressor.updatePosition()
+	// We wrap this call with a `sync.OnceFunc` to ensure it is only triggered once.
+	decompressor.initOnce = sync.OnceFunc(func() {
+		decompressor.posquit = make(chan struct{})
+		decompressor.posdone = make(chan struct{})
+		// updatePosition closes the channel t.posdone on exit
+		go decompressor.updatePosition()
+	})
 
 	return decompressor, nil
 }
@@ -172,6 +177,7 @@ func (d *decompressor) Run() {
 	defer handler.Stop()
 
 	d.mut.Lock()
+	d.initOnce()
 	d.done = make(chan struct{})
 	d.mut.Unlock()
 

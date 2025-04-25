@@ -44,15 +44,17 @@ type tailer struct {
 	posAndSizeMtx sync.Mutex
 
 	running *atomic.Bool
+	stopped *atomic.Bool
 
+	// initOnce must be called from when we can successfully run the tailer and mut most be locked.
+	initOnce          func()
 	componentStopping func() bool
 
-	mut      sync.RWMutex
-	stopping bool
-	tail     *tail.Tail
-	posquit  chan struct{} // used by the readLine method to tell the updatePosition method to stop
-	posdone  chan struct{} // used by the updatePosition method to notify when it stopped
-	done     chan struct{} // used by the readLine method to notify when it stopped
+	mut     sync.RWMutex
+	tail    *tail.Tail
+	posquit chan struct{} // used by the readLine method to tell the updatePosition method to stop
+	posdone chan struct{} // used by the updatePosition method to notify when it stopped
+	done    chan struct{} // used by the readLine method to notify when it stopped
 
 	decoder *encoding.Decoder
 }
@@ -69,6 +71,7 @@ func newTailer(metrics *metrics, logger log.Logger, receiver loki.LogsReceiver, 
 		labels:            labels,
 		labelsStr:         labels.String(),
 		running:           atomic.NewBool(false),
+		stopped:           atomic.NewBool(false),
 		tailFromEnd:       tailFromEnd,
 		pollOptions:       pollOptions,
 		componentStopping: componentStopping,
@@ -83,6 +86,14 @@ func newTailer(metrics *metrics, logger log.Logger, receiver loki.LogsReceiver, 
 		decoder := encoder.NewDecoder()
 		tailer.decoder = decoder
 	}
+
+	// We wrap this call with a `sync.OnceFunc` to ensure it is only started once.
+	tailer.initOnce = sync.OnceFunc(func() {
+		tailer.posdone = make(chan struct{})
+		tailer.posquit = make(chan struct{})
+		// updatePosition closes the channel t.posdone on exit
+		go tailer.updatePosition()
+	})
 
 	return tailer, nil
 }
@@ -144,7 +155,12 @@ func getLastLinePosition(path string) (int64, error) {
 }
 
 func (t *tailer) Run() {
-	// only if initRun succeeds, the channels t.done, t.posdone, t.posquit are initialized
+	// Check if the stop function was called between two Run.
+	if t.stopped.Load() {
+		return
+	}
+
+	// NOTE: t.done and t.tail are initialized if initRun succeeds.
 	handler, err := t.initRun()
 	if err != nil {
 		level.Error(t.logger).Log("msg", "failed to run tailer", "err", err)
@@ -153,8 +169,6 @@ func (t *tailer) Run() {
 
 	defer handler.Stop()
 
-	// updatePosition closes the channel t.posdone on exit
-	go t.updatePosition()
 	t.metrics.filesActive.Add(1.)
 
 	// readLines closes the channels t.done and t.posquit on exit
@@ -164,11 +178,6 @@ func (t *tailer) Run() {
 func (t *tailer) initRun() (loki.EntryHandler, error) {
 	t.mut.Lock()
 	defer t.mut.Unlock()
-
-	// Check if the stop function was called between two Run.
-	if t.stopping {
-		return nil, fmt.Errorf("tailer stopped")
-	}
 
 	fi, err := os.Stat(t.path)
 	if err != nil {
@@ -219,9 +228,10 @@ func (t *tailer) initRun() (loki.EntryHandler, error) {
 	t.tail = tail
 	labelsMiddleware := t.labels.Merge(model.LabelSet{filenameLabel: model.LabelValue(t.path)})
 	handler := loki.AddLabelsMiddleware(labelsMiddleware).Wrap(loki.NewEntryHandler(t.receiver.Chan(), func() {}))
-	t.posquit = make(chan struct{})
-	t.posdone = make(chan struct{})
+
+	t.initOnce()
 	t.done = make(chan struct{})
+
 	return handler, nil
 }
 
@@ -274,8 +284,6 @@ func (t *tailer) readLines(handler loki.EntryHandler) {
 		t.running.Store(false)
 		level.Info(t.logger).Log("msg", "tail routine: exited", "path", t.path)
 		close(t.done)
-		// Shut down the position marker thread
-		close(t.posquit)
 	}()
 	entries := handler.Chan()
 	for {
@@ -344,12 +352,12 @@ func (t *tailer) markPositionAndSize() error {
 }
 
 func (t *tailer) Stop() {
-	t.mut.Lock()
-	t.stopping = true
-	defer func() {
-		t.stopping = false
-	}()
+	if !t.stopped.CompareAndSwap(false, true) {
+		// We halve already called Stop
+		return
+	}
 
+	t.mut.RLock()
 	var err error
 	// Stop the underlying tailer to prevent resource leak.
 	if t.tail != nil {
@@ -361,7 +369,7 @@ func (t *tailer) Stop() {
 		}
 		err = t.tail.Stop()
 	}
-	t.mut.Unlock()
+	t.mut.RUnlock()
 
 	if err != nil {
 		if utils.IsEphemeralOrFileClosed(err) {
@@ -374,17 +382,19 @@ func (t *tailer) Stop() {
 		}
 	}
 	level.Debug(t.logger).Log("msg", "waiting for readline and position marker to exit", "path", t.path)
+
+	t.mut.RLock()
 	if t.done != nil {
 		// Wait for readLines() to consume all the remaining messages and exit when the channel is closed
 		<-t.done
-		t.done = nil
 	}
-	if t.posdone != nil {
-		// Wait for the position marker thread to exit
+
+	if t.posquit != nil {
+		close(t.posquit)
 		<-t.posdone
-		t.posdone = nil
-		t.posquit = nil
 	}
+	t.mut.RLock()
+
 	level.Info(t.logger).Log("msg", "stopped tailing file", "path", t.path)
 
 	// If the component is not stopping, then it means that the target for this component is gone and that
