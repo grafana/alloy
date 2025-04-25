@@ -18,6 +18,8 @@ Main (unreleased)
 
 - Add support to configure basic authentication for alloy http server. (@kalleep)
 
+- Add `validate` command to alloy that will perform limited validation of alloy configuration files. (@kalleep)
+
 ### Enhancements
 
 - Add binary version to constants exposed in configuration file syntatx. (@adlots)
@@ -30,6 +32,7 @@ Main (unreleased)
   - `query_tables`: improve queries parsing (@cristiangreco)
   - `query_tables`: add support for prepared statements (@cristiangreco)
   - make tidbparser the default choice (@cristiangreco)
+  - `query_sample`: better handling of timer overflows (@fridgepoet)
   - collect metrics on enabled `performance_schema.setup_consumers` (@fridgepoet)
 
 - Mixin dashboards improvements: added minimum cluster size to Cluster Overview dashboard, fixed units in OpenTelemetry dashboard, fixed slow components evaluation time units in Controller dashboard and updated Prometheus dashboard to correctly aggregate across instances. (@thampiotr)
