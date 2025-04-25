@@ -992,8 +992,7 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 			lokiClient.Received()[0].Line)
 	})
 
-	t.Run("assertions on the queries", func(t *testing.T) {
-		// this tests that expected query text is used in the constants
+	t.Run("asserts that expected query text is used in the constants", func(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer db.Close()
@@ -1368,7 +1367,7 @@ func TestQuerySample_calculateWallTime(t *testing.T) {
 		assert.Equalf(t, uint64(18446749073), result, "got %d, want 18446749073", result)
 	})
 
-	t.Run("calculates another timestamp", func(t *testing.T) {
+	t.Run("calculates another timestamp when timer approaches overflow", func(t *testing.T) {
 		c := &QuerySample{lastUptime: picosecondsToSeconds(math.MaxUint64) + 1}
 		serverStartTime := float64(3)
 		timer := float64(math.MaxUint64 - 5)
