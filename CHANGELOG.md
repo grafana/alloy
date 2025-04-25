@@ -46,6 +46,8 @@ Main (unreleased)
 - Fix `otelcol.receiver.filelog` documentation's default value for `start_at`. (@petewall)
 - Fix `mimir.rules.kubernetes` panic on non-leader debug info retrieval (@TheoBrigitte)
 
+- Fix `loki.source.file` race condition that often lead to panic when using `decompression`. (@kalleep)
+
 ### Other changes
 
 - Update the zap logging adapter used by `otelcol` components to log arrays and objects. (@dehaansa)
