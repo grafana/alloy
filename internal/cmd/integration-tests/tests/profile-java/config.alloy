@@ -1,0 +1,39 @@
+discovery.process "all" {
+  refresh_interval = "60s"
+  discover_config {
+    cwd = true
+    exe = true
+    commandline = true
+    username = true
+    uid = true
+    container_id = true
+  }
+}
+
+discovery.relabel "java" {
+  targets = discovery.process.all.targets
+  rule {
+    action = "keep"
+    regex = ".*/java$"
+    source_labels = ["__meta_process_exe"]
+  }
+}
+
+pyroscope.java "java" {
+  targets = discovery.relabel.java.output
+  forward_to = [pyroscope.write.default.receiver]
+  tmp_dir = "/var/lib/alloy/tmp"
+  profiling_config {
+    interval = "60s"
+    alloc = "512k"
+    cpu = true
+    sample_rate = 100
+    lock = "1ms"
+  }
+}
+
+pyroscope.write "default" {
+  endpoint {
+    url = "http://localhost:4040"
+  }
+}

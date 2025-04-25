@@ -26,6 +26,11 @@ services:
     networks:
       - integration-tests
 
+  pyroscope:
+    image: grafana/pyroscope:latest
+    ports:
+    - 4040:4040
+
   zookeeper:
     image: confluentinc/cp-zookeeper:latest
     environment:
