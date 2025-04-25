@@ -56,8 +56,7 @@ If `access_token_passthrough` is enabled it will be preserved as a attribute `co
 
 ## Blocks
 
-The following blocks are supported inside the definition of
-`otelcol.receiver.splunkhec`:
+You can use the following blocks with `otelcol.receiver.splunkhec`:
 
 | Block                                                      | Description                                                                | Required |
 | ---------------------------------------------------------- | -------------------------------------------------------------------------- | -------- |
