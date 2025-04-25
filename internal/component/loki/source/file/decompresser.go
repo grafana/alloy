@@ -321,14 +321,16 @@ func (d *decompressor) Stop() {
 		return
 	}
 
-	// Shut down the position marker thread
-	close(d.posquit)
-	<-d.posdone
-
-	// Wait for readLines() to consume all the remaining messages and exit when the channel is closed
 	d.mut.RLock()
+	// Wait for readLines() to consume all the remaining messages and exit when the channel is closed
 	if d.done != nil {
 		<-d.done
+	}
+
+	// Shut down the position marker thread
+	if d.posquit != nil {
+		close(d.posquit)
+		<-d.posdone
 	}
 	d.mut.RUnlock()
 
