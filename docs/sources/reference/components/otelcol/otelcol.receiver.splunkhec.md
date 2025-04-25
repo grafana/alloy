@@ -12,7 +12,8 @@ title: otelcol.receiver.splunkhec
 
 {{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-`otelcol.receiver.splunkhec` accepts events in the [Splunk HEC format](https://docs.splunk.com/Documentation/Splunk/8.0.5/Data/FormateventsforHTTPEventCollector) forwards them to other `otelcol.*` components. The receiver accepts data formatted as JSON HEC events under any path or as EOL separated log raw data if sent to the raw_path path.
+`otelcol.receiver.splunkhec` accepts events in the [Splunk HEC format](https://docs.splunk.com/Documentation/Splunk/8.0.5/Data/FormateventsforHTTPEventCollector) forwards them to other `otelcol.*` components.
+The receiver accepts data formatted as JSON HEC events under any path or as EOL separated log raw data if sent to the `raw_path` path.
 
 {{< admonition type="note" >}}
 `otelcol.receiver.splunkhec` is a wrapper over the upstream OpenTelemetry Collector `splunkhec` receiver.
