@@ -46,7 +46,7 @@ type tailer struct {
 	running *atomic.Bool
 	stopped *atomic.Bool
 
-	// initOnce must be called from when we can successfully run the tailer and mut most be locked.
+	// initOnce must be called from when we can successfully run the tailer and mut must be locked.
 	initOnce          func()
 	componentStopping func() bool
 

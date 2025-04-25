@@ -61,7 +61,7 @@ type decompressor struct {
 	size     int64
 	cfg      DecompressionConfig
 
-	// initOnce must be called from `Run` and mut most be locked.
+	// initOnce must be called from `Run` and mut must be locked.
 	initOnce          func()
 	componentStopping func() bool
 
