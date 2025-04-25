@@ -12,6 +12,8 @@ v1.8.3
 
 ### Bugfixes
 
+- Fix `mimir.rules.kubernetes` panic on non-leader debug info retrieval (@TheoBrigitte)
+
 - Fix `loki.source.file` race condition that often lead to panic when using `decompression`. (@kalleep)
 
 v1.8.2
