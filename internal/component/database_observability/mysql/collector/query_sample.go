@@ -150,7 +150,7 @@ func (c *QuerySample) Stop() {
 	c.cancel()
 }
 
-// initializeBookmark queries the database for the uptime "modulo" overflows so that upon startup we don't collect
+// initializeBookmark queries the database for the uptime since overflow (if any) so that upon startup we don't collect
 // samples that may have been collected previously.
 func (c *QuerySample) initializeBookmark(ctx context.Context) error {
 	rs := c.dbConnection.QueryRowContext(ctx, selectUptime)
@@ -343,7 +343,7 @@ func (c *QuerySample) determineTimerClauseAndLimit(uptime float64) (string, floa
 	return timerClause, limit
 }
 
-// uptimeSinceOverflow calculates the uptime "modulo" overflows: it returns the remainder of the uptime value with any
+// uptimeSinceOverflow calculates the uptime "modulo" overflows (if any): it returns the remainder of the uptime value with any
 // overflowed time removed
 func uptimeSinceOverflow(uptime float64) float64 {
 	overflowAdjustment := float64(calculateNumberOfOverflows(uptime)) * picosecondsOverflowInSeconds
