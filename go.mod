@@ -715,6 +715,7 @@ require (
 	github.com/mistifyio/go-zfs v2.1.2-0.20190413222219-f784269be439+incompatible // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
+	github.com/mitchellh/hashstructure v1.1.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/mna/redisc v1.3.2 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
@@ -792,7 +793,6 @@ require (
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
 	github.com/prometheus-community/go-runit v0.1.0 // indirect
 	github.com/prometheus-community/prom-label-proxy v0.7.0 // indirect
-	github.com/prometheus/alertmanager v0.27.0 // indirect
 	github.com/prometheus/exporter-toolkit v0.14.0 // indirect
 	github.com/puzpuzpuz/xsync/v3 v3.5.1 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 // indirect
@@ -941,6 +941,7 @@ require (
 require (
 	github.com/grafana/beyla/v2 v2.1.0-alloy-1
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/storage/filestorage v0.122.0
+	github.com/prometheus/alertmanager v0.27.0
 	go.opentelemetry.io/collector/extension/xextension v0.122.1
 )
 
@@ -1026,3 +1027,6 @@ exclude (
 )
 
 replace github.com/prometheus/procfs => github.com/prometheus/procfs v0.12.0
+
+// TODO: Upstream this change prior to merging the mimir.alerts.kubernetes component to main.
+replace github.com/prometheus-operator/prometheus-operator => github.com/ptodev/prometheus-operator v0.0.0-20250425071154-e2ee3c49b414

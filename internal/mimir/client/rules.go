@@ -5,6 +5,8 @@ import (
 	"io"
 	"net/url"
 
+	"github.com/grafana/alloy/internal/runtime/logging/level"
+	alertmgr_cfg "github.com/prometheus/alertmanager/config"
 	"github.com/prometheus/prometheus/model/rulefmt"
 	"gopkg.in/yaml.v3"
 )
@@ -80,4 +82,36 @@ func (r *MimirClient) ListRules(ctx context.Context, namespace string) (map[stri
 	}
 
 	return ruleSet, nil
+}
+
+// This struct is what Mimir expects to receive:
+// https://github.com/grafana/mimir/blob/8a08500af3c50763d21a78b2a08007a2abcb5af1/pkg/mimirtool/client/alerts.go#L20-L23
+type configCompat struct {
+	TemplateFiles      map[string]string `yaml:"template_files"`
+	AlertmanagerConfig string            `yaml:"alertmanager_config"`
+}
+
+func (r *MimirClient) CreateAlertmanagerConfigs(ctx context.Context, conf alertmgr_cfg.Config, templateFiles map[string]string) error {
+	payload := configCompat{
+		AlertmanagerConfig: conf.String(),
+		TemplateFiles:      templateFiles,
+	}
+	payloadStr, err := yaml.Marshal(&payload)
+	if err != nil {
+		return err
+	}
+
+	level.Debug(r.logger).Log("msg", "sending Alertmanager config to Mimir", "config", payloadStr)
+
+	op := "/api/v1/alerts"
+	path := "/api/v1/alerts"
+
+	res, err := r.doRequest(op, path, "POST", []byte(payloadStr))
+	if err != nil {
+		return err
+	}
+
+	res.Body.Close()
+
+	return nil
 }

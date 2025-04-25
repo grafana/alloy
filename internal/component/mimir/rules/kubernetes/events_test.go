@@ -10,6 +10,7 @@ import (
 	"github.com/go-kit/log"
 	v1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	promListers "github.com/prometheus-operator/prometheus-operator/pkg/client/listers/monitoring/v1"
+	"github.com/prometheus/alertmanager/config"
 	"github.com/prometheus/prometheus/model/rulefmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -85,6 +86,12 @@ func (m *fakeMimirClient) ListRules(_ context.Context, namespace string) (map[st
 		output[ns] = v
 	}
 	return output, nil
+}
+
+// CreateAlertmanagerConfigs implements client.Interface.
+func (m *fakeMimirClient) CreateAlertmanagerConfigs(ctx context.Context, conf config.Config, templateFiles map[string]string) error {
+	// TODO: Reuse the fakeMimirClient from the mimir.alerts.kubernetes tests?
+	panic("unimplemented")
 }
 
 func TestEventLoop(t *testing.T) {

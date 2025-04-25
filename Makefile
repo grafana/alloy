@@ -175,6 +175,10 @@ endif
 integration-test:
 	cd internal/cmd/integration-tests && $(GO_ENV) go run .
 
+.PHONY: integration-test-k8s
+integration-test-k8s: alloy-image
+	./internal/cmd/integration-tests-k8s/run.sh
+
 #
 # Targets for building binaries
 #
