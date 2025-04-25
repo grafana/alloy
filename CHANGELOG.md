@@ -42,6 +42,7 @@ Main (unreleased)
 ### Bugfixes
 
 - Fix `otelcol.receiver.filelog` documentation's default value for `start_at`. (@petewall)
+- Fix `loki.source.docker` only starting log collection on running containers.(@RasEza)
 
 ### Other changes
 
