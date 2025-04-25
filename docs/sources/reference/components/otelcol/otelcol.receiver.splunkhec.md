@@ -25,7 +25,7 @@ You can specify multiple `otelcol.receiver.splunkhec` components by giving them 
 ## Usage
 
 ```alloy
-otelcol.receiver.splunkhec "LABEL" {
+otelcol.receiver.splunkhec "<LABEL>" {
   output {
     metrics = [...]
     logs    = [...]
