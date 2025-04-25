@@ -255,6 +255,43 @@ func TestDecompressor(t *testing.T) {
 	positionsFile.Stop()
 }
 
+func TestDecompressor_RunCalledTwice(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
+	l := util.TestLogger(t)
+	ch1 := loki.NewLogsReceiver()
+	tempDir := t.TempDir()
+	positionsFile, err := positions.New(l, positions.Config{
+		SyncPeriod:        50 * time.Millisecond,
+		PositionsFile:     filepath.Join(tempDir, "positions.yaml"),
+		IgnoreInvalidYaml: false,
+		ReadOnly:          false,
+	})
+	require.NoError(t, err)
+	filename := "testdata/onelinelog.tar.gz"
+	labels := model.LabelSet{
+		"filename": model.LabelValue(filename),
+		"foo":      "bar",
+	}
+	decompressor, err := newDecompressor(
+		newMetrics(nil),
+		l,
+		ch1,
+		positionsFile,
+		filename,
+		labels,
+		"",
+		DecompressionConfig{Format: "gz"},
+		func() bool { return true },
+	)
+	require.NoError(t, err)
+
+	decompressor.Run()
+	decompressor.Run()
+
+	decompressor.Stop()
+	positionsFile.Stop()
+}
+
 func TestDecompressorPositionFileEntryDeleted(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
 	l := util.TestLogger(t)
