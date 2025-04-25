@@ -115,7 +115,9 @@ The `hec_metadata_to_otel_attrs` block configures otel attributes from hec metad
 
 {{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### output block
+### `output`
+
+<span class="badge docs-labels__stage docs-labels__item">Required</span>
 
 The `output` block configures a set of components to forward resulting telemetry data to.
 
