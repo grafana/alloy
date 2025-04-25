@@ -8,9 +8,7 @@ labels:
 title: otelcol.receiver.splunkhec
 ---
 
-<span class="badge docs-labels__stage docs-labels__item">Public preview</span>
-
-# otelcol.receiver.splunkhec
+# `otelcol.receiver.splunkhec`
 
 {{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
