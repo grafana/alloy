@@ -34,7 +34,8 @@ otelcol.receiver.splunkhec "<LABEL>" {
 ```
 
 ## Arguments
-`otelcol.receiver.splunkhec` supports the following arguments:
+
+You can use the following arguments with `otelcol.receiver.splunkhec`:
 
 | Name                       | Type                       | Description                                                                                                    | Default                                                    | Required |
 | -------------------------- | -------------------------- | ---------------------------------------------------------------------------------------------------------------| ---------------------------------------------------------- | -------- |
