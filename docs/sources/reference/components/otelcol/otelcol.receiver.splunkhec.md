@@ -72,7 +72,7 @@ The following blocks are supported inside the definition of
 [debug_metrics]: #debug_metrics-block
 [output]: #output-block
 
-### tls block
+### `tls`
 
 The `tls` block configures TLS settings used for a server.
 If the `tls` block isn't provided, TLS isn't used for connections to the server.
