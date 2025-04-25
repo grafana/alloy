@@ -67,10 +67,10 @@ The following blocks are supported inside the definition of
 | debug_metrics                                     | [hec_metadata_to_otel_attrs][]      | Configures the metrics that this component generates to monitor its state. | no       |
 | output                                            | [output][]                          | Configures where to send received telemetry data.                          | yes      |
 
-[tls]: #tls-block
-[cors]: #cors-block
-[debug_metrics]: #debug_metrics-block
-[output]: #output-block
+[tls]: #tls
+[cors]: #cors
+[debug_metrics]: #debug_metrics
+[output]: #output
 
 ### `tls`
 
