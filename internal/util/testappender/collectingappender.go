@@ -51,6 +51,10 @@ func (c *collectingAppender) LatestSampleFor(labels string) *MetricSample {
 	return c.latestSamples[labels]
 }
 
+func (c *collectingAppender) SetOptions(_ *storage.AppendOptions) {
+	// No-op.
+}
+
 func (c *collectingAppender) Append(ref storage.SeriesRef, l labels.Labels, t int64, v float64) (storage.SeriesRef, error) {
 	c.mut.Lock()
 	defer c.mut.Unlock()
@@ -83,6 +87,10 @@ func (c *collectingAppender) UpdateMetadata(ref storage.SeriesRef, l labels.Labe
 }
 
 func (c *collectingAppender) AppendCTZeroSample(ref storage.SeriesRef, l labels.Labels, t, ct int64) (storage.SeriesRef, error) {
+	panic("not implemented yet for this test appender")
+}
+
+func (app *collectingAppender) AppendHistogramCTZeroSample(ref storage.SeriesRef, l labels.Labels, t int64, ct int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
 	panic("not implemented yet for this test appender")
 }
 

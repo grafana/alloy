@@ -13,6 +13,7 @@ import (
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/model/exemplar"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/scrape"
@@ -79,9 +80,18 @@ func Test(t *testing.T) {
 			Labels: exemplarLabels,
 		}
 
+		// This is required as under the hood the prometheus code applies
+		// labels using the scrape config.
+		target := scrape.NewTarget(
+			labels.New(),
+			&config.DefaultScrapeConfig,
+			model.LabelSet{},
+			model.LabelSet{},
+		)
+
 		ctx := t.Context()
 		ctx = scrape.ContextWithMetricMetadataStore(ctx, alloyprometheus.NoopMetadataStore{})
-		ctx = scrape.ContextWithTarget(ctx, &scrape.Target{})
+		ctx = scrape.ContextWithTarget(ctx, target)
 		app := exports.Receiver.Appender(ctx)
 		_, err := app.Append(0, l, ts, v)
 		require.NoError(t, err)
