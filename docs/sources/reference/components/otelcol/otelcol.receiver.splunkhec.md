@@ -1,7 +1,5 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.receiver.splunkhec/
-aliases:
-  - ../otelcol.receiver.splunkhec/ # /docs/alloy/latest/reference/otelcol.receiver.splunkhec/
 description: Learn about otelcol.receiver.splunkhec
 title: otelcol.receiver.splunkhec
 ---
