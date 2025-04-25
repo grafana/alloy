@@ -111,7 +111,7 @@ The `hec_metadata_to_otel_attrs` block configures otel attributes from hec metad
 | `index`      | `string` | Specifies the mapping of the index field to a attribute.      | `com.splunk.index`      | no       |
 | `host`       | `string` | Specifies the mapping of the host field to a attribute.       | `host.name`             | no       |
 
-### debug_metrics block
+### `debug_metrics`
 
 {{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
