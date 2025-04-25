@@ -59,13 +59,13 @@ If `access_token_passthrough` is enabled it will be preserved as a attribute `co
 The following blocks are supported inside the definition of
 `otelcol.receiver.splunkhec`:
 
-| Hierarchy                                         | Block                               | Description                                                                | Required |
-| ------------------------------------------------- | ----------------------------------- |----------------------------------------------------------------------------|--------- |
-| tls                                               | [tls][]                             | Configures TLS for the HTTP server.                                        | no       |
-| cors                                              | [cors][]                            | Configures CORS for the HTTP server.                                       | no       |
-| hec_metadata_to_otel_attrs                        | [cors][]                            | Configures CORS for the HTTP server.                                       | no       |
-| debug_metrics                                     | [hec_metadata_to_otel_attrs][]      | Configures the metrics that this component generates to monitor its state. | no       |
-| output                                            | [output][]                          | Configures where to send received telemetry data.                          | yes      |
+| Block                                                      | Description                                                                | Required |
+| ---------------------------------------------------------- | -------------------------------------------------------------------------- | -------- |
+| [`output`][output]                                         | Configures where to send received telemetry data.                          | yes      |
+| [`cors`][cors]                                             | Configures CORS for the HTTP server.                                       | no       |
+| [`hec_metadata_to_otel_attrs`][hec_metadata_to_otel_attrs] | Configures OpenTelemetry attributes from HEC metadata.                     | no       |
+| [`debug_metrics`][debug_metrics]                           | Configures the metrics that this component generates to monitor its state. | no       |
+| [`tls`][tls]                                               | Configures TLS for the HTTP server.                                        | no       |
 
 [tls]: #tls
 [cors]: #cors
