@@ -104,14 +104,7 @@ func (t *tailer) Run(ctx context.Context) {
 	for {
 		select {
 		case <-tickerC:
-			res, err := t.opts.client.ContainerInspect(ctx, t.target.Name())
-			if err != nil {
-				level.Error(t.log).Log("msg", "error inspecting Docker container", "id", t.target.Name(), "error", err)
-				continue
-			}
-			if res.State.Running {
-				t.target.StartIfNotRunning()
-			}
+			t.target.StartIfNotRunning()
 		case <-ctx.Done():
 			t.target.Stop()
 			ticker.Stop()
