@@ -1127,16 +1127,20 @@ The `stage.regex` inner block configures a processing stage that parses log line
 
 The following arguments are supported:
 
-| Name         | Type     | Description                                                        | Default | Required |
-| ------------ | -------- | ------------------------------------------------------------------ | ------- | -------- |
-| `expression` | `string` | A valid RE2 regular expression. Each capture group must be named.  |         | yes      |
-| `source`     | `string` | Name from extracted data to parse. If empty, uses the log message. | `""`    | no       |
+| Name                 | Type     | Description                                                        | Default | Required |
+| -------------------- | -------- | ------------------------------------------------------------------ | ------- | -------- |
+| `expression`         | `string` | A valid RE2 regular expression. Each capture group must be named.  |         | yes      |
+| `source`             | `string` | Name from extracted data to parse. If empty, uses the log message. | `""`    | no       |
+| `labels_from_groups` | `bool`   | Whether to automatically add named capture groups as labels.       | false   | no       |
+
 
 The `expression` field needs to be a RE2 regular expression string.
 Every matched capture group is added to the extracted map, so it must be named like: `(?P<name>re)`.
 The name of the capture group is then used as the key in the extracted map for the matched value.
 
 Because of how {{< param "PRODUCT_NAME" >}} syntax strings work, any backslashes in `expression` must be escaped with a double backslash, for example, `"\\w"` or `"\\S+"`.
+
+When `labels_from_groups` is set to true, any named capture groups from the regex expression are automatically added as labels in addition to being added to the extracted map.
 
 If the `source` is empty or missing, then the stage parses the log line itself.
 If it's set, the stage parses a previously extracted value with the same name.
@@ -1181,6 +1185,28 @@ time: 2022-01-01T01:00:00.000000001Z
 Then, the regular expression stage parses the value for time from the shared values and appends the subsequent key-value pair back into the extracted values map:
 
 ```text
+year: 2022
+```
+
+The following example demonstrates how `labels_from_groups` can automatically add the matched groups as labels:
+
+```alloy
+{"timestamp":"2022-01-01T01:00:00.000000001Z"}
+
+stage.json {
+    expressions = { time = "timestamp" }
+}
+stage.regex {
+    expression = "^(?P<year>\\d+)"
+    source = "time"
+    labels_from_groups = true   // Sets up an 'year' label, based on the 'year' capture group's value.
+}
+```
+
+This pipeline produces the same extracted values as before:
+
+```text
+time: 2022-01-01T01:00:00.000000001Z
 year: 2022
 ```
 

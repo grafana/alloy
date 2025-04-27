@@ -57,6 +57,8 @@ Main (unreleased)
 - Reduced the lag time during targets handover in a cluster in `prometheus.scrape` components by reducing thread contention. (@thampiotr)
 
 - Pretty print diagnostic errors when using `alloy run` (@kalleep)
+  
+- Add `labels_from_groups` attribute to `stage.regex` in `loki.process` to automatically add named capture groups as labels. (@harshrai654)
 
 - The `loki.rules.kubernetes` component now supports adding extra label matchers
   to all queries discovered via `PrometheusRule` CRDs. (@QuentinBisson)
