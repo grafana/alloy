@@ -32,8 +32,8 @@ jobs:
 
           latest_tag=$( if ! git describe --tags --abbrev=0 --match='helm-chart/*' 2> /dev/null ; then git rev-list --max-parents=0 --first-parent HEAD; fi )
 
-          echo "Running: ct list-changed --config ${CT_CONFIGFILE} --since ${latest_tag} --target-branch ${{ github.ref_name }}"
-          changed=$(ct list-changed --config "${CT_CONFIGFILE}" --since "${latest_tag}" --target-branch "${{ github.ref_name }}")
+          echo "Running: ct list-changed --config ${CT_CONFIGFILE} --since ${latest_tag} --target-branch ${GH_REF_NAME}"
+          changed=$(ct list-changed --config "${CT_CONFIGFILE}" --since "${latest_tag}" --target-branch "${GH_REF_NAME}")
           echo "${changed}"
 
           num_changed=$(wc -l <<< ${changed})
@@ -57,6 +57,8 @@ jobs:
             echo "No charts have changed, skipping release"
             echo "changed=false" >> $GITHUB_OUTPUT
           fi
+        env:
+          GH_REF_NAME: ${{ github.ref_name }}
 
   release:
     needs: [setup]
