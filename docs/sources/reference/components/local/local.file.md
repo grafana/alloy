@@ -5,6 +5,8 @@ aliases:
 description: Learn about local.file
 labels:
   stage: general-availability
+  products:
+    - oss
 title: local.file
 ---
 

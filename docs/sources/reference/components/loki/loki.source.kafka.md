@@ -5,6 +5,8 @@ aliases:
 description: Learn about loki.source.kafka
 labels:
   stage: general-availability
+  products:
+    - oss
 title: loki.source.kafka
 ---
 
