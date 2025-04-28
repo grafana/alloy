@@ -5,6 +5,9 @@ on:
     paths:
       - 'tools/build-image/windows/**'
 
+permissions:
+  contents: read
+
 jobs:
   check-windows-build-image:
     runs-on: windows-2019

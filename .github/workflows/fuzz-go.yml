@@ -18,13 +18,16 @@ on:
         default: false
         type: boolean
 
+permissions:
+  contents: read
+
 jobs:
   find-tests:
     runs-on: ubuntu-latest
     outputs:
       tests: ${{ steps.find-tests.outputs.tests }}
     steps:
-      - name: Checkout code 
+      - name: Checkout code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           persist-credentials: false

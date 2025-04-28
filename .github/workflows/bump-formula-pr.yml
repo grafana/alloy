@@ -3,6 +3,9 @@ on:
   release:
     types: [released]
 
+permissions:
+  contents: read
+
 jobs:
   homebrew-grafana:
     name: homebrew-grafana
@@ -58,4 +61,3 @@ jobs:
         force: false # true
         user_name: grafana-alloybot[bot]
         user_email: 879451+grafana-alloybot[bot]@users.noreply.github.com
-  

@@ -6,6 +6,9 @@ on:
       - 'tools/build-image/*'
       - '.github/workflows/check-linux-build-image.yml'
 
+permissions:
+  contents: read
+
 jobs:
   check-linux-build-image:
     strategy:

@@ -9,6 +9,10 @@ env:
   CR_INDEX_PATH: "${{ github.workspace }}/.cr-index"
   CR_PACKAGE_PATH: "${{ github.workspace }}/.cr-release-packages"
   CR_TOOL_PATH: "${{ github.workspace }}/.cr-tool"
+
+permissions:
+  contents: read
+
 jobs:
   setup:
     runs-on: ubuntu-latest

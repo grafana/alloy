@@ -1,6 +1,10 @@
 name: Test PR
 on:
   pull_request:
+
+permissions:
+  contents: read
+
 jobs:
   lint:
     uses: ./.github/workflows/lint.yml

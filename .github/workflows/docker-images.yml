@@ -8,6 +8,9 @@ on:
       - Makefile
       - 'tools/make/*'
 
+permissions:
+  contents: read
+
 jobs:
   # NOTE(rfratto): We only test building the Docker images for the host
   # platform, but we're really only looking for issues that are

@@ -12,6 +12,10 @@ on:
       - 'Dockerfile'
       - 'tools/ci/docker-containers'
       - '.github/workflows/check-linux-container.yml'
+
+permissions:
+  contents: read
+
 jobs:
   publish_windows_container:
     name: Check Linux container

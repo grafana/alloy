@@ -8,6 +8,10 @@ on:
     - internal/tools/packaging_test/**
     - Makefile
     - tools/make/*.mk
+
+permissions:
+  contents: read
+
 jobs:
   test_linux_system_packages:
     name: Test Linux system packages

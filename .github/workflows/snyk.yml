@@ -1,12 +1,15 @@
 name: Snyk Monitor Scanning
 on:
- release:
-   types: [published]
- push:
+  release:
+    types: [published]
+  push:
     branches:
       - main
       - master
- workflow_dispatch:
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   snyk-scan-ci:
