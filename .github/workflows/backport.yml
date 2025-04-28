@@ -1,6 +1,9 @@
 name: Backport PR Creator
 on:
-  pull_request_target:
+  pull_request_target: # zizmor: ignore[dangerous-triggers] In order to backport PRs from external
+    # contributors, this workflow needs to run against the base repo. The checkout action below is
+    # pinned to a specific commit to prevent arbitrary code execution by a fork that updates the
+    # logic of this workflow.
     types:
       - closed
       - labeled
@@ -14,7 +17,7 @@ jobs:
         with:
           repository: "grafana/grafana-github-actions"
           path: ./actions
-          # Pin the version to before https://github.com/grafana/grafana-github-actions/pull/113 because
+          # Pin the version to before https://github.com/grafana/grafana-github-actions/pull/113
           # to avoid the strict rules for PR labels.
           ref: d284afd314ca3625c23595e9f62b52d215ead7ce
           persist-credentials: false
