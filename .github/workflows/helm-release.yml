@@ -21,6 +21,7 @@ jobs:
         with:
           fetch-depth: 0
           path: source
+          persist-credentials: false
 
       - name: Install chart-testing
         uses: helm/chart-testing-action@0d28d3144d3a25ea2cc349d6e59901c4ff469b3b # v2.7.0
@@ -77,6 +78,7 @@ jobs:
           fetch-depth: 0
           path: source
           token: ${{ steps.app-token.outputs.token }}
+          persist-credentials: false
 
       - name: Configure Git
         run: |
@@ -91,6 +93,7 @@ jobs:
           repository: grafana/helm-charts
           path: helm-charts
           token: ${{ steps.app-token.outputs.token }}
+          persist-credentials: false
 
       - name: Configure Git for helm-charts
         run: |
