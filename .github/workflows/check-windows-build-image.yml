@@ -11,6 +11,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
 
       - name: Create test Windows build image
         uses: mr-smithers-excellent/docker-build-push@59523c638baec979a74fea99caa9e29d97e5963c # v6.4
