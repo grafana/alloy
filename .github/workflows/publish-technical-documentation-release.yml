@@ -21,9 +21,9 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: grafana/writers-toolkit/publish-technical-documentation-release@publish-technical-documentation-release/v1
-        # ^ This action's version is left as a tag instead of a pinned hash because renovate does
-        # not support this type of tag/version format without custom configuration.
+      - uses: grafana/writers-toolkit/publish-technical-documentation-release@publish-technical-documentation-release/v1 # zizmor: ignore[unpinned-uses]
+        # This internal action's version is left as a tag instead of a pinned hash because renovate
+        # does not support this type of tag/version format without custom configuration.
         with:
           release_tag_regexp: "^v(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$"
           release_branch_regexp: "^release/v(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$"
