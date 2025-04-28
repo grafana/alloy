@@ -54,4 +54,7 @@ jobs:
     - name: Build and publish the container
       # TODO: Run "make alloy-image-windows" instead?
       run: |
-       & "C:/Program Files/git/bin/bash.exe" -c 'PUSH_ALLOY_IMAGE=${{inputs.push}} WINDOWS_VERSION=${{matrix.os}} ALLOY_GO_VERSION=${{steps.get_go_version.outputs.alloy_go_version}} ./tools/ci/docker-containers-windows ${{ inputs.img-name }}'
+        & "C:/Program Files/git/bin/bash.exe" -c 'PUSH_ALLOY_IMAGE=${SHOULD_PUSH_ALLOY_IMAGE} WINDOWS_VERSION=${{matrix.os}} ALLOY_GO_VERSION=${{steps.get_go_version.outputs.alloy_go_version}} ./tools/ci/docker-containers-windows ${IMG_NAME}'
+      env:
+        SHOULD_PUSH_ALLOY_IMAGE: ${{ inputs.push }}
+        IMG_NAME: ${{ inputs.img-name }}

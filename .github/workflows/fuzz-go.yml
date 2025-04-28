@@ -31,7 +31,7 @@ jobs:
       - name: Find fuzz tests
         id: find-tests
         run: |
-          TEST_FILES=$(find "${{ inputs.directory }}" -name '*_test.go' -not -path './vendor/*')
+          TEST_FILES=$(find "${DIRECTORY}" -name '*_test.go' -not -path './vendor/*')
 
           RESULTS=()
 
@@ -41,7 +41,7 @@ jobs:
               continue
             fi
 
-            PACKAGE_PATH=$(dirname ${FILE#${{ inputs.directory }}/})
+            PACKAGE_PATH=$(dirname ${FILE#${DIRECTORY}/})
             for FUZZ_FUNC in $FUZZ_FUNCS; do
               if [ -z "$FUZZ_FUNC" ]; then
                 continue
@@ -63,6 +63,8 @@ jobs:
           done
 
           echo 'tests=['$INCLUDE_STRING']' >> $GITHUB_OUTPUT
+        env:
+          DIRECTORY: ${{ inputs.directory }}
 
   fuzz:
     name: "${{ matrix.package }}: ${{ matrix.function }}"
@@ -101,7 +103,9 @@ jobs:
           # support cross-module testing, and the provided directory may be in
           # a different module.
           cd "${{ matrix.package }}"
-          go test -fuzz="${{ matrix.function }}\$" -run="${{ matrix.function }}\$" -fuzztime="${{ inputs.fuzz-time }}" .
+          go test -fuzz="${{ matrix.function }}\$" -run="${{ matrix.function }}\$" -fuzztime="${FUZZ_TIME}" .
+        env:
+          FUZZ_TIME: ${{ inputs.fuzz-time }}
 
       # Fuzzing may have failed because of an existing bug, or it may have
       # found a new one and written a new test case file in testdata/ relative
