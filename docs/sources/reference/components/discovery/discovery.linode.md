@@ -5,6 +5,8 @@ aliases:
 description: Learn about discovery.linode
 labels:
   stage: general-availability
+  products:
+    - oss
 title: discovery.linode
 ---
 

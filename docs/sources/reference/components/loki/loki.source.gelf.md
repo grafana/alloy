@@ -5,6 +5,8 @@ aliases:
 description: Learn about loki.source.gelf
 labels:
   stage: general-availability
+  products:
+    - oss
 title: loki.source.gelf
 ---
 

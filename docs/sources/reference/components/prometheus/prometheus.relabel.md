@@ -5,6 +5,8 @@ aliases:
 description: Learn about prometheus.relabel
 labels:
   stage: general-availability
+  products:
+    - oss
 title: prometheus.relabel
 ---
 
