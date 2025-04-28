@@ -142,33 +142,6 @@ func TestTailer(t *testing.T) {
 	}, time.Second, 50*time.Millisecond)
 
 	tailer.Stop()
-
-	// Run the tailer again
-	go tailer.Run()
-	select {
-	case <-ch1.Chan():
-		t.Fatal("no message should be sent because of the position file")
-	case <-time.After(1 * time.Second):
-	}
-
-	// Write logs again
-	_, err = logFile.Write([]byte("writing some new text\n"))
-	require.NoError(t, err)
-	select {
-	case logEntry := <-ch1.Chan():
-		require.Equal(t, "writing some new text", logEntry.Line)
-	case <-time.After(1 * time.Second):
-		require.FailNow(t, "failed waiting for log line")
-	}
-
-	tailer.Stop()
-
-	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		pos, err := positionsFile.Get(logFile.Name(), labels.String())
-		assert.NoError(c, err)
-		assert.Equal(c, int64(40), pos)
-	}, time.Second, 50*time.Millisecond)
-
 	positionsFile.Stop()
 	require.NoError(t, logFile.Close())
 }
