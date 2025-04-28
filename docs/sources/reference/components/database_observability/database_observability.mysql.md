@@ -23,23 +23,24 @@ database_observability.mysql "<LABEL>" {
 
 You can use the following arguments with `database_observability.mysql`:
 
- Name                      | Type                 | Description                                                       | Default | Required 
----------------------------|----------------------|-------------------------------------------------------------------|---------|----------
- `data_source_name`        | `secret`             | [Data Source Name][] for the MySQL server to connect to.          |         | yes      
- `forward_to`              | `list(LogsReceiver)` | Where to forward log entries after processing.                    |         | yes      
- `collect_interval`        | `duration`           | How frequently to collect information from database.              | `"1m"`  | no       
- `disable_query_redaction` | `bool`               | Collect unredacted sql query text including parameters.           | `false` | no       
- `disable_collectors`      | `list(string)`       | A list of collectors to disable from the default set.             |         | no       
- `enable_collectors`       | `list(string)`       | A list of collectors to enable on top of the default set.         |         | no       
+| Name                               | Type                 | Description                                                                             | Default | Required |
+|------------------------------------|----------------------|-----------------------------------------------------------------------------------------|---------|----------|
+| `data_source_name`                 | `secret`             | [Data Source Name][] for the MySQL server to connect to.                                |         | yes      |
+| `forward_to`                       | `list(LogsReceiver)` | Where to forward log entries after processing.                                          |         | yes      |
+| `collect_interval`                 | `duration`           | How frequently to collect information from database.                                    | `"1m"`  | no       |
+| `disable_collectors`               | `list(string)`       | A list of collectors to disable from the default set.                                   |         | no       |
+| `disable_query_redaction`          | `bool`               | Collect unredacted sql query text including parameters.                                 | `false` | no       |
+| `enable_collectors`                | `list(string)`       | A list of collectors to enable on top of the default set.                               |         | no       |
+| `setup_consumers_collect_interval` | `duration`           | How frequently to collect performance_schema.setup_consumers information from database. | `"1h"`  | no       |
 
+The following collectors are configurable:
 
-The following collectors are enabled by default:
-
- Name           | Description                                           
-----------------|-------------------------------------------------------
- `query_tables` | Collect query table information.
- `schema_table` | Collect schemas and tables from `information_schema`. 
- `query_sample` | Collect query samples.
+| Name              | Description                                           | Enabled by default |
+|-------------------|-------------------------------------------------------|--------------------|
+| `query_tables`    | Collect query table information.                      | yes                |
+| `schema_table`    | Collect schemas and tables from `information_schema`. | yes                |
+| `query_sample`    | Collect query samples.                                | no                 |
+| `setup_consumers` | Collect enabled `performance_schema.setup_consumers`. | yes                |
 
 ## Blocks
 

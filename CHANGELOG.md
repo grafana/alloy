@@ -33,6 +33,7 @@ Main (unreleased)
   - `query_tables`: add support for prepared statements (@cristiangreco)
   - make tidbparser the default choice (@cristiangreco)
   - `query_sample`: better handling of timer overflows (@fridgepoet)
+  - collect metrics on enabled `performance_schema.setup_consumers` (@fridgepoet)
 
 - Mixin dashboards improvements: added minimum cluster size to Cluster Overview dashboard, fixed units in OpenTelemetry dashboard, fixed slow components evaluation time units in Controller dashboard and updated Prometheus dashboard to correctly aggregate across instances. (@thampiotr)
 
