@@ -103,61 +103,52 @@ func Test(t *testing.T) {
 
 	url := fmt.Sprintf("http://%s", httpAddr)
 
-	g := &run.Group{}
 	// send log event
-	g.Add(func() error {
-		event := HecEvent{
-			Event: map[string]string{
-				"msg":      "some message",
-				"severity": "Info",
-			},
-			Host:       "my_host",
-			Source:     "my_source",
-			SourceType: "my_source_type",
-			Index:      "index",
-			Time:       float64(time.Now().Unix()),
-		}
+	go func() {
+		util.Eventually(t, func(t require.TestingT) {
+			event := HecEvent{
+				Event: map[string]string{
+					"msg":      "some message",
+					"severity": "Info",
+				},
+				Host:       "my_host",
+				Source:     "my_source",
+				SourceType: "my_source_type",
+				Index:      "index",
+				Time:       float64(time.Now().Unix()),
+			}
 
-		buf := bytes.NewBuffer([]byte{})
+			buf := bytes.NewBuffer([]byte{})
+			require.NoError(t, json.NewEncoder(buf).Encode(&event))
 
-		err := json.NewEncoder(buf).Encode(&event)
-		if err != nil {
-			return err
-		}
+			_, err := http.DefaultClient.Post(url, "application/json", buf)
+			require.NoError(t, err)
+		})
+	}()
 
-		_, err = http.DefaultClient.Post(url, "application/json", buf)
-		return err
-	}, func(_ error) {})
+	go func() {
+		// send metric event
+		util.Eventually(t, func(t require.TestingT) {
+			event := HecEvent{
+				Event:      "metric",
+				Host:       "my_host",
+				Source:     "my_source",
+				SourceType: "my_source_type",
+				Index:      "index",
+				Time:       float64(time.Now().Unix()),
+				Fields: map[string]any{
+					"metric_name:name": 1,
+				},
+			}
 
-	// send metric event
-	g.Add(func() error {
-		event := HecEvent{
-			Event:      "metric",
-			Host:       "my_host",
-			Source:     "my_source",
-			SourceType: "my_source_type",
-			Index:      "index",
-			Time:       float64(time.Now().Unix()),
-			Fields: map[string]any{
-				"metric_name:name": 1,
-			},
-		}
-
-		buf := bytes.NewBuffer([]byte{})
-
-		err := json.NewEncoder(buf).Encode(&event)
-		if err != nil {
-			return err
-		}
-
-		_, err = http.DefaultClient.Post(url, "application/json", buf)
-		return err
-	}, func(err error) {})
-
-	require.NoError(t, g.Run())
+			buf := bytes.NewBuffer([]byte{})
+			require.NoError(t, json.NewEncoder(buf).Encode(&event))
+			_, err = http.DefaultClient.Post(url, "application/json", buf)
+			require.NoError(t, err)
+		})
+	}()
 
 	resg := &run.Group{}
-
 	// Wait for our client to get log.
 	resg.Add(func() error {
 		select {
