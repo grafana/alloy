@@ -1021,3 +1021,6 @@ exclude (
 )
 
 replace github.com/prometheus/procfs => github.com/prometheus/procfs v0.12.0
+
+// Use v0.62.0 of prometheus/common for all dependencies until mongodb_exporter is updated to support 0.63.0
+replace github.com/prometheus/common => github.com/prometheus/common v0.62.0
