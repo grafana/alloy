@@ -4,6 +4,8 @@ description: Learn about database_observability.mysql
 title: database_observability.mysql
 labels:
   stage: experimental
+  products:
+    - oss
 ---
 
 # `database_observability.mysql`

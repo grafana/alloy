@@ -5,6 +5,8 @@ aliases:
 description: Learn about prometheus.remote_write
 labels:
   stage: general-availability
+  products:
+    - oss
 title: prometheus.remote_write
 ---
 
