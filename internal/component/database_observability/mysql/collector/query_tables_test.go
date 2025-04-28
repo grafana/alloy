@@ -7,10 +7,11 @@ import (
 	"testing"
 	"time"
 
-	loki_fake "github.com/grafana/alloy/internal/component/common/loki/client/fake"
-	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/prometheus/common/model"
 	"go.uber.org/goleak"
+
+	loki_fake "github.com/grafana/alloy/internal/component/common/loki/client/fake"
+	"github.com/grafana/alloy/internal/component/database_observability"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/go-kit/log"
@@ -39,7 +40,7 @@ func TestQueryTables(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
 			},
 		},
 		{
@@ -54,7 +55,7 @@ func TestQueryTables(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
 			},
 		},
 		{
@@ -69,7 +70,7 @@ func TestQueryTables(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
 			},
 		},
 		{
@@ -84,7 +85,7 @@ func TestQueryTables(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
 			},
 		},
 		{
@@ -100,8 +101,8 @@ func TestQueryTables(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="abc123" table="other_table"`,
-				`schema="some_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="some_schema" digest="abc123" table="other_table"`,
+				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
 			},
 		},
 		{
@@ -121,7 +122,7 @@ func TestQueryTables(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="abc123" table="another_table"`,
+				`level="info" schema="some_schema" digest="abc123" table="another_table"`,
 			},
 		},
 		{
@@ -136,7 +137,7 @@ func TestQueryTables(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
 			},
 		},
 		{
@@ -178,7 +179,7 @@ func TestQueryTables(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
 			},
 		},
 		{
@@ -199,8 +200,8 @@ func TestQueryTables(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="abc123" table="some_table"`,
-				`schema="other_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="other_schema" digest="abc123" table="some_table"`,
 			},
 		},
 		{
@@ -217,9 +218,9 @@ func TestQueryTables(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="abc123" table="employees_emea"`,
-				`schema="some_schema" digest="abc123" table="employees_us_east"`,
-				`schema="some_schema" digest="abc123" table="employees_us_west"`,
+				`level="info" schema="some_schema" digest="abc123" table="employees_emea"`,
+				`level="info" schema="some_schema" digest="abc123" table="employees_us_east"`,
+				`level="info" schema="some_schema" digest="abc123" table="employees_us_west"`,
 			},
 		},
 		{
@@ -234,7 +235,7 @@ func TestQueryTables(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
 			},
 		},
 		{
@@ -260,7 +261,7 @@ func TestQueryTables(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
 			},
 		},
 		{
@@ -275,7 +276,7 @@ func TestQueryTables(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
 			},
 		},
 		{
@@ -299,7 +300,7 @@ func TestQueryTables(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="e0873cf52305aa7debc3916440a13e21db318b2be0a2683a4cef86f7f83d9be2" table="some_table"`,
+				`level="info" schema="some_schema" digest="e0873cf52305aa7debc3916440a13e21db318b2be0a2683a4cef86f7f83d9be2" table="some_table"`,
 			},
 		},
 		{
@@ -312,7 +313,7 @@ func TestQueryTables(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="e0873cf52305aa7debc3916440a13e21db318b2be0a2683a4cef86f7f83d9be2" table="some_table"`,
+				`level="info" schema="some_schema" digest="e0873cf52305aa7debc3916440a13e21db318b2be0a2683a4cef86f7f83d9be2" table="some_table"`,
 			},
 		},
 		{
@@ -328,7 +329,7 @@ func TestQueryTables(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="eaa4a5f19747182443e826effc1627ffb298e17c7f4a462ee7ad0202e199a407" table="some_table"`,
+				`level="info" schema="some_schema" digest="eaa4a5f19747182443e826effc1627ffb298e17c7f4a462ee7ad0202e199a407" table="some_table"`,
 			},
 		},
 		{
@@ -344,7 +345,7 @@ func TestQueryTables(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="e0873cf52305aa7debc3916440a13e21db318b2be0a2683a4cef86f7f83d9be2" table="some_table"`,
+				`level="info" schema="some_schema" digest="e0873cf52305aa7debc3916440a13e21db318b2be0a2683a4cef86f7f83d9be2" table="some_table"`,
 			},
 		},
 	}
@@ -492,7 +493,7 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		require.Equal(t, `schema="some_schema" digest="abc123" table="some_table"`, lokiEntries[0].Line)
+		require.Equal(t, `level="info" schema="some_schema" digest="abc123" table="some_table"`, lokiEntries[0].Line)
 	})
 
 	t.Run("recoverable sql error in result set (prepared statements)", func(t *testing.T) {
@@ -563,7 +564,7 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		require.Equal(t, `schema="some_schema" digest="e0873cf52305aa7debc3916440a13e21db318b2be0a2683a4cef86f7f83d9be2" table="some_table"`, lokiEntries[0].Line)
+		require.Equal(t, `level="info" schema="some_schema" digest="e0873cf52305aa7debc3916440a13e21db318b2be0a2683a4cef86f7f83d9be2" table="some_table"`, lokiEntries[0].Line)
 	})
 
 	t.Run("result set iteration error (query samples)", func(t *testing.T) {
@@ -633,7 +634,7 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		require.Equal(t, `schema="some_schema" digest="abc123" table="some_table"`, lokiEntries[0].Line)
+		require.Equal(t, `level="info" schema="some_schema" digest="abc123" table="some_table"`, lokiEntries[0].Line)
 	})
 
 	t.Run("result set iteration error (prepared statements)", func(t *testing.T) {
@@ -699,7 +700,7 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		require.Equal(t, `schema="some_schema" digest="e0873cf52305aa7debc3916440a13e21db318b2be0a2683a4cef86f7f83d9be2" table="some_table"`, lokiEntries[0].Line)
+		require.Equal(t, `level="info" schema="some_schema" digest="e0873cf52305aa7debc3916440a13e21db318b2be0a2683a4cef86f7f83d9be2" table="some_table"`, lokiEntries[0].Line)
 	})
 
 	t.Run("connection error recovery (query samples)", func(t *testing.T) {
@@ -766,7 +767,7 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		require.Equal(t, `schema="some_schema" digest="abc123" table="some_table"`, lokiEntries[0].Line)
+		require.Equal(t, `level="info" schema="some_schema" digest="abc123" table="some_table"`, lokiEntries[0].Line)
 	})
 
 	t.Run("connection error recovery (prepared statements)", func(t *testing.T) {
@@ -831,6 +832,6 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		require.Equal(t, `schema="some_schema" digest="e0873cf52305aa7debc3916440a13e21db318b2be0a2683a4cef86f7f83d9be2" table="some_table"`, lokiEntries[0].Line)
+		require.Equal(t, `level="info" schema="some_schema" digest="e0873cf52305aa7debc3916440a13e21db318b2be0a2683a4cef86f7f83d9be2" table="some_table"`, lokiEntries[0].Line)
 	})
 }
