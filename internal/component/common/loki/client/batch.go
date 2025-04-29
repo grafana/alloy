@@ -20,6 +20,14 @@ const (
 	errMaxStreamsLimitExceeded = "streams limit exceeded, streams: %d exceeds limit: %d, stream: '%s'"
 )
 
+func isErrMaxStreamsLimitExceeded(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	return strings.HasPrefix(err.Error(), "streams limit exceeded")
+}
+
 // SentDataMarkerHandler is a slice of the MarkerHandler interface, that the batch interacts with to report the event that
 // all data in the batch has been delivered or a client failed to do so.
 type SentDataMarkerHandler interface {

@@ -358,7 +358,7 @@ func (c *queueClient) appendSingleEntry(segmentNum int, lbs model.LabelSet, e lo
 	if err != nil {
 		level.Error(c.logger).Log("msg", "batch add err", "tenant", tenantID, "error", err)
 		reason := ReasonGeneric
-		if err.Error() == errMaxStreamsLimitExceeded {
+		if isErrMaxStreamsLimitExceeded(err) {
 			reason = ReasonStreamLimited
 		}
 		c.metrics.droppedBytes.WithLabelValues(c.cfg.URL.Host, tenantID, reason).Add(float64(len(e.Line)))

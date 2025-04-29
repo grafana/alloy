@@ -185,3 +185,29 @@ func BenchmarkLabelsMapToString(b *testing.B) {
 	}
 	result = r
 }
+
+func TestIsErrMaxStreamsLimitExceeded(t *testing.T) {
+	testCases := []struct {
+		name     string
+		err      error
+		expected bool
+	}{
+		{
+			name:     "error is max stream limit exceeded",
+			err:      fmt.Errorf(errMaxStreamsLimitExceeded, 1, 2, "foo bar"),
+			expected: true,
+		},
+		{
+			name:     "error is different",
+			err:      fmt.Errorf("some other error"),
+			expected: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := isErrMaxStreamsLimitExceeded(tc.err)
+			assert.Equal(t, tc.expected, result)
+		})
+	}
+}
