@@ -11,21 +11,18 @@ import (
 )
 
 func TestBuildLokiEntry(t *testing.T) {
-	t.Run("without manual timestamp", func(t *testing.T) {
-		entry := buildLokiEntry(logging.LevelDebug, "test-operation", "test-instance", "This is a test log line", nil)
+	entry := buildLokiEntry(logging.LevelDebug, "test-operation", "test-instance", "This is a test log line")
 
-		require.Len(t, entry.Labels, 3)
-		require.Equal(t, database_observability.JobName, string(entry.Labels["job"]))
-		require.Equal(t, "test-operation", string(entry.Labels["op"]))
-		require.Equal(t, "test-instance", string(entry.Labels["instance"]))
-		require.Equal(t, `level="debug" This is a test log line`, entry.Line)
-	})
+	require.Len(t, entry.Labels, 3)
+	require.Equal(t, database_observability.JobName, string(entry.Labels["job"]))
+	require.Equal(t, "test-operation", string(entry.Labels["op"]))
+	require.Equal(t, "test-instance", string(entry.Labels["instance"]))
+	require.Equal(t, `level="debug" This is a test log line`, entry.Line)
+}
 
-	t.Run("with manual timestamp", func(t *testing.T) {
-		ts := float64(5)
-		entry := buildLokiEntry(logging.LevelInfo, "test-operation", "test-instance", "This is a test log line", &ts)
+func TestBuildLokiEntryWithTimestamp(t *testing.T) {
+	entry := buildLokiEntryWithTimestamp(logging.LevelInfo, "test-operation", "test-instance", "This is a test log line", 5)
 
-		require.Equal(t, int64(ts), entry.Entry.Timestamp.UnixNano())
-		require.Equal(t, time.Unix(0, int64(ts)), entry.Entry.Timestamp)
-	})
+	require.Equal(t, int64(5), entry.Entry.Timestamp.UnixNano())
+	require.Equal(t, time.Unix(0, 5), entry.Entry.Timestamp)
 }

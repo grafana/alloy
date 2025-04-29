@@ -286,13 +286,12 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 			logMessage += fmt.Sprintf(` sql_text="%s"`, row.SQLText.String)
 		}
 
-		timestampNanoseconds := millisecondsToNanoseconds(row.TimestampMilliseconds)
-		c.entryHandler.Chan() <- buildLokiEntry(
+		c.entryHandler.Chan() <- buildLokiEntryWithTimestamp(
 			logging.LevelInfo,
 			OP_QUERY_SAMPLE,
 			c.instanceKey,
 			logMessage,
-			&timestampNanoseconds,
+			int64(millisecondsToNanoseconds(row.TimestampMilliseconds)),
 		)
 	}
 
