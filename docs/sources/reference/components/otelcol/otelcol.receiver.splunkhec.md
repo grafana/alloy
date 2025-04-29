@@ -102,8 +102,9 @@ The following headers are always implicitly allowed:
 
 If `allowed_headers` includes `"*"`, all headers are permitted.
 
-### hec_metadata_to_otel_attrs block
-The `hec_metadata_to_otel_attrs` block configures otel attributes from hec metadata.
+### `hec_metadata_to_otel_attrs`
+
+The `hec_metadata_to_otel_attrs` block configures OpenTelemetry attributes from HEC metadata.
 
 | Name         | Type     | Description                                                   | Default                 | Required |
 | ------------ | -------- | --------------------------------------------------------------| ----------------------- |--------- |
