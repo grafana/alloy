@@ -136,7 +136,7 @@ jobs:
         if: ${{ failure() && steps.new-failure.outputs.file != '' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: failure-${{ steps.new-failure.outputs.package }}-${{ steps.new-failure.outputs.function }}
+          name: failure-${FAILED_PACKAGE}-${FAILED_FUNCTION}
           path: ${{ steps.new-failure.outputs.file }}
 
       - name: Generate reproduction instructions
@@ -149,17 +149,20 @@ jobs:
 
           To reproduce the failure locally, run the following command using the GitHub CLI to download the failed test case:
 
-          <pre lang="bash">gh run download --repo ${{ github.repository }} ${{ github.run_id }} -n failure-${{ steps.new-failure.outputs.package }}-${{ steps.new-failure.outputs.function }} --dir ${{ matrix.package }}/testdata/fuzz/${{ matrix.function }}</pre>
+          <pre lang="bash">gh run download --repo ${{ github.repository }} ${{ github.run_id }} -n failure-${FAILED_PACKAGE}-${FAILED_FILE} --dir ${{ matrix.package }}/testdata/fuzz/${{ matrix.function }}</pre>
 
           When opening a PR with the fix, please include the test case file in your PR to prevent regressions.
           EOF
+        env:
+          FAILED_FUNCTION: ${{ steps.new-failure.outputs.function }}
+          FAILED_PACKAGE: ${{ steps.new-failure.outputs.package }}
 
       - name: Create new issue
         if: ${{ failure() && steps.new-failure.outputs.file != '' && inputs.create-issue }}
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         with:
           script: |
-            const failureName = "${{ steps.new-failure.outputs.name }}";
+            const failureName = "${FAILED_NAME}";
             const issueTitle = `${{ matrix.package }}: ${{ matrix.function }} failed (${failureName})`;
 
             // Look for existing issue first with the same title.
@@ -181,7 +184,7 @@ jobs:
 
             To reproduce the failure locally, run the following command using the GitHub CLI to download the failed test case:
 
-            <pre lang="bash">gh run download --repo ${{ github.repository }} ${{ github.run_id }} -n failure-${{ steps.new-failure.outputs.package }}-${{ steps.new-failure.outputs.function }} --dir ${{ matrix.package }}/testdata/fuzz/${{ matrix.function }}</pre>
+            <pre lang="bash">gh run download --repo ${{ github.repository }} ${{ github.run_id }} -n failure-${FAILED_PACKAGE}-${FAILED_FUNCTION} --dir ${{ matrix.package }}/testdata/fuzz/${{ matrix.function }}</pre>
 
             When opening a PR with the fix, please include the test case file in your PR to prevent regressions.
 
@@ -190,3 +193,7 @@ jobs:
 
               labels: ['bug'],
             })
+        env:
+          FAILED_NAME: ${{ steps.new-failure.outputs.name }}
+          FAILED_FUNCTION: ${{ steps.new-failure.outputs.function }}
+          FAILED_PACKAGE: ${{ steps.new-failure.outputs.function }}
