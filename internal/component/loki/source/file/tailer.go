@@ -369,7 +369,6 @@ func (t *tailer) Stop() {
 		}
 		err = t.tail.Stop()
 	}
-	t.mut.RUnlock()
 
 	if err != nil {
 		if utils.IsEphemeralOrFileClosed(err) {
@@ -383,7 +382,6 @@ func (t *tailer) Stop() {
 	}
 	level.Debug(t.logger).Log("msg", "waiting for readline and position marker to exit", "path", t.path)
 
-	t.mut.RLock()
 	if t.done != nil {
 		// Wait for readLines() to consume all the remaining messages and exit when the channel is closed
 		<-t.done
@@ -393,7 +391,7 @@ func (t *tailer) Stop() {
 		close(t.posquit)
 		<-t.posdone
 	}
-	t.mut.RLock()
+	t.mut.RUnlock()
 
 	level.Info(t.logger).Log("msg", "stopped tailing file", "path", t.path)
 
