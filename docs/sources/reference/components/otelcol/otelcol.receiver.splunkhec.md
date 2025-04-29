@@ -87,9 +87,9 @@ The `cors` block configures CORS settings for an HTTP server.
 The following arguments are supported:
 
 | Name              | Type           | Description                                              | Default                | Required |
-| ----------------- |----------------|----------------------------------------------------------|------------------------|--------- |
-| `allowed_origins` | `list(string)` | Allowed values for the `Origin` header.                  |                        | no       |
+| ----------------- | -------------- | -------------------------------------------------------- | ---------------------- | -------- |
 | `allowed_headers` | `list(string)` | Accepted headers from CORS requests.                     | `["X-Requested-With"]` | no       |
+| `allowed_origins` | `list(string)` | Allowed values for the `Origin` header.                  |                        | no       |
 | `max_age`         | `number`       | Configures the `Access-Control-Max-Age` response header. |                        | no       |
 
 The `allowed_headers` specifies which headers are acceptable from a CORS request.
