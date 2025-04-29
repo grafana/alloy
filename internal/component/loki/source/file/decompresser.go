@@ -317,7 +317,7 @@ func (d *decompressor) markPositionAndSize() error {
 
 func (d *decompressor) Stop() {
 	if !d.stopped.CompareAndSwap(false, true) {
-		// We halve already called Stop
+		// We have already called Stop
 		return
 	}
 
