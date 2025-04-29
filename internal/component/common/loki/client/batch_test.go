@@ -31,7 +31,7 @@ func TestBatch_MaxStreams(t *testing.T) {
 		err := b.add(entry)
 		if err != nil {
 			errCount++
-			assert.EqualError(t, err, fmt.Errorf(errMaxStreamsLimitExceeded, len(b.streams), b.maxStreams, entry.Labels).Error())
+			assert.ErrorIs(t, err, errMaxStreamsLimitExceeded)
 		}
 	}
 	assert.Equal(t, errCount, 2)
@@ -184,30 +184,4 @@ func BenchmarkLabelsMapToString(b *testing.B) {
 		r = labelsMapToString(labelSet, ReservedLabelTenantID)
 	}
 	result = r
-}
-
-func TestIsErrMaxStreamsLimitExceeded(t *testing.T) {
-	testCases := []struct {
-		name     string
-		err      error
-		expected bool
-	}{
-		{
-			name:     "error is max stream limit exceeded",
-			err:      fmt.Errorf(errMaxStreamsLimitExceeded, 1, 2, "foo bar"),
-			expected: true,
-		},
-		{
-			name:     "error is different",
-			err:      fmt.Errorf("some other error"),
-			expected: false,
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			result := isErrMaxStreamsLimitExceeded(tc.err)
-			assert.Equal(t, tc.expected, result)
-		})
-	}
 }
