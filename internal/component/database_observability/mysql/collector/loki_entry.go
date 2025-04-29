@@ -12,16 +12,23 @@ import (
 	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
-func buildLokiEntry(level logging.Level, op, instanceKey, line string) loki.Entry {
-	return loki.Entry{
+func buildLokiEntry(level logging.Level, op, instanceKey, line string, manualTimestamp *float64) loki.Entry {
+	timestamp := time.Unix(0, time.Now().UnixNano())
+	if manualTimestamp != nil {
+		timestamp = time.Unix(0, int64(*manualTimestamp))
+	}
+
+	lokiEntry := loki.Entry{
 		Labels: model.LabelSet{
 			"job":      database_observability.JobName,
 			"op":       model.LabelValue(op),
 			"instance": model.LabelValue(instanceKey),
 		},
 		Entry: logproto.Entry{
-			Timestamp: time.Unix(0, time.Now().UnixNano()),
+			Timestamp: timestamp,
 			Line:      fmt.Sprintf(`level="%s" %s`, level, line),
 		},
 	}
+
+	return lokiEntry
 }

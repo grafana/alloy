@@ -250,6 +250,7 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 			OP_SCHEMA_DETECTION,
 			c.instanceKey,
 			fmt.Sprintf(`schema="%s"`, schema),
+			nil,
 		)
 	}
 
@@ -295,6 +296,7 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 				OP_TABLE_DETECTION,
 				c.instanceKey,
 				fmt.Sprintf(`schema="%s" table="%s"`, schema, tableName),
+				nil,
 			)
 		}
 
@@ -341,6 +343,7 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 				`schema="%s" table="%s" create_statement="%s" table_spec="%s"`,
 				table.schema, table.tableName, table.b64CreateStmt, table.b64TableSpec,
 			),
+			nil,
 		)
 	}
 

@@ -160,6 +160,7 @@ func (c *QueryTables) tablesFromEventsStatements(ctx context.Context) error {
 				OP_QUERY_PARSED_TABLE_NAME,
 				c.instanceKey,
 				fmt.Sprintf(`schema="%s" digest="%s" table="%s"`, schema, digest, table),
+				nil,
 			)
 		}
 	}
@@ -222,6 +223,7 @@ func (c *QueryTables) tablesFromPreparedStatements(ctx context.Context) error {
 				OP_QUERY_PARSED_TABLE_NAME,
 				c.instanceKey,
 				fmt.Sprintf(`schema="%s" digest="%s" table="%s"`, schema, digest, table),
+				nil,
 			)
 		}
 	}
