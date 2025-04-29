@@ -53,7 +53,8 @@ You can use the following arguments with `otelcol.receiver.splunkhec`:
 By default, `otelcol.receiver.splunkhec` listens for HTTP connections on `localhost:8088`.
 To expose the HTTP server to other machines on your network, configure `endpoint` with the IP address to listen on, or `0.0.0.0:8088` to listen on all network interfaces.
 
-If `access_token_passthrough` is enabled it will be preserved as a attribute `com.splunk.hec.access_token`. If logs or metrics are exported with `otelcol.exporter.splunkhec` it will check for this attribute and if present forward it with outgoing request.
+If `access_token_passthrough` is enabled it will be preserved as a attribute `com.splunk.hec.access_token`.
+If logs or metrics are exported with `otelcol.exporter.splunkhec` it will check for this attribute and if present forward it with outgoing request.
 
 ## Blocks
 
