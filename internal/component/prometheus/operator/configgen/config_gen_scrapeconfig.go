@@ -4,6 +4,7 @@ package configgen
 
 import (
 	"fmt"
+	"strings"
 
 	promopv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	"github.com/prometheus-operator/prometheus-operator/pkg/namespacelabeler"
@@ -92,7 +93,10 @@ func (cg *ConfigGenerator) commonScrapeConfigConfig(m *promopv1alpha1.ScrapeConf
 		cfg.Params = m.Spec.Params
 	}
 	if m.Spec.Scheme != nil {
-		cfg.Scheme = *m.Spec.Scheme
+		// Prometheus Operator ScrapeConfig CRD requires spec.scheme to be uppercase "HTTP" or "HTTPS", but
+		// the implementation expects lowercase "http" or "https" in the final scrape configuration. So, we
+		// have to lowercase the schema.
+		cfg.Scheme = strings.ToLower(*m.Spec.Scheme)
 	}
 	if m.Spec.TLSConfig != nil {
 		if cfg.HTTPClientConfig.TLSConfig, err = cg.generateSafeTLS(*m.Spec.TLSConfig, m.Namespace); err != nil {
