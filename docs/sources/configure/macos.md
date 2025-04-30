@@ -110,4 +110,4 @@ To expose the UI to other machines, complete the following steps:
 
 [UI]: ../../troubleshoot/debug/#alloy-ui
 [env_vars]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/cli/environment-variables/
-[flags]: https://grafana.com/docs/alloy/latest/reference/cli/run/
+[flags]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/cli/run/
