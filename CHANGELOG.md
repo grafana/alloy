@@ -47,6 +47,8 @@ Main (unreleased)
 - Fix `otelcol.receiver.filelog` documentation's default value for `start_at`. (@petewall)
 - Fix `mimir.rules.kubernetes` panic on non-leader debug info retrieval (@TheoBrigitte)
 
+- Fix detection of the “streams limit exceeded” error in the Loki client so that metrics are correctly labeled as `ReasonStreamLimited`. (@maratkhv)
+
 ### Other changes
 
 - Update the zap logging adapter used by `otelcol` components to log arrays and objects. (@dehaansa)

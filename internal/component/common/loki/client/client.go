@@ -310,7 +310,7 @@ func (c *client) run() {
 			if err != nil {
 				level.Error(c.logger).Log("msg", "batch add err", "tenant", tenantID, "error", err)
 				reason := ReasonGeneric
-				if err.Error() == errMaxStreamsLimitExceeded {
+				if errors.Is(err, errMaxStreamsLimitExceeded) {
 					reason = ReasonStreamLimited
 				}
 				c.metrics.droppedBytes.WithLabelValues(c.cfg.URL.Host, tenantID, reason).Add(float64(len(e.Line)))

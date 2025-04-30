@@ -9,6 +9,9 @@ on:
     paths:
       - "docs/sources/**"
 
+permissions:
+  contents: read
+
 jobs:
   deploy-pr-preview:
     if: "!github.event.pull_request.head.repo.fork"
