@@ -9,6 +9,7 @@ import (
 	"compress/bzip2"
 	"compress/gzip"
 	"compress/zlib"
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -62,11 +63,9 @@ type decompressor struct {
 
 	componentStopping func() bool
 
-	mut      sync.RWMutex
-	stopping bool
-	posquit  chan struct{} // used by the readLine method to tell the updatePosition method to stop
-	posdone  chan struct{} // used by the updatePosition method to notify when it stopped
-	done     chan struct{} // used by the readLine method to notify when it stopped
+	posquit chan struct{} // used by the readLine method to tell the updatePosition method to stop
+	posdone chan struct{} // used by the updatePosition method to notify when it stopped
+	done    chan struct{} // used by the readLine method to notify when it stopped
 }
 
 func newDecompressor(
@@ -155,30 +154,42 @@ func mountReader(f *os.File, logger log.Logger, format CompressionFormat) (reade
 	return reader, nil
 }
 
-func (d *decompressor) Run() {
-	d.mut.Lock()
-
-	// Check if the stop function was called between two Run.
-	if d.stopping {
-		d.mut.Unlock()
+func (d *decompressor) Run(ctx context.Context) {
+	// Check if context was canceled between two calls to Run.
+	select {
+	case <-ctx.Done():
 		return
+	default:
 	}
 
 	labelsMiddleware := d.labels.Merge(model.LabelSet{filenameLabel: model.LabelValue(d.path)})
 	handler := loki.AddLabelsMiddleware(labelsMiddleware).Wrap(loki.NewEntryHandler(d.receiver.Chan(), func() {}))
 	defer handler.Stop()
+
 	d.posquit = make(chan struct{})
 	d.posdone = make(chan struct{})
 	d.done = make(chan struct{})
-	d.mut.Unlock()
-
-	// updatePosition closes the channel t.posdone on exit
-	go d.updatePosition()
 
 	d.metrics.filesActive.Add(1.)
+	go func() {
+		// updatePosition closes the channel t.posdone on exit
+		d.updatePosition()
+	}()
 
-	// readLines closes the channels t.done on exit
-	d.readLines(handler)
+	ctx, cancel := context.WithCancel(ctx)
+	go func() {
+		// readLines closes the channels t.done and t.posquit on exit
+		d.readLines(handler)
+		cancel()
+	}()
+
+	d.running.Store(true)
+	defer d.running.Store(false)
+
+	select {
+	case <-ctx.Done():
+		d.stop()
+	}
 }
 
 func (d *decompressor) updatePosition() {
@@ -187,6 +198,7 @@ func (d *decompressor) updatePosition() {
 	defer func() {
 		positionWait.Stop()
 		level.Info(d.logger).Log("msg", "position timer: exited", "path", d.path)
+		d.cleanupMetrics()
 		close(d.posdone)
 	}()
 
@@ -219,9 +231,10 @@ func (d *decompressor) readLines(handler loki.EntryHandler) {
 
 	defer func() {
 		d.running.Store(false)
-		d.cleanupMetrics()
 		level.Info(d.logger).Log("msg", "read lines routine finished", "path", d.path)
 		close(d.done)
+		close(d.posquit)
+
 	}()
 	entries := handler.Chan()
 
@@ -309,27 +322,12 @@ func (d *decompressor) markPositionAndSize() error {
 	return nil
 }
 
-func (d *decompressor) Stop() {
-	d.mut.Lock()
-	d.stopping = true
-	defer func() {
-		d.stopping = false
-	}()
-	d.mut.Unlock()
-
-	// Shut down the position marker thread
-	if d.posquit != nil {
-		close(d.posquit)
-		<-d.posdone
-		d.posquit = nil
-		d.posdone = nil
-	}
-
+func (d *decompressor) stop() {
 	// Wait for readLines() to consume all the remaining messages and exit when the channel is closed
-	if d.done != nil {
-		<-d.done
-		d.done = nil
-	}
+	<-d.done
+	// Wait for the position marker thread to exit
+	<-d.posdone
+
 	level.Info(d.logger).Log("msg", "stopped decompressor", "path", d.path)
 
 	// If the component is not stopping, then it means that the target for this component is gone and that
@@ -364,8 +362,4 @@ func (d *decompressor) cleanupMetrics() {
 	d.metrics.readLines.DeleteLabelValues(d.path)
 	d.metrics.readBytes.DeleteLabelValues(d.path)
 	d.metrics.totalBytes.DeleteLabelValues(d.path)
-}
-
-func (d *decompressor) Path() string {
-	return d.path
 }
