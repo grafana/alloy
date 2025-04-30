@@ -4,7 +4,6 @@ package file
 // of the reader interface.
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"sync"
@@ -230,7 +229,7 @@ func TestDecompressor(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	go decompressor.Run(context.Background())
+	go decompressor.Run(t.Context())
 
 	select {
 	case logEntry := <-ch1.Chan():
@@ -246,7 +245,7 @@ func TestDecompressor(t *testing.T) {
 	}, time.Second, 50*time.Millisecond)
 
 	// Run the decompressor again
-	go decompressor.Run(context.Background())
+	go decompressor.Run(t.Context())
 	select {
 	case <-ch1.Chan():
 		t.Fatal("no message should be sent because of the position file")
@@ -285,7 +284,7 @@ func TestDecompressorPositionFileEntryDeleted(t *testing.T) {
 		func() bool { return false },
 	)
 	require.NoError(t, err)
-	go decompressor.Run(context.Background())
+	go decompressor.Run(t.Context())
 
 	select {
 	case logEntry := <-ch1.Chan():
@@ -333,7 +332,7 @@ func TestDecompressor_RunCalledTwice(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	decompressor.Run(context.Background())
-	decompressor.Run(context.Background())
+	decompressor.Run(t.Context())
+	decompressor.Run(t.Context())
 	positionsFile.Stop()
 }

@@ -186,10 +186,8 @@ func (d *decompressor) Run(ctx context.Context) {
 	d.running.Store(true)
 	defer d.running.Store(false)
 
-	select {
-	case <-ctx.Done():
-		d.stop()
-	}
+	<-ctx.Done()
+	d.stop()
 }
 
 func (d *decompressor) updatePosition() {
@@ -232,8 +230,8 @@ func (d *decompressor) readLines(handler loki.EntryHandler) {
 		level.Info(d.logger).Log("msg", "read lines routine finished", "path", d.path)
 		close(d.done)
 		close(d.posquit)
-
 	}()
+
 	entries := handler.Chan()
 
 	f, err := os.Open(d.path)

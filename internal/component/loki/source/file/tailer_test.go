@@ -91,7 +91,7 @@ func TestGetLastLinePosition(t *testing.T) {
 	}
 }
 
-func TestTailer2(t *testing.T) {
+func TestTailer(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
 	l := util.TestLogger(t)
 	ch1 := loki.NewLogsReceiver()
@@ -126,7 +126,7 @@ func TestTailer2(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan struct{})
 	go func() {
 		tailer.Run(ctx)
@@ -152,7 +152,7 @@ func TestTailer2(t *testing.T) {
 	<-done
 
 	// Run the tailer again
-	ctx, cancel = context.WithCancel(context.Background())
+	ctx, cancel = context.WithCancel(t.Context())
 	done = make(chan struct{})
 	go func() {
 		tailer.Run(ctx)
@@ -184,7 +184,6 @@ func TestTailer2(t *testing.T) {
 
 	positionsFile.Stop()
 	require.NoError(t, logFile.Close())
-
 }
 
 func TestTailerPositionFileEntryDeleted(t *testing.T) {
@@ -221,7 +220,7 @@ func TestTailerPositionFileEntryDeleted(t *testing.T) {
 		func() bool { return false },
 	)
 	require.NoError(t, err)
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	go tailer.Run(ctx)
 
 	_, err = logFile.Write([]byte("writing some text\n"))
@@ -292,7 +291,7 @@ func TestTailerDeleteFileInstant(t *testing.T) {
 
 	done := make(chan struct{})
 	go func() {
-		tailer.Run(context.Background())
+		tailer.Run(t.Context())
 		positionsFile.Stop()
 		close(done)
 	}()

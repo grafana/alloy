@@ -174,10 +174,8 @@ func (t *tailer) Run(ctx context.Context) {
 	t.running.Store(true)
 	defer t.running.Store(false)
 
-	select {
-	case <-ctx.Done():
-		t.stop()
-	}
+	<-ctx.Done()
+	t.stop()
 }
 
 func (t *tailer) initRun() (loki.EntryHandler, error) {
@@ -391,10 +389,7 @@ func (t *tailer) stop() {
 	if !t.componentStopping() {
 		t.positions.Remove(t.path, t.labelsStr)
 	}
-
 }
-
-func (t *tailer) Stop() {}
 
 func (t *tailer) IsRunning() bool {
 	return t.running.Load()
