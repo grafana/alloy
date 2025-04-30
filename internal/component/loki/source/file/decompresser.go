@@ -222,7 +222,6 @@ func (d *decompressor) updatePosition() {
 // During each iteration, the parsed and decoded log line is then sent to the API with the current timestamp.
 func (d *decompressor) readLines(handler loki.EntryHandler) {
 	level.Info(d.logger).Log("msg", "read lines routine: started", "path", d.path)
-	d.running.Store(true)
 
 	if d.cfg.InitialDelay > 0 {
 		level.Info(d.logger).Log("msg", "sleeping before starting decompression", "path", d.path, "duration", d.cfg.InitialDelay.String())
@@ -230,7 +229,6 @@ func (d *decompressor) readLines(handler loki.EntryHandler) {
 	}
 
 	defer func() {
-		d.running.Store(false)
 		level.Info(d.logger).Log("msg", "read lines routine finished", "path", d.path)
 		close(d.done)
 		close(d.posquit)
