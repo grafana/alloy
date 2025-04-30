@@ -167,7 +167,7 @@ func (d *decompressor) Run(ctx context.Context) {
 	done := make(chan struct{})
 	ctx, cancel := context.WithCancel(ctx)
 	go func() {
-		// readLines closes the done on exit
+		// readLines closes done on exit
 		d.readLines(handler, done)
 		cancel()
 	}()
