@@ -18,6 +18,10 @@ on:
       - '.github/workflows/publish-alloy.yml'
       - '.github/workflows/publish-alloy-devel.yml'
       - '.github/workflows/publish-alloy-release.yml'
+
+permissions:
+  contents: read
+
 jobs:
   check_windows_container:
     uses: ./.github/workflows/publish-alloy.yml

@@ -5,6 +5,8 @@ aliases:
 description: Learn about discovery.file
 labels:
   stage: general-availability
+  products:
+    - oss
 title: discovery.file
 ---
 

@@ -5,6 +5,8 @@ aliases:
 description: Learn about beyla.ebpf
 labels:
   stage: general-availability
+  products:
+    - oss
 title: beyla.ebpf
 ---
 

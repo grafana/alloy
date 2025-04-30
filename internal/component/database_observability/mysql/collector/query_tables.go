@@ -13,6 +13,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability/mysql/collector/parser"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
@@ -155,6 +156,7 @@ func (c *QueryTables) tablesFromEventsStatements(ctx context.Context) error {
 		tables := c.sqlParser.ExtractTableNames(c.logger, digest, stmt)
 		for _, table := range tables {
 			c.entryHandler.Chan() <- buildLokiEntry(
+				logging.LevelInfo,
 				OP_QUERY_PARSED_TABLE_NAME,
 				c.instanceKey,
 				fmt.Sprintf(`schema="%s" digest="%s" table="%s"`, schema, digest, table),
@@ -216,6 +218,7 @@ func (c *QueryTables) tablesFromPreparedStatements(ctx context.Context) error {
 		tables := c.sqlParser.ExtractTableNames(c.logger, schema, stmt)
 		for _, table := range tables {
 			c.entryHandler.Chan() <- buildLokiEntry(
+				logging.LevelInfo,
 				OP_QUERY_PARSED_TABLE_NAME,
 				c.instanceKey,
 				fmt.Sprintf(`schema="%s" digest="%s" table="%s"`, schema, digest, table),

@@ -5,6 +5,8 @@ aliases:
 description: Learn about discovery.lightsail
 labels:
   stage: general-availability
+  products:
+    - oss
 title: discovery.lightsail
 ---
 

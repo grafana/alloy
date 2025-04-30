@@ -5,6 +5,8 @@ aliases:
 description: Learn about loki.relabel
 labels:
   stage: general-availability
+  products:
+    - oss
 title: loki.relabel
 ---
 
