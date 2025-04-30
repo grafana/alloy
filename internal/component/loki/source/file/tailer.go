@@ -49,10 +49,6 @@ type tailer struct {
 	componentStopping func() bool
 
 	tail    *tail.Tail
-	posquit chan struct{} // used by the readLine method to tell the updatePosition method to stop
-	posdone chan struct{} // used by the updatePosition method to notify when it stopped
-	done    chan struct{} // used by the readLine method to notify when it stopped
-
 	decoder *encoding.Decoder
 }
 
@@ -159,15 +155,11 @@ func (t *tailer) Run(ctx context.Context) {
 
 	t.metrics.filesActive.Add(1.)
 
-	go func() {
-		// updatePosition closes the channel t.posdone on exit
-		t.updatePosition()
-	}()
-
+	done := make(chan struct{})
 	ctx, cancel := context.WithCancel(ctx)
 	go func() {
-		// readLines closes the channels t.done and t.posquit on exit
-		t.readLines(handler)
+		// readLines closes done on exit
+		t.readLines(handler, done)
 		cancel()
 	}()
 
@@ -175,7 +167,7 @@ func (t *tailer) Run(ctx context.Context) {
 	defer t.running.Store(false)
 
 	<-ctx.Done()
-	t.stop()
+	t.stop(done)
 }
 
 func (t *tailer) initRun() (loki.EntryHandler, error) {
@@ -230,9 +222,6 @@ func (t *tailer) initRun() (loki.EntryHandler, error) {
 
 	labelsMiddleware := t.labels.Merge(model.LabelSet{filenameLabel: model.LabelValue(t.path)})
 	handler := loki.AddLabelsMiddleware(labelsMiddleware).Wrap(loki.NewEntryHandler(t.receiver.Chan(), func() {}))
-	t.posquit = make(chan struct{})
-	t.posdone = make(chan struct{})
-	t.done = make(chan struct{})
 
 	return handler, nil
 }
@@ -242,7 +231,7 @@ func (t *tailer) initRun() (loki.EntryHandler, error) {
 // an error it stops the tailer and exits, the tailer will be re-opened by the
 // backoff retry method if it still exists and will start reading from the
 // last successful entry in the positions file.
-func (t *tailer) updatePosition() {
+func (t *tailer) updatePosition(posquit chan struct{}) {
 	positionSyncPeriod := t.positions.SyncPeriod()
 	positionWait := time.NewTicker(positionSyncPeriod)
 	defer func() {
@@ -250,7 +239,6 @@ func (t *tailer) updatePosition() {
 		level.Info(t.logger).Log("msg", "position timer: exited", "path", t.path)
 		// NOTE: metrics must be cleaned up after the position timer exits, as markPositionAndSize() updates metrics.
 		t.cleanupMetrics()
-		close(t.posdone)
 	}()
 
 	for {
@@ -265,7 +253,7 @@ func (t *tailer) updatePosition() {
 				}
 				return
 			}
-		case <-t.posquit:
+		case <-posquit:
 			return
 		}
 	}
@@ -277,16 +265,23 @@ func (t *tailer) updatePosition() {
 // there are unread lines in this channel and the Stop method on the tailer is
 // called, the underlying tailer will never exit if there are unread lines in
 // the t.tail.Lines channel
-func (t *tailer) readLines(handler loki.EntryHandler) {
+func (t *tailer) readLines(handler loki.EntryHandler, done chan struct{}) {
 	level.Info(t.logger).Log("msg", "tail routine: started", "path", t.path)
+
+	posquit, posdone := make(chan struct{}), make(chan struct{})
+	go func() {
+		t.updatePosition(posquit)
+		close(posdone)
+	}()
 
 	// This function runs in a goroutine, if it exits this tailer will never do any more tailing.
 	// Clean everything up.
 	defer func() {
 		level.Info(t.logger).Log("msg", "tail routine: exited", "path", t.path)
-		close(t.done)
 		// Shut down the position marker thread
-		close(t.posquit)
+		close(posquit)
+		<-posdone
+		close(done)
 	}()
 
 	entries := handler.Chan()
@@ -355,7 +350,7 @@ func (t *tailer) markPositionAndSize() error {
 	return nil
 }
 
-func (t *tailer) stop() {
+func (t *tailer) stop(done chan struct{}) {
 	// Save the current position before shutting down tailer to ensure that if the file is tailed again
 	// it start where it left off.
 	err := t.markPositionAndSize()
@@ -378,9 +373,7 @@ func (t *tailer) stop() {
 	level.Debug(t.logger).Log("msg", "waiting for readline and position marker to exit", "path", t.path)
 
 	// Wait for readLines() to consume all the remaining messages and exit when the channel is closed
-	<-t.done
-	// Wait for the position marker thread to exit
-	<-t.posdone
+	<-done
 
 	level.Info(t.logger).Log("msg", "stopped tailing file", "path", t.path)
 

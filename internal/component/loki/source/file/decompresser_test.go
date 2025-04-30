@@ -50,6 +50,24 @@ func newNoopClient() *noopClient {
 	return c
 }
 
+var _ positions.Positions = (*noopPositions)(nil)
+
+type noopPositions struct{}
+
+func (n *noopPositions) Get(path string, labels string) (int64, error) { return 0, nil }
+
+func (n *noopPositions) GetString(path string, labels string) string { return "" }
+
+func (n *noopPositions) Put(path string, labels string, pos int64) {}
+
+func (n *noopPositions) PutString(path string, labels string, pos string) {}
+
+func (n *noopPositions) Remove(path string, labels string) {}
+
+func (n *noopPositions) Stop() {}
+
+func (n *noopPositions) SyncPeriod() time.Duration { return 10 * time.Second }
+
 func BenchmarkReadlines(b *testing.B) {
 	entryHandler := newNoopClient()
 
@@ -79,9 +97,9 @@ func BenchmarkReadlines(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				newDec := decBase
 				newDec.metrics = newMetrics(prometheus.NewRegistry())
-				newDec.done = make(chan struct{})
-				newDec.readLines(entryHandler)
-				<-newDec.done
+				done := make(chan struct{})
+				newDec.readLines(entryHandler, done)
+				<-done
 			}
 		})
 	}
@@ -93,21 +111,20 @@ func TestGigantiqueGunzipFile(t *testing.T) {
 	defer handler.Stop()
 
 	d := &decompressor{
-		logger:   log.NewNopLogger(),
-		running:  atomic.NewBool(false),
-		receiver: loki.NewLogsReceiver(),
-		path:     file,
-		done:     make(chan struct{}),
-		posquit:  make(chan struct{}),
-		metrics:  newMetrics(prometheus.NewRegistry()),
-		cfg:      DecompressionConfig{Format: "gz"},
+		logger:    log.NewNopLogger(),
+		running:   atomic.NewBool(false),
+		receiver:  loki.NewLogsReceiver(),
+		path:      file,
+		metrics:   newMetrics(prometheus.NewRegistry()),
+		cfg:       DecompressionConfig{Format: "gz"},
+		positions: &noopPositions{},
 	}
 
-	d.readLines(handler)
+	done := make(chan struct{})
+	d.readLines(handler, done)
+	<-done
 
-	<-d.done
 	time.Sleep(time.Millisecond * 200)
-
 	entries := handler.Received()
 	require.Equal(t, 100000, len(entries))
 }
@@ -124,21 +141,20 @@ func TestOnelineFiles(t *testing.T) {
 		defer handler.Stop()
 
 		d := &decompressor{
-			logger:   log.NewNopLogger(),
-			running:  atomic.NewBool(false),
-			receiver: loki.NewLogsReceiver(),
-			path:     file,
-			done:     make(chan struct{}),
-			posquit:  make(chan struct{}),
-			metrics:  newMetrics(prometheus.NewRegistry()),
-			cfg:      DecompressionConfig{Format: "gz"},
+			logger:    log.NewNopLogger(),
+			running:   atomic.NewBool(false),
+			receiver:  loki.NewLogsReceiver(),
+			path:      file,
+			metrics:   newMetrics(prometheus.NewRegistry()),
+			cfg:       DecompressionConfig{Format: "gz"},
+			positions: &noopPositions{},
 		}
 
-		d.readLines(handler)
+		done := make(chan struct{})
+		d.readLines(handler, done)
+		<-done
 
-		<-d.done
 		time.Sleep(time.Millisecond * 200)
-
 		entries := handler.Received()
 		require.Equal(t, 1, len(entries))
 		require.Equal(t, string(fileContent), entries[0].Line)
@@ -150,19 +166,19 @@ func TestOnelineFiles(t *testing.T) {
 		defer handler.Stop()
 
 		d := &decompressor{
-			logger:   log.NewNopLogger(),
-			running:  atomic.NewBool(false),
-			receiver: loki.NewLogsReceiver(),
-			path:     file,
-			done:     make(chan struct{}),
-			posquit:  make(chan struct{}),
-			metrics:  newMetrics(prometheus.NewRegistry()),
-			cfg:      DecompressionConfig{Format: "bz2"},
+			logger:    log.NewNopLogger(),
+			running:   atomic.NewBool(false),
+			receiver:  loki.NewLogsReceiver(),
+			path:      file,
+			metrics:   newMetrics(prometheus.NewRegistry()),
+			cfg:       DecompressionConfig{Format: "bz2"},
+			positions: &noopPositions{},
 		}
 
-		d.readLines(handler)
+		done := make(chan struct{})
+		d.readLines(handler, done)
+		<-done
 
-		<-d.done
 		time.Sleep(time.Millisecond * 200)
 
 		entries := handler.Received()
@@ -176,19 +192,19 @@ func TestOnelineFiles(t *testing.T) {
 		defer handler.Stop()
 
 		d := &decompressor{
-			logger:   log.NewNopLogger(),
-			running:  atomic.NewBool(false),
-			receiver: loki.NewLogsReceiver(),
-			path:     file,
-			done:     make(chan struct{}),
-			posquit:  make(chan struct{}),
-			metrics:  newMetrics(prometheus.NewRegistry()),
-			cfg:      DecompressionConfig{Format: "gz"},
+			logger:    log.NewNopLogger(),
+			running:   atomic.NewBool(false),
+			receiver:  loki.NewLogsReceiver(),
+			path:      file,
+			metrics:   newMetrics(prometheus.NewRegistry()),
+			cfg:       DecompressionConfig{Format: "gz"},
+			positions: &noopPositions{},
 		}
 
-		d.readLines(handler)
+		done := make(chan struct{})
+		d.readLines(handler, done)
 
-		<-d.done
+		<-done
 		time.Sleep(time.Millisecond * 200)
 
 		entries := handler.Received()

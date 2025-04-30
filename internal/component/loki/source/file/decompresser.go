@@ -62,10 +62,6 @@ type decompressor struct {
 	cfg      DecompressionConfig
 
 	componentStopping func() bool
-
-	posquit chan struct{} // used by the readLine method to tell the updatePosition method to stop
-	posdone chan struct{} // used by the updatePosition method to notify when it stopped
-	done    chan struct{} // used by the readLine method to notify when it stopped
 }
 
 func newDecompressor(
@@ -166,20 +162,13 @@ func (d *decompressor) Run(ctx context.Context) {
 	handler := loki.AddLabelsMiddleware(labelsMiddleware).Wrap(loki.NewEntryHandler(d.receiver.Chan(), func() {}))
 	defer handler.Stop()
 
-	d.posquit = make(chan struct{})
-	d.posdone = make(chan struct{})
-	d.done = make(chan struct{})
-
 	d.metrics.filesActive.Add(1.)
-	go func() {
-		// updatePosition closes the channel t.posdone on exit
-		d.updatePosition()
-	}()
 
+	done := make(chan struct{})
 	ctx, cancel := context.WithCancel(ctx)
 	go func() {
-		// readLines closes the channels t.done and t.posquit on exit
-		d.readLines(handler)
+		// readLines closes the done on exit
+		d.readLines(handler, done)
 		cancel()
 	}()
 
@@ -187,17 +176,16 @@ func (d *decompressor) Run(ctx context.Context) {
 	defer d.running.Store(false)
 
 	<-ctx.Done()
-	d.stop()
+	d.stop(done)
 }
 
-func (d *decompressor) updatePosition() {
+func (d *decompressor) updatePosition(posquit chan struct{}) {
 	positionSyncPeriod := d.positions.SyncPeriod()
 	positionWait := time.NewTicker(positionSyncPeriod)
 	defer func() {
 		positionWait.Stop()
 		level.Info(d.logger).Log("msg", "position timer: exited", "path", d.path)
 		d.cleanupMetrics()
-		close(d.posdone)
 	}()
 
 	for {
@@ -207,7 +195,7 @@ func (d *decompressor) updatePosition() {
 				level.Error(d.logger).Log("msg", "position timer: error getting position and/or size, stopping decompressor", "path", d.path, "error", err)
 				return
 			}
-		case <-d.posquit:
+		case <-posquit:
 			return
 		}
 	}
@@ -218,7 +206,8 @@ func (d *decompressor) updatePosition() {
 // It first decompresses the file as a whole using a reader and then it will iterate
 // over its chunks, separated by '\n'.
 // During each iteration, the parsed and decoded log line is then sent to the API with the current timestamp.
-func (d *decompressor) readLines(handler loki.EntryHandler) {
+// done channel is closed when readlines exits.
+func (d *decompressor) readLines(handler loki.EntryHandler, done chan struct{}) {
 	level.Info(d.logger).Log("msg", "read lines routine: started", "path", d.path)
 
 	if d.cfg.InitialDelay > 0 {
@@ -226,10 +215,17 @@ func (d *decompressor) readLines(handler loki.EntryHandler) {
 		time.Sleep(d.cfg.InitialDelay)
 	}
 
+	posquit, posdone := make(chan struct{}), make(chan struct{})
+	go func() {
+		d.updatePosition(posquit)
+		close(posdone)
+	}()
+
 	defer func() {
 		level.Info(d.logger).Log("msg", "read lines routine finished", "path", d.path)
-		close(d.done)
-		close(d.posquit)
+		close(posquit)
+		<-posdone
+		close(done)
 	}()
 
 	entries := handler.Chan()
@@ -318,11 +314,9 @@ func (d *decompressor) markPositionAndSize() error {
 	return nil
 }
 
-func (d *decompressor) stop() {
+func (d *decompressor) stop(done chan struct{}) {
 	// Wait for readLines() to consume all the remaining messages and exit when the channel is closed
-	<-d.done
-	// Wait for the position marker thread to exit
-	<-d.posdone
+	<-done
 
 	level.Info(d.logger).Log("msg", "stopped decompressor", "path", d.path)
 
