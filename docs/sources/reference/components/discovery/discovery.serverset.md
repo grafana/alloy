@@ -5,6 +5,8 @@ aliases:
 description: Learn about discovery.serverset
 labels:
   stage: general-availability
+  products:
+    - oss
 title: discovery.serverset
 ---
 

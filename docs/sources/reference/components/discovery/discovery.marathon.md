@@ -5,6 +5,8 @@ aliases:
 description: Learn about discovery.marathon
 labels:
   stage: general-availability
+  products:
+    - oss
 title: discovery.marathon
 ---
 

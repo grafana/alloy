@@ -5,6 +5,8 @@ aliases:
 description: Learn about loki.write
 labels:
   stage: general-availability
+  products:
+    - oss
 title: loki.write
 ---
 

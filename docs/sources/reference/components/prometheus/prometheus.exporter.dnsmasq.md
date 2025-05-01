@@ -5,6 +5,8 @@ aliases:
 description: Learn about prometheus.exporter.dnsmasq
 labels:
   stage: general-availability
+  products:
+    - oss
 title: prometheus.exporter.dnsmasq
 ---
 

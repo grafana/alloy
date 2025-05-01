@@ -5,6 +5,8 @@ aliases:
 description: Learn about loki.rules.kubernetes
 labels:
   stage: general-availability
+  products:
+    - oss
 title: loki.rules.kubernetes
 ---
 
