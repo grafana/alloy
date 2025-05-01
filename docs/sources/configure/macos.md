@@ -80,15 +80,15 @@ export GCLOUD_FM_LOG_PATH="/opt/homebrew/var/log/alloy.err.log"
 
 ## Configure command line flags
 
-You can use the file at `$(brew --prefix)/etc/alloy/config.env` to pass multiple [command line flags][flags] to {{< param "PRODUCT_NAME" >}}.
+You can use the file at `$(brew --prefix)/etc/alloy/extra-args.txt` to pass multiple [command line flags][flags] to {{< param "PRODUCT_NAME" >}}.
 
 To add the command line flags:
 
-1. Edit the file at `$(brew --prefix)/etc/alloy/config.env`.
+1. Edit the file at `$(brew --prefix)/etc/alloy/extra-args.txt`.
 1. Add the specific flags you need.
 1. Restart {{< param "PRODUCT_NAME" >}}.
 
-For example, you can add the following command line flag in `$(brew --prefix)/etc/alloy/config.env` to enable the experimental components in {{< param "PRODUCT_NAME" >}}.
+For example, you can add the following command line flag in `$(brew --prefix)/etc/alloy/extra-args.txt` to enable the experimental components in {{< param "PRODUCT_NAME" >}}.
 
 ```shell
 --stability.level=experimental
