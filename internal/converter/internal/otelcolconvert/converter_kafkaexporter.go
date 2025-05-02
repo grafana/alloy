@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/exporter/kafka"
 	"github.com/grafana/alloy/internal/component/otelcol/extension"
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/kafka/configkafka"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componentstatus"
 )
@@ -51,6 +53,12 @@ func (kafkaExporterConverter) ConvertAndAppend(state *State, id componentstatus.
 }
 
 func toKafkaExporter(cfg *kafkaexporter.Config) *kafka.Arguments {
+	var tlsCfgPtr *otelcol.TLSClientArguments
+	if cfg.TLS != nil {
+		tlsCfg := toTLSClientArguments(*cfg.TLS)
+		tlsCfgPtr = &tlsCfg
+	}
+
 	return &kafka.Arguments{
 		Brokers:                              cfg.Brokers,
 		ProtocolVersion:                      cfg.ProtocolVersion,
@@ -63,21 +71,34 @@ func toKafkaExporter(cfg *kafkaexporter.Config) *kafka.Arguments {
 		PartitionMetricsByResourceAttributes: cfg.PartitionMetricsByResourceAttributes,
 		Timeout:                              cfg.TimeoutSettings.Timeout,
 
+		Logs:    toKafkaSignalConfig(cfg.Logs),
+		Metrics: toKafkaSignalConfig(cfg.Metrics),
+		Traces:  toKafkaSignalConfig(cfg.Traces),
+
 		Authentication: toKafkaAuthentication(encodeMapstruct(cfg.Authentication)),
 		Metadata:       toKafkaMetadata(cfg.Metadata),
 		Retry:          toRetryArguments(cfg.BackOffConfig),
 		Queue:          toQueueArguments(cfg.QueueSettings),
 		Producer:       toKafkaProducer(cfg.Producer),
 
+		TLS: tlsCfgPtr,
+
 		DebugMetrics: common.DefaultValue[kafka.Arguments]().DebugMetrics,
 	}
 }
 
-func toKafkaProducer(cfg kafkaexporter.Producer) kafka.Producer {
+func toKafkaProducer(cfg configkafka.ProducerConfig) kafka.Producer {
 	return kafka.Producer{
 		MaxMessageBytes:  cfg.MaxMessageBytes,
 		Compression:      cfg.Compression,
 		RequiredAcks:     int(cfg.RequiredAcks),
 		FlushMaxMessages: cfg.FlushMaxMessages,
+	}
+}
+
+func toKafkaSignalConfig(cfg kafkaexporter.SignalConfig) kafka.KafkaExporterSignalConfig {
+	return kafka.KafkaExporterSignalConfig{
+		Topic:    cfg.Topic,
+		Encoding: cfg.Encoding,
 	}
 }

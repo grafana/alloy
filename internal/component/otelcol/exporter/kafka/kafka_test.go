@@ -20,6 +20,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 		cfg      string
 		expected map[string]interface{}
 	}{
+		// TODO: Add a test with the root-level "topic" and "enncoding" attributes
 		{
 			testName: "Defaults",
 			cfg: `
@@ -32,14 +33,28 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"client_id":              "sarama",
 				"topic":                  "",
 				"topic_from_attribute":   "",
-				"encoding":               "otlp_proto",
+				"encoding":               "",
 				"partition_traces_by_id": false,
 				"partition_metrics_by_resource_attributes": false,
 				"timeout":        5 * time.Second,
 				"authentication": map[string]interface{}{},
 
+				"logs": map[string]interface{}{
+					"topic":    "otlp_logs",
+					"encoding": "otlp_proto",
+				},
+				"metrics": map[string]interface{}{
+					"topic":    "otlp_metrics",
+					"encoding": "otlp_proto",
+				},
+				"traces": map[string]interface{}{
+					"topic":    "otlp_spans",
+					"encoding": "otlp_proto",
+				},
+
 				"metadata": map[string]interface{}{
-					"full": true,
+					"full":             true,
+					"refresh_interval": 10 * time.Minute,
 					"retry": map[string]interface{}{
 						"max":     3,
 						"backoff": 250 * time.Millisecond,
@@ -73,7 +88,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				brokers = ["redpanda:123"]
 				resolve_canonical_bootstrap_servers_only = true
 				client_id = "my-client"
-				topic = "my-topic"
+				topic = ""
 				topic_from_attribute = "my-attr"
 				encoding = "otlp_json"
 				partition_traces_by_id = true
@@ -88,7 +103,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				}
 
 				metadata {
-					include_all_topics = false
+					full = false
+					refresh_interval = "14s"
 					retry {
 						max_retries = 5
 						backoff = "511ms"
@@ -116,15 +132,28 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					compression = "gzip"
 					flush_max_messages = 101
 				}
+
+				logs {
+					topic = "logs_test_topic"
+					encoding = "raw"
+				}
+				metrics {
+					topic = "metrics_test_topic"
+					encoding = "otlp_json"
+				}
+				traces {
+					topic = "spans_test_topic"
+					encoding = "zipkin_json"
+				}
 			`,
 			expected: map[string]interface{}{
 				"brokers":          []string{"redpanda:123"},
 				"protocol_version": "2.0.0",
 				"resolve_canonical_bootstrap_servers_only": true,
 				"client_id":              "my-client",
-				"topic":                  "my-topic",
+				"topic":                  "",
 				"topic_from_attribute":   "my-attr",
-				"encoding":               "otlp_json",
+				"encoding":               "",
 				"partition_traces_by_id": true,
 				"partition_metrics_by_resource_attributes": true,
 				"timeout": 12 * time.Second,
@@ -135,8 +164,22 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					},
 				},
 
+				"logs": map[string]interface{}{
+					"topic":    "logs_test_topic",
+					"encoding": "raw",
+				},
+				"metrics": map[string]interface{}{
+					"topic":    "metrics_test_topic",
+					"encoding": "otlp_json",
+				},
+				"traces": map[string]interface{}{
+					"topic":    "spans_test_topic",
+					"encoding": "zipkin_json",
+				},
+
 				"metadata": map[string]interface{}{
-					"full": false,
+					"full":             false,
+					"refresh_interval": 14 * time.Second,
 					"retry": map[string]interface{}{
 						"max":     5,
 						"backoff": 511 * time.Millisecond,

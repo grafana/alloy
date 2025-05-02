@@ -78,6 +78,7 @@ type ResourceAttributesConfig struct {
 	HostName           rac.ResourceAttributeConfig `alloy:"host.name,block,optional"`
 	OsDescription      rac.ResourceAttributeConfig `alloy:"os.description,block,optional"`
 	OsType             rac.ResourceAttributeConfig `alloy:"os.type,block,optional"`
+	OsVersion          rac.ResourceAttributeConfig `alloy:"os.version,block,optional"`
 }
 
 func (r ResourceAttributesConfig) Convert() map[string]interface{} {
@@ -95,5 +96,6 @@ func (r ResourceAttributesConfig) Convert() map[string]interface{} {
 		"host.name":              r.HostName.Convert(),
 		"os.description":         r.OsDescription.Convert(),
 		"os.type":                r.OsType.Convert(),
+		"os.version":             r.OsVersion.Convert(),
 	}
 }

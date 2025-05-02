@@ -9,7 +9,7 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/receiver/kafka"
 	"github.com/grafana/alloy/syntax"
 	"github.com/mitchellh/mapstructure"
-	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/kafka/configkafka"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/config/configretry"
@@ -29,25 +29,33 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				output {}
 			`,
 			expected: kafkareceiver.Config{
-				Brokers:           []string{"10.10.10.10:9092"},
-				ProtocolVersion:   "2.0.0",
-				SessionTimeout:    10 * time.Second,
-				HeartbeatInterval: 3 * time.Second,
-				Encoding:          "otlp_proto",
-				GroupID:           "otel-collector",
-				ClientID:          "otel-collector",
-				InitialOffset:     "latest",
-				Metadata: kafkaexporter.Metadata{
-					Full: true,
-					Retry: kafkaexporter.MetadataRetry{
-						Max:     3,
-						Backoff: 250 * time.Millisecond,
+				ClientConfig: configkafka.ClientConfig{
+					Brokers:         []string{"10.10.10.10:9092"},
+					ProtocolVersion: "2.0.0",
+					ClientID:        "otel-collector",
+					Metadata: configkafka.MetadataConfig{
+						Full:            true,
+						RefreshInterval: 10 * time.Minute,
+						Retry: configkafka.MetadataRetryConfig{
+							Max:     3,
+							Backoff: 250 * time.Millisecond,
+						},
 					},
 				},
-				AutoCommit: kafkareceiver.AutoCommit{
-					Enable:   true,
-					Interval: 1 * time.Second,
+				ConsumerConfig: configkafka.ConsumerConfig{
+					SessionTimeout:    10 * time.Second,
+					HeartbeatInterval: 3 * time.Second,
+					GroupID:           "otel-collector",
+					InitialOffset:     "latest",
+					AutoCommit: configkafka.AutoCommitConfig{
+						Enable:   true,
+						Interval: 1 * time.Second,
+					},
+					MinFetchSize:     1,
+					DefaultFetchSize: 1048576,
+					MaxFetchSize:     0,
 				},
+				Encoding: "otlp_proto",
 				HeaderExtraction: kafkareceiver.HeaderExtraction{
 					ExtractHeaders: false,
 					Headers:        []string{},
@@ -60,9 +68,6 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					MaxInterval:         0,
 					MaxElapsedTime:      0,
 				},
-				MinFetchSize:     1,
-				DefaultFetchSize: 1048576,
-				MaxFetchSize:     0,
 			},
 		},
 		{
@@ -78,7 +83,6 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				client_id = "test_client_id"
 				initial_offset = "test_offset"
 				metadata {
-					include_all_topics = true
 					retry {
 						max_retries = 9
 						backoff = "11s"
@@ -110,26 +114,34 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				output {}
 			`,
 			expected: kafkareceiver.Config{
-				Brokers:           []string{"10.10.10.10:9092"},
-				ProtocolVersion:   "2.0.0",
-				SessionTimeout:    11 * time.Second,
-				HeartbeatInterval: 4 * time.Second,
-				Topic:             "test_topic",
-				Encoding:          "test_encoding",
-				GroupID:           "test_group_id",
-				ClientID:          "test_client_id",
-				InitialOffset:     "test_offset",
-				Metadata: kafkaexporter.Metadata{
-					Full: true,
-					Retry: kafkaexporter.MetadataRetry{
-						Max:     9,
-						Backoff: 11 * time.Second,
+				ClientConfig: configkafka.ClientConfig{
+					Brokers:         []string{"10.10.10.10:9092"},
+					ProtocolVersion: "2.0.0",
+					ClientID:        "test_client_id",
+					Metadata: configkafka.MetadataConfig{
+						Full:            true,
+						RefreshInterval: 10 * time.Minute,
+						Retry: configkafka.MetadataRetryConfig{
+							Max:     9,
+							Backoff: 11 * time.Second,
+						},
 					},
 				},
-				AutoCommit: kafkareceiver.AutoCommit{
-					Enable:   true,
-					Interval: 12 * time.Second,
+				ConsumerConfig: configkafka.ConsumerConfig{
+					SessionTimeout:    11 * time.Second,
+					HeartbeatInterval: 4 * time.Second,
+					GroupID:           "test_group_id",
+					InitialOffset:     "test_offset",
+					AutoCommit: configkafka.AutoCommitConfig{
+						Enable:   true,
+						Interval: 12 * time.Second,
+					},
+					MinFetchSize:     2,
+					DefaultFetchSize: 10000,
+					MaxFetchSize:     20,
 				},
+				Topic:    "test_topic",
+				Encoding: "test_encoding",
 				MessageMarking: kafkareceiver.MessageMarking{
 					After:   true,
 					OnError: true,
@@ -146,9 +158,6 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					MaxInterval:         1 * time.Second,
 					MaxElapsedTime:      1 * time.Minute,
 				},
-				MinFetchSize:     2,
-				DefaultFetchSize: 10000,
-				MaxFetchSize:     20,
 			},
 		},
 	}
@@ -201,14 +210,15 @@ func TestArguments_Auth(t *testing.T) {
 				"initial_offset":     "latest",
 				"min_fetch_size":     1,
 				"default_fetch_size": 1048576,
-				"metadata": kafkaexporter.Metadata{
-					Full: true,
-					Retry: kafkaexporter.MetadataRetry{
+				"metadata": configkafka.MetadataConfig{
+					Full:            true,
+					RefreshInterval: 10 * time.Minute,
+					Retry: configkafka.MetadataRetryConfig{
 						Max:     3,
 						Backoff: 250 * time.Millisecond,
 					},
 				},
-				"autocommit": kafkareceiver.AutoCommit{
+				"autocommit": configkafka.AutoCommitConfig{
 					Enable:   true,
 					Interval: 1 * time.Second,
 				},
@@ -264,14 +274,15 @@ func TestArguments_Auth(t *testing.T) {
 				"initial_offset":     "latest",
 				"min_fetch_size":     1,
 				"default_fetch_size": 1048576,
-				"metadata": kafkaexporter.Metadata{
-					Full: true,
-					Retry: kafkaexporter.MetadataRetry{
+				"metadata": configkafka.MetadataConfig{
+					Full:            true,
+					RefreshInterval: 10 * time.Minute,
+					Retry: configkafka.MetadataRetryConfig{
 						Max:     3,
 						Backoff: 250 * time.Millisecond,
 					},
 				},
-				"autocommit": kafkareceiver.AutoCommit{
+				"autocommit": configkafka.AutoCommitConfig{
 					Enable:   true,
 					Interval: 1 * time.Second,
 				},
@@ -333,14 +344,15 @@ func TestArguments_Auth(t *testing.T) {
 				"initial_offset":     "latest",
 				"min_fetch_size":     1,
 				"default_fetch_size": 1048576,
-				"metadata": kafkaexporter.Metadata{
-					Full: true,
-					Retry: kafkaexporter.MetadataRetry{
+				"metadata": configkafka.MetadataConfig{
+					Full:            true,
+					RefreshInterval: 10 * time.Minute,
+					Retry: configkafka.MetadataRetryConfig{
 						Max:     3,
 						Backoff: 250 * time.Millisecond,
 					},
 				},
-				"autocommit": kafkareceiver.AutoCommit{
+				"autocommit": configkafka.AutoCommitConfig{
 					Enable:   true,
 					Interval: 1 * time.Second,
 				},
@@ -402,14 +414,15 @@ func TestArguments_Auth(t *testing.T) {
 				"initial_offset":     "latest",
 				"min_fetch_size":     1,
 				"default_fetch_size": 1048576,
-				"metadata": kafkaexporter.Metadata{
-					Full: true,
-					Retry: kafkaexporter.MetadataRetry{
+				"metadata": configkafka.MetadataConfig{
+					Full:            true,
+					RefreshInterval: 10 * time.Minute,
+					Retry: configkafka.MetadataRetryConfig{
 						Max:     3,
 						Backoff: 250 * time.Millisecond,
 					},
 				},
-				"autocommit": kafkareceiver.AutoCommit{
+				"autocommit": configkafka.AutoCommitConfig{
 					Enable:   true,
 					Interval: 1 * time.Second,
 				},

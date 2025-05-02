@@ -33,9 +33,12 @@ otelcol.receiver.kafka "default" {
 			password     = "fakepassword"
 		}
 	}
-	min_fetch_size     = 2
-	default_fetch_size = 1048575
-	max_fetch_size     = 2000000
+	min_fetch_size           = 2
+	default_fetch_size       = 1048575
+	max_fetch_size           = 2000000
+	max_fetch_wait           = "11s"
+	group_rebalance_strategy = "roundrobin"
+	group_instance_id        = "fakeinstanceid"
 
 	error_backoff {
 		enabled              = true
@@ -59,7 +62,6 @@ otelcol.exporter.kafka "default" {
 	resolve_canonical_bootstrap_servers_only = true
 	client_id                                = "otelcol"
 	topic_from_attribute                     = "my_topic"
-	encoding                                 = "otlp_json"
 	partition_traces_by_id                   = true
 	partition_metrics_by_resource_attributes = true
 	timeout                                  = "11s"

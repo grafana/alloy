@@ -4,7 +4,6 @@ package kafka
 import (
 	"time"
 
-	"github.com/IBM/sarama"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
@@ -13,7 +12,9 @@ import (
 	"github.com/grafana/alloy/syntax"
 	"github.com/mitchellh/mapstructure"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/kafka/configkafka"
 	otelcomponent "go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/confmap/xconfmap"
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
 	"go.opentelemetry.io/collector/pipeline"
 )
@@ -49,21 +50,31 @@ type Arguments struct {
 	Brokers                              []string      `alloy:"brokers,attr,optional"`
 	ResolveCanonicalBootstrapServersOnly bool          `alloy:"resolve_canonical_bootstrap_servers_only,attr,optional"`
 	ClientID                             string        `alloy:"client_id,attr,optional"`
-	Topic                                string        `alloy:"topic,attr,optional"`
+	Topic                                string        `alloy:"topic,attr,optional"` // Deprecated
 	TopicFromAttribute                   string        `alloy:"topic_from_attribute,attr,optional"`
 	Encoding                             string        `alloy:"encoding,attr,optional"`
 	PartitionTracesByID                  bool          `alloy:"partition_traces_by_id,attr,optional"`
 	PartitionMetricsByResourceAttributes bool          `alloy:"partition_metrics_by_resource_attributes,attr,optional"`
 	Timeout                              time.Duration `alloy:"timeout,attr,optional"`
 
+	Logs    KafkaExporterSignalConfig `alloy:"logs,block,optional"`
+	Metrics KafkaExporterSignalConfig `alloy:"metrics,block,optional"`
+	Traces  KafkaExporterSignalConfig `alloy:"traces,block,optional"`
+
 	Authentication otelcol.KafkaAuthenticationArguments `alloy:"authentication,block,optional"`
 	Metadata       otelcol.KafkaMetadataArguments       `alloy:"metadata,block,optional"`
 	Retry          otelcol.RetryArguments               `alloy:"retry_on_failure,block,optional"`
 	Queue          otelcol.QueueArguments               `alloy:"sending_queue,block,optional"`
 	Producer       Producer                             `alloy:"producer,block,optional"`
+	TLS            *otelcol.TLSClientArguments          `alloy:"tls,block,optional"`
 
 	// DebugMetrics configures component internal metrics. Optional.
 	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
+}
+
+type KafkaExporterSignalConfig struct {
+	Topic    string `alloy:"topic,attr"`
+	Encoding string `alloy:"encoding,attr,optional"`
 }
 
 // Producer defines configuration for producer
@@ -91,10 +102,10 @@ type Producer struct {
 }
 
 // Convert converts args into the upstream type.
-func (args Producer) Convert() kafkaexporter.Producer {
-	return kafkaexporter.Producer{
+func (args Producer) Convert() configkafka.ProducerConfig {
+	return configkafka.ProducerConfig{
 		MaxMessageBytes:  args.MaxMessageBytes,
-		RequiredAcks:     sarama.RequiredAcks(args.RequiredAcks),
+		RequiredAcks:     configkafka.RequiredAcks(args.RequiredAcks),
 		Compression:      args.Compression,
 		FlushMaxMessages: args.FlushMaxMessages,
 	}
@@ -109,12 +120,14 @@ var (
 // SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = Arguments{
-		Encoding: "otlp_proto",
+		// Do not set the encoding argument - it is deprecated.
+		// Encoding: "otlp_proto",
 		Brokers:  []string{"localhost:9092"},
 		ClientID: "sarama",
 		Timeout:  5 * time.Second,
 		Metadata: otelcol.KafkaMetadataArguments{
-			IncludeAllTopics: true,
+			Full:            true,
+			RefreshInterval: 10 * time.Minute,
 			Retry: otelcol.KafkaMetadataRetryArguments{
 				MaxRetries: 3,
 				Backoff:    250 * time.Millisecond,
@@ -125,6 +138,18 @@ func (args *Arguments) SetToDefault() {
 			RequiredAcks:     1,
 			Compression:      "none",
 			FlushMaxMessages: 0,
+		},
+		Logs: KafkaExporterSignalConfig{
+			Topic:    "otlp_logs",
+			Encoding: "otlp_proto",
+		},
+		Metrics: KafkaExporterSignalConfig{
+			Topic:    "otlp_metrics",
+			Encoding: "otlp_proto",
+		},
+		Traces: KafkaExporterSignalConfig{
+			Topic:    "otlp_spans",
+			Encoding: "otlp_proto",
 		},
 	}
 	args.Retry.SetToDefault()
@@ -139,7 +164,7 @@ func (args *Arguments) Validate() error {
 		return err
 	}
 	kafkaCfg := otelCfg.(*kafkaexporter.Config)
-	return kafkaCfg.Validate()
+	return xconfmap.Validate(kafkaCfg)
 }
 
 // Convert implements exporter.Arguments.
@@ -157,9 +182,9 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	result.ResolveCanonicalBootstrapServersOnly = args.ResolveCanonicalBootstrapServersOnly
 	result.ProtocolVersion = args.ProtocolVersion
 	result.ClientID = args.ClientID
-	result.Topic = args.Topic
 	result.TopicFromAttribute = args.TopicFromAttribute
-	result.Encoding = args.Encoding
+	// Do not set the encoding argument - it is deprecated.
+	// result.Encoding = args.Encoding
 	result.PartitionTracesByID = args.PartitionTracesByID
 	result.PartitionMetricsByResourceAttributes = args.PartitionMetricsByResourceAttributes
 	result.TimeoutSettings = exporterhelper.TimeoutConfig{
@@ -168,12 +193,70 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	result.Metadata = args.Metadata.Convert()
 	result.BackOffConfig = *args.Retry.Convert()
 
+	if args.Logs.Topic != "" {
+		result.Logs.Topic = args.Logs.Topic
+	} else if args.Topic != "" {
+		result.Logs.Topic = args.Topic
+	} else {
+		result.Logs.Topic = "otlp_logs"
+	}
+
+	if args.Metrics.Topic != "" {
+		result.Metrics.Topic = args.Metrics.Topic
+	} else if args.Topic != "" {
+		result.Metrics.Topic = args.Topic
+	} else {
+		result.Metrics.Topic = "otlp_metrics"
+	}
+
+	if args.Traces.Topic != "" {
+		result.Traces.Topic = args.Traces.Topic
+	} else if args.Topic != "" {
+		result.Traces.Topic = args.Topic
+	} else {
+		result.Traces.Topic = "otlp_spans"
+	}
+
+	if args.Logs.Encoding != "" {
+		result.Logs.Encoding = args.Logs.Encoding
+	} else if args.Encoding != "" {
+		result.Logs.Encoding = args.Encoding
+	} else {
+		result.Logs.Encoding = "otlp_proto"
+	}
+
+	if args.Metrics.Encoding != "" {
+		result.Metrics.Encoding = args.Metrics.Encoding
+	} else if args.Encoding != "" {
+		result.Metrics.Encoding = args.Encoding
+	} else {
+		result.Metrics.Encoding = "otlp_proto"
+	}
+
+	if args.Traces.Encoding != "" {
+		result.Traces.Encoding = args.Traces.Encoding
+	} else if args.Encoding != "" {
+		result.Traces.Encoding = args.Encoding
+	} else {
+		result.Traces.Encoding = "otlp_proto"
+	}
+
+	if args.TLS != nil {
+		tlsCfg := args.TLS.Convert()
+		result.TLS = tlsCfg
+	}
+
 	q, err := args.Queue.Convert()
 	if err != nil {
 		return nil, err
 	}
 	result.QueueSettings = *q
 	result.Producer = args.Producer.Convert()
+
+	if args.TLS != nil {
+		tlsCfg := args.TLS.Convert()
+		result.TLS = tlsCfg
+	}
 
 	return &result, nil
 }

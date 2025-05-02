@@ -7,12 +7,10 @@ The `metadata` block configures how to retrieve and store metadata from the Kafk
 
 The following arguments are supported:
 
-Name                 | Type   | Description                                   | Default | Required
----------------------|--------|-----------------------------------------------|---------|---------
-`include_all_topics` | `bool` | When true, maintains metadata for all topics. | `true`  | no
+Name               | Type       | Description                                           | Default  | Required
+-------------------|------------|-------------------------------------------------------|----------|---------
+`full`             | `bool`     | Whether to maintain a full set of metadata.           | `true`   | no
+`refresh_interval` | `duration` | The frequency at which cluster metadata is refreshed. | `"10m"`  | no
 
-If the `include_all_topics` argument is `true`, a full set of metadata for all topics is maintained rather than the minimal set that has been necessary so far.
-Including the full set of metadata is more convenient for users but can consume a substantial amount of memory if you have many topics and partitions.
+When `full` is set to `false`, the client does not make the initial request to broker at the startup.
 
-Retrieving metadata may fail if the Kafka broker is starting up at the same time as the {{< param "PRODUCT_NAME" >}} component.
-The `retry` child block can be provided to customize retry behavior.

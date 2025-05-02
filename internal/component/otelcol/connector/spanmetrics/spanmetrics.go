@@ -59,6 +59,8 @@ type Arguments struct {
 	// See https://opentelemetry.io/docs/specs/semconv/resource/ for possible attributes.
 	ResourceMetricsKeyAttributes []string `alloy:"resource_metrics_key_attributes,attr,optional"`
 
+	AggregationCardinalityLimit int `alloy:"aggregation_cardinality_limit,attr,optional"`
+
 	AggregationTemporality string `alloy:"aggregation_temporality,attr,optional"`
 
 	Histogram HistogramConfig `alloy:"histogram,block"`
@@ -87,6 +89,8 @@ type Arguments struct {
 
 	// DebugMetrics configures component internal metrics. Optional.
 	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
+
+	IncludeInstrumentationScope []string `alloy:"include_instrumentation_scope,attr,optional"`
 }
 
 var (
@@ -102,7 +106,6 @@ const (
 
 // DefaultArguments holds default settings for Arguments.
 var DefaultArguments = Arguments{
-	DimensionsCacheSize:      1000,
 	AggregationTemporality:   AggregationTemporalityCumulative,
 	MetricsFlushInterval:     60 * time.Second,
 	MetricsExpiration:        0,
@@ -134,6 +137,10 @@ func (args *Arguments) Validate() error {
 		// Valid
 	default:
 		return fmt.Errorf("invalid aggregation_temporality: %v", args.AggregationTemporality)
+	}
+
+	if args.AggregationCardinalityLimit < 0 {
+		return fmt.Errorf("invalid aggregation_cardinality_limit: %v, the limit should be positive", args.AggregationCardinalityLimit)
 	}
 
 	return nil
@@ -189,6 +196,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		ResourceMetricsCacheSize:     args.ResourceMetricsCacheSize,
 		TimestampCacheSize:           &timestampCacheSize,
 		ResourceMetricsKeyAttributes: args.ResourceMetricsKeyAttributes,
+		AggregationCardinalityLimit:  args.AggregationCardinalityLimit,
 		AggregationTemporality:       aggregationTemporality,
 		Histogram:                    *histogram,
 		MetricsFlushInterval:         args.MetricsFlushInterval,
@@ -196,6 +204,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		Namespace:                    args.Namespace,
 		Exemplars:                    *args.Exemplars.Convert(),
 		Events:                       args.Events.Convert(),
+		IncludeInstrumentationScope:  args.IncludeInstrumentationScope,
 	}, nil
 }
 
