@@ -7,6 +7,13 @@ This document contains a historical list of changes between releases. Only
 changes that impact end-user behavior are listed; changes to documentation or
 internal API changes are not present.
 
+v1.8.3
+-----------------
+
+### Bugfixes
+
+- Fix `loki.source.file` race condition that often lead to panic when using `decompression`. (@kalleep)
+
 v1.8.2
 -----------------
 
