@@ -51,6 +51,8 @@ Main (unreleased)
 
 - Fix `loki.source.file` race condition that often lead to panic when using `decompression`. (@kalleep)
 
+- Fix deadlock in `loki.source.file` that can happen when targets are removed. (@kalleep)
+
 ### Other changes
 
 - Update the zap logging adapter used by `otelcol` components to log arrays and objects. (@dehaansa)
