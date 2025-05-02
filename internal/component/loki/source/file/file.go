@@ -168,13 +168,15 @@ func (c *Component) Run(ctx context.Context) error {
 			// flushing its data, but nothing is reading from handler.Chan().
 			readCtx, cancel := context.WithCancel(ctx)
 			go func() {
-				select {
-				case entry := <-c.handler.Chan():
-					for _, receiver := range c.receivers {
-						receiver.Chan() <- entry
+				for {
+					select {
+					case entry := <-c.handler.Chan():
+						for _, receiver := range c.receivers {
+							receiver.Chan() <- entry
+						}
+					case <-readCtx.Done():
+						return
 					}
-				case <-readCtx.Done():
-					return
 				}
 			}()
 
@@ -184,6 +186,7 @@ func (c *Component) Run(ctx context.Context) error {
 				tasks = append(tasks, &entry)
 			}
 			err := runner.ApplyTasks(ctx, tasks)
+
 			// We cancel readCtx because we are done updating tasks and the main loop will continue to
 			// read from it.
 			cancel()
