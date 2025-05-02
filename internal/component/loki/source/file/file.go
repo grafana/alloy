@@ -164,7 +164,7 @@ func (c *Component) Run(ctx context.Context) error {
 			c.mut.Lock()
 
 			// When we are updating tasks we need to continue to read from handler.Chan().
-			// This is held to avoid a race condition where stopping a reader is
+			// This is done to avoid a race condition where stopping a reader is
 			// flushing its data, but nothing is reading from handler.Chan().
 			readCtx, cancel := context.WithCancel(ctx)
 			go func() {
