@@ -25,6 +25,16 @@ import (
 	"github.com/grafana/alloy/internal/util"
 )
 
+type fakeRec struct {
+	c chan loki.Entry
+}
+
+func (f *fakeRec) Chan() chan loki.Entry {
+	return f.c
+}
+
+var _ loki.LogsReceiver = (*fakeRec)(nil)
+
 func Test(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
 
@@ -76,6 +86,76 @@ func Test(t *testing.T) {
 			require.FailNow(t, "failed waiting for log line")
 		}
 	}
+}
+
+func TestUpdateRemoveFileWhileReading(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
+
+	ctx, cancel := context.WithCancel(componenttest.TestContext(t))
+	defer cancel()
+
+	// Create file to log to.
+	f, err := os.CreateTemp(t.TempDir(), "example")
+	require.NoError(t, err)
+	defer f.Close()
+
+	ctrl, err := componenttest.NewControllerFromID(util.TestLogger(t), "loki.source.file")
+	require.NoError(t, err)
+
+	ch1 := loki.NewLogsReceiver()
+
+	go func() {
+		err := ctrl.Run(ctx, Arguments{
+			Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{
+				"__path__": f.Name(),
+				"foo":      "bar",
+			})},
+			ForwardTo: []loki.LogsReceiver{ch1},
+		})
+		require.NoError(t, err)
+	}()
+
+	ctrl.WaitRunning(time.Minute)
+
+	// Start a goroutine that reads from the channel until cancellation
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ch1.Chan():
+				// Just consume the messages
+			}
+		}
+	}()
+
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				_, err = f.Write([]byte("writing some text\nwriting some text2\n"))
+				require.NoError(t, err)
+			}
+		}
+	}()
+
+	time.Sleep(100 * time.Millisecond)
+
+	err = ctrl.Update(Arguments{
+		Targets:   []discovery.Target{},
+		ForwardTo: []loki.LogsReceiver{ch1},
+	})
+	require.NoError(t, err)
+
+	time.Sleep(100 * time.Millisecond)
+
+	err = ctrl.Update(Arguments{
+		Targets:   []discovery.Target{},
+		ForwardTo: []loki.LogsReceiver{ch1},
+	})
+	require.NoError(t, err)
 }
 
 func TestFileWatch(t *testing.T) {
