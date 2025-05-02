@@ -114,11 +114,11 @@ func (args *Arguments) SetToDefault() {
 			10 * time.Second,
 			15 * time.Second,
 		},
-		Dimensions:            []string{},
-		CacheLoop:             1 * time.Minute,
-		StoreExpirationLoop:   2 * time.Second,
-		DatabaseNameAttributes: ["db.name"],
-		MetricsFlushInterval:  60 * time.Second,
+		Dimensions:             []string{},
+		CacheLoop:              1 * time.Minute,
+		StoreExpirationLoop:    2 * time.Second,
+		DatabaseNameAttributes: []string{"db.name"},
+		MetricsFlushInterval:   60 * time.Second,
 		//TODO: Add VirtualNodePeerAttributes when it's no longer controlled by
 		// the "processor.servicegraph.virtualNode" feature gate.
 		// VirtualNodePeerAttributes: []string{
@@ -170,10 +170,10 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 			MaxItems: args.Store.MaxItems,
 			TTL:      args.Store.TTL,
 		},
-		CacheLoop:             args.CacheLoop,
-		StoreExpirationLoop:   args.StoreExpirationLoop,
-		MetricsFlushInterval:  &args.MetricsFlushInterval,
-		DatabaseNameAttribute: args.DatabaseNameAttribute,
+		CacheLoop:              args.CacheLoop,
+		StoreExpirationLoop:    args.StoreExpirationLoop,
+		MetricsFlushInterval:   &args.MetricsFlushInterval,
+		DatabaseNameAttribute:  args.DatabaseNameAttribute,
 		DatabaseNameAttributes: args.DatabaseNameAttributes,
 		//TODO: Add VirtualNodePeerAttributes when it's no longer controlled by
 		// the "processor.servicegraph.virtualNode" feature gate.
