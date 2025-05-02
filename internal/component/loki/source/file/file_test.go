@@ -25,16 +25,6 @@ import (
 	"github.com/grafana/alloy/internal/util"
 )
 
-type fakeRec struct {
-	c chan loki.Entry
-}
-
-func (f *fakeRec) Chan() chan loki.Entry {
-	return f.c
-}
-
-var _ loki.LogsReceiver = (*fakeRec)(nil)
-
 func Test(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
 
