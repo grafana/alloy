@@ -13,7 +13,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/splunkhecexporter"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componentstatus"
-	"go.opentelemetry.io/collector/exporter/exporterbatcher"
+	"go.opentelemetry.io/collector/exporter/exporterhelper"
 )
 
 func init() {
@@ -119,7 +119,7 @@ func toSplunkHecTelemetry(cfg splunkhecexporter.HecTelemetry) splunkhec_config.S
 	}
 }
 
-func toSplunkHecBatcherConfig(cfg exporterbatcher.Config) splunkhec_config.BatcherConfig {
+func toSplunkHecBatcherConfig(cfg exporterhelper.BatcherConfig) splunkhec_config.BatcherConfig {
 	sizer, _ := cfg.SizeConfig.Sizer.MarshalText()
 	return splunkhec_config.BatcherConfig{
 		Enabled:      cfg.Enabled,

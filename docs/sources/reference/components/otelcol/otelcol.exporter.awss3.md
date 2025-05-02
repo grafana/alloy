@@ -42,24 +42,30 @@ Replace the following:
 
 ## Arguments
 
-`otelcol.exporter.awss3` supports no arguments and is configured completely through inner blocks.
+`otelcol.exporter.otlp` supports the following arguments:
+
+Name      | Type       | Description                                      | Default | Required
+----------|------------|--------------------------------------------------|---------|---------
+`timeout` | `duration` | Time to wait before marking a request as failed. | `"5s"`  | no
 
 ## Blocks
 
 The following blocks are supported inside the definition of
 `otelcol.exporter.awss3`:
 
-Hierarchy              | Block                | Description                                                                          | Required
------------------------|----------------------|--------------------------------------------------------------------------------------|---------
-s3_uploader            | [s3_uploader][]      | Configures the AWS S3 bucket details to send telemetry data to.                      | yes
-marshaler              | [marshaler][]        | Marshaler used to produce output data.                                               | no
-debug_metrics          | [debug_metrics][]    | Configures the metrics that this component generates to monitor its state.           | no
-sending_queue          | [sending_queue][]    | Configures batching of data before sending.                                          | no
+Hierarchy              | Block                    | Description                                                                                              | Required
+-----------------------|--------------------------|----------------------------------------------------------------------------------------------------------|---------
+s3_uploader            | [s3_uploader][]          | Configures the AWS S3 bucket details to send telemetry data to.                                          | yes
+marshaler              | [marshaler][]            | Marshaler used to produce output data.                                                                   | no
+debug_metrics          | [debug_metrics][]        | Configures the metrics that this component generates to monitor its state.                               | no
+sending_queue          | [sending_queue][]        | Configures batching of data before sending.                                                              | no
+resource_attrs_to_s3   | [resource_attrs_to_s3][] | Configures the mapping of S3 configuration values to resource attribute values for uploading operations. | no
 
 [s3_uploader]: #s3_uploader-block
 [marshaler]: #marshaler-block
 [debug_metrics]: #debug_metrics-block
 [sending_queue]: #sending_queue-block
+[resource_attrs_to_s3]: #resource_attrs_to_s3-block
 
 ### s3_uploader block
 
@@ -79,7 +85,7 @@ Name                  | Type      | Description                                 
 `s3_force_path_style` | `boolean` | Set this to `true` to force the request to use [path-style requests](https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html#path-style-access) | `false`                                       | no
 `disable_ssl`         | `boolean` | Set this to `true` to disable SSL when sending requests.                                                                                                          |                                               | `false`
 `compression`         | `string`  | How should the file be compressed? `none`, `gzip`                                                                                                                 | `none`                                        | no
-`acl`                 | `string`  | The canned ACL to use when uploading objects.                                                                                                                     | `"private"`                                   | no
+`acl`                 | `string`  | The canned ACL to use when uploading objects.                                                                                                                     | `none`                                   | no
 `storage_class`       | `string`  | The storage class to use when uploading objects.                                                                                                                     | `"STANDARD"`                                  | no
 
 [path-style requests]: https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html#path-style-access
@@ -110,6 +116,18 @@ Name                    | Type       | Description                              
 The `sending_queue` block configures an in-memory buffer of batches before data is sent to s3.
 
 {{< docs/shared lookup="reference/components/otelcol-queue-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### resource_attrs_to_s3 block
+
+The following arguments are supported:
+
+Name       | Type     | Description                                                                  | Default | Required
+-----------|----------|------------------------------------------------------------------------------|---------|---------
+`s3_prefix`| `string` | Configures which resource attribute's value should be used as the S3 prefix. |         | yes
+
+When `s3_prefix` is set, it dynamically overrides [s3_uploader][] > `s3_prefix`.
+If the specified resource attribute exists in the data, its value will be used as the prefix.
+Otherwise, [s3_uploader][] > `s3_prefix` will serve as the fallback.
 
 ### Compression
 

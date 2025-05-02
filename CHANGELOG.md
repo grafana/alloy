@@ -52,6 +52,32 @@ Main (unreleased)
 
 - Updated Windows install script to add DisplayVersion into registry on install (@enessene)
 
+- Upgrade `otelcol` components from OpenTelemetry v0.122.0 to v0.125.0 (@ptodev):
+  - [`pkg/ottl`] Enhance the Decode OTTL function to support all flavors of Base64.
+  - [`otelcol.processor.resourcedetection`] Adding the `os.version` resource attribute to system processor.
+  - [`otelcol.auth.bearer`] Allow the header name to be customized.
+  - [`otelcol.exporter.awss3`] Add a new `sending_queue` feature.
+  - [`otelcol.exporter.awss3`] Add a new `timeout` argument.
+  - [`otelcol.exporter.awss3`] Add a new `resource_attrs_to_s3` configuration block.
+  - [`otelcol.exporter.awss3`] Fixes an issue where the AWS S3 Exporter was forcing an ACL to be set, leading to unexpected behavior in S3 bucket permissions.
+  - [`otelcol.connector.spanmetrics`] A new `include_instrumentation_scope` configuration argument.
+  - [`otelcol.connector.spanmetrics`] Initialise new `calls_total` metrics at 0.
+  - [`otelcol.connector.spanmetrics`] A new `aggregation_cardinality_limit` configuration argument 
+    to limit the number of unique combinations of dimensions that will be tracked for metrics aggregation.
+  - [`otelcol.connector.spanmetrics`] Deprecate the unused argument `dimensions_cache_size`.
+  - [`otelcol.connector.spanmetrics`] Moving the start timestamp (and last seen timestamp) from the resourceMetrics level to the individual metrics level. 
+  - [`otelcol.processor.k8sattributes`] Add option to configure automatic resource attributes - with annotation prefix.
+    Implements [Specify resource attributes using Kubernetes annotations](https://github.com/open-telemetry/semantic-conventions/blob/main/docs/non-normative/k8s-attributes.md#specify-resource-attributes-using-kubernetes-annotations).
+    This will ensure that each metric has its own accurate start and last seen timestamps, regardless of its relationship to other spans.
+  - [`otelcol.connector.servicegraph`] Change `database_name_attribute` to accept a list of values.
+  - [`otelcol.exporter.kafka`, `otelcol.receiver.kafka`] Deprecating the `auth` > `plain_text` block. Use `auth` > `sasl` with `mechanism` set to `PLAIN` instead.
+  - [`otelcol.exporter.kafka`, `otelcol.receiver.kafka`] Deprecating the `topic` argument. Use `logs` > `topic`, `metrics` > `topic`, or `traces` > `topic` instead.
+  - [`otelcol.exporter.kafka`, `otelcol.receiver.kafka`] Deprecate the `auth` > `tls` block. Use the top-level `tls` block instead.
+  - [`otelcol.receiver.kafka`] Add max_fetch_wait config setting.
+    This setting allows you to specify the maximum time that the broker will wait for min_fetch_size bytes of data 
+    to be available before sending a response to the client.
+  - [ `otelcol.receiver.kafka`] Add support for configuring Kafka consumer rebalance strategy and group instance ID.
+
 v1.8.2
 -----------------
 

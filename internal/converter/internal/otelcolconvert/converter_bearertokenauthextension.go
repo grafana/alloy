@@ -64,6 +64,7 @@ func toBearerTokenAuthExtension(cfg *bearertokenauthextension.Config) *bearer.Ar
 	return &bearer.Arguments{
 		Scheme:       cfg.Scheme,
 		Token:        alloytypes.Secret(string(cfg.BearerToken)),
+		Header:       cfg.Header,
 		DebugMetrics: common.DefaultValue[bearer.Arguments]().DebugMetrics,
 	}
 }

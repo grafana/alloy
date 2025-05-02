@@ -37,7 +37,7 @@ func (loadbalancingExporterConverter) ConvertAndAppend(state *State, id componen
 	overrideHook := func(val interface{}) interface{} {
 		switch val.(type) {
 		case auth.Handler:
-			ext := state.LookupExtension(cfg.(*loadbalancingexporter.Config).Protocol.OTLP.Auth.AuthenticatorID)
+			ext := state.LookupExtension(cfg.(*loadbalancingexporter.Config).Protocol.OTLP.ClientConfig.Auth.AuthenticatorID)
 			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
 		case extension.ExtensionHandler:
 			ext := state.LookupExtension(*cfg.(*loadbalancingexporter.Config).QueueSettings.StorageID)
@@ -77,12 +77,12 @@ func toLoadbalancingExporter(cfg *loadbalancingexporter.Config) *loadbalancing.A
 
 func toProtocol(cfg loadbalancingexporter.Protocol) loadbalancing.Protocol {
 	var a *auth.Handler
-	if cfg.OTLP.Auth != nil {
+	if cfg.OTLP.ClientConfig.Auth != nil {
 		a = &auth.Handler{}
 	}
 
 	// Set default value for `balancer_name` to sync up with upstream's
-	balancerName := cfg.OTLP.BalancerName
+	balancerName := cfg.OTLP.ClientConfig.BalancerName
 	if balancerName == "" {
 		balancerName = otelcol.DefaultBalancerName
 	}
@@ -92,21 +92,21 @@ func toProtocol(cfg loadbalancingexporter.Protocol) loadbalancing.Protocol {
 		// otlpexporter, but otelcol.exporter.loadbalancing uses custom types to
 		// remove unwanted fields.
 		OTLP: loadbalancing.OtlpConfig{
-			Timeout: cfg.OTLP.Timeout,
+			Timeout: cfg.OTLP.TimeoutConfig.Timeout,
 			Queue:   toQueueArguments(cfg.OTLP.QueueConfig),
 			Retry:   toRetryArguments(cfg.OTLP.RetryConfig),
 			Client: loadbalancing.GRPCClientArguments{
-				Compression: otelcol.CompressionType(cfg.OTLP.Compression),
+				Compression: otelcol.CompressionType(cfg.OTLP.ClientConfig.Compression),
 
-				TLS:       toTLSClientArguments(cfg.OTLP.TLSSetting),
-				Keepalive: toKeepaliveClientArguments(cfg.OTLP.Keepalive),
+				TLS:       toTLSClientArguments(cfg.OTLP.ClientConfig.TLSSetting),
+				Keepalive: toKeepaliveClientArguments(cfg.OTLP.ClientConfig.Keepalive),
 
-				ReadBufferSize:  units.Base2Bytes(cfg.OTLP.ReadBufferSize),
-				WriteBufferSize: units.Base2Bytes(cfg.OTLP.WriteBufferSize),
-				WaitForReady:    cfg.OTLP.WaitForReady,
-				Headers:         toHeadersMap(cfg.OTLP.Headers),
+				ReadBufferSize:  units.Base2Bytes(cfg.OTLP.ClientConfig.ReadBufferSize),
+				WriteBufferSize: units.Base2Bytes(cfg.OTLP.ClientConfig.WriteBufferSize),
+				WaitForReady:    cfg.OTLP.ClientConfig.WaitForReady,
+				Headers:         toHeadersMap(cfg.OTLP.ClientConfig.Headers),
 				BalancerName:    balancerName,
-				Authority:       cfg.OTLP.Authority,
+				Authority:       cfg.OTLP.ClientConfig.Authority,
 
 				Authentication: a,
 			},

@@ -88,7 +88,6 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				}
 
 				metadata {
-					include_all_topics = false
 					retry {
 						max_retries = 5
 						backoff = "511ms"

@@ -40,7 +40,7 @@ func (otlpExporterConverter) ConvertAndAppend(state *State, id componentstatus.I
 	overrideHook := func(val interface{}) interface{} {
 		switch val.(type) {
 		case auth.Handler:
-			ext := state.LookupExtension(cfg.(*otlpexporter.Config).Auth.AuthenticatorID)
+			ext := state.LookupExtension(cfg.(*otlpexporter.Config).ClientConfig.Auth.AuthenticatorID)
 			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
 		case extension.ExtensionHandler:
 			ext := state.LookupExtension(*cfg.(*otlpexporter.Config).QueueConfig.StorageID)
@@ -63,7 +63,7 @@ func (otlpExporterConverter) ConvertAndAppend(state *State, id componentstatus.I
 
 func toOtelcolExporterOTLP(cfg *otlpexporter.Config) *otlp.Arguments {
 	return &otlp.Arguments{
-		Timeout: cfg.Timeout,
+		Timeout: cfg.TimeoutConfig.Timeout,
 
 		Queue: toQueueArguments(cfg.QueueConfig),
 		Retry: toRetryArguments(cfg.RetryConfig),
