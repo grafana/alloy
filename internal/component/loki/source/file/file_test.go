@@ -119,10 +119,13 @@ func TestUpdateRemoveFileWhileReading(t *testing.T) {
 		}
 	}()
 
+	// we create a new context for writes so we can cancel it before we close the file
+	writeCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	go func() {
 		for {
 			select {
-			case <-ctx.Done():
+			case <-writeCtx.Done():
 				return
 			default:
 				_, err = f.Write([]byte("writing some text\nwriting some text2\n"))
