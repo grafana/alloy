@@ -16,6 +16,17 @@ v1.8.3
 
 - Fix `loki.source.file` race condition that often lead to panic when using `decompression`. (@kalleep)
 
+<<<<<<< HEAD
+=======
+- Fix deadlock in `loki.source.file` that can happen when targets are removed. (@kalleep)
+
+### Other changes
+
+- Update the zap logging adapter used by `otelcol` components to log arrays and objects. (@dehaansa)
+
+- Updated Windows install script to add DisplayVersion into registry on install (@enessene)
+
+>>>>>>> 4b788736f (fix: deadlock in loki.source.file when target is removed (#3488))
 v1.8.2
 -----------------
 
