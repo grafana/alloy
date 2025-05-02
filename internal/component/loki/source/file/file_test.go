@@ -119,7 +119,6 @@ func TestUpdateRemoveFileWhileReading(t *testing.T) {
 		}
 	}()
 
-	// we create a new context for writes so we can cancel it before we close the file
 	writeCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	go func() {
@@ -129,6 +128,9 @@ func TestUpdateRemoveFileWhileReading(t *testing.T) {
 				return
 			default:
 				_, err = f.Write([]byte("writing some text\nwriting some text2\n"))
+				if errors.Is(err, os.ErrClosed) && errors.Is(writeCtx.Err(), context.Canceled) {
+					return
+				}
 				require.NoError(t, err)
 			}
 		}
