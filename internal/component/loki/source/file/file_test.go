@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -107,11 +108,16 @@ func TestUpdateRemoveFileWhileReading(t *testing.T) {
 
 	ctrl.WaitRunning(time.Minute)
 
+	workerCtx, cancelWorkers := context.WithCancel(ctx)
+	var wg sync.WaitGroup
+	wg.Add(2)
+
 	// Start a goroutine that reads from the channel until cancellation
 	go func() {
+		defer wg.Done()
 		for {
 			select {
-			case <-ctx.Done():
+			case <-workerCtx.Done():
 				return
 			case <-ch1.Chan():
 				// Just consume the messages
@@ -119,18 +125,14 @@ func TestUpdateRemoveFileWhileReading(t *testing.T) {
 		}
 	}()
 
-	writeCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
 	go func() {
+		defer wg.Done()
 		for {
 			select {
-			case <-writeCtx.Done():
+			case <-workerCtx.Done():
 				return
 			default:
 				_, err = f.Write([]byte("writing some text\nwriting some text2\n"))
-				if errors.Is(err, os.ErrClosed) && errors.Is(writeCtx.Err(), context.Canceled) {
-					return
-				}
 				require.NoError(t, err)
 			}
 		}
@@ -151,6 +153,9 @@ func TestUpdateRemoveFileWhileReading(t *testing.T) {
 		ForwardTo: []loki.LogsReceiver{ch1},
 	})
 	require.NoError(t, err)
+
+	cancelWorkers()
+	wg.Wait()
 }
 
 func TestFileWatch(t *testing.T) {
