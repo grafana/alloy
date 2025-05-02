@@ -1,0 +1,23 @@
+# Test rendering of the chart with the controller explicitly set to StatefulSet and autoscaling with vertical.
+apiVersion: autoscaling.k8s.io/v1
+controller:
+  type: statefulset
+  autoscaling:
+    horizontal:
+      enabled: false
+    vertical:
+      enabled: true
+      resourcePolicy:
+        containerPolicies:
+        - containerName: alloy
+          controlledResources:
+          - cpu
+          - memory
+          controlledValues: "RequestsAndLimits"
+          maxAllowed:
+            cpu: "500m"
+            memory: "600Mi"
+          minAllowed:
+            cpu: "250m"
+            memory: "100Mi"
+  enableStatefulSetAutoDeletePVC: true
