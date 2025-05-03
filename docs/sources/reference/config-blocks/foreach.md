@@ -43,7 +43,8 @@ Setting `enable_metrics` to `true` when `collection` has lots of elements may ca
 {{< /admonition >}}
 
 {{< admonition type="note" >}}
-When `id` is set and `enable_metrics` is true, component paths in metrics will use the value of the specified field from collection items instead of a hash of the entire item. For example:
+When `id` is set and `enable_metrics` is `true`, component paths in metrics use the value of the specified field from collection items instead of a hash of the entire item.
+For example:
 
 ```alloy
 foreach "pods" {
@@ -59,9 +60,9 @@ foreach "pods" {
 }
 ```
 
-This will result in component paths like:
+This results in component paths like the following:
 
-```
+```text
 /foreach.pods/foreach_app-1_1/component.default
 /foreach.pods/foreach_app-1_2/component.default
 /foreach.pods/foreach_app-2_1/component.default
