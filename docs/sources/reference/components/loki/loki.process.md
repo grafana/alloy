@@ -1131,7 +1131,7 @@ The following arguments are supported:
 | -------------------- | -------- | ------------------------------------------------------------------ | ------- | -------- |
 | `expression`         | `string` | A valid RE2 regular expression. Each capture group must be named.  |         | yes      |
 | `source`             | `string` | Name from extracted data to parse. If empty, uses the log message. | `""`    | no       |
-| `labels_from_groups` | `bool`   | Whether to automatically add named capture groups as labels.       | false   | no       |
+| `labels_from_groups` | `bool`   | Whether to automatically add named capture groups as labels.       | `false` | no       |
 
 
 The `expression` field needs to be a RE2 regular expression string.
@@ -1140,7 +1140,7 @@ The name of the capture group is then used as the key in the extracted map for t
 
 Because of how {{< param "PRODUCT_NAME" >}} syntax strings work, any backslashes in `expression` must be escaped with a double backslash, for example, `"\\w"` or `"\\S+"`.
 
-When `labels_from_groups` is set to true, any named capture groups from the regex expression are automatically added as labels in addition to being added to the extracted map.
+When `labels_from_groups` is set to `true`, any named capture groups from the regular expression are automatically added as labels in addition to being added to the extracted map.
 
 If the `source` is empty or missing, then the stage parses the log line itself.
 If it's set, the stage parses a previously extracted value with the same name.
