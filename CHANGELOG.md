@@ -45,6 +45,17 @@ Main (unreleased)
 
 - Fix `otelcol.receiver.filelog` documentation's default value for `start_at`. (@petewall)
 
+### Other changes
+
+- Update the zap logging adapter used by `otelcol` components to log arrays and objects. (@dehaansa)
+
+- Updated Windows install script to add DisplayVersion into registry on install (@enessene)
+
+v1.8.3
+-----------------
+
+### Bugfixes
+
 - Fix `mimir.rules.kubernetes` panic on non-leader debug info retrieval (@TheoBrigitte)
 
 - Fix detection of the “streams limit exceeded” error in the Loki client so that metrics are correctly labeled as `ReasonStreamLimited`. (@maratkhv)
@@ -54,12 +65,6 @@ Main (unreleased)
 - Fix deadlock in `loki.source.file` that can happen when targets are removed. (@kalleep)
 
 - Fix `loki.process` to emit valid logfmt. (@kalleep)
-
-### Other changes
-
-- Update the zap logging adapter used by `otelcol` components to log arrays and objects. (@dehaansa)
-
-- Updated Windows install script to add DisplayVersion into registry on install (@enessene)
 
 v1.8.2
 -----------------
