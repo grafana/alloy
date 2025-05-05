@@ -2,6 +2,7 @@ package collector
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -17,4 +18,11 @@ func TestBuildLokiEntry(t *testing.T) {
 	require.Equal(t, "test-operation", string(entry.Labels["op"]))
 	require.Equal(t, "test-instance", string(entry.Labels["instance"]))
 	require.Equal(t, `level="debug" This is a test log line`, entry.Line)
+}
+
+func TestBuildLokiEntryWithTimestamp(t *testing.T) {
+	entry := buildLokiEntryWithTimestamp(logging.LevelInfo, "test-operation", "test-instance", "This is a test log line", 5)
+
+	require.Equal(t, int64(5), entry.Entry.Timestamp.UnixNano())
+	require.Equal(t, time.Unix(0, 5), entry.Entry.Timestamp)
 }
