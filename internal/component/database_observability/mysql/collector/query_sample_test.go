@@ -1482,7 +1482,7 @@ func TestQuerySample_calculateWallTime(t *testing.T) {
 		timer := 2e12 // Timer indicates event timing, counted since server startup. 2 seconds in picoseconds
 
 		result := c.calculateWallTime(serverStartTime, timer)
-		assert.Equalf(t, uint64(4000), result, "got %d, want 4000", result)
+		assert.Equalf(t, float64(4000), result, "got %f, want 4000", result)
 	})
 
 	t.Run("calculates the timestamp, taking into account the overflows", func(t *testing.T) {
@@ -1492,7 +1492,7 @@ func TestQuerySample_calculateWallTime(t *testing.T) {
 
 		result := c.calculateWallTime(serverStartTime, timer)
 
-		assert.Equalf(t, uint64(18446749073), result, "got %d, want 18446749073", result)
+		assert.Equalf(t, 18446749073.709553, result, "got %f, want 18446749073.709553", result)
 	})
 
 	t.Run("calculates another timestamp when timer approaches overflow", func(t *testing.T) {
@@ -1502,7 +1502,7 @@ func TestQuerySample_calculateWallTime(t *testing.T) {
 
 		result := c.calculateWallTime(serverStartTime, timer)
 
-		assert.Equalf(t, uint64(36893491147), result, "got %d, want 36893491147", result)
+		assert.Equalf(t, 3.6893491147419106e+10, result, "got %f, want 3.6893491147419106e+10", result)
 	})
 }
 
