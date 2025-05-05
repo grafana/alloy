@@ -68,7 +68,7 @@ func TestDefaultConfig(t *testing.T) {
 		Network:           NetworkConfig{BlackList: "^$", WhiteList: "^.+$", Exclude: "^$", Include: "^.+$"},
 		PhysicalDisk:      PhysicalDiskConfig{Include: "^.+$", Exclude: "^$"},
 		Printer:           PrinterConfig{Exclude: "^$", Include: "^.+$"},
-		Process:           ProcessConfig{BlackList: "^$", WhiteList: "^.+$", Exclude: "^$", Include: "^.+$"},
+		Process:           ProcessConfig{BlackList: "^$", WhiteList: "^.+$", Exclude: "^$", Include: "^.+$", EnableWorkerProcess: "false"},
 		ScheduledTask:     ScheduledTaskConfig{Exclude: "^$", Include: "^.+$"},
 		Service:           ServiceConfig{UseApi: "false", Where: "", V2: "false"},
 		SMB:               SMBConfig{EnabledList: []string{}},

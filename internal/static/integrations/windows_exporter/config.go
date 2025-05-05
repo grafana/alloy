@@ -98,6 +98,7 @@ type ProcessConfig struct {
 	WhiteList string `yaml:"whitelist,omitempty"`
 	Include   string `yaml:"include,omitempty"`
 	Exclude   string `yaml:"exclude,omitempty"`
+	IIS       string `yaml:"iis_process_lookup,omitempty"`
 }
 
 // NetworkConfig handles settings for the windows_exporter network collector
