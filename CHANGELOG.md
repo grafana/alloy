@@ -7,6 +7,21 @@ This document contains a historical list of changes between releases. Only
 changes that impact end-user behavior are listed; changes to documentation or
 internal API changes are not present.
 
+v1.8.3
+-----------------
+
+### Bugfixes
+
+- Fix `mimir.rules.kubernetes` panic on non-leader debug info retrieval (@TheoBrigitte)
+
+- Fix detection of the “streams limit exceeded” error in the Loki client so that metrics are correctly labeled as `ReasonStreamLimited`. (@maratkhv)
+
+- Fix `loki.source.file` race condition that often lead to panic when using `decompression`. (@kalleep)
+
+- Fix deadlock in `loki.source.file` that can happen when targets are removed. (@kalleep)
+
+- Fix `loki.process` to emit valid logfmt. (@kalleep)
+
 v1.8.2
 -----------------
 
