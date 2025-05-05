@@ -204,7 +204,7 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 
 			// sample time
 			TimerEndPicoseconds    sql.NullFloat64
-			TimestampMilliseconds  uint64
+			TimestampMilliseconds  float64
 			ElapsedTimePicoseconds sql.NullFloat64
 			CPUTime                float64
 
@@ -286,11 +286,12 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 			logMessage += fmt.Sprintf(` sql_text="%s"`, row.SQLText.String)
 		}
 
-		c.entryHandler.Chan() <- buildLokiEntry(
+		c.entryHandler.Chan() <- buildLokiEntryWithTimestamp(
 			logging.LevelInfo,
 			OP_QUERY_SAMPLE,
 			c.instanceKey,
 			logMessage,
+			int64(millisecondsToNanoseconds(row.TimestampMilliseconds)),
 		)
 	}
 
@@ -302,7 +303,7 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 	return nil
 }
 
-func (c *QuerySample) calculateWallTime(serverStartTime, timer float64) uint64 {
+func (c *QuerySample) calculateWallTime(serverStartTime, timer float64) float64 {
 	// timer indicates event timing since server startup.
 	// The timer value is in picoseconds with a column type of bigint unsigned. This value can overflow after about ~213 days.
 	// We need to account for this overflow when calculating the timestamp.
@@ -358,6 +359,7 @@ const (
 	picosecondsPerSecond      float64 = 1e12
 	millisecondsPerSecond     float64 = 1e3
 	millisecondsPerPicosecond float64 = 1e9
+	nanosecondsPerMillisecond float64 = 1e6
 )
 
 func picosecondsToSeconds(picoseconds float64) float64 {
@@ -368,10 +370,14 @@ func picosecondsToMilliseconds(picoseconds float64) float64 {
 	return picoseconds / millisecondsPerPicosecond
 }
 
+func millisecondsToNanoseconds(milliseconds float64) float64 {
+	return milliseconds * nanosecondsPerMillisecond
+}
+
 func secondsToPicoseconds(seconds float64) float64 {
 	return seconds * picosecondsPerSecond
 }
 
-func secondsToMilliseconds(seconds float64) uint64 {
-	return uint64(seconds * millisecondsPerSecond)
+func secondsToMilliseconds(seconds float64) float64 {
+	return seconds * millisecondsPerSecond
 }

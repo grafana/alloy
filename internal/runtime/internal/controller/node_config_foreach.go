@@ -126,6 +126,7 @@ func (fn *ForeachConfigNode) ID() ComponentID {
 type ForEachArguments struct {
 	Collection []any  `alloy:"collection,attr"`
 	Var        string `alloy:"var,attr"`
+	Id         string `alloy:"id,attr,optional"`
 
 	// enable_metrics should be false by default.
 	// That way users are protected from an explosion of debug metrics
@@ -189,10 +190,25 @@ func (fn *ForeachConfigNode) evaluate(scope *vm.Scope) error {
 	newCustomComponentIds := make(map[string]bool, len(args.Collection))
 	fn.customComponentHashCounts = make(map[string]int)
 	for i := 0; i < len(args.Collection); i++ {
+		// Using default value for id as whole collection object
+		id := args.Collection[i]
+
+		// Extract Id from collection if exists
+		if args.Id != "" {
+			if m, ok := args.Collection[i].(map[string]any); ok {
+				if val, exists := m[args.Id]; exists {
+					// Use the field's value for fingerprinting
+					id = val
+				} else {
+					level.Warn(fn.logger).Log("msg", "specified id not found in collection item", "id", args.Id)
+				}
+			}
+		}
+
 		// We must create an ID from the collection entries to avoid recreating all components on every updates.
 		// We track the hash counts because the collection might contain duplicates ([1, 1, 1] would result in the same ids
 		// so we handle it by adding the count at the end -> [11, 12, 13]
-		customComponentID := fmt.Sprintf("foreach_%s", objectFingerprint(args.Collection[i]))
+		customComponentID := fmt.Sprintf("foreach_%s", objectFingerprint(id))
 		count := fn.customComponentHashCounts[customComponentID] // count = 0 if the key is not found
 		fn.customComponentHashCounts[customComponentID] = count + 1
 		customComponentID += fmt.Sprintf("_%d", count+1)
@@ -400,9 +416,9 @@ func computeHash(s string) string {
 	return hex.EncodeToString(hasher.Sum(nil))
 }
 
-func objectFingerprint(obj any) string {
+func objectFingerprint(id any) string {
 	// TODO: Test what happens if there is a "true" string and a true bool in the collection.
-	switch v := obj.(type) {
+	switch v := id.(type) {
 	case string:
 		return replaceNonAlphaNumeric(v)
 	case int, bool:

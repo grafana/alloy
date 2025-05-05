@@ -34,6 +34,7 @@ Main (unreleased)
   - make tidbparser the default choice (@cristiangreco)
   - `query_sample`: better handling of timer overflows (@fridgepoet)
   - collect metrics on enabled `performance_schema.setup_consumers` (@fridgepoet)
+  - `query_sample`: base log entries on calculated timestamp from rows, not now() (@fridgepoet)
 
 - Mixin dashboards improvements: added minimum cluster size to Cluster Overview dashboard, fixed units in OpenTelemetry dashboard, fixed slow components evaluation time units in Controller dashboard and updated Prometheus dashboard to correctly aggregate across instances. (@thampiotr)
 
@@ -41,18 +42,32 @@ Main (unreleased)
 
 - Pretty print diagnostic errors when using `alloy run` (@kalleep)
 
+-  Add optional `id` field to `foreach` block to generate more meaningful component paths in metrics by using a specific field from collection items. (@harshrai654)
+  
 ### Bugfixes
 
 - Fix `otelcol.receiver.filelog` documentation's default value for `start_at`. (@petewall)
-- Fix `mimir.rules.kubernetes` panic on non-leader debug info retrieval (@TheoBrigitte)
-
-- Fix detection of the “streams limit exceeded” error in the Loki client so that metrics are correctly labeled as `ReasonStreamLimited`. (@maratkhv)
 
 ### Other changes
 
 - Update the zap logging adapter used by `otelcol` components to log arrays and objects. (@dehaansa)
 
 - Updated Windows install script to add DisplayVersion into registry on install (@enessene)
+
+v1.8.3
+-----------------
+
+### Bugfixes
+
+- Fix `mimir.rules.kubernetes` panic on non-leader debug info retrieval (@TheoBrigitte)
+
+- Fix detection of the “streams limit exceeded” error in the Loki client so that metrics are correctly labeled as `ReasonStreamLimited`. (@maratkhv)
+
+- Fix `loki.source.file` race condition that often lead to panic when using `decompression`. (@kalleep)
+
+- Fix deadlock in `loki.source.file` that can happen when targets are removed. (@kalleep)
+
+- Fix `loki.process` to emit valid logfmt. (@kalleep)
 
 v1.8.2
 -----------------

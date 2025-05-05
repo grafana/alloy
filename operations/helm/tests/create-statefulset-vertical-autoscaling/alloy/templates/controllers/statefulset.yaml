@@ -1,7 +1,7 @@
 ---
-# Source: alloy/templates/controllers/daemonset.yaml
+# Source: alloy/templates/controllers/statefulset.yaml
 apiVersion: apps/v1
-kind: DaemonSet
+kind: StatefulSet
 metadata:
   name: alloy
   namespace: default
@@ -12,7 +12,10 @@ metadata:
     app.kubernetes.io/version: "vX.Y.Z"
     app.kubernetes.io/managed-by: Helm
 spec:
+  replicas: 1
+  podManagementPolicy: Parallel
   minReadySeconds: 10
+  serviceName: alloy
   selector:
     matchLabels:
       app.kubernetes.io/name: alloy
@@ -28,7 +31,7 @@ spec:
       serviceAccountName: alloy
       containers:
         - name: alloy
-          image: docker.io/grafana/alloy:v1.8.3
+          image: docker.io/grafana/alloy:v1.8.2
           imagePullPolicy: IfNotPresent
           args:
             - run
@@ -44,9 +47,6 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
-          envFrom:
-            - configMapRef:
-                name: special-config
           ports:
             - containerPort: 12345
               name: http-metrics
@@ -77,3 +77,6 @@ spec:
         - name: config
           configMap:
             name: alloy
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Delete
+    whenScaled: Delete
