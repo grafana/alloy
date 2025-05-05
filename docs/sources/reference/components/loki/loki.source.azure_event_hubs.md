@@ -6,6 +6,8 @@ aliases:
 description: Learn about loki.source.azure_event_hubs
 labels:
   stage: general-availability
+  products:
+    - oss
 title: loki.source.azure_event_hubs
 ---
 

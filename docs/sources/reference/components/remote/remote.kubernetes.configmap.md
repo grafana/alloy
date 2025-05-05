@@ -5,6 +5,8 @@ aliases:
 description: Learn about remote.kubernetes.configmap
 labels:
   stage: general-availability
+  products:
+    - oss
 title: remote.kubernetes.configmap
 ---
 

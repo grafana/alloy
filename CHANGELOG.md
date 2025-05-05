@@ -18,6 +18,8 @@ Main (unreleased)
 
 - Add support to configure basic authentication for alloy http server. (@kalleep)
 
+- Add `validate` command to alloy that will perform limited validation of alloy configuration files. (@kalleep)
+
 ### Enhancements
 
 - Add binary version to constants exposed in configuration file syntatx. (@adlots)
@@ -28,7 +30,11 @@ Main (unreleased)
   - `schema_table`: add support for index expressions (@cristiangreco)
   - `query_sample`: enable opt-in support to extract unredacted sql query (sql_text) (@matthewnolf)
   - `query_tables`: improve queries parsing (@cristiangreco)
+  - `query_tables`: add support for prepared statements (@cristiangreco)
   - make tidbparser the default choice (@cristiangreco)
+  - `query_sample`: better handling of timer overflows (@fridgepoet)
+  - collect metrics on enabled `performance_schema.setup_consumers` (@fridgepoet)
+  - `query_sample`: base log entries on calculated timestamp from rows, not now() (@fridgepoet)
 
 - Mixin dashboards improvements: added minimum cluster size to Cluster Overview dashboard, fixed units in OpenTelemetry dashboard, fixed slow components evaluation time units in Controller dashboard and updated Prometheus dashboard to correctly aggregate across instances. (@thampiotr)
 
@@ -36,14 +42,12 @@ Main (unreleased)
 
 - Pretty print diagnostic errors when using `alloy run` (@kalleep)
 
+-  Add optional `id` field to `foreach` block to generate more meaningful component paths in metrics by using a specific field from collection items. (@harshrai654)
+  
 - The `mimir.rules.kubernetes` component now supports adding extra label matchers
   to all queries discovered via `PrometheusRule` CRDs by extracting label values defined on the `PrometheusRule`. (@QuentinBisson)
 
 ### Bugfixes
-
-- Fix `otelcol.exporter.prometheus` dropping valid exemplars. (@github-vincent-miszczak)
-
-- Fix `loki.source.podlogs` add missing labels `__meta_kubernetes_namespace` and `__meta_kubernetes_pod_label_*`. (@kalleep)
 
 - Fix `otelcol.receiver.filelog` documentation's default value for `start_at`. (@petewall)
 
@@ -52,6 +56,30 @@ Main (unreleased)
 - Update the zap logging adapter used by `otelcol` components to log arrays and objects. (@dehaansa)
 
 - Updated Windows install script to add DisplayVersion into registry on install (@enessene)
+
+v1.8.3
+-----------------
+
+### Bugfixes
+
+- Fix `mimir.rules.kubernetes` panic on non-leader debug info retrieval (@TheoBrigitte)
+
+- Fix detection of the “streams limit exceeded” error in the Loki client so that metrics are correctly labeled as `ReasonStreamLimited`. (@maratkhv)
+
+- Fix `loki.source.file` race condition that often lead to panic when using `decompression`. (@kalleep)
+
+- Fix deadlock in `loki.source.file` that can happen when targets are removed. (@kalleep)
+
+- Fix `loki.process` to emit valid logfmt. (@kalleep)
+
+v1.8.2
+-----------------
+
+### Bugfixes
+
+- Fix `otelcol.exporter.prometheus` dropping valid exemplars. (@github-vincent-miszczak)
+
+- Fix `loki.source.podlogs` not adding labels `__meta_kubernetes_namespace` and `__meta_kubernetes_pod_label_*`. (@kalleep)
 
 v1.8.1
 -----------------
