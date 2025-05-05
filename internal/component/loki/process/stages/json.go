@@ -165,7 +165,7 @@ func (j *jsonStage) processEntry(extracted map[string]interface{}, entry *string
 		}
 	}
 	if Debug {
-		level.Debug(j.logger).Log("msg", "extracted data debug in json stage", "extracted data", fmt.Sprintf("%v", extracted))
+		level.Debug(j.logger).Log("msg", "extracted data debug in json stage", "extracted_data", fmt.Sprintf("%v", extracted))
 	}
 	return nil
 }
