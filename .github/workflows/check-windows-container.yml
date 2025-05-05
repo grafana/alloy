@@ -25,6 +25,9 @@ permissions:
 jobs:
   check_windows_container:
     uses: ./.github/workflows/publish-alloy.yml
+    permissions:
+      contents: read
+      id-token: write
     with:
       img-name: alloy-devel
       push: false
