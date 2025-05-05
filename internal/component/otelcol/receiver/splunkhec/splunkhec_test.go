@@ -195,7 +195,6 @@ func TestUnmarshalDefault(t *testing.T) {
 			CompressionAlgorithms: slices.Clone(otelcol.DefaultCompressionAlgorithms),
 		},
 		RawPath: "/services/collector/raw",
-		// Default value https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/4b29766cfde3a0eea46439707167084bfc48bad1/receiver/splunkhecreceiver/config.go#L32
 		HealthPath: "/services/collector/health",
 		Splitting:  splunkhecreceiver.SplittingStrategy(SplittingStrategyLine),
 	}
