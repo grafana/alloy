@@ -53,6 +53,8 @@ Main (unreleased)
 
 - Fix deadlock in `loki.source.file` that can happen when targets are removed. (@kalleep)
 
+- Fix `loki.process` to emit valid logfmt. (@kalleep)
+
 ### Other changes
 
 - Update the zap logging adapter used by `otelcol` components to log arrays and objects. (@dehaansa)
