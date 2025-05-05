@@ -10,6 +10,10 @@ internal API changes are not present.
 Unreleased
 ----------
 
+### Bug fixes
+
+- Fix VPA issue not rendering correctly. (@mattdurham)
+
 1.0.3 (2025-05-05)
 ----------
 
