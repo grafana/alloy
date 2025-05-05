@@ -70,6 +70,9 @@ jobs:
     needs: [setup]
     runs-on: ubuntu-latest
     if: needs.setup.outputs.changed == 'true'
+    permissions:
+      contents: write
+      id-token: write
     steps:
       - uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1.12.0
         id: app-token

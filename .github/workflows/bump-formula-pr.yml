@@ -5,12 +5,14 @@ on:
 
 permissions:
   contents: read
-  id-token: write
 
 jobs:
   homebrew-grafana:
     name: homebrew-grafana
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     steps:
     # TODO: Remove this when we no longer need a forked action in the "Update Homebrew formula" step.
     - name: Checkout code
