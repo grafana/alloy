@@ -76,7 +76,7 @@ The following example demonstrates configuring `prometheus.remote_write` with mu
 ```alloy
 prometheus.remote_write "default" {
   endpoint {
-    url = "http://localhost:9090/api/prom/push"
+    url = "http://localhost:9009/api/prom/push"
   }
 
   endpoint {
@@ -221,7 +221,7 @@ prometheus.scrape "pods" {
 
 prometheus.remote_write "default" {
   endpoint {
-    url = "http://localhost:9090/api/prom/push"
+    url = "http://localhost:9009/api/prom/push"
   }
 }
 ```
@@ -347,7 +347,7 @@ prometheus.scrape "services" {
 
 prometheus.remote_write "default" {
   endpoint {
-    url = "http://localhost:9090/api/prom/push"
+    url = "http://localhost:9009/api/prom/push"
   }
 }
 ```
@@ -416,7 +416,7 @@ prometheus.scrape "custom_targets" {
 
 prometheus.remote_write "default" {
   endpoint {
-    url = "http://localhost:9090/api/prom/push"
+    url = "http://localhost:9009/api/prom/push"
   }
 }
 ```
