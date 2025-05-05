@@ -79,7 +79,9 @@ func testDirectory(t *testing.T, dir string, minStability featuregate.Stability,
 					Report(buffer, validateErr, sources)
 				}
 
-				assert.Equal(t, string(snapshot), buffer.String(), "Missmatching expected diagnostics")
+				expected := string(normalizeLineEndings(snapshot))
+				actual := string(normalizeLineEndings(buffer.Bytes()))
+				assert.Equal(t, expected, actual, "Missmatching expected diagnostics")
 			})
 		}
 		return nil
@@ -89,4 +91,10 @@ func testDirectory(t *testing.T, dir string, minStability featuregate.Stability,
 func fileExists(path string) bool {
 	_, err := os.Stat(path)
 	return err == nil
+}
+
+// normalizeLineEndings will replace '\r\n' with '\n'.
+func normalizeLineEndings(data []byte) []byte {
+	normalized := bytes.ReplaceAll(data, []byte{'\r', '\n'}, []byte{'\n'})
+	return normalized
 }
