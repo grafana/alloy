@@ -1000,9 +1000,6 @@ replace (
 	// grafana fork of the exporter, or completely into upstream
 	github.com/prometheus-community/postgres_exporter => github.com/grafana/postgres_exporter v0.15.1-0.20250312140329-3046b223bba0
 
-	// Needed until a bunch of exporters are updated, because 0.13.0 breaks compatibility in web.ListenAndServe
-	//github.com/prometheus/exporter-toolkit => github.com/prometheus/exporter-toolkit v0.11.0
-
 	// TODO(marctc): remove once this PR is merged upstream: https://github.com/prometheus/mysqld_exporter/pull/774
 	github.com/prometheus/mysqld_exporter => github.com/grafana/mysqld_exporter v0.17.2-0.20250226152553-be612e3fdedd
 
