@@ -70,6 +70,18 @@ SHOW VARIABLES LIKE 'performance_schema_max_digest_length';
 +--------------------------------------+-------+
 ```
 
+6. Optionally enable the `events_statements_cpu` consumer if you want to capture query samples. Verify the current setting:
+
+```sql
+SELECT * FROM performance_schema.setup_consumers WHERE NAME = 'events_statements_cpu';
+```
+
+Use this statement to enable the consumer if it's disabled:
+
+```sql
+UPDATE performance_schema.setup_consumers SET ENABLED = 'YES' WHERE NAME = 'events_statements_cpu';
+```
+
 ## Running and configuring Alloy
 
 1. You need to run the latest Alloy version from the `main` branch. The latest tags are available here on [Docker Hub](https://hub.docker.com/r/grafana/alloy-dev/tags) (for example, `grafana/alloy-dev:v1.9.0-devel-5128872` or more recent) . Additionally, the `--stability.level=experimental` CLI flag is necessary for running the `database_observability` component.
@@ -95,9 +107,17 @@ prometheus.exporter.mysql "integrations_mysqld_exporter_<your_DB_name>" {
 }
 
 database_observability.mysql "mysql_<your_DB_name>" {
-  data_source_name = local.file.mysql_secret_<your_DB_name>.content
-  forward_to       = [loki.relabel.database_observability_mysql_<your_DB_name>.receiver]
-  collect_interval = "1m"
+  data_source_name  = local.file.mysql_secret_<your_DB_name>.content
+  forward_to        = [loki.relabel.database_observability_mysql_<your_DB_name>.receiver]
+  collect_interval  = "1m"
+
+  // OPTIONAL: enable collecting samples of queries with their execution metrics. The sql text will be redacted to hide sensitive params.
+  enable_collectors = ["query_sample"]
+
+  // OPTIONAL: if `query_sample` collector is enabled, you can use
+  // the following setting to disable sql text redaction (by default
+  // query samples are redacted).
+  disable_query_redaction = true
 }
 
 loki.relabel "database_observability_mysql_<your_DB_name>" {
@@ -231,9 +251,10 @@ prometheus.exporter.mysql "integrations_mysqld_exporter_example_db_1" {
 }
 
 database_observability.mysql "mysql_example_db_1" {
-  data_source_name = local.file.mysql_secret_example_db_1.content
-  forward_to       = [loki.relabel.database_observability_mysql_example_db_1.receiver]
-  collect_interval = "1m"
+  data_source_name  = local.file.mysql_secret_example_db_1.content
+  forward_to        = [loki.relabel.database_observability_mysql_example_db_1.receiver]
+  collect_interval  = "1m"
+  enable_collectors = ["query_sample"]
 }
 
 loki.relabel "database_observability_mysql_example_db_1" {
@@ -269,9 +290,10 @@ prometheus.exporter.mysql "integrations_mysqld_exporter_example_db_2" {
 }
 
 database_observability.mysql "mysql_example_db_2" {
-  data_source_name = local.file.mysql_secret_example_db_2.content
-  forward_to       = [loki.relabel.database_observability_mysql_example_db_2.receiver]
-  collect_interval = "1m"
+  data_source_name  = local.file.mysql_secret_example_db_2.content
+  forward_to        = [loki.relabel.database_observability_mysql_example_db_2.receiver]
+  collect_interval  = "1m"
+  enable_collectors = ["query_sample"]
 }
 
 loki.relabel "database_observability_mysql_example_db_2" {
