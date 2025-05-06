@@ -3,6 +3,7 @@ package promsdprocessor
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -18,6 +19,7 @@ import (
 	"go.opentelemetry.io/collector/processor"
 
 	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	promsdconsumer "github.com/grafana/alloy/internal/static/traces/promsdprocessor/consumer"
 	util "github.com/grafana/alloy/internal/util/log"
 )
@@ -49,7 +51,7 @@ func newTraceProcessor(nextConsumer consumer.Traces, operationType string, podAs
 
 	mgr := promdiscovery.NewManager(
 		ctx,
-		logger,
+		slog.New(logging.NewSlogGoKitHandler(logger)),
 		discoveryManagerRegistry,
 		sdMetrics,
 		promdiscovery.Name("traces service disco"),

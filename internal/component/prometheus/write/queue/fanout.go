@@ -14,6 +14,12 @@ type fanout struct {
 	children []storage.Appender
 }
 
+func (f fanout) SetOptions(opts *storage.AppendOptions) {
+	for _, child := range f.children {
+		child.SetOptions(opts)
+	}
+}
+
 func (f fanout) Append(ref storage.SeriesRef, l labels.Labels, t int64, v float64) (storage.SeriesRef, error) {
 	for _, child := range f.children {
 		_, err := child.Append(ref, l, t, v)
@@ -81,6 +87,16 @@ func (f fanout) UpdateMetadata(ref storage.SeriesRef, l labels.Labels, m metadat
 func (f fanout) AppendCTZeroSample(ref storage.SeriesRef, l labels.Labels, t, ct int64) (storage.SeriesRef, error) {
 	for _, child := range f.children {
 		_, err := child.AppendCTZeroSample(ref, l, t, ct)
+		if err != nil {
+			return ref, err
+		}
+	}
+	return ref, nil
+}
+
+func (f fanout) AppendHistogramCTZeroSample(ref storage.SeriesRef, l labels.Labels, t, ct int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
+	for _, child := range f.children {
+		_, err := child.AppendHistogramCTZeroSample(ref, l, t, ct, h, fh)
 		if err != nil {
 			return ref, err
 		}

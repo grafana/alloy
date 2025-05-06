@@ -81,7 +81,7 @@ func newTransaction(
 	obsrecv *receiverhelper.ObsReport,
 	trimSuffixes bool,
 	enableNativeHistograms bool,
-) *transaction {
+) storage.Appender {
 	return &transaction{
 		ctx:                    ctx,
 		families:               make(map[resourceKey]map[scopeID]map[string]*metricFamily),
@@ -98,6 +98,11 @@ func newTransaction(
 		scopeAttributes:        make(map[resourceKey]map[scopeID]pcommon.Map),
 		nodeResources:          map[resourceKey]pcommon.Resource{},
 	}
+}
+
+// SetOptions implements the storage.Appender interface.
+func (t *transaction) SetOptions(_ *storage.AppendOptions) {
+	// No options to set.
 }
 
 // Append always returns 0 to disable label caching.
@@ -451,7 +456,7 @@ func getScopeID(ls labels.Labels) scopeID {
 	return scope
 }
 
-func (t *transaction) initTransaction(labels labels.Labels) (*resourceKey, error) {
+func (t *transaction) initTransaction(l labels.Labels) (*resourceKey, error) {
 	target, ok := scrape.TargetFromContext(t.ctx)
 	if !ok {
 		return nil, errors.New("unable to find target in context")
@@ -461,12 +466,12 @@ func (t *transaction) initTransaction(labels labels.Labels) (*resourceKey, error
 		return nil, errors.New("unable to find MetricMetadataStore in context")
 	}
 
-	rKey, err := t.getJobAndInstance(labels)
+	rKey, err := t.getJobAndInstance(l)
 	if err != nil {
 		return nil, err
 	}
 	if _, ok := t.nodeResources[*rKey]; !ok {
-		t.nodeResources[*rKey] = CreateResource(rKey.job, rKey.instance, target.DiscoveredLabels())
+		t.nodeResources[*rKey] = CreateResource(rKey.job, rKey.instance, target.DiscoveredLabels(labels.NewBuilder(labels.EmptyLabels())))
 	}
 
 	t.isNew = false

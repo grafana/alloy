@@ -59,6 +59,10 @@ func (app *Appender) init() {
 	}
 }
 
+func (app *Appender) SetOptions(opts *storage.AppendOptions) {
+	// No options are supported.
+}
+
 // Append adds or updates a sample for a given metric, identified by labels. l
 // must not be empty. If Append is called twice for the same metric, older
 // samples are discarded.
@@ -211,6 +215,11 @@ func (app *Appender) Rollback() error {
 // AppendCTZeroSample implements storage.Appender.
 func (app *Appender) AppendCTZeroSample(ref storage.SeriesRef, l labels.Labels, t int64, ct int64) (storage.SeriesRef, error) {
 	panic("this test appender does not yet implement AppendCTZeroSample")
+}
+
+// AppendHistogramCTZeroSample implements storage.Appender.
+func (app *Appender) AppendHistogramCTZeroSample(ref storage.SeriesRef, l labels.Labels, t int64, ct int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
+	panic("this test appender does not yet implement AppendHistogramCTZeroSample")
 }
 
 // MetricFamilies returns the generated slice of *dto.MetricsFamily.

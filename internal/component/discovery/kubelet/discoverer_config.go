@@ -2,12 +2,14 @@ package kubelet
 
 import (
 	"fmt"
+	"log/slog"
 
 	"github.com/prometheus/client_golang/prometheus"
 	prom_discovery "github.com/prometheus/prometheus/discovery"
 	"github.com/prometheus/prometheus/discovery/refresh"
 
 	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
 type kubeletDiscoveryConfig struct {
@@ -40,7 +42,7 @@ func (k *kubeletDiscoveryConfig) NewDiscoverer(discOpts prom_discovery.Discovere
 	}
 
 	return refresh.NewDiscovery(refresh.Options{
-		Logger:              k.opts.Logger,
+		Logger:              slog.New(logging.NewSlogGoKitHandler(k.opts.Logger)),
 		Mech:                "kubelet",
 		Interval:            interval,
 		RefreshF:            kubeletDiscovery.Refresh,

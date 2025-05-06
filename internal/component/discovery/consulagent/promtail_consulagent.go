@@ -15,6 +15,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/http"
 	"strconv"
@@ -27,11 +28,13 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
+	"github.com/prometheus/common/promslog"
 	"github.com/prometheus/prometheus/discovery"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
 	"github.com/prometheus/prometheus/util/strutil"
 
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/slogadapter"
 )
 
 const (
@@ -164,9 +167,9 @@ type Discovery struct {
 }
 
 // NewDiscovery returns a new Discovery for the given config.
-func NewDiscovery(conf *SDConfig, logger log.Logger) (*Discovery, error) {
+func NewDiscovery(conf *SDConfig, logger *slog.Logger) (*Discovery, error) {
 	if logger == nil {
-		logger = log.NewNopLogger()
+		logger = promslog.NewNopLogger()
 	}
 
 	tls, err := config.NewTLSConfig(&conf.TLSConfig)
@@ -209,7 +212,7 @@ func NewDiscovery(conf *SDConfig, logger log.Logger) (*Discovery, error) {
 		refreshInterval:  time.Duration(conf.RefreshInterval),
 		clientDatacenter: conf.Datacenter,
 		finalizer:        transport.CloseIdleConnections,
-		logger:           logger,
+		logger:           slogadapter.GoKit(logger.Handler()),
 	}
 	return cd, nil
 }

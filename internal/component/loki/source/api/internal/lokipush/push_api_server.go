@@ -160,10 +160,11 @@ func (s *PushAPIServer) handleLoki(w http.ResponseWriter, r *http.Request) {
 		logger,
 		tenantID,
 		r,
-		nil, // tenants retention
 		push.EmptyLimits{},
 		push.ParseLokiRequest,
 		nil, // usage tracker
+		nil,
+		false,
 	)
 	if err != nil {
 		level.Warn(s.logger).Log("msg", "failed to parse incoming push request", "err", err.Error())

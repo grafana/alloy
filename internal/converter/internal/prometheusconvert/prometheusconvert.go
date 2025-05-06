@@ -4,13 +4,13 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/prometheus/remotewrite"
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/grafana/alloy/internal/converter/internal/prometheusconvert/build"
 	"github.com/grafana/alloy/internal/converter/internal/prometheusconvert/component"
+	"github.com/prometheus/common/promslog"
 	prom_config "github.com/prometheus/prometheus/config"
 	prom_discover "github.com/prometheus/prometheus/discovery"
 	"github.com/prometheus/prometheus/storage"
@@ -31,7 +31,8 @@ func Convert(in []byte, extraArgs []string) ([]byte, diag.Diagnostics) {
 		return nil, diags
 	}
 
-	promConfig, err := prom_config.Load(string(in), false, log.NewNopLogger())
+	// TODO3 - figure out how to escape externalLabels before passing
+	promConfig, err := prom_config.Load(string(in), promslog.NewNopLogger())
 	if err != nil {
 		diags.Add(diag.SeverityLevelCritical, fmt.Sprintf("failed to parse Prometheus config: %s", err))
 		return nil, diags

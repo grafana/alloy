@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"math"
 	"sync"
 	"time"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/exemplar"
@@ -146,7 +148,7 @@ type Storage struct {
 
 // NewStorage makes a new Storage.
 func NewStorage(logger log.Logger, registerer prometheus.Registerer, path string) (*Storage, error) {
-	w, err := wlog.NewSize(logger, registerer, SubDirectory(path), wlog.DefaultSegmentSize, wlog.CompressionSnappy)
+	w, err := wlog.NewSize(slog.New(logging.NewSlogGoKitHandler(logger)), registerer, SubDirectory(path), wlog.DefaultSegmentSize, wlog.CompressionSnappy)
 	if err != nil {
 		return nil, err
 	}
@@ -321,7 +323,7 @@ func (w *Storage) loadWAL(r *wlog.Reader, multiRef map[chunks.HeadSeriesRef]chun
 					}
 				}
 				decoded <- samples
-			case record.HistogramSamples:
+			case record.HistogramSamples, record.CustomBucketsHistogramSamples:
 				histograms := histogramsPool.Get().([]record.RefHistogramSample)[:0]
 				histograms, err = dec.HistogramSamples(rec, histograms)
 				if err != nil {
@@ -333,7 +335,7 @@ func (w *Storage) loadWAL(r *wlog.Reader, multiRef map[chunks.HeadSeriesRef]chun
 					return
 				}
 				decoded <- histograms
-			case record.FloatHistogramSamples:
+			case record.FloatHistogramSamples, record.CustomBucketsFloatHistogramSamples:
 				floatHistograms := floatHistogramsPool.Get().([]record.RefFloatHistogramSample)[:0]
 				floatHistograms, err = dec.FloatHistogramSamples(rec, floatHistograms)
 				if err != nil {
@@ -520,7 +522,7 @@ func (w *Storage) Truncate(mint int64) error {
 		return nil
 	}
 
-	keep := func(id chunks.HeadSeriesRef) bool {
+	keep := func(id chunks.HeadSeriesRef, last int) bool {
 		if w.series.GetByID(id) != nil {
 			return true
 		}
@@ -528,7 +530,7 @@ func (w *Storage) Truncate(mint int64) error {
 		seg, ok := w.deleted[id]
 		return ok && seg > last
 	}
-	if _, err = wlog.Checkpoint(w.logger, w.wal, first, last, keep, mint); err != nil {
+	if _, err = wlog.Checkpoint(slog.New(logging.NewSlogGoKitHandler(w.logger)), w.wal, first, last, keep, mint); err != nil {
 		return fmt.Errorf("create checkpoint: %w", err)
 	}
 	if err := w.wal.Truncate(last + 1); err != nil {
@@ -675,6 +677,11 @@ type appender struct {
 }
 
 var _ storage.Appender = (*appender)(nil)
+
+// SetOptions implements the storage.Appender interface.
+func (a *appender) SetOptions(_ *storage.AppendOptions) {
+	// No options to set.
+}
 
 func (a *appender) Append(ref storage.SeriesRef, l labels.Labels, t int64, v float64) (storage.SeriesRef, error) {
 	series := a.w.series.GetByID(chunks.HeadSeriesRef(ref))
@@ -860,6 +867,11 @@ func (a *appender) AppendCTZeroSample(_ storage.SeriesRef, _ labels.Labels, _ in
 	return 0, nil
 }
 
+func (a *appender) AppendHistogramCTZeroSample(_ storage.SeriesRef, _ labels.Labels, _, _ int64, _ *histogram.Histogram, _ *histogram.FloatHistogram) (storage.SeriesRef, error) {
+	// TODO(ptodev): implement this later
+	return 0, nil
+}
+
 func (a *appender) UpdateMetadata(ref storage.SeriesRef, _ labels.Labels, m metadata.Metadata) (storage.SeriesRef, error) {
 	// TODO(rfratto): implement pushing metadata to WAL
 	return 0, nil
@@ -911,19 +923,41 @@ func (a *appender) log() error {
 	}
 
 	if len(a.pendingHistograms) > 0 {
-		buf = encoder.HistogramSamples(a.pendingHistograms, buf)
-		if err := a.w.wal.Log(buf); err != nil {
-			return err
+		var customBucketsHistograms []record.RefHistogramSample
+		buf, customBucketsHistograms = encoder.HistogramSamples(a.pendingHistograms, buf)
+		if len(buf) > 0 {
+			if err := a.w.wal.Log(buf); err != nil {
+				return err
+			}
+			buf = buf[:0]
 		}
-		buf = buf[:0]
+
+		if len(customBucketsHistograms) > 0 {
+			buf = encoder.CustomBucketsHistogramSamples(customBucketsHistograms, buf)
+			if err := a.w.wal.Log(buf); err != nil {
+				return err
+			}
+			buf = buf[:0]
+		}
 	}
 
 	if len(a.pendingFloatHistograms) > 0 {
-		buf = encoder.FloatHistogramSamples(a.pendingFloatHistograms, buf)
-		if err := a.w.wal.Log(buf); err != nil {
-			return err
+		var customBucketsFloatHistograms []record.RefFloatHistogramSample
+		buf, customBucketsFloatHistograms = encoder.FloatHistogramSamples(a.pendingFloatHistograms, buf)
+		if len(buf) > 0 {
+			if err := a.w.wal.Log(buf); err != nil {
+				return err
+			}
+			buf = buf[:0]
 		}
-		buf = buf[:0]
+
+		if len(customBucketsFloatHistograms) > 0 {
+			buf = encoder.CustomBucketsFloatHistogramSamples(customBucketsFloatHistograms, buf)
+			if err := a.w.wal.Log(buf); err != nil {
+				return err
+			}
+			buf = buf[:0]
+		}
 	}
 
 	// Exemplars should be logged after samples (float/native histogram/etc),

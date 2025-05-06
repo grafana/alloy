@@ -23,8 +23,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/common/model"
+	"github.com/prometheus/common/promslog"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
 
@@ -341,7 +341,7 @@ func newServer(t *testing.T) (*httptest.Server, *SDConfig) {
 }
 
 func newDiscovery(t *testing.T, config *SDConfig) *Discovery {
-	logger := log.NewNopLogger()
+	logger := promslog.NewNopLogger()
 	d, err := NewDiscovery(config, logger)
 	require.NoError(t, err)
 	return d

@@ -17,11 +17,12 @@ import (
 // getting data. Interceptor should not be modified once created. All callback
 // fields are optional.
 type Interceptor struct {
-	onAppend             func(ref storage.SeriesRef, l labels.Labels, t int64, v float64, next storage.Appender) (storage.SeriesRef, error)
-	onAppendExemplar     func(ref storage.SeriesRef, l labels.Labels, e exemplar.Exemplar, next storage.Appender) (storage.SeriesRef, error)
-	onUpdateMetadata     func(ref storage.SeriesRef, l labels.Labels, m metadata.Metadata, next storage.Appender) (storage.SeriesRef, error)
-	onAppendHistogram    func(ref storage.SeriesRef, l labels.Labels, t int64, h *histogram.Histogram, fh *histogram.FloatHistogram, next storage.Appender) (storage.SeriesRef, error)
-	onAppendCTZeroSample func(ref storage.SeriesRef, l labels.Labels, t, ct int64, next storage.Appender) (storage.SeriesRef, error)
+	onAppend                      func(ref storage.SeriesRef, l labels.Labels, t int64, v float64, next storage.Appender) (storage.SeriesRef, error)
+	onAppendExemplar              func(ref storage.SeriesRef, l labels.Labels, e exemplar.Exemplar, next storage.Appender) (storage.SeriesRef, error)
+	onUpdateMetadata              func(ref storage.SeriesRef, l labels.Labels, m metadata.Metadata, next storage.Appender) (storage.SeriesRef, error)
+	onAppendHistogram             func(ref storage.SeriesRef, l labels.Labels, t int64, h *histogram.Histogram, fh *histogram.FloatHistogram, next storage.Appender) (storage.SeriesRef, error)
+	onAppendCTZeroSample          func(ref storage.SeriesRef, l labels.Labels, t, ct int64, next storage.Appender) (storage.SeriesRef, error)
+	onAppendHistogramCTZeroSample func(ref storage.SeriesRef, l labels.Labels, t, ct int64, h *histogram.Histogram, fh *histogram.FloatHistogram, next storage.Appender) (storage.SeriesRef, error)
 
 	// next is the next appendable to pass in the chain.
 	next storage.Appendable
@@ -91,6 +92,14 @@ func WithCTZeroSampleHook(f func(ref storage.SeriesRef, l labels.Labels, t, ct i
 	}
 }
 
+// WithHistogramCTZeroSampleHook returns an InterceptorOption which hooks into calls to
+// AppendHistogramCTZeroSample.
+func WithHistogramCTZeroSampleHook(f func(ref storage.SeriesRef, l labels.Labels, t, ct int64, h *histogram.Histogram, fh *histogram.FloatHistogram, next storage.Appender) (storage.SeriesRef, error)) InterceptorOption {
+	return func(i *Interceptor) {
+		i.onAppendHistogramCTZeroSample = f
+	}
+}
+
 // Appender satisfies the Appendable interface.
 func (f *Interceptor) Appender(ctx context.Context) storage.Appender {
 	app := &interceptappender{
@@ -109,9 +118,18 @@ type interceptappender struct {
 	child             storage.Appender
 	ls                labelstore.LabelStore
 	stalenessTrackers []labelstore.StalenessTracker
+	options           *storage.AppendOptions
 }
 
 var _ storage.Appender = (*interceptappender)(nil)
+
+// SetOptions satisfies the Appender interface.
+func (a *interceptappender) SetOptions(options *storage.AppendOptions) {
+	a.options = options
+	if a.child != nil {
+		a.child.SetOptions(options)
+	}
+}
 
 // Append satisfies the Appender interface.
 func (a *interceptappender) Append(ref storage.SeriesRef, l labels.Labels, t int64, v float64) (storage.SeriesRef, error) {
@@ -193,6 +211,7 @@ func (a *interceptappender) UpdateMetadata(
 	return a.child.UpdateMetadata(ref, l, m)
 }
 
+// AppendHistogram satisfies the Appender interface.
 func (a *interceptappender) AppendHistogram(
 	ref storage.SeriesRef,
 	l labels.Labels,
@@ -214,6 +233,7 @@ func (a *interceptappender) AppendHistogram(
 	return a.child.AppendHistogram(ref, l, t, h, fh)
 }
 
+// AppendCTZeroSample satisfies the Appender interface.
 func (a *interceptappender) AppendCTZeroSample(
 	ref storage.SeriesRef,
 	l labels.Labels,
@@ -231,4 +251,25 @@ func (a *interceptappender) AppendCTZeroSample(
 		return 0, nil
 	}
 	return a.child.AppendCTZeroSample(ref, l, t, ct)
+}
+
+// AppendHistogramCTZeroSample satisfies the Appender interface.
+func (a *interceptappender) AppendHistogramCTZeroSample(
+	ref storage.SeriesRef,
+	l labels.Labels,
+	t, ct int64,
+	h *histogram.Histogram,
+	fh *histogram.FloatHistogram,
+) (storage.SeriesRef, error) {
+
+	if ref == 0 {
+		ref = storage.SeriesRef(a.ls.GetOrAddGlobalRefID(l))
+	}
+	if a.interceptor.onAppendHistogramCTZeroSample != nil {
+		return a.interceptor.onAppendHistogramCTZeroSample(ref, l, t, ct, h, fh, a.child)
+	}
+	if a.child == nil {
+		return 0, nil
+	}
+	return a.child.AppendHistogramCTZeroSample(ref, l, t, ct, h, fh)
 }
