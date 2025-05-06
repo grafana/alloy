@@ -42,8 +42,8 @@ Name | Type | Description | Default | Required
 ---- | ---- | ----------- | ------- | --------
 `brokers` | `array(string)` | Kafka brokers to connect to. | | yes
 `protocol_version` | `string` | Kafka protocol version to use. | | yes
-`topic` | `string` | (Deprecated) Kafka topic to read from. | _See below_ | no
-`encoding` | `string` | (Deprecated) Encoding of payload read from Kafka. | `"otlp_proto"` | no
+`topic` | `string` | (Deprecated) Kafka topic to read from. | `""` | no
+`encoding` | `string` | (Deprecated) Encoding of payload read from Kafka. | `""` | no
 `group_id` | `string` | Consumer group to consume messages from. | `"otel-collector"` | no
 `client_id` | `string` | Consumer client ID to use. | `"otel-collector"` | no
 `initial_offset` | `string` | Initial offset to use if no offset was previously committed. | `"latest"` | no
@@ -58,12 +58,6 @@ Name | Type | Description | Default | Required
 `group_instance_id` | `string` | A unique identifier for the consumer instance within a consumer group. | `""` | no
 
 For `max_fetch_size`, the value `0` means no limit.
-
-If `topic` is specified, it will be used as the default topic.
-However, it will be overriden if the signal-specific [logs][], [metrics][], or [traces][] blocks are set.
-
-If `encoding` is specified, it will be used as the default encoding.
-However, it will be overriden if the signal-specific [logs][], [metrics][], or [traces][] blocks are set.
 
 `initial_offset` must be either `"latest"` or `"earliest"`.
 

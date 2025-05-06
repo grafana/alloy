@@ -82,7 +82,8 @@ func (args *Arguments) SetToDefault() {
 		// for compatibility, even though that means using a client and group ID of
 		// "otel-collector".
 
-		Encoding:               "otlp_proto",
+		// Do not set the encoding argument - it is deprecated.
+		// Encoding:               "otlp_proto",
 		Brokers:                []string{"localhost:9092"},
 		ClientID:               "otel-collector",
 		GroupID:                "otel-collector",
@@ -94,19 +95,18 @@ func (args *Arguments) SetToDefault() {
 		MaxFetchSize:           0,
 		MaxFetchWait:           250 * time.Millisecond,
 		GroupRebalanceStrategy: "range",
-		// TODO: Uncomment this when there are no longer global "topic" and "encoding" arguments.
-		// Logs: KafkaReceiverTopicEncodingConfig{
-		// 	Topic:    "otlp_logs",
-		// 	Encoding: "otlp_proto",
-		// },
-		// Metrics: KafkaReceiverTopicEncodingConfig{
-		// 	Topic:    "otlp_metrics",
-		// 	Encoding: "otlp_proto",
-		// },
-		// Traces: KafkaReceiverTopicEncodingConfig{
-		// 	Topic:    "otlp_spans",
-		// 	Encoding: "otlp_proto",
-		// },
+		Logs: KafkaReceiverTopicEncodingConfig{
+			Topic:    "otlp_logs",
+			Encoding: "otlp_proto",
+		},
+		Metrics: KafkaReceiverTopicEncodingConfig{
+			Topic:    "otlp_metrics",
+			Encoding: "otlp_proto",
+		},
+		Traces: KafkaReceiverTopicEncodingConfig{
+			Topic:    "otlp_spans",
+			Encoding: "otlp_proto",
+		},
 	}
 	args.Metadata.SetToDefault()
 	args.AutoCommit.SetToDefault()
@@ -119,7 +119,6 @@ func (args *Arguments) SetToDefault() {
 func (args *Arguments) Validate() error {
 	var signals []string
 
-	// TODO: Edit this
 	if len(args.Topic) > 0 {
 		if len(args.Output.Logs) > 0 {
 			signals = append(signals, "logs")
@@ -199,7 +198,8 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	result.ProtocolVersion = args.ProtocolVersion
 	result.SessionTimeout = args.SessionTimeout
 	result.HeartbeatInterval = args.HeartbeatInterval
-	result.Encoding = args.Encoding
+	// Do not set the encoding argument - it is deprecated.
+	// result.Encoding = args.Encoding
 	result.GroupID = args.GroupID
 	result.ClientID = args.ClientID
 	result.InitialOffset = args.InitialOffset

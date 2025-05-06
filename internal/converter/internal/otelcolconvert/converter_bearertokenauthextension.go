@@ -82,6 +82,7 @@ func toBearerTokenAuthExtensionWithFilename(state *State, cfg *bearertokenauthex
 
 	return &bearer.Arguments{
 		Scheme:       cfg.Scheme,
+		Header:       cfg.Header,
 		DebugMetrics: common.DefaultValue[bearer.Arguments]().DebugMetrics,
 	}, fmt.Sprintf("%s.content", StringifyBlock(block))
 }

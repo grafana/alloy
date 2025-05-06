@@ -47,13 +47,7 @@ Name                                       | Type            | Description      
 `partition_traces_by_id`                   | `bool`          | Whether to include the trace ID as the message key in trace messages sent to Kafka. | `"false"`            | no
 `partition_metrics_by_resource_attributes` | `bool`          | Whether to include the hash of sorted resource attributes as the message partitioning key in metric messages sent to Kafka. | `"false"`            | no
 
-If `topic` is specified, it will be used as the default topic.
-However, it will be overriden if the signal-specific [logs][], [metrics][], or [traces][] blocks are set.
-
-When `topic_from_attribute` is set, it will take precedence over `topic`.
-
-If `encoding` is specified, it will be used as the default encoding.
-However, it will be overriden if the signal-specific [logs][], [metrics][], or [traces][] blocks are set.
+When `topic_from_attribute` is set, it will take precedence over the `topic` arguments in [logs][], [metrics][], and [traces][] blocks.
 
 `partition_traces_by_id` does not have any effect on Jaeger encoding exporters since Jaeger exporters include trace ID as the message key by default.
 
@@ -123,7 +117,7 @@ The `logs` block configures how to send traces to Kafka brokers.
 
 Name       | Type     | Description                                                                | Default          | Required
 ---------- | -------- | -------------------------------------------------------------------------- | ---------------- | --------
-`topic`    | `string` | The name of the Kafka topic to which traces will be exported.              | `"otlp_traces"`  | no
+`topic`    | `string` | The name of the Kafka topic to which traces will be exported.              | `"otlp_spans"`  | no
 `encoding` | `string` | The encoding for logs. See [Supported encodings](#supported-encodings).    | `"otlp_proto"`   | no
 
 ### authentication block

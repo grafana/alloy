@@ -1031,10 +1031,10 @@ replace github.com/prometheus/procfs => github.com/prometheus/procfs v0.12.0
 
 replace github.com/grafana/beyla/v2 => /Users/paulintodev/Documents/GitHub/beyla-paulin-2/
 
-replace github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter => /Users/paulintodev/Documents/GitHub/opentelemetry-collector-contrib-paulin/exporter/kafkaexporter
+replace github.com/open-telemetry/opentelemetry-collector-contrib => github.com/ptodev/opentelemetry-collector-contrib v0.0.0-20250506154750-58322eed65ce
 
-replace github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver => /Users/paulintodev/Documents/GitHub/opentelemetry-collector-contrib-paulin/receiver/kafkareceiver
+replace github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter => github.com/ptodev/opentelemetry-collector-contrib/exporter/kafkaexporter v0.0.0-20250506154750-58322eed65ce
 
-replace github.com/open-telemetry/opentelemetry-collector-contrib => /Users/paulintodev/Documents/GitHub/opentelemetry-collector-contrib-paulin
+replace github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver => github.com/ptodev/opentelemetry-collector-contrib/receiver/kafkareceiver v0.0.0-20250506154750-58322eed65ce
 
-replace github.com/open-telemetry/opentelemetry-collector-contrib/internal/kafka => /Users/paulintodev/Documents/GitHub/opentelemetry-collector-contrib-paulin/internal/kafka
+replace github.com/open-telemetry/opentelemetry-collector-contrib/internal/kafka => github.com/ptodev/opentelemetry-collector-contrib/internal/kafka v0.0.0-20250506154750-58322eed65ce

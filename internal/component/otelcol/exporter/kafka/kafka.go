@@ -120,7 +120,8 @@ var (
 // SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = Arguments{
-		Encoding: "otlp_proto",
+		// Do not set the encoding argument - it is deprecated.
+		// Encoding: "otlp_proto",
 		Brokers:  []string{"localhost:9092"},
 		ClientID: "sarama",
 		Timeout:  5 * time.Second,
@@ -138,19 +139,18 @@ func (args *Arguments) SetToDefault() {
 			Compression:      "none",
 			FlushMaxMessages: 0,
 		},
-		// TODO: Uncomment this when there are no longer global "topic" and "encoding" arguments.
-		// Logs: KafkaExporterSignalConfig{
-		// 	Topic:    "otlp_logs",
-		// 	Encoding: "otlp_proto",
-		// },
-		// Metrics: KafkaExporterSignalConfig{
-		// 	Topic:    "otlp_metrics",
-		// 	Encoding: "otlp_proto",
-		// },
-		// Traces: KafkaExporterSignalConfig{
-		// 	Topic:    "otlp_spans",
-		// 	Encoding: "otlp_proto",
-		// },
+		Logs: KafkaExporterSignalConfig{
+			Topic:    "otlp_logs",
+			Encoding: "otlp_proto",
+		},
+		Metrics: KafkaExporterSignalConfig{
+			Topic:    "otlp_metrics",
+			Encoding: "otlp_proto",
+		},
+		Traces: KafkaExporterSignalConfig{
+			Topic:    "otlp_spans",
+			Encoding: "otlp_proto",
+		},
 	}
 	args.Retry.SetToDefault()
 	args.Queue.SetToDefault()
@@ -183,7 +183,8 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	result.ProtocolVersion = args.ProtocolVersion
 	result.ClientID = args.ClientID
 	result.TopicFromAttribute = args.TopicFromAttribute
-	result.Encoding = args.Encoding
+	// Do not set the encoding argument - it is deprecated.
+	// result.Encoding = args.Encoding
 	result.PartitionTracesByID = args.PartitionTracesByID
 	result.PartitionMetricsByResourceAttributes = args.PartitionMetricsByResourceAttributes
 	result.TimeoutSettings = exporterhelper.TimeoutConfig{

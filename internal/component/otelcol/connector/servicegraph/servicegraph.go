@@ -65,7 +65,7 @@ type Arguments struct {
 
 	// DatabaseNameAttributes is the attribute name list of attributes need to match used to identify the database name from span attributes, the higher the front, the higher the priority.
 	// The default value is {"db.name"}.
-	DatabaseNameAttributes []string `mapstructure:"database_name_attributes"`
+	DatabaseNameAttributes []string `alloy:"database_name_attributes,attr,optional"`
 
 	// Output configures where to send processed data. Required.
 	Output *otelcol.ConsumerArguments `alloy:"output,block"`

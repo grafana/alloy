@@ -48,7 +48,6 @@ exporters:
     partition_traces_by_id: true
     partition_metrics_by_resource_attributes: true
     timeout: 11s
-    encoding: otlp_json
     auth:
       plain_text:
         username: fakeusername
