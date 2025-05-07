@@ -57,37 +57,11 @@ func buildAlloy() {
 	executeCommand("make", []string{"-C", "../../..", "ALLOY_IMAGE=" + alloyImageName, "alloy-image"}, "Building Alloy")
 }
 
-func runSingleTest(ctx context.Context, testDir string, port int) {
-	info, err := os.Stat(testDir)
-	if err != nil {
-		panic(err)
-	}
-	if !info.IsDir() {
-		return
-	}
-
-	dirName := filepath.Base(testDir)
-
-	absTestDir, err := filepath.Abs(testDir)
-	if err != nil {
-		panic(fmt.Sprintf("failed to get absolute path of testDir: %v", err))
-	}
-
+// Setup container files for mounting into the test container
+func prepareContainerFiles(absTestDir string) ([]testcontainers.ContainerFile, []*os.File, error) {
 	files, err := collectFiles(absTestDir)
 	if err != nil {
-		panic(fmt.Sprintf("failed to collect config files: %v", err))
-	}
-
-	natPort, err := nat.NewPort("tcp", strconv.Itoa(port))
-	if err != nil {
-		panic(fmt.Sprintf("failed to build natPort: %v", err))
-	}
-
-	// The network is created via the docker-compose file but a randomly generated prefix is added.
-	// We retrieve the name to add the Alloy test containers in the same network.
-	networkName, err := getTestcontainersNetworkName(ctx)
-	if err != nil {
-		panic(fmt.Sprintf("failed to get Testcontainers network name: %v", err))
+		return nil, nil, fmt.Errorf("failed to collect config files: %v", err)
 	}
 
 	var containerFiles []testcontainers.ContainerFile
@@ -96,7 +70,11 @@ func runSingleTest(ctx context.Context, testDir string, port int) {
 	for _, fileToAdd := range files {
 		f, err := os.Open(fileToAdd.path)
 		if err != nil {
-			panic(fmt.Sprintf("failed to open file %s: %v", fileToAdd.path, err))
+			// Close files opened so far
+			for _, openFile := range openFiles {
+				openFile.Close()
+			}
+			return nil, nil, fmt.Errorf("failed to open file %s: %v", fileToAdd.path, err)
 		}
 		openFiles = append(openFiles, f)
 
@@ -107,11 +85,15 @@ func runSingleTest(ctx context.Context, testDir string, port int) {
 		})
 	}
 
-	defer func() {
-		for _, f := range openFiles {
-			f.Close()
-		}
-	}()
+	return containerFiles, openFiles, nil
+}
+
+// Create a container request based on the test directory
+func createContainerRequest(dirName string, port int, networkName string, containerFiles []testcontainers.ContainerFile) testcontainers.ContainerRequest {
+	natPort, err := nat.NewPort("tcp", strconv.Itoa(port))
+	if err != nil {
+		panic(fmt.Sprintf("failed to build natPort: %v", err))
+	}
 
 	req := testcontainers.ContainerRequest{
 		Image:        alloyImageName,
@@ -128,6 +110,7 @@ func runSingleTest(ctx context.Context, testDir string, port int) {
 		Privileged: true,
 	}
 
+	// Apply special configurations for specific tests
 	if dirName == "beyla" {
 		req.HostConfigModifier = func(hostConfig *container.HostConfig) {
 			hostConfig.Privileged = true
@@ -141,6 +124,75 @@ func runSingleTest(ctx context.Context, testDir string, port int) {
 		req.ExposedPorts = append(req.ExposedPorts, "1514/tcp")
 	}
 
+	return req
+}
+
+// Configure the test command with appropriate environment variables if needed
+func setupTestCommand(ctx context.Context, dirName string, testDir string, alloyContainer testcontainers.Container) (*exec.Cmd, error) {
+	testCmd := exec.Command("go", "test")
+	testCmd.Dir = testDir
+
+	if dirName == "loki-enrich" {
+		mappedPort, err := alloyContainer.MappedPort(ctx, "1514/tcp")
+		if err != nil {
+			return nil, fmt.Errorf("failed to get mapped port: %v", err)
+		}
+
+		host, err := alloyContainer.Host(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get container host: %v", err)
+		}
+
+		fmt.Printf("Loki API should be available at http://%s:%s/loki/api/v1/push\n",
+			host, mappedPort.Port())
+
+		// TODO: we shouldn't have this logic here, this is needed for the loki-enrich test
+		// to work, but we should find a better way to pass the host and port
+		testCmd.Env = append(os.Environ(),
+			fmt.Sprintf("ALLOY_HOST=%s", host),
+			fmt.Sprintf("ALLOY_PORT=%s", mappedPort.Port()))
+	}
+
+	return testCmd, nil
+}
+
+func runSingleTest(ctx context.Context, testDir string, port int) {
+	info, err := os.Stat(testDir)
+	if err != nil {
+		panic(err)
+	}
+	if !info.IsDir() {
+		return
+	}
+
+	dirName := filepath.Base(testDir)
+
+	absTestDir, err := filepath.Abs(testDir)
+	if err != nil {
+		panic(fmt.Sprintf("failed to get absolute path of testDir: %v", err))
+	}
+
+	// Prepare container files
+	containerFiles, openFiles, err := prepareContainerFiles(absTestDir)
+	if err != nil {
+		panic(err)
+	}
+	defer func() {
+		for _, f := range openFiles {
+			f.Close()
+		}
+	}()
+
+	// Get network name
+	networkName, err := getTestcontainersNetworkName(ctx)
+	if err != nil {
+		panic(fmt.Sprintf("failed to get Testcontainers network name: %v", err))
+	}
+
+	// Create container request
+	req := createContainerRequest(dirName, port, networkName, containerFiles)
+
+	// Start container
 	alloyContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
 		Started:          true,
@@ -154,38 +206,19 @@ func runSingleTest(ctx context.Context, testDir string, port int) {
 	}
 	defer alloyContainer.Terminate(ctx)
 
-	testCmd := exec.Command("go", "test")
-	testCmd.Dir = testDir
-
-	if dirName == "loki-enrich" {
-		mappedPort, err := alloyContainer.MappedPort(ctx, "1514/tcp")
-		if err != nil {
-			logChan <- TestLog{
-				TestDir:  dirName,
-				AlloyLog: fmt.Sprintf("failed to get mapped port: %v", err),
-			}
-			return
+	// Setup and run test command
+	testCmd, err := setupTestCommand(ctx, dirName, testDir, alloyContainer)
+	if err != nil {
+		logChan <- TestLog{
+			TestDir:  dirName,
+			AlloyLog: fmt.Sprintf("%v", err),
 		}
-
-		host, err := alloyContainer.Host(ctx)
-		if err != nil {
-			logChan <- TestLog{
-				TestDir:  dirName,
-				AlloyLog: fmt.Sprintf("failed to get container host: %v", err),
-			}
-			return
-		}
-
-		fmt.Printf("Loki API should be available at http://%s:%s/loki/api/v1/push\n",
-			host, mappedPort.Port())
-
-		testCmd.Env = append(os.Environ(),
-			fmt.Sprintf("ALLOY_HOST=%s", host),
-			fmt.Sprintf("ALLOY_PORT=%s", mappedPort.Port()))
+		return
 	}
 
 	testOutput, errTest := testCmd.CombinedOutput()
 
+	// Collect and report logs if test failed
 	alloyLogs, _ := alloyContainer.Logs(ctx)
 	alloyLog, _ := io.ReadAll(alloyLogs)
 
