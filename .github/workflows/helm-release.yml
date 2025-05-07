@@ -95,7 +95,7 @@ jobs:
           fetch-depth: 0
           path: source
           token: ${{ steps.app-token.outputs.token }}
-          persist-credentials: false
+          persist-credentials: true # Needed for `git push origin tag_name`
 
       - name: Configure Git
         run: |
