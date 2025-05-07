@@ -10,8 +10,10 @@ env:
   CR_PACKAGE_PATH: "${{ github.workspace }}/.cr-release-packages"
   CR_TOOL_PATH: "${{ github.workspace }}/.cr-tool"
 
+# These permissions are needed to assume roles from Github's OIDC.
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   setup:
@@ -70,11 +72,19 @@ jobs:
     runs-on: ubuntu-latest
     if: needs.setup.outputs.changed == 'true'
     steps:
+      - id: get-secrets
+        uses: grafana/shared-workflows/actions/get-vault-secrets@5d7e361bc7e0a183cde8afe9899fb7b596d2659b # get-vault-secrets-v1.2.0
+        with:
+          repo_secrets: |
+            ALLOYBOT_APP_ID=alloybot:app_id
+            ALLOYBOT_PRIVATE_KEY=alloybot:private_key
+          export_env: false
+
       - uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1.12.0
         id: app-token
         with:
-          app-id: ${{ secrets.ALLOYBOT_APP_ID }}
-          private-key: ${{ secrets.ALLOYBOT_PRIVATE_KEY }}
+          app-id: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_APP_ID }}
+          private-key: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_PRIVATE_KEY }}
           owner: grafana
           repositories: alloy,helm-charts
 
@@ -188,5 +198,3 @@ jobs:
         env:
           TOKEN: ${{ steps.app-token.outputs.token }}
           TAG_NAME: ${{ steps.parse-chart.outputs.tagname }}
-
-
