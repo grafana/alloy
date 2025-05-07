@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Edge, Node, ReactFlow, useEdgesState, useNodesState } from '@xyflow/react';
 
 import { useGraph } from '../../hooks/graph';
@@ -20,6 +21,7 @@ type GraphProps = {
 
 // The graph is not updated on config reload. The page must be reloaded to see the changes.
 const ComponentGraph: React.FC<GraphProps> = ({ components, moduleID, enabled, window }) => {
+  const navigate = useNavigate();
   const [baseNodes, baseEdges] = useMemo(() => buildGraph(components), [components]);
   const [data, setData] = useState<DebugData[]>([]);
   const { error } = useGraph(setData, moduleID, window, enabled);
@@ -64,13 +66,12 @@ const ComponentGraph: React.FC<GraphProps> = ({ components, moduleID, enabled, w
 
   // On click, open the component details page in a new tab.
   const onNodeClick = (_event: React.MouseEvent, node: Node) => {
-    const baseUrl = globalThis.window.location.origin;
     const path =
       node.data.moduleID && node.data.moduleID !== ''
         ? `/component/${node.data.moduleID}/${node.data.localID}`
         : `/component/${node.data.localID}`;
 
-    globalThis.window.open(baseUrl + path, '_blank');
+    navigate(path);
   };
 
   return (
