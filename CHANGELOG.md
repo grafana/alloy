@@ -48,6 +48,9 @@ Main (unreleased)
 
 -  Add optional `id` field to `foreach` block to generate more meaningful component paths in metrics by using a specific field from collection items. (@harshrai654)
   
+- The `mimir.rules.kubernetes` component now supports adding extra label matchers
+  to all queries discovered via `PrometheusRule` CRDs by extracting label values defined on the `PrometheusRule`. (@QuentinBisson)
+
 ### Bugfixes
 
 - Fix `otelcol.receiver.filelog` documentation's default value for `start_at`. (@petewall)
