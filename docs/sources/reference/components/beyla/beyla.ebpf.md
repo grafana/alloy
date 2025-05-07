@@ -40,10 +40,10 @@ beyla.ebpf "<LABEL>" {
 
 You can use the following arguments with `beyla.ebpf`:
 
-| Name              | Type     | Description                                                                         | Default | Required |
-| ----------------- | -------- | ----------------------------------------------------------------------------------- | ------- | -------- |
-| `debug`           | `bool`   | Enable debug mode for Beyla.                                                        | `false` | no       |
-| `enforce_sys_caps`| `bool`   | Enforce system capabilities required for eBPF instrumentation.                      | `false` | no       |
+| Name               | Type   | Description                                                    | Default | Required |
+| ------------------ | ------ | -------------------------------------------------------------- | ------- | -------- |
+| `debug`            | `bool` | Enable debug mode for Beyla.                                   | `false` | no       |
+| `enforce_sys_caps` | `bool` | Enforce system capabilities required for eBPF instrumentation. | `false` | no       |
 
 `debug` enables debug mode for Beyla. This mode logs BPF logs, network logs, trace representation logs, and other debug information.
 
@@ -492,23 +492,22 @@ The following examples show you how to collect metrics and traces from `beyla.eb
 This example uses a [`prometheus.scrape` component][scrape] to collect metrics from `beyla.ebpf` of the specified port:
 
 ```alloy
-beyla.ebpf "default" {
-    open_port = <OPEN_PORT>
+beyla.ebpf "default" { // Defines a beyla.ebpf component instance named "default"
+    open_port = <OPEN_PORT> // Sets the port of the running service to instrument with eBPF
 }
 
-prometheus.scrape "beyla" {
-  targets = beyla.ebpf.default.targets
-  honor_labels = true // required to keep job and instance labels
-  forward_to = [prometheus.remote_write.demo.receiver]
+prometheus.scrape "beyla" { // Defines a prometheus.scrape component instance named "beyla"
+  targets = beyla.ebpf.default.targets // Uses the exported targets from beyla.ebpf.default for scraping
+  honor_labels = true // Ensures job and instance labels from the target are preserved in the scraped metrics
+  forward_to = [prometheus.remote_write.demo.receiver] // Forwards scraped metrics to the prometheus.remote_write.demo component
 }
 
-prometheus.remote_write "demo" {
+prometheus.remote_write "demo" { // Defines a prometheus.remote_write component instance named "demo"
   endpoint {
-    url = <PROMETHEUS_REMOTE_WRITE_URL>
-
+    url = <PROMETHEUS_REMOTE_WRITE_URL> // Sets the remote write endpoint URL for sending metrics
     basic_auth {
-      username = <USERNAME>
-      password = <PASSWORD>
+      username = <USERNAME> // Sets the username for authentication to the remote write endpoint
+      password = <PASSWORD> // Sets the password for authentication to the remote write endpoint
     }
   }
 }
@@ -526,20 +525,20 @@ Replace the following:
 This example gets traces from `beyla.ebpf` and forwards them to `otlp`:
 
 ```alloy
-beyla.ebpf "default" {
-    open_port = <OPEN_PORT>
-    output {
-        traces = [otelcol.processor.batch.default.input]
+beyla.ebpf "default" { // Defines a beyla.ebpf component instance named "default"
+    open_port = <OPEN_PORT> // Sets the port of the running service to instrument with eBPF
+    output { // Configures the output block to forward traces
+        traces = [otelcol.processor.batch.default.input] // Forwards traces to the input of the otelcol.processor.batch component
     }
 }
-otelcol.processor.batch "default" {
+otelcol.processor.batch "default" { // Defines an OpenTelemetry Collector processor component named "default"
     output {
-        traces  = [otelcol.exporter.otlp.default.input]
+        traces  = [otelcol.exporter.otlp.default.input] // Forwards batched traces to the otelcol.exporter.otlp component
     }
 }
-otelcol.exporter.otlp "default" {
+otelcol.exporter.otlp "default" { // Defines an OTLP exporter component named "default"
     client {
-        endpoint = sys.env("<OTLP_ENDPOINT>")
+        endpoint = sys.env("<OTLP_ENDPOINT>") // Sets the OTLP endpoint from an environment variable
     }
 }
 ```
@@ -547,6 +546,61 @@ otelcol.exporter.otlp "default" {
 Replace the following:
 
 * _`<OPEN_PORT>`_: The port of the running service for Beyla automatically instrumented with eBPF.
+* _`<OTLP_ENDPOINT>`_: The endpoint of the OpenTelemetry Collector to send traces to.
+
+### Combined Example
+
+This example combines metrics and traces collection from `beyla.ebpf`:
+
+```alloy
+// This block configures the beyla.ebpf component named "default"
+beyla.ebpf "default" {
+    open_port = <OPEN_PORT> // Sets the port of the running service to instrument with eBPF
+    // The output block is required to forward traces to another component
+    output {
+        traces = [otelcol.processor.batch.default.input] // Forwards traces to the input of the otelcol.processor.batch component
+    }
+}
+
+// This block configures an OpenTelemetry Collector processor to batch traces
+otelcol.processor.batch "default" {
+    output {
+        traces  = [otelcol.exporter.otlp.default.input] // Forwards batched traces to the otelcol.exporter.otlp component
+    }
+}
+
+// This block configures an OTLP exporter to send traces to a remote endpoint
+otelcol.exporter.otlp "default" {
+    client {
+        endpoint = sys.env("<OTLP_ENDPOINT>") // Sets the OTLP endpoint from an environment variable
+    }
+}
+
+// This block configures a prometheus.scrape component to collect metrics from beyla.ebpf
+prometheus.scrape "beyla" {
+  targets = beyla.ebpf.default.targets // Uses the exported targets from beyla.ebpf for scraping
+  honor_labels = true // Keeps job and instance labels from the target
+  forward_to = [prometheus.remote_write.demo.receiver] // Forwards scraped metrics to the prometheus.remote_write component
+}
+
+// This block configures a prometheus.remote_write component to send metrics to a remote Prometheus-compatible endpoint
+prometheus.remote_write "demo" {
+  endpoint {
+    url = <PROMETHEUS_REMOTE_WRITE_URL> // Sets the remote write URL
+    basic_auth {
+      username = <USERNAME> // Sets the username for authentication
+      password = <PASSWORD> // Sets the password for authentication
+    }
+  }
+}
+```
+
+Replace the following:
+
+* _`<OPEN_PORT>`_: The port of the running service for Beyla automatically instrumented with eBPF.
+* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
+* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 * _`<OTLP_ENDPOINT>`_: The endpoint of the OpenTelemetry Collector to send traces to.
 
 [Grafana Beyla]: https://github.com/grafana/beyla
