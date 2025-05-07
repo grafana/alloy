@@ -1,6 +1,7 @@
 package alloytypes_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/grafana/alloy/syntax/alloytypes"
@@ -87,6 +88,25 @@ func TestOptionalSecret_Write(t *testing.T) {
 			be := builder.NewExpr()
 			be.SetValue(tc.value)
 			require.Equal(t, tc.expect, string(be.Bytes()))
+		})
+	}
+}
+
+func TestOptionalSecret_Format(t *testing.T) {
+	tt := []struct {
+		name   string
+		value  interface{}
+		expect string
+	}{
+		{"non-sensitive", alloytypes.OptionalSecret{Value: "foobar"}, `foobar`},
+		{"sensitive", alloytypes.OptionalSecret{IsSecret: true, Value: "foobar"}, `(secret)`},
+		{"non-sensitive pointer", &alloytypes.OptionalSecret{Value: "foobar"}, `foobar`},
+		{"sensitive pointer", &alloytypes.OptionalSecret{IsSecret: true, Value: "foobar"}, `(secret)`},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.expect, fmt.Sprintf("%s", tc.value))
 		})
 	}
 }
