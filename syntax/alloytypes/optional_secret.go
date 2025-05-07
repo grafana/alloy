@@ -82,3 +82,13 @@ func (s OptionalSecret) AlloyTokenize() []builder.Token {
 		Lit: fmt.Sprintf("%q", s.Value),
 	}}
 }
+
+// String returns a string representation of the OptionalSecret. If IsSecret is
+// true, the value will be hidden and replaced with "(secret)". Otherwise,
+// the value will be returned as a string.
+func (s OptionalSecret) String() string {
+	if s.IsSecret {
+		return "(secret)"
+	}
+	return s.Value
+}
