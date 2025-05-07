@@ -639,7 +639,7 @@ func TestArguments_Validate(t *testing.T) {
 		{
 			name:    "empty arguments",
 			args:    Arguments{},
-			wantErr: "either metrics.features must include at least one of: network, application, application_span, application_service_graph, application_process, or tracing must be enabled",
+			wantErr: "either metrics.features must include at least one of: [network, application, application_span, application_service_graph, application_process], or tracing must be enabled",
 		},
 		{
 			name: "valid network-only configuration",
@@ -748,7 +748,7 @@ func TestArguments_Validate(t *testing.T) {
 				TracePrinter: "disabled",
 				// No metrics features and disabled tracing
 			},
-			wantErr: "either metrics.features must include at least one of: network, application, application_span, application_service_graph, application_process, or tracing must be enabled",
+			wantErr: "either metrics.features must include at least one of: [network, application, application_span, application_service_graph, application_process], or tracing must be enabled",
 		},
 	}
 
