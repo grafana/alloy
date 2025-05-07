@@ -2387,6 +2387,8 @@ github.com/prometheus/statsd_exporter v0.22.8/go.mod h1:/DzwbTEaFTE0Ojz5PqcSk6+P
 github.com/prometheus/tsdb v0.7.1/go.mod h1:qhTCs0VvXwvX/y3TZrWD7rabWM+ijKTux40TwIPHuXU=
 github.com/protocolbuffers/protoscope v0.0.0-20221109213918-8e7a6aafa2c9 h1:arwj11zP0yJIxIRiDn22E0H8PxfF7TsTrc2wIPFIsf4=
 github.com/protocolbuffers/protoscope v0.0.0-20221109213918-8e7a6aafa2c9/go.mod h1:SKZx6stCn03JN3BOWTwvVIO2ajMkb/zQdTceXYhKw/4=
+github.com/ptodev/beyla/v2 v2.0.0-20250507083427-93b2af475c8d h1:oqMOTJM+WagHfq95U/S/fqZkHA2ucRH5p6xWsdJBywI=
+github.com/ptodev/beyla/v2 v2.0.0-20250507083427-93b2af475c8d/go.mod h1:paDYfhkRs9Au+wENl4Eve5ddjld9Mrhp+Jw2BrZrWvA=
 github.com/ptodev/opentelemetry-collector-contrib v0.0.0-20250506154750-58322eed65ce h1:ThbOTTu5v329Qka0LjI1Kyk2fmoRk5e98+ofZvDLfII=
 github.com/ptodev/opentelemetry-collector-contrib v0.0.0-20250506154750-58322eed65ce/go.mod h1:h/gmGm2uRzmM6OV00PySs06jJHEtL+eMKj7NHbuaOUU=
 github.com/ptodev/opentelemetry-collector-contrib/exporter/kafkaexporter v0.0.0-20250506154750-58322eed65ce h1:cP8s8aGMWiNVwI18d6mnq6YVEInMlW+Jm8VwO0MiNjI=

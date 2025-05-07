@@ -1029,7 +1029,7 @@ exclude (
 
 replace github.com/prometheus/procfs => github.com/prometheus/procfs v0.12.0
 
-replace github.com/grafana/beyla/v2 => /Users/paulintodev/Documents/GitHub/beyla-paulin-2/
+replace github.com/grafana/beyla/v2 => github.com/ptodev/beyla/v2 v2.0.0-20250507083427-93b2af475c8d
 
 replace github.com/open-telemetry/opentelemetry-collector-contrib => github.com/ptodev/opentelemetry-collector-contrib v0.0.0-20250506154750-58322eed65ce
 
