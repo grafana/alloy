@@ -69,10 +69,9 @@ jobs:
     needs: [setup]
     runs-on: ubuntu-latest
     if: needs.setup.outputs.changed == 'true'
-    # These permissions are needed to assume roles from Github's OIDC.
     permissions:
-      contents: read
-      id-token: write
+      contents: write # Needed to push to origin
+      id-token: write # Needed to generate app token
     steps:
       - id: get-secrets
         uses: grafana/shared-workflows/actions/get-vault-secrets@5d7e361bc7e0a183cde8afe9899fb7b596d2659b # get-vault-secrets-v1.2.0
@@ -192,6 +191,8 @@ jobs:
           cd source
           echo "Pushing tag ${TAG_NAME}"
           git push origin "${TAG_NAME}"
+        env:
+          TAG_NAME: ${{ steps.parse-chart.outputs.tagname }}
 
       - name: Update helm-charts index.yaml
         run: |
