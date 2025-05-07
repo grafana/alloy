@@ -54,6 +54,8 @@ Main (unreleased)
 
 - Fix [#3386](https://github.com/grafana/alloy/issues/3386) lower casing scheme in `prometheus.operator.scrapeconfigs`. (@alex-berger)
 
+- Fix [#1470](https://github.com/grafana/alloy/issues/1470) allow formatting of an OptionalSecret (from `local.file`) as a string. (@stuart-warren)
+
 ### Other changes
 
 - Update the zap logging adapter used by `otelcol` components to log arrays and objects. (@dehaansa)
