@@ -10,10 +10,8 @@ env:
   CR_PACKAGE_PATH: "${{ github.workspace }}/.cr-release-packages"
   CR_TOOL_PATH: "${{ github.workspace }}/.cr-tool"
 
-# These permissions are needed to assume roles from Github's OIDC.
 permissions:
   contents: read
-  id-token: write
 
 jobs:
   setup:
@@ -71,6 +69,10 @@ jobs:
     needs: [setup]
     runs-on: ubuntu-latest
     if: needs.setup.outputs.changed == 'true'
+    # These permissions are needed to assume roles from Github's OIDC.
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - id: get-secrets
         uses: grafana/shared-workflows/actions/get-vault-secrets@5d7e361bc7e0a183cde8afe9899fb7b596d2659b # get-vault-secrets-v1.2.0

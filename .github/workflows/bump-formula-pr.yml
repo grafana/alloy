@@ -3,15 +3,17 @@ on:
   release:
     types: [released]
 
-# These permissions are needed to assume roles from Github's OIDC.
 permissions:
   contents: read
-  id-token: write
 
 jobs:
   homebrew-grafana:
     name: homebrew-grafana
     runs-on: ubuntu-latest
+    # These permissions are needed to assume roles from Github's OIDC.
+    permissions:
+      contents: read
+      id-token: write
     steps:
     # TODO: Remove this when we no longer need a forked action in the "Update Homebrew formula" step.
     - name: Checkout code
