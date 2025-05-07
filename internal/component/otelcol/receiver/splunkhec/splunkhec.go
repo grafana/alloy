@@ -68,7 +68,7 @@ type Arguments struct {
 	// Splitting strategy used, can be either "line" or "none". Optional.
 	Splitting SplittingStrategy `alloy:"splitting,attr,optional"`
 
-	// AccessTokenPassthrough if enabled perserves incomming access token as a attribute "com.splunk.hec.access_token".
+	// AccessTokenPassthrough if enabled preserves incoming access token as a attribute "com.splunk.hec.access_token".
 	// `otelcol.exporter.splunkhec` will check for this attribute and if present forward it.
 	AccessTokenPassthrough bool `alloy:"access_token_passthrough,attr,optional"`
 
