@@ -194,7 +194,7 @@ func TestUnmarshalDefault(t *testing.T) {
 			Endpoint:              "localhost:8088",
 			CompressionAlgorithms: slices.Clone(otelcol.DefaultCompressionAlgorithms),
 		},
-		RawPath: "/services/collector/raw",
+		RawPath:    "/services/collector/raw",
 		HealthPath: "/services/collector/health",
 		Splitting:  splunkhecreceiver.SplittingStrategy(SplittingStrategyLine),
 	}
