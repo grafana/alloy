@@ -38,6 +38,7 @@ Name                     | Type       | Description                             
 `include_metadata`       | `boolean`  | Propagate incoming connection metadata to downstream consumers.  | `false`            | no
 `read_timeout`           | `duration` | Read timeout for requests of the HTTP server.                    | `"60s"`            | no
 `compression_algorithms` | `list(string)` | A list of compression algorithms the server can accept.      | `["", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"]` | no
+`auth`              | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests.     |               | no
 
 By default, `otelcol.receiver.datadog` listens for HTTP connections on `localhost`.
 To expose the HTTP server to other machines on your network, configure `endpoint` with the IP address to listen on, or `0.0.0.0:8126` to listen on all network interfaces.
@@ -132,6 +133,30 @@ otelcol.exporter.otlp "default" {
   client {
     endpoint = sys.env("OTLP_ENDPOINT")
   }
+}
+```
+
+## Enable authentication
+
+You can create a `otelcol.receiver.datadog` component that requires authentication for requests. This is useful for limiting who can push data to the server. 
+
+{{< admonition type="note" >}}
+Not all OpenTelemetry Collector authentication plugins support receiver authentication.
+Refer to the [documentation](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/otelcol/) for each `otelcol.auth.*` component to determine its compatibility.
+{{< /admonition >}} 
+
+```alloy
+otelcol.receiver.datadog "default" {
+  output {
+    metrics = [otelcol.processor.batch.default.input]
+    traces  = [otelcol.processor.batch.default.input]
+  }
+  auth = otelcol.auth.basic.creds.handler
+}
+
+otelcol.auth.basic "creds" {
+    username = sys.env("USERNAME")
+    password = sys.env("PASSWORD")
 }
 ```
 <!-- START GENERATED COMPATIBLE COMPONENTS -->

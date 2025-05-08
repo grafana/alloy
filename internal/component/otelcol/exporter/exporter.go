@@ -9,13 +9,9 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	otelcomponent "go.opentelemetry.io/collector/component"
-	"go.opentelemetry.io/collector/config/configtelemetry"
 	otelexporter "go.opentelemetry.io/collector/exporter"
-	otelextension "go.opentelemetry.io/collector/extension"
 	"go.opentelemetry.io/collector/pipeline"
 	sdkprometheus "go.opentelemetry.io/otel/exporters/prometheus"
-	otelmetric "go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/metric/noop"
 	"go.opentelemetry.io/otel/sdk/metric"
 
 	"github.com/grafana/alloy/internal/build"
@@ -40,7 +36,7 @@ type Arguments interface {
 
 	// Extensions returns the set of extensions that the configured component is
 	// allowed to use.
-	Extensions() map[otelcomponent.ID]otelextension.Extension
+	Extensions() map[otelcomponent.ID]otelcomponent.Component
 
 	// Exporters returns the set of exporters that are exposed to the configured
 	// component.
@@ -118,7 +114,7 @@ var (
 func New(opts component.Options, f otelexporter.Factory, args Arguments, supportedSignals TypeSignalFunc) (*Exporter, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	consumer := lazyconsumer.NewPaused(ctx)
+	consumer := lazyconsumer.NewPaused(ctx, opts.ID)
 
 	// Create a lazy collector where metrics from the upstream component will be
 	// forwarded.
@@ -184,25 +180,14 @@ func (e *Exporter) Update(args component.Arguments) error {
 		metricOpts = append(metricOpts, metric.WithView(views.DropHighCardinalityServerAttributes()...))
 	}
 
-	metricsLevel, err := debugMetricsConfig.Level.Convert()
-	if err != nil {
-		return err
-	}
-
 	mp := metric.NewMeterProvider(metricOpts...)
 	settings := otelexporter.Settings{
+		ID: otelcomponent.NewIDWithName(e.factory.Type(), e.opts.ID),
 		TelemetrySettings: otelcomponent.TelemetrySettings{
 			Logger: zapadapter.New(e.opts.Logger),
 
 			TracerProvider: e.opts.Tracer,
 			MeterProvider:  mp,
-			LeveledMeterProvider: func(level configtelemetry.Level) otelmetric.MeterProvider {
-				if level <= metricsLevel {
-					return mp
-				}
-				return noop.MeterProvider{}
-			},
-			MetricsLevel: metricsLevel,
 		},
 
 		BuildInfo: otelcomponent.BuildInfo{
@@ -225,7 +210,7 @@ func (e *Exporter) Update(args component.Arguments) error {
 
 	var tracesExporter otelexporter.Traces
 	if supportedSignals.SupportsTraces() {
-		tracesExporter, err = e.factory.CreateTracesExporter(e.ctx, settings, exporterConfig)
+		tracesExporter, err = e.factory.CreateTraces(e.ctx, settings, exporterConfig)
 		if err != nil && !errors.Is(err, pipeline.ErrSignalNotSupported) {
 			return err
 		} else if tracesExporter != nil {
@@ -235,7 +220,7 @@ func (e *Exporter) Update(args component.Arguments) error {
 
 	var metricsExporter otelexporter.Metrics
 	if supportedSignals.SupportsMetrics() {
-		metricsExporter, err = e.factory.CreateMetricsExporter(e.ctx, settings, exporterConfig)
+		metricsExporter, err = e.factory.CreateMetrics(e.ctx, settings, exporterConfig)
 		if err != nil && !errors.Is(err, pipeline.ErrSignalNotSupported) {
 			return err
 		} else if metricsExporter != nil {
@@ -245,7 +230,7 @@ func (e *Exporter) Update(args component.Arguments) error {
 
 	var logsExporter otelexporter.Logs
 	if supportedSignals.SupportsLogs() {
-		logsExporter, err = e.factory.CreateLogsExporter(e.ctx, settings, exporterConfig)
+		logsExporter, err = e.factory.CreateLogs(e.ctx, settings, exporterConfig)
 		if err != nil && !errors.Is(err, pipeline.ErrSignalNotSupported) {
 			return err
 		} else if logsExporter != nil {
@@ -253,9 +238,12 @@ func (e *Exporter) Update(args component.Arguments) error {
 		}
 	}
 
+	updateConsumersFunc := func() {
+		e.consumer.SetConsumers(tracesExporter, metricsExporter, logsExporter)
+	}
+
 	// Schedule the components to run once our component is running.
-	e.sched.Schedule(host, components...)
-	e.consumer.SetConsumers(tracesExporter, metricsExporter, logsExporter)
+	e.sched.Schedule(e.ctx, updateConsumersFunc, host, components...)
 	return nil
 }
 

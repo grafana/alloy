@@ -38,6 +38,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/local/file"                               // Import local.file
 	_ "github.com/grafana/alloy/internal/component/local/file_match"                         // Import local.file_match
 	_ "github.com/grafana/alloy/internal/component/loki/echo"                                // Import loki.echo
+	_ "github.com/grafana/alloy/internal/component/loki/enrich"                              // Import loki.enrich
 	_ "github.com/grafana/alloy/internal/component/loki/process"                             // Import loki.process
 	_ "github.com/grafana/alloy/internal/component/loki/relabel"                             // Import loki.relabel
 	_ "github.com/grafana/alloy/internal/component/loki/rules/kubernetes"                    // Import loki.rules.kubernetes
@@ -72,6 +73,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/awss3"                   // Import otelcol.exporter.awss3exporter
 	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/datadog"                 // Import otelcol.exporter.datadog
 	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/debug"                   // Import otelcol.exporter.debug
+	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/googlecloud"             // Import otelcol.exporter.googlecloud
 	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/kafka"                   // Import otelcol.exporter.kafka
 	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/loadbalancing"           // Import otelcol.exporter.loadbalancing
 	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/loki"                    // Import otelcol.exporter.loki
@@ -83,6 +85,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/otelcol/extension/jaeger_remote_sampling" // Import otelcol.extension.jaeger_remote_sampling
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/attributes"             // Import otelcol.processor.attributes
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/batch"                  // Import otelcol.processor.batch
+	_ "github.com/grafana/alloy/internal/component/otelcol/processor/cumulativetodelta"      // Import otelcol.processor.cumulativetodelta
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/deltatocumulative"      // Import otelcol.processor.deltatocumulative
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/discovery"              // Import otelcol.processor.discovery
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/filter"                 // Import otelcol.processor.filter
@@ -95,9 +98,11 @@ import (
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/span"                   // Import otelcol.processor.span
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/tail_sampling"          // Import otelcol.processor.tail_sampling
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/transform"              // Import otelcol.processor.transform
+	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/awscloudwatch"           // Import otelcol.receiver.awscloudwatch
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/datadog"                 // Import otelcol.receiver.datadog
-	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/influxdb"                // Import otelcol.receiver.influxdb
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/file_stats"              // Import otelcol.receiver.file_stats
+	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/filelog"                 // Import otelcol.receiver.filelog
+	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/influxdb"                // Import otelcol.receiver.influxdb
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/jaeger"                  // Import otelcol.receiver.jaeger
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/kafka"                   // Import otelcol.receiver.kafka
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/loki"                    // Import otelcol.receiver.loki
@@ -105,8 +110,12 @@ import (
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/otlp"                    // Import otelcol.receiver.otlp
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/prometheus"              // Import otelcol.receiver.prometheus
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/solace"                  // Import otelcol.receiver.solace
+	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/splunkhec"               // Import otelcol.receiver.splunkhec
+	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/syslog"                  // Import otelcol.receiver.syslog
+	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/tcplog"                  // Import otelcol.receiver.tcplog
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/vcenter"                 // Import otelcol.receiver.vcenter
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/zipkin"                  // Import otelcol.receiver.zipkin
+	_ "github.com/grafana/alloy/internal/component/otelcol/storage/file"                     // Import otelcol.storage.file
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/apache"               // Import prometheus.exporter.apache
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/azure"                // Import prometheus.exporter.azure
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/blackbox"             // Import prometheus.exporter.blackbox
@@ -136,6 +145,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/windows"              // Import prometheus.exporter.windows
 	_ "github.com/grafana/alloy/internal/component/prometheus/operator/podmonitors"          // Import prometheus.operator.podmonitors
 	_ "github.com/grafana/alloy/internal/component/prometheus/operator/probes"               // Import prometheus.operator.probes
+	_ "github.com/grafana/alloy/internal/component/prometheus/operator/scrapeconfigs"        // Import prometheus.operator.scrapeconfigs
 	_ "github.com/grafana/alloy/internal/component/prometheus/operator/servicemonitors"      // Import prometheus.operator.servicemonitors
 	_ "github.com/grafana/alloy/internal/component/prometheus/receive_http"                  // Import prometheus.receive_http
 	_ "github.com/grafana/alloy/internal/component/prometheus/relabel"                       // Import prometheus.relabel
@@ -145,6 +155,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/pyroscope/ebpf"                           // Import pyroscope.ebpf
 	_ "github.com/grafana/alloy/internal/component/pyroscope/java"                           // Import pyroscope.java
 	_ "github.com/grafana/alloy/internal/component/pyroscope/receive_http"                   // Import pyroscope.receive_http
+	_ "github.com/grafana/alloy/internal/component/pyroscope/relabel"                        // Import pyroscope.relabel
 	_ "github.com/grafana/alloy/internal/component/pyroscope/scrape"                         // Import pyroscope.scrape
 	_ "github.com/grafana/alloy/internal/component/pyroscope/write"                          // Import pyroscope.write
 	_ "github.com/grafana/alloy/internal/component/remote/http"                              // Import remote.http

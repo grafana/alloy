@@ -1,0 +1,32 @@
+name: Test (Mac)
+on:
+  # Run tests on main just so the module and build cache can be saved and used
+  # in PRs. This speeds up the time it takes to test PRs dramatically.
+  # (More information on https://docs.github.com/en/enterprise-server@3.6/actions/using-workflows/caching-dependencies-to-speed-up-workflows)
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test (Mac)
+    strategy:
+      matrix:
+        platform: [macos-latest-xlarge]
+    runs-on: ${{ matrix.platform }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      with:
+        persist-credentials: false
+    - name: Set up Go
+      uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
+      with:
+        go-version-file: go.mod
+        cache: true
+    - name: Test
+      run: CGO_LDFLAGS="-ld_classic $CGO_LDFLAGS" make GO_TAGS="nodocker" test

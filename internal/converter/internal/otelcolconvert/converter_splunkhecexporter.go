@@ -2,9 +2,11 @@ package otelcolconvert
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/grafana/alloy/internal/component/otelcol/exporter/splunkhec"
 	splunkhec_config "github.com/grafana/alloy/internal/component/otelcol/exporter/splunkhec/config"
+	"github.com/grafana/alloy/internal/component/otelcol/extension"
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/grafana/alloy/syntax/alloytypes"
@@ -30,9 +32,17 @@ func (splunkhecExporterConverter) ConvertAndAppend(state *State, id componentsta
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
+	overrideHook := func(val interface{}) interface{} {
+		switch val.(type) {
+		case extension.ExtensionHandler:
+			ext := state.LookupExtension(*cfg.(*splunkhecexporter.Config).QueueSettings.StorageID)
+			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
+		}
+		return common.GetAlloyTypesOverrideHook()(val)
+	}
 
 	args := toSplunkHecExporter(cfg.(*splunkhecexporter.Config))
-	block := common.NewBlockWithOverride([]string{"otelcol", "exporter", "splunkhec"}, label, args)
+	block := common.NewBlockWithOverrideFn([]string{"otelcol", "exporter", "splunkhec"}, label, args, overrideHook)
 
 	diags.Add(
 		diag.SeverityLevelInfo,
@@ -57,8 +67,8 @@ func toSplunkHecHTTPClientArguments(cfg *splunkhecexporter.Config) splunkhec_con
 	return splunkhec_config.SplunkHecClientArguments{
 		Endpoint:            cfg.Endpoint,
 		Timeout:             cfg.Timeout,
-		ReadBufferSize:      int(cfg.ReadBufferSize),
-		WriteBufferSize:     int(cfg.WriteBufferSize),
+		ReadBufferSize:      cfg.ReadBufferSize,
+		WriteBufferSize:     cfg.WriteBufferSize,
 		MaxIdleConns:        cfg.MaxIdleConns,
 		MaxIdleConnsPerHost: cfg.MaxIdleConnsPerHost,
 		MaxConnsPerHost:     cfg.MaxConnsPerHost,
@@ -110,11 +120,13 @@ func toSplunkHecTelemetry(cfg splunkhecexporter.HecTelemetry) splunkhec_config.S
 }
 
 func toSplunkHecBatcherConfig(cfg exporterbatcher.Config) splunkhec_config.BatcherConfig {
+	sizer, _ := cfg.SizeConfig.Sizer.MarshalText()
 	return splunkhec_config.BatcherConfig{
 		Enabled:      cfg.Enabled,
 		FlushTimeout: cfg.FlushTimeout,
-		MinSizeItems: cfg.MinSizeItems,
-		MaxSizeItems: cfg.MaxSizeItems,
+		MinSize:      cfg.SizeConfig.MinSize,
+		MaxSize:      cfg.SizeConfig.MaxSize,
+		Sizer:        string(sizer),
 	}
 }
 

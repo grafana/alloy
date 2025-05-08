@@ -36,7 +36,7 @@ func New(node ast.Node) *Evaluator {
 //
 // Each call to Evaluate may provide a different scope with new values for
 // available variables. If a variable used by the Evaluator's node isn't
-// defined in scope or any of the parent scopes, Evaluate will return an error.
+// defined in scope, Evaluate will return an error.
 func (vm *Evaluator) Evaluate(scope *Scope, v interface{}) (err error) {
 	// Track a map that allows us to associate values with ast.Nodes so we can
 	// return decorated error messages.
@@ -356,6 +356,24 @@ func (vm *Evaluator) evaluateExpr(scope *Scope, assoc map[value.Value]ast.Node, 
 		}
 
 		switch val.Type() {
+		case value.TypeCapsule:
+			// Check if this capsule can be converted into Alloy object to get the required field
+			if newVal, ok := val.TryConvertToObject(); ok {
+				field, found := newVal[expr.Name.Name]
+				if !found {
+					return value.Null, diag.Diagnostic{
+						Severity: diag.SeverityLevelError,
+						StartPos: ast.StartPos(expr.Name).Position(),
+						EndPos:   ast.EndPos(expr.Name).Position(),
+						Message:  fmt.Sprintf("field %q does not exist", expr.Name.Name),
+					}
+				}
+				return field, nil
+			}
+			return value.Null, value.Error{
+				Value: val,
+				Inner: fmt.Errorf("expected object or array or a capsule convertible to an object, got %s", val.Type()),
+			}
 		case value.TypeObject:
 			res, ok := val.Key(expr.Name.Name)
 			if !ok {
@@ -413,6 +431,26 @@ func (vm *Evaluator) evaluateExpr(scope *Scope, assoc map[value.Value]ast.Node, 
 			}
 			return field, nil
 
+		case value.TypeCapsule:
+			// Check if this capsule can be converted into Alloy object to get the required field
+			if newVal, ok := val.TryConvertToObject(); ok {
+				// Objects are indexed with a string.
+				if idx.Type() != value.TypeString {
+					return value.Null, value.TypeError{Value: idx, Expected: value.TypeString}
+				}
+
+				field, ok := newVal[idx.Text()]
+				if !ok {
+					// If a key doesn't exist in an object accessed with [], return null.
+					return value.Null, nil
+				}
+				return field, nil
+			}
+			return value.Null, value.Error{
+				Value: val,
+				Inner: fmt.Errorf("expected object or array or a capsule convertible to an object, got %s", val.Type()),
+			}
+
 		default:
 			return value.Null, value.Error{
 				Value: val,
@@ -455,11 +493,6 @@ func (vm *Evaluator) evaluateExpr(scope *Scope, assoc map[value.Value]ast.Node, 
 
 // A Scope exposes a set of variables available to use during evaluation.
 type Scope struct {
-	// Parent optionally points to a parent Scope containing more variable.
-	// Variables defined in children scopes take precedence over variables of the
-	// same name found in parent scopes.
-	Parent *Scope
-
 	// Variables holds the list of available variable names that can be used when
 	// evaluating a node.
 	//
@@ -475,23 +508,15 @@ func NewScope(variables map[string]interface{}) *Scope {
 	}
 }
 
-func NewScopeWithParent(parent *Scope, variables map[string]interface{}) *Scope {
-	return &Scope{
-		Parent:    parent,
-		Variables: variables,
-	}
-}
-
-// Lookup looks up a named identifier from the scope, all of the scope's
-// parents, and the stdlib.
+// Lookup looks up a named identifier from the scope and the stdlib.
 func (s *Scope) Lookup(name string) (interface{}, bool) {
-	// Traverse the scope first, then fall back to stdlib.
-	for s != nil {
+	// Check the scope first.
+	if s != nil {
 		if val, ok := s.Variables[name]; ok {
 			return val, true
 		}
-		s = s.Parent
 	}
+	// Falls back to the stdlib.
 	if ident, ok := stdlib.Identifiers[name]; ok {
 		return ident, true
 	}

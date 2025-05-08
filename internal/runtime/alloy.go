@@ -54,6 +54,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/atomic"
 
+	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/internal/controller"
 	"github.com/grafana/alloy/internal/runtime/internal/importsource"
@@ -147,9 +148,9 @@ func New(o Options) *Runtime {
 type controllerOptions struct {
 	Options
 
-	ComponentRegistry controller.ComponentRegistry // Custom component registry used in tests.
-	ModuleRegistry    *moduleRegistry              // Where to register created modules.
-	IsModule          bool                         // Whether this controller is for a module.
+	ComponentRegistry component.Registry // Custom component registry used in tests.
+	ModuleRegistry    *moduleRegistry    // Where to register created modules.
+	IsModule          bool               // Whether this controller is for a module.
 	// A worker pool to evaluate components asynchronously. A default one will be created if this is nil.
 	WorkerPool worker.Pool
 }
@@ -207,17 +208,24 @@ func newController(o controllerOptions) *Runtime {
 			OnExportsChange: o.OnExportsChange,
 			Registerer:      o.Reg,
 			ControllerID:    o.ControllerID,
-			NewModuleController: func(id string) controller.ModuleController {
+			NewModuleController: func(opts controller.ModuleControllerOpts) controller.ModuleController {
+				// The module controller registry should take precedence.,
+				// because it is tailored to this module.
+				reg := o.Reg
+				if opts.RegOverride != nil {
+					reg = opts.RegOverride
+				}
+
 				return newModuleController(&moduleControllerOptions{
 					ComponentRegistry:    o.ComponentRegistry,
 					ModuleRegistry:       o.ModuleRegistry,
 					Logger:               log,
 					Tracer:               tracer,
-					Reg:                  o.Reg,
+					Reg:                  reg,
 					DataPath:             o.DataPath,
 					MinStability:         o.MinStability,
 					EnableCommunityComps: o.EnableCommunityComps,
-					ID:                   id,
+					ID:                   opts.Id,
 					ServiceMap:           serviceMap,
 					WorkerPool:           workerPool,
 				})
@@ -265,6 +273,7 @@ func (f *Runtime) Run(ctx context.Context) {
 				components = f.loader.Components()
 				services   = f.loader.Services()
 				imports    = f.loader.Imports()
+				forEachs   = f.loader.ForEachs()
 
 				runnables = make([]controller.RunnableNode, 0, len(components)+len(services)+len(imports))
 			)
@@ -274,6 +283,10 @@ func (f *Runtime) Run(ctx context.Context) {
 
 			for _, i := range imports {
 				runnables = append(runnables, i)
+			}
+
+			for _, fe := range forEachs {
+				runnables = append(runnables, fe)
 			}
 
 			// Only the root controller should run services, since modules share the
@@ -306,9 +319,9 @@ func (f *Runtime) LoadSource(source *Source, args map[string]any, configPath str
 	}
 	return f.applyLoaderConfig(controller.ApplyOptions{
 		Args:            args,
-		ComponentBlocks: source.components,
-		ConfigBlocks:    source.configBlocks,
-		DeclareBlocks:   source.declareBlocks,
+		ComponentBlocks: source.Components(),
+		ConfigBlocks:    source.Configs(),
+		DeclareBlocks:   source.Declares(),
 		ArgScope: vm.NewScope(map[string]interface{}{
 			importsource.ModulePath: modulePath,
 		}),
@@ -319,9 +332,9 @@ func (f *Runtime) LoadSource(source *Source, args map[string]any, configPath str
 func (f *Runtime) loadSource(source *Source, args map[string]any, customComponentRegistry *controller.CustomComponentRegistry) error {
 	return f.applyLoaderConfig(controller.ApplyOptions{
 		Args:                    args,
-		ComponentBlocks:         source.components,
-		ConfigBlocks:            source.configBlocks,
-		DeclareBlocks:           source.declareBlocks,
+		ComponentBlocks:         source.Components(),
+		ConfigBlocks:            source.Configs(),
+		DeclareBlocks:           source.Declares(),
 		CustomComponentRegistry: customComponentRegistry,
 		ArgScope:                customComponentRegistry.Scope(),
 	})

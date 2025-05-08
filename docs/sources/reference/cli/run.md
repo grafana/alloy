@@ -19,11 +19,11 @@ alloy run [<FLAG> ...] <PATH_NAME>
 Replace the following:
 
 * _`<FLAG>`_: One or more flags that define the input and output of the command.
-* _`<PATH_NAME>`_: Required. The {{< param "PRODUCT_NAME" >}} configuration file/directory path.
+* _`<PATH_NAME>`_: Required. The {{< param "PRODUCT_NAME" >}} configuration file or directory path.
 
 If the _`<PATH_NAME>`_ argument isn't provided, or if the configuration path can't be loaded or contains errors during the initial load, the `run` command immediately exits and shows an error message.
 
-If you give the _`<PATH_NAME>`_ argument a directory path, {{< param "PRODUCT_NAME" >}} finds `*.alloy` files (ignoring nested directories) and loads them as a single configuration source.
+If you provide a directory path for  the _`<PATH_NAME>`_, {{< param "PRODUCT_NAME" >}} finds `*.alloy` files, ignoring nested directories, and loads them as a single configuration source.
 However, component names must be **unique** across all {{< param "PRODUCT_NAME" >}} configuration files, and configuration blocks must not be repeated.
 
 {{< param "PRODUCT_NAME" >}} continues to run if subsequent reloads of the configuration file fail, potentially marking components as unhealthy depending on the nature of the failure.
@@ -55,11 +55,22 @@ The following flags are supported:
 * `--cluster.tls-cert-path`: Path to the certificate file used for peer communication over TLS.
 * `--cluster.tls-key-path`: Path to the key file used for peer communication over TLS.
 * `--cluster.tls-server-name`: Server name used for peer communication over TLS.
-* `--config.format`: The format of the source file. Supported formats: `alloy`, `otelcol`, `prometheus`, `promtail`, `static` (default `"alloy"`).
-* `--config.bypass-conversion-errors`: Enable bypassing errors when converting (default `false`).
+* `--cluster.wait-for-size`: Wait for the cluster to reach the specified number of instances before allowing components that use clustering to begin processing. Zero means disabled (default `0`).
+* `--cluster.wait-timeout`: Maximum duration to wait for minimum cluster size before proceeding with available nodes. Zero means wait forever, no timeout (default `0`).
+* `--config.format`: Specifies the source file format. Supported formats: `alloy`, `otelcol`, `prometheus`, `promtail`, and `static` (default `"alloy"`).
+* `--config.bypass-conversion-errors`: Enable bypassing errors during conversion (default `false`).
 * `--config.extra-args`: Extra arguments from the original format used by the converter.
-* `--stability.level`: The minimum permitted stability level of functionality to run. Supported values: `experimental`, `public-preview`, `generally-available` (default `"generally-available"`).
+* `--stability.level`: The minimum permitted stability level of functionality. Supported values: `experimental`, `public-preview`, and `generally-available` (default `"generally-available"`).
 * `--feature.community-components.enabled`: Enable community components (default `false`).
+* `--feature.prometheus.metric-validation-scheme`: Prometheus metric validation scheme to use. Supported values: `legacy`, `utf-8`. NOTE: this is an experimental flag and may be removed in future releases (default `"legacy"`).
+* `--windows.priority`: The priority to set for the {{< param "PRODUCT_NAME" >}} process when running on Windows. This is only available on Windows. Supported values: `above_normal`, `below_normal`, `normal`, `high`, `idle`, or `realtime` (default `"normal"`).
+
+{{< admonition type="note" >}}
+The `--windows.priority` flag is in [Public preview][] and is not covered by {{< param "FULL_PRODUCT_NAME" >}} [backward compatibility][] guarantees.
+
+[Public preview]: https://grafana.com/docs/release-life-cycle/
+[backward compatibility]: ../../../introduction/backward-compatibility/
+{{< /admonition >}}
 
 ## Update the configuration file
 
@@ -129,15 +140,24 @@ The `--cluster.rejoin-interval` flag defines how often each node should rediscov
 This operation is useful for addressing split-brain issues if the initial bootstrap is unsuccessful and for making clustering easier to manage in dynamic environments.
 To disable this behavior, set the `--cluster.rejoin-interval` flag to `"0s"`.
 
-Discovering peers using the `--cluster.join-addresses` and `--cluster.discover-peers` flags only happens on startup.
-After that, cluster nodes depend on gossiping messages with each other to converge on the cluster's state.
+If `--cluster.rejoin-interval` is set to `0s`, then discovering peers using the `--cluster.join-addresses` and `--cluster.discover-peers` flags only happens at startup. After that, cluster nodes depend on gossiping messages with each other to converge on the cluster's state.
 
 The first node that's used to bootstrap a new cluster (also known as the "seed node") can either omit the flags that specify peers to join or can try to connect to itself.
 
-To join or rejoin a cluster, {{< param "PRODUCT_NAME" >}} tries to connect to a certain number of peers limited by the `--cluster.max-join-peers` flag.
+To join or rejoin a cluster, {{< param "PRODUCT_NAME" >}} tries to connect to a number of random peers limited by the `--cluster.max-join-peers` flag.
 This flag can be useful for clusters of significant sizes because connecting to a high number of peers can be an expensive operation.
 To disable this behavior, set the `--cluster.max-join-peers` flag to 0.
 If the value of `--cluster.max-join-peers` is higher than the number of peers discovered, {{< param "PRODUCT_NAME" >}} connects to all of them.
+
+The `--cluster.wait-for-size` flag specifies the minimum cluster size required before components that use clustering
+begin processing traffic. When set to a value greater than zero, a node will join the cluster but the components that
+use clustering will not take on any work until enough nodes are available. This ensures adequate cluster capacity - refer to
+[estimate resource usage][] for guidelines. The default value is `0`, which disables this feature.
+
+The `--cluster.wait-timeout` flag sets how long a node will wait for the cluster to reach the size specified by
+`--cluster.wait-for-size`. If the timeout expires, the node will proceed with available nodes. Setting this to `0` (the
+default) means wait indefinitely. For production environments, consider setting a timeout of several minutes as a
+fallback.
 
 The `--cluster.name` flag can be used to prevent clusters from accidentally merging.
 When `--cluster.name` is provided, nodes only join peers who share the same cluster name value.
@@ -178,3 +198,4 @@ Refer to [alloy convert][] for more details on how `extra-args` work.
 [support bundle]: ../../../troubleshoot/support_bundle/
 [component controller]: ../../../get-started/component_controller/
 [UI]: ../../../troubleshoot/debug/#clustering-page
+[estimate resource usage]: ../../../introduction/estimate-resource-usage/

@@ -40,6 +40,7 @@ func (influxdbReceiverConverter) ConvertAndAppend(
 	id componentstatus.InstanceID,
 	cfg component.Config,
 ) diag.Diagnostics {
+
 	var diags diag.Diagnostics
 
 	// Generate a label for the converted component
@@ -64,14 +65,15 @@ func (influxdbReceiverConverter) ConvertAndAppend(
 
 // toInfluxdbReceiver converts the influxdbreceiver.Config to influxdb.Arguments
 func toInfluxdbReceiver(
-    state *State,
-    id componentstatus.InstanceID,
-    cfg *influxdbreceiver.Config,
+	state *State,
+	id componentstatus.InstanceID,
+	cfg *influxdbreceiver.Config,
 ) *influxdb.Arguments {
-    metricsConsumers := ToTokenizedConsumers(state.Next(id, pipeline.SignalMetrics))
+
+	metricsConsumers := ToTokenizedConsumers(state.Next(id, pipeline.SignalMetrics))
 
 	args := &influxdb.Arguments{
-		HTTPServer:  *toHTTPServerArguments(&cfg.ServerConfig),
+		HTTPServer:   *toHTTPServerArguments(&cfg.ServerConfig),
 		DebugMetrics: common.DefaultValue[influxdb.Arguments]().DebugMetrics,
 		Output: &otelcol.ConsumerArguments{
 			Metrics: metricsConsumers,

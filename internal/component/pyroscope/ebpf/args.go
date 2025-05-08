@@ -21,6 +21,7 @@ type Arguments struct {
 	CollectUserProfile   bool                   `alloy:"collect_user_profile,attr,optional"`
 	CollectKernelProfile bool                   `alloy:"collect_kernel_profile,attr,optional"`
 	Demangle             string                 `alloy:"demangle,attr,optional"`
+	GoTableFallback      bool                   `alloy:"go_table_fallback,attr,optional"`
 	PythonEnabled        bool                   `alloy:"python_enabled,attr,optional"`
 	SymbolsMapSize       int                    `alloy:"symbols_map_size,attr,optional"`
 	PIDMapSize           int                    `alloy:"pid_map_size,attr,optional"`

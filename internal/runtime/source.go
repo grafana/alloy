@@ -1,7 +1,7 @@
 package runtime
 
 import (
-	"crypto/sha256"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -16,7 +16,6 @@ import (
 type Source struct {
 	sourceMap map[string][]byte // Map that links parsed Alloy source's name with its content.
 	fileMap   map[string]*ast.File
-	hash      [sha256.Size]byte // Hash of all files in sourceMap sorted by name.
 
 	// Components holds the list of raw Alloy AST blocks describing components.
 	// The Alloy controller can interpret them.
@@ -44,7 +43,6 @@ func ParseSource(name string, bb []byte) (*Source, error) {
 	}
 	source.sourceMap = map[string][]byte{name: bb}
 	source.fileMap = map[string]*ast.File{name: node}
-	source.hash = sha256.Sum256(bb)
 	return source, nil
 }
 
@@ -77,7 +75,7 @@ func sourceFromBody(body ast.Body) (*Source, error) {
 			switch fullName {
 			case "declare":
 				declares = append(declares, stmt)
-			case "logging", "tracing", "argument", "export", "import.file", "import.string", "import.http", "import.git":
+			case "logging", "tracing", "argument", "export", "import.file", "import.string", "import.http", "import.git", "foreach":
 				configs = append(configs, stmt)
 			default:
 				components = append(components, stmt)
@@ -109,12 +107,13 @@ type namedSource struct {
 // Source. sources must not be modified after calling ParseSources.
 func ParseSources(sources map[string][]byte) (*Source, error) {
 	var (
+		// Collect diagnostic errors from several sources.
+		mergedDiags diag.Diagnostics
 		// Combined source from all the input content.
 		mergedSource = &Source{
 			sourceMap: sources,
 			fileMap:   make(map[string]*ast.File, len(sources)),
 		}
-		hash = sha256.New() // Combined hash of all the sources.
 	)
 
 	// Sorted slice so ParseSources always does the same thing.
@@ -131,10 +130,15 @@ func ParseSources(sources map[string][]byte) (*Source, error) {
 
 	// Parse each .alloy source and compute new hash for the whole sourceMap
 	for _, namedSource := range sortedSources {
-		hash.Write(namedSource.Content)
-
 		sourceFragment, err := ParseSource(namedSource.Name, namedSource.Content)
 		if err != nil {
+			// If we encounter diagnostic errors we combine them and
+			// later return all of them
+			var diags diag.Diagnostics
+			if errors.As(err, &diags) {
+				mergedDiags = append(mergedDiags, diags...)
+				continue
+			}
 			return nil, err
 		}
 
@@ -145,7 +149,10 @@ func ParseSources(sources map[string][]byte) (*Source, error) {
 		mergedSource.declareBlocks = append(mergedSource.declareBlocks, sourceFragment.declareBlocks...)
 	}
 
-	mergedSource.hash = [32]byte(hash.Sum(nil))
+	if len(mergedDiags) > 0 {
+		return nil, mergedDiags
+	}
+
 	return mergedSource, nil
 }
 
@@ -167,11 +174,14 @@ func (s *Source) SourceFiles() map[string]*ast.File {
 	return s.fileMap
 }
 
-// SHA256 returns the sha256 checksum of the source.
-// Do not modify the returned byte array.
-func (s *Source) SHA256() [sha256.Size]byte {
-	if s == nil {
-		return [sha256.Size]byte{}
-	}
-	return s.hash
+func (s *Source) Components() []*ast.BlockStmt {
+	return s.components
+}
+
+func (s *Source) Configs() []*ast.BlockStmt {
+	return s.configBlocks
+}
+
+func (s *Source) Declares() []*ast.BlockStmt {
+	return s.declareBlocks
 }

@@ -15,7 +15,7 @@ apiVersion: {{ include "alloy.controller.pdb.apiVersion" . }}
 kind: PodDisruptionBudget
 metadata:
   name: {{ include "alloy.fullname" . }}
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ include "alloy.namespace" . }}
   labels:
     {{- include "alloy.labels" . | nindent 4 }}
 spec:

@@ -212,20 +212,23 @@ func ServeSupportBundle(rw http.ResponseWriter, b *Bundle, logsBuf *bytes.Buffer
 	rw.Header().Set("Content-Disposition", "attachment; filename=\"alloy-support-bundle.zip\"")
 
 	zipStructure := map[string][]byte{
-		"alloy-metadata.yaml":                b.meta,
-		"alloy-components.json":              b.components,
-		"alloy-peers.json":                   b.peers,
-		"alloy-metrics-sample-start.txt":     b.alloyMetricsStart,
-		"alloy-metrics-sample-end.txt":       b.alloyMetricsEnd,
-		"alloy-runtime-flags.txt":            b.runtimeFlags,
-		"alloy-environment.txt":              b.environmentVariables,
-		"alloy-logs.txt":                     logsBuf.Bytes(),
-		"sources/remote-config/remote.alloy": b.remoteCfg,
-		"pprof/cpu.pprof":                    b.cpuBuf.Bytes(),
-		"pprof/heap.pprof":                   b.heapBuf.Bytes(),
-		"pprof/goroutine.pprof":              b.goroutineBuf.Bytes(),
-		"pprof/mutex.pprof":                  b.mutexBuf.Bytes(),
-		"pprof/block.pprof":                  b.blockBuf.Bytes(),
+		"alloy-metadata.yaml":            b.meta,
+		"alloy-components.json":          b.components,
+		"alloy-peers.json":               b.peers,
+		"alloy-metrics-sample-start.txt": b.alloyMetricsStart,
+		"alloy-metrics-sample-end.txt":   b.alloyMetricsEnd,
+		"alloy-runtime-flags.txt":        b.runtimeFlags,
+		"alloy-environment.txt":          b.environmentVariables,
+		"alloy-logs.txt":                 logsBuf.Bytes(),
+		"pprof/cpu.pprof":                b.cpuBuf.Bytes(),
+		"pprof/heap.pprof":               b.heapBuf.Bytes(),
+		"pprof/goroutine.pprof":          b.goroutineBuf.Bytes(),
+		"pprof/mutex.pprof":              b.mutexBuf.Bytes(),
+		"pprof/block.pprof":              b.blockBuf.Bytes(),
+	}
+
+	if len(b.remoteCfg) > 0 {
+		zipStructure["sources/remote-config/remote.alloy"] = b.remoteCfg
 	}
 
 	for p, s := range b.sources {

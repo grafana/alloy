@@ -1,7 +1,6 @@
 package gcp_exporter_test
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -60,7 +59,7 @@ func TestSelfPruningDeltaStore_ListMetrics_Delegates(t *testing.T) {
 }
 
 func TestSelfPruningDeltaStore_PruningWorkflow(t *testing.T) {
-	sixMinutesAheadClock := clock.Context(context.Background(), clock.NewMock(time.Now().Add(6*time.Minute)))
+	sixMinutesAheadClock := clock.Context(t.Context(), clock.NewMock(time.Now().Add(6*time.Minute)))
 	type testCase struct {
 		name               string
 		storeState         map[string][]*collectors.ConstMetric
@@ -76,7 +75,7 @@ func TestSelfPruningDeltaStore_PruningWorkflow(t *testing.T) {
 			callsToMakeTo: func(store *gcp_exporter.SelfPruningDeltaStore[collectors.ConstMetric], ts *testStore) {
 				// Initialize last operation time
 				store.ListMetrics("test-descriptor")
-				store.Prune(context.Background())
+				store.Prune(t.Context())
 			},
 			expectedCallCounts: map[string]int{"test-descriptor": 1}, // Once to init last operation time
 		},

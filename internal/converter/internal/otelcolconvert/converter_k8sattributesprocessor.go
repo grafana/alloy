@@ -65,8 +65,10 @@ func toK8SAttributesProcessor(state *State, id componentstatus.InstanceID, cfg *
 			Fields:    toFilterFields(cfg.Filter.Fields),
 			Labels:    toFilterFields(cfg.Filter.Labels),
 		},
-		PodAssociations: toPodAssociations(cfg.Association),
-		Exclude:         toExclude(cfg.Exclude),
+		PodAssociations:        toPodAssociations(cfg.Association),
+		Exclude:                toExclude(cfg.Exclude),
+		WaitForMetadata:        cfg.WaitForMetadata,
+		WaitForMetadataTimeout: cfg.WaitForMetadataTimeout,
 
 		Output: &otelcol.ConsumerArguments{
 			Metrics: ToTokenizedConsumers(nextMetrics),
@@ -126,7 +128,6 @@ func toFilterExtract(cfg []k8sattributesprocessor.FieldExtractConfig) []k8sattri
 			TagName:  c.TagName,
 			Key:      c.Key,
 			KeyRegex: c.KeyRegex,
-			Regex:    c.Regex,
 			From:     c.From,
 		})
 	}

@@ -1,6 +1,7 @@
 package write
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -8,16 +9,16 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/oklog/run"
+	"github.com/grafana/pyroscope/api/model/labelset"
 	commonconfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
-	"go.uber.org/multierr"
-	"golang.org/x/sync/errgroup"
 
 	"github.com/grafana/alloy/internal/alloyseed"
 	"github.com/grafana/alloy/internal/component"
@@ -26,6 +27,7 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/useragent"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/dskit/backoff"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
@@ -38,17 +40,6 @@ var (
 		return Arguments{}
 	}
 	_ component.Component = (*Component)(nil)
-
-	// List of headers to ignore when copying headers from client to server connection
-	// https://datatracker.ietf.org/doc/html/rfc9113#name-connection-specific-header-
-	ignoreProxyHeaders = map[string]bool{
-		"Connection":        true,
-		"Proxy-Connection":  true,
-		"Keep-Alive":        true,
-		"Transfer-Encoding": true,
-		"Upgrade":           true,
-		"TE":                true,
-	}
 )
 
 func init() {
@@ -155,7 +146,6 @@ func (c *Component) Run(ctx context.Context) error {
 // Update implements Component.
 func (c *Component) Update(newConfig component.Arguments) error {
 	c.cfg = newConfig.(Arguments)
-	level.Debug(c.opts.Logger).Log("msg", "updating pyroscope.write config", "old", c.cfg, "new", newConfig)
 	receiver, err := NewFanOut(c.opts, newConfig.(Arguments), c.metrics)
 	if err != nil {
 		return err
@@ -189,7 +179,10 @@ func NewFanOut(opts component.Options, config Arguments, metrics *metrics) (*fan
 		if err != nil {
 			return nil, err
 		}
-		pushClients = append(pushClients, pushv1connect.NewPusherServiceClient(httpClient, endpoint.URL, WithUserAgent(userAgent)))
+		pushClients = append(
+			pushClients,
+			pushv1connect.NewPusherServiceClient(httpClient, endpoint.URL, WithUserAgent(userAgent)),
+		)
 		ingestClients[endpoint] = httpClient
 	}
 	return &fanOutClient{
@@ -202,12 +195,15 @@ func NewFanOut(opts component.Options, config Arguments, metrics *metrics) (*fan
 }
 
 // Push implements the PusherServiceClient interface.
-func (f *fanOutClient) Push(ctx context.Context, req *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
-	// Don't flow the context down to the `run.Group`.
-	// We want to fan out to all even in case of failures to one.
+func (f *fanOutClient) Push(
+	ctx context.Context,
+	req *connect.Request[pushv1.PushRequest],
+) (*connect.Response[pushv1.PushResponse], error) {
+
 	var (
-		g                     run.Group
+		wg                    sync.WaitGroup
 		errs                  error
+		errorMut              sync.Mutex
 		reqSize, profileCount = requestSize(req)
 	)
 
@@ -222,7 +218,9 @@ func (f *fanOutClient) Push(ctx context.Context, req *connect.Request[pushv1.Pus
 			})
 			err error
 		)
-		g.Add(func() error {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
 			req := connect.NewRequest(req.Msg)
 			for k, v := range f.config.Endpoints[i].Headers {
 				req.Header().Set(k, v)
@@ -240,7 +238,8 @@ func (f *fanOutClient) Push(ctx context.Context, req *connect.Request[pushv1.Pus
 					f.metrics.sentProfiles.WithLabelValues(f.config.Endpoints[i].URL).Add(float64(profileCount))
 					break
 				}
-				level.Warn(f.opts.Logger).Log("msg", "failed to push to endpoint", "endpoint", f.config.Endpoints[i].URL, "err", err)
+				level.Warn(f.opts.Logger).
+					Log("msg", "failed to push to endpoint", "endpoint", f.config.Endpoints[i].URL, "err", err)
 				if !shouldRetry(err) {
 					break
 				}
@@ -253,15 +252,14 @@ func (f *fanOutClient) Push(ctx context.Context, req *connect.Request[pushv1.Pus
 			if err != nil {
 				f.metrics.droppedBytes.WithLabelValues(f.config.Endpoints[i].URL).Add(float64(reqSize))
 				f.metrics.droppedProfiles.WithLabelValues(f.config.Endpoints[i].URL).Add(float64(profileCount))
-				level.Warn(f.opts.Logger).Log("msg", "final error sending to profiles to endpoint", "endpoint", f.config.Endpoints[i].URL, "err", err)
-				errs = multierr.Append(errs, err)
+				level.Warn(f.opts.Logger).
+					Log("msg", "final error sending to profiles to endpoint", "endpoint", f.config.Endpoints[i].URL, "err", err)
+				util.ErrorsJoinConcurrent(&errs, err, &errorMut)
 			}
-			return err
-		}, func(err error) {})
+		}()
 	}
-	if err := g.Run(); err != nil {
-		return nil, err
-	}
+
+	wg.Wait()
 	if errs != nil {
 		return nil, errs
 	}
@@ -299,6 +297,11 @@ func (f *fanOutClient) Appender() pyroscope.Appender {
 
 // Append implements the Appender interface.
 func (f *fanOutClient) Append(ctx context.Context, lbs labels.Labels, samples []*pyroscope.RawSample) error {
+	// Validate labels first
+	if err := validateLabels(lbs); err != nil {
+		return fmt.Errorf("invalid labels in profile: %w", err)
+	}
+
 	// todo(ctovena): we should probably pool the label pair arrays and label builder to avoid allocs.
 	var (
 		protoLabels  = make([]*typesv1.LabelPair, 0, len(lbs)+len(f.config.ExternalLabels))
@@ -340,102 +343,113 @@ func (f *fanOutClient) Append(ctx context.Context, lbs labels.Labels, samples []
 }
 
 type PyroscopeWriteError struct {
+	Message    string
 	StatusCode int
 }
 
 func (e *PyroscopeWriteError) Error() string {
-	return fmt.Sprintf("pyroscope write error: status %d", e.StatusCode)
+	return fmt.Sprintf("pyroscope write error: status=%d msg=%s", e.StatusCode, e.Message)
+}
+
+func (e *PyroscopeWriteError) readBody(resp *http.Response) {
+	// read the first 2028 bytes of error body
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 2048))
+	if err == nil {
+		e.Message = string(body)
+	}
+
+	// ensure full body is read to keep http connection Keep-Alive
+	_, _ = io.Copy(io.Discard, resp.Body)
 }
 
 // AppendIngest implements the pyroscope.Appender interface.
 func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.IncomingProfile) error {
-	pipeWriters := make([]io.Writer, len(f.config.Endpoints))
-	pipeReaders := make([]io.Reader, len(f.config.Endpoints))
-	for i := range f.config.Endpoints {
-		pr, pw := io.Pipe()
-		pipeReaders[i] = pr
-		pipeWriters[i] = pw
+	var wg sync.WaitGroup
+	var errorMut sync.Mutex
+	var errs error
+
+	// Handle labels
+	query := profile.URL.Query()
+	ls := labelset.New(make(map[string]string))
+
+	finalLabels := ensureNameMatchesService(profile.Labels)
+
+	if err := validateLabels(finalLabels); err != nil {
+		return fmt.Errorf("invalid labels in profile: %w", err)
 	}
-	mw := io.MultiWriter(pipeWriters...)
 
-	g, ctx := errgroup.WithContext(ctx)
-
-	// Start copying the profile body to all pipes
-	g.Go(func() error {
-		defer func() {
-			for _, pw := range pipeWriters {
-				pw.(io.WriteCloser).Close()
-			}
-		}()
-		_, err := io.Copy(mw, profile.Body)
-		return err
+	finalLabels.Range(func(l labels.Label) {
+		ls.Add(l.Name, l.Value)
 	})
 
-	// Send to each endpoint concurrently
-	for i, endpoint := range f.config.Endpoints {
-		g.Go(func() error {
-			defer pipeReaders[i].(io.ReadCloser).Close()
+	// Add external labels (which will override any existing ones)
+	for k, v := range f.config.ExternalLabels {
+		ls.Add(k, v)
+	}
+	query.Set("name", ls.Normalized())
 
+	// Send to each endpoint concurrently
+	for endpointIdx, endpoint := range f.config.Endpoints {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
 			u, err := url.Parse(endpoint.URL)
 			if err != nil {
-				return fmt.Errorf("parse endpoint URL: %w", err)
+				util.ErrorsJoinConcurrent(&errs, fmt.Errorf("parse URL for endpoint[%d]: %w", endpointIdx, err), &errorMut)
+				return
 			}
 
 			u.Path = path.Join(u.Path, profile.URL.Path)
 
-			// Handle labels
-			query := profile.URL.Query()
-			if nameParam := query.Get("name"); nameParam != "" {
-				key, err := ParseKey(nameParam)
-				if err != nil {
-					return err
-				}
-				for k, v := range f.config.ExternalLabels {
-					key.labels[k] = v
-				}
-				query.Set("name", key.Normalized())
-			}
+			// attch labels
 			u.RawQuery = query.Encode()
 
-			req, err := http.NewRequestWithContext(ctx, "POST", u.String(), pipeReaders[i])
+			req, err := http.NewRequestWithContext(ctx, "POST", u.String(), bytes.NewReader(profile.RawBody))
 			if err != nil {
-				return fmt.Errorf("create request: %w", err)
+				util.ErrorsJoinConcurrent(&errs, fmt.Errorf("create request for endpoint[%d]: %w", endpointIdx, err), &errorMut)
+				return
 			}
 
-			// First set profile headers as defaults
-			for k, v := range profile.Headers {
-				// Ignore this header as it may interfere with keepalives in the connection to pyroscope
-				// which may cause huge load due to tls renegotiation
-				if _, exists := ignoreProxyHeaders[k]; exists {
-					continue
-				}
-				req.Header[k] = v
-			}
-
-			// Override any profile duplicated header
+			// set headers from endpoint
 			for k, v := range endpoint.Headers {
 				req.Header.Set(k, v)
 			}
 
+			// now set profile content type, overwrite what existed
+			for idx := range profile.ContentType {
+				if idx == 0 {
+					req.Header.Set(pyroscope.HeaderContentType, profile.ContentType[idx])
+					continue
+				}
+				req.Header.Add(pyroscope.HeaderContentType, profile.ContentType[idx])
+			}
+
 			resp, err := f.ingestClients[endpoint].Do(req)
 			if err != nil {
-				return fmt.Errorf("do request: %w", err)
+				util.ErrorsJoinConcurrent(&errs, fmt.Errorf("do request for endpoint[%d]: %w", endpointIdx, err), &errorMut)
+				return
 			}
 			defer resp.Body.Close()
 
+			if resp.StatusCode != http.StatusOK {
+				wErr := &PyroscopeWriteError{StatusCode: resp.StatusCode}
+				wErr.readBody(resp)
+				util.ErrorsJoinConcurrent(&errs, fmt.Errorf("remote error for endpoint[%d]: %w", endpointIdx, wErr), &errorMut)
+				return
+			}
+
+			// Ensure full body is read to keep http connection Keep-Alive
 			_, err = io.Copy(io.Discard, resp.Body)
 			if err != nil {
-				return fmt.Errorf("read response body: %w", err)
+				util.ErrorsJoinConcurrent(&errs, fmt.Errorf("reading response body for endpoint[%d]: %w", endpointIdx, err), &errorMut)
+				return
 			}
-
-			if resp.StatusCode != http.StatusOK {
-				return &PyroscopeWriteError{StatusCode: resp.StatusCode}
-			}
-			return nil
-		})
+		}()
 	}
 
-	return g.Wait()
+	wg.Wait()
+
+	return errs
 }
 
 // WithUserAgent returns a `connect.ClientOption` that sets the User-Agent header on.
@@ -464,4 +478,46 @@ func (i *agentInterceptor) WrapStreamingClient(next connect.StreamingClientFunc)
 
 func (i *agentInterceptor) WrapStreamingHandler(next connect.StreamingHandlerFunc) connect.StreamingHandlerFunc {
 	return next
+}
+
+func ensureNameMatchesService(lbls labels.Labels) labels.Labels {
+	if serviceName := lbls.Get(pyroscope.LabelServiceName); serviceName != "" {
+		builder := labels.NewBuilder(lbls)
+		builder.Set(pyroscope.LabelName, serviceName)
+		return builder.Labels()
+	}
+	return lbls
+}
+
+// validateLabels checks for valid labels and doesn't contain duplicates.
+func validateLabels(lbls labels.Labels) error {
+	if lbls.Len() == 0 {
+		return labelset.ErrServiceNameIsRequired
+	}
+
+	sort.Sort(lbls)
+
+	lastLabelName := ""
+	for _, l := range lbls {
+		if cmp := strings.Compare(lastLabelName, l.Name); cmp == 0 {
+			return fmt.Errorf("duplicate label name: %s", l.Name)
+		}
+
+		// Validate label value
+		if !model.LabelValue(l.Value).IsValid() {
+			return fmt.Errorf("invalid label value for %s: %s", l.Name, l.Value)
+		}
+
+		// Skip label name validation for pyroscope reserved labels
+		if l.Name != pyroscope.LabelName {
+			// Validate label name
+			if err := labelset.ValidateLabelName(l.Name); err != nil {
+				return fmt.Errorf("invalid label name: %w", err)
+			}
+		}
+
+		lastLabelName = l.Name
+	}
+
+	return nil
 }

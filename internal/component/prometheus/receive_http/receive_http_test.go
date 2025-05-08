@@ -22,6 +22,7 @@ import (
 	"github.com/prometheus/prometheus/prompb"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/prometheus/prometheus/storage/remote"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/protoadapt"
@@ -30,14 +31,14 @@ import (
 func TestForwardsMetrics(t *testing.T) {
 	timestamp := time.Now().Add(time.Second).UnixMilli()
 	input := []prompb.TimeSeries{{
-		Labels: []prompb.Label{{Name: "cluster", Value: "local"}, {Name: "foo", Value: "bar"}},
+		Labels: []prompb.Label{{Name: "__name__", Value: "test_metric"}, {Name: "cluster", Value: "local"}, {Name: "foo", Value: "bar"}},
 		Samples: []prompb.Sample{
 			{Timestamp: timestamp, Value: 12},
 			{Timestamp: timestamp + 1, Value: 24},
 			{Timestamp: timestamp + 2, Value: 48},
 		},
 	}, {
-		Labels: []prompb.Label{{Name: "cluster", Value: "local"}, {Name: "fizz", Value: "buzz"}},
+		Labels: []prompb.Label{{Name: "__name__", Value: "test_metric"}, {Name: "cluster", Value: "local"}, {Name: "fizz", Value: "buzz"}},
 		Samples: []prompb.Sample{
 			{Timestamp: timestamp, Value: 191},
 			{Timestamp: timestamp + 1, Value: 1337},
@@ -45,11 +46,11 @@ func TestForwardsMetrics(t *testing.T) {
 	}}
 
 	expected := []testSample{
-		{ts: timestamp, val: 12, l: labels.FromStrings("cluster", "local", "foo", "bar")},
-		{ts: timestamp + 1, val: 24, l: labels.FromStrings("cluster", "local", "foo", "bar")},
-		{ts: timestamp + 2, val: 48, l: labels.FromStrings("cluster", "local", "foo", "bar")},
-		{ts: timestamp, val: 191, l: labels.FromStrings("cluster", "local", "fizz", "buzz")},
-		{ts: timestamp + 1, val: 1337, l: labels.FromStrings("cluster", "local", "fizz", "buzz")},
+		{ts: timestamp, val: 12, l: labels.FromStrings("__name__", "test_metric", "cluster", "local", "foo", "bar")},
+		{ts: timestamp + 1, val: 24, l: labels.FromStrings("__name__", "test_metric", "cluster", "local", "foo", "bar")},
+		{ts: timestamp + 2, val: 48, l: labels.FromStrings("__name__", "test_metric", "cluster", "local", "foo", "bar")},
+		{ts: timestamp, val: 191, l: labels.FromStrings("__name__", "test_metric", "cluster", "local", "fizz", "buzz")},
+		{ts: timestamp + 1, val: 1337, l: labels.FromStrings("__name__", "test_metric", "cluster", "local", "fizz", "buzz")},
 	}
 
 	actualSamples := make(chan testSample, 100)
@@ -69,7 +70,7 @@ func TestForwardsMetrics(t *testing.T) {
 	}
 	comp, err := New(testOptions(t), args)
 	require.NoError(t, err)
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 	go func() {
 		require.NoError(t, comp.Run(ctx))
@@ -81,37 +82,37 @@ func TestForwardsMetrics(t *testing.T) {
 func TestUpdate(t *testing.T) {
 	timestamp := time.Now().Add(time.Second).UnixMilli()
 	input01 := []prompb.TimeSeries{{
-		Labels: []prompb.Label{{Name: "cluster", Value: "local"}, {Name: "foo", Value: "bar"}},
+		Labels: []prompb.Label{{Name: "__name__", Value: "test_metric"}, {Name: "cluster", Value: "local"}, {Name: "foo", Value: "bar"}},
 		Samples: []prompb.Sample{
 			{Timestamp: timestamp, Value: 12},
 		},
 	}, {
-		Labels: []prompb.Label{{Name: "cluster", Value: "local"}, {Name: "fizz", Value: "buzz"}},
+		Labels: []prompb.Label{{Name: "__name__", Value: "test_metric"}, {Name: "cluster", Value: "local"}, {Name: "fizz", Value: "buzz"}},
 		Samples: []prompb.Sample{
 			{Timestamp: timestamp, Value: 191},
 		},
 	}}
 	expected01 := []testSample{
-		{ts: timestamp, val: 12, l: labels.FromStrings("cluster", "local", "foo", "bar")},
-		{ts: timestamp, val: 191, l: labels.FromStrings("cluster", "local", "fizz", "buzz")},
+		{ts: timestamp, val: 12, l: labels.FromStrings("__name__", "test_metric", "cluster", "local", "foo", "bar")},
+		{ts: timestamp, val: 191, l: labels.FromStrings("__name__", "test_metric", "cluster", "local", "fizz", "buzz")},
 	}
 
 	input02 := []prompb.TimeSeries{{
-		Labels: []prompb.Label{{Name: "cluster", Value: "local"}, {Name: "foo", Value: "bar"}},
+		Labels: []prompb.Label{{Name: "__name__", Value: "test_metric"}, {Name: "cluster", Value: "local"}, {Name: "foo", Value: "bar"}},
 		Samples: []prompb.Sample{
 			{Timestamp: timestamp + 1, Value: 24},
 			{Timestamp: timestamp + 2, Value: 48},
 		},
 	}, {
-		Labels: []prompb.Label{{Name: "cluster", Value: "local"}, {Name: "fizz", Value: "buzz"}},
+		Labels: []prompb.Label{{Name: "__name__", Value: "test_metric"}, {Name: "cluster", Value: "local"}, {Name: "fizz", Value: "buzz"}},
 		Samples: []prompb.Sample{
 			{Timestamp: timestamp + 1, Value: 1337},
 		},
 	}}
 	expected02 := []testSample{
-		{ts: timestamp + 1, val: 24, l: labels.FromStrings("cluster", "local", "foo", "bar")},
-		{ts: timestamp + 2, val: 48, l: labels.FromStrings("cluster", "local", "foo", "bar")},
-		{ts: timestamp + 1, val: 1337, l: labels.FromStrings("cluster", "local", "fizz", "buzz")},
+		{ts: timestamp + 1, val: 24, l: labels.FromStrings("__name__", "test_metric", "cluster", "local", "foo", "bar")},
+		{ts: timestamp + 2, val: 48, l: labels.FromStrings("__name__", "test_metric", "cluster", "local", "foo", "bar")},
+		{ts: timestamp + 1, val: 1337, l: labels.FromStrings("__name__", "test_metric", "cluster", "local", "fizz", "buzz")},
 	}
 
 	actualSamples := make(chan testSample, 100)
@@ -131,7 +132,7 @@ func TestUpdate(t *testing.T) {
 	}
 	comp, err := New(testOptions(t), args)
 	require.NoError(t, err)
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 	go func() {
 		require.NoError(t, comp.Run(ctx))
@@ -242,7 +243,7 @@ func TestServerRestarts(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 			defer cancel()
 
 			comp, err := New(testOptions(t), tc.initialArgs)
@@ -287,14 +288,15 @@ type testSample struct {
 }
 
 func waitForServerToBeReady(t *testing.T, args Arguments) {
-	require.Eventuallyf(t, func() bool {
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		resp, err := http.Get(fmt.Sprintf(
 			"http://%v:%d/wrong/path",
 			args.Server.HTTP.ListenAddress,
 			args.Server.HTTP.ListenPort,
 		))
 		t.Logf("err: %v, resp: %v", err, resp)
-		return err == nil && resp.StatusCode == 404
+		assert.Nil(c, err)
+		assert.Equal(c, 404, resp.StatusCode)
 	}, 5*time.Second, 20*time.Millisecond, "server failed to start before timeout")
 }
 
@@ -376,7 +378,8 @@ func request(ctx context.Context, rawRemoteWriteURL string, req *prompb.WriteReq
 	}
 
 	compressed := snappy.Encode(buf, buf)
-	return client.Store(ctx, compressed, 0)
+	_, err = client.Store(ctx, compressed, 0)
+	return err
 }
 
 func testOptions(t *testing.T) component.Options {

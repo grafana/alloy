@@ -1,12 +1,14 @@
 // Package postgres_exporter embeds https://github.com/prometheus/postgres_exporter
-package postgres_exporter //nolint:golint
+package postgres_exporter
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"strings"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/static/integrations"
 	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
 	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
@@ -86,6 +88,10 @@ func (c *Config) InstanceKey(_ string) (string, error) {
 }
 
 func parsePostgresURL(url string) (map[string]string, error) {
+	if url == "postgresql://" || url == "postgres://" {
+		return map[string]string{}, nil
+	}
+
 	raw, err := pq.ParseURL(url)
 	if err != nil {
 		return nil, err
@@ -95,10 +101,10 @@ func parsePostgresURL(url string) (map[string]string, error) {
 
 	unescaper := strings.NewReplacer(`\'`, `'`, `\\`, `\`)
 
-	for _, keypair := range strings.Split(raw, " ") {
+	for keypair := range strings.SplitSeq(raw, " ") {
 		parts := strings.SplitN(keypair, "=", 2)
 		if len(parts) != 2 {
-			panic(fmt.Sprintf("unexpected keypair %s from pq", keypair))
+			return nil, fmt.Errorf("unexpected keypair %s from pq", keypair)
 		}
 
 		key := parts[0]
@@ -148,6 +154,8 @@ func New(log log.Logger, cfg *Config) (integrations.Integration, error) {
 		return nil, err
 	}
 
+	logger := slog.New(logging.NewSlogGoKitHandler(log))
+
 	e := postgres_exporter.NewExporter(
 		dsns,
 		postgres_exporter.DisableDefaultMetrics(cfg.DisableDefaultMetrics),
@@ -156,7 +164,7 @@ func New(log log.Logger, cfg *Config) (integrations.Integration, error) {
 		postgres_exporter.AutoDiscoverDatabases(cfg.AutodiscoverDatabases),
 		postgres_exporter.ExcludeDatabases(cfg.ExcludeDatabases),
 		postgres_exporter.IncludeDatabases(strings.Join(cfg.IncludeDatabases, ",")),
-		postgres_exporter.WithLogger(log),
+		postgres_exporter.WithLogger(logger),
 		postgres_exporter.WithMetricPrefix("pg"),
 	)
 
@@ -169,7 +177,7 @@ func New(log log.Logger, cfg *Config) (integrations.Integration, error) {
 	// However, these can only work for the first DSN provided. This matches the current implementation of the exporter.
 	// TODO: Once https://github.com/prometheus-community/postgres_exporter/issues/999 is addressed, update the exporter
 	// and change this.
-	c, err := collector.NewPostgresCollector(log, cfg.ExcludeDatabases, dsns[0], cfg.EnabledCollectors)
+	c, err := collector.NewPostgresCollector(logger, cfg.ExcludeDatabases, dsns[0], cfg.EnabledCollectors)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create postgres_exporter collector: %w", err)
 	}

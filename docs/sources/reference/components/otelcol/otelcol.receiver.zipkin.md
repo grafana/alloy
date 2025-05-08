@@ -39,6 +39,7 @@ Name | Type | Description | Default | Required
 `max_request_body_size` | `string`   | Maximum request body size the server will allow.                   | `20MiB`          | no
 `include_metadata` | `boolean` | Propagate incoming connection metadata to downstream consumers. | | no
 `compression_algorithms` | `list(string)` | A list of compression algorithms the server can accept.    | `["", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"]` | no
+`auth`              | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests.     |               | no
 
 If `parse_string_tags` is `true`, string tags and binary annotations are
 converted to `int`, `bool`, and `float` if possible. String tags and binary
@@ -139,6 +140,26 @@ otelcol.exporter.otlp "default" {
   client {
     endpoint = sys.env("OTLP_ENDPOINT")
   }
+}
+```
+
+## Enable authentication
+
+You can create a `otelcol.receiver.zipkin` component that requires authentication for requests. This is useful for limiting who can push data to the server. 
+
+{{< admonition type="note" >}}
+Not all OpenTelemetry Collector authentication plugins support receiver authentication.
+Refer to the [documentation](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/otelcol/) for each `otelcol.auth.*` component to determine its compatibility.
+{{< /admonition >}} 
+
+```alloy
+otelcol.receiver.zipkin "default" {
+  auth = otelcol.auth.basic.creds.handler
+}
+
+otelcol.auth.basic "creds" {
+    username = sys.env("USERNAME")
+    password = sys.env("PASSWORD")
 }
 ```
 <!-- START GENERATED COMPATIBLE COMPONENTS -->

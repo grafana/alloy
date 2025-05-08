@@ -24,6 +24,9 @@ func TestAlloyUnmarshal(t *testing.T) {
 			username = "username"
 			password = "pass"
 		}
+		http_headers = {
+			"foo" = ["foobar"],
+		}
 	`
 
 	var args Arguments
@@ -34,6 +37,9 @@ func TestAlloyUnmarshal(t *testing.T) {
 	assert.Equal(t, 60, args.Port)
 	assert.Equal(t, "username", args.HTTPClientConfig.BasicAuth.Username)
 	assert.Equal(t, alloytypes.Secret("pass"), args.HTTPClientConfig.BasicAuth.Password)
+
+	header := args.HTTPClientConfig.HTTPHeaders.Headers["foo"][0]
+	assert.Equal(t, "foobar", string(header))
 }
 
 func TestConvert(t *testing.T) {
@@ -46,6 +52,11 @@ func TestConvert(t *testing.T) {
 				Username: "username",
 				Password: "pass",
 			},
+			HTTPHeaders: &config.Headers{
+				Headers: map[string][]alloytypes.Secret{
+					"foo": {"foobar"},
+				},
+			},
 		},
 	}
 	promArgs := alloyArgs.Convert().(*prom_discovery.SDConfig)
@@ -54,6 +65,9 @@ func TestConvert(t *testing.T) {
 	assert.Equal(t, 81, promArgs.Port)
 	assert.Equal(t, "username", promArgs.HTTPClientConfig.BasicAuth.Username)
 	assert.Equal(t, promConfig.Secret("pass"), promArgs.HTTPClientConfig.BasicAuth.Password)
+
+	header := promArgs.HTTPClientConfig.HTTPHeaders.Headers["foo"].Secrets[0]
+	assert.Equal(t, "foobar", string(header))
 }
 
 func TestValidateNoDatacenterId(t *testing.T) {

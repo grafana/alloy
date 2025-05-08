@@ -27,7 +27,7 @@ import (
 )
 
 func TestLokiSourceAPI_Simple(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 
 	receiver := fake.NewClient(func() {})
@@ -73,7 +73,7 @@ func TestLokiSourceAPI_Simple(t *testing.T) {
 }
 
 func TestLokiSourceAPI_Update(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 
 	receiver := fake.NewClient(func() {})
@@ -148,7 +148,7 @@ func TestLokiSourceAPI_Update(t *testing.T) {
 }
 
 func TestLokiSourceAPI_FanOut(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 
 	const receiversCount = 10

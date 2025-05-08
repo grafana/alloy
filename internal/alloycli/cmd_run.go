@@ -2,6 +2,7 @@ package alloycli
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -9,6 +10,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -20,6 +22,7 @@ import (
 	"github.com/grafana/ckit/advertise"
 	"github.com/grafana/ckit/peer"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/common/model"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"go.opentelemetry.io/otel"
@@ -44,10 +47,16 @@ import (
 	uiservice "github.com/grafana/alloy/internal/service/ui"
 	"github.com/grafana/alloy/internal/static/config/instrumentation"
 	"github.com/grafana/alloy/internal/usagestats"
+	"github.com/grafana/alloy/internal/util/windowspriority"
 	"github.com/grafana/alloy/syntax/diag"
 
 	// Install Components
 	_ "github.com/grafana/alloy/internal/component/all"
+)
+
+var (
+	prometheusLegacyMetricValidationScheme = "legacy"
+	prometheusUTF8MetricValidationScheme   = "utf-8"
 )
 
 func runCommand() *cobra.Command {
@@ -64,6 +73,10 @@ func runCommand() *cobra.Command {
 		clusterMaxJoinPeers:   5,
 		clusterRejoinInterval: 60 * time.Second,
 		disableSupportBundle:  false,
+		// For backwards compatibility - use the LegacyValidation of Prometheus metrics name. This is a global variable
+		// setting that has changed upstream. See https://github.com/prometheus/common/pull/724.
+		prometheusMetricNameValidationScheme: prometheusLegacyMetricValidationScheme,
+		windowsPriority:                      windowspriority.PriorityNormal,
 	}
 
 	cmd := &cobra.Command{
@@ -143,6 +156,10 @@ depending on the nature of the reload error.
 		StringVar(&r.clusterTLSKeyPath, "cluster.tls-key-path", r.clusterTLSKeyPath, "Path to the key file")
 	cmd.Flags().
 		StringVar(&r.clusterTLSServerName, "cluster.tls-server-name", r.clusterTLSServerName, "Server name to use for TLS communication")
+	cmd.Flags().
+		IntVar(&r.clusterWaitForSize, "cluster.wait-for-size", r.clusterWaitForSize, "Wait for the cluster to reach the specified number of instances before allowing components that use clustering to begin processing. Zero means disabled")
+	cmd.Flags().
+		DurationVar(&r.clusterWaitTimeout, "cluster.wait-timeout", 0, "Maximum duration to wait for minimum cluster size before proceeding with available nodes. Zero means wait forever, no timeout")
 
 	// Config flags
 	cmd.Flags().StringVar(&r.configFormat, "config.format", r.configFormat, fmt.Sprintf("The format of the source file. Supported formats: %s.", supportedFormatsList()))
@@ -155,38 +172,46 @@ depending on the nature of the reload error.
 	cmd.Flags().StringVar(&r.storagePath, "storage.path", r.storagePath, "Base directory where components can store data")
 	cmd.Flags().Var(&r.minStability, "stability.level", fmt.Sprintf("Minimum stability level of features to enable. Supported values: %s", strings.Join(featuregate.AllowedValues(), ", ")))
 	cmd.Flags().BoolVar(&r.enableCommunityComps, "feature.community-components.enabled", r.enableCommunityComps, "Enable community components.")
+	cmd.Flags().StringVar(&r.prometheusMetricNameValidationScheme, "feature.prometheus.metric-validation-scheme", prometheusLegacyMetricValidationScheme, fmt.Sprintf("Prometheus metric validation scheme to use. Supported values: %q, %q. NOTE: this is an experimental flag and may be removed in future releases.", prometheusLegacyMetricValidationScheme, prometheusUTF8MetricValidationScheme))
+	if runtime.GOOS == "windows" {
+		cmd.Flags().StringVar(&r.windowsPriority, "windows.priority", r.windowsPriority, fmt.Sprintf("Process priority to use when running on windows. This flag is currently in public preview. Supported values: %s", strings.Join(slices.Collect(windowspriority.PriorityValues()), ", ")))
+	}
 
 	addDeprecatedFlags(cmd)
 	return cmd
 }
 
 type alloyRun struct {
-	inMemoryAddr                 string
-	httpListenAddr               string
-	storagePath                  string
-	minStability                 featuregate.Stability
-	uiPrefix                     string
-	enablePprof                  bool
-	disableReporting             bool
-	clusterEnabled               bool
-	clusterNodeName              string
-	clusterAdvAddr               string
-	clusterJoinAddr              string
-	clusterDiscoverPeers         string
-	clusterAdvInterfaces         []string
-	clusterRejoinInterval        time.Duration
-	clusterMaxJoinPeers          int
-	clusterName                  string
-	clusterEnableTLS             bool
-	clusterTLSCAPath             string
-	clusterTLSCertPath           string
-	clusterTLSKeyPath            string
-	clusterTLSServerName         string
-	configFormat                 string
-	configBypassConversionErrors bool
-	configExtraArgs              string
-	enableCommunityComps         bool
-	disableSupportBundle         bool
+	inMemoryAddr                         string
+	httpListenAddr                       string
+	storagePath                          string
+	minStability                         featuregate.Stability
+	uiPrefix                             string
+	enablePprof                          bool
+	disableReporting                     bool
+	clusterEnabled                       bool
+	clusterNodeName                      string
+	clusterAdvAddr                       string
+	clusterJoinAddr                      string
+	clusterDiscoverPeers                 string
+	clusterAdvInterfaces                 []string
+	clusterRejoinInterval                time.Duration
+	clusterMaxJoinPeers                  int
+	clusterName                          string
+	clusterEnableTLS                     bool
+	clusterTLSCAPath                     string
+	clusterTLSCertPath                   string
+	clusterTLSKeyPath                    string
+	clusterTLSServerName                 string
+	clusterWaitForSize                   int
+	clusterWaitTimeout                   time.Duration
+	configFormat                         string
+	configBypassConversionErrors         bool
+	configExtraArgs                      string
+	enableCommunityComps                 bool
+	disableSupportBundle                 bool
+	prometheusMetricNameValidationScheme string
+	windowsPriority                      string
 }
 
 func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
@@ -211,6 +236,27 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 		return fmt.Errorf("building tracer: %w", err)
 	}
 
+	if err := fr.configurePrometheusMetricNameValidationScheme(l); err != nil {
+		return err
+	}
+
+	// The non-windows path for this is just a return nil, but to protect against
+	// refactoring assumptions we confirm that we're running on windows before setting the priority.
+	if runtime.GOOS == "windows" && fr.windowsPriority != "normal" {
+		if err := featuregate.CheckAllowed(
+			featuregate.StabilityPublicPreview,
+			fr.minStability,
+			"Windows process priority"); err != nil {
+			return err
+		}
+
+		if err := windowspriority.SetPriority(fr.windowsPriority); err != nil {
+			return fmt.Errorf("setting process priority: %w", err)
+		} else {
+			level.Info(l).Log("msg", "set process priority", "priority", fr.windowsPriority)
+		}
+	}
+
 	// Set the global tracer provider to catch global traces, but ideally things
 	// use the tracer provider given to them so the appropriate attributes get
 	// injected.
@@ -220,7 +266,10 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 
 	// Set the memory limit, this will honor GOMEMLIMIT if set
 	// If there is a cgroup on linux it will use that
-	applyAutoMemLimit(l)
+	err = applyAutoMemLimit(l)
+	if err != nil {
+		level.Error(l).Log("msg", "failed to apply memory limit", "err", err)
+	}
 
 	// Enable the profiling.
 	setMutexBlockProfiling(l)
@@ -249,30 +298,32 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 	// To work around this, we lazily create variables for the functions the HTTP
 	// service needs and set them after the Alloy controller exists.
 	var (
-		reload func() (*alloy_runtime.Source, error)
+		reload func() (map[string][]byte, error)
 		ready  func() bool
 	)
 
-	clusterService, err := buildClusterService(clusterOptions{
+	clusterService, err := buildClusterService(ClusterOptions{
 		Log:     log.With(l, "service", "cluster"),
 		Tracer:  t,
 		Metrics: reg,
 
-		EnableClustering:    fr.clusterEnabled,
-		NodeName:            fr.clusterNodeName,
-		AdvertiseAddress:    fr.clusterAdvAddr,
-		ListenAddress:       fr.httpListenAddr,
-		JoinPeers:           splitPeers(fr.clusterJoinAddr, ","),
-		DiscoverPeers:       fr.clusterDiscoverPeers,
-		RejoinInterval:      fr.clusterRejoinInterval,
-		AdvertiseInterfaces: fr.clusterAdvInterfaces,
-		ClusterMaxJoinPeers: fr.clusterMaxJoinPeers,
-		ClusterName:         fr.clusterName,
-		EnableTLS:           fr.clusterEnableTLS,
-		TLSCertPath:         fr.clusterTLSCertPath,
-		TLSCAPath:           fr.clusterTLSCAPath,
-		TLSKeyPath:          fr.clusterTLSKeyPath,
-		TLSServerName:       fr.clusterTLSServerName,
+		EnableClustering:       fr.clusterEnabled,
+		NodeName:               fr.clusterNodeName,
+		AdvertiseAddress:       fr.clusterAdvAddr,
+		ListenAddress:          fr.httpListenAddr,
+		JoinPeers:              splitPeers(fr.clusterJoinAddr, ","),
+		DiscoverPeers:          fr.clusterDiscoverPeers,
+		RejoinInterval:         fr.clusterRejoinInterval,
+		AdvertiseInterfaces:    fr.clusterAdvInterfaces,
+		ClusterMaxJoinPeers:    fr.clusterMaxJoinPeers,
+		ClusterName:            fr.clusterName,
+		EnableTLS:              fr.clusterEnableTLS,
+		TLSCertPath:            fr.clusterTLSCertPath,
+		TLSCAPath:              fr.clusterTLSCAPath,
+		TLSKeyPath:             fr.clusterTLSKeyPath,
+		TLSServerName:          fr.clusterTLSServerName,
+		MinimumClusterSize:     fr.clusterWaitForSize,
+		MinimumSizeWaitTimeout: fr.clusterWaitTimeout,
 	})
 	if err != nil {
 		return err
@@ -290,8 +341,11 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 		Tracer:   t,
 		Gatherer: prometheus.DefaultGatherer,
 
-		ReadyFunc:  func() bool { return ready() },
-		ReloadFunc: func() (*alloy_runtime.Source, error) { return reload() },
+		ReadyFunc: func() bool { return ready() },
+		ReloadFunc: func() error {
+			_, err := reload()
+			return err
+		},
 
 		HTTPListenAddr:   fr.httpListenAddr,
 		MemoryListenAddr: fr.inMemoryAddr,
@@ -318,6 +372,7 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 	uiService := uiservice.New(uiservice.Options{
 		UIPrefix:        fr.uiPrefix,
 		CallbackManager: liveDebuggingService.Data().(livedebugging.CallbackManager),
+		Logger:          log.With(l, "service", "ui"),
 	})
 
 	otelService := otel_service.New(l)
@@ -347,19 +402,25 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 	})
 
 	ready = f.Ready
-	reload = func() (*alloy_runtime.Source, error) {
-		alloySource, err := loadAlloySource(configPath, fr.configFormat, fr.configBypassConversionErrors, fr.configExtraArgs)
-		defer instrumentation.InstrumentConfig(err == nil, alloySource.SHA256(), fr.clusterName)
-
+	reload = func() (map[string][]byte, error) {
+		sources, err := loadSourceFiles(configPath, fr.configFormat, fr.configBypassConversionErrors, fr.configExtraArgs)
 		if err != nil {
+			instrumentation.InstrumentConfig(false, [32]byte{}, fr.clusterName)
 			return nil, fmt.Errorf("reading config path %q: %w", configPath, err)
 		}
-		httpService.SetSources(alloySource.SourceFiles())
-		if err := f.LoadSource(alloySource, nil, configPath); err != nil {
-			return alloySource, fmt.Errorf("error during the initial load: %w", err)
+
+		alloySource, err := alloy_runtime.ParseSources(sources)
+		defer instrumentation.InstrumentConfig(err == nil, hashSourceFiles(sources), fr.clusterName)
+		if err != nil {
+			return sources, fmt.Errorf("reading config path %q: %w", configPath, err)
 		}
 
-		return alloySource, nil
+		httpService.SetSources(alloySource.SourceFiles())
+		if err := f.LoadSource(alloySource, nil, configPath); err != nil {
+			return sources, fmt.Errorf("error during the initial load: %w", err)
+		}
+
+		return sources, nil
 	}
 
 	// Alloy controller
@@ -396,7 +457,7 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 				ContextLinesBefore: 1,
 				ContextLinesAfter:  1,
 			})
-			_ = p.Fprint(os.Stderr, source.RawConfigs(), diags)
+			_ = p.Fprint(os.Stderr, source, diags)
 
 			// Print newline after the diagnostics.
 			fmt.Println()
@@ -435,6 +496,26 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 	}
 }
 
+func (fr *alloyRun) configurePrometheusMetricNameValidationScheme(l log.Logger) error {
+	switch fr.prometheusMetricNameValidationScheme {
+	case prometheusLegacyMetricValidationScheme:
+		model.NameValidationScheme = model.LegacyValidation
+	case prometheusUTF8MetricValidationScheme:
+		if err := featuregate.CheckAllowed(
+			featuregate.StabilityExperimental,
+			fr.minStability,
+			"Prometheus utf-8 metric name validation scheme",
+		); err != nil {
+			return err
+		}
+		level.Warn(l).Log("msg", "Using experimental UTF-8 Prometheus metric name validation scheme")
+		model.NameValidationScheme = model.UTF8Validation
+	default:
+		return fmt.Errorf("invalid prometheus metric name validation scheme: %q", fr.prometheusMetricNameValidationScheme)
+	}
+	return nil
+}
+
 // getEnabledComponentsFunc returns a function that gets the current enabled components
 func getEnabledComponentsFunc(f *alloy_runtime.Runtime) func() map[string]interface{} {
 	return func() map[string]interface{} {
@@ -450,7 +531,7 @@ func getEnabledComponentsFunc(f *alloy_runtime.Runtime) func() map[string]interf
 	}
 }
 
-func loadAlloySource(path string, converterSourceFormat string, converterBypassErrors bool, configExtraArgs string) (*alloy_runtime.Source, error) {
+func loadSourceFiles(path string, converterSourceFormat string, converterBypassErrors bool, configExtraArgs string) (map[string][]byte, error) {
 	fi, err := os.Stat(path)
 	if err != nil {
 		return nil, err
@@ -482,7 +563,7 @@ func loadAlloySource(path string, converterSourceFormat string, converterBypassE
 			return nil, err
 		}
 
-		return alloy_runtime.ParseSources(sources)
+		return sources, nil
 	}
 
 	bb, err := os.ReadFile(path)
@@ -504,7 +585,21 @@ func loadAlloySource(path string, converterSourceFormat string, converterBypassE
 		}
 	}
 
-	return alloy_runtime.ParseSource(path, bb)
+	return map[string][]byte{path: bb}, nil
+}
+
+func hashSourceFiles(sources map[string][]byte) [sha256.Size]byte {
+	// Combined hash of all the sources.
+	hash := sha256.New()
+
+	// Sort keys so they are always added in the same order.
+	keys := maps.Keys(sources)
+	slices.Sort(keys)
+	for _, key := range keys {
+		hash.Write(sources[key])
+	}
+
+	return [32]byte(hash.Sum(nil))
 }
 
 // addDeprecatedFlags adds flags that are deprecated, but we keep them for backwards compatibility.

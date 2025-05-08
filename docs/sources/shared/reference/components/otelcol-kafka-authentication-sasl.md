@@ -20,6 +20,7 @@ The `mechanism` argument can be set to one of the following strings:
 * `"AWS_MSK_IAM"`
 * `"SCRAM-SHA-256"`
 * `"SCRAM-SHA-512"`
+* `"AWS_MSK_IAM_OAUTHBEARER"`
 
 When `mechanism` is set to `"AWS_MSK_IAM"`, the `aws_msk` child block must also be provided.
 

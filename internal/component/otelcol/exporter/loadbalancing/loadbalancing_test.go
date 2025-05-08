@@ -435,9 +435,10 @@ func TestConfigConversion(t *testing.T) {
 				Resolver: loadbalancingexporter.ResolverSettings{
 					Static: nil,
 					K8sSvc: &loadbalancingexporter.K8sSvcResolver{
-						Service: "lb-svc.lb-ns",
-						Ports:   []int32{4317},
-						Timeout: 1 * time.Second,
+						Service:         "lb-svc.lb-ns",
+						Ports:           []int32{4317},
+						Timeout:         1 * time.Second,
+						ReturnHostnames: false,
 					},
 				},
 				RoutingKey: "traceID",
@@ -452,6 +453,7 @@ func TestConfigConversion(t *testing.T) {
 					service = "lb-svc.lb-ns"
 					ports = [55690, 55691]
 					timeout = "13s"
+					return_hostnames = true
 				}
 			}
 			protocol {
@@ -464,9 +466,10 @@ func TestConfigConversion(t *testing.T) {
 				Resolver: loadbalancingexporter.ResolverSettings{
 					Static: nil,
 					K8sSvc: &loadbalancingexporter.K8sSvcResolver{
-						Service: "lb-svc.lb-ns",
-						Ports:   []int32{55690, 55691},
-						Timeout: 13 * time.Second,
+						Service:         "lb-svc.lb-ns",
+						Ports:           []int32{55690, 55691},
+						Timeout:         13 * time.Second,
+						ReturnHostnames: true,
 					},
 				},
 				RoutingKey: "traceID",
@@ -539,6 +542,105 @@ func TestConfigConversion(t *testing.T) {
 				},
 				RoutingKey: "traceID",
 				Protocol:   defaultProtocol,
+			},
+		},
+		{
+			testName: "no_resiliency",
+			alloyCfg: `
+			resolver {
+				static {
+					hostnames = ["endpoint-1"]
+				}
+			}
+			protocol {
+				otlp {
+					client {}
+				}
+			}
+			`,
+			expected: loadbalancingexporter.Config{
+				Resolver: loadbalancingexporter.ResolverSettings{
+					Static: &loadbalancingexporter.StaticResolver{
+						Hostnames: []string{"endpoint-1"},
+					},
+					DNS: nil,
+				},
+				RoutingKey: "traceID",
+				Protocol:   defaultProtocol,
+				TimeoutSettings: exporterhelper.TimeoutConfig{
+					Timeout: 0,
+				},
+				BackOffConfig: configretry.BackOffConfig{
+					Enabled:             false,
+					InitialInterval:     0,
+					RandomizationFactor: 0,
+					Multiplier:          0,
+					MaxInterval:         0,
+					MaxElapsedTime:      0,
+				},
+				QueueSettings: exporterhelper.QueueConfig{
+					Enabled:      false,
+					NumConsumers: 0,
+					QueueSize:    0,
+				},
+			},
+		},
+		{
+			testName: "with_resiliency",
+			alloyCfg: `
+			timeout = "14s"
+			retry_on_failure {
+				enabled = true
+				initial_interval = "11s"
+				randomization_factor = 0.4
+				multiplier = 1.1
+				max_interval = "111s"
+				max_elapsed_time = "222s"
+			}
+			sending_queue {
+				enabled = true
+				num_consumers = 11
+				queue_size = 1111
+			}
+			resolver {
+				static {
+					hostnames = ["endpoint-1"]
+				}
+			}
+			protocol {
+				otlp {
+					client {}
+				}
+			}
+			debug_metrics {
+				disable_high_cardinality_metrics = true
+			}
+			`,
+			expected: loadbalancingexporter.Config{
+				Resolver: loadbalancingexporter.ResolverSettings{
+					Static: &loadbalancingexporter.StaticResolver{
+						Hostnames: []string{"endpoint-1"},
+					},
+					DNS: nil,
+				},
+				RoutingKey: "traceID",
+				Protocol:   defaultProtocol,
+				TimeoutSettings: exporterhelper.TimeoutConfig{
+					Timeout: 14 * time.Second,
+				},
+				BackOffConfig: configretry.BackOffConfig{
+					Enabled:             true,
+					InitialInterval:     11 * time.Second,
+					RandomizationFactor: 0.4,
+					Multiplier:          1.1,
+					MaxInterval:         111 * time.Second,
+					MaxElapsedTime:      222 * time.Second,
+				},
+				QueueSettings: exporterhelper.QueueConfig{
+					Enabled:      true,
+					NumConsumers: 11,
+					QueueSize:    1111,
+				},
 			},
 		},
 	}

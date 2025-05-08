@@ -120,12 +120,16 @@ type Info struct {
 	// this component depends on, or is depended on by, respectively.
 	References, ReferencedBy []string
 
+	// List of component ids that this component sends data to.
+	DataFlowEdgesTo []string
+
 	ComponentName string // Name of the component.
 	Health        Health // Current component health.
 
-	Arguments Arguments   // Current arguments value of the component.
-	Exports   Exports     // Current exports value of the component.
-	DebugInfo interface{} // Current debug info of the component.
+	Arguments            Arguments   // Current arguments value of the component.
+	Exports              Exports     // Current exports value of the component.
+	DebugInfo            interface{} // Current debug info of the component.
+	LiveDebuggingEnabled bool
 }
 
 // MarshalJSON returns a JSON representation of cd. The format of the
@@ -139,25 +143,28 @@ func (info *Info) MarshalJSON() ([]byte, error) {
 		}
 
 		componentDetailJSON struct {
-			Name             string               `json:"name"`
-			Type             string               `json:"type,omitempty"`
-			LocalID          string               `json:"localID"`
-			ModuleID         string               `json:"moduleID"`
-			Label            string               `json:"label,omitempty"`
-			References       []string             `json:"referencesTo"`
-			ReferencedBy     []string             `json:"referencedBy"`
-			Health           *componentHealthJSON `json:"health"`
-			Original         string               `json:"original"`
-			Arguments        json.RawMessage      `json:"arguments,omitempty"`
-			Exports          json.RawMessage      `json:"exports,omitempty"`
-			DebugInfo        json.RawMessage      `json:"debugInfo,omitempty"`
-			CreatedModuleIDs []string             `json:"createdModuleIDs,omitempty"`
+			Name                 string               `json:"name"`
+			Type                 string               `json:"type,omitempty"`
+			LocalID              string               `json:"localID"`
+			ModuleID             string               `json:"moduleID"`
+			Label                string               `json:"label,omitempty"`
+			References           []string             `json:"referencesTo"`
+			ReferencedBy         []string             `json:"referencedBy"`
+			DataFlowEdgesTo      []string             `json:"dataFlowEdgesTo"`
+			Health               *componentHealthJSON `json:"health"`
+			Original             string               `json:"original"`
+			Arguments            json.RawMessage      `json:"arguments,omitempty"`
+			Exports              json.RawMessage      `json:"exports,omitempty"`
+			DebugInfo            json.RawMessage      `json:"debugInfo,omitempty"`
+			CreatedModuleIDs     []string             `json:"createdModuleIDs,omitempty"`
+			LiveDebuggingEnabled bool                 `json:"liveDebuggingEnabled"`
 		}
 	)
 
 	var (
-		references   = info.References
-		referencedBy = info.ReferencedBy
+		references      = info.References
+		referencedBy    = info.ReferencedBy
+		dataFlowEdgesTo = info.DataFlowEdgesTo
 
 		arguments, exports, debugInfo json.RawMessage
 		err                           error
@@ -168,6 +175,9 @@ func (info *Info) MarshalJSON() ([]byte, error) {
 	}
 	if referencedBy == nil {
 		referencedBy = []string{}
+	}
+	if dataFlowEdgesTo == nil {
+		dataFlowEdgesTo = []string{}
 	}
 
 	arguments, err = alloyjson.MarshalBody(info.Arguments)
@@ -184,22 +194,24 @@ func (info *Info) MarshalJSON() ([]byte, error) {
 	}
 
 	return json.Marshal(&componentDetailJSON{
-		Name:         info.ComponentName,
-		Type:         "block",
-		ModuleID:     info.ID.ModuleID,
-		LocalID:      info.ID.LocalID,
-		Label:        info.Label,
-		References:   references,
-		ReferencedBy: referencedBy,
+		Name:            info.ComponentName,
+		Type:            "block",
+		ModuleID:        info.ID.ModuleID,
+		LocalID:         info.ID.LocalID,
+		Label:           info.Label,
+		References:      references,
+		ReferencedBy:    referencedBy,
+		DataFlowEdgesTo: dataFlowEdgesTo,
 		Health: &componentHealthJSON{
 			State:       info.Health.Health.String(),
 			Message:     info.Health.Message,
 			UpdatedTime: info.Health.UpdateTime,
 		},
-		Arguments:        arguments,
-		Exports:          exports,
-		DebugInfo:        debugInfo,
-		CreatedModuleIDs: info.ModuleIDs,
+		Arguments:            arguments,
+		Exports:              exports,
+		DebugInfo:            debugInfo,
+		CreatedModuleIDs:     info.ModuleIDs,
+		LiveDebuggingEnabled: info.LiveDebuggingEnabled,
 	})
 }
 

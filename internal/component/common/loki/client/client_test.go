@@ -83,7 +83,7 @@ func TestClient_Handle(t *testing.T) {
 			expectedMetrics: `
                                # HELP loki_write_sent_entries_total Number of log entries sent to the ingester.
                                # TYPE loki_write_sent_entries_total counter
-                               loki_write_sent_entries_total{host="__HOST__"} 3.0
+                               loki_write_sent_entries_total{host="__HOST__",tenant=""} 3.0
                                # HELP loki_write_dropped_entries_total Number of log entries dropped because failed to be sent to the ingester after all retries.
                                # TYPE loki_write_dropped_entries_total counter
                                loki_write_dropped_entries_total{host="__HOST__",reason="ingester_error",tenant=""} 0
@@ -121,7 +121,7 @@ func TestClient_Handle(t *testing.T) {
 			expectedMetrics: `
                                # HELP loki_write_sent_entries_total Number of log entries sent to the ingester.
                                # TYPE loki_write_sent_entries_total counter
-                               loki_write_sent_entries_total{host="__HOST__"} 2.0
+                               loki_write_sent_entries_total{host="__HOST__",tenant=""} 2.0
                                # HELP loki_write_dropped_entries_total Number of log entries dropped because failed to be sent to the ingester after all retries.
                                # TYPE loki_write_dropped_entries_total counter
                                loki_write_dropped_entries_total{host="__HOST__",reason="ingester_error",tenant=""} 0
@@ -166,7 +166,7 @@ func TestClient_Handle(t *testing.T) {
 			expectedMetrics: `
                                # HELP loki_write_sent_entries_total Number of log entries sent to the ingester.
                                # TYPE loki_write_sent_entries_total counter
-                               loki_write_sent_entries_total{host="__HOST__"} 3.0
+                               loki_write_sent_entries_total{host="__HOST__",tenant=""} 3.0
                                # HELP loki_write_dropped_entries_total Number of log entries dropped because failed to be sent to the ingester after all retries.
                                # TYPE loki_write_dropped_entries_total counter
                                loki_write_dropped_entries_total{host="__HOST__",reason="ingester_error",tenant=""} 0
@@ -208,7 +208,7 @@ func TestClient_Handle(t *testing.T) {
 			expectedMetrics: `
                               # HELP loki_write_sent_entries_total Number of log entries sent to the ingester.
                               # TYPE loki_write_sent_entries_total counter
-                              loki_write_sent_entries_total{host="__HOST__"} 2.0
+                              loki_write_sent_entries_total{host="__HOST__",tenant=""} 2.0
                               # HELP loki_write_dropped_entries_total Number of log entries dropped because failed to be sent to the ingester after all retries.
                               # TYPE loki_write_dropped_entries_total counter
                               loki_write_dropped_entries_total{host="__HOST__",reason="ingester_error",tenant=""} 0
@@ -270,7 +270,7 @@ func TestClient_Handle(t *testing.T) {
                               loki_write_mutated_bytes_total{host="__HOST__",reason="stream_limited",tenant=""} 0
                               # HELP loki_write_sent_entries_total Number of log entries sent to the ingester.
                               # TYPE loki_write_sent_entries_total counter
-                              loki_write_sent_entries_total{host="__HOST__"} 0
+                              loki_write_sent_entries_total{host="__HOST__",tenant=""} 0
                        `,
 		},
 		"do not retry send a batch in case the server responds with a 4xx": {
@@ -306,7 +306,7 @@ func TestClient_Handle(t *testing.T) {
                               loki_write_mutated_bytes_total{host="__HOST__",reason="stream_limited",tenant=""} 0
                               # HELP loki_write_sent_entries_total Number of log entries sent to the ingester.
                               # TYPE loki_write_sent_entries_total counter
-                              loki_write_sent_entries_total{host="__HOST__"} 0
+                              loki_write_sent_entries_total{host="__HOST__",tenant=""} 0
                        `,
 		},
 		"do retry sending a batch in case the server responds with a 429": {
@@ -350,7 +350,7 @@ func TestClient_Handle(t *testing.T) {
                               loki_write_mutated_bytes_total{host="__HOST__",reason="stream_limited",tenant=""} 0
                               # HELP loki_write_sent_entries_total Number of log entries sent to the ingester.
                               # TYPE loki_write_sent_entries_total counter
-                              loki_write_sent_entries_total{host="__HOST__"} 0
+                              loki_write_sent_entries_total{host="__HOST__",tenant=""} 0
                        `,
 		},
 		"do not retry in case of 429 when client is configured to drop rate limited batches": {
@@ -387,7 +387,7 @@ func TestClient_Handle(t *testing.T) {
                               loki_write_mutated_bytes_total{host="__HOST__",reason="stream_limited",tenant=""} 0
                               # HELP loki_write_sent_entries_total Number of log entries sent to the ingester.
                               # TYPE loki_write_sent_entries_total counter
-                              loki_write_sent_entries_total{host="__HOST__"} 0
+                              loki_write_sent_entries_total{host="__HOST__",tenant=""} 0
                        `,
 		},
 		"batch log entries together honoring the client tenant ID": {
@@ -406,7 +406,7 @@ func TestClient_Handle(t *testing.T) {
 			expectedMetrics: `
                               # HELP loki_write_sent_entries_total Number of log entries sent to the ingester.
                               # TYPE loki_write_sent_entries_total counter
-                              loki_write_sent_entries_total{host="__HOST__"} 2.0
+                              loki_write_sent_entries_total{host="__HOST__",tenant="tenant-default"} 2.0
                               # HELP loki_write_dropped_entries_total Number of log entries dropped because failed to be sent to the ingester after all retries.
                               # TYPE loki_write_dropped_entries_total counter
                               loki_write_dropped_entries_total{host="__HOST__", reason="ingester_error", tenant="tenant-default"} 0
@@ -451,7 +451,9 @@ func TestClient_Handle(t *testing.T) {
 			expectedMetrics: `
                               # HELP loki_write_sent_entries_total Number of log entries sent to the ingester.
                               # TYPE loki_write_sent_entries_total counter
-                              loki_write_sent_entries_total{host="__HOST__"} 4.0
+                              loki_write_sent_entries_total{host="__HOST__",tenant="tenant-1"} 2.0
+                              loki_write_sent_entries_total{host="__HOST__",tenant="tenant-2"} 1.0
+                              loki_write_sent_entries_total{host="__HOST__",tenant="tenant-default"} 1.0
                               # HELP loki_write_dropped_entries_total Number of log entries dropped because failed to be sent to the ingester after all retries.
                               # TYPE loki_write_dropped_entries_total counter
                               loki_write_dropped_entries_total{host="__HOST__",reason="ingester_error",tenant="tenant-1"} 0
@@ -564,7 +566,7 @@ func TestClient_Handle(t *testing.T) {
 			fmt.Printf("Received reqs: %#v\n", receivedReqs)
 			fmt.Printf("Expected reqs: %#v\n", testData.expectedReqs)
 
-			expectedMetrics := strings.Replace(testData.expectedMetrics, "__HOST__", serverURL.Host, -1)
+			expectedMetrics := strings.ReplaceAll(testData.expectedMetrics, "__HOST__", serverURL.Host)
 			err = testutil.GatherAndCompare(reg, strings.NewReader(expectedMetrics), "loki_write_sent_entries_total", "loki_write_dropped_entries_total", "loki_write_mutated_entries_total", "loki_write_mutated_bytes_total")
 			assert.NoError(t, err)
 		})
@@ -604,7 +606,7 @@ func TestClient_StopNow(t *testing.T) {
 			expectedMetrics: `
                               # HELP loki_write_sent_entries_total Number of log entries sent to the ingester.
                               # TYPE loki_write_sent_entries_total counter
-                              loki_write_sent_entries_total{host="__HOST__"} 3.0
+                              loki_write_sent_entries_total{host="__HOST__",tenant=""} 3.0
                               # HELP loki_write_dropped_entries_total Number of log entries dropped because failed to be sent to the ingester after all retries.
                               # TYPE loki_write_dropped_entries_total counter
                               loki_write_dropped_entries_total{host="__HOST__",reason="ingester_error",tenant=""} 0
@@ -635,7 +637,7 @@ func TestClient_StopNow(t *testing.T) {
                               loki_write_dropped_entries_total{host="__HOST__",reason="stream_limited",tenant=""} 0
                               # HELP loki_write_sent_entries_total Number of log entries sent to the ingester.
                               # TYPE loki_write_sent_entries_total counter
-                              loki_write_sent_entries_total{host="__HOST__"} 0
+                              loki_write_sent_entries_total{host="__HOST__", tenant=""} 0
                        `,
 		},
 	}
@@ -709,7 +711,7 @@ func TestClient_StopNow(t *testing.T) {
 			// the exact order which is not guaranteed in case of multi-tenant
 			require.ElementsMatch(t, c.expectedReqs, receivedReqs)
 
-			expectedMetrics := strings.Replace(c.expectedMetrics, "__HOST__", serverURL.Host, -1)
+			expectedMetrics := strings.ReplaceAll(c.expectedMetrics, "__HOST__", serverURL.Host)
 			err = testutil.GatherAndCompare(reg, strings.NewReader(expectedMetrics), "loki_write_sent_entries_total", "loki_write_dropped_entries_total")
 			assert.NoError(t, err)
 		})

@@ -8,7 +8,7 @@ prometheus.scrape "metrics_agent_prometheus" {
 
 prometheus.remote_write "metrics_agent" {
 	endpoint {
-		name = "agent-eea444"
+		name = "agent-f579d1"
 		url  = "https://prometheus-us-central1.grafana.net/api/prom/push"
 
 		queue_config { }
@@ -41,7 +41,7 @@ prometheus.scrape "integrations_statsd_exporter" {
 
 prometheus.remote_write "integrations" {
 	endpoint {
-		name = "agent-eea444"
+		name = "agent-f579d1"
 		url  = "https://prometheus-us-central1.grafana.net/api/prom/push"
 
 		queue_config { }

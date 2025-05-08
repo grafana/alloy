@@ -134,7 +134,7 @@ The rough flow of this pipeline is:
 
 {{< figure src="/media/docs/alloy/diagram-example-logs-loki-alloy.png" width="500" alt="Diagram of pipeline that collects logs from /tmp/alloy-logs and writes them to a local Loki instance" >}}
 
-If you navigate to [http://localhost:3000/explore][] and switch the Datasource to `Loki`, you can query for `{filename="/tmp/alloy-logs/log.log"}` and see the log line you created earlier.
+If you navigate to [http://localhost:3000/explore][] and switch the data source to `Loki`, you can query for `{filename="/tmp/alloy-logs/log.log"}` and see the log line you created earlier.
 Try running the following command to add more logs to the file.
 
 ```bash
@@ -196,7 +196,7 @@ echo 'level=warn msg="WARN: This is a warn level log!"' >> /tmp/alloy-logs/log.l
 echo 'level=debug msg="DEBUG: This is a debug level log!"' >> /tmp/alloy-logs/log.log
 ```
 
-Navigate to [http://localhost:3000/explore][] and switch the Datasource to `Loki`.
+Navigate to [http://localhost:3000/explore][] and switch the data source to `Loki`.
 Try querying for `{filename="/tmp/alloy-logs/log.log"}` and see if you can find the new label.
 
 Now that you have added new labels, you can also filter on them. Try querying for `{os!=""}`.
@@ -262,7 +262,7 @@ echo 'level=warn msg="WARN: This is a warn level log!"' >> /tmp/alloy-logs/log.l
 echo 'level=debug msg="DEBUG: This is a debug level log!"' >> /tmp/alloy-logs/log.log
 ```
 
-Navigate to [http://localhost:3000/explore][] and switch the Datasource to `Loki`.
+Navigate to [http://localhost:3000/explore][] and switch the data source to `Loki`.
 Try querying for `{level!=""}` to see the new labels in action.
 
 {{< figure src="/media/docs/alloy/screenshot-log-line-levels.png" alt="Grafana Explore view of example log lines, now with the extracted 'level' label" >}}

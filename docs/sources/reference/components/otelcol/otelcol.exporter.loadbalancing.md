@@ -57,9 +57,10 @@ otelcol.exporter.loadbalancing "LABEL" {
 
 `otelcol.exporter.loadbalancing` supports the following arguments:
 
-Name          | Type     | Description                          | Default     | Required
---------------|----------|--------------------------------------|-------------|---------
-`routing_key` | `string` | Routing strategy for load balancing. | `"traceID"` | no
+Name          | Type       | Description                                                                        | Default     | Required
+--------------|------------|------------------------------------------------------------------------------------|-------------|---------
+`routing_key` | `string`   | Routing strategy for load balancing.                                               | `"traceID"` | no
+`timeout`     | `duration` | Time to wait before marking a request to the `otlp > protocol` exporter as failed. | `"0s"`      | no
 
 The `routing_key` attribute determines how to route signals across endpoints. Its value could be one of the following:
 - `"service"`: spans, logs, and metrics with the same `service.name` will be exported to the same backend.
@@ -72,33 +73,51 @@ for metric collection. Otherwise, metrics for the same services would be sent to
 
 The loadbalancer configures the exporter for the signal types supported by the `routing_key`.
 
+The `timeout` argument is similar to the top-level `queue` and `retry` [blocks][] for `otelcol.exporter.loadbalancing` itself.
+It helps to re-route data into a new set of healthy backends.
+This is especially useful for highly elastic environments like Kubernetes, 
+where the list of resolved endpoints changes frequently due to deployments and scaling events. 
+
+[blocks]: #blocks
+
 > **EXPERIMENTAL**: Metrics support in `otelcol.exporter.loadbalancing` is an [experimental][] feature.
 > Experimental features are subject to frequent breaking changes, and may be removed with no equivalent replacement.
 > The `stability.level` flag must be set to `experimental` to use the feature.
+
+[experimental]: https://grafana.com/docs/release-life-cycle/
 
 ## Blocks
 
 The following blocks are supported inside the definition of
 `otelcol.exporter.loadbalancing`:
 
-Hierarchy                            | Block             | Description                                                                | Required
--------------------------------------|-------------------|----------------------------------------------------------------------------|---------
-resolver                             | [resolver][]      | Configures discovering the endpoints to export to.                         | yes
-resolver > static                    | [static][]        | Static list of endpoints to export to.                                     | no
-resolver > dns                       | [dns][]           | DNS-sourced list of endpoints to export to.                                | no
-resolver > kubernetes                | [kubernetes][]    | Kubernetes-sourced list of endpoints to export to.                         | no
-resolver > aws_cloud_map             | [aws_cloud_map][] | AWS CloudMap-sourced list of endpoints to export to.                       | no
-protocol                             | [protocol][]      | Protocol settings. Only OTLP is supported at the moment.                   | no
-protocol > otlp                      | [otlp][]          | Configures an OTLP exporter.                                               | no
-protocol > otlp > client             | [client][]        | Configures the exporter gRPC client.                                       | no
-protocol > otlp > client > tls       | [tls][]           | Configures TLS for the gRPC client.                                        | no
-protocol > otlp > client > keepalive | [keepalive][]     | Configures keepalive settings for the gRPC client.                         | no
-protocol > otlp > queue              | [queue][]         | Configures batching of data before sending.                                | no
-protocol > otlp > retry              | [retry][]         | Configures retry mechanism for failed requests.                            | no
-debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
+Hierarchy                            | Block             | Description                                                                       | Required
+-------------------------------------|-------------------|-----------------------------------------------------------------------------------|---------
+resolver                             | [resolver][]      | Configures discovering the endpoints to export to.                                | yes
+resolver > static                    | [static][]        | Static list of endpoints to export to.                                            | no
+resolver > dns                       | [dns][]           | DNS-sourced list of endpoints to export to.                                       | no
+resolver > kubernetes                | [kubernetes][]    | Kubernetes-sourced list of endpoints to export to.                                | no
+resolver > aws_cloud_map             | [aws_cloud_map][] | AWS CloudMap-sourced list of endpoints to export to.                              | no
+protocol                             | [protocol][]      | Protocol settings. Only OTLP is supported at the moment.                          | no
+protocol > otlp                      | [otlp][]          | Configures an OTLP exporter.                                                      | no
+protocol > otlp > client             | [client][]        | Configures the exporter gRPC client.                                              | no
+protocol > otlp > client > tls       | [tls][]           | Configures TLS for the gRPC client.                                               | no
+protocol > otlp > client > keepalive | [keepalive][]     | Configures keepalive settings for the gRPC client.                                | no
+protocol > otlp > queue              | [queue][]         | Configures batching of data before sending.                                       | no
+protocol > otlp > retry              | [retry][]         | Configures retry mechanism for failed requests.                                   | no
+queue                                | [queue][]         | Configures batching of data before sending to the `otlp > protocol` exporter.     | no
+retry                                | [retry][]         | Configures retry mechanism for failed requests to the `otlp > protocol` exporter. | no
+debug_metrics                        | [debug_metrics][] | Configures the metrics that this component generates to monitor its state.        | no
 
 The `>` symbol indicates deeper levels of nesting. For example, `resolver > static`
 refers to a `static` block defined inside a `resolver` block.
+
+There are two types of [queue][] and [retry][] blocks:
+* The queue and retry blocks under `protocol > otlp`. This is useful for temporary problems with a specific backend, like transient network issues.
+* The top-level queue and retry blocks for `otelcol.exporter.loadbalancing`. 
+  Those configuration options provide capability to re-route data into a new set of healthy backends.
+  This is useful for highly elastic environments like Kubernetes, 
+  where the list of resolved endpoints changes frequently due to deployments and scaling events. 
 
 [resolver]: #resolver-block
 [static]: #static-block
@@ -154,11 +173,12 @@ The `kubernetes` resolver has a much faster response time than the `dns` resolve
 
 The following arguments are supported:
 
-Name      | Type           | Description                                                 | Default  | Required
-----------|----------------|-------------------------------------------------------------|----------|---------
-`service` | `string`       | Kubernetes service to resolve.                              |          | yes
-`ports`   | `list(number)` | Ports to use with the IP addresses resolved from `service`. | `[4317]` | no
-`timeout` | `duration`     | Resolver timeout.                                           | `"1s"`   | no
+Name               | Type           | Description                                                 | Default  | Required
+-------------------|----------------|-------------------------------------------------------------|----------|---------
+`service`          | `string`       | Kubernetes service to resolve.                              |          | yes
+`ports`            | `list(number)` | Ports to use with the IP addresses resolved from `service`. | `[4317]` | no
+`timeout`          | `duration`     | Resolver timeout.                                           | `"1s"`   | no
+`return_hostnames` | `bool`         | Return hostnames instead of IPs.                            | `false`  | no
 
 If no namespace is specified inside `service`, an attempt will be made to infer the namespace for this {{< param "PRODUCT_NAME" >}}.
 If this fails, the `default` namespace will be used.
@@ -167,6 +187,10 @@ Each of the ports listed in `ports` will be used with each of the IPs resolved f
 
 The "get", "list", and "watch" [roles](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#role-example)
 must be granted in Kubernetes for the resolver to work.
+
+`return_hostnames` is useful in certain situations like using Istio in sidecar mode. 
+To use this feature, the `service` argument must be a headless `Service`, pointing at a `StatefulSet`.
+Also, the `service` argument must be what is specified under `.spec.serviceName` in the `StatefulSet`.
 
 ### aws_cloud_map block
 
