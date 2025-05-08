@@ -3,16 +3,15 @@ package typecheck
 import (
 	"fmt"
 	"reflect"
-	"strings"
 
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/diag"
 	"github.com/grafana/alloy/syntax/internal/reflectutil"
-	"github.com/grafana/alloy/syntax/internal/syntaxtags"
+	"github.com/grafana/alloy/syntax/internal/tagcache"
 )
 
 type state struct {
-	tags       map[string]syntaxtags.Field
+	tags       *tagcache.TagInfo
 	seenAttrs  map[string]struct{}
 	blockCount map[string]int
 }
@@ -26,7 +25,7 @@ func block(b *ast.BlockStmt, rv reflect.Value) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	s := state{
-		tags:       getTags(rv.Type()),
+		tags:       tagcache.Get(rv.Type()),
 		seenAttrs:  make(map[string]struct{}),
 		blockCount: make(map[string]int),
 	}
@@ -34,8 +33,7 @@ func block(b *ast.BlockStmt, rv reflect.Value) diag.Diagnostics {
 	for _, stmt := range b.Body {
 		switch stmt := stmt.(type) {
 		case *ast.BlockStmt:
-			name := strings.Join(stmt.Name, ".")
-			s.blockCount[name]++
+			s.blockCount[stmt.GetBlockName()]++
 		}
 	}
 
@@ -57,7 +55,7 @@ func block(b *ast.BlockStmt, rv reflect.Value) diag.Diagnostics {
 		}
 	}
 
-	for name, t := range s.tags {
+	for name, t := range s.tags.TagLookup {
 		if t.IsOptional() {
 			continue
 		}
@@ -91,8 +89,12 @@ func block(b *ast.BlockStmt, rv reflect.Value) diag.Diagnostics {
 }
 
 func checkBlock(s *state, b *ast.BlockStmt, rv reflect.Value) diag.Diagnostics {
-	name := strings.Join(b.Name, ".")
-	tag, ok := s.tags[name]
+	name := b.GetBlockName()
+	if _, ok := s.tags.EnumLookup[name]; ok {
+		return checkEnum(s, b, rv)
+	}
+
+	tag, ok := s.tags.TagLookup[name]
 	if !ok {
 		return diag.Diagnostics{{
 			Severity: diag.SeverityLevelError,
@@ -113,7 +115,7 @@ func checkBlock(s *state, b *ast.BlockStmt, rv reflect.Value) diag.Diagnostics {
 
 	switch field.Kind() {
 	case reflect.Slice:
-		// We make sure that we have a slice with one item so we can extract it out.
+		// NOTE: we do not need to store any values so we can always set and resue the same slot
 		field.Set(reflect.MakeSlice(field.Type(), 1, 1))
 		return block(b, reflectutil.DeferencePointer(field.Index(0)))
 	case reflect.Array:
@@ -146,8 +148,22 @@ func checkBlock(s *state, b *ast.BlockStmt, rv reflect.Value) diag.Diagnostics {
 
 }
 
+func checkEnum(s *state, b *ast.BlockStmt, rv reflect.Value) diag.Diagnostics {
+	tf, ok := s.tags.EnumLookup[b.GetBlockName()]
+	if !ok {
+		panic("checkEnum called with a non-enum block")
+	}
+
+	field := reflectutil.GetOrAlloc(rv, tf.EnumField)
+	// NOTE: we do not need to store any values so we can always set and resue the same slot
+	field.Set(reflect.MakeSlice(field.Type(), 1, 1))
+	elem := reflectutil.DeferencePointer(field.Index(0))
+
+	return block(b, reflectutil.DeferencePointer(reflectutil.GetOrAlloc(elem, tf.BlockField)))
+}
+
 func checkAttr(s *state, a *ast.AttributeStmt, _ reflect.Value) diag.Diagnostics {
-	tf, ok := s.tags[a.Name.Name]
+	tf, ok := s.tags.TagLookup[a.Name.Name]
 	if !ok {
 		return diag.Diagnostics{{
 			Severity: diag.SeverityLevelError,
@@ -174,18 +190,5 @@ func checkAttr(s *state, a *ast.AttributeStmt, _ reflect.Value) diag.Diagnostics
 	}
 
 	s.seenAttrs[a.Name.Name] = struct{}{}
-
 	return nil
-}
-
-func getTags(t reflect.Type) map[string]syntaxtags.Field {
-	tags := syntaxtags.Get(t)
-
-	// FIXME: how should we handle enums, they seem to have some special handling
-	m := make(map[string]syntaxtags.Field, len(tags))
-	for _, tag := range tags {
-		m[strings.Join(tag.Name, ".")] = tag
-	}
-
-	return m
 }

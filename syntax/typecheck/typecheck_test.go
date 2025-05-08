@@ -9,21 +9,27 @@ import (
 )
 
 type Args struct {
-	Arg1       string     `alloy:"arg1,attr,optional"`
-	Arg2       string     `alloy:"arg2,attr"`
-	Block1     Block1     `alloy:"block1,block"`
-	Block2     []Block1   `alloy:"block2,block,optional"`
-	Block3     [2]Block1  `alloy:"block3,block,optional"`
-	InnerBlock InnerBlock `alloy:",squash"`
+	Arg1       string      `alloy:"arg1,attr,optional"`
+	Arg2       string      `alloy:"arg2,attr"`
+	Block1     Block1      `alloy:"block1,block"`
+	Block2     []Block1    `alloy:"block2,block,optional"`
+	Block3     [2]Block1   `alloy:"block3,block,optional"`
+	InnerBlock InnerBlock  `alloy:",squash"`
+	EnumBlock  []EnumBlock `alloy:"enum,enum,optional"`
 }
 
 type Block1 struct {
-	BlockArg1 string `alloy:"block_arg1,attr,optional"`
-	BlockArg2 string `alloy:"block_arg2,attr"`
+	BlockArg1 string `alloy:"arg1,attr,optional"`
+	BlockArg2 string `alloy:"arg2,attr"`
 }
 
 type InnerBlock struct {
 	Arg3 bool `alloy:"arg3,attr"`
+}
+
+type EnumBlock struct {
+	Block1 *Block1     `alloy:"block1,block,optional"`
+	Block2 *InnerBlock `alloy:"block2,block,optional"`
 }
 
 func TestBlock(t *testing.T) {
@@ -42,17 +48,17 @@ func TestBlock(t *testing.T) {
 					arg2 = "test"	
 					arg3 = true
 					block1 {
-						block_arg1 = "test"
-						block_arg2 = "test"
+						arg1 = "test"
+						arg2 = "test"
 					}
 
 					block2 {
-						block_arg2 = "test"
+						arg2 = "test"
 					}
 					
 					block2 {
-						block_arg1 = "test"
-						block_arg2 = "test"
+						arg1 = "test"
+						arg2 = "test"
 					}
 				}
 			`),
@@ -65,8 +71,8 @@ func TestBlock(t *testing.T) {
 					arg3 = true
 
 					block1 {
-						block_arg1 = "test"
-						block_arg2 = "test"
+						arg1 = "test"
+						arg2 = "test"
 					}
 				}
 			`),
@@ -79,8 +85,8 @@ func TestBlock(t *testing.T) {
 					arg3 = true
 
 					block1 {
-						block_arg1 = "test"
-						block_arg2 = "test"
+						arg1 = "test"
+						arg2 = "test"
 					}
 				}
 			`),
@@ -97,8 +103,8 @@ func TestBlock(t *testing.T) {
 					arg3 = true
 
 					block1 {
-						block_arg1 = "test"
-						block_arg2 = "test"
+						arg1 = "test"
+						arg2 = "test"
 					}
 				}
 			`),
@@ -114,8 +120,8 @@ func TestBlock(t *testing.T) {
 						arg3 = true
 
 						block1 {
-							block_arg1 = "test"
-							block_arg2 = "test"
+							arg1 = "test"
+							arg2 = "test"
 						}
 					}
 				`),
@@ -141,11 +147,11 @@ func TestBlock(t *testing.T) {
 					arg3 = true
 
 					block1 {
-						block_arg1 = "test"
+						arg1 = "test"
 					}
 				}
 			`),
-			expectedErr: `7:6: missing required attribute "block_arg2"`,
+			expectedErr: `7:6: missing required attribute "arg2"`,
 		},
 		{
 			desc: "missing required attribute in slice block",
@@ -156,20 +162,20 @@ func TestBlock(t *testing.T) {
 					arg3 = true
 
 					block1 {
-						block_arg1 = "test"
-						block_arg2 = "test"
+						arg1 = "test"
+						arg2 = "test"
 					}
 		
 					block2 {
-						block_arg2 = "test"
+						arg2 = "test"
 					}
 					
 					block2 {
-						block_arg1 = "test"
+						arg1 = "test"
 					}
 				}
 			`),
-			expectedErr: `16:6: missing required attribute "block_arg2"`,
+			expectedErr: `16:6: missing required attribute "arg2"`,
 		},
 		{
 			desc: "to many blocks when type is array with 2 elements",
@@ -180,8 +186,8 @@ func TestBlock(t *testing.T) {
 					arg3 = true
 
 					block1 {
-						block_arg1 = "test"
-						block_arg2 = "test"
+						arg1 = "test"
+						arg2 = "test"
 					}
 		
 					block3 {}
@@ -192,6 +198,67 @@ func TestBlock(t *testing.T) {
 				}
 			`),
 			expectedErr: `12:6: block "block3" must be specified exactly 2 times, but was specified 3 times (and 2 more diagnostics)`,
+		},
+		{
+			desc: "enum block",
+			src: []byte(`
+				test "name" {
+					arg1 = "test"
+					arg2 = "test"	
+					arg3 = true
+					block1 {
+						arg1 = "test"
+						arg2 = "test"
+					}
+
+					block2 {
+						arg2 = "test"
+					}
+					
+					block2 {
+						arg1 = "test"
+						arg2 = "test"
+					}
+
+					enum.block1 {
+						arg2 = "test"
+					}
+	
+					enum.block2 {
+						arg3 = "test"
+					}
+				}
+			`),
+		},
+		{
+			desc: "missing required attribute in enum",
+			src: []byte(`
+				test "name" {
+					arg1 = "test"
+					arg2 = "test"	
+					arg3 = true
+					block1 {
+						arg1 = "test"
+						arg2 = "test"
+					}
+
+					block2 {
+						arg2 = "test"
+					}
+					
+					block2 {
+						arg1 = "test"
+						arg2 = "test"
+					}
+
+					enum.block1 {
+						arg2 = "test"
+					}
+	
+					enum.block2 {}
+				}
+			`),
+			expectedErr: `24:6: missing required attribute "arg3"`,
 		},
 	}
 
