@@ -10,6 +10,8 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	alloy_runtime "github.com/grafana/alloy/internal/runtime"
+	"github.com/grafana/alloy/internal/runtime/logging"
+	"github.com/grafana/alloy/internal/runtime/tracing"
 	"github.com/grafana/alloy/internal/service"
 )
 
@@ -61,16 +63,12 @@ func (v *validator) run() error {
 
 	var diags diag.Diagnostics
 	// Need to validate declares first becuse we will register "custom" components.
-	declareDiags := v.validateDeclares(s.Declares())
-	diags = append(diags, declareDiags...)
+	diags.Merge(v.validateDeclares(s.Declares()))
+	diags.Merge(v.validateConfigs(s.Configs()))
 
-	configDiags := v.validateConfigs(s.Configs())
-	diags = append(diags, configDiags...)
-
-	components, _ := splitComponents(s.Components(), v.sm)
-
-	componentDiags := v.validateComponents(components)
-	diags = append(diags, componentDiags...)
+	components, services := splitComponents(s.Components(), v.sm)
+	diags.Merge(v.validateComponents(components))
+	diags.Merge(v.validateServices(services))
 
 	if diags.HasErrors() {
 		return diags
@@ -129,6 +127,18 @@ func (v *validator) validateConfigs(configs []*ast.BlockStmt) diag.Diagnostics {
 			// We need to register import blocks as a custom component.
 			v.cr.registerCustomComponent(c)
 		}
+
+		// In config we store blocks for logging, tracing, argument, export, import.file,
+		// import.string, import.http, import.git, foreach.
+		// For now we only typecheck logging and tracing and ignore the rest.
+		switch c.GetBlockName() {
+		case "logging":
+			args := &logging.Options{}
+			diags.Merge(typecheck.Block(c, args))
+		case "tracing":
+			args := &tracing.Options{}
+			diags.Merge(typecheck.Block(c, args))
+		}
 	}
 
 	return diags
@@ -179,6 +189,35 @@ func (v *validator) validateComponents(components []*ast.BlockStmt) diag.Diagnos
 
 		// 4. Perform typecheck on component
 		diags.Merge(typecheck.Block(c, reg.CloneArguments()))
+	}
+
+	return diags
+}
+
+func (v *validator) validateServices(services []*ast.BlockStmt) diag.Diagnostics {
+	var (
+		diags diag.Diagnostics
+		mem   = make(map[string]*ast.BlockStmt, len(services))
+	)
+
+	for _, s := range services {
+		def := v.sm[s.GetBlockName()]
+
+		if diag, ok := blockAlreadyDefined(mem, s); ok {
+			diags.Add(diag)
+		}
+
+		if def.ConfigType == nil {
+			diags.Add(diag.Diagnostic{
+				Severity: diag.SeverityLevelError,
+				StartPos: ast.StartPos(s).Position(),
+				EndPos:   ast.EndPos(s).Position(),
+				Message:  fmt.Sprintf("service %q does not support being configured", def.Name),
+			})
+			continue
+		}
+
+		diags.Merge(typecheck.Block(s, def.CloneConfig()))
 	}
 
 	return diags

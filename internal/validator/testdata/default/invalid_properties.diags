@@ -14,7 +14,7 @@ Error: main.alloy:6:2: unrecognized attribute name "test"
   |     ^^^^^^^^^^^^
 7 | }
 
-Error: main.alloy:5:1: missing required attribute "forward_to"
+Error: main.alloy:5:1: missing required attribute "targets"
 
 4 |   
 5 |   loki.source.file "invalid_property" {
@@ -24,7 +24,7 @@ Error: main.alloy:5:1: missing required attribute "forward_to"
   | |_^
 8 |   
 
-Error: main.alloy:5:1: missing required attribute "targets"
+Error: main.alloy:5:1: missing required attribute "forward_to"
 
 4 |   
 5 |   loki.source.file "invalid_property" {
