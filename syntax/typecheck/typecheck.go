@@ -49,13 +49,9 @@ func block(b *ast.BlockStmt, rv reflect.Value) diag.Diagnostics {
 	for _, stmt := range b.Body {
 		switch n := stmt.(type) {
 		case *ast.BlockStmt:
-			for _, d := range checkBlock(&s, n, rv) {
-				diags.Add(d)
-			}
+			diags.Merge(checkBlock(&s, n, rv))
 		case *ast.AttributeStmt:
-			if d := checkAttr(&s, n, rv); d != nil {
-				diags.Add(*d)
-			}
+			diags.Merge(checkAttr(&s, n, rv))
 		default:
 			panic(fmt.Sprintf("syntax/vm: unrecognized node type %T", stmt))
 		}
@@ -148,31 +144,31 @@ func checkBlock(s *state, b *ast.BlockStmt, rv reflect.Value) diag.Diagnostics {
 
 }
 
-func checkAttr(s *state, a *ast.AttributeStmt, _ reflect.Value) *diag.Diagnostic {
+func checkAttr(s *state, a *ast.AttributeStmt, _ reflect.Value) diag.Diagnostics {
 	tf, ok := s.tags[a.Name.Name]
 	if !ok {
-		return &diag.Diagnostic{
+		return diag.Diagnostics{{
 			Severity: diag.SeverityLevelError,
 			StartPos: ast.StartPos(a).Position(),
 			EndPos:   ast.EndPos(a).Position(),
 			Message:  fmt.Sprintf("unrecognized attribute name %q", a.Name.Name),
-		}
+		}}
 	} else if tf.IsBlock() {
-		return &diag.Diagnostic{
+		return diag.Diagnostics{{
 			Severity: diag.SeverityLevelError,
 			StartPos: ast.StartPos(a).Position(),
 			EndPos:   ast.EndPos(a).Position(),
 			Message:  fmt.Sprintf("%q must be a block, but is used as an attribute", a.Name.Name),
-		}
+		}}
 	}
 
 	if _, seen := s.seenAttrs[a.Name.Name]; seen {
-		return &diag.Diagnostic{
+		return diag.Diagnostics{{
 			Severity: diag.SeverityLevelError,
 			StartPos: ast.StartPos(a).Position(),
 			EndPos:   ast.EndPos(a).Position(),
 			Message:  fmt.Sprintf("attribute %q may only be provided once", a.Name.Name),
-		}
+		}}
 	}
 
 	s.seenAttrs[a.Name.Name] = struct{}{}
