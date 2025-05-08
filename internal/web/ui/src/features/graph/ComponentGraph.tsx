@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Edge, Node, ReactFlow, useEdgesState, useNodesState } from '@xyflow/react';
 
+import { usePathPrefix } from '../../contexts/PathPrefixContext';
 import { useGraph } from '../../hooks/graph';
 import { parseID } from '../../utils/id';
 import { ComponentInfo } from '../component/types';
@@ -21,7 +21,7 @@ type GraphProps = {
 
 // The graph is not updated on config reload. The page must be reloaded to see the changes.
 const ComponentGraph: React.FC<GraphProps> = ({ components, moduleID, enabled, window }) => {
-  const navigate = useNavigate();
+  const pathPrefix = usePathPrefix();
   const [baseNodes, baseEdges] = useMemo(() => buildGraph(components), [components]);
   const [data, setData] = useState<DebugData[]>([]);
   const { error } = useGraph(setData, moduleID, window, enabled);
@@ -66,12 +66,13 @@ const ComponentGraph: React.FC<GraphProps> = ({ components, moduleID, enabled, w
 
   // On click, open the component details page in a new tab.
   const onNodeClick = (_event: React.MouseEvent, node: Node) => {
+    const baseUrl = globalThis.window.location.origin + pathPrefix;
     const path =
       node.data.moduleID && node.data.moduleID !== ''
-        ? `/component/${node.data.moduleID}/${node.data.localID}`
-        : `/component/${node.data.localID}`;
+        ? `component/${node.data.moduleID}/${node.data.localID}`
+        : `component/${node.data.localID}`;
 
-    navigate(path);
+    globalThis.window.open(baseUrl + path, '_blank');
   };
 
   return (
