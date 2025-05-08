@@ -9,16 +9,21 @@ import (
 )
 
 type Args struct {
-	Arg1   string    `alloy:"arg1,attr,optional"`
-	Arg2   string    `alloy:"arg2,attr"`
-	Block1 Block1    `alloy:"block1,block"`
-	Block2 []Block1  `alloy:"block2,block,optional"`
-	Block3 [2]Block1 `alloy:"block3,block,optional"`
+	Arg1       string     `alloy:"arg1,attr,optional"`
+	Arg2       string     `alloy:"arg2,attr"`
+	Block1     Block1     `alloy:"block1,block"`
+	Block2     []Block1   `alloy:"block2,block,optional"`
+	Block3     [2]Block1  `alloy:"block3,block,optional"`
+	InnerBlock InnerBlock `alloy:",squash"`
 }
 
 type Block1 struct {
 	BlockArg1 string `alloy:"block_arg1,attr,optional"`
 	BlockArg2 string `alloy:"block_arg2,attr"`
+}
+
+type InnerBlock struct {
+	Arg3 bool `alloy:"arg3,attr"`
 }
 
 func TestBlock(t *testing.T) {
@@ -35,6 +40,7 @@ func TestBlock(t *testing.T) {
 				test "name" {
 					arg1 = "test"
 					arg2 = "test"	
+					arg3 = true
 					block1 {
 						block_arg1 = "test"
 						block_arg2 = "test"
@@ -56,6 +62,7 @@ func TestBlock(t *testing.T) {
 			src: []byte(`
 				test "name" {
 					arg2 = "test"	
+					arg3 = true
 
 					block1 {
 						block_arg1 = "test"
@@ -69,6 +76,7 @@ func TestBlock(t *testing.T) {
 			src: []byte(`
 				test "name" {
 					arg1 = "test"
+					arg3 = true
 
 					block1 {
 						block_arg1 = "test"
@@ -86,6 +94,7 @@ func TestBlock(t *testing.T) {
 					arg1 = "test"
 					arg1 = "test"
 					arg2 = "test"
+					arg3 = true
 
 					block1 {
 						block_arg1 = "test"
@@ -102,6 +111,7 @@ func TestBlock(t *testing.T) {
 						unknown = "test"
 						arg1 = "test"
 						arg2 = "test"
+						arg3 = true
 
 						block1 {
 							block_arg1 = "test"
@@ -117,6 +127,7 @@ func TestBlock(t *testing.T) {
 				test "name" {
 					arg1 = "test"
 					arg2 = "test"
+					arg3 = true
 				}
 			`),
 			expectedErr: `2:5: missing required block "block1"`,
@@ -127,13 +138,14 @@ func TestBlock(t *testing.T) {
 				test "name" {
 					arg1 = "test"
 					arg2 = "test"
+					arg3 = true
 
 					block1 {
 						block_arg1 = "test"
 					}
 				}
 			`),
-			expectedErr: `6:6: missing required attribute "block_arg2"`,
+			expectedErr: `7:6: missing required attribute "block_arg2"`,
 		},
 		{
 			desc: "missing required attribute in slice block",
@@ -141,6 +153,7 @@ func TestBlock(t *testing.T) {
 				test "name" {
 					arg1 = "test"
 					arg2 = "test"
+					arg3 = true
 
 					block1 {
 						block_arg1 = "test"
@@ -156,7 +169,7 @@ func TestBlock(t *testing.T) {
 					}
 				}
 			`),
-			expectedErr: `15:6: missing required attribute "block_arg2"`,
+			expectedErr: `16:6: missing required attribute "block_arg2"`,
 		},
 		{
 			desc: "to many blocks when type is array with 2 elements",
@@ -164,6 +177,7 @@ func TestBlock(t *testing.T) {
 				test "name" {
 					arg1 = "test"
 					arg2 = "test"
+					arg3 = true
 
 					block1 {
 						block_arg1 = "test"
@@ -177,7 +191,7 @@ func TestBlock(t *testing.T) {
 					block3 {}
 				}
 			`),
-			expectedErr: `11:6: block "block3" must be specified exactly 2 times, but was specified 3 times (and 2 more diagnostics)`,
+			expectedErr: `12:6: block "block3" must be specified exactly 2 times, but was specified 3 times (and 2 more diagnostics)`,
 		},
 	}
 
