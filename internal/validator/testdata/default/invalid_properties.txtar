@@ -5,6 +5,13 @@ remote.http "missing_required" {
 }
 
 loki.source.file "invalid_property" {
-	test = "asd"
+	test = "test"
 }
 
+logging {
+	test = "test"
+}
+
+http {
+	test = "test"
+}

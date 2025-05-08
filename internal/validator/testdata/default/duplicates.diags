@@ -25,3 +25,10 @@ Error: main.alloy:4:1: block local.file_match.applogs already declared at main.a
 4 | local.file_match "applogs" {
   | ^^^^^^^^^^^^^^^^^^^^^^^^
 5 |     path_targets = [{"__path__" = "/tmp/app-logs/app.log"}]
+
+Error: main.alloy:18:1: block http already declared at main.alloy:17:1
+
+17 | http {}
+18 | http {}
+   | ^^^^
+19 | 
