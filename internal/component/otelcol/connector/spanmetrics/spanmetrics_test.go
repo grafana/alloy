@@ -41,7 +41,6 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			expected: spanmetricsconnector.Config{
 				Dimensions:               []spanmetricsconnector.Dimension{},
 				ExcludeDimensions:        nil,
-				DimensionsCacheSize:      1000,
 				TimestampCacheSize:       &defaultTimestampCacheSize,
 				AggregationTemporality:   "AGGREGATION_TEMPORALITY_CUMULATIVE",
 				ResourceMetricsCacheSize: 1000,
@@ -92,7 +91,6 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			`,
 			expected: spanmetricsconnector.Config{
 				Dimensions:               []spanmetricsconnector.Dimension{},
-				DimensionsCacheSize:      1000,
 				ExcludeDimensions:        nil,
 				AggregationTemporality:   "AGGREGATION_TEMPORALITY_CUMULATIVE",
 				ResourceMetricsCacheSize: 1000,
@@ -122,7 +120,6 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				default = "GET"
 			}
 			exclude_dimensions = ["test_exclude_dim1", "test_exclude_dim2"]
-			dimensions_cache_size = 333
 			aggregation_temporality = "DELTA"
 			resource_metrics_cache_size = 12345
 			metric_timestamp_cache_size = 12389
@@ -153,7 +150,6 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					{Name: "http.method", Default: getStringPtr("GET")},
 				},
 				ExcludeDimensions:        []string{"test_exclude_dim1", "test_exclude_dim2"},
-				DimensionsCacheSize:      333,
 				AggregationTemporality:   "AGGREGATION_TEMPORALITY_DELTA",
 				ResourceMetricsCacheSize: 12345,
 				TimestampCacheSize:       &timestampCacheSize,
@@ -197,7 +193,6 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			`,
 			expected: spanmetricsconnector.Config{
 				Dimensions:               []spanmetricsconnector.Dimension{},
-				DimensionsCacheSize:      1000,
 				AggregationTemporality:   "AGGREGATION_TEMPORALITY_CUMULATIVE",
 				ResourceMetricsCacheSize: 1000,
 				TimestampCacheSize:       &defaultTimestampCacheSize,
@@ -226,32 +221,6 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			output {}
 			`,
 			errorMsg: `invalid aggregation_temporality: badVal`,
-		},
-		{
-			testName: "invalidDimensionCache1",
-			cfg: `
-			dimensions_cache_size = -1
-
-			histogram {
-				explicit {}
-			}
-
-			output {}
-			`,
-			errorMsg: `invalid cache size: -1, the maximum number of the items in the cache should be positive`,
-		},
-		{
-			testName: "invalidDimensionCache2",
-			cfg: `
-			dimensions_cache_size = 0
-
-			histogram {
-				explicit {}
-			}
-
-			output {}
-			`,
-			errorMsg: `invalid cache size: 0, the maximum number of the items in the cache should be positive`,
 		},
 		{
 			testName: "invalidMetricsFlushInterval1",
@@ -348,6 +317,20 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			output {}
 			`,
 			errorMsg: `missing required block "histogram"`,
+		},
+		{
+			testName: "invalidMetricTimestampCacheSize",
+			cfg: `
+			metric_timestamp_cache_size = 0
+			aggregation_temporality = "DELTA"
+
+			histogram {
+				explicit {}
+			}
+
+			output {}
+			`,
+			errorMsg: `invalid metric_timestamp_cache_size: 0, the cache size should be positive`,
 		},
 	}
 

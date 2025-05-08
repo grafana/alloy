@@ -122,12 +122,6 @@ func (args *Arguments) SetToDefault() {
 
 // Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
-	if args.DimensionsCacheSize <= 0 {
-		return fmt.Errorf(
-			"invalid cache size: %v, the maximum number of the items in the cache should be positive",
-			args.DimensionsCacheSize)
-	}
-
 	if args.MetricsFlushInterval <= 0 {
 		return fmt.Errorf("metrics_flush_interval must be greater than 0")
 	}
@@ -141,6 +135,10 @@ func (args *Arguments) Validate() error {
 
 	if args.AggregationCardinalityLimit < 0 {
 		return fmt.Errorf("invalid aggregation_cardinality_limit: %v, the limit should be positive", args.AggregationCardinalityLimit)
+	}
+
+	if args.AggregationTemporality == AggregationTemporalityDelta && args.TimestampCacheSize <= 0 {
+		return fmt.Errorf("invalid metric_timestamp_cache_size: %v, the cache size should be positive", args.TimestampCacheSize)
 	}
 
 	return nil
