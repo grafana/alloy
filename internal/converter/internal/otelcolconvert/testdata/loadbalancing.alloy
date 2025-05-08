@@ -37,10 +37,20 @@ otelcol.exporter.loadbalancing "default" {
 	}
 	routing_key = "service"
 
+	retry_on_failure {
+		enabled              = false
+		initial_interval     = "0s"
+		randomization_factor = 0
+		multiplier           = 0
+		max_interval         = "0s"
+		max_elapsed_time     = "0s"
+	}
+
 	sending_queue {
 		enabled       = false
 		num_consumers = 0
 		queue_size    = 0
+		sizer         = ""
 		storage       = otelcol.storage.file.default_fs.handler
 	}
 }

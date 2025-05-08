@@ -93,6 +93,8 @@ func (args *Arguments) SetToDefault() {
 	}
 	args.DebugMetrics.SetToDefault()
 	args.Protocol.OTLP.SetToDefault()
+	args.Retry.SetToDefault()
+	args.Queue.SetToDefault()
 }
 
 // Validate implements syntax.Validator.

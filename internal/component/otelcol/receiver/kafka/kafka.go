@@ -44,9 +44,9 @@ type Arguments struct {
 	ClientID          string        `alloy:"client_id,attr,optional"`
 	InitialOffset     string        `alloy:"initial_offset,attr,optional"`
 
-	Logs    KafkaReceiverTopicEncodingConfig `alloy:"logs,block,optional"`
-	Metrics KafkaReceiverTopicEncodingConfig `alloy:"metrics,block,optional"`
-	Traces  KafkaReceiverTopicEncodingConfig `alloy:"traces,block,optional"`
+	Logs    *KafkaReceiverTopicEncodingConfig `alloy:"logs,block,optional"`
+	Metrics *KafkaReceiverTopicEncodingConfig `alloy:"metrics,block,optional"`
+	Traces  *KafkaReceiverTopicEncodingConfig `alloy:"traces,block,optional"`
 
 	ResolveCanonicalBootstrapServersOnly bool `alloy:"resolve_canonical_bootstrap_servers_only,attr,optional"`
 
@@ -82,8 +82,6 @@ func (args *Arguments) SetToDefault() {
 		// for compatibility, even though that means using a client and group ID of
 		// "otel-collector".
 
-		// Do not set the encoding argument - it is deprecated.
-		// Encoding:               "otlp_proto",
 		Brokers:                []string{"localhost:9092"},
 		ClientID:               "otel-collector",
 		GroupID:                "otel-collector",
@@ -95,18 +93,6 @@ func (args *Arguments) SetToDefault() {
 		MaxFetchSize:           0,
 		MaxFetchWait:           250 * time.Millisecond,
 		GroupRebalanceStrategy: "range",
-		Logs: KafkaReceiverTopicEncodingConfig{
-			Topic:    "otlp_logs",
-			Encoding: "otlp_proto",
-		},
-		Metrics: KafkaReceiverTopicEncodingConfig{
-			Topic:    "otlp_metrics",
-			Encoding: "otlp_proto",
-		},
-		Traces: KafkaReceiverTopicEncodingConfig{
-			Topic:    "otlp_spans",
-			Encoding: "otlp_proto",
-		},
 	}
 	args.Metadata.SetToDefault()
 	args.AutoCommit.SetToDefault()
@@ -154,7 +140,7 @@ func (args *Arguments) Validate() error {
 }
 
 type KafkaReceiverTopicEncodingConfig struct {
-	Topic    string `alloy:"topic,attr"`
+	Topic    string `alloy:"topic,attr,optional"`
 	Encoding string `alloy:"encoding,attr,optional"`
 }
 
@@ -216,49 +202,49 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	result.GroupInstanceID = args.GroupInstanceID
 	result.ErrorBackOff = *args.ErrorBackOff.Convert()
 
-	if args.Logs.Topic != "" {
+	if args.Logs != nil && args.Logs.Topic != "" {
 		result.Logs.Topic = args.Logs.Topic
-	} else if args.Topic != "" {
+	} else if len(args.Topic) > 0 {
 		result.Logs.Topic = args.Topic
 	} else {
 		result.Logs.Topic = "otlp_logs"
 	}
 
-	if args.Metrics.Topic != "" {
+	if args.Metrics != nil && args.Metrics.Topic != "" {
 		result.Metrics.Topic = args.Metrics.Topic
-	} else if args.Topic != "" {
+	} else if len(args.Topic) > 0 {
 		result.Metrics.Topic = args.Topic
 	} else {
 		result.Metrics.Topic = "otlp_metrics"
 	}
 
-	if args.Traces.Topic != "" {
+	if args.Traces != nil && args.Traces.Topic != "" {
 		result.Traces.Topic = args.Traces.Topic
-	} else if args.Topic != "" {
+	} else if len(args.Topic) > 0 {
 		result.Traces.Topic = args.Topic
 	} else {
 		result.Traces.Topic = "otlp_spans"
 	}
 
-	if args.Logs.Encoding != "" {
+	if args.Logs != nil && args.Logs.Encoding != "" {
 		result.Logs.Encoding = args.Logs.Encoding
-	} else if args.Encoding != "" {
+	} else if len(args.Encoding) > 0 {
 		result.Logs.Encoding = args.Encoding
 	} else {
 		result.Logs.Encoding = "otlp_proto"
 	}
 
-	if args.Metrics.Encoding != "" {
+	if args.Metrics != nil && args.Metrics.Encoding != "" {
 		result.Metrics.Encoding = args.Metrics.Encoding
-	} else if args.Encoding != "" {
+	} else if len(args.Encoding) > 0 {
 		result.Metrics.Encoding = args.Encoding
 	} else {
 		result.Metrics.Encoding = "otlp_proto"
 	}
 
-	if args.Traces.Encoding != "" {
+	if args.Traces != nil && args.Traces.Encoding != "" {
 		result.Traces.Encoding = args.Traces.Encoding
-	} else if args.Encoding != "" {
+	} else if len(args.Encoding) > 0 {
 		result.Traces.Encoding = args.Encoding
 	} else {
 		result.Traces.Encoding = "otlp_proto"

@@ -74,12 +74,18 @@ func toOtelcolExporterOTLP(cfg *otlpexporter.Config) *otlp.Arguments {
 	}
 }
 
-func toQueueArguments(cfg exporterhelper.QueueConfig) otelcol.QueueArguments {
+func toQueueArguments(cfg exporterhelper.QueueBatchConfig) otelcol.QueueArguments {
+	sizer, err := cfg.Sizer.MarshalText()
+	if err != nil {
+		panic(fmt.Errorf("failed to marshal sizer: %w", err))
+	}
+
 	q := otelcol.QueueArguments{
 		Enabled:      cfg.Enabled,
 		NumConsumers: cfg.NumConsumers,
 		QueueSize:    cfg.QueueSize,
 		Blocking:     cfg.Blocking,
+		Sizer:        string(sizer),
 	}
 
 	if cfg.StorageID != nil {

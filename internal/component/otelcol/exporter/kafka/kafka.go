@@ -34,14 +34,30 @@ func init() {
 }
 
 func GetSignalType(opts component.Options, args component.Arguments) exporter.TypeSignal {
-	switch args.(Arguments).Encoding {
+	var signal exporter.TypeSignal
+	signal = 0
+
+	arguments := args.(Arguments)
+	switch arguments.Encoding {
 	case "raw":
-		return exporter.TypeLogs
+		signal = exporter.TypeLogs
 	case "jaeger_proto", "jaeger_json", "zipkin_proto", "zipkin_json":
-		return exporter.TypeTraces
-	default:
-		return exporter.TypeAll
+		signal = exporter.TypeTraces
+	case "otlp_proto", "otlp_json":
+		signal = exporter.TypeAll
 	}
+
+	if arguments.Logs != nil {
+		signal |= exporter.TypeLogs
+	}
+	if arguments.Metrics != nil {
+		signal |= exporter.TypeMetrics
+	}
+	if arguments.Traces != nil {
+		signal |= exporter.TypeTraces
+	}
+
+	return signal
 }
 
 // Arguments configures the otelcol.exporter.kafka component.
@@ -57,9 +73,9 @@ type Arguments struct {
 	PartitionMetricsByResourceAttributes bool          `alloy:"partition_metrics_by_resource_attributes,attr,optional"`
 	Timeout                              time.Duration `alloy:"timeout,attr,optional"`
 
-	Logs    KafkaExporterSignalConfig `alloy:"logs,block,optional"`
-	Metrics KafkaExporterSignalConfig `alloy:"metrics,block,optional"`
-	Traces  KafkaExporterSignalConfig `alloy:"traces,block,optional"`
+	Logs    *KafkaExporterSignalConfig `alloy:"logs,block,optional"`
+	Metrics *KafkaExporterSignalConfig `alloy:"metrics,block,optional"`
+	Traces  *KafkaExporterSignalConfig `alloy:"traces,block,optional"`
 
 	Authentication otelcol.KafkaAuthenticationArguments `alloy:"authentication,block,optional"`
 	Metadata       otelcol.KafkaMetadataArguments       `alloy:"metadata,block,optional"`
@@ -73,7 +89,7 @@ type Arguments struct {
 }
 
 type KafkaExporterSignalConfig struct {
-	Topic    string `alloy:"topic,attr"`
+	Topic    string `alloy:"topic,attr,optional"`
 	Encoding string `alloy:"encoding,attr,optional"`
 }
 
@@ -120,8 +136,6 @@ var (
 // SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = Arguments{
-		// Do not set the encoding argument - it is deprecated.
-		// Encoding: "otlp_proto",
 		Brokers:  []string{"localhost:9092"},
 		ClientID: "sarama",
 		Timeout:  5 * time.Second,
@@ -138,18 +152,6 @@ func (args *Arguments) SetToDefault() {
 			RequiredAcks:     1,
 			Compression:      "none",
 			FlushMaxMessages: 0,
-		},
-		Logs: KafkaExporterSignalConfig{
-			Topic:    "otlp_logs",
-			Encoding: "otlp_proto",
-		},
-		Metrics: KafkaExporterSignalConfig{
-			Topic:    "otlp_metrics",
-			Encoding: "otlp_proto",
-		},
-		Traces: KafkaExporterSignalConfig{
-			Topic:    "otlp_spans",
-			Encoding: "otlp_proto",
 		},
 	}
 	args.Retry.SetToDefault()
@@ -193,49 +195,49 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	result.Metadata = args.Metadata.Convert()
 	result.BackOffConfig = *args.Retry.Convert()
 
-	if args.Logs.Topic != "" {
+	if args.Logs != nil && args.Logs.Topic != "" {
 		result.Logs.Topic = args.Logs.Topic
-	} else if args.Topic != "" {
+	} else if len(args.Topic) > 0 {
 		result.Logs.Topic = args.Topic
 	} else {
 		result.Logs.Topic = "otlp_logs"
 	}
 
-	if args.Metrics.Topic != "" {
+	if args.Metrics != nil && args.Metrics.Topic != "" {
 		result.Metrics.Topic = args.Metrics.Topic
-	} else if args.Topic != "" {
+	} else if len(args.Topic) > 0 {
 		result.Metrics.Topic = args.Topic
 	} else {
 		result.Metrics.Topic = "otlp_metrics"
 	}
 
-	if args.Traces.Topic != "" {
+	if args.Traces != nil && args.Traces.Topic != "" {
 		result.Traces.Topic = args.Traces.Topic
-	} else if args.Topic != "" {
+	} else if len(args.Topic) > 0 {
 		result.Traces.Topic = args.Topic
 	} else {
 		result.Traces.Topic = "otlp_spans"
 	}
 
-	if args.Logs.Encoding != "" {
+	if args.Logs != nil && args.Logs.Encoding != "" {
 		result.Logs.Encoding = args.Logs.Encoding
-	} else if args.Encoding != "" {
+	} else if len(args.Encoding) > 0 {
 		result.Logs.Encoding = args.Encoding
 	} else {
 		result.Logs.Encoding = "otlp_proto"
 	}
 
-	if args.Metrics.Encoding != "" {
+	if args.Metrics != nil && args.Metrics.Encoding != "" {
 		result.Metrics.Encoding = args.Metrics.Encoding
-	} else if args.Encoding != "" {
+	} else if len(args.Encoding) > 0 {
 		result.Metrics.Encoding = args.Encoding
 	} else {
 		result.Metrics.Encoding = "otlp_proto"
 	}
 
-	if args.Traces.Encoding != "" {
+	if args.Traces != nil && args.Traces.Encoding != "" {
 		result.Traces.Encoding = args.Traces.Encoding
-	} else if args.Encoding != "" {
+	} else if len(args.Encoding) > 0 {
 		result.Traces.Encoding = args.Encoding
 	} else {
 		result.Traces.Encoding = "otlp_proto"

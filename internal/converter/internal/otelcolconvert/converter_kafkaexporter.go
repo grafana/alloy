@@ -96,8 +96,8 @@ func toKafkaProducer(cfg configkafka.ProducerConfig) kafka.Producer {
 	}
 }
 
-func toKafkaSignalConfig(cfg kafkaexporter.SignalConfig) kafka.KafkaExporterSignalConfig {
-	return kafka.KafkaExporterSignalConfig{
+func toKafkaSignalConfig(cfg kafkaexporter.SignalConfig) *kafka.KafkaExporterSignalConfig {
+	return &kafka.KafkaExporterSignalConfig{
 		Topic:    cfg.Topic,
 		Encoding: cfg.Encoding,
 	}

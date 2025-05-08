@@ -72,6 +72,10 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					"enabled":       true,
 					"num_consumers": 10,
 					"queue_size":    1000,
+					// TODO: Why is this not working?
+					"sizer": map[string]interface{}{
+						"val": "requests",
+					},
 				},
 				"producer": map[string]interface{}{
 					"max_message_bytes":  1000000,
@@ -284,7 +288,7 @@ func TestDebugMetricsConfig(t *testing.T) {
 	}
 }
 
-func TestEncoding(t *testing.T) {
+func TestGetSignalType(t *testing.T) {
 	encodings := []string{
 		"otlp_proto",
 		"otlp_json",
@@ -311,5 +315,75 @@ func TestEncoding(t *testing.T) {
 				require.Equal(t, exporter.TypeAll, signalType)
 			}
 		})
+	}
+
+	signalCfgs := []struct {
+		logs    *kafka.KafkaExporterSignalConfig
+		traces  *kafka.KafkaExporterSignalConfig
+		metrics *kafka.KafkaExporterSignalConfig
+	}{
+		{
+			logs: &kafka.KafkaExporterSignalConfig{Encoding: "raw"},
+		},
+		{
+			traces: &kafka.KafkaExporterSignalConfig{Encoding: "zipkin_json"},
+		},
+		{
+			metrics: &kafka.KafkaExporterSignalConfig{Encoding: "otlp_json"},
+		},
+		{
+			metrics: &kafka.KafkaExporterSignalConfig{Encoding: "otlp_json"},
+			logs:    &kafka.KafkaExporterSignalConfig{Encoding: "raw"},
+		},
+		{
+			metrics: &kafka.KafkaExporterSignalConfig{Encoding: "otlp_json"},
+			logs:    &kafka.KafkaExporterSignalConfig{Encoding: "raw"},
+		},
+		{
+			traces: &kafka.KafkaExporterSignalConfig{Encoding: "zipkin_json"},
+			logs:   &kafka.KafkaExporterSignalConfig{Encoding: "raw"},
+		},
+		{
+			metrics: &kafka.KafkaExporterSignalConfig{Encoding: "otlp_json"},
+			traces:  &kafka.KafkaExporterSignalConfig{Encoding: "zipkin_json"},
+		},
+	}
+
+	for _, encoding := range encodings {
+		for _, signalCfg := range signalCfgs {
+			t.Run(encoding, func(t *testing.T) {
+				args := kafka.Arguments{
+					Encoding: encoding,
+					Logs:     signalCfg.logs,
+					Traces:   signalCfg.traces,
+					Metrics:  signalCfg.metrics,
+				}
+				signalType := kafka.GetSignalType(component.Options{}, args)
+
+				var expected exporter.TypeSignal
+				expected = 0
+
+				if signalCfg.logs != nil {
+					expected |= exporter.TypeLogs
+				}
+				if signalCfg.metrics != nil {
+					expected |= exporter.TypeMetrics
+				}
+				if signalCfg.traces != nil {
+					expected |= exporter.TypeTraces
+				}
+
+				switch encoding {
+				case "raw":
+					expected |= exporter.TypeLogs
+				case "jaeger_proto", "jaeger_json", "zipkin_proto", "zipkin_json":
+					expected |= exporter.TypeTraces
+				default:
+					expected |= exporter.TypeAll
+				}
+
+				require.Equal(t, expected, signalType)
+			})
+		}
 	}
 }

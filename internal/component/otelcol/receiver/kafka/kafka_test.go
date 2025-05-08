@@ -16,6 +16,63 @@ import (
 )
 
 func TestArguments_UnmarshalAlloy(t *testing.T) {
+	defaultExpected := func() kafkareceiver.Config {
+		return kafkareceiver.Config{
+			ClientConfig: configkafka.ClientConfig{
+				Brokers:         []string{"10.10.10.10:9092"},
+				ProtocolVersion: "2.0.0",
+				ClientID:        "otel-collector",
+				Metadata: configkafka.MetadataConfig{
+					Full:            true,
+					RefreshInterval: 10 * time.Minute,
+					Retry: configkafka.MetadataRetryConfig{
+						Max:     3,
+						Backoff: 250 * time.Millisecond,
+					},
+				},
+			},
+			ConsumerConfig: configkafka.ConsumerConfig{
+				SessionTimeout:    10 * time.Second,
+				HeartbeatInterval: 3 * time.Second,
+				GroupID:           "otel-collector",
+				InitialOffset:     "latest",
+				AutoCommit: configkafka.AutoCommitConfig{
+					Enable:   true,
+					Interval: 1 * time.Second,
+				},
+				MinFetchSize:           1,
+				DefaultFetchSize:       1048576,
+				MaxFetchSize:           0,
+				MaxFetchWait:           250 * time.Millisecond,
+				GroupRebalanceStrategy: "range",
+			},
+			Logs: kafkareceiver.TopicEncodingConfig{
+				Topic:    "otlp_logs",
+				Encoding: "otlp_proto",
+			},
+			Metrics: kafkareceiver.TopicEncodingConfig{
+				Topic:    "otlp_metrics",
+				Encoding: "otlp_proto",
+			},
+			Traces: kafkareceiver.TopicEncodingConfig{
+				Topic:    "otlp_spans",
+				Encoding: "otlp_proto",
+			},
+			HeaderExtraction: kafkareceiver.HeaderExtraction{
+				ExtractHeaders: false,
+				Headers:        []string{},
+			},
+			ErrorBackOff: configretry.BackOffConfig{
+				Enabled:             false,
+				InitialInterval:     0,
+				RandomizationFactor: 0,
+				Multiplier:          0,
+				MaxInterval:         0,
+				MaxElapsedTime:      0,
+			},
+		}
+	}
+
 	tests := []struct {
 		testName string
 		cfg      string
@@ -28,47 +85,66 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				protocol_version = "2.0.0"
 				output {}
 			`,
-			expected: kafkareceiver.Config{
-				ClientConfig: configkafka.ClientConfig{
-					Brokers:         []string{"10.10.10.10:9092"},
-					ProtocolVersion: "2.0.0",
-					ClientID:        "otel-collector",
-					Metadata: configkafka.MetadataConfig{
-						Full:            true,
-						RefreshInterval: 10 * time.Minute,
-						Retry: configkafka.MetadataRetryConfig{
-							Max:     3,
-							Backoff: 250 * time.Millisecond,
-						},
-					},
-				},
-				ConsumerConfig: configkafka.ConsumerConfig{
-					SessionTimeout:    10 * time.Second,
-					HeartbeatInterval: 3 * time.Second,
-					GroupID:           "otel-collector",
-					InitialOffset:     "latest",
-					AutoCommit: configkafka.AutoCommitConfig{
-						Enable:   true,
-						Interval: 1 * time.Second,
-					},
-					MinFetchSize:     1,
-					DefaultFetchSize: 1048576,
-					MaxFetchSize:     0,
-				},
-				Encoding: "otlp_proto",
-				HeaderExtraction: kafkareceiver.HeaderExtraction{
-					ExtractHeaders: false,
-					Headers:        []string{},
-				},
-				ErrorBackOff: configretry.BackOffConfig{
-					Enabled:             false,
-					InitialInterval:     0,
-					RandomizationFactor: 0,
-					Multiplier:          0,
-					MaxInterval:         0,
-					MaxElapsedTime:      0,
-				},
-			},
+			expected: defaultExpected(),
+		},
+
+		{
+			testName: "Deprecated topic",
+			cfg: `
+				brokers = ["10.10.10.10:9092"]
+				protocol_version = "2.0.0"
+				topic = "test_default_topic"
+				metrics {
+					topic = "test_metrics_topic"
+				}
+				output {}
+			`,
+			expected: func() kafkareceiver.Config {
+				cfg := defaultExpected()
+
+				cfg.Topic = ""
+				cfg.Encoding = ""
+
+				cfg.Logs.Topic = "test_default_topic"
+				cfg.Logs.Encoding = "otlp_proto"
+
+				cfg.Metrics.Topic = "test_metrics_topic"
+				cfg.Metrics.Encoding = "otlp_proto"
+
+				cfg.Traces.Topic = "test_default_topic"
+				cfg.Traces.Encoding = "otlp_proto"
+
+				return cfg
+			}(),
+		},
+		{
+			testName: "Deprecated encoding",
+			cfg: `
+				brokers = ["10.10.10.10:9092"]
+				protocol_version = "2.0.0"
+				encoding = "otlp_json"
+				traces {
+					encoding = "zipkin_thrift"
+				}
+				output {}
+			`,
+			expected: func() kafkareceiver.Config {
+				cfg := defaultExpected()
+
+				cfg.Topic = ""
+				cfg.Encoding = ""
+
+				cfg.Logs.Topic = "otlp_logs"
+				cfg.Logs.Encoding = "otlp_json"
+
+				cfg.Metrics.Topic = "otlp_metrics"
+				cfg.Metrics.Encoding = "otlp_json"
+
+				cfg.Traces.Topic = "otlp_spans"
+				cfg.Traces.Encoding = "zipkin_thrift"
+
+				return cfg
+			}(),
 		},
 		{
 			testName: "ExplicitValues_AuthPlaintext",
@@ -77,11 +153,23 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				protocol_version = "2.0.0"
 				session_timeout = "11s"
 				heartbeat_interval = "4s"
-				topic = "test_topic"
-				encoding = "test_encoding"
 				group_id = "test_group_id"
 				client_id = "test_client_id"
 				initial_offset = "test_offset"
+				group_rebalance_strategy = "roundrobin"
+				max_fetch_wait = "2s"
+				logs {
+					topic = "test_logs_topic"
+					encoding = "raw"
+				}
+				metrics {
+					topic = "test_metrics_topic"
+					encoding = "otlp_json"
+				}
+				traces {
+					topic = "test_spans_topic"
+					encoding = "zipkin_json"
+				}
 				metadata {
 					retry {
 						max_retries = 9
@@ -114,6 +202,18 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				output {}
 			`,
 			expected: kafkareceiver.Config{
+				Logs: kafkareceiver.TopicEncodingConfig{
+					Topic:    "test_logs_topic",
+					Encoding: "raw",
+				},
+				Metrics: kafkareceiver.TopicEncodingConfig{
+					Topic:    "test_metrics_topic",
+					Encoding: "otlp_json",
+				},
+				Traces: kafkareceiver.TopicEncodingConfig{
+					Topic:    "test_spans_topic",
+					Encoding: "zipkin_json",
+				},
 				ClientConfig: configkafka.ClientConfig{
 					Brokers:         []string{"10.10.10.10:9092"},
 					ProtocolVersion: "2.0.0",
@@ -136,12 +236,12 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 						Enable:   true,
 						Interval: 12 * time.Second,
 					},
-					MinFetchSize:     2,
-					DefaultFetchSize: 10000,
-					MaxFetchSize:     20,
+					MinFetchSize:           2,
+					DefaultFetchSize:       10000,
+					MaxFetchSize:           20,
+					MaxFetchWait:           2 * time.Second,
+					GroupRebalanceStrategy: "roundrobin",
 				},
-				Topic:    "test_topic",
-				Encoding: "test_encoding",
 				MessageMarking: kafkareceiver.MessageMarking{
 					After:   true,
 					OnError: true,
