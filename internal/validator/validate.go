@@ -6,6 +6,7 @@ import (
 
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/diag"
+	"github.com/grafana/alloy/syntax/typecheck"
 
 	"github.com/grafana/alloy/internal/component"
 	alloy_runtime "github.com/grafana/alloy/internal/runtime"
@@ -153,7 +154,7 @@ func (v *validator) validateComponents(components []*ast.BlockStmt) diag.Diagnos
 		}
 
 		// 2. Check if component exists and can be used.
-		_, err := v.cr.Get(name)
+		reg, custom, err := v.cr.Get(name)
 		if err != nil {
 			diags.Add(diag.Diagnostic{
 				Severity: diag.SeverityLevelError,
@@ -170,6 +171,14 @@ func (v *validator) validateComponents(components []*ast.BlockStmt) diag.Diagnos
 		if diag, ok := blockAlreadyDefined(mem, c); ok {
 			diags.Add(diag)
 		}
+
+		// For now we are skipping typecheking for custom components (modules and declares)
+		if custom {
+			continue
+		}
+
+		// 4. Perform typecheck on component
+		diags.Merge(typecheck.Block(c, reg.CloneArguments()))
 	}
 
 	return diags
