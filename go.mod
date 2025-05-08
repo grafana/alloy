@@ -1085,7 +1085,7 @@ replace github.com/prometheus/procfs => github.com/prometheus/procfs v0.12.0
 // Use v0.62.0 of prometheus/common for all dependencies until mongodb_exporter is updated to support 0.63.0
 replace github.com/prometheus/common => github.com/prometheus/common v0.62.0
 
-replace github.com/grafana/beyla/v2 => github.com/ptodev/beyla/v2 v2.0.0-20250507083427-93b2af475c8d
+replace github.com/grafana/beyla/v2 => github.com/grafana/beyla/v2 v2.0.0-20250507144903-6e9838deca09
 
 replace github.com/open-telemetry/opentelemetry-collector-contrib => github.com/ptodev/opentelemetry-collector-contrib v0.0.0-20250506154750-58322eed65ce
 
