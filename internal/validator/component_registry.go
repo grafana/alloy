@@ -32,7 +32,7 @@ func (cr *componentRegistry) Get(name string) (component.Registration, bool, err
 	}
 
 	req, err := cr.parent.Get(name)
-	return req, true, err
+	return req, false, err
 }
 
 func (cr *componentRegistry) registerCustomComponent(c *ast.BlockStmt) {
