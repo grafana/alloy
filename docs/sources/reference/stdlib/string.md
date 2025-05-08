@@ -74,8 +74,8 @@ The specification may contain the following verbs.
 | `%s` | Convert to string and insert the string's characters.                                     |
 | `%q` | Convert to string and produce a JSON quoted string representation.                        |
 
-When using the `string.format` function with a [`secret`] value, you must first convert it to a non-sensitive string using the `convert.nonsensitive` function.
-If the resulting value must be a [`secret`], you can use string concatenation with the `+` operator instead of the `string.format` function.
+When using the `string.format` function with a [`secret`][] value, you must first convert it to a non-sensitive string using the [`convert.nonsensitive`][] function.
+If the resulting value must be a [`secret`][], you can use string concatenation with the `+` operator instead of the `string.format` function.
 
 ## string.join
 
@@ -209,3 +209,4 @@ If the string doesn't start with the prefix, the string is returned unchanged.
 ```
 
 [`secret`]: ../../../get-started/configuration-syntax/expressions/types_and_values/#secrets
+[`convert.nonsensitive`]: ../convert/#nonsensitive
