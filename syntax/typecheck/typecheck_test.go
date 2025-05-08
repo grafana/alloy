@@ -1,7 +1,6 @@
 package typecheck
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/grafana/alloy/syntax/ast"
@@ -10,9 +9,11 @@ import (
 )
 
 type Args struct {
-	Arg1   string `alloy:"arg1,attr,optional"`
-	Arg2   string `alloy:"arg2,attr"`
-	Block1 Block1 `alloy:"block1,block"`
+	Arg1   string    `alloy:"arg1,attr,optional"`
+	Arg2   string    `alloy:"arg2,attr"`
+	Block1 Block1    `alloy:"block1,block"`
+	Block2 []Block1  `alloy:"block2,block,optional"`
+	Block3 [2]Block1 `alloy:"block3,block,optional"`
 }
 
 type Block1 struct {
@@ -38,6 +39,15 @@ func TestBlock(t *testing.T) {
 						block_arg1 = "test"
 						block_arg2 = "test"
 					}
+
+					block2 {
+						block_arg2 = "test"
+					}
+					
+					block2 {
+						block_arg1 = "test"
+						block_arg2 = "test"
+					}
 				}
 			`),
 		},
@@ -46,6 +56,7 @@ func TestBlock(t *testing.T) {
 			src: []byte(`
 				test "name" {
 					arg2 = "test"	
+
 					block1 {
 						block_arg1 = "test"
 						block_arg2 = "test"
@@ -58,6 +69,7 @@ func TestBlock(t *testing.T) {
 			src: []byte(`
 				test "name" {
 					arg1 = "test"
+
 					block1 {
 						block_arg1 = "test"
 						block_arg2 = "test"
@@ -74,6 +86,7 @@ func TestBlock(t *testing.T) {
 					arg1 = "test"
 					arg1 = "test"
 					arg2 = "test"
+
 					block1 {
 						block_arg1 = "test"
 						block_arg2 = "test"
@@ -89,6 +102,7 @@ func TestBlock(t *testing.T) {
 						unknown = "test"
 						arg1 = "test"
 						arg2 = "test"
+
 						block1 {
 							block_arg1 = "test"
 							block_arg2 = "test"
@@ -113,20 +127,62 @@ func TestBlock(t *testing.T) {
 				test "name" {
 					arg1 = "test"
 					arg2 = "test"
+
 					block1 {
 						block_arg1 = "test"
 					}
 				}
 			`),
-			expectedErr: `5:6: missing required attribute "block_arg2"`,
+			expectedErr: `6:6: missing required attribute "block_arg2"`,
+		},
+		{
+			desc: "missing required attribute in slice block",
+			src: []byte(`
+				test "name" {
+					arg1 = "test"
+					arg2 = "test"
+
+					block1 {
+						block_arg1 = "test"
+						block_arg2 = "test"
+					}
+		
+					block2 {
+						block_arg2 = "test"
+					}
+					
+					block2 {
+						block_arg1 = "test"
+					}
+				}
+			`),
+			expectedErr: `15:6: missing required attribute "block_arg2"`,
+		},
+		{
+			desc: "to many blocks when type is array with 2 elements",
+			src: []byte(`
+				test "name" {
+					arg1 = "test"
+					arg2 = "test"
+
+					block1 {
+						block_arg1 = "test"
+						block_arg2 = "test"
+					}
+		
+					block3 {}
+		
+					block3 {}
+					
+					block3 {}
+				}
+			`),
+			expectedErr: `11:6: block "block3" must be specified exactly 2 times, but was specified 3 times (and 2 more diagnostics)`,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
-			if tt.desc == "missing required attribute in block" {
-				fmt.Println()
-			}
 
 			file, err := parser.ParseFile("", []byte(tt.src))
 			require.NoError(t, err)

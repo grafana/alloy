@@ -113,6 +113,8 @@ func checkBlock(s *state, b *ast.BlockStmt, rv reflect.Value) diag.Diagnostics {
 
 	switch field.Kind() {
 	case reflect.Slice:
+		// We make sure that we have a slice with one item so we can extract it out.
+		field.Set(reflect.MakeSlice(field.Type(), 1, 1))
 		return block(b, reflectutil.DeferencePointer(field.Index(0)))
 	case reflect.Array:
 		if field.Len() != s.blockCount[name] {
