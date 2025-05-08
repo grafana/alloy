@@ -189,14 +189,3 @@ func getTags(t reflect.Type) map[string]syntaxtags.Field {
 
 	return m
 }
-
-// Fixme remove and simplify
-func prepareDecodeValue(v reflect.Value) reflect.Value {
-	for v.Kind() == reflect.Pointer {
-		if v.IsNil() {
-			v.Set(reflect.New(v.Type().Elem()))
-		}
-		v = v.Elem()
-	}
-	return v
-}
