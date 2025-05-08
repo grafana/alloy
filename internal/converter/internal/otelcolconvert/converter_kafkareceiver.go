@@ -79,6 +79,10 @@ func toKafkaReceiver(state *State, id componentstatus.InstanceID, cfg *kafkarece
 
 		TLS: tlsCfgPtr,
 
+		Logs:    toKafkaTopicEncodingConfig(cfg.Logs),
+		Metrics: toKafkaTopicEncodingConfig(cfg.Metrics),
+		Traces:  toKafkaTopicEncodingConfig(cfg.Traces),
+
 		MinFetchSize:           cfg.MinFetchSize,
 		DefaultFetchSize:       cfg.DefaultFetchSize,
 		MaxFetchSize:           cfg.MaxFetchSize,
@@ -109,8 +113,8 @@ func toKafkaErrorBackOff(cfg configretry.BackOffConfig) kafka.ErrorBackOffArgume
 	}
 }
 
-func toKafkaTopicEncodingConfig(cfg kafkareceiver.TopicEncodingConfig) kafka.KafkaReceiverTopicEncodingConfig {
-	return kafka.KafkaReceiverTopicEncodingConfig{
+func toKafkaTopicEncodingConfig(cfg kafkareceiver.TopicEncodingConfig) *kafka.KafkaReceiverTopicEncodingConfig {
+	return &kafka.KafkaReceiverTopicEncodingConfig{
 		Topic:    cfg.Topic,
 		Encoding: cfg.Encoding,
 	}
