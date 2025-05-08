@@ -45,3 +45,5 @@ Validation is limited in scope. It currently checks for:
 * Syntax errors.
 * Missing components.
 * Component name conflicts.
+* Required properties are set.
+* Uknown properties.
