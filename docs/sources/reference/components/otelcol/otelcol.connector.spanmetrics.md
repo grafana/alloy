@@ -67,7 +67,7 @@ otelcol.connector.spanmetrics "LABEL" {
 | Name                              | Type           | Description                                                                            | Default                 | Required |
 | --------------------------------- | -------------- | -------------------------------------------------------------------------------------- | ----------------------- | -------- |
 | `aggregation_temporality`         | `string`       | Configures whether to reset the metrics after flushing.                                | `"CUMULATIVE"`          | no       |
-| `dimensions_cache_size`           | `number`       | (Deprecated: use `aggregation_cardinality_limit` instead) How many dimensions to cache.| `1000`                  | no       |
+| `dimensions_cache_size`           | `number`       | (Deprecated: use `aggregation_cardinality_limit` instead) How many dimensions to cache.| `0`                  | no       |
 | `exclude_dimensions`              | `list(string)` | List of dimensions to be excluded from the default set of dimensions.                  | `[]`                    | no       |
 | `metrics_flush_interval`          | `duration`     | How often to flush generated metrics.                                                  | `"60s"`                 | no       |
 | `metrics_expiration`              | `duration`     | Time period after which metrics are considered stale and are removed from the cache.   | `"0s"`                  | no       |
