@@ -129,7 +129,7 @@ func (v *validator) validateConfigs(configs []*ast.BlockStmt) diag.Diagnostics {
 		}
 
 		// In config we store blocks for logging, tracing, argument, export, import.file,
-		// import.string, import.http, import.git, foreach.
+		// import.string, import.http, import.git and foreach.
 		// For now we only typecheck logging and tracing and ignore the rest.
 		switch c.GetBlockName() {
 		case "logging":
