@@ -54,6 +54,8 @@ Main (unreleased)
 
 - Fix `otelcol.receiver.filelog` documentation's default value for `start_at`. (@petewall)
 
+- Fix `pyroscope.scrape` scraping godeltaprof profiles. (@korniltsev)
+
 - Fix [#3386](https://github.com/grafana/alloy/issues/3386) lower casing scheme in `prometheus.operator.scrapeconfigs`. (@alex-berger)
 
 ### Other changes
