@@ -47,7 +47,7 @@ Main (unreleased)
 - Pretty print diagnostic errors when using `alloy run` (@kalleep)
 
 -  Add optional `id` field to `foreach` block to generate more meaningful component paths in metrics by using a specific field from collection items. (@harshrai654)
-  
+
 - Fix validation logic in `beyla.ebpf` component to ensure that either metrics or traces are enabled. (@marctc)
 
 ### Bugfixes
@@ -63,6 +63,8 @@ Main (unreleased)
 - Update the zap logging adapter used by `otelcol` components to log arrays and objects. (@dehaansa)
 
 - Updated Windows install script to add DisplayVersion into registry on install (@enessene)
+
+- Update Docker builds to install latest Linux security fixes on top of base image (@jharvey10)
 
 v1.8.3
 -----------------
