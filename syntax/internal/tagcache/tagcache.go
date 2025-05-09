@@ -78,4 +78,3 @@ type EnumBlock struct {
 	EnumField  syntaxtags.Field // Field in the parent struct of the enum slice
 	BlockField syntaxtags.Field // Field in the enum struct for the enum block
 }
-

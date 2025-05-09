@@ -145,7 +145,6 @@ func checkBlock(s *state, b *ast.BlockStmt, rv reflect.Value) diag.Diagnostics {
 		}
 		return block(b, reflectutil.DeferencePointer(field))
 	}
-
 }
 
 func checkEnum(s *state, b *ast.BlockStmt, rv reflect.Value) diag.Diagnostics {

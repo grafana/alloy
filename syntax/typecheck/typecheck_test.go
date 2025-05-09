@@ -264,7 +264,7 @@ func TestBlock(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
-			file, err := parser.ParseFile("", []byte(tt.src))
+			file, err := parser.ParseFile("", tt.src)
 			require.NoError(t, err)
 			diag := Block(file.Body[0].(*ast.BlockStmt), &Args{})
 			if tt.expectedErr == "" {
