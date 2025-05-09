@@ -7,11 +7,12 @@ import (
 
 	"github.com/IBM/sarama"
 	"github.com/go-kit/log"
+	kafka_exporter "github.com/grafana/kafka_exporter/exporter"
+
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/static/integrations"
 	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
 	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
-	kafka_exporter "github.com/grafana/kafka_exporter/exporter"
 )
 
 // DefaultConfig holds the default settings for the kafka_lag_exporter
@@ -152,7 +153,7 @@ func (c *Config) Name() string {
 // InstanceKey returns the hostname:port of the first Kafka node, if any. If
 // there is not exactly one Kafka node, the user must manually provide
 // their own value for instance key in the common config.
-func (c *Config) InstanceKey(agentKey string) (string, error) {
+func (c *Config) InstanceKey(_ string) (string, error) {
 	if len(c.KafkaURIs) == 1 {
 		return c.KafkaURIs[0], nil
 	}

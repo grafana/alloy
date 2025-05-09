@@ -8,9 +8,10 @@ import (
 	"net/http"
 
 	"github.com/go-kit/log"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+
 	"github.com/grafana/alloy/internal/static/integrations"
 	"github.com/grafana/alloy/internal/static/integrations/config"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 // Config controls the Agent integration.
@@ -21,9 +22,8 @@ func (c *Config) Name() string {
 	return "agent"
 }
 
-// InstanceKey returns the hostname of the machine.
-func (c *Config) InstanceKey(agentKey string) (string, error) {
-	return agentKey, nil
+func (c *Config) InstanceKey(defaultKey string) (string, error) {
+	return defaultKey, nil
 }
 
 // NewIntegration converts this config into an instance of an integration.

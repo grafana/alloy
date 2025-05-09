@@ -2,11 +2,12 @@ package snowflake_exporter
 
 import (
 	"github.com/go-kit/log"
+	"github.com/grafana/snowflake-prometheus-exporter/collector"
+	config_util "github.com/prometheus/common/config"
+
 	"github.com/grafana/alloy/internal/static/integrations"
 	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
 	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
-	"github.com/grafana/snowflake-prometheus-exporter/collector"
-	config_util "github.com/prometheus/common/config"
 )
 
 // DefaultConfig is the default config for the snowflake integration
@@ -39,8 +40,7 @@ func (c *Config) exporterConfig() *collector.Config {
 	}
 }
 
-// Identifier returns a string that identifies the integration.
-func (c *Config) InstanceKey(agentKey string) (string, error) {
+func (c *Config) InstanceKey(_ string) (string, error) {
 	return c.AccountName, nil
 }
 
