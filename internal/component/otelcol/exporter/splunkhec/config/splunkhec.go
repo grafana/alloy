@@ -10,7 +10,6 @@ import (
 	"go.opentelemetry.io/collector/config/configopaque"
 	"go.opentelemetry.io/collector/config/configretry"
 	"go.opentelemetry.io/collector/config/configtls"
-	"go.opentelemetry.io/collector/exporter/exporterbatcher"
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
 )
 
@@ -96,22 +95,22 @@ type BatcherConfig struct {
 	// FlushTimeout sets the time after which a batch will be sent regardless of its size.
 	FlushTimeout time.Duration `alloy:"flush_timeout,attr,optional"`
 
-	MinSize int    `alloy:"min_size,attr,optional"`
-	MaxSize int    `alloy:"max_size,attr,optional"`
+	MinSize int64  `alloy:"min_size,attr,optional"`
+	MaxSize int64  `alloy:"max_size,attr,optional"`
 	Sizer   string `alloy:"sizer,attr,optional"`
 }
 
-func (args *BatcherConfig) Convert() *exporterbatcher.Config {
+func (args *BatcherConfig) Convert() *exporterhelper.BatcherConfig {
 	if args == nil {
 		return nil
 	}
-	sizer := exporterbatcher.SizerType{}
+	sizer := exporterhelper.RequestSizerType{}
 	// ignore error here because we check for valid sizer in Validate()
 	_ = sizer.UnmarshalText([]byte(args.Sizer))
-	return &exporterbatcher.Config{
+	return &exporterhelper.BatcherConfig{
 		Enabled:      args.Enabled,
 		FlushTimeout: args.FlushTimeout,
-		SizeConfig: exporterbatcher.SizeConfig{
+		SizeConfig: exporterhelper.SizeConfig{
 			Sizer:   sizer,
 			MinSize: args.MinSize,
 			MaxSize: args.MaxSize,

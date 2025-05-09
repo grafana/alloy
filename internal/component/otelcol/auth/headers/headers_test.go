@@ -66,7 +66,7 @@ func Test(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, ext.Extension, "handler extension is nil")
 
-	clientAuth, ok := ext.Extension.(extauth.Client)
+	clientAuth, ok := ext.Extension.(extauth.HTTPClient)
 	require.True(t, ok, "handler does not implement configauth.ClientAuthenticator")
 
 	rt, err := clientAuth.RoundTripper(http.DefaultTransport)

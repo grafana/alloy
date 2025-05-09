@@ -1508,6 +1508,9 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 						"os.type": map[string]interface{}{
 							"enabled": true,
 						},
+						"os.version": map[string]interface{}{
+							"enabled": false,
+						},
 					},
 				},
 				"ec2":              ec2.DefaultArguments.Convert(),

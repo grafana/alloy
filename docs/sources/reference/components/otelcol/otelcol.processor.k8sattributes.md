@@ -87,7 +87,7 @@ pod_association          | [pod_association][] | Rules to associate pod metadata
 pod_association > source | [source][]          | Source information to identify a pod.                     | no
 exclude                  | [exclude][]         | Exclude pods from being processed.                        | no
 exclude > pod            | [pod][]             | Pod information.                                          | no
-debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
+debug_metrics            | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
 
 
 The `>` symbol indicates deeper levels of nesting. For example, `extract > annotation`
@@ -112,9 +112,10 @@ The `extract` block configures which metadata, annotations, and labels to extrac
 
 The following attributes are supported:
 
-Name       | Type           | Description                          | Default     | Required
------------|----------------|--------------------------------------|-------------|---------
-`metadata` | `list(string)` | Pre-configured metadata keys to add. | _See below_ | no
+Name               | Type           | Description                                             | Default     | Required
+-------------------|----------------|---------------------------------------------------------|-------------|---------
+`metadata`         | `list(string)` | Pre-configured metadata keys to add.                    | _See below_ | no
+`otel_annotations` | `bool`         | Whether to set the [recommended resource attributes][]. | `false`     | no
 
 The currently supported `metadata` keys are:
 
@@ -149,6 +150,10 @@ By default, if `metadata` is not specified, the following fields are extracted a
 * `k8s.container.name` (requires an additional attribute to be set: `container.id`)
 * `container.image.name` (requires one of the following additional attributes to be set: `container.id` or `k8s.container.name`)
 * `container.image.tag` (requires one of the following additional attributes to be set: `container.id` or `k8s.container.name`)
+
+When `otel_annotations` is set to `true`, annotations such as `resource.opentelemetry.io/foo` will be translated to the `foo` resource attribute, etc.
+
+[recommended resource attributes]: https://opentelemetry.io/docs/specs/semconv/non-normative/k8s-attributes/
 
 ### annotation block
 
@@ -371,6 +376,8 @@ otelcol.processor.k8sattributes "default" {
       "k8s.pod.uid",
       "k8s.pod.start_time",
     ]
+
+    otel_annotations = true
   }
 
   output {
@@ -447,6 +454,7 @@ prometheus.remote_write "mimir" {
   }
 }
 ```
+
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components

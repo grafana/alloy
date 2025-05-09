@@ -110,6 +110,7 @@ func toSpanmetricsConnector(state *State, id componentstatus.InstanceID, cfg *sp
 		TimestampCacheSize:           timestampCacheSize,
 		Namespace:                    cfg.Namespace,
 		ResourceMetricsCacheSize:     cfg.ResourceMetricsCacheSize,
+		AggregationCardinalityLimit:  cfg.AggregationCardinalityLimit,
 		ResourceMetricsKeyAttributes: cfg.ResourceMetricsKeyAttributes,
 		Exemplars: spanmetrics.ExemplarsConfig{
 			Enabled:         cfg.Exemplars.Enabled,
@@ -119,6 +120,7 @@ func toSpanmetricsConnector(state *State, id componentstatus.InstanceID, cfg *sp
 			Enabled:    cfg.Events.Enabled,
 			Dimensions: eventDimensions,
 		},
+		IncludeInstrumentationScope: cfg.IncludeInstrumentationScope,
 
 		Output: &otelcol.ConsumerArguments{
 			Metrics: ToTokenizedConsumers(nextMetrics),

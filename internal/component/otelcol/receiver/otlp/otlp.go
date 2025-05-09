@@ -67,7 +67,7 @@ func (args *HTTPConfigArguments) Convert() (*otlpreceiver.HTTPConfig, error) {
 	}
 
 	return &otlpreceiver.HTTPConfig{
-		ServerConfig:   httpServerArgs,
+		ServerConfig:   *httpServerArgs,
 		TracesURLPath:  args.TracesURLPath,
 		MetricsURLPath: args.MetricsURLPath,
 		LogsURLPath:    args.LogsURLPath,

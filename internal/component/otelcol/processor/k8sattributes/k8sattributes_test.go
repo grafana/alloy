@@ -64,6 +64,8 @@ func Test_ExtractAnnotations(t *testing.T) {
 				"k8s.job.name",
 				"k8s.node.name",
 			]
+
+			otel_annotations = true
 		}
 	
 		output {
@@ -85,6 +87,8 @@ func Test_ExtractAnnotations(t *testing.T) {
 	require.Len(t, extract.Labels, 1)
 	require.Equal(t, extract.Labels[0].KeyRegex, "opentel.*")
 	require.Equal(t, extract.Labels[0].From, "pod")
+
+	require.Equal(t, extract.OtelAnnotations, true)
 }
 
 func Test_FilterNodeEnvironmentVariable(t *testing.T) {

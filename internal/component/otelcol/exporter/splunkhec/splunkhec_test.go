@@ -13,7 +13,6 @@ import (
 	"go.opentelemetry.io/collector/config/configopaque"
 	"go.opentelemetry.io/collector/config/configretry"
 	"go.opentelemetry.io/collector/config/configtls"
-	"go.opentelemetry.io/collector/exporter/exporterbatcher"
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
 )
 
@@ -67,14 +66,14 @@ func TestConfigConversion(t *testing.T) {
 			MaxInterval:         30000000000,
 			MaxElapsedTime:      300000000000,
 		},
-		BatcherConfig: exporterbatcher.Config{
+		BatcherConfig: exporterhelper.BatcherConfig{
 			Enabled:      false,
 			FlushTimeout: 200000000,
-			SizeConfig: exporterbatcher.SizeConfig{
+			SizeConfig: exporterhelper.SizeConfig{
 				MinSize: 8192,
 				MaxSize: 0,
-				Sizer: func() exporterbatcher.SizerType {
-					var s exporterbatcher.SizerType
+				Sizer: func() exporterhelper.RequestSizerType {
+					var s exporterhelper.RequestSizerType
 					require.NoError(t, s.UnmarshalText([]byte("items")))
 					return s
 				}(),
@@ -155,14 +154,14 @@ func TestConfigConversion(t *testing.T) {
 			MaxInterval:         30000000000,
 			MaxElapsedTime:      300000000000,
 		},
-		BatcherConfig: exporterbatcher.Config{
+		BatcherConfig: exporterhelper.BatcherConfig{
 			Enabled:      false,
 			FlushTimeout: 200000000,
-			SizeConfig: exporterbatcher.SizeConfig{
+			SizeConfig: exporterhelper.SizeConfig{
 				MinSize: 8192,
 				MaxSize: 0,
-				Sizer: func() exporterbatcher.SizerType {
-					var s exporterbatcher.SizerType
+				Sizer: func() exporterhelper.RequestSizerType {
+					var s exporterhelper.RequestSizerType
 					require.NoError(t, s.UnmarshalText([]byte("items")))
 					return s
 				}(),
