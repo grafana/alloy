@@ -117,7 +117,7 @@ func checkBlock(s *state, b *ast.BlockStmt, rv reflect.Value) diag.Diagnostics {
 
 	switch field.Kind() {
 	case reflect.Slice:
-		// NOTE: we do not need to store any values so we can always set and resue the same slot
+		// NOTE: we do not need to store any values so we can always set and reuse the same slot
 		field.Set(reflect.MakeSlice(field.Type(), 1, 1))
 		return block(b, reflectutil.DeferencePointer(field.Index(0)))
 	case reflect.Array:
