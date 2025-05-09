@@ -15,7 +15,6 @@ import (
 	"github.com/grafana/pyroscope/ebpf/pprof"
 	"github.com/grafana/pyroscope/ebpf/sd"
 	"github.com/grafana/pyroscope/ebpf/symtab"
-	"github.com/oklog/run"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/pyroscope"
@@ -61,7 +60,7 @@ func New(opts component.Options, args Arguments) (component.Component, error) {
 		args:         args,
 		targetFinder: targetFinder,
 		session:      session,
-		argsUpdate:   make(chan Arguments),
+		argsUpdate:   make(chan Arguments, 4),
 	}
 	res.metrics.targetsActive.Set(float64(len(res.targetFinder.DebugInfo())))
 	return res, nil
@@ -104,54 +103,105 @@ type Component struct {
 	debugInfo     DebugInfo
 	debugInfoLock sync.Mutex
 	metrics       *metrics
+
+	healthMut sync.RWMutex
+	health    component.Health
 }
 
 func (c *Component) Run(ctx context.Context) error {
-	err := c.session.Start()
-	if err != nil {
-		return fmt.Errorf("ebpf profiling session start: %w", err)
-	}
-	defer c.session.Stop()
+	started := false
 
-	var g run.Group
-	g.Add(func() error {
-		collectInterval := c.args.CollectInterval
-		t := time.NewTicker(collectInterval)
-		defer t.Stop()
-		for {
-			select {
-			case <-ctx.Done():
-				return nil
-			case newArgs := <-c.argsUpdate:
-				c.args = newArgs
-				c.session.UpdateTargets(targetsOptionFromArgs(c.args))
-				c.metrics.targetsActive.Set(float64(len(c.targetFinder.DebugInfo())))
-				err := c.session.Update(convertSessionOptions(c.args, c.metrics))
-				if err != nil {
-					return nil
-				}
-				c.appendable.UpdateChildren(newArgs.ForwardTo)
-				if c.args.CollectInterval != collectInterval {
-					t.Reset(c.args.CollectInterval)
-					collectInterval = c.args.CollectInterval
-				}
-			case <-t.C:
-				err := c.collectProfiles()
-				if err != nil {
-					c.metrics.profilingSessionsFailingTotal.Inc()
-					return err
-				}
-				c.updateDebugInfo()
+	collectInterval := c.args.CollectInterval
+	t := time.NewTicker(collectInterval)
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case newArgs := <-c.argsUpdate:
+			// ensure there are no other updates queued. this might happen if the collection takes a very long time
+			newArgs = getLatestArgsFromChannel(c.argsUpdate, newArgs)
+
+			// update targets
+			c.args = newArgs
+			c.session.UpdateTargets(targetsOptionFromArgs(c.args))
+			c.metrics.targetsActive.Set(float64(len(c.targetFinder.DebugInfo())))
+			err := c.session.Update(convertSessionOptions(c.args, c.metrics))
+			if err != nil {
+				level.Error(c.options.Logger).Log("msg", "failed to update profiling session", "err", err)
+				c.reportUnhealthy(err)
+				continue
 			}
+			c.appendable.UpdateChildren(newArgs.ForwardTo)
+			if c.args.CollectInterval != collectInterval {
+				t.Reset(c.args.CollectInterval)
+				collectInterval = c.args.CollectInterval
+			}
+		case <-t.C:
+			if !started {
+				err := c.session.Start()
+				if err != nil {
+					level.Error(c.options.Logger).Log("msg", "failed to start profiling session", "err", err)
+					c.reportUnhealthy(err)
+					continue
+				}
+				defer c.session.Stop()
+				started = true
+			}
+
+			err := c.collectProfiles()
+			if err != nil {
+				level.Error(c.options.Logger).Log("msg", "failed to collect profiles", "err", err)
+				c.reportUnhealthy(err)
+				c.metrics.profilingSessionsFailingTotal.Inc()
+				continue
+			}
+			c.reportHealthy()
+			c.updateDebugInfo()
 		}
-	}, func(error) {})
-	return g.Run()
+	}
+}
+
+func getLatestArgsFromChannel[A any](ch chan A, current A) A {
+	for {
+		select {
+		case x := <-ch:
+			current = x
+		default:
+			return current
+		}
+	}
 }
 
 func (c *Component) Update(args component.Arguments) error {
 	newArgs := args.(Arguments)
 	c.argsUpdate <- newArgs
 	return nil
+}
+
+func (c *Component) reportUnhealthy(err error) {
+	c.healthMut.Lock()
+	defer c.healthMut.Unlock()
+	c.health = component.Health{
+		Health:     component.HealthTypeUnhealthy,
+		Message:    err.Error(),
+		UpdateTime: time.Now(),
+	}
+}
+
+func (c *Component) reportHealthy() {
+	c.healthMut.Lock()
+	defer c.healthMut.Unlock()
+	c.health = component.Health{
+		Health:     component.HealthTypeHealthy,
+		UpdateTime: time.Now(),
+	}
+}
+
+func (c *Component) CurrentHealth() component.Health {
+	c.healthMut.RLock()
+	defer c.healthMut.RUnlock()
+	return c.health
 }
 
 func (c *Component) DebugInfo() interface{} {
