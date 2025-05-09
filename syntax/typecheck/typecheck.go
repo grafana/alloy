@@ -156,7 +156,7 @@ func checkEnum(s *state, b *ast.BlockStmt, rv reflect.Value) diag.Diagnostics {
 	}
 
 	field := reflectutil.GetOrAlloc(rv, tf.EnumField)
-	// NOTE: we do not need to store any values so we can always set and resue the same slot
+	// NOTE: we do not need to store any values so we can always set and reuse the same slot
 	field.Set(reflect.MakeSlice(field.Type(), 1, 1))
 	elem := reflectutil.DeferencePointer(field.Index(0))
 
