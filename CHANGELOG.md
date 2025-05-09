@@ -20,6 +20,8 @@ Main (unreleased)
 
 - Add support to configure basic authentication for alloy http server. (@kalleep)
 
+- Add support for Mimir federated rule groups in `mimir.rules.kubernetes` (@QuentinBisson)
+
 - Add `validate` command to alloy that will perform limited validation of alloy configuration files. (@kalleep)
 
 - Add `otelcol.receiver.splunkhec` component to receive events in splunk hec format and forward them to other `otelcol.*` components. (@kalleep)

@@ -101,7 +101,7 @@ func (c *Component) reconcileState(ctx context.Context) error {
 		return err
 	}
 
-	diffs := kubernetes.DiffRuleState(desiredState, c.currentState)
+	diffs := kubernetes.DiffPrometheusRuleGroupState(desiredState, c.currentState)
 	var result error
 	for ns, diff := range diffs {
 		err = c.applyChanges(ctx, ns, diff)
@@ -114,13 +114,13 @@ func (c *Component) reconcileState(ctx context.Context) error {
 	return result
 }
 
-func (c *Component) loadStateFromK8s() (kubernetes.RuleGroupsByNamespace, error) {
+func (c *Component) loadStateFromK8s() (kubernetes.PrometheusRuleGroupsByNamespace, error) {
 	matchedNamespaces, err := c.namespaceLister.List(c.namespaceSelector)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list namespaces: %w", err)
 	}
 
-	desiredState := make(kubernetes.RuleGroupsByNamespace)
+	desiredState := make(kubernetes.PrometheusRuleGroupsByNamespace)
 	for _, ns := range matchedNamespaces {
 		crdState, err := c.ruleLister.PrometheusRules(ns.Name).List(c.ruleSelector)
 		if err != nil {
@@ -158,7 +158,7 @@ func convertCRDRuleGroupToRuleGroup(crd promv1.PrometheusRuleSpec) ([]rulefmt.Ru
 	return groups.Groups, nil
 }
 
-func (c *Component) applyChanges(ctx context.Context, namespace string, diffs []kubernetes.RuleGroupDiff) error {
+func (c *Component) applyChanges(ctx context.Context, namespace string, diffs []kubernetes.PrometheusRuleGroupDiff) error {
 	if len(diffs) == 0 {
 		return nil
 	}
