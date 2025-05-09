@@ -1,5 +1,23 @@
 valid config
 -- main.alloy --
+http {
+  tls {
+    cert_file = sys.env("TLS_CERT_FILE_PATH")
+    key_file  = sys.env("TLS_KEY_FILE_PATH")
+  }
+}
+
+logging {
+  level  = "info"
+  format = "logfmt"
+}
+
+tracing {
+  sampling_fraction = 0.1
+
+  write_to = [otelcol.exporter.otlp.tempo.input]
+}
+
 local.file_match "applogs" {
     path_targets = [{"__path__" = "/tmp/app-logs/app.log"}]
 }
@@ -48,10 +66,6 @@ declare "self_collect" {
 }
 
 self_collect "selfmonitor" {}
-
-logging {
-
-}
 
 import.file "math" {
   filename = "module.alloy"

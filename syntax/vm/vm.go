@@ -11,6 +11,7 @@ import (
 	"github.com/grafana/alloy/syntax/internal/reflectutil"
 	"github.com/grafana/alloy/syntax/internal/stdlib"
 	"github.com/grafana/alloy/syntax/internal/syntaxtags"
+	"github.com/grafana/alloy/syntax/internal/tagcache"
 	"github.com/grafana/alloy/syntax/internal/value"
 )
 
@@ -144,7 +145,7 @@ func (vm *Evaluator) evaluateDecode(scope *Scope, assoc map[value.Value]ast.Node
 		panic(fmt.Sprintf("syntax/vm: can only evaluate blocks into structs, got %s", rv.Kind()))
 	}
 
-	ti := getCachedTagInfo(rv.Type())
+	ti := tagcache.Get(rv.Type())
 
 	var stmts ast.Body
 	switch node := node.(type) {
