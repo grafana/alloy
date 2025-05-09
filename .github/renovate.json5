@@ -8,7 +8,6 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "config:recommended",
-
   ],
 
   "commitMessageAction": "update",
@@ -29,6 +28,11 @@
 
   // Allow PR creation between 06:00 and 10:00 UTC on Mondays
   "schedule": ["* 6-10 * * 1"],
+
+  // Open security-related PRs irrespective of other settings
+  "vulnerabilityAlerts": {
+    "enabled": true
+  },
 
   "packageRules": [
     {
