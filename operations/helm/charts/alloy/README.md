@@ -149,6 +149,12 @@ useful if just using the default DaemonSet isn't sufficient.
 | ingress.tls | list | `[]` |  |
 | nameOverride | string | `nil` | Overrides the chart's name. Used to change the infix in the resource names. |
 | namespaceOverride | string | `nil` | Overrides the chart's namespace. |
+| networkPolicy.egress[0] | object | `{}` |  |
+| networkPolicy.enabled | bool | `false` |  |
+| networkPolicy.flavor | string | `"kubernetes"` |  |
+| networkPolicy.ingress[0] | object | `{}` |  |
+| networkPolicy.policyTypes[0] | string | `"Ingress"` |  |
+| networkPolicy.policyTypes[1] | string | `"Egress"` |  |
 | rbac.create | bool | `true` | Whether to create RBAC resources for Alloy. |
 | service.annotations | object | `{}` |  |
 | service.clusterIP | string | `""` | Cluster IP, can be set to None, empty "" or an IP address |
