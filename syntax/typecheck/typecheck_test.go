@@ -14,13 +14,22 @@ type Args struct {
 	Block1     Block1      `alloy:"block1,block"`
 	Block2     []Block1    `alloy:"block2,block,optional"`
 	Block3     [2]Block1   `alloy:"block3,block,optional"`
+	Block4     Block2      `alloy:"block4,block,optional"`
 	InnerBlock InnerBlock  `alloy:",squash"`
 	EnumBlock  []EnumBlock `alloy:"enum,enum,optional"`
 }
 
 type Block1 struct {
-	BlockArg1 string `alloy:"arg1,attr,optional"`
-	BlockArg2 string `alloy:"arg2,attr"`
+	Arg1 string `alloy:"arg1,attr,optional"`
+	Arg2 string `alloy:"arg2,attr"`
+}
+
+type Block2 struct {
+	Nested NestedBlock `alloy:"nested,block"`
+}
+
+type NestedBlock struct {
+	Arg string `alloy:"nested_arg,attr"`
 }
 
 type InnerBlock struct {
@@ -259,6 +268,25 @@ func TestBlock(t *testing.T) {
 				}
 			`),
 			expectedErr: `24:6: missing required attribute "arg3"`,
+		},
+		{
+			desc: "missing required attribute nested block",
+			src: []byte(`
+				test "name" {
+					arg2 = "test"
+					arg3 = false
+
+					block1 {
+						arg1 = "test"
+						arg2 = "test"
+					}
+
+					block4 {
+						nested {}
+					}
+				}
+			`),
+			expectedErr: `12:7: missing required attribute "nested_arg"`,
 		},
 	}
 

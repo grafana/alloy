@@ -156,8 +156,12 @@ func checkEnum(s *state, b *ast.BlockStmt, rv reflect.Value) diag.Diagnostics {
 	}
 
 	field := reflectutil.GetOrAlloc(rv, tf.EnumField)
+	if field.Kind() != reflect.Slice {
+		panic("syntax/vm: enum field must be a slice kind, got " + field.Kind().String())
+	}
 	// NOTE: we do not need to store any values so we can always set and reuse the same slot
 	field.Set(reflect.MakeSlice(field.Type(), 1, 1))
+
 	elem := reflectutil.DeferencePointer(field.Index(0))
 
 	return block(b, reflectutil.DeferencePointer(reflectutil.GetOrAlloc(elem, tf.BlockField)))
