@@ -64,7 +64,7 @@ type Arguments struct {
 }
 
 var DefaultArguments = Arguments{
-	CollectInterval:               1 * time.Minute,
+	CollectInterval:               5 * time.Second,
 	UseTiDBParser:                 true,
 	SetupConsumersCollectInterval: 1 * time.Hour,
 }

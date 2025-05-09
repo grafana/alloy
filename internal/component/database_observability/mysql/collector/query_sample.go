@@ -31,6 +31,7 @@ WHERE variable_name = 'UPTIME'`
 
 const selectQuerySamples = `
 SELECT statements.CURRENT_SCHEMA,
+	statements.EVENT_ID,
 	statements.DIGEST,
 	statements.DIGEST_TEXT,
 	statements.TIMER_END,
@@ -41,9 +42,16 @@ SELECT statements.CURRENT_SCHEMA,
 	statements.ROWS_AFFECTED,
 	statements.ERRORS,
 	statements.MAX_CONTROLLED_MEMORY,
-	statements.MAX_TOTAL_MEMORY
+	statements.MAX_TOTAL_MEMORY,
+	waits.event_name as WAIT_EVENT_NAME,
+	waits.timer_wait as WAIT_TIME,
+	waits.NESTING_EVENT_ID as WAIT_NESTING_EVENT_ID,
+	waits.NESTING_EVENT_TYPE as WAIT_NESTING_EVENT_TYPE
 	%s
-FROM performance_schema.events_statements_history AS statements
+FROM performance_schema.events_statements_current AS statements
+	LEFT JOIN performance_schema.events_waits_current waits 
+		ON statements.thread_id = waits.thread_id 
+		AND statements.EVENT_ID = waits.NESTING_EVENT_ID
 WHERE statements.sql_text IS NOT NULL
   AND statements.CURRENT_SCHEMA NOT IN ('mysql', 'performance_schema', 'sys', 'information_schema')
   %s`
@@ -198,6 +206,7 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 		row := struct {
 			// sample query details
 			Schema     sql.NullString
+			EventID    sql.NullString
 			Digest     sql.NullString
 			DigestText sql.NullString
 			SQLText    sql.NullString
@@ -217,10 +226,17 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 			// sample memory info
 			MaxControlledMemory uint64
 			MaxTotalMemory      uint64
+
+			// wait
+			WaitEventName        sql.NullString
+			WaitTime             sql.NullFloat64
+			WaitNestingEventID   sql.NullString
+			WaitNestingEventType sql.NullString
 		}{}
 
 		scanArgs := []interface{}{
 			&row.Schema,
+			&row.EventID,
 			&row.Digest,
 			&row.DigestText,
 			&row.TimerEndPicoseconds,
@@ -232,6 +248,10 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 			&row.Errors,
 			&row.MaxControlledMemory,
 			&row.MaxTotalMemory,
+			&row.WaitEventName,
+			&row.WaitTime,
+			&row.WaitNestingEventID,
+			&row.WaitNestingEventType,
 		}
 		if c.disableQueryRedaction {
 			scanArgs = append(scanArgs, &row.SQLText)
@@ -266,10 +286,22 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 		cpuTime := picosecondsToMilliseconds(row.CPUTime)
 		elapsedTime := picosecondsToMilliseconds(row.ElapsedTimePicoseconds.Float64)
 
+		// Only include wait event info if it's valid
+		waitEventInfo := ""
+		if row.WaitEventName.Valid && row.WaitTime.Valid {
+			waitTime := picosecondsToMilliseconds(row.WaitTime.Float64)
+			waitEventInfo = fmt.Sprintf(` wait_event_name="%s" wait_time="%fms" wait_nesting_event_id="%s" wait_nesting_event_type="%s"`,
+				row.WaitEventName.String,
+				waitTime,
+				row.WaitNestingEventID.String,
+				row.WaitNestingEventType.String)
+		}
+
 		logMessage :=
 			fmt.Sprintf(
-				`schema="%s" digest="%s" digest_text="%s" rows_examined="%d" rows_sent="%d" rows_affected="%d" errors="%d" max_controlled_memory="%db" max_total_memory="%db" cpu_time="%fms" elapsed_time="%fms" elapsed_time_ms="%fms"`,
+				`schema="%s" event_id="%s" digest="%s" digest_text="%s" rows_examined="%d" rows_sent="%d" rows_affected="%d" errors="%d" max_controlled_memory="%db" max_total_memory="%db" cpu_time="%fms" elapsed_time="%fms" elapsed_time_ms="%fms"%s`,
 				row.Schema.String,
+				row.EventID.String,
 				row.Digest.String,
 				digestText,
 				row.RowsExamined,
@@ -281,6 +313,7 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 				cpuTime,
 				elapsedTime,
 				elapsedTime,
+				waitEventInfo,
 			)
 		if c.disableQueryRedaction && row.SQLText.Valid {
 			logMessage += fmt.Sprintf(` sql_text="%s"`, row.SQLText.String)
