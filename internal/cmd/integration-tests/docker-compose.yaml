@@ -3,6 +3,7 @@ services:
 
   mimir:
     image: grafana/mimir:2.10.4
+    restart: unless-stopped
     volumes:
       - ./configs/mimir:/etc/mimir-config
     entrypoint:
@@ -10,9 +11,16 @@ services:
       - -config.file=/etc/mimir-config/mimir.yaml
     ports:
       - "9009:9009"
+    healthcheck:
+      test: ["CMD", "wget", "-O", "-", "-S", "http://localhost:9009/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
   
   tempo:
     image: grafana/tempo:2.6.1
+    restart: unless-stopped
     command: [ "-config.file=/etc/tempo.yaml" ]
     volumes:
       - ./configs/tempo/tempo.yaml:/etc/tempo.yaml
@@ -23,17 +31,32 @@ services:
       - "4319:4317"    # otlp grpc
       - "4320:4318"    # otlp http
       - "9411:9411"    # zipkin
+    healthcheck:
+      test: ["CMD", "wget", "-O", "-", "-S", "http://localhost:3200/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
 
   zookeeper:
     image: confluentinc/cp-zookeeper:latest
+    restart: unless-stopped
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
+    healthcheck:
+      test: ["CMD-SHELL", "echo srvr | nc localhost 2181 || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
 
   kafka:
     image: confluentinc/cp-kafka:latest
+    restart: unless-stopped
     depends_on:
-      - zookeeper
+      zookeeper:
+        condition: service_healthy
     ports:
       - "9094:9094"
     environment:
@@ -43,21 +66,38 @@ services:
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
 
   kafka-gen:
     depends_on:
-      - kafka
+      kafka:
+        condition: service_healthy
     build:
       dockerfile: ./internal/cmd/integration-tests/configs/kafka/Dockerfile
       context: ../../..
 
   loki:
     image: grafana/loki:latest
+    restart: unless-stopped
     command: -config.file=/etc/loki/local-config.yaml
     ports:
       - "3100:3100"
+    healthcheck:
+      test: ["CMD", "wget", "-O", "-", "-S", "http://localhost:3100/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
 
   otel-gen:
+    depends_on:
+      tempo:
+        condition: service_healthy
     build:
       dockerfile: ./internal/cmd/integration-tests/configs/otel-gen/Dockerfile
       context: ../../..
@@ -65,6 +105,9 @@ services:
       - OTEL_EXPORTER_ENDPOINT=${OTEL_EXPORTER_ENDPOINT:-host.docker.internal:4318}
 
   prom-gen:
+    depends_on:
+      mimir:
+        condition: service_healthy
     build:
       dockerfile: ./internal/cmd/integration-tests/configs/prom-gen/Dockerfile
       context: ../../..
@@ -73,11 +116,19 @@ services:
 
   redis:
     image: redis:6.0.9-alpine
+    restart: unless-stopped
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
 
   snmp-simulator:
     image: tandrup/snmpsim:v0.4
+    restart: unless-stopped
     container_name: snmpsim
     ports:
       - "161:161/udp"
