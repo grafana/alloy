@@ -17,7 +17,6 @@ import (
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/dskit/backoff"
-	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/config/configgrpc"
 	"go.opentelemetry.io/collector/config/confighttp"
@@ -30,7 +29,7 @@ import (
 // Test performs a basic integration test which runs the otelcol.receiver.otlp
 // component and ensures that it can receive and forward data.
 func Test(t *testing.T) {
-	httpAddr := getFreeAddr(t)
+	httpAddr := componenttest.GetFreeAddr(t)
 
 	ctx := componenttest.TestContext(t)
 	l := util.TestLogger(t)
@@ -117,15 +116,6 @@ func makeTracesOutput(ch chan ptrace.Traces) *otelcol.ConsumerArguments {
 	return &otelcol.ConsumerArguments{
 		Traces: []otelcol.Consumer{&traceConsumer},
 	}
-}
-
-func getFreeAddr(t *testing.T) string {
-	t.Helper()
-
-	portNumber, err := freeport.GetFreePort()
-	require.NoError(t, err)
-
-	return fmt.Sprintf("localhost:%d", portNumber)
 }
 
 func TestUnmarshalDefault(t *testing.T) {

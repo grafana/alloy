@@ -156,6 +156,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver v0.122.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/opencensusreceiver v0.122.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/solacereceiver v0.122.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/splunkhecreceiver v0.122.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/syslogreceiver v0.122.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/tcplogreceiver v0.122.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/vcenterreceiver v0.122.0
@@ -178,7 +179,7 @@ require (
 	github.com/prometheus/blackbox_exporter v0.24.1-0.20230623125439-bd22efa1c900
 	github.com/prometheus/client_golang v1.21.1
 	github.com/prometheus/client_model v0.6.1
-	github.com/prometheus/common v0.62.0
+	github.com/prometheus/common v0.63.0
 	github.com/prometheus/common/sigv4 v0.1.0
 	github.com/prometheus/consul_exporter v0.8.0
 	github.com/prometheus/memcached_exporter v0.13.0
@@ -186,7 +187,7 @@ require (
 	github.com/prometheus/node_exporter v1.6.0
 	github.com/prometheus/procfs v0.15.1
 	github.com/prometheus/prometheus v0.300.1 // replaced by a fork of v2.54.1 further down this file
-	github.com/prometheus/snmp_exporter v0.28.0 // if you update the snmp_exporter version, make sure to update the SNMP_VERSION in _index
+	github.com/prometheus/snmp_exporter v0.29.0 // if you update the snmp_exporter version, make sure to update the SNMP_VERSION in _index
 	github.com/prometheus/statsd_exporter v0.22.8
 	github.com/richardartoul/molecule v1.0.1-0.20240531184615-7ca0df43c0b3
 	github.com/rogpeppe/go-internal v1.13.1
@@ -606,7 +607,7 @@ require (
 	github.com/googleapis/gax-go/v2 v2.14.1 // indirect
 	github.com/gophercloud/gophercloud v1.14.1 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
-	github.com/gosnmp/gosnmp v1.38.0 // indirect
+	github.com/gosnmp/gosnmp v1.39.0 // indirect
 	github.com/grafana/go-offsets-tracker v0.1.7 // indirect
 	github.com/grafana/gomemcache v0.0.0-20240229205252-cd6a66d6fb56 // indirect
 	github.com/grafana/jfr-parser v0.9.3 // indirect
@@ -739,6 +740,7 @@ require (
 	github.com/oapi-codegen/runtime v1.0.0 // indirect
 	github.com/ohler55/ojg v1.20.1 // indirect
 	github.com/oklog/ulid v1.3.1 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/extension/ackextension v0.122.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/aws/ecsutil v0.122.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/common v0.122.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/coreinternal v0.122.0 // indirect
@@ -1021,3 +1023,6 @@ exclude (
 )
 
 replace github.com/prometheus/procfs => github.com/prometheus/procfs v0.12.0
+
+// Use v0.62.0 of prometheus/common for all dependencies until mongodb_exporter is updated to support 0.63.0
+replace github.com/prometheus/common => github.com/prometheus/common v0.62.0
