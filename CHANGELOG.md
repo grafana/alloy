@@ -45,6 +45,8 @@ Main (unreleased)
 - Reduced the lag time during targets handover in a cluster in `prometheus.scrape` components by reducing thread contention. (@thampiotr)
 
 - Pretty print diagnostic errors when using `alloy run` (@kalleep)
+  
+- Add `labels_from_groups` attribute to `stage.regex` in `loki.process` to automatically add named capture groups as labels. (@harshrai654)
 
 -  Add optional `id` field to `foreach` block to generate more meaningful component paths in metrics by using a specific field from collection items. (@harshrai654)
   
