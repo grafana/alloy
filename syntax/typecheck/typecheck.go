@@ -3,6 +3,7 @@ package typecheck
 import (
 	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/diag"
@@ -55,11 +56,12 @@ func block(b *ast.BlockStmt, rv reflect.Value) diag.Diagnostics {
 		}
 	}
 
-	for name, t := range s.tags.TagLookup {
+	for _, t := range s.tags.Tags {
 		if t.IsOptional() {
 			continue
 		}
 
+		name := strings.Join(t.Name, ".")
 		if t.IsAttr() {
 			if _, ok := s.seenAttrs[name]; !ok {
 				diags.Add(diag.Diagnostic{
