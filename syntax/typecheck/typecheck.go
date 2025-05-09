@@ -39,7 +39,7 @@ func block(b *ast.BlockStmt, rv reflect.Value) diag.Diagnostics {
 	}
 
 	// FIXME(kallep): When we start to check that correct types are set for properties we most likely need to
-	// confider these interfaces.
+	// consider these interfaces.
 	// - value.Defaulter
 	// - value.Unmarshaler
 	// - value.ConvertibleFromCapsule
