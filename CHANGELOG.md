@@ -66,6 +66,8 @@ Main (unreleased)
 
 - Update Docker builds to install latest Linux security fixes on top of base image (@jharvey10)
 
+- Reduce Docker image size slightly by consolidating some RUN layers (@AchimGrolimund)
+
 v1.8.3
 -----------------
 
