@@ -1,5 +1,5 @@
 prometheus.exporter.redis "redis_metrics" {
-  redis_addr = "localhost:6379"
+  redis_addr = "redis:6379"
 }
 
 prometheus.scrape "redis_metrics" {
@@ -11,7 +11,7 @@ prometheus.scrape "redis_metrics" {
 
 prometheus.remote_write "redis_metrics" {
   endpoint {
-    url = "http://localhost:9009/api/v1/push"
+    url = "http://mimir:9009/api/v1/push"
     metadata_config {
         send_interval = "1s"
     }
