@@ -202,6 +202,7 @@ require (
 	github.com/spf13/pflag v1.0.6
 	github.com/stretchr/testify v1.10.0
 	github.com/testcontainers/testcontainers-go v0.35.0
+	github.com/testcontainers/testcontainers-go/modules/compose v0.33.0
 	github.com/tilinna/clock v1.1.0
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
 	github.com/vincent-petithory/dataurl v1.0.0
@@ -982,8 +983,6 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.5.0 // indirect
 	tags.cncf.io/container-device-interface v0.8.0 // indirect
 )
-
-require github.com/testcontainers/testcontainers-go/modules/compose v0.33.0
 
 require (
 	github.com/grafana/beyla/v2 v2.1.0-alloy-1
