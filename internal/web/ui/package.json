@@ -7,10 +7,10 @@
     "@fortawesome/fontawesome-svg-core": "^6.7.2",
     "@fortawesome/free-solid-svg-icons": "^6.7.2",
     "@fortawesome/react-fontawesome": "^0.2.2",
-    "@grafana/data": "11.5.0",
-    "@grafana/ui": "11.5.0",
-    "@svgr/webpack": "^8.0.1",
-    "@xyflow/react": "^12.4.4",
+    "@grafana/data": "11.6.1",
+    "@grafana/ui": "11.6.1",
+    "@svgr/webpack": "^8.1.0",
+    "@xyflow/react": "^12.6.0",
     "d3": "^7.9.0",
     "d3-dag": "^0.11.5",
     "d3-zoom": "^3.0.0",
@@ -20,13 +20,13 @@
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.30.0",
     "react-syntax-highlighter": "^15.6.1",
-    "typescript": "^5.8.2"
+    "typescript": "^5.8.3"
   },
   "devDependencies": {
     "@types/d3": "^7.4.3",
     "@types/d3-zoom": "^3.0.8",
     "@types/react": "^18.3.20",
-    "@types/react-dom": "^18.3.5",
+    "@types/react-dom": "^18.3.7",
     "@types/react-syntax-highlighter": "^15.5.13",
     "eslint": "^8.57.1",
     "eslint-config-prettier": "^9.1.0",
@@ -37,11 +37,11 @@
     "react-scripts": "5.0.1"
   },
   "resolutions": {
-    "react-scripts/@svgr/webpack": "^8.0.1",
-    "react-scripts/resolve-url-loader/postcss": "^8.4.31",
+    "react-scripts/@svgr/webpack": "^8.1.0",
+    "react-scripts/resolve-url-loader/postcss": "^8.5.3",
     "react-syntax-highlighter/refractor/prismjs": "^1.30.0",
     "@types/react-syntax-highlighter/@types/react": "^18.3.20",
-    "@grafana/data/dompurify": "^3.2.4",
+    "@grafana/data/dompurify": "^3.2.5",
     "@grafana/ui/prismjs": "^1.30.0"
   },
   "scripts": {
