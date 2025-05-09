@@ -93,8 +93,10 @@ func (args *Arguments) SetToDefault() {
 	}
 	args.DebugMetrics.SetToDefault()
 	args.Protocol.OTLP.SetToDefault()
-	args.Retry.SetToDefault()
-	args.Queue.SetToDefault()
+	// Do not set these two to their default values.
+	// Upstream doesn't do that for backwards compatibility.
+	// args.Retry.SetToDefault()
+	// args.Queue.SetToDefault()
 }
 
 // Validate implements syntax.Validator.
