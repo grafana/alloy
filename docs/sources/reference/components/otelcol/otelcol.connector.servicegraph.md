@@ -63,7 +63,7 @@ Name                        | Type             | Description                    
 `store_expiration_loop`     | `duration`       | The time to expire old entries from the store periodically.                              | `"2s"`       | no
 `metrics_flush_interval`    | `duration`       | The interval at which metrics are flushed to downstream components.                      | `"60s"`      | no
 `database_name_attribute`   | `string`         | (Deprecated) The attribute name used to identify the database name from span attributes. | `"db.name"`  | no
-`database_name_attributes`  | `list(string)`   | The list of attribute names used to identify the database name from span attributes. The attributes are tried in order, selecting the first match | `["db.name"]`  | no
+`database_name_attributes`  | `list(string)`   | The list of attribute names used to identify the database name from span attributes.     | `["db.name"]`  | no
 
 Service graphs work by inspecting traces and looking for spans with parent-children relationship that represent a request.
 `otelcol.connector.servicegraph` uses OpenTelemetry semantic conventions to detect a myriad of requests.
@@ -109,6 +109,8 @@ Additional labels can be included using the `dimensions` configuration option:
 * Firstly the resource attributes will be searched. If the attribute is not found, the span attributes will be searched.
 
 When `metrics_flush_interval` is set to `0s`, metrics will be flushed on every received batch of traces.
+
+The attributes in `database_name_attributes` are tried in order, selecting the first match.
 
 [Span Kind]: https://opentelemetry.io/docs/concepts/signals/traces/#span-kind
 

@@ -14,3 +14,5 @@ Name               | Type       | Description                                   
 
 When `full` is set to `false`, the client does not make the initial request to broker at the startup.
 
+Retrieving metadata may fail if the Kafka broker is starting up at the same time as the {{< param "PRODUCT_NAME" >}} component.
+The `retry` child block can be provided to customize retry behavior.

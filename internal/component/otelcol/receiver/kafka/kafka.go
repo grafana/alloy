@@ -38,15 +38,15 @@ type Arguments struct {
 	ProtocolVersion   string        `alloy:"protocol_version,attr"`
 	SessionTimeout    time.Duration `alloy:"session_timeout,attr,optional"`
 	HeartbeatInterval time.Duration `alloy:"heartbeat_interval,attr,optional"`
-	Topic             string        `alloy:"topic,attr,optional"` // Deprecated
-	Encoding          string        `alloy:"encoding,attr,optional"`
+	Topic             string        `alloy:"topic,attr,optional"`    // Deprecated
+	Encoding          string        `alloy:"encoding,attr,optional"` // Deprecated
 	GroupID           string        `alloy:"group_id,attr,optional"`
 	ClientID          string        `alloy:"client_id,attr,optional"`
 	InitialOffset     string        `alloy:"initial_offset,attr,optional"`
 
-	Logs    *KafkaReceiverTopicEncodingConfig `alloy:"logs,block,optional"`
-	Metrics *KafkaReceiverTopicEncodingConfig `alloy:"metrics,block,optional"`
-	Traces  *KafkaReceiverTopicEncodingConfig `alloy:"traces,block,optional"`
+	Logs    KafkaReceiverTopicEncodingConfig `alloy:"logs,block,optional"`
+	Metrics KafkaReceiverTopicEncodingConfig `alloy:"metrics,block,optional"`
+	Traces  KafkaReceiverTopicEncodingConfig `alloy:"traces,block,optional"`
 
 	ResolveCanonicalBootstrapServersOnly bool `alloy:"resolve_canonical_bootstrap_servers_only,attr,optional"`
 
@@ -144,6 +144,41 @@ type KafkaReceiverTopicEncodingConfig struct {
 	Encoding string `alloy:"encoding,attr,optional"`
 }
 
+type deprecatedAttr struct {
+	value        string
+	defaultValue string
+}
+
+func (c *KafkaReceiverTopicEncodingConfig) convert(topic, encoding deprecatedAttr) kafkareceiver.TopicEncodingConfig {
+	result := kafkareceiver.TopicEncodingConfig{}
+
+	if c != nil { // Use values from the new block if set.
+		if len(c.Topic) > 0 {
+			result.Topic = c.Topic
+		}
+		if len(c.Encoding) > 0 {
+			result.Encoding = c.Encoding
+		}
+	} else { // Try to use deprecated atributes only if the new block is not set.
+		if len(topic.value) > 0 {
+			result.Topic = topic.value
+		}
+
+		if len(encoding.value) > 0 {
+			result.Encoding = encoding.value
+		}
+	}
+
+	if len(result.Topic) == 0 {
+		result.Topic = topic.defaultValue
+	}
+	if len(result.Encoding) == 0 {
+		result.Encoding = encoding.defaultValue
+	}
+
+	return result
+}
+
 type ErrorBackOffArguments struct {
 	Enabled             bool          `alloy:"enabled,attr,optional"`
 	InitialInterval     time.Duration `alloy:"initial_interval,attr,optional"`
@@ -202,53 +237,38 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	result.GroupInstanceID = args.GroupInstanceID
 	result.ErrorBackOff = *args.ErrorBackOff.Convert()
 
-	if args.Logs != nil && args.Logs.Topic != "" {
-		result.Logs.Topic = args.Logs.Topic
-	} else if len(args.Topic) > 0 {
-		result.Logs.Topic = args.Topic
-	} else {
-		result.Logs.Topic = "otlp_logs"
-	}
+	result.Logs = args.Logs.convert(
+		deprecatedAttr{
+			value:        args.Topic,
+			defaultValue: "otlp_logs",
+		},
+		deprecatedAttr{
+			value:        args.Encoding,
+			defaultValue: "otlp_proto",
+		},
+	)
 
-	if args.Metrics != nil && args.Metrics.Topic != "" {
-		result.Metrics.Topic = args.Metrics.Topic
-	} else if len(args.Topic) > 0 {
-		result.Metrics.Topic = args.Topic
-	} else {
-		result.Metrics.Topic = "otlp_metrics"
-	}
+	result.Metrics = args.Metrics.convert(
+		deprecatedAttr{
+			value:        args.Topic,
+			defaultValue: "otlp_metrics",
+		},
+		deprecatedAttr{
+			value:        args.Encoding,
+			defaultValue: "otlp_proto",
+		},
+	)
 
-	if args.Traces != nil && args.Traces.Topic != "" {
-		result.Traces.Topic = args.Traces.Topic
-	} else if len(args.Topic) > 0 {
-		result.Traces.Topic = args.Topic
-	} else {
-		result.Traces.Topic = "otlp_spans"
-	}
-
-	if args.Logs != nil && args.Logs.Encoding != "" {
-		result.Logs.Encoding = args.Logs.Encoding
-	} else if len(args.Encoding) > 0 {
-		result.Logs.Encoding = args.Encoding
-	} else {
-		result.Logs.Encoding = "otlp_proto"
-	}
-
-	if args.Metrics != nil && args.Metrics.Encoding != "" {
-		result.Metrics.Encoding = args.Metrics.Encoding
-	} else if len(args.Encoding) > 0 {
-		result.Metrics.Encoding = args.Encoding
-	} else {
-		result.Metrics.Encoding = "otlp_proto"
-	}
-
-	if args.Traces != nil && args.Traces.Encoding != "" {
-		result.Traces.Encoding = args.Traces.Encoding
-	} else if len(args.Encoding) > 0 {
-		result.Traces.Encoding = args.Encoding
-	} else {
-		result.Traces.Encoding = "otlp_proto"
-	}
+	result.Traces = args.Traces.convert(
+		deprecatedAttr{
+			value:        args.Topic,
+			defaultValue: "otlp_spans",
+		},
+		deprecatedAttr{
+			value:        args.Encoding,
+			defaultValue: "otlp_proto",
+		},
+	)
 
 	if args.TLS != nil {
 		tlsCfg := args.TLS.Convert()

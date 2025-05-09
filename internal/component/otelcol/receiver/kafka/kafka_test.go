@@ -118,6 +118,27 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			}(),
 		},
 		{
+			testName: "Deprecated topic and encoding and empty blocks",
+			cfg: `
+				brokers = ["10.10.10.10:9092"]
+				protocol_version = "2.0.0"
+
+				// Neither "topic" nor "encoding" will be used,
+				// because the default values from the enpty blocks should be used.
+				// Making those blocks empty means their thefault values should be used,
+				// and they have precendence over those deprecared arguments.
+				topic = "test_default_topic"
+				encoding = "otlp_json"
+
+				metrics {}
+				logs {}
+				traces {}
+
+				output {}
+			`,
+			expected: defaultExpected(),
+		},
+		{
 			testName: "Deprecated encoding",
 			cfg: `
 				brokers = ["10.10.10.10:9092"]

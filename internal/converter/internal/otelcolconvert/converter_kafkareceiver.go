@@ -113,8 +113,8 @@ func toKafkaErrorBackOff(cfg configretry.BackOffConfig) kafka.ErrorBackOffArgume
 	}
 }
 
-func toKafkaTopicEncodingConfig(cfg kafkareceiver.TopicEncodingConfig) *kafka.KafkaReceiverTopicEncodingConfig {
-	return &kafka.KafkaReceiverTopicEncodingConfig{
+func toKafkaTopicEncodingConfig(cfg kafkareceiver.TopicEncodingConfig) kafka.KafkaReceiverTopicEncodingConfig {
+	return kafka.KafkaReceiverTopicEncodingConfig{
 		Topic:    cfg.Topic,
 		Encoding: cfg.Encoding,
 	}

@@ -90,9 +90,9 @@ The following blocks are supported inside the definition of
 
 Hierarchy | Block | Description | Required
 --------- | ----- | ----------- | --------
-logs | [logs][] | Configures receive logs from Kafka brokers. | no
-metrics | [metrics][] | Configures receive metrics from Kafka brokers. | no
-traces | [traces][] | Configures receive traces from Kafka brokers. | no
+logs | [logs][] | Configures how to receive logs from Kafka brokers. | no
+metrics | [metrics][] | Configures how to receive metrics from Kafka brokers. | no
+traces | [traces][] | Configures how to receive traces from Kafka brokers. | no
 authentication | [authentication][] | Configures authentication for connecting to Kafka brokers. | no
 authentication > plaintext | [plaintext][] | (Deprecated) Authenticates against Kafka brokers with plaintext. | no
 authentication > sasl | [sasl][] | Authenticates against Kafka brokers with SASL. | no
@@ -133,29 +133,29 @@ The `>` symbol indicates deeper levels of nesting. For example,
 
 ### logs block
 
-The `logs` block configures how to send logs to Kafka brokers.
+The `logs` block configures how to receive logs from Kafka brokers.
 
 Name       | Type     | Description                                                                | Default        | Required
 ---------- | -------- | -------------------------------------------------------------------------- | -------------- | --------
-`topic`    | `string` | The name of the Kafka topic to which logs will be exported.                | `"otlp_logs"`  | no
+`topic`    | `string` | The name of the Kafka topic on which logs will be received.                | `"otlp_logs"`  | no
 `encoding` | `string` | The encoding for logs. See [Supported encodings](#supported-encodings).    | `"otlp_proto"` | no
 
 ### metrics block
 
-The `logs` block configures how to send metrics to Kafka brokers.
+The `logs` block configures how to receive metrics from Kafka brokers.
 
 Name       | Type     | Description                                                                | Default           | Required
 ---------- | -------- | -------------------------------------------------------------------------- | ----------------- | --------
-`topic`    | `string` | The name of the Kafka topic to which metrics will be exported.             | `"otlp_metrics"`  | no
+`topic`    | `string` | The name of the Kafka topic on which metrics will be received.             | `"otlp_metrics"`  | no
 `encoding` | `string` | The encoding for logs. See [Supported encodings](#supported-encodings).    | `"otlp_proto"`    | no
 
 ### traces block
 
-The `logs` block configures how to send traces to Kafka brokers.
+The `logs` block configures how to receive traces from Kafka brokers.
 
 Name       | Type     | Description                                                                | Default          | Required
 ---------- | -------- | -------------------------------------------------------------------------- | ---------------- | --------
-`topic`    | `string` | The name of the Kafka topic to which traces will be exported.              | `"otlp_traces"`  | no
+`topic`    | `string` | The name of the Kafka topic on which traces will be received.              | `"otlp_traces"`  | no
 `encoding` | `string` | The encoding for logs. See [Supported encodings](#supported-encodings).    | `"otlp_proto"`   | no
 
 ### authentication block

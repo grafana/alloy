@@ -8,7 +8,6 @@ The `plaintext` block has been deprecated.
 Use `sasl` with `mechanism` set to `PLAIN` instead.
 {{< /admonition >}}
 
-
 The `plaintext` block configures plain text authentication against Kafka brokers.
 
 The following arguments are supported:
