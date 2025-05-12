@@ -3,6 +3,7 @@ package controller
 import (
 	"fmt"
 
+	"github.com/grafana/alloy/internal/dynamic/foreach"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/internal/importsource"
 	"github.com/grafana/alloy/syntax/ast"
@@ -19,7 +20,7 @@ const (
 
 // Add config blocks that are not GA. Config blocks that are not specified here are considered GA.
 var configBlocksUnstable = map[string]featuregate.Stability{
-	foreachID: featuregate.StabilityExperimental,
+	foreachID: foreach.StabilityLevel,
 }
 
 // NewConfigNode creates a new ConfigNode from an initial ast.BlockStmt.

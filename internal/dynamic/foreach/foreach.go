@@ -1,7 +1,13 @@
 package foreach
 
-// TypeTemplate is the Block name for template property
-const TypeTemplate = "template"
+import "github.com/grafana/alloy/internal/featuregate"
+
+const (
+	// StabilityLevel for foreach blocks.
+	StabilityLevel = featuregate.StabilityExperimental
+	// TypeTemplate is the block name for template property
+	TypeTemplate = "template"
+)
 
 type Arguments struct {
 	Collection []any  `alloy:"collection,attr"`

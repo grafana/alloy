@@ -10,6 +10,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/dynamic/foreach"
+	"github.com/grafana/alloy/internal/featuregate"
 	alloy_runtime "github.com/grafana/alloy/internal/runtime"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/tracing"
@@ -23,6 +24,9 @@ type Options struct {
 	ServiceDefinitions []service.Definition
 	// ComponentRegistry is used to validate component config.
 	ComponentRegistry component.Registry
+	// MinStability is the minimum stability level of features that can be used by the collector. It is defined by
+	// the user, for example, via command-line flags.
+	MinStability featuregate.Stability
 }
 
 func Validate(opts Options) error {
@@ -31,9 +35,10 @@ func Validate(opts Options) error {
 }
 
 type validator struct {
-	sources map[string][]byte
-	sm      map[string]service.Definition
-	cr      *componentRegistry
+	minStability featuregate.Stability
+	sources      map[string][]byte
+	sm           map[string]service.Definition
+	cr           *componentRegistry
 }
 
 func newValidator(opts Options) *validator {
@@ -43,9 +48,10 @@ func newValidator(opts Options) *validator {
 	}
 
 	return &validator{
-		sources: opts.Sources,
-		sm:      sm,
-		cr:      newComponentRegistry(opts.ComponentRegistry),
+		minStability: opts.MinStability,
+		sources:      opts.Sources,
+		sm:           sm,
+		cr:           newComponentRegistry(opts.ComponentRegistry),
 	}
 }
 
@@ -150,7 +156,25 @@ func (v *validator) validateConfigs(configs []*ast.BlockStmt) diag.Diagnostics {
 func (v *validator) validateForeach(block *ast.BlockStmt) diag.Diagnostics {
 	var diags diag.Diagnostics
 
+	name := block.GetBlockName()
+	// Check required stability level.
+	if err := featuregate.CheckAllowed(foreach.StabilityLevel, v.minStability, fmt.Sprintf("foreach block %q", name)); err != nil {
+		diags.Add(diag.Diagnostic{
+			Severity: diag.SeverityLevelError,
+			StartPos: block.NamePos.Position(),
+			EndPos:   block.NamePos.Add(len(name) - 1).Position(),
+			Message:  err.Error(),
+		})
+	}
+
+	// Require label for all foreach blocks.
 	if block.Label == "" {
+		diags.Add(diag.Diagnostic{
+			Severity: diag.SeverityLevelError,
+			StartPos: block.NamePos.Position(),
+			EndPos:   block.NamePos.Add(len(name) - 1).Position(),
+			Message:  "declare block must have a label",
+		})
 
 	}
 
@@ -158,6 +182,7 @@ func (v *validator) validateForeach(block *ast.BlockStmt) diag.Diagnostics {
 		body     ast.Body
 		template *ast.BlockStmt
 	)
+
 	for _, stmt := range block.Body {
 		if b, ok := stmt.(*ast.BlockStmt); ok && b.GetBlockName() == foreach.TypeTemplate {
 			template = b
@@ -170,6 +195,7 @@ func (v *validator) validateForeach(block *ast.BlockStmt) diag.Diagnostics {
 	block.Body = body
 	diags.Merge(typecheck.Block(block, &foreach.Arguments{}))
 
+	// Foreach blocks must have a template.
 	if template == nil {
 		diags.Add(diag.Diagnostic{
 			Severity: diag.SeverityLevelError,
@@ -180,6 +206,7 @@ func (v *validator) validateForeach(block *ast.BlockStmt) diag.Diagnostics {
 		return diags
 	}
 
+	// We extarct all blocks from template body and evaludate them as as components.
 	components := make([]*ast.BlockStmt, 0, len(template.Body))
 	for _, stmt := range template.Body {
 		b, ok := stmt.(*ast.BlockStmt)
