@@ -30,5 +30,5 @@ if [[ -z $(git status -s) ]]; then
   echo ${VERSION}-devel+${SHA}
 else
   # Git is dirty; tag as VERSION-devel+wip.
-  echo ${VERSION}-devel+wip
+  echo ${VERSION}-devel+dirty
 fi

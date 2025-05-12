@@ -17,7 +17,7 @@ permissions:
   contents: read
 
 jobs:
-  publish_windows_container:
+  check-linux-container:
     name: Check Linux container
     container: grafana/alloy-build-image:v0.1.18
     runs-on:
