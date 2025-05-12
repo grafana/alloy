@@ -492,30 +492,43 @@ The following examples show you how to collect metrics and traces from `beyla.eb
 This example uses a [`prometheus.scrape` component][scrape] to collect metrics from `beyla.ebpf` of the specified port:
 
 ```alloy
+# This block configures the beyla.ebpf component to instrument services on a specific port and expose application metrics.
 beyla.ebpf "default" {
+  # Configure process discovery for instrumentation.
   discovery {
+    # Specify which services to instrument.
     services {
+      # Instrument services listening on the specified port.
       open_ports = <OPEN_PORT>
     }
   }
 
+  # Configure which metrics to collect.
   metrics {
     features = [
-     "application", 
+     # Enable application-level metrics.
+     "application",
     ]
   }
 }
 
+# This block configures Prometheus to scrape metrics from the beyla.ebpf component.
 prometheus.scrape "beyla" {
+  # Use the targets exported by the beyla.ebpf component.
   targets = beyla.ebpf.default.targets
-  honor_labels = true // required to keep job and instance labels
+  # Required to keep job and instance labels.
+  honor_labels = true
+  # Forward scraped metrics to the remote_write receiver.
   forward_to = [prometheus.remote_write.demo.receiver]
 }
 
+# This block configures Prometheus remote_write to send metrics to an external endpoint.
 prometheus.remote_write "demo" {
   endpoint {
+    # Set the remote_write endpoint URL.
     url = <PROMETHEUS_REMOTE_WRITE_URL>
 
+    # Configure basic authentication for the remote_write endpoint.
     basic_auth {
       username = <USERNAME>
       password = <PASSWORD>
@@ -523,42 +536,62 @@ prometheus.remote_write "demo" {
   }
 }
 ```
+
+Replace the following:
+
+* _`<OPEN_PORT>`_: The port of the running service for Beyla automatically instrumented with eBPF.
+* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
+* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+
 #### Kubernetes
 
 This example gets metrics from `beyla.ebpf` for the specified namespace and Pods running in a Kubernetes cluster:
 
 ```alloy
+# This block configures beyla.ebpf to instrument services in a specific Kubernetes namespace and Pod, and to decorate metrics with Kubernetes metadata.
 beyla.ebpf "default" {
   attributes {
     kubernetes {
-     enable = "true"
+      # Enable Kubernetes metadata decoration.
+      enable = "true"
     }
   }
   discovery {
     services {
-     kubernetes {
-      namespace = "<NAMESPACE>"
-      pod_name = "<POD_NAME>"
-     }
+      kubernetes {
+        # Match services in the specified namespace.
+        namespace = "<NAMESPACE>"
+        # Match services running in the specified Pod.
+        pod_name = "<POD_NAME>"
+      }
     }
   }
   metrics {
     features = [
-     "application", 
+      # Enable application-level metrics.
+      "application",
     ]
   }
 }
 
+# This block configures Prometheus to scrape metrics from the beyla.ebpf component.
 prometheus.scrape "beyla" {
+  # Use the targets exported by the beyla.ebpf component.
   targets = beyla.ebpf.default.targets
-  honor_labels = true // required to keep job and instance labels
+  # Required to keep job and instance labels.
+  honor_labels = true
+  # Forward scraped metrics to the remote_write receiver.
   forward_to = [prometheus.remote_write.demo.receiver]
 }
 
+# This block configures Prometheus remote_write to send metrics to an external endpoint.
 prometheus.remote_write "demo" {
   endpoint {
+    # Set the remote_write endpoint URL.
     url = <PROMETHEUS_REMOTE_WRITE_URL>
 
+    # Configure basic authentication for the remote_write endpoint.
     basic_auth {
       username = <USERNAME>
       password = <PASSWORD>
@@ -581,25 +614,33 @@ Replace the following:
 This example gets traces from `beyla.ebpf` and forwards them to `otlp`:
 
 ```alloy
+# This block configures beyla.ebpf to instrument services on a specific port and forward traces to a batch processor.
 beyla.ebpf "default" {
+  # Configure process discovery for instrumentation.
   discovery {
+    # Specify which services to instrument.
     services {
+      # Instrument services listening on the specified port.
       open_ports = <OPEN_PORT>
     }
   }
+  # Configure output to forward traces to the batch processor.
   output {
     traces = [otelcol.processor.batch.default.input]
   }
 }
 
+# This block configures a batch processor to receive traces and forward them to the OTLP exporter.
 otelcol.processor.batch "default" {
   output {
     traces  = [otelcol.exporter.otlp.default.input]
   }
 }
 
+# This block configures the OTLP exporter to send traces to an external endpoint.
 otelcol.exporter.otlp "default" {
   client {
+    # Set the OTLP endpoint using an environment variable.
     endpoint = sys.env("<OTLP_ENDPOINT>")
   }
 }
