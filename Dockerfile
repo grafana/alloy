@@ -38,7 +38,6 @@ FROM --platform=$TARGETPLATFORM public.ecr.aws/ubuntu/ubuntu:noble
 # Username and uid for alloy user
 ARG UID="473"
 ARG USERNAME="alloy"
-ARG TARGETPLATFORM
 
 LABEL org.opencontainers.image.source="https://github.com/grafana/alloy"
 
