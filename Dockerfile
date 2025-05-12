@@ -33,7 +33,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 
 ###
 
-FROM --platform=$TARGETPLATFORM public.ecr.aws/ubuntu/ubuntu:noble
+FROM public.ecr.aws/ubuntu/ubuntu:noble
 
 # Username and uid for alloy user
 ARG UID="473"
