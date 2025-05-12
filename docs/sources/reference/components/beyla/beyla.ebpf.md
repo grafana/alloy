@@ -493,7 +493,60 @@ This example uses a [`prometheus.scrape` component][scrape] to collect metrics f
 
 ```alloy
 beyla.ebpf "default" {
-    open_port = <OPEN_PORT>
+  discovery {
+    services {
+      open_ports = <OPEN_PORT>
+    }
+  }
+
+  metrics {
+    features = [
+     "application", 
+    ]
+  }
+}
+
+prometheus.scrape "beyla" {
+  targets = beyla.ebpf.default.targets
+  honor_labels = true // required to keep job and instance labels
+  forward_to = [prometheus.remote_write.demo.receiver]
+}
+
+prometheus.remote_write "demo" {
+  endpoint {
+    url = <PROMETHEUS_REMOTE_WRITE_URL>
+
+    basic_auth {
+      username = <USERNAME>
+      password = <PASSWORD>
+    }
+  }
+}
+```
+#### Kubernetes
+
+This example gets metrics from `beyla.ebpf` for the specified namespace and Pods running in a Kubernetes cluster:
+
+```alloy
+beyla.ebpf "default" {
+  attributes {
+    kubernetes {
+     enable = "true"
+    }
+  }
+  discovery {
+    services {
+     kubernetes {
+      namespace = "<NAMESPACE>"
+      pod_name = "<POD_NAME>"
+     }
+    }
+  }
+  metrics {
+    features = [
+     "application", 
+    ]
+  }
 }
 
 prometheus.scrape "beyla" {
@@ -517,6 +570,8 @@ prometheus.remote_write "demo" {
 Replace the following:
 
 * _`<OPEN_PORT>`_: The port of the running service for Beyla automatically instrumented with eBPF.
+* _`<NAMESPACE>`_: The namespaces of the applications running in a Kubernetes cluster.
+* _`<POD_NAME>`_: The name of the Pods running in a Kubernetes cluster.
 * _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
 * _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
 * _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
@@ -527,20 +582,26 @@ This example gets traces from `beyla.ebpf` and forwards them to `otlp`:
 
 ```alloy
 beyla.ebpf "default" {
-    open_port = <OPEN_PORT>
-    output {
-        traces = [otelcol.processor.batch.default.input]
+  discovery {
+    services {
+      open_ports = <OPEN_PORT>
     }
+  }
+  output {
+    traces = [otelcol.processor.batch.default.input]
+  }
 }
+
 otelcol.processor.batch "default" {
-    output {
-        traces  = [otelcol.exporter.otlp.default.input]
-    }
+  output {
+    traces  = [otelcol.exporter.otlp.default.input]
+  }
 }
+
 otelcol.exporter.otlp "default" {
-    client {
-        endpoint = sys.env("<OTLP_ENDPOINT>")
-    }
+  client {
+    endpoint = sys.env("<OTLP_ENDPOINT>")
+  }
 }
 ```
 

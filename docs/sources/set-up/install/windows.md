@@ -66,7 +66,7 @@ The `--windows.priority` flag is in [Public preview][stability] and is not cover
 The `/RUNTIMEPRIORITY` installation option sets this flag, and if Alloy is not running with an appropriate stability level it will fail to start.
 
 [stability]: https://grafana.com/docs/release-life-cycle/
-[backward compatibility]: ../introduction/backward-compatibility/
+[backward compatibility]: ../../../introduction/backward-compatibility/
 {{< /admonition >}}
 
 ## Service Configuration

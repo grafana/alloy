@@ -21,7 +21,7 @@ modules:
   targets = [
     {
       "name" = "t1",
-      "address" = "localhost:161",
+      "address" = "snmp-simulator:161",
       "module" = "default",
       "auth" = "public_v2",
     },
@@ -37,7 +37,7 @@ prometheus.scrape "snmp_metrics" {
 
 prometheus.remote_write "snmp_metrics" {
   endpoint {
-    url = "http://localhost:9009/api/v1/push"
+    url = "http://mimir:9009/api/v1/push"
     metadata_config {
         send_interval = "1s"
     }
@@ -71,7 +71,7 @@ modules:
         help: "A textual description of the entity."
 `
   target "t1" {
-      address     = "localhost:161"
+      address     = "snmp-simulator:161"
       module      = "default"
       auth        = "public_v2"
   }
@@ -86,7 +86,7 @@ prometheus.scrape "snmp_metrics2" {
 
 prometheus.remote_write "snmp_metrics2" {
   endpoint {
-    url = "http://localhost:9009/api/v1/push"
+    url = "http://mimir:9009/api/v1/push"
     metadata_config {
         send_interval = "1s"
     }
@@ -132,7 +132,7 @@ modules:
 `
   concurrency = 2
   target "t1" {
-      address     = "localhost:161"
+      address     = "snmp-simulator:161"
       module      = "default,hrDeviceForTest"
       auth        = "public_v2"
   }
@@ -147,7 +147,7 @@ prometheus.scrape "snmp_metrics3" {
 
 prometheus.remote_write "snmp_metrics3" {
   endpoint {
-    url = "http://localhost:9009/api/v1/push"
+    url = "http://mimir:9009/api/v1/push"
     metadata_config {
         send_interval = "1s"
     }
@@ -175,7 +175,7 @@ auths:
 `
 
   target "t1" {
-      address     = "localhost:161"
+      address     = "snmp-simulator:161"
       module      = "system,hrDevice"
       auth        = "public_custom"
   }
@@ -190,7 +190,7 @@ prometheus.scrape "snmp_metrics4" {
 
 prometheus.remote_write "snmp_metrics4" {
   endpoint {
-    url = "http://localhost:9009/api/v1/push"
+    url = "http://mimir:9009/api/v1/push"
     metadata_config {
         send_interval = "1s"
     }
