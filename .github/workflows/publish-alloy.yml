@@ -10,6 +10,10 @@ on:
         required: false
         type: boolean
         default: true
+      dev:
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -35,6 +39,11 @@ jobs:
       with:
         persist-credentials: false
         fetch-tags: true
+
+    - name: Tag dev
+      if: ${{ inputs.dev }}
+      run: |
+        & "C:/Program Files/git/bin/bash.exe" -c './tools/tag-dev'
 
     - name: Set up Go
       uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0

@@ -17,9 +17,9 @@ permissions:
   contents: read
 
 jobs:
-  publish_windows_container:
+  check-linux-container:
     name: Check Linux container
-    container: grafana/alloy-build-image:v0.1.18
+    container: grafana/alloy-build-image:v0.1.19
     runs-on:
       labels: github-hosted-ubuntu-x64-large
     steps:

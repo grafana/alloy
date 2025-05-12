@@ -15,10 +15,11 @@ jobs:
       id-token: write
     with:
       img-name: alloy-devel
+      dev: true
 
   publish_linux_container:
     name: Publish Linux alloy-devel container
-    container: grafana/alloy-build-image:v0.1.18
+    container: grafana/alloy-build-image:v0.1.19
     runs-on:
       labels: github-hosted-ubuntu-x64-large
     permissions:
@@ -39,8 +40,7 @@ jobs:
 
     - name: Tag dev
       run: |
-        VERSION=$(sed -e '/^#/d' -e '/^$/d' VERSION | tr -d '\n')
-        git tag -m $VERSION $VERSION-devel
+        ./tools/tag-dev
 
     - name: Set ownership
       # https://github.com/actions/runner/issues/2033#issuecomment-1204205989
@@ -62,7 +62,7 @@ jobs:
 
   publish_linux_boringcrypto_container:
     name: Publish Linux alloy-devel-boringcrypto container
-    container: grafana/alloy-build-image:v0.1.18
+    container: grafana/alloy-build-image:v0.1.19
     runs-on:
       labels: github-hosted-ubuntu-x64-large
     permissions:
@@ -83,8 +83,7 @@ jobs:
 
     - name: Tag dev
       run: |
-        VERSION=$(sed -e '/^#/d' -e '/^$/d' VERSION | tr -d '\n')
-        git tag -m $VERSION $VERSION-devel
+        ./tools/tag-dev
 
     - name: Set ownership
       # https://github.com/actions/runner/issues/2033#issuecomment-1204205989
