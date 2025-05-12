@@ -15,6 +15,7 @@ jobs:
       id-token: write
     with:
       img-name: alloy-devel
+      dev: true
 
   publish_linux_container:
     name: Publish Linux alloy-devel container
@@ -39,8 +40,7 @@ jobs:
 
     - name: Tag dev
       run: |
-        VERSION=$(sed -e '/^#/d' -e '/^$/d' VERSION | tr -d '\n')
-        git tag -m $VERSION $VERSION-devel
+        ./tools/tag-dev
 
     - name: Set ownership
       # https://github.com/actions/runner/issues/2033#issuecomment-1204205989
@@ -83,8 +83,7 @@ jobs:
 
     - name: Tag dev
       run: |
-        VERSION=$(sed -e '/^#/d' -e '/^$/d' VERSION | tr -d '\n')
-        git tag -m $VERSION $VERSION-devel
+        ./tools/tag-dev
 
     - name: Set ownership
       # https://github.com/actions/runner/issues/2033#issuecomment-1204205989
