@@ -38,6 +38,8 @@ FROM public.ecr.aws/ubuntu/ubuntu:noble
 # Username and uid for alloy user
 ARG UID="473"
 ARG USERNAME="alloy"
+# Force non-interactive mode for tzdata package install
+ARG DEBIAN_FRONTEND="noninteractive"
 
 LABEL org.opencontainers.image.source="https://github.com/grafana/alloy"
 
