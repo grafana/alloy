@@ -9,6 +9,7 @@ import (
 	"github.com/grafana/alloy/syntax/typecheck"
 
 	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/dynamic/foreach"
 	alloy_runtime "github.com/grafana/alloy/internal/runtime"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/tracing"
@@ -138,9 +139,63 @@ func (v *validator) validateConfigs(configs []*ast.BlockStmt) diag.Diagnostics {
 		case "tracing":
 			args := &tracing.Options{}
 			diags.Merge(typecheck.Block(c, args))
+		case "foreach":
+			diags.Merge(v.validateForeach(c))
 		}
 	}
 
+	return diags
+}
+
+func (v *validator) validateForeach(block *ast.BlockStmt) diag.Diagnostics {
+	var diags diag.Diagnostics
+
+	if block.Label == "" {
+
+	}
+
+	var (
+		body     ast.Body
+		template *ast.BlockStmt
+	)
+	for _, stmt := range block.Body {
+		if b, ok := stmt.(*ast.BlockStmt); ok && b.GetBlockName() == foreach.TypeTemplate {
+			template = b
+			continue
+		}
+		body = append(body, stmt)
+	}
+
+	// Set the body of block to all non template properties.
+	block.Body = body
+	diags.Merge(typecheck.Block(block, &foreach.Arguments{}))
+
+	if template == nil {
+		diags.Add(diag.Diagnostic{
+			Severity: diag.SeverityLevelError,
+			StartPos: ast.StartPos(block).Position(),
+			EndPos:   ast.EndPos(block).Position(),
+			Message:  fmt.Sprintf("missing required block %q", foreach.TypeTemplate),
+		})
+		return diags
+	}
+
+	components := make([]*ast.BlockStmt, 0, len(template.Body))
+	for _, stmt := range template.Body {
+		b, ok := stmt.(*ast.BlockStmt)
+		if !ok {
+			diags.Add(diag.Diagnostic{
+				Severity: diag.SeverityLevelError,
+				StartPos: ast.StartPos(stmt).Position(),
+				EndPos:   ast.EndPos(stmt).Position(),
+				Message:  fmt.Sprintf("unsupported statement type %T", stmt),
+			})
+			continue
+		}
+		components = append(components, b)
+	}
+
+	diags.Merge(v.validateComponents(components))
 	return diags
 }
 

@@ -1,0 +1,43 @@
+invalid foreach
+-- main.alloy --
+foreach "missing" { }
+
+foreach "invalid_property" {
+	test       = "test"
+	collection = []
+	var        = "each"
+
+	template { }
+}
+
+foreach "invalid_template" {
+	collection = []
+	var        = "each"
+
+	template {
+		// Unknown component.
+		local.missing "applogs" { }
+
+		// Missing required property.
+		remote.http "missing_required" { }
+
+		// Invalid property.
+		loki.source.file "invalid_property" {
+			test       = "test"
+			targets    = []
+			forward_to = []
+		}
+
+		// Service configuration.
+		logging { }
+
+		// Duplicates.
+		local.file_match "applogs" {
+			path_targets = [{"__path__" = "/tmp/app-logs/app.log"}]
+		}
+
+		local.file_match "applogs" {
+			path_targets = [{"__path__" = "/tmp/app-logs/app.log"}]
+		}
+	}
+}
