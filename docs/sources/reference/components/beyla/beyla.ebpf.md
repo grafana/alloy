@@ -175,11 +175,13 @@ Each attribute can be an attribute name or a wildcard, for example, `k8s.dst.*` 
 The following example shows how you can include and exclude specific attributes:
 
 ```alloy
+beyla.ebpf "default" {
 attributes {
-  select {
-      attr = "sql_client_duration"
-      include = ["*"]
-      exclude = ["db_statement"]
+    select {
+        attr = "sql_client_duration"
+        include = ["*"]
+        exclude = ["db_statement"]
+    }
   }
 }
 ```
@@ -188,17 +190,19 @@ Additionally, you can use `*` wildcards as metric names to add and exclude attri
 For example:
 
 ```alloy
-attributes {
-  select {
-      attr = "http_*"
-      include = ["*"]
-      exclude = ["http_path", "http_route"]
+beyla.ebpf "default" {
+  attributes {
+    select {
+        attr = "http_*"
+        include = ["*"]
+        exclude = ["http_path", "http_route"]
+    }
+    select {
+        attr = "http_client_*"
+        // override http_* exclusion
+        include = ["http_path"]
+    }
   }
-  select {
-      attr = "http_client_*"
-      // override http_* exclusion
-      include = ["http_path"]
-  }  
 }
 ```
 
@@ -221,6 +225,10 @@ It contains the following blocks:
 In some scenarios, Beyla instruments a wide variety of services, such as a Kubernetes DaemonSet that instruments all the services in a node.
 The `services` block allows you to filter the services to instrument based on their metadata. If you specify other selectors in the same services entry,
 the instrumented processes need to match all the selector properties.
+
+The same properties are available for both `services` and `exclude_services` blocks.
+The `services` block configures the services to discover for the component.
+The `exclude_services` block configures the services to exclude for the component.
 
 | Name         | Type     | Description                                                                              | Default | Required |
 | ------------ | -------- | ---------------------------------------------------------------------------------------- | ------- | -------- |
@@ -257,6 +265,24 @@ the instrumented processes need to match all the selector properties.
 | `pod_name`         | `string`      | Regular expression of Kubernetes Pods to match.                                                             | `""`    | no       |
 | `replicaset_name`  | `string`      | Regular expression of Kubernetes ReplicaSets to match.                                                      | `""`    | no       |
 | `statefulset_name` | `string`      | Regular expression of Kubernetes StatefulSets to match.                                                     | `""`    | no       |
+
+Example:
+``` alloy
+beyla.ebpf "default" {
+  discovery {
+    services {
+      exe_path = "/opt/myapp/myapp"
+      open_ports = "8080"
+    }
+    exclude_services {
+      open_ports = "443"
+      kubernetes {
+        namespace = "kube-system"
+      }
+    }
+  }
+}
+```
 
 ### `ebpf`
 
@@ -322,14 +348,16 @@ wildcards).
 Example:
 
 ```alloy
-filters {
-  application {
-    attr = "url.path"
-    match = "/user/*"
-  }
-  network {
-    attr = "k8s.src.owner.name"
-    match = "*"
+beyla.ebpf "default" {
+  filters {
+    application {
+      attr = "url.path"
+      match = "/user/*"
+    }
+    network {
+      attr = "k8s.src.owner.name"
+      match = "*"
+    }
   }
 }
 ```
