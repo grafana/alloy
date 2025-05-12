@@ -16,6 +16,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/dynamic/foreach"
 	"github.com/grafana/alloy/internal/runner"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/syntax/ast"
@@ -50,7 +51,7 @@ type ForeachConfigNode struct {
 
 	mut   sync.RWMutex
 	block *ast.BlockStmt
-	args  ForEachArguments
+	args  foreach.Arguments
 
 	moduleControllerFactory func(opts ModuleControllerOpts) ModuleController
 	moduleControllerOpts    ModuleControllerOpts
@@ -123,17 +124,6 @@ func (fn *ForeachConfigNode) ID() ComponentID {
 	return fn.id
 }
 
-type ForEachArguments struct {
-	Collection []any  `alloy:"collection,attr"`
-	Var        string `alloy:"var,attr"`
-	Id         string `alloy:"id,attr,optional"`
-
-	// enable_metrics should be false by default.
-	// That way users are protected from an explosion of debug metrics
-	// if there are many items inside "collection".
-	EnableMetrics bool `alloy:"enable_metrics,attr,optional"`
-}
-
 func (fn *ForeachConfigNode) Evaluate(evalScope *vm.Scope) error {
 	err := fn.evaluate(evalScope)
 
@@ -168,7 +158,7 @@ func (fn *ForeachConfigNode) evaluate(scope *vm.Scope) error {
 
 	eval := vm.New(argsBody)
 
-	var args ForEachArguments
+	var args foreach.Arguments
 	if err := eval.Evaluate(scope, &args); err != nil {
 		return fmt.Errorf("decoding configuration: %w", err)
 	}
