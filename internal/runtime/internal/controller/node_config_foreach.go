@@ -23,8 +23,6 @@ import (
 	"github.com/grafana/alloy/syntax/vm"
 )
 
-const templateType = "template"
-
 // The ForeachConfigNode will create the pipeline defined in its template block for each entry defined in its collection argument.
 // Each pipeline is managed by a custom component.
 // The custom component has access to the root scope (it can access exports and modules outside of the foreach template).
@@ -145,7 +143,7 @@ func (fn *ForeachConfigNode) evaluate(scope *vm.Scope) error {
 	var argsBody ast.Body
 	var template *ast.BlockStmt
 	for _, stmt := range fn.block.Body {
-		if blockStmt, ok := stmt.(*ast.BlockStmt); ok && blockStmt.GetBlockName() == templateType {
+		if blockStmt, ok := stmt.(*ast.BlockStmt); ok && blockStmt.GetBlockName() == foreach.TypeTemplate {
 			template = blockStmt
 			continue
 		}

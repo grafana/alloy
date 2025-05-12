@@ -1,5 +1,8 @@
 package foreach
 
+// TypeTemplate is the Block name for template property
+const TypeTemplate = "template"
+
 type Arguments struct {
 	Collection []any  `alloy:"collection,attr"`
 	Var        string `alloy:"var,attr"`
