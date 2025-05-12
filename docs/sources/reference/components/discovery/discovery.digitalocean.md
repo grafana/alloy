@@ -100,21 +100,31 @@ In those cases, exported fields retain their last healthy values.
 This would result in targets with `__address__` labels like: `192.0.2.1:8080`:
 
 ```alloy
+# This block configures discovery.digitalocean to discover DigitalOcean Droplets and expose them as scrape targets.
 discovery.digitalocean "example" {
+  # Set the port to append to the __address__ label for each discovered Droplet.
   port             = 8080
+  # Set the refresh interval for updating the list of Droplets.
   refresh_interval = "5m"
+  # Specify the bearer token for authenticating with the DigitalOcean API.
   bearer_token     = "my-secret-bearer-token"
 }
 
+# This block configures Prometheus to scrape metrics from the discovered DigitalOcean Droplet targets.
 prometheus.scrape "demo" {
+  # Use the targets exported by the discovery.digitalocean component.
   targets    = discovery.digitalocean.example.targets
+  # Forward scraped metrics to the remote_write receiver.
   forward_to = [prometheus.remote_write.demo.receiver]
 }
 
+# This block configures Prometheus remote_write to send metrics to an external endpoint.
 prometheus.remote_write "demo" {
   endpoint {
+    # Set the remote_write endpoint URL.
     url = "<PROMETHEUS_REMOTE_WRITE_URL>"
 
+    # Configure basic authentication for the remote_write endpoint.
     basic_auth {
       username = "<USERNAME>"
       password = "<PASSWORD>"
