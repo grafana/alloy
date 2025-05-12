@@ -1,0 +1,74 @@
+valid config
+-- main.alloy --
+http {
+  tls {
+    cert_file = sys.env("TLS_CERT_FILE_PATH")
+    key_file  = sys.env("TLS_KEY_FILE_PATH")
+  }
+}
+
+logging {
+  level  = "info"
+  format = "logfmt"
+}
+
+tracing {
+  sampling_fraction = 0.1
+
+  write_to = [otelcol.exporter.otlp.tempo.input]
+}
+
+local.file_match "applogs" {
+    path_targets = [{"__path__" = "/tmp/app-logs/app.log"}]
+}
+
+loki.source.file "local_files" {
+    targets    = local.file_match.applogs.targets
+
+    forward_to = [loki.process.add_new_label.receiver]
+}
+
+loki.process "add_new_label" {
+    stage.logfmt {
+        mapping = {
+            "extracted_level" = "level",
+        }
+    }
+
+    stage.labels {
+        values = {
+            "level" = "extracted_level",
+        }
+    }
+
+    forward_to = [loki.write.local_loki.receiver]
+}
+
+loki.write "local_loki" {
+    endpoint {
+        url = "http://loki:3100/loki/api/v1/push"
+    }
+}
+
+declare "self_collect" {
+  argument "metrics_output" {
+    optional = false
+    comment  = "Where to send collected metrics."
+  }
+
+  prometheus.scrape "selfmonitor" {
+    targets = [{
+      __address__ = "127.0.0.1:12345",
+    }]
+
+    forward_to = [argument.metrics_output.value]
+  }
+}
+
+self_collect "selfmonitor" {}
+
+import.file "math" {
+  filename = "module.alloy"
+}
+
+math.add "default" {}

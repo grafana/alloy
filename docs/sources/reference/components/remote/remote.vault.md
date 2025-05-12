@@ -5,6 +5,8 @@ aliases:
 description: Learn about remote.vault
 labels:
   stage: general-availability
+  products:
+    - oss
 title: remote.vault
 ---
 

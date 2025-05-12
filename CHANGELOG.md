@@ -12,11 +12,17 @@ Main (unreleased)
 
 ### Features
 
+- Bump snmp_exporter and embedded modules in `prometheus.exporter.snmp` to v0.29.0, add cisco_device module support (@v-zhuravlev)
+
 - Add the `otelcol.storage.file` extension to support persistent sending queues and `otelcol.receiver.filelog` file state tracking between restarts. (@dehaansa)
 
 - Add `otelcol.exporter.googlecloud` community component to export metrics, traces, and logs to Google Cloud. (@motoki317)
 
 - Add support to configure basic authentication for alloy http server. (@kalleep)
+
+- Add `validate` command to alloy that will perform limited validation of alloy configuration files. (@kalleep)
+
+- Add `otelcol.receiver.splunkhec` component to receive events in splunk hec format and forward them to other `otelcol.*` components. (@kalleep)
 
 ### Enhancements
 
@@ -26,8 +32,13 @@ Main (unreleased)
 
 - (_Experimental_) Various changes to the experimental component `database_observability.mysql`:
   - `schema_table`: add support for index expressions (@cristiangreco)
+  - `query_sample`: enable opt-in support to extract unredacted sql query (sql_text) (@matthewnolf)
   - `query_tables`: improve queries parsing (@cristiangreco)
+  - `query_tables`: add support for prepared statements (@cristiangreco)
   - make tidbparser the default choice (@cristiangreco)
+  - `query_sample`: better handling of timer overflows (@fridgepoet)
+  - collect metrics on enabled `performance_schema.setup_consumers` (@fridgepoet)
+  - `query_sample`: base log entries on calculated timestamp from rows, not now() (@fridgepoet)
 
 - Mixin dashboards improvements: added minimum cluster size to Cluster Overview dashboard, fixed units in OpenTelemetry dashboard, fixed slow components evaluation time units in Controller dashboard and updated Prometheus dashboard to correctly aggregate across instances. (@thampiotr)
 
@@ -38,17 +49,47 @@ Main (unreleased)
 - The `loki.rules.kubernetes` component now supports adding extra label matchers
   to all queries discovered via `PrometheusRule` CRDs. (@QuentinBisson)
 
+-  Add optional `id` field to `foreach` block to generate more meaningful component paths in metrics by using a specific field from collection items. (@harshrai654)
+  
+- Fix validation logic in `beyla.ebpf` component to ensure that either metrics or traces are enabled. (@marctc)
+
 ### Bugfixes
 
-- Fix `otelcol.exporter.prometheus` dropping valid exemplars. (@github-vincent-miszczak)
+- Fix `otelcol.receiver.filelog` documentation's default value for `start_at`. (@petewall)
 
-- Fix `loki.source.podlogs` add missing labels `__meta_kubernetes_namespace` and `__meta_kubernetes_pod_label_*`. (@kalleep)
+- Fix [#3386](https://github.com/grafana/alloy/issues/3386) lower casing scheme in `prometheus.operator.scrapeconfigs`. (@alex-berger)
+
+- Fix [#3437](https://github.com/grafana/alloy/issues/3437) Component Graph links now follow `--server.http.ui-path-prefix`. (@solidcellaMoon)
 
 ### Other changes
 
 - Update the zap logging adapter used by `otelcol` components to log arrays and objects. (@dehaansa)
 
 - Updated Windows install script to add DisplayVersion into registry on install (@enessene)
+
+v1.8.3
+-----------------
+
+### Bugfixes
+
+- Fix `mimir.rules.kubernetes` panic on non-leader debug info retrieval (@TheoBrigitte)
+
+- Fix detection of the “streams limit exceeded” error in the Loki client so that metrics are correctly labeled as `ReasonStreamLimited`. (@maratkhv)
+
+- Fix `loki.source.file` race condition that often lead to panic when using `decompression`. (@kalleep)
+
+- Fix deadlock in `loki.source.file` that can happen when targets are removed. (@kalleep)
+
+- Fix `loki.process` to emit valid logfmt. (@kalleep)
+
+v1.8.2
+-----------------
+
+### Bugfixes
+
+- Fix `otelcol.exporter.prometheus` dropping valid exemplars. (@github-vincent-miszczak)
+
+- Fix `loki.source.podlogs` not adding labels `__meta_kubernetes_namespace` and `__meta_kubernetes_pod_label_*`. (@kalleep)
 
 v1.8.1
 -----------------

@@ -7,6 +7,10 @@ on:
     paths:
       - "docs/sources/**"
   workflow_dispatch:
+
+permissions:
+  contents: read
+
 jobs:
   sync:
     if: github.repository == 'grafana/alloy'
@@ -16,6 +20,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - uses: grafana/writers-toolkit/publish-technical-documentation@39cdc38767184996e25d611923f8ce697e33bc70 # publish-technical-documentation/v1
+        with:
+          persist-credentials: false
+      - uses: grafana/writers-toolkit/publish-technical-documentation@publish-technical-documentation/v1 # zizmor: ignore[unpinned-uses]
+        # This internal action's version is left as a tag instead of a pinned hash because renovate
+        # does not support this type of tag/version format without custom configuration.
         with:
           website_directory: content/docs/alloy/next

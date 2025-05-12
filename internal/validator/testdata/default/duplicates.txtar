@@ -1,0 +1,20 @@
+duplicated components and declares
+-- main.alloy --
+local.file_match "applogs" {
+    path_targets = [{"__path__" = "/tmp/app-logs/app.log"}]
+}
+local.file_match "applogs" {
+    path_targets = [{"__path__" = "/tmp/app-logs/app.log"}]
+}
+
+declare "self_collect" {}
+declare "self_collect" {}
+
+import.file "math" {}
+import.file "math" {}
+
+logging {}
+logging {}
+
+http {}
+http {}

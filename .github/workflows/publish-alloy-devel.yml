@@ -6,19 +6,25 @@ on:
 
 permissions:
   contents: read
-  id-token: write
 
 jobs:
   publish_windows_container:
     uses: ./.github/workflows/publish-alloy.yml
+    permissions:
+      contents: read
+      id-token: write
     with:
       img-name: alloy-devel
+      dev: true
 
   publish_linux_container:
     name: Publish Linux alloy-devel container
-    container: grafana/alloy-build-image:v0.1.17
+    container: grafana/alloy-build-image:v0.1.19
     runs-on:
       labels: github-hosted-ubuntu-x64-large
+    permissions:
+      contents: read
+      id-token: write
     steps:
       # This step needs to run before "Checkout code".
       # That's because it generates a new file.
@@ -29,6 +35,12 @@ jobs:
 
     - name: Checkout code
       uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      with:
+        persist-credentials: false
+
+    - name: Tag dev
+      run: |
+        ./tools/tag-dev
 
     - name: Set ownership
       # https://github.com/actions/runner/issues/2033#issuecomment-1204205989
@@ -50,9 +62,12 @@ jobs:
 
   publish_linux_boringcrypto_container:
     name: Publish Linux alloy-devel-boringcrypto container
-    container: grafana/alloy-build-image:v0.1.17
+    container: grafana/alloy-build-image:v0.1.19
     runs-on:
       labels: github-hosted-ubuntu-x64-large
+    permissions:
+      contents: read
+      id-token: write
     steps:
     # This step needs to run before "Checkout code".
     # That's because it generates a new file.
@@ -63,6 +78,12 @@ jobs:
 
     - name: Checkout code
       uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      with:
+        persist-credentials: false
+
+    - name: Tag dev
+      run: |
+        ./tools/tag-dev
 
     - name: Set ownership
       # https://github.com/actions/runner/issues/2033#issuecomment-1204205989
@@ -77,10 +98,10 @@ jobs:
         cache: false
 
     - run: |
-       docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
-       docker buildx create --name multiarch-alloy-alloy-devel-boringcrypto-${GITHUB_SHA} --driver docker-container --use
-       ./tools/ci/docker-containers alloy-devel-boringcrypto
-       docker buildx rm multiarch-alloy-alloy-devel-boringcrypto-${GITHUB_SHA}
+        docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+        docker buildx create --name multiarch-alloy-alloy-devel-boringcrypto-${GITHUB_SHA} --driver docker-container --use
+        ./tools/ci/docker-containers alloy-devel-boringcrypto
+        docker buildx rm multiarch-alloy-alloy-devel-boringcrypto-${GITHUB_SHA}
 
   update_deployment_tools:
     name: Update deployment_tools
@@ -88,6 +109,9 @@ jobs:
     needs:
     - publish_linux_container
     - publish_linux_boringcrypto_container
+    permissions:
+      contents: read
+      id-token: write
     steps:
 
     - name: Get Vault secrets
@@ -100,6 +124,8 @@ jobs:
 
     - name: Checkout code
       uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      with:
+        persist-credentials: false
 
     - name: Get the image tag
       run: |

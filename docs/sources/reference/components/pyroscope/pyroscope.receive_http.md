@@ -3,6 +3,8 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/pyroscope/
 description: Learn about pyroscope.receive_http
 labels:
   stage: public-preview
+  products:
+    - oss
 title: pyroscope.receive_http
 ---
 

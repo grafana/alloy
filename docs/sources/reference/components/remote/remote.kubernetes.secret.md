@@ -5,6 +5,8 @@ aliases:
 description: Learn about remote.kubernetes.secret
 labels:
   stage: general-availability
+  products:
+    - oss
 title: remote.kubernetes.secret
 ---
 

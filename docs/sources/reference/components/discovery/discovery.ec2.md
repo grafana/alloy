@@ -5,6 +5,8 @@ aliases:
 description: Learn about discovery.ec2
 labels:
   stage: general-availability
+  products:
+    - oss
 title: discovery.ec2
 ---
 

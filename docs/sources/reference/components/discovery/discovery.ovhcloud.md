@@ -5,6 +5,8 @@ aliases:
 description: Learn about discovery.ovhcloud
 labels:
   stage: general-availability
+  products:
+    - oss
 title: discovery.ovhcloud
 ---
 

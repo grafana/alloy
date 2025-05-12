@@ -12,7 +12,6 @@ metadata:
     app.kubernetes.io/version: "vX.Y.Z"
     app.kubernetes.io/managed-by: Helm
 spec:
-  replicas: 1
   minReadySeconds: 10
   selector:
     matchLabels:
@@ -29,7 +28,7 @@ spec:
       serviceAccountName: alloy
       containers:
         - name: alloy
-          image: docker.io/grafana/alloy:v1.8.1
+          image: docker.io/grafana/alloy:v1.8.3
           imagePullPolicy: IfNotPresent
           args:
             - run
