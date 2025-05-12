@@ -19,7 +19,7 @@ jobs:
 
   publish_linux_container:
     name: Publish Linux alloy-devel container
-    container: grafana/alloy-build-image:v0.1.18
+    container: grafana/alloy-build-image:v0.1.19
     runs-on:
       labels: github-hosted-ubuntu-x64-large
     permissions:
@@ -62,7 +62,7 @@ jobs:
 
   publish_linux_boringcrypto_container:
     name: Publish Linux alloy-devel-boringcrypto container
-    container: grafana/alloy-build-image:v0.1.18
+    container: grafana/alloy-build-image:v0.1.19
     runs-on:
       labels: github-hosted-ubuntu-x64-large
     permissions:
