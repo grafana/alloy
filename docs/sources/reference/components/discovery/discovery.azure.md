@@ -126,25 +126,38 @@ In those cases, exported fields retain their last healthy values.
 ## Example
 
 ```alloy
+# This block configures discovery.azure to discover Azure VMs using OAuth authentication and exposes them as scrape targets.
 discovery.azure "example" {
+  # Set the port to append to the __address__ label for each discovered target.
   port = 80
+  # Specify the Azure subscription ID to discover VMs from.
   subscription_id = "<AZURE_SUBSCRIPTION_ID>"
+  # Configure OAuth 2.0 authentication for Azure API access.
   oauth {
-      client_id = "<AZURE_CLIENT_ID>"
-      client_secret = "<AZURE_CLIENT_SECRET>"
-      tenant_id = "<AZURE_TENANT_ID>"
+    # Set the OAuth 2.0 client ID.
+    client_id = "<AZURE_CLIENT_ID>"
+    # Set the OAuth 2.0 client secret.
+    client_secret = "<AZURE_CLIENT_SECRET>"
+    # Set the OAuth 2.0 tenant ID.
+    tenant_id = "<AZURE_TENANT_ID>"
   }
 }
 
+# This block configures Prometheus to scrape metrics from the discovered Azure VM targets.
 prometheus.scrape "demo" {
+  # Use the targets exported by the discovery.azure component.
   targets    = discovery.azure.example.targets
+  # Forward scraped metrics to the remote_write receiver.
   forward_to = [prometheus.remote_write.demo.receiver]
 }
 
+# This block configures Prometheus remote_write to send metrics to an external endpoint.
 prometheus.remote_write "demo" {
   endpoint {
+    # Set the remote_write endpoint URL.
     url = "<PROMETHEUS_REMOTE_WRITE_URL>"
 
+    # Configure basic authentication for the remote_write endpoint.
     basic_auth {
       username = "<USERNAME>"
       password = "<PASSWORD>"
