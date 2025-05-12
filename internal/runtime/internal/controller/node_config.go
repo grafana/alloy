@@ -15,12 +15,11 @@ const (
 	exportBlockID   = "export"
 	loggingBlockID  = "logging"
 	tracingBlockID  = "tracing"
-	foreachID       = "foreach"
 )
 
 // Add config blocks that are not GA. Config blocks that are not specified here are considered GA.
 var configBlocksUnstable = map[string]featuregate.Stability{
-	foreachID: foreach.StabilityLevel,
+	foreach.Name: foreach.StabilityLevel,
 }
 
 // NewConfigNode creates a new ConfigNode from an initial ast.BlockStmt.
@@ -49,7 +48,7 @@ func NewConfigNode(block *ast.BlockStmt, globals ComponentGlobals, customReg *Cu
 		return NewTracingConfigNode(block, globals), nil
 	case importsource.BlockImportFile, importsource.BlockImportString, importsource.BlockImportHTTP, importsource.BlockImportGit:
 		return NewImportConfigNode(block, globals, importsource.GetSourceType(block.GetBlockName())), nil
-	case foreachID:
+	case foreach.Name:
 		return NewForeachConfigNode(block, globals, customReg), nil
 	default:
 		diags.Add(diag.Diagnostic{

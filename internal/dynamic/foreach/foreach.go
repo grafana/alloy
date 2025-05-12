@@ -3,6 +3,8 @@ package foreach
 import "github.com/grafana/alloy/internal/featuregate"
 
 const (
+	// Name is the block name for foreach blocks.
+	Name = "foreach"
 	// StabilityLevel for foreach blocks.
 	StabilityLevel = featuregate.StabilityExperimental
 	// TypeTemplate is the block name for template property

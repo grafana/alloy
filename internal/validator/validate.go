@@ -145,7 +145,7 @@ func (v *validator) validateConfigs(configs []*ast.BlockStmt) diag.Diagnostics {
 		case "tracing":
 			args := &tracing.Options{}
 			diags.Merge(typecheck.Block(c, args))
-		case "foreach":
+		case foreach.Name:
 			diags.Merge(v.validateForeach(c))
 		}
 	}
@@ -175,7 +175,6 @@ func (v *validator) validateForeach(block *ast.BlockStmt) diag.Diagnostics {
 			EndPos:   block.NamePos.Add(len(name) - 1).Position(),
 			Message:  "declare block must have a label",
 		})
-
 	}
 
 	var (
@@ -207,7 +206,11 @@ func (v *validator) validateForeach(block *ast.BlockStmt) diag.Diagnostics {
 	}
 
 	// We extarct all blocks from template body and evaludate them as as components.
-	components := make([]*ast.BlockStmt, 0, len(template.Body))
+	var (
+		nested     = make([]*ast.BlockStmt, 0, len(template.Body))
+		components = make([]*ast.BlockStmt, 0, len(template.Body))
+	)
+
 	for _, stmt := range template.Body {
 		b, ok := stmt.(*ast.BlockStmt)
 		if !ok {
@@ -219,9 +222,19 @@ func (v *validator) validateForeach(block *ast.BlockStmt) diag.Diagnostics {
 			})
 			continue
 		}
+
+		if b.GetBlockName() == foreach.Name {
+			nested = append(nested, b)
+			continue
+		}
+
 		components = append(components, b)
 	}
 
+	// We can reuse validateConfigs here since we know that all block in nested
+	// are foreach.
+	diags.Merge(v.validateConfigs(nested))
+	// Validate all other blocks as components.
 	diags.Merge(v.validateComponents(components))
 	return diags
 }
