@@ -270,12 +270,18 @@ Example:
 ``` alloy
 beyla.ebpf "default" {
   discovery {
+    // Instrument all services with 8080 open port
     services {
-      exe_path = "/opt/myapp/myapp"
       open_ports = "8080"
     }
+    // Instrument all services from the default namespace
+    services {
+      kubernetes {
+        namespace = "default"
+      }
+    }
+    // Exclude all services from the kube-system namespace
     exclude_services {
-      open_ports = "443"
       kubernetes {
         namespace = "kube-system"
       }
