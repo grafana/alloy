@@ -48,7 +48,7 @@ RUN apt-get update \
         ca-certificates \
         libsystemd0 \
         tzdata \
-    && apt clean \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 
