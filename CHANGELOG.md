@@ -34,7 +34,6 @@ Main (unreleased)
   - `schema_table`: add support for index expressions (@cristiangreco)
   - `query_sample`: enable opt-in support to extract unredacted sql query (sql_text) (@matthewnolf)
   - `query_tables`: improve queries parsing (@cristiangreco)
-  - `query_tables`: add support for prepared statements (@cristiangreco)
   - make tidbparser the default choice (@cristiangreco)
   - `query_sample`: better handling of timer overflows (@fridgepoet)
   - collect metrics on enabled `performance_schema.setup_consumers` (@fridgepoet)
@@ -47,7 +46,7 @@ Main (unreleased)
 - Pretty print diagnostic errors when using `alloy run` (@kalleep)
 
 -  Add optional `id` field to `foreach` block to generate more meaningful component paths in metrics by using a specific field from collection items. (@harshrai654)
-  
+
 - Fix validation logic in `beyla.ebpf` component to ensure that either metrics or traces are enabled. (@marctc)
 
 ### Bugfixes
