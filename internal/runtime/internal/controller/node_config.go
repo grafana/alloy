@@ -5,7 +5,7 @@ import (
 
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/nodeconf/foreach"
-	"github.com/grafana/alloy/internal/runtime/internal/importsource"
+	"github.com/grafana/alloy/internal/nodeconf/importsource"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/diag"
 )
