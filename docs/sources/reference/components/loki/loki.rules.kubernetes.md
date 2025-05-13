@@ -81,23 +81,27 @@ You can use the following blocks with `loki.rules.kubernetes`:
 
 | Block                                                              | Description                                                | Required |
 | ------------------------------------------------------------------ | ---------------------------------------------------------- | -------- |
-| [`authorization`][authorization]                                   | Configure generic authorization to the endpoint.           | no       |
-| [`basic_auth`][basic_auth]                                         | Configure `basic_auth` for authenticating to the endpoint. | no       |
-| [`rule_namespace_selector`][label_selector]                        | Label selector for `Namespace` resources.                  | no       |
-| `rule_namespace_selector` > [`match_expression`][match_expression] | Label match expression for `Namespace` resources.          | no       |
-| [`rule_selector`][label_selector]                                  | Label selector for `PrometheusRule` resources.             | no       |
-| `rule_selector` > [`match_expression`][match_expression]           | Label match expression for `PrometheusRule` resources.     | no       |
-| [`oauth2`][oauth2]                                                 | Configure OAuth 2.0 for authenticating to the endpoint.    | no       |
-| `oauth2` > [`tls_config`][tls_config]                              | Configure TLS settings for connecting to the endpoint.     | no       |
-| [`tls_config`][tls_config]                                         | Configure TLS settings for connecting to the endpoint.     | no       |
+| [`authorization`][authorization]                                   | Configure generic authorization to the endpoint.           | no |
+| [`basic_auth`][basic_auth]                                         | Configure `basic_auth` for authenticating to the endpoint. | no |
+| [`extra_query_matchers`][extra_query_matchers]                     | Additional label matchers to add to each query.            | no |
+| `extra_query_matchers` > [`matcher`][matcher]                      | A label matcher to add to each query.                      | no |
+| [`rule_namespace_selector`][label_selector]                        | Label selector for `Namespace` resources.                  | no |
+| `rule_namespace_selector` > [`match_expression`][match_expression] | Label match expression for `Namespace` resources.          | no |
+| [`rule_selector`][label_selector]                                  | Label selector for `PrometheusRule` resources.             | no |
+| `rule_selector` > [`match_expression`][match_expression]           | Label match expression for `PrometheusRule` resources.     | no |
+| [`oauth2`][oauth2]                                                 | Configure OAuth 2.0 for authenticating to the endpoint.    | no |
+| `oauth2` > [`tls_config`][tls_config]                              | Configure TLS settings for connecting to the endpoint.     | no |
+| [`tls_config`][tls_config]                                         | Configure TLS settings for connecting to the endpoint.     | no |
 
 The > symbol indicates deeper levels of nesting.
 For example, `oauth2` > `tls_config` refers to a `tls_config` block defined inside an `oauth2` block.
 
 [authorization]: #authorization
 [basic_auth]: #basic_auth
+[extra_query_matchers]: #extra_query_matchers
 [label_selector]: #rule_selector-and-rule_namespace_selector
 [match_expression]: #match_expression
+[matcher]: #matcher
 [oauth2]: #oauth2
 [tls_config]: #tls_config
 
@@ -108,6 +112,26 @@ For example, `oauth2` > `tls_config` refers to a `tls_config` block defined insi
 ### `basic_auth`
 
 {{< docs/shared lookup="reference/components/basic-auth-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `extra_query_matchers`
+
+The `extra_query_matchers` block has no attributes.
+It contains zero or more [matcher][] blocks.
+These blocks allow you to add extra label matchers to all queries that are discovered by the `loki.rules.kubernetes` component.
+The algorithm for adding the label matchers to queries is the same as the one used by the [`promtool promql label-matchers set` command](https://prometheus.io/docs/prometheus/latest/command-line/promtool/#promtool-promql).
+It's adapted to work with the LogQL parser.
+
+### `matcher`
+
+The `matcher` block describes a label matcher that's added to each query found in `PrometheusRule` CRDs.
+
+The following arguments are supported:
+
+| Name         | Type     | Description                                        | Default | Required |
+| ------------ | -------- | -------------------------------------------------- | ------- | -------- |
+| `match_type` | `string` | The type of match. One of `=`, `!=`, `=~` or `!~`. |         | yes      |
+| `name`       | `string` | Name of the label to match.                        |         | yes      |
+| `value`      | `string` | Value of the label to match.                       |         | yes      |
 
 ### `rule_selector` and `rule_namespace_selector`
 
@@ -227,6 +251,23 @@ Replace the following:
 * _`<GRAFANA_CLOUD_USER>`_: Your Grafana Cloud user name.
 * _`<GRAFANA_CLOUD_API_KEY>`_: Your Grafana Cloud API key.
 * _`<GRAFANA_CLOUD_API_KEY_PATH>`_: The path to the Grafana Cloud API key.
+
+This example adds label matcher `{cluster=~"prod-.*"}` to all the queries discovered by `loki.rules.kubernetes`.
+
+```alloy
+loki.rules.kubernetes "default" {
+    address = "loki:3100"
+    extra_query_matchers {
+        matcher {
+            name = "cluster"
+            match_type = "=~"
+            value = "prod-.*"
+        }
+    }
+}
+```
+
+If a query in the form of `{app="my-app"}` is found in `PrometheusRule` CRDs, it will be modified to `{app="my-app", cluster=~"prod-.*"}` before sending it to Loki.
 
 The following example is an RBAC configuration for Kubernetes. It authorizes {{< param "PRODUCT_NAME" >}} to query the Kubernetes REST API:
 

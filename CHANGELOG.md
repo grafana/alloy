@@ -47,6 +47,9 @@ Main (unreleased)
 
 - Pretty print diagnostic errors when using `alloy run` (@kalleep)
 
+- The `loki.rules.kubernetes` component now supports adding extra label matchers
+  to all queries discovered via `PrometheusRule` CRDs. (@QuentinBisson)
+
 -  Add optional `id` field to `foreach` block to generate more meaningful component paths in metrics by using a specific field from collection items. (@harshrai654)
 
 - Fix validation logic in `beyla.ebpf` component to ensure that either metrics or traces are enabled. (@marctc)
