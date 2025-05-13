@@ -12,6 +12,7 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/nodeconf/foreach"
+	"github.com/grafana/alloy/internal/nodeconf/importsource"
 	alloy_runtime "github.com/grafana/alloy/internal/runtime"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/tracing"
@@ -136,16 +137,22 @@ func (v *validator) validateConfigs(configs []*ast.BlockStmt, cr *componentRegis
 
 		// In config we store blocks for logging, tracing, argument, export, import.file,
 		// import.string, import.http, import.git and foreach.
-		// For now we only typecheck logging and tracing and ignore the rest.
+		// For now we only typecheck logging, tracing, foreach and imports.
 		switch c.GetBlockName() {
 		case "logging":
-			args := &logging.Options{}
-			diags.Merge(typecheck.Block(c, args))
+			diags.Merge(typecheck.Block(c, &logging.Options{}))
 		case "tracing":
-			args := &tracing.Options{}
-			diags.Merge(typecheck.Block(c, args))
+			diags.Merge(typecheck.Block(c, &tracing.Options{}))
 		case foreach.BlockName:
 			diags.Merge(v.validateForeach(c, cr))
+		case importsource.BlockNameFile:
+			diags.Merge(typecheck.Block(c, &importsource.FileArguments{}))
+		case importsource.BlockNameString:
+			diags.Merge(typecheck.Block(c, &importsource.StringArguments{}))
+		case importsource.BlockNameHTTP:
+			diags.Merge(typecheck.Block(c, &importsource.HTTPArguments{}))
+		case importsource.BlockNameGit:
+			diags.Merge(typecheck.Block(c, &importsource.GitArguments{}))
 		}
 	}
 
@@ -222,7 +229,11 @@ func (v *validator) validateForeach(block *ast.BlockStmt, cr *componentRegistry)
 			continue
 		}
 
-		var validNames = [...]string{foreach.BlockName, "import.file", "import.string", "import.http", "import.git"}
+		var validNames = [...]string{
+			foreach.BlockName, importsource.BlockNameFile,
+			importsource.BlockNameString, importsource.BlockNameHTTP, importsource.BlockNameGit,
+		}
+
 		if slices.Contains(validNames[:], b.GetBlockName()) {
 			configs = append(configs, b)
 			continue
