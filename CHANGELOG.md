@@ -67,6 +67,9 @@ Main (unreleased)
 
 - Updated Windows install script to add DisplayVersion into registry on install (@enessene)
 
+- RPM artifacts in Alloy GitHub releases are no longer signed.
+  The artifacts on the `https://rpm.grafana.com` repository used by the `yum` package manager will continue to be signed. (@ptodev)
+
 v1.8.3
 -----------------
 
