@@ -61,6 +61,9 @@ type ForeachConfigNode struct {
 
 	dataFlowEdgeMut  sync.RWMutex
 	dataFlowEdgeRefs []string
+
+	metricsEnabled bool
+	runner         *runner.Runner[*forEachChild]
 }
 
 var _ ComponentNode = (*ForeachConfigNode)(nil)
@@ -183,7 +186,19 @@ func (fn *ForeachConfigNode) evaluate(scope *vm.Scope) error {
 	} else {
 		fn.moduleControllerOpts.RegOverride = NoopRegistry{}
 	}
-	fn.moduleController = fn.moduleControllerFactory(fn.moduleControllerOpts)
+
+	if fn.moduleController == nil {
+		fn.moduleController = fn.moduleControllerFactory(fn.moduleControllerOpts)
+	} else if fn.metricsEnabled != args.EnableMetrics && fn.runner != nil {
+		// When metrics are toggled on/off, we must recreate the module controller with the new registry.
+		// This requires recreating and re-registering all components with the new controller.
+		// Since enabling/disabling metrics is typically a one-time configuration change rather than
+		// a frequent runtime toggle, the overhead of recreating components is acceptable.
+		fn.moduleController = fn.moduleControllerFactory(fn.moduleControllerOpts)
+		fn.customComponents = make(map[string]CustomComponent)
+		fn.runner.ApplyTasks(context.Background(), []*forEachChild{}) // stops all running children
+	}
+	fn.metricsEnabled = args.EnableMetrics
 
 	// Loop through the items to create the custom components.
 	// On re-evaluation new components are added and existing ones are updated.
@@ -273,12 +288,12 @@ func (fn *ForeachConfigNode) Run(ctx context.Context) error {
 	newCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	runner := runner.New(func(forEachChild *forEachChild) runner.Worker {
+	fn.runner = runner.New(func(forEachChild *forEachChild) runner.Worker {
 		return &forEachChildRunner{
 			child: forEachChild,
 		}
 	})
-	defer runner.Stop()
+	defer fn.runner.Stop()
 
 	updateTasks := func() error {
 		fn.mut.Lock()
@@ -293,7 +308,7 @@ func (fn *ForeachConfigNode) Run(ctx context.Context) error {
 				healthUpdate: fn.setRunHealth,
 			})
 		}
-		return runner.ApplyTasks(newCtx, tasks)
+		return fn.runner.ApplyTasks(newCtx, tasks)
 	}
 
 	fn.setRunHealth(component.HealthTypeHealthy, "started foreach")
