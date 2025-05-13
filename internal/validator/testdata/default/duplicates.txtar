@@ -10,8 +10,13 @@ local.file_match "applogs" {
 declare "self_collect" {}
 declare "self_collect" {}
 
-import.file "math" {}
-import.file "math" {}
+import.file "math" {
+  filename = "path/to/module/config.alloy"
+}
+
+import.file "math" {
+  filename = "path/to/module/config.alloy"
+}
 
 logging {}
 logging {}

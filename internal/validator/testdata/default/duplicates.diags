@@ -5,19 +5,19 @@ Error: main.alloy:9:1: block declare.self_collect already declared at main.alloy
    | ^^^^^^^^^^^^^^^^^^^^
 10 | 
 
-Error: main.alloy:12:1: block import.file.math already declared at main.alloy:11:1
+Error: main.alloy:15:1: block import.file.math already declared at main.alloy:11:1
 
-11 | import.file "math" {}
-12 | import.file "math" {}
+14 | 
+15 | import.file "math" {
    | ^^^^^^^^^^^^^^^^
-13 | 
+16 |   filename = "path/to/module/config.alloy"
 
-Error: main.alloy:15:1: block logging already declared at main.alloy:14:1
+Error: main.alloy:20:1: block logging already declared at main.alloy:19:1
 
-14 | logging {}
-15 | logging {}
+19 | logging {}
+20 | logging {}
    | ^^^^^^^
-16 | 
+21 | 
 
 Error: main.alloy:4:1: block local.file_match.applogs already declared at main.alloy:1:1
 
@@ -26,9 +26,9 @@ Error: main.alloy:4:1: block local.file_match.applogs already declared at main.a
   | ^^^^^^^^^^^^^^^^^^^^^^^^
 5 |     path_targets = [{"__path__" = "/tmp/app-logs/app.log"}]
 
-Error: main.alloy:18:1: block http already declared at main.alloy:17:1
+Error: main.alloy:23:1: block http already declared at main.alloy:22:1
 
-17 | http {}
-18 | http {}
+22 | http {}
+23 | http {}
    | ^^^^
-19 | 
+24 | 

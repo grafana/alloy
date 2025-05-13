@@ -1,8 +1,7 @@
 invalid properties
 -- main.alloy --
 
-remote.http "missing_required" {
-}
+remote.http "missing_required" {}
 
 loki.source.file "invalid_property" {
 	test = "test"
@@ -13,5 +12,18 @@ logging {
 }
 
 http {
+	test = "test"
+}
+
+import.string "string" {}
+
+import.file "file" {}
+
+import.git "git" {
+  revision   = "main"
+  path       = "modules"
+}
+
+import.http "http" {
 	test = "test"
 }
