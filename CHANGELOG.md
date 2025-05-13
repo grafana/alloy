@@ -70,6 +70,10 @@ Main (unreleased)
 
 - Updated Windows install script to add DisplayVersion into registry on install (@enessene)
 
+- Update Docker builds to install latest Linux security fixes on top of base image (@jharvey10)
+
+- Reduce Docker image size slightly by consolidating some RUN layers (@AchimGrolimund)
+
 - RPM artifacts in Alloy GitHub releases are no longer signed.
   The artifacts on the `https://rpm.grafana.com` repository used by the `yum` package manager will continue to be signed. (@ptodev)
 
