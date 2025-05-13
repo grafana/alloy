@@ -1,0 +1,27 @@
+# https://taskfile.dev
+
+version: '3'
+
+vars:
+  KUBECONFIG: build/kubeconfig.yaml
+  CLUSTERNAME: alloy-example
+
+tasks:  
+  create-cluster:
+    status:
+      - test -f {{.KUBECONFIG}} && kubectl --kubeconfig {{.KUBECONFIG}} cluster-info &>/dev/null
+    cmds:
+      - mkdir -p build
+      - kind create cluster --config config/kind/multinode.yaml --name {{.CLUSTERNAME}} --kubeconfig {{.KUBECONFIG}}
+
+  delete-cluster:
+    cmds:
+      - kind delete cluster --name {{.CLUSTERNAME}}
+      - rm -rf {{.KUBECONFIG}}
+
+  install-operator:
+    deps: [create-cluster]
+    status:
+      - helm --kubeconfig {{.KUBECONFIG}} test alloy-operator -n operator &>/dev/null
+    cmds:
+      - helm --kubeconfig {{.KUBECONFIG}} upgrade --install alloy-operator -n operator --create-namespace grafana/alloy-operator --wait
