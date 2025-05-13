@@ -16,13 +16,12 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/nodeconf/foreach"
 	"github.com/grafana/alloy/internal/runner"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/vm"
 )
-
-const templateType = "template"
 
 // The ForeachConfigNode will create the pipeline defined in its template block for each entry defined in its collection argument.
 // Each pipeline is managed by a custom component.
@@ -50,7 +49,7 @@ type ForeachConfigNode struct {
 
 	mut   sync.RWMutex
 	block *ast.BlockStmt
-	args  ForEachArguments
+	args  foreach.Arguments
 
 	moduleControllerFactory func(opts ModuleControllerOpts) ModuleController
 	moduleControllerOpts    ModuleControllerOpts
@@ -61,6 +60,8 @@ type ForeachConfigNode struct {
 
 	dataFlowEdgeMut  sync.RWMutex
 	dataFlowEdgeRefs []string
+
+	runner *runner.Runner[*forEachChild]
 }
 
 var _ ComponentNode = (*ForeachConfigNode)(nil)
@@ -123,17 +124,6 @@ func (fn *ForeachConfigNode) ID() ComponentID {
 	return fn.id
 }
 
-type ForEachArguments struct {
-	Collection []any  `alloy:"collection,attr"`
-	Var        string `alloy:"var,attr"`
-	Id         string `alloy:"id,attr,optional"`
-
-	// enable_metrics should be false by default.
-	// That way users are protected from an explosion of debug metrics
-	// if there are many items inside "collection".
-	EnableMetrics bool `alloy:"enable_metrics,attr,optional"`
-}
-
 func (fn *ForeachConfigNode) Evaluate(evalScope *vm.Scope) error {
 	err := fn.evaluate(evalScope)
 
@@ -155,7 +145,7 @@ func (fn *ForeachConfigNode) evaluate(scope *vm.Scope) error {
 	var argsBody ast.Body
 	var template *ast.BlockStmt
 	for _, stmt := range fn.block.Body {
-		if blockStmt, ok := stmt.(*ast.BlockStmt); ok && blockStmt.GetBlockName() == templateType {
+		if blockStmt, ok := stmt.(*ast.BlockStmt); ok && blockStmt.GetBlockName() == foreach.TypeTemplate {
 			template = blockStmt
 			continue
 		}
@@ -168,12 +158,10 @@ func (fn *ForeachConfigNode) evaluate(scope *vm.Scope) error {
 
 	eval := vm.New(argsBody)
 
-	var args ForEachArguments
+	var args foreach.Arguments
 	if err := eval.Evaluate(scope, &args); err != nil {
 		return fmt.Errorf("decoding configuration: %w", err)
 	}
-
-	fn.args = args
 
 	// By default don't show debug metrics.
 	if args.EnableMetrics {
@@ -183,7 +171,23 @@ func (fn *ForeachConfigNode) evaluate(scope *vm.Scope) error {
 	} else {
 		fn.moduleControllerOpts.RegOverride = NoopRegistry{}
 	}
-	fn.moduleController = fn.moduleControllerFactory(fn.moduleControllerOpts)
+
+	if fn.moduleController == nil {
+		fn.moduleController = fn.moduleControllerFactory(fn.moduleControllerOpts)
+	} else if fn.args.EnableMetrics != args.EnableMetrics && fn.runner != nil {
+		// When metrics are toggled on/off, we must recreate the module controller with the new registry.
+		// This requires recreating and re-registering all components with the new controller.
+		// Since enabling/disabling metrics is typically a one-time configuration change rather than
+		// a frequent runtime toggle, the overhead of recreating components is acceptable.
+		fn.moduleController = fn.moduleControllerFactory(fn.moduleControllerOpts)
+		fn.customComponents = make(map[string]CustomComponent)
+		err := fn.runner.ApplyTasks(context.Background(), []*forEachChild{}) // stops all running children
+		if err != nil {
+			return fmt.Errorf("error stopping foreach children: %w", err)
+		}
+	}
+
+	fn.args = args
 
 	// Loop through the items to create the custom components.
 	// On re-evaluation new components are added and existing ones are updated.
@@ -273,12 +277,12 @@ func (fn *ForeachConfigNode) Run(ctx context.Context) error {
 	newCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	runner := runner.New(func(forEachChild *forEachChild) runner.Worker {
+	fn.runner = runner.New(func(forEachChild *forEachChild) runner.Worker {
 		return &forEachChildRunner{
 			child: forEachChild,
 		}
 	})
-	defer runner.Stop()
+	defer fn.runner.Stop()
 
 	updateTasks := func() error {
 		fn.mut.Lock()
@@ -293,7 +297,7 @@ func (fn *ForeachConfigNode) Run(ctx context.Context) error {
 				healthUpdate: fn.setRunHealth,
 			})
 		}
-		return runner.ApplyTasks(newCtx, tasks)
+		return fn.runner.ApplyTasks(newCtx, tasks)
 	}
 
 	fn.setRunHealth(component.HealthTypeHealthy, "started foreach")

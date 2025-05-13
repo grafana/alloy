@@ -45,7 +45,7 @@ platform:
 steps:
 - commands:
   - '& "C:/Program Files/git/bin/bash.exe" -c ''go test -tags="nodocker,nonetwork"
-    ./...'''
+    $(go list ./... | grep -v /integration-tests/)'''
   image: grafana/alloy-build-image:v0.1.8-windows
   name: Run Go tests
 trigger:
@@ -375,12 +375,6 @@ steps:
       from_secret: docker_login
     DOCKER_PASSWORD:
       from_secret: docker_password
-    GPG_PASSPHRASE:
-      from_secret: gpg_passphrase
-    GPG_PRIVATE_KEY:
-      from_secret: gpg_private_key
-    GPG_PUBLIC_KEY:
-      from_secret: gpg_public_key
   image: grafana/alloy-build-image:v0.1.19
   name: Publish release
   volumes:
@@ -438,24 +432,6 @@ kind: secret
 name: gcr_admin
 ---
 get:
-  name: passphrase
-  path: infra/data/ci/packages-publish/gpg
-kind: secret
-name: gpg_passphrase
----
-get:
-  name: private-key
-  path: infra/data/ci/packages-publish/gpg
-kind: secret
-name: gpg_private_key
----
-get:
-  name: public-key
-  path: infra/data/ci/packages-publish/gpg
-kind: secret
-name: gpg_public_key
----
-get:
   name: private-key
   path: infra/data/ci/agent/githubapp
 kind: secret
@@ -480,6 +456,6 @@ kind: secret
 name: updater_private_key
 ---
 kind: signature
-hmac: 9cb7eba9f1678ac39bf43a2ddcf4f2fae491427b68e74b7ab2f8f970182dced0
+hmac: 97e03c7222ff8e76e82dfc902b5bfad2c608742470e01db30ad76a2bfbb49d56
 
 ...

@@ -22,6 +22,8 @@ Main (unreleased)
 
 - Add `validate` command to alloy that will perform limited validation of alloy configuration files. (@kalleep)
 
+- Add support to validate foreach block when using `validate` command. (@kalleep)
+
 - Add `otelcol.receiver.splunkhec` component to receive events in splunk hec format and forward them to other `otelcol.*` components. (@kalleep)
 
 ### Enhancements
@@ -34,7 +36,6 @@ Main (unreleased)
   - `schema_table`: add support for index expressions (@cristiangreco)
   - `query_sample`: enable opt-in support to extract unredacted sql query (sql_text) (@matthewnolf)
   - `query_tables`: improve queries parsing (@cristiangreco)
-  - `query_tables`: add support for prepared statements (@cristiangreco)
   - make tidbparser the default choice (@cristiangreco)
   - `query_sample`: better handling of timer overflows (@fridgepoet)
   - collect metrics on enabled `performance_schema.setup_consumers` (@fridgepoet)
@@ -45,6 +46,9 @@ Main (unreleased)
 - Reduced the lag time during targets handover in a cluster in `prometheus.scrape` components by reducing thread contention. (@thampiotr)
 
 - Pretty print diagnostic errors when using `alloy run` (@kalleep)
+
+- The `loki.rules.kubernetes` component now supports adding extra label matchers
+  to all queries discovered via `PrometheusRule` CRDs. (@QuentinBisson)
 
 -  Add optional `id` field to `foreach` block to generate more meaningful component paths in metrics by using a specific field from collection items. (@harshrai654)
 
@@ -58,6 +62,8 @@ Main (unreleased)
 
 - Fix [#3437](https://github.com/grafana/alloy/issues/3437) Component Graph links now follow `--server.http.ui-path-prefix`. (@solidcellaMoon)
 
+- Fix a bug in the `foreach` preventing the UI from showing the components in the template when the block was re-evaluated. (@wildum)
+
 ### Other changes
 
 - Update the zap logging adapter used by `otelcol` components to log arrays and objects. (@dehaansa)
@@ -67,6 +73,9 @@ Main (unreleased)
 - Update Docker builds to install latest Linux security fixes on top of base image (@jharvey10)
 
 - Reduce Docker image size slightly by consolidating some RUN layers (@AchimGrolimund)
+
+- RPM artifacts in Alloy GitHub releases are no longer signed.
+  The artifacts on the `https://rpm.grafana.com` repository used by the `yum` package manager will continue to be signed. (@ptodev)
 
 v1.8.3
 -----------------

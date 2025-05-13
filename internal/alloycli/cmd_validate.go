@@ -75,6 +75,7 @@ func (v *alloyValidate) Run(configFile string) error {
 				&ui.Service{},
 			),
 			ComponentRegistry: component.NewDefaultRegistry(v.minStability, v.enableCommunityComps),
+			MinStability:      v.minStability,
 		},
 	); err != nil {
 		validator.Report(os.Stderr, err, sources)

@@ -37,7 +37,8 @@ const (
 
 func TestValidate(t *testing.T) {
 	// Test with default config.
-	testDirectory(t, "./testdata/default", featuregate.StabilityGenerallyAvailable, false)
+	testDirectory(t, "./testdata/ga", featuregate.StabilityGenerallyAvailable, false)
+	testDirectory(t, "./testdata/default", featuregate.StabilityExperimental, false)
 }
 
 func testDirectory(t *testing.T, dir string, minStability featuregate.Stability, enableCommunityComps bool) {
@@ -67,6 +68,7 @@ func testDirectory(t *testing.T, dir string, minStability featuregate.Stability,
 						&remotecfg.Service{},
 						&ui.Service{},
 					),
+					MinStability: minStability,
 				})
 
 				diagsFile := strings.TrimSuffix(path, txtarSuffix) + diagsSuffix
