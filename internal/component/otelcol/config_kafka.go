@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/grafana/alloy/syntax/alloytypes"
-	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/kafka/configkafka"
 )
 
 // KafkaAuthenticationArguments configures how to authenticate to the Kafka broker.
@@ -118,13 +118,15 @@ func (args KafkaKerberosArguments) Convert() map[string]interface{} {
 // KafkaMetadataArguments configures how the Alloy component will
 // retrieve metadata from the Kafka broker.
 type KafkaMetadataArguments struct {
-	IncludeAllTopics bool                        `alloy:"include_all_topics,attr,optional"`
-	Retry            KafkaMetadataRetryArguments `alloy:"retry,block,optional"`
+	Full            bool                        `alloy:"full,attr,optional"`
+	RefreshInterval time.Duration               `alloy:"refresh_interval,attr,optional"`
+	Retry           KafkaMetadataRetryArguments `alloy:"retry,block,optional"`
 }
 
 func (args *KafkaMetadataArguments) SetToDefault() {
 	*args = KafkaMetadataArguments{
-		IncludeAllTopics: true,
+		Full:            true,
+		RefreshInterval: 10 * time.Minute,
 		Retry: KafkaMetadataRetryArguments{
 			MaxRetries: 3,
 			Backoff:    250 * time.Millisecond,
@@ -133,10 +135,11 @@ func (args *KafkaMetadataArguments) SetToDefault() {
 }
 
 // Convert converts args into the upstream type.
-func (args KafkaMetadataArguments) Convert() kafkaexporter.Metadata {
-	return kafkaexporter.Metadata{
-		Full:  args.IncludeAllTopics,
-		Retry: args.Retry.Convert(),
+func (args KafkaMetadataArguments) Convert() configkafka.MetadataConfig {
+	return configkafka.MetadataConfig{
+		Full:            args.Full,
+		RefreshInterval: args.RefreshInterval,
+		Retry:           args.Retry.Convert(),
 	}
 }
 
@@ -149,8 +152,8 @@ type KafkaMetadataRetryArguments struct {
 }
 
 // Convert converts args into the upstream type.
-func (args KafkaMetadataRetryArguments) Convert() kafkaexporter.MetadataRetry {
-	return kafkaexporter.MetadataRetry{
+func (args KafkaMetadataRetryArguments) Convert() configkafka.MetadataRetryConfig {
+	return configkafka.MetadataRetryConfig{
 		Max:     args.MaxRetries,
 		Backoff: args.Backoff,
 	}

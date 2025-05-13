@@ -32,6 +32,7 @@ type Arguments struct {
 	// Do not include the "filename" attribute - users should use local.file instead.
 	Scheme string            `alloy:"scheme,attr,optional"`
 	Token  alloytypes.Secret `alloy:"token,attr"`
+	Header string            `alloy:"header,attr,optional"`
 
 	// DebugMetrics configures component internal metrics. Optional.
 	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
@@ -42,6 +43,7 @@ var _ auth.Arguments = Arguments{}
 // DefaultArguments holds default settings for Arguments.
 var DefaultArguments = Arguments{
 	Scheme: "Bearer",
+	Header: "Authorization",
 }
 
 // SetToDefault implements syntax.Defaulter.
@@ -54,6 +56,7 @@ func (args Arguments) convert() (otelcomponent.Config, error) {
 	return &bearertokenauthextension.Config{
 		Scheme:      args.Scheme,
 		BearerToken: configopaque.String(args.Token),
+		Header:      args.Header,
 	}, nil
 }
 

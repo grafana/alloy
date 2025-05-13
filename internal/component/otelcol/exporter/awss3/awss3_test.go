@@ -11,6 +11,7 @@ import (
 	"github.com/grafana/alloy/syntax"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awss3exporter"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/exporter/exporterhelper"
 )
 
 func TestDebugMetricsConfig(t *testing.T) {
@@ -187,7 +188,7 @@ func TestConfig(t *testing.T) {
 	tests := []struct {
 		testName string
 		agentCfg string
-		expected awss3exporter.S3UploaderConfig
+		expected awss3exporter.Config
 	}{
 		{
 			testName: "default",
@@ -197,24 +198,36 @@ func TestConfig(t *testing.T) {
 				s3_prefix = "logs"
 			}
 			`,
-			expected: awss3exporter.S3UploaderConfig{
-				S3Bucket:          "test",
-				S3Prefix:          "logs",
-				S3PartitionFormat: "year=%Y/month=%m/day=%d/hour=%H/minute=%M",
-				FilePrefix:        "",
-				Endpoint:          "",
-				RoleArn:           "",
-				S3ForcePathStyle:  false,
-				DisableSSL:        false,
-				Compression:       "none",
-				Region:            "us-east-1",
-				ACL:               "private",
-				StorageClass:      "STANDARD",
+			expected: awss3exporter.Config{
+				TimeoutSettings: exporterhelper.TimeoutConfig{
+					Timeout: 5 * time.Second,
+				},
+				S3Uploader: awss3exporter.S3UploaderConfig{
+					S3Bucket:          "test",
+					S3Prefix:          "logs",
+					S3PartitionFormat: "year=%Y/month=%m/day=%d/hour=%H/minute=%M",
+					FilePrefix:        "",
+					Endpoint:          "",
+					RoleArn:           "",
+					S3ForcePathStyle:  false,
+					DisableSSL:        false,
+					Compression:       "none",
+					Region:            "us-east-1",
+					ACL:               "private",
+					StorageClass:      "STANDARD",
+				},
+				MarshalerName: "otlp_json",
+				QueueSettings: exporterhelper.QueueBatchConfig{
+					Enabled:      true,
+					NumConsumers: 10,
+					QueueSize:    1000,
+				},
 			},
 		},
 		{
 			testName: "explicit_values",
 			agentCfg: `
+			timeout = "12s"
 			s3_uploader {
 				s3_bucket = "test"
 				s3_prefix = "logs"
@@ -228,19 +241,30 @@ func TestConfig(t *testing.T) {
 				region = "us-east-2"
 			}
 			`,
-			expected: awss3exporter.S3UploaderConfig{
-				S3Bucket:          "test",
-				S3Prefix:          "logs",
-				S3PartitionFormat: "year=%Y/month=%m/day=%d/hour=%H/minute=%M",
-				FilePrefix:        "prefix",
-				Endpoint:          "https://s3.amazonaws.com",
-				RoleArn:           "arn:aws:iam::123456789012:role/test",
-				S3ForcePathStyle:  true,
-				DisableSSL:        true,
-				Compression:       "gzip",
-				Region:            "us-east-2",
-				ACL:               "private",
-				StorageClass:      "STANDARD",
+			expected: awss3exporter.Config{
+				TimeoutSettings: exporterhelper.TimeoutConfig{
+					Timeout: 12 * time.Second,
+				},
+				S3Uploader: awss3exporter.S3UploaderConfig{
+					S3Bucket:          "test",
+					S3Prefix:          "logs",
+					S3PartitionFormat: "year=%Y/month=%m/day=%d/hour=%H/minute=%M",
+					FilePrefix:        "prefix",
+					Endpoint:          "https://s3.amazonaws.com",
+					RoleArn:           "arn:aws:iam::123456789012:role/test",
+					S3ForcePathStyle:  true,
+					DisableSSL:        true,
+					Compression:       "gzip",
+					Region:            "us-east-2",
+					ACL:               "private",
+					StorageClass:      "STANDARD",
+				},
+				MarshalerName: "otlp_json",
+				QueueSettings: exporterhelper.QueueBatchConfig{
+					Enabled:      true,
+					NumConsumers: 10,
+					QueueSize:    1000,
+				},
 			},
 		},
 	}
@@ -248,10 +272,10 @@ func TestConfig(t *testing.T) {
 		t.Run(tc.testName, func(t *testing.T) {
 			var args awss3.Arguments
 			require.NoError(t, syntax.Unmarshal([]byte(tc.agentCfg), &args))
-			_, err := args.Convert()
+			actual, err := args.Convert()
 			require.NoError(t, err)
 
-			require.Equal(t, tc.expected, args.S3Uploader.Convert())
+			require.Equal(t, &tc.expected, actual)
 		})
 	}
 }

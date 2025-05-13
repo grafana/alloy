@@ -667,10 +667,11 @@ Block                                  | Description                            
 [host.cpu.vendor.id][res-attr-cfg]     | Toggles the `host.cpu.vendor.id` resource attribute. <br> Sets `enabled` to `false` by default.     | no
 [host.id][res-attr-cfg]                | Toggles the `host.id` resource attribute. <br> Sets `enabled` to `false` by default.                | no
 [host.ip][res-attr-cfg]                | Toggles the `host.ip` resource attribute. <br> Sets `enabled` to `false` by default.                | no
-[host.mac][res-attr-cfg]               | Toggles the `host.mac` resource attribute. <br> Sets `enabled` to `false` by default.                | no
+[host.mac][res-attr-cfg]               | Toggles the `host.mac` resource attribute. <br> Sets `enabled` to `false` by default.               | no
 [host.name][res-attr-cfg]              | Toggles the `host.name` resource attribute. <br> Sets `enabled` to `true` by default.               | no
 [os.description][res-attr-cfg]         | Toggles the `os.description` resource attribute. <br> Sets `enabled` to `false` by default.         | no
 [os.type][res-attr-cfg]                | Toggles the `os.type` resource attribute. <br> Sets `enabled` to `true` by default.                 | no
+[os.version][res-attr-cfg]             | Toggles the `os.version` resource attribute. <br> Sets `enabled` to `false` by default.             | no
 
 ### openshift
 

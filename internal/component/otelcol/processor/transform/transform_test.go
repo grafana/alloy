@@ -240,7 +240,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			}
 			output {}
 			`,
-			errorMsg: `unable to infer context from statements, path's first segment must be a valid context name:`,
+			errorMsg: `inferred context "metric" is not a valid candidate`,
 		},
 		{
 			testName: "RenameAttribute2",
