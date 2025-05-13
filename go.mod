@@ -1082,12 +1082,15 @@ replace github.com/prometheus/procfs => github.com/prometheus/procfs v0.12.0
 // Use v0.62.0 of prometheus/common for all dependencies until mongodb_exporter is updated to support 0.63.0
 replace github.com/prometheus/common => github.com/prometheus/common v0.62.0
 
-replace github.com/grafana/beyla/v2 => github.com/grafana/beyla/v2 v2.0.0-20250507144903-6e9838deca09
+// TODO: Use a release version of Beyla once it contains this change:
+// https://github.com/grafana/beyla/pull/1904
+replace github.com/grafana/beyla/v2 => github.com/grafana/beyla/v2 v2.0.0-20250513152015-20baad37a3ad
 
-replace github.com/open-telemetry/opentelemetry-collector-contrib/pkg/kafka/configkafka => github.com/grafana/opentelemetry-collector-contrib/pkg/kafka/configkafka v0.0.0-20250513154522-927cb8a6022a
-
-replace github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter => github.com/grafana/opentelemetry-collector-contrib/exporter/kafkaexporter v0.0.0-20250513154522-927cb8a6022a
-
-replace github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver => github.com/grafana/opentelemetry-collector-contrib/receiver/kafkareceiver v0.0.0-20250513154522-927cb8a6022a
-
-replace github.com/open-telemetry/opentelemetry-collector-contrib/internal/kafka => github.com/grafana/opentelemetry-collector-contrib/internal/kafka v0.0.0-20250513154522-927cb8a6022a
+// TODO: Use a release verision of OTel once it contains this change:
+// https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/39946
+replace (
+	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter => github.com/grafana/opentelemetry-collector-contrib/exporter/kafkaexporter v0.0.0-20250513154522-927cb8a6022a
+	github.com/open-telemetry/opentelemetry-collector-contrib/internal/kafka => github.com/grafana/opentelemetry-collector-contrib/internal/kafka v0.0.0-20250513154522-927cb8a6022a
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/kafka/configkafka => github.com/grafana/opentelemetry-collector-contrib/pkg/kafka/configkafka v0.0.0-20250513154522-927cb8a6022a
+	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver => github.com/grafana/opentelemetry-collector-contrib/receiver/kafkareceiver v0.0.0-20250513154522-927cb8a6022a
+)
