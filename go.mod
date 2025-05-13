@@ -129,7 +129,9 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/jaegerremotesampling v0.125.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/oauth2clientauthextension v0.125.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/sigv4authextension v0.125.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/extension/storage/filestorage v0.125.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/datadog v0.125.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/kafka/configkafka v0.125.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl v0.125.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest v0.125.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatautil v0.125.0
@@ -203,6 +205,7 @@ require (
 	github.com/spf13/pflag v1.0.6
 	github.com/stretchr/testify v1.10.0
 	github.com/testcontainers/testcontainers-go v0.37.0
+	github.com/testcontainers/testcontainers-go/modules/compose v0.37.0
 	github.com/tilinna/clock v1.1.0
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
 	github.com/vincent-petithory/dataurl v1.0.0
@@ -293,12 +296,6 @@ require (
 	k8s.io/utils v0.0.0-20241104100929-3ea5e8cea738
 	sigs.k8s.io/controller-runtime v0.20.4
 	sigs.k8s.io/yaml v1.4.0
-)
-
-require (
-	github.com/open-telemetry/opentelemetry-collector-contrib v0.0.0-00010101000000-000000000000
-	github.com/open-telemetry/opentelemetry-collector-contrib/extension/storage/filestorage v0.125.0
-	github.com/testcontainers/testcontainers-go/modules/compose v0.37.0
 )
 
 require (
@@ -1087,10 +1084,10 @@ replace github.com/prometheus/common => github.com/prometheus/common v0.62.0
 
 replace github.com/grafana/beyla/v2 => github.com/grafana/beyla/v2 v2.0.0-20250507144903-6e9838deca09
 
-replace github.com/open-telemetry/opentelemetry-collector-contrib => github.com/ptodev/opentelemetry-collector-contrib v0.0.0-20250506154750-58322eed65ce
+replace github.com/open-telemetry/opentelemetry-collector-contrib/pkg/kafka/configkafka => github.com/grafana/opentelemetry-collector-contrib/pkg/kafka/configkafka v0.0.0-20250513154522-927cb8a6022a
 
-replace github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter => github.com/ptodev/opentelemetry-collector-contrib/exporter/kafkaexporter v0.0.0-20250506154750-58322eed65ce
+replace github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter => github.com/grafana/opentelemetry-collector-contrib/exporter/kafkaexporter v0.0.0-20250513154522-927cb8a6022a
 
-replace github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver => github.com/ptodev/opentelemetry-collector-contrib/receiver/kafkareceiver v0.0.0-20250506154750-58322eed65ce
+replace github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver => github.com/grafana/opentelemetry-collector-contrib/receiver/kafkareceiver v0.0.0-20250513154522-927cb8a6022a
 
-replace github.com/open-telemetry/opentelemetry-collector-contrib/internal/kafka => github.com/ptodev/opentelemetry-collector-contrib/internal/kafka v0.0.0-20250506154750-58322eed65ce
+replace github.com/open-telemetry/opentelemetry-collector-contrib/internal/kafka => github.com/grafana/opentelemetry-collector-contrib/internal/kafka v0.0.0-20250513154522-927cb8a6022a
