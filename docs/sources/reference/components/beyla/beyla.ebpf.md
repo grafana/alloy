@@ -558,6 +558,7 @@ prometheus.remote_write "demo" {
   }
 }
 ```
+
 #### Kubernetes
 
 This example gets metrics from `beyla.ebpf` for the specified namespace and Pods running in a Kubernetes cluster:
