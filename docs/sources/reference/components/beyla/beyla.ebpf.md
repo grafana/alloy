@@ -267,6 +267,7 @@ the instrumented processes need to match all the selector properties.
 | `statefulset_name` | `string`      | Regular expression of Kubernetes StatefulSets to match.                                                     | `""`    | no       |
 
 Example:
+
 ``` alloy
 beyla.ebpf "default" {
   discovery {
