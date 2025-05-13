@@ -106,16 +106,16 @@ func (c *Component) reconcileState(ctx context.Context) error {
 	}
 
 	diffs := kubernetes.DiffRuleState(desiredState, c.currentState)
-	var result error
+	var errs error
 	for ns, diff := range diffs {
 		err = c.applyChanges(ctx, ns, diff)
 		if err != nil {
-			result = multierror.Append(result, err)
+			errs = multierror.Append(errs, err)
 			continue
 		}
 	}
 
-	return result
+	return errs
 }
 
 func (c *Component) loadStateFromK8s() (kubernetes.RuleGroupsByNamespace, error) {
@@ -220,20 +220,21 @@ func convertCRDRuleGroupToRuleGroup(crd promv1.PrometheusRuleSpec) ([]rulefmt.Ru
 		return nil, err
 	}
 
-	var result error
+	var errs error
 	groups, _ := rulefmt.Parse(buf)
 	for _, group := range groups.Groups {
 		for _, rule := range group.Rules {
 			if _, err := syntax.ParseExpr(rule.Expr.Value); err != nil {
 				if rule.Record.Value != "" {
-					result = multierror.Append(result, fmt.Errorf("could not parse expression for record '%s' in group '%s': %w", rule.Record.Value, group.Name, err))
+					errs = multierror.Append(errs, fmt.Errorf("could not parse expression for record '%s' in group '%s': %w", rule.Record.Value, group.Name, err))
+				} else {
+					errs = multierror.Append(errs, fmt.Errorf("could not parse expression for alert '%s' in group '%s': %w", rule.Alert.Value, group.Name, err))
 				}
-				result = multierror.Append(result, fmt.Errorf("could not parse expression for alert '%s' in group '%s': %w", rule.Alert.Value, group.Name, err))
 			}
 		}
 	}
-	if result != nil {
-		return nil, result
+	if errs != nil {
+		return nil, errs
 	}
 
 	return groups.Groups, nil
