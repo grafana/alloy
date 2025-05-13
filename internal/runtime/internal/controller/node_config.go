@@ -3,8 +3,8 @@ package controller
 import (
 	"fmt"
 
-	"github.com/grafana/alloy/internal/dynamic/foreach"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/foreach"
 	"github.com/grafana/alloy/internal/runtime/internal/importsource"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/diag"

@@ -10,8 +10,8 @@ import (
 	"github.com/grafana/alloy/syntax/typecheck"
 
 	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/dynamic/foreach"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/foreach"
 	alloy_runtime "github.com/grafana/alloy/internal/runtime"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/tracing"
