@@ -144,7 +144,7 @@ func (v *validator) validateConfigs(configs []*ast.BlockStmt, cr *componentRegis
 		case "tracing":
 			args := &tracing.Options{}
 			diags.Merge(typecheck.Block(c, args))
-		case foreach.Name:
+		case foreach.BlockName:
 			diags.Merge(v.validateForeach(c, cr))
 		}
 	}
@@ -222,7 +222,7 @@ func (v *validator) validateForeach(block *ast.BlockStmt, cr *componentRegistry)
 			continue
 		}
 
-		var validNames = [...]string{foreach.Name, "import.file", "import.string", "import.http", "import.git"}
+		var validNames = [...]string{foreach.BlockName, "import.file", "import.string", "import.http", "import.git"}
 		if slices.Contains(validNames[:], b.GetBlockName()) {
 			configs = append(configs, b)
 			continue
