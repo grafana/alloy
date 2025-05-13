@@ -45,7 +45,7 @@ platform:
 steps:
 - commands:
   - '& "C:/Program Files/git/bin/bash.exe" -c ''go test -tags="nodocker,nonetwork"
-    ./...'''
+    $(go list ./... | grep -v /integration-tests/)'''
   image: grafana/alloy-build-image:v0.1.8-windows
   name: Run Go tests
 trigger:
@@ -456,6 +456,6 @@ kind: secret
 name: updater_private_key
 ---
 kind: signature
-hmac: 8785a3fd5fd4dfe9099641135201cac2d3e3bc04b0d2715a01c83045b2da84d3
+hmac: 97e03c7222ff8e76e82dfc902b5bfad2c608742470e01db30ad76a2bfbb49d56
 
 ...
