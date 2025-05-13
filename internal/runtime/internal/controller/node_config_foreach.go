@@ -62,8 +62,7 @@ type ForeachConfigNode struct {
 	dataFlowEdgeMut  sync.RWMutex
 	dataFlowEdgeRefs []string
 
-	metricsEnabled bool
-	runner         *runner.Runner[*forEachChild]
+	runner *runner.Runner[*forEachChild]
 }
 
 var _ ComponentNode = (*ForeachConfigNode)(nil)
@@ -176,8 +175,6 @@ func (fn *ForeachConfigNode) evaluate(scope *vm.Scope) error {
 		return fmt.Errorf("decoding configuration: %w", err)
 	}
 
-	fn.args = args
-
 	// By default don't show debug metrics.
 	if args.EnableMetrics {
 		// If metrics should be enabled, just use the regular registry.
@@ -189,7 +186,7 @@ func (fn *ForeachConfigNode) evaluate(scope *vm.Scope) error {
 
 	if fn.moduleController == nil {
 		fn.moduleController = fn.moduleControllerFactory(fn.moduleControllerOpts)
-	} else if fn.metricsEnabled != args.EnableMetrics && fn.runner != nil {
+	} else if fn.args.EnableMetrics != args.EnableMetrics && fn.runner != nil {
 		// When metrics are toggled on/off, we must recreate the module controller with the new registry.
 		// This requires recreating and re-registering all components with the new controller.
 		// Since enabling/disabling metrics is typically a one-time configuration change rather than
@@ -201,7 +198,8 @@ func (fn *ForeachConfigNode) evaluate(scope *vm.Scope) error {
 			return fmt.Errorf("error stopping foreach children: %w", err)
 		}
 	}
-	fn.metricsEnabled = args.EnableMetrics
+
+	fn.args = args
 
 	// Loop through the items to create the custom components.
 	// On re-evaluation new components are added and existing ones are updated.
