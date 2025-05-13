@@ -204,7 +204,7 @@ func (v *validator) validateForeach(block *ast.BlockStmt, cr *componentRegistry)
 		return diags
 	}
 
-	// We extarct all blocks from template body and evaludate them as as components.
+	// We extract all blocks from template body and evaluate them as components.
 	var (
 		configs    = make([]*ast.BlockStmt, 0, len(template.Body))
 		components = make([]*ast.BlockStmt, 0, len(template.Body))
