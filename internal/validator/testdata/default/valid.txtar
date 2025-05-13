@@ -120,6 +120,8 @@ foreach "redis" {
 
 			forward_to = [prometheus.remote_write.mimir.receiver]
 		}
+
+		math.add "default" { }
 	}
 }
 
