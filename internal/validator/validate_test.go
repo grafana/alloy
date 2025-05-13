@@ -37,6 +37,7 @@ const (
 
 func TestValidate(t *testing.T) {
 	// Test with default config.
+	testDirectory(t, "./testdata/ga", featuregate.StabilityGenerallyAvailable, false)
 	testDirectory(t, "./testdata/default", featuregate.StabilityExperimental, false)
 }
 
