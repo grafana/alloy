@@ -196,7 +196,10 @@ func (fn *ForeachConfigNode) evaluate(scope *vm.Scope) error {
 		// a frequent runtime toggle, the overhead of recreating components is acceptable.
 		fn.moduleController = fn.moduleControllerFactory(fn.moduleControllerOpts)
 		fn.customComponents = make(map[string]CustomComponent)
-		fn.runner.ApplyTasks(context.Background(), []*forEachChild{}) // stops all running children
+		err := fn.runner.ApplyTasks(context.Background(), []*forEachChild{}) // stops all running children
+		if err != nil {
+			return fmt.Errorf("error stopping foreach children: %w", err)
+		}
 	}
 	fn.metricsEnabled = args.EnableMetrics
 
