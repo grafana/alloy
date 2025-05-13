@@ -59,6 +59,8 @@ Main (unreleased)
 
 - Fix [#3437](https://github.com/grafana/alloy/issues/3437) Component Graph links now follow `--server.http.ui-path-prefix`. (@solidcellaMoon)
 
+- Fix a bug in the `foreach` preventing the UI from showing the components in the template when the block was re-evaluated. (@wildum)
+
 ### Other changes
 
 - Update the zap logging adapter used by `otelcol` components to log arrays and objects. (@dehaansa)
