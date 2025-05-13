@@ -50,7 +50,7 @@ You can use the following blocks with `remote.kubernetes.secret`:
 
 | Block                                            | Description                                                  | Required |
 | ------------------------------------------------ | ------------------------------------------------------------ | -------- |
-| [`client`][client]                               | Configures Kubernetes client used to find Probes.            | no       |
+| [`client`][client]                               | Configures Kubernetes client used to find Secrets.            | no       |
 | `client` > [`authorization`][authorization]      | Configure generic authorization to the Kubernetes API.       | no       |
 | `client` >[`basic_auth`][basic_auth]             | Configure basic authentication to the Kubernetes API.        | no       |
 | `client` > [`oauth2`][oauth2]                    | Configure OAuth2 for authenticating to the Kubernetes API.   | no       |
@@ -68,7 +68,7 @@ For example, `client` > `basic_auth` refers to a `basic_auth` block defined insi
 
 ### `client`
 
-The `client` block configures the Kubernetes client used to discover Probes.
+The `client` block configures the Kubernetes client used to discover Secrets.
 If the `client` block isn't provided, the default in-cluster configuration with the service account of the running {{< param "PRODUCT_NAME" >}} Pod is used.
 
 The following arguments are supported:
