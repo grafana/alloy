@@ -16,13 +16,12 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/nodeconf/foreach"
 	"github.com/grafana/alloy/internal/runner"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/vm"
 )
-
-const templateType = "template"
 
 // The ForeachConfigNode will create the pipeline defined in its template block for each entry defined in its collection argument.
 // Each pipeline is managed by a custom component.
@@ -50,7 +49,7 @@ type ForeachConfigNode struct {
 
 	mut   sync.RWMutex
 	block *ast.BlockStmt
-	args  ForEachArguments
+	args  foreach.Arguments
 
 	moduleControllerFactory func(opts ModuleControllerOpts) ModuleController
 	moduleControllerOpts    ModuleControllerOpts
@@ -123,17 +122,6 @@ func (fn *ForeachConfigNode) ID() ComponentID {
 	return fn.id
 }
 
-type ForEachArguments struct {
-	Collection []any  `alloy:"collection,attr"`
-	Var        string `alloy:"var,attr"`
-	Id         string `alloy:"id,attr,optional"`
-
-	// enable_metrics should be false by default.
-	// That way users are protected from an explosion of debug metrics
-	// if there are many items inside "collection".
-	EnableMetrics bool `alloy:"enable_metrics,attr,optional"`
-}
-
 func (fn *ForeachConfigNode) Evaluate(evalScope *vm.Scope) error {
 	err := fn.evaluate(evalScope)
 
@@ -155,7 +143,7 @@ func (fn *ForeachConfigNode) evaluate(scope *vm.Scope) error {
 	var argsBody ast.Body
 	var template *ast.BlockStmt
 	for _, stmt := range fn.block.Body {
-		if blockStmt, ok := stmt.(*ast.BlockStmt); ok && blockStmt.GetBlockName() == templateType {
+		if blockStmt, ok := stmt.(*ast.BlockStmt); ok && blockStmt.GetBlockName() == foreach.TypeTemplate {
 			template = blockStmt
 			continue
 		}
@@ -168,7 +156,7 @@ func (fn *ForeachConfigNode) evaluate(scope *vm.Scope) error {
 
 	eval := vm.New(argsBody)
 
-	var args ForEachArguments
+	var args foreach.Arguments
 	if err := eval.Evaluate(scope, &args); err != nil {
 		return fmt.Errorf("decoding configuration: %w", err)
 	}

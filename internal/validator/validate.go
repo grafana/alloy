@@ -2,6 +2,7 @@ package validator
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/grafana/alloy/syntax/ast"
@@ -9,6 +10,8 @@ import (
 	"github.com/grafana/alloy/syntax/typecheck"
 
 	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/nodeconf/foreach"
 	alloy_runtime "github.com/grafana/alloy/internal/runtime"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/tracing"
@@ -22,17 +25,20 @@ type Options struct {
 	ServiceDefinitions []service.Definition
 	// ComponentRegistry is used to validate component config.
 	ComponentRegistry component.Registry
+	// MinStability is the minimum stability level of features that can be used by the collector. It is defined by
+	// the user, for example, via command-line flags.
+	MinStability featuregate.Stability
 }
 
 func Validate(opts Options) error {
 	v := newValidator(opts)
-	return v.run()
+	return v.run(newComponentRegistry(opts.ComponentRegistry))
 }
 
 type validator struct {
-	sources map[string][]byte
-	sm      map[string]service.Definition
-	cr      *componentRegistry
+	minStability featuregate.Stability
+	sources      map[string][]byte
+	sm           map[string]service.Definition
 }
 
 func newValidator(opts Options) *validator {
@@ -42,13 +48,13 @@ func newValidator(opts Options) *validator {
 	}
 
 	return &validator{
-		sources: opts.Sources,
-		sm:      sm,
-		cr:      newComponentRegistry(opts.ComponentRegistry),
+		minStability: opts.MinStability,
+		sources:      opts.Sources,
+		sm:           sm,
 	}
 }
 
-func (v *validator) run() error {
+func (v *validator) run(cr *componentRegistry) error {
 	s, err := alloy_runtime.ParseSources(v.sources)
 	if err != nil {
 		return err
@@ -57,17 +63,17 @@ func (v *validator) run() error {
 	// Register all "import" blocks as custom component.
 	for _, c := range s.Configs() {
 		if c.Name[0] == "import" {
-			v.cr.registerCustomComponent(c)
+			cr.registerCustomComponent(c)
 		}
 	}
 
 	var diags diag.Diagnostics
 	// Need to validate declares first becuse we will register "custom" components.
-	diags.Merge(v.validateDeclares(s.Declares()))
-	diags.Merge(v.validateConfigs(s.Configs()))
+	diags.Merge(v.validateDeclares(s.Declares(), cr))
+	diags.Merge(v.validateConfigs(s.Configs(), cr))
 
 	components, services := splitComponents(s.Components(), v.sm)
-	diags.Merge(v.validateComponents(components))
+	diags.Merge(v.validateComponents(components, cr))
 	diags.Merge(v.validateServices(services))
 
 	if diags.HasErrors() {
@@ -78,7 +84,7 @@ func (v *validator) run() error {
 }
 
 // validateDeclares will perform validation on declare blocks and register them as "custom" component.
-func (v *validator) validateDeclares(declares []*ast.BlockStmt) diag.Diagnostics {
+func (v *validator) validateDeclares(declares []*ast.BlockStmt, cr *componentRegistry) diag.Diagnostics {
 	var (
 		diags diag.Diagnostics
 		mem   = make(map[string]*ast.BlockStmt, len(declares))
@@ -98,7 +104,7 @@ func (v *validator) validateDeclares(declares []*ast.BlockStmt) diag.Diagnostics
 		} else {
 			// Only register custom component if we have a label
 			// Without a label there is no way to create one.
-			v.cr.registerCustomComponent(d)
+			cr.registerCustomComponent(d)
 		}
 
 		// 2. Declares need to be unique
@@ -111,7 +117,7 @@ func (v *validator) validateDeclares(declares []*ast.BlockStmt) diag.Diagnostics
 }
 
 // validateConfigs will perform validation on config blocks.
-func (v *validator) validateConfigs(configs []*ast.BlockStmt) diag.Diagnostics {
+func (v *validator) validateConfigs(configs []*ast.BlockStmt, cr *componentRegistry) diag.Diagnostics {
 	var (
 		diags diag.Diagnostics
 		mem   = make(map[string]*ast.BlockStmt, len(configs))
@@ -125,7 +131,7 @@ func (v *validator) validateConfigs(configs []*ast.BlockStmt) diag.Diagnostics {
 
 		if c.Name[0] == "import" {
 			// We need to register import blocks as a custom component.
-			v.cr.registerCustomComponent(c)
+			cr.registerCustomComponent(c)
 		}
 
 		// In config we store blocks for logging, tracing, argument, export, import.file,
@@ -138,14 +144,105 @@ func (v *validator) validateConfigs(configs []*ast.BlockStmt) diag.Diagnostics {
 		case "tracing":
 			args := &tracing.Options{}
 			diags.Merge(typecheck.Block(c, args))
+		case foreach.Name:
+			diags.Merge(v.validateForeach(c, cr))
 		}
 	}
 
 	return diags
 }
 
+func (v *validator) validateForeach(block *ast.BlockStmt, cr *componentRegistry) diag.Diagnostics {
+	var diags diag.Diagnostics
+
+	name := block.GetBlockName()
+	// Check required stability level.
+	if err := featuregate.CheckAllowed(foreach.StabilityLevel, v.minStability, fmt.Sprintf("foreach block %q", name)); err != nil {
+		diags.Add(diag.Diagnostic{
+			Severity: diag.SeverityLevelError,
+			StartPos: block.NamePos.Position(),
+			EndPos:   block.NamePos.Add(len(name) - 1).Position(),
+			Message:  err.Error(),
+		})
+	}
+
+	// Require label for all foreach blocks.
+	if block.Label == "" {
+		diags.Add(diag.Diagnostic{
+			Severity: diag.SeverityLevelError,
+			StartPos: block.NamePos.Position(),
+			EndPos:   block.NamePos.Add(len(name) - 1).Position(),
+			Message:  "declare block must have a label",
+		})
+	}
+
+	var (
+		body     ast.Body
+		template *ast.BlockStmt
+	)
+
+	for _, stmt := range block.Body {
+		if b, ok := stmt.(*ast.BlockStmt); ok && b.GetBlockName() == foreach.TypeTemplate {
+			template = b
+			continue
+		}
+		body = append(body, stmt)
+	}
+
+	// Set the body of block to all non template properties.
+	block.Body = body
+	diags.Merge(typecheck.Block(block, &foreach.Arguments{}))
+
+	// Foreach blocks must have a template.
+	if template == nil {
+		diags.Add(diag.Diagnostic{
+			Severity: diag.SeverityLevelError,
+			StartPos: ast.StartPos(block).Position(),
+			EndPos:   ast.EndPos(block).Position(),
+			Message:  fmt.Sprintf("missing required block %q", foreach.TypeTemplate),
+		})
+		return diags
+	}
+
+	// We extract all blocks from template body and evaluate them as components.
+	var (
+		configs    = make([]*ast.BlockStmt, 0, len(template.Body))
+		components = make([]*ast.BlockStmt, 0, len(template.Body))
+	)
+
+	for _, stmt := range template.Body {
+		b, ok := stmt.(*ast.BlockStmt)
+		if !ok {
+			diags.Add(diag.Diagnostic{
+				Severity: diag.SeverityLevelError,
+				StartPos: ast.StartPos(stmt).Position(),
+				EndPos:   ast.EndPos(stmt).Position(),
+				Message:  fmt.Sprintf("unsupported statement type %T", stmt),
+			})
+			continue
+		}
+
+		var validNames = [...]string{foreach.Name, "import.file", "import.string", "import.http", "import.git"}
+		if slices.Contains(validNames[:], b.GetBlockName()) {
+			configs = append(configs, b)
+			continue
+		}
+
+		components = append(components, b)
+	}
+
+	foreachCr := newComponentRegistry(cr)
+
+	// We can reuse validateConfigs here since we know that all block in nested
+	// are foreach.
+	diags.Merge(v.validateConfigs(configs, foreachCr))
+	// Validate all other blocks as components.
+	diags.Merge(v.validateComponents(components, foreachCr))
+	return diags
+}
+
 // validateComponents will perform validation on component blocks.
-func (v *validator) validateComponents(components []*ast.BlockStmt) diag.Diagnostics {
+func (v *validator) validateComponents(components []*ast.BlockStmt, cr component.Registry) diag.Diagnostics {
 	var (
 		diags diag.Diagnostics
 		mem   = make(map[string]*ast.BlockStmt, len(components))
@@ -164,7 +261,7 @@ func (v *validator) validateComponents(components []*ast.BlockStmt) diag.Diagnos
 		}
 
 		// 2. Check if component exists and can be used.
-		reg, custom, err := v.cr.Get(name)
+		reg, err := cr.Get(name)
 		if err != nil {
 			diags.Add(diag.Diagnostic{
 				Severity: diag.SeverityLevelError,
@@ -177,17 +274,17 @@ func (v *validator) validateComponents(components []*ast.BlockStmt) diag.Diagnos
 			continue
 		}
 
-		// 3. Components need to be unique
+		// 3. Components need to be unique.
 		if diag, ok := blockAlreadyDefined(mem, c); ok {
 			diags.Add(diag)
 		}
 
-		// For now we are skipping typecheking for custom components (modules and declares)
-		if custom {
+		// Skip components without any arguments.
+		if reg.Args == nil {
 			continue
 		}
 
-		// 4. Perform typecheck on component
+		// 4. Perform typecheck on component.
 		diags.Merge(typecheck.Block(c, reg.CloneArguments()))
 	}
 
