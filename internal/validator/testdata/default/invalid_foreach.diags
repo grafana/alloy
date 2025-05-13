@@ -65,44 +65,58 @@ Error: main.alloy:37:3: block local.file_match.applogs already declared at main.
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
 38 |             path_targets = [{"__path__" = "/tmp/app-logs/app.log"}]
 
-Error: main.alloy:54:5: cannot find the definition of component name "local.missing"
+Error: main.alloy:62:1: block foreach.invalid_nested already declared at main.alloy:43:1
 
-53 |                 // Unknown component.
-54 |                 local.missing "applogs" { }
+61 | 
+62 | foreach "invalid_nested" {
+   | ^^^^^^^^^^^^^^^^^^^^^^
+63 |     collection = []
+
+Error: main.alloy:73:5: cannot find the definition of component name "local.missing"
+
+72 |                 // Unknown component.
+73 |                 local.missing "applogs" { }
    |                 ^^^^^^^^^^^^^
-55 | 
+74 | 
 
-Error: main.alloy:57:5: missing required attribute "url"
+Error: main.alloy:76:5: missing required attribute "url"
 
-56 |                 // Missing required property.
-57 |                 remote.http "missing_required" { }
+75 |                 // Missing required property.
+76 |                 remote.http "missing_required" { }
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-58 | 
+77 | 
 
-Error: main.alloy:61:6: unrecognized attribute name "test"
+Error: main.alloy:80:6: unrecognized attribute name "test"
 
-60 |                 loki.source.file "invalid_property" {
-61 |                     test       = "test"
+79 |                 loki.source.file "invalid_property" {
+80 |                     test       = "test"
    |                     ^^^^^^^^^^^^^^^^^^^
-62 |                     targets    = []
+81 |                     targets    = []
 
-Error: main.alloy:67:5: component "logging" must have a label
+Error: main.alloy:86:5: component "logging" must have a label
 
-66 |                 // Service configuration.
-67 |                 logging { }
+85 |                 // Service configuration.
+86 |                 logging { }
    |                 ^^^^^^^
-68 | 
+87 | 
 
-Error: main.alloy:67:5: cannot find the definition of component name "logging"
+Error: main.alloy:86:5: cannot find the definition of component name "logging"
 
-66 |                 // Service configuration.
-67 |                 logging { }
+85 |                 // Service configuration.
+86 |                 logging { }
    |                 ^^^^^^^
-68 | 
+87 | 
 
-Error: main.alloy:74:5: block local.file_match.applogs already declared at main.alloy:70:5
+Error: main.alloy:93:5: block local.file_match.applogs already declared at main.alloy:89:5
 
-73 | 
-74 |                 local.file_match "applogs" {
+92 | 
+93 |                 local.file_match "applogs" {
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^
-75 |                     path_targets = [{"__path__" = "/tmp/app-logs/app.log"}]
+94 |                     path_targets = [{"__path__" = "/tmp/app-logs/app.log"}]
+
+Error: main.alloy:60:1: cannot find the definition of component name "mod.myModule"
+
+59 | // invalid outside of foreach
+60 | mod.myModule "mod" { }
+   | ^^^^^^^^^^^^
+61 | 

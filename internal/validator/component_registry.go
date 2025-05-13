@@ -21,18 +21,17 @@ type componentRegistry struct {
 	custom map[string]component.Registration
 }
 
-func (cr *componentRegistry) Get(name string) (component.Registration, bool, error) {
+func (cr *componentRegistry) Get(name string) (component.Registration, error) {
 	parts := strings.Split(name, ".")
 	// FIXME(kalleep): right now we register modules as custom components and only validate the
 	// namespace part. We can't really know what components are contained within a module without
 	// importing it first. Maybe we could have an option for validation to resolve modules so we could
 	// validate them correctly but by default we don't resolve and validate them.
 	if reg, ok := cr.custom[parts[0]]; ok {
-		return reg, true, nil
+		return reg, nil
 	}
 
-	req, err := cr.parent.Get(name)
-	return req, false, err
+	return cr.parent.Get(name)
 }
 
 func (cr *componentRegistry) registerCustomComponent(c *ast.BlockStmt) {

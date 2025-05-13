@@ -47,6 +47,25 @@ foreach "invalid_nested" {
 	var        = "outer"
 
 	template {
+		import.git "mod" {
+			repository = "https://github.com/wildum/module.git"
+			revision   = "master"
+			path       = module + ".alloy"
+		}
+	
+		// valid inside foreach
+		mod.myModule "mod" { }
+	}
+}
+
+// invalid outside of foreach
+mod.myModule "mod" { }
+
+foreach "invalid_nested" {
+	collection = []
+	var        = "outer"
+
+	template {
 		foreach "invalid_template" {
 			collection = []
 			var        = "inner"
