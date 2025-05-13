@@ -145,6 +145,11 @@ func TestParserTiDB_ExtractTableNames(t *testing.T) {
 			sql:    "SELECT TRIM (TRAILING '/' FROM url)",
 			tables: nil,
 		},
+		{
+			name:   "if with redacted values",
+			sql:    "SELECT IF(`some_table`.`url` IS NULL, ?, ...) AS `url` FROM `some_table`",
+			tables: []string{"some_table"},
+		},
 	}
 
 	for _, tc := range testcases {
