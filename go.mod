@@ -365,6 +365,7 @@ require (
 	github.com/DataDog/datadog-agent/pkg/aggregator/ckey v0.66.0-devel.0.20250407180930-ebfcfa2817ce // indirect
 	github.com/DataDog/datadog-agent/pkg/api v0.66.0-devel.0.20250407180930-ebfcfa2817ce // indirect
 	github.com/DataDog/datadog-agent/pkg/collector/check/defaults v0.66.0-devel.0.20250407180930-ebfcfa2817ce // indirect
+	github.com/DataDog/datadog-agent/pkg/config/create v0.0.0-20250407180930-ebfcfa2817ce // indirect
 	github.com/DataDog/datadog-agent/pkg/config/env v0.66.0-devel.0.20250407180930-ebfcfa2817ce // indirect
 	github.com/DataDog/datadog-agent/pkg/config/mock v0.66.0-devel.0.20250407180930-ebfcfa2817ce // indirect
 	github.com/DataDog/datadog-agent/pkg/config/model v0.66.0-devel.0.20250407180930-ebfcfa2817ce // indirect
@@ -412,6 +413,7 @@ require (
 	github.com/DataDog/datadog-agent/pkg/util/json v0.66.0-devel.0.20250407180930-ebfcfa2817ce // indirect
 	github.com/DataDog/datadog-agent/pkg/util/log v0.66.0-devel.0.20250407180930-ebfcfa2817ce // indirect
 	github.com/DataDog/datadog-agent/pkg/util/option v0.66.0-devel.0.20250407180930-ebfcfa2817ce // indirect
+	github.com/DataDog/datadog-agent/pkg/util/otel v0.66.0-devel // indirect
 	github.com/DataDog/datadog-agent/pkg/util/pointer v0.66.0-devel.0.20250407180930-ebfcfa2817ce // indirect
 	github.com/DataDog/datadog-agent/pkg/util/scrubber v0.66.0-devel.0.20250407180930-ebfcfa2817ce // indirect
 	github.com/DataDog/datadog-agent/pkg/util/sort v0.66.0-devel.0.20250407180930-ebfcfa2817ce // indirect
@@ -744,9 +746,11 @@ require (
 	github.com/mna/redisc v1.3.2 // indirect
 	github.com/moby/buildkit v0.14.1 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
+	github.com/moby/go-archive v0.1.0 // indirect
 	github.com/moby/locker v1.0.1 // indirect
 	github.com/moby/patternmatcher v0.6.0 // indirect
 	github.com/moby/spdystream v0.5.0 // indirect
+	github.com/moby/sys/atomicwriter v0.1.0 // indirect
 	github.com/moby/sys/capability v0.3.0 // indirect
 	github.com/moby/sys/mountinfo v0.7.2 // indirect
 	github.com/moby/sys/sequential v0.6.0 // indirect
@@ -986,10 +990,6 @@ require (
 	sigs.k8s.io/json v0.0.0-20241010143419-9aa6b5e7a4b3 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.5.0 // indirect
 	tags.cncf.io/container-device-interface v1.0.1 // indirect
-	github.com/DataDog/datadog-agent/pkg/config/create v0.0.0-20250407180930-ebfcfa2817ce // indirect
-	github.com/DataDog/datadog-agent/pkg/util/otel v0.66.0-devel // indirect
-	github.com/moby/go-archive v0.1.0 // indirect
-	github.com/moby/sys/atomicwriter v0.1.0 // indirect
 )
 
 // NOTE: replace directives below must always be *temporary*.
@@ -1074,7 +1074,7 @@ replace github.com/prometheus/common => github.com/prometheus/common v0.62.0
 
 // TODO: Use a release version of Beyla once it contains this change:
 // https://github.com/grafana/beyla/pull/1904
-replace github.com/grafana/beyla/v2 => github.com/grafana/beyla/v2 v2.0.0-20250513152015-20baad37a3ad
+replace github.com/grafana/beyla/v2 => github.com/grafana/beyla/v2 v2.0.0-20250514154939-a8013f6986df
 
 // TODO: Use a release verision of OTel once it contains this change:
 // https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/39946
