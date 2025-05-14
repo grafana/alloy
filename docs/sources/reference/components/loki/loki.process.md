@@ -751,7 +751,7 @@ stage.labels {
 }
 
 stage.match {
-    selector = "{applbl=\"examplelabel\"}"
+    selector = "{applbl=\"example1\"}"
 
     stage.json {
         expressions = { "msg" = "message" }
@@ -766,7 +766,7 @@ stage.match {
 }
 
 stage.match {
-    selector = "{applbl=\"bar\"} |~ \".*noisy error.*\""
+    selector = "{applbl=\"example2\"} |~ \".*noisy error.*\""
     action   = "drop"
 
     drop_counter_reason = "discard_noisy_errors"
@@ -779,7 +779,7 @@ stage.output {
 
 The first two stages parse the log lines as JSON, decode the `app` value into the shared extracted map as `appname`, and use its value as the `applbl` label.
 
-The third stage uses the LogQL selector to only execute the nested stages on lines where the `applbl="examplelabel"`.
+The third stage uses the LogQL selector to only execute the nested stages on lines where the `applbl="example1"`.
 So, for the first line, the nested JSON stage adds `msg="app1 log line"` into the extracted map.
 
 The fourth stage uses the LogQL selector to only execute on lines where `applbl="qux"`. This means it won't match any of the input, and the nested JSON stage doesn't run.
