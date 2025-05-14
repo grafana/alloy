@@ -1,17 +1,16 @@
-otelcol.receiver.otlp "default" {
-	grpc {
-		endpoint = "localhost:4317"
-	}
+otelcol.receiver.splunkhec "default" {
+	raw_path = "/raw"
 
-	http {
-		endpoint               = "localhost:4318"
-		compression_algorithms = ["zlib"]
+	hec_metadata_to_otel_attrs {
+		source     = "mysource"
+		sourcetype = "mysourcetype"
+		index      = "myindex"
+		host       = "myhost"
 	}
 
 	output {
 		metrics = [otelcol.exporter.splunkhec.default.input]
 		logs    = [otelcol.exporter.splunkhec.default.input]
-		traces  = [otelcol.exporter.splunkhec.default.input]
 	}
 }
 

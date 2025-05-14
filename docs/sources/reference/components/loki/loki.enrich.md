@@ -5,6 +5,8 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/loki/loki.
 title: loki.enrich
 labels:
   stage: experimental
+  products:
+    - oss
 description: The loki.enrich component enriches logs with labels from service discovery.
 ---
 

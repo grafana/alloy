@@ -5,6 +5,8 @@ aliases:
 description: Learn about discovery.hetzner
 labels:
   stage: general-availability
+  products:
+    - oss
 title: discovery.hetzner
 ---
 

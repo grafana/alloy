@@ -1,6 +1,7 @@
 package client
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -16,8 +17,8 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 )
 
-const (
-	errMaxStreamsLimitExceeded = "streams limit exceeded, streams: %d exceeds limit: %d, stream: '%s'"
+var (
+	errMaxStreamsLimitExceeded = errors.New("streams limit exceeded")
 )
 
 // SentDataMarkerHandler is a slice of the MarkerHandler interface, that the batch interacts with to report the event that
@@ -73,7 +74,7 @@ func (b *batch) add(entry loki.Entry) error {
 
 	streams := len(b.streams)
 	if b.maxStreams > 0 && streams >= b.maxStreams {
-		return fmt.Errorf(errMaxStreamsLimitExceeded, streams, b.maxStreams, labels)
+		return fmt.Errorf("%w, streams: %d exceeds limit: %d, stream: '%s'", errMaxStreamsLimitExceeded, streams, b.maxStreams, labels)
 	}
 	// Add the entry as a new stream
 	b.streams[labels] = &logproto.Stream{
@@ -98,7 +99,7 @@ func (b *batch) addFromWAL(lbs model.LabelSet, entry logproto.Entry, segmentNum 
 
 	streams := len(b.streams)
 	if b.maxStreams > 0 && streams >= b.maxStreams {
-		return fmt.Errorf(errMaxStreamsLimitExceeded, streams, b.maxStreams, labels)
+		return fmt.Errorf("%w, streams: %d exceeds limit: %d, stream: '%s'", errMaxStreamsLimitExceeded, streams, b.maxStreams, labels)
 	}
 
 	// Add the entry as a new stream

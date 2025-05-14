@@ -5,6 +5,8 @@ aliases:
 description: Learn about discovery.triton
 labels:
   stage: general-availability
+  products:
+    - oss
 title: discovery.triton
 ---
 

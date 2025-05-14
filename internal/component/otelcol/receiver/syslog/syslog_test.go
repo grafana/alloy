@@ -15,7 +15,6 @@ import (
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/dskit/backoff"
-	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/pdata/plog"
 )
@@ -23,7 +22,7 @@ import (
 // Test performs a basic integration test which runs the otelcol.receiver.syslog
 // component and ensures that it can receive and forward data.
 func Test(t *testing.T) {
-	tcp := getFreeAddr(t)
+	tcp := componenttest.GetFreeAddr(t)
 
 	ctx := componenttest.TestContext(t)
 	l := util.TestLogger(t)
@@ -115,15 +114,6 @@ func makeLogsOutput(ch chan plog.Logs) *otelcol.ConsumerArguments {
 	return &otelcol.ConsumerArguments{
 		Logs: []otelcol.Consumer{&logsConsumer},
 	}
-}
-
-func getFreeAddr(t *testing.T) string {
-	t.Helper()
-
-	portNumber, err := freeport.GetFreePort()
-	require.NoError(t, err)
-
-	return fmt.Sprintf("127.0.0.1:%d", portNumber)
 }
 
 func TestUnmarshal(t *testing.T) {

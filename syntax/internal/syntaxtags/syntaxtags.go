@@ -333,12 +333,12 @@ func validateEnum(field reflect.StructField) error {
 	enumElementFields := Get(elementType)
 	for _, field := range enumElementFields {
 		if !field.IsBlock() {
-			return fmt.Errorf("fields in an enum element may only be blocks, got " + field.Flags.String())
+			return fmt.Errorf("fields in an enum element may only be blocks, got %s", field.Flags.String())
 		}
 
 		fieldType := deferenceType(elementType.FieldByIndex(field.Index).Type)
 		if fieldType.Kind() != reflect.Struct {
-			return fmt.Errorf("blocks in an enum element may only be structs, got " + fieldType.Kind().String())
+			return fmt.Errorf("blocks in an enum element may only be structs, got %s", fieldType.Kind().String())
 		}
 	}
 

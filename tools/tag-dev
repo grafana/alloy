@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+
+if [ ! -z "${GITHUB_WORKSPACE}" ]; then
+  git config --global --add safe.directory "$GITHUB_WORKSPACE"
+  # We are only adding a temporary tag so it does not matter what these are set to
+  git config user.name "alloy"
+  git config user.email "alloy@users.noreply.github.com"
+fi
+
+TAG=$(tools/image-tag)
+git tag $TAG -m "tag dev"

@@ -107,7 +107,7 @@ func (m *eventLogMessageStage) processEntry(extracted map[string]interface{}, ke
 	}
 	if Debug {
 		level.Debug(m.logger).Log("msg", "extracted data debug in event_log_message stage",
-			"extracted data", fmt.Sprintf("%v", extracted))
+			"extracted_data", fmt.Sprintf("%v", extracted))
 	}
 	return nil
 }

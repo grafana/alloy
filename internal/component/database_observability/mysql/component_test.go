@@ -2,11 +2,12 @@ package mysql
 
 import (
 	"testing"
+	"time"
 
-	"github.com/grafana/alloy/internal/component/database_observability/mysql/collector"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/grafana/alloy/internal/component/database_observability/mysql/collector"
 	"github.com/grafana/alloy/syntax"
 )
 
@@ -41,6 +42,22 @@ func Test_collectSQLText(t *testing.T) {
 
 		assert.False(t, args.DisableQueryRedaction)
 	})
+
+	t.Run("setup consumers scrape interval is correctly parsed from config", func(t *testing.T) {
+		t.Parallel()
+
+		var exampleDBO11yAlloyConfig = `
+		data_source_name = ""
+		forward_to = []
+		setup_consumers_collect_interval = "1h"
+	`
+
+		var args Arguments
+		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
+		require.NoError(t, err)
+
+		assert.Equal(t, time.Hour, args.SetupConsumersCollectInterval)
+	})
 }
 
 func Test_enableOrDisableCollectors(t *testing.T) {
@@ -57,9 +74,10 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		actualCollectors := enableOrDisableCollectors(args)
 
 		assert.Equal(t, map[string]bool{
-			collector.QueryTablesName: true,
-			collector.SchemaTableName: true,
-			collector.QuerySampleName: false,
+			collector.QueryTablesName:    true,
+			collector.SchemaTableName:    true,
+			collector.QuerySampleName:    false,
+			collector.SetupConsumersName: true,
 		}, actualCollectors)
 	})
 
@@ -67,7 +85,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		var exampleDBO11yAlloyConfig = `
 		data_source_name = ""
 		forward_to = []
-		enable_collectors = ["query_tables", "schema_table", "query_sample"]
+		enable_collectors = ["query_tables", "schema_table", "query_sample", "setup_consumers"]
 	`
 
 		var args Arguments
@@ -77,9 +95,10 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		actualCollectors := enableOrDisableCollectors(args)
 
 		assert.Equal(t, map[string]bool{
-			collector.QueryTablesName: true,
-			collector.SchemaTableName: true,
-			collector.QuerySampleName: true,
+			collector.QueryTablesName:    true,
+			collector.SchemaTableName:    true,
+			collector.QuerySampleName:    true,
+			collector.SetupConsumersName: true,
 		}, actualCollectors)
 	})
 
@@ -87,7 +106,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		var exampleDBO11yAlloyConfig = `
 		data_source_name = ""
 		forward_to = []
-		disable_collectors = ["query_tables", "schema_table", "query_sample"]
+		disable_collectors = ["query_tables", "schema_table", "query_sample", "setup_consumers"]
 	`
 
 		var args Arguments
@@ -97,9 +116,10 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		actualCollectors := enableOrDisableCollectors(args)
 
 		assert.Equal(t, map[string]bool{
-			collector.QueryTablesName: false,
-			collector.SchemaTableName: false,
-			collector.QuerySampleName: false,
+			collector.QueryTablesName:    false,
+			collector.SchemaTableName:    false,
+			collector.QuerySampleName:    false,
+			collector.SetupConsumersName: false,
 		}, actualCollectors)
 	})
 
@@ -107,8 +127,8 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		var exampleDBO11yAlloyConfig = `
 		data_source_name = ""
 		forward_to = []
-		disable_collectors = ["query_tables", "schema_table", "query_sample"]
-		enable_collectors = ["query_tables", "schema_table", "query_sample"]
+		disable_collectors = ["query_tables", "schema_table", "query_sample", "setup_consumers"]
+		enable_collectors = ["query_tables", "schema_table", "query_sample", "setup_consumers"]
 	`
 
 		var args Arguments
@@ -118,9 +138,10 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		actualCollectors := enableOrDisableCollectors(args)
 
 		assert.Equal(t, map[string]bool{
-			collector.QueryTablesName: true,
-			collector.SchemaTableName: true,
-			collector.QuerySampleName: true,
+			collector.QueryTablesName:    true,
+			collector.SchemaTableName:    true,
+			collector.QuerySampleName:    true,
+			collector.SetupConsumersName: true,
 		}, actualCollectors)
 	})
 
@@ -128,7 +149,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		var exampleDBO11yAlloyConfig = `
 		data_source_name = ""
 		forward_to = []
-		disable_collectors = ["schema_table", "query_sample"]
+		disable_collectors = ["schema_table", "query_sample", "setup_consumers"]
 		enable_collectors = ["query_tables"]
 	`
 
@@ -139,9 +160,10 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		actualCollectors := enableOrDisableCollectors(args)
 
 		assert.Equal(t, map[string]bool{
-			collector.QueryTablesName: true,
-			collector.SchemaTableName: false,
-			collector.QuerySampleName: false,
+			collector.QueryTablesName:    true,
+			collector.SchemaTableName:    false,
+			collector.QuerySampleName:    false,
+			collector.SetupConsumersName: false,
 		}, actualCollectors)
 	})
 
@@ -160,9 +182,10 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		actualCollectors := enableOrDisableCollectors(args)
 
 		assert.Equal(t, map[string]bool{
-			collector.QueryTablesName: true,
-			collector.SchemaTableName: true,
-			collector.QuerySampleName: false,
+			collector.QueryTablesName:    true,
+			collector.SchemaTableName:    true,
+			collector.QuerySampleName:    false,
+			collector.SetupConsumersName: true,
 		}, actualCollectors)
 	})
 }

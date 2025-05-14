@@ -140,5 +140,5 @@ null
 "Hello, world!"
 ```
 
-[`local.file`]: ../components/local/local.file/
-[`prometheus.exporter.blackbox`]: ../components/prometheus/prometheus.exporter.blackbox
+[`local.file`]: ../../components/local/local.file/
+[`prometheus.exporter.blackbox`]: ../../components/prometheus/prometheus.exporter.blackbox

@@ -9,6 +9,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
@@ -45,6 +46,11 @@ type Definition struct {
 	// an attempt to configure it via the controller will fail.
 	// This field must be set to a non-zero value.
 	Stability featuregate.Stability
+}
+
+// CloneConfig returns a new zero value of the registered config type.
+func (d Definition) CloneConfig() any {
+	return reflect.New(reflect.TypeOf(d.ConfigType)).Interface()
 }
 
 // Host is a controller for services and components.

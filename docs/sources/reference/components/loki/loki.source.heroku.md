@@ -5,6 +5,8 @@ aliases:
 description: Learn about loki.source.heroku
 labels:
   stage: general-availability
+  products:
+    - oss
 title: loki.source.heroku
 ---
 

@@ -5,6 +5,8 @@ aliases:
 description: Learn about loki.echo
 labels:
   stage: general-availability
+  products:
+    - oss
 title: loki.echo
 ---
 

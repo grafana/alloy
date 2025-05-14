@@ -5,6 +5,8 @@ aliases:
 description: Learn about prometheus.exporter.catchpoint
 labels:
   stage: experimental
+  products:
+    - oss
 title: prometheus.exporter.catchpoint
 ---
 

@@ -5,6 +5,8 @@ aliases:
 description: Learn about prometheus.exporter.consul
 labels:
   stage: general-availability
+  products:
+    - oss
 title: prometheus.exporter.consul
 ---
 

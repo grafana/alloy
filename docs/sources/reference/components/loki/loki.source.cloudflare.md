@@ -6,6 +6,8 @@ aliases:
 description: Learn about loki.source.cloudflare
 labels:
   stage: general-availability
+  products:
+    - oss
 title: loki.source.cloudflare
 ---
 

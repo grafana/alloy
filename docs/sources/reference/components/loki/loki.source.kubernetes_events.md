@@ -5,6 +5,8 @@ aliases:
 description: Learn about loki.source.kubernetes_events
 labels:
   stage: general-availability
+  products:
+    - oss
 title: loki.source.kubernetes_events
 ---
 

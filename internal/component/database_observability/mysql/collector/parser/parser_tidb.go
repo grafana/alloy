@@ -24,11 +24,15 @@ func NewTiDBSqlParser() *TiDBSqlParser {
 func (p *TiDBSqlParser) Parse(sql string) (any, error) {
 	// mysql will redact auth details with <secret> but the tidb parser
 	// will fail to parse it so we replace it with '<secret>'
-	sql = strings.Replace(sql, "IDENTIFIED BY <secret>", "IDENTIFIED BY '<secret>'", 1)
+	sql = strings.ReplaceAll(sql, "IDENTIFIED BY <secret>", "IDENTIFIED BY '<secret>'")
 
 	// tidb parser doesn't support text line IN (...), so we replace it with (?)
-	sql = strings.Replace(sql, "( ... )", "(?)", 1)
-	sql = strings.Replace(sql, "(...)", "(?)", 1)
+	sql = strings.ReplaceAll(sql, "( ... )", "(?)")
+	sql = strings.ReplaceAll(sql, "(...)", "(?)")
+
+	// similar cleanup for functions with redacted values
+	sql = strings.ReplaceAll(sql, ", ... )", ", ?)")
+	sql = strings.ReplaceAll(sql, ", ...)", ", ?)")
 
 	tParser := parser.New()
 	stmtNodes, _, err := tParser.ParseSQL(sql)

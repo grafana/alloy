@@ -1,0 +1,9 @@
+not generally available
+-- main.alloy --
+// Collect metrics for each Redis instance.
+foreach "foreach" {
+	collection = []
+	var        = "each"
+
+	template {}
+}

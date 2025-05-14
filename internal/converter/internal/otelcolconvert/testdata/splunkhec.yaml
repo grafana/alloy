@@ -1,12 +1,12 @@
-
 receivers:
-  otlp:
-    protocols:
-      grpc:
-      http:
-        compression_algorithms:
-        - "zlib"
-
+  splunk_hec:
+    raw_path: "/raw"
+    hec_metadata_to_otel_attrs:
+      source: "mysource"
+      sourcetype: "mysourcetype"
+      index: "myindex"
+      host: "myhost"
+    
 exporters:
   splunk_hec:
     # Splunk HTTP Event Collector token.
@@ -52,11 +52,8 @@ exporters:
 service:
   pipelines:
     metrics:
-      receivers: [otlp]
-      exporters: [splunk_hec]
-    traces:
-      receivers: [otlp]
+      receivers: [splunk_hec]
       exporters: [splunk_hec]
     logs:
-      receivers: [otlp]
+      receivers: [splunk_hec]
       exporters: [splunk_hec]

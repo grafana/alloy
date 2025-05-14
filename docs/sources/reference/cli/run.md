@@ -69,7 +69,7 @@ The following flags are supported:
 The `--windows.priority` flag is in [Public preview][] and is not covered by {{< param "FULL_PRODUCT_NAME" >}} [backward compatibility][] guarantees.
 
 [Public preview]: https://grafana.com/docs/release-life-cycle/
-[backward compatibility]: ../introduction/backward-compatibility/
+[backward compatibility]: ../../../introduction/backward-compatibility/
 {{< /admonition >}}
 
 ## Update the configuration file

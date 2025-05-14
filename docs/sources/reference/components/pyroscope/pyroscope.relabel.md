@@ -5,6 +5,8 @@ aliases:
 description: Learn about pyroscope.relabel
 labels:
   stage: public-preview
+  products:
+    - oss
 title: pyroscope.relabel
 ---
 

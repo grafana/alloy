@@ -28,8 +28,8 @@ otelcol.processor.batch "otlp_metrics" {
 }
 
 otelcol.exporter.otlphttp "otlp_metrics" {
-	metrics_endpoint = "http://localhost:9009/otlp/v1/metrics"
-	traces_endpoint = "http://localhost:4320/v1/traces"
+	metrics_endpoint = "http://mimir:9009/otlp/v1/metrics"
+	traces_endpoint = "http://tempo:4318/v1/traces"
   client {
 	  endpoint = "ignore"
     tls {
@@ -45,7 +45,7 @@ otelcol.exporter.prometheus "otlp_to_prom_metrics" {
 
 prometheus.remote_write "otlp_to_prom_metrics" {
   endpoint {
-    url = "http://localhost:9009/api/v1/push"
+    url = "http://mimir:9009/api/v1/push"
     send_native_histograms = true
     metadata_config {
         send_interval = "1s"
@@ -70,7 +70,7 @@ prometheus.scrape "otlp_integration" {
 
 prometheus.remote_write "otlp_integration" {
   endpoint {
-    url = "http://localhost:9009/api/v1/push"
+    url = "http://mimir:9009/api/v1/push"
   }
   external_labels = {
     test_name = "otlp_integration",

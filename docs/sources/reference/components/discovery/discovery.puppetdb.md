@@ -5,6 +5,8 @@ aliases:
 description: Learn about discovery.puppetdb
 labels:
   stage: general-availability
+  products:
+    - oss
 title: discovery.puppetdb
 ---
 

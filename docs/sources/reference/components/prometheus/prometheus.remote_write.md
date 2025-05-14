@@ -5,6 +5,8 @@ aliases:
 description: Learn about prometheus.remote_write
 labels:
   stage: general-availability
+  products:
+    - oss
 title: prometheus.remote_write
 ---
 
@@ -390,9 +392,9 @@ To troubleshoot, take the following steps in order:
    ./promtool tsdb dump --match='{__name__="otelcol_connector_spanmetrics_duration_seconds_bucket", http_method="GET", job="ExampleJobName"}' /path/to/wal/
    ```
 
-[clustering]: ../../../configure/clustering
+[clustering]: ../../../../configure/clustering
 [mimir-ooo-err]: https://grafana.com/docs/mimir/latest/manage/mimir-runbooks/#err-mimir-sample-out-of-order
-[run-cmd]: ../../cli/run/
+[run-cmd]: ../../../cli/run/
 [promtool]: https://prometheus.io/docs/prometheus/latest/command-line/promtool/#promtool-tsdb
 
 ## Technical details

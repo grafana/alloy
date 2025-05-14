@@ -5,6 +5,8 @@ aliases:
 description: Learn about prometheus.operator.scrapeconfigs
 labels:
   stage: experimental
+  products:
+    - oss
 title: prometheus.operator.scrapeconfigs
 ---
 

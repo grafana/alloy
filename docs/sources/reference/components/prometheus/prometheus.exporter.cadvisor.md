@@ -5,6 +5,8 @@ aliases:
 description: Learn about the prometheus.exporter.cadvisor
 labels:
   stage: general-availability
+  products:
+    - oss
 title: prometheus.exporter.cadvisor
 ---
 

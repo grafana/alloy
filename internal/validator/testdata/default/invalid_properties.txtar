@@ -1,0 +1,17 @@
+invalid properties
+-- main.alloy --
+
+remote.http "missing_required" {
+}
+
+loki.source.file "invalid_property" {
+	test = "test"
+}
+
+logging {
+	test = "test"
+}
+
+http {
+	test = "test"
+}

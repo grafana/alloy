@@ -5,6 +5,8 @@ aliases:
 description: Learn about mimir.rules.kubernetes
 labels:
   stage: general-availability
+  products:
+    - oss
 title: mimir.rules.kubernetes
 ---
 

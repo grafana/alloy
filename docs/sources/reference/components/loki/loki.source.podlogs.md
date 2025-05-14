@@ -5,6 +5,8 @@ aliases:
 description: Learn about loki.source.podlogs
 labels:
   stage: general-availability
+  products:
+    - oss
 title: loki.source.podlogs
 ---
 

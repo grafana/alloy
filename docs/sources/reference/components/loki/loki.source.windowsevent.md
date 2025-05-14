@@ -5,6 +5,8 @@ aliases:
 description: Learn about loki.windowsevent
 labels:
   stage: general-availability
+  products:
+    - oss
 title: loki.source.windowsevent
 ---
 

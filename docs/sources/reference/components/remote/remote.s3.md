@@ -5,6 +5,8 @@ aliases:
 description: Learn about remote.s3
 labels:
   stage: general-availability
+  products:
+    - oss
 title: remote.s3
 ---
 

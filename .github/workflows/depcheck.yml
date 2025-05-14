@@ -6,6 +6,10 @@ on:
   workflow_dispatch: {}
   schedule:
     - cron: '0 0 * * *'
+
+permissions:
+  contents: read
+
 jobs:
   check:
     name: Check
@@ -13,6 +17,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
 
       - name: Invoke action
         uses: rfratto/depcheck@95f3e3d75101f21e73363c928d500a222cf03572 # main

@@ -17,6 +17,12 @@ local linux_containers_jobs = std.map(function(container) (
       ref: ['refs/tags/v*'],
     },
     steps: [{
+      name: 'Fetch tags',
+      image: build_image.linux,
+	  commands: [
+        'git fetch --tags',
+	  ],
+    }, {
       // We only need to run this once per machine, so it's OK if it fails. It
       // is also likely to fail when run in parallel on the same machine.
       name: 'Configure QEMU',
@@ -72,6 +78,13 @@ linux_containers_jobs + [
     image_pull_secrets: ['dockerconfigjson'],
     steps: [
       {
+       name: 'Fetch tags',
+       image: build_image.linux,
+	   commands: [
+        'git fetch --tags',
+       ],
+      },
+      {
         name: 'Generate GitHub token',
         image: 'us.gcr.io/kubernetes-dev/github-app-secret-writer:latest',
         environment: {
@@ -93,9 +106,6 @@ linux_containers_jobs + [
         environment: {
           DOCKER_LOGIN: secrets.docker_login.fromSecret,
           DOCKER_PASSWORD: secrets.docker_password.fromSecret,
-          GPG_PRIVATE_KEY: secrets.gpg_private_key.fromSecret,
-          GPG_PUBLIC_KEY: secrets.gpg_public_key.fromSecret,
-          GPG_PASSPHRASE: secrets.gpg_passphrase.fromSecret,
         },
         commands: [
           'export GITHUB_TOKEN=$(cat %s)' % ghTokenFilename,

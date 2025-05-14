@@ -4,6 +4,9 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+
 jobs:
   lint:
     uses: ./.github/workflows/lint.yml
@@ -12,12 +15,14 @@ jobs:
     name: Test (Full)
     runs-on: ubuntu-latest-8-cores
     container:
-      image: grafana/alloy-build-image:v0.1.17
+      image: grafana/alloy-build-image:v0.1.19
       volumes:
         - /var/run/docker.sock
     steps:
     - name: Checkout code
       uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      with:
+        persist-credentials: false
     - name: Set ownership
       # https://github.com/actions/runner/issues/2033#issuecomment-1204205989
       run: |

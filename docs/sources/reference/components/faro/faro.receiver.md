@@ -5,6 +5,8 @@ aliases:
 description: Learn about the faro.receiver
 labels:
   stage: general-availability
+  products:
+    - oss
 title: faro.receiver
 ---
 

@@ -64,5 +64,6 @@
     "not ie <= 11",
     "not op_mini all"
   ],
-  "proxy": "http://localhost:12345"
+  "proxy": "http://localhost:12345",
+  "packageManager": "yarn@1.22.22"
 }

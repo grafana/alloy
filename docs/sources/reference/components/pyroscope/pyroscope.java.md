@@ -5,6 +5,8 @@ aliases:
 description: Learn about pyroscope.java
 labels:
   stage: general-availability
+  products:
+    - oss
 title: pyroscope.java
 ---
 

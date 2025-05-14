@@ -1,6 +1,6 @@
 prometheus.scrape "scrape_prom_metrics" {
   targets = [
-    {"__address__" = "localhost:9001"},
+    {"__address__" = "prom-gen:9001"},
   ]
   forward_to = [prometheus.remote_write.scrape_prom_metrics.receiver, otelcol.receiver.prometheus.scrape_prom_metrics_to_otlp.receiver]
   scrape_classic_histograms = true
@@ -11,7 +11,7 @@ prometheus.scrape "scrape_prom_metrics" {
 
 prometheus.remote_write "scrape_prom_metrics" {
   endpoint {
-    url = "http://localhost:9009/api/v1/push"
+    url = "http://mimir:9009/api/v1/push"
     send_native_histograms = true
     metadata_config {
         send_interval = "1s"
@@ -45,7 +45,7 @@ otelcol.processor.attributes "scrape_prom_metrics_to_otlp" {
 
 otelcol.exporter.otlphttp "scrape_prom_metrics_to_otlp" {
   client {
-    endpoint = "http://localhost:9009/otlp"
+    endpoint = "http://mimir:9009/otlp"
     tls {
       insecure             = true
       insecure_skip_verify = true

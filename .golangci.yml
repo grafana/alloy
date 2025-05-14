@@ -59,6 +59,7 @@ linters:
       - examples$
       - component/otelcol/extension/jaeger_remote_sampling/internal # Copied with attribution from OTel Collector
       - component/otelcol/receiver/prometheus/internal # Copied with attribution from OTel Collector
+      - internal/cmd/integration-tests # Exclude all integration tests
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0

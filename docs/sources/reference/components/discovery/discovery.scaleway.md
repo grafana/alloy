@@ -5,6 +5,8 @@ aliases:
 description: Learn about discovery.scaleway
 labels:
   stage: general-availability
+  products:
+    - oss
 title: discovery.scaleway
 ---
 

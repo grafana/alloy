@@ -5,6 +5,8 @@ aliases:
 description: Learn about prometheus.exporter.statsd
 labels:
   stage: general-availability
+  products:
+    - oss
 title: prometheus.exporter.statsd
 ---
 

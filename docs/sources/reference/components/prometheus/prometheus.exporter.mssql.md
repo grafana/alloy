@@ -5,6 +5,8 @@ aliases:
 description: Learn about prometheus.exporter.mssql
 labels:
   stage: general-availability
+  products:
+    - oss
 title: prometheus.exporter.mssql
 ---
 

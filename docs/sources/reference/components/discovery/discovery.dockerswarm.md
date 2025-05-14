@@ -5,6 +5,8 @@ aliases:
 description: Learn about discovery.dockerswarm
 labels:
   stage: general-availability
+  products:
+    - oss
 title: discovery.dockerswarm
 ---
 

@@ -3,20 +3,37 @@ on:
   release:
     types: [released]
 
+permissions:
+  contents: read
+
 jobs:
   homebrew-grafana:
     name: homebrew-grafana
     runs-on: ubuntu-latest
+    # These permissions are needed to assume roles from Github's OIDC.
+    permissions:
+      contents: read
+      id-token: write
     steps:
     # TODO: Remove this when we no longer need a forked action in the "Update Homebrew formula" step.
     - name: Checkout code
       uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      with:
+        persist-credentials: false
+
+    - id: get-secrets
+      uses: grafana/shared-workflows/actions/get-vault-secrets@5d7e361bc7e0a183cde8afe9899fb7b596d2659b # get-vault-secrets-v1.2.0
+      with:
+        repo_secrets: |
+          ALLOYBOT_APP_ID=alloybot:app_id
+          ALLOYBOT_PRIVATE_KEY=alloybot:private_key
+        export_env: false
 
     - uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1.12.0
       id: app-token
       with:
-        app-id: ${{ secrets.ALLOYBOT_APP_ID }}
-        private-key: ${{ secrets.ALLOYBOT_PRIVATE_KEY }}
+        app-id: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_APP_ID }}
+        private-key: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_PRIVATE_KEY }}
         owner: grafana
         repositories: alloy,homebrew-grafana
 
@@ -56,4 +73,3 @@ jobs:
         force: false # true
         user_name: grafana-alloybot[bot]
         user_email: 879451+grafana-alloybot[bot]@users.noreply.github.com
-  

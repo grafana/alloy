@@ -3,6 +3,8 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus
 description: Learn about prometheus.write.queue
 labels:
   stage: experimental
+  products:
+    - oss
 title: prometheus.write.queue
 ---
 

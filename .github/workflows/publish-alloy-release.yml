@@ -4,6 +4,9 @@ on:
     tags:
       - v*
 
+permissions:
+  contents: read
+
 jobs:
   publish_windows_container:
     uses: ./.github/workflows/publish-alloy.yml

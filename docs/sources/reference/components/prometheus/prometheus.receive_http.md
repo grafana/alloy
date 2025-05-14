@@ -5,6 +5,8 @@ aliases:
 description: Learn about prometheus.receive_http
 labels:
   stage: general-availability
+  products:
+    - oss
 title: prometheus.receive_http
 ---
 

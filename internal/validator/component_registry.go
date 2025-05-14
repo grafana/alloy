@@ -7,8 +7,6 @@ import (
 	"github.com/grafana/alloy/syntax/ast"
 )
 
-var _ component.Registry = (*componentRegistry)(nil)
-
 func newComponentRegistry(cr component.Registry) *componentRegistry {
 	return &componentRegistry{
 		parent: cr,

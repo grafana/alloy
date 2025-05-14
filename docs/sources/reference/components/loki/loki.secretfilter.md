@@ -4,6 +4,8 @@ description: Learn about loki.secretfilter
 title: loki.secretfilter
 labels:
   stage: experimental
+  products:
+    - oss
 ---
 
 # `loki.secretfilter`

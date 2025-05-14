@@ -22,6 +22,7 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/nodeconf/foreach"
 	"github.com/grafana/alloy/internal/runtime/internal/dag"
 	"github.com/grafana/alloy/internal/runtime/internal/worker"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
@@ -965,7 +966,7 @@ func (l *Loader) collectCustomComponentReferences(stmts ast.Body, uniqueReferenc
 		)
 
 		switch {
-		case componentName == declareType || componentName == templateType:
+		case componentName == declareType || componentName == foreach.TypeTemplate:
 			l.collectCustomComponentReferences(blockStmt.Body, uniqueReferences)
 		case foundDeclare:
 			uniqueReferences[declareNode] = struct{}{}
