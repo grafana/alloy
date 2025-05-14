@@ -78,7 +78,7 @@ The `/RUNTIMEPRIORITY` installation option sets this flag, and if Alloy is not r
 
 ## Uninstall
 
-You can uninstall {{< param "PRODUCT_NAME" >}} with Windows Remove Programs or `%PROGRAMFILES%\GrafanaLabs\Alloy\uninstall.exe`.
+You can uninstall {{< param "PRODUCT_NAME" >}} with Windows Add or Remove Programs or `%PROGRAMFILES%\GrafanaLabs\Alloy\uninstall.exe`.
 Uninstalling {{< param "PRODUCT_NAME" >}} stops the service and removes it from disk.
 This includes any configuration files in the installation directory.
 
