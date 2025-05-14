@@ -318,7 +318,8 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 			logMessage += fmt.Sprintf(` sql_text="%s"`, row.SQLText.String)
 		}
 
-		if !row.WaitEventID.Valid {
+		switch row.WaitEventID.Valid {
+		case false: // log a statement sample as usual
 			c.entryHandler.Chan() <- buildLokiEntryWithTimestamp(
 				logging.LevelInfo,
 				OP_QUERY_SAMPLE,
@@ -326,7 +327,7 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 				logMessage,
 				int64(millisecondsToNanoseconds(row.TimestampMilliseconds)),
 			)
-		} else {
+		case true: // log a wait event --a child of the statement sample
 			waitTime := picosecondsToMilliseconds(row.WaitTime.Float64)
 			waitLogMessage :=
 				fmt.Sprintf(
