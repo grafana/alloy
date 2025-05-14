@@ -44,10 +44,20 @@ You can use the following arguments with `beyla.ebpf`:
 | ----------------- | -------- | ----------------------------------------------------------------------------------- | ------- | -------- |
 | `debug`           | `bool`   | Enable debug mode for Beyla.                                                        | `false` | no       |
 | `enforce_sys_caps`| `bool`   | Enforce system capabilities required for eBPF instrumentation.                      | `false` | no       |
+| `trace_printer`   | `string` | Format for printing trace information.                                              | `"disabled"` | no |
+
 
 `debug` enables debug mode for Beyla. This mode logs BPF logs, network logs, trace representation logs, and other debug information.
 
 When `enforce_sys_caps`  is set to true and the required system capabilities aren't present, Beyla aborts its startup and logs a list of the missing capabilities.
+
+`trace_printer` is used to print the trace information in a specific format. The following formats are supported:
+
+* `disabled` disables trace printing.
+* `counter` prints the trace information in a counter format.
+* `text` prints the trace information in a text format.
+* `json` prints the trace information in a JSON format.
+* `json_indent` prints the trace information in a JSON format with indentation.
 
 ## Blocks
 
@@ -295,26 +305,18 @@ beyla.ebpf "default" {
 
 The `ebpf` block configures eBPF-specific settings.
 
-| Name                          | Type          | Description                                                                    | Default      | Required |
-| ----------------------------- | ------------- | ------------------------------------------------------------------------------ | ------------ | -------- |
-| `wakeup_len`                  | `int`         | Number of messages to accumulate before wakeup request.                        | `""`         | no       |
-| `track_request_headers`       | `bool`        | Enable tracking of request headers for Traceparent fields.                     | `false`      | no       |
-| `http_request_timeout`        | `duration`    | Timeout for HTTP requests.                                                     | `30s`        | no       |
-| `context_propagation`         | `string`      | Enables injecting of the Traceparent header value for outgoing HTTP requests.  | `"disabled"` | no       |
-| `high_request_volume`         | `bool`        | Optimize for immediate request information when response is seen.              | `false`      | no       |
-| `heuristic_sql_detect`        | `bool`        | Enable heuristic-based detection of SQL requests.                              | `false`      | no       |
-| `trace_printer`               | `string`      | Format for printing trace information.                                         | `"disabled"` | no       |
+| Name                          | Type          | Description                                                                | Default | Required |
+| ----------------------------- | ------------- | -------------------------------------------------------------------------- | ------- | -------- |
+| `wakeup_len`                  | `int`         | Number of messages to accumulate before wakeup request.                    | `""`    | no       |
+| `track_request_headers`       | `bool`        | Enable tracking of request headers for Traceparent fields.                 | `false` | no       |
+| `http_request_timeout`        | `duration`    | Timeout for HTTP requests.                                                 | `30s`   | no       |
+| `enable_context_propagation`  | `bool`        | Enable context propagation using Linux Traffic Control probes.             | `false` | no       |
+| `high_request_volume`         | `bool`        | Optimize for immediate request information when response is seen.          | `false` | no       |
+| `heuristic_sql_detect`        | `bool`        | Enable heuristic-based detection of SQL requests.                         | `false` | no       |
 
 `enable_context_propagation` enables context propagation using Linux Traffic Control probes.
 For more information about this topic, refer to [Distributed traces with Beyla][].
 
-`trace_printer` is used to print the trace information in a specific format. The following formats are supported:
-
-* `disabled` disables trace printing.
-* `counter` prints the trace information in a counter format.
-* `text` prints the trace information in a text format.
-* `json` prints the trace information in a JSON format.
-* `json_indent` prints the trace information in a JSON format with indentation.
 
 #### `context_propagation`
 
