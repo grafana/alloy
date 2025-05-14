@@ -305,17 +305,14 @@ beyla.ebpf "default" {
 
 The `ebpf` block configures eBPF-specific settings.
 
-| Name                          | Type          | Description                                                                | Default | Required |
-| ----------------------------- | ------------- | -------------------------------------------------------------------------- | ------- | -------- |
-| `wakeup_len`                  | `int`         | Number of messages to accumulate before wakeup request.                    | `""`    | no       |
-| `track_request_headers`       | `bool`        | Enable tracking of request headers for Traceparent fields.                 | `false` | no       |
-| `http_request_timeout`        | `duration`    | Timeout for HTTP requests.                                                 | `30s`   | no       |
-| `enable_context_propagation`  | `bool`        | Enable context propagation using Linux Traffic Control probes.             | `false` | no       |
-| `high_request_volume`         | `bool`        | Optimize for immediate request information when response is seen.          | `false` | no       |
-| `heuristic_sql_detect`        | `bool`        | Enable heuristic-based detection of SQL requests.                         | `false` | no       |
-
-`enable_context_propagation` enables context propagation using Linux Traffic Control probes.
-For more information about this topic, refer to [Distributed traces with Beyla][].
+| Name                          | Type          | Description                                                                    | Default      | Required |
+| ----------------------------- | ------------- | ------------------------------------------------------------------------------ | ------------ | -------- |
+| `wakeup_len`                  | `int`         | Number of messages to accumulate before wakeup request.                        | `""`         | no       |
+| `track_request_headers`       | `bool`        | Enable tracking of request headers for Traceparent fields.                     | `false`      | no       |
+| `http_request_timeout`        | `duration`    | Timeout for HTTP requests.                                                     | `30s`        | no       |
+| `context_propagation`         | `string`      | Enables injecting of the Traceparent header value for outgoing HTTP requests.  | `"disabled"` | no       |
+| `high_request_volume`         | `bool`        | Optimize for immediate request information when response is seen.              | `false`      | no       |
+| `heuristic_sql_detect`        | `bool`        | Enable heuristic-based detection of SQL requests.                              | `false`      | no       |
 
 
 #### `context_propagation`

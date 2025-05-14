@@ -356,6 +356,8 @@ func (args EBPF) Convert() (*beylaCfg.EBPFTracer, error) {
 	ebpf.TrackRequestHeaders = args.TrackRequestHeaders
 	ebpf.HighRequestVolume = args.HighRequestVolume
 	ebpf.HeuristicSQLDetect = args.HeuristicSQLDetect
+	ebpf.BpfDebug = args.BpfDebug
+	ebpf.ProtocolDebug = args.ProtocolDebug
 	return &ebpf, nil
 }
 

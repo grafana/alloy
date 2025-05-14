@@ -103,6 +103,8 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 			http_request_timeout = "10s"
 			high_request_volume = true
 			heuristic_sql_detect = true
+			bpf_debug = false
+			protocol_debug_print = false
 		}
 		filters {
 			application {
@@ -168,6 +170,8 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 	require.Equal(t, 10*time.Second, cfg.EBPF.HTTPRequestTimeout)
 	require.True(t, cfg.EBPF.HighRequestVolume)
 	require.True(t, cfg.EBPF.HeuristicSQLDetect)
+	require.False(t, cfg.EBPF.BpfDebug)
+	require.False(t, cfg.EBPF.ProtocolDebug)
 	require.Len(t, cfg.Filters.Application, 1)
 	require.Len(t, cfg.Filters.Network, 1)
 	require.Equal(t, filter.MatchDefinition{NotMatch: "UDP"}, cfg.Filters.Application["transport"])
@@ -453,6 +457,8 @@ func TestConvert_EBPF(t *testing.T) {
 		HighRequestVolume:   true,
 		HeuristicSQLDetect:  true,
 		ContextPropagation:  "headers",
+		BpfDebug:            true,
+		ProtocolDebug:       true,
 	}
 
 	expectedConfig := beyla.DefaultConfig.EBPF
@@ -461,6 +467,8 @@ func TestConvert_EBPF(t *testing.T) {
 	expectedConfig.HighRequestVolume = true
 	expectedConfig.HeuristicSQLDetect = true
 	expectedConfig.ContextPropagation = config.ContextPropagationHeadersOnly
+	expectedConfig.BpfDebug = true
+	expectedConfig.ProtocolDebug = true
 
 	config, err := args.Convert()
 	require.NoError(t, err)

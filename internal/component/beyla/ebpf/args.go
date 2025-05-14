@@ -126,6 +126,8 @@ type EBPF struct {
 	ContextPropagation  string        `alloy:"context_propagation,attr,optional"`
 	HighRequestVolume   bool          `alloy:"high_request_volume,attr,optional"`
 	HeuristicSQLDetect  bool          `alloy:"heuristic_sql_detect,attr,optional"`
+	BpfDebug            bool          `alloy:"bpf_debug,attr,optional"`
+	ProtocolDebug       bool          `alloy:"protocol_debug_print,attr,optional"`
 }
 
 type Filters struct {
