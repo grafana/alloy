@@ -312,11 +312,12 @@ The `ebpf` block configures eBPF-specific settings.
 | `http_request_timeout`        | `duration`    | Timeout for HTTP requests.                                                 | `30s`   | no       |
 | `enable_context_propagation`  | `bool`        | Enable context propagation using Linux Traffic Control probes.             | `false` | no       |
 | `high_request_volume`         | `bool`        | Optimize for immediate request information when response is seen.          | `false` | no       |
-| `heuristic_sql_detect`        | `bool`        | Enable heuristic-based detection of SQL requests.                         | `false` | no       |
+| `heuristic_sql_detect`        | `bool`        | Enable heuristic-based detection of SQL requests.                          | `false` | no       |
+| `bpf_debug`                   | `bool`        | Enables logging of eBPF program events.                                    | `false` | no       |
+| `protocol_debug_print`        | `bool`        | Enables debug printing of the protocol data.                               | `false` | no       |
 
 `enable_context_propagation` enables context propagation using Linux Traffic Control probes.
 For more information about this topic, refer to [Distributed traces with Beyla][].
-
 
 ### `filters`
 
