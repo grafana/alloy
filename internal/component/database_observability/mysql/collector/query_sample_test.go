@@ -55,7 +55,7 @@ func TestQuerySample(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`level="info" schema="some_schema" event_id="123" digest="some_digest" digest_text="select * from some_table where id = :redacted1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`,
+				"level=\"info\" schema=\"some_schema\" event_id=\"123\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"",
 			},
 		},
 		{
@@ -103,7 +103,7 @@ func TestQuerySample(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`level="info" schema="some_schema" event_id="124" digest="some_digest" digest_text="select * from some_table where id = :redacted1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`,
+				"level=\"info\" schema=\"some_schema\" event_id=\"124\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"",
 			},
 		},
 		{
@@ -132,7 +132,7 @@ func TestQuerySample(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`level="info" schema="some_schema" event_id="123" digest="some_digest" digest_text="select * from some_table where id = :redacted1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`,
+				"level=\"info\" schema=\"some_schema\" event_id=\"123\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"",
 			},
 		},
 		{
@@ -186,7 +186,7 @@ func TestQuerySample(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`level="info" schema="some_schema" event_id="123" digest="some_digest" digest_text="begin" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`,
+				`level="info" schema="some_schema" event_id="123" digest="some_digest" digest_text="start transaction" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`,
 			},
 		},
 		{
@@ -214,7 +214,7 @@ func TestQuerySample(t *testing.T) {
 				"some_schema",
 				"124",
 				"some_digest",
-				"not valid sql",
+				"insert into...",
 				"70000000",
 				"20000000",
 				"10000000",
@@ -234,7 +234,7 @@ func TestQuerySample(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`level="info" schema="some_schema" event_id="123" digest="some_digest" digest_text="select * from some_table where id = :redacted1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`,
+				"level=\"info\" schema=\"some_schema\" event_id=\"123\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"",
 			},
 		},
 		{
@@ -283,8 +283,8 @@ func TestQuerySample(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`level="info" schema="some_schema" event_id="123" digest="some_digest" digest_text="select * from some_table where id = :redacted1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`,
-				`level="info" schema="some_other_schema" event_id="124" digest="some_digest" digest_text="select * from some_table where id = :redacted1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`,
+				"level=\"info\" schema=\"some_schema\" event_id=\"123\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"",
+				"level=\"info\" schema=\"some_other_schema\" event_id=\"124\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"",
 			},
 		},
 		{
@@ -313,7 +313,7 @@ func TestQuerySample(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`level="info" schema="some_schema" event_id="123" digest="some_digest" digest_text="select * from (select id, name from employees_us_east union select id, name from employees_us_west) as employees_us union select id, name from employees_emea" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`,
+				"level=\"info\" schema=\"some_schema\" event_id=\"123\" digest=\"some_digest\" digest_text=\"select * from ( select `id` , `name` from `employees_us_east` union select `id` , `name` from `employees_us_west` ) as `employees_us` union select `id` , `name` from `employees_emea`\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"",
 			},
 		},
 		{
@@ -342,7 +342,7 @@ func TestQuerySample(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`level="info" schema="some_schema" event_id="123" digest="some_digest" digest_text="show create table" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`,
+				"level=\"info\" schema=\"some_schema\" event_id=\"123\" digest=\"some_digest\" digest_text=\"show create table `some_table`\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"",
 			},
 		},
 	}
@@ -530,9 +530,9 @@ func TestQuerySample_WaitEvents(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		assert.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		assert.Equal(t, `level="info" schema="some_schema" event_id="123" digest="some_digest" digest_text="select * from some_table where id = :redacted1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`, lokiEntries[0].Line)
+		assert.Equal(t, "level=\"info\" schema=\"some_schema\" event_id=\"123\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
 		assert.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_WAIT_EVENT, "instance": "mysql-db"}, lokiEntries[1].Labels)
-		assert.Equal(t, `level="info" schema="some_schema" digest="some_digest" digest_text="select * from some_table where id = 1" event_id="123" wait_event_id="124" wait_event_name="wait/io/file/innodb/innodb_data_file" wait_object_name="wait_object_name" wait_object_type="wait_object_type" wait_time="0.100000ms"`, lokiEntries[1].Line)
+		assert.Equal(t, "level=\"info\" schema=\"some_schema\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" event_id=\"123\" wait_event_id=\"124\" wait_event_name=\"wait/io/file/innodb/innodb_data_file\" wait_object_name=\"wait_object_name\" wait_object_type=\"wait_object_type\" wait_time=\"0.100000ms\"", lokiEntries[1].Line)
 	})
 
 	t.Run("query sample and multiple wait events are collected", func(t *testing.T) {
@@ -681,15 +681,15 @@ func TestQuerySample_WaitEvents(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		assert.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		assert.Equal(t, `level="info" schema="books_store" event_id="123" digest="some_digest" digest_text="select * from some_table where id = :redacted1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`, lokiEntries[0].Line)
+		assert.Equal(t, "level=\"info\" schema=\"books_store\" event_id=\"123\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
 		assert.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_WAIT_EVENT, "instance": "mysql-db"}, lokiEntries[1].Labels)
-		assert.Equal(t, `level="info" schema="books_store" digest="some_digest" digest_text="select * from some_table where id = 1" event_id="123" wait_event_id="124" wait_event_name="wait/lock/table/sql/handler" wait_object_name="books" wait_object_type="TABLE" wait_time="0.000150ms"`, lokiEntries[1].Line)
+		assert.Equal(t, "level=\"info\" schema=\"books_store\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" event_id=\"123\" wait_event_id=\"124\" wait_event_name=\"wait/lock/table/sql/handler\" wait_object_name=\"books\" wait_object_type=\"TABLE\" wait_time=\"0.000150ms\"", lokiEntries[1].Line)
 		assert.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_WAIT_EVENT, "instance": "mysql-db"}, lokiEntries[2].Labels)
-		assert.Equal(t, `level="info" schema="books_store" digest="some_digest" digest_text="select * from some_table where id = 1" event_id="123" wait_event_id="125" wait_event_name="wait/lock/table/sql/handler" wait_object_name="categories" wait_object_type="TABLE" wait_time="0.000350ms"`, lokiEntries[2].Line)
+		assert.Equal(t, "level=\"info\" schema=\"books_store\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" event_id=\"123\" wait_event_id=\"125\" wait_event_name=\"wait/lock/table/sql/handler\" wait_object_name=\"categories\" wait_object_type=\"TABLE\" wait_time=\"0.000350ms\"", lokiEntries[2].Line)
 		assert.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_WAIT_EVENT, "instance": "mysql-db"}, lokiEntries[3].Labels)
-		assert.Equal(t, `level="info" schema="books_store" digest="some_digest" digest_text="select * from some_table where id = 1" event_id="123" wait_event_id="126" wait_event_name="wait/io/table/sql/handler" wait_object_name="books" wait_object_type="TABLE" wait_time="0.000500ms"`, lokiEntries[3].Line)
+		assert.Equal(t, "level=\"info\" schema=\"books_store\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" event_id=\"123\" wait_event_id=\"126\" wait_event_name=\"wait/io/table/sql/handler\" wait_object_name=\"books\" wait_object_type=\"TABLE\" wait_time=\"0.000500ms\"", lokiEntries[3].Line)
 		assert.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_WAIT_EVENT, "instance": "mysql-db"}, lokiEntries[4].Labels)
-		assert.Equal(t, `level="info" schema="books_store" digest="some_digest" digest_text="select * from some_table where id = 1" event_id="123" wait_event_id="127" wait_event_name="wait/io/table/sql/handler" wait_object_name="categories" wait_object_type="TABLE" wait_time="0.000700ms"`, lokiEntries[4].Line)
+		assert.Equal(t, "level=\"info\" schema=\"books_store\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" event_id=\"123\" wait_event_id=\"127\" wait_event_name=\"wait/io/table/sql/handler\" wait_object_name=\"categories\" wait_object_type=\"TABLE\" wait_time=\"0.000700ms\"", lokiEntries[4].Line)
 	})
 
 	t.Run("query sample and its wait event and another query sample are collected", func(t *testing.T) {
@@ -798,11 +798,11 @@ func TestQuerySample_WaitEvents(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		assert.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		assert.Equal(t, `level="info" schema="books_store" event_id="123" digest="some_digest" digest_text="select * from some_table where id = :redacted1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`, lokiEntries[0].Line)
+		assert.Equal(t, "level=\"info\" schema=\"books_store\" event_id=\"123\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
 		assert.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_WAIT_EVENT, "instance": "mysql-db"}, lokiEntries[1].Labels)
-		assert.Equal(t, `level="info" schema="books_store" digest="some_digest" digest_text="select * from some_table where id = 1" event_id="123" wait_event_id="124" wait_event_name="wait/lock/table/sql/handler" wait_object_name="books" wait_object_type="TABLE" wait_time="0.000150ms"`, lokiEntries[1].Line)
+		assert.Equal(t, "level=\"info\" schema=\"books_store\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" event_id=\"123\" wait_event_id=\"124\" wait_event_name=\"wait/lock/table/sql/handler\" wait_object_name=\"books\" wait_object_type=\"TABLE\" wait_time=\"0.000150ms\"", lokiEntries[1].Line)
 		assert.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"}, lokiEntries[2].Labels)
-		assert.Equal(t, `level="info" schema="books_store" event_id="126" digest="another_digest" digest_text="select * from another_table where id = :redacted1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`, lokiEntries[2].Line)
+		assert.Equal(t, "level=\"info\" schema=\"books_store\" event_id=\"126\" digest=\"another_digest\" digest_text=\"select * from `another_table` where `id` = ?\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[2].Line)
 	})
 
 	t.Run("wait event with disabled sql redaction", func(t *testing.T) {
@@ -910,9 +910,9 @@ func TestQuerySample_WaitEvents(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		assert.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		assert.Equal(t, `level="info" schema="some_schema" event_id="123" digest="some_digest" digest_text="select * from some_table where id = :v1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms" sql_text="select * from some_table where id = 1"`, lokiEntries[0].Line)
+		assert.Equal(t, "level=\"info\" schema=\"some_schema\" event_id=\"123\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\" sql_text=\"select * from some_table where id = 1\"", lokiEntries[0].Line)
 		assert.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_WAIT_EVENT, "instance": "mysql-db"}, lokiEntries[1].Labels)
-		assert.Equal(t, `level="info" schema="some_schema" digest="some_digest" digest_text="select * from some_table where id = ?" event_id="123" wait_event_id="124" wait_event_name="wait/io/file/innodb/innodb_data_file" wait_object_name="wait_object_name" wait_object_type="wait_object_type" wait_time="0.100000ms" sql_text="select * from some_table where id = 1"`, lokiEntries[1].Line)
+		assert.Equal(t, "level=\"info\" schema=\"some_schema\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" event_id=\"123\" wait_event_id=\"124\" wait_event_name=\"wait/io/file/innodb/innodb_data_file\" wait_object_name=\"wait_object_name\" wait_object_type=\"wait_object_type\" wait_time=\"0.100000ms\" sql_text=\"select * from some_table where id = 1\"", lokiEntries[1].Line)
 	})
 }
 
@@ -1019,7 +1019,7 @@ func TestQuerySampleDisableQueryRedaction(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		require.Equal(t, `level="info" schema="some_schema" event_id="123" digest="some_digest" digest_text="select * from some_table where id = :v1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms" sql_text="select * from some_table where id = 1"`, lokiEntries[0].Line)
+		require.Equal(t, "level=\"info\" schema=\"some_schema\" event_id=\"123\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\" sql_text=\"select * from some_table where id = 1\"", lokiEntries[0].Line)
 	})
 
 	t.Run("does not collect sql text when disabled", func(t *testing.T) {
@@ -1121,7 +1121,7 @@ func TestQuerySampleDisableQueryRedaction(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		require.Equal(t, `level="info" schema="some_schema" event_id="123" digest="some_digest" digest_text="select * from some_table where id = :v1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`, lokiEntries[0].Line)
+		require.Equal(t, "level=\"info\" schema=\"some_schema\" event_id=\"123\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
 	})
 }
 
@@ -1249,7 +1249,7 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		require.Equal(t, `level="info" schema="some_schema" event_id="123" digest="some_digest" digest_text="select * from some_table where id = :redacted1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`, lokiEntries[0].Line)
+		require.Equal(t, "level=\"info\" schema=\"some_schema\" event_id=\"123\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
 	})
 
 	t.Run("result set iteration error", func(t *testing.T) {
@@ -1369,7 +1369,7 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		require.Equal(t, `level="info" schema="some_schema" event_id="123" digest="some_digest" digest_text="select * from some_table where id = :redacted1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`, lokiEntries[0].Line)
+		require.Equal(t, "level=\"info\" schema=\"some_schema\" event_id=\"123\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
 	})
 
 	t.Run("connection error recovery", func(t *testing.T) {
@@ -1487,7 +1487,7 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		require.Equal(t, `level="info" schema="some_schema" event_id="123" digest="some_digest" digest_text="select * from some_table where id = :redacted1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`, lokiEntries[0].Line)
+		require.Equal(t, "level=\"info\" schema=\"some_schema\" event_id=\"123\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
 	})
 }
 
@@ -1618,10 +1618,7 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 			"op":       OP_QUERY_SAMPLE,
 			"instance": "some instance key",
 		}, lokiClient.Received()[0].Labels)
-		assert.Equal(t, "level=\"info\" schema=\"test_schema\" event_id=\"123\" digest=\"some digest\" digest_text=\"select * from `users`\" "+
-			"rows_examined=\"1000\" rows_sent=\"100\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"1048576b\" "+
-			"max_total_memory=\"2097152b\" cpu_time=\"0.000556ms\" elapsed_time=\"2000.000000ms\" elapsed_time_ms=\"2000.000000ms\"",
-			lokiClient.Received()[0].Line)
+		assert.Equal(t, "level=\"info\" schema=\"test_schema\" event_id=\"123\" digest=\"some digest\" digest_text=\"select * from `users`\" rows_examined=\"1000\" rows_sent=\"100\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"1048576b\" max_total_memory=\"2097152b\" cpu_time=\"0.000556ms\" elapsed_time=\"2000.000000ms\" elapsed_time_ms=\"2000.000000ms\"", lokiClient.Received()[0].Line)
 	})
 
 	t.Run("asserts that expected query text is used in the constants", func(t *testing.T) {

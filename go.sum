@@ -2408,8 +2408,8 @@ github.com/pingcap/failpoint v0.0.0-20240528011301-b51a646c7c86 h1:tdMsjOqUR7YXH
 github.com/pingcap/failpoint v0.0.0-20240528011301-b51a646c7c86/go.mod h1:exzhVYca3WRtd6gclGNErRWb1qEgff3LYta0LvRmON4=
 github.com/pingcap/log v1.1.0 h1:ELiPxACz7vdo1qAvvaWJg1NrYFoY6gqAh/+Uo6aXdD8=
 github.com/pingcap/log v1.1.0/go.mod h1:DWQW5jICDR7UJh4HtxXSM20Churx4CQL0fwL/SoOSA4=
-github.com/pingcap/tidb/pkg/parser v0.0.0-20250220113329-fdf33cffaea7 h1:nLmoYd9OR1GitgJWDM/3ujpVywzAMC9mqj29GBjPCJ8=
-github.com/pingcap/tidb/pkg/parser v0.0.0-20250220113329-fdf33cffaea7/go.mod h1:Hju1TEWZvrctQKbztTRwXH7rd41Yq0Pgmq4PrEKcq7o=
+github.com/pingcap/tidb/pkg/parser v0.0.0-20250501143621-a50a2323f4ba h1:5QO1U6l1LDG/9PlofvaL3ejtml6b/dZ4ExZX5u4Qx1c=
+github.com/pingcap/tidb/pkg/parser v0.0.0-20250501143621-a50a2323f4ba/go.mod h1:+8feuexTKcXHZF/dkDfvCwEyBAmgb4paFc3/WeYV2eE=
 github.com/pires/go-proxyproto v0.7.0 h1:IukmRewDQFWC7kfnb66CSomk2q/seBuilHBYFwyq0Hs=
 github.com/pires/go-proxyproto v0.7.0/go.mod h1:Vz/1JPY/OACxWGQNIRY2BeyDmpoaWmEP40O9LbuiFR4=
 github.com/pjbgf/sha1cd v0.3.0 h1:4D5XXmUUBUl/xQ6IjCkEAbqXskkq/4O7LmGn0AqMDs4=

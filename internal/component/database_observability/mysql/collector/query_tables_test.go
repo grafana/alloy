@@ -307,7 +307,6 @@ func TestQueryTables(t *testing.T) {
 				CollectInterval: time.Second,
 				EntryHandler:    lokiClient,
 				Logger:          log.NewLogfmtLogger(os.Stderr),
-				UseTiDBParser:   true,
 			})
 			require.NoError(t, err)
 			require.NotNil(t, collector)
@@ -369,7 +368,6 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
-			UseTiDBParser:   true,
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -434,7 +432,6 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
-			UseTiDBParser:   true,
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -496,7 +493,6 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
-			UseTiDBParser:   true,
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)

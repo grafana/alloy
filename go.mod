@@ -166,7 +166,7 @@ require (
 	github.com/oschwald/maxminddb-golang v1.13.0
 	github.com/percona/mongodb_exporter v0.43.1
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
-	github.com/pingcap/tidb/pkg/parser v0.0.0-20250220113329-fdf33cffaea7
+	github.com/pingcap/tidb/pkg/parser v0.0.0-20250501143621-a50a2323f4ba
 	github.com/pkg/errors v0.9.1
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2
 	github.com/prometheus-community/elasticsearch_exporter v1.5.0
@@ -210,7 +210,7 @@ require (
 	github.com/webdevops/go-common v0.0.0-20231022162947-a6adfb05a7e9
 	github.com/wk8/go-ordered-map v0.2.0
 	github.com/xdg-go/scram v1.1.2
-	github.com/xwb1989/sqlparser v0.0.0-20180606152119-120387863bf2
+	github.com/xwb1989/sqlparser v0.0.0-20180606152119-120387863bf2 // indirect
 	github.com/zeebo/xxh3 v1.0.2
 	go.opentelemetry.io/collector/client v1.28.1
 	go.opentelemetry.io/collector/component v1.28.1

@@ -73,7 +73,6 @@ type QuerySampleArguments struct {
 	InstanceKey           string
 	CollectInterval       time.Duration
 	EntryHandler          loki.EntryHandler
-	UseTiDBParser         bool
 	DisableQueryRedaction bool
 
 	Logger log.Logger
@@ -102,15 +101,10 @@ func NewQuerySample(args QuerySampleArguments) (*QuerySample, error) {
 		instanceKey:           args.InstanceKey,
 		collectInterval:       args.CollectInterval,
 		entryHandler:          args.EntryHandler,
+		sqlParser:             parser.NewTiDBSqlParser(),
 		disableQueryRedaction: args.DisableQueryRedaction,
 		logger:                log.With(args.Logger, "collector", QuerySampleName),
 		running:               &atomic.Bool{},
-	}
-
-	if args.UseTiDBParser {
-		c.sqlParser = parser.NewTiDBSqlParser()
-	} else {
-		c.sqlParser = parser.NewXwbSqlParser()
 	}
 
 	return c, nil
@@ -307,23 +301,22 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 		cpuTime := picosecondsToMilliseconds(row.CPUTime)
 		elapsedTime := picosecondsToMilliseconds(row.ElapsedTimePicoseconds.Float64)
 
-		logMessage :=
-			fmt.Sprintf(
-				`schema="%s" event_id="%s" digest="%s" digest_text="%s" rows_examined="%d" rows_sent="%d" rows_affected="%d" errors="%d" max_controlled_memory="%db" max_total_memory="%db" cpu_time="%fms" elapsed_time="%fms" elapsed_time_ms="%fms"`,
-				row.Schema.String,
-				row.StatementEventID.String,
-				row.Digest.String,
-				digestText,
-				row.RowsExamined,
-				row.RowsSent,
-				row.RowsAffected,
-				row.Errors,
-				row.MaxControlledMemory,
-				row.MaxTotalMemory,
-				cpuTime,
-				elapsedTime,
-				elapsedTime,
-			)
+		logMessage := fmt.Sprintf(
+			`schema="%s" event_id="%s" digest="%s" digest_text="%s" rows_examined="%d" rows_sent="%d" rows_affected="%d" errors="%d" max_controlled_memory="%db" max_total_memory="%db" cpu_time="%fms" elapsed_time="%fms" elapsed_time_ms="%fms"`,
+			row.Schema.String,
+			row.StatementEventID.String,
+			row.Digest.String,
+			digestText,
+			row.RowsExamined,
+			row.RowsSent,
+			row.RowsAffected,
+			row.Errors,
+			row.MaxControlledMemory,
+			row.MaxTotalMemory,
+			cpuTime,
+			elapsedTime,
+			elapsedTime,
+		)
 		if c.disableQueryRedaction && row.SQLText.Valid {
 			logMessage += fmt.Sprintf(` sql_text="%s"`, row.SQLText.String)
 		}
@@ -343,19 +336,18 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 
 		if row.WaitEventID.Valid {
 			waitTime := picosecondsToMilliseconds(row.WaitTime.Float64)
-			waitLogMessage :=
-				fmt.Sprintf(
-					`schema="%s" digest="%s" digest_text="%s" event_id="%s" wait_event_id="%s" wait_event_name="%s" wait_object_name="%s" wait_object_type="%s" wait_time="%fms"`,
-					row.Schema.String,
-					row.Digest.String,
-					row.DigestText.String,
-					row.StatementEventID.String,
-					row.WaitEventID.String,
-					row.WaitEventName.String,
-					row.WaitObjectName.String,
-					row.WaitObjectType.String,
-					waitTime,
-				)
+			waitLogMessage := fmt.Sprintf(
+				`schema="%s" digest="%s" digest_text="%s" event_id="%s" wait_event_id="%s" wait_event_name="%s" wait_object_name="%s" wait_object_type="%s" wait_time="%fms"`,
+				row.Schema.String,
+				row.Digest.String,
+				digestText,
+				row.StatementEventID.String,
+				row.WaitEventID.String,
+				row.WaitEventName.String,
+				row.WaitObjectName.String,
+				row.WaitObjectType.String,
+				waitTime,
+			)
 
 			if c.disableQueryRedaction && row.SQLText.Valid {
 				waitLogMessage += fmt.Sprintf(` sql_text="%s"`, row.SQLText.String)
