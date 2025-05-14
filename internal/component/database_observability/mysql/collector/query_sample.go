@@ -19,6 +19,12 @@ import (
 const (
 	OP_QUERY_SAMPLE = "query_sample"
 	QuerySampleName = "query_sample"
+
+	sqlTextField              = `, statements.SQL_TEXT`
+	sqlTextNotNullClause      = ` AND statements.SQL_TEXT IS NOT NULL`
+	digestTextNotNullClause   = ` AND statements.DIGEST_TEXT IS NOT NULL`
+	endOfTimeline             = ` AND statements.TIMER_END > ? AND statements.TIMER_END <= ?`
+	beginningAndEndOfTimeline = ` AND statements.TIMER_END > ? OR statements.TIMER_END <= ?`
 )
 
 const selectUptime = `SELECT variable_value FROM performance_schema.global_status WHERE variable_name = 'UPTIME'`
@@ -44,9 +50,9 @@ SELECT statements.CURRENT_SCHEMA,
 	statements.MAX_TOTAL_MEMORY
 	%s
 FROM performance_schema.events_statements_history AS statements
-WHERE statements.sql_text IS NOT NULL
+WHERE statements.DIGEST IS NOT NULL
   AND statements.CURRENT_SCHEMA NOT IN ('mysql', 'performance_schema', 'sys', 'information_schema')
-  %s`
+	%s %s`
 
 type QuerySampleArguments struct {
 	DB                    *sql.DB
@@ -177,12 +183,16 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 
 	timerClause, limit := c.determineTimerClauseAndLimit(uptime)
 
-	var sqlTextField string
+	var textField, textNotNullClause string
 	if c.disableQueryRedaction {
-		sqlTextField = ",statements.SQL_TEXT"
+		textField = sqlTextField
+		textNotNullClause = sqlTextNotNullClause
+	} else {
+		textField = ""
+		textNotNullClause = digestTextNotNullClause
 	}
 
-	query := fmt.Sprintf(selectQuerySamples, sqlTextField, timerClause)
+	query := fmt.Sprintf(selectQuerySamples, textField, textNotNullClause, timerClause)
 
 	rs, err := c.dbConnection.QueryContext(ctx, query, c.timerBookmark, limit)
 	if err != nil {
@@ -266,22 +276,21 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 		cpuTime := picosecondsToMilliseconds(row.CPUTime)
 		elapsedTime := picosecondsToMilliseconds(row.ElapsedTimePicoseconds.Float64)
 
-		logMessage :=
-			fmt.Sprintf(
-				`schema="%s" digest="%s" digest_text="%s" rows_examined="%d" rows_sent="%d" rows_affected="%d" errors="%d" max_controlled_memory="%db" max_total_memory="%db" cpu_time="%fms" elapsed_time="%fms" elapsed_time_ms="%fms"`,
-				row.Schema.String,
-				row.Digest.String,
-				digestText,
-				row.RowsExamined,
-				row.RowsSent,
-				row.RowsAffected,
-				row.Errors,
-				row.MaxControlledMemory,
-				row.MaxTotalMemory,
-				cpuTime,
-				elapsedTime,
-				elapsedTime,
-			)
+		logMessage := fmt.Sprintf(
+			`schema="%s" digest="%s" digest_text="%s" rows_examined="%d" rows_sent="%d" rows_affected="%d" errors="%d" max_controlled_memory="%db" max_total_memory="%db" cpu_time="%fms" elapsed_time="%fms" elapsed_time_ms="%fms"`,
+			row.Schema.String,
+			row.Digest.String,
+			digestText,
+			row.RowsExamined,
+			row.RowsSent,
+			row.RowsAffected,
+			row.Errors,
+			row.MaxControlledMemory,
+			row.MaxTotalMemory,
+			cpuTime,
+			elapsedTime,
+			elapsedTime,
+		)
 		if c.disableQueryRedaction && row.SQLText.Valid {
 			logMessage += fmt.Sprintf(` sql_text="%s"`, row.SQLText.String)
 		}
@@ -322,11 +331,6 @@ func (c *QuerySample) calculateWallTime(serverStartTime, timer float64) float64 
 func calculateNumberOfOverflows(uptime float64) int {
 	return int(math.Floor(uptime / picosecondsOverflowInSeconds))
 }
-
-const (
-	endOfTimeline             = ` AND statements.TIMER_END > ? AND statements.TIMER_END <= ?;`
-	beginningAndEndOfTimeline = ` AND statements.TIMER_END > ? OR statements.TIMER_END <= ?;`
-)
 
 func (c *QuerySample) determineTimerClauseAndLimit(uptime float64) (string, float64) {
 	timerClause := endOfTimeline

@@ -47,3 +47,4 @@ Validation is limited in scope. It currently checks for:
 * Component name conflicts.
 * Required properties are set.
 * Uknown properties.
+* Foreach blocks.
