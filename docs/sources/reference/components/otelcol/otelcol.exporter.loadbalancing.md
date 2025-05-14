@@ -6,28 +6,23 @@ description: Learn about otelcol.exporter.loadbalancing
 title: otelcol.exporter.loadbalancing
 ---
 
-# otelcol.exporter.loadbalancing
+# `otelcol.exporter.loadbalancing`
 
 <!-- Include a picture of the LB architecture? -->
 
-`otelcol.exporter.loadbalancing` accepts logs and traces from other `otelcol` components
-and writes them over the network using the OpenTelemetry Protocol (OTLP) protocol.
+`otelcol.exporter.loadbalancing` accepts logs and traces from other `otelcol` components and writes them over the network using the OpenTelemetry Protocol (OTLP) protocol.
 
 {{< admonition type="note" >}}
 `otelcol.exporter.loadbalancing` is a wrapper over the upstream OpenTelemetry Collector `loadbalancing` exporter.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
 {{< /admonition >}}
 
-Multiple `otelcol.exporter.loadbalancing` components can be specified by giving them
-different labels.
+You can specify multiple `otelcol.exporter.loadbalancing` components by giving them different labels.
 
 The decision which backend to use depends on the trace ID or the service name.
-The backend load doesn't influence the choice. Even though this load-balancer won't do
-round-robin balancing of the batches, the load distribution should be very similar among backends,
-with a standard deviation under 5% at the current configuration.
+The backend load doesn't influence the choice. Even though this load-balancer won't do round-robin balancing of the batches, the load distribution should be very similar among backends, with a standard deviation under 5% at the current configuration.
 
-`otelcol.exporter.loadbalancing` is especially useful for backends configured with tail-based samplers
-which choose a backend based on the view of the full trace.
+`otelcol.exporter.loadbalancing` is especially useful for backends configured with tail-based samplers which choose a backend based on the view of the full trace.
 
 When a list of backends is updated, some of the signals will be rerouted to different backends.
 Around R/N of the "routes" will be rerouted differently, where:
@@ -41,7 +36,7 @@ This should be stable enough for most cases, and the larger the number of backen
 ## Usage
 
 ```alloy
-otelcol.exporter.loadbalancing "LABEL" {
+otelcol.exporter.loadbalancing "<LABEL>" {
   resolver {
     ...
   }
@@ -55,28 +50,31 @@ otelcol.exporter.loadbalancing "LABEL" {
 
 ## Arguments
 
-`otelcol.exporter.loadbalancing` supports the following arguments:
+You can use the following arguments with `otelcol.exporter.loadbalancing`:
 
-Name          | Type       | Description                                                                        | Default     | Required
---------------|------------|------------------------------------------------------------------------------------|-------------|---------
-`routing_key` | `string`   | Routing strategy for load balancing.                                               | `"traceID"` | no
-`timeout`     | `duration` | Time to wait before marking a request to the `otlp > protocol` exporter as failed. | `"0s"`      | no
+| Name          | Type       | Description                                                                        | Default     | Required |
+| ------------- | ---------- | ---------------------------------------------------------------------------------- | ----------- | -------- |
+| `routing_key` | `string`   | Routing strategy for load balancing.                                               | `"traceID"` | no       |
+| `timeout`     | `duration` | Time to wait before marking a request to the `otlp > protocol` exporter as failed. | `"0s"`      | no       |
 
 The `routing_key` attribute determines how to route signals across endpoints. Its value could be one of the following:
-- `"service"`: spans, logs, and metrics with the same `service.name` will be exported to the same backend.
+
+* `"service"`: spans, logs, and metrics with the same `service.name` will be exported to the same backend.
+
 This is useful when using processors like the span metrics, so all spans for each service are sent to consistent {{< param "PRODUCT_NAME" >}} instances
 for metric collection. Otherwise, metrics for the same services would be sent to different instances, making aggregations inaccurate.
-- `"traceID"`: spans and logs belonging to the same `traceID` will be exported to the same backend.
-- `"resource"`: metrics belonging to the same resource will be exported to the same backend.
-- `"metric"`: metrics with the same name will be exported to the same backend.
-- `"streamID"`: metrics with the same `streamID` will be exported to the same backend.
+
+* `"traceID"`: Spans and logs belonging to the same `traceID` will be exported to the same backend.
+* `"resource"`: Metrics belonging to the same resource will be exported to the same backend.
+* `"metric"`: Metrics with the same name will be exported to the same backend.
+* `"streamID"`: Metrics with the same `streamID` will be exported to the same backend.
 
 The loadbalancer configures the exporter for the signal types supported by the `routing_key`.
 
 The `timeout` argument is similar to the top-level `queue` and `retry` [blocks][] for `otelcol.exporter.loadbalancing` itself.
 It helps to re-route data into a new set of healthy backends.
-This is especially useful for highly elastic environments like Kubernetes, 
-where the list of resolved endpoints changes frequently due to deployments and scaling events. 
+This is especially useful for highly elastic environments like Kubernetes,
+where the list of resolved endpoints changes frequently due to deployments and scaling events.
 
 [blocks]: #blocks
 
@@ -88,36 +86,36 @@ where the list of resolved endpoints changes frequently due to deployments and s
 
 ## Blocks
 
-The following blocks are supported inside the definition of
-`otelcol.exporter.loadbalancing`:
+You can use the following blocks with `otelcol.exporter.loadbalancing`:
 
-Hierarchy                            | Block             | Description                                                                       | Required
--------------------------------------|-------------------|-----------------------------------------------------------------------------------|---------
-resolver                             | [resolver][]      | Configures discovering the endpoints to export to.                                | yes
-resolver > static                    | [static][]        | Static list of endpoints to export to.                                            | no
-resolver > dns                       | [dns][]           | DNS-sourced list of endpoints to export to.                                       | no
-resolver > kubernetes                | [kubernetes][]    | Kubernetes-sourced list of endpoints to export to.                                | no
-resolver > aws_cloud_map             | [aws_cloud_map][] | AWS CloudMap-sourced list of endpoints to export to.                              | no
-protocol                             | [protocol][]      | Protocol settings. Only OTLP is supported at the moment.                          | no
-protocol > otlp                      | [otlp][]          | Configures an OTLP exporter.                                                      | no
-protocol > otlp > client             | [client][]        | Configures the exporter gRPC client.                                              | no
-protocol > otlp > client > tls       | [tls][]           | Configures TLS for the gRPC client.                                               | no
-protocol > otlp > client > keepalive | [keepalive][]     | Configures keepalive settings for the gRPC client.                                | no
-protocol > otlp > queue              | [queue][]         | Configures batching of data before sending.                                       | no
-protocol > otlp > retry              | [retry][]         | Configures retry mechanism for failed requests.                                   | no
-queue                                | [queue][]         | Configures batching of data before sending to the `otlp > protocol` exporter.     | no
-retry                                | [retry][]         | Configures retry mechanism for failed requests to the `otlp > protocol` exporter. | no
-debug_metrics                        | [debug_metrics][] | Configures the metrics that this component generates to monitor its state.        | no
+| Block                                               | Description                                                                       | Required |
+| --------------------------------------------------- | --------------------------------------------------------------------------------- | -------- |
+| [`resolver`][resolver]                              | Configures discovering the endpoints to export to.                                | yes      |
+| resolver > [`aws_cloud_map`][aws_cloud_map]         | AWS CloudMap-sourced list of endpoints to export to.                              | no       |
+| resolver > [`dns`][dns]                             | DNS-sourced list of endpoints to export to.                                       | no       |
+| resolver > [`kubernetes`][kubernetes]               | Kubernetes-sourced list of endpoints to export to.                                | no       |
+| resolver > [`static`][static]                       | Static list of endpoints to export to.                                            | no       |
+| [`protocol`][protocol]                              | Protocol settings. Only OTLP is supported at the moment.                          | no       |
+| protocol > [`otlp`][]                               | Configures an OTLP exporter.                                                      | no       |
+| protocol > otlp > [`client`][client]                | Configures the exporter gRPC client.                                              | no       |
+| protocol > otlp > client > [`keepalive`][keepalive] | Configures keepalive settings for the gRPC client.                                | no       |
+| protocol > otlp > client > [`tls`][tls]             | Configures TLS for the gRPC client.                                               | no       |
+| protocol > otlp > [`queue`][queue]                  | Configures batching of data before sending.                                       | no       |
+| protocol > otlp > [`retry`][retry]                  | Configures retry mechanism for failed requests.                                   | no       |
+| [`queue`][queue]                                    | Configures batching of data before sending to the `otlp > protocol` exporter.     | no       |
+| [`retry`][retry]                                    | Configures retry mechanism for failed requests to the `otlp > protocol` exporter. | no       |
+| [`debug_metrics`][debug_metrics]                    | Configures the metrics that this component generates to monitor its state.        | no       |
 
-The `>` symbol indicates deeper levels of nesting. For example, `resolver > static`
-refers to a `static` block defined inside a `resolver` block.
+The > symbol indicates deeper levels of nesting.
+For example, `resolver` > `static` refers to a `static` block defined inside a `resolver` block.
 
 There are two types of [queue][] and [retry][] blocks:
-* The queue and retry blocks under `protocol > otlp`. This is useful for temporary problems with a specific backend, like transient network issues.
-* The top-level queue and retry blocks for `otelcol.exporter.loadbalancing`. 
+
+* The queue and retry blocks under `protocol > otlp`.
+  This is useful for temporary problems with a specific backend, like transient network issues.
+* The top-level queue and retry blocks for `otelcol.exporter.loadbalancing`.
   Those configuration options provide capability to re-route data into a new set of healthy backends.
-  This is useful for highly elastic environments like Kubernetes, 
-  where the list of resolved endpoints changes frequently due to deployments and scaling events. 
+  This is useful for highly elastic environments like Kubernetes,  where the list of resolved endpoints changes frequently due to deployments and scaling events. 
 
 [resolver]: #resolver-block
 [static]: #static-block
