@@ -36,7 +36,9 @@ FROM performance_schema.global_status
 WHERE variable_name = 'UPTIME'`
 
 const selectQuerySamples = `
-SELECT statements.CURRENT_SCHEMA,
+SELECT
+	statements.CURRENT_SCHEMA,
+	statements.EVENT_ID,
 	statements.DIGEST,
 	statements.DIGEST_TEXT,
 	statements.TIMER_END,
@@ -47,11 +49,20 @@ SELECT statements.CURRENT_SCHEMA,
 	statements.ROWS_AFFECTED,
 	statements.ERRORS,
 	statements.MAX_CONTROLLED_MEMORY,
-	statements.MAX_TOTAL_MEMORY
+	statements.MAX_TOTAL_MEMORY,
+	waits.event_id as WAIT_EVENT_ID,
+	waits.event_name as WAIT_EVENT_NAME,
+	waits.timer_wait as WAIT_TIMER_WAIT
 	%s
-FROM performance_schema.events_statements_history AS statements
-WHERE statements.DIGEST IS NOT NULL
-  AND statements.CURRENT_SCHEMA NOT IN ('mysql', 'performance_schema', 'sys', 'information_schema')
+FROM
+	performance_schema.events_statements_history AS statements
+LEFT JOIN
+	performance_schema.events_waits_history waits
+	ON statements.thread_id = waits.thread_id
+	AND statements.EVENT_ID = waits.NESTING_EVENT_ID
+WHERE
+	statements.DIGEST IS NOT NULL
+	AND statements.CURRENT_SCHEMA NOT IN ('mysql', 'performance_schema', 'sys', 'information_schema')
 	%s %s`
 
 type QuerySampleArguments struct {
@@ -207,10 +218,11 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 	for rs.Next() {
 		row := struct {
 			// sample query details
-			Schema     sql.NullString
-			Digest     sql.NullString
-			DigestText sql.NullString
-			SQLText    sql.NullString
+			Schema           sql.NullString
+			StatementEventID sql.NullString
+			Digest           sql.NullString
+			DigestText       sql.NullString
+			SQLText          sql.NullString
 
 			// sample time
 			TimerEndPicoseconds    sql.NullFloat64
@@ -227,10 +239,16 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 			// sample memory info
 			MaxControlledMemory uint64
 			MaxTotalMemory      uint64
+
+			// sample wait info, if any
+			WaitEventID   sql.NullString
+			WaitEventName sql.NullString
+			WaitTime      sql.NullFloat64
 		}{}
 
 		scanArgs := []interface{}{
 			&row.Schema,
+			&row.StatementEventID,
 			&row.Digest,
 			&row.DigestText,
 			&row.TimerEndPicoseconds,
@@ -242,6 +260,9 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 			&row.Errors,
 			&row.MaxControlledMemory,
 			&row.MaxTotalMemory,
+			&row.WaitEventID,
+			&row.WaitEventName,
+			&row.WaitTime,
 		}
 		if c.disableQueryRedaction {
 			scanArgs = append(scanArgs, &row.SQLText)
@@ -276,32 +297,54 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 		cpuTime := picosecondsToMilliseconds(row.CPUTime)
 		elapsedTime := picosecondsToMilliseconds(row.ElapsedTimePicoseconds.Float64)
 
-		logMessage := fmt.Sprintf(
-			`schema="%s" digest="%s" digest_text="%s" rows_examined="%d" rows_sent="%d" rows_affected="%d" errors="%d" max_controlled_memory="%db" max_total_memory="%db" cpu_time="%fms" elapsed_time="%fms" elapsed_time_ms="%fms"`,
-			row.Schema.String,
-			row.Digest.String,
-			digestText,
-			row.RowsExamined,
-			row.RowsSent,
-			row.RowsAffected,
-			row.Errors,
-			row.MaxControlledMemory,
-			row.MaxTotalMemory,
-			cpuTime,
-			elapsedTime,
-			elapsedTime,
-		)
+		logMessage :=
+			fmt.Sprintf(
+				`schema="%s" event_id="%s" digest="%s" digest_text="%s" rows_examined="%d" rows_sent="%d" rows_affected="%d" errors="%d" max_controlled_memory="%db" max_total_memory="%db" cpu_time="%fms" elapsed_time="%fms" elapsed_time_ms="%fms"`,
+				row.Schema.String,
+				row.StatementEventID.String,
+				row.Digest.String,
+				digestText,
+				row.RowsExamined,
+				row.RowsSent,
+				row.RowsAffected,
+				row.Errors,
+				row.MaxControlledMemory,
+				row.MaxTotalMemory,
+				cpuTime,
+				elapsedTime,
+				elapsedTime,
+			)
 		if c.disableQueryRedaction && row.SQLText.Valid {
 			logMessage += fmt.Sprintf(` sql_text="%s"`, row.SQLText.String)
 		}
 
-		c.entryHandler.Chan() <- buildLokiEntryWithTimestamp(
-			logging.LevelInfo,
-			OP_QUERY_SAMPLE,
-			c.instanceKey,
-			logMessage,
-			int64(millisecondsToNanoseconds(row.TimestampMilliseconds)),
-		)
+		if !row.WaitEventID.Valid {
+			c.entryHandler.Chan() <- buildLokiEntryWithTimestamp(
+				logging.LevelInfo,
+				OP_QUERY_SAMPLE,
+				c.instanceKey,
+				logMessage,
+				int64(millisecondsToNanoseconds(row.TimestampMilliseconds)),
+			)
+		} else {
+			waitTime := picosecondsToMilliseconds(row.WaitTime.Float64)
+			waitLogMessage :=
+				fmt.Sprintf(
+					`event_id="%s" wait_event_id="%s" wait_event_name="%s" wait_time="%fms"`,
+					row.StatementEventID.String,
+					row.WaitEventID.String,
+					row.WaitEventName.String,
+					waitTime,
+				)
+
+			c.entryHandler.Chan() <- buildLokiEntryWithTimestamp(
+				logging.LevelInfo,
+				"wait_event",
+				c.instanceKey,
+				waitLogMessage,
+				int64(millisecondsToNanoseconds(row.TimestampMilliseconds)),
+			)
+		}
 	}
 
 	if err := rs.Err(); err != nil {

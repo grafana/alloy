@@ -30,9 +30,10 @@ func TestQuerySample(t *testing.T) {
 		logsLines  []string
 	}{
 		{
-			name: "select query",
+			name: "select query with wait event",
 			rows: [][]driver.Value{{
 				"some_schema",
+				"123",
 				"some_digest",
 				"select * from some_table where id = 1",
 				"70000000",
@@ -44,18 +45,49 @@ func TestQuerySample(t *testing.T) {
 				"0",
 				"456",
 				"457",
+				"456",
+				"wait/io/file/innodb/innodb_data_file",
+				"100000000",
+			}},
+			logsLabels: []model.LabelSet{
+				{"job": database_observability.JobName, "op": "wait_event", "instance": "mysql-db"},
+			},
+			logsLines: []string{
+				`level="info" event_id="123" wait_event_id="456" wait_event_name="wait/io/file/innodb/innodb_data_file" wait_time="0.100000ms"`,
+			},
+		},
+		{
+			name: "select query without wait event",
+			rows: [][]driver.Value{{
+				"some_schema",
+				"123",
+				"some_digest",
+				"select * from some_table where id = 1",
+				"70000000",
+				"20000000",
+				"10000000",
+				"5",
+				"5",
+				"0",
+				"0",
+				"456",
+				"457",
+				nil,
+				nil,
+				nil,
 			}},
 			logsLabels: []model.LabelSet{
 				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`level="info" schema="some_schema" digest="some_digest" digest_text="select * from some_table where id = :redacted1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`,
+				`level="info" schema="some_schema" event_id="123" digest="some_digest" digest_text="select * from some_table where id = :redacted1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`,
 			},
 		},
 		{
 			name: "truncated query",
 			rows: [][]driver.Value{{
 				"some_schema",
+				"123",
 				"some_digest",
 				"insert into some_table (`id1`, `id2`, `id3`, `id...",
 				"70000000",
@@ -67,8 +99,12 @@ func TestQuerySample(t *testing.T) {
 				"0",
 				"456",
 				"457",
+				nil,
+				nil,
+				nil,
 			}, {
 				"some_schema",
+				"124",
 				"some_digest",
 				"select * from some_table where id = 1",
 				"70000000",
@@ -80,18 +116,22 @@ func TestQuerySample(t *testing.T) {
 				"0",
 				"456",
 				"457",
+				nil,
+				nil,
+				nil,
 			}},
 			logsLabels: []model.LabelSet{
 				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`level="info" schema="some_schema" digest="some_digest" digest_text="select * from some_table where id = :redacted1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`,
+				`level="info" schema="some_schema" event_id="124" digest="some_digest" digest_text="select * from some_table where id = :redacted1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`,
 			},
 		},
 		{
 			name: "truncated in multi-line comment",
 			rows: [][]driver.Value{{
 				"some_schema",
+				"123",
 				"some_digest",
 				"select * from some_table where id = 1 /*traceparent='00-abc...",
 				"70000000",
@@ -103,18 +143,22 @@ func TestQuerySample(t *testing.T) {
 				"0",
 				"456",
 				"457",
+				nil,
+				nil,
+				nil,
 			}},
 			logsLabels: []model.LabelSet{
 				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`level="info" schema="some_schema" digest="some_digest" digest_text="select * from some_table where id = :redacted1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`,
+				`level="info" schema="some_schema" event_id="123" digest="some_digest" digest_text="select * from some_table where id = :redacted1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`,
 			},
 		},
 		{
 			name: "truncated with properly closed comment",
 			rows: [][]driver.Value{{
 				"some_schema",
+				"123",
 				"some_digest",
 				"select * from some_table where id = 1 /* comment that's closed */ and name = 'test...",
 				"70000000",
@@ -126,6 +170,9 @@ func TestQuerySample(t *testing.T) {
 				"0",
 				"456",
 				"457",
+				nil,
+				nil,
+				nil,
 			}},
 			logsLabels: []model.LabelSet{},
 			logsLines:  []string{},
@@ -134,6 +181,7 @@ func TestQuerySample(t *testing.T) {
 			name: "start transaction",
 			rows: [][]driver.Value{{
 				"some_schema",
+				"123",
 				"some_digest",
 				"START TRANSACTION",
 				"70000000",
@@ -145,18 +193,22 @@ func TestQuerySample(t *testing.T) {
 				"0",
 				"456",
 				"457",
+				nil,
+				nil,
+				nil,
 			}},
 			logsLabels: []model.LabelSet{
 				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`level="info" schema="some_schema" digest="some_digest" digest_text="begin" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`,
+				`level="info" schema="some_schema" event_id="123" digest="some_digest" digest_text="begin" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`,
 			},
 		},
 		{
 			name: "sql parse error",
 			rows: [][]driver.Value{{
 				"some_schema",
+				"123",
 				"some_digest",
 				"select * from some_table where id = 1",
 				"70000000",
@@ -168,8 +220,12 @@ func TestQuerySample(t *testing.T) {
 				"0",
 				"456",
 				"457",
+				nil,
+				nil,
+				nil,
 			}, {
 				"some_schema",
+				"124",
 				"some_digest",
 				"not valid sql",
 				"70000000",
@@ -181,18 +237,22 @@ func TestQuerySample(t *testing.T) {
 				"0",
 				"456",
 				"457",
+				nil,
+				nil,
+				nil,
 			}},
 			logsLabels: []model.LabelSet{
 				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`level="info" schema="some_schema" digest="some_digest" digest_text="select * from some_table where id = :redacted1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`,
+				`level="info" schema="some_schema" event_id="123" digest="some_digest" digest_text="select * from some_table where id = :redacted1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`,
 			},
 		},
 		{
 			name: "multiple schemas",
 			rows: [][]driver.Value{{
 				"some_schema",
+				"123",
 				"some_digest",
 				"select * from some_table where id = 1",
 				"70000000",
@@ -204,8 +264,12 @@ func TestQuerySample(t *testing.T) {
 				"0",
 				"456",
 				"457",
+				nil,
+				nil,
+				nil,
 			}, {
 				"some_other_schema",
+				"124",
 				"some_digest",
 				"select * from some_table where id = 1",
 				"70000000",
@@ -217,20 +281,24 @@ func TestQuerySample(t *testing.T) {
 				"0",
 				"456",
 				"457",
+				nil,
+				nil,
+				nil,
 			}},
 			logsLabels: []model.LabelSet{
 				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
 				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`level="info" schema="some_schema" digest="some_digest" digest_text="select * from some_table where id = :redacted1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`,
-				`level="info" schema="some_other_schema" digest="some_digest" digest_text="select * from some_table where id = :redacted1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`,
+				`level="info" schema="some_schema" event_id="123" digest="some_digest" digest_text="select * from some_table where id = :redacted1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`,
+				`level="info" schema="some_other_schema" event_id="124" digest="some_digest" digest_text="select * from some_table where id = :redacted1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`,
 			},
 		},
 		{
 			name: "subquery and union",
 			rows: [][]driver.Value{{
 				"some_schema",
+				"123",
 				"some_digest",
 				"SELECT * FROM (SELECT id, name FROM employees_us_east UNION SELECT id, name FROM employees_us_west) as employees_us UNION SELECT id, name FROM employees_emea",
 				"70000000",
@@ -242,18 +310,22 @@ func TestQuerySample(t *testing.T) {
 				"0",
 				"456",
 				"457",
+				nil,
+				nil,
+				nil,
 			}},
 			logsLabels: []model.LabelSet{
 				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`level="info" schema="some_schema" digest="some_digest" digest_text="select * from (select id, name from employees_us_east union select id, name from employees_us_west) as employees_us union select id, name from employees_emea" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`,
+				`level="info" schema="some_schema" event_id="123" digest="some_digest" digest_text="select * from (select id, name from employees_us_east union select id, name from employees_us_west) as employees_us union select id, name from employees_emea" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`,
 			},
 		},
 		{
 			name: "show create table (table name is not parsed)",
 			rows: [][]driver.Value{{
 				"some_schema",
+				"123",
 				"some_digest",
 				"SHOW CREATE TABLE some_table",
 				"70000000",
@@ -265,12 +337,15 @@ func TestQuerySample(t *testing.T) {
 				"0",
 				"456",
 				"457",
+				nil,
+				nil,
+				nil,
 			}},
 			logsLabels: []model.LabelSet{
 				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`level="info" schema="some_schema" digest="some_digest" digest_text="show create table" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`,
+				`level="info" schema="some_schema" event_id="123" digest="some_digest" digest_text="show create table" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`,
 			},
 		},
 	}
@@ -320,6 +395,7 @@ func TestQuerySample(t *testing.T) {
 				WillReturnRows(
 					sqlmock.NewRows([]string{
 						"statements.CURRENT_SCHEMA",
+						"statements.EVENT_ID",
 						"statements.DIGEST",
 						"statements.DIGEST_TEXT",
 						"statements.TIMER_END",
@@ -331,6 +407,9 @@ func TestQuerySample(t *testing.T) {
 						"statements.ERRORS",
 						"statements.MAX_CONTROLLED_MEMORY",
 						"statements.MAX_TOTAL_MEMORY",
+						"waits.event_id",
+						"waits.event_name",
+						"waits.timer_wait",
 					}).AddRows(
 						tc.rows...,
 					),
@@ -388,7 +467,7 @@ func TestQuerySampleDisableQueryRedaction(t *testing.T) {
 		mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
-					"timer_end",
+					"uptime",
 				}).AddRow(
 					"1",
 				))
@@ -406,6 +485,7 @@ func TestQuerySampleDisableQueryRedaction(t *testing.T) {
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"statements.CURRENT_SCHEMA",
+					"statements.EVENT_ID",
 					"statements.DIGEST",
 					"statements.DIGEST_TEXT",
 					"statements.TIMER_END",
@@ -417,9 +497,13 @@ func TestQuerySampleDisableQueryRedaction(t *testing.T) {
 					"statements.ERRORS",
 					"statements.MAX_CONTROLLED_MEMORY",
 					"statements.MAX_TOTAL_MEMORY",
+					"waits.event_id",
+					"waits.event_name",
+					"waits.timer_wait",
 					"statements.SQL_TEXT",
 				}).AddRow(
 					"some_schema",
+					"123",
 					"some_digest",
 					"select * from some_table where id = ?",
 					"70000000",
@@ -431,6 +515,9 @@ func TestQuerySampleDisableQueryRedaction(t *testing.T) {
 					"0",
 					"456",
 					"457",
+					nil,
+					nil,
+					nil,
 					"select * from some_table where id = 1",
 				),
 			)
@@ -454,7 +541,7 @@ func TestQuerySampleDisableQueryRedaction(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		require.Equal(t, `level="info" schema="some_schema" digest="some_digest" digest_text="select * from some_table where id = :v1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms" sql_text="select * from some_table where id = 1"`, lokiEntries[0].Line)
+		require.Equal(t, `level="info" schema="some_schema" event_id="123" digest="some_digest" digest_text="select * from some_table where id = :v1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms" sql_text="select * from some_table where id = 1"`, lokiEntries[0].Line)
 	})
 
 	t.Run("does not collect sql text when disabled", func(t *testing.T) {
@@ -480,7 +567,7 @@ func TestQuerySampleDisableQueryRedaction(t *testing.T) {
 		mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
-					"timer_end",
+					"uptime",
 				}).AddRow(
 					"1",
 				))
@@ -498,6 +585,7 @@ func TestQuerySampleDisableQueryRedaction(t *testing.T) {
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"statements.CURRENT_SCHEMA",
+					"statements.EVENT_ID",
 					"statements.DIGEST",
 					"statements.DIGEST_TEXT",
 					"statements.TIMER_END",
@@ -509,8 +597,12 @@ func TestQuerySampleDisableQueryRedaction(t *testing.T) {
 					"statements.ERRORS",
 					"statements.MAX_CONTROLLED_MEMORY",
 					"statements.MAX_TOTAL_MEMORY",
+					"waits.event_id",
+					"waits.event_name",
+					"waits.timer_wait",
 				}).AddRow(
 					"some_schema",
+					"123",
 					"some_digest",
 					"select * from some_table where id = ?",
 					"70000000",
@@ -522,6 +614,9 @@ func TestQuerySampleDisableQueryRedaction(t *testing.T) {
 					"0",
 					"456",
 					"457",
+					nil,
+					nil,
+					nil,
 				),
 			)
 
@@ -544,133 +639,7 @@ func TestQuerySampleDisableQueryRedaction(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		require.Equal(t, `level="info" schema="some_schema" digest="some_digest" digest_text="select * from some_table where id = :v1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`, lokiEntries[0].Line)
-	})
-}
-
-func TestQuerySample_SQLDriverErrors(t *testing.T) {
-	defer goleak.VerifyNone(t)
-
-	t.Run("recoverable sql error in result set", func(t *testing.T) {
-		t.Parallel()
-
-		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
-		require.NoError(t, err)
-		defer db.Close()
-
-		lokiClient := loki_fake.NewClient(func() {})
-
-		collector, err := NewQuerySample(QuerySampleArguments{
-			DB:              db,
-			InstanceKey:     "mysql-db",
-			CollectInterval: time.Second,
-			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
-		})
-		require.NoError(t, err)
-		require.NotNil(t, collector)
-
-		mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().
-			WillReturnRows(
-				sqlmock.NewRows([]string{
-					"uptime",
-				}).AddRow(
-					"1",
-				))
-
-		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(
-			sqlmock.NewRows([]string{
-				"now",
-				"uptime",
-			}).AddRow(
-				5,
-				1,
-			))
-
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, "", digestTextNotNullClause, endOfTimeline)).WithArgs(
-			1e12,
-			1e12,
-		).RowsWillBeClosed().
-			WillReturnRows(
-				sqlmock.NewRows([]string{
-					"digest", // not enough columns
-				}).AddRow(
-					"abc123",
-				))
-
-		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(
-			sqlmock.NewRows([]string{
-				"now",
-				"uptime",
-			}).AddRow(
-				5,
-				1,
-			))
-
-		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(
-			sqlmock.NewRows([]string{
-				"now",
-				"uptime",
-			}).AddRow(
-				5,
-				1,
-			))
-
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, "", digestTextNotNullClause, endOfTimeline)).WithArgs(
-			1e12,
-			1e12,
-		).RowsWillBeClosed().
-			WillReturnRows(
-				sqlmock.NewRows([]string{
-					"statements.CURRENT_SCHEMA",
-					"statements.DIGEST",
-					"statements.DIGEST_TEXT",
-					"statements.TIMER_END",
-					"statements.TIMER_WAIT",
-					"statements.CPU_TIME",
-					"statements.ROWS_EXAMINED",
-					"statements.ROWS_SENT",
-					"statements.ROWS_AFFECTED",
-					"statements.ERRORS",
-					"statements.MAX_CONTROLLED_MEMORY",
-					"statements.MAX_TOTAL_MEMORY",
-				}).AddRow(
-					"some_schema",
-					"some_digest",
-					"select * from some_table where id = 1",
-					"70000000",
-					"20000000",
-					"10000000",
-					"5",
-					"5",
-					"0",
-					"0",
-					"456",
-					"457",
-				),
-			)
-
-		err = collector.Start(t.Context())
-		require.NoError(t, err)
-
-		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) == 1
-		}, 5*time.Second, 100*time.Millisecond)
-
-		collector.Stop()
-		lokiClient.Stop()
-
-		require.Eventually(t, func() bool {
-			return collector.Stopped()
-		}, 5*time.Second, 100*time.Millisecond)
-
-		err = mock.ExpectationsWereMet()
-		require.NoError(t, err)
-
-		lokiEntries := lokiClient.Received()
-		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		require.Equal(t, `level="info" schema="some_schema" digest="some_digest" digest_text="select * from some_table where id = :redacted1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`, lokiEntries[0].Line)
-		require.Equal(t, `level="info" schema="some_schema" digest="some_digest" digest_text="select * from some_table where id = :redacted1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`, lokiEntries[0].Line)
+		require.Equal(t, `level="info" schema="some_schema" event_id="123" digest="some_digest" digest_text="select * from some_table where id = :v1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`, lokiEntries[0].Line)
 	})
 }
 
@@ -740,6 +709,7 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"statements.CURRENT_SCHEMA",
+					"statements.EVENT_ID",
 					"statements.DIGEST",
 					"statements.DIGEST_TEXT",
 					"statements.TIMER_END",
@@ -751,8 +721,12 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 					"statements.ERRORS",
 					"statements.MAX_CONTROLLED_MEMORY",
 					"statements.MAX_TOTAL_MEMORY",
+					"waits.event_id",
+					"waits.event_name",
+					"waits.timer_wait",
 				}).AddRow(
 					"some_schema",
+					"123",
 					"some_digest",
 					"select * from some_table where id = 1",
 					"70000000",
@@ -764,6 +738,9 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 					"0",
 					"456",
 					"457",
+					nil,
+					nil,
+					nil,
 				),
 			)
 
@@ -786,7 +763,7 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		require.Equal(t, `level="info" schema="some_schema" digest="some_digest" digest_text="select * from some_table where id = :redacted1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`, lokiEntries[0].Line)
+		require.Equal(t, `level="info" schema="some_schema" event_id="123" digest="some_digest" digest_text="select * from some_table where id = :redacted1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`, lokiEntries[0].Line)
 	})
 
 	t.Run("result set iteration error", func(t *testing.T) {
@@ -829,6 +806,7 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"statements.CURRENT_SCHEMA",
+					"statements.EVENT_ID",
 					"statements.DIGEST",
 					"statements.DIGEST_TEXT",
 					"statements.TIMER_END",
@@ -840,8 +818,12 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 					"statements.ERRORS",
 					"statements.MAX_CONTROLLED_MEMORY",
 					"statements.MAX_TOTAL_MEMORY",
+					"waits.event_id",
+					"waits.event_name",
+					"waits.timer_wait",
 				}).AddRow(
 					"some_schema",
+					"123",
 					"some_digest",
 					"select * from some_table where id = 1",
 					"70000000",
@@ -853,8 +835,12 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 					"0",
 					"456",
 					"457",
+					nil,
+					nil,
+					nil,
 				).AddRow(
 					"some_schema",
+					"124",
 					"some_digest",
 					"select * from some_table where id = 1",
 					"70000000",
@@ -866,6 +852,9 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 					"0",
 					"456",
 					"457",
+					nil,
+					nil,
+					nil,
 				).RowError(1, fmt.Errorf("rs error")), // error on second row
 			)
 
@@ -888,7 +877,7 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		require.Equal(t, `level="info" schema="some_schema" digest="some_digest" digest_text="select * from some_table where id = :redacted1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`, lokiEntries[0].Line)
+		require.Equal(t, `level="info" schema="some_schema" event_id="123" digest="some_digest" digest_text="select * from some_table where id = :redacted1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`, lokiEntries[0].Line)
 	})
 
 	t.Run("connection error recovery", func(t *testing.T) {
@@ -948,6 +937,7 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"statements.CURRENT_SCHEMA",
+					"statements.EVENT_ID",
 					"statements.DIGEST",
 					"statements.DIGEST_TEXT",
 					"statements.TIMER_END",
@@ -959,8 +949,12 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 					"statements.ERRORS",
 					"statements.MAX_CONTROLLED_MEMORY",
 					"statements.MAX_TOTAL_MEMORY",
+					"waits.event_id",
+					"waits.event_name",
+					"waits.timer_wait",
 				}).AddRow(
 					"some_schema",
+					"123",
 					"some_digest",
 					"select * from some_table where id = 1",
 					"70000000",
@@ -972,6 +966,9 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 					"0",
 					"456",
 					"457",
+					nil,
+					nil,
+					nil,
 				),
 			)
 
@@ -994,7 +991,7 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		require.Equal(t, `level="info" schema="some_schema" digest="some_digest" digest_text="select * from some_table where id = :redacted1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`, lokiEntries[0].Line)
+		require.Equal(t, `level="info" schema="some_schema" event_id="123" digest="some_digest" digest_text="select * from some_table where id = :redacted1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`, lokiEntries[0].Line)
 	})
 }
 
@@ -1057,21 +1054,26 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 			1e12, // initial timerBookmark
 			5e12, // uptime of 5 seconds in picoseconds (modulo 0 overflows)
 		).WillReturnRows(sqlmock.NewRows([]string{
-			"current_schema",
-			"digest",
-			"digest_text",
-			"timer_end",
-			"timer_wait",
-			"cpu_time",
-			"rows_examined",
-			"rows_sent",
-			"rows_affected",
-			"errors",
-			"max_controlled_memory",
-			"max_total_memory",
+			"statements.CURRENT_SCHEMA",
+			"statements.EVENT_ID",
+			"statements.DIGEST",
+			"statements.DIGEST_TEXT",
+			"statements.TIMER_END",
+			"statements.TIMER_WAIT",
+			"statements.CPU_TIME",
+			"statements.ROWS_EXAMINED",
+			"statements.ROWS_SENT",
+			"statements.ROWS_AFFECTED",
+			"statements.ERRORS",
+			"statements.MAX_CONTROLLED_MEMORY",
+			"statements.MAX_TOTAL_MEMORY",
+			"waits.event_id",
+			"waits.event_name",
+			"waits.timer_wait",
 		}).
 			AddRow(
 				"test_schema",         // current_schema
+				123,                   // EVENT_ID
 				"some digest",         // digest
 				"SELECT * FROM users", // digest_text
 				2e12,                  // timer_end
@@ -1083,6 +1085,9 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 				0,                     // errors
 				1048576,               // max_controlled_memory (1MB)
 				2097152,               // max_total_memory (2MB)
+				nil,                   // WAIT_EVENT_ID
+				nil,                   // WAIT_EVENT_NAME
+				nil,                   // WAIT_TIME
 			),
 		)
 
@@ -1113,7 +1118,7 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 			"op":       OP_QUERY_SAMPLE,
 			"instance": "some instance key",
 		}, lokiClient.Received()[0].Labels)
-		assert.Equal(t, "level=\"info\" schema=\"test_schema\" digest=\"some digest\" digest_text=\"select * from `users`\" "+
+		assert.Equal(t, "level=\"info\" schema=\"test_schema\" event_id=\"123\" digest=\"some digest\" digest_text=\"select * from `users`\" "+
 			"rows_examined=\"1000\" rows_sent=\"100\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"1048576b\" "+
 			"max_total_memory=\"2097152b\" cpu_time=\"0.000556ms\" elapsed_time=\"2000.000000ms\" elapsed_time_ms=\"2000.000000ms\"",
 			lokiClient.Received()[0].Line)
@@ -1138,7 +1143,9 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 			),
 		)
 		mock.ExpectQuery(`
-			SELECT statements.CURRENT_SCHEMA,
+			SELECT
+				statements.CURRENT_SCHEMA,
+				statements.EVENT_ID,
 				statements.DIGEST,
 				statements.DIGEST_TEXT,
 				statements.TIMER_END,
@@ -1149,8 +1156,16 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 				statements.ROWS_AFFECTED,
 				statements.ERRORS,
 				statements.MAX_CONTROLLED_MEMORY,
-				statements.MAX_TOTAL_MEMORY
-			FROM performance_schema.events_statements_history AS statements
+				statements.MAX_TOTAL_MEMORY,
+				waits.event_id as WAIT_EVENT_ID,
+				waits.event_name as WAIT_EVENT_NAME,
+				waits.timer_wait as WAIT_TIMER_WAIT
+			FROM
+				performance_schema.events_statements_history AS statements
+			LEFT JOIN
+				performance_schema.events_waits_history waits
+				ON statements.thread_id = waits.thread_id
+				AND statements.EVENT_ID = waits.NESTING_EVENT_ID
 			WHERE statements.DIGEST IS NOT NULL
 			  AND statements.CURRENT_SCHEMA NOT IN ('mysql', 'performance_schema', 'sys', 'information_schema')
 			  AND statements.DIGEST_TEXT IS NOT NULL
