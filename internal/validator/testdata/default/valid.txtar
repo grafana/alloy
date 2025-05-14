@@ -153,3 +153,21 @@ foreach "outer" {
 		}
 	}
 }
+
+import.string "string" {
+  content = ""
+}
+
+import.file "file" {
+  filename = "path/to/module/config.alloy"
+}
+
+import.git "git" {
+  repository = "https://github.com/grafana/alloy/module.git"
+  revision   = "main"
+  path       = "modules"
+}
+
+import.http "http" {
+  url = "http://server.com/module"
+}

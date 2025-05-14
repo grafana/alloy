@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/grafana/alloy/internal/nodeconf/foreach"
+	"github.com/grafana/alloy/internal/nodeconf/importsource"
 	"github.com/grafana/alloy/internal/static/config/encoder"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/diag"
@@ -76,7 +77,8 @@ func sourceFromBody(body ast.Body) (*Source, error) {
 			switch fullName {
 			case "declare":
 				declares = append(declares, stmt)
-			case "logging", "tracing", "argument", "export", "import.file", "import.string", "import.http", "import.git", foreach.Name:
+			case "logging", "tracing", "argument", "export", foreach.BlockName,
+				importsource.BlockNameFile, importsource.BlockNameString, importsource.BlockNameHTTP, importsource.BlockNameGit:
 				configs = append(configs, stmt)
 			default:
 				components = append(components, stmt)

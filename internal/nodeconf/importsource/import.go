@@ -18,10 +18,10 @@ const (
 )
 
 const (
-	BlockImportFile   = "import.file"
-	BlockImportString = "import.string"
-	BlockImportHTTP   = "import.http"
-	BlockImportGit    = "import.git"
+	BlockNameFile   = "import.file"
+	BlockNameString = "import.string"
+	BlockNameHTTP   = "import.http"
+	BlockNameGit    = "import.git"
 )
 
 const ModulePath = "module_path"
@@ -59,13 +59,13 @@ func NewImportSource(sourceType SourceType, managedOpts component.Options, eval 
 // GetSourceType returns a SourceType matching a source name.
 func GetSourceType(fullName string) SourceType {
 	switch fullName {
-	case BlockImportFile:
+	case BlockNameFile:
 		return File
-	case BlockImportString:
+	case BlockNameString:
 		return String
-	case BlockImportHTTP:
+	case BlockNameHTTP:
 		return HTTP
-	case BlockImportGit:
+	case BlockNameGit:
 		return Git
 	}
 	panic(fmt.Errorf("name does not map to a known source type: %v", fullName))
