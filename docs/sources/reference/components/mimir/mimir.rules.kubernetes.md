@@ -151,12 +151,12 @@ The `matcher` block describes a label matcher that's added to each query found i
 
 The following arguments are supported:
 
-| Name                    | Type     | Description                                         | Default | Required |
-| ----------------------- | -------- | --------------------------------------------------- | ------- | -------- |
-| `match_type`            | `string` | The type of match. One of `=`, `!=`, `=~` and `!~`. |         | yes      |
-| `name`                  | `string` | Name of the label to match.                         |         | yes      |
-| `value`                 | `string` | Value of the label to match.                        |         | no       |
-| `value_from_label`      | `string` | Value of the Kubernetes `PrometheusRule` label to match.       |         | no       |
+| Name               | Type     | Description                                              | Default | Required |
+| ------------------ | -------- | -------------------------------------------------------- | ------- | -------- |
+| `match_type`       | `string` | The type of match. One of `=`, `!=`, `=~` and `!~`.      |         | yes      |
+| `name`             | `string` | Name of the label to match.                              |         | yes      |
+| `value`            | `string` | Value of the label to match.                             |         | no       |
+| `value_from_label` | `string` | Value of the Kubernetes `PrometheusRule` label to match. |         | no       |
 
 Only one of `value` or `value_from_label` can be used. 
 
