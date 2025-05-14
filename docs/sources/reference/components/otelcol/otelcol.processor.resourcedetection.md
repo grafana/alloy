@@ -103,7 +103,7 @@ You can use the following blocks with `otelcol.processor.resourcedetection`:
 | [`kubernetes_node`][kubernetes_node]   | Queries the Kubernetes API server to retrieve various node resource attributes.                         | no       |
 | [`lambda`][lambda]                     | Uses the AWS Lambda runtime environment variables to retrieve various resource attributes.              | no       |
 | [`openshift`][openshift]               | Queries the OpenShift and Kubernetes APIs to retrieve various resource attributes.                      | no       |
-| [`system`][system]                     |                                                                                                         | no       |
+| [`system`][system]                     | Queries the host machine to retrieve various resource attributes.                                       | no       |
 
 [output]: #output
 [debug_metrics]: #debug_metrics
