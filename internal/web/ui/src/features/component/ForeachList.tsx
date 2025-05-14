@@ -49,7 +49,7 @@ const ForeachList = ({ foreach, useRemotecfg, handleSorting }: ComponentListProp
             <div className={foreachStyles.moduleHeader}>
               <span className={foreachStyles.expandIcon}>{expandedModules.has(moduleId) ? '▼' : '▶'}</span>
               <span className={foreachStyles.moduleId}>{moduleId.split('/').pop()}</span>
-              <NavLink to={`${urlPrefix}/graph/${moduleId}`} className={styles.viewButton}>
+              <NavLink to={`/graph/${moduleId}`} className={styles.viewButton}>
                 Graph
               </NavLink>
             </div>
