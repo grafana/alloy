@@ -59,7 +59,6 @@ type QuerySampleArguments struct {
 	InstanceKey           string
 	CollectInterval       time.Duration
 	EntryHandler          loki.EntryHandler
-	UseTiDBParser         bool
 	DisableQueryRedaction bool
 
 	Logger log.Logger
@@ -88,15 +87,10 @@ func NewQuerySample(args QuerySampleArguments) (*QuerySample, error) {
 		instanceKey:           args.InstanceKey,
 		collectInterval:       args.CollectInterval,
 		entryHandler:          args.EntryHandler,
+		sqlParser:             parser.NewTiDBSqlParser(),
 		disableQueryRedaction: args.DisableQueryRedaction,
 		logger:                log.With(args.Logger, "collector", QuerySampleName),
 		running:               &atomic.Bool{},
-	}
-
-	if args.UseTiDBParser {
-		c.sqlParser = parser.NewTiDBSqlParser()
-	} else {
-		c.sqlParser = parser.NewXwbSqlParser()
 	}
 
 	return c, nil

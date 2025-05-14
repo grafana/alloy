@@ -19,6 +19,5 @@ var (
 	StatementTypeUpdate StatementType = "update"
 	StatementTypeDelete StatementType = "delete"
 
-	_ Parser = (*XwbSqlParser)(nil)
 	_ Parser = (*TiDBSqlParser)(nil)
 )

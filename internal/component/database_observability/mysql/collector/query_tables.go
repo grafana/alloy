@@ -35,7 +35,6 @@ type QueryTablesArguments struct {
 	InstanceKey     string
 	CollectInterval time.Duration
 	EntryHandler    loki.EntryHandler
-	UseTiDBParser   bool
 
 	Logger log.Logger
 }
@@ -59,14 +58,9 @@ func NewQueryTables(args QueryTablesArguments) (*QueryTables, error) {
 		instanceKey:     args.InstanceKey,
 		collectInterval: args.CollectInterval,
 		entryHandler:    args.EntryHandler,
+		sqlParser:       parser.NewTiDBSqlParser(),
 		logger:          log.With(args.Logger, "collector", QueryTablesName),
 		running:         &atomic.Bool{},
-	}
-
-	if args.UseTiDBParser {
-		c.sqlParser = parser.NewTiDBSqlParser()
-	} else {
-		c.sqlParser = parser.NewXwbSqlParser()
 	}
 
 	return c, nil
