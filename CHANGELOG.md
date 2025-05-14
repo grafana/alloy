@@ -51,6 +51,8 @@ Main (unreleased)
 
 - Fix validation logic in `beyla.ebpf` component to ensure that either metrics or traces are enabled. (@marctc)
 
+- Improve `foreach` UI and add graph support for it. (@wildum)
+
 ### Bugfixes
 
 - Fix `otelcol.receiver.filelog` documentation's default value for `start_at`. (@petewall)
