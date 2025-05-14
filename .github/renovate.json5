@@ -84,6 +84,8 @@
       // Supersede previous rules to require PR creation approval for major versions
       "matchUpdateTypes": ["major"],
       "dependencyDashboardApproval": true,
+      // This forces each dep to have a unique group, resulting in each major update
+      // having its own PR.
       "groupName": "{{manager}} dependency {{depName}}"
     }
   ],
