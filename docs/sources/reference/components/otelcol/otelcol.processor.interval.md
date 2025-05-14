@@ -6,35 +6,36 @@ title: otelcol.processor.interval
 
 <span class="badge docs-labels__stage docs-labels__item">Experimental</span>
 
-# otelcol.processor.interval
+# `otelcol.processor.interval`
 
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `otelcol.processor.interval` aggregates metrics and periodically forwards the latest values to the next component in the pipeline.
 The processor supports aggregating the following metric types:
 
-- Monotonically increasing, cumulative sums
-- Monotonically increasing, cumulative histograms
-- Monotonically increasing, cumulative exponential histograms
-- Gauges
-- Summaries
+* Monotonically increasing, cumulative sums
+* Monotonically increasing, cumulative histograms
+* Monotonically increasing, cumulative exponential histograms
+* Gauges
+* Summaries
 
 The following metric types will _not_ be aggregated and will instead be passed, unchanged, to the next component in the pipeline:
 
-- All delta metrics
-- Non-monotonically increasing sums
+* All delta metrics
+* Non-monotonically increasing sums
 
 {{< admonition type="note" >}}
 Aggregating data over an interval is an inherently lossy process.
 You lose precision for monotonically increasing cumulative sums, histograms, and exponential histograms, but you don't lose overall data.
 You can lose data when you aggregate non-monotonically increasing sums, gauges, and summaries.
 For example, a value can increase and decrease to the original value, and you can lose this change in the aggregation.
-In most cases, this type of data loss is OK.
+In most cases, this type of data loss is acceptable.
 However, you can change the configuration so that these changed values pass through and are _not_ aggregated.
 {{< /admonition >}}
 
 {{< admonition type="warning" >}}
-After exporting, any internal state is cleared. If no new metrics come in, the next interval will export nothing.
+After exporting, any internal state is cleared.
+If no new metrics come in, the next interval will export nothing.
 {{< /admonition >}}
 
 {{< admonition type="note" >}}
@@ -45,7 +46,7 @@ Bug reports or feature requests will be redirected to the upstream repository, i
 ## Usage
 
 ```alloy
-otelcol.processor.interval "LABEL" {
+otelcol.processor.interval "<LABEL>" {
   output {
     metrics = [...]
   }
@@ -54,7 +55,7 @@ otelcol.processor.interval "LABEL" {
 
 ## Arguments
 
-`otelcol.processor.interval` supports the following arguments:
+You can use the following argument with `otelcol.processor.interval`:
 
 | Name       | Type       | Description                                                         | Default | Required |
 | ---------- | ---------- | ------------------------------------------------------------------- | ------- | -------- |
@@ -62,23 +63,27 @@ otelcol.processor.interval "LABEL" {
 
 ## Blocks
 
-The following blocks are supported inside the definition of `otelcol.processor.interval`:
+You can use the following blocks with `otelcol.processor.interval`:
 
-| Hierarchy     | Block             | Description                                                                | Required |
-| ------------- | ----------------- | -------------------------------------------------------------------------- | -------- |
-| output        | [output][]        | Configures where to send received telemetry data.                          | yes      |
-| passthrough   | [passthrough][]   | Configure metric types to be passed through instead of aggregated.         | no       |
-| debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no       |
+| Block                            | Description                                                                | Required |
+| -------------------------------- | -------------------------------------------------------------------------- | -------- |
+| [`output`][output]               | Configures where to send received telemetry data.                          | yes      |
+| [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |
+| [`passthrough`][passthrough]     | Configure metric types to be passed through instead of aggregated.         | no       |
 
-[output]: #output-block
-[debug_metrics]: #debug_metrics-block
-[passthrough]: #passthrough-block
+[output]: #output
+[debug_metrics]: #debug_metrics
+[passthrough]: #passthrough
 
-### output block
+### `output`
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### passthrough block
+### `debug_metrics`
+
+{{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `passthrough`
 
 The `passthrough` block configures which metric types should be passed through instead of being aggregated.
 
@@ -88,10 +93,6 @@ The following attributes are supported:
 | --------- | ------ | -------------------------------------------------------------------------------------- | ------- | -------- |
 | `gauge`   | `bool` | Determines whether gauge metrics should be passed through as they are or aggregated.   | `false` | no       |
 | `summary` | `bool` | Determines whether summary metrics should be passed through as they are or aggregated. | `false` | no       |
-
-### debug_metrics block
-
-{{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 
@@ -109,7 +110,7 @@ The following fields are exported and can be referenced by other components:
 
 ## Debug information
 
-`otelcol.processor.interval` does not expose any component-specific debug information.
+`otelcol.processor.interval` doesn't expose any component-specific debug information.
 
 ## Example
 

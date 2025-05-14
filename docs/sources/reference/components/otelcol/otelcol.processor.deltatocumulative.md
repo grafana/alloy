@@ -8,7 +8,7 @@ title: otelcol.processor.deltatocumulative
 
 <span class="badge docs-labels__stage docs-labels__item">Experimental</span>
 
-# otelcol.processor.deltatocumulative
+# `otelcol.processor.deltatocumulative`
 
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -33,7 +33,7 @@ otelcol.processor.deltatocumulative "LABEL" {
 
 ## Arguments
 
-`otelcol.processor.deltatocumulative` supports the following arguments:
+You can use the following arguments with `otelcol.processor.deltatocumulative`:
 
 | Name          | Type       | Description                                                         | Default       | Required |
 | ------------- | ---------- | ------------------------------------------------------------------- | ------------- | -------- |
@@ -50,21 +50,21 @@ If the limit of tracked streams is reached, new incoming streams are dropped.
 
 ## Blocks
 
-The following blocks are supported inside the definition of `otelcol.processor.deltatocumulative`:
+You can use the following blocks with `otelcol.processor.deltatocumulative`:
 
-| Hierarchy     | Block             | Description                                                                | Required |
-| ------------- | ----------------- | -------------------------------------------------------------------------- | -------- |
-| output        | [output][]        | Configures where to send received telemetry data.                          | yes      |
-| debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no       |
+| Block                            | Description                                                                | Required |
+| -------------------------------- | -------------------------------------------------------------------------- | -------- |
+| [`output`][output]               | Configures where to send received telemetry data.                          | yes      |
+| [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |
 
-[output]: #output-block
-[debug_metrics]: #debug_metrics-block
+[output]: #output
+[debug_metrics]: #debug_metrics
 
-### output block
+### `output`
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### debug_metrics block
+### `debug_metrics`
 
 {{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -84,14 +84,14 @@ The following fields are exported and can be referenced by other components:
 
 ## Debug information
 
-`otelcol.processor.deltatocumulative` does not expose any component-specific debug information.
+`otelcol.processor.deltatocumulative` doesn't expose any component-specific debug information.
 
 ## Debug metrics
 
-- `otelcol_deltatocumulative_streams_tracked` (gauge): Number of streams currently tracked by the aggregation state.
-- `otelcol_deltatocumulative_streams_limit` (gauge): Upper limit of tracked streams.
-- `otelcol_deltatocumulative_streams_max_stale_seconds` (gauge): Duration without new samples after which streams are dropped.
-- `otelcol_deltatocumulative_datapoints` (counter): Total number of datapoints processed (successfully or unsuccessfully).
+* `otelcol_deltatocumulative_datapoints` (counter): Total number of datapoints processed (successfully or unsuccessfully).
+* `otelcol_deltatocumulative_streams_limit` (gauge): Upper limit of tracked streams.
+* `otelcol_deltatocumulative_streams_max_stale_seconds` (gauge): Duration without new samples after which streams are dropped.
+* `otelcol_deltatocumulative_streams_tracked` (gauge): Number of streams currently tracked by the aggregation state.
 
 ## Examples
 
@@ -115,7 +115,7 @@ otelcol.exporter.otlp "production" {
 
 [otelcol.exporter.otlp]: ../otelcol.exporter.otlp/
 
-### Exporting Prometheus data
+### Export Prometheus data
 
 This example converts delta temporality metrics to cumulative metrics before it is converted to Prometheus data, which requires cumulative temporality:
 
