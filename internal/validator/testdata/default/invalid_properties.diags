@@ -47,6 +47,20 @@ Error: main.alloy:25:1: missing required attribute "url"
    | |_^
 28 |   
 
+Error: main.alloy:30:1: import.http block must have a label
+
+29 | // missing label
+30 | import.http {}
+   | ^^^^^^^^^^^
+31 | 
+
+Error: main.alloy:30:1: missing required attribute "url"
+
+29 | // missing label
+30 | import.http {}
+   | ^^^^^^^^^^^^^^
+31 | 
+
 Error: main.alloy:2:1: missing required attribute "url"
 
 1 | 

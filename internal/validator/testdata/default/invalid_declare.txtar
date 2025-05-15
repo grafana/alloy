@@ -26,7 +26,12 @@ declare "module" {
 
 	export "duplicate" {}
 	export "duplicate" {}
-
+	
+	// missing labels
+	argument {}
+	export {
+		value = ""
+	}
 
 	// Unknown component.
 	local.missing "applogs" { }
@@ -64,4 +69,3 @@ declare "module_1" {
 
 // inner module
 module_2 "test" {}
-

@@ -27,3 +27,6 @@ import.git "git" {
 import.http "http" {
 	test = "test"
 }
+
+// missing label
+import.http {}

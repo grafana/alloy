@@ -38,49 +38,63 @@ Error: main.alloy:26:2: block export.duplicate already declared at main.alloy:25
 25 |     export "duplicate" {}
 26 |     export "duplicate" {}
    |     ^^^^^^^^^^^^^^^^
-27 | 
+27 |     
 
 Error: main.alloy:26:2: missing required attribute "value"
 
 25 |     export "duplicate" {}
 26 |     export "duplicate" {}
    |     ^^^^^^^^^^^^^^^^^^^^^
-27 | 
+27 |     
 
-Error: main.alloy:43:2: logging not allowed in module
+Error: main.alloy:29:2: argument block must have a label
 
-42 |     // Service configuration.
-43 |     logging { }
+28 |     // missing labels
+29 |     argument {}
+   |     ^^^^^^^^
+30 |     export {
+
+Error: main.alloy:30:2: export block must have a label
+
+29 |     argument {}
+30 |     export {
+   |     ^^^^^^
+31 |         value = ""
+
+Error: main.alloy:48:2: logging not allowed in module
+
+47 |     // Service configuration.
+48 |     logging { }
    |     ^^^^^^^
-44 | 
-
-Error: main.alloy:30:2: cannot find the definition of component name "local.missing"
-
-29 |     // Unknown component.
-30 |     local.missing "applogs" { }
-   |     ^^^^^^^^^^^^^
-31 | 
-
-Error: main.alloy:33:2: missing required attribute "url"
-
-32 |     // Missing required property.
-33 |     remote.http "missing_required" { }
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-34 | 
-
-Error: main.alloy:37:3: unrecognized attribute name "test"
-
-36 |     loki.source.file "invalid_property" {
-37 |         test       = "test"
-   |         ^^^^^^^^^^^^^^^^^^^
-38 |         targets    = []
-
-Error: main.alloy:50:2: block local.file_match.applogs already declared at main.alloy:46:2
-
 49 | 
-50 |     local.file_match "applogs" {
+
+Error: main.alloy:35:2: cannot find the definition of component name "local.missing"
+
+34 |     // Unknown component.
+35 |     local.missing "applogs" { }
+   |     ^^^^^^^^^^^^^
+36 | 
+
+Error: main.alloy:38:2: missing required attribute "url"
+
+37 |     // Missing required property.
+38 |     remote.http "missing_required" { }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+39 | 
+
+Error: main.alloy:42:3: unrecognized attribute name "test"
+
+41 |     loki.source.file "invalid_property" {
+42 |         test       = "test"
+   |         ^^^^^^^^^^^^^^^^^^^
+43 |         targets    = []
+
+Error: main.alloy:55:2: block local.file_match.applogs already declared at main.alloy:51:2
+
+54 | 
+55 |     local.file_match "applogs" {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
-51 |         path_targets = [{"__path__" = "/tmp/app-logs/app.log"}]
+56 |         path_targets = [{"__path__" = "/tmp/app-logs/app.log"}]
 
 Error: main.alloy:3:1: argument blocks only allowed inside a module
 
@@ -99,9 +113,9 @@ Error: main.alloy:5:1: export blocks only allowed inside a module
   | |_^
 8 |   
 
-Error: main.alloy:64:1: cannot find the definition of component name "module_2"
+Error: main.alloy:69:1: cannot find the definition of component name "module_2"
 
-63 | // inner module
-64 | module_2 "test" {}
+68 | // inner module
+69 | module_2 "test" {}
    | ^^^^^^^^
-65 | 
+70 | 

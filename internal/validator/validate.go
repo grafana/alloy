@@ -165,9 +165,22 @@ func (v *validator) validateConfigs(s *state) {
 			s.cr.registerCustomComponent(node.block)
 		}
 
+		name := node.block.GetBlockName()
+
+		if name != "logging" && name != "tracing" {
+			if node.block.Label == "" {
+				node.diags.Add(diag.Diagnostic{
+					Severity: diag.SeverityLevelError,
+					StartPos: node.block.NamePos.Position(),
+					EndPos:   node.block.NamePos.Add(len(name) - 1).Position(),
+					Message:  fmt.Sprintf("%s block must have a label", name),
+				})
+			}
+		}
+
 		// In configs we store blocks for logging, tracing, argument, export, import.file,
 		// import.string, import.http, import.git and foreach.
-		switch c.GetBlockName() {
+		switch name {
 		case "logging":
 			node.args = &logging.Options{}
 			if diag, ok := blockDisallowed(s, node.block); ok {
@@ -233,13 +246,13 @@ func (v *validator) validateForeach(node *blockNode, s *state) {
 		})
 	}
 
-	// Require label for all foreach blocks.
+	// Require label for foreach block.
 	if node.block.Label == "" {
 		node.diags.Add(diag.Diagnostic{
 			Severity: diag.SeverityLevelError,
 			StartPos: node.block.NamePos.Position(),
 			EndPos:   node.block.NamePos.Add(len(name) - 1).Position(),
-			Message:  "declare block must have a label",
+			Message:  "foreach block must have a label",
 		})
 	}
 
