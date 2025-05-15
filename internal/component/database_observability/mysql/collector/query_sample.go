@@ -52,6 +52,8 @@ SELECT
 	statements.MAX_TOTAL_MEMORY,
 	waits.event_id as WAIT_EVENT_ID,
 	waits.event_name as WAIT_EVENT_NAME,
+	waits.object_name as WAIT_OBJECT_NAME,
+	waits.object_type as WAIT_OBJECT_TYPE,
 	waits.timer_wait as WAIT_TIMER_WAIT
 	%s
 FROM
@@ -215,6 +217,9 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 	c.timerBookmark = limit
 	c.lastUptime = uptime
 
+	lastDigestLogged := ""
+	lastEventIDLogged := ""
+
 	for rs.Next() {
 		row := struct {
 			// sample query details
@@ -241,9 +246,11 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 			MaxTotalMemory      uint64
 
 			// sample wait info, if any
-			WaitEventID   sql.NullString
-			WaitEventName sql.NullString
-			WaitTime      sql.NullFloat64
+			WaitEventID    sql.NullString
+			WaitEventName  sql.NullString
+			WaitObjectName sql.NullString
+			WaitObjectType sql.NullString
+			WaitTime       sql.NullFloat64
 		}{}
 
 		scanArgs := []interface{}{
@@ -262,6 +269,8 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 			&row.MaxTotalMemory,
 			&row.WaitEventID,
 			&row.WaitEventName,
+			&row.WaitObjectName,
+			&row.WaitObjectType,
 			&row.WaitTime,
 		}
 		if c.disableQueryRedaction {
@@ -318,8 +327,10 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 			logMessage += fmt.Sprintf(` sql_text="%s"`, row.SQLText.String)
 		}
 
-		switch row.WaitEventID.Valid {
-		case false: // log a statement sample as usual
+		if lastDigestLogged != row.Digest.String || lastEventIDLogged != row.StatementEventID.String {
+			lastDigestLogged = row.Digest.String
+			lastEventIDLogged = row.StatementEventID.String
+
 			c.entryHandler.Chan() <- buildLokiEntryWithTimestamp(
 				logging.LevelInfo,
 				OP_QUERY_SAMPLE,
@@ -327,14 +338,19 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 				logMessage,
 				int64(millisecondsToNanoseconds(row.TimestampMilliseconds)),
 			)
-		case true: // log a wait event --a child of the statement sample
+		}
+
+		if row.WaitEventID.Valid {
 			waitTime := picosecondsToMilliseconds(row.WaitTime.Float64)
 			waitLogMessage :=
 				fmt.Sprintf(
-					`event_id="%s" wait_event_id="%s" wait_event_name="%s" wait_time="%fms"`,
+					`digest="%s" event_id="%s" wait_event_id="%s" wait_event_name="%s" wait_object_name="%s" wait_object_type="%s" wait_time="%fms"`,
+					row.Digest.String,
 					row.StatementEventID.String,
 					row.WaitEventID.String,
 					row.WaitEventName.String,
+					row.WaitObjectName.String,
+					row.WaitObjectType.String,
 					waitTime,
 				)
 
