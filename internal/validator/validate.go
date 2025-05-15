@@ -104,7 +104,6 @@ func (v *validator) validate(s *state) diag.Diagnostics {
 	v.validateServices(s)
 
 	for n := range s.graph.Nodes() {
-		fmt.Println("Add diag for node: ", n.NodeID())
 		// Add any diagnostic for node that should be before type check.
 		diags.Merge(n.diags)
 		if n.args != nil {
@@ -403,6 +402,7 @@ func extractBlocks(node *blockNode, body ast.Body) ([]*ast.BlockStmt, []*ast.Blo
 
 		if b.GetBlockName() == "declare" {
 			declares = append(declares, b)
+			continue
 		}
 
 		components = append(components, b)

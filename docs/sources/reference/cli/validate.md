@@ -48,3 +48,4 @@ Validation is limited in scope. It currently checks for:
 * Required properties are set.
 * Uknown properties.
 * Foreach blocks.
+* Declare blocks.
