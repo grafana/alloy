@@ -122,7 +122,7 @@ You can use the following blocks with `otelcol.processor.resourcedetection`:
 [openshift]: #openshift
 [kubernetes_node]: #kubernetes_node
 [kubeadm]: #kubeadm
-[res-attr-cfg]: #resource-attribute-config
+[res-attr-cfg]: #resource-attribute-configuration
 [dynatrace]: #dynatrace
 
 ### `output`
