@@ -95,7 +95,7 @@ type state struct {
 }
 
 func (v *validator) validate(s *state) *state {
-	// Need to validate declares first becuse we will register "custom" components.
+	// Need to validate declares first because we will register "custom" components.
 	v.validateDeclares(s)
 	v.validateConfigs(s)
 
