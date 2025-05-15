@@ -476,8 +476,8 @@ func blockDisallowed(s *state, b *ast.BlockStmt) (diag.Diagnostic, bool) {
 			StartPos: b.NamePos.Position(),
 			EndPos:   b.NamePos.Add(len(id) - 1).Position(),
 		}, true
-
 	}
+
 	if s.foreach {
 		return diag.Diagnostic{
 			Severity: diag.SeverityLevelError,

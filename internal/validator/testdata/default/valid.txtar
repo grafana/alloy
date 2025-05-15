@@ -171,3 +171,13 @@ import.git "git" {
 import.http "http" {
   url = "http://server.com/module"
 }
+
+declare "shadow_me" {}
+
+declare "my_module" {
+	declare "shadow_me" {}
+
+	shadow_me "test" {}
+}
+
+shadow_me "test" {}
