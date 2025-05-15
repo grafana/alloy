@@ -531,7 +531,7 @@ func TestQuerySample_WaitEvents(t *testing.T) {
 
 	logsLines := []string{
 		`level="info" schema="some_schema" event_id="123" digest="some_digest" digest_text="select * from some_table where id = :redacted1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`,
-		`level="info" digest="some_digest" schema="some_schema" event_id="123" wait_event_id="124" wait_event_name="wait/io/file/innodb/innodb_data_file" wait_object_name="wait_object_name" wait_object_type="wait_object_type" wait_time="0.100000ms"`,
+		`level="info" schema="some_schema" digest="some_digest" digest_text="select * from some_table where id = 1" event_id="123" wait_event_id="124" wait_event_name="wait/io/file/innodb/innodb_data_file" wait_object_name="wait_object_name" wait_object_type="wait_object_type" wait_time="0.100000ms"`,
 	}
 
 	require.Eventually(t, func() bool {
