@@ -3,9 +3,3 @@ Error: main.alloy:1:1: cannot find the definition of component name "local.missi
 1 | local.missing "applogs" {
   | ^^^^^^^^^^^^^
 2 |     path_targets = [{"__path__" = "/tmp/app-logs/app.log"}]
-
-Error: main.alloy:1:1: cannot find the definition of component name "local.missing"
-
-1 | local.missing "applogs" {
-  | ^^^^^^^^^^^^^
-2 |     path_targets = [{"__path__" = "/tmp/app-logs/app.log"}]

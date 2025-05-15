@@ -109,8 +109,6 @@ func (v *validator) validate(s *state) diag.Diagnostics {
 		if n.args != nil {
 			diags.Merge(typecheck.Block(n.block, n.args))
 		}
-		// Add any diagnostic for node that should be after type check.
-		diags.Merge(n.diags)
 	}
 
 	if diags.HasErrors() {

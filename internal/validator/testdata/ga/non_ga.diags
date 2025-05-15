@@ -4,10 +4,3 @@ Error: main.alloy:2:1: foreach block "foreach" is at stability level "experiment
 2 | foreach "foreach" {
   | ^^^^^^^
 3 |     collection = []
-
-Error: main.alloy:2:1: foreach block "foreach" is at stability level "experimental", which is below the minimum allowed stability level "generally-available". Use --stability.level command-line flag to enable "experimental" features
-
-1 | // Collect metrics for each Redis instance.
-2 | foreach "foreach" {
-  | ^^^^^^^
-3 |     collection = []
