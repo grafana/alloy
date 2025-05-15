@@ -246,6 +246,7 @@ The `exclude_services` block configures the services to exclude for the componen
 | `namespace`  | `string` | The namespace of the service to match.                                                   | `""`    | no       |
 | `open_ports` | `string` | The port of the running service for Beyla automatically instrumented with eBPF.          | `""`    | no       |
 | `exe_path`   | `string` | The path of the running service for Beyla automatically instrumented with eBPF.          | `""`    | no       |
+| `containers_only` | `bool`   |Restrict the discovery to processes which are running inside a container.             | `false` | no       |
 
 `exe_path` accepts a regular expression to be matched against the full executable command line, including the directory where the executable resides on the file system.
 
@@ -272,6 +273,7 @@ the instrumented processes need to match all the selector properties.
 | `namespace`        | `string`      | Regular expression of Kubernetes Namespaces to match.                                                       | `""`    | no       |
 | `owner_name`       | `string`      | Regular expression of Kubernetes owners of running Pods to match.                                           | `""`    | no       |
 | `pod_labels`       | `map(string)` | Key-value pairs of labels with keys matching Kubernetes Pods with the provided value as regular expression. | `{}`    | no       |
+| `pod_annotations`       | `map(string)` | Key-value pairs of labels with keys matching Kubernetes annotations with the provided value as regular expression. | `{}`    | no       |
 | `pod_name`         | `string`      | Regular expression of Kubernetes Pods to match.                                                             | `""`    | no       |
 | `replicaset_name`  | `string`      | Regular expression of Kubernetes ReplicaSets to match.                                                      | `""`    | no       |
 | `statefulset_name` | `string`      | Regular expression of Kubernetes StatefulSets to match.                                                     | `""`    | no       |

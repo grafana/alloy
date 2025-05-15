@@ -985,7 +985,7 @@ require (
 )
 
 require (
-	github.com/grafana/beyla/v2 v2.1.0-alloy-1
+	github.com/grafana/beyla/v2 v2.2.3
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/storage/filestorage v0.122.0
 	go.opentelemetry.io/collector/extension/xextension v0.122.1
 )

@@ -161,14 +161,25 @@ func (args Services) Convert() (services.DefinitionCriteria, error) {
 			}
 			podLabels[k] = &label
 		}
+		// Convert pod annotations to attributes
+		podAnnotations := map[string]*services.RegexpAttr{}
+		for k, v := range s.Kubernetes.PodAnnotations {
+			annotation, err := stringToRegexpAttr(v)
+			if err != nil {
+				return nil, err
+			}
+			podAnnotations[k] = &annotation
+		}
 
 		attrs = append(attrs, services.Attributes{
-			Name:      s.Name,
-			Namespace: s.Namespace,
-			OpenPorts: ports,
-			Path:      paths,
-			Metadata:  kubernetes,
-			PodLabels: podLabels,
+			Name:           s.Name,
+			Namespace:      s.Namespace,
+			OpenPorts:      ports,
+			Path:           paths,
+			Metadata:       kubernetes,
+			PodLabels:      podLabels,
+			ContainersOnly: s.ContainersOnly,
+			PodAnnotations: podAnnotations,
 		})
 	}
 	return attrs, nil

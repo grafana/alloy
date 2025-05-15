@@ -1356,6 +1356,8 @@ github.com/grafana/alloy-remote-config v0.0.10 h1:1Ge7lz2mjXI1rd6SmiZpFHyXeLehBu
 github.com/grafana/alloy-remote-config v0.0.10/go.mod h1:kHE1usYo2WAVCikQkIXuoG1Clz8BSdiz3kF+DZSCQ4k=
 github.com/grafana/beyla/v2 v2.1.0-alloy-1 h1:VyR8ahPS+LfCq3oZjLSgIVaP/Q18om0ZkWn7T2i9hbk=
 github.com/grafana/beyla/v2 v2.1.0-alloy-1/go.mod h1:+njBszDWhtQq5KY1/zXTlK7vl+n5Q+gWXs/rR9cqEyw=
+github.com/grafana/beyla/v2 v2.2.3 h1:wE9yMv6JdNn1t0Ah6eNOiXcp9Ere0GH0fzzxT5DMXOA=
+github.com/grafana/beyla/v2 v2.2.3/go.mod h1:lp9AiI+ZvwSZF7tS+r0+fIpfFZ/01dwjWAH3gOaoszI=
 github.com/grafana/cadvisor v0.0.0-20240729082359-1f04a91701e2 h1:ju6EcY2aEobeBg185ETtFCKj5WzaQ48qfkbsSRRQrF4=
 github.com/grafana/cadvisor v0.0.0-20240729082359-1f04a91701e2/go.mod h1:8sLW/G7rcFe1CKMaA4pYT4mX3P1xQVGqM6luzEzx/2g=
 github.com/grafana/catchpoint-prometheus-exporter v0.0.0-20250218151502-6e97feaee761 h1:dPJOIEwtQ8uR3Qa79pb/lsSFJQ6j4P9vpCUQ4fKimG4=

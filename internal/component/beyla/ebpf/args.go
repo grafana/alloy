@@ -68,11 +68,12 @@ type Selection struct {
 type Services []Service
 
 type Service struct {
-	Name       string            `alloy:"name,attr,optional"`
-	Namespace  string            `alloy:"namespace,attr,optional"`
-	OpenPorts  string            `alloy:"open_ports,attr,optional"`
-	Path       string            `alloy:"exe_path,attr,optional"`
-	Kubernetes KubernetesService `alloy:"kubernetes,block,optional"`
+	Name           string            `alloy:"name,attr,optional"`
+	Namespace      string            `alloy:"namespace,attr,optional"`
+	OpenPorts      string            `alloy:"open_ports,attr,optional"`
+	Path           string            `alloy:"exe_path,attr,optional"`
+	Kubernetes     KubernetesService `alloy:"kubernetes,block,optional"`
+	ContainersOnly bool              `alloy:"containers_only,attr,optional"`
 }
 
 type KubernetesService struct {
@@ -84,6 +85,7 @@ type KubernetesService struct {
 	DaemonSetName   string            `alloy:"daemonset_name,attr,optional"`
 	OwnerName       string            `alloy:"owner_name,attr,optional"`
 	PodLabels       map[string]string `alloy:"pod_labels,attr,optional"`
+	PodAnnotations  map[string]string `alloy:"pod_annotations,attr,optional"`
 }
 
 type Discovery struct {
