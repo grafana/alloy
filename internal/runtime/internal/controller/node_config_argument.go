@@ -5,6 +5,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/grafana/alloy/internal/nodeconf/argument"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/vm"
 )
@@ -36,12 +37,6 @@ func NewArgumentConfigNode(block *ast.BlockStmt, globals ComponentGlobals) *Argu
 	}
 }
 
-type argumentBlock struct {
-	Optional bool   `alloy:"optional,attr,optional"`
-	Default  any    `alloy:"default,attr,optional"`
-	Comment  string `alloy:"comment,attr,optional"`
-}
-
 // Evaluate implements BlockNode and updates the arguments for the managed config block
 // by re-evaluating its Alloy block with the provided scope. The managed config block
 // will be built the first time Evaluate is called.
@@ -52,13 +47,13 @@ func (cn *ArgumentConfigNode) Evaluate(scope *vm.Scope) error {
 	cn.mut.Lock()
 	defer cn.mut.Unlock()
 
-	var argument argumentBlock
-	if err := cn.eval.Evaluate(scope, &argument); err != nil {
+	var args argument.Arguments
+	if err := cn.eval.Evaluate(scope, &args); err != nil {
 		return fmt.Errorf("decoding configuration: %w", err)
 	}
 
-	cn.defaultValue = argument.Default
-	cn.optional = argument.Optional
+	cn.defaultValue = args.Default
+	cn.optional = args.Optional
 
 	return nil
 }

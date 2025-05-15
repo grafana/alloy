@@ -1,0 +1,29 @@
+invalid arguments and exports
+-- main.alloy --
+
+// arguments in root
+argument "root" {}
+
+export "root" {
+	value = ""
+}
+
+declare "module" {
+	// invalid attribute
+	argument "invalid_attr" {
+		test = ""
+	}
+
+	export "invalid_expr" {
+		value = ""			
+		test = ""
+	}
+	
+	export "missing_attr" {}
+	
+	argument "duplicate" {}
+	argument "duplicate" {}
+
+	export "duplicate" {}
+	export "duplicate" {}
+}
