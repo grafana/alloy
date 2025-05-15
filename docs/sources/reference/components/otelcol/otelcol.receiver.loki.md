@@ -3,10 +3,10 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/ot
 aliases:
   - ../otelcol.receiver.loki/ # /docs/alloy/latest/reference/otelcol.receiver.loki/
 description: Learn about otelcol.receiver.loki
-title: `otelcol.receiver.loki`
+title: otelcol.receiver.loki
 ---
 
-# otelcol.receiver.loki
+# `otelcol.receiver.loki`
 
 `otelcol.receiver.loki` receives Loki log entries, converts them to the OpenTelemetry logs format, and forwards them to other `otelcol.*` components.
 
