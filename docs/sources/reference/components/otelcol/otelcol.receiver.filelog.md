@@ -75,7 +75,7 @@ To persist state between restarts of the {{< param "PRODUCT_NAME" >}} process, s
 
 [encoding-documentation]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/{{< param "OTEL_VERSION" >}}/receiver/filelogreceiver/README.md#supported-encodings
 
-### operators
+### `operators`
 
 The `operators` list is a list of stanza [operators][] that transform the log entries after they have been read.
 
@@ -103,12 +103,12 @@ The following blocks are supported inside the definition of
 | Hierarchy                   | Block                 | Description                                                                                     | Required |
 |-----------------------------|-----------------------|-------------------------------------------------------------------------------------------------|----------|
 | output                      | [output][]            | Configures where to send received telemetry data.                                               | yes      |
-| multiline                   | [multiline][]         | Configures rules for multiline parsing of log messages                                          | no       |
-| header                      | [header][]            | Configures rules for parsing a log header line                                                  | no       |
-| retry_on_failure            | [retry_on_failure][]  | Configures the retry behavior when the receiver encounters an error downstream in the pipeline. | no       |
 | debug_metrics               | [debug_metrics][]     | Configures the metrics that this component generates to monitor its state.                      | no       |
+| header                      | [header][]            | Configures rules for parsing a log header line                                                  | no       |
+| multiline                   | [multiline][]         | Configures rules for multiline parsing of log messages                                          | no       |
 | ordering_criteria           | [ordering_criteria][] | Configures the order in which log files are processed.                                          | no       |
 | ordering_criteria > sort_by | [sort_by][]           | Configures the fields to sort by within the ordering critera.                                   | yes      |
+| retry_on_failure            | [retry_on_failure][]  | Configures the retry behavior when the receiver encounters an error downstream in the pipeline. | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `ordering_criteria` > `sort_by` refers to a `sort_by` block defined inside a `ordering_criteria` block.

@@ -35,7 +35,7 @@ otelcol.receiver.awscloudwatch "<LABEL>" {
 
 You can use the following arguments with `otelcol.receiver.awscloudwatch`:
 
-|      Name       |   Type   |           Description            | Default | Required |
+| Name            | Type     | Description                      | Default | Required |
 | --------------- | -------- | -------------------------------- | ------- | -------- |
 | `region`        | `string` | AWS region to collect logs from. |         | yes      |
 | `imds_endpoint` | `string` | Custom EC2 IMDS endpoint to use. |         | no       |
@@ -47,7 +47,7 @@ If `imds_endpoint` is not specified, and the environment variable `AWS_EC2_METAD
 
 You can use the following blocks with `otelcol.receiver.awscloudwatch`:
 
-|              Block               |                                Description                                 | Required |
+| Block                            | Description                                                                | Required |
 | -------------------------------- | -------------------------------------------------------------------------- | -------- |
 | [`output`][output]               | Configures where to send received telemetry data.                          | yes      |
 | [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |
@@ -57,41 +57,51 @@ You can use the following blocks with `otelcol.receiver.awscloudwatch`:
 [debug_metrics]: #debug_metrics
 [output]: #output
 
+### `output`
+
+<span class="badge docs-labels__stage docs-labels__item">Required</span>
+
+{{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `debug_metrics`
+
+{{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
 ### `logs`
 
 The `logs` block configures how logs are collected from CloudWatch.
 
 The following arguments are supported:
 
-|           Name           |    Type    |                          Description                           | Default | Required |
+| Name                     | Type       | Description                                                    | Default | Required |
 | ------------------------ | ---------- | -------------------------------------------------------------- | ------- | -------- |
 | `max_events_per_request` | `int`      | Maximum number of events to process per request to Cloudwatch. | `1000`  | no       |
 | `poll_interval`          | `duration` | How frequently to poll for new log entries.                    | `"1m"`  | no       |
 
 The `logs` block supports the following blocks:
 
-|          Block          |                 Description                  | Required |
+| Block                   | Description                                  | Required |
 | ----------------------- | -------------------------------------------- | -------- |
 | [groups](#logs--groups) | Configures which log groups to collect from. | no       |
 
-### logs > groups
+### `logs` > `groups`
 
 The `groups` block supports the following blocks:
 
-|                    Block                    |                   Description                   | Required |
+| Block                                       | Description                                     | Required |
 | ------------------------------------------- | ----------------------------------------------- | -------- |
 | [autodiscover](#logs--groups--autodiscover) | Configures automatic discovery of log groups.   | no       |
 | [named](#logs--groups--named)               | Configures specific log groups to collect from. | no       |
 
 The blocks `autodiscover` or `named` are mutually exclusive.
 
-#### logs > groups > autodiscover
+#### `logs` > `groups` > `autodiscover`
 
 The `autodiscover` block configures automatic discovery of log groups.
 
 The following arguments are supported:
 
-|   Name   |   Type   |                Description                | Default | Required |
+| Name     | Type     | Description                               | Default | Required |
 | -------- | -------- | ----------------------------------------- | ------- | -------- |
 | `limit`  | `int`    | Maximum number of log groups to discover. | `50`    | no       |
 | `prefix` | `string` | Prefix to filter log groups by.           |         | no       |
@@ -102,18 +112,18 @@ The `autodiscover` block supports the following blocks:
 | ----------------------------------------------- | --------------------------------- | -------- |
 | [streams](#logs--groups--autodiscover--streams) | Configures log streams filtering. | no       |
 
-#### logs > groups > autodiscover > streams
+#### `logs` > `groups` > `autodiscover` > `streams`
 
 The `streams` block configures filtering of log streams for the autodiscovered log groups.
 
 The following arguments are supported:
 
-|    Name    |    Type    |              Description               | Default | Required |
+| Name       | Type       | Description                            | Default | Required |
 | ---------- | ---------- | -------------------------------------- | ------- | -------- |
 | `names`    | `[]string` | List of exact stream names to collect. |         | no       |
 | `prefixes` | `[]string` | List of prefixes to filter streams by. |         | no       |
 
-#### logs > groups > named
+#### `logs` > `groups` > `named`
 
 The `named` block explicitly configures specific log groups to collect from. Multiple `named` blocks can be specified.
 
@@ -124,16 +134,6 @@ The following arguments are supported:
 | `group_name` | `string`   | Name of the CloudWatch log group.      | yes      |
 | `names`      | `[]string` | List of exact stream names to collect. | no       |
 | `prefixes`   | `[]string` | List of prefixes to filter streams by. | no       |
-
-### `debug_metrics`
-
-{{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
-
-### `output`
-
-<span class="badge docs-labels__stage docs-labels__item">Required</span>
-
-{{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 
