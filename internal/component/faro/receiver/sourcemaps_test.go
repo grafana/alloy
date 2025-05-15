@@ -625,10 +625,9 @@ func (cl *mockHTTPClient) Get(url string) (resp *http.Response, err error) {
 }
 
 type mockFileService struct {
-	files       map[string][]byte
-	stats       []string
-	reads       []string
-	validateErr error
+	files map[string][]byte
+	stats []string
+	reads []string
 }
 
 func (s *mockFileService) Stat(name string) (fs.FileInfo, error) {
@@ -650,9 +649,6 @@ func (s *mockFileService) ReadFile(name string) ([]byte, error) {
 }
 
 func (s *mockFileService) ValidateFilePath(name string) (string, error) {
-	if s.validateErr != nil {
-		return "", s.validateErr
-	}
 	return name, nil
 }
 
