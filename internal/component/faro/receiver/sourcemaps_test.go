@@ -567,6 +567,46 @@ func TestOsFileService_RejectsInvalidPaths(t *testing.T) {
 	}
 }
 
+func Test_sourceMapsStoreImpl_RealWorldPathValidation(t *testing.T) {
+	var (
+		logger      = util.TestLogger(t)
+		fileService = &mockFileService{
+			files: map[string][]byte{},
+		}
+		store = newSourceMapsStore(
+			logger,
+			SourceMapsArguments{
+				Download: false,
+				Locations: []LocationArguments{
+					{
+						MinifiedPathPrefix: "https://example.com/",
+						Path:               "/foo/bar/baz/qux",
+					},
+				},
+			},
+			newSourceMapMetrics(prometheus.NewRegistry()),
+			nil,
+			fileService,
+		)
+	)
+
+	input := &payload.Exception{
+		Stacktrace: &payload.Stacktrace{
+			Frames: []payload.Frame{
+				{
+					Colno:    6,
+					Filename: "https://example.com/folder/file.js",
+					Function: "eval",
+					Lineno:   5,
+				},
+			},
+		},
+	}
+
+	transformException(logger, store, input, "123")
+	require.Equal(t, []string{"/foo/bar/baz/qux/folder/file.js.map"}, fileService.stats)
+}
+
 type mockHTTPClient struct {
 	responses []struct {
 		*http.Response
@@ -585,9 +625,10 @@ func (cl *mockHTTPClient) Get(url string) (resp *http.Response, err error) {
 }
 
 type mockFileService struct {
-	files map[string][]byte
-	stats []string
-	reads []string
+	files       map[string][]byte
+	stats       []string
+	reads       []string
+	validateErr error
 }
 
 func (s *mockFileService) Stat(name string) (fs.FileInfo, error) {
@@ -609,6 +650,9 @@ func (s *mockFileService) ReadFile(name string) ([]byte, error) {
 }
 
 func (s *mockFileService) ValidateFilePath(name string) (string, error) {
+	if s.validateErr != nil {
+		return "", s.validateErr
+	}
 	return name, nil
 }
 
