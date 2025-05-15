@@ -136,7 +136,7 @@ func (v *validator) validateDeclares(s *state) {
 		s.graph.Add(node)
 
 		configs, declares, services, components := extractBlocks(node, node.block.Body, v.sm)
-		// Add sub as node
+		// Add module state as node to graph
 		s.graph.Add(newSubNode(node, v.validate(&state{
 			root:       false,
 			graph:      newGraph(),
@@ -275,7 +275,7 @@ func (v *validator) validateForeach(node *blockNode, s *state) {
 	// We extract all blocks from template body and evaluate them as components.
 	configs, declares, services, components := extractBlocks(node, template.Body, v.sm)
 
-	// Add sub as node
+	// Add foreach state as node to the graph
 	s.graph.Add(newSubNode(node, v.validate(&state{
 		root:       s.root,
 		foreach:    true,

@@ -66,7 +66,6 @@ func validateGraph(s *state) diag.Diagnostics {
 				continue
 			}
 			diags.Merge(typecheck.Block(node.block, reg.CloneArguments()))
-
 		case *subNode:
 			diags.Merge(validateGraph(node.state))
 		}
