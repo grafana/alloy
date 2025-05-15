@@ -30,33 +30,6 @@ func TestQuerySample(t *testing.T) {
 		logsLines  []string
 	}{
 		{
-			name: "select query with wait event",
-			rows: [][]driver.Value{{
-				"some_schema",
-				"123",
-				"some_digest",
-				"select * from some_table where id = 1",
-				"70000000",
-				"20000000",
-				"10000000",
-				"5",
-				"5",
-				"0",
-				"0",
-				"456",
-				"457",
-				"456",
-				"wait/io/file/innodb/innodb_data_file",
-				"100000000",
-			}},
-			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": "wait_event", "instance": "mysql-db"},
-			},
-			logsLines: []string{
-				`level="info" event_id="123" wait_event_id="456" wait_event_name="wait/io/file/innodb/innodb_data_file" wait_time="0.100000ms"`,
-			},
-		},
-		{
 			name: "select query without wait event",
 			rows: [][]driver.Value{{
 				"some_schema",
@@ -72,6 +45,8 @@ func TestQuerySample(t *testing.T) {
 				"0",
 				"456",
 				"457",
+				nil,
+				nil,
 				nil,
 				nil,
 				nil,
@@ -102,6 +77,8 @@ func TestQuerySample(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				nil,
+				nil,
 			}, {
 				"some_schema",
 				"124",
@@ -116,6 +93,8 @@ func TestQuerySample(t *testing.T) {
 				"0",
 				"456",
 				"457",
+				nil,
+				nil,
 				nil,
 				nil,
 				nil,
@@ -146,6 +125,8 @@ func TestQuerySample(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				nil,
+				nil,
 			}},
 			logsLabels: []model.LabelSet{
 				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
@@ -173,6 +154,8 @@ func TestQuerySample(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				nil,
+				nil,
 			}},
 			logsLabels: []model.LabelSet{},
 			logsLines:  []string{},
@@ -193,6 +176,8 @@ func TestQuerySample(t *testing.T) {
 				"0",
 				"456",
 				"457",
+				nil,
+				nil,
 				nil,
 				nil,
 				nil,
@@ -223,6 +208,8 @@ func TestQuerySample(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				nil,
+				nil,
 			}, {
 				"some_schema",
 				"124",
@@ -237,6 +224,8 @@ func TestQuerySample(t *testing.T) {
 				"0",
 				"456",
 				"457",
+				nil,
+				nil,
 				nil,
 				nil,
 				nil,
@@ -267,6 +256,8 @@ func TestQuerySample(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				nil,
+				nil,
 			}, {
 				"some_other_schema",
 				"124",
@@ -281,6 +272,8 @@ func TestQuerySample(t *testing.T) {
 				"0",
 				"456",
 				"457",
+				nil,
+				nil,
 				nil,
 				nil,
 				nil,
@@ -313,6 +306,8 @@ func TestQuerySample(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				nil,
+				nil,
 			}},
 			logsLabels: []model.LabelSet{
 				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
@@ -337,6 +332,8 @@ func TestQuerySample(t *testing.T) {
 				"0",
 				"456",
 				"457",
+				nil,
+				nil,
 				nil,
 				nil,
 				nil,
@@ -409,6 +406,8 @@ func TestQuerySample(t *testing.T) {
 						"statements.MAX_TOTAL_MEMORY",
 						"waits.event_id",
 						"waits.event_name",
+						"waits.object_name",
+						"waits.object_type",
 						"waits.timer_wait",
 					}).AddRows(
 						tc.rows...,
@@ -434,11 +433,133 @@ func TestQuerySample(t *testing.T) {
 
 			lokiEntries := lokiClient.Received()
 			require.Equal(t, len(tc.logsLines), len(lokiEntries))
+			require.Equal(t, len(tc.logsLabels), len(lokiEntries))
+
 			for i, entry := range lokiEntries {
 				require.Equal(t, tc.logsLabels[i], entry.Labels)
 				require.Equal(t, tc.logsLines[i], entry.Line)
 			}
 		})
+	}
+}
+
+func TestQuerySample_WaitEvents(t *testing.T) {
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	lokiClient := loki_fake.NewClient(func() {})
+
+	collector, err := NewQuerySample(QuerySampleArguments{
+		DB:              db,
+		InstanceKey:     "mysql-db",
+		CollectInterval: time.Second,
+		EntryHandler:    lokiClient,
+		Logger:          log.NewLogfmtLogger(os.Stderr),
+	})
+	require.NoError(t, err)
+	require.NotNil(t, collector)
+
+	mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().
+		WillReturnRows(
+			sqlmock.NewRows([]string{
+				"uptime",
+			}).AddRow(
+				"1", // corresponds to initial timerBookmark
+			),
+		)
+
+	mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(
+		sqlmock.NewRows([]string{
+			"now",
+			"uptime",
+		}).AddRow(
+			5,
+			1,
+		))
+
+	mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, "", digestTextNotNullClause, endOfTimeline)).WithArgs(
+		1e12, // initial timerBookmark
+		1e12,
+	).RowsWillBeClosed().
+		WillReturnRows(
+			sqlmock.NewRows([]string{
+				"statements.CURRENT_SCHEMA",
+				"statements.EVENT_ID",
+				"statements.DIGEST",
+				"statements.DIGEST_TEXT",
+				"statements.TIMER_END",
+				"statements.TIMER_WAIT",
+				"statements.CPU_TIME",
+				"statements.ROWS_EXAMINED",
+				"statements.ROWS_SENT",
+				"statements.ROWS_AFFECTED",
+				"statements.ERRORS",
+				"statements.MAX_CONTROLLED_MEMORY",
+				"statements.MAX_TOTAL_MEMORY",
+				"waits.event_id",
+				"waits.event_name",
+				"waits.object_name",
+				"waits.object_type",
+				"waits.timer_wait",
+			}).AddRows(
+				[]driver.Value{
+					"some_schema",
+					"123",
+					"some_digest",
+					"select * from some_table where id = 1",
+					"70000000",
+					"20000000",
+					"10000000",
+					"5",
+					"5",
+					"0",
+					"0",
+					"456",
+					"457",
+					"124",
+					"wait/io/file/innodb/innodb_data_file",
+					"wait_object_name",
+					"wait_object_type",
+					"100000000",
+				},
+			),
+		)
+
+	err = collector.Start(t.Context())
+	require.NoError(t, err)
+
+	logsLines := []string{
+		`level="info" schema="some_schema" event_id="123" digest="some_digest" digest_text="select * from some_table where id = :redacted1" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`,
+		`level="info" digest="some_digest" schema="some_schema" event_id="123" wait_event_id="124" wait_event_name="wait/io/file/innodb/innodb_data_file" wait_object_name="wait_object_name" wait_object_type="wait_object_type" wait_time="0.100000ms"`,
+	}
+
+	require.Eventually(t, func() bool {
+		return len(lokiClient.Received()) == len(logsLines)
+	}, 5*time.Second, 100*time.Millisecond)
+
+	collector.Stop()
+	lokiClient.Stop()
+
+	require.Eventually(t, func() bool {
+		return collector.Stopped()
+	}, 5*time.Second, 100*time.Millisecond)
+
+	err = mock.ExpectationsWereMet()
+	require.NoError(t, err)
+
+	logsLabels := []model.LabelSet{
+		{"job": database_observability.JobName, "op": "query_sample", "instance": "mysql-db"},
+		{"job": database_observability.JobName, "op": "wait_event", "instance": "mysql-db"},
+	}
+
+	lokiEntries := lokiClient.Received()
+	require.Equal(t, len(logsLines), len(lokiEntries))
+	require.Equal(t, len(logsLabels), len(lokiEntries))
+
+	for i, entry := range lokiEntries {
+		require.Equal(t, logsLabels[i], entry.Labels)
+		require.Equal(t, logsLines[i], entry.Line)
 	}
 }
 
@@ -499,6 +620,8 @@ func TestQuerySampleDisableQueryRedaction(t *testing.T) {
 					"statements.MAX_TOTAL_MEMORY",
 					"waits.event_id",
 					"waits.event_name",
+					"waits.object_name",
+					"waits.object_type",
 					"waits.timer_wait",
 					"statements.SQL_TEXT",
 				}).AddRow(
@@ -515,6 +638,8 @@ func TestQuerySampleDisableQueryRedaction(t *testing.T) {
 					"0",
 					"456",
 					"457",
+					nil,
+					nil,
 					nil,
 					nil,
 					nil,
@@ -599,6 +724,8 @@ func TestQuerySampleDisableQueryRedaction(t *testing.T) {
 					"statements.MAX_TOTAL_MEMORY",
 					"waits.event_id",
 					"waits.event_name",
+					"waits.object_name",
+					"waits.object_type",
 					"waits.timer_wait",
 				}).AddRow(
 					"some_schema",
@@ -614,6 +741,8 @@ func TestQuerySampleDisableQueryRedaction(t *testing.T) {
 					"0",
 					"456",
 					"457",
+					nil,
+					nil,
 					nil,
 					nil,
 					nil,
@@ -723,6 +852,8 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 					"statements.MAX_TOTAL_MEMORY",
 					"waits.event_id",
 					"waits.event_name",
+					"waits.object_name",
+					"waits.object_type",
 					"waits.timer_wait",
 				}).AddRow(
 					"some_schema",
@@ -738,6 +869,8 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 					"0",
 					"456",
 					"457",
+					nil,
+					nil,
 					nil,
 					nil,
 					nil,
@@ -820,6 +953,8 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 					"statements.MAX_TOTAL_MEMORY",
 					"waits.event_id",
 					"waits.event_name",
+					"waits.object_name",
+					"waits.object_type",
 					"waits.timer_wait",
 				}).AddRow(
 					"some_schema",
@@ -838,6 +973,8 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 					nil,
 					nil,
 					nil,
+					nil,
+					nil,
 				).AddRow(
 					"some_schema",
 					"124",
@@ -852,6 +989,8 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 					"0",
 					"456",
 					"457",
+					nil,
+					nil,
 					nil,
 					nil,
 					nil,
@@ -951,6 +1090,8 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 					"statements.MAX_TOTAL_MEMORY",
 					"waits.event_id",
 					"waits.event_name",
+					"waits.object_name",
+					"waits.object_type",
 					"waits.timer_wait",
 				}).AddRow(
 					"some_schema",
@@ -966,6 +1107,8 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 					"0",
 					"456",
 					"457",
+					nil,
+					nil,
 					nil,
 					nil,
 					nil,
@@ -1069,6 +1212,8 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 			"statements.MAX_TOTAL_MEMORY",
 			"waits.event_id",
 			"waits.event_name",
+			"waits.object_name",
+			"waits.object_type",
 			"waits.timer_wait",
 		}).
 			AddRow(
@@ -1087,6 +1232,8 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 				2097152,               // max_total_memory (2MB)
 				nil,                   // WAIT_EVENT_ID
 				nil,                   // WAIT_EVENT_NAME
+				nil,                   // WAIT_OBJECT_NAME
+				nil,                   // WAIT_OBJECT_TYPE
 				nil,                   // WAIT_TIME
 			),
 		)
@@ -1159,6 +1306,8 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 				statements.MAX_TOTAL_MEMORY,
 				waits.event_id as WAIT_EVENT_ID,
 				waits.event_name as WAIT_EVENT_NAME,
+				waits.object_name as WAIT_OBJECT_NAME,
+				waits.object_type as WAIT_OBJECT_TYPE,
 				waits.timer_wait as WAIT_TIMER_WAIT
 			FROM
 				performance_schema.events_statements_history AS statements

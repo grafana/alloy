@@ -344,8 +344,9 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 			waitTime := picosecondsToMilliseconds(row.WaitTime.Float64)
 			waitLogMessage :=
 				fmt.Sprintf(
-					`digest="%s" event_id="%s" wait_event_id="%s" wait_event_name="%s" wait_object_name="%s" wait_object_type="%s" wait_time="%fms"`,
+					`digest="%s" schema="%s" event_id="%s" wait_event_id="%s" wait_event_name="%s" wait_object_name="%s" wait_object_type="%s" wait_time="%fms"`,
 					row.Digest.String,
+					row.Schema.String,
 					row.StatementEventID.String,
 					row.WaitEventID.String,
 					row.WaitEventName.String,
