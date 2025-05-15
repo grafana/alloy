@@ -85,6 +85,7 @@ func (v *validator) run(cr *componentRegistry) error {
 
 type state struct {
 	root       bool
+	foreach    bool
 	graph      *orderedGraph
 	declares   []*ast.BlockStmt
 	configs    []*ast.BlockStmt
@@ -146,12 +147,13 @@ func (v *validator) validateDeclares(s *state) {
 			node.id = node.id + "-" + strconv.Itoa(i)
 		}
 
-		configs, declares, components := extractBlocks(node, node.block.Body)
+		configs, declares, services, components := extractBlocks(node, node.block.Body, v.sm)
 		node.diags.Merge(v.validate(&state{
 			root:       false,
 			graph:      newGraph(),
 			declares:   declares,
 			configs:    configs,
+			services:   services,
 			components: components,
 			cr:         newComponentRegistry(s.cr),
 		}))
@@ -182,9 +184,15 @@ func (v *validator) validateConfigs(s *state) {
 		switch c.GetBlockName() {
 		case "logging":
 			node.args = &logging.Options{}
+			if diag, ok := blockDisallowed(s, node.block); ok {
+				node.diags.Add(diag)
+			}
 			s.graph.Add(node)
 		case "tracing":
 			node.args = &tracing.Options{}
+			if diag, ok := blockDisallowed(s, node.block); ok {
+				node.diags.Add(diag)
+			}
 			s.graph.Add(node)
 		case foreach.BlockName:
 			node.args = &foreach.Arguments{}
@@ -278,12 +286,14 @@ func (v *validator) validateForeach(node *blockNode, s *state) {
 	}
 
 	// We extract all blocks from template body and evaluate them as components.
-	configs, declares, components := extractBlocks(node, template.Body)
+	configs, declares, services, components := extractBlocks(node, template.Body, v.sm)
 	node.diags.Merge(v.validate(&state{
 		root:       s.root,
+		foreach:    true,
 		graph:      newGraph(),
 		declares:   declares,
 		configs:    configs,
+		services:   services,
 		components: components,
 		cr:         newComponentRegistry(s.cr),
 	}))
@@ -353,6 +363,10 @@ func (v *validator) validateServices(s *state) {
 			node.id = node.id + "-" + strconv.Itoa(i)
 		}
 
+		if diag, ok := blockDisallowed(s, node.block); ok {
+			node.diags.Add(diag)
+		}
+
 		if def.ConfigType == nil {
 			node.diags.Add(diag.Diagnostic{
 				Severity: diag.SeverityLevelError,
@@ -369,15 +383,16 @@ func (v *validator) validateServices(s *state) {
 }
 
 var configBlockNames = [...]string{
-	foreach.BlockName, argument.BlockName, export.BlockName, importsource.BlockNameFile,
-	importsource.BlockNameString, importsource.BlockNameHTTP, importsource.BlockNameGit,
+	foreach.BlockName, argument.BlockName, export.BlockName, "logging", "tracing",
+	importsource.BlockNameFile, importsource.BlockNameString, importsource.BlockNameHTTP, importsource.BlockNameGit,
 }
 
 // extractBlocks extracts configs, declares and components blocks from body
-func extractBlocks(node *blockNode, body ast.Body) ([]*ast.BlockStmt, []*ast.BlockStmt, []*ast.BlockStmt) {
+func extractBlocks(node *blockNode, body ast.Body, sm map[string]service.Definition) ([]*ast.BlockStmt, []*ast.BlockStmt, []*ast.BlockStmt, []*ast.BlockStmt) {
 	var (
 		configs    = make([]*ast.BlockStmt, 0, len(body))
 		declares   = make([]*ast.BlockStmt, 0, len(body))
+		services   = make([]*ast.BlockStmt, 0, len(body))
 		components = make([]*ast.BlockStmt, 0, len(body))
 	)
 
@@ -403,10 +418,15 @@ func extractBlocks(node *blockNode, body ast.Body) ([]*ast.BlockStmt, []*ast.Blo
 			continue
 		}
 
+		if _, ok := sm[blockID(b)]; ok {
+			services = append(services, b)
+			continue
+		}
+
 		components = append(components, b)
 	}
 
-	return configs, declares, components
+	return configs, declares, services, components
 }
 
 func splitComponents(blocks []*ast.BlockStmt, sm map[string]service.Definition) ([]*ast.BlockStmt, []*ast.BlockStmt) {
@@ -444,5 +464,28 @@ func blockAlreadyDefined(mem map[string]*ast.BlockStmt, b *ast.BlockStmt) (diag.
 		}, true
 	}
 	mem[id] = b
+	return diag.Diagnostic{}, false
+}
+
+func blockDisallowed(s *state, b *ast.BlockStmt) (diag.Diagnostic, bool) {
+	id := blockID(b)
+	if !s.root {
+		return diag.Diagnostic{
+			Severity: diag.SeverityLevelError,
+			Message:  fmt.Sprintf("%s not allowed in module", id),
+			StartPos: b.NamePos.Position(),
+			EndPos:   b.NamePos.Add(len(id) - 1).Position(),
+		}, true
+
+	}
+	if s.foreach {
+		return diag.Diagnostic{
+			Severity: diag.SeverityLevelError,
+			Message:  fmt.Sprintf("%s not allowed in foreach", id),
+			StartPos: b.NamePos.Position(),
+			EndPos:   b.NamePos.Add(len(id) - 1).Position(),
+		}, true
+	}
+
 	return diag.Diagnostic{}, false
 }

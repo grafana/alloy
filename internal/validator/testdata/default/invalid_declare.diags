@@ -1,11 +1,4 @@
-Error: main.alloy:3:2: component "logging" must have a label
-
-2 |     // Service configuration.
-3 |     logging { }
-  |     ^^^^^^^
-4 | }
-
-Error: main.alloy:3:2: cannot find the definition of component name "logging"
+Error: main.alloy:3:2: logging not allowed in module
 
 2 |     // Service configuration.
 3 |     logging { }
