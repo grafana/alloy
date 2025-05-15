@@ -8,7 +8,6 @@ import (
 
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/diag"
-	"github.com/grafana/alloy/syntax/typecheck"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
@@ -66,7 +65,7 @@ func (v *validator) run(cr *componentRegistry) error {
 
 	components, services := splitComponents(s.Components(), v.sm)
 
-	diags := v.validate(&state{
+	rootState := &state{
 		root:       true,
 		graph:      newGraph(),
 		declares:   s.Declares(),
@@ -74,8 +73,9 @@ func (v *validator) run(cr *componentRegistry) error {
 		components: components,
 		services:   services,
 		cr:         cr,
-	})
+	}
 
+	diags := validateGraph(v.validate(rootState))
 	if diags.HasErrors() {
 		return diags
 	}
@@ -94,29 +94,14 @@ type state struct {
 	cr         *componentRegistry
 }
 
-func (v *validator) validate(s *state) diag.Diagnostics {
-	var diags diag.Diagnostics
-
+func (v *validator) validate(s *state) *state {
 	// Need to validate declares first becuse we will register "custom" components.
 	v.validateDeclares(s)
 	v.validateConfigs(s)
 
 	v.validateComponents(s)
 	v.validateServices(s)
-
-	for n := range s.graph.Nodes() {
-		// Add any diagnostic for node that should be before type check.
-		diags.Merge(n.diags)
-		if n.args != nil {
-			diags.Merge(typecheck.Block(n.block, n.args))
-		}
-	}
-
-	if diags.HasErrors() {
-		return diags
-	}
-
-	return nil
+	return s
 }
 
 // validateDeclares will perform validation on declare blocks and register them as "custom" component.
@@ -147,8 +132,12 @@ func (v *validator) validateDeclares(s *state) {
 			node.id = node.id + "-" + strconv.Itoa(i)
 		}
 
+		// Add declare to graph
+		s.graph.Add(node)
+
 		configs, declares, services, components := extractBlocks(node, node.block.Body, v.sm)
-		node.diags.Merge(v.validate(&state{
+		// Add sub as node
+		s.graph.Add(newSubNode(node, v.validate(&state{
 			root:       false,
 			graph:      newGraph(),
 			declares:   declares,
@@ -156,10 +145,7 @@ func (v *validator) validateDeclares(s *state) {
 			services:   services,
 			components: components,
 			cr:         newComponentRegistry(s.cr),
-		}))
-
-		// Add declare to graph
-		s.graph.Add(node)
+		})))
 	}
 }
 
@@ -285,9 +271,12 @@ func (v *validator) validateForeach(node *blockNode, s *state) {
 		return
 	}
 
+	s.graph.Add(node)
 	// We extract all blocks from template body and evaluate them as components.
 	configs, declares, services, components := extractBlocks(node, template.Body, v.sm)
-	node.diags.Merge(v.validate(&state{
+
+	// Add sub as node
+	s.graph.Add(newSubNode(node, v.validate(&state{
 		root:       s.root,
 		foreach:    true,
 		graph:      newGraph(),
@@ -296,8 +285,7 @@ func (v *validator) validateForeach(node *blockNode, s *state) {
 		services:   services,
 		components: components,
 		cr:         newComponentRegistry(s.cr),
-	}))
-	s.graph.Add(node)
+	})))
 }
 
 // validateComponents will perform validation on component blocks.
@@ -306,7 +294,7 @@ func (v *validator) validateComponents(s *state) {
 
 	for i, c := range s.components {
 		var (
-			node = newBlockNode(c)
+			node = newComponentNode(c)
 			name = node.block.GetBlockName()
 		)
 		// All components must have a label.
@@ -324,24 +312,6 @@ func (v *validator) validateComponents(s *state) {
 			node.diags.Add(diag)
 			// We need to generate a unique id for this duplicated node so we can still typecheck it.
 			node.id = node.id + "-" + strconv.Itoa(i)
-		}
-
-		// Check if component exists and can be used.
-		reg, err := s.cr.Get(name)
-		if err != nil {
-			node.diags.Add(diag.Diagnostic{
-				Severity: diag.SeverityLevelError,
-				StartPos: c.NamePos.Position(),
-				EndPos:   c.NamePos.Add(len(name) - 1).Position(),
-				Message:  err.Error(),
-			})
-			s.graph.Add(node)
-			// We cannot do further validation if the component don't exist.
-			continue
-		}
-
-		if reg.Args != nil {
-			node.args = reg.CloneArguments()
 		}
 
 		s.graph.Add(node)

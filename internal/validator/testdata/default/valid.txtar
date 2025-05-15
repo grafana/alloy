@@ -181,3 +181,8 @@ declare "my_module" {
 }
 
 shadow_me "test" {}
+
+// use "a" before declare in "b"
+declare "b" { a "test" {} }
+
+declare "a" { }
