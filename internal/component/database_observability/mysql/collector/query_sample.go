@@ -17,8 +17,9 @@ import (
 )
 
 const (
-	OP_QUERY_SAMPLE = "query_sample"
 	QuerySampleName = "query_sample"
+	OP_QUERY_SAMPLE = "query_sample"
+	OP_WAIT_EVENT   = "wait_event"
 
 	sqlTextField              = `, statements.SQL_TEXT`
 	sqlTextNotNullClause      = ` AND statements.SQL_TEXT IS NOT NULL`
