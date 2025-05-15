@@ -350,9 +350,10 @@ func TestConvert_Discovery(t *testing.T) {
 	args := Discovery{
 		Services: []Service{
 			{
-				Name:      "test",
-				Namespace: "default",
-				OpenPorts: "80",
+				Name:           "test",
+				Namespace:      "default",
+				OpenPorts:      "80",
+				ContainersOnly: true,
 			},
 			{
 				Kubernetes: KubernetesService{
@@ -370,6 +371,7 @@ func TestConvert_Discovery(t *testing.T) {
 					DaemonSetName:   "test",
 					OwnerName:       "test",
 					PodLabels:       map[string]string{"test": "test"},
+					PodAnnotations:  map[string]string{"test": "test"},
 				},
 			},
 		},
@@ -388,6 +390,7 @@ func TestConvert_Discovery(t *testing.T) {
 	require.Equal(t, "test", config.Services[0].Name)
 	require.Equal(t, "default", config.Services[0].Namespace)
 	require.Equal(t, services.PortEnum{Ranges: []services.PortRange{{Start: 80, End: 0}}}, config.Services[0].OpenPorts)
+	require.True(t, config.Services[0].ContainersOnly)
 	require.True(t, config.Services[1].Metadata[services.AttrNamespace].IsSet())
 	require.True(t, config.Services[1].Metadata[services.AttrDeploymentName].IsSet())
 	_, exists := config.Services[1].Metadata[services.AttrDaemonSetName]
@@ -400,6 +403,7 @@ func TestConvert_Discovery(t *testing.T) {
 	require.True(t, config.Services[2].Metadata[services.AttrDaemonSetName].IsSet())
 	require.True(t, config.Services[2].Metadata[services.AttrOwnerName].IsSet())
 	require.True(t, config.Services[2].PodLabels["test"].IsSet())
+	require.True(t, config.Services[2].PodAnnotations["test"].IsSet())
 	require.NoError(t, config.Services.Validate())
 	require.Len(t, config.ExcludeServices, 1)
 	require.Equal(t, "test", config.ExcludeServices[0].Name)

@@ -84,6 +84,8 @@ Main (unreleased)
   - [0.26.0] Add option to honor original labels from event tags over labels specified in mapping configuration.
   - [0.27.1] Support dogstatsd extended aggregation
   - [0.27.2] Fix panic on certain invalid lines
+  
+- Upgrade `beyla.ebpf` to v2.2.3. The full list of changes can be found in the [Beyla release notes](https://github.com/grafana/beyla/releases/tag/v2.2.3). (@marctc)
 
 ### Bugfixes
 
