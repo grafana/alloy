@@ -1,4 +1,4 @@
-name: Shared container publish workflow
+name: Shared Windows container publish workflow
 
 on:
   workflow_call:
@@ -21,7 +21,7 @@ permissions:
 
 jobs:
   publish_windows_container:
-    name: Publish Windows alloy container
+    name: Publish Alloy Windows container
     strategy:
       matrix:
         os: [windows-2022, windows-2019]

@@ -8,7 +8,57 @@ permissions:
   contents: read
 
 jobs:
-  publish_windows_container:
-    uses: ./.github/workflows/publish-alloy.yml
+  publish_linux_container:
+    uses: ./.github/workflows/publish-alloy-linux.yml
+    permissions:
+      contents: read
+      id-token: write
     with:
       img-name: alloy
+  
+  publish_linux_boringcrypto_container:
+    uses: ./.github/workflows/publish-alloy-linux.yml
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      img-name: alloy-boringcrypto
+
+  publish_windows_container:
+    uses: ./.github/workflows/publish-alloy-windows.yml
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      img-name: alloy
+
+  publish_github_release:
+    name: Publish Alloy Linux container
+    container: grafana/alloy-build-image:v0.1.19
+    runs-on: ubuntu-latest
+    needs:
+    - publish_linux_container
+    - publish_linux_boringcrypto_container
+    - publish_windows_container
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      with:
+        persist-credentials: false
+
+    - name: Set up Go
+      uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
+      with:
+        go-version-file: go.mod
+        cache: false
+
+    - name: Publish
+      # This step needs GITHUB_REF_NAME, 
+      # the value of which only makes sense if the current ref is a tag.
+      if: ${{ github.ref_type == 'tag' }}
+      run: |
+        RELEASE_BUILD=1 VERSION="${GITHUB_REF_NAME}" make -j4 dist
+        VERSION="${GITHUB_REF_NAME}" RELEASE_DOC_TAG=$(echo "${GITHUB_REF_NAME}" | awk -F '.' '{print $1"."$2}') ./tools/release
