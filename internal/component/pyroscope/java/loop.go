@@ -49,7 +49,12 @@ type profilingLoop struct {
 	totalSamples     int64
 }
 
-func newProfilingLoop(pid int, target discovery.Target, logger log.Logger, profiler *asprof.Profiler, output *pyroscope.Fanout, cfg ProfilingConfig) *profilingLoop {
+// TODO: Write a test for tmpDir:
+// * What if it's an invalid dir?
+// * What if it contains a "/" in the beginning or the end?
+// * What if it's not in the root dir ("/tmp")?
+func newProfilingLoop(pid int, target discovery.Target, logger log.Logger, profiler *asprof.Profiler,
+	output *pyroscope.Fanout, cfg ProfilingConfig, tmpDir string) *profilingLoop {
 	ctx, cancel := context.WithCancel(context.Background())
 	dist := profiler.Distribution()
 	p := &profilingLoop{
@@ -59,7 +64,7 @@ func newProfilingLoop(pid int, target discovery.Target, logger log.Logger, profi
 		target:   target,
 		cancel:   cancel,
 		dist:     dist,
-		jfrFile:  fmt.Sprintf("/tmp/asprof-%d-%d.jfr", os.Getpid(), pid),
+		jfrFile:  fmt.Sprintf("/"+tmpDir+"/asprof-%d-%d.jfr", os.Getpid(), pid),
 		cfg:      cfg,
 		profiler: profiler,
 	}

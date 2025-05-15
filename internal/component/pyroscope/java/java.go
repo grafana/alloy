@@ -147,7 +147,7 @@ func (j *javaComponent) updateTargets(args Arguments) {
 		}
 		proc := j.pid2process[pid]
 		if proc == nil {
-			proc = newProfilingLoop(pid, target, j.opts.Logger, j.profiler, j.forwardTo, j.args.ProfilingConfig)
+			proc = newProfilingLoop(pid, target, j.opts.Logger, j.profiler, j.forwardTo, j.args.ProfilingConfig, j.args.TmpDir)
 			_ = level.Debug(j.opts.Logger).Log("msg", "new process", "target", fmt.Sprintf("%+v", target))
 			j.pid2process[pid] = proc
 		} else {
