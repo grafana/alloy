@@ -97,11 +97,11 @@ You can use the following blocks with `otelcol.receiver.kafka`:
 | ------------------------------------------------ | ------------------------------------------------------------------------------------------ | -------- |
 | [`output`][output]                               | Configures where to send received telemetry data.                                          | yes      |
 | [`authentication`][authentication]               | Configures authentication for connecting to Kafka brokers.                                 | no       |
+| `authentication` > [`kerberos`][kerberos]         | Authenticates against Kafka brokers with Kerberos.                                         | no       |
 | `authentication` > [`plaintext`][plaintext]      | Authenticates against Kafka brokers with plaintext.                                        | no       |
 | `authentication` > [`sasl`][sasl]                | Authenticates against Kafka brokers with SASL.                                             | no       |
-| `authentication` > [`tls`][tls]                  | Configures TLS for connecting to the Kafka brokers.                                        | no       |
 | `authentication` > `sasl` > [`aws_msk`][aws_msk] | Additional SASL parameters when using AWS_MSK_IAM.                                         | no       |
-| `authentication` >[`kerberos`][kerberos]         | Authenticates against Kafka brokers with Kerberos.                                         | no       |
+| `authentication` > [`tls`][tls]                  | Configures TLS for connecting to the Kafka brokers.                                        | no       |
 | [`autocommit`][autocommit]                       | Configures how to automatically commit updated topic offsets to back to the Kafka brokers. | no       |
 | [`debug_metrics`][debug_metrics]                 | Configures the metrics which this component generates to monitor its state.                | no       |
 | [`error_backoff`][error_backoff]                 | Configures how to handle errors when receiving messages from Kafka.                        | no       |
@@ -113,121 +113,81 @@ You can use the following blocks with `otelcol.receiver.kafka`:
 The > symbol indicates deeper levels of nesting.
 For example, `authentication` > `tls` refers to a `tls` block defined inside an `authentication` block.
 
-[authentication]: #authentication-block
-[plaintext]: #plaintext-block
-[sasl]: #sasl-block
-[aws_msk]: #aws_msk-block
-[tls]: #tls-block
-[kerberos]: #kerberos-block
-[metadata]: #metadata-block
-[retry]: #retry-block
-[autocommit]: #autocommit-block
-[message_marking]: #message_marking-block
-[header_extraction]: #header_extraction-block
-[debug_metrics]: #debug_metrics-block
-[output]: #output-block
-[error_backoff]: #error_backoff-block
-### authentication block
+[authentication]: #authentication
+[plaintext]: #plaintext
+[sasl]: #sasl
+[aws_msk]: #aws_msk
+[tls]: #tls
+[kerberos]: #kerberos
+[metadata]: #metadata
+[retry]: #retry
+[autocommit]: #autocommit
+[message_marking]: #message_marking
+[header_extraction]: #header_extraction
+[debug_metrics]: #debug_metrics
+[output]: #output
+[error_backoff]: #error_backoff
+
+### `output`
+
+{{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `authentication`
 
 {{< docs/shared lookup="reference/components/otelcol-kafka-authentication.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### plaintext block
-
-{{< docs/shared lookup="reference/components/otelcol-kafka-authentication-plaintext.md" source="alloy" version="<ALLOY_VERSION>" >}}
-
-### sasl block
-
-{{< docs/shared lookup="reference/components/otelcol-kafka-authentication-sasl.md" source="alloy" version="<ALLOY_VERSION>" >}}
-
-### aws_msk block
-
-{{< docs/shared lookup="reference/components/otelcol-kafka-authentication-sasl-aws_msk.md" source="alloy" version="<ALLOY_VERSION>" >}}
-
-### tls block
-
-The `tls` block configures TLS settings used for connecting to the Kafka
-brokers. If the `tls` block isn't provided, TLS won't be used for
-communication.
-
-{{< docs/shared lookup="reference/components/otelcol-tls-client-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
-
-### kerberos block
+### `kerberos`
 
 {{< docs/shared lookup="reference/components/otelcol-kafka-authentication-kerberos.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### metadata block
+### `plaintext`
 
-{{< docs/shared lookup="reference/components/otelcol-kafka-metadata.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/otelcol-kafka-authentication-plaintext.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### retry block
+### `sasl`
 
-{{< docs/shared lookup="reference/components/otelcol-kafka-metadata-retry.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/otelcol-kafka-authentication-sasl.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### autocommit block
+### `aws_msk`
 
-The `autocommit` block configures how to automatically commit updated topic
-offsets back to the Kafka brokers.
+{{< docs/shared lookup="reference/components/otelcol-kafka-authentication-sasl-aws_msk.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-The following arguments are supported:
+### `tls`
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`enable` | `bool` | Enable autocommitting updated topic offsets. | `true` | no
-`interval` | `duration` | How frequently to autocommit. | `"1s"` | no
+The `tls` block configures TLS settings used for connecting to the Kafka brokers.
+If the `tls` block isn't provided, TLS won't be used for communication.
 
-### message_marking block
+{{< docs/shared lookup="reference/components/otelcol-tls-client-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-The `message_marking` block configures when Kafka messages are marked as read.
+### `autocommit`
 
-The following arguments are supported:
-
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`after_execution` | `bool` | Mark messages after forwarding telemetry data to other components. | `false` | no
-`include_unsuccessful` | `bool` | Whether failed forwards should be marked as read. | `false` | no
-
-By default, a Kafka message is marked as read immediately after it is retrieved
-from the Kafka broker. If the `after_execution` argument is true, messages are
-only read after the telemetry data is forwarded to components specified in [the
-`output` block][output].
-
-When `after_execution` is true, messages are only marked as read when they are
-decoded successfully and components where the data was forwarded did not return
-an error. If the `include_unsuccessful` argument is true, messages are marked
-as read even if decoding or forwarding failed. Setting `include_unsuccessful`
-has no effect if `after_execution` is `false`.
-
-> **WARNING**: Setting `after_execution` to `true` and `include_unsuccessful`
-> to `false` can block the entire Kafka partition if message processing returns
-> a permanent error, such as failing to decode.
-
-### header_extraction block
-
-The `header_extraction` block configures how to extract headers from Kafka records.
+The `autocommit` block configures how to automatically commit updated topic offsets back to the Kafka brokers.
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`extract_headers` | `bool` | Enables attaching header fields to resource attributes. | `false` | no
-`headers` | `list(string)` | A list of headers to extract from the Kafka record. | `[]` | no
+| Name       | Type       | Description                                  | Default | Required |
+| ---------- | ---------- | -------------------------------------------- | ------- | -------- |
+| `enable`   | `bool`     | Enable autocommitting updated topic offsets. | `true`  | no       |
+| `interval` | `duration` | How frequently to autocommit.                | `"1s"`  | no       |
 
-Regular expressions are not allowed in the `headers` argument. Only exact matching will be performed.
+### `debug_metrics`
 
-### error_backoff block
+{{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `error_backoff`
 
 The `error_backoff` block configures how failed requests to Kafka are retried.
 
 The following arguments are supported:
 
-Name                   | Type       | Description                                            | Default | Required
------------------------|------------|--------------------------------------------------------|---------|---------
-`enabled`              | `boolean`  | Enables retrying failed requests.                      | `false` | no
-`initial_interval`     | `duration` | Initial time to wait before retrying a failed request. | `"0s"`  | no
-`max_elapsed_time`     | `duration` | Maximum time to wait before discarding a failed batch. | `"0s"`  | no
-`max_interval`         | `duration` | Maximum time to wait between retries.                  | `"0s"`  | no
-`multiplier`           | `number`   | Factor to grow wait time before retrying.              | `0`     | no
-`randomization_factor` | `number`   | Factor to randomize wait time before retrying.         | `0`     | no
+| Name                   | Type       | Description                                            | Default | Required |
+| ---------------------- | ---------- | ------------------------------------------------------ | ------- | -------- |
+| `enabled`              | `boolean`  | Enables retrying failed requests.                      | `false` | no       |
+| `initial_interval`     | `duration` | Initial time to wait before retrying a failed request. | `"0s"`  | no       |
+| `max_elapsed_time`     | `duration` | Maximum time to wait before discarding a failed batch. | `"0s"`  | no       |
+| `max_interval`         | `duration` | Maximum time to wait between retries.                  | `"0s"`  | no       |
+| `multiplier`           | `number`   | Factor to grow wait time before retrying.              | `0`     | no       |
+| `randomization_factor` | `number`   | Factor to randomize wait time before retrying.         | `0`     | no       |
 
 When `enabled` is `true`, failed batches are retried after a given interval.
 The `initial_interval` argument specifies how long to wait before the first retry attempt.
@@ -240,17 +200,52 @@ If `randomization_factor` is greater than `0`, the wait time before retries is m
 If a batch hasn't been sent successfully, it's discarded after the time specified by `max_elapsed_time` elapses.
 If `max_elapsed_time` is set to `"0s"`, failed requests are retried forever until they succeed.
 
-### debug_metrics block
+### `header_extraction`
 
-{{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+The `header_extraction` block configures how to extract headers from Kafka records.
 
-### output block
+The following arguments are supported:
 
-{{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+Name | Type | Description | Default | Required
+---- | ---- | ----------- | ------- | --------
+`extract_headers` | `bool` | Enables attaching header fields to resource attributes. | `false` | no
+`headers` | `list(string)` | A list of headers to extract from the Kafka record. | `[]` | no
+
+Regular expressions are not allowed in the `headers` argument. Only exact matching will be performed.
+
+### message_marking block
+
+The `message_marking` block configures when Kafka messages are marked as read.
+
+The following arguments are supported:
+
+| Name                   | Type   | Description                                                        | Default | Required |
+| ---------------------- | ------ | ------------------------------------------------------------------ | ------- | -------- |
+| `after_execution`      | `bool` | Mark messages after forwarding telemetry data to other components. | `false` | no       |
+| `include_unsuccessful` | `bool` | Whether failed forwards should be marked as read.                  | `false` | no       |
+
+By default, a Kafka message is marked as read immediately after it is retrieved from the Kafka broker.
+If the `after_execution` argument is true, messages are only read after the telemetry data is forwarded to components specified in [the `output` block][output].
+
+When `after_execution` is true, messages are only marked as read when they are decoded successfully and components where the data was forwarded didn't return an error.
+If the `include_unsuccessful` argument is true, messages are marked as read even if decoding or forwarding failed.
+Setting `include_unsuccessful` has no effect if `after_execution` is `false`.
+
+{{< admonition type="warning" >}}
+Setting `after_execution` to `true` and `include_unsuccessful` to `false` can block the entire Kafka partition if message processing returns a permanent error, such as failing to decode.
+{{< /admonition >}}
+
+### `metadata`
+
+{{< docs/shared lookup="reference/components/otelcol-kafka-metadata.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `retry`
+
+{{< docs/shared lookup="reference/components/otelcol-kafka-metadata-retry.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 
-`otelcol.receiver.kafka` does not export any fields.
+`otelcol.receiver.kafka` doesn't export any fields.
 
 ## Component health
 
@@ -259,13 +254,11 @@ configuration.
 
 ## Debug information
 
-`otelcol.receiver.kafka` does not expose any component-specific debug
-information.
+`otelcol.receiver.kafka` doesn't expose any component-specific debug information.
 
 ## Example
 
-This example forwards read telemetry data through a batch processor before
-finally sending it to an OTLP-capable endpoint:
+This example forwards read telemetry data through a batch processor before finally sending it to an OTLP-capable endpoint:
 
 ```alloy
 otelcol.receiver.kafka "default" {
