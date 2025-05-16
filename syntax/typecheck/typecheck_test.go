@@ -303,3 +303,23 @@ func TestBlock(t *testing.T) {
 		})
 	}
 }
+
+func TestBlockMap(t *testing.T) {
+	type Args struct {
+		Map map[string]any `alloy:"map,block"`
+	}
+
+	src := []byte(`
+		test "name" {
+			map {
+				a = 1
+				b = "str"
+			}
+		}
+	`)
+
+	file, err := parser.ParseFile("", src)
+	require.NoError(t, err)
+	diag := Block(file.Body[0].(*ast.BlockStmt), &Args{})
+	require.Len(t, diag, 0)
+}

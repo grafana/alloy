@@ -181,7 +181,7 @@ func (vm *Evaluator) evaluateMap(scope *Scope, assoc map[value.Value]ast.Node, n
 				Severity: diag.SeverityLevelError,
 				StartPos: node.NamePos.Position(),
 				EndPos:   node.LCurlyPos.Position(),
-				Message:  fmt.Sprintf("block %q requires non-empty label", strings.Join(node.Name, ".")),
+				Message:  fmt.Sprintf("block %q requires empty label", strings.Join(node.Name, ".")),
 			}
 		}
 		stmts = node.Body
