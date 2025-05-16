@@ -57,6 +57,7 @@ func TestConfigConversion(t *testing.T) {
 			NumConsumers: 10,
 			QueueSize:    1000,
 			StorageID:    nil,
+			Sizer:        exporterhelper.RequestSizerTypeRequests,
 		},
 		BackOffConfig: configretry.BackOffConfig{
 			Enabled:             true,
@@ -145,6 +146,7 @@ func TestConfigConversion(t *testing.T) {
 			NumConsumers: 10,
 			QueueSize:    1000,
 			StorageID:    (nil),
+			Sizer:        exporterhelper.RequestSizerTypeRequests,
 		},
 		BackOffConfig: configretry.BackOffConfig{
 			Enabled:             true,

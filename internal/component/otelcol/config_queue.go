@@ -62,7 +62,17 @@ func (args *QueueArguments) Convert() (*otelexporterhelper.QueueBatchConfig, err
 
 	sizer, err := convertSizer(args.Sizer)
 	if err != nil {
-		return nil, err
+		if args.Enabled {
+			return nil, err
+		} else {
+			// This is a workaround for components which have queue arguments,
+			// but don't use them in some cases. For example, the loadbalancing exporter
+			// doesn't set the queue arguments by default. This leaves the sizer empty,
+			// and then the convert function complains that the sizer value is invalid.
+			// If the queue is disabled then it should be ok just to set the sizer to the default value -
+			// it won't make a difference anyway.
+			sizer = &otelexporterhelper.RequestSizerTypeRequests
+		}
 	}
 
 	q := &otelexporterhelper.QueueBatchConfig{

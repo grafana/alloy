@@ -44,9 +44,9 @@ type Arguments struct {
 	ClientID          string        `alloy:"client_id,attr,optional"`
 	InitialOffset     string        `alloy:"initial_offset,attr,optional"`
 
-	Logs    KafkaReceiverTopicEncodingConfig `alloy:"logs,block,optional"`
-	Metrics KafkaReceiverTopicEncodingConfig `alloy:"metrics,block,optional"`
-	Traces  KafkaReceiverTopicEncodingConfig `alloy:"traces,block,optional"`
+	Logs    *KafkaReceiverTopicEncodingConfig `alloy:"logs,block,optional"`
+	Metrics *KafkaReceiverTopicEncodingConfig `alloy:"metrics,block,optional"`
+	Traces  *KafkaReceiverTopicEncodingConfig `alloy:"traces,block,optional"`
 
 	ResolveCanonicalBootstrapServersOnly bool `alloy:"resolve_canonical_bootstrap_servers_only,attr,optional"`
 
