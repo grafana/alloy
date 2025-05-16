@@ -3,12 +3,16 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/ot
 aliases:
   - ../otelcol.auth.basic/ # /docs/alloy/latest/reference/components/otelcol.auth.basic/
 description: Learn about otelcol.auth.basic
+labels:
+  stage: general-availability
+  products:
+    - oss
 title: otelcol.auth.basic
 ---
 
 # `otelcol.auth.basic`
 
-`otelcol.auth.basic` exposes a `handler` that can be used by other `otelcol` components to authenticate requests using basic authentication.
+`otelcol.auth.basic` exposes a `handler` that other `otelcol` components can use to authenticate requests using basic authentication.
 
 This component supports both server and client authentication.
 

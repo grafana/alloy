@@ -3,6 +3,10 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/ot
 aliases:
   - ../otelcol.receiver.kafka/ # /docs/alloy/latest/reference/otelcol.receiver.kafka/
 description: Learn about otelcol.receiver.kafka
+labels:
+  stage: general-availability
+  products:
+    - oss
 title: otelcol.receiver.kafka
 ---
 
@@ -97,7 +101,7 @@ You can use the following blocks with `otelcol.receiver.kafka`:
 | ------------------------------------------------ | ------------------------------------------------------------------------------------------ | -------- |
 | [`output`][output]                               | Configures where to send received telemetry data.                                          | yes      |
 | [`authentication`][authentication]               | Configures authentication for connecting to Kafka brokers.                                 | no       |
-| `authentication` > [`kerberos`][kerberos]         | Authenticates against Kafka brokers with Kerberos.                                         | no       |
+| `authentication` > [`kerberos`][kerberos]        | Authenticates against Kafka brokers with Kerberos.                                         | no       |
 | `authentication` > [`plaintext`][plaintext]      | Authenticates against Kafka brokers with plaintext.                                        | no       |
 | `authentication` > [`sasl`][sasl]                | Authenticates against Kafka brokers with SASL.                                             | no       |
 | `authentication` > `sasl` > [`aws_msk`][aws_msk] | Additional SASL parameters when using AWS_MSK_IAM.                                         | no       |
@@ -129,6 +133,8 @@ For example, `authentication` > `tls` refers to a `tls` block defined inside an 
 [error_backoff]: #error_backoff
 
 ### `output`
+
+<span class="badge docs-labels__stage docs-labels__item">Required</span>
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 

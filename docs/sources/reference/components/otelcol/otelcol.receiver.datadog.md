@@ -3,10 +3,12 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/ot
 aliases:
   - ../otelcol.receiver.datadog/ # /docs/alloy/latest/reference/otelcol.receiver.datadog/
 description: Learn about otelcol.receiver.datadog
+labels:
+  stage: experimental
+  products:
+    - oss
 title: otelcol.receiver.datadog
 ---
-
-<span class="badge docs-labels__stage docs-labels__item">Experimental</span>
 
 # `otelcol.receiver.datadog`
 
@@ -60,6 +62,8 @@ You can use the following blocks with `otelcol.receiver.datadog`:
 [output]: #output
 
 ### `output`
+
+<span class="badge docs-labels__stage docs-labels__item">Required</span>
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 

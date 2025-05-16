@@ -3,12 +3,16 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/ot
 aliases:
   - ../otelcol.auth.sigv4/ # /docs/alloy/latest/reference/components/otelcol.auth.sigv4/
 description: Learn about otelcol.auth.sigv4
+labels:
+  stage: general-availability
+  products:
+    - oss
 title: otelcol.auth.sigv4
 ---
 
 # `otelcol.auth.sigv4`
 
-`otelcol.auth.sigv4` exposes a `handler` that can be used by other `otelcol` components to authenticate requests to AWS services using the AWS Signature Version 4 (SigV4) protocol.
+`otelcol.auth.sigv4` exposes a `handler` that other `otelcol` components can use to authenticate requests to AWS services using the AWS Signature Version 4 (SigV4) protocol.
 For more information about SigV4 refer to the AWS documentation about [Signing AWS API requests][].
 
 This component only supports client authentication.

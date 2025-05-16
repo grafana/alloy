@@ -3,6 +3,10 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/ot
 aliases:
   - ../otelcol.processor.span/ # /docs/alloy/latest/reference/otelcol.processor.span/
 description: Learn about otelcol.processor.span
+labels:
+  stage: general-availability
+  products:
+    - oss
 title: otelcol.processor.span
 ---
 
@@ -72,6 +76,8 @@ If both an `include` block and an `exclude`block are specified, the `include` pr
 [debug_metrics]: #debug_metrics
 
 ### `output`
+
+<span class="badge docs-labels__stage docs-labels__item">Required</span>
 
 {{< docs/shared lookup="reference/components/output-block-traces.md" source="alloy" version="<ALLOY_VERSION>" >}}
 

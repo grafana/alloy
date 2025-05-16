@@ -3,6 +3,10 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/ot
 aliases:
   - ../otelcol.receiver.loki/ # /docs/alloy/latest/reference/otelcol.receiver.loki/
 description: Learn about otelcol.receiver.loki
+labels:
+  stage: general-availability
+  products:
+    - oss
 title: otelcol.receiver.loki
 ---
 
@@ -37,6 +41,8 @@ You can use the following blocks with `otelcol.receiver.loki`:
 [output]: #output
 
 ### `output`
+
+<span class="badge docs-labels__stage docs-labels__item">Required</span>
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 

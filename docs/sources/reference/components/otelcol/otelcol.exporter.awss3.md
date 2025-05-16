@@ -3,10 +3,12 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/ot
 aliases:
   - ../otelcol.exporter.awss3/ # /docs/alloy/latest/reference/components/otelcol.exporter.awss3/
 description: Learn about otelcol.exporter.awss3
+labels:
+  stage: experimental
+  products:
+    - oss
 title: otelcol.exporter.awss3
 ---
-
-<span class="badge docs-labels__stage docs-labels__item">Experimental</span>
 
 # `otelcol.exporter.awss3`
 
@@ -55,6 +57,8 @@ You can use the following blocks with `otelcol.exporter.awss3`:
 
 ### `s3_uploader`
 
+<span class="badge docs-labels__stage docs-labels__item">Required</span>
+
 The `s3_uploader` block configures the AWS S3 bucket details used by the component.
 
 The following arguments are supported:
@@ -64,7 +68,7 @@ The following arguments are supported:
 | `s3_bucket`           | `string`  | The S3 bucket.                                                                                        |                                               | yes      |
 | `s3_prefix`           | `string`  | Prefix for the S3 key (root directory inside the bucket).                                             |                                               | yes      |
 | `acl`                 | `string`  | The canned ACL to use when uploading objects.                                                         | `"private"`                                   | no       |
-| `compression`         | `string`  | How should the file be compressed? `none`, `gzip`                                                     | `none`                                        | no       |
+| `compression`         | `string`  | File compression method, `none` or `gzip`                                                             | `none`                                        | no       |
 | `disable_ssl`         | `boolean` | Set this to `true` to disable SSL when sending requests.                                              | `false`                                       | no       |
 | `endpoint`            | `string`  | Overrides the endpoint used by the exporter instead of constructing it from `region` and `s3_bucket`. |                                               | no       |
 | `file_prefix`         | `string`  | The file prefix defined by the user.                                                                  |                                               | no       |

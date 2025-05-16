@@ -3,6 +3,8 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/ot
 description: Learn about otelcol.receiver.filelog
 labels:
   stage: public-preview
+  products:
+    - oss
 title: otelcol.receiver.filelog
 ---
 
@@ -101,13 +103,13 @@ The following blocks are supported inside the definition of
 `otelcol.receiver.filelog`:
 
 | Hierarchy                   | Block                 | Description                                                                                     | Required |
-|-----------------------------|-----------------------|-------------------------------------------------------------------------------------------------|----------|
+| --------------------------- | --------------------- | ----------------------------------------------------------------------------------------------- | -------- |
 | output                      | [output][]            | Configures where to send received telemetry data.                                               | yes      |
 | debug_metrics               | [debug_metrics][]     | Configures the metrics that this component generates to monitor its state.                      | no       |
 | header                      | [header][]            | Configures rules for parsing a log header line                                                  | no       |
 | multiline                   | [multiline][]         | Configures rules for multiline parsing of log messages                                          | no       |
 | ordering_criteria           | [ordering_criteria][] | Configures the order in which log files are processed.                                          | no       |
-| ordering_criteria > sort_by | [sort_by][]           | Configures the fields to sort by within the ordering critera.                                   | yes      |
+| ordering_criteria > sort_by | [sort_by][]           | Configures the fields to sort by within the ordering criteria.                                  | yes      |
 | retry_on_failure            | [retry_on_failure][]  | Configures the retry behavior when the receiver encounters an error downstream in the pipeline. | no       |
 
 The > symbol indicates deeper levels of nesting.

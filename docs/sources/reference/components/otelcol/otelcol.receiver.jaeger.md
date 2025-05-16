@@ -3,6 +3,10 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/ot
 aliases:
   - ../otelcol.receiver.jaeger/ # /docs/alloy/latest/reference/otelcol.receiver.jaeger/
 description: Learn about otelcol.receiver.jaeger
+labels:
+  stage: general-availability
+  products:
+    - oss
 title: otelcol.receiver.jaeger
 ---
 
@@ -78,9 +82,13 @@ For example, `protocols` > `grpc` refers to a `grpc` block defined inside a `pro
 
 ### `output`
 
+<span class="badge docs-labels__stage docs-labels__item">Required</span>
+
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `protocols`
+
+<span class="badge docs-labels__stage docs-labels__item">Required</span>
 
 The `protocols` block defines a set of protocols used to accept traces over the network.
 

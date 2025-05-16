@@ -1,10 +1,12 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.processor.interval/
 description: Learn about otelcol.processor.interval
+labels:
+  stage: experimental
+  products:
+    - oss
 title: otelcol.processor.interval
 ---
-
-<span class="badge docs-labels__stage docs-labels__item">Experimental</span>
 
 # `otelcol.processor.interval`
 
@@ -76,6 +78,8 @@ You can use the following blocks with `otelcol.processor.interval`:
 [passthrough]: #passthrough
 
 ### `output`
+
+<span class="badge docs-labels__stage docs-labels__item">Required</span>
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 

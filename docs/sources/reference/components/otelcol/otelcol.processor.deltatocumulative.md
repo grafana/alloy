@@ -3,6 +3,10 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/ot
 aliases:
   - ../otelcol.processor.deltatocumulative/ # /docs/alloy/latest/reference/otelcol.processor.deltatocumulative/
 description: Learn about otelcol.processor.deltatocumulative
+labels:
+  stage: experimental
+  products:
+    - oss
 title: otelcol.processor.deltatocumulative
 ---
 
@@ -61,6 +65,8 @@ You can use the following blocks with `otelcol.processor.deltatocumulative`:
 [debug_metrics]: #debug_metrics
 
 ### `output`
+
+<span class="badge docs-labels__stage docs-labels__item">Required</span>
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 

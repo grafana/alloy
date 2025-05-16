@@ -3,6 +3,10 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/ot
 aliases:
   - ../otelcol.processor.batch/ # /docs/alloy/latest/reference/otelcol.processor.batch/
 description: Learn about otelcol.processor.batch
+labels:
+  stage: general-availability
+  products:
+    - oss
 title: otelcol.processor.batch
 ---
 
@@ -92,6 +96,8 @@ You can use the following blocks with `otelcol.processor.batch`:
 [debug_metrics]: #debug_metrics
 
 ### `output`
+
+<span class="badge docs-labels__stage docs-labels__item">Required</span>
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 

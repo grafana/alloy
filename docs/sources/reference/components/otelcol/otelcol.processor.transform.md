@@ -3,6 +3,10 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/ot
 aliases:
   - ../otelcol.processor.transform/ # /docs/alloy/latest/reference/otelcol.processor.transform/
 description: Learn about otelcol.processor.transform
+labels:
+  stage: general-availability
+  products:
+    - oss
 title: otelcol.processor.transform
 ---
 
@@ -140,6 +144,8 @@ You can use the following blocks with `otelcol.processor.transform`:
 [OTTL Context]: #ottl-context
 
 ### `output`
+
+<span class="badge docs-labels__stage docs-labels__item">Required</span>
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 

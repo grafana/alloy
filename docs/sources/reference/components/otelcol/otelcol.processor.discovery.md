@@ -3,6 +3,10 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/ot
 aliases:
   - ../otelcol.processor.discovery/ # /docs/alloy/latest/reference/otelcol.processor.discovery/
 description: Learn about otelcol.processor.discovery
+labels:
+  stage: general-availability
+  products:
+    - oss
 title: otelcol.processor.discovery
 ---
 
@@ -91,6 +95,8 @@ You can use the following block with `otelcol.processor.discovery`:
 [output]: #output
 
 ### `output`
+
+<span class="badge docs-labels__stage docs-labels__item">Required</span>
 
 {{< docs/shared lookup="reference/components/output-block-traces.md" source="alloy" version="<ALLOY_VERSION>" >}}
 

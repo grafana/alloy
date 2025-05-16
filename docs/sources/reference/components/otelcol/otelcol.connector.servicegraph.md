@@ -3,6 +3,10 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/ot
 aliases:
   - ../otelcol.connector.servicegraph/ # /docs/alloy/latest/reference/components/otelcol.connector.servicegraph/
 description: Learn about otelcol.connector.servicegraph
+labels:
+  stage: general-availability
+  products:
+    - oss
 title: otelcol.connector.servicegraph
 ---
 
@@ -71,7 +75,7 @@ The following requests are supported:
 
 Every span which can be paired up to form a request is kept in an in-memory store:
 
-* If the TTL of the span expires before it can be paired, it is deleted from the store.
+* If the TTL of the span expires before it can be paired, it's deleted from the store.
   TTL is configured in the [store][] block.
 * If the span is paired prior to its expiration, a metric is recorded and the span is deleted from the store.
 
@@ -93,7 +97,7 @@ The `latency_histogram_buckets` argument controls the buckets for `traces_servic
 Each emitted metrics series have a `client` and a `server` label corresponding with the service doing the request and the service receiving the request.
 The value of the label is derived from the `service.name` resource attribute of the two spans.
 
-The `connection_type` label may not be set. If it is set, its value will be either `messaging_system` or `database`.
+The `connection_type` label may not be set. If it's set, its value will be either `messaging_system` or `database`.
 
 Additional labels can be included using the `dimensions` configuration option:
 
@@ -121,6 +125,8 @@ You can use the following blocks with `otelcol.connector.servicegraph`:
 [debug_metrics]: #debug_metrics
 
 ### `output`
+
+<span class="badge docs-labels__stage docs-labels__item">Required</span>
 
 {{< docs/shared lookup="reference/components/output-block-metrics.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -154,8 +160,7 @@ It doesn't accept metrics and logs.
 
 ## Debug information
 
-`otelcol.connector.servicegraph` doesn't expose any component-specific debug
-information.
+`otelcol.connector.servicegraph` doesn't expose any component-specific debug information.
 
 ## Example
 

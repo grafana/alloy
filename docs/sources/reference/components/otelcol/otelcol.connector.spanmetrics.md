@@ -3,6 +3,10 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/ot
 aliases:
   - ../otelcol.connector.spanmetrics/ # /docs/alloy/latest/reference/components/otelcol.connector.spanmetrics/
 description: Learn about otelcol.connector.spanmetrics
+labels:
+  stage: general-availability
+  products:
+    - oss
 title: otelcol.connector.spanmetrics
 ---
 
@@ -57,7 +61,7 @@ otelcol.connector.spanmetrics "<LABEL>" {
 
 ## Arguments
 
-You can us ethe following arguments with `otelcol.connector.spanmetrics`:
+You can use the following arguments with `otelcol.connector.spanmetrics`:
 
 | Name                              | Type           | Description                                                                            | Default                 | Required |
 | --------------------------------- | -------------- | -------------------------------------------------------------------------------------- | ----------------------- | -------- |
@@ -98,19 +102,19 @@ For example, `["service.name", "telemetry.sdk.language", "telemetry.sdk.name"]`.
 
 You can use the following blocks with `otelcol.connector.spanmetrics`:
 
-| Block                                    | Description                                                                                                                                               | Required |
-| ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
-| [`histogram`][histogram]                 | Configures the histogram derived from spans durations.                                                                                                    | yes      |
-| [`output`][output]                       | Configures where to send telemetry data.                                                                                                                  | yes      |
-| [`debug_metrics`][debug_metrics]         | Configures the metrics that this component generates to monitor its state.                                                                                | no       |
-| [`dimension`][dimension]                 | Dimensions to be added in addition to the default ones.                                                                                                   | no       |
-| [`events`][events]                       | Configures the events metric.                                                                                                                             | no       |
-| events > [`dimension`][dimension]        | Span event attributes to add as dimensions to the events metric, _on top of_ the default ones and the ones configured in the top-level `dimension` block. | no       |
-| [`exemplars`][exemplars]                 | Configures how to attach exemplars to histograms.                                                                                                         | no       |
-| histogram > [`explicit`][explicit]       | Configuration for a histogram with explicit buckets.                                                                                                      | no       |
-| histogram > [`exponential`][exponential] | Configuration for a histogram with exponential buckets.                                                                                                   | no       |
+| Block                                      | Description                                                                                                                                               | Required |
+| ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| [`histogram`][histogram]                   | Configures the histogram derived from spans durations.                                                                                                    | yes      |
+| [`output`][output]                         | Configures where to send telemetry data.                                                                                                                  | yes      |
+| [`debug_metrics`][debug_metrics]           | Configures the metrics that this component generates to monitor its state.                                                                                | no       |
+| [`dimension`][dimension]                   | Dimensions to be added in addition to the default ones.                                                                                                   | no       |
+| [`events`][events]                         | Configures the events metric.                                                                                                                             | no       |
+| `events` > [`dimension`][dimension]        | Span event attributes to add as dimensions to the events metric, _on top of_ the default ones and the ones configured in the top-level `dimension` block. | no       |
+| [`exemplars`][exemplars]                   | Configures how to attach exemplars to histograms.                                                                                                         | no       |
+| `histogram` > [`explicit`][explicit]       | Configuration for a histogram with explicit buckets.                                                                                                      | no       |
+| `histogram` > [`exponential`][exponential] | Configuration for a histogram with exponential buckets.                                                                                                   | no       |
 
-You must specify either a "[exponential][]" or an "[explicit][]" block.
+You must specify either an [`exponential`][] or an [`explicit`][] block.
 You can't specify both blocks in the same configuration.
 
 [dimension]: #dimension
@@ -123,6 +127,8 @@ You can't specify both blocks in the same configuration.
 [debug_metrics]: #debug_metrics
 
 ### `histogram`
+
+<span class="badge docs-labels__stage docs-labels__item">Required</span>
 
 The `histogram` block configures the histogram derived from spans' durations.
 
@@ -139,6 +145,8 @@ The supported values for `unit` are:
 * `"s"`: seconds
 
 ### `output`
+
+<span class="badge docs-labels__stage docs-labels__item">Required</span>
 
 {{< docs/shared lookup="reference/components/output-block-metrics.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -166,7 +174,7 @@ The following attributes are supported:
 | `name`    | `string` | Span attribute or resource attribute to look up. |         | yes      |
 | `default` | `string` | Value to use if the attribute is missing.        | null    | no       |
 
-`otelcol.connector.spanmetrics` will look for the `name` attribute in the span's collection of attributes.
+`otelcol.connector.spanmetrics` looks for the `name` attribute in the span's collection of attributes.
 If it's not found, the resource attributes will be checked.
 
 If the attribute is missing in both the span and resource attributes:
@@ -232,9 +240,7 @@ The following fields are exported and can be referenced by other components:
 `input` accepts `otelcol.Consumer` traces telemetry data.
 It doesn't accept metrics and logs.
 
-## Handling of resource attributes
-
-[Handling of resource attributes]: #handling-of-resource-attributes
+## Handle resource attributes
 
 `otelcol.connector.spanmetrics` is an OTLP-native component.
 As such, it aims to preserve the resource attributes of spans.
@@ -651,12 +657,11 @@ otelcol.exporter.otlp "production" {
 ### Send metrics via a Prometheus remote write
 
 The generated metrics can be sent to a Prometheus-compatible database such as Grafana Mimir.
-However, extra steps are required in order to make sure all metric samples are received.
-This is because `otelcol.connector.spanmetrics` aims to [preserve resource attributes][Handling of resource attributes] in the metrics which it outputs.
+However, extra steps are required to make sure all metric samples are received.
+This is because `otelcol.connector.spanmetrics` aims to [preserve resource attributes](#handle-resource-attributes) in the metrics which it outputs.
 
-Unfortunately, the [Prometheus data model][prom-data-model] has no notion of resource attributes.
-This means that if `otelcol.connector.spanmetrics` outputs metrics with identical metric attributes,
-but different resource attributes, `otelcol.exporter.prometheus` will convert the metrics into the same metric series.
+Unfortunately, the [Prometheus data model](https://prometheus.io/docs/concepts/data_model/) has no notion of resource attributes.
+This means that if `otelcol.connector.spanmetrics` outputs metrics with identical metric attributes, but different resource attributes, `otelcol.exporter.prometheus` converts the metrics into the same metric series.
 This problem can be solved by doing **either** of the following:
 
 * **Recommended approach:** Prior to `otelcol.connector.spanmetrics`, remove all resource attributes from the incoming spans which aren't needed by `otelcol.connector.spanmetrics`.
@@ -729,7 +734,7 @@ This problem can be solved by doing **either** of the following:
 * Or, after `otelcol.connector.spanmetrics`, copy each of the resource attributes as a metric datapoint attribute.
   This has the advantage that the resource attributes will be visible as metric labels.
   However, the {{< term "cardinality" >}}cardinality{{< /term >}} of the metrics may be much higher, which could increase the cost of storing and querying them.
-  The example below uses the [merge_maps][] OTTL function.
+  The example below uses the [`merge_maps`][merge_maps] OTTL function.
 
   {{< collapse title="Example configuration to add all resource attributes as metric datapoint attributes." >}}
 
@@ -787,7 +792,7 @@ This problem can be solved by doing **either** of the following:
 
   {{< /collapse >}}
 
-If the resource attributes are not treated in either of the ways described above, an error such as this one could be logged by `prometheus.remote_write`:
+If the resource attributes aren't treated in either of the ways described above, an error such as this one could be logged by `prometheus.remote_write`:
 `the sample has been rejected because another sample with the same timestamp, but a different value, has already been ingested (err-mimir-sample-duplicate-timestamp)`.
 
 {{< admonition type="note" >}}

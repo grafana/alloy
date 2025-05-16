@@ -3,6 +3,10 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/ot
 aliases:
   - ../otelcol.receiver.prometheus/ # /docs/alloy/latest/reference/otelcol.receiver.prometheus/
 description: Learn about otelcol.receiver.prometheus
+labels:
+  stage: general-availability
+  products:
+    - oss
 title: otelcol.receiver.prometheus
 ---
 
@@ -39,6 +43,8 @@ You can use the following blocks with `otelcol.receiver.prometheus`:
 [output]: #output
 
 ### `output`
+
+<span class="badge docs-labels__stage docs-labels__item">Required</span>
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 

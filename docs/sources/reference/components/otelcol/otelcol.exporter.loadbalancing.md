@@ -3,6 +3,10 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/ot
 aliases:
   - ../otelcol.exporter.loadbalancing/ # /docs/alloy/latest/reference/components/otelcol.exporter.loadbalancing/
 description: Learn about otelcol.exporter.loadbalancing
+labels:
+  stage: general-availability
+  products:
+    - oss
 title: otelcol.exporter.loadbalancing
 ---
 
@@ -88,23 +92,23 @@ where the list of resolved endpoints changes frequently due to deployments and s
 
 You can use the following blocks with `otelcol.exporter.loadbalancing`:
 
-| Block                                               | Description                                                                       | Required |
-| --------------------------------------------------- | --------------------------------------------------------------------------------- | -------- |
-| [`resolver`][resolver]                              | Configures discovering the endpoints to export to.                                | yes      |
-| resolver > [`aws_cloud_map`][aws_cloud_map]         | AWS CloudMap-sourced list of endpoints to export to.                              | no       |
-| resolver > [`dns`][dns]                             | DNS-sourced list of endpoints to export to.                                       | no       |
-| resolver > [`kubernetes`][kubernetes]               | Kubernetes-sourced list of endpoints to export to.                                | no       |
-| resolver > [`static`][static]                       | Static list of endpoints to export to.                                            | no       |
-| [`protocol`][protocol]                              | Protocol settings. Only OTLP is supported at the moment.                          | no       |
-| protocol > [`otlp`][otlp]                               | Configures an OTLP exporter.                                                      | no       |
-| protocol > otlp > [`client`][client]                | Configures the exporter gRPC client.                                              | no       |
-| protocol > otlp > client > [`keepalive`][keepalive] | Configures keepalive settings for the gRPC client.                                | no       |
-| protocol > otlp > client > [`tls`][tls]             | Configures TLS for the gRPC client.                                               | no       |
-| protocol > otlp > [`queue`][queue]                  | Configures batching of data before sending.                                       | no       |
-| protocol > otlp > [`retry`][retry]                  | Configures retry mechanism for failed requests.                                   | no       |
-| [`queue`][queue]                                    | Configures batching of data before sending to the `otlp > protocol` exporter.     | no       |
-| [`retry`][retry]                                    | Configures retry mechanism for failed requests to the `otlp > protocol` exporter. | no       |
-| [`debug_metrics`][debug_metrics]                    | Configures the metrics that this component generates to monitor its state.        | no       |
+| Block                                                     | Description                                                                       | Required |
+| --------------------------------------------------------- | --------------------------------------------------------------------------------- | -------- |
+| [`resolver`][resolver]                                    | Configures discovering the endpoints to export to.                                | yes      |
+| `resolver` > [`aws_cloud_map`][aws_cloud_map]             | AWS CloudMap-sourced list of endpoints to export to.                              | no       |
+| `resolver` > [`dns`][dns]                                 | DNS-sourced list of endpoints to export to.                                       | no       |
+| `resolver` > [`kubernetes`][kubernetes]                   | Kubernetes-sourced list of endpoints to export to.                                | no       |
+| `resolver` > [`static`][static]                           | Static list of endpoints to export to.                                            | no       |
+| [`protocol`][protocol]                                    | Protocol settings. Only OTLP is supported at the moment.                          | no       |
+| `protocol` > [`otlp`][otlp]                               | Configures an OTLP exporter.                                                      | no       |
+| `protocol` > `otlp` > [`client`][client]                  | Configures the exporter gRPC client.                                              | no       |
+| `protocol` > `otlp` > `client` > [`keepalive`][keepalive] | Configures keepalive settings for the gRPC client.                                | no       |
+| `protocol` > `otlp` > `client` > [`tls`][tls]             | Configures TLS for the gRPC client.                                               | no       |
+| `protocol` > `otlp` > [`queue`][queue]                    | Configures batching of data before sending.                                       | no       |
+| `protocol` > `otlp` > [`retry`][retry]                    | Configures retry mechanism for failed requests.                                   | no       |
+| [`queue`][queue]                                          | Configures batching of data before sending to the `otlp > protocol` exporter.     | no       |
+| [`retry`][retry]                                          | Configures retry mechanism for failed requests to the `otlp > protocol` exporter. | no       |
+| [`debug_metrics`][debug_metrics]                          | Configures the metrics that this component generates to monitor its state.        | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `resolver` > `static` refers to a `static` block defined inside a `resolver` block.
@@ -132,6 +136,8 @@ There are two types of [queue][] and [retry][] blocks:
 [debug_metrics]: #debug_metrics
 
 ### `resolver`
+
+<span class="badge docs-labels__stage docs-labels__item">Required</span>
 
 The `resolver` block configures how to retrieve the endpoint to which this exporter will send data.
 

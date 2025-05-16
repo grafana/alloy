@@ -4,6 +4,8 @@ description: Learn about otelcol.storage.file
 title: otelcol.storage.file
 labels:
   stage: public-preview
+  products:
+    - oss
 ---
 
 # `otelcol.storage.file`

@@ -1,6 +1,9 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.exporter.googlecloud/
 description: Learn about otelcol.exporter.googlecloud
+labels:
+  products:
+    - oss
 title: otelcol.exporter.googlecloud
 ---
 

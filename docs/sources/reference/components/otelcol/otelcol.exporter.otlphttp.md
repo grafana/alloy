@@ -3,6 +3,10 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/ot
 aliases:
   - ../otelcol.exporter.otlphttp/ # /docs/alloy/latest/reference/components/otelcol.exporter.otlphttp/
 description: Learn about otelcol.exporter.otlphttp
+labels:
+  stage: general-availability
+  products:
+    - oss
 title: otelcol.exporter.otlphttp
 ---
 
@@ -67,6 +71,8 @@ For example, `client` > `tls` refers to a `tls` block defined inside a `client` 
 [debug_metrics]: #debug_metrics
 
 ### `client`
+
+<span class="badge docs-labels__stage docs-labels__item">Required</span>
 
 The `client` block configures the HTTP client used by the component.
 

@@ -1,6 +1,9 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.exporter.splunkhec/
 description: Learn about otelcol.exporter.splunkhec
+labels:
+  products:
+    - oss
 title: otelcol.exporter.splunkhec
 ---
 
@@ -67,6 +70,8 @@ For example, `splunk` > `batcher` refers to a `batcher` block defined inside a `
 
 ### `splunk`
 
+<span class="badge docs-labels__stage docs-labels__item">Required</span>
+
 The `splunk` block configures Splunk HEC specific settings.
 
 The following arguments are supported:
@@ -123,6 +128,8 @@ The following arguments are supported:
 | `override_metrics_names` | `map(string)` | Override metrics for internal metrics in the exporter. |         | no       |
 
 ### `client`
+
+<span class="badge docs-labels__stage docs-labels__item">Required</span>
 
 The `client` block configures the HTTP client used by the component.
 

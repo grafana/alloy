@@ -3,6 +3,10 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/ot
 aliases:
   - ../otelcol.processor.memory_limiter/ # /docs/alloy/latest/reference/otelcol.processor.memory_limiter/
 description: Learn about otelcol.processor.memory_limiter
+labels:
+  stage: general-availability
+  products:
+    - oss
 title: otelcol.processor.memory_limiter
 ---
 
@@ -48,7 +52,7 @@ You can use the following arguments with `otelcol.processor.memory_limiter`:
 | `check_interval`         | `duration` | How often to check memory usage.                                                       |                | yes      |
 | `limit_percentage`       | `int`      | Maximum amount of total available memory targeted to be allocated by the process heap. | `0`            | no       |
 | `limit`                  | `string`   | Maximum amount of memory targeted to be allocated by the process heap.                 | `"0MiB"`       | no       |
-| `spike_limit_percentage` | ` int`     | Maximum spike expected between the measurements of memory usage.                       | `0`            | no       |
+| `spike_limit_percentage` | `int`      | Maximum spike expected between the measurements of memory usage.                       | `0`            | no       |
 | `spike_limit`            | `string`   | Maximum spike expected between the measurements of memory usage.                       | 20% of `limit` | no       |
 
 The arguments must define either `limit` or the `limit_percentage, spike_limit_percentage` pair, but not both.
@@ -75,6 +79,8 @@ You can use the following blocks with `otelcol.processor.memory_limiter`:
 [debug_metrics]: #debug_metrics
 
 ### `output`
+
+<span class="badge docs-labels__stage docs-labels__item">Required</span>
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 

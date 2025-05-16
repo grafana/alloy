@@ -3,12 +3,16 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/ot
 aliases:
   - ../otelcol.auth.headers/ # /docs/alloy/latest/reference/components/otelcol.auth.headers/
 description: Learn about otelcol.auth.headers
+labels:
+  stage: general-availability
+  products:
+    - oss
 title: otelcol.auth.headers
 ---
 
 # `otelcol.auth.headers`
 
-`otelcol.auth.headers` exposes a `handler` that can be used by other `otelcol` components to authenticate requests using custom headers.
+`otelcol.auth.headers` exposes a `handler` that other `otelcol` components can use to authenticate requests using custom headers.
 
 This component only supports client authentication.
 
@@ -32,7 +36,7 @@ otelcol.auth.headers "<LABEL>" {
 
 ## Arguments
 
-`otelcol.auth.headers` doesn't support any arguments and is configured fully through inner blocks.
+`otelcol.auth.headers` doesn't support any arguments.
 
 ## Blocks
 

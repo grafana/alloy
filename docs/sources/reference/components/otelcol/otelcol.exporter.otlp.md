@@ -3,6 +3,10 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/ot
 aliases:
   - ../otelcol.exporter.otlp/ # /docs/alloy/latest/reference/components/otelcol.exporter.otlp/
 description: Learn about otelcol.exporter.otlp
+labels:
+  stage: general-availability
+  products:
+    - oss
 title: otelcol.exporter.otlp
 ---
 
@@ -42,8 +46,8 @@ You can use the following blocks with `otelcol.exporter.otlp`:
 | Block                                  | Description                                                                | Required |
 | -------------------------------------- | -------------------------------------------------------------------------- | -------- |
 | [`client`][client]                     | Configures the gRPC server to send telemetry data to.                      | yes      |
-| client > [`keepalive`][keepalive]      | Configures keepalive settings for the gRPC client.                         | no       |
-| client > [`tls`][tls]                  | Configures TLS for the gRPC client.                                        | no       |
+| `client` > [`keepalive`][keepalive]    | Configures keepalive settings for the gRPC client.                         | no       |
+| `client` > [`tls`][tls]                | Configures TLS for the gRPC client.                                        | no       |
 | [`debug_metrics`][debug_metrics]       | Configures the metrics that this component generates to monitor its state. | no       |
 | [`retry_on_failure`][retry_on_failure] | Configures retry mechanism for failed requests.                            | no       |
 | [`sending_queue`][sending_queue]       | Configures batching of data before sending.                                | no       |
@@ -59,6 +63,8 @@ For example, `client` > `tls` refers to a `tls` block defined inside a `client` 
 [debug_metrics]: #debug_metrics
 
 ### `client`
+
+<span class="badge docs-labels__stage docs-labels__item">Required</span>
 
 The `client` block configures the gRPC client used by the component.
 

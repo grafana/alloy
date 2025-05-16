@@ -3,6 +3,10 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/ot
 aliases:
   - ../otelcol.extension.jaeger_remote_sampling/ # /docs/alloy/latest/reference/otelcol.extension.jaeger_remote_sampling/
 description: Learn about otelcol.extension.jaeger_remote_sampling
+labels:
+  stage: general-availability
+  products:
+    - oss
 title: otelcol.extension.jaeger_remote_sampling
 ---
 
@@ -67,6 +71,8 @@ For example, `grpc` > `tls` refers to a `tls` block defined inside a `grpc` bloc
 [debug_metrics]: #debug_metrics
 
 ### `source`
+
+<span class="badge docs-labels__stage docs-labels__item">Required</span>
 
 The `source` block configures the method of retrieving the Jaeger remote sampling document that is served by the servers specified in the `grpc` and `http` blocks.
 

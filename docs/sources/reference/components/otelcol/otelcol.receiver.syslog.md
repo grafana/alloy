@@ -1,10 +1,12 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.receiver.syslog/
 description: Learn about otelcol.receiver.syslog
+labels:
+  stage: public-preview
+  products:
+    - oss
 title: otelcol.receiver.syslog
 ---
-
-<span class="badge docs-labels__stage docs-labels__item">Public preview</span>
 
 # `otelcol.receiver.syslog`
 
@@ -75,7 +77,6 @@ The `on_error` argument can take the following values:
 
 You can use the following blocks with `otelcol.receiver.syslog`:
 
-
 | Block                                  | Description                                                                                     | Required |
 | -------------------------------------- | ----------------------------------------------------------------------------------------------- | -------- |
 | [`output`][output]                     | Configures where to send received telemetry data.                                               | yes      |
@@ -103,6 +104,8 @@ A syslog receiver must have either a `udp` or `tcp` block configured.
 [output]: #output
 
 ### `output`
+
+<span class="badge docs-labels__stage docs-labels__item">Required</span>
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 

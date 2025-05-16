@@ -3,14 +3,18 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/ot
 aliases:
   - ../otelcol.auth.oauth2/ # /docs/alloy/latest/reference/components/otelcol.auth.oauth2/
 description: Learn about otelcol.auth.oauth2
+labels:
+  stage: general-availability
+  products:
+    - oss
 title: otelcol.auth.oauth2
 ---
 
 # `otelcol.auth.oauth2`
 
-`otelcol.auth.oauth2` exposes a `handler` that can be used by other `otelcol` components to authenticate requests using OAuth 2.0.
+`otelcol.auth.oauth2` exposes a `handler` that other `otelcol` components can use to authenticate requests using OAuth 2.0.
 
-This component only supports client authentication. 
+This component only supports client authentication.
 
 The authorization tokens can be used by HTTP and gRPC based OpenTelemetry exporters.
 This component can fetch and refresh expired tokens automatically.
@@ -115,6 +119,7 @@ otelcol.auth.oauth2 "creds" {
 ```
 
 Here is another example with some optional attributes specified:
+
 ```alloy
 otelcol.exporter.otlp "example" {
   client {

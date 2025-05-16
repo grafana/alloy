@@ -3,6 +3,10 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/ot
 aliases:
   - ../otelcol.exporter.loki/ # /docs/alloy/latest/reference/components/otelcol.exporter.loki/
 description: Learn about otelcol.exporter.loki
+labels:
+  stage: general-availability
+  products:
+    - oss
 title: otelcol.exporter.loki
 ---
 
@@ -21,11 +25,11 @@ To convert them, the OTLP log should contain special "hint" attributes:
 * To convert OTLP log attributes to Loki labels, use the `loki.attribute.labels` hint attribute.
 
 Labels will be translated to a [Prometheus format][], which is more constrained than the OTLP format.
-For examples on label translation, see the [Converting OTLP attributes to Loki labels][] section.
+For examples on label translation, see the [Convert OTLP attributes to Loki labels][] section.
 
 Multiple `otelcol.exporter.loki` components can be specified by giving them different labels.
 
-[Converting OTLP attributes to Loki labels]: #converting-otlp-attributes-to-loki-labels
+[Convert OTLP attributes to Loki labels]: #convert-otlp-attributes-to-loki-labels
 
 ## Usage
 

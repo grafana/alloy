@@ -3,12 +3,16 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/ot
 aliases:
   - ../otelcol.auth.bearer/ # /docs/alloy/latest/reference/components/otelcol.auth.bearer/
 description: Learn about otelcol.auth.bearer
+labels:
+  stage: general-availability
+  products:
+    - oss
 title: otelcol.auth.bearer
 ---
 
 # `otelcol.auth.bearer`
 
-`otelcol.auth.bearer` exposes a `handler` that can be used by other `otelcol` components to authenticate requests using bearer token authentication.
+`otelcol.auth.bearer` exposes a `handler` that other `otelcol` components can use to authenticate requests using bearer token authentication.
 
 This component supports both server and client authentication.
 
@@ -37,7 +41,7 @@ You can use the following arguments with `otelcol.auth.bearer`:
 | `scheme` | `string` | Authentication scheme name.                      | "Bearer" | no       |
 
 When sending the token, the value of `scheme` is prepended to the `token` value.
-The string is then sent out as either a header (in case of HTTP) or as metadata (in case of gRPC).
+The string is then sent out as either a header for HTTP or as metadata for gRPC.
 
 If you use a file to store the token, you can use [`local.file`][local.file] to retrieve the `token` value from the file.
 

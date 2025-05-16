@@ -3,6 +3,10 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/ot
 aliases:
   - ../otelcol.processor.filter/ # /docs/alloy/latest/reference/otelcol.processor.filter/
 description: Learn about otelcol.processor.filter
+labels:
+  stage: general-availability
+  products:
+    - oss
 title: otelcol.processor.filter
 ---
 
@@ -102,6 +106,8 @@ You can use the following blocks with `otelcol.processor.filter`:
 [debug_metrics]: #debug_metrics
 
 ### `output`
+
+<span class="badge docs-labels__stage docs-labels__item">Required</span>
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 

@@ -1,10 +1,14 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.receiver.influxdb/
 description: Learn about otelcol.receiver.influxdb
+labels:
+  stage: general-availability
+  products:
+    - oss
 title: otelcol.receiver.influxdb
 ---
 
-# otelcol.receiver.influxdb
+# `otelcol.receiver.influxdb`
 
 `otelcol.receiver.influxdb` receives InfluxDB metrics, converts them into OpenTelemetry (OTEL) format, and forwards them to other `otelcol.*` components over the network.
 
@@ -54,6 +58,8 @@ The following blocks are supported inside the definition of `otelcol.receiver.in
 [output]: #output
 
 ### `output`
+
+<span class="badge docs-labels__stage docs-labels__item">Required</span>
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 

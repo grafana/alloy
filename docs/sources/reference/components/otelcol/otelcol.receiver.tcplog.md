@@ -3,6 +3,8 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/ot
 description: Learn about otelcol.receiver.tcplog
 labels:
   stage: experimental
+  products:
+    - oss
 title: otelcol.receiver.tcplog
 ---
 

@@ -5,6 +5,8 @@ aliases:
 description: Learn about otelcol.processor.cumulativetodelta
 labels:
   stage: public-preview
+  products:
+    - oss
 title: otelcol.processor.cumulativetodelta
 ---
 

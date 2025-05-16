@@ -1,10 +1,12 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol.exporter.debug/
 description: Learn about otelcol.exporter.debug
+labels:
+  stage: experimental
+  products:
+    - oss
 title: otelcol.exporter.debug
 ---
-
-<span class="badge docs-labels__stage docs-labels__item">Experimental</span>
 
 # `otelcol.exporter.debug`
 

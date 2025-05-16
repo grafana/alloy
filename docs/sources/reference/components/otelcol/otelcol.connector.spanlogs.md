@@ -3,6 +3,10 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/ot
 aliases:
   - ../otelcol.connector.spanlogs/ # /docs/alloy/latest/reference/components/otelcol.connector.spanlogs/
 description: Learn about otelcol.connector.spanlogs
+labels:
+  stage: general-availability
+  products:
+    - oss
 title: otelcol.connector.spanlogs
 ---
 
@@ -13,7 +17,7 @@ This allows you to automatically build a mechanism for trace discovery.
 
 {{< admonition type="note" >}}
 `otelcol.connector.spanlogs` is a custom component unrelated to any components from the OpenTelemetry Collector.
-It is based on the `automatic_logging` component in the [traces][] subsystem of Grafana Agent Static.
+It's based on the `automatic_logging` component in the [traces][] subsystem of Grafana Agent Static.
 
 [traces]: https://grafana.com/docs/agent/latest/static/configuration/traces-config
 {{< /admonition >}}
@@ -64,6 +68,8 @@ You can use the following blocks with `otelcol.connector.spanlogs`:
 [overrides]: #overrides
 
 ### `output`
+
+<span class="badge docs-labels__stage docs-labels__item">Required</span>
 
 {{< docs/shared lookup="reference/components/output-block-logs.md" source="alloy" version="<ALLOY_VERSION>" >}}
 

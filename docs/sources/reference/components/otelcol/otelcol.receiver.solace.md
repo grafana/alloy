@@ -1,6 +1,10 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.receiver.solace/
 description: Learn about otelcol.receiver.solace
+labels:
+  stage: general-availability
+  products:
+    - oss
 title: otelcol.receiver.solace
 ---
 
@@ -75,6 +79,8 @@ One SASL authentication block is required in the `authentication` block.
 [output]: #output
 
 ### `output`
+
+<span class="badge docs-labels__stage docs-labels__item">Required</span>
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 

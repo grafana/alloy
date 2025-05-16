@@ -3,14 +3,16 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/ot
 aliases:
   - ../otelcol.receiver.opencensus/ # /docs/alloy/latest/reference/otelcol.receiver.opencensus/
 description: Learn about otelcol.receiver.opencensus
+labels:
+  stage: general-availability
+  products:
+    - oss
 title: otelcol.receiver.opencensus
 ---
 
 # `otelcol.receiver.opencensus`
 
-`otelcol.receiver.opencensus` accepts telemetry data via gRPC or HTTP
-using the [OpenCensus](https://opencensus.io/) format and
-forwards it to other `otelcol.*` components.
+`otelcol.receiver.opencensus` accepts telemetry data via gRPC or HTTP using the [OpenCensus](https://opencensus.io/) format and forwards it to other `otelcol.*` components.
 
 {{< admonition type="note" >}}
 `otelcol.receiver.opencensus` is a wrapper over the upstream OpenTelemetry Collector `opencensus` receiver from the `otelcol-contrib` distribution.
@@ -33,8 +35,7 @@ otelcol.receiver.opencensus "<LABEL>" {
 
 ## Arguments
 
-You can use the collowing arguments with `otelcol.receiver.opencensus`:
-
+You can use the following arguments with `otelcol.receiver.opencensus`:
 
 | Name                     | Type                       | Description                                                                  | Default           | Required |
 | ------------------------ | -------------------------- | ---------------------------------------------------------------------------- | ----------------- | -------- |
@@ -83,6 +84,8 @@ For example, `keepalive > enforcesment_policy` refers to an `enforcement_policy`
 [output]: #output
 
 ### `output`
+
+<span class="badge docs-labels__stage docs-labels__item">Required</span>
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 

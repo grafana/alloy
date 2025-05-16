@@ -3,6 +3,10 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/ot
 aliases:
   - ../otelcol.receiver.zipkin/ # /docs/alloy/latest/reference/otelcol.receiver.zipkin/
 description: Learn about otelcol.receiver.zipkin
+labels:
+  stage: general-availability
+  products:
+    - oss
 title: otelcol.receiver.zipkin
 ---
 
@@ -60,6 +64,8 @@ You can use the following blocks with `otelcol.receiver.zipkin`:
 [output]: #output
 
 ### `output`
+
+<span class="badge docs-labels__stage docs-labels__item">Required</span>
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 

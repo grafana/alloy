@@ -3,6 +3,10 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/ot
 aliases:
   - ../otelcol.exporter.kafka/ # /docs/alloy/latest/reference/components/otelcol.exporter.kafka/
 description: Learn about otelcol.exporter.kafka
+labels:
+  stage: general-availability
+  products:
+    - oss
 title: otelcol.exporter.kafka
 ---
 

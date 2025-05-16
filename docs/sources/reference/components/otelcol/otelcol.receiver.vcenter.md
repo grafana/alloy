@@ -3,10 +3,12 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/ot
 aliases:
   - ../otelcol.receiver.vcenter/ # /docs/alloy/latest/reference/otelcol.receiver.vcenter/
 title: otelcol.receiver.vcenter
+labels:
+  stage: experimental
+  products:
+    - oss
 description: Learn about otelcol.receiver.vcenter
 ---
-
-<span class="badge docs-labels__stage docs-labels__item">Experimental</span>
 
 # `otelcol.receiver.vcenter`
 
@@ -82,6 +84,8 @@ You can use the following blocks with `otelcol.receiver.vcenter`:
 [output]: #output
 
 ### `output`
+
+<span class="badge docs-labels__stage docs-labels__item">Required</span>
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -165,12 +169,11 @@ You can use the following blocks with `otelcol.receiver.vcenter`:
 | `vcenter.vm.vsan.operations`               | [metric][] | Enables the `vcenter.vm.vsan.operations` metric.               | `true`  | no       |
 | `vcenter.vm.vsan.throughput`               | [metric][] | Enables the `vcenter.vm.vsan.throughput` metric.               | `true`  | no       |
 
-#### `metrics`
+#### `metric`
 
 | Name      | Type      | Description                   | Default | Required |
 | --------- | --------- | ----------------------------- | ------- | -------- |
 | `enabled` | `boolean` | Whether to enable the metric. | `true`  | no       |
-
 
 ### `resource_attributes`
 

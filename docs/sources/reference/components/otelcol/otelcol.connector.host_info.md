@@ -3,6 +3,10 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/ot
 aliases:
   - ../otelcol.connector.host_info/ # /docs/alloy/latest/reference/components/otelcol.connector.host_info/
 description: Learn about otelcol.connector.host_info
+labels:
+  stage: general-availability
+  products:
+    - oss
 title: otelcol.connector.host_info
 ---
 
@@ -33,15 +37,17 @@ You can use the following arguments with `otelcol.connector.host_info`:
 
 You can use the following blocks with `otelcol.connector.host_info`:
 
-| Block                            | Description                                                                | Required |     |
-| -------------------------------- | -------------------------------------------------------------------------- | -------- | --- |
-| [`output`][output]               | Configures where to send received telemetry data.                          | yes      |     |
-| [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |     |
+| Block                            | Description                                                                | Required |
+| -------------------------------- | -------------------------------------------------------------------------- | -------- |
+| [`output`][output]               | Configures where to send received telemetry data.                          | yes      |
+| [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |
 
 [output]: #output
 [debug_metrics]: #debug_metrics
 
 ### `output`
+
+<span class="badge docs-labels__stage docs-labels__item">Required</span>
 
 {{< docs/shared lookup="reference/components/output-block-metrics.md" source="alloy" version="<ALLOY_VERSION>" >}}
 

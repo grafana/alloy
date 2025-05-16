@@ -3,6 +3,10 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/ot
 aliases:
   - ../otelcol.exporter.prometheus/ # /docs/alloy/latest/reference/components/otelcol.exporter.prometheus/
 description: Learn about otelcol.exporter.prometheus
+labels:
+  stage: general-availability
+  products:
+    - oss
 title: otelcol.exporter.prometheus
 ---
 
@@ -64,9 +68,9 @@ Refer to [Create Prometheus labels from OTLP resource attributes][] for an examp
 
 You can use the following blocks with `otelcol.exporter.prometheus`:
 
-| Block             | Description                                                                | Required |
-| ----------------- | -------------------------------------------------------------------------- | -------- |
-| [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no       |
+| Block                            | Description                                                                | Required |
+| -------------------------------- | -------------------------------------------------------------------------- | -------- |
+| [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |
 
 [debug_metrics]: #debug_metrics
 

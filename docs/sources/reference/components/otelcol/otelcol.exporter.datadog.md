@@ -3,6 +3,9 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/ot
 description: Learn about otelcol.exporter.datadog
 aliases:
   - ../otelcol.exporter.datadog/ # /docs/alloy/latest/reference/components/otelcol.exporter.datadog/
+labels:
+  products:
+    - oss
 title: otelcol.exporter.datadog
 ---
 
@@ -83,6 +86,8 @@ For example, `metrics` > `summaries` refers to a `summaries` block defined insid
 [debug_metrics]: #debug_metrics
 
 ### `api`
+
+<span class="badge docs-labels__stage docs-labels__item">Required</span>
 
 The `api` block configures authentication with the Datadog API.
 This is required to send telemetry to Datadog.

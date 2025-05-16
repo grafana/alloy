@@ -3,6 +3,10 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/ot
 aliases:
   - ../otelcol.receiver.file_stats/ # /docs/alloy/latest/reference/otelcol.receiver.file_stats/
 title: otelcol.receiver.file_stats
+labels:
+  stage: general-availability
+  products:
+    - oss
 description: Learn about otelcol.receiver.file_stats
 ---
 
@@ -88,6 +92,8 @@ You can use the following blocks with `otelcol.receiver.file_stats`:
 [output]: #output
 
 ### `output`
+
+<span class="badge docs-labels__stage docs-labels__item">Required</span>
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 

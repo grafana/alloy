@@ -3,6 +3,10 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/ot
 aliases:
   - ../otelcol.processor.resourcedetection/ # /docs/alloy/latest/reference/otelcol.processor.resourcedetection/
 title: otelcol.processor.resourcedetection
+labels:
+  stage: general-availability
+  products:
+    - oss
 description: Learn about otelcol.processor.resourcedetection
 ---
 
@@ -126,6 +130,8 @@ You can use the following blocks with `otelcol.processor.resourcedetection`:
 [dynatrace]: #dynatrace
 
 ### `output`
+
+<span class="badge docs-labels__stage docs-labels__item">Required</span>
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 

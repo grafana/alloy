@@ -3,6 +3,10 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/ot
 aliases:
   - ../otelcol.receiver.otlp/ # /docs/alloy/latest/reference/otelcol.receiver.otlp/
 description: Learn about otelcol.receiver.otlp
+labels:
+  stage: general-availability
+  products:
+    - oss
 title: otelcol.receiver.otlp
 ---
 
@@ -68,6 +72,8 @@ For example, `grpc` > `tls` refers to a `tls` block defined inside a `grpc` bloc
 [output]: #output
 
 ### `output`
+
+<span class="badge docs-labels__stage docs-labels__item">Required</span>
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 

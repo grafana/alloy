@@ -3,6 +3,10 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/ot
 aliases:
   - ../otelcol.processor.k8sattributes/ # /docs/alloy/latest/reference/otelcol.processor.k8sattributes/
 description: Learn about otelcol.processor.k8sattributes
+labels:
+  stage: general-availability
+  products:
+    - oss
 title: otelcol.processor.k8sattributes
 ---
 
@@ -106,6 +110,8 @@ For example, `extract` > `annotation` refers to an `annotation` block defined in
 [debug_metrics]: #debug_metrics
 
 ### `output`
+
+<span class="badge docs-labels__stage docs-labels__item">Required</span>
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
