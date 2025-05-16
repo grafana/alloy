@@ -99,7 +99,7 @@ A syslog receiver must have either a `udp` or `tcp` block configured.
 [tcp]: #tcp
 [multiline]: #multiline
 [async]: #async
-[retry_on_failure]: #retry-on-failure
+[retry_on_failure]: #retry_on_failure
 [debug_metrics]: #debug_metrics
 [output]: #output
 

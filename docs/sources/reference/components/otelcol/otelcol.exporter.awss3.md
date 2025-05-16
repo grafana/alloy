@@ -37,7 +37,7 @@ otelcol.exporter.awss3 "<LABEL>" {
 
 ## Arguments
 
-`otelcol.exporter.awss3` supports no arguments and is configured completely through inner blocks.
+`otelcol.exporter.awss3` doesn't support any arguments.
 
 ## Blocks
 

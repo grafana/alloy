@@ -99,10 +99,10 @@ For example, `extract` > `annotation` refers to an `annotation` block defined in
 [output]: #output
 [extract]: #extract
 [annotation]: #annotation
-[extract_label]: #extract-label
+[extract_label]: #label-extract
 [filter]: #filter
 [field]: #field
-[filter_label]: #filter-label
+[filter_label]: #label-filter
 [pod_association]: #pod_association
 [source]: #source
 [exclude]: #exclude
@@ -333,7 +333,7 @@ otelcol.processor.k8sattributes "default" {
 
 otelcol.exporter.otlp "default" {
   client {
-    endpoint = sys.env("OTLP_ENDPOINT")
+    endpoint = sys.env("<OTLP_ENDPOINT>")
   }
 }
 ```
@@ -383,7 +383,7 @@ otelcol.processor.k8sattributes "default" {
 
 otelcol.exporter.otlp "default" {
   client {
-    endpoint = sys.env("OTLP_ENDPOINT")
+    endpoint = sys.env("<OTLP_ENDPOINT>")
   }
 }
 ```

@@ -2,7 +2,7 @@
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.exporter.syslog/
 description: Learn about otelcol.exporter.syslog
 labels:
-  stage: general-availability
+  stage: public-preview
   products:
     - oss
 title: otelcol.exporter.syslog

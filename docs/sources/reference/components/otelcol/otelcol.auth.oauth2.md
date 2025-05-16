@@ -101,7 +101,7 @@ The following fields are exported and can be referenced by other components:
 
 ## Example
 
-This example configures [otelcol.exporter.otlp][] to use OAuth 2.0 for authentication:
+This example configures [`otelcol.exporter.otlp`][otelcol.exporter.otlp] to use OAuth 2.0 for authentication:
 
 ```alloy
 otelcol.exporter.otlp "example" {

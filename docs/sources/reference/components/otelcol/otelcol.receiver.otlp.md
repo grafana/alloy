@@ -25,7 +25,7 @@ different labels.
 ## Usage
 
 ```alloy
-otelcol.receiver.otlp "LABEL" {
+otelcol.receiver.otlp "<LABEL>" {
   grpc { ... }
   http { ... }
 
@@ -39,7 +39,7 @@ otelcol.receiver.otlp "LABEL" {
 
 ## Arguments
 
-`otelcol.receiver.otlp` doesn't support any arguments and is configured fully through inner blocks.
+`otelcol.receiver.otlp` doesn't support any arguments.
 
 ## Blocks
 
@@ -67,7 +67,7 @@ For example, `grpc` > `tls` refers to a `tls` block defined inside a `grpc` bloc
 [server_parameters]: #server_parameters
 [enforcement_policy]: #enforcement_policy
 [http]: #http
-[cors]: #cor
+[cors]: #cors
 [debug_metrics]: #debug_metrics
 [output]: #output
 

@@ -114,7 +114,7 @@ You can use the following blocks with `otelcol.connector.spanmetrics`:
 | `histogram` > [`explicit`][explicit]       | Configuration for a histogram with explicit buckets.                                                                                                      | no       |
 | `histogram` > [`exponential`][exponential] | Configuration for a histogram with exponential buckets.                                                                                                   | no       |
 
-You must specify either an [`exponential`][] or an [`explicit`][] block.
+You must specify either an [`exponential`][exponential] or an [`explicit`][explicit] block.
 You can't specify both blocks in the same configuration.
 
 [dimension]: #dimension

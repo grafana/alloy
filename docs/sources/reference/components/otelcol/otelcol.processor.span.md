@@ -34,7 +34,7 @@ otelcol.processor.span "<LABEL>" {
 
 ## Arguments
 
-`otelcol.processor.span` doesn't support any arguments and is configured fully through inner blocks.
+`otelcol.processor.span` doesn't support any arguments.
 
 ## Blocks
 
@@ -87,7 +87,7 @@ If both an `include` block and an `exclude`block are specified, the `include` pr
 
 ### `exclude`
 
-The `exclude` block provides an option to exclude data from being fed into the [name][] and [status][] blocks based on the properties of a span.
+The `exclude` block provides an option to exclude data from being fed into the [`name`][name] and [`status`][status] blocks based on the properties of a span.
 
 The following arguments are supported:
 
@@ -102,7 +102,7 @@ The following arguments are supported:
 
 A match occurs if at least one item in the lists matches.
 
-One of `services`, `span_names`, `span_kinds`, [attribute][], [resource][], or [library][] must be specified with a non-empty value for a valid configuration.
+One of `services`, `span_names`, `span_kinds`, [`attribute`][attribute], [`resource`][resource], or [`library`][library] must be specified with a non-empty value for a valid configuration.
 
 ### `attribute`
 
@@ -122,7 +122,7 @@ One of `services`, `span_names`, `span_kinds`, [attribute][], [resource][], or [
 
 ### `include`
 
-The `include` block provides an option to include data being fed into the [name][] and [status][] blocks based on the properties of a span.
+The `include` block provides an option to include data being fed into the [`name`][name] and [`status`][status] blocks based on the properties of a span.
 
 The following arguments are supported:
 
@@ -137,7 +137,7 @@ The following arguments are supported:
 
 A match occurs if at least one item in the lists matches.
 
-One of `services`, `span_names`, `span_kinds`, [attribute][], [resource][], or [library][] must be specified with a non-empty value for a valid configuration.
+One of `services`, `span_names`, `span_kinds`, [`attribute`][attribute], [`resource`][resource], or [`library`][library] must be specified with a non-empty value for a valid configuration.
 
 ### `name`
 
@@ -150,7 +150,7 @@ The following attributes are supported:
 | `from_attributes` | `list(string)` | Attribute keys to pull values from, to generate a new span name. | `[]`    | no       |
 | `separator`       | `string`       | Separates attributes values in the new span name.                | `""`    | no       |
 
-Firstly `from_attributes` rules are applied, then [to-attributes][] are applied.
+Firstly `from_attributes` rules are applied, then [`to-attributes`][to-attributes] are applied.
 At least one of these 2 fields must be set.
 
 `from_attributes` represents the attribute keys to pull the values from to generate the new span name:
@@ -161,7 +161,7 @@ At least one of these 2 fields must be set.
 
 `separator` is the string used to separate attributes values in the new span name.
 If no value is set, no separator is used between attribute values.
-`separator` is used with `from_attributes` only. It's not used with [to-attributes][].
+`separator` is used with `from_attributes` only. It's not used with [`to-attributes`][to-attributes].
 
 ### `to_attributes`
 
@@ -183,7 +183,7 @@ Each rule in the `rules` list is a regular expression pattern string.
 1. The matched portion in the span name is replaced by extracted attribute name.
 1. If the attributes already exist in the span then they will be overwritten.
 1. The process is repeated for all rules in the order they are specified.
-1. Each subsequent rule works on the span name that is the output after processing the previous rule.
+1. Each subsequent rule works on the span name that's the output after processing the previous rule.
 
 `break_after_match` specifies if processing of rules should stop after the first match.
 If it's `false`, rule processing will continue to be performed over the modified span name.

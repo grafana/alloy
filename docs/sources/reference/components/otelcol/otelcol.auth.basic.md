@@ -73,7 +73,7 @@ The following fields are exported and can be referenced by other components:
 
 ## Example
 
-This example configures [otelcol.exporter.otlp][] to use basic authentication:
+This example configures [`otelcol.exporter.otlp`][otelcol.exporter.otlp] to use basic authentication:
 
 ```alloy
 otelcol.exporter.otlp "example" {

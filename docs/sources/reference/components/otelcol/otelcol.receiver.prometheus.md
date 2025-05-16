@@ -4,7 +4,7 @@ aliases:
   - ../otelcol.receiver.prometheus/ # /docs/alloy/latest/reference/otelcol.receiver.prometheus/
 description: Learn about otelcol.receiver.prometheus
 labels:
-  stage: general-availability
+  stage: public-preview
   products:
     - oss
 title: otelcol.receiver.prometheus

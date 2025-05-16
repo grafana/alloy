@@ -102,15 +102,15 @@ otelcol.receiver.filelog "default" {
 The following blocks are supported inside the definition of
 `otelcol.receiver.filelog`:
 
-| Hierarchy                   | Block                 | Description                                                                                     | Required |
-| --------------------------- | --------------------- | ----------------------------------------------------------------------------------------------- | -------- |
-| output                      | [output][]            | Configures where to send received telemetry data.                                               | yes      |
-| debug_metrics               | [debug_metrics][]     | Configures the metrics that this component generates to monitor its state.                      | no       |
-| header                      | [header][]            | Configures rules for parsing a log header line                                                  | no       |
-| multiline                   | [multiline][]         | Configures rules for multiline parsing of log messages                                          | no       |
-| ordering_criteria           | [ordering_criteria][] | Configures the order in which log files are processed.                                          | no       |
-| ordering_criteria > sort_by | [sort_by][]           | Configures the fields to sort by within the ordering criteria.                                  | yes      |
-| retry_on_failure            | [retry_on_failure][]  | Configures the retry behavior when the receiver encounters an error downstream in the pipeline. | no       |
+| Block                                      | Description                                                                                     | Required |
+| ------------------------------------------ | ----------------------------------------------------------------------------------------------- | -------- |
+| [`output`][output]                         | Configures where to send received telemetry data.                                               | yes      |
+| [`debug_metrics`][debug_metrics]           | Configures the metrics that this component generates to monitor its state.                      | no       |
+| [`header`][header]                         | Configures rules for parsing a log header line                                                  | no       |
+| [`multiline`][multiline]                   | Configures rules for multiline parsing of log messages                                          | no       |
+| [`ordering_criteria`][ordering_criteria]   | Configures the order in which log files are processed.                                          | no       |
+| `ordering_criteria` > [`sort_by`][sort_by] | Configures the fields to sort by within the ordering criteria.                                  | yes      |
+| [`retry_on_failure`][retry_on_failure]     | Configures the retry behavior when the receiver encounters an error downstream in the pipeline. | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `ordering_criteria` > `sort_by` refers to a `sort_by` block defined inside a `ordering_criteria` block.
@@ -119,9 +119,9 @@ For example, `ordering_criteria` > `sort_by` refers to a `sort_by` block defined
 [debug_metrics]: #debug_metrics
 [header]: #header
 [multiline]: #multiline
-[ordering_criteria]: #ordering-criteria
-[sort_by]: #sort-by
-[retry_on_failure]: #retry-on-failure
+[ordering_criteria]: #ordering_criteria
+[sort_by]: #sort_by
+[retry_on_failure]: #retry_on_failure
 
 ### `output`
 

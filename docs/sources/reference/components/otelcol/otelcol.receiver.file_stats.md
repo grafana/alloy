@@ -73,7 +73,7 @@ You can use the following blocks with `otelcol.receiver.file_stats`:
 | `resource_attributes` > [`file.name`][file.name]                           | Configures the `file.name` resource attribute.                             | no       |
 | `resource_attributes` > `file.name` > [`metrics_exclude`][metrics_exclude] | Metrics to exclude the `file.name` resource attribute from.                | no       |
 | `resource_attributes` > `file.name` > [`metrics_include`][metrics_include] | Metrics to include the `file.name` resource attribute in.                  | no       |
-| `resource_attributes` > [file.path][file.path]                             | Configures the `file.path` resource attribute.                             | no       |
+| `resource_attributes` > [`file.path`][file.path]                           | Configures the `file.path` resource attribute.                             | no       |
 | `resource_attributes` > `file.path` > [`metrics_exclude`][metrics_exclude] | Metrics to exclude the `file.path` resource attribute from.                | no       |
 | `resource_attributes` > `file.path` > [`metrics_include`][metrics_include] | Metrics to include the `file.path` resource attribute in.                  | no       |
 

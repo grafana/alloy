@@ -140,7 +140,7 @@ You can use the following blocks with `otelcol.processor.transform`:
 [log_statements]: #log_statements
 [output]: #output
 [debug_metrics]: #debug_metrics
-
+[statements]: #statements
 [OTTL Context]: #ottl-context
 
 ### `output`
@@ -606,7 +606,8 @@ otelcol.exporter.otlp "default" {
 [metrics protobuf]: https://github.com/open-telemetry/opentelemetry-proto/blob/v1.0.0/opentelemetry/proto/metrics/v1/metrics.proto
 [logs protobuf]: https://github.com/open-telemetry/opentelemetry-proto/blob/v1.0.0/opentelemetry/proto/logs/v1/logs.proto
 
-[OTTL]: [OpenTelemetry Transformation Language (OTTL)](https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/{{< param "OTEL_VERSION" >}}/pkg/ottl/README.md)
+[OTTL]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/{{< param "OTEL_VERSION" >}}/pkg/ottl/README.md
+[OpenTelemetry Transformation Language (OTTL)]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/{{< param "OTEL_VERSION" >}}/pkg/ottl/README.md
 [OTTL functions]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/{{< param "OTEL_VERSION" >}}/pkg/ottl/ottlfuncs/README.md
 [convert_sum_to_gauge]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/transformprocessor#convert_sum_to_gauge
 [convert_gauge_to_sum]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/transformprocessor#convert_gauge_to_sum

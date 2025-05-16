@@ -28,7 +28,7 @@ otelcol.receiver.loki "<LABEL>" {
 
 ## Arguments
 
-`otelcol.receiver.loki` doesn't support any arguments and is configured fully through inner blocks.
+`otelcol.receiver.loki` doesn't support any arguments.
 
 ## Blocks
 

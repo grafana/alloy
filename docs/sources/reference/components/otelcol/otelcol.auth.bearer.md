@@ -81,7 +81,7 @@ The following fields are exported and can be referenced by other components:
 
 ### Default scheme via gRPC transport
 
-The following example configures [otelcol.exporter.otlp][] to use a bearer token authentication.
+The following example configures [`otelcol.exporter.otlp`][otelcol.exporter.otlp] to use a bearer token authentication.
 
 If you assume that the value of the `API_KEY` environment variable is `SECRET_API_KEY`, then the `Authorization` RPC metadata is set to `Bearer SECRET_API_KEY`.
 
@@ -100,7 +100,7 @@ otelcol.auth.bearer "creds" {
 
 ### Custom scheme via HTTP transport
 
-The following example configures [otelcol.exporter.otlphttp][] to use a bearer token authentication.
+The following example configures [`otelcol.exporter.otlphttp`][otelcol.exporter.otlphttp] to use a bearer token authentication.
 
 If you assume that the value of the `API_KEY` environment variable is `SECRET_API_KEY`, then the `Authorization` HTTP header is set to `MyScheme SECRET_API_KEY`.
 

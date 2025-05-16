@@ -97,7 +97,7 @@ The following are dropped during the conversion process:
   Prometheus doesn't natively support delta metrics.
   If your {{< param "PRODUCT_NAME" >}} instance ingests delta OTLP metrics, you can convert them to cumulative OTLP metrics with [`otelcol.processor.deltatocumulative`][otelcol.processor.deltatocumulative] before you use `otelcol.exporter.prometheus`.
 
-  [otelcol.processor.deltatocumulative]: ../otelcol.processor.deltatocumulative
+  [otelcol.processor.deltatocumulative]: ../otelcol.processor.deltatocumulative/
   {{< /admonition >}}
 
 ## Component health

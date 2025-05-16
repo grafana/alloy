@@ -10,8 +10,6 @@ labels:
 title: otelcol.processor.deltatocumulative
 ---
 
-<span class="badge docs-labels__stage docs-labels__item">Experimental</span>
-
 # `otelcol.processor.deltatocumulative`
 
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
@@ -28,7 +26,7 @@ You can specify multiple `otelcol.processor.deltatocumulative` components by giv
 ## Usage
 
 ```alloy
-otelcol.processor.deltatocumulative "LABEL" {
+otelcol.processor.deltatocumulative "<LABEL>" {
   output {
     metrics = [...]
   }
@@ -114,7 +112,7 @@ otelcol.processor.deltatocumulative "default" {
 
 otelcol.exporter.otlp "production" {
   client {
-    endpoint = sys.env("OTLP_SERVER_ENDPOINT")
+    endpoint = sys.env("<OTLP_SERVER_ENDPOINT>")
   }
 }
 ```
@@ -138,7 +136,7 @@ otelcol.exporter.prometheus "default" {
 
 prometheus.remote_write "default" {
   endpoint {
-    url = sys.env("PROMETHEUS_SERVER_URL")
+    url = sys.env("<PROMETHEUS_SERVER_URL>")
   }
 }
 ```

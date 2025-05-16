@@ -64,7 +64,7 @@ Exercise caution when using `otelcol.processor.filter`:
 ## Usage
 
 ```alloy
-otelcol.processor.filter "LABEL" {
+otelcol.processor.filter "<LABEL>" {
   output {
     metrics = [...]
     logs    = [...]

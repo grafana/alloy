@@ -10,6 +10,8 @@ title: otelcol.exporter.debug
 
 # `otelcol.exporter.debug`
 
+{{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
 `otelcol.exporter.debug` accepts telemetry data from other `otelcol` components and writes them to the console (stderr).
 You can control the verbosity of the logs.
 

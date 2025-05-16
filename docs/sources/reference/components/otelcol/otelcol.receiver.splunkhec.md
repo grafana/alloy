@@ -71,6 +71,7 @@ You can use the following blocks with `otelcol.receiver.splunkhec`:
 [cors]: #cors
 [debug_metrics]: #debug_metrics
 [output]: #output
+[hec_metadata_to_otel_attrs]: #hec_metadata_to_otel_attrs
 
 ### `output`
 

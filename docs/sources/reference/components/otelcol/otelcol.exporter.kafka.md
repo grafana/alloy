@@ -79,20 +79,20 @@ The `encoding` argument determines how to encode messages sent to Kafka.
 
 You can use the following blocks with `otelcol.exporter.kafka`:
 
-| Block                                        | Description                                                                 | Required |
-| -------------------------------------------- | --------------------------------------------------------------------------- | -------- |
-| [`authentication`][authentication]           | Configures authentication for connecting to Kafka brokers.                  | no       |
-| `authentication` > [`kerberos`][kerberos]    | Authenticates against Kafka brokers with Kerberos.                          | no       |
-| `authentication` > [`plaintext`][plaintext]  | Authenticates against Kafka brokers with plaintext.                         | no       |
-| `authentication` > [`sasl`][sasl]            | Authenticates against Kafka brokers with SASL.                              | no       |
-| `authentication` > `sasl` > [aws`_msk][sasl] | Additional SASL parameters when using AWS_MSK_IAM.                          | no       |
-| `authentication` > [`tls`][tls]              | Configures TLS for connecting to the Kafka brokers.                         | no       |
-| [`debug_metrics`][debug_metrics]             | Configures the metrics which this component generates to monitor its state. | no       |
-| [`metadata`][metadata]                       | Configures how to retrieve metadata from Kafka brokers.                     | no       |
-| `metadata` > [`retry`][retry]                | Configures how to retry metadata retrieval.                                 | no       |
-| [`producer`][producer]                       | Kafka producer configuration,                                               | no       |
-| [`retry_on_failure`][retry_on_failure]       | Configures retry mechanism for failed requests.                             | no       |
-| [`sending_queue`][sending_queue]             | Configures batching of data before sending.                                 | no       |
+| Block                                         | Description                                                                 | Required |
+| --------------------------------------------- | --------------------------------------------------------------------------- | -------- |
+| [`authentication`][authentication]            | Configures authentication for connecting to Kafka brokers.                  | no       |
+| `authentication` > [`kerberos`][kerberos]     | Authenticates against Kafka brokers with Kerberos.                          | no       |
+| `authentication` > [`plaintext`][plaintext]   | Authenticates against Kafka brokers with plaintext.                         | no       |
+| `authentication` > [`sasl`][sasl]             | Authenticates against Kafka brokers with SASL.                              | no       |
+| `authentication` > `sasl` > [`aws_msk`][sasl] | Additional SASL parameters when using AWS_MSK_IAM.                          | no       |
+| `authentication` > [`tls`][tls]               | Configures TLS for connecting to the Kafka brokers.                         | no       |
+| [`debug_metrics`][debug_metrics]              | Configures the metrics which this component generates to monitor its state. | no       |
+| [`metadata`][metadata]                        | Configures how to retrieve metadata from Kafka brokers.                     | no       |
+| `metadata` > [`retry`][retry]                 | Configures how to retry metadata retrieval.                                 | no       |
+| [`producer`][producer]                        | Kafka producer configuration,                                               | no       |
+| [`retry_on_failure`][retry_on_failure]        | Configures retry mechanism for failed requests.                             | no       |
+| [`sending_queue`][sending_queue]              | Configures batching of data before sending.                                 | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `authentication` > `tls` refers to a `tls` block defined inside an `authentication` block.
@@ -162,10 +162,10 @@ The following arguments are supported:
 | `max_message_bytes`  | `number` | The maximum permitted size of a message in bytes.   | `1000000` | no       |
 | `required_acks`      | `number` | Controls when a message is regarded as transmitted. | `1`       | no       |
 
-Refer to the [sarama documentation][RequiredAcks] for more information on `required_acks`.
+Refer to the [Go sarama documentation][RequiredAcks] for more information on `required_acks`.
 
 `compression` could be set to either `none`, `gzip`, `snappy`, `lz4`, or `zstd`.
-Refer to the [Sarama documentation][CompressionCodec] for more information.
+Refer to the [Go sarama documentation][CompressionCodec] for more information.
 
 [RequiredAcks]: https://pkg.go.dev/github.com/IBM/sarama@v1.43.2#RequiredAcks
 [CompressionCodec]: https://pkg.go.dev/github.com/IBM/sarama@v1.43.2#CompressionCodec

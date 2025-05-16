@@ -47,6 +47,8 @@ You can use the following arguments with `otelcol.processor.resourcedetection`:
 
 `detectors` could contain the following values:
 
+{{< column-list >}}
+
 * `aks`
 * `azure`
 * `consul`
@@ -64,6 +66,8 @@ You can use the following arguments with `otelcol.processor.resourcedetection`:
 * `lambda`
 * `openshift`
 * `system`
+
+{{< /column-list >}}
 
 `env` is the only detector that is not configured through a block.
 The `env` detector reads resource information from the `OTEL_RESOURCE_ATTRIBUTES` environment variable.
@@ -933,7 +937,7 @@ otelcol.processor.resourcedetection "default" {
 ### `env` and `ec2`
 
 There is no need to put in an `ec2 {}` block.
-The `ec2` defaults are applied automatically, as specified in [ec2][].
+The `ec2` defaults are applied automatically, as specified in [`ec2`][ec2].
 
 ```alloy
 otelcol.processor.resourcedetection "default" {
@@ -950,7 +954,7 @@ otelcol.processor.resourcedetection "default" {
 ### `ec2` with default resource attributes
 
 There is no need to put in a `ec2 {}` block.
-The `ec2` defaults are applied automatically, as specified in [ec2][].
+The `ec2` defaults are applied automatically, as specified in [`ec2`][ec2].
 
 ```alloy
 otelcol.processor.resourcedetection "default" {
@@ -997,7 +1001,7 @@ otelcol.processor.resourcedetection "default" {
 This example uses the default `node_from_env_var` option of `K8S_NODE_NAME`.
 
 There is no need to put in a `kubernetes_node {}` block.
-The `kubernetes_node` defaults are applied automatically, as specified in [kubernetes_node][].
+The `kubernetes_node` defaults are applied automatically, as specified in [`kubernetes_node`][kubernetes_node].
 
 ```alloy
 otelcol.processor.resourcedetection "default" {

@@ -78,7 +78,7 @@ You can use the following blocks with `otelcol.processor.tail_sampling`:
 | [`policy`][policy]                                                                         | Policies used to make a sampling decision.                                                                  | yes      |
 | `policy` > [`boolean_attribute`][boolean_attribute]                                        | The policy samples based on a boolean attribute (resource and record).                                      | no       |
 | `policy` > [`latency`][latency]                                                            | The policy samples based on the duration of the trace.                                                      | no       |
-| `policy` > [`numeric_attribute`][]                                                         | The policy samples based on the number attributes (resource and record).                                    | no       |
+| `policy` > [`numeric_attribute`][numeric_attribute]                                        | The policy samples based on the number attributes (resource and record).                                    | no       |
 | `policy` > [`ottl_condition`][ottl_condition]                                              | The policy samples based on a given boolean OTTL condition (span and span event).                           | no       |
 | `policy` > [`probabilistic`][probabilistic]                                                | The policy samples a percentage of traces.                                                                  | no       |
 | `policy` > [`rate_limiting`][rate_limiting]                                                | The policy samples based on rate.                                                                           | no       |
@@ -589,7 +589,7 @@ otelcol.processor.tail_sampling "default" {
 
 otelcol.exporter.otlp "production" {
   client {
-    endpoint = sys.env("OTLP_SERVER_ENDPOINT")
+    endpoint = sys.env("<OTLP_SERVER_ENDPOINT>")
   }
 }
 ```

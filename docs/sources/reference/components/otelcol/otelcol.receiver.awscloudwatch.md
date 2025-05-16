@@ -86,7 +86,7 @@ The `logs` block supports the following blocks:
 | ----------------------- | -------------------------------------------- | -------- |
 | [groups](#logs--groups) | Configures which log groups to collect from. | no       |
 
-### `logs` > `groups`
+#### `logs` > `groups`
 
 The `groups` block supports the following blocks:
 

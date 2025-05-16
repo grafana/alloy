@@ -127,7 +127,7 @@ otelcol.processor.batch "default" {
 
 otelcol.exporter.otlp "default" {
   client {
-    endpoint = sys.env("OTLP_ENDPOINT")
+    endpoint = sys.env("<OTLP_ENDPOINT>")
   }
 }
 ```
@@ -176,8 +176,8 @@ otelcol.receiver.influxdb "influxdb_metrics" {
 }
 
 otelcol.auth.basic "creds" {
-    username = sys.env("USERNAME")
-    password = sys.env("PASSWORD")
+    username = sys.env("<USERNAME>")
+    password = sys.env("<PASSWORD>")
 }
 ```
 

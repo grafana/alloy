@@ -105,7 +105,7 @@ The following fields are exported and can be referenced by other components:
 
 ## Example
 
-This example configures [otelcol.exporter.otlp][] to use custom headers:
+This example configures [`otelcol.exporter.otlp`][otelcol.exporter.otlp] to use custom headers:
 
 ```alloy
 otelcol.receiver.otlp "default" {

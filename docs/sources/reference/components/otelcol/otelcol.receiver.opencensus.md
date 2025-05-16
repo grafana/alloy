@@ -64,17 +64,17 @@ For details, refer to its [OpenApi specification](https://github.com/census-inst
 
 You can use the following blocks with `otelcol.receiver.opencensus`:
 
-| Block                              | Description                                                                | Required |
-| ---------------------------------- | -------------------------------------------------------------------------- | -------- |
-| [output][]                         | Configures where to send received telemetry data.                          | yes      |
-| [tls][]                            | Configures TLS for the gRPC server.                                        | no       |
-| [debug_metrics][]                  | Configures the metrics that this component generates to monitor its state. | no       |
-| [keepalive][]                      | Configures keepalive settings for the configured server.                   | no       |
-| keepalive > [enforcement_policy][] | Enforcement policy for keepalive settings.                                 | no       |
-| keepalive > [server_parameters][]  | Server parameters used to configure keepalive settings.                    | no       |
+| Block                                                    | Description                                                                | Required |
+| -------------------------------------------------------- | -------------------------------------------------------------------------- | -------- |
+| [`output`][output]                                       | Configures where to send received telemetry data.                          | yes      |
+| [`debug_metrics`][debug_metrics]                         | Configures the metrics that this component generates to monitor its state. | no       |
+| [`keepalive`][keepalive]                                 | Configures keepalive settings for the configured server.                   | no       |
+| `keepalive` > [`enforcement_policy`][enforcement_policy] | Enforcement policy for keepalive settings.                                 | no       |
+| `keepalive` > [`server_parameters`][server_parameters]   | Server parameters used to configure keepalive settings.                    | no       |
+| [`tls`][tls]                                             | Configures TLS for the gRPC server.                                        | no       |
 
 The > symbol indicates deeper levels of nesting.
-For example, `keepalive > enforcesment_policy` refers to an `enforcement_policy` block defined inside a `keepalive` block.
+For example, `keepalive` > `enforcesment_policy` refers to an `enforcement_policy` block defined inside a `keepalive` block.
 
 [tls]: #tls
 [keepalive]: #keepalive
@@ -88,13 +88,6 @@ For example, `keepalive > enforcesment_policy` refers to an `enforcement_policy`
 <span class="badge docs-labels__stage docs-labels__item">Required</span>
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
-
-### `tls`
-
-The `tls` block configures TLS settings used for a server.
-If the `tls` block isn't provided, TLS won't be used for connections to the server.
-
-{{< docs/shared lookup="reference/components/otelcol-tls-server-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `debug_metrics`
 
@@ -131,6 +124,13 @@ The following arguments are supported:
 | `max_connection_idle`      | `duration` | Maximum age for idle connections.                                                    | `"infinity"` | no       |
 | `time`                     | `duration` | How often to ping inactive clients to check for liveness.                            | `"2h"`       | no       |
 | `timeout`                  | `duration` | Time to wait before closing inactive clients that do not respond to liveness checks. | `"20s"`      | no       |
+
+### `tls`
+
+The `tls` block configures TLS settings used for a server.
+If the `tls` block isn't provided, TLS won't be used for connections to the server.
+
+{{< docs/shared lookup="reference/components/otelcol-tls-server-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

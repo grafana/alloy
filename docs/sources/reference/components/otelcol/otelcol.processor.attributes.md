@@ -36,7 +36,7 @@ otelcol.processor.attributes "<LABEL>" {
 
 ## Arguments
 
-`otelcol.processor.attributes` doesn't support any arguments and is configured fully through inner blocks.
+`otelcol.processor.attributes` doesn't support any arguments.
 
 ## Blocks
 

@@ -22,8 +22,8 @@ You can specify multiple `otelcol.receiver.solace` components by giving them dif
 ## Usage
 
 ```alloy
-otelcol.receiver.solace "LABEL" {
-  queue = "QUEUE"
+otelcol.receiver.solace "<LABEL>" {
+  queue = "<QUEUE>"
   auth {
     // sasl_plain or sasl_xauth2 or sasl_external block
   }
@@ -98,7 +98,7 @@ It doesn't support any arguments and is configured fully through inner blocks.
 
 The `sasl_xauth2` block configures how to authenticate to the Solace broker with SASL External.
 It doesn't support any arguments or blocks.
-It must be used with the [tls][] block.
+It must be used with the [`tls`][tls] block.
 
 ### `sasl_plain`
 

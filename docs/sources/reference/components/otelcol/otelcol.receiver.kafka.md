@@ -219,7 +219,7 @@ Name | Type | Description | Default | Required
 
 Regular expressions are not allowed in the `headers` argument. Only exact matching will be performed.
 
-### message_marking block
+### `message_marking`
 
 The `message_marking` block configures when Kafka messages are marked as read.
 

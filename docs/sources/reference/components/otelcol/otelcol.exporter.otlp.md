@@ -127,7 +127,7 @@ server.
 
 {{< admonition type="note" >}}
 `otelcol.exporter.otlp` uses gRPC, which does not allow you to send sensitive credentials (like `auth`) over insecure channels.
-Sending sensitive credentials over insecure non-TLS connections is supported by non-gRPC exporters such as [otelcol.exporter.otlphttp][].
+Sending sensitive credentials over insecure non-TLS connections is supported by non-gRPC exporters such as [`otelcol.exporter.otlphttp`][otelcol.exporter.otlphttp].
 
 [otelcol.exporter.otlphttp]: ../otelcol.exporter.otlphttp/
 {{< /admonition >}}
