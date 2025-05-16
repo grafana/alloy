@@ -15,7 +15,6 @@ import (
 
 	"github.com/grafana/beyla/v2/pkg/beyla"
 	"github.com/grafana/beyla/v2/pkg/components"
-	"github.com/grafana/beyla/v2/pkg/config"
 	beylaCfg "github.com/grafana/beyla/v2/pkg/config"
 	"github.com/grafana/beyla/v2/pkg/export/attributes"
 	"github.com/grafana/beyla/v2/pkg/export/debug"
@@ -354,7 +353,7 @@ func (args EBPF) Convert() beylaCfg.EBPFTracer {
 		ebpf.HTTPRequestTimeout = args.HTTPRequestTimeout
 	}
 	if args.ContextPropagationEnabled {
-		ebpf.ContextPropagation = config.ContextPropagationAll
+		ebpf.ContextPropagation = beylaCfg.ContextPropagationAll
 	}
 	ebpf.WakeupLen = args.WakeupLen
 	ebpf.TrackRequestHeaders = args.TrackRequestHeaders
