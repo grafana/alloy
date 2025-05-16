@@ -53,7 +53,7 @@ When the collector (re)starts, there's no record of how much of a given cumulati
 
 * `"auto"` (default): Send the observed value if the start time is set AND the start time happens after the component started AND the start time is different from the timestamp.
   This is suitable for gateway deployments.
-  This heuristic is like `drop`, but it keeps values for newly started counters which could not have had previous observed values.
+  This heuristic is like `drop`, but it keeps values for newly started counters which couldn't have had previous observed values.
 * `"keep"`: Send the observed value as the delta value. This is suitable for when the incoming metrics haven't been observed before.
   For example, when you are running the collector as a sidecar, the collector lifecycle is tied to the metric source.
 * `"drop"`: Keep the observed value but don't send it. This is suitable for gateway deployments.
@@ -140,7 +140,6 @@ The following fields are exported and can be referenced by other components:
 `otelcol.processor.cumulativetodelta` doesn't expose any component-specific debug information.
 
 ## Example
-
 
 This example converts cumulative temporality metrics to delta before sending it to [`otelcol.exporter.otlp`][otelcol.exporter.otlp] for further processing.
 

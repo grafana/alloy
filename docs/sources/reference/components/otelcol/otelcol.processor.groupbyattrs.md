@@ -17,7 +17,7 @@ title: otelcol.processor.groupbyattrs
 If necessary, bug reports or feature requests will be redirected to the upstream repository.
 {{< /admonition >}}
 
-We recommend you use the groupbyattrs processor together with [otelcol.processor.batch][], as a consecutive step.
+We recommend you use the groupbyattrs processor together with [`otelcol.processor.batch`][otelcol.processor.batch], as a consecutive step.
 This will reduce the fragmentation of data by grouping records together under the matching Resource/Instrumentation Library.
 
 You can specify multiple `otelcol.processor.groupbyattrs` components by giving them different labels.
@@ -156,7 +156,7 @@ Resource {host.name="host-B",source="prom"}
 This output demonstrates how `otelcol.processor.groupbyattrs` works in various situations:
 
 * The DataPoints for the `gauge-1` (GAUGE) metric were originally split under 2 Metric instances and have been merged in the output.
-* The DataPoints of the `mixed-type` (GAUGE) and `mixed-type` (SUM) metrics have not been merged under the same Metric, because their DataType is different.
+* The DataPoints of the `mixed-type` (GAUGE) and `mixed-type` (SUM) metrics haven't been merged under the same Metric, because their DataType is different.
 * The `dont-move` metric DataPoints don't have a `host.name` attribute and therefore remained under the original Resource.
 * The new Resources inherited the attributes from the original Resource (`source="prom"`), plus the specified attributes from the processed metrics (`host.name="host-A"` or `host.name="host-B"`).
 * The specified "grouping" attributes that are set on the new Resources are also removed from the metric DataPoints.

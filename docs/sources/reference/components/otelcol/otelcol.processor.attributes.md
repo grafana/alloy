@@ -93,7 +93,7 @@ The following attributes are supported:
 | `key`            | `string` | The attribute that the action relates to.                               |         | yes      |
 | `action`         | `string` | The type of action performed.                                           |         | yes      |
 | `value`          | `any`    | The value to populate for the key.                                      |         | no       |
-| `pattern`        | `string` | A regex pattern.                                                        | `""`    | no       |
+| `pattern`        | `string` | A regular expression pattern.                                           | `""`    | no       |
 | `from_attribute` | `string` | The attribute from the input data used to populate the attribute value. | `""`    | no       |
 | `from_context`   | `string` | The context value used to populate the attribute value.                 | `""`    | no       |
 | `converted_type` | `string` | The type to convert the attribute value to.                             | `""`    | no       |
@@ -102,14 +102,14 @@ The `value` data type must be either a number, string, or boolean.
 
 The supported values for `action` are:
 
-* `insert`: Inserts a new attribute in input data where the key doesn't already exist.
+* `insert`: Inserts an attribute in input data where the key doesn't already exist.
   * The `key` attribute is required. It specifies the attribute to act upon.
   * One of the `value`, `from_attribute` or `from_context` attributes is required.
 * `update`: Updates an attribute in input data where the key does exist.
   * The `key`attribute is required.
     It specifies the attribute to act upon.
   * One of the `value`, `from_attribute` or `from_context` attributes is required.
-* `upsert`: Either inserts a new attribute in input data where the key doesn't already exist or updates an attribute in input data where the key does exist.
+* `upsert`: Either inserts an attribute in input data where the key doesn't already exist or updates an attribute in input data where the key does exist.
   * The `key`attribute is required. It specifies the attribute to act upon.
   * One of the `value`, `from_attribute` or `from_context`attributes is required:
     * `value` specifies the value to populate for the key.
@@ -122,15 +122,15 @@ The supported values for `action` are:
       If the key is `client.address`, the value will be set to the client address.
       If the key doesn't exist, no action is performed.
       If the key has multiple values the values will be joined with a `;` separator.
-* `hash`: Hashes (SHA1) an existing attribute value.
+* `hash`: Hashes (SHA1) an attribute value.
   * The `key` attribute or the `pattern` attributes is required.
 * `extract`: Extracts values using a regular expression rule from the input key to target keys specified in the rule.
   If a target key already exists, it will be overridden.
-  Note: It behaves similarly to the Span Processor `to_attributes` setting with the existing attribute as the source.
-  * The `key` attribute is required. It specifies the attribute to extract values from. The value of `key` is NOT altered.
-  * The `pattern` attribute is required. It is the regular expression pattern used to extract attributes from the value of `key`.
+  Note: It behaves similarly to the Span Processor `to_attributes` setting with the attribute as the source.
+  * The `key` attribute is required. It specifies the attribute to extract values from. The value of `key` isn't altered.
+  * The `pattern` attribute is required. It's the regular expression pattern used to extract attributes from the value of `key`.
     The submatchers must be named. If attributes already exist, they will be overwritten.
-* `convert`: Converts an existing attribute to a specified type.
+* `convert`: Converts an attribute to a specified type.
   * The `key` attribute is required. It specifies the attribute to act upon.
   * The `converted_type` attribute is required and must be one of int, double or string.
 * `delete`: Deletes an attribute from the input data.
@@ -331,13 +331,13 @@ otelcol.exporter.otlp "default" {
 
 For example, the following spans match the properties and won't be processed by the processor:
 
-* Span1 Name: "svcB", Attributes: {env: "dev", test_request: 123, credit_card: 1234}
-* Span2 Name: "svcA", Attributes: {env: "dev", test_request: false}
+* Span1 Name: `"svcB", Attributes: {env: "dev", test_request: 123, credit_card: 1234}`
+* Span2 Name: `"svcA", Attributes: {env: "dev", test_request: false}`
 
 The following spans don't match the properties and the processor actions are applied to it:
 
-* Span3 Name: "svcB", Attributes: {env: 1, test_request: "dev", credit_card: 1234}
-* Span4 Name: "svcC", Attributes: {env: "dev", test_request: false}
+* Span3 Name: `"svcB", Attributes: {env: 1, test_request: "dev", credit_card: 1234}`
+* Span4 Name: `"svcC", Attributes: {env: "dev", test_request: false}`
 
 Due to the presence of the `services` attribute, this configuration works only for trace signals.
 This is why only traces are configured in the `output` block.
@@ -506,7 +506,7 @@ otelcol.processor.attributes "default" {
 
 ### Include spans based on a regular expression of log body
 
-This processor will remove the "token" attribute and will obfuscate the "password" attribute in spans where the log body matches "AUTH.*".
+This processor removes the "token" attribute and obfuscates the "password" attribute in spans where the log body matches `"AUTH.*"`.
 
 Due to the presence of the `log_bodies` attribute, this configuration works only for log signals.
 This is why only logs are configured in the `output` block.
@@ -536,7 +536,7 @@ otelcol.processor.attributes "default" {
 ### Include spans based on a regular expression of log severity
 
 The following example demonstrates how to process logs that have a severity level which is equal to or higher than the level specified in the `log_severity` block.
-This processor will remove the "token" attribute and will obfuscate the "password" attribute in logs where the severity is at least "INFO".
+This processor removes the "token" attribute and obfuscates the "password" attribute in logs where the severity is at least `"INFO"`.
 
 Due to the presence of the `log_severity` attribute, this configuration works only for log signals.
 This is why only logs are configured in the `output` block.
@@ -569,7 +569,7 @@ otelcol.processor.attributes "default" {
 ### Include spans based on a regular expression of log severity text
 
 The following demonstrates how to process logs that have a severity text that match regular expression patterns.
-This processor will remove the "token" attribute and will obfuscate the "password" attribute in logs where severity matches "info".
+This processor removes the "token" attribute and obfuscates the "password" attribute in logs where severity matches "info".
 
 Due to the presence of the `log_severity_texts` attribute, this configuration works only for log signals.
 This is why only logs are configured in the `output` block.
@@ -599,7 +599,7 @@ otelcol.processor.attributes "default" {
 ### Include metrics based on metric names
 
 The following demonstrates how to process metrics that have a name starting with "counter".
-This processor will add a label called "important_label" with a value of "label_val" to the metric.
+This processor will add a label called `"important_label"` with a value of `"label_val"` to the metric.
 If the label already exists, its value will be updated.
 
 Due to the presence of the `metric_names` attribute, this configuration works only for metric signals.

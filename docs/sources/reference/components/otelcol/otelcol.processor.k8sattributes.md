@@ -40,7 +40,7 @@ You can use the following arguments with `otelcol.processor.k8sattributes`:
 | Name                        | Type       | Description                                                                    | Default          | Required |
 | --------------------------- | ---------- | ------------------------------------------------------------------------------ | ---------------- | -------- |
 | `auth_type`                 | `string`   | Authentication method when connecting to the Kubernetes API.                   | `serviceAccount` | no       |
-| `passthrough`               | `bool`     | Passthrough signals as-is, only adding a `k8s.pod.ip` resource attribute.      | `false`          | no       |
+| `passthrough`               | `bool`     | Pass through signals as-is, only adding a `k8s.pod.ip` resource attribute.     | `false`          | no       |
 | `wait_for_metadata_timeout` | `duration` | How long to wait for Kubernetes metadata to arrive.                            | `"10s"`          | no       |
 | `wait_for_metadata`         | `bool`     | Whether to wait for Kubernetes metadata to arrive before processing telemetry. | `false`          | no       |
 
@@ -48,18 +48,18 @@ The supported values for `auth_type` are:
 
 * `none`: No authentication is required.
 * `serviceAccount`: Use the built-in service account that Kubernetes automatically provisions for each Pod.
-* `kubeConfig`: Use local credentials like those used by kubectl.
+* `kubeConfig`: Use local credentials like those used by `kubectl`.
 * `tls`: Use client TLS authentication.
 
 Setting `passthrough` to `true` enables the "passthrough mode" of `otelcol.processor.k8sattributes`:
 
 * Only a `k8s.pod.ip` resource attribute will be added.
 * No other metadata will be added.
-* The Kubernetes API will not be accessed.
-* To correctly detect the pod IPs, {{< param "PRODUCT_NAME" >}} must receive spans directly from services.
+* The Kubernetes API won't be accessed.
+* To correctly detect the Pod IPs, {{< param "PRODUCT_NAME" >}} must receive spans directly from services.
 * The `passthrough` setting is useful when configuring {{< param "PRODUCT_NAME" >}} as a Kubernetes Deployment.
 
-A {{< param "PRODUCT_NAME" >}} running as a Deployment cannot detect the IP addresses of pods generating telemetry data without any of the well-known IP attributes.
+A {{< param "PRODUCT_NAME" >}} running as a Deployment can't detect the IP addresses of pods generating telemetry data without any of the well-known IP attributes.
 If the Deployment {{< param "PRODUCT_NAME" >}} receives telemetry from {{< param "PRODUCT_NAME" >}}s deployed as DaemonSet, then some of those attributes might be missing.
 As a workaround, you can configure the DaemonSet {{< param "PRODUCT_NAME" >}}s with `passthrough` set to `true`.
 
@@ -174,7 +174,7 @@ By default, if `metadata` isn't specified, the following fields are extracted an
 * `container.image.name` (requires one of the following additional attributes to be set: `container.id` or `k8s.container.name`)
 * `container.image.tag` (requires one of the following additional attributes to be set: `container.id` or `k8s.container.name`)
 * `k8s.container.name` (requires an additional attribute to be set: `container.id`)
-* `k8s.deployment.name` (if the pod is controlled by a deployment)
+* `k8s.deployment.name` (if the Pod is controlled by a deployment)
 * `k8s.namespace.name`
 * `k8s.node.name`
 * `k8s.pod.name`
@@ -203,7 +203,7 @@ The `label` block configures how to extract Kubernetes labels.
 {{< admonition type="caution" >}}
 
 The `regex` argument has been removed.
-Use the [ExtractPatterns][extract-patterns] function from `otelcol.processor.transform` instead. 
+Use the [ExtractPatterns][extract-patterns] function from `otelcol.processor.transform` instead.
 
 [extract-patterns]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/{{< param "OTEL_VERSION" >}}/pkg/ottl/ottlfuncs/README.md#extractpatterns
 
@@ -242,7 +242,7 @@ The `pod_association` block doesn't support any arguments and is configured full
 
 The `pod_association` block can be repeated multiple times, to configure additional rules.
 
-#### Example:
+#### Example
 
 ```alloy
 pod_association {

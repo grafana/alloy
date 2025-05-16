@@ -119,7 +119,7 @@ There are two types of [queue][] and [retry][] blocks:
   This is useful for temporary problems with a specific backend, like transient network issues.
 * The top-level queue and retry blocks for `otelcol.exporter.loadbalancing`.
   Those configuration options provide capability to re-route data into a new set of healthy backends.
-  This is useful for highly elastic environments like Kubernetes,  where the list of resolved endpoints changes frequently due to deployments and scaling events. 
+  This is useful for highly elastic environments like Kubernetes,  where the list of resolved endpoints changes frequently due to deployments and scaling events.
 
 [resolver]: #resolver
 [static]: #static
@@ -141,7 +141,7 @@ There are two types of [queue][] and [retry][] blocks:
 
 The `resolver` block configures how to retrieve the endpoint to which this exporter will send data.
 
-Inside the `resolver` block, either the [dns][] block or the [static][] block should be specified.
+Inside the `resolver` block, either the [`dns`][dns] block or the [`static`][static] block should be specified.
 If both `dns` and `static` are specified, `dns` takes precedence.
 
 ### `aws_cloud_map`
@@ -167,7 +167,7 @@ The following arguments are supported:
 * `HEALTHY_OR_ELSE_ALL`: Returns healthy instances, unless none are reporting a healthy state.
   In that case, return all instances. This is also called failing open.
 
-If `port` is not set, a default port defined in CloudMap will be used.
+If `port` isn't set, a default port defined in CloudMap will be used.
 
 {{< admonition type="note" >}}
 The `aws_cloud_map` resolver returns a maximum of 100 hosts.
@@ -212,7 +212,7 @@ The "get", "list", and "watch" [roles](https://kubernetes.io/docs/reference/acce
 
 `return_hostnames` is useful in certain situations like using Istio in sidecar mode.
 To use this feature, the `service` argument must be a headless `Service`, pointing at a `StatefulSet`.
-Also, the `service` argument must be what is specified under `.spec.serviceName` in the `StatefulSet`.
+Also, the `service` argument must be what's specified under `.spec.serviceName` in the `StatefulSet`.
 
 ### `static`
 
@@ -280,11 +280,11 @@ The `keepalive` block configures keepalive settings for gRPC client connections.
 
 The following arguments are supported:
 
-| Name                    | Type       | Description                                                                                | Default | Required |
-| ----------------------- | ---------- | ------------------------------------------------------------------------------------------ | ------- | -------- |
-| `ping_wait`             | `duration` | How often to ping the server after no activity.                                            |         | no       |
-| `ping_response_timeout` | `duration` | Time to wait before closing inactive connections if the server does not respond to a ping. |         | no       |
-| `ping_without_stream`   | `boolean`  | Send pings even if there is no active stream request.                                      |         | no       |
+| Name                    | Type       | Description                                                                               | Default | Required |
+| ----------------------- | ---------- | ----------------------------------------------------------------------------------------- | ------- | -------- |
+| `ping_wait`             | `duration` | How often to ping the server after no activity.                                           |         | no       |
+| `ping_response_timeout` | `duration` | Time to wait before closing inactive connections if the server doesn't respond to a ping. |         | no       |
+| `ping_without_stream`   | `boolean`  | Send pings even if there is no active stream request.                                     |         | no       |
 
 ### `tls`
 
@@ -385,7 +385,7 @@ For example, service graphs can be [generated][tempo-servicegraphs] in Grafana C
 [tempo-servicegraphs]: https://grafana.com/docs/tempo/latest/metrics-generator/service_graphs/
 [adaptive-metrics]: https://grafana.com/docs/grafana-cloud/cost-management-and-billing/reduce-costs/metrics-costs/control-metrics-usage-via-adaptive-metrics/
 
-### Mixing stateful components
+### Mix stateful components
 
 <!-- TODO: Add a picture of the architecture?  -->
 Different {{< param "PRODUCT_NAME" >}} components may require a different `routing_key` for `otelcol.exporter.loadbalancing`.
@@ -735,10 +735,10 @@ The following example shows a Kubernetes configuration that sets up two groups o
 * A pool of load-balancer {{< param "PRODUCT_NAME" >}}s:
   * Spans are received from instrumented applications via `otelcol.receiver.otlp`
   * Spans are exported via `otelcol.exporter.loadbalancing`.
-  * The load-balancer {{< param "PRODUCT_NAME" >}}s will get notified by the Kubernetes API any time a pod
+  * The load-balancer {{< param "PRODUCT_NAME" >}}s will get notified by the Kubernetes API any time a Pod
     is added or removed from the pool of sampling {{< param "PRODUCT_NAME" >}}s.
 * A pool of sampling {{< param "PRODUCT_NAME" >}}instances:
-  * The sampling {{< param "PRODUCT_NAME" >}}s do not need to run behind a headless service.
+  * The sampling {{< param "PRODUCT_NAME" >}} instances don't need to run behind a headless service.
   * Spans are received from the load-balancer {{< param "PRODUCT_NAME" >}}s via `otelcol.receiver.otlp`
   * Traces are sampled via `otelcol.processor.tail_sampling`.
   * The traces are exported via `otelcol.exporter.otlp` to a an OTLP-compatible database such as Tempo.

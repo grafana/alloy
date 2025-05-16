@@ -175,7 +175,7 @@ Statements are checked in order from "high level" to "low level" telemetry, in t
 1. `span`
 1. `spanevent`
 
-If at least one `span` condition is satisfied, the `spanevent` conditions will not be checked.
+If at least one `span` condition is satisfied, the `spanevent` conditions won't be checked.
 Only one of the statements inside the list of statements has to be satisfied.
 
 If all span events for a span are dropped, the span will be left intact.

@@ -112,11 +112,11 @@ The `keepalive` block configures keepalive settings for gRPC client connections.
 
 The following arguments are supported:
 
-| Name                    | Type       | Description                                                                                | Default | Required |
-| ----------------------- | ---------- | ------------------------------------------------------------------------------------------ | ------- | -------- |
-| `ping_wait`             | `duration` | How often to ping the server after no activity.                                            |         | no       |
-| `ping_response_timeout` | `duration` | Time to wait before closing inactive connections if the server does not respond to a ping. |         | no       |
-| `ping_without_stream`   | `boolean`  | Send pings even if there is no active stream request.                                      |         | no       |
+| Name                    | Type       | Description                                                                               | Default | Required |
+| ----------------------- | ---------- | ----------------------------------------------------------------------------------------- | ------- | -------- |
+| `ping_wait`             | `duration` | How often to ping the server after no activity.                                           |         | no       |
+| `ping_response_timeout` | `duration` | Time to wait before closing inactive connections if the server doesn't respond to a ping. |         | no       |
+| `ping_without_stream`   | `boolean`  | Send pings even if there is no active stream request.                                     |         | no       |
 
 ### `tls`
 
@@ -126,7 +126,7 @@ server.
 {{< docs/shared lookup="reference/components/otelcol-tls-client-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 {{< admonition type="note" >}}
-`otelcol.exporter.otlp` uses gRPC, which does not allow you to send sensitive credentials (like `auth`) over insecure channels.
+`otelcol.exporter.otlp` uses gRPC, which doesn't allow you to send sensitive credentials like `auth` over insecure channels.
 Sending sensitive credentials over insecure non-TLS connections is supported by non-gRPC exporters such as [`otelcol.exporter.otlphttp`][otelcol.exporter.otlphttp].
 
 [otelcol.exporter.otlphttp]: ../otelcol.exporter.otlphttp/

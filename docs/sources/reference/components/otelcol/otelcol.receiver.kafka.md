@@ -212,12 +212,13 @@ The `header_extraction` block configures how to extract headers from Kafka recor
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`extract_headers` | `bool` | Enables attaching header fields to resource attributes. | `false` | no
-`headers` | `list(string)` | A list of headers to extract from the Kafka record. | `[]` | no
+| Name              | Type           | Description                                             | Default | Required |
+| ----------------- | -------------- | ------------------------------------------------------- | ------- | -------- |
+| `extract_headers` | `bool`         | Enables attaching header fields to resource attributes. | `false` | no       |
+| `headers`         | `list(string)` | A list of headers to extract from the Kafka record.     | `[]`    | no       |
 
-Regular expressions are not allowed in the `headers` argument. Only exact matching will be performed.
+Regular expressions aren't allowed in the `headers` argument.
+Only exact matching will be performed.
 
 ### `message_marking`
 
@@ -230,10 +231,10 @@ The following arguments are supported:
 | `after_execution`      | `bool` | Mark messages after forwarding telemetry data to other components. | `false` | no       |
 | `include_unsuccessful` | `bool` | Whether failed forwards should be marked as read.                  | `false` | no       |
 
-By default, a Kafka message is marked as read immediately after it is retrieved from the Kafka broker.
+By default, a Kafka message is marked as read immediately after it's retrieved from the Kafka broker.
 If the `after_execution` argument is true, messages are only read after the telemetry data is forwarded to components specified in [the `output` block][output].
 
-When `after_execution` is true, messages are only marked as read when they are decoded successfully and components where the data was forwarded didn't return an error.
+When `after_execution` is true, messages are only marked as read when they're decoded successfully and components where the data was forwarded didn't return an error.
 If the `include_unsuccessful` argument is true, messages are marked as read even if decoding or forwarding failed.
 Setting `include_unsuccessful` has no effect if `after_execution` is `false`.
 

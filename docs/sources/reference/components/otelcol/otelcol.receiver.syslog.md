@@ -133,15 +133,15 @@ If `max_elapsed_time` is set to `0`, data will never be discarded.
 The `tcp` block configures a TCP syslog server.
 The following arguments are supported:
 
-| Name                            | Type     | Description                                                                                                  | Default | Required |
-| ------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------ | ------- | -------- |
-| `listen_address`                | `string` | The `<host:port>` address to listen to for syslog messages.                                                  |         | yes      |
-| `add_attributes`                | `bool`   | Add net.* attributes to log messages according to OpenTelemetry semantic conventions.                        | `false` | no       |
-| `encoding`                      | `string` | The encoding of the syslog messages.                                                                         | `utf-8` | no       |
-| `max_log_size`                  | `string` | The maximum size of a log entry to read before failing.                                                      | `1MiB`  | no       |
-| `one_log_per_packet`            | `bool`   | Skip log tokenization, improving performance when messages always contain one log and multiline is not used. | `false` | no       |
-| `preserve_leading_whitespaces`  | `bool`   | Preserves leading whitespace in messages when set to `true`.                                                 | `false` | no       |
-| `preserve_trailing_whitespaces` | `bool`   | Preserves trailing whitespace in messages when set to `true`.                                                | `false` | no       |
+| Name                            | Type     | Description                                                                                                 | Default | Required |
+| ------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------- | ------- | -------- |
+| `listen_address`                | `string` | The `<host:port>` address to listen to for syslog messages.                                                 |         | yes      |
+| `add_attributes`                | `bool`   | Add net.* attributes to log messages according to OpenTelemetry semantic conventions.                       | `false` | no       |
+| `encoding`                      | `string` | The encoding of the syslog messages.                                                                        | `utf-8` | no       |
+| `max_log_size`                  | `string` | The maximum size of a log entry to read before failing.                                                     | `1MiB`  | no       |
+| `one_log_per_packet`            | `bool`   | Skip log tokenization, improving performance when messages always contain one log and multiline isn't used. | `false` | no       |
+| `preserve_leading_whitespaces`  | `bool`   | Preserves leading whitespace in messages when set to `true`.                                                | `false` | no       |
+| `preserve_trailing_whitespaces` | `bool`   | Preserves trailing whitespace in messages when set to `true`.                                               | `false` | no       |
 
 The `encoding` argument specifies the encoding of the incoming syslog messages.
 `encoding` must be one of `utf-8`, `utf-16le`, `utf-16be`, `ascii`, `big5`, `nop`.
@@ -176,17 +176,17 @@ isn't provided, TLS won't be used for connections to the server.
 The `udp` block configures a UDP syslog server.
 The following arguments are supported:
 
-| Name                            | Type     | Description                                                                                                  | Default | Required |
-| ------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------ | ------- | -------- |
-| `listen_address`                | `string` | The `<host:port>` address to listen to for syslog messages.                                                  |         | yes      |
-| `add_attributes`                | `bool`   | Add net.* attributes to log messages according to OpenTelemetry semantic conventions.                        | `false` | no       |
-| `encoding`                      | `string` | The encoding of the syslog messages.                                                                         | `utf-8` | no       |
-| `one_log_per_packet`            | `bool`   | Skip log tokenization, improving performance when messages always contain one log and multiline is not used. | `false` | no       |
-| `preserve_leading_whitespaces`  | `bool`   | Preserves leading whitespace in messages when set to `true`.                                                 | `false` | no       |
-| `preserve_trailing_whitespaces` | `bool`   | Preserves trailing whitespace in messages when set to `true`.                                                | `false` | no       |
+| Name                            | Type     | Description                                                                                                 | Default | Required |
+| ------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------- | ------- | -------- |
+| `listen_address`                | `string` | The `<host:port>` address to listen to for syslog messages.                                                 |         | yes      |
+| `add_attributes`                | `bool`   | Add net.* attributes to log messages according to OpenTelemetry semantic conventions.                       | `false` | no       |
+| `encoding`                      | `string` | The encoding of the syslog messages.                                                                        | `utf-8` | no       |
+| `one_log_per_packet`            | `bool`   | Skip log tokenization, improving performance when messages always contain one log and multiline isn't used. | `false` | no       |
+| `preserve_leading_whitespaces`  | `bool`   | Preserves leading whitespace in messages when set to `true`.                                                | `false` | no       |
+| `preserve_trailing_whitespaces` | `bool`   | Preserves trailing whitespace in messages when set to `true`.                                               | `false` | no       |
 
 The `encoding` argument specifies the encoding of the incoming syslog messages.
-`encoding` must be one of `utf-8`, `utf-16le`, `utf-16be`, `ascii`, `big5`, or `nop`. 
+`encoding` must be one of `utf-8`, `utf-16le`, `utf-16be`, `ascii`, `big5`, or `nop`.
 Refer to the upstream receiver [documentation][encoding-documentation] for more details.
 
 ### `async`

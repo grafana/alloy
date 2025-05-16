@@ -74,10 +74,10 @@ You can specify multiple `otelcol.processor.transform` components by giving them
 
 {{< admonition type="warning" >}}
 `otelcol.processor.transform` allows you to modify all aspects of your telemetry.
-Some specific risks are given below, but this is not an exhaustive list.
-It is important to understand your data before using this processor.
+Some specific risks are given below, but this isn't an exhaustive list.
+It's important to understand your data before using this processor.
 
-* [Unsound Transformations][]: Transformations between metric data types are not defined in the [metrics data model][].
+* [Unsound Transformations][]: Transformations between metric data types aren't defined in the [metrics data model][].
   To use these functions, you must understand the incoming data and know that it can be meaningfully converted to a new metric data type or can be used to create new metrics.
   * Although OTTL allows you to use the `set` function with `metric.data_type`, its implementation in the transform processor is a [no-op][].
     To modify a data type, you must use a specific function such as `convert_gauge_to_sum`.
@@ -118,7 +118,7 @@ The supported values for `error_mode` are:
 
 * `ignore`: Ignore errors returned by conditions, log them, and continue on to the next condition.
   This is the recommended mode.
-* `silent`: Ignore errors returned by conditions, do not log them, and continue on to the next condition.
+* `silent`: Ignore errors returned by conditions, don't log them, and continue on to the next condition.
 * `propagate`: Return the error up the pipeline.
   This will result in the payload being dropped from {{< param "PRODUCT_NAME" >}}.
 
@@ -206,8 +206,8 @@ It can also be used alongside them.
 | `metric` | `list(string)` | A list of OTTL statements which transform metrics. | `[]`    | no       |
 | `trace`  | `list(string)` | A list of OTTL statements which transform traces.  | `[]`    | no       |
 
-The inference happens automatically because path names are prefixed with the context name. 
-In the following example, the inferred context value is `datapoint`, as it is the only context that supports parsing both datapoint and metric paths:
+The inference happens automatically because path names are prefixed with the context name.
+In the following example, the inferred context value is `datapoint`, as it's the only context that supports parsing both datapoint and metric paths:
 
 ```alloy
 statements {
@@ -273,8 +273,8 @@ Contexts __NEVER__ supply access to individual items "lower" in the protobuf def
 * Similarly, statements associated to a `metric` __WILL NOT__ be able to access individual datapoints, but can access the entire datapoints slice.
 * Similarly, statements associated to a `span` __WILL NOT__ be able to access individual SpanEvents, but can access the entire SpanEvents slice.
 
-For practical purposes, this means that a context cannot make decisions on its telemetry based on telemetry "lower" in the structure.
-For example, __the following context statement is not possible__ because it attempts to use individual datapoint attributes in the condition of a statement associated to a `metric`:
+For practical purposes, this means that a context can't make decisions on its telemetry based on telemetry "lower" in the structure.
+For example, __the following context statement isn't possible__ because it attempts to use individual datapoint attributes in the condition of a statement associated to a `metric`:
 
 ```alloy
 metric_statements {
@@ -311,7 +311,7 @@ The protobuf definitions for OTLP signals are maintained on GitHub:
 
 Whenever possible, associate your statements to the context which the statement intens to transform.
 The contexts are nested, and the higher-level contexts don't have to iterate through any of the contexts at a lower level.
-For example, although you can modify resource attributes associated to a span using the `span` context, it is more efficient to use the `resource` context.
+For example, although you can modify resource attributes associated to a span using the `span` context, it's more efficient to use the `resource` context.
 
 ## Exported fields
 
@@ -337,9 +337,9 @@ The following fields are exported and can be referenced by other components:
 
 ## Examples
 
-### Perform a transformation if an attribute does not exist
+### Perform a transformation if an attribute doesn't exist
 
-This example sets the attribute `test` to `pass` if the attribute `test` does not exist.
+This example sets the attribute `test` to `pass` if the attribute `test` doesn't exist.
 
 ```alloy
 otelcol.processor.transform "default" {
@@ -348,7 +348,7 @@ otelcol.processor.transform "default" {
   trace_statements {
     context = "span"
     statements = [
-      // Accessing a map with a key that does not exist will return nil.
+      // Accessing a map with a key that doesn't exist will return nil.
       `set(attributes["test"], "pass") where attributes["test"] == nil`,
     ]
   }

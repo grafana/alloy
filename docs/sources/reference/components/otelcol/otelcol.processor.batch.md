@@ -14,7 +14,7 @@ title: otelcol.processor.batch
 
 `otelcol.processor.batch` accepts telemetry data from other `otelcol` components and places them into batches.
 Batching improves the compression of data and reduces the number of outgoing network requests required to transmit data.
-This processor supports both size and time based batching. 
+This processor supports both size and time based batching.
 
 We strongly recommend that you configure the batch processor on every {{< param "PRODUCT_NAME" >}} that uses OpenTelemetry (otelcol) {{< param "PRODUCT_NAME" >}} components.
 The batch processor should be defined in the pipeline after the `otelcol.processor.memory_limiter` as well as any sampling processors.
@@ -67,9 +67,9 @@ Use `send_batch_max_size` to limit the amount of data contained in a single batc
 * When set to `0`, batches can be any size.
 * When set to a non-zero value, `send_batch_max_size` must be greater than or equal to `send_batch_size`.
   Every batch will contain up to the `send_batch_max_size` number of spans, log lines, or metric samples.
-  The excess spans, log lines, or metric samples will not be lost - instead, they will be added to the next batch.
+  The excess spans, log lines, or metric samples won't be lost - instead, they will be added to the next batch.
 
-For example, assume `send_batch_size` is set to the default `8192` and there are currently 8,000 batched spans.
+For example, assume `send_batch_size` is set to the default `8192` and there are 8,000 batched spans.
 If the batch processor receives 8,000 more spans at once, its behavior depends on how `send_batch_max_size` is configured:
 
 * If `send_batch_max_size` is set to `0`, the total batch size would be 16,000 which would then be flushed as a single batch.
@@ -156,7 +156,7 @@ otelcol.exporter.otlp "production" {
 ### Batching with a timeout
 
 This example will buffer up to 10,000 spans, metric data points, or log records for up to 10 seconds.
-Because `send_batch_max_size` is not set, the batch size may exceed 10,000.
+Because `send_batch_max_size` isn't set, the batch size may exceed 10,000.
 
 ```alloy
 otelcol.processor.batch "default" {

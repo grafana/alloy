@@ -69,7 +69,7 @@ You can use the following arguments with `otelcol.processor.resourcedetection`:
 
 {{< /column-list >}}
 
-`env` is the only detector that is not configured through a block.
+`env` is the only detector that's not configured through a block.
 The `env` detector reads resource information from the `OTEL_RESOURCE_ATTRIBUTES` environment variable.
 This variable must be in the format `<key1>=<value1>,<key2>=<value2>,...`, the details of which are currently pending confirmation in the OpenTelemetry specification.
 
@@ -82,11 +82,11 @@ For example, if you had `detectors = ["eks", "ec2"]` then `cloud.platform` will 
 
 The following order is recommended for AWS:
 
-  1. [lambda][]
-  1. [elasticbeanstalk][]
-  1. [eks][]
-  1. [ecs][]
-  1. [ec2][]
+  1. [`lambda`][lambda]
+  1. [`elasticbeanstalk`][elasticbeanstalk]
+  1. [`eks`][eks]
+  1. [`ecs`][ecs]
+  1. [`ec2`][ec2]
 
 ## Blocks
 
@@ -145,19 +145,19 @@ The `aks` block adds resource attributes related to Azure AKS.
 
 The `aks` block supports the following blocks:
 
-| Block                                            | Description                                  | Required |
-| ------------------------------------------------ | -------------------------------------------- | -------- |
+| Block                                              | Description                                  | Required |
+| -------------------------------------------------- | -------------------------------------------- | -------- |
 | [`resource_attributes`](#aks--resource_attributes) | Configures which resource attributes to add. | no       |
 
 #### `aks` > `resource_attributes`
 
 The `resource_attributes` block supports the following blocks:
 
-| Block                              | Description                                                                                   | Required |
-| ---------------------------------- | --------------------------------------------------------------------------------------------- | -------- |
-| [`cloud.platform`][res-attr-cfg]   | Toggles the `cloud.platform` resource attribute. <br> Sets `enabled` to `true` by default.    | no       |
-| [`cloud.provider`][res-attr-cfg]   | Toggles the `cloud.provider` resource attribute. <br> Sets `enabled` to `true` by default.    | no       |
-| [`k8s.cluster.name`][res-attr-cfg] | Toggles the `k8s.cluster.name` resource attribute. <br> Sets `enabled` to `false` by default. | no       |
+| Block                              | Description                                                                              | Required |
+| ---------------------------------- | ---------------------------------------------------------------------------------------- | -------- |
+| [`cloud.platform`][res-attr-cfg]   | Toggles the `cloud.platform` resource attribute. Sets `enabled` to `true` by default.    | no       |
+| [`cloud.provider`][res-attr-cfg]   | Toggles the `cloud.provider` resource attribute. Sets `enabled` to `true` by default.    | no       |
+| [`k8s.cluster.name`][res-attr-cfg] | Toggles the `k8s.cluster.name` resource attribute. Sets `enabled` to `false` by default. | no       |
 
 Example values:
 
@@ -228,7 +228,7 @@ The `consul` block supports the following attributes:
 | Attribute    | Type           | Description                                                                       | Default | Required |
 | ------------ | -------------- | --------------------------------------------------------------------------------- | ------- | -------- |
 | `address`    | `string`       | The address of the Consul server                                                  | `""`    | no       |
-| `datacenter` | `string`       | Datacenter to use. If not provided, the default agent datacenter is used.         | `""`    | no       |
+| `datacenter` | `string`       | Data center to use. If not provided, the default agent data center is used.       | `""`    | no       |
 | `meta`       | `list(string)` | Allowlist of [Consul Metadata][] keys to use as resource attributes.              | `[]`    | no       |
 | `namespace`  | `string`       | The name of the namespace to send along for the request.                          | `""`    | no       |
 | `token`      | `secret`       | A per-request ACL token which overrides the Consul agent's default (empty) token. | `""`    | no       |
@@ -694,7 +694,7 @@ rules:
 `auth_type` can be set to one of the following:
 
 * `none`: No authentication.
-* `serviceAccount`: Use the standard service account token provided to the {{< param "PRODUCT_NAME" >}} pod.
+* `serviceAccount`: Use the standard service account token provided to the {{< param "PRODUCT_NAME" >}} Pod.
 * `kubeConfig`: Use credentials from `~/.kube/config`.
 
 The `kubernetes_node` block supports the following blocks:
@@ -724,7 +724,7 @@ The `lambda` block supports the following blocks:
 | ---------------------------------------------------- | -------------------------------------------- | -------- |
 | [resource_attri`butes](#lambda--resource_attributes) | Configures which resource attributes to add. | no       |
 
-#### lambda > resource_attributes
+#### `lambda` > `resource_attributes`
 
 The `resource_attributes` block supports the following blocks:
 
@@ -996,7 +996,7 @@ otelcol.processor.resourcedetection "default" {
 }
 ```
 
-### `kubernetes_node`
+### `kubernetes_node` with a default node
 
 This example uses the default `node_from_env_var` option of `K8S_NODE_NAME`.
 

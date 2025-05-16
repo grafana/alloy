@@ -12,7 +12,7 @@ title: otelcol.receiver.awscloudwatch
 
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-`otelcol.receiver.awscloudwatch` receives logs from AWS CloudWatch and forwards them to other `otelcol.*` components.
+`otelcol.receiver.awscloudwatch` receives logs from Amazon CloudWatch and forwards them to other `otelcol.*` components.
 
 {{< admonition type="note" >}}
 `otelcol.receiver.awscloudwatch` is a wrapper over the upstream OpenTelemetry Collector `awscloudwatch` receiver.
@@ -43,7 +43,7 @@ You can use the following arguments with `otelcol.receiver.awscloudwatch`:
 | `imds_endpoint` | `string` | Custom EC2 IMDS endpoint to use. |         | no       |
 | `profile`       | `string` | AWS credentials profile to use.  |         | no       |
 
-If `imds_endpoint` is not specified, and the environment variable `AWS_EC2_METADATA_SERVICE_ENDPOINT` has a value, it will be used as the IMDS endpoint.
+If `imds_endpoint` isn't specified, and the environment variable `AWS_EC2_METADATA_SERVICE_ENDPOINT` has a value, it will be used as the IMDS endpoint.
 
 ## Blocks
 
@@ -77,7 +77,7 @@ The following arguments are supported:
 
 | Name                     | Type       | Description                                                    | Default | Required |
 | ------------------------ | ---------- | -------------------------------------------------------------- | ------- | -------- |
-| `max_events_per_request` | `int`      | Maximum number of events to process per request to Cloudwatch. | `1000`  | no       |
+| `max_events_per_request` | `int`      | Maximum number of events to process per request to CloudWatch. | `1000`  | no       |
 | `poll_interval`          | `duration` | How frequently to poll for new log entries.                    | `"1m"`  | no       |
 
 The `logs` block supports the following blocks:

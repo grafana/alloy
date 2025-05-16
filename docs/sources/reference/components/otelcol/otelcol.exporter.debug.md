@@ -16,7 +16,7 @@ title: otelcol.exporter.debug
 You can control the verbosity of the logs.
 
 {{< admonition type="note" >}}
-`otelcol.exporter.debug` is a wrapper over the upstream OpenTelemetry Collector `debug` exporter. 
+`otelcol.exporter.debug` is a wrapper over the upstream OpenTelemetry Collector `debug` exporter.
 If necessary, bug reports or feature requests are redirected to the upstream repository.
 {{< /admonition >}}
 

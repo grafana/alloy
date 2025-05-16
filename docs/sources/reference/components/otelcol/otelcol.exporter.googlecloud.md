@@ -82,14 +82,14 @@ The following arguments are supported:
 |--------------------|----------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|----------|
 | `target_principal` | `string`       | TargetPrincipal is the email address of the service account to impersonate.                                                                                                                  |         | yes      |
 | `delegates`        | `list(string)` | Delegates are the service account email addresses in a delegation chain. Each service account must be granted roles/iam.serviceAccountTokenCreator on the next service account in the chain. | `[]`    | no       |
-| `subject`          | `string`       | Subject is the sub field of a JWT. This field should only be set if you wish to impersonate as a user. This feature is useful when using domain wide delegation.                             | `""`    | no       |
+| `subject`          | `string`       | Subject is the sub field of a JWT. This field should only be set if you need to impersonate as a user. This feature is useful when using domain wide delegation.                             | `""`    | no       |
 
 ### `log`
 
 The following arguments are supported:
 
 | Name                          | Type           | Description                                                                                                                                                                                                | Default                      | Required |
-|-------------------------------|----------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------|----------|
+| ----------------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- | -------- |
 | `compression`                 | `string`       | Compression format for Log gRPC requests. Supported values: [`gzip`].                                                                                                                                      | `""` (no compression)        | no       |
 | `default_log_name`            | `string`       | Defines a default name for log entries. If left unset, and a log entry doesn't have the `gcp.log_name` attribute set, the exporter returns an error processing that entry.                                 | `""`                         | no       |
 | `endpoint`                    | `string`       | Endpoint where log data is sent.                                                                                                                                                                           | `logging.googleapis.com:443` | no       |
@@ -99,7 +99,7 @@ The following arguments are supported:
 | `resource_filters` > `prefix` | `string`       | Match resource keys by prefix.                                                                                                                                                                             | `""`                         | no       |
 | `resource_filters` > `regex`  | `string`       | Match resource keys by regular expression.                                                                                                                                                                 | `""`                         | no       |
 | `service_resource_labels`     | `bool`         | If true, the exporter copies the OTel service.name, service.namespace, and service.instance.id resource attributes into the GCM timeseries metric labels.                                                  | `true`                       | no       |
-| `use_insecure`                | `bool`         | If true, disables gRPC client transport security. Only has effect if Endpoint is not `""`.                                                                                                                 | `false`                      | no       |
+| `use_insecure`                | `bool`         | If true, disables gRPC client transport security. Only has effect if Endpoint isn't `""`.                                                                                                                  | `false`                      | no       |
 
 ### `metric`
 

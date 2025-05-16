@@ -58,7 +58,7 @@ You can use the following arguments with `otelcol.connector.servicegraph`:
 
 | Name                        | Type             | Description                                                                 | Default                                                                                                                      | Required |
 | --------------------------- | ---------------- | --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | -------- |
-| `cache_loop`                | `duration`       | Configures how often to delete series which have not been updated.          | `"1m"`                                                                                                                       | no       |
+| `cache_loop`                | `duration`       | Configures how often to delete series which haven't been updated.           | `"1m"`                                                                                                                       | no       |
 | `database_name_attribute`   | `string`         | The attribute name used to identify the database name from span attributes. | `"db.name"`                                                                                                                  | no       |
 | `dimensions`                | `list(string)`   | A list of dimensions to add with the default dimensions.                    | `[]`                                                                                                                         | no       |
 | `latency_histogram_buckets` | `list(duration)` | Buckets for latency histogram metrics.                                      | `["2ms", "4ms", "6ms", "8ms", "10ms", "50ms", "100ms", "200ms", "400ms", "800ms", "1s", "1400ms", "2s", "5s", "10s", "15s"]` | no       |
@@ -81,14 +81,14 @@ Every span which can be paired up to form a request is kept in an in-memory stor
 
 The following metrics are emitted by the processor:
 
-| Metric                                      | Type      | Labels                          | Description                                                               |
-| ------------------------------------------- | --------- | ------------------------------- | ------------------------------------------------------------------------- |
-| `traces_service_graph_dropped_spans_total`  | Counter   | client, server, connection_type | Total count of dropped spans                                              |
-| `traces_service_graph_request_client`       | Histogram | client, server, connection_type | Number of seconds for a request between two nodes as seen from the client |
-| `traces_service_graph_request_failed_total` | Counter   | client, server, connection_type | Total count of failed requests between two nodes                          |
-| `traces_service_graph_request_server`       | Histogram | client, server, connection_type | Number of seconds for a request between two nodes as seen from the server |
-| `traces_service_graph_request_total`        | Counter   | client, server, connection_type | Total count of requests between two nodes                                 |
-| `traces_service_graph_unpaired_spans_total` | Counter   | client, server, connection_type | Total count of unpaired spans                                             |
+| Metric                                      | Type      | Labels                                | Description                                                               |
+| ------------------------------------------- | --------- | ------------------------------------- | ------------------------------------------------------------------------- |
+| `traces_service_graph_dropped_spans_total`  | Counter   | `client`, `server`, `connection_type` | Total count of dropped spans                                              |
+| `traces_service_graph_request_client`       | Histogram | `client`, `server`, `connection_type` | Number of seconds for a request between two nodes as seen from the client |
+| `traces_service_graph_request_failed_total` | Counter   | `client`, `server`, `connection_type` | Total count of failed requests between two nodes                          |
+| `traces_service_graph_request_server`       | Histogram | `client`, `server`, `connection_type` | Number of seconds for a request between two nodes as seen from the server |
+| `traces_service_graph_request_total`        | Counter   | `client`, `server`, `connection_type` | Total count of requests between two nodes                                 |
+| `traces_service_graph_unpaired_spans_total` | Counter   | `client`, `server`, `connection_type` | Total count of unpaired spans                                             |
 
 Duration is measured both from the client and the server sides.
 
@@ -104,7 +104,7 @@ Additional labels can be included using the `dimensions` configuration option:
 * Those labels will have a prefix to mark where they originate (client or server span kinds).
   The `client_` prefix relates to the dimensions coming from spans with a [Span Kind][] of `client`.
   The `server_` prefix relates to the dimensions coming from spans with a [Span Kind][] of `server`.
-* Firstly the resource attributes will be searched. If the attribute is not found, the span attributes will be searched.
+* Firstly the resource attributes will be searched. If the attribute isn't found, the span attributes will be searched.
 
 When `metrics_flush_interval` is set to `0s`, metrics will be flushed on every received batch of traces.
 

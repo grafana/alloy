@@ -117,13 +117,13 @@ The `server_parameters` block controls keepalive and maximum age settings for gR
 
 The following arguments are supported:
 
-| Name                       | Type       | Description                                                                          | Default      | Required |
-| -------------------------- | ---------- | ------------------------------------------------------------------------------------ | ------------ | -------- |
-| `max_connection_age_grace` | `duration` | Time to wait before forcibly closing connections.                                    | `"infinity"` | no       |
-| `max_connection_age`       | `duration` | Maximum age for non-idle connections.                                                | `"infinity"` | no       |
-| `max_connection_idle`      | `duration` | Maximum age for idle connections.                                                    | `"infinity"` | no       |
-| `time`                     | `duration` | How often to ping inactive clients to check for liveness.                            | `"2h"`       | no       |
-| `timeout`                  | `duration` | Time to wait before closing inactive clients that do not respond to liveness checks. | `"20s"`      | no       |
+| Name                       | Type       | Description                                                                         | Default      | Required |
+| -------------------------- | ---------- | ----------------------------------------------------------------------------------- | ------------ | -------- |
+| `max_connection_age_grace` | `duration` | Time to wait before forcibly closing connections.                                   | `"infinity"` | no       |
+| `max_connection_age`       | `duration` | Maximum age for non-idle connections.                                               | `"infinity"` | no       |
+| `max_connection_idle`      | `duration` | Maximum age for idle connections.                                                   | `"infinity"` | no       |
+| `time`                     | `duration` | How often to ping inactive clients to check for liveness.                           | `"2h"`       | no       |
+| `timeout`                  | `duration` | Time to wait before closing inactive clients that don't respond to liveness checks. | `"20s"`      | no       |
 
 ### `tls`
 

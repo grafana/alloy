@@ -66,7 +66,7 @@ The following fields are exported and can be referenced by other components:
 
 This example uses the `otelcol.receiver.loki` component as a bridge between the Loki and OpenTelemetry ecosystems.
 The component exposes a receiver which the `loki.source.file` component uses to send Loki log entries to.
-The logs are converted to the OTLP format before they are forwarded to the `otelcol.exporter.otlp` component to be sent to an OTLP-capable endpoint:
+The logs are converted to the OTLP format before they're forwarded to the `otelcol.exporter.otlp` component to be sent to an OTLP-capable endpoint:
 
 ```alloy
 loki.source.file "default" {

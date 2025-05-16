@@ -71,7 +71,7 @@ The `encoding` argument determines how to encode messages sent to Kafka.
   * `"zipkin_proto"`: The payload is serialized to Zipkin v2 proto Span.
   * `"zipkin_json"`: The payload is serialized to Zipkin v2 JSON Span.
 * Encodings which work only for logs:
-  * `"raw"`: If the log record body is a byte array, it is sent as is. Otherwise, it is serialized to JSON. Resource and record attributes are discarded.
+  * `"raw"`: If the log record body is a byte array, it's sent as is. Otherwise, it's serialized to JSON. Resource and record attributes are discarded.
 
 `partition_traces_by_id` doesn't have any effect on Jaeger encoding exporters since Jaeger exporters include trace ID as the message key by default.
 
@@ -79,20 +79,20 @@ The `encoding` argument determines how to encode messages sent to Kafka.
 
 You can use the following blocks with `otelcol.exporter.kafka`:
 
-| Block                                         | Description                                                                 | Required |
-| --------------------------------------------- | --------------------------------------------------------------------------- | -------- |
-| [`authentication`][authentication]            | Configures authentication for connecting to Kafka brokers.                  | no       |
-| `authentication` > [`kerberos`][kerberos]     | Authenticates against Kafka brokers with Kerberos.                          | no       |
-| `authentication` > [`plaintext`][plaintext]   | Authenticates against Kafka brokers with plaintext.                         | no       |
-| `authentication` > [`sasl`][sasl]             | Authenticates against Kafka brokers with SASL.                              | no       |
-| `authentication` > `sasl` > [`aws_msk`][sasl] | Additional SASL parameters when using AWS_MSK_IAM.                          | no       |
-| `authentication` > [`tls`][tls]               | Configures TLS for connecting to the Kafka brokers.                         | no       |
-| [`debug_metrics`][debug_metrics]              | Configures the metrics which this component generates to monitor its state. | no       |
-| [`metadata`][metadata]                        | Configures how to retrieve metadata from Kafka brokers.                     | no       |
-| `metadata` > [`retry`][retry]                 | Configures how to retry metadata retrieval.                                 | no       |
-| [`producer`][producer]                        | Kafka producer configuration,                                               | no       |
-| [`retry_on_failure`][retry_on_failure]        | Configures retry mechanism for failed requests.                             | no       |
-| [`sending_queue`][sending_queue]              | Configures batching of data before sending.                                 | no       |
+| Block                                            | Description                                                                 | Required |
+| ------------------------------------------------ | --------------------------------------------------------------------------- | -------- |
+| [`authentication`][authentication]               | Configures authentication for connecting to Kafka brokers.                  | no       |
+| `authentication` > [`kerberos`][kerberos]        | Authenticates against Kafka brokers with Kerberos.                          | no       |
+| `authentication` > [`plaintext`][plaintext]      | Authenticates against Kafka brokers with plaintext.                         | no       |
+| `authentication` > [`sasl`][sasl]                | Authenticates against Kafka brokers with SASL.                              | no       |
+| `authentication` > `sasl` > [`aws_msk`][aws_msk] | Additional SASL parameters when using AWS_MSK_IAM.                          | no       |
+| `authentication` > [`tls`][tls]                  | Configures TLS for connecting to the Kafka brokers.                         | no       |
+| [`debug_metrics`][debug_metrics]                 | Configures the metrics which this component generates to monitor its state. | no       |
+| [`metadata`][metadata]                           | Configures how to retrieve metadata from Kafka brokers.                     | no       |
+| `metadata` > [`retry`][retry]                    | Configures how to retry metadata retrieval.                                 | no       |
+| [`producer`][producer]                           | Kafka producer configuration,                                               | no       |
+| [`retry_on_failure`][retry_on_failure]           | Configures retry mechanism for failed requests.                             | no       |
+| [`sending_queue`][sending_queue]                 | Configures batching of data before sending.                                 | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `authentication` > `tls` refers to a `tls` block defined inside an `authentication` block.

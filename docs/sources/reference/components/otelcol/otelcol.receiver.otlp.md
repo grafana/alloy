@@ -123,13 +123,13 @@ The `server_parameters` block controls keepalive and maximum age settings for gR
 
 The following arguments are supported:
 
-| Name                       | Type       | Description                                                                          | Default      | Required |
-| -------------------------- | ---------- | ------------------------------------------------------------------------------------ | ------------ | -------- |
-| `max_connection_age_grace` | `duration` | Time to wait before forcibly closing connections.                                    | `"infinity"` | no       |
-| `max_connection_age`       | `duration` | Maximum age for non-idle connections.                                                | `"infinity"` | no       |
-| `max_connection_idle`      | `duration` | Maximum age for idle connections.                                                    | `"infinity"` | no       |
-| `time`                     | `duration` | How often to ping inactive clients to check for liveness.                            | `"2h"`       | no       |
-| `timeout`                  | `duration` | Time to wait before closing inactive clients that do not respond to liveness checks. | `"20s"`      | no       |
+| Name                       | Type       | Description                                                                         | Default      | Required |
+| -------------------------- | ---------- | ----------------------------------------------------------------------------------- | ------------ | -------- |
+| `max_connection_age_grace` | `duration` | Time to wait before forcibly closing connections.                                   | `"infinity"` | no       |
+| `max_connection_age`       | `duration` | Maximum age for non-idle connections.                                               | `"infinity"` | no       |
+| `max_connection_idle`      | `duration` | Maximum age for idle connections.                                                   | `"infinity"` | no       |
+| `time`                     | `duration` | How often to ping inactive clients to check for liveness.                           | `"2h"`       | no       |
+| `timeout`                  | `duration` | Time to wait before closing inactive clients that don't respond to liveness checks. | `"20s"`      | no       |
 
 ### `tls`
 
@@ -199,7 +199,7 @@ If `allowed_headers` includes `"*"`, all headers are permitted.
 ## Debug metrics
 
 * `otelcol_receiver_accepted_spans_total` (counter): Number of spans successfully pushed into the pipeline.
-* `otelcol_receiver_refused_spans_total` (counter): Number of spans that could not be pushed into the pipeline.
+* `otelcol_receiver_refused_spans_total` (counter): Number of spans that couldn't be pushed into the pipeline.
 * `rpc_server_duration_milliseconds` (histogram): Duration of RPC requests from a gRPC server.
 * `rpc_server_request_size_bytes` (histogram): Measures size of RPC request messages (uncompressed).
 * `rpc_server_requests_per_rpc` (histogram): Measures the number of messages received per RPC. Should be 1 for all non-streaming RPCs.
@@ -239,16 +239,17 @@ otelcol.exporter.otlp "default" {
 
 ## Technical details
 
-`otelcol.receiver.otlp` supports [gzip](https://en.wikipedia.org/wiki/Gzip) for compression.
+`otelcol.receiver.otlp` supports [Gzip](https://en.wikipedia.org/wiki/Gzip) for compression.
 
 ## Enable authentication
 
-You can create a `otelcol.reciever.otlp` component that requires authentication for requests. This is useful for limiting who can push data to the server. 
+You can create a `otelcol.reciever.otlp` component that requires authentication for requests.
+This is useful for limiting who can push data to the server.
 
 {{< admonition type="note" >}}
 Not all OpenTelemetry Collector authentication plugins support receiver authentication.
 Refer to the [documentation](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/otelcol/) for each `otelcol.auth.*` component to determine its compatibility.
-{{< /admonition >}} 
+{{< /admonition >}}
 
 ```alloy
 otelcol.receiver.otlp "default" {

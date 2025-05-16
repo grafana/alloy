@@ -45,7 +45,7 @@ You can use the following arguments with `otelcol.exporter.datadog`:
 
 If `hostname` is unset, the hostname is determined automatically.
 For more information, refer to the Datadog [Fallback hostname logic](https://docs.datadoghq.com/opentelemetry/schema_semantics/hostname/?tab=datadogexporter#fallback-hostname-logic) documentation.
-This option will **NOT** change the hostname applied to metrics or traces if they already have hostname-identifying attributes.
+This option won't change the hostname applied to metrics or traces if they already have hostname-identifying attributes.
 
 ## Blocks
 
@@ -80,7 +80,6 @@ For example, `metrics` > `summaries` refers to a `summaries` block defined insid
 [summaries]: #summaries
 [host_metadata]: #host_metadata
 [client]: #client
-[tls]: #tls
 [retry_on_failure]: #retry_on_failure
 [queue]: #queue
 [debug_metrics]: #debug_metrics
@@ -142,7 +141,7 @@ By default, the exporter only sends host metadata for a single host, whose name 
 Valid values for `hostname_source` are:
 
 * `"first_resource"` picks the host metadata hostname from the resource attributes on the first OTLP payload that gets to the exporter. 
-  If the first payload lacks hostname-like attributes, it will fallback to 'config_or_system' behavior. **Do not use this hostname source if receiving data from multiple hosts**.
+  If the first payload lacks hostname-like attributes, it will fallback to 'config_or_system' behavior. **Don't use this hostname source if receiving data from multiple hosts**.
 * `"config_or_system"` picks the host metadata hostname from the 'hostname' setting, falling back to system and cloud provider APIs.
 
 ### `logs`

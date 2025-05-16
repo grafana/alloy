@@ -72,7 +72,7 @@ For more information on modes, refer to the upstream Collector's [Mode Selection
 `hash_seed` determines an integer to compute the hash algorithm. This argument could be used for both traces and logs.
 When used for logs, it computes the hash of a log record.
 For hashing to work, all collectors for a given tier, for example, behind the same load balancer, must have the same `hash_seed`.
-It is also possible to leverage a different `hash_seed` at different collector tiers to support additional sampling requirements.
+It's also possible to leverage a different `hash_seed` at different collector tiers to support additional sampling requirements.
 
 `sampling_percentage` determines the percentage at which traces or logs are sampled.
 All traces or logs are sampled if you set this argument to a value greater than or equal to 100.

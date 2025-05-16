@@ -152,10 +152,10 @@ The following arguments are supported:
 
 Each policy results in a decision, and the processor evaluates them to make a final decision:
 
-* When there's an "inverted not sample" decision, the trace is not sampled.
+* When there's an "inverted not sample" decision, the trace isn't sampled.
 * When there's a "sample" decision, the trace is sampled.
 * When there's an "inverted sample" decision and no "not sample" decisions, the trace is sampled.
-* In all other cases, the trace is _not_ sampled.
+* In all other cases, the trace isn't sampled.
 
 An "inverted" decision is the one made based on the `invert_match` attribute, such as the one from the string, numeric or boolean tag policy.
 
@@ -265,7 +265,7 @@ The following arguments are supported:
 | `min_spans` | `number` | Minimum number of spans in a trace. |         | yes      |
 | `max_spans` | `number` | Maximum number of spans in a trace. | `0`     | no       |
 
-Set `max_spans` to `0`, if you do not want to limit the policy samples based on the maximum number of spans in a trace.
+Set `max_spans` to `0`, if you don't want to limit the policy samples based on the maximum number of spans in a trace.
 
 ### `status_code`
 
@@ -278,11 +278,13 @@ The following arguments are supported:
 | -------------- | -------------- | ----------------------------------------------------------------------------------------- | ------- | -------- |
 | `status_codes` | `list(string)` | Holds the configurable settings to create a status code filter sampling policy evaluator. |         | yes      |
 
-`status_codes` values must be "OK", "ERROR" or "UNSET".
+`status_codes` values must be `"OK"`, `"ERROR"`, or `"UNSET"`.
 
 ### `string_attribute`
 
-The `string_attribute` block configures a policy of type `string_attribute`. The policy samples based on string attributes (resource and record) value matches. Both exact and regex value matches are supported.
+The `string_attribute` block configures a policy of type `string_attribute`.
+The policy samples based on string attributes (resource and record) value matches.
+Both exact and regular expression value matches are supported.
 
 The following arguments are supported:
 
@@ -290,7 +292,7 @@ The following arguments are supported:
 | ------------------------ | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
 | `key`                    | `string`       | Tag that the filter is matched against.                                                                                                                     |         | yes      |
 | `values`                 | `list(string)` | Set of values or regular expressions to use when matching against attribute values.                                                                         |         | yes      |
-| `enabled_regex_matching` | `bool`         | Determines whether to match attribute values by regexp string.                                                                                              | false   | no       |
+| `enabled_regex_matching` | `bool`         | Determines whether to match attribute values by regular expression string.                                                                                  | false   | no       |
 | `cache_max_size`         | `string`       | The maximum number of attribute entries of Least Recently Used (LRU) Cache that stores the matched result from the regular expressions defined in `values.` |         | no       |
 | `invert_match`           | `bool`         | Indicates that values or regular expressions must not match against attribute values.                                                                       | false   | no       |
 

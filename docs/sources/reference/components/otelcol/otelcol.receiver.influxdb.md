@@ -160,7 +160,7 @@ prometheus.remote_write "mimir" {
 ## Enable authentication
 
 You can create a `otelcol.receiver.influxdb` component that requires authentication for requests.
-This is useful for limiting who can push data to the server. 
+This is useful for limiting who can push data to the server.
 
 {{< admonition type="note" >}}
 Not all OpenTelemetry Collector authentication plugins support receiver authentication.

@@ -44,10 +44,10 @@ You can use the following blocks with `otelcol.extension.jaeger_remote_sampling`
 | `source` > [`remote`][remote]                                     | Configures the gRPC client used to retrieve the Jaeger remote sampling document. | no       |
 | `source` > `remote` > [`keepalive` client][keepalive_client]      | Configures keepalive settings for the gRPC client.                               | no       |
 | `source` > `remote` > [`tls` client][tls_client]                  | Configures TLS for the gRPC client.                                              | no       |
-| [`http`][http]                                                    | Configures the http server to serve Jaeger remote sampling.                      | no       |
+| [`http`][http]                                                    | Configures the HTTP server to serve Jaeger remote sampling.                      | no       |
 | `http` > [`cors`][cors]                                           | Configures CORS for the HTTP server.                                             | no       |
 | `http` > [`tls`][tls]                                             | Configures TLS for the HTTP server.                                              | no       |
-| [`grpc`][grpc]                                                    | Configures the grpc server to serve Jaeger remote sampling.                      | no       |
+| [`grpc`][grpc]                                                    | Configures the gRPC server to serve Jaeger remote sampling.                      | no       |
 | `grpc` > [`keepalive`][keepalive]                                 | Configures keepalive settings for the configured server.                         | no       |
 | `grpc` > `keepalive` > [`enforcement_policy`][enforcement_policy] | Enforcement policy for keepalive settings.                                       | no       |
 | `grpc` > `keepalive` > [`server_parameters`][server_parameters]   | Server parameters used to configure keepalive settings.                          | no       |
@@ -74,7 +74,7 @@ For example, `grpc` > `tls` refers to a `tls` block defined inside a `grpc` bloc
 
 <span class="badge docs-labels__stage docs-labels__item">Required</span>
 
-The `source` block configures the method of retrieving the Jaeger remote sampling document that is served by the servers specified in the `grpc` and `http` blocks.
+The `source` block configures the method of retrieving the Jaeger remote sampling document that's served by the servers specified in the `grpc` and `http` blocks.
 
 The following arguments are supported:
 
@@ -132,11 +132,11 @@ This `keepalive` block configures keepalive settings for gRPC client connections
 
 The following arguments are supported:
 
-| Name                    | Type       | Description                                                                                | Default | Required |
-| ----------------------- | ---------- | ------------------------------------------------------------------------------------------ | ------- | -------- |
-| `ping_wait`             | `duration` | How often to ping the server after no activity.                                            |         | no       |
-| `ping_response_timeout` | `duration` | Time to wait before closing inactive connections if the server does not respond to a ping. |         | no       |
-| `ping_without_stream`   | `boolean`  | Send pings even if there is no active stream request.                                      |         | no       |
+| Name                    | Type       | Description                                                                               | Default | Required |
+| ----------------------- | ---------- | ----------------------------------------------------------------------------------------- | ------- | -------- |
+| `ping_wait`             | `duration` | How often to ping the server after no activity.                                           |         | no       |
+| `ping_response_timeout` | `duration` | Time to wait before closing inactive connections if the server doesn't respond to a ping. |         | no       |
+| `ping_without_stream`   | `boolean`  | Send pings even if there is no active stream request.                                     |         | no       |
 
 ### `tls` client
 
@@ -228,13 +228,13 @@ The `server_parameters` block controls keepalive and maximum age settings for gR
 
 The following arguments are supported:
 
-| Name                       | Type       | Description                                                                          | Default      | Required |
-| -------------------------- | ---------- | ------------------------------------------------------------------------------------ | ------------ | -------- |
-| `max_connection_age_grace` | `duration` | Time to wait before forcibly closing connections.                                    | `"infinity"` | no       |
-| `max_connection_age`       | `duration` | Maximum age for non-idle connections.                                                | `"infinity"` | no       |
-| `max_connection_idle`      | `duration` | Maximum age for idle connections.                                                    | `"infinity"` | no       |
-| `time`                     | `duration` | How often to ping inactive clients to check for liveness.                            | `"2h"`       | no       |
-| `timeout`                  | `duration` | Time to wait before closing inactive clients that do not respond to liveness checks. | `"20s"`      | no       |
+| Name                       | Type       | Description                                                                         | Default      | Required |
+| -------------------------- | ---------- | ----------------------------------------------------------------------------------- | ------------ | -------- |
+| `max_connection_age_grace` | `duration` | Time to wait before forcibly closing connections.                                   | `"infinity"` | no       |
+| `max_connection_age`       | `duration` | Maximum age for non-idle connections.                                               | `"infinity"` | no       |
+| `max_connection_idle`      | `duration` | Maximum age for idle connections.                                                   | `"infinity"` | no       |
+| `time`                     | `duration` | How often to ping inactive clients to check for liveness.                           | `"2h"`       | no       |
+| `timeout`                  | `duration` | Time to wait before closing inactive clients that don't respond to liveness checks. | `"20s"`      | no       |
 
 ### `debug_metrics`
 
@@ -250,10 +250,10 @@ The following arguments are supported:
 
 ## Examples
 
-### Serving from a file
+### Serve from a file
 
 This example configures the Jaeger remote sampling extension to load a local JSON document and serve it over the default HTTP port of 5778.
-Currently this configuration style exists for consistency with upstream Opentelemetry Collector components and may be removed.
+Currently this configuration style exists for consistency with upstream OpenTelemetry Collector components and may be removed.
 
 ```alloy
 otelcol.extension.jaeger_remote_sampling "example" {

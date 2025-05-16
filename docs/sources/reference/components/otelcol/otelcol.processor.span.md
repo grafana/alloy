@@ -182,7 +182,7 @@ Each rule in the `rules` list is a regular expression pattern string.
 1. Each subexpression name becomes an attribute name and the subexpression matched portion becomes the attribute value.
 1. The matched portion in the span name is replaced by extracted attribute name.
 1. If the attributes already exist in the span then they will be overwritten.
-1. The process is repeated for all rules in the order they are specified.
+1. The process is repeated for all rules in the order they're specified.
 1. Each subsequent rule works on the span name that's the output after processing the previous rule.
 
 `break_after_match` specifies if processing of rules should stop after the first match.

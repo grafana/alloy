@@ -63,15 +63,15 @@ You can use the following arguments with `otelcol.processor.discovery`:
 `targets` could come from `discovery.*` components:
 
 1. The `__address__` label will be matched against the IP address of incoming spans.
-   * If `__address__` contains a port, it is ignored.
+   * If `__address__` contains a port, it's ignored.
 1. If a match is found, then relabeling rules are applied.
-   * Note that labels starting with `__` will not be added to the spans.
+   * Labels starting with `__` won't be added to the spans.
 
 The supported values for `operation_type` are:
 
-* `insert`: Inserts a new resource attribute if the key does not already exist.
+* `insert`: Inserts a new resource attribute if the key doesn't already exist.
 * `update`: Updates a resource attribute if the key already exists.
-* `upsert`: Either inserts a new resource attribute if the key does not already exist, or updates a resource attribute if the key does exist.
+* `upsert`: Either inserts a new resource attribute if the key doesn't already exist, or updates a resource attribute if the key does exist.
 
 The supported values for `pod_associations` are:
 

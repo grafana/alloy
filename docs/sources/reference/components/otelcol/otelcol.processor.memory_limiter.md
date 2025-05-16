@@ -62,7 +62,7 @@ The soft limits are then calculated as the hard limit minus the `spike_limit` or
 The recommended value for spike limits is about 20% of the corresponding hard limit.
 
 The recommended `check_interval` value is 1 second.
-If the traffic through the component is spiky in nature, it is recommended to either decrease the interval or increase the spike limit to avoid going over the hard limit.
+If the traffic through the component is spiky in nature, it's recommended to either decrease the interval or increase the spike limit to avoid going over the hard limit.
 
 The `limit` and `spike_limit` values must be larger than 1 MiB.
 

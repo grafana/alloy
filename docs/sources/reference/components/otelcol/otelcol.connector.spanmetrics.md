@@ -12,7 +12,7 @@ title: otelcol.connector.spanmetrics
 
 # `otelcol.connector.spanmetrics`
 
-`otelcol.connector.spanmetrics` accepts span data from other `otelcol` components and aggregates Request, Error and Duration (R.E.D) OpenTelemetry metrics from the spans:
+`otelcol.connector.spanmetrics` accepts span data from other `otelcol` components and aggregates Request, Error, and Duration (R.E.D) OpenTelemetry metrics from the spans:
 
 * **Request** counts are computed as the number of spans seen per unique set of dimensions, including Errors. Multiple metrics can be aggregated if, for instance, a user wishes to view call counts just on `service.name` and `span.name`.
 
@@ -79,8 +79,8 @@ Adjusting `dimensions_cache_size` can improve the {{< param "PRODUCT_NAME" >}} p
 
 The supported values for `aggregation_temporality` are:
 
-* `"CUMULATIVE"`: The metrics will **not** be reset after they are flushed.
-* `"DELTA"`: The metrics will be reset after they are flushed.
+* `"CUMULATIVE"`: The metrics won't be reset after they're flushed.
+* `"DELTA"`: The metrics will be reset after they're flushed.
 
 If `namespace` is set, the generated metric name will be added a `namespace.` prefix.
 

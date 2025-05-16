@@ -37,7 +37,7 @@ otelcol.receiver.filelog "<LABEL>" {
 You can use the following arguments with `otelcol.receiver.filelog`:
 
 | Name                            | Type                       | Description                                                                                | Default | Required |
-| ------------------------------- | -------------------------- | ------------------------------------------------------------------------------------------ |---------| -------- |
+| ------------------------------- | -------------------------- | ------------------------------------------------------------------------------------------ | ------- | -------- |
 | `include`                       | `list(string)`             | A list of glob patterns to include files.                                                  |         | yes      |
 | `acquire_fs_lock`               | `bool`                     | Whether to acquire a file system lock while reading the file (Unix only).                  | `false` | no       |
 | `attributes`                    | `map(string)`              | A map of attributes to add to each log entry.                                              | `{}`    | no       |
@@ -48,8 +48,8 @@ You can use the following arguments with `otelcol.receiver.filelog`:
 | `exclude`                       | `list(string)`             | A list of glob patterns to exclude files that would be included by the `include` patterns. | `[]`    | no       |
 | `fingerprint_size`              | `units.Base2Bytes`         | The size of the fingerprint used to detect file changes.                                   | `1KiB`  | no       |
 | `force_flush_period`            | `time.Duration`            | The period after which logs are flushed even if the buffer isn't full.                     | `500ms` | no       |
-| `include_file_name_resolved`    | `bool`                     | Whether to include the resolved file name in the log entry.                                | `false` | no       |
-| `include_file_name`             | `bool`                     | Whether to include the file name in the log entry.                                         | `true`  | no       |
+| `include_file_name_resolved`    | `bool`                     | Whether to include the resolved filename in the log entry.                                 | `false` | no       |
+| `include_file_name`             | `bool`                     | Whether to include the filename in the log entry.                                          | `true`  | no       |
 | `include_file_owner_group_name` | `bool`                     | Whether to include the file owner's group name in the log entry.                           | `false` | no       |
 | `include_file_owner_name`       | `bool`                     | Whether to include the file owner's name in the log entry.                                 | `false` | no       |
 | `include_file_path_resolved`    | `bool`                     | Whether to include the resolved file path in the log entry.                                | `false` | no       |
@@ -144,7 +144,7 @@ The following arguments are supported:
 | `metadata_operators` | `lists(map(string)` | A list of operators used to parse metadata from the header. |         | yes      |
 | `pattern`            | `string`            | A regular expression that matches the header line.          |         | yes      |
 
-If a `header` block is not set, no log lines will be treated as header metadata.
+If a `header` block isn't set, no log lines will be treated as header metadata.
 
 The `metadata_operators` list is a list of stanza [operators][] that parses metadata from the header.
 Any attributes created from the embedded operators pipeline will be applied to all log entries in the file.
@@ -185,7 +185,7 @@ The following arguments are supported:
 
 A `multiline` block must contain either `line_start_pattern` or `line_end_pattern`.
 
-If a `multiline` block isn't set, log entries will not be split.
+If a `multiline` block isn't set, log entries won't be split.
 
 ### `ordering_criteria`
 
@@ -251,7 +251,7 @@ If `max_elapsed_time` is set to `0` data is never discarded.
 
 ## Example
 
-This example reads log entries using the `otelcol.receiver.filelog` receiver and they are logged by a `otelcol.exporter.debug` component.
+This example reads log entries using the `otelcol.receiver.filelog` receiver and they're logged by a `otelcol.exporter.debug` component.
 It expects the logs to start with an ISO8601 compatible timestamp and parses it from the log using the `regex_parser` operator.
 
 ```alloy

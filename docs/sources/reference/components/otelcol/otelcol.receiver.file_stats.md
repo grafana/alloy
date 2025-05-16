@@ -114,12 +114,6 @@ It accepts no arguments, but contains other blocks for individual metrics:
 
 Refer to the documentation of individual metric blocks for whether that metric is enabled by default.
 
-[file.atime]: #fileatime
-[file.count]: #filecount
-[file.ctime]: #filectime
-[file.mtime]: #filemtime
-[file.size]: #filesize
-
 ### `file.atime`
 
 The `file.atime` block configures the `file.atime` metric.
@@ -175,9 +169,6 @@ It accepts no arguments, but contains other blocks for configuring individual re
 * The [`file.path`][file.path] block
 
 Refer to the documentation of individual resource attribute blocks for whether that resource attribute is enabled by default.
-
-[file.name]: #filename-block
-[file.path]: #filepath-block
 
 ### `file.name`
 

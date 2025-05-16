@@ -79,7 +79,7 @@ The following arguments are supported:
 | Name                         | Type     | Description                                                                                                            | Default                       | Required |
 | ---------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------- | ----------------------------- | -------- |
 | `token`                      | `secret` | Splunk HEC Token.                                                                                                      |                               | yes      |
-| `disable_compression`        | `bool`   | Disable GZip compression.                                                                                              | `false`                       | no       |
+| `disable_compression`        | `bool`   | Disable Gzip compression.                                                                                              | `false`                       | no       |
 | `export_raw`                 | `bool`   | Send only the logs body when targeting HEC raw endpoint.                                                               | `false`                       | no       |
 | `health_check_enabled`       | `bool`   | Used to verify Splunk HEC health on exporter startup.                                                                  | `true`                        | no       |
 | `health_path`                | `string` | Path for the health API.                                                                                               | `/services/collector/health'` | no       |
@@ -98,13 +98,13 @@ The following arguments are supported:
 
 #### `batcher`
 
-| Name            | Type            | Description                                                                                                                                                                                                  | Default | Required |
-| --------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------- | -------- |
-| `enabled`       | `bool`          | Whether to not enqueue batches before sending to the consumerSender.                                                                                                                                         | `false` | no       |
-| `flush_timeout` | `time.Duration` | The time after which a batch will be sent regardless of its size.                                                                                                                                            | `200ms` | no       |
-| `max_size`      | `uint`          | The maximum size of a batch. If the batch exceeds this value, it is broken up into smaller batches. Must be greater than or equal to `min_size`. Setting this value to zero disables the maximum size limit. | `0`     | no       |
-| `min_size`      | `uint`          | The minimum size of a batch.                                                                                                                                                                                 | `8192`  | no       |
-| `sizer`         | `string`        | The unit of measure for the batch size. Must be one of `items`, `bytes`, or `requests`.                                                                                                                      | `items` | no       |
+| Name            | Type            | Description                                                                                                                                                                                               | Default | Required |
+| --------------- | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
+| `enabled`       | `bool`          | Whether to not enqueue batches before sending to the consumerSender.                                                                                                                                      | `false` | no       |
+| `flush_timeout` | `time.Duration` | The time after which a batch will be sent regardless of its size.                                                                                                                                         | `200ms` | no       |
+| `max_size`      | `uint`          | The maximum size of a batch. If the batch exceeds this value, it's broken up into smaller batches. Must be greater than or equal to `min_size`. Set this value to zero to disable the maximum size limit. | `0`     | no       |
+| `min_size`      | `uint`          | The minimum size of a batch.                                                                                                                                                                              | `8192`  | no       |
+| `sizer`         | `string`        | The unit of measure for the batch size. Must be one of `items`, `bytes`, or `requests`.                                                                                                                   | `items` | no       |
 
 #### `heartbeat`
 

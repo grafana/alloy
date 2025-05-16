@@ -121,7 +121,7 @@ otelcol.exporter.otlp "production" {
 
 ### Export Prometheus data
 
-This example converts delta temporality metrics to cumulative metrics before it is converted to Prometheus data, which requires cumulative temporality:
+This example converts delta temporality metrics to cumulative metrics before it's converted to Prometheus data, which requires cumulative temporality:
 
 ```alloy
 otelcol.processor.deltatocumulative "default" {

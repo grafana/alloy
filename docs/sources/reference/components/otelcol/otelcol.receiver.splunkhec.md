@@ -174,7 +174,7 @@ otelcol.exporter.otlp "default" {
 
 ## Enable authentication
 
-You can create a `otelcol.receiver.splunkhec` component that requires authentication for requests. This is useful for limiting who can push data to the server. 
+You can create a `otelcol.receiver.splunkhec` component that requires authentication for requests. This is useful for limiting who can push data to the server.
 
 {{< admonition type="note" >}}
 Not all OpenTelemetry Collector authentication plugins support receiver authentication.

@@ -21,7 +21,7 @@ The processor supports aggregating the following metric types:
 * Gauges
 * Summaries
 
-The following metric types will _not_ be aggregated and will instead be passed, unchanged, to the next component in the pipeline:
+The following metric types won't be aggregated and will instead be passed, unchanged, to the next component in the pipeline:
 
 * All delta metrics
 * Non-monotonically increasing sums
@@ -32,7 +32,7 @@ You lose precision for monotonically increasing cumulative sums, histograms, and
 You can lose data when you aggregate non-monotonically increasing sums, gauges, and summaries.
 For example, a value can increase and decrease to the original value, and you can lose this change in the aggregation.
 In most cases, this type of data loss is acceptable.
-However, you can change the configuration so that these changed values pass through and are _not_ aggregated.
+However, you can change the configuration so that these changed values pass through and aren't aggregated.
 {{< /admonition >}}
 
 {{< admonition type="warning" >}}
@@ -93,10 +93,10 @@ The `passthrough` block configures which metric types should be passed through i
 
 The following attributes are supported:
 
-| Name      | Type   | Description                                                                            | Default | Required |
-| --------- | ------ | -------------------------------------------------------------------------------------- | ------- | -------- |
-| `gauge`   | `bool` | Determines whether gauge metrics should be passed through as they are or aggregated.   | `false` | no       |
-| `summary` | `bool` | Determines whether summary metrics should be passed through as they are or aggregated. | `false` | no       |
+| Name      | Type   | Description                                                                           | Default | Required |
+| --------- | ------ | ------------------------------------------------------------------------------------- | ------- | -------- |
+| `gauge`   | `bool` | Determines whether gauge metrics should be passed through as they're or aggregated.   | `false` | no       |
+| `summary` | `bool` | Determines whether summary metrics should be passed through as they're or aggregated. | `false` | no       |
 
 ## Exported fields
 
@@ -150,27 +150,27 @@ otelcol.auth.basic "grafana_cloud" {
 }
 ```
 
-| Timestamp | Metric Name  | Aggregation Temporarility | Attributes        | Value |
-| --------- | ------------ | ------------------------- | ----------------- | ----: |
-| 0         | test_metric  | Cumulative                | labelA: foo       |   4.0 |
-| 2         | test_metric  | Cumulative                | labelA: bar       |   3.1 |
-| 4         | other_metric | Delta                     | fruitType: orange |  77.4 |
-| 6         | test_metric  | Cumulative                | labelA: foo       |   8.2 |
-| 8         | test_metric  | Cumulative                | labelA: foo       |  12.8 |
-| 10        | test_metric  | Cumulative                | labelA: bar       |   6.4 |
+| Timestamp | Metric Name    | Aggregation Temporarility | Attributes          | Value |
+| --------- | -------------- | ------------------------- | ------------------- | ----: |
+| 0         | `test_metric`  | Cumulative                | `labelA: example1`  |   4.0 |
+| 2         | `test_metric`  | Cumulative                | `labelA: example2`  |   3.1 |
+| 4         | `other_metric` | Delta                     | `fruitType: orange` |  77.4 |
+| 6         | `test_metric`  | Cumulative                | `labelA: example1`  |   8.2 |
+| 8         | `test_metric`  | Cumulative                | `labelA: example1`  |  12.8 |
+| 10        | `test_metric`  | Cumulative                | `labelA: example2`  |   6.4 |
 
-The processor immediately passes the following metric to the next processor in the chain because it is a Delta metric.
+The processor immediately passes the following metric to the next processor in the chain because it's a Delta metric.
 
-| Timestamp | Metric Name  | Aggregation Temporarility | Attributes        | Value |
-| --------- | ------------ | ------------------------- | ----------------- | ----: |
-| 4         | other_metric | Delta                     | fruitType: orange |  77.4 |
+| Timestamp | Metric Name    | Aggregation Temporarility | Attributes          | Value |
+| --------- | -------------- | ------------------------- | ------------------- | ----: |
+| 4         | `other_metric` | Delta                     | `fruitType: orange` |  77.4 |
 
 At the next `interval` (15s by default), the processor passed the following metrics to the next processor in the chain.
 
-| Timestamp | Metric Name | Aggregation Temporarility | Attributes  | Value |
-| --------- | ----------- | ------------------------- | ----------- | ----: |
-| 8         | test_metric | Cumulative                | labelA: foo |  12.8 |
-| 10        | test_metric | Cumulative                | labelA: bar |   6.4 |
+| Timestamp | Metric Name   | Aggregation Temporarility | Attributes         | Value |
+| --------- | ------------- | ------------------------- | ------------------ | ----: |
+| 8         | `test_metric` | Cumulative                | `labelA: example1` |  12.8 |
+| 10        | `test_metric` | Cumulative                | `labelA: example1` |   6.4 |
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
