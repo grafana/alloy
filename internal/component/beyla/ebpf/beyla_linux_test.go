@@ -13,6 +13,7 @@ import (
 
 	"github.com/grafana/beyla/v2/pkg/beyla"
 	"github.com/grafana/beyla/v2/pkg/config"
+	beylaCfg "github.com/grafana/beyla/v2/pkg/config"
 	"github.com/grafana/beyla/v2/pkg/export/attributes"
 	"github.com/grafana/beyla/v2/pkg/export/debug"
 	"github.com/grafana/beyla/v2/pkg/filter"
@@ -470,11 +471,7 @@ func TestConvert_EBPF(t *testing.T) {
 	expectedConfig.TrackRequestHeaders = true
 	expectedConfig.HighRequestVolume = true
 	expectedConfig.HeuristicSQLDetect = true
-<<<<<<< HEAD
-	expectedConfig.ContextPropagation = config.ContextPropagationHeadersOnly
-=======
-	expectedConfig.ContextPropagation = config.ContextPropagationDisabled
->>>>>>> da53b75e0 (Fix linter)
+	expectedConfig.ContextPropagation = beylaCfg.ContextPropagationHeadersOnly
 	expectedConfig.BpfDebug = true
 	expectedConfig.ProtocolDebug = true
 
