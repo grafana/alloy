@@ -407,8 +407,23 @@ prometheus.scrape "integrations_memcached_exporter" {
 }
 
 prometheus.exporter.mongodb "integrations_mongodb_exporter" {
-	mongodb_uri    = "mongodb://mongodb-a:27017"
-	direct_connect = true
+	mongodb_uri                  = "mongodb://mongodb-a:27017"
+	compatible_mode              = true
+	collect_all                  = true
+	discovering_mode             = true
+	enable_db_stats              = true
+	enable_db_stats_free_storage = true
+	enable_diagnostic_data       = true
+	enable_replicaset_status     = true
+	enable_replicaset_config     = true
+	enable_currentop_metrics     = true
+	enable_top_metrics           = true
+	enable_index_stats           = true
+	enable_coll_stats            = true
+	enable_profile               = true
+	enable_shards                = true
+	enable_fcv                   = true
+	enable_pbm_metrics           = true
 }
 
 discovery.relabel "integrations_mongodb_exporter" {
