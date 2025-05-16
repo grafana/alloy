@@ -41,6 +41,7 @@ Main (unreleased)
   - collect metrics on enabled `performance_schema.setup_consumers` (@fridgepoet)
   - `query_sample`: base log entries on calculated timestamp from rows, not now() (@fridgepoet)
   - `query_sample`: check digest is not null (@cristiangreco)
+  - `query_sample`: add additional logs for wait events (@fridgepoet)
 
 - Mixin dashboards improvements: added minimum cluster size to Cluster Overview dashboard, fixed units in OpenTelemetry dashboard, fixed slow components evaluation time units in Controller dashboard and updated Prometheus dashboard to correctly aggregate across instances. (@thampiotr)
 
