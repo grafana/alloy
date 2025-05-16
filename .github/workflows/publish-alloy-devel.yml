@@ -27,7 +27,7 @@ jobs:
       dev: true
 
   publish_windows_container:
-    uses: ./.github/workflows/publish-alloy-linux.yml
+    uses: ./.github/workflows/publish-alloy-windows.yml
     permissions:
       contents: read
       id-token: write

@@ -64,6 +64,5 @@ jobs:
         ./tools/ci/docker-containers ${IMG_NAME}
         docker buildx rm multiarch-alloy-${IMG_NAME}-${GITHUB_SHA}
       env:
-        SHOULD_PUSH_ALLOY_IMAGE: ${{ inputs.push }}
+        PUSH_ALLOY_IMAGE: ${{ inputs.push }}
         IMG_NAME: ${{ inputs.img-name }}
-  
