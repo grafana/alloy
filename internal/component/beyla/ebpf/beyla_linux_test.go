@@ -470,7 +470,11 @@ func TestConvert_EBPF(t *testing.T) {
 	expectedConfig.TrackRequestHeaders = true
 	expectedConfig.HighRequestVolume = true
 	expectedConfig.HeuristicSQLDetect = true
+<<<<<<< HEAD
 	expectedConfig.ContextPropagation = config.ContextPropagationHeadersOnly
+=======
+	expectedConfig.ContextPropagation = config.ContextPropagationDisabled
+>>>>>>> da53b75e0 (Fix linter)
 	expectedConfig.BpfDebug = true
 	expectedConfig.ProtocolDebug = true
 
