@@ -66,4 +66,3 @@ jobs:
       env:
         PUSH_ALLOY_IMAGE: ${{ inputs.push }}
         IMG_NAME: ${{ inputs.img-name }}
-  
