@@ -65,7 +65,9 @@ declare "self_collect" {
 	}
 }
 
-self_collect "selfmonitor" { }
+self_collect "selfmonitor" {
+	metrics_output = "test"
+}
 
 import.file "math" {
 	filename = "module.alloy"

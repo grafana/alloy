@@ -2,12 +2,17 @@ package validator
 
 import (
 	"fmt"
+	"reflect"
 	"slices"
 	"strconv"
 	"strings"
 
+	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/diag"
+	"github.com/grafana/alloy/syntax/typecheck"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
@@ -92,6 +97,8 @@ type state struct {
 	components []*ast.BlockStmt
 	services   []*ast.BlockStmt
 	cr         *componentRegistry
+	// arguments registered by module
+	arguments []*ast.BlockStmt
 }
 
 func (v *validator) validate(s *state) *state {
@@ -112,17 +119,13 @@ func (v *validator) validateDeclares(s *state) {
 		node := newBlockNode(d)
 
 		// Declare blocks must have a label.
-		if d.Label == "" {
+		if node.block.Label == "" {
 			node.diags.Add(diag.Diagnostic{
 				Severity: diag.SeverityLevelError,
 				StartPos: d.NamePos.Position(),
 				EndPos:   d.NamePos.Add(len(d.GetBlockName()) - 1).Position(),
 				Message:  "declare block must have a label",
 			})
-		} else {
-			// Only register custom component if we have a label
-			// Without a label there is no way to create one.
-			s.cr.registerCustomComponent(node.block)
 		}
 
 		// Declares need to be unique
@@ -136,8 +139,8 @@ func (v *validator) validateDeclares(s *state) {
 		s.graph.Add(node)
 
 		configs, declares, services, components := extractBlocks(node, node.block.Body, v.sm)
-		// Add module state as node to graph
-		s.graph.Add(newSubNode(node, v.validate(&state{
+
+		moduleState := &state{
 			root:       false,
 			graph:      newGraph(),
 			declares:   declares,
@@ -145,7 +148,14 @@ func (v *validator) validateDeclares(s *state) {
 			services:   services,
 			components: components,
 			cr:         newComponentRegistry(s.cr),
-		})))
+		}
+
+		// Add module state as node to graph
+		s.graph.Add(newSubNode(node, v.validate(moduleState)))
+
+		if node.block.Label != "" {
+			s.cr.registerCustomComponent(node.block, generateArgumentsStruct(moduleState.arguments))
+		}
 	}
 }
 
@@ -162,7 +172,7 @@ func (v *validator) validateConfigs(s *state) {
 			node.id = node.id + "-" + strconv.Itoa(i)
 		} else if c.Name[0] == "import" {
 			// We need to register import blocks as a custom component.
-			s.cr.registerCustomComponent(node.block)
+			s.cr.registerCustomComponent(node.block, nil)
 		}
 
 		name := node.block.GetBlockName()
@@ -217,6 +227,9 @@ func (v *validator) validateConfigs(s *state) {
 					StartPos: ast.StartPos(node.block).Position(),
 					EndPos:   ast.EndPos(node.block).Position(),
 				})
+			}
+			if node.block.Label != "" {
+				s.arguments = append(s.arguments, node.block)
 			}
 			s.graph.Add(node)
 		case export.BlockName:
@@ -471,4 +484,33 @@ func blockDisallowed(s *state, b *ast.BlockStmt) (diag.Diagnostic, bool) {
 	}
 
 	return diag.Diagnostic{}, false
+}
+
+func generateArgumentsStruct(args []*ast.BlockStmt) any {
+	mem := make(map[string]struct{})
+	fields := make([]reflect.StructField, 0, len(args))
+	for _, a := range args {
+		if _, ok := mem[a.Label]; ok {
+			continue
+		}
+		mem[a.Label] = struct{}{}
+
+		optional := typecheck.TryUnwrapBlockAttr(a, "optional", syntax.ValueFromBool(true))
+
+		var tag string
+		if optional.Bool() {
+			tag = fmt.Sprintf(`alloy:"%s,attr,optional"`, a.Label)
+		} else {
+			tag = fmt.Sprintf(`alloy:"%s,attr"`, a.Label)
+		}
+
+		f := reflect.StructField{
+			Name: cases.Title(language.English).String(a.Label),
+			Type: reflect.TypeFor[any](),
+			Tag:  reflect.StructTag(tag),
+		}
+		fields = append(fields, f)
+	}
+
+	return reflect.New(reflect.StructOf(fields)).Interface()
 }

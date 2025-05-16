@@ -69,3 +69,13 @@ declare "module_1" {
 
 // inner module
 module_2 "test" {}
+
+declare "module_3" {
+	argument "arg" {
+		optional = false
+	}
+}
+
+module_3 "test" {
+	test = "test"
+}

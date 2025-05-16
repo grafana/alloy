@@ -101,6 +101,7 @@ func block(b *ast.BlockStmt, rv reflect.Value) diag.Diagnostics {
 	return diags
 }
 
+// FIXME(kalleep): currently we ignore block maps
 func checkMapBlock(b *ast.BlockStmt, _ reflect.Value) diag.Diagnostics {
 	var diags diag.Diagnostics
 	if b.Label != "" {
