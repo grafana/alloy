@@ -46,7 +46,7 @@ type (
 type osFileService struct{}
 
 func (fs osFileService) ValidateFilePath(name string) (string, error) {
-	if strings.Contains(name, "/") || strings.Contains(name, "\\") || strings.Contains(name, "..") {
+	if strings.Contains(name, "\\") || strings.Contains(name, "..") {
 		return "", fmt.Errorf("invalid file name: %s", name)
 	}
 	return name, nil
