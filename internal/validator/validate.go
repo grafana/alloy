@@ -495,7 +495,7 @@ func generateArgumentsStruct(args []*ast.BlockStmt) any {
 		}
 		mem[a.Label] = struct{}{}
 
-		optional := typecheck.TryUnwrapBlockAttr(a, "optional", syntax.ValueFromBool(true))
+		optional := typecheck.TryUnwrapBlockAttr(a, "optional", syntax.ValueFromBool(false))
 
 		var tag string
 		if optional.Bool() {
