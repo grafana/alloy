@@ -55,6 +55,10 @@ declare "self_collect" {
 		optional = false
 		comment  = "Where to send collected metrics."
 	}
+	
+	argument "optional" {
+		optional = true
+	}
 
 	prometheus.scrape "selfmonitor" {
 		targets = [{
