@@ -161,7 +161,10 @@ func (v *validator) validateDeclares(s *state) {
 
 // validateConfigs will perform validation on config blocks.
 func (v *validator) validateConfigs(s *state) {
-	mem := make(map[string]*ast.BlockStmt, len(s.configs))
+	var (
+		register bool
+		mem      = make(map[string]*ast.BlockStmt, len(s.configs))
+	)
 
 	for i, c := range s.configs {
 		node := newBlockNode(c)
@@ -172,25 +175,12 @@ func (v *validator) validateConfigs(s *state) {
 			node.id = node.id + "-" + strconv.Itoa(i)
 		} else if c.Name[0] == "import" {
 			// We need to register import blocks as a custom component.
-			s.cr.registerCustomComponent(node.block, nil)
-		}
-
-		name := node.block.GetBlockName()
-
-		if name != "logging" && name != "tracing" {
-			if node.block.Label == "" {
-				node.diags.Add(diag.Diagnostic{
-					Severity: diag.SeverityLevelError,
-					StartPos: node.block.NamePos.Position(),
-					EndPos:   node.block.NamePos.Add(len(name) - 1).Position(),
-					Message:  fmt.Sprintf("%s block must have a label", name),
-				})
-			}
+			register = true
 		}
 
 		// In configs we store blocks for logging, tracing, argument, export, import.file,
 		// import.string, import.http, import.git and foreach.
-		switch name {
+		switch node.block.GetBlockName() {
 		case "logging":
 			node.args = &logging.Options{}
 			if diag, ok := blockDisallowed(s, node.block); ok {
@@ -204,20 +194,7 @@ func (v *validator) validateConfigs(s *state) {
 			}
 			s.graph.Add(node)
 		case foreach.BlockName:
-			node.args = &foreach.Arguments{}
 			v.validateForeach(node, s)
-		case importsource.BlockNameFile:
-			node.args = &importsource.FileArguments{}
-			s.graph.Add(node)
-		case importsource.BlockNameString:
-			node.args = &importsource.StringArguments{}
-			s.graph.Add(node)
-		case importsource.BlockNameHTTP:
-			node.args = &importsource.HTTPArguments{}
-			s.graph.Add(node)
-		case importsource.BlockNameGit:
-			node.args = &importsource.GitArguments{}
-			s.graph.Add(node)
 		case argument.BlockName:
 			node.args = &argument.Arguments{}
 			if s.root {
@@ -228,9 +205,13 @@ func (v *validator) validateConfigs(s *state) {
 					EndPos:   ast.EndPos(node.block).Position(),
 				})
 			}
-			if node.block.Label != "" {
+			if diag, ok := blockMissingLabel(node.block); ok {
+				register = false
+				node.diags.Add(diag)
+			} else {
 				s.arguments = append(s.arguments, node.block)
 			}
+
 			s.graph.Add(node)
 		case export.BlockName:
 			node.args = &export.Arguments{}
@@ -242,13 +223,49 @@ func (v *validator) validateConfigs(s *state) {
 					EndPos:   ast.EndPos(node.block).Position(),
 				})
 			}
+
+			if diag, ok := blockMissingLabel(node.block); ok {
+				register = false
+				node.diags.Add(diag)
+			}
+
 			s.graph.Add(node)
+		default:
+			v.validateImport(node, register, s)
 		}
+	}
+}
+
+func (v *validator) validateImport(node *blockNode, register bool, s *state) {
+	// Require label for import block.
+	if diag, ok := blockMissingLabel(node.block); ok {
+		register = false
+		node.diags.Add(diag)
+	}
+
+	switch node.block.GetBlockName() {
+	case importsource.BlockNameFile:
+		node.args = &importsource.FileArguments{}
+		s.graph.Add(node)
+	case importsource.BlockNameString:
+		node.args = &importsource.StringArguments{}
+		s.graph.Add(node)
+	case importsource.BlockNameHTTP:
+		node.args = &importsource.HTTPArguments{}
+		s.graph.Add(node)
+	case importsource.BlockNameGit:
+		node.args = &importsource.GitArguments{}
+		s.graph.Add(node)
+	}
+
+	if register {
+		s.cr.registerCustomComponent(node.block, nil)
 	}
 }
 
 func (v *validator) validateForeach(node *blockNode, s *state) {
 	name := node.block.GetBlockName()
+
 	// Check required stability level.
 	if err := featuregate.CheckAllowed(foreach.StabilityLevel, v.minStability, fmt.Sprintf("foreach block %q", name)); err != nil {
 		node.diags.Add(diag.Diagnostic{
@@ -260,13 +277,8 @@ func (v *validator) validateForeach(node *blockNode, s *state) {
 	}
 
 	// Require label for foreach block.
-	if node.block.Label == "" {
-		node.diags.Add(diag.Diagnostic{
-			Severity: diag.SeverityLevelError,
-			StartPos: node.block.NamePos.Position(),
-			EndPos:   node.block.NamePos.Add(len(name) - 1).Position(),
-			Message:  "foreach block must have a label",
-		})
+	if diag, ok := blockMissingLabel(node.block); ok {
+		node.diags.Add(diag)
 	}
 
 	var (
@@ -284,6 +296,7 @@ func (v *validator) validateForeach(node *blockNode, s *state) {
 
 	// Set the body of block to all non template properties.
 	node.block.Body = body
+	node.args = &foreach.Arguments{}
 
 	// Foreach blocks must have a template.
 	if template == nil {
@@ -483,6 +496,19 @@ func blockDisallowed(s *state, b *ast.BlockStmt) (diag.Diagnostic, bool) {
 		}, true
 	}
 
+	return diag.Diagnostic{}, false
+}
+
+func blockMissingLabel(b *ast.BlockStmt) (diag.Diagnostic, bool) {
+	if b.Label == "" {
+		name := b.GetBlockName()
+		return diag.Diagnostic{
+			Severity: diag.SeverityLevelError,
+			StartPos: b.NamePos.Position(),
+			EndPos:   b.NamePos.Add(len(name) - 1).Position(),
+			Message:  fmt.Sprintf("%s block must have a label", name),
+		}, true
+	}
 	return diag.Diagnostic{}, false
 }
 
