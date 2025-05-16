@@ -59,7 +59,7 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/grafana/alloy-remote-config v0.0.10
 	github.com/grafana/alloy/syntax v0.1.0
-	github.com/grafana/beyla/v2 v2.1.0-alloy-1
+	github.com/grafana/beyla/v2 v2.2.3-alloy.2
 	github.com/grafana/catchpoint-prometheus-exporter v0.0.0-20250218151502-6e97feaee761
 	github.com/grafana/ckit v0.0.0-20250226083311-4f9f4aacabb5
 	github.com/grafana/cloudflare-go v0.0.0-20230110200409-c627cf6792f2
@@ -1071,10 +1071,6 @@ replace github.com/prometheus/procfs => github.com/prometheus/procfs v0.12.0
 
 // Use v0.62.0 of prometheus/common for all dependencies until mongodb_exporter is updated to support 0.63.0
 replace github.com/prometheus/common => github.com/prometheus/common v0.62.0
-
-// TODO: Use a release version of Beyla once it contains this change:
-// https://github.com/grafana/beyla/pull/1904
-replace github.com/grafana/beyla/v2 => github.com/grafana/beyla/v2 v2.0.0-20250514154939-a8013f6986df
 
 // TODO: Use a release verision of OTel once it contains this change:
 // https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/39946
