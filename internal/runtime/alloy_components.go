@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/dag"
 	"github.com/grafana/alloy/internal/runtime/internal/controller"
-	"github.com/grafana/alloy/internal/runtime/internal/dag"
 )
 
 // GetComponent implements [component.Provider].

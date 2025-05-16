@@ -3,14 +3,16 @@ package validator
 import (
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/diag"
-	"github.com/grafana/alloy/syntax/typecheck"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/nodeconf/argument"
+	"github.com/grafana/alloy/internal/nodeconf/export"
 	"github.com/grafana/alloy/internal/nodeconf/foreach"
 	"github.com/grafana/alloy/internal/nodeconf/importsource"
 	alloy_runtime "github.com/grafana/alloy/internal/runtime"
@@ -61,22 +63,19 @@ func (v *validator) run(cr *componentRegistry) error {
 		return err
 	}
 
-	// Register all "import" blocks as custom component.
-	for _, c := range s.Configs() {
-		if c.Name[0] == "import" {
-			cr.registerCustomComponent(c)
-		}
+	components, services := splitComponents(s.Components(), v.sm)
+
+	rootState := &state{
+		root:       true,
+		graph:      newGraph(),
+		declares:   s.Declares(),
+		configs:    s.Configs(),
+		components: components,
+		services:   services,
+		cr:         cr,
 	}
 
-	var diags diag.Diagnostics
-	// Need to validate declares first becuse we will register "custom" components.
-	diags.Merge(v.validateDeclares(s.Declares(), cr))
-	diags.Merge(v.validateConfigs(s.Configs(), cr))
-
-	components, services := splitComponents(s.Components(), v.sm)
-	diags.Merge(v.validateComponents(components, cr))
-	diags.Merge(v.validateServices(services))
-
+	diags := validateGraph(v.validate(rootState))
 	if diags.HasErrors() {
 		return diags
 	}
@@ -84,102 +83,176 @@ func (v *validator) run(cr *componentRegistry) error {
 	return nil
 }
 
+type state struct {
+	root       bool
+	foreach    bool
+	graph      *orderedGraph
+	declares   []*ast.BlockStmt
+	configs    []*ast.BlockStmt
+	components []*ast.BlockStmt
+	services   []*ast.BlockStmt
+	cr         *componentRegistry
+}
+
+func (v *validator) validate(s *state) *state {
+	// Need to validate declares first because we will register "custom" components.
+	v.validateDeclares(s)
+	v.validateConfigs(s)
+
+	v.validateComponents(s)
+	v.validateServices(s)
+	return s
+}
+
 // validateDeclares will perform validation on declare blocks and register them as "custom" component.
-func (v *validator) validateDeclares(declares []*ast.BlockStmt, cr *componentRegistry) diag.Diagnostics {
-	var (
-		diags diag.Diagnostics
-		mem   = make(map[string]*ast.BlockStmt, len(declares))
-	)
+func (v *validator) validateDeclares(s *state) {
+	mem := make(map[string]*ast.BlockStmt, len(s.declares))
 
-	for _, d := range declares {
-		name := d.GetBlockName()
+	for i, d := range s.declares {
+		node := newBlockNode(d)
 
-		// 1. Declare blocks must have a label.
+		// Declare blocks must have a label.
 		if d.Label == "" {
-			diags.Add(diag.Diagnostic{
+			node.diags.Add(diag.Diagnostic{
 				Severity: diag.SeverityLevelError,
 				StartPos: d.NamePos.Position(),
-				EndPos:   d.NamePos.Add(len(name) - 1).Position(),
+				EndPos:   d.NamePos.Add(len(d.GetBlockName()) - 1).Position(),
 				Message:  "declare block must have a label",
 			})
 		} else {
 			// Only register custom component if we have a label
 			// Without a label there is no way to create one.
-			cr.registerCustomComponent(d)
+			s.cr.registerCustomComponent(node.block)
 		}
 
-		// 2. Declares need to be unique
-		if diag, ok := blockAlreadyDefined(mem, d); ok {
-			diags.Add(diag)
+		// Declares need to be unique
+		if diag, ok := blockAlreadyDefined(mem, node.block); ok {
+			node.diags.Add(diag)
+			// We need to generate a unique id for this duplicated node so we can still typecheck it.
+			node.id = node.id + "-" + strconv.Itoa(i)
 		}
+
+		// Add declare to graph
+		s.graph.Add(node)
+
+		configs, declares, services, components := extractBlocks(node, node.block.Body, v.sm)
+		// Add module state as node to graph
+		s.graph.Add(newSubNode(node, v.validate(&state{
+			root:       false,
+			graph:      newGraph(),
+			declares:   declares,
+			configs:    configs,
+			services:   services,
+			components: components,
+			cr:         newComponentRegistry(s.cr),
+		})))
 	}
-
-	return diags
 }
 
 // validateConfigs will perform validation on config blocks.
-func (v *validator) validateConfigs(configs []*ast.BlockStmt, cr *componentRegistry) diag.Diagnostics {
-	var (
-		diags diag.Diagnostics
-		mem   = make(map[string]*ast.BlockStmt, len(configs))
-	)
+func (v *validator) validateConfigs(s *state) {
+	mem := make(map[string]*ast.BlockStmt, len(s.configs))
 
-	for _, c := range configs {
-		// 1. Config blocks needs to be unique.
-		if diag, ok := blockAlreadyDefined(mem, c); ok {
-			diags.Add(diag)
-		}
-
-		if c.Name[0] == "import" {
+	for i, c := range s.configs {
+		node := newBlockNode(c)
+		// Config blocks needs to be unique.
+		if diag, ok := blockAlreadyDefined(mem, node.block); ok {
+			node.diags.Add(diag)
+			// We need to generate a unique id for this duplicated node so we can still typecheck it.
+			node.id = node.id + "-" + strconv.Itoa(i)
+		} else if c.Name[0] == "import" {
 			// We need to register import blocks as a custom component.
-			cr.registerCustomComponent(c)
+			s.cr.registerCustomComponent(node.block)
 		}
 
-		// In config we store blocks for logging, tracing, argument, export, import.file,
+		name := node.block.GetBlockName()
+
+		if name != "logging" && name != "tracing" {
+			if node.block.Label == "" {
+				node.diags.Add(diag.Diagnostic{
+					Severity: diag.SeverityLevelError,
+					StartPos: node.block.NamePos.Position(),
+					EndPos:   node.block.NamePos.Add(len(name) - 1).Position(),
+					Message:  fmt.Sprintf("%s block must have a label", name),
+				})
+			}
+		}
+
+		// In configs we store blocks for logging, tracing, argument, export, import.file,
 		// import.string, import.http, import.git and foreach.
-		// For now we only typecheck logging, tracing, foreach and imports.
-		switch c.GetBlockName() {
+		switch name {
 		case "logging":
-			diags.Merge(typecheck.Block(c, &logging.Options{}))
+			node.args = &logging.Options{}
+			if diag, ok := blockDisallowed(s, node.block); ok {
+				node.diags.Add(diag)
+			}
+			s.graph.Add(node)
 		case "tracing":
-			diags.Merge(typecheck.Block(c, &tracing.Options{}))
+			node.args = &tracing.Options{}
+			if diag, ok := blockDisallowed(s, node.block); ok {
+				node.diags.Add(diag)
+			}
+			s.graph.Add(node)
 		case foreach.BlockName:
-			diags.Merge(v.validateForeach(c, cr))
+			node.args = &foreach.Arguments{}
+			v.validateForeach(node, s)
 		case importsource.BlockNameFile:
-			diags.Merge(typecheck.Block(c, &importsource.FileArguments{}))
+			node.args = &importsource.FileArguments{}
+			s.graph.Add(node)
 		case importsource.BlockNameString:
-			diags.Merge(typecheck.Block(c, &importsource.StringArguments{}))
+			node.args = &importsource.StringArguments{}
+			s.graph.Add(node)
 		case importsource.BlockNameHTTP:
-			diags.Merge(typecheck.Block(c, &importsource.HTTPArguments{}))
+			node.args = &importsource.HTTPArguments{}
+			s.graph.Add(node)
 		case importsource.BlockNameGit:
-			diags.Merge(typecheck.Block(c, &importsource.GitArguments{}))
+			node.args = &importsource.GitArguments{}
+			s.graph.Add(node)
+		case argument.BlockName:
+			node.args = &argument.Arguments{}
+			if s.root {
+				node.diags.Add(diag.Diagnostic{
+					Severity: diag.SeverityLevelError,
+					Message:  "argument blocks only allowed inside a module",
+					StartPos: ast.StartPos(node.block).Position(),
+					EndPos:   ast.EndPos(node.block).Position(),
+				})
+			}
+			s.graph.Add(node)
+		case export.BlockName:
+			node.args = &export.Arguments{}
+			if s.root {
+				node.diags.Add(diag.Diagnostic{
+					Severity: diag.SeverityLevelError,
+					Message:  "export blocks only allowed inside a module",
+					StartPos: ast.StartPos(node.block).Position(),
+					EndPos:   ast.EndPos(node.block).Position(),
+				})
+			}
+			s.graph.Add(node)
 		}
 	}
-
-	return diags
 }
 
-func (v *validator) validateForeach(block *ast.BlockStmt, cr *componentRegistry) diag.Diagnostics {
-	var diags diag.Diagnostics
-
-	name := block.GetBlockName()
+func (v *validator) validateForeach(node *blockNode, s *state) {
+	name := node.block.GetBlockName()
 	// Check required stability level.
 	if err := featuregate.CheckAllowed(foreach.StabilityLevel, v.minStability, fmt.Sprintf("foreach block %q", name)); err != nil {
-		diags.Add(diag.Diagnostic{
+		node.diags.Add(diag.Diagnostic{
 			Severity: diag.SeverityLevelError,
-			StartPos: block.NamePos.Position(),
-			EndPos:   block.NamePos.Add(len(name) - 1).Position(),
+			StartPos: node.block.NamePos.Position(),
+			EndPos:   node.block.NamePos.Add(len(name) - 1).Position(),
 			Message:  err.Error(),
 		})
 	}
 
-	// Require label for all foreach blocks.
-	if block.Label == "" {
-		diags.Add(diag.Diagnostic{
+	// Require label for foreach block.
+	if node.block.Label == "" {
+		node.diags.Add(diag.Diagnostic{
 			Severity: diag.SeverityLevelError,
-			StartPos: block.NamePos.Position(),
-			EndPos:   block.NamePos.Add(len(name) - 1).Position(),
-			Message:  "declare block must have a label",
+			StartPos: node.block.NamePos.Position(),
+			EndPos:   node.block.NamePos.Add(len(name) - 1).Position(),
+			Message:  "foreach block must have a label",
 		})
 	}
 
@@ -188,7 +261,7 @@ func (v *validator) validateForeach(block *ast.BlockStmt, cr *componentRegistry)
 		template *ast.BlockStmt
 	)
 
-	for _, stmt := range block.Body {
+	for _, stmt := range node.block.Body {
 		if b, ok := stmt.(*ast.BlockStmt); ok && b.GetBlockName() == foreach.TypeTemplate {
 			template = b
 			continue
@@ -197,30 +270,119 @@ func (v *validator) validateForeach(block *ast.BlockStmt, cr *componentRegistry)
 	}
 
 	// Set the body of block to all non template properties.
-	block.Body = body
-	diags.Merge(typecheck.Block(block, &foreach.Arguments{}))
+	node.block.Body = body
 
 	// Foreach blocks must have a template.
 	if template == nil {
-		diags.Add(diag.Diagnostic{
+		node.diags.Add(diag.Diagnostic{
 			Severity: diag.SeverityLevelError,
-			StartPos: ast.StartPos(block).Position(),
-			EndPos:   ast.EndPos(block).Position(),
+			StartPos: ast.StartPos(node.block).Position(),
+			EndPos:   ast.EndPos(node.block).Position(),
 			Message:  fmt.Sprintf("missing required block %q", foreach.TypeTemplate),
 		})
-		return diags
+		s.graph.Add(node)
+		return
 	}
 
+	s.graph.Add(node)
 	// We extract all blocks from template body and evaluate them as components.
+	configs, declares, services, components := extractBlocks(node, template.Body, v.sm)
+
+	// Add foreach state as node to the graph
+	s.graph.Add(newSubNode(node, v.validate(&state{
+		root:       s.root,
+		foreach:    true,
+		graph:      newGraph(),
+		declares:   declares,
+		configs:    configs,
+		services:   services,
+		components: components,
+		cr:         newComponentRegistry(s.cr),
+	})))
+}
+
+// validateComponents will perform validation on component blocks.
+func (v *validator) validateComponents(s *state) {
+	mem := make(map[string]*ast.BlockStmt, len(s.components))
+
+	for i, c := range s.components {
+		var (
+			node = newComponentNode(c)
+			name = node.block.GetBlockName()
+		)
+		// All components must have a label.
+		if c.Label == "" {
+			node.diags.Add(diag.Diagnostic{
+				Severity: diag.SeverityLevelError,
+				StartPos: node.block.NamePos.Position(),
+				EndPos:   node.block.NamePos.Add(len(name) - 1).Position(),
+				Message:  fmt.Sprintf("component %q must have a label", name),
+			})
+		}
+
+		// Components need to be unique.
+		if diag, ok := blockAlreadyDefined(mem, node.block); ok {
+			node.diags.Add(diag)
+			// We need to generate a unique id for this duplicated node so we can still typecheck it.
+			node.id = node.id + "-" + strconv.Itoa(i)
+		}
+
+		s.graph.Add(node)
+	}
+}
+
+func (v *validator) validateServices(s *state) {
+	mem := make(map[string]*ast.BlockStmt, len(s.services))
+
+	for i, c := range s.services {
+		var (
+			node = newBlockNode(c)
+			def  = v.sm[c.GetBlockName()]
+		)
+
+		if diag, ok := blockAlreadyDefined(mem, node.block); ok {
+			node.diags.Add(diag)
+			// We need to generate a unique id for this duplicated node so we can still typecheck it.
+			node.id = node.id + "-" + strconv.Itoa(i)
+		}
+
+		if diag, ok := blockDisallowed(s, node.block); ok {
+			node.diags.Add(diag)
+		}
+
+		if def.ConfigType == nil {
+			node.diags.Add(diag.Diagnostic{
+				Severity: diag.SeverityLevelError,
+				StartPos: ast.StartPos(c).Position(),
+				EndPos:   ast.EndPos(c).Position(),
+				Message:  fmt.Sprintf("service %q does not support being configured", def.Name),
+			})
+		} else {
+			node.args = def.CloneConfig()
+		}
+
+		s.graph.Add(node)
+	}
+}
+
+var configBlockNames = [...]string{
+	foreach.BlockName, argument.BlockName, export.BlockName, "logging", "tracing",
+	importsource.BlockNameFile, importsource.BlockNameString, importsource.BlockNameHTTP, importsource.BlockNameGit,
+}
+
+// extractBlocks extracts configs, declares and components blocks from body
+func extractBlocks(node *blockNode, body ast.Body, sm map[string]service.Definition) ([]*ast.BlockStmt, []*ast.BlockStmt, []*ast.BlockStmt, []*ast.BlockStmt) {
 	var (
-		configs    = make([]*ast.BlockStmt, 0, len(template.Body))
-		components = make([]*ast.BlockStmt, 0, len(template.Body))
+		configs    = make([]*ast.BlockStmt, 0, len(body))
+		declares   = make([]*ast.BlockStmt, 0, len(body))
+		services   = make([]*ast.BlockStmt, 0, len(body))
+		components = make([]*ast.BlockStmt, 0, len(body))
 	)
 
-	for _, stmt := range template.Body {
+	for _, stmt := range body {
 		b, ok := stmt.(*ast.BlockStmt)
 		if !ok {
-			diags.Add(diag.Diagnostic{
+			node.diags.Add(diag.Diagnostic{
 				Severity: diag.SeverityLevelError,
 				StartPos: ast.StartPos(stmt).Position(),
 				EndPos:   ast.EndPos(stmt).Position(),
@@ -229,106 +391,25 @@ func (v *validator) validateForeach(block *ast.BlockStmt, cr *componentRegistry)
 			continue
 		}
 
-		var validNames = [...]string{
-			foreach.BlockName, importsource.BlockNameFile,
-			importsource.BlockNameString, importsource.BlockNameHTTP, importsource.BlockNameGit,
+		if slices.Contains(configBlockNames[:], b.GetBlockName()) {
+			configs = append(configs, b)
+			continue
 		}
 
-		if slices.Contains(validNames[:], b.GetBlockName()) {
-			configs = append(configs, b)
+		if b.GetBlockName() == "declare" {
+			declares = append(declares, b)
+			continue
+		}
+
+		if _, ok := sm[blockID(b)]; ok {
+			services = append(services, b)
 			continue
 		}
 
 		components = append(components, b)
 	}
 
-	foreachCr := newComponentRegistry(cr)
-
-	// We can reuse validateConfigs here since we know that all block in nested
-	// are foreach.
-	diags.Merge(v.validateConfigs(configs, foreachCr))
-	// Validate all other blocks as components.
-	diags.Merge(v.validateComponents(components, foreachCr))
-	return diags
-}
-
-// validateComponents will perform validation on component blocks.
-func (v *validator) validateComponents(components []*ast.BlockStmt, cr component.Registry) diag.Diagnostics {
-	var (
-		diags diag.Diagnostics
-		mem   = make(map[string]*ast.BlockStmt, len(components))
-	)
-
-	for _, c := range components {
-		name := c.GetBlockName()
-		// 1. All components must have a label.
-		if c.Label == "" {
-			diags.Add(diag.Diagnostic{
-				Severity: diag.SeverityLevelError,
-				StartPos: c.NamePos.Position(),
-				EndPos:   c.NamePos.Add(len(name) - 1).Position(),
-				Message:  fmt.Sprintf("component %q must have a label", name),
-			})
-		}
-
-		// 2. Check if component exists and can be used.
-		reg, err := cr.Get(name)
-		if err != nil {
-			diags.Add(diag.Diagnostic{
-				Severity: diag.SeverityLevelError,
-				StartPos: c.NamePos.Position(),
-				EndPos:   c.NamePos.Add(len(name) - 1).Position(),
-				Message:  err.Error(),
-			})
-
-			// We cannot do further validation if the component don't exist.
-			continue
-		}
-
-		// 3. Components need to be unique.
-		if diag, ok := blockAlreadyDefined(mem, c); ok {
-			diags.Add(diag)
-		}
-
-		// Skip components without any arguments.
-		if reg.Args == nil {
-			continue
-		}
-
-		// 4. Perform typecheck on component.
-		diags.Merge(typecheck.Block(c, reg.CloneArguments()))
-	}
-
-	return diags
-}
-
-func (v *validator) validateServices(services []*ast.BlockStmt) diag.Diagnostics {
-	var (
-		diags diag.Diagnostics
-		mem   = make(map[string]*ast.BlockStmt, len(services))
-	)
-
-	for _, s := range services {
-		def := v.sm[s.GetBlockName()]
-
-		if diag, ok := blockAlreadyDefined(mem, s); ok {
-			diags.Add(diag)
-		}
-
-		if def.ConfigType == nil {
-			diags.Add(diag.Diagnostic{
-				Severity: diag.SeverityLevelError,
-				StartPos: ast.StartPos(s).Position(),
-				EndPos:   ast.EndPos(s).Position(),
-				Message:  fmt.Sprintf("service %q does not support being configured", def.Name),
-			})
-			continue
-		}
-
-		diags.Merge(typecheck.Block(s, def.CloneConfig()))
-	}
-
-	return diags
+	return configs, declares, services, components
 }
 
 func splitComponents(blocks []*ast.BlockStmt, sm map[string]service.Definition) ([]*ast.BlockStmt, []*ast.BlockStmt) {
@@ -366,5 +447,28 @@ func blockAlreadyDefined(mem map[string]*ast.BlockStmt, b *ast.BlockStmt) (diag.
 		}, true
 	}
 	mem[id] = b
+	return diag.Diagnostic{}, false
+}
+
+func blockDisallowed(s *state, b *ast.BlockStmt) (diag.Diagnostic, bool) {
+	id := blockID(b)
+	if !s.root {
+		return diag.Diagnostic{
+			Severity: diag.SeverityLevelError,
+			Message:  fmt.Sprintf("%s not allowed in module", id),
+			StartPos: b.NamePos.Position(),
+			EndPos:   b.NamePos.Add(len(id) - 1).Position(),
+		}, true
+	}
+
+	if s.foreach {
+		return diag.Diagnostic{
+			Severity: diag.SeverityLevelError,
+			Message:  fmt.Sprintf("%s not allowed in foreach", id),
+			StartPos: b.NamePos.Position(),
+			EndPos:   b.NamePos.Add(len(id) - 1).Position(),
+		}, true
+	}
+
 	return diag.Diagnostic{}, false
 }

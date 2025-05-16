@@ -1,3 +1,9 @@
+Error: main.alloy:1:1: missing required block "template"
+
+1 | foreach "missing" { }
+  | ^^^^^^^^^^^^^^^^^^^^^
+2 | 
+
 Error: main.alloy:1:1: missing required attribute "collection"
 
 1 | foreach "missing" { }
@@ -10,18 +16,19 @@ Error: main.alloy:1:1: missing required attribute "var"
   | ^^^^^^^^^^^^^^^^^^^^^
 2 | 
 
-Error: main.alloy:1:1: missing required block "template"
-
-1 | foreach "missing" { }
-  | ^^^^^^^^^^^^^^^^^^^^^
-2 | 
-
 Error: main.alloy:4:2: unrecognized attribute name "test"
 
 3 | foreach "invalid_property" {
 4 |     test       = "test"
   |     ^^^^^^^^^^^^^^^^^^^
 5 |     collection = []
+
+Error: main.alloy:30:3: logging not allowed in foreach
+
+29 |         // Service configuration.
+30 |         logging { }
+   |         ^^^^^^^
+31 | 
 
 Error: main.alloy:17:3: cannot find the definition of component name "local.missing"
 
@@ -44,20 +51,6 @@ Error: main.alloy:24:4: unrecognized attribute name "test"
    |             ^^^^^^^^^^^^^^^^^^^
 25 |             targets    = []
 
-Error: main.alloy:30:3: component "logging" must have a label
-
-29 |         // Service configuration.
-30 |         logging { }
-   |         ^^^^^^^
-31 | 
-
-Error: main.alloy:30:3: cannot find the definition of component name "logging"
-
-29 |         // Service configuration.
-30 |         logging { }
-   |         ^^^^^^^
-31 | 
-
 Error: main.alloy:37:3: block local.file_match.applogs already declared at main.alloy:33:3
 
 36 | 
@@ -71,6 +64,13 @@ Error: main.alloy:62:1: block foreach.invalid_nested already declared at main.al
 62 | foreach "invalid_nested" {
    | ^^^^^^^^^^^^^^^^^^^^^^
 63 |     collection = []
+
+Error: main.alloy:86:5: logging not allowed in foreach
+
+85 |                 // Service configuration.
+86 |                 logging { }
+   |                 ^^^^^^^
+87 | 
 
 Error: main.alloy:73:5: cannot find the definition of component name "local.missing"
 
@@ -92,20 +92,6 @@ Error: main.alloy:80:6: unrecognized attribute name "test"
 80 |                     test       = "test"
    |                     ^^^^^^^^^^^^^^^^^^^
 81 |                     targets    = []
-
-Error: main.alloy:86:5: component "logging" must have a label
-
-85 |                 // Service configuration.
-86 |                 logging { }
-   |                 ^^^^^^^
-87 | 
-
-Error: main.alloy:86:5: cannot find the definition of component name "logging"
-
-85 |                 // Service configuration.
-86 |                 logging { }
-   |                 ^^^^^^^
-87 | 
 
 Error: main.alloy:93:5: block local.file_match.applogs already declared at main.alloy:89:5
 
