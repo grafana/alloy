@@ -153,3 +153,36 @@ foreach "outer" {
 		}
 	}
 }
+
+import.string "string" {
+  content = ""
+}
+
+import.file "file" {
+  filename = "path/to/module/config.alloy"
+}
+
+import.git "git" {
+  repository = "https://github.com/grafana/alloy/module.git"
+  revision   = "main"
+  path       = "modules"
+}
+
+import.http "http" {
+  url = "http://server.com/module"
+}
+
+declare "shadow_me" {}
+
+declare "my_module" {
+	declare "shadow_me" {}
+
+	shadow_me "test" {}
+}
+
+shadow_me "test" {}
+
+// use "a" before declare in "b"
+declare "b" { a "test" {} }
+
+declare "a" { }
