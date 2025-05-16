@@ -27,7 +27,7 @@ Main (unreleased)
 - (_Experimental_) Various changes to the experimental component `database_observability.mysql`:
   - `schema_table`: add support for index expressions (@cristiangreco)
 
-- Update `async-profiler` binaries for `pyroscope.java` to 4.0-87b7b42
+- Update `async-profiler` binaries for `pyroscope.java` to 4.0-87b7b42 (@github-hamza-bouqal)
 
 ### Bugfixes
 
