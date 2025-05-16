@@ -363,7 +363,7 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 
 			c.entryHandler.Chan() <- buildLokiEntryWithTimestamp(
 				logging.LevelInfo,
-				"wait_event",
+				OP_WAIT_EVENT,
 				c.instanceKey,
 				waitLogMessage,
 				int64(millisecondsToNanoseconds(row.TimestampMilliseconds)),
