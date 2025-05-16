@@ -866,7 +866,7 @@ The following arguments are supported:
 
 | Name                | Type          | Description                                                                         | Default                  | Required |
 | ------------------- | ------------- | ----------------------------------------------------------------------------------- | ------------------------ | -------- |
-| `buckets`           | `list(float)` | Predefined buckets                                                                    |                          | yes      |
+| `buckets`           | `list(float)` | Predefined buckets                                                                  |                          | yes      |
 | `name`              | `string`      | The metric name.                                                                    |                          | yes      |
 | `description`       | `string`      | The metric's description and help text.                                             | `""`                     | no       |
 | `max_idle_duration` | `duration`    | Maximum amount of time to wait until the metric is marked as 'stale' and removed.   | `"5m"`                   | no       |

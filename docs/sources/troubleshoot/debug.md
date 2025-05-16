@@ -46,6 +46,8 @@ Click the {{< param "PRODUCT_NAME" >}} logo to navigate back to the home page.
 > **EXPERIMENTAL**: This is an [experimental][] feature.
 > Experimental features are subject to frequent breaking changes, and may be removed with no equivalent replacement.
 
+[experimental]: https://grafana.com/docs/release-life-cycle/
+
 {{< figure src="/media/docs/alloy/ui_graph_page_new_2.png" alt="Alloy UI graph page" >}}
 
 The **Graph** page shows a graph view of components defined in the configuration file.

@@ -42,19 +42,19 @@ loki.rules.kubernetes "<LABEL>" {
 
 You can use the following arguments with `loki.rules.kubernetes`:
 
-| Name                    | Type       | Description                                                                     | Default | Required |
-| ----------------------- | ---------- | ------------------------------------------------------------------------------- | ------- | -------- |
-| `address`               | `string`   | URL of the Loki ruler.                                                          |         | yes      |
-| `bearer_token_file`     | `string`   | File containing a bearer token to authenticate with.                            |         | no       |
-| `bearer_token`          | `secret`   | Bearer token to authenticate with.                                              |         | no       |
-| `enable_http2`          | `bool`     | Whether HTTP2 is supported for requests.                                        | `true`  | no       |
-| `follow_redirects`      | `bool`     | Whether redirects returned by the server should be followed.                    | `true`  | no       |
-| `http_headers`           | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.          |                      | no       |
-| `loki_namespace_prefix` | `string`   | Prefix used to differentiate multiple {{< param "PRODUCT_NAME" >}} deployments. | "alloy" | no       |
-| `proxy_url`             | `string`   | HTTP proxy to proxy requests through.                                           |         | no       |
-| `sync_interval`         | `duration` | Amount of time between reconciliations with Loki.                               | "30s"   | no       |
-| `tenant_id`             | `string`   | Loki tenant ID.                                                                 |         | no       |
-| `use_legacy_routes`     | `bool`     | Whether to use deprecated ruler API endpoints.                                  | false   | no       |
+| Name                    | Type                | Description                                                                             | Default | Required |
+| ----------------------- | ------------------- | --------------------------------------------------------------------------------------- | ------- | -------- |
+| `address`               | `string`            | URL of the Loki ruler.                                                                  |         | yes      |
+| `bearer_token_file`     | `string`            | File containing a bearer token to authenticate with.                                    |         | no       |
+| `bearer_token`          | `secret`            | Bearer token to authenticate with.                                                      |         | no       |
+| `enable_http2`          | `bool`              | Whether HTTP2 is supported for requests.                                                | `true`  | no       |
+| `follow_redirects`      | `bool`              | Whether redirects returned by the server should be followed.                            | `true`  | no       |
+| `http_headers`          | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name. |         | no       |
+| `loki_namespace_prefix` | `string`            | Prefix used to differentiate multiple {{< param "PRODUCT_NAME" >}} deployments.         | "alloy" | no       |
+| `proxy_url`             | `string`            | HTTP proxy to proxy requests through.                                                   |         | no       |
+| `sync_interval`         | `duration`          | Amount of time between reconciliations with Loki.                                       | "30s"   | no       |
+| `tenant_id`             | `string`            | Loki tenant ID.                                                                         |         | no       |
+| `use_legacy_routes`     | `bool`              | Whether to use deprecated ruler API endpoints.                                          | false   | no       |
 
  At most, one of the following can be provided:
 
@@ -81,17 +81,17 @@ You can use the following blocks with `loki.rules.kubernetes`:
 
 | Block                                                              | Description                                                | Required |
 | ------------------------------------------------------------------ | ---------------------------------------------------------- | -------- |
-| [`authorization`][authorization]                                   | Configure generic authorization to the endpoint.           | no |
-| [`basic_auth`][basic_auth]                                         | Configure `basic_auth` for authenticating to the endpoint. | no |
-| [`extra_query_matchers`][extra_query_matchers]                     | Additional label matchers to add to each query.            | no |
-| `extra_query_matchers` > [`matcher`][matcher]                      | A label matcher to add to each query.                      | no |
-| [`rule_namespace_selector`][label_selector]                        | Label selector for `Namespace` resources.                  | no |
-| `rule_namespace_selector` > [`match_expression`][match_expression] | Label match expression for `Namespace` resources.          | no |
-| [`rule_selector`][label_selector]                                  | Label selector for `PrometheusRule` resources.             | no |
-| `rule_selector` > [`match_expression`][match_expression]           | Label match expression for `PrometheusRule` resources.     | no |
-| [`oauth2`][oauth2]                                                 | Configure OAuth 2.0 for authenticating to the endpoint.    | no |
-| `oauth2` > [`tls_config`][tls_config]                              | Configure TLS settings for connecting to the endpoint.     | no |
-| [`tls_config`][tls_config]                                         | Configure TLS settings for connecting to the endpoint.     | no |
+| [`authorization`][authorization]                                   | Configure generic authorization to the endpoint.           | no       |
+| [`basic_auth`][basic_auth]                                         | Configure `basic_auth` for authenticating to the endpoint. | no       |
+| [`extra_query_matchers`][extra_query_matchers]                     | Additional label matchers to add to each query.            | no       |
+| `extra_query_matchers` > [`matcher`][matcher]                      | A label matcher to add to each query.                      | no       |
+| [`rule_namespace_selector`][label_selector]                        | Label selector for `Namespace` resources.                  | no       |
+| `rule_namespace_selector` > [`match_expression`][match_expression] | Label match expression for `Namespace` resources.          | no       |
+| [`rule_selector`][label_selector]                                  | Label selector for `PrometheusRule` resources.             | no       |
+| `rule_selector` > [`match_expression`][match_expression]           | Label match expression for `PrometheusRule` resources.     | no       |
+| [`oauth2`][oauth2]                                                 | Configure OAuth 2.0 for authenticating to the endpoint.    | no       |
+| `oauth2` > [`tls_config`][tls_config]                              | Configure TLS settings for connecting to the endpoint.     | no       |
+| [`tls_config`][tls_config]                                         | Configure TLS settings for connecting to the endpoint.     | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `oauth2` > `tls_config` refers to a `tls_config` block defined inside an `oauth2` block.

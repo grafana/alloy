@@ -38,8 +38,8 @@ otelcol.receiver.splunkhec "<LABEL>" {
 You can use the following arguments with `otelcol.receiver.splunkhec`:
 
 | Name                       | Type                       | Description                                                                                                    | Default                                                    | Required |
-| -------------------------- | -------------------------- | ---------------------------------------------------------------------------------------------------------------| ---------------------------------------------------------- | -------- |
-| `access_token_passthrough` | `boolean`                  | If enabled perserves incomming access token as a attribute `com.splunk.hec.access_token`                       | `false`                                                    | no       |
+| -------------------------- | -------------------------- | -------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- | -------- |
+| `access_token_passthrough` | `boolean`                  | If enabled preserves incoming access token as a attribute `com.splunk.hec.access_token`                        | `false`                                                    | no       |
 | `auth`                     | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests.                                   |                                                            | no       |
 | `compression_algorithms`   | `list(string)`             | A list of compression algorithms the server can accept.                                                        | `["", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"]` | no       |
 | `endpoint`                 | `string`                   | `host:port` to listen for traffic on.                                                                          | `"localhost:8088"`                                         | no       |
@@ -48,7 +48,6 @@ You can use the following arguments with `otelcol.receiver.splunkhec`:
 | `max_request_body_size`    | `string`                   | Maximum request body size the server will allow.                                                               | `20MiB`                                                    | no       |
 | `raw_path`                 | `string`                   | The path accepting raw HEC events. Only applies when the receiver is used for logs.                            | `/services/collector/raw`                                  | no       |
 | `splitting`                | `string`                   | Defines the splitting strategy used by the receiver when ingesting raw events. Can be set to "line" or "none". | `"line"`                                                   | no       |
-
 
 By default, `otelcol.receiver.splunkhec` listens for HTTP connections on `localhost:8088`.
 To expose the HTTP server to other machines on your network, configure `endpoint` with the IP address to listen on, or `0.0.0.0:8088` to listen on all network interfaces.
@@ -64,21 +63,32 @@ You can use the following blocks with `otelcol.receiver.splunkhec`:
 | ---------------------------------------------------------- | -------------------------------------------------------------------------- | -------- |
 | [`output`][output]                                         | Configures where to send received telemetry data.                          | yes      |
 | [`cors`][cors]                                             | Configures CORS for the HTTP server.                                       | no       |
-| [`hec_metadata_to_otel_attrs`][hec_metadata_to_otel_attrs] | Configures OpenTelemetry attributes from HEC metadata.                     | no       |
 | [`debug_metrics`][debug_metrics]                           | Configures the metrics that this component generates to monitor its state. | no       |
+| [`hec_metadata_to_otel_attrs`][hec_metadata_to_otel_attrs] | Configures OpenTelemetry attributes from HEC metadata.                     | no       |
 | [`tls`][tls]                                               | Configures TLS for the HTTP server.                                        | no       |
 
 [tls]: #tls
 [cors]: #cors
 [debug_metrics]: #debug_metrics
 [output]: #output
+[hec_metadata_to_otel_attrs]: #hec_metadata_to_otel_attrs
 
-### `tls`
+### `output`
 
-The `tls` block configures TLS settings used for a server.
-If the `tls` block isn't provided, TLS isn't used for connections to the server.
+<span class="badge docs-labels__stage docs-labels__item">Required</span>
 
-{{< docs/shared lookup="reference/components/otelcol-tls-server-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+The `output` block configures a set of components to forward resulting telemetry data to.
+
+The following arguments are supported:
+
+| Name      | Type                     | Description                           | Default | Required |
+| --------- |--------------------------|---------------------------------------|---------|--------- |
+| `logs`    | `list(otelcol.Consumer)` | List of consumers to send logs to.    | `[]`    | no       |
+| `metrics` | `list(otelcol.Consumer)` | List of consumers to send metrics to. | `[]`    | no       |
+
+You must specify the `output` block, but all its arguments are optional.
+By default, telemetry data is dropped.
+Configure the `metrics` and `logs` arguments accordingly to send telemetry data to other components.
 
 ### `cors`
 
@@ -102,37 +112,27 @@ The following headers are always implicitly allowed:
 
 If `allowed_headers` includes `"*"`, all headers are permitted.
 
+### `debug_metrics`
+
+{{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
 ### `hec_metadata_to_otel_attrs`
 
 The `hec_metadata_to_otel_attrs` block configures OpenTelemetry attributes from HEC metadata.
 
 | Name         | Type     | Description                                                   | Default                 | Required |
-| ------------ | -------- | --------------------------------------------------------------| ----------------------- |--------- |
+| ------------ | -------- | ------------------------------------------------------------- | ----------------------- | -------- |
 | `host`       | `string` | Specifies the mapping of the host field to a attribute.       | `host.name`             | no       |
 | `index`      | `string` | Specifies the mapping of the index field to a attribute.      | `com.splunk.index`      | no       |
 | `source`     | `string` | Specifies the mapping of the source field to a attribute.     | `com.splunk.source`     | no       |
 | `sourcetype` | `string` | Specifies the mapping of the sourcetype field to a attribute. | `com.splunk.sourcetype` | no       |
 
-### `debug_metrics`
+### `tls`
 
-{{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+The `tls` block configures TLS settings used for a server.
+If the `tls` block isn't provided, TLS isn't used for connections to the server.
 
-### `output`
-
-<span class="badge docs-labels__stage docs-labels__item">Required</span>
-
-The `output` block configures a set of components to forward resulting telemetry data to.
-
-The following arguments are supported:
-
-| Name      | Type                     | Description                           | Default | Required |
-| --------- |--------------------------|---------------------------------------|---------|--------- |
-| `logs`    | `list(otelcol.Consumer)` | List of consumers to send logs to.    | `[]`    | no       |
-| `metrics` | `list(otelcol.Consumer)` | List of consumers to send metrics to. | `[]`    | no       |
-
-You must specify the `output` block, but all its arguments are optional.
-By default, telemetry data is dropped.
-Configure the `metrics` and `logs` arguments accordingly to send telemetry data to other components.
+{{< docs/shared lookup="reference/components/otelcol-tls-server-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 
@@ -174,12 +174,12 @@ otelcol.exporter.otlp "default" {
 
 ## Enable authentication
 
-You can create a `otelcol.receiver.splunkhec` component that requires authentication for requests. This is useful for limiting who can push data to the server. 
+You can create a `otelcol.receiver.splunkhec` component that requires authentication for requests. This is useful for limiting who can push data to the server.
 
 {{< admonition type="note" >}}
 Not all OpenTelemetry Collector authentication plugins support receiver authentication.
 Refer to the [documentation](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/otelcol/) for each `otelcol.auth.*` component to determine its compatibility.
-{{< /admonition >}} 
+{{< /admonition >}}
 
 ```alloy
 otelcol.receiver.splunkhec "default" {
