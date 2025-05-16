@@ -1,4 +1,4 @@
-package vm
+package transform
 
 import (
 	"fmt"
@@ -8,7 +8,7 @@ import (
 	"github.com/grafana/alloy/syntax/token"
 )
 
-func valueFromLiteral(lit string, tok token.Token) (value.Value, error) {
+func ValueFromLiteral(lit string, tok token.Token) (value.Value, error) {
 	// NOTE(rfratto): this function should never return an error, since the
 	// parser only produces valid tokens; it can only fail if a user hand-builds
 	// an AST with invalid literals.
