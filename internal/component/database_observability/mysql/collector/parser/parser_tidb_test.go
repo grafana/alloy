@@ -124,7 +124,6 @@ func TestParserTiDB_ExtractTableNames(t *testing.T) {
 			sql:    "DROP TABLE IF EXISTS some_table",
 			tables: []string{"some_table"},
 		},
-		// the following tests pass only with tidb parser
 		{
 			name:   "show create table",
 			sql:    "SHOW CREATE TABLE some_table",

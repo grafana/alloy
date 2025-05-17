@@ -57,15 +57,11 @@ type Arguments struct {
 	EnableCollectors              []string            `alloy:"enable_collectors,attr,optional"`
 	DisableCollectors             []string            `alloy:"disable_collectors,attr,optional"`
 
-	// TODO(cristian): experimental, will be removed soon
-	UseTiDBParser bool `alloy:"use_tidb_parser,attr,optional"`
-
 	DisableQueryRedaction bool `alloy:"disable_query_redaction,attr,optional"`
 }
 
 var DefaultArguments = Arguments{
 	CollectInterval:               1 * time.Minute,
-	UseTiDBParser:                 true,
 	SetupConsumersCollectInterval: 1 * time.Hour,
 }
 
@@ -259,7 +255,6 @@ func (c *Component) startCollectors() error {
 			InstanceKey:     c.instanceKey,
 			CollectInterval: c.args.CollectInterval,
 			EntryHandler:    entryHandler,
-			UseTiDBParser:   c.args.UseTiDBParser,
 			Logger:          c.opts.Logger,
 		})
 		if err != nil {
@@ -303,7 +298,6 @@ func (c *Component) startCollectors() error {
 			InstanceKey:           c.instanceKey,
 			CollectInterval:       c.args.CollectInterval,
 			EntryHandler:          entryHandler,
-			UseTiDBParser:         c.args.UseTiDBParser,
 			Logger:                c.opts.Logger,
 			DisableQueryRedaction: c.args.DisableQueryRedaction,
 		})
