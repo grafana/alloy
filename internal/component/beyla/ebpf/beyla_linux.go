@@ -161,14 +161,25 @@ func (args Services) Convert() (services.DefinitionCriteria, error) {
 			}
 			podLabels[k] = &label
 		}
+		// Convert pod annotations to attributes
+		podAnnotations := map[string]*services.RegexpAttr{}
+		for k, v := range s.Kubernetes.PodAnnotations {
+			annotation, err := stringToRegexpAttr(v)
+			if err != nil {
+				return nil, err
+			}
+			podAnnotations[k] = &annotation
+		}
 
 		attrs = append(attrs, services.Attributes{
-			Name:      s.Name,
-			Namespace: s.Namespace,
-			OpenPorts: ports,
-			Path:      paths,
-			Metadata:  kubernetes,
-			PodLabels: podLabels,
+			Name:           s.Name,
+			Namespace:      s.Namespace,
+			OpenPorts:      ports,
+			Path:           paths,
+			Metadata:       kubernetes,
+			PodLabels:      podLabels,
+			ContainersOnly: s.ContainersOnly,
+			PodAnnotations: podAnnotations,
 		})
 	}
 	return attrs, nil
@@ -341,11 +352,15 @@ func (args EBPF) Convert() beylaCfg.EBPFTracer {
 	if args.HTTPRequestTimeout != 0 {
 		ebpf.HTTPRequestTimeout = args.HTTPRequestTimeout
 	}
-	ebpf.ContextPropagationEnabled = args.ContextPropagationEnabled
+	if args.ContextPropagationEnabled {
+		ebpf.ContextPropagation = beylaCfg.ContextPropagationAll
+	}
 	ebpf.WakeupLen = args.WakeupLen
 	ebpf.TrackRequestHeaders = args.TrackRequestHeaders
 	ebpf.HighRequestVolume = args.HighRequestVolume
 	ebpf.HeuristicSQLDetect = args.HeuristicSQLDetect
+	ebpf.BpfDebug = args.BpfDebug
+	ebpf.ProtocolDebug = args.ProtocolDebug
 	return ebpf
 }
 

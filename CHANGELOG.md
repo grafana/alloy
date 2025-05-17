@@ -80,6 +80,8 @@ Main (unreleased)
 - RPM artifacts in Alloy GitHub releases are no longer signed.
   The artifacts on the `https://rpm.grafana.com` repository used by the `yum` package manager will continue to be signed. (@ptodev)
 
+- Upgrade `beyla.ebpf` to v2.2.3. The full list of changes can be found in the [Beyla release notes](https://github.com/grafana/beyla/releases/tag/v2.2.3). (@marctc)
+
 v1.8.3
 -----------------
 
