@@ -20,6 +20,8 @@ Main (unreleased)
 
 - Add support to configure basic authentication for alloy http server. (@kalleep)
 
+- Add support for Mimir federated rule groups in `mimir.rules.kubernetes` (@QuentinBisson)
+
 - Add `validate` command to alloy that will perform limited validation of alloy configuration files. (@kalleep)
 
 - Add support to validate foreach block when using `validate` command. (@kalleep)
