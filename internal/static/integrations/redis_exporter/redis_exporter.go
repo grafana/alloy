@@ -116,7 +116,7 @@ func (c *Config) Name() string {
 }
 
 // InstanceKey returns the addr of the redis server.
-func (c *Config) InstanceKey(agentKey string) (string, error) {
+func (c *Config) InstanceKey(_ string) (string, error) {
 	return c.RedisAddr, nil
 }
 
@@ -153,7 +153,7 @@ func New(log log.Logger, c *Config) (integrations.Integration, error) {
 		exporterConfig.LuaScript = scripts
 	}
 
-	//new version of the exporter takes the file paths directly, for hot-reloading support (https://github.com/oliver006/redis_exporter/pull/526)
+	// new version of the exporter takes the file paths directly, for hot-reloading support (https://github.com/oliver006/redis_exporter/pull/526)
 
 	if (c.TLSClientKeyFile != "") != (c.TLSClientCertFile != "") {
 		return nil, errors.New("TLS client key file and cert file should both be present")

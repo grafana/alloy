@@ -8,10 +8,11 @@ import (
 	"github.com/githubexporter/github-exporter/exporter"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	config_util "github.com/prometheus/common/config"
+
 	"github.com/grafana/alloy/internal/static/integrations"
 	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
 	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
-	config_util "github.com/prometheus/common/config"
 )
 
 // DefaultConfig holds the default settings for the github_exporter integration
@@ -54,10 +55,13 @@ func (c *Config) Name() string {
 }
 
 // InstanceKey returns the hostname:port of the GitHub API server.
-func (c *Config) InstanceKey(agentKey string) (string, error) {
+func (c *Config) InstanceKey(_ string) (string, error) {
 	u, err := url.Parse(c.APIURL)
 	if err != nil {
 		return "", fmt.Errorf("could not parse url: %w", err)
+	}
+	if u.Port() != "" {
+		return u.Host + ":" + u.Port(), nil
 	}
 	return u.Host, nil
 }

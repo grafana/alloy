@@ -2,6 +2,7 @@ package windows_exporter
 
 import (
 	"github.com/go-kit/log"
+
 	"github.com/grafana/alloy/internal/static/integrations"
 	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
 	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
@@ -40,9 +41,8 @@ func (c *Config) Name() string {
 	return "windows_exporter"
 }
 
-// InstanceKey returns the hostname:port of the agent.
-func (c *Config) InstanceKey(agentKey string) (string, error) {
-	return agentKey, nil
+func (c *Config) InstanceKey(defaultKey string) (string, error) {
+	return defaultKey, nil
 }
 
 // NewIntegration creates an integration based on the given configuration

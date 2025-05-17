@@ -7,15 +7,17 @@ import (
 	"os"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/static/integrations"
 	oe "github.com/iamseth/oracledb_exporter/collector"
+
+	"github.com/grafana/alloy/internal/static/integrations"
 
 	// required driver for integration
 	_ "github.com/sijms/go-ora/v2"
 
+	config_util "github.com/prometheus/common/config"
+
 	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
 	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
-	config_util "github.com/prometheus/common/config"
 )
 
 // DefaultConfig is the default config for the oracledb v2 integration
@@ -77,7 +79,7 @@ func (c *Config) Name() string {
 }
 
 // InstanceKey returns the addr of the oracle instance.
-func (c *Config) InstanceKey(agentKey string) (string, error) {
+func (c *Config) InstanceKey(_ string) (string, error) {
 	u, err := url.Parse(string(c.ConnectionString))
 	if err != nil {
 		return "", err
