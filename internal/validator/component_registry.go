@@ -34,8 +34,8 @@ func (cr *componentRegistry) Get(name string) (component.Registration, error) {
 	return cr.parent.Get(name)
 }
 
-func (cr *componentRegistry) registerCustomComponent(c *ast.BlockStmt) {
+func (cr *componentRegistry) registerCustomComponent(c *ast.BlockStmt, args any) {
 	// FIXME(kalleep): Figure out how to resolve args and exports for declares and how we could
 	// support doing proper checks of modules.
-	cr.custom[c.Label] = component.Registration{Name: c.Label}
+	cr.custom[c.Label] = component.Registration{Name: c.Label, Args: args}
 }

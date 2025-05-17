@@ -101,3 +101,6 @@ type Value = value.Value
 
 // ValueFromString creates a new Value from a given string.
 var ValueFromString = value.String
+
+// ValueFromBool creates a new Value from a given bool.
+var ValueFromBool = value.Bool
