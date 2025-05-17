@@ -19,6 +19,14 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+func boolPtr(val bool) *bool {
+	return &val
+}
+
+func stringPtr(val string) *string {
+	return &val
+}
+
 var (
 	configGen = &ConfigGenerator{
 		Secrets: &fakeSecrets{},
@@ -69,7 +77,7 @@ func TestGenerateK8SSDConfig(t *testing.T) {
 				APIServer: config.URL{},
 			},
 			attachMetadata: &promopv1.AttachMetadata{
-				Node: true,
+				Node: boolPtr(true),
 			},
 			expected: &promk8s.SDConfig{
 				Role:               promk8s.RoleEndpoint,
@@ -187,8 +195,8 @@ func TestGenerateSafeTLSConfig(t *testing.T) {
 		{
 			name: "empty",
 			tlsConfig: promopv1.SafeTLSConfig{
-				InsecureSkipVerify: true,
-				ServerName:         "test",
+				InsecureSkipVerify: boolPtr(true),
+				ServerName:         stringPtr("test"),
 			},
 			hasErr:     false,
 			serverName: "test",
@@ -196,7 +204,7 @@ func TestGenerateSafeTLSConfig(t *testing.T) {
 		{
 			name: "ca_file",
 			tlsConfig: promopv1.SafeTLSConfig{
-				InsecureSkipVerify: true,
+				InsecureSkipVerify: boolPtr(true),
 				CA:                 promopv1.SecretOrConfigMap{Secret: s("secrets", "ca_file")},
 			},
 			hasErr:     false,
@@ -206,7 +214,7 @@ func TestGenerateSafeTLSConfig(t *testing.T) {
 		{
 			name: "ca_file",
 			tlsConfig: promopv1.SafeTLSConfig{
-				InsecureSkipVerify: true,
+				InsecureSkipVerify: boolPtr(true),
 				CA:                 promopv1.SecretOrConfigMap{ConfigMap: cm("non-secrets", "ca_file")},
 			},
 			hasErr:     false,
@@ -216,7 +224,7 @@ func TestGenerateSafeTLSConfig(t *testing.T) {
 		{
 			name: "cert_file",
 			tlsConfig: promopv1.SafeTLSConfig{
-				InsecureSkipVerify: true,
+				InsecureSkipVerify: boolPtr(true),
 				Cert:               promopv1.SecretOrConfigMap{Secret: s("secrets", "cert_file")},
 			},
 			hasErr:     false,
@@ -226,7 +234,7 @@ func TestGenerateSafeTLSConfig(t *testing.T) {
 		{
 			name: "cert_file",
 			tlsConfig: promopv1.SafeTLSConfig{
-				InsecureSkipVerify: true,
+				InsecureSkipVerify: boolPtr(true),
 				Cert:               promopv1.SecretOrConfigMap{ConfigMap: cm("non-secrets", "cert_file")},
 			},
 			hasErr:     false,
@@ -236,7 +244,7 @@ func TestGenerateSafeTLSConfig(t *testing.T) {
 		{
 			name: "key_file",
 			tlsConfig: promopv1.SafeTLSConfig{
-				InsecureSkipVerify: true,
+				InsecureSkipVerify: boolPtr(true),
 				KeySecret:          s("secrets", "key_file"),
 			},
 			hasErr:     false,
@@ -289,7 +297,7 @@ func TestGenerateTLSConfig(t *testing.T) {
 			name: "safe gets set",
 			tlsConfig: promopv1.TLSConfig{
 				SafeTLSConfig: promopv1.SafeTLSConfig{
-					InsecureSkipVerify: true,
+					InsecureSkipVerify: boolPtr(true),
 				},
 			},
 			hasErr:   false,
@@ -485,14 +493,14 @@ func TestRelabelerAdd(t *testing.T) {
 func TestRelabelerAddFromV1(t *testing.T) {
 	relabeler := &relabeler{}
 
-	cfgs := []*promopv1.RelabelConfig{
+	cfgs := []promopv1.RelabelConfig{
 		{
 			SourceLabels: []promopv1.LabelName{"__meta_kubernetes_pod_label_app"},
-			Separator:    ";",
+			Separator:    stringPtr(";"),
 			TargetLabel:  "app",
 			Regex:        "(.*)",
 			Modulus:      1,
-			Replacement:  "$1",
+			Replacement:  stringPtr("$1"),
 			Action:       "replace",
 		},
 	}
