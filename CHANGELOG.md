@@ -57,6 +57,8 @@ Main (unreleased)
 
 - Improve `foreach` UI and add graph support for it. (@wildum)
 
+- Update `async-profiler` binaries for `pyroscope.java` to 4.0-87b7b42 (@github-hamza-bouqal)
+
 ### Bugfixes
 
 - Fix `otelcol.receiver.filelog` documentation's default value for `start_at`. (@petewall)
