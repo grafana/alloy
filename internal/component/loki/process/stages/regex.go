@@ -23,8 +23,9 @@ var (
 // RegexConfig configures a processing stage uses regular expressions to
 // extract values from log lines into the shared values map.
 type RegexConfig struct {
-	Expression string  `alloy:"expression,attr"`
-	Source     *string `alloy:"source,attr,optional"`
+	Expression       string  `alloy:"expression,attr"`
+	Source           *string `alloy:"source,attr,optional"`
+	LabelsFromGroups bool    `alloy:"labels_from_groups,attr,optional"`
 }
 
 // validateRegexConfig validates the config and return a regex
@@ -118,6 +119,9 @@ func (r *regexStage) Process(labels model.LabelSet, extracted map[string]interfa
 	for i, name := range r.expression.SubexpNames() {
 		if i != 0 && name != "" {
 			extracted[name] = match[i]
+			if r.config.LabelsFromGroups {
+				labels[model.LabelName(name)] = model.LabelValue(match[i])
+			}
 		}
 	}
 	if Debug {

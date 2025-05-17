@@ -76,7 +76,7 @@ func NewPipeline(logger log.Logger, stages []StageConfig, jobName *string, regis
 	}, nil
 }
 
-// RunWith will reads from the input channel entries, mutate them with the process function and returns them via the output channel.
+// RunWith will read from the input channel entries, mutate them with the process function and returns them via the output channel.
 func RunWith(input chan Entry, process func(e Entry) Entry) chan Entry {
 	out := make(chan Entry)
 	go func() {
