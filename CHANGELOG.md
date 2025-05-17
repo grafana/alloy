@@ -10,6 +10,13 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Breaking changes
+
+- The `prometheus.exporter.oracledb` component now embeds the [`oracledb_exporter from oracle`](https://github.com/oracle/oracle-db-appdev-monitoring) instead of the deprecated [`oracledb_exporter from iamseth`](https://github.com/iamseth/oracledb_exporter) for collecting metrics from an OracleDB server: (@wildum)
+  - The arguments `username`, `password`, `default_metrics`, and `custom_metrics` are now supported.
+  - The previously undocumented argument `custom_metrics` is now expecting a list of paths to custom metrics files.
+  - The following metrics are no longer available by default: oracledb_sessions_activity, oracledb_tablespace_free_bytes
+
 ### Features
 
 - Bump snmp_exporter and embedded modules in `prometheus.exporter.snmp` to v0.29.0, add cisco_device module support (@v-zhuravlev)

@@ -14,6 +14,19 @@ For a complete list of changes to {{< param "FULL_PRODUCT_NAME" >}}, with links 
 
 [Changelog]: https://github.com/grafana/alloy/blob/main/CHANGELOG.md
 
+## v1.9
+
+### Breaking change: The `prometheus.exporter.oracledb` component now embeds a different exporter
+
+The `prometheus.exporter.oracledb` component now embeds the [`oracledb_exporter from oracle`](https://github.com/oracle/oracle-db-appdev-monitoring) instead of the deprecated [`oracledb_exporter from iamseth`](https://github.com/iamseth/oracledb_exporter).
+
+As a result of this change, the following metrics are no longer available by default:
+
+- `oracledb_sessions_activity`
+- `oracledb_tablespace_free_bytes`
+
+The previously undocumented argument `custom_metrics` is now expecting a list of paths to custom metrics files.
+
 ## v1.6
 
 ### Breaking change: The `topics` argument in the component `loki.source.kafka` does not use regex by default anymore
