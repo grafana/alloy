@@ -4,6 +4,7 @@ package docker
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -106,10 +107,10 @@ func TestDuplicateTargets(t *testing.T) {
 }
 
 func TestRestart(t *testing.T) {
-	runningState := true
+	var inspectError error // nil to simulate a running container.
 	client := clientMock{
-		logLine: "2024-05-02T13:11:55.879889Z caller=module_service.go:114 msg=\"module stopped\" module=distributor",
-		running: func() bool { return runningState },
+		logLine:    "2024-05-02T13:11:55.879889Z caller=module_service.go:114 msg=\"module stopped\" module=distributor",
+		inspectErr: &inspectError,
 	}
 	expectedLogLine := "caller=module_service.go:114 msg=\"module stopped\" module=distributor"
 
@@ -125,14 +126,14 @@ func TestRestart(t *testing.T) {
 	}, time.Second, 20*time.Millisecond, "Expected log lines were not found within the time limit.")
 
 	// Stops the container.
-	runningState = false
+	inspectError = fmt.Errorf("container not found")
 	time.Sleep(targetRestartInterval + 10*time.Millisecond) // Sleep for a duration greater than targetRestartInterval to make sure it stops sending log lines.
 	entryHandler.Clear()
 	time.Sleep(targetRestartInterval + 10*time.Millisecond)
-	assert.Empty(t, entryHandler.Received()) // No log lines because the container was not running.
+	assert.Empty(t, entryHandler.Received()) // No log lines because a container is not found.
 
 	// Restart the container and expect log lines.
-	runningState = true
+	inspectError = nil
 	assert.EventuallyWithT(t, func(c *assert.CollectT) {
 		logLines := entryHandler.Received()
 		if assert.NotEmpty(c, logLines) {
@@ -142,10 +143,10 @@ func TestRestart(t *testing.T) {
 }
 
 func TestTargetNeverStarted(t *testing.T) {
-	runningState := false
+	var inspectError error = fmt.Errorf("container not found")
 	client := clientMock{
-		logLine: "2024-05-02T13:11:55.879889Z caller=module_service.go:114 msg=\"module stopped\" module=distributor",
-		running: func() bool { return runningState },
+		logLine:    "2024-05-02T13:11:55.879889Z caller=module_service.go:114 msg=\"module stopped\" module=distributor",
+		inspectErr: &inspectError,
 	}
 
 	tailer, _ := setupTailer(t, client)
@@ -191,19 +192,17 @@ func setupTailer(t *testing.T, client clientMock) (tailer *tailer, entryHandler 
 
 type clientMock struct {
 	client.APIClient
-	logLine string
-	running func() bool
+	logLine    string
+	inspectErr *error
 }
 
 func (mock clientMock) ContainerInspect(ctx context.Context, c string) (types.ContainerJSON, error) {
+	if mock.inspectErr != nil && *mock.inspectErr != nil {
+		return types.ContainerJSON{}, *mock.inspectErr
+	}
 	return types.ContainerJSON{
-		ContainerJSONBase: &types.ContainerJSONBase{
-			ID: c,
-			State: &types.ContainerState{
-				Running: mock.running(),
-			},
-		},
-		Config: &container.Config{Tty: true},
+		ContainerJSONBase: &types.ContainerJSONBase{},
+		Config:            &container.Config{Tty: true},
 	}, nil
 }
 
