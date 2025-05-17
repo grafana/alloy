@@ -12,10 +12,11 @@ import (
 // QueueArguments holds shared settings for components which can queue
 // requests.
 type QueueArguments struct {
-	Enabled      bool `alloy:"enabled,attr,optional"`
-	NumConsumers int  `alloy:"num_consumers,attr,optional"`
-	QueueSize    int  `alloy:"queue_size,attr,optional"`
-	Blocking     bool `alloy:"blocking,attr,optional"`
+	Enabled      bool   `alloy:"enabled,attr,optional"`
+	NumConsumers int    `alloy:"num_consumers,attr,optional"`
+	QueueSize    int64  `alloy:"queue_size,attr,optional"`
+	Blocking     bool   `alloy:"blocking,attr,optional"`
+	Sizer        string `alloy:"sizer,attr,optional"`
 
 	// Storage is a binding to an otelcol.storage.* component extension which handles
 	// reading and writing to disk
@@ -37,6 +38,7 @@ func (args *QueueArguments) SetToDefault() {
 		// This can be estimated at 1-4 GB worth of maximum memory usage
 		// This default is probably still too high, and may be adjusted further down in a future release
 		QueueSize: 1000,
+		Sizer:     "requests",
 	}
 }
 
@@ -53,16 +55,32 @@ func (args *QueueArguments) Extensions() map[otelcomponent.ID]otelcomponent.Comp
 }
 
 // Convert converts args into the upstream type.
-func (args *QueueArguments) Convert() (*otelexporterhelper.QueueConfig, error) {
+func (args *QueueArguments) Convert() (*otelexporterhelper.QueueBatchConfig, error) {
 	if args == nil {
 		return nil, nil
 	}
 
-	q := &otelexporterhelper.QueueConfig{
+	sizer, err := convertSizer(args.Sizer)
+	if err != nil {
+		if args.Enabled {
+			return nil, err
+		} else {
+			// This is a workaround for components which have queue arguments,
+			// but don't use them in some cases. For example, the loadbalancing exporter
+			// doesn't set the queue arguments by default. This leaves the sizer empty,
+			// and then the convert function complains that the sizer value is invalid.
+			// If the queue is disabled then it should be ok just to set the sizer to the default value -
+			// it won't make a difference anyway.
+			sizer = &otelexporterhelper.RequestSizerTypeRequests
+		}
+	}
+
+	q := &otelexporterhelper.QueueBatchConfig{
 		Enabled:      args.Enabled,
 		NumConsumers: args.NumConsumers,
 		QueueSize:    args.QueueSize,
 		Blocking:     args.Blocking,
+		Sizer:        *sizer,
 	}
 
 	// Configure storage if args.Storage is set.
@@ -87,5 +105,23 @@ func (args *QueueArguments) Validate() error {
 		return fmt.Errorf("queue_size must be greater than zero")
 	}
 
+	_, err := convertSizer(args.Sizer)
+	if err != nil {
+		return err
+	}
+
 	return nil
+}
+
+func convertSizer(sizer string) (*otelexporterhelper.RequestSizerType, error) {
+	switch sizer {
+	case "bytes":
+		return &otelexporterhelper.RequestSizerTypeBytes, nil
+	case "items":
+		return &otelexporterhelper.RequestSizerTypeItems, nil
+	case "requests":
+		return &otelexporterhelper.RequestSizerTypeRequests, nil
+	default:
+		return nil, fmt.Errorf("invalid sizer: %s", sizer)
+	}
 }

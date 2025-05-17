@@ -2,6 +2,8 @@
 package awss3
 
 import (
+	"time"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
@@ -43,6 +45,9 @@ type Arguments struct {
 
 	S3Uploader    S3Uploader    `alloy:"s3_uploader,block"`
 	MarshalerName MarshalerType `alloy:"marshaler,block,optional"`
+	Timeout       time.Duration `alloy:"timeout,attr,optional"`
+
+	ResourceAttrsToS3 ResourceAttrsToS3 `alloy:"resource_attrs_to_s3,block,optional"`
 
 	// DebugMetrics configures component internal metrics. Optional
 	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
@@ -55,6 +60,7 @@ func (args *Arguments) SetToDefault() {
 	args.S3Uploader.SetToDefault()
 	args.DebugMetrics.SetToDefault()
 	args.Queue.SetToDefault()
+	args.Timeout = otelcol.DefaultTimeout
 }
 
 // Validate implements syntax.Validator.
@@ -72,6 +78,8 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 
 	result.S3Uploader = args.S3Uploader.Convert()
 	result.MarshalerName = args.MarshalerName.Convert()
+	result.ResourceAttrsToS3 = args.ResourceAttrsToS3.Convert()
+	result.TimeoutSettings.Timeout = args.Timeout
 
 	q, err := args.Queue.Convert()
 	if err != nil {
@@ -92,6 +100,18 @@ func (args Arguments) Exporters() map[pipeline.Signal]map[otelcomponent.ID]otelc
 
 func (args Arguments) DebugMetricsConfig() otelcolCfg.DebugMetricsArguments {
 	return args.DebugMetrics
+}
+
+// ResourceAttrsToS3 defines the mapping of S3 uploading configuration values to resource attribute values.
+type ResourceAttrsToS3 struct {
+	// S3Prefix indicates the mapping of the key (directory) prefix used for writing into the bucket to a specific resource attribute value.
+	S3Prefix string `alloy:"s3_prefix,attr"`
+}
+
+func (args ResourceAttrsToS3) Convert() awss3exporter.ResourceAttrsToS3 {
+	return awss3exporter.ResourceAttrsToS3{
+		S3Prefix: args.S3Prefix,
+	}
 }
 
 // S3 Uploader Arguments Block
@@ -117,7 +137,6 @@ func (args *S3Uploader) SetToDefault() {
 		DisableSSL:        false,
 		S3PartitionFormat: "year=%Y/month=%m/day=%d/hour=%H/minute=%M",
 		Compression:       "none",
-		ACL:               "private",
 		StorageClass:      "STANDARD",
 	}
 }

@@ -38,7 +38,7 @@ func (otlpHTTPExporterConverter) ConvertAndAppend(state *State, id componentstat
 	overrideHook := func(val interface{}) interface{} {
 		switch val.(type) {
 		case auth.Handler:
-			ext := state.LookupExtension(cfg.(*otlphttpexporter.Config).Auth.AuthenticatorID)
+			ext := state.LookupExtension(cfg.(*otlphttpexporter.Config).ClientConfig.Auth.AuthenticatorID)
 			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
 		case extension.ExtensionHandler:
 			ext := state.LookupExtension(*cfg.(*otlphttpexporter.Config).QueueConfig.StorageID)
