@@ -162,19 +162,22 @@ func (v *validator) validateDeclares(s *state) {
 // validateConfigs will perform validation on config blocks.
 func (v *validator) validateConfigs(s *state) {
 	var (
-		register bool
-		mem      = make(map[string]*ast.BlockStmt, len(s.configs))
+		mem = make(map[string]*ast.BlockStmt, len(s.configs))
 	)
 
 	for i, c := range s.configs {
-		node := newBlockNode(c)
+		var (
+			// regiter controls whether we register arguments and imports.
+			register bool
+			node     = newBlockNode(c)
+		)
+
 		// Config blocks needs to be unique.
 		if diag, ok := blockAlreadyDefined(mem, node.block); ok {
 			node.diags.Add(diag)
 			// We need to generate a unique id for this duplicated node so we can still typecheck it.
 			node.id = node.id + "-" + strconv.Itoa(i)
-		} else if c.Name[0] == "import" {
-			// We need to register import blocks as a custom component.
+		} else {
 			register = true
 		}
 
@@ -205,10 +208,10 @@ func (v *validator) validateConfigs(s *state) {
 					EndPos:   ast.EndPos(node.block).Position(),
 				})
 			}
+
 			if diag, ok := blockMissingLabel(node.block); ok {
-				register = false
 				node.diags.Add(diag)
-			} else {
+			} else if register {
 				s.arguments = append(s.arguments, node.block)
 			}
 
@@ -225,7 +228,6 @@ func (v *validator) validateConfigs(s *state) {
 			}
 
 			if diag, ok := blockMissingLabel(node.block); ok {
-				register = false
 				node.diags.Add(diag)
 			}
 
@@ -513,14 +515,8 @@ func blockMissingLabel(b *ast.BlockStmt) (diag.Diagnostic, bool) {
 }
 
 func generateArgumentsStruct(args []*ast.BlockStmt) any {
-	mem := make(map[string]struct{})
 	fields := make([]reflect.StructField, 0, len(args))
 	for _, a := range args {
-		if _, ok := mem[a.Label]; ok {
-			continue
-		}
-		mem[a.Label] = struct{}{}
-
 		optional := typecheck.TryUnwrapBlockAttr(a, "optional", syntax.ValueFromBool(false))
 
 		var tag string
