@@ -101,13 +101,13 @@ case "$TARGET_CONTAINER" in
     ;;
 
   alloy-devel)
-    docker buildx build $DOCKER_FLAGS         \
-      --platform $BUILD_PLATFORMS             \
-      --build-arg RELEASE_BUILD=1             \
-      --build-arg VERSION="$VERSION"          \
-      -t "$DEVEL_ALLOY_IMAGE:$TAG_VERSION"    \
-      -t "$DEVEL_ALLOY_IMAGE:$BRANCH_TAG"     \
-      -f Dockerfile                           \
+    docker buildx build $DOCKER_FLAGS      \
+      --platform $BUILD_PLATFORMS          \
+      --build-arg RELEASE_BUILD=1          \
+      --build-arg VERSION="$VERSION"       \
+      -t "$DEVEL_ALLOY_IMAGE:$TAG_VERSION" \
+      -t "$DEVEL_ALLOY_IMAGE:$BRANCH_TAG"  \
+      -f Dockerfile                        \
       .
     ;;
 
