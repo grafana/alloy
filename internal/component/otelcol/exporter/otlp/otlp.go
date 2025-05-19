@@ -38,7 +38,7 @@ type Arguments struct {
 	Retry otelcol.RetryArguments `alloy:"retry_on_failure,block,optional"`
 
 	// Add BatcherConfig once https://github.com/open-telemetry/opentelemetry-collector/issues/8122 is resolved
-	// BatcherConfig exporterbatcher.Config `mapstructure:"batcher"`
+	// BatcherConfig exporterhelper.BatcherConfig `mapstructure:"batcher"`
 
 	// DebugMetrics configures component internal metrics. Optional.
 	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`

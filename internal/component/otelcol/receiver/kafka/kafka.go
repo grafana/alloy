@@ -12,6 +12,7 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/receiver"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/mitchellh/mapstructure"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/kafka/configkafka"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/configretry"
@@ -37,11 +38,15 @@ type Arguments struct {
 	ProtocolVersion   string        `alloy:"protocol_version,attr"`
 	SessionTimeout    time.Duration `alloy:"session_timeout,attr,optional"`
 	HeartbeatInterval time.Duration `alloy:"heartbeat_interval,attr,optional"`
-	Topic             string        `alloy:"topic,attr,optional"`
-	Encoding          string        `alloy:"encoding,attr,optional"`
+	Topic             string        `alloy:"topic,attr,optional"`    // Deprecated
+	Encoding          string        `alloy:"encoding,attr,optional"` // Deprecated
 	GroupID           string        `alloy:"group_id,attr,optional"`
 	ClientID          string        `alloy:"client_id,attr,optional"`
 	InitialOffset     string        `alloy:"initial_offset,attr,optional"`
+
+	Logs    *KafkaReceiverTopicEncodingConfig `alloy:"logs,block,optional"`
+	Metrics *KafkaReceiverTopicEncodingConfig `alloy:"metrics,block,optional"`
+	Traces  *KafkaReceiverTopicEncodingConfig `alloy:"traces,block,optional"`
 
 	ResolveCanonicalBootstrapServersOnly bool `alloy:"resolve_canonical_bootstrap_servers_only,attr,optional"`
 
@@ -50,10 +55,14 @@ type Arguments struct {
 	AutoCommit       AutoCommitArguments                  `alloy:"autocommit,block,optional"`
 	MessageMarking   MessageMarkingArguments              `alloy:"message_marking,block,optional"`
 	HeaderExtraction HeaderExtraction                     `alloy:"header_extraction,block,optional"`
+	TLS              *otelcol.TLSClientArguments          `alloy:"tls,block,optional"`
 
-	MinFetchSize     int32 `alloy:"min_fetch_size,attr,optional"`
-	DefaultFetchSize int32 `alloy:"default_fetch_size,attr,optional"`
-	MaxFetchSize     int32 `alloy:"max_fetch_size,attr,optional"`
+	MinFetchSize           int32         `alloy:"min_fetch_size,attr,optional"`
+	DefaultFetchSize       int32         `alloy:"default_fetch_size,attr,optional"`
+	MaxFetchSize           int32         `alloy:"max_fetch_size,attr,optional"`
+	MaxFetchWait           time.Duration `alloy:"max_fetch_wait,attr,optional"`
+	GroupRebalanceStrategy string        `alloy:"group_rebalance_strategy,attr,optional"`
+	GroupInstanceID        string        `alloy:"group_instance_id,attr,optional"`
 
 	ErrorBackOff ErrorBackOffArguments `alloy:"error_backoff,block,optional"`
 
@@ -73,16 +82,17 @@ func (args *Arguments) SetToDefault() {
 		// for compatibility, even though that means using a client and group ID of
 		// "otel-collector".
 
-		Encoding:          "otlp_proto",
-		Brokers:           []string{"localhost:9092"},
-		ClientID:          "otel-collector",
-		GroupID:           "otel-collector",
-		InitialOffset:     "latest",
-		SessionTimeout:    10 * time.Second,
-		HeartbeatInterval: 3 * time.Second,
-		MinFetchSize:      1,
-		DefaultFetchSize:  1048576,
-		MaxFetchSize:      0,
+		Brokers:                []string{"localhost:9092"},
+		ClientID:               "otel-collector",
+		GroupID:                "otel-collector",
+		InitialOffset:          "latest",
+		SessionTimeout:         10 * time.Second,
+		HeartbeatInterval:      3 * time.Second,
+		MinFetchSize:           1,
+		DefaultFetchSize:       1048576,
+		MaxFetchSize:           0,
+		MaxFetchWait:           250 * time.Millisecond,
+		GroupRebalanceStrategy: "range",
 	}
 	args.Metadata.SetToDefault()
 	args.AutoCommit.SetToDefault()
@@ -120,7 +130,58 @@ func (args *Arguments) Validate() error {
 		}
 	}
 
+	switch args.GroupRebalanceStrategy {
+	case "range", "roundrobin", "sticky":
+	default:
+		return fmt.Errorf("group_rebalance_strategy must be one of 'range', 'roundrobin', or 'sticky'")
+	}
+
 	return nil
+}
+
+type KafkaReceiverTopicEncodingConfig struct {
+	Topic    string `alloy:"topic,attr,optional"`
+	Encoding string `alloy:"encoding,attr,optional"`
+}
+
+// A utility struct for handling deprecated arguments.
+type deprecatedArg struct {
+	// The value to which the deprecated argument is set.
+	value string
+
+	// The default value to use if neither the deprecated argument
+	// nor the "new" argument have a non-empty value.
+	defaultValue string
+}
+
+func (c *KafkaReceiverTopicEncodingConfig) convert(topic, encoding deprecatedArg) kafkareceiver.TopicEncodingConfig {
+	result := kafkareceiver.TopicEncodingConfig{}
+
+	if c != nil { // Use values from the new block if set.
+		if len(c.Topic) > 0 {
+			result.Topic = c.Topic
+		}
+		if len(c.Encoding) > 0 {
+			result.Encoding = c.Encoding
+		}
+	} else { // Try to use deprecated attributes only if the new block is not set.
+		if len(topic.value) > 0 {
+			result.Topic = topic.value
+		}
+
+		if len(encoding.value) > 0 {
+			result.Encoding = encoding.value
+		}
+	}
+
+	if len(result.Topic) == 0 {
+		result.Topic = topic.defaultValue
+	}
+	if len(result.Encoding) == 0 {
+		result.Encoding = encoding.defaultValue
+	}
+
+	return result
 }
 
 type ErrorBackOffArguments struct {
@@ -163,8 +224,8 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	result.ProtocolVersion = args.ProtocolVersion
 	result.SessionTimeout = args.SessionTimeout
 	result.HeartbeatInterval = args.HeartbeatInterval
-	result.Topic = args.Topic
-	result.Encoding = args.Encoding
+	// Do not set the encoding argument - it is deprecated.
+	// result.Encoding = args.Encoding
 	result.GroupID = args.GroupID
 	result.ClientID = args.ClientID
 	result.InitialOffset = args.InitialOffset
@@ -176,7 +237,48 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	result.MinFetchSize = args.MinFetchSize
 	result.DefaultFetchSize = args.DefaultFetchSize
 	result.MaxFetchSize = args.MaxFetchSize
+	result.MaxFetchWait = args.MaxFetchWait
+	result.GroupRebalanceStrategy = args.GroupRebalanceStrategy
+	result.GroupInstanceID = args.GroupInstanceID
 	result.ErrorBackOff = *args.ErrorBackOff.Convert()
+
+	result.Logs = args.Logs.convert(
+		deprecatedArg{
+			value:        args.Topic,
+			defaultValue: "otlp_logs",
+		},
+		deprecatedArg{
+			value:        args.Encoding,
+			defaultValue: "otlp_proto",
+		},
+	)
+
+	result.Metrics = args.Metrics.convert(
+		deprecatedArg{
+			value:        args.Topic,
+			defaultValue: "otlp_metrics",
+		},
+		deprecatedArg{
+			value:        args.Encoding,
+			defaultValue: "otlp_proto",
+		},
+	)
+
+	result.Traces = args.Traces.convert(
+		deprecatedArg{
+			value:        args.Topic,
+			defaultValue: "otlp_spans",
+		},
+		deprecatedArg{
+			value:        args.Encoding,
+			defaultValue: "otlp_proto",
+		},
+	)
+
+	if args.TLS != nil {
+		tlsCfg := args.TLS.Convert()
+		result.TLS = tlsCfg
+	}
 
 	return &result, nil
 }
@@ -211,8 +313,8 @@ func (args *AutoCommitArguments) SetToDefault() {
 }
 
 // Convert converts args into the upstream type.
-func (args AutoCommitArguments) Convert() kafkareceiver.AutoCommit {
-	return kafkareceiver.AutoCommit{
+func (args AutoCommitArguments) Convert() configkafka.AutoCommitConfig {
+	return configkafka.AutoCommitConfig{
 		Enable:   args.Enable,
 		Interval: args.Interval,
 	}

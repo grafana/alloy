@@ -37,23 +37,29 @@ otelcol.exporter.awss3 "<LABEL>" {
 
 ## Arguments
 
-`otelcol.exporter.awss3` doesn't support any arguments.
+You can use the following arguments with `otelcol.exporter.awss3`:
+	
+| Name      | Type       | Description                                      | Default | Required |
+| --------- | ---------- | ------------------------------------------------ | ------- | -------- |
+| `timeout` | `duration` | Time to wait before marking a request as failed. | `"5s"`  | no       |
 
 ## Blocks
 
 You can use the following blocks with `otelcol.exporter.awss3`:
 
-| Block                            | Description                                                                | Required |
-| -------------------------------- | -------------------------------------------------------------------------- | -------- |
-| [`s3_uploader`][s3_uploader]     | Configures the AWS S3 bucket details to send telemetry data to.            | yes      |
-| [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |
-| [`marshaler`][marshaler]         | Marshaler used to produce output data.                                     | no       |
-| [`sending_queue`][sending_queue] | Configures batching of data before sending.                                | no       |
+| Block                                          | Description                                                                                              | Required |
+| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------- | -------- |
+| [`s3_uploader`][s3_uploader]                   | Configures the AWS S3 bucket details to send telemetry data to.                                          | yes      |
+| [`debug_metrics`][debug_metrics]               | Configures the metrics that this component generates to monitor its state.                               | no       |
+| [`marshaler`][marshaler]                       | Marshaler used to produce output data.                                                                   | no       |
+| [`resource_attrs_to_s3`][resource_attrs_to_s3] | Configures the mapping of S3 configuration values to resource attribute values for uploading operations. | no       |
+| [`sending_queue`][sending_queue]               | Configures batching of data before sending.                                                              | no       |
 
 [s3_uploader]: #s3_uploader
 [marshaler]: #marshaler
 [debug_metrics]: #debug_metrics
 [sending_queue]: #sending_queue
+[resource_attrs_to_s3]: #resource_attrs_to_s3-block
 
 ### `s3_uploader`
 
@@ -67,7 +73,7 @@ The following arguments are supported:
 | --------------------- | --------- | ----------------------------------------------------------------------------------------------------- | --------------------------------------------- | -------- |
 | `s3_bucket`           | `string`  | The S3 bucket.                                                                                        |                                               | yes      |
 | `s3_prefix`           | `string`  | Prefix for the S3 key (root directory inside the bucket).                                             |                                               | yes      |
-| `acl`                 | `string`  | The canned ACL to use when uploading objects.                                                         | `"private"`                                   | no       |
+| `acl`                 | `string`  | The canned ACL to use when uploading objects.                                                         | `""`                                          | no       |
 | `compression`         | `string`  | File compression method, `none` or `gzip`                                                             | `none`                                        | no       |
 | `disable_ssl`         | `boolean` | Set this to `true` to disable SSL when sending requests.                                              | `false`                                       | no       |
 | `endpoint`            | `string`  | Overrides the endpoint used by the exporter instead of constructing it from `region` and `s3_bucket`. |                                               | no       |
@@ -108,6 +114,18 @@ The following arguments are supported:
 The `sending_queue` block configures an in-memory buffer of batches before data is sent to S3.
 
 {{< docs/shared lookup="reference/components/otelcol-queue-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### resource_attrs_to_s3 block
+
+The following arguments are supported:
+
+| Name        | Type     | Description                                                                  | Default | Required |
+| ----------- | -------- | ---------------------------------------------------------------------------- | ------- | -------- |
+| `s3_prefix` | `string` | Configures which resource attribute's value should be used as the S3 prefix. |         | yes      |
+
+When `s3_prefix` is set, it dynamically overrides [`s3_uploader`][s3_uploader] > `s3_prefix`.
+If the specified resource attribute exists in the data, its value will be used as the prefix.
+Otherwise, [`s3_uploader`][s3_uploader] > `s3_prefix` will serve as the fallback.
 
 ### Compression
 

@@ -15,7 +15,7 @@ connectors:
       max_items: 10
     cache_loop: 2m
     store_expiration_loop: 5s
-    database_name_attribute: db_name3
+    database_name_attributes: [db_name3, db_name4]
     metrics_flush_interval: 3m
 
 exporters:
