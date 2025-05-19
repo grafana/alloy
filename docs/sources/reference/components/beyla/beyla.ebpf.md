@@ -51,13 +51,14 @@ You can use the following arguments with `beyla.ebpf`:
 
 When `enforce_sys_caps`  is set to true and the required system capabilities aren't present, Beyla aborts its startup and logs a list of the missing capabilities.
 
-`trace_printer` is used to print the trace information in a specific format. The following formats are supported:
+`trace_printer` is used to print the trace information in a specific format.
+The following formats are supported:
 
-* `disabled` disables trace printing.
-* `counter` prints the trace information in a counter format.
-* `text` prints the trace information in a text format.
-* `json` prints the trace information in a JSON format.
-* `json_indent` prints the trace information in a JSON format with indentation.
+* `disabled`: Disables trace printing.
+* `counter`: Prints the trace information in a counter format.
+* `text`: Prints the trace information in a text format.
+* `json`: Prints the trace information in a JSON format.
+* `json_indent`: Prints the trace information in a JSON format with indentation.
 
 ## Blocks
 
