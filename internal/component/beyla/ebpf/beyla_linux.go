@@ -336,17 +336,27 @@ func (args Network) Convert(enable bool) beyla.NetworkConfig {
 	return networks
 }
 
-func (args EBPF) Convert() beylaCfg.EBPFTracer {
+func (args EBPF) Convert() (*beylaCfg.EBPFTracer, error) {
 	ebpf := beyla.DefaultConfig.EBPF
 	if args.HTTPRequestTimeout != 0 {
 		ebpf.HTTPRequestTimeout = args.HTTPRequestTimeout
 	}
-	ebpf.ContextPropagationEnabled = args.ContextPropagationEnabled
+
+	if args.ContextPropagation == "" {
+		args.ContextPropagation = "disabled"
+	}
+	var contextPropagationMode beylaCfg.ContextPropagationMode
+	err := contextPropagationMode.UnmarshalText([]byte(args.ContextPropagation))
+	if err != nil {
+		return nil, err
+	}
+	ebpf.ContextPropagation = contextPropagationMode
+
 	ebpf.WakeupLen = args.WakeupLen
 	ebpf.TrackRequestHeaders = args.TrackRequestHeaders
 	ebpf.HighRequestVolume = args.HighRequestVolume
 	ebpf.HeuristicSQLDetect = args.HeuristicSQLDetect
-	return ebpf
+	return &ebpf, nil
 }
 
 func (args Filters) Convert() filter.AttributesConfig {
@@ -507,7 +517,13 @@ func (a *Arguments) Convert() (*beyla.Config, error) {
 	cfg.Prometheus = a.Metrics.Convert()
 	cfg.NetworkFlows = a.Metrics.Network.Convert(a.Metrics.hasNetworkFeature())
 	cfg.EnforceSysCaps = a.EnforceSysCaps
-	cfg.EBPF = a.EBPF.Convert()
+
+	ebpf, err := a.EBPF.Convert()
+	if err != nil {
+		return nil, err
+	}
+	cfg.EBPF = *ebpf
+
 	cfg.Filters = a.Filters.Convert()
 	cfg.TracePrinter = debug.TracePrinter(a.TracePrinter)
 

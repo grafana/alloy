@@ -66,7 +66,7 @@ You can use the following arguments with `otelcol.connector.spanmetrics`:
 | Name                              | Type           | Description                                                                            | Default                 | Required |
 | --------------------------------- | -------------- | -------------------------------------------------------------------------------------- | ----------------------- | -------- |
 | `aggregation_temporality`         | `string`       | Configures whether to reset the metrics after flushing.                                | `"CUMULATIVE"`          | no       |
-| `dimensions_cache_size`           | `number`       | How many dimensions to cache.                                                          | `1000`                  | no       |
+| `dimensions_cache_size`           | `number`       | (Deprecated: use `aggregation_cardinality_limit` instead) How many dimensions to cache.| `0`                  | no       |
 | `exclude_dimensions`              | `list(string)` | List of dimensions to be excluded from the default set of dimensions.                  | `[]`                    | no       |
 | `metric_timestamp_cache_size`     | `number`       | Controls the size of a cache used to keep track of the last time a metric was flushed. | `1000`                  | no       |
 | `metrics_expiration`              | `duration`     | Time period after which metrics are considered stale and are removed from the cache.   | `"0s"`                  | no       |
@@ -74,8 +74,8 @@ You can use the following arguments with `otelcol.connector.spanmetrics`:
 | `namespace`                       | `string`       | Metric namespace.                                                                      | `"traces.span.metrics"` | no       |
 | `resource_metrics_cache_size`     | `number`       | The size of the cache holding metrics for a service.                                   | `1000`                  | no       |
 | `resource_metrics_key_attributes` | `list(string)` | Limits the resource attributes used to create the metrics.                             | `[]`                    | no       |
-
-Adjusting `dimensions_cache_size` can improve the {{< param "PRODUCT_NAME" >}} process' memory usage.
+| `aggregation_cardinality_limit`   | `number`       | The maximum number of unique combinations of dimensions that will be tracked for metrics aggregation. | `0`      | no       |
+| `include_instrumentation_scope`   | `list(string)` | A list of instrumentation scope names to include from the traces.                      | `[]`                    | no       |
 
 The supported values for `aggregation_temporality` are:
 
@@ -97,6 +97,9 @@ Downstream components converting from delta to cumulative may handle these reset
 A resource doesn't need to have all of the attributes.
 The list must include enough attributes to properly identify unique resources or risk aggregating data from more than one service and span.
 For example, `["service.name", "telemetry.sdk.language", "telemetry.sdk.name"]`.
+
+When the `aggregation_cardinality_limit` limit is reached, additional unique combinations will be dropped but registered under a new entry with `otel.metric.overflow="true"`. 
+A value of `0` means no limit is applied.
 
 ## Blocks
 
