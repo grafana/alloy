@@ -3,7 +3,6 @@ package oracledb_exporter
 import (
 	"fmt"
 	"log/slog"
-	"net/url"
 	"os"
 	"strings"
 
@@ -56,16 +55,6 @@ func (c *Config) Name() string {
 
 // InstanceKey returns the addr of the oracle instance.
 func (c *Config) InstanceKey(agentKey string) (string, error) {
-	// Backward compatibility when the connection string needed the scheme
-	if strings.HasPrefix(string(c.ConnectionString), "oracle://") {
-		u, err := url.Parse(string(c.ConnectionString))
-		if err != nil {
-			return "", err
-		}
-		return fmt.Sprintf("%s:%s", u.Hostname(), u.Port()), nil
-	}
-
-	// New url format does not require the scheme
 	parts := strings.Split(string(c.ConnectionString), "/")
 	if len(parts) == 0 {
 		return "", fmt.Errorf("invalid connection string format")
@@ -83,56 +72,17 @@ func init() {
 	integrations_v2.RegisterLegacy(&Config{}, integrations_v2.TypeMultiplex, metricsutils.NewNamedShim("oracledb"))
 }
 
-// This is for backwards compatibility with the old config where the username and password were in the connection string
-// The old config has the format: oracle://user:pass@host:port/service_name[?OPTION1=VALUE1[&OPTIONn=VALUEn]...]
-// The new exporter expects the format: host:port/service_name[?OPTION1=VALUE1[&OPTIONn=VALUEn]...]
-func parseConnectionString(c *Config) (string, string, string, error) {
-	connectionString := string(c.ConnectionString)
-	username := c.Username
-	password := string(c.Password)
-
-	if strings.HasPrefix(string(c.ConnectionString), "oracle://") {
-		u, err := url.Parse(connectionString)
-		if err != nil {
-			return "", "", "", err
-		}
-		pass, set := u.User.Password()
-		if !set {
-			return "", "", "", fmt.Errorf("password not set in connection string with scheme")
-		}
-
-		if c.Username != "" || c.Password != "" {
-			return "", "", "", fmt.Errorf("username and password should not be provided in both the connection string and the arguments")
-		}
-
-		password = pass
-		username = u.User.Username()
-		parts := strings.Split(connectionString, "@")
-		if len(parts) < 2 {
-			return "", "", "", fmt.Errorf("connection string with credentials must contain an @ character")
-		}
-		connectionString = strings.Join(parts[1:], "@") // safety in case there are multiple @ characters
-	}
-
-	return connectionString, username, password, nil
-}
-
 // New creates a new oracledb integration. The integration scrapes metrics
 // from an OracleDB exporter running with the https://github.com/oracle/oracle-db-appdev-monitoring
 func New(logger log.Logger, c *Config) (integrations.Integration, error) {
-	connectionString, username, password, err := parseConnectionString(c)
-	if err != nil {
-		return nil, err
-	}
-
 	slogLogger := slog.New(logging.NewSlogGoKitHandler(logger))
 
 	oeExporter, err := oe.NewExporter(slogLogger, &oe.MetricsConfiguration{
 		Databases: map[string]oe.DatabaseConfig{
 			"default": {
-				URL:      connectionString,
-				Username: username,
-				Password: password,
+				URL:      string(c.ConnectionString),
+				Username: c.Username,
+				Password: string(c.Password),
 				ConnectConfig: oe.ConnectConfig{
 					MaxIdleConns: c.MaxIdleConns,
 					MaxOpenConns: c.MaxOpenConns,

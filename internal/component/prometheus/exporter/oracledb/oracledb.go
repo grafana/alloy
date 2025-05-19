@@ -14,6 +14,10 @@ import (
 	config_util "github.com/prometheus/common/config"
 )
 
+const (
+	oracleScheme = "oracle://"
+)
+
 func init() {
 	component.Register(component.Registration{
 		Name:      "prometheus.exporter.oracledb",
@@ -39,7 +43,6 @@ var DefaultArguments = Arguments{
 var (
 	errNoConnectionString = errors.New("no connection string was provided")
 	errWrongSchema        = errors.New("connection string should not contain a scheme if the username and password are provided")
-	errNoPassword         = errors.New("password not set in connection string with scheme")
 )
 
 // Arguments controls the oracledb exporter.
@@ -65,18 +68,13 @@ func (a *Arguments) Validate() error {
 		return errNoConnectionString
 	}
 
-	if strings.HasPrefix(string(a.ConnectionString), "oracle://") && (a.Username != "" || a.Password != "") {
-		return errWrongSchema
-	}
-
-	if strings.HasPrefix(string(a.ConnectionString), "oracle://") {
-		u, err := url.Parse(string(a.ConnectionString))
+	if hasOracleScheme(a.ConnectionString) {
+		if a.Username != "" || a.Password != "" {
+			return errWrongSchema
+		}
+		_, err := url.Parse(string(a.ConnectionString))
 		if err != nil {
 			return err
-		}
-		_, set := u.User.Password()
-		if !set {
-			return errNoPassword
 		}
 	}
 
@@ -84,14 +82,42 @@ func (a *Arguments) Validate() error {
 }
 
 func (a *Arguments) Convert() *oracledb_exporter.Config {
+	connectionString, username, password := a.convertConnectionString()
 	return &oracledb_exporter.Config{
-		ConnectionString: config_util.Secret(a.ConnectionString),
+		ConnectionString: config_util.Secret(connectionString),
 		MaxIdleConns:     a.MaxIdleConns,
 		MaxOpenConns:     a.MaxOpenConns,
 		QueryTimeout:     a.QueryTimeout,
 		CustomMetrics:    a.CustomMetrics,
-		Username:         a.Username,
-		Password:         config_util.Secret(a.Password),
+		Username:         username,
+		Password:         config_util.Secret(password),
 		DefaultMetrics:   a.DefaultMetrics,
 	}
+}
+
+// This is for backwards compatibility with the old config where the username and password were in the connection string
+func (a *Arguments) convertConnectionString() (string, string, string) {
+	connectionString := string(a.ConnectionString)
+	username := a.Username
+	password := string(a.Password)
+	if hasOracleScheme(a.ConnectionString) {
+		u, _ := url.Parse(string(a.ConnectionString))
+		if pass, set := u.User.Password(); set && strings.Contains(connectionString, "@") {
+			// with credentials
+			// oracle://user:pass@host:port/service_name[?OPTION1=VALUE1[&OPTIONn=VALUEn]...]
+			password = pass
+			username = u.User.Username()
+			connectionString = strings.Join(strings.Split(connectionString, "@")[1:], "@")
+		} else {
+			// without credentials
+			// oracle://host:port/service_name[?OPTION1=VALUE1[&OPTIONn=VALUEn]...]
+			connectionString = strings.TrimPrefix(connectionString, oracleScheme)
+		}
+	}
+	// connectionString is now in the format: host:port/service_name[?OPTION1=VALUE1[&OPTIONn=VALUEn]...]
+	return connectionString, username, password
+}
+
+func hasOracleScheme(connectionString alloytypes.Secret) bool {
+	return strings.HasPrefix(string(connectionString), oracleScheme)
 }

@@ -35,8 +35,10 @@ You can use the following arguments with `prometheus.exporter.oracledb`:
 | `max_idle_conns`    | `int`      | Number of maximum idle connections in the connection pool.     | `0`     | no       |
 | `max_open_conns`    | `int`      | Number of maximum open connections in the connection pool.     | `10`    | no       |
 | `query_timeout`     | `int`      | The query timeout in seconds.                                  | `5`     | no       |
-| `default_metrics`   | `string`   | The path to the default metrics file.                          |         | no       |
-| `custom_metrics`    | `[]string` | The paths to the custom metrics files.                         |         | no       |
+| `default_metrics`   | `string`   | The path to the default metrics file. (TOML format)            |         | no       |
+| `custom_metrics`    | `[]string` | The paths to the custom metrics files. (TOML format)           |         | no       |
+
+Examples of TOML metrics files can be found in the [oracledb_exporter repository](https://github.com/oracle/oracle-db-appdev-monitoring).
 
 For backward compatibility, the `username` and `password` arguments can still be provided in the `connection_string` argument:
 

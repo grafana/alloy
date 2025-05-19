@@ -3,8 +3,10 @@ package oracledb
 import (
 	"testing"
 
+	"github.com/grafana/alloy/internal/static/integrations/oracledb_exporter"
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/alloytypes"
+	config_util "github.com/prometheus/common/config"
 	"github.com/stretchr/testify/require"
 )
 
@@ -62,12 +64,13 @@ func TestAlloyUnmarshal2(t *testing.T) {
 	require.Equal(t, expected, args)
 }
 
-func TestArgumentsValidate(t *testing.T) {
+func TestArguments(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    Arguments
 		wantErr bool
 		err     error
+		want    *oracledb_exporter.Config
 	}{
 		{
 			name: "no connection string",
@@ -88,15 +91,7 @@ func TestArgumentsValidate(t *testing.T) {
 			err:     errWrongSchema,
 		},
 		{
-			name: "no password in connection string with scheme",
-			args: Arguments{
-				ConnectionString: alloytypes.Secret("oracle://localhost:1521/orcl.localnet"),
-			},
-			wantErr: true,
-			err:     errNoPassword,
-		},
-		{
-			name: "valid OracleDB",
+			name: "valid OracleDB old config",
 			args: Arguments{
 				ConnectionString: alloytypes.Secret("oracle://user:password@localhost:1521/orcl.localnet"),
 				MaxIdleConns:     1,
@@ -105,9 +100,40 @@ func TestArgumentsValidate(t *testing.T) {
 				CustomMetrics:    []string{"custom_metrics.toml"},
 				DefaultMetrics:   "default_metrics.toml",
 			},
+			want: &oracledb_exporter.Config{
+				ConnectionString: config_util.Secret("localhost:1521/orcl.localnet"),
+				MaxIdleConns:     1,
+				MaxOpenConns:     1,
+				QueryTimeout:     5,
+				CustomMetrics:    []string{"custom_metrics.toml"},
+				DefaultMetrics:   "default_metrics.toml",
+				Username:         "user",
+				Password:         config_util.Secret("password"),
+			},
 		},
 		{
-			name: "valid OracleDB2",
+			name: "valid OracleDB old config without credentials",
+			args: Arguments{
+				ConnectionString: alloytypes.Secret("oracle://localhost:1521/orcl.localnet"),
+				MaxIdleConns:     1,
+				MaxOpenConns:     1,
+				QueryTimeout:     5,
+				CustomMetrics:    []string{"custom_metrics.toml"},
+				DefaultMetrics:   "default_metrics.toml",
+			},
+			want: &oracledb_exporter.Config{
+				ConnectionString: config_util.Secret("localhost:1521/orcl.localnet"),
+				MaxIdleConns:     1,
+				MaxOpenConns:     1,
+				QueryTimeout:     5,
+				CustomMetrics:    []string{"custom_metrics.toml"},
+				DefaultMetrics:   "default_metrics.toml",
+				Username:         "",
+				Password:         config_util.Secret(""),
+			},
+		},
+		{
+			name: "valid OracleDB new config",
 			args: Arguments{
 				ConnectionString: alloytypes.Secret("localhost:1521/orcl.localnet"),
 				MaxIdleConns:     1,
@@ -117,6 +143,16 @@ func TestArgumentsValidate(t *testing.T) {
 				DefaultMetrics:   "default_metrics.toml",
 				Username:         "user",
 				Password:         alloytypes.Secret("password"),
+			},
+			want: &oracledb_exporter.Config{
+				ConnectionString: config_util.Secret("localhost:1521/orcl.localnet"),
+				MaxIdleConns:     1,
+				MaxOpenConns:     1,
+				QueryTimeout:     5,
+				CustomMetrics:    []string{"custom_metrics.toml"},
+				DefaultMetrics:   "default_metrics.toml",
+				Username:         "user",
+				Password:         config_util.Secret("password"),
 			},
 		},
 	}
@@ -129,6 +165,7 @@ func TestArgumentsValidate(t *testing.T) {
 				require.Contains(t, err.Error(), tt.err.Error())
 			} else {
 				require.NoError(t, err)
+				require.Equal(t, tt.want, tt.args.Convert())
 			}
 		})
 	}
