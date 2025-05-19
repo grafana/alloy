@@ -23,10 +23,9 @@ else
   export GITHUB_TAG=""
 fi
 
-# We only set PUSH_IMAGE variable if $PUSH_ALLOY_IMAGE is set to 'true'.
-# All other cases would this variable is unset (missing, set to another value etc).
+DOCKER_FLAGS=""
 if [[ $PUSH_ALLOY_IMAGE == "true"  ]]; then
-	PUSH_IMAGE=true
+	DOCKER_FLAGS="--push"
 fi
 
 export RELEASE_ALLOY_IMAGE=grafana/alloy
@@ -75,7 +74,7 @@ export BUILD_PLATFORMS_BORINGCRYPTO=linux/amd64,linux/arm64
 
 case "$TARGET_CONTAINER" in
   alloy)
-    docker buildx build ${PUSH_IMAGE:+--push}\
+    docker buildx build $DOCKER_FLAGS        \
       --platform $BUILD_PLATFORMS            \
       --build-arg RELEASE_BUILD=1            \
       --build-arg VERSION="$VERSION"         \
@@ -91,7 +90,7 @@ case "$TARGET_CONTAINER" in
       BRANCH_TAG=$BORINGCRYPTO_LATEST
     fi
 
-    docker buildx build ${PUSH_IMAGE:+--push}             \
+    docker buildx build $DOCKER_FLAGS                     \
       --platform $BUILD_PLATFORMS_BORINGCRYPTO            \
       --build-arg RELEASE_BUILD=1                         \
       --build-arg VERSION="$VERSION"                      \
@@ -106,7 +105,7 @@ case "$TARGET_CONTAINER" in
   alloy-devel)
 	echo $PUSH_ALLOY_IMAGE
 
-    docker buildx build ${PUSH_IMAGE:+--push} \
+    docker buildx build $DOCKER_FLAGS         \
       --platform $BUILD_PLATFORMS             \
       --build-arg RELEASE_BUILD=1             \
       --build-arg VERSION="$VERSION"          \
@@ -121,7 +120,7 @@ case "$TARGET_CONTAINER" in
       BRANCH_TAG=$BORINGCRYPTO_LATEST
     fi
 
-    docker buildx build ${PUSH_IMAGE:+--push}           \
+    docker buildx build $DOCKER_FLAGS                   \
       --platform $BUILD_PLATFORMS_BORINGCRYPTO          \
       --build-arg RELEASE_BUILD=1                       \
       --build-arg VERSION="$VERSION"                    \
