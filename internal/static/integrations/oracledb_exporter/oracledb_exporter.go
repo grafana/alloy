@@ -1,7 +1,6 @@
 package oracledb_exporter
 
 import (
-	"errors"
 	"fmt"
 	"log/slog"
 	"net/url"
@@ -30,8 +29,6 @@ var DefaultConfig = Config{
 	CustomMetrics:    []string{},
 }
 
-var errNoConnectionString = errors.New("no connection string was provided")
-
 // Config is the configuration for the oracledb v2 integration
 type Config struct {
 	ConnectionString config_util.Secret `yaml:"connection_string"`
@@ -59,7 +56,6 @@ func (c *Config) Name() string {
 
 // InstanceKey returns the addr of the oracle instance.
 func (c *Config) InstanceKey(agentKey string) (string, error) {
-
 	// Backward compatibility when the connection string needed the scheme
 	if strings.HasPrefix(string(c.ConnectionString), "oracle://") {
 		u, err := url.Parse(string(c.ConnectionString))
@@ -124,7 +120,6 @@ func parseConnectionString(c *Config) (string, string, string, error) {
 // New creates a new oracledb integration. The integration scrapes metrics
 // from an OracleDB exporter running with the https://github.com/oracle/oracle-db-appdev-monitoring
 func New(logger log.Logger, c *Config) (integrations.Integration, error) {
-
 	connectionString, username, password, err := parseConnectionString(c)
 	if err != nil {
 		return nil, err
