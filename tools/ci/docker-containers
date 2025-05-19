@@ -78,7 +78,6 @@ case "$TARGET_CONTAINER" in
       --platform $BUILD_PLATFORMS            \
       --build-arg RELEASE_BUILD=1            \
       --build-arg VERSION="$VERSION"         \
-      --output=type=image                    \
       -t "$RELEASE_ALLOY_IMAGE:$TAG_VERSION" \
       -t "$RELEASE_ALLOY_IMAGE:$BRANCH_TAG"  \
       -f Dockerfile                          \
@@ -95,7 +94,6 @@ case "$TARGET_CONTAINER" in
       --build-arg RELEASE_BUILD=1                         \
       --build-arg VERSION="$VERSION"                      \
       --build-arg GOEXPERIMENT=boringcrypto               \
-      --output=type=image                                 \
       -t "$RELEASE_ALLOY_IMAGE:$TAG_VERSION-boringcrypto" \
       -t "$RELEASE_ALLOY_IMAGE:$BRANCH_TAG"               \
       -f Dockerfile                                       \
@@ -123,7 +121,6 @@ case "$TARGET_CONTAINER" in
       --build-arg RELEASE_BUILD=1                       \
       --build-arg VERSION="$VERSION"                    \
       --build-arg GOEXPERIMENT=boringcrypto             \
-      --output=type=image                               \
       -t "$DEVEL_ALLOY_IMAGE:$TAG_VERSION-boringcrypto" \
       -t "$DEVEL_ALLOY_IMAGE:$BRANCH_TAG"               \
       -f Dockerfile                                     \
