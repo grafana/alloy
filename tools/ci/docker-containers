@@ -23,6 +23,12 @@ else
   export GITHUB_TAG=""
 fi
 
+# We only set PUSH_IMAGE variable if $PUSH_ALLOY_IMAGE is set to 'true'.
+# All other cases would this variable is unset (missing, set to another value etc).
+if [[ $PUSH_ALLOY_IMAGE == "true"  ]]; then
+	PUSH_IMAGE=true
+fi
+
 export RELEASE_ALLOY_IMAGE=grafana/alloy
 export DEVEL_ALLOY_IMAGE=grafana/alloy-dev
 
@@ -69,7 +75,7 @@ export BUILD_PLATFORMS_BORINGCRYPTO=linux/amd64,linux/arm64
 
 case "$TARGET_CONTAINER" in
   alloy)
-    docker buildx build                      \
+    docker buildx build ${PUSH_IMAGE:+--push}\
       --platform $BUILD_PLATFORMS            \
       --build-arg RELEASE_BUILD=1            \
       --build-arg VERSION="$VERSION"         \
@@ -78,11 +84,6 @@ case "$TARGET_CONTAINER" in
       -t "$RELEASE_ALLOY_IMAGE:$BRANCH_TAG"  \
       -f Dockerfile                          \
       .
-
-    if [[ $PUSH_ALLOY_IMAGE == "true"  ]]; then
-      docker push "$RELEASE_ALLOY_IMAGE:$TAG_VERSION"
-      docker push "$RELEASE_ALLOY_IMAGE:$BRANCH_TAG"
-    fi
     ;;
 
   alloy-boringcrypto)
@@ -90,7 +91,7 @@ case "$TARGET_CONTAINER" in
       BRANCH_TAG=$BORINGCRYPTO_LATEST
     fi
 
-    docker buildx build                                   \
+    docker buildx build ${PUSH_IMAGE:+--push}             \
       --platform $BUILD_PLATFORMS_BORINGCRYPTO            \
       --build-arg RELEASE_BUILD=1                         \
       --build-arg VERSION="$VERSION"                      \
@@ -100,28 +101,19 @@ case "$TARGET_CONTAINER" in
       -t "$RELEASE_ALLOY_IMAGE:$BRANCH_TAG"               \
       -f Dockerfile                                       \
       .
-
-    if [[ $PUSH_ALLOY_IMAGE == "true"  ]]; then
-      docker push "$RELEASE_ALLOY_IMAGE:$TAG_VERSION-boringcrypto"
-      docker push "$RELEASE_ALLOY_IMAGE:$BRANCH_TAG"
-    fi
     ;;
 
   alloy-devel)
-    docker buildx build                    \
-      --platform $BUILD_PLATFORMS          \
-      --build-arg RELEASE_BUILD=1          \
-      --build-arg VERSION="$VERSION"       \
-      --output=type=image                  \
-      -t "$DEVEL_ALLOY_IMAGE:$TAG_VERSION" \
-      -t "$DEVEL_ALLOY_IMAGE:$BRANCH_TAG"  \
-      -f Dockerfile                        \
-      .
+	echo $PUSH_ALLOY_IMAGE
 
-    if [[ $PUSH_ALLOY_IMAGE == "true"  ]]; then
-      docker push "$DEVEL_ALLOY_IMAGE:$TAG_VERSION"
-      docker push "$DEVEL_ALLOY_IMAGE:$BRANCH_TAG"
-    fi
+    docker buildx build ${PUSH_IMAGE:+--push} \
+      --platform $BUILD_PLATFORMS             \
+      --build-arg RELEASE_BUILD=1             \
+      --build-arg VERSION="$VERSION"          \
+      -t "$DEVEL_ALLOY_IMAGE:$TAG_VERSION"    \
+      -t "$DEVEL_ALLOY_IMAGE:$BRANCH_TAG"     \
+      -f Dockerfile                           \
+      .
     ;;
 
   alloy-devel-boringcrypto)
@@ -129,7 +121,7 @@ case "$TARGET_CONTAINER" in
       BRANCH_TAG=$BORINGCRYPTO_LATEST
     fi
 
-    docker buildx build                                 \
+    docker buildx build ${PUSH_IMAGE:+--push}           \
       --platform $BUILD_PLATFORMS_BORINGCRYPTO          \
       --build-arg RELEASE_BUILD=1                       \
       --build-arg VERSION="$VERSION"                    \
@@ -139,11 +131,6 @@ case "$TARGET_CONTAINER" in
       -t "$DEVEL_ALLOY_IMAGE:$BRANCH_TAG"               \
       -f Dockerfile                                     \
       .
-
-    if [[ $PUSH_ALLOY_IMAGE == "true"  ]]; then
-      docker push "$DEVEL_ALLOY_IMAGE:$TAG_VERSION-boringcrypto"
-      docker push "$DEVEL_ALLOY_IMAGE:$BRANCH_TAG"
-    fi
     ;;
 
   *)
