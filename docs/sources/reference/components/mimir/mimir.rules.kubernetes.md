@@ -151,11 +151,14 @@ The `matcher` block describes a label matcher that's added to each query found i
 
 The following arguments are supported:
 
-| Name         | Type     | Description                                         | Default | Required |
-| ------------ | -------- | --------------------------------------------------- | ------- | -------- |
-| `match_type` | `string` | The type of match. One of `=`, `!=`, `=~` and `!~`. |         | yes      |
-| `name`       | `string` | Name of the label to match.                         |         | yes      |
-| `value`      | `string` | Value of the label to match.                        |         | yes      |
+| Name               | Type     | Description                                              | Default | Required |
+| ------------------ | -------- | -------------------------------------------------------- | ------- | -------- |
+| `match_type`       | `string` | The type of match. One of `=`, `!=`, `=~` and `!~`.      |         | yes      |
+| `name`             | `string` | Name of the label to match.                              |         | yes      |
+| `value`            | `string` | Value of the label to match.                             |         | no       |
+| `value_from_label` | `string` | Value of the Kubernetes `PrometheusRule` label to match. |         | no       |
+
+Only one of `value` or `value_from_label` can be used. 
 
 ### `rule_selector` and `rule_namespace_selector`
 
@@ -234,7 +237,7 @@ Only resources managed by the component are exposed, regardless of how many actu
 | `mimir_rules_events_retried_total`            | `counter`   | Number of events that were retried, partitioned by event type.           |
 | `mimir_rules_events_total`                    | `counter`   | Number of events processed, partitioned by event type.                   |
 
-## Example
+## Examples
 
 This example creates a `mimir.rules.kubernetes` component that loads discovered rules to a local Mimir instance under the `team-a` tenant.
 Only namespaces and rules with the `alloy` label set to `yes` are included.
@@ -290,6 +293,33 @@ mimir.rules.kubernetes "default" {
 ```
 
 If a query in the form of `up != 1` is found in `PrometheusRule` CRDs, it's' modified to `up{cluster=~"prod-.*"} != 1` before sending it to Mimir.
+
+This example shows a `PrometheusRule` with a label set to `application.kubernetes.io/name=my-app`.
+
+```yaml
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+  metadata:
+    labels:
+      application.kubernetes.io/name: my-app
+```
+
+The following configuration extracts the value from the PrometheusRules CR label `application.kubernetes.io/name` and adds a label matcher with the value `{app=~"extracted_value"}` to all the queries discovered by the `mimir.rules.kubernetes` component.
+
+```alloy
+mimir.rules.kubernetes "default" {
+    address = "<GRAFANA_CLOUD_METRICS_URL>"
+    extra_query_matchers {
+        matcher {
+            name = "app"
+            match_type = "="
+            value_from_label = "application.kubernetes.io/name"
+        }
+    }
+}
+```
+
+If a query in the form of `up != 1` is found in `PrometheusRule` CRDs, it's modified to `up{app="my-app"} != 1` before sending it to Mimir.
 
 The following example is an RBAC configuration for Kubernetes.
 It authorizes {{< param "PRODUCT_NAME" >}} to query the Kubernetes REST API:

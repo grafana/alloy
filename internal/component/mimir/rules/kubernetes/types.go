@@ -81,14 +81,25 @@ func (e *ExtraQueryMatchers) Validate() error {
 }
 
 type Matcher struct {
-	Name      string `alloy:"name,attr"`
-	Value     string `alloy:"value,attr"`
-	MatchType string `alloy:"match_type,attr"`
+	Name           string `alloy:"name,attr"`
+	Value          string `alloy:"value,attr,optional"`
+	ValueFromLabel string `alloy:"value_from_label,attr,optional"`
+	MatchType      string `alloy:"match_type,attr"`
 }
 
 func (m Matcher) Validate() error {
 	if !slices.Contains(validMatchTypes, m.MatchType) {
 		return fmt.Errorf("invalid match type: %q", m.MatchType)
+	}
+	// Check that exactly one value source is provided
+	valueSourceCount := 0
+	for _, field := range []string{m.Value, m.ValueFromLabel} {
+		if field != "" {
+			valueSourceCount++
+		}
+	}
+	if valueSourceCount != 1 {
+		return fmt.Errorf("exactly one of 'value' or 'value_from_label' must be provided, got %d", valueSourceCount)
 	}
 	return nil
 }
