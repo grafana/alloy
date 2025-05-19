@@ -38,7 +38,7 @@ type profilingLoop struct {
 	dist       *asprof.Distribution
 	jfrFile    string
 	startTime  time.Time
-	profiler   *asprof.Profiler
+	profiler   Profiler
 	sampleRate int
 
 	error            error
@@ -49,7 +49,13 @@ type profilingLoop struct {
 	totalSamples     int64
 }
 
-func newProfilingLoop(pid int, target discovery.Target, logger log.Logger, profiler *asprof.Profiler, output *pyroscope.Fanout, cfg ProfilingConfig) *profilingLoop {
+type Profiler interface {
+	CopyLib(dist *asprof.Distribution, pid int) error
+	Execute(dist *asprof.Distribution, argv []string) (string, string, error)
+	Distribution() *asprof.Distribution
+}
+
+func newProfilingLoop(pid int, target discovery.Target, logger log.Logger, profiler Profiler, output *pyroscope.Fanout, cfg ProfilingConfig) *profilingLoop {
 	ctx, cancel := context.WithCancel(context.Background())
 	dist := profiler.Distribution()
 	p := &profilingLoop{
@@ -102,6 +108,7 @@ func (p *profilingLoop) loop(ctx context.Context) {
 		}
 		sleep()
 		if ctx.Err() != nil {
+			p.cleanup()
 			return
 		}
 		err = p.reset()
@@ -114,15 +121,22 @@ func (p *profilingLoop) loop(ctx context.Context) {
 	}
 }
 
+func (p *profilingLoop) cleanup() {
+	jfrFile := asprof.ProcessPath(p.jfrFile, p.pid)
+
+	err := os.Remove(jfrFile)
+	if err != nil {
+		_ = level.Warn(p.logger).Log("msg", "failed to delete jfr file", "err", err)
+	}
+}
+
 func (p *profilingLoop) reset() error {
 	jfrFile := asprof.ProcessPath(p.jfrFile, p.pid)
 	startTime := p.startTime
 	endTime := time.Now()
 	sampleRate := p.sampleRate
 	p.startTime = endTime
-	defer func() {
-		os.Remove(jfrFile)
-	}()
+	defer p.cleanup()
 
 	err := p.stop()
 	if err != nil {
