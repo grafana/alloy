@@ -45,7 +45,7 @@ oracle://user:pass@host:port/service_name[?OPTION1=VALUE1[&OPTIONn=VALUEn]...]
 ```
 
 If the `connection_string` argument doesn't contain the `username` and `password`, the `username` and `password` arguments must be provided.
-In this case, the url must have the format:
+In this case, the URL must have the format:
 
 ```conn
 host:port/service_name[?OPTION1=VALUE1[&OPTIONn=VALUEn]...]
