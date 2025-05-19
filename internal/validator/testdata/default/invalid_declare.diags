@@ -119,3 +119,20 @@ Error: main.alloy:69:1: cannot find the definition of component name "module_2"
 69 | module_2 "test" {}
    | ^^^^^^^^
 70 | 
+
+Error: main.alloy:78:2: unrecognized attribute name "test"
+
+77 | module_3 "test" {
+78 |     test = "test"
+   |     ^^^^^^^^^^^^^
+79 | }
+
+Error: main.alloy:77:1: missing required attribute "arg"
+
+76 |   
+77 |   module_3 "test" {
+   |  _^^^^^^^^^^^^^^^^^
+78 | |     test = "test"
+79 | | }
+   | |_^
+80 |   

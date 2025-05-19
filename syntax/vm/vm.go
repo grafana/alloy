@@ -12,6 +12,7 @@ import (
 	"github.com/grafana/alloy/syntax/internal/stdlib"
 	"github.com/grafana/alloy/syntax/internal/syntaxtags"
 	"github.com/grafana/alloy/syntax/internal/tagcache"
+	"github.com/grafana/alloy/syntax/internal/transform"
 	"github.com/grafana/alloy/syntax/internal/value"
 )
 
@@ -181,7 +182,7 @@ func (vm *Evaluator) evaluateMap(scope *Scope, assoc map[value.Value]ast.Node, n
 				Severity: diag.SeverityLevelError,
 				StartPos: node.NamePos.Position(),
 				EndPos:   node.LCurlyPos.Position(),
-				Message:  fmt.Sprintf("block %q requires non-empty label", strings.Join(node.Name, ".")),
+				Message:  fmt.Sprintf("block %q requires empty label", strings.Join(node.Name, ".")),
 			}
 		}
 		stmts = node.Body
@@ -303,8 +304,7 @@ func (vm *Evaluator) evaluateExpr(scope *Scope, assoc map[value.Value]ast.Node, 
 
 	switch expr := expr.(type) {
 	case *ast.LiteralExpr:
-		return valueFromLiteral(expr.Value, expr.Kind)
-
+		return transform.ValueFromLiteral(expr.Value, expr.Kind)
 	case *ast.BinaryExpr:
 		lhs, err := vm.evaluateExpr(scope, assoc, expr.Left)
 		if err != nil {

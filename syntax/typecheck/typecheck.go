@@ -11,7 +11,7 @@ import (
 	"github.com/grafana/alloy/syntax/internal/tagcache"
 )
 
-type state struct {
+type structState struct {
 	tags       *tagcache.TagInfo
 	seenAttrs  map[string]struct{}
 	blockCount map[string]int
@@ -25,75 +25,100 @@ func Block(b *ast.BlockStmt, args any) diag.Diagnostics {
 func block(b *ast.BlockStmt, rv reflect.Value) diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	s := state{
-		tags:       tagcache.Get(rv.Type()),
-		seenAttrs:  make(map[string]struct{}),
-		blockCount: make(map[string]int),
-	}
-
-	for _, stmt := range b.Body {
-		switch stmt := stmt.(type) {
-		case *ast.BlockStmt:
-			s.blockCount[stmt.GetBlockName()]++
-		}
-	}
-
-	// FIXME(kallep): When we start to check that correct types are set for properties we most likely need to
-	// consider these interfaces.
-	// - value.Defaulter
-	// - value.Unmarshaler
-	// - value.ConvertibleFromCapsule
-	// - value.ConvertibleIntoCapsule
-	// - encoding.TextUnmarshaler
-	for _, stmt := range b.Body {
-		switch n := stmt.(type) {
-		case *ast.BlockStmt:
-			diags.Merge(checkBlock(&s, n, rv))
-		case *ast.AttributeStmt:
-			diags.Merge(checkAttr(&s, n, rv))
-		default:
-			panic(fmt.Sprintf("syntax/vm: unrecognized node type %T", stmt))
-		}
-	}
-
-	for _, t := range s.tags.Tags {
-		if t.IsOptional() {
-			continue
+	switch rv.Kind() {
+	case reflect.Map:
+		return checkMapBlock(b, rv)
+	case reflect.Interface:
+		var m map[string]any
+		rv := reflect.MakeMap(reflect.TypeOf(m))
+		return checkMapBlock(b, rv)
+	case reflect.Struct:
+		s := structState{
+			tags:       tagcache.Get(rv.Type()),
+			seenAttrs:  make(map[string]struct{}),
+			blockCount: make(map[string]int),
 		}
 
-		name := strings.Join(t.Name, ".")
-		if t.IsAttr() {
-			if _, ok := s.seenAttrs[name]; !ok {
-				diags.Add(diag.Diagnostic{
-					Severity: diag.SeverityLevelError,
-					StartPos: ast.StartPos(b).Position(),
-					EndPos:   ast.EndPos(b).Position(),
-					Message:  fmt.Sprintf("missing required attribute %q", name),
-				})
+		for _, stmt := range b.Body {
+			switch stmt := stmt.(type) {
+			case *ast.BlockStmt:
+				s.blockCount[stmt.GetBlockName()]++
 			}
-			continue
 		}
 
-		if t.IsBlock() {
-			if _, ok := s.blockCount[name]; !ok {
-				diags.Add(diag.Diagnostic{
-					Severity: diag.SeverityLevelError,
-					StartPos: ast.StartPos(b).Position(),
-					EndPos:   ast.EndPos(b).Position(),
-					Message:  fmt.Sprintf("missing required block %q", name),
-				})
+		// FIXME(kallep): When we start to check that correct types are set for properties we most likely need to
+		// consider these interfaces.
+		// - value.Defaulter
+		// - value.Unmarshaler
+		// - value.ConvertibleFromCapsule
+		// - value.ConvertibleIntoCapsule
+		// - encoding.TextUnmarshaler
+		for _, stmt := range b.Body {
+			switch n := stmt.(type) {
+			case *ast.BlockStmt:
+				diags.Merge(checkStructBlock(&s, n, rv))
+			case *ast.AttributeStmt:
+				diags.Merge(checkStructAttr(&s, n, rv))
+			default:
+				panic(fmt.Sprintf("syntax/vm: unrecognized node type %T", stmt))
 			}
-			continue
 		}
+
+		for _, t := range s.tags.Tags {
+			if t.IsOptional() {
+				continue
+			}
+
+			name := strings.Join(t.Name, ".")
+			if t.IsAttr() {
+				if _, ok := s.seenAttrs[name]; !ok {
+					diags.Add(diag.Diagnostic{
+						Severity: diag.SeverityLevelError,
+						StartPos: ast.StartPos(b).Position(),
+						EndPos:   ast.EndPos(b).Position(),
+						Message:  fmt.Sprintf("missing required attribute %q", name),
+					})
+				}
+				continue
+			}
+
+			if t.IsBlock() {
+				if _, ok := s.blockCount[name]; !ok {
+					diags.Add(diag.Diagnostic{
+						Severity: diag.SeverityLevelError,
+						StartPos: ast.StartPos(b).Position(),
+						EndPos:   ast.EndPos(b).Position(),
+						Message:  fmt.Sprintf("missing required block %q", name),
+					})
+				}
+				continue
+			}
+		}
+	default:
+		panic(fmt.Sprintf("syntax/typecheck: can only type check arguments of type struct, map and interface, got %s", rv.Kind()))
 	}
 
 	return diags
 }
 
-func checkBlock(s *state, b *ast.BlockStmt, rv reflect.Value) diag.Diagnostics {
+// FIXME(kalleep): currently we ignore block maps
+func checkMapBlock(b *ast.BlockStmt, _ reflect.Value) diag.Diagnostics {
+	var diags diag.Diagnostics
+	if b.Label != "" {
+		diags.Add(diag.Diagnostic{
+			Severity: diag.SeverityLevelError,
+			StartPos: b.NamePos.Position(),
+			EndPos:   b.LCurlyPos.Position(),
+			Message:  fmt.Sprintf("block %q requires empty label", b.GetBlockName()),
+		})
+	}
+	return diags
+}
+
+func checkStructBlock(s *structState, b *ast.BlockStmt, rv reflect.Value) diag.Diagnostics {
 	name := b.GetBlockName()
 	if _, ok := s.tags.EnumLookup[name]; ok {
-		return checkEnum(s, b, rv)
+		return checkStructEnum(s, b, rv)
 	}
 
 	tag, ok := s.tags.TagLookup[name]
@@ -149,7 +174,7 @@ func checkBlock(s *state, b *ast.BlockStmt, rv reflect.Value) diag.Diagnostics {
 	}
 }
 
-func checkEnum(s *state, b *ast.BlockStmt, rv reflect.Value) diag.Diagnostics {
+func checkStructEnum(s *structState, b *ast.BlockStmt, rv reflect.Value) diag.Diagnostics {
 	tf, ok := s.tags.EnumLookup[b.GetBlockName()]
 	if !ok {
 		panic("checkEnum called with a non-enum block")
@@ -167,7 +192,7 @@ func checkEnum(s *state, b *ast.BlockStmt, rv reflect.Value) diag.Diagnostics {
 	return block(b, reflectutil.DeferencePointer(reflectutil.GetOrAlloc(elem, tf.BlockField)))
 }
 
-func checkAttr(s *state, a *ast.AttributeStmt, _ reflect.Value) diag.Diagnostics {
+func checkStructAttr(s *structState, a *ast.AttributeStmt, _ reflect.Value) diag.Diagnostics {
 	tf, ok := s.tags.TagLookup[a.Name.Name]
 	if !ok {
 		return diag.Diagnostics{{

@@ -2,12 +2,17 @@ package validator
 
 import (
 	"fmt"
+	"reflect"
 	"slices"
 	"strconv"
 	"strings"
 
+	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/diag"
+	"github.com/grafana/alloy/syntax/typecheck"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
@@ -92,6 +97,8 @@ type state struct {
 	components []*ast.BlockStmt
 	services   []*ast.BlockStmt
 	cr         *componentRegistry
+	// arguments registered by module
+	arguments []*ast.BlockStmt
 }
 
 func (v *validator) validate(s *state) *state {
@@ -112,17 +119,13 @@ func (v *validator) validateDeclares(s *state) {
 		node := newBlockNode(d)
 
 		// Declare blocks must have a label.
-		if d.Label == "" {
+		if node.block.Label == "" {
 			node.diags.Add(diag.Diagnostic{
 				Severity: diag.SeverityLevelError,
 				StartPos: d.NamePos.Position(),
 				EndPos:   d.NamePos.Add(len(d.GetBlockName()) - 1).Position(),
 				Message:  "declare block must have a label",
 			})
-		} else {
-			// Only register custom component if we have a label
-			// Without a label there is no way to create one.
-			s.cr.registerCustomComponent(node.block)
 		}
 
 		// Declares need to be unique
@@ -136,8 +139,8 @@ func (v *validator) validateDeclares(s *state) {
 		s.graph.Add(node)
 
 		configs, declares, services, components := extractBlocks(node, node.block.Body, v.sm)
-		// Add module state as node to graph
-		s.graph.Add(newSubNode(node, v.validate(&state{
+
+		moduleState := &state{
 			root:       false,
 			graph:      newGraph(),
 			declares:   declares,
@@ -145,42 +148,42 @@ func (v *validator) validateDeclares(s *state) {
 			services:   services,
 			components: components,
 			cr:         newComponentRegistry(s.cr),
-		})))
+		}
+
+		// Add module state as node to graph
+		s.graph.Add(newSubNode(node, v.validate(moduleState)))
+
+		if node.block.Label != "" {
+			s.cr.registerCustomComponent(node.block, generateArgumentsStruct(moduleState.arguments))
+		}
 	}
 }
 
 // validateConfigs will perform validation on config blocks.
 func (v *validator) validateConfigs(s *state) {
-	mem := make(map[string]*ast.BlockStmt, len(s.configs))
+	var (
+		mem = make(map[string]*ast.BlockStmt, len(s.configs))
+	)
 
 	for i, c := range s.configs {
-		node := newBlockNode(c)
+		var (
+			// regiter controls whether we register arguments and imports.
+			register bool
+			node     = newBlockNode(c)
+		)
+
 		// Config blocks needs to be unique.
 		if diag, ok := blockAlreadyDefined(mem, node.block); ok {
 			node.diags.Add(diag)
 			// We need to generate a unique id for this duplicated node so we can still typecheck it.
 			node.id = node.id + "-" + strconv.Itoa(i)
-		} else if c.Name[0] == "import" {
-			// We need to register import blocks as a custom component.
-			s.cr.registerCustomComponent(node.block)
-		}
-
-		name := node.block.GetBlockName()
-
-		if name != "logging" && name != "tracing" {
-			if node.block.Label == "" {
-				node.diags.Add(diag.Diagnostic{
-					Severity: diag.SeverityLevelError,
-					StartPos: node.block.NamePos.Position(),
-					EndPos:   node.block.NamePos.Add(len(name) - 1).Position(),
-					Message:  fmt.Sprintf("%s block must have a label", name),
-				})
-			}
+		} else {
+			register = true
 		}
 
 		// In configs we store blocks for logging, tracing, argument, export, import.file,
 		// import.string, import.http, import.git and foreach.
-		switch name {
+		switch node.block.GetBlockName() {
 		case "logging":
 			node.args = &logging.Options{}
 			if diag, ok := blockDisallowed(s, node.block); ok {
@@ -194,20 +197,7 @@ func (v *validator) validateConfigs(s *state) {
 			}
 			s.graph.Add(node)
 		case foreach.BlockName:
-			node.args = &foreach.Arguments{}
 			v.validateForeach(node, s)
-		case importsource.BlockNameFile:
-			node.args = &importsource.FileArguments{}
-			s.graph.Add(node)
-		case importsource.BlockNameString:
-			node.args = &importsource.StringArguments{}
-			s.graph.Add(node)
-		case importsource.BlockNameHTTP:
-			node.args = &importsource.HTTPArguments{}
-			s.graph.Add(node)
-		case importsource.BlockNameGit:
-			node.args = &importsource.GitArguments{}
-			s.graph.Add(node)
 		case argument.BlockName:
 			node.args = &argument.Arguments{}
 			if s.root {
@@ -218,6 +208,13 @@ func (v *validator) validateConfigs(s *state) {
 					EndPos:   ast.EndPos(node.block).Position(),
 				})
 			}
+
+			if diag, ok := blockMissingLabel(node.block); ok {
+				node.diags.Add(diag)
+			} else if register {
+				s.arguments = append(s.arguments, node.block)
+			}
+
 			s.graph.Add(node)
 		case export.BlockName:
 			node.args = &export.Arguments{}
@@ -229,13 +226,48 @@ func (v *validator) validateConfigs(s *state) {
 					EndPos:   ast.EndPos(node.block).Position(),
 				})
 			}
+
+			if diag, ok := blockMissingLabel(node.block); ok {
+				node.diags.Add(diag)
+			}
+
 			s.graph.Add(node)
+		default:
+			v.validateImport(node, register, s)
 		}
+	}
+}
+
+func (v *validator) validateImport(node *blockNode, register bool, s *state) {
+	// Require label for import block.
+	if diag, ok := blockMissingLabel(node.block); ok {
+		register = false
+		node.diags.Add(diag)
+	}
+
+	switch node.block.GetBlockName() {
+	case importsource.BlockNameFile:
+		node.args = &importsource.FileArguments{}
+		s.graph.Add(node)
+	case importsource.BlockNameString:
+		node.args = &importsource.StringArguments{}
+		s.graph.Add(node)
+	case importsource.BlockNameHTTP:
+		node.args = &importsource.HTTPArguments{}
+		s.graph.Add(node)
+	case importsource.BlockNameGit:
+		node.args = &importsource.GitArguments{}
+		s.graph.Add(node)
+	}
+
+	if register {
+		s.cr.registerCustomComponent(node.block, nil)
 	}
 }
 
 func (v *validator) validateForeach(node *blockNode, s *state) {
 	name := node.block.GetBlockName()
+
 	// Check required stability level.
 	if err := featuregate.CheckAllowed(foreach.StabilityLevel, v.minStability, fmt.Sprintf("foreach block %q", name)); err != nil {
 		node.diags.Add(diag.Diagnostic{
@@ -247,13 +279,8 @@ func (v *validator) validateForeach(node *blockNode, s *state) {
 	}
 
 	// Require label for foreach block.
-	if node.block.Label == "" {
-		node.diags.Add(diag.Diagnostic{
-			Severity: diag.SeverityLevelError,
-			StartPos: node.block.NamePos.Position(),
-			EndPos:   node.block.NamePos.Add(len(name) - 1).Position(),
-			Message:  "foreach block must have a label",
-		})
+	if diag, ok := blockMissingLabel(node.block); ok {
+		node.diags.Add(diag)
 	}
 
 	var (
@@ -271,6 +298,7 @@ func (v *validator) validateForeach(node *blockNode, s *state) {
 
 	// Set the body of block to all non template properties.
 	node.block.Body = body
+	node.args = &foreach.Arguments{}
 
 	// Foreach blocks must have a template.
 	if template == nil {
@@ -471,4 +499,40 @@ func blockDisallowed(s *state, b *ast.BlockStmt) (diag.Diagnostic, bool) {
 	}
 
 	return diag.Diagnostic{}, false
+}
+
+func blockMissingLabel(b *ast.BlockStmt) (diag.Diagnostic, bool) {
+	if b.Label == "" {
+		name := b.GetBlockName()
+		return diag.Diagnostic{
+			Severity: diag.SeverityLevelError,
+			StartPos: b.NamePos.Position(),
+			EndPos:   b.NamePos.Add(len(name) - 1).Position(),
+			Message:  fmt.Sprintf("%s block must have a label", name),
+		}, true
+	}
+	return diag.Diagnostic{}, false
+}
+
+func generateArgumentsStruct(args []*ast.BlockStmt) any {
+	fields := make([]reflect.StructField, 0, len(args))
+	for _, a := range args {
+		optional := typecheck.TryUnwrapBlockAttr(a, "optional", syntax.ValueFromBool(false))
+
+		var tag string
+		if optional.Bool() {
+			tag = fmt.Sprintf(`alloy:"%s,attr,optional"`, a.Label)
+		} else {
+			tag = fmt.Sprintf(`alloy:"%s,attr"`, a.Label)
+		}
+
+		f := reflect.StructField{
+			Name: cases.Title(language.English).String(a.Label),
+			Type: reflect.TypeFor[any](),
+			Tag:  reflect.StructTag(tag),
+		}
+		fields = append(fields, f)
+	}
+
+	return reflect.New(reflect.StructOf(fields)).Interface()
 }
