@@ -41,6 +41,7 @@ otelcol.exporter.loadbalancing "default" {
 		enabled       = false
 		num_consumers = 0
 		queue_size    = 0
+		sizer         = ""
 		storage       = otelcol.storage.file.default_fs.handler
 	}
 }

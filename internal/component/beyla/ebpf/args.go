@@ -120,12 +120,12 @@ type Network struct {
 }
 
 type EBPF struct {
-	WakeupLen                 int           `alloy:"wakeup_len,attr,optional"`
-	TrackRequestHeaders       bool          `alloy:"track_request_headers,attr,optional"`
-	HTTPRequestTimeout        time.Duration `alloy:"http_request_timeout,attr,optional"`
-	ContextPropagationEnabled bool          `alloy:"enable_context_propagation,attr,optional"`
-	HighRequestVolume         bool          `alloy:"high_request_volume,attr,optional"`
-	HeuristicSQLDetect        bool          `alloy:"heuristic_sql_detect,attr,optional"`
+	WakeupLen           int           `alloy:"wakeup_len,attr,optional"`
+	TrackRequestHeaders bool          `alloy:"track_request_headers,attr,optional"`
+	HTTPRequestTimeout  time.Duration `alloy:"http_request_timeout,attr,optional"`
+	ContextPropagation  string        `alloy:"context_propagation,attr,optional"`
+	HighRequestVolume   bool          `alloy:"high_request_volume,attr,optional"`
+	HeuristicSQLDetect  bool          `alloy:"heuristic_sql_detect,attr,optional"`
 }
 
 type Filters struct {

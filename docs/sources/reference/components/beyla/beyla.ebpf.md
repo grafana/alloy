@@ -295,15 +295,15 @@ beyla.ebpf "default" {
 
 The `ebpf` block configures eBPF-specific settings.
 
-| Name                          | Type          | Description                                                                | Default | Required |
-| ----------------------------- | ------------- | -------------------------------------------------------------------------- | ------- | -------- |
-| `wakeup_len`                  | `int`         | Number of messages to accumulate before wakeup request.                    | `""`    | no       |
-| `track_request_headers`       | `bool`        | Enable tracking of request headers for Traceparent fields.                 | `false` | no       |
-| `http_request_timeout`        | `duration`    | Timeout for HTTP requests.                                                 | `30s`   | no       |
-| `enable_context_propagation`  | `bool`        | Enable context propagation using Linux Traffic Control probes.             | `false` | no       |
-| `high_request_volume`         | `bool`        | Optimize for immediate request information when response is seen.          | `false` | no       |
-| `heuristic_sql_detect`        | `bool`        | Enable heuristic-based detection of SQL requests.                         | `false` | no       |
-| `trace_printer`              | `string`      | Format for printing trace information. | `"disabled"` | no |
+| Name                          | Type          | Description                                                                    | Default      | Required |
+| ----------------------------- | ------------- | ------------------------------------------------------------------------------ | ------------ | -------- |
+| `wakeup_len`                  | `int`         | Number of messages to accumulate before wakeup request.                        | `""`         | no       |
+| `track_request_headers`       | `bool`        | Enable tracking of request headers for Traceparent fields.                     | `false`      | no       |
+| `http_request_timeout`        | `duration`    | Timeout for HTTP requests.                                                     | `30s`        | no       |
+| `context_propagation`         | `string`      | Enables injecting of the Traceparent header value for outgoing HTTP requests.  | `"disabled"` | no       |
+| `high_request_volume`         | `bool`        | Optimize for immediate request information when response is seen.              | `false`      | no       |
+| `heuristic_sql_detect`        | `bool`        | Enable heuristic-based detection of SQL requests.                              | `false`      | no       |
+| `trace_printer`               | `string`      | Format for printing trace information.                                         | `"disabled"` | no       |
 
 `enable_context_propagation` enables context propagation using Linux Traffic Control probes.
 For more information about this topic, refer to [Distributed traces with Beyla][].
@@ -315,6 +315,29 @@ For more information about this topic, refer to [Distributed traces with Beyla][
 * `text` prints the trace information in a text format.
 * `json` prints the trace information in a JSON format.
 * `json_indent` prints the trace information in a JSON format with indentation.
+
+#### `context_propagation`
+
+`context_propagation` allows Beyla to propagate any incoming context to downstream services. 
+This context propagation support works for any programming language.
+
+For TLS encrypted HTTP requests (HTTPS), the Traceparent header value is encoded at TCP/IP packet level, 
+and requires that Beyla is present on both sides of the communication.
+
+The TCP/IP packet level encoding uses Linux Traffic Control (TC). 
+eBPF programs that also use TC need to chain correctly with Beyla. 
+For more information about chaining programs, refer to the [Cilium compatibility][cilium] documentation.
+
+You can disable the TCP/IP level encoding and TC programs by setting `context_propagation` to `"headers"`. 
+This context propagation support is fully compatible with any OpenTelemetry distributed tracing library.
+
+`context_propagation` can be set to either one of the following values:
+* `all`:	Enable both HTTP and IP options context propagation.
+* `headers`:	Enable context propagation via the HTTP headers only.
+* `ip`:	Enable context propagation via the IP options field only.
+* `disabled`:	Disable trace context propagation.
+
+[cilium]: https://grafana.com/docs/beyla/latest/cilium-compatibility/
 
 ### `filters`
 

@@ -30,10 +30,10 @@ otelcol.connector.servicegraph "default" {
 		max_items = 10
 		ttl       = "1s"
 	}
-	cache_loop              = "2m0s"
-	store_expiration_loop   = "5s"
-	metrics_flush_interval  = "3m0s"
-	database_name_attribute = "db_name3"
+	cache_loop               = "2m0s"
+	store_expiration_loop    = "5s"
+	metrics_flush_interval   = "3m0s"
+	database_name_attributes = ["db_name3", "db_name4"]
 
 	output {
 		metrics = [otelcol.exporter.otlp.default.input]
