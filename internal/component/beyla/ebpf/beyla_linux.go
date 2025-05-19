@@ -114,6 +114,8 @@ func (args Selections) Convert() attributes.Selection {
 
 func (args Discovery) Convert() (services.DiscoveryConfig, error) {
 	d := beyla.DefaultConfig.Discovery
+
+	// Services
 	srv, err := args.Services.Convert()
 	if err != nil {
 		return d, err
@@ -131,6 +133,27 @@ func (args Discovery) Convert() (services.DiscoveryConfig, error) {
 		}
 		d.DefaultExcludeServices = defaultExcludeSrv
 	}
+
+	// Survey
+	survey, err := args.Survey.Convert()
+	if err != nil {
+		return d, err
+	}
+	d.Survey = survey
+	// excludeSurvey, err := args.ExcludeSurvey.Convert()
+	// if err != nil {
+	// 	return d, err
+	// }
+	// d.ExcludeSurvey = excludeSurvey
+	// if args.DefaultExcludeSurvey != nil {
+	// 	defaultExcludeSurvey, err := args.DefaultExcludeSurvey.Convert()
+	// 	if err != nil {
+	// 		return d, err
+	// 	}
+	// 	d.DefaultExcludeSurvey = defaultExcludeSurvey
+	// }
+
+	// Common fields
 	d.SkipGoSpecificTracers = args.SkipGoSpecificTracers
 	if args.ExcludeOTelInstrumentedServices {
 		d.ExcludeOTelInstrumentedServices = args.ExcludeOTelInstrumentedServices
@@ -581,6 +604,13 @@ func (args *Arguments) Validate() error {
 	if len(args.Discovery.ExcludeServices) > 0 {
 		if err := args.Discovery.ExcludeServices.Validate(); err != nil {
 			return fmt.Errorf("invalid exclude_services configuration: %s", err.Error())
+		}
+	}
+
+	// TODO: Wire validation for the rest of the Survey-related fields whenever applicable.
+	if len(args.Discovery.Survey) > 0 {
+		if err := args.Discovery.Survey.Validate(); err != nil {
+			return fmt.Errorf("invalid survey configuration: %s", err.Error())
 		}
 	}
 

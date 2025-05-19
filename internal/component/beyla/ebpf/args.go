@@ -89,11 +89,14 @@ type KubernetesService struct {
 }
 
 type Discovery struct {
-	Services                        Services `alloy:"services,block"`
-	ExcludeServices                 Services `alloy:"exclude_services,block,optional"`
-	DefaultExcludeServices          Services `alloy:"default_exclude_services,block,optional"`
-	SkipGoSpecificTracers           bool     `alloy:"skip_go_specific_tracers,attr,optional"`
-	ExcludeOTelInstrumentedServices bool     `alloy:"exclude_otel_instrumented_services,attr,optional"`
+	Services               Services `alloy:"services,block,optional"`
+	ExcludeServices        Services `alloy:"exclude_services,block,optional"`
+	DefaultExcludeServices Services `alloy:"default_exclude_services,block,optional"`
+	Survey                 Services `alloy:"survey,block,optional"`
+	// ExcludeSurvey                   Services `alloy:"exclude_survey,block,optional"`
+	// DefaultExcludeSurvey            Services `alloy:"default_exclude_survey,block,optional"`
+	SkipGoSpecificTracers           bool `alloy:"skip_go_specific_tracers,attr,optional"`
+	ExcludeOTelInstrumentedServices bool `alloy:"exclude_otel_instrumented_services,attr,optional"`
 }
 
 type Metrics struct {
