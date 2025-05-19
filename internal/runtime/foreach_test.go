@@ -33,9 +33,9 @@ func TestForeach(t *testing.T) {
 			if tc.update != nil {
 				testConfigForEach(t, tc.main, tc.reloadConfig, func() {
 					require.NoError(t, os.WriteFile(tc.update.name, []byte(tc.update.updateConfig), 0664))
-				}, nil, nil)
+				}, nil, nil, nil)
 			} else {
-				testConfigForEach(t, tc.main, tc.reloadConfig, nil, nil, nil)
+				testConfigForEach(t, tc.main, tc.reloadConfig, nil, nil, nil, nil)
 			}
 		})
 	}
@@ -53,24 +53,25 @@ func TestForeachMetrics(t *testing.T) {
 			if tc.update != nil {
 				testConfigForEach(t, tc.main, tc.reloadConfig, func() {
 					require.NoError(t, os.WriteFile(tc.update.name, []byte(tc.update.updateConfig), 0664))
-				}, tc.expectedMetrics, tc.expectedDurationMetrics)
+				}, tc.expectedMetrics, tc.expectedDurationMetrics, tc.expectedMetricsAfterReload)
 			} else {
-				testConfigForEach(t, tc.main, tc.reloadConfig, nil, tc.expectedMetrics, tc.expectedDurationMetrics)
+				testConfigForEach(t, tc.main, tc.reloadConfig, nil, tc.expectedMetrics, tc.expectedDurationMetrics, tc.expectedMetricsAfterReload)
 			}
 		})
 	}
 }
 
 type testForEachFile struct {
-	description             string      // description at the top of the txtar file
-	main                    string      // root config that the controller should load
-	module                  string      // module imported by the root config
-	reloadConfig            string      // root config that the controller should apply on reload
-	update                  *updateFile // update can be used to update the content of a file at runtime
-	expectedMetrics         *string     // expected prometheus metrics
-	expectedDurationMetrics *int        // expected prometheus duration metrics - check those separately as they vary with each test run
-	expectedDebugInfo       *string     // expected debug info after running the config
-	expectedDebugInfo2      *string     // 2nd optional expected debug info after running the config
+	description                string      // description at the top of the txtar file
+	main                       string      // root config that the controller should load
+	module                     string      // module imported by the root config
+	reloadConfig               string      // root config that the controller should apply on reload
+	update                     *updateFile // update can be used to update the content of a file at runtime
+	expectedMetrics            *string     // expected prometheus metrics
+	expectedDurationMetrics    *int        // expected prometheus duration metrics - check those separately as they vary with each test run
+	expectedDebugInfo          *string     // expected debug info after running the config
+	expectedDebugInfo2         *string     // 2nd optional expected debug info after running the config
+	expectedMetricsAfterReload *string     // expected prometheus metrics after reload
 }
 
 func buildTestForEach(t *testing.T, filename string) testForEachFile {
@@ -95,6 +96,9 @@ func buildTestForEach(t *testing.T, filename string) testForEachFile {
 		case "expected_metrics.prom":
 			expectedMetrics := string(alloyConfig.Data)
 			tc.expectedMetrics = &expectedMetrics
+		case "expected_metrics_after_reload.prom":
+			expectedMetricsAfterReload := string(alloyConfig.Data)
+			tc.expectedMetricsAfterReload = &expectedMetricsAfterReload
 		case "expected_duration_metrics.prom":
 			expectedDurationMetrics, err := strconv.Atoi(strings.TrimSpace(string((alloyConfig.Data))))
 			require.NoError(t, err)
@@ -110,7 +114,7 @@ func buildTestForEach(t *testing.T, filename string) testForEachFile {
 	return tc
 }
 
-func testConfigForEach(t *testing.T, config string, reloadConfig string, update func(), expectedMetrics *string, expectedDurationMetrics *int) {
+func testConfigForEach(t *testing.T, config string, reloadConfig string, update func(), expectedMetrics *string, expectedDurationMetrics *int, expectedMetricsAfterReload *string) {
 	defer verifyNoGoroutineLeaks(t)
 	reg := prometheus.NewRegistry()
 	ctrl, f := setup(t, config, reg, featuregate.StabilityExperimental)
@@ -151,26 +155,7 @@ func testConfigForEach(t *testing.T, config string, reloadConfig string, update 
 	}
 
 	if expectedMetrics != nil {
-		metricsToCheck := []string{}
-
-		// These metrics have fixed values.
-		// Hence, we can compare their values from run to run.
-		metrics := map[string]bool{
-			"alloy_component_controller_running_components": true,
-			"alloy_component_controller_evaluating":         true,
-			"pulse_count":                                   true,
-			// "alloy_component_evaluation_queue_size": true, // TODO - metric value is inconsistent
-		}
-
-		// Only check metrics that are present in the expected output
-		for metric := range metrics {
-			if strings.Contains(*expectedMetrics, metric) {
-				metricsToCheck = append(metricsToCheck, metric)
-			}
-		}
-
-		err := testutil.GatherAndCompare(reg, strings.NewReader(*expectedMetrics), metricsToCheck...)
-		require.NoError(t, err)
+		checkMetrics(t, reg, expectedMetrics)
 	}
 
 	if update != nil {
@@ -197,7 +182,34 @@ func testConfigForEach(t *testing.T, config string, reloadConfig string, update 
 			sum := getDebugInfo[int](t, ctrl, "", "testcomponents.summation_receiver.sum")
 			return sum >= 30
 		}, 3*time.Second, 10*time.Millisecond)
+
+		if expectedMetricsAfterReload != nil {
+			checkMetrics(t, reg, expectedMetricsAfterReload)
+		}
 	}
+}
+
+func checkMetrics(t *testing.T, reg *prometheus.Registry, expectedMetrics *string) {
+	metricsToCheck := []string{}
+
+	// These metrics have fixed values.
+	// Hence, we can compare their values from run to run.
+	metrics := map[string]bool{
+		"alloy_component_controller_running_components": true,
+		"alloy_component_controller_evaluating":         true,
+		"pulse_count":                                   true,
+		// "alloy_component_evaluation_queue_size": true, // TODO - metric value is inconsistent
+	}
+
+	// Only check metrics that are present in the expected output
+	for metric := range metrics {
+		if strings.Contains(*expectedMetrics, metric) {
+			metricsToCheck = append(metricsToCheck, metric)
+		}
+	}
+
+	err := testutil.GatherAndCompare(reg, strings.NewReader(*expectedMetrics), metricsToCheck...)
+	require.NoError(t, err)
 }
 
 func getDebugInfo[T any](t *testing.T, ctrl *runtime.Runtime, moduleId string, nodeId string) T {

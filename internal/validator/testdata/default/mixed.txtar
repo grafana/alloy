@@ -6,7 +6,7 @@ local.missing "missing" {
 
 -- missing_label.alloy --
 local.file {
-    path_targets = [{"__path__" = "/tmp/app-logs/app.log"}]
+	filename = "/tmp/app-logs/app.log"
 }
 
 -- valid.alloy --

@@ -17,8 +17,15 @@ import (
 )
 
 const (
-	OP_QUERY_SAMPLE = "query_sample"
 	QuerySampleName = "query_sample"
+	OP_QUERY_SAMPLE = "query_sample"
+	OP_WAIT_EVENT   = "wait_event"
+
+	sqlTextField              = `, statements.SQL_TEXT`
+	sqlTextNotNullClause      = ` AND statements.SQL_TEXT IS NOT NULL`
+	digestTextNotNullClause   = ` AND statements.DIGEST_TEXT IS NOT NULL`
+	endOfTimeline             = ` AND statements.TIMER_END > ? AND statements.TIMER_END <= ?`
+	beginningAndEndOfTimeline = ` AND statements.TIMER_END > ? OR statements.TIMER_END <= ?`
 )
 
 const selectUptime = `SELECT variable_value FROM performance_schema.global_status WHERE variable_name = 'UPTIME'`
@@ -30,7 +37,9 @@ FROM performance_schema.global_status
 WHERE variable_name = 'UPTIME'`
 
 const selectQuerySamples = `
-SELECT statements.CURRENT_SCHEMA,
+SELECT
+	statements.CURRENT_SCHEMA,
+	statements.EVENT_ID,
 	statements.DIGEST,
 	statements.DIGEST_TEXT,
 	statements.TIMER_END,
@@ -41,12 +50,23 @@ SELECT statements.CURRENT_SCHEMA,
 	statements.ROWS_AFFECTED,
 	statements.ERRORS,
 	statements.MAX_CONTROLLED_MEMORY,
-	statements.MAX_TOTAL_MEMORY
+	statements.MAX_TOTAL_MEMORY,
+	waits.event_id as WAIT_EVENT_ID,
+	waits.event_name as WAIT_EVENT_NAME,
+	waits.object_name as WAIT_OBJECT_NAME,
+	waits.object_type as WAIT_OBJECT_TYPE,
+	waits.timer_wait as WAIT_TIMER_WAIT
 	%s
-FROM performance_schema.events_statements_history AS statements
-WHERE statements.sql_text IS NOT NULL
-  AND statements.CURRENT_SCHEMA NOT IN ('mysql', 'performance_schema', 'sys', 'information_schema')
-  %s`
+FROM
+	performance_schema.events_statements_history AS statements
+LEFT JOIN
+	performance_schema.events_waits_history waits
+	ON statements.thread_id = waits.thread_id
+	AND statements.EVENT_ID = waits.NESTING_EVENT_ID
+WHERE
+	statements.DIGEST IS NOT NULL
+	AND statements.CURRENT_SCHEMA NOT IN ('mysql', 'performance_schema', 'sys', 'information_schema')
+	%s %s`
 
 type QuerySampleArguments struct {
 	DB                    *sql.DB
@@ -177,12 +197,16 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 
 	timerClause, limit := c.determineTimerClauseAndLimit(uptime)
 
-	var sqlTextField string
+	var textField, textNotNullClause string
 	if c.disableQueryRedaction {
-		sqlTextField = ",statements.SQL_TEXT"
+		textField = sqlTextField
+		textNotNullClause = sqlTextNotNullClause
+	} else {
+		textField = ""
+		textNotNullClause = digestTextNotNullClause
 	}
 
-	query := fmt.Sprintf(selectQuerySamples, sqlTextField, timerClause)
+	query := fmt.Sprintf(selectQuerySamples, textField, textNotNullClause, timerClause)
 
 	rs, err := c.dbConnection.QueryContext(ctx, query, c.timerBookmark, limit)
 	if err != nil {
@@ -194,13 +218,17 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 	c.timerBookmark = limit
 	c.lastUptime = uptime
 
+	lastDigestLogged := ""
+	lastEventIDLogged := ""
+
 	for rs.Next() {
 		row := struct {
 			// sample query details
-			Schema     sql.NullString
-			Digest     sql.NullString
-			DigestText sql.NullString
-			SQLText    sql.NullString
+			Schema           sql.NullString
+			StatementEventID sql.NullString
+			Digest           sql.NullString
+			DigestText       sql.NullString
+			SQLText          sql.NullString
 
 			// sample time
 			TimerEndPicoseconds    sql.NullFloat64
@@ -217,10 +245,18 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 			// sample memory info
 			MaxControlledMemory uint64
 			MaxTotalMemory      uint64
+
+			// sample wait info, if any
+			WaitEventID    sql.NullString
+			WaitEventName  sql.NullString
+			WaitObjectName sql.NullString
+			WaitObjectType sql.NullString
+			WaitTime       sql.NullFloat64
 		}{}
 
 		scanArgs := []interface{}{
 			&row.Schema,
+			&row.StatementEventID,
 			&row.Digest,
 			&row.DigestText,
 			&row.TimerEndPicoseconds,
@@ -232,6 +268,11 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 			&row.Errors,
 			&row.MaxControlledMemory,
 			&row.MaxTotalMemory,
+			&row.WaitEventID,
+			&row.WaitEventName,
+			&row.WaitObjectName,
+			&row.WaitObjectType,
+			&row.WaitTime,
 		}
 		if c.disableQueryRedaction {
 			scanArgs = append(scanArgs, &row.SQLText)
@@ -268,8 +309,9 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 
 		logMessage :=
 			fmt.Sprintf(
-				`schema="%s" digest="%s" digest_text="%s" rows_examined="%d" rows_sent="%d" rows_affected="%d" errors="%d" max_controlled_memory="%db" max_total_memory="%db" cpu_time="%fms" elapsed_time="%fms" elapsed_time_ms="%fms"`,
+				`schema="%s" event_id="%s" digest="%s" digest_text="%s" rows_examined="%d" rows_sent="%d" rows_affected="%d" errors="%d" max_controlled_memory="%db" max_total_memory="%db" cpu_time="%fms" elapsed_time="%fms" elapsed_time_ms="%fms"`,
 				row.Schema.String,
+				row.StatementEventID.String,
 				row.Digest.String,
 				digestText,
 				row.RowsExamined,
@@ -286,13 +328,47 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 			logMessage += fmt.Sprintf(` sql_text="%s"`, row.SQLText.String)
 		}
 
-		c.entryHandler.Chan() <- buildLokiEntryWithTimestamp(
-			logging.LevelInfo,
-			OP_QUERY_SAMPLE,
-			c.instanceKey,
-			logMessage,
-			int64(millisecondsToNanoseconds(row.TimestampMilliseconds)),
-		)
+		if lastDigestLogged != row.Digest.String || lastEventIDLogged != row.StatementEventID.String {
+			lastDigestLogged = row.Digest.String
+			lastEventIDLogged = row.StatementEventID.String
+
+			c.entryHandler.Chan() <- buildLokiEntryWithTimestamp(
+				logging.LevelInfo,
+				OP_QUERY_SAMPLE,
+				c.instanceKey,
+				logMessage,
+				int64(millisecondsToNanoseconds(row.TimestampMilliseconds)),
+			)
+		}
+
+		if row.WaitEventID.Valid {
+			waitTime := picosecondsToMilliseconds(row.WaitTime.Float64)
+			waitLogMessage :=
+				fmt.Sprintf(
+					`schema="%s" digest="%s" digest_text="%s" event_id="%s" wait_event_id="%s" wait_event_name="%s" wait_object_name="%s" wait_object_type="%s" wait_time="%fms"`,
+					row.Schema.String,
+					row.Digest.String,
+					row.DigestText.String,
+					row.StatementEventID.String,
+					row.WaitEventID.String,
+					row.WaitEventName.String,
+					row.WaitObjectName.String,
+					row.WaitObjectType.String,
+					waitTime,
+				)
+
+			if c.disableQueryRedaction && row.SQLText.Valid {
+				waitLogMessage += fmt.Sprintf(` sql_text="%s"`, row.SQLText.String)
+			}
+
+			c.entryHandler.Chan() <- buildLokiEntryWithTimestamp(
+				logging.LevelInfo,
+				OP_WAIT_EVENT,
+				c.instanceKey,
+				waitLogMessage,
+				int64(millisecondsToNanoseconds(row.TimestampMilliseconds)),
+			)
+		}
 	}
 
 	if err := rs.Err(); err != nil {
@@ -322,11 +398,6 @@ func (c *QuerySample) calculateWallTime(serverStartTime, timer float64) float64 
 func calculateNumberOfOverflows(uptime float64) int {
 	return int(math.Floor(uptime / picosecondsOverflowInSeconds))
 }
-
-const (
-	endOfTimeline             = ` AND statements.TIMER_END > ? AND statements.TIMER_END <= ?;`
-	beginningAndEndOfTimeline = ` AND statements.TIMER_END > ? OR statements.TIMER_END <= ?;`
-)
 
 func (c *QuerySample) determineTimerClauseAndLimit(uptime float64) (string, float64) {
 	timerClause := endOfTimeline

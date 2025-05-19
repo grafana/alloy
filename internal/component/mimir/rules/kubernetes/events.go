@@ -156,16 +156,16 @@ func (e *eventProcessor) reconcileState(ctx context.Context) error {
 	currentState := e.getMimirState()
 	diffs := kubernetes.DiffRuleState(desiredState, currentState)
 
-	var result error
+	var errs error
 	for ns, diff := range diffs {
 		err = e.applyChanges(ctx, ns, diff)
 		if err != nil {
-			result = multierror.Append(result, err)
+			errs = multierror.Append(errs, err)
 			continue
 		}
 	}
 
-	return result
+	return errs
 }
 
 // desiredStateFromKubernetes loads PrometheusRule resources from Kubernetes and converts
