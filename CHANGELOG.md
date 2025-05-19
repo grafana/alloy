@@ -35,6 +35,8 @@ Main (unreleased)
 
 ### Enhancements
 
+- `prometheus.exporter.mongodb` now offers fine-grained control over collected metrics with new configuration options. (@TeTeHacko)
+
 - Add binary version to constants exposed in configuration file syntatx. (@adlots)
 
 - Update `loki.secretfilter` to include metrics about redactions (@kelnage)
