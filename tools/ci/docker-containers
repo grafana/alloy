@@ -103,8 +103,6 @@ case "$TARGET_CONTAINER" in
     ;;
 
   alloy-devel)
-	echo $PUSH_ALLOY_IMAGE
-
     docker buildx build $DOCKER_FLAGS         \
       --platform $BUILD_PLATFORMS             \
       --build-arg RELEASE_BUILD=1             \
