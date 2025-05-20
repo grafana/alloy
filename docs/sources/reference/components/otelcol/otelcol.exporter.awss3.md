@@ -42,7 +42,7 @@ Replace the following:
 
 ## Arguments
 
-`otelcol.exporter.otlp` supports the following arguments:
+`otelcol.exporter.awss3` supports the following arguments:
 
 Name      | Type       | Description                                      | Default | Required
 ----------|------------|--------------------------------------------------|---------|---------

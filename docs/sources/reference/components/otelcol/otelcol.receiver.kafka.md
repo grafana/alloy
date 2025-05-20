@@ -142,7 +142,7 @@ Name       | Type     | Description                                             
 
 ### metrics block
 
-The `logs` block configures how to receive metrics from Kafka brokers.
+The `metrics` block configures how to receive metrics from Kafka brokers.
 
 Name       | Type     | Description                                                                | Default           | Required
 ---------- | -------- | -------------------------------------------------------------------------- | ----------------- | --------
@@ -151,7 +151,7 @@ Name       | Type     | Description                                             
 
 ### traces block
 
-The `logs` block configures how to receive traces from Kafka brokers.
+The `traces` block configures how to receive traces from Kafka brokers.
 
 Name       | Type     | Description                                                                | Default          | Required
 ---------- | -------- | -------------------------------------------------------------------------- | ---------------- | --------
