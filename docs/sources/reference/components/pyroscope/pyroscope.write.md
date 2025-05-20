@@ -46,14 +46,14 @@ You can use the following argument with `pyroscope.write`:
 
 The following blocks are supported inside the definition of `pyroscope.write`:
 
-| Block                                              | Description                                                | Required |     |
-| -------------------------------------------------- | ---------------------------------------------------------- | -------- | --- |
-| [`endpoint`][endpoint]                             | Location to send profiles to.                              | no       |     |
-| `endpoint` > [`authorization`][authorization]      | Configure generic authorization to the endpoint.           | no       |     |
-| `endpoint` > [`basic_auth`][basic_auth]            | Configure `basic_auth` for authenticating to the endpoint. | no       |     |
-| `endpoint` > [`oauth2`][oauth2]                    | Configure OAuth 2.0 for authenticating to the endpoint.    | no       |     |
-| `endpoint` > `oauth2` > [`tls_config`][tls_config] | Configure TLS settings for connecting to the endpoint.     | no       |     |
-| `endpoint` > [`tls_config`][tls_config]            | Configure TLS settings for connecting to the endpoint.     | no       |     |
+| Block                                              | Description                                                | Required |
+| -------------------------------------------------- | ---------------------------------------------------------- | -------- |
+| [`endpoint`][endpoint]                             | Location to send profiles to.                              | no       |
+| `endpoint` > [`authorization`][authorization]      | Configure generic authorization to the endpoint.           | no       |
+| `endpoint` > [`basic_auth`][basic_auth]            | Configure `basic_auth` for authenticating to the endpoint. | no       |
+| `endpoint` > [`oauth2`][oauth2]                    | Configure OAuth 2.0 for authenticating to the endpoint.    | no       |
+| `endpoint` > `oauth2` > [`tls_config`][tls_config] | Configure TLS settings for connecting to the endpoint.     | no       |
+| `endpoint` > [`tls_config`][tls_config]            | Configure TLS settings for connecting to the endpoint.     | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `endpoint` > `basic_auth` refers to a `basic_auth` block defined inside an `endpoint` block.
@@ -79,7 +79,7 @@ The following arguments are supported:
 | `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`    | no       |
 | `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`    | no       |
 | `headers`                | `map(string)`       | Extra headers to deliver with the request.                                                       |           | no       |
-| `http_headers`           | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.          |                      | no       |
+| `http_headers`           | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.          |           | no       |
 | `max_backoff_period`     | `duration`          | Maximum backoff time between retries.                                                            | `"5m"`    | no       |
 | `max_backoff_retries`    | `int`               | Maximum number of retries. 0 to retry infinitely.                                                | 10        | no       |
 | `min_backoff_period`     | `duration`          | Initial backoff time between retries.                                                            | `"500ms"` | no       |
