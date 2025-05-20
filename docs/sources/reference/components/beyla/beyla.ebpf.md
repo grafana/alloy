@@ -528,17 +528,7 @@ This example uses a [`prometheus.scrape` component][scrape] to collect metrics f
 
 ```alloy
 beyla.ebpf "default" {
-  discovery {
-    services {
-      open_ports = <OPEN_PORT>
-    }
-  }
-
-  metrics {
-    features = [
-     "application", 
-    ]
-  }
+    open_port = <OPEN_PORT>
 }
 
 prometheus.scrape "beyla" {
@@ -557,32 +547,6 @@ prometheus.remote_write "demo" {
     }
   }
 }
-```
-
-#### Kubernetes
-
-This example gets metrics from `beyla.ebpf` for the specified namespace and Pods running in a Kubernetes cluster:
-
-```alloy
-beyla.ebpf "default" {
-  attributes {
-    kubernetes {
-     enable = "true"
-    }
-  }
-  discovery {
-    services {
-     kubernetes {
-      namespace = "<NAMESPACE>"
-      pod_name = "<POD_NAME>"
-     }
-    }
-  }
-  metrics {
-    features = [
-     "application", 
-    ]
-  }
 }
 
 prometheus.scrape "beyla" {
