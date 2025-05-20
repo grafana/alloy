@@ -7,7 +7,7 @@ headless: true
 The following arguments are supported:
 
 | Name            | Type                       | Description                                                                                | Default | Required |
-|-----------------|----------------------------|--------------------------------------------------------------------------------------------|---------|----------|
+| --------------- | -------------------------- | ------------------------------------------------------------------------------------------ | ------- | -------- |
 | `blocking`      | `boolean`                  | If `true`, blocks until the queue has room for a new request.                              | `false` | no       |
 | `enabled`       | `boolean`                  | Enables an buffer before sending data to the client.                                       | `true`  | no       |
 | `num_consumers` | `number`                   | Number of readers to send batches written to the queue in parallel.                        | `10`    | no       |
@@ -27,6 +27,6 @@ Larger values of `num_consumers` allow data to be sent more quickly at the expen
 If an `otelcol.storage.*` component is configured and provided in the queue's `storage` argument, the queue uses the
 provided storage extension to provide a persistent queue and the queue is no longer stored in memory.
 Any data persisted will be processed on startup if {{< param "PRODUCT_NAME" >}} is killed or restarted.
-See the [exporterhelper documentation][queue_docs] in the OpenTelemetry Collector repository for more details.
+Refer to the [exporterhelper documentation][queue_docs] in the OpenTelemetry Collector repository for more details.
 
 [queue_docs]: https://github.com/open-telemetry/opentelemetry-collector/blob/<OTEL_VERSION>/exporter/exporterhelper/README.md#persistent-queue
