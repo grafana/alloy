@@ -121,28 +121,26 @@ func (p *profilingLoop) loop(ctx context.Context) {
 }
 
 func (p *profilingLoop) cleanupJFR() {
-	// cleanup jfr jfrFile
-
 	// first try to find through process path
 	jfrFile := asprof.ProcessPath(p.jfrFile, p.pid)
-	if _, err := os.Stat(jfrFile); os.IsNotExist(err) {
-		// the process path is not found, if the target process might have stopped in the meantime
+	if err := os.Remove(jfrFile); os.IsNotExist(err) {
+		// the process path was not found, this is possible when the target process stopped in the meantime.
 
 		if jfrFile == p.jfrFile {
-			// nothing we can do, was this was /proc path
+			// nothing we can do, the process path was not actually a /proc path
 			return
 		}
 
 		jfrFile = p.jfrFile
-		if _, err := os.Stat(jfrFile); os.IsNotExist(err) {
+		if err := os.Remove(jfrFile); os.IsNotExist(err) {
+			_ = level.Debug(p.logger).Log("msg", "unable to delete jfr file, likely because target process is stopped and was containerized", "path", jfrFile, "err", err)
 			// file not found on the host system, process was likely containerized and we can't delete this file anymore
 			return
+		} else if err != nil {
+			_ = level.Warn(p.logger).Log("msg", "failed to delete jfr file at host path", "path", jfrFile, "err", err)
 		}
-	}
-
-	err := os.Remove(jfrFile)
-	if err != nil {
-		_ = level.Warn(p.logger).Log("msg", "failed to delete jfr file", "err", err)
+	} else if err != nil {
+		_ = level.Warn(p.logger).Log("msg", "failed to delete jfr file at process path", "path", jfrFile, "err", err)
 	}
 }
 
