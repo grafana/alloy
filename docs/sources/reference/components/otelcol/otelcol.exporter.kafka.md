@@ -47,6 +47,10 @@ Name                                       | Type            | Description      
 `partition_traces_by_id`                   | `bool`          | Whether to include the trace ID as the message key in trace messages sent to Kafka. | `"false"`            | no
 `partition_metrics_by_resource_attributes` | `bool`          | Whether to include the hash of sorted resource attributes as the message partitioning key in metric messages sent to Kafka. | `"false"`            | no
 
+{{< admonition type="warning" >}}
+The `topic` and `encoding` arguments are deprecated in favour of the [logs][], [metrics][], and [traces][] blocks.
+{{< /admonition >}}
+
 When `topic_from_attribute` is set, it will take precedence over the `topic` arguments in [logs][], [metrics][], and [traces][] blocks.
 
 `partition_traces_by_id` does not have any effect on Jaeger encoding exporters since Jaeger exporters include trace ID as the message key by default.

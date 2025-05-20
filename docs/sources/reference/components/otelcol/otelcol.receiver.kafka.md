@@ -57,6 +57,10 @@ Name | Type | Description | Default | Required
 `group_rebalance_strategy` | `string` | The strategy used to assign partitions to consumers within a consumer group. | `"range"` | no
 `group_instance_id` | `string` | A unique identifier for the consumer instance within a consumer group. | `""` | no
 
+{{< admonition type="warning" >}}
+The `topic` and `encoding` arguments are deprecated in favour of the [logs][], [metrics][], and [traces][] blocks.
+{{< /admonition >}}
+
 For `max_fetch_size`, the value `0` means no limit.
 
 `initial_offset` must be either `"latest"` or `"earliest"`.
