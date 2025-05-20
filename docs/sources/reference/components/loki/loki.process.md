@@ -1140,7 +1140,8 @@ The name of the capture group is then used as the key in the extracted map for t
 
 Because of how {{< param "PRODUCT_NAME" >}} syntax strings work, any backslashes in `expression` must be escaped with a double backslash, for example, `"\\w"` or `"\\S+"`.
 
-When `labels_from_groups` is set to `true`, any named capture groups from the regular expression are automatically added as labels in addition to being added to the extracted map.
+When `labels_from_groups` is set to true, any named capture groups from the regex expression are automatically added as labels in addition to being added to the extracted map.
+If a capture group name matches an existing label name, the existing label's value will be overridden by the extracted value.
 
 If the `source` is empty or missing, then the stage parses the log line itself.
 If it's set, the stage parses a previously extracted value with the same name.

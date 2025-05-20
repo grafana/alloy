@@ -41,7 +41,19 @@ stage.regex {
 stage.regex {
     expression = "^HTTP\\/(?P<protocol_version>[0-9\\.]+)$"
     source     = "protocol"
-}	
+}
+`
+
+var testRegexAlloyMultiStageWithExistingLabelsAndLabelFromGroups = `
+stage.static_labels {
+    values = {
+      protocol = "HTTP/2",
+    }
+}
+stage.regex {
+    expression = "^(?P<ip>\\S+) (?P<identd>\\S+) (?P<user>\\S+) \\[(?P<timestamp>[\\w:/]+\\s[+\\-]\\d{4})\\] \"(?P<action>\\S+)\\s?(?P<path>\\S+)?\\s?(?P<protocol>\\S+)?\" (?P<status>\\d{3}|-) (?P<size>\\d+|-)\\s?\"?(?P<referer>[^\"]*)\"?\\s?\"?(?P<useragent>[^\"]*)?\"?$"
+	labels_from_groups = true
+}
 `
 
 var testRegexAlloySourceWithMissingKey = `
@@ -130,6 +142,36 @@ func TestPipeline_Regex(t *testing.T) {
 				"size":             "932",
 				"referer":          "-",
 				"useragent":        "Mozilla/5.0 (Windows; U; Windows NT 5.1; de; rv:1.9.1.7) Gecko/20091221 Firefox/3.5.7 GTB6",
+			},
+			model.LabelSet{
+				"ip":        "11.11.11.11",
+				"identd":    "-",
+				"user":      "frank",
+				"timestamp": "25/Jan/2000:14:00:01 -0500",
+				"action":    "GET",
+				"path":      "/1986.js",
+				"protocol":  "HTTP/1.1",
+				"status":    "200",
+				"size":      "932",
+				"referer":   "-",
+				"useragent": "Mozilla/5.0 (Windows; U; Windows NT 5.1; de; rv:1.9.1.7) Gecko/20091221 Firefox/3.5.7 GTB6",
+			},
+		},
+		"successfully run a pipeline with regex stage labels overriding existing labels with labels_from_groups": {
+			testRegexAlloyMultiStageWithExistingLabelsAndLabelFromGroups,
+			testRegexLogLine,
+			map[string]interface{}{
+				"ip":        "11.11.11.11",
+				"identd":    "-",
+				"user":      "frank",
+				"timestamp": "25/Jan/2000:14:00:01 -0500",
+				"action":    "GET",
+				"path":      "/1986.js",
+				"protocol":  "HTTP/1.1",
+				"status":    "200",
+				"size":      "932",
+				"referer":   "-",
+				"useragent": "Mozilla/5.0 (Windows; U; Windows NT 5.1; de; rv:1.9.1.7) Gecko/20091221 Firefox/3.5.7 GTB6",
 			},
 			model.LabelSet{
 				"ip":        "11.11.11.11",
