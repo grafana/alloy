@@ -324,7 +324,7 @@ mimir.rules.kubernetes "default" {
 If a query in the form of `up != 1` is found in `PrometheusRule` CRDs, it's modified to `up{app="my-app"} != 1` before sending it to Mimir.
 
 This example demonstrates tenant federation. Rules defined in the `PrometheusRule` CR are considered to originate from `source-tenant-alpha` and `source-tenant-beta`.
-The `mimir.rules.kubernetes` component will sync these rules to the `target-tenant-main` in the configured Mimir instance.
+The `mimir.rules.kubernetes` component syncs these rules to the `target-tenant-main` in the configured Mimir instance.
 
 ```alloy
 // config.alloy
