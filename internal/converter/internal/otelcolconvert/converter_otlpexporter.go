@@ -81,11 +81,12 @@ func toQueueArguments(cfg exporterhelper.QueueBatchConfig) otelcol.QueueArgument
 	}
 
 	q := otelcol.QueueArguments{
-		Enabled:      cfg.Enabled,
-		NumConsumers: cfg.NumConsumers,
-		QueueSize:    cfg.QueueSize,
-		Blocking:     cfg.Blocking,
-		Sizer:        string(sizer),
+		Enabled:         cfg.Enabled,
+		NumConsumers:    cfg.NumConsumers,
+		QueueSize:       cfg.QueueSize,
+		Blocking:        cfg.Blocking, //nolint:staticcheck
+		BlockOnOverflow: cfg.BlockOnOverflow,
+		Sizer:           string(sizer),
 	}
 
 	if cfg.StorageID != nil {

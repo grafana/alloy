@@ -6,14 +6,19 @@ headless: true
 
 The following arguments are supported:
 
-| Name            | Type                       | Description                                                                                | Default | Required |
-|-----------------|----------------------------|--------------------------------------------------------------------------------------------|---------|----------|
-| `blocking`      | `boolean`                  | If `true`, blocks until the queue has room for a new request.                              | `false` | no       |
-| `enabled`       | `boolean`                  | Enables an buffer before sending data to the client.                                       | `true`  | no       |
-| `num_consumers` | `number`                   | Number of readers to send batches written to the queue in parallel.                        | `10`    | no       |
-| `queue_size`    | `number`                   | Maximum number of unwritten batches allowed in the queue at the same time.                 | `1000`  | no       |
-| `sizer`         | `string`                   | How the queue and batching is measured.                                                     | `"requests"`  | no       |
-| `storage`       | `capsule(otelcol.Handler)` | Handler from an `otelcol.storage` component to use to enable a persistent queue mechanism. |         | no       |
+| Name                | Type                       | Description                                                                                | Default       | Required |
+|---------------------|----------------------------|--------------------------------------------------------------------------------------------|---------------|----------|
+| `blocking`          | `boolean`                  | (Deprecated) If `true`, blocks until the queue has room for a new request.                              | `false`       | no       |
+| `block_on_overflow` | `boolean`                  | The behavior when the component's `TotalSize` limit is reached.                            | `false`       | no       |
+| `enabled`           | `boolean`                  | Enables a buffer before sending data to the client.                                        | `true`        | no       |
+| `num_consumers`     | `number`                   | Number of readers to send batches written to the queue in parallel.                        | `10`          | no       |
+| `queue_size`        | `number`                   | Maximum number of unwritten batches allowed in the queue at the same time.                 | `1000`        | no       |
+| `sizer`             | `string`                   | How the queue and batching is measured.                                                    | `"requests"`  | no       |
+| `storage`           | `capsule(otelcol.Handler)` | Handler from an `otelcol.storage` component to use to enable a persistent queue mechanism. |               | no       |
+
+The `blocking` argument is deprecated in favour of the `block_on_overflow` argument.
+
+When `block_on_overflow` is `true`, the component will wait for space; otherwise, operations will immediately return a retryable error.
 
 When `enabled` is `true`, data is first written to an in-memory buffer before sending it to the configured server.
 Batches sent to the component's `input` exported field are added to the buffer as long as the number of unsent batches doesn't exceed the configured `queue_size`.

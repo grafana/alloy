@@ -12,11 +12,12 @@ import (
 // QueueArguments holds shared settings for components which can queue
 // requests.
 type QueueArguments struct {
-	Enabled      bool   `alloy:"enabled,attr,optional"`
-	NumConsumers int    `alloy:"num_consumers,attr,optional"`
-	QueueSize    int64  `alloy:"queue_size,attr,optional"`
-	Blocking     bool   `alloy:"blocking,attr,optional"`
-	Sizer        string `alloy:"sizer,attr,optional"`
+	Enabled         bool   `alloy:"enabled,attr,optional"`
+	NumConsumers    int    `alloy:"num_consumers,attr,optional"`
+	QueueSize       int64  `alloy:"queue_size,attr,optional"`
+	Blocking        bool   `alloy:"blocking,attr,optional"`
+	BlockOnOverflow bool   `alloy:"block_on_overflow,attr,optional"`
+	Sizer           string `alloy:"sizer,attr,optional"`
 
 	// Storage is a binding to an otelcol.storage.* component extension which handles
 	// reading and writing to disk
@@ -76,11 +77,12 @@ func (args *QueueArguments) Convert() (*otelexporterhelper.QueueBatchConfig, err
 	}
 
 	q := &otelexporterhelper.QueueBatchConfig{
-		Enabled:      args.Enabled,
-		NumConsumers: args.NumConsumers,
-		QueueSize:    args.QueueSize,
-		Blocking:     args.Blocking,
-		Sizer:        *sizer,
+		Enabled:         args.Enabled,
+		NumConsumers:    args.NumConsumers,
+		QueueSize:       args.QueueSize,
+		Blocking:        args.Blocking,
+		BlockOnOverflow: args.BlockOnOverflow,
+		Sizer:           *sizer,
 	}
 
 	// Configure storage if args.Storage is set.
