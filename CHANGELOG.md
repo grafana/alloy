@@ -51,6 +51,7 @@ Main (unreleased)
   - `query_sample`: base log entries on calculated timestamp from rows, not now() (@fridgepoet)
   - `query_sample`: check digest is not null (@cristiangreco)
   - `query_sample`: add additional logs for wait events (@fridgepoet)
+  - make tidb the default and only sql parser
 
 - Mixin dashboards improvements: added minimum cluster size to Cluster Overview dashboard, fixed units in OpenTelemetry dashboard, fixed slow components evaluation time units in Controller dashboard and updated Prometheus dashboard to correctly aggregate across instances. (@thampiotr)
 
@@ -64,7 +65,7 @@ Main (unreleased)
   to all queries discovered via `PrometheusRule` CRDs. (@QuentinBisson)
 
 -  Add optional `id` field to `foreach` block to generate more meaningful component paths in metrics by using a specific field from collection items. (@harshrai654)
-  
+
 - The `mimir.rules.kubernetes` component now supports adding extra label matchers
   to all queries discovered via `PrometheusRule` CRDs by extracting label values defined on the `PrometheusRule`. (@QuentinBisson)
 
