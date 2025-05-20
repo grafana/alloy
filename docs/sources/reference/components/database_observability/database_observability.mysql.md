@@ -51,20 +51,30 @@ The `database_observability.mysql` component doesn't support any blocks. You can
 ## Example
 
 ```alloy
+# This block configures the database_observability.mysql component to collect MySQL metrics and logs and forward logs to Loki.
 database_observability.mysql "orders_db" {
+  # The MySQL Data Source Name (DSN) to connect to.
   data_source_name = "user:pass@tcp(mysql:3306)/"
+  # Forward collected logs to the Loki logs_service receiver.
   forward_to = [loki.write.logs_service.receiver]
 }
 
+# This block configures Prometheus to scrape metrics from the MySQL observability component.
 prometheus.scrape "orders_db" {
+  # Use the targets exported by the database_observability.mysql component.
   targets = database_observability.mysql.orders_db.targets
-  honor_labels = true // required to keep job and instance labels
+  # Required to keep job and instance labels.
+  honor_labels = true
+  # Forward scraped metrics to the remote_write receiver.
   forward_to = [prometheus.remote_write.metrics_service.receiver]
 }
 
+# This block configures Prometheus remote_write to send metrics to a Grafana Cloud endpoint.
 prometheus.remote_write "metrics_service" {
   endpoint {
+    # Set the remote_write endpoint URL for hosted metrics.
     url = sys.env("<GRAFANA_CLOUD_HOSTED_METRICS_URL>")
+    # Configure basic authentication for the metrics endpoint.
     basic_auth {
       username = sys.env("<GRAFANA_CLOUD_HOSTED_METRICS_ID>")
       password = sys.env("<GRAFANA_CLOUD_RW_API_KEY>")
@@ -72,9 +82,12 @@ prometheus.remote_write "metrics_service" {
   }
 }
 
+# This block configures Loki to write logs to a Grafana Cloud endpoint.
 loki.write "logs_service" {
   endpoint {
+    # Set the Loki endpoint URL for hosted logs.
     url = sys.env("<GRAFANA_CLOUD_HOSTED_LOGS_URL>")
+    # Configure basic authentication for the logs endpoint.
     basic_auth {
       username = sys.env("<GRAFANA_CLOUD_HOSTED_LOGS_ID>")
       password = sys.env("<GRAFANA_CLOUD_RW_API_KEY>")

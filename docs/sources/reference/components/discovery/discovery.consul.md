@@ -151,23 +151,32 @@ In those cases, exported fields retain their last healthy values.
 This example discovers targets from Consul for the specified list of services:
 
 ```alloy
+# This block configures discovery.consul to discover targets for a specific list of services from a Consul server.
 discovery.consul "example" {
+  # Set the Consul server address and port.
   server = "localhost:8500"
+  # Specify the list of services to discover from Consul.
   services = [
     "service1",
     "service2",
   ]
 }
 
+# This block configures Prometheus to scrape metrics from the discovered Consul targets.
 prometheus.scrape "demo" {
+  # Use the targets exported by the discovery.consul component.
   targets    = discovery.consul.example.targets
+  # Forward scraped metrics to the remote_write receiver.
   forward_to = [prometheus.remote_write.demo.receiver]
 }
 
+# This block configures Prometheus remote_write to send metrics to an external endpoint.
 prometheus.remote_write "demo" {
   endpoint {
+    # Set the remote_write endpoint URL.
     url = "<PROMETHEUS_REMOTE_WRITE_URL>"
 
+    # Configure basic authentication for the remote_write endpoint.
     basic_auth {
       username = "<USERNAME>"
       password = "<PASSWORD>"
