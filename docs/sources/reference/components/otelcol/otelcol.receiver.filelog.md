@@ -3,6 +3,8 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/ot
 description: Learn about otelcol.receiver.filelog
 labels:
   stage: public-preview
+  products:
+    - oss
 title: otelcol.receiver.filelog
 ---
 
@@ -72,7 +74,7 @@ Refer to the upstream receiver [documentation][encoding-documentation] for more 
 
 [encoding-documentation]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/{{< param "OTEL_VERSION" >}}/receiver/filelogreceiver/README.md#supported-encodings
 
-### operators
+### `operators`
 
 The `operators` list is a list of stanza [operators][] that transform the log entries after they have been read.
 
@@ -97,15 +99,15 @@ otelcol.receiver.filelog "default" {
 The following blocks are supported inside the definition of
 `otelcol.receiver.filelog`:
 
-| Hierarchy                   | Block                 | Description                                                                                     | Required |
-|-----------------------------|-----------------------|-------------------------------------------------------------------------------------------------|----------|
-| output                      | [output][]            | Configures where to send received telemetry data.                                               | yes      |
-| multiline                   | [multiline][]         | Configures rules for multiline parsing of log messages                                          | no       |
-| header                      | [header][]            | Configures rules for parsing a log header line                                                  | no       |
-| retry_on_failure            | [retry_on_failure][]  | Configures the retry behavior when the receiver encounters an error downstream in the pipeline. | no       |
-| debug_metrics               | [debug_metrics][]     | Configures the metrics that this component generates to monitor its state.                      | no       |
-| ordering_criteria           | [ordering_criteria][] | Configures the order in which log files are processed.                                          | no       |
-| ordering_criteria > sort_by | [sort_by][]           | Configures the fields to sort by within the ordering critera.                                   | yes      |
+| Block                                      | Description                                                                                     | Required |
+| ------------------------------------------ | ----------------------------------------------------------------------------------------------- | -------- |
+| [`output`][output]                         | Configures where to send received telemetry data.                                               | yes      |
+| [`debug_metrics`][debug_metrics]           | Configures the metrics that this component generates to monitor its state.                      | no       |
+| [`header`][header]                         | Configures rules for parsing a log header line                                                  | no       |
+| [`multiline`][multiline]                   | Configures rules for multiline parsing of log messages                                          | no       |
+| [`ordering_criteria`][ordering_criteria]   | Configures the order in which log files are processed.                                          | no       |
+| `ordering_criteria` > [`sort_by`][sort_by] | Configures the fields to sort by within the ordering criteria.                                  | yes      |
+| [`retry_on_failure`][retry_on_failure]     | Configures the retry behavior when the receiver encounters an error downstream in the pipeline. | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `ordering_criteria` > `sort_by` refers to a `sort_by` block defined inside a `ordering_criteria` block.
@@ -114,9 +116,9 @@ For example, `ordering_criteria` > `sort_by` refers to a `sort_by` block defined
 [debug_metrics]: #debug_metrics
 [header]: #header
 [multiline]: #multiline
-[ordering_criteria]: #ordering-criteria
-[sort_by]: #sort-by
-[retry_on_failure]: #retry-on-failure
+[ordering_criteria]: #ordering_criteria
+[sort_by]: #sort_by
+[retry_on_failure]: #retry_on_failure
 
 ### `output`
 
@@ -139,7 +141,7 @@ The following arguments are supported:
 | `metadata_operators` | `lists(map(string)` | A list of operators used to parse metadata from the header. |         | yes      |
 | `pattern`            | `string`            | A regular expression that matches the header line.          |         | yes      |
 
-If a `header` block is not set, no log lines will be treated as header metadata.
+If a `header` block isn't set, no log lines will be treated as header metadata.
 
 The `metadata_operators` list is a list of stanza [operators][] that parses metadata from the header.
 Any attributes created from the embedded operators pipeline will be applied to all log entries in the file.
@@ -180,7 +182,7 @@ The following arguments are supported:
 
 A `multiline` block must contain either `line_start_pattern` or `line_end_pattern`.
 
-If a `multiline` block isn't set, log entries will not be split.
+If a `multiline` block isn't set, log entries won't be split.
 
 ### `ordering_criteria`
 
@@ -246,7 +248,7 @@ If `max_elapsed_time` is set to `0` data is never discarded.
 
 ## Example
 
-This example reads log entries using the `otelcol.receiver.filelog` receiver and they are logged by a `otelcol.exporter.debug` component.
+This example reads log entries using the `otelcol.receiver.filelog` receiver and they're logged by a `otelcol.exporter.debug` component.
 It expects the logs to start with an ISO8601 compatible timestamp and parses it from the log using the `regex_parser` operator.
 
 ```alloy

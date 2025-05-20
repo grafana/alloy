@@ -528,7 +528,61 @@ This example uses a [`prometheus.scrape` component][scrape] to collect metrics f
 
 ```alloy
 beyla.ebpf "default" {
-    open_port = <OPEN_PORT>
+  discovery {
+    services {
+      open_ports = <OPEN_PORT>
+    }
+  }
+
+  metrics {
+    features = [
+     "application", 
+    ]
+  }
+}
+
+prometheus.scrape "beyla" {
+  targets = beyla.ebpf.default.targets
+  honor_labels = true // required to keep job and instance labels
+  forward_to = [prometheus.remote_write.demo.receiver]
+}
+
+prometheus.remote_write "demo" {
+  endpoint {
+    url = <PROMETHEUS_REMOTE_WRITE_URL>
+
+    basic_auth {
+      username = <USERNAME>
+      password = <PASSWORD>
+    }
+  }
+}
+```
+
+#### Kubernetes
+
+This example gets metrics from `beyla.ebpf` for the specified namespace and Pods running in a Kubernetes cluster:
+
+```alloy
+beyla.ebpf "default" {
+  attributes {
+    kubernetes {
+     enable = "true"
+    }
+  }
+  discovery {
+    services {
+     kubernetes {
+      namespace = "<NAMESPACE>"
+      pod_name = "<POD_NAME>"
+     }
+    }
+  }
+  metrics {
+    features = [
+     "application", 
+    ]
+  }
 }
 
 prometheus.scrape "beyla" {

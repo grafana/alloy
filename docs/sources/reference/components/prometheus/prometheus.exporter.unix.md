@@ -12,7 +12,7 @@ title: prometheus.exporter.unix
 
 # `prometheus.exporter.unix`
 
-The `prometheus.exporter.unix` component uses the [`node_exporter`](https://github.com/prometheus/node_exporter) to expose a wide variety of hardware and OS metrics for \*nix-based systems.
+The `prometheus.exporter.unix` component uses the [`node_exporter`](https://github.com/prometheus/node_exporter) to expose a wide variety of hardware and OS metrics for Unix-based systems.
 
 The `node_exporter` itself is comprised of various _collectors_, which you can enable and disable.
 For more information on collectors, refer to the [`collectors-list`](#collectors-list) section.
@@ -32,8 +32,8 @@ You can use the following arguments with `prometheus.exporter.unix`:
 
 | Name                       | Type           | Description                                                                 | Default          | Required |
 | -------------------------- | -------------- | --------------------------------------------------------------------------- | ---------------- | -------- |
-| `disable_collectors`       | `list(string)` | Collectors to disable.                                             |  `[]`            | no       |
-| `enable_collectors`        | `list(string)` | Collectors to enable.                                              |  `[]`            | no       |
+| `disable_collectors`       | `list(string)` | Collectors to disable.                                                      | `[]`             | no       |
+| `enable_collectors`        | `list(string)` | Collectors to enable.                                                       | `[]`             | no       |
 | `include_exporter_metrics` | `boolean`      | Whether metrics about the exporter itself should be reported.               | false            | no       |
 | `procfs_path`              | `string`       | The procfs mount point.                                                     | `/proc`          | no       |
 | `rootfs_path`              | `string`       | Specify a prefix for accessing the host filesystem.                         | `/`              | no       |
@@ -115,8 +115,8 @@ You can use the following blocks with `prometheus.exporter.unix`:
 
 ### `disk`
 
-| Name             | Type     | Description                                                                                  | Default                                                        | Required |
-| ---------------- | -------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------- | -------- |
+| Name             | Type     | Description                                                                                    | Default                                                        | Required |
+| ---------------- | -------- | ---------------------------------------------------------------------------------------------- | -------------------------------------------------------------- | -------- |
 | `device_exclude` | `string` | Regular expression of devices to exclude for `diskstats`.                                      | `"^(ram\|loop\|fd\|(h\|s\|v\|xv)d[a-z]\|nvme\\d+n\\d+p)\\d+$"` | no       |
 | `device_include` | `string` | Regular expression of devices to include for `diskstats`. If set, `device_exclude` is ignored. |                                                                | no       |
 
