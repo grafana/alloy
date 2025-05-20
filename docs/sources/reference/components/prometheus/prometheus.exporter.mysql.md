@@ -35,7 +35,8 @@ You can use the following arguments with `prometheus.exporter.mysql`:
 | `log_slow_filter`    | `bool`         | Used to avoid queries from scrapes being logged in the slow query log.                                              | `false` | no       |
 | `set_collectors`     | `list(string)` | A list of [collectors][] to run. Fully overrides the default set.                                                   |         | no       |
 
-Set a `lock_wait_timeout` on the connection to avoid potentially long wait times for metadata locks. View more detailed documentation on `lock_wait_timeout` [in the MySQL documentation](https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html#sysvar_lock_wait_timeout).
+Set a `lock_wait_timeout` on the connection to avoid potentially long wait times for metadata locks.
+For more information, refer to the `lock_wait_timeout` [in the MySQL documentation](https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html#sysvar_lock_wait_timeout).
 
 {{< admonition type="note" >}}
 `log_slow_filter` isn't supported by Oracle MySQL.
