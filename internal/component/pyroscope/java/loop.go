@@ -108,7 +108,6 @@ func (p *profilingLoop) loop(ctx context.Context) {
 		}
 		sleep()
 		if ctx.Err() != nil {
-			p.cleanup()
 			return
 		}
 		err = p.reset()
@@ -121,8 +120,25 @@ func (p *profilingLoop) loop(ctx context.Context) {
 	}
 }
 
-func (p *profilingLoop) cleanup() {
+func (p *profilingLoop) cleanupJFR() {
+	// cleanup jfr jfrFile
+
+	// first try to find through process path
 	jfrFile := asprof.ProcessPath(p.jfrFile, p.pid)
+	if _, err := os.Stat(jfrFile); os.IsNotExist(err) {
+		// the process path is not found, if the target process might have stopped in the meantime
+
+		if jfrFile == p.jfrFile {
+			// nothing we can do, was this was /proc path
+			return
+		}
+
+		jfrFile = p.jfrFile
+		if _, err := os.Stat(jfrFile); os.IsNotExist(err) {
+			// file not found on the host system, process was likely containerized and we can't delete this file anymore
+			return
+		}
+	}
 
 	err := os.Remove(jfrFile)
 	if err != nil {
@@ -136,7 +152,7 @@ func (p *profilingLoop) reset() error {
 	endTime := time.Now()
 	sampleRate := p.sampleRate
 	p.startTime = endTime
-	defer p.cleanup()
+	defer p.cleanupJFR()
 
 	err := p.stop()
 	if err != nil {
@@ -276,6 +292,7 @@ func (p *profilingLoop) update(target discovery.Target, config ProfilingConfig) 
 func (p *profilingLoop) Close() error {
 	p.cancel()
 	p.wg.Wait()
+	p.cleanupJFR()
 	return nil
 }
 

@@ -58,7 +58,7 @@ func (m *mockAppendable) AppendIngest(ctx context.Context, profile *pyroscope.In
 	return args.Error(0)
 }
 
-func newTestProfilingLoop(t *testing.T, profiler *mockProfiler, appendable pyroscope.Appendable) *profilingLoop {
+func newTestProfilingLoop(_ *testing.T, profiler *mockProfiler, appendable pyroscope.Appendable) *profilingLoop {
 	reg := prometheus.NewRegistry()
 	output := pyroscope.NewFanout([]pyroscope.Appendable{appendable}, "test-appendable", reg)
 	logger := log.NewNopLogger()
@@ -100,7 +100,6 @@ func TestProfilingLoop_StartStop(t *testing.T) {
 		f, err := os.Create(p.jfrFile)
 		require.NoError(t, err)
 		defer f.Close()
-
 	}).Return("", "", nil).Once()
 
 	// expect the profiler to be executed with the correct arguments to stop it
