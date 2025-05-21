@@ -37,7 +37,7 @@ You can use the following arguments with `otelcol.receiver.datadog`:
 | ------------------------ | -------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------- | -------- |
 | `endpoint`               | `string`                   | `host:port` to listen for traffic on.                                        | `"localhost:8126"`                                         | no       |
 | `max_request_body_size`  | `string`                   | Maximum request body size the server will allow.                             | `20MiB`                                                    | no       |
-| `include_metadata`       | `boolean`                  | Propagate incoming connection metadata to downstream consumers.              | `false`                                                    | no       |
+| `include_metadata`       | `bool`                     | Propagate incoming connection metadata to downstream consumers.               | `false`                                                    | no       |
 | `read_timeout`           | `duration`                 | Read timeout for requests of the HTTP server.                                | `"60s"`                                                    | no       |
 | `compression_algorithms` | `list(string)`             | A list of compression algorithms the server can accept.                      | `["", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"]` | no       |
 | `auth`                   | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests. |                                                            | no       |
@@ -51,7 +51,7 @@ You can use the following blocks with `otelcol.receiver.datadog`:
 
 | Block                            | Description                                                                | Required |
 | -------------------------------- | -------------------------------------------------------------------------- | -------- |
-| [`output`][output]               | Configures where to send received traces.                                  | yes      |
+| [`output`][output]               | Configures where to send received telemetry data.                          | yes      |
 | [`cors`][cors]                   | Configures CORS for the HTTP server.                                       | no       |
 | [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |
 | [`tls`][tls]                     | Configures TLS for the HTTP server.                                        | no       |

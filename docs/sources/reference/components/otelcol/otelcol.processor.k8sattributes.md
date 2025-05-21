@@ -41,7 +41,7 @@ You can use the following arguments with `otelcol.processor.k8sattributes`:
 | --------------------------- | ---------- | ------------------------------------------------------------------------------ | ---------------- | -------- |
 | `auth_type`                 | `string`   | Authentication method when connecting to the Kubernetes API.                   | `serviceAccount` | no       |
 | `passthrough`               | `bool`     | Pass through signals as-is, only adding a `k8s.pod.ip` resource attribute.     | `false`          | no       |
-| `wait_for_metadata_timeout` | `duration` | How long to wait for Kubernetes metadata to arrive.                            | `"10s"`          | no       |
+| `metadata_sync_timeout`     | `duration` | How long to wait for Kubernetes metadata to arrive.                            | `"10s"`          | no       |
 | `wait_for_metadata`         | `bool`     | Whether to wait for Kubernetes metadata to arrive before processing telemetry. | `false`          | no       |
 
 The supported values for `auth_type` are:

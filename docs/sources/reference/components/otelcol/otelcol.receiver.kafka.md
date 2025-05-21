@@ -42,7 +42,7 @@ You can use the following arguments with `otelcol.receiver.kafka`:
 
 | Name                                       | Type            | Description                                                                                         | Default            | Required |
 | ------------------------------------------ | --------------- | --------------------------------------------------------------------------------------------------- | ------------------ | -------- |
-| `brokers`                                  | `array(string)` | Kafka brokers to connect to.                                                                        |                    | yes      |
+| `brokers`                                  | `list(string)`  | Kafka brokers to connect to.                                                                        |                    | yes      |
 | `protocol_version`                         | `string`        | Kafka protocol version to use.                                                                      |                    | yes      |
 | `client_id`                                | `string`        | Consumer client ID to use.                                                                          | `"otel-collector"` | no       |
 | `default_fetch_size`                       | `int`           | The default number of message bytes to fetch in a request.                                          | `1048576`          | no       |
@@ -52,7 +52,7 @@ You can use the following arguments with `otelcol.receiver.kafka`:
 | `initial_offset`                           | `string`        | Initial offset to use if no offset was previously committed.                                        | `"latest"`         | no       |
 | `max_fetch_size`                           | `int`           | The maximum number of message bytes to fetch in a request.                                          | `0`                | no       |
 | `min_fetch_size`                           | `int`           | The minimum number of message bytes to fetch in a request.                                          | `1`                | no       |
-| `resolve_canonical_bootstrap_servers_only` | `bool`          | Whether to resolve then reverse-lookup broker IPs during startup.                                   | `"false"`          | no       |
+| `resolve_canonical_bootstrap_servers_only` | `bool`          | Whether to resolve then reverse-lookup broker IPs during startup.                                   | `false`            | no       |
 | `session_timeout`                          | `duration`      | The request timeout for detecting client failures when using Kafka group management.                | `"10s"`            | no       |
 | `topic`                                    | `string`        | Kafka topic to read from.                                                                           | _See below_        | no       |
 
