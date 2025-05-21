@@ -73,6 +73,13 @@ Main (unreleased)
 
 - Improve `foreach` UI and add graph support for it. (@wildum)
 
+- Update statsd_exporter to v0.28.0, most notable changes: (@kalleep)
+  - [0.23.0] Support experimental native histograms.
+  - [0.24.1] Support scaling parameter in mapping.
+  - [0.26.0] Add option to honor original labels from event tags over labels specified in mapping configuration.
+  - [0.27.1] Support dogstatsd extended aggregation
+  - [0.27.2] Fix panic on certain invalid lines
+
 ### Bugfixes
 
 - Fix `otelcol.receiver.filelog` documentation's default value for `start_at`. (@petewall)
