@@ -73,7 +73,7 @@ require (
 	github.com/grafana/pyroscope/api v1.2.0
 	github.com/grafana/pyroscope/ebpf v0.4.9
 	github.com/grafana/regexp v0.0.0-20240518133315-a468a5bfb3bc
-	github.com/grafana/snowflake-prometheus-exporter v0.0.0-20240813124544-9995e8354548
+	github.com/grafana/snowflake-prometheus-exporter v0.0.0-20250507154309-83bcbaac6b04
 	github.com/grafana/tail v0.0.0-20230510142333-77b18831edf0
 	github.com/grafana/vmware_exporter v0.0.5-beta.0.20250218170317-73398ba08329
 	github.com/grafana/walqueue v0.0.0-20250402195023-cd132d6ff0bc
@@ -455,6 +455,7 @@ require (
 	github.com/andybalholm/brotli v1.1.1 // indirect
 	github.com/antchfx/xmlquery v1.4.4 // indirect
 	github.com/antchfx/xpath v1.3.3 // indirect
+	github.com/apache/arrow-go/v18 v18.0.0 // indirect
 	github.com/apache/thrift v0.21.0 // indirect
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/armon/go-metrics v0.4.1 // indirect
@@ -850,7 +851,7 @@ require (
 	github.com/shurcooL/vfsgen v0.0.0-20200824052919-0d455de96546 // indirect
 	github.com/skeema/knownhosts v1.3.0 // indirect
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966 // indirect
-	github.com/snowflakedb/gosnowflake v1.13.3 // indirect
+	github.com/snowflakedb/gosnowflake v1.14.0 // indirect
 	github.com/softlayer/softlayer-go v0.0.0-20180806151055-260589d94c7d // indirect
 	github.com/soheilhy/cmux v0.1.5 // indirect
 	github.com/sony/gobreaker v0.5.0 // indirect
@@ -989,8 +990,6 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/storage/filestorage v0.122.0
 	go.opentelemetry.io/collector/extension/xextension v0.122.1
 )
-
-require github.com/apache/arrow-go/v18 v18.0.0 // indirect
 
 // NOTE: replace directives below must always be *temporary*.
 //
