@@ -51,7 +51,7 @@ You can use the following blocks with `otelcol.exporter.otlphttp`:
 
 | Block                                                 | Description                                                                | Required |
 | ----------------------------------------------------- | -------------------------------------------------------------------------- | -------- |
-| [`client`][client]                                    | Configures the HTTP server to send telemetry data to.                      | yes      |
+| [`client`][client]                                    | Configures the HTTP client to send telemetry data to.                      | yes      |
 | `client` > [`compression_params`][compression_params] | Configure advanced compression options.                                    | no       |
 | `client` > [`cookies`][cookies]                       | Store cookies from server responses and reuse them in subsequent requests. | no       |
 | `client` > [`tls`][tls]                               | Configures TLS for the HTTP client.                                        | no       |
@@ -91,7 +91,7 @@ The following arguments are supported:
 | `max_conns_per_host`      | `int`                      | Limits the total (dialing,active, and idle) number of connections per host.                                        | `0`        | no       |
 | `max_idle_conns_per_host` | `int`                      | Limits the number of idle HTTP connections the host can keep open.                                                 | `0`        | no       |
 | `max_idle_conns`          | `int`                      | Limits the number of idle HTTP connections the client can keep open.                                               | `100`      | no       |
-| `proxy_url`               | `string`                   | HTTP proxy to send requests through.                                                                               |            |          |
+| `proxy_url`               | `string`                   | HTTP proxy to send requests through.                                                                               |            | no       |
 | `read_buffer_size`        | `string`                   | Size of the read buffer the HTTP client uses for reading server responses.                                         | `0`        | no       |
 | `timeout`                 | `duration`                 | Time to wait before marking a request as failed.                                                                   | `"30s"`    | no       |
 | `write_buffer_size`       | `string`                   | Size of the write buffer the HTTP client uses for writing requests.                                                | `"512KiB"` | no       |

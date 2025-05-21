@@ -48,7 +48,7 @@ The following blocks are supported inside the definition of `otelcol.exporter.sp
 | [`splunk`][splunk]                                    | Configures the Splunk HEC exporter.                                            | yes      |
 | `splunk` > [`batcher`][batcher]                       | Configures batching requests based on a timeout and a minimum number of items. | no       |
 | `splunk` > [`heartbeat`][heartbeat]                   | Configures the exporters heartbeat settings.                                   | no       |
-| `splunk` > [`otel_to_hec_fields`][otel_to_hec_fields] | Configures mapping of Open Telemetry to HEC Fields.                            | no       |
+| `splunk` > [`otel_to_hec_fields`][otel_to_hec_fields] | Configures mapping of OpenTelemetry to HEC Fields.                             | no       |
 | `splunk` > [`telemetry`][telemetry]                   | Configures the exporters telemetry.                                            | no       |
 | [`client`][client]                                    | Configures the HTTP client used to send data to Splunk HEC.                    | yes      |
 | [`debug_metrics`][debug_metrics]                      | Configures the metrics that this component generates to monitor its state.     | no       |
@@ -184,7 +184,7 @@ The following fields are exported and can be referenced by other components:
 
 ## Example
 
-### Open Telemetry Receiver
+### OpenTelemetry Receiver
 
 This example forwards metrics, logs, and traces send to the `otelcol.receiver.otlp.default` receiver to the Splunk HEC exporter.
 
@@ -249,7 +249,7 @@ otelcol.exporter.splunkhec "default" {
 
 ### Forward Prometheus Metrics
 
-This example forwards Prometheus metrics from {{< param "PRODUCT_NAME" >}} through a receiver for conversion to Open Telemetry format before finally sending them to Splunk HEC.
+This example forwards Prometheus metrics from {{< param "PRODUCT_NAME" >}} through a receiver for conversion to OpenTelemetry format before finally sending them to Splunk HEC.
 
 ```alloy
 prometheus.exporter.self "default" {
