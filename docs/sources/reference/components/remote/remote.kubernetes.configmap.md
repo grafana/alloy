@@ -52,7 +52,7 @@ You can use the following blocks with `remote.kubernetes.configmap`:
 
 | Block                                            | Description                                                   | Required |
 | ------------------------------------------------ | ------------------------------------------------------------- | -------- |
-| [`client`][client]                               | Configures Kubernetes client used to find Probes.             | no       |
+| [`client`][client]                               | Configures Kubernetes client used to find ConfigMaps.         | no       |
 | `client` > [`authorization`][authorization]      | Configure generic authorization to the Kubernetes API.        | no       |
 | `client` > [`basic_auth`][basic_auth]            | Configure basic authentication to the Kubernetes API.         | no       |
 | `client` > [`oauth2`][oauth2]                    | Configure OAuth 2.0 for authenticating to the Kubernetes API. | no       |
@@ -70,7 +70,7 @@ For example, `client` > `basic_auth` refers to a `basic_auth` block defined insi
 
 ### `client`
 
-The `client` block configures the Kubernetes client used to discover Probes.
+The `client` block configures the Kubernetes client used to discover ConfigMaps.
 If the `client` block isn't provided, the default in-cluster configuration with the service account of the running {{< param "PRODUCT_NAME" >}} Pod is used.
 
 The following arguments are supported:
@@ -82,7 +82,7 @@ The following arguments are supported:
 | `bearer_token`           | `secret`            | Bearer token to authenticate with.                                                               |         | no       |
 | `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`  | no       |
 | `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`  | no       |
-| `http_headers`           | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.          |                      | no       |
+| `http_headers`           | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.          |         | no       |
 | `kubeconfig_file`        | `string`            | Path of the `kubeconfig` file to use for connecting to Kubernetes.                               |         | no       |
 | `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |         | no       |
 | `proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |         | no       |

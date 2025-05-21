@@ -1,4 +1,4 @@
-package vm
+package tagcache
 
 import (
 	"reflect"
@@ -13,20 +13,20 @@ import (
 // of the process, this will consume a negligible amount of memory.
 var tagsCache sync.Map
 
-func getCachedTagInfo(t reflect.Type) *tagInfo {
+func Get(t reflect.Type) *TagInfo {
 	if t.Kind() != reflect.Struct {
 		panic("getCachedTagInfo called with non-struct type")
 	}
 
 	if entry, ok := tagsCache.Load(t); ok {
-		return entry.(*tagInfo)
+		return entry.(*TagInfo)
 	}
 
 	tfs := syntaxtags.Get(t)
-	ti := &tagInfo{
+	ti := &TagInfo{
 		Tags:       tfs,
 		TagLookup:  make(map[string]syntaxtags.Field, len(tfs)),
-		EnumLookup: make(map[string]enumBlock), // The length is not known ahead of time
+		EnumLookup: make(map[string]EnumBlock), // The length is not known ahead of time
 	}
 
 	for _, tf := range tfs {
@@ -41,12 +41,12 @@ func getCachedTagInfo(t reflect.Type) *tagInfo {
 			// Find all the blocks that match to the enum, and inject them into the
 			// EnumLookup table.
 			enumFieldType := t.FieldByIndex(tf.Index).Type
-			enumBlocksInfo := getCachedTagInfo(deferenceType(enumFieldType.Elem()))
+			enumBlocksInfo := Get(deferenceType(enumFieldType.Elem()))
 			for _, blockField := range enumBlocksInfo.TagLookup {
 				// The full name of the enum block is the name of the enum plus the
 				// name of the block, separated by '.'
 				enumBlockName := fullName + "." + strings.Join(blockField.Name, ".")
-				ti.EnumLookup[enumBlockName] = enumBlock{
+				ti.EnumLookup[enumBlockName] = EnumBlock{
 					EnumField:  tf,
 					BlockField: blockField,
 				}
@@ -65,16 +65,16 @@ func deferenceType(ty reflect.Type) reflect.Type {
 	return ty
 }
 
-type tagInfo struct {
+type TagInfo struct {
 	Tags      []syntaxtags.Field
 	TagLookup map[string]syntaxtags.Field
 
 	// EnumLookup maps enum blocks to the enum field. For example, an enum block
 	// called "foo.foo" and "foo.bar" will both map to the "foo" enum field.
-	EnumLookup map[string]enumBlock
+	EnumLookup map[string]EnumBlock
 }
 
-type enumBlock struct {
+type EnumBlock struct {
 	EnumField  syntaxtags.Field // Field in the parent struct of the enum slice
 	BlockField syntaxtags.Field // Field in the enum struct for the enum block
 }

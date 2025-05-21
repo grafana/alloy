@@ -10,6 +10,13 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Breaking changes
+
+- The `prometheus.exporter.oracledb` component now embeds the [`oracledb_exporter from oracle`](https://github.com/oracle/oracle-db-appdev-monitoring) instead of the deprecated [`oracledb_exporter from iamseth`](https://github.com/iamseth/oracledb_exporter) for collecting metrics from an OracleDB server: (@wildum)
+  - The arguments `username`, `password`, `default_metrics`, and `custom_metrics` are now supported.
+  - The previously undocumented argument `custom_metrics` is now expecting a list of paths to custom metrics files.
+  - The following metrics are no longer available by default: oracledb_sessions_activity, oracledb_tablespace_free_bytes
+
 ### Features
 
 - Bump snmp_exporter and embedded modules in `prometheus.exporter.snmp` to v0.29.0, add cisco_device module support (@v-zhuravlev)
@@ -22,9 +29,13 @@ Main (unreleased)
 
 - Add `validate` command to alloy that will perform limited validation of alloy configuration files. (@kalleep)
 
+- Add support to validate foreach block when using `validate` command. (@kalleep)
+
 - Add `otelcol.receiver.splunkhec` component to receive events in splunk hec format and forward them to other `otelcol.*` components. (@kalleep)
 
 ### Enhancements
+
+- `prometheus.exporter.mongodb` now offers fine-grained control over collected metrics with new configuration options. (@TeTeHacko)
 
 - Add binary version to constants exposed in configuration file syntatx. (@adlots)
 
@@ -34,31 +45,58 @@ Main (unreleased)
   - `schema_table`: add support for index expressions (@cristiangreco)
   - `query_sample`: enable opt-in support to extract unredacted sql query (sql_text) (@matthewnolf)
   - `query_tables`: improve queries parsing (@cristiangreco)
-  - `query_tables`: add support for prepared statements (@cristiangreco)
   - make tidbparser the default choice (@cristiangreco)
   - `query_sample`: better handling of timer overflows (@fridgepoet)
   - collect metrics on enabled `performance_schema.setup_consumers` (@fridgepoet)
   - `query_sample`: base log entries on calculated timestamp from rows, not now() (@fridgepoet)
+  - `query_sample`: check digest is not null (@cristiangreco)
+  - `query_sample`: add additional logs for wait events (@fridgepoet)
+  - make tidb the default and only sql parser
 
 - Mixin dashboards improvements: added minimum cluster size to Cluster Overview dashboard, fixed units in OpenTelemetry dashboard, fixed slow components evaluation time units in Controller dashboard and updated Prometheus dashboard to correctly aggregate across instances. (@thampiotr)
 
 - Reduced the lag time during targets handover in a cluster in `prometheus.scrape` components by reducing thread contention. (@thampiotr)
 
 - Pretty print diagnostic errors when using `alloy run` (@kalleep)
+  
+- Add `labels_from_groups` attribute to `stage.regex` in `loki.process` to automatically add named capture groups as labels. (@harshrai654)
+
+- The `loki.rules.kubernetes` component now supports adding extra label matchers
+  to all queries discovered via `PrometheusRule` CRDs. (@QuentinBisson)
 
 -  Add optional `id` field to `foreach` block to generate more meaningful component paths in metrics by using a specific field from collection items. (@harshrai654)
-  
+
+- The `mimir.rules.kubernetes` component now supports adding extra label matchers
+  to all queries discovered via `PrometheusRule` CRDs by extracting label values defined on the `PrometheusRule`. (@QuentinBisson)
+
+- Fix validation logic in `beyla.ebpf` component to ensure that either metrics or traces are enabled. (@marctc)
+
+- Improve `foreach` UI and add graph support for it. (@wildum)
+
 ### Bugfixes
 
 - Fix `otelcol.receiver.filelog` documentation's default value for `start_at`. (@petewall)
 
 - Fix [#3386](https://github.com/grafana/alloy/issues/3386) lower casing scheme in `prometheus.operator.scrapeconfigs`. (@alex-berger)
 
+- Fix [#3437](https://github.com/grafana/alloy/issues/3437) Component Graph links now follow `--server.http.ui-path-prefix`. (@solidcellaMoon)
+
+- Fix a bug in the `foreach` preventing the UI from showing the components in the template when the block was re-evaluated. (@wildum)
+
+- Fix alloy health handler so header is written before response body. (@kalleep)
+
 ### Other changes
 
 - Update the zap logging adapter used by `otelcol` components to log arrays and objects. (@dehaansa)
 
 - Updated Windows install script to add DisplayVersion into registry on install (@enessene)
+
+- Update Docker builds to install latest Linux security fixes on top of base image (@jharvey10)
+
+- Reduce Docker image size slightly by consolidating some RUN layers (@AchimGrolimund)
+
+- RPM artifacts in Alloy GitHub releases are no longer signed.
+  The artifacts on the `https://rpm.grafana.com` repository used by the `yum` package manager will continue to be signed. (@ptodev)
 
 v1.8.3
 -----------------

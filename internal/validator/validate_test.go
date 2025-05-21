@@ -15,6 +15,13 @@ import (
 
 	// Install Components
 	_ "github.com/grafana/alloy/internal/component/all"
+	"github.com/grafana/alloy/internal/service"
+	"github.com/grafana/alloy/internal/service/cluster"
+	"github.com/grafana/alloy/internal/service/http"
+	"github.com/grafana/alloy/internal/service/labelstore"
+	"github.com/grafana/alloy/internal/service/otel"
+	"github.com/grafana/alloy/internal/service/remotecfg"
+	"github.com/grafana/alloy/internal/service/ui"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
@@ -30,7 +37,8 @@ const (
 
 func TestValidate(t *testing.T) {
 	// Test with default config.
-	testDirectory(t, "./testdata/default", featuregate.StabilityGenerallyAvailable, false)
+	testDirectory(t, "./testdata/ga", featuregate.StabilityGenerallyAvailable, false)
+	testDirectory(t, "./testdata/default", featuregate.StabilityExperimental, false)
 }
 
 func testDirectory(t *testing.T, dir string, minStability featuregate.Stability, enableCommunityComps bool) {
@@ -52,6 +60,15 @@ func testDirectory(t *testing.T, dir string, minStability featuregate.Stability,
 				validateErr := Validate(Options{
 					Sources:           sources,
 					ComponentRegistry: component.NewDefaultRegistry(minStability, enableCommunityComps),
+					ServiceDefinitions: getServiceDefinitions(
+						&cluster.Service{},
+						&http.Service{},
+						&labelstore.Service{},
+						&otel.Service{},
+						&remotecfg.Service{},
+						&ui.Service{},
+					),
+					MinStability: minStability,
 				})
 
 				diagsFile := strings.TrimSuffix(path, txtarSuffix) + diagsSuffix
@@ -97,4 +114,12 @@ func fileExists(path string) bool {
 func normalizeLineEndings(data []byte) []byte {
 	normalized := bytes.ReplaceAll(data, []byte{'\r', '\n'}, []byte{'\n'})
 	return normalized
+}
+
+func getServiceDefinitions(services ...service.Service) []service.Definition {
+	def := make([]service.Definition, 0, len(services))
+	for _, s := range services {
+		def = append(def, s.Definition())
+	}
+	return def
 }

@@ -12,7 +12,7 @@ import (
 
 // ImportString imports a module from a string.
 type ImportString struct {
-	arguments       component.Arguments
+	arguments       StringArguments
 	eval            *vm.Evaluator
 	onContentChange func(map[string]string)
 	modulePath      string
@@ -27,12 +27,12 @@ func NewImportString(eval *vm.Evaluator, onContentChange func(map[string]string)
 	}
 }
 
-type importStringConfigBlock struct {
+type StringArguments struct {
 	Content alloytypes.OptionalSecret `alloy:"content,attr"`
 }
 
 func (im *ImportString) Evaluate(scope *vm.Scope) error {
-	var arguments importStringConfigBlock
+	var arguments StringArguments
 	if err := im.eval.Evaluate(scope, &arguments); err != nil {
 		return fmt.Errorf("decoding configuration: %w", err)
 	}

@@ -175,11 +175,13 @@ Each attribute can be an attribute name or a wildcard, for example, `k8s.dst.*` 
 The following example shows how you can include and exclude specific attributes:
 
 ```alloy
+beyla.ebpf "default" {
 attributes {
-  select {
-      attr = "sql_client_duration"
-      include = ["*"]
-      exclude = ["db_statement"]
+    select {
+        attr = "sql_client_duration"
+        include = ["*"]
+        exclude = ["db_statement"]
+    }
   }
 }
 ```
@@ -188,17 +190,19 @@ Additionally, you can use `*` wildcards as metric names to add and exclude attri
 For example:
 
 ```alloy
-attributes {
-  select {
-      attr = "http_*"
-      include = ["*"]
-      exclude = ["http_path", "http_route"]
+beyla.ebpf "default" {
+  attributes {
+    select {
+        attr = "http_*"
+        include = ["*"]
+        exclude = ["http_path", "http_route"]
+    }
+    select {
+        attr = "http_client_*"
+        // override http_* exclusion
+        include = ["http_path"]
+    }
   }
-  select {
-      attr = "http_client_*"
-      // override http_* exclusion
-      include = ["http_path"]
-  }  
 }
 ```
 
@@ -221,6 +225,10 @@ It contains the following blocks:
 In some scenarios, Beyla instruments a wide variety of services, such as a Kubernetes DaemonSet that instruments all the services in a node.
 The `services` block allows you to filter the services to instrument based on their metadata. If you specify other selectors in the same services entry,
 the instrumented processes need to match all the selector properties.
+
+The same properties are available for both `services` and `exclude_services` blocks.
+The `services` block configures the services to discover for the component.
+The `exclude_services` block configures the services to exclude for the component.
 
 | Name         | Type     | Description                                                                              | Default | Required |
 | ------------ | -------- | ---------------------------------------------------------------------------------------- | ------- | -------- |
@@ -257,6 +265,31 @@ the instrumented processes need to match all the selector properties.
 | `pod_name`         | `string`      | Regular expression of Kubernetes Pods to match.                                                             | `""`    | no       |
 | `replicaset_name`  | `string`      | Regular expression of Kubernetes ReplicaSets to match.                                                      | `""`    | no       |
 | `statefulset_name` | `string`      | Regular expression of Kubernetes StatefulSets to match.                                                     | `""`    | no       |
+
+Example:
+
+``` alloy
+beyla.ebpf "default" {
+  discovery {
+    // Instrument all services with 8080 open port
+    services {
+      open_ports = "8080"
+    }
+    // Instrument all services from the default namespace
+    services {
+      kubernetes {
+        namespace = "default"
+      }
+    }
+    // Exclude all services from the kube-system namespace
+    exclude_services {
+      kubernetes {
+        namespace = "kube-system"
+      }
+    }
+  }
+}
+```
 
 ### `ebpf`
 
@@ -322,14 +355,16 @@ wildcards).
 Example:
 
 ```alloy
-filters {
-  application {
-    attr = "url.path"
-    match = "/user/*"
-  }
-  network {
-    attr = "k8s.src.owner.name"
-    match = "*"
+beyla.ebpf "default" {
+  filters {
+    application {
+      attr = "url.path"
+      match = "/user/*"
+    }
+    network {
+      attr = "k8s.src.owner.name"
+      match = "*"
+    }
   }
 }
 ```
@@ -493,7 +528,61 @@ This example uses a [`prometheus.scrape` component][scrape] to collect metrics f
 
 ```alloy
 beyla.ebpf "default" {
-    open_port = <OPEN_PORT>
+  discovery {
+    services {
+      open_ports = <OPEN_PORT>
+    }
+  }
+
+  metrics {
+    features = [
+     "application", 
+    ]
+  }
+}
+
+prometheus.scrape "beyla" {
+  targets = beyla.ebpf.default.targets
+  honor_labels = true // required to keep job and instance labels
+  forward_to = [prometheus.remote_write.demo.receiver]
+}
+
+prometheus.remote_write "demo" {
+  endpoint {
+    url = <PROMETHEUS_REMOTE_WRITE_URL>
+
+    basic_auth {
+      username = <USERNAME>
+      password = <PASSWORD>
+    }
+  }
+}
+```
+
+#### Kubernetes
+
+This example gets metrics from `beyla.ebpf` for the specified namespace and Pods running in a Kubernetes cluster:
+
+```alloy
+beyla.ebpf "default" {
+  attributes {
+    kubernetes {
+     enable = "true"
+    }
+  }
+  discovery {
+    services {
+     kubernetes {
+      namespace = "<NAMESPACE>"
+      pod_name = "<POD_NAME>"
+     }
+    }
+  }
+  metrics {
+    features = [
+     "application", 
+    ]
+  }
 }
 
 prometheus.scrape "beyla" {
@@ -517,6 +606,8 @@ prometheus.remote_write "demo" {
 Replace the following:
 
 * _`<OPEN_PORT>`_: The port of the running service for Beyla automatically instrumented with eBPF.
+* _`<NAMESPACE>`_: The namespaces of the applications running in a Kubernetes cluster.
+* _`<POD_NAME>`_: The name of the Pods running in a Kubernetes cluster.
 * _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
 * _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
 * _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
@@ -527,20 +618,26 @@ This example gets traces from `beyla.ebpf` and forwards them to `otlp`:
 
 ```alloy
 beyla.ebpf "default" {
-    open_port = <OPEN_PORT>
-    output {
-        traces = [otelcol.processor.batch.default.input]
+  discovery {
+    services {
+      open_ports = <OPEN_PORT>
     }
+  }
+  output {
+    traces = [otelcol.processor.batch.default.input]
+  }
 }
+
 otelcol.processor.batch "default" {
-    output {
-        traces  = [otelcol.exporter.otlp.default.input]
-    }
+  output {
+    traces  = [otelcol.exporter.otlp.default.input]
+  }
 }
+
 otelcol.exporter.otlp "default" {
-    client {
-        endpoint = sys.env("<OTLP_ENDPOINT>")
-    }
+  client {
+    endpoint = sys.env("<OTLP_ENDPOINT>")
+  }
 }
 ```
 

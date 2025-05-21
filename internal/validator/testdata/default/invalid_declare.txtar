@@ -1,0 +1,81 @@
+invalid declare
+-- main.alloy --
+
+// arguments in root
+argument "root" {}
+
+export "root" {
+	value = ""
+}
+
+declare "module" {
+	// invalid attribute
+	argument "invalid_attr" {
+		test = ""
+	}
+
+	export "invalid_expr" {
+		value = ""			
+		test = ""
+	}
+	
+	export "missing_attr" {}
+	
+	argument "duplicate" {}
+	argument "duplicate" {}
+
+	export "duplicate" {}
+	export "duplicate" {}
+	
+	// missing labels
+	argument {}
+	export {
+		value = ""
+	}
+
+	// Unknown component.
+	local.missing "applogs" { }
+
+	// Missing required property.
+	remote.http "missing_required" { }
+
+	// Invalid property.
+	loki.source.file "invalid_property" {
+		test       = "test"
+		targets    = []
+		forward_to = []
+	}
+
+	// Service configuration.
+	logging { }
+
+	// Duplicates.
+	local.file_match "applogs" {
+		path_targets = [{"__path__" = "/tmp/app-logs/app.log"}]
+	}
+
+	local.file_match "applogs" {
+		path_targets = [{"__path__" = "/tmp/app-logs/app.log"}]
+	}
+}
+
+declare "module_1" {
+	declare "module_2" {
+
+	}
+
+	module_2 "test" {}
+}
+
+// inner module
+module_2 "test" {}
+
+declare "module_3" {
+	argument "arg" {
+		optional = false
+	}
+}
+
+module_3 "test" {
+	test = "test"
+}

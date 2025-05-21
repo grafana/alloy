@@ -8,16 +8,10 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "config:recommended",
-
   ],
 
   "commitMessageAction": "update",
   "commitMessageTopic": "{{manager}} dependency {{depName}}",
-
-  // Tell dependency dashboard to only require PR creation approval for major versions
-  "major": {
-    "dependencyDashboardApproval": true
-  },
 
   // Updates must be published for at least 7 to be considered
   "minimumReleaseAge": "7 days",
@@ -30,30 +24,31 @@
   // Allow PR creation between 06:00 and 10:00 UTC on Mondays
   "schedule": ["* 6-10 * * 1"],
 
+  // Open security-related PRs irrespective of other settings
+  "vulnerabilityAlerts": {
+    "enabled": true
+  },
+
   "packageRules": [
     {
       "matchManagers": ["docker-compose"],
-      // "matchUpdateTypes": ["minor", "patch"],
-      // "groupName": "docker-compose dependencies (minor, patch)",
+      // "groupName": "docker-compose dependencies",
       "enabled": false // TODO: remove to enable when ready
     },
     {
       "matchManagers": ["dockerfile"],
-      // "matchUpdateTypes": ["minor", "patch"],
-      // "groupName": "dockerfile dependencies (minor, patch)",
+      // "groupName": "dockerfile dependencies",
       // "pinDigests": true,
       "enabled": false // TODO: remove to enable when ready
     },
     {
       "matchManagers": ["github-actions"],
-      "matchUpdateTypes": ["minor", "patch"],
-      "groupName": "github-actions dependencies (minor, patch)",
-      "pinDigests": true
+      "groupName": "github-actions dependencies",
+      "pinDigests": true,
     },
     {
       "matchManagers": ["gomod"],
-      "matchUpdateTypes": ["minor", "patch"],
-      "groupName": "go dependencies (minor, patch)",
+      "groupName": "go dependencies"
     },
     {
       // Group and hold some otel-specific go dependencies
@@ -68,26 +63,30 @@
     },
     {
       "matchManagers": ["helm-values"],
-      // "matchUpdateTypes": ["minor", "patch"],
-      // "groupName": "helm-values dependencies (minor, patch)",
+      // "groupName": "helm-values dependencies",
       "enabled": false // TODO: remove to enable when ready
     },
     {
       "matchManagers": ["helmv3"],
-      // "matchUpdateTypes": ["minor", "patch"],
-      // "groupName": "helmv3 dependencies (minor, patch)",
+      // "groupName": "helmv3 dependencies",
       "enabled": false // TODO: remove to enable when ready
     },
     {
       "matchManagers": ["jsonnet-bundler"],
-      // "matchUpdateTypes": ["minor", "patch"],
-      // "groupName": "jsonnet-bundler dependencies (minor, patch)",
+      // "groupName": "jsonnet-bundler dependencies",
       "enabled": false // TODO: remove to enable when ready
     },
     {
       "matchManagers": ["npm"],
-      "matchUpdateTypes": ["minor", "patch"],
-      "groupName": "npm dependencies (minor, patch)"
+      "groupName": "npm dependencies",
+    },
+    {
+      // Supersede previous rules to require PR creation approval for major versions
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true,
+      // This forces each dep to have a unique group, resulting in each major update
+      // having its own PR.
+      "groupName": "{{manager}} dependency {{depName}}"
     }
-  ]
+  ],
 }

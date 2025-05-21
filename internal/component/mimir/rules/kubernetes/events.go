@@ -156,16 +156,16 @@ func (e *eventProcessor) reconcileState(ctx context.Context) error {
 	currentState := e.getMimirState()
 	diffs := kubernetes.DiffRuleState(desiredState, currentState)
 
-	var result error
+	var errs error
 	for ns, diff := range diffs {
 		err = e.applyChanges(ctx, ns, diff)
 		if err != nil {
-			result = multierror.Append(result, err)
+			errs = multierror.Append(errs, err)
 			continue
 		}
 	}
 
-	return result
+	return errs
 }
 
 // desiredStateFromKubernetes loads PrometheusRule resources from Kubernetes and converts
@@ -202,7 +202,7 @@ func (e *eventProcessor) desiredStateFromKubernetes() (kubernetes.RuleGroupsByNa
 				for _, ruleGroup := range groups {
 					for i := range ruleGroup.Rules {
 						query := ruleGroup.Rules[i].Expr.Value
-						newQuery, err := addMatchersToQuery(query, e.extraQueryMatchers.Matchers)
+						newQuery, err := addMatchersToQuery(rule, query, e.extraQueryMatchers.Matchers)
 						if err != nil {
 							level.Error(e.logger).Log("msg", "failed to add labels to PrometheusRule query", "query", query, "err", err)
 						}
@@ -218,10 +218,22 @@ func (e *eventProcessor) desiredStateFromKubernetes() (kubernetes.RuleGroupsByNa
 	return desiredState, nil
 }
 
-func addMatchersToQuery(query string, matchers []Matcher) (string, error) {
+func addMatchersToQuery(rule *promv1.PrometheusRule, query string, matchers []Matcher) (string, error) {
 	var err error
 	for _, s := range matchers {
-		query, err = labelsSetPromQL(query, s.MatchType, s.Name, s.Value)
+		matchingValue := s.Value
+		if s.ValueFromLabel != "" {
+			value, ok := rule.Labels[s.ValueFromLabel]
+			if !ok {
+				return "", fmt.Errorf("label %s not found", s.ValueFromLabel)
+			}
+			if value == "" {
+				return "", fmt.Errorf("value for label %s is empty", s.ValueFromLabel)
+			}
+			matchingValue = value
+		}
+
+		query, err = labelsSetPromQL(query, s.MatchType, s.Name, matchingValue)
 		if err != nil {
 			return "", err
 		}
