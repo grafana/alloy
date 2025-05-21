@@ -79,20 +79,20 @@ The `encoding` argument determines how to encode messages sent to Kafka.
 
 You can use the following blocks with `otelcol.exporter.kafka`:
 
-| Block                                            | Description                                                                 | Required |
-| ------------------------------------------------ | --------------------------------------------------------------------------- | -------- |
-| [`authentication`][authentication]               | Configures authentication for connecting to Kafka brokers.                  | no       |
-| `authentication` > [`kerberos`][kerberos]        | Authenticates against Kafka brokers with Kerberos.                          | no       |
-| `authentication` > [`plaintext`][plaintext]      | Authenticates against Kafka brokers with plaintext.                         | no       |
-| `authentication` > [`sasl`][sasl]                | Authenticates against Kafka brokers with SASL.                              | no       |
-| `authentication` > `sasl` > [`aws_msk`][aws_msk] | Additional SASL parameters when using AWS_MSK_IAM.                          | no       |
-| `authentication` > [`tls`][tls]                  | Configures TLS for connecting to the Kafka brokers.                         | no       |
-| [`debug_metrics`][debug_metrics]                 | Configures the metrics which this component generates to monitor its state. | no       |
-| [`metadata`][metadata]                           | Configures how to retrieve metadata from Kafka brokers.                     | no       |
-| `metadata` > [`retry`][retry]                    | Configures how to retry metadata retrieval.                                 | no       |
-| [`producer`][producer]                           | Kafka producer configuration,                                               | no       |
-| [`retry_on_failure`][retry_on_failure]           | Configures retry mechanism for failed requests.                             | no       |
-| [`sending_queue`][sending_queue]                 | Configures batching of data before sending.                                 | no       |
+| Block                                            | Description                                                                | Required |
+| ------------------------------------------------ | -------------------------------------------------------------------------- | -------- |
+| [`authentication`][authentication]               | Configures authentication for connecting to Kafka brokers.                 | no       |
+| `authentication` > [`kerberos`][kerberos]        | Authenticates against Kafka brokers with Kerberos.                         | no       |
+| `authentication` > [`plaintext`][plaintext]      | Authenticates against Kafka brokers with plaintext.                        | no       |
+| `authentication` > [`sasl`][sasl]                | Authenticates against Kafka brokers with SASL.                             | no       |
+| `authentication` > `sasl` > [`aws_msk`][aws_msk] | Additional SASL parameters when using AWS_MSK_IAM.                         | no       |
+| `authentication` > [`tls`][tls]                  | Configures TLS for connecting to the Kafka brokers.                        | no       |
+| [`debug_metrics`][debug_metrics]                 | Configures the metrics that this component generates to monitor its state. | no       |
+| [`metadata`][metadata]                           | Configures how to retrieve metadata from Kafka brokers.                    | no       |
+| `metadata` > [`retry`][retry]                    | Configures how to retry metadata retrieval.                                | no       |
+| [`producer`][producer]                           | Kafka producer configuration.                                              | no       |
+| [`retry_on_failure`][retry_on_failure]           | Configures retry mechanism for failed requests.                            | no       |
+| [`sending_queue`][sending_queue]                 | Configures batching of data before sending.                                | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `authentication` > `tls` refers to a `tls` block defined inside an `authentication` block.
