@@ -601,7 +601,7 @@ func Test_sourceMapsStoreImpl_RealWorldPathValidation(t *testing.T) {
 
 	actual := transformException(logger, store, input, "123")
 	require.Equal(t, input, actual)
-	require.Equal(t, []string{"/foo/bar/baz/qux/folder/file.js.map"}, fileService.stats)
+	require.Equal(t, []string{filepath.FromSlash("/foo/bar/baz/qux/folder/file.js.map")}, fileService.stats)
 	require.Empty(t, fileService.reads, "should not read file when stat fails")
 }
 
