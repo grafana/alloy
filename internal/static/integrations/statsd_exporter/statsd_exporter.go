@@ -252,12 +252,14 @@ func (e *Exporter) Run(ctx context.Context) error {
 			Logger:          e.log,
 			LineParser:      parser,
 			UDPPackets:      e.metrics.UDPPackets,
+			UDPPacketDrops:  e.metrics.UDPPacketDrops,
 			LinesReceived:   e.metrics.LinesReceived,
 			EventsFlushed:   e.metrics.EventsFlushed,
 			SampleErrors:    *e.metrics.SampleErrors,
 			SamplesReceived: e.metrics.SamplesReceived,
 			TagErrors:       e.metrics.TagErrors,
 			TagsReceived:    e.metrics.TagsReceived,
+			UdpPacketQueue:  make(chan []byte, 1000),
 		}
 
 		go ul.Listen()
