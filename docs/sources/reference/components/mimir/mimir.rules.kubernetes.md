@@ -14,7 +14,7 @@ title: mimir.rules.kubernetes
 
 `mimir.rules.kubernetes` discovers `PrometheusRule` Kubernetes resources and loads them into a Mimir instance.
 
-It can also federate rules from different source tenants into a target Mimir tenant by interpreting the `monitoring.grafana.com/source_tenants` annotation on `PrometheusRule` resources.
+It can also [federate rules](https://grafana.com/docs/mimir/latest/references/architecture/components/ruler/#federated-rule-groups) from different source tenants into a target Mimir tenant by interpreting the `monitoring.grafana.com/source_tenants` annotation on `PrometheusRule` resources.
 
 * You can specify multiple `mimir.rules.kubernetes` components by giving them different labels.
 * [Kubernetes label selectors][] can be used to limit the `Namespace` and `PrometheusRule` resources considered during reconciliation.
@@ -324,7 +324,7 @@ mimir.rules.kubernetes "default" {
 If a query in the form of `up != 1` is found in `PrometheusRule` CRDs, it's modified to `up{app="my-app"} != 1` before sending it to Mimir.
 
 This example demonstrates tenant federation. Rules defined in the `PrometheusRule` CR are considered to originate from `source-tenant-alpha` and `source-tenant-beta`.
-The `mimir.rules.kubernetes` component will sync these rules to the `target-tenant-main` in the configured Mimir instance.
+The `mimir.rules.kubernetes` component syncs these rules to the `target-tenant-main` in the configured Mimir instance.
 
 ```alloy
 // config.alloy
