@@ -12,8 +12,8 @@ import (
 
 type MimirRuleGroup struct {
 	rulefmt.RuleGroup `yaml:",inline"`
-        // Source tenants is extracted from the CR annotations and not the actual rule group definition.
-	SourceTenants     []string `yaml:"source_tenants,omitempty"`
+	// Source tenants is extracted from the CR annotations and not the actual rule group definition.
+	SourceTenants []string `yaml:"source_tenants,omitempty"`
 }
 
 type mimirRuleGroups struct {
