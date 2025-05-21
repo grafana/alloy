@@ -59,13 +59,13 @@ You can use the following blocks with `otelcol.auth.headers`:
 The `header` block defines a custom header to attach to requests.
 It's valid to provide multiple `header` blocks to set more than one header.
 
-| Name             | Type                 | Description                                                 | Default    | Required |
-| ---------------- | -------------------- | ----------------------------------------------------------- | ---------- | -------- |
-| `key`            | `string`             | Name of the header to set.                                  |            | yes      |
-| `action`         | `string`             | An action to perform on the header                          | `"upsert"` | no       |
-| `from_attribute` | `string`             | Metadata name used to retrieve header value                 |            | no       |
-| `from_context`   | `string`             | Authentication attribute name used to retrieve header value |            | no       |
-| `value`          | `string` or `secret` | Value of the header.                                        |            | no       |
+| Name             | Type                 | Description                                                  | Default    | Required |
+| ---------------- | -------------------- | ------------------------------------------------------------ | ---------- | -------- |
+| `key`            | `string`             | Name of the header to set.                                   |            | yes      |
+| `action`         | `string`             | An action to perform on the header.                          | `"upsert"` | no       |
+| `from_attribute` | `string`             | Authentication attribute name used to retrieve header value. |            | no       |
+| `from_context`   | `string`             | Metadata name used to retrieve header value.                 |            | no       |
+| `value`          | `string` or `secret` | Value of the header.                                         |            | no       |
 
 The supported values for `action` are:
 
@@ -74,7 +74,7 @@ The supported values for `action` are:
 * `upsert`: Inserts a header if it doesn't exist and updates the header if it exists.
 * `delete`: Deletes the header.
 
-Exactly one of `value` or `from_context` must be provided for each `header` block.
+Exactly one of `value`, `from_context`, or `from_attribute` must be provided for each `header` block.
 
 The `value` attribute sets the value of the header directly.
 Alternatively, you can use `from_context` to dynamically retrieve the header value from request metadata, or you can use `from_attribute` to dynamically retrieve the header value from request authentication metadata.
