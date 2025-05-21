@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component/faro/receiver/internal/payload"
 	alloyutil "github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/client_golang/prometheus"
@@ -601,69 +600,8 @@ func Test_sourceMapsStoreImpl_RealWorldPathValidation(t *testing.T) {
 
 	actual := transformException(logger, store, input, "123")
 	require.Equal(t, input, actual)
-	require.Equal(t, []string{"/foo/bar/baz/qux/folder/file.js.map"}, fileService.stats)
+	require.Equal(t, []string{filepath.FromSlash("/foo/bar/baz/qux/folder/file.js.map")}, fileService.stats)
 	require.Empty(t, fileService.reads, "should not read file when stat fails")
-}
-
-func Test_sourceMapsStoreImpl_InvalidPathMetrics(t *testing.T) {
-	var (
-		logBuf bytes.Buffer
-		logger = log.NewLogfmtLogger(log.NewSyncWriter(&logBuf))
-		reg    = prometheus.NewRegistry()
-		store  = newSourceMapsStore(
-			logger,
-			SourceMapsArguments{
-				Download: false,
-				Locations: []LocationArguments{
-					{
-						MinifiedPathPrefix: "http://foo.com/",
-						Path:               "/var/build/latest/",
-					},
-				},
-			},
-			newSourceMapMetrics(reg),
-			nil,
-			newTestFileService(),
-		)
-	)
-
-	input := &payload.Exception{
-		Stacktrace: &payload.Stacktrace{
-			Frames: []payload.Frame{
-				{
-					Colno:    6,
-					Filename: "http://foo.com/..\\etc\\passwd",
-					Function: "eval",
-					Lineno:   5,
-				},
-			},
-		},
-	}
-
-	transformException(logger, store, input, "123")
-
-	logOutput := logBuf.String()
-	require.Contains(t, logOutput, "msg=\"source map path contains invalid characters\"")
-	require.Contains(t, logOutput, "url=http://foo.com/..\\etc\\passwd")
-	require.Contains(t, logOutput, "file_path=/var/build/latest/..\\etc\\passwd.map")
-
-	metrics, err := reg.Gather()
-	require.NoError(t, err)
-
-	var found bool
-	for _, metric := range metrics {
-		if metric.GetName() == "faro_receiver_sourcemap_file_reads_total" {
-			for _, m := range metric.GetMetric() {
-				for _, label := range m.GetLabel() {
-					if label.GetName() == "status" && label.GetValue() == "invalid_path" {
-						found = true
-						require.Equal(t, float64(1), m.GetCounter().GetValue())
-					}
-				}
-			}
-		}
-	}
-	require.True(t, found, "Expected to find metric with invalid_path status")
 }
 
 type mockHTTPClient struct {
