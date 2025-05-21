@@ -83,6 +83,8 @@ Main (unreleased)
 
 - Fix a bug in the `foreach` preventing the UI from showing the components in the template when the block was re-evaluated. (@wildum)
 
+- Fix alloy health handler so header is written before response body. (@kalleep)
+
 ### Other changes
 
 - Update the zap logging adapter used by `otelcol` components to log arrays and objects. (@dehaansa)
