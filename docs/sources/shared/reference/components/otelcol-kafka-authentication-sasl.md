@@ -7,14 +7,14 @@ The `sasl` block configures SASL authentication against Kafka brokers.
 
 The following arguments are supported:
 
-Name        | Type     | Description                                              | Default | Required
-------------|----------|----------------------------------------------------------|---------|---------
-`username`  | `string` | Username to use for SASL authentication.                 |         | yes
-`password`  | `secret` | Password to use for SASL authentication.                 |         | yes
-`mechanism` | `string` | SASL mechanism to use when authenticating.               |         | yes
-`version`   | `number` | Version of the SASL Protocol to use when authenticating. | `0`     | no
+| Name        | Type     | Description                                              | Default | Required |
+| ----------- | -------- | -------------------------------------------------------- | ------- | -------- |
+| `mechanism` | `string` | SASL mechanism to use when authenticating.               |         | yes      |
+| `password`  | `secret` | Password to use for SASL authentication.                 |         | yes      |
+| `username`  | `string` | Username to use for SASL authentication.                 |         | yes      |
+| `version`   | `number` | Version of the SASL Protocol to use when authenticating. | `0`     | no       |
 
-The `mechanism` argument can be set to one of the following strings:
+You can set the `mechanism` argument to one of the following strings:
 
 * `"PLAIN"`
 * `"AWS_MSK_IAM"`
