@@ -14,6 +14,8 @@ title: mimir.rules.kubernetes
 
 `mimir.rules.kubernetes` discovers `PrometheusRule` Kubernetes resources and loads them into a Mimir instance.
 
+It can also [federate rules](https://grafana.com/docs/mimir/latest/references/architecture/components/ruler/#federated-rule-groups) from different source tenants into a target Mimir tenant by interpreting the `monitoring.grafana.com/source_tenants` annotation on `PrometheusRule` resources.
+
 * You can specify multiple `mimir.rules.kubernetes` components by giving them different labels.
 * [Kubernetes label selectors][] can be used to limit the `Namespace` and `PrometheusRule` resources considered during reconciliation.
 * Compatible with the Ruler APIs of Grafana Mimir, Grafana Cloud, and Grafana Enterprise Metrics.
@@ -320,6 +322,47 @@ mimir.rules.kubernetes "default" {
 ```
 
 If a query in the form of `up != 1` is found in `PrometheusRule` CRDs, it's modified to `up{app="my-app"} != 1` before sending it to Mimir.
+
+This example demonstrates tenant federation. Rules defined in the `PrometheusRule` CR are considered to originate from `source-tenant-alpha` and `source-tenant-beta`.
+The `mimir.rules.kubernetes` component syncs these rules to the `target-tenant-main` in the configured Mimir instance.
+
+```alloy
+// config.alloy
+mimir.rules.kubernetes "federated_rules" {
+    address   = "mimir-ruler.example.com:8080"
+    tenant_id = "target-tenant-main" // Target tenant in Mimir
+
+    rule_selector {
+        match_labels = {
+            "federation-group" = "group1"
+        }
+    }
+}
+```
+
+```yaml
+# prometheus-rule-federated.yaml
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: federated-app-rules
+  namespace: my-apps
+  labels:
+    federation-group: "group1"
+  annotations:
+    monitoring.grafana.com/source_tenants: "source-tenant-alpha,source-tenant-beta"
+spec:
+  groups:
+  - name: my.app.rules
+    rules:
+    - alert: HighErrorRateFederated
+      expr: job:request_latency_seconds:mean5m{job="my-federated-app"} > 0.5
+      for: 10m
+      labels:
+        severity: critical
+      annotations:
+        summary: High request error rate for my-federated-app
+```
 
 The following example is an RBAC configuration for Kubernetes.
 It authorizes {{< param "PRODUCT_NAME" >}} to query the Kubernetes REST API:

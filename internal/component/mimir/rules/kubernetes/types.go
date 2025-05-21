@@ -12,6 +12,8 @@ import (
 	"github.com/grafana/alloy/internal/component/common/kubernetes"
 )
 
+const AnnotationsSourceTenants = "monitoring.grafana.com/source_tenants"
+
 var (
 	// This should contain all valid match types for extra query matchers.
 	validMatchTypes = []string{
