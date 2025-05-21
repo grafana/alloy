@@ -233,8 +233,8 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 			return
 		}
 
-		_, _ = fmt.Fprintln(w, "All Alloy components are healthy.")
 		w.WriteHeader(http.StatusOK)
+		_, _ = fmt.Fprintln(w, "All Alloy components are healthy.")
 	})
 
 	r.Handle(
