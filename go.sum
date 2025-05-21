@@ -2499,8 +2499,6 @@ github.com/prometheus/procfs v0.12.0 h1:jluTpSng7V9hY0O2R9DzzJHYb2xULk9VTR1V1R/k
 github.com/prometheus/procfs v0.12.0/go.mod h1:pcuDEFsWDnvcgNzo4EEweacyhjeA9Zk3cnaOZAZEfOo=
 github.com/prometheus/snmp_exporter v0.29.0 h1:COShgBj1tmWvA5pAkWQgO/lB3+bL/MFqUIqOELSZaBw=
 github.com/prometheus/snmp_exporter v0.29.0/go.mod h1:WWtqbJ4kYdgHwjh52YRjHwJRne1tzBRHXuqWKtabxm8=
-github.com/prometheus/statsd_exporter v0.22.8 h1:Qo2D9ZzaQG+id9i5NYNGmbf1aa/KxKbB9aKfMS+Yib0=
-github.com/prometheus/statsd_exporter v0.22.8/go.mod h1:/DzwbTEaFTE0Ojz5PqcSk6+PFHOPWGxdXVr6yC8eFOM=
 github.com/prometheus/statsd_exporter v0.28.0 h1:S3ZLyLm/hOKHYZFOF0h4zYmd0EeKyPF9R1pFBYXUgYY=
 github.com/prometheus/statsd_exporter v0.28.0/go.mod h1:Lq41vNkMLfiPANmI+uHb5/rpFFUTxPXiiNpmsAYLvDI=
 github.com/prometheus/tsdb v0.7.1/go.mod h1:qhTCs0VvXwvX/y3TZrWD7rabWM+ijKTux40TwIPHuXU=
