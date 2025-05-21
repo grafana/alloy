@@ -28,6 +28,8 @@ const (
 	eventTypeSyncMimir kubernetes.EventType = "sync-mimir"
 )
 
+var sourceTenantsRegex = regexp.MustCompile(`\s*,\s*`)
+
 type eventProcessor struct {
 	queue    workqueue.TypedRateLimitingInterface[kubernetes.Event]
 	stopChan chan struct{}
@@ -186,7 +188,7 @@ func (e *eventProcessor) desiredStateFromKubernetes() (kubernetes.MimirRuleGroup
 
 			var sourceTenants []string
 			if rule.Annotations[AnnotationsSourceTenants] != "" {
-				sourceTenants = regexp.MustCompile(`\s*,\s*`).
+				sourceTenants = sourceTenantsRegex.
 					Split(rule.Annotations[AnnotationsSourceTenants], -1)
 			}
 
