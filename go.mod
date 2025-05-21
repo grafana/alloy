@@ -512,7 +512,7 @@ require (
 	github.com/cloudflare/circl v1.3.7 // indirect
 	github.com/cloudflare/golz4 v0.0.0-20150217214814-ef862a3cdc58 // indirect
 	github.com/cncf/xds/go v0.0.0-20241223141626-cff3c89139a3 // indirect
-	github.com/compose-spec/compose-go/v2 v2.1.3 // indirect
+	github.com/compose-spec/compose-go/v2 v2.4.1 // indirect
 	github.com/containerd/cgroups/v3 v3.0.5 // indirect
 	github.com/containerd/console v1.0.4 // indirect
 	github.com/containerd/containerd v1.7.27 // indirect
