@@ -4,17 +4,17 @@ description: Shared content, tls config block
 headless: true
 ---
 
-Name                   | Type     | Description                                              | Default | Required
------------------------|----------|----------------------------------------------------------|---------|---------
-`ca_pem`               | `string` | CA PEM-encoded text to validate the server with.         |         | no
-`ca_file`              | `string` | CA certificate to validate the server with.              |         | no
-`cert_pem`             | `string` | Certificate PEM-encoded text for client authentication.  |         | no
-`cert_file`            | `string` | Certificate file for client authentication.              |         | no
-`insecure_skip_verify` | `bool`   | Disables validation of the server certificate.           |         | no
-`key_file`             | `string` | Key file for client authentication.                      |         | no
-`key_pem`              | `secret` | Key PEM-encoded text for client authentication.          |         | no
-`min_version`          | `string` | Minimum acceptable TLS version.                          |         | no
-`server_name`          | `string` | ServerName extension to indicate the name of the server. |         | no
+| Name                   | Type     | Description                                              | Default | Required |
+| ---------------------- | -------- | -------------------------------------------------------- | ------- | -------- |
+| `ca_pem`               | `string` | CA PEM-encoded text to validate the server with.         |         | no       |
+| `ca_file`              | `string` | CA certificate to validate the server with.              |         | no       |
+| `cert_pem`             | `string` | Certificate PEM-encoded text for client authentication.  |         | no       |
+| `cert_file`            | `string` | Certificate file for client authentication.              |         | no       |
+| `insecure_skip_verify` | `bool`   | Disables validation of the server certificate.           |         | no       |
+| `key_file`             | `string` | Key file for client authentication.                      |         | no       |
+| `key_pem`              | `secret` | Key PEM-encoded text for client authentication.          |         | no       |
+| `min_version`          | `string` | Minimum acceptable TLS version.                          |         | no       |
+| `server_name`          | `string` | ServerName extension to indicate the name of the server. |         | no       |
 
 The following pairs of arguments are mutually exclusive and can't both be set simultaneously:
 
