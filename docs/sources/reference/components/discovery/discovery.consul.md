@@ -36,7 +36,7 @@ You can use the following arguments with `discovery.consul`:
 | `datacenter`             | `string`            | Data center to query. If not provided, the default is used.                                                     |                  | no       |
 | `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                                        | `true`           | no       |
 | `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                                    | `true`           | no       |
-| `http_headers`           | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.          |                      | no       |
+| `http_headers`           | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.                         |                  | no       |
 | `namespace`              | `string`            | Namespace to use. Only supported in Consul Enterprise.                                                          |                  | no       |
 | `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying.                |                  | no       |
 | `node_meta`              | `map(string)`       | Node metadata key/value pairs to filter nodes for a given service.                                              |                  | no       |
@@ -54,7 +54,7 @@ You can use the following arguments with `discovery.consul`:
 | `token`                  | `secret`            | Secret token used to access the Consul API.                                                                     |                  | no       |
 | `username`               | `string`            | The username to use. Deprecated in favor of the `basic_auth` configuration.                                     |                  | no       |
 
- At most, one of the following can be provided:
+At most, one of the following can be provided:
 
 * [`authorization`][authorization] block
 * [`basic_auth`][basic_auth] block
@@ -101,7 +101,7 @@ The `basic_auth` block configures basic authentication to the endpoint.
 
 ### `oauth2`
 
-The `oauth` block configures OAuth 2.0 authentication to the endpoint.
+The `oauth2` block configures OAuth 2.0 authentication to the endpoint.
 
 {{< docs/shared lookup="reference/components/oauth2-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 

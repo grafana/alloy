@@ -40,11 +40,11 @@ beyla.ebpf "<LABEL>" {
 
 You can use the following arguments with `beyla.ebpf`:
 
-| Name              | Type     | Description                                                                         | Default | Required |
-| ----------------- | -------- | ----------------------------------------------------------------------------------- | ------- | -------- |
-| `debug`           | `bool`   | Enable debug mode for Beyla.                                                        | `false` | no       |
-| `enforce_sys_caps`| `bool`   | Enforce system capabilities required for eBPF instrumentation.                      | `false` | no       |
-| `trace_printer`   | `string` | Format for printing trace information.                                              | `"disabled"` | no |
+| Name               | Type     | Description                                                    | Default      | Required |
+| ------------------ | -------- | -------------------------------------------------------------- | ------------ | -------- |
+| `debug`            | `bool`   | Enable debug mode for Beyla.                                   | `false`      | no       |
+| `enforce_sys_caps` | `bool`   | Enforce system capabilities required for eBPF instrumentation. | `false`      | no       |
+| `trace_printer`    | `string` | Format for printing trace information.                         | `"disabled"` | no       |
 
 
 `debug` enables debug mode for Beyla. This mode logs BPF logs, network logs, trace representation logs, and other debug information.

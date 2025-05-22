@@ -111,7 +111,7 @@ discovery.consulagent "example" {
 }
 
 prometheus.scrape "demo" {
-  targets    = discovery.consul.example.targets
+  targets    = discovery.consulagent.example.targets
   forward_to = [prometheus.remote_write.demo.receiver]
 }
 
