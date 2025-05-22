@@ -868,6 +868,7 @@ The `resource_attributes` block supports the following blocks:
 | [`host.name`][res-attr-cfg]              | Toggles the `host.name` resource attribute. Sets `enabled` to `true` by default.               | no       |
 | [`os.description`][res-attr-cfg]         | Toggles the `os.description` resource attribute. Sets `enabled` to `false` by default.         | no       |
 | [`os.type`][res-attr-cfg]                | Toggles the `os.type` resource attribute. Sets `enabled` to `true` by default.                 | no       |
+| [`os.version`][res-attr-cfg]             | Toggles the `os.version` resource attribute. Sets `enabled` to `false` by default.             | no       |
 
 ## Common configuration
 

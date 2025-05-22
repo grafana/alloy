@@ -41,37 +41,19 @@ You can use the following arguments with `otelcol.exporter.kafka`:
 | `protocol_version`                         | `string`       | Kafka protocol version to use.                                                                                              |                      | yes      |
 | `brokers`                                  | `list(string)` | Kafka brokers to connect to.                                                                                                | `["localhost:9092"]` | no       |
 | `client_id`                                | `string`       | Consumer client ID to use. The ID will be used for all produce requests.                                                    | `"sarama"`           | no       |
-| `encoding`                                 | `string`       | Encoding of payload read from Kafka.                                                                                        | `"otlp_proto"`       | no       |
+| `encoding`                                 | `string`       | (Deprecated) Encoding of payload read from Kafka.                                                                           | `"otlp_proto"`       | no       |
 | `partition_metrics_by_resource_attributes` | `bool`         | Whether to include the hash of sorted resource attributes as the message partitioning key in metric messages sent to Kafka. | `"false"`            | no       |
 | `partition_traces_by_id`                   | `bool`         | Whether to include the trace ID as the message key in trace messages sent to Kafka.                                         | `"false"`            | no       |
 | `resolve_canonical_bootstrap_servers_only` | `bool`         | Whether to resolve then reverse-lookup broker IPs during startup.                                                           | `"false"`            | no       |
 | `timeout`                                  | `duration`     | The timeout for every attempt to send data to the backend.                                                                  | `"5s"`               | no       |
 | `topic_from_attribute`                     | `string`       | A resource attribute whose value should be used as the message's topic.                                                     | `""`                 | no       |
-| `topic`                                    | `string`       | Kafka topic to send to.                                                                                                     | _See below_          | no       |
+| `topic`                                    | `string`       | (Deprecated) Kafka topic to send to.                                                                                        | _See below_          | no       |
 
-If `topic` isn't set, different topics will be used for different telemetry signals:
+{{< admonition type="warning" >}}
+The `topic` and `encoding` arguments are deprecated in favor of the [`logs`][logs], [`metrics`][metrics], and [`traces`][traces] blocks.
+{{< /admonition >}}
 
-* Metrics will be sent to an `otlp_metrics` topic.
-* Traces will be sent to an `otlp_spans` topic.
-* Logs will be sent to an `otlp_logs` topic.
-
-If topic is set, the same topic will be used for all telemetry signals - metrics, logs, and traces.
-
-When `topic_from_attribute` is set, it will take precedence over `topic`.
-
-The `encoding` argument determines how to encode messages sent to Kafka.
-`encoding` must be one of the following strings:
-
-* Encodings which work for traces, logs, and metrics:
-  * `"otlp_proto"`: Encode messages as OTLP protobuf.
-  * `"otlp_json"`: Encode messages as OTLP JSON.
-* Encodings which work only for traces:
-  * `"jaeger_proto"`: The payload is serialized to a single Jaeger proto `Span`, and keyed by TraceID.
-  * `"jaeger_json"`: The payload is serialized to a single Jaeger JSON Span using `jsonpb`, and keyed by TraceID.
-  * `"zipkin_proto"`: The payload is serialized to Zipkin v2 proto Span.
-  * `"zipkin_json"`: The payload is serialized to Zipkin v2 JSON Span.
-* Encodings which work only for logs:
-  * `"raw"`: If the log record body is a byte array, it's sent as is. Otherwise, it's serialized to JSON. Resource and record attributes are discarded.
+When `topic_from_attribute` is set, it will take precedence over the `topic` arguments in [`logs`][logs], [`metrics`][metrics], and [`traces`][traces] blocks.
 
 `partition_traces_by_id` doesn't have any effect on Jaeger encoding exporters since Jaeger exporters include trace ID as the message key by default.
 
@@ -79,24 +61,31 @@ The `encoding` argument determines how to encode messages sent to Kafka.
 
 You can use the following blocks with `otelcol.exporter.kafka`:
 
-| Block                                            | Description                                                                | Required |
-| ------------------------------------------------ | -------------------------------------------------------------------------- | -------- |
-| [`authentication`][authentication]               | Configures authentication for connecting to Kafka brokers.                 | no       |
-| `authentication` > [`kerberos`][kerberos]        | Authenticates against Kafka brokers with Kerberos.                         | no       |
-| `authentication` > [`plaintext`][plaintext]      | Authenticates against Kafka brokers with plaintext.                        | no       |
-| `authentication` > [`sasl`][sasl]                | Authenticates against Kafka brokers with SASL.                             | no       |
-| `authentication` > `sasl` > [`aws_msk`][aws_msk] | Additional SASL parameters when using AWS_MSK_IAM.                         | no       |
-| `authentication` > [`tls`][tls]                  | Configures TLS for connecting to the Kafka brokers.                        | no       |
-| [`debug_metrics`][debug_metrics]                 | Configures the metrics that this component generates to monitor its state. | no       |
-| [`metadata`][metadata]                           | Configures how to retrieve metadata from Kafka brokers.                    | no       |
-| `metadata` > [`retry`][retry]                    | Configures how to retry metadata retrieval.                                | no       |
-| [`producer`][producer]                           | Kafka producer configuration.                                              | no       |
-| [`retry_on_failure`][retry_on_failure]           | Configures retry mechanism for failed requests.                            | no       |
-| [`sending_queue`][sending_queue]                 | Configures batching of data before sending.                                | no       |
+| Block                                            | Description                                                                 | Required |
+| ------------------------------------------------ | --------------------------------------------------------------------------- | -------- |
+| [`authentication`][authentication]               | Configures authentication for connecting to Kafka brokers.                  | no       |
+| `authentication` > [`kerberos`][kerberos]        | Authenticates against Kafka brokers with Kerberos.                          | no       |
+| `authentication` > [`plaintext`][plaintext]      | Authenticates against Kafka brokers with plaintext.                         | no       |
+| `authentication` > [`sasl`][sasl]                | Authenticates against Kafka brokers with SASL.                              | no       |
+| `authentication` > `sasl` > [`aws_msk`][aws_msk] | Additional SASL parameters when using AWS_MSK_IAM.                          | no       |
+| `authentication` > [`tls`][tls]                  | Configures TLS for connecting to the Kafka brokers.                         | no       |
+| [`debug_metrics`][debug_metrics]                 | Configures the metrics which this component generates to monitor its state. | no       |
+| [`logs`][logs]                                   | Configures how to send logs to Kafka brokers.                               | no       |
+| [`metadata`][metadata]                           | Configures how to retrieve metadata from Kafka brokers.                     | no       |
+| `metadata` > [`retry`][retry]                    | Configures how to retry metadata retrieval.                                 | no       |
+| [`metrics`][metrics]                             | Configures how to send metrics to Kafka brokers.                            | no       |
+| [`producer`][producer]                           | Kafka producer configuration,                                               | no       |
+| [`retry_on_failure`][retry_on_failure]           | Configures retry mechanism for failed requests.                             | no       |
+| [`sending_queue`][sending_queue]                 | Configures batching of data before sending.                                 | no       |
+| [`tls`][tls]                                     | Configures TLS for connecting to the Kafka brokers.                         | no       |
+| [`traces`][traces]                               | Configures how to send traces to Kafka brokers.                             | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `authentication` > `tls` refers to a `tls` block defined inside an `authentication` block.
 
+[logs]: #logs
+[metrics]: #metrics
+[traces]: #traces
 [authentication]: #authentication
 [plaintext]: #plaintext
 [sasl]: #sasl
@@ -109,6 +98,33 @@ For example, `authentication` > `tls` refers to a `tls` block defined inside an 
 [sending_queue]: #sending_queue
 [producer]: #producer
 [debug_metrics]: #debug_metrics
+
+### `logs`
+	
+The `logs` block configures how to send logs to Kafka brokers.
+
+| Name       | Type     | Description                                                                  | Default        | Required |
+| ---------- | -------- | ---------------------------------------------------------------------------- | -------------- | -------- |
+| `encoding` | `string` | The encoding for logs. Refer to [Supported encodings](#supported-encodings). | `"otlp_proto"` | no       |
+| `topic`    | `string` | The name of the Kafka topic to which logs will be exported.                  | `"otlp_logs"`  | no       |
+
+### `metrics`
+
+The `metrics` block configures how to send metrics to Kafka brokers.
+
+| Name       | Type     | Description                                                                  | Default          | Required |
+| ---------- | -------- | ---------------------------------------------------------------------------- | ---------------- | -------- |
+| `encoding` | `string` | The encoding for logs. Refer to [Supported encodings](#supported-encodings). | `"otlp_proto"`   | no       |
+| `topic`    | `string` | The name of the Kafka topic to which metrics will be exported.               | `"otlp_metrics"` | no       |
+
+### `traces`
+
+The `traces` block configures how to send traces to Kafka brokers.
+
+| Name       | Type     | Description                                                                  | Default        | Required |
+| ---------- | -------- | ---------------------------------------------------------------------------- | -------------- | -------- |
+| `encoding` | `string` | The encoding for logs. Refer to [Supported encodings](#supported-encodings). | `"otlp_proto"` | no       |
+| `topic`    | `string` | The name of the Kafka topic to which traces will be exported.                | `"otlp_spans"` | no       |
 
 ### `authentication`
 
@@ -191,6 +207,28 @@ The following fields are exported and can be referenced by other components:
 | `input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to. |
 
 `input` accepts `otelcol.Consumer` data for any telemetry signal (metrics, logs, or traces).
+
+## Supported encodings
+
+`otelcol.exporter.kafka` supports encoding extensions, as well as the following built-in encodings.
+
+Available for all signals:
+
+* `otlp_proto`: Data is encoded as OTLP Protobuf.
+* `otlp_json`: Data is encoded as OTLP JSON.
+
+Available only for traces:
+
+* `jaeger_proto`: The payload is serialized to a single Jaeger proto `Span`, and keyed by TraceID.
+* `jaeger_json`: The payload is serialized to a single Jaeger JSON Span using `jsonpb`, and keyed by TraceID.
+* `zipkin_proto`: The payload is serialized to Zipkin v2 proto Span.
+* `zipkin_json`: The payload is serialized to Zipkin v2 JSON Span.
+
+Available only for logs:
+
+* `raw`: If the log record body is a byte array, it is sent as is.
+   Otherwise, it is serialized to JSON.
+   Resource and record attributes are discarded.
 
 ## Component health
 

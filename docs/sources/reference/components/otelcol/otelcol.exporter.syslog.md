@@ -67,10 +67,10 @@ You can use the following arguments with `otelcol.exporter.syslog`:
 | `timeout`               | `duration` | Time to wait before marking a request as failed.      | `5s`      | no       |
 
 The `network` argument specifies if the syslog endpoint is using the TCP or UDP protocol.
-`network` must be one of `tcp`, `udp`
+`network` must be one of `tcp`, `udp`.
 
 The `protocol` argument specifies the syslog format supported by the endpoint.
-`protocol` must be one of `rfc5424`, `rfc3164`
+`protocol` must be one of `rfc5424`, `rfc3164`.
 
 ## Blocks
 

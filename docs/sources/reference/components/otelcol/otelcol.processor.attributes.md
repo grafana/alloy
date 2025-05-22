@@ -55,8 +55,8 @@ You can use the following blocks with `otelcol.processor.attributes`:
 | `exclude` > [`resource`][resource]         | A list of items to match the resources against.                            | no       |
 | [`include`][include]                       | Filter for data included in this processor's actions.                      | no       |
 | `include` > [`attribute`][attribute]       | A list of attributes to match against.                                     | no       |
-| `include` > [`log_severity`][log_severity] | A list of items to match the implementation library against.               | no       |
-| `include` > [`library`][library]           | How to match against a log record's SeverityNumber, if defined.            | no       |
+| `include` > [`log_severity`][log_severity] | How to match against a log record's SeverityNumber, if defined.            | no       |
+| `include` > [`library`][library]           | A list of items to match the implementation library against.               | no       |
 | `include` > [`regexp`][regexp]             | Regex cache settings.                                                      | no       |
 | `include` > [`resource`][resource]         | A list of items to match the resources against.                            | no       |
 
@@ -156,7 +156,7 @@ consider a processor such as [otelcol.processor.tail_sampling][].
 
 One of the following is also required:
 
-* For spans, one of `services`, `span_names`, `span_kinds`, [attribute][], [resource][], or [library][] must be specified  with a non-empty value for a valid configuration.
+* For spans, one of `services`, `span_names`, `span_kinds`, [attribute][], [resource][], or [library][] must be specified with a non-empty value for a valid configuration.
   The `log_bodies`, `log_severity_texts`, `log_severity`, and `metric_names` attributes are invalid.
 * For logs, one of `log_bodies`, `log_severity_texts`, `log_severity`, [attribute][], [resource][], or [library][] must be specified with a non-empty value for a valid configuration.
   The `span_names`, `span_kinds`, `metric_names`, and `services` attributes are invalid.

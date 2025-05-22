@@ -27,6 +27,10 @@ As a result of this change, the following metrics are no longer available by def
 
 The previously undocumented argument `custom_metrics` is now expecting a list of paths to custom metrics files.
 
+### Breaking change: The `enable_context_propagation` argument in `beyla.ebpf` has been replaced with the `context_propagation` argument.
+
+Set `enable_context_propagation` to `all` to get the same behaviour as `enable_context_propagation` being set to `true`.
+
 ## v1.6
 
 ### Breaking change: The `topics` argument in the component `loki.source.kafka` does not use regex by default anymore
