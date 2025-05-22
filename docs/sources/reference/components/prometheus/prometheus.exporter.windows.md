@@ -133,9 +133,9 @@ User-supplied `exclude` and `include` strings are [wrapped][wrap-regex] in a reg
 
 ### `mscluster`
 
-| Name           | Type           | Description                                      | Default | Required |
-| -------------- | -------------- | ------------------------------------------------ | ------- | -------- |
-| `enabled_list` | `list(string)` | A list of collectors to use. | `["cluster","network","node","resource","resourcegroup"]`    | no       |
+| Name           | Type           | Description                  | Default                                                   | Required |
+| -------------- | -------------- | ---------------------------- | --------------------------------------------------------- | -------- |
+| `enabled_list` | `list(string)` | A list of collectors to use. | `["cluster","network","node","resource","resourcegroup"]` | no       |
 
 The collectors specified by `enabled_list` can include the following:
 
