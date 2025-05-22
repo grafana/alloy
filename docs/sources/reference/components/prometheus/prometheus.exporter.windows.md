@@ -181,7 +181,7 @@ The collectors specified by `enabled_list` can include the following:
 * `clrremoting`
 * `clrsecurity`
 
-For example, `enabled_list` may be set to `["clrjit"]`.
+For example, you can set `enabled_list` to `["clrjit"]`.
 
 ### `performancecounter`
 | Name      | Type     | Description                                       | Default  | Required |
