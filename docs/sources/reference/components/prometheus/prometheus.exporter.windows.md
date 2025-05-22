@@ -145,7 +145,7 @@ The collectors specified by `enabled_list` can include the following:
 * `resource`
 * `resouregroup`
 
-For example, `enabled_list` may be set to `["cluster"]`.
+For example, you can set `enabled_list` to `["cluster"]`.
 
 ### `mssql`
 
