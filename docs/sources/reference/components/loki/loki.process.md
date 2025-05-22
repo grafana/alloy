@@ -67,7 +67,7 @@ You can use the following blocks with `loki.process`:
 | [`stage.pack`][stage.pack]                               | Configures a `pack` processing stage.                          | no       |
 | [`stage.regex`][stage.regex]                             | Configures a `regex` processing stage.                         | no       |
 | [`stage.replace`][stage.replace]                         | Configures a `replace` processing stage.                       | no       |
-| [`stage.sampling`][stage.sampling]                       | Samples logs at a given rate.                                  | no       |
+| [`stage.sampling`][stage.sampling]                       | Configures a `sampling` processing stage.                      | no       |
 | [`stage.static_labels`][stage.static_labels]             | Configures a `static_labels` processing stage.                 | no       |
 | [`stage.structured_metadata`][stage.structured_metadata] | Configures a structured metadata processing stage.             | no       |
 | [`stage.template`][stage.template]                       | Configures a `template` processing stage.                      | no       |

@@ -39,7 +39,7 @@ You can use the following arguments with `discovery.nomad`:
 | `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false`                   | no       |
 | `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |                           | no       |
 | `refresh_interval`       | `duration`          | Frequency to refresh list of containers.                                                         | `30s`                     | no       |
-| `region`                 | `string`            | Nomad region to use.                                                                             | `"global"`                | no       |
+| `region`                 | `string`            | Nomad region to use.                                                                             | `global`                  | no       |
 | `server`                 | `string`            | Address of nomad server.                                                                         | `"http://localhost:4646"` | no       |
 | `tag_separator`          | `string`            | Separator to join nomad tags into Prometheus labels.                                             | `","`                     | no       |
 

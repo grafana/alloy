@@ -36,7 +36,7 @@ You can use the following arguments with `local.file`:
 | `filename`       | `string`   | Path of the file on disk to watch.                       |              | yes      |
 | `detector`       | `string`   | Which file change detector to use, `fsnotify` or `poll`. | `"fsnotify"` | no       |
 | `is_secret`      | `bool`     | Marks the file as containing a [secret][].               | `false`      | no       |
-| `poll_frequency` | `duration` | How often to poll for file changes.                      | `"1m"`       | no       |
+| `poll_frequency` | `duration` | How often to poll for file changes.                      | `1m`         | no       |
 
 [secret]: ../../../../get-started/configuration-syntax/expressions/types_and_values/#secrets
 
