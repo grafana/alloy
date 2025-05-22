@@ -4,7 +4,6 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
 	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
@@ -75,7 +74,6 @@ func TestDefaultConfig(t *testing.T) {
 		SMTP:              SMTPConfig{BlackList: "^$", WhiteList: "^.+$", Exclude: "^$", Include: "^.+$"},
 		TextFile:          TextFileConfig{TextFileDirectory: getDefaultTextFilePath()},
 		TCP:               TCPConfig{EnabledList: []string{"metrics", "connections_state"}},
-		Update:            UpdateConfig{Online: false, ScrapeInterval: 6 * time.Hour},
 		Filetime:          FiletimeConfig{FilePatterns: []string{}},
 	}
 

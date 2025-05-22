@@ -31,6 +31,9 @@ func toWindowsExporter(config *windows_exporter.Config) *windows.Arguments {
 		Exchange: windows.ExchangeConfig{
 			EnabledList: split(config.Exchange.EnabledList),
 		},
+		Filetime: windows.FiletimeConfig{
+			FilePatterns: config.Filetime.FilePatterns,
+		},
 		IIS: windows.IISConfig{
 			AppBlackList:  config.IIS.AppBlackList,
 			AppWhiteList:  config.IIS.AppWhiteList,
@@ -47,9 +50,6 @@ func toWindowsExporter(config *windows_exporter.Config) *windows.Arguments {
 			Include:   config.LogicalDisk.Include,
 			Exclude:   config.LogicalDisk.Exclude,
 		},
-		MSMQ: windows.MSMQConfig{
-			Where: config.MSMQ.Where,
-		},
 		MSSQL: windows.MSSQLConfig{
 			EnabledClasses: split(config.MSSQL.EnabledClasses),
 		},
@@ -58,6 +58,9 @@ func toWindowsExporter(config *windows_exporter.Config) *windows.Arguments {
 			WhiteList: config.Network.WhiteList,
 			Exclude:   config.Network.Exclude,
 			Include:   config.Network.Include,
+		},
+		PerformanceCounter: windows.PerformanceCounterConfig{
+			Objects: config.PerformanceCounter.Objects,
 		},
 		PhysicalDisk: windows.PhysicalDiskConfig{
 			Exclude: config.PhysicalDisk.Exclude,
@@ -78,8 +81,8 @@ func toWindowsExporter(config *windows_exporter.Config) *windows.Arguments {
 			Include: config.ScheduledTask.Include,
 		},
 		Service: windows.ServiceConfig{
-			UseApi: config.Service.UseApi,
-			Where:  config.Service.Where,
+			Include: config.Service.Include,
+			Exclude: config.Service.Exclude,
 		},
 		SMB: windows.SMBConfig{
 			EnabledList: split(config.SMB.EnabledList),
@@ -96,5 +99,9 @@ func toWindowsExporter(config *windows_exporter.Config) *windows.Arguments {
 		TextFile: windows.TextFileConfig{
 			TextFileDirectory: config.TextFile.TextFileDirectory,
 		},
+		TCP: windows.TCPConfig{
+			EnabledList: split(config.TCP.EnabledList),
+		},
+		// add update collector settings
 	}
 }

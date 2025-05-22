@@ -69,7 +69,6 @@ You can use the following blocks with `prometheus.exporter.windows`:
 | [`smtp`][smtp]                                 | Configures the `smtp` collector.                 | no       |
 | [`text_file`][text_file]                       | Configures the `text_file` collector.            | no       |
 | [`tcp`][tcp]                                   | Configures the `tcp` collector.                  | no       |
-| [`update`][update]                             | Configures the `update` collector.               | no       |
 
 [dfsr]: #dfsr
 [exchange]: #exchange
@@ -91,7 +90,6 @@ You can use the following blocks with `prometheus.exporter.windows`:
 [smtp]: #smtp
 [text_file]: #text_file
 [tcp]: #tcp
-[update]: #update
 
 ### `dfsr`
 
@@ -333,13 +331,6 @@ When `text_file_directory` is set, only files with the extension `.prom` inside 
 The `.prom` files must end with an empty line feed for the component to recognize and read them.
 {{< /admonition >}}
 
-### `update`
-
-| Name              | Type            | Description                                                                     | Default | Required |
-|-------------------|-----------------|---------------------------------------------------------------------------------|---------|----------|
-| `online`          | `bool`          | Whether to search for pending updates online. This will take longer to complete | `false` | no       |
-| `scrape_interval` | `time.Duration` | How frequently to scrape Windows Update information                             | `6h`    | no       |
-
 ## Exported fields
 
 {{< docs/shared lookup="reference/components/exporter-component-exports.md" source="alloy" version="<ALLOY_VERSION>" >}}
@@ -427,7 +418,6 @@ Users can choose to enable a subset of collectors to limit the amount of metrics
 | [`terminal_services`][terminal_services]                             | Terminal services (RDS)                                              |                    |
 | [`textfile`][textfile]                                               | Read Prometheus metrics from a text file                             |                    |
 | [`udp`][udp]                                                         | UDP connections                                                      |                    |
-| [`update`][update]                                                   | Windows Update metrics                                               |                    |
 | [`vmware`][vmware]                                                   | Performance counters installed by the VMware Guest agent             |                    |
 
 [ad]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.ad.md
@@ -473,7 +463,6 @@ Users can choose to enable a subset of collectors to limit the amount of metrics
 [terminal_services]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.terminal_services.md
 [textfile]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.textfile.md
 [udp]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.udp.md
-[update]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.update.md
 [vmware]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.vmware.md
 [sql_server]: https://docs.microsoft.com/en-us/sql/relational-databases/performance-monitor/use-sql-server-objects#SQLServerPOs
 

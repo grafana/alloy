@@ -132,8 +132,6 @@ func TestAlloyUnmarshal(t *testing.T) {
 	require.Equal(t, ".+", args.LogicalDisk.Include)
 	require.Equal(t, []string{"example"}, args.TCP.EnabledList)
 	require.Equal(t, []string{"example"}, args.Filetime.FilePatterns)
-	require.Equal(t, true, args.Update.Online)
-	require.Equal(t, 3*time.Hour, args.Update.ScrapeInterval)
 	// This isn't a real example, and the recommendation would be to use a file rather than a raw string
 	require.Equal(t, "---\t- name: \"Processor\"\t\tcounters:\t\t\t- name: \"% Processor Time\"\t\t\t  instance: \"_Total\"\t\t\t  type: \"counter\"\t\t\t  labels:\t\t\t\t  - name: \"Instance\"\t\t\t\t\tvalue: \"_Total\"", args.PerformanceCounter.Objects)
 }

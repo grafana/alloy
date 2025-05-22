@@ -3,7 +3,6 @@ package windows
 import (
 	"slices"
 	"strings"
-	"time"
 
 	windows_integration "github.com/grafana/alloy/internal/static/integrations/windows_exporter"
 	col "github.com/prometheus-community/windows_exporter/pkg/collector"
@@ -84,10 +83,6 @@ func (a *Arguments) SetToDefault() {
 		},
 		TCP: TCPConfig{
 			EnabledList: col.ConfigDefaults.TCP.CollectorsEnabled,
-		},
-		Update: UpdateConfig{ // fields are not exported
-			Online:         false,
-			ScrapeInterval: 6 * time.Hour,
 		},
 		Filetime: FiletimeConfig{
 			FilePatterns: col.ConfigDefaults.Filetime.FilePatterns,

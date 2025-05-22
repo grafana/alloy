@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/prometheus-community/windows_exporter/internal/collector/update"
 	"github.com/prometheus-community/windows_exporter/pkg/collector"
 	"gopkg.in/yaml.v3"
 )
@@ -120,19 +119,6 @@ func (c *Config) ToWindowsExporterConfig() (collector.Config, error) {
 	cfg.Filetime.FilePatterns = c.Filetime.FilePatterns
 
 	cfg.TCP.CollectorsEnabled = strings.Split(c.TCP.EnabledList, ",")
-	// For some reason the Update collector settings are not exported so we need to yaml marshal/unmarshal
-	var updateCfg update.Config
-	content, err := yaml.Marshal(c.Update)
-	if err != nil {
-		errs = append(errs, err)
-	} else {
-		err = yaml.Unmarshal(content, &updateCfg)
-		if err != nil {
-			errs = append(errs, err)
-		} else {
-			cfg.Update = updateCfg
-		}
-	}
 
 	// These objects are all internal and the best way to handle is to accept as a string and unmarshal
 	// into the config struct
