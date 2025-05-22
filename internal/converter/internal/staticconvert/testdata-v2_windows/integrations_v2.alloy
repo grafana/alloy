@@ -10,9 +10,9 @@ prometheus.remote_write "metrics_default" {
 }
 
 prometheus.exporter.windows "integrations_windows_exporter" {
-	service {
-		use_api = "false"
-	}
+	mscluster { }
+
+	netframework { }
 }
 
 discovery.relabel "integrations_windows" {
