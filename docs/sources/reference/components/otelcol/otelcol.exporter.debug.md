@@ -36,7 +36,7 @@ You can use the following arguments with `otelcol.exporter.debug`:
 | --------------------- | -------- | ----------------------------------------------------------------- | --------- | -------- |
 | `sampling_initial`    | `int`    | Number of messages initially logged each second.                  | `2`       | no       |
 | `sampling_thereafter` | `int`    | Sampling rate after the initial messages are logged.              | `1`       | no       |
-| `use_internal_logger` | `bool`   | Whether to use the internal logger or print directly to `stdout`. | `true`    | no       |
+| `use_internal_logger` | `bool`   | Whether to use the internal logger or print directly to `stderr`. | `true`    | no       |
 | `verbosity`           | `string` | Verbosity of the generated logs.                                  | `"basic"` | no       |
 
 The `verbosity` argument must be one of:

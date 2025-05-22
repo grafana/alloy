@@ -73,8 +73,8 @@ The following arguments are supported:
 | --------------------- | --------- | ----------------------------------------------------------------------------------------------------- | --------------------------------------------- | -------- |
 | `s3_bucket`           | `string`  | The S3 bucket.                                                                                        |                                               | yes      |
 | `s3_prefix`           | `string`  | Prefix for the S3 key (root directory inside the bucket).                                             |                                               | yes      |
-| `acl`                 | `string`  | The canned ACL to use when uploading objects.                                                         | `""`                                          | no       |
-| `compression`         | `string`  | File compression method, `none` or `gzip`                                                             | `none`                                        | no       |
+| `acl`                 | `string`  | The canned ACL to use when uploading objects.                                                         | `"private"`                                   | no       |
+| `compression`         | `string`  | File compression method, `none` or `gzip`                                                             | `"none"`                                      | no       |
 | `disable_ssl`         | `boolean` | Set this to `true` to disable SSL when sending requests.                                              | `false`                                       | no       |
 | `endpoint`            | `string`  | Overrides the endpoint used by the exporter instead of constructing it from `region` and `s3_bucket`. |                                               | no       |
 | `file_prefix`         | `string`  | The file prefix defined by the user.                                                                  |                                               | no       |

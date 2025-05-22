@@ -53,7 +53,7 @@ You can use the following blocks with `otelcol.exporter.googlecloud`:
 |---------------------------------------------------|----------------------------------------------------------------------------|----------|
 | [`debug_metrics`][debug_metrics]                  | Configures the metrics that this component generates to monitor its state. | no       |
 | [`impersonate`][impersonate]                      | Configuration for service account impersonation                            | no       |
-| [`log`][log]                                      | Configuration for sending metrics to Cloud Logging.                        | no       |
+| [`log`][log]                                      | Configuration for sending logs to Cloud Logging.                           | no       |
 | [`metric`][metric]                                | Configuration for sending metrics to Cloud Monitoring.                     | no       |
 | [`metric` > `experimental_wal`][experimental_wal] | Configuration for write ahead log for time series requests.                | no       |
 | [`sending_queue`][sending_queue]                  | Configures batching of data before sending.                                | no       |
