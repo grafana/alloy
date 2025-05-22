@@ -45,7 +45,7 @@ You can use the following blocks with `otelcol.exporter.otlp`:
 
 | Block                                  | Description                                                                | Required |
 | -------------------------------------- | -------------------------------------------------------------------------- | -------- |
-| [`client`][client]                     | Configures the gRPC server to send telemetry data to.                      | yes      |
+| [`client`][client]                     | Configures the gRPC client to send telemetry data to.                      | yes      |
 | `client` > [`keepalive`][keepalive]    | Configures keepalive settings for the gRPC client.                         | no       |
 | `client` > [`tls`][tls]                | Configures TLS for the gRPC client.                                        | no       |
 | [`debug_metrics`][debug_metrics]       | Configures the metrics that this component generates to monitor its state. | no       |
