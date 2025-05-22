@@ -12,7 +12,7 @@ title: otelcol.connector.host_info
 
 # `otelcol.connector.host_info`
 
-`otel.connector.host_info` accepts span data from other `otelcol` components and generates usage metrics.
+`otelcol.connector.host_info` accepts span data from other `otelcol` components and generates usage metrics.
 
 ## Usage
 
