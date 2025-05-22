@@ -34,7 +34,7 @@ You can use the following arguments with `discovery.consulagent`:
 | ------------------ | -------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ---------------- | -------- |
 | `datacenter`       | `string`       | Data center in which the Consul Agent is configured to run. If not provided, the data center is retrieved from the local Consul Agent. |                  | no       |
 | `password`         | `secret`       | The password to use.                                                                                                                   |                  | no       |
-| `refresh_interval` | `duration`     | Frequency to refresh list of containers.                                                                                               | `"30s"`          | no       |
+| `refresh_interval` | `duration`     | Frequency to refresh list of containers.                                                                                               | `30s`            | no       |
 | `scheme`           | `string`       | The scheme to use when talking to the Consul Agent.                                                                                    | `http`           | no       |
 | `server`           | `string`       | Host and port of the Consul Agent API.                                                                                                 | `localhost:8500` | no       |
 | `services`         | `list(string)` | A list of services for which targets are retrieved. If omitted, all services are scraped.                                              |                  | no       |

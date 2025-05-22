@@ -45,7 +45,7 @@ You can use the following arguments with `discovery.consul`:
 | `proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                                   |                  | no       |
 | `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                                           | `false`          | no       |
 | `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                                            |                  | no       |
-| `refresh_interval`       | `duration`          | Frequency to refresh list of containers.                                                                        | `"30s"`          | no       |
+| `refresh_interval`       | `duration`          | Frequency to refresh list of containers.                                                                        | `30s`            | no       |
 | `scheme`                 | `string`            | The scheme to use when talking to Consul.                                                                       | `http`           | no       |
 | `server`                 | `string`            | Host and port of the Consul API.                                                                                | `localhost:8500` | no       |
 | `services`               | `list(string)`      | A list of services for which targets are retrieved. If omitted, all services are scraped.                       |                  | no       |
