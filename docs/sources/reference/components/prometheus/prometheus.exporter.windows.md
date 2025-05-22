@@ -47,28 +47,28 @@ Refer to the [Collectors list](#collectors-list) for the default set.
 
 You can use the following blocks with `prometheus.exporter.windows`:
 
-| Name                                           | Description                                      | Required |
-|------------------------------------------------|--------------------------------------------------|----------|
-| [`dfsr`][dfsr]                                 | Configures the `dfsr` collector.                 | no       |
-| [`exchange`][exchange]                         | Configures the `exchange` collector.             | no       |
-| [`filetime`][filetime]                         | Configures the `filetime` collector.             | no       |
-| [`iis`][iis]                                   | Configures the `iis` collector.                  | no       |
-| [`logical_disk`][logical_disk]                 | Configures the `logical_disk` collector.         | no       |
-| [`mscluster`][mscluster]                       | Configures the `mscluster` collector.            | no       |
-| [`mssql`][mssql]                               | Configures the `mssql` collector.                | no       |
-| [`netframework`][netframework]                 | Configures the `netframework` collector.         | no       |
-| [`network`][network]                           | Configures the `network` collector.              | no       |
-| [`performancecounter`][performancecounter]     | Configures the `performancecounter` collector.   | no       |
-| [`physical_disk`][physical_disk]               | Configures the `physical_disk` collector.        | no       |
-| [`printer`][printer]                           | Configures the `printer` collector.              | no       |
-| [`process`][process]                           | Configures the `process` collector.              | no       |
-| [`scheduled_task`][scheduled_task]             | Configures the `scheduled_task` collector.       | no       |
-| [`service`][service]                           | Configures the `service` collector.              | no       |
-| [`smb_client`][smb_client]                     | Configures the `smb_client` collector.           | no       |
-| [`smb`][smb]                                   | Configures the `smb` collector.                  | no       |
-| [`smtp`][smtp]                                 | Configures the `smtp` collector.                 | no       |
-| [`text_file`][text_file]                       | Configures the `text_file` collector.            | no       |
-| [`tcp`][tcp]                                   | Configures the `tcp` collector.                  | no       |
+| Name                                       | Description                                    | Required |
+| ------------------------------------------ | ---------------------------------------------- | -------- |
+| [`dfsr`][dfsr]                             | Configures the `dfsr` collector.               | no       |
+| [`exchange`][exchange]                     | Configures the `exchange` collector.           | no       |
+| [`filetime`][filetime]                     | Configures the `filetime` collector.           | no       |
+| [`iis`][iis]                               | Configures the `iis` collector.                | no       |
+| [`logical_disk`][logical_disk]             | Configures the `logical_disk` collector.       | no       |
+| [`mscluster`][mscluster]                   | Configures the `mscluster` collector.          | no       |
+| [`mssql`][mssql]                           | Configures the `mssql` collector.              | no       |
+| [`netframework`][netframework]             | Configures the `netframework` collector.       | no       |
+| [`network`][network]                       | Configures the `network` collector.            | no       |
+| [`performancecounter`][performancecounter] | Configures the `performancecounter` collector. | no       |
+| [`physical_disk`][physical_disk]           | Configures the `physical_disk` collector.      | no       |
+| [`printer`][printer]                       | Configures the `printer` collector.            | no       |
+| [`process`][process]                       | Configures the `process` collector.            | no       |
+| [`scheduled_task`][scheduled_task]         | Configures the `scheduled_task` collector.     | no       |
+| [`service`][service]                       | Configures the `service` collector.            | no       |
+| [`smb_client`][smb_client]                 | Configures the `smb_client` collector.         | no       |
+| [`smb`][smb]                               | Configures the `smb` collector.                | no       |
+| [`smtp`][smtp]                             | Configures the `smtp` collector.               | no       |
+| [`tcp`][tcp]                               | Configures the `tcp` collector.                | no       |
+| [`text_file`][text_file]                   | Configures the `text_file` collector.          | no       |
 
 [dfsr]: #dfsr
 [exchange]: #exchange
