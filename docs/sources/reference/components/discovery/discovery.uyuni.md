@@ -32,7 +32,7 @@ You can use the following arguments with `discovery.uyuni`:
 
 | Name                     | Type                | Description                                                                                      | Default                 | Required |
 | ------------------------ | ------------------- | ------------------------------------------------------------------------------------------------ | ----------------------- | -------- |
-| `password`               | `Secret`            | The password to use for authentication to the Uyuni API.                                         |                         | yes      |
+| `password`               | `secret`            | The password to use for authentication to the Uyuni API.                                         |                         | yes      |
 | `server`                 | `string`            | The primary Uyuni Server.                                                                        |                         | yes      |
 | `username`               | `string`            | The username to use for authentication to the Uyuni API.                                         |                         | yes      |
 | `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`                  | no       |

@@ -47,7 +47,7 @@ You can use the following arguments with `discovery.puppetdb`:
 | `proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |         | no       |
 | `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false` | no       |
 | `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |         | no       |
-| `refresh_interval`       | `duration`          | Frequency to refresh targets.                                                                    | `"30s"` | no       |
+| `refresh_interval`       | `duration`          | Frequency to refresh targets.                                                                    | `30s`   | no       |
 
  At most, one of the following can be provided:
 
@@ -95,7 +95,7 @@ The `basic_auth` block configures basic authentication to the endpoint.
 
 ### `oauth2`
 
-The `oauth` block configures OAuth 2.0 authentication to the endpoint.
+The `oauth2` block configures OAuth 2.0 authentication to the endpoint.
 
 {{< docs/shared lookup="reference/components/oauth2-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 

@@ -44,8 +44,8 @@ You can use the following arguments with `discovery.ovhcloud`:
 | `application_secret` | `secret`   | [API][] application secret.                     |          | yes      |
 | `consumer_key`       | `secret`   | [API][] consumer key.                           |          | yes      |
 | `service`            | `string`   | Service of the targets to retrieve.             |          | yes      |
-| `endpoint`           | `string`   | [API][] endpoint.                               | "ovh-eu" | no       |
-| `refresh_interval`   | `duration` | Refresh interval to re-read the resources list. | "60s"    | no       |
+| `endpoint`           | `string`   | [API][] endpoint.                               | `ovh-eu` | no       |
+| `refresh_interval`   | `duration` | Refresh interval to re-read the resources list. | `60s`    | no       |
 
 `service` must be either `vps` or `dedicated_server`.
 

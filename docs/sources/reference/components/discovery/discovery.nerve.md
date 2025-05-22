@@ -33,7 +33,7 @@ You can use the following arguments with `discovery.nerve`:
 | --------- | -------------- | --------------------------------- | ------- | -------- |
 | `paths`   | `list(string)` | The paths to look for targets at. |         | yes      |
 | `servers` | `list(string)` | The Zookeeper servers.            |         | yes      |
-| `timeout` | `duration`     | The timeout to use.               | `"10s"` | no       |
+| `timeout` | `duration`     | The timeout to use.               | `10s`   | no       |
 
 Each element in the `path` list can either point to a single service, or to the root of a tree of services.
 
