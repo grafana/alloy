@@ -82,6 +82,9 @@ Main (unreleased)
   - [0.27.1] Support dogstatsd extended aggregation
   - [0.27.2] Fix panic on certain invalid lines
 
+- Update secret-filter gitleaks.toml from v8.19.0 to v8.26.0
+
+
 ### Bugfixes
 
 - Fix `otelcol.receiver.filelog` documentation's default value for `start_at`. (@petewall)
