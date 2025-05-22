@@ -84,7 +84,7 @@ The `assume_role` block specifies the configuration needed to assume a role.
 
 If the `assume_role` block is specified in the configuration and `sts_region` isn't set, then `sts_region` will default to the value for `region`.
 
-For cross region authentication, `region` and `sts_region` can be set different to different values.
+For cross region authentication, `region` and `sts_region` can be set to different values.
 
 ### `debug_metrics`
 
