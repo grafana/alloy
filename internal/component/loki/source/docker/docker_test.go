@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/go-kit/log"
@@ -195,11 +194,11 @@ type clientMock struct {
 	running func() bool
 }
 
-func (mock clientMock) ContainerInspect(ctx context.Context, c string) (types.ContainerJSON, error) {
-	return types.ContainerJSON{
-		ContainerJSONBase: &types.ContainerJSONBase{
+func (mock clientMock) ContainerInspect(ctx context.Context, c string) (container.InspectResponse, error) {
+	return container.InspectResponse{
+		ContainerJSONBase: &container.ContainerJSONBase{
 			ID: c,
-			State: &types.ContainerState{
+			State: &container.State{
 				Running: mock.running(),
 			},
 		},

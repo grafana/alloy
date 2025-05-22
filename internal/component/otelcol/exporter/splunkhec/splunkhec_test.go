@@ -13,7 +13,6 @@ import (
 	"go.opentelemetry.io/collector/config/configopaque"
 	"go.opentelemetry.io/collector/config/configretry"
 	"go.opentelemetry.io/collector/config/configtls"
-	"go.opentelemetry.io/collector/exporter/exporterbatcher"
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
 )
 
@@ -53,11 +52,12 @@ func TestConfigConversion(t *testing.T) {
 			HTTP2PingTimeout:     0,
 			Cookies:              (*confighttp.CookiesConfig)(nil),
 		},
-		QueueSettings: exporterhelper.QueueConfig{
+		QueueSettings: exporterhelper.QueueBatchConfig{
 			Enabled:      true,
 			NumConsumers: 10,
 			QueueSize:    1000,
 			StorageID:    nil,
+			Sizer:        exporterhelper.RequestSizerTypeRequests,
 		},
 		BackOffConfig: configretry.BackOffConfig{
 			Enabled:             true,
@@ -67,14 +67,14 @@ func TestConfigConversion(t *testing.T) {
 			MaxInterval:         30000000000,
 			MaxElapsedTime:      300000000000,
 		},
-		BatcherConfig: exporterbatcher.Config{
+		BatcherConfig: exporterhelper.BatcherConfig{ //nolint:staticcheck
 			Enabled:      false,
 			FlushTimeout: 200000000,
-			SizeConfig: exporterbatcher.SizeConfig{
+			SizeConfig: exporterhelper.SizeConfig{ //nolint:staticcheck
 				MinSize: 8192,
 				MaxSize: 0,
-				Sizer: func() exporterbatcher.SizerType {
-					var s exporterbatcher.SizerType
+				Sizer: func() exporterhelper.RequestSizerType {
+					var s exporterhelper.RequestSizerType
 					require.NoError(t, s.UnmarshalText([]byte("items")))
 					return s
 				}(),
@@ -141,11 +141,12 @@ func TestConfigConversion(t *testing.T) {
 			HTTP2ReadIdleTimeout: 0,
 			HTTP2PingTimeout:     0,
 			Cookies:              (*confighttp.CookiesConfig)(nil)},
-		QueueSettings: exporterhelper.QueueConfig{
+		QueueSettings: exporterhelper.QueueBatchConfig{
 			Enabled:      true,
 			NumConsumers: 10,
 			QueueSize:    1000,
 			StorageID:    (nil),
+			Sizer:        exporterhelper.RequestSizerTypeRequests,
 		},
 		BackOffConfig: configretry.BackOffConfig{
 			Enabled:             true,
@@ -155,14 +156,14 @@ func TestConfigConversion(t *testing.T) {
 			MaxInterval:         30000000000,
 			MaxElapsedTime:      300000000000,
 		},
-		BatcherConfig: exporterbatcher.Config{
+		BatcherConfig: exporterhelper.BatcherConfig{ //nolint:staticcheck
 			Enabled:      false,
 			FlushTimeout: 200000000,
-			SizeConfig: exporterbatcher.SizeConfig{
+			SizeConfig: exporterhelper.SizeConfig{ //nolint:staticcheck
 				MinSize: 8192,
 				MaxSize: 0,
-				Sizer: func() exporterbatcher.SizerType {
-					var s exporterbatcher.SizerType
+				Sizer: func() exporterhelper.RequestSizerType {
+					var s exporterhelper.RequestSizerType
 					require.NoError(t, s.UnmarshalText([]byte("items")))
 					return s
 				}(),

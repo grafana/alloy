@@ -143,9 +143,10 @@ The `extract` block configures which metadata, annotations, and labels to extrac
 
 The following attributes are supported:
 
-| Name       | Type           | Description                          | Default     | Required |
-| ---------- | -------------- | ------------------------------------ | ----------- | -------- |
-| `metadata` | `list(string)` | Pre-configured metadata keys to add. | _See below_ | no       |
+| Name               | Type           | Description                                             | Default     | Required |
+| ------------------ | -------------- | ------------------------------------------------------- | ----------- | -------- |
+| `metadata`         | `list(string)` | Pre-configured metadata keys to add.                    | _See below_ | no       |
+| `otel_annotations` | `bool`         | Whether to set the [recommended resource attributes][]. | `false`     | no       |
 
 The supported `metadata` keys are:
 
@@ -180,6 +181,10 @@ By default, if `metadata` isn't specified, the following fields are extracted an
 * `k8s.pod.name`
 * `k8s.pod.start_time`
 * `k8s.pod.uid`
+
+When `otel_annotations` is set to `true`, annotations such as `resource.opentelemetry.io/exampleResource` will be translated to the `exampleResource` resource attribute, etc.
+
+[recommended resource attributes]: https://opentelemetry.io/docs/specs/semconv/non-normative/k8s-attributes/
 
 ### `annotation`
 
@@ -372,6 +377,8 @@ otelcol.processor.k8sattributes "default" {
       "k8s.pod.uid",
       "k8s.pod.start_time",
     ]
+
+    otel_annotations = true
   }
 
   output {
@@ -447,6 +454,7 @@ prometheus.remote_write "mimir" {
   }
 }
 ```
+
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components
