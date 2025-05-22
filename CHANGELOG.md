@@ -84,7 +84,6 @@ Main (unreleased)
 
 - Update secret-filter gitleaks.toml from v8.19.0 to v8.26.0
 
-
 ### Bugfixes
 
 - Fix `otelcol.receiver.filelog` documentation's default value for `start_at`. (@petewall)
