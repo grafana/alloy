@@ -2,21 +2,66 @@ package windows_exporter
 
 import (
 	"errors"
+	"maps"
 	"regexp"
-	"strconv"
+	"slices"
 	"strings"
+	"time"
 
+	"github.com/prometheus-community/windows_exporter/internal/collector/update"
 	"github.com/prometheus-community/windows_exporter/pkg/collector"
+	"gopkg.in/yaml.v3"
 )
+
+var netframeworkCollectors = map[string]struct{}{
+	"netframework_clrexceptions":      {},
+	"netframework_clrinterop":         {},
+	"netframework_clrjit":             {},
+	"netframework_clrloading":         {},
+	"netframework_clrlocksandthreads": {},
+	"netframework_clrmemory":          {},
+	"netframework_clrremoting":        {},
+	"netframework_clrsecurity":        {},
+}
+
+var msclusterCollectors = map[string]struct{}{
+	"mscluster_cluster":       {},
+	"mscluster_network":       {},
+	"mscluster_node":          {},
+	"mscluster_resource":      {},
+	"mscluster_resourcegroup": {},
+}
 
 func (c *Config) ToWindowsExporterConfig() (collector.Config, error) {
 	var err error
+
+	enabledCollectors := make(map[string][]string, len(c.EnabledCollectors))
+	for _, coll := range strings.Split(c.EnabledCollectors, ",") {
+		if _, ok := netframeworkCollectors[coll]; ok {
+			enabledCollectors["netframework"] = append(enabledCollectors["netframework"], strings.TrimPrefix(coll, "netframework_"))
+			continue
+		}
+		if _, ok := msclusterCollectors[coll]; ok {
+			enabledCollectors["mscluster"] = append(enabledCollectors["mscluster"], strings.TrimPrefix(coll, "mscluster_"))
+			continue
+		}
+		enabledCollectors[coll] = []string{}
+	}
+	c.EnabledCollectors = strings.Join(slices.Collect(maps.Keys(enabledCollectors)), ",")
 
 	errs := make([]error, 0, 18)
 
 	cfg := collector.ConfigDefaults
 	cfg.DFSR.CollectorsEnabled = strings.Split(c.Dfsr.SourcesEnabled, ",")
 	cfg.Exchange.CollectorsEnabled = strings.Split(c.Exchange.EnabledList, ",")
+
+	if len(c.MSCluster.EnabledList) > 0 || len(enabledCollectors["mscluster"]) > 0 {
+		cfg.MSCluster.CollectorsEnabled = append(strings.Split(c.MSCluster.EnabledList, ","), enabledCollectors["mscluster"]...)
+	}
+
+	if len(c.NetFramework.EnabledList) > 0 || len(enabledCollectors["netframework"]) > 0 {
+		cfg.NetFramework.CollectorsEnabled = append(strings.Split(c.NetFramework.EnabledList, ","), enabledCollectors["netframework"]...)
+	}
 
 	cfg.IIS.SiteInclude, err = regexp.Compile(coalesceString(c.IIS.SiteInclude, c.IIS.SiteWhiteList))
 	errs = append(errs, err)
@@ -27,9 +72,10 @@ func (c *Config) ToWindowsExporterConfig() (collector.Config, error) {
 	cfg.IIS.AppExclude, err = regexp.Compile(coalesceString(c.IIS.AppExclude, c.IIS.AppBlackList))
 	errs = append(errs, err)
 
-	cfg.Service.ServiceWhereClause = c.Service.Where
-	cfg.Service.UseAPI = c.Service.UseApi == "true"
-	cfg.Service.V2 = c.Service.V2 == "true"
+	cfg.Service.ServiceExclude, err = regexp.Compile(c.Service.Exclude)
+	errs = append(errs, err)
+	cfg.Service.ServiceInclude, err = regexp.Compile(c.Service.Include)
+	errs = append(errs, err)
 
 	cfg.SMTP.ServerInclude, err = regexp.Compile(coalesceString(c.SMTP.Include, c.SMTP.WhiteList))
 	errs = append(errs, err)
@@ -52,6 +98,7 @@ func (c *Config) ToWindowsExporterConfig() (collector.Config, error) {
 	errs = append(errs, err)
 	cfg.Process.ProcessInclude, err = regexp.Compile(coalesceString(c.Process.Include, c.Process.WhiteList))
 	errs = append(errs, err)
+	cfg.Process.EnableWorkerProcess = c.Process.EnableIISWorkerProcess
 
 	cfg.Net.NicExclude, err = regexp.Compile(coalesceString(c.Network.Exclude, c.Network.BlackList))
 	errs = append(errs, err)
@@ -59,8 +106,6 @@ func (c *Config) ToWindowsExporterConfig() (collector.Config, error) {
 	errs = append(errs, err)
 
 	cfg.Mssql.CollectorsEnabled = strings.Split(c.MSSQL.EnabledClasses, ",")
-
-	cfg.Msmq.QueryWhereClause = &c.MSMQ.Where
 
 	cfg.LogicalDisk.VolumeInclude, err = regexp.Compile(coalesceString(c.LogicalDisk.Include, c.LogicalDisk.WhiteList))
 	errs = append(errs, err)
@@ -71,6 +116,32 @@ func (c *Config) ToWindowsExporterConfig() (collector.Config, error) {
 	errs = append(errs, err)
 	cfg.ScheduledTask.TaskExclude, err = regexp.Compile(c.ScheduledTask.Exclude)
 	errs = append(errs, err)
+
+	cfg.Filetime.FilePatterns = c.Filetime.FilePatterns
+
+	cfg.TCP.CollectorsEnabled = strings.Split(c.TCP.EnabledList, ",")
+	// For some reason the Update collector settings are not exported so we need to yaml marshal/unmarshal
+	var updateCfg update.Config
+	content, err := yaml.Marshal(c.Update)
+	if err != nil {
+		errs = append(errs, err)
+	} else {
+		err = yaml.Unmarshal(content, &updateCfg)
+		if err != nil {
+			errs = append(errs, err)
+		} else {
+			cfg.Update = updateCfg
+		}
+	}
+
+	// These objects are all internal and the best way to handle is to accept as a string and unmarshal
+	// into the config struct
+	if c.PerformanceCounter.Objects != "" {
+		err = yaml.Unmarshal([]byte(c.PerformanceCounter.Objects), &cfg.PerformanceCounter.Objects)
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
 
 	return cfg, errors.Join(errs...)
 }
@@ -109,9 +180,6 @@ var DefaultConfig = Config{
 		Include:   collector.ConfigDefaults.LogicalDisk.VolumeInclude.String(),
 		Exclude:   collector.ConfigDefaults.LogicalDisk.VolumeExclude.String(),
 	},
-	MSMQ: MSMQConfig{
-		Where: *collector.ConfigDefaults.Msmq.QueryWhereClause,
-	},
 	MSSQL: MSSQLConfig{
 		EnabledClasses: strings.Join(collector.ConfigDefaults.Mssql.CollectorsEnabled, ","),
 	},
@@ -140,9 +208,8 @@ var DefaultConfig = Config{
 		Exclude: collector.ConfigDefaults.ScheduledTask.TaskExclude.String(),
 	},
 	Service: ServiceConfig{
-		UseApi: strconv.FormatBool(collector.ConfigDefaults.Service.UseAPI),
-		Where:  collector.ConfigDefaults.Service.ServiceWhereClause,
-		V2:     strconv.FormatBool(collector.ConfigDefaults.Service.V2),
+		Include: collector.ConfigDefaults.Service.ServiceInclude.String(),
+		Exclude: collector.ConfigDefaults.Service.ServiceExclude.String(),
 	},
 	SMTP: SMTPConfig{
 		BlackList: collector.ConfigDefaults.SMTP.ServerExclude.String(),
@@ -158,6 +225,19 @@ var DefaultConfig = Config{
 	},
 	TextFile: TextFileConfig{
 		TextFileDirectory: strings.Join(collector.ConfigDefaults.Textfile.TextFileDirectories, ","),
+	},
+	TCP: TCPConfig{
+		EnabledList: strings.Join(collector.ConfigDefaults.TCP.CollectorsEnabled, ","),
+	},
+	Update: UpdateConfig{ // fields are not exported
+		Online:         false,
+		ScrapeInterval: 6 * time.Hour,
+	},
+	Filetime: FiletimeConfig{
+		FilePatterns: collector.ConfigDefaults.Filetime.FilePatterns,
+	},
+	PerformanceCounter: PerformanceCounterConfig{
+		Objects: "", // default is empty, we yaml unmarshal the config
 	},
 }
 
