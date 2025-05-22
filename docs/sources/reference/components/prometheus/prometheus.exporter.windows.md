@@ -238,7 +238,7 @@ User-supplied `exclude` and `include` strings are [wrapped][wrap-regex] in a reg
 |-----------------------------|----------|-----------------------------------------------|----------|----------|
 | `exclude`                   | `string` | Regular expression of processes to exclude.   | `"^$"`   | no       |
 | `include`                   | `string` | Regular expression of processes to include.   | `"^.+$"` | no       |
-| `enable_iis_worker_process` | `string` | Enable IIS collectWorker process name queries | false    | no       |
+| `enable_iis_worker_process` | `string` | Enable IIS collectWorker process name queries | `false`  | no       |
 
 Processes must match the regular expression specified by `include` and must _not_ match the regular expression specified by `exclude` to be included.
 
