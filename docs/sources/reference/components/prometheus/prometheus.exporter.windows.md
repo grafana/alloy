@@ -314,7 +314,7 @@ The collectors specified by `enabled_list` can include the following:
 * `connections_state`
 * `metrics`
 
-For example, `enabled_list` may be set to `["metrics"]`.
+For example, you can set `enabled_list` to `["metrics"]`.
 
 ### `text_file`
 
