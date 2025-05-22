@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/grafana/beyla/v2/pkg/beyla"
+	"github.com/grafana/beyla/v2/pkg/config"
 	"github.com/grafana/beyla/v2/pkg/export/attributes"
 	"github.com/grafana/beyla/v2/pkg/export/debug"
 	"github.com/grafana/beyla/v2/pkg/filter"
@@ -98,7 +99,7 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 		ebpf {
 			wakeup_len = 10
 			track_request_headers = true
-			enable_context_propagation = true
+			context_propagation = "ip"
 			http_request_timeout = "10s"
 			high_request_volume = true
 			heuristic_sql_detect = true
@@ -163,7 +164,7 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 	require.True(t, cfg.EnforceSysCaps)
 	require.Equal(t, 10, cfg.EBPF.WakeupLen)
 	require.True(t, cfg.EBPF.TrackRequestHeaders)
-	require.True(t, cfg.EBPF.ContextPropagationEnabled)
+	require.Equal(t, cfg.EBPF.ContextPropagation, config.ContextPropagationIPOptionsOnly)
 	require.Equal(t, 10*time.Second, cfg.EBPF.HTTPRequestTimeout)
 	require.True(t, cfg.EBPF.HighRequestVolume)
 	require.True(t, cfg.EBPF.HeuristicSQLDetect)
@@ -451,6 +452,7 @@ func TestConvert_EBPF(t *testing.T) {
 		TrackRequestHeaders: true,
 		HighRequestVolume:   true,
 		HeuristicSQLDetect:  true,
+		ContextPropagation:  "headers",
 	}
 
 	expectedConfig := beyla.DefaultConfig.EBPF
@@ -458,11 +460,12 @@ func TestConvert_EBPF(t *testing.T) {
 	expectedConfig.TrackRequestHeaders = true
 	expectedConfig.HighRequestVolume = true
 	expectedConfig.HeuristicSQLDetect = true
-	expectedConfig.ContextPropagationEnabled = false
+	expectedConfig.ContextPropagation = config.ContextPropagationHeadersOnly
 
-	config := args.Convert()
+	config, err := args.Convert()
+	require.NoError(t, err)
 
-	require.Equal(t, expectedConfig, config)
+	require.Equal(t, expectedConfig, *config)
 }
 
 func TestConvert_Filters(t *testing.T) {
