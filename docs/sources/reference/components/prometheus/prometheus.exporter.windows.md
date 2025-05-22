@@ -184,6 +184,7 @@ The collectors specified by `enabled_list` can include the following:
 For example, you can set `enabled_list` to `["clrjit"]`.
 
 ### `performancecounter`
+
 | Name      | Type     | Description                                       | Default  | Required |
 | --------- | -------- | ------------------------------------------------- | -------- | -------- |
 | `objects` | `string` | YAML string representing the counters to monitor. | `""`     | no       |
