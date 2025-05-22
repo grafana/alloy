@@ -4,9 +4,9 @@ description: Shared content, managed_identity block
 headless: true
 ---
 
-Name        | Type     | Description                                             | Default | Required
-------------|----------|---------------------------------------------------------|---------|---------
-`client_id` | `string` | Client ID of the managed identity used to authenticate. |         | yes
+| Name        | Type     | Description                                             | Default | Required |
+| ----------- | -------- | ------------------------------------------------------- | ------- | -------- |
+| `client_id` | `string` | Client ID of the managed identity used to authenticate. |         | yes      |
 
 `client_id` should be a valid [UUID][] in one of the supported formats:
 
