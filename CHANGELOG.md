@@ -138,6 +138,8 @@ Main (unreleased)
     to be available before sending a response to the client.
   - [ `otelcol.receiver.kafka`] Add support for configuring Kafka consumer rebalance strategy and group instance ID.
 
+  - Update `go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux` dependency from v0.45.0 to v0.61.0, to get "Superfluous call to `WriteHeader`" [fixes](https://github.com/open-telemetry/opentelemetry-go-contrib/releases/tag/v1.30.0) (@sslavic)
+
 v1.8.3
 -----------------
 
