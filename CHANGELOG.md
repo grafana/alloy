@@ -85,7 +85,7 @@ Main (unreleased)
   - [0.27.1] Support dogstatsd extended aggregation
   - [0.27.2] Fix panic on certain invalid lines
   
-- Upgrade `beyla.ebpf` to v2.2.4. The full list of changes can be found in the [Beyla release notes](https://github.com/grafana/beyla/releases/tag/v2.2.4). (@grcevski)
+- Upgrade `beyla.ebpf` to v2.2.4-alloy. The full list of changes can be found in the [Beyla release notes](https://github.com/grafana/beyla/releases/tag/v2.2.4-alloy). (@grcevski)
 
 ### Bugfixes
 

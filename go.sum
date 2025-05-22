@@ -1367,8 +1367,8 @@ github.com/gosnmp/gosnmp v1.39.0/go.mod h1:CxVS6bXqmWZlafUj9pZUnQX5e4fAltqPcijxW
 github.com/gotestyourself/gotestyourself v2.2.0+incompatible/go.mod h1:zZKM6oeNM8k+FRljX1mnzVYeS8wiGgQyvST1/GafPbY=
 github.com/grafana/alloy-remote-config v0.0.10 h1:1Ge7lz2mjXI1rd6SmiZpFHyXeLehBuCi43+XTkdqgV4=
 github.com/grafana/alloy-remote-config v0.0.10/go.mod h1:kHE1usYo2WAVCikQkIXuoG1Clz8BSdiz3kF+DZSCQ4k=
-github.com/grafana/beyla/v2 v2.2.4 h1:Bi41f43uHUVCvmWWyVVBZbPOMmnh9Dx9d2opVL6EDOc=
-github.com/grafana/beyla/v2 v2.2.4/go.mod h1:paDYfhkRs9Au+wENl4Eve5ddjld9Mrhp+Jw2BrZrWvA=
+github.com/grafana/beyla/v2 v2.2.4-alloy h1:kyEjfuBZh4s+o2gquDLu0ouDBACUIowJl6nGP7AAehk=
+github.com/grafana/beyla/v2 v2.2.4-alloy/go.mod h1:paDYfhkRs9Au+wENl4Eve5ddjld9Mrhp+Jw2BrZrWvA=
 github.com/grafana/cadvisor v0.0.0-20240729082359-1f04a91701e2 h1:ju6EcY2aEobeBg185ETtFCKj5WzaQ48qfkbsSRRQrF4=
 github.com/grafana/cadvisor v0.0.0-20240729082359-1f04a91701e2/go.mod h1:8sLW/G7rcFe1CKMaA4pYT4mX3P1xQVGqM6luzEzx/2g=
 github.com/grafana/catchpoint-prometheus-exporter v0.0.0-20250218151502-6e97feaee761 h1:dPJOIEwtQ8uR3Qa79pb/lsSFJQ6j4P9vpCUQ4fKimG4=
