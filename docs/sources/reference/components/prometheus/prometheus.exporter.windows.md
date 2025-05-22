@@ -166,9 +166,9 @@ User-supplied `exclude` and `include` strings are [wrapped][wrap-regex] in a reg
 
 ### `netframework`
 
-| Name           | Type           | Description                                      | Default | Required |
-| -------------- | -------------- | ------------------------------------------------ | ------- | -------- |
-| `enabled_list` | `list(string)` | A list of collectors to use. | `["clrexceptions","clrinterop","clrjit","clrloading","clrlocksandthreads","clrmemory","clrremoting","clrsecurity"]`    | no       |
+| Name           | Type           | Description                  | Default                                                                                                             | Required |
+| -------------- | -------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------- | -------- |
+| `enabled_list` | `list(string)` | A list of collectors to use. | `["clrexceptions","clrinterop","clrjit","clrloading","clrlocksandthreads","clrmemory","clrremoting","clrsecurity"]` | no       |
 
 The collectors specified by `enabled_list` can include the following:
 
