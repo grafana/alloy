@@ -34,14 +34,14 @@ You can use the following arguments with `discovery.kuma`:
 | `bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                             |         | no       |
 | `bearer_token`           | `secret`            | Bearer token to authenticate with.                                                               |         | no       |
 | `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`  | no       |
-| `fetch_timeout`          | `duration`          | The time after which the monitoring assignments are refreshed.                                   | `"2m"`  | no       |
+| `fetch_timeout`          | `duration`          | Timeout for fetching monitoring assignments.                                                     | `2m`    | no       |
 | `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`  | no       |
-| `http_headers`           | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.          |                      | no       |
+| `http_headers`           | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.          |         | no       |
 | `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |         | no       |
 | `proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |         | no       |
 | `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false` | no       |
 | `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |         | no       |
-| `refresh_interval`       | `duration`          | The time to wait between polling update requests.                                                | `"30s"` | no       |
+| `refresh_interval`       | `duration`          | The time to wait between polling update requests.                                                | `30s`   | no       |
 
  At most, one of the following can be provided:
 
