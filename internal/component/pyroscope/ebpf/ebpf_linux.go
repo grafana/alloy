@@ -109,7 +109,11 @@ type Component struct {
 }
 
 func (c *Component) Run(ctx context.Context) error {
-	started := false
+	var (
+		sessionStarted   = false
+		sessionErrors    = 0
+		sessionMaxErrors = 3
+	)
 
 	collectInterval := c.args.CollectInterval
 	t := time.NewTicker(collectInterval)
@@ -138,15 +142,22 @@ func (c *Component) Run(ctx context.Context) error {
 				collectInterval = c.args.CollectInterval
 			}
 		case <-t.C:
-			if !started {
+			if !sessionStarted {
 				err := c.session.Start()
 				if err != nil {
+					sessionErrors++
+					if sessionErrors > sessionMaxErrors {
+						level.Error(c.options.Logger).Log("msg", "too many errors starting profiling session, giving up", "tries", sessionErrors, "last_error", err)
+						t.Stop()
+						continue
+					}
 					level.Error(c.options.Logger).Log("msg", "failed to start profiling session", "err", err)
 					c.reportUnhealthy(err)
 					continue
 				}
+				sessionErrors = 0
 				defer c.session.Stop()
-				started = true
+				sessionStarted = true
 			}
 
 			err := c.collectProfiles()
