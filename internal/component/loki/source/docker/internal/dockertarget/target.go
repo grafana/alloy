@@ -41,6 +41,7 @@ type Target struct {
 	logger        log.Logger
 	handler       loki.EntryHandler
 	since         int64
+	last          int64
 	positions     positions.Positions
 	containerName string
 	labels        model.LabelSet
@@ -56,13 +57,23 @@ type Target struct {
 }
 
 // NewTarget starts a new target to read logs from a given container ID.
-func NewTarget(metrics *Metrics, logger log.Logger, handler loki.EntryHandler, position positions.Positions, containerID string, labels model.LabelSet, relabelConfig []*relabel.Config, client client.APIClient) (*Target, error) {
+func NewTarget(
+	metrics *Metrics,
+	logger log.Logger,
+	handler loki.EntryHandler,
+	position positions.Positions,
+	containerID string,
+	labels model.LabelSet,
+	relabelConfig []*relabel.Config,
+	client client.APIClient,
+) (*Target, error) {
 	labelsStr := labels.String()
 	pos, err := position.Get(positions.CursorKey(containerID), labelsStr)
 	if err != nil {
 		return nil, err
 	}
 	var since int64
+	var last int64
 	if pos != 0 {
 		since = pos
 	}
@@ -71,6 +82,7 @@ func NewTarget(metrics *Metrics, logger log.Logger, handler loki.EntryHandler, p
 		logger:        logger,
 		handler:       handler,
 		since:         since,
+		last:          last,
 		positions:     position,
 		containerName: containerID,
 		labels:        labels,
@@ -221,6 +233,7 @@ func (t *Target) process(r io.Reader, logStreamLset model.LabelSet) {
 		// case anyway.
 		t.positions.Put(positions.CursorKey(t.containerName), t.labelsStr, ts.Unix())
 		t.since = ts.Unix()
+		t.last = time.Now().Unix()
 	}
 }
 
@@ -267,6 +280,9 @@ func (t *Target) Hash() uint64 {
 func (t *Target) Path() string {
 	return t.containerName
 }
+
+// Last returns the unix timestamp of the target's last processing loop.
+func (t *Target) Last() int64 { return t.last }
 
 // Details returns target-specific details.
 func (t *Target) Details() map[string]string {
