@@ -56,7 +56,7 @@ You can use the following blocks with `faro.receiver`:
 | `sourcemaps` >  [`location`][location]       | Configures on-disk location for sourcemap retrieval. | no       |
 
 The > symbol indicates deeper levels of nesting.
-For example, `sourcemaps` > `location` refers to a `location` block defined inside an `sourcemaps` block.
+For example, `sourcemaps` > `location` refers to a `location` block defined inside a `sourcemaps` block.
 
 [location]: #location
 [output]: #output
@@ -81,11 +81,11 @@ Clients using the [Grafana Faro Web SDK][faro-sdk] forward telemetry data to thi
 | Name                       | Type           | Description                                                     | Default     | Required |
 | -------------------------- | -------------- | --------------------------------------------------------------- | ----------- | -------- |
 | `listen_address`           | `string`       | Address to listen for HTTP traffic on.                          | `127.0.0.1` | no       |
-| `listen_port`              | `number`       | Port to listen for HTTP traffic on.                             | `12347`     | no       |
+| `listen_port`              | `int`          | Port to listen for HTTP traffic on.                             | `12347`     | no       |
 | `cors_allowed_origins`     | `list(string)` | Origins for which cross-origin requests are permitted.          | `[]`        | no       |
 | `api_key`                  | `secret`       | Optional API key to validate client requests with.              | `""`        | no       |
 | `max_allowed_payload_size` | `string`       | Maximum size (in bytes) for client requests.                    | `"5MiB"`    | no       |
-| `include_metadata`         | `boolean`      | Propagate incoming connection metadata to downstream consumers. | `false`     | no       |
+| `include_metadata`         | `bool`         | Propagate incoming connection metadata to downstream consumers. | `false`     | no       |
 
 By default, telemetry data is only accepted from applications on the same local network as the browser.
 To accept telemetry data from a wider set of clients, modify the `listen_address` attribute to the IP address of the appropriate network interface to use.

@@ -95,7 +95,7 @@ The `basic_auth` block configures basic authentication to the endpoint.
 
 ### `oauth2`
 
-The `oauth` block configures OAuth 2.0 authentication to the endpoint.
+The `oauth2` block configures OAuth 2.0 authentication to the endpoint.
 
 {{< docs/shared lookup="reference/components/oauth2-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
