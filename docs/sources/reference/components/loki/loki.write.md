@@ -80,7 +80,7 @@ The following arguments are supported:
 | `http_headers`           | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.          |           | no       |
 | `headers`                | `map(string)`       | Extra headers to deliver with the request.                                                       |           | no       |
 | `max_backoff_period`     | `duration`          | Maximum backoff time between retries.                                                            | `"5m"`    | no       |
-| `max_backoff_retries`    | `int`               | Maximum number of retries.                                                                       | 10        | no       |
+| `max_backoff_retries`    | `int`               | Maximum number of retries.                                                                       | `10`      | no       |
 | `min_backoff_period`     | `duration`          | Initial backoff time between retries.                                                            | `"500ms"` | no       |
 | `name`                   | `string`            | Optional name to identify this endpoint with.                                                    |           | no       |
 | `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |           | no       |

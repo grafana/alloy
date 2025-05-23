@@ -42,7 +42,7 @@ You can use the following arguments with `loki.source.cloudflare`:
 | `additional_fields` | `list(string)`       | The additional list of fields to supplement those provided via `fields_type`. |             | no       |
 | `fields_type`       | `string`             | The set of fields to fetch for log entries.                                   | `"default"` | no       |
 | `labels`            | `map(string)`        | The labels to associate with incoming log entries.                            | `{}`        | no       |
-| `pull_range`        | `duration`           | The timeframe to fetch for each pull request.                                 | `1m`        | no       |
+| `pull_range`        | `duration`           | The timeframe to fetch for each pull request.                                 | `"1m"`      | no       |
 | `workers`           | `int`                | The number of workers to use for parsing logs.                                | `3`         | no       |
 
 By default `loki.source.cloudflare` fetches logs with the `default` set of fields.

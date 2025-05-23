@@ -92,9 +92,9 @@ Any omitted fields take their default values.
 
 | Name                        | Type          | Description                                                                                                                               | Default | Required |
 | --------------------------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
-| `graceful_shutdown_timeout` | `duration`    | Timeout for servers graceful shutdown. If configured, should be greater than zero.                                                        | `30s`   | no       |
+| `graceful_shutdown_timeout` | `duration`    | Timeout for servers graceful shutdown. If configured, should be greater than zero.                                                        | `"30s"` | no       |
 | `labels`                    | `map(string)` | Additional labels to associate with incoming entries.                                                                                     | `{}`    | no       |
-| `push_timeout`              | `duration`    | Sets a maximum processing time for each incoming GCP log entry.                                                                           | `0s`    | no       |
+| `push_timeout`              | `duration`    | Sets a maximum processing time for each incoming GCP log entry.                                                                           | `"0s"`  | no       |
 | `use_full_line`             | `bool`        | Send the full line from Cloud Logging even if `textPayload` is available. If `textPayload` is present in the line, it's used as log line. | `false` | no       |
 | `use_incoming_timestamp`    | `bool`        | Whether to use the incoming entry timestamp.                                                                                              | `false` | no       |
 
