@@ -53,11 +53,17 @@ func toWindowsExporter(config *windows_exporter.Config) *windows.Arguments {
 		MSSQL: windows.MSSQLConfig{
 			EnabledClasses: split(config.MSSQL.EnabledClasses),
 		},
+		MSCluster: windows.MSClusterConfig{
+			EnabledList: split(config.MSCluster.EnabledList),
+		},
 		Network: windows.NetworkConfig{
 			BlackList: config.Network.BlackList,
 			WhiteList: config.Network.WhiteList,
 			Exclude:   config.Network.Exclude,
 			Include:   config.Network.Include,
+		},
+		NetFramework: windows.NetFrameworkConfig{
+			EnabledList: split(config.NetFramework.EnabledList),
 		},
 		PerformanceCounter: windows.PerformanceCounterConfig{
 			Objects: config.PerformanceCounter.Objects,

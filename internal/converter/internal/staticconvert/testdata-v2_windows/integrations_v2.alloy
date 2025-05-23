@@ -9,11 +9,7 @@ prometheus.remote_write "metrics_default" {
 	}
 }
 
-prometheus.exporter.windows "integrations_windows_exporter" {
-	mscluster { }
-
-	netframework { }
-}
+prometheus.exporter.windows "integrations_windows_exporter" { }
 
 discovery.relabel "integrations_windows" {
 	targets = prometheus.exporter.windows.integrations_windows_exporter.targets

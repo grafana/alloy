@@ -169,11 +169,17 @@ var DefaultConfig = Config{
 	MSSQL: MSSQLConfig{
 		EnabledClasses: strings.Join(collector.ConfigDefaults.Mssql.CollectorsEnabled, ","),
 	},
+	MSCluster: MSClusterConfig{
+		EnabledList: strings.Join(collector.ConfigDefaults.MSCluster.CollectorsEnabled, ","),
+	},
 	Network: NetworkConfig{
 		BlackList: collector.ConfigDefaults.Net.NicExclude.String(),
 		WhiteList: collector.ConfigDefaults.Net.NicInclude.String(),
 		Include:   collector.ConfigDefaults.Net.NicInclude.String(),
 		Exclude:   collector.ConfigDefaults.Net.NicExclude.String(),
+	},
+	NetFramework: NetFrameworkConfig{
+		EnabledList: strings.Join(collector.ConfigDefaults.NetFramework.CollectorsEnabled, ","),
 	},
 	PhysicalDisk: PhysicalDiskConfig{
 		Include: collector.ConfigDefaults.PhysicalDisk.DiskInclude.String(),
