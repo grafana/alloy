@@ -32,6 +32,7 @@ type mockSession struct {
 	collected       int
 	data            [][]string
 	dataTarget      *sd.Target
+	mtx             sync.Mutex
 }
 
 func (m *mockSession) Start() error {
@@ -43,6 +44,8 @@ func (m *mockSession) Stop() {
 }
 
 func (m *mockSession) Update(options ebpfspy.SessionOptions) error {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
 	m.options = options
 	return nil
 }
@@ -157,6 +160,8 @@ func TestTargetUpdatesWithLongCollection(t *testing.T) {
 
 	// wait for the session to be updated
 	require.Eventually(t, func() bool {
+		session.mtx.Lock()
+		defer session.mtx.Unlock()
 		return session.options.SampleRate == 1234
 	}, time.Second*1, time.Millisecond*10)
 
