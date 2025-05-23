@@ -164,7 +164,7 @@ func (c *Component) Run(ctx context.Context) error {
 				level.Info(c.options.Logger).Log("msg", "ebpf profiling session started")
 			}
 
-			err := c.collectProfiles()
+			err := c.collectProfiles(ctx)
 			if err != nil {
 				level.Error(c.options.Logger).Log("msg", "failed to collect profiles", "err", err)
 				c.reportUnhealthy(err)
@@ -225,7 +225,7 @@ func (c *Component) DebugInfo() interface{} {
 	return c.debugInfo
 }
 
-func (c *Component) collectProfiles() error {
+func (c *Component) collectProfiles(ctx context.Context) error {
 	c.metrics.profilingSessionsTotal.Inc()
 	level.Debug(c.options.Logger).Log("msg", "ebpf  collectProfiles")
 	args := c.args
@@ -241,6 +241,11 @@ func (c *Component) collectProfiles() error {
 	level.Debug(c.options.Logger).Log("msg", "ebpf collectProfiles done", "profiles", len(builders.Builders))
 	bytesSent := 0
 	for _, builder := range builders.Builders {
+		// check if the context is done
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+
 		serviceName := builder.Labels.Get("service_name")
 		c.metrics.pprofsTotal.WithLabelValues(serviceName).Inc()
 		c.metrics.pprofSamplesTotal.WithLabelValues(serviceName).Add(float64(len(builder.Profile.Sample)))
@@ -257,7 +262,7 @@ func (c *Component) collectProfiles() error {
 		c.metrics.pprofBytesTotal.WithLabelValues(serviceName).Add(float64(len(rawProfile)))
 
 		samples := []*pyroscope.RawSample{{RawProfile: rawProfile}}
-		err = appender.Append(context.Background(), builder.Labels, samples)
+		err = appender.Append(ctx, builder.Labels, samples)
 		if err != nil {
 			level.Error(c.options.Logger).Log("msg", "ebpf pprof write", "err", err)
 			continue
