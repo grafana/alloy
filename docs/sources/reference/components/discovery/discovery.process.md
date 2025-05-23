@@ -33,7 +33,7 @@ You can use the following arguments with `discovery.process`:
 | Name               | Type                | Description                                                                              | Default | Required |
 | ------------------ | ------------------- | ---------------------------------------------------------------------------------------- | ------- | -------- |
 | `join`             | `list(map(string))` | Join external targets to discovered processes targets based on `__container_id__` label. |         | no       |
-| `refresh_interval` | `duration`          | How often to sync targets.                                                               | `60s`   | no       |
+| `refresh_interval` | `duration`          | How often to sync targets.                                                               | `"60s"` | no       |
 
 ### Targets joining
 

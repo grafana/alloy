@@ -52,7 +52,7 @@ You can use the following arguments with `loki.rules.kubernetes`:
 | `http_headers`          | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name. |           | no       |
 | `loki_namespace_prefix` | `string`            | Prefix used to differentiate multiple {{< param "PRODUCT_NAME" >}} deployments.         | `"alloy"` | no       |
 | `proxy_url`             | `string`            | HTTP proxy to proxy requests through.                                                   |           | no       |
-| `sync_interval`         | `duration`          | Amount of time between reconciliations with Loki.                                       | `30s`     | no       |
+| `sync_interval`         | `duration`          | Amount of time between reconciliations with Loki.                                       | `"30s"`   | no       |
 | `tenant_id`             | `string`            | Loki tenant ID.                                                                         |           | no       |
 | `use_legacy_routes`     | `bool`              | Whether to use deprecated ruler API endpoints.                                          | `false`   | no       |
 

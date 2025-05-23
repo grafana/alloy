@@ -31,8 +31,8 @@ You can use the following arguments with `local.file_match`:
 | Name                | Type                | Description                                                                                | Default | Required |
 |---------------------|---------------------|--------------------------------------------------------------------------------------------|---------|----------|
 | `path_targets`      | `list(map(string))` | Targets to expand; looks for glob patterns on the  `__path__` and `__path_exclude__` keys. |         | yes      |
-| `ignore_older_than` | `duration`          | Ignores files which are modified before this duration.                                     | `0s`    | no       |
-| `sync_period`       | `duration`          | How often to sync filesystem and targets.                                                  | `10s`   | no       |
+| `ignore_older_than` | `duration`          | Ignores files which are modified before this duration.                                     | `"0s"`  | no       |
+| `sync_period`       | `duration`          | How often to sync filesystem and targets.                                                  | `"10s"` | no       |
 
 `path_targets` uses [doublestar][] style paths.
 
