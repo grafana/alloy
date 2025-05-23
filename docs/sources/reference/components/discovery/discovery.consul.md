@@ -49,7 +49,7 @@ You can use the following arguments with `discovery.consul`:
 | `scheme`                 | `string`            | The scheme to use when talking to Consul.                                                                       | `"http"`           | no       |
 | `server`                 | `string`            | Host and port of the Consul API.                                                                                | `"localhost:8500"` | no       |
 | `services`               | `list(string)`      | A list of services for which targets are retrieved. If omitted, all services are scraped.                       |                    | no       |
-| `tag_separator`          | `string`            | The string by which Consul tags are joined into the tag label.                                                  | `,`                | no       |
+| `tag_separator`          | `string`            | The string by which Consul tags are joined into the tag label.                                                  | `","`              | no       |
 | `tags`                   | `list(string)`      | An optional list of tags used to filter nodes for a given service. Services must contain all tags in the list.  |                    | no       |
 | `token`                  | `secret`            | Secret token used to access the Consul API.                                                                     |                    | no       |
 | `username`               | `string`            | The username to use. Deprecated in favor of the `basic_auth` configuration.                                     |                    | no       |
