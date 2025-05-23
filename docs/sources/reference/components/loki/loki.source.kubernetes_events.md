@@ -68,12 +68,12 @@ You can use the following blocks with `loki.source.kubernetes_events`:
 
 | Block                                            | Description                                                | Required |
 | ------------------------------------------------ | ---------------------------------------------------------- | -------- |
-| [`client`][client]                               | Configures Kubernetes client used to tail logs.            | no       |
+| [`client`][client]                               | Configures Kubernetes client used to tail events.          | no       |
 | `client` > [`authorization`][authorization]      | Configure generic authorization to the endpoint.           | no       |
 | `client` > [`basic_auth`][basic_auth]            | Configure `basic_auth` for authenticating to the endpoint. | no       |
 | `client` > [`oauth2`][oauth2]                    | Configure OAuth 2.0 for authenticating to the endpoint.    | no       |
 | `client` > `oauth2` > [`tls_config`][tls_config] | Configure TLS settings for connecting to the endpoint.     | no       |
-| `client` > [`tls_config`][]                      | Configure TLS settings for connecting to the endpoint.     | no       |
+| `client` > [`tls_config`][tls_config]            | Configure TLS settings for connecting to the endpoint.     | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `client` > `basic_auth` refers to a `basic_auth` block defined inside a `client` block.
