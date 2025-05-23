@@ -50,7 +50,7 @@ You can use the following arguments with `otelcol.auth.oauth2`:
 | `client_secret`      | `secret`            | The secret string associated with the client identifier.                           |         | no       |
 | `endpoint_params`    | `map(list(string))` | Additional parameters that are sent to the token endpoint.                         | `{}`    | no       |
 | `scopes`             | `list(string)`      | Requested permissions associated for the client.                                   | `[]`    | no       |
-| `timeout`            | `duration`          | The timeout on the client connecting to `token_url`.                               | `"0s"`  | no       |
+| `timeout`            | `duration`          | The timeout on the client connecting to `token_url`.                               | `0s`    | no       |
 
 The `timeout` argument is used both for requesting initial tokens and for refreshing tokens. `"0s"` implies no timeout.
 

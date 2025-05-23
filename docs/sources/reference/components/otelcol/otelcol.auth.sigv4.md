@@ -45,8 +45,8 @@ You can use the following arguments with `otelcol.auth.sigv4`:
 
 | Name      | Type     | Description                   | Default | Required |
 | --------- | -------- | ----------------------------- | ------- | -------- |
-| `region`  | `string` | The AWS region to sign with.  | ""      | no       |
-| `service` | `string` | The AWS service to sign with. | ""      | no       |
+| `region`  | `string` | The AWS region to sign with.  | `""`    | no       |
+| `service` | `string` | The AWS service to sign with. | `""`    | no       |
 
 If `region` and `service` are left empty, their values are inferred from the URL of the exporter using the following rules:
 

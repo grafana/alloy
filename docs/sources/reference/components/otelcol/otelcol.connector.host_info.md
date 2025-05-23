@@ -31,7 +31,7 @@ You can use the following arguments with `otelcol.connector.host_info`:
 | Name                     | Type           | Description                                                        | Default       | Required |
 | ------------------------ | -------------- | ------------------------------------------------------------------ | ------------- | -------- |
 | `host_identifiers`       | `list(string)` | Ordered list of resource attributes used to identify unique hosts. | `["host.id"]` | no       |
-| `metrics_flush_interval` | `duration`     | How often to flush generated metrics.                              | `"60s"`       | no       |
+| `metrics_flush_interval` | `duration`     | How often to flush generated metrics.                              | `60s`         | no       |
 
 ## Blocks
 

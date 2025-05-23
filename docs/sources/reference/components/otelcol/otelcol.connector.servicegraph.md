@@ -58,13 +58,13 @@ You can use the following arguments with `otelcol.connector.servicegraph`:
 
 | Name                        | Type             | Description                                                                              | Default                                                                                                                      | Required |
 | --------------------------- | ---------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | -------- |
-| `cache_loop`                | `duration`       | Configures how often to delete series which have not been updated.                       | `"1m"`                                                                                                                       | no       |
+| `cache_loop`                | `duration`       | Configures how often to delete series which have not been updated.                       | `1m`                                                                                                                         | no       |
 | `database_name_attribute`   | `string`         | (Deprecated) The attribute name used to identify the database name from span attributes. | `"db.name"`                                                                                                                  | no       |
 | `database_name_attributes`  | `list(string)`   | The list of attribute names used to identify the database name from span attributes.     | `["db.name"]`                                                                                                                | no       |
 | `dimensions`                | `list(string)`   | A list of dimensions to add with the default dimensions.                                 | `[]`                                                                                                                         | no       |
 | `latency_histogram_buckets` | `list(duration)` | Buckets for latency histogram metrics.                                                   | `["2ms", "4ms", "6ms", "8ms", "10ms", "50ms", "100ms", "200ms", "400ms", "800ms", "1s", "1400ms", "2s", "5s", "10s", "15s"]` | no       |
-| `metrics_flush_interval`    | `duration`       | The interval at which metrics are flushed to downstream components.                      | `"60s"`                                                                                                                      | no       |
-| `store_expiration_loop`     | `duration`       | The time to expire old entries from the store periodically.                              | `"2s"`                                                                                                                       | no       |
+| `metrics_flush_interval`    | `duration`       | The interval at which metrics are flushed to downstream components.                      | `60s`                                                                                                                        | no       |
+| `store_expiration_loop`     | `duration`       | The time to expire old entries from the store periodically.                              | `2s`                                                                                                                         | no       |
 
 Service graphs work by inspecting traces and looking for spans with parent-children relationship that represent a request.
 `otelcol.connector.servicegraph` uses OpenTelemetry semantic conventions to detect a myriad of requests.
@@ -143,8 +143,8 @@ The `store` block configures the in-memory store for spans.
 
 | Name        | Type       | Description                                   | Default | Required |
 | ----------- | ---------- | --------------------------------------------- | ------- | -------- |
-| `max_items` | `number`   | Maximum number of items to keep in the store. | `1000`  | no       |
-| `ttl`       | `duration` | The time to live for spans in the store.      | `"2s"`  | no       |
+| `max_items` | `int`      | Maximum number of items to keep in the store. | `1000`  | no       |
+| `ttl`       | `duration` | The time to live for spans in the store.      | `2s`    | no       |
 
 ## Exported fields
 

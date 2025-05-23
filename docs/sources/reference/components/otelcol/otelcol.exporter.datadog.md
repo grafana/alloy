@@ -110,13 +110,13 @@ The following arguments are supported:
 | Name                      | Type       | Description                                                                 | Default | Required |
 | ------------------------- | ---------- | --------------------------------------------------------------------------- | ------- | -------- |
 | `disable_keep_alives`     | `bool`     | Disable HTTP keep-alive.                                                    |         | no       |
-| `idle_conn_timeout`       | `duration` | Time to wait before an idle connection closes itself.                       | `"45s"` | no       |
-| `insecure_skip_verify`    | `boolean`  | Ignores insecure server TLS certificates.                                   |         | no       |
+| `idle_conn_timeout`       | `duration` | Time to wait before an idle connection closes itself.                       | `45s`   | no       |
+| `insecure_skip_verify`    | `bool`     | Ignores insecure server TLS certificates.                                   |         | no       |
 | `max_conns_per_host`      | `int`      | Limits the total (dialing,active, and idle) number of connections per host. |         | no       |
 | `max_idle_conns_per_host` | `int`      | Limits the number of idle HTTP connections the host can keep open.          | `5`     | no       |
 | `max_idle_conns`          | `int`      | Limits the number of idle HTTP connections the client can keep open.        | `100`   | no       |
 | `read_buffer_size`        | `string`   | Size of the read buffer the HTTP client uses for reading server responses.  |         | no       |
-| `timeout`                 | `duration` | Time to wait before marking a request as failed.                            | `"15s"` | no       |
+| `timeout`                 | `duration` | Time to wait before marking a request as failed.                            | `15s`   | no       |
 | `write_buffer_size`       | `string`   | Size of the write buffer the HTTP client uses for writing requests.         |         | no       |
 
 ### `debug_metrics`

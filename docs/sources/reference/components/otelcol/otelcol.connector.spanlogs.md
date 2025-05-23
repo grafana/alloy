@@ -77,7 +77,7 @@ You can use the following blocks with `otelcol.connector.spanlogs`:
 
 The `overrides` block configures overrides for keys that will be logged in the body of the log line.
 
-The following attributes are supported:
+The following arguments are supported:
 
 | Name                | Type     | Description                                                | Default  | Required |
 | ------------------- | -------- | ---------------------------------------------------------- | -------- | -------- |
