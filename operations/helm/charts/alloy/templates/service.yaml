@@ -27,8 +27,8 @@ spec:
       {{- if eq .Values.service.type "NodePort" }}
       nodePort: {{ .Values.service.nodePort }}
       {{- end }}
-      port: {{ .Values.listenPort }}
-      targetPort: {{ .Values.listenPort }}
+      port: {{ $values.listenPort }}
+      targetPort: {{ $values.listenPort }}
       protocol: "TCP"
 {{- range $portMap := .Values.extraPorts }}
     - name: {{ $portMap.name }}
