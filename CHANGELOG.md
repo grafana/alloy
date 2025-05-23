@@ -112,6 +112,8 @@ v1.9.0-rc.0
 
 - Fix `prometheus.exporter.unix` to pass hwmon config correctly. (@kalleep)
 
+- Fix [#3408](https://github.com/grafana/alloy/issues/3408) `loki.source.docker` can now collect logs from containers not in the running state. (@adamamsmith)
+
 ### Other changes
 
 - Update the zap logging adapter used by `otelcol` components to log arrays and objects. (@dehaansa)
