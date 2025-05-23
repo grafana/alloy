@@ -61,7 +61,7 @@ You can use the following argument with `otelcol.processor.interval`:
 
 | Name       | Type       | Description                                                         | Default | Required |
 | ---------- | ---------- | ------------------------------------------------------------------- | ------- | -------- |
-| `interval` | `duration` | The interval in the processor should export the aggregated metrics. | `"60s"` | no       |
+| `interval` | `duration` | The interval in which the processor should export aggregated metrics.| `"60s"` | no       |
 
 ## Blocks
 
@@ -71,7 +71,7 @@ You can use the following blocks with `otelcol.processor.interval`:
 | -------------------------------- | -------------------------------------------------------------------------- | -------- |
 | [`output`][output]               | Configures where to send received telemetry data.                          | yes      |
 | [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |
-| [`passthrough`][passthrough]     | Configure metric types to be passed through instead of aggregated.         | no       |
+| [`passthrough`][passthrough]     | Configures metric types to be passed through instead of aggregated.        | no       |
 
 [output]: #output
 [debug_metrics]: #debug_metrics

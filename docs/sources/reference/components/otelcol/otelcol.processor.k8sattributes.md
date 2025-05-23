@@ -68,7 +68,7 @@ If telemetry is sent to this processor before the metadata is synced, there will
 
 To wait for the metadata to be synced before `otelcol.processor.k8sattributes` is ready, set the `wait_for_metadata` option to `true`.
 Then, the processor won't be ready until the metadata is fully synced. As a result, the start-up of {{< param "PRODUCT_NAME" >}} will be blocked.
-If the metadata can't be synced by the time the `metadata_sync_timeout` duration is reached,
+If the metadata can't be synced by the time the `wait_for_metadata_timeout` duration is reached,
 `otelcol.processor.k8sattributes` will become unhealthy and fail to start.
 
 If `otelcol.processor.k8sattributes` is unhealthy, other {{< param "PRODUCT_NAME" >}} components will still be able to start.
@@ -143,9 +143,10 @@ The `extract` block configures which metadata, annotations, and labels to extrac
 
 The following attributes are supported:
 
-| Name       | Type           | Description                          | Default     | Required |
-| ---------- | -------------- | ------------------------------------ | ----------- | -------- |
-| `metadata` | `list(string)` | Pre-configured metadata keys to add. | _See below_ | no       |
+| Name               | Type           | Description                                             | Default     | Required |
+| ------------------ | -------------- | ------------------------------------------------------- | ----------- | -------- |
+| `metadata`         | `list(string)` | Pre-configured metadata keys to add.                    | _See below_ | no       |
+| `otel_annotations` | `bool`         | Whether to set the [recommended resource attributes][]. | `false`     | no       |
 
 The supported `metadata` keys are:
 
@@ -180,6 +181,10 @@ By default, if `metadata` isn't specified, the following fields are extracted an
 * `k8s.pod.name`
 * `k8s.pod.start_time`
 * `k8s.pod.uid`
+
+When `otel_annotations` is set to `true`, annotations such as `resource.opentelemetry.io/exampleResource` will be translated to the `exampleResource` resource attribute, etc.
+
+[recommended resource attributes]: https://opentelemetry.io/docs/specs/semconv/non-normative/k8s-attributes/
 
 ### `annotation`
 
@@ -372,6 +377,8 @@ otelcol.processor.k8sattributes "default" {
       "k8s.pod.uid",
       "k8s.pod.start_time",
     ]
+
+    otel_annotations = true
   }
 
   output {
@@ -447,6 +454,7 @@ prometheus.remote_write "mimir" {
   }
 }
 ```
+
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components

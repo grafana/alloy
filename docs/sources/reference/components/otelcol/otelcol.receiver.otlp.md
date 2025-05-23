@@ -92,9 +92,9 @@ The following arguments are supported:
 | ------------------------ | -------------------------- | ---------------------------------------------------------------------------- | ---------------- | -------- |
 | `auth`                   | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests. |                  | no       |
 | `endpoint`               | `string`                   | `host:port` to listen for traffic on.                                        | `"0.0.0.0:4317"` | no       |
-| `include_metadata`       | `boolean`                  | Propagate incoming connection metadata to downstream consumers.              |                  | no       |
+| `include_metadata`       | `bool`                     | Propagate incoming connection metadata to downstream consumers.              | `false`          | no       |
 | `max_concurrent_streams` | `number`                   | Limit the number of concurrent streaming RPC calls.                          |                  | no       |
-| `max_recv_msg_size`      | `string`                   | Maximum size of messages the server will accept.                             | `"4MiB`"         | no       |
+| `max_recv_msg_size`      | `string`                   | Maximum size of messages the server will accept.                             | `"4MiB"`         | no       |
 | `read_buffer_size`       | `string`                   | Size of the read buffer the gRPC server will use for reading from clients.   | `"512KiB"`       | no       |
 | `transport`              | `string`                   | Transport to use for the gRPC server.                                        | `"tcp"`          | no       |
 | `write_buffer_size`      | `string`                   | Size of the write buffer the gRPC server will use for writing to clients.    |                  | no       |
@@ -150,7 +150,7 @@ The following arguments are supported:
 | `auth`                   | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests. |                                                            | no       |
 | `compression_algorithms` | `list(string)`             | A list of compression algorithms the server can accept.                      | `["", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"]` | no       |
 | `endpoint`               | `string`                   | `host:port` to listen for traffic on.                                        | `"0.0.0.0:4318"`                                           | no       |
-| `include_metadata`       | `boolean`                  | Propagate incoming connection metadata to downstream consumers.              |                                                            | no       |
+| `include_metadata`       | `bool`                     | Propagate incoming connection metadata to downstream consumers.              | `false`                                                    | no       |
 | `logs_url_path`          | `string`                   | The URL path to receive logs on.                                             | `"/v1/logs"`                                               | no       |
 | `max_request_body_size`  | `string`                   | Maximum request body size the server will allow.                             | `20MiB`                                                    | no       |
 | `metrics_url_path`       | `string`                   | The URL path to receive metrics on.                                          | `"/v1/metrics"`                                            | no       |

@@ -17,6 +17,9 @@ Main (unreleased)
   - The previously undocumented argument `custom_metrics` is now expecting a list of paths to custom metrics files.
   - The following metrics are no longer available by default: oracledb_sessions_activity, oracledb_tablespace_free_bytes
 
+- (_Experimental_) The `enable_context_propagation` argument in `beyla.ebpf` has been replaced with the `context_propagation` argument.
+  Set `enable_context_propagation` to `all` to get the same behaviour as `enable_context_propagation` being set to `true`.
+
 ### Features
 
 - Bump snmp_exporter and embedded modules in `prometheus.exporter.snmp` to v0.29.0, add cisco_device module support (@v-zhuravlev)
@@ -81,6 +84,8 @@ Main (unreleased)
   - [0.26.0] Add option to honor original labels from event tags over labels specified in mapping configuration.
   - [0.27.1] Support dogstatsd extended aggregation
   - [0.27.2] Fix panic on certain invalid lines
+  
+- Upgrade `beyla.ebpf` to v2.2.4-alloy. The full list of changes can be found in the [Beyla release notes](https://github.com/grafana/beyla/releases/tag/v2.2.4-alloy). (@grcevski)
 
 - Update secret-filter gitleaks.toml from v8.19.0 to v8.26.0
 
@@ -108,6 +113,32 @@ Main (unreleased)
 
 - RPM artifacts in Alloy GitHub releases are no longer signed.
   The artifacts on the `https://rpm.grafana.com` repository used by the `yum` package manager will continue to be signed. (@ptodev)
+
+- Upgrade `otelcol` components from OpenTelemetry v0.122.0 to v0.125.0 (@ptodev):
+  - [`pkg/ottl`] Enhance the Decode OTTL function to support all flavors of Base64.
+  - [`otelcol.processor.resourcedetection`] Adding the `os.version` resource attribute to system processor.
+  - [`otelcol.auth.bearer`] Allow the header name to be customized.
+  - [`otelcol.exporter.awss3`] Add a new `sending_queue` feature.
+  - [`otelcol.exporter.awss3`] Add a new `timeout` argument.
+  - [`otelcol.exporter.awss3`] Add a new `resource_attrs_to_s3` configuration block.
+  - [`otelcol.exporter.awss3`] Fixes an issue where the AWS S3 Exporter was forcing an ACL to be set, leading to unexpected behavior in S3 bucket permissions.
+  - [`otelcol.connector.spanmetrics`] A new `include_instrumentation_scope` configuration argument.
+  - [`otelcol.connector.spanmetrics`] Initialise new `calls_total` metrics at 0.
+  - [`otelcol.connector.spanmetrics`] A new `aggregation_cardinality_limit` configuration argument 
+    to limit the number of unique combinations of dimensions that will be tracked for metrics aggregation.
+  - [`otelcol.connector.spanmetrics`] Deprecate the unused argument `dimensions_cache_size`.
+  - [`otelcol.connector.spanmetrics`] Moving the start timestamp (and last seen timestamp) from the resourceMetrics level to the individual metrics level. 
+    This will ensure that each metric has its own accurate start and last seen timestamps, regardless of its relationship to other spans.
+  - [`otelcol.processor.k8sattributes`] Add option to configure automatic resource attributes - with annotation prefix.
+    Implements [Specify resource attributes using Kubernetes annotations](https://github.com/open-telemetry/semantic-conventions/blob/main/docs/non-normative/k8s-attributes.md#specify-resource-attributes-using-kubernetes-annotations).
+  - [`otelcol.connector.servicegraph`] Change `database_name_attribute` to accept a list of values.
+  - [`otelcol.exporter.kafka`, `otelcol.receiver.kafka`] Deprecating the `auth` > `plain_text` block. Use `auth` > `sasl` with `mechanism` set to `PLAIN` instead.
+  - [`otelcol.exporter.kafka`, `otelcol.receiver.kafka`] Deprecating the `topic` argument. Use `logs` > `topic`, `metrics` > `topic`, or `traces` > `topic` instead.
+  - [`otelcol.exporter.kafka`, `otelcol.receiver.kafka`] Deprecate the `auth` > `tls` block. Use the top-level `tls` block instead.
+  - [`otelcol.receiver.kafka`] Add max_fetch_wait config setting.
+    This setting allows you to specify the maximum time that the broker will wait for min_fetch_size bytes of data 
+    to be available before sending a response to the client.
+  - [ `otelcol.receiver.kafka`] Add support for configuring Kafka consumer rebalance strategy and group instance ID.
 
 v1.8.3
 -----------------

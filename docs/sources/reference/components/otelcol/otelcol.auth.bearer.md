@@ -35,10 +35,11 @@ otelcol.auth.bearer "<LABEL>" {
 
 You can use the following arguments with `otelcol.auth.bearer`:
 
-| Name     | Type     | Description                                      | Default  | Required |
-| -------- | -------- | ------------------------------------------------ | -------- | -------- |
-| `token`  | `secret` | Bearer token to use for authenticating requests. |          | yes      |
-| `scheme` | `string` | Authentication scheme name.                      | "Bearer" | no       |
+| Name     | Type     | Description                                      | Default         | Required |
+| -------- | -------- | ------------------------------------------------ | --------------- | -------- |
+| `token`  | `secret` | Bearer token to use for authenticating requests. |                 | yes      |
+| `header` | `string` | Specifies the auth header name.                  | "Authorization" | no       |
+| `scheme` | `string` | Authentication scheme name.                      | "Bearer"        | no       |
 
 When sending the token, the value of `scheme` is prepended to the `token` value.
 The string is then sent out as either a header for HTTP or as metadata for gRPC.
@@ -49,7 +50,7 @@ If you use a file to store the token, you can use [`local.file`][local.file] to 
 
 ## Blocks
 
-You can use the following blocks with `otelcol.auth.bearer`:
+You can use the following block with `otelcol.auth.bearer`:
 
 | Block                            | Description                                                                | Required |
 | -------------------------------- | -------------------------------------------------------------------------- | -------- |

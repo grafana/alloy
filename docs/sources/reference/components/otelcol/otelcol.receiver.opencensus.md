@@ -42,9 +42,9 @@ You can use the following arguments with `otelcol.receiver.opencensus`:
 | `auth`                   | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests. |                   | no       |
 | `cors_allowed_origins`   | `list(string)`             | A list of allowed Cross-Origin Resource Sharing (CORS) origins.              |                   | no       |
 | `endpoint`               | `string`                   | `host:port` to listen for traffic on.                                        | `"0.0.0.0:55678"` | no       |
-| `include_metadata`       | `boolean`                  | Propagate incoming connection metadata to downstream consumers.              |                   | no       |
+| `include_metadata`       | `bool`                     | Propagate incoming connection metadata to downstream consumers.               | `false`           | no       |
 | `max_concurrent_streams` | `number`                   | Limit the number of concurrent streaming RPC calls.                          |                   | no       |
-| `max_recv_msg_size`      | `string`                   | Maximum size of messages the server will accept.                             | `"4MiB`"          | no       |
+| `max_recv_msg_size`      | `string`                   | Maximum size of messages the server will accept.                             | `"4MiB"`          | no       |
 | `read_buffer_size`       | `string`                   | Size of the read buffer the gRPC server will use for reading from clients.   | `"512KiB"`        | no       |
 | `transport`              | `string`                   | Transport to use for the gRPC server.                                        | `"tcp"`           | no       |
 | `write_buffer_size`      | `string`                   | Size of the write buffer the gRPC server will use for writing to clients.    |                   | no       |

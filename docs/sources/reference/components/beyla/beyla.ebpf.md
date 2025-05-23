@@ -44,10 +44,21 @@ You can use the following arguments with `beyla.ebpf`:
 | ----------------- | -------- | ----------------------------------------------------------------------------------- | ------- | -------- |
 | `debug`           | `bool`   | Enable debug mode for Beyla.                                                        | `false` | no       |
 | `enforce_sys_caps`| `bool`   | Enforce system capabilities required for eBPF instrumentation.                      | `false` | no       |
+| `trace_printer`   | `string` | Format for printing trace information.                                              | `"disabled"` | no |
+
 
 `debug` enables debug mode for Beyla. This mode logs BPF logs, network logs, trace representation logs, and other debug information.
 
 When `enforce_sys_caps`  is set to true and the required system capabilities aren't present, Beyla aborts its startup and logs a list of the missing capabilities.
+
+`trace_printer` is used to print the trace information in a specific format.
+The following formats are supported:
+
+* `disabled`: Disables trace printing.
+* `counter`: Prints the trace information in a counter format.
+* `text`: Prints the trace information in a text format.
+* `json`: Prints the trace information in a JSON format.
+* `json_indent`: Prints the trace information in a JSON format with indentation.
 
 ## Blocks
 
@@ -236,6 +247,7 @@ The `exclude_services` block configures the services to exclude for the componen
 | `namespace`  | `string` | The namespace of the service to match.                                                   | `""`    | no       |
 | `open_ports` | `string` | The port of the running service for Beyla automatically instrumented with eBPF.          | `""`    | no       |
 | `exe_path`   | `string` | The path of the running service for Beyla automatically instrumented with eBPF.          | `""`    | no       |
+| `containers_only` | `bool`   |Restrict the discovery to processes which are running inside a container.             | `false` | no       |
 
 `exe_path` accepts a regular expression to be matched against the full executable command line, including the directory where the executable resides on the file system.
 
@@ -262,6 +274,7 @@ the instrumented processes need to match all the selector properties.
 | `namespace`        | `string`      | Regular expression of Kubernetes Namespaces to match.                                                       | `""`    | no       |
 | `owner_name`       | `string`      | Regular expression of Kubernetes owners of running Pods to match.                                           | `""`    | no       |
 | `pod_labels`       | `map(string)` | Key-value pairs of labels with keys matching Kubernetes Pods with the provided value as regular expression. | `{}`    | no       |
+| `pod_annotations`       | `map(string)` | Key-value pairs of labels with keys matching Kubernetes annotations with the provided value as regular expression. | `{}`    | no       |
 | `pod_name`         | `string`      | Regular expression of Kubernetes Pods to match.                                                             | `""`    | no       |
 | `replicaset_name`  | `string`      | Regular expression of Kubernetes ReplicaSets to match.                                                      | `""`    | no       |
 | `statefulset_name` | `string`      | Regular expression of Kubernetes StatefulSets to match.                                                     | `""`    | no       |
@@ -295,26 +308,39 @@ beyla.ebpf "default" {
 
 The `ebpf` block configures eBPF-specific settings.
 
-| Name                          | Type          | Description                                                                | Default | Required |
-| ----------------------------- | ------------- | -------------------------------------------------------------------------- | ------- | -------- |
-| `wakeup_len`                  | `int`         | Number of messages to accumulate before wakeup request.                    | `""`    | no       |
-| `track_request_headers`       | `bool`        | Enable tracking of request headers for Traceparent fields.                 | `false` | no       |
-| `http_request_timeout`        | `duration`    | Timeout for HTTP requests.                                                 | `30s`   | no       |
-| `enable_context_propagation`  | `bool`        | Enable context propagation using Linux Traffic Control probes.             | `false` | no       |
-| `high_request_volume`         | `bool`        | Optimize for immediate request information when response is seen.          | `false` | no       |
-| `heuristic_sql_detect`        | `bool`        | Enable heuristic-based detection of SQL requests.                         | `false` | no       |
-| `trace_printer`              | `string`      | Format for printing trace information. | `"disabled"` | no |
+| Name                          | Type          | Description                                                                    | Default      | Required |
+| ----------------------------- | ------------- | ------------------------------------------------------------------------------ | ------------ | -------- |
+| `wakeup_len`                  | `int`         | Number of messages to accumulate before wakeup request.                        | `""`         | no       |
+| `track_request_headers`       | `bool`        | Enable tracking of request headers for Traceparent fields.                     | `false`      | no       |
+| `http_request_timeout`        | `duration`    | Timeout for HTTP requests.                                                     | `30s`        | no       |
+| `context_propagation`         | `string`      | Enables injecting of the Traceparent header value for outgoing HTTP requests.  | `"disabled"` | no       |
+| `high_request_volume`         | `bool`        | Optimize for immediate request information when response is seen.              | `false`      | no       |
+| `heuristic_sql_detect`        | `bool`        | Enable heuristic-based detection of SQL requests.                              | `false`      | no       |
 
-`enable_context_propagation` enables context propagation using Linux Traffic Control probes.
-For more information about this topic, refer to [Distributed traces with Beyla][].
 
-`trace_printer` is used to print the trace information in a specific format. The following formats are supported:
+#### `context_propagation`
 
-* `disabled` disables trace printing.
-* `counter` prints the trace information in a counter format.
-* `text` prints the trace information in a text format.
-* `json` prints the trace information in a JSON format.
-* `json_indent` prints the trace information in a JSON format with indentation.
+`context_propagation` allows Beyla to propagate any incoming context to downstream services. 
+This context propagation support works for any programming language.
+
+For TLS encrypted HTTP requests (HTTPS), the Traceparent header value is encoded at TCP/IP packet level, 
+and requires that Beyla is present on both sides of the communication.
+
+The TCP/IP packet level encoding uses Linux Traffic Control (TC). 
+eBPF programs that also use TC need to chain correctly with Beyla. 
+For more information about chaining programs, refer to the [Cilium compatibility][cilium] documentation.
+
+You can disable the TCP/IP level encoding and TC programs by setting `context_propagation` to `"headers"`. 
+This context propagation support is fully compatible with any OpenTelemetry distributed tracing library.
+
+`context_propagation` can be set to either one of the following values:
+
+* `all`: Enable both HTTP and IP options context propagation.
+* `headers`: Enable context propagation via the HTTP headers only.
+* `ip`: Enable context propagation via the IP options field only.
+* `disabled`: Disable trace context propagation.
+
+[cilium]: https://grafana.com/docs/beyla/latest/cilium-compatibility/
 
 ### `filters`
 

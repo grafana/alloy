@@ -68,11 +68,12 @@ type Selection struct {
 type Services []Service
 
 type Service struct {
-	Name       string            `alloy:"name,attr,optional"`
-	Namespace  string            `alloy:"namespace,attr,optional"`
-	OpenPorts  string            `alloy:"open_ports,attr,optional"`
-	Path       string            `alloy:"exe_path,attr,optional"`
-	Kubernetes KubernetesService `alloy:"kubernetes,block,optional"`
+	Name           string            `alloy:"name,attr,optional"`
+	Namespace      string            `alloy:"namespace,attr,optional"`
+	OpenPorts      string            `alloy:"open_ports,attr,optional"`
+	Path           string            `alloy:"exe_path,attr,optional"`
+	Kubernetes     KubernetesService `alloy:"kubernetes,block,optional"`
+	ContainersOnly bool              `alloy:"containers_only,attr,optional"`
 }
 
 type KubernetesService struct {
@@ -84,6 +85,7 @@ type KubernetesService struct {
 	DaemonSetName   string            `alloy:"daemonset_name,attr,optional"`
 	OwnerName       string            `alloy:"owner_name,attr,optional"`
 	PodLabels       map[string]string `alloy:"pod_labels,attr,optional"`
+	PodAnnotations  map[string]string `alloy:"pod_annotations,attr,optional"`
 }
 
 type Discovery struct {
@@ -120,12 +122,14 @@ type Network struct {
 }
 
 type EBPF struct {
-	WakeupLen                 int           `alloy:"wakeup_len,attr,optional"`
-	TrackRequestHeaders       bool          `alloy:"track_request_headers,attr,optional"`
-	HTTPRequestTimeout        time.Duration `alloy:"http_request_timeout,attr,optional"`
-	ContextPropagationEnabled bool          `alloy:"enable_context_propagation,attr,optional"`
-	HighRequestVolume         bool          `alloy:"high_request_volume,attr,optional"`
-	HeuristicSQLDetect        bool          `alloy:"heuristic_sql_detect,attr,optional"`
+	WakeupLen           int           `alloy:"wakeup_len,attr,optional"`
+	TrackRequestHeaders bool          `alloy:"track_request_headers,attr,optional"`
+	HTTPRequestTimeout  time.Duration `alloy:"http_request_timeout,attr,optional"`
+	ContextPropagation  string        `alloy:"context_propagation,attr,optional"`
+	HighRequestVolume   bool          `alloy:"high_request_volume,attr,optional"`
+	HeuristicSQLDetect  bool          `alloy:"heuristic_sql_detect,attr,optional"`
+	BpfDebug            bool          `alloy:"bpf_debug,attr,optional"`
+	ProtocolDebug       bool          `alloy:"protocol_debug_print,attr,optional"`
 }
 
 type Filters struct {

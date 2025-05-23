@@ -44,10 +44,10 @@ You can use the following arguments with `otelcol.receiver.filelog`:
 | `compression`                   | `string`                   | The compression type used for the log file.                                                | ``      | no       |
 | `delete_after_read`             | `bool`                     | Whether to delete the file after reading.                                                  | `false` | no       |
 | `encoding`                      | `string`                   | The encoding of the log file.                                                              | `utf-8` | no       |
-| `exclude_older_than`            | `time.Duration`            | Exclude files with a modification time older than the specified duration.                  | `0s`    | no       |
+| `exclude_older_than`            | `duration`                 | Exclude files with a modification time older than the specified duration.                  | `0s`    | no       |
 | `exclude`                       | `list(string)`             | A list of glob patterns to exclude files that would be included by the `include` patterns. | `[]`    | no       |
 | `fingerprint_size`              | `units.Base2Bytes`         | The size of the fingerprint used to detect file changes.                                   | `1KiB`  | no       |
-| `force_flush_period`            | `time.Duration`            | The period after which logs are flushed even if the buffer isn't full.                     | `500ms` | no       |
+| `force_flush_period`            | `duration`                 | The period after which logs are flushed even if the buffer isn't full.                     | `500ms` | no       |
 | `include_file_name_resolved`    | `bool`                     | Whether to include the resolved filename in the log entry.                                 | `false` | no       |
 | `include_file_name`             | `bool`                     | Whether to include the filename in the log entry.                                          | `true`  | no       |
 | `include_file_owner_group_name` | `bool`                     | Whether to include the file owner's group name in the log entry.                           | `false` | no       |
@@ -58,8 +58,8 @@ You can use the following arguments with `otelcol.receiver.filelog`:
 | `max_batches`                   | `int`                      | The maximum number of batches to process concurrently.                                     | `10`    | no       |
 | `max_concurrent_files`          | `int`                      | The maximum number of files to read concurrently.                                          | `10`    | no       |
 | `max_log_size`                  | `units.Base2Bytes`         | The maximum size of a log entry.                                                           | `1MiB`  | no       |
-| `operators`                     | `lists(map(string)`        | A list of operators used to parse the log entries.                                         | `[]`    | no       |
-| `poll_interval`                 | `time.Duration`            | The interval at which the file is polled for new entries.                                  | `200ms` | no       |
+| `operators`                     | `list(map(string))`        | A list of operators used to parse the log entries.                                         | `[]`    | no       |
+| `poll_interval`                 | `duration`                 | The interval at which the file is polled for new entries.                                  | `200ms` | no       |
 | `preserve_leading_whitespaces`  | `bool`                     | Preserves leading whitespace in messages when set to `true`.                               | `false` | no       |
 | `preserve_trailing_whitespaces` | `bool`                     | Preserves trailing whitespace in messages when set to `true`.                              | `false` | no       |
 | `resource`                      | `map(string)`              | A map of resource attributes to associate with each log entry.                             | `{}`    | no       |

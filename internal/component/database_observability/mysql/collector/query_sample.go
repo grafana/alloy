@@ -39,7 +39,9 @@ WHERE variable_name = 'UPTIME'`
 const selectQuerySamples = `
 SELECT
 	statements.CURRENT_SCHEMA,
+	statements.THREAD_ID,
 	statements.EVENT_ID,
+	statements.END_EVENT_ID,
 	statements.DIGEST,
 	statements.DIGEST_TEXT,
 	statements.TIMER_END,
@@ -52,6 +54,7 @@ SELECT
 	statements.MAX_CONTROLLED_MEMORY,
 	statements.MAX_TOTAL_MEMORY,
 	waits.event_id as WAIT_EVENT_ID,
+	waits.end_event_id as WAIT_END_EVENT_ID,
 	waits.event_name as WAIT_EVENT_NAME,
 	waits.object_name as WAIT_OBJECT_NAME,
 	waits.object_type as WAIT_OBJECT_TYPE,
@@ -218,11 +221,13 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 	for rs.Next() {
 		row := struct {
 			// sample query details
-			Schema           sql.NullString
-			StatementEventID sql.NullString
-			Digest           sql.NullString
-			DigestText       sql.NullString
-			SQLText          sql.NullString
+			Schema              sql.NullString
+			ThreadID            sql.NullString
+			StatementEventID    sql.NullString
+			StatementEndEventID sql.NullString
+			Digest              sql.NullString
+			DigestText          sql.NullString
+			SQLText             sql.NullString
 
 			// sample time
 			TimerEndPicoseconds    sql.NullFloat64
@@ -242,6 +247,7 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 
 			// sample wait info, if any
 			WaitEventID    sql.NullString
+			WaitEndEventID sql.NullString
 			WaitEventName  sql.NullString
 			WaitObjectName sql.NullString
 			WaitObjectType sql.NullString
@@ -250,7 +256,9 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 
 		scanArgs := []interface{}{
 			&row.Schema,
+			&row.ThreadID,
 			&row.StatementEventID,
+			&row.StatementEndEventID,
 			&row.Digest,
 			&row.DigestText,
 			&row.TimerEndPicoseconds,
@@ -263,6 +271,7 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 			&row.MaxControlledMemory,
 			&row.MaxTotalMemory,
 			&row.WaitEventID,
+			&row.WaitEndEventID,
 			&row.WaitEventName,
 			&row.WaitObjectName,
 			&row.WaitObjectType,
@@ -302,9 +311,9 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 		elapsedTime := picosecondsToMilliseconds(row.ElapsedTimePicoseconds.Float64)
 
 		logMessage := fmt.Sprintf(
-			`schema="%s" event_id="%s" digest="%s" digest_text="%s" rows_examined="%d" rows_sent="%d" rows_affected="%d" errors="%d" max_controlled_memory="%db" max_total_memory="%db" cpu_time="%fms" elapsed_time="%fms" elapsed_time_ms="%fms"`,
-			row.Schema.String,
-			row.StatementEventID.String,
+			`schema="%s" thread_id="%s" event_id="%s" end_event_id="%s" digest="%s" digest_text="%s" rows_examined="%d" rows_sent="%d" rows_affected="%d" errors="%d" max_controlled_memory="%db" max_total_memory="%db" cpu_time="%fms" elapsed_time="%fms" elapsed_time_ms="%fms"`,
+			row.Schema.String, row.ThreadID.String,
+			row.StatementEventID.String, row.StatementEndEventID.String,
 			row.Digest.String,
 			digestText,
 			row.RowsExamined,
@@ -337,12 +346,14 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 		if row.WaitEventID.Valid {
 			waitTime := picosecondsToMilliseconds(row.WaitTime.Float64)
 			waitLogMessage := fmt.Sprintf(
-				`schema="%s" digest="%s" digest_text="%s" event_id="%s" wait_event_id="%s" wait_event_name="%s" wait_object_name="%s" wait_object_type="%s" wait_time="%fms"`,
+				`schema="%s" thread_id="%s" digest="%s" digest_text="%s" event_id="%s" wait_event_id="%s" wait_end_event_id="%s" wait_event_name="%s" wait_object_name="%s" wait_object_type="%s" wait_time="%fms"`,
 				row.Schema.String,
+				row.ThreadID.String,
 				row.Digest.String,
 				digestText,
 				row.StatementEventID.String,
 				row.WaitEventID.String,
+				row.WaitEndEventID.String,
 				row.WaitEventName.String,
 				row.WaitObjectName.String,
 				row.WaitObjectType.String,

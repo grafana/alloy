@@ -63,8 +63,8 @@ You can use the following blocks with `otelcol.exporter.datadog`:
 | metrics > [`histograms`][histograms]   | Histograms specific configuration.                                         | no       |
 | metrics > [`summaries`][summaries]     | Summaries specific configuration                                           | no       |
 | metrics > [`sums`][sums]               | Sums specific configuration                                                | no       |
-| [`queue`][queue]                       | Configures batching of data before sending.                                | no       |
 | [`retry_on_failure`][retry_on_failure] | Configures retry mechanism for failed requests.                            | no       |
+| [`sending_queue`][queue]               | Configures batching of data before sending.                                | no       |
 | [`traces`][traces]                     | Trace exporter specific configuration.                                     | no       |
 
 The > symbol indicates deeper levels of nesting.
@@ -81,7 +81,7 @@ For example, `metrics` > `summaries` refers to a `summaries` block defined insid
 [host_metadata]: #host_metadata
 [client]: #client
 [retry_on_failure]: #retry_on_failure
-[queue]: #queue
+[queue]: #sending_queue
 [debug_metrics]: #debug_metrics
 
 ### `api`
@@ -241,17 +241,17 @@ Valid values for `initial_cumulative_monotonic_value` are:
 * `"drop"` always drops the initial value.
 * `"keep"` always reports the initial value.
 
-### `queue`
-
-The `queue` block configures an in-memory buffer of batches before data is sent to the HTTP server.
-
-{{< docs/shared lookup="reference/components/otelcol-queue-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
-
 ### `retry_on_failure`
 
 The `retry_on_failure` block configures how failed requests to Datadog are retried.
 
 {{< docs/shared lookup="reference/components/otelcol-retry-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `sending_queue`
+
+The `sending_queue` block configures an in-memory buffer of batches before data is sent to the HTTP server.
+
+{{< docs/shared lookup="reference/components/otelcol-queue-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `traces`
 

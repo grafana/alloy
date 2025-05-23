@@ -59,9 +59,9 @@ You can use the following arguments with `otelcol.receiver.vcenter`:
 | `endpoint`            | `string`   | Endpoint to a vCenter Server or ESXi host which has the SDK path enabled. |         | yes      |
 | `username`            | `string`   | Username to use for authentication.                                       |         | yes      |
 | `password`            | `string`   | Password to use for authentication.                                       |         | yes      |
-| `collection_interval` | `duration` | Defines how often to collect metrics.                                     | `"1m"`  | no       |
-| `initial_delay`       | `duration` | Defines how long this receiver waits before starting.                     | `"1s"`  | no       |
-| `timeout`             | `duration` | Defines the timeout for the underlying HTTP client.                       | `"0s"`  | no       |
+| `collection_interval` | `duration` | Defines how often to collect metrics.                                     | `1m`    | no       |
+| `initial_delay`       | `duration` | Defines how long this receiver waits before starting.                     | `1s`    | no       |
+| `timeout`             | `duration` | Defines the timeout for the underlying HTTP client.                       | `0s`    | no       |
 
 `endpoint` has the format `<protocol>://<hostname>`. For example, `https://vcsa.hostname.localnet`.
 

@@ -46,7 +46,7 @@ otelcol.receiver.jaeger "<LABEL>" {
 
 ## Blocks
 
-You can use the following blocks `otelcol.receiver.jaeger`:
+You can use the following blocks with `otelcol.receiver.jaeger`:
 
 | Block                                                                           | Description                                                                | Required |
 | ------------------------------------------------------------------------------- | -------------------------------------------------------------------------- | -------- |
