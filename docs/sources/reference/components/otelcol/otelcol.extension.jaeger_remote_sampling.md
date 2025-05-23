@@ -82,7 +82,7 @@ The following arguments are supported:
 | ----------------- | ---------- | ------------------------------------------------------------------------------- | ------- | -------- |
 | `content`         | `string`   | A string containing the Jaeger remote sampling contents directly.               | `""`    | no       |
 | `file`            | `string`   | A local file containing a Jaeger remote sampling document.                      | `""`    | no       |
-| `reload_interval` | `duration` | The interval at which to reload the specified file. Leave at 0 to never reload. | `0`     | no       |
+| `reload_interval` | `duration` | The interval at which to reload the specified file. Leave at 0 to never reload. | `"0"`   | no       |
 
 Exactly one of the `file` argument, `content` argument or `remote` block must be specified.
 
@@ -100,7 +100,7 @@ The following arguments are supported:
 | `compression`       | `string`                   | Compression mechanism to use for requests.                                       | `"gzip"`   | no       |
 | `headers`           | `map(string)`              | Additional headers to send with the request.                                     | `{}`       | no       |
 | `read_buffer_size`  | `string`                   | Size of the read buffer the gRPC client to use for reading server responses.     |            | no       |
-| `wait_for_ready`    | `boolean`                  | Waits for gRPC connection to be in the `READY` state before sending data.        | `false`    | no       |
+| `wait_for_ready`    | `bool`                     | Waits for gRPC connection to be in the `READY` state before sending data.        | `false`    | no       |
 | `write_buffer_size` | `string`                   | Size of the write buffer the gRPC client to use for writing requests.            | `"512KiB"` | no       |
 
 {{< docs/shared lookup="reference/components/otelcol-compression-field.md" source="alloy" version="<ALLOY_VERSION>" >}}
