@@ -57,16 +57,7 @@ type Target struct {
 }
 
 // NewTarget starts a new target to read logs from a given container ID.
-func NewTarget(
-	metrics *Metrics,
-	logger log.Logger,
-	handler loki.EntryHandler,
-	position positions.Positions,
-	containerID string,
-	labels model.LabelSet,
-	relabelConfig []*relabel.Config,
-	client client.APIClient,
-) (*Target, error) {
+func NewTarget(metrics *Metrics, logger log.Logger, handler loki.EntryHandler, position positions.Positions, containerID string, labels model.LabelSet, relabelConfig []*relabel.Config, client client.APIClient) (*Target, error) {
 	labelsStr := labels.String()
 	pos, err := position.Get(positions.CursorKey(containerID), labelsStr)
 	if err != nil {
