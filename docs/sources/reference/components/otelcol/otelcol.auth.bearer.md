@@ -49,7 +49,7 @@ If you use a file to store the token, you can use [`local.file`][local.file] to 
 
 ## Blocks
 
-You can use the following blocks with `otelcol.auth.bearer`:
+You can use the following block with `otelcol.auth.bearer`:
 
 | Block                            | Description                                                                | Required |
 | -------------------------------- | -------------------------------------------------------------------------- | -------- |

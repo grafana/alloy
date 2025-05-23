@@ -27,7 +27,7 @@ You can specify multiple `otelcol.auth.basic` components by giving them differen
 
 ```alloy
 otelcol.auth.basic "<LABEL>" {
-  username = ">USERNAME>"
+  username = "<USERNAME>"
   password = "<PASSWORD>"
 }
 ```
