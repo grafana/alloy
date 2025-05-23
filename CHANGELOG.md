@@ -99,6 +99,8 @@ Main (unreleased)
 
 - Fix alloy health handler so header is written before response body. (@kalleep)
 
+- Fix `prometheus.exporter.unix` to pass hwmon config correctly. (@kalleep)
+
 ### Other changes
 
 - Update the zap logging adapter used by `otelcol` components to log arrays and objects. (@dehaansa)
