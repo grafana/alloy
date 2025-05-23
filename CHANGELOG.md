@@ -10,6 +10,9 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+v1.9.0-rc.0
+-----------------
+
 ### Breaking changes
 
 - The `prometheus.exporter.windows` component has been update to version v0.30.6. This update includes a significant rework of the exporter and includes some breaking changes. (@dehaansa)
