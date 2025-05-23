@@ -38,7 +38,7 @@ type profilingLoop struct {
 	dist       *asprof.Distribution
 	jfrFile    string
 	startTime  time.Time
-	profiler   *asprof.Profiler
+	profiler   Profiler
 	sampleRate int
 
 	error            error
@@ -49,7 +49,13 @@ type profilingLoop struct {
 	totalSamples     int64
 }
 
-func newProfilingLoop(pid int, target discovery.Target, logger log.Logger, profiler *asprof.Profiler, output *pyroscope.Fanout, cfg ProfilingConfig) *profilingLoop {
+type Profiler interface {
+	CopyLib(dist *asprof.Distribution, pid int) error
+	Execute(dist *asprof.Distribution, argv []string) (string, string, error)
+	Distribution() *asprof.Distribution
+}
+
+func newProfilingLoop(pid int, target discovery.Target, logger log.Logger, profiler Profiler, output *pyroscope.Fanout, cfg ProfilingConfig) *profilingLoop {
 	ctx, cancel := context.WithCancel(context.Background())
 	dist := profiler.Distribution()
 	p := &profilingLoop{
@@ -114,15 +120,37 @@ func (p *profilingLoop) loop(ctx context.Context) {
 	}
 }
 
+func (p *profilingLoop) cleanupJFR() {
+	// first try to find through process path
+	jfrFile := asprof.ProcessPath(p.jfrFile, p.pid)
+	if err := os.Remove(jfrFile); os.IsNotExist(err) {
+		// the process path was not found, this is possible when the target process stopped in the meantime.
+
+		if jfrFile == p.jfrFile {
+			// nothing we can do, the process path was not actually a /proc path
+			return
+		}
+
+		jfrFile = p.jfrFile
+		if err := os.Remove(jfrFile); os.IsNotExist(err) {
+			_ = level.Debug(p.logger).Log("msg", "unable to delete jfr file, likely because target process is stopped and was containerized", "path", jfrFile, "err", err)
+			// file not found on the host system, process was likely containerized and we can't delete this file anymore
+			return
+		} else if err != nil {
+			_ = level.Warn(p.logger).Log("msg", "failed to delete jfr file at host path", "path", jfrFile, "err", err)
+		}
+	} else if err != nil {
+		_ = level.Warn(p.logger).Log("msg", "failed to delete jfr file at process path", "path", jfrFile, "err", err)
+	}
+}
+
 func (p *profilingLoop) reset() error {
 	jfrFile := asprof.ProcessPath(p.jfrFile, p.pid)
 	startTime := p.startTime
 	endTime := time.Now()
 	sampleRate := p.sampleRate
 	p.startTime = endTime
-	defer func() {
-		os.Remove(jfrFile)
-	}()
+	defer p.cleanupJFR()
 
 	err := p.stop()
 	if err != nil {
@@ -262,6 +290,7 @@ func (p *profilingLoop) update(target discovery.Target, config ProfilingConfig) 
 func (p *profilingLoop) Close() error {
 	p.cancel()
 	p.wg.Wait()
+	p.cleanupJFR()
 	return nil
 }
 
