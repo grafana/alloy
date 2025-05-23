@@ -40,7 +40,7 @@ You can use the following arguments with `otelcol.processor.cumulativetodelta`:
 | Name            | Type       | Description                                                            | Default  | Required |
 | --------------- | ---------- | ---------------------------------------------------------------------- | -------- | -------- |
 | `initial_value` | `string`   | Handling of the first observed point for a given metric identity.      | `"auto"` | no       |
-| `max_staleness` | `duration` | The total time a state entry will live past the time it was last seen. | `0`      | no       |
+| `max_staleness` | `duration` | The total time a state entry will live past the time it was last seen. | `"0"`    | no       |
 
 `otelcol.processor.cumulativetodelta` tracks incoming metric streams.
 Sum and exponential histogram metrics with delta temporality are tracked and converted into cumulative temporality.
