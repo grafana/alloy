@@ -31,8 +31,8 @@ The full list of metrics that can be collected can be found in [vcenter receiver
 
 This receiver has been built to support ESXi and vCenter versions:
 
-* 8
-* 7.0
+- 8
+- 7.0
 
 A “Read Only” user assigned to a vSphere with permissions to the vCenter server, cluster, and all subsequent resources being monitored must be specified in order for the receiver to retrieve information about them.
 
@@ -256,7 +256,6 @@ otelcol.exporter.otlp "default" {
 `otelcol.receiver.vcenter` can accept arguments from the following components:
 
 - Components that export [OpenTelemetry `otelcol.Consumer`](../../../compatibility/#opentelemetry-otelcolconsumer-exporters)
-
 
 {{< admonition type="note" >}}
 Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.

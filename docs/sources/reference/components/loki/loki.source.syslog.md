@@ -87,7 +87,7 @@ The `labels` map is applied to every message that the component reads.
 All header fields from the parsed RFC5424 messages are brought in as internal labels, prefixed with `__syslog_`.
 
 If `label_structured_data` is set, structured data in the syslog header is also translated to internal labels in the form of `__syslog_message_sd_<ID>_<KEY>`.
-For example, a  structured data entry of `[example@99999 test="yes"]` becomes the label `__syslog_message_sd_example_99999_test` with the value `"yes"`.
+For example, a structured data entry of `[example@99999 test="yes"]` becomes the label `__syslog_message_sd_example_99999_test` with the value `"yes"`.
 
 The `rfc3164_default_to_current_year` argument is only relevant when `use_incoming_timestamp` is also set to `true`.
 `rfc3164` message timestamps don't contain a year, and this component's default behavior is to mimic Promtail behavior and leave the year as 0.
@@ -110,15 +110,15 @@ configuration.
 
 `loki.source.syslog` exposes some debug information per syslog listener:
 
-* Whether the listener is running.
-* The listen address.
-* The labels that the listener applies to incoming log entries.
+- Whether the listener is running.
+- The listen address.
+- The labels that the listener applies to incoming log entries.
 
 ## Debug metrics
 
-* `loki_source_syslog_empty_messages_total` (counter): Total number of empty messages received from the syslog component.
-* `loki_source_syslog_entries_total` (counter): Total number of successful entries sent to the syslog component.
-* `loki_source_syslog_parsing_errors_total` (counter): Total number of parsing errors while receiving syslog messages.
+- `loki_source_syslog_empty_messages_total` (counter): Total number of empty messages received from the syslog component.
+- `loki_source_syslog_entries_total` (counter): Total number of successful entries sent to the syslog component.
+- `loki_source_syslog_parsing_errors_total` (counter): Total number of parsing errors while receiving syslog messages.
 
 ## Example
 
@@ -154,7 +154,6 @@ loki.write "local" {
 `loki.source.syslog` can accept arguments from the following components:
 
 - Components that export [Loki `LogsReceiver`](../../../compatibility/#loki-logsreceiver-exporters)
-
 
 {{< admonition type="note" >}}
 Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.

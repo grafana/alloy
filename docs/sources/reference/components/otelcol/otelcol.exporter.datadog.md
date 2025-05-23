@@ -18,7 +18,7 @@ title: otelcol.exporter.datadog
 `otelcol.exporter.datadog` accepts metrics and traces telemetry data from other `otelcol` components and sends it to Datadog.
 
 {{< admonition type="note" >}}
-`otelcol.exporter.datadog` is a wrapper over the upstream OpenTelemetry Collector `datadog` exporter from the `otelcol-contrib`  distribution.
+`otelcol.exporter.datadog` is a wrapper over the upstream OpenTelemetry Collector `datadog` exporter from the `otelcol-contrib` distribution.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
 {{< /admonition >}}
 
@@ -140,9 +140,9 @@ By default, the exporter only sends host metadata for a single host, whose name 
 
 Valid values for `hostname_source` are:
 
-* `"first_resource"` picks the host metadata hostname from the resource attributes on the first OTLP payload that gets to the exporter. 
+- `"first_resource"` picks the host metadata hostname from the resource attributes on the first OTLP payload that gets to the exporter.
   If the first payload lacks hostname-like attributes, it will fallback to 'config_or_system' behavior. **Don't use this hostname source if receiving data from multiple hosts**.
-* `"config_or_system"` picks the host metadata hostname from the 'hostname' setting, falling back to system and cloud provider APIs.
+- `"config_or_system"` picks the host metadata hostname from the 'hostname' setting, falling back to system and cloud provider APIs.
 
 ### `logs`
 
@@ -200,9 +200,9 @@ The following arguments are supported:
 
 Valid values for `mode` are:
 
-* `"distributions"` to report metrics as Datadog distributions (recommended).
-* `"nobuckets"` to not report bucket metrics.
-* `"counters"` to report one metric per histogram bucket.
+- `"distributions"` to report metrics as Datadog distributions (recommended).
+- `"nobuckets"` to not report bucket metrics.
+- `"counters"` to report one metric per histogram bucket.
 
 ### `summaries`
 
@@ -216,8 +216,8 @@ The following arguments are supported:
 
 Valid values for `mode` are:
 
-* `"noquantiles"` to not report quantile metrics.
-* `"gauges"` to report one gauge metric per quantile.
+- `"noquantiles"` to not report quantile metrics.
+- `"gauges"` to report one gauge metric per quantile.
 
 ### `sums`
 
@@ -232,14 +232,14 @@ The following arguments are supported:
 
 Valid values for `cumulative_monotonic_mode` are:
 
-* `"to_delta"` to calculate delta for sum in the client side and report as Datadog counts.
-* `"raw_value"` to report the raw value as a Datadog gauge.
+- `"to_delta"` to calculate delta for sum in the client side and report as Datadog counts.
+- `"raw_value"` to report the raw value as a Datadog gauge.
 
 Valid values for `initial_cumulative_monotonic_value` are:
 
-* `"auto"` reports the initial value if its start timestamp is set, and it happens after the process was started.
-* `"drop"` always drops the initial value.
-* `"keep"` always reports the initial value.
+- `"auto"` reports the initial value if its start timestamp is set, and it happens after the process was started.
+- `"drop"` always drops the initial value.
+- `"keep"` always reports the initial value.
 
 ### `retry_on_failure`
 

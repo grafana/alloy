@@ -15,8 +15,8 @@ The following attributes are supported:
 
 When you don't specify the `tag_name`, a default tag name is used with the format:
 
-* `k8s.pod.annotations.<annotation key>`
-* `k8s.pod.labels.<label key>`
+- `k8s.pod.annotations.<annotation key>`
+- `k8s.pod.labels.<label key>`
 
 For example, if `tag_name` isn't specified and the key is `git_sha`, the attribute name will be `k8s.pod.annotations.git_sha`.
 
@@ -25,8 +25,8 @@ When `key_regex` is present, `tag_name` supports back reference to both named ca
 
 For example, assume your Pod spec contains the following labels:
 
-* `app.kubernetes.io/component: mysql`
-* `app.kubernetes.io/version: 5.7.21`
+- `app.kubernetes.io/component: mysql`
+- `app.kubernetes.io/version: 5.7.21`
 
 If you'd like to add tags for all labels with the prefix `app.kubernetes.io/` and trim the prefix, then you can specify the following extraction rules:
 

@@ -66,8 +66,8 @@ Attribute and value are strings and aren't marked as optional.
 The three `Affect` booleans are optional.
 The example also has two `blocks` defined which are standard parts of an OpenTelemetry component in Alloy.
 
-* `Output`: Defines the next components to receive each type of telemetry from this component.
-* `DebugMetrics`: Allows users to modify the behavior of the internal Alloy telemetry.
+- `Output`: Defines the next components to receive each type of telemetry from this component.
+- `DebugMetrics`: Allows users to modify the behavior of the internal Alloy telemetry.
 
 ```go
 type Arguments struct {
@@ -192,10 +192,10 @@ You can find [detailed Alloy developer documentation](https://github.com/grafana
 The following list provides some examples of OpenTelemetry components added by both Grafana Labs employees and Alloy community members.
 These should provide good examples of pull requests that follow the guidelines above, as well as examples of more complex components than the `example` processor above.
 
-* [`otelcol.receiver.filelog`](https://github.com/grafana/alloy/pull/2711)  
-* [`otelcol.processor.cumulativetodelta`](https://github.com/grafana/alloy/pull/2689)  
-* [`otelcol.receiver.tcplog`](https://github.com/grafana/alloy/pull/2701)  
-* [`otelcol.receiver.awscloudwatch`](https://github.com/grafana/alloy/pull/2822)
+- [`otelcol.receiver.filelog`](https://github.com/grafana/alloy/pull/2711)
+- [`otelcol.processor.cumulativetodelta`](https://github.com/grafana/alloy/pull/2689)
+- [`otelcol.receiver.tcplog`](https://github.com/grafana/alloy/pull/2701)
+- [`otelcol.receiver.awscloudwatch`](https://github.com/grafana/alloy/pull/2822)
 
 ## Example configuration
 

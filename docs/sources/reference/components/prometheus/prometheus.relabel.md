@@ -87,13 +87,13 @@ In those cases, exported fields are kept at their last healthy values.
 
 ## Debug metrics
 
-* `prometheus_fanout_latency` (histogram): Write latency for sending to direct and indirect components.
-* `prometheus_forwarded_samples_total` (counter): Total number of samples sent to downstream components.
-* `prometheus_relabel_cache_hits` (counter): Total number of cache hits.
-* `prometheus_relabel_cache_misses` (counter): Total number of cache misses.
-* `prometheus_relabel_cache_size` (gauge): Total size of relabel cache.
-* `prometheus_relabel_metrics_processed` (counter): Total number of metrics processed.
-* `prometheus_relabel_metrics_written` (counter): Total number of metrics written.
+- `prometheus_fanout_latency` (histogram): Write latency for sending to direct and indirect components.
+- `prometheus_forwarded_samples_total` (counter): Total number of samples sent to downstream components.
+- `prometheus_relabel_cache_hits` (counter): Total number of cache hits.
+- `prometheus_relabel_cache_misses` (counter): Total number of cache misses.
+- `prometheus_relabel_cache_size` (gauge): Total size of relabel cache.
+- `prometheus_relabel_metrics_processed` (counter): Total number of metrics processed.
+- `prometheus_relabel_metrics_written` (counter): Total number of metrics written.
 
 ## Example
 

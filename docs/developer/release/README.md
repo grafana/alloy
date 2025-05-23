@@ -18,6 +18,7 @@ Once a release is scheduled, a release shepherd is determined. This person will 
 responsible for ownership of the following workflows:
 
 ## First release candidate (`rc.0`)
+
 1. [Ensure our OpenTelemetry Collector dependency has been updated](./00-ensure-otel-dep-updated.md)
 2. [Create Release Branch](./01-create-release-branch.md)
 3. [Update the "main" and "release/" branches](./02-update-version-in-code.md)
@@ -27,6 +28,7 @@ responsible for ownership of the following workflows:
 7. [Announce Release](./08-announce-release.md)
 
 ## Additional release candidate (`rc.1`, `rc.2`...)
+
 1. [Update the "main" and "release/" branches](./02-update-version-in-code.md)
 2. [Tag Release](./03-tag-release.md)
 3. [Publish Release](./04-publish-release.md)
@@ -34,6 +36,7 @@ responsible for ownership of the following workflows:
 5. [Announce Release](./08-announce-release.md)
 
 ## Stable Release Publish (`1.2.0`, `1.6.0`...)
+
 1. [Update the "main" and "release/" branches](./02-update-version-in-code.md)
 2. [Tag Release](./03-tag-release.md)
 3. [Publish Release](./04-publish-release.md)
@@ -43,6 +46,7 @@ responsible for ownership of the following workflows:
 7. [Announce Release](./08-announce-release.md)
 
 ## Patch Release Publish - latest version (`1.15.1`, `1.15.2`...)
+
 1. [Update the "main" and "release/" branches](./02-update-version-in-code.md)
 2. [Tag Release](./03-tag-release.md)
 3. [Publish Release](./04-publish-release.md)
@@ -52,6 +56,7 @@ responsible for ownership of the following workflows:
 7. [Announce Release](./08-announce-release.md)
 
 ## Patch Release Publish - older version (`1.0.1`, `1.0.2`...)
+
 - Not documented yet (but here are some hints)
   - somewhat similar to Patch Release Publish (latest version)
   - find the old release branch

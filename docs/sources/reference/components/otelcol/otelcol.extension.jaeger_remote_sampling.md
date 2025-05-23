@@ -111,8 +111,8 @@ The following arguments are supported:
 
 An HTTP proxy can be configured through the following environment variables:
 
-* `HTTPS_PROXY`
-* `NO_PROXY`
+- `HTTPS_PROXY`
+- `NO_PROXY`
 
 The `HTTPS_PROXY` environment variable specifies a URL to use for proxying requests.
 Connections to the proxy are established via [the `HTTP CONNECT` method][HTTP CONNECT].
@@ -173,10 +173,10 @@ The following arguments are supported:
 The `allowed_headers` specifies which headers are acceptable from a CORS request.
 The following headers are always implicitly allowed:
 
-* `Accept`
-* `Accept-Language`
-* `Content-Type`
-* `Content-Language`
+- `Accept`
+- `Accept-Language`
+- `Content-Type`
+- `Content-Language`
 
 If `allowed_headers` includes `"*"`, all headers will be permitted.
 

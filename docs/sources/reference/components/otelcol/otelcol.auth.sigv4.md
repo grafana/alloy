@@ -30,6 +30,7 @@ You can specify multiple `otelcol.auth.sigv4` components by giving them differen
 {{< param "PRODUCT_NAME" >}} must have valid AWS credentials as used by the [AWS SDK for Go][].
 
 [AWS SDK for Go]: https://aws.github.io/aws-sdk-go-v2/docs/configuring-sdk/#specifying-credentials
+
 {{< /admonition >}}
 
 ## Usage
@@ -50,9 +51,9 @@ You can use the following arguments with `otelcol.auth.sigv4`:
 
 If `region` and `service` are left empty, their values are inferred from the URL of the exporter using the following rules:
 
-* If the exporter URL starts with `aps-workspaces` and `service` is empty, `service` will be set to `aps`.
-* If the exporter URL starts with `search-` and `service` is empty, `service` will be set to `es`.
-* If the exporter URL starts with either `aps-workspaces` or `search-` and `region` is empty, `region` will be set to the value between the first and second `.` character in the exporter URL.
+- If the exporter URL starts with `aps-workspaces` and `service` is empty, `service` will be set to `aps`.
+- If the exporter URL starts with `search-` and `service` is empty, `service` will be set to `es`.
+- If the exporter URL starts with either `aps-workspaces` or `search-` and `region` is empty, `region` will be set to the value between the first and second `.` character in the exporter URL.
 
 If none of the above rules apply, then `region` and `service` must be specified.
 

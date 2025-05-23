@@ -14,7 +14,7 @@ title: otelcol.processor.probabilistic_sampler
 
 `otelcol.processor.probabilistic_sampler` accepts logs and traces data from other otelcol components and applies probabilistic sampling based on configuration options.
 
-<!-- 
+<!--
 The next few paragraphs were copied from the OTel docs:
 https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/processor/probabilisticsamplerprocessor/README.md
 -->
@@ -121,8 +121,8 @@ The following fields are exported and can be referenced by other components:
 
 `input` accepts `otelcol.Consumer` OTLP-formatted data for any telemetry signal of these types:
 
-* logs
-* traces
+- logs
+- traces
 
 ## Component health
 
@@ -185,6 +185,7 @@ otelcol.processor.probabilistic_sampler "default" {
   }
 }
 ```
+
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components

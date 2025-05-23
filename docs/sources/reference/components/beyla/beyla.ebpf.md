@@ -16,7 +16,7 @@ title: beyla.ebpf
 The `beyla.ebpf` component uses Grafana Beyla version {{< param "BEYLA_VERSION" >}}.
 {{< /admonition >}}
 
-The `beyla.ebpf` component is a wrapper for [Grafana Beyla][] which uses [eBPF][[eBPF website]] to automatically inspect application executables and the OS networking layer, and capture trace spans related to web transactions and Rate Errors Duration (RED) metrics for Linux HTTP/S and gRPC services.
+The `beyla.ebpf` component is a wrapper for [Grafana Beyla][] which uses [eBPF][eBPF website]] to automatically inspect application executables and the OS networking layer, and capture trace spans related to web transactions and Rate Errors Duration (RED) metrics for Linux HTTP/S and gRPC services.
 You can configure the component to collect telemetry data from a specific port or executable path, and other criteria from Kubernetes metadata.
 The component exposes metrics that can be collected by a Prometheus scrape component, and traces that can be forwarded to an OTel exporter component.
 
@@ -40,25 +40,24 @@ beyla.ebpf "<LABEL>" {
 
 You can use the following arguments with `beyla.ebpf`:
 
-| Name              | Type     | Description                                                                         | Default | Required |
-| ----------------- | -------- | ----------------------------------------------------------------------------------- | ------- | -------- |
-| `debug`           | `bool`   | Enable debug mode for Beyla.                                                        | `false` | no       |
-| `enforce_sys_caps`| `bool`   | Enforce system capabilities required for eBPF instrumentation.                      | `false` | no       |
-| `trace_printer`   | `string` | Format for printing trace information.                                              | `"disabled"` | no |
-
+| Name               | Type     | Description                                                    | Default      | Required |
+| ------------------ | -------- | -------------------------------------------------------------- | ------------ | -------- |
+| `debug`            | `bool`   | Enable debug mode for Beyla.                                   | `false`      | no       |
+| `enforce_sys_caps` | `bool`   | Enforce system capabilities required for eBPF instrumentation. | `false`      | no       |
+| `trace_printer`    | `string` | Format for printing trace information.                         | `"disabled"` | no       |
 
 `debug` enables debug mode for Beyla. This mode logs BPF logs, network logs, trace representation logs, and other debug information.
 
-When `enforce_sys_caps`  is set to true and the required system capabilities aren't present, Beyla aborts its startup and logs a list of the missing capabilities.
+When `enforce_sys_caps` is set to true and the required system capabilities aren't present, Beyla aborts its startup and logs a list of the missing capabilities.
 
 `trace_printer` is used to print the trace information in a specific format.
 The following formats are supported:
 
-* `disabled`: Disables trace printing.
-* `counter`: Prints the trace information in a counter format.
-* `text`: Prints the trace information in a text format.
-* `json`: Prints the trace information in a JSON format.
-* `json_indent`: Prints the trace information in a JSON format with indentation.
+- `disabled`: Disables trace printing.
+- `counter`: Prints the trace information in a counter format.
+- `text`: Prints the trace information in a text format.
+- `json`: Prints the trace information in a JSON format.
+- `json_indent`: Prints the trace information in a JSON format with indentation.
 
 ## Blocks
 
@@ -143,15 +142,15 @@ If `cluster_name` isn't set, Beyla tries to detect the cluster name from the Kub
 If `enable` is set to `true`, Beyla decorates the metrics and traces with Kubernetes metadata.
 The following labels are added:
 
-* `k8s.daemonset.name`
-* `k8s.deployment.name`
-* `k8s.namespace.name`
-* `k8s.node.name`
-* `k8s.pod.name`
-* `k8s.pod.start_time`
-* `k8s.pod.uid`
-* `k8s.replicaset.name`
-* `k8s.statefulset.name`
+- `k8s.daemonset.name`
+- `k8s.deployment.name`
+- `k8s.namespace.name`
+- `k8s.node.name`
+- `k8s.pod.name`
+- `k8s.pod.start_time`
+- `k8s.pod.uid`
+- `k8s.replicaset.name`
+- `k8s.statefulset.name`
 
 If `enable` is set to `false`, the Kubernetes metadata decorator is disabled.
 
@@ -241,13 +240,13 @@ The same properties are available for both `services` and `exclude_services` blo
 The `services` block configures the services to discover for the component.
 The `exclude_services` block configures the services to exclude for the component.
 
-| Name         | Type     | Description                                                                              | Default | Required |
-| ------------ | -------- | ---------------------------------------------------------------------------------------- | ------- | -------- |
-| `name`       | `string` | The name of the service to match.                                                        | `""`    | no       |
-| `namespace`  | `string` | The namespace of the service to match.                                                   | `""`    | no       |
-| `open_ports` | `string` | The port of the running service for Beyla automatically instrumented with eBPF.          | `""`    | no       |
-| `exe_path`   | `string` | The path of the running service for Beyla automatically instrumented with eBPF.          | `""`    | no       |
-| `containers_only` | `bool`   |Restrict the discovery to processes which are running inside a container.             | `false` | no       |
+| Name              | Type     | Description                                                                     | Default | Required |
+| ----------------- | -------- | ------------------------------------------------------------------------------- | ------- | -------- |
+| `name`            | `string` | The name of the service to match.                                               | `""`    | no       |
+| `namespace`       | `string` | The namespace of the service to match.                                          | `""`    | no       |
+| `open_ports`      | `string` | The port of the running service for Beyla automatically instrumented with eBPF. | `""`    | no       |
+| `exe_path`        | `string` | The path of the running service for Beyla automatically instrumented with eBPF. | `""`    | no       |
+| `containers_only` | `bool`   | Restrict the discovery to processes which are running inside a container.       | `false` | no       |
 
 `exe_path` accepts a regular expression to be matched against the full executable command line, including the directory where the executable resides on the file system.
 
@@ -267,21 +266,21 @@ Set to empty to allow Alloy to instrument itself as well as these other componen
 This `kubernetes` block filters the services to instrument based on their Kubernetes metadata. If you specify other selectors in the same services entry,
 the instrumented processes need to match all the selector properties.
 
-| Name               | Type          | Description                                                                                                 | Default | Required |
-| ------------------ | ------------- | ----------------------------------------------------------------------------------------------------------- | ------- | -------- |
-| `daemonset_name`   | `string`      | Regular expression of Kubernetes DaemonSets to match.                                                       | `""`    | no       |
-| `deployment_name`  | `string`      | Regular expression of Kubernetes Deployments to match.                                                      | `""`    | no       |
-| `namespace`        | `string`      | Regular expression of Kubernetes Namespaces to match.                                                       | `""`    | no       |
-| `owner_name`       | `string`      | Regular expression of Kubernetes owners of running Pods to match.                                           | `""`    | no       |
-| `pod_labels`       | `map(string)` | Key-value pairs of labels with keys matching Kubernetes Pods with the provided value as regular expression. | `{}`    | no       |
-| `pod_annotations`       | `map(string)` | Key-value pairs of labels with keys matching Kubernetes annotations with the provided value as regular expression. | `{}`    | no       |
-| `pod_name`         | `string`      | Regular expression of Kubernetes Pods to match.                                                             | `""`    | no       |
-| `replicaset_name`  | `string`      | Regular expression of Kubernetes ReplicaSets to match.                                                      | `""`    | no       |
-| `statefulset_name` | `string`      | Regular expression of Kubernetes StatefulSets to match.                                                     | `""`    | no       |
+| Name               | Type          | Description                                                                                                        | Default | Required |
+| ------------------ | ------------- | ------------------------------------------------------------------------------------------------------------------ | ------- | -------- |
+| `daemonset_name`   | `string`      | Regular expression of Kubernetes DaemonSets to match.                                                              | `""`    | no       |
+| `deployment_name`  | `string`      | Regular expression of Kubernetes Deployments to match.                                                             | `""`    | no       |
+| `namespace`        | `string`      | Regular expression of Kubernetes Namespaces to match.                                                              | `""`    | no       |
+| `owner_name`       | `string`      | Regular expression of Kubernetes owners of running Pods to match.                                                  | `""`    | no       |
+| `pod_labels`       | `map(string)` | Key-value pairs of labels with keys matching Kubernetes Pods with the provided value as regular expression.        | `{}`    | no       |
+| `pod_annotations`  | `map(string)` | Key-value pairs of labels with keys matching Kubernetes annotations with the provided value as regular expression. | `{}`    | no       |
+| `pod_name`         | `string`      | Regular expression of Kubernetes Pods to match.                                                                    | `""`    | no       |
+| `replicaset_name`  | `string`      | Regular expression of Kubernetes ReplicaSets to match.                                                             | `""`    | no       |
+| `statefulset_name` | `string`      | Regular expression of Kubernetes StatefulSets to match.                                                            | `""`    | no       |
 
 Example:
 
-``` alloy
+```alloy
 beyla.ebpf "default" {
   discovery {
     // Instrument all services with 8080 open port
@@ -308,37 +307,36 @@ beyla.ebpf "default" {
 
 The `ebpf` block configures eBPF-specific settings.
 
-| Name                          | Type          | Description                                                                    | Default      | Required |
-| ----------------------------- | ------------- | ------------------------------------------------------------------------------ | ------------ | -------- |
-| `wakeup_len`                  | `int`         | Number of messages to accumulate before wakeup request.                        | `""`         | no       |
-| `track_request_headers`       | `bool`        | Enable tracking of request headers for Traceparent fields.                     | `false`      | no       |
-| `http_request_timeout`        | `duration`    | Timeout for HTTP requests.                                                     | `30s`        | no       |
-| `context_propagation`         | `string`      | Enables injecting of the Traceparent header value for outgoing HTTP requests.  | `"disabled"` | no       |
-| `high_request_volume`         | `bool`        | Optimize for immediate request information when response is seen.              | `false`      | no       |
-| `heuristic_sql_detect`        | `bool`        | Enable heuristic-based detection of SQL requests.                              | `false`      | no       |
-
+| Name                    | Type       | Description                                                                   | Default      | Required |
+| ----------------------- | ---------- | ----------------------------------------------------------------------------- | ------------ | -------- |
+| `wakeup_len`            | `int`      | Number of messages to accumulate before wakeup request.                       | `""`         | no       |
+| `track_request_headers` | `bool`     | Enable tracking of request headers for Traceparent fields.                    | `false`      | no       |
+| `http_request_timeout`  | `duration` | Timeout for HTTP requests.                                                    | `30s`        | no       |
+| `context_propagation`   | `string`   | Enables injecting of the Traceparent header value for outgoing HTTP requests. | `"disabled"` | no       |
+| `high_request_volume`   | `bool`     | Optimize for immediate request information when response is seen.             | `false`      | no       |
+| `heuristic_sql_detect`  | `bool`     | Enable heuristic-based detection of SQL requests.                             | `false`      | no       |
 
 #### `context_propagation`
 
-`context_propagation` allows Beyla to propagate any incoming context to downstream services. 
+`context_propagation` allows Beyla to propagate any incoming context to downstream services.
 This context propagation support works for any programming language.
 
-For TLS encrypted HTTP requests (HTTPS), the Traceparent header value is encoded at TCP/IP packet level, 
+For TLS encrypted HTTP requests (HTTPS), the Traceparent header value is encoded at TCP/IP packet level,
 and requires that Beyla is present on both sides of the communication.
 
-The TCP/IP packet level encoding uses Linux Traffic Control (TC). 
-eBPF programs that also use TC need to chain correctly with Beyla. 
+The TCP/IP packet level encoding uses Linux Traffic Control (TC).
+eBPF programs that also use TC need to chain correctly with Beyla.
 For more information about chaining programs, refer to the [Cilium compatibility][cilium] documentation.
 
-You can disable the TCP/IP level encoding and TC programs by setting `context_propagation` to `"headers"`. 
+You can disable the TCP/IP level encoding and TC programs by setting `context_propagation` to `"headers"`.
 This context propagation support is fully compatible with any OpenTelemetry distributed tracing library.
 
 `context_propagation` can be set to either one of the following values:
 
-* `all`: Enable both HTTP and IP options context propagation.
-* `headers`: Enable context propagation via the HTTP headers only.
-* `ip`: Enable context propagation via the IP options field only.
-* `disabled`: Disable trace context propagation.
+- `all`: Enable both HTTP and IP options context propagation.
+- `headers`: Enable context propagation via the HTTP headers only.
+- `ip`: Enable context propagation via the IP options field only.
+- `disabled`: Disable trace context propagation.
 
 [cilium]: https://grafana.com/docs/beyla/latest/cilium-compatibility/
 
@@ -354,11 +352,11 @@ It contains the following blocks:
 
 The `application` block configures filtering of application attributes.
 
-| Name        | Type     | Description                              | Required |
-| ----------- | -------- | -----------------------------------------| -------- |
-| `attr`      | `string` | The name of the attribute to match.      | yes      |
-| `match`     | `string` | String to match attribute values.        | no       |
-| `not_match` | `string` | String to exclude matching values.       | no       |
+| Name        | Type     | Description                         | Required |
+| ----------- | -------- | ----------------------------------- | -------- |
+| `attr`      | `string` | The name of the attribute to match. | yes      |
+| `match`     | `string` | String to match attribute values.   | no       |
+| `not_match` | `string` | String to exclude matching values.  | no       |
 
 Both properties accept a
 [glob-like](https://github.com/gobwas/glob) string (it can be a full value or include
@@ -368,11 +366,11 @@ wildcards).
 
 The `network` block configures filtering of network attributes.
 
-| Name        | Type     | Description                              | Required |
-| ----------- | -------- | ---------------------------------------- | -------- |
-| `attr`      | `string` | The name of the attribute to match.      | yes      |
-| `match`     | `string` | String to match attribute values.        | no       |
-| `not_match` | `string` | String to exclude matching values.       | no       |
+| Name        | Type     | Description                         | Required |
+| ----------- | -------- | ----------------------------------- | -------- |
+| `attr`      | `string` | The name of the attribute to match. | yes      |
+| `match`     | `string` | String to match attribute values.   | no       |
+| `not_match` | `string` | String to exclude matching values.  | no       |
 
 Both properties accept a
 [glob-like](https://github.com/gobwas/glob) string (it can be a full value or include
@@ -407,20 +405,20 @@ The `metrics` block configures which metrics Beyla collects.
 
 `features` is a list of features to enable for the metrics. The following features are available:
 
-* `application` exports application-level metrics.
-* `application_process` exports metrics about the processes that run the instrumented application.
-* `application_service_graph` exports application-level service graph metrics.
-* `application_span` exports application-level metrics in traces span metrics format.
-* `network` exports network-level metrics.
+- `application` exports application-level metrics.
+- `application_process` exports metrics about the processes that run the instrumented application.
+- `application_service_graph` exports application-level service graph metrics.
+- `application_span` exports application-level metrics in traces span metrics format.
+- `network` exports network-level metrics.
 
 `instrumentations` is a list of instrumentations to enable for the metrics. The following instrumentations are available:
 
-* `*` enables all `instrumentations`. If `*` is present in the list, the other values are ignored.
-* `grpc` enables the collection of gRPC application metrics.
-* `http` enables the collection of HTTP/HTTPS/HTTP2 application metrics.
-* `kafka` enables the collection of Kafka client/server message queue metrics.
-* `redis` enables the collection of Redis client/server database metrics.
-* `sql` enables the collection of SQL database client call metrics.
+- `*` enables all `instrumentations`. If `*` is present in the list, the other values are ignored.
+- `grpc` enables the collection of gRPC application metrics.
+- `http` enables the collection of HTTP/HTTPS/HTTP2 application metrics.
+- `kafka` enables the collection of Kafka client/server message queue metrics.
+- `redis` enables the collection of Redis client/server database metrics.
+- `sql` enables the collection of SQL database client call metrics.
 
 #### `network` metrics
 
@@ -444,10 +442,10 @@ The `network` block configures network metrics options for Beyla. You must appen
 
 You can set `source` to `socket_filter` or `tc`.
 
-* `socket_filter` is used as an event source.
-   Beyla installs an eBPF Linux socket filter to capture the network events.
-* `tc` is used as a kernel module.
-   Beyla uses the Linux Traffic Control ingress and egress filters to capture the network events, in a direct action mode.
+- `socket_filter` is used as an event source.
+  Beyla installs an eBPF Linux socket filter to capture the network events.
+- `tc` is used as a kernel module.
+  Beyla uses the Linux Traffic Control ingress and egress filters to capture the network events, in a direct action mode.
 
 You can set `agent_ip_iface` to `external` (default), `local`, or `name:<interface name>`, for example `name:eth0`.
 
@@ -457,33 +455,33 @@ You can set `agent_ip_type` to `ipv4`, `ipv6`, or `any` (default).
 
 {{< column-list >}}
 
-* `AH`
-* `BEETPH`
-* `COMP`
-* `DCCP`
-* `EGP`
-* `ENCAP`
-* `ESP`
-* `ETHERNET`
-* `GRE`
-* `ICMP`
-* `IDP`
-* `IGMP`
-* `IP`
-* `IPIP`
-* `IPV6`
-* `L2TP`
-* `MPLS`
-* `MTP`
-* `PIM`
-* `PUP`
-* `RAW`
-* `RSVP`
-* `SCTP`
-* `TCP`
-* `TP`
-* `UDP`
-* `UDPLITE`
+- `AH`
+- `BEETPH`
+- `COMP`
+- `DCCP`
+- `EGP`
+- `ENCAP`
+- `ESP`
+- `ETHERNET`
+- `GRE`
+- `ICMP`
+- `IDP`
+- `IGMP`
+- `IP`
+- `IPIP`
+- `IPV6`
+- `L2TP`
+- `MPLS`
+- `MTP`
+- `PIM`
+- `PUP`
+- `RAW`
+- `RSVP`
+- `SCTP`
+- `TCP`
+- `TP`
+- `UDP`
+- `UDPLITE`
 
 {{< /column-list >}}
 
@@ -505,24 +503,24 @@ The `routes` block configures the routes to match HTTP paths into user-provided 
 
 `ignore_mode` properties are:
 
-* `all` discards metrics and traces matching the `ignored_patterns`.
-* `metrics` discards only the metrics that match the `ignored_patterns`. No trace events are ignored.
-* `traces` discards only the traces that match the `ignored_patterns`. No metric events are ignored.
+- `all` discards metrics and traces matching the `ignored_patterns`.
+- `metrics` discards only the metrics that match the `ignored_patterns`. No trace events are ignored.
+- `traces` discards only the traces that match the `ignored_patterns`. No metric events are ignored.
 
 `patterns` and `ignore_patterns` are a list of patterns which a URL path with specific tags which allow for grouping path segments (or ignored them).
 The matcher tags can be in the `:name` or `{name}` format.
 
 `unmatched` properties are:
 
-* `heuristic` automatically derives the `http.route` field property from the path value based on the following rules:
-  * Any path components that have numbers or characters outside of the ASCII alphabet (or `-` and _), are replaced by an asterisk `*`.
-  * Any alphabetical components that don't look like words are replaced by an asterisk `*`.
-* `path` copies the `http.route` field property to the path value.
+- `heuristic` automatically derives the `http.route` field property from the path value based on the following rules:
+  - Any path components that have numbers or characters outside of the ASCII alphabet (or `-` and \_), are replaced by an asterisk `*`.
+  - Any alphabetical components that don't look like words are replaced by an asterisk `*`.
+- `path` copies the `http.route` field property to the path value.
   {{< admonition type="caution" >}}
   This property could lead to a cardinality explosion on the ingester side.
   {{< /admonition >}}
-* `unset` leaves the `http.route` property as unset.
-* `wildcard` sets the `http.route` field property to a generic asterisk-based `/**` value.
+- `unset` leaves the `http.route` property as unset.
+- `wildcard` sets the `http.route` field property to a generic asterisk-based `/**` value.
 
 ## Exported fields
 
@@ -562,7 +560,7 @@ beyla.ebpf "default" {
 
   metrics {
     features = [
-     "application", 
+     "application",
     ]
   }
 }
@@ -606,7 +604,7 @@ beyla.ebpf "default" {
   }
   metrics {
     features = [
-     "application", 
+     "application",
     ]
   }
 }
@@ -631,12 +629,12 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-* _`<OPEN_PORT>`_: The port of the running service for Beyla automatically instrumented with eBPF.
-* _`<NAMESPACE>`_: The namespaces of the applications running in a Kubernetes cluster.
-* _`<POD_NAME>`_: The name of the Pods running in a Kubernetes cluster.
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+- _`<OPEN_PORT>`_: The port of the running service for Beyla automatically instrumented with eBPF.
+- _`<NAMESPACE>`_: The namespaces of the applications running in a Kubernetes cluster.
+- _`<POD_NAME>`_: The name of the Pods running in a Kubernetes cluster.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 ### Traces
 
@@ -669,8 +667,8 @@ otelcol.exporter.otlp "default" {
 
 Replace the following:
 
-* _`<OPEN_PORT>`_: The port of the running service for Beyla automatically instrumented with eBPF.
-* _`<OTLP_ENDPOINT>`_: The endpoint of the OpenTelemetry Collector to send traces to.
+- _`<OPEN_PORT>`_: The port of the running service for Beyla automatically instrumented with eBPF.
+- _`<OTLP_ENDPOINT>`_: The endpoint of the OpenTelemetry Collector to send traces to.
 
 [Grafana Beyla]: https://github.com/grafana/beyla
 [eBPF website]: https://ebpf.io/

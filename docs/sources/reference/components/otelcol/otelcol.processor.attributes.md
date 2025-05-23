@@ -102,39 +102,39 @@ The `value` data type must be either a number, string, or boolean.
 
 The supported values for `action` are:
 
-* `insert`: Inserts an attribute in input data where the key doesn't already exist.
-  * The `key` attribute is required. It specifies the attribute to act upon.
-  * One of the `value`, `from_attribute` or `from_context` attributes is required.
-* `update`: Updates an attribute in input data where the key does exist.
-  * The `key`attribute is required.
+- `insert`: Inserts an attribute in input data where the key doesn't already exist.
+  - The `key` attribute is required. It specifies the attribute to act upon.
+  - One of the `value`, `from_attribute` or `from_context` attributes is required.
+- `update`: Updates an attribute in input data where the key does exist.
+  - The `key`attribute is required.
     It specifies the attribute to act upon.
-  * One of the `value`, `from_attribute` or `from_context` attributes is required.
-* `upsert`: Either inserts an attribute in input data where the key doesn't already exist or updates an attribute in input data where the key does exist.
-  * The `key`attribute is required. It specifies the attribute to act upon.
-  * One of the `value`, `from_attribute` or `from_context`attributes is required:
-    * `value` specifies the value to populate for the key.
-    * `from_attribute` specifies the attribute from the input data to use to populate the value.
+  - One of the `value`, `from_attribute` or `from_context` attributes is required.
+- `upsert`: Either inserts an attribute in input data where the key doesn't already exist or updates an attribute in input data where the key does exist.
+  - The `key`attribute is required. It specifies the attribute to act upon.
+  - One of the `value`, `from_attribute` or `from_context`attributes is required:
+    - `value` specifies the value to populate for the key.
+    - `from_attribute` specifies the attribute from the input data to use to populate the value.
       If the attribute doesn't exist, no action is performed.
-    * `from_context` specifies the context value used to populate the attribute value.
+    - `from_context` specifies the context value used to populate the attribute value.
       If the key is prefixed with `metadata.`, the values are searched in the receiver's transport protocol for additional information like gRPC Metadata or HTTP Headers.
       If the key is prefixed with `auth.`, the values are searched in the authentication information set by the server authenticator.
       Refer to the server authenticator documentation part of your pipeline for more information about which attributes are available.
       If the key is `client.address`, the value will be set to the client address.
       If the key doesn't exist, no action is performed.
       If the key has multiple values the values will be joined with a `;` separator.
-* `hash`: Hashes (SHA1) an attribute value.
-  * The `key` attribute or the `pattern` attributes is required.
-* `extract`: Extracts values using a regular expression rule from the input key to target keys specified in the rule.
+- `hash`: Hashes (SHA1) an attribute value.
+  - The `key` attribute or the `pattern` attributes is required.
+- `extract`: Extracts values using a regular expression rule from the input key to target keys specified in the rule.
   If a target key already exists, it will be overridden.
   Note: It behaves similarly to the Span Processor `to_attributes` setting with the attribute as the source.
-  * The `key` attribute is required. It specifies the attribute to extract values from. The value of `key` isn't altered.
-  * The `pattern` attribute is required. It's the regular expression pattern used to extract attributes from the value of `key`.
+  - The `key` attribute is required. It specifies the attribute to extract values from. The value of `key` isn't altered.
+  - The `pattern` attribute is required. It's the regular expression pattern used to extract attributes from the value of `key`.
     The submatchers must be named. If attributes already exist, they will be overwritten.
-* `convert`: Converts an attribute to a specified type.
-  * The `key` attribute is required. It specifies the attribute to act upon.
-  * The `converted_type` attribute is required and must be one of int, double or string.
-* `delete`: Deletes an attribute from the input data.
-  * The `key` attribute or the `pattern` attribute is required. It specifies the attribute to act upon.
+- `convert`: Converts an attribute to a specified type.
+  - The `key` attribute is required. It specifies the attribute to act upon.
+  - The `converted_type` attribute is required and must be one of int, double or string.
+- `delete`: Deletes an attribute from the input data.
+  - The `key` attribute or the `pattern` attribute is required. It specifies the attribute to act upon.
 
 ### `debug_metrics`
 
@@ -150,17 +150,18 @@ If you would like to not propagate certain signals to downstream components,
 consider a processor such as [otelcol.processor.tail_sampling][].
 
 [otelcol.processor.tail_sampling]: ../otelcol.processor.tail_sampling/
+
 {{< /admonition >}}
 
 {{< docs/shared lookup="reference/components/match-properties-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 One of the following is also required:
 
-* For spans, one of `services`, `span_names`, `span_kinds`, [attribute][], [resource][], or [library][] must be specified with a non-empty value for a valid configuration.
+- For spans, one of `services`, `span_names`, `span_kinds`, [attribute][], [resource][], or [library][] must be specified with a non-empty value for a valid configuration.
   The `log_bodies`, `log_severity_texts`, `log_severity`, and `metric_names` attributes are invalid.
-* For logs, one of `log_bodies`, `log_severity_texts`, `log_severity`, [attribute][], [resource][], or [library][] must be specified with a non-empty value for a valid configuration.
+- For logs, one of `log_bodies`, `log_severity_texts`, `log_severity`, [attribute][], [resource][], or [library][] must be specified with a non-empty value for a valid configuration.
   The `span_names`, `span_kinds`, `metric_names`, and `services` attributes are invalid.
-* For metrics, `metric_names` must be specified with a valid non-empty value for a valid configuration.
+- For metrics, `metric_names` must be specified with a valid non-empty value for a valid configuration.
   The `span_names`, `span_kinds`, `log_bodies`, `log_severity_texts`, `log_severity`, `services`, [attribute][], [resource][], and [library][] attributes are invalid.
 
 If the configuration includes filters which are specific to a particular signal type, it's best to include only that signal type in the component's output.
@@ -194,11 +195,11 @@ The `include` block provides an option to include data being fed into the [actio
 
 One of the following is also required:
 
-* For spans, one of `services`, `span_names`, `span_kinds`, [attribute][], [resource][], or [library][] must be specified with a non-empty value for a valid configuration.
+- For spans, one of `services`, `span_names`, `span_kinds`, [attribute][], [resource][], or [library][] must be specified with a non-empty value for a valid configuration.
   The `log_bodies`, `log_severity_texts`, `log_severity`, and `metric_names` attributes are invalid.
-* For logs, one of `log_bodies`, `log_severity_texts`, `log_severity`, [attribute][], [resource][], or [library][] must be specified with a non-empty value for a valid configuration.
+- For logs, one of `log_bodies`, `log_severity_texts`, `log_severity`, [attribute][], [resource][], or [library][] must be specified with a non-empty value for a valid configuration.
   The `span_names`, `span_kinds`, `metric_names`, and `services` attributes are invalid.
-* For metrics, one of `metric_names` or `resources` must be specified with a valid non-empty value for a valid configuration.
+- For metrics, one of `metric_names` or `resources` must be specified with a valid non-empty value for a valid configuration.
   The `span_names`, `span_kinds`, `log_bodies`, `log_severity_texts`, `log_severity`, `services`, [attribute][], [resource][], and [library][] attributes are invalid.
 
 If the configuration includes filters which are specific to a particular signal type, it's best to include only that signal type in the component's output.
@@ -331,13 +332,13 @@ otelcol.exporter.otlp "default" {
 
 For example, the following spans match the properties and won't be processed by the processor:
 
-* Span1 Name: `"svcB", Attributes: {env: "dev", test_request: 123, credit_card: 1234}`
-* Span2 Name: `"svcA", Attributes: {env: "dev", test_request: false}`
+- Span1 Name: `"svcB", Attributes: {env: "dev", test_request: 123, credit_card: 1234}`
+- Span2 Name: `"svcA", Attributes: {env: "dev", test_request: false}`
 
 The following spans don't match the properties and the processor actions are applied to it:
 
-* Span3 Name: `"svcB", Attributes: {env: 1, test_request: "dev", credit_card: 1234}`
-* Span4 Name: `"svcC", Attributes: {env: "dev", test_request: false}`
+- Span3 Name: `"svcB", Attributes: {env: 1, test_request: "dev", credit_card: 1234}`
+- Span4 Name: `"svcC", Attributes: {env: "dev", test_request: false}`
 
 Due to the presence of the `services` attribute, this configuration works only for trace signals.
 This is why only traces are configured in the `output` block.
@@ -478,11 +479,11 @@ This processor will obfuscate the `db.statement` attribute in spans where the `d
 ```alloy
 otelcol.processor.attributes "default" {
     include {
-        // "match_type" of "regexp" defines that the "value" attributes 
+        // "match_type" of "regexp" defines that the "value" attributes
         // in the "attribute" blocks are regexp-es.
         match_type = "regexp"
 
-        // This attribute ('db.statement') must exist in the span and match 
+        // This attribute ('db.statement') must exist in the span and match
         // the regex ('SELECT \* FROM USERS.*') for a match.
         attribute {
             key = "db.statement"
@@ -622,6 +623,7 @@ otelcol.processor.attributes "default" {
     }
 }
 ```
+
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components

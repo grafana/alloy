@@ -50,9 +50,9 @@ The `config_file` argument points to a YAML file defining which `blackbox_export
 The `config` argument must be a YAML document as string defining which `blackbox_exporter` modules to use.
 `config` is typically loaded by using the exports of another component. For example:
 
-* `local.file.LABEL.content`
-* `remote.http.LABEL.content`
-* `remote.s3.LABEL.content`
+- `local.file.LABEL.content`
+- `remote.http.LABEL.content`
+- `remote.s3.LABEL.content`
 
 The `timeout` attribute in `config` or `config_file` has an effective upper limit of 10 seconds. Refer to the Prometheus blackbox exporter [issue 751](https://github.com/prometheus/blackbox_exporter/issues/751) for more information.
 
@@ -61,9 +61,9 @@ The `targets` argument must be used when blackbox targets can't be passed as a t
 
 You can set the following labels to a target:
 
-* `name`: The name of the target to probe (required).
-* `address`: The address of the target to probe (required).
-* `module`: The blackbox module to use to probe.
+- `name`: The name of the target to probe (required).
+- `address`: The address of the target to probe (required).
+- `module`: The blackbox module to use to probe.
 
 The component passes any additional labels to the exported target.
 
@@ -162,9 +162,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 ### Collect metrics using an embedded configuration
 
@@ -243,13 +243,13 @@ The YAML file in this example looks like this:
 
 ```yaml
 - targets:
-  - localhost:9009
+    - localhost:9009
   labels:
     name: t1
     module: http_2xx
     other_label: example
 - targets:
-  - localhost:9009
+    - localhost:9009
   labels:
     name: t2
     module: http_2xx
@@ -257,9 +257,9 @@ The YAML file in this example looks like this:
 
 Replace the following:
 
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 [scrape]: ../prometheus.scrape/
 [disc]: ../../discovery/discovery.file/

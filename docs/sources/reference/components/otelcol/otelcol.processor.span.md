@@ -155,9 +155,9 @@ At least one of these 2 fields must be set.
 
 `from_attributes` represents the attribute keys to pull the values from to generate the new span name:
 
-* All attribute keys are required in the span to rename a span.
+- All attribute keys are required in the span to rename a span.
   If any attribute is missing from the span, no rename will occur.
-* The new span name is constructed in order of the `from_attributes` specified in the configuration.
+- The new span name is constructed in order of the `from_attributes` specified in the configuration.
 
 `separator` is the string used to separate attributes values in the new span name.
 If no value is set, no separator is used between attribute values.
@@ -204,9 +204,9 @@ The following attributes are supported:
 
 The supported values for `code` are:
 
-* `Ok`
-* `Error`
-* `Unset`
+- `Ok`
+- `Error`
+- `Unset`
 
 `description` should only be specified if `code` is set to `Error`.
 
@@ -341,9 +341,9 @@ This example renames the span name to `{operation_website}`
 and adds the attribute `{Key: operation_website, Value: <old span name> }`
 if the span has the following properties:
 
-* Service name contains the word `banks`.
-* The span name contains `/` anywhere in the string.
-* The span name isn't `donot/change`.
+- Service name contains the word `banks`.
+- The span name contains `/` anywhere in the string.
+- The span name isn't `donot/change`.
 
 ```alloy
 otelcol.processor.span "default" {
@@ -407,6 +407,7 @@ otelcol.processor.span "default" {
   }
 }
 ```
+
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components

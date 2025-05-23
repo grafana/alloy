@@ -110,7 +110,7 @@ The following arguments are supported:
 
 The `autodiscover` block supports the following blocks:
 
-|                      Block                      |            Description            | Required |
+| Block                                           | Description                       | Required |
 | ----------------------------------------------- | --------------------------------- | -------- |
 | [streams](#logs--groups--autodiscover--streams) | Configures log streams filtering. | no       |
 
@@ -131,7 +131,7 @@ The `named` block explicitly configures specific log groups to collect from. Mul
 
 The following arguments are supported:
 
-|     Name     |    Type    |              Description               | Required |
+| Name         | Type       | Description                            | Required |
 | ------------ | ---------- | -------------------------------------- | -------- |
 | `group_name` | `string`   | Name of the CloudWatch log group.      | yes      |
 | `names`      | `[]string` | List of exact stream names to collect. | no       |
@@ -198,7 +198,6 @@ otelcol.exporter.otlp "default" {
 `otelcol.receiver.awscloudwatch` can accept arguments from the following components:
 
 - Components that export [OpenTelemetry `otelcol.Consumer`](../../../compatibility/#opentelemetry-otelcolconsumer-exporters)
-
 
 {{< admonition type="note" >}}
 Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.

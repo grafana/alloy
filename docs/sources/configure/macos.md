@@ -38,12 +38,12 @@ To customize the {{< param "PRODUCT_NAME" >}} service on macOS, perform the foll
 
 1. Modify the `service` section as desired to change things such as:
 
-   * Location of log files.
+   - Location of log files.
 
 1. Modify the `COMMAND` in the `install` section as desired to change things such as:
 
-   * The configuration file used by {{< param "PRODUCT_NAME" >}}.
-   * Flags passed to the {{< param "PRODUCT_NAME" >}} binary.
+   - The configuration file used by {{< param "PRODUCT_NAME" >}}.
+   - Flags passed to the {{< param "PRODUCT_NAME" >}} binary.
 
 1. Save the modified file.
 

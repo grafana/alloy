@@ -106,15 +106,15 @@ The following arguments are supported:
 | `send_exemplars`         | `bool`              | Whether exemplars should be sent.                                                                | `true`  | no       |
 | `send_native_histograms` | `bool`              | Whether native histograms should be sent.                                                        | `false` | no       |
 
- At most, one of the following can be provided:
+At most, one of the following can be provided:
 
-* [`authorization`][authorization] block
-* [`azuread`][azuread] block
-* [`basic_auth`][basic_auth] block
-* [`bearer_token_file`](#endpoint) argument
-* [`bearer_token`](#endpoint) argument
-* [`oauth2`][oauth2] block
-* [`sigv4`][sigv4] block
+- [`authorization`][authorization] block
+- [`azuread`][azuread] block
+- [`basic_auth`][basic_auth] block
+- [`bearer_token_file`](#endpoint) argument
+- [`bearer_token`](#endpoint) argument
+- [`oauth2`][oauth2] block
+- [`sigv4`][sigv4] block
 
 When multiple `endpoint` blocks are provided, metrics are concurrently sent to all configured locations.
 Each endpoint has a _queue_ which is used to read metrics from the WAL and queue them for sending.
@@ -231,8 +231,8 @@ The `wal` block customizes the Write-Ahead Log (WAL) used to temporarily store m
 
 The WAL serves two primary purposes:
 
-* Buffer unsent metrics in case of intermittent network issues.
-* Populate in-memory cache after a process restart.
+- Buffer unsent metrics in case of intermittent network issues.
+- Populate in-memory cache after a process restart.
 
 The WAL is located inside a component-specific directory relative to the storage path {{< param "PRODUCT_NAME" >}} is configured to use.
 Refer to the [`run` documentation][run] for information about how to change the storage path.
@@ -263,39 +263,39 @@ In those cases, exported fields are kept at their last healthy values.
 
 ## Debug metrics
 
-* `prometheus_remote_storage_bytes_total` (counter): Total number of bytes of data sent by queues after compression.
-* `prometheus_remote_storage_enqueue_retries_total` (counter): Total number of times enqueue has failed because a shard's queue was full.
-* `prometheus_remote_storage_exemplars_dropped_total` (counter): Total number of exemplars which were dropped after being read from the WAL before being sent to `remote_write` because of an unknown reference ID.
-* `prometheus_remote_storage_exemplars_failed_total` (counter): Total number of exemplars that failed to send to remote storage due to non-recoverable errors.
-* `prometheus_remote_storage_exemplars_in_total` (counter): Exemplars read into remote storage.
-* `prometheus_remote_storage_exemplars_pending` (gauge): The number of exemplars pending in shards to be sent to remote storage.
-* `prometheus_remote_storage_exemplars_retried_total` (counter): Total number of exemplars that failed to send to remote storage but were retried due to recoverable errors.
-* `prometheus_remote_storage_exemplars_total` (counter): Total number of exemplars sent to remote storage.
-* `prometheus_remote_storage_max_samples_per_send` (gauge): The maximum number of samples each shard is allowed to send in a single request.
-* `prometheus_remote_storage_metadata_bytes_total` (counter): Total number of bytes of metadata sent by queues after compression.
-* `prometheus_remote_storage_metadata_failed_total` (counter): Total number of metadata entries that failed to send to remote storage due to non-recoverable errors.
-* `prometheus_remote_storage_metadata_retried_total` (counter): Total number of metadata entries that failed to send to remote storage but were retried due to recoverable errors.
-* `prometheus_remote_storage_metadata_total` (counter): Total number of metadata entries sent to remote storage.
-* `prometheus_remote_storage_queue_highest_sent_timestamp_seconds` (gauge): Unix timestamp of the latest WAL sample successfully sent by a queue.
-* `prometheus_remote_storage_samples_dropped_total` (counter): Total number of samples which were dropped after being read from the WAL before being sent to `remote_write` because of an unknown reference ID.
-* `prometheus_remote_storage_samples_failed_total` (counter): Total number of samples that failed to send to remote storage due to non-recoverable errors.
-* `prometheus_remote_storage_samples_in_total` (counter): Samples read into remote storage.
-* `prometheus_remote_storage_samples_pending` (gauge): The number of samples pending in shards to be sent to remote storage.
-* `prometheus_remote_storage_samples_retries_total` (counter): Total number of samples that failed to send to remote storage but were retried due to recoverable errors.
-* `prometheus_remote_storage_samples_total` (counter): Total number of samples sent to remote storage.
-* `prometheus_remote_storage_sent_batch_duration_seconds` (histogram): Duration of send calls to remote storage.
-* `prometheus_remote_storage_shard_capacity` (gauge): The capacity of shards within a given queue.
-* `prometheus_remote_storage_shards_desired` (gauge): The number of shards a queue wants to run to be able to keep up with the amount of incoming metrics.
-* `prometheus_remote_storage_shards_max` (gauge): The maximum number of a shards a queue is allowed to run.
-* `prometheus_remote_storage_shards_min` (gauge): The minimum number of shards a queue is allowed to run.
-* `prometheus_remote_storage_shards` (gauge): The number of shards used for concurrent delivery of metrics to an endpoint.
-* `prometheus_remote_write_wal_exemplars_appended_total` (counter): Total number of exemplars appended to the WAL.
-* `prometheus_remote_write_wal_out_of_order_samples_total` (counter): Total number of out of order samples ingestion failed attempts.
-* `prometheus_remote_write_wal_samples_appended_total` (counter): Total number of samples appended to the WAL.
-* `prometheus_remote_write_wal_storage_active_series` (gauge): Current number of active series being tracked by the WAL.
-* `prometheus_remote_write_wal_storage_created_series_total` (counter): Total number of created series appended to the WAL.
-* `prometheus_remote_write_wal_storage_deleted_series` (gauge): Current number of series marked for deletion from memory.
-* `prometheus_remote_write_wal_storage_removed_series_total` (counter): Total number of series removed from the WAL.
+- `prometheus_remote_storage_bytes_total` (counter): Total number of bytes of data sent by queues after compression.
+- `prometheus_remote_storage_enqueue_retries_total` (counter): Total number of times enqueue has failed because a shard's queue was full.
+- `prometheus_remote_storage_exemplars_dropped_total` (counter): Total number of exemplars which were dropped after being read from the WAL before being sent to `remote_write` because of an unknown reference ID.
+- `prometheus_remote_storage_exemplars_failed_total` (counter): Total number of exemplars that failed to send to remote storage due to non-recoverable errors.
+- `prometheus_remote_storage_exemplars_in_total` (counter): Exemplars read into remote storage.
+- `prometheus_remote_storage_exemplars_pending` (gauge): The number of exemplars pending in shards to be sent to remote storage.
+- `prometheus_remote_storage_exemplars_retried_total` (counter): Total number of exemplars that failed to send to remote storage but were retried due to recoverable errors.
+- `prometheus_remote_storage_exemplars_total` (counter): Total number of exemplars sent to remote storage.
+- `prometheus_remote_storage_max_samples_per_send` (gauge): The maximum number of samples each shard is allowed to send in a single request.
+- `prometheus_remote_storage_metadata_bytes_total` (counter): Total number of bytes of metadata sent by queues after compression.
+- `prometheus_remote_storage_metadata_failed_total` (counter): Total number of metadata entries that failed to send to remote storage due to non-recoverable errors.
+- `prometheus_remote_storage_metadata_retried_total` (counter): Total number of metadata entries that failed to send to remote storage but were retried due to recoverable errors.
+- `prometheus_remote_storage_metadata_total` (counter): Total number of metadata entries sent to remote storage.
+- `prometheus_remote_storage_queue_highest_sent_timestamp_seconds` (gauge): Unix timestamp of the latest WAL sample successfully sent by a queue.
+- `prometheus_remote_storage_samples_dropped_total` (counter): Total number of samples which were dropped after being read from the WAL before being sent to `remote_write` because of an unknown reference ID.
+- `prometheus_remote_storage_samples_failed_total` (counter): Total number of samples that failed to send to remote storage due to non-recoverable errors.
+- `prometheus_remote_storage_samples_in_total` (counter): Samples read into remote storage.
+- `prometheus_remote_storage_samples_pending` (gauge): The number of samples pending in shards to be sent to remote storage.
+- `prometheus_remote_storage_samples_retries_total` (counter): Total number of samples that failed to send to remote storage but were retried due to recoverable errors.
+- `prometheus_remote_storage_samples_total` (counter): Total number of samples sent to remote storage.
+- `prometheus_remote_storage_sent_batch_duration_seconds` (histogram): Duration of send calls to remote storage.
+- `prometheus_remote_storage_shard_capacity` (gauge): The capacity of shards within a given queue.
+- `prometheus_remote_storage_shards_desired` (gauge): The number of shards a queue wants to run to be able to keep up with the amount of incoming metrics.
+- `prometheus_remote_storage_shards_max` (gauge): The maximum number of a shards a queue is allowed to run.
+- `prometheus_remote_storage_shards_min` (gauge): The minimum number of shards a queue is allowed to run.
+- `prometheus_remote_storage_shards` (gauge): The number of shards used for concurrent delivery of metrics to an endpoint.
+- `prometheus_remote_write_wal_exemplars_appended_total` (counter): Total number of exemplars appended to the WAL.
+- `prometheus_remote_write_wal_out_of_order_samples_total` (counter): Total number of out of order samples ingestion failed attempts.
+- `prometheus_remote_write_wal_samples_appended_total` (counter): Total number of samples appended to the WAL.
+- `prometheus_remote_write_wal_storage_active_series` (gauge): Current number of active series being tracked by the WAL.
+- `prometheus_remote_write_wal_storage_created_series_total` (counter): Total number of created series appended to the WAL.
+- `prometheus_remote_write_wal_storage_deleted_series` (gauge): Current number of series marked for deletion from memory.
+- `prometheus_remote_write_wal_storage_removed_series_total` (counter): Total number of series removed from the WAL.
 
 ## Examples
 
@@ -466,10 +466,10 @@ However, if you run {{< param "PRODUCT_NAME" >}} at a large scale and each insta
 
 {{< param "PRODUCT_NAME" >}} exposes a few metrics that you can use to monitor the remote write shards:
 
-* `prometheus_remote_storage_shards_desired` (gauge): The number of shards a queue wants to run to keep up with the number of incoming metrics.
-* `prometheus_remote_storage_shards_max` (gauge): The maximum number of shards a queue is allowed to run.
-* `prometheus_remote_storage_shards_min` (gauge): The minimum number of shards a queue is allowed to run.
-* `prometheus_remote_storage_shards` (gauge): The number of shards used for concurrent delivery of metrics to an endpoint.
+- `prometheus_remote_storage_shards_desired` (gauge): The number of shards a queue wants to run to keep up with the number of incoming metrics.
+- `prometheus_remote_storage_shards_max` (gauge): The maximum number of shards a queue is allowed to run.
+- `prometheus_remote_storage_shards_min` (gauge): The minimum number of shards a queue is allowed to run.
+- `prometheus_remote_storage_shards` (gauge): The number of shards used for concurrent delivery of metrics to an endpoint.
 
 If you're already running {{< param "PRODUCT_NAME" >}}, a rule of thumb is to set `max_shards` to 4x shard utilization.
 Using the metrics explained above, you can run the following PromQL instant query to compute the suggested `max_shards` value for each remote write endpoint `url`:

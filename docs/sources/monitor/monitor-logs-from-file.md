@@ -23,8 +23,8 @@ In this example scenario, {{< param "PRODUCT_NAME" >}} collects logs from a loca
 
 Ensure you have the following:
 
-* [Docker](https://www.docker.com/)
-* [Git](https://git-scm.com/)
+- [Docker](https://www.docker.com/)
+- [Git](https://git-scm.com/)
 
 {{< admonition type="note" >}}
 You need administrator privileges to run `docker` commands.
@@ -104,17 +104,17 @@ livedebugging {
 
 The logging configuration in this example requires three components:
 
-* `local.file_match`
-* `loki.source.file`
-* `loki.write`
+- `local.file_match`
+- `loki.source.file`
+- `loki.write`
 
 #### `local.file_match`
 
 The [`local.file_match`][local.file_match] component discovers files on the local filesystem using glob patterns.
 In this example, the component requires the following arguments:
 
-* `path_targets`: Targets to expand. Looks for glob patterns on the `__path__` key.
-* `sync_period`: How often to sync the filesystem and targets.
+- `path_targets`: Targets to expand. Looks for glob patterns on the `__path__` key.
+- `sync_period`: How often to sync the filesystem and targets.
 
 ```alloy
 local.file_match "local_files" {
@@ -128,9 +128,9 @@ local.file_match "local_files" {
 The [`loki.source.file`][loki.source.file] component reads log entries from files and forwards them to other Loki components.
 In this example, the component requires the following arguments:
 
-* `targets`: The list of files to read logs from.
-* `forward_to`: The list of receivers to send log entries to.
-* `tail_from_end`: Whether a log file is tailed from the end if a stored position isn't found.
+- `targets`: The list of files to read logs from.
+- `forward_to`: The list of receivers to send log entries to.
+- `tail_from_end`: Whether a log file is tailed from the end if a stored position isn't found.
 
 ```alloy
 loki.source.file "log_scrape" {
@@ -145,7 +145,7 @@ loki.source.file "log_scrape" {
 The [`loki.write`][loki.write] component writes logs to a Loki destination.
 In this example, the component requires the following argument:
 
-* `url`: Defines the full URL endpoint in Loki to send logs to.
+- `url`: Defines the full URL endpoint in Loki to send logs to.
 
 ```alloy
 loki.write "local" {

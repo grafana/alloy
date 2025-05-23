@@ -26,9 +26,9 @@ Multiple `otelcol.processor.discovery` components can be specified by giving the
 It can be difficult to follow [OpenTelemetry semantic conventions][OTEL sem conv] when
 adding resource attributes via `otelcol.processor.discovery`:
 
-* `discovery.relabel` and most `discovery.*` processes such as `discovery.kubernetes` can only emit [Prometheus-compatible labels][Prometheus data model].
-* Prometheus labels use underscores (`_`) in labels names, whereas [OpenTelemetry semantic conventions][OTEL sem conv] use dots (`.`).
-* Although `otelcol.processor.discovery` is able to work with non-Prometheus labels such as ones containing dots, the fact that `discovery.*` components are generally only compatible with Prometheus naming conventions makes it hard to follow OpenTelemetry  semantic conventions in `otelcol.processor.discovery`.
+- `discovery.relabel` and most `discovery.*` processes such as `discovery.kubernetes` can only emit [Prometheus-compatible labels][Prometheus data model].
+- Prometheus labels use underscores (`_`) in labels names, whereas [OpenTelemetry semantic conventions][OTEL sem conv] use dots (`.`).
+- Although `otelcol.processor.discovery` is able to work with non-Prometheus labels such as ones containing dots, the fact that `discovery.*` components are generally only compatible with Prometheus naming conventions makes it hard to follow OpenTelemetry semantic conventions in `otelcol.processor.discovery`.
 
 If your use case is to add resource attributes which contain Kubernetes metadata, consider using `otelcol.processor.k8sattributes` instead.
 
@@ -37,6 +37,7 @@ The main use case for `otelcol.processor.discovery` is for users who migrate to 
 [Prometheus data model]: https://prometheus.io/docs/concepts/data_model/#metric-names-and-labels
 [OTEL sem conv]: https://github.com/open-telemetry/semantic-conventions/blob/main/docs/README.md
 [Traces]: https://grafana.com/docs/agent/latest/static/configuration/traces-config/
+
 {{< /admonition >}}
 
 ## Usage
@@ -63,23 +64,23 @@ You can use the following arguments with `otelcol.processor.discovery`:
 `targets` could come from `discovery.*` components:
 
 1. The `__address__` label will be matched against the IP address of incoming spans.
-   * If `__address__` contains a port, it's ignored.
+   - If `__address__` contains a port, it's ignored.
 1. If a match is found, then relabeling rules are applied.
-   * Labels starting with `__` won't be added to the spans.
+   - Labels starting with `__` won't be added to the spans.
 
 The supported values for `operation_type` are:
 
-* `insert`: Inserts a new resource attribute if the key doesn't already exist.
-* `update`: Updates a resource attribute if the key already exists.
-* `upsert`: Either inserts a new resource attribute if the key doesn't already exist, or updates a resource attribute if the key does exist.
+- `insert`: Inserts a new resource attribute if the key doesn't already exist.
+- `update`: Updates a resource attribute if the key already exists.
+- `upsert`: Either inserts a new resource attribute if the key doesn't already exist, or updates a resource attribute if the key does exist.
 
 The supported values for `pod_associations` are:
 
-* `ip`: The hostname will be sourced from an `ip` resource attribute.
-* `net.host.ip`: The hostname will be sourced from a `net.host.ip` resource attribute.
-* `k8s.pod.ip`: The hostname will be sourced from a `k8s.pod.ip` resource attribute.
-* `hostname`: The hostname will be sourced from a `host.name` resource attribute.
-* `connection`: The hostname will be sourced from the context from the incoming requests (gRPC and HTTP).
+- `ip`: The hostname will be sourced from an `ip` resource attribute.
+- `net.host.ip`: The hostname will be sourced from a `net.host.ip` resource attribute.
+- `k8s.pod.ip`: The hostname will be sourced from a `k8s.pod.ip` resource attribute.
+- `hostname`: The hostname will be sourced from a `host.name` resource attribute.
+- `connection`: The hostname will be sourced from the context from the incoming requests (gRPC and HTTP).
 
 If multiple `pod_associations` methods are enabled, the order of evaluation is honored.
 For example, when `pod_associations` is `["ip", "net.host.ip"]`, `"net.host.ip"` may be matched only if `"ip"` hasn't already matched.
@@ -110,7 +111,7 @@ The following fields are exported and can be referenced by other components:
 
 `input` accepts `otelcol.Consumer` OTLP-formatted data for telemetry signals of these types:
 
-* traces
+- traces
 
 ## Component health
 

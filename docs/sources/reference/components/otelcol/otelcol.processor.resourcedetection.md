@@ -49,23 +49,23 @@ You can use the following arguments with `otelcol.processor.resourcedetection`:
 
 {{< column-list >}}
 
-* `aks`
-* `azure`
-* `consul`
-* `docker`
-* `dynatrace`
-* `ec2`
-* `ecs`
-* `eks`
-* `elasticbeanstalk`
-* `env`
-* `gcp`
-* `heroku`
-* `kubeadm`
-* `kubernetes_node`
-* `lambda`
-* `openshift`
-* `system`
+- `aks`
+- `azure`
+- `consul`
+- `docker`
+- `dynatrace`
+- `ec2`
+- `ecs`
+- `eks`
+- `elasticbeanstalk`
+- `env`
+- `gcp`
+- `heroku`
+- `kubeadm`
+- `kubernetes_node`
+- `lambda`
+- `openshift`
+- `system`
 
 {{< /column-list >}}
 
@@ -82,11 +82,11 @@ For example, if you had `detectors = ["eks", "ec2"]` then `cloud.platform` will 
 
 The following order is recommended for AWS:
 
-  1. [`lambda`][lambda]
-  1. [`elasticbeanstalk`][elasticbeanstalk]
-  1. [`eks`][eks]
-  1. [`ecs`][ecs]
-  1. [`ec2`][ec2]
+1. [`lambda`][lambda]
+1. [`elasticbeanstalk`][elasticbeanstalk]
+1. [`eks`][eks]
+1. [`ecs`][ecs]
+1. [`ec2`][ec2]
 
 ## Blocks
 
@@ -161,18 +161,18 @@ The `resource_attributes` block supports the following blocks:
 
 Example values:
 
-* `cloud.platform`: `"azure_vm"`
-* `cloud.provider`: `"azure"`
+- `cloud.platform`: `"azure_vm"`
+- `cloud.provider`: `"azure"`
 
 Azure AKS cluster name is derived from the Azure Instance Metadata Service's (IMDS) infrastructure resource group field.
 This field contains the resource group and name of the cluster, separated by underscores. For example: `MC_<resource group>_<cluster name>_<location>`.
 
 Example:
 
-* Resource group: `my-resource-group`
-* Cluster name: `my-cluster`
-* Location: `eastus`
-* Generated name: `MC_my-resource-group_my-cluster_eastus`
+- Resource group: `my-resource-group`
+- Cluster name: `my-cluster`
+- Location: `eastus`
+- Generated name: `MC_my-resource-group_my-cluster_eastus`
 
 The cluster name is detected if it doesn't contain underscores and if a custom infrastructure resource group name wasn't used.
 
@@ -187,8 +187,8 @@ The `azure` block queries the [Azure Instance Metadata Service][] to retrieve va
 
 The `azure` block supports the following blocks:
 
-| Block                                              | Description                                  | Required |
-| -------------------------------------------------- | -------------------------------------------- | -------- |
+| Block                                                | Description                                  | Required |
+| ---------------------------------------------------- | -------------------------------------------- | -------- |
 | [`resource_attributes`](#azure--resource_attributes) | Configures which resource attributes to add. | no       |
 
 The `azure` block supports the following attributes:
@@ -216,8 +216,8 @@ The `resource_attributes` block supports the following blocks:
 
 Example values:
 
-* `cloud.platform`: `"azure_vm"`
-* `cloud.provider`: `"azure"`
+- `cloud.platform`: `"azure_vm"`
+- `cloud.provider`: `"azure"`
 
 ### `consul`
 
@@ -311,8 +311,8 @@ The `ec2` block supports the following attributes:
 | `max_backoff`  | `duration`     | The maximum backoff time between retries.                                   | `"20s"` | no       |
 | `tags`         | `list(string)` | A list of regular expressions to match against tag keys of an EC2 instance. | `[]`    | no       |
 
-<!-- The folliwing commented behavior is implemented in https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/37453 but it does not appear 
-that the code actually will cause the collector to fail to start, waiting for a response from the author 
+<!-- The folliwing commented behavior is implemented in https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/37453 but it does not appear
+that the code actually will cause the collector to fail to start, waiting for a response from the author
 <!-- | `fail_on_missing_metadata` | `bool`         | Whether to fail if metadata is missing.                                     | `false` | no       |
 
 By default the ec2 detector will log errors if the metadata endpoint is unavailable, but if `fail_on_missing_metadata` is `true` it will propagate that error instead which will cause {{< param "PRODUCT_NAME" >}} to fail to start. -->
@@ -332,8 +332,8 @@ To fetch EC2 tags, the IAM role assigned to the EC2 instance must have a policy 
 
 The `ec2` block supports the following blocks:
 
-| Block                                              | Description                                  | Required |
-| -------------------------------------------------- | -------------------------------------------- | -------- |
+| Block                           | Description                                  | Required |
+| ------------------------------- | -------------------------------------------- | -------- |
 | [``](#ec2--resource_attributes) | Configures which resource attributes to add. | no       |
 
 #### `ec2` > `resource_attributes`
@@ -410,8 +410,8 @@ The `resource_attributes` block supports the following blocks:
 
 Example values:
 
-* `cloud.provider`: `"aws"`
-* `cloud.platform`: `"aws_eks"`
+- `cloud.provider`: `"aws"`
+- `cloud.platform`: `"aws_eks"`
 
 ### `elasticbeanstalk`
 
@@ -439,8 +439,8 @@ The `resource_attributes` block supports the following blocks:
 
 Example values:
 
-* `cloud.provider`: `"aws"`
-* `cloud.platform`: `"aws_elastic_beanstalk"`
+- `cloud.provider`: `"aws"`
+- `cloud.platform`: `"aws_elastic_beanstalk"`
 
 ### `gcp`
 
@@ -487,81 +487,81 @@ The `resource_attributes` block supports the following blocks:
 
 #### Google Compute Engine (GCE) metadata
 
-* `cloud.provider`: `"gcp"`
-* `cloud.platform`: `"gcp_compute_engine"`
-* `cloud.account.id`: Project ID
-* `cloud.region`: For example, `"us-central1"`
-* `cloud.availability_zone`: For example, `"us-central1-c"`
-* `host.id`: Instance ID
-* `host.name`: Instance name
-* `host.type`: Machine type
-* (optional) `gcp.gce.instance.hostname`
-* (optional) `gcp.gce.instance.name`
-* `gcp.gce.instance.group_manager.name`:  Managed instance group name
-* `gcp.gce.instance.group_manager.region`:  Managed instance group region
-* `gcp.gce.instance.group_manager.zone`:  Managed instance group zone
+- `cloud.provider`: `"gcp"`
+- `cloud.platform`: `"gcp_compute_engine"`
+- `cloud.account.id`: Project ID
+- `cloud.region`: For example, `"us-central1"`
+- `cloud.availability_zone`: For example, `"us-central1-c"`
+- `host.id`: Instance ID
+- `host.name`: Instance name
+- `host.type`: Machine type
+- (optional) `gcp.gce.instance.hostname`
+- (optional) `gcp.gce.instance.name`
+- `gcp.gce.instance.group_manager.name`: Managed instance group name
+- `gcp.gce.instance.group_manager.region`: Managed instance group region
+- `gcp.gce.instance.group_manager.zone`: Managed instance group zone
 
 #### Google Kubernetes Engine (GKE) metadata
 
-* `cloud.provider`: `"gcp"`
-* `cloud.platform`: `"gcp_kubernetes_engine"`
-* `cloud.account.id`: Project ID
-* `cloud.region`: Only for regional GKE clusters, for example `"us-central1"`
-* `cloud.availability_zone`: only for zonal GKE clusters, for example, `"us-central1-c"`
-* `k8s.cluster.name`
-* `host.id`: Instance ID
-* `host.name`: Instance name, only when workload identity is disabled
+- `cloud.provider`: `"gcp"`
+- `cloud.platform`: `"gcp_kubernetes_engine"`
+- `cloud.account.id`: Project ID
+- `cloud.region`: Only for regional GKE clusters, for example `"us-central1"`
+- `cloud.availability_zone`: only for zonal GKE clusters, for example, `"us-central1-c"`
+- `k8s.cluster.name`
+- `host.id`: Instance ID
+- `host.name`: Instance name, only when workload identity is disabled
 
 One known issue happens when GKE workload identity is enabled.
 The GCE metadata endpoints won't be available, and the GKE resource detector won't be able to determine `host.name`.
 If this happens, you can set `host.name` from one of the following resources:
 
-* Get the `node.name` through the [downward API][] with the `env` detector.
-* Get the Kubernetes node name from the Kubernetes API (with `k8s.io/client-go`).
+- Get the `node.name` through the [downward API][] with the `env` detector.
+- Get the Kubernetes node name from the Kubernetes API (with `k8s.io/client-go`).
 
 [downward API]: https://kubernetes.io/docs/concepts/workloads/pods/downward-api/
 
 #### Google Cloud Run Services metadata
 
-* `cloud.provider`: `"gcp"`
-* `cloud.platform`: `"gcp_cloud_run"`
-* `cloud.account.id`: Project ID
-* `cloud.region`: For example, `"us-central1"`
-* `faas.id`: Instance ID
-* `faas.name`: Service name
-* `faas.version`: Service revision
+- `cloud.provider`: `"gcp"`
+- `cloud.platform`: `"gcp_cloud_run"`
+- `cloud.account.id`: Project ID
+- `cloud.region`: For example, `"us-central1"`
+- `faas.id`: Instance ID
+- `faas.name`: Service name
+- `faas.version`: Service revision
 
 #### Cloud Run Jobs metadata
 
-* `cloud.provider`: `"gcp"`
-* `cloud.platform`: `"gcp_cloud_run"`
-* `cloud.account.id`: Project ID
-* `cloud.region`: For example, `"us-central1"`
-* `faas.id`: Instance ID
-* `faas.name`: Service name
-* `gcp.cloud_run.job.execution`: For example, `"my-service-ajg89"`
-* `gcp.cloud_run.job.task_index`: For example, `"0"`
+- `cloud.provider`: `"gcp"`
+- `cloud.platform`: `"gcp_cloud_run"`
+- `cloud.account.id`: Project ID
+- `cloud.region`: For example, `"us-central1"`
+- `faas.id`: Instance ID
+- `faas.name`: Service name
+- `gcp.cloud_run.job.execution`: For example, `"my-service-ajg89"`
+- `gcp.cloud_run.job.task_index`: For example, `"0"`
 
 #### Google Cloud Functions metadata
 
-* `cloud.provider`: `"gcp"`
-* `cloud.platform`: `"gcp_cloud_functions"`
-* `cloud.account.id`: Project ID
-* `cloud.region`: For example, `"us-central1"`
-* `faas.id`: Instance ID
-* `faas.name`: Function name
-* `faas.version`: Function version
+- `cloud.provider`: `"gcp"`
+- `cloud.platform`: `"gcp_cloud_functions"`
+- `cloud.account.id`: Project ID
+- `cloud.region`: For example, `"us-central1"`
+- `faas.id`: Instance ID
+- `faas.name`: Function name
+- `faas.version`: Function version
 
 #### Google App Engine metadata
 
-* `cloud.provider`: `"gcp"`
-* `cloud.platform`: `"gcp_app_engine"`
-* `cloud.account.id`: Project ID
-* `cloud.region`: For example, `"us-central1"`
-* `cloud.availability_zone`: For example, `"us-central1-c"`
-* `faas.id`: Instance ID
-* `faas.name`: Service name
-* `faas.version`: Service version
+- `cloud.provider`: `"gcp"`
+- `cloud.platform`: `"gcp_app_engine"`
+- `cloud.account.id`: Project ID
+- `cloud.region`: For example, `"us-central1"`
+- `cloud.availability_zone`: For example, `"us-central1-c"`
+- `faas.id`: Instance ID
+- `faas.name`: Service name
+- `faas.version`: Service version
 
 ### `heroku`
 
@@ -626,10 +626,10 @@ metadata:
   name: otel-collector
   namespace: kube-system
 rules:
-  - apiGroups: [""]
-    resources: ["configmaps"]
-    resourceNames: ["kubeadm-config"]
-    verbs: ["get"]
+  - apiGroups: ['']
+    resources: ['configmaps']
+    resourceNames: ['kubeadm-config']
+    verbs: ['get']
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -637,9 +637,9 @@ metadata:
   name: otel-collector-rolebinding
   namespace: kube-system
 subjects:
-- kind: ServiceAccount
-  name: default
-  namespace: default
+  - kind: ServiceAccount
+    name: default
+    namespace: default
 roleRef:
   kind: Role
   name: otel-collector
@@ -648,9 +648,9 @@ roleRef:
 
 You can set `auth_type` to one of the following:
 
-* `none`: No authentication.
-* `serviceAccount`: Use the standard service account token provided to the {{< param "PRODUCT_NAME" >}} Pod.
-* `kubeConfig`: Use credentials from `~/.kube/config`.
+- `none`: No authentication.
+- `serviceAccount`: Use the standard service account token provided to the {{< param "PRODUCT_NAME" >}} Pod.
+- `kubeConfig`: Use credentials from `~/.kube/config`.
 
 The `kubeadm` block supports the following blocks:
 
@@ -686,16 +686,16 @@ kind: ClusterRole
 metadata:
   name: alloy
 rules:
-  - apiGroups: [""]
-    resources: ["nodes"]
-    verbs: ["get", "list"]
+  - apiGroups: ['']
+    resources: ['nodes']
+    verbs: ['get', 'list']
 ```
 
 `auth_type` can be set to one of the following:
 
-* `none`: No authentication.
-* `serviceAccount`: Use the standard service account token provided to the {{< param "PRODUCT_NAME" >}} Pod.
-* `kubeConfig`: Use credentials from `~/.kube/config`.
+- `none`: No authentication.
+- `serviceAccount`: Use the standard service account token provided to the {{< param "PRODUCT_NAME" >}} Pod.
+- `kubeConfig`: Use credentials from `~/.kube/config`.
 
 The `kubernetes_node` block supports the following blocks:
 
@@ -742,21 +742,21 @@ The `resource_attributes` block supports the following blocks:
 
 [Cloud semantic conventions][]:
 
-* `cloud.provider`: `"aws"`
-* `cloud.platform`: `"aws_lambda"`
-* `cloud.region`: `$AWS_REGION`
+- `cloud.provider`: `"aws"`
+- `cloud.platform`: `"aws_lambda"`
+- `cloud.region`: `$AWS_REGION`
 
 [Function as a Service semantic conventions][] and [AWS Lambda semantic conventions][]:
 
-* `faas.name`: `$AWS_LAMBDA_FUNCTION_NAME`
-* `faas.version`: `$AWS_LAMBDA_FUNCTION_VERSION`
-* `faas.instance`: `$AWS_LAMBDA_LOG_STREAM_NAME`
-* `faas.max_memory`: `$AWS_LAMBDA_FUNCTION_MEMORY_SIZE`
+- `faas.name`: `$AWS_LAMBDA_FUNCTION_NAME`
+- `faas.version`: `$AWS_LAMBDA_FUNCTION_VERSION`
+- `faas.instance`: `$AWS_LAMBDA_LOG_STREAM_NAME`
+- `faas.max_memory`: `$AWS_LAMBDA_FUNCTION_MEMORY_SIZE`
 
 [AWS Logs semantic conventions][]:
 
-* `aws.log.group.names`: `$AWS_LAMBDA_LOG_GROUP_NAME`
-* `aws.log.stream.names`: `$AWS_LAMBDA_LOG_STREAM_NAME`
+- `aws.log.group.names`: `$AWS_LAMBDA_LOG_GROUP_NAME`
+- `aws.log.stream.names`: `$AWS_LAMBDA_LOG_STREAM_NAME`
 
 [Cloud semantic conventions]: https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/resource/semantic_conventions/cloud.md
 [Function as a Service semantic conventions]: https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/resource/semantic_conventions/faas.md
@@ -781,9 +781,9 @@ kind: ClusterRole
 metadata:
   name: alloy
 rules:
-- apiGroups: ["config.openshift.io"]
-  resources: ["infrastructures", "infrastructures/status"]
-  verbs: ["get", "watch", "list"]
+  - apiGroups: ['config.openshift.io']
+    resources: ['infrastructures', 'infrastructures/status']
+    verbs: ['get', 'watch', 'list']
 ```
 
 By default, the API address is determined from the environment variables `KUBERNETES_SERVICE_HOST`, `KUBERNETES_SERVICE_PORT` and the service token is read from `/var/run/secrets/kubernetes.io/serviceaccount/token`.
@@ -830,16 +830,16 @@ The `system` block supports the following attributes:
 
 The valid options for `hostname_sources` are:
 
-* `"dns"`: Uses multiple sources to get the fully qualified domain name.
+- `"dns"`: Uses multiple sources to get the fully qualified domain name.
   First, it looks up the host name in the local machine's `hosts` file.
   If that fails, it looks up the CNAME.
   If the CNAME lookup fails, it does a reverse DNS query.
   This hostname source may produce unreliable results on Windows.
   To produce a FQDN, Windows hosts might have better results using the "lookup" hostname source.
-* `"os"`: Provides the hostname provided by the local machine's kernel.
-* `"cname"`: Provides the canonical name, as provided by `net.LookupCNAME` in the Go standard library.
+- `"os"`: Provides the hostname provided by the local machine's kernel.
+- `"cname"`: Provides the canonical name, as provided by `net.LookupCNAME` in the Go standard library.
   This hostname source may produce unreliable results on Windows.
-* `"lookup"`: Does a reverse DNS lookup of the current host's IP address.
+- `"lookup"`: Does a reverse DNS lookup of the current host's IP address.
 
 If there is an error fetching a hostname from a source, the next source from the list of `hostname_sources` will be considered.
 
@@ -904,9 +904,9 @@ The following fields are exported and can be referenced by other components:
 
 `input` accepts `otelcol.Consumer` OTLP-formatted data for any telemetry signal of these types:
 
-* logs
-* metrics
-* traces
+- logs
+- metrics
+- traces
 
 ## Component health
 
@@ -1019,11 +1019,11 @@ otelcol.processor.resourcedetection "default" {
 You need to add this to your workload:
 
 ```yaml
-        env:
-          - name: K8S_NODE_NAME
-            valueFrom:
-              fieldRef:
-                fieldPath: spec.nodeName
+env:
+  - name: K8S_NODE_NAME
+    valueFrom:
+      fieldRef:
+        fieldPath: spec.nodeName
 ```
 
 ### `kubernetes_node` with a custom environment variable
@@ -1048,12 +1048,13 @@ otelcol.processor.resourcedetection "default" {
 You need to add this to your workload:
 
 ```yaml
-        env:
-          - name: my_custom_var
-            valueFrom:
-              fieldRef:
-                fieldPath: spec.nodeName
+env:
+  - name: my_custom_var
+    valueFrom:
+      fieldRef:
+        fieldPath: spec.nodeName
 ```
+
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components

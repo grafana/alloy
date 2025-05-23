@@ -10,9 +10,9 @@ Patch Releases for that version of Alloy.
 
 ## Steps
 
-1. Determine which commit should be used as a base for the release branch.
+1.  Determine which commit should be used as a base for the release branch.
 
-2. Create and push the release branch from the selected base commit:
+2.  Create and push the release branch from the selected base commit:
 
     The name of the release branch should be `release/VERSION_PREFIX`
     defined above, such as `release/v0.31`.
@@ -23,8 +23,8 @@ Patch Releases for that version of Alloy.
     - If the consensus commit is not the latest commit from main, branch from that instead.
 
     > **NOTE**: Don't create any other branches that are prefixed with `release` when creating PRs or
-    those branches will collide with our automated release build publish rules.
+    > those branches will collide with our automated release build publish rules.
 
-3. Open a PR against `main` to update the VERSION file at the root of the
-   repository to the next minor release planned. For example, if you have just
-   created `release/v1.0`, then VERSION should be updated to `v1.1.0`.
+3.  Open a PR against `main` to update the VERSION file at the root of the
+    repository to the next minor release planned. For example, if you have just
+    created `release/v1.0`, then VERSION should be updated to `v1.1.0`.

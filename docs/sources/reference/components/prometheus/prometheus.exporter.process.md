@@ -56,14 +56,14 @@ Each `matcher` block configuration can match multiple processes, which are track
 
 The `name` argument can use the following template variables. By default it uses the base path of the executable:
 
-* `{{.Comm}}`: Basename of the original executable from /proc/\<pid\>/stat.
-* `{{.ExeBase}}`: Basename of the executable from argv[0].
-* `{{.ExeFull}}`: Fully qualified path of the executable.
-* `{{.Username}}`: Username of the effective user.
-* `{{.Matches}}`: Map containing all regular explression capture groups resulting from matching a process with the cmdline rule group.
-* `{{.PID}}`: PID of the process. Note that the PID is copied from the first executable found.
-* `{{.StartTime}}`: The start time of the process. This is useful when combined with PID as PIDS get reused over time.
-* `{{.Cgroups}}`: The cgroups, if supported, of the process (`/proc/self/cgroup`). This is particularly useful for identifying to which container a process belongs.
+- `{{.Comm}}`: Basename of the original executable from /proc/\<pid\>/stat.
+- `{{.ExeBase}}`: Basename of the executable from argv[0].
+- `{{.ExeFull}}`: Fully qualified path of the executable.
+- `{{.Username}}`: Username of the effective user.
+- `{{.Matches}}`: Map containing all regular explression capture groups resulting from matching a process with the cmdline rule group.
+- `{{.PID}}`: PID of the process. Note that the PID is copied from the first executable found.
+- `{{.StartTime}}`: The start time of the process. This is useful when combined with PID as PIDS get reused over time.
+- `{{.Cgroups}}`: The cgroups, if supported, of the process (`/proc/self/cgroup`). This is particularly useful for identifying to which container a process belongs.
 
 {{< admonition type="note" >}}
 Using `PID` or `StartTime` is discouraged, as it's almost never what you want, and is likely to result in high cardinality metrics.
@@ -130,9 +130,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 [scrape]: ../prometheus.scrape/
 

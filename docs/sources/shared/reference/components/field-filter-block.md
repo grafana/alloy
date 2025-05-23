@@ -14,7 +14,7 @@ The following attributes are supported:
 
 You can use the following values for `op`:
 
-* `equals`: The field value must equal the provided value.
-* `not-equals`: The field value must not be equal to the provided value.
-* `exists`: The field value must exist. Only applicable to `annotation` fields.
-* `does-not-exist`: The field value must not exist. Only applicable to `annotation` fields.
+- `equals`: The field value must equal the provided value.
+- `not-equals`: The field value must not be equal to the provided value.
+- `exists`: The field value must exist. Only applicable to `annotation` fields.
+- `does-not-exist`: The field value must not exist. Only applicable to `annotation` fields.

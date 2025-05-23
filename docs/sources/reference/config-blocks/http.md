@@ -80,9 +80,9 @@ When the `tls` block is specified, arguments for the TLS certificate (using `cer
 
 The following pairs of arguments are mutually exclusive, and only one may be configured at a time:
 
-* `cert_pem` and `cert_file`
-* `key_pem` and `key_file`
-* `client_ca_pem` and `client_ca_file`
+- `cert_pem` and `cert_file`
+- `key_pem` and `key_file`
+- `client_ca_pem` and `client_ca_file`
 
 The `client_auth_type` argument determines whether to validate client certificates.
 The default value, `NoClientCert`, indicates that the client certificate isn't validated.
@@ -90,11 +90,11 @@ The `client_ca_pem` and `client_ca_file` arguments may only be configured when `
 
 The following values are accepted for `client_auth_type`:
 
-* `NoClientCert`: client certificates are neither requested nor validated.
-* `RequestClientCert`: requests clients to send an optional certificate. Certificates provided by clients aren't validated.
-* `RequireAnyClientCert`: requires at least one certificate from clients. Certificates provided by clients aren't validated.
-* `VerifyClientCertIfGiven`: requests clients to send an optional certificate. If a certificate is sent, it must be valid.
-* `RequireAndVerifyClientCert`: requires clients to send a valid certificate.
+- `NoClientCert`: client certificates are neither requested nor validated.
+- `RequestClientCert`: requests clients to send an optional certificate. Certificates provided by clients aren't validated.
+- `RequireAnyClientCert`: requires at least one certificate from clients. Certificates provided by clients aren't validated.
+- `VerifyClientCertIfGiven`: requests clients to send an optional certificate. If a certificate is sent, it must be valid.
+- `RequireAndVerifyClientCert`: requires clients to send a valid certificate.
 
 The `client_ca_pem` or `client_ca_file` arguments may be used to perform client certificate validation.
 These arguments may only be provided when `client_auth_type` isn't set to `NoClientCert`.
@@ -139,22 +139,22 @@ If you don't provide the min and max TLS version, a default value is used.
 
 The following versions are recognized:
 
-* `TLS13` for TLS 1.3
-* `TLS12` for TLS 1.2
-* `TLS11` for TLS 1.1
-* `TLS10` for TLS 1.0
+- `TLS13` for TLS 1.3
+- `TLS12` for TLS 1.2
+- `TLS11` for TLS 1.1
+- `TLS10` for TLS 1.0
 
 ### windows certificate filter block
 
 The `windows_certificate_filter` block is used to configure retrieving certificates from the built-in Windows certificate store.
 When you use the `windows_certificate_filter` block the following TLS settings are overridden and cause an error if defined.
 
-* `cert_pem`
-* `cert_file`
-* `key_pem`
-* `key_file`
-* `client_ca`
-* `client_ca_file`
+- `cert_pem`
+- `cert_file`
+- `key_pem`
+- `key_file`
+- `client_ca`
+- `client_ca_file`
 
 {{< admonition type="warning" >}}
 This feature is only available on Windows.
@@ -192,27 +192,29 @@ The `client` block is used to check the certificate presented to the server.
 [client]: #client-block
 
 ### auth block
+
 The auth block configures server authentication for the http block. This can be used to enable basic authentication and to set authentication filters for specified API paths.
 
 ### basic block
+
 The basic block enables basic HTTP authentication by requiring both a username and password for access.
 
-| Name                  | Type           | Description                                                       | Default | Required |
-| --------------------- | -------------- | ----------------------------------------------------------------- | ------- | -------- |
-| `username`            | `string`       | The username to use for basic authentication.                     |         | yes      |
-| `password`            | `secret`       | The password to use for basic authentication.                     |         | yes      |
-
+| Name       | Type     | Description                                   | Default | Required |
+| ---------- | -------- | --------------------------------------------- | ------- | -------- |
+| `username` | `string` | The username to use for basic authentication. |         | yes      |
+| `password` | `secret` | The password to use for basic authentication. |         | yes      |
 
 ### filter block
+
 The filter block is used to configure which API paths should be protected by authentication. It allows you to specify a list of paths, using prefix matching, that will require authentication.
 
-| Name                  | Type           | Description                                                                                                            | Default | Required |
-| ----------------------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
-| `paths`                             | `list(string)` | List of API paths to be protected by authentication. The paths are matched using prefix matching.                      | `[]`    | no       |
-| `authenticate_matching_paths`       | `bool`         | If true, authentication is required for all matching paths. If false, authentication is excluded for these paths.      | `true`  | no       |
-
+| Name                          | Type           | Description                                                                                                       | Default | Required |
+| ----------------------------- | -------------- | ----------------------------------------------------------------------------------------------------------------- | ------- | -------- |
+| `paths`                       | `list(string)` | List of API paths to be protected by authentication. The paths are matched using prefix matching.                 | `[]`    | no       |
+| `authenticate_matching_paths` | `bool`         | If true, authentication is required for all matching paths. If false, authentication is excluded for these paths. | `true`  | no       |
 
 Example of enforcing authentication on `/metrics` and every enpoint that has `/v1` as prefix:
+
 ```alloy
 http {
   auth {
@@ -230,6 +232,7 @@ http {
 ```
 
 Example enforcing authentication on all endpoints except `/metrics`:
+
 ```alloy
 http {
   auth {

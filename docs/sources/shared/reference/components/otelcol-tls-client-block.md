@@ -32,9 +32,9 @@ If you set `reload_interval` to `"0s"`, the certificate never reloaded.
 
 The following pairs of arguments are mutually exclusive and can't both be set simultaneously:
 
-* `ca_pem` and `ca_file`
-* `cert_pem` and `cert_file`
-* `key_pem` and `key_file`
+- `ca_pem` and `ca_file`
+- `cert_pem` and `cert_file`
+- `key_pem` and `key_file`
 
 If `cipher_suites` is left blank, a safe default list is used.
 Refer to the [Go TLS documentation][golang-tls] for a list of supported cipher suites.

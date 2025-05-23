@@ -18,4 +18,5 @@ Grafana Agent has been deprecated and is in Long-Term Support (LTS) through Octo
 Read more about why we recommend migrating to [Grafana Alloy][alloy].
 
 [alloy]: https://grafana.com/blog/2024/04/09/grafana-alloy-opentelemetry-collector-with-prometheus-pipelines/
+
 {{< /admonition >}}

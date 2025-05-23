@@ -5,8 +5,8 @@ headless: true
 
 This block specifies properties to match the implementation library against:
 
-* More than one `library` block can be defined.
-* A match occurs if the span's implementation library matches at least one `library` block.
+- More than one `library` block can be defined.
+- A match occurs if the span's implementation library matches at least one `library` block.
 
 The following arguments are supported:
 

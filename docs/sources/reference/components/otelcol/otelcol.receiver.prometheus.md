@@ -90,6 +90,7 @@ otelcol.exporter.otlp "default" {
   }
 }
 ```
+
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components

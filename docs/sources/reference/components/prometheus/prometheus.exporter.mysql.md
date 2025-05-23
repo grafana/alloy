@@ -113,9 +113,9 @@ Refer to the [MySQL documentation](https://dev.mysql.com/doc/mysql-perfschema-ex
 
 ### `perf_schema.memory_events`
 
-| Name            | Type     | Description                                                                         | Default            | Required |
-| --------------- | -------- | ----------------------------------------------------------------------------------- | ------------------ | -------- |
-| `remove_prefix` | `string` | Prefix to trim away from `performance_schema.memory_summary_global_by_event_name`.  | `"memory/"`        | no       |
+| Name            | Type     | Description                                                                        | Default     | Required |
+| --------------- | -------- | ---------------------------------------------------------------------------------- | ----------- | -------- |
+| `remove_prefix` | `string` | Prefix to trim away from `performance_schema.memory_summary_global_by_event_name`. | `"memory/"` | no       |
 
 ### Supported Collectors
 
@@ -164,7 +164,7 @@ The full list of supported collectors is:
 ## Component health
 
 `prometheus.exporter.mysql` is only reported as unhealthy if given an invalid configuration.
- In those cases, exported fields retain their last healthy values.
+In those cases, exported fields retain their last healthy values.
 
 ## Debug information
 
@@ -204,9 +204,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 [scrape]: ../prometheus.scrape/
 

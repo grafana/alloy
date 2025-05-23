@@ -46,18 +46,18 @@ You can use the following arguments with `otelcol.processor.k8sattributes`:
 
 The supported values for `auth_type` are:
 
-* `none`: No authentication is required.
-* `serviceAccount`: Use the built-in service account that Kubernetes automatically provisions for each Pod.
-* `kubeConfig`: Use local credentials like those used by `kubectl`.
-* `tls`: Use client TLS authentication.
+- `none`: No authentication is required.
+- `serviceAccount`: Use the built-in service account that Kubernetes automatically provisions for each Pod.
+- `kubeConfig`: Use local credentials like those used by `kubectl`.
+- `tls`: Use client TLS authentication.
 
 Setting `passthrough` to `true` enables the "passthrough mode" of `otelcol.processor.k8sattributes`:
 
-* Only a `k8s.pod.ip` resource attribute will be added.
-* No other metadata will be added.
-* The Kubernetes API won't be accessed.
-* To correctly detect the Pod IPs, {{< param "PRODUCT_NAME" >}} must receive spans directly from services.
-* The `passthrough` setting is useful when configuring {{< param "PRODUCT_NAME" >}} as a Kubernetes Deployment.
+- Only a `k8s.pod.ip` resource attribute will be added.
+- No other metadata will be added.
+- The Kubernetes API won't be accessed.
+- To correctly detect the Pod IPs, {{< param "PRODUCT_NAME" >}} must receive spans directly from services.
+- The `passthrough` setting is useful when configuring {{< param "PRODUCT_NAME" >}} as a Kubernetes Deployment.
 
 A {{< param "PRODUCT_NAME" >}} running as a Deployment can't detect the IP addresses of pods generating telemetry data without any of the well-known IP attributes.
 If the Deployment {{< param "PRODUCT_NAME" >}} receives telemetry from {{< param "PRODUCT_NAME" >}}s deployed as DaemonSet, then some of those attributes might be missing.
@@ -150,37 +150,37 @@ The following attributes are supported:
 
 The supported `metadata` keys are:
 
-* `container.id`
-* `container.image.name`
-* `container.image.tag`
-* `k8s.container.name`
-* `k8s.cronjob.name`
-* `k8s.daemonset.name`
-* `k8s.daemonset.uid`
-* `k8s.deployment.name`
-* `k8s.job.name`
-* `k8s.job.uid`
-* `k8s.namespace.name`
-* `k8s.node.name`
-* `k8s.pod.name`
-* `k8s.pod.start_time`
-* `k8s.pod.uid`
-* `k8s.replicaset.name`
-* `k8s.replicaset.uid`
-* `k8s.statefulset.name`
-* `k8s.statefulset.uid`
+- `container.id`
+- `container.image.name`
+- `container.image.tag`
+- `k8s.container.name`
+- `k8s.cronjob.name`
+- `k8s.daemonset.name`
+- `k8s.daemonset.uid`
+- `k8s.deployment.name`
+- `k8s.job.name`
+- `k8s.job.uid`
+- `k8s.namespace.name`
+- `k8s.node.name`
+- `k8s.pod.name`
+- `k8s.pod.start_time`
+- `k8s.pod.uid`
+- `k8s.replicaset.name`
+- `k8s.replicaset.uid`
+- `k8s.statefulset.name`
+- `k8s.statefulset.uid`
 
 By default, if `metadata` isn't specified, the following fields are extracted and added to spans, metrics, and logs as resource attributes:
 
-* `container.image.name` (requires one of the following additional attributes to be set: `container.id` or `k8s.container.name`)
-* `container.image.tag` (requires one of the following additional attributes to be set: `container.id` or `k8s.container.name`)
-* `k8s.container.name` (requires an additional attribute to be set: `container.id`)
-* `k8s.deployment.name` (if the Pod is controlled by a deployment)
-* `k8s.namespace.name`
-* `k8s.node.name`
-* `k8s.pod.name`
-* `k8s.pod.start_time`
-* `k8s.pod.uid`
+- `container.image.name` (requires one of the following additional attributes to be set: `container.id` or `k8s.container.name`)
+- `container.image.tag` (requires one of the following additional attributes to be set: `container.id` or `k8s.container.name`)
+- `k8s.container.name` (requires an additional attribute to be set: `container.id`)
+- `k8s.deployment.name` (if the Pod is controlled by a deployment)
+- `k8s.namespace.name`
+- `k8s.node.name`
+- `k8s.pod.name`
+- `k8s.pod.start_time`
+- `k8s.pod.uid`
 
 When `otel_annotations` is set to `true`, annotations such as `resource.opentelemetry.io/exampleResource` will be translated to the `exampleResource` resource attribute, etc.
 
@@ -307,12 +307,12 @@ information.
 
 In most cases, this is enough to get started. It'll add these resource attributes to all logs, metrics, and traces:
 
-* `k8s.deployment.name`
-* `k8s.namespace.name`
-* `k8s.node.name`
-* `k8s.pod.name`
-* `k8s.pod.start_time`
-* `k8s.pod.uid`
+- `k8s.deployment.name`
+- `k8s.namespace.name`
+- `k8s.node.name`
+- `k8s.pod.name`
+- `k8s.pod.start_time`
+- `k8s.pod.uid`
 
 Example:
 

@@ -1,8 +1,8 @@
 # Proposal: Alloy proposal process
 
-* Author: Robert Fratto (@rfratto)
-* Last updated: 2024-05-22
-* Original issue: https://github.com/grafana/alloy/issues/908
+- Author: Robert Fratto (@rfratto)
+- Last updated: 2024-05-22
+- Original issue: https://github.com/grafana/alloy/issues/908
 
 ## Abstract
 
@@ -26,11 +26,11 @@ Alloy project.
 
 Formalizing a process for creating and reviewing proposals will help ensure that:
 
-* All contributors can contribute to the direction of Alloy.
-* All existing and new proposals are guaranteed to be evaluated and decided on.
-* A publicly accessible single source of truth is used for discussing all
+- All contributors can contribute to the direction of Alloy.
+- All existing and new proposals are guaranteed to be evaluated and decided on.
+- A publicly accessible single source of truth is used for discussing all
   proposals.
-* Make it clear when a change to Alloy requires consensus and approval before
+- Make it clear when a change to Alloy requires consensus and approval before
   code is acceptable.
 
 [design in the open]: https://github.com/grafana/agent/blob/main/docs/rfcs/0001-designing-in-the-open.md
@@ -43,9 +43,9 @@ which typically only include a problem statement but no suggested solution.
 
 Proposals typically include:
 
-* A clear problem statement.
-* A proposed solution to the problem statement.
-* If applicable, a list of alternative solutions with rationale for why the
+- A clear problem statement.
+- A proposed solution to the problem statement.
+- If applicable, a list of alternative solutions with rationale for why the
   alternative solutions were not selected.
 
 Proposals can still meet the above criteria while remaining brief. For example,
@@ -58,28 +58,28 @@ this proposal would be sufficient:
 
 At a high-level, proposals go through the following stages:
 
-1. *Issue*: A brief [issue][new-proposal] is created for the proposal.
+1. _Issue_: A brief [issue][new-proposal] is created for the proposal.
 
-2. *Discuss*: Public discussion on the proposal issue drives the proposal
+2. _Discuss_: Public discussion on the proposal issue drives the proposal
    towards one of three outcomes:
 
-   * Accept the proposal, or
-   * decline the proposal, or
-   * ask for a design document.
+   - Accept the proposal, or
+   - decline the proposal, or
+   - ask for a design document.
 
    As public discussion occurs, the proposal is expected to be refined over
    time to address incoming feedback.
 
    If the proposal is accepted or declined, the proposal process ends here.
 
-3. *Design document*: If requested, a design document is written, and the PR
+3. _Design document_: If requested, a design document is written, and the PR
    for the design document becomes the new home for discussing the proposal.
 
-4. *Consensus*: Once comments and changes have slowed down, a final public
+4. _Consensus_: Once comments and changes have slowed down, a final public
    discussion aims to reach consensus for one of two outcomes:
 
-   * Accept the proposal, or
-   * decline the proposal.
+   - Accept the proposal, or
+   - decline the proposal.
 
 [new-proposal]: https://github.com/grafana/alloy/issues/new?assignees=&labels=proposal&projects=&template=proposal.yaml
 
@@ -114,22 +114,22 @@ avoids approved proposals from becoming obsolete before they are implemented.
 Proposals that require more careful consideration and explanation require a
 design document.
 
-* Design documents should be checked into the Alloy repository as
+- Design documents should be checked into the Alloy repository as
   `docs/design/NNNN-name.md`, where `NNNN` is the GitHub issue number of the
   proposal and `name` is a short descriptive name deliminated by hyphens.
 
-* Design documents should follow the template in `docs/design/template.md`.
+- Design documents should follow the template in `docs/design/template.md`.
 
-* Design documents should address any specific concerns raised during the
+- Design documents should address any specific concerns raised during the
   initial discussion.
 
-* Design documents should acknowledge and address alternative solutions, if
+- Design documents should acknowledge and address alternative solutions, if
   known, to the problem statement.
 
 Once a design document is created, the proposal author should:
 
-* Close the original proposal issue and link to the design document PR.
-* Update the proposal issue description with a link to the design document.
+- Close the original proposal issue and link to the design document PR.
+- Update the proposal issue description with a link to the design document.
 
 Closing the original proposal issue in favor of the design document PR prevents
 fragmenting discussions as contributors work towards consensus on a proposal.
@@ -148,9 +148,9 @@ is closed.
 ```markdown
 # Proposal: [Title]
 
-* Author(s): [List of proposal authors]
-* Last updated: [Date]
-* Original issue: https://github.com/grafana/alloy/issues/NNNN
+- Author(s): [List of proposal authors]
+- Last updated: [Date]
+- Original issue: https://github.com/grafana/alloy/issues/NNNN
 
 ## Abstract
 
@@ -209,25 +209,25 @@ deadline.
 
 Proposals are in one of the following states:
 
-* **Incoming**: New proposals are given the _Incoming_ state.
+- **Incoming**: New proposals are given the _Incoming_ state.
 
   The proposal review process prioritizes proposals in other states to keep
   things moving forward. If time permits during the review process, proposals
   in _Incoming_ are moved to _Active_.
 
-* **Active**: Proposals in the _Active_ state are reviewed during the proposal
+- **Active**: Proposals in the _Active_ state are reviewed during the proposal
   review process to watch for emerging consensus in the discussion. The
   proposal review group may also comment, make suggestions, ask clarifying
   questions, and try to restate the proposal to make sure everyone agrees about
   what exactly is being discussed.
 
-* **Likely Accept**: If a proposal discussion seems to have reached a consensus
+- **Likely Accept**: If a proposal discussion seems to have reached a consensus
   to accept a proposal, the proposal review group moves the proposal to the
   _Likely Accept_ state. This change should be indicated with a comment on the
   proposal. This state marks the final period for comments that might change
   the recognition of consensus.
 
-* **Likely Decline**: If a proposal discussion seems to have reached a consensus
+- **Likely Decline**: If a proposal discussion seems to have reached a consensus
   to decline a proposal, the proposal review group moves the proposal to the
   _Likely Decline_ state.
 
@@ -239,7 +239,7 @@ Proposals are in one of the following states:
   on the proposal, and this state marks the final period for comments that
   might change the recognition of consensus.
 
-* **Accepted**: If a proposal has been in _Likely Accept_ for a week and
+- **Accepted**: If a proposal has been in _Likely Accept_ for a week and
   consensus has not changed, the proposal is moved to the _Accepted_ state.
 
   If significant discussion happens during the _Likely Accept_ period, the
@@ -248,7 +248,7 @@ Proposals are in one of the following states:
 
   Once a proposal has been Accepted, implementation work may begin.
 
-* **Declined**: If a proposal has been in _Likely Decline_ for a week and
+- **Declined**: If a proposal has been in _Likely Decline_ for a week and
   consensus has not changed, the proposal is moved to the _Declined_ state.
 
   If significant discussion happens during the _Likely Decline_ period, the
@@ -260,14 +260,14 @@ Proposals are in one of the following states:
   to be set as _Declined as Duplicate_ unless there is significant new
   information.
 
-* **Declined as Duplicate**: If a proposal is a duplicate of a previously
+- **Declined as Duplicate**: If a proposal is a duplicate of a previously
   decided proposal, the proposal review group may decline the proposal directly
   without progressing through other stages.
 
   Reconsidering a previously declined proposal with the same approach may be
   considered when there is significant new information.
 
-* **Declined as Infeasible**: If a proposal directly contradicts the core
+- **Declined as Infeasible**: If a proposal directly contradicts the core
   design of Alloy, or if a proposal is impossible to implement efficiently or
   at all, the proposal review group may decline the proposal as infeasible
   without progressing through other stages.
@@ -276,14 +276,14 @@ Proposals are in one of the following states:
   discussion may lead to a feasible proposal, the proposal may be kept open and
   the discussion continued.
 
-* **Declined as Retracted**: If a proposal is closed or retracted in a comment
+- **Declined as Retracted**: If a proposal is closed or retracted in a comment
   by the original author, the proposal review group may decline the proposal as
   retracted without progressing through other stages.
 
   If the proposal is retracted in a comment and there is still general interest
   from others, the proposal may be kept open and the discussion continued.
 
-* **Declined as Obsolete**: If a proposal is obsoleted by changes to Alloy that
+- **Declined as Obsolete**: If a proposal is obsoleted by changes to Alloy that
   have been made since the proposal was filed, the proposal review group may
   decline the proposal as obsolete without progressing through other stages.
 
@@ -291,7 +291,7 @@ Proposals are in one of the following states:
   discussion may lead to a different, non-obsolete proposal, the proposal may
   be kept open and the discussion continued.
 
-* **Hold**: If a discussion of a proposal requires design revisions or
+- **Hold**: If a discussion of a proposal requires design revisions or
   additional information that will not be available for a couple of weeks or
   more, the proposal review group moves the proposal to the _Hold_ state with a
   note of what it is waiting on. Once the proposal is unblocked, the proposal
@@ -301,7 +301,6 @@ Proposals are in one of the following states:
 A publicly available GitHub project tracks proposals and their states.
 
 [governance]: https://github.com/grafana/alloy/blob/main/GOVERNANCE.md
-
 
 ### Consensus and disagreement
 
@@ -383,18 +382,18 @@ long threads that can be difficult to follow.
 
 There are some mitigation strategies to help with this:
 
-* Discussion on issues should be done conversationally rather than responding
+- Discussion on issues should be done conversationally rather than responding
   to individual lines of text. This can help reduce the total number of
   comments and make a conversation more digestible.
 
-* Authors of proposals can start with offline discussions and use alternative
+- Authors of proposals can start with offline discussions and use alternative
   tools (such as Google Docs) to prepare proposals for public presentation.
 
-* The proposal review group keeps discussions focused by preventing derailing
+- The proposal review group keeps discussions focused by preventing derailing
   and pointing out when concurrent conversational threads can be joined
   together under a larger idea.
 
-* More involved proposals are transformed into design document PRs, where
+- More involved proposals are transformed into design document PRs, where
   tooling for discussions is better suited for long-form discussions. Less
   involved proposals can require less discussion, potentially avoiding the
   issue of an issue becoming long-winded.
@@ -423,13 +422,13 @@ Following the proposed process, the next steps are:
 If this proposal is accepted, all existing and new proposals will be subject to
 the process described here, and the following will occur:
 
-* A new public project board will be created for tracking proposals in their
+- A new public project board will be created for tracking proposals in their
   various states.
 
-* A more general form of the proposal process will be moved to
+- A more general form of the proposal process will be moved to
   `docs/design/README.md`.
 
-* Authors of existing proposals may be asked to make changes to their proposal
+- Authors of existing proposals may be asked to make changes to their proposal
   to adhere to this new process, such as moving embedded design documents into
   a design document PR.
 

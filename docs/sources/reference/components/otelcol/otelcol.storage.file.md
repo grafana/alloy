@@ -38,7 +38,7 @@ You can use the following arguments with `otelcol.storage.file`:
 | Name                    | Type            | Description                                                                                 | Default | Required |
 | ----------------------- | --------------- | ------------------------------------------------------------------------------------------- | ------- | -------- |
 | `create_directory`      | `bool`          | Will the component be responsible for creating the `directory`.                             | `true`  | no       |
-| `directory`             | `string`        | The path to the dedicated data storage directory.                                           | *       | no       |
+| `directory`             | `string`        | The path to the dedicated data storage directory.                                           | \*      | no       |
 | `directory_permissions` | `string`        | The octal file permissions used when creating the `directory` if `create_directory` is set. | `0750`  | no       |
 | `fsync`                 | `bool`          | Will `fsync` be called after each write operation.                                          | `false` | no       |
 | `timeout`               | `time.Duration` | The timeout for file storage operations.                                                    | `1s`    | no       |
@@ -71,7 +71,7 @@ The `compaction` block defines the compaction parameters for the file storage.
 | ------------------------------- | --------------- | ------------------------------------------------------------------------------ | ------- | -------- |
 | `check_interval`                | `time.Duration` | The interval to check if online compaction is required.                        | `5s`    | no       |
 | `cleanup_on_start`              | `bool`          | Cleanup temporary files on component start.                                    | `false` | no       |
-| `directory`                     | `string`        | The path to the directory where temporary compaction artifacts will be stored. | *       | no       |
+| `directory`                     | `string`        | The path to the directory where temporary compaction artifacts will be stored. | \*      | no       |
 | `max_transaction_size`          | `int`           | Maximum number of items present in a single compaction iteration.              | `65536` | no       |
 | `on_rebound`                    | `bool`          | Run compaction online when rebound conditions are met.                         | `false` | no       |
 | `on_start`                      | `bool`          | Run compaction on component start.                                             | `false` | no       |

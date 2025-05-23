@@ -82,7 +82,7 @@ The `output` block configures a set of components to forward resulting telemetry
 The following arguments are supported:
 
 | Name      | Type                     | Description                           | Default | Required |
-| --------- |--------------------------|---------------------------------------|---------|--------- |
+| --------- | ------------------------ | ------------------------------------- | ------- | -------- |
 | `logs`    | `list(otelcol.Consumer)` | List of consumers to send logs to.    | `[]`    | no       |
 | `metrics` | `list(otelcol.Consumer)` | List of consumers to send metrics to. | `[]`    | no       |
 
@@ -105,10 +105,10 @@ The following arguments are supported:
 The `allowed_headers` specifies which headers are acceptable from a CORS request.
 The following headers are always implicitly allowed:
 
-* `Accept`
-* `Accept-Language`
-* `Content-Type`
-* `Content-Language`
+- `Accept`
+- `Accept-Language`
+- `Content-Type`
+- `Content-Language`
 
 If `allowed_headers` includes `"*"`, all headers are permitted.
 
@@ -203,7 +203,6 @@ otelcol.auth.basic "creds" {
 `otelcol.receiver.splunkhec` can accept arguments from the following components:
 
 - Components that export [OpenTelemetry `otelcol.Consumer`](../../../compatibility/#opentelemetry-otelcolconsumer-exporters)
-
 
 {{< admonition type="note" >}}
 Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.

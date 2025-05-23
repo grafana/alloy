@@ -37,9 +37,9 @@ otelcol.processor.deltatocumulative "<LABEL>" {
 
 You can use the following arguments with `otelcol.processor.deltatocumulative`:
 
-| Name          | Type       | Description                                                         | Default       | Required |
-| ------------- | ---------- | ------------------------------------------------------------------- | ------------- | -------- |
-| `max_stale`   | `duration` | How long to wait for a new sample before marking a stream as stale. | `"5m"`        | no       |
+| Name          | Type       | Description                                                         | Default               | Required |
+| ------------- | ---------- | ------------------------------------------------------------------- | --------------------- | -------- |
+| `max_stale`   | `duration` | How long to wait for a new sample before marking a stream as stale. | `"5m"`                | no       |
 | `max_streams` | `number`   | Upper limit of streams to track. Set to `0` to disable.             | `9223372036854775807` | no       |
 
 `otelcol.processor.deltatocumulative` tracks incoming metric streams.
@@ -92,10 +92,10 @@ The following fields are exported and can be referenced by other components:
 
 ## Debug metrics
 
-* `otelcol_deltatocumulative_datapoints` (counter): Total number of datapoints processed (successfully or unsuccessfully).
-* `otelcol_deltatocumulative_streams_limit` (gauge): Upper limit of tracked streams.
-* `otelcol_deltatocumulative_streams_max_stale_seconds` (gauge): Duration without new samples after which streams are dropped.
-* `otelcol_deltatocumulative_streams_tracked` (gauge): Number of streams currently tracked by the aggregation state.
+- `otelcol_deltatocumulative_datapoints` (counter): Total number of datapoints processed (successfully or unsuccessfully).
+- `otelcol_deltatocumulative_streams_limit` (gauge): Upper limit of tracked streams.
+- `otelcol_deltatocumulative_streams_max_stale_seconds` (gauge): Duration without new samples after which streams are dropped.
+- `otelcol_deltatocumulative_streams_tracked` (gauge): Number of streams currently tracked by the aggregation state.
 
 ## Examples
 

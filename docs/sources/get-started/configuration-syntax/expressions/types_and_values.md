@@ -11,33 +11,33 @@ weight: 100
 
 The {{< param "PRODUCT_NAME" >}} syntax supports the following value types:
 
-* `number`: Any numeric value, such as `3` or `3.14`.
-* `string`: A sequence of Unicode characters representing text, such as `"Hello, world!"`.
-* `bool`: A boolean value, either `true` or `false`.
-* `array`: A sequence of values, such as `[1, 2, 3]`. Index array elements using whole numbers starting from zero.
-* `object`: A group of values identified by named labels, such as `{ name = "John" }`.
-* `function`: A value representing a routine that runs with arguments to compute another value, such as `sys.env("HOME")`.
+- `number`: Any numeric value, such as `3` or `3.14`.
+- `string`: A sequence of Unicode characters representing text, such as `"Hello, world!"`.
+- `bool`: A boolean value, either `true` or `false`.
+- `array`: A sequence of values, such as `[1, 2, 3]`. Index array elements using whole numbers starting from zero.
+- `object`: A group of values identified by named labels, such as `{ name = "John" }`.
+- `function`: A value representing a routine that runs with arguments to compute another value, such as `sys.env("HOME")`.
   Functions take zero or more arguments as input and always return a single value as output.
-* `null`: A type that represents no value.
+- `null`: A type that represents no value.
 
 ## Naming convention
 
 In addition to the preceding types, the [component reference][] documentation uses the following conventions for referring to types:
 
-* `any`: A value of any type.
-* `map(T)`: An `object` where all values are of type `T`.
+- `any`: A value of any type.
+- `map(T)`: An `object` where all values are of type `T`.
   For example, `map(string)` is an object where all values are strings.
   The key type of an object is always a string or an identifier converted into a string.
-* `list(T)`: An `array` where all values are of type `T`.
+- `list(T)`: An `array` where all values are of type `T`.
   For example, `list(string)` is an array where all values are strings.
-* `duration`: A `string` that denotes a duration of time, such as `"100ms"`, `"1h30m"`, or `"10s"`.
+- `duration`: A `string` that denotes a duration of time, such as `"100ms"`, `"1h30m"`, or `"10s"`.
   Valid units include:
 
-  * `h` for hours.
-  * `m` for minutes.
-  * `s` for seconds.
-  * `ms` for milliseconds.
-  * `ns` for nanoseconds.
+  - `h` for hours.
+  - `m` for minutes.
+  - `s` for seconds.
+  - `ms` for milliseconds.
+  - `ns` for nanoseconds.
 
   You can combine values of descending units to add their values together.
   For example, `"1h30m"` is equivalent to `"90m"`.
@@ -84,7 +84,7 @@ The following table lists the supported escape sequences.
 
 ## Raw strings
 
-Raw strings are sequences of Unicode characters enclosed in backticks ``` `` ```.
+Raw strings are sequences of Unicode characters enclosed in backticks ` `` `.
 Raw strings don't support escape sequences.
 
 ```alloy
@@ -161,11 +161,12 @@ Wrap keys in double quotes if they aren't [valid identifiers][valid].
 {{< admonition type="note" >}}
 Don't confuse objects with blocks.
 
-* An _object_ is a value assigned to an [Attribute][]. Use commas between key-value pairs on separate lines.
-* A [Block][] is a named structural element composed of multiple attributes. Don't use commas between attributes.
+- An _object_ is a value assigned to an [Attribute][]. Use commas between key-value pairs on separate lines.
+- A [Block][] is a named structural element composed of multiple attributes. Don't use commas between attributes.
 
 [Attribute]: ../../syntax/#attributes
 [Block]: ../../syntax/#blocks
+
 {{< /admonition >}}
 
 ## Functions

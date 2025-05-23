@@ -125,10 +125,10 @@ stage.cri {}
 
 CRI specifies log lines as single space-delimited values with the following components:
 
-* `time`: The timestamp string of the log.
-* `stream`: Either `stdout` or `stderr`.
-* `flags`: CRI flags including `F` or `P`.
-* `log`: The contents of the log line.
+- `time`: The timestamp string of the log.
+- `stream`: Either `stdout` or `stderr`.
+- `flags`: CRI flags including `F` or `P`.
+- `log`: The contents of the log line.
 
 Given the following log line, the subsequent key-value pairs are created in the shared map of extracted data:
 
@@ -175,9 +175,9 @@ stage.docker {}
 
 Docker log entries are formatted as JSON with the following keys:
 
-* `log`: The content of log line.
-* `stream`: Either `stdout` or `stderr`.
-* `time`: The timestamp string of the log line.
+- `log`: The content of log line.
+- `stream`: Either `stdout` or `stderr`.
+- `time`: The timestamp string of the log line.
 
 Given the following log line, the subsequent key-value pairs are created in the shared map of extracted data:
 
@@ -209,14 +209,14 @@ The following arguments are supported:
 
 The `expression` field must be a RE2 regular expression string.
 
-* If `source` is empty or not provided, the regular expression attempts to match the log line itself.
-* If `source` is a single name, the regular expression attempts to match the corresponding value from the extracted map.
-* If `source` is a comma-separated list of names, the corresponding values from the extracted map are concatenated using `separator` and the regular expression attempts to match the concatenated string.
+- If `source` is empty or not provided, the regular expression attempts to match the log line itself.
+- If `source` is a single name, the regular expression attempts to match the corresponding value from the extracted map.
+- If `source` is a comma-separated list of names, the corresponding values from the extracted map are concatenated using `separator` and the regular expression attempts to match the concatenated string.
 
 The `value` field can only work with values from the extracted map, and must be specified together with `source`.
 
-* If `source` is a single name, the entries are dropped when there is an exact match between the corresponding value from the extracted map and the `value`.
-* If `source` is a comma-separated list of names, the entries are dropped when the `value` matches the `source` values from extracted data, concatenated using the `separator`.
+- If `source` is a single name, the entries are dropped when there is an exact match between the corresponding value from the extracted map and the `value`.
+- If `source` is a comma-separated list of names, the entries are dropped when the `value` matches the `source` values from extracted data, concatenated using the `separator`.
 
 Whenever an entry is dropped, the metric `loki_process_dropped_lines_total` is incremented.
 By default, the reason label is `"drop_stage"`, but you can provide a custom label using the `drop_counter_reason` argument.
@@ -297,14 +297,14 @@ Given the following log line:
 
 The first stage would create the following key-value pairs in the set of extracted data:
 
-* `message`: `Message type:\r\nOverwritten: new\r\nImage: C:\Users\User\alloy.exe`
-* `Overwritten`: `old`
+- `message`: `Message type:\r\nOverwritten: new\r\nImage: C:\Users\User\alloy.exe`
+- `Overwritten`: `old`
 
 The second stage parses the value of `message` from the extracted data and appends or overwrites the following key-value pairs to the set of extracted data:
 
-* `Image`: `C:\\Users\\User\\alloy.exe`
-* `Message_type`: (empty string)
-* `Overwritten`: `new`
+- `Image`: `C:\\Users\\User\\alloy.exe`
+- `Message_type`: (empty string)
+- `Overwritten`: `new`
 
 ### `stage.geoip`
 
@@ -540,7 +540,7 @@ You can use one of two options to circumvent this issue:
 
 1. An escaped double quote. For example: `http_user_agent = "\"request_User-Agent\""`
 1. A backtick quote. For example: ``http_user_agent = `"request_User-Agent"` ``
-{{< /admonition >}}
+   {{< /admonition >}}
 
 ### `stage.label_drop`
 
@@ -846,7 +846,7 @@ The following arguments are supported:
 
 | Name                | Type       | Description                                                                         | Default                  | Required |
 | ------------------- | ---------- | ----------------------------------------------------------------------------------- | ------------------------ | -------- |
-| `action`            | `string`   | The action to take. Valid actions are  `inc`, `dec`, `set`, `add`, or `sub`.        |                          | yes      |
+| `action`            | `string`   | The action to take. Valid actions are `inc`, `dec`, `set`, `add`, or `sub`.         |                          | yes      |
 | `name`              | `string`   | The metric name.                                                                    |                          | yes      |
 | `description`       | `string`   | The metric's description and help text.                                             | `""`                     | no       |
 | `max_idle_duration` | `duration` | Maximum amount of time to wait until the metric is marked as 'stale' and removed.   | `"5m"`                   | no       |
@@ -885,15 +885,15 @@ The `max_idle_duration` must be greater or equal to `"1s"`, and it defaults to `
 The metric values extracted from the log data are internally converted to floats.
 The supported values are the following:
 
-* Integer
-* Floating point number
-* String - Two types of string format are supported:
-  * Strings that represent floating point numbers, for example, "0.804" is converted to 0.804.
-  * Duration format strings. Valid time units are `"ns"`, `"us"`, `"ms"`, `"s"`, `"m"`, `"h"`.
+- Integer
+- Floating point number
+- String - Two types of string format are supported:
+  - Strings that represent floating point numbers, for example, "0.804" is converted to 0.804.
+  - Duration format strings. Valid time units are `"ns"`, `"us"`, `"ms"`, `"s"`, `"m"`, `"h"`.
     A value in this format is converted to a floating point number of seconds, for example, `"0.5ms"` is converted to `0.0005`.
-* Boolean:
-  * `true` is converted to `1`.
-  * `false` is converted to `0`.
+- Boolean:
+  - `true` is converted to `1`.
+  - `false` is converted to `0`.
 
 The following pipeline creates a counter which increments every time any log line is received by using the `match_all` parameter.
 The pipeline creates a second counter which adds the byte size of these log lines by using the `count_entry_bytes` parameter.
@@ -1132,7 +1132,6 @@ The following arguments are supported:
 | `expression`         | `string` | A valid RE2 regular expression. Each capture group must be named.  |         | yes      |
 | `source`             | `string` | Name from extracted data to parse. If empty, uses the log message. | `""`    | no       |
 | `labels_from_groups` | `bool`   | Whether to automatically add named capture groups as labels.       | `false` | no       |
-
 
 The `expression` field needs to be a RE2 regular expression string.
 Every matched capture group is added to the extracted map, so it must be named like: `(?P<name>re)`.
@@ -1505,10 +1504,10 @@ stage.template {
 
 ##### `Trim`, `TrimLeft`, `TrimRight`, `TrimSpace`, `TrimPrefix`, `TrimSuffix`
 
-* `Trim` returns a slice of the string `s` with all leading and trailing Unicode code points contained in `cutset` removed.
-* `TrimLeft` and `TrimRight` are the same as Trim except that they trim only leading and trailing characters, respectively.
-* `TrimSpace` returns a slice of the string s, with all leading and trailing white space removed, as defined by Unicode.
-* `TrimPrefix` and `TrimSuffix` trim the supplied prefix or suffix, respectively.
+- `Trim` returns a slice of the string `s` with all leading and trailing Unicode code points contained in `cutset` removed.
+- `TrimLeft` and `TrimRight` are the same as Trim except that they trim only leading and trailing characters, respectively.
+- `TrimSpace` returns a slice of the string s, with all leading and trailing white space removed, as defined by Unicode.
+- `TrimPrefix` and `TrimSuffix` trim the supplied prefix or suffix, respectively.
 
 The following example shows how you can use this function.
 
@@ -1677,7 +1676,7 @@ The following table shows the supported reference values to use when defining a 
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | Year                | 06, 2006                                                                                                                 |
 | Month               | 1, 01, Jan, January                                                                                                      |
-| Day                 | 2, 02, _2 (two digits right justified)                                                                                   |
+| Day                 | 2, 02, \_2 (two digits right justified)                                                                                  |
 | Day of the week     | Mon, Monday                                                                                                              |
 | Hour                | 3 (12-hour), 03 (12-hour zero prefixed), 15 (24-hour)                                                                    |
 | Minute              | 4, 04                                                                                                                    |
@@ -1701,8 +1700,8 @@ The `action_on_failure` field defines what should happen when the source field d
 
 The supported actions are:
 
-* fudge (default): Change the timestamp to the last known timestamp, summing up 1 nanosecond to guarantee log entries ordering.
-* skip: Don't change the timestamp and keep the time when the log entry was scraped.
+- fudge (default): Change the timestamp to the last known timestamp, summing up 1 nanosecond to guarantee log entries ordering.
+- skip: Don't change the timestamp and keep the time when the log entry was scraped.
 
 The following stage fetches the `time` value from the shared values map, parses it as a RFC3339 format, and sets it as the log entry's timestamp.
 
@@ -1775,7 +1774,7 @@ loki.process "default" {
   stage.labels {
     values = {
       Description = "",
-      Subject_SecurityID  = "",        
+      Subject_SecurityID  = "",
       ReadOP = "Subject_ReadOperation",
     }
   }
@@ -1797,12 +1796,12 @@ The `json` stage would create the following key-value pairs in the set of extrac
 
 The `windowsevent` stage parses the value of `message` from the extracted data and appends or overwrites the following key-value pairs to the set of extracted data:
 
-* `Description`:           "Special privileges assigned to new logon.",
-* `Subject_SecurityID`:    "S-1-1-1",
-* `Subject_AccountName`:   "SYSTEM",
-* `Subject_AccountDomain`: "NT AUTHORITY",
-* `Subject_LogonID`:       "0xAAA",
-* `Privileges`:            "SeAssignPrimaryTokenPrivilege,SeTcbPrivilege,SeSecurityPrivilege",
+- `Description`: "Special privileges assigned to new logon.",
+- `Subject_SecurityID`: "S-1-1-1",
+- `Subject_AccountName`: "SYSTEM",
+- `Subject_AccountDomain`: "NT AUTHORITY",
+- `Subject_LogonID`: "0xAAA",
+- `Privileges`: "SeAssignPrimaryTokenPrivilege,SeTcbPrivilege,SeSecurityPrivilege",
 
 Finally the `labels` stage uses the extracted values `Description`, `Subject_SecurityID` and `Subject_ReadOperation` to add them as labels of the log entry before forwarding it to a `loki.write` component.
 
@@ -1824,8 +1823,8 @@ The following fields are exported and can be referenced by other components:
 
 ## Debug metrics
 
-* `loki_process_dropped_lines_total` (counter): Number of lines dropped as part of a processing stage.
-* `loki_process_dropped_lines_by_label_total` (counter):  Number of lines dropped when `by_label_name` is non-empty in [stage.limit][].
+- `loki_process_dropped_lines_total` (counter): Number of lines dropped as part of a processing stage.
+- `loki_process_dropped_lines_by_label_total` (counter): Number of lines dropped when `by_label_name` is non-empty in [stage.limit][].
 
 ## Example
 
@@ -1844,6 +1843,7 @@ loki.process "local" {
   }
 }
 ```
+
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components

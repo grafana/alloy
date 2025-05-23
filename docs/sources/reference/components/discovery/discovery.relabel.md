@@ -91,7 +91,7 @@ In those cases, exported fields retain their last healthy values.
 
 ## Example
 
-The following example shows how the `discovery.relabel` component applies relabel rules to the incoming targets. In practice, the 
+The following example shows how the `discovery.relabel` component applies relabel rules to the incoming targets. In practice, the
 `targets` slice will come from another `discovery.*` component, but they are enumerated here to help clarify the example.
 
 ```alloy

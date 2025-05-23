@@ -29,11 +29,11 @@ This component is based on the [Grafana Tempo service graph processor](https://g
 
 Service graphs are useful for a number of use-cases:
 
-* Infer the topology of a distributed system. As distributed systems grow, they become more complex.
+- Infer the topology of a distributed system. As distributed systems grow, they become more complex.
   Service graphs can help you understand the structure of the system.
-* Provide a high level overview of the health of your system.
+- Provide a high level overview of the health of your system.
   Service graphs show error rates, latencies, and other relevant data.
-* Provide a historic view of a system's topology.
+- Provide a historic view of a system's topology.
   Distributed systems change very frequently, and service graphs offer a way of seeing how these systems have evolved over time.
 
 Since `otelcol.connector.servicegraph` has to process both sides of an edge, it needs to process all spans of a trace to function properly.
@@ -70,15 +70,15 @@ Service graphs work by inspecting traces and looking for spans with parent-child
 `otelcol.connector.servicegraph` uses OpenTelemetry semantic conventions to detect a myriad of requests.
 The following requests are supported:
 
-* A direct request between two services, where the outgoing and the incoming span must have a [Span Kind][] value of `client` and `server` respectively.
-* A request across a messaging system, where the outgoing and the incoming span must have a [Span Kind][] value of `producer` and `consumer` respectively.
-* A database request, where spans have a [Span Kind][] with a value of `client`, as well as an attribute with a key of `db.name`.
+- A direct request between two services, where the outgoing and the incoming span must have a [Span Kind][] value of `client` and `server` respectively.
+- A request across a messaging system, where the outgoing and the incoming span must have a [Span Kind][] value of `producer` and `consumer` respectively.
+- A database request, where spans have a [Span Kind][] with a value of `client`, as well as an attribute with a key of `db.name`.
 
 Every span which can be paired up to form a request is kept in an in-memory store:
 
-* If the TTL of the span expires before it can be paired, it's deleted from the store.
+- If the TTL of the span expires before it can be paired, it's deleted from the store.
   TTL is configured in the [store][] block.
-* If the span is paired prior to its expiration, a metric is recorded and the span is deleted from the store.
+- If the span is paired prior to its expiration, a metric is recorded and the span is deleted from the store.
 
 The following metrics are emitted by the processor:
 
@@ -102,10 +102,10 @@ The `connection_type` label may not be set. If it's set, its value will be eithe
 
 Additional labels can be included using the `dimensions` configuration option:
 
-* Those labels will have a prefix to mark where they originate (client or server span kinds).
+- Those labels will have a prefix to mark where they originate (client or server span kinds).
   The `client_` prefix relates to the dimensions coming from spans with a [Span Kind][] of `client`.
   The `server_` prefix relates to the dimensions coming from spans with a [Span Kind][] of `server`.
-* Firstly the resource attributes will be searched. If the attribute isn't found, the span attributes will be searched.
+- Firstly the resource attributes will be searched. If the attribute isn't found, the span attributes will be searched.
 
 When `metrics_flush_interval` is set to `0s`, metrics will be flushed on every received batch of traces.
 

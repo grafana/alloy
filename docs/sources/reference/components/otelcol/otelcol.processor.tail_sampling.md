@@ -59,9 +59,9 @@ A larger number will use more memory but be more efficient when adding traces to
 
 `decision_cache` can contain two keys:
 
-* `sampled_cache_size`: Configures the number of trace IDs to be kept in an LRU cache, persisting the "keep" decisions for traces that may have already been released from memory.
+- `sampled_cache_size`: Configures the number of trace IDs to be kept in an LRU cache, persisting the "keep" decisions for traces that may have already been released from memory.
   By default, the size is 0 and the cache is inactive.
-* `non_sampled_cache_size`: Configures number of trace IDs to be kept in an LRU cache, persisting the "drop" decisions for traces that may have already been released from memory.
+- `non_sampled_cache_size`: Configures number of trace IDs to be kept in an LRU cache, persisting the "drop" decisions for traces that may have already been released from memory.
   By default, the size is 0 and the cache is inactive.
 
 You may want to vary the size of the `decision_cache` depending on how many "keep" vs "drop" decisions you expect from your policies.
@@ -152,10 +152,10 @@ The following arguments are supported:
 
 Each policy results in a decision, and the processor evaluates them to make a final decision:
 
-* When there's an "inverted not sample" decision, the trace isn't sampled.
-* When there's a "sample" decision, the trace is sampled.
-* When there's an "inverted sample" decision and no "not sample" decisions, the trace is sampled.
-* In all other cases, the trace isn't sampled.
+- When there's an "inverted not sample" decision, the trace isn't sampled.
+- When there's a "sample" decision, the trace is sampled.
+- When there's an "inverted sample" decision and no "not sample" decisions, the trace is sampled.
+- In all other cases, the trace isn't sampled.
 
 An "inverted" decision is the one made based on the `invert_match` attribute, such as the one from the string, numeric or boolean tag policy.
 
@@ -218,9 +218,9 @@ The following arguments are supported:
 
 The supported values for `error_mode` are:
 
-* `ignore`: Ignore errors returned by conditions, log them, and continue on to the next condition. This is the recommended mode.
-* `silent`: Ignore errors returned by conditions, don't log them, and continue on to the next condition.
-* `propagate`: Return the error up the pipeline. This results in the payload being dropped from {{< param "PRODUCT_NAME" >}}.
+- `ignore`: Ignore errors returned by conditions, log them, and continue on to the next condition. This is the recommended mode.
+- `silent`: Ignore errors returned by conditions, don't log them, and continue on to the next condition.
+- `propagate`: Return the error up the pipeline. This results in the payload being dropped from {{< param "PRODUCT_NAME" >}}.
 
 At least one of `span` or `spanevent` should be specified. Both `span` and `spanevent` can also be specified.
 

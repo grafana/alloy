@@ -16,15 +16,15 @@ This topic describes how to collect and forward metrics, logs, and traces data f
 
 ## Components and configuration blocks used in this topic
 
-* [`prometheus.exporter.self`][prometheus.exporter.self]
-* [`prometheus.scrape`][prometheus.scrape]
-* [`logging`][logging]
-* [`tracing`][tracing]
+- [`prometheus.exporter.self`][prometheus.exporter.self]
+- [`prometheus.scrape`][prometheus.scrape]
+- [`logging`][logging]
+- [`tracing`][tracing]
 
 ## Before you begin
 
-* Identify where to send {{< param "PRODUCT_NAME" >}}'s telemetry data.
-* Be familiar with the concept of [Components][] in {{< param "PRODUCT_NAME" >}}.
+- Identify where to send {{< param "PRODUCT_NAME" >}}'s telemetry data.
+- Be familiar with the concept of [Components][] in {{< param "PRODUCT_NAME" >}}.
 
 ## Meta-monitoring metrics
 
@@ -46,7 +46,8 @@ In this task, you use the [`prometheus.exporter.self`][prometheus.exporter.self]
    ```
 
    Replace the following:
-   * _`<SELF_LABEL>`_: The label for the component such as `default` or `metamonitoring`. The label must be unique across all `prometheus.exporter.self` components in the same configuration file.
+
+   - _`<SELF_LABEL>`_: The label for the component such as `default` or `metamonitoring`. The label must be unique across all `prometheus.exporter.self` components in the same configuration file.
 
 1. Add the following `prometheus.scrape` component to your configuration file.
 
@@ -58,8 +59,9 @@ In this task, you use the [`prometheus.exporter.self`][prometheus.exporter.self]
    ```
 
    Replace the following:
-   * _`<SCRAPE_LABEL>`_: The label for the scrape component such as `default`. The label must be unique across all `prometheus.scrape` components in the same configuration file.
-   * _`<METRICS_RECEIVER_LIST>`_: A comma-delimited list of component receivers to forward metrics to.
+
+   - _`<SCRAPE_LABEL>`_: The label for the scrape component such as `default`. The label must be unique across all `prometheus.scrape` components in the same configuration file.
+   - _`<METRICS_RECEIVER_LIST>`_: A comma-delimited list of component receivers to forward metrics to.
      For example, to send to a remote write component, use `prometheus.remote_write.WRITE_LABEL.receiver`.
      Similarly, to send data to a relabeling component, use `prometheus.relabel.PROCESS_LABEL.receiver`.
      To use data in the OTLP format, you can send data to a converter component, like `otelcol.receiver.prometheus.OTEL.receiver`.
@@ -100,9 +102,10 @@ The block is specified without a label and can only be provided once per configu
    ```
 
    Replace the following:
-   * _`<LOG_LEVEL>`_: The log level to use for {{< param "PRODUCT_NAME" >}}'s logs. If the attribute isn't set, it defaults to `info`.
-   * _`<LOG_FORMAT>`_: The log format to use for {{< param "PRODUCT_NAME" >}}'s logs. If the attribute isn't set, it defaults to `logfmt`.
-   * _`<LOGS_RECEIVER_LIST>`_: A comma-delimited list of component receivers to forward logs to.
+
+   - _`<LOG_LEVEL>`_: The log level to use for {{< param "PRODUCT_NAME" >}}'s logs. If the attribute isn't set, it defaults to `info`.
+   - _`<LOG_FORMAT>`_: The log format to use for {{< param "PRODUCT_NAME" >}}'s logs. If the attribute isn't set, it defaults to `logfmt`.
+   - _`<LOGS_RECEIVER_LIST>`_: A comma-delimited list of component receivers to forward logs to.
      For example, to send to a processing component, use `loki.process.PROCESS_LABEL.receiver`.
      Similarly, to send data to a relabeling component, use `loki.relabel.PROCESS_LABEL.receiver`.
      To use data in the OTLP format, you can send data to a converter component, like `otelcol.receiver.loki.OTEL.receiver`.
@@ -140,8 +143,9 @@ In this task, you use the [tracing][] block to forward {{< param "PRODUCT_NAME" 
    ```
 
    Replace the following:
-   * _`<SAMPLING_FRACTION>`_: The fraction of traces to keep. If the attribute isn't set, it defaults to `0.1`.
-   * _`<TRACES_RECEIVER_LIST>`_: A comma-delimited list of component receivers to forward traces to.
+
+   - _`<SAMPLING_FRACTION>`_: The fraction of traces to keep. If the attribute isn't set, it defaults to `0.1`.
+   - _`<TRACES_RECEIVER_LIST>`_: A comma-delimited list of component receivers to forward traces to.
      For example, to send to an OpenTelemetry exporter component use `otelcol.exporter.otlp.EXPORT_LABEL.input`.
 
 The following example demonstrates configuring the tracing block and sending to a compatible component.

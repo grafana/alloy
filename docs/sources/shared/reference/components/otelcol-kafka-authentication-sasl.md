@@ -16,11 +16,11 @@ The following arguments are supported:
 
 You can set the `mechanism` argument to one of the following strings:
 
-* `"PLAIN"`
-* `"AWS_MSK_IAM"`
-* `"SCRAM-SHA-256"`
-* `"SCRAM-SHA-512"`
-* `"AWS_MSK_IAM_OAUTHBEARER"`
+- `"PLAIN"`
+- `"AWS_MSK_IAM"`
+- `"SCRAM-SHA-256"`
+- `"SCRAM-SHA-512"`
+- `"AWS_MSK_IAM_OAUTHBEARER"`
 
 When `mechanism` is set to `"AWS_MSK_IAM"`, the `aws_msk` child block must also be provided.
 

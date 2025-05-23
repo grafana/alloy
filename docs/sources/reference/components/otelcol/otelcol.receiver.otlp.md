@@ -158,9 +158,9 @@ The following arguments are supported:
 
 To send telemetry signals to `otelcol.receiver.otlp` with HTTP/JSON, POST to:
 
-* `[endpoint][traces_url_path]` for traces.
-* `[endpoint][metrics_url_path]` for metrics.
-* `[endpoint][logs_url_path]` for logs.
+- `[endpoint][traces_url_path]` for traces.
+- `[endpoint][metrics_url_path]` for metrics.
+- `[endpoint][logs_url_path]` for logs.
 
 ### `cors`
 
@@ -177,10 +177,10 @@ The following arguments are supported:
 The `allowed_headers` argument specifies which headers are acceptable from a CORS request.
 The following headers are always implicitly allowed:
 
-* `Accept`
-* `Accept-Language`
-* `Content-Type`
-* `Content-Language`
+- `Accept`
+- `Accept-Language`
+- `Content-Type`
+- `Content-Language`
 
 If `allowed_headers` includes `"*"`, all headers are permitted.
 
@@ -198,13 +198,13 @@ If `allowed_headers` includes `"*"`, all headers are permitted.
 
 ## Debug metrics
 
-* `otelcol_receiver_accepted_spans_total` (counter): Number of spans successfully pushed into the pipeline.
-* `otelcol_receiver_refused_spans_total` (counter): Number of spans that couldn't be pushed into the pipeline.
-* `rpc_server_duration_milliseconds` (histogram): Duration of RPC requests from a gRPC server.
-* `rpc_server_request_size_bytes` (histogram): Measures size of RPC request messages (uncompressed).
-* `rpc_server_requests_per_rpc` (histogram): Measures the number of messages received per RPC. Should be 1 for all non-streaming RPCs.
-* `rpc_server_response_size_bytes` (histogram): Measures size of RPC response messages (uncompressed).
-* `rpc_server_responses_per_rpc` (histogram): Measures the number of messages received per RPC. Should be 1 for all non-streaming RPCs.
+- `otelcol_receiver_accepted_spans_total` (counter): Number of spans successfully pushed into the pipeline.
+- `otelcol_receiver_refused_spans_total` (counter): Number of spans that couldn't be pushed into the pipeline.
+- `rpc_server_duration_milliseconds` (histogram): Duration of RPC requests from a gRPC server.
+- `rpc_server_request_size_bytes` (histogram): Measures size of RPC request messages (uncompressed).
+- `rpc_server_requests_per_rpc` (histogram): Measures the number of messages received per RPC. Should be 1 for all non-streaming RPCs.
+- `rpc_server_response_size_bytes` (histogram): Measures size of RPC response messages (uncompressed).
+- `rpc_server_responses_per_rpc` (histogram): Measures the number of messages received per RPC. Should be 1 for all non-streaming RPCs.
 
 ## Example
 
@@ -270,6 +270,7 @@ otelcol.auth.basic "creds" {
     password = sys.env("<PASSWORD>")
 }
 ```
+
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components
@@ -277,7 +278,6 @@ otelcol.auth.basic "creds" {
 `otelcol.receiver.otlp` can accept arguments from the following components:
 
 - Components that export [OpenTelemetry `otelcol.Consumer`](../../../compatibility/#opentelemetry-otelcolconsumer-exporters)
-
 
 {{< admonition type="note" >}}
 Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.

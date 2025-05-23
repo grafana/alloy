@@ -106,11 +106,11 @@ You can use the following blocks with `otelcol.receiver.file_stats`:
 The `metrics` block configures the set of metrics that will be sent to downstream components.
 It accepts no arguments, but contains other blocks for individual metrics:
 
-* The [`file.atime`][file.atime] block
-* The [`file.count`][file.count] block
-* The [`file.ctime`][file.ctime] block
-* The [`file.mtime`][file.mtime] block
-* The [`file.size`][file.size] block
+- The [`file.atime`][file.atime] block
+- The [`file.count`][file.count] block
+- The [`file.ctime`][file.ctime] block
+- The [`file.mtime`][file.mtime] block
+- The [`file.size`][file.size] block
 
 Refer to the documentation of individual metric blocks for whether that metric is enabled by default.
 
@@ -165,8 +165,8 @@ The `file.size` block configures the `file.size` metric.
 The `resource_attributes` block configures resource attributes for metrics sent to downstream components.
 It accepts no arguments, but contains other blocks for configuring individual resource attributes:
 
-* The [`file.name`][file.name] block
-* The [`file.path`][file.path] block
+- The [`file.name`][file.name] block
+- The [`file.path`][file.path] block
 
 Refer to the documentation of individual resource attribute blocks for whether that resource attribute is enabled by default.
 
@@ -190,8 +190,8 @@ The `metrics_exclude` block may be specified multiple times.
 
 | Name     | Type     | Description                                      | Default | Required |
 | -------- | -------- | ------------------------------------------------ | ------- | -------- |
-| `strict` | `string` | The exact name of the metric to exclude.         |         | yes*     |
-| `regexp` | `string` | A regular expression for the metrics to exclude. |         | yes*     |
+| `strict` | `string` | The exact name of the metric to exclude.         |         | yes\*    |
+| `regexp` | `string` | A regular expression for the metrics to exclude. |         | yes\*    |
 
 Exactly one of `strict` or `regexp` must be specified.
 
@@ -202,8 +202,8 @@ The `metrics_include` block may be specified multiple times.
 
 | Name     | Type     | Description                                      | Default | Required |
 | -------- | -------- | ------------------------------------------------ | ------- | -------- |
-| `strict` | `string` | The exact name of the metric to include.         |         | yes*     |
-| `regexp` | `string` | A regular expression for the metrics to include. |         | yes*     |
+| `strict` | `string` | The exact name of the metric to include.         |         | yes\*    |
+| `regexp` | `string` | A regular expression for the metrics to include. |         | yes\*    |
 
 Exactly one of `strict` or `regexp` must be specified.
 
@@ -227,8 +227,8 @@ If a given metric matches all the `metrics_include` blocks and none of the `metr
 
 `otelcol.receiver.file_stats` is reported as unhealthy when:
 
-* It's given an invalid configuration.
-* It runs on an unsupported operating system.
+- It's given an invalid configuration.
+- It runs on an unsupported operating system.
 
 ## Debug information
 
@@ -267,7 +267,6 @@ otelcol.exporter.otlp "default" {
 `otelcol.receiver.file_stats` can accept arguments from the following components:
 
 - Components that export [OpenTelemetry `otelcol.Consumer`](../../../compatibility/#opentelemetry-otelcolconsumer-exporters)
-
 
 {{< admonition type="note" >}}
 Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.

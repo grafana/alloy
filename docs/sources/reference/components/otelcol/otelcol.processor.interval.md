@@ -15,16 +15,16 @@ title: otelcol.processor.interval
 `otelcol.processor.interval` aggregates metrics and periodically forwards the latest values to the next component in the pipeline.
 The processor supports aggregating the following metric types:
 
-* Monotonically increasing, cumulative sums
-* Monotonically increasing, cumulative histograms
-* Monotonically increasing, cumulative exponential histograms
-* Gauges
-* Summaries
+- Monotonically increasing, cumulative sums
+- Monotonically increasing, cumulative histograms
+- Monotonically increasing, cumulative exponential histograms
+- Gauges
+- Summaries
 
 The following metric types won't be aggregated and will instead be passed, unchanged, to the next component in the pipeline:
 
-* All delta metrics
-* Non-monotonically increasing sums
+- All delta metrics
+- Non-monotonically increasing sums
 
 {{< admonition type="note" >}}
 Aggregating data over an interval is an inherently lossy process.
@@ -59,9 +59,9 @@ otelcol.processor.interval "<LABEL>" {
 
 You can use the following argument with `otelcol.processor.interval`:
 
-| Name       | Type       | Description                                                         | Default | Required |
-| ---------- | ---------- | ------------------------------------------------------------------- | ------- | -------- |
-| `interval` | `duration` | The interval in which the processor should export aggregated metrics.| `"60s"` | no       |
+| Name       | Type       | Description                                                           | Default | Required |
+| ---------- | ---------- | --------------------------------------------------------------------- | ------- | -------- |
+| `interval` | `duration` | The interval in which the processor should export aggregated metrics. | `"60s"` | no       |
 
 ## Blocks
 

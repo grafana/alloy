@@ -24,11 +24,11 @@ The `declare` block has no predefined schema for its arguments.
 The body of the `declare` block is used as the component definition.
 The body can contain the following:
 
-* [argument][] blocks
-* [export][] blocks
-* [declare][] blocks
-* [import][] blocks
-* Component definitions (either built-in or custom components)
+- [argument][] blocks
+- [export][] blocks
+- [declare][] blocks
+- [import][] blocks
+- Component definitions (either built-in or custom components)
 
 The `declare` block may not contain any configuration blocks that aren't listed above.
 

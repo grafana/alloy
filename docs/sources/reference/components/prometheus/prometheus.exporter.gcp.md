@@ -24,9 +24,9 @@ The following example shows a load balancing metric:
 
 The metric has the following attributes:
 
-* `monitored_resource` = `https_lb_rule`
-* `metric_type_prefix` = `loadbalancing.googleapis.com/`
-* `metric_type` = `https/backend_latencies`
+- `monitored_resource` = `https_lb_rule`
+- `metric_type_prefix` = `loadbalancing.googleapis.com/`
+- `metric_type` = `https/backend_latencies`
 
 These attributes result in a final metric name of `stackdriver_https_lb_rule_loadbalancing_googleapis_com_https_backend_latencies`
 

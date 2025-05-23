@@ -82,9 +82,9 @@ prometheus.remote_write "default" {
 
 The preceding example contains two blocks:
 
-* `prometheus.remote_write "default"`: A labeled block that creates a `prometheus.remote_write` component.
+- `prometheus.remote_write "default"`: A labeled block that creates a `prometheus.remote_write` component.
   The label is the string `"default"`.
-* `endpoint`: An unlabeled block inside the component that configures an endpoint for sending metrics.
+- `endpoint`: An unlabeled block inside the component that configures an endpoint for sending metrics.
   This block sets the `url` attribute to specify the endpoint.
 
 ## Attributes
@@ -104,10 +104,10 @@ Use expressions to compute attribute values.
 Simple expressions include constants like `"debug"`, `32`, or `[1, 2, 3, 4]`.
 The {{< param "PRODUCT_NAME" >}} syntax supports complex expressions, such as:
 
-* Referencing component exports: `local.file.password_file.content`
-* Mathematical operations: `1 + 2`, `3 * 4`, `(5 * 6) + (7 + 8)`
-* Equality checks: `local.file.file_a.content == local.file.file_b.content`
-* Calling functions from the standard library: `sys.env("HOME")` retrieves the `HOME` environment variable.
+- Referencing component exports: `local.file.password_file.content`
+- Mathematical operations: `1 + 2`, `3 * 4`, `(5 * 6) + (7 + 8)`
+- Equality checks: `local.file.file_a.content == local.file.file_b.content`
+- Calling functions from the standard library: `sys.env("HOME")` retrieves the `HOME` environment variable.
 
 You can use expressions for any attribute in a component definition.
 
@@ -120,25 +120,25 @@ You form a reference by combining the component's name (for example, `local.file
 
 {{< param "PRODUCT_NAME" >}} is:
 
-* _Fast_: The configuration language is fast and the controller evaluates changes quickly.
-* _Simple_: The configuration language is easy to read and write, reducing the learning curve.
-* _Easy to debug_: The configuration language provides detailed error information.
+- _Fast_: The configuration language is fast and the controller evaluates changes quickly.
+- _Simple_: The configuration language is easy to read and write, reducing the learning curve.
+- _Easy to debug_: The configuration language provides detailed error information.
 
 The {{< param "PRODUCT_NAME" >}} configuration syntax is a distinct language with custom syntax and features, such as first-class functions.
 
-* Blocks group related settings and typically represent component creation.
+- Blocks group related settings and typically represent component creation.
   Blocks have a name consisting of identifiers separated by `.`, an optional user label, and a body containing attributes and nested blocks.
-* Attributes appear within blocks and assign values to names.
-* Expressions represent values, either literally or by referencing and combining other values.
+- Attributes appear within blocks and assign values to names.
+- Expressions represent values, either literally or by referencing and combining other values.
   You use expressions to compute attribute values.
 
 ## Tooling
 
 You can use the following tools to write {{< param "PRODUCT_NAME" >}} configuration files:
 
-* Editor support for:
-  * [VSCode](https://github.com/grafana/vscode-alloy)
-  * [Vim/Neovim](https://github.com/grafana/vim-alloy)
-* Code formatting with the [`alloy fmt` command][fmt]
+- Editor support for:
+  - [VSCode](https://github.com/grafana/vscode-alloy)
+  - [Vim/Neovim](https://github.com/grafana/vim-alloy)
+- Code formatting with the [`alloy fmt` command][fmt]
 
 [fmt]: ../../reference/cli/fmt/

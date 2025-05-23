@@ -21,8 +21,8 @@ title: otelcol.exporter.loki
 The attributes of the OTLP log aren't converted to Loki attributes by default.
 To convert them, the OTLP log should contain special "hint" attributes:
 
-* To convert OTLP resource attributes to Loki labels, use the `loki.resource.labels` hint attribute.
-* To convert OTLP log attributes to Loki labels, use the `loki.attribute.labels` hint attribute.
+- To convert OTLP resource attributes to Loki labels, use the `loki.resource.labels` hint attribute.
+- To convert OTLP log attributes to Loki labels, use the `loki.attribute.labels` hint attribute.
 
 Labels will be translated to a [Prometheus format][], which is more constrained than the OTLP format.
 For examples on label translation, see the [Convert OTLP attributes to Loki labels][] section.
@@ -102,8 +102,8 @@ loki.write "local" {
 
 This example converts the following attributes to Loki labels:
 
-* The `service.name` and `service.namespace` OTLP resource attributes.
-* The `event.domain` and `event.name` OTLP log attributes.
+- The `service.name` and `service.namespace` OTLP resource attributes.
+- The `event.domain` and `event.name` OTLP log attributes.
 
 Labels will be translated to a [Prometheus format][].
 For example:

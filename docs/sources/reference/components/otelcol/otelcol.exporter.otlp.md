@@ -90,8 +90,8 @@ The following arguments are supported:
 
 An HTTP proxy can be configured through the following environment variables:
 
-* `HTTPS_PROXY`
-* `NO_PROXY`
+- `HTTPS_PROXY`
+- `NO_PROXY`
 
 The `HTTPS_PROXY` environment variable specifies a URL to use for proxying requests.
 Connections to the proxy are established via [the `HTTP CONNECT` method][HTTP CONNECT].
@@ -130,6 +130,7 @@ server.
 Sending sensitive credentials over insecure non-TLS connections is supported by non-gRPC exporters such as [`otelcol.exporter.otlphttp`][otelcol.exporter.otlphttp].
 
 [otelcol.exporter.otlphttp]: ../otelcol.exporter.otlphttp/
+
 {{< /admonition >}}
 
 ### `debug_metrics`
@@ -169,15 +170,15 @@ The following fields are exported and can be referenced by other components:
 
 ## Debug metrics
 
-* `otelcol_exporter_queue_capacity` (gauge): Fixed capacity of the retry queue (in batches)
-* `otelcol_exporter_queue_size` (gauge): Current size of the retry queue (in batches)
-* `otelcol_exporter_send_failed_spans_total` (counter): Number of spans in failed attempts to send to destination.
-* `otelcol_exporter_sent_spans_total` (counter): Number of spans successfully sent to destination.
-* `rpc_client_duration_milliseconds` (histogram): Measures the duration of inbound RPC.
-* `rpc_client_request_size_bytes` (histogram): Measures size of RPC request messages (uncompressed).
-* `rpc_client_requests_per_rpc` (histogram): Measures the number of messages received per RPC. Should be 1 for all non-streaming RPCs.
-* `rpc_client_response_size_bytes` (histogram): Measures size of RPC response messages (uncompressed).
-* `rpc_client_responses_per_rpc` (histogram): Measures the number of messages received per RPC. Should be 1 for all non-streaming RPCs.
+- `otelcol_exporter_queue_capacity` (gauge): Fixed capacity of the retry queue (in batches)
+- `otelcol_exporter_queue_size` (gauge): Current size of the retry queue (in batches)
+- `otelcol_exporter_send_failed_spans_total` (counter): Number of spans in failed attempts to send to destination.
+- `otelcol_exporter_sent_spans_total` (counter): Number of spans successfully sent to destination.
+- `rpc_client_duration_milliseconds` (histogram): Measures the duration of inbound RPC.
+- `rpc_client_request_size_bytes` (histogram): Measures size of RPC request messages (uncompressed).
+- `rpc_client_requests_per_rpc` (histogram): Measures the number of messages received per RPC. Should be 1 for all non-streaming RPCs.
+- `rpc_client_response_size_bytes` (histogram): Measures size of RPC response messages (uncompressed).
+- `rpc_client_responses_per_rpc` (histogram): Measures the number of messages received per RPC. Should be 1 for all non-streaming RPCs.
 
 ## Examples
 
@@ -216,6 +217,7 @@ otelcol.auth.basic "grafana_cloud_traces" {
     password = sys.env("GRAFANA_CLOUD_API_KEY")
 }
 ```
+
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components

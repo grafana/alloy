@@ -23,8 +23,8 @@ In this example scenario, {{< param "PRODUCT_NAME" >}} listens for syslog messag
 
 Ensure you have the following:
 
-* [Docker](https://www.docker.com/)
-* [Git](https://git-scm.com/)
+- [Docker](https://www.docker.com/)
+- [Git](https://git-scm.com/)
 
 {{< admonition type="note" >}}
 You need administrator privileges to run `docker` commands.
@@ -104,18 +104,18 @@ livedebugging {
 
 The logging configuration in this example requires two components:
 
-* `loki.source.syslog`
-* `loki.write`
+- `loki.source.syslog`
+- `loki.write`
 
 #### `loki.source.syslog`
 
 The [`loki.source.syslog`][loki.source.syslog] component listens for syslog messages over TCP or UDP connections and forwards them to other Loki components.
 In this example, the component requires the following arguments:
 
-* `address`: The host and port address to listen to for syslog messages.
-* `protocol`: The protocol to listen to for syslog messages. The default is TCP.
-* `labels`: The labels to associate with each received syslog record.
-* `forward_to`: The list of receivers to send log entries to.
+- `address`: The host and port address to listen to for syslog messages.
+- `protocol`: The protocol to listen to for syslog messages. The default is TCP.
+- `labels`: The labels to associate with each received syslog record.
+- `forward_to`: The list of receivers to send log entries to.
 
 ```alloy
 loki.source.syslog "local" {
@@ -139,7 +139,7 @@ loki.source.syslog "local" {
 The [`loki.write`][loki.write] component writes logs to a Loki destination.
 In this example, the component requires the following arguments:
 
-* `url`: Defines the full URL endpoint in Loki to send logs to.
+- `url`: Defines the full URL endpoint in Loki to send logs to.
 
 ```alloy
 loki.write "local" {

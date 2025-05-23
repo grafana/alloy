@@ -5,9 +5,9 @@ headless: true
 
 This block specifies an attribute to match against:
 
-* You can define more than one `attribute` block.
-* Only `match_type = "strict"` is allowed if `attribute` is specified.
-* All `attribute` blocks must match exactly for a match to occur.
+- You can define more than one `attribute` block.
+- Only `match_type = "strict"` is allowed if `attribute` is specified.
+- All `attribute` blocks must match exactly for a match to occur.
 
 The following arguments are supported:
 

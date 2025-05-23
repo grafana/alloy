@@ -38,10 +38,9 @@ otelcol.exporter.awss3 "<LABEL>" {
 ## Arguments
 
 You can use the following arguments with `otelcol.exporter.awss3`:
-	
-| Name      | Type       | Description                                      | Default | Required |
+| Name | Type | Description | Default | Required |
 | --------- | ---------- | ------------------------------------------------ | ------- | -------- |
-| `timeout` | `duration` | Time to wait before marking a request as failed. | `"5s"`  | no       |
+| `timeout` | `duration` | Time to wait before marking a request as failed. | `"5s"` | no |
 
 ## Blocks
 
@@ -95,12 +94,12 @@ The following arguments are supported:
 
 Marshaler determines the format of data sent to AWS S3. Currently, the following marshalers are implemented:
 
-* `otlp_json` (default): the [OpenTelemetry Protocol format](https://github.com/open-telemetry/opentelemetry-proto), represented as JSON.
-* `otlp_proto`: the [OpenTelemetry Protocol format](https://github.com/open-telemetry/opentelemetry-proto), represented as Protocol Buffers.
+- `otlp_json` (default): the [OpenTelemetry Protocol format](https://github.com/open-telemetry/opentelemetry-proto), represented as JSON.
+- `otlp_proto`: the [OpenTelemetry Protocol format](https://github.com/open-telemetry/opentelemetry-proto), represented as Protocol Buffers.
   A single protobuf message is written into each object.
-* `sumo_ic`: the [Sumo Logic Installed Collector Archive format](https://help.sumologic.com/docs/manage/data-archiving/archive/).
+- `sumo_ic`: the [Sumo Logic Installed Collector Archive format](https://help.sumologic.com/docs/manage/data-archiving/archive/).
   **This format is supported only for logs.**
-* `body`: export the log body as string.
+- `body`: export the log body as string.
   **This format is supported only for logs.**
 
 The following arguments are supported:
@@ -129,8 +128,8 @@ Otherwise, [`s3_uploader`][s3_uploader] > `s3_prefix` will serve as the fallback
 
 ### Compression
 
-* `none` (default): File compression isn't used.
-* `gzip`: Files are compressed with Gzip.
+- `none` (default): File compression isn't used.
+- `gzip`: Files are compressed with Gzip.
   **This doesn't support `sumo_ic`marshaler.**
 
 ## Exported fields
@@ -153,15 +152,15 @@ The following fields are exported and can be referenced by other components:
 
 ## Debug metrics
 
-* `otelcol_exporter_queue_capacity` (gauge): Fixed capacity of the retry queue (in batches).
-* `otelcol_exporter_queue_size` (gauge): Current size of the retry queue (in batches).
-* `otelcol_exporter_send_failed_spans_total` (counter): Number of spans in failed attempts to send to destination.
-* `otelcol_exporter_sent_spans_total` (counter): Number of spans successfully sent to destination.
-* `rpc_client_duration_milliseconds` (histogram): Measures the duration of inbound RPC.
-* `rpc_client_request_size_bytes` (histogram): Measures size of RPC request messages (uncompressed).
-* `rpc_client_requests_per_rpc` (histogram): Measures the number of messages received per RPC. Should be 1 for all non-streaming RPCs.
-* `rpc_client_response_size_bytes` (histogram): Measures size of RPC response messages (uncompressed).
-* `rpc_client_responses_per_rpc` (histogram): Measures the number of messages received per RPC. Should be 1 for all non-streaming RPCs.
+- `otelcol_exporter_queue_capacity` (gauge): Fixed capacity of the retry queue (in batches).
+- `otelcol_exporter_queue_size` (gauge): Current size of the retry queue (in batches).
+- `otelcol_exporter_send_failed_spans_total` (counter): Number of spans in failed attempts to send to destination.
+- `otelcol_exporter_sent_spans_total` (counter): Number of spans successfully sent to destination.
+- `rpc_client_duration_milliseconds` (histogram): Measures the duration of inbound RPC.
+- `rpc_client_request_size_bytes` (histogram): Measures size of RPC request messages (uncompressed).
+- `rpc_client_requests_per_rpc` (histogram): Measures the number of messages received per RPC. Should be 1 for all non-streaming RPCs.
+- `rpc_client_response_size_bytes` (histogram): Measures size of RPC response messages (uncompressed).
+- `rpc_client_responses_per_rpc` (histogram): Measures the number of messages received per RPC. Should be 1 for all non-streaming RPCs.
 
 ## Example
 

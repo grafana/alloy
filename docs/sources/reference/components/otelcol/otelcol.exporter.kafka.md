@@ -17,7 +17,7 @@ title: otelcol.exporter.kafka
 It's important to use `otelcol.exporter.kafka` together with `otelcol.processor.batch` to make sure `otelcol.exporter.kafka` doesn't slow down due to sending Kafka a huge number of small payloads.
 
 {{< admonition type="note" >}}
-`otelcol.exporter.kafka` is a wrapper over the upstream OpenTelemetry Collector `kafka` exporter from the `otelcol-contrib`  distribution.
+`otelcol.exporter.kafka` is a wrapper over the upstream OpenTelemetry Collector `kafka` exporter from the `otelcol-contrib` distribution.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
 {{< /admonition >}}
 
@@ -100,7 +100,7 @@ For example, `authentication` > `tls` refers to a `tls` block defined inside an 
 [debug_metrics]: #debug_metrics
 
 ### `logs`
-	
+
 The `logs` block configures how to send logs to Kafka brokers.
 
 | Name       | Type     | Description                                                                  | Default        | Required |
@@ -214,21 +214,21 @@ The following fields are exported and can be referenced by other components:
 
 Available for all signals:
 
-* `otlp_proto`: Data is encoded as OTLP Protobuf.
-* `otlp_json`: Data is encoded as OTLP JSON.
+- `otlp_proto`: Data is encoded as OTLP Protobuf.
+- `otlp_json`: Data is encoded as OTLP JSON.
 
 Available only for traces:
 
-* `jaeger_proto`: The payload is serialized to a single Jaeger proto `Span`, and keyed by TraceID.
-* `jaeger_json`: The payload is serialized to a single Jaeger JSON Span using `jsonpb`, and keyed by TraceID.
-* `zipkin_proto`: The payload is serialized to Zipkin v2 proto Span.
-* `zipkin_json`: The payload is serialized to Zipkin v2 JSON Span.
+- `jaeger_proto`: The payload is serialized to a single Jaeger proto `Span`, and keyed by TraceID.
+- `jaeger_json`: The payload is serialized to a single Jaeger JSON Span using `jsonpb`, and keyed by TraceID.
+- `zipkin_proto`: The payload is serialized to Zipkin v2 proto Span.
+- `zipkin_json`: The payload is serialized to Zipkin v2 JSON Span.
 
 Available only for logs:
 
-* `raw`: If the log record body is a byte array, it is sent as is.
-   Otherwise, it is serialized to JSON.
-   Resource and record attributes are discarded.
+- `raw`: If the log record body is a byte array, it is sent as is.
+  Otherwise, it is serialized to JSON.
+  Resource and record attributes are discarded.
 
 ## Component health
 

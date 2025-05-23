@@ -59,9 +59,9 @@ The `config` argument must be a YAML document as string defining which SNMP modu
 `config` is typically loaded by using the exports of another component.
 For example,
 
-* `local.file.LABEL.content`
-* `remote.http.LABEL.content`
-* `remote.s3.LABEL.content`
+- `local.file.LABEL.content`
+- `remote.http.LABEL.content`
+- `remote.s3.LABEL.content`
 
 Set `config_merge_strategy` to `merge` to add additional configuration to the embedded SNMP configuration.
 For example, if you need to add a few custom `auth` settings without regenerating the whole configuration.
@@ -69,11 +69,11 @@ For example, if you need to add a few custom `auth` settings without regeneratin
 The `targets` argument is an alternative to the [target][] block. This is useful when SNMP targets are supplied by another component.
 The following labels can be set to a target:
 
-* `name`: The name of the target (required).
-* `address` or `__address__`: The address of SNMP device (required).
-* `module`: SNMP modules to use for polling, separated by comma.
-* `auth`: The SNMP authentication profile to use.
-* `walk_params`: The configuration to use for this target.
+- `name`: The name of the target (required).
+- `address` or `__address__`: The address of SNMP device (required).
+- `module`: SNMP modules to use for polling, separated by comma.
+- `auth`: The SNMP authentication profile to use.
+- `walk_params`: The configuration to use for this target.
 
 Any other labels defined are added to the scraped metrics.
 
@@ -224,9 +224,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 The following example uses the alternative way to pass targets:
 
@@ -330,13 +330,13 @@ The YAML file in this example looks like this:
 
 ```yaml
 - targets:
-  - localhost:161
+    - localhost:161
   labels:
     name: t1
     module: default
     auth: public_v2
 - targets:
-  - localhost:161
+    - localhost:161
   labels:
     name: t2
     module: default

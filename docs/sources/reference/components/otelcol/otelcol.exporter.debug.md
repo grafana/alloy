@@ -41,9 +41,9 @@ You can use the following arguments with `otelcol.exporter.debug`:
 
 The `verbosity` argument must be one of:
 
-* `"basic"`: A single-line summary of received data is logged to stderr, with a total count of telemetry records for every batch of received logs, metrics, or traces.
-* `"normal"`: Produces the same output as `"basic"` verbosity.
-* `"detailed"`: All details of every telemetry record are logged to stderr, typically writing multiple lines for every telemetry record.
+- `"basic"`: A single-line summary of received data is logged to stderr, with a total count of telemetry records for every batch of received logs, metrics, or traces.
+- `"normal"`: Produces the same output as `"basic"` verbosity.
+- `"detailed"`: All details of every telemetry record are logged to stderr, typically writing multiple lines for every telemetry record.
 
 The following example shows `"basic"` and `"normal"` output:
 
@@ -149,6 +149,7 @@ otelcol.receiver.otlp "default" {
 
 otelcol.exporter.debug "default" {}
 ```
+
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components

@@ -5,8 +5,8 @@ headless: true
 
 This block specifies items to match the resources against:
 
-* More than one `resource` block can be defined.
-* A match occurs if the input data resources match at least one `resource` block.
+- More than one `resource` block can be defined.
+- A match occurs if the input data resources match at least one `resource` block.
 
 The following arguments are supported:
 

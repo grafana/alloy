@@ -29,7 +29,7 @@ prometheus.exporter.postgres "<LABEL>" {
 You can use the following arguments with `prometheus.exporter.postgres`:
 
 | Name                         | Type           | Description                                                                   | Default | Required |
-|------------------------------|----------------|-------------------------------------------------------------------------------|---------|----------|
+| ---------------------------- | -------------- | ----------------------------------------------------------------------------- | ------- | -------- |
 | `data_source_names`          | `list(secret)` | Specifies the PostgreSQL servers to connect to.                               |         | yes      |
 | `custom_queries_config_path` | `string`       | Path to YAML file containing custom queries to expose as metrics.             | ""      | no       |
 | `disable_default_metrics`    | `bool`         | When `true`, only exposes metrics supplied from `custom_queries_config_path`. | `false` | no       |
@@ -54,25 +54,25 @@ The following collectors are available for selection:
 
 {{< column-list >}}
 
-* `database`
-* `database_wraparound`
-* `locks`
-* `long_running_transactions`
-* `postmaster`
-* `process_idle`
-* `replication`
-* `replication_slot`
-* `stat_activity_autovacuum`
-* `stat_bgwriter`
-* `stat_checkpointer` - Only supported in PostgreSQL 17 and later
-* `stat_database`
-* `stat_statements`
-* `stat_user_tables`
-* `stat_wal_receiver`
-* `statio_user_indexes`
-* `statio_user_tables`
-* `wal`
-* `xlog_location`
+- `database`
+- `database_wraparound`
+- `locks`
+- `long_running_transactions`
+- `postmaster`
+- `process_idle`
+- `replication`
+- `replication_slot`
+- `stat_activity_autovacuum`
+- `stat_bgwriter`
+- `stat_checkpointer` - Only supported in PostgreSQL 17 and later
+- `stat_database`
+- `stat_statements`
+- `stat_user_tables`
+- `stat_wal_receiver`
+- `statio_user_indexes`
+- `statio_user_tables`
+- `wal`
+- `xlog_location`
 
 {{< /column-list >}}
 
@@ -80,15 +80,15 @@ By default, the following collectors are enabled:
 
 {{< column-list >}}
 
-* `database`
-* `locks`
-* `replication`
-* `replication_slot`
-* `stat_bgwriter`
-* `stat_database`
-* `stat_user_tables`
-* `statio_user_tables`
-* `wal`
+- `database`
+- `locks`
+- `replication`
+- `replication_slot`
+- `stat_bgwriter`
+- `stat_database`
+- `stat_user_tables`
+- `statio_user_tables`
+- `wal`
 
 {{< /column-list >}}
 
@@ -113,7 +113,7 @@ The `autodiscovery` block configures discovery of databases, outside of any spec
 The following arguments are supported:
 
 | Name                 | Type           | Description                                                                    | Default | Required |
-|----------------------|----------------|--------------------------------------------------------------------------------|---------|----------|
+| -------------------- | -------------- | ------------------------------------------------------------------------------ | ------- | -------- |
 | `database_allowlist` | `list(string)` | List of databases to filter for, meaning only these databases will be scraped. |         | no       |
 | `database_denylist`  | `list(string)` | List of databases to filter out, meaning all other databases will be scraped.  |         | no       |
 | `enabled`            | `bool`         | Whether to automatically discover other databases.                             | `false` | no       |
@@ -170,9 +170,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 ### Collect custom metrics from an allowlisted set of databases
 
@@ -213,9 +213,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 ### Collect metrics from all databases except for a denylisted database
 
@@ -254,9 +254,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

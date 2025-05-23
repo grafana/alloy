@@ -10,6 +10,6 @@ headless: true
 
 The supported values for `cloud` are:
 
-* `"AzurePublic"`
-* `"AzureChina"`
-* `"AzureGovernment"`
+- `"AzurePublic"`
+- `"AzureChina"`
+- `"AzureGovernment"`

@@ -53,27 +53,27 @@ You can use the following arguments with `otelcol.processor.batch`:
 
 `otelcol.processor.batch` accumulates data into a batch until one of the following events happens:
 
-* The duration specified by `timeout` elapses since the time the last batch was sent.
-* The number of spans, log lines, or metric samples processed is greater than or equal to the number specified by `send_batch_size`.
+- The duration specified by `timeout` elapses since the time the last batch was sent.
+- The number of spans, log lines, or metric samples processed is greater than or equal to the number specified by `send_batch_size`.
 
 Logs, traces, and metrics are processed independently.
 For example, if `send_batch_size` is set to `1000`:
 
-* The processor may, at the same time, buffer 1,000 spans, 1,000 log lines, and 1,000 metric samples before flushing them.
-* If there are enough spans for a batch of spans (1,000 or more), but not enough for a batch of metric samples (less than 1,000) then only the spans will be flushed.
+- The processor may, at the same time, buffer 1,000 spans, 1,000 log lines, and 1,000 metric samples before flushing them.
+- If there are enough spans for a batch of spans (1,000 or more), but not enough for a batch of metric samples (less than 1,000) then only the spans will be flushed.
 
 Use `send_batch_max_size` to limit the amount of data contained in a single batch:
 
-* When set to `0`, batches can be any size.
-* When set to a non-zero value, `send_batch_max_size` must be greater than or equal to `send_batch_size`.
+- When set to `0`, batches can be any size.
+- When set to a non-zero value, `send_batch_max_size` must be greater than or equal to `send_batch_size`.
   Every batch will contain up to the `send_batch_max_size` number of spans, log lines, or metric samples.
   The excess spans, log lines, or metric samples won't be lost - instead, they will be added to the next batch.
 
 For example, assume `send_batch_size` is set to the default `8192` and there are 8,000 batched spans.
 If the batch processor receives 8,000 more spans at once, its behavior depends on how `send_batch_max_size` is configured:
 
-* If `send_batch_max_size` is set to `0`, the total batch size would be 16,000 which would then be flushed as a single batch.
-* If `send_batch_max_size` is set to `10000`, then the total batch size will be 10,000 and the remaining 6,000 spans will be flushed in a subsequent batch.
+- If `send_batch_max_size` is set to `0`, the total batch size would be 16,000 which would then be flushed as a single batch.
+- If `send_batch_max_size` is set to `10000`, then the total batch size will be 10,000 and the remaining 6,000 spans will be flushed in a subsequent batch.
 
 `metadata_cardinality_limit` applies for the lifetime of the process.
 
@@ -125,11 +125,11 @@ The following fields are exported and can be referenced by other components:
 
 ## Debug metrics
 
-* `otelcol_processor_batch_batch_send_size_bytes` (histogram): Number of bytes in batch that was sent.
-* `otelcol_processor_batch_batch_send_size` (histogram): Number of units in the batch.
-* `otelcol_processor_batch_batch_size_trigger_send_total` (counter): Number of times the batch was sent due to a size trigger.
-* `otelcol_processor_batch_metadata_cardinality` (gauge): Number of distinct metadata value combinations being processed.
-* `otelcol_processor_batch_timeout_trigger_send_total` (counter): Number of times the batch was sent due to a timeout trigger.
+- `otelcol_processor_batch_batch_send_size_bytes` (histogram): Number of bytes in batch that was sent.
+- `otelcol_processor_batch_batch_send_size` (histogram): Number of units in the batch.
+- `otelcol_processor_batch_batch_size_trigger_send_total` (counter): Number of times the batch was sent due to a size trigger.
+- `otelcol_processor_batch_metadata_cardinality` (gauge): Number of distinct metadata value combinations being processed.
+- `otelcol_processor_batch_timeout_trigger_send_total` (counter): Number of times the batch was sent due to a timeout trigger.
 
 ## Examples
 

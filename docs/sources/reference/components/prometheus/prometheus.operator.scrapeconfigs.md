@@ -96,13 +96,13 @@ The following arguments are supported:
 | `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false` | no       |
 | `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |         | no       |
 
- At most, one of the following can be provided:
- 
-* [`authorization`][authorization] block
-* [`basic_auth`][basic_auth] block
-* [`bearer_token`][client] argument
-* [`bearer_token_file`][client] argument
-* [`oauth2`][oauth2] block
+At most, one of the following can be provided:
+
+- [`authorization`][authorization] block
+- [`basic_auth`][basic_auth] block
+- [`bearer_token`][client] argument
+- [`bearer_token_file`][client] argument
+- [`oauth2`][oauth2] block
 
 {{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -175,10 +175,10 @@ The following arguments are supported:
 
 The `operator` argument must be one of the following strings:
 
-* `"In"`
-* `"NotIn"`
-* `"Exists"`
-* `"DoesNotExist"`
+- `"In"`
+- `"NotIn"`
+- `"Exists"`
+- `"DoesNotExist"`
 
 If there are multiple `match_expressions` blocks inside of a `selector` block, they are combined together with AND clauses.
 
@@ -243,10 +243,10 @@ prometheus.operator.scrapeconfigs "scrapeconfigs" {
 `prometheus.operator.scrapeconfigs` adds the following extra
 labels to all metrics scraped for [ScrapeConfig](https://prometheus-operator.dev/docs/api-reference/api/#monitoring.coreos.com/v1alpha1.ScrapeConfig) objects.
 
-|Label|Description|
-|---|---|
-|`__meta_kubernetes_scrapeconfig_namespace`|Namespace of the *ScrapeConfig* object|
-|`__meta_kubernetes_scrapeconfig_name`|Name of the *ScrapeConfig* object|
+| Label                                      | Description                            |
+| ------------------------------------------ | -------------------------------------- |
+| `__meta_kubernetes_scrapeconfig_namespace` | Namespace of the _ScrapeConfig_ object |
+| `__meta_kubernetes_scrapeconfig_name`      | Name of the _ScrapeConfig_ object      |
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
@@ -255,7 +255,6 @@ labels to all metrics scraped for [ScrapeConfig](https://prometheus-operator.dev
 `prometheus.operator.scrapeconfigs` can accept arguments from the following components:
 
 - Components that export [Prometheus `MetricsReceiver`](../../../compatibility/#prometheus-metricsreceiver-exporters)
-
 
 {{< admonition type="note" >}}
 Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.

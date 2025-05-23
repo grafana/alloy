@@ -155,12 +155,12 @@ Resource {host.name="host-B",source="prom"}
 
 This output demonstrates how `otelcol.processor.groupbyattrs` works in various situations:
 
-* The DataPoints for the `gauge-1` (GAUGE) metric were originally split under 2 Metric instances and have been merged in the output.
-* The DataPoints of the `mixed-type` (GAUGE) and `mixed-type` (SUM) metrics haven't been merged under the same Metric, because their DataType is different.
-* The `dont-move` metric DataPoints don't have a `host.name` attribute and therefore remained under the original Resource.
-* The new Resources inherited the attributes from the original Resource (`source="prom"`), plus the specified attributes from the processed metrics (`host.name="host-A"` or `host.name="host-B"`).
-* The specified "grouping" attributes that are set on the new Resources are also removed from the metric DataPoints.
-* While not shown in the above example, the processor also merges collections of records under matching InstrumentationLibrary.
+- The DataPoints for the `gauge-1` (GAUGE) metric were originally split under 2 Metric instances and have been merged in the output.
+- The DataPoints of the `mixed-type` (GAUGE) and `mixed-type` (SUM) metrics haven't been merged under the same Metric, because their DataType is different.
+- The `dont-move` metric DataPoints don't have a `host.name` attribute and therefore remained under the original Resource.
+- The new Resources inherited the attributes from the original Resource (`source="prom"`), plus the specified attributes from the processed metrics (`host.name="host-A"` or `host.name="host-B"`).
+- The specified "grouping" attributes that are set on the new Resources are also removed from the metric DataPoints.
+- While not shown in the above example, the processor also merges collections of records under matching InstrumentationLibrary.
 
 ### Compaction
 
@@ -178,17 +178,17 @@ Resource {host.name="localhost"}
   InstrumentationLibrary {name="OtherLibrary"}
   Spans
     Span {span_id=2, ...}
-    
+
 Resource {host.name="localhost"}
   InstrumentationLibrary {name="MyLibrary"}
   Spans
     Span {span_id=3, ...}
-    
+
 Resource {host.name="localhost"}
   InstrumentationLibrary {name="MyLibrary"}
   Spans
     Span {span_id=4, ...}
-    
+
 Resource {host.name="otherhost"}
   InstrumentationLibrary {name="MyLibrary"}
   Spans

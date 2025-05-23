@@ -17,18 +17,18 @@ It's fully compatible with the most popular open source observability standards 
 
 Some of the key features of {{< param "PRODUCT_NAME" >}} include:
 
-* **Custom components:** You can use {{< param "PRODUCT_NAME" >}} to create and share custom components.
+- **Custom components:** You can use {{< param "PRODUCT_NAME" >}} to create and share custom components.
   Custom components combine a pipeline of existing components into a single, easy-to-understand component that's just a few lines long.
   You can use pre-built custom components from the community, ones packaged by Grafana, or create your own.
-* **Reusable components:** You can use the output of a component as the input for multiple other components.
-* **Chained components:** You can chain components together to form a pipeline.
-* **Single task per component:** The scope of each component is limited to one specific task.
-* **GitOps compatibility:** {{< param "PRODUCT_NAME" >}} uses frameworks to pull configurations from Git, S3, HTTP endpoints, and just about any other source.
-* **Clustering support:** {{< param "PRODUCT_NAME" >}} has native clustering support.
+- **Reusable components:** You can use the output of a component as the input for multiple other components.
+- **Chained components:** You can chain components together to form a pipeline.
+- **Single task per component:** The scope of each component is limited to one specific task.
+- **GitOps compatibility:** {{< param "PRODUCT_NAME" >}} uses frameworks to pull configurations from Git, S3, HTTP endpoints, and just about any other source.
+- **Clustering support:** {{< param "PRODUCT_NAME" >}} has native clustering support.
   Clustering helps distribute the workload and ensures you have high availability.
   You can quickly create horizontally scalable deployments with minimal resource and operational overhead.
-* **Security:** {{< param "PRODUCT_NAME" >}} helps you manage authentication credentials and connect to HashiCorp Vaults or Kubernetes clusters to retrieve secrets.
-* **Debugging utilities:** {{< param "PRODUCT_NAME" >}} provides troubleshooting support and an embedded [user interface][UI] to help you identify and resolve configuration problems.
+- **Security:** {{< param "PRODUCT_NAME" >}} helps you manage authentication credentials and connect to HashiCorp Vaults or Kubernetes clusters to retrieve secrets.
+- **Debugging utilities:** {{< param "PRODUCT_NAME" >}} provides troubleshooting support and an embedded [user interface][UI] to help you identify and resolve configuration problems.
 
 ## How does {{% param "PRODUCT_NAME" %}} work as an OpenTelemetry collector?
 
@@ -55,11 +55,11 @@ You can use transformations to inject extra metadata into telemetry or filter ou
 
 ## Next steps
 
-* [Install][] {{< param "PRODUCT_NAME" >}}.
-* Learn about the core [Concepts][] of {{< param "PRODUCT_NAME" >}}.
-* Follow the [tutorials][] for hands-on learning about {{< param "PRODUCT_NAME" >}}.
-* Learn how to [collect and forward data][Collect] with {{< param "PRODUCT_NAME" >}}.
-* Check out the [reference][] documentation to find information about the {{< param "PRODUCT_NAME" >}} components, configuration blocks, and command line tools.
+- [Install][] {{< param "PRODUCT_NAME" >}}.
+- Learn about the core [Concepts][] of {{< param "PRODUCT_NAME" >}}.
+- Follow the [tutorials][] for hands-on learning about {{< param "PRODUCT_NAME" >}}.
+- Learn how to [collect and forward data][Collect] with {{< param "PRODUCT_NAME" >}}.
+- Check out the [reference][] documentation to find information about the {{< param "PRODUCT_NAME" >}} components, configuration blocks, and command line tools.
 
 [OpenTelemetry]: https://opentelemetry.io/ecosystem/distributions/
 [Install]: ../set-up/install/

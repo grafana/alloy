@@ -28,4 +28,4 @@ sys.env("HOME")
 encoding.from_json(local.file.cfg.content)["namespace"]
 ```
 
-[standard library]:../../../../reference/stdlib/
+[standard library]: ../../../../reference/stdlib/

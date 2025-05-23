@@ -289,6 +289,10 @@ else
 	sed -i "s/SNMP_VERSION: v[0-9]\+\.[0-9]\+\.[0-9]\+/SNMP_VERSION: $$LATEST_SNMP_VERSION/" docs/sources/_index.md.t
 endif
 
+.PHONY: format-docs
+format-docs:
+	prettier --list-different --write --log-level=warn --single-quote 'docs/**/*.md'
+
 #
 # Other targets
 #

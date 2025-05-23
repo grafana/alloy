@@ -23,8 +23,8 @@ In this example scenario, {{< param "PRODUCT_NAME" >}} collects log entries over
 
 Ensure you have the following:
 
-* [Docker](https://www.docker.com/)
-* [Git](https://git-scm.com/)
+- [Docker](https://www.docker.com/)
+- [Git](https://git-scm.com/)
 
 {{< admonition type="note" >}}
 You need administrator privileges to run `docker` commands.
@@ -104,19 +104,19 @@ livedebugging {
 
 The logging configuration in this example requires three components:
 
-* `loki.source.api`
-* `loki.process`
-* `loki.write`
+- `loki.source.api`
+- `loki.process`
+- `loki.write`
 
 #### `loki.source.api`
 
 The [`loki.source.api`][loki.source.api] component receives log entries over HTTP and forwards them to other Loki components.
 In this example, the component requires the following arguments:
 
-* `listen_address`: The network address the server listens to for new connections.
+- `listen_address`: The network address the server listens to for new connections.
   Setting this argument to `0.0.0.0` tells the server to listen on all IP addresses.
-* `listen_port`: The port the server listens to for new connections.
-* `forward_to`: The list of receivers to send log entries to.
+- `listen_port`: The port the server listens to for new connections.
+- `forward_to`: The list of receivers to send log entries to.
 
 ```alloy
 loki.source.api "loki_push_api" {
@@ -135,20 +135,20 @@ loki.source.api "loki_push_api" {
 The [`loki.process`][loki.process] component receives log entries from other Loki components, applies processing stages, and forwards the results to the list of receivers.
 In this example, the component requires the following arguments:
 
-* `expressions`: Key-value pairs defining the name of the data extracted and the value it's populated with.
-* `source`: Name from extracted values map to use for the timestamp.
-* `format`: Determines how to parse the source string.
-* `values`: Key-value pairs defining the label to set and how to look them up.
-* `forward_to`: The list of receivers to send log entries to.
+- `expressions`: Key-value pairs defining the name of the data extracted and the value it's populated with.
+- `source`: Name from extracted values map to use for the timestamp.
+- `format`: Determines how to parse the source string.
+- `values`: Key-value pairs defining the label to set and how to look them up.
+- `forward_to`: The list of receivers to send log entries to.
 
 ```alloy
 loki.process "labels" {
     stage.json {
-      expressions = { 
+      expressions = {
                       "timestamp" = "",
-                      "state" = "", 
-                      "package_size" = "", 
-                      "package_status" = "", 
+                      "state" = "",
+                      "package_size" = "",
+                      "package_status" = "",
                       "package_id" = "",
                     }
     }
@@ -191,7 +191,7 @@ loki.process "labels" {
 The [`loki.write`][loki.write] component writes logs to a Loki destination.
 In this example, the component requires the following argument:
 
-* `url`: Defines the full URL endpoint in Loki to send logs to.
+- `url`: Defines the full URL endpoint in Loki to send logs to.
 
 ```alloy
 loki.write "local" {

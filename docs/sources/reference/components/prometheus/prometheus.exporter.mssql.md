@@ -53,9 +53,9 @@ If specified, the `query_config` argument must be a YAML document as string defi
 `query_config` is typically loaded by using the exports of another component.
 For example,
 
-* `local.file.<LABEL>.content`
-* `remote.http.<LABEL>.content`
-* `remote.s3.<LABEL>.content`
+- `local.file.<LABEL>.content`
+- `remote.http.<LABEL>.content`
+- `remote.s3.<LABEL>.content`
 
 Refer to [`sql_exporter`](https://github.com/burningalchemist/sql_exporter#collectors) for details on how to create a configuration.
 
@@ -127,9 +127,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 [scrape]: ../prometheus.scrape/
 

@@ -1,8 +1,8 @@
 # Proposal: Standardizing the Alloy standard library
 
-* Author: Robert Fratto (@rfratto)
-* Last updated: 2024-06-27
-* Discussion link: <https://github.com/grafana/alloy/pull/1161>
+- Author: Robert Fratto (@rfratto)
+- Last updated: 2024-06-27
+- Discussion link: <https://github.com/grafana/alloy/pull/1161>
 
 ## Abstract
 
@@ -14,25 +14,25 @@ consistent.
 
 As of Alloy v1.2.0, there are 19 identifiers in the standard library:
 
-* `base64_decode`
-* `coalesce`
-* `concat`
-* `constants`
-* `env`
-* `format`
-* `join`
-* `json_decode`
-* `json_path`
-* `nonsensitive`
-* `replace`
-* `split`
-* `to_lower`
-* `to_upper`
-* `trim`
-* `trim_prefix`
-* `trim_space`
-* `trim_suffix`
-* `yaml_decode`
+- `base64_decode`
+- `coalesce`
+- `concat`
+- `constants`
+- `env`
+- `format`
+- `join`
+- `json_decode`
+- `json_path`
+- `nonsensitive`
+- `replace`
+- `split`
+- `to_lower`
+- `to_upper`
+- `trim`
+- `trim_prefix`
+- `trim_space`
+- `trim_suffix`
+- `yaml_decode`
 
 These identifiers were added organically over time; there has been little
 thought to consistency across all identifiers.
@@ -44,8 +44,8 @@ new identifiers are added and become harder to understand.
 
 This proposal aims to:
 
-* Establish a convention for how to name identifiers in the standard library.
-* Propose a way to align existing identifiers with the new convention without
+- Establish a convention for how to name identifiers in the standard library.
+- Propose a way to align existing identifiers with the new convention without
   breaking backwards compatibility.
 
 For the sake of demonstrating the convention, new identifiers are provided as
@@ -57,27 +57,27 @@ accepted if this proposal is accepted.
 The standard library will introduce namespaces for identifiers that group
 similar identifiers together:
 
-* Array functions
-    * `array.concat` (previously `concat`)
-* Conversion functions
-    * `convert.nonsensitive` (previously `nonsensitive`)
-* Encoding functions
-    * `encoding.from_base64` (previously `base64_decode`)
-    * `encoding.from_json` (previously `json_decode`)
-    * `encoding.from_yaml` (previously `yaml_decode`)
-* System-related functions
-    * `sys.env` (previously `env`)
-* String functions
-    * `string.format` (previously `format`)
-    * `string.join` (previously `join`)
-    * `string.replace` (previously `replace`)
-    * `string.split` (previously `split`)
-    * `string.to_lower` (previously `to_lower`)
-    * `string.to_upper` (previously `to_upper`)
-    * `string.trim` (previously `trim`)
-    * `string.trim_prefix` (previously `trim_prefix`)
-    * `string.trim_space` (previously `trim_space`)
-    * `string.trim_suffix` (previously`trim_suffix`)
+- Array functions
+  - `array.concat` (previously `concat`)
+- Conversion functions
+  - `convert.nonsensitive` (previously `nonsensitive`)
+- Encoding functions
+  - `encoding.from_base64` (previously `base64_decode`)
+  - `encoding.from_json` (previously `json_decode`)
+  - `encoding.from_yaml` (previously `yaml_decode`)
+- System-related functions
+  - `sys.env` (previously `env`)
+- String functions
+  - `string.format` (previously `format`)
+  - `string.join` (previously `join`)
+  - `string.replace` (previously `replace`)
+  - `string.split` (previously `split`)
+  - `string.to_lower` (previously `to_lower`)
+  - `string.to_upper` (previously `to_upper`)
+  - `string.trim` (previously `trim`)
+  - `string.trim_prefix` (previously `trim_prefix`)
+  - `string.trim_space` (previously `trim_space`)
+  - `string.trim_suffix` (previously`trim_suffix`)
 
 > **NOTE**: The decoding functions were placed into an `encoding` namespace to
 > leave the door open for having a single namespace for both performing
@@ -119,56 +119,56 @@ what these namespaces could eventually look like:
 > **NOTE**: These are not part of the proposal and are only provided as an
 > example.
 
-* Array functions
-    * `array.concat`
-    * `array.length` (**new**; return the length of an array)
-    * `array.contains` (**new**; check if an array contains an element)
-    * `array.distinct` (**new**; return an array with only unique elements)
-* Conversion functions
-    * `convert.nonsensitive`
-    * `convert.sensitive` (**new**; explicitly convert a string into a secret)
-    * `convert.to_number` (**new**; convert a string to a number)
-    * `convert.to_string` (**new**; convert a number to a string)
-    * `convert.to_bool` (**new**; convert a string or number to a boolean)
-* Encoding functions
-    * `encoding.from_base64`
-    * `encoding.from_json`
-    * `encoding.from_yaml`
-* System-related functions
-    * `sys.env`
-    * `sys.cpu_count` (**new**; the number of CPUs on a system)
-    * `sys.memory` (**new**; the amount of memory available on a system)
-* String functions
-    * `string.format`
-    * `string.join`
-    * `string.replace`
-    * `string.split`
-    * `string.to_lower`
-    * `string.to_upper`
-    * `string.trim`
-    * `string.trim_prefix`
-    * `string.trim_space`
-    * `string.trim_suffix`
-    * `string.contains` (**new**; check if a string contains a substring)
+- Array functions
+  - `array.concat`
+  - `array.length` (**new**; return the length of an array)
+  - `array.contains` (**new**; check if an array contains an element)
+  - `array.distinct` (**new**; return an array with only unique elements)
+- Conversion functions
+  - `convert.nonsensitive`
+  - `convert.sensitive` (**new**; explicitly convert a string into a secret)
+  - `convert.to_number` (**new**; convert a string to a number)
+  - `convert.to_string` (**new**; convert a number to a string)
+  - `convert.to_bool` (**new**; convert a string or number to a boolean)
+- Encoding functions
+  - `encoding.from_base64`
+  - `encoding.from_json`
+  - `encoding.from_yaml`
+- System-related functions
+  - `sys.env`
+  - `sys.cpu_count` (**new**; the number of CPUs on a system)
+  - `sys.memory` (**new**; the amount of memory available on a system)
+- String functions
+  - `string.format`
+  - `string.join`
+  - `string.replace`
+  - `string.split`
+  - `string.to_lower`
+  - `string.to_upper`
+  - `string.trim`
+  - `string.trim_prefix`
+  - `string.trim_space`
+  - `string.trim_suffix`
+  - `string.contains` (**new**; check if a string contains a substring)
 
 ## Pros and cons
 
 Pros:
 
-* Aligns with how constants and component names are namespaced.
-* Makes it clear which identifiers are standardized by looking for the
+- Aligns with how constants and component names are namespaced.
+- Makes it clear which identifiers are standardized by looking for the
   dot-separated namespace.
-* Namespaces enable having two functions with the same name in two different
+- Namespaces enable having two functions with the same name in two different
   namespaces (`path.join` and `string.join`).
 
 Cons:
 
-* Deprecating 17 of the 19 identifiers may be seen as aggressive, even if they
+- Deprecating 17 of the 19 identifiers may be seen as aggressive, even if they
   are never removed.
-* Using the standard library becomes more verbose
-    * However, some of the verbosity may be bought back in the future if
-      [aliases](https://github.com/grafana/alloy/issues/154) are introduced.
-* Namespaces in the standard library must not collide with a component
+- Using the standard library becomes more verbose
+  - However, some of the verbosity may be bought back in the future if
+    [aliases](https://github.com/grafana/alloy/issues/154) are introduced.
+- Namespaces in the standard library must not collide with a component
   namespace.
 
 ## Alternative solutions
@@ -180,17 +180,17 @@ Rather than separating the namespace and identifier using a dot
 
 Pros:
 
-* Clearer when something is in the standard library compared to being a
+- Clearer when something is in the standard library compared to being a
   reference to a component.
-* Not possible for a standard library namespace to collide with a component
+- Not possible for a standard library namespace to collide with a component
   namespace.
 
 Cons:
 
-* Inconsistent with `constants` which uses dot-separation for retrieving a
+- Inconsistent with `constants` which uses dot-separation for retrieving a
   specific constant.
-    * This could be mitigated by changing `constants.os` to `constants_os` or
-      similar.
+  - This could be mitigated by changing `constants.os` to `constants_os` or
+    similar.
 
 ### Do not standardize existing identifiers
 
@@ -199,14 +199,14 @@ established, while existing identifiers are left untouched.
 
 Pros:
 
-* The majority of the existing standard library remains valid.
+- The majority of the existing standard library remains valid.
 
 Cons:
 
-* Until the number of new identifiers is far more than the number of current
+- Until the number of new identifiers is far more than the number of current
   identifiers, the standard library will appear very inconsistent, with a heavy
   mix of namespaced and non-namespaced identifiers.
-* An existing identifier may belong in a namespace alongside new identifiers,
+- An existing identifier may belong in a namespace alongside new identifiers,
   but is left out for backwards compatibility, causing inconsistencies.
 
 ### Do not establish a standardization for identifiers
@@ -216,11 +216,11 @@ let the standard library grow organically.
 
 Pros:
 
-* Less work for contributors :)
+- Less work for contributors :)
 
 Cons:
 
-* It will be harder to understand and navigate the standard library as the
+- It will be harder to understand and navigate the standard library as the
   number of identifiers grows.
 
 ## Compatibility
@@ -249,9 +249,9 @@ steps:
 2. Update examples, tests, internal configs, and config converters to use the
    new namespaced identifiers.
 
-2. Find a way to detect and report usage of deprecated identifiers to a user.
+3. Find a way to detect and report usage of deprecated identifiers to a user.
 
-3. Add standard library usage stats, so usage of deprecated
+4. Add standard library usage stats, so usage of deprecated
    identifiers can be tracked over time, allowing maintainers to make an
    informed decision for if they can be removed alongside a major release.
 

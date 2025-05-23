@@ -11,11 +11,11 @@ without an issue.
 
 ## Before Contributing
 
-* Review the following code coding style guidelines:
-  * [Go Code Review Comments][code-review-comments]
-  * The _Formatting and style_ section of Peter Bourgon's [Go: Best Practices for Production Environments][best-practices]
-  * The [Uber Go Style Guide][uber-style-guide]
-* Sign our [CLA][], otherwise we're not able to accept contributions.
+- Review the following code coding style guidelines:
+  - [Go Code Review Comments][code-review-comments]
+  - The _Formatting and style_ section of Peter Bourgon's [Go: Best Practices for Production Environments][best-practices]
+  - The [Uber Go Style Guide][uber-style-guide]
+- Sign our [CLA][], otherwise we're not able to accept contributions.
 
 ## Steps to Contribute
 
@@ -80,20 +80,20 @@ Run `make help` for a description of all available Make targets.
 
 Compiling Alloy on Linux requires extra dependencies:
 
-* [systemd headers](https://packages.debian.org/sid/libsystemd-dev) for
+- [systemd headers](https://packages.debian.org/sid/libsystemd-dev) for
   Loki components.
 
-   * Can be installed on Debian-based distributions with:
+  - Can be installed on Debian-based distributions with:
 
-     ```bash
-     sudo apt-get install libsystemd-dev
-     ```
+    ```bash
+    sudo apt-get install libsystemd-dev
+    ```
 
 ### Compile on Windows
 
 Compiling Alloy on Windows requires extra dependencies:
 
-* [tdm-gcc](https://jmeubank.github.io/tdm-gcc/download/) full 64-bit install
+- [tdm-gcc](https://jmeubank.github.io/tdm-gcc/download/) full 64-bit install
   for compiling C dependencies.
 
 ## Pull Request Checklist
@@ -159,8 +159,8 @@ For example:
 > Readers should be able to understand how a change impacts them. Default to
 > being explicit over vague.
 >
-> * Vague: `- Fixed issue with metric names. (@ghost)`
-> * Explicit: `- Fixed issue where instances of the letter s in metric names were replaced with z. (@ghost)`
+> - Vague: `- Fixed issue with metric names. (@ghost)`
+> - Explicit: `- Fixed issue where instances of the letter s in metric names were replaced with z. (@ghost)`
 
 ## Dependency management
 

@@ -26,7 +26,7 @@ database_observability.mysql "<LABEL>" {
 You can use the following arguments with `database_observability.mysql`:
 
 | Name                               | Type                 | Description                                                                             | Default | Required |
-|------------------------------------|----------------------|-----------------------------------------------------------------------------------------|---------|----------|
+| ---------------------------------- | -------------------- | --------------------------------------------------------------------------------------- | ------- | -------- |
 | `data_source_name`                 | `secret`             | [Data Source Name][] for the MySQL server to connect to.                                |         | yes      |
 | `forward_to`                       | `list(LogsReceiver)` | Where to forward log entries after processing.                                          |         | yes      |
 | `collect_interval`                 | `duration`           | How frequently to collect information from database.                                    | `"1m"`  | no       |
@@ -38,7 +38,7 @@ You can use the following arguments with `database_observability.mysql`:
 The following collectors are configurable:
 
 | Name              | Description                                           | Enabled by default |
-|-------------------|-------------------------------------------------------|--------------------|
+| ----------------- | ----------------------------------------------------- | ------------------ |
 | `query_tables`    | Collect query table information.                      | yes                |
 | `schema_table`    | Collect schemas and tables from `information_schema`. | yes                |
 | `query_sample`    | Collect query samples.                                | no                 |
@@ -85,11 +85,11 @@ loki.write "logs_service" {
 
 Replace the following:
 
-* _`<GRAFANA_CLOUD_HOSTED_METRICS_URL>`_: The URL for your Grafana Cloud hosted metrics.
-* _`<GRAFANA_CLOUD_HOSTED_METRICS_ID>`_: The user ID for your Grafana Cloud hosted metrics.
-* _`<GRAFANA_CLOUD_RW_API_KEY>`_: Your Grafana Cloud API key.
-* _`<GRAFANA_CLOUD_HOSTED_LOGS_URL>`_: The URL for your Grafana Cloud hosted logs.
-* _`<GRAFANA_CLOUD_HOSTED_LOGS_ID>`_: The user ID for your Grafana Cloud hosted logs.
+- _`<GRAFANA_CLOUD_HOSTED_METRICS_URL>`_: The URL for your Grafana Cloud hosted metrics.
+- _`<GRAFANA_CLOUD_HOSTED_METRICS_ID>`_: The user ID for your Grafana Cloud hosted metrics.
+- _`<GRAFANA_CLOUD_RW_API_KEY>`_: Your Grafana Cloud API key.
+- _`<GRAFANA_CLOUD_HOSTED_LOGS_URL>`_: The URL for your Grafana Cloud hosted logs.
+- _`<GRAFANA_CLOUD_HOSTED_LOGS_ID>`_: The user ID for your Grafana Cloud hosted logs.
 
 [Data Source Name]: https://github.com/go-sql-driver/mysql#dsn-data-source-name
 

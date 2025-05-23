@@ -18,24 +18,24 @@ If any of the OTTL statements evaluates to **true**, the telemetry data is **dro
 OTTL statements consist of [OTTL Converter functions][], which act on paths.
 A path is a reference to a telemetry data such as:
 
-* Resource attributes.
-* Instrumentation scope name.
-* Span attributes.
+- Resource attributes.
+- Instrumentation scope name.
+- Span attributes.
 
 In addition to the [standard OTTL Converter functions][OTTL Converter functions], the following metrics-only functions are used exclusively by the processor:
 
-* [HasAttrKeyOnDataPoint][]
-* [HasAttrOnDataPoint][]
+- [HasAttrKeyOnDataPoint][]
+- [HasAttrOnDataPoint][]
 
 [OTTL][] statements used in `otelcol.processor.filter` mostly contain constructs such as:
 
-* [Booleans][OTTL booleans]:
-  * `not true`
-  * `not IsMatch(name, "http_.*")`
-* [Math expressions][OTTL math expressions]:
-  * `1 + 1`
-  * `end_time_unix_nano - start_time_unix_nano`
-  * `sum([1, 2, 3, 4]) + (10 / 1) - 1`
+- [Booleans][OTTL booleans]:
+  - `not true`
+  - `not IsMatch(name, "http_.*")`
+- [Math expressions][OTTL math expressions]:
+  - `1 + 1`
+  - `end_time_unix_nano - start_time_unix_nano`
+  - `sum([1, 2, 3, 4]) + (10 / 1) - 1`
 
 {{< admonition type="note" >}}
 Raw {{< param "PRODUCT_NAME" >}} syntax strings can be used to write OTTL statements.
@@ -52,13 +52,14 @@ You can specify multiple `otelcol.processor.filter` components by giving them di
 {{< admonition type="warning" >}}
 Exercise caution when using `otelcol.processor.filter`:
 
-* Make sure you understand schema/format of the incoming data and test the configuration thoroughly.
+- Make sure you understand schema/format of the incoming data and test the configuration thoroughly.
   In general, use a configuration that's as specific as possible ensure you retain only the data you want to keep.
-* [Orphaned Telemetry][]: The processor allows dropping spans.
+- [Orphaned Telemetry][]: The processor allows dropping spans.
   Dropping a span may lead to orphaned spans if the dropped span is a parent.
   Dropping a span may lead to orphaned logs if the log references the dropped span.
 
 [Orphaned Telemetry]: https://github.com/open-telemetry/opentelemetry-collector/blob/v0.85.0/docs/standard-warnings.md#orphaned-telemetry
+
 {{< /admonition >}}
 
 ## Usage
@@ -83,9 +84,9 @@ You can use the following arguments with `otelcol.processor.filter`:
 
 The supported values for `error_mode` are:
 
-* `ignore`: Ignore errors returned by conditions, log them, and continue on to the next condition. This is the recommended mode.
-* `silent`: Ignore errors returned by conditions, don't log them, and continue on to the next condition.
-* `propagate`: Return the error up the pipeline. This will result in the payload being dropped from {{< param "PRODUCT_NAME" >}}.
+- `ignore`: Ignore errors returned by conditions, log them, and continue on to the next condition. This is the recommended mode.
+- `silent`: Ignore errors returned by conditions, don't log them, and continue on to the next condition.
+- `propagate`: Return the error up the pipeline. This will result in the payload being dropped from {{< param "PRODUCT_NAME" >}}.
 
 ## Blocks
 
@@ -126,7 +127,7 @@ Only `logs` blocks can be specified.
 
 The syntax of OTTL statements depends on the OTTL context. Refer to the OpenTelemetry documentation for more information:
 
-* [OTTL log context][]
+- [OTTL log context][]
 
 Only one of the statements inside the list of statements has to be satisfied.
 
@@ -142,8 +143,8 @@ Only one `metrics` blocks can be specified.
 
 The syntax of OTTL statements depends on the OTTL context. Refer to the OpenTelemetry documentation for more information:
 
-* [OTTL metric context][]
-* [OTTL datapoint context][]
+- [OTTL metric context][]
+- [OTTL datapoint context][]
 
 Statements are checked in order from "high level" to "low level" telemetry, in this order:
 
@@ -167,8 +168,8 @@ Only one `traces` block can be specified.
 
 The syntax of OTTL statements depends on the OTTL context. See the OpenTelemetry documentation for more information:
 
-* [OTTL span context][]
-* [OTTL spanevent context][]
+- [OTTL span context][]
+- [OTTL spanevent context][]
 
 Statements are checked in order from "high level" to "low level" telemetry, in this order:
 
@@ -230,8 +231,8 @@ otelcol.processor.filter "default" {
 
 This example drops metrics which satisfy at least one of two OTTL statements:
 
-* The metric name is `my.metric` and there is a `my_label` resource attribute with a value of `abc123`.
-* The metric is a histogram.
+- The metric name is `my.metric` and there is a `my_label` resource attribute with a value of `abc123`.
+- The metric is a histogram.
 
 ```alloy
 otelcol.processor.filter "default" {

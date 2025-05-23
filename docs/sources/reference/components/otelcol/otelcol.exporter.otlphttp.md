@@ -98,8 +98,8 @@ The following arguments are supported:
 
 When setting `headers`, note that:
 
-* Certain headers such as `Content-Length` and `Connection` are automatically written when needed and values in `headers` may be ignored.
-* The `Host` header is automatically derived from the `endpoint` value. However, this automatic assignment can be overridden by explicitly setting a `Host` header in `headers`.
+- Certain headers such as `Content-Length` and `Connection` are automatically written when needed and values in `headers` may be ignored.
+- The `Host` header is automatically derived from the `endpoint` value. However, this automatic assignment can be overridden by explicitly setting a `Host` header in `headers`.
 
 Setting `disable_keep_alives` to `true` will result in significant overhead establishing a new HTTP or HTTPS connection for every request.
 Before enabling this option, consider whether changes to idle connection settings can achieve your goal.
@@ -191,6 +191,7 @@ otelcol.exporter.otlphttp "tempo" {
     }
 }
 ```
+
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components

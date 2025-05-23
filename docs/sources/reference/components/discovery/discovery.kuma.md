@@ -36,20 +36,20 @@ You can use the following arguments with `discovery.kuma`:
 | `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`  | no       |
 | `fetch_timeout`          | `duration`          | The time after which the monitoring assignments are refreshed.                                   | `"2m"`  | no       |
 | `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`  | no       |
-| `http_headers`           | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.          |                      | no       |
+| `http_headers`           | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.          |         | no       |
 | `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |         | no       |
 | `proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |         | no       |
 | `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false` | no       |
 | `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |         | no       |
 | `refresh_interval`       | `duration`          | The time to wait between polling update requests.                                                | `"30s"` | no       |
 
- At most, one of the following can be provided:
+At most, one of the following can be provided:
 
-* [`authorization`][authorization] block
-* [`basic_auth`][basic_auth] block
-* [`bearer_token_file`][arguments] argument
-* [`bearer_token`][arguments] argument
-* [`oauth2`][oauth2] block
+- [`authorization`][authorization] block
+- [`basic_auth`][basic_auth] block
+- [`bearer_token_file`][arguments] argument
+- [`bearer_token`][arguments] argument
+- [`oauth2`][oauth2] block
 
 [arguments]: #arguments
 
@@ -109,10 +109,10 @@ The following fields are exported and can be referenced by other components:
 
 The following meta labels are available on targets and can be used by the `discovery.relabel` component:
 
-* `__meta_kuma_dataplane`: The name of the proxy.
-* `__meta_kuma_label_<tagname>`: Each tag of the proxy.
-* `__meta_kuma_mesh`: The name of the proxy's Mesh.
-* `__meta_kuma_service`: The name of the proxy's associated Service.
+- `__meta_kuma_dataplane`: The name of the proxy.
+- `__meta_kuma_label_<tagname>`: Each tag of the proxy.
+- `__meta_kuma_mesh`: The name of the proxy's Mesh.
+- `__meta_kuma_service`: The name of the proxy's associated Service.
 
 ## Component health
 
@@ -150,9 +150,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

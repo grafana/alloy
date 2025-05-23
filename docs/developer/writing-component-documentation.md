@@ -16,15 +16,15 @@ list of [Exceptions][] at the bottom of this page for examples.
 
 ## General guidelines
 
-* Follow the [Grafana Writers' Toolkit](https://grafana.com/docs/writers-toolkit/).
-* Follow the [Google developer documentation style guide](https://developers.google.com/style).
-* Prefer being explicit over making assumptions; assume that your documentation
+- Follow the [Grafana Writers' Toolkit](https://grafana.com/docs/writers-toolkit/).
+- Follow the [Google developer documentation style guide](https://developers.google.com/style).
+- Prefer being explicit over making assumptions; assume that your documentation
   may be the first page someone visits.
-* Aim for component documentation to be consistent with documentation for other
+- Aim for component documentation to be consistent with documentation for other
   components.
-* Refer to the component by its full name as much as possible rather than "the
+- Refer to the component by its full name as much as possible rather than "the
   component."
-* Do not use backticks in headers.
+- Do not use backticks in headers.
 
 ## Page structure
 
@@ -41,7 +41,7 @@ If documenting a beta component, include the following inside the frontmatter:
 
 ```markdown
 labels:
-  stage: beta
+stage: beta
 ```
 
 If documenting an experimental component, include the following inside the
@@ -49,7 +49,7 @@ frontmatter:
 
 ```markdown
 labels:
-  stage: experimental
+stage: experimental
 ```
 
 All component reference pages should always be broken down into the following
@@ -78,7 +78,6 @@ explicitly documenting that it does not apply to a component. For example:
 Always including the headers removes as much guesswork as possible from
 readers, so they know for certain that there is no debug information, rather
 than assuming it must not exist if it's not documented.
-
 
 ### Title
 
@@ -177,16 +176,15 @@ For example:
 ```markdown
 The following arguments are supported:
 
-Name             | Type       | Description                            | Default      | Required |
----------------- | ---------- | -------------------------------------- | ------------ | -------- |
-`filename`       | `string`   | Path of the file on disk to watch.     |              | yes      |
-`detector`       | `string`   | Which file change detector to use.     | `"fsnotify"` | no       |
-`poll_frequency` | `duration` | How often to poll for file changes.    | `"1m"`       | no       |
-`is_secret`      | `bool`     | Marks the file as containing a secret. | `false`      | no       |
+| Name             | Type       | Description                            | Default      | Required |
+| ---------------- | ---------- | -------------------------------------- | ------------ | -------- |
+| `filename`       | `string`   | Path of the file on disk to watch.     |              | yes      |
+| `detector`       | `string`   | Which file change detector to use.     | `"fsnotify"` | no       |
+| `poll_frequency` | `duration` | How often to poll for file changes.    | `"1m"`       | no       |
+| `is_secret`      | `bool`     | Marks the file as containing a secret. | `false`      | no       |
 ```
 
-Values for the Name column should be the backticked argument name, such as ``
-`targets` ``.
+Values for the Name column should be the backticked argument name, such as `` `targets` ``.
 
 Values for the Type column should be the backticked Alloy syntax type (for example,
 `string`, `bool`, `number`). Arrays should be represented as
@@ -195,9 +193,9 @@ Values for the Type column should be the backticked Alloy syntax type (for examp
 
 In addition to the known types, the following are excepted as convention:
 
-* `duration`: A string which is parsed as a duration.
-* `secret`: A string which is treated as sensitive.
-* `capsule(T)`: An internal encapsulated value.
+- `duration`: A string which is parsed as a duration.
+- `secret`: A string which is treated as sensitive.
+- `capsule(T)`: An internal encapsulated value.
 
 Values for the Description column should be kept as short as possible to keep
 the table small and readable. Detailed descriptions should be placed outside of
@@ -247,26 +245,26 @@ fully through arguments.
 When blocks are supported by the component, the set of blocks should be listed
 using a Markdown table, with the following columns:
 
-| Column      | Description                       |
-| ----------- | --------------------------------- |
-| Hierarchy   | Block path.                       |
-| Block       | Link to block documentation.      |
-| Description | Block description.                |
-| Required    | Whether the block is required.    |
+| Column      | Description                    |
+| ----------- | ------------------------------ |
+| Hierarchy   | Block path.                    |
+| Block       | Link to block documentation.   |
+| Description | Block description.             |
+| Required    | Whether the block is required. |
 
 For example:
 
 ```markdown
 The following blocks are supported:
 
-Hierarchy                    | Block             | Description                        | Required |
----------------------------- | ----------------- | ---------------------------------- | -------- |
-client                       | [client][]        | HTTP client settings.              | no       |
-client > basic_auth          | [basic_auth][]    | Basic authentication settings.     | no       |
-client > authorization       | [authorization][] | Generic authentication settings.   | no       |
-client > oauth2              | [oauth2][]        | OAuth 2.0 authentication settings. | no       |
-client > oauth2 > tls_config | [tls_config][]    | TLS settings for OAuth 2.0.        | no       |
-client > tls_config          | [tls_config][]    | TLS settings the HTTP client.      | no       |
+| Hierarchy                    | Block             | Description                        | Required |
+| ---------------------------- | ----------------- | ---------------------------------- | -------- |
+| client                       | [client][]        | HTTP client settings.              | no       |
+| client > basic_auth          | [basic_auth][]    | Basic authentication settings.     | no       |
+| client > authorization       | [authorization][] | Generic authentication settings.   | no       |
+| client > oauth2              | [oauth2][]        | OAuth 2.0 authentication settings. | no       |
+| client > oauth2 > tls_config | [tls_config][]    | TLS settings for OAuth 2.0.        | no       |
+| client > tls_config          | [tls_config][]    | TLS settings the HTTP client.      | no       |
 ```
 
 Values for the Hierarchy column should be the path to the block from the
@@ -341,15 +339,15 @@ the `tls` block isn't provided, connections to the server are unencrypted.
 
 The following arguments are supported:
 
-Name              | Type       | Description                                                   | Default | Required |
------------------ | ---------- | ------------------------------------------------------------- | ------- | -------- |
-`ca_file`         | `string`   | Path to the CA file.                                          |         | no       |
-`cert_file`       | `string`   | Path to the TLS certificate.                                  |         | no       |
-`key_file`        | `string`   | Path to the TLS certificate key.                              |         | no       |
-`min_version`     | `string`   | Minimum acceptable TLS version for connections.               |         | no       |
-`max_version`     | `string`   | Maximum acceptable TLS version for connections.               |         | no       |
-`reload_interval` | `duration` | Frequency to reload the certificates.                         |         | no       |
-`client_ca_file`  | `string`   | Path to the CA file used to authenticate client certificates. |         | no       |
+| Name              | Type       | Description                                                   | Default | Required |
+| ----------------- | ---------- | ------------------------------------------------------------- | ------- | -------- |
+| `ca_file`         | `string`   | Path to the CA file.                                          |         | no       |
+| `cert_file`       | `string`   | Path to the TLS certificate.                                  |         | no       |
+| `key_file`        | `string`   | Path to the TLS certificate key.                              |         | no       |
+| `min_version`     | `string`   | Minimum acceptable TLS version for connections.               |         | no       |
+| `max_version`     | `string`   | Maximum acceptable TLS version for connections.               |         | no       |
+| `reload_interval` | `duration` | Frequency to reload the certificates.                         |         | no       |
+| `client_ca_file`  | `string`   | Path to the CA file used to authenticate client certificates. |         | no       |
 
 Default values for the `min_version` and `max_version` arguments are inherited
 from Go, currently TLS 1.2 and TLS 1.3 respectively. When these arguments are
@@ -375,11 +373,11 @@ The `COMPONENT_NAME` component does not export any values.
 When the component exports values, it should provide a table of exported values
 with the following columns:
 
-| Column      | Description                       |
-| ----------- | --------------------------------- |
-| Name        | Name of exported value.           |
-| Type        | Alloy syntax type of exported value.     |
-| Description | Description of exported value.    |
+| Column      | Description                          |
+| ----------- | ------------------------------------ |
+| Name        | Name of exported value.              |
+| Type        | Alloy syntax type of exported value. |
+| Description | Description of exported value.       |
 
 Values for the Name column should be the backticked exported field name, such
 as `` `targets` ``.
@@ -446,11 +444,11 @@ should be the following paragraph:
 When the component exports values, it should provide a table of exposed metrics
 with the following columns:
 
-| Column      | Description                       |
-| ----------- | --------------------------------- |
-| Name        | Name of Prometheus metric.        |
-| Type        | Prometheus metric type.           |
-| Description | Metric description.               |
+| Column      | Description                |
+| ----------- | -------------------------- |
+| Name        | Name of Prometheus metric. |
+| Type        | Prometheus metric type.    |
+| Description | Metric description.        |
 
 Values in the Name and Type column should be backticked.
 
@@ -473,9 +471,11 @@ containing a descriptive name. For example:
 ## Examples
 
 ### Send metrics to a Prometheus server
+
 ...
 
 ### Send metrics to a Prometheus server using Oauth2 authentication
+
 ...
 ```
 
@@ -502,9 +502,11 @@ prometheus.remote_write "default" {
   }
 }
 ```
+
 Replace the following:
-  - `TARGETS_URL`: The URL to fetch the JSON array of objects from.
-  - `PROMETHEUS_URL`: The URL of the Prometheus remote_write-compatible server to send metrics to.
+
+- `TARGETS_URL`: The URL to fetch the JSON array of objects from.
+- `PROMETHEUS_URL`: The URL of the Prometheus remote_write-compatible server to send metrics to.
 ````
 
 Each example should be a full pipeline when possible, rather than just the
@@ -516,11 +518,11 @@ written in all uppercase and underscore delimited, for example: `API_URL`.
 Examples of the new component should avoid using placeholders and instead use
 realistic example values. For example, if documenting a `prometheus.scrape` component, use:
 
-  ```grafana-alloy
-  remote.http "targets" {
-    url = "http://localhost:8080/targets"
-  }
-  ```
+```grafana-alloy
+remote.http "targets" {
+  url = "http://localhost:8080/targets"
+}
+```
 
 If an example includes a placeholder, make sure to include a brief description
 of what the placeholder is. For example:
@@ -531,11 +533,12 @@ Replace `API_URL` with the URL of the API to query.
 
 or if there are multiple placeholders:
 
-````markdown
+```markdown
 Replace the following:
-  - `API_URL`: The URL of the API to query.
-  - `API_KEY`: The API key to use when querying the API.
-````
+
+- `API_URL`: The URL of the API to query.
+- `API_KEY`: The API key to use when querying the API.
+```
 
 If an example includes clarifying comments, make sure that the relevant
 Arguments or block header includes sufficient explanation to be the official

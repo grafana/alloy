@@ -22,9 +22,9 @@ In this example scenario, {{< param "PRODUCT_NAME" >}} collects Linux metrics an
 
 Ensure you have the following:
 
-* [Docker](https://www.docker.com/)
-* [Git](https://git-scm.com/)
-* A Linux host or Linux running in a Virtual Machine
+- [Docker](https://www.docker.com/)
+- [Git](https://git-scm.com/)
+- A Linux host or Linux running in a Virtual Machine
 
 {{< admonition type="note" >}}
 You need administrator privileges to run `docker` commands.
@@ -94,10 +94,10 @@ You can find this file in the cloned repository at `alloy-scenarios/linux/`.
 
 The metrics configuration in this example requires four components:
 
-* `prometheus.exporter.unix`
-* `discovery.relabel`
-* `prometheus.scrape`
-* `prometheus.remote_write`
+- `prometheus.exporter.unix`
+- `discovery.relabel`
+- `prometheus.scrape`
+- `prometheus.remote_write`
 
 #### `prometheus.exporter.unix`
 
@@ -106,13 +106,13 @@ This is the primary component that you configure to collect your Linux system me
 
 In this example, this component requires the following arguments:
 
-* `disable_collectors`: Disable specific collectors to reduce unnecessary overhead.
-* `enable_collectors`: Enable the `meminfo` collector.
-* `fs_types_exclude`: A regular expression of filesystem types to ignore.
-* `mount_points_exclude`: A regular expression of mount types to ignore.
-* `mount_timeout`: How long to wait for a mount to respond before marking it as stale.
-* `ignored_devices`: Regular expression of virtual and container network interfaces to ignore.
-* `device_exclude`: Regular expression of virtual and container network interfaces to exclude.
+- `disable_collectors`: Disable specific collectors to reduce unnecessary overhead.
+- `enable_collectors`: Enable the `meminfo` collector.
+- `fs_types_exclude`: A regular expression of filesystem types to ignore.
+- `mount_points_exclude`: A regular expression of mount types to ignore.
+- `mount_timeout`: How long to wait for a mount to respond before marking it as stale.
+- `ignored_devices`: Regular expression of virtual and container network interfaces to ignore.
+- `device_exclude`: Regular expression of virtual and container network interfaces to exclude.
 
 ```alloy
 prometheus.exporter.unix "integrations_node_exporter" {
@@ -144,9 +144,9 @@ This [`discovery.relabel`][discovery.relabel] component replaces the instance an
 
 In this example, this component requires the following arguments:
 
-* `targets`: The targets to relabel.
-* `source_labels`: The list of labels to select for relabeling. The rules extract the instance and job labels.
-* `replacement`: The value that replaces the source label. The rules set the target labels to `constants.hostname`, and `integrations/node_exporter`.
+- `targets`: The targets to relabel.
+- `source_labels`: The list of labels to select for relabeling. The rules extract the instance and job labels.
+- `replacement`: The value that replaces the source label. The rules set the target labels to `constants.hostname`, and `integrations/node_exporter`.
 
 ```alloy
 discovery.relabel "integrations_node_exporter" {
@@ -169,10 +169,10 @@ discovery.relabel "integrations_node_exporter" {
 This [`discovery.relabel`][discovery.relabel] component defines the relabeling rules for the systemd journal logs.
 In this example, this component requires the following arguments:
 
-* `targets`: The targets to relabel.
+- `targets`: The targets to relabel.
   No targets are modified, so the `targets` argument is an empty array.
-* `source_labels`: The list of labels to select for relabeling. The rules extract the systemd unit, ID, transport, and log priority.
-* `target_label`: The label written to the target. The rules set the target labels to `unit`, `boot_id`, `transport`, and `level`.
+- `source_labels`: The list of labels to select for relabeling. The rules extract the systemd unit, ID, transport, and log priority.
+- `target_label`: The label written to the target. The rules set the target labels to `unit`, `boot_id`, `transport`, and `level`.
 
 ```alloy
 discovery.relabel "logs_integrations_integrations_node_exporter_journal_scrape" {
@@ -205,9 +205,9 @@ discovery.relabel "logs_integrations_integrations_node_exporter_journal_scrape" 
 The [`prometheus.scrape`][prometheus.scrape] component scrapes `node_exporter` metrics and forwards them to a receiver.
 In this example, the component requires the following arguments:
 
-* `targets`: The target to scrape metrics from. Use the targets with labels from the `discovery.relabel` component.
-* `forward_to`: The destination to forward metrics to. Send the scraped metrics to the relabeling component.
-* `scrape_interval`: The frequency of scraping the target.
+- `targets`: The target to scrape metrics from. Use the targets with labels from the `discovery.relabel` component.
+- `forward_to`: The destination to forward metrics to. Send the scraped metrics to the relabeling component.
+- `scrape_interval`: The frequency of scraping the target.
 
 ```alloy
 prometheus.scrape "integrations_node_exporter" {
@@ -222,7 +222,7 @@ prometheus.scrape "integrations_node_exporter" {
 The [`prometheus.remote_write`][prometheus.remote_write] component sends metrics to a Prometheus server.
 In this example, the component requires the following argument:
 
-* `url`: Defines the full URL endpoint to send metrics to.
+- `url`: Defines the full URL endpoint to send metrics to.
 
 This component provides the `prometheus.remote_write.local.receiver` destination for `prometheus.scrape`.
 
@@ -240,19 +240,19 @@ This component provides the `prometheus.remote_write.local.receiver` destination
 
 The logging configuration in this example requires four components:
 
-* `loki.source.journal`
-* `local.file_match`
-* `loki.source.file`
-* `loki.write`
+- `loki.source.journal`
+- `local.file_match`
+- `loki.source.file`
+- `loki.write`
 
 #### `loki.source.journal`
 
 The [`loki.source.journal`][loki.source.journal] component collects logs from the systemd journal and forwards them to a Loki receiver.
 In this example, the component requires the following arguments:
 
-* `max_age`: Only collect logs from the last 24 hours.
-* `relabel_rules`: Relabeling rules to apply on log entries.
-* `forward_to`: Send logs to the local Loki instance.
+- `max_age`: Only collect logs from the last 24 hours.
+- `relabel_rules`: Relabeling rules to apply on log entries.
+- `forward_to`: Send logs to the local Loki instance.
 
 ```alloy
 loki.source.journal "logs_integrations_integrations_node_exporter_journal_scrape" {
@@ -267,11 +267,11 @@ loki.source.journal "logs_integrations_integrations_node_exporter_journal_scrape
 The [`local.file_match`][local.file_match] component discovers files on the local filesystem using glob patterns.
 In this example, the component requires the following arguments:
 
-* `path_targets`: Targets to expand:
-  * `__address__`: Targets the localhost for log collection.
-  * `__path__`: Collect standard system logs.
-  * `instance`: Add an instance label with hostname.
-  * `job`: Add a job label for logs.
+- `path_targets`: Targets to expand:
+  - `__address__`: Targets the localhost for log collection.
+  - `__path__`: Collect standard system logs.
+  - `instance`: Add an instance label with hostname.
+  - `job`: Add a job label for logs.
 
 ```alloy
 local.file_match "logs_integrations_integrations_node_exporter_direct_scrape" {
@@ -289,8 +289,8 @@ local.file_match "logs_integrations_integrations_node_exporter_direct_scrape" {
 The [`loki.source.file`][loki.source.file] component reads log entries from files and forwards them to other Loki components.
 In this example, the component requires the following arguments:
 
-* `targets`: The list of files to read logs from.
-* `forward_to`: The list of receivers to send log entries to.
+- `targets`: The list of files to read logs from.
+- `forward_to`: The list of receivers to send log entries to.
 
 ```alloy
 loki.source.file "logs_integrations_integrations_node_exporter_direct_scrape" {
@@ -304,7 +304,7 @@ loki.source.file "logs_integrations_integrations_node_exporter_direct_scrape" {
 The [`loki.write`][loki.write] component writes logs to a Loki destination.
 In this example, the component requires the following argument:
 
-* `url`: Defines the full URL endpoint in Loki to send logs to.
+- `url`: Defines the full URL endpoint in Loki to send logs to.
 
 ```alloy
 loki.write "local" {

@@ -59,27 +59,27 @@ The values that you can use are:
 
 {{< column-list >}}
 
-* `"advtcp"`
-* `"app"`
-* `"cpu_topology"`
-* `"cpu"`
-* `"cpuLoad"`
-* `"cpuset"`
-* `"disk"`
-* `"diskIO"`
-* `"hugetlb"`
-* `"memory_numa"`
-* `"memory"`
-* `"network"`
-* `"oom_event"`
-* `"percpu"`
-* `"perf_event"`
-* `"process"`
-* `"referenced_memory"`
-* `"resctrl"`
-* `"sched"`
-* `"tcp"`
-* `"udp"`
+- `"advtcp"`
+- `"app"`
+- `"cpu_topology"`
+- `"cpu"`
+- `"cpuLoad"`
+- `"cpuset"`
+- `"disk"`
+- `"diskIO"`
+- `"hugetlb"`
+- `"memory_numa"`
+- `"memory"`
+- `"network"`
+- `"oom_event"`
+- `"percpu"`
+- `"perf_event"`
+- `"process"`
+- `"referenced_memory"`
+- `"resctrl"`
+- `"sched"`
+- `"tcp"`
+- `"udp"`
 
 {{< /column-list >}}
 
@@ -87,16 +87,16 @@ By default the following metric kinds are disabled:
 
 {{< column-list >}}
 
-* `"advtcp"`
-* `"cpu_topology"`
-* `"cpuset"`
-* `"hugetlb"`
-* `"memory_numa"`
-* `"process"`
-* `"referenced_memory"`
-* `"resctrl"`
-* `"tcp"`
-* `"udp"`
+- `"advtcp"`
+- `"cpu_topology"`
+- `"cpuset"`
+- `"hugetlb"`
+- `"memory_numa"`
+- `"process"`
+- `"referenced_memory"`
+- `"resctrl"`
+- `"tcp"`
+- `"udp"`
 
 {{< /column-list >}}
 
@@ -152,9 +152,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 [scrape]: ../prometheus.scrape/
 

@@ -29,9 +29,9 @@ To calculate the correct value for `queue_size`, multiply the average number of 
 
 The `sizer` argument could be set to:
 
-* `requests`: number of incoming batches of metrics, logs, traces (the most performant option).
-* `items`: number of the smallest parts of each signal (spans, metric data points, log records).
-* `bytes`: the size of serialized data in bytes (the least performant option).
+- `requests`: number of incoming batches of metrics, logs, traces (the most performant option).
+- `items`: number of the smallest parts of each signal (spans, metric data points, log records).
+- `bytes`: the size of serialized data in bytes (the least performant option).
 
 The `num_consumers` argument controls how many readers read from the buffer and send data in parallel.
 Larger values of `num_consumers` allow data to be sent more quickly at the expense of increased network traffic.

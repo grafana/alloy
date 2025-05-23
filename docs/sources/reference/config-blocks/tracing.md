@@ -35,10 +35,10 @@ otelcol.exporter.otlp "tempo" {
 
 The following arguments are supported:
 
-Name                | Type                     | Description                                         | Default | Required
---------------------|--------------------------|-----------------------------------------------------|---------|---------
-`sampling_fraction` | `number`                 | Fraction of traces to keep.                         | `0.1`   | no
-`write_to`          | `list(otelcol.Consumer)` | Inputs from `otelcol` components to send traces to. | `[]`    | no
+| Name                | Type                     | Description                                         | Default | Required |
+| ------------------- | ------------------------ | --------------------------------------------------- | ------- | -------- |
+| `sampling_fraction` | `number`                 | Fraction of traces to keep.                         | `0.1`   | no       |
+| `write_to`          | `list(otelcol.Consumer)` | Inputs from `otelcol` components to send traces to. | `[]`    | no       |
 
 The `write_to` argument controls which components to send traces to for processing.
 The elements in the array can be any `otelcol` component that accept traces, including processors and exporters.
@@ -55,10 +55,10 @@ When set to `1` or greater, 100% of traces are kept. When set to `0` or lower, 0
 
 The following blocks are supported inside the definition of `tracing`:
 
-Hierarchy               | Block             | Description                                                  | Required
-------------------------|-------------------|--------------------------------------------------------------|---------
-sampler                 | [sampler][]       | Define custom sampling on top of the base sampling fraction. | no
-sampler > jaeger_remote | [jaeger_remote][] | Retrieve sampling information via a Jaeger remote sampler.   | no
+| Hierarchy               | Block             | Description                                                  | Required |
+| ----------------------- | ----------------- | ------------------------------------------------------------ | -------- |
+| sampler                 | [sampler][]       | Define custom sampling on top of the base sampling fraction. | no       |
+| sampler > jaeger_remote | [jaeger_remote][] | Retrieve sampling information via a Jaeger remote sampler.   | no       |
 
 The `>` symbol indicates deeper levels of nesting. For example, `sampler > jaeger_remote` refers to a `jaeger_remote` block defined inside an `sampler` block.
 
@@ -73,11 +73,11 @@ It's invalid to define more than one sampler to use in the `sampler` block.
 
 The `jaeger_remote` block configures the retrieval of sampling information through a remote server that exposes Jaeger sampling strategies.
 
-Name               | Type       | Description                                                | Default                            | Required
--------------------|------------|------------------------------------------------------------|------------------------------------|---------
-`url`              | `string`   | URL to retrieve sampling strategies from.                  | `"http://127.0.0.1:5778/sampling"` | no
-`max_operations`   | `number`   | Limit number of operations which can have custom sampling. | `256`                              | no
-`refresh_interval` | `duration` | Frequency to poll the URL for new sampling strategies.     | `"1m"`                             | no
+| Name               | Type       | Description                                                | Default                            | Required |
+| ------------------ | ---------- | ---------------------------------------------------------- | ---------------------------------- | -------- |
+| `url`              | `string`   | URL to retrieve sampling strategies from.                  | `"http://127.0.0.1:5778/sampling"` | no       |
+| `max_operations`   | `number`   | Limit number of operations which can have custom sampling. | `256`                              | no       |
+| `refresh_interval` | `duration` | Frequency to poll the URL for new sampling strategies.     | `"1m"`                             | no       |
 
 The remote sampling strategies are retrieved from the URL specified by the `url` argument, and polled for updates on a timer. The frequency for how often polling occurs is controlled by the `refresh_interval` argument.
 

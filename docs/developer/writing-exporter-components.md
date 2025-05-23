@@ -45,6 +45,7 @@ prometheus.exporter.blackbox "example" {
 ## Functions
 
 - Define `init` function to register the component using `component.Register`.
+
   - The `Build` param should be a function that returns a `component.Component` interface.
   - The name used in the second parameter of `exporter.New` when defining the `Build` function it's important as it will define the label `job` in the form of `integrations/<name>`.
   - Avoid creating components with `Singleton: true` as it will make it impossible to run multiple instances of the exporter.

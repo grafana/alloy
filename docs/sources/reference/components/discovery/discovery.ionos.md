@@ -35,7 +35,7 @@ You can use the following arguments with `discovery.ionos`:
 | `bearer_token`           | `secret`            | Bearer token to authenticate with.                                                               |         | no       |
 | `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`  | no       |
 | `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`  | no       |
-| `http_headers`           | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.          |                      | no       |
+| `http_headers`           | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.          |         | no       |
 | `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |         | no       |
 | `port`                   | `int`               | The port to scrape metrics from.                                                                 | 80      | no       |
 | `proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |         | no       |
@@ -43,13 +43,13 @@ You can use the following arguments with `discovery.ionos`:
 | `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |         | no       |
 | `refresh_interval`       | `duration`          | The time after which the servers are refreshed.                                                  | `60s`   | no       |
 
- At most, one of the following can be provided:
+At most, one of the following can be provided:
 
-* [`authorization`][authorization] block
-* [`basic_auth`][basic_auth] block
-* [`bearer_token_file`][arguments] argument
-* [`bearer_token`][arguments]
-* [`oauth2`][oauth2] block
+- [`authorization`][authorization] block
+- [`basic_auth`][basic_auth] block
+- [`bearer_token_file`][arguments] argument
+- [`bearer_token`][arguments]
+- [`oauth2`][oauth2] block
 
 [arguments]: #arguments
 
@@ -109,19 +109,19 @@ The following fields are exported and can be referenced by other components:
 
 Each target includes the following labels:
 
-* `__meta_ionos_server_availability_zone`: The availability zone of the server.
-* `__meta_ionos_server_boot_cdrom_id`: The ID of the CD-ROM the server is booted from.
-* `__meta_ionos_server_boot_image_id`: The ID of the boot image or snapshot the server is booted from.
-* `__meta_ionos_server_boot_volume_id`: The ID of the boot volume.
-* `__meta_ionos_server_cpu_family`: The CPU family of the server to.
-* `__meta_ionos_server_id`: The ID of the server.
-* `__meta_ionos_server_ip`: A comma separated list of all IP addresses assigned to the server.
-* `__meta_ionos_server_lifecycle`: The lifecycle state of the server resource.
-* `__meta_ionos_server_name`: The name of the server.
-* `__meta_ionos_server_nic_ip_<nic_name>`: A comma separated list of IP addresses, grouped by the name of each NIC attached to the server.
-* `__meta_ionos_server_servers_id`: The ID of the servers the server belongs to.
-* `__meta_ionos_server_state`: The execution state of the server.
-* `__meta_ionos_server_type`: The type of the server.
+- `__meta_ionos_server_availability_zone`: The availability zone of the server.
+- `__meta_ionos_server_boot_cdrom_id`: The ID of the CD-ROM the server is booted from.
+- `__meta_ionos_server_boot_image_id`: The ID of the boot image or snapshot the server is booted from.
+- `__meta_ionos_server_boot_volume_id`: The ID of the boot volume.
+- `__meta_ionos_server_cpu_family`: The CPU family of the server to.
+- `__meta_ionos_server_id`: The ID of the server.
+- `__meta_ionos_server_ip`: A comma separated list of all IP addresses assigned to the server.
+- `__meta_ionos_server_lifecycle`: The lifecycle state of the server resource.
+- `__meta_ionos_server_name`: The name of the server.
+- `__meta_ionos_server_nic_ip_<nic_name>`: A comma separated list of IP addresses, grouped by the name of each NIC attached to the server.
+- `__meta_ionos_server_servers_id`: The ID of the servers the server belongs to.
+- `__meta_ionos_server_state`: The execution state of the server.
+- `__meta_ionos_server_type`: The type of the server.
 
 ## Component health
 
@@ -162,9 +162,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

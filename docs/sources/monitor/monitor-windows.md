@@ -22,10 +22,10 @@ In this example scenario, {{< param "PRODUCT_NAME" >}} collects Windows performa
 
 Ensure you have the following:
 
-* [Docker](https://www.docker.com/)
-* [Git](https://git-scm.com/)
-* A Windows Server or Desktop. This scenario monitors a computer running Windows.
-* Windows administrator access. You need administrator access to install {{< param "PRODUCT_NAME" >}} and configure it to collect metrics and logs.
+- [Docker](https://www.docker.com/)
+- [Git](https://git-scm.com/)
+- A Windows Server or Desktop. This scenario monitors a computer running Windows.
+- Windows administrator access. You need administrator access to install {{< param "PRODUCT_NAME" >}} and configure it to collect metrics and logs.
 
 {{< admonition type="note" >}}
 You need administrator privileges to run `docker` commands.
@@ -106,16 +106,16 @@ The configuration includes `livedebugging` to stream real-time data to the {{< p
 
 The metrics configuration in this example requires three components:
 
-* `prometheus.exporter.windows`
-* `prometheus.scrape`
-* `prometheus.remote_write`
+- `prometheus.exporter.windows`
+- `prometheus.scrape`
+- `prometheus.remote_write`
 
 #### `prometheus.exporter.windows`
 
 The [`prometheus.exporter.windows`][prometheus.exporter.windows] component exposes hardware and OS metrics for Windows-based systems.
 In this example, the component requires the following arguments:
 
-* `enabled_collectors`: The list of collectors to enable.
+- `enabled_collectors`: The list of collectors to enable.
 
 ```alloy
 prometheus.exporter.windows "default" {
@@ -128,8 +128,8 @@ prometheus.exporter.windows "default" {
 The [`prometheus.scrape`][prometheus.scrape] component scrapes Windows metrics and forwards them to a receiver.
 In this example, the component requires the following arguments:
 
-* `targets`: The target to scrape metrics from.
-* `forward_to`: The destination to forward metrics to.
+- `targets`: The target to scrape metrics from.
+- `forward_to`: The destination to forward metrics to.
 
 ```alloy
 prometheus.scrape "example" {
@@ -143,7 +143,7 @@ prometheus.scrape "example" {
 The [`prometheus.remote_write`][prometheus.remote_write] component sends metrics to a Prometheus server.
 In this example, the component requires the following argument:
 
-* `url`: Defines the full URL endpoint to send metrics to.
+- `url`: Defines the full URL endpoint to send metrics to.
 
 ```alloy
 prometheus.remote_write "demo" {
@@ -161,18 +161,18 @@ prometheus.remote_write "demo" {
 
 The logging configuration in this example requires three components:
 
-* `loki.source.windowsevent`
-* `loki.process`
-* `loki.write`
+- `loki.source.windowsevent`
+- `loki.process`
+- `loki.write`
 
 #### `loki.source.windowsevent`
 
 The [`loki.source.windowsevent`][loki.source.windowsevent] component reads events from Windows Event Logs and forwards them to other Loki components.
 In this example, the component requires the following arguments:
 
-* `eventlog_name`: The event log to read from.
-* `use_incoming_timestamp`: Assigns the current timestamp to the log.
-* `forward_to`: The list of receivers to send log entries to.
+- `eventlog_name`: The event log to read from.
+- `use_incoming_timestamp`: Assigns the current timestamp to the log.
+- `forward_to`: The list of receivers to send log entries to.
 
 ```alloy
 loki.source.windowsevent "application"  {
@@ -195,11 +195,11 @@ loki.source.windowsevent "System"  {
 The [`loki.process`][loki.process] component receives log entries from other Loki components, applies one or more processing stages, and forwards the results to the list of receivers.
 In this example, the component requires the following arguments:
 
-* `forward_to`: The list of receivers to send log entries to.
-* `expressions`: The key-value pairs that define the name of the data extracted and the value that it's populated with.
-* `values`: The key-value pairs that define the label to set and how to look them up.
-* `source`: Name from extracted values map to use for the timestamp.
-* `overwrite_existing`: Overwrite the existing extracted data fields.
+- `forward_to`: The list of receivers to send log entries to.
+- `expressions`: The key-value pairs that define the name of the data extracted and the value that it's populated with.
+- `values`: The key-value pairs that define the label to set and how to look them up.
+- `source`: Name from extracted values map to use for the timestamp.
+- `overwrite_existing`: Overwrite the existing extracted data fields.
 
 ```alloy
 loki.process "endpoint" {
@@ -251,7 +251,7 @@ loki.process "endpoint" {
 The [`loki.write`][loki.write] component writes the logs out to a Loki destination.
 In this example, the component requires the following argument:
 
-* `url`: Defines the full URL endpoint in Loki to send logs to.
+- `url`: Defines the full URL endpoint in Loki to send logs to.
 
 ```alloy
 loki.write "endpoint" {

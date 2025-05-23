@@ -71,7 +71,7 @@ Refer to the upstream receiver [documentation][encoding-documentation] for more 
 
 `start_at` must be one of `beginning` or `end`. The `header` block may only be used if `start_at` is `beginning`.
 
-`compression` must be either `` or `gzip`.
+`compression` must be either ``or`gzip`.
 
 To persist state between restarts of the {{< param "PRODUCT_NAME" >}} process, set the `storage` attribute to the `handler` exported from an `otelcol.storage.*` component.
 
@@ -179,8 +179,8 @@ The following arguments are supported:
 
 | Name                 | Type     | Description                                                     | Default | Required |
 | -------------------- | -------- | --------------------------------------------------------------- | ------- | -------- |
-| `line_end_pattern`   | `string` | A regular expression that matches the end of a log entry.       |         | yes*     |
-| `line_start_pattern` | `string` | A regular expression that matches the beginning of a log entry. |         | yes*     |
+| `line_end_pattern`   | `string` | A regular expression that matches the end of a log entry.       |         | yes\*    |
+| `line_start_pattern` | `string` | A regular expression that matches the beginning of a log entry. |         | yes\*    |
 | `omit_pattern`       | `bool`   | Omit the start/end pattern from the split log entries.          | `false` | no       |
 
 A `multiline` block must contain either `line_start_pattern` or `line_end_pattern`.
@@ -281,7 +281,6 @@ otelcol.exporter.debug "default" {}
 `otelcol.receiver.filelog` can accept arguments from the following components:
 
 - Components that export [OpenTelemetry `otelcol.Consumer`](../../../compatibility/#opentelemetry-otelcolconsumer-exporters)
-
 
 {{< admonition type="note" >}}
 Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.

@@ -13,18 +13,18 @@ You may also need to cherry pick commits on the `release/` branch.
 
 Example PRs:
 
-* [Release Candidate](https://github.com/grafana/alloy/pull/1410).
+- [Release Candidate](https://github.com/grafana/alloy/pull/1410).
   Here the PR is done on the main branch, before creating the release branch.
   You can do this to save time by not having to update the release branch separately.
-* [Additional Release Candidate](https://github.com/grafana/alloy/pull/1701)
-* [Stable Release](https://github.com/grafana/alloy/pull/1747)
+- [Additional Release Candidate](https://github.com/grafana/alloy/pull/1701)
+- [Stable Release](https://github.com/grafana/alloy/pull/1747)
   There is no need to update the VERSION file in this PR.
   The VERSION file is already pointing to the version being released ever since the `release/` branch was created.
-* [Patch Release](https://github.com/grafana/alloy/pull/1767)
+- [Patch Release](https://github.com/grafana/alloy/pull/1767)
 
 ### 1.1. Add the new version to the CHANGELOG
 
-For a First Release Candidate (`rc.0`), replace the `Main (unreleased)` header with a new one for  `VERSION`.
+For a First Release Candidate (`rc.0`), replace the `Main (unreleased)` header with a new one for `VERSION`.
 
 For an Additional Release Candidate or SRV, update the header `PREVIOUS_RELEASE_CANDIDATE_VERSION` to `VERSION`.
 
@@ -45,8 +45,9 @@ The contents of the VERSION file should not contain `rc` information.
 Therefore, there is no need to update the VERSION file for additional release candidates (e.g. `rc.1`, `rc.2`).
 
 For example:
-* If you are going to release `v1.2.0-rc.0`, then the VERSION file should contain `v1.2.0`.
-* If you are going to release `v1.5.1`, then the VERSION file should contain `v1.5.1`.
+
+- If you are going to release `v1.2.0-rc.0`, then the VERSION file should contain `v1.2.0`.
+- If you are going to release `v1.5.1`, then the VERSION file should contain `v1.5.1`.
 
 After updating the VERSION file, run:
 
@@ -58,9 +59,9 @@ make generate-versioned-files
 
 Examples:
 
-* Release Candidate example PR [here](https://github.com/grafana/alloy/pull/1410)
-* Stable Release example PR [here](https://github.com/grafana/alloy/pull/1419)
-* Patch Release example PR [here](https://github.com/grafana/alloy/pull/1769)
+- Release Candidate example PR [here](https://github.com/grafana/alloy/pull/1410)
+- Stable Release example PR [here](https://github.com/grafana/alloy/pull/1419)
+- Patch Release example PR [here](https://github.com/grafana/alloy/pull/1769)
 
 ### 2.1. Add the new version to the CHANGELOG
 
@@ -72,8 +73,9 @@ For an Additional Release Candidate or SRV, update the header `PREVIOUS_RELEASE_
 
 The [VERSION file][VERSION-file] on the "main" branch should point to the next major version.
 For example:
-* If you are going to release `v1.2.0-rc.0`, then the VERSION file should contain `v1.3.0`.
-* If you are going to release `v1.5.1`, then the VERSION file should contain `v1.6.0`.
+
+- If you are going to release `v1.2.0-rc.0`, then the VERSION file should contain `v1.3.0`.
+- If you are going to release `v1.5.1`, then the VERSION file should contain `v1.6.0`.
 
 The reasoning behind this is that any builds of the main branch should contain the next major version they are meant to go to.
 If the latest release branch that was cut is `release/1.3`, then `main` is preparing for `1.4.0`.

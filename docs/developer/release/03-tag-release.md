@@ -8,10 +8,10 @@ A tag is required to create GitHub artifacts and as a prerequisite for publishin
 
 2. Make sure you are up to date on the release branch:
 
-   ``` 
+   ```
    git checkout release-VERSION_PREFIX
-   git fetch origin 
-   git pull origin 
+   git fetch origin
+   git pull origin
    ```
 
 3. Determine the [VERSION](concepts/version.md).
@@ -38,16 +38,16 @@ export GPG_TTY=$(tty)
 
 1. Tag the release:
 
-    Example commands:
+   Example commands:
 
-    ```
-    git tag -s VERSION
-    git push origin VERSION
-    ```
+   ```
+   git tag -s VERSION
+   git push origin VERSION
+   ```
 
 2. After a tag has been pushed, GitHub Tasks will create release assets and open a release draft for every pushed tag.
 
-    - This will take ~20-40 minutes.
-    - You can monitor this by viewing the drone build on the commit for the release tag.
+   - This will take ~20-40 minutes.
+   - You can monitor this by viewing the drone build on the commit for the release tag.
 
-    If the Homebrew Formula fails to update, close the existing open PR and re-run the failed CI.
+   If the Homebrew Formula fails to update, close the existing open PR and re-run the failed CI.

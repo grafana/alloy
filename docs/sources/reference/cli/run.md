@@ -18,12 +18,12 @@ alloy run [<FLAG> ...] <PATH_NAME>
 
 Replace the following:
 
-* _`<FLAG>`_: One or more flags that define the input and output of the command.
-* _`<PATH_NAME>`_: Required. The {{< param "PRODUCT_NAME" >}} configuration file or directory path.
+- _`<FLAG>`_: One or more flags that define the input and output of the command.
+- _`<PATH_NAME>`_: Required. The {{< param "PRODUCT_NAME" >}} configuration file or directory path.
 
 If the _`<PATH_NAME>`_ argument isn't provided, or if the configuration path can't be loaded or contains errors during the initial load, the `run` command immediately exits and shows an error message.
 
-If you provide a directory path for  the _`<PATH_NAME>`_, {{< param "PRODUCT_NAME" >}} finds `*.alloy` files, ignoring nested directories, and loads them as a single configuration source.
+If you provide a directory path for the _`<PATH_NAME>`_, {{< param "PRODUCT_NAME" >}} finds `*.alloy` files, ignoring nested directories, and loads them as a single configuration source.
 However, component names must be **unique** across all {{< param "PRODUCT_NAME" >}} configuration files, and configuration blocks must not be repeated.
 
 {{< param "PRODUCT_NAME" >}} continues to run if subsequent reloads of the configuration file fail, potentially marking components as unhealthy depending on the nature of the failure.
@@ -34,50 +34,51 @@ The HTTP server is also exposes a UI at `/` for debugging running components.
 
 The following flags are supported:
 
-* `--server.http.enable-pprof`: Enable /debug/pprof profiling endpoints. (default `true`).
-* `--server.http.memory-addr`: Address to listen for [in-memory HTTP traffic][] on (default `alloy.internal:12345`).
-* `--server.http.listen-addr`: Address to listen for HTTP traffic on (default `127.0.0.1:12345`).
-* `--server.http.ui-path-prefix`: Base path where the UI is exposed (default `/`).
-* `--storage.path`: Base directory where components can store data (default `data-alloy/`).
-* `--disable-reporting`: Disable [data collection][] (default `false`).
-* `--disable-support-bundle`: Disable [support bundle][] endpoint (default `false`).
-* `--cluster.enabled`: Start {{< param "PRODUCT_NAME" >}} in clustered mode (default `false`).
-* `--cluster.node-name`: The name to use for this node (defaults to the environment's hostname).
-* `--cluster.join-addresses`: Comma-separated list of addresses to join the cluster at (default `""`). Mutually exclusive with `--cluster.discover-peers`.
-* `--cluster.discover-peers`: List of key-value tuples for discovering peers (default `""`). Mutually exclusive with `--cluster.join-addresses`.
-* `--cluster.rejoin-interval`: How often to rejoin the list of peers (default `"60s"`).
-* `--cluster.advertise-address`: Address to advertise to other cluster nodes (default `""`).
-* `--cluster.advertise-interfaces`: List of interfaces used to infer an address to advertise. Set to `all` to use all available network interfaces on the system. (default `"eth0,en0"`).
-* `--cluster.max-join-peers`: Number of peers to join from the discovered set (default `5`).
-* `--cluster.name`: Name to prevent nodes without this identifier from joining the cluster (default `""`).
-* `--cluster.enable-tls`: Specifies whether TLS should be used for communication between peers (default `false`).
-* `--cluster.tls-ca-path`: Path to the CA certificate file used for peer communication over TLS.
-* `--cluster.tls-cert-path`: Path to the certificate file used for peer communication over TLS.
-* `--cluster.tls-key-path`: Path to the key file used for peer communication over TLS.
-* `--cluster.tls-server-name`: Server name used for peer communication over TLS.
-* `--cluster.wait-for-size`: Wait for the cluster to reach the specified number of instances before allowing components that use clustering to begin processing. Zero means disabled (default `0`).
-* `--cluster.wait-timeout`: Maximum duration to wait for minimum cluster size before proceeding with available nodes. Zero means wait forever, no timeout (default `0`).
-* `--config.format`: Specifies the source file format. Supported formats: `alloy`, `otelcol`, `prometheus`, `promtail`, and `static` (default `"alloy"`).
-* `--config.bypass-conversion-errors`: Enable bypassing errors during conversion (default `false`).
-* `--config.extra-args`: Extra arguments from the original format used by the converter.
-* `--stability.level`: The minimum permitted stability level of functionality. Supported values: `experimental`, `public-preview`, and `generally-available` (default `"generally-available"`).
-* `--feature.community-components.enabled`: Enable community components (default `false`).
-* `--feature.prometheus.metric-validation-scheme`: Prometheus metric validation scheme to use. Supported values: `legacy`, `utf-8`. NOTE: this is an experimental flag and may be removed in future releases (default `"legacy"`).
-* `--windows.priority`: The priority to set for the {{< param "PRODUCT_NAME" >}} process when running on Windows. This is only available on Windows. Supported values: `above_normal`, `below_normal`, `normal`, `high`, `idle`, or `realtime` (default `"normal"`).
+- `--server.http.enable-pprof`: Enable /debug/pprof profiling endpoints. (default `true`).
+- `--server.http.memory-addr`: Address to listen for [in-memory HTTP traffic][] on (default `alloy.internal:12345`).
+- `--server.http.listen-addr`: Address to listen for HTTP traffic on (default `127.0.0.1:12345`).
+- `--server.http.ui-path-prefix`: Base path where the UI is exposed (default `/`).
+- `--storage.path`: Base directory where components can store data (default `data-alloy/`).
+- `--disable-reporting`: Disable [data collection][] (default `false`).
+- `--disable-support-bundle`: Disable [support bundle][] endpoint (default `false`).
+- `--cluster.enabled`: Start {{< param "PRODUCT_NAME" >}} in clustered mode (default `false`).
+- `--cluster.node-name`: The name to use for this node (defaults to the environment's hostname).
+- `--cluster.join-addresses`: Comma-separated list of addresses to join the cluster at (default `""`). Mutually exclusive with `--cluster.discover-peers`.
+- `--cluster.discover-peers`: List of key-value tuples for discovering peers (default `""`). Mutually exclusive with `--cluster.join-addresses`.
+- `--cluster.rejoin-interval`: How often to rejoin the list of peers (default `"60s"`).
+- `--cluster.advertise-address`: Address to advertise to other cluster nodes (default `""`).
+- `--cluster.advertise-interfaces`: List of interfaces used to infer an address to advertise. Set to `all` to use all available network interfaces on the system. (default `"eth0,en0"`).
+- `--cluster.max-join-peers`: Number of peers to join from the discovered set (default `5`).
+- `--cluster.name`: Name to prevent nodes without this identifier from joining the cluster (default `""`).
+- `--cluster.enable-tls`: Specifies whether TLS should be used for communication between peers (default `false`).
+- `--cluster.tls-ca-path`: Path to the CA certificate file used for peer communication over TLS.
+- `--cluster.tls-cert-path`: Path to the certificate file used for peer communication over TLS.
+- `--cluster.tls-key-path`: Path to the key file used for peer communication over TLS.
+- `--cluster.tls-server-name`: Server name used for peer communication over TLS.
+- `--cluster.wait-for-size`: Wait for the cluster to reach the specified number of instances before allowing components that use clustering to begin processing. Zero means disabled (default `0`).
+- `--cluster.wait-timeout`: Maximum duration to wait for minimum cluster size before proceeding with available nodes. Zero means wait forever, no timeout (default `0`).
+- `--config.format`: Specifies the source file format. Supported formats: `alloy`, `otelcol`, `prometheus`, `promtail`, and `static` (default `"alloy"`).
+- `--config.bypass-conversion-errors`: Enable bypassing errors during conversion (default `false`).
+- `--config.extra-args`: Extra arguments from the original format used by the converter.
+- `--stability.level`: The minimum permitted stability level of functionality. Supported values: `experimental`, `public-preview`, and `generally-available` (default `"generally-available"`).
+- `--feature.community-components.enabled`: Enable community components (default `false`).
+- `--feature.prometheus.metric-validation-scheme`: Prometheus metric validation scheme to use. Supported values: `legacy`, `utf-8`. NOTE: this is an experimental flag and may be removed in future releases (default `"legacy"`).
+- `--windows.priority`: The priority to set for the {{< param "PRODUCT_NAME" >}} process when running on Windows. This is only available on Windows. Supported values: `above_normal`, `below_normal`, `normal`, `high`, `idle`, or `realtime` (default `"normal"`).
 
 {{< admonition type="note" >}}
 The `--windows.priority` flag is in [Public preview][] and is not covered by {{< param "FULL_PRODUCT_NAME" >}} [backward compatibility][] guarantees.
 
 [Public preview]: https://grafana.com/docs/release-life-cycle/
 [backward compatibility]: ../../../introduction/backward-compatibility/
+
 {{< /admonition >}}
 
 ## Update the configuration file
 
 The configuration file can be reloaded from disk by either:
 
-* Sending an HTTP POST request to the `/-/reload` endpoint.
-* Sending a `SIGHUP` signal to the {{< param "PRODUCT_NAME" >}} process.
+- Sending an HTTP POST request to the `/-/reload` endpoint.
+- Sending a `SIGHUP` signal to the {{< param "PRODUCT_NAME" >}} process.
 
 When this happens, the [component controller][] synchronizes the set of running components with the latest set of components specified in the configuration file.
 Components that are no longer defined in the configuration file after reloading are shut down, and components that have been added to the configuration file since the previous reload are created.
@@ -90,17 +91,17 @@ By default, {{< param "PRODUCT_NAME" >}} only allows you to use functionality th
 
 To use [Experimental][stability] or [Public preview][stability] functionality, set the `--stability.level` flag to the level you want to use:
 
-* `--stability.level=experimental`: Use functionality marked as _Experimental_ and above.
-* `--stability.level=public-preview`: Use functionality marked as _Public preview_ and above.
-* `--stability.level=generally-available`: Use functionality marked as _Generally available_.
+- `--stability.level=experimental`: Use functionality marked as _Experimental_ and above.
+- `--stability.level=public-preview`: Use functionality marked as _Public preview_ and above.
+- `--stability.level=generally-available`: Use functionality marked as _Generally available_.
 
 {{< admonition type="caution" >}}
 Setting `--stability.level` to `experimental` or `public-preview` may enable _Experimental_ or _Public preview_ behavior for items otherwise marked _Generally available_, such as:
 
-* The component controller
-* Components in the main configuration or in imported modules
-* Configuration blocks in the main configuration
-{{< /admonition >}}
+- The component controller
+- Components in the main configuration or in imported modules
+- Configuration blocks in the main configuration
+  {{< /admonition >}}
 
 [stability]: https://grafana.com/docs/release-life-cycle/
 
@@ -168,9 +169,9 @@ Attempting to join a cluster with a wrong `--cluster.name` results in a "failed 
 
 Clustered {{< param "PRODUCT_NAME" >}}s are in one of three states:
 
-* **Viewer**: {{< param "PRODUCT_NAME" >}} has a read-only view of the cluster and isn't participating in workload distribution.
-* **Participant**: {{< param "PRODUCT_NAME" >}} is participating in workload distribution for components that have clustering enabled.
-* **Terminating**: {{< param "PRODUCT_NAME" >}} is shutting down and no longer assigning new work to itself.
+- **Viewer**: {{< param "PRODUCT_NAME" >}} has a read-only view of the cluster and isn't participating in workload distribution.
+- **Participant**: {{< param "PRODUCT_NAME" >}} is participating in workload distribution for components that have clustering enabled.
+- **Terminating**: {{< param "PRODUCT_NAME" >}} is shutting down and no longer assigning new work to itself.
 
 Each {{< param "PRODUCT_NAME" >}} initially joins the cluster in the viewer state and then transitions to the participant state after the process startup completes.
 Each {{< param "PRODUCT_NAME" >}} then transitions to the terminating state when shutting down.
@@ -191,7 +192,7 @@ Include `--config.extra-args` to pass additional command line flags from the ori
 Refer to [alloy convert][] for more details on how `extra-args` work.
 
 [alloy convert]: ../convert/
-[clustering]:  ../../../get-started/clustering/
+[clustering]: ../../../get-started/clustering/
 [go-discover]: https://github.com/hashicorp/go-discover
 [in-memory HTTP traffic]: ../../../get-started/component_controller/#in-memory-traffic
 [data collection]: ../../../data-collection/

@@ -51,12 +51,12 @@ When set to `"0"`, the state is retained indefinitely.
 The `initial_value` sets the handling of the first observed point for a given metric identity.
 When the collector (re)starts, there's no record of how much of a given cumulative counter has already been converted to delta values.
 
-* `"auto"` (default): Send the observed value if the start time is set AND the start time happens after the component started AND the start time is different from the timestamp.
+- `"auto"` (default): Send the observed value if the start time is set AND the start time happens after the component started AND the start time is different from the timestamp.
   This is suitable for gateway deployments.
   This heuristic is like `drop`, but it keeps values for newly started counters which couldn't have had previous observed values.
-* `"keep"`: Send the observed value as the delta value. This is suitable for when the incoming metrics haven't been observed before.
+- `"keep"`: Send the observed value as the delta value. This is suitable for when the incoming metrics haven't been observed before.
   For example, when you are running the collector as a sidecar, the collector lifecycle is tied to the metric source.
-* `"drop"`: Keep the observed value but don't send it. This is suitable for gateway deployments.
+- `"drop"`: Keep the observed value but don't send it. This is suitable for gateway deployments.
   It guarantees that all delta counts it produces haven't been observed before, but drops the values between the first two observations.
 
 ## Blocks
@@ -91,7 +91,7 @@ The `include` block configures which metrics to convert to delta.
 The following attributes are supported:
 
 | Name           | Type           | Description                              | Default | Required |
-| -------------- | -------------- | ---------------------------------------- |-------- | -------- |
+| -------------- | -------------- | ---------------------------------------- | ------- | -------- |
 | `match_type`   | `string`       | Match type to use, `strict` or `regexp`. |         | no       |
 | `metric_types` | `list(string)` | Metric types to convert to delta.        |         | no       |
 | `metrics`      | `list(string)` | Names or patterns to convert to delta.   |         | no       |

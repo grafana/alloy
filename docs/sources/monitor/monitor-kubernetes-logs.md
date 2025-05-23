@@ -20,18 +20,18 @@ The Helm chart simplifies configuration and deploys best practices for monitorin
 
 {{< param "PRODUCT_NAME" >}}, installed with `k8s-monitoring-helm`, collects two log sources: [Pod Logs][] and [Kubernetes Events][].
 
-[Pod Logs]: https://kubernetes.io/docs/concepts/cluster-administration/logging/#basic-logging-in-kubernetes  
-[Kubernetes Events]: https://kubernetes.io/docs/reference/kubernetes-api/cluster-resources/event-v1/  
+[Pod Logs]: https://kubernetes.io/docs/concepts/cluster-administration/logging/#basic-logging-in-kubernetes
+[Kubernetes Events]: https://kubernetes.io/docs/reference/kubernetes-api/cluster-resources/event-v1/
 [scenarios]: https://github.com/grafana/alloy-scenarios/
 
 ## Before you begin
 
 Ensure you have the following:
 
-* [Docker](https://www.docker.com/)  
-* [Git](https://git-scm.com/)  
-* [Helm](https://helm.sh/docs/intro/install/)  
-* [kind](https://kind.sigs.k8s.io/docs/user/quick-start/)
+- [Docker](https://www.docker.com/)
+- [Git](https://git-scm.com/)
+- [Helm](https://helm.sh/docs/intro/install/)
+- [kind](https://kind.sigs.k8s.io/docs/user/quick-start/)
 
 ## Clone and deploy the example
 
@@ -183,8 +183,8 @@ destinations:
 
 Enable the collection of cluster events.
 
-* `collector`: Use the `alloy-logs` collector to collect logs.  
-* `namespaces`: Specify the `meta` and `prod` namespaces to collect logs from.
+- `collector`: Use the `alloy-logs` collector to collect logs.
+- `namespaces`: Specify the `meta` and `prod` namespaces to collect logs from.
 
 ```yaml
 clusterEvents:
@@ -209,9 +209,9 @@ nodeLogs:
 
 Enable the collection of Pod logs.
 
-* `labelsToKeep`: Specify labels to keep when collecting logs.  
-  This configuration removes `pod` from the labels to keep.  
-* `structuredMetadata`: Specify structured metadata to collect.  
+- `labelsToKeep`: Specify labels to keep when collecting logs.  
+  This configuration removes `pod` from the labels to keep.
+- `structuredMetadata`: Specify structured metadata to collect.  
   This configuration sets the structured metadata `pod` to keep the Pod name for querying.
 
 ```yaml
@@ -219,9 +219,21 @@ podLogs:
   enabled: true
   gatherMethod: kubernetesApi
   collector: alloy-logs
-  labelsToKeep: ["app_kubernetes_io_name","container","instance","job","level","namespace","service_name","service_namespace","deployment_environment","deployment_environment_name"]
+  labelsToKeep:
+    [
+      'app_kubernetes_io_name',
+      'container',
+      'instance',
+      'job',
+      'level',
+      'namespace',
+      'service_name',
+      'service_namespace',
+      'deployment_environment',
+      'deployment_environment_name',
+    ]
   structuredMetadata:
-    pod: pod  # Set structured metadata "pod" from label "pod"
+    pod: pod # Set structured metadata "pod" from label "pod"
   namespaces:
     - meta
     - prod

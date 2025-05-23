@@ -16,7 +16,7 @@ title: otelcol.exporter.googlecloud
 `otelcol.exporter.googlecloud` accepts metrics, traces, and logs from other `otelcol` components and sends it to Google Cloud.
 
 {{< admonition type="note" >}}
-`otelcol.exporter.googlecloud` is a wrapper over the upstream OpenTelemetry Collector `googlecloud` exporter from the `otelcol-contrib`  distribution.
+`otelcol.exporter.googlecloud` is a wrapper over the upstream OpenTelemetry Collector `googlecloud` exporter from the `otelcol-contrib` distribution.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
 {{< /admonition >}}
 
@@ -50,7 +50,7 @@ You can use the following arguments with `otelcol.exporter.googlecloud`:
 You can use the following blocks with `otelcol.exporter.googlecloud`:
 
 | Block                                             | Description                                                                | Required |
-|---------------------------------------------------|----------------------------------------------------------------------------|----------|
+| ------------------------------------------------- | -------------------------------------------------------------------------- | -------- |
 | [`debug_metrics`][debug_metrics]                  | Configures the metrics that this component generates to monitor its state. | no       |
 | [`impersonate`][impersonate]                      | Configuration for service account impersonation                            | no       |
 | [`log`][log]                                      | Configuration for sending logs to Cloud Logging.                           | no       |
@@ -79,7 +79,7 @@ For example, `metric` > `experimental_wal` refers to a `experimental_wal` block 
 The following arguments are supported:
 
 | Name               | Type           | Description                                                                                                                                                                                  | Default | Required |
-|--------------------|----------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|----------|
+| ------------------ | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
 | `target_principal` | `string`       | TargetPrincipal is the email address of the service account to impersonate.                                                                                                                  |         | yes      |
 | `delegates`        | `list(string)` | Delegates are the service account email addresses in a delegation chain. Each service account must be granted roles/iam.serviceAccountTokenCreator on the next service account in the chain. | `[]`    | no       |
 | `subject`          | `string`       | Subject is the sub field of a JWT. This field should only be set if you need to impersonate as a user. This feature is useful when using domain wide delegation.                             | `""`    | no       |
@@ -106,9 +106,9 @@ The following arguments are supported:
 The following arguments are supported:
 
 | Name                                   | Type           | Description                                                                                                                                                                                                                 | Default                                                  | Required |
-|----------------------------------------|----------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------|----------|
+| -------------------------------------- | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- | -------- |
 | `compression`                          | `string`       | Compression format for Metrics gRPC requests. Supported values: [`gzip`].                                                                                                                                                   | `""` (no compression)                                    | no       |
-| `create_metric_descriptor_buffer_size` | `number`       | Buffer size for the  channel which asynchronously calls CreateMetricDescriptor.                                                                                                                                             | `10`                                                     | no       |
+| `create_metric_descriptor_buffer_size` | `number`       | Buffer size for the channel which asynchronously calls CreateMetricDescriptor.                                                                                                                                              | `10`                                                     | no       |
 | `create_service_timeseries`            | `bool`         | If true, this sends all timeseries using `CreateServiceTimeSeries`. Implicitly, this sets `skip_create_descriptor` to true.                                                                                                 | `false`                                                  | no       |
 | `cumulative_normalization`             | `bool`         | If true, normalizes cumulative metrics without start times or with explicit reset points by subtracting subsequent points from the initial point. Since it caches starting points, it may result in increased memory usage. | `true`                                                   | no       |
 | `endpoint`                             | `string`       | Endpoint where metric data is sent to.                                                                                                                                                                                      | `monitoring.googleapis.com:443`                          | no       |
@@ -129,7 +129,7 @@ The following arguments are supported:
 The following arguments are supported:
 
 | Name          | Type     | Description                                                                              | Default | Required |
-|---------------|----------|------------------------------------------------------------------------------------------|---------|----------|
+| ------------- | -------- | ---------------------------------------------------------------------------------------- | ------- | -------- |
 | `directory`   | `string` | Path to local directory for the WAL file.                                                | `./`    | yes      |
 | `max_backoff` | `string` | Max duration to retry requests on network errors (`UNAVAILABLE` or `DEADLINE_EXCEEDED`). | `1h`    | no       |
 
@@ -142,7 +142,7 @@ The `sending_queue` block configures an in-memory buffer of batches before data 
 ### `trace`
 
 | Name                                 | Type           | Description                                                                                                                                                                      | Default                         | Required |
-|--------------------------------------|----------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------|----------|
+| ------------------------------------ | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- | -------- |
 | `attribute_mappings`                 | `list(object)` | Determines how to map from OpenTelemetry attribute keys to Google Cloud Trace keys. By default, it changes HTTP and service keys so that they appear more prominently in the UI. | `[]`                            | no       |
 | `attribute_mappings` > `key`         | `string`       | The OpenTelemetry attribute key.                                                                                                                                                 | `""`                            | no       |
 | `attribute_mappings` > `replacement` | `string`       | The attribute sent to Google Cloud Trace.                                                                                                                                        | `""`                            | no       |
@@ -155,7 +155,7 @@ The `sending_queue` block configures an in-memory buffer of batches before data 
 The following fields are exported and can be referenced by other components:
 
 | Name    | Type               | Description                                                 |
-|---------|--------------------|-------------------------------------------------------------|
+| ------- | ------------------ | ----------------------------------------------------------- |
 | `input` | `otelcol.Consumer` | A value other components can use to send telemetry data to. |
 
 `input` accepts `otelcol.Consumer` data for any telemetry signal (metrics, logs, or traces).

@@ -22,17 +22,17 @@ All arguments are optional. Omitted fields take their default values.
 
 You can use the following actions:
 
-* `drop`      - Drops metrics where `regex` matches the string extracted using the `source_labels` and `separator`.
-* `dropequal` - Drop targets for which the concatenated `source_labels` do match `target_label`.
-* `hashmod`   - Hashes the concatenated labels, calculates its modulo `modulus` and writes the result to the `target_label`.
-* `keep`      - Keeps metrics where `regex` matches the string extracted using the `source_labels` and `separator`.
-* `keepequal` - Drop targets for which the concatenated `source_labels` don't match `target_label`.
-* `labeldrop` - Matches `regex` against all label names. Any labels that match are removed from the metric's label set.
-* `labelkeep` - Matches `regex` against all label names. Any labels that don't match are removed from the metric's label set.
-* `labelmap`  - Matches `regex` against all label names. Any labels that match are renamed according to the contents of the `replacement` field.
-* `lowercase` - Sets `target_label` to the lowercase form of the concatenated `source_labels`.
-* `replace`   - Matches `regex` to the concatenated labels. If there's a match, it replaces the content of the `target_label` using the contents of the `replacement` field.
-* `uppercase` - Sets `target_label` to the uppercase form of the concatenated `source_labels`.
+- `drop` - Drops metrics where `regex` matches the string extracted using the `source_labels` and `separator`.
+- `dropequal` - Drop targets for which the concatenated `source_labels` do match `target_label`.
+- `hashmod` - Hashes the concatenated labels, calculates its modulo `modulus` and writes the result to the `target_label`.
+- `keep` - Keeps metrics where `regex` matches the string extracted using the `source_labels` and `separator`.
+- `keepequal` - Drop targets for which the concatenated `source_labels` don't match `target_label`.
+- `labeldrop` - Matches `regex` against all label names. Any labels that match are removed from the metric's label set.
+- `labelkeep` - Matches `regex` against all label names. Any labels that don't match are removed from the metric's label set.
+- `labelmap` - Matches `regex` against all label names. Any labels that match are renamed according to the contents of the `replacement` field.
+- `lowercase` - Sets `target_label` to the lowercase form of the concatenated `source_labels`.
+- `replace` - Matches `regex` to the concatenated labels. If there's a match, it replaces the content of the `target_label` using the contents of the `replacement` field.
+- `uppercase` - Sets `target_label` to the uppercase form of the concatenated `source_labels`.
 
 {{< admonition type="note" >}}
 The regular expression capture groups can be referred to using either the `$CAPTURE_GROUP_NUMBER` or `${CAPTURE_GROUP_NUMBER}` notation.

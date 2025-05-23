@@ -1,8 +1,8 @@
 # Proposal: [Title]
 
-* Author(s): [List of proposal authors]
-* Last updated: [Date]
-* Original issue: https://github.com/grafana/alloy/issues/NNNN
+- Author(s): [List of proposal authors]
+- Last updated: [Date]
+- Original issue: https://github.com/grafana/alloy/issues/NNNN
 
 ## Abstract
 
@@ -35,4 +35,3 @@
 ## Related open issues
 
 [If applicable, a discussion of issues relating to this proposal for which the author does not know the solution. This section may be omitted if there are none.]
-

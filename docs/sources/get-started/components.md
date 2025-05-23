@@ -14,8 +14,8 @@ Each component performs a single task, such as retrieving secrets or collecting 
 
 Components consist of the following:
 
-* **Arguments:** Settings that configure a component.
-* **Exports:** Named values that a component makes available to other components.
+- **Arguments:** Settings that configure a component.
+- **Exports:** Named values that a component makes available to other components.
 
 Each component has a name that describes its responsibility.
 For example, the `local.file` component retrieves the contents of files on disk.

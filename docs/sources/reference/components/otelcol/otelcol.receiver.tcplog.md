@@ -85,7 +85,7 @@ The `multiline` block configures logic for splitting incoming log entries.
 The following arguments are supported:
 
 | Name                 | Type     | Description                                                     | Default | Required |
-|----------------------|----------|-----------------------------------------------------------------|---------|----------|
+| -------------------- | -------- | --------------------------------------------------------------- | ------- | -------- |
 | `line_end_pattern`   | `string` | A regular expression that matches the end of a log entry.       |         | no       |
 | `line_start_pattern` | `string` | A regular expression that matches the beginning of a log entry. |         | no       |
 | `omit_pattern`       | `bool`   | Omit the start/end pattern from the split log entries.          | `false` | no       |
@@ -157,7 +157,6 @@ otelcol.exporter.debug "default" {}
 `otelcol.receiver.tcplog` can accept arguments from the following components:
 
 - Components that export [OpenTelemetry `otelcol.Consumer`](../../../compatibility/#opentelemetry-otelcolconsumer-exporters)
-
 
 {{< admonition type="note" >}}
 Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.

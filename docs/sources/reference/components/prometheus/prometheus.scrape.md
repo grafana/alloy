@@ -74,19 +74,19 @@ You can use the following arguments with `prometheus.scrape`:
 
 At most, one of the following can be provided:
 
-* [`authorization`][authorization] block
-* [`basic_auth`][basic_auth] block
-* [`bearer_token_file`](#arguments) argument
-* [`bearer_token`](#arguments) argument
-* [`oauth2`][oauth2] block
+- [`authorization`][authorization] block
+- [`basic_auth`][basic_auth] block
+- [`bearer_token_file`](#arguments) argument
+- [`bearer_token`](#arguments) argument
+- [`oauth2`][oauth2] block
 
 The `scrape_protocols` controls the preferred order of protocols to negotiate during a scrape.
 The following values are supported:
 
-* `OpenMetricsText0.0.1`
-* `OpenMetricsText1.0.0`
-* `PrometheusProto`
-* `PrometheusText0.0.4`
+- `OpenMetricsText0.0.1`
+- `OpenMetricsText1.0.0`
+- `PrometheusProto`
+- `PrometheusText0.0.4`
 
 If you were using the deprecated `enable_protobuf_negotiation` argument, switch to using `scrape_protocols = ["PrometheusProto", "OpenMetricsText1.0.0", "OpenMetricsText0.0.1", "PrometheusText0.0.4"]` instead.
 
@@ -97,16 +97,16 @@ To scrape native histograms, `scrape_native_histograms` must be set to `true` an
 
 `track_timestamps_staleness` controls whether Prometheus tracks [staleness][prom-staleness] of metrics with an explicit timestamp present in scraped data.
 
-* An "explicit timestamp" is an optional timestamp in the [Prometheus metrics exposition format][prom-text-exposition-format]. For example, this sample has a timestamp of `1395066363000`:
+- An "explicit timestamp" is an optional timestamp in the [Prometheus metrics exposition format][prom-text-exposition-format]. For example, this sample has a timestamp of `1395066363000`:
 
   ```text
   http_requests_total{method="post",code="200"} 1027 1395066363000
   ```
 
-* If `track_timestamps_staleness` is set to `true`, a staleness marker will be inserted when a metric is no longer present or the target is down.
-* A "staleness marker" is just a {{< term "sample" >}}sample{{< /term >}} with a specific NaN value which is reserved for internal use by Prometheus.
-* We recommend you set `track_timestamps_staleness` to `true` if the database where metrics are written to has enabled [out of order ingestion][mimir-ooo].
-* If `track_timestamps_staleness` is set to `false`, samples with explicit timestamps will only be labeled as stale after a certain time period, which in Prometheus is 5 minutes by default.
+- If `track_timestamps_staleness` is set to `true`, a staleness marker will be inserted when a metric is no longer present or the target is down.
+- A "staleness marker" is just a {{< term "sample" >}}sample{{< /term >}} with a specific NaN value which is reserved for internal use by Prometheus.
+- We recommend you set `track_timestamps_staleness` to `true` if the database where metrics are written to has enabled [out of order ingestion][mimir-ooo].
+- If `track_timestamps_staleness` is set to `false`, samples with explicit timestamps will only be labeled as stale after a certain time period, which in Prometheus is 5 minutes by default.
 
 [prom-text-exposition-format]: https://prometheus.io/docs/instrumenting/exposition_formats/#text-based-format
 [prom-staleness]: https://prometheus.io/docs/prometheus/latest/querying/basics/#staleness
@@ -184,9 +184,9 @@ If {{< param "PRODUCT_NAME" >}} is _not_ running in clustered mode, then the blo
 
 ## Debug metrics
 
-* `prometheus_fanout_latency` (histogram): Write latency for sending to direct and indirect components.
-* `prometheus_forwarded_samples_total` (counter): Total number of samples sent to downstream components.
-* `prometheus_scrape_targets_gauge` (gauge): Number of targets this component is configured to scrape.
+- `prometheus_fanout_latency` (histogram): Write latency for sending to direct and indirect components.
+- `prometheus_forwarded_samples_total` (counter): Total number of samples sent to downstream components.
+- `prometheus_scrape_targets_gauge` (gauge): Number of targets this component is configured to scrape.
 
 ## Scraping behavior
 
@@ -251,7 +251,7 @@ The`scrape_classic_histograms` argument controls whether the component should al
 
 ## Example
 
-### Set up scrape jobs for `blackbox exporter` targets  
+### Set up scrape jobs for `blackbox exporter` targets
 
 The following example sets up the scrape job with certain attributes (scrape endpoint, scrape interval, query parameters) and lets it scrape two instances of the [blackbox exporter](https://github.com/prometheus/blackbox_exporter/).
 The exposed metrics are sent over to the provided list of receivers, as defined by other components.
@@ -300,18 +300,18 @@ prometheus.scrape "kubelet" {
 
 The following special labels can change the behavior of `prometheus.scrape`:
 
-* `__address__`: The name of the label that holds the `<host>:<port>` address of a scrape target.
-* `__metrics_path__`: The name of the label that holds the path on which to scrape a target.
-* `__param_<name>`: A prefix for labels that provide URL parameters `<name>` used to scrape a target.
-* `__scheme__`: the name of the label that holds the scheme (http,https) on which to  scrape a target.
-* `__scrape_interval__`: The name of the label that holds the scrape interval used to scrape a target.
-* `__scrape_timeout__`: The name of the label that holds the scrape timeout used to scrape a target.
+- `__address__`: The name of the label that holds the `<host>:<port>` address of a scrape target.
+- `__metrics_path__`: The name of the label that holds the path on which to scrape a target.
+- `__param_<name>`: A prefix for labels that provide URL parameters `<name>` used to scrape a target.
+- `__scheme__`: the name of the label that holds the scheme (http,https) on which to scrape a target.
+- `__scrape_interval__`: The name of the label that holds the scrape interval used to scrape a target.
+- `__scrape_timeout__`: The name of the label that holds the scrape timeout used to scrape a target.
 
 Special labels added after a scrape
 
-* `__name__`: The label name indicating the metric name of a timeseries.
-* `instance`: The label name used for the instance label.
-* `job`: The label name indicating the job from which a timeseries was scraped.
+- `__name__`: The label name indicating the metric name of a timeseries.
+- `instance`: The label name used for the instance label.
+- `job`: The label name indicating the job from which a timeseries was scraped.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
@@ -321,7 +321,6 @@ Special labels added after a scrape
 
 - Components that export [Targets](../../../compatibility/#targets-exporters)
 - Components that export [Prometheus `MetricsReceiver`](../../../compatibility/#prometheus-metricsreceiver-exporters)
-
 
 {{< admonition type="note" >}}
 Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.

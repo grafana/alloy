@@ -20,6 +20,7 @@ title: otelcol.exporter.prometheus
 Conversion of metrics are done according to the OpenTelemetry [Metrics Data Model][] specification.
 
 [Metrics Data Model]: https://opentelemetry.io/docs/reference/specification/metrics/data-model/
+
 {{< /admonition >}}
 
 You can specify multiple `otelcol.exporter.prometheus` components by giving them different labels.
@@ -50,7 +51,7 @@ By default, OpenTelemetry resources are converted into `target_info` metrics.
 OpenTelemetry instrumentation scopes are converted into `otel_scope_info` metrics.
 Set the `include_scope_info` and `include_target_info` arguments to `false`, respectively, to disable the custom metrics.
 
-When `include_scope_labels` is `true`  the `otel_scope_name` and `otel_scope_version` labels are added to every converted metric sample.
+When `include_scope_labels` is `true` the `otel_scope_name` and `otel_scope_version` labels are added to every converted metric sample.
 
 When `include_target_info` is true, OpenTelemetry Collector resources are converted into `target_info` metrics.
 
@@ -62,6 +63,7 @@ to convert OTLP resource attributes to OTLP metric datapoint attributes before u
 Refer to [Create Prometheus labels from OTLP resource attributes][] for an example.
 
 [Create Prometheus labels from OTLP resource attributes]: #create-prometheus-labels-from-otlp-resource-attributes
+
 {{< /admonition >}}
 
 ## Blocks
@@ -92,12 +94,13 @@ Metrics sent to the `input` are converted to Prometheus-compatible metrics and a
 
 The following are dropped during the conversion process:
 
-* Metrics that use the delta aggregation temporality.
+- Metrics that use the delta aggregation temporality.
   {{< admonition type="note" >}}
   Prometheus doesn't natively support delta metrics.
   If your {{< param "PRODUCT_NAME" >}} instance ingests delta OTLP metrics, you can convert them to cumulative OTLP metrics with [`otelcol.processor.deltatocumulative`][otelcol.processor.deltatocumulative] before you use `otelcol.exporter.prometheus`.
 
   [otelcol.processor.deltatocumulative]: ../otelcol.processor.deltatocumulative/
+
   {{< /admonition >}}
 
 ## Component health

@@ -91,9 +91,9 @@ You can use the following blocks with `prometheus.exporter.windows`:
 
 ### `exchange`
 
-| Name           | Type           | Description                  | Default       | Required |
-| ---------------|----------------|------------------------------|---------------|--------- |
-| `enabled_list` | `list(string)` | A list of collectors to use. | `["ADAccessProcesses", "TransportQueues", "HttpProxy", "ActiveSync", "AvailabilityService", "OutlookWebAccess", "Autodiscover", "WorkloadManagement", "RpcClientAccess", "MapiHttpEmsmdb"]` | no |
+| Name           | Type           | Description                  | Default                                                                                                                                                                                     | Required |
+| -------------- | -------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| `enabled_list` | `list(string)` | A list of collectors to use. | `["ADAccessProcesses", "TransportQueues", "HttpProxy", "ActiveSync", "AvailabilityService", "OutlookWebAccess", "Autodiscover", "WorkloadManagement", "RpcClientAccess", "MapiHttpEmsmdb"]` | no       |
 
 ### `iis`
 
@@ -127,8 +127,8 @@ Specifying `enabled_classes` is useful to limit the response to the MSMQs you sp
 
 ### `mssql`
 
-| Name              | Type           | Description                         | Default | Required |
-| ----------------- | -------------- | ----------------------------------- | ------- | -------- |
+| Name              | Type           | Description                         | Default                                                                                                                                                      | Required |
+| ----------------- | -------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------- |
 | `enabled_classes` | `list(string)` | A list of MSSQL WMI classes to use. | `["accessmethods", "availreplica", "bufman", "databases", "dbreplica", "genstats", "locks", "memmgr", "sqlstats", "sqlerrors", "transactions", "waitstats"]` | no       |
 
 ### `network`
@@ -205,7 +205,7 @@ The v2 collector can query service states much more efficiently, but can't provi
 
 The collectors specified by `enabled_list` can include the following:
 
-* `ServerShares`
+- `ServerShares`
 
 For example, `enabled_list` may be set to `["ServerShares"]`.
 
@@ -217,7 +217,7 @@ For example, `enabled_list` may be set to `["ServerShares"]`.
 
 The collectors specified by `enabled_list` can include the following:
 
-* `ClientShares`
+- `ClientShares`
 
 For example, `enabled_list` may be set to `"ClientShares"`.
 
@@ -236,7 +236,7 @@ User-supplied `exclude` and `include` strings are [wrapped][wrap-regex] in a reg
 
 | Name                  | Type     | Description                                        | Default       | Required |
 | --------------------- | -------- | -------------------------------------------------- | ------------- | -------- |
-| `text_file_directory` | `string` | The directory containing the files to be ingested. | __see below__ | no       |
+| `text_file_directory` | `string` | The directory containing the files to be ingested. | **see below** | no       |
 
 The default value for `text_file_directory` is relative to the location of the {{< param "PRODUCT_NAME" >}} executable.
 By default, `text_file_directory` is set to the `textfile_inputs` directory in the installation directory of {{< param "PRODUCT_NAME" >}}.
@@ -436,9 +436,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 [scrape]: ../prometheus.scrape/
 

@@ -31,9 +31,9 @@ The backend load doesn't influence the choice. Even though this load-balancer wo
 When a list of backends is updated, some of the signals will be rerouted to different backends.
 Around R/N of the "routes" will be rerouted differently, where:
 
-* A "route" is either a trace ID or a service name mapped to a certain backend.
-* "R" is the total number of routes.
-* "N" is the total number of backends.
+- A "route" is either a trace ID or a service name mapped to a certain backend.
+- "R" is the total number of routes.
+- "N" is the total number of backends.
 
 This should be stable enough for most cases, and the larger the number of backends, the less disruption it should cause.
 
@@ -63,15 +63,15 @@ You can use the following arguments with `otelcol.exporter.loadbalancing`:
 
 The `routing_key` attribute determines how to route signals across endpoints. Its value can be one of the following:
 
-* `"service"`: spans, logs, and metrics with the same `service.name` will be exported to the same backend.
+- `"service"`: spans, logs, and metrics with the same `service.name` will be exported to the same backend.
 
 This is useful when using processors like the span metrics, so all spans for each service are sent to consistent {{< param "PRODUCT_NAME" >}} instances
 for metric collection. Otherwise, metrics for the same services would be sent to different instances, making aggregations inaccurate.
 
-* `"traceID"`: Spans and logs belonging to the same `traceID` will be exported to the same backend.
-* `"resource"`: Metrics belonging to the same resource will be exported to the same backend.
-* `"metric"`: Metrics with the same name will be exported to the same backend.
-* `"streamID"`: Metrics with the same `streamID` will be exported to the same backend.
+- `"traceID"`: Spans and logs belonging to the same `traceID` will be exported to the same backend.
+- `"resource"`: Metrics belonging to the same resource will be exported to the same backend.
+- `"metric"`: Metrics with the same name will be exported to the same backend.
+- `"streamID"`: Metrics with the same `streamID` will be exported to the same backend.
 
 The loadbalancer configures the exporter for the signal types supported by the `routing_key`.
 
@@ -115,11 +115,11 @@ For example, `resolver` > `static` refers to a `static` block defined inside a `
 
 There are two types of [queue][] and [retry][] blocks:
 
-* The queue and retry blocks under `protocol > otlp`.
+- The queue and retry blocks under `protocol > otlp`.
   This is useful for temporary problems with a specific backend, like transient network issues.
-* The top-level queue and retry blocks for `otelcol.exporter.loadbalancing`.
+- The top-level queue and retry blocks for `otelcol.exporter.loadbalancing`.
   Those configuration options provide capability to re-route data into a new set of healthy backends.
-  This is useful for highly elastic environments like Kubernetes,  where the list of resolved endpoints changes frequently due to deployments and scaling events.
+  This is useful for highly elastic environments like Kubernetes, where the list of resolved endpoints changes frequently due to deployments and scaling events.
 
 [resolver]: #resolver
 [static]: #static
@@ -161,10 +161,10 @@ The following arguments are supported:
 
 `health_status` can be set to either of:
 
-* `HEALTHY`: Only return instances that are healthy.
-* `UNHEALTHY`: Only return instances that are unhealthy.
-* `ALL`: Return all instances, regardless of their health status.
-* `HEALTHY_OR_ELSE_ALL`: Returns healthy instances, unless none are reporting a healthy state.
+- `HEALTHY`: Only return instances that are healthy.
+- `UNHEALTHY`: Only return instances that are unhealthy.
+- `ALL`: Return all instances, regardless of their health status.
+- `HEALTHY_OR_ELSE_ALL`: Returns healthy instances, unless none are reporting a healthy state.
   In that case, return all instances. This is also called failing open.
 
 If `port` isn't set, a default port defined in CloudMap will be used.
@@ -259,8 +259,8 @@ The following arguments are supported:
 
 You can configure an HTTP proxy with the following environment variables:
 
-* `HTTPS_PROXY`
-* `NO_PROXY`
+- `HTTPS_PROXY`
+- `NO_PROXY`
 
 The `HTTPS_PROXY` environment variable specifies a URL to use for proxying requests.
 Connections to the proxy are established via [the `HTTP CONNECT` method][HTTP CONNECT].
@@ -318,8 +318,8 @@ The following fields are exported and can be referenced by other components:
 
 `input` accepts `otelcol.Consumer` OTLP-formatted data for telemetry signals of these types:
 
-* logs
-* traces
+- logs
+- traces
 
 ## Choose a load balancing strategy
 
@@ -334,10 +334,11 @@ The use of `otelcol.exporter.loadbalancing` is only necessary for [stateful comp
 ### `otelcol.processor.tail_sampling`
 
 <!-- TODO: Add a picture of the architecture?  -->
+
 All spans for a given trace ID must go to the same tail sampling {{< param "PRODUCT_NAME" >}} instance.
 
-* This can be done by configuring `otelcol.exporter.loadbalancing` with `routing_key = "traceID"`.
-* If you don't configure `routing_key = "traceID"`, the sampling decision may be incorrect.
+- This can be done by configuring `otelcol.exporter.loadbalancing` with `routing_key = "traceID"`.
+- If you don't configure `routing_key = "traceID"`, the sampling decision may be incorrect.
   The tail sampler must have a full view of the trace when making a sampling decision.
   For example, a `rate_limiting` tail sampling strategy may incorrectly pass through more spans than expected if the spans for the same trace are spread out to more than one {{< param "PRODUCT_NAME" >}} instance.
 
@@ -347,8 +348,8 @@ All spans for a given trace ID must go to the same tail sampling {{< param "PROD
 
 All spans for a given `service.name` must go to the same spanmetrics {{< param "PRODUCT_NAME" >}}.
 
-* This can be done by configuring `otelcol.exporter.loadbalancing` with `routing_key = "service"`.
-* If you do not configure `routing_key = "service"`, metrics generated from spans might be incorrect.
+- This can be done by configuring `otelcol.exporter.loadbalancing` with `routing_key = "service"`.
+- If you do not configure `routing_key = "service"`, metrics generated from spans might be incorrect.
   For example, if similar spans for the same `service.name` end up on different {{< param "PRODUCT_NAME" >}} instances, the two {{< param "PRODUCT_NAME" >}} instances will have identical metric series for calculating span latency, errors, and number of requests.
   When both {{< param "PRODUCT_NAME" >}} instances attempt to write the metrics to a database such as Mimir, the series may clash with each other.
   At best, this will lead to an error in {{< param "PRODUCT_NAME" >}} and a rejected write to the metrics database.
@@ -368,7 +369,7 @@ However, there are ways to scale `otelcol.connector.spanmetrics` without the nee
 
 It's challenging to scale `otelcol.connector.servicegraph` over multiple {{< param "PRODUCT_NAME" >}} instances.
 For `otelcol.connector.servicegraph` to work correctly, each "client" span must be paired with a "server" span to calculate metrics such as span duration.
-If a "client" span goes to one {{< param "PRODUCT_NAME" >}}, but a "server" span goes to another {{< param "PRODUCT_NAME" >}},  then no single {{< param "PRODUCT_NAME" >}} will be able to pair the spans and a metric won't be generated.
+If a "client" span goes to one {{< param "PRODUCT_NAME" >}}, but a "server" span goes to another {{< param "PRODUCT_NAME" >}}, then no single {{< param "PRODUCT_NAME" >}} will be able to pair the spans and a metric won't be generated.
 
 `otelcol.exporter.loadbalancing` can solve this problem partially if it is configured with `routing_key = "traceID"`.
 Each {{< param "PRODUCT_NAME" >}} will then be able to calculate a service graph for each "client"/"server" pair in a trace.
@@ -388,12 +389,13 @@ For example, service graphs can be [generated][tempo-servicegraphs] in Grafana C
 ### Mix stateful components
 
 <!-- TODO: Add a picture of the architecture?  -->
+
 Different {{< param "PRODUCT_NAME" >}} components may require a different `routing_key` for `otelcol.exporter.loadbalancing`.
 For example, `otelcol.processor.tail_sampling` requires `routing_key = "traceID"` whereas `otelcol.connector.spanmetrics` requires `routing_key = "service"`.
 To load balance both types of components, two different sets of load balancers have to be set up:
 
-* One set of `otelcol.exporter.loadbalancing` with `routing_key = "traceID"`, sending spans to {{< param "PRODUCT_NAME" >}}s doing tail sampling and no span metrics.
-* Another set of `otelcol.exporter.loadbalancing` with `routing_key = "service"`, sending spans to {{< param "PRODUCT_NAME" >}}s doing span metrics and no service graphs.
+- One set of `otelcol.exporter.loadbalancing` with `routing_key = "traceID"`, sending spans to {{< param "PRODUCT_NAME" >}}s doing tail sampling and no span metrics.
+- Another set of `otelcol.exporter.loadbalancing` with `routing_key = "service"`, sending spans to {{< param "PRODUCT_NAME" >}}s doing span metrics and no service graphs.
 
 Unfortunately, this can also lead to side effects.
 For example, if `otelcol.connector.spanmetrics` is configured to generate exemplars, the tail sampling {{< param "PRODUCT_NAME" >}}s might drop the trace that the exemplar points to.
@@ -469,14 +471,14 @@ otelcol.exporter.loadbalancing "default" {
 
 The following example shows a Kubernetes configuration that configures two groups of {{< param "PRODUCT_NAME" >}} instances:
 
-* A pool of load-balancer {{< param "PRODUCT_NAME" >}} instances:
-  * Spans are received from instrumented applications via `otelcol.receiver.otlp`
-  * Spans are exported via `otelcol.exporter.loadbalancing`.
-* A pool of sampling {{< param "PRODUCT_NAME" >}} instances:
-  * The sampling {{< param "PRODUCT_NAME" >}}s run behind a headless service to enable the load-balancer {{< param "PRODUCT_NAME" >}}s to discover them.
-  * Spans are received from the load-balancer {{< param "PRODUCT_NAME" >}}s via `otelcol.receiver.otlp`
-  * Traces are sampled via `otelcol.processor.tail_sampling`.
-  * The traces are exported via `otelcol.exporter.otlp` to an OTLP-compatible database such as Tempo.
+- A pool of load-balancer {{< param "PRODUCT_NAME" >}} instances:
+  - Spans are received from instrumented applications via `otelcol.receiver.otlp`
+  - Spans are exported via `otelcol.exporter.loadbalancing`.
+- A pool of sampling {{< param "PRODUCT_NAME" >}} instances:
+  - The sampling {{< param "PRODUCT_NAME" >}}s run behind a headless service to enable the load-balancer {{< param "PRODUCT_NAME" >}}s to discover them.
+  - Spans are received from the load-balancer {{< param "PRODUCT_NAME" >}}s via `otelcol.receiver.otlp`
+  - Traces are sampled via `otelcol.processor.tail_sampling`.
+  - The traces are exported via `otelcol.exporter.otlp` to an OTLP-compatible database such as Tempo.
 
 {{< collapse title="Example Kubernetes configuration" >}}
 
@@ -504,12 +506,12 @@ spec:
         name: k6-trace-generator
     spec:
       containers:
-      - env:
-        - name: ENDPOINT
-          value: alloy-traces-lb.grafana-cloud-monitoring.svc.cluster.local:9411
-        image: ghcr.io/grafana/xk6-client-tracing:v0.0.2
-        imagePullPolicy: IfNotPresent
-        name: k6-trace-generator
+        - env:
+            - name: ENDPOINT
+              value: alloy-traces-lb.grafana-cloud-monitoring.svc.cluster.local:9411
+          image: ghcr.io/grafana/xk6-client-tracing:v0.0.2
+          imagePullPolicy: IfNotPresent
+          name: k6-trace-generator
 ---
 apiVersion: v1
 kind: Service
@@ -519,10 +521,10 @@ metadata:
 spec:
   clusterIP: None
   ports:
-  - name: alloy-traces-otlp-grpc
-    port: 9411
-    protocol: TCP
-    targetPort: 9411
+    - name: alloy-traces-otlp-grpc
+      port: 9411
+      protocol: TCP
+      targetPort: 9411
   selector:
     name: alloy-traces-lb
   type: ClusterIP
@@ -545,28 +547,28 @@ spec:
         name: alloy-traces-lb
     spec:
       containers:
-      - args:
-        - run
-        - /etc/alloy/alloy_lb.alloy
-        command:
-        - /bin/alloy
-        image: grafana/alloy:v1.0
-        imagePullPolicy: IfNotPresent
-        name: alloy-traces
-        ports:
-        - containerPort: 9411
-          name: otlp-grpc
-          protocol: TCP
-        - containerPort: 34621
-          name: alloy-lb
-          protocol: TCP
-        volumeMounts:
-        - mountPath: /etc/alloy
+        - args:
+            - run
+            - /etc/alloy/alloy_lb.alloy
+          command:
+            - /bin/alloy
+          image: grafana/alloy:v1.0
+          imagePullPolicy: IfNotPresent
           name: alloy-traces
+          ports:
+            - containerPort: 9411
+              name: otlp-grpc
+              protocol: TCP
+            - containerPort: 34621
+              name: alloy-lb
+              protocol: TCP
+          volumeMounts:
+            - mountPath: /etc/alloy
+              name: alloy-traces
       volumes:
-      - configMap:
+        - configMap:
+            name: alloy-traces
           name: alloy-traces
-        name: alloy-traces
 ---
 apiVersion: v1
 kind: Service
@@ -576,10 +578,10 @@ metadata:
 spec:
   clusterIP: None
   ports:
-  - name: alloy-lb
-    port: 34621
-    protocol: TCP
-    targetPort: alloy-lb
+    - name: alloy-lb
+      port: 34621
+      protocol: TCP
+      targetPort: alloy-lb
   selector:
     name: alloy-traces-sampling
   type: ClusterIP
@@ -602,28 +604,28 @@ spec:
         name: alloy-traces-sampling
     spec:
       containers:
-      - args:
-        - run
-        - /etc/alloy/alloy_sampling.alloy
-        command:
-        - /bin/alloy
-        image: grafana/alloy:v1.0
-        imagePullPolicy: IfNotPresent
-        name: alloy-traces
-        ports:
-        - containerPort: 9411
-          name: otlp-grpc
-          protocol: TCP
-        - containerPort: 34621
-          name: alloy-lb
-          protocol: TCP
-        volumeMounts:
-        - mountPath: /etc/alloy
+        - args:
+            - run
+            - /etc/alloy/alloy_sampling.alloy
+          command:
+            - /bin/alloy
+          image: grafana/alloy:v1.0
+          imagePullPolicy: IfNotPresent
           name: alloy-traces
+          ports:
+            - containerPort: 9411
+              name: otlp-grpc
+              protocol: TCP
+            - containerPort: 34621
+              name: alloy-lb
+              protocol: TCP
+          volumeMounts:
+            - mountPath: /etc/alloy
+              name: alloy-traces
       volumes:
-      - configMap:
+        - configMap:
+            name: alloy-traces
           name: alloy-traces
-        name: alloy-traces
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -696,6 +698,7 @@ You must fill in the correct OTLP credentials prior to running the example.
 You can use [k3d][] to start the example:
 
 <!-- TODO: Link to the k3d page -->
+
 ```bash
 k3d cluster create alloy-lb-test
 kubectl apply -f kubernetes_config.yaml
@@ -711,7 +714,7 @@ k3d cluster delete alloy-lb-test
 
 ### Kubernetes resolver
 
-When you configure `otelcol.exporter.loadbalancing`  with a `kubernetes` resolver, the Kubernetes API notifies {{< param "PRODUCT_NAME" >}} whenever a new Pod is added or removed from the service.
+When you configure `otelcol.exporter.loadbalancing` with a `kubernetes` resolver, the Kubernetes API notifies {{< param "PRODUCT_NAME" >}} whenever a new Pod is added or removed from the service.
 Spans are exported to the addresses from the Kubernetes API, combined with all the possible `ports`.
 
 ```alloy
@@ -732,18 +735,19 @@ otelcol.exporter.loadbalancing "default" {
 
 The following example shows a Kubernetes configuration that sets up two groups of {{< param "PRODUCT_NAME" >}} instances:
 
-* A pool of load-balancer {{< param "PRODUCT_NAME" >}}s:
-  * Spans are received from instrumented applications via `otelcol.receiver.otlp`
-  * Spans are exported via `otelcol.exporter.loadbalancing`.
-  * The load-balancer {{< param "PRODUCT_NAME" >}}s will get notified by the Kubernetes API any time a Pod
+- A pool of load-balancer {{< param "PRODUCT_NAME" >}}s:
+  - Spans are received from instrumented applications via `otelcol.receiver.otlp`
+  - Spans are exported via `otelcol.exporter.loadbalancing`.
+  - The load-balancer {{< param "PRODUCT_NAME" >}}s will get notified by the Kubernetes API any time a Pod
     is added or removed from the pool of sampling {{< param "PRODUCT_NAME" >}}s.
-* A pool of sampling {{< param "PRODUCT_NAME" >}}instances:
-  * The sampling {{< param "PRODUCT_NAME" >}} instances don't need to run behind a headless service.
-  * Spans are received from the load-balancer {{< param "PRODUCT_NAME" >}}s via `otelcol.receiver.otlp`
-  * Traces are sampled via `otelcol.processor.tail_sampling`.
-  * The traces are exported via `otelcol.exporter.otlp` to a an OTLP-compatible database such as Tempo.
+- A pool of sampling {{< param "PRODUCT_NAME" >}}instances:
+  - The sampling {{< param "PRODUCT_NAME" >}} instances don't need to run behind a headless service.
+  - Spans are received from the load-balancer {{< param "PRODUCT_NAME" >}}s via `otelcol.receiver.otlp`
+  - Traces are sampled via `otelcol.processor.tail_sampling`.
+  - The traces are exported via `otelcol.exporter.otlp` to a an OTLP-compatible database such as Tempo.
 
 <!-- TODO: In the k8s config, why does the LB service has to be headless? -->
+
 {{< collapse title="Example Kubernetes configuration" >}}
 
 ```yaml
@@ -764,14 +768,14 @@ metadata:
   name: alloy-traces-role
   namespace: grafana-cloud-monitoring
 rules:
-- apiGroups:
-  - ""
-  resources:
-  - endpoints
-  verbs:
-  - list
-  - watch
-  - get
+  - apiGroups:
+      - ''
+    resources:
+      - endpoints
+    verbs:
+      - list
+      - watch
+      - get
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -783,9 +787,9 @@ roleRef:
   kind: Role
   name: alloy-traces-role
 subjects:
-- kind: ServiceAccount
-  name: alloy-traces
-  namespace: grafana-cloud-monitoring
+  - kind: ServiceAccount
+    name: alloy-traces
+    namespace: grafana-cloud-monitoring
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -805,12 +809,12 @@ spec:
         name: k6-trace-generator
     spec:
       containers:
-      - env:
-        - name: ENDPOINT
-          value: alloy-traces-lb.grafana-cloud-monitoring.svc.cluster.local:9411
-        image: ghcr.io/grafana/xk6-client-tracing:v0.0.2
-        imagePullPolicy: IfNotPresent
-        name: k6-trace-generator
+        - env:
+            - name: ENDPOINT
+              value: alloy-traces-lb.grafana-cloud-monitoring.svc.cluster.local:9411
+          image: ghcr.io/grafana/xk6-client-tracing:v0.0.2
+          imagePullPolicy: IfNotPresent
+          name: k6-trace-generator
 ---
 apiVersion: v1
 kind: Service
@@ -820,10 +824,10 @@ metadata:
 spec:
   clusterIP: None
   ports:
-  - name: alloy-traces-otlp-grpc
-    port: 9411
-    protocol: TCP
-    targetPort: 9411
+    - name: alloy-traces-otlp-grpc
+      port: 9411
+      protocol: TCP
+      targetPort: 9411
   selector:
     name: alloy-traces-lb
   type: ClusterIP
@@ -846,26 +850,26 @@ spec:
         name: alloy-traces-lb
     spec:
       containers:
-      - args:
-        - run
-        - /etc/alloy/alloy_lb.alloy
-        command:
-        - /bin/alloy
-        image: grafana/alloy:v1.0
-        imagePullPolicy: IfNotPresent
-        name: alloy-traces
-        ports:
-        - containerPort: 9411
-          name: otlp-grpc
-          protocol: TCP
-        volumeMounts:
-        - mountPath: /etc/alloy
+        - args:
+            - run
+            - /etc/alloy/alloy_lb.alloy
+          command:
+            - /bin/alloy
+          image: grafana/alloy:v1.0
+          imagePullPolicy: IfNotPresent
           name: alloy-traces
+          ports:
+            - containerPort: 9411
+              name: otlp-grpc
+              protocol: TCP
+          volumeMounts:
+            - mountPath: /etc/alloy
+              name: alloy-traces
       serviceAccount: alloy-traces
       volumes:
-      - configMap:
+        - configMap:
+            name: alloy-traces
           name: alloy-traces
-        name: alloy-traces
 ---
 apiVersion: v1
 kind: Service
@@ -874,10 +878,10 @@ metadata:
   namespace: grafana-cloud-monitoring
 spec:
   ports:
-  - name: alloy-lb
-    port: 34621
-    protocol: TCP
-    targetPort: alloy-lb
+    - name: alloy-lb
+      port: 34621
+      protocol: TCP
+      targetPort: alloy-lb
   selector:
     name: alloy-traces-sampling
   type: ClusterIP
@@ -900,25 +904,25 @@ spec:
         name: alloy-traces-sampling
     spec:
       containers:
-      - args:
-        - run
-        - /etc/alloy/alloy_sampling.alloy
-        command:
-        - /bin/alloy
-        image: grafana/alloy:v1.0
-        imagePullPolicy: IfNotPresent
-        name: alloy-traces
-        ports:
-        - containerPort: 34621
-          name: alloy-lb
-          protocol: TCP
-        volumeMounts:
-        - mountPath: /etc/alloy
+        - args:
+            - run
+            - /etc/alloy/alloy_sampling.alloy
+          command:
+            - /bin/alloy
+          image: grafana/alloy:v1.0
+          imagePullPolicy: IfNotPresent
           name: alloy-traces
+          ports:
+            - containerPort: 34621
+              name: alloy-lb
+              protocol: TCP
+          volumeMounts:
+            - mountPath: /etc/alloy
+              name: alloy-traces
       volumes:
-      - configMap:
+        - configMap:
+            name: alloy-traces
           name: alloy-traces
-        name: alloy-traces
 ---
 apiVersion: v1
 kind: ConfigMap

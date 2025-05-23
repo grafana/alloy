@@ -37,9 +37,9 @@ The exporter uses the Azure SDK for go and supports [authentication](https://lea
 
 The account used by {{< param "PRODUCT_NAME" >}} needs:
 
-* When using an Azure Resource Graph query, [read access to the resources that will be queried by Resource Graph](https://learn.microsoft.com/en-us/azure/governance/resource-graph/overview#permissions-in-azure-resource-graph).
+- When using an Azure Resource Graph query, [read access to the resources that will be queried by Resource Graph](https://learn.microsoft.com/en-us/azure/governance/resource-graph/overview#permissions-in-azure-resource-graph).
 <!-- vale Grafana.GoogleSpacing = NO -->
-* Permissions to call the [Microsoft.Insights Metrics API](https://learn.microsoft.com/en-us/rest/api/monitor/metrics/list) which should be the `Microsoft.Insights/Metrics/Read` permission.
+- Permissions to call the [Microsoft.Insights Metrics API](https://learn.microsoft.com/en-us/rest/api/monitor/metrics/list) which should be the `Microsoft.Insights/Metrics/Read` permission.
 <!-- vale Grafana.GoogleSpacing = YES -->
 
 ## Usage
@@ -91,13 +91,21 @@ The `resource_graph_query_filter` can be embedded into a template query of the f
 
 Valid values for `metric_aggregations` are `minimum`, `maximum`, `average`, `total`, and `count`.
 If no aggregation is specified, the value is retrieved from the metric.
+
 <!-- vale Grafana.GoogleSpacing = NO -->
+
 For example, the aggregation value of the metric `Availability` in [Microsoft.ClassicStorage/storageAccounts](https://learn.microsoft.com/en-us/azure/azure-monitor/reference/supported-metrics/microsoft-classicstorage-storageaccounts-metrics) is `average`.
+
 <!-- vale Grafana.GoogleSpacing = YES -->
+
 Every metric has its own set of dimensions.
+
 <!-- vale Grafana.GoogleSpacing = NO -->
+
 For example, the dimensions for the metric `Availability` in [Microsoft.ClassicStorage/storageAccounts](https://learn.microsoft.com/en-us/azure/azure-monitor/reference/supported-metrics/microsoft-classicstorage-storageaccounts-metrics) are `GeoType`, `ApiName`, and `Authentication`.
+
 <!-- vale Grafana.GoogleSpacing = YES -->
+
 If a single dimension is requested, it will have the name `dimension`.
 If multiple dimensions are requested, they will have the name `dimension<dimension_name>`.
 
@@ -182,10 +190,10 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-* _`<SUBSCRIPTIONS>`_: The Azure subscription IDs holding the resources you are interested in.
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+- _`<SUBSCRIPTIONS>`_: The Azure subscription IDs holding the resources you are interested in.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

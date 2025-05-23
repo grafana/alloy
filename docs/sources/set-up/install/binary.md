@@ -12,10 +12,10 @@ weight: 600
 
 {{< param "PRODUCT_NAME" >}} is distributed as a standalone binary for the following operating systems and architectures:
 
-* Linux: AMD64, ARM64
-* Windows: AMD64
-* macOS: AMD64 on Intel, ARM64 on Apple Silicon
-* FreeBSD: AMD64
+- Linux: AMD64, ARM64
+- Windows: AMD64
+- macOS: AMD64 on Intel, ARM64 on Apple Silicon
+- FreeBSD: AMD64
 
 ## Download {{% param "PRODUCT_NAME" %}}
 
@@ -37,7 +37,7 @@ To download {{< param "PRODUCT_NAME" >}} as a standalone binary, perform the fol
 
    Replace the following:
 
-   * _`<BINARY_PATH>`_: The path to the extracted binary.
+   - _`<BINARY_PATH>`_: The path to the extracted binary.
 
 ### BoringCrypto binaries
 
@@ -50,7 +50,7 @@ To retrieve them, follow the steps above but search for the `alloy-boringcrypto`
 
 ## Next steps
 
-* [Run {{< param "PRODUCT_NAME" >}}][Run]
+- [Run {{< param "PRODUCT_NAME" >}}][Run]
 
 [release]: https://github.com/grafana/alloy/releases
 [Run]: ../../run/binary/

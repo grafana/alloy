@@ -50,7 +50,7 @@ You can use the following arguments with `otelcol.receiver.opencensus`:
 | `write_buffer_size`      | `string`                   | Size of the write buffer the gRPC server will use for writing to clients.    |                   | no       |
 
 `cors_allowed_origins` are the allowed [CORS](https://github.com/rs/cors) origins for HTTP/JSON requests.
-An empty list means that CORS isn't enabled at all. A wildcard (*) can be used to match any origin or one or more characters of an origin.
+An empty list means that CORS isn't enabled at all. A wildcard (\*) can be used to match any origin or one or more characters of an origin.
 
 The "endpoint" parameter is the same for both gRPC and HTTP/JSON, as the protocol is recognized and processed accordingly.
 
@@ -223,6 +223,7 @@ otelcol.auth.basic "creds" {
     password = sys.env("PASSWORD")
 }
 ```
+
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components
@@ -230,7 +231,6 @@ otelcol.auth.basic "creds" {
 `otelcol.receiver.opencensus` can accept arguments from the following components:
 
 - Components that export [OpenTelemetry `otelcol.Consumer`](../../../compatibility/#opentelemetry-otelcolconsumer-exporters)
-
 
 {{< admonition type="note" >}}
 Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.

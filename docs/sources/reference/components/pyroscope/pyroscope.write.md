@@ -15,8 +15,8 @@ title: pyroscope.write
 `pyroscope.write` receives performance profiles from other components and forwards them to a series of user-supplied endpoints.
 When `pyroscope.write` forwards profiles, all labels starting with double underscore (`__`) are dropped before the data is sent, with the following exceptions:
 
-* `__name__` is preserved because it identifies the profile type.
-* `__delta__`is preserved because it's required for delta profiles.
+- `__name__` is preserved because it identifies the profile type.
+- `__delta__`is preserved because it's required for delta profiles.
 
 You can specify multiple `pyroscope.write` components by giving them different labels.
 
@@ -90,13 +90,13 @@ The following arguments are supported:
 | `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |           | no       |
 | `remote_timeout`         | `duration`          | Timeout for requests made to the URL.                                                            | `"10s"`   | no       |
 
- At most, one of the following can be provided:
+At most, one of the following can be provided:
 
-* [`authorization`][authorization] block
-* [`basic_auth`][basic_auth] block
-* [`bearer_token_file`][endpoint] argument
-* [`bearer_token`][endpoint] argument
-* [`oauth2`][oauth2] block
+- [`authorization`][authorization] block
+- [`basic_auth`][basic_auth] block
+- [`bearer_token_file`][endpoint] argument
+- [`bearer_token`][endpoint] argument
+- [`oauth2`][oauth2] block
 
 {{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -159,6 +159,7 @@ pyroscope.scrape "default" {
   forward_to = [pyroscope.write.staging.receiver]
 }
 ```
+
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components

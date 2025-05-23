@@ -1,6 +1,6 @@
 ---
 aliases:
-- /docs/alloy/latest/reference/components/loki/loki.enrich/
+  - /docs/alloy/latest/reference/components/loki/loki.enrich/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/loki/loki.enrich/
 title: loki.enrich
 labels:
@@ -23,16 +23,16 @@ It matches a label from incoming logs against a label from discovered targets, a
 loki.enrich "<LABEL>" {
   // List of targets from a discovery component
   targets = <DISCOVERY_COMPONENT>.targets
-  
+
   // Which label from discovered targets to match against
   match_label = "<LABEL>"
-  
+
   // Which label from incoming logs to match against
   source_label = "<LABEL>"
-  
+
   // List of labels to copy from discovered targets to logs
   labels_to_copy = ["<LABEL>", ...]
-  
+
   // Where to send enriched logs
   forward_to = [<RECEIVER_LIST>]
 }

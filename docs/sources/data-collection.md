@@ -24,14 +24,14 @@ The statistics are collected at `https://stats.grafana.org`.
 
 When usage statistics reporting is enabled, {{< param "PRODUCT_NAME" >}} collects the following information:
 
-* A randomly generated, anonymous, unique ID (UUID).
-* The timestamp when the UUID was first generated.
-* The timestamp when the report was created (by default, every four hours).
-* The version of {{< param "PRODUCT_NAME" >}}.
-* The operating system where {{< param "PRODUCT_NAME" >}} is running.
-* The system architecture where {{< param "PRODUCT_NAME" >}} is running.
-* A list of enabled [components][].
-* The deployment method for {{< param "PRODUCT_NAME" >}}, such as Docker, Helm, or a Linux package.
+- A randomly generated, anonymous, unique ID (UUID).
+- The timestamp when the UUID was first generated.
+- The timestamp when the report was created (by default, every four hours).
+- The version of {{< param "PRODUCT_NAME" >}}.
+- The operating system where {{< param "PRODUCT_NAME" >}} is running.
+- The system architecture where {{< param "PRODUCT_NAME" >}} is running.
+- A list of enabled [components][].
+- The deployment method for {{< param "PRODUCT_NAME" >}}, such as Docker, Helm, or a Linux package.
 
 {{< admonition type="note" >}}
 {{< param "PRODUCT_NAME" >}} maintainers commit to keeping the list of tracked information updated over time.

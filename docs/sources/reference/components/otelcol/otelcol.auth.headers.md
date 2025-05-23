@@ -69,10 +69,10 @@ It's valid to provide multiple `header` blocks to set more than one header.
 
 The supported values for `action` are:
 
-* `insert`: Inserts the new header if it doesn't exist.
-* `update`: Updates the header value if it exists.
-* `upsert`: Inserts a header if it doesn't exist and updates the header if it exists.
-* `delete`: Deletes the header.
+- `insert`: Inserts the new header if it doesn't exist.
+- `update`: Updates the header value if it exists.
+- `upsert`: Inserts a header if it doesn't exist and updates the header if it exists.
+- `delete`: Deletes the header.
 
 Exactly one of `value`, `from_context`, or `from_attribute` must be provided for each `header` block.
 
@@ -81,9 +81,9 @@ Alternatively, you can use `from_context` to dynamically retrieve the header val
 
 For `from_context` to work, other components in the pipeline also need to be configured appropriately:
 
-* If an `otelcol.processor.batch` is present in the pipeline, it must be configured to preserve client metadata.
+- If an `otelcol.processor.batch` is present in the pipeline, it must be configured to preserve client metadata.
   Do this by adding the value that `from_context` needs to the `metadata_keys` of the batch processor.
-* `otelcol` receivers must be configured with `include_metadata` set to `true` so that metadata keys are available to the pipeline.
+- `otelcol` receivers must be configured with `include_metadata` set to `true` so that metadata keys are available to the pipeline.
 
 `from_attribute` metadata can't, at this time, be preserved through an `otelcol.processor.batch` component, and is only provided from the `otelcol.auth.basic` extension.
 

@@ -10,4 +10,3 @@ headless: true
 
 [flag]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/cli/run/
 [experimental]: https://grafana.com/docs/release-life-cycle/
-

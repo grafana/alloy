@@ -23,8 +23,8 @@ In this example scenario, {{< param "PRODUCT_NAME" >}} collects Docker container
 
 Ensure you have the following:
 
-* [Docker](https://www.docker.com/)
-* [Git](https://git-scm.com/)
+- [Docker](https://www.docker.com/)
+- [Git](https://git-scm.com/)
 
 {{< admonition type="note" >}}
 You need administrator privileges to run `docker` commands.
@@ -86,17 +86,17 @@ You can find this file in the cloned repository at `alloy-scenarios/docker-monit
 
 The metrics configuration in this example requires three components:
 
-* `prometheus.exporter.cadvisor`
-* `prometheus.scrape`
-* `prometheus.remote_write`
+- `prometheus.exporter.cadvisor`
+- `prometheus.scrape`
+- `prometheus.remote_write`
 
 #### `prometheus.exporter.cadvisor`
 
 The [`prometheus.exporter.cadvisor`][prometheus.exporter.cadvisor] component exposes Docker container metrics.
 In this example, the component requires the following arguments:
 
-* `docker_host`: Defines the Docker endpoint.
-* `storage_duration`: Sets the time data is stored in memory.
+- `docker_host`: Defines the Docker endpoint.
+- `storage_duration`: Sets the time data is stored in memory.
 
 This component provides the `prometheus.exporter.cadvisor.example.targets` target for `prometheus.scrape`.
 
@@ -113,9 +113,9 @@ prometheus.exporter.cadvisor "example" {
 The [`prometheus.scrape`][prometheus.scrape] component scrapes cAdvisor metrics and forwards them to a receiver.
 In this example, the component requires the following arguments:
 
-* `targets`: The target to scrape metrics from.
-* `forward_to`: The destination to forward metrics to.
-* `scrape_interval`: The frequency of scraping the target.
+- `targets`: The target to scrape metrics from.
+- `forward_to`: The destination to forward metrics to.
+- `scrape_interval`: The frequency of scraping the target.
 
 ```alloy
 prometheus.scrape "scraper" {
@@ -131,7 +131,7 @@ prometheus.scrape "scraper" {
 The [`prometheus.remote_write`][prometheus.remote_write] component sends metrics to a Prometheus server.
 In this example, the component requires the following argument:
 
-* `url`: Defines the full URL endpoint to send metrics to.
+- `url`: Defines the full URL endpoint to send metrics to.
 
 This component provides the `prometheus.remote_write.demo.receiver` destination for `prometheus.scrape`.
 
@@ -151,17 +151,17 @@ prometheus.remote_write "demo" {
 
 The logging configuration in this example requires four components:
 
-* `discovery.docker`
-* `discovery.relabel`
-* `loki.source.docker`
-* `loki.write`
+- `discovery.docker`
+- `discovery.relabel`
+- `loki.source.docker`
+- `loki.write`
 
 #### `discovery.docker`
 
 The [`discovery.docker`][discovery.docker] component discovers Docker containers and extracts metadata.
 In this example, the component requires the following argument:
 
-* `host`: Defines the address of the Docker daemon.
+- `host`: Defines the address of the Docker daemon.
 
 ```alloy
 discovery.docker "linux" {
@@ -174,14 +174,14 @@ discovery.docker "linux" {
 The [`discovery.relabel`][discovery.relabel] component defines a relabeling rule to create a service name from the container name.
 In this example, the component requires the following arguments:
 
-* `targets`: The targets to relabel.
+- `targets`: The targets to relabel.
   In this example, the `discovery.relabel` component is used only for its exported `relabel_rules` in the `loki.source.docker` component.
   No targets are modified, so the `targets` argument is an empty array.
-* `source_labels`: The list of labels to select for relabeling.
-* `regex`: A regular expression that matches any string after `/`.
+- `source_labels`: The list of labels to select for relabeling.
+- `regex`: A regular expression that matches any string after `/`.
   Docker container names often appear with a leading slash (/) in Prometheus automatic discovery labels.
   This expression keeps the container name.
-* `target_label`: The label written to the target.
+- `target_label`: The label written to the target.
 
 ```alloy
 discovery.relabel "logs_integrations_docker" {
@@ -200,11 +200,11 @@ discovery.relabel "logs_integrations_docker" {
 The [`loki.source.docker`][loki.source.docker] component collects logs from Docker containers.
 In this example, the component requires the following arguments:
 
-* `host`: The address of the Docker daemon.
-* `targets`: The list of containers to read logs from.
-* `labels`: The default set of labels to apply to entries.
-* `relabel_rules`: The relabeling rules to apply to log entries.
-* `forward_to`: The list of receivers to send log entries to.
+- `host`: The address of the Docker daemon.
+- `targets`: The list of containers to read logs from.
+- `labels`: The default set of labels to apply to entries.
+- `relabel_rules`: The relabeling rules to apply to log entries.
+- `forward_to`: The list of receivers to send log entries to.
 
 ```alloy
 loki.source.docker "default" {
@@ -221,7 +221,7 @@ loki.source.docker "default" {
 The [`loki.write`][loki.write] component writes logs to a Loki destination.
 In this example, the component requires the following argument:
 
-* `url`: Defines the full URL endpoint in Loki to send logs to.
+- `url`: Defines the full URL endpoint in Loki to send logs to.
 
 ```alloy
 loki.write "local" {

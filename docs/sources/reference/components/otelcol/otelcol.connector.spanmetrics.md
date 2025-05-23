@@ -14,7 +14,7 @@ title: otelcol.connector.spanmetrics
 
 `otelcol.connector.spanmetrics` accepts span data from other `otelcol` components and aggregates Request, Error, and Duration (R.E.D) OpenTelemetry metrics from the spans:
 
-* **Request** counts are computed as the number of spans seen per unique set of dimensions, including Errors. Multiple metrics can be aggregated if, for instance, a user wishes to view call counts just on `service.name` and `span.name`.
+- **Request** counts are computed as the number of spans seen per unique set of dimensions, including Errors. Multiple metrics can be aggregated if, for instance, a user wishes to view call counts just on `service.name` and `span.name`.
 
   Requests are tracked using a `calls` metric with a `status.code` datapoint attribute set to `Ok`:
 
@@ -22,7 +22,7 @@ title: otelcol.connector.spanmetrics
   calls { service.name="shipping", span.name="get_shipping/{shippingId}", span.kind="SERVER", status.code="Ok" }
   ```
 
-* **Error** counts are computed from the number of spans with an `Error` status code.
+- **Error** counts are computed from the number of spans with an `Error` status code.
 
   Errors are tracked using a `calls` metric with a `status.code` datapoint attribute set to `Error`:
 
@@ -30,7 +30,7 @@ title: otelcol.connector.spanmetrics
   calls { service.name="shipping", span.name="get_shipping/{shippingId}, span.kind="SERVER", status.code="Error" }
   ```
 
-* **Duration** is computed from the difference between the span start and end times and inserted into the relevant duration histogram time bucket for each unique set dimensions.
+- **Duration** is computed from the difference between the span start and end times and inserted into the relevant duration histogram time bucket for each unique set dimensions.
 
   Span durations are tracked using a `duration` histogram metric:
 
@@ -63,24 +63,24 @@ otelcol.connector.spanmetrics "<LABEL>" {
 
 You can use the following arguments with `otelcol.connector.spanmetrics`:
 
-| Name                              | Type           | Description                                                                            | Default                 | Required |
-| --------------------------------- | -------------- | -------------------------------------------------------------------------------------- | ----------------------- | -------- |
-| `aggregation_temporality`         | `string`       | Configures whether to reset the metrics after flushing.                                | `"CUMULATIVE"`          | no       |
-| `dimensions_cache_size`           | `number`       | (Deprecated: use `aggregation_cardinality_limit` instead) How many dimensions to cache.| `0`                  | no       |
-| `exclude_dimensions`              | `list(string)` | List of dimensions to be excluded from the default set of dimensions.                  | `[]`                    | no       |
-| `metric_timestamp_cache_size`     | `number`       | Controls the size of a cache used to keep track of the last time a metric was flushed. | `1000`                  | no       |
-| `metrics_expiration`              | `duration`     | Time period after which metrics are considered stale and are removed from the cache.   | `"0s"`                  | no       |
-| `metrics_flush_interval`          | `duration`     | How often to flush generated metrics.                                                  | `"60s"`                 | no       |
-| `namespace`                       | `string`       | Metric namespace.                                                                      | `"traces.span.metrics"` | no       |
-| `resource_metrics_cache_size`     | `number`       | The size of the cache holding metrics for a service.                                   | `1000`                  | no       |
-| `resource_metrics_key_attributes` | `list(string)` | Limits the resource attributes used to create the metrics.                             | `[]`                    | no       |
-| `aggregation_cardinality_limit`   | `number`       | The maximum number of unique combinations of dimensions that will be tracked for metrics aggregation. | `0`      | no       |
-| `include_instrumentation_scope`   | `list(string)` | A list of instrumentation scope names to include from the traces.                      | `[]`                    | no       |
+| Name                              | Type           | Description                                                                                           | Default                 | Required |
+| --------------------------------- | -------------- | ----------------------------------------------------------------------------------------------------- | ----------------------- | -------- |
+| `aggregation_temporality`         | `string`       | Configures whether to reset the metrics after flushing.                                               | `"CUMULATIVE"`          | no       |
+| `dimensions_cache_size`           | `number`       | (Deprecated: use `aggregation_cardinality_limit` instead) How many dimensions to cache.               | `0`                     | no       |
+| `exclude_dimensions`              | `list(string)` | List of dimensions to be excluded from the default set of dimensions.                                 | `[]`                    | no       |
+| `metric_timestamp_cache_size`     | `number`       | Controls the size of a cache used to keep track of the last time a metric was flushed.                | `1000`                  | no       |
+| `metrics_expiration`              | `duration`     | Time period after which metrics are considered stale and are removed from the cache.                  | `"0s"`                  | no       |
+| `metrics_flush_interval`          | `duration`     | How often to flush generated metrics.                                                                 | `"60s"`                 | no       |
+| `namespace`                       | `string`       | Metric namespace.                                                                                     | `"traces.span.metrics"` | no       |
+| `resource_metrics_cache_size`     | `number`       | The size of the cache holding metrics for a service.                                                  | `1000`                  | no       |
+| `resource_metrics_key_attributes` | `list(string)` | Limits the resource attributes used to create the metrics.                                            | `[]`                    | no       |
+| `aggregation_cardinality_limit`   | `number`       | The maximum number of unique combinations of dimensions that will be tracked for metrics aggregation. | `0`                     | no       |
+| `include_instrumentation_scope`   | `list(string)` | A list of instrumentation scope names to include from the traces.                                     | `[]`                    | no       |
 
 The supported values for `aggregation_temporality` are:
 
-* `"CUMULATIVE"`: The metrics won't be reset after they're flushed.
-* `"DELTA"`: The metrics will be reset after they're flushed.
+- `"CUMULATIVE"`: The metrics won't be reset after they're flushed.
+- `"DELTA"`: The metrics will be reset after they're flushed.
 
 If `namespace` is set, the generated metric name will be added a `namespace.` prefix.
 
@@ -98,7 +98,7 @@ A resource doesn't need to have all of the attributes.
 The list must include enough attributes to properly identify unique resources or risk aggregating data from more than one service and span.
 For example, `["service.name", "telemetry.sdk.language", "telemetry.sdk.name"]`.
 
-When the `aggregation_cardinality_limit` limit is reached, additional unique combinations will be dropped but registered under a new entry with `otel.metric.overflow="true"`. 
+When the `aggregation_cardinality_limit` limit is reached, additional unique combinations will be dropped but registered under a new entry with `otel.metric.overflow="true"`.
 A value of `0` means no limit is applied.
 
 ## Blocks
@@ -144,8 +144,8 @@ The following attributes are supported:
 
 The supported values for `unit` are:
 
-* `"ms"`: milliseconds
-* `"s"`: seconds
+- `"ms"`: milliseconds
+- `"s"`: seconds
 
 ### `output`
 
@@ -163,10 +163,10 @@ The `dimension` block configures dimensions to be added in addition to the defau
 
 The default dimensions are:
 
-* `service.name`
-* `span.name`
-* `span.kind`
-* `status.code`
+- `service.name`
+- `span.name`
+- `span.kind`
+- `status.code`
 
 The default dimensions are always added. If no additional dimensions are specified, only the default ones will be added.
 
@@ -182,8 +182,8 @@ If it's not found, the resource attributes will be checked.
 
 If the attribute is missing in both the span and resource attributes:
 
-* If `default` isn't set, the dimension will be omitted.
-* If `default` is set, the dimension will be added and its value will be set to the value of `default`.
+- If `default` isn't set, the dimension will be omitted.
+- If `default` is set, the dimension will be added and its value will be set to the value of `default`.
 
 ### `events`
 
@@ -600,10 +600,10 @@ As such, it aims to preserve the resource attributes of spans.
 
 In the example below, `http.status_code` and `http.method` are additional dimensions on top of:
 
-* `service.name`
-* `span.name`
-* `span.kind`
-* `status.code`
+- `service.name`
+- `span.name`
+- `span.kind`
+- `status.code`
 
 ```alloy
 otelcol.receiver.otlp "default" {
@@ -667,7 +667,7 @@ Unfortunately, the [Prometheus data model](https://prometheus.io/docs/concepts/d
 This means that if `otelcol.connector.spanmetrics` outputs metrics with identical metric attributes, but different resource attributes, `otelcol.exporter.prometheus` converts the metrics into the same metric series.
 This problem can be solved by doing **either** of the following:
 
-* **Recommended approach:** Prior to `otelcol.connector.spanmetrics`, remove all resource attributes from the incoming spans which aren't needed by `otelcol.connector.spanmetrics`.
+- **Recommended approach:** Prior to `otelcol.connector.spanmetrics`, remove all resource attributes from the incoming spans which aren't needed by `otelcol.connector.spanmetrics`.
 
   {{< collapse title="Example configuration to remove unnecessary resource attributes." >}}
 
@@ -734,7 +734,7 @@ This problem can be solved by doing **either** of the following:
 
   {{< /collapse >}}
 
-* Or, after `otelcol.connector.spanmetrics`, copy each of the resource attributes as a metric datapoint attribute.
+- Or, after `otelcol.connector.spanmetrics`, copy each of the resource attributes as a metric datapoint attribute.
   This has the advantage that the resource attributes will be visible as metric labels.
   However, the {{< term "cardinality" >}}cardinality{{< /term >}} of the metrics may be much higher, which could increase the cost of storing and querying them.
   The example below uses the [`merge_maps`][merge_maps] OTTL function.
