@@ -18,6 +18,9 @@
     {{- if $values.clustering.name }}
     - --cluster.name={{ $values.clustering.name }}
     {{- end}}
+    {{- if $values.clustering.maxJoinPeers }}
+    - --cluster.max-join-peers={{ $values.clustering.maxJoinPeers }}
+    {{- end}}
     {{- end}}
     {{- if $values.stabilityLevel }}
     - --stability.level={{ $values.stabilityLevel }}
