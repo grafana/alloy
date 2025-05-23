@@ -182,7 +182,7 @@ var fakeSecrets = map[string]fakeSecret{
 	"generic": {
 		name:   "generic-api-key",
 		prefix: "tok" + "en" + ":",
-		value:  "tok" + "en" + ":" + strings.Repeat("A", 15),
+		value:  "tok" + "en" + ":" + "1" + strings.Repeat("A", 15), // All letters are not considered as token
 	},
 	"custom-fake-secret": {
 		name:  "my-fake-secret",
