@@ -49,7 +49,7 @@ otelcol.connector.spanlogs "<LABEL>" {
 | `span_attributes`    | `list(string)` | Additional span attributes to log.            | `[]`    | no       |
 | `spans`              | `bool`         | Log one line per span.                        | `false` | no       |
 
-The values listed in `labels` should be the values of either span, process or event attributes.
+The values listed in `labels` should be the values of either span, process, or event attributes.
 
 {{< admonition type="warning" >}}
 Setting either `spans` or `events` to `true` could lead to a high volume of logs.
@@ -59,10 +59,10 @@ Setting either `spans` or `events` to `true` could lead to a high volume of logs
 
 You can use the following blocks with `otelcol.connector.spanlogs`:
 
-| Block         | Description                                       | Required |
-| ------------- | ------------------------------------------------- | -------- |
-| [output][]    | Configures where to send received telemetry data. | yes      |
-| [overrides][] | Overrides for keys in the log body.               | no       |
+| Block                    | Description                                       | Required |
+| ------------------------ | ------------------------------------------------- | -------- |
+| [`output`][output]       | Configures where to send received telemetry data. | yes      |
+| [`overrides`][overrides] | Overrides for keys in the log body.               | no       |
 
 [output]: #output
 [overrides]: #overrides
