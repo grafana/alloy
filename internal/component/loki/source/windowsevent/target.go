@@ -31,6 +31,7 @@ type Target struct {
 	subscription  win_eventlog.EvtHandle
 	handler       api.EntryHandler
 	cfg           *scrapeconfig.WindowsEventsTargetConfig
+	args          Arguments
 	relabelConfig []*relabel.Config
 	logger        log.Logger
 
@@ -48,7 +49,7 @@ func NewTarget(
 	logger log.Logger,
 	handler api.EntryHandler,
 	relabel []*relabel.Config,
-	cfg *scrapeconfig.WindowsEventsTargetConfig,
+	args Arguments,
 	bookmarkSyncPeriod time.Duration,
 ) (*Target, error) {
 	sigEvent, err := windows.CreateEvent(nil, 0, 0, nil)
@@ -57,6 +58,7 @@ func NewTarget(
 	}
 	defer windows.CloseHandle(sigEvent)
 
+	cfg := convertConfig(args)
 	bm, err := newBookMark(cfg.BookmarkPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create bookmark using path=%s: %w", cfg.BookmarkPath, err)
@@ -65,6 +67,7 @@ func NewTarget(
 	t := &Target{
 		done:          make(chan struct{}),
 		cfg:           cfg,
+		args:          args,
 		bm:            bm,
 		relabelConfig: relabel,
 		logger:        logger,
@@ -208,7 +211,7 @@ func (t *Target) renderEntries(events []win_eventlog.Event) []api.Entry {
 			entry.Labels[model.LabelName(lbl.Name)] = model.LabelValue(lbl.Value)
 		}
 
-		line, err := formatLine(t.cfg, event)
+		line, err := formatLine(t.args, event)
 		if err != nil {
 			level.Warn(t.logger).Log("msg", "error formatting event", "err", err)
 			continue
