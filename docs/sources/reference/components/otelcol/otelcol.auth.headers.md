@@ -44,15 +44,11 @@ You can use the following blocks with `otelcol.auth.headers`:
 
 | Block                            | Description                                                                | Required |
 | -------------------------------- | -------------------------------------------------------------------------- | -------- |
+| [`header`][header]               | Custom header to attach to requests.                                       | yes      |
 | [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |
-| [`header`][header]               | Custom header to attach to requests.                                       | no       |
 
 [header]: #header
 [debug_metrics]: #debug_metrics
-
-### `debug_metrics`
-
-{{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `header`
 
@@ -86,6 +82,10 @@ For `from_context` to work, other components in the pipeline also need to be con
 * `otelcol` receivers must be configured with `include_metadata` set to `true` so that metadata keys are available to the pipeline.
 
 `from_attribute` metadata can't, at this time, be preserved through an `otelcol.processor.batch` component, and is only provided from the `otelcol.auth.basic` extension.
+
+### `debug_metrics`
+
+{{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

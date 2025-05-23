@@ -129,9 +129,9 @@ The following arguments are supported:
 The following arguments are supported:
 
 | Name          | Type     | Description                                                                              | Default | Required |
-|---------------|----------|------------------------------------------------------------------------------------------|---------|----------|
-| `directory`   | `string` | Path to local directory for the WAL file.                                                | `./`    | yes      |
-| `max_backoff` | `string` | Max duration to retry requests on network errors (`UNAVAILABLE` or `DEADLINE_EXCEEDED`). | `1h`    | no       |
+| ------------- | -------- | ---------------------------------------------------------------------------------------- | ------- | -------- |
+| `directory`   | `string` | Path to local directory for the WAL file.                                                | `"./"`  | yes      |
+| `max_backoff` | `string` | Max duration to retry requests on network errors (`UNAVAILABLE` or `DEADLINE_EXCEEDED`). | `"1h"`  | no       |
 
 ### `sending_queue`
 
