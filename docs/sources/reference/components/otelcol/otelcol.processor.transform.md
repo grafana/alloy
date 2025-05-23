@@ -599,9 +599,6 @@ otelcol.exporter.otlp "default" {
 }
 ```
 
-[strings]: ../../../../get-started/configuration-syntax/expressions/types_and_values/#strings
-[raw-strings]: ../../../../get-started/configuration-syntax/expressions/types_and_values/#raw-strings
-
 [traces protobuf]: https://github.com/open-telemetry/opentelemetry-proto/blob/v1.0.0/opentelemetry/proto/trace/v1/trace.proto
 [metrics protobuf]: https://github.com/open-telemetry/opentelemetry-proto/blob/v1.0.0/opentelemetry/proto/metrics/v1/metrics.proto
 [logs protobuf]: https://github.com/open-telemetry/opentelemetry-proto/blob/v1.0.0/opentelemetry/proto/logs/v1/logs.proto
