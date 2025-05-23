@@ -30,23 +30,24 @@ The component starts a new UDP listener and fans out log entries to the list of 
 
 You can use the following arguments with `loki.source.gelf`:
 
-| Name                     | Type           | Description                                                                | Default         | Required |
-| ------------------------ | -------------- | -------------------------------------------------------------------------- | --------------- | -------- |
-| `listen_address`         | `string`       | UDP address and port to listen for Graylog messages.                       | `0.0.0.0:12201` | no       |
-| `relabel_rules`          | `RelabelRules` | Relabeling rules to apply on log entries.                                  | "{}"            | no       |
-| `use_incoming_timestamp` | `bool`         | When false, assigns the current timestamp to the log when it was processed | `false`         | no       |
+| Name                     | Type                 | Description                                                                | Default         | Required |
+| ------------------------ | -------------------- | -------------------------------------------------------------------------- | --------------- | -------- |
+| `forward_to`             | `list(LogsReceiver)` | List of receivers to send log entries to.                                  |                 | yes      |
+| `listen_address`         | `string`             | UDP address and port to listen for Graylog messages.                       | `0.0.0.0:12201` | no       |
+| `relabel_rules`          | `RelabelRules`       | Relabeling rules to apply on log entries.                                  | `{}`            | no       |
+| `use_incoming_timestamp` | `bool`               | When false, assigns the current timestamp to the log when it was processed | `false`         | no       |
 
 {{< admonition type="note" >}}
 GELF logs can be sent uncompressed or compressed with GZIP or ZLIB.
 A `job` label is added with the full name of the component `loki.source.gelf.LABEL`.
 {{< /admonition >}}
 
-The `relabel_rules` argument can make use of the `rules` export from a [`loki.relabel`][loki.relabel] component to apply one or more relabling rules to log entries before they're forward to the list of receivers specified in `forward_to`.
+The `relabel_rules` argument can make use of the `rules` export from a [`loki.relabel`][loki.relabel] component to apply one or more relabeling rules to log entries before they're forwarded to the list of receivers specified in `forward_to`.
 
 Incoming messages have the following internal labels available:
 
 * `__gelf_message_facility`: The GELF facility.
-* `__gelf_message_host`: The GELF level message version sent by the client.
+* `__gelf_message_version`: The GELF message version sent by the client.
 * `__gelf_message_host`: The host sending the GELF message.
 * `__gelf_message_level`: The GELF level as a string.
 

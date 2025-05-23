@@ -32,7 +32,7 @@ You can use the following arguments with `loki.write`:
 
 | Name              | Type          | Description                                  | Default        | Required |
 | ----------------- | ------------- | -------------------------------------------- | -------------- | -------- |
-| `external_labels` | `map(string)` | Labels to add to logs sent over the network. |                | no       |
+| `external_labels` | `map(string)` | Labels to add to logs sent over the network. | `{}`           | no       |
 | `max_streams`     | `int`         | Maximum number of active streams.            | `0` (no limit) | no       |
 
 ## Blocks

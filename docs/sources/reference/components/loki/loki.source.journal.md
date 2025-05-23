@@ -43,7 +43,7 @@ You can use the following arguments with `loki.source.journal`:
 | `format_as_json` | `bool`               | Whether to forward the original journal entry as JSON.                                            | `false` | no       |
 | `labels`         | `map(string)`        | The labels to apply to every log coming out of the journal.                                       | `{}`    | no       |
 | `matches`        | `string`             | Journal matches to filter. The `+` character isn't supported, only logical AND matches are added. | `""`    | no       |
-| `max_age`        | `duration`           | The oldest relative time from process start that will be read.                                    | `"7h"`  | no       |
+| `max_age`        | `duration`           | The oldest relative time from process start that will be read.                                    | `7h`    | no       |
 | `path`           | `string`             | Path to a directory to read entries from.                                                         | `""`    | no       |
 | `relabel_rules`  | `RelabelRules`       | Relabeling rules to apply on log entries.                                                         | `{}`    | no       |
 

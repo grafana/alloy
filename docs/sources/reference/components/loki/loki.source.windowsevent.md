@@ -35,14 +35,14 @@ You can use the following arguments with `loki.source.windowsevent`:
 | ------------------------ | -------------------- | ----------------------------------------------------------- | -------------------------- | --------- |
 | `forward_to`             | `list(LogsReceiver)` | List of receivers to send log entries to.                   |                            | yes       |
 | `eventlog_name`          | `string`             | Event log to read from.                                     |                            | See below |
-| `xpath_query`            | `string`             | Event log to read from.                                     | `"*"`                      | See below |
+| `xpath_query`            | `string`             | XPath query to select events.                               | `"*"`                      | See below |
 | `bookmark_path`          | `string`             | Keeps position in event log.                                | `"DATA_PATH/bookmark.xml"` | no        |
 | `exclude_event_data`     | `bool`               | Exclude event data.                                         | `false`                    | no        |
 | `exclude_event_message`  | `bool`               | Exclude the human-friendly event message.                   | `false`                    | no        |
 | `exclude_user_data`      | `bool`               | Exclude user data.                                          | `false`                    | no        |
-| `labels`                 | `map(string)`        | The labels to associate with incoming logs.                 |                            | no        |
-| `locale`                 | `number`             | Locale ID for event rendering. 0 default is Windows Locale. | `0`                        | no        |
-| `poll_interval`          | `duration`           | How often to poll the event log.                            | `"3s"`                     | no        |
+| `labels`                 | `map(string)`        | The labels to associate with incoming logs.                 | `{}`                       | no        |
+| `locale`                 | `int`                | Locale ID for event rendering. 0 default is Windows Locale. | `0`                        | no        |
+| `poll_interval`          | `duration`           | How often to poll the event log.                            | `3s`                       | no        |
 | `use_incoming_timestamp` | `bool`               | When false, assigns the current timestamp to the log.       | `false`                    | no        |
 
 {{< admonition type="note" >}}
