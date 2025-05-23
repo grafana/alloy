@@ -82,10 +82,10 @@ func (a *Arguments) SetToDefault() {
 			TextFileDirectory: strings.Join(col.ConfigDefaults.Textfile.TextFileDirectories, ","),
 		},
 		TCP: TCPConfig{
-			EnabledList: col.ConfigDefaults.TCP.CollectorsEnabled,
+			EnabledList: slices.Clone(col.ConfigDefaults.TCP.CollectorsEnabled),
 		},
 		Filetime: FiletimeConfig{
-			FilePatterns: col.ConfigDefaults.Filetime.FilePatterns,
+			FilePatterns: slices.Clone(col.ConfigDefaults.Filetime.FilePatterns),
 		},
 		MSCluster: MSClusterConfig{
 			EnabledList: slices.Clone(col.ConfigDefaults.MSCluster.CollectorsEnabled),
