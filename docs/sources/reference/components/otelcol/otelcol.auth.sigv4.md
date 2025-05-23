@@ -78,9 +78,9 @@ The `assume_role` block specifies the configuration needed to assume a role.
 
 | Name           | Type     | Description                                                     | Default | Required |
 | -------------- | -------- | --------------------------------------------------------------- | ------- | -------- |
-| `arn`          | `string` | The Amazon Resource Name (ARN) of a role to assume.             | ""      | no       |
-| `session_name` | `string` | The name of a role session.                                     | ""      | no       |
-| `sts_region`   | `string` | The AWS region where STS is used to assume the configured role. | ""      | no       |
+| `arn`          | `string` | The Amazon Resource Name (ARN) of a role to assume.             | `""`    | no       |
+| `session_name` | `string` | The name of a role session.                                     | `""`    | no       |
+| `sts_region`   | `string` | The AWS region where STS is used to assume the configured role. | `""`    | no       |
 
 If the `assume_role` block is specified in the configuration and `sts_region` isn't set, then `sts_region` will default to the value for `region`.
 

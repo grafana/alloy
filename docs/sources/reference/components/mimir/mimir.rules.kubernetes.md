@@ -66,7 +66,7 @@ You can use the following arguments with `mimir.rules.kubernetes`:
 | `proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |                 | no       |
 | `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false`         | no       |
 | `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |                 | no       |
-| `sync_interval`          | `duration`          | Amount of time between reconciliations with Mimir.                                               | `5m`            | no       |
+| `sync_interval`          | `duration`          | Amount of time between reconciliations with Mimir.                                               | `"5m"`          | no       |
 | `tenant_id`              | `string`            | Mimir tenant ID.                                                                                 |                 | no       |
 | `use_legacy_routes`      | `bool`              | Whether to use deprecated ruler API endpoints.                                                   | `false`         | no       |
 

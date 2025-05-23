@@ -45,7 +45,7 @@ You can use the following arguments with `otelcol.exporter.kafka`:
 | `partition_metrics_by_resource_attributes` | `bool`         | Whether to include the hash of sorted resource attributes as the message partitioning key in metric messages sent to Kafka. | `false`              | no       |
 | `partition_traces_by_id`                   | `bool`         | Whether to include the trace ID as the message key in trace messages sent to Kafka.                                         | `false`              | no       |
 | `resolve_canonical_bootstrap_servers_only` | `bool`         | Whether to resolve then reverse-lookup broker IPs during startup.                                                           | `false`              | no       |
-| `timeout`                                  | `duration`     | The timeout for every attempt to send data to the backend.                                                                  | `5s`                 | no       |
+| `timeout`                                  | `duration`     | The timeout for every attempt to send data to the backend.                                                                  | `"5s"`               | no       |
 | `topic_from_attribute`                     | `string`       | A resource attribute whose value should be used as the message's topic.                                                     | `""`                 | no       |
 | `topic`                                    | `string`       | (Deprecated) Kafka topic to send to.                                                                                        | _See below_          | no       |
 

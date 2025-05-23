@@ -37,7 +37,7 @@ You can use the following argument with `otelcol.exporter.otlp`:
 
 | Name      | Type       | Description                                      | Default | Required |
 | --------- | ---------- | ------------------------------------------------ | ------- | -------- |
-| `timeout` | `duration` | Time to wait before marking a request as failed. | `5s`    | no       |
+| `timeout` | `duration` | Time to wait before marking a request as failed. | `"5s"`  | no       |
 
 ## Blocks
 

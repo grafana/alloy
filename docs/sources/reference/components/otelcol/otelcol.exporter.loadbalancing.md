@@ -59,7 +59,7 @@ You can use the following arguments with `otelcol.exporter.loadbalancing`:
 | Name          | Type       | Description                                                                        | Default     | Required |
 | ------------- | ---------- | ---------------------------------------------------------------------------------- | ----------- | -------- |
 | `routing_key` | `string`   | Routing strategy for load balancing.                                               | `"traceID"` | no       |
-| `timeout`     | `duration` | Time to wait before marking a request to the `otlp > protocol` exporter as failed. | `0s`        | no       |
+| `timeout`     | `duration` | Time to wait before marking a request to the `otlp > protocol` exporter as failed. | `"0s"`      | no       |
 
 The `routing_key` attribute determines how to route signals across endpoints. Its value can be one of the following:
 
