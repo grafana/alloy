@@ -156,8 +156,12 @@ func (c *Component) Run(ctx context.Context) error {
 					continue
 				}
 				sessionErrors = 0
-				defer c.session.Stop()
+				defer func() {
+					c.session.Stop()
+					level.Info(c.options.Logger).Log("msg", "ebpf profiling session stopped")
+				}()
 				sessionStarted = true
+				level.Info(c.options.Logger).Log("msg", "ebpf profiling session started")
 			}
 
 			err := c.collectProfiles()
