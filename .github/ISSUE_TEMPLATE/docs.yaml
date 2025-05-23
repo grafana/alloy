@@ -1,7 +1,7 @@
 name: Documentation feedback
 description: Give feedback on the Grafana Alloy documentation.
 title: "Docs feedback: "
-labels: ["type/docs"]
+labels: ["type/docs", "needs-triage"]
 body:
   - type: input
     id: url
