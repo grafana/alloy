@@ -98,20 +98,20 @@ The following arguments are supported:
 
 #### `batcher`
 
-| Name            | Type            | Description                                                                                                                                                                                               | Default | Required |
-| --------------- | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
-| `enabled`       | `bool`          | Whether to not enqueue batches before sending to the consumerSender.                                                                                                                                      | `false` | no       |
-| `flush_timeout` | `time.Duration` | The time after which a batch will be sent regardless of its size.                                                                                                                                         | `200ms` | no       |
-| `max_size`      | `uint`          | The maximum size of a batch. If the batch exceeds this value, it's broken up into smaller batches. Must be greater than or equal to `min_size`. Set this value to zero to disable the maximum size limit. | `0`     | no       |
-| `min_size`      | `uint`          | The minimum size of a batch.                                                                                                                                                                              | `8192`  | no       |
-| `sizer`         | `string`        | The unit of measure for the batch size. Must be one of `items`, `bytes`, or `requests`.                                                                                                                   | `items` | no       |
+| Name            | Type       | Description                                                                                                                                                                                               | Default   | Required |
+| --------------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | -------- |
+| `enabled`       | `bool`     | Whether to not enqueue batches before sending to the consumerSender.                                                                                                                                      | `false`   | no       |
+| `flush_timeout` | `duration` | The time after which a batch will be sent regardless of its size.                                                                                                                                         | `"200ms"` | no       |
+| `max_size`      | `uint`     | The maximum size of a batch. If the batch exceeds this value, it's broken up into smaller batches. Must be greater than or equal to `min_size`. Set this value to zero to disable the maximum size limit. | `0`       | no       |
+| `min_size`      | `uint`     | The minimum size of a batch.                                                                                                                                                                              | `8192`    | no       |
+| `sizer`         | `string`   | The unit of measure for the batch size. Must be one of `items`, `bytes`, or `requests`.                                                                                                                   | `items`   | no       |
 
 #### `heartbeat`
 
-| Name       | Type            | Description                                           | Default | Required |
-| ---------- | --------------- | ----------------------------------------------------- | ------- | -------- |
-| `interval` | `time.Duration` | Time interval for the heartbeat interval, in seconds. | `0s`    | no       |
-| `startup`  | `bool`          | Send heartbeat events on exporter startup.            | `false` | no       |
+| Name       | Type       | Description                                           | Default | Required |
+| ---------- | ---------- | ----------------------------------------------------- | ------- | -------- |
+| `interval` | `duration` | Time interval for the heartbeat interval, in seconds. | `"0s"`  | no       |
+| `startup`  | `bool`     | Send heartbeat events on exporter startup.            | `false` | no       |
 
 #### `otel_to_hec_fields`
 

@@ -64,7 +64,7 @@ You can use the following arguments with `otelcol.exporter.syslog`:
 | `port`                  | `int`      | The port where the syslog server accepts connections. | `514`     | no       |
 | `protocol`              | `string`   | The syslog protocol that the syslog server supports.  | `rfc5424` | no       |
 | `enable_octet_counting` | `bool`     | Whether to enable rfc6587 octet counting.             | `false`   | no       |
-| `timeout`               | `duration` | Time to wait before marking a request as failed.      | `5s`      | no       |
+| `timeout`               | `duration` | Time to wait before marking a request as failed.      | `"5s"`    | no       |
 
 The `network` argument specifies if the syslog endpoint is using the TCP or UDP protocol.
 `network` must be one of `tcp`, `udp`.
