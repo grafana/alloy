@@ -40,7 +40,7 @@ You can use the following arguments with `discovery.lightsail`:
 | `proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                                           |         | no       |
 | `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                                                   | `false` | no       |
 | `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                                                    |         | no       |
-| `refresh_interval`       | `duration`          | Refresh interval to re-read the instance list.                                                                          | `60s`   | no       |
+| `refresh_interval`       | `duration`          | Refresh interval to re-read the instance list.                                                                          | `"60s"` | no       |
 | `region`                 | `string`            | The AWS region. If blank, the region from the instance metadata is used.                                                |         | no       |
 | `role_arn`               | `string`            | AWS Role ARN, an alternative to using AWS API keys.                                                                     |         | no       |
 | `secret_key`             | `string`            | The AWS API key secret. If blank, the environment variable `AWS_SECRET_ACCESS_KEY` is used.                             |         | no       |

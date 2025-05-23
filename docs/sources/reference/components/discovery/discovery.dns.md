@@ -30,7 +30,7 @@ You can use the following arguments with `discovery.dns`:
 | ------------------ | -------------- | -------------------------------------------------------------------- | ------- | -------- |
 | `names`            | `list(string)` | DNS names to look up.                                                |         | yes      |
 | `port`             | `number`       | Port to use for collecting metrics. Not used for SRV records.        | `0`     | no       |
-| `refresh_interval` | `duration`     | How often to query DNS for updates.                                  | `30s`   | no       |
+| `refresh_interval` | `duration`     | How often to query DNS for updates.                                  | `"30s"` | no       |
 | `type`             | `string`       | Type of DNS record to query. Must be one of SRV, A, AAAA, MX, or NS. | `"SRV"` | no       |
 
 ## Blocks

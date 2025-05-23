@@ -41,7 +41,7 @@ You can use the following arguments with `discovery.ionos`:
 | `proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |         | no       |
 | `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false` | no       |
 | `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |         | no       |
-| `refresh_interval`       | `duration`          | The time after which the servers are refreshed.                                                  | `60s`   | no       |
+| `refresh_interval`       | `duration`          | The time after which the servers are refreshed.                                                  | `"60s"` | no       |
 
 At most, one of the following can be provided:
 

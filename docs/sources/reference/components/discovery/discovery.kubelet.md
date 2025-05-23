@@ -35,7 +35,7 @@ You can use the following arguments with `discovery.kubelet`:
 | Name                     | Type                | Description                                                                                      | Default                     | Required |
 | ------------------------ | ------------------- | ------------------------------------------------------------------------------------------------ | --------------------------- | -------- |
 | `url`                    | `string`            | URL of the Kubelet server.                                                                       | `"https://localhost:10250"` | no       |
-| `refresh_interval`       | `duration`          | How often the Kubelet should be polled for scrape targets.                                       | `5s`                        | no       |
+| `refresh_interval`       | `duration`          | How often the Kubelet should be polled for scrape targets.                                       | `"5s"`                      | no       |
 | `namespaces`             | `list(string)`      | A list of namespaces to extract target Pods from.                                                |                             | no       |
 | `bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                             |                             | no       |
 | `bearer_token`           | `secret`            | Bearer token to authenticate with.                                                               |                             | no       |
