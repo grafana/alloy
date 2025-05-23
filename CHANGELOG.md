@@ -7,7 +7,7 @@ This document contains a historical list of changes between releases. Only
 changes that impact end-user behavior are listed; changes to documentation or
 internal API changes are not present.
 
-Main (unreleased)
+v1.9.0-rc.0
 -----------------
 
 ### Breaking changes
@@ -106,6 +106,8 @@ Main (unreleased)
 - Fix a bug in the `foreach` preventing the UI from showing the components in the template when the block was re-evaluated. (@wildum)
 
 - Fix alloy health handler so header is written before response body. (@kalleep)
+
+- Fix `prometheus.exporter.unix` to pass hwmon config correctly. (@kalleep)
 
 ### Other changes
 
