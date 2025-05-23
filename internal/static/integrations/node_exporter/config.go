@@ -498,11 +498,6 @@ func (c *Config) mapConfigToNodeConfig() *collector.NodeCollectorConfig {
 		Softirq: &blankBool,
 	}
 
-	cfg.HwMon = collector.HwMonConfig{
-		ChipInclude: &blankString,
-		ChipExclude: &blankString,
-	}
-
 	cfg.Qdisc = collector.QdiscConfig{
 		Fixtures:         &blankString,
 		DeviceInclude:    &blankString,
