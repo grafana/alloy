@@ -2,7 +2,6 @@ package windows
 
 import (
 	"slices"
-	"strconv"
 	"strings"
 
 	windows_integration "github.com/grafana/alloy/internal/static/integrations/windows_exporter"
@@ -35,9 +34,6 @@ func (a *Arguments) SetToDefault() {
 			Include:   col.ConfigDefaults.LogicalDisk.VolumeInclude.String(),
 			Exclude:   col.ConfigDefaults.LogicalDisk.VolumeExclude.String(),
 		},
-		MSMQ: MSMQConfig{
-			Where: *col.ConfigDefaults.Msmq.QueryWhereClause,
-		},
 		MSSQL: MSSQLConfig{
 			EnabledClasses: slices.Clone(col.ConfigDefaults.Mssql.CollectorsEnabled),
 		},
@@ -56,19 +52,19 @@ func (a *Arguments) SetToDefault() {
 			Exclude: col.ConfigDefaults.Printer.PrinterExclude.String(),
 		},
 		Process: ProcessConfig{
-			BlackList: col.ConfigDefaults.Process.ProcessExclude.String(),
-			WhiteList: col.ConfigDefaults.Process.ProcessInclude.String(),
-			Include:   col.ConfigDefaults.Process.ProcessInclude.String(),
-			Exclude:   col.ConfigDefaults.Process.ProcessExclude.String(),
+			BlackList:              col.ConfigDefaults.Process.ProcessExclude.String(),
+			WhiteList:              col.ConfigDefaults.Process.ProcessInclude.String(),
+			Include:                col.ConfigDefaults.Process.ProcessInclude.String(),
+			Exclude:                col.ConfigDefaults.Process.ProcessExclude.String(),
+			EnableIISWorkerProcess: col.ConfigDefaults.Process.EnableWorkerProcess,
 		},
 		ScheduledTask: ScheduledTaskConfig{
 			Include: col.ConfigDefaults.ScheduledTask.TaskInclude.String(),
 			Exclude: col.ConfigDefaults.ScheduledTask.TaskExclude.String(),
 		},
 		Service: ServiceConfig{
-			UseApi: strconv.FormatBool(col.ConfigDefaults.Service.UseAPI),
-			Where:  col.ConfigDefaults.Service.ServiceWhereClause,
-			V2:     strconv.FormatBool(col.ConfigDefaults.Service.V2),
+			Include: col.ConfigDefaults.Service.ServiceInclude.String(),
+			Exclude: col.ConfigDefaults.Service.ServiceExclude.String(),
 		},
 		SMB: SMBConfig{
 			EnabledList: []string{},
@@ -84,6 +80,18 @@ func (a *Arguments) SetToDefault() {
 		},
 		TextFile: TextFileConfig{
 			TextFileDirectory: strings.Join(col.ConfigDefaults.Textfile.TextFileDirectories, ","),
+		},
+		TCP: TCPConfig{
+			EnabledList: slices.Clone(col.ConfigDefaults.TCP.CollectorsEnabled),
+		},
+		Filetime: FiletimeConfig{
+			FilePatterns: slices.Clone(col.ConfigDefaults.Filetime.FilePatterns),
+		},
+		MSCluster: MSClusterConfig{
+			EnabledList: slices.Clone(col.ConfigDefaults.MSCluster.CollectorsEnabled),
+		},
+		NetFramework: NetFrameworkConfig{
+			EnabledList: slices.Clone(col.ConfigDefaults.NetFramework.CollectorsEnabled),
 		},
 	}
 }

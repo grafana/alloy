@@ -12,6 +12,12 @@ Main (unreleased)
 
 ### Breaking changes
 
+- The `prometheus.exporter.windows` component has been update to version v0.30.6. This update includes a significant rework of the exporter and includes some breaking changes. (@dehaansa)
+  - The `msmq` and `service` collectors can no longer be configured with a WMI where clause. Any filtering previously done in a where clause will need to be done in a `prometheus.relabel` component.
+  - The `service` collector no longer provides `enable_v2_collector` and `use_api` configuration options.
+  - The `mscluster_*` and `netframework_*` collectors are now replaced with one `mscluster` and `netframework` collector that allows you to enable the separate metric groupings individually.
+  - The `teradici_pcoip` and `vmware_blast` collectors have been removed from the exporter.
+
 - The `prometheus.exporter.oracledb` component now embeds the [`oracledb_exporter from oracle`](https://github.com/oracle/oracle-db-appdev-monitoring) instead of the deprecated [`oracledb_exporter from iamseth`](https://github.com/iamseth/oracledb_exporter) for collecting metrics from an OracleDB server: (@wildum)
   - The arguments `username`, `password`, `default_metrics`, and `custom_metrics` are now supported.
   - The previously undocumented argument `custom_metrics` is now expecting a list of paths to custom metrics files.
@@ -39,6 +45,8 @@ Main (unreleased)
 - Add support for Mimir federated rule groups in `mimir.rules.kubernetes` (@QuentinBisson)
 
 ### Enhancements
+
+- `prometheus.exporter.windows` has been significantly refactored upstream and includes new collectors like `filetime`, `pagefile`, `performancecounter`, `udp`, and `update` as well as new configuration options for existing collectors. (@dehaansa)
 
 - `prometheus.exporter.mongodb` now offers fine-grained control over collected metrics with new configuration options. (@TeTeHacko)
 
