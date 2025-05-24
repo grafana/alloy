@@ -10,6 +10,10 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Bugfixes
+
+- For CRD-based components (`prometheus.operator.*`), retry initializing informers if the apiserver request fails. This rectifies issues where the apiserver is not reachable immediately after node restart. (@dehaansa)
+
 v1.9.0-rc.0
 -----------------
 
