@@ -33,7 +33,6 @@ prometheus.exporter.mongodb "<LABEL>" {
 ## Arguments
 
 You can use the following arguments with `prometheus.exporter.mongodb`:
-
 | Name                             | Type      | Description                                                                                                                            | Default | Required |
 | -------------------------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
 | `mongodb_uri`                    | `secret`  | MongoDB node connection URI.                                                                                                           |         | yes      |
