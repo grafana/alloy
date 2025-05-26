@@ -152,7 +152,7 @@ otelcol.processor.cumulativetodelta "default" {
 
 otelcol.exporter.otlp "production" {
   client {
-    endpoint = sys.env("OTLP_SERVER_ENDPOINT")
+    endpoint = sys.env("<OTLP_SERVER_ENDPOINT>")
   }
 }
 ```

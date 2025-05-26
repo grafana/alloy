@@ -30,7 +30,7 @@ otelcol.receiver.prometheus "<LABEL>" {
 
 ## Arguments
 
-`otelcol.receiver.prometheus` doesn't support any arguments.
+The `otelcol.receiver.prometheus` component doesn't support any arguments. You can configure this component with blocks.
 
 ## Blocks
 

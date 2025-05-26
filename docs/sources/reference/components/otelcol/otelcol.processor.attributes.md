@@ -36,7 +36,7 @@ otelcol.processor.attributes "<LABEL>" {
 
 ## Arguments
 
-`otelcol.processor.attributes` doesn't support any arguments.
+The `otelcol.processor.attributes` component doesn't support any arguments. You can configure this component wiht blocks.
 
 ## Blocks
 

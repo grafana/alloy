@@ -32,7 +32,7 @@ otelcol.extension.jaeger_remote_sampling "<LABEL>" {
 
 ## Arguments
 
-`otelcol.extension.jaeger_remote_sampling` doesn't support any arguments and is configured fully through inner blocks.
+The `otelcol.extension.jaeger_remote_sampling` component doesn't support any arguments. You can configure this component with blocks.
 
 ## Blocks
 

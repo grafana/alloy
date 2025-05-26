@@ -28,7 +28,7 @@ otelcol.receiver.influxdb "influxdb_metrics" {
 
 ## Arguments
 
-`otelcol.receiver.influxdb` supports the following arguments:
+You can use the following arguments with `otelcol.receiver.influxdb`:
 
 | Name                     | Type                       | Description                                                                  | Default                                                    | Required |
 | ------------------------ | -------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------- | -------- |
@@ -43,7 +43,7 @@ To expose the HTTP server to other machines on your network, configure `endpoint
 
 ## Blocks
 
-The following blocks are supported inside the definition of `otelcol.receiver.influxdb`:
+You can use the following blocks with `otelcol.receiver.influxdb`:
 
 | Block                            | Description                                           | Required |
 | -------------------------------- | ----------------------------------------------------- | -------- |
