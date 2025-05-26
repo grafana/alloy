@@ -42,7 +42,7 @@ otelcol.receiver.jaeger "<LABEL>" {
 
 ## Arguments
 
-`otelcol.receiver.jaeger` doesn't support any arguments and is configured fully through inner blocks.
+`otelcol.receiver.jaeger` doesn't support any arguments.
 
 ## Blocks
 
