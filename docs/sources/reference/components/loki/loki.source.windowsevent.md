@@ -41,7 +41,7 @@ You can use the following arguments with `loki.source.windowsevent`:
 | `exclude_event_message`  | `bool`               | Exclude the human-friendly event message.                   | `false`                    | no        |
 | `exclude_user_data`      | `bool`               | Exclude user data.                                          | `false`                    | no        |
 | `labels`                 | `map(string)`        | The labels to associate with incoming logs.                 | `{}`                       | no        |
-| `locale`                 | `int`                | Locale ID for event rendering. 0 default is Windows Locale. | `0`                        | no        |
+| `locale`                 | `number`             | Locale ID for event rendering. 0 default is Windows Locale. | `0`                        | no        |
 | `poll_interval`          | `duration`           | How often to poll the event log.                            | `"3s"`                     | no        |
 | `use_incoming_timestamp` | `bool`               | When false, assigns the current timestamp to the log.       | `false`                    | no        |
 
