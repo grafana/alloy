@@ -30,11 +30,11 @@ otelcol.receiver.prometheus "<LABEL>" {
 
 ## Arguments
 
-`otelcol.receiver.prometheus` doesn't support any arguments and is configured fully through inner blocks.
+`otelcol.receiver.prometheus` doesn't support any arguments.
 
 ## Blocks
 
-You can use the following blocks with `otelcol.receiver.prometheus`:
+You can use the following block with `otelcol.receiver.prometheus`:
 
 | Block              | Description                                       | Required |
 | ------------------ | ------------------------------------------------- | -------- |
