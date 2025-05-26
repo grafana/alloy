@@ -14,6 +14,8 @@ Unreleased
 
 - Fix VPA issue not rendering correctly. (@mattdurham)
 
+- Fix `app.kubernetes.io/version` label not being set correctly. (@wildum)
+
 1.0.3 (2025-05-05)
 ----------
 
