@@ -68,7 +68,7 @@ You can use the following blocks with `remote.http`:
 | `client` > [`tls_config`][tls_config]            | Configure TLS settings for connecting to the endpoint.     | no       |
 
 The > symbol indicates deeper levels of nesting.
-For example, `client` > `basic_auth` refers to an `basic_auth` block defined inside a `client` block.
+For example, `client` > `basic_auth` refers to a `basic_auth` block defined inside a `client` block.
 
 [client]: #client
 [authorization]: #authorization

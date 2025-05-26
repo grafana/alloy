@@ -55,9 +55,9 @@ This doesn't support reading of directories.
 
 You can use the following block with `remote.s3`:
 
- | Name               | Description                                       | Required |
- | ------------------ | ------------------------------------------------- | -------- |
- | [`client`][client] | Additional options for configuring the S3 client. | no       |
+| Name               | Description                                       | Required |
+| ------------------ | ------------------------------------------------- | -------- |
+| [`client`][client] | Additional options for configuring the S3 client. | no       |
 
 [client]: #client
 
