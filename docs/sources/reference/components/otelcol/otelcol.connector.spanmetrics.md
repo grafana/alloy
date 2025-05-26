@@ -175,7 +175,7 @@ The following attributes are supported:
 | Name      | Type     | Description                                      | Default | Required |
 | --------- | -------- | ------------------------------------------------ | ------- | -------- |
 | `name`    | `string` | Span attribute or resource attribute to look up. |         | yes      |
-| `default` | `string` | Value to use if the attribute is missing.        | null    | no       |
+| `default` | `string` | Value to use if the attribute is missing.        | `null`  | no       |
 
 `otelcol.connector.spanmetrics` looks for the `name` attribute in the span's collection of attributes.
 If it's not found, the resource attributes will be checked.

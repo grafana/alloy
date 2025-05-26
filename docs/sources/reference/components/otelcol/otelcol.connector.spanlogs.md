@@ -36,7 +36,7 @@ otelcol.connector.spanlogs "<LABEL>" {
 
 ## Arguments
 
-`otelcol.connector.spanlogs` supports the following arguments:
+You can use the following arguments with `otelcol.connector.spanlogs`:
 
 | Name                 | Type           | Description                                   | Default | Required |
 | -------------------- | -------------- | --------------------------------------------- | ------- | -------- |

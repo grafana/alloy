@@ -36,7 +36,7 @@ otelcol.auth.headers "<LABEL>" {
 
 ## Arguments
 
-`otelcol.auth.headers` doesn't support any arguments.
+The `otelcol.auth.headers` component doesn't support any arguments. You can configure this component with blocks.
 
 ## Blocks
 
