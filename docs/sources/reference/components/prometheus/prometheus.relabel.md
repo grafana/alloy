@@ -55,7 +55,7 @@ You can use the following arguments with `prometheus.relabel`:
 
 ## Blocks
 
-You can use the following blocks with `prometheus.relabel`:
+You can use the following block with `prometheus.relabel`:
 
 | Name           | Description                                    | Required |
 | -------------- | ---------------------------------------------- | -------- |

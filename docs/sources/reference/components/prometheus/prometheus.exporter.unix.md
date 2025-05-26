@@ -191,14 +191,14 @@ The default values vary by the operating system {{< param "PRODUCT_NAME" >}} run
 
 | Name                          | Type      | Description                                                           | Default | Required |
 | ----------------------------- | --------- | --------------------------------------------------------------------- | ------- | -------- |
-| `ignore_invalid_speed_device` | `boolean` | Ignore net devices with invalid speed values.                         | false   | no       |
+| `ignore_invalid_speed_device` | `boolean` | Ignore net devices with invalid speed values.                         | `false` | no       |
 | `ignored_devices`             | `string`  | Regular expression of net devices to ignore for `netclass` collector. | `"^$"`  | no       |
 
 ### `netdev`
 
 | Name             | Type      | Description                                                                             | Default | Required |
 | ---------------- | --------- | --------------------------------------------------------------------------------------- | ------- | -------- |
-| `address_info`   | `boolean` | Enable collecting address-info for every device.                                        | false   | no       |
+| `address_info`   | `boolean` | Enable collecting address-info for every device.                                        | `false` | no       |
 | `device_exclude` | `string`  | Regular expression of net devices to exclude. Mutually exclusive with `device_include`. |         | no       |
 | `device_include` | `string`  | Regular expression of net devices to include. Mutually exclusive with `device_exclude`. |         | no       |
 
@@ -270,9 +270,9 @@ An explicit value in the block takes precedence over the environment variable.
 
 | Name              | Type      | Description                                                                                                          | Default                                           | Required |
 | ----------------- | --------- | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- | -------- |
-| `enable_restarts` | `boolean` | Enables service unit metric `service_restart_total`                                                                  | false                                             | no       |
-| `start_time`      | `boolean` | Enables service unit metric `unit_start_time_seconds`                                                                | false                                             | no       |
-| `task_metrics`    | `boolean` | Enables service unit task metrics `unit_tasks_current` and `unit_tasks_max.`                                         | false                                             | no       |
+| `enable_restarts` | `boolean` | Enables service unit metric `service_restart_total`                                                                  | `false`                                           | no       |
+| `start_time`      | `boolean` | Enables service unit metric `unit_start_time_seconds`                                                                | `false`                                           | no       |
+| `task_metrics`    | `boolean` | Enables service unit task metrics `unit_tasks_current` and `unit_tasks_max.`                                         | `false`                                           | no       |
 | `unit_exclude`    | `string`  | Regular expression of systemd units to exclude. Units must both match include and not match exclude to be collected. | `".+\\.(automount\|device\|mount\|scope\|slice)"` | no       |
 | `unit_include`    | `string`  | Regular expression of systemd units to include. Units must both match include and not match exclude to be collected. | `".+"`                                            | no       |
 
