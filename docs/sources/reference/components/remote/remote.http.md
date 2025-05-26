@@ -36,7 +36,7 @@ You can use the following arguments with `remote.http`:
 | `url`            | `string`      | URL to poll.                                                 |         | yes      |
 | `body`           | `string`      | The request body.                                            | `""`    | no       |
 | `headers`        | `map(string)` | Custom headers for the request.                              | `{}`    | no       |
-| `is_secret`      | `bool`        | Whether the response body should be treated as a [secret][]. | false   | no       |
+| `is_secret`      | `bool`        | Whether the response body should be treated as a [secret][]. | `false` | no       |
 | `method`         | `string`      | Define HTTP method for the request                           | `"GET"` | no       |
 | `poll_frequency` | `duration`    | Frequency to poll the URL.                                   | `"1m"`  | no       |
 | `poll_timeout`   | `duration`    | Timeout when polling the URL.                                | `"10s"` | no       |

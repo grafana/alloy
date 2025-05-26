@@ -41,7 +41,7 @@ You can use the following arguments with `prometheus.operator.podmonitors`:
 | ----------------------- | ----------------------- | --------------------------------------------------------------------------------------------------------- | ------- | -------- |
 | `forward_to`            | `list(MetricsReceiver)` | List of receivers to send scraped metrics to.                                                             |         | yes      |
 | `namespaces`            | `list(string)`          | List of namespaces to search for PodMonitor resources. If not specified, all namespaces will be searched. |         | no       |
-| `informer_sync_timeout` | `duration`              | Timeout for initial sync of PodMonitor resources.                                                         | `1m`    | no       |
+| `informer_sync_timeout` | `duration`              | Timeout for initial sync of PodMonitor resources.                                                         | `"1m"`  | no       |
 
 ## Blocks
 

@@ -30,16 +30,16 @@ prometheus.exporter.unix "<LABEL>" {
 
 You can use the following arguments with `prometheus.exporter.unix`:
 
-| Name                       | Type           | Description                                                                 | Default          | Required |
-| -------------------------- | -------------- | --------------------------------------------------------------------------- | ---------------- | -------- |
-| `disable_collectors`       | `list(string)` | Collectors to disable.                                                      | `[]`             | no       |
-| `enable_collectors`        | `list(string)` | Collectors to enable.                                                       | `[]`             | no       |
-| `include_exporter_metrics` | `boolean`      | Whether metrics about the exporter itself should be reported.               | false            | no       |
-| `procfs_path`              | `string`       | The procfs mount point.                                                     | `/proc`          | no       |
-| `rootfs_path`              | `string`       | Specify a prefix for accessing the host filesystem.                         | `/`              | no       |
-| `set_collectors`           | `list(string)` | Overrides the default set of enabled collectors with the collectors listed. |                  | no       |
-| `sysfs_path`               | `string`       | The sysfs mount point.                                                      | `/sys`           | no       |
-| `udev_data_path`           | `string`       | The udev data path.                                                         | `/run/udev/data` | no       |
+| Name                       | Type           | Description                                                                 | Default            | Required |
+| -------------------------- | -------------- | --------------------------------------------------------------------------- | ------------------ | -------- |
+| `disable_collectors`       | `list(string)` | Collectors to disable.                                                      | `[]`               | no       |
+| `enable_collectors`        | `list(string)` | Collectors to enable.                                                       | `[]`               | no       |
+| `include_exporter_metrics` | `bool`         | Whether metrics about the exporter itself should be reported.               | `false`            | no       |
+| `procfs_path`              | `string`       | The procfs mount point.                                                     | `"/proc"`          | no       |
+| `rootfs_path`              | `string`       | Specify a prefix for accessing the host filesystem.                         | `"/"`              | no       |
+| `set_collectors`           | `list(string)` | Overrides the default set of enabled collectors with the collectors listed. |                    | no       |
+| `sysfs_path`               | `string`       | The sysfs mount point.                                                      | `"/sys"`           | no       |
+| `udev_data_path`           | `string`       | The udev data path.                                                         | `"/run/udev/data"` | no       |
 
 `set_collectors` defines a hand-picked list of enabled-by-default collectors.
 If set, anything not provided in that list is disabled by default.
