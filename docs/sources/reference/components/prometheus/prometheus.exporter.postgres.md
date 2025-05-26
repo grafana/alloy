@@ -29,12 +29,12 @@ prometheus.exporter.postgres "<LABEL>" {
 You can use the following arguments with `prometheus.exporter.postgres`:
 
 | Name                         | Type           | Description                                                                   | Default | Required |
-| ---------------------------- | -------------- | ----------------------------------------------------------------------------- | ------- | -------- |
+|------------------------------|----------------|-------------------------------------------------------------------------------|---------|----------|
 | `data_source_names`          | `list(secret)` | Specifies the PostgreSQL servers to connect to.                               |         | yes      |
-| `custom_queries_config_path` | `string`       | Path to YAML file containing custom queries to expose as metrics.             | `""`    | no       |
+| `custom_queries_config_path` | `string`       | Path to YAML file containing custom queries to expose as metrics.             | ""      | no       |
 | `disable_default_metrics`    | `bool`         | When `true`, only exposes metrics supplied from `custom_queries_config_path`. | `false` | no       |
 | `disable_settings_metrics`   | `bool`         | Disables collection of metrics from `pg_settings`.                            | `false` | no       |
-| `enabled_collectors`         | `list(string)` | List of collectors to enable. Refer to the information below for more detail. | `[]`    | no       |
+| `enabled_collectors`         | `list(string)` | List of collectors to enable. Refer to the information below for more detail. | []      | no       |
 
 Refer to the [PostgreSQL documentation](https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING) for more information about the format of the connection strings in `data_source_names`.
 
