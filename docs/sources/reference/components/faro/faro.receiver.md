@@ -81,7 +81,7 @@ Clients using the [Grafana Faro Web SDK][faro-sdk] forward telemetry data to thi
 | Name                       | Type           | Description                                                     | Default     | Required |
 | -------------------------- | -------------- | --------------------------------------------------------------- | ----------- | -------- |
 | `listen_address`           | `string`       | Address to listen for HTTP traffic on.                          | `127.0.0.1` | no       |
-| `listen_port`              | `int`          | Port to listen for HTTP traffic on.                             | `12347`     | no       |
+| `listen_port`              | `number`       | Port to listen for HTTP traffic on.                             | `12347`     | no       |
 | `cors_allowed_origins`     | `list(string)` | Origins for which cross-origin requests are permitted.          | `[]`        | no       |
 | `api_key`                  | `secret`       | Optional API key to validate client requests with.              | `""`        | no       |
 | `max_allowed_payload_size` | `string`       | Maximum size (in bytes) for client requests.                    | `"5MiB"`    | no       |

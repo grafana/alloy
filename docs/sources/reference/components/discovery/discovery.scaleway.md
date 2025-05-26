@@ -45,7 +45,7 @@ You can use the following arguments with `discovery.scaleway`:
 | `http_headers`           | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.          |                              | no          |
 | `name_filter`            | `string`            | Name filter to apply against the listing request.                                                |                              | no          |
 | `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |                              | no          |
-| `port`                   | `int`               | Default port on servers to associate with generated targets.                                     | `80`                         | no          |
+| `port`                   | `number`            | Default port on servers to associate with generated targets.                                     | `80`                         | no          |
 | `proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |                              | no          |
 | `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false`                      | no          |
 | `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |                              | no          |
