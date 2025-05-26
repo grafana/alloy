@@ -10,6 +10,10 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Other changes
+
+- Fix dead link for ServiceMonitor in the prometheus.operator.servicemonitors documentation page (@TheoBrigitte)
+
 v1.9.0-rc.0
 -----------------
 
