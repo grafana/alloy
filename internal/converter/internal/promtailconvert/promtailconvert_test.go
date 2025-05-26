@@ -11,5 +11,5 @@ import (
 )
 
 func TestConvert(t *testing.T) {
-	test_common.TestDirectory(t, "testdata", ".yaml", true, []string{}, map[string]struct{}{}, promtailconvert.Convert)
+	test_common.TestDirectory(t, "testdata", ".yaml", true, []string{}, map[string]struct{}{}, promtailconvert.Convert, false)
 }
