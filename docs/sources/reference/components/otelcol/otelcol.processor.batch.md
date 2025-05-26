@@ -45,11 +45,11 @@ You can use the following arguments with `otelcol.processor.batch`:
 
 | Name                         | Type           | Description                                                             | Default   | Required |
 | ---------------------------- | -------------- | ----------------------------------------------------------------------- | --------- | -------- |
-| `metadata_cardinality_limit` | `int`          | Limit of the unique metadata key/value combinations.                    | `1000`    | no       |
+| `metadata_cardinality_limit` | `number`       | Limit of the unique metadata key/value combinations.                    | `1000`    | no       |
 | `metadata_keys`              | `list(string)` | Creates a different batcher for each key/value combination of metadata. | `[]`      | no       |
-| `send_batch_max_size`        | `int`          | Upper limit of a batch size.                                            | `0`       | no       |
+| `send_batch_max_size`        | `number`       | Upper limit of a batch size.                                            | `0`       | no       |
 | `send_batch_size`            | `int`          | Amount of data to buffer before flushing the batch.                     | `8192`    | no       |
-| `timeout`                    | `duration`     | How long to wait before flushing the batch.                             | `"200ms"` | no       |
+| `timeout`                    | `number`       | How long to wait before flushing the batch.                             | `"200ms"` | no       |
 
 `otelcol.processor.batch` accumulates data into a batch until one of the following events happens:
 
