@@ -33,7 +33,7 @@ loki.source.kafka "<LABEL>" {
 
 ## Arguments
 
-`loki.source.kafka` supports the following arguments:
+You can use the following arguments with `loki.source.kafka`:
 
 | Name                     | Type                 | Description                                             | Default               | Required |
 | ------------------------ | -------------------- | ------------------------------------------------------- | --------------------- | -------- |

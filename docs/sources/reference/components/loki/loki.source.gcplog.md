@@ -33,7 +33,7 @@ loki.source.gcplog "<LABEL>" {
 
 ## Arguments
 
-`loki.source.gcplog` supports the following arguments:
+You can use the following arguments with `loki.source.gcplog`:
 
 | Name            | Type                 | Description                               | Default | Required |
 | --------------- | -------------------- | ----------------------------------------- | ------- | -------- |
