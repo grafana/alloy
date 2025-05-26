@@ -42,15 +42,15 @@ otelcol.receiver.syslog "<LABEL>" {
 
 You can use the following arguments with `otelcol.receiver.syslog`:
 
-| Name                              | Type     | Description                                                        | Default     | Required |
-| --------------------------------- | -------- | ------------------------------------------------------------------ | ----------- | -------- |
-| `allow_skip_pri_header`           | `bool`   | Allow parsing records without a priority header.                   | `false`     | no       |
-| `enable_octet_counting`           | `bool`   | Whether to enable RFC6587 octet counting.                          | `false`     | no       |
-| `location`                        | `string` | The geographic time zone to use when parsing an RFC3164 timestamp. | `"UTC"`     | no       |
-| `max_octets`                      | `int`    | The maximum octets for messages when octet counting is enabled.    | `8192`      | no       |
-| `non_transparent_framing_trailer` | `string` | The framing trailer when using RFC6587 Non-Transparent-Framing.    |             | no       |
-| `on_error`                        | `string` | The action to take when an error occurs.                           | `"send"`    | no       |
-| `protocol`                        | `string` | The syslog protocol that the syslog server supports.               | `"rfc5424"` | no       |
+| Name                              | Type     | Description                                                        | Default   | Required |
+| --------------------------------- | -------- | ------------------------------------------------------------------ | --------- | -------- |
+| `allow_skip_pri_header`           | `bool`   | Allow parsing records without a priority header.                   | `false`   | no       |
+| `enable_octet_counting`           | `bool`   | Whether to enable RFC6587 octet counting.                          | `false`   | no       |
+| `location`                        | `string` | The geographic time zone to use when parsing an RFC3164 timestamp. | `UTC`     | no       |
+| `max_octets`                      | `int`    | The maximum octets for messages when octet counting is enabled.    | `8192`    | no       |
+| `non_transparent_framing_trailer` | `string` | The framing trailer when using RFC6587 Non-Transparent-Framing.    |           | no       |
+| `on_error`                        | `string` | The action to take when an error occurs.                           | `send`    | no       |
+| `protocol`                        | `string` | The syslog protocol that the syslog server supports.               | `rfc5424` | no       |
 
 The `protocol` argument specifies the syslog format supported by the receiver.
 `protocol` must be one of `rfc5424` or `rfc3164`
