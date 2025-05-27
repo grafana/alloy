@@ -74,8 +74,8 @@ func (cg *ConfigGenerator) GeneratePodMonitorConfig(m *promopv1.PodMonitor, ep p
 			return nil, err
 		}
 	}
-	if ep.BearerTokenSecret.Name != "" {
-		val, err := cg.Secrets.GetSecretValue(m.Namespace, ep.BearerTokenSecret)
+	if ep.BearerTokenSecret.Name != "" { //nolint:staticcheck
+		val, err := cg.Secrets.GetSecretValue(m.Namespace, ep.BearerTokenSecret) //nolint:staticcheck
 		if err != nil {
 			return nil, err
 		}
