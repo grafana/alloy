@@ -491,6 +491,16 @@ func TestStdlibGroupBy(t *testing.T) {
 				}},
 			},
 		},
+		{
+			"key refers to a nested object",
+			`array.group_by([{"name" = "alice", "age" = 20, "address" = {"city" = "New York", "state" = "NY"}}], "address.city", false)`,
+			// The key should be present at the top level of the object. In this case, the group_by assumes that the key is missing.
+			[]map[string]interface{}{
+				{"address.city": "", "items": []interface{}{
+					map[string]interface{}{"name": "alice", "age": 20, "address": map[string]interface{}{"city": "New York", "state": "NY"}},
+				}},
+			},
+		},
 	}
 
 	for _, tc := range tt {
@@ -502,7 +512,9 @@ func TestStdlibGroupBy(t *testing.T) {
 
 			rv := reflect.New(reflect.TypeOf(tc.expect))
 			require.NoError(t, eval.Evaluate(nil, rv.Interface()))
-			require.Equal(t, tc.expect, rv.Elem().Interface())
+			result := rv.Elem().Interface().([]map[string]interface{})
+			expected := tc.expect.([]map[string]interface{})
+			require.ElementsMatch(t, expected, result, "groups should match without order")
 		})
 	}
 }
@@ -526,12 +538,12 @@ func TestStdlibGroupBy_Errors(t *testing.T) {
 		{
 			"second argument not string",
 			`array.group_by([{"name" = "alice"}], 123, false)`,
-			`"123" should be string, got number`,
+			`123 should be string, got number`,
 		},
 		{
-			"third argument not boolean",
+			"third argument not bool",
 			`array.group_by([{"name" = "alice"}], "age", "not a bool")`,
-			`"not a bool" should be boolean, got string`,
+			`"not a bool" should be bool, got string`,
 		},
 		{
 			"array element not object",
@@ -541,7 +553,7 @@ func TestStdlibGroupBy_Errors(t *testing.T) {
 		{
 			"key value not string",
 			`array.group_by([{"name" = "alice", "age" = 20}], "age", false)`,
-			`"20" should be string, got number`,
+			`20 should be string, got number`,
 		},
 	}
 

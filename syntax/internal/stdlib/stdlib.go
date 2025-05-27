@@ -146,7 +146,22 @@ var groupBy = value.RawFunction(func(funcValue value.Value, args ...value.Value)
 
 	groups := make(map[string][]value.Value)
 	for i := 0; i < args[0].Len(); i++ {
-		item := convertIfNeeded(args[0].Index(i))
+		item := args[0].Index(i)
+		if item.Type() != value.TypeObject {
+			obj, ok := item.TryConvertToObject()
+			if !ok {
+				return value.Null, value.ArgError{
+					Function: funcValue,
+					Argument: item,
+					Index:    i,
+					Inner: value.TypeError{
+						Value:    item,
+						Expected: value.TypeObject,
+					},
+				}
+			}
+			item = value.Object(obj)
+		}
 
 		val, hasKey := item.Key(key)
 		if !hasKey {
@@ -358,6 +373,14 @@ var combineMaps = value.RawFunction(func(funcValue value.Value, args ...value.Va
 		}
 	}
 
+	convertIfNeeded := func(v value.Value) value.Value {
+		if v.Type() != value.TypeObject {
+			obj, _ := v.TryConvertToObject() // no need to check result as arguments were validated earlier.
+			return value.Object(obj)
+		}
+		return v
+	}
+
 	// We cannot preallocate the size of the result array, because we don't know
 	// how well the merge is going to go. If none of the merge conditions are met,
 	// the result array will be empty.
@@ -480,11 +503,3 @@ var coalesce = value.RawFunction(func(funcValue value.Value, args ...value.Value
 	// Return the last arg if all are empty.
 	return args[len(args)-1], nil
 })
-
-func convertIfNeeded(v value.Value) value.Value {
-	if v.Type() != value.TypeObject {
-		obj, _ := v.TryConvertToObject() // no need to check result as arguments were validated earlier.
-		return value.Object(obj)
-	}
-	return v
-}

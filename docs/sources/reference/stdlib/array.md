@@ -90,20 +90,20 @@ You can find more examples in the [tests][].
 The `array.group_by` function groups an array of objects by a given key.
 
 * The first argument is an array of objects.
-* The second argument is a string that is the key to group by.
+* The second argument is a string that is the key to group by. The value of the key must be a string and should be present at the top level of the object.
 * The third argument is a boolean that indicates whether the elements that don't match the key should be dropped (true) or added to the empty group (false).
 
 ### Examples
 
 ```alloy
-> array.group_by([{"name" = "alice", "age" = "20"}, {"name" = "bob", "age" = "20"}, {"name" = "charlie", "age" = "30"}, {"name" = "william"}], "age", false)
-[{"age" = "20", "items" = [{"name" = "alice", "age" = "20"}, {"name" = "bob", "age" = "20"}]}, {"age" = "30", "items" = [{"name" = "charlie", "age" = "30"}]}, {"age" = "", "items" = [{"name" = "william"}]}]
+> array.group_by([{"type" = "fruit", "name" = "apple"}, {"type" = "fruit", "name" = "banana"}, {"type" = "vegetable", "name" = "carrot"}, {"name" = "rock"}], "type", false)
+[{"type" = "fruit", "items" = [{"type" = "fruit", "name" = "apple"}, {"type" = "fruit", "name" = "banana"}]}, {"type" = "vegetable", "items" = [{"type" = "vegetable", "name" = "carrot"}]}, {"type" = "", "items" = [{"name" = "rock"}]}]
 
-> array.group_by([{"name" = "alice", "age" = "20"}, {"name" = "bob", "age" = "20"}, {"name" = "charlie", "age" = "30"}, {"name" = "william"}], "age", true)
-[{"age" = "20", "items" = [{"name" = "alice", "age" = "20"}, {"name" = "bob", "age" = "20"}]}, {"age" = "30", "items" = [{"name" = "charlie", "age" = "30"}]}]
+> array.group_by([{"type" = "fruit", "name" = "apple"}, {"type" = "fruit", "name" = "banana"}, {"type" = "vegetable", "name" = "carrot"}, {"name" = "rock"}], "type", true)
+[{"type" = "fruit", "items" = [{"type" = "fruit", "name" = "apple"}, {"type" = "fruit", "name" = "banana"}]}, {"type" = "vegetable", "items" = [{"type" = "vegetable", "name" = "carrot"}]}]
 ```
 
-The following example shows how to use `array.group_by` function with a `foreach` block to group targets by match labels and create a `prometheus.scrape` component for each group dynamically. The targets in this example are expected to have a label "match" that contains instant vector selectors separated by slash (see [Federation][federation]).
+The following example shows how to use `array.group_by` function with a `foreach` block to group targets by match labels and create a `prometheus.scrape` component for each group dynamically. The targets in this example are expected to have a label "match" that contains instant vector selectors separated by slash (see [Federation][federation] for more information on the match parameter).
 
 ```alloy
 foreach "federation" {
