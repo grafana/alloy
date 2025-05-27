@@ -69,8 +69,12 @@ func TestDirectory(
 				actualDiags.RemoveDiagsBySeverity(diag.SeverityLevelInfo)
 				actualDiags.RemoveDiagsByText(diagsToIgnore)
 
+				var hasCritical bool
 				buffer := bytes.NewBuffer([]byte{})
 				for _, d := range actualDiags {
+					if d.Severity == diag.SeverityLevelCritical {
+						hasCritical = true
+					}
 					_, _ = buffer.WriteString(d.String())
 					_ = buffer.WriteByte('\n')
 				}
@@ -84,16 +88,20 @@ func TestDirectory(
 						require.NoError(t, err)
 						t.Logf("updated diags file %s", diagsFile)
 					} else if fileExists(diagsFile) {
+						t.Logf("removed diags file %s", diagsFile)
 						require.NoError(t, os.Remove(diagsFile))
 					}
 
-					if len(actualAlloy) > 0 {
+					if len(actualAlloy) > 0 && !hasCritical {
 						f, err := os.OpenFile(alloyFile, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
 						require.NoError(t, err)
 						_, err = io.Copy(f, bytes.NewReader(actualAlloy))
 						require.NoError(t, err)
 						f.Close()
 						t.Logf("updated alloy file %s", alloyFile)
+					} else if fileExists(alloyFile) {
+						t.Logf("removed alloy file %s", alloyFile)
+						require.NoError(t, os.Remove(alloyFile))
 					}
 				}
 
