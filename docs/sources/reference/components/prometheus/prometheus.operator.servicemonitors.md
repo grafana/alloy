@@ -12,7 +12,7 @@ title: prometheus.operator.servicemonitors
 
 # `prometheus.operator.servicemonitors`
 
-`prometheus.operator.servicemonitors` discovers [ServiceMonitor](https://prometheus-operator.dev/docs/operator/api/#monitoring.coreos.com/v1.ServiceMonitor) resources in your Kubernetes cluster and scrapes the targets they reference.
+`prometheus.operator.servicemonitors` discovers [ServiceMonitor](https://prometheus-operator.dev/docs/api-reference/api/#monitoring.coreos.com/v1.ServiceMonitor) resources in your Kubernetes cluster and scrapes the targets they reference.
 This component performs three main functions:
 
 1. Discover ServiceMonitor resources from your Kubernetes cluster.
