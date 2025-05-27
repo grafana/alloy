@@ -34,9 +34,9 @@ otelcol.receiver.loki "<LABEL>" {
 
 You can use the following blocks with `otelcol.receiver.loki`:
 
-| Hierarchy | Block      | Description                                        | Required |
-| --------- | ---------- | -------------------------------------------------- | -------- |
-| output    | [output][] | Configures where to send converted telemetry data. | yes      |
+| Block              | Description                                        | Required |
+| ------------------ | -------------------------------------------------- | -------- |
+| [`output`][output] | Configures where to send converted telemetry data. | yes      |
 
 [output]: #output
 
