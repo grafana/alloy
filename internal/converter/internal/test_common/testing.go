@@ -50,6 +50,7 @@ func TestDirectory(
 	t *testing.T, folderPath string, sourceSuffix string, loadAlloyConfig bool, extraArgs []string,
 	diagsToIgnore map[string]struct{}, convert func(in []byte, extraArgs []string) ([]byte, diag.Diagnostics), update bool,
 ) {
+
 	require.NoError(t, filepath.WalkDir(folderPath, func(path string, d fs.DirEntry, _ error) error {
 		// Only skip iterating child folders
 		if d.IsDir() && path != folderPath {
