@@ -103,7 +103,8 @@ The `array.group_by` function groups an array of objects by a given key.
 [{"type" = "fruit", "items" = [{"type" = "fruit", "name" = "apple"}, {"type" = "fruit", "name" = "banana"}]}, {"type" = "vegetable", "items" = [{"type" = "vegetable", "name" = "carrot"}]}]
 ```
 
-The following example shows how to use `array.group_by` function with a `foreach` block to group targets by match labels and create a `prometheus.scrape` component for each group dynamically. The targets in this example are expected to have a label "match" that contains instant vector selectors separated by slash (see [Federation][federation] for more information on the match parameter).
+The following example shows how to use the `array.group_by` function with a `foreach` block to group targets by match labels and create a `prometheus.scrape` component for each group dynamically.
+The targets in this example should have a label "match" that contains instant vector selectors separated by slash (refer to [Federation][federation] for more information on the match parameter).
 
 ```alloy
 foreach "federation" {
