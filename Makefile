@@ -161,7 +161,7 @@ run-alloylint: alloylint
 test:
 	$(GO_ENV) go test $(GO_FLAGS) -race $(shell go list ./... | grep -v /integration-tests/)
 	$(GO_ENV) go test $(GO_FLAGS) ./internal/static/integrations/node_exporter ./internal/static/logs ./internal/component/otelcol/processor/tail_sampling ./internal/component/loki/source/file ./internal/component/loki/source/docker
-	$(GO_ENV) find . -name go.mod -not -path "./go.mod" -execdir go test -race ./... \;
+	$(GO_ENV) cd ./syntax && go test -race ./...
 
 test-packages:
 ifeq ($(USE_CONTAINER),1)
