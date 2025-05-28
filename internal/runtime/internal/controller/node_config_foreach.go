@@ -212,7 +212,7 @@ func (fn *ForeachConfigNode) evaluate(scope *vm.Scope) error {
 		// We must create an ID from the collection entries to avoid recreating all components on every updates.
 		// We track the hash counts because the collection might contain duplicates ([1, 1, 1] would result in the same ids
 		// so we handle it by adding the count at the end -> [11, 12, 13]
-		customComponentID := fmt.Sprintf("foreach_%s", objectFingerprint(id))
+		customComponentID := fmt.Sprintf("foreach_%s", objectFingerprint(id, args.HashStringId))
 		count := fn.customComponentHashCounts[customComponentID] // count = 0 if the key is not found
 		fn.customComponentHashCounts[customComponentID] = count + 1
 		customComponentID += fmt.Sprintf("_%d", count+1)
@@ -420,10 +420,13 @@ func computeHash(s string) string {
 	return hex.EncodeToString(hasher.Sum(nil))
 }
 
-func objectFingerprint(id any) string {
+func objectFingerprint(id any, hashId bool) string {
 	// TODO: Test what happens if there is a "true" string and a true bool in the collection.
 	switch v := id.(type) {
 	case string:
+		if hashId {
+			return computeHash(v)
+		}
 		return replaceNonAlphaNumeric(v)
 	case int, bool:
 		return fmt.Sprintf("%v", v)
