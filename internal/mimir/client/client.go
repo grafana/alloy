@@ -16,6 +16,7 @@ import (
 	"github.com/grafana/alloy/internal/useragent"
 	"github.com/grafana/dskit/instrument"
 	"github.com/grafana/dskit/user"
+	alertmgr_cfg "github.com/prometheus/alertmanager/config"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/config"
 )
@@ -42,6 +43,9 @@ type Interface interface {
 	CreateRuleGroup(ctx context.Context, namespace string, rg MimirRuleGroup) error
 	DeleteRuleGroup(ctx context.Context, namespace, groupName string) error
 	ListRules(ctx context.Context, namespace string) (map[string][]MimirRuleGroup, error)
+
+	// Alertmanager
+	CreateAlertmanagerConfigs(ctx context.Context, conf alertmgr_cfg.Config, templateFiles map[string]string) error
 }
 
 // MimirClient is a client to the Mimir API.

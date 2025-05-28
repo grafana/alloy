@@ -737,6 +737,7 @@ require (
 	github.com/mistifyio/go-zfs v2.1.2-0.20190413222219-f784269be439+incompatible // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
+	github.com/mitchellh/hashstructure v1.1.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/mna/redisc v1.3.2 // indirect
 	github.com/moby/buildkit v0.21.1 // indirect
@@ -823,7 +824,6 @@ require (
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
 	github.com/prometheus-community/go-runit v0.1.0 // indirect
 	github.com/prometheus-community/prom-label-proxy v0.7.0 // indirect
-	github.com/prometheus/alertmanager v0.27.0 // indirect
 	github.com/prometheus/exporter-toolkit v0.14.0 // indirect
 	github.com/puzpuzpuz/xsync/v3 v3.5.1 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 // indirect
@@ -997,6 +997,7 @@ require (
 	github.com/mitchellh/hashstructure/v2 v2.0.2 // indirect
 	github.com/moby/go-archive v0.1.0 // indirect
 	github.com/moby/sys/atomicwriter v0.1.0 // indirect
+	github.com/prometheus/alertmanager v0.27.0
 	github.com/tonistiigi/dchapes-mode v0.0.0-20250318174251-73d941a28323 // indirect
 	github.com/tonistiigi/go-csvvalue v0.0.0-20240710180619-ddb21b71c0b4 // indirect
 	github.com/zclconf/go-cty v1.16.0 // indirect
@@ -1090,3 +1091,6 @@ replace (
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/kafka/configkafka => github.com/grafana/opentelemetry-collector-contrib/pkg/kafka/configkafka v0.0.0-20250513154522-927cb8a6022a
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver => github.com/grafana/opentelemetry-collector-contrib/receiver/kafkareceiver v0.0.0-20250513154522-927cb8a6022a
 )
+
+// TODO: Upstream this change prior to merging the mimir.alerts.kubernetes component to main.
+replace github.com/prometheus-operator/prometheus-operator => github.com/ptodev/prometheus-operator v0.0.0-20250425071154-e2ee3c49b414
