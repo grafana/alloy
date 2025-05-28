@@ -1,4 +1,4 @@
-# If run on OSX, default bash < 4 and does not support declare -A
+# If run on OSX, default bash < 4 and does not support declare -A, also bsd awk does not support multiline strings
 #!/usr/bin/env bash
 
 set -euo pipefail
@@ -25,7 +25,7 @@ for README in $(find ./docs/sources/reference/components -name '*.md' -and -not 
         continue
     fi
     FILENAME=${README##*/}
-    LABEL_NAME="${FILENAME%.*}"
+    LABEL_NAME="c/${FILENAME%.*}"
     TYPE=$(echo "${LABEL_NAME}" | cut -f1 -d '.' )
     
     if (( "${#LABEL_NAME}" > 50 )); then
@@ -33,7 +33,8 @@ for README in $(find ./docs/sources/reference/components -name '*.md' -and -not 
         continue
     fi
 
-    echo "Creating label '${LABEL_NAME}' for file with color ${COLORS["${TYPE}"]:-${FALLBACK_COLOR}}"
+    echo "Creating label '${LABEL_NAME}' with color ${COLORS["${TYPE}"]:-${FALLBACK_COLOR}}"
     gh label create "${LABEL_NAME}" -c "${COLORS["${TYPE}"]:-${FALLBACK_COLOR}}" --force
 done
 
+echo "Component labels updated successfully."
