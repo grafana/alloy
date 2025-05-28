@@ -1,4 +1,6 @@
 name: 'Generate component labels'
+permissions:
+  contents: read
 on:
   push:
     branches: [main]
@@ -12,6 +14,8 @@ on:
 
 jobs:
   generate-component-labels:
+    permissions:
+      issues: write
     runs-on: ubuntu-24.04
     if: ${{ github.repository_owner == 'grafana' }}
     steps:
