@@ -35,8 +35,11 @@ You can use the following arguments with `foreach`:
 | `var`            | `string`    | Name of the variable referring to the current item in the collection.                    |         | yes      |
 | `enable_metrics` | `bool`      | Whether to expose debug metrics in the {{< param "PRODUCT_NAME" >}} `/metrics` endpoint. | `false` | no       |
 | `id`             | `string`    | Name of the field to use from collection items for child component's identification.     | `""`    | no       |
+| `hash_string_id` | `bool`      | Whether to hash the string representation of the id of the collection items.             | `false` | no       |
 
 The items in the `collection` list can be of any type [type][types], such as a bool, a string, a list, or a map.
+
+When using a collection of strings or when the `id` field is a string, you can set `hash_string_id` to `true` to hash the string representation of the `id` field instead of using the string itself. This is recommended when the strings are long because the values will be used to identify the components that are created dynamically in metrics, logs and in the UI.
 
 {{< admonition type="warning" >}}
 Setting `enable_metrics` to `true` when `collection` has lots of elements may cause a large number of metrics to appear on the {{< param "PRODUCT_NAME" >}} `/metric` endpoint.
