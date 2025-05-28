@@ -17,7 +17,7 @@ researching the behavior of Alloy or other technologies relevant to the issue, a
 
 After an effort has been made to triage an issue, the issue should be in one of several states
 
-* Waiting for author
+* Waiting for author (tag: `waiting-for-author`)
   * An issue might be waiting on more feedback from its author if
     * There was insuffucient information available to reproduce the issue
     * There was insufficient information available to fully define the feature requested
