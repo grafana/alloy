@@ -10,6 +10,10 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Features
+
+- (_Experimental_) Add an `array.group_by` stdlib function to group items in an array by a key. (@wildum)
+
 v1.9.0-rc.0
 -----------------
 
