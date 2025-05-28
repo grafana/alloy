@@ -23,7 +23,7 @@ After an effort has been made to triage an issue, the issue should be in one of 
     * There was insufficient information available to fully define the feature requested
     * An answer to the author's problem was proposed using existing functionality
   * These issues should be tagged `waiting-for-author` in addition to any other categorizing tags (`bug`, `enhancement`, etc)
-* Waiting for codeowner
+* Waiting for codeowner (tag: `waiting-for-codeowner`)
   * Some issues related to community components within Alloy will be dependent on the community maintainer of the component, and other issues may be dependent on codeowners of components that are not maintained by additional teams within Grafana (beyla, pyroscope, database_observability)
   * These issues should be tagged `waiting-for-codeowner` in addition to any other triage that is initially possible
   * These issues should retain the `needs-triage` label until the codeowner has responded
