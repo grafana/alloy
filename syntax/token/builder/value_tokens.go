@@ -3,6 +3,7 @@ package builder
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/grafana/alloy/syntax/internal/value"
 	"github.com/grafana/alloy/syntax/scanner"
@@ -38,7 +39,12 @@ func valueTokens(v value.Value) []Token {
 		toks = append(toks, Token{token.NUMBER, v.Number().ToString()})
 
 	case value.TypeString:
-		toks = append(toks, Token{token.STRING, fmt.Sprintf("%q", v.Text())})
+		str := v.Text()
+		if strings.Contains(str, "\"") {
+			toks = append(toks, Token{token.STRING, fmt.Sprintf("`%s`", str)})
+		} else {
+			toks = append(toks, Token{token.STRING, fmt.Sprintf("%q", str)})
+		}
 
 	case value.TypeBool:
 		toks = append(toks, Token{token.STRING, fmt.Sprintf("%v", v.Bool())})

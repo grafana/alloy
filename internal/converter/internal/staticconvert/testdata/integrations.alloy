@@ -760,7 +760,7 @@ prometheus.scrape "integrations_statsd_exporter" {
 prometheus.exporter.gcp "integrations_gcp_exporter" {
 	project_ids      = ["<project_id>"]
 	metrics_prefixes = ["loadbalancing.googleapis.com/https/request_bytes_count", "loadbalancing.googleapis.com/https/total_latencies"]
-	extra_filters    = ["loadbalancing.googleapis.com:resource.labels.backend_target_name=\"sample-value\""]
+	extra_filters    = [`loadbalancing.googleapis.com:resource.labels.backend_target_name="sample-value"`]
 }
 
 discovery.relabel "integrations_gcp_exporter" {
