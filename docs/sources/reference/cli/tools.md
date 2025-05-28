@@ -27,7 +27,7 @@ Replace the following:
 * _`<FLAG>`_: One or more flags that define the input and output of the command.
 * _`<WAL_DIRECTORY>`_: The WAL directory.
 
-The `sample-stats` command reads the Write-Ahead Log (WAL) specified by _`<WAL_DIRECTORY>`+ and collects information on metric samples within it.
+The `sample-stats` command reads the Write-Ahead Log (WAL) specified by _`<WAL_DIRECTORY>`_ and collects information on metric samples within it.
 
 For each metric discovered, `sample-stats` emits:
 
