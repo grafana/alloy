@@ -5,6 +5,8 @@ aliases:
 description: Learn about pyroscope.java
 labels:
   stage: general-availability
+  products:
+    - oss
 title: pyroscope.java
 ---
 
@@ -89,6 +91,8 @@ After process profiling startup, the component detects `libc` type and copies ac
 {{< admonition type="note" >}}
 The `asprof` binary runs with root permissions.
 If you change the `tmp_dir` configuration to something other than `/tmp`, then you must ensure that the directory is only writable by root.
+
+The filesystem mounted at `tmp_dir` in the {{< param "PRODUCT_NAME" >}} and target containers, needs to allow execution of files stored there. Typically a mount option called `noexec` would prevent files from being executed.
 {{< /admonition >}}
 
 ### `targets`

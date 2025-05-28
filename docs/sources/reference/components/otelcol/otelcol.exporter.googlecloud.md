@@ -1,6 +1,9 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.exporter.googlecloud/
 description: Learn about otelcol.exporter.googlecloud
+labels:
+  products:
+    - oss
 title: otelcol.exporter.googlecloud
 ---
 
@@ -37,7 +40,7 @@ Refer to the original [Google Cloud Exporter][] document.
 You can use the following arguments with `otelcol.exporter.googlecloud`:
 
 | Name                        | Type     | Description                                                                                                                                                                                                                        | Default                                       | Required |
-|-----------------------------|----------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------|----------|
+| --------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- | -------- |
 | `project`                   | `string` | GCP project identifier.                                                                                                                                                                                                            | Fetch from credentials                        | no       |
 | `destination_project_quota` | `bool`   | Counts quota for traces and metrics against the project to which the data is sent as opposed to the project associated with the Collector's service account. For example, when setting `project_id` or using multi-project export. | `false`                                       | no       |
 | `user_agent`                | `string` | Override the user agent string sent on requests to Cloud Monitoring (currently only applies to metrics). Specify `{{version}}` to include the application version number.                                                          | `opentelemetry-collector-contrib {{version}}` | no       |
@@ -50,7 +53,7 @@ You can use the following blocks with `otelcol.exporter.googlecloud`:
 |---------------------------------------------------|----------------------------------------------------------------------------|----------|
 | [`debug_metrics`][debug_metrics]                  | Configures the metrics that this component generates to monitor its state. | no       |
 | [`impersonate`][impersonate]                      | Configuration for service account impersonation                            | no       |
-| [`log`][log]                                      | Configuration for sending metrics to Cloud Logging.                        | no       |
+| [`log`][log]                                      | Configuration for sending logs to Cloud Logging.                           | no       |
 | [`metric`][metric]                                | Configuration for sending metrics to Cloud Monitoring.                     | no       |
 | [`metric` > `experimental_wal`][experimental_wal] | Configuration for write ahead log for time series requests.                | no       |
 | [`sending_queue`][sending_queue]                  | Configures batching of data before sending.                                | no       |
@@ -79,14 +82,14 @@ The following arguments are supported:
 |--------------------|----------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|----------|
 | `target_principal` | `string`       | TargetPrincipal is the email address of the service account to impersonate.                                                                                                                  |         | yes      |
 | `delegates`        | `list(string)` | Delegates are the service account email addresses in a delegation chain. Each service account must be granted roles/iam.serviceAccountTokenCreator on the next service account in the chain. | `[]`    | no       |
-| `subject`          | `string`       | Subject is the sub field of a JWT. This field should only be set if you wish to impersonate as a user. This feature is useful when using domain wide delegation.                             | `""`    | no       |
+| `subject`          | `string`       | Subject is the sub field of a JWT. This field should only be set if you need to impersonate as a user. This feature is useful when using domain wide delegation.                             | `""`    | no       |
 
 ### `log`
 
 The following arguments are supported:
 
 | Name                          | Type           | Description                                                                                                                                                                                                | Default                      | Required |
-|-------------------------------|----------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------|----------|
+| ----------------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- | -------- |
 | `compression`                 | `string`       | Compression format for Log gRPC requests. Supported values: [`gzip`].                                                                                                                                      | `""` (no compression)        | no       |
 | `default_log_name`            | `string`       | Defines a default name for log entries. If left unset, and a log entry doesn't have the `gcp.log_name` attribute set, the exporter returns an error processing that entry.                                 | `""`                         | no       |
 | `endpoint`                    | `string`       | Endpoint where log data is sent.                                                                                                                                                                           | `logging.googleapis.com:443` | no       |
@@ -96,7 +99,7 @@ The following arguments are supported:
 | `resource_filters` > `prefix` | `string`       | Match resource keys by prefix.                                                                                                                                                                             | `""`                         | no       |
 | `resource_filters` > `regex`  | `string`       | Match resource keys by regular expression.                                                                                                                                                                 | `""`                         | no       |
 | `service_resource_labels`     | `bool`         | If true, the exporter copies the OTel service.name, service.namespace, and service.instance.id resource attributes into the GCM timeseries metric labels.                                                  | `true`                       | no       |
-| `use_insecure`                | `bool`         | If true, disables gRPC client transport security. Only has effect if Endpoint is not `""`.                                                                                                                 | `false`                      | no       |
+| `use_insecure`                | `bool`         | If true, disables gRPC client transport security. Only has effect if Endpoint isn't `""`.                                                                                                                  | `false`                      | no       |
 
 ### `metric`
 

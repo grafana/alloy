@@ -161,14 +161,25 @@ func (args Services) Convert() (services.DefinitionCriteria, error) {
 			}
 			podLabels[k] = &label
 		}
+		// Convert pod annotations to attributes
+		podAnnotations := map[string]*services.RegexpAttr{}
+		for k, v := range s.Kubernetes.PodAnnotations {
+			annotation, err := stringToRegexpAttr(v)
+			if err != nil {
+				return nil, err
+			}
+			podAnnotations[k] = &annotation
+		}
 
 		attrs = append(attrs, services.Attributes{
-			Name:      s.Name,
-			Namespace: s.Namespace,
-			OpenPorts: ports,
-			Path:      paths,
-			Metadata:  kubernetes,
-			PodLabels: podLabels,
+			Name:           s.Name,
+			Namespace:      s.Namespace,
+			OpenPorts:      ports,
+			Path:           paths,
+			Metadata:       kubernetes,
+			PodLabels:      podLabels,
+			ContainersOnly: s.ContainersOnly,
+			PodAnnotations: podAnnotations,
 		})
 	}
 	return attrs, nil
@@ -336,17 +347,29 @@ func (args Network) Convert(enable bool) beyla.NetworkConfig {
 	return networks
 }
 
-func (args EBPF) Convert() beylaCfg.EBPFTracer {
+func (args EBPF) Convert() (*beylaCfg.EBPFTracer, error) {
 	ebpf := beyla.DefaultConfig.EBPF
 	if args.HTTPRequestTimeout != 0 {
 		ebpf.HTTPRequestTimeout = args.HTTPRequestTimeout
 	}
-	ebpf.ContextPropagationEnabled = args.ContextPropagationEnabled
+
+	if args.ContextPropagation == "" {
+		args.ContextPropagation = "disabled"
+	}
+	var contextPropagationMode beylaCfg.ContextPropagationMode
+	err := contextPropagationMode.UnmarshalText([]byte(args.ContextPropagation))
+	if err != nil {
+		return nil, err
+	}
+	ebpf.ContextPropagation = contextPropagationMode
+
 	ebpf.WakeupLen = args.WakeupLen
 	ebpf.TrackRequestHeaders = args.TrackRequestHeaders
 	ebpf.HighRequestVolume = args.HighRequestVolume
 	ebpf.HeuristicSQLDetect = args.HeuristicSQLDetect
-	return ebpf
+	ebpf.BpfDebug = args.BpfDebug
+	ebpf.ProtocolDebug = args.ProtocolDebug
+	return &ebpf, nil
 }
 
 func (args Filters) Convert() filter.AttributesConfig {
@@ -507,7 +530,13 @@ func (a *Arguments) Convert() (*beyla.Config, error) {
 	cfg.Prometheus = a.Metrics.Convert()
 	cfg.NetworkFlows = a.Metrics.Network.Convert(a.Metrics.hasNetworkFeature())
 	cfg.EnforceSysCaps = a.EnforceSysCaps
-	cfg.EBPF = a.EBPF.Convert()
+
+	ebpf, err := a.EBPF.Convert()
+	if err != nil {
+		return nil, err
+	}
+	cfg.EBPF = *ebpf
+
 	cfg.Filters = a.Filters.Convert()
 	cfg.TracePrinter = debug.TracePrinter(a.TracePrinter)
 
@@ -527,14 +556,19 @@ func (args *Arguments) Validate() error {
 	hasNetworkFeature := args.Metrics.hasNetworkFeature()
 	hasAppFeature := args.Metrics.hasAppFeature()
 
-	// Validate TracePrinter
+	isTracingEnabled := args.TracePrinter != "" && args.TracePrinter != string(debug.TracePrinterDisabled)
+	hasOutputConfig := args.Output != nil && args.Output.Traces != nil
+
 	if args.TracePrinter == "" {
 		args.TracePrinter = string(debug.TracePrinterDisabled)
 	} else if !debug.TracePrinter(args.TracePrinter).Valid() {
 		return fmt.Errorf("trace_printer: invalid value %q. Valid values are: disabled, counter, text, json, json_indent", args.TracePrinter)
 	}
 
-	// Services are required only when application observability is enabled
+	if err := args.Metrics.Validate(); err != nil {
+		return err
+	}
+
 	if hasAppFeature {
 		if len(args.Discovery.Services) == 0 {
 			return fmt.Errorf("discovery.services is required when application features are enabled")
@@ -544,21 +578,16 @@ func (args *Arguments) Validate() error {
 		}
 	}
 
-	// Only validate exclude_services if they are defined (empty is valid)
 	if len(args.Discovery.ExcludeServices) > 0 {
 		if err := args.Discovery.ExcludeServices.Validate(); err != nil {
 			return fmt.Errorf("invalid exclude_services configuration: %s", err.Error())
 		}
 	}
 
-	// Check that at least one feature type is enabled
-	if !hasNetworkFeature && !hasAppFeature {
-		return fmt.Errorf("metrics.features must include at least one of: network, application, application_span, application_service_graph, or application_process")
+	if !hasNetworkFeature && !hasAppFeature && !isTracingEnabled && !hasOutputConfig {
+		return fmt.Errorf("either metrics.features must include at least one of: [network, application, application_span, application_service_graph, application_process], or tracing must be enabled via trace_printer or output section")
 	}
 
-	if err := args.Metrics.Validate(); err != nil {
-		return err
-	}
 	return nil
 }
 

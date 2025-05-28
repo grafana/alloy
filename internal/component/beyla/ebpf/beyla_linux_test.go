@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/grafana/beyla/v2/pkg/beyla"
+	"github.com/grafana/beyla/v2/pkg/config"
 	"github.com/grafana/beyla/v2/pkg/export/attributes"
 	"github.com/grafana/beyla/v2/pkg/export/debug"
 	"github.com/grafana/beyla/v2/pkg/filter"
@@ -23,6 +24,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/syntax"
 )
 
@@ -97,10 +99,12 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 		ebpf {
 			wakeup_len = 10
 			track_request_headers = true
-			enable_context_propagation = true
+			context_propagation = "ip"
 			http_request_timeout = "10s"
 			high_request_volume = true
 			heuristic_sql_detect = true
+			bpf_debug = false
+			protocol_debug_print = false
 		}
 		filters {
 			application {
@@ -162,10 +166,12 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 	require.True(t, cfg.EnforceSysCaps)
 	require.Equal(t, 10, cfg.EBPF.WakeupLen)
 	require.True(t, cfg.EBPF.TrackRequestHeaders)
-	require.True(t, cfg.EBPF.ContextPropagationEnabled)
+	require.Equal(t, cfg.EBPF.ContextPropagation, config.ContextPropagationIPOptionsOnly)
 	require.Equal(t, 10*time.Second, cfg.EBPF.HTTPRequestTimeout)
 	require.True(t, cfg.EBPF.HighRequestVolume)
 	require.True(t, cfg.EBPF.HeuristicSQLDetect)
+	require.False(t, cfg.EBPF.BpfDebug)
+	require.False(t, cfg.EBPF.ProtocolDebug)
 	require.Len(t, cfg.Filters.Application, 1)
 	require.Len(t, cfg.Filters.Network, 1)
 	require.Equal(t, filter.MatchDefinition{NotMatch: "UDP"}, cfg.Filters.Application["transport"])
@@ -344,9 +350,10 @@ func TestConvert_Discovery(t *testing.T) {
 	args := Discovery{
 		Services: []Service{
 			{
-				Name:      "test",
-				Namespace: "default",
-				OpenPorts: "80",
+				Name:           "test",
+				Namespace:      "default",
+				OpenPorts:      "80",
+				ContainersOnly: true,
 			},
 			{
 				Kubernetes: KubernetesService{
@@ -364,6 +371,7 @@ func TestConvert_Discovery(t *testing.T) {
 					DaemonSetName:   "test",
 					OwnerName:       "test",
 					PodLabels:       map[string]string{"test": "test"},
+					PodAnnotations:  map[string]string{"test": "test"},
 				},
 			},
 		},
@@ -382,6 +390,7 @@ func TestConvert_Discovery(t *testing.T) {
 	require.Equal(t, "test", config.Services[0].Name)
 	require.Equal(t, "default", config.Services[0].Namespace)
 	require.Equal(t, services.PortEnum{Ranges: []services.PortRange{{Start: 80, End: 0}}}, config.Services[0].OpenPorts)
+	require.True(t, config.Services[0].ContainersOnly)
 	require.True(t, config.Services[1].Metadata[services.AttrNamespace].IsSet())
 	require.True(t, config.Services[1].Metadata[services.AttrDeploymentName].IsSet())
 	_, exists := config.Services[1].Metadata[services.AttrDaemonSetName]
@@ -394,6 +403,7 @@ func TestConvert_Discovery(t *testing.T) {
 	require.True(t, config.Services[2].Metadata[services.AttrDaemonSetName].IsSet())
 	require.True(t, config.Services[2].Metadata[services.AttrOwnerName].IsSet())
 	require.True(t, config.Services[2].PodLabels["test"].IsSet())
+	require.True(t, config.Services[2].PodAnnotations["test"].IsSet())
 	require.NoError(t, config.Services.Validate())
 	require.Len(t, config.ExcludeServices, 1)
 	require.Equal(t, "test", config.ExcludeServices[0].Name)
@@ -450,6 +460,9 @@ func TestConvert_EBPF(t *testing.T) {
 		TrackRequestHeaders: true,
 		HighRequestVolume:   true,
 		HeuristicSQLDetect:  true,
+		ContextPropagation:  "headers",
+		BpfDebug:            true,
+		ProtocolDebug:       true,
 	}
 
 	expectedConfig := beyla.DefaultConfig.EBPF
@@ -457,11 +470,14 @@ func TestConvert_EBPF(t *testing.T) {
 	expectedConfig.TrackRequestHeaders = true
 	expectedConfig.HighRequestVolume = true
 	expectedConfig.HeuristicSQLDetect = true
-	expectedConfig.ContextPropagationEnabled = false
+	expectedConfig.ContextPropagation = config.ContextPropagationHeadersOnly
+	expectedConfig.BpfDebug = true
+	expectedConfig.ProtocolDebug = true
 
-	config := args.Convert()
+	config, err := args.Convert()
+	require.NoError(t, err)
 
-	require.Equal(t, expectedConfig, config)
+	require.Equal(t, expectedConfig, *config)
 }
 
 func TestConvert_Filters(t *testing.T) {
@@ -638,7 +654,7 @@ func TestArguments_Validate(t *testing.T) {
 		{
 			name:    "empty arguments",
 			args:    Arguments{},
-			wantErr: "metrics.features must include at least one of: network, application",
+			wantErr: "either metrics.features must include at least one of: [network, application, application_span, application_service_graph, application_process], or tracing must be enabled",
 		},
 		{
 			name: "valid network-only configuration",
@@ -696,7 +712,7 @@ func TestArguments_Validate(t *testing.T) {
 					Features: []string{"invalid"},
 				},
 			},
-			wantErr: "metrics.features must include at least one of: network, application, application_span, application_service_graph, or application_process",
+			wantErr: "metrics.features: invalid value \"invalid\"",
 		},
 		{
 			name: "valid trace printer",
@@ -724,6 +740,30 @@ func TestArguments_Validate(t *testing.T) {
 				},
 			},
 			wantErr: `trace_printer: invalid value "invalid". Valid values are: disabled, counter, text, json, json_indent`,
+		},
+		{
+			name: "valid tracing-only configuration with trace_printer",
+			args: Arguments{
+				TracePrinter: "json",
+				// No metrics features defined
+			},
+		},
+		{
+			name: "valid tracing-only configuration with output section",
+			args: Arguments{
+				Output: &otelcol.ConsumerArguments{
+					Traces: []otelcol.Consumer{},
+				},
+				// No metrics features defined
+			},
+		},
+		{
+			name: "invalid configuration with disabled tracing and no metrics",
+			args: Arguments{
+				TracePrinter: "disabled",
+				// No metrics features and disabled tracing
+			},
+			wantErr: "either metrics.features must include at least one of: [network, application, application_span, application_service_graph, application_process], or tracing must be enabled",
 		},
 	}
 

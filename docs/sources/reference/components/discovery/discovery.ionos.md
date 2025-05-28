@@ -5,6 +5,8 @@ aliases:
 description: Learn about discovery.ionos
 labels:
   stage: general-availability
+  products:
+    - oss
 title: discovery.ionos
 ---
 
@@ -101,9 +103,9 @@ The `tls_config` block configures TLS settings for connecting to the endpoint.
 
 The following fields are exported and can be referenced by other components:
 
-Name      | Type                | Description
-----------|---------------------|--------------------------------------------------------
-`targets` | `list(map(string))` | The set of targets discovered from the IONOS Cloud API.
+| Name      | Type                | Description                                             |
+| --------- | ------------------- | ------------------------------------------------------- |
+| `targets` | `list(map(string))` | The set of targets discovered from the IONOS Cloud API. |
 
 Each target includes the following labels:
 

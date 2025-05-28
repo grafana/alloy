@@ -3,7 +3,7 @@ prometheus.exporter.blackbox "blackbox_metrics" {
   targets = [
     {
       "name" = "t1",
-      "address" = "localhost:9009", // use mimir as a target
+      "address" = "mimir:9009", // use mimir as a target
       "module" = "http_2xx",
     },
   ]
@@ -18,7 +18,7 @@ prometheus.scrape "blackbox_metrics" {
 
 prometheus.remote_write "blackbox_metrics" {
   endpoint {
-    url = "http://localhost:9009/api/v1/push"
+    url = "http://mimir:9009/api/v1/push"
     metadata_config {
         send_interval = "1s"
     }
@@ -35,7 +35,7 @@ prometheus.exporter.blackbox "blackbox_metrics2" {
   config = "{ modules: { http_2xx: { prober: http, timeout: 5s } } }"
   target {
     name = "t1"
-    address = "localhost:9009" // use mimir as a target
+    address = "mimir:9009" // use mimir as a target
     module = "http_2xx"
   }
 }
@@ -49,7 +49,7 @@ prometheus.scrape "blackbox_metrics2" {
 
 prometheus.remote_write "blackbox_metrics2" {
   endpoint {
-    url = "http://localhost:9009/api/v1/push"
+    url = "http://mimir:9009/api/v1/push"
     metadata_config {
         send_interval = "1s"
     }

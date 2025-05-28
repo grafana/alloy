@@ -4,7 +4,8 @@ import (
 	"fmt"
 
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/internal/importsource"
+	"github.com/grafana/alloy/internal/nodeconf/foreach"
+	"github.com/grafana/alloy/internal/nodeconf/importsource"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/diag"
 )
@@ -14,12 +15,11 @@ const (
 	exportBlockID   = "export"
 	loggingBlockID  = "logging"
 	tracingBlockID  = "tracing"
-	foreachID       = "foreach"
 )
 
 // Add config blocks that are not GA. Config blocks that are not specified here are considered GA.
 var configBlocksUnstable = map[string]featuregate.Stability{
-	foreachID: featuregate.StabilityExperimental,
+	foreach.BlockName: foreach.StabilityLevel,
 }
 
 // NewConfigNode creates a new ConfigNode from an initial ast.BlockStmt.
@@ -46,9 +46,9 @@ func NewConfigNode(block *ast.BlockStmt, globals ComponentGlobals, customReg *Cu
 		return NewLoggingConfigNode(block, globals), nil
 	case tracingBlockID:
 		return NewTracingConfigNode(block, globals), nil
-	case importsource.BlockImportFile, importsource.BlockImportString, importsource.BlockImportHTTP, importsource.BlockImportGit:
+	case importsource.BlockNameFile, importsource.BlockNameString, importsource.BlockNameHTTP, importsource.BlockNameGit:
 		return NewImportConfigNode(block, globals, importsource.GetSourceType(block.GetBlockName())), nil
-	case foreachID:
+	case foreach.BlockName:
 		return NewForeachConfigNode(block, globals, customReg), nil
 	default:
 		diags.Add(diag.Diagnostic{

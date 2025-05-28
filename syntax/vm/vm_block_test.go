@@ -705,7 +705,7 @@ func TestVM_Block_UnmarshalToMap(t *testing.T) {
 					field_a = 12345
 				}
 			`,
-			expectError: `block "some.settings" requires non-empty label`,
+			expectError: `block "some.settings" requires empty label`,
 		},
 
 		{

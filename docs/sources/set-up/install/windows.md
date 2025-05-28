@@ -26,7 +26,7 @@ To do a standard graphical install of {{< param "PRODUCT_NAME" >}} on Windows, p
 
 1. Double-click on `alloy-installer-windows-amd64.exe` to install {{< param "PRODUCT_NAME" >}}.
 
-{{< param "PRODUCT_NAME" >}} is installed into the default directory `%PROGRAMFILES64%\GrafanaLabs\Alloy`.
+{{< param "PRODUCT_NAME" >}} is installed into the default directory `%PROGRAMFILES%\GrafanaLabs\Alloy`.
 
 ## Silent install
 
@@ -66,7 +66,7 @@ The `--windows.priority` flag is in [Public preview][stability] and is not cover
 The `/RUNTIMEPRIORITY` installation option sets this flag, and if Alloy is not running with an appropriate stability level it will fail to start.
 
 [stability]: https://grafana.com/docs/release-life-cycle/
-[backward compatibility]: ../introduction/backward-compatibility/
+[backward compatibility]: ../../../introduction/backward-compatibility/
 {{< /admonition >}}
 
 ## Service Configuration
@@ -78,7 +78,7 @@ The `/RUNTIMEPRIORITY` installation option sets this flag, and if Alloy is not r
 
 ## Uninstall
 
-You can uninstall {{< param "PRODUCT_NAME" >}} with Windows Remove Programs or `%PROGRAMFILES64%\GrafanaLabs\Alloy\uninstaller.exe`.
+You can uninstall {{< param "PRODUCT_NAME" >}} with Windows Add or Remove Programs or `%PROGRAMFILES%\GrafanaLabs\Alloy\uninstall.exe`.
 Uninstalling {{< param "PRODUCT_NAME" >}} stops the service and removes it from disk.
 This includes any configuration files in the installation directory.
 

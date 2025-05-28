@@ -1,7 +1,7 @@
 package controller
 
 import (
-	"github.com/grafana/alloy/internal/runtime/internal/dag"
+	"github.com/grafana/alloy/internal/dag"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/vm"
 )

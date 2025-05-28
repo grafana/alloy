@@ -95,7 +95,7 @@ func (sn *ServiceNode) Evaluate(scope *vm.Scope) error {
 		return nil // Do nothing; no configuration.
 	}
 
-	argsPointer := reflect.New(reflect.TypeOf(sn.def.ConfigType)).Interface()
+	argsPointer := sn.def.CloneConfig()
 
 	if err := sn.eval.Evaluate(scope, argsPointer); err != nil {
 		return fmt.Errorf("decoding configuration: %w", err)

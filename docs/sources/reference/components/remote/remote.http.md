@@ -5,6 +5,8 @@ aliases:
 description: Learn about remote.http
 labels:
   stage: general-availability
+  products:
+    - oss
 title: remote.http
 ---
 

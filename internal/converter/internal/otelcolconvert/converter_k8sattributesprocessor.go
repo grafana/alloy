@@ -55,9 +55,10 @@ func toK8SAttributesProcessor(state *State, id componentstatus.InstanceID, cfg *
 		AuthType:    string(cfg.AuthType),
 		Passthrough: cfg.Passthrough,
 		ExtractConfig: k8sattributes.ExtractConfig{
-			Metadata:    cfg.Extract.Metadata,
-			Annotations: toFilterExtract(cfg.Extract.Annotations),
-			Labels:      toFilterExtract(cfg.Extract.Labels),
+			Metadata:        cfg.Extract.Metadata,
+			Annotations:     toFilterExtract(cfg.Extract.Annotations),
+			Labels:          toFilterExtract(cfg.Extract.Labels),
+			OtelAnnotations: cfg.Extract.OtelAnnotations,
 		},
 		Filter: k8sattributes.FilterConfig{
 			Node:      cfg.Filter.Node,

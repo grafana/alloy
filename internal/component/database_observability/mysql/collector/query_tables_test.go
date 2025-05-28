@@ -7,10 +7,11 @@ import (
 	"testing"
 	"time"
 
-	loki_fake "github.com/grafana/alloy/internal/component/common/loki/client/fake"
-	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/prometheus/common/model"
 	"go.uber.org/goleak"
+
+	loki_fake "github.com/grafana/alloy/internal/component/common/loki/client/fake"
+	"github.com/grafana/alloy/internal/component/database_observability"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/go-kit/log"
@@ -21,11 +22,10 @@ func TestQueryTables(t *testing.T) {
 	defer goleak.VerifyNone(t)
 
 	testcases := []struct {
-		name                  string
-		eventStatementsRows   [][]driver.Value
-		preparedStatementRows [][]driver.Value
-		logsLabels            []model.LabelSet
-		logsLines             []string
+		name                string
+		eventStatementsRows [][]driver.Value
+		logsLabels          []model.LabelSet
+		logsLines           []string
 	}{
 		{
 			name: "select query",
@@ -39,7 +39,7 @@ func TestQueryTables(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
 			},
 		},
 		{
@@ -54,7 +54,7 @@ func TestQueryTables(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
 			},
 		},
 		{
@@ -69,7 +69,7 @@ func TestQueryTables(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
 			},
 		},
 		{
@@ -84,7 +84,7 @@ func TestQueryTables(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
 			},
 		},
 		{
@@ -100,8 +100,8 @@ func TestQueryTables(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="abc123" table="other_table"`,
-				`schema="some_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="some_schema" digest="abc123" table="other_table"`,
+				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
 			},
 		},
 		{
@@ -121,7 +121,7 @@ func TestQueryTables(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="abc123" table="another_table"`,
+				`level="info" schema="some_schema" digest="abc123" table="another_table"`,
 			},
 		},
 		{
@@ -136,7 +136,7 @@ func TestQueryTables(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
 			},
 		},
 		{
@@ -178,7 +178,7 @@ func TestQueryTables(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
 			},
 		},
 		{
@@ -199,8 +199,8 @@ func TestQueryTables(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="abc123" table="some_table"`,
-				`schema="other_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="other_schema" digest="abc123" table="some_table"`,
 			},
 		},
 		{
@@ -217,9 +217,9 @@ func TestQueryTables(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="abc123" table="employees_emea"`,
-				`schema="some_schema" digest="abc123" table="employees_us_east"`,
-				`schema="some_schema" digest="abc123" table="employees_us_west"`,
+				`level="info" schema="some_schema" digest="abc123" table="employees_emea"`,
+				`level="info" schema="some_schema" digest="abc123" table="employees_us_east"`,
+				`level="info" schema="some_schema" digest="abc123" table="employees_us_west"`,
 			},
 		},
 		{
@@ -234,7 +234,7 @@ func TestQueryTables(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
 			},
 		},
 		{
@@ -260,7 +260,7 @@ func TestQueryTables(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
 			},
 		},
 		{
@@ -275,7 +275,7 @@ func TestQueryTables(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
 			},
 		},
 		{
@@ -288,64 +288,6 @@ func TestQueryTables(t *testing.T) {
 			}},
 			logsLabels: []model.LabelSet{},
 			logsLines:  []string{},
-		},
-		{
-			name: "select prepared statement",
-			preparedStatementRows: [][]driver.Value{{
-				"select * from some_table where id = 1",
-				"some_schema",
-			}},
-			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
-			},
-			logsLines: []string{
-				`schema="some_schema" digest="e0873cf52305aa7debc3916440a13e21db318b2be0a2683a4cef86f7f83d9be2" table="some_table"`,
-			},
-		},
-		{
-			name: "select prepared statement with parameters",
-			preparedStatementRows: [][]driver.Value{{
-				"select * from some_table where id = ?",
-				"some_schema",
-			}},
-			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
-			},
-			logsLines: []string{
-				`schema="some_schema" digest="e0873cf52305aa7debc3916440a13e21db318b2be0a2683a4cef86f7f83d9be2" table="some_table"`,
-			},
-		},
-		{
-			name: "prepared statements with same digest",
-			preparedStatementRows: [][]driver.Value{{
-				"select * from some_table where created_at > date_sub(now(), interval 1 day)",
-				"some_schema",
-			}, {
-				"select * from some_table where created_at > date_sub(now(), interval 30 day)",
-				"some_schema",
-			}},
-			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
-			},
-			logsLines: []string{
-				`schema="some_schema" digest="eaa4a5f19747182443e826effc1627ffb298e17c7f4a462ee7ad0202e199a407" table="some_table"`,
-			},
-		},
-		{
-			name: "prepared statements parse error",
-			preparedStatementRows: [][]driver.Value{{
-				"not valid sql",
-				"some_schema",
-			}, {
-				"select * from some_table where id = ?",
-				"some_schema",
-			}},
-			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
-			},
-			logsLines: []string{
-				`schema="some_schema" digest="e0873cf52305aa7debc3916440a13e21db318b2be0a2683a4cef86f7f83d9be2" table="some_table"`,
-			},
 		},
 	}
 
@@ -365,7 +307,6 @@ func TestQueryTables(t *testing.T) {
 				CollectInterval: time.Second,
 				EntryHandler:    lokiClient,
 				Logger:          log.NewLogfmtLogger(os.Stderr),
-				UseTiDBParser:   true,
 			})
 			require.NoError(t, err)
 			require.NotNil(t, collector)
@@ -379,16 +320,6 @@ func TestQueryTables(t *testing.T) {
 						"query_sample_text",
 					}).AddRows(
 						tc.eventStatementsRows...,
-					),
-				)
-
-			mock.ExpectQuery(selectPreparedStatements).WithoutArgs().RowsWillBeClosed().
-				WillReturnRows(
-					sqlmock.NewRows([]string{
-						"sql_text",
-						"current_schema",
-					}).AddRows(
-						tc.preparedStatementRows...,
 					),
 				)
 
@@ -422,7 +353,7 @@ func TestQueryTables(t *testing.T) {
 func TestQueryTablesSQLDriverErrors(t *testing.T) {
 	defer goleak.VerifyNone(t)
 
-	t.Run("recoverable sql error in result set (query samples)", func(t *testing.T) {
+	t.Run("recoverable sql error in result set", func(t *testing.T) {
 		t.Parallel()
 
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
@@ -437,7 +368,6 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
-			UseTiDBParser:   true,
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -465,14 +395,6 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 				),
 			)
 
-		mock.ExpectQuery(selectPreparedStatements).WithoutArgs().RowsWillBeClosed().
-			WillReturnRows(
-				sqlmock.NewRows([]string{
-					"sql_text",
-					"current_schema",
-				}),
-			)
-
 		err = collector.Start(t.Context())
 		require.NoError(t, err)
 
@@ -492,10 +414,10 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		require.Equal(t, `schema="some_schema" digest="abc123" table="some_table"`, lokiEntries[0].Line)
+		require.Equal(t, `level="info" schema="some_schema" digest="abc123" table="some_table"`, lokiEntries[0].Line)
 	})
 
-	t.Run("recoverable sql error in result set (prepared statements)", func(t *testing.T) {
+	t.Run("result set iteration error", func(t *testing.T) {
 		t.Parallel()
 
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
@@ -510,78 +432,6 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
-			UseTiDBParser:   true,
-		})
-		require.NoError(t, err)
-		require.NotNil(t, collector)
-
-		mock.ExpectQuery(selectQueryTablesSamples).WithoutArgs().RowsWillBeClosed().
-			WillReturnRows(
-				sqlmock.NewRows([]string{
-					"digest",
-					"digest_text",
-					"schema_name",
-					"query_sample_text",
-				}),
-			)
-
-		mock.ExpectQuery(selectPreparedStatements).WithoutArgs().RowsWillBeClosed().
-			WillReturnRows(
-				sqlmock.NewRows([]string{
-					"sql_text", // not enough columns
-				}).AddRow(
-					"abc123",
-				))
-
-		mock.ExpectQuery(selectPreparedStatements).WithoutArgs().RowsWillBeClosed().
-			WillReturnRows(
-				sqlmock.NewRows([]string{
-					"sql_text",
-					"current_schema",
-				}).AddRow(
-					"SELECT * FROM `some_table` WHERE `id` = ?",
-					"some_schema",
-				),
-			)
-
-		err = collector.Start(t.Context())
-		require.NoError(t, err)
-
-		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) == 1
-		}, 5*time.Second, 100*time.Millisecond)
-
-		collector.Stop()
-		lokiClient.Stop()
-
-		require.Eventually(t, func() bool {
-			return collector.Stopped()
-		}, 5*time.Second, 100*time.Millisecond)
-
-		err = mock.ExpectationsWereMet()
-		require.NoError(t, err)
-
-		lokiEntries := lokiClient.Received()
-		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		require.Equal(t, `schema="some_schema" digest="e0873cf52305aa7debc3916440a13e21db318b2be0a2683a4cef86f7f83d9be2" table="some_table"`, lokiEntries[0].Line)
-	})
-
-	t.Run("result set iteration error (query samples)", func(t *testing.T) {
-		t.Parallel()
-
-		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
-		require.NoError(t, err)
-		defer db.Close()
-
-		lokiClient := loki_fake.NewClient(func() {})
-
-		collector, err := NewQueryTables(QueryTablesArguments{
-			DB:              db,
-			InstanceKey:     "mysql-db",
-			CollectInterval: time.Second,
-			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
-			UseTiDBParser:   true,
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -606,14 +456,6 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 				).RowError(1, fmt.Errorf("rs error")), // error on second row
 			)
 
-		mock.ExpectQuery(selectPreparedStatements).WithoutArgs().RowsWillBeClosed().
-			WillReturnRows(
-				sqlmock.NewRows([]string{
-					"sql_text",
-					"current_schema",
-				}),
-			)
-
 		err = collector.Start(t.Context())
 		require.NoError(t, err)
 
@@ -633,10 +475,10 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		require.Equal(t, `schema="some_schema" digest="abc123" table="some_table"`, lokiEntries[0].Line)
+		require.Equal(t, `level="info" schema="some_schema" digest="abc123" table="some_table"`, lokiEntries[0].Line)
 	})
 
-	t.Run("result set iteration error (prepared statements)", func(t *testing.T) {
+	t.Run("connection error recovery", func(t *testing.T) {
 		t.Parallel()
 
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
@@ -651,73 +493,6 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
-			UseTiDBParser:   true,
-		})
-		require.NoError(t, err)
-		require.NotNil(t, collector)
-
-		mock.ExpectQuery(selectQueryTablesSamples).WithoutArgs().RowsWillBeClosed().
-			WillReturnRows(
-				sqlmock.NewRows([]string{
-					"digest",
-					"digest_text",
-					"schema_name",
-					"query_sample_text",
-				}),
-			)
-
-		mock.ExpectQuery(selectPreparedStatements).WithoutArgs().RowsWillBeClosed().
-			WillReturnRows(
-				sqlmock.NewRows([]string{
-					"sql_text",
-					"current_schema",
-				}).AddRow(
-					"SELECT * FROM `some_table` WHERE `id` = ?",
-					"some_schema",
-				).AddRow(
-					"SELECT * FROM `another_table` WHERE `id` = ?",
-					"another_schema",
-				).RowError(1, fmt.Errorf("rs error")), // error on second row
-			)
-
-		err = collector.Start(t.Context())
-		require.NoError(t, err)
-
-		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) == 1
-		}, 5*time.Second, 100*time.Millisecond)
-
-		collector.Stop()
-		lokiClient.Stop()
-
-		require.Eventually(t, func() bool {
-			return collector.Stopped()
-		}, 5*time.Second, 100*time.Millisecond)
-
-		err = mock.ExpectationsWereMet()
-		require.NoError(t, err)
-
-		lokiEntries := lokiClient.Received()
-		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		require.Equal(t, `schema="some_schema" digest="e0873cf52305aa7debc3916440a13e21db318b2be0a2683a4cef86f7f83d9be2" table="some_table"`, lokiEntries[0].Line)
-	})
-
-	t.Run("connection error recovery (query samples)", func(t *testing.T) {
-		t.Parallel()
-
-		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
-		require.NoError(t, err)
-		defer db.Close()
-
-		lokiClient := loki_fake.NewClient(func() {})
-
-		collector, err := NewQueryTables(QueryTablesArguments{
-			DB:              db,
-			InstanceKey:     "mysql-db",
-			CollectInterval: time.Second,
-			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
-			UseTiDBParser:   true,
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -739,14 +514,6 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 				),
 			)
 
-		mock.ExpectQuery(selectPreparedStatements).WithoutArgs().RowsWillBeClosed().
-			WillReturnRows(
-				sqlmock.NewRows([]string{
-					"sql_text",
-					"current_schema",
-				}),
-			)
-
 		err = collector.Start(t.Context())
 		require.NoError(t, err)
 
@@ -766,71 +533,6 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		require.Equal(t, `schema="some_schema" digest="abc123" table="some_table"`, lokiEntries[0].Line)
-	})
-
-	t.Run("connection error recovery (prepared statements)", func(t *testing.T) {
-		t.Parallel()
-
-		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
-		require.NoError(t, err)
-		defer db.Close()
-
-		lokiClient := loki_fake.NewClient(func() {})
-
-		collector, err := NewQueryTables(QueryTablesArguments{
-			DB:              db,
-			InstanceKey:     "mysql-db",
-			CollectInterval: time.Second,
-			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
-			UseTiDBParser:   true,
-		})
-		require.NoError(t, err)
-		require.NotNil(t, collector)
-
-		mock.ExpectQuery(selectQueryTablesSamples).WithoutArgs().RowsWillBeClosed().
-			WillReturnRows(
-				sqlmock.NewRows([]string{
-					"digest",
-					"digest_text",
-					"schema_name",
-					"query_sample_text",
-				}),
-			)
-
-		mock.ExpectQuery(selectPreparedStatements).WithoutArgs().WillReturnError(fmt.Errorf("connection error"))
-
-		mock.ExpectQuery(selectPreparedStatements).WithoutArgs().RowsWillBeClosed().
-			WillReturnRows(
-				sqlmock.NewRows([]string{
-					"sql_text",
-					"current_schema",
-				}).AddRow(
-					"SELECT * FROM `some_table` WHERE `id` = ?",
-					"some_schema",
-				),
-			)
-
-		err = collector.Start(t.Context())
-		require.NoError(t, err)
-
-		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) == 1
-		}, 5*time.Second, 100*time.Millisecond)
-
-		collector.Stop()
-		lokiClient.Stop()
-
-		require.Eventually(t, func() bool {
-			return collector.Stopped()
-		}, 5*time.Second, 100*time.Millisecond)
-
-		err = mock.ExpectationsWereMet()
-		require.NoError(t, err)
-
-		lokiEntries := lokiClient.Received()
-		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		require.Equal(t, `schema="some_schema" digest="e0873cf52305aa7debc3916440a13e21db318b2be0a2683a4cef86f7f83d9be2" table="some_table"`, lokiEntries[0].Line)
+		require.Equal(t, `level="info" schema="some_schema" digest="abc123" table="some_table"`, lokiEntries[0].Line)
 	})
 }

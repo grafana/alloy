@@ -287,6 +287,24 @@ func TestCollectionNonArrayValue(t *testing.T) {
 	require.ErrorContains(t, foreachConfigNode.Evaluate(vm.NewScope(make(map[string]interface{}))), `"aaa" should be array, got string`)
 }
 
+func TestModuleControllerUpdate(t *testing.T) {
+	config := `foreach "default" {
+		collection = [1, 2, 3]
+		var = "num"
+		template {
+		}
+	}`
+	foreachConfigNode := NewForeachConfigNode(getBlockFromConfig(t, config), getComponentGlobals(t), nil)
+	require.NoError(t, foreachConfigNode.Evaluate(vm.NewScope(make(map[string]interface{}))))
+	customComponentIds := foreachConfigNode.moduleController.(*ModuleControllerMock).CustomComponents
+	require.ElementsMatch(t, customComponentIds, []string{"foreach_1_1", "foreach_2_1", "foreach_3_1"})
+
+	// Re-evaluate, the module controller should still contain the same custom components
+	require.NoError(t, foreachConfigNode.Evaluate(vm.NewScope(make(map[string]interface{}))))
+	customComponentIds = foreachConfigNode.moduleController.(*ModuleControllerMock).CustomComponents
+	require.ElementsMatch(t, customComponentIds, []string{"foreach_1_1", "foreach_2_1", "foreach_3_1"})
+}
+
 func getBlockFromConfig(t *testing.T, config string) *ast.BlockStmt {
 	file, err := parser.ParseFile("", []byte(config))
 	require.NoError(t, err)

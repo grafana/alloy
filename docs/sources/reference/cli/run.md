@@ -19,11 +19,11 @@ alloy run [<FLAG> ...] <PATH_NAME>
 Replace the following:
 
 * _`<FLAG>`_: One or more flags that define the input and output of the command.
-* _`<PATH_NAME>`_: Required. The {{< param "PRODUCT_NAME" >}} configuration file/directory path.
+* _`<PATH_NAME>`_: Required. The {{< param "PRODUCT_NAME" >}} configuration file or directory path.
 
 If the _`<PATH_NAME>`_ argument isn't provided, or if the configuration path can't be loaded or contains errors during the initial load, the `run` command immediately exits and shows an error message.
 
-If you give the _`<PATH_NAME>`_ argument a directory path, {{< param "PRODUCT_NAME" >}} finds `*.alloy` files (ignoring nested directories) and loads them as a single configuration source.
+If you provide a directory path for  the _`<PATH_NAME>`_, {{< param "PRODUCT_NAME" >}} finds `*.alloy` files, ignoring nested directories, and loads them as a single configuration source.
 However, component names must be **unique** across all {{< param "PRODUCT_NAME" >}} configuration files, and configuration blocks must not be repeated.
 
 {{< param "PRODUCT_NAME" >}} continues to run if subsequent reloads of the configuration file fail, potentially marking components as unhealthy depending on the nature of the failure.
@@ -57,10 +57,10 @@ The following flags are supported:
 * `--cluster.tls-server-name`: Server name used for peer communication over TLS.
 * `--cluster.wait-for-size`: Wait for the cluster to reach the specified number of instances before allowing components that use clustering to begin processing. Zero means disabled (default `0`).
 * `--cluster.wait-timeout`: Maximum duration to wait for minimum cluster size before proceeding with available nodes. Zero means wait forever, no timeout (default `0`).
-* `--config.format`: The format of the source file. Supported formats: `alloy`, `otelcol`, `prometheus`, `promtail`, `static` (default `"alloy"`).
-* `--config.bypass-conversion-errors`: Enable bypassing errors when converting (default `false`).
+* `--config.format`: Specifies the source file format. Supported formats: `alloy`, `otelcol`, `prometheus`, `promtail`, and `static` (default `"alloy"`).
+* `--config.bypass-conversion-errors`: Enable bypassing errors during conversion (default `false`).
 * `--config.extra-args`: Extra arguments from the original format used by the converter.
-* `--stability.level`: The minimum permitted stability level of functionality to run. Supported values: `experimental`, `public-preview`, `generally-available` (default `"generally-available"`).
+* `--stability.level`: The minimum permitted stability level of functionality. Supported values: `experimental`, `public-preview`, and `generally-available` (default `"generally-available"`).
 * `--feature.community-components.enabled`: Enable community components (default `false`).
 * `--feature.prometheus.metric-validation-scheme`: Prometheus metric validation scheme to use. Supported values: `legacy`, `utf-8`. NOTE: this is an experimental flag and may be removed in future releases (default `"legacy"`).
 * `--windows.priority`: The priority to set for the {{< param "PRODUCT_NAME" >}} process when running on Windows. This is only available on Windows. Supported values: `above_normal`, `below_normal`, `normal`, `high`, `idle`, or `realtime` (default `"normal"`).
@@ -69,7 +69,7 @@ The following flags are supported:
 The `--windows.priority` flag is in [Public preview][] and is not covered by {{< param "FULL_PRODUCT_NAME" >}} [backward compatibility][] guarantees.
 
 [Public preview]: https://grafana.com/docs/release-life-cycle/
-[backward compatibility]: ../introduction/backward-compatibility/
+[backward compatibility]: ../../../introduction/backward-compatibility/
 {{< /admonition >}}
 
 ## Update the configuration file

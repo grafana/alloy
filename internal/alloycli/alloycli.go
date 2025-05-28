@@ -28,6 +28,7 @@ func Run() {
 		fmtCommand(),
 		runCommand(),
 		toolsCommand(),
+		validateCommand(),
 	)
 
 	if err := cmd.Execute(); err != nil {

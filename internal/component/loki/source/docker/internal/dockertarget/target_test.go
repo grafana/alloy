@@ -15,7 +15,6 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
 
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/go-kit/log"
@@ -43,11 +42,11 @@ func TestDockerTarget(t *testing.T) {
 			require.NoError(t, err)
 		default:
 			w.Header().Set("Content-Type", "application/json")
-			info := types.ContainerJSON{
-				ContainerJSONBase: &types.ContainerJSONBase{},
-				Mounts:            []types.MountPoint{},
+			info := container.InspectResponse{
+				ContainerJSONBase: &container.ContainerJSONBase{},
+				Mounts:            []container.MountPoint{},
 				Config:            &container.Config{Tty: false},
-				NetworkSettings:   &types.NetworkSettings{},
+				NetworkSettings:   &container.NetworkSettings{},
 			}
 			err := json.NewEncoder(w).Encode(info)
 			require.NoError(t, err)

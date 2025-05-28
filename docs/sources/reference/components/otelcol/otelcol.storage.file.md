@@ -4,14 +4,16 @@ description: Learn about otelcol.storage.file
 title: otelcol.storage.file
 labels:
   stage: public-preview
+  products:
+    - oss
 ---
 
 # `otelcol.storage.file`
 
 {{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-`otelcol.storage.file` exposes a `handler` that other `otelcol` components can use to write state to a local directory. 
-The current implementation of this component uses [bbolt][] to store and read data on disk.
+`otelcol.storage.file` exposes a `handler` that other `otelcol` components can use to write state to a local directory.
+The current implementation of this component uses [`bbolt`][] to store and read data on disk.
 
 {{< admonition type="note" >}}
 `otelcol.storage.file` is a wrapper over the upstream OpenTelemetry Collector `filestorage` extension.
@@ -20,7 +22,7 @@ Bug reports or feature requests will be redirected to the upstream repository, i
 
 You can specify multiple `otelcol.storage.file` components by giving them different labels.
 
-[bbolt]: https://github.com/etcd-io/bbolt
+[`bbolt`]: https://github.com/etcd-io/bbolt
 
 ## Usage
 
@@ -34,12 +36,12 @@ otelcol.storage.file "<LABEL>" {
 You can use the following arguments with `otelcol.storage.file`:
 
 | Name                    | Type            | Description                                                                                 | Default | Required |
-|-------------------------|-----------------|---------------------------------------------------------------------------------------------|---------|----------|
+| ----------------------- | --------------- | ------------------------------------------------------------------------------------------- | ------- | -------- |
 | `create_directory`      | `bool`          | Will the component be responsible for creating the `directory`.                             | `true`  | no       |
-| `directory`             | `string`        | The path to the dedicated data storage directory.                                          | *       | no       |
+| `directory`             | `string`        | The path to the dedicated data storage directory.                                           |         | no       |
 | `directory_permissions` | `string`        | The octal file permissions used when creating the `directory` if `create_directory` is set. | `0750`  | no       |
-| `fsync`                 | `bool`          | Will fsync be called after each write operation.                                            | `false` | no       |
-| `timeout`               | `time.Duration` | The timeout for file storage operations.                                                    | `1s`    | no       |
+| `fsync`                 | `bool`          | Will `fsync` be called after each write operation.                                          | `false` | no       |
+| `timeout`               | `duration`      | The timeout for file storage operations.                                                    | `1s`    | no       |
 
 The default `directory` used for file storage is a subdirectory of the `data-alloy` directory located in the {{< param "PRODUCT_NAME" >}} working directory.
 This will vary depending on the path specified by the [command line flag][run] `--storage-path`.
@@ -65,22 +67,22 @@ You can use the following blocks with `otelcol.storage.file`:
 
 The `compaction` block defines the compaction parameters for the file storage.
 
-| Name                            | Type            | Description                                                                    | Default | Required |
-|---------------------------------|-----------------|--------------------------------------------------------------------------------|---------|----------|
-| `check_interval`                | `time.Duration` | The interval to check if online compaction is required.                        | `5s`    | no       |
-| `cleanup_on_start`              | `bool`          | Cleanup temporary files on component start.                                    | `false` | no       |
-| `directory`                     | `string`        | The path to the directory where temporary compaction artifacts will be stored. | *       | no       |
-| `max_transaction_size`          | `int`           | Maximum number of items present in a single compaction iteration.              | `65536` | no       |
-| `on_rebound`                    | `bool`          | Run compaction online when rebound conditions are met.                         | `false` | no       |
-| `on_start`                      | `bool`          | Run compaction on component start.                                             | `false` | no       |
-| `rebound_needed_threshold_mib`  | `int`           | File storage total allocated size boundary to mark need for online compaction.       | `100`   | no       |
-| `rebound_trigger_threshold_mib` | `int`           | File storage used allocated size boundary to trigger online compaction.        | `10`    | no       |
+| Name                            | Type      | Description                                                                    | Default | Required |
+| ------------------------------- | --------- | ------------------------------------------------------------------------------ | ------- | -------- |
+| `check_interval`                | `duration`| The interval to check if online compaction is required.                        | `5s`    | no       |
+| `cleanup_on_start`              | `bool`    | Cleanup temporary files on component start.                                    | `false` | no       |
+| `directory`                     | `string`  | The path to the directory where temporary compaction artifacts will be stored. |         | no       |
+| `max_transaction_size`          | `int`     | Maximum number of items present in a single compaction iteration.              | `65536` | no       |
+| `on_rebound`                    | `bool`    | Run compaction online when rebound conditions are met.                         | `false` | no       |
+| `on_start`                      | `bool`    | Run compaction on component start.                                             | `false` | no       |
+| `rebound_needed_threshold_mib`  | `int`     | File storage total allocated size boundary to mark need for online compaction. | `100`   | no       |
+| `rebound_trigger_threshold_mib` | `int`     | File storage used allocated size boundary to trigger online compaction.        | `10`    | no       |
 
 The default `directory` used for file storage is a subdirectory of the `data-alloy` directory located in the {{< param "PRODUCT_NAME" >}} working directory.
 This will vary depending on the path specified by the [command line flag][run] `--storage-path`.
 
-If `on_rebound` online compaction is enabled, compaction will be triggered when total allocated data is greater than `rebound_needed_threshold_mib` and 
-used allocated data is less than `rebound_trigger_threshold_mib`. More detailed information about the way the component supports file compaction for allocated disk storage recovery can be found in the upstream component's [documentation][compaction_docs].
+If `on_rebound` online compaction is enabled, compaction will be triggered when total allocated data is greater than `rebound_needed_threshold_mib` and used allocated data is less than `rebound_trigger_threshold_mib`.
+More detailed information about the way the component supports file compaction for allocated disk storage recovery can be found in the upstream component's [documentation][compaction_docs].
 
 [compaction_docs]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/extension/storage/filestorage#compaction
 
@@ -109,10 +111,9 @@ The following fields are exported and can be referenced by other components:
 ### `otelcol.receiver.filelog`
 
 This examples uses an `otelcol.storage.file` component to store file offsets for an `otelcol.receiver.filelog` component.
-This will only use a small amount of data for each file that has been read so it's unlikely that you will need to be concerned
-about compaction settings.
+This will only use a small amount of data for each file that has been read so it's unlikely that you will need to be concerned about compaction settings.
 
-The default settings of the component will place the [bbolt] file for the receiver in `<STORAGE_PATH>/otelcol.storage.file.default/receiver_filelog_default`
+The default settings of the component will place the [`bbolt`] file for the receiver in `<STORAGE_PATH>/otelcol.storage.file.default/receiver_filelog_default`
 
 ```alloy
 
