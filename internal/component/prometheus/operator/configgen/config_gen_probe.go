@@ -197,7 +197,7 @@ func (cg *ConfigGenerator) GenerateProbeConfig(m *promopv1.Probe) (cfg *config.S
 	}
 	cfg.RelabelConfigs = relabels.configs
 	if m.Spec.TLSConfig != nil {
-		if cfg.HTTPClientConfig.TLSConfig, err = cg.generateSafeTLS(m.Spec.TLSConfig.SafeTLSConfig, m.Namespace); err != nil {
+		if cfg.HTTPClientConfig.TLSConfig, err = cg.generateSafeTLS(*m.Spec.TLSConfig, m.Namespace); err != nil {
 			return nil, err
 		}
 	}
