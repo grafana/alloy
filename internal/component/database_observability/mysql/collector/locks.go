@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sync/atomic"
 	"time"
 
 	"github.com/go-kit/log"
@@ -72,6 +73,9 @@ type LockArguments struct {
 	InstanceKey       string
 	ScrapeInterval    time.Duration
 	LockWaitThreshold time.Duration
+
+	running *atomic.Bool
+	cancel  context.CancelFunc
 }
 
 type Lock struct {
@@ -100,17 +104,23 @@ func NewLock(args LockArguments) (*Lock, error) {
 		instanceKey:       args.InstanceKey,
 		scrapeInterval:    args.ScrapeInterval,
 		lockWaitThreshold: args.LockWaitThreshold,
+		logger:            log.WithComponentName(args.DB, "mysql", "collector", "locks"),
 	}, nil
 }
 
 func (c Lock) Run(ctx context.Context) error {
 	go func() {
+		defer func() {
+			c.Stop()
+			c.running.Store(false)
+		}
 		level.Info(c.logger).Log("Lock: starting")
 		ticker := time.NewTicker(time.Second)
 
 		for {
 			if err := c.fetchLocks(ctx); err != nil {
-				break
+				level.Error(c.logger).Log("msg", "locks collector error", "err", err)
+
 			}
 
 			select {
