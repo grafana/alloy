@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/go-kit/log"
@@ -69,7 +68,7 @@ type dataLockInfo struct {
 }
 
 type LockArguments struct {
-	DSN               string
+	DB                *sql.DB
 	InstanceKey       string
 	ScrapeInterval    time.Duration
 	LockWaitThreshold time.Duration
@@ -88,32 +87,26 @@ type Lock struct {
 }
 
 func NewLock(args LockArguments) (*Lock, error) {
-	dbConnection, err := sql.Open("mysql", args.DSN)
-	if err != nil {
-		return nil, err
-	}
-	if dbConnection == nil {
+	if args.DB == nil {
 		return nil, errors.New("nil DB connection")
 	}
 
-	if err = dbConnection.Ping(); err != nil {
+	if err = args.DB.Ping(); err != nil {
 		return nil, err
 	}
 
 	return &Lock{
-		mySQLClient:       dbConnection,
+		mySQLClient:       args.DB,
 		instanceKey:       args.InstanceKey,
 		scrapeInterval:    args.ScrapeInterval,
 		lockWaitThreshold: args.LockWaitThreshold,
 	}, nil
 }
 
-func (c Lock) Run(ctx context.Context, wg *sync.WaitGroup) error {
+func (c Lock) Run(ctx context.Context) error {
 	go func() {
-		defer wg.Done()
-
 		level.Info(c.logger).Log("Lock: starting")
-		ticker := time.NewTicker(c.scrapeInterval)
+		ticker := time.NewTicker(time.Second)
 
 		for {
 			if err := c.fetchLocks(ctx); err != nil {

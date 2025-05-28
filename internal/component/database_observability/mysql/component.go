@@ -330,6 +330,22 @@ func (c *Component) startCollectors() error {
 		c.collectors = append(c.collectors, scCollector)
 	}
 
+	locksCollector, err := collector.NewLock(collector.LockArguments{
+		DB:          dbConnection,
+		InstanceKey: c.instanceKey,
+		//ScrapeInterval:    0,
+		//LockWaitThreshold: 0,
+	})
+	if err != nil {
+		level.Error(c.opts.Logger).Log("msg", "failed to create SetupConsumer collector", "err", err)
+		return err
+	}
+	if err := locksCollector.Run(context.Background()); err != nil {
+		level.Error(c.opts.Logger).Log("msg", "failed to start SetupConsumer collector", "err", err)
+		return err
+	}
+	c.collectors = append(c.collectors, scCollector)
+
 	// Connection Info collector is always enabled
 	ciCollector, err := collector.NewConnectionInfo(collector.ConnectionInfoArguments{
 		DSN:      string(c.args.DataSourceName),
