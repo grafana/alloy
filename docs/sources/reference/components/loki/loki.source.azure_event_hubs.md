@@ -52,7 +52,7 @@ You can use the following arguments with `loki.source.azure_event_hubs`:
 | `group_id`                  | `string`             | The Kafka consumer group ID.                                                        | `"loki.source.azure_event_hubs"` | no       |
 | `labels`                    | `map(string)`        | The labels to associate with each received event.                                   | `{}`                             | no       |
 | `relabel_rules`             | `RelabelRules`       | Relabeling rules to apply on log entries.                                           | `{}`                             | no       |
-| `use_incoming_timestamp`    | `bool`               | Whether or not to use the timestamp received from Azure Event Hub.                  | `false`                          | no       |
+| `use_incoming_timestamp`    | `bool`               | Whether to use the timestamp received from Azure Event Hub.                         | `false`                          | no       |
 
 The `fully_qualified_namespace` argument must refer to a full `HOST:PORT` that points to your event hub, such as `NAMESPACE.servicebus.windows.net:9093`.
 The `assignor` argument must be set to one of `"range"`, `"roundrobin"`, or `"sticky"`.

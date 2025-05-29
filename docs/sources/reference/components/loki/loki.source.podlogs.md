@@ -37,7 +37,7 @@ loki.source.podlogs "<LABEL>" {
 
 The component starts a new reader for each of the given `targets` and fans out log entries to the list of receivers passed in `forward_to`.
 
-`loki.source.podlogs` supports the following arguments:
+You can use the following arguments with `loki.source.podlogs`:
 
 | Name         | Type                 | Description                               | Default | Required |
 | ------------ | -------------------- | ----------------------------------------- | ------- | -------- |
