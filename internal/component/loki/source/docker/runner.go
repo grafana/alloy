@@ -109,7 +109,14 @@ func (t *tailer) Run(ctx context.Context) {
 				level.Error(t.log).Log("msg", "error inspecting Docker container", "id", t.target.Name(), "error", err)
 				continue
 			}
-			if res.State.Running {
+
+			finished, err := time.Parse(time.RFC3339Nano, res.State.FinishedAt)
+			if err != nil {
+				level.Error(t.log).Log("msg", "error parsing finished time for Docker container", "id", t.target.Name(), "error", err)
+				finished = time.Unix(0, 0)
+			}
+
+			if res.State.Running || finished.Unix() >= t.target.Last() {
 				t.target.StartIfNotRunning()
 			}
 		case <-ctx.Done():

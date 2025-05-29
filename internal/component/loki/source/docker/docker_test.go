@@ -105,10 +105,12 @@ func TestDuplicateTargets(t *testing.T) {
 }
 
 func TestRestart(t *testing.T) {
+	finishedAt := "2024-05-02T13:11:55.879889Z"
 	runningState := true
 	client := clientMock{
-		logLine: "2024-05-02T13:11:55.879889Z caller=module_service.go:114 msg=\"module stopped\" module=distributor",
-		running: func() bool { return runningState },
+		logLine:    "2024-05-02T13:11:55.879889Z caller=module_service.go:114 msg=\"module stopped\" module=distributor",
+		running:    func() bool { return runningState },
+		finishedAt: func() string { return finishedAt },
 	}
 	expectedLogLine := "caller=module_service.go:114 msg=\"module stopped\" module=distributor"
 
@@ -142,16 +144,24 @@ func TestRestart(t *testing.T) {
 
 func TestTargetNeverStarted(t *testing.T) {
 	runningState := false
+	finishedAt := "2024-05-02T13:11:55.879889Z"
 	client := clientMock{
-		logLine: "2024-05-02T13:11:55.879889Z caller=module_service.go:114 msg=\"module stopped\" module=distributor",
-		running: func() bool { return runningState },
+		logLine:    "2024-05-02T13:11:55.879889Z caller=module_service.go:114 msg=\"module stopped\" module=distributor",
+		running:    func() bool { return runningState },
+		finishedAt: func() string { return finishedAt },
 	}
+	expectedLogLine := "caller=module_service.go:114 msg=\"module stopped\" module=distributor"
 
-	tailer, _ := setupTailer(t, client)
+	tailer, entryHandler := setupTailer(t, client)
 	ctx, cancel := context.WithCancel(t.Context())
 	go tailer.Run(ctx)
 
-	time.Sleep(20 * time.Millisecond)
+	assert.EventuallyWithT(t, func(c *assert.CollectT) {
+		logLines := entryHandler.Received()
+		if assert.NotEmpty(c, logLines) {
+			assert.Equal(c, expectedLogLine, logLines[0].Line)
+		}
+	}, time.Second, 20*time.Millisecond, "Expected log lines were not found within the time limit after restart.")
 
 	require.NotPanics(t, func() { cancel() })
 }
@@ -190,8 +200,9 @@ func setupTailer(t *testing.T, client clientMock) (tailer *tailer, entryHandler 
 
 type clientMock struct {
 	client.APIClient
-	logLine string
-	running func() bool
+	logLine    string
+	running    func() bool
+	finishedAt func() string
 }
 
 func (mock clientMock) ContainerInspect(ctx context.Context, c string) (container.InspectResponse, error) {
@@ -199,7 +210,8 @@ func (mock clientMock) ContainerInspect(ctx context.Context, c string) (containe
 		ContainerJSONBase: &container.ContainerJSONBase{
 			ID: c,
 			State: &container.State{
-				Running: mock.running(),
+				Running:    mock.running(),
+				FinishedAt: mock.finishedAt(),
 			},
 		},
 		Config: &container.Config{Tty: true},
