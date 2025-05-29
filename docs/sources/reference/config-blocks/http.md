@@ -42,6 +42,14 @@ You can use the following blocks with `http`:
 The > symbol indicates deeper levels of nesting.
 For example, `auth` > `basic` refers to an `basic` block defined inside an `auth` block.
 
+[auth]: #auth
+[basic]: #basic
+[filter]: #filter
+[tls]: #tls
+[windows_certificate_filter]: #windows-certificate-filter
+[server]: #server
+[client]: #client
+
 ### `auth`
 
 The auth block configures server authentication for the `http` block.
@@ -200,11 +208,6 @@ If multiple certificates are found, the `windows_certificate_filter` chooses the
 | `issuer_common_names` | `list(string)` | Issuer common names to check against.                                                                      |         | no       |
 | `refresh_interval`    | `string`       | How often to check for a new server certificate.                                                           | `"5m"`  | no       |
 | `template_id`         | `string`       | Server Template ID to match in ASN1 format, for example, "1.2.3".                                          | `""`    | no       |
-
-[tls]: #tls
-[windows_certificate_filter]: #windows-certificate-filter
-[server]: #server
-[client]: #client
 
 ## Examples
 

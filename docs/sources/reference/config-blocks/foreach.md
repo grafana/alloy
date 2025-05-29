@@ -77,7 +77,7 @@ This results in component paths like the following:
 If the collection item isn't an object or the specified field doesn't exist, it falls back to using the entire item for identification.
 {{< /admonition >}}
 
-[types]: ../../../get-started/configuration-syntax/expressions/types_and_values
+[types]: ../../../get-started/configuration-syntax/expressions/types_and_values/
 
 ## Blocks
 
