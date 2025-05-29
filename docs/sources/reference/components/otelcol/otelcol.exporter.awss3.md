@@ -37,8 +37,8 @@ otelcol.exporter.awss3 "<LABEL>" {
 
 ## Arguments
 
-You can use the following arguments with `otelcol.exporter.awss3`:
-	
+You can use the following argument with `otelcol.exporter.awss3`:
+
 | Name      | Type       | Description                                      | Default | Required |
 | --------- | ---------- | ------------------------------------------------ | ------- | -------- |
 | `timeout` | `duration` | Time to wait before marking a request as failed. | `"5s"`  | no       |

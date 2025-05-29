@@ -101,7 +101,7 @@ Multiline logs may also be harder to parse.
 
 ## Blocks
 
-You can use the following blocks with `otelcol.exporter.debug`:
+You can use the following block with `otelcol.exporter.debug`:
 
 | Block                            | Description                                                                | Required |
 | -------------------------------- | -------------------------------------------------------------------------- | -------- |
