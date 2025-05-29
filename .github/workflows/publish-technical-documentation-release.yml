@@ -29,8 +29,8 @@ jobs:
         # This internal action's version is left as a tag instead of a pinned hash because renovate
         # does not support this type of tag/version format without custom configuration.
         with:
-          release_tag_regexp: "^v(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$"
-          release_branch_regexp: "^release/v(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$"
-          release_branch_with_patch_regexp: "^release/v(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$"
+          release_tag_regexp: "^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+          release_branch_regexp: "^release/v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+          release_branch_with_patch_regexp: "^release/v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
           website_directory: content/docs/alloy
           version_suffix: ""
