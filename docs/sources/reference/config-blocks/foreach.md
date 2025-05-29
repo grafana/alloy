@@ -1,13 +1,15 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/stdlib/foreach/
-description: Learn about foreach
+canonical: https://grafana.com/docs/alloy/latest/reference/config-blocks/foreach/
+description: Learn about the foreach configuration block
 labels:
   stage: experimental
+  products:
+    - oss
 menuTitle: foreach
 title: foreach
 ---
 
-# foreach
+# `foreach`
 
 {{< docs/shared lookup="stability/experimental_feature.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -34,12 +36,13 @@ You can use the following arguments with `foreach`:
 | `collection`     | `list(any)` | A list of items to loop over.                                                            |         | yes      |
 | `var`            | `string`    | Name of the variable referring to the current item in the collection.                    |         | yes      |
 | `enable_metrics` | `bool`      | Whether to expose debug metrics in the {{< param "PRODUCT_NAME" >}} `/metrics` endpoint. | `false` | no       |
-| `id`             | `string`    | Name of the field to use from collection items for child component's identification.     | `""`    | no       |
 | `hash_string_id` | `bool`      | Whether to hash the string representation of the id of the collection items.             | `false` | no       |
+| `id`             | `string`    | Name of the field to use from collection items for child component's identification.     | `""`    | no       |
 
 The items in the `collection` list can be of any type [type][types], such as a bool, a string, a list, or a map.
 
-When using a collection of strings or when the `id` field is a string, you can set `hash_string_id` to `true` to hash the string representation of the `id` field instead of using the string itself. This is recommended when the strings are long because the values will be used to identify the components that are created dynamically in metrics, logs and in the UI.
+When using a collection of strings or when the `id` field is a string, you can set `hash_string_id` to `true` to hash the string representation of the `id` field instead of using the string itself.
+This is recommended when the strings are long because the values are used to identify the components that are created dynamically in metrics, logs, and in the UI.
 
 {{< admonition type="warning" >}}
 Setting `enable_metrics` to `true` when `collection` has lots of elements may cause a large number of metrics to appear on the {{< param "PRODUCT_NAME" >}} `/metric` endpoint.
@@ -71,29 +74,28 @@ This results in component paths like the following:
 /foreach.pods/foreach_app-2_1/component.default
 ```
 
-If the collection item is not a object or the specified field doesn't exist, it falls back to using the entire item for identification.
+If the collection item isn't an object or the specified field doesn't exist, it falls back to using the entire item for identification.
 {{< /admonition >}}
 
 [types]: ../../../get-started/configuration-syntax/expressions/types_and_values
 
 ## Blocks
 
-You can use the following blocks with `foreach`:
+You can use the following block with `foreach`:
 
-| Block        | Description                  | Required |
-| ------------ | ---------------------------- | -------- |
-| [template][] | A component pipeline to run. | yes      |
+| Block                  | Description                  | Required |
+| ---------------------- | ---------------------------- | -------- |
+| [`template`][template] | A component pipeline to run. | yes      |
 
 [template]: #template
 
 ### `template`
 
-The `template` block contains the definition of {{< param "PRODUCT_NAME" >}} components which will be ran for every item in the collection.
-The contents of the block look like a normal {{< param "PRODUCT_NAME" >}} configuration file,
-except that you can use the keyword defined in `var` to refer to the current item in the collection.
+The `template` block contains the definition of {{< param "PRODUCT_NAME" >}} components used for every item in the collection.
+The contents of the block look like a normal {{< param "PRODUCT_NAME" >}} configuration file, except that you can use the keyword defined in `var` to refer to the current item in the collection.
 
 Components inside the `template` block can use exports of components defined outside of the `foreach` block.
-However, components outside of the `foreach` cannot use exports from components defined inside the `template` block of a `foreach`.
+However, components outside of the `foreach` can't use exports from components defined inside the `template` block of a `foreach`.
 
 ## Example
 

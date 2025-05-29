@@ -1,62 +1,77 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/config-blocks/http/
 description: Learn about the http configuration block
-menuTitle: http
-title: http block
+labels:
+  stage: general-availability
+  products:
+    - oss
+title: http
 ---
 
-# http block
+# `http`
 
 `http` is an optional configuration block used to customize how the {{< param "PRODUCT_NAME" >}} HTTP server functions.
 `http` is specified without a label and can only be provided once per configuration file.
 
-## Example
+## Usage
 
 ```alloy
 http {
-  tls {
-    cert_file = sys.env("TLS_CERT_FILE_PATH")
-    key_file  = sys.env("TLS_KEY_FILE_PATH")
-  }
 
-  auth {
-    basic {
-      username = sys.env("BASIC_AUTH_USERNAME")
-      password = sys.env("BASIC_AUTH_PASSWORD")
-    }
-
-    filter {
-      paths                       = ["/"]
-      authenticate_matching_paths = true
-    }
-  }
 }
 ```
 
 ## Arguments
 
-The `http` block supports no arguments and is configured completely through inner blocks.
+The `http` block doesn't support any arguments. You can configure this block with inner blocks.
 
 ## Blocks
 
-The following blocks are supported inside the definition of `http`:
+You can use the following blocks with `http`:
 
-| Hierarchy                                 | Block                          | Description                                                   | Required |
-| ----------------------------------------- | ------------------------------ | ------------------------------------------------------------- | -------- |
-| tls                                       | [tls][]                        | Define TLS settings for the HTTP server.                      | no       |
-| tls > windows_certificate_filter          | [windows_certificate_filter][] | Configure Windows certificate store for all certificates.     | no       |
-| tls > windows_certificate_filter > client | [client][]                     | Configure client certificates for Windows certificate filter. | no       |
-| tls > windows_certificate_filter > server | [server][]                     | Configure server certificates for Windows certificate filter. | no       |
-| auth                                      | [auth][]                       | Configure server authentication.                              | no       |
-| auth > basic                              | [basic][]                      | Configure basic authentication.                               | no       |
-| auth > filter                             | [filter][]                     | Configure authentication filter.                              | no       |
+| Block                                                              | Description                                                   | Required |
+| ------------------------------------------------------------------ | ------------------------------------------------------------- | -------- |
+| [`auth`][auth]                                                     | Configure server authentication.                              | no       |
+| `auth` > [`basic`][basic]                                          | Configure basic authentication.                               | no       |
+| `auth` > [`filter`][filter]                                        | Configure authentication filter.                              | no       |
+| [`tls`][tls]                                                       | Define TLS settings for the HTTP server.                      | no       |
+| `tls` > [`windows_certificate_filter`][windows_certificate_filter] | Configure Windows certificate store for all certificates.     | no       |
+| `tls` > `windows_certificate_filter` > [`client`][client]          | Configure client certificates for Windows certificate filter. | no       |
+| `tls` > `windows_certificate_filter` > [`server`][server]          | Configure server certificates for Windows certificate filter. | no       |
 
-### tls block
+The > symbol indicates deeper levels of nesting.
+For example, `auth` > `basic` refers to an `basic` block defined inside an `auth` block.
+
+### `auth`
+
+The auth block configures server authentication for the `http` block.
+This can be used to enable basic authentication and to set authentication filters for specified API paths.
+
+### `basic`
+
+The `basic` block enables basic HTTP authentication by requiring both a username and password for access.
+
+| Name       | Type     | Description                                   | Default | Required |
+| ---------- | -------- | --------------------------------------------- | ------- | -------- |
+| `password` | `secret` | The password to use for basic authentication. |         | yes      |
+| `username` | `string` | The username to use for basic authentication. |         | yes      |
+
+### `filter`
+
+The `filter` block is used to configure which API paths should be protected by authentication.
+It allows you to specify a list of paths, using prefix matching, that will require authentication.
+
+| Name                          | Type           | Description                                                                                                           | Default | Required |
+| ----------------------------- | -------------- | --------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
+| `authenticate_matching_paths` | `bool`         | If `true`, authentication is required for all matching paths. If `false`, authentication is excluded for these paths. | `true`  | no       |
+| `paths`                       | `list(string)` | List of API paths to be protected by authentication. The paths are matched using prefix matching.                     | `[]`    | no       |
+
+### `tls`
 
 The `tls` block configures TLS settings for the HTTP server.
 
 {{< admonition type="warning" >}}
-If you add the `tls` block and reload the configuration when {{< param "PRODUCT_NAME" >}} is running, existing connections continue communicating over plaintext.
+If you add the `tls` block and reload the configuration when {{< param "PRODUCT_NAME" >}} is running, existing connections continue communicating over plain text.
 Similarly, if you remove the `tls` block and reload the configuration when {{< param "PRODUCT_NAME" >}} is running, existing connections continue communicating over TLS.
 
 To ensure all connections use TLS, configure the `tls` block before you start {{< param "PRODUCT_NAME" >}}.
@@ -64,17 +79,17 @@ To ensure all connections use TLS, configure the `tls` block before you start {{
 
 | Name                | Type           | Description                                                      | Default          | Required      |
 | ------------------- | -------------- | ---------------------------------------------------------------- | ---------------- | ------------- |
-| `cert_pem`          | `string`       | PEM data of the server TLS certificate.                          | `""`             | conditionally |
 | `cert_file`         | `string`       | Path to the server TLS certificate on disk.                      | `""`             | conditionally |
-| `key_pem`           | `string`       | PEM data of the server TLS key.                                  | `""`             | conditionally |
+| `cert_pem`          | `string`       | PEM data of the server TLS certificate.                          | `""`             | conditionally |
 | `key_file`          | `string`       | Path to the server TLS key on disk.                              | `""`             | conditionally |
-| `client_ca_pem`     | `string`       | PEM data of the client CA to validate requests against.          | `""`             | no            |
-| `client_ca_file`    | `string`       | Path to the client CA file on disk to validate requests against. | `""`             | no            |
-| `client_auth_type`  | `string`       | Client authentication to use.                                    | `"NoClientCert"` | no            |
+| `key_pem`           | `string`       | PEM data of the server TLS key.                                  | `""`             | conditionally |
 | `cipher_suites`     | `list(string)` | Set of cipher suites to use.                                     | `[]`             | no            |
+| `client_auth_type`  | `string`       | Client authentication to use.                                    | `"NoClientCert"` | no            |
+| `client_ca_file`    | `string`       | Path to the client CA file on disk to validate requests against. | `""`             | no            |
+| `client_ca_pem`     | `string`       | PEM data of the client CA to validate requests against.          | `""`             | no            |
 | `curve_preferences` | `list(string)` | Set of elliptic curves to use in a handshake.                    | `[]`             | no            |
-| `min_version`       | `string`       | Oldest TLS version to accept from clients.                       | `""`             | no            |
 | `max_version`       | `string`       | Newest TLS version to accept from clients.                       | `""`             | no            |
+| `min_version`       | `string`       | Oldest TLS version to accept from clients.                       | `""`             | no            |
 
 When the `tls` block is specified, arguments for the TLS certificate (using `cert_pem` or `cert_file`) and for the TLS key (using `key_pem` or `key_file`) are required.
 
@@ -144,7 +159,7 @@ The following versions are recognized:
 * `TLS11` for TLS 1.1
 * `TLS10` for TLS 1.0
 
-### windows certificate filter block
+### `windows certificate filter`
 
 The `windows_certificate_filter` block is used to configure retrieving certificates from the built-in Windows certificate store.
 When you use the `windows_certificate_filter` block the following TLS settings are overridden and cause an error if defined.
@@ -163,7 +178,17 @@ TLS min and max may not be compatible with the certificate stored in the Windows
 The `windows_certificate_filter` serves the certificate even if it isn't compatible with the specified TLS version.
 {{< /admonition >}}
 
-### server block
+### `client`
+
+The `client` block is used to check the certificate presented to the server.
+
+| Name                  | Type           | Description                                                       | Default | Required |
+| --------------------- | -------------- | ----------------------------------------------------------------- | ------- | -------- |
+| `issuer_common_names` | `list(string)` | Issuer common names to check against.                             |         | no       |
+| `subject_regex`       | `string`       | Regular expression to match Subject name.                         | `""`    | no       |
+| `template_id`         | `string`       | Client Template ID to match in ASN1 format, for example, "1.2.3". | `""`    | no       |
+
+### `server`
 
 The `server` block is used to find the certificate to check the signer.
 If multiple certificates are found, the `windows_certificate_filter` chooses the certificate with the expiration farthest in the future.
@@ -176,43 +201,15 @@ If multiple certificates are found, the `windows_certificate_filter` chooses the
 | `refresh_interval`    | `string`       | How often to check for a new server certificate.                                                           | `"5m"`  | no       |
 | `template_id`         | `string`       | Server Template ID to match in ASN1 format, for example, "1.2.3".                                          | `""`    | no       |
 
-### client block
+[tls]: #tls
+[windows_certificate_filter]: #windows-certificate-filter
+[server]: #server
+[client]: #client
 
-The `client` block is used to check the certificate presented to the server.
+## Examples
 
-| Name                  | Type           | Description                                                       | Default | Required |
-| --------------------- | -------------- | ----------------------------------------------------------------- | ------- | -------- |
-| `issuer_common_names` | `list(string)` | Issuer common names to check against.                             |         | no       |
-| `subject_regex`       | `string`       | Regular expression to match Subject name.                         | `""`    | no       |
-| `template_id`         | `string`       | Client Template ID to match in ASN1 format, for example, "1.2.3". | `""`    | no       |
+Example of enforcing authentication on `/metrics` and every endpoint that has `/v1` as prefix:
 
-[tls]: #tls-block
-[windows_certificate_filter]: #windows-certificate-filter-block
-[server]: #server-block
-[client]: #client-block
-
-### auth block
-The auth block configures server authentication for the http block. This can be used to enable basic authentication and to set authentication filters for specified API paths.
-
-### basic block
-The basic block enables basic HTTP authentication by requiring both a username and password for access.
-
-| Name                  | Type           | Description                                                       | Default | Required |
-| --------------------- | -------------- | ----------------------------------------------------------------- | ------- | -------- |
-| `username`            | `string`       | The username to use for basic authentication.                     |         | yes      |
-| `password`            | `secret`       | The password to use for basic authentication.                     |         | yes      |
-
-
-### filter block
-The filter block is used to configure which API paths should be protected by authentication. It allows you to specify a list of paths, using prefix matching, that will require authentication.
-
-| Name                  | Type           | Description                                                                                                            | Default | Required |
-| ----------------------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
-| `paths`                             | `list(string)` | List of API paths to be protected by authentication. The paths are matched using prefix matching.                      | `[]`    | no       |
-| `authenticate_matching_paths`       | `bool`         | If true, authentication is required for all matching paths. If false, authentication is excluded for these paths.      | `true`  | no       |
-
-
-Example of enforcing authentication on `/metrics` and every enpoint that has `/v1` as prefix:
 ```alloy
 http {
   auth {
@@ -230,6 +227,7 @@ http {
 ```
 
 Example enforcing authentication on all endpoints except `/metrics`:
+
 ```alloy
 http {
   auth {
