@@ -25,14 +25,14 @@ prometheus.exporter.github "<LABEL>" {
 
 You can use the following arguments with `prometheus.exporter.github`:
 
-| Name             | Type           | Description                                                      | Default                  | Required |
-| ---------------- | -------------- | ---------------------------------------------------------------- | ------------------------ | -------- |
-| `api_token_file` | `string`       | File containing API token to use to authenticate against GitHub. |                          | no       |
-| `api_token`      | `secret`       | API token to use to authenticate against GitHub.                 |                          | no       |
-| `api_url`        | `string`       | The full URI of the GitHub API.                                  | `https://api.github.com` | no       |
-| `organizations`  | `list(string)` | GitHub organizations for which to collect metrics.               |                          | no       |
-| `repositories`   | `list(string)` | GitHub repositories for which to collect metrics.                |                          | no       |
-| `users`          | `list(string)` | A list of GitHub users for which to collect metrics.             |                          | no       |
+| Name             | Type           | Description                                                      | Default                    | Required |
+| ---------------- | -------------- | ---------------------------------------------------------------- | -------------------------- | -------- |
+| `api_token_file` | `string`       | File containing API token to use to authenticate against GitHub. |                            | no       |
+| `api_token`      | `secret`       | API token to use to authenticate against GitHub.                 |                            | no       |
+| `api_url`        | `string`       | The full URI of the GitHub API.                                  | `"https://api.github.com"` | no       |
+| `organizations`  | `list(string)` | GitHub organizations for which to collect metrics.               |                            | no       |
+| `repositories`   | `list(string)` | GitHub repositories for which to collect metrics.                |                            | no       |
+| `users`          | `list(string)` | A list of GitHub users for which to collect metrics.             |                            | no       |
 
 GitHub uses an aggressive rate limit for unauthenticated requests based on IP address.
 To allow more API requests, we recommend that you configure either `api_token` or `api_token_file` to authenticate against GitHub.

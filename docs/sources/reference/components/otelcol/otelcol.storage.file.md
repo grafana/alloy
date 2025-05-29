@@ -35,13 +35,13 @@ otelcol.storage.file "<LABEL>" {
 
 You can use the following arguments with `otelcol.storage.file`:
 
-| Name                    | Type            | Description                                                                                 | Default | Required |
-| ----------------------- | --------------- | ------------------------------------------------------------------------------------------- | ------- | -------- |
-| `create_directory`      | `bool`          | Will the component be responsible for creating the `directory`.                             | `true`  | no       |
-| `directory`             | `string`        | The path to the dedicated data storage directory.                                           |         | no       |
-| `directory_permissions` | `string`        | The octal file permissions used when creating the `directory` if `create_directory` is set. | `0750`  | no       |
-| `fsync`                 | `bool`          | Will `fsync` be called after each write operation.                                          | `false` | no       |
-| `timeout`               | `duration`      | The timeout for file storage operations.                                                    | `1s`    | no       |
+| Name                    | Type       | Description                                                                                 | Default  | Required |
+| ----------------------- | ---------- | ------------------------------------------------------------------------------------------- | -------- | -------- |
+| `create_directory`      | `bool`     | Will the component be responsible for creating the `directory`.                             | `true`   | no       |
+| `directory`             | `string`   | The path to the dedicated data storage directory.                                           |          | no       |
+| `directory_permissions` | `string`   | The octal file permissions used when creating the `directory` if `create_directory` is set. | `"0750"` | no       |
+| `fsync`                 | `bool`     | Will `fsync` be called after each write operation.                                          | `false`  | no       |
+| `timeout`               | `duration` | The timeout for file storage operations.                                                    | `"1s"`   | no       |
 
 The default `directory` used for file storage is a subdirectory of the `data-alloy` directory located in the {{< param "PRODUCT_NAME" >}} working directory.
 This will vary depending on the path specified by the [command line flag][run] `--storage-path`.
@@ -67,16 +67,16 @@ You can use the following blocks with `otelcol.storage.file`:
 
 The `compaction` block defines the compaction parameters for the file storage.
 
-| Name                            | Type      | Description                                                                    | Default | Required |
-| ------------------------------- | --------- | ------------------------------------------------------------------------------ | ------- | -------- |
-| `check_interval`                | `duration`| The interval to check if online compaction is required.                        | `5s`    | no       |
-| `cleanup_on_start`              | `bool`    | Cleanup temporary files on component start.                                    | `false` | no       |
-| `directory`                     | `string`  | The path to the directory where temporary compaction artifacts will be stored. |         | no       |
-| `max_transaction_size`          | `int`     | Maximum number of items present in a single compaction iteration.              | `65536` | no       |
-| `on_rebound`                    | `bool`    | Run compaction online when rebound conditions are met.                         | `false` | no       |
-| `on_start`                      | `bool`    | Run compaction on component start.                                             | `false` | no       |
-| `rebound_needed_threshold_mib`  | `int`     | File storage total allocated size boundary to mark need for online compaction. | `100`   | no       |
-| `rebound_trigger_threshold_mib` | `int`     | File storage used allocated size boundary to trigger online compaction.        | `10`    | no       |
+| Name                            | Type       | Description                                                                    | Default | Required |
+| ------------------------------- | ---------- | ------------------------------------------------------------------------------ | ------- | -------- |
+| `check_interval`                | `duration` | The interval to check if online compaction is required.                        | `"5s"`  | no       |
+| `cleanup_on_start`              | `bool`     | Cleanup temporary files on component start.                                    | `false` | no       |
+| `directory`                     | `string`   | The path to the directory where temporary compaction artifacts will be stored. |         | no       |
+| `max_transaction_size`          | `int`      | Maximum number of items present in a single compaction iteration.              | `65536` | no       |
+| `on_rebound`                    | `bool`     | Run compaction online when rebound conditions are met.                         | `false` | no       |
+| `on_start`                      | `bool`     | Run compaction on component start.                                             | `false` | no       |
+| `rebound_needed_threshold_mib`  | `int`      | File storage total allocated size boundary to mark need for online compaction. | `100`   | no       |
+| `rebound_trigger_threshold_mib` | `int`      | File storage used allocated size boundary to trigger online compaction.        | `10`    | no       |
 
 The default `directory` used for file storage is a subdirectory of the `data-alloy` directory located in the {{< param "PRODUCT_NAME" >}} working directory.
 This will vary depending on the path specified by the [command line flag][run] `--storage-path`.

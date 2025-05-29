@@ -37,13 +37,13 @@ otelcol.receiver.tcplog "<LABEL>" {
 
 You can use the following arguments with `otelcol.receiver.tcplog`:
 
-| Name                 | Type     | Description                                                                                                 | Default | Required |
-| -------------------- | -------- | ----------------------------------------------------------------------------------------------------------- | ------- | -------- |
-| `listen_address`     | `string` | The `<HOST:PORT>` address to listen to for logs messages.                                                   |         | yes      |
-| `add_attributes`     | `bool`   | Add `net.*` attributes to log messages according to [OpenTelemetry semantic conventions][net-semconv].      | `false` | no       |
-| `encoding`           | `string` | The encoding of the log messages.                                                                           | `utf-8` | no       |
-| `max_log_size`       | `string` | The maximum size of a log entry to read before failing.                                                     | `1MiB`  | no       |
-| `one_log_per_packet` | `bool`   | Skip log tokenization, improving performance when messages always contain one log and multiline isn't used. | `false` | no       |
+| Name                 | Type     | Description                                                                                                 | Default   | Required |
+| -------------------- | -------- | ----------------------------------------------------------------------------------------------------------- | --------- | -------- |
+| `listen_address`     | `string` | The `<HOST:PORT>` address to listen to for logs messages.                                                   |           | yes      |
+| `add_attributes`     | `bool`   | Add `net.*` attributes to log messages according to [OpenTelemetry semantic conventions][net-semconv].      | `false`   | no       |
+| `encoding`           | `string` | The encoding of the log messages.                                                                           | `"utf-8"` | no       |
+| `max_log_size`       | `string` | The maximum size of a log entry to read before failing.                                                     | `"1MiB"`  | no       |
+| `one_log_per_packet` | `bool`   | Skip log tokenization, improving performance when messages always contain one log and multiline isn't used. | `false`   | no       |
 
 The `encoding` argument specifies the encoding of the incoming log messages.
 `encoding` must be one of `utf-8`, `utf-16le`, `utf-16be`, `ascii`, `big5`, or `nop`.
@@ -103,9 +103,9 @@ The following arguments are supported:
 | Name               | Type       | Description                                                                                                               | Default | Required |
 | ------------------ | ---------- | ------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
 | `enabled`          | `bool`     | If set to `true` and an error occurs, the receiver will pause reading the log files and resend the current batch of logs. | `false` | no       |
-| `initial_interval` | `duration` | The time to wait after first failure to retry.                                                                            | `1s`    | no       |
-| `max_elapsed_time` | `duration` | The maximum age of a message before the data is discarded.                                                                | `5m`    | no       |
-| `max_interval`     | `duration` | The maximum time to wait after applying backoff logic.                                                                    | `30s`   | no       |
+| `initial_interval` | `duration` | The time to wait after first failure to retry.                                                                            | `"1s"`  | no       |
+| `max_elapsed_time` | `duration` | The maximum age of a message before the data is discarded.                                                                | `"5m"`  | no       |
+| `max_interval`     | `duration` | The maximum time to wait after applying backoff logic.                                                                    | `"30s"` | no       |
 
 If `max_elapsed_time` is set to `0` data is never discarded.
 
