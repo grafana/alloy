@@ -75,7 +75,7 @@ otelcol.processor.filter "<LABEL>" {
 
 ## Arguments
 
-You can use the following arguments with `otelcol.processor.filter`:
+You can use the following argument with `otelcol.processor.filter`:
 
 | Name         | Type     | Description                                                        | Default       | Required |
 | ------------ | -------- | ------------------------------------------------------------------ | ------------- | -------- |

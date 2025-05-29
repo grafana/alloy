@@ -55,7 +55,7 @@ You can use the following arguments with `otelcol.receiver.kafka`:
 | `max_fetch_size`                           | `int`           | The maximum number of message bytes to fetch in a request.                                                            | `0`                | no       |
 | `max_fetch_wait`                           | `duration`      | The maximum amount of time the broker should wait for `min_fetch_size` bytes to be available before returning anyway. | `"250ms"`          | no       |
 | `min_fetch_size`                           | `int`           | The minimum number of message bytes to fetch in a request.                                                            | `1`                | no       |
-| `resolve_canonical_bootstrap_servers_only` | `bool`          | Whether to resolve then reverse-lookup broker IPs during startup.                                                     | `"false"`          | no       |
+| `resolve_canonical_bootstrap_servers_only` | `bool`          | Whether to resolve then reverse-lookup broker IPs during startup.                                                     | `false`            | no       |
 | `session_timeout`                          | `duration`      | The request timeout for detecting client failures when using Kafka group management.                                  | `"10s"`            | no       |
 | `topic`                                    | `string`        | (Deprecated) Kafka topic to read from.                                                                                | _See below_        | no       |
 
@@ -69,6 +69,7 @@ For `max_fetch_size`, the value `0` means no limit.
 
 The `group_rebalance_strategy` argument determines how Kafka distributes topic partitions among the consumers in the group during rebalances. 
 Supported strategies are:
+
 - `range`: This strategy assigns partitions to consumers based on a range. 
   It aims to distribute partitions evenly across consumers, but it can lead to uneven distribution if the number of partitions is not a multiple of the number of consumers. 
   For more information, refer to the Kafka RangeAssignor documentation, see [RangeAssignor][].
@@ -80,6 +81,7 @@ Supported strategies are:
   For more information, refer to the Kafka StickyAssignor documentation, see [StickyAssignor][].
 
 Using a `group_instance_id` is useful for stateful consumers or when you need to ensure that a specific consumer instance is always assigned the same set of partitions.
+
 - If `group_instance_id` is set to a non-empty string, the consumer is treated as a static member of the group. 
   This means that the consumer will maintain its partition assignments across restarts and rebalances, as long as it rejoins the group with the same `group_instance_id`.
 - If `group_instance_id` is set to an empty string (or not set), the consumer is treated as a dynamic member. 

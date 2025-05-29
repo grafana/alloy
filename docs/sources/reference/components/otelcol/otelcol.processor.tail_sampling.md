@@ -292,9 +292,9 @@ The following arguments are supported:
 | ------------------------ | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
 | `key`                    | `string`       | Tag that the filter is matched against.                                                                                                                     |         | yes      |
 | `values`                 | `list(string)` | Set of values or regular expressions to use when matching against attribute values.                                                                         |         | yes      |
-| `enabled_regex_matching` | `bool`         | Determines whether to match attribute values by regular expression string.                                                                                  | false   | no       |
+| `enabled_regex_matching` | `bool`         | Determines whether to match attribute values by regular expression string.                                                                                  | `false` | no       |
 | `cache_max_size`         | `string`       | The maximum number of attribute entries of Least Recently Used (LRU) Cache that stores the matched result from the regular expressions defined in `values.` |         | no       |
-| `invert_match`           | `bool`         | Indicates that values or regular expressions must not match against attribute values.                                                                       | false   | no       |
+| `invert_match`           | `bool`         | Indicates that values or regular expressions must not match against attribute values.                                                                       | `false` | no       |
 
 ### `trace_state`
 

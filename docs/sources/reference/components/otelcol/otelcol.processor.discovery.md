@@ -57,7 +57,7 @@ You can use the following arguments with `otelcol.processor.discovery`:
 | Name               | Type                | Description                                                           | Default                                                         | Required |
 | ------------------ | ------------------- | --------------------------------------------------------------------- | --------------------------------------------------------------- | -------- |
 | `targets`          | `list(map(string))` | List of target labels to apply to the spans.                          |                                                                 | yes      |
-| `operation_type`   | `string`            | Configures whether to update a span's attribute if it already exists. | `upsert`                                                        | no       |
+| `operation_type`   | `string`            | Configures whether to update a span's attribute if it already exists. | `"upsert"`                                                      | no       |
 | `pod_associations` | `list(string)`      | Configures how to decide the hostname of the span.                    | `["ip", "net.host.ip", "k8s.pod.ip", "hostname", "connection"]` | no       |
 
 `targets` could come from `discovery.*` components:

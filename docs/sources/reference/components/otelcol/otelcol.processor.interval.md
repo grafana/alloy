@@ -59,9 +59,9 @@ otelcol.processor.interval "<LABEL>" {
 
 You can use the following argument with `otelcol.processor.interval`:
 
-| Name       | Type       | Description                                                         | Default | Required |
-| ---------- | ---------- | ------------------------------------------------------------------- | ------- | -------- |
-| `interval` | `duration` | The interval in which the processor should export aggregated metrics.| `"60s"` | no       |
+| Name       | Type       | Description                                                           | Default | Required |
+| ---------- | ---------- | --------------------------------------------------------------------- | ------- | -------- |
+| `interval` | `duration` | The interval in which the processor should export aggregated metrics. | `"60s"` | no       |
 
 ## Blocks
 

@@ -28,7 +28,7 @@ otelcol.receiver.loki "<LABEL>" {
 
 ## Arguments
 
-`otelcol.receiver.loki` doesn't support any arguments.
+The `otelcol.receiver.loki` component doesn't support any arguments. You can configure this component with blocks.
 
 ## Blocks
 

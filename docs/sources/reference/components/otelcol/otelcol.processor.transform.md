@@ -108,7 +108,7 @@ otelcol.processor.transform "<LABEL>" {
 
 ## Arguments
 
-You can use the following arguments with `otelcol.processor.transform`:
+You can use the following argument with `otelcol.processor.transform`:
 
 | Name         | Type     | Description                                                        | Default       | Required |
 | ------------ | -------- | ------------------------------------------------------------------ | ------------- | -------- |

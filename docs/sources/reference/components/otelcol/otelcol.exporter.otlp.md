@@ -70,17 +70,17 @@ The `client` block configures the gRPC client used by the component.
 
 The following arguments are supported:
 
-| Name                | Type                       | Description                                                                      | Default       | Required |
-| ------------------- | -------------------------- | -------------------------------------------------------------------------------- | ------------- | -------- |
-| `endpoint`          | `string`                   | `host:port` to send telemetry data to.                                           |               | yes      |
-| `auth`              | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests.     |               | no       |
-| `authority`         | `string`                   | Overrides the default `:authority` header in gRPC requests from the gRPC client. |               | no       |
-| `balancer_name`     | `string`                   | Which gRPC client-side load balancer to use for requests.                        | `round_robin` | no       |
-| `compression`       | `string`                   | Compression mechanism to use for requests.                                       | `"gzip"`      | no       |
-| `headers`           | `map(string)`              | Additional headers to send with the request.                                     | `{}`          | no       |
-| `read_buffer_size`  | `string`                   | Size of the read buffer the gRPC client to use for reading server responses.     |               | no       |
-| `wait_for_ready`    | `boolean`                  | Waits for gRPC connection to be in the `READY` state before sending data.        | `false`       | no       |
-| `write_buffer_size` | `string`                   | Size of the write buffer the gRPC client to use for writing requests.            | `"512KiB"`    | no       |
+| Name                | Type                       | Description                                                                      | Default         | Required |
+| ------------------- | -------------------------- | -------------------------------------------------------------------------------- | --------------- | -------- |
+| `endpoint`          | `string`                   | `host:port` to send telemetry data to.                                           |                 | yes      |
+| `auth`              | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests.     |                 | no       |
+| `authority`         | `string`                   | Overrides the default `:authority` header in gRPC requests from the gRPC client. |                 | no       |
+| `balancer_name`     | `string`                   | Which gRPC client-side load balancer to use for requests.                        | `"round_robin"` | no       |
+| `compression`       | `string`                   | Compression mechanism to use for requests.                                       | `"gzip"`        | no       |
+| `headers`           | `map(string)`              | Additional headers to send with the request.                                     | `{}`            | no       |
+| `read_buffer_size`  | `string`                   | Size of the read buffer the gRPC client to use for reading server responses.     |                 | no       |
+| `wait_for_ready`    | `boolean`                  | Waits for gRPC connection to be in the `READY` state before sending data.        | `false`         | no       |
+| `write_buffer_size` | `string`                   | Size of the write buffer the gRPC client to use for writing requests.            | `"512KiB"`      | no       |
 
 {{< docs/shared lookup="reference/components/otelcol-compression-field.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
