@@ -1,14 +1,15 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/cli/convert/
 description: Learn about the convert command
-menuTitle: convert
-title: The convert command
+labels:
+  stage: public-preview
+  products:
+    - oss
+title: convert
 weight: 100
 ---
 
-<span class="badge docs-labels__stage docs-labels__item">Public preview</span>
-
-# The convert command
+# `convert`
 
 {{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -40,7 +41,7 @@ The following flags are supported:
 * `--report`, `-r`: The filepath and filename where the report is written.
 * `--source-format`, `-f`: Required. The format of the source file. Supported formats: [`otelcol`][otelcol], [`prometheus`][prometheus], [`promtail`][promtail], [`static`][static].
 * `--bypass-errors`, `-b`: Enable bypassing errors when converting.
-* `--extra-args`, `e`: Extra arguments from the original format used by the converter.
+* `--extra-args`, `-e`: Extra arguments from the original format used by the converter.
 
 ### Defaults
 
@@ -70,7 +71,7 @@ Refer to [Migrate from OpenTelemetry Collector to {{< param "PRODUCT_NAME" >}}][
 
 Using the `--source-format=prometheus` will convert the source configuration from [Prometheus v2.45][] to an {{< param "PRODUCT_NAME" >}} configuration.
 
-This includes Prometheus features such as [``scrape_config][scrape_config], [`relabel_config`][relabel_config], [`metric_relabel_configs`][metric_relabel_configs], [`remote_write`][remote_write], and many supported `*_sd_configs`.
+This includes Prometheus features such as [`scrape_config`][scrape_config], [`relabel_config`][relabel_config], [`metric_relabel_configs`][metric_relabel_configs], [`remote_write`][remote_write], and many supported `*_sd_configs`.
 Unsupported features in a source configuration result in [errors][].
 
 Refer to [Migrate from Prometheus to {{< param "PRODUCT_NAME" >}}][migrate prometheus] for a detailed migration guide.
