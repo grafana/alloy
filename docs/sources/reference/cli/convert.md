@@ -1,14 +1,15 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/cli/convert/
 description: Learn about the convert command
-menuTitle: convert
-title: The convert command
+labels:
+  stage: public-preview
+  products:
+    - oss
+title: convert
 weight: 100
 ---
 
-<span class="badge docs-labels__stage docs-labels__item">Public preview</span>
-
-# The convert command
+# `convert`
 
 {{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 

@@ -1,12 +1,15 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/cli/run/
 description: Learn about the run command
-menuTitle: run
-title: The run command
+labels:
+  stage: general-availability
+  products:
+    - oss
+title: run
 weight: 300
 ---
 
-# The `run` command
+# `run`
 
 The `run` command runs {{< param "PRODUCT_NAME" >}} in the foreground until an interrupt is received.
 

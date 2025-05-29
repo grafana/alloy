@@ -1,12 +1,15 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/cli/tools/
 description: Learn about the tools command
-menuTitle: tools
-title: The tools command
+labels:
+  stage: general-availability
+  products:
+    - oss
+title: tools
 weight: 400
 ---
 
-# The `tools` command
+# `tools`
 
 The `tools` command contains command line tooling grouped by {{< param "PRODUCT_NAME" >}} component.
 
