@@ -1,0 +1,24 @@
+apiVersion: 1
+datasources:
+  - name: cortex-dev-01-dev-us-central-0
+    uid: cortex-dev-01-dev-us-central-0
+    type: prometheus
+    url: https://prometheus-dev-01-dev-us-central-0.grafana-dev.net/api/prom
+    basicAuth: true
+    basicAuthUser: 9960
+    secureJsonData:
+      basicAuthPassword: $MIMIR_DEV_READ_KEY
+    editable: true
+    isDefault: true
+    version: 1
+  - name: loki-dev
+    uid: loki-dev
+    type: loki
+    url: https://logs-dev-005.grafana-dev.net
+    basicAuth: true
+    basicAuthUser: 29
+    secureJsonData:
+      basicAuthPassword: $LOKI_DEV_READ_KEY
+    editable: true
+    isDefault: false
+    version: 1
