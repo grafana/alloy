@@ -37,12 +37,12 @@ prometheus.operator.servicemonitors "<LABEL>" {
 
 You can use the following arguments with `prometheus.operator.servicemonitors`:
 
-| Name                    | Type                    | Description                                                                                               | Default     | Required |
-| ----------------------- | ----------------------- | --------------------------------------------------------------------------------------------------------- | ----------- | -------- |
-| `forward_to`            | `list(MetricsReceiver)` | List of receivers to send scraped metrics to.                                                             |             | yes      |
-| `informer_sync_timeout` | `duration`              | Timeout for initial sync of ServiceMonitor resources.                                                     | `1m`        | no       |
-| `kubernetes_role`       | `string`                | The Kubernetes role used for discovery. Supports `endpoints` or `endpointslice`.                          | `endpoints` | no       |
-| `namespaces`            | `list(string)`          | List of namespaces to search for ServiceMonitor resources. If not specified, all namespaces are searched. |             | no       |
+| Name                    | Type                    | Description                                                                                               | Default       | Required |
+| ----------------------- | ----------------------- | --------------------------------------------------------------------------------------------------------- | ------------- | -------- |
+| `forward_to`            | `list(MetricsReceiver)` | List of receivers to send scraped metrics to.                                                             |               | yes      |
+| `informer_sync_timeout` | `duration`              | Timeout for initial sync of ServiceMonitor resources.                                                     | `"1m"`        | no       |
+| `kubernetes_role`       | `string`                | The Kubernetes role used for discovery. Supports `endpoints` or `endpointslice`.                          | `"endpoints"` | no       |
+| `namespaces`            | `list(string)`          | List of namespaces to search for ServiceMonitor resources. If not specified, all namespaces are searched. |               | no       |
 
 ## Blocks
 

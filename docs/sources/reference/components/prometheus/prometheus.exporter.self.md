@@ -23,7 +23,7 @@ prometheus.exporter.self "<LABEL>" {
 
 ## Arguments
 
-The `prometheus.exporter.self` doesn't support any arguments.
+The `prometheus.exporter.self` component doesn't support any arguments.
 
 ## Blocks
 

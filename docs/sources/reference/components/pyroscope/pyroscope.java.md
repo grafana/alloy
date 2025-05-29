@@ -67,11 +67,11 @@ For example, in Docker, capabilities that aren't on the allowlist are dropped by
 
 You can use the following arguments with `pyroscope.java`:
 
-| Name         | Type                     | Description                                      | Default | Required |
-| ------------ | ------------------------ | ------------------------------------------------ | ------- | -------- |
-| `forward_to` | `list(ProfilesReceiver)` | List of receivers to send collected profiles to. |         | yes      |
-| `targets`    | `list(map(string))`      | List of java process targets to profile.         |         | yes      |
-| `tmp_dir`    | `string`                 | Temporary directory to store async-profiler.     | `/tmp`  | no       |
+| Name         | Type                     | Description                                      | Default  | Required |
+| ------------ | ------------------------ | ------------------------------------------------ | -------- | -------- |
+| `forward_to` | `list(ProfilesReceiver)` | List of receivers to send collected profiles to. |          | yes      |
+| `targets`    | `list(map(string))`      | List of java process targets to profile.         |          | yes      |
+| `tmp_dir`    | `string`                 | Temporary directory to store async-profiler.     | `"/tmp"` | no       |
 
 ## Profiling behavior
 

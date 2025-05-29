@@ -30,16 +30,16 @@ prometheus.exporter.unix "<LABEL>" {
 
 You can use the following arguments with `prometheus.exporter.unix`:
 
-| Name                       | Type           | Description                                                                 | Default          | Required |
-| -------------------------- | -------------- | --------------------------------------------------------------------------- | ---------------- | -------- |
-| `disable_collectors`       | `list(string)` | Collectors to disable.                                                      | `[]`             | no       |
-| `enable_collectors`        | `list(string)` | Collectors to enable.                                                       | `[]`             | no       |
-| `include_exporter_metrics` | `boolean`      | Whether metrics about the exporter itself should be reported.               | false            | no       |
-| `procfs_path`              | `string`       | The procfs mount point.                                                     | `/proc`          | no       |
-| `rootfs_path`              | `string`       | Specify a prefix for accessing the host filesystem.                         | `/`              | no       |
-| `set_collectors`           | `list(string)` | Overrides the default set of enabled collectors with the collectors listed. |                  | no       |
-| `sysfs_path`               | `string`       | The sysfs mount point.                                                      | `/sys`           | no       |
-| `udev_data_path`           | `string`       | The udev data path.                                                         | `/run/udev/data` | no       |
+| Name                       | Type           | Description                                                                 | Default            | Required |
+| -------------------------- | -------------- | --------------------------------------------------------------------------- | ------------------ | -------- |
+| `disable_collectors`       | `list(string)` | Collectors to disable.                                                      | `[]`               | no       |
+| `enable_collectors`        | `list(string)` | Collectors to enable.                                                       | `[]`               | no       |
+| `include_exporter_metrics` | `bool`         | Whether metrics about the exporter itself should be reported.               | `false`            | no       |
+| `procfs_path`              | `string`       | The procfs mount point.                                                     | `"/proc"`          | no       |
+| `rootfs_path`              | `string`       | Specify a prefix for accessing the host filesystem.                         | `"/"`              | no       |
+| `set_collectors`           | `list(string)` | Overrides the default set of enabled collectors with the collectors listed. |                    | no       |
+| `sysfs_path`               | `string`       | The sysfs mount point.                                                      | `"/sys"`           | no       |
+| `udev_data_path`           | `string`       | The udev data path.                                                         | `"/run/udev/data"` | no       |
 
 `set_collectors` defines a hand-picked list of enabled-by-default collectors.
 If set, anything not provided in that list is disabled by default.
@@ -191,14 +191,14 @@ The default values vary by the operating system {{< param "PRODUCT_NAME" >}} run
 
 | Name                          | Type      | Description                                                           | Default | Required |
 | ----------------------------- | --------- | --------------------------------------------------------------------- | ------- | -------- |
-| `ignore_invalid_speed_device` | `boolean` | Ignore net devices with invalid speed values.                         | false   | no       |
+| `ignore_invalid_speed_device` | `boolean` | Ignore net devices with invalid speed values.                         | `false` | no       |
 | `ignored_devices`             | `string`  | Regular expression of net devices to ignore for `netclass` collector. | `"^$"`  | no       |
 
 ### `netdev`
 
 | Name             | Type      | Description                                                                             | Default | Required |
 | ---------------- | --------- | --------------------------------------------------------------------------------------- | ------- | -------- |
-| `address_info`   | `boolean` | Enable collecting address-info for every device.                                        | false   | no       |
+| `address_info`   | `boolean` | Enable collecting address-info for every device.                                        | `false` | no       |
 | `device_exclude` | `string`  | Regular expression of net devices to exclude. Mutually exclusive with `device_include`. |         | no       |
 | `device_include` | `string`  | Regular expression of net devices to include. Mutually exclusive with `device_exclude`. |         | no       |
 
@@ -270,9 +270,9 @@ An explicit value in the block takes precedence over the environment variable.
 
 | Name              | Type      | Description                                                                                                          | Default                                           | Required |
 | ----------------- | --------- | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- | -------- |
-| `enable_restarts` | `boolean` | Enables service unit metric `service_restart_total`                                                                  | false                                             | no       |
-| `start_time`      | `boolean` | Enables service unit metric `unit_start_time_seconds`                                                                | false                                             | no       |
-| `task_metrics`    | `boolean` | Enables service unit task metrics `unit_tasks_current` and `unit_tasks_max.`                                         | false                                             | no       |
+| `enable_restarts` | `boolean` | Enables service unit metric `service_restart_total`                                                                  | `false`                                           | no       |
+| `start_time`      | `boolean` | Enables service unit metric `unit_start_time_seconds`                                                                | `false`                                           | no       |
+| `task_metrics`    | `boolean` | Enables service unit task metrics `unit_tasks_current` and `unit_tasks_max.`                                         | `false`                                           | no       |
 | `unit_exclude`    | `string`  | Regular expression of systemd units to exclude. Units must both match include and not match exclude to be collected. | `".+\\.(automount\|device\|mount\|scope\|slice)"` | no       |
 | `unit_include`    | `string`  | Regular expression of systemd units to include. Units must both match include and not match exclude to be collected. | `".+"`                                            | no       |
 

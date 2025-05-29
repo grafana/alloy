@@ -44,7 +44,7 @@ You can use the following argument with `pyroscope.write`:
 
 ## Blocks
 
-The following blocks are supported inside the definition of `pyroscope.write`:
+You can use the following blocks with `pyroscope.write`:
 
 | Block                                              | Description                                                | Required |
 | -------------------------------------------------- | ---------------------------------------------------------- | -------- |
@@ -81,7 +81,7 @@ The following arguments are supported:
 | `headers`                | `map(string)`       | Extra headers to deliver with the request.                                                       |           | no       |
 | `http_headers`           | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.          |           | no       |
 | `max_backoff_period`     | `duration`          | Maximum backoff time between retries.                                                            | `"5m"`    | no       |
-| `max_backoff_retries`    | `int`               | Maximum number of retries. 0 to retry infinitely.                                                | 10        | no       |
+| `max_backoff_retries`    | `int`               | Maximum number of retries. 0 to retry infinitely.                                                | `10`      | no       |
 | `min_backoff_period`     | `duration`          | Initial backoff time between retries.                                                            | `"500ms"` | no       |
 | `name`                   | `string`            | Optional name to identify the endpoint in metrics.                                               |           | no       |
 | `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |           | no       |

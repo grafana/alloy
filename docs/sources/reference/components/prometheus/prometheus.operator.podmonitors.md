@@ -41,7 +41,7 @@ You can use the following arguments with `prometheus.operator.podmonitors`:
 | ----------------------- | ----------------------- | --------------------------------------------------------------------------------------------------------- | ------- | -------- |
 | `forward_to`            | `list(MetricsReceiver)` | List of receivers to send scraped metrics to.                                                             |         | yes      |
 | `namespaces`            | `list(string)`          | List of namespaces to search for PodMonitor resources. If not specified, all namespaces will be searched. |         | no       |
-| `informer_sync_timeout` | `duration`              | Timeout for initial sync of PodMonitor resources.                                                         | `1m`    | no       |
+| `informer_sync_timeout` | `duration`              | Timeout for initial sync of PodMonitor resources.                                                         | `"1m"`  | no       |
 
 ## Blocks
 
@@ -90,7 +90,7 @@ The following arguments are supported:
 | `bearer_token`           | `secret`            | Bearer token to authenticate with.                                                               |         | no       |
 | `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`  | no       |
 | `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`  | no       |
-| `http_headers`           | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.          |                      | no       |
+| `http_headers`           | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.          |         | no       |
 | `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |         | no       |
 | `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |         | no       |
 | `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false` | no       |

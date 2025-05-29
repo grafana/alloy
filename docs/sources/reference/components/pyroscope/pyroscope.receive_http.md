@@ -38,7 +38,7 @@ The component starts an HTTP server supporting the following endpoint.
 
 ## Arguments
 
-You can use the following arguments with `pyroscope.receive_http`:
+You can use the following argument with `pyroscope.receive_http`:
 
 | Name         | Type                     | Description                            | Default | Required |
 | ------------ | ------------------------ | -------------------------------------- | ------- | -------- |
@@ -46,7 +46,7 @@ You can use the following arguments with `pyroscope.receive_http`:
 
 ## Blocks
 
-You can use the following blocks `pyroscope.receive_http`:
+You can use the following block with `pyroscope.receive_http`:
 
 | Name           | Description                                        | Required |
 | -------------- | -------------------------------------------------- | -------- |
