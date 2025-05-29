@@ -35,20 +35,20 @@ You can use the following arguments with `discovery.ionos`:
 | `bearer_token`           | `secret`            | Bearer token to authenticate with.                                                               |         | no       |
 | `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`  | no       |
 | `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`  | no       |
-| `http_headers`           | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.          |                      | no       |
+| `http_headers`           | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.          |         | no       |
 | `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |         | no       |
-| `port`                   | `int`               | The port to scrape metrics from.                                                                 | 80      | no       |
+| `port`                   | `int`               | The port to scrape metrics from.                                                                 | `80`    | no       |
 | `proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |         | no       |
 | `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false` | no       |
 | `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |         | no       |
-| `refresh_interval`       | `duration`          | The time after which the servers are refreshed.                                                  | `60s`   | no       |
+| `refresh_interval`       | `duration`          | The time after which the servers are refreshed.                                                  | `"60s"` | no       |
 
- At most, one of the following can be provided:
+At most, one of the following can be provided:
 
 * [`authorization`][authorization] block
 * [`basic_auth`][basic_auth] block
 * [`bearer_token_file`][arguments] argument
-* [`bearer_token`][arguments]
+* [`bearer_token`][arguments] argument
 * [`oauth2`][oauth2] block
 
 [arguments]: #arguments
@@ -63,7 +63,7 @@ You can use the following blocks with `discovery.ionos`:
 | ------------------------------------- | ---------------------------------------------------------- | -------- |
 | [`authorization`][authorization]      | Configure generic authorization to the endpoint.           | no       |
 | [`basic_auth`][basic_auth]            | Configure `basic_auth` for authenticating to the endpoint. | no       |
-| [`oauth2`][basic_auth]                | Configure OAuth 2.0 for authenticating to the endpoint.    | no       |
+| [`oauth2`][oauth2]                    | Configure OAuth 2.0 for authenticating to the endpoint.    | no       |
 | `oauth2` > [`tls_config`][tls_config] | Configure TLS settings for connecting to the endpoint.     | no       |
 | [`tls_config`][tls_config]            | Configure TLS settings for connecting to the endpoint.     | no       |
 
