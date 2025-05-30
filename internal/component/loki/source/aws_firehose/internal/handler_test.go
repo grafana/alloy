@@ -215,7 +215,7 @@ func TestHandler(t *testing.T) {
 
 				require.Len(t, entries, 14)
 				for i, e := range entries {
-					var expectedTimestamp = time.Unix(cwLogsTimestamps[i]/1000, 0)
+					var expectedTimestamp = time.UnixMilli(cwLogsTimestamps[i])
 					require.Equal(t, expectedTimestamp, e.Timestamp, "timestamp is other than expected")
 				}
 			},

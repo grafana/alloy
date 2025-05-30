@@ -275,7 +275,7 @@ func (h *Handler) handleCloudwatchLogsRecord(ctx context.Context, data []byte, c
 
 	for _, event := range cwRecord.LogEvents {
 		if h.useIncomingTs {
-			timestamp = time.Unix(event.Timestamp/millisecondsPerSecond, 0)
+			timestamp = time.UnixMilli(event.Timestamp)
 		}
 		h.sender.Send(ctx, loki.Entry{
 			Labels: h.postProcessLabels(cwLogsLabels.Labels()),
