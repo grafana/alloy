@@ -18,6 +18,10 @@ Main (unreleased)
 
 - Add `hash_string_id` argument to `foreach` block to hash the string representation of the pipeline id instead of using the string itself. (@wildum)
 
+### Bugfixes
+
+- Fix `loki.source.firehose` to propagate specific cloudwatch event timestamps when useIncomingTs is set to true. (@michaelPotter)
+
 v1.9.0
 -----------------
 
