@@ -36,6 +36,24 @@ const (
 //go:embed testdata/*
 var testData embed.FS
 
+// These timestamps line up with the log entries in the testdata/cw_logs_mixed.json file.
+var cwLogsTimestamps = []int64{
+	1684423980083,
+	1684424003641,
+	1684424003820,
+	1684424003822,
+	1684424003859,
+	1684424003859,
+	1684424005707,
+	1684424005708,
+	1684424005718,
+	1684424005718,
+	1684424007492,
+	1684424007493,
+	1684424007494,
+	1684424007494,
+}
+
 func readTestData(t *testing.T, name string) string {
 	f, err := testData.ReadFile(name)
 	if err != nil {
@@ -196,8 +214,8 @@ func TestHandler(t *testing.T) {
 				require.Equal(t, "86208cf6-2bcc-47e6-9010-02ca9f44a025", r.RequestID)
 
 				require.Len(t, entries, 14)
-				expectedTimestamp := time.Unix(cwRequestTimestamp/1000, 0)
-				for _, e := range entries {
+				for i, e := range entries {
+					var expectedTimestamp = time.UnixMilli(cwLogsTimestamps[i])
 					require.Equal(t, expectedTimestamp, e.Timestamp, "timestamp is other than expected")
 				}
 			},
