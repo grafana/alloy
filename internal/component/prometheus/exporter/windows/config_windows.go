@@ -93,5 +93,8 @@ func (a *Arguments) SetToDefault() {
 		NetFramework: NetFrameworkConfig{
 			EnabledList: slices.Clone(col.ConfigDefaults.NetFramework.CollectorsEnabled),
 		},
+		DNS: DNSConfig{
+			EnabledList: slices.Clone(col.ConfigDefaults.DNS.CollectorsEnabled),
+		},
 	}
 }

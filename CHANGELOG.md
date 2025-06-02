@@ -14,9 +14,15 @@ Main (unreleased)
 
 - (_Experimental_) Add an `array.group_by` stdlib function to group items in an array by a key. (@wildum)
 
+- Update the `prometheus.exporter.windows` component to version v0.30.7. This adds new metrics to the `dns` collector. (@dehaansa)
+
 ### Enhancements
 
 - Add `hash_string_id` argument to `foreach` block to hash the string representation of the pipeline id instead of using the string itself. (@wildum)
+
+### Bugfixes
+
+- Update the `prometheus.exporter.windows` component to version v0.30.7. This fixes an error with the exchange collector and terminal_services collector (@dehaansa)
 
 v1.9.0
 -----------------

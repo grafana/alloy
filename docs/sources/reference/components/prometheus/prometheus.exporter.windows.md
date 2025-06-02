@@ -50,6 +50,7 @@ You can use the following blocks with `prometheus.exporter.windows`:
 | Name                                       | Description                                    | Required |
 | ------------------------------------------ | ---------------------------------------------- | -------- |
 | [`dfsr`][dfsr]                             | Configures the `dfsr` collector.               | no       |
+| [`dns`][dns]                               | Configures the `dns` collector.                | no       |
 | [`exchange`][exchange]                     | Configures the `exchange` collector.           | no       |
 | [`filetime`][filetime]                     | Configures the `filetime` collector.           | no       |
 | [`iis`][iis]                               | Configures the `iis` collector.                | no       |
@@ -71,6 +72,7 @@ You can use the following blocks with `prometheus.exporter.windows`:
 | [`text_file`][text_file]                   | Configures the `text_file` collector.          | no       |
 
 [dfsr]: #dfsr
+[dns]: #dns
 [exchange]: #exchange
 [filetime]: #filetime
 [iis]: #iis
@@ -96,6 +98,12 @@ You can use the following blocks with `prometheus.exporter.windows`:
 | Name             | Type           | Description                            | Default                            | Required |
 | ---------------- | -------------- | -------------------------------------- | ---------------------------------- | -------- |
 | `source_enabled` | `list(string)` | A list of DFSR Perflib sources to use. | `["connection","folder","volume"]` | no       |
+
+### `dns`
+
+| Name           | Type           | Description                  | Default                      | Required |
+|----------------|----------------|------------------------------|------------------------------|----------|
+| `enabled_list` | `list(string)` | A list of collectors to use. | `["metrics", "error_stats"]` | no       |
 
 ### `exchange`
 
