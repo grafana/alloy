@@ -35,10 +35,10 @@ You can use the following arguments with `logging`:
 
 The following strings are recognized as valid log levels:
 
-* `"debug"`: Write all logs, including _debug_ level logs.
 * `"error"`: Only write logs at the _error_ level.
-* `"info"`: Only write logs at _info_ level or above.
 * `"warn"`: Only write logs at the _warn_ level or above.
+* `"info"`: Only write logs at _info_ level or above.
+* `"debug"`: Write all logs, including _debug_ level logs.
 
 ### Log format
 
