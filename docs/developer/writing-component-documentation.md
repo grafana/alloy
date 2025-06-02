@@ -181,7 +181,7 @@ listed using a Markdown table, with the following columns:
 | Default     | Default value for the argument.   |
 | Required    | Whether the argument is required. |
 
-Sort the table rows alphabetically, required first, then optional.
+If possible, sort the table rows alphabetically, required first, then optional.
 
 A paragraph with the content "You can use the following arguments with `COMPONENT_NAME`:" should
 always prefix the arguments table.
@@ -261,7 +261,7 @@ using a Markdown table, with the following columns:
 | Description | Block description.                |
 | Required    | Whether the block is required.    |
 
-Sort the table rows alphabetically, required first, then optional.
+If possible, sort the table rows alphabetically, required first, then optional.
 
 A paragraph with the content "You can use the following blocks with `COMPONENT_NAME`:" should
 always prefix the blocks table.
