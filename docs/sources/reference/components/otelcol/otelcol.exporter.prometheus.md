@@ -39,12 +39,12 @@ You can use the following arguments with `otelcol.exporter.prometheus`:
 | Name                               | Type                    | Description                                                       | Default | Required |
 | ---------------------------------- | ----------------------- | ----------------------------------------------------------------- | ------- | -------- |
 | `forward_to`                       | `list(MetricsReceiver)` | Where to forward converted Prometheus metrics.                    |         | yes      |
-| `add_metric_suffixes`              | `boolean`               | Whether to add type and unit suffixes to metric names.            | `true`  | no       |
+| `add_metric_suffixes`              | `bool`                  | Whether to add type and unit suffixes to metric names.            | `true`  | no       |
 | `gc_frequency`                     | `duration`              | How often to clean up stale metrics from memory.                  | `"5m"`  | no       |
-| `include_scope_info`               | `boolean`               | Whether to include `otel_scope_info` metrics.                     | `false` | no       |
-| `include_scope_labels`             | `boolean`               | Whether to include additional OTLP labels in all metrics.         | `true`  | no       |
-| `include_target_info`              | `boolean`               | Whether to include `target_info` metrics.                         | `true`  | no       |
-| `resource_to_telemetry_conversion` | `boolean`               | Whether to convert OTel resource attributes to Prometheus labels. | `false` | no       |
+| `include_scope_info`               | `bool`                  | Whether to include `otel_scope_info` metrics.                     | `false` | no       |
+| `include_scope_labels`             | `bool`                  | Whether to include additional OTLP labels in all metrics.         | `true`  | no       |
+| `include_target_info`              | `bool`                  | Whether to include `target_info` metrics.                         | `true`  | no       |
+| `resource_to_telemetry_conversion` | `bool`                  | Whether to convert OTel resource attributes to Prometheus labels. | `false` | no       |
 
 By default, OpenTelemetry resources are converted into `target_info` metrics.
 OpenTelemetry instrumentation scopes are converted into `otel_scope_info` metrics.

@@ -37,11 +37,11 @@ otelcol.receiver.solace "<LABEL>" {
 
 You can use the following arguments with `otelcol.receiver.solace`:
 
-| Name                 | Type     | Description                                                               | Default          | Required |
-| -------------------- | -------- | ------------------------------------------------------------------------- | ---------------- | -------- |
-| `queue`              | `string` | Name of the Solace telemetry queue to get span trace messages from.       |                  | yes      |
-| `broker`             | `string` | Name of the Solace broker using AMQP over TLS.                            | `localhost:5671` | no       |
-| `max_unacknowledged` | `int`    | Maximum number of unacknowledged messages the Solace broker can transmit. | 10               | no       |
+| Name                 | Type     | Description                                                               | Default            | Required |
+| -------------------- | -------- | ------------------------------------------------------------------------- | ------------------ | -------- |
+| `queue`              | `string` | Name of the Solace telemetry queue to get span trace messages from.       |                    | yes      |
+| `broker`             | `string` | Name of the Solace broker using AMQP over TLS.                            | `"localhost:5671"` | no       |
+| `max_unacknowledged` | `int`    | Maximum number of unacknowledged messages the Solace broker can transmit. | `10`               | no       |
 
 `queue` must have the format `queue://#telemetry-myTelemetryProfile`.
 
