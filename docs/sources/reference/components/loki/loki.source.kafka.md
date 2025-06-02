@@ -33,19 +33,19 @@ loki.source.kafka "<LABEL>" {
 
 ## Arguments
 
-`loki.source.kafka` supports the following arguments:
+You can use the following arguments with `loki.source.kafka`:
 
-| Name                     | Type                 | Description                                              | Default               | Required |
-|--------------------------|----------------------|----------------------------------------------------------|-----------------------|----------|
-| `brokers`                | `list(string)`       | The list of brokers to connect to Kafka.                 |                       | yes      |
-| `forward_to`             | `list(LogsReceiver)` | List of receivers to send log entries to.                |                       | yes      |
-| `topics`                 | `list(string)`       | The list of Kafka topics to consume.                     |                       | yes      |
-| `assignor`               | `string`             | The consumer group rebalancing strategy to use.          | `"range"`             | no       |
-| `group_id`               | `string`             | The Kafka consumer group id.                             | `"loki.source.kafka"` | no       |
-| `labels`                 | `map(string)`        | The labels to associate with each received Kafka event.  | `{}`                  | no       |
-| `relabel_rules`          | `RelabelRules`       | Relabeling rules to apply on log entries.                | `{}`                  | no       |
-| `use_incoming_timestamp` | `bool`               | Whether or not to use the timestamp received from Kafka. | `false`               | no       |
-| `version`                | `string`             | Kafka version to connect to.                             | `"2.2.1"`             | no       |
+| Name                     | Type                 | Description                                             | Default               | Required |
+| ------------------------ | -------------------- | ------------------------------------------------------- | --------------------- | -------- |
+| `brokers`                | `list(string)`       | The list of brokers to connect to Kafka.                |                       | yes      |
+| `forward_to`             | `list(LogsReceiver)` | List of receivers to send log entries to.               |                       | yes      |
+| `topics`                 | `list(string)`       | The list of Kafka topics to consume.                    |                       | yes      |
+| `assignor`               | `string`             | The consumer group rebalancing strategy to use.         | `"range"`             | no       |
+| `group_id`               | `string`             | The Kafka consumer group ID.                            | `"loki.source.kafka"` | no       |
+| `labels`                 | `map(string)`        | The labels to associate with each received Kafka event. | `{}`                  | no       |
+| `relabel_rules`          | `RelabelRules`       | Relabeling rules to apply on log entries.               | `{}`                  | no       |
+| `use_incoming_timestamp` | `bool`               | Whether to use the timestamp received from Kafka.       | `false`               | no       |
+| `version`                | `string`             | Kafka version to connect to.                            | `"2.2.1"`             | no       |
 
 `assignor` values can be either `"range"`, `"roundrobin"`, or `"sticky"`.
 
