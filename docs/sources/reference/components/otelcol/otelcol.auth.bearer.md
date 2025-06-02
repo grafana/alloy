@@ -35,10 +35,10 @@ otelcol.auth.bearer "<LABEL>" {
 
 You can use the following arguments with `otelcol.auth.bearer`:
 
-| Name     | Type     | Description                                      | Default  | Required |
-| -------- | -------- | ------------------------------------------------ | -------- | -------- |
-| `token`  | `secret` | Bearer token to use for authenticating requests. |          | yes      |
-| `scheme` | `string` | Authentication scheme name.                      | "Bearer" | no       |
+| Name     | Type     | Description                                      | Default    | Required |
+| -------- | -------- | ------------------------------------------------ | ---------- | -------- |
+| `token`  | `secret` | Bearer token to use for authenticating requests. |            | yes      |
+| `scheme` | `string` | Authentication scheme name.                      | `"Bearer"` | no       |
 
 When sending the token, the value of `scheme` is prepended to the `token` value.
 The string is then sent out as either a header for HTTP or as metadata for gRPC.
