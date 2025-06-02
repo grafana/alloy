@@ -10,6 +10,10 @@ internal API changes are not present.
 Unreleased
 ----------
 
+### Bug fixes
+
+- Fix `alloy.mounts.extra` incorrect list after templateting. (@sentoz)
+
 1.1.0 (2025-06-02)
 ----------
 
