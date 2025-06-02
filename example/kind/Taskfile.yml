@@ -8,6 +8,7 @@ vars:
 
 tasks:  
   create-cluster:
+    run: once
     status:
       - test -f {{.KUBECONFIG}} && kubectl --kubeconfig {{.KUBECONFIG}} cluster-info &>/dev/null
     cmds:
@@ -15,66 +16,40 @@ tasks:
       - kind create cluster --config config/kind/multinode.yaml --name {{.CLUSTERNAME}} --kubeconfig {{.KUBECONFIG}}
 
   delete-cluster:
+    run: once
     cmds:
       - kind delete cluster --name {{.CLUSTERNAME}}
       - rm -rf {{.KUBECONFIG}}
 
-  deploy:operator:
-    deps: [create-cluster]
-    status:
-      - helm --kubeconfig {{.KUBECONFIG}} test alloy-operator -n operator &>/dev/null
+  update-helm-repos:
+    run: once
     cmds:
       - helm repo add grafana https://grafana.github.io/helm-charts
       - helm repo update
+
+  deploy:operator:
+    deps: [create-cluster, update-helm-repos]
+    cmds:
       - helm --kubeconfig {{.KUBECONFIG}} upgrade --install alloy-operator -n operator --create-namespace grafana/alloy-operator --wait
 
   deploy:grafana:
-    deps: [create-cluster]
-    status:
-      - helm --kubeconfig {{.KUBECONFIG}} test grafana -n monitoring &>/dev/null
+    deps: [create-cluster, update-helm-repos]
     cmds:
-      - helm repo add grafana https://grafana.github.io/helm-charts
-      - helm repo update
       - helm --kubeconfig {{.KUBECONFIG}} upgrade --install grafana -n monitoring --create-namespace grafana/grafana --values {{.TASK_DIR}}/config/grafana/values.yaml --wait
 
+  deploy:mimir:
+    deps: [create-cluster, update-helm-repos]
+    cmds:
+      - helm --kubeconfig {{.KUBECONFIG}} upgrade --install mimir -n mimir --create-namespace grafana/mimir-distributed --values {{.TASK_DIR}}/config/mimir/values.yaml --wait
+
   deploy:alloy:logs-daemonset:
-    desc: Deploy logs-daemonset overlay
+    run: once
     deps: [deploy:operator]
     cmds:
       - kubectl --kubeconfig {{.KUBECONFIG}} apply -k {{.TASK_DIR}}/config/alloy/overlays/logs-daemonset
 
   expose:
     desc: Expose all services on localhost via port-forward
-    deps: [deploy:grafana]
+    deps: [deploy:grafana, deploy:mimir]
     cmds:
-      - |
-        bash -c '
-        # Start Grafana port-forward in background
-        kubectl --kubeconfig {{.KUBECONFIG}} port-forward -n monitoring service/grafana 3000:80 &
-        GRAFANA_PID=$!
-        
-        # Give port-forward a moment to start
-        sleep 2
-        
-        # Print available URLs
-        echo ""
-        echo "🌐 Services are now available at:"
-        echo "   Grafana: http://localhost:3000"
-        echo ""
-        echo "Press Ctrl+C to stop all port forwarding"
-        echo ""
-        
-        # Function to cleanup background processes
-        cleanup() {
-          echo ""
-          echo "Stopping port forwarding..."
-          kill $GRAFANA_PID 2>/dev/null || true
-          exit 0
-        }
-        
-        # Set up signal handling
-        trap cleanup SIGINT SIGTERM
-        
-        # Wait for background processes
-        wait
-        '
+      - "{{.TASK_DIR}}/config/expose.sh {{.KUBECONFIG}}"

@@ -16,6 +16,6 @@ spec:
 
         prometheus.remote_write "local_prom" {
           endpoint {
-            url = "http://prometheus-server.prometheus.svc:9090/api/v1/write"
+            url = "http://mimir-nginx.mimir.svc:80/api/v1/push"
           }
         } 
