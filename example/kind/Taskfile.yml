@@ -19,9 +19,26 @@ tasks:
       - kind delete cluster --name {{.CLUSTERNAME}}
       - rm -rf {{.KUBECONFIG}}
 
-  install-operator:
+  deploy:operator:
     deps: [create-cluster]
     status:
       - helm --kubeconfig {{.KUBECONFIG}} test alloy-operator -n operator &>/dev/null
     cmds:
+      - helm repo add grafana https://grafana.github.io/helm-charts
+      - helm repo update
       - helm --kubeconfig {{.KUBECONFIG}} upgrade --install alloy-operator -n operator --create-namespace grafana/alloy-operator --wait
+
+  deploy:grafana:
+    deps: [create-cluster]
+    status:
+      - helm --kubeconfig {{.KUBECONFIG}} test grafana -n monitoring &>/dev/null
+    cmds:
+      - helm repo add grafana https://grafana.github.io/helm-charts
+      - helm repo update
+      - helm --kubeconfig {{.KUBECONFIG}} upgrade --install grafana -n monitoring --create-namespace grafana/grafana --wait
+
+  deploy:alloy:logs-daemonset:
+    desc: Deploy logs-daemonset overlay
+    deps: [deploy:operator]
+    cmds:
+      - kubectl --kubeconfig {{.KUBECONFIG}} apply -k {{.TASK_DIR}}/config/alloy/overlays/logs-daemonset
