@@ -39,7 +39,7 @@ You can use the following arguments with `discovery.serverset`:
 | --------- | -------------- | ------------------------------------------------ | ------- | -------- |
 | `paths`   | `list(string)` | The Zookeeper paths to discover Serversets from. |         | yes      |
 | `servers` | `list(string)` | The Zookeeper servers to connect to.             |         | yes      |
-| `timeout` | `duration`     | The Zookeeper session timeout                    | `10s`   | no       |
+| `timeout` | `duration`     | The Zookeeper session timeout                    | `"10s"` | no       |
 
 ## Blocks
 
