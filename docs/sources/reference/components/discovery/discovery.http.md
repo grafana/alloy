@@ -106,7 +106,7 @@ You can use the following arguments with `discovery.http`:
 | `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |         | no       |
 | `refresh_interval`       | `duration`          | How often to refresh targets.                                                                    | `"60s"` | no       |
 
- At most, one of the following can be provided:
+At most, one of the following can be provided:
 
 * [`authorization`][authorization] block
 * [`basic_auth`][basic_auth] block
@@ -126,7 +126,7 @@ You can use the following blocks with `discovery.http`:
 | ------------------------------------- | ---------------------------------------------------------- | -------- |
 | [`authorization`][authorization]      | Configure generic authorization to the endpoint.           | no       |
 | [`basic_auth`][basic_auth]            | Configure `basic_auth` for authenticating to the endpoint. | no       |
-| [`oauth2`][basic_auth]                | Configure OAuth 2.0 for authenticating to the endpoint.    | no       |
+| [`oauth2`][oauth2]                    | Configure OAuth 2.0 for authenticating to the endpoint.    | no       |
 | `oauth2` > [`tls_config`][tls_config] | Configure TLS settings for connecting to the endpoint.     | no       |
 | [`tls_config`][tls_config]            | Configure TLS settings for connecting to the endpoint.     | no       |
 

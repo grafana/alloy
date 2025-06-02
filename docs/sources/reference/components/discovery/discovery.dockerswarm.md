@@ -40,7 +40,7 @@ You can use the following arguments with `discovery.dockerswarm`:
 | `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                                                          |         | no       |
 | `refresh_interval`       | `duration`          | Interval at which to refresh the list of targets.                                                                             | `"60s"` | no       |
 
- At most, one of the following can be provided:
+At most, one of the following can be provided:
 
 * [`authorization`][authorization] block
 * [`basic_auth`][basic_auth] block
@@ -61,7 +61,7 @@ You can use the following blocks with `discovery.dockerswarm`:
 | [`authorization`][authorization]      | Configure generic authorization to the endpoint.                                   | no       |
 | [`basic_auth`][basic_auth]            | Configure `basic_auth` for authenticating to the endpoint.                         | no       |
 | [`filter`][filter]                    | Optional filter to limit the discovery process to a subset of available resources. | no       |
-| [`oauth2`][oauth2]                    | Configure OAuth2 for authenticating to the endpoint.                               | no       |
+| [`oauth2`][oauth2]                    | Configure OAuth 2.0 for authenticating to the endpoint.                            | no       |
 | `oauth2` > [`tls_config`][tls_config] | Configure TLS settings for connecting to the endpoint.                             | no       |
 | [`tls_config`][tls_config]            | Configure TLS settings for connecting to the endpoint.                             | no       |
 
@@ -105,7 +105,7 @@ You can use the following arguments to configure a filter.
 
 ### `oauth2`
 
-The `oauth` block configures OAuth 2.0 authentication to the endpoint.
+The `oauth2` block configures OAuth 2.0 authentication to the endpoint.
 
 {{< docs/shared lookup="reference/components/oauth2-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 

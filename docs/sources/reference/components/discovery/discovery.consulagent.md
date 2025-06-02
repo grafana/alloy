@@ -28,18 +28,18 @@ discovery.consulagent "<LABEL>" {
 
 You can use the following arguments with `discovery.consulagent`:
 
-| Name               | Type           | Description                                                                                                                            | Default          | Required |
-| ------------------ | -------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ---------------- | -------- |
-| `datacenter`       | `string`       | Data center in which the Consul Agent is configured to run. If not provided, the data center is retrieved from the local Consul Agent. |                  | no       |
-| `password`         | `secret`       | The password to use.                                                                                                                   |                  | no       |
-| `refresh_interval` | `duration`     | Frequency to refresh list of containers.                                                                                               | `"30s"`          | no       |
-| `scheme`           | `string`       | The scheme to use when talking to the Consul Agent.                                                                                    | `http`           | no       |
-| `server`           | `string`       | Host and port of the Consul Agent API.                                                                                                 | `localhost:8500` | no       |
-| `services`         | `list(string)` | A list of services for which targets are retrieved. If omitted, all services are scraped.                                              |                  | no       |
-| `tag_separator`    | `string`       | The string by which Consul tags are joined into the tag label.                                                                         | `,`              | no       |
-| `tags`             | `list(string)` | An optional list of tags used to filter nodes for a given service. Services must contain all tags in the list.                         |                  | no       |
-| `token`            | `secret`       | Secret token used to access the Consul Agent API.                                                                                      |                  | no       |
-| `username`         | `string`       | The username to use.                                                                                                                   |                  | no       |
+| Name               | Type           | Description                                                                                                                            | Default            | Required |
+| ------------------ | -------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ------------------ | -------- |
+| `datacenter`       | `string`       | Data center in which the Consul Agent is configured to run. If not provided, the data center is retrieved from the local Consul Agent. |                    | no       |
+| `password`         | `secret`       | The password to use.                                                                                                                   |                    | no       |
+| `refresh_interval` | `duration`     | Frequency to refresh list of containers.                                                                                               | `"30s"`            | no       |
+| `scheme`           | `string`       | The scheme to use when talking to the Consul Agent.                                                                                    | `"http"`           | no       |
+| `server`           | `string`       | Host and port of the Consul Agent API.                                                                                                 | `"localhost:8500"` | no       |
+| `services`         | `list(string)` | A list of services for which targets are retrieved. If omitted, all services are scraped.                                              |                    | no       |
+| `tag_separator`    | `string`       | The string by which Consul tags are joined into the tag label.                                                                         | `","`              | no       |
+| `tags`             | `list(string)` | An optional list of tags used to filter nodes for a given service. Services must contain all tags in the list.                         |                    | no       |
+| `token`            | `secret`       | Secret token used to access the Consul Agent API.                                                                                      |                    | no       |
+| `username`         | `string`       | The username to use.                                                                                                                   |                    | no       |
 
 ## Blocks
 
@@ -109,7 +109,7 @@ discovery.consulagent "example" {
 }
 
 prometheus.scrape "demo" {
-  targets    = discovery.consul.example.targets
+  targets    = discovery.consulagent.example.targets
   forward_to = [prometheus.remote_write.demo.receiver]
 }
 
