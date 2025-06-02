@@ -42,6 +42,11 @@ tasks:
     cmds:
       - helm --kubeconfig {{.KUBECONFIG}} upgrade --install mimir -n mimir --create-namespace grafana/mimir-distributed --values {{.TASK_DIR}}/config/mimir/values.yaml --wait
 
+  deploy:k8s-monitoring:
+    deps: [create-cluster, update-helm-repos]
+    cmds:
+      - helm --kubeconfig {{.KUBECONFIG}} upgrade --install k8s-monitoring -n monitoring --create-namespace grafana/k8s-monitoring --values {{.TASK_DIR}}/config/k8s-monitoring/values.yaml --values {{.TASK_DIR}}/config/k8s-monitoring/credentials.yaml --wait
+
   deploy:alloy:logs-daemonset:
     run: once
     deps: [deploy:operator]
