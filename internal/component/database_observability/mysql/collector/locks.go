@@ -76,6 +76,7 @@ type LockArguments struct {
 
 	running *atomic.Bool
 	cancel  context.CancelFunc
+	Logger  log.Logger
 }
 
 type Lock struct {
@@ -88,6 +89,8 @@ type Lock struct {
 	// The minimum amount of time elapsed waiting due to a lock
 	// to be selected for scrape
 	lockWaitThreshold time.Duration
+	running           *atomic.Bool
+	cancel            context.CancelFunc
 }
 
 func NewLock(args LockArguments) (*Lock, error) {
@@ -95,7 +98,7 @@ func NewLock(args LockArguments) (*Lock, error) {
 		return nil, errors.New("nil DB connection")
 	}
 
-	if err = args.DB.Ping(); err != nil {
+	if err := args.DB.Ping(); err != nil {
 		return nil, err
 	}
 
@@ -104,16 +107,24 @@ func NewLock(args LockArguments) (*Lock, error) {
 		instanceKey:       args.InstanceKey,
 		scrapeInterval:    args.ScrapeInterval,
 		lockWaitThreshold: args.LockWaitThreshold,
-		logger:            log.WithComponentName(args.DB, "mysql", "collector", "locks"),
+		logger:            log.With(args.Logger, "mysql", "collector", "locks"),
+		running:           &atomic.Bool{},
 	}, nil
 }
 
+// Stop should be kept idempotent
+func (c *Lock) Stop() {
+	c.cancel()
+}
+
 func (c Lock) Run(ctx context.Context) error {
+	ctx, cancel := context.WithCancel(ctx)
+	c.cancel = cancel
 	go func() {
 		defer func() {
 			c.Stop()
 			c.running.Store(false)
-		}
+		}()
 		level.Info(c.logger).Log("Lock: starting")
 		ticker := time.NewTicker(time.Second)
 
