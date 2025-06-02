@@ -111,7 +111,7 @@ The following arguments are supported:
 | ------------------------- | ---------- | --------------------------------------------------------------------------- | ------- | -------- |
 | `disable_keep_alives`     | `bool`     | Disable HTTP keep-alive.                                                    |         | no       |
 | `idle_conn_timeout`       | `duration` | Time to wait before an idle connection closes itself.                       | `"45s"` | no       |
-| `insecure_skip_verify`    | `boolean`  | Ignores insecure server TLS certificates.                                   |         | no       |
+| `insecure_skip_verify`    | `bool`     | Ignores insecure server TLS certificates.                                   |         | no       |
 | `max_conns_per_host`      | `int`      | Limits the total (dialing,active, and idle) number of connections per host. |         | no       |
 | `max_idle_conns_per_host` | `int`      | Limits the number of idle HTTP connections the host can keep open.          | `5`     | no       |
 | `max_idle_conns`          | `int`      | Limits the number of idle HTTP connections the client can keep open.        | `100`   | no       |
