@@ -571,11 +571,8 @@ documenting auxiliary artifacts which are related to a component.
 ### `otelcol.processor.transform`
 
 The [`otelcol.processor.transform`][otelcol.processor.transform] component documentation needed to add
-an extra section about OTTL Contexts because there is no appropriate OTEL docs page
-that we could link to. Currently this information is housed on the [transformprocessor][]
-doc page, but because it contains YAML config for the Collector, users might get confused
-how this maps to Alloy and it's better not to link to it. In the future we could try to
-move this information from [transformprocessor][] to the [OTTL Context][ottl context] doc.
+an extra section about [OTTL Contexts][ottl context] because there is no appropriate OTEL docs page
+that we could link to.
 
 [loki.source.podlogs]: ../sources/reference/components/loki.source.podlogs.md
 [otelcol.processor.transform]: ../sources/reference/components/otelcol.processor.transform.md
