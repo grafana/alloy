@@ -184,7 +184,7 @@ listed using a Markdown table, with the following columns:
 If possible, sort the table rows alphabetically, required first, then optional.
 
 A paragraph with the content "You can use the following arguments with `COMPONENT_NAME`:" should
-always prefix the arguments table.
+always precede the arguments table.
 
 For example:
 
@@ -236,7 +236,7 @@ relevant to the arguments. If there is component behavior relevant to a
 specific block, describe that component behavior in the documentation section
 for that block instead.
 
-It's acceptable to provide configuration snippets for the arguments if it aids
+It's encouraged to provide configuration snippets for the arguments if it aids
 documentation.
 
 ### Blocks
@@ -264,7 +264,7 @@ using a Markdown table, with the following columns:
 If possible, sort the table rows alphabetically, required first, then optional.
 
 A paragraph with the content "You can use the following blocks with `COMPONENT_NAME`:" should
-always prefix the blocks table.
+always precede the blocks table.
 
 For example:
 
@@ -364,7 +364,7 @@ not provided, their Go-inherited defaults will not display in the component UI
 page.
 ```
 
-It's acceptable for block sections to provide configuration snippets for the
+It's encouraged for block sections to provide configuration snippets for the
 block if it aids documentation.
 
 ### Exported fields
@@ -548,7 +548,7 @@ Replace the following:
 If an example includes clarifying comments, make sure that the relevant
 Arguments or block header includes sufficient explanation to be the official
 source for the clarifying comment. Clarifying comments must only be used be
-supplementary information to re-enforce knowledge, and not as the primary source
+supplementary information to reinforce knowledge, and not as the primary source
 of information.
 
 Examples should be formatted using the [`alloy fmt`](https://grafana.com/docs/alloy/latest/reference/cli/fmt/) command.
