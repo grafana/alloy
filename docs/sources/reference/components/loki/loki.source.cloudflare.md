@@ -34,7 +34,7 @@ You can use the following arguments with `loki.source.cloudflare`:
 
 | Name                | Type                 | Description                                                                   | Default     | Required |
 | ------------------- | -------------------- | ----------------------------------------------------------------------------- | ----------- | -------- |
-| `api_token`         | `string`             | The API token to authenticate with.                                           |             | yes      |
+| `api_token`         | `secret`             | The API token to authenticate with.                                           |             | yes      |
 | `forward_to`        | `list(LogsReceiver)` | List of receivers to send log entries to.                                     |             | yes      |
 | `zone_id`           | `string`             | The Cloudflare zone ID to use.                                                |             | yes      |
 | `additional_fields` | `list(string)`       | The additional list of fields to supplement those provided via `fields_type`. |             | no       |
