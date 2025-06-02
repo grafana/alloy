@@ -18,4 +18,4 @@ spec:
           endpoint {
             url = "http://mimir-nginx.mimir.svc:80/api/v1/push"
           }
-        } 
+        }
