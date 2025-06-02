@@ -62,7 +62,7 @@ The `NO_PROXY` environment variable is used to define any hosts that should be e
 
 You can use the `PPROF_MUTEX_PROFILING_PERCENT` environment variable to define the percentage of mutex profiles to retrieve from the pprof mutex endpoint.
 If you set this variable to `5`, then 5 percent of the mutexes are sampled.
-The default value is `0`.
+By default, the sampling rate is set to `0.1%`
 
 ## `PPROF_BLOCK_PROFILING_RATE`
 
