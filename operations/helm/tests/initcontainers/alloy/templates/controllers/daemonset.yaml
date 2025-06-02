@@ -75,8 +75,7 @@ spec:
           volumeMounts:
             - name: config
               mountPath: /etc/alloy
-            -
-              mountPath: /etc/geoip
+            - mountPath: /etc/geoip
               name: geoip
         - name: config-reloader
           image: quay.io/prometheus-operator/prometheus-config-reloader:v0.81.0
