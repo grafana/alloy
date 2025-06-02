@@ -118,14 +118,14 @@ It contains the following blocks:
 
 This `kubernetes` block configures the decorating of the metrics and traces with Kubernetes metadata from the instrumented Pods.
 
-| Name                       | Type           | Description                                            | Default | Required |
-| -------------------------- | -------------- | ------------------------------------------------------ | ------- | -------- |
-| `cluster_name`             | `string`       | The name of the Kubernetes cluster.                    | `""`    | no       |
-| `disable_informers`        | `list(string)` | List of Kubernetes informers to disable.               | `[]`    | no       |
-| `enable`                   | `string`       | Enable the Kubernetes metadata decoration.             | `false` | no       |
-| `informers_resync_period`  | `duration`     | Period for Kubernetes informers resynchronization.     | `30m`   | no       |
-| `informers_sync_timeout`   | `duration`     | Timeout for Kubernetes informers synchronization.      | `30s`   | no       |
-| `meta_restrict_local_node` | `bool`         | Restrict Kubernetes metadata collection to local node. | `false` | no       |
+| Name                       | Type           | Description                                            | Default   | Required |
+| -------------------------- | -------------- | ------------------------------------------------------ | --------- | -------- |
+| `cluster_name`             | `string`       | The name of the Kubernetes cluster.                    | `""`      | no       |
+| `disable_informers`        | `list(string)` | List of Kubernetes informers to disable.               | `[]`      | no       |
+| `enable`                   | `string`       | Enable the Kubernetes metadata decoration.             | `false`   | no       |
+| `informers_resync_period`  | `duration`     | Period for Kubernetes informers resynchronization.     | `"30m"`   | no       |
+| `informers_sync_timeout`   | `duration`     | Timeout for Kubernetes informers synchronization.      | `"30s"`   | no       |
+| `meta_restrict_local_node` | `bool`         | Restrict Kubernetes metadata collection to local node. | `false`   | no       |
 
 If `cluster_name` isn't set, Beyla tries to detect the cluster name from the Kubernetes API.
 
@@ -295,15 +295,15 @@ beyla.ebpf "default" {
 
 The `ebpf` block configures eBPF-specific settings.
 
-| Name                          | Type          | Description                                                                | Default | Required |
-| ----------------------------- | ------------- | -------------------------------------------------------------------------- | ------- | -------- |
-| `wakeup_len`                  | `int`         | Number of messages to accumulate before wakeup request.                    | `""`    | no       |
-| `track_request_headers`       | `bool`        | Enable tracking of request headers for Traceparent fields.                 | `false` | no       |
-| `http_request_timeout`        | `duration`    | Timeout for HTTP requests.                                                 | `30s`   | no       |
-| `enable_context_propagation`  | `bool`        | Enable context propagation using Linux Traffic Control probes.             | `false` | no       |
-| `high_request_volume`         | `bool`        | Optimize for immediate request information when response is seen.          | `false` | no       |
-| `heuristic_sql_detect`        | `bool`        | Enable heuristic-based detection of SQL requests.                         | `false` | no       |
-| `trace_printer`              | `string`      | Format for printing trace information. | `"disabled"` | no |
+| Name                         | Type       | Description                                                       | Default      | Required |
+| ---------------------------- | ---------- | ----------------------------------------------------------------- | ------------ | -------- |
+| `wakeup_len`                 | `int`      | Number of messages to accumulate before wakeup request.           | `""`         | no       |
+| `track_request_headers`      | `bool`     | Enable tracking of request headers for Traceparent fields.        | `false`      | no       |
+| `http_request_timeout`       | `duration` | Timeout for HTTP requests.                                        | `30s`        | no       |
+| `enable_context_propagation` | `bool`     | Enable context propagation using Linux Traffic Control probes.    | `false`      | no       |
+| `high_request_volume`        | `bool`     | Optimize for immediate request information when response is seen. | `false`      | no       |
+| `heuristic_sql_detect`       | `bool`     | Enable heuristic-based detection of SQL requests.                 | `false`      | no       |
+| `trace_printer`              | `string`   | Format for printing trace information.                            | `"disabled"` | no       |
 
 `enable_context_propagation` enables context propagation using Linux Traffic Control probes.
 For more information about this topic, refer to [Distributed traces with Beyla][].
@@ -405,7 +405,7 @@ The `network` block configures network metrics options for Beyla. You must appen
 | `agent_ip_iface`       | `string`       | Network interface to get agent IP from.                               | `"external"`      | no       |
 | `agent_ip_type`        | `string`       | Type of IP address to use.                                            | `"any"`           | no       |
 | `agent_ip`             | `string`       | Allows overriding the reported `beyla.ip` attribute on each metric.   | `""`              | no       |
-| `cache_active_timeout` | `duration`     | Timeout for active flow cache entries.                                | `5s`              | no       |
+| `cache_active_timeout` | `duration`     | Timeout for active flow cache entries.                                | `"5s"`            | no       |
 | `cache_max_flows`      | `int`          | Maximum number of flows to cache.                                     | `5000`            | no       |
 | `cidrs`                | `list(string)` | List of CIDR ranges to monitor.                                       | `[]`              | no       |
 | `direction`            | `string`       | Direction of traffic to monitor.                                      | `"both"`          | no       |
