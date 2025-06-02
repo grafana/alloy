@@ -3,4 +3,4 @@ kind: Kustomization
 
 resources:
   - alloy.yaml
-  - namespace.yaml 
+  - namespace.yaml

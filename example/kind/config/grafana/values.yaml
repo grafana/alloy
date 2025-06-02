@@ -15,4 +15,4 @@ datasources:
       - name: mimir
         type: prometheus
         url: http://mimir-nginx.mimir.svc:80/prometheus
-        isDefault: true 
+        isDefault: true
