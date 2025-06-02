@@ -33,7 +33,7 @@ otelcol.connector.spanlogs "LABEL" {
 
 ## Arguments
 
-`otelcol.connector.spanlogs` supports the following arguments:
+You can use the following arguments with `otelcol.connector.spanlogs`:
 
 | Name                 | Type           | Description                                   | Default | Required |
 | -------------------- | -------------- | --------------------------------------------- | ------- | -------- |
@@ -69,7 +69,7 @@ The following blocks are supported inside the definition of
 
 The `overrides` block configures overrides for keys that will be logged in the body of the log line.
 
-The following attributes are supported:
+The following arguments are supported:
 
 | Name                | Type     | Description                                                | Default  | Required |
 | ------------------- | -------- | ---------------------------------------------------------- | -------- | -------- |

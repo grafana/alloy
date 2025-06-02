@@ -40,7 +40,7 @@ otelcol.exporter.loki "LABEL" {
 
 ## Arguments
 
-`otelcol.exporter.loki` supports the following arguments:
+You can use the following argument with `otelcol.exporter.loki`:
 
 Name         | Type             | Description                           | Default | Required
 -------------|------------------|---------------------------------------|---------|---------

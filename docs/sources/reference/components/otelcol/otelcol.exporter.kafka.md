@@ -34,18 +34,18 @@ otelcol.exporter.kafka "LABEL" {
 
 The following arguments are supported:
 
-Name                                       | Type            | Description                                                                         | Default              | Required
------------------------------------------- | --------------- | ----------------------------------------------------------------------------------- | -------------------- | --------
-`protocol_version`                         | `string`        | Kafka protocol version to use.                                                      |                      | yes
-`brokers`                                  | `list(string)`  | Kafka brokers to connect to.                                                        | `["localhost:9092"]` | no
-`topic`                                    | `string`        | Kafka topic to send to.                                                             |  _See below_         | no
-`topic_from_attribute`                     | `string`        | A resource attribute whose value should be used as the message's topic.             |  `""`                | no
-`encoding`                                 | `string`        | Encoding of payload read from Kafka.                                                | `"otlp_proto"`       | no
-`client_id`                                | `string`        | Consumer client ID to use. The ID will be used for all produce requests.            | `"sarama"`           | no
-`timeout`                                  | `duration`      | The timeout for every attempt to send data to the backend.                          | `"5s"`               | no
-`resolve_canonical_bootstrap_servers_only` | `bool`          | Whether to resolve then reverse-lookup broker IPs during startup.                   | `"false"`            | no
-`partition_traces_by_id`                   | `bool`          | Whether to include the trace ID as the message key in trace messages sent to Kafka. | `"false"`            | no
-`partition_metrics_by_resource_attributes` | `bool`          | Whether to include the hash of sorted resource attributes as the message partitioning key in metric messages sent to Kafka. | `"false"`            | no
+| Name                                       | Type           | Description                                                                                                                 | Default              | Required |
+| ------------------------------------------ | -------------- | --------------------------------------------------------------------------------------------------------------------------- | -------------------- | -------- |
+| `protocol_version`                         | `string`       | Kafka protocol version to use.                                                                                              |                      | yes      |
+| `brokers`                                  | `list(string)` | Kafka brokers to connect to.                                                                                                | `["localhost:9092"]` | no       |
+| `topic`                                    | `string`       | Kafka topic to send to.                                                                                                     | _See below_          | no       |
+| `topic_from_attribute`                     | `string`       | A resource attribute whose value should be used as the message's topic.                                                     | `""`                 | no       |
+| `encoding`                                 | `string`       | Encoding of payload read from Kafka.                                                                                        | `"otlp_proto"`       | no       |
+| `client_id`                                | `string`       | Consumer client ID to use. The ID will be used for all produce requests.                                                    | `"sarama"`           | no       |
+| `timeout`                                  | `duration`     | The timeout for every attempt to send data to the backend.                                                                  | `"5s"`               | no       |
+| `resolve_canonical_bootstrap_servers_only` | `bool`         | Whether to resolve then reverse-lookup broker IPs during startup.                                                           | `"false"`            | no       |
+| `partition_traces_by_id`                   | `bool`         | Whether to include the trace ID as the message key in trace messages sent to Kafka.                                         | `"false"`            | no       |
+| `partition_metrics_by_resource_attributes` | `bool`         | Whether to include the hash of sorted resource attributes as the message partitioning key in metric messages sent to Kafka. | `"false"`            | no       |
 
 If `topic` is not set, different topics will be used for different telemetry signals:
 
