@@ -10,11 +10,18 @@ internal API changes are not present.
 Unreleased
 ----------
 
+1.1.0 (2025-06-02)
+----------
+
 ### Bug fixes
 
 - Fix VPA issue not rendering correctly. (@mattdurham)
 
 - Fix `app.kubernetes.io/version` label not being set correctly. (@wildum)
+
+### Enhancements
+
+- Update to Grafana Alloy v1.9.0. (@wildum)
 
 1.0.3 (2025-05-05)
 ----------
