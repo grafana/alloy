@@ -1,0 +1,9 @@
+# Grafana configuration for local development
+# Enables passwordless access via anonymous authentication
+
+grafana.ini:
+  auth.anonymous:
+    enabled: true
+    org_role: Admin
+  auth:
+    disable_login_form: true 
