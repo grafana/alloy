@@ -30,7 +30,7 @@ You can use the following arguments with `loki.write`:
 
 | Name              | Type          | Description                                  | Default        | Required |
 | ----------------- | ------------- | -------------------------------------------- | -------------- | -------- |
-| `external_labels` | `map(string)` | Labels to add to logs sent over the network. |                | no       |
+| `external_labels` | `map(string)` | Labels to add to logs sent over the network. | `{}`           | no       |
 | `max_streams`     | `int`         | Maximum number of active streams.            | `0` (no limit) | no       |
 
 ## Blocks
@@ -77,7 +77,7 @@ The following arguments are supported:
 | `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`    | no       |
 | `headers`                | `map(string)`       | Extra headers to deliver with the request.                                                       |           | no       |
 | `max_backoff_period`     | `duration`          | Maximum backoff time between retries.                                                            | `"5m"`    | no       |
-| `max_backoff_retries`    | `int`               | Maximum number of retries.                                                                       | 10        | no       |
+| `max_backoff_retries`    | `int`               | Maximum number of retries.                                                                       | `10`      | no       |
 | `min_backoff_period`     | `duration`          | Initial backoff time between retries.                                                            | `"500ms"` | no       |
 | `name`                   | `string`            | Optional name to identify this endpoint with.                                                    |           | no       |
 | `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |           | no       |
