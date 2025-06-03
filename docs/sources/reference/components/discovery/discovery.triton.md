@@ -35,7 +35,7 @@ You can use the following arguments with `discovery.triton`:
 | `endpoint`         | `string`       | The Triton discovery endpoint.                      |               | yes      |
 | `groups`           | `list(string)` | A list of groups to retrieve targets from.          |               | no       |
 | `port`             | `int`          | The port to use for discovery and metrics scraping. | `9163`        | no       |
-| `refresh_interval` | `duration`     | The refresh interval for the list of targets.       | `60s`         | no       |
+| `refresh_interval` | `duration`     | The refresh interval for the list of targets.       | `"60s"`       | no       |
 | `role`             | `string`       | The type of targets to discover.                    | `"container"` | no       |
 | `version`          | `int`          | The Triton discovery API version.                   | `1`           | no       |
 

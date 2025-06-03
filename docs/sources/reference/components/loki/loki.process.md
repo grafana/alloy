@@ -65,7 +65,7 @@ You can use the following blocks with `loki.process`:
 | [`stage.pack`][stage.pack]                               | Configures a `pack` processing stage.                          | no       |
 | [`stage.regex`][stage.regex]                             | Configures a `regex` processing stage.                         | no       |
 | [`stage.replace`][stage.replace]                         | Configures a `replace` processing stage.                       | no       |
-| [`stage.sampling`][stage.sampling]                       | Samples logs at a given rate.                                  | no       |
+| [`stage.sampling`][stage.sampling]                       | Configures a `sampling` processing stage.                      | no       |
 | [`stage.static_labels`][stage.static_labels]             | Configures a `static_labels` processing stage.                 | no       |
 | [`stage.structured_metadata`][stage.structured_metadata] | Configures a structured metadata processing stage.             | no       |
 | [`stage.template`][stage.template]                       | Configures a `template` processing stage.                      | no       |
@@ -255,11 +255,11 @@ The `eventlogmessage` stage extracts data from the Message string that appears i
 
 The following arguments are supported:
 
-| Name                  | Type     | Description                                           | Default   | Required |
-| --------------------- | -------- | ----------------------------------------------------- | --------- | -------- |
-| `drop_invalid_labels` | `bool`   | Whether to drop fields that aren't valid label names. | `false`   | no       |
-| `overwrite_existing`  | `bool`   | Whether to overwrite existing extracted data fields.  | `false`   | no       |
-| `source`              | `string` | Name of the field in the extracted data to parse.     | `message` | no       |
+| Name                  | Type     | Description                                           | Default     | Required |
+| --------------------- | -------- | ----------------------------------------------------- | ----------- | -------- |
+| `drop_invalid_labels` | `bool`   | Whether to drop fields that aren't valid label names. | `false`     | no       |
+| `overwrite_existing`  | `bool`   | Whether to overwrite existing extracted data fields.  | `false`     | no       |
+| `source`              | `string` | Name of the field in the extracted data to parse.     | `"message"` | no       |
 
 When `drop_invalid_labels` is set to `true`, the stage drops fields that aren't valid label names.
 If set to `false`, the stage automatically converts them into valid labels replacing invalid characters with underscores.

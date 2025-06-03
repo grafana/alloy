@@ -43,8 +43,8 @@ You can use the following arguments with `discovery.linode`:
 | `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false` | no       |
 | `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |         | no       |
 | `refresh_interval`       | `duration`          | The time to wait between polling update requests.                                                | `"60s"` | no       |
-| `region`                 | `string`            | A region to filter on.                                                                           | `""`    | no       |
-| `tag_separator`          | `string`            | The string by which Linode Instance tags are joined into the tag label.                          | `,`     | no       |
+| `region`                 | `string`            | A region to filter on.                                                                           |         | no       |
+| `tag_separator`          | `string`            | The string by which Linode Instance tags are joined into the tag label.                          | `","`   | no       |
 
  At most, one of the following can be provided:
 

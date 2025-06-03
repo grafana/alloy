@@ -42,10 +42,10 @@ loki.relabel "<LABEL>" {
 
 You can use the following arguments with `loki.relabel`:
 
-| Name             | Type             | Description                                                    | Default | Required |
-| ---------------- | ---------------- | -------------------------------------------------------------- | ------- | -------- |
-| `forward_to`     | `list(receiver)` | Where to forward log entries after relabeling.                 |         | yes      |
-| `max_cache_size` | `int`            | The maximum number of elements to hold in the relabeling cache | 10,000  | no       |
+| Name             | Type             | Description                                                    | Default  | Required |
+| ---------------- | ---------------- | -------------------------------------------------------------- | -------- | -------- |
+| `forward_to`     | `list(receiver)` | Where to forward log entries after relabeling.                 |          | yes      |
+| `max_cache_size` | `int`            | The maximum number of elements to hold in the relabeling cache | `10000`  | no       |
 
 ## Blocks
 
