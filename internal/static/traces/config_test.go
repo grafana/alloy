@@ -1743,9 +1743,9 @@ load_balancing:
 					assert.NotNil(t, tc.expectedProcessors)
 					var p pipeline.ID
 					if componentID.Name() != "" {
-						p = pipeline.MustNewIDWithName(componentID.Type().String(), componentID.Name())
+						p = pipeline.NewIDWithName(pipeline.SignalTraces, componentID.Name())
 					} else {
-						p = pipeline.MustNewID(componentID.Type().String())
+						p = pipeline.NewID(pipeline.SignalTraces)
 					}
 
 					assert.NotNil(t, actualConfig.Service.Pipelines[p])
