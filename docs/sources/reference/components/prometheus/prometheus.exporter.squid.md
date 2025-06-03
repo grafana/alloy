@@ -24,7 +24,7 @@ prometheus.exporter.squid "<LABEL>" {
 
 ## Arguments
 
-You can use the following arguments to configure the exporter's behavior.`prometheus.exporter.squid`
+You can use the following arguments with `prometheus.exporter.squid`:
 
 | Name       | Type     | Description                                           | Default | Required |
 | ---------- | -------- | ----------------------------------------------------- | ------- | -------- |

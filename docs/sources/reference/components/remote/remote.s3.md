@@ -53,9 +53,11 @@ This doesn't support reading of directories.
 
 ## Blocks
 
- | Name               | Description                                       | Required |
- | ------------------ | ------------------------------------------------- | -------- |
- | [`client`][client] | Additional options for configuring the S3 client. | no       |
+You can use the following block with `remote.s3`:
+
+| Name               | Description                                       | Required |
+| ------------------ | ------------------------------------------------- | -------- |
+| [`client`][client] | Additional options for configuring the S3 client. | no       |
 
 [client]: #client
 
@@ -68,8 +70,8 @@ The `client` block customizes options to connect to the S3 server.
 | `key`            | `string` | Used to override default access key.                                                   |         | no       |
 | `secret`         | `secret` | Used to override default secret value.                                                 |         | no       |
 | `endpoint`       | `string` | Specifies a custom URL to access, used generally for S3-compatible systems.            |         | no       |
-| `disable_ssl`    | `bool`   | Used to disable SSL, generally used for testing.                                       |         | no       |
-| `use_path_style` | `string` | Path style is a deprecated setting that's generally enabled for S3 compatible systems. | `false` | no       |
+| `disable_ssl`    | `bool`   | Used to disable SSL, generally used for testing.                                       | `false` | no       |
+| `use_path_style` | `bool`   | Path style is a deprecated setting that's generally enabled for S3 compatible systems. | `false` | no       |
 | `region`         | `string` | Used to override default region.                                                       |         | no       |
 | `signing_region` | `string` | Used to override the signing region when using a custom endpoint.                      |         | no       |
 
