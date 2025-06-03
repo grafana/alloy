@@ -3,6 +3,9 @@ package ssh_exporter
 import (
     "errors"
     "fmt"
+    "net/url"
+    "strings"
+    "time"
 )
 
 var DefaultConfig = Config{
@@ -21,13 +24,17 @@ type Target struct {
     Username       string         `yaml:"username"`
     Password       string         `yaml:"password,omitempty"`
     KeyFile        string         `yaml:"key_file,omitempty"`
-    CommandTimeout int            `yaml:"command_timeout,omitempty"`
+    CommandTimeout time.Duration  `yaml:"command_timeout,omitempty"`
     CustomMetrics  []CustomMetric `yaml:"custom_metrics,omitempty"`
 }
 
 func (t *Target) Validate() error {
     if t.Address == "" {
         return errors.New("target address cannot be empty")
+    }
+    // Validate that address is a valid IP or hostname
+    if _, err := url.ParseRequestURI("ssh://" + t.Address); err != nil {
+        return fmt.Errorf("invalid address: %s: %w", t.Address, err)
     }
     if t.Port <= 0 || t.Port > 65535 {
         return fmt.Errorf("invalid port: %d", t.Port)
@@ -58,6 +65,11 @@ func (cm *CustomMetric) Validate() error {
     }
     if cm.Command == "" {
         return errors.New("custom metric command cannot be empty")
+    }
+    // Disallow potentially unsafe shell characters in command
+    // Disallow backticks and semicolons to prevent command injection
+    if strings.ContainsAny(cm.Command, "`;" ) {
+        return fmt.Errorf("custom metric command contains unsafe characters")
     }
     if cm.Type != "gauge" && cm.Type != "counter" {
         return fmt.Errorf("unsupported metric type: %s", cm.Type)

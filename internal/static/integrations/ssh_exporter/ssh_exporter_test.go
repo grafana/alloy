@@ -1,17 +1,18 @@
 package ssh_exporter
 
 import (
-	"bytes"
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/x509"
-	"encoding/pem"
-	"fmt"
-	"io/ioutil"
-	"os"
-	"path/filepath"
-	"testing"
-	"gopkg.in/yaml.v2"
+   "bytes"
+   "crypto/rand"
+   "crypto/rsa"
+   "crypto/x509"
+   "encoding/pem"
+   "fmt"
+   "io/ioutil"
+   "os"
+   "path/filepath"
+   "testing"
+   "time"
+   "gopkg.in/yaml.v2"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -128,7 +129,7 @@ targets:
     port: 22
     username: "admin"
     password: "password"
-    command_timeout: 10
+    command_timeout: "10s"
     custom_metrics:
       - name: "load_average"
         command: "echo 1.23"
@@ -138,7 +139,7 @@ targets:
     port: 22
     username: "monitor"
     key_file: "/path/to/private.key"
-    command_timeout: 15
+    command_timeout: "15s"
     custom_metrics:
       - name: "disk_usage"
         command: "echo '50%'"
@@ -153,12 +154,12 @@ targets:
 	expectedConfig := Config{
 		VerboseLogging: true,
 		Targets: []Target{
-			{
-				Address:        "192.168.1.10",
-				Port:           22,
-				Username:       "admin",
-				Password:       "password",
-				CommandTimeout: 10,
+        {
+            Address:        "192.168.1.10",
+            Port:           22,
+            Username:       "admin",
+            Password:       "password",
+            CommandTimeout: 10 * time.Second,
 				CustomMetrics: []CustomMetric{
 					{
 						Name:    "load_average",
@@ -168,12 +169,12 @@ targets:
 					},
 				},
 			},
-			{
-				Address:        "192.168.1.11",
-				Port:           22,
-				Username:       "monitor",
-				KeyFile:        "/path/to/private.key",
-				CommandTimeout: 15,
+        {
+            Address:        "192.168.1.11",
+            Port:           22,
+            Username:       "monitor",
+            KeyFile:        "/path/to/private.key",
+            CommandTimeout: 15 * time.Second,
 				CustomMetrics: []CustomMetric{
 					{
 						Name:       "disk_usage",
@@ -336,7 +337,7 @@ func TestConfig_NewIntegration(t *testing.T) {
 				Port:           22,
 				Username:       "admin",
 				Password:       "password",
-				CommandTimeout: 10,
+				CommandTimeout: 10 * time.Second,
 				CustomMetrics: []CustomMetric{
 					{
 						Name:    "load_average",

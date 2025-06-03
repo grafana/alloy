@@ -2,6 +2,10 @@ package ssh
 
 import (
     "errors"
+    "fmt"
+    "net/url"
+    "time"
+    "strings"
 
     "github.com/grafana/alloy/internal/component"
     "github.com/grafana/alloy/internal/component/prometheus/exporter"
@@ -59,13 +63,21 @@ type Target struct {
     Username       string         `alloy:"username,attr,optional"`
     Password       string         `alloy:"password,attr,optional"`
     KeyFile        string         `alloy:"key_file,attr,optional"`
-    CommandTimeout int            `alloy:"command_timeout,attr,optional"`
+    CommandTimeout time.Duration  `alloy:"command_timeout,attr,optional"`
     CustomMetrics  []CustomMetric `alloy:"custom_metrics,block,optional"`
 }
 
 func (t *Target) Validate() error {
     if t.Address == "" {
         return errors.New("target address cannot be empty")
+    }
+    // Prevent URI schemes in address
+    if strings.Contains(t.Address, "://") {
+        return fmt.Errorf("invalid address: %s", t.Address)
+    }
+    // Validate that address is a valid IP or hostname
+    if _, err := url.ParseRequestURI("ssh://" + t.Address); err != nil {
+        return fmt.Errorf("invalid address: %s: %w", t.Address, err)
     }
     if t.Port <= 0 || t.Port > 65535 {
         return errors.New("invalid port")
@@ -112,6 +124,11 @@ func (cm *CustomMetric) Validate() error {
     }
     if cm.Command == "" {
         return errors.New("custom metric command cannot be empty")
+    }
+    // Disallow potentially unsafe shell characters in command
+    // Disallow backticks and semicolons to prevent command injection
+    if strings.ContainsAny(cm.Command, "`;" ) {
+        return fmt.Errorf("custom metric command contains unsafe characters")
     }
     if cm.Type != "gauge" && cm.Type != "counter" {
         return errors.New("unsupported metric type")

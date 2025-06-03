@@ -2,6 +2,7 @@ package ssh
 
 import (
     "testing"
+    "time"
 
     "github.com/grafana/alloy/internal/static/integrations/ssh_exporter"
     "github.com/grafana/alloy/syntax"
@@ -19,7 +20,7 @@ targets {
   port            = 22
   username        = "admin"
   password        = "password"
-  command_timeout = 10
+  command_timeout = "10s"
 
   custom_metrics {
     name    = "load_average"
@@ -34,7 +35,7 @@ targets {
   port            = 22
   username        = "monitor"
   key_file        = "/path/to/private.key"
-  command_timeout = 15
+  command_timeout = "15s"
 }
 `
 
@@ -50,7 +51,7 @@ targets {
                 Port:           22,
                 Username:       "admin",
                 Password:       "password",
-                CommandTimeout: 10,
+                CommandTimeout: 10 * time.Second,
                 CustomMetrics: []CustomMetric{
                     {
                         Name:    "load_average",
@@ -65,7 +66,7 @@ targets {
                 Port:           22,
                 Username:       "monitor",
                 KeyFile:        "/path/to/private.key",
-                CommandTimeout: 15,
+                CommandTimeout: 15 * time.Second,
             },
         },
     }
@@ -161,7 +162,7 @@ func TestArgumentsValidate(t *testing.T) {
                         Port:           22,
                         Username:       "admin",
                         Password:       "password",
-                        CommandTimeout: 10,
+                        CommandTimeout: 10 * time.Second,
                         CustomMetrics: []CustomMetric{
                             {
                                 Name:    "metric1",
@@ -250,7 +251,7 @@ targets {
   port            = 22
   username        = "admin"
   password        = "password"
-  command_timeout = 10
+  command_timeout = "10s"
 
   custom_metrics {
     name    = "cpu_usage"
@@ -272,7 +273,7 @@ targets {
   port            = 22
   username        = "monitor"
   key_file        = "/path/to/private.key"
-  command_timeout = 15
+  command_timeout = "15s"
 
   custom_metrics {
     name    = "disk_usage"
@@ -288,7 +289,7 @@ targets {
   port            = 22
   username        = "user"
   password        = "secret"
-  command_timeout = 20
+  command_timeout = "20s"
 
   custom_metrics {
     name    = "network_in"
@@ -311,7 +312,7 @@ targets {
                 Port:           22,
                 Username:       "admin",
                 Password:       "password",
-                CommandTimeout: 10,
+                CommandTimeout: 10 * time.Second,
                 CustomMetrics: []CustomMetric{
                     {
                         Name:    "cpu_usage",
@@ -332,7 +333,7 @@ targets {
                 Port:           22,
                 Username:       "monitor",
                 KeyFile:        "/path/to/private.key",
-                CommandTimeout: 15,
+                CommandTimeout: 15 * time.Second,
                 CustomMetrics: []CustomMetric{
                     {
                         Name:       "disk_usage",
@@ -348,7 +349,7 @@ targets {
                 Port:           22,
                 Username:       "user",
                 Password:       "secret",
-                CommandTimeout: 20,
+                CommandTimeout: 20 * time.Second,
                 CustomMetrics: []CustomMetric{
                     {
                         Name:    "network_in",

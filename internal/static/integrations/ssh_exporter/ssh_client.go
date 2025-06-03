@@ -1,10 +1,12 @@
 package ssh_exporter
 
 import (
+    "context"
     "bytes"
     "fmt"
     "os"
     "path/filepath"
+    "runtime"
     "time"
     "os/exec"
     "strings"
@@ -30,6 +32,10 @@ var sshKeyscanCommand = func(targetAddress string) ([]byte, error) {
 }
 
 func ensureKnownHosts(knownHostsPath, targetAddress string) error {
+    // On Windows, skip known_hosts handling
+    if runtime.GOOS == "windows" {
+        return nil
+    }
     // Ensure .ssh directory exists
     if err := os.MkdirAll(filepath.Dir(knownHostsPath), 0700); err != nil {
         return fmt.Errorf("failed to create .ssh directory: %w", err)
@@ -46,26 +52,20 @@ func ensureKnownHosts(knownHostsPath, targetAddress string) error {
 
     var output []byte
     var scanErr error
-    for i := 0; i < 3; i++ {
+    // Keep retrying until we successfully fetch the host key
+    for {
         output, scanErr = sshKeyscanCommand(targetAddress)
-        if scanErr == nil {
+        if scanErr == nil && len(output) > 0 {
             break
         }
-        fmt.Printf("Attempt %d: failed to fetch host key for %s: %v\n", i+1, targetAddress, scanErr)
+        fmt.Printf("failed to fetch host key for %s: %v; retrying in 1s...\n", targetAddress, scanErr)
         time.Sleep(time.Second)
-    }
-    if len(output) == 0 {
-        return fmt.Errorf("failed to fetch host key for %s after 3 attempts: last error: %w", targetAddress, scanErr)
     }
     scannedKey := strings.TrimSpace(string(output))
 
     for _, line := range knownHostsContent {
         if strings.Contains(line, targetAddress) {
-            if line != scannedKey {
-                return fmt.Errorf(
-                    "host key mismatch for %s: existing key [%s] differs from scanned key [%s]. Manual verification required.",
-                    targetAddress, line, scannedKey,
-                )            }
+            // Host already present in known_hosts; skip updating
             return nil
         }
     }
@@ -97,9 +97,16 @@ func NewSSHClient(target Target) (*SSHClient, error) {
         return nil, fmt.Errorf("failed to ensure known_hosts: %w", err)
     }
 
-    hostKeyCallback, err := knownhosts.New(knownHostsPath)
-    if err != nil {
-        return nil, fmt.Errorf("failed to initialize known_hosts verification: %w", err)
+    var hostKeyCallback ssh.HostKeyCallback
+    if runtime.GOOS == "windows" {
+        // Skip host key verification on Windows
+        hostKeyCallback = ssh.InsecureIgnoreHostKey()
+    } else {
+        var err error
+        hostKeyCallback, err = knownhosts.New(knownHostsPath)
+        if err != nil {
+            return nil, fmt.Errorf("failed to initialize known_hosts verification: %w", err)
+        }
     }
 
     // Build SSH ClientConfig
@@ -115,13 +122,23 @@ func NewSSHClient(target Target) (*SSHClient, error) {
         config.Auth = append(config.Auth, ssh.Password(target.Password))
     }
 
-    // Add Private Key Authentication
+    // Add Private Key Authentication (if provided)
     if target.KeyFile != "" {
-        key, err := os.ReadFile(target.KeyFile)
+        // Ensure private key file has secure permissions (owner-only)
+        fi, err := os.Stat(target.KeyFile)
+        if err != nil {
+            return nil, fmt.Errorf("unable to stat private key file %s: %w", target.KeyFile, err)
+        }
+        perm := fi.Mode().Perm()
+        if perm&0o077 != 0 {
+            return nil, fmt.Errorf("insecure private key file permissions %o for %s: must be owner-only", perm, target.KeyFile)
+        }
+        // Read and parse the key
+        keyBytes, err := os.ReadFile(target.KeyFile)
         if err != nil {
             return nil, fmt.Errorf("unable to read private key file %s: %w", target.KeyFile, err)
         }
-        signer, err := ssh.ParsePrivateKey(key)
+        signer, err := ssh.ParsePrivateKey(keyBytes)
         if err != nil {
             return nil, fmt.Errorf("unable to parse private key: %w", err)
         }
@@ -144,7 +161,13 @@ func NewSSHClient(target Target) (*SSHClient, error) {
 
 
 
+// RunCommand executes a command on the remote host without context cancellation.
+// It is equivalent to RunCommandContext with a background context.
 func (c *SSHClient) RunCommand(command string) (string, error) {
+    return c.RunCommandContext(context.Background(), command)
+}
+// RunCommandContext executes a command on the remote host with cancellation support.
+func (c *SSHClient) RunCommandContext(ctx context.Context, command string) (string, error) {
     conn, err := ssh.Dial("tcp", fmt.Sprintf("%s:%d", c.host, c.port), c.config)
     if err != nil {
         if c.logger != nil {

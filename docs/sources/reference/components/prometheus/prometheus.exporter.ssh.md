@@ -1,109 +1,122 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus/prometheus.exporter.ssh/
-aliases:
-  - ../prometheus.exporter.ssh/ # /docs/alloy/latest/reference/components/prometheus.exporter.ssh/
 description: Learn about prometheus.exporter.ssh
 title: prometheus.exporter.ssh
 ---
 
 # prometheus.exporter.ssh
 
+{{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
 The `prometheus.exporter.ssh` component embeds an SSH exporter for collecting metrics from remote servers over SSH and exporting them as Prometheus metrics.
 
 ## Usage
 
+```alloy
+prometheus.exporter.ssh "example" {
+  verbose_logging  = true        // optional: enable debug-level logs
+  command_timeout  = "30s"       // optional: timeout for SSH commands
+
+  targets {
+    address         = "192.168.1.10"  // required: host or IP
+    username        = "admin"         // required: SSH username
+    password        = "password"      // required if key_file is unset
+    // key_file     = "path/to/key.pem" // alternative to password-based auth
+
+    custom_metrics {
+      name    = "load_average"        // required: metric name
+      command = "cat /proc/loadavg | awk '{print $1}'"  // required: command
+      type    = "gauge"               // required: gauge or counter
+      help    = "Load average over 1 minute" // optional help text
+    }
+  }
+}
 ```
-prometheus.exporter.ssh "LABEL" {
-  // Configuration options
+
+## Example: Curated Targets via Discovery
+
+```alloy
+locals {
+  ssh_keys = {
+    for path in filesystem.glob("${path.module}/keys/*.pem") : basename(path, ".pem") => path
+  }
+}
+
+prometheus.exporter.ssh "curated" {
+  # Iterate only over discovered hosts with a matching key
+  for_each = data.discovery.hosts.byLabel("app=backend")
+
+  targets {
+    address    = each.value             // host or IP from discovery
+    username   = "monitor"             // required: SSH user
+    key_file   = ssh_keys[each.value]    // only hosts with key files
+
+    custom_metrics {
+      name    = "uptime"               // required: metric name
+      command = "cat /proc/uptime | awk '{print $1}'"  // required: command
+      type    = "gauge"                // required: gauge or counter
+    }
+  }
 }
 ```
 
 ## Arguments
 
-The following arguments can be used to configure the exporter's behavior.
-All arguments are optional unless specified. Omitted fields take their default values.
-
-| Name              | Type     | Description                                        | Default | Required |
-| ----------------- | -------- | -------------------------------------------------- | ------- | -------- |
-| `verbose_logging` | `bool`   | Enable verbose logging for debugging purposes.     | `false` | no       |
-| `targets`         | `block`  | One or more target configurations for SSH metrics. |         | yes      |
+| Name              | Type   | Description                                    | Default | Required |
+|-------------------|--------|------------------------------------------------|---------|----------|
+| `verbose_logging` | `bool` | Enable verbose logging for debugging purposes. | `false` | no       |
 
 ## Blocks
 
-The following blocks are supported inside the definition of `prometheus.exporter.ssh`:
+### `targets` block
 
-| Block          | Description                                                 | Required |
-| -------------- | ----------------------------------------------------------- | -------- |
-| `targets`      | Configures an SSH target to collect metrics from.           | yes      |
-| `custom_metrics` | Defines custom metrics to collect from the target server. | yes      |
-
-### targets block
-
-The `targets` block defines the remote servers to connect to and the metrics to collect. It supports the following arguments:
+Configures SSH targets to collect metrics from.
 
 | Name              | Type                  | Description                                                            | Default | Required |
-| ----------------- | --------------------- | ---------------------------------------------------------------------- | ------- | -------- |
-| `address`         | `string`              | The IP address or hostname of the target server.                       |         | yes      |
+|-------------------|-----------------------|------------------------------------------------------------------------|---------|----------|
+| `address`         | `string`              | The IP or hostname of the target server.                               |         | yes      |
 | `port`            | `int`                 | SSH port number.                                                       | `22`    | no       |
-| `username`        | `string`              | SSH username for authentication.                                       |         | yes      |
-| `password`        | `secret`              | Password for password-based SSH authentication.                        |         | Required if `key_file` is not provided |
-| `key_file`        | `string`              | Path to the private key file for key-based SSH authentication.         |         | Required if `password` is not provided |
-| `command_timeout` | `int`                 | Timeout in seconds for each command execution over SSH.                | `30`    | no       |
-| `custom_metrics`  | `block`               | One or more custom metrics to collect from the target server.          |         | yes      |
+| `username`        | `string`              | SSH username.                                                          |         | yes      |
+| `password`        | `secret`              | Password for SSH login.                                                |         | no       |
+| `key_file`        | `string`              | Private key file path for key-based auth.                              |         | no       |
+| `command_timeout` | `duration`            | Timeout for each SSH command.                                          | `30s`   | no       |
+| `custom_metrics`  | `block`               | One or more metrics to collect via SSH.                                |         | yes      |
 
-#### Authentication
+> Either `password` or `key_file` must be set. If both are provided, `key_file` is used.
 
-You must provide either `password` or `key_file` for SSH authentication. If both are provided, `key_file` will be used.
+### `custom_metrics` block
 
-### custom_metrics block
-
-The `custom_metrics` block defines the metrics to collect from the target server. It supports the following arguments:
+Defines metrics to collect from a server.
 
 | Name           | Type                  | Description                                                                  | Default | Required |
-| -------------- | --------------------- | ---------------------------------------------------------------------------- | ------- | -------- |
-| `name`         | `string`              | The name of the metric.                                                      |         | yes      |
-| `command`      | `string`              | The command to execute over SSH to collect the metric.                       |         | yes      |
-| `type`         | `string`              | The type of the metric (`gauge` or `counter`).                               |         | yes      |
-| `help`         | `string`              | Help text for the metric.                                                    |         | no       |
-| `labels`       | `map(string, string)` | Key-value pairs of labels to associate with the metric.                      | `{}`    | no       |
-| `parse_regex`  | `string`              | Regular expression to parse the command output and extract the metric value. |         | no       |
-
-#### Metric Types
-
-- `gauge`: Represents a numerical value that can go up or down.
-- `counter`: Represents a cumulative value that only increases.
-
-#### parse_regex
-
-If the command output is not a simple numeric value, use `parse_regex` to extract the numeric value from the output.
-
----
+|----------------|-----------------------|------------------------------------------------------------------------------|---------|----------|
+| `name`         | `string`              | Name of the exported metric.                                                |         | yes      |
+| `command`      | `string`              | Command to run remotely to get the metric value.                            |         | yes      |
+| `type`         | `string`              | Metric type: `gauge` or `counter`.                                          |         | yes      |
+| `help`         | `string`              | Help text for the metric.                                                   |         | no       |
+| `labels`       | `map(string, string)` | Additional labels to attach to the metric.                                  | `{}`    | no       |
+| `parse_regex`  | `string`              | Regex to extract value from command output.                                 |         | no       |
 
 ## Secure Known Hosts Setup
 
 ### How It Works
 
-The `prometheus.exporter.ssh` component uses the `known_hosts` file to validate host keys and protect against man-in-the-middle (MITM) attacks. Here's how it handles this:
-
-1. **First-Time Setup**:
-   - If the `known_hosts` file does not exist, the component creates it and fetches the host key using `ssh-keyscan`.
-   - The fetched key is securely stored in the `known_hosts` file.
-
-2. **Subsequent Runs**:
-   - The component validates the server's host key against the stored key in `known_hosts`.
-   - If the keys match, the connection proceeds.
-   - If there is a mismatch, the component raises an error, requiring **manual intervention** to verify the legitimacy of the key change.
-
-3. **Adding or Modifying Targets**:
-   - When a new target is added, or its address changes, the component automatically scans and stores the host key.
-   - If the target's key already exists but has changed, the connection is blocked until the discrepancy is resolved manually.
+1. **First Run**: If `~/.ssh/known_hosts` is missing, a new one is created using `ssh-keyscan`.
+2. **Validation**: Host keys are validated on every connection attempt.
+3. **Changes**: Key mismatches raise an error requiring manual review.
+4. **New Targets**: Automatically scanned and added, but mismatches block the connection.
 
 ### Manual Resolution
 
-If a host key mismatch occurs due to a legitimate key update:
-- Manually update the `known_hosts` file with the new key using `ssh-keyscan` or other secure methods.
+Use `ssh-keyscan` or another secure method to update `known_hosts` when a host key legitimately changes.
 
----
+## Security Considerations
+
+- Only valid IPs/hostnames accepted.
+- Backticks and semicolons are disallowed in commands to prevent injection.
+- SSH key files must be `0600`.
+- Known-hosts entries are bootstrapped and never overwritten.
+- On Windows, host-key checks are skipped.
 
 ## Exported fields
 
@@ -121,13 +134,9 @@ If a host key mismatch occurs due to a legitimate key update:
 
 `prometheus.exporter.ssh` doesn't expose any component-specific debug metrics.
 
----
+## Example: Prometheus Scrape
 
-## Example
-
-This example uses a [`prometheus.scrape` component][scrape] to collect metrics from `prometheus.exporter.ssh`:
-
-```
+```alloy
 prometheus.exporter.ssh "example" {
   verbose_logging = true
 
@@ -136,7 +145,7 @@ prometheus.exporter.ssh "example" {
     port            = 22
     username        = "admin"
     password        = "password"
-    command_timeout = 10
+    command_timeout = "10s"
 
     custom_metrics {
       name    = "load_average"
@@ -151,19 +160,18 @@ prometheus.exporter.ssh "example" {
     port            = 22
     username        = "monitor"
     key_file        = "/path/to/private.key"
-    command_timeout = 15
+    command_timeout = "15s"
 
     custom_metrics {
       name        = "disk_usage"
       command     = "df / | tail -1 | awk '{print $5}'"
       type        = "gauge"
       help        = "Disk usage percentage"
-      parse_regex = "(\\d+)%"
+      parse_regex = "(\d+)%"
     }
   }
 }
 
-// Configure a prometheus.scrape component to collect SSH metrics.
 prometheus.scrape "demo" {
   targets    = prometheus.exporter.ssh.example.targets
   forward_to = [prometheus.remote_write.demo.receiver]
@@ -183,9 +191,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-- `PROMETHEUS_REMOTE_WRITE_URL`: The URL of the Prometheus remote_write-compatible server to send metrics to.
-- `USERNAME`: The username to use for authentication to the `remote_write` API.
-- `PASSWORD`: The password to use for authentication to the `remote_write` API.
+- `PROMETHEUS_REMOTE_WRITE_URL`: Remote write-compatible server URL.
+- `USERNAME`: Auth username.
+- `PASSWORD`: Auth password.
 
 [scrape]: ../prometheus.scrape/
 
