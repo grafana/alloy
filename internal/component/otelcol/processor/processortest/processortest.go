@@ -30,12 +30,13 @@ type Signal interface {
 }
 
 type ProcessorRunConfig struct {
-	Ctx        context.Context
-	T          *testing.T
-	Args       component.Arguments
-	TestSignal Signal
-	Ctrl       *componenttest.Controller
-	L          log.Logger
+	Ctx                   context.Context
+	T                     *testing.T
+	Args                  component.Arguments
+	TestSignal            Signal
+	AdditionalSignalSends int
+	Ctrl                  *componenttest.Controller
+	L                     log.Logger
 }
 
 func TestRunProcessor(c ProcessorRunConfig) {
@@ -56,13 +57,14 @@ func TestRunProcessor(c ProcessorRunConfig) {
 			MaxBackoff: 100 * time.Millisecond,
 		})
 		for bo.Ongoing() {
-			err := c.TestSignal.ConsumeInput(c.Ctx, exports.Input)
-			if err != nil {
-				level.Error(c.L).Log("msg", "failed to send signal", "err", err)
-				bo.Wait()
-				continue
+			for i := 0; i <= c.AdditionalSignalSends; i++ {
+				err := c.TestSignal.ConsumeInput(c.Ctx, exports.Input)
+				if err != nil {
+					level.Error(c.L).Log("msg", "failed to send signal", "err", err)
+					bo.Wait()
+					continue
+				}
 			}
-
 			return
 		}
 	}()
@@ -138,13 +140,30 @@ func (s traceToMetricSignal) CheckOutput(t *testing.T) {
 	// Set the timeout to a few seconds so that all components have finished.
 	// Components such as otelcol.connector.spanmetrics may need a few
 	// seconds before they output metrics.
-	timeout := time.Second * 5
+	timeoutCh := time.After(time.Second * 5)
+	latestReceived := ""
 
-	select {
-	case <-time.After(timeout):
-		require.FailNow(t, "failed waiting for metrics")
-	case actualMetric := <-s.metricCh:
-		CompareMetrics(t, s.expectedOutputMetric, actualMetric)
+	for {
+		select {
+		case <-timeoutCh:
+			require.FailNow(t, "failed waiting for the required metrics", "latest received: %s", latestReceived)
+			return
+		case actualMetric := <-s.metricCh:
+			jsonMarshaler := pmetric.JSONMarshaler{}
+			metricsBuf, err := jsonMarshaler.MarshalMetrics(actualMetric)
+			require.NoError(t, err)
+			metricsStr := string(metricsBuf)
+			t.Logf("actual metrics: %s", metricsStr)
+			latestReceived = metricsStr
+
+			err = CompareMetrics(t, s.expectedOutputMetric, actualMetric)
+			if err == nil {
+				// The expected metrics were received - return.
+				t.Logf("received the expected metric")
+				return
+			}
+			t.Logf("received a metric which is NOT the expected one")
+		}
 	}
 }
 
@@ -312,7 +331,8 @@ func (s metricSignal) CheckOutput(t *testing.T) {
 	case <-time.After(time.Second):
 		require.FailNow(t, "failed waiting for logs")
 	case actualMetric := <-s.metricCh:
-		CompareMetrics(t, s.expectedOutputMetric, actualMetric)
+		err := CompareMetrics(t, s.expectedOutputMetric, actualMetric)
+		require.NoError(t, err)
 	}
 }
 

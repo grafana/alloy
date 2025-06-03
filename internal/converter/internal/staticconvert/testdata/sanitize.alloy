@@ -1,6 +1,6 @@
 prometheus.remote_write "metrics_integrations" {
 	endpoint {
-		name = "integrations-ce3432"
+		name = "integrations-65e590"
 		url  = "https://region.grafana.net/api/prom/push"
 
 		basic_auth {

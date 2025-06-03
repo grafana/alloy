@@ -54,7 +54,7 @@ func newTestEnvironment(t *testing.T, onCreated func()) *testEnvironment {
 					_ context.Context,
 					_ otelextension.Settings,
 					_ otelcomponent.Config,
-				) (otelcomponent.Component, error) {
+				) (otelextension.Extension, error) {
 
 					onCreated()
 					return nil, nil
@@ -84,11 +84,15 @@ type fakeExtensionArgs struct {
 
 var _ extension.Arguments = fakeExtensionArgs{}
 
-func (fa fakeExtensionArgs) Convert() (otelcomponent.Config, error) {
+func (fakeExtensionArgs) ExportsHandler() bool {
+	return false
+}
+
+func (fa fakeExtensionArgs) Convert(_ component.Options) (otelcomponent.Config, error) {
 	return &struct{}{}, nil
 }
 
-func (fa fakeExtensionArgs) Extensions() map[otelcomponent.ID]otelextension.Extension {
+func (fa fakeExtensionArgs) Extensions() map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 

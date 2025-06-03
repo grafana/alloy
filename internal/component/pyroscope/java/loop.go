@@ -1,4 +1,4 @@
-//go:build linux && (amd64 || arm64)
+//go:build (linux || darwin) && (amd64 || arm64)
 
 package java
 
@@ -13,14 +13,15 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/component/discovery"
-	"github.com/grafana/alloy/internal/component/pyroscope"
-	"github.com/grafana/alloy/internal/component/pyroscope/java/asprof"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	jfrpprof "github.com/grafana/jfr-parser/pprof"
 	jfrpprofPyroscope "github.com/grafana/jfr-parser/pprof/pyroscope"
 	"github.com/prometheus/prometheus/model/labels"
 	gopsutil "github.com/shirou/gopsutil/v3/process"
+
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/component/pyroscope"
+	"github.com/grafana/alloy/internal/component/pyroscope/java/asprof"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 const spyName = "alloy.java"
@@ -34,17 +35,29 @@ type profilingLoop struct {
 	pid        int
 	target     discovery.Target
 	cancel     context.CancelFunc
-	error      error
 	dist       *asprof.Distribution
 	jfrFile    string
 	startTime  time.Time
-	profiler   *asprof.Profiler
+	profiler   Profiler
 	sampleRate int
+
+	error            error
+	lastError        time.Time
+	lastPush         time.Time
+	lastBytesPerType []debugInfoBytesPerType
+	totalBytes       int64
+	totalSamples     int64
 }
 
-func newProfilingLoop(pid int, target discovery.Target, logger log.Logger, profiler *asprof.Profiler, output *pyroscope.Fanout, cfg ProfilingConfig) *profilingLoop {
+type Profiler interface {
+	CopyLib(dist *asprof.Distribution, pid int) error
+	Execute(dist *asprof.Distribution, argv []string) (string, string, error)
+	Distribution() *asprof.Distribution
+}
+
+func newProfilingLoop(pid int, target discovery.Target, logger log.Logger, profiler Profiler, output *pyroscope.Fanout, cfg ProfilingConfig) *profilingLoop {
 	ctx, cancel := context.WithCancel(context.Background())
-	dist, err := profiler.DistributionForProcess(pid)
+	dist := profiler.Distribution()
 	p := &profilingLoop{
 		logger:   log.With(logger, "pid", pid),
 		output:   output,
@@ -57,11 +70,6 @@ func newProfilingLoop(pid int, target discovery.Target, logger log.Logger, profi
 		profiler: profiler,
 	}
 	_ = level.Debug(p.logger).Log("msg", "new process", "target", fmt.Sprintf("%+v", target))
-
-	if err != nil {
-		p.onError(fmt.Errorf("failed to select dist for pid %d: %w", pid, err))
-		return p
-	}
 
 	p.wg.Add(1)
 	go func() {
@@ -112,15 +120,37 @@ func (p *profilingLoop) loop(ctx context.Context) {
 	}
 }
 
+func (p *profilingLoop) cleanupJFR() {
+	// first try to find through process path
+	jfrFile := asprof.ProcessPath(p.jfrFile, p.pid)
+	if err := os.Remove(jfrFile); os.IsNotExist(err) {
+		// the process path was not found, this is possible when the target process stopped in the meantime.
+
+		if jfrFile == p.jfrFile {
+			// nothing we can do, the process path was not actually a /proc path
+			return
+		}
+
+		jfrFile = p.jfrFile
+		if err := os.Remove(jfrFile); os.IsNotExist(err) {
+			_ = level.Debug(p.logger).Log("msg", "unable to delete jfr file, likely because target process is stopped and was containerized", "path", jfrFile, "err", err)
+			// file not found on the host system, process was likely containerized and we can't delete this file anymore
+			return
+		} else if err != nil {
+			_ = level.Warn(p.logger).Log("msg", "failed to delete jfr file at host path", "path", jfrFile, "err", err)
+		}
+	} else if err != nil {
+		_ = level.Warn(p.logger).Log("msg", "failed to delete jfr file at process path", "path", jfrFile, "err", err)
+	}
+}
+
 func (p *profilingLoop) reset() error {
 	jfrFile := asprof.ProcessPath(p.jfrFile, p.pid)
 	startTime := p.startTime
 	endTime := time.Now()
 	sampleRate := p.sampleRate
 	p.startTime = endTime
-	defer func() {
-		os.Remove(jfrFile)
-	}()
+	defer p.cleanupJFR()
 
 	err := p.stop()
 	if err != nil {
@@ -144,17 +174,29 @@ func (p *profilingLoop) push(jfrBytes []byte, startTime time.Time, endTime time.
 		return fmt.Errorf("failed to parse jfr: %w", err)
 	}
 	target := p.getTarget()
+	var totalSamples, totalBytes int64
+
+	// reset the per type bytes stats
+	p.lastBytesPerType = p.lastBytesPerType[:0]
+
 	for _, req := range profiles.Profiles {
 		metric := req.Metric
 		sz := req.Profile.SizeVT()
 		l := log.With(p.logger, "metric", metric, "sz", sz)
 		ls := labels.NewBuilder(nil)
-		for _, l := range jfrpprofPyroscope.Labels(target, profiles.JFREvent, req.Metric, "", spyName) {
+		for _, l := range jfrpprofPyroscope.Labels(target.AsMap(), profiles.JFREvent, req.Metric, "", spyName) {
 			ls.Set(l.Name, l.Value)
 		}
 		if ls.Get(labelServiceName) == "" {
 			ls.Set(labelServiceName, inferServiceName(target))
 		}
+
+		p.lastBytesPerType = append(p.lastBytesPerType, debugInfoBytesPerType{
+			Type:  metric,
+			Bytes: int64(sz),
+		})
+		totalBytes += int64(sz)
+		totalSamples += int64(len(req.Profile.Sample))
 
 		profile, err := req.Profile.MarshalVT()
 		if err != nil {
@@ -168,6 +210,12 @@ func (p *profilingLoop) push(jfrBytes []byte, startTime time.Time, endTime time.
 			continue
 		}
 		_ = l.Log("msg", "pushed jfr-pprof")
+
+		p.mutex.Lock()
+		p.lastPush = time.Now()
+		p.totalSamples += totalSamples
+		p.totalBytes += totalBytes
+		p.mutex.Unlock()
 	}
 	return nil
 }
@@ -242,6 +290,7 @@ func (p *profilingLoop) update(target discovery.Target, config ProfilingConfig) 
 func (p *profilingLoop) Close() error {
 	p.cancel()
 	p.wg.Wait()
+	p.cleanupJFR()
 	return nil
 }
 
@@ -255,7 +304,36 @@ func (p *profilingLoop) onError(err error) bool {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 	p.error = err
+	p.lastError = time.Now()
 	return alive
+}
+
+func (p *profilingLoop) debugInfo() *debugInfoProfiledTarget {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+
+	d := &debugInfoProfiledTarget{
+		TotalBytes:   p.totalBytes,
+		TotalSamples: p.totalSamples,
+		LastProfiled: p.lastPush,
+		LastError:    p.lastError,
+		PID:          p.pid,
+		Target:       p.target,
+	}
+
+	// expose per profile type bytes
+	if len(p.lastBytesPerType) > 0 {
+		d.LastProfileBytesPerType = make(map[string]int64)
+		for _, b := range p.lastBytesPerType {
+			d.LastProfileBytesPerType[b.Type] += b.Bytes
+		}
+	}
+
+	// expose error message if given
+	if p.error != nil {
+		d.ErrorMsg = p.error.Error()
+	}
+	return d
 }
 
 func (p *profilingLoop) interval() time.Duration {

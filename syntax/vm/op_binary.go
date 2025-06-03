@@ -1,6 +1,7 @@
 package vm
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"reflect"
@@ -17,16 +18,8 @@ func evalBinop(lhs value.Value, op token.Token, rhs value.Value) (value.Value, e
 		origRHS = rhs
 	)
 
-	// Hack to allow OptionalSecrets to be used in binary operations.
-	//
-	// TODO(rfratto): be more flexible in the future with broader definitions of
-	// how capsules can be converted to other types for the purposes of doing a
-	// binop.
-	if lhs.Type() == value.TypeCapsule {
-		lhs = tryUnwrapOptionalSecret(lhs)
-	}
-	if rhs.Type() == value.TypeCapsule {
-		rhs = tryUnwrapOptionalSecret(rhs)
+	if lhs.Type() == value.TypeCapsule || rhs.Type() == value.TypeCapsule {
+		lhs, rhs = tryUnwrapCapsules(lhs, rhs)
 	}
 
 	// TODO(rfratto): evalBinop should check for underflows and overflows
@@ -40,13 +33,16 @@ func evalBinop(lhs value.Value, op token.Token, rhs value.Value) (value.Value, e
 		return value.Bool(!valuesEqual(lhs, rhs)), nil
 	}
 
-	// The type of lhs and rhs must be acceptable for the binary operator.
+	// The type of lhs must be acceptable for the binary operator.
 	if !acceptableBinopType(lhs, op) {
 		return value.Null, value.Error{
 			Value: origLHS,
 			Inner: fmt.Errorf("should be one of %v for binop %s, got %s", binopAllowedTypes[op], op, lhs.Type()),
 		}
-	} else if !acceptableBinopType(rhs, op) {
+	}
+
+	// The type of rhs must be acceptable for the binary operator.
+	if !acceptableBinopType(rhs, op) {
 		return value.Null, value.Error{
 			Value: origRHS,
 			Inner: fmt.Errorf("should be one of %v for binop %s, got %s", binopAllowedTypes[op], op, rhs.Type()),
@@ -65,9 +61,34 @@ func evalBinop(lhs value.Value, op token.Token, rhs value.Value) (value.Value, e
 	case token.AND: // bool && Bool
 		return value.Bool(lhs.Bool() && rhs.Bool()), nil
 
-	case token.ADD: // number + number, string + string
+	// number + number
+	// string + string
+	// capsule(OptionalSecret) + capsule(OptionalSecret)
+	// capsule(Secret) + capsule(Secret)
+	case token.ADD:
 		if lhs.Type() == value.TypeString {
 			return value.String(lhs.Text() + rhs.Text()), nil
+		}
+
+		if lhs.Type() == value.TypeCapsule {
+			switch lhsValue := lhs.Interface().(type) {
+			case alloytypes.OptionalSecret:
+				rhsOptSecret, _ := rhs.Interface().(alloytypes.OptionalSecret)
+				return value.Encapsulate(
+					alloytypes.OptionalSecret{
+						Value:    lhsValue.Value + rhsOptSecret.Value,
+						IsSecret: (lhsValue.IsSecret || rhsOptSecret.IsSecret),
+					},
+				), nil
+			case alloytypes.Secret:
+				rhsSecret, _ := rhs.Interface().(alloytypes.Secret)
+				return value.Encapsulate(alloytypes.Secret(string(lhsValue) + string(rhsSecret))), nil
+			default:
+				return value.Null, value.Error{
+					Value: origLHS,
+					Inner: fmt.Errorf("could not perform binop %s for unknown types lhs %s rhs %s", op, lhs.Type(), rhs.Type()),
+				}
+			}
 		}
 
 		lhsNum, rhsNum := lhs.Number(), rhs.Number()
@@ -104,6 +125,29 @@ func evalBinop(lhs value.Value, op token.Token, rhs value.Value) (value.Value, e
 
 	case token.DIV: // number / number
 		lhsNum, rhsNum := lhs.Number(), rhs.Number()
+		switch rhsNum.Kind() {
+		case value.NumberKindUint:
+			if rhsNum.Uint() == uint64(0) {
+				return value.Null, value.Error{
+					Value: origRHS,
+					Inner: errors.New("divide by zero error"),
+				}
+			}
+		case value.NumberKindInt:
+			if rhsNum.Int() == int64(0) {
+				return value.Null, value.Error{
+					Value: origRHS,
+					Inner: errors.New("divide by zero error"),
+				}
+			}
+		case value.NumberKindFloat:
+			if rhsNum.Float() == float64(0) {
+				return value.Null, value.Error{
+					Value: origRHS,
+					Inner: errors.New("divide by zero error"),
+				}
+			}
+		}
 		switch fitNumberKinds(lhsNum.Kind(), rhsNum.Kind()) {
 		case value.NumberKindUint:
 			return value.Uint(lhsNum.Uint() / rhsNum.Uint()), nil
@@ -115,6 +159,29 @@ func evalBinop(lhs value.Value, op token.Token, rhs value.Value) (value.Value, e
 
 	case token.MOD: // number % number
 		lhsNum, rhsNum := lhs.Number(), rhs.Number()
+		switch rhsNum.Kind() {
+		case value.NumberKindUint:
+			if rhsNum.Uint() == uint64(0) {
+				return value.Null, value.Error{
+					Value: origRHS,
+					Inner: errors.New("divide by zero error"),
+				}
+			}
+		case value.NumberKindInt:
+			if rhsNum.Int() == int64(0) {
+				return value.Null, value.Error{
+					Value: origRHS,
+					Inner: errors.New("divide by zero error"),
+				}
+			}
+		case value.NumberKindFloat:
+			if rhsNum.Float() == float64(0) {
+				return value.Null, value.Error{
+					Value: origRHS,
+					Inner: errors.New("divide by zero error"),
+				}
+			}
+		}
 		switch fitNumberKinds(lhsNum.Kind(), rhsNum.Kind()) {
 		case value.NumberKindUint:
 			return value.Uint(lhsNum.Uint() % rhsNum.Uint()), nil
@@ -207,19 +274,75 @@ func evalBinop(lhs value.Value, op token.Token, rhs value.Value) (value.Value, e
 	panic("syntax/vm: unreachable")
 }
 
-// tryUnwrapOptionalSecret accepts a value and, if it is a
-// alloytypes.OptionalSecret where IsSecret is false, returns a string value
-// instead.
-//
-// If val is not a alloytypes.OptionalSecret or IsSecret is true,
-// tryUnwrapOptionalSecret returns the input value unchanged.
-func tryUnwrapOptionalSecret(val value.Value) value.Value {
-	optSecret, ok := val.Interface().(alloytypes.OptionalSecret)
-	if !ok || optSecret.IsSecret {
-		return val
+// tryUnwrapCapsules accepts two value and tries to unwarp them to similar types
+// If none of the condition matches it will return the inputs
+func tryUnwrapCapsules(lhs value.Value, rhs value.Value) (value.Value, value.Value) {
+	switch lhsValue := lhs.Interface().(type) {
+	case alloytypes.OptionalSecret:
+		return tryUnwrapOptionalSecrets(lhs, lhsValue, rhs)
+	case alloytypes.Secret:
+		return tryUnwrapSecret(lhs, lhsValue, rhs)
+	case string:
+		return tryUnwrapString(lhs, lhsValue, rhs)
+	default:
+		return lhs, rhs
 	}
+}
 
-	return value.String(optSecret.Value)
+// tryUnwrapOptionalSecrets tries to Unwarp the rhs value corresponding to the
+// lhs value of type OptionalSecret.
+func tryUnwrapOptionalSecrets(lhs value.Value, lhsValue alloytypes.OptionalSecret, rhs value.Value) (value.Value, value.Value) {
+	switch rhsValue := rhs.Interface().(type) {
+	case alloytypes.Secret:
+		// OptionalSecrets, Secret = Secret, Secret
+		return value.Encapsulate(alloytypes.Secret(lhsValue.Value)), rhs
+	case string:
+		if lhsValue.IsSecret {
+			// OptionalSecrets{IsSecret: true}, string = OptionalSecrets, OptionalSecrets
+			return lhs, value.Encapsulate(alloytypes.OptionalSecret{Value: rhsValue, IsSecret: true})
+		}
+		// OptionalSecrets{IsSecret: false}, string = string, string
+		return value.String(lhsValue.Value), value.String(rhsValue)
+	default:
+		// no condition matches return the inputs
+		return lhs, rhs
+	}
+}
+
+// tryUnwrapSecret tries to Unwarp the rhs value corresponding to the
+// lhs value of type Secret.
+func tryUnwrapSecret(lhs value.Value, _ alloytypes.Secret, rhs value.Value) (value.Value, value.Value) {
+	switch rhsValue := rhs.Interface().(type) {
+	case alloytypes.OptionalSecret:
+		// Secret, OptionalSecret = Secret, Secret
+		return lhs, value.Encapsulate(alloytypes.Secret(rhsValue.Value))
+	case string:
+		// Secret, string = Secret, Secret
+		return lhs, value.Encapsulate(alloytypes.Secret(rhsValue))
+	default:
+		//no condition matches return the inputs
+		return lhs, rhs
+	}
+}
+
+// tryUnwrapString tries to Unwarp the rhs value corresponding to the
+// lhs value of type string.
+func tryUnwrapString(lhs value.Value, lhsValue string, rhs value.Value) (value.Value, value.Value) {
+	switch rhsValue := rhs.Interface().(type) {
+	case alloytypes.OptionalSecret:
+		if rhsValue.IsSecret {
+			// string, OptionalSecrets{IsSecret: true} = OptionalSecrets, OptionalSecrets
+			return value.Encapsulate(alloytypes.OptionalSecret{Value: lhsValue, IsSecret: true}), rhs
+		}
+		// string, OptionalSecrets{IsSecret: false} = string, string
+		return lhs, value.String(rhsValue.Value)
+	case alloytypes.Secret:
+		// string, Secret = Secret, Secret
+		return value.Encapsulate(alloytypes.Secret(lhsValue)), rhs
+	default:
+		// no condition matches return the inputs
+		return lhs, rhs
+	}
 }
 
 // valuesEqual returns true if two Values are equal.
@@ -306,7 +429,7 @@ var binopAllowedTypes = map[token.Token][]value.Type{
 	token.OR:  {value.TypeBool},
 	token.AND: {value.TypeBool},
 
-	token.ADD: {value.TypeNumber, value.TypeString},
+	token.ADD: {value.TypeNumber, value.TypeString, value.TypeCapsule},
 	token.SUB: {value.TypeNumber},
 	token.MUL: {value.TypeNumber},
 	token.DIV: {value.TypeNumber},
@@ -349,8 +472,11 @@ var numberKindPrec = map[value.NumberKind]int{
 }
 
 func intPow[Number int64 | uint64](n, m Number) Number {
-	if m == 0 {
+	switch {
+	case m == 0 || n == 1:
 		return 1
+	case n == 0 && m > 0:
+		return 0
 	}
 	result := n
 	for i := Number(2); i <= m; i++ {

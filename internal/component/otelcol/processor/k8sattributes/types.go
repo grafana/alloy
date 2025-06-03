@@ -4,7 +4,6 @@ type FieldExtractConfig struct {
 	TagName  string `alloy:"tag_name,attr,optional"`
 	Key      string `alloy:"key,attr,optional"`
 	KeyRegex string `alloy:"key_regex,attr,optional"`
-	Regex    string `alloy:"regex,attr,optional"`
 	From     string `alloy:"from,attr,optional"`
 }
 
@@ -13,15 +12,15 @@ func (args FieldExtractConfig) convert() map[string]interface{} {
 		"tag_name":  args.TagName,
 		"key":       args.Key,
 		"key_regex": args.KeyRegex,
-		"regex":     args.Regex,
 		"from":      args.From,
 	}
 }
 
 type ExtractConfig struct {
-	Metadata    []string             `alloy:"metadata,attr,optional"`
-	Annotations []FieldExtractConfig `alloy:"annotation,block,optional"`
-	Labels      []FieldExtractConfig `alloy:"label,block,optional"`
+	Metadata        []string             `alloy:"metadata,attr,optional"`
+	Annotations     []FieldExtractConfig `alloy:"annotation,block,optional"`
+	Labels          []FieldExtractConfig `alloy:"label,block,optional"`
+	OtelAnnotations bool                 `alloy:"otel_annotations,attr,optional"`
 }
 
 func (args ExtractConfig) convert() map[string]interface{} {
@@ -37,9 +36,10 @@ func (args ExtractConfig) convert() map[string]interface{} {
 	}
 
 	return map[string]interface{}{
-		"metadata":    args.Metadata,
-		"annotations": annotations,
-		"labels":      labels,
+		"metadata":         args.Metadata,
+		"annotations":      annotations,
+		"labels":           labels,
+		"otel_annotations": args.OtelAnnotations,
 	}
 }
 

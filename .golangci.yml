@@ -1,90 +1,77 @@
-# Full list of configuration options: https://golangci-lint.run/usage/configuration/
-
-run:
-  timeout: 5m
-  skip-dirs:
-    - component/pyroscope/scrape/internal/fastdelta
-    - component/pyroscope/scrape/internal/pproflite
-
-output:
-  sort-results: true
-
+version: "2"
 linters:
   enable:
+    - depguard    # Allow/denylist specific imports
     - errcheck    # Report unchecked errors
-    - goconst     # Find repeated strings that could be replaced by constant
-    - gofmt       # Check whether code was gofmt-ed
-    - goimports   # Check imports were formatted with gofmt
-    - revive      # Broad set of rules; replaces deprecated golint
-    - gosimple    # Check whether code can be simplified
     - ineffassign # Detect when assignment to variable is never used
+    - goconst     # Find repeated strings that could be replaced by constant
+    - govet       # `go vet`
+    - makezero    # Detect misuse of make with non-zero length and append
     - misspell    # Report on commonly misspelled English words
+    - revive      # Broad set of rules; replaces deprecated golint
+    - staticcheck # staticcheck, gosimple, stylecheck merged into staticcheck
     - unconvert   # Remove unnecessary type conversions
     - unparam     # Detect unused function parameters
-    - govet       # `go vet`
     - unused      # Detect unused constants/variables/functions/types
-    - typecheck   # Ensure code typechecks
-    - depguard    # Allow/denylist specific imports
-    - makezero    # Detect misuse of make with non-zero length and append
-    - tenv        # Use testing.(*T).Setenv instead of os.Setenv
+    - usetesting  # Use testing.(*T).Setenv instead of os.Setenv
     - whitespace  # Report unnecessary blank lines
-
+  settings:
+    depguard:
+      rules:
+        main:
+          deny:
+            - pkg: sync/atomic
+              desc: Use go.uber.org/atomic instead of sync/atomic
+            - pkg: github.com/pkg/errors
+              desc: Use errors instead of github.com/pkg/errors
+            - pkg: github.com/go-kit/kit/log
+              desc: Use github.com/go-kit/log instead of github.com/go-kit/kit/log
+            - pkg: golang.org/x/sync/errgroup
+              desc: Use github.com/oklog/run instead of golang.org/x/sync/errgroup
+    revive:
+      rules:
+        - name: package-comments
+          disabled: true
+    staticcheck:
+      # default is ["all", "-ST1000", "-ST1003", "-ST1016", "-ST1020", "-ST1021", "-ST1022"]
+      checks: ["all", "-ST1000", "-ST1003", "-ST1016", "-ST1020", "-ST1021", "-ST1022", "-QF1001", "-QF1007",  "-QF1008"]
+    whitespace:
+      multi-if: true
+      multi-func: true
+  exclusions:
+    generated: lax
+    rules:
+      - linters:
+          - errcheck
+        path: _test.go
+      - path: (.+)\.go$
+        text: Error return value of `(.*\.Close|.*\.Log|os.Remove)` is not checked
+      - path: (.+)\.go$
+        text: 'var-naming: don''t use an underscore in package name'
+      - linters:
+          - goconst
+        path: (.+)_test\.go
+    paths:
+      - component/pyroscope/scrape/internal/fastdelta
+      - component/pyroscope/scrape/internal/pproflite
+      - third_party$
+      - builtin$
+      - examples$
+      - component/otelcol/extension/jaeger_remote_sampling/internal # Copied with attribution from OTel Collector
+      - component/otelcol/receiver/prometheus/internal # Copied with attribution from OTel Collector
+      - internal/cmd/integration-tests # Exclude all integration tests
 issues:
-  # We want to use our own exclusion rules and ignore all the defaults.
-  exclude-use-default: false
-
-  exclude-rules:
-    # It's fine if tests ignore errors.
-    - path: _test.go
-      linters:
-        - errcheck
-
-  exclude:
-    # Ignoring errors on Close, Log, and removing files is OK in most cases.
-    - "Error return value of `(.*\\.Close|.*\\.Log|os.Remove)` is not checked"
-    # Packages for integrations are named matching their upstream counterpart,
-    # which almost always have underscores.
-    - "var-naming: don't use an underscore in package name"
-
-# Linter settings options: https://golangci-lint.run/usage/linters/
-linters-settings:
-  depguard:
-    rules:
-      main:
-        deny:
-          - pkg: "sync/atomic"
-            desc: Use go.uber.org/atomic instead of sync/atomic
-          - pkg: "github.com/pkg/errors"
-            desc: Use errors instead of github.com/pkg/errors
-          - pkg: "github.com/go-kit/kit/log"
-            desc: Use github.com/go-kit/log instead of github.com/go-kit/kit/log
-          - pkg: "golang.org/x/sync/errgroup"
-            desc: Use github.com/oklog/run instead of golang.org/x/sync/errgroup
-
-  whitespace:
-    # While there normally shouldn't be extra redundant leading/trailing
-    # whitespace, if statement conditions and function headers that cross
-    # multiple lines are an exception.
-    #
-    #   if true ||
-    #      false {
-    #
-    #       // ... ^ must have empty line above
-    #    }
-    #
-    #   func foo(
-    #     a int,
-    #   ) {
-    #
-    #     // ... ^ must have empty line above
-    #   }
-    #
-    # This helps readers easily separate where the multi-line if/function ends
-    # at a glance.
-    multi-if: true
-    multi-func: true
-
-  revive:
-    rules:
-    - name: package-comments
-      disabled: true
+  max-issues-per-linter: 0
+  max-same-issues: 0
+formatters:
+  enable:
+    - gofmt     # Check whether code was gofmt-ed
+    - goimports # Check imports were formatted with gofmt
+  exclusions:
+    generated: lax
+    paths:
+      - component/pyroscope/scrape/internal/fastdelta
+      - component/pyroscope/scrape/internal/pproflite
+      - third_party$
+      - builtin$
+      - examples$

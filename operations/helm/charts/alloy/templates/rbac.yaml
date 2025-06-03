@@ -62,6 +62,7 @@ rules:
       - podmonitors
       - servicemonitors
       - probes
+      - scrapeconfigs
     verbs:
       - get
       - list
@@ -107,5 +108,5 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: {{ include "alloy.serviceAccountName" . }}
-    namespace: {{ .Release.Namespace }}
+    namespace: {{ include "alloy.namespace" . }}
 {{- end }}

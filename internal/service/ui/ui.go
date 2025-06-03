@@ -7,7 +7,9 @@ import (
 	"net/http"
 	"path"
 
+	"github.com/go-kit/log"
 	"github.com/gorilla/mux"
+
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/service"
 	http_service "github.com/grafana/alloy/internal/service/http"
@@ -25,6 +27,7 @@ const ServiceName = "ui"
 type Options struct {
 	UIPrefix        string                        // Path prefix to host the UI at.
 	CallbackManager livedebugging.CallbackManager // CallbackManager is used for live debugging in the UI.
+	Logger          log.Logger
 }
 
 // Service implements the UI service.
@@ -78,10 +81,7 @@ func (s *Service) Data() any {
 func (s *Service) ServiceHandler(host service.Host) (base string, handler http.Handler) {
 	r := mux.NewRouter()
 
-	remotecfgSvc, _ := host.GetService(remotecfg_service.ServiceName)
-	remotecfgHost := remotecfgSvc.Data().(remotecfg_service.Data).Host
-
-	fa := api.NewAlloyAPI(host, remotecfgHost, s.opts.CallbackManager)
+	fa := api.NewAlloyAPI(host, s.opts.CallbackManager, s.opts.Logger)
 	fa.RegisterRoutes(path.Join(s.opts.UIPrefix, "/api/v0/web"), r)
 	ui.RegisterRoutes(s.opts.UIPrefix, r)
 

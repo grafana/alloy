@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/dag"
 	"github.com/grafana/alloy/internal/runtime/internal/controller"
-	"github.com/grafana/alloy/internal/runtime/internal/dag"
 )
 
 // GetComponent implements [component.Provider].
@@ -113,6 +113,8 @@ func (f *Runtime) getComponentDetail(cn controller.ComponentNode, graph *dag.Gra
 		References:   references,
 		ReferencedBy: referencedBy,
 
+		DataFlowEdgesTo: cn.GetDataFlowEdgesTo(),
+
 		ComponentName: cn.ComponentName(),
 		Health:        health,
 
@@ -128,6 +130,10 @@ func (f *Runtime) getComponentDetail(cn controller.ComponentNode, graph *dag.Gra
 			componentInfo.DebugInfo = builtinComponent.DebugInfo()
 		}
 	}
+
+	_, liveDebuggingEnabled := componentInfo.Component.(component.LiveDebugging)
+	componentInfo.LiveDebuggingEnabled = liveDebuggingEnabled
+
 	return componentInfo
 }
 

@@ -1,7 +1,7 @@
 package common
 
 import (
-	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"time"
@@ -21,13 +21,13 @@ func FetchDataFromURL(url string, target Unmarshaler) error {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return errors.New("Non-OK HTTP status: " + resp.Status)
-	}
-
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("Non-OK HTTP status: %s, body: %s, url: %s", resp.Status, string(bodyBytes), url)
 	}
 
 	return target.Unmarshal(bodyBytes)

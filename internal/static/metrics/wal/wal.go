@@ -15,6 +15,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/exemplar"
 	"github.com/prometheus/prometheus/model/histogram"
@@ -84,15 +85,13 @@ func newStorageMetrics(r prometheus.Registerer) *storageMetrics {
 	})
 
 	if r != nil {
-		r.MustRegister(
-			m.numActiveSeries,
-			m.numDeletedSeries,
-			m.totalOutOfOrderSamples,
-			m.totalCreatedSeries,
-			m.totalRemovedSeries,
-			m.totalAppendedSamples,
-			m.totalAppendedExemplars,
-		)
+		m.numActiveSeries = util.MustRegisterOrGet(r, m.numActiveSeries).(prometheus.Gauge)
+		m.numDeletedSeries = util.MustRegisterOrGet(r, m.numDeletedSeries).(prometheus.Gauge)
+		m.totalOutOfOrderSamples = util.MustRegisterOrGet(r, m.totalOutOfOrderSamples).(prometheus.Counter)
+		m.totalCreatedSeries = util.MustRegisterOrGet(r, m.totalCreatedSeries).(prometheus.Counter)
+		m.totalRemovedSeries = util.MustRegisterOrGet(r, m.totalRemovedSeries).(prometheus.Counter)
+		m.totalAppendedSamples = util.MustRegisterOrGet(r, m.totalAppendedSamples).(prometheus.Counter)
+		m.totalAppendedExemplars = util.MustRegisterOrGet(r, m.totalAppendedExemplars).(prometheus.Counter)
 	}
 
 	return &m

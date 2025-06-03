@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/grafana/alloy/internal/featuregate"
 	util_log "github.com/grafana/loki/v3/pkg/util/log"
 )
 
@@ -58,7 +59,7 @@ var plName = "testPipeline"
 // TestLimitPipeline is used to verify we properly parse the yaml config and create a working pipeline
 func TestLimitWaitPipeline(t *testing.T) {
 	registry := prometheus.NewRegistry()
-	pl, err := NewPipeline(util_log.Logger, loadConfig(testLimitWaitAlloy), &plName, registry)
+	pl, err := NewPipeline(util_log.Logger, loadConfig(testLimitWaitAlloy), &plName, registry, featuregate.StabilityGenerallyAvailable)
 	logs := make([]Entry, 0)
 	logCount := 5
 	for i := 0; i < logCount; i++ {
@@ -76,7 +77,7 @@ func TestLimitWaitPipeline(t *testing.T) {
 // TestLimitPipeline is used to verify we properly parse the yaml config and create a working pipeline
 func TestLimitDropPipeline(t *testing.T) {
 	registry := prometheus.NewRegistry()
-	pl, err := NewPipeline(util_log.Logger, loadConfig(testLimitDropAlloy), &plName, registry)
+	pl, err := NewPipeline(util_log.Logger, loadConfig(testLimitDropAlloy), &plName, registry, featuregate.StabilityGenerallyAvailable)
 	logs := make([]Entry, 0)
 	logCount := 10
 	for i := 0; i < logCount; i++ {
@@ -94,7 +95,7 @@ func TestLimitDropPipeline(t *testing.T) {
 // TestLimitByLabelPipeline is used to verify we properly parse the yaml config and create a working pipeline
 func TestLimitByLabelPipeline(t *testing.T) {
 	registry := prometheus.NewRegistry()
-	pl, err := NewPipeline(util_log.Logger, loadConfig(testLimitByLabelAlloy), &plName, registry)
+	pl, err := NewPipeline(util_log.Logger, loadConfig(testLimitByLabelAlloy), &plName, registry, featuregate.StabilityGenerallyAvailable)
 	logs := make([]Entry, 0)
 	logCount := 5
 	for i := 0; i < logCount; i++ {
@@ -119,11 +120,12 @@ func TestLimitByLabelPipeline(t *testing.T) {
 	var hasTotal, hasByLabel bool
 	mfs, _ := registry.Gather()
 	for _, mf := range mfs {
-		if *mf.Name == "loki_process_dropped_lines_total" {
+		switch *mf.Name {
+		case "loki_process_dropped_lines_total":
 			hasTotal = true
 			assert.Len(t, mf.Metric, 1)
 			assert.Equal(t, 8, int(mf.Metric[0].Counter.GetValue()))
-		} else if *mf.Name == "loki_process_dropped_lines_by_label_total" {
+		case "loki_process_dropped_lines_by_label_total":
 			hasByLabel = true
 			assert.Len(t, mf.Metric, 2)
 			assert.Equal(t, 4, int(mf.Metric[0].Counter.GetValue()))

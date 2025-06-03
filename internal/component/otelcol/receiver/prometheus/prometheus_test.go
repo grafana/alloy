@@ -79,7 +79,7 @@ func Test(t *testing.T) {
 			Labels: exemplarLabels,
 		}
 
-		ctx := context.Background()
+		ctx := t.Context()
 		ctx = scrape.ContextWithMetricMetadataStore(ctx, alloyprometheus.NoopMetadataStore{})
 		ctx = scrape.ContextWithTarget(ctx, &scrape.Target{})
 		app := exports.Receiver.Appender(ctx)

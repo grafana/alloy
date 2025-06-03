@@ -29,9 +29,33 @@ func TestAlloyUnmarshal(t *testing.T) {
 		MaxIdleConnections: 3,
 		MaxOpenConnections: 3,
 		Timeout:            10 * time.Second,
+		ConnectionName:     "",
 	}
 
 	require.Equal(t, expected, args)
+}
+
+func TestAlloyUnmarshalWithName(t *testing.T) {
+	alloyConfig := `
+	connection_string = "sqlserver://user:pass@localhost:1433"
+	connection_name = "localhost"
+	max_idle_connections = 3
+	max_open_connections = 3
+	timeout = "10s"
+	`
+
+	var args Arguments
+	err := syntax.Unmarshal([]byte(alloyConfig), &args)
+	require.NoError(t, err)
+	var collectorConfig config.CollectorConfig
+	err = yaml.UnmarshalStrict([]byte(args.QueryConfig.Value), &collectorConfig)
+	require.NoError(t, err)
+
+	require.Equal(t, alloytypes.Secret("sqlserver://user:pass@localhost:1433"), args.ConnectionString)
+	require.Equal(t, "localhost", args.ConnectionName)
+	require.Equal(t, 3, args.MaxIdleConnections)
+	require.Equal(t, 3, args.MaxOpenConnections)
+	require.Equal(t, 10*time.Second, args.Timeout)
 }
 
 func TestAlloyUnmarshalWithInlineQueryConfig(t *testing.T) {

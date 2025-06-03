@@ -1,7 +1,6 @@
 package gcplog
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"strings"
@@ -13,6 +12,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/goleak"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -25,6 +25,43 @@ import (
 // TODO (@tpaschalis) We can't test this easily as there's no way to inject
 // the mock PubSub client inside the component, but we'll find a workaround.
 func TestPull(t *testing.T) {}
+
+func TestPushFromNestedController(t *testing.T) {
+	goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
+
+	opts := component.Options{
+		ID:            "foo/loki.source.gcplog.default",
+		Logger:        util.TestAlloyLogger(t),
+		Registerer:    prometheus.NewRegistry(),
+		OnStateChange: func(e component.Exports) {},
+	}
+
+	ch1, ch2 := loki.NewLogsReceiver(), loki.NewLogsReceiver()
+	args := Arguments{}
+
+	port, err := freeport.GetFreePort()
+	require.NoError(t, err)
+	args.PushTarget = &gcptypes.PushConfig{
+		Server: &fnet.ServerConfig{
+			HTTP: &fnet.HTTPConfig{
+				ListenAddress: "localhost",
+				ListenPort:    port,
+			},
+			// assign random grpc port
+			GRPC: &fnet.GRPCConfig{ListenPort: 0},
+		},
+		Labels: map[string]string{
+			"foo": "bar",
+		},
+	}
+	args.ForwardTo = []loki.LogsReceiver{ch1, ch2}
+	args.RelabelRules = exportedRules
+
+	// Create and run the component.
+	c, err := New(opts, args)
+	require.NoError(t, err)
+	require.NotNil(t, c)
+}
 
 func TestPush(t *testing.T) {
 	opts := component.Options{
@@ -58,7 +95,7 @@ func TestPush(t *testing.T) {
 	c, err := New(opts, args)
 	require.NoError(t, err)
 
-	go c.Run(context.Background())
+	go c.Run(t.Context())
 	time.Sleep(200 * time.Millisecond)
 
 	// Create a GCP PushRequest and send it to the launched server.

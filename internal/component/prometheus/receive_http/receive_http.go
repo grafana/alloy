@@ -16,6 +16,7 @@ import (
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/prometheus/prometheus/storage/remote"
 )
@@ -66,9 +67,12 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 	uncheckedCollector := util.NewUncheckedCollector(nil)
 	opts.Registerer.MustRegister(uncheckedCollector)
 
+	//TODO: Make this configurable in the future?
+	supportedRemoteWriteProtoMsgs := config.RemoteWriteProtoMsgs{config.RemoteWriteProtoMsgV1}
+
 	c := &Component{
 		opts:               opts,
-		handler:            remote.NewWriteHandler(opts.Logger, opts.Registerer, fanout),
+		handler:            remote.NewWriteHandler(opts.Logger, opts.Registerer, fanout, supportedRemoteWriteProtoMsgs),
 		fanout:             fanout,
 		uncheckedCollector: uncheckedCollector,
 	}
@@ -107,7 +111,7 @@ func (c *Component) Update(args component.Arguments) error {
 	}
 	c.shutdownServer()
 
-	err, s := c.createNewServer(newArgs)
+	s, err := c.createNewServer(newArgs)
 	if err != nil {
 		return err
 	}
@@ -124,7 +128,7 @@ func (c *Component) Update(args component.Arguments) error {
 	return nil
 }
 
-func (c *Component) createNewServer(args Arguments) (error, *fnet.TargetServer) {
+func (c *Component) createNewServer(args Arguments) (*fnet.TargetServer, error) {
 	// [server.Server] registers new metrics every time it is created. To
 	// avoid issues with re-registering metrics with the same name, we create a
 	// new registry for the server every time we create one, and pass it to an
@@ -139,10 +143,10 @@ func (c *Component) createNewServer(args Arguments) (error, *fnet.TargetServer) 
 		args.Server,
 	)
 	if err != nil {
-		return fmt.Errorf("failed to create server: %v", err), nil
+		return nil, fmt.Errorf("failed to create server: %v", err)
 	}
 
-	return nil, s
+	return s, nil
 }
 
 // shutdownServer will shut down the currently used server.

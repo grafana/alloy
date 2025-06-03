@@ -17,15 +17,15 @@ import (
 // Datadog Exporter only supports InsecureSkipVerify for TLS configuration.
 // https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/v0.105.0/exporter/datadogexporter/examples/collector.yaml#L219
 type DatadogClientArguments struct {
-	ReadBufferSize      int            `alloy:"read_buffer_size,attr,optional"`
-	WriteBufferSize     int            `alloy:"write_buffer_size,attr,optional"`
-	Timeout             time.Duration  `alloy:"timeout,attr,optional"`
-	MaxIdleConns        *int           `alloy:"max_idle_conns,attr,optional"`
-	MaxIdleConnsPerHost *int           `alloy:"max_idle_conns_per_host,attr,optional"`
-	MaxConnsPerHost     *int           `alloy:"max_conns_per_host,attr,optional"`
-	IdleConnTimeout     *time.Duration `alloy:"idle_conn_timeout,attr,optional"`
-	DisableKeepAlives   bool           `alloy:"disable_keep_alives,attr,optional"`
-	InsecureSkipVerify  bool           `alloy:"insecure_skip_verify,attr,optional"`
+	ReadBufferSize      int           `alloy:"read_buffer_size,attr,optional"`
+	WriteBufferSize     int           `alloy:"write_buffer_size,attr,optional"`
+	Timeout             time.Duration `alloy:"timeout,attr,optional"`
+	MaxIdleConns        int           `alloy:"max_idle_conns,attr,optional"`
+	MaxIdleConnsPerHost int           `alloy:"max_idle_conns_per_host,attr,optional"`
+	MaxConnsPerHost     int           `alloy:"max_conns_per_host,attr,optional"`
+	IdleConnTimeout     time.Duration `alloy:"idle_conn_timeout,attr,optional"`
+	DisableKeepAlives   bool          `alloy:"disable_keep_alives,attr,optional"`
+	InsecureSkipVerify  bool          `alloy:"insecure_skip_verify,attr,optional"`
 }
 
 func (args *DatadogClientArguments) Convert() *confighttp.ClientConfig {
@@ -56,7 +56,9 @@ func (args *DatadogClientArguments) SetToDefault() {
 	// We leave this to OTel as the types for MaxIdleConns etc are ptrs, which is difficult for Alloy to default.
 	// https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/v0.105.0/exporter/datadogexporter/internal/clientutil/http.go#L49
 	*args = DatadogClientArguments{
-		Timeout: 15 * time.Second,
+		Timeout:         15 * time.Second,
+		MaxIdleConns:    100,
+		IdleConnTimeout: 90 * time.Second,
 	}
 }
 
@@ -106,6 +108,8 @@ func (args *DatadogHostMetadataArguments) Convert() *datadogOtelconfig.HostMetad
 		Enabled:        args.Enabled,
 		HostnameSource: datadogOtelconfig.HostnameSource(args.HostnameSource),
 		Tags:           args.Tags,
+		//TODO: Make ReporterPeriod configurable.
+		ReporterPeriod: 30 * time.Minute,
 	}
 }
 

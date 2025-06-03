@@ -9,12 +9,13 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/prometheus/common/model"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	http_service "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/static/integrations"
-	"github.com/prometheus/common/model"
 )
 
 // Creator is a function provided by an implementation to create a concrete exporter instance.
@@ -92,7 +93,9 @@ func (c *Component) Update(args component.Arguments) error {
 	c.mut.Lock()
 	c.exporter = exporter
 	if instanceKey != "" {
-		c.baseTarget["instance"] = instanceKey
+		tb := discovery.NewTargetBuilderFrom(c.baseTarget)
+		tb.Set("instance", instanceKey)
+		c.baseTarget = tb.Target()
 	}
 
 	var targets []discovery.Target
@@ -142,7 +145,7 @@ func newExporter(creator Creator, name string, targetBuilderFunc func(discovery.
 			componentName = opts.ID
 		}
 
-		c.baseTarget = discovery.Target{
+		c.baseTarget = discovery.NewTargetFromMap(map[string]string{
 			model.AddressLabel:      httpData.MemoryListenAddr,
 			model.SchemeLabel:       "http",
 			model.MetricsPathLabel:  path.Join(httpData.HTTPPathForComponent(opts.ID), "metrics"),
@@ -150,8 +153,7 @@ func newExporter(creator Creator, name string, targetBuilderFunc func(discovery.
 			"job":                   jobName,
 			"__meta_component_name": componentName,
 			"__meta_component_id":   opts.ID,
-		}
-
+		})
 		// Call to Update() to set the output once at the start.
 		if err := c.Update(args); err != nil {
 			return nil, err

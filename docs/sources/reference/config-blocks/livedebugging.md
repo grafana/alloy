@@ -30,8 +30,8 @@ livedebugging {
 
 The following arguments are supported:
 
-| Name      | Type   | Description                         | Default | Required |
-| --------- | ------ | ----------------------------------- | ------- | -------- |
-| `enabled` | `bool` | Enables the live debugging feature. | `false` | no       |
+| Name                 | Type  | Description                                                      | Default | Required |
+| -------------------- | ----- | ---------------------------------------------------------------  | ------- | -------- |
+| `enabled`            | `bool`| Enables the live debugging feature.                              | `false` | no       |
 
 [debug]: ../../../troubleshoot/debug/

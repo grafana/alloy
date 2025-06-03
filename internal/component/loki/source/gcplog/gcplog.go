@@ -121,7 +121,7 @@ func (c *Component) Update(args component.Arguments) error {
 	c.fanout = newArgs.ForwardTo
 
 	var rcs []*relabel.Config
-	if newArgs.RelabelRules != nil && len(newArgs.RelabelRules) > 0 {
+	if len(newArgs.RelabelRules) > 0 {
 		rcs = alloy_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules)
 	}
 
@@ -132,7 +132,8 @@ func (c *Component) Update(args component.Arguments) error {
 		}
 	}
 	entryHandler := loki.NewEntryHandler(c.handler.Chan(), func() {})
-	jobName := strings.Replace(c.opts.ID, ".", "_", -1)
+	r := strings.NewReplacer(".", "_", "/", "_")
+	jobName := r.Replace(c.opts.ID)
 
 	if newArgs.PullTarget != nil {
 		// TODO(@tpaschalis) Are there any options from "google.golang.org/api/option"

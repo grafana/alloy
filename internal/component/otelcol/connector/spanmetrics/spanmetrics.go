@@ -13,7 +13,6 @@ import (
 	"github.com/grafana/alloy/syntax"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/connector/spanmetricsconnector"
 	otelcomponent "go.opentelemetry.io/collector/component"
-	otelextension "go.opentelemetry.io/collector/extension"
 	"go.opentelemetry.io/collector/pipeline"
 )
 
@@ -60,6 +59,8 @@ type Arguments struct {
 	// See https://opentelemetry.io/docs/specs/semconv/resource/ for possible attributes.
 	ResourceMetricsKeyAttributes []string `alloy:"resource_metrics_key_attributes,attr,optional"`
 
+	AggregationCardinalityLimit int `alloy:"aggregation_cardinality_limit,attr,optional"`
+
 	AggregationTemporality string `alloy:"aggregation_temporality,attr,optional"`
 
 	Histogram HistogramConfig `alloy:"histogram,block"`
@@ -88,6 +89,8 @@ type Arguments struct {
 
 	// DebugMetrics configures component internal metrics. Optional.
 	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
+
+	IncludeInstrumentationScope []string `alloy:"include_instrumentation_scope,attr,optional"`
 }
 
 var (
@@ -103,7 +106,6 @@ const (
 
 // DefaultArguments holds default settings for Arguments.
 var DefaultArguments = Arguments{
-	DimensionsCacheSize:      1000,
 	AggregationTemporality:   AggregationTemporalityCumulative,
 	MetricsFlushInterval:     60 * time.Second,
 	MetricsExpiration:        0,
@@ -120,12 +122,6 @@ func (args *Arguments) SetToDefault() {
 
 // Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
-	if args.DimensionsCacheSize <= 0 {
-		return fmt.Errorf(
-			"invalid cache size: %v, the maximum number of the items in the cache should be positive",
-			args.DimensionsCacheSize)
-	}
-
 	if args.MetricsFlushInterval <= 0 {
 		return fmt.Errorf("metrics_flush_interval must be greater than 0")
 	}
@@ -135,6 +131,14 @@ func (args *Arguments) Validate() error {
 		// Valid
 	default:
 		return fmt.Errorf("invalid aggregation_temporality: %v", args.AggregationTemporality)
+	}
+
+	if args.AggregationCardinalityLimit < 0 {
+		return fmt.Errorf("invalid aggregation_cardinality_limit: %v, the limit should be positive", args.AggregationCardinalityLimit)
+	}
+
+	if args.AggregationTemporality == AggregationTemporalityDelta && args.TimestampCacheSize <= 0 {
+		return fmt.Errorf("invalid metric_timestamp_cache_size: %v, the cache size should be positive", args.TimestampCacheSize)
 	}
 
 	return nil
@@ -190,6 +194,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		ResourceMetricsCacheSize:     args.ResourceMetricsCacheSize,
 		TimestampCacheSize:           &timestampCacheSize,
 		ResourceMetricsKeyAttributes: args.ResourceMetricsKeyAttributes,
+		AggregationCardinalityLimit:  args.AggregationCardinalityLimit,
 		AggregationTemporality:       aggregationTemporality,
 		Histogram:                    *histogram,
 		MetricsFlushInterval:         args.MetricsFlushInterval,
@@ -197,11 +202,12 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		Namespace:                    args.Namespace,
 		Exemplars:                    *args.Exemplars.Convert(),
 		Events:                       args.Events.Convert(),
+		IncludeInstrumentationScope:  args.IncludeInstrumentationScope,
 	}, nil
 }
 
 // Extensions implements connector.Arguments.
-func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
+func (args Arguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 

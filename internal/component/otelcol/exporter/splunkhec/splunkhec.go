@@ -12,7 +12,6 @@ import (
 	splunkhec_config "github.com/grafana/alloy/internal/component/otelcol/exporter/splunkhec/config"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/splunkhecexporter"
 	otelcomponent "go.opentelemetry.io/collector/component"
-	otelextension "go.opentelemetry.io/collector/extension"
 	"go.opentelemetry.io/collector/pipeline"
 )
 
@@ -24,7 +23,7 @@ func init() {
 		Exports:   otelcol.ConsumerExports{},
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
 			fact := splunkhecexporter.NewFactory()
-			return exporter.New(opts, fact, args.(Arguments), exporter.TypeAll)
+			return exporter.New(opts, fact, args.(Arguments), exporter.TypeSignalConstFunc(exporter.TypeAll))
 		},
 	})
 }
@@ -52,10 +51,13 @@ func (args *Arguments) SetToDefault() {
 }
 
 func (args Arguments) Convert() (otelcomponent.Config, error) {
-
+	q, err := args.Queue.Convert()
+	if err != nil {
+		return nil, err
+	}
 	return (&splunkhec_config.SplunkHecArguments{
 		Splunk:                   args.Splunk,
-		QueueSettings:            *args.Queue.Convert(),
+		QueueSettings:            *q,
 		RetrySettings:            *args.Retry.Convert(),
 		SplunkHecClientArguments: args.Client,
 	}).Convert(), nil
@@ -79,8 +81,8 @@ func (args Arguments) DebugMetricsConfig() otelcolCfg.DebugMetricsArguments {
 }
 
 // Extensions implements exporter.Arguments.
-func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
-	return nil
+func (args Arguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
+	return args.Queue.Extensions()
 }
 
 // Exporters implements exporter.Arguments.

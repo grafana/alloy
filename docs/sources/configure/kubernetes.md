@@ -14,7 +14,7 @@ This page describes how to apply a new configuration to {{< param "PRODUCT_NAME"
 It assumes that:
 
 - You have [installed {{< param "PRODUCT_NAME" >}} on Kubernetes using the Helm chart][k8s-install].
-- You already have a new {{< param "PRODUCT_NAME" >}} configuration that you want to apply to your Helm chart installation.
+- You already have a {{< param "PRODUCT_NAME" >}} configuration that you want to apply to your Helm chart installation.
 
 Refer to [Collect and forward data][collect] for information about configuring {{< param "PRODUCT_NAME" >}} to collect and forward data.
 
@@ -25,15 +25,15 @@ Refer to [Collect and forward data][collect] for information about configuring {
 
 To modify {{< param "PRODUCT_NAME" >}}'s Helm chart configuration, perform the following steps:
 
-1. Create a local `values.yaml` file with a new Helm chart configuration.
+1. Create a local `values.yaml` file with a Helm chart configuration.
 
    1. You can use your own copy of the values file or download a copy of the
-      default [values.yaml][].
+      default [`values.yaml`][values.yaml].
 
    1. Make changes to your `values.yaml` to customize settings for the
       Helm chart.
 
-      Refer to the inline documentation in the default [values.yaml][] for more
+      Refer to the inline documentation in the default [`values.yaml`][values.yaml] for more
       information about each option.
 
 1. Run the following command in a terminal to upgrade your {{< param "PRODUCT_NAME" >}} installation:
@@ -43,11 +43,10 @@ To modify {{< param "PRODUCT_NAME" >}}'s Helm chart configuration, perform the f
    ```
 
    Replace the following:
-   - _`<NAMESPACE>`_: The namespace you used for your {{< param "PRODUCT_NAME" >}} installation.
-   - _`<RELEASE_NAME>`_: The name you used for your {{< param "PRODUCT_NAME" >}} installation.
-   - _`<VALUES_PATH>`_: The path to your copy of `values.yaml` to use.
 
-[values.yaml]: https://raw.githubusercontent.com/grafana/alloy/main/operations/helm/charts/alloy/values.yaml
+   * _`<NAMESPACE>`_: The namespace you used for your {{< param "PRODUCT_NAME" >}} installation.
+   * _`<RELEASE_NAME>`_: The name you used for your {{< param "PRODUCT_NAME" >}} installation.
+   * _`<VALUES_PATH>`_: The path to your copy of `values.yaml` to use.
 
 ## Kustomize considerations
 
@@ -98,9 +97,9 @@ Use this method if you prefer to embed your {{< param "PRODUCT_NAME" >}} configu
 
    Replace the following:
 
-   - _`<NAMESPACE>`_: The namespace you used for your {{< param "PRODUCT_NAME" >}} installation.
-   - _`<RELEASE_NAME>`_: The name you used for your {{< param "PRODUCT_NAME" >}} installation.
-   - _`<VALUES_PATH>`_: The path to your copy of `values.yaml` to use.
+   * _`<NAMESPACE>`_: The namespace you used for your {{< param "PRODUCT_NAME" >}} installation.
+   * _`<RELEASE_NAME>`_: The name you used for your {{< param "PRODUCT_NAME" >}} installation.
+   * _`<VALUES_PATH>`_: The path to your copy of `values.yaml` to use.
 
 ### Method 2: Create a separate ConfigMap from a file
 
@@ -124,7 +123,7 @@ Use this method if you prefer to write your {{< param "PRODUCT_NAME" >}} configu
 
    Replace the following:
 
-   - _`<NAMESPACE>`_: The namespace you used for your {{< param "PRODUCT_NAME" >}} installation.
+   * _`<NAMESPACE>`_: The namespace you used for your {{< param "PRODUCT_NAME" >}} installation.
 
 1. Modify Helm Chart's configuration in your `values.yaml` to use the existing ConfigMap:
 
@@ -144,9 +143,9 @@ Use this method if you prefer to write your {{< param "PRODUCT_NAME" >}} configu
 
    Replace the following:
 
-   - _`<NAMESPACE>`_: The namespace you used for your {{< param "PRODUCT_NAME" >}} installation.
-   - _`<RELEASE_NAME>`_: The name you used for your {{< param "PRODUCT_NAME" >}} installation.
-   - _`<VALUES_PATH>`_: The path to your copy of `values.yaml` to use.
+   * _`<NAMESPACE>`_: The namespace you used for your {{< param "PRODUCT_NAME" >}} installation.
+   * _`<RELEASE_NAME>`_: The name you used for your {{< param "PRODUCT_NAME" >}} installation.
+   * _`<VALUES_PATH>`_: The path to your copy of `values.yaml` to use.
 
 [values.yaml]: https://raw.githubusercontent.com/grafana/alloy/main/operations/helm/charts/alloy/values.yaml
 [Helm chart]: https://github.com/grafana/alloy/tree/main/operations/helm/charts/alloy

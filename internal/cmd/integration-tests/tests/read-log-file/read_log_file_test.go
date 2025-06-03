@@ -1,5 +1,3 @@
-//go:build !windows
-
 package main
 
 import (
@@ -19,7 +17,7 @@ func TestReadLogFile(t *testing.T) {
 		if assert.NotEmpty(c, logResponse.Data.Result) {
 			logs := make([]string, 0)
 			for _, result := range logResponse.Data.Result {
-				assert.Equal(c, result.Stream["filename"], "logs.txt")
+				assert.Equal(c, result.Stream["filename"], "/etc/alloy/logs.txt")
 				for _, valuePair := range result.Values {
 					logs = append(logs, valuePair[1])
 				}

@@ -8,6 +8,7 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/metadata"
 	"github.com/prometheus/prometheus/storage"
+	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/service/labelstore"
 )
@@ -26,6 +27,10 @@ type Interceptor struct {
 	next storage.Appendable
 
 	ls labelstore.LabelStore
+
+	// lastSeriesCount stores the number of series that were sent through the last interceptappender. It helps to estimate how
+	// much memory to allocate for the staleness trackers.
+	lastSeriesCount atomic.Int64
 }
 
 var _ storage.Appendable = (*Interceptor)(nil)
@@ -91,7 +96,7 @@ func (f *Interceptor) Appender(ctx context.Context) storage.Appender {
 	app := &interceptappender{
 		interceptor:       f,
 		ls:                f.ls,
-		stalenessTrackers: make([]labelstore.StalenessTracker, 0),
+		stalenessTrackers: make([]labelstore.StalenessTracker, 0, f.lastSeriesCount.Load()),
 	}
 	if f.next != nil {
 		app.child = f.next.Appender(ctx)
@@ -130,6 +135,7 @@ func (a *interceptappender) Append(ref storage.SeriesRef, l labels.Labels, t int
 
 // Commit satisfies the Appender interface.
 func (a *interceptappender) Commit() error {
+	a.interceptor.lastSeriesCount.Store(int64(len(a.stalenessTrackers)))
 	a.ls.TrackStaleness(a.stalenessTrackers)
 	if a.child == nil {
 		return nil
@@ -139,6 +145,7 @@ func (a *interceptappender) Commit() error {
 
 // Rollback satisfies the Appender interface.
 func (a *interceptappender) Rollback() error {
+	a.interceptor.lastSeriesCount.Store(int64(len(a.stalenessTrackers)))
 	a.ls.TrackStaleness(a.stalenessTrackers)
 	if a.child == nil {
 		return nil

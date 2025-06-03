@@ -3,7 +3,6 @@ canonical: https://grafana.com/docs/alloy/latest/introduction/estimate-resource-
 aliases:
   - ../tasks/estimate-resource-usage/ # /docs/alloy/latest/tasks/estimate-resource-usage/
 description: Estimate expected Grafana Alloy resource usage
-headless: true
 title: Estimate Grafana Alloy resource usage
 menuTitle: Estimate resource usage
 weight: 300
@@ -28,7 +27,7 @@ As a rule of thumb, **per each 1 million active series** and with the default sc
 * 11 GiB of memory
 * 1.5 MiB/s of total network bandwidth, send and receive
 
-These recommendations are based on deployments that use [clustering][], but they will broadly apply to other deployment modes.
+These recommendations are based on deployments that use [clustering][], but they broadly apply to other deployment modes.
 Refer to [Deploy {{< param "FULL_PRODUCT_NAME" >}}][deploy] for more information on how to deploy {{< param "PRODUCT_NAME" >}}.
 
 ## Loki logs

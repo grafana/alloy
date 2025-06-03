@@ -258,6 +258,10 @@ func (c *Component) updateTailer(args Arguments) error {
 // updateReconciler updates the state of the reconciler. This must only be
 // called after updateTailer. mut must be held when calling.
 func (c *Component) updateReconciler(args Arguments) error {
+	// The clustering settings should always be updated,
+	// even if the selectors haven't changed.
+	c.reconciler.SetDistribute(args.Clustering.Enabled)
+
 	var (
 		selectorChanged          = !reflect.DeepEqual(c.args.Selector, args.Selector)
 		namespaceSelectorChanged = !reflect.DeepEqual(c.args.NamespaceSelector, args.NamespaceSelector)
@@ -276,7 +280,6 @@ func (c *Component) updateReconciler(args Arguments) error {
 	}
 
 	c.reconciler.UpdateSelectors(sel, nsSel)
-	c.reconciler.SetDistribute(args.Clustering.Enabled)
 
 	// Request a reconcile so the new selectors get applied.
 	c.controller.RequestReconcile()

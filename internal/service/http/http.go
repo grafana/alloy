@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	_ "net/http/pprof" // Register pprof handlers
@@ -21,12 +22,13 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
-	alloy_runtime "github.com/grafana/alloy/internal/runtime"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/service/remotecfg"
 	"github.com/grafana/alloy/internal/static/server"
+	"github.com/grafana/alloy/syntax/ast"
+	"github.com/grafana/alloy/syntax/printer"
 	"github.com/grafana/ckit/memconn"
 	_ "github.com/grafana/pyroscope-go/godeltaprof/http/pprof" // Register godeltaprof handler
 	"github.com/prometheus/client_golang/prometheus"
@@ -49,7 +51,7 @@ type Options struct {
 	Gatherer prometheus.Gatherer  // Where to collect metrics from.
 
 	ReadyFunc  func() bool
-	ReloadFunc func() (*alloy_runtime.Source, error)
+	ReloadFunc func() error
 
 	HTTPListenAddr   string                // Address to listen for HTTP traffic on.
 	MemoryListenAddr string                // Address to accept in-memory traffic on.
@@ -60,7 +62,8 @@ type Options struct {
 
 // Arguments holds runtime settings for the HTTP service.
 type Arguments struct {
-	TLS *TLSArguments `alloy:"tls,block,optional"`
+	Auth *AuthArguments `alloy:"auth,block,optional"`
+	TLS  *TLSArguments  `alloy:"tls,block,optional"`
 }
 
 type Service struct {
@@ -77,6 +80,13 @@ type Service struct {
 
 	// Used to enforce single-flight requests to supportHandler
 	supportBundleMut sync.Mutex
+
+	// Track the raw config for use with the support bundle
+	sources map[string]*ast.File
+
+	authenticatorMut sync.RWMutex
+	// authenticator is applied to every request made to http server
+	authenticator authenticator
 
 	// publicLis and tcpLis are used to lazily enable TLS, since TLS is
 	// optionally configurable at runtime.
@@ -131,6 +141,8 @@ func New(opts Options) *Service {
 		gatherer:     r,
 		opts:         opts,
 
+		authenticator: allowAuthenticator,
+
 		publicLis: publicLis,
 		tcpLis:    tcpLis,
 		memLis:    memconn.NewListener(l),
@@ -182,6 +194,49 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 		otelmux.WithTracerProvider(s.tracer),
 	))
 
+	// Apply authenticator middleware.
+	// If none is configured allowAuthenticator is used and no authentication is required.
+	r.Use(func(h http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			s.authenticatorMut.RLock()
+			err := s.authenticator(w, r)
+			s.authenticatorMut.RUnlock()
+			if err != nil {
+				level.Info(s.log).Log("msg", "failed to authenticate request", "path", r.URL.Path, "err", err)
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+
+			h.ServeHTTP(w, r)
+		})
+	})
+
+	// The implementation for "/-/healthy" is inspired by
+	// the "/components" web API endpoint in /internal/web/api/api.go
+	r.HandleFunc("/-/healthy", func(w http.ResponseWriter, r *http.Request) {
+		components, err := host.ListComponents("", component.InfoOptions{
+			GetHealth: true,
+		})
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		unhealthyComponents := []string{}
+		for _, c := range components {
+			if c.Health.Health == component.HealthTypeUnhealthy {
+				unhealthyComponents = append(unhealthyComponents, c.ComponentName)
+			}
+		}
+		if len(unhealthyComponents) > 0 {
+			http.Error(w, "unhealthy components: "+strings.Join(unhealthyComponents, ", "), http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		_, _ = fmt.Fprintln(w, "All Alloy components are healthy.")
+	})
+
 	r.Handle(
 		"/metrics",
 		promhttp.HandlerFor(s.gatherer, promhttp.HandlerOpts{}),
@@ -200,10 +255,10 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 		r.HandleFunc("/-/ready", func(w http.ResponseWriter, _ *http.Request) {
 			if s.opts.ReadyFunc() {
 				w.WriteHeader(http.StatusOK)
-				fmt.Fprintln(w, "Alloy is ready.")
+				_, _ = fmt.Fprintln(w, "Alloy is ready.")
 			} else {
 				w.WriteHeader(http.StatusServiceUnavailable)
-				fmt.Fprintln(w, "Alloy is not ready.")
+				_, _ = fmt.Fprintln(w, "Alloy is not ready.")
 			}
 		})
 	}
@@ -212,8 +267,7 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 		r.HandleFunc("/-/reload", func(w http.ResponseWriter, _ *http.Request) {
 			level.Info(s.log).Log("msg", "reload requested via /-/reload endpoint")
 
-			_, err := s.opts.ReloadFunc()
-			if err != nil {
+			if err := s.opts.ReloadFunc(); err != nil {
 				level.Error(s.log).Log("msg", "failed to reload config", "err", err.Error())
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
@@ -225,7 +279,7 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 	}
 
 	// Wire in support bundle generator
-	r.HandleFunc("/-/support", s.supportHandler).Methods("GET")
+	r.HandleFunc("/-/support", s.generateSupportBundleHandler(host)).Methods("GET")
 
 	// Wire custom service handlers for services which depend on the http
 	// service.
@@ -259,60 +313,72 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 	return nil
 }
 
-func (s *Service) supportHandler(rw http.ResponseWriter, r *http.Request) {
+func (s *Service) generateSupportBundleHandler(host service.Host) func(rw http.ResponseWriter, r *http.Request) {
+	return func(rw http.ResponseWriter, r *http.Request) {
+		s.supportBundleMut.Lock()
+		defer s.supportBundleMut.Unlock()
+
+		if s.opts.BundleContext.DisableSupportBundle {
+			rw.WriteHeader(http.StatusForbidden)
+			_, _ = rw.Write([]byte("support bundle generation is disabled; it can be re-enabled by removing the --disable-support-bundle flag"))
+			return
+		}
+
+		duration := getServerWriteTimeout(r)
+		if r.URL.Query().Has("duration") {
+			d, err := strconv.Atoi(r.URL.Query().Get("duration"))
+			if err != nil {
+				http.Error(rw, fmt.Sprintf("duration value (in seconds) should be a positive integer: %s", err), http.StatusBadRequest)
+				return
+			}
+			if d < 1 {
+				http.Error(rw, "duration value (in seconds) should be larger than 1", http.StatusBadRequest)
+				return
+			}
+			if float64(d) > duration.Seconds() {
+				http.Error(rw, "duration value exceeds the server's write timeout", http.StatusBadRequest)
+				return
+			}
+			duration = time.Duration(d) * time.Second
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), duration)
+		defer cancel()
+
+		var logsBuffer bytes.Buffer
+		syncBuff := log.NewSyncWriter(&logsBuffer)
+		s.globalLogger.SetTemporaryWriter(syncBuff)
+		defer func() {
+			s.globalLogger.RemoveTemporaryWriter()
+		}()
+
+		// Get and redact the cached remote config.
+		cachedConfig, err := remoteCfgRedactedCachedConfig(host)
+		if err != nil {
+			level.Debug(s.log).Log("msg", "failed to get cached remote config", "err", err)
+		}
+
+		// Ensure the sources are written using the printer as it will handle
+		// secret redaction.
+		sources := redactedSources(s.sources)
+
+		bundle, err := ExportSupportBundle(ctx, s.opts.BundleContext.RuntimeFlags, s.opts.HTTPListenAddr, sources, cachedConfig, s.Data().(Data).DialFunc)
+		if err != nil {
+			http.Error(rw, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if err := ServeSupportBundle(rw, bundle, &logsBuffer); err != nil {
+			http.Error(rw, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+}
+
+// SetSources sets the sources on reload to be delivered
+// with the support bundle.
+func (s *Service) SetSources(sources map[string]*ast.File) {
 	s.supportBundleMut.Lock()
 	defer s.supportBundleMut.Unlock()
-
-	// TODO(dehaansa) remove this check once the support bundle is generally available
-	if !s.opts.MinStability.Permits(featuregate.StabilityPublicPreview) {
-		rw.WriteHeader(http.StatusForbidden)
-		_, _ = rw.Write([]byte("support bundle generation is only available in public preview. Use" +
-			" --stability.level command-line flag to enable public-preview features"))
-		return
-	}
-
-	if s.opts.BundleContext.DisableSupportBundle {
-		rw.WriteHeader(http.StatusForbidden)
-		_, _ = rw.Write([]byte("support bundle generation is disabled; it can be re-enabled by removing the --disable-support-bundle flag"))
-		return
-	}
-
-	duration := getServerWriteTimeout(r)
-	if r.URL.Query().Has("duration") {
-		d, err := strconv.Atoi(r.URL.Query().Get("duration"))
-		if err != nil {
-			http.Error(rw, fmt.Sprintf("duration value (in seconds) should be a positive integer: %s", err), http.StatusBadRequest)
-			return
-		}
-		if d < 1 {
-			http.Error(rw, "duration value (in seconds) should be larger than 1", http.StatusBadRequest)
-			return
-		}
-		if float64(d) > duration.Seconds() {
-			http.Error(rw, "duration value exceeds the server's write timeout", http.StatusBadRequest)
-			return
-		}
-		duration = time.Duration(d) * time.Second
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), duration)
-	defer cancel()
-
-	var logsBuffer bytes.Buffer
-	syncBuff := log.NewSyncWriter(&logsBuffer)
-	s.globalLogger.SetTemporaryWriter(syncBuff)
-	defer func() {
-		s.globalLogger.RemoveTemporaryWriter()
-	}()
-
-	bundle, err := ExportSupportBundle(ctx, s.opts.BundleContext.RuntimeFlags, s.opts.HTTPListenAddr, s.Data().(Data).DialFunc)
-	if err != nil {
-		http.Error(rw, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if err := ServeSupportBundle(rw, bundle, &logsBuffer); err != nil {
-		http.Error(rw, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	s.sources = sources
 }
 
 func getServerWriteTimeout(r *http.Request) time.Duration {
@@ -357,7 +423,7 @@ func (s *Service) componentHandler(getHost func() (service.Host, error), pathPre
 		host, err := getHost()
 		if host == nil || err != nil {
 			w.WriteHeader(http.StatusServiceUnavailable)
-			fmt.Fprintf(w, "failed to get host: %s\n", err)
+			_, _ = fmt.Fprintf(w, "failed to get host: %s\n", err)
 			return
 		}
 		// Trim the path prefix to get our full path.
@@ -367,7 +433,8 @@ func (s *Service) componentHandler(getHost func() (service.Host, error), pathPre
 		componentID, componentPath, err := splitURLPath(host, trimmedPath)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintf(w, "failed to parse URL path %q: %s\n", r.URL.Path, err)
+			_, _ = fmt.Fprintf(w, "failed to parse URL path %q: %s\n", r.URL.Path, err)
+			return
 		}
 
 		info, err := host.GetComponent(componentID, component.InfoOptions{})
@@ -427,6 +494,14 @@ func (s *Service) Update(newConfig any) error {
 			return err
 		}
 	}
+
+	s.authenticatorMut.Lock()
+	if newArgs.Auth != nil {
+		s.authenticator = newArgs.Auth.authenticator()
+	} else {
+		s.authenticator = allowAuthenticator
+	}
+	s.authenticatorMut.Unlock()
 
 	return nil
 }
@@ -580,6 +655,49 @@ func (lis *lazyListener) Addr() net.Addr {
 	}
 
 	return lis.inner.Addr()
+}
+
+func redactedSources(sources map[string]*ast.File) map[string][]byte {
+	if sources == nil {
+		return nil
+	}
+	printedSources := make(map[string][]byte, len(sources))
+
+	for k, v := range sources {
+		b, err := printFileRedacted(v)
+		if err != nil {
+			printedSources[k] = []byte(fmt.Errorf("failed to print source: %w", err).Error())
+			continue
+		}
+		printedSources[k] = b
+	}
+	return printedSources
+}
+
+func remoteCfgRedactedCachedConfig(host service.Host) ([]byte, error) {
+	svc, ok := host.GetService(remotecfg.ServiceName)
+	if !ok {
+		return nil, fmt.Errorf("failed to get the remotecfg service")
+	}
+
+	return printFileRedacted(svc.(*remotecfg.Service).GetCachedAstFile())
+}
+
+func printFileRedacted(f *ast.File) ([]byte, error) {
+	if f == nil {
+		return []byte{}, nil
+	}
+
+	c := printer.Config{
+		RedactSecrets: true,
+	}
+
+	var buf bytes.Buffer
+	w := io.Writer(&buf)
+	if err := c.Fprint(w, f); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
 
 func remoteCfgHostProvider(host service.Host) func() (service.Host, error) {

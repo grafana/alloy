@@ -33,6 +33,9 @@ func Test(t *testing.T) {
 				tags_filter      = ["foo", "bar"]
 				refresh_interval = "5m"
 				port             = 1234
+				http_headers = {
+					"foo" = ["foobar"],
+				}
 			`,
 		},
 	}

@@ -5,7 +5,10 @@ package cloudflaretarget
 // read from the Cloudflare Logpull API and forward entries to other loki
 // components.
 
-import "github.com/prometheus/client_golang/prometheus"
+import (
+	"github.com/grafana/alloy/internal/util"
+	"github.com/prometheus/client_golang/prometheus"
+)
 
 // Metrics holds a set of cloudflare metrics.
 type Metrics struct {
@@ -31,10 +34,8 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 	})
 
 	if reg != nil {
-		reg.MustRegister(
-			m.Entries,
-			m.LastEnd,
-		)
+		m.Entries = util.MustRegisterOrGet(reg, m.Entries).(prometheus.Counter)
+		m.LastEnd = util.MustRegisterOrGet(reg, m.LastEnd).(prometheus.Gauge)
 	}
 
 	return &m

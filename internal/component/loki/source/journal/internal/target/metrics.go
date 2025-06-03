@@ -4,7 +4,10 @@ package target
 // configure and run the targets that can read journal entries and forward them
 // to other loki components.
 
-import "github.com/prometheus/client_golang/prometheus"
+import (
+	"github.com/grafana/alloy/internal/util"
+	"github.com/prometheus/client_golang/prometheus"
+)
 
 // Metrics holds a set of journal target metrics.
 type Metrics struct {
@@ -30,10 +33,8 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 	})
 
 	if reg != nil {
-		reg.MustRegister(
-			m.journalErrors,
-			m.journalLines,
-		)
+		m.journalErrors = util.MustRegisterOrGet(reg, m.journalErrors).(*prometheus.CounterVec)
+		m.journalLines = util.MustRegisterOrGet(reg, m.journalLines).(prometheus.Counter)
 	}
 
 	return &m

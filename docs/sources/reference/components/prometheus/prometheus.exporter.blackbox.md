@@ -3,58 +3,64 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus
 aliases:
   - ../prometheus.exporter.blackbox/ # /docs/alloy/latest/reference/components/prometheus.exporter.blackbox/
 description: Learn about prometheus.exporter.blackbox
+labels:
+  stage: general-availability
+  products:
+    - oss
 title: prometheus.exporter.blackbox
 ---
 
-# prometheus.exporter.blackbox
+# `prometheus.exporter.blackbox`
 
-The `prometheus.exporter.blackbox` component embeds
-[`blackbox_exporter`](https://github.com/prometheus/blackbox_exporter). `blackbox_exporter` lets you collect blackbox metrics (probes) and expose them as Prometheus metrics.
+The `prometheus.exporter.blackbox` component embeds the [`blackbox_exporter`](https://github.com/prometheus/blackbox_exporter).
+The `blackbox_exporter` lets you collect blackbox metrics (probes) and expose them as Prometheus metrics.
 
 ## Usage
 
 ```alloy
-prometheus.exporter.blackbox "LABEL" {
+prometheus.exporter.blackbox "<LABEL>" {
   target {
-    name    = "example"
-    address = "EXAMPLE_ADDRESS"
+    name    = "<NAME>"
+    address = "<EXAMPLE_ADDRESS>"
   }
 }
 ```
 
-or 
+or
 
 ```alloy
-prometheus.exporter.blackbox "LABEL" {
-  targets = TARGET_LIST
+prometheus.exporter.blackbox "<LABEL>" {
+  targets = <TARGET_LIST>
 }
 ```
 
 ## Arguments
 
-The following arguments can be used to configure the exporter's behavior.
-Omitted fields take their default values.
+You can use the following arguments with `prometheus.exporter.blackbox`:
 
 | Name                   | Type                 | Description                                                      | Default  | Required |
 | ---------------------- | -------------------- | ---------------------------------------------------------------- | -------- | -------- |
-| `config_file`          | `string`             | `blackbox_exporter` configuration file path.                       |          | no       |
-| `config`               | `string` or `secret` | `blackbox_exporter` configuration as inline string.                |          | no       |
+| `config_file`          | `string`             | `blackbox_exporter` configuration file path.                     |          | no       |
+| `config`               | `string` or `secret` | `blackbox_exporter` configuration as inline string.              |          | no       |
 | `probe_timeout_offset` | `duration`           | Offset in seconds to subtract from timeout when probing targets. | `"0.5s"` | no       |
 | `targets`              | `list(map(string))`  | Blackbox targets.                                                |          | no       |
 
 Either `config_file` or `config` must be specified.
 The `config_file` argument points to a YAML file defining which `blackbox_exporter` modules to use.
 The `config` argument must be a YAML document as string defining which `blackbox_exporter` modules to use.
-`config` is typically loaded by using the exports of another component. For example,
+`config` is typically loaded by using the exports of another component. For example:
 
-- `local.file.LABEL.content`
-- `remote.http.LABEL.content`
-- `remote.s3.LABEL.content`
+* `local.file.LABEL.content`
+* `remote.http.LABEL.content`
+* `remote.s3.LABEL.content`
+
+The `timeout` attribute in `config` or `config_file` has an effective upper limit of 10 seconds. Refer to the Prometheus blackbox exporter [issue 751](https://github.com/prometheus/blackbox_exporter/issues/751) for more information.
 
 You can't use both the `targets` argument and the [target][] block in the same configuration file.
-The `targets` argument must be used when blackbox targets cannot be passed as a target block because another component supplies them.
+The `targets` argument must be used when blackbox targets can't be passed as a target block because another component supplies them.
 
 You can set the following labels to a target:
+
 * `name`: The name of the target to probe (required).
 * `address`: The address of the target to probe (required).
 * `module`: The blackbox module to use to probe.
@@ -65,26 +71,26 @@ Refer to [`blackbox_exporter`](https://github.com/prometheus/blackbox_exporter/b
 
 ## Blocks
 
-The following blocks are supported inside the definition of
-`prometheus.exporter.blackbox` to configure collector-specific options:
+You can use the following block with `prometheus.exporter.blackbox`:
 
-| Hierarchy | Name       | Description                   | Required |
-| --------- | ---------- | ----------------------------- | -------- |
-| target    | [target][] | Configures a blackbox target. | no       |
+| Name               | Description                   | Required |
+| ------------------ | ----------------------------- | -------- |
+| [`target`][target] | Configures a blackbox target. | no       |
 
-[target]: #target-block
+[target]: #target
 
-### target block
-
-The `target` block defines an individual blackbox target.
-The `target` block may be specified multiple times to define multiple targets. `name` attribute is required and will be used in the target's `job` label.
+### `target`
 
 | Name      | Type          | Description                         | Default | Required |
 | --------- | ------------- | ----------------------------------- | ------- | -------- |
-| `name`    | `string`      | The name of the target to probe.    |         | yes      |
 | `address` | `string`      | The address of the target to probe. |         | yes      |
-| `module`  | `string`      | Blackbox module to use to probe.    | `""`    | no       |
+| `name`    | `string`      | The name of the target to probe.    |         | yes      |
 | `labels`  | `map(string)` | Labels to add to the target.        |         | no       |
+| `module`  | `string`      | Blackbox module to use to probe.    | `""`    | no       |
+
+The `target` block defines an individual blackbox target.
+The `target` block may be specified multiple times to define multiple targets.
+The `name` attribute is required and is used in the target's `job` label.
 
 Labels specified in the `labels` argument won't override labels set by `blackbox_exporter`.
 
@@ -94,28 +100,27 @@ Labels specified in the `labels` argument won't override labels set by `blackbox
 
 ## Component health
 
-`prometheus.exporter.blackbox` is only reported as unhealthy if given
-an invalid configuration. In those cases, exported fields retain their last
-healthy values.
+`prometheus.exporter.blackbox` is only reported as unhealthy if given an invalid configuration.
+In those cases, exported fields retain their last healthy values.
 
 ## Debug information
 
-`prometheus.exporter.blackbox` doesn't expose any component-specific
-debug information.
+`prometheus.exporter.blackbox` doesn't expose any component-specific debug information.
 
 ## Debug metrics
 
-`prometheus.exporter.blackbox` doesn't expose any component-specific
-debug metrics.
+`prometheus.exporter.blackbox` doesn't expose any component-specific debug metrics.
 
 ## Examples
 
 ### Collect metrics using a blackbox exporter configuration file
 
-This example uses a [`prometheus.scrape` component][scrape] to collect metrics from `prometheus.exporter.blackbox`. 
-It adds an extra label, `env="dev"`, to the metrics emitted by the `grafana` target. The `example` target doesn't have any added labels.
+This example uses a [`prometheus.scrape` component][scrape] to collect metrics from `prometheus.exporter.blackbox`.
+It adds an extra label, `env="dev"`, to the metrics emitted by the `grafana` target.
+The `example` target doesn't have any added labels.
 
-The `config_file` argument is used to define which `blackbox_exporter` modules to use. You can use the [blackbox example config file](https://github.com/prometheus/blackbox_exporter/blob/master/example.yml).
+The `config_file` argument defines which `blackbox_exporter` modules to use.
+You can use the [blackbox example configuration file](https://github.com/prometheus/blackbox_exporter/blob/master/example.yml).
 
 ```alloy
 prometheus.exporter.blackbox "example" {
@@ -145,11 +150,11 @@ prometheus.scrape "demo" {
 
 prometheus.remote_write "demo" {
   endpoint {
-    url = PROMETHEUS_REMOTE_WRITE_URL
+    url = "<PROMETHEUS_REMOTE_WRITE_URL>"
 
     basic_auth {
-      username = USERNAME
-      password = PASSWORD
+      username = "<USERNAME>"
+      password = "<PASSWORD>"
     }
   }
 }
@@ -157,9 +162,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-- `PROMETHEUS_REMOTE_WRITE_URL`: The URL of the Prometheus remote_write-compatible server to send metrics to.
-- `USERNAME`: The username to use for authentication to the `remote_write` API.
-- `PASSWORD`: The password to use for authentication to the `remote_write` API.
+* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
+* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 ### Collect metrics using an embedded configuration
 
@@ -224,17 +229,18 @@ prometheus.scrape "example" {
 
 prometheus.remote_write "example" {
   endpoint {
-    url = PROMETHEUS_REMOTE_WRITE_URL
+    url = "<PROMETHEUS_REMOTE_WRITE_URL>"
 
     basic_auth {
-      username = USERNAME
-      password = PASSWORD
+      username = "<USERNAME>"
+      password = "<PASSWORD>"
     }
   }
 }
 ```
 
 The YAML file in this example looks like this:
+
 ```yaml
 - targets:
   - localhost:9009
@@ -251,13 +257,44 @@ The YAML file in this example looks like this:
 
 Replace the following:
 
-- `PROMETHEUS_REMOTE_WRITE_URL`: The URL of the Prometheus remote_write-compatible server to send metrics to.
-- `USERNAME`: The username to use for authentication to the `remote_write` API.
-- `PASSWORD`: The password to use for authentication to the `remote_write` API.
+* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
+* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 [scrape]: ../prometheus.scrape/
-[disc]: ../discovery.file/
-[relabel]: ../discovery.relabel/
+[disc]: ../../discovery/discovery.file/
+[relabel]: ../../discovery/discovery.relabel/
+
+### Set instance label to target URL
+
+Some dashboards may expect the `instance` label on the Blackbox metrics to contain the value of the target URL.
+The following example demonstrates how to achieve that with Prometheus [relabeling][relabel]:
+
+```alloy
+prometheus.exporter.blackbox "example" {
+  config = "{ modules: { http_2xx: { prober: http, timeout: 5s } } }"
+
+  target {
+    name    = "example"
+    address = "example.com"
+    module = "http_2xx"
+  }
+}
+
+discovery.relabel "example" {
+  targets = prometheus.exporter.blackbox.example.targets
+
+  rule {
+    source_labels = ["__param_target"]
+    target_label = "instance"
+  }
+}
+
+prometheus.scrape "example" {
+  targets = discovery.relabel.example.output
+  forward_to = [prometheus.remote_write.metrics_service.receiver]
+}
+```
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

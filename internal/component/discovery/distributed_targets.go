@@ -30,9 +30,13 @@ func NewDistributedTargetsWithCustomLabels(clusteringEnabled bool, cluster clust
 		cluster = disabledCluster{}
 	}
 
-	localCap := len(allTargets) + 1
-	if peerCount := len(cluster.Peers()); peerCount != 0 {
-		localCap = (len(allTargets) + 1) / peerCount
+	var localCap int
+	if !cluster.Ready() {
+		localCap = 0 // cluster not ready - won't take any traffic locally
+	} else if peerCount := len(cluster.Peers()); peerCount != 0 {
+		localCap = (len(allTargets) + 1) / peerCount // if we have peers - calculate expected capacity
+	} else {
+		localCap = len(allTargets) // cluster ready but no peers? fall back to all traffic locally
 	}
 
 	localTargets := make([]Target, 0, localCap)
@@ -40,7 +44,7 @@ func NewDistributedTargetsWithCustomLabels(clusteringEnabled bool, cluster clust
 	remoteTargetKeys := make(map[shard.Key]struct{}, len(allTargets)-localCap)
 
 	// Need to handle duplicate entries.
-	singlular := make(map[shard.Key]struct{})
+	unique := make(map[shard.Key]struct{})
 	for _, tgt := range allTargets {
 		var targetKey shard.Key
 		// If we have no custom labels check all non-meta labels.
@@ -49,12 +53,19 @@ func NewDistributedTargetsWithCustomLabels(clusteringEnabled bool, cluster clust
 		} else {
 			targetKey = keyForLabels(tgt, labels)
 		}
-		if _, ok := singlular[targetKey]; ok {
+
+		// check if we have already seen this target
+		if _, ok := unique[targetKey]; ok {
 			continue
 		}
-		singlular[targetKey] = struct{}{}
-		peers, err := cluster.Lookup(targetKey, 1, shard.OpReadWrite)
-		belongsToLocal := err != nil || len(peers) == 0 || peers[0].Self
+		unique[targetKey] = struct{}{}
+
+		// Determine if target belongs locally. Make sure it doesn't if cluster not ready.
+		belongsToLocal := false
+		if cluster.Ready() {
+			peers, err := cluster.Lookup(targetKey, 1, shard.OpReadWrite)
+			belongsToLocal = err != nil || len(peers) == 0 || peers[0].Self
+		}
 
 		if belongsToLocal {
 			localTargets = append(localTargets, tgt)
@@ -99,21 +110,25 @@ func (dt *DistributedTargets) MovedToRemoteInstance(prev *DistributedTargets) []
 }
 
 func keyFor(tgt Target) shard.Key {
-	return shard.Key(tgt.NonMetaLabels().Hash())
+	return shard.Key(tgt.NonMetaLabelsHash())
 }
 
 func keyForLabels(tgt Target, lbls []string) shard.Key {
-	return shard.Key(tgt.SpecificLabels(lbls).Hash())
+	return shard.Key(tgt.SpecificLabelsHash(lbls))
 }
 
 type disabledCluster struct{}
 
 var _ cluster.Cluster = disabledCluster{}
 
-func (l disabledCluster) Lookup(key shard.Key, replicationFactor int, op shard.Op) ([]peer.Peer, error) {
+func (l disabledCluster) Lookup(_ shard.Key, _ int, _ shard.Op) ([]peer.Peer, error) {
 	return nil, nil
 }
 
 func (l disabledCluster) Peers() []peer.Peer {
 	return nil
+}
+
+func (l disabledCluster) Ready() bool {
+	return true
 }

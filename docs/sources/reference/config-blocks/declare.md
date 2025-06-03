@@ -71,5 +71,5 @@ prometheus.remote_write "example" {
 [argument]: ../argument/
 [export]: ../export/
 [declare]: ../declare/
-[import]: ../../../get-started/modules/#importing-modules
+[import]: ../../../get-started/modules/#import-modules
 [custom component]: ../../../get-started/custom_components/

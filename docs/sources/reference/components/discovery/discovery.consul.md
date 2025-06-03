@@ -3,58 +3,64 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/
 aliases:
   - ../discovery.consul/ # /docs/alloy/latest/reference/components/discovery.consul/
 description: Learn about discovery.consul
+labels:
+  stage: general-availability
+  products:
+    - oss
 title: discovery.consul
 ---
 
-# discovery.consul
+# `discovery.consul`
 
-`discovery.consul` allows retrieving scrape targets from [Consul's Catalog API][].
+`discovery.consul` allows you to retrieve scrape targets from [Consul's Catalog API][].
 
 [Consul's Catalog API]: https://www.consul.io/use-cases/discover-services
 
 ## Usage
 
 ```alloy
-discovery.consul "LABEL" {
-  server = CONSUL_SERVER
+discovery.consul "<LABEL>" {
+  server = "<CONSUL_SERVER>"
 }
 ```
 
 ## Arguments
 
-The following arguments are supported:
+You can use the following arguments with `discovery.consul`:
 
-Name                     | Type                | Description                                                                                                     | Default          | Required
--------------------------|---------------------|-----------------------------------------------------------------------------------------------------------------|------------------|---------
-`server`                 | `string`            | Host and port of the Consul API.                                                                                | `localhost:8500` | no
-`token`                  | `secret`            | Secret token used to access the Consul API.                                                                     |                  | no
-`datacenter`             | `string`            | Datacenter to query. If not provided, the default is used.                                                      |                  | no
-`namespace`              | `string`            | Namespace to use. Only supported in Consul Enterprise.                                                          |                  | no
-`partition`              | `string`            | Admin partition to use. Only supported in Consul Enterprise.                                                    |                  | no
-`tag_separator`          | `string`            | The string by which Consul tags are joined into the tag label.                                                  | `,`              | no
-`scheme`                 | `string`            | The scheme to use when talking to Consul.                                                                       | `http`           | no
-`username`               | `string`            | The username to use. Deprecated in favor of the `basic_auth` configuration.                                     |                  | no
-`password`               | `secret`            | The password to use. Deprecated in favor of the `basic_auth` configuration.                                     |                  | no
-`allow_stale`            | `bool`              | Allow stale Consul results. Reduces load on Consul. Refer to the [Consul documentation][] for more information. | `true`           | no
-`services`               | `list(string)`      | A list of services for which targets are retrieved. If omitted, all services are scraped.                       |                  | no
-`tags`                   | `list(string)`      | An optional list of tags used to filter nodes for a given service. Services must contain all tags in the list.  |                  | no
-`node_meta`              | `map(string)`       | Node metadata key/value pairs to filter nodes for a given service.                                              |                  | no
-`refresh_interval`       | `duration`          | Frequency to refresh list of containers.                                                                        | `"30s"`          | no
-`bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                                            |                  | no
-`bearer_token`           | `secret`            | Bearer token to authenticate with.                                                                              |                  | no
-`enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                                        | `true`           | no
-`follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                                    | `true`           | no
-`proxy_url`              | `string`            | HTTP proxy to send requests through.                                                                            |                  | no
-`no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying.                |                  | no
-`proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                                           | `false`          | no
-`proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                                   |                  | no
+| Name                     | Type                | Description                                                                                                     | Default            | Required |
+| ------------------------ | ------------------- | --------------------------------------------------------------------------------------------------------------- | ------------------ | -------- |
+| `allow_stale`            | `bool`              | Allow stale Consul results. Reduces load on Consul. Refer to the [Consul documentation][] for more information. | `true`             | no       |
+| `bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                                            |                    | no       |
+| `bearer_token`           | `secret`            | Bearer token to authenticate with.                                                                              |                    | no       |
+| `datacenter`             | `string`            | Data center to query. If not provided, the default is used.                                                     |                    | no       |
+| `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                                        | `true`             | no       |
+| `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                                    | `true`             | no       |
+| `http_headers`           | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.                         |                    | no       |
+| `namespace`              | `string`            | Namespace to use. Only supported in Consul Enterprise.                                                          |                    | no       |
+| `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying.                |                    | no       |
+| `node_meta`              | `map(string)`       | Node metadata key/value pairs to filter nodes for a given service.                                              |                    | no       |
+| `partition`              | `string`            | Admin partition to use. Only supported in Consul Enterprise.                                                    |                    | no       |
+| `password`               | `secret`            | The password to use. Deprecated in favor of the `basic_auth` configuration.                                     |                    | no       |
+| `proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                                   |                    | no       |
+| `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                                           | `false`            | no       |
+| `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                                            |                    | no       |
+| `refresh_interval`       | `duration`          | Frequency to refresh list of containers.                                                                        | `"30s"`            | no       |
+| `scheme`                 | `string`            | The scheme to use when talking to Consul.                                                                       | `"http"`           | no       |
+| `server`                 | `string`            | Host and port of the Consul API.                                                                                | `"localhost:8500"` | no       |
+| `services`               | `list(string)`      | A list of services for which targets are retrieved. If omitted, all services are scraped.                       |                    | no       |
+| `tag_separator`          | `string`            | The string by which Consul tags are joined into the tag label.                                                  | `","`              | no       |
+| `tags`                   | `list(string)`      | An optional list of tags used to filter nodes for a given service. Services must contain all tags in the list.  |                    | no       |
+| `token`                  | `secret`            | Secret token used to access the Consul API.                                                                     |                    | no       |
+| `username`               | `string`            | The username to use. Deprecated in favor of the `basic_auth` configuration.                                     |                    | no       |
 
- At most, one of the following can be provided:
- - [`bearer_token` argument](#arguments).
- - [`bearer_token_file` argument](#arguments).
- - [`basic_auth` block][basic_auth].
- - [`authorization` block][authorization].
- - [`oauth2` block][oauth2].
+At most, one of the following can be provided:
+
+* [`authorization`][authorization] block
+* [`basic_auth`][basic_auth] block
+* [`bearer_token_file`][arguments] argument
+* [`bearer_token`][arguments] argument
+* [`oauth2`][oauth2] block
 
 {{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -63,38 +69,45 @@ Name                     | Type                | Description                    
 
 ## Blocks
 
-The following blocks are supported inside the definition of
-`discovery.consul`:
+You can use the following blocks with `discovery.consul`:
 
-Hierarchy           | Block             | Description                                                | Required
---------------------|-------------------|------------------------------------------------------------|---------
-basic_auth          | [basic_auth][]    | Configure `basic_auth` for authenticating to the endpoint. | no
-authorization       | [authorization][] | Configure generic authorization to the endpoint.           | no
-oauth2              | [oauth2][]        | Configure OAuth2 for authenticating to the endpoint.       | no
-oauth2 > tls_config | [tls_config][]    | Configure TLS settings for connecting to the endpoint.     | no
-tls_config          | [tls_config][]    | Configure TLS settings for connecting to the endpoint.     | no
+| Block                                 | Description                                                | Required |
+| ------------------------------------- | ---------------------------------------------------------- | -------- |
+| [`authorization`][authorization]      | Configure generic authorization to the endpoint.           | no       |
+| [`basic_auth`][basic_auth]            | Configure `basic_auth` for authenticating to the endpoint. | no       |
+| [`oauth2`][oauth2]                    | Configure OAuth 2.0 for authenticating to the endpoint.    | no       |
+| `oauth2` > [`tls_config`][tls_config] | Configure TLS settings for connecting to the endpoint.     | no       |
+| [`tls_config`][tls_config]            | Configure TLS settings for connecting to the endpoint.     | no       |
 
-The `>` symbol indicates deeper levels of nesting.
-For example, `oauth2 > tls_config` refers to a `tls_config` block defined inside an `oauth2` block.
+The > symbol indicates deeper levels of nesting.
+For example, `oauth2` > `tls_config` refers to a `tls_config` block defined inside an `oauth2` block.
 
-[basic_auth]: #basic_auth-block
-[authorization]: #authorization-block
-[oauth2]: #oauth2-block
-[tls_config]: #tls_config-block
+[authorization]: #authorization
+[basic_auth]: #basic_auth
+[oauth2]: #oauth2
+[tls_config]: #tls_config
 
-### basic_auth block
+### `authorization`
 
-{{< docs/shared lookup="reference/components/basic-auth-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
-
-### authorization block
+The `authorization` block configures generic authorization to the endpoint.
 
 {{< docs/shared lookup="reference/components/authorization-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### oauth2 block
+### `basic_auth`
+
+The `basic_auth` block configures basic authentication to the endpoint.
+
+{{< docs/shared lookup="reference/components/basic-auth-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `oauth2`
+
+The `oauth2` block configures OAuth 2.0 authentication to the endpoint.
 
 {{< docs/shared lookup="reference/components/oauth2-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### tls_config block
+### `tls_config`
+
+The `tls_config` block configures TLS settings for connecting to the endpoint.
 
 {{< docs/shared lookup="reference/components/tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -102,16 +115,16 @@ For example, `oauth2 > tls_config` refers to a `tls_config` block defined inside
 
 The following fields are exported and can be referenced by other components:
 
-Name      | Type                | Description
-----------|---------------------|-----------------------------------------------------------
-`targets` | `list(map(string))` | The set of targets discovered from the Consul catalog API.
+| Name      | Type                | Description                                                |
+| --------- | ------------------- | ---------------------------------------------------------- |
+| `targets` | `list(map(string))` | The set of targets discovered from the Consul catalog API. |
 
 Each target includes the following labels:
 
 * `__meta_consul_address`: The address of the target.
-* `__meta_consul_partition`: The admin partition name where the service is registered.
 * `__meta_consul_metadata_<key>`: Each node metadata key value of the target.
 * `__meta_consul_node`: The node name defined for the target.
+* `__meta_consul_partition`: The administrator partition name where the service is registered.
 * `__meta_consul_service_address`: The service address of the target.
 * `__meta_consul_service_id`: The service ID of the target.
 * `__meta_consul_service_metadata_<key>`: Each service metadata key value of the target.
@@ -153,19 +166,21 @@ prometheus.scrape "demo" {
 
 prometheus.remote_write "demo" {
   endpoint {
-    url = <PROMETHEUS_REMOTE_WRITE_URL>
+    url = "<PROMETHEUS_REMOTE_WRITE_URL>"
 
     basic_auth {
-      username = <USERNAME>
-      password = <PASSWORD>
+      username = "<USERNAME>"
+      password = "<PASSWORD>"
     }
   }
 }
 ```
+
 Replace the following:
-  - _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
-  - _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-  - _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+
+* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
+* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

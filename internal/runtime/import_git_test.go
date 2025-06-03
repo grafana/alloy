@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/vcs"
 	"github.com/stretchr/testify/require"
 )
@@ -42,7 +43,7 @@ testImport.add "cc" {
 }
 `
 	// Create our git repository.
-	runGit(t, testRepo, "init", testRepo)
+	initializeRepo(t, testRepo)
 	runGit(t, testRepo, "checkout", "-b", "main")
 
 	// Add the file we want.
@@ -55,10 +56,10 @@ testImport.add "cc" {
 	runGit(t, testRepo, "commit", "-m \"test\"")
 
 	defer verifyNoGoroutineLeaks(t)
-	ctrl, f := setup(t, main)
+	ctrl, f := setup(t, main, nil, featuregate.StabilityPublicPreview)
 	err = ctrl.LoadSource(f, nil, "")
 	require.NoError(t, err)
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 
 	var wg sync.WaitGroup
 	defer func() {
@@ -108,7 +109,7 @@ testImport.add "cc" {
     b = 1
 }
 `
-	runGit(t, testRepo, "init", testRepo)
+	initializeRepo(t, testRepo)
 	runGit(t, testRepo, "checkout", "-b", "main")
 
 	runGit(t, testRepo, "checkout", "-b", "testor")
@@ -122,10 +123,10 @@ testImport.add "cc" {
 	runGit(t, testRepo, "commit", "-m \"test\"")
 
 	defer verifyNoGoroutineLeaks(t)
-	ctrl, f := setup(t, main)
+	ctrl, f := setup(t, main, nil, featuregate.StabilityPublicPreview)
 	err = ctrl.LoadSource(f, nil, "")
 	require.NoError(t, err)
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 
 	var wg sync.WaitGroup
 	defer func() {
@@ -162,7 +163,7 @@ testImport.add "cc" {
 func TestPullUpdatingFromHash(t *testing.T) {
 	testRepo := t.TempDir()
 
-	runGit(t, testRepo, "init", testRepo)
+	initializeRepo(t, testRepo)
 	runGit(t, testRepo, "checkout", "-b", "main")
 
 	math := filepath.Join(testRepo, "math.alloy")
@@ -205,10 +206,10 @@ testImport.add "cc" {
 	runGit(t, testRepo, "commit", "-m \"test2\"")
 
 	defer verifyNoGoroutineLeaks(t)
-	ctrl, f := setup(t, main)
+	ctrl, f := setup(t, main, nil, featuregate.StabilityPublicPreview)
 	err = ctrl.LoadSource(f, nil, "")
 	require.NoError(t, err)
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 
 	var wg sync.WaitGroup
 	defer func() {
@@ -232,7 +233,7 @@ testImport.add "cc" {
 func TestPullUpdatingFromTag(t *testing.T) {
 	testRepo := t.TempDir()
 
-	runGit(t, testRepo, "init", testRepo)
+	initializeRepo(t, testRepo)
 	runGit(t, testRepo, "checkout", "-b", "main")
 
 	math := filepath.Join(testRepo, "math.alloy")
@@ -269,10 +270,10 @@ testImport.add "cc" {
 
 	defer verifyNoGoroutineLeaks(t)
 
-	ctrl, f := setup(t, main)
+	ctrl, f := setup(t, main, nil, featuregate.StabilityPublicPreview)
 	err = ctrl.LoadSource(f, nil, "")
 	require.NoError(t, err)
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 
 	var wg sync.WaitGroup
 	defer func() {
@@ -291,6 +292,12 @@ testImport.add "cc" {
 		export := getExport[map[string]interface{}](t, ctrl, "", "testImport.add.cc")
 		return export["sum"] == 2
 	}, 5*time.Second, 100*time.Millisecond)
+}
+
+func initializeRepo(t *testing.T, testRepo string) {
+	runGit(t, testRepo, "init", testRepo)
+	runGit(t, testRepo, "config", "user.email", "you@example.com")
+	runGit(t, testRepo, "config", "user.name", "Your Name")
 }
 
 func runGit(t *testing.T, dir string, args ...string) {
@@ -340,7 +347,7 @@ testImport.add "cc" {
     b = 1
 }
 `
-	runGit(t, testRepo, "init", testRepo)
+	initializeRepo(t, testRepo)
 	runGit(t, testRepo, "checkout", "-b", "main")
 
 	runGit(t, testRepo, "checkout", "-b", "testor")
@@ -354,14 +361,14 @@ testImport.add "cc" {
 	runGit(t, testRepo, "commit", "-m \"test\"")
 
 	defer verifyNoGoroutineLeaks(t)
-	ctrl, f := setup(t, main)
+	ctrl, f := setup(t, main, nil, featuregate.StabilityPublicPreview)
 	err = ctrl.LoadSource(f, nil, "")
 	expectedErr := vcs.InvalidRevisionError{
 		Revision: "nonexistent",
 	}
 	require.ErrorContains(t, err, expectedErr.Error())
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	var wg sync.WaitGroup
 	defer func() {
 		cancel()

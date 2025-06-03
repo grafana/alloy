@@ -10,22 +10,22 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/grafana/alloy/syntax/alloytypes"
-	"github.com/grafana/alloy/syntax/internal/value"
 	"github.com/ohler55/ojg/jp"
 	"github.com/ohler55/ojg/oj"
 	"gopkg.in/yaml.v3"
-)
 
-// TODO: refactor the stdlib to have consistent naming between namespaces and identifiers.
+	"github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/alloy/syntax/internal/value"
+)
 
 // ExperimentalIdentifiers contains the full name (namespace + identifier's name) of stdlib
 // identifiers that are considered "experimental".
 var ExperimentalIdentifiers = map[string]bool{
 	"array.combine_maps": true,
+	"array.group_by":     true,
 }
 
-// These identifiers are deprecated in favour of the namespaced ones.
+// DeprecatedIdentifiers are deprecated in favour of the namespaced ones.
 var DeprecatedIdentifiers = map[string]interface{}{
 	"env":           os.Getenv,
 	"nonsensitive":  nonSensitive,
@@ -75,9 +75,13 @@ var file = map[string]interface{}{
 }
 
 var encoding = map[string]interface{}{
-	"from_json":   jsonDecode,
-	"from_yaml":   yamlDecode,
-	"from_base64": base64Decode,
+	"from_json":      jsonDecode,
+	"from_yaml":      yamlDecode,
+	"from_base64":    base64Decode,
+	"from_URLbase64": base64URLDecode,
+	"to_json":        jsonEncode,
+	"to_base64":      base64Encode,
+	"to_URLbase64":   base64URLEncode,
 }
 
 var str = map[string]interface{}{
@@ -93,9 +97,115 @@ var str = map[string]interface{}{
 	"trim_space":  strings.TrimSpace,
 }
 
+// groupBy takes an array of objects, a key to group by, and a boolean to determine
+// whether to drop objects missing the key. It returns an array of objects containing
+// the key value and grouped items.
+var groupBy = value.RawFunction(func(funcValue value.Value, args ...value.Value) (value.Value, error) {
+	if len(args) != 3 {
+		return value.Null, fmt.Errorf("group_by: expected 3 arguments, got %d", len(args))
+	}
+
+	if args[0].Type() != value.TypeArray {
+		return value.Null, value.ArgError{
+			Function: funcValue,
+			Argument: args[0],
+			Index:    0,
+			Inner: value.TypeError{
+				Value:    args[0],
+				Expected: value.TypeArray,
+			},
+		}
+	}
+
+	if args[1].Type() != value.TypeString {
+		return value.Null, value.ArgError{
+			Function: funcValue,
+			Argument: args[1],
+			Index:    1,
+			Inner: value.TypeError{
+				Value:    args[1],
+				Expected: value.TypeString,
+			},
+		}
+	}
+
+	if args[2].Type() != value.TypeBool {
+		return value.Null, value.ArgError{
+			Function: funcValue,
+			Argument: args[2],
+			Index:    2,
+			Inner: value.TypeError{
+				Value:    args[2],
+				Expected: value.TypeBool,
+			},
+		}
+	}
+
+	key := args[1].Text()
+	dropMissing := args[2].Bool()
+
+	groups := make(map[string][]value.Value)
+	for i := 0; i < args[0].Len(); i++ {
+		item := args[0].Index(i)
+		if item.Type() != value.TypeObject {
+			obj, ok := item.TryConvertToObject()
+			if !ok {
+				return value.Null, value.ArgError{
+					Function: funcValue,
+					Argument: item,
+					Index:    i,
+					Inner: value.TypeError{
+						Value:    item,
+						Expected: value.TypeObject,
+					},
+				}
+			}
+			item = value.Object(obj)
+		}
+
+		val, hasKey := item.Key(key)
+		if !hasKey {
+			if dropMissing {
+				continue
+			}
+			// Add to empty value group if not dropping
+			groups[""] = append(groups[""], item)
+			continue
+		}
+
+		// Only accept string values for the key field
+		if val.Type() != value.TypeString {
+			return value.Null, value.ArgError{
+				Function: funcValue,
+				Argument: val,
+				Index:    i,
+				Inner: value.TypeError{
+					Value:    val,
+					Expected: value.TypeString,
+				},
+			}
+		}
+
+		valStr := val.Text()
+		groups[valStr] = append(groups[valStr], item)
+	}
+
+	result := make([]value.Value, 0, len(groups))
+	for val, items := range groups {
+		groupObj := map[string]value.Value{
+			key:     value.String(val),
+			"items": value.Array(items...),
+		}
+		result = append(result, value.Object(groupObj))
+	}
+
+	return value.Array(result...), nil
+})
+
 var array = map[string]interface{}{
 	"concat":       concat,
 	"combine_maps": combineMaps,
+	"group_by":     groupBy,
 }
 
 var convert = map[string]interface{}{
@@ -156,25 +266,25 @@ var concat = value.RawFunction(func(funcValue value.Value, args ...value.Value) 
 })
 
 // This function assumes that the types of the value.Value objects are correct.
-func shouldJoin(left value.Value, right value.Value, conditions value.Value) (bool, error) {
+func shouldJoin(left value.Value, right value.Value, conditions value.Value) bool {
 	for i := 0; i < conditions.Len(); i++ {
 		condition := conditions.Index(i).Text()
 
 		leftVal, ok := left.Key(condition)
 		if !ok {
-			return false, nil
+			return false
 		}
 
 		rightVal, ok := right.Key(condition)
 		if !ok {
-			return false, nil
+			return false
 		}
 
 		if !leftVal.Equal(rightVal) {
-			return false, nil
+			return false
 		}
 	}
-	return true, nil
+	return true
 }
 
 // Merge two maps.
@@ -224,15 +334,19 @@ var combineMaps = value.RawFunction(func(funcValue value.Value, args ...value.Va
 			}
 		}
 		for j := 0; j < args[i].Len(); j++ {
-			if args[i].Index(j).Type() != value.TypeObject {
-				return value.Null, value.ArgError{
-					Function: funcValue,
-					Argument: args[i].Index(j),
-					Index:    j,
-					Inner: value.TypeError{
-						Value:    args[i].Index(j),
-						Expected: value.TypeObject,
-					},
+			elem := args[i].Index(j)
+			// Check if elements are objects or are convertible to objects.
+			if elem.Type() != value.TypeObject {
+				if _, ok := elem.TryConvertToObject(); !ok {
+					return value.Null, value.ArgError{
+						Function: funcValue,
+						Argument: elem,
+						Index:    j,
+						Inner: value.TypeError{
+							Value:    elem,
+							Expected: value.TypeObject,
+						},
+					}
 				}
 			}
 		}
@@ -259,6 +373,14 @@ var combineMaps = value.RawFunction(func(funcValue value.Value, args ...value.Va
 		}
 	}
 
+	convertIfNeeded := func(v value.Value) value.Value {
+		if v.Type() != value.TypeObject {
+			obj, _ := v.TryConvertToObject() // no need to check result as arguments were validated earlier.
+			return value.Object(obj)
+		}
+		return v
+	}
+
 	// We cannot preallocate the size of the result array, because we don't know
 	// how well the merge is going to go. If none of the merge conditions are met,
 	// the result array will be empty.
@@ -266,15 +388,10 @@ var combineMaps = value.RawFunction(func(funcValue value.Value, args ...value.Va
 
 	for i := 0; i < args[0].Len(); i++ {
 		for j := 0; j < args[1].Len(); j++ {
-			left := args[0].Index(i)
-			right := args[1].Index(j)
+			left := convertIfNeeded(args[0].Index(i))
+			right := convertIfNeeded(args[1].Index(j))
 
-			join, err := shouldJoin(left, right, args[2])
-			if err != nil {
-				return value.Null, err
-			}
-
-			if join {
+			if shouldJoin(left, right, args[2]) {
 				val, err := concatMaps(left, right)
 				if err != nil {
 					return value.Null, err
@@ -305,7 +422,7 @@ func yamlDecode(in string) (interface{}, error) {
 	return res, nil
 }
 
-func base64Decode(in string) (interface{}, error) {
+func base64Decode(in string) ([]byte, error) {
 	decoded, err := base64.StdEncoding.DecodeString(in)
 	if err != nil {
 		return nil, err
@@ -313,7 +430,37 @@ func base64Decode(in string) (interface{}, error) {
 	return decoded, nil
 }
 
-func jsonPath(jsonString string, path string) (interface{}, error) {
+func base64URLDecode(in string) ([]byte, error) {
+	decoded, err := base64.URLEncoding.DecodeString(in)
+	if err != nil {
+		return nil, err
+	}
+	return decoded, nil
+}
+
+func base64URLEncode(in string) (string, error) {
+	encoded := base64.URLEncoding.EncodeToString([]byte(in))
+	return encoded, nil
+}
+
+func base64Encode(in string) (string, error) {
+	encoded := base64.StdEncoding.EncodeToString([]byte(in))
+	return encoded, nil
+}
+
+func jsonEncode(in interface{}) (string, error) {
+	v, ok := in.(map[string]interface{})
+	if !ok {
+		return "", fmt.Errorf("jsonEncode only supports map")
+	}
+	res, err := json.Marshal(v)
+	if err != nil {
+		return "", err
+	}
+	return string(res), nil
+}
+
+func jsonPath(jsonString string, path string) ([]interface{}, error) {
 	jsonPathExpr, err := jp.ParseString(path)
 	if err != nil {
 		return nil, err
@@ -338,13 +485,21 @@ var coalesce = value.RawFunction(func(funcValue value.Value, args ...value.Value
 		}
 
 		if !arg.Reflect().IsZero() {
-			if argType := value.AlloyType(arg.Reflect().Type()); (argType == value.TypeArray || argType == value.TypeObject) && arg.Len() == 0 {
+			argType := arg.Type()
+			// Check if it's a capsule that can be converted into an object and the object is empty.
+			if obj, ok := arg.TryConvertToObject(); ok && len(obj) == 0 {
+				continue
+			}
+			// Check if it's an array or an object that's empty.
+			if (argType == value.TypeArray || argType == value.TypeObject) && arg.Len() == 0 {
 				continue
 			}
 
+			// Else we found a non-empty argument.
 			return arg, nil
 		}
 	}
 
+	// Return the last arg if all are empty.
 	return args[len(args)-1], nil
 })

@@ -243,6 +243,8 @@ func (c *Component) relabel(val float64, lbls labels.Labels) labels.Labels {
 	c.mut.RLock()
 	defer c.mut.RUnlock()
 
+	c.metricsProcessed.Inc()
+
 	globalRef := c.ls.GetOrAddGlobalRefID(lbls)
 	var (
 		relabelled labels.Labels
@@ -273,10 +275,19 @@ func (c *Component) relabel(val float64, lbls labels.Labels) labels.Labels {
 	// TODO(@mattdurham): Instead of setting this each time could collect on demand for better performance.
 	c.cacheSize.Set(float64(c.cache.Len()))
 
-	componentID := livedebugging.ComponentID(c.opts.ID)
-	if c.debugDataPublisher.IsActive(componentID) {
-		c.debugDataPublisher.Publish(componentID, fmt.Sprintf("%s => %s", lbls.String(), relabelled.String()))
+	count := uint64(1)
+	if relabelled.Len() == 0 {
+		count = 0 // if no labels are left, the count is not incremented because the metric will be filtered out
 	}
+	componentID := livedebugging.ComponentID(c.opts.ID)
+	c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
+		componentID,
+		livedebugging.PrometheusMetric,
+		count,
+		func() string {
+			return fmt.Sprintf("%s => %s", lbls.String(), relabelled.String())
+		},
+	))
 
 	return relabelled
 }
@@ -318,7 +329,7 @@ func (c *Component) addToCache(originalID uint64, lbls labels.Labels, keep bool)
 	})
 }
 
-func (c *Component) LiveDebugging(_ int) {}
+func (c *Component) LiveDebugging() {}
 
 // labelAndID stores both the globalrefid for the label and the id itself. We store the id so that it doesn't have
 // to be recalculated again.

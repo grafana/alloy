@@ -19,7 +19,7 @@ Elements within the list can be any type.
 
 ### Examples
 
-```
+```alloy
 > array.concat([])
 []
 
@@ -35,22 +35,20 @@ Elements within the list can be any type.
 
 ## array.combine_maps
 
-> **EXPERIMENTAL**: This is an [experimental][] feature. Experimental
-> features are subject to frequent breaking changes, and may be removed with
-> no equivalent replacement. The `stability.level` flag must be set to `experimental`
-> to use the feature.
+{{< docs/shared lookup="stability/experimental_feature.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 The `array.combine_maps` function allows you to join two arrays of maps if certain keys have matching values in both maps. It's particularly useful when combining labels of targets coming from different `prometheus.discovery.*` or `prometheus.exporter.*` components.
 It takes three arguments:
 
-* The first two arguments are a of type `list(map(string))`. The keys of the map are strings. 
+* The first two arguments are a of type `list(map(string))`. The keys of the map are strings.
   The value for each key could be of any Alloy type such as a `string`, `integer`, `map`, or a `capsule`.
 * The third input is an `array` containing strings. The strings are the keys whose value has to match for maps to be combined.
 
 The maps that don't contain all the keys provided in the third argument will be discarded. When maps are combined and both contain the same keys, the last value from the second argument will be used.
 
 Pseudo function code:
-```
+
+```text
 for every map in arg1:
   for every map in arg2:
     if the condition key matches in both:
@@ -73,6 +71,7 @@ for every map in arg1:
 ```
 
 Examples using discovery and exporter components:
+
 ```alloy
 > array.combine_maps(discovery.kubernetes.k8s_pods.targets, prometheus.exporter.postgres, ["instance"])
 
@@ -83,3 +82,48 @@ You can find more examples in the [tests][].
 
 [tests]: https://github.com/grafana/alloy/blob/main/syntax/vm/vm_stdlib_test.go
 [experimental]: https://grafana.com/docs/release-life-cycle/
+
+## array.group_by
+
+{{< docs/shared lookup="stability/experimental_feature.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+The `array.group_by` function groups an array of objects by a given key.
+
+* The first argument is an array of objects.
+* The second argument is a string that is the key to group by. The value of the key must be a string and should be present at the top level of the object.
+* The third argument is a boolean that indicates whether the elements that don't match the key should be dropped (true) or added to the empty group (false).
+
+### Examples
+
+```alloy
+> array.group_by([{"type" = "fruit", "name" = "apple"}, {"type" = "fruit", "name" = "banana"}, {"type" = "vegetable", "name" = "carrot"}, {"name" = "rock"}], "type", false)
+[{"type" = "fruit", "items" = [{"type" = "fruit", "name" = "apple"}, {"type" = "fruit", "name" = "banana"}]}, {"type" = "vegetable", "items" = [{"type" = "vegetable", "name" = "carrot"}]}, {"type" = "", "items" = [{"name" = "rock"}]}]
+
+> array.group_by([{"type" = "fruit", "name" = "apple"}, {"type" = "fruit", "name" = "banana"}, {"type" = "vegetable", "name" = "carrot"}, {"name" = "rock"}], "type", true)
+[{"type" = "fruit", "items" = [{"type" = "fruit", "name" = "apple"}, {"type" = "fruit", "name" = "banana"}]}, {"type" = "vegetable", "items" = [{"type" = "vegetable", "name" = "carrot"}]}]
+```
+
+The following example shows how to use the `array.group_by` function with a `foreach` block to group targets by match labels and create a `prometheus.scrape` component for each group dynamically.
+The targets in this example should have a label "match" that contains instant vector selectors separated by slash (refer to [Federation][federation] for more information on the match parameter).
+
+```alloy
+foreach "federation" {
+ collection = array.group_by(discovery.file.example.targets, "match", false)
+ var = "each"
+ id  = "match"
+
+ template {
+   prometheus.scrape "default" {
+     targets    = each["items"]
+     honor_labels = true
+     metrics_path = "/federate"
+     params = {
+       "match[]" = string.split(coalesce(each["match"], "{__name__!=\"\"}"), "/"),
+     }
+     forward_to = [prometheus.remote_write.default.receiver]
+   }
+ }
+}
+```
+
+[federation]: https://prometheus.io/docs/prometheus/latest/federation/#configuring-federation

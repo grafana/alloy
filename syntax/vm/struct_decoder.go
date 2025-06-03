@@ -5,10 +5,12 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/diag"
 	"github.com/grafana/alloy/syntax/internal/reflectutil"
 	"github.com/grafana/alloy/syntax/internal/syntaxtags"
+	"github.com/grafana/alloy/syntax/internal/tagcache"
 	"github.com/grafana/alloy/syntax/internal/value"
 )
 
@@ -17,7 +19,7 @@ type structDecoder struct {
 	VM      *Evaluator
 	Scope   *Scope
 	Assoc   map[value.Value]ast.Node
-	TagInfo *tagInfo
+	TagInfo *tagcache.TagInfo
 }
 
 // Decode decodes the list of statements into the struct value specified by rv.
@@ -111,7 +113,7 @@ func (st *structDecoder) Decode(stmts ast.Body, rv reflect.Value) error {
 
 type decodeOptions struct {
 	Tags       map[string]syntaxtags.Field
-	EnumBlocks map[string]enumBlock
+	EnumBlocks map[string]tagcache.EnumBlock
 
 	SeenAttrs, SeenBlocks, SeenEnums map[string]struct{}
 
@@ -181,6 +183,12 @@ func (st *structDecoder) decodeAttr(attr *ast.AttributeStmt, rv reflect.Value, s
 	if err := value.Decode(val, field.Addr().Interface()); err != nil {
 		// TODO(rfratto): get error as diagnostics.
 		return err
+	}
+
+	// This annotation on the AST is used when printing the value.
+	switch field.Addr().Interface().(type) {
+	case *alloytypes.Secret, *alloytypes.OptionalSecret:
+		attr.Value.SetSecret(true)
 	}
 
 	return nil

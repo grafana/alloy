@@ -3,34 +3,38 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/remote/rem
 aliases:
   - ../remote.kubernetes.configmap/ # /docs/alloy/latest/reference/components/remote.kubernetes.configmap/
 description: Learn about remote.kubernetes.configmap
+labels:
+  stage: general-availability
+  products:
+    - oss
 title: remote.kubernetes.configmap
 ---
 
-# remote.kubernetes.configmap
+# `remote.kubernetes.configmap`
 
 `remote.kubernetes.configmap` reads a ConfigMap from the Kubernetes API server and exposes its data for other components to consume.
 
-This can be useful anytime {{< param "PRODUCT_NAME" >}} needs data from a ConfigMap that is not directly mounted to the {{< param "PRODUCT_NAME" >}} pod.
+This can be useful anytime {{< param "PRODUCT_NAME" >}} needs data from a ConfigMap that is not directly mounted to the {{< param "PRODUCT_NAME" >}} Pod.
 
 ## Usage
 
 ```alloy
-remote.kubernetes.configmap "LABEL" {
-  namespace = "NAMESPACE_OF_CONFIGMAP"
-  name = "NAME_OF_CONFIGMAP"
+remote.kubernetes.configmap "<LABEL>" {
+  namespace = "<NAMESPACE_OF_CONFIGMAP>"
+  name = "<NAME_OF_CONFIGMAP>"
 }
 ```
 
 ## Arguments
 
-The following arguments are supported:
+You can use the following arguments with `remote.kubernetes.configmap`:
 
-Name             | Type       | Description                                            | Default | Required
------------------|------------|--------------------------------------------------------|---------|---------
-`namespace`      | `string`   | Kubernetes namespace containing the desired ConfigMap. |         | yes
-`name`           | `string`   | Name of the Kubernetes ConfigMap                       |         | yes
-`poll_frequency` | `duration` | Frequency to poll the Kubernetes API.                  | `"1m"`  | no
-`poll_timeout`   | `duration` | Timeout when polling the Kubernetes API.               | `"15s"` | no
+| Name             | Type       | Description                                            | Default | Required |
+| ---------------- | ---------- | ------------------------------------------------------ | ------- | -------- |
+| `name`           | `string`   | Name of the Kubernetes ConfigMap                       |         | yes      |
+| `namespace`      | `string`   | Kubernetes namespace containing the desired ConfigMap. |         | yes      |
+| `poll_frequency` | `duration` | Frequency to poll the Kubernetes API.                  | `"1m"`  | no       |
+| `poll_timeout`   | `duration` | Timeout when polling the Kubernetes API.               | `"15s"` | no       |
 
 When this component performs a poll operation, it requests the ConfigMap data from the Kubernetes API.
 A poll is triggered by the following:
@@ -44,79 +48,80 @@ After a successful poll, all data is exported with the same field names as the s
 
 ## Blocks
 
-The following blocks are supported inside the definition of `remote.kubernetes.configmap`:
+You can use the following blocks with `remote.kubernetes.configmap`:
 
-Hierarchy                    | Block             | Description                                                  | Required
------------------------------|-------------------|--------------------------------------------------------------|---------
-client                       | [client][]        | Configures Kubernetes client used to find Probes.            | no
-client > basic_auth          | [basic_auth][]    | Configure basic authentication to the Kubernetes API.        | no
-client > authorization       | [authorization][] | Configure generic authorization to the Kubernetes API.       | no
-client > oauth2              | [oauth2][]        | Configure OAuth2 for authenticating to the Kubernetes API.   | no
-client > oauth2 > tls_config | [tls_config][]    | Configure TLS settings for connecting to the Kubernetes API. | no
-client > tls_config          | [tls_config][]    | Configure TLS settings for connecting to the Kubernetes API. | no
+| Block                                            | Description                                                   | Required |
+| ------------------------------------------------ | ------------------------------------------------------------- | -------- |
+| [`client`][client]                               | Configures Kubernetes client used to find ConfigMaps.         | no       |
+| `client` > [`authorization`][authorization]      | Configure generic authorization to the Kubernetes API.        | no       |
+| `client` > [`basic_auth`][basic_auth]            | Configure basic authentication to the Kubernetes API.         | no       |
+| `client` > [`oauth2`][oauth2]                    | Configure OAuth 2.0 for authenticating to the Kubernetes API. | no       |
+| `client` > `oauth2` > [`tls_config`][tls_config] | Configure TLS settings for connecting to the Kubernetes API.  | no       |
+| `client` > [`tls_config`][tls_config]            | Configure TLS settings for connecting to the Kubernetes API.  | no       |
 
-The `>` symbol indicates deeper levels of nesting.
-For example, `client > basic_auth` refers to a `basic_auth` block defined inside a `client` block.
+The > symbol indicates deeper levels of nesting.
+For example, `client` > `basic_auth` refers to a `basic_auth` block defined inside a `client` block.
 
-[client]: #client-block
-[basic_auth]: #basic_auth-block
-[authorization]: #authorization-block
-[oauth2]: #oauth2-block
-[tls_config]: #tls_config-block
+[client]: #client
+[authorization]: #authorization
+[basic_auth]: #basic_auth
+[oauth2]: #oauth2
+[tls_config]: #tls_config
 
-### client block
+### `client`
 
-The `client` block configures the Kubernetes client used to discover Probes.
-If the `client` block isn't provided, the default in-cluster configuration with the service account of the running {{< param "PRODUCT_NAME" >}} pod is used.
+The `client` block configures the Kubernetes client used to discover ConfigMaps.
+If the `client` block isn't provided, the default in-cluster configuration with the service account of the running {{< param "PRODUCT_NAME" >}} Pod is used.
 
 The following arguments are supported:
 
-Name                     | Type                | Description                                                   | Default | Required
--------------------------|---------------------|---------------------------------------------------------------|---------|---------
-`api_server`             | `string`            | URL of the Kubernetes API server.                             |         | no
-`kubeconfig_file`        | `string`            | Path of the `kubeconfig` file to use for connecting to Kubernetes. |    | no
-`bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.          |         | no
-`bearer_token`           | `secret`            | Bearer token to authenticate with.                            |         | no
-`enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                      | `true`  | no
-`follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.  | `true`  | no
-`proxy_url`              | `string`            | HTTP proxy to send requests through.                          |         | no
-`no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. | | no
-`proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.         | `false` | no
-`proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests. |         | no
+| Name                     | Type                | Description                                                                                      | Default | Required |
+| ------------------------ | ------------------- | ------------------------------------------------------------------------------------------------ | ------- | -------- |
+| `api_server`             | `string`            | URL of the Kubernetes API server.                                                                |         | no       |
+| `bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                             |         | no       |
+| `bearer_token`           | `secret`            | Bearer token to authenticate with.                                                               |         | no       |
+| `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`  | no       |
+| `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`  | no       |
+| `http_headers`           | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.          |         | no       |
+| `kubeconfig_file`        | `string`            | Path of the `kubeconfig` file to use for connecting to Kubernetes.                               |         | no       |
+| `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |         | no       |
+| `proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |         | no       |
+| `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false` | no       |
+| `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |         | no       |
 
  At most, one of the following can be provided:
- - [`bearer_token` argument][client].
- - [`bearer_token_file` argument][client].
- - [`basic_auth` block][basic_auth].
- - [`authorization` block][authorization].
- - [`oauth2` block][oauth2].
+
+* [`authorization`][authorization] block
+* [`basic_auth`][basic_auth] block
+* [`bearer_token_file`][client] argument
+* [`bearer_token`][client] argument
+* [`oauth2`][oauth2] block
 
 {{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### basic_auth block
-
-{{< docs/shared lookup="reference/components/basic-auth-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
-
-### authorization block
+### `authorization`
 
 {{< docs/shared lookup="reference/components/authorization-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### oauth2 block
+### `basic_auth`
+
+{{< docs/shared lookup="reference/components/basic-auth-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `oauth2`
 
 {{< docs/shared lookup="reference/components/oauth2-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### tls_config block
+### `tls_config`
 
 {{< docs/shared lookup="reference/components/tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
-
 
 ## Exported fields
 
 The following fields are exported and can be referenced by other components:
 
-Name   | Type          | Description
--------|---------------|--------------------------------------------------
-`data` | `map(string)` | Data from the ConfigMap obtained from Kubernetes.
+| Name   | Type          | Description                                       |
+| ------ | ------------- | ------------------------------------------------- |
+| `data` | `map(string)` | Data from the ConfigMap obtained from Kubernetes. |
 
 The `data` field contains a mapping from field names to values.
 
@@ -126,11 +131,11 @@ Instances of `remote.kubernetes.configmap` report as healthy if the most recent 
 
 ## Debug information
 
-`remote.kubernetes.configmap` does not expose any component-specific debug information.
+`remote.kubernetes.configmap` doesn't expose any component-specific debug information.
 
 ## Debug metrics
 
-`remote.kubernetes.configmap` does not expose any component-specific debug metrics.
+`remote.kubernetes.configmap` doesn't expose any component-specific debug metrics.
 
 ## Example
 

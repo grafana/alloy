@@ -3,6 +3,7 @@ package build
 import (
 	"fmt"
 
+	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/loki/source/syslog"
 	"github.com/grafana/alloy/internal/converter/diag"
@@ -36,7 +37,7 @@ func (s *ScrapeConfigBuilder) AppendSyslogConfig() {
 
 	// If the syslog format is not set, use the default.
 	if listenerConfig.SyslogFormat == "" {
-		listenerConfig.SyslogFormat = string(syslog.DefaultListenerConfig.SyslogFormat)
+		listenerConfig.SyslogFormat = syslog.DefaultListenerConfig.SyslogFormat
 	}
 
 	args := syslog.Arguments{
@@ -64,14 +65,14 @@ func (s *ScrapeConfigBuilder) AppendSyslogConfig() {
 	))
 }
 
-func convertSyslogFormat(format scrapeconfig.SyslogFormat) (string, error) {
+func convertSyslogFormat(format scrapeconfig.SyslogFormat) (config.SysLogFormat, error) {
 	switch format {
 	case "":
 		return syslog.DefaultListenerConfig.SyslogFormat, nil
 	case scrapeconfig.SyslogFormatRFC3164:
-		return syslog.SyslogFormatRFC3164, nil
+		return config.SyslogFormatRFC3164, nil
 	case scrapeconfig.SyslogFormatRFC5424:
-		return syslog.SyslogFormatRFC5424, nil
+		return config.SyslogFormatRFC5424, nil
 	default:
 		return "", fmt.Errorf("unknown syslog format %q", format)
 	}

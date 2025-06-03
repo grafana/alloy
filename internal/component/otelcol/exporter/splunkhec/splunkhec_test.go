@@ -2,7 +2,6 @@ package splunkhec_test
 
 import (
 	"testing"
-	"time"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/splunkhecexporter"
 
@@ -14,7 +13,6 @@ import (
 	"go.opentelemetry.io/collector/config/configopaque"
 	"go.opentelemetry.io/collector/config/configretry"
 	"go.opentelemetry.io/collector/config/configtls"
-	"go.opentelemetry.io/collector/exporter/exporterbatcher"
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
 )
 
@@ -45,20 +43,21 @@ func TestConfigConversion(t *testing.T) {
 			Headers:              map[string]configopaque.String(nil),
 			Auth:                 (*configauth.Authentication)(nil),
 			Compression:          "",
-			MaxIdleConns:         (*int)(nil),
-			MaxIdleConnsPerHost:  (*int)(nil),
-			MaxConnsPerHost:      (*int)(nil),
-			IdleConnTimeout:      (*time.Duration)(nil),
+			MaxIdleConns:         100,
+			MaxIdleConnsPerHost:  0,
+			MaxConnsPerHost:      0,
+			IdleConnTimeout:      90000000000,
 			DisableKeepAlives:    false,
 			HTTP2ReadIdleTimeout: 0,
 			HTTP2PingTimeout:     0,
 			Cookies:              (*confighttp.CookiesConfig)(nil),
 		},
-		QueueSettings: exporterhelper.QueueConfig{
+		QueueSettings: exporterhelper.QueueBatchConfig{
 			Enabled:      true,
 			NumConsumers: 10,
 			QueueSize:    1000,
 			StorageID:    nil,
+			Sizer:        exporterhelper.RequestSizerTypeRequests,
 		},
 		BackOffConfig: configretry.BackOffConfig{
 			Enabled:             true,
@@ -68,11 +67,18 @@ func TestConfigConversion(t *testing.T) {
 			MaxInterval:         30000000000,
 			MaxElapsedTime:      300000000000,
 		},
-		BatcherConfig: exporterbatcher.Config{
-			Enabled:       false,
-			FlushTimeout:  200000000,
-			MinSizeConfig: exporterbatcher.MinSizeConfig{MinSizeItems: 8192},
-			MaxSizeConfig: exporterbatcher.MaxSizeConfig{MaxSizeItems: 0},
+		BatcherConfig: exporterhelper.BatcherConfig{ //nolint:staticcheck
+			Enabled:      false,
+			FlushTimeout: 200000000,
+			SizeConfig: exporterhelper.SizeConfig{ //nolint:staticcheck
+				MinSize: 8192,
+				MaxSize: 0,
+				Sizer: func() exporterhelper.RequestSizerType {
+					var s exporterhelper.RequestSizerType
+					require.NoError(t, s.UnmarshalText([]byte("items")))
+					return s
+				}(),
+			},
 		},
 		LogDataEnabled:          true,
 		ProfilingDataEnabled:    true,
@@ -122,23 +128,25 @@ func TestConfigConversion(t *testing.T) {
 				InsecureSkipVerify: false,
 				ServerName:         "",
 			}, ReadBufferSize: 0,
-			WriteBufferSize: 0,
-			Timeout:         15000000000,
-			Headers:         map[string]configopaque.String(nil),
-			Auth:            (*configauth.Authentication)(nil),
-			Compression:     "", MaxIdleConns: (*int)(nil),
-			MaxIdleConnsPerHost:  (*int)(nil),
-			MaxConnsPerHost:      (*int)(nil),
-			IdleConnTimeout:      (*time.Duration)(nil),
+			WriteBufferSize:      0,
+			Timeout:              15000000000,
+			Headers:              map[string]configopaque.String(nil),
+			Auth:                 (*configauth.Authentication)(nil),
+			Compression:          "",
+			MaxIdleConns:         100,
+			MaxIdleConnsPerHost:  0,
+			MaxConnsPerHost:      0,
+			IdleConnTimeout:      90000000000,
 			DisableKeepAlives:    false,
 			HTTP2ReadIdleTimeout: 0,
 			HTTP2PingTimeout:     0,
 			Cookies:              (*confighttp.CookiesConfig)(nil)},
-		QueueSettings: exporterhelper.QueueConfig{
+		QueueSettings: exporterhelper.QueueBatchConfig{
 			Enabled:      true,
 			NumConsumers: 10,
 			QueueSize:    1000,
 			StorageID:    (nil),
+			Sizer:        exporterhelper.RequestSizerTypeRequests,
 		},
 		BackOffConfig: configretry.BackOffConfig{
 			Enabled:             true,
@@ -148,10 +156,19 @@ func TestConfigConversion(t *testing.T) {
 			MaxInterval:         30000000000,
 			MaxElapsedTime:      300000000000,
 		},
-		BatcherConfig: exporterbatcher.Config{Enabled: false,
-			FlushTimeout:  200000000,
-			MinSizeConfig: exporterbatcher.MinSizeConfig{MinSizeItems: 8192},
-			MaxSizeConfig: exporterbatcher.MaxSizeConfig{MaxSizeItems: 0}},
+		BatcherConfig: exporterhelper.BatcherConfig{ //nolint:staticcheck
+			Enabled:      false,
+			FlushTimeout: 200000000,
+			SizeConfig: exporterhelper.SizeConfig{ //nolint:staticcheck
+				MinSize: 8192,
+				MaxSize: 0,
+				Sizer: func() exporterhelper.RequestSizerType {
+					var s exporterhelper.RequestSizerType
+					require.NoError(t, s.UnmarshalText([]byte("items")))
+					return s
+				}(),
+			},
+		},
 		LogDataEnabled:       true,
 		ProfilingDataEnabled: true,
 		Token:                "token", Source: "",

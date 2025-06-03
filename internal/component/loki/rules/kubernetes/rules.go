@@ -12,6 +12,7 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 	lokiClient "github.com/grafana/alloy/internal/loki/client"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/dskit/instrument"
 	promListers "github.com/prometheus-operator/prometheus-operator/pkg/client/listers/monitoring/v1"
@@ -58,13 +59,13 @@ type Component struct {
 	informerStopChan  chan struct{}
 	ticker            *time.Ticker
 
-	queue         workqueue.RateLimitingInterface
+	queue         workqueue.TypedRateLimitingInterface[commonK8s.Event]
 	configUpdates chan ConfigUpdate
 
 	namespaceSelector labels.Selector
 	ruleSelector      labels.Selector
 
-	currentState commonK8s.RuleGroupsByNamespace
+	currentState commonK8s.PrometheusRuleGroupsByNamespace
 
 	metrics   *metrics
 	healthMut sync.RWMutex
@@ -82,13 +83,11 @@ type metrics struct {
 }
 
 func (m *metrics) Register(r prometheus.Registerer) error {
-	r.MustRegister(
-		m.configUpdatesTotal,
-		m.eventsTotal,
-		m.eventsFailed,
-		m.eventsRetried,
-		m.lokiClientTiming,
-	)
+	m.configUpdatesTotal = util.MustRegisterOrGet(r, m.configUpdatesTotal).(prometheus.Counter)
+	m.eventsTotal = util.MustRegisterOrGet(r, m.eventsTotal).(*prometheus.CounterVec)
+	m.eventsFailed = util.MustRegisterOrGet(r, m.eventsFailed).(*prometheus.CounterVec)
+	m.eventsRetried = util.MustRegisterOrGet(r, m.eventsRetried).(*prometheus.CounterVec)
+	m.lokiClientTiming = util.MustRegisterOrGet(r, m.lokiClientTiming).(*prometheus.HistogramVec)
 	return nil
 }
 
@@ -212,8 +211,8 @@ func (c *Component) Run(ctx context.Context) error {
 
 // startup launches the informers and starts the event loop.
 func (c *Component) startup(ctx context.Context) error {
-	cfg := workqueue.RateLimitingQueueConfig{Name: "loki.rules.kubernetes"}
-	c.queue = workqueue.NewRateLimitingQueueWithConfig(workqueue.DefaultControllerRateLimiter(), cfg)
+	cfg := workqueue.TypedRateLimitingQueueConfig[commonK8s.Event]{Name: "loki.rules.kubernetes"}
+	c.queue = workqueue.NewTypedRateLimitingQueueWithConfig(workqueue.DefaultTypedControllerRateLimiter[commonK8s.Event](), cfg)
 	c.informerStopChan = make(chan struct{})
 
 	if err := c.startNamespaceInformer(); err != nil {
