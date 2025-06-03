@@ -161,9 +161,9 @@ func toHTTPConfigArguments(cfg *otlpreceiver.HTTPConfig) *otlp.HTTPConfigArgumen
 	return &otlp.HTTPConfigArguments{
 		HTTPServerArguments: toHTTPServerArguments(&cfg.ServerConfig),
 
-		TracesURLPath:  cfg.TracesURLPath,
-		MetricsURLPath: cfg.MetricsURLPath,
-		LogsURLPath:    cfg.LogsURLPath,
+		TracesURLPath:  string(cfg.TracesURLPath),
+		MetricsURLPath: string(cfg.MetricsURLPath),
+		LogsURLPath:    string(cfg.LogsURLPath),
 	}
 }
 
