@@ -73,11 +73,11 @@ debug_metrics | [debug_metrics][] | Configures the metrics that this component g
 
 The `assume_role` block specifies the configuration needed to assume a role.
 
-Name           | Type     | Description                                                     | Default | Required
----------------|----------|-----------------------------------------------------------------|---------|---------
-`arn`          | `string` | The Amazon Resource Name (ARN) of a role to assume.             | ""      | no
-`session_name` | `string` | The name of a role session.                                     | ""      | no
-`sts_region`   | `string` | The AWS region where STS is used to assume the configured role. | ""      | no
+| Name           | Type     | Description                                                     | Default | Required |
+| -------------- | -------- | --------------------------------------------------------------- | ------- | -------- |
+| `arn`          | `string` | The Amazon Resource Name (ARN) of a role to assume.             | `""`    | no       |
+| `session_name` | `string` | The name of a role session.                                     | `""`    | no       |
+| `sts_region`   | `string` | The AWS region where STS is used to assume the configured role. | `""`    | no       |
 
 If the `assume_role` block is specified in the config and `sts_region` is not set, then `sts_region` will default to the value for `region`.
 
