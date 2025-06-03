@@ -311,7 +311,7 @@ The `ec2` block supports the following attributes:
 | `max_backoff`  | `duration`     | The maximum backoff time between retries.                                   | `"20s"` | no       |
 | `tags`         | `list(string)` | A list of regular expressions to match against tag keys of an EC2 instance. | `[]`    | no       |
 
-<!-- The folliwing commented behavior is implemented in https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/37453 but it does not appear 
+<!-- The following commented behavior is implemented in https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/37453 but it does not appear 
 that the code actually will cause the collector to fail to start, waiting for a response from the author 
 <!-- | `fail_on_missing_metadata` | `bool`         | Whether to fail if metadata is missing.                                     | `false` | no       |
 

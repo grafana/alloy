@@ -1,12 +1,15 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/cli/validate/
 description: Learn about the validate command
-menuTitle: validate
-title: The validate command
-weight: 200
+labels:
+  stage: general-availability
+  products:
+    - oss
+title: validate
+weight: 500
 ---
 
-# The `validate` command
+# `validate`
 
 The `validate` command validates an {{< param "PRODUCT_NAME" >}} configuration file or directory path.
 
@@ -46,6 +49,6 @@ Validation is limited in scope. It currently checks for:
 * Missing components.
 * Component name conflicts.
 * Required properties are set.
-* Uknown properties.
+* Unknown properties.
 * Foreach blocks.
 * Declare blocks.
