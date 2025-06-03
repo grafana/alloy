@@ -1,119 +1,119 @@
 package ssh_exporter
 
 import (
-    "fmt"
-    "regexp"
-    "strconv"
-    "strings"
+	"fmt"
+	"regexp"
+	"strconv"
+	"strings"
 
-    "github.com/go-kit/log"
-    "github.com/go-kit/log/level"
-    "github.com/prometheus/client_golang/prometheus"
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 type SSHClientInterface interface {
-    RunCommand(command string) (string, error)
+	RunCommand(command string) (string, error)
 }
 
 type SSHCollector struct {
-    logger  log.Logger
-    target  Target
-    client  SSHClientInterface
-    metrics map[string]*prometheus.Desc
+	logger  log.Logger
+	target  Target
+	client  SSHClientInterface
+	metrics map[string]*prometheus.Desc
 }
 
 func NewSSHCollector(logger log.Logger, target Target) (*SSHCollector, error) {
-    client, err := NewSSHClient(target)
-    if err != nil {
-        return nil, err
-    }
-    client.logger = logger
+	client, err := NewSSHClient(target)
+	if err != nil {
+		return nil, err
+	}
+	client.logger = logger
 
-    collector := &SSHCollector{
-        logger:  logger,
-        target:  target,
-        client:  client,
-        metrics: make(map[string]*prometheus.Desc),
-    }
+	collector := &SSHCollector{
+		logger:  logger,
+		target:  target,
+		client:  client,
+		metrics: make(map[string]*prometheus.Desc),
+	}
 
-    // Initialize metric descriptors for custom metrics
-    for _, cm := range target.CustomMetrics {
-        var labels []string
-        for label := range cm.Labels {
-            labels = append(labels, label)
-        }
-        desc := prometheus.NewDesc(cm.Name, cm.Help, labels, nil)
-        collector.metrics[cm.Name] = desc
-    }
+	// Initialize metric descriptors for custom metrics
+	for _, cm := range target.CustomMetrics {
+		var labels []string
+		for label := range cm.Labels {
+			labels = append(labels, label)
+		}
+		desc := prometheus.NewDesc(cm.Name, cm.Help, labels, nil)
+		collector.metrics[cm.Name] = desc
+	}
 
-    return collector, nil
+	return collector, nil
 }
 
 func (c *SSHCollector) Describe(ch chan<- *prometheus.Desc) {
-    for _, desc := range c.metrics {
-        ch <- desc
-    }
+	for _, desc := range c.metrics {
+		ch <- desc
+	}
 }
 
 func (c *SSHCollector) Collect(ch chan<- prometheus.Metric) {
-    for _, cm := range c.target.CustomMetrics {
-        value, err := c.executeCustomCommand(cm)
-        if err != nil {
-            level.Error(c.logger).Log("msg", "failed to execute custom command", "command", cm.Command, "err", err)
-            continue
-        }
+	for _, cm := range c.target.CustomMetrics {
+		value, err := c.executeCustomCommand(cm)
+		if err != nil {
+			level.Error(c.logger).Log("msg", "failed to execute custom command", "command", cm.Command, "err", err)
+			continue
+		}
 
-        level.Debug(c.logger).Log("msg", "executed custom command", "command", cm.Command, "value", value)
+		level.Debug(c.logger).Log("msg", "executed custom command", "command", cm.Command, "value", value)
 
-        var labelValues []string
-        for _, v := range cm.Labels {
-            labelValues = append(labelValues, v)
-        }
+		var labelValues []string
+		for _, v := range cm.Labels {
+			labelValues = append(labelValues, v)
+		}
 
-        desc := c.metrics[cm.Name]
+		desc := c.metrics[cm.Name]
 
-        var metric prometheus.Metric
-        switch strings.ToLower(cm.Type) {
-        case "gauge":
-            metric = prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, value, labelValues...)
-        case "counter":
-            metric = prometheus.MustNewConstMetric(desc, prometheus.CounterValue, value, labelValues...)
-        default:
-            level.Error(c.logger).Log("msg", "unsupported metric type", "type", cm.Type)
-            continue
-        }
+		var metric prometheus.Metric
+		switch strings.ToLower(cm.Type) {
+		case "gauge":
+			metric = prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, value, labelValues...)
+		case "counter":
+			metric = prometheus.MustNewConstMetric(desc, prometheus.CounterValue, value, labelValues...)
+		default:
+			level.Error(c.logger).Log("msg", "unsupported metric type", "type", cm.Type)
+			continue
+		}
 
-        ch <- metric
-    }
+		ch <- metric
+	}
 }
 
 func (c *SSHCollector) executeCustomCommand(cm CustomMetric) (float64, error) {
-    output, err := c.client.RunCommand(cm.Command)
-    if err != nil {
-        level.Error(c.logger).Log("msg", "SSH command failed", "command", cm.Command, "err", err)
-        return 0, err
-    }
+	output, err := c.client.RunCommand(cm.Command)
+	if err != nil {
+		level.Error(c.logger).Log("msg", "SSH command failed", "command", cm.Command, "err", err)
+		return 0, err
+	}
 
-    level.Debug(c.logger).Log("msg", "SSH command output", "command", cm.Command, "output", output)
+	level.Debug(c.logger).Log("msg", "SSH command output", "command", cm.Command, "output", output)
 
-    output = strings.TrimSpace(output)
+	output = strings.TrimSpace(output)
 
-    if cm.ParseRegex != "" {
-        re, err := regexp.Compile(cm.ParseRegex)
-        if err != nil {
-            return 0, fmt.Errorf("invalid parse regex: %w", err)
-        }
-        matches := re.FindStringSubmatch(output)
-        if len(matches) < 2 {
-            return 0, fmt.Errorf("no matches found using regex")
-        }
-        output = matches[1]
-    }
+	if cm.ParseRegex != "" {
+		re, err := regexp.Compile(cm.ParseRegex)
+		if err != nil {
+			return 0, fmt.Errorf("invalid parse regex: %w", err)
+		}
+		matches := re.FindStringSubmatch(output)
+		if len(matches) < 2 {
+			return 0, fmt.Errorf("no matches found using regex")
+		}
+		output = matches[1]
+	}
 
-    value, err := strconv.ParseFloat(output, 64)
-    if err != nil {
-        return 0, fmt.Errorf("failed to parse output '%s' as float: %w", output, err)
-    }
+	value, err := strconv.ParseFloat(output, 64)
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse output '%s' as float: %w", output, err)
+	}
 
-    return value, nil
+	return value, nil
 }

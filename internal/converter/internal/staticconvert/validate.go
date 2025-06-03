@@ -30,7 +30,6 @@ import (
 	"github.com/grafana/alloy/internal/static/integrations/redis_exporter"
 	"github.com/grafana/alloy/internal/static/integrations/snmp_exporter"
 	"github.com/grafana/alloy/internal/static/integrations/snowflake_exporter"
-	"github.com/grafana/alloy/internal/static/integrations/ssh_exporter"
 	"github.com/grafana/alloy/internal/static/integrations/squid_exporter"
 	"github.com/grafana/alloy/internal/static/integrations/statsd_exporter"
 	v2 "github.com/grafana/alloy/internal/static/integrations/v2"

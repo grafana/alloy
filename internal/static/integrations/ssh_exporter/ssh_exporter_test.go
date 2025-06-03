@@ -1,25 +1,26 @@
 package ssh_exporter
 
 import (
-   "bytes"
-   "crypto/rand"
-   "crypto/rsa"
-   "crypto/x509"
-   "encoding/pem"
-   "fmt"
-   "io/ioutil"
-   "os"
-   "path/filepath"
-   "testing"
-   "time"
-   "gopkg.in/yaml.v2"
+	"bytes"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
+	"fmt"
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
+
+	"gopkg.in/yaml.v2"
+
+	"os/user"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/ssh"
-	"os/user"
 )
 
 var (
@@ -31,7 +32,7 @@ var (
 
 // Mock ssh-keyscan command
 var mockSSHKeyscanCommand = func(targetAddress string) ([]byte, error) {
-	publicKey, err := ioutil.ReadFile(publicKeyPath)
+	publicKey, err := os.ReadFile(publicKeyPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read test public key: %w", err)
 	}
@@ -42,6 +43,7 @@ var mockSSHKeyscanCommand = func(targetAddress string) ([]byte, error) {
 func init() {
 	sshKeyscanCommand = mockSSHKeyscanCommand
 }
+
 // TestMain handles test setup and teardown
 func TestMain(m *testing.M) {
 	var err error
@@ -65,7 +67,7 @@ func TestMain(m *testing.M) {
 
 // setupKnownHosts creates a mock known_hosts file
 func setupKnownHosts(publicKeyPath string) (string, error) {
-	tempDir, err := ioutil.TempDir("", "ssh_exporter_test")
+	tempDir, err := os.MkdirTemp("", "ssh_exporter_test")
 	if err != nil {
 		return "", fmt.Errorf("failed to create temp dir: %w", err)
 	}
@@ -77,13 +79,13 @@ func setupKnownHosts(publicKeyPath string) (string, error) {
 		return "", fmt.Errorf("failed to create .ssh directory: %w", err)
 	}
 
-	publicKey, err := ioutil.ReadFile(publicKeyPath)
+	publicKey, err := os.ReadFile(publicKeyPath)
 	if err != nil {
 		return "", fmt.Errorf("failed to read public key: %w", err)
 	}
 
 	entry := fmt.Sprintf("192.168.1.10 %s", publicKey)
-	if err := ioutil.WriteFile(knownHostsPath, []byte(entry), 0600); err != nil {
+	if err := os.WriteFile(knownHostsPath, []byte(entry), 0600); err != nil {
 		return "", fmt.Errorf("failed to write known_hosts file: %w", err)
 	}
 
@@ -110,10 +112,10 @@ func generateTempKeyPair() (string, string, error) {
 	privateKeyPath := filepath.Join(os.TempDir(), "test_private_key.pem")
 	publicKeyPath := filepath.Join(os.TempDir(), "test_public_key.pem")
 
-	if err := ioutil.WriteFile(privateKeyPath, privateKeyPEM.Bytes(), 0600); err != nil {
+	if err := os.WriteFile(privateKeyPath, privateKeyPEM.Bytes(), 0600); err != nil {
 		return "", "", fmt.Errorf("failed to write private key: %w", err)
 	}
-	if err := ioutil.WriteFile(publicKeyPath, publicKeyBytes, 0644); err != nil {
+	if err := os.WriteFile(publicKeyPath, publicKeyBytes, 0644); err != nil {
 		return "", "", fmt.Errorf("failed to write public key: %w", err)
 	}
 
@@ -154,12 +156,12 @@ targets:
 	expectedConfig := Config{
 		VerboseLogging: true,
 		Targets: []Target{
-        {
-            Address:        "192.168.1.10",
-            Port:           22,
-            Username:       "admin",
-            Password:       "password",
-            CommandTimeout: 10 * time.Second,
+			{
+				Address:        "192.168.1.10",
+				Port:           22,
+				Username:       "admin",
+				Password:       "password",
+				CommandTimeout: 10 * time.Second,
 				CustomMetrics: []CustomMetric{
 					{
 						Name:    "load_average",
@@ -169,12 +171,12 @@ targets:
 					},
 				},
 			},
-        {
-            Address:        "192.168.1.11",
-            Port:           22,
-            Username:       "monitor",
-            KeyFile:        "/path/to/private.key",
-            CommandTimeout: 15 * time.Second,
+			{
+				Address:        "192.168.1.11",
+				Port:           22,
+				Username:       "monitor",
+				KeyFile:        "/path/to/private.key",
+				CommandTimeout: 15 * time.Second,
 				CustomMetrics: []CustomMetric{
 					{
 						Name:       "disk_usage",
@@ -190,86 +192,86 @@ targets:
 
 	require.Equal(t, expectedConfig, c)
 }
+
 type MockSSHClient struct {
-    logger         log.Logger
-    executeCommand func(command string) (string, error)
+	logger         log.Logger
+	executeCommand func(command string) (string, error)
 }
 
 func (m *MockSSHClient) Execute(command string) (string, error) {
-    return m.executeCommand(command)
+	return m.executeCommand(command)
 }
 
 func (m *MockSSHClient) RunCommand(command string) (string, error) {
-    return m.Execute(command) // Reuse the same mocked behavior
+	return m.Execute(command) // Reuse the same mocked behavior
 }
 
 func (m *MockSSHClient) Close() error {
-    return nil // Mock close
+	return nil // Mock close
 }
 
 // Updated TestSSHCollector_Collect
 func TestSSHCollector_Collect(t *testing.T) {
-    // Set up mock known_hosts
-    knownHostsPath, err := setupKnownHosts(publicKeyPath)
-    require.NoError(t, err)
-    defer os.RemoveAll(knownHostsPath)
+	// Set up mock known_hosts
+	knownHostsPath, err := setupKnownHosts(publicKeyPath)
+	require.NoError(t, err)
+	defer os.RemoveAll(knownHostsPath)
 
-    currentUser = func() (*user.User, error) {
-        return &user.User{HomeDir: filepath.Dir(knownHostsPath)}, nil
-    }
-    defer func() { currentUser = user.Current }()
+	currentUser = func() (*user.User, error) {
+		return &user.User{HomeDir: filepath.Dir(knownHostsPath)}, nil
+	}
+	defer func() { currentUser = user.Current }()
 
-    // Create a target with a custom metric
-    target := Target{
-        Address:  "192.168.1.10",
-        Port:     22,
-        Username: "admin",
-        Password: "password",
-        CustomMetrics: []CustomMetric{
-            {
-                Name:    "mock_metric",
-                Command: "echo 1.23",
-                Type:    "gauge",
-                Help:    "A mock metric for testing",
-            },
-        },
-    }
+	// Create a target with a custom metric
+	target := Target{
+		Address:  "192.168.1.10",
+		Port:     22,
+		Username: "admin",
+		Password: "password",
+		CustomMetrics: []CustomMetric{
+			{
+				Name:    "mock_metric",
+				Command: "echo 1.23",
+				Type:    "gauge",
+				Help:    "A mock metric for testing",
+			},
+		},
+	}
 
-    // Use a mock SSH client
-    mockClient := &MockSSHClient{
-        logger: log.NewNopLogger(),
-        executeCommand: func(command string) (string, error) {
-            if command == "echo 1.23" {
-                return "1.23", nil
-            }
-            return "", fmt.Errorf("unexpected command: %s", command)
-        },
-    }
+	// Use a mock SSH client
+	mockClient := &MockSSHClient{
+		logger: log.NewNopLogger(),
+		executeCommand: func(command string) (string, error) {
+			if command == "echo 1.23" {
+				return "1.23", nil
+			}
+			return "", fmt.Errorf("unexpected command: %s", command)
+		},
+	}
 
-    collector := &SSHCollector{
-        logger:  log.NewNopLogger(),
-        target:  target,
-        client:  mockClient, // Use the mock client
-        metrics: map[string]*prometheus.Desc{
-            "mock_metric": prometheus.NewDesc("mock_metric", "A mock metric for testing", nil, nil),
-        },
-    }
+	collector := &SSHCollector{
+		logger: log.NewNopLogger(),
+		target: target,
+		client: mockClient, // Use the mock client
+		metrics: map[string]*prometheus.Desc{
+			"mock_metric": prometheus.NewDesc("mock_metric", "A mock metric for testing", nil, nil),
+		},
+	}
 
-    // Test Collect
-    ch := make(chan prometheus.Metric)
-    go func() {
-        collector.Collect(ch)
-        close(ch)
-    }()
+	// Test Collect
+	ch := make(chan prometheus.Metric)
+	go func() {
+		collector.Collect(ch)
+		close(ch)
+	}()
 
-    var metrics []prometheus.Metric
-    for metric := range ch {
-        metrics = append(metrics, metric)
-    }
+	var metrics []prometheus.Metric
+	for metric := range ch {
+		metrics = append(metrics, metric)
+	}
 
-    require.NotEmpty(t, metrics) // Ensure metrics are collected
+	require.NotEmpty(t, metrics) // Ensure metrics are collected
 }
-
 
 // Use centralized keys in TestNewSSHClient_AuthMethods
 func TestNewSSHClient_AuthMethods(t *testing.T) {
