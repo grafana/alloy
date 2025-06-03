@@ -19,6 +19,7 @@ Main (unreleased)
 ### Enhancements
 
 - Add `hash_string_id` argument to `foreach` block to hash the string representation of the pipeline id instead of using the string itself. (@wildum)
+
 - Update `async-profiler` binaries for `pyroscope.java` to 4.0-87b7b42 (@github-hamza-bouqal)
 
 - (_Experimental_) `prometheus.write.queue` add support for exemplars. (@dehaansa)
@@ -30,13 +31,17 @@ Main (unreleased)
 ### Bugfixes
 
 - Fix the `validate` command not understanding the `livedebugging` block. (@dehaansa)
+
 - Fix invalid class names in python profiles obtained with `pyroscope.ebpf`. (@korniltsev)
 
 - For CRD-based components (`prometheus.operator.*`), retry initializing informers if the apiserver request fails. This rectifies issues where the apiserver is not reachable immediately after node restart. (@dehaansa)
 
+- Fixed a bug which prevented non-secret optional secrets to be passed in as `number` arguments. (@ptodev)
+
 ### Other changes
 
 - Mark `pyroscope.receive_http` and `pyroscope.relabel` components as GA. (@marcsanmi)
+
 - Upgrade `otelcol` components from OpenTelemetry v0.126.0 to v0.127.0 (@korniltsev)
 
 v1.9.1
