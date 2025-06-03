@@ -39,7 +39,7 @@ otelcol.receiver.otlp "<LABEL>" {
 
 ## Arguments
 
-`otelcol.receiver.otlp` doesn't support any arguments.
+The `otelcol.receiver.otlp` component doesn't support any arguments. You can configure this component with blocks.
 
 ## Blocks
 
@@ -152,7 +152,7 @@ The following arguments are supported:
 | `endpoint`               | `string`                   | `host:port` to listen for traffic on.                                        | `"0.0.0.0:4318"`                                           | no       |
 | `include_metadata`       | `bool`                     | Propagate incoming connection metadata to downstream consumers.              | `false`                                                    | no       |
 | `logs_url_path`          | `string`                   | The URL path to receive logs on.                                             | `"/v1/logs"`                                               | no       |
-| `max_request_body_size`  | `string`                   | Maximum request body size the server will allow.                             | `20MiB`                                                    | no       |
+| `max_request_body_size`  | `string`                   | Maximum request body size the server will allow.                             | `"20MiB"`                                                    | no       |
 | `metrics_url_path`       | `string`                   | The URL path to receive metrics on.                                          | `"/v1/metrics"`                                            | no       |
 | `traces_url_path`        | `string`                   | The URL path to receive traces on.                                           | `"/v1/traces"`                                             | no       |
 
