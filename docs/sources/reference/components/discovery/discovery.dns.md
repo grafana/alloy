@@ -39,9 +39,9 @@ The `discovery.dns` component doesn't support any blocks. You can configure this
 
 The following field is exported and can be referenced by other components:
 
-| Name      | Type                | Description                                        |
-| --------- | ------------------- | -------------------------------------------------- |
-| `targets` | `list(map(string))` | The set of targets discovered from the docker API. |
+| Name      | Type                | Description                                         |
+| --------- | ------------------- | --------------------------------------------------- |
+| `targets` | `list(map(string))` | The set of targets discovered from the DNS records. |
 
 Each target includes the following labels:
 

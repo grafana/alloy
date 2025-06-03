@@ -42,7 +42,7 @@ You can use the following arguments with `discovery.docker`:
 | `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                                                |               | no       |
 | `refresh_interval`       | `duration`          | Frequency to refresh list of containers.                                                                            | `"1m"`        | no       |
 
- At most, one of the following can be provided:
+At most, one of the following can be provided:
 
 * [`authorization`][authorization] block
 * [`basic_auth`][basic_auth] block
@@ -104,7 +104,7 @@ Refer to [List containers][List containers] from the Docker Engine API documenta
 
 ### `oauth2`
 
-The `oauth` block configures OAuth 2.0 authentication to the endpoint.
+The `oauth2` block configures OAuth 2.0 authentication to the endpoint.
 
 {{< docs/shared lookup="reference/components/oauth2-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 

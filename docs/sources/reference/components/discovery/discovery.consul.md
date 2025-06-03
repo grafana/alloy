@@ -51,7 +51,7 @@ You can use the following arguments with `discovery.consul`:
 | `token`                  | `secret`            | Secret token used to access the Consul API.                                                                     |                  | no       |
 | `username`               | `string`            | The username to use. Deprecated in favor of the `basic_auth` configuration.                                     |                  | no       |
 
- At most, one of the following can be provided:
+At most, one of the following can be provided:
 
 * [`authorization`][authorization] block
 * [`basic_auth`][basic_auth] block
@@ -98,7 +98,7 @@ The `basic_auth` block configures basic authentication to the endpoint.
 
 ### `oauth2`
 
-The `oauth` block configures OAuth 2.0 authentication to the endpoint.
+The `oauth2` block configures OAuth 2.0 authentication to the endpoint.
 
 {{< docs/shared lookup="reference/components/oauth2-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 

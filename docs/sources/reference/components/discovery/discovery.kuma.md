@@ -32,7 +32,7 @@ You can use the following arguments with `discovery.kuma`:
 | `bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                             |         | no       |
 | `bearer_token`           | `secret`            | Bearer token to authenticate with.                                                               |         | no       |
 | `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`  | no       |
-| `fetch_timeout`          | `duration`          | The time after which the monitoring assignments are refreshed.                                   | `"2m"`  | no       |
+| `fetch_timeout`          | `duration`          | Timeout for fetching monitoring assignments.                                                     | `"2m"`  | no       |
 | `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`  | no       |
 | `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |         | no       |
 | `proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |         | no       |
