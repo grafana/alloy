@@ -12,7 +12,7 @@ Unreleased
 
 ### Bug fixes
 
-- Fix `alloy.mounts.extra` incorrect list after templateting. (@sentoz)
+- Fix `alloy.mounts.extra` incorrect list after templating. (@sentoz)
 
 1.1.0 (2025-06-02)
 ----------
