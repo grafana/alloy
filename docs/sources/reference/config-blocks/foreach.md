@@ -1,13 +1,15 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/stdlib/foreach/
-description: Learn about foreach
+canonical: https://grafana.com/docs/alloy/latest/reference/config-blocks/foreach/
+description: Learn about the foreach configuration block
 labels:
   stage: experimental
+  products:
+    - oss
 menuTitle: foreach
 title: foreach
 ---
 
-# foreach
+# `foreach`
 
 {{< docs/shared lookup="stability/experimental_feature.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -68,29 +70,28 @@ This results in component paths like the following:
 /foreach.pods/foreach_app-2_1/component.default
 ```
 
-If the collection item is not a object or the specified field doesn't exist, it falls back to using the entire item for identification.
+If the collection item isn't an object or the specified field doesn't exist, it falls back to using the entire item for identification.
 {{< /admonition >}}
 
-[types]: ../../../get-started/configuration-syntax/expressions/types_and_values
+[types]: ../../../get-started/configuration-syntax/expressions/types_and_values/
 
 ## Blocks
 
-You can use the following blocks with `foreach`:
+You can use the following block with `foreach`:
 
-| Block        | Description                  | Required |
-| ------------ | ---------------------------- | -------- |
-| [template][] | A component pipeline to run. | yes      |
+| Block                  | Description                  | Required |
+| ---------------------- | ---------------------------- | -------- |
+| [`template`][template] | A component pipeline to run. | yes      |
 
 [template]: #template
 
 ### `template`
 
-The `template` block contains the definition of {{< param "PRODUCT_NAME" >}} components which will be ran for every item in the collection.
-The contents of the block look like a normal {{< param "PRODUCT_NAME" >}} configuration file,
-except that you can use the keyword defined in `var` to refer to the current item in the collection.
+The `template` block contains the definition of {{< param "PRODUCT_NAME" >}} components used for every item in the collection.
+The contents of the block look like a normal {{< param "PRODUCT_NAME" >}} configuration file, except that you can use the keyword defined in `var` to refer to the current item in the collection.
 
 Components inside the `template` block can use exports of components defined outside of the `foreach` block.
-However, components outside of the `foreach` cannot use exports from components defined inside the `template` block of a `foreach`.
+However, components outside of the `foreach` can't use exports from components defined inside the `template` block of a `foreach`.
 
 ## Example
 
