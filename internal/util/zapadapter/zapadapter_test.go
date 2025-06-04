@@ -122,6 +122,39 @@ func Test(t *testing.T) {
 	}
 }
 
+/*
+	As of 2025-06-04:
+
+goos: darwin
+goarch: arm64
+pkg: github.com/grafana/alloy/internal/util/zapadapter
+cpu: Apple M2
+Benchmark
+Benchmark/No_fields_enabled-8         	 1352374	       864.7 ns/op
+Benchmark/No_fields_disabled-8        	 6223372	       193.1 ns/op
+Benchmark/Any_enabled-8               	 1000000	      1332 ns/op
+Benchmark/Any_disabled-8              	 4654744	       240.5 ns/op
+Benchmark/Bool_enabled-8              	 1000000	      1015 ns/op
+Benchmark/Bool_disabled-8             	 5353936	       253.2 ns/op
+Benchmark/Duration_enabled-8          	 1000000	      1062 ns/op
+Benchmark/Duration_disabled-8         	 5175646	       238.0 ns/op
+Benchmark/Error_enabled-8             	 1000000	      1105 ns/op
+Benchmark/Error_disabled-8            	 4905226	       267.0 ns/op
+Benchmark/Float32_enabled-8           	 1000000	      1203 ns/op
+Benchmark/Float32_disabled-8          	 4813323	       233.6 ns/op
+Benchmark/Float64_enabled-8           	 1000000	      1037 ns/op
+Benchmark/Float64_disabled-8          	 5130016	       232.8 ns/op
+Benchmark/Int_enabled-8               	 1000000	      1065 ns/op
+Benchmark/Int_disabled-8              	 5154585	       241.0 ns/op
+Benchmark/String_enabled-8            	 1000000	      1025 ns/op
+Benchmark/String_disabled-8           	 5105998	       233.3 ns/op
+Benchmark/Time_enabled-8              	 1000000	      1143 ns/op
+Benchmark/Time_disabled-8             	 4857289	       248.3 ns/op
+Benchmark/Array_enabled-8             	  327018	      3529 ns/op
+Benchmark/Array_disabled-8            	 4889307	       252.8 ns/op
+Benchmark/Object_enabled-8            	  285597	      4187 ns/op
+Benchmark/Object_disabled-8           	 4864752	       245.3 ns/op
+*/
 func Benchmark(b *testing.B) {
 	// Benchmark various fields that may be commonly printed.
 

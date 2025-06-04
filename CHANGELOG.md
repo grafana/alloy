@@ -22,6 +22,8 @@ Main (unreleased)
 
 - Fix `loki.source.firehose` to propagate specific cloudwatch event timestamps when useIncomingTs is set to true. (@michaelPotter)
 
+- Fix elevated CPU usage when using some `otelcol` components due to debug logging. (@thampiotr)
+
 v1.9.0
 -----------------
 
