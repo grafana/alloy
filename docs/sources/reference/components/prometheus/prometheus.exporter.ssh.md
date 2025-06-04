@@ -37,33 +37,6 @@ prometheus.exporter.ssh "example" {
 }
 ```
 
-## Example: Curated Targets via Discovery
-
-```alloy
-locals {
-  ssh_keys = {
-    for path in filesystem.glob("${path.module}/keys/*.pem") : basename(path, ".pem") => path
-  }
-}
-
-prometheus.exporter.ssh "curated" {
-  # Iterate only over discovered hosts with a matching key
-  for_each = data.discovery.hosts.byLabel("app=backend")
-
-  targets {
-    address    = each.value             // host or IP from discovery
-    username   = "monitor"             // required: SSH user
-    key_file   = ssh_keys[each.value]    // only hosts with key files
-
-    custom_metrics {
-      name    = "uptime"               // required: metric name
-      command = "cat /proc/uptime | awk '{print $1}'"  // required: command
-      type    = "gauge"                // required: gauge or counter
-    }
-  }
-}
-```
-
 ## Arguments
 
 You can use the following argument with `prometheus.exporter.ssh`:
@@ -102,6 +75,33 @@ Defines metrics to collect from a server.
 | `help`         | `string`              | Help text for the metric.                                                   |         | no       |
 | `labels`       | `map(string, string)` | Additional labels to attach to the metric.                                  | `{}`    | no       |
 | `parse_regex`  | `string`              | Regex to extract value from command output.                                 |         | no       |
+
+## Example: Curated Targets via Discovery
+
+```alloy
+locals {
+  ssh_keys = {
+    for path in filesystem.glob("${path.module}/keys/*.pem") : basename(path, ".pem") => path
+  }
+}
+
+prometheus.exporter.ssh "curated" {
+  # Iterate only over discovered hosts with a matching key
+  for_each = data.discovery.hosts.byLabel("app=backend")
+
+  targets {
+    address    = each.value             // host or IP from discovery
+    username   = "monitor"             // required: SSH user
+    key_file   = ssh_keys[each.value]    // only hosts with key files
+
+    custom_metrics {
+      name    = "uptime"               // required: metric name
+      command = "cat /proc/uptime | awk '{print $1}'"  // required: command
+      type    = "gauge"                // required: gauge or counter
+    }
+  }
+}
+```
 
 ## Secure Known Hosts Setup
 
