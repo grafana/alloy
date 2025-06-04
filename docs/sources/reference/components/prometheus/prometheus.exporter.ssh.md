@@ -75,7 +75,7 @@ The following arguments are supported:
 | `password`        | `secret`   | Password for SSH login.                            |         | no       |
 | `port`            | `int`      | SSH port number.                                   | `22`    | no       |
 
-> Either `password` or `key_file` must be set. If both are provided, `key_file` is used.
+Either `password` or `key_file` must be set. If both are provided, `key_file` is used.
 
 ### `custom_metrics` block
 
