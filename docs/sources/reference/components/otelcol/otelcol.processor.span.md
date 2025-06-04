@@ -34,7 +34,7 @@ otelcol.processor.span "<LABEL>" {
 
 ## Arguments
 
-`otelcol.processor.span` doesn't support any arguments.
+The `otelcol.processor.span` component doesn't support any arguments. You can configure this component with blocks.
 
 ## Blocks
 

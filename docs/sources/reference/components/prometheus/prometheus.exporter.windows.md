@@ -157,8 +157,8 @@ For example, you can set `enabled_list` to `["cluster"]`.
 
 ### `mssql`
 
-| Name              | Type           | Description                         | Default | Required |
-| ----------------- | -------------- | ----------------------------------- | ------- | -------- |
+| Name              | Type           | Description                         | Default                                                                                                                                                              | Required |
+| ----------------- | -------------- | ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
 | `enabled_classes` | `list(string)` | A list of MSSQL WMI classes to use. | `["accessmethods", "availreplica", "bufman", "databases", "dbreplica", "genstats", "info", "locks", "memmgr", "sqlerrors", "sqlstats", "transactions", "waitstats"]` | no       |
 
 ### `network`

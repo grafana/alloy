@@ -49,7 +49,7 @@ You can use the following arguments with `loki.source.kubernetes`:
 | Name         | Type                 | Description                               | Default | Required |
 | ------------ | -------------------- | ----------------------------------------- | ------- | -------- |
 | `forward_to` | `list(LogsReceiver)` | List of receivers to send log entries to. |         | yes      |
-| `targets`    | `list(map(string))`  | List of files to read from.               |         | yes      |
+| `targets`    | `list(map(string))`  | List of targets to tail logs from.        |         | yes      |
 
 Each target in `targets` must have the following labels:
 

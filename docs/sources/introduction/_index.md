@@ -13,6 +13,8 @@ It's fully compatible with the most popular open source observability standards 
 
 {{< param "PRODUCT_NAME" >}} focuses on ease-of-use and the ability to adapt to the needs of power users.
 
+{{< docs/learning-journeys title="Send logs to Grafana Cloud using Alloy" url="/docs/learning-journeys/send-logs-alloy-loki/" >}}
+
 ## Key features
 
 Some of the key features of {{< param "PRODUCT_NAME" >}} include:
