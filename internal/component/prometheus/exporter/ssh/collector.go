@@ -60,7 +60,7 @@ func (a *Arguments) Convert() *ssh_exporter.Config {
 type Target struct {
 	Address        string         `alloy:"address,attr"`
 	Port           int            `alloy:"port,attr,optional"`
-	Username       string         `alloy:"username,attr,optional"`
+	Username       string         `alloy:"username,attr"`
 	Password       string         `alloy:"password,attr,optional"`
 	KeyFile        string         `alloy:"key_file,attr,optional"`
 	CommandTimeout time.Duration  `alloy:"command_timeout,attr,optional"`
