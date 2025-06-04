@@ -58,7 +58,7 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{/* substr trims delimeter prefix char from alloy.imageId output
     e.g. ':' for tags and '@' for digests.
     For digests, we crop the string to a 7-char (short) sha. */}}
-app.kubernetes.io/version: {{ (include "alloy.imageId" .) | trunc 15 | trimPrefix "@sha256" | trimPrefix ":" | quote }}
+app.kubernetes.io/version: {{ (include "alloy.imageId" .) | trimPrefix "@sha256" | trimPrefix ":" | trunc 63 | quote }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 app.kubernetes.io/part-of: alloy
 {{- end }}

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"hash/fnv"
 	"path"
+	"reflect"
 	"strings"
 	"sync"
 	"time"
@@ -212,14 +213,18 @@ func (fn *ForeachConfigNode) evaluate(scope *vm.Scope) error {
 		// We must create an ID from the collection entries to avoid recreating all components on every updates.
 		// We track the hash counts because the collection might contain duplicates ([1, 1, 1] would result in the same ids
 		// so we handle it by adding the count at the end -> [11, 12, 13]
-		customComponentID := fmt.Sprintf("foreach_%s", objectFingerprint(id))
+		customComponentID := fmt.Sprintf("foreach_%s", objectFingerprint(id, args.HashStringId))
 		count := fn.customComponentHashCounts[customComponentID] // count = 0 if the key is not found
 		fn.customComponentHashCounts[customComponentID] = count + 1
 		customComponentID += fmt.Sprintf("_%d", count+1)
 
-		cc, err := fn.getOrCreateCustomComponent(customComponentID)
+		cc, created, err := fn.getOrCreateCustomComponent(customComponentID)
 		if err != nil {
 			return err
+		}
+
+		if created && args.HashStringId && id != nil && reflect.TypeOf(id).Kind() == reflect.String {
+			level.Debug(fn.logger).Log("msg", "a new foreach pipeline was created", "value", id, "fingerprint", customComponentID)
 		}
 
 		// Expose the current scope + the collection item that correspond to the child.
@@ -253,18 +258,18 @@ func (fn *ForeachConfigNode) evaluate(scope *vm.Scope) error {
 
 // Assumes that a lock is held,
 // so that fn.moduleController doesn't change while the function is running.
-func (fn *ForeachConfigNode) getOrCreateCustomComponent(customComponentID string) (CustomComponent, error) {
+func (fn *ForeachConfigNode) getOrCreateCustomComponent(customComponentID string) (CustomComponent, bool, error) {
 	cc, exists := fn.customComponents[customComponentID]
 	if exists {
-		return cc, nil
+		return cc, false, nil
 	}
 
 	newCC, err := fn.moduleController.NewCustomComponent(customComponentID, func(exports map[string]any) {})
 	if err != nil {
-		return nil, fmt.Errorf("creating custom component: %w", err)
+		return nil, true, fmt.Errorf("creating custom component: %w", err)
 	}
 	fn.customComponents[customComponentID] = newCC
-	return newCC, nil
+	return newCC, true, nil
 }
 
 func (fn *ForeachConfigNode) UpdateBlock(b *ast.BlockStmt) {
@@ -420,10 +425,13 @@ func computeHash(s string) string {
 	return hex.EncodeToString(hasher.Sum(nil))
 }
 
-func objectFingerprint(id any) string {
+func objectFingerprint(id any, hashId bool) string {
 	// TODO: Test what happens if there is a "true" string and a true bool in the collection.
 	switch v := id.(type) {
 	case string:
+		if hashId {
+			return computeHash(v)
+		}
 		return replaceNonAlphaNumeric(v)
 	case int, bool:
 		return fmt.Sprintf("%v", v)

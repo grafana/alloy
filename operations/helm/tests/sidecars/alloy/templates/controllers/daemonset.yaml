@@ -28,7 +28,7 @@ spec:
       serviceAccountName: alloy
       containers:
         - name: alloy
-          image: docker.io/grafana/alloy:v1.8.3
+          image: docker.io/grafana/alloy:v1.9.0
           imagePullPolicy: IfNotPresent
           args:
             - run
@@ -57,8 +57,7 @@ spec:
           volumeMounts:
             - name: config
               mountPath: /etc/alloy
-            -
-              mountPath: /etc/geoip
+            - mountPath: /etc/geoip
               name: geoip
         - name: config-reloader
           image: quay.io/prometheus-operator/prometheus-config-reloader:v0.81.0

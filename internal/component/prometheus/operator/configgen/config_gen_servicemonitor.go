@@ -64,10 +64,10 @@ func (cg *ConfigGenerator) GenerateServiceMonitorConfig(m *promopv1.ServiceMonit
 			return nil, err
 		}
 	}
-	if ep.BearerTokenFile != "" {
-		cfg.HTTPClientConfig.BearerTokenFile = ep.BearerTokenFile
-	} else if ep.BearerTokenSecret != nil && ep.BearerTokenSecret.Name != "" {
-		val, err := cg.Secrets.GetSecretValue(m.Namespace, *ep.BearerTokenSecret)
+	if ep.BearerTokenFile != "" { //nolint:staticcheck
+		cfg.HTTPClientConfig.BearerTokenFile = ep.BearerTokenFile //nolint:staticcheck
+	} else if ep.BearerTokenSecret != nil && ep.BearerTokenSecret.Name != "" { //nolint:staticcheck
+		val, err := cg.Secrets.GetSecretValue(m.Namespace, *ep.BearerTokenSecret) //nolint:staticcheck
 		if err != nil {
 			return nil, err
 		}

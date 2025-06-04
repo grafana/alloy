@@ -10,11 +10,19 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
-### Other changes
+### Features
 
-- Fix dead link for ServiceMonitor in the prometheus.operator.servicemonitors documentation page (@TheoBrigitte)
+- (_Experimental_) Add an `array.group_by` stdlib function to group items in an array by a key. (@wildum)
 
-v1.9.0-rc.0
+### Enhancements
+
+- Add `hash_string_id` argument to `foreach` block to hash the string representation of the pipeline id instead of using the string itself. (@wildum)
+
+### Bugfixes
+
+- Fix `loki.source.firehose` to propagate specific cloudwatch event timestamps when useIncomingTs is set to true. (@michaelPotter)
+
+v1.9.0
 -----------------
 
 ### Breaking changes
@@ -106,6 +114,8 @@ v1.9.0-rc.0
 
 - Fix `otelcol.receiver.filelog` documentation's default value for `start_at`. (@petewall)
 
+- Fix `pyroscope.scrape` scraping godeltaprof profiles. (@korniltsev)
+
 - Fix [#3386](https://github.com/grafana/alloy/issues/3386) lower casing scheme in `prometheus.operator.scrapeconfigs`. (@alex-berger)
 
 - Fix [#3437](https://github.com/grafana/alloy/issues/3437) Component Graph links now follow `--server.http.ui-path-prefix`. (@solidcellaMoon)
@@ -115,6 +125,8 @@ v1.9.0-rc.0
 - Fix alloy health handler so header is written before response body. (@kalleep)
 
 - Fix `prometheus.exporter.unix` to pass hwmon config correctly. (@kalleep)
+
+- Fix [#3408](https://github.com/grafana/alloy/issues/3408) `loki.source.docker` can now collect logs from containers not in the running state. (@adamamsmith)
 
 ### Other changes
 

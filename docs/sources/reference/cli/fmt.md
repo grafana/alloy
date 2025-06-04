@@ -1,12 +1,15 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/cli/fmt/
 description: Learn about the fmt command
-menuTitle: fmt
-title: The fmt command
+labels:
+  stage: general-availability
+  products:
+    - oss
+title: fmt
 weight: 200
 ---
 
-# The `fmt` command
+# `fmt`
 
 The `fmt` command formats a given {{< param "PRODUCT_NAME" >}} configuration file.
 
