@@ -95,8 +95,9 @@ func getImportManagedOptions(globals ComponentGlobals, cn *ImportConfigNode) com
 	cn.registry = prometheus.NewRegistry()
 	parent, id := splitPath(cn.globalID)
 	return component.Options{
-		ID:     cn.globalID,
-		Logger: log.With(globals.Logger, "config_path", parent, "config_id", id),
+		ID:       cn.globalID,
+		Logger:   log.With(globals.Logger, "config_path", parent, "config_id", id),
+		LogLevel: globals.Logger.Level(),
 		Registerer: prometheus.WrapRegistererWith(prometheus.Labels{
 			"config_path": parent,
 			"config_id":   id,

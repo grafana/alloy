@@ -90,6 +90,10 @@ func NewDeferred(w io.Writer) (*Logger, error) {
 	return l, nil
 }
 
+func (l *Logger) Level() slog.Leveler {
+	return l.level
+}
+
 // Handler returns a [slog.Handler]. The returned Handler remains valid if l is
 // updated.
 func (l *Logger) Handler() slog.Handler { return l.deferredSlog }

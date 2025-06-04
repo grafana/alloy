@@ -107,7 +107,7 @@ func (c *Config) NewIntegration(l log.Logger) (integrations.Integration, error) 
 
 	return Exporter{
 		cfg:               *c,
-		logger:            zapadapter.New(l).Sugar(),
+		logger:            zapadapter.New(l, nil).Sugar(),
 		ConcurrencyConfig: concurrencyConfig,
 	}, nil
 }

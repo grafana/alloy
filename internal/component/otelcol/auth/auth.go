@@ -228,7 +228,7 @@ func (a *Auth) Update(args component.Arguments) error {
 	settings := otelextension.Settings{
 		ID: otelcomponent.NewIDWithName(a.factory.Type(), a.opts.ID),
 		TelemetrySettings: otelcomponent.TelemetrySettings{
-			Logger: zapadapter.New(a.opts.Logger),
+			Logger: zapadapter.New(a.opts.Logger, a.opts.LogLevel),
 
 			TracerProvider: a.opts.Tracer,
 			MeterProvider:  mp,

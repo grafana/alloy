@@ -4,6 +4,7 @@ package zapadapter
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"strings"
 	"sync"
 	"time"
@@ -17,24 +18,44 @@ import (
 // New returns a new zap.Logger instance which will forward logs to the
 // provided log.Logger. The github.com/go-kit/log/level package will be used
 // for specifying log levels.
-func New(l log.Logger) *zap.Logger {
-	return zap.New(&loggerCore{inner: l})
+func New(l log.Logger, leveler slog.Leveler) *zap.Logger {
+	return zap.New(&loggerCore{inner: l, leveler: leveler})
 }
 
 // loggerCore is a zap.Core implementation which forwards logs to a log.Logger
 // instance.
 type loggerCore struct {
-	inner log.Logger
+	inner   log.Logger
+	leveler slog.Leveler
 }
 
 var _ zapcore.Core = (*loggerCore)(nil)
 
+var levelMap = map[zapcore.Level]slog.Level{
+	zapcore.DebugLevel: slog.LevelDebug,
+	zapcore.InfoLevel:  slog.LevelInfo,
+	zapcore.WarnLevel:  slog.LevelWarn,
+	zapcore.ErrorLevel: slog.LevelError,
+	// zapcore.DPanicLevel, zapcore.PanicLevel, and zapcore.FatalLevel are not
+	// supported by go-kit/log, so we map them to slog.LevelError.
+	zapcore.DPanicLevel: slog.LevelError,
+	zapcore.PanicLevel:  slog.LevelError,
+	zapcore.FatalLevel:  slog.LevelError,
+}
+
 // Enabled implements zapcore.Core and returns whether logs at a specific level
 // should be reported.
-func (lc *loggerCore) Enabled(zapcore.Level) bool {
-	// An instance of log.Logger has no way of knowing if logs will be filtered
-	// out, so we always have to return true here.
-	return true
+func (lc *loggerCore) Enabled(lvl zapcore.Level) bool {
+	if lc.leveler == nil {
+		return true
+	}
+
+	slogLevel, ok := levelMap[lvl]
+	if !ok {
+		return true
+	}
+
+	return slogLevel >= lc.leveler.Level()
 }
 
 // With implements zapcore.Core, returning a new logger core with ff appended
@@ -63,6 +84,10 @@ func (lc *loggerCore) Check(e zapcore.Entry, ce *zapcore.CheckedEntry) *zapcore.
 // Write serializes e with the provided list of fields, writing them to the
 // underlying github.com/go-kit/log.Logger instance.
 func (lc *loggerCore) Write(e zapcore.Entry, ff []zapcore.Field) error {
+	if !lc.Enabled(e.Level) {
+		return nil
+	}
+
 	enc := newFieldEncoder()
 	defer func() { _ = enc.Close() }()
 

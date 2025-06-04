@@ -3,6 +3,7 @@ package component
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"reflect"
 	"strings"
 
@@ -71,6 +72,10 @@ type Options struct {
 	// Logger the component may use for logging. Logs emitted with the logger
 	// always include the component ID as a field.
 	Logger log.Logger
+
+	// LogLevel is the dynamic log level of the system. This allows various log
+	// handlers to adjust their log level at runtime.
+	LogLevel slog.Leveler
 
 	// A path to a directory with this component may use for storage. The path is
 	// guaranteed to be unique across all running components.

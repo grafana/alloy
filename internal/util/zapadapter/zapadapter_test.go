@@ -113,7 +113,7 @@ func Test(t *testing.T) {
 
 			inner := log.NewLogfmtLogger(log.NewSyncWriter(&buf))
 
-			zapLogger := zapadapter.New(inner)
+			zapLogger := zapadapter.New(inner, nil)
 			zapLogger.Info("Hello, world!", tc.field...)
 
 			require.Equal(t, tc.expect, strings.TrimSpace(buf.String()))
@@ -151,7 +151,7 @@ func runBenchmark(b *testing.B, name string, fields ...zap.Field) {
 	innerLogger := log.NewLogfmtLogger(io.Discard)
 	innerLogger = level.NewFilter(innerLogger, level.AllowAll())
 
-	zapLogger := zapadapter.New(innerLogger)
+	zapLogger := zapadapter.New(innerLogger, nil)
 
 	b.Run(name, func(b *testing.B) {
 		for i := 0; i < b.N; i++ {

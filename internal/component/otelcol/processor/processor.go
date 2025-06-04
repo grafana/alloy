@@ -161,7 +161,7 @@ func (p *Processor) Update(args component.Arguments) error {
 	settings := otelprocessor.Settings{
 		ID: otelcomponent.NewIDWithName(p.factory.Type(), p.opts.ID),
 		TelemetrySettings: otelcomponent.TelemetrySettings{
-			Logger: zapadapter.New(p.opts.Logger),
+			Logger: zapadapter.New(p.opts.Logger, p.opts.LogLevel),
 
 			TracerProvider: p.opts.Tracer,
 			MeterProvider:  mp,
