@@ -44,13 +44,13 @@ prometheus.exporter.snmp "<LABEL>" {
 
 You can use the following arguments with `prometheus.exporter.snmp`:
 
-| Name                    | Type                 | Description                                                                                                                  | Default   | Required |
-| ----------------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------- | --------- | -------- |
-| `concurrency`           | `int`                | SNMP exporter concurrency.                                                                                                   | `1`       | no       |
-| `config_file`           | `string`             | SNMP configuration file defining custom modules.                                                                             |           | no       |
-| `config_merge_strategy` | `string`             | A strategy defining how `config` or `config_file` contents merge with the embedded SNMP config. Can be `replace` or `merge`. | `replace` | no       |
-| `config`                | `string` or `secret` | SNMP configuration as inline string.                                                                                         |           | no       |
-| `targets`               | `list(map(string))`  | SNMP targets.                                                                                                                |           | no       |
+| Name                    | Type                 | Description                                                                                                                  | Default     | Required |
+| ----------------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ----------- | -------- |
+| `concurrency`           | `int`                | SNMP exporter concurrency.                                                                                                   | `1`         | no       |
+| `config_file`           | `string`             | SNMP configuration file defining custom modules.                                                                             |             | no       |
+| `config_merge_strategy` | `string`             | A strategy defining how `config` or `config_file` contents merge with the embedded SNMP config. Can be `replace` or `merge`. | `"replace"` | no       |
+| `config`                | `string` or `secret` | SNMP configuration as inline string.                                                                                         |             | no       |
+| `targets`               | `list(map(string))`  | SNMP targets.                                                                                                                |             | no       |
 
 The `config_file` argument points to a YAML file defining which snmp_exporter modules to use.
 Refer to [snmp_exporter](https://github.com/prometheus/snmp_exporter/tree/{{< param "SNMP_VERSION" >}}?tab=readme-ov-file#configuration) for details on how to generate a configuration file.

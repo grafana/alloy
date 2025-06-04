@@ -85,7 +85,7 @@ Exactly one `auth.*` block **must** be provided, otherwise the component will fa
 
 ### `auth.approle`
 
-The `auth.token` block authenticates to Vault using the [AppRole auth method][AppRole].
+The `auth.approle` block authenticates to Vault using the [AppRole auth method][AppRole].
 
 | Name             | Type     | Description                      | Default     | Required |
 | ---------------- | -------- | -------------------------------- | ----------- | -------- |
@@ -303,7 +303,7 @@ local.file "vault_token" {
 remote.vault "remote_write" {
   server = "https://prod-vault.corporate.internal"
   path   = "secret"
-  key    = "prometheus/remote_write
+  key    = "prometheus/remote_write"
 
   auth.token {
     token = local.file.vault_token.content
