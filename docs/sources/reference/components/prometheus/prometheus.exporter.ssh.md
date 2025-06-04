@@ -47,6 +47,19 @@ You can use the following argument with `prometheus.exporter.ssh`:
 
 ## Blocks
 
+You can use the following blocks with `prometheus.exporter.ssh`:
+
+| Block                                          | Description                                     | Required |
+| ---------------------------------------------- | ----------------------------------------------- | -------- |
+| [`targets`][targets]                           | Configures SSH targets to collect metrics from. | yes      |
+| `targets` > [`custom_metrics`][custom_metrics] | Defines metrics to collect from a server.       | yes      |
+
+The `>` symbol indicates deeper levels of nesting.
+For example, `targets` > `custom_metrics` refers to a `custom_metrics` block defined inside a `target` block.
+
+[targets]: #targets
+[custom_metrics]: #custom_metrics
+
 ### `targets` block
 
 Configures SSH targets to collect metrics from.
