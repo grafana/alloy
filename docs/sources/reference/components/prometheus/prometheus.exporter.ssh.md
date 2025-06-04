@@ -64,15 +64,16 @@ For example, `targets` > `custom_metrics` refers to a `custom_metrics` block def
 
 Configures SSH targets to collect metrics from.
 
-| Name              | Type                  | Description                                                            | Default | Required |
-|-------------------|-----------------------|------------------------------------------------------------------------|---------|----------|
-| `address`         | `string`              | The IP or hostname of the target server.                               |         | yes      |
-| `port`            | `int`                 | SSH port number.                                                       | `22`    | no       |
-| `username`        | `string`              | SSH username.                                                          |         | yes      |
-| `password`        | `secret`              | Password for SSH login.                                                |         | no       |
-| `key_file`        | `string`              | Private key file path for key-based auth.                              |         | no       |
-| `command_timeout` | `duration`            | Timeout for each SSH command.                                          | `30s`   | no       |
-| `custom_metrics`  | `block`               | One or more metrics to collect via SSH.                                |         | yes      |
+The following arguments are supported:
+
+| Name              | Type       | Description                                        | Default | Required |
+| ----------------- | ---------- | -------------------------------------------------- | ------- | -------- |
+| `address`         | `string`   | The IP or hostname of the target server.           |         | yes      |
+| `username`        | `string`   | SSH username.                                      |         | yes      |
+| `command_timeout` | `duration` | Timeout for each SSH command.                      | `"30s"` | no       |
+| `key_file`        | `string`   | Private key file path for key-based authorization. |         | no       |
+| `password`        | `secret`   | Password for SSH login.                            |         | no       |
+| `port`            | `int`      | SSH port number.                                   | `22`    | no       |
 
 > Either `password` or `key_file` must be set. If both are provided, `key_file` is used.
 
