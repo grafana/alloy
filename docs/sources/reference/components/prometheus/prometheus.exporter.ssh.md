@@ -198,9 +198,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-- `PROMETHEUS_REMOTE_WRITE_URL`: Remote write-compatible server URL.
-- `USERNAME`: Auth username.
-- `PASSWORD`: Auth password.
+* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: Remote write-compatible server URL.
+* _`<USERNAME>`_: Auth username.
+* _`<PASSWORD>`_: Auth password.
 
 [scrape]: ../prometheus.scrape/
 
