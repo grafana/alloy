@@ -130,7 +130,8 @@ Use `ssh-keyscan` or another secure method to update `known_hosts` when a host k
 
 ## Component health
 
-`prometheus.exporter.ssh` is only reported as unhealthy if given an invalid configuration. In those cases, exported fields retain their last healthy values.
+`prometheus.exporter.ssh` is only reported as unhealthy if given an invalid configuration.
+In those cases, exported fields retain their last healthy values.
 
 ## Debug information
 
