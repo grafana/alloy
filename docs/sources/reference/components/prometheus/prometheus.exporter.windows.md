@@ -103,7 +103,7 @@ You can use the following blocks with `prometheus.exporter.windows`:
 
 | Name           | Type           | Description                  | Default                      | Required |
 |----------------|----------------|------------------------------|------------------------------|----------|
-| `enabled_list` | `list(string)` | A list of collectors to use. | `["metrics", "error_stats"]` | no       |
+| `enabled_list` | `list(string)` | A list of collectors to use. | `["metrics", "wmi_stats"]` | no       |
 
 ### `exchange`
 

@@ -80,7 +80,7 @@ func TestDefaultConfig(t *testing.T) {
 		TextFile:          TextFileConfig{TextFileDirectory: getDefaultTextFilePath()},
 		TCP:               TCPConfig{EnabledList: []string{"metrics", "connections_state"}},
 		Filetime:          FiletimeConfig{FilePatterns: []string{}},
-		DNS:               DNSConfig{EnabledList: []string{"metrics", "error_stats"}},
+		DNS:               DNSConfig{EnabledList: []string{"metrics", "wmi_stats"}},
 	}
 
 	var args Arguments
