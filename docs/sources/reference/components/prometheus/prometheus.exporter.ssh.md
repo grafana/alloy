@@ -60,7 +60,7 @@ For example, `targets` > `custom_metrics` refers to a `custom_metrics` block def
 [targets]: #targets
 [custom_metrics]: #custom_metrics
 
-### `targets` block
+### `targets`
 
 Configures SSH targets to collect metrics from.
 
