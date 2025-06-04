@@ -545,16 +545,12 @@ func convertValue(val Value, toType Type) (Value, error) {
 	case TypeCapsule:
 		// Some capsules, such as optional secrects, may be convertible to a string.
 		// Try to convert them to a string and then rerun convertValue.
-		cc, ok := val.Interface().(ConvertibleIntoCapsule)
-		if ok {
-			into := reflect.New(reflect.TypeOf(string(""))).Elem()
-
-			err := cc.ConvertInto(into.Addr().Interface())
+		into := reflect.New(reflect.TypeOf(string(""))).Elem()
+		ok, err := tryCapsuleConvert(val, into, TypeString)
+		if ok && err == nil {
+			val, err := convertValue(Value{into, TypeString}, toType)
 			if err == nil {
-				val, err := convertValue(Value{into, TypeString}, toType)
-				if err == nil {
-					return val, nil
-				}
+				return val, nil
 			}
 		}
 	}
