@@ -22,6 +22,8 @@ Main (unreleased)
 
 - Fix `loki.source.firehose` to propagate specific cloudwatch event timestamps when useIncomingTs is set to true. (@michaelPotter)
 
+- Fixed a bug which prevented non-secret optional secrets to be passed in as `number` arguments. (@ptodev)
+
 v1.9.0
 -----------------
 
