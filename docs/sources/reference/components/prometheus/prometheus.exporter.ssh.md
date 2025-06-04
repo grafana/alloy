@@ -66,6 +66,8 @@ prometheus.exporter.ssh "curated" {
 
 ## Arguments
 
+You can use the following argument with `prometheus.exporter.ssh`:
+
 | Name              | Type   | Description                                    | Default | Required |
 |-------------------|--------|------------------------------------------------|---------|----------|
 | `verbose_logging` | `bool` | Enable verbose logging for debugging purposes. | `false` | no       |
