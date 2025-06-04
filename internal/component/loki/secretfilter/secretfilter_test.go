@@ -226,7 +226,7 @@ var fakeSecrets = map[string]fakeSecret{
 	},
 	"sha1-secret-low-entropy": {
 		name:  "sha1-secret-low-entropy",
-		value: "00000000000000000001111111111111111111111",
+		value: "0000000000000000000111111111111111111111",
 	},
 }
 
@@ -475,6 +475,13 @@ var tt = []struct {
 		customGitleaksConfig["with_low_entropy"],
 		testLogs["sha1_low_entropy_secret"].log,
 		testLogs["sha1_low_entropy_secret"].log, // Entropy of the secret too low, no redaction expected
+	},
+	{
+		"sha1_secret_secret_low_entropy_no_entropy_enabled",
+		testConfigs["custom_gitleaks_file_simple"],
+		customGitleaksConfig["with_low_entropy"],
+		testLogs["sha1_low_entropy_secret"].log,
+		replaceSecrets(testLogs["sha1_secret"].log, testLogs["sha1_secret"].secrets, false, false, defaultRedactionString),
 	},
 	{
 		"sha1_secret_config_high_entropy",
