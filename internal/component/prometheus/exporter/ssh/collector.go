@@ -64,7 +64,7 @@ type Target struct {
 	Password       string         `alloy:"password,attr,optional"`
 	KeyFile        string         `alloy:"key_file,attr,optional"`
 	CommandTimeout time.Duration  `alloy:"command_timeout,attr,optional"`
-	CustomMetrics  []CustomMetric `alloy:"custom_metrics,block,optional"`
+	CustomMetrics  []CustomMetric `alloy:"custom_metrics,block"`
 }
 
 func (t *Target) Validate() error {
