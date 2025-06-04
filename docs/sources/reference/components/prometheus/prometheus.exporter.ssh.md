@@ -112,7 +112,7 @@ Defines metrics to collect from a server.
 3. **Changes**: Key mismatches raise an error requiring manual review.
 4. **New Targets**: Automatically scanned and added, but mismatches block the connection.
 
-### Manual Resolution
+### Manual resolution
 
 Use `ssh-keyscan` or another secure method to update `known_hosts` when a host key legitimately changes.
 
