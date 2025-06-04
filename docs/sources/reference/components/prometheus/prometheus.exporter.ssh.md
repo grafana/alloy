@@ -1,6 +1,10 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus/prometheus.exporter.ssh/
 description: Learn about prometheus.exporter.ssh
+labels:
+  stage: experimental
+  products:
+    - oss
 title: prometheus.exporter.ssh
 ---
 
