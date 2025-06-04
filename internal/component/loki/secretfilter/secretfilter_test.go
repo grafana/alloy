@@ -899,10 +899,13 @@ func TestMetrics(t *testing.T) {
 	tests := []struct {
 		name                        string
 		inputLog                    string
+		entropyEnabled              bool
 		expectedRedactedTotal       int
 		expectedRedactedByRule      map[string]int
 		expectedAllowlistedBySource map[string]int
+		expectedEntropyByRule       map[string]int
 		allowlist                   []string
+		customConfig                string
 	}{
 		{
 			name:                  "No secrets",
@@ -935,6 +938,17 @@ func TestMetrics(t *testing.T) {
 			},
 			allowlist: []string{fakeSecrets["grafana-api-key"].value},
 		},
+		{
+			name:                   "Not redacted because of entropy",
+			inputLog:               testLogs["sha1_low_entropy_secret"].log,
+			expectedRedactedTotal:  0,
+			expectedRedactedByRule: map[string]int{},
+			expectedEntropyByRule: map[string]int{
+				"sha1-secret": 1,
+			},
+			entropyEnabled: true,
+			customConfig:   customGitleaksConfig["with_high_entropy"],
+		},
 	}
 
 	for _, tc := range tests {
@@ -946,6 +960,14 @@ func TestMetrics(t *testing.T) {
 			args := Arguments{
 				ForwardTo:   []loki.LogsReceiver{loki.NewLogsReceiver()},
 				OriginLabel: "job",
+			}
+
+			if tc.customConfig != "" {
+				args.GitleaksConfig = createTempGitleaksConfig(t, tc.customConfig)
+			}
+
+			if tc.entropyEnabled {
+				args.EnableEntropy = true
 			}
 
 			// Set allowlist if provided
@@ -1044,6 +1066,23 @@ func TestMetrics(t *testing.T) {
 				require.NoError(t,
 					testutil.GatherAndCompare(registry, strings.NewReader(metricStrings.String()),
 						"loki_secretfilter_secrets_redacted_by_origin"))
+			}
+
+			// Check entropy metrics
+			if len(tc.expectedEntropyByRule) > 0 {
+				var metricStrings strings.Builder
+				metricStrings.WriteString("# HELP loki_secretfilter_secrets_skipped_entropy_by_rule_total Number of secrets that matched a rule but whose entropy was too low to be redacted, partitioned by rule name.\n")
+				metricStrings.WriteString("# TYPE loki_secretfilter_secrets_skipped_entropy_by_rule_total counter\n")
+				// Add each rule metric
+				for ruleName, expectedCount := range tc.expectedEntropyByRule {
+					metric := fmt.Sprintf(`loki_secretfilter_secrets_skipped_entropy_by_rule_total{rule="%s"} %d`,
+						ruleName, expectedCount)
+					metricStrings.WriteString(metric + "\n")
+				}
+				// Compare the metrics
+				require.NoError(t,
+					testutil.GatherAndCompare(registry, strings.NewReader(metricStrings.String()),
+						"loki_secretfilter_secrets_skipped_entropy_by_rule_total"))
 			}
 
 			// Check processingDuration metric
