@@ -9,11 +9,12 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
-	"github.com/grafana/alloy/internal/util/zapadapter"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+
+	"github.com/grafana/alloy/internal/runtime/logging"
+	"github.com/grafana/alloy/internal/util/zapadapter"
 )
 
 func Test(t *testing.T) {
@@ -134,28 +135,43 @@ func Benchmark(b *testing.B) {
 	runBenchmark(b, "Int", zap.Int("key", 1234))
 	runBenchmark(b, "String", zap.String("key", "test"))
 	runBenchmark(b, "Time", zap.Time("key", time.Date(2022, 12, 1, 1, 1, 1, 1, time.UTC)))
-	runBenchmark(b, "Array", zap.Strings("key", []string{"foo", "bar"}))
+	runBenchmark(b, "Array", zap.Strings("key", []string{"foo", "bar", "foo", "bar", "foo", "bar", "foo", "bar", "foo", "bar", "foo", "bar", "foo", "bar", "foo", "bar", "foo", "bar", "foo", "bar", "foo", "bar", "foo", "bar", "foo", "bar"}))
 	runBenchmark(b, "Object", zap.Object("key", testObject{
 		obj: map[string]any{
-			"foo": "bar",
-			"bar": 123,
-			"baz": true,
+			"foo":  "car",
+			"bar":  123,
+			"baz":  true,
+			"foo2": "bar2",
+			"bar2": 123,
+			"baz2": true,
 			"qux": map[string]any{
-				"foo": "car",
+				"foo":  "car",
+				"bar":  123,
+				"baz":  true,
+				"foo2": "bar2",
+				"bar2": 123,
+				"baz2": true,
 			},
 		},
 	}))
 }
 
 func runBenchmark(b *testing.B, name string, fields ...zap.Field) {
-	innerLogger := log.NewLogfmtLogger(io.Discard)
-	innerLogger = level.NewFilter(innerLogger, level.AllowAll())
+	innerLogger, err := logging.NewDeferred(io.Discard)
+	require.NoError(b, err)
+	err = innerLogger.Update(logging.Options{Level: logging.LevelInfo, Format: logging.FormatLogfmt})
+	require.NoError(b, err)
 
 	zapLogger := zapadapter.New(innerLogger)
 
-	b.Run(name, func(b *testing.B) {
+	b.Run(name+" enabled", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			zapLogger.Info("Hello, world!", fields...)
+		}
+	})
+	b.Run(name+" disabled", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			zapLogger.Debug("Hello, world!", fields...)
 		}
 	})
 }
