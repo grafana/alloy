@@ -116,7 +116,7 @@ Defines metrics to collect from a server.
 
 Use `ssh-keyscan` or another secure method to update `known_hosts` when a host key legitimately changes.
 
-## Security Considerations
+## Security considerations
 
 - Only valid IPs/hostnames accepted.
 - Backticks and semicolons are disallowed in commands to prevent injection.
