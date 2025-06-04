@@ -4,7 +4,7 @@
 KUBECONFIG=${1:-build/kubeconfig.yaml}
 
 # Start Grafana port-forward in background
-kubectl --kubeconfig "$KUBECONFIG" port-forward -n monitoring service/grafana 3000:80 &
+kubectl --kubeconfig "$KUBECONFIG" port-forward -n grafana service/grafana 3000:80 &
 GRAFANA_PID=$!
 
 # Start Mimir port-forward in background

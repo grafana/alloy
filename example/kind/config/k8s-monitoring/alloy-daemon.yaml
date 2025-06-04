@@ -1,0 +1,21 @@
+apiVersion: collectors.grafana.com/v1alpha1
+kind: Alloy
+metadata:
+  name: alloy-daemon
+  namespace: k8s-monitoring
+spec:
+  alloy:
+    configMap:
+      content: |-
+        prometheus.exporter.self "default" {}
+
+        prometheus.scrape "default" {
+          targets    = prometheus.exporter.self.default.targets
+          forward_to = [prometheus.remote_write.local_prom.receiver]
+        }
+
+        prometheus.remote_write "local_prom" {
+          endpoint {
+            url = "http://mimir-nginx.mimir.svc:80/api/v1/push"
+          }
+        }
