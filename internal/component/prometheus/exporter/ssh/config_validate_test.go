@@ -1,4 +1,4 @@
-package ssh_exporter
+package ssh
 
 import (
 	"testing"
@@ -7,7 +7,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestTargetValidate_InvalidAddress(t *testing.T) {
+// TestTargetValidateNotAHost ensures invalid hostnames are rejected.
+func TestTargetValidateNotAHost(t *testing.T) {
 	tgt := Target{
 		Address:        "not a host",
 		Port:           22,
@@ -18,7 +19,8 @@ func TestTargetValidate_InvalidAddress(t *testing.T) {
 	require.Error(t, err)
 }
 
-func TestCustomMetricValidate_UnsafeCommand(t *testing.T) {
+// TestCustomMetricValidateUnsafeCommand ensures dangerous commands are rejected.
+func TestCustomMetricValidateUnsafeCommand(t *testing.T) {
 	cm := CustomMetric{
 		Name:    "m1",
 		Command: "uname -a `rm -rf /`",

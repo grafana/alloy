@@ -9,9 +9,9 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter"
+	ssh_exporter "github.com/grafana/alloy/internal/component/prometheus/exporter/ssh/ssh_exporter"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/static/integrations"
-	"github.com/grafana/alloy/internal/static/integrations/ssh_exporter"
 )
 
 func init() {
@@ -99,6 +99,7 @@ func (t *Target) Convert() ssh_exporter.Target {
 		customMetrics[i] = cm.Convert()
 	}
 	return ssh_exporter.Target{
+		SkipAuth:       true,
 		Address:        t.Address,
 		Port:           t.Port,
 		Username:       t.Username,

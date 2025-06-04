@@ -19,6 +19,8 @@ type Config struct {
 }
 
 type Target struct {
+	// SkipAuth, when true, disables authentication enforcement (for dynamic use-cases)
+	SkipAuth       bool           `yaml:"-"`
 	Address        string         `yaml:"address"`
 	Port           int            `yaml:"port"`
 	Username       string         `yaml:"username"`

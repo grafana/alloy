@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/static/integrations/ssh_exporter"
+	ssh_exporter "github.com/grafana/alloy/internal/component/prometheus/exporter/ssh/ssh_exporter"
 	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
 )
@@ -217,6 +217,8 @@ func TestConvert(t *testing.T) {
 		VerboseLogging: true,
 		Targets: []ssh_exporter.Target{
 			{
+				// Skip authentication enforcement flag set for dynamic conversion
+				SkipAuth:       true,
 				Address:        "192.168.1.10",
 				Port:           22,
 				Username:       "admin",

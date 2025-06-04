@@ -51,16 +51,21 @@ func ensureKnownHosts(knownHostsPath, targetAddress string) error {
 		knownHostsContent = strings.Split(string(content), "\n")
 	}
 
+	// Try up to 3 times to fetch the host key, then skip if unsuccessful
 	var output []byte
 	var scanErr error
-	// Keep retrying until we successfully fetch the host key
-	for {
+	const maxAttempts = 3
+	for i := 0; i < maxAttempts; i++ {
 		output, scanErr = sshKeyscanCommand(targetAddress)
 		if scanErr == nil && len(output) > 0 {
 			break
 		}
 		fmt.Printf("failed to fetch host key for %s: %v; retrying in 1s...\n", targetAddress, scanErr)
 		time.Sleep(time.Second)
+	}
+	if scanErr != nil || len(output) == 0 {
+		// Unable to fetch a host key; skip known_hosts update
+		return nil
 	}
 	scannedKey := strings.TrimSpace(string(output))
 
@@ -145,8 +150,8 @@ func NewSSHClient(target Target) (*SSHClient, error) {
 		config.Auth = append(config.Auth, ssh.PublicKeys(signer))
 	}
 
-	// Validate at least one auth method
-	if len(config.Auth) == 0 {
+	// Validate at least one auth method (unless skipped)
+	if !target.SkipAuth && len(config.Auth) == 0 {
 		return nil, fmt.Errorf("no valid authentication method provided (password or private key)")
 	}
 
