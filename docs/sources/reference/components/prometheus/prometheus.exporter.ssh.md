@@ -8,7 +8,7 @@ labels:
 title: prometheus.exporter.ssh
 ---
 
-# prometheus.exporter.ssh
+# `prometheus.exporter.ssh`
 
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
