@@ -26,6 +26,7 @@ import (
 	alloy_runtime "github.com/grafana/alloy/internal/runtime"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service"
+	"github.com/grafana/alloy/internal/useragent"
 	"github.com/grafana/alloy/internal/util/jitter"
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/ast"
@@ -47,6 +48,8 @@ const baseJitter = 100 * time.Millisecond
 const disablePollingFrequency = math.MaxInt64 - baseJitter
 
 var errNotModified = errors.New("config not modified since last fetch")
+
+var userAgent = useragent.Get()
 
 // Service implements a service for remote configuration.
 // The default value of ch is nil; this means it will block forever if the
@@ -183,6 +186,7 @@ func New(opts Options) (*Service, error) {
 				httpClient,
 				args.URL,
 				connect.WithHTTPGet(),
+				connect.WithInterceptors(&agentInterceptor{userAgent}),
 			), nil
 		},
 	}, nil
@@ -563,4 +567,27 @@ func (s *Service) setPollFrequency(t time.Duration) {
 	case s.updateTickerChan <- struct{}{}:
 	default:
 	}
+}
+
+type agentInterceptor struct {
+	agent string
+}
+
+func (i *agentInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
+	return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+		req.Header().Set("User-Agent", i.agent)
+		return next(ctx, req)
+	}
+}
+
+func (i *agentInterceptor) WrapStreamingClient(next connect.StreamingClientFunc) connect.StreamingClientFunc {
+	return func(ctx context.Context, spec connect.Spec) connect.StreamingClientConn {
+		conn := next(ctx, spec)
+		conn.RequestHeader().Set("User-Agent", i.agent)
+		return conn
+	}
+}
+
+func (i *agentInterceptor) WrapStreamingHandler(next connect.StreamingHandlerFunc) connect.StreamingHandlerFunc {
+	return next
 }

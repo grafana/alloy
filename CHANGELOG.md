@@ -18,6 +18,8 @@ Main (unreleased)
 
 - Add `hash_string_id` argument to `foreach` block to hash the string representation of the pipeline id instead of using the string itself. (@wildum)
 
+- Add `User-Agent` header to remotecfg requests. (@tpaschalis)
+
 v1.9.1
 -----------------
 
