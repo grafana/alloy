@@ -18,6 +18,8 @@ Main (unreleased)
 
 - Add `hash_string_id` argument to `foreach` block to hash the string representation of the pipeline id instead of using the string itself. (@wildum)
 
+- (_Experimental_) `prometheus.write.queue` add support for exemplars. (@dehaansa)
+
 v1.9.1
 -----------------
 
