@@ -15,8 +15,10 @@ title: otelcol.exporter.otlphttp
 `otelcol.exporter.otlphttp` accepts telemetry data from other `otelcol` components and writes them over the network using the OTLP HTTP protocol.
 
 {{< admonition type="note" >}}
-`otelcol.exporter.otlphttp` is a wrapper over the upstream OpenTelemetry Collector `otlphttp` exporter.
+`otelcol.exporter.otlphttp` is a wrapper over the upstream OpenTelemetry Collector [`otlphttp`][] exporter.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`otlphttp`]: https://github.com/open-telemetry/opentelemetry-collector/tree/{{< param "OTEL_VERSION" >}}/exporter/otlphttpexporter
 {{< /admonition >}}
 
 You can specify multiple `otelcol.exporter.otlphttp` components by giving them different labels.

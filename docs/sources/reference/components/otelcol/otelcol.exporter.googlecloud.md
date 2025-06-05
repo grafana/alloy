@@ -16,8 +16,10 @@ title: otelcol.exporter.googlecloud
 `otelcol.exporter.googlecloud` accepts metrics, traces, and logs from other `otelcol` components and sends it to Google Cloud.
 
 {{< admonition type="note" >}}
-`otelcol.exporter.googlecloud` is a wrapper over the upstream OpenTelemetry Collector `googlecloud` exporter from the `otelcol-contrib`  distribution.
+`otelcol.exporter.googlecloud` is a wrapper over the upstream OpenTelemetry Collector [`googlecloud`][] exporter.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`googlecloud`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/exporter/googlecloudexporter
 {{< /admonition >}}
 
 You can specify multiple `otelcol.exporter.googlecloud` components by giving them different labels.

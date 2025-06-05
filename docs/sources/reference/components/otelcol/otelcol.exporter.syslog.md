@@ -16,8 +16,10 @@ title: otelcol.exporter.syslog
 It supports syslog protocols [RFC5424][] and [RFC3164][] and can send data over `TCP` or `UDP`.
 
 {{< admonition type="note" >}}
-`otelcol.exporter.syslog` is a wrapper over the upstream OpenTelemetry Collector `syslog` exporter.
+`otelcol.exporter.syslog` is a wrapper over the upstream OpenTelemetry Collector [`syslog`][] exporter.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`syslog`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/exporter/syslogexporter
 {{< /admonition >}}
 
 You can specify multiple `otelcol.exporter.syslog` components by giving them different labels.

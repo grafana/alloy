@@ -20,8 +20,10 @@ This component only supports client authentication.
 [Signing AWS API requests]: https://docs.aws.amazon.com/general/latest/gr/signing-aws-api-requests.html
 
 {{< admonition type="note" >}}
-`otelcol.auth.sigv4` is a wrapper over the upstream OpenTelemetry Collector `sigv4auth` extension.
+`otelcol.auth.sigv4` is a wrapper over the upstream OpenTelemetry Collector [`sigv4auth`][] extension.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`sigv4auth`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/extension/sigv4authextension
 {{< /admonition >}}
 
 You can specify multiple `otelcol.auth.sigv4` components by giving them different labels.

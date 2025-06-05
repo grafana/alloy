@@ -21,8 +21,10 @@ The batch processor should be defined in the pipeline after the `otelcol.process
 This is because batching should happen after any data drops such as sampling.
 
 {{< admonition type="note" >}}
-`otelcol.processor.batch` is a wrapper over the upstream OpenTelemetry Collector `batch` processor.
+`otelcol.processor.batch` is a wrapper over the upstream OpenTelemetry Collector [`batch`][] processor.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`batch`]: https://github.com/open-telemetry/opentelemetry-collector/tree/{{< param "OTEL_VERSION" >}}/processor/batchprocessor
 {{< /admonition >}}
 
 You can specify multiple `otelcol.processor.batch` components by giving them different labels.
