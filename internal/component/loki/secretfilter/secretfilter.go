@@ -545,7 +545,7 @@ func (c *Component) Update(args component.Arguments) error {
 
 // calculateEntropy computes the Shannon entropy of a given string.
 func calculateEntropy(str string) float64 {
-	var entropy float64 = 0.0
+	entropy := 0.0
 	// Create a map to store the frequency of each rune
 	frequences := make(map[rune]int)
 
