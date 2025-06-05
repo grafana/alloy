@@ -16,8 +16,10 @@ title: otelcol.exporter.splunkhec
 `otelcol.exporter.splunkhec` accepts metrics and traces telemetry data from other `otelcol` components and sends it to Splunk HEC.
 
 {{< admonition type="note" >}}
-`otelcol.exporter.splunkhec` is a wrapper over the upstream OpenTelemetry Collector `splunkhec` exporter from the `otelcol-contrib`  distribution.
+`otelcol.exporter.splunkhec` is a wrapper over the upstream OpenTelemetry Collector [`splunkhec`][] exporter.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`splunkhec`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/exporter/splunkhecexporter
 {{< /admonition >}}
 
 You can specify multiple `otelcol.exporter.splunkhec` components by giving them different labels.

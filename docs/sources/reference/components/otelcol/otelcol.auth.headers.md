@@ -17,8 +17,10 @@ title: otelcol.auth.headers
 This component only supports client authentication.
 
 {{< admonition type="note" >}}
-`otelcol.auth.headers` is a wrapper over the upstream OpenTelemetry Collector `headerssetter` extension.
+`otelcol.auth.headers` is a wrapper over the upstream OpenTelemetry Collector [`headerssetter`][] extension.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`headerssetter`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/extension/headerssetterextension
 {{< /admonition >}}
 
 You can specify multiple `otelcol.auth.headers` components by giving them different labels.
