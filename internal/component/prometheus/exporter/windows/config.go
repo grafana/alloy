@@ -50,6 +50,7 @@ type Arguments struct {
 	PerformanceCounter PerformanceCounterConfig `alloy:"performancecounter,block,optional"`
 	MSCluster          MSClusterConfig          `alloy:"mscluster,block,optional"`
 	NetFramework       NetFrameworkConfig       `alloy:"netframework,block,optional"`
+	DNS                DNSConfig                `alloy:"dns,block,optional"`
 }
 
 // Convert converts the component's Arguments to the integration's Config.
@@ -377,6 +378,18 @@ type NetFrameworkConfig struct {
 // Convert converts the component's NetFrameworkConfig to the integration's NetFrameworkConfig.
 func (t NetFrameworkConfig) Convert() windows_integration.NetFrameworkConfig {
 	return windows_integration.NetFrameworkConfig{
+		EnabledList: strings.Join(t.EnabledList, ","),
+	}
+}
+
+// DNSConfig handles settings for the windows_exporter DNS collector
+type DNSConfig struct {
+	EnabledList []string `alloy:"enabled_list,attr,optional"`
+}
+
+// Convert converts the component's DNSConfig to the integration's DNSConfig.
+func (t DNSConfig) Convert() windows_integration.DNSConfig {
+	return windows_integration.DNSConfig{
 		EnabledList: strings.Join(t.EnabledList, ","),
 	}
 }
