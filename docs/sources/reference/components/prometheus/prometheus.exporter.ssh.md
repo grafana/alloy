@@ -73,14 +73,14 @@ The following arguments are supported:
 
 You can attach arbitrary labels to your metrics using the `labels` argument in `custom_metrics` (for example, `labels = { address = each.value }`).
 
-| Name           | Type                  | Description                                                                  | Default | Required |
-|----------------|-----------------------|------------------------------------------------------------------------------|---------|----------|
-| `name`         | `string`              | Name of the exported metric.                                                |         | yes      |
-| `command`      | `string`              | Command to run remotely to get the metric value.                            |         | yes      |
-| `type`         | `string`              | Metric type: `gauge` or `counter`.                                          |         | yes      |
-| `help`         | `string`              | Help text for the metric.                                                   |         | no       |
-| `labels`       | `map(string, string)` | Additional labels to attach to the metric.                                  | `{}`    | no       |
-| `parse_regex`  | `string`              | Regex to extract value from command output.                                 |         | no       |
+| Name          | Type                  | Description                                              | Default | Required |
+| ------------- | --------------------- | -------------------------------------------------------- | ------- | -------- |
+| `command`     | `string`              | Command to run remotely to get the metric value.         |         | yes      |
+| `name`        | `string`              | Name of the exported metric.                             |         | yes      |
+| `type`        | `string`              | Metric type: `gauge` or `counter`.                       |         | yes      |
+| `help`        | `string`              | Help text for the metric.                                |         | no       |
+| `labels`      | `map(string, string)` | Additional labels to attach to the metric.               | `{}`    | no       |
+| `parse_regex` | `string`              | Regular expression to extract value from command output. |         | no       |
 
 ## Secure Known Hosts Setup
 
