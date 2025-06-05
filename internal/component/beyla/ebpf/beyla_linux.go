@@ -194,7 +194,7 @@ func serviceConvert[Attr any](
 func (args Services) Convert() (services.RegexDefinitionCriteria, error) {
 	var attrs services.RegexDefinitionCriteria
 	for _, s := range args {
-		ports, paths, kubernetes, podLabels, podAnnotations, err := serviceConvert[services.RegexpAttr](
+		ports, paths, kubernetes, podLabels, podAnnotations, err := serviceConvert(
 			s,
 			stringToRegexpAttr,
 			convertKubernetes,
@@ -221,7 +221,7 @@ func (args Services) Convert() (services.RegexDefinitionCriteria, error) {
 func (args Services) ConvertGlob() (services.GlobDefinitionCriteria, error) {
 	var attrs services.GlobDefinitionCriteria
 	for _, s := range args {
-		ports, paths, kubernetes, podLabels, podAnnotations, err := serviceConvert[services.GlobAttr](
+		ports, paths, kubernetes, podLabels, podAnnotations, err := serviceConvert(
 			s,
 			stringToGlobAttr,
 			convertKubernetesGlob,
@@ -264,22 +264,20 @@ func (args Services) Validate() error {
 	return nil
 }
 
-// genericConvertKubernetesService is a reusable function that converts fields of a KubernetesService-like struct
-// using a supplied getter function for each field. The getter should return the value to convert and the attribute key.
-func genericConvertKubernetesService[T any, Attr any](
+func convertKubernetesAttributes[T any, Attr any](
 	args T,
 	getters []func(T) (string, string),
 	convertFunc func(string) (Attr, error),
 ) (map[string]*Attr, error) {
 	metadata := map[string]*Attr{}
 	for _, getter := range getters {
-		val, key := getter(args)
-		if val != "" {
-			attr, err := convertFunc(val)
+		alloyAttr, beylaAttr := getter(args)
+		if alloyAttr != "" {
+			attr, err := convertFunc(alloyAttr)
 			if err != nil {
 				return nil, err
 			}
-			metadata[key] = &attr
+			metadata[beylaAttr] = &attr
 		}
 	}
 	return metadata, nil
@@ -297,12 +295,12 @@ var kubernetesGetters = []func(KubernetesService) (string, string){
 
 // Convert to RegexpAttr
 func convertKubernetes(args KubernetesService) (map[string]*services.RegexpAttr, error) {
-	return genericConvertKubernetesService(args, kubernetesGetters, stringToRegexpAttr)
+	return convertKubernetesAttributes(args, kubernetesGetters, stringToRegexpAttr)
 }
 
 // Convert to GlobAttr
 func convertKubernetesGlob(args KubernetesService) (map[string]*services.GlobAttr, error) {
-	return genericConvertKubernetesService(args, kubernetesGetters, stringToGlobAttr)
+	return convertKubernetesAttributes(args, kubernetesGetters, stringToGlobAttr)
 }
 
 func (args Metrics) Convert() prom.PrometheusConfig {
