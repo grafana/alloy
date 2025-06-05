@@ -18,6 +18,10 @@ Main (unreleased)
 
 - Add `hash_string_id` argument to `foreach` block to hash the string representation of the pipeline id instead of using the string itself. (@wildum)
 
+### Bugfixes
+
+- Fix the `validate` command not understanding the `livedebugging` block. (@dehaansa)
+
 v1.9.1
 -----------------
 
