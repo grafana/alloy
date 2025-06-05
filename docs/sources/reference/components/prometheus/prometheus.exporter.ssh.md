@@ -65,7 +65,7 @@ The following arguments are supported:
 
 Either `password` or `key_file` must be set. If both are provided, `key_file` is used.
 
-### `custom_metrics` block
+### `custom_metrics`
 
 Defines metrics to collect from a server.
 
