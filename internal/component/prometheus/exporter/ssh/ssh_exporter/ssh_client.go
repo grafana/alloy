@@ -6,12 +6,11 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
-
-	"os/user"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"

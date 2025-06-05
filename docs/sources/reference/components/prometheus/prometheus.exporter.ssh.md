@@ -18,32 +18,20 @@ The `prometheus.exporter.ssh` component embeds an SSH exporter for collecting me
 
 ```alloy
 prometheus.exporter.ssh "example" {
-  verbose_logging  = true        // optional: enable debug-level logs
-  command_timeout  = "30s"       // optional: timeout for SSH commands
-
   targets {
-    address         = "192.168.1.10"  // required: host or IP
-    username        = "admin"         // required: SSH username
-    password        = "password"      // required if key_file is unset
-    // key_file     = "path/to/key.pem" // alternative to password-based auth
-
+    address         = "192.168.1.10"
+    username        = "admin"
+    key_file     = "path/to/key.pem"
     custom_metrics {
-      name    = "load_average"        // required: metric name
-      command = "cat /proc/loadavg | awk '{print $1}'"  // required: command
-      type    = "gauge"               // required: gauge or counter
-      help    = "Load average over 1 minute" // optional help text
+      name    = "load_average"
+      command = "cat /proc/loadavg | awk '{print $1}'"
+      type    = "gauge"
+      help    = "Load average over 1 minute"
+      labels  = { host = "192.168.1.10" }  // attach host as a label
     }
   }
 }
-```
 
-## Arguments
-
-You can use the following argument with `prometheus.exporter.ssh`:
-
-| Name              | Type   | Description                                    | Default | Required |
-|-------------------|--------|------------------------------------------------|---------|----------|
-| `verbose_logging` | `bool` | Enable verbose logging for debugging purposes. | `false` | no       |
 
 ## Blocks
 
@@ -81,6 +69,8 @@ Either `password` or `key_file` must be set. If both are provided, `key_file` is
 
 Defines metrics to collect from a server.
 
+You can attach arbitrary labels to your metrics using the `labels` argument in `custom_metrics` (for example, `labels = { address = each.value }`).
+
 | Name           | Type                  | Description                                                                  | Default | Required |
 |----------------|-----------------------|------------------------------------------------------------------------------|---------|----------|
 | `name`         | `string`              | Name of the exported metric.                                                |         | yes      |
@@ -89,33 +79,6 @@ Defines metrics to collect from a server.
 | `help`         | `string`              | Help text for the metric.                                                   |         | no       |
 | `labels`       | `map(string, string)` | Additional labels to attach to the metric.                                  | `{}`    | no       |
 | `parse_regex`  | `string`              | Regex to extract value from command output.                                 |         | no       |
-
-## Example: Curated Targets via Discovery
-
-```alloy
-locals {
-  ssh_keys = {
-    for path in filesystem.glob("${path.module}/keys/*.pem") : basename(path, ".pem") => path
-  }
-}
-
-prometheus.exporter.ssh "curated" {
-  # Iterate only over discovered hosts with a matching key
-  for_each = data.discovery.hosts.byLabel("app=backend")
-
-  targets {
-    address    = each.value             // host or IP from discovery
-    username   = "monitor"             // required: SSH user
-    key_file   = ssh_keys[each.value]    // only hosts with key files
-
-    custom_metrics {
-      name    = "uptime"               // required: metric name
-      command = "cat /proc/uptime | awk '{print $1}'"  // required: command
-      type    = "gauge"                // required: gauge or counter
-    }
-  }
-}
-```
 
 ## Secure Known Hosts Setup
 
@@ -155,12 +118,14 @@ In those cases, exported fields retain their last healthy values.
 
 `prometheus.exporter.ssh` doesn't expose any component-specific debug metrics.
 
-## Example: Prometheus Scrape
+## Examples
 
 ```alloy
+// Discover SSH key files matching hosts
+local.file_match "ssh_keys" {
+  path_targets = [{ "__path__" = "/path/to/keys/*.pem" }]
+}
 prometheus.exporter.ssh "example" {
-  verbose_logging = true
-
   targets {
     address         = "192.168.1.10"
     port            = 22
@@ -173,6 +138,7 @@ prometheus.exporter.ssh "example" {
       command = "cat /proc/loadavg | awk '{print $1}'"
       type    = "gauge"
       help    = "Load average over 1 minute"
+      labels  = { host = "192.168.1.10" }  // attach host as a label
     }
   }
 
@@ -189,6 +155,7 @@ prometheus.exporter.ssh "example" {
       type        = "gauge"
       help        = "Disk usage percentage"
       parse_regex = "(\d+)%"
+      labels      = { host = "192.168.1.11" }  // attach host as a label
     }
   }
 }

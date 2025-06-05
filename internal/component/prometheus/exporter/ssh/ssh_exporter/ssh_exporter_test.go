@@ -19,6 +19,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
+	dto "github.com/prometheus/client_model/go"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/ssh"
 )
@@ -125,7 +126,6 @@ func generateTempKeyPair() (string, string, error) {
 // Test for unmarshalling multiple targets from YAML
 func TestConfig_UnmarshalYAML_MultipleTargets(t *testing.T) {
 	yamlConfig := `
-verbose_logging: true
 targets:
   - address: "192.168.1.10"
     port: 22
@@ -154,7 +154,6 @@ targets:
 	require.NoError(t, yaml.UnmarshalStrict([]byte(yamlConfig), &c))
 
 	expectedConfig := Config{
-		VerboseLogging: true,
 		Targets: []Target{
 			{
 				Address:        "192.168.1.10",
@@ -332,7 +331,6 @@ func TestNewSSHClient_AuthMethods(t *testing.T) {
 // Additional tests preserved for new integrations
 func TestConfig_NewIntegration(t *testing.T) {
 	c := &Config{
-		VerboseLogging: true,
 		Targets: []Target{
 			{
 				Address:        "192.168.1.10",
@@ -359,4 +357,56 @@ func TestConfig_NewIntegration(t *testing.T) {
 
 	lvl := level.NewFilter(logger, level.AllowAll())
 	level.Debug(lvl).Log("msg", "test debug log")
+}
+
+// TestSSHCollector_Collect_WithLabels verifies that labels defined in custom_metrics
+// are applied to the emitted Prometheus metrics.
+func TestSSHCollector_Collect_WithLabels(t *testing.T) {
+	// Setup a target with labels
+	target := Target{
+		Address:  "host1",
+		Port:     22,
+		Username: "user",
+		Password: "pass",
+		CustomMetrics: []CustomMetric{{
+			Name:    "test_metric",
+			Command: "echo 5",
+			Type:    "gauge",
+			Help:    "Test metric",
+			Labels:  map[string]string{"host": "host1", "env": "prod"},
+		}},
+	}
+	// Mock client returns '5'
+	mockClient := &MockSSHClient{
+		logger: log.NewNopLogger(),
+		executeCommand: func(command string) (string, error) {
+			if command == "echo 5" {
+				return "5", nil
+			}
+			return "", fmt.Errorf("unexpected command: %s", command)
+		},
+	}
+	// Descriptor must list labels in same order as keys slice
+	// Use sorted label keys to match collector's sorted ordering
+	desc := prometheus.NewDesc("test_metric", "Test metric",
+		[]string{"env", "host"}, nil)
+	collector := &SSHCollector{
+		logger:  log.NewNopLogger(),
+		target:  target,
+		client:  mockClient,
+		metrics: map[string]*prometheus.Desc{"test_metric": desc},
+	}
+	ch := make(chan prometheus.Metric, 1)
+	collector.Collect(ch)
+	close(ch)
+	metric, ok := <-ch
+	require.True(t, ok)
+	var dtoMetric dto.Metric
+	require.NoError(t, metric.Write(&dtoMetric))
+	// Map labels to verify
+	got := map[string]string{}
+	for _, lp := range dtoMetric.Label {
+		got[lp.GetName()] = lp.GetValue()
+	}
+	require.Equal(t, map[string]string{"host": "host1", "env": "prod"}, got)
 }

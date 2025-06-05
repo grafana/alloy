@@ -9,13 +9,13 @@ import (
 )
 
 var DefaultConfig = Config{
-	VerboseLogging: false,
-	Targets:        []Target{},
+	Targets: []Target{},
 }
 
+// Config defines the configuration for the SSH exporter
 type Config struct {
-	VerboseLogging bool     `yaml:"verbose_logging,omitempty"`
-	Targets        []Target `yaml:"targets,omitempty"`
+	// Targets is the list of SSH targets to collect metrics from
+	Targets []Target `yaml:"targets,omitempty"`
 }
 
 type Target struct {

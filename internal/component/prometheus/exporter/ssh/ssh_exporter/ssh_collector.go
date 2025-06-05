@@ -3,6 +3,7 @@ package ssh_exporter
 import (
 	"fmt"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -38,11 +39,13 @@ func NewSSHCollector(logger log.Logger, target Target) (*SSHCollector, error) {
 
 	// Initialize metric descriptors for custom metrics
 	for _, cm := range target.CustomMetrics {
-		var labels []string
-		for label := range cm.Labels {
-			labels = append(labels, label)
+		// Sort label keys for deterministic descriptor and value ordering
+		keys := make([]string, 0, len(cm.Labels))
+		for k := range cm.Labels {
+			keys = append(keys, k)
 		}
-		desc := prometheus.NewDesc(cm.Name, cm.Help, labels, nil)
+		sort.Strings(keys)
+		desc := prometheus.NewDesc(cm.Name, cm.Help, keys, nil)
 		collector.metrics[cm.Name] = desc
 	}
 
@@ -65,9 +68,15 @@ func (c *SSHCollector) Collect(ch chan<- prometheus.Metric) {
 
 		level.Debug(c.logger).Log("msg", "executed custom command", "command", cm.Command, "value", value)
 
-		var labelValues []string
-		for _, v := range cm.Labels {
-			labelValues = append(labelValues, v)
+		// Collect label values in sorted key order
+		labelKeys := make([]string, 0, len(cm.Labels))
+		for k := range cm.Labels {
+			labelKeys = append(labelKeys, k)
+		}
+		sort.Strings(labelKeys)
+		labelValues := make([]string, 0, len(labelKeys))
+		for _, k := range labelKeys {
+			labelValues = append(labelValues, cm.Labels[k])
 		}
 
 		desc := c.metrics[cm.Name]

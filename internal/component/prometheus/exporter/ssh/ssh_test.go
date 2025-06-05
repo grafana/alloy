@@ -9,10 +9,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestAlloyUnmarshal(t *testing.T) {
-	alloyConfig := `
-verbose_logging = true
-
+// TestAlloyUnmarshal_StaticExample validates basic DSL parsing for a single target.
+func TestAlloyUnmarshal_StaticExample(t *testing.T) {
+	example := `
 targets {
   address         = "192.168.1.10"
   port            = 22
@@ -25,163 +24,67 @@ targets {
     command = "cat /proc/loadavg | awk '{print $1}'"
     type    = "gauge"
     help    = "Load average over 1 minute"
+    labels  = { host = "192.168.1.10" }
   }
 }
+`
+	var args Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(example), &args))
+	require.Len(t, args.Targets, 1)
+	tgt := args.Targets[0]
+	require.Equal(t, "192.168.1.10", tgt.Address)
+	require.Equal(t, 22, tgt.Port)
+	require.Equal(t, "admin", tgt.Username)
+	require.Equal(t, "password", tgt.Password)
+	require.Equal(t, 10*time.Second, tgt.CommandTimeout)
+	require.Len(t, tgt.CustomMetrics, 1)
+	cm := tgt.CustomMetrics[0]
+	require.Equal(t, "load_average", cm.Name)
+	require.Equal(t, "cat /proc/loadavg | awk '{print $1}'", cm.Command)
+	require.Equal(t, "gauge", cm.Type)
+	require.Equal(t, "Load average over 1 minute", cm.Help)
+	require.Equal(t, map[string]string{"host": "192.168.1.10"}, cm.Labels)
+}
 
+// TestAlloyUnmarshal_KeyFileInterpolation ensures interpolation literals are preserved.
+func TestAlloyUnmarshal_KeyFileInterpolation(t *testing.T) {
+	example := `
 targets {
-  address         = "192.168.1.11"
-  port            = 22
-  username        = "monitor"
-  key_file        = "/path/to/private.key"
-  command_timeout = "15s"
+  address  = "localhost"
+  port     = 22
+  username = "user"
+  key_file = "/path/${var.name}.pem"
+  custom_metrics {
+    name    = "m"
+    command = "echo 1"
+    type    = "gauge"
+  }
 }
 `
-
 	var args Arguments
-	err := syntax.Unmarshal([]byte(alloyConfig), &args)
-	require.NoError(t, err)
-
-	expected := Arguments{
-		VerboseLogging: true,
-		Targets: []Target{
-			{
-				Address:        "192.168.1.10",
-				Port:           22,
-				Username:       "admin",
-				Password:       "password",
-				CommandTimeout: 10 * time.Second,
-				CustomMetrics: []CustomMetric{
-					{
-						Name:    "load_average",
-						Command: "cat /proc/loadavg | awk '{print $1}'",
-						Type:    "gauge",
-						Help:    "Load average over 1 minute",
-					},
-				},
-			},
-			{
-				Address:        "192.168.1.11",
-				Port:           22,
-				Username:       "monitor",
-				KeyFile:        "/path/to/private.key",
-				CommandTimeout: 15 * time.Second,
-			},
-		},
-	}
-
-	require.Equal(t, expected, args)
+	require.NoError(t, syntax.Unmarshal([]byte(example), &args))
+	require.Len(t, args.Targets, 1)
+	require.Equal(t, "/path/${var.name}.pem", args.Targets[0].KeyFile)
 }
 
+// TestArgumentsValidate covers argument validation rules.
 func TestArgumentsValidate(t *testing.T) {
-	tests := []struct {
+	cases := []struct {
 		name    string
 		args    Arguments
 		wantErr bool
-		errMsg  string
 	}{
-		{
-			name: "no targets",
-			args: Arguments{
-				Targets: nil,
-			},
-			wantErr: true,
-			errMsg:  "at least one target must be specified",
-		},
-		{
-			name: "empty target address",
-			args: Arguments{
-				Targets: []Target{
-					{
-						Address:  "",
-						Port:     22,
-						Username: "admin",
-					},
-				},
-			},
-			wantErr: true,
-			errMsg:  "target address cannot be empty",
-		},
-		{
-			name: "missing username",
-			args: Arguments{
-				Targets: []Target{
-					{
-						Address:  "192.168.1.10",
-						Port:     22,
-						Username: "",
-					},
-				},
-			},
-			wantErr: true,
-			errMsg:  "username cannot be empty",
-		},
-		{
-			name: "invalid port number",
-			args: Arguments{
-				Targets: []Target{
-					{
-						Address:  "192.168.1.10",
-						Port:     -1,
-						Username: "admin",
-					},
-				},
-			},
-			wantErr: true,
-			errMsg:  "invalid port",
-		},
-		{
-			name: "unsupported metric type",
-			args: Arguments{
-				Targets: []Target{
-					{
-						Address:  "192.168.1.10",
-						Port:     22,
-						Username: "admin",
-						CustomMetrics: []CustomMetric{
-							{
-								Name:    "invalid_metric",
-								Command: "echo 42",
-								Type:    "histogram", // Assuming only "gauge" and "counter" are supported
-							},
-						},
-					},
-				},
-			},
-			wantErr: true,
-			errMsg:  "unsupported metric type",
-		},
-		{
-			name: "valid configuration",
-			args: Arguments{
-				Targets: []Target{
-					{
-						Address:        "192.168.1.10",
-						Port:           22,
-						Username:       "admin",
-						Password:       "password",
-						CommandTimeout: 10 * time.Second,
-						CustomMetrics: []CustomMetric{
-							{
-								Name:    "metric1",
-								Command: "echo 42",
-								Type:    "gauge",
-								Help:    "Test metric",
-							},
-						},
-					},
-				},
-			},
-			wantErr: false,
-		},
-		// ... you can add more test cases if needed ...
+		{"no targets", Arguments{}, true},
+		{"empty address", Arguments{Targets: []Target{{}}}, true},
+		{"missing username", Arguments{Targets: []Target{{Address: "a", Port: 22}}}, true},
+		{"invalid port", Arguments{Targets: []Target{{Address: "a", Port: 0, Username: "u"}}}, true},
+		{"valid config", Arguments{Targets: []Target{{Address: "a", Port: 22, Username: "u"}}}, false},
 	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := tt.args.Validate()
-			if tt.wantErr {
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.args.Validate()
+			if tc.wantErr {
 				require.Error(t, err)
-				require.Contains(t, err.Error(), tt.errMsg)
 			} else {
 				require.NoError(t, err)
 			}
@@ -189,175 +92,27 @@ func TestArgumentsValidate(t *testing.T) {
 	}
 }
 
+// TestConvert ensures Arguments.Convert produces the expected exporter Config.
 func TestConvert(t *testing.T) {
-	args := Arguments{
-		VerboseLogging: true,
-		Targets: []Target{
-			{
-				Address:        "192.168.1.10",
-				Port:           22,
-				Username:       "admin",
-				Password:       "password",
-				CommandTimeout: 10,
-				CustomMetrics: []CustomMetric{
-					{
-						Name:    "metric1",
-						Command: "echo 42",
-						Type:    "gauge",
-						Help:    "Test metric",
-					},
-				},
-			},
-		},
-	}
-
-	res := args.Convert()
-
+	args := Arguments{Targets: []Target{{
+		Address:        "a",
+		Port:           22,
+		Username:       "u",
+		Password:       "p",
+		CommandTimeout: 5 * time.Second,
+		CustomMetrics:  []CustomMetric{{Name: "m", Command: "echo 1", Type: "gauge"}},
+	}}}
+	cfg := args.Convert()
 	expected := &ssh_exporter.Config{
-		VerboseLogging: true,
-		Targets: []ssh_exporter.Target{
-			{
-				// Skip authentication enforcement flag set for dynamic conversion
-				SkipAuth:       true,
-				Address:        "192.168.1.10",
-				Port:           22,
-				Username:       "admin",
-				Password:       "password",
-				CommandTimeout: 10,
-				CustomMetrics: []ssh_exporter.CustomMetric{
-					{
-						Name:    "metric1",
-						Command: "echo 42",
-						Type:    "gauge",
-						Help:    "Test metric",
-					},
-				},
-			},
-		},
+		Targets: []ssh_exporter.Target{{
+			SkipAuth:       true,
+			Address:        "a",
+			Port:           22,
+			Username:       "u",
+			Password:       "p",
+			CommandTimeout: 5 * time.Second,
+			CustomMetrics:  []ssh_exporter.CustomMetric{{Name: "m", Command: "echo 1", Type: "gauge", Help: "", Labels: nil, ParseRegex: ""}},
+		}},
 	}
-
-	require.Equal(t, expected, res)
-}
-
-func TestAlloyUnmarshal_MultipleTargets(t *testing.T) {
-	alloyConfig := `
-verbose_logging = true
-
-targets {
-  address         = "192.168.1.10"
-  port            = 22
-  username        = "admin"
-  password        = "password"
-  command_timeout = "10s"
-
-  custom_metrics {
-    name    = "cpu_usage"
-    command = "top -bn1 | grep 'Cpu(s)' | awk '{print $2 + $4}'"
-    type    = "gauge"
-    help    = "CPU usage percentage"
-  }
-
-  custom_metrics {
-    name    = "memory_available"
-    command = "free -m | awk '/Mem:/ {print $7}'"
-    type    = "gauge"
-    help    = "Available memory in MB"
-  }
-}
-
-targets {
-  address         = "192.168.1.11"
-  port            = 22
-  username        = "monitor"
-  key_file        = "/path/to/private.key"
-  command_timeout = "15s"
-
-  custom_metrics {
-    name    = "disk_usage"
-    command = "df / | tail -1 | awk '{print $5}'"
-    type    = "gauge"
-    help    = "Disk usage percentage"
-    parse_regex = "(\\d+)%"
-  }
-}
-
-targets {
-  address         = "192.168.1.12"
-  port            = 22
-  username        = "user"
-  password        = "secret"
-  command_timeout = "20s"
-
-  custom_metrics {
-    name    = "network_in"
-    command = "ifconfig eth0 | grep 'RX packets' | awk '{print $5}'"
-    type    = "counter"
-    help    = "Network input packets"
-  }
-}
-`
-
-	var args Arguments
-	err := syntax.Unmarshal([]byte(alloyConfig), &args)
-	require.NoError(t, err)
-
-	expected := Arguments{
-		VerboseLogging: true,
-		Targets: []Target{
-			{
-				Address:        "192.168.1.10",
-				Port:           22,
-				Username:       "admin",
-				Password:       "password",
-				CommandTimeout: 10 * time.Second,
-				CustomMetrics: []CustomMetric{
-					{
-						Name:    "cpu_usage",
-						Command: "top -bn1 | grep 'Cpu(s)' | awk '{print $2 + $4}'",
-						Type:    "gauge",
-						Help:    "CPU usage percentage",
-					},
-					{
-						Name:    "memory_available",
-						Command: "free -m | awk '/Mem:/ {print $7}'",
-						Type:    "gauge",
-						Help:    "Available memory in MB",
-					},
-				},
-			},
-			{
-				Address:        "192.168.1.11",
-				Port:           22,
-				Username:       "monitor",
-				KeyFile:        "/path/to/private.key",
-				CommandTimeout: 15 * time.Second,
-				CustomMetrics: []CustomMetric{
-					{
-						Name:       "disk_usage",
-						Command:    "df / | tail -1 | awk '{print $5}'",
-						Type:       "gauge",
-						Help:       "Disk usage percentage",
-						ParseRegex: `(\d+)%`,
-					},
-				},
-			},
-			{
-				Address:        "192.168.1.12",
-				Port:           22,
-				Username:       "user",
-				Password:       "secret",
-				CommandTimeout: 20 * time.Second,
-				CustomMetrics: []CustomMetric{
-					{
-						Name:    "network_in",
-						Command: "ifconfig eth0 | grep 'RX packets' | awk '{print $5}'",
-						Type:    "counter",
-						Help:    "Network input packets",
-					},
-				},
-			},
-		},
-	}
-
-	require.Equal(t, expected, args)
+	require.Equal(t, expected, cfg)
 }

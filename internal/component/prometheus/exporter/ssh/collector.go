@@ -30,8 +30,7 @@ func createExporter(opts component.Options, args component.Arguments, defaultIns
 }
 
 type Arguments struct {
-	VerboseLogging bool     `alloy:"verbose_logging,attr,optional"`
-	Targets        []Target `alloy:"targets,block"`
+	Targets []Target `alloy:"targets,block"`
 }
 
 func (a *Arguments) Validate() error {
@@ -52,8 +51,7 @@ func (a *Arguments) Convert() *ssh_exporter.Config {
 		targets[i] = t.Convert()
 	}
 	return &ssh_exporter.Config{
-		VerboseLogging: a.VerboseLogging,
-		Targets:        targets,
+		Targets: targets,
 	}
 }
 

@@ -14,6 +14,8 @@ Main (unreleased)
 
 - (_Experimental_) Add an `array.group_by` stdlib function to group items in an array by a key. (@wildum)
 
+- (_Experimental_) Added `prometheus.exporter.ssh` custom metrics via ssh for remote hosts. (@EHSchmitt4395)
+
 ### Enhancements
 
 - Add `hash_string_id` argument to `foreach` block to hash the string representation of the pipeline id instead of using the string itself. (@wildum)
@@ -551,8 +553,6 @@ v1.6.0
 - Add `otelcol.receiver.influxdb` to convert influx metric into OTEL. (@EHSchmitt4395)
 
 - Add a new `/-/healthy` endpoint which returns HTTP 500 if one or more components are unhealthy. (@ptodev)
-
-- Added `prometheus.exporter.ssh` custom metrics via ssh for remote hosts. (@EHSchmitt4395)
 
 ### Enhancements
 
