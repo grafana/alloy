@@ -69,6 +69,8 @@ Either `password` or `key_file` must be set. If both are provided, `key_file` is
 
 Defines metrics to collect from a server.
 
+The following arguments are supported:
+
 You can attach arbitrary labels to your metrics using the `labels` argument in `custom_metrics` (for example, `labels = { address = each.value }`).
 
 | Name           | Type                  | Description                                                                  | Default | Required |
