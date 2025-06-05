@@ -26,6 +26,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/model"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/discovery"
@@ -49,13 +50,13 @@ func init() {
 }
 
 type Component struct {
-	opts      component.Options
-	mut       sync.Mutex
-	args      Arguments
-	reload    chan struct{}
-	reg       *prometheus.Registry
-	healthMut sync.RWMutex
-	health    component.Health
+	opts       component.Options
+	mut        sync.Mutex
+	args       Arguments
+	argsUpdate chan Arguments
+	reg        *prometheus.Registry
+	healthMut  sync.RWMutex
+	health     component.Health
 }
 
 var _ component.HealthComponent = (*Component)(nil)
@@ -135,23 +136,11 @@ func (args Discovery) Convert() (services.DiscoveryConfig, error) {
 	}
 
 	// Survey
-	survey, err := args.Survey.Convert()
+	survey, err := args.Survey.ConvertGlob()
 	if err != nil {
 		return d, err
 	}
 	d.Survey = survey
-	// excludeSurvey, err := args.ExcludeSurvey.Convert()
-	// if err != nil {
-	// 	return d, err
-	// }
-	// d.ExcludeSurvey = excludeSurvey
-	// if args.DefaultExcludeSurvey != nil {
-	// 	defaultExcludeSurvey, err := args.DefaultExcludeSurvey.Convert()
-	// 	if err != nil {
-	// 		return d, err
-	// 	}
-	// 	d.DefaultExcludeSurvey = defaultExcludeSurvey
-	// }
 
 	// Common fields
 	d.SkipGoSpecificTracers = args.SkipGoSpecificTracers
@@ -161,40 +150,88 @@ func (args Discovery) Convert() (services.DiscoveryConfig, error) {
 	return d, nil
 }
 
-func (args Services) Convert() (services.DefinitionCriteria, error) {
-	var attrs services.DefinitionCriteria
+func serviceConvert[Attr any](
+	s Service,
+	convertFunc func(string) (Attr, error),
+	convertKubernetesFunc func(KubernetesService) (map[string]*Attr, error)) (services.PortEnum, Attr, map[string]*Attr, map[string]*Attr, map[string]*Attr, error) {
+	var paths Attr
+	var kubernetes map[string]*Attr
+	var podLabels map[string]*Attr
+	var podAnnotations map[string]*Attr
+
+	ports, err := stringToPortEnum(s.OpenPorts)
+	if err != nil {
+		return ports, paths, kubernetes, podLabels, podAnnotations, err
+	}
+	paths, err = convertFunc(s.Path)
+	if err != nil {
+		return ports, paths, kubernetes, podLabels, podAnnotations, err
+	}
+	kubernetes, err = convertKubernetesFunc(s.Kubernetes)
+	if err != nil {
+		return ports, paths, kubernetes, podLabels, podAnnotations, err
+	}
+	podLabels = map[string]*Attr{}
+	for k, v := range s.Kubernetes.PodLabels {
+		label, err := convertFunc(v)
+		if err != nil {
+			return ports, paths, kubernetes, podLabels, podAnnotations, err
+		}
+		podLabels[k] = &label
+	}
+	// Convert pod annotations to attributes
+	podAnnotations = map[string]*Attr{}
+	for k, v := range s.Kubernetes.PodAnnotations {
+		annotation, err := convertFunc(v)
+		if err != nil {
+			return ports, paths, kubernetes, podLabels, podAnnotations, err
+		}
+		podAnnotations[k] = &annotation
+	}
+	return ports, paths, kubernetes, podLabels, podAnnotations, nil
+}
+
+func (args Services) Convert() (services.RegexDefinitionCriteria, error) {
+	var attrs services.RegexDefinitionCriteria
 	for _, s := range args {
-		ports, err := stringToPortEnum(s.OpenPorts)
+		ports, paths, kubernetes, podLabels, podAnnotations, err := serviceConvert[services.RegexpAttr](
+			s,
+			stringToRegexpAttr,
+			convertKubernetes,
+		)
+
 		if err != nil {
 			return nil, err
-		}
-		paths, err := stringToRegexpAttr(s.Path)
-		if err != nil {
-			return nil, err
-		}
-		kubernetes, err := s.Kubernetes.Convert()
-		if err != nil {
-			return nil, err
-		}
-		podLabels := map[string]*services.RegexpAttr{}
-		for k, v := range s.Kubernetes.PodLabels {
-			label, err := stringToRegexpAttr(v)
-			if err != nil {
-				return nil, err
-			}
-			podLabels[k] = &label
-		}
-		// Convert pod annotations to attributes
-		podAnnotations := map[string]*services.RegexpAttr{}
-		for k, v := range s.Kubernetes.PodAnnotations {
-			annotation, err := stringToRegexpAttr(v)
-			if err != nil {
-				return nil, err
-			}
-			podAnnotations[k] = &annotation
 		}
 
-		attrs = append(attrs, services.Attributes{
+		attrs = append(attrs, services.RegexSelector{
+			Name:           s.Name,
+			Namespace:      s.Namespace,
+			OpenPorts:      ports,
+			Path:           paths,
+			Metadata:       kubernetes,
+			PodLabels:      podLabels,
+			ContainersOnly: s.ContainersOnly,
+			PodAnnotations: podAnnotations,
+		})
+	}
+	return attrs, nil
+}
+
+func (args Services) ConvertGlob() (services.GlobDefinitionCriteria, error) {
+	var attrs services.GlobDefinitionCriteria
+	for _, s := range args {
+		ports, paths, kubernetes, podLabels, podAnnotations, err := serviceConvert[services.GlobAttr](
+			s,
+			stringToGlobAttr,
+			convertKubernetesGlob,
+		)
+
+		if err != nil {
+			return nil, err
+		}
+
+		attrs = append(attrs, services.GlobAttributes{
 			Name:           s.Name,
 			Namespace:      s.Namespace,
 			OpenPorts:      ports,
@@ -227,58 +264,45 @@ func (args Services) Validate() error {
 	return nil
 }
 
-func (args KubernetesService) Convert() (map[string]*services.RegexpAttr, error) {
-	metadata := map[string]*services.RegexpAttr{}
-	if args.Namespace != "" {
-		namespace, err := stringToRegexpAttr(args.Namespace)
-		metadata[services.AttrNamespace] = &namespace
-		if err != nil {
-			return nil, err
-		}
-	}
-	if args.PodName != "" {
-		podName, err := stringToRegexpAttr(args.PodName)
-		metadata[services.AttrPodName] = &podName
-		if err != nil {
-			return nil, err
-		}
-	}
-	if args.DeploymentName != "" {
-		deploymentName, err := stringToRegexpAttr(args.DeploymentName)
-		metadata[services.AttrDeploymentName] = &deploymentName
-		if err != nil {
-			return nil, err
-		}
-	}
-	if args.ReplicaSetName != "" {
-		replicaSetName, err := stringToRegexpAttr(args.ReplicaSetName)
-		metadata[services.AttrReplicaSetName] = &replicaSetName
-		if err != nil {
-			return nil, err
-		}
-	}
-	if args.StatefulSetName != "" {
-		statefulSetName, err := stringToRegexpAttr(args.StatefulSetName)
-		metadata[services.AttrStatefulSetName] = &statefulSetName
-		if err != nil {
-			return nil, err
-		}
-	}
-	if args.DaemonSetName != "" {
-		daemonSetName, err := stringToRegexpAttr(args.DaemonSetName)
-		metadata[services.AttrDaemonSetName] = &daemonSetName
-		if err != nil {
-			return nil, err
-		}
-	}
-	if args.OwnerName != "" {
-		ownerName, err := stringToRegexpAttr(args.OwnerName)
-		metadata[services.AttrOwnerName] = &ownerName
-		if err != nil {
-			return nil, err
+// genericConvertKubernetesService is a reusable function that converts fields of a KubernetesService-like struct
+// using a supplied getter function for each field. The getter should return the value to convert and the attribute key.
+func genericConvertKubernetesService[T any, Attr any](
+	args T,
+	getters []func(T) (string, string),
+	convertFunc func(string) (Attr, error),
+) (map[string]*Attr, error) {
+	metadata := map[string]*Attr{}
+	for _, getter := range getters {
+		val, key := getter(args)
+		if val != "" {
+			attr, err := convertFunc(val)
+			if err != nil {
+				return nil, err
+			}
+			metadata[key] = &attr
 		}
 	}
 	return metadata, nil
+}
+
+var kubernetesGetters = []func(KubernetesService) (string, string){
+	func(a KubernetesService) (string, string) { return a.Namespace, services.AttrNamespace },
+	func(a KubernetesService) (string, string) { return a.PodName, services.AttrPodName },
+	func(a KubernetesService) (string, string) { return a.DeploymentName, services.AttrDeploymentName },
+	func(a KubernetesService) (string, string) { return a.ReplicaSetName, services.AttrReplicaSetName },
+	func(a KubernetesService) (string, string) { return a.StatefulSetName, services.AttrStatefulSetName },
+	func(a KubernetesService) (string, string) { return a.DaemonSetName, services.AttrDaemonSetName },
+	func(a KubernetesService) (string, string) { return a.OwnerName, services.AttrOwnerName },
+}
+
+// Convert to RegexpAttr
+func convertKubernetes(args KubernetesService) (map[string]*services.RegexpAttr, error) {
+	return genericConvertKubernetesService(args, kubernetesGetters, stringToRegexpAttr)
+}
+
+// Convert to GlobAttr
+func convertKubernetesGlob(args KubernetesService) (map[string]*services.GlobAttr, error) {
+	return genericConvertKubernetesService(args, kubernetesGetters, stringToGlobAttr)
 }
 
 func (args Metrics) Convert() prom.PrometheusConfig {
@@ -416,12 +440,10 @@ func (args Filters) Convert() filter.AttributesConfig {
 }
 
 func New(opts component.Options, args Arguments) (*Component, error) {
-	reg := prometheus.NewRegistry()
 	c := &Component{
-		opts:   opts,
-		args:   args,
-		reload: make(chan struct{}, 1),
-		reg:    reg,
+		opts:       opts,
+		args:       args,
+		argsUpdate: make(chan Arguments, 1),
 	}
 
 	if err := c.Update(args); err != nil {
@@ -441,15 +463,27 @@ func (c *Component) Run(ctx context.Context) error {
 	}
 
 	var cancel context.CancelFunc
+	var cancelG *errgroup.Group
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
-		case <-c.reload:
-			// cancel any previously running Beyla instance
+		case newArgs := <-c.argsUpdate:
+			newArgs = getLatestArgsFromChannel(c.argsUpdate, newArgs)
+			c.args = newArgs
 			if cancel != nil {
+				// cancel any previously running Beyla instance
 				cancel()
+				level.Info(c.opts.Logger).Log("msg", "waiting for Beyla to terminate")
+				if err := cancelG.Wait(); err != nil {
+					level.Error(c.opts.Logger).Log("msg", "failed to terminate Beyla", "err", err)
+					c.reportUnhealthy(err)
+					return err
+				}
 			}
+
+			level.Info(c.opts.Logger).Log("msg", "starting Beyla component")
+
 			newCtx, cancelFunc := context.WithCancel(ctx)
 			cancel = cancelFunc
 
@@ -461,15 +495,33 @@ func (c *Component) Run(ctx context.Context) error {
 				c.mut.Unlock()
 				continue
 			}
+			c.reg = prometheus.NewRegistry()
 			c.reportHealthy()
 			cfg.Prometheus.Registry = c.reg
 			c.mut.Unlock()
-			err = components.RunBeyla(newCtx, cfg)
-			if err != nil {
-				level.Error(c.opts.Logger).Log("msg", "failed to run Beyla", "err", err)
-				c.reportUnhealthy(err)
-				continue
-			}
+
+			g, launchCtx := errgroup.WithContext(newCtx)
+			cancelG = g
+
+			g.Go(func() error {
+				err := components.RunBeyla(launchCtx, cfg)
+				if err != nil {
+					level.Error(c.opts.Logger).Log("msg", "failed to run Beyla", "err", err)
+					c.reportUnhealthy(err)
+				}
+				return err
+			})
+		}
+	}
+}
+
+func getLatestArgsFromChannel[A any](ch chan A, current A) A {
+	for {
+		select {
+		case x := <-ch:
+			current = x
+		default:
+			return current
 		}
 	}
 }
@@ -485,10 +537,9 @@ func (c *Component) Update(args component.Arguments) error {
 	c.opts.OnStateChange(Exports{
 		Targets: []discovery.Target{baseTarget},
 	})
-	select {
-	case c.reload <- struct{}{}:
-	default:
-	}
+
+	newArgs := args.(Arguments)
+	c.argsUpdate <- newArgs
 	return nil
 }
 
@@ -630,6 +681,20 @@ func stringToRegexpAttr(s string) (services.RegexpAttr, error) {
 		return services.RegexpAttr{}, err
 	}
 	return services.NewPathRegexp(re), nil
+}
+
+func stringToGlobAttr(s string) (services.GlobAttr, error) {
+	if s == "" {
+		return services.GlobAttr{}, nil
+	}
+
+	globAttr := services.GlobAttr{}
+	err := globAttr.UnmarshalText([]byte(s))
+
+	if err != nil {
+		return services.GlobAttr{}, err
+	}
+	return globAttr, nil
 }
 
 func stringToPortEnum(s string) (services.PortEnum, error) {
