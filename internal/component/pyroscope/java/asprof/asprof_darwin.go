@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 )
 
-//go:embed async-profiler-4.0-7c3aa59-macos.zip
+//go:embed async-profiler-4.0-87b7b42-macos.zip
 var embeddedArchiveData []byte
 
 // bin/asprof
