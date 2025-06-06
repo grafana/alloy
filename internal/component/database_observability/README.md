@@ -72,6 +72,12 @@ SHOW VARIABLES LIKE 'performance_schema_max_digest_length';
 
 6. Optionally enable the `events_statements_cpu` consumer if you want to capture query samples. Verify the current setting:
 
+```promql
+database_observability_setup_consumers_enabled{job="integrations/db-o11y", consumer_name="events_statements_cpu"}
+```
+
+or with a sql query:
+
 ```sql
 SELECT * FROM performance_schema.setup_consumers WHERE NAME = 'events_statements_cpu';
 ```
@@ -83,6 +89,12 @@ UPDATE performance_schema.setup_consumers SET ENABLED = 'YES' WHERE NAME = 'even
 ```
 
 7. Optionally enable the `events_waits_history` consumer if you want to collect wait events for each query sample. Verify the current settings:
+
+```promql
+database_observability_setup_consumers_enabled{job="integrations/db-o11y", consumer_name="events_waits_history"}
+```
+
+or with a sql query:
 
 ```sql
 SELECT * FROM performance_schema.setup_consumers WHERE NAME = 'events_waits_history';
