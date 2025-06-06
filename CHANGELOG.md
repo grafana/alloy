@@ -14,6 +14,7 @@ v1.9.2
 
 - Send profiles concurrently from `pyroscope.ebpf`. (@korniltsev)
 
+- Fix the `validate` command not understanding the `livedebugging` block. (@dehaansa)
 
 v1.9.1
 -----------------
