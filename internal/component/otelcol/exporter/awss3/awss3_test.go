@@ -215,6 +215,7 @@ func TestConfig(t *testing.T) {
 					Region:            "us-east-1",
 					ACL:               "",
 					StorageClass:      "STANDARD",
+					RetryMode:         "standard",
 				},
 				MarshalerName: "otlp_json",
 				QueueSettings: exporterhelper.QueueBatchConfig{
@@ -259,6 +260,7 @@ func TestConfig(t *testing.T) {
 					Region:            "us-east-2",
 					ACL:               "",
 					StorageClass:      "STANDARD",
+					RetryMode:         "standard",
 				},
 				MarshalerName: "otlp_json",
 				QueueSettings: exporterhelper.QueueBatchConfig{
