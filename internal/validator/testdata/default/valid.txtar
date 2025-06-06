@@ -12,6 +12,10 @@ logging {
 	format = "logfmt"
 }
 
+livedebugging {
+	enabled = true
+}
+
 tracing {
 	sampling_fraction = 0.1
 

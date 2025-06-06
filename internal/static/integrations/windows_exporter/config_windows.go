@@ -129,6 +129,8 @@ func (c *Config) ToWindowsExporterConfig() (collector.Config, error) {
 		}
 	}
 
+	cfg.DNS.CollectorsEnabled = strings.Split(c.DNS.EnabledList, ",")
+
 	return cfg, errors.Join(errs...)
 }
 
@@ -230,6 +232,9 @@ var DefaultConfig = Config{
 	},
 	PerformanceCounter: PerformanceCounterConfig{
 		Objects: "", // default is empty, we yaml unmarshal the config
+	},
+	DNS: DNSConfig{
+		EnabledList: strings.Join(collector.ConfigDefaults.DNS.CollectorsEnabled, ","),
 	},
 }
 

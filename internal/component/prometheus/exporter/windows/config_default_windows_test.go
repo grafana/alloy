@@ -43,6 +43,9 @@ func TestAlloyUnmarshalWithDefaultConfig(t *testing.T) {
 	require.Equal(t, defaultArgs.SMTP.Exclude, args.SMTP.Exclude)
 	require.Equal(t, defaultArgs.SMTP.Include, args.SMTP.Include)
 	require.Equal(t, defaultArgs.TextFile.TextFileDirectory, args.TextFile.TextFileDirectory)
+	require.Equal(t, defaultArgs.TCP.EnabledList, args.TCP.EnabledList)
+	require.Equal(t, defaultArgs.Filetime.FilePatterns, args.Filetime.FilePatterns)
+	require.Equal(t, defaultArgs.DNS.EnabledList, args.DNS.EnabledList)
 
 }
 
@@ -77,6 +80,7 @@ func TestDefaultConfig(t *testing.T) {
 		TextFile:          TextFileConfig{TextFileDirectory: getDefaultTextFilePath()},
 		TCP:               TCPConfig{EnabledList: []string{"metrics", "connections_state"}},
 		Filetime:          FiletimeConfig{FilePatterns: []string{}},
+		DNS:               DNSConfig{EnabledList: []string{"metrics", "wmi_stats"}},
 	}
 
 	var args Arguments
