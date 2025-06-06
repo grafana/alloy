@@ -125,6 +125,8 @@ v1.9.0
   
 - Upgrade `beyla.ebpf` to v2.2.4-alloy. The full list of changes can be found in the [Beyla release notes](https://github.com/grafana/beyla/releases/tag/v2.2.4-alloy). (@grcevski)
 
+- Update secret-filter gitleaks.toml from v8.19.0 to v8.26.0
+
 ### Bugfixes
 
 - Fix `otelcol.receiver.filelog` documentation's default value for `start_at`. (@petewall)
