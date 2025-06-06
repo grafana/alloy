@@ -18,6 +18,10 @@ Main (unreleased)
 
 - Add `hash_string_id` argument to `foreach` block to hash the string representation of the pipeline id instead of using the string itself. (@wildum)
 
+- (_Experimental_) `prometheus.write.queue` add support for exemplars. (@dehaansa)
+
+- (_Experimental_) `prometheus.write.queue` initialize queue metrics that are seconds values as time.Now, not 0. (@dehaansa)
+
 ### Bugfixes
 
 - Fix the `validate` command not understanding the `livedebugging` block. (@dehaansa)

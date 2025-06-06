@@ -167,26 +167,27 @@ In those cases, exported fields are kept at their last healthy values.
 The following metrics are provided for backward compatibility.
 They generally behave the same, but there are likely edge cases where they differ.
 
-* `prometheus_remote_storage_enqueue_retries_total` (counter): Total number of times enqueue has failed because a shard's queue was full.
+<!-- * `prometheus_remote_storage_enqueue_retries_total` (counter): Total number of times enqueue has failed because a shard's queue was full.
 * `prometheus_remote_storage_exemplars_dropped_total` (counter): Total number of exemplars that were dropped after being read from the WAL before being sent to `remote_write` because of an unknown reference ID.
 * `prometheus_remote_storage_exemplars_failed_total` (counter): Total number of exemplars that failed to send to remote storage due to non-recoverable errors.
 * `prometheus_remote_storage_exemplars_in_total` (counter): Exemplars read into remote storage.
 * `prometheus_remote_storage_exemplars_retried_total` (counter): Total number of exemplars that failed to send to remote storage but were retried due to recoverable errors.
-* `prometheus_remote_storage_exemplars_total` (counter): Total number of exemplars sent to remote storage.
+* `prometheus_remote_storage_exemplars_total` (counter): Total number of exemplars sent to remote storage. -->
 * `prometheus_remote_storage_metadata_failed_total` (counter): Total number of metadata entries that failed to send to remote storage due to non-recoverable errors.
 * `prometheus_remote_storage_metadata_retried_total` (counter): Total number of metadata entries that failed to send to remote storage but were retried due to recoverable errors.
 * `prometheus_remote_storage_metadata_total` (counter): Total number of metadata entries sent to remote storage.
 * `prometheus_remote_storage_queue_highest_sent_timestamp_seconds` (gauge): Unix timestamp of the latest WAL sample successfully sent by a queue.
-* `prometheus_remote_storage_samples_dropped_total` (counter): Total number of samples which were dropped after being read from the WAL before being sent to `remote_write` because of an unknown reference ID.
+* `prometheus_remote_storage_highest_timestamp_in_seconds` TODO
+<!-- * `prometheus_remote_storage_samples_dropped_total` (counter): Total number of samples which were dropped after being read from the WAL before being sent to `remote_write` because of an unknown reference ID. -->
 * `prometheus_remote_storage_samples_failed_total` (counter): Total number of samples that failed to send to remote storage due to non-recoverable errors.
-* `prometheus_remote_storage_samples_in_total` (counter): Samples read into remote storage.
-* `prometheus_remote_storage_samples_retries_total` (counter): Total number of samples that failed to send to remote storage but were retried due to recoverable errors.
+<!-- * `prometheus_remote_storage_samples_in_total` (counter): Samples read into remote storage. -->
+* `prometheus_remote_storage_samples_retried_total` (counter): Total number of samples that failed to send to remote storage but were retried due to recoverable errors.
 * `prometheus_remote_storage_samples_total` (counter): Total number of samples sent to remote storage.
 * `prometheus_remote_storage_sent_batch_duration_seconds` (histogram): Duration of send calls to remote storage.
-* `prometheus_remote_write_wal_exemplars_appended_total` (counter): Total number of exemplars appended to the WAL.
-* `prometheus_remote_write_wal_samples_appended_total` (counter): Total number of samples appended to the WAL.
-* `prometheus_remote_write_wal_storage_created_series_total` (counter): Total number of created series appended to the WAL.
-* `prometheus_remote_write_wal_storage_removed_series_total` (counter): Total number of series removed from the WAL.
+<!-- * `prometheus_remote_write_wal_exemplars_appended_total` (counter): Total number of exemplars appended to the WAL. -->
+<!-- * `prometheus_remote_write_wal_samples_appended_total` (counter): Total number of samples appended to the WAL. -->
+<!-- * `prometheus_remote_write_wal_storage_created_series_total` (counter): Total number of created series appended to the WAL.
+* `prometheus_remote_write_wal_storage_removed_series_total` (counter): Total number of series removed from the WAL. -->
 * `prometheus_remote_storage_bytes_total` (counter): Total number of bytes of data sent by queues after compression.
 * `prometheus_remote_storage_sent_bytes_total` (counter): Total number of bytes of data sent by queues after compression. (same as `prometheus_remote_storage_bytes_total`)
 * `prometheus_remote_storage_sent_batch_duration_seconds` (histogram): Duration of send calls to remote storage.
@@ -199,22 +200,23 @@ Metrics that are new to `prometheus.write.queue`. These are highly subject to ch
 * `alloy_queue_metadata_network_sent_total` (counter): Number of metadata sent successfully.
 * `alloy_queue_metadata_serializer_errors_total` (counter): Number of errors for metadata written to serializer.
 * `alloy_queue_metadata_serializer_incoming_signals_total` (counter): Total number of metadata written to serialization.
-* `alloy_queue_network_metadata_failed_total` (counter): Number of metadata failed.
-* `alloy_queue_network_metadata_network_duration_seconds` (histogram): Duration writing metadata to endpoint.
-* `alloy_queue_network_metadata_network_errors_total` (counter): Number of errors writing metadata to network.
-* `alloy_queue_network_metadata_retried_429_total` (counter): Number of metadata retried due to status code 429.
-* `alloy_queue_network_metadata_retried_5xx_total` (counter): Number of metadata retried due to status code 5xx.
-* `alloy_queue_network_metadata_retried_total` (counter): Number of metadata retried due to network issues.
-* `alloy_queue_network_series_failed_total` (counter): Number of series failed.
-* `alloy_queue_network_series_network_duration_seconds` (histogram): Duration writing series to endpoint.
-* `alloy_queue_network_series_network_errors_total` (counter): Number of errors writing series to network.
-* `alloy_queue_network_series_retried_429_total` (counter): Number of series retried due to status code 429.
-* `alloy_queue_network_series_retried_5xx_total` (counter): Number of series retried due to status code 5xx.
-* `alloy_queue_network_series_retried_total` (counter): Number of series retried due to network issues.
+* `alloy_queue_metadata_network_failed_total` (counter): Number of metadata failed.
+* `alloy_queue_metadata_network_duration_seconds` (histogram): Duration writing metadata to endpoint.
+* `alloy_queue_metadata_network_errors_total` (counter): Number of errors writing metadata to network.
+* `alloy_queue_metadata_network_retried_429_total` (counter): Number of metadata retried due to status code 429.
+* `alloy_queue_metadata_network_retried_5xx_total` (counter): Number of metadata retried due to status code 5xx.
+* `alloy_queue_metadata_network_retried_total` (counter): Number of metadata retried due to network issues.
+* `alloy_queue_series_network_failed_total` (counter): Number of series failed.
+* `alloy_queue_series_network_duration_seconds` (histogram): Duration writing series to endpoint.
+* `alloy_queue_series_network_errors_total` (counter): Number of errors writing series to network.
+* `alloy_queue_series_network_retried_429_total` (counter): Number of series retried due to status code 429.
+* `alloy_queue_series_network_retried_5xx_total` (counter): Number of series retried due to status code 5xx.
+* `alloy_queue_series_network_retried_total` (counter): Number of series retried due to network issues.
 * `alloy_queue_series_network_sent_total` (counter): Number of series sent successfully.
 * `alloy_queue_series_network_timestamp_seconds` (gauge): Highest timestamp written to an endpoint.
 * `alloy_queue_series_serializer_errors_total` (counter): Number of errors for series written to serializer.
 * `alloy_queue_series_serializer_incoming_signals_total` (counter): Total number of series written to serialization.
+* `alloy_queue_series_serializer_incoming_exemplars_total` (counter): Total number of exemplars written to serialization.
 * `alloy_queue_series_serializer_incoming_timestamp_seconds` (gauge): Highest timestamp of incoming series.
 * `alloy_queue_series_disk_compressed_bytes_read_total` (counter): Total number of compressed bytes read from disk.
 * `alloy_queue_series_disk_compressed_bytes_written_total` (counter): Total number of compressed bytes written to disk.
