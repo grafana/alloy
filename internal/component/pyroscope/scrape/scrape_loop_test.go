@@ -10,18 +10,19 @@ import (
 	"testing"
 	"time"
 
+	"go.uber.org/atomic"
+	"go.uber.org/goleak"
+
 	"github.com/go-kit/log"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/component/pyroscope"
+	"github.com/grafana/alloy/internal/util"
 	config_util "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
 	"github.com/prometheus/prometheus/model/labels"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/atomic"
-	"go.uber.org/goleak"
-
-	"github.com/grafana/alloy/internal/component/discovery"
-	"github.com/grafana/alloy/internal/component/pyroscope"
-	"github.com/grafana/alloy/internal/util"
 )
 
 func TestScrapePool(t *testing.T) {
@@ -173,6 +174,27 @@ func TestScrapeLoop(t *testing.T) {
 	require.Error(t, loop.LastError())
 	require.WithinDuration(t, time.Now(), loop.LastScrape(), 1*time.Second)
 	require.NotEmpty(t, loop.LastScrapeDuration())
+}
+
+func TestGodeltaprofLoopAppender(t *testing.T) {
+	target := NewTarget(labels.FromStrings(
+		model.MetricNameLabel, pprofGoDeltaProfMemory,
+		model.SchemeLabel, "http",
+		model.AddressLabel, "127.0.0.1:239",
+		ProfilePath, "/debug/pprof/delta_heap"),
+		url.Values{
+			"seconds": []string{"1"},
+		})
+	a := pyroscope.AppendableFunc(func(_ context.Context, labels labels.Labels, samples []*pyroscope.RawSample) error {
+		return nil
+	})
+	loop := newScrapeLoop(
+		target,
+		&http.Client{},
+		a,
+		200*time.Millisecond, 30*time.Second, util.TestLogger(t))
+	_, da := loop.appender.(*deltaAppender)
+	assert.False(t, da)
 }
 
 func BenchmarkSync(b *testing.B) {

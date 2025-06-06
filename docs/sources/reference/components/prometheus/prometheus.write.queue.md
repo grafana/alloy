@@ -37,9 +37,9 @@ prometheus.write.queue "<LABEL>" {
 
 You can use the following argument with `prometheus.write.queue`:
 
-| Name  | Type   | Description | Default                                                          | Required |     |
-| ----- | ------ | ----------- | ---------------------------------------------------------------- | -------- | --- |
-| `ttl` | `time` | `duration`  | How long the samples can be queued for before they're discarded. | `2h`     | no  |
+| Name  | Type      | Description                                                        | Default   | Required |
+| ----- | --------- | ------------------------------------------------------------------ | --------- | -------- |
+| `ttl` | `duration`| How long the samples can be queued for before they're discarded.   | `"2h"`    | no       |
 
 ## Blocks
 
@@ -70,21 +70,21 @@ Each `endpoint` has its own WAL folder.
 
 The following arguments are supported:
 
-| Name                     | Type                   | Description                                                                      | Default | Required |
-| ------------------------ | ---------------------- | -------------------------------------------------------------------------------- | ------- | -------- |
-| `url`                    | `string`               | Full URL to send metrics to.                                                     |         | yes      |
-| `batch_count`            | `uint`                 | How many series to queue in each queue.                                          | `1000`  | no       |
-| `bearer_token`           | `secret`               | Bearer token to authenticate with.                                               |         | no       |
-| `enable_round_robin`     | `bool`                 | Use round robin load balancing when there are multiple IPs for a given endpoint. | `false` | no       |
-| `external_labels`        | `map(string)`          | Labels to add to metrics sent over the network.                                  |         | no       |
-| `flush_interval`         | `duration`             | How long to wait until sending if `batch_count` isn't triggered.                 | `1s`    | no       |
-| `headers`                | `map(secret)`          | Custom HTTP headers to add to all requests sent to the server.                   |         | no       |
-| `max_retry_attempts`     | `uint`                 | Maximum number of retries before dropping the batch.                             | `0`     | no       |
-| `proxy_url`              | `string`               | URL of the HTTP proxy to use for requests.                                       |         | no       |
-| `proxy_from_environment` | `bool`                 | Whether to read proxy configuration from environment variables.                  | `false` | no       |
-| `proxy_connect_headers`  | `map(secret)`          | HTTP headers to send to proxies during CONNECT requests.                         |         | no       |
-| `retry_backoff`          | `duration`             | How long to wait between retries.                                                | `1s`    | no       |
-| `write_timeout`          | `duration`             | Timeout for requests made to the URL.                                            | `"30s"` | no       |
+| Name                     | Type          | Description                                                                      | Default | Required |
+| ------------------------ | ------------- | -------------------------------------------------------------------------------- | ------- | -------- |
+| `url`                    | `string`      | Full URL to send metrics to.                                                     |         | yes      |
+| `batch_count`            | `uint`        | How many series to queue in each queue.                                          | `1000`  | no       |
+| `bearer_token`           | `secret`      | Bearer token to authenticate with.                                               |         | no       |
+| `enable_round_robin`     | `bool`        | Use round robin load balancing when there are multiple IPs for a given endpoint. | `false` | no       |
+| `external_labels`        | `map(string)` | Labels to add to metrics sent over the network.                                  |         | no       |
+| `flush_interval`         | `duration`    | How long to wait until sending if `batch_count` isn't triggered.                 | `"1s"`  | no       |
+| `headers`                | `map(secret)` | Custom HTTP headers to add to all requests sent to the server.                   |         | no       |
+| `max_retry_attempts`     | `uint`        | Maximum number of retries before dropping the batch.                             | `0`     | no       |
+| `proxy_url`              | `string`      | URL of the HTTP proxy to use for requests.                                       |         | no       |
+| `proxy_from_environment` | `bool`        | Whether to read proxy configuration from environment variables.                  | `false` | no       |
+| `proxy_connect_headers`  | `map(secret)` | HTTP headers to send to proxies during CONNECT requests.                         |         | no       |
+| `retry_backoff`          | `duration`    | How long to wait between retries.                                                | `"1s"`  | no       |
+| `write_timeout`          | `duration`    | Timeout for requests made to the URL.                                            | `"30s"` | no       |
 
 ### `basic_auth`
 
@@ -107,13 +107,13 @@ The following arguments are supported:
 | Name                             | Type       | Description                                                                                                                       | Default | Required |
 | -------------------------------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
 | `allowed_network_error_fraction` | `float`    | The allowed error rate before scaling down. For example `0.50` allows 50% error rate.                                             | `0.50`  | no       |
-| `desired_check_interval`         | `duration` | The length of time between checking for desired connections.                                                                      | `5s`    | no       |
-| `desired_connections_lookback`   | `duration` | The length of time that previous desired connections are kept for determining desired connections.                                | `5m`    | no       |
-| `drift_scale_down`               | `duration` | The minimum amount of time between the timestamps of incoming signals and outgoing signals before decreasing desired connections. | `30`    | no       |
-| `drift_scale_up`                 | `duration` | The maximum amount of time between the timestamps of incoming signals and outgoing signals before increasing desired connections. | `60`    | no       |
+| `desired_check_interval`         | `duration` | The length of time between checking for desired connections.                                                                      | `"5s"`  | no       |
+| `desired_connections_lookback`   | `duration` | The length of time that previous desired connections are kept for determining desired connections.                                | `"5m"`  | no       |
+| `drift_scale_down`               | `duration` | The minimum amount of time between the timestamps of incoming signals and outgoing signals before decreasing desired connections. | `"30s"` | no       |
+| `drift_scale_up`                 | `duration` | The maximum amount of time between the timestamps of incoming signals and outgoing signals before increasing desired connections. | `"60s"` | no       |
 | `max_connections`                | `uint`     | The maximum number of desired connections.                                                                                        | `50`    | no       |
 | `min_connections`                | `uint`     | The minimum number of desired connections.                                                                                        | `2`     | no       |
-| `network_flush_interval`         | `duration` | The length of time that network successes and failures are kept for determining desired connections.                              | `1m`    | no       |
+| `network_flush_interval`         | `duration` | The length of time that network successes and failures are kept for determining desired connections.                              | `"1m"`  | no       |
 
 Parallelism determines when to scale up or down the number of desired connections.
 
@@ -142,7 +142,7 @@ The following arguments are supported:
 
 | Name                   | Type       | Description                                                                 | Default | Required |
 | ---------------------- | ---------- | --------------------------------------------------------------------------- | ------- | -------- |
-| `batch_interval`       | `duration` | How often to batch signals to disk if `max_signals_to_batch` isn't reached. | `5s`    | no       |
+| `batch_interval`       | `duration` | How often to batch signals to disk if `max_signals_to_batch` isn't reached. | `"5s"`  | no       |
 | `max_signals_to_batch` | `uint`     | The maximum number of signals before they're batched to disk.               | `10000` | no       |
 
 ## Exported fields

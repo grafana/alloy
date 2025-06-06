@@ -32,7 +32,7 @@ You can use the following arguments with `discovery.uyuni`:
 
 | Name                     | Type                | Description                                                                                      | Default                 | Required |
 | ------------------------ | ------------------- | ------------------------------------------------------------------------------------------------ | ----------------------- | -------- |
-| `password`               | `Secret`            | The password to use for authentication to the Uyuni API.                                         |                         | yes      |
+| `password`               | `secret`            | The password to use for authentication to the Uyuni API.                                         |                         | yes      |
 | `server`                 | `string`            | The primary Uyuni Server.                                                                        |                         | yes      |
 | `username`               | `string`            | The username to use for authentication to the Uyuni API.                                         |                         | yes      |
 | `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`                  | no       |
@@ -43,7 +43,7 @@ You can use the following arguments with `discovery.uyuni`:
 | `proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |                         | no       |
 | `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false`                 | no       |
 | `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |                         | no       |
-| `refresh_interval`       | `duration`          | Interval at which to refresh the list of targets.                                                | `1m`                    | no       |
+| `refresh_interval`       | `duration`          | Interval at which to refresh the list of targets.                                                | `"1m"`                  | no       |
 | `separator`              | `string`            | The separator to use when building the `__meta_uyuni_groups` label.                              | `","`                   | no       |
 
 {{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}

@@ -154,7 +154,7 @@ You can do this by setting up your Datadog Agent in the following way:
    Or by setting an environment variable:
 
    ```bash
-   DD_DD_URL='{"http://<DATADOG_RECEIVER_HOST>:<DATADOG_RECEIVER_PORT>": ["datadog-receiver"]}'
+   DD_URL='{"http://<DATADOG_RECEIVER_HOST>:<DATADOG_RECEIVER_PORT>": ["datadog-receiver"]}'
    ```
 
 ## Run {{% param "PRODUCT_NAME" %}}

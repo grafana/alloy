@@ -168,11 +168,15 @@ func newScrapeLoop(t *Target, scrapeClient *http.Client, appendable pyroscope.Ap
 		timeout += interval - time.Second
 	}
 
+	appender := appendable.Appender()
+	if !t.godeltaprof {
+		appender = NewDeltaAppender(appender, t.allLabels)
+	}
 	return &scrapeLoop{
 		Target:       t,
 		logger:       logger,
 		scrapeClient: scrapeClient,
-		appender:     NewDeltaAppender(appendable.Appender(), t.allLabels),
+		appender:     appender,
 		interval:     interval,
 		timeout:      timeout,
 	}
