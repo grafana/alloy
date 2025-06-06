@@ -184,6 +184,11 @@ var testConfigs = map[string]string{
 		enable_entropy = true
 		gitleaks_config = "not-empty" // This will be replaced with the actual path to the temporary gitleaks config file
 	`,
+	"with_entropy_and_generic_default_config": `
+		forward_to = []
+		enable_entropy = true
+		include_generic = true
+	`,
 }
 
 // List of fake secrets to use for testing
@@ -227,6 +232,16 @@ var fakeSecrets = map[string]fakeSecret{
 	"sha1-secret-low-entropy": {
 		name:  "sha1-secret-low-entropy",
 		value: "0000000000000000000111111111111111111111",
+	},
+	"generic-api-key-high-entropy": {
+		name:   "generic-api-key",
+		prefix: "tok" + "en" + "=",
+		value:  "tok" + "en" + "=" + "abcdefghijklmnopqrstuvwxyz12345",
+	},
+	"generic-api-key-low-entropy": {
+		name:   "generic-api-key",
+		prefix: "tok" + "en" + "=",
+		value:  "tok" + "en" + "=" + "aaa123aaa123aaa123aaa123aaa123",
 	},
 }
 
@@ -297,6 +312,18 @@ var testLogs = map[string]testLog{
 			"message": "This is a simple log message with a secret value ` + fakeSecrets["sha1-secret-low-entropy"].value + ` !
 		}`,
 		secrets: []fakeSecret{fakeSecrets["sha1-secret-low-entropy"]},
+	},
+	"generic_api_key_high_entropy": {
+		log: `{
+			"message": "This is a simple log message with a secret value ` + fakeSecrets["generic-api-key-high-entropy"].value + ` !
+		}`,
+		secrets: []fakeSecret{fakeSecrets["generic-api-key-high-entropy"]},
+	},
+	"generic_api_key_low_entropy": {
+		log: `{
+			"message": "This is a simple log message with a secret value ` + fakeSecrets["generic-api-key-low-entropy"].value + ` !
+		}`,
+		secrets: []fakeSecret{fakeSecrets["generic-api-key"]},
 	},
 }
 
@@ -496,6 +523,27 @@ var tt = []struct {
 		customGitleaksConfig["with_high_entropy"],
 		testLogs["sha1_secret"].log,
 		replaceSecrets(testLogs["sha1_secret"].log, testLogs["sha1_secret"].secrets, false, false, defaultRedactionString),
+	},
+	{
+		"generic_api_key_high_entropy",
+		testConfigs["with_entropy_and_generic_default_config"],
+		"",
+		testLogs["generic_api_key_high_entropy"].log,
+		replaceSecrets(testLogs["generic_api_key_high_entropy"].log, testLogs["generic_api_key_high_entropy"].secrets, true, false, defaultRedactionString),
+	},
+	{
+		"generic_api_key_low_entropy",
+		testConfigs["with_entropy_and_generic_default_config"],
+		"",
+		testLogs["generic_api_key_low_entropy"].log,
+		testLogs["generic_api_key_low_entropy"].log, // Entropy of the secret too low, no redaction expected
+	},
+	{
+		"generic_api_key_high_entropy_secret_no_entropy_enabled",
+		testConfigs["include_generic"],
+		"",
+		testLogs["generic_api_key_high_entropy"].log,
+		replaceSecrets(testLogs["generic_api_key_high_entropy"].log, testLogs["generic_api_key_high_entropy"].secrets, true, false, defaultRedactionString),
 	},
 }
 
