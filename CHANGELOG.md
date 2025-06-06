@@ -22,6 +22,8 @@ Main (unreleased)
 
 - Fix the `validate` command not understanding the `livedebugging` block. (@dehaansa)
 
+- For CRD-based components (`prometheus.operator.*`), retry initializing informers if the apiserver request fails. This rectifies issues where the apiserver is not reachable immediately after node restart. (@dehaansa)
+
 v1.9.1
 -----------------
 
