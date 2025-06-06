@@ -14,8 +14,6 @@ Main (unreleased)
 
 - (_Experimental_) Add an `array.group_by` stdlib function to group items in an array by a key. (@wildum)
 
-- Update the `prometheus.exporter.windows` component to version v0.30.7. This adds new metrics to the `dns` collector. (@dehaansa)
-
 - Add entropy support for `loki.secretfilter` (@romain-gaillard)
 
 ### Enhancements
