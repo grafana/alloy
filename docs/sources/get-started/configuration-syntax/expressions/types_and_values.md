@@ -47,7 +47,7 @@ In addition to the preceding types, the [component reference][] documentation us
 The {{< param "PRODUCT_NAME" >}} syntax treats integers, unsigned integers, and floating-point values as a single `number` type.
 This simplifies writing and reading {{< param "PRODUCT_NAME" >}} configuration files.
 
-```alloy
+```
 3    == 3.00     // true
 5.0  == (10 / 2) // true
 1e+2 == 100      // true
