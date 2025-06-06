@@ -82,9 +82,21 @@ Use this statement to enable the consumer if it's disabled:
 UPDATE performance_schema.setup_consumers SET ENABLED = 'YES' WHERE NAME = 'events_statements_cpu';
 ```
 
+7. Optionally enable the `events_waits_history` consumer if you want to collect wait events for each query sample. Verify the current settings:
+
+```sql
+SELECT * FROM performance_schema.setup_consumers WHERE NAME = 'events_waits_history';
+```
+
+Use this statement to enable the consumer if it's disabled:
+
+```sql
+UPDATE performance_schema.setup_consumers SET ENABLED = 'YES' WHERE NAME = 'events_waits_history';
+```
+
 ## Running and configuring Alloy
 
-1. You need to run the latest Alloy version from the `main` branch. The latest tags are available here on [Docker Hub](https://hub.docker.com/r/grafana/alloy-dev/tags) (for example, `grafana/alloy-dev:v1.9.0-devel-5128872` or more recent) . Additionally, the `--stability.level=experimental` CLI flag is necessary for running the `database_observability` component.
+1. You need to run the latest Alloy version from the `main` branch. The latest tags are available here on [Docker Hub](https://hub.docker.com/r/grafana/alloy-dev/tags) (for example, `grafana/alloy-dev:v1.10.0-devel-2c22262` or more recent) . Additionally, the `--stability.level=experimental` CLI flag is necessary for running the `database_observability` component.
 
 2. Add the following configuration block to Alloy.
 - Replace `<your_DB_name>`
@@ -100,7 +112,7 @@ local.file "mysql_secret_<your_DB_name>" {
 
 prometheus.exporter.mysql "integrations_mysqld_exporter_<your_DB_name>" {
   data_source_name  = local.file.mysql_secret_<your_DB_name>.content
-  enable_collectors = ["perf_schema.eventsstatements"]
+  enable_collectors = ["perf_schema.eventsstatements", "perf_schema.eventswaits"]
   perf_schema.eventsstatements {
     text_limit = 2048
   }
@@ -194,7 +206,7 @@ When using the k8s-monitoring helm chart you might need to extend your `values.y
 alloy:
   image:
     repository: "grafana/alloy-dev"
-    tag: <alloy-version> // e.g. "v1.9.0-devel-5128872"
+    tag: <alloy-version> // e.g. "v1.10.0-devel-2c22262"
 
   alloy:
     stabilityLevel: experimental
@@ -244,7 +256,7 @@ local.file "mysql_secret_example_db_1" {
 
 prometheus.exporter.mysql "integrations_mysqld_exporter_example_db_1" {
   data_source_name  = local.file.mysql_secret_example_db_1.content
-  enable_collectors = ["perf_schema.eventsstatements"]
+  enable_collectors = ["perf_schema.eventsstatements", "perf_schema.eventswaits"]
   perf_schema.eventsstatements {
     text_limit = 2048
   }
@@ -283,7 +295,7 @@ local.file "mysql_secret_example_db_2" {
 
 prometheus.exporter.mysql "integrations_mysqld_exporter_example_db_2" {
   data_source_name  = local.file.mysql_secret_example_db_2.content
-  enable_collectors = ["perf_schema.eventsstatements"]
+  enable_collectors = ["perf_schema.eventsstatements", "perf_schema.eventswaits"]
   perf_schema.eventsstatements {
     text_limit = 2048
   }
