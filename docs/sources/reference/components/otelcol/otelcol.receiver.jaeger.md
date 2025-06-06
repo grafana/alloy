@@ -15,8 +15,10 @@ title: otelcol.receiver.jaeger
 `otelcol.receiver.jaeger` accepts Jaeger-formatted data over the network and forwards it to other `otelcol.*` components.
 
 {{< admonition type="note" >}}
-`otelcol.receiver.jaeger` is a wrapper over the upstream OpenTelemetry Collector `jaeger` receiver.
+`otelcol.receiver.jaeger` is a wrapper over the upstream OpenTelemetry Collector [`jaeger`][] receiver.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`jaeger`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/jaegerreceiver
 {{< /admonition >}}
 
 You can specify multiple `otelcol.receiver.jaeger` components by giving them different labels.

@@ -31,8 +31,10 @@ When the TraceID isn't defined, the sampler can be configured to apply hashing t
 This sampler also supports sampling priority.
 
 {{< admonition type="note" >}}
-`otelcol.processor.probabilistic_sampler` is a wrapper over the upstream OpenTelemetry Collector Contrib `probabilistic_sampler` processor.
+`otelcol.processor.probabilistic_sampler` is a wrapper over the upstream OpenTelemetry Collector Contrib [`probabilistic_sampler`][] processor.
 If necessary, bug reports or feature requests will be redirected to the upstream repository.
+
+[`probabilistic_sampler`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/probabilisticsamplerprocessor
 {{< /admonition >}}
 
 You can specify multiple `otelcol.processor.probabilistic_sampler` components by giving them different labels.

@@ -41,8 +41,10 @@ If no new metrics come in, the next interval will export nothing.
 {{< /admonition >}}
 
 {{< admonition type="note" >}}
-`otelcol.processor.interval` is a wrapper over the upstream OpenTelemetry Collector `interval` processor.
+`otelcol.processor.interval` is a wrapper over the upstream OpenTelemetry Collector [`interval`][] processor.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`interval`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/intervalprocessor
 {{< /admonition >}}
 
 ## Usage

@@ -15,8 +15,10 @@ title: otelcol.receiver.opencensus
 `otelcol.receiver.opencensus` accepts telemetry data via gRPC or HTTP using the [OpenCensus](https://opencensus.io/) format and forwards it to other `otelcol.*` components.
 
 {{< admonition type="note" >}}
-`otelcol.receiver.opencensus` is a wrapper over the upstream OpenTelemetry Collector `opencensus` receiver from the `otelcol-contrib` distribution.
+`otelcol.receiver.opencensus` is a wrapper over the upstream OpenTelemetry Collector [`opencensus`][] receiver.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`opencensus`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/opencensusreceiver
 {{< /admonition >}}
 
 You can specify multiple `otelcol.receiver.opencensus` components by giving them different labels.
