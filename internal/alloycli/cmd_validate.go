@@ -12,6 +12,7 @@ import (
 	"github.com/grafana/alloy/internal/service/cluster"
 	"github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/service/labelstore"
+	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/service/otel"
 	"github.com/grafana/alloy/internal/service/remotecfg"
 	"github.com/grafana/alloy/internal/service/ui"
@@ -70,6 +71,7 @@ func (v *alloyValidate) Run(configFile string) error {
 				&cluster.Service{},
 				&http.Service{},
 				&labelstore.Service{},
+				&livedebugging.Service{},
 				&otel.Service{},
 				&remotecfg.Service{},
 				&ui.Service{},
