@@ -182,10 +182,10 @@ The `exporter` block configures the metric exporter settings.
 
 The following arguments are supported:
 
-| Name                                     | Type   | Description                                                                          | Default | Required |
-| ---------------------------------------- | ------ | ------------------------------------------------------------------------------------ | ------- | -------- |
-| `instrumentation_scope_metadata_as_tags` | `bool` | Set to `true` to add metadata about the instrumentation scope that created a metric. | `false` | no       |
-| `resource_attributes_as_tags`            | `bool` | Set to `true` to add resource attributes of a metric to its metric tags.             | `false` | no       |
+| Name                                     | Type   | Description                                                                               | Default | Required |
+| ---------------------------------------- | ------ |-------------------------------------------------------------------------------------------|---------| -------- |
+| `instrumentation_scope_metadata_as_tags` | `bool` | Set to `false` to not add metadata about the instrumentation scope that created a metric. | `true`  | no       |
+| `resource_attributes_as_tags`            | `bool` | Set to `true` to add resource attributes of a metric to its metric tags.                  | `false` | no       |
 
 ### `histograms`
 

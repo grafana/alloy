@@ -36,7 +36,8 @@ otelcol.exporter.datadog "default" {
 		endpoint  = "https://api.datadoghq.com"
 
 		exporter {
-			resource_attributes_as_tags = true
+			resource_attributes_as_tags            = true
+			instrumentation_scope_metadata_as_tags = false
 		}
 
 		histograms {
