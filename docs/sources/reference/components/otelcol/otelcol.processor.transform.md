@@ -66,8 +66,10 @@ Raw strings are generally more convenient for writing OTTL statements.
 {{< /admonition >}}
 
 {{< admonition type="note" >}}
-`otelcol.processor.transform` is a wrapper over the upstream OpenTelemetry Collector `transform` processor.
+`otelcol.processor.transform` is a wrapper over the upstream OpenTelemetry Collector [`transform`][] processor.
 If necessary, bug reports or feature requests will be redirected to the upstream repository.
+
+[`transform`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/transformprocessor
 {{< /admonition >}}
 
 You can specify multiple `otelcol.processor.transform` components by giving them different labels.

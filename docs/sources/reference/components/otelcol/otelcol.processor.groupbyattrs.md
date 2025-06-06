@@ -13,8 +13,10 @@ title: otelcol.processor.groupbyattrs
 `otelcol.processor.groupbyattrs` accepts spans, metrics, and traces from other `otelcol` components and groups them under the same resource.
 
 {{< admonition type="note" >}}
-`otelcol.processor.groupbyattrs` is a wrapper over the upstream OpenTelemetry Collector `groupbyattrs` processor.
+`otelcol.processor.groupbyattrs` is a wrapper over the upstream OpenTelemetry Collector [`groupbyattrs`][] processor.
 If necessary, bug reports or feature requests will be redirected to the upstream repository.
+
+[`groupbyattrs`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/groupbyattrsprocessor
 {{< /admonition >}}
 
 We recommend you use the groupbyattrs processor together with [`otelcol.processor.batch`][otelcol.processor.batch], as a consecutive step.
