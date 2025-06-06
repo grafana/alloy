@@ -22,6 +22,10 @@ Main (unreleased)
 
 - (_Experimental_) `prometheus.write.queue` initialize queue metrics that are seconds values as time.Now, not 0. (@dehaansa)
 
+### Bugfixes
+
+- Fix the `validate` command not understanding the `livedebugging` block. (@dehaansa)
+
 v1.9.1
 -----------------
 
