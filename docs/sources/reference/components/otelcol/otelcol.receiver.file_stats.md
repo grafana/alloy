@@ -15,8 +15,10 @@ description: Learn about otelcol.receiver.file_stats
 `otelcol.receiver.file_stats` collects metrics from files and folders specified with a glob pattern.
 
 {{< admonition type="note" >}}
-`otelcol.receiver.file_stats` is a wrapper over the upstream OpenTelemetry Collector `filestats` receiver from the `otelcol-contrib` distribution.
+`otelcol.receiver.file_stats` is a wrapper over the upstream OpenTelemetry Collector [`filestats`][] receiver.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`filestats`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/filestatsreceiver
 {{< /admonition >}}
 
 Multiple `otelcol.receiver.file_stats` components can be specified by giving them different labels.

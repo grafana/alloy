@@ -15,8 +15,10 @@ title: otelcol.exporter.otlp
 `otelcol.exporter.otlp` accepts telemetry data from other `otelcol` components and writes them over the network using the OTLP gRPC protocol.
 
 {{< admonition type="note" >}}
-`otelcol.exporter.otlp` is a wrapper over the upstream OpenTelemetry Collector `otlp` exporter.
+`otelcol.exporter.otlp` is a wrapper over the upstream OpenTelemetry Collector [`otlp`][] exporter.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`otlp`]: https://github.com/open-telemetry/opentelemetry-collector/tree/{{< param "OTEL_VERSION" >}}/exporter/otlpexporter
 {{< /admonition >}}
 
 You can specify multiple `otelcol.exporter.otlp` components by giving them different labels.

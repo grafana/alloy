@@ -18,8 +18,10 @@ title: otelcol.exporter.datadog
 `otelcol.exporter.datadog` accepts metrics and traces telemetry data from other `otelcol` components and sends it to Datadog.
 
 {{< admonition type="note" >}}
-`otelcol.exporter.datadog` is a wrapper over the upstream OpenTelemetry Collector `datadog` exporter from the `otelcol-contrib`  distribution.
+`otelcol.exporter.datadog` is a wrapper over the upstream OpenTelemetry Collector [`datadog`][] exporter.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`datadog`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/exporter/datadogexporter
 {{< /admonition >}}
 
 You can specify multiple `otelcol.exporter.datadog` components by giving them different labels.

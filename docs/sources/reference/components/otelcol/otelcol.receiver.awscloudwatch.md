@@ -15,8 +15,10 @@ title: otelcol.receiver.awscloudwatch
 `otelcol.receiver.awscloudwatch` receives logs from Amazon CloudWatch and forwards them to other `otelcol.*` components.
 
 {{< admonition type="note" >}}
-`otelcol.receiver.awscloudwatch` is a wrapper over the upstream OpenTelemetry Collector `awscloudwatch` receiver.
+`otelcol.receiver.awscloudwatch` is a wrapper over the upstream OpenTelemetry Collector [`awscloudwatch`][] receiver.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`awscloudwatch`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/awscloudwatchreceiver
 {{< /admonition >}}
 
 You can specify multiple `otelcol.receiver.awscloudwatch` components by giving them different labels.

@@ -18,6 +18,10 @@ title: otelcol.receiver.prometheus
 
 You can specify multiple `otelcol.receiver.prometheus` components by giving them different labels.
 
+{{< admonition type="note" >}}
+`otelcol.receiver.prometheus` is a custom component unrelated to any processors from the OpenTelemetry Collector.
+{{< /admonition >}}
+
 ## Usage
 
 ```alloy

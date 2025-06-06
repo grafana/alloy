@@ -16,8 +16,10 @@ title: otelcol.processor.attributes
 It also supports the ability to filter and match input data to determine if it should be included or excluded for attribute modifications.
 
 {{< admonition type="note" >}}
-`otelcol.processor.attributes` is a wrapper over the upstream OpenTelemetry Collector `attributes` processor.
+`otelcol.processor.attributes` is a wrapper over the upstream OpenTelemetry Collector [`attributes`][] processor.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`attributes`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/attributesprocessor
 {{< /admonition >}}
 
 You can specify multiple `otelcol.processor.attributes` components by giving them different labels.

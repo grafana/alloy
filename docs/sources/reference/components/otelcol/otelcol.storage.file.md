@@ -16,8 +16,10 @@ labels:
 The current implementation of this component uses [`bbolt`][] to store and read data on disk.
 
 {{< admonition type="note" >}}
-`otelcol.storage.file` is a wrapper over the upstream OpenTelemetry Collector `filestorage` extension.
+`otelcol.storage.file` is a wrapper over the upstream OpenTelemetry Collector [`filestorage`][] extension.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`filestorage`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/extension/storage/filestorage
 {{< /admonition >}}
 
 You can specify multiple `otelcol.storage.file` components by giving them different labels.

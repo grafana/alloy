@@ -15,8 +15,10 @@ title: otelcol.receiver.otlp
 `otelcol.receiver.otlp` accepts OTLP-formatted data over the network and forwards it to other `otelcol.*` components.
 
 {{< admonition type="note" >}}
-`otelcol.receiver.otlp` is a wrapper over the upstream OpenTelemetry Collector `otlp` receiver.
+`otelcol.receiver.otlp` is a wrapper over the upstream OpenTelemetry Collector [`otlp`][] receiver.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`otlp`]: https://github.com/open-telemetry/opentelemetry-collector/tree/{{< param "OTEL_VERSION" >}}/receiver/otlpreceiver
 {{< /admonition >}}
 
 Multiple `otelcol.receiver.otlp` components can be specified by giving them
