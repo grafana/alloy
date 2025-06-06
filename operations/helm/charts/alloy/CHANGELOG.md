@@ -10,6 +10,17 @@ internal API changes are not present.
 Unreleased
 ----------
 
+
+
+1.1.1 (2025-06-05)
+----------
+
+### Bug fixes
+
+- Fix `alloy.mounts.extra` incorrect list after templating. (@sentoz)
+
+- Update to Grafana Alloy v1.9.1. (@thampiotr)
+
 1.1.0 (2025-06-02)
 ----------
 

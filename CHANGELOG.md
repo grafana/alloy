@@ -18,6 +18,25 @@ Main (unreleased)
 
 - Add `hash_string_id` argument to `foreach` block to hash the string representation of the pipeline id instead of using the string itself. (@wildum)
 
+### Bugfixes
+
+- Fix the `validate` command not understanding the `livedebugging` block. (@dehaansa)
+
+v1.9.1
+-----------------
+
+### Features
+
+- Update the `prometheus.exporter.windows` component to version v0.30.7. This adds new metrics to the `dns` collector. (@dehaansa)
+
+### Bugfixes
+
+- Update the `prometheus.exporter.windows` component to version v0.30.7. This fixes an error with the exchange collector and terminal_services collector (@dehaansa)
+
+- Fix `loki.source.firehose` to propagate specific cloudwatch event timestamps when useIncomingTs is set to true. (@michaelPotter)
+
+- Fix elevated CPU usage when using some `otelcol` components due to debug logging. (@thampiotr)
+
 v1.9.0
 -----------------
 
