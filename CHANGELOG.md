@@ -20,6 +20,8 @@ Main (unreleased)
 
 - (_Experimental_) `prometheus.write.queue` add support for exemplars. (@dehaansa)
 
+- (_Experimental_) `prometheus.write.queue` initialize queue metrics that are seconds values as time.Now, not 0. (@dehaansa)
+
 v1.9.1
 -----------------
 
