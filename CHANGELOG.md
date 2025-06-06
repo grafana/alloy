@@ -24,6 +24,17 @@ Main (unreleased)
 
 ### Bugfixes
 
+- Fix the `validate` command not understanding the `livedebugging` block. (@dehaansa)
+
+v1.9.1
+-----------------
+
+### Features
+
+- Update the `prometheus.exporter.windows` component to version v0.30.7. This adds new metrics to the `dns` collector. (@dehaansa)
+
+### Bugfixes
+
 - Update the `prometheus.exporter.windows` component to version v0.30.7. This fixes an error with the exchange collector and terminal_services collector (@dehaansa)
 
 - Fix `loki.source.firehose` to propagate specific cloudwatch event timestamps when useIncomingTs is set to true. (@michaelPotter)
