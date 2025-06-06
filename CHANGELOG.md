@@ -14,6 +14,8 @@ Main (unreleased)
 
 - (_Experimental_) Add an `array.group_by` stdlib function to group items in an array by a key. (@wildum)
 
+- Add entropy support for `loki.secretfilter` (@romain-gaillard)
+
 ### Enhancements
 
 - Add `hash_string_id` argument to `foreach` block to hash the string representation of the pipeline id instead of using the string itself. (@wildum)
