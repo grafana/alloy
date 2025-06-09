@@ -1438,6 +1438,12 @@ github.com/grafana/vmware_exporter v0.0.5-beta.0.20250218170317-73398ba08329 h1:
 github.com/grafana/vmware_exporter v0.0.5-beta.0.20250218170317-73398ba08329/go.mod h1:Z28219aViNlsLlPvuCnlgHDagRdZBAZ7JOnQg1b3eWg=
 github.com/grafana/walqueue v0.0.0-20250402195023-cd132d6ff0bc h1:3uxEsWrrkBZy5XbXF8FMFNsmnuB8QHrE1eSiheaCt0Q=
 github.com/grafana/walqueue v0.0.0-20250402195023-cd132d6ff0bc/go.mod h1:mgOAircFKdN03tt2gZUPTVw6EQr8XnRI+M3Qw1oT1NE=
+github.com/grafana/walqueue v0.0.0-20250605193259-9bd9dd45304e h1:oDad8NSAIyrTkgkiux1ZLInLE/t3wddLYebkwd1tJFY=
+github.com/grafana/walqueue v0.0.0-20250605193259-9bd9dd45304e/go.mod h1:ezyqvsW/SYw4FIr+xj8eEeiwC0AuRF6Y8OUcFL3uXzU=
+github.com/grafana/walqueue v0.0.0-20250605195045-126adacf68b1 h1:Rt1muGn0rEXdERZuv/DICMQm4VXcS/Sy1TFNBWdZEms=
+github.com/grafana/walqueue v0.0.0-20250605195045-126adacf68b1/go.mod h1:r5esBN3LfoYHk5JKD+o4/IBwuftA1uCmaqT6C8av21c=
+github.com/grafana/walqueue v0.0.0-20250606153244-9d2294b26901 h1:fOE7XvFsuXvHr9bmmcf0CfCL5ToEUOWBStMu1ruGEWc=
+github.com/grafana/walqueue v0.0.0-20250606153244-9d2294b26901/go.mod h1:r5esBN3LfoYHk5JKD+o4/IBwuftA1uCmaqT6C8av21c=
 github.com/gregjones/httpcache v0.0.0-20180305231024-9cad4c3443a7/go.mod h1:FecbI9+v66THATjSRHfNgh1IVFe/9kFxbXtjV0ctIMA=
 github.com/grobie/gomemcache v0.0.0-20230213081705-239240bbc445 h1:FlKQKUYPZ5yDCN248M3R7x8yu2E3yEZ0H7aLomE4EoE=
 github.com/grobie/gomemcache v0.0.0-20230213081705-239240bbc445/go.mod h1:L69/dBlPQlWkcnU76WgcppK5e4rrxzQdi6LhLnK/ytA=
