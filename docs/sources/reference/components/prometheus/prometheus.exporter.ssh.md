@@ -90,7 +90,7 @@ You can attach arbitrary labels to your metrics using the `labels` argument in `
 | `labels`      | `map(string, string)` | Additional labels to attach to the metric.               | `{}`    | no       |
 | `parse_regex` | `string`              | Regular expression to extract value from command output. |         | no       |
 
-## Secure Known Hosts Setup
+## Secure known hosts setup
 
 ### How It Works
 
