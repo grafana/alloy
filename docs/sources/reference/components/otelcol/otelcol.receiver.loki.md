@@ -17,7 +17,7 @@ title: otelcol.receiver.loki
 You can specify multiple `otelcol.receiver.loki` components by giving them different labels.
 
 {{< admonition type="note" >}}
-`otelcol.receiver.loki` is a custom component unrelated to any processors from the OpenTelemetry Collector.
+`otelcol.receiver.loki` is a custom component unrelated to any receivers from the upstream OpenTelemetry Collector.
 {{< /admonition >}}
 
 ## Usage
