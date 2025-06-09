@@ -14,6 +14,10 @@ title: otelcol.connector.host_info
 
 `otelcol.connector.host_info` accepts span data from other `otelcol` components and generates usage metrics.
 
+{{< admonition type="note" >}}
+`otelcol.connector.host_info` is a custom component unrelated to any connectors from the upstream OpenTelemetry Collector.
+{{< /admonition >}}
+
 ## Usage
 
 ```alloy

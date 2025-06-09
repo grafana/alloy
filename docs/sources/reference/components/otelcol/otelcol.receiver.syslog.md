@@ -16,8 +16,10 @@ title: otelcol.receiver.syslog
 It supports syslog protocols [RFC5424][] and [RFC3164][] and can receive data over `TCP` or `UDP`.
 
 {{< admonition type="note" >}}
-`otelcol.receiver.syslog` is a wrapper over the upstream OpenTelemetry Collector `syslog` receiver.
+`otelcol.receiver.syslog` is a wrapper over the upstream OpenTelemetry Collector [`syslog`][] receiver.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`syslog`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/syslogreceiver
 {{< /admonition >}}
 
 You can specify multiple `otelcol.receiver.syslog` components by giving them different labels.

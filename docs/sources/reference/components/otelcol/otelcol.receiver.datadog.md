@@ -18,6 +18,13 @@ title: otelcol.receiver.datadog
 
 You can specify multiple `otelcol.receiver.datadog` components by giving them different labels.
 
+{{< admonition type="note" >}}
+`otelcol.receiver.datadog` is a wrapper over the upstream OpenTelemetry Collector [`datadog`][] receiver.
+Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`datadog`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/datadogreceiver
+{{< /admonition >}}
+
 ## Usage
 
 ```alloy

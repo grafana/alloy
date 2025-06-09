@@ -17,8 +17,10 @@ title: otelcol.auth.bearer
 This component supports both server and client authentication.
 
 {{< admonition type="note" >}}
-`otelcol.auth.bearer` is a wrapper over the upstream OpenTelemetry Collector `bearertokenauth` extension.
+`otelcol.auth.bearer` is a wrapper over the upstream OpenTelemetry Collector [`bearertokenauth`][] extension.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`bearertokenauth`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/extension/bearertokenauthextension
 {{< /admonition >}}
 
 You can specify multiple `otelcol.auth.bearer` components by giving them different labels.
