@@ -95,9 +95,9 @@ You can attach arbitrary labels to your metrics using the `labels` argument in `
 ### How It Works
 
 1. **First Run**: If `~/.ssh/known_hosts` is missing, a new one is created using `ssh-keyscan`.
-2. **Validation**: Host keys are validated on every connection attempt.
-3. **Changes**: Key mismatches raise an error requiring manual review.
-4. **New Targets**: Automatically scanned and added, but mismatches block the connection.
+1. **Validation**: Host keys are validated on every connection attempt.
+1. **Changes**: Key mismatches raise an error requiring manual review.
+1. **New Targets**: Automatically scanned and added, but mismatches block the connection.
 
 ### Manual resolution
 
