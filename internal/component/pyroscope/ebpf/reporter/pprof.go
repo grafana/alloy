@@ -12,6 +12,7 @@ import (
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 
 	"github.com/elastic/go-freelru"
+	lru "github.com/elastic/go-freelru"
 	"github.com/go-kit/log"
 	"github.com/google/pprof/profile"
 	"github.com/prometheus/prometheus/model/labels"
@@ -52,7 +53,7 @@ type PPROFReporter struct {
 	Executables *freelru.SyncedLRU[libpf.FileID, samples.ExecInfo]
 	Frames      *freelru.SyncedLRU[
 		libpf.FileID,
-		*xsync.RWMutex[map[libpf.AddressOrLineno]samples.SourceInfo],
+		*xsync.RWMutex[*lru.LRU[libpf.AddressOrLineno, samples.SourceInfo]],
 	]
 
 	sd              discovery.TargetProducer
@@ -87,8 +88,10 @@ func NewPPROF(
 
 	})
 
-	frames, err := freelru.NewSynced[libpf.FileID,
-		*xsync.RWMutex[map[libpf.AddressOrLineno]samples.SourceInfo]](
+	frames, err := freelru.NewSynced[
+		libpf.FileID,
+		*xsync.RWMutex[*lru.LRU[libpf.AddressOrLineno, samples.SourceInfo]],
+	](
 		cfg.FramesCacheElements, libpf.FileID.Hash32)
 	if err != nil {
 		return nil, err
@@ -118,9 +121,9 @@ func (p *PPROFReporter) ReportCountForTrace(
 
 }
 
-func (p *PPROFReporter) ReportTraceEvent(trace *libpf.Trace, meta *samples.TraceEventMeta) {
+func (p *PPROFReporter) ReportTraceEvent(trace *libpf.Trace, meta *samples.TraceEventMeta) error {
 	if meta.Origin != support.TraceOriginSampling && meta.Origin != support.TraceOriginOffCPU {
-		return
+		return nil
 	}
 
 	key := samples.TraceAndMetaKey{
@@ -141,7 +144,7 @@ func (p *PPROFReporter) ReportTraceEvent(trace *libpf.Trace, meta *samples.Trace
 		events.Timestamps = append(events.Timestamps, uint64(meta.Timestamp))
 		events.OffTimes = append(events.OffTimes, meta.OffTime)
 		(*traceEventsMap)[meta.Origin][key] = events
-		return
+		return nil
 	}
 
 	(*traceEventsMap)[meta.Origin][key] = &samples.TraceEvents{
@@ -154,6 +157,7 @@ func (p *PPROFReporter) ReportTraceEvent(trace *libpf.Trace, meta *samples.Trace
 		Timestamps:         []uint64{uint64(meta.Timestamp)},
 		OffTimes:           []int64{meta.OffTime},
 	}
+	return nil
 }
 
 func (p *PPROFReporter) SupportsReportTraceEvent() bool {
@@ -184,7 +188,7 @@ func (p *PPROFReporter) LookupFrame(frameID libpf.FrameID) (samples.SourceInfo, 
 		FramesCacheLifetime); exists {
 		frameMap := frameMapLock.RLock()
 		defer frameMapLock.RUnlock(&frameMap)
-		si, known = (*frameMap)[frameID.AddressOrLine()]
+		si, known = (*frameMap).GetAndRefresh(frameID.AddressOrLine(), FramesCacheLifetime)
 	}
 	return si, known
 }
@@ -203,7 +207,7 @@ func (p *PPROFReporter) FrameMetadata(args *reporter2.FrameMetadataArgs) {
 	})
 }
 
-func (p *PPROFReporter) frameMetadata(frameID libpf.FrameID, sif func() samples.SourceInfo) samples.SourceInfo {
+func (p *PPROFReporter) frameMetadata(frameID libpf.FrameID, sif func() samples.SourceInfo) {
 	fileID := frameID.FileID()
 	addressOrLine := frameID.AddressOrLine()
 
@@ -213,16 +217,20 @@ func (p *PPROFReporter) frameMetadata(frameID libpf.FrameID, sif func() samples.
 		defer frameMapLock.WUnlock(&frameMap)
 
 		si := sif()
-		(*frameMap)[addressOrLine] = si
-		return si
+		(*frameMap).AddWithLifetime(addressOrLine, si, FramesCacheLifetime)
+		return
 	}
 
-	v := make(map[libpf.AddressOrLineno]samples.SourceInfo)
+	frameMap, err := lru.New[libpf.AddressOrLineno, samples.SourceInfo](1024,
+		func(k libpf.AddressOrLineno) uint32 { return uint32(k) })
+	if err != nil {
+		return
+	}
 	si := sif()
-	v[addressOrLine] = si
-	mu := xsync.NewRWMutex(v)
+	frameMap.AddWithLifetime(addressOrLine, si, FramesCacheLifetime)
+	mu := xsync.NewRWMutex(frameMap)
 	p.Frames.Add(fileID, &mu)
-	return si
+	return
 }
 
 func (p *PPROFReporter) ReportHostMetadata(_ map[string]string) {
@@ -392,11 +400,12 @@ func (p *PPROFReporter) createProfile(
 					funcName = "UNREPORTED"
 				} else {
 					fileIDInfo := fileIDInfoLock.RLock()
-					if si, exists := (*fileIDInfo)[traceInfo.Linenos[i]]; exists {
+					if si, exists := (*fileIDInfo).GetAndRefresh(traceInfo.Linenos[i], FramesCacheLifetime); exists {
 						if len(si.Frames) == 1 {
-							funcName = si.Frames[0].FunctionName
-							filePath = si.Frames[0].FilePath
-							lineNo = int64(si.Frames[0].LineNumber)
+							frame := si.Frames[0]
+							funcName = frame.FunctionName
+							filePath = frame.FilePath
+							lineNo = int64(frame.LineNumber)
 						} else {
 							funcName = "UNRESOLVED"
 						}

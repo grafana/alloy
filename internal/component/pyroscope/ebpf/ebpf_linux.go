@@ -8,12 +8,6 @@ import (
 	"strings"
 	"time"
 
-	ebpfspy "github.com/grafana/pyroscope/ebpf"
-	demangle2 "github.com/grafana/pyroscope/ebpf/cpp/demangle"
-	"github.com/grafana/pyroscope/ebpf/pprof"
-	"github.com/grafana/pyroscope/ebpf/sd"
-	"github.com/grafana/pyroscope/ebpf/symtab"
-
 	"github.com/go-kit/log/level"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/pyroscope"
@@ -21,7 +15,7 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/oklog/run"
 	"github.com/sirupsen/logrus"
-	sd "go.opentelemetry.io/ebpf-profiler/pyroscope/discovery"
+	discovery2 "go.opentelemetry.io/ebpf-profiler/pyroscope/discovery"
 	"go.opentelemetry.io/ebpf-profiler/pyroscope/dynamicprofiling"
 	"go.opentelemetry.io/ebpf-profiler/pyroscope/internalshim/controller"
 	"go.opentelemetry.io/ebpf-profiler/pyroscope/symb/irsymcache"
@@ -51,7 +45,7 @@ func New(opts component.Options, args Arguments) (component.Component, error) {
 		return nil, err
 	}
 	dynamicProfilingPolicy := cfg.PyroscopeDynamicProfilingPolicy
-	discovery := sd.NewTargetProducer(cgroups, targetsOptions(dynamicProfilingPolicy, args))
+	discovery := discovery2.NewTargetProducer(cgroups, targetsOptions(dynamicProfilingPolicy, args))
 	ms := newMetrics(opts.Registerer)
 
 	appendable := pyroscope.NewFanout(args.ForwardTo, opts.ID, opts.Registerer)
@@ -127,7 +121,7 @@ type Component struct {
 	dynamicProfilingPolicy bool
 	argsUpdate             chan Arguments
 	appendable             *pyroscope.Fanout
-	targetFinder           sd.TargetProducer
+	targetFinder           discovery2.TargetProducer
 
 	metrics *metrics
 	cfg     *controller.Config
@@ -163,15 +157,15 @@ func (c *Component) Update(args component.Arguments) error {
 	return nil
 }
 
-func targetsOptions(dynamicProfilingPolicy bool, args Arguments) sd.TargetsOptions {
-	targets := make([]sd.DiscoveredTarget, 0, len(args.Targets))
+func targetsOptions(dynamicProfilingPolicy bool, args Arguments) discovery2.TargetsOptions {
+	targets := make([]discovery2.DiscoveredTarget, 0, len(args.Targets))
 	for _, t := range args.Targets {
 		targets = append(targets, t.AsMap()) // todo optimize AsMap
 	}
-	return sd.TargetsOptions{
+	return discovery2.TargetsOptions{
 		Targets:     targets,
 		TargetsOnly: dynamicProfilingPolicy,
-		DefaultTarget: sd.DiscoveredTarget{
+		DefaultTarget: discovery2.DiscoveredTarget{
 			"service_name": "unspecified",
 		},
 	}
