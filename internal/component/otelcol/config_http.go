@@ -6,7 +6,6 @@ import (
 	"github.com/alecthomas/units"
 	"github.com/grafana/alloy/internal/component/otelcol/auth"
 	otelcomponent "go.opentelemetry.io/collector/component"
-	otelconfigauth "go.opentelemetry.io/collector/config/configauth"
 	"go.opentelemetry.io/collector/config/configcompression"
 	otelconfighttp "go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/config/configopaque"
@@ -50,15 +49,15 @@ func (args *HTTPServerArguments) Convert() (*otelconfighttp.ServerConfig, error)
 	// if the extension does not support server auth an error will be returned.
 	var authentication *otelconfighttp.AuthConfig
 	if args.Authentication != nil {
-		ext, err := args.Authentication.GetExtension(auth.Server)
-		if err != nil {
-			return nil, err
-		}
+		//ext, err := args.Authentication.GetExtension(auth.Server)
+		//if err != nil {
+		//	return nil, err
+		//}
 
 		authentication = &otelconfighttp.AuthConfig{
-			Authentication: otelconfigauth.Authentication{
-				AuthenticatorID: ext.ID,
-			},
+			//Authentication: otelconfigauth.Authentication{
+			//	AuthenticatorID: ext.ID,
+			//},//TODO
 		}
 	}
 
@@ -149,14 +148,14 @@ func (args *HTTPClientArguments) Convert() (*otelconfighttp.ClientConfig, error)
 	}
 
 	// Configure the authentication if args.Auth is set.
-	var authentication *otelconfigauth.Authentication
-	if args.Authentication != nil {
-		ext, err := args.Authentication.GetExtension(auth.Client)
-		if err != nil {
-			return nil, err
-		}
-		authentication = &otelconfigauth.Authentication{AuthenticatorID: ext.ID}
-	}
+	//var authentication *otelconfigauth.Authentication
+	//if args.Authentication != nil {
+	//	ext, err := args.Authentication.GetExtension(auth.Client)
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//	authentication = &otelconfigauth.Authentication{AuthenticatorID: ext.ID}
+	//}
 
 	opaqueHeaders := make(map[string]configopaque.String)
 	for headerName, headerVal := range args.Headers {
@@ -184,7 +183,7 @@ func (args *HTTPClientArguments) Convert() (*otelconfighttp.ClientConfig, error)
 		HTTP2ReadIdleTimeout: args.HTTP2ReadIdleTimeout,
 		HTTP2PingTimeout:     args.HTTP2PingTimeout,
 
-		Auth: authentication,
+		//Auth: authentication, TODO
 
 		Cookies: args.Cookies.Convert(),
 	}
