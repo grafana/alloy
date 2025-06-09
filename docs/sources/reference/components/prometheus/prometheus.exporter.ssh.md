@@ -32,6 +32,9 @@ prometheus.exporter.ssh "example" {
   }
 }
 
+# Arguments
+
+The `prometheus.exporter.ssh` component doesn't support any arguments. You can configure this component with blocks.
 
 ## Blocks
 
