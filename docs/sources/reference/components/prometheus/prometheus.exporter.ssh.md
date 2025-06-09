@@ -74,6 +74,9 @@ Either `password` or `key_file` must be set. If both are provided, `key_file` is
 
 Defines metrics to collect from a server.
 
+<span class="badge docs-labels__stage docs-labels__item">Required</span>
+
+
 The following arguments are supported:
 
 You can attach arbitrary labels to your metrics using the `labels` argument in `custom_metrics` (for example, `labels = { address = each.value }`).
