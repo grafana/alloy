@@ -17,6 +17,7 @@ Main (unreleased)
 ### Enhancements
 
 - Add `hash_string_id` argument to `foreach` block to hash the string representation of the pipeline id instead of using the string itself. (@wildum)
+- Update `async-profiler` binaries for `pyroscope.java` to 4.0-87b7b42 (@github-hamza-bouqal)
 
 ### Bugfixes
 
@@ -125,8 +126,6 @@ v1.9.0
   - [0.27.2] Fix panic on certain invalid lines
   
 - Upgrade `beyla.ebpf` to v2.2.4-alloy. The full list of changes can be found in the [Beyla release notes](https://github.com/grafana/beyla/releases/tag/v2.2.4-alloy). (@grcevski)
-
-- Update `async-profiler` binaries for `pyroscope.java` to 4.0-87b7b42 (@github-hamza-bouqal)
 
 ### Bugfixes
 
