@@ -40,6 +40,7 @@ type Config struct {
 	Update             UpdateConfig             `yaml:"update,omitempty"`
 	Filetime           FiletimeConfig           `yaml:"filetime,omitempty"`
 	PerformanceCounter PerformanceCounterConfig `yaml:"performancecounter,omitempty"`
+	DNS                DNSConfig                `yaml:"dns,omitempty"`
 }
 
 // Name returns the name used, "windows_explorer"
@@ -74,6 +75,11 @@ type MSClusterConfig struct {
 
 // NetFrameworkConfig handles settings for the windows_exporter NetFramework collector
 type NetFrameworkConfig struct {
+	EnabledList string `yaml:"enabled_list,omitempty"`
+}
+
+// DNSConfig handles settings for the windows_exporter DNS collector
+type DNSConfig struct {
 	EnabledList string `yaml:"enabled_list,omitempty"`
 }
 

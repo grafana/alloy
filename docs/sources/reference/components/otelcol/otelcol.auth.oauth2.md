@@ -21,8 +21,10 @@ This component can fetch and refresh expired tokens automatically.
 Refer to the [OAuth 2.0 Authorization Framework](https://datatracker.ietf.org/doc/html/rfc6749#section-4.4) for more information about the Auth 2.0 Client Credentials flow.
 
 {{< admonition type="note" >}}
-`otelcol.auth.oauth2` is a wrapper over the upstream OpenTelemetry Collector `oauth2client` extension.
+`otelcol.auth.oauth2` is a wrapper over the upstream OpenTelemetry Collector [`oauth2client`][] extension.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`oauth2client`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/extension/oauth2clientauthextension
 {{< /admonition >}}
 
 You can specify multiple `otelcol.auth.oauth2` components by giving them different labels.
