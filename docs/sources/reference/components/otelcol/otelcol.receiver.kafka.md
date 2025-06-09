@@ -15,8 +15,10 @@ title: otelcol.receiver.kafka
 `otelcol.receiver.kafka` accepts telemetry data from a Kafka broker and forwards it to other `otelcol.*` components.
 
 {{< admonition type="note" >}}
-`otelcol.receiver.kafka` is a wrapper over the upstream OpenTelemetry Collector `kafka` receiver from the `otelcol-contrib` distribution.
+`otelcol.receiver.kafka` is a wrapper over the upstream OpenTelemetry Collector [`kafka`][] receiver.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`kafka`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/kafkareceiver
 {{< /admonition >}}
 
 You can specify multiple `otelcol.receiver.kafka` components by giving them different labels.

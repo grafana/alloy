@@ -21,8 +21,10 @@ When usage exceeds the hard limit, the processor forces a garbage collection to 
 When usage is below the soft limit, no data is dropped and no forced garbage collection is performed.
 
 {{< admonition type="note" >}}
-`otelcol.processor.memory_limiter` is a wrapper over the upstream OpenTelemetry Collector `memorylimiter` processor.
+`otelcol.processor.memory_limiter` is a wrapper over the upstream OpenTelemetry Collector [`memorylimiter`][] processor.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`memorylimiter`]: https://github.com/open-telemetry/opentelemetry-collector/tree/{{< param "OTEL_VERSION" >}}/processor/memorylimiterprocessor
 {{< /admonition >}}
 
 You can specify multiple `otelcol.processor.memory_limiter` components by giving them different labels.

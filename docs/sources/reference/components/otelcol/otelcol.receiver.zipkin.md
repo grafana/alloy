@@ -15,8 +15,10 @@ title: otelcol.receiver.zipkin
 `otelcol.receiver.zipkin` accepts Zipkin-formatted traces over the network and forwards it to other `otelcol.*` components.
 
 {{< admonition type="note" >}}
-`otelcol.receiver.zipkin` is a wrapper over the upstream OpenTelemetry Collector `zipkin` receiver.
+`otelcol.receiver.zipkin` is a wrapper over the upstream OpenTelemetry Collector [`zipkin`][] receiver.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`zipkin`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/zipkinreceiver
 {{< /admonition >}}
 
 You can specify multiple `otelcol.receiver.zipkin` components by giving them different labels.
