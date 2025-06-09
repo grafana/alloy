@@ -47,6 +47,11 @@ tasks:
     cmds:
       - helm --kubeconfig {{.KUBECONFIG}} upgrade --install k8s-monitoring -n k8s-monitoring --create-namespace grafana/k8s-monitoring --values {{.TASK_DIR}}/config/k8s-monitoring/values.yaml --values {{.TASK_DIR}}/config/k8s-monitoring/credentials.yaml --wait
 
+  deploy:cloud-onboarding:local:
+    deps: [create-cluster]
+    cmds:
+      - helm --kubeconfig {{.KUBECONFIG}} upgrade --install grafana-cloud-onboarding -n grafana-cloud-onboarding --create-namespace {{.TASK_DIR}}/../../../grafana-cloud-onboarding-helm-chart/charts/grafana-cloud-collector/ --wait
+
   deploy:alloy:daemon:
     desc: Deploy the consolidated Alloy DaemonSet for o11y onboarding
     cmds:
