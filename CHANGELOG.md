@@ -22,6 +22,10 @@ Main (unreleased)
 
 - Fix the `validate` command not understanding the `livedebugging` block. (@dehaansa)
 
+### Other changes
+
+- Mark `pyroscope.receive_http` and `pyroscope.relabel` components as GA. (@marcsanmi)
+
 v1.9.1
 -----------------
 
