@@ -15,8 +15,10 @@ title: otelcol.processor.k8sattributes
 `otelcol.processor.k8sattributes` accepts telemetry data from other `otelcol` components and adds Kubernetes metadata to the resource attributes of spans, logs, or metrics.
 
 {{< admonition type="note" >}}
-`otelcol.processor.k8sattributes` is a wrapper over the upstream OpenTelemetry Collector `k8sattributes` processor.
+`otelcol.processor.k8sattributes` is a wrapper over the upstream OpenTelemetry Collector [`k8sattributes`][] processor.
 If necessary, bug reports or feature requests will be redirected to the upstream repository.
+
+[`k8sattributes`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/k8sattributesprocessor
 {{< /admonition >}}
 
 You can specify multiple `otelcol.processor.k8sattributes` components by giving them different labels.

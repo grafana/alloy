@@ -19,8 +19,10 @@ Those metrics can then be used by a data visualization application, for example,
 [Grafana]: https://grafana.com/docs/grafana/latest/explore/trace-integration/#service-graph
 
 {{< admonition type="note" >}}
-`otelcol.connector.servicegraph` is a wrapper over the upstream OpenTelemetry Collector `servicegraph` connector.
+`otelcol.connector.servicegraph` is a wrapper over the upstream OpenTelemetry Collector [`servicegraph`][] connector.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`servicegraph`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/connector/servicegraphconnector
 {{< /admonition >}}
 
 You can specify multiple `otelcol.connector.servicegraph` components by giving them different labels.

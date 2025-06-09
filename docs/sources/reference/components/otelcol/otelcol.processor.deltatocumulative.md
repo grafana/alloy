@@ -17,8 +17,10 @@ title: otelcol.processor.deltatocumulative
 `otelcol.processor.deltatocumulative` accepts metrics from other `otelcol` components and converts metrics with the delta temporality to cumulative.
 
 {{< admonition type="note" >}}
-`otelcol.processor.deltatocumulative` is a wrapper over the upstream OpenTelemetry Collector `deltatocumulative` processor.
+`otelcol.processor.deltatocumulative` is a wrapper over the upstream OpenTelemetry Collector [`deltatocumulative`][] processor.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`deltatocumulative`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/deltatocumulativeprocessor
 {{< /admonition >}}
 
 You can specify multiple `otelcol.processor.deltatocumulative` components by giving them different labels.
