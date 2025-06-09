@@ -53,6 +53,8 @@ For example, `targets` > `custom_metrics` refers to a `custom_metrics` block def
 
 ### `targets`
 
+<span class="badge docs-labels__stage docs-labels__item">Required</span>
+
 Configures SSH targets to collect metrics from.
 
 The following arguments are supported:
